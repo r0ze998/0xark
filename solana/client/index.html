@@ -32,8 +32,29 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div id="h">ARROWS move / SPACE menu / Z select / X back</div>
 </div>
 <script>
-const c=document.getElementById('g'),g=c.getContext('2d'),W=480,H=320;
+const c=document.getElementById('g'),W=480,H=320;
+let g=c.getContext('2d');
 const TW=15,TH=13;
+
+// ═══════════════════════════════════════
+// SMOOTH ANIMATION UTILITIES
+// ═══════════════════════════════════════
+function lerp(a,b,t){return a+(b-a)*t;}
+function easeInOut(t){return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);}
+let lastTime=0,dt=1;
+
+// Offscreen canvas caches for edge blending and fog
+const edgeCanvas=document.createElement('canvas');
+edgeCanvas.width=W;edgeCanvas.height=H;
+const edgeCtx=edgeCanvas.getContext('2d');
+let edgeCacheDirty=true;
+let edgeCacheLastCamX=-9999,edgeCacheLastCamY=-9999;
+
+const fogCanvas=document.createElement('canvas');
+fogCanvas.width=W;fogCanvas.height=H;
+const fogCtx=fogCanvas.getContext('2d');
+let fogCacheDirty=true;
+let fogCacheLastCamX=-9999,fogCacheLastCamY=-9999;
 
 // ═══════════════════════════════════════
 // AUDIO
@@ -75,19 +96,36 @@ function tx(s,x,y,sz,c){g.fillStyle=c||'#303028';g.font=(sz||7)+"px 'Press Start
 // ═══════════════════════════════════════
 // TYPEWRITER
 // ═══════════════════════════════════════
-let twText='',twTarget='',twI=0,twDone=true;
-function twSet(s){twTarget=s;twText='';twI=0;twDone=false;}
-function twTick(){if(!twDone&&twI<twTarget.length){twText+=twTarget[twI];twI++;if(twI>=twTarget.length)twDone=true;}}
+let twText='',twTarget='',twI=0,twDone=true,twAccum=0,twShowFrame=0;
+function twSet(s){twTarget=s;twText='';twI=0;twDone=false;twAccum=0;twShowFrame=fr;}
+function twTick(){
+  if(!twDone){
+    twAccum+=dt;
+    while(twAccum>=0.33&&twI<twTarget.length){
+      twText+=twTarget[twI];twI++;twAccum-=0.33;
+      if(twI>=twTarget.length)twDone=true;
+    }
+  }
+}
 
 // ═══════════════════════════════════════
 // FADE + FLASH
 // ═══════════════════════════════════════
-let fadeAlpha=1,fadingIn=true,fadeCallback=null;
-function fadeIn(cb){fadeAlpha=1;fadingIn=true;fadeCallback=cb;}
-function fadeOut(cb){fadeAlpha=0;fadingIn=false;fadeCallback=cb;}
+let fadeAlpha=1,fadingIn=true,fadeCallback=null,fadeProgress=0;
+function fadeIn(cb){fadeAlpha=1;fadingIn=true;fadeCallback=cb;fadeProgress=0;}
+function fadeOut(cb){fadeAlpha=0;fadingIn=false;fadeCallback=cb;fadeProgress=0;}
 function fadeUpdate(){
-  if(fadingIn&&fadeAlpha>0){fadeAlpha-=.06;if(fadeAlpha<=0){fadeAlpha=0;if(fadeCallback){fadeCallback();fadeCallback=null;}}}
-  if(!fadingIn&&fadeAlpha<1){fadeAlpha+=.06;if(fadeAlpha>=1){fadeAlpha=1;if(fadeCallback){fadeCallback();fadeCallback=null;}}}
+  const speed=0.06*dt;
+  if(fadingIn&&fadeAlpha>0){
+    fadeProgress=Math.min(1,fadeProgress+speed);
+    fadeAlpha=1-easeInOut(fadeProgress);
+    if(fadeAlpha<=0){fadeAlpha=0;if(fadeCallback){fadeCallback();fadeCallback=null;}}
+  }
+  if(!fadingIn&&fadeAlpha<1){
+    fadeProgress=Math.min(1,fadeProgress+speed);
+    fadeAlpha=easeInOut(fadeProgress);
+    if(fadeAlpha>=1){fadeAlpha=1;if(fadeCallback){fadeCallback();fadeCallback=null;}}
+  }
 }
 function fadeDraw(){if(fadeAlpha>0){bx(0,0,W,H,`rgba(0,0,0,${fadeAlpha})`);}}
 let flashT=0;
@@ -276,16 +314,18 @@ for(let i=0;i<40;i++){
 }
 
 function fogRevealRadius(mapIdx,cx,cy,radius){
+  let changed=false;
   for(let dy=-radius;dy<=radius;dy++){
     for(let dx=-radius;dx<=radius;dx++){
       if(Math.abs(dx)+Math.abs(dy)<=radius){
         const nx=cx+dx,ny=cy+dy;
         if(nx>=0&&nx<MW&&ny>=0&&ny<MH){
-          fogRevealed[mapIdx][ny][nx]=true;
+          if(!fogRevealed[mapIdx][ny][nx]){fogRevealed[mapIdx][ny][nx]=true;changed=true;}
         }
       }
     }
   }
+  if(changed)fogCacheDirty=true;
 }
 
 function fogSave(){
@@ -402,7 +442,7 @@ function showBanner(text){
 }
 
 // ── NPC DIALOG STATE ──
-let npcDialogActive=false, npcDialogLines=[], npcDialogIdx=0, npcDialogName='';
+let npcDialogActive=false, npcDialogLines=[], npcDialogIdx=0, npcDialogName='', npcDialogOpenFrame=0;
 
 // ── WILD ENCOUNTER STATE ──
 let wildEncounterActive=false, wildEncounterCard=-1, wildEncounterFrame=0;
@@ -460,9 +500,9 @@ for(let i=0;i<12;i++){
 }
 
 const pl=[
-  {x:15,y:13,c:'#48b8e8',n:'You',cd:[1,3,0,0,0],cc:2,dir:0,step:0},
-  {x:19,y:14,c:'#d860a0',n:'Rival',cd:[2,5,0,0,0],cc:2,dir:2,step:0},
-  {x:6,y:11,c:'#d8b028',n:'Hunter',cd:[4,0,0,0,0],cc:1,dir:0,step:0},
+  {x:15,y:13,c:'#48b8e8',n:'You',cd:[1,3,0,0,0],cc:2,dir:0,step:0,walkFrame:0,visualX:15*TW,visualY:13*TH},
+  {x:19,y:14,c:'#d860a0',n:'Rival',cd:[2,5,0,0,0],cc:2,dir:2,step:0,walkFrame:0,visualX:19*TW,visualY:14*TH},
+  {x:6,y:11,c:'#d8b028',n:'Hunter',cd:[4,0,0,0,0],cc:1,dir:0,step:0,walkFrame:0,visualX:6*TW,visualY:11*TH},
 ];
 
 const sp={s:3,b:2,c:1};
@@ -1032,19 +1072,23 @@ function drawTile(tx_,ty){
 // SPRITES
 // ═══════════════════════════════════════
 function drawSprite(p,isPlayer){
-  const px=p.x*TW-camX,py=p.y*TH-camY-7;
+  const px=p.visualX-camX,py=p.visualY-camY-7;
   if(px<-20||px>W+20||py<-24||py>H+24)return;
-  const bob=p.step%2===1?1:0;
+  // 4-frame walk: 0=stand, 1=step-left, 2=stand, 3=step-right
+  const wf=p.walkFrame%4;
+  const bob=(wf===1||wf===3)?1:0;
   const d=p.dir;
-  const stepOff=p.step%2===1;
+  const stepOff=(wf===1);
 
   g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(px+7,py+19,5,2,0,0,Math.PI*2);g.fill();
 
-  if(stepOff){bx(px+2,py+17+bob,4,2,'#383030');bx(px+8,py+16+bob,4,2,'#383030');}
+  if(wf===1){bx(px+2,py+17+bob,4,2,'#383030');bx(px+8,py+16+bob,4,2,'#383030');}
+  else if(wf===3){bx(px+4,py+16+bob,4,2,'#383030');bx(px+7,py+17+bob,4,2,'#383030');}
   else{bx(px+3,py+17+bob,4,2,'#383030');bx(px+7,py+17+bob,4,2,'#383030');}
 
   bx(px+3,py+14+bob,4,4,'#4050a0');bx(px+7,py+14+bob,4,4,'#4050a0');
-  if(stepOff){bx(px+3,py+14+bob,4,3,'#3848a0');bx(px+7,py+15+bob,4,3,'#3848a0');}
+  if(wf===1){bx(px+3,py+14+bob,4,3,'#3848a0');bx(px+7,py+15+bob,4,3,'#3848a0');}
+  else if(wf===3){bx(px+3,py+15+bob,4,3,'#3848a0');bx(px+7,py+14+bob,4,3,'#3848a0');}
 
   let shirtC,shirtH,hairC,hairH;
   if(p===pl[0]){shirtC='#4080d0';shirtH='#5090e0';hairC='#282830';hairH='#383840';}
@@ -1183,12 +1227,14 @@ function drawBirds(){
 // CAMERA
 // ═══════════════════════════════════════
 function updateCamera(){
-  const px=pl[0].x*TW+TW/2,py=pl[0].y*TH+TH/2;
+  const px=pl[0].visualX+TW/2,py=pl[0].visualY+TH/2;
   camTargetX=px-W/2;camTargetY=py-(H-40)/2;
   const maxX=MW*TW-W,maxY=MH*TH-H;
   camTargetX=Math.max(0,Math.min(maxX,camTargetX));
   camTargetY=Math.max(0,Math.min(maxY,camTargetY));
-  camX+=(camTargetX-camX)*.15;camY+=(camTargetY-camY)*.15;
+  const lerpT=1-Math.pow(1-0.12,dt);
+  camX=lerp(camX,camTargetX,lerpT);
+  camY=lerp(camY,camTargetY,lerpT);
 }
 
 // ═══════════════════════════════════════
@@ -1227,9 +1273,12 @@ function doMapTransition(exit){
     currentMap=exit.targetMap;
     pl[0].x=exit.targetX;
     pl[0].y=exit.targetY;
+    pl[0].visualX=exit.targetX*TW;
+    pl[0].visualY=exit.targetY*TH;
     // Snap camera
-    camX=pl[0].x*TW-W/2;camY=pl[0].y*TH-H/2;
+    camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
     camTargetX=camX;camTargetY=camY;
+    edgeCacheDirty=true;fogCacheDirty=true;
     particles.length=0;
     // Reveal starting area on new map
     fogRevealRadius(currentMap,pl[0].x,pl[0].y,2);fogSave();
@@ -1441,6 +1490,7 @@ function checkNPCInteraction(){
       npcDialogLines=npc.dialog;
       npcDialogIdx=0;
       npcDialogName=npc.name;
+      npcDialogOpenFrame=fr;
       sfxConfirm();
       return true;
     }
@@ -1450,18 +1500,24 @@ function checkNPCInteraction(){
 
 function drawNPCDialog(){
   if(!npcDialogActive)return;
+  const dlgSlide=Math.min(1,(fr-npcDialogOpenFrame)/6);
+  const dlgEase=easeInOut(dlgSlide);
+  const slideOff=74*(1-dlgEase);
+  g.globalAlpha=dlgEase;
   // FRLG textbox
-  win(4,H-80,W-8,74);
+  win(4,H-80+slideOff,W-8,74);
   // Name plate
-  win(8,H-88,npcDialogName.length*8+16,16);
-  tx(npcDialogName,16,H-77,6,'#c04040');
+  win(8,H-88+slideOff,npcDialogName.length*8+16,16);
+  tx(npcDialogName,16,H-77+slideOff,6,'#c04040');
   // Dialog text
   const line=npcDialogLines[npcDialogIdx]||'';
   const line2=npcDialogLines[npcDialogIdx+1]||'';
-  tx(line,16,H-56,6,'#303028');
-  if(line2)tx(line2,16,H-42,6,'#303028');
-  // Continue indicator
-  if(Math.floor(fr/20)%2===0)tx('\u25BC',W-20,H-14,6,'#c04040');
+  tx(line,16,H-56+slideOff,6,'#303028');
+  if(line2)tx(line2,16,H-42+slideOff,6,'#303028');
+  // Continue indicator with smooth bounce
+  const arrowBounce=Math.sin(fr*0.15)*2;
+  tx('\u25BC',W-20,H-14+slideOff+arrowBounce,6,'#c04040');
+  g.globalAlpha=1;
 }
 
 // ═══════════════════════════════════════
@@ -1710,7 +1766,7 @@ function drawRivalAlertAnim(p,px,py){
   // "!" alert animation when rival enters visible range
   if(!p._alertTimer)p._alertTimer=0;
   if(p._alertTimer>0){
-    p._alertTimer--;
+    p._alertTimer-=dt;
     const bounceY=Math.sin(p._alertTimer*0.3)*3;
     const alpha=Math.min(1,p._alertTimer/15);
     g.globalAlpha=alpha;
@@ -1737,14 +1793,51 @@ function dMap(){
   const endTY=Math.min(MH-1,Math.ceil((camY+H)/TH));
 
   for(let y=startTY;y<=endTY;y++){
-    for(let x=startTX;x<=endTX;x++){drawTile(x,y);}
+    for(let x=startTX;x<=endTX;x++){
+      // Skip tiles fully hidden by fog (no adjacent revealed tiles)
+      if(!fogRevealed[currentMap][y]?.[x]){
+        let anyNeighborRevealed=false;
+        for(let dy=-1;dy<=1&&!anyNeighborRevealed;dy++){
+          for(let dx=-1;dx<=1&&!anyNeighborRevealed;dx++){
+            const ny=y+dy,nx=x+dx;
+            if(ny>=0&&ny<MH&&nx>=0&&nx<MW&&fogRevealed[currentMap][ny]?.[nx])anyNeighborRevealed=true;
+          }
+        }
+        if(!anyNeighborRevealed)continue;
+      }
+      drawTile(x,y);
+    }
   }
 
-  // Edge blending post-pass (every 3rd frame for performance)
-  if(fr%3===0) drawEdgeBlending(startTX,startTY,endTX,endTY);
+  // Edge blending post-pass (cached to offscreen canvas)
+  {
+    const camMoved=Math.abs(camX-edgeCacheLastCamX)>0.5||Math.abs(camY-edgeCacheLastCamY)>0.5;
+    if(edgeCacheDirty||camMoved){
+      edgeCtx.clearRect(0,0,W,H);
+      const mainCtx=g;
+      g=edgeCtx;
+      drawEdgeBlending(startTX,startTY,endTX,endTY);
+      g=mainCtx;
+      edgeCacheLastCamX=camX;edgeCacheLastCamY=camY;
+      edgeCacheDirty=false;
+    }
+    g.drawImage(edgeCanvas,0,0);
+  }
 
-  // ── FOG OF WAR OVERLAY ── (after tiles, before sprites)
-  drawFogOverlay(startTX,startTY,endTX,endTY);
+  // ── FOG OF WAR OVERLAY ── (cached to offscreen canvas)
+  {
+    const camMoved=Math.abs(camX-fogCacheLastCamX)>0.5||Math.abs(camY-fogCacheLastCamY)>0.5;
+    if(fogCacheDirty||camMoved){
+      fogCtx.clearRect(0,0,W,H);
+      const mainCtx=g;
+      g=fogCtx;
+      drawFogOverlay(startTX,startTY,endTX,endTY);
+      g=mainCtx;
+      fogCacheLastCamX=camX;fogCacheLastCamY=camY;
+      fogCacheDirty=false;
+    }
+    g.drawImage(fogCanvas,0,0);
+  }
   // Fog particles only every other frame
   if(fr%2===0) drawFogParticles();
 
@@ -1774,12 +1867,12 @@ function dMap(){
     }else{hv._wasVisible=false;}
   }else{pl[2]._wasVisible=false;}
   const sorted=visiblePl.map((p,i)=>({p,i:pl.indexOf(p)}));
-  sorted.sort((a,b)=>a.p.y-b.p.y);
+  sorted.sort((a,b)=>a.p.visualY-b.p.visualY);
   sorted.forEach(({p,i})=>{
     drawSprite(p,i===0);
     // Draw "!" alert for rivals entering visible range
     if(i!==0){
-      const spx=p.x*TW-camX,spy=p.y*TH-camY-7;
+      const spx=p.visualX-camX,spy=p.visualY-camY-7;
       drawRivalAlertAnim(p,spx,spy);
     }
   });
@@ -1815,11 +1908,16 @@ function dMap(){
   // Minimap
   drawMinimap();
 
-  // Textbox
+  // Textbox with slide-up animation
   if(!twDone){
-    win(4,hudY-42,W-8,38);
-    tx(twText,14,hudY-18,6);
-    if(twDone&&Math.floor(fr/20)%2===0)tx('\u25BC',W-20,hudY-8,6,'#c04040');
+    const tbSlide=Math.min(1,(fr-twShowFrame)/6);
+    const tbEase=easeInOut(tbSlide);
+    const tbY=hudY-42+38*(1-tbEase);
+    g.globalAlpha=tbEase;
+    win(4,tbY,W-8,38);
+    tx(twText,14,tbY+24,6);
+    if(twDone&&Math.floor(fr/20)%2===0)tx('\u25BC',W-20,tbY+34,6,'#c04040');
+    g.globalAlpha=1;
   }
 
   // NPC dialog overlay
@@ -1844,15 +1942,32 @@ function dMap(){
 // ═══════════════════════════════════════
 // MENU
 // ═══════════════════════════════════════
+let menuOpenFrame=0;
 function dMenu(){
-  bx(0,0,W,H,'rgba(0,0,0,.35)');
-  win(W-140,8,132,148);
-  const items=['CARDS','MAP','BATTLE','LOG','NEW GAME','CLOSE'];
-  items.forEach((s,i)=>{
-    const y=28+i*20;
-    if(i===mi){tx('\u25B6',W-128,y,7,'#c04040');tx(s,W-114,y,7,i===4?'#d8b028':'#c04040');}
-    else tx(s,W-114,y,7,i===4?'#a08820':'#303028');
-  });
+  if(menuOpenFrame===0)menuOpenFrame=fr;
+  const menuT=Math.min(1,(fr-menuOpenFrame)/8); // 8 frames to fully open
+  const ease=easeInOut(menuT);
+  const menuW=Math.floor(132*ease),menuH=Math.floor(148*ease);
+  const menuX=W-8-menuW,menuY=8;
+  bx(0,0,W,H,`rgba(0,0,0,${0.35*ease})`);
+  if(menuW>4&&menuH>4){
+    win(menuX,menuY,menuW,menuH);
+    if(ease>=0.7){
+      const itemAlpha=Math.min(1,(ease-0.7)/0.3);
+      g.globalAlpha=itemAlpha;
+      const items=['CARDS','MAP','BATTLE','LOG','NEW GAME','CLOSE'];
+      items.forEach((s,i)=>{
+        const y=28+i*20;
+        // Smooth cursor bounce
+        if(i===mi){
+          const bounce=Math.sin(fr*0.15)*1.5;
+          tx('\u25B6',W-128+bounce,y,7,'#c04040');tx(s,W-114,y,7,i===4?'#d8b028':'#c04040');
+        }
+        else tx(s,W-114,y,7,i===4?'#a08820':'#303028');
+      });
+      g.globalAlpha=1;
+    }
+  }
 }
 
 // ═══════════════════════════════════════
@@ -2352,14 +2467,32 @@ function dLog(){
 // ═══════════════════════════════════════
 // GAME LOOP
 // ═══════════════════════════════════════
+function updateVisualPositions(){
+  const lerpT=1-Math.pow(1-0.2,dt);
+  pl.forEach(p=>{
+    p.visualX=lerp(p.visualX,p.x*TW,lerpT);
+    p.visualY=lerp(p.visualY,p.y*TH,lerpT);
+    // Update walk frame based on movement distance
+    const dx=Math.abs(p.visualX-p.x*TW),dy=Math.abs(p.visualY-p.y*TH);
+    if(dx>0.5||dy>0.5){
+      // Still moving - advance walk cycle
+      p._walkAccum=(p._walkAccum||0)+dt;
+      if(p._walkAccum>=4){p._walkAccum=0;p.walkFrame=(p.walkFrame+1)%4;}
+    }else{
+      p.walkFrame=0;p._walkAccum=0;
+    }
+  });
+}
+
 function update(){
   fr++;
   if(fr%20===0)wt++;
-  if(fr%3===0)twTick();
+  twTick();
   fadeUpdate();updateParticles();updateBanner();
-  if(flashT>0)flashT--;
-  if(bpShakeTimer>0)bpShakeTimer--;
-  if(rivalAlert>0)rivalAlert--;
+  updateVisualPositions();
+  if(flashT>0)flashT-=dt;
+  if(bpShakeTimer>0)bpShakeTimer-=dt;
+  if(rivalAlert>0)rivalAlert-=dt;
 
   // Bird movement
   if(fr%10===0){
@@ -2413,7 +2546,9 @@ function update(){
         const rx=5+Math.floor(Math.random()*(MW-10));
         const ry=5+Math.floor(Math.random()*(MH-10));
         if(WALKABLE.has(m[ry]?.[rx])){
-          pl[i+1].x=rx;pl[i+1].y=ry;placed=true;
+          pl[i+1].x=rx;pl[i+1].y=ry;
+          pl[i+1].visualX=rx*TW;pl[i+1].visualY=ry*TH;
+          placed=true;
         }
       }
       // Alert if entered player's map
@@ -2453,7 +2588,12 @@ function draw(){
   fadeDraw();
 }
 
-function loop(){update();draw();requestAnimationFrame(loop);}
+function loop(now){
+  if(!lastTime)lastTime=now;
+  dt=Math.min(3,Math.max(0.1,(now-lastTime)/16.67)); // normalized to 60fps, clamped
+  lastTime=now;
+  update();draw();requestAnimationFrame(loop);
+}
 
 // ═══════════════════════════════════════
 // INPUT
@@ -2487,7 +2627,7 @@ document.addEventListener('keydown',e=>{
   if(wildEncounterActive)return;
 
   if(sc==='map'){
-    if(e.code==='Space'){mo=!mo;mi=0;sfxSelect();return;}
+    if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();return;}
     if(mo){
       if(e.code==='ArrowUp'){mi=Math.max(0,mi-1);sfxMove();}
       if(e.code==='ArrowDown'){mi=Math.min(5,mi+1);sfxMove();}
@@ -2497,9 +2637,10 @@ document.addEventListener('keydown',e=>{
         else if(mi===4){
           // NEW GAME: reset all state
           fogClear();
-          pl[0].cd=[1,3,0,0,0];pl[0].cc=2;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;
-          pl[1].cd=[2,5,0,0,0];pl[1].cc=2;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;
-          pl[2].cd=[4,0,0,0,0];pl[2].cc=1;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;
+          pl[0].cd=[1,3,0,0,0];pl[0].cc=2;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
+          pl[1].cd=[2,5,0,0,0];pl[1].cc=2;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
+          pl[2].cd=[4,0,0,0,0];pl[2].cc=1;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
+          edgeCacheDirty=true;fogCacheDirty=true;
           sp.s=3;sp.b=2;sp.c=1;rd=3;currentMap=0;
           rivalMaps=[0,0];lg.length=0;lg.push('New game started!');
           treasures.forEach(t=>t.collected=false);
@@ -2507,7 +2648,7 @@ document.addEventListener('keydown',e=>{
         }
         else{fadeOut(()=>{sc=s[mi];mo=false;if(sc==='act'){actEnterFrame=fr;battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
       }
-      if(e.code==='KeyX'){mo=false;sfxBack();}
+      if(e.code==='KeyX'){mo=false;menuOpenFrame=0;sfxBack();}
     }else{
       // Z = interact with NPC
       if(e.code==='KeyZ'){
@@ -2522,7 +2663,8 @@ document.addEventListener('keydown',e=>{
       if(nx!==p.x||ny!==p.y){
         const m=getMap();
         if(nx>=0&&nx<MW&&ny>=0&&ny<MH&&WALKABLE.has(m[ny]?.[nx])){
-          p.x=nx;p.y=ny;p.step++;sfxMove();
+          p.x=nx;p.y=ny;p.step++;p.walkFrame=(p.walkFrame+1)%4;sfxMove();
+          edgeCacheDirty=true;
           // Reveal fog around new position
           fogRevealRadius(currentMap,nx,ny,2);
           fogSave();
@@ -2576,7 +2718,7 @@ document.addEventListener('keydown',e=>{
 function ss(s){sfxSelect();fadeOut(()=>{sc=s;mo=false;if(s==='act'){actEnterFrame=fr;battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
 function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle('a',['map','act','crd','log'][i]===sc));}
 
-loop();
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
