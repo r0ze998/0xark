@@ -630,10 +630,393 @@ let npcDialogActive=false, npcDialogLines=[], npcDialogIdx=0, npcDialogName='', 
 // ── WILD ENCOUNTER STATE ──
 let wildEncounterActive=false, wildEncounterCard=-1, wildEncounterFrame=0;
 
-// ── RIVAL MAP TELEPORT ──
-let rivalMapTimer=0;
+// ── RIVAL AI SYSTEM ──
 let rivalMaps=[0,0]; // which map rival and hunter are on
 let rivalAlert=0, rivalAlertName='';
+
+// Rival AI state objects
+const rivalAI=[
+  // Index 0 = pl[1] "Rival" — The Hunter (Aggressive)
+  {goalX:10,goalY:10,goalMap:0,personality:'hunter',moveTimer:0,moveInterval:10,
+   lastKnownPlayerMap:-1,lastKnownPlayerX:-1,lastKnownPlayerY:-1,
+   state:'exploring',stateTimer:0,fleeDir:-1},
+  // Index 1 = pl[2] "Hunter" — The Collector (Strategic)
+  {goalX:20,goalY:15,goalMap:1,personality:'collector',moveTimer:0,moveInterval:12,
+   lastKnownPlayerMap:-1,lastKnownPlayerX:-1,lastKnownPlayerY:-1,
+   state:'exploring',stateTimer:0,fleeDir:-1}
+];
+
+// Footprints system: {map, x, y, age}
+const footprints=[];
+const FOOTPRINT_MAX_AGE=3600; // 60 seconds at 60fps
+
+// Proximity tension state
+let proximityPulseTimer=0;
+let proximityDangerLevel=0; // 0=none, 1=same map, 2=within 8, 3=within 5, 4=within 2
+let rivalDangerAlertShown=false;
+
+// Danger drone SFX
+let dangerDroneNode=null,dangerDroneGain=null;
+function startDangerDrone(){
+  if(!soundEnabled||dangerDroneNode)return;
+  try{
+    const o=AC.createOscillator(),gn=AC.createGain();
+    o.type='sine';o.frequency.value=55;
+    gn.gain.value=0;
+    o.connect(gn);gn.connect(AC.destination);
+    o.start();
+    dangerDroneNode=o;dangerDroneGain=gn;
+  }catch(e){}
+}
+function stopDangerDrone(){
+  if(dangerDroneNode){
+    try{dangerDroneGain.gain.linearRampToValueAtTime(0,AC.currentTime+0.3);
+    setTimeout(()=>{try{dangerDroneNode.stop();dangerDroneNode.disconnect();}catch(e){}dangerDroneNode=null;dangerDroneGain=null;},400);
+    }catch(e){dangerDroneNode=null;dangerDroneGain=null;}
+  }
+}
+function sfxDangerAlert(){if(!soundEnabled)return;beep(200,.1,.08);setTimeout(()=>beep(300,.08,.07),100);}
+
+// Find a walkable tile near (x,y) on mapIdx for rival goal
+function findWalkableTile(mapIdx,nearX,nearY,radius){
+  const m=maps[mapIdx];
+  for(let attempt=0;attempt<40;attempt++){
+    const rx=nearX+Math.floor(Math.random()*radius*2)-radius;
+    const ry=nearY+Math.floor(Math.random()*radius*2)-radius;
+    if(rx>=1&&rx<MW-1&&ry>=1&&ry<MH-1&&WALKABLE.has(m[ry]?.[rx])){
+      return{x:rx,y:ry};
+    }
+  }
+  return null;
+}
+
+// Find tall grass patches on a map
+function findGrassPatch(mapIdx){
+  const m=maps[mapIdx];
+  const patches=[];
+  for(let y=2;y<MH-2;y++){
+    for(let x=2;x<MW-2;x++){
+      if(m[y][x]===11)patches.push({x,y});
+    }
+  }
+  if(patches.length===0)return null;
+  return patches[Math.floor(Math.random()*patches.length)];
+}
+
+// Find which map has cards a rival needs
+function findCardMap(rIdx){
+  const r=pl[rIdx];
+  const has=new Set();
+  r.cd.forEach(c=>{if(c>0)has.add(c);});
+  // AREA_CARDS: Port=[1,2], Forest=[3,4], Ruins=[5,1]
+  const needs=[];
+  for(let i=1;i<=5;i++){if(!has.has(i))needs.push(i);}
+  if(needs.length===0)return Math.floor(Math.random()*3);
+  // Find map that provides needed cards
+  const mapCards=[[1,2],[3,4],[5,1]];
+  const scored=[];
+  for(let m=0;m<3;m++){
+    let score=0;
+    mapCards[m].forEach(c=>{if(needs.includes(c))score++;});
+    scored.push({map:m,score});
+  }
+  scored.sort((a,b)=>b.score-a.score);
+  if(scored[0].score>0)return scored[0].map;
+  return Math.floor(Math.random()*3);
+}
+
+// Find exit from current map to target map
+function findExitToMap(fromMap,toMap){
+  for(const ex of exits){
+    if(ex.fromMap===fromMap&&ex.targetMap===toMap){
+      return{x:ex.tiles[0][0],y:ex.tiles[0][1],targetMap:ex.targetMap,targetX:ex.targetX,targetY:ex.targetY};
+    }
+  }
+  return null;
+}
+
+// Simple step toward goal: reduce dx or dy by 1, prefer walkable+path tiles
+function stepToward(rIdx,goalX,goalY){
+  const p=pl[rIdx];
+  const mapIdx=rivalMaps[rIdx-1];
+  const m=maps[mapIdx];
+  const dx=goalX-p.x;
+  const dy=goalY-p.y;
+  if(dx===0&&dy===0)return false;
+
+  // Candidate steps in priority order
+  const candidates=[];
+  if(Math.abs(dx)>=Math.abs(dy)){
+    if(dx!==0)candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
+    if(dy!==0)candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
+    // Diagonal alternatives
+    if(dx!==0&&dy!==0){
+      candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
+      candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
+    }
+  }else{
+    if(dy!==0)candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
+    if(dx!==0)candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
+    if(dx!==0&&dy!==0){
+      candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
+      candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
+    }
+  }
+  // Random perpendicular as last resort
+  if(candidates.length<3){
+    const perp=[{nx:p.x+1,ny:p.y},{nx:p.x-1,ny:p.y},{nx:p.x,ny:p.y+1},{nx:p.x,ny:p.y-1}];
+    perp.sort(()=>Math.random()-0.5);
+    perp.forEach(c=>candidates.push(c));
+  }
+
+  // Pick best walkable candidate, preferring path tiles
+  for(const c of candidates){
+    if(c.nx>=0&&c.nx<MW&&c.ny>=0&&c.ny<MH&&WALKABLE.has(m[c.ny]?.[c.nx])){
+      // Set direction
+      const sdx=c.nx-p.x,sdy=c.ny-p.y;
+      if(sdy>0)p.dir=0;else if(sdx<0)p.dir=1;
+      else if(sdy<0)p.dir=2;else if(sdx>0)p.dir=3;
+      p.x=c.nx;p.y=c.ny;p.step++;
+      return true;
+    }
+  }
+  return false;
+}
+
+// Rival picks a new goal based on personality
+function pickRivalGoal(aiIdx){
+  const ai=rivalAI[aiIdx];
+  const rIdx=aiIdx+1; // pl index
+  const r=pl[rIdx];
+  const rMap=rivalMaps[aiIdx];
+  const rCards=r.cd.filter(c=>c>0).length;
+
+  if(ai.personality==='hunter'){
+    // The Hunter - Aggressive
+    // Priority 1: If knows player location, move toward them
+    if(ai.lastKnownPlayerMap>=0&&ai.lastKnownPlayerMap===rMap){
+      ai.goalX=ai.lastKnownPlayerX;
+      ai.goalY=ai.lastKnownPlayerY;
+      ai.goalMap=rMap;
+      ai.state='hunting';
+      return;
+    }
+    // Priority 2: If < 3 cards, go get cards
+    if(rCards<3){
+      const needMap=findCardMap(rIdx);
+      if(needMap!==rMap){
+        // Navigate to exit
+        const ex=findExitToMap(rMap,needMap);
+        if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.goalMap=rMap;ai.state='exploring';return;}
+      }
+      const grass=findGrassPatch(rMap);
+      if(grass){ai.goalX=grass.x;ai.goalY=grass.y;ai.goalMap=rMap;ai.state='exploring';return;}
+    }
+    // Priority 3: Has 3+ cards, hunt the player
+    if(ai.lastKnownPlayerMap>=0&&ai.lastKnownPlayerMap!==rMap){
+      const ex=findExitToMap(rMap,ai.lastKnownPlayerMap);
+      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.goalMap=rMap;ai.state='hunting';return;}
+    }
+    // Default: explore randomly
+    const t=findWalkableTile(rMap,Math.floor(MW/2),Math.floor(MH/2),15);
+    if(t){ai.goalX=t.x;ai.goalY=t.y;ai.goalMap=rMap;}
+    ai.state='exploring';
+  }else{
+    // The Collector - Strategic
+    // Priority 1: Go to area with missing cards
+    const needMap=findCardMap(rIdx);
+    if(needMap!==rMap){
+      // Avoid the aggressive rival's map if possible
+      const aggressiveMap=rivalMaps[0];
+      if(needMap===aggressiveMap&&rCards>=2){
+        // Try alternate map
+        const altMaps=[0,1,2].filter(m=>m!==rMap&&m!==aggressiveMap);
+        const altNeed=altMaps.find(m=>{
+          const mc=[[1,2],[3,4],[5,1]][m];
+          const has=new Set();r.cd.forEach(c=>{if(c>0)has.add(c);});
+          return mc.some(c=>!has.has(c));
+        });
+        if(altNeed!==undefined){
+          const ex=findExitToMap(rMap,altNeed);
+          if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.goalMap=rMap;ai.state='exploring';return;}
+        }
+      }
+      const ex=findExitToMap(rMap,needMap);
+      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.goalMap=rMap;ai.state='exploring';return;}
+    }
+    // Priority 2: Walk to tall grass
+    const grass=findGrassPatch(rMap);
+    if(grass){ai.goalX=grass.x;ai.goalY=grass.y;ai.goalMap=rMap;ai.state='exploring';return;}
+    // Default: explore
+    const t=findWalkableTile(rMap,Math.floor(MW/2),Math.floor(MH/2),15);
+    if(t){ai.goalX=t.x;ai.goalY=t.y;ai.goalMap=rMap;}
+    ai.state='exploring';
+  }
+}
+
+// Update single rival AI each frame
+function updateRivalAI(aiIdx){
+  const ai=rivalAI[aiIdx];
+  const rIdx=aiIdx+1;
+  const r=pl[rIdx];
+  const rMap=rivalMaps[aiIdx];
+
+  // Decrement move timer
+  ai.moveTimer--;
+  if(ai.moveTimer>0)return;
+  ai.moveTimer=ai.moveInterval+Math.floor(Math.random()*4); // 8-14 frames
+
+  // If player is on same map and nearby, update last known
+  if(rMap===currentMap){
+    const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+    // Hunter: always track if within 12 tiles
+    if(ai.personality==='hunter'&&dist<=12){
+      ai.lastKnownPlayerMap=currentMap;
+      ai.lastKnownPlayerX=pl[0].x;
+      ai.lastKnownPlayerY=pl[0].y;
+    }
+    // Collector: only track if within 6 tiles
+    if(ai.personality==='collector'&&dist<=6){
+      ai.lastKnownPlayerMap=currentMap;
+      ai.lastKnownPlayerX=pl[0].x;
+      ai.lastKnownPlayerY=pl[0].y;
+    }
+
+    // Hunter chases player directly if within 8 tiles
+    if(ai.personality==='hunter'&&dist<=8){
+      ai.goalX=pl[0].x;ai.goalY=pl[0].y;ai.goalMap=rMap;
+      ai.state='hunting';
+      ai.moveInterval=8; // faster when chasing
+    }
+
+    // Collector flees if player within 5 tiles (70% chance)
+    if(ai.personality==='collector'&&dist<=5&&ai.state!=='fleeing'){
+      if(Math.random()<0.7){
+        ai.state='fleeing';
+        ai.stateTimer=6; // flee for 6 steps
+        // Move away from player
+        const fdx=r.x-pl[0].x;const fdy=r.y-pl[0].y;
+        const fx=r.x+(fdx>0?8:-8);const fy=r.y+(fdy>0?8:-8);
+        const clamped=findWalkableTile(rMap,Math.max(2,Math.min(MW-3,fx)),Math.max(2,Math.min(MH-3,fy)),5);
+        if(clamped){ai.goalX=clamped.x;ai.goalY=clamped.y;ai.goalMap=rMap;}
+        ai.moveInterval=6; // flee fast
+      }
+    }
+  }
+
+  // Fleeing countdown
+  if(ai.state==='fleeing'){
+    ai.stateTimer--;
+    if(ai.stateTimer<=0){
+      ai.state='exploring';
+      ai.moveInterval=ai.personality==='hunter'?10:12;
+      pickRivalGoal(aiIdx);
+    }
+  }
+
+  // Check if at goal
+  const atGoal=Math.abs(r.x-ai.goalX)<=1&&Math.abs(r.y-ai.goalY)<=1;
+  if(atGoal){
+    // Check if standing on exit tile
+    for(const ex of exits){
+      if(ex.fromMap===rMap){
+        for(const [etx,ety] of ex.tiles){
+          if(r.x===etx&&r.y===ety){
+            // Transition rival to new map
+            const oldMap=rMap;
+            rivalMaps[aiIdx]=ex.targetMap;
+            r.x=ex.targetX;r.y=ex.targetY;
+            r.visualX=ex.targetX*TW;r.visualY=ex.targetY*TH;
+            // Alert if entered player's map
+            if(ex.targetMap===currentMap&&oldMap!==currentMap){
+              rivalAlert=90;rivalAlertName=r.n;
+              flash();beep(660,.04,.06);
+              lg.push('You sense movement... '+r.n+' entered the area!');
+            }
+            pickRivalGoal(aiIdx);
+            return;
+          }
+        }
+      }
+    }
+    // Not on exit, pick new goal
+    ai.moveInterval=ai.personality==='hunter'?10:12;
+    pickRivalGoal(aiIdx);
+  }
+
+  // Take a step toward goal
+  const moved=stepToward(rIdx,ai.goalX,ai.goalY);
+  if(moved){
+    // Add footprint
+    footprints.push({map:rMap,x:r.x,y:r.y,age:0});
+
+    // Card encounter from grass (same chances as player)
+    const m=maps[rMap];
+    const tile=m[r.y]?.[r.x];
+    let encounterChance=0;
+    if(tile===11)encounterChance=0.20;
+    else if(tile===1)encounterChance=0.08;
+    if(encounterChance>0&&Math.random()<encounterChance){
+      const cardId=pickAreaCardForMap(rMap);
+      if(addCardToPlayer(rIdx,cardId)){
+        // Log if player is on same map
+        if(rMap===currentMap){
+          lg.push(r.n+' found a card nearby...');
+        }
+      }
+    }
+  }else{
+    // Stuck: pick new goal
+    pickRivalGoal(aiIdx);
+  }
+}
+
+// Update proximity tension based on rival distances
+function updateProximityTension(){
+  let maxDanger=0;
+  for(let i=0;i<2;i++){
+    if(rivalMaps[i]!==currentMap)continue;
+    const r=pl[i+1];
+    const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+    let danger=1; // same map
+    if(dist<=8)danger=2;
+    if(dist<=5)danger=3;
+    if(dist<=2)danger=4;
+    if(danger>maxDanger)maxDanger=danger;
+  }
+  proximityDangerLevel=maxDanger;
+
+  // Danger drone audio
+  if(proximityDangerLevel>=3){
+    startDangerDrone();
+    if(dangerDroneGain){
+      const targetVol=proximityDangerLevel===4?0.06:0.03;
+      try{dangerDroneGain.gain.linearRampToValueAtTime(targetVol,AC.currentTime+0.1);}catch(e){}
+    }
+  }else{
+    stopDangerDrone();
+  }
+
+  // "!" alert when rival first gets within 2 tiles
+  if(proximityDangerLevel>=4&&!rivalDangerAlertShown){
+    rivalDangerAlertShown=true;
+    sfxDangerAlert();
+    lg.push('! Something is very close!');
+  }
+  if(proximityDangerLevel<4)rivalDangerAlertShown=false;
+}
+
+// Update footprints aging
+function updateFootprints(){
+  for(let i=footprints.length-1;i>=0;i--){
+    footprints[i].age++;
+    if(footprints[i].age>=FOOTPRINT_MAX_AGE){
+      footprints.splice(i,1);
+    }
+  }
+  // Cap footprint count
+  while(footprints.length>200)footprints.shift();
+}
 
 // Pre-generate random values for tile detail (per map, reuse with offset)
 const tileRand=[];
@@ -908,6 +1291,7 @@ function resetNewFeatureState(){
   burnedTiles.length=0;shadowStepsLeft=0;fishingCooldownTimer=0;
   fishingActive=false;inBuilding=false;crystalRevealTimer=0;
   mapCardUseActive=false;fountainActive=false;
+  footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
 }
 
 function resetGameState(startCards){
@@ -922,7 +1306,17 @@ function resetGameState(startCards){
   pl[1].cd=cards1;pl[1].cc=cc1;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
   pl[2].cd=cards2;pl[2].cc=cc2;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
   sp.s=3;sp.b=2;sp.c=1;rd=1;currentMap=0;stepCounter=0;randomEventTimer=0;
-  rivalMaps=[0,0];lg.length=0;lg.push(startCards?'New game started!':'New game started!');
+  rivalMaps=[0,0];
+  // Reset rival AI
+  rivalAI[0].goalX=10;rivalAI[0].goalY=10;rivalAI[0].goalMap=0;rivalAI[0].state='exploring';
+  rivalAI[0].moveTimer=0;rivalAI[0].moveInterval=10;rivalAI[0].lastKnownPlayerMap=-1;
+  rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;rivalAI[0].stateTimer=0;
+  rivalAI[1].goalX=20;rivalAI[1].goalY=15;rivalAI[1].goalMap=1;rivalAI[1].state='exploring';
+  rivalAI[1].moveTimer=0;rivalAI[1].moveInterval=12;rivalAI[1].lastKnownPlayerMap=-1;
+  rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;rivalAI[1].stateTimer=0;
+  footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
+  stopDangerDrone();
+  lg.length=0;lg.push(startCards?'New game started!':'New game started!');
   treasures.forEach(t=>t.collected=false);
   tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
   resetNewFeatureState();
@@ -1834,6 +2228,17 @@ function drawMinimap(){
       if(isVisibleThroughFog(rp.x,rp.y,3)||crystalRevealTimer>0){
         const rpx=mx+rp.x*sx,rpy=my+rp.y*sy;
         bx(rpx,rpy,2,2,rp.c);
+        // Direction arrow when crystal reveal or recent scout active
+        if(crystalRevealTimer>0){
+          const ai=rivalAI[idx];
+          const gdx=ai.goalX-rp.x;const gdy=ai.goalY-rp.y;
+          if(gdx!==0||gdy!==0){
+            const len=Math.sqrt(gdx*gdx+gdy*gdy);
+            const nx_=gdx/len*4,ny_=gdy/len*4;
+            g.strokeStyle=rp.c;g.lineWidth=1;
+            g.beginPath();g.moveTo(rpx+1,rpy+1);g.lineTo(rpx+1+nx_,rpy+1+ny_);g.stroke();
+          }
+        }
       }
     }
   });
@@ -2576,6 +2981,22 @@ function dMap(){
   drawParticles(camX,camY);
   drawBirds();
 
+  // Draw footprints on revealed grass tiles
+  footprints.forEach(fp=>{
+    if(fp.map!==currentMap)return;
+    if(!fogRevealed[currentMap][fp.y]?.[fp.x])return;
+    const m=maps[currentMap];
+    const tile=m[fp.y]?.[fp.x];
+    if(tile!==1&&tile!==11&&tile!==7)return;
+    const fpx=fp.x*TW-camX;const fpy=fp.y*TH-camY;
+    if(fpx<-TW||fpx>W||fpy<-TH||fpy>H)return;
+    const alpha=Math.max(0,1-fp.age/FOOTPRINT_MAX_AGE)*0.35;
+    g.globalAlpha=alpha;
+    bx(fpx+4,fpy+10,2,2,'#3a3828');
+    bx(fpx+9,fpy+12,2,2,'#3a3828');
+    g.globalAlpha=1;
+  });
+
   // Draw NPCs on this map (only if on revealed tile)
   npcs.forEach(npc=>{
     if(npc.map===currentMap&&fogRevealed[currentMap][npc.y]?.[npc.x])drawNPCSprite(npc);
@@ -2586,7 +3007,6 @@ function dMap(){
   if(rivalMaps[0]===currentMap){
     const rv=pl[1];
     if(isVisibleThroughFog(rv.x,rv.y,3)){
-      // Check if rival just became visible (trigger alert)
       if(!rv._wasVisible){rv._wasVisible=true;rv._alertTimer=30;sfxEncounter();}
       visiblePl.push(rv);
     }else{rv._wasVisible=false;}
@@ -2602,12 +3022,29 @@ function dMap(){
   sorted.sort((a,b)=>a.p.visualY-b.p.visualY);
   sorted.forEach(({p,i})=>{
     drawSprite(p,i===0);
-    // Draw "!" alert for rivals entering visible range
     if(i!==0){
       const spx=p.visualX-camX,spy=p.visualY-camY-7;
       drawRivalAlertAnim(p,spx,spy);
     }
   });
+
+  // Proximity heartbeat pulse on screen edges
+  if(proximityDangerLevel>=1&&sc==='map'){
+    const pulseSpeed=proximityDangerLevel>=4?0.25:proximityDangerLevel>=3?0.15:proximityDangerLevel>=2?0.08:0.04;
+    const pulseAlpha=proximityDangerLevel>=4?0.18:proximityDangerLevel>=3?0.10:proximityDangerLevel>=2?0.05:0.02;
+    const pulse=Math.sin(fr*pulseSpeed)*0.5+0.5;
+    const a=pulse*pulseAlpha;
+    if(a>0.005){
+      g.globalAlpha=a;
+      // Red vignette on edges
+      const grad=g.createRadialGradient(W/2,H/2,W*0.3,W/2,H/2,W*0.7);
+      grad.addColorStop(0,'rgba(0,0,0,0)');
+      grad.addColorStop(1,'rgba(180,30,30,1)');
+      g.fillStyle=grad;
+      g.fillRect(0,0,W,H-HUD_HEIGHT);
+      g.globalAlpha=1;
+    }
+  }
 
   // Darkness overlay for ruins
   if(currentMap===2){bx(0,0,W,H,'rgba(10,0,20,.12)');}
@@ -3202,20 +3639,37 @@ function playerHasAllFive(){const s=hasUniqueCards(0);return s.has(1)&&s.has(2)&
 // Rival AI: choose an action index (0=Draw,1=Steal,2=Barrier,3=Scout)
 function rivalChooseAction(rIdx){
   const r=pl[rIdx];
+  const aiIdx=rIdx-1;
+  const ai=rivalAI[aiIdx];
   const rCardCount=r.cd.filter(c=>c>0).length;
   if(rCardCount<2)return 0;// Draw if low
   const roll=Math.random();
-  // If rival has 4+ unique types, play defensively
   const rUnique=hasUniqueCards(rIdx);
-  if(rUnique.size>=4){
-    if(roll<0.5)return 2;// barrier to protect
-    if(roll<0.8)return 0;// draw to fill
-    return 1;// occasional steal
+
+  if(ai.personality==='hunter'){
+    // Aggressive: mostly Steal + Scout
+    if(rUnique.size>=4){
+      if(roll<0.4)return 2;// barrier to protect lead
+      if(roll<0.7)return 1;// steal
+      return 3;// scout
+    }
+    if(pl[0].cd.filter(c=>c>0).length>=2){
+      if(roll<0.5)return 1;// steal from player
+      if(roll<0.75)return 3;// scout player
+      return 0;// draw
+    }
+    if(roll<0.4)return 1;if(roll<0.7)return 0;return 3;
+  }else{
+    // Collector: mostly Draw + Barrier
+    if(rUnique.size>=4){
+      if(roll<0.6)return 2;// barrier to protect
+      if(roll<0.9)return 0;// draw to fill
+      return 2;// more barrier
+    }
+    if(roll<0.5)return 0;// draw
+    if(roll<0.8)return 2;// barrier
+    return 0;// more draw
   }
-  if(pl[0].cd.filter(c=>c>0).length>=3&&rivalMaps[rIdx-1]===currentMap){
-    if(roll<0.4)return 1;if(roll<0.7)return 0;return 2;
-  }
-  if(roll<0.5)return 0;if(roll<0.8)return 2;return 3;
 }
 
 let bpPlayerBarrier=false; // track if player used barrier this round
@@ -3903,6 +4357,10 @@ function dLog(){
     else if(l.includes('drew')||l.includes('Scout')||l.includes('Found'))cl='#308030';
     else if(l.includes('Shadow'))cl='#7858a0';
     else if(l.includes('Wild'))cl='#d8b028';
+    else if(l.includes('sense')||l.includes('tense')||l.includes('close'))cl='#a04040';
+    else if(l.includes('Footprints')||l.includes('passed'))cl='#887050';
+    else if(l.includes('ambush')||l.includes('running'))cl='#d06030';
+    else if(l.includes('entered'))cl='#c06040';
     tx(l,16,y+22,6,cl);
   });
   if(Math.floor(fr/20)%2===0)tx('\u25BC',W-24,H-14,7,'#d8b028');
@@ -4722,58 +5180,55 @@ function update(){
     });
   }
 
-  // NPC AI movement (rivals on their maps)
-  if(fr%50===0){
-    pl.slice(1).forEach((p,idx)=>{
-      const rMap=rivalMaps[idx];
-      const m=maps[rMap];
-      const dx=Math.floor(Math.random()*3)-1;
-      const dy=Math.floor(Math.random()*3)-1;
-      const nx=p.x+dx,ny=p.y+dy;
-      if(nx>=0&&nx<MW&&ny>=0&&ny<MH&&WALKABLE.has(m[ny]?.[nx])){
-        if(dx<0)p.dir=1;else if(dx>0)p.dir=3;
-        else if(dy<0)p.dir=2;else if(dy>0)p.dir=0;
-        p.x=nx;p.y=ny;p.step++;
-      }
-    });
-  }
+  // Autonomous rival AI movement
+  updateRivalAI(0);
+  updateRivalAI(1);
+  updateFootprints();
+  updateProximityTension();
 
-  // Rival map teleport (every ~30 seconds = 1800 frames)
-  rivalMapTimer++;
-  if(rivalMapTimer>=1800){
-    rivalMapTimer=0;
+  // Atmosphere log messages based on proximity (throttled)
+  if(fr%300===0){
     for(let i=0;i<2;i++){
-      const oldMap=rivalMaps[i];
-      const newMap=Math.floor(Math.random()*3);
-      rivalMaps[i]=newMap;
-      // Reposition rival on new map
-      const m=maps[newMap];
-      let placed=false;
-      for(let attempt=0;attempt<50&&!placed;attempt++){
-        const rx=5+Math.floor(Math.random()*(MW-10));
-        const ry=5+Math.floor(Math.random()*(MH-10));
-        if(WALKABLE.has(m[ry]?.[rx])){
-          pl[i+1].x=rx;pl[i+1].y=ry;
-          pl[i+1].visualX=rx*TW;pl[i+1].visualY=ry*TH;
-          placed=true;
-        }
-      }
-      // Alert if entered player's map
-      if(newMap===currentMap&&oldMap!==currentMap){
-        rivalAlert=90;rivalAlertName=pl[i+1].n;
-        flash();beep(660,.04,.06);
-      }
+      if(rivalMaps[i]!==currentMap)continue;
+      const r=pl[i+1];
+      const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+      if(dist<=8&&dist>5){lg.push('The air feels tense...');}
+      else if(dist>8&&dist<=15){lg.push('You sense movement nearby...');}
     }
   }
 
-  // Encounter check (only if rival on same map, skip if shadow or in building)
+  // Footprint log messages when player walks on rival footprints
+  if(sc==='map'&&!mo){
+    const pFp=footprints.find(f=>f.map===currentMap&&f.x===pl[0].x&&f.y===pl[0].y&&f.age<1800);
+    if(pFp&&fr%60===0){
+      lg.push('Footprints in the grass... someone passed here.');
+      pFp.age=1800; // Don't log again
+    }
+  }
+
+  // Encounter check (player walks to rival OR rival walks to player)
   if(sc==='map'&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning&&!encounterExclActive&&!shopActive&&!signpostActive&&!inBuilding&&shadowStepsLeft<=0){
     pl.slice(1).forEach((r,idx)=>{
       if(rivalMaps[idx]!==currentMap)return;
-      if(Math.abs(r.x-pl[0].x)<=1&&Math.abs(r.y-pl[0].y)<=1&&Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y)===1){
+      const adjDist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+      if(adjDist<=1&&adjDist>0){
         if(!encounterCooldown){
+          // Collector rival: 70% chance to flee instead of fight
+          const ai=rivalAI[idx];
+          if(ai.personality==='collector'&&ai.state!=='fleeing'&&Math.random()<0.7){
+            ai.state='fleeing';
+            ai.stateTimer=6;
+            ai.moveInterval=6;
+            const fdx=r.x-pl[0].x;const fdy=r.y-pl[0].y;
+            const fx=r.x+(fdx!==0?fdx*4:0);const fy=r.y+(fdy!==0?fdy*4:0);
+            const flee=findWalkableTile(rivalMaps[idx],Math.max(2,Math.min(MW-3,fx)),Math.max(2,Math.min(MH-3,fy)),5);
+            if(flee){ai.goalX=flee.x;ai.goalY=flee.y;ai.goalMap=rivalMaps[idx];}
+            lg.push(r.n+' is trying to run away!');
+            encounterCooldown=60;
+            return;
+          }
+
           encounterCooldown=120;
-          // Show "!" exclamation above both sprites, then freeze 0.5s before transition
           encounterExclActive=true;
           encounterExclFrame=fr;
           encounterExclTarget=idx+1;
@@ -4782,12 +5237,12 @@ function update(){
           encounterExclRivalX=r.visualX;
           encounterExclRivalY=r.visualY;
           sfxEncounterDramatic();
-          // After 0.5s freeze (30 frames), do screen wipe transition
+          const rivalName=r.n;
+          const isRivalInitiated=ai.state==='hunting';
           setTimeout(()=>{
             encounterExclActive=false;
             flash();
-            twSet('Wild '+r.n+' appeared! Entering battle...');
-            // Wipe transition (diagonal)
+            twSet(isRivalInitiated?rivalName+' ambushed you! Battle!':'Wild '+rivalName+' appeared! Entering battle...');
             battleWipeActive=true;battleWipeFrame=fr;
             setTimeout(()=>{
               battleWipeActive=false;
@@ -5169,6 +5624,8 @@ document.addEventListener('keydown',e=>{
           p.x=nx;p.y=ny;p.step++;p.walkFrame=(p.walkFrame+1)%4;sfxMove();sfxStep();
           stepCounter++;
           edgeCacheDirty=true;
+          // Leave player footprint
+          footprints.push({map:currentMap,x:nx,y:ny,age:0});
           // Reveal fog around new position
           fogRevealRadius(currentMap,nx,ny,2);
           fogSave();
@@ -5318,6 +5775,10 @@ function saveGame(){
       rd:rd, stepCounter:stepCounter,
       currentMap:currentMap,
       rivalMaps:[...rivalMaps],
+      rivalAI:rivalAI.map(a=>({goalX:a.goalX,goalY:a.goalY,goalMap:a.goalMap,
+        personality:a.personality,moveInterval:a.moveInterval,
+        lastKnownPlayerMap:a.lastKnownPlayerMap,lastKnownPlayerX:a.lastKnownPlayerX,
+        lastKnownPlayerY:a.lastKnownPlayerY,state:a.state})),
       log:lg.slice(-20),
       treasures:treasures.map(t=>t.collected),
       sc:sc,
@@ -5355,6 +5816,18 @@ function loadGame(){
     rd=d.rd;stepCounter=d.stepCounter;
     currentMap=d.currentMap;
     rivalMaps=[...d.rivalMaps];
+    if(d.rivalAI){
+      d.rivalAI.forEach((a,i)=>{
+        if(rivalAI[i]){
+          rivalAI[i].goalX=a.goalX;rivalAI[i].goalY=a.goalY;rivalAI[i].goalMap=a.goalMap;
+          rivalAI[i].moveInterval=a.moveInterval;
+          rivalAI[i].lastKnownPlayerMap=a.lastKnownPlayerMap;
+          rivalAI[i].lastKnownPlayerX=a.lastKnownPlayerX;
+          rivalAI[i].lastKnownPlayerY=a.lastKnownPlayerY;
+          rivalAI[i].state=a.state;
+        }
+      });
+    }
     lg.length=0;d.log.forEach(l=>lg.push(l));
     d.treasures.forEach((c,i)=>{if(treasures[i])treasures[i].collected=c;});
     if(d.tutorialFlags)tutorialFlags={...tutorialFlags,...d.tutorialFlags};
