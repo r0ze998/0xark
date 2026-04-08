@@ -696,6 +696,105 @@ let encounterCooldown=0,actEnterFrame=0;
 let camX=0,camY=0,camTargetX=0,camTargetY=0;
 let mapTransitioning=false;
 
+// ── DAY/NIGHT VISUAL CYCLE ──
+const dayNightStartTime=Date.now();
+const DAY_CYCLE_MS=20*60*1000; // 20 minutes full cycle
+function getDayNightPhase(){
+  const elapsed=(Date.now()-dayNightStartTime)%DAY_CYCLE_MS;
+  const mins=elapsed/(60*1000);
+  if(mins<5)return{phase:'dawn',t:mins/5};
+  if(mins<10)return{phase:'day',t:(mins-5)/5};
+  if(mins<15)return{phase:'dusk',t:(mins-10)/5};
+  return{phase:'night',t:(mins-15)/5};
+}
+function drawDayNightOverlay(){
+  const dn=getDayNightPhase();
+  if(dn.phase==='dawn'){
+    g.fillStyle='rgba(255,200,100,0.05)';g.fillRect(0,0,W,H-HUD_HEIGHT);
+  }else if(dn.phase==='dusk'){
+    g.fillStyle='rgba(255,100,80,0.06)';g.fillRect(0,0,W,H-HUD_HEIGHT);
+  }else if(dn.phase==='night'){
+    g.fillStyle='rgba(20,20,80,0.12)';g.fillRect(0,0,W,H-HUD_HEIGHT);
+  }
+  // day = no overlay
+}
+function drawDayNightIcon(ix,iy){
+  const dn=getDayNightPhase();
+  if(dn.phase==='dawn'){
+    // Rising sun - orange circle
+    g.fillStyle='#e0a030';g.fillRect(ix+1,iy+2,3,3);g.fillRect(ix,iy+3,5,1);
+    g.fillStyle='#f0c060';g.fillRect(ix+2,iy+3,1,1);
+  }else if(dn.phase==='day'){
+    // Full sun - bright yellow
+    g.fillStyle='#f0d040';g.fillRect(ix+1,iy+1,3,3);
+    g.fillStyle='#f0d040';g.fillRect(ix+2,iy,1,1);g.fillRect(ix+2,iy+4,1,1);
+    g.fillRect(ix,iy+2,1,1);g.fillRect(ix+4,iy+2,1,1);
+  }else if(dn.phase==='dusk'){
+    // Setting sun - orange/red
+    g.fillStyle='#d06030';g.fillRect(ix+1,iy+2,3,3);g.fillRect(ix,iy+3,5,1);
+    g.fillStyle='#e08040';g.fillRect(ix+2,iy+3,1,1);
+  }else{
+    // Moon - crescent
+    g.fillStyle='#c0c8e0';g.fillRect(ix+1,iy+1,3,3);g.fillRect(ix,iy+2,1,2);
+    g.fillStyle='rgba(20,20,30,.88)';g.fillRect(ix+2,iy+1,2,2);
+  }
+}
+
+// ── PLAYER STATUS EFFECTS ──
+let cardGetAnimTimer=0,cardGetAnimX=0,cardGetAnimY=0;
+const statusSparkles=[];
+function triggerCardGetAnim(px,py){cardGetAnimTimer=40;cardGetAnimX=px;cardGetAnimY=py;}
+function drawPlayerStatusEffects(){
+  const p=pl[0];
+  const px=p.visualX-camX,py=p.visualY-camY-7;
+  if(px<-30||px>W+30||py<-30||py>H+30)return;
+
+  // EXHAUSTED indicator: all spells at 0
+  if(sp.s<=0&&sp.b<=0&&sp.c<=0){
+    const flicker=Math.sin(fr*0.2)*0.2+0.8;
+    g.globalAlpha=flicker;
+    tx('EXHAUSTED',px-16,py-8,4,'#d04040');
+    g.globalAlpha=1;
+  }
+
+  // Sparkle particles when player has 4+ cards
+  const cardCount=pl[0].cd.filter(c=>c>0).length;
+  if(cardCount>=4){
+    // Spawn sparkles
+    if(fr%6===0){
+      statusSparkles.push({
+        x:px+3+Math.random()*10,y:py+2+Math.random()*14,
+        vx:(Math.random()-0.5)*0.6,vy:-0.5-Math.random()*0.4,
+        life:18+Math.random()*10
+      });
+    }
+    // Draw sparkles
+    for(let i=statusSparkles.length-1;i>=0;i--){
+      const s=statusSparkles[i];
+      s.x+=s.vx;s.y+=s.vy;s.life--;
+      if(s.life<=0){statusSparkles.splice(i,1);continue;}
+      const sa=Math.min(1,s.life/8);
+      g.globalAlpha=sa;
+      const sc_=Math.floor(fr*0.3+i)%2===0?'#f0e860':'#fff';
+      bx(s.x,s.y,1,1,sc_);
+      g.globalAlpha=1;
+    }
+  }else{
+    // Clear sparkles if no longer 4+ cards
+    statusSparkles.length=0;
+  }
+
+  // "+" floating up animation after getting a card
+  if(cardGetAnimTimer>0){
+    const progress=1-cardGetAnimTimer/40;
+    const floatY=cardGetAnimY-progress*16;
+    g.globalAlpha=1-progress;
+    tx('+',cardGetAnimX+4,floatY,7,'#40d040');
+    g.globalAlpha=1;
+    cardGetAnimTimer--;
+  }
+}
+
 // ── Battle phase system ──
 let battlePhase='select';
 let bpFrame=0,bpAction=-1,bpResolveQueue=[],bpResolveIdx=0;
@@ -1399,13 +1498,23 @@ function drawNPCSprite(npc){
     bx(px+2,py,10,3,hairC);
   }
 
-  // "!" indicator when player is adjacent
-  const dist=Math.abs(pl[0].x-npc.x)+Math.abs(pl[0].y-npc.y);
-  if(dist<=2&&npc.map===currentMap){
-    const bounceY=Math.sin(fr*.12)*2;
-    bx(px+5,py-12+bounceY,5,8,'#f0c830');
-    bx(px+6,py-11+bounceY,3,5,'#f8e060');
-    bx(px+7,py-5+bounceY,1,1,'#f0c830');
+  // Colored diamond indicator above NPC (FRLG style)
+  // Always show, gently bobbing; different colors per type
+  if(npc.map===currentMap){
+    const bobY=Math.sin(fr*0.08)*2;
+    let diaC,diaH;
+    if(npc.type===0){diaC='#4080d0';diaH='#60a0e8';} // Card Dealer = blue
+    else if(npc.type===1){diaC='#40b060';diaH='#60d080';} // Info Broker = green
+    else{diaC='#d0b040';diaH='#e8d060';} // Others = yellow
+    const dx_=px+6,dy_=py-12+bobY;
+    // Diamond shape (5px tall, 3px wide at center)
+    bx(dx_+1,dy_,1,1,diaC);
+    bx(dx_,dy_+1,3,1,diaC);
+    bx(dx_+1,dy_+1,1,1,diaH);
+    bx(dx_,dy_+2,3,1,diaC);
+    bx(dx_+1,dy_+3,1,1,diaC);
+    // Bright center highlight
+    bx(dx_+1,dy_+2,1,1,diaH);
   }
 }
 
@@ -1530,50 +1639,72 @@ function drawBanner(){
 // MINIMAP
 // ═══════════════════════════════════════
 function drawMinimap(){
-  const mmW=60,mmH=45;
-  const mx=W-mmW-8,my=H-40-mmH-8;
-  // Background
-  bx(mx-2,my-2,mmW+4,mmH+4,'rgba(0,0,0,.6)');
-  bx(mx-1,my-1,mmW+2,mmH+2,mapColors[currentMap]);
-  bx(mx,my,mmW,mmH,'rgba(20,20,30,.85)');
+  const mmW=60,mmH=40;
+  const mx=W-mmW-8,my=H-40-mmH-14;
 
-  // Draw simplified map with fog
+  // FRLG-style window border
+  g.fillStyle='#484058';
+  g.fillRect(mx,my-1,mmW,1);g.fillRect(mx-1,my,1,mmH);
+  g.fillRect(mx+mmW,my,1,mmH);g.fillRect(mx,my+mmH,mmW,1);
+  g.fillStyle='#686078';
+  g.fillRect(mx+1,my,mmW-2,1);g.fillRect(mx,my+1,1,mmH-2);
+  g.fillRect(mx+mmW-1,my+1,1,mmH-2);g.fillRect(mx+1,my+mmH-1,mmW-2,1);
+  // Fill background
+  bx(mx+1,my+1,mmW-2,mmH-2,'rgba(20,20,30,.88)');
+
+  // Draw simplified map with fog - actual tile colors
   const m=getMap();
   const sx=mmW/MW,sy=mmH/MH;
   for(let ty=0;ty<MH;ty+=2){
     for(let tx_=0;tx_<MW;tx_+=2){
-      // Check fog: if any of the 2x2 block is revealed, show it
       const revealed=fogRevealed[currentMap][ty]?.[tx_]||
                      fogRevealed[currentMap][ty]?.[tx_+1]||
                      fogRevealed[currentMap][ty+1]?.[tx_]||
                      fogRevealed[currentMap][ty+1]?.[tx_+1];
       if(!revealed){
-        // Hidden: very dark
         bx(mx+tx_*sx,my+ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),'#080810');
         continue;
       }
       const t=m[ty]?.[tx_];
       let col=null;
-      if(t===0)col='#285888';
-      else if(t===1||t===7||t===11)col='#48a050';
-      else if(t===2)col='#c0b070';
-      else if(t===3||t===13)col='#286828';
-      else if(t===4)col='#d8c898';
-      else if(t===5||t===15||t===16)col='#a06060';
-      else if(t===17)col='#3868a0';
-      else if(t===18||t===8)col='#686878';
-      else if(t===22||t===23)col='#585860';
-      else if(t===25)col='#c04020';
-      else if(t===10)col='#806830';
-      if(col){bx(mx+tx_*sx,my+ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),col);}
+      // Actual tile colors: water=blue, grass=green, sand=yellow, path=brown, buildings=red
+      if(t===0||t===17)col='#3070b8';       // water = blue
+      else if(t===1||t===7||t===11)col='#48a850'; // grass = green
+      else if(t===3||t===13)col='#2a6828';   // trees = dark green
+      else if(t===2)col='#a08050';           // path = brown
+      else if(t===4||t===10||t===14)col='#d8c060'; // sand = yellow
+      else if(t===5||t===15||t===16)col='#c04848'; // buildings = red
+      else if(t===18||t===8)col='#686878';   // mountain/rock
+      else if(t===22||t===23)col='#585860';  // ruins
+      else if(t===25)col='#c04020';          // lava
+      else if(t===24||t===26)col='#60c0d0';  // glow/crystal
+      else col='#48a850';                     // default grass
+      bx(mx+tx_*sx,my+ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),col);
     }
   }
 
-  // Player dot (blinking) - always visible
-  if(Math.floor(fr/10)%2===0){
-    const pdx=mx+pl[0].x*sx,pdy=my+pl[0].y*sy;
-    bx(pdx-1,pdy-1,3,3,'#fff');bx(pdx,pdy,1,1,'#f04040');
-  }
+  // Exit locations as blinking white dots (pulse)
+  const exitPulse=Math.sin(fr*0.15)*0.4+0.6;
+  exits.forEach(e=>{
+    if(e.fromMap===currentMap){
+      e.tiles.forEach(([ex,ey])=>{
+        if(fogRevealed[currentMap][ey]?.[ex]){
+          g.globalAlpha=exitPulse;
+          const epx=mx+ex*sx,epy=my+ey*sy;
+          bx(epx,epy,Math.max(1,sx),Math.max(1,sy),'#fff');
+          g.globalAlpha=1;
+        }
+      });
+    }
+  });
+
+  // NPC dots (small yellow)
+  npcs.forEach(npc=>{
+    if(npc.map===currentMap&&fogRevealed[currentMap][npc.y]?.[npc.x]){
+      const npx=mx+npc.x*sx,npy=my+npc.y*sy;
+      bx(npx,npy,Math.max(1,sx),Math.max(1,sy),'#f0d040');
+    }
+  });
 
   // Rival dots only if on revealed tiles within range
   pl.slice(1).forEach((rp,idx)=>{
@@ -1583,8 +1714,15 @@ function drawMinimap(){
     }
   });
 
-  // Map name
-  tx(mapNames[currentMap].substring(0,8),mx,my-4,4,mapColors[currentMap]);
+  // Player dot - bright blinking
+  const playerPulse=Math.sin(fr*0.2)*0.3+0.7;
+  g.globalAlpha=playerPulse;
+  const pdx=mx+pl[0].x*sx,pdy=my+pl[0].y*sy;
+  bx(pdx-1,pdy-1,3,3,'#fff');bx(pdx,pdy,1,1,'#40f040');
+  g.globalAlpha=1;
+
+  // Map name above minimap
+  tx(mapNames[currentMap],mx,my-5,4,mapColors[currentMap]);
 }
 
 // ═══════════════════════════════════════
@@ -2343,6 +2481,47 @@ function dMap(){
   // Atmospheric effects
   drawAtmosphere();
 
+  // Player status effects (sparkle, exhausted, card get)
+  drawPlayerStatusEffects();
+
+  // Map edge gradient polish (darken edges when camera near map bounds)
+  {
+    const maxX=MW*TW-W,maxY=MH*TH-(H-HUD_HEIGHT);
+    const edgeFade=20;
+    // Left edge
+    if(camX<edgeFade){
+      const a=0.15*(1-camX/edgeFade);
+      const gr=g.createLinearGradient(0,0,edgeFade,0);
+      gr.addColorStop(0,'rgba(0,0,0,'+a+')');gr.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=gr;g.fillRect(0,0,edgeFade,H-HUD_HEIGHT);
+    }
+    // Right edge
+    if(camX>maxX-edgeFade){
+      const a=0.15*Math.min(1,(camX-(maxX-edgeFade))/edgeFade);
+      const gr=g.createLinearGradient(W-edgeFade,0,W,0);
+      gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,'+a+')');
+      g.fillStyle=gr;g.fillRect(W-edgeFade,0,edgeFade,H-HUD_HEIGHT);
+    }
+    // Top edge
+    if(camY<edgeFade){
+      const a=0.15*(1-camY/edgeFade);
+      const gr=g.createLinearGradient(0,0,0,edgeFade);
+      gr.addColorStop(0,'rgba(0,0,0,'+a+')');gr.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=gr;g.fillRect(0,0,W,edgeFade);
+    }
+    // Bottom edge
+    if(camY>maxY-edgeFade){
+      const a=0.15*Math.min(1,(camY-(maxY-edgeFade))/edgeFade);
+      const hud=H-HUD_HEIGHT;
+      const gr=g.createLinearGradient(0,hud-edgeFade,0,hud);
+      gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,'+a+')');
+      g.fillStyle=gr;g.fillRect(0,hud-edgeFade,W,edgeFade);
+    }
+  }
+
+  // Day/night overlay (after all rendering, before HUD)
+  drawDayNightOverlay();
+
   // ── HUD BAR ──
   const hudY=H-HUD_HEIGHT;
   win(0,hudY,W,HUD_HEIGHT);
@@ -2378,6 +2557,9 @@ function dMap(){
 
   // Sound indicator
   tx(soundEnabled?'SND:ON':'SND:OFF',440,hudY+16,4,soundEnabled?'#60a060':'#a06060');
+
+  // Day/night icon
+  drawDayNightIcon(430,hudY+25);
 
   // Save indicator
   if(saveIndicatorTimer>0){
@@ -2819,6 +3001,8 @@ function dAct(){
 function startCardAcquisition(cardIdx){
   cardAcqActive=true;cardAcqFrame=fr;cardAcqCard=cardIdx;cardAcqDone=false;
   cardAcqParticles.length=0;sfxCardGet();
+  // Trigger floating "+" effect
+  triggerCardGetAnim(pl[0].visualX-camX,pl[0].visualY-camY-7);
 }
 
 function drawCardAcquisition(){
