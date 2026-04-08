@@ -1556,8 +1556,8 @@ function updateCamera(){
   camTargetX=Math.max(0,Math.min(maxX,camTargetX));
   camTargetY=Math.max(0,Math.min(maxY,camTargetY));
   const lerpT=1-Math.pow(1-0.12,dt);
-  camX=lerp(camX,camTargetX,lerpT);
-  camY=lerp(camY,camTargetY,lerpT);
+  camX=Math.round(lerp(camX,camTargetX,lerpT));
+  camY=Math.round(lerp(camY,camTargetY,lerpT));
 }
 
 // ═══════════════════════════════════════
@@ -3270,14 +3270,19 @@ function dLog(){
 // GAME LOOP
 // ═══════════════════════════════════════
 function updateVisualPositions(){
-  const lerpT=1-Math.pow(1-0.2,dt);
+  const lerpT=1-Math.pow(1-0.25,dt);
   pl.forEach(p=>{
-    p.visualX=lerp(p.visualX,p.x*TW,lerpT);
-    p.visualY=lerp(p.visualY,p.y*TH,lerpT);
-    // Update walk frame based on movement distance
-    const dx=Math.abs(p.visualX-p.x*TW),dy=Math.abs(p.visualY-p.y*TH);
+    const targetX=p.x*TW, targetY=p.y*TH;
+    p.visualX=lerp(p.visualX,targetX,lerpT);
+    p.visualY=lerp(p.visualY,targetY,lerpT);
+    // Snap to target when very close (prevents sub-pixel jitter)
+    const dx=Math.abs(p.visualX-targetX),dy=Math.abs(p.visualY-targetY);
+    if(dx<0.3&&dy<0.3){p.visualX=targetX;p.visualY=targetY;}
+    // Round to integer for crisp pixel rendering
+    p.visualX=Math.round(p.visualX);
+    p.visualY=Math.round(p.visualY);
+    // Update walk frame based on movement
     if(dx>0.5||dy>0.5){
-      // Still moving - advance walk cycle
       p._walkAccum=(p._walkAccum||0)+dt;
       if(p._walkAccum>=4){p._walkAccum=0;p.walkFrame=(p.walkFrame+1)%4;}
     }else{
