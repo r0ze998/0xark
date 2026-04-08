@@ -832,6 +832,102 @@ let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encou
 // ── Battle wipe transition ──
 let battleWipeActive=false, battleWipeFrame=0;
 
+// ═══════════════════════════════════════
+// FEATURE 2: AREA-SPECIFIC EVENTS
+// ═══════════════════════════════════════
+
+// ── FISHING STATE (Port Town) ──
+let fishingActive=false, fishingPhase='idle', fishingTimer=0, fishingBiteFrame=0;
+let fishingCooldownTimer=0; // 30-sec cooldown (1800 frames)
+const FISHING_COOLDOWN=1800;
+
+// ── TRAPS STATE (Forest) ──
+const forestTraps=new Set(['1-6-6','1-20-12','1-12-18','1-32-14']); // mapIdx-x-y
+const triggeredTraps=new Set();
+
+// ── PUZZLES STATE (Ruins) ──
+// 3 colored stones: positions cycle 0,1,2 — correct order is red=0,blue=1,yellow=2
+let puzzleStoneOrder=[2,0,1]; // start wrong: yellow,red,blue
+let puzzleSolved=false;
+let puzzleMessage='', puzzleMessageTimer=0;
+// Puzzle pillar locations on ruins map (near blocked passage)
+const puzzlePillarPositions=[{x:14,y:25},{x:15,y:25},{x:16,y:25}];
+const puzzleColors=['#c04040','#4060c0','#d0c040']; // red, blue, yellow
+const puzzleNames=['FIRE','WATER','LIGHT'];
+
+// ═══════════════════════════════════════
+// FEATURE 3: ENTERABLE BUILDINGS
+// ═══════════════════════════════════════
+let inBuilding=false, buildingType='', buildingPlayerX=4, buildingPlayerY=6;
+let buildingPlayerDir=0, buildingReturnX=0, buildingReturnY=0, buildingReturnMap=0;
+const BUILDING_W=10, BUILDING_H=8;
+
+// Card Shop interior map (10x8): 0=floor, 1=wall, 2=counter, 3=shelf, 4=exit, 5=npc
+const BUILDING_SHOP=[
+  [1,1,1,1,1,1,1,1,1,1],
+  [1,3,0,0,0,0,0,0,3,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,0,2,2,2,2,2,0,0,1],
+  [1,0,0,0,5,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,4,4,1,1,1,1],
+];
+
+// Info Broker interior map (10x8)
+const BUILDING_INFO=[
+  [1,1,1,1,1,1,1,1,1,1],
+  [1,3,0,0,0,0,0,0,3,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,2,2,2,0,0,0,1],
+  [1,0,0,0,5,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,4,4,1,1,1,1],
+];
+
+let buildingNpcDialog=false, buildingNpcLines=[], buildingNpcIdx=0, buildingNpcName='';
+let infoBrokerConfirm=false, infoBrokerResult='', infoBrokerResultTimer=0;
+
+// ═══════════════════════════════════════
+// FEATURE 4: INTERACTABLE OBJECTS
+// ═══════════════════════════════════════
+const shakenTrees=new Set(); // "mapIdx-x-y"
+const pushedRocks=new Set();
+const usedCrystals=new Set();
+let campfireUsed=false;
+let fountainActive=false, fountainConfirm=false, fountainResult='', fountainResultTimer=0;
+let crystalRevealTimer=0; // frames remaining for crystal rival reveal
+let objectInteractMsg='', objectInteractTimer=0;
+
+// ═══════════════════════════════════════
+// FEATURE 5: CARDS USED ON MAP
+// ═══════════════════════════════════════
+let shadowStepsLeft=0;
+const burnedTiles=[]; // {mapIdx, x, y} — tiles burned by Flame
+let mapCardUseActive=false, mapCardUseIdx=0;
+let mapCardDirSelect=false, mapCardDirIdx=0, mapCardPendingType=-1;
+const MAP_USABLE_CARDS=[3,2,5]; // Flame=3, Shadow=2, Void=5 (card IDs)
+const MAP_CARD_NAMES=['FLAME','SHADOW','VOID'];
+
+// SFX for new features
+function resetNewFeatureState(){
+  triggeredTraps.clear();shakenTrees.clear();pushedRocks.clear();usedCrystals.clear();
+  puzzleStoneOrder=[2,0,1];puzzleSolved=false;campfireUsed=false;
+  burnedTiles.length=0;shadowStepsLeft=0;fishingCooldownTimer=0;
+  fishingActive=false;inBuilding=false;crystalRevealTimer=0;
+  mapCardUseActive=false;fountainActive=false;
+}
+
+function sfxFishCast(){if(!soundEnabled)return;beep(300,.08,.06);setTimeout(()=>beep(200,.06,.05),80);}
+function sfxFishBite(){if(!soundEnabled)return;beep(880,.04,.08);setTimeout(()=>beep(1100,.06,.08),40);}
+function sfxFishCatch(){if(!soundEnabled)return;beep(440,.06,.06);setTimeout(()=>beep(660,.06,.06),60);setTimeout(()=>beep(880,.08,.07),120);}
+function sfxFishMiss(){if(!soundEnabled)return;beep(200,.1,.06);}
+function sfxTrap(){if(!soundEnabled)return;beep(150,.08,.1);setTimeout(()=>beep(100,.1,.1),80);}
+function sfxPuzzle(){if(!soundEnabled)return;beep(440,.06,.06);setTimeout(()=>beep(550,.06,.06),60);setTimeout(()=>beep(660,.06,.06),120);setTimeout(()=>beep(880,.1,.08),180);}
+function sfxBurn(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='bandpass';f.frequency.value=1500;f.Q.value=1;gn.gain.setValueAtTime(.1,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.2);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.2);}catch(e){}}
+function sfxPhase(){if(!soundEnabled)return;beep(600,.04,.06);setTimeout(()=>beep(400,.06,.05),50);setTimeout(()=>beep(800,.08,.06),100);}
+
 const lg=['Game started. Collect all 5 card types to win!'];
 
 // ═══════════════════════════════════════
@@ -1713,11 +1809,22 @@ function drawMinimap(){
     }
   });
 
-  // Rival dots only if on revealed tiles within range
+  // Triggered traps as red dots on minimap
+  triggeredTraps.forEach(key=>{
+    const parts=key.split('-');
+    const tMap=parseInt(parts[0]),tx_=parseInt(parts[1]),ty_=parseInt(parts[2]);
+    if(tMap===currentMap){
+      bx(mx+tx_*sx,my+ty_*sy,Math.max(1,sx),Math.max(1,sy),'#ff3030');
+    }
+  });
+
+  // Rival dots: visible through fog OR crystal reveal active
   pl.slice(1).forEach((rp,idx)=>{
-    if(rivalMaps[idx]===currentMap&&isVisibleThroughFog(rp.x,rp.y,3)){
-      const rpx=mx+rp.x*sx,rpy=my+rp.y*sy;
-      bx(rpx,rpy,2,2,rp.c);
+    if(rivalMaps[idx]===currentMap){
+      if(isVisibleThroughFog(rp.x,rp.y,3)||crystalRevealTimer>0){
+        const rpx=mx+rp.x*sx,rpy=my+rp.y*sy;
+        bx(rpx,rpy,2,2,rp.c);
+      }
     }
   });
 
@@ -2649,15 +2756,15 @@ function dMenu(){
     if(ease>=0.7){
       const itemAlpha=Math.min(1,(ease-0.7)/0.3);
       g.globalAlpha=itemAlpha;
-      const items=['CARDS','MAP','BATTLE','LOG','DISCARD','SAVE','NEW GAME','CLOSE'];
+      const items=['CARDS','MAP','BATTLE','LOG','USE CARD','DISCARD','SAVE','NEW GAME','CLOSE'];
       items.forEach((s,i)=>{
-        const y=34+i*24;
+        const y=34+i*22;
         if(i===mi){
           const bounce=Math.sin(fr*0.15)*1.5;
-          const clr=(i===4?'#b06030':i===5?'#40a0d0':i===6?'#d8b028':'#c04040');
-          tx('\u25B6',W-160+bounce,y,9,clr);tx(s,W-144,y,9,clr);
+          const clr=(i===4?'#9060c0':i===5?'#b06030':i===6?'#40a0d0':i===7?'#d8b028':'#c04040');
+          tx('\u25B6',W-160+bounce,y,8,clr);tx(s,W-144,y,8,clr);
         }
-        else tx(s,W-144,y,9,i===4?'#906030':i===5?'#3080a0':i===6?'#a08820':'#303028');
+        else tx(s,W-144,y,8,i===4?'#7050a0':i===5?'#906030':i===6?'#3080a0':i===7?'#a08820':'#303028');
       });
       g.globalAlpha=1;
     }
@@ -3801,6 +3908,754 @@ function dLog(){
 }
 
 // ═══════════════════════════════════════
+// FISHING MINIGAME (Port Town)
+// ═══════════════════════════════════════
+function canFish(){
+  if(currentMap!==0||fishingCooldownTimer>0||inBuilding)return false;
+  const p=pl[0],m=getMap();
+  // Check if player is on dock and facing water
+  const tile=m[p.y]?.[p.x];
+  if(tile!==10)return false;
+  let fx=p.x,fy=p.y;
+  if(p.dir===0)fy++;else if(p.dir===2)fy--;
+  else if(p.dir===1)fx--;else if(p.dir===3)fx++;
+  if(fx>=0&&fx<MW&&fy>=0&&fy<MH){
+    const facingTile=m[fy]?.[fx];
+    if(facingTile===0||facingTile===17)return true;
+  }
+  return false;
+}
+
+function startFishing(){
+  fishingActive=true;
+  fishingPhase='waiting';
+  fishingTimer=60+Math.floor(Math.random()*120); // 1-3 seconds at 60fps
+  sfxFishCast();
+  twSet('Cast a line... wait for it...');
+}
+
+function updateFishing(){
+  if(!fishingActive)return;
+  if(fishingPhase==='waiting'){
+    fishingTimer--;
+    if(fishingTimer<=0){
+      fishingPhase='bite';
+      fishingBiteFrame=fr;
+      sfxFishBite();
+    }
+  }else if(fishingPhase==='bite'){
+    // Player has 30 frames (0.5s) to press Z
+    if(fr-fishingBiteFrame>30){
+      fishingPhase='miss';
+      fishingTimer=60;
+      sfxFishMiss();
+      twSet('The catch got away!');
+    }
+  }else if(fishingPhase==='catch'){
+    fishingTimer--;
+    if(fishingTimer<=0){
+      fishingActive=false;
+      fishingCooldownTimer=FISHING_COOLDOWN;
+    }
+  }else if(fishingPhase==='miss'){
+    fishingTimer--;
+    if(fishingTimer<=0){
+      fishingActive=false;
+      fishingCooldownTimer=FISHING_COOLDOWN;
+    }
+  }
+}
+
+function fishingCatchCard(){
+  fishingPhase='catch';
+  fishingTimer=90;
+  sfxFishCatch();
+  // Random Port Town card (Crystal or Shadow)
+  const cardIdx=Math.random()<0.5?0:1;
+  let slot=-1;
+  for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
+  if(slot>=0){
+    pl[0].cd[slot]=cardIdx+1;
+    syncCardCount(0);
+    startCardAcquisition(cardIdx);
+    twSet('You caught a '+CD[cardIdx].n+' card!');
+    lg.push('Fishing: Caught '+CD[cardIdx].n+'!');
+    if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+  }else{
+    discardActive=true;discardSelIdx=0;discardPendingCard=cardIdx+1;discardSource='wild';
+    twSet('Caught '+CD[cardIdx].n+'! Discard one to keep it.');
+  }
+}
+
+function drawFishingOverlay(){
+  if(!fishingActive)return;
+  if(fishingPhase==='bite'){
+    // Show "!" indicator
+    const bobY=Math.sin(fr*0.3)*3;
+    const px=pl[0].visualX-camX+8,py=pl[0].visualY-camY-30+bobY;
+    bx(px-6,py-4,12,16,'#fff');
+    bx(px-5,py-3,10,14,'#f0c830');
+    tx('!',px-4,py+8,12,'#c04040');
+    tx('Z NOW!',px-18,py+16,5,'#c04040');
+  }else if(fishingPhase==='waiting'){
+    // Show bobber animation
+    const px=pl[0].visualX-camX,py=pl[0].visualY-camY;
+    let bx_=px,by_=py;
+    if(pl[0].dir===0){by_+=20;}else if(pl[0].dir===2){by_-=20;}
+    else if(pl[0].dir===1){bx_-=20;}else{bx_+=20;}
+    const bob=Math.sin(fr*0.1)*2;
+    g.fillStyle='#c04040';g.beginPath();g.arc(bx_+8,by_+bob,3,0,Math.PI*2);g.fill();
+    // Line from player to bobber
+    g.strokeStyle='#a0a0a0';g.lineWidth=1;
+    g.beginPath();g.moveTo(px+8,py);g.lineTo(bx_+8,by_+bob);g.stroke();
+  }
+}
+
+// ═══════════════════════════════════════
+// FOREST TRAPS
+// ═══════════════════════════════════════
+function checkForestTrap(){
+  if(currentMap!==1)return false;
+  const key='1-'+pl[0].x+'-'+pl[0].y;
+  if(forestTraps.has(key)&&!triggeredTraps.has(key)){
+    triggeredTraps.add(key);
+    sfxTrap();
+    flash();
+    twSet('You triggered a trap!');
+    // Lose a random card
+    const filled=[];
+    for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
+    if(filled.length>0){
+      const slot=filled[Math.floor(Math.random()*filled.length)];
+      const lost=pl[0].cd[slot];
+      pl[0].cd[slot]=0;
+      syncCardCount(0);
+      lg.push('Trap! Lost '+CD[lost-1].n+'!');
+      objectInteractMsg='Lost '+CD[lost-1].n+' to a trap!';
+      objectInteractTimer=120;
+    }else{
+      lg.push('Trap triggered but you had no cards!');
+      objectInteractMsg='Trap triggered! Lucky - no cards to lose.';
+      objectInteractTimer=120;
+    }
+    return true;
+  }
+  return false;
+}
+
+// ═══════════════════════════════════════
+// RUINS PUZZLE
+// ═══════════════════════════════════════
+function checkPuzzleInteraction(){
+  if(currentMap!==2||puzzleSolved)return false;
+  const p=pl[0];
+  let fx=p.x,fy=p.y;
+  if(p.dir===0)fy++;else if(p.dir===2)fy--;
+  else if(p.dir===1)fx--;else if(p.dir===3)fx++;
+  // Check if facing a puzzle pillar
+  for(let i=0;i<3;i++){
+    const pp=puzzlePillarPositions[i];
+    if(fx===pp.x&&fy===pp.y){
+      // Cycle stone at position i
+      puzzleStoneOrder[i]=(puzzleStoneOrder[i]+1)%3;
+      sfxSelect();
+      const name=puzzleNames[puzzleStoneOrder[i]];
+      puzzleMessage='Stone '+String(i+1)+' is now '+name;
+      puzzleMessageTimer=90;
+      // Check if solved: 0=red(fire), 1=blue(water), 2=yellow(light)
+      if(puzzleStoneOrder[0]===0&&puzzleStoneOrder[1]===1&&puzzleStoneOrder[2]===2){
+        puzzleSolved=true;
+        sfxPuzzle();
+        puzzleMessage='The passage opens!';
+        puzzleMessageTimer=180;
+        twSet('The passage opens! A void card appears!');
+        lg.push('Ruins puzzle solved!');
+        // Give a Void card
+        let slot=-1;
+        for(let j=0;j<5;j++){if(pl[0].cd[j]===0){slot=j;break;}}
+        if(slot>=0){
+          pl[0].cd[slot]=5;
+          syncCardCount(0);
+          startCardAcquisition(4);
+          if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+        }else{
+          discardActive=true;discardSelIdx=0;discardPendingCard=5;discardSource='wild';
+        }
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+function drawPuzzlePillars(){
+  if(currentMap!==2)return;
+  for(let i=0;i<3;i++){
+    const pp=puzzlePillarPositions[i];
+    const px=pp.x*TW-camX,py=pp.y*TH-camY;
+    if(px<-TW||px>W||py<-TH||py>H)continue;
+    if(!fogRevealed[2][pp.y]?.[pp.x])continue;
+    // Draw colored pillar
+    const col=puzzleColors[puzzleStoneOrder[i]];
+    if(!puzzleSolved){
+      bx(px+4,py+2,8,12,col);
+      bx(px+5,py+3,6,10,lighten(col,.15));
+      bx(px+3,py,10,3,col);
+      // Label
+      const label=puzzleNames[puzzleStoneOrder[i]][0];
+      tx(label,px+5,py+13,5,'#fff');
+      // Glow
+      const pulse=Math.sin(fr*.06+i*2)*.2+.4;
+      g.fillStyle=col.replace(')',`,${pulse})`).replace('rgb','rgba');
+      if(col[0]==='#'){
+        g.fillStyle=`rgba(${parseInt(col.slice(1,3),16)},${parseInt(col.slice(3,5),16)},${parseInt(col.slice(5,7),16)},${pulse})`;
+      }
+      g.beginPath();g.arc(px+8,py+8,8,0,Math.PI*2);g.fill();
+    }
+  }
+}
+
+function drawPuzzleMessage(){
+  if(puzzleMessageTimer<=0)return;
+  puzzleMessageTimer--;
+  const alpha=puzzleMessageTimer>20?1:puzzleMessageTimer/20;
+  g.globalAlpha=alpha;
+  win(W/2-160,H/2-20,320,36);
+  tx(puzzleMessage,W/2-140,H/2+4,7,'#d0c040');
+  g.globalAlpha=1;
+}
+
+// ═══════════════════════════════════════
+// BUILDING INTERIORS
+// ═══════════════════════════════════════
+function enterBuilding(type,doorX,doorY){
+  buildingType=type;
+  buildingReturnX=pl[0].x;
+  buildingReturnY=pl[0].y;
+  buildingReturnMap=currentMap;
+  buildingPlayerX=4;
+  buildingPlayerY=6;
+  buildingPlayerDir=2;
+  inBuilding=true;
+  sfxDoorOpen();
+  fadeOut(()=>{fadeIn();});
+}
+
+function exitBuilding(){
+  inBuilding=false;
+  pl[0].x=buildingReturnX;
+  pl[0].y=buildingReturnY;
+  currentMap=buildingReturnMap;
+  sfxDoorOpen();
+  fadeOut(()=>{fadeIn();});
+}
+
+function getBuildingMap(){
+  if(buildingType==='shop')return BUILDING_SHOP;
+  if(buildingType==='info')return BUILDING_INFO;
+  return BUILDING_SHOP;
+}
+
+function buildingTileWalkable(t){return t===0||t===4||t===5;}
+
+function checkBuildingEntry(){
+  const p=pl[0],m=getMap();
+  let fx=p.x,fy=p.y;
+  if(p.dir===0)fy++;else if(p.dir===2)fy--;
+  else if(p.dir===1)fx--;else if(p.dir===3)fx++;
+  if(fx>=0&&fx<MW&&fy>=0&&fy<MH){
+    const t=m[fy]?.[fx];
+    // Card Shop door (building type 5 at specific locations)
+    // Check for Card Dealer NPC building - tile 5 in Port Town
+    if(currentMap===0&&t===5){
+      // Check which building: (8,5) is card shop, (22,5)=info broker area -> (22,6 door)
+      if(fx===8&&fy===5){enterBuilding('shop',fx,fy);return true;}
+      if(fx===20&&fy===11){enterBuilding('shop',fx,fy);return true;}
+    }
+    if(currentMap===0&&t===15){
+      // Blue building = Info Broker
+      if(fx===22&&fy===5){enterBuilding('info',fx,fy);return true;}
+    }
+  }
+  return false;
+}
+
+function drawBuildingInterior(){
+  // Black background
+  bx(0,0,W,H,'#1a1a2a');
+  const bm=getBuildingMap();
+  const tileSize=32; // Larger tiles for interior
+  const offsetX=W/2-BUILDING_W*tileSize/2;
+  const offsetY=H/2-BUILDING_H*tileSize/2-20;
+
+  for(let y=0;y<BUILDING_H;y++){
+    for(let x=0;x<BUILDING_W;x++){
+      const t=bm[y][x];
+      const px=offsetX+x*tileSize,py=offsetY+y*tileSize;
+      if(t===0){
+        // Floor
+        bx(px,py,tileSize,tileSize,'#c0b090');
+        bx(px,py,tileSize,1,'#d0c0a0');
+        if((x+y)%2===0)bx(px,py,tileSize,tileSize,'rgba(0,0,0,.04)');
+      }else if(t===1){
+        // Wall
+        bx(px,py,tileSize,tileSize,'#605848');
+        bx(px+1,py+1,tileSize-2,tileSize-2,'#706858');
+        // Brick pattern
+        for(let by=0;by<tileSize;by+=8){
+          for(let bxx=0;bxx<tileSize;bxx+=12){
+            bx(px+bxx,py+by,11,7,'#786858');
+          }
+        }
+      }else if(t===2){
+        // Counter
+        bx(px,py,tileSize,tileSize,'#c0b090');
+        bx(px,py+4,tileSize,tileSize-4,'#805830');
+        bx(px+1,py+5,tileSize-2,tileSize-6,'#906838');
+        bx(px,py+4,tileSize,2,'#a07840');
+      }else if(t===3){
+        // Shelf
+        bx(px,py,tileSize,tileSize,'#706858');
+        bx(px+2,py+4,tileSize-4,6,'#805830');
+        bx(px+2,py+16,tileSize-4,6,'#805830');
+        // Card displays on shelf
+        for(let i=0;i<3;i++){
+          const cx=px+4+i*9,cy=py+5;
+          const cr=CD[i%5];
+          bx(cx,cy-2,7,4,cr.c);
+          bx(cx,cy+10,7,4,cr.c);
+        }
+      }else if(t===4){
+        // Exit door
+        bx(px,py,tileSize,tileSize,'#c0b090');
+        bx(px+4,py,tileSize-8,tileSize,'#483838');
+        bx(px+6,py+2,tileSize-12,tileSize-4,'#382828');
+        // Arrow indicator
+        const bob=Math.sin(fr*0.1)*2;
+        tx('EXIT',px+4,py+tileSize/2+4+bob,5,'#f0c830');
+      }else if(t===5){
+        // NPC position (floor underneath)
+        bx(px,py,tileSize,tileSize,'#c0b090');
+        if((x+y)%2===0)bx(px,py,tileSize,tileSize,'rgba(0,0,0,.04)');
+      }
+    }
+  }
+
+  // Draw NPC in building
+  const npcX=4,npcY=4; // NPC behind counter
+  const npx=offsetX+npcX*tileSize,npy=offsetY+npcY*tileSize;
+  // Simple NPC sprite (larger)
+  bx(npx+8,npy+4,16,20,'#f0dcc0');
+  if(buildingType==='shop'){
+    bx(npx+6,npy+10,20,14,'#8050a0');
+    bx(npx+8,npy,16,8,'#404048');
+  }else{
+    bx(npx+6,npy+10,20,14,'#407048');
+    bx(npx+8,npy,16,8,'#604830');
+  }
+  bx(npx+10,npy+6,4,3,'#181820');bx(npx+18,npy+6,4,3,'#181820');
+  // Diamond above NPC
+  const bobY=Math.sin(fr*0.08)*2;
+  bx(npx+14,npy-8+bobY,4,4,buildingType==='shop'?'#4080d0':'#40b060');
+
+  // Draw player in building
+  const ppx=offsetX+buildingPlayerX*tileSize,ppy=offsetY+buildingPlayerY*tileSize;
+  // Simplified sprite at interior scale
+  bx(ppx+8,ppy+16,16,8,'#4050a0'); // pants
+  bx(ppx+6,ppy+8,20,10,'#4080d0'); // shirt
+  bx(ppx+8,ppy,16,10,'#f0dcc0'); // head
+  bx(ppx+8,ppy-2,16,6,'#282830'); // hair
+  if(buildingPlayerDir===2){
+    bx(ppx+10,ppy+4,4,3,'#181820');bx(ppx+18,ppy+4,4,3,'#181820');
+  }
+
+  // HUD for building
+  const hudY=H-40;
+  win(0,hudY,W,40);
+  tx(buildingType==='shop'?'CARD SHOP':'INFO BROKER',10,hudY+20,8,'#806030');
+  tx('Z=Interact  X=Exit  Arrows=Move',200,hudY+20,6,'#686068');
+
+  // Building NPC dialog
+  if(buildingNpcDialog){
+    const line=buildingNpcLines[buildingNpcIdx]||'';
+    const line2=buildingNpcLines[buildingNpcIdx+1]||'';
+    win(6,H-120,W-12,70);
+    win(10,H-130,buildingNpcName.length*9+20,20);
+    tx(buildingNpcName,20,H-115,7,'#c04040');
+    tx(line,20,H-90,7,'#303028');
+    if(line2)tx(line2,20,H-72,7,'#303028');
+    const arrowBounce=Math.sin(fr*0.15)*2;
+    tx('\u25BC',W-24,H-58+arrowBounce,7,'#c04040');
+  }
+
+  // Info broker confirm/result
+  if(infoBrokerConfirm){
+    bx(0,0,W,H,'rgba(0,0,0,.4)');
+    win(W/2-180,H/2-60,360,120);
+    tx('Pay 1 card for rival locations?',W/2-160,H/2-30,7,'#303028');
+    tx('Z=Yes  X=No',W/2-60,H/2+10,7,'#c04040');
+  }
+  if(infoBrokerResultTimer>0){
+    infoBrokerResultTimer--;
+    const a=infoBrokerResultTimer>20?1:infoBrokerResultTimer/20;
+    g.globalAlpha=a;
+    win(W/2-200,H/2-40,400,80);
+    // Word wrap
+    const maxC=46;
+    let l1=infoBrokerResult,l2='';
+    if(infoBrokerResult.length>maxC){
+      let brk=infoBrokerResult.lastIndexOf(' ',maxC);
+      if(brk<1)brk=maxC;
+      l1=infoBrokerResult.substring(0,brk);
+      l2=infoBrokerResult.substring(brk+1);
+    }
+    tx(l1,W/2-180,H/2-10,7,'#303028');
+    if(l2)tx(l2,W/2-180,H/2+8,7,'#303028');
+    g.globalAlpha=1;
+  }
+}
+
+// ═══════════════════════════════════════
+// INTERACTABLE OBJECTS
+// ═══════════════════════════════════════
+function getFacingTile(){
+  const p=pl[0],m=getMap();
+  let fx=p.x,fy=p.y;
+  if(p.dir===0)fy++;else if(p.dir===2)fy--;
+  else if(p.dir===1)fx--;else if(p.dir===3)fx++;
+  if(fx>=0&&fx<MW&&fy>=0&&fy<MH)return{x:fx,y:fy,tile:m[fy]?.[fx]};
+  return null;
+}
+
+function checkObjectInteraction(){
+  const ft=getFacingTile();
+  if(!ft)return false;
+  const key=currentMap+'-'+ft.x+'-'+ft.y;
+
+  // Tree interaction (type 3)
+  if(ft.tile===3){
+    if(shakenTrees.has(key)){
+      objectInteractMsg='Already shaken this tree.';
+      objectInteractTimer=60;
+      return true;
+    }
+    shakenTrees.add(key);
+    if(Math.random()<0.1){
+      // 10% chance: card falls out
+      const cardIdx=Math.floor(Math.random()*5);
+      let slot=-1;
+      for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
+      if(slot>=0){
+        pl[0].cd[slot]=cardIdx+1;
+        syncCardCount(0);
+        startCardAcquisition(cardIdx);
+        objectInteractMsg='A card fell from the tree!';
+        lg.push('Shook tree: Found '+CD[cardIdx].n+'!');
+        if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+      }else{
+        discardActive=true;discardSelIdx=0;discardPendingCard=cardIdx+1;discardSource='wild';
+        objectInteractMsg='Found '+CD[cardIdx].n+'! Discard to keep.';
+      }
+    }else{
+      objectInteractMsg='Nothing fell from the tree.';
+    }
+    objectInteractTimer=90;
+    sfxSelect();
+    return true;
+  }
+
+  // Rock interaction (type 8)
+  if(ft.tile===8){
+    if(pushedRocks.has(key)){
+      objectInteractMsg='Already checked this rock.';
+      objectInteractTimer=60;
+      return true;
+    }
+    pushedRocks.add(key);
+    sfxSelect();
+    if(Math.random()<0.2){
+      const areaCards=AREA_CARDS[currentMap]||[1,2];
+      const cardId=areaCards[Math.floor(Math.random()*areaCards.length)];
+      let slot=-1;
+      for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
+      if(slot>=0){
+        pl[0].cd[slot]=cardId;
+        syncCardCount(0);
+        startCardAcquisition(cardId-1);
+        objectInteractMsg='Found a hidden card under the rock!';
+        lg.push('Rock: Found '+CD[cardId-1].n+'!');
+        if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+      }else{
+        discardActive=true;discardSelIdx=0;discardPendingCard=cardId;discardSource='wild';
+        objectInteractMsg='Found '+CD[cardId-1].n+'! Discard to keep.';
+      }
+    }else{
+      objectInteractMsg='Nothing under the rock.';
+    }
+    objectInteractTimer=90;
+    return true;
+  }
+
+  // Campfire interaction (type 29, Forest only)
+  if(ft.tile===29&&currentMap===1){
+    if(campfireUsed){
+      objectInteractMsg='Already rested here.';
+      objectInteractTimer=60;
+      return true;
+    }
+    campfireUsed=true;
+    sfxConfirm();
+    // Restore 1 spell charge: rotate Steal->Barrier->Scout
+    if(sp.s<3){sp.s++;objectInteractMsg='Rested by campfire. +1 Steal charge!';lg.push('Campfire: +1 Steal!');}
+    else if(sp.b<3){sp.b++;objectInteractMsg='Rested by campfire. +1 Barrier charge!';lg.push('Campfire: +1 Barrier!');}
+    else if(sp.c<3){sp.c++;objectInteractMsg='Rested by campfire. +1 Scout charge!';lg.push('Campfire: +1 Scout!');}
+    else{objectInteractMsg='Rested, but all spells are full.';}
+    objectInteractTimer=120;
+    return true;
+  }
+
+  // Fountain interaction (type 20, Port Town)
+  if(ft.tile===20&&currentMap===0){
+    const filled=[];
+    for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
+    if(filled.length===0){
+      objectInteractMsg='Toss a card? You have none!';
+      objectInteractTimer=90;
+      return true;
+    }
+    fountainActive=true;
+    fountainConfirm=true;
+    sfxSelect();
+    return true;
+  }
+
+  // Crystal interaction (type 26, Ruins)
+  if(ft.tile===26&&currentMap===2){
+    if(usedCrystals.has(key)){
+      objectInteractMsg='This crystal is spent.';
+      objectInteractTimer=60;
+      return true;
+    }
+    usedCrystals.add(key);
+    sfxSelect();
+    if(Math.random()<0.5){
+      // Reveal rivals on minimap for 60 seconds (3600 frames)
+      crystalRevealTimer=3600;
+      objectInteractMsg='The crystal glows! Rivals revealed!';
+      lg.push('Crystal: Rivals revealed for 60s!');
+    }else{
+      objectInteractMsg='The crystal shattered! Nothing happened.';
+      lg.push('Crystal shattered.');
+    }
+    objectInteractTimer=120;
+    flash();
+    return true;
+  }
+
+  return false;
+}
+
+function doFountainExchange(){
+  const filled=[];
+  for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
+  if(filled.length===0)return;
+  // Remove random card, give different random card
+  const slot=filled[Math.floor(Math.random()*filled.length)];
+  const oldCard=pl[0].cd[slot];
+  let newCard;
+  do{newCard=Math.floor(Math.random()*5)+1;}while(newCard===oldCard);
+  pl[0].cd[slot]=newCard;
+  syncCardCount(0);
+  startCardAcquisition(newCard-1);
+  fountainResult='The fountain glows! Received '+CD[newCard-1].n+'!';
+  fountainResultTimer=120;
+  lg.push('Fountain: Traded '+CD[oldCard-1].n+' for '+CD[newCard-1].n+'!');
+  sfxShopTrade();
+  if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+}
+
+function drawObjectInteractMsg(){
+  if(objectInteractTimer<=0)return;
+  objectInteractTimer--;
+  const alpha=objectInteractTimer>20?1:objectInteractTimer/20;
+  g.globalAlpha=alpha;
+  win(W/2-200,H/2-20,400,36);
+  tx(objectInteractMsg,W/2-190,H/2+4,6,'#303028');
+  g.globalAlpha=1;
+}
+
+function drawFountainDialog(){
+  if(!fountainActive)return;
+  if(fountainConfirm){
+    bx(0,0,W,H,'rgba(0,0,0,.4)');
+    win(W/2-180,H/2-50,360,100);
+    tx('Toss a card into the fountain?',W/2-160,H/2-24,7,'#303028');
+    tx('You will get a random card back.',W/2-160,H/2-4,6,'#686068');
+    tx('Z=Yes  X=No',W/2-60,H/2+24,7,'#c04040');
+  }
+  if(fountainResultTimer>0){
+    fountainResultTimer--;
+    const a=fountainResultTimer>20?1:fountainResultTimer/20;
+    g.globalAlpha=a;
+    win(W/2-180,H/2-20,360,36);
+    tx(fountainResult,W/2-170,H/2+4,6,'#3060b0');
+    g.globalAlpha=1;
+    if(fountainResultTimer<=0)fountainActive=false;
+  }
+}
+
+// ═══════════════════════════════════════
+// MAP CARD USE SYSTEM
+// ═══════════════════════════════════════
+function getMapUsableCards(){
+  // Returns [{slot, cardId, name}] for cards that can be used on map
+  const result=[];
+  for(let i=0;i<5;i++){
+    const cd=pl[0].cd[i];
+    if(cd===3)result.push({slot:i,cardId:3,name:'FLAME',desc:'Burn tree/bush ahead'});
+    else if(cd===2)result.push({slot:i,cardId:2,name:'SHADOW',desc:'Invisible 30 steps'});
+    else if(cd===5)result.push({slot:i,cardId:5,name:'VOID',desc:'Phase through wall'});
+  }
+  return result;
+}
+
+function openMapCardUse(){
+  const usable=getMapUsableCards();
+  if(usable.length===0){
+    twSet('No usable cards! Flame/Shadow/Void work on the map.');
+    return;
+  }
+  mapCardUseActive=true;
+  mapCardUseIdx=0;
+  sfxSelect();
+}
+
+function executeMapCard(cardId,slot){
+  if(cardId===3){
+    // Flame: burn tree/bush in direction
+    mapCardDirSelect=true;
+    mapCardDirIdx=pl[0].dir;
+    mapCardPendingType=3;
+    return;
+  }else if(cardId===2){
+    // Shadow: invisible 30 steps
+    pl[0].cd[slot]=0;
+    syncCardCount(0);
+    shadowStepsLeft=30;
+    mapCardUseActive=false;
+    sfxShadow();
+    twSet('You became invisible for 30 steps!');
+    lg.push('Used Shadow on map: 30 invisible steps!');
+  }else if(cardId===5){
+    // Void: phase through wall in direction
+    mapCardDirSelect=true;
+    mapCardDirIdx=pl[0].dir;
+    mapCardPendingType=5;
+    return;
+  }
+}
+
+function executeDirCard(dir){
+  const p=pl[0],m=getMap();
+  let dx=0,dy=0;
+  if(dir===0){dy=1;}else if(dir===2){dy=-1;}
+  else if(dir===1){dx=-1;}else if(dir===3){dx=1;}
+  const tx_=p.x+dx,ty_=p.y+dy;
+
+  if(mapCardPendingType===3){
+    // Flame: burn tree or bush
+    if(tx_>=0&&tx_<MW&&ty_>=0&&ty_<MH){
+      const tile=m[ty_]?.[tx_];
+      if(tile===3||tile===12||tile===13){
+        // Find the slot with Flame
+        let slot=-1;
+        for(let i=0;i<5;i++){if(pl[0].cd[i]===3){slot=i;break;}}
+        if(slot>=0){
+          pl[0].cd[slot]=0;
+          syncCardCount(0);
+          // Replace tile with grass
+          maps[currentMap][ty_][tx_]=1;
+          burnedTiles.push({mapIdx:currentMap,x:tx_,y:ty_});
+          edgeCacheDirty=true;
+          sfxBurn();
+          flash();
+          twSet('The obstacle burns away!');
+          lg.push('Used Flame: burned tile at ('+tx_+','+ty_+')');
+        }
+      }else{
+        twSet('Nothing to burn there.');
+      }
+    }
+  }else if(mapCardPendingType===5){
+    // Void: phase through wall (teleport 2 tiles)
+    const fx=p.x+dx*2,fy=p.y+dy*2;
+    if(fx>=0&&fx<MW&&fy>=0&&fy<MH&&WALKABLE.has(m[fy]?.[fx])){
+      let slot=-1;
+      for(let i=0;i<5;i++){if(pl[0].cd[i]===5){slot=i;break;}}
+      if(slot>=0){
+        pl[0].cd[slot]=0;
+        syncCardCount(0);
+        p.x=fx;p.y=fy;
+        fogRevealRadius(currentMap,fx,fy,2);fogSave();
+        edgeCacheDirty=true;
+        sfxPhase();
+        flash();
+        twSet('You phase through the obstacle!');
+        lg.push('Used Void: phased to ('+fx+','+fy+')');
+      }
+    }else{
+      twSet('Cannot phase there - no walkable tile beyond.');
+    }
+  }
+  mapCardDirSelect=false;
+  mapCardUseActive=false;
+}
+
+function drawMapCardUseOverlay(){
+  if(!mapCardUseActive)return;
+  const usable=getMapUsableCards();
+  if(usable.length===0){mapCardUseActive=false;return;}
+
+  if(mapCardDirSelect){
+    // Direction selection
+    bx(0,0,W,H,'rgba(0,0,0,.45)');
+    win(W/2-120,H/2-50,240,100);
+    tx('Select direction:',W/2-80,H/2-26,7,'#806030');
+    const dirNames=['DOWN','LEFT','UP','RIGHT'];
+    const dirCodes=[0,1,2,3];
+    for(let i=0;i<4;i++){
+      const y=H/2-6+Math.floor(i/2)*22;
+      const x=W/2-100+(i%2)*120;
+      if(dirCodes[i]===mapCardDirIdx){
+        tx('\u25B6',x-10,y+12,7,'#c04040');
+        tx(dirNames[i],x,y+12,7,'#c04040');
+      }else{
+        tx(dirNames[i],x,y+12,7,'#303028');
+      }
+    }
+    tx('Z=Confirm  X=Cancel',W/2-90,H/2+42,5,'#686068');
+    return;
+  }
+
+  bx(0,0,W,H,'rgba(0,0,0,.45)');
+  const mh=usable.length*32+48;
+  win(W/2-140,H/2-mh/2,280,mh);
+  tx('USE CARD ON MAP',W/2-80,H/2-mh/2+22,7,'#806030');
+  usable.forEach((item,j)=>{
+    const cr=CD[item.cardId-1];
+    const y=H/2-mh/2+38+j*32;
+    if(j===mapCardUseIdx){
+      bx(W/2-130,y-2,260,28,'rgba(192,168,96,.22)');
+      tx('\u25B6',W/2-134,y+14,7,'#c04040');
+    }
+    bx(W/2-118,y+2,20,20,cr.d);bx(W/2-116,y+4,16,16,cr.c);
+    tx(item.name,W/2-92,y+14,7,j===mapCardUseIdx?'#c04040':'#303028');
+    tx(item.desc,W/2+10,y+14,5,'#908878');
+  });
+  tx('Z=Use  X=Cancel',W/2-70,H/2+mh/2-10,5,'#686068');
+}
+
+// ═══════════════════════════════════════
 // GAME LOOP
 // ═══════════════════════════════════════
 function updateVisualPositions(){
@@ -3841,6 +4696,9 @@ function update(){
   if(flashT>0)flashT-=dt;
   if(bpShakeTimer>0)bpShakeTimer-=dt;
   if(rivalAlert>0)rivalAlert-=dt;
+  if(fishingCooldownTimer>0)fishingCooldownTimer--;
+  if(crystalRevealTimer>0)crystalRevealTimer--;
+  updateFishing();
 
   // Bird movement
   if(fr%10===0){
@@ -3907,8 +4765,8 @@ function update(){
     }
   }
 
-  // Encounter check (only if rival on same map)
-  if(sc==='map'&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning&&!encounterExclActive&&!shopActive&&!signpostActive){
+  // Encounter check (only if rival on same map, skip if shadow or in building)
+  if(sc==='map'&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning&&!encounterExclActive&&!shopActive&&!signpostActive&&!inBuilding&&shadowStepsLeft<=0){
     pl.slice(1).forEach((r,idx)=>{
       if(rivalMaps[idx]!==currentMap)return;
       if(Math.abs(r.x-pl[0].x)<=1&&Math.abs(r.y-pl[0].y)<=1&&Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y)===1){
@@ -3945,7 +4803,10 @@ function update(){
 function draw(){
   g.clearRect(0,0,W,H);
   if(sc==='title')dTitle();
-  else if(sc==='map'){dMap();if(mo)dMenu();}
+  else if(sc==='map'){
+    if(inBuilding){drawBuildingInterior();}
+    else{dMap();if(mo)dMenu();}
+  }
   else if(sc==='act')dAct();
   else if(sc==='crd')dCrd();
   else if(sc==='log')dLog();
@@ -3953,6 +4814,22 @@ function draw(){
   drawCardAcquisition();
   drawDiscardOverlay();
   drawTutorialMsg();
+  if(!inBuilding&&sc==='map'){
+    drawFishingOverlay();
+    drawPuzzlePillars();
+    drawPuzzleMessage();
+    drawObjectInteractMsg();
+    drawFountainDialog();
+    drawMapCardUseOverlay();
+    // Shadow effect on player sprite
+    if(shadowStepsLeft>0){
+      const px=pl[0].visualX-camX,py=pl[0].visualY-camY-8;
+      g.globalAlpha=0.4;
+      bx(px-2,py-2,20,28,'rgba(80,40,160,.3)');
+      g.globalAlpha=1;
+      tx('SHADOW:'+shadowStepsLeft,px-8,py-12,4,'#9060c0');
+    }
+  }
   if(flashT>0){bx(0,0,W,H,`rgba(255,255,255,${(flashT>10?1:flashT/10)*.8})`);}
   // Battle wipe transition (diagonal split)
   if(battleWipeActive){
@@ -4015,6 +4892,7 @@ document.addEventListener('keydown',e=>{
           rivalMaps=[0,0];lg.length=0;lg.push('Game started. Collect all 5 card types to win!');
           treasures.forEach(t=>t.collected=false);
           tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
+          resetNewFeatureState();
           fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Crystal & Shadow cards found here');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
             fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
@@ -4116,15 +4994,104 @@ document.addEventListener('keydown',e=>{
   // Battle encounter exclamation or wipe - wait
   if(encounterExclActive||battleWipeActive)return;
 
+  if(sc==='map'&&inBuilding){
+    // Building interior input
+    if(buildingNpcDialog){
+      if(e.code==='KeyZ'||e.code==='Space'){
+        buildingNpcIdx+=2;
+        if(buildingNpcIdx>=buildingNpcLines.length){buildingNpcDialog=false;buildingNpcIdx=0;}
+        else sfxSelect();
+      }
+      if(e.code==='KeyX'){buildingNpcDialog=false;sfxBack();}
+      return;
+    }
+    if(infoBrokerConfirm){
+      if(e.code==='KeyZ'){
+        infoBrokerConfirm=false;
+        // Check if player has a card to pay
+        const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
+        if(filled.length>0){
+          const slot=filled[Math.floor(Math.random()*filled.length)];
+          const lost=pl[0].cd[slot];pl[0].cd[slot]=0;syncCardCount(0);
+          const rivalArea=mapNames[rivalMaps[0]]||'???';
+          const hunterArea=mapNames[rivalMaps[1]]||'???';
+          infoBrokerResult='Rival is in '+rivalArea+'. Hunter is in '+hunterArea+'.';
+          infoBrokerResultTimer=240;
+          lg.push('Info Broker: Rival='+rivalArea+', Hunter='+hunterArea+' (paid '+CD[lost-1].n+')');
+          sfxConfirm();
+        }else{
+          infoBrokerResult='You have no cards to pay!';
+          infoBrokerResultTimer=120;
+        }
+      }
+      if(e.code==='KeyX'){infoBrokerConfirm=false;sfxBack();}
+      return;
+    }
+    if(e.code==='KeyX'){exitBuilding();return;}
+    // Movement in building
+    const bm=getBuildingMap();
+    let bnx=buildingPlayerX,bny=buildingPlayerY;
+    if(e.code==='ArrowUp'){bny--;buildingPlayerDir=2;}
+    if(e.code==='ArrowDown'){bny++;buildingPlayerDir=0;}
+    if(e.code==='ArrowLeft'){bnx--;buildingPlayerDir=1;}
+    if(e.code==='ArrowRight'){bnx++;buildingPlayerDir=3;}
+    if(bnx!==buildingPlayerX||bny!==buildingPlayerY){
+      if(bnx>=0&&bnx<BUILDING_W&&bny>=0&&bny<BUILDING_H){
+        const bt=bm[bny][bnx];
+        if(bt===4){
+          // Exit
+          exitBuilding();return;
+        }
+        if(buildingTileWalkable(bt)){
+          buildingPlayerX=bnx;buildingPlayerY=bny;sfxStep();
+        }
+      }
+    }
+    if(e.code==='KeyZ'){
+      // Interact with NPC in building
+      let fx=buildingPlayerX,fy=buildingPlayerY;
+      if(buildingPlayerDir===0)fy++;else if(buildingPlayerDir===2)fy--;
+      else if(buildingPlayerDir===1)fx--;else if(buildingPlayerDir===3)fx++;
+      if(fx>=0&&fx<BUILDING_W&&fy>=0&&fy<BUILDING_H){
+        const bt=bm[fy][fx];
+        if(bt===5||bt===2){
+          // Adjacent to NPC or counter
+          if(buildingType==='shop'){
+            openCardShop();
+          }else if(buildingType==='info'){
+            // Info Broker interaction
+            const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
+            if(filled.length>0){
+              infoBrokerConfirm=true;
+              sfxSelect();
+            }else{
+              buildingNpcDialog=true;
+              buildingNpcLines=['I can tell you where','your rivals are.','But you need a card to pay!'];
+              buildingNpcIdx=0;
+              buildingNpcName='Info Broker';
+              sfxConfirm();
+            }
+          }
+        }
+      }
+    }
+    return;
+  }
+
   if(sc==='map'){
     if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();return;}
     if(mo){
       if(e.code==='ArrowUp'){mi=Math.max(0,mi-1);sfxMove();}
-      if(e.code==='ArrowDown'){mi=Math.min(7,mi+1);sfxMove();}
+      if(e.code==='ArrowDown'){mi=Math.min(8,mi+1);sfxMove();}
       if(e.code==='KeyZ'){
         sfxConfirm();const s=['crd','map','act','log'];
-        if(mi===7)mo=false;
+        if(mi===8)mo=false;
         else if(mi===4){
+          // USE CARD on map
+          mo=false;menuOpenFrame=0;
+          openMapCardUse();
+        }
+        else if(mi===5){
           // DISCARD
           const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
           if(filled.length>0){
@@ -4132,13 +5099,13 @@ document.addEventListener('keydown',e=>{
             mo=false;menuOpenFrame=0;
           }else{twSet('No cards to discard!');mo=false;menuOpenFrame=0;}
         }
-        else if(mi===5){
+        else if(mi===6){
           // SAVE
           saveGame();
           twSet('Game saved!');
           mo=false;menuOpenFrame=0;
         }
-        else if(mi===6){
+        else if(mi===7){
           // NEW GAME: reset all state
           clearSave();fogClear();
           pl[0].cd=[1,3,0,0,0];pl[0].cc=2;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
@@ -4150,16 +5117,62 @@ document.addEventListener('keydown',e=>{
           rivalMaps=[0,0];lg.length=0;lg.push('New game started!');
           treasures.forEach(t=>t.collected=false);
           tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
+          resetNewFeatureState();
           fadeOut(()=>{sc='title';mo=false;fadeIn();ub();});
         }
         else{fadeOut(()=>{sc=s[mi];mo=false;if(sc==='act'){actEnterFrame=fr;battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
       }
       if(e.code==='KeyX'){mo=false;menuOpenFrame=0;sfxBack();}
     }else{
-      // Z = interact with NPC or signpost
+      // Map card use overlay input
+      if(mapCardUseActive){
+        if(mapCardDirSelect){
+          if(e.code==='ArrowUp'){mapCardDirIdx=2;sfxMove();}
+          if(e.code==='ArrowDown'){mapCardDirIdx=0;sfxMove();}
+          if(e.code==='ArrowLeft'){mapCardDirIdx=1;sfxMove();}
+          if(e.code==='ArrowRight'){mapCardDirIdx=3;sfxMove();}
+          if(e.code==='KeyZ'){sfxConfirm();executeDirCard(mapCardDirIdx);}
+          if(e.code==='KeyX'){mapCardDirSelect=false;mapCardUseActive=false;sfxBack();}
+          return;
+        }
+        const usable=getMapUsableCards();
+        if(e.code==='ArrowUp'){mapCardUseIdx=Math.max(0,mapCardUseIdx-1);sfxMove();}
+        if(e.code==='ArrowDown'){mapCardUseIdx=Math.min(usable.length-1,mapCardUseIdx+1);sfxMove();}
+        if(e.code==='KeyZ'){
+          sfxConfirm();
+          const item=usable[mapCardUseIdx];
+          executeMapCard(item.cardId,item.slot);
+        }
+        if(e.code==='KeyX'){mapCardUseActive=false;sfxBack();}
+        return;
+      }
+
+      // Fountain dialog input
+      if(fountainActive&&fountainConfirm){
+        if(e.code==='KeyZ'){fountainConfirm=false;doFountainExchange();}
+        if(e.code==='KeyX'){fountainConfirm=false;fountainActive=false;sfxBack();}
+        return;
+      }
+
+      // Fishing input
+      if(fishingActive){
+        if(fishingPhase==='bite'&&e.code==='KeyZ'){
+          fishingCatchCard();
+          return;
+        }
+        if(e.code==='KeyX'){fishingActive=false;sfxBack();}
+        return;
+      }
+
+      // Z = interact with NPC, signpost, building, puzzle, objects, or fish
       if(e.code==='KeyZ'){
         if(checkNPCInteraction())return;
         if(checkSignpostInteraction())return;
+        if(checkBuildingEntry())return;
+        if(checkPuzzleInteraction())return;
+        if(checkObjectInteraction())return;
+        // Fishing check
+        if(canFish()){startFishing();return;}
       }
 
       const p=pl[0];let nx=p.x,ny=p.y;
@@ -4184,6 +5197,12 @@ document.addEventListener('keydown',e=>{
           // Water proximity sound
           if(newTile!==0){const adj=[[nx-1,ny],[nx+1,ny],[nx,ny-1],[nx,ny+1]];if(adj.some(([ax,ay])=>ax>=0&&ax<MW&&ay>=0&&ay<MH&&m[ay]?.[ax]===0))sfxWaterNear();}
 
+          // Shadow step countdown
+          if(shadowStepsLeft>0)shadowStepsLeft--;
+
+          // Check forest traps (skip if shadow active)
+          if(shadowStepsLeft<=0)checkForestTrap();
+
           // Random map event every 200 steps
           randomEventTimer++;
           if(randomEventTimer>=200&&!randomEventActive&&!wildEncounterActive&&!cardAcqActive){
@@ -4198,8 +5217,8 @@ document.addEventListener('keydown',e=>{
           // Check treasure
           checkTreasure();
 
-          // Check wild encounter
-          if(!cardAcqActive&&!randomEventActive)tryWildEncounter();
+          // Check wild encounter (skip if shadow active)
+          if(!cardAcqActive&&!randomEventActive&&shadowStepsLeft<=0)tryWildEncounter();
         }
       }
     }
@@ -4289,6 +5308,7 @@ document.addEventListener('keydown',e=>{
         rivalMaps=[0,0];lg.length=0;lg.push('New game started!');
         treasures.forEach(t=>t.collected=false);
         tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
+        resetNewFeatureState();
         edgeCacheDirty=true;fogCacheDirty=true;
         fadeOut(()=>{sc='map';mo=false;showBanner('PORT TOWN','Crystal & Shadow cards found here');
           fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
@@ -4328,7 +5348,16 @@ function saveGame(){
       treasures:treasures.map(t=>t.collected),
       sc:sc,
       tutorialFlags:{...tutorialFlags},
-      randomEventTimer:randomEventTimer
+      randomEventTimer:randomEventTimer,
+      triggeredTraps:[...triggeredTraps],
+      puzzleStoneOrder:[...puzzleStoneOrder],
+      puzzleSolved:puzzleSolved,
+      shakenTrees:[...shakenTrees],
+      pushedRocks:[...pushedRocks],
+      usedCrystals:[...usedCrystals],
+      campfireUsed:campfireUsed,
+      burnedTiles:[...burnedTiles],
+      shadowStepsLeft:shadowStepsLeft
     };
     localStorage.setItem(SAVE_KEY,JSON.stringify(data));
     saveIndicatorTimer=60;
@@ -4355,6 +5384,15 @@ function loadGame(){
     d.treasures.forEach((c,i)=>{if(treasures[i])treasures[i].collected=c;});
     if(d.tutorialFlags)tutorialFlags={...tutorialFlags,...d.tutorialFlags};
     if(d.randomEventTimer!==undefined)randomEventTimer=d.randomEventTimer;
+    if(d.triggeredTraps)d.triggeredTraps.forEach(t=>triggeredTraps.add(t));
+    if(d.puzzleStoneOrder)puzzleStoneOrder=[...d.puzzleStoneOrder];
+    if(d.puzzleSolved!==undefined)puzzleSolved=d.puzzleSolved;
+    if(d.shakenTrees)d.shakenTrees.forEach(t=>shakenTrees.add(t));
+    if(d.pushedRocks)d.pushedRocks.forEach(t=>pushedRocks.add(t));
+    if(d.usedCrystals)d.usedCrystals.forEach(t=>usedCrystals.add(t));
+    if(d.campfireUsed!==undefined)campfireUsed=d.campfireUsed;
+    if(d.burnedTiles){burnedTiles.length=0;d.burnedTiles.forEach(t=>{burnedTiles.push(t);if(maps[t.mapIdx]&&maps[t.mapIdx][t.y])maps[t.mapIdx][t.y][t.x]=1;});}
+    if(d.shadowStepsLeft!==undefined)shadowStepsLeft=d.shadowStepsLeft;
     // Sync card counts from actual data to prevent drift
     syncCardCount(0);syncCardCount(1);syncCardCount(2);
     fogLoad();
