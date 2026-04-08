@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-oxark = "FUNza8fK4aUtGrf2jaeBomZbyScmZmfrx2r6jbZaDx76"
+oxark = "3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum"
 
 [provider]
 cluster = "localnet"

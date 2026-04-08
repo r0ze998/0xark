@@ -34,6 +34,7 @@ pub fn handle_join_game(ctx: Context<JoinGame>, game_id: u64) -> Result<()> {
     ps.game_id = game_id;
     ps.player = ctx.accounts.player.key();
     ps.player_index = game.player_count;
+    ps.area = 0; // Start at Port Town
     ps.cards = [0; 5];
     ps.card_count = 0;
     ps.steal_count = INITIAL_STEAL_SPELLS;
@@ -43,6 +44,7 @@ pub fn handle_join_game(ctx: Context<JoinGame>, game_id: u64) -> Result<()> {
     ps.has_revealed = false;
     ps.revealed_action = 0;
     ps.revealed_target = Pubkey::default();
+    ps.move_target = 0;
     ps.bump = ctx.bumps.player_state;
 
     game.player_count += 1;

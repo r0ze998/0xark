@@ -19,6 +19,21 @@ impl Default for GameStatus {
 /// Action types for commit-reveal
 /// 0=None, 1=Draw, 2=Steal, 3=Barrier, 4=Scout,
 /// 5=UseCrystal, 6=UseShadow, 7=UseFlame, 8=UseStorm, 9=UseVoid
+/// Area IDs: 0=Port, 1=Forest, 2=Ruins
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Area {
+    #[default]
+    Port,
+    Forest,
+    Ruins,
+}
+
+impl From<u8> for Area {
+    fn from(v: u8) -> Self {
+        match v { 1 => Area::Forest, 2 => Area::Ruins, _ => Area::Port }
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ActionType {
     None,
@@ -26,6 +41,7 @@ pub enum ActionType {
     Steal,
     Barrier,
     Scout,
+    Move,         // NEW: move to adjacent area
     UseCrystal,
     UseShadow,
     UseFlame,
@@ -38,6 +54,7 @@ impl From<u8> for ActionType {
         match v {
             1 => ActionType::Draw,
             2 => ActionType::Steal,
+            10 => ActionType::Move,
             3 => ActionType::Barrier,
             4 => ActionType::Scout,
             5 => ActionType::UseCrystal,
@@ -77,6 +94,7 @@ pub struct PlayerState {
     pub game_id: u64,
     pub player: Pubkey,
     pub player_index: u8,
+    pub area: u8,  // 0=Port, 1=Forest, 2=Ruins
     /// Cards held: array of 5 slots, value = card_id (1-5), 0 = empty
     pub cards: [u8; 5],
     pub card_count: u8,
@@ -88,11 +106,13 @@ pub struct PlayerState {
     /// Revealed action (stored after reveal, used during resolution)
     pub revealed_action: u8,
     pub revealed_target: Pubkey,
+    /// Move target area (if action is Move)
+    pub move_target: u8,
     pub bump: u8,
 }
 
 impl PlayerState {
-    pub const SIZE: usize = 8 + 8 + 32 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1;
+    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 1;
 }
 
 #[account]

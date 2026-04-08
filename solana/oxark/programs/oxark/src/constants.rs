@@ -11,8 +11,19 @@ pub const COMMIT_SEED: &[u8] = b"commit";
 
 pub const TOTAL_CARD_TYPES: u8 = 5;
 pub const MAX_PLAYERS: u8 = 3;
-pub const MAX_ROUNDS: u8 = 25;
+pub const MAX_ROUNDS: u8 = 30;
+pub const NUM_AREAS: u8 = 3; // Port=0, Forest=1, Ruins=2
 pub const INITIAL_HAND_SIZE: u8 = 2;
+
+// Area card tables: which card IDs are available in each area
+// Port: Crystal(1), Shadow(2)
+// Forest: Flame(3), Storm(4)
+// Ruins: Void(5), Crystal(1)
+pub const AREA_CARDS: [[u8; 2]; 3] = [
+    [1, 2], // Port
+    [3, 4], // Forest
+    [5, 1], // Ruins
+];
 pub const INITIAL_STEAL_SPELLS: u8 = 3;
 pub const INITIAL_BARRIER_SPELLS: u8 = 2;
 pub const INITIAL_SCOUT_SPELLS: u8 = 1;

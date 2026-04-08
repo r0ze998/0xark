@@ -9,7 +9,7 @@ pub use error::ErrorCode;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("FUNza8fK4aUtGrf2jaeBomZbyScmZmfrx2r6jbZaDx76");
+declare_id!("3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum");
 
 #[program]
 pub mod oxark {

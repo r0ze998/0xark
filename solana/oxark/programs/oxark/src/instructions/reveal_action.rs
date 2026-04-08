@@ -97,6 +97,9 @@ fn validate_action(ps: &PlayerState, at: ActionType, target: Pubkey, caller: Pub
             require!(has_card(&ps.cards, 5), ErrorCode::CardNotFound);
             require!(target != caller, ErrorCode::CannotTargetSelf);
         },
+        ActionType::Move => {
+            // Move is always valid — target encodes the destination area in low byte
+        },
         ActionType::None => {
             return Err(ErrorCode::InvalidAction.into());
         },
