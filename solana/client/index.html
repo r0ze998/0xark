@@ -2661,76 +2661,247 @@ function dMenu(){
 }
 
 // ═══════════════════════════════════════
-// BATTLE / ACTION SCREEN
+// BATTLE / ACTION SCREEN (FRLG STYLE)
 // ═══════════════════════════════════════
+
+// Battle animation particles
+const battleParticles=[];
+let battleAnimFrame=0;
+
+// New SFX for battle effects
+function sfxCrystal(){if(!soundEnabled)return;beep(880,.06,.07);setTimeout(()=>beep(1100,.04,.06),50);setTimeout(()=>beep(1320,.06,.07),100);setTimeout(()=>beep(1760,.08,.08),150);}
+function sfxShadow(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='sine';o.frequency.setValueAtTime(400,AC.currentTime);o.frequency.linearRampToValueAtTime(100,AC.currentTime+.2);gn.gain.setValueAtTime(.06,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.2);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.2);}catch(e){}}
+function sfxFlame(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='bandpass';f.frequency.value=1200;f.Q.value=2;gn.gain.setValueAtTime(.08,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.15);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.15);}catch(e){}}
+function sfxStorm(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='highpass';f.frequency.value=3000;gn.gain.setValueAtTime(.1,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.2);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.2);}catch(e){}}
+function sfxVoid(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(600,AC.currentTime);o.frequency.linearRampToValueAtTime(200,AC.currentTime+.15);gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.15);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.15);}catch(e){}}
+
 function drawBattleBG(){
-  bx(0,0,W,H,'#e8e0c8');
-  for(let py=0;py<H;py+=8)for(let px=0;px<W;px+=8){
-    if((px+py)%16===0)bx(px,py,4,4,'rgba(0,0,0,.02)');
+  // Area-specific gradient backgrounds
+  if(currentMap===0){
+    // Port: ocean/dock scene
+    for(let y=0;y<H;y++){
+      const t=y/H;
+      const r=Math.floor(lerp(100,140,t));
+      const gv=Math.floor(lerp(160,200,t));
+      const b=Math.floor(lerp(220,240,t));
+      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
+    }
+    // Waves at bottom
+    for(let i=0;i<8;i++){
+      const wy=H-80+i*12+Math.sin(fr*0.04+i)*4;
+      bx(0,wy,W,2,`rgba(255,255,255,${0.08-i*0.008})`);
+    }
+    // Dock/pier lines
+    bx(0,H-40,W,4,'#8B7355');bx(0,H-36,W,1,'#A08860');
+    for(let x=20;x<W;x+=60){bx(x,H-60,6,24,'#7B6345');bx(x+1,H-59,4,22,'#8B7355');}
+  }else if(currentMap===1){
+    // Forest: trees and grass
+    for(let y=0;y<H;y++){
+      const t=y/H;
+      const r=Math.floor(lerp(60,100,t));
+      const gv=Math.floor(lerp(120,160,t));
+      const b=Math.floor(lerp(60,80,t));
+      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
+    }
+    // Tree silhouettes in back
+    for(let i=0;i<6;i++){
+      const tx_=30+i*110+Math.sin(i*2.3)*20;
+      const th=60+Math.sin(i*1.7)*20;
+      bx(tx_+8,20,8,th,'#2a5030');
+      for(let j=0;j<3;j++){
+        const tw=36-j*8,ty_=20+j*14-th*0.1;
+        bx(tx_+12-tw/2,ty_+j*6,tw,18-j*4,'#3a6840');
+      }
+    }
+    // Grass tufts
+    for(let x=0;x<W;x+=16){
+      const h=4+Math.sin(x*0.3+fr*0.02)*2;
+      bx(x,H-38-h,3,h+2,'#4a8848');
+      bx(x+6,H-36-h*0.7,2,h,'#5a9858');
+    }
+  }else{
+    // Ruins: stone walls and torches
+    for(let y=0;y<H;y++){
+      const t=y/H;
+      const r=Math.floor(lerp(50,80,t));
+      const gv=Math.floor(lerp(45,70,t));
+      const b=Math.floor(lerp(60,90,t));
+      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
+    }
+    // Stone pillars
+    for(let i=0;i<4;i++){
+      const px_=60+i*160;
+      bx(px_,10,24,H-50,'#605848');bx(px_+2,10,20,H-50,'#706858');
+      bx(px_-4,8,32,8,'#706858');bx(px_-2,10,28,4,'#807868');
+      // Torch flames
+      const flicker=Math.sin(fr*0.15+i*2)*2;
+      bx(px_+8,4+flicker,8,6,'#e08020');bx(px_+9,2+flicker,6,4,'#f0c040');
+      bx(px_+10,0+flicker,4,3,'#f8e060');
+    }
+    // Cracks in floor
+    for(let i=0;i<5;i++){
+      const cx_=40+i*130,cy_=H-30;
+      bx(cx_,cy_,12,1,'#403830');bx(cx_+4,cy_+1,8,1,'#403830');
+    }
   }
+  // Ground platform
+  bx(0,H-34,W,34,'#706048');bx(0,H-34,W,2,'#908068');bx(0,H-32,W,1,'rgba(255,255,255,.1)');
 }
 
-function drawBattleHand(){
-  win(4,36,W-8,110);tx('YOUR HAND',14,54,7,'#686068');
-  for(let i=0;i<5;i++){
-    const cd=pl[0].cd[i],cx=14+i*124;
-    let sx=0,sy=0;
-    if(bpShakeTarget===0&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
-    if(cd>0){
-      const cr=CD[cd-1];
-      bx(cx+sx,62+sy,112,76,cr.d);bx(cx+2+sx,64+sy,108,72,cr.c);
-      bx(cx+3+sx,65+sy,106,70,'rgba(0,0,0,.08)');bx(cx+4+sx,66+sy,104,68,cr.c);
-      bx(cx+6+sx,68+sy,100,44,cr.d);bx(cx+7+sx,69+sy,98,42,'rgba(255,255,255,.12)');
-      tx(cr.i,cx+38+sx,104+sy,22,'#fff');
-      bx(cx+4+sx,114+sy,104,18,'rgba(0,0,0,.25)');bx(cx+5+sx,115+sy,102,16,cr.d);
-      tx(cr.n,cx+16+sx,129+sy,7,'#fff');bx(cx+4+sx,66+sy,3,26,'rgba(255,255,255,.15)');
+// Draw FRLG-style card count bar (like HP bar)
+function drawCardBar(x,y,w,cards,maxCards){
+  // Bar background
+  bx(x,y,w,6,'#383830');bx(x+1,y+1,w-2,4,'#505040');
+  // Segments
+  const segW=Math.floor((w-4)/maxCards);
+  for(let i=0;i<maxCards;i++){
+    const sx=x+2+i*segW;
+    if(i<cards.length&&cards[i]>0){
+      const cr=CD[cards[i]-1];
+      bx(sx,y+1,segW-1,4,cr.c);
+      bx(sx,y+1,segW-1,1,'rgba(255,255,255,.3)');
     }else{
-      bx(cx+sx,62+sy,112,76,'#c0b898');bx(cx+2+sx,64+sy,108,72,'#d0c8a8');
-      tx('?',cx+44+sx,108+sy,20,'#a89880');
+      bx(sx,y+1,segW-1,4,'#282820');
     }
   }
 }
 
-function drawBattleRivals(){
-  win(360,152,W-370,168);tx('RIVALS',372,170,6,'#686068');
-  pl.slice(1).forEach((p,i)=>{
-    const y=190+i*66;
-    let sx=0,sy=0;
-    if(bpShakeTarget===i+1&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*4;sy=Math.cos(bpShakeTimer*1.6)*2;}
-    bx(372+sx,y-4+sy,12,16,p.c);bx(373+sx,y-6+sy,10,8,'#f0dcc0');
-    bx(375+sx,y-4+sy,2,2,'#181820');bx(379+sx,y-4+sy,2,2,'#181820');
-    tx(p.n,390+sx,y+6+sy,7);tx(p.cc+' cards',390+sx,y+20+sy,6,'#989080');
-    bx(390+sx,y+28+sy,W-406,6,'#d8d0c0');
-    bx(390+sx,y+28+sy,Math.min(W-406,p.cc*(W-406)/5),6,p.c);
-    bx(390+sx,y+28+sy,Math.min(W-406,p.cc*(W-406)/5),1,'rgba(255,255,255,.3)');
-  });
+// Draw FRLG-style opponent info box (top-left)
+function drawOpponentInfoBox(){
+  const rival=pl[1]; // Primary opponent
+  let sx=0,sy=0;
+  if(bpShakeTarget===1&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
+  // FRLG info box shape
+  const bx_=8+sx,by_=16+sy,bw=260,bh=52;
+  bx(bx_,by_,bw,bh,'#f8f0d8');bx(bx_,by_,bw,2,'#c8c0a0');bx(bx_,by_+bh-2,bw,2,'#a89878');
+  bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
+  bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
+  // Name
+  tx(rival.n,bx_+10,by_+18,9,'#383830');
+  // Area indicator
+  const areaTag=mapNames[rivalMaps[0]]||'???';
+  tx(areaTag,bx_+10,by_+32,5,'#988870');
+  // Card bar (like HP bar)
+  tx('CARDS',bx_+120,by_+18,5,'#887858');
+  drawCardBar(bx_+156,by_+12,94,rival.cd,5);
+  // Card count number
+  tx(rival.cc+'/5',bx_+200,by_+32,6,'#383830');
+  // Spell indicators as small icons
+  bx(bx_+120,by_+28,6,6,'#b04040');bx(bx_+128,by_+35,5,'#686060');// S
+  bx(bx_+140,by_+28,6,6,'#3060b0');bx(bx_+148,by_+35,5,'#686060');// B
 }
 
-function drawMiniSpriteBattle(p,cx,cy,scale){
-  const s=scale||1;const w=14*s,h=20*s;const ox=cx-w/2,oy=cy-h/2;
-  g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(cx,oy+h,w*.4,h*.1,0,0,Math.PI*2);g.fill();
-  let shirtC=p===pl[0]?'#4080d0':p===pl[1]?'#d060a0':'#d0a030';
-  let hairC=p===pl[0]?'#282830':p===pl[1]?'#804020':'#585040';
-  bx(ox+2*s,oy+17*s,4*s,2*s,'#383030');bx(ox+8*s,oy+17*s,4*s,2*s,'#383030');
+// Draw FRLG-style player info box (bottom-right)
+function drawPlayerInfoBox(){
+  let sx=0,sy=0;
+  if(bpShakeTarget===0&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
+  const bx_=W-290+sx,by_=H-130+sy,bw=280,bh=68;
+  bx(bx_,by_,bw,bh,'#f8f0d8');bx(bx_,by_,bw,2,'#c8c0a0');bx(bx_,by_+bh-2,bw,2,'#a89878');
+  bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
+  bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
+  // Name
+  tx(pl[0].n,bx_+10,by_+18,9,'#383830');
+  // Card bar
+  tx('CARDS',bx_+10,by_+34,5,'#887858');
+  drawCardBar(bx_+48,by_+28,160,pl[0].cd,5);
+  tx(pl[0].cc+'/5',bx_+214,by_+34,6,'#383830');
+  // Win indicator
+  if(pl[0].cc>=4){
+    const flash=Math.sin(fr*0.15)*0.3+0.7;
+    g.globalAlpha=flash;
+    tx('5/5\u2192WIN!',bx_+180,by_+50,6,'#c04040');
+    g.globalAlpha=1;
+  }
+  // Spell counts
+  tx('STL:'+sp.s,bx_+10,by_+50,5,'#b04040');
+  tx('BAR:'+sp.b,bx_+70,by_+50,5,'#3060b0');
+  tx('SCT:'+sp.c,bx_+130,by_+50,5,'#308030');
+  // Area
+  tx(mapNames[currentMap],bx_+10,by_+62,5,'#988870');
+}
+
+// Draw battle sprite (front-facing for opponent, back-facing for player)
+function drawBattleSprite(p,cx,cy,scale,facingAway){
+  const s=scale;
+  const w=14*s,h=20*s;
+  const ox=cx-w/2,oy=cy-h/2;
+  // Shadow
+  g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(cx,oy+h+2*s,w*.5,h*.12,0,0,Math.PI*2);g.fill();
+  let shirtC,shirtH,hairC,hairH;
+  if(p===pl[0]){shirtC='#4080d0';shirtH='#5090e0';hairC='#282830';hairH='#383840';}
+  else if(p===pl[1]){shirtC='#d060a0';shirtH='#e070b0';hairC='#804020';hairH='#905030';}
+  else{shirtC='#d0a030';shirtH='#e0b040';hairC='#585040';hairH='#686058';}
+  // Feet
+  bx(ox+2*s,oy+17*s,4*s,3*s,'#383030');bx(ox+8*s,oy+17*s,4*s,3*s,'#383030');
+  // Pants
   bx(ox+3*s,oy+14*s,8*s,4*s,'#4050a0');
-  bx(ox+2*s,oy+8*s,10*s,7*s,shirtC);
-  bx(ox+2*s,oy+1*s,10*s,8*s,'#f0dcc0');
-  bx(ox+4*s,oy+4*s,2*s,2*s,'#181820');bx(ox+8*s,oy+4*s,2*s,2*s,'#181820');
-  bx(ox+4*s,oy+4*s,1*s,1*s,'#fff');bx(ox+8*s,oy+4*s,1*s,1*s,'#fff');
-  bx(ox+2*s,oy,10*s,3*s,hairC);
+  // Body
+  bx(ox+2*s,oy+8*s,10*s,7*s,shirtC);bx(ox+3*s,oy+9*s,8*s,5*s,shirtH);
+  // Arms
+  bx(ox-1*s,oy+9*s,4*s,6*s,shirtC);bx(ox+11*s,oy+9*s,4*s,6*s,shirtC);
+  // Hands
+  bx(ox-1*s,oy+14*s,3*s,2*s,'#e8d0b0');bx(ox+12*s,oy+14*s,3*s,2*s,'#e8d0b0');
+  // Head
+  bx(ox+3*s,oy+1*s,8*s,8*s,'#f0dcc0');bx(ox+4*s,oy+2*s,6*s,6*s,'#e8d0b0');
+  if(facingAway){
+    // Back of head (player's view in Pokemon)
+    bx(ox+3*s,oy,8*s,6*s,hairC);bx(ox+4*s,oy+s,6*s,5*s,hairH);
+    bx(ox+2*s,oy+s,2*s,3*s,hairC);bx(ox+10*s,oy+s,2*s,3*s,hairC);
+    // Backpack detail
+    bx(ox+4*s,oy+10*s,6*s,3*s,'#305080');bx(ox+5*s,oy+11*s,4*s,1*s,'#4070a0');
+  }else{
+    // Front face (opponent view)
+    bx(ox+4*s,oy+4*s,2*s,2*s,'#181820');bx(ox+8*s,oy+4*s,2*s,2*s,'#181820');
+    bx(ox+4*s,oy+4*s,s,s,'#fff');bx(ox+8*s,oy+4*s,s,s,'#fff');
+    bx(ox+6*s,oy+7*s,2*s,s,'#c0a090');
+    // Hair
+    if(p===pl[1]){
+      bx(ox+3*s,oy,8*s,3*s,hairC);bx(ox+2*s,oy+s,2*s,7*s,hairC);bx(ox+10*s,oy+s,2*s,7*s,hairC);
+      bx(ox+4*s,oy-s,6*s,2*s,hairC);
+    }else if(p===pl[2]){
+      bx(ox+2*s,oy,10*s,3*s,'#d0a030');bx(ox+s,oy+2*s,12*s,s,'#b08820');
+    }else{
+      bx(ox+3*s,oy,8*s,3*s,hairC);bx(ox+2*s,oy,2*s,2*s,hairC);bx(ox+10*s,oy,2*s,2*s,hairC);
+    }
+  }
+}
+
+// Draw "HP bar" style but for card count on mini display
+function drawMiniSpriteBattle(p,cx,cy,scale){
+  drawBattleSprite(p,cx,cy,scale,false);
 }
 
 function drawVsSplash(){
   bx(0,0,W,H,'#181828');const t=fr-bpFrame;
+  // Diagonal split
   const angle=W*1.2;
   g.save();
   g.fillStyle='#c04040';g.beginPath();g.moveTo(W/2-2,0);g.lineTo(W/2+angle/2,H);g.lineTo(W/2-2-angle/2,H);g.closePath();g.fill();
   g.fillStyle='#3060b0';g.beginPath();g.moveTo(W/2+2,0);g.lineTo(W/2+2+angle/2,0);g.lineTo(W/2+2+angle/2,H);g.lineTo(W/2+2-angle/2,H);g.closePath();g.fill();
   g.restore();
-  const pSlide=Math.min(1,t/30);drawMiniSpriteBattle(pl[0],(-60+pSlide*(W/2-40)),H/2-10,2);
-  const rSlide=Math.min(1,t/30);drawMiniSpriteBattle(pl[1],(W+60-rSlide*(W/2-40)),H/2-10,2);
-  if(t>15){g.globalAlpha=Math.min(1,(t-15)/10);tx('VS',W/2-24,H/2+10,30,'#f0c830');g.globalAlpha=1;}
+  // Sprites slide in (player from left back-facing, opponent from right front-facing)
+  const pSlide=Math.min(1,t/30);
+  const pX=-60+pSlide*(W/4+20);
+  drawBattleSprite(pl[0],pX,H/2-10,3,true);
+  const rSlide=Math.min(1,t/30);
+  const rX=W+60-rSlide*(W/4+20);
+  drawBattleSprite(pl[1],rX,H/2-10,3,false);
+  // VS text
+  if(t>15){
+    g.globalAlpha=Math.min(1,(t-15)/10);
+    // VS with outline
+    tx('VS',W/2-26,H/2+12,32,'#000');
+    tx('VS',W/2-24,H/2+10,30,'#f0c830');
+    g.globalAlpha=1;
+  }
+  // Flash
   if(t>=28&&t<=35){bx(0,0,W,H,`rgba(255,255,255,${(35-t)/7*.9})`);}
+  // Area name
+  if(t>20&&t<55){
+    g.globalAlpha=Math.min(1,(t-20)/8,Math.max(0,(55-t)/8));
+    tx(mapNames[currentMap],W/2-60,H/2+40,7,'#fff');
+    g.globalAlpha=1;
+  }
   if(t>=60){battlePhase='select';bpFrame=fr;}
 }
 
@@ -2742,25 +2913,102 @@ function isActionAvailable(i){
   return true;
 }
 
+// Phase banner colors and text
+const PHASE_COLORS={select:'#3060b0',confirming:'#d8b028',resolving:'#c04040',result:'#308030'};
+const PHASE_LABELS={select:'COMMIT PHASE',confirming:'REVEALING...',resolving:'RESOLVING!',result:'COMPLETE'};
+
+function drawPhaseBanner(phase){
+  const col=PHASE_COLORS[phase]||'#383830';
+  const label=PHASE_LABELS[phase]||'';
+  bx(0,0,W,22,col);bx(0,20,W,2,'rgba(0,0,0,.3)');
+  bx(0,0,W,1,'rgba(255,255,255,.2)');
+  // Round info on left
+  tx('R'+rd+'/25',6,15,7,'#fff');
+  // Phase label centered
+  const labelW=label.length*7;
+  tx(label,W/2-labelW/2,15,7,'#fff');
+  // Area on right
+  tx(mapNames[currentMap],W-120,15,6,'rgba(255,255,255,.7)');
+}
+
+// Draw the battle arena with sprites
+function drawBattleArena(){
+  // Player sprite (bottom-left, from behind like Pokemon trainer)
+  let psx=0,psy=0;
+  if(bpShakeTarget===0&&bpShakeTimer>0){psx=Math.sin(bpShakeTimer*1.2)*4;psy=Math.cos(bpShakeTimer*1.6)*2;}
+  drawBattleSprite(pl[0],130+psx,H-120+psy,3,true);
+  // Opponent sprite (top-right, facing you)
+  let osx=0,osy=0;
+  if(bpShakeTarget===1&&bpShakeTimer>0){osx=Math.sin(bpShakeTimer*1.2)*4;osy=Math.cos(bpShakeTimer*1.6)*2;}
+  drawBattleSprite(pl[1],W-160+osx,110+osy,3,false);
+}
+
+// FRLG-style 2x2 action grid
+function drawActionGrid(){
+  const gridX=8,gridY=H-134,cellW=130,cellH=32,gap=4;
+  const actions=[
+    {name:'DRAW',desc:'from pool',col:'#303028',icon:'#48b8e8'},
+    {name:'STEAL',desc:sp.s+' left',col:'#b04040',icon:'#b04040'},
+    {name:'BARRIER',desc:sp.b+' left',col:'#3060b0',icon:'#3060b0'},
+    {name:'SCOUT',desc:sp.c+' left',col:'#308030',icon:'#308030'}
+  ];
+  // Grid background
+  win(gridX-2,gridY-6,cellW*2+gap+12,cellH*2+gap+16);
+  for(let r=0;r<2;r++){
+    for(let c=0;c<2;c++){
+      const idx=r*2+c;
+      const cx_=gridX+4+c*(cellW+gap);
+      const cy_=gridY+2+r*(cellH+gap);
+      const avail=isActionAvailable(idx);
+      const sel=(idx===ai&&!bpCardSelectActive&&!bpTargetSelectActive);
+      // Cell background
+      if(sel&&avail){
+        bx(cx_,cy_,cellW,cellH,'#f8f0d8');bx(cx_,cy_,cellW,1,'#d0c8a0');
+        bx(cx_,cy_+cellH-1,cellW,1,'#a89878');
+      }else{
+        bx(cx_,cy_,cellW,cellH,avail?'#e8e0c8':'#c8c0b0');
+      }
+      // Icon square
+      const iconCol=avail?actions[idx].icon:'#989088';
+      bx(cx_+4,cy_+6,18,18,iconCol);bx(cx_+5,cy_+7,16,16,avail?'rgba(255,255,255,.2)':'rgba(0,0,0,.1)');
+      // Text
+      const textCol=avail?(sel?'#c04040':actions[idx].col):'#a0a0a0';
+      tx(actions[idx].name,cx_+26,cy_+16,7,textCol);
+      tx(actions[idx].desc,cx_+26,cy_+28,5,avail?'#908878':'#b8b8b8');
+      // Cursor arrow
+      if(sel&&avail){
+        const bob_=Math.sin(fr*0.15)*2;
+        tx('\u25B6',cx_-10+bob_,cy_+18,7,'#c04040');
+      }
+    }
+  }
+  // USE CARD button below the grid
+  const ucX=gridX+4,ucY=gridY+cellH*2+gap+6,ucW=cellW*2+gap,ucH=28;
+  const ucAvail=isActionAvailable(4);
+  const ucSel=(ai===4&&!bpCardSelectActive&&!bpTargetSelectActive);
+  if(ucSel&&ucAvail){
+    bx(ucX,ucY,ucW,ucH,'#f8f0d8');bx(ucX,ucY,ucW,1,'#d0c8a0');
+  }else{
+    bx(ucX,ucY,ucW,ucH,ucAvail?'#e8e0c8':'#c8c0b0');
+  }
+  bx(ucX+4,ucY+4,18,18,'#806030');bx(ucX+5,ucY+5,16,16,'rgba(255,255,255,.15)');
+  tx('USE CARD',ucX+26,ucY+16,7,ucAvail?(ucSel?'#c04040':'#806030'):'#a0a0a0');
+  tx('consume fx',ucX+120,ucY+16,5,ucAvail?'#908878':'#b8b8b8');
+  if(ucSel&&ucAvail){
+    const bob_=Math.sin(fr*0.15)*2;
+    tx('\u25B6',ucX-10+bob_,ucY+18,7,'#c04040');
+  }
+}
+
 function drawSelectPhase(){
   const slideProgress=Math.min(1,(fr-bpFrame)/20);
   g.save();g.translate(-(1-slideProgress)*W,0);
   drawBattleBG();
-  win(4,2,W-8,30);tx(`ROUND ${rd} / 25`,W/2-62,22,10);
-  drawBattleHand();
-  win(4,152,350,168);tx('ACTION',14,170,6,'#686068');
-  const ac=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
-  const ad=['from pool',sp.s+' left',sp.b+' left',sp.c+' left','consume fx'];
-  const acl=['#303028','#b04040','#3060b0','#308030','#806030'];
-  ac.forEach((a,i)=>{
-    const y=186+i*28;
-    const avail=isActionAvailable(i);
-    if(i===ai&&avail){bx(12,y-10,338,24,'rgba(192,168,96,.18)');tx('\u25B6',14,y+2,7,'#c04040');}
-    const col=avail?(i===ai?'#c04040':acl[i]):'#a0a0a0';
-    tx(a,34,y+2,7,col);tx(ad[i],190,y+2,6,avail?'#989080':'#b8b8b8');
-    if(!avail){bx(12,y-10,338,24,'rgba(160,160,160,.08)');}
-  });
-  drawBattleRivals();
+  drawPhaseBanner('select');
+  drawBattleArena();
+  drawOpponentInfoBox();
+  drawPlayerInfoBox();
+  drawActionGrid();
   // Card selection submenu for USE CARD
   if(bpCardSelectActive){
     bx(0,0,W,H,'rgba(0,0,0,.4)');
@@ -2792,8 +3040,12 @@ function drawSelectPhase(){
 }
 
 function drawConfirmingPhase(){
-  drawBattleBG();win(4,2,W-8,30);tx(`ROUND ${rd} / 25`,W/2-62,22,10);
-  drawBattleHand();drawBattleRivals();
+  drawBattleBG();
+  drawPhaseBanner('confirming');
+  drawBattleArena();
+  drawOpponentInfoBox();
+  drawPlayerInfoBox();
+  // Text box at bottom
   win(4,H-64,W-8,58);
   const t=fr-bpFrame;const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
   if(t<40)tx('You chose '+actionNames[bpAction]+'!',16,H-36,9,'#303028');
@@ -2983,47 +3235,232 @@ function generateResolveEvents(){
   return events;
 }
 
+// Card effect animation helpers
+function drawCrystalEffect(cx_,cy_,evT){
+  // Blue energy spiral around player sprite, then lightning bolt
+  if(evT===1)sfxCrystal();
+  const a=Math.max(0,1-evT/35);
+  g.save();g.globalAlpha=a;
+  for(let i=0;i<8;i++){
+    const ang=evT*0.2+i*(Math.PI*2/8);
+    const dist=20+evT*1.5;
+    const px_=cx_+Math.cos(ang)*dist;
+    const py_=cy_+Math.sin(ang)*dist*0.6;
+    bx(px_-2,py_-2,4,4,'#48b8e8');bx(px_-1,py_-1,2,2,'#a0e0ff');
+  }
+  // Lightning bolt at mid-animation
+  if(evT>15&&evT<30){
+    g.strokeStyle=`rgba(100,200,255,${(30-evT)/15})`;g.lineWidth=2;
+    g.beginPath();g.moveTo(cx_,cy_-20);
+    g.lineTo(cx_+10,cy_-5);g.lineTo(cx_-5,cy_+5);g.lineTo(cx_+15,cy_+25);
+    g.stroke();
+    g.strokeStyle=`rgba(200,240,255,${(30-evT)/20})`;g.lineWidth=1;
+    g.beginPath();g.moveTo(cx_+2,cy_-18);
+    g.lineTo(cx_+12,cy_-3);g.lineTo(cx_-3,cy_+7);g.lineTo(cx_+17,cy_+27);
+    g.stroke();
+  }
+  g.globalAlpha=1;g.restore();
+}
+
+function drawShadowEffect(cx_,cy_,evT){
+  if(evT===1)sfxShadow();
+  // Player fades to semi-transparent with dark particles
+  if(evT<25){
+    const a=0.3+Math.sin(evT*0.3)*0.2;
+    g.globalAlpha=a;
+    bx(cx_-25,cy_-30,50,60,'rgba(80,40,120,.4)');
+    g.globalAlpha=1;
+  }
+  // Dark particles rising
+  for(let i=0;i<6;i++){
+    const px_=cx_-15+i*6+Math.sin(evT*0.2+i)*4;
+    const py_=cy_+20-evT*1.5-i*3;
+    const pa=Math.max(0,1-evT/30);
+    bx(px_,py_,3,3,`rgba(80,30,120,${pa})`);
+    bx(px_+1,py_+1,1,1,`rgba(140,80,180,${pa})`);
+  }
+}
+
+function drawFlameEffect(cx_,cy_,evT){
+  if(evT===1)sfxFlame();
+  // Fire particles erupting from center
+  for(let i=0;i<12;i++){
+    const ang=i*(Math.PI*2/12)+evT*0.05;
+    const dist=evT*2+Math.sin(i*1.3)*8;
+    const px_=cx_+Math.cos(ang)*dist;
+    const py_=cy_+Math.sin(ang)*dist*0.5-evT*0.5;
+    const pa=Math.max(0,1-evT/35);
+    const sz=4-evT*0.08;
+    if(sz>0){
+      bx(px_-sz/2,py_-sz/2,sz,sz,`rgba(220,80,40,${pa})`);
+      bx(px_-sz/4,py_-sz/4,sz/2,sz/2,`rgba(255,200,60,${pa})`);
+    }
+  }
+  // Target flash red
+  if(evT<10){
+    g.globalAlpha=(10-evT)/10*0.4;
+    bx(0,0,W,H,'#ff2020');
+    g.globalAlpha=1;
+  }
+}
+
+function drawStormEffect(evT){
+  if(evT===1)sfxStorm();
+  // Screen shake
+  if(evT<20){
+    const shk=Math.sin(evT*2)*(20-evT)*0.3;
+    g.save();g.translate(shk,shk*0.5);
+  }
+  // Lightning bolts across top
+  if(evT<25){
+    const a=Math.max(0,1-evT/25);
+    g.strokeStyle=`rgba(255,255,200,${a})`;g.lineWidth=3;
+    for(let i=0;i<3;i++){
+      const sx_=80+i*200+Math.sin(evT+i)*20;
+      g.beginPath();g.moveTo(sx_,0);
+      g.lineTo(sx_+15,40);g.lineTo(sx_-10,80);g.lineTo(sx_+20,120);
+      g.stroke();
+    }
+    // Flash
+    if(evT%4<2){g.globalAlpha=a*0.3;bx(0,0,W,H,'#fff');g.globalAlpha=1;}
+  }
+  if(evT<20)g.restore();
+}
+
+function drawVoidEffect(cx_,cy_,evT){
+  if(evT===1)sfxVoid();
+  // Purple vortex in center
+  const a=Math.max(0,1-evT/35);
+  g.save();g.globalAlpha=a;
+  for(let i=0;i<10;i++){
+    const ang=evT*0.3+i*(Math.PI*2/10);
+    const dist=30-evT*0.3+Math.sin(evT*0.5+i)*5;
+    const px_=cx_+Math.cos(ang)*dist;
+    const py_=cy_+Math.sin(ang)*dist*0.6;
+    bx(px_-2,py_-2,4,4,`rgba(100,50,160,${a})`);
+    bx(px_-1,py_-1,2,2,`rgba(180,100,220,${a})`);
+  }
+  // Card shape flying
+  if(evT>10&&evT<30){
+    const t_=(evT-10)/20;
+    const cardX=lerp(cx_+60,cx_-60,t_);
+    const cardY=cy_-10+Math.sin(t_*Math.PI)*-20;
+    bx(cardX-6,cardY-8,12,16,'#7858a0');bx(cardX-5,cardY-7,10,14,'#9878c0');
+    tx('?',cardX-3,cardY+4,6,'#fff');
+  }
+  g.globalAlpha=1;g.restore();
+}
+
 function drawResolvingPhase(){
-  drawBattleBG();win(4,2,W-8,30);tx(`ROUND ${rd} / 25`,W/2-62,22,10);
-  drawBattleHand();drawBattleRivals();
-  const t=fr-bpFrame,eventDuration=45,currentIdx=Math.floor(t/eventDuration);
+  drawBattleBG();
+  drawPhaseBanner('resolving');
+  drawBattleArena();
+  drawOpponentInfoBox();
+  drawPlayerInfoBox();
+  const t=fr-bpFrame,eventDuration=50,currentIdx=Math.floor(t/eventDuration);
   if(currentIdx<bpResolveQueue.length){
     bpResolveIdx=currentIdx;const ev=bpResolveQueue[currentIdx];const evT=t%eventDuration;
+    // Typewriter text box at bottom
     const slideIn=Math.min(1,evT/12);const textX=W*(1-slideIn)+16*slideIn;
-    win(4,H-64,W-8,58);tx(ev.text,textX,H-38,7,'#303028');
-    if(ev.effect==='slash'&&evT<20){
-      g.save();g.strokeStyle=`rgba(200,40,40,${1-evT/20})`;g.lineWidth=2;
-      const cx_=ev.target===0?W/4:W*3/4,cy_=80;
-      for(let i=0;i<3;i++){g.beginPath();g.moveTo(cx_-15+i*8,cy_-15+i*4);g.lineTo(cx_+15+i*8,cy_+15+i*4);g.stroke();}
+    win(4,H-64,W-8,58);
+    tx(ev.text,textX,H-38,7,'#303028');
+    // Brief pause indicator
+    if(evT>38){
+      const dotCount=Math.floor((evT-38)/4)%4;
+      tx('.'.repeat(dotCount),textX+ev.text.length*7+4,H-38,7,'#a09080');
+    }
+    // === EFFECT ANIMATIONS ===
+    const playerCX=130,playerCY=H-120;
+    const oppCX=W-160,oppCY=110;
+    if(ev.effect==='slash'&&evT<25){
+      const tgtCX=ev.target===0?playerCX:oppCX;
+      const tgtCY=ev.target===0?playerCY:oppCY;
+      g.save();g.strokeStyle=`rgba(200,40,40,${1-evT/25})`;g.lineWidth=3;
+      for(let i=0;i<4;i++){
+        g.beginPath();
+        g.moveTo(tgtCX-20+i*10,tgtCY-20+i*5);
+        g.lineTo(tgtCX+20+i*10,tgtCY+20+i*5);
+        g.stroke();
+      }
       g.restore();if(evT===1)sfxSlash();
     }
-    if(ev.effect==='shield'&&evT<25){
-      const r=evT*3,a=1-evT/25;g.save();
-      g.strokeStyle=`rgba(48,96,176,${a})`;g.lineWidth=3;g.beginPath();g.arc(W/4,90,r,0,Math.PI*2);g.stroke();
-      g.strokeStyle=`rgba(100,160,240,${a*.6})`;g.beginPath();g.arc(W/4,90,r*.7,0,Math.PI*2);g.stroke();
+    if(ev.effect==='shield'&&evT<30){
+      const r_=evT*2.5,a_=1-evT/30;g.save();
+      g.strokeStyle=`rgba(48,96,176,${a_})`;g.lineWidth=3;
+      g.beginPath();g.arc(playerCX,playerCY,r_,0,Math.PI*2);g.stroke();
+      g.strokeStyle=`rgba(100,160,240,${a_*.6})`;g.lineWidth=2;
+      g.beginPath();g.arc(playerCX,playerCY,r_*.7,0,Math.PI*2);g.stroke();
+      // Shield icon
+      if(evT<15){
+        g.globalAlpha=1-evT/15;
+        bx(playerCX-8,playerCY-12,16,20,'rgba(60,120,200,.5)');
+        bx(playerCX-6,playerCY-10,12,16,'rgba(100,180,255,.4)');
+      }
+      g.globalAlpha=1;g.restore();if(evT===1)sfxShield();
+    }
+    if(ev.effect==='shield_block'&&evT<30){
+      const r_=evT*3,a_=1-evT/30;g.save();
+      g.strokeStyle=`rgba(48,96,240,${a_})`;g.lineWidth=4;
+      g.beginPath();g.arc(playerCX,playerCY,r_,0,Math.PI*2);g.stroke();
+      if(evT<10){
+        g.globalAlpha=(10-evT)/10*0.5;
+        bx(playerCX-30,playerCY-30,60,60,'#6090ff');
+        g.globalAlpha=1;
+      }
+      // "BLOCKED" text
+      if(evT>5&&evT<25){
+        g.globalAlpha=Math.min(1,(evT-5)/5)*Math.max(0,(25-evT)/10);
+        tx('BLOCKED!',playerCX-40,playerCY-40,8,'#4080ff');
+        g.globalAlpha=1;
+      }
       g.restore();if(evT===1)sfxShield();
     }
-    if(ev.effect==='shield_block'&&evT<25){
-      const r=evT*3,a=1-evT/25;g.save();
-      g.strokeStyle=`rgba(48,96,240,${a})`;g.lineWidth=4;g.beginPath();g.arc(W/4,90,r,0,Math.PI*2);g.stroke();
-      if(evT<8)bx(W/4-30,60,60,60,`rgba(100,160,255,${.4-evT*.05})`);
-      g.restore();if(evT===1)sfxShield();
+    if(ev.effect==='damage'&&evT<20){
+      bpShakeTarget=ev.target!==undefined?ev.target:0;bpShakeTimer=20-evT;
+      if(evT===1)sfxDamage();
+      // Flash on target
+      if(evT<6&&evT%2===0){
+        const tgtCX=ev.target===0?playerCX:oppCX;
+        const tgtCY=ev.target===0?playerCY:oppCY;
+        g.globalAlpha=0.5;bx(tgtCX-30,tgtCY-40,60,80,'#ff4040');g.globalAlpha=1;
+      }
     }
-    if(ev.effect==='damage'&&evT<15){bpShakeTarget=ev.target!==undefined?ev.target:0;bpShakeTimer=15-evT;if(evT===1)sfxDamage();}
-    else if(ev.effect!=='damage'&&evT>15)bpShakeTimer=0;
-    if(ev.effect==='card_get'&&evT<30){
-      const cardY=H-evT*4;const scale=Math.min(1,evT/15);const cw=40*scale,ch=56*scale;
-      bx(W/4-cw/2,cardY-ch,cw,ch,'#d85840');bx(W/4-cw/2+2,cardY-ch+2,cw-4,ch-4,'#e87060');
-      if(scale>.5)tx('\u25B2',W/4-6,cardY-ch/2+4,Math.floor(12*scale),'#fff');
-      for(let i=0;i<6;i++){
-        const ang=i*(Math.PI*2/6)+evT*.1,dist=15+evT*.5;
-        bx(W/4+Math.cos(ang)*dist,cardY-ch/2+Math.sin(ang)*dist,2,2,`rgba(255,255,200,${Math.max(0,1-evT/30)})`);
+    else if(ev.effect!=='damage'&&evT>20)bpShakeTimer=0;
+    if(ev.effect==='card_get'&&evT<35){
+      // Card rising with sparkles
+      const cardY=playerCY+30-evT*2;const scale_=Math.min(1,evT/15);
+      const cw_=40*scale_,ch_=56*scale_;
+      bx(playerCX-cw_/2,cardY-ch_/2,cw_,ch_,'#d85840');
+      bx(playerCX-cw_/2+2,cardY-ch_/2+2,cw_-4,ch_-4,'#e87060');
+      if(scale_>.5)tx('\u25B2',playerCX-6,cardY+4,Math.floor(12*scale_),'#fff');
+      for(let i=0;i<8;i++){
+        const ang=i*(Math.PI*2/8)+evT*.15,dist=12+evT*.8;
+        const pa=Math.max(0,1-evT/35);
+        bx(playerCX+Math.cos(ang)*dist,cardY+Math.sin(ang)*dist,3,3,`rgba(255,255,200,${pa})`);
       }
       if(evT===1)sfxCardGet();
     }
-    if(ev.effect==='card_get_rival'&&evT<20){
-      bx(360,200-evT*2,20,28,'#d85840');bx(362,202-evT*2,16,24,'#e87060');
-      tx('\u25B2',366,218-evT*2,8,'#fff');if(evT===1)sfxCardGet();
+    if(ev.effect==='card_get_rival'&&evT<25){
+      const riseY=oppCY+20-evT*1.5;
+      bx(oppCX-10,riseY-14,20,28,'#d85840');bx(oppCX-8,riseY-12,16,24,'#e87060');
+      tx('\u25B2',oppCX-4,riseY+6,8,'#fff');
+      if(evT===1)sfxCardGet();
+    }
+    // Card consumption effect animations based on card name in event text
+    if(ev.text&&ev.text.includes('Crystal')&&ev.type==='result'&&evT<35){
+      drawCrystalEffect(playerCX,playerCY,evT);
+    }
+    if(ev.text&&ev.text.includes('Shadow')&&ev.type==='result'&&evT<30){
+      drawShadowEffect(playerCX,playerCY,evT);
+    }
+    if(ev.text&&ev.text.includes('Flame')&&ev.type==='result'&&evT<35){
+      drawFlameEffect(W/2,H/2-20,evT);
+    }
+    if(ev.text&&ev.text.includes('Storm')&&ev.type==='result'&&evT<25){
+      drawStormEffect(evT);
+    }
+    if(ev.text&&ev.text.includes('Void')&&ev.type==='result'&&evT<35){
+      drawVoidEffect(W/2,H/2-20,evT);
     }
   }else{
     battlePhase='result';bpFrame=fr;bpShakeTarget=-1;bpShakeTimer=0;
@@ -3031,10 +3468,61 @@ function drawResolvingPhase(){
 }
 
 function drawResultPhase(){
-  drawBattleBG();win(4,2,W-8,30);tx(`ROUND ${rd} / 25`,W/2-62,22,10);
-  drawBattleHand();drawBattleRivals();
-  const t=fr-bpFrame;win(4,H-64,W-8,58);tx('Round complete!',16,H-38,9,'#308030');
-  if(t>20&&Math.floor(t/20)%2===0)tx('PRESS Z TO CONTINUE',W/2-110,H-16,6,'#989080');
+  drawBattleBG();
+  drawPhaseBanner('result');
+  drawBattleArena();
+  drawOpponentInfoBox();
+  drawPlayerInfoBox();
+  const t=fr-bpFrame;
+  // Summary panel in center
+  const panW=360,panH=200,panX=W/2-panW/2,panY=H/2-panH/2-10;
+  const slideIn_=Math.min(1,t/15);
+  g.globalAlpha=slideIn_;
+  win(panX,panY,panW,panH);
+  tx('ROUND '+rd+' COMPLETE',panX+panW/2-90,panY+24,8,'#308030');
+  // Card bar display
+  tx('Your cards:',panX+16,panY+48,6,'#686068');
+  for(let i=0;i<5;i++){
+    const cd=pl[0].cd[i];
+    const sx_=panX+110+i*38;
+    if(cd>0){
+      const cr=CD[cd-1];
+      bx(sx_,panY+38,32,18,cr.d);bx(sx_+1,panY+39,30,16,cr.c);
+      tx(cr.n[0],sx_+10,panY+52,7,'#fff');
+    }else{
+      bx(sx_,panY+38,32,18,'#c0b898');bx(sx_+1,panY+39,30,16,'#d0c8a8');
+      tx('-',sx_+12,panY+52,7,'#a89880');
+    }
+  }
+  // Recent events summary from resolve queue
+  if(bpResolveQueue&&bpResolveQueue.length>0){
+    let lineY=panY+68;
+    const maxEvents=Math.min(bpResolveQueue.length,5);
+    for(let i=0;i<maxEvents;i++){
+      const ev=bpResolveQueue[i];
+      if(!ev.text)continue;
+      const evAlpha=Math.min(1,Math.max(0,(t-15-i*4)/8));
+      if(evAlpha<=0)continue;
+      g.globalAlpha=evAlpha;
+      let evCol='#686068';
+      if(ev.text.includes('stole')||ev.text.includes('Burn'))evCol='#c04040';
+      else if(ev.text.includes('obtained')||ev.text.includes('got'))evCol='#308030';
+      else if(ev.text.includes('BARRIER')||ev.text.includes('BLOCKED'))evCol='#3060b0';
+      else if(ev.text.includes('Shadow'))evCol='#7858a0';
+      // Truncate long text
+      const dispText=ev.text.length>42?ev.text.substring(0,40)+'..':ev.text;
+      tx(dispText,panX+16,lineY+12,5,evCol);
+      lineY+=16;
+    }
+  }
+  g.globalAlpha=slideIn_;
+  // Spell counts
+  tx('Spells: STL:'+sp.s+' BAR:'+sp.b+' SCT:'+sp.c,panX+16,panY+panH-30,6,'#988870');
+  g.globalAlpha=1;
+  // Press Z prompt
+  if(t>25&&Math.floor(t/20)%2===0){
+    tx('PRESS Z TO CONTINUE',W/2-110,panY+panH+10,6,'#989080');
+  }
 }
 
 function dAct(){
@@ -3671,8 +4159,23 @@ document.addEventListener('keydown',e=>{
       }
       if(e.code==='KeyX'){bpTargetSelectActive=false;sfxBack();}
     }else if(battlePhase==='select'){
-      if(e.code==='ArrowUp'){ai=Math.max(0,ai-1);sfxMove();}
-      if(e.code==='ArrowDown'){ai=Math.min(4,ai+1);sfxMove();}
+      // 2x2 grid navigation: 0=DRAW(TL), 1=STEAL(TR), 2=BARRIER(BL), 3=SCOUT(BR), 4=USE CARD(below)
+      if(e.code==='ArrowUp'){
+        if(ai===4){ai=2;sfxMove();}
+        else if(ai>=2){ai-=2;sfxMove();}
+      }
+      if(e.code==='ArrowDown'){
+        if(ai<2){ai+=2;sfxMove();}
+        else if(ai<4){ai=4;sfxMove();}
+      }
+      if(e.code==='ArrowLeft'){
+        if(ai===1){ai=0;sfxMove();}
+        else if(ai===3){ai=2;sfxMove();}
+      }
+      if(e.code==='ArrowRight'){
+        if(ai===0){ai=1;sfxMove();}
+        else if(ai===2){ai=3;sfxMove();}
+      }
       if(e.code==='KeyZ'){
         if(!isActionAvailable(ai)){sfxBack();return;}
         if(ai===4){
