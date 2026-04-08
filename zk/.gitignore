@@ -1,0 +1,8 @@
+node_modules/
+build/*.ptau
+build/*.zkey
+build/*.wtns
+build/proof.json
+build/public.json
+build/commit_reveal_js/
+package-lock.json
