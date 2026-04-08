@@ -71,6 +71,8 @@ function sfxSlash(){try{const o=AC.createOscillator(),gn=AC.createGain();o.type=
 function sfxShield(){try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.setValueAtTime(300,AC.currentTime);o.frequency.linearRampToValueAtTime(800,AC.currentTime+.08);gn.gain.value=.07;o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.08);}catch(e){}}
 function sfxDamage(){beep(100,.06,.1);setTimeout(()=>beep(100,.06,.1),80);}
 function sfxEncounter(){beep(220,.08,.07);setTimeout(()=>beep(330,.06,.07),80);setTimeout(()=>beep(440,.1,.08),160);}
+function sfxEvent(){beep(330,.06,.06);setTimeout(()=>beep(440,.04,.06),60);setTimeout(()=>beep(550,.06,.06),120);}
+function sfxShop(){beep(660,.04,.06);setTimeout(()=>beep(880,.06,.06),50);}
 
 // ═══════════════════════════════════════
 // FRLG WINDOW SYSTEM
@@ -522,6 +524,26 @@ const cardAcqParticles=[];
 
 // ── Victory screen ──
 let victoryFrame=0,victoryCardsShown=0;
+
+// ── Footstep counter ──
+let stepCounter=0;
+
+// ── Random map events ──
+let randomEventTimer=0;
+let randomEventActive=false, randomEventText='', randomEventFrame=0;
+
+// ── Card Shop state ──
+let shopActive=false, shopSelectedIdx=0, shopConfirm=false, shopResultText='', shopResultFrame=0, shopPhase='list';
+
+// ── Signpost state ──
+let signpostActive=false, signpostText='', signpostFrame=0;
+
+// ── Battle encounter exclamation ──
+let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
+let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
+
+// ── Battle wipe transition ──
+let battleWipeActive=false, battleWipeFrame=0;
 
 const lg=['Game started. Collect all 5 card types to win!'];
 
@@ -1486,6 +1508,11 @@ function checkNPCInteraction(){
       if(p.x<npc.x)npc.dir=1;else if(p.x>npc.x)npc.dir=3;
       else if(p.y<npc.y)npc.dir=2;else npc.dir=0;
 
+      // Card Dealer opens the shop instead of normal dialog
+      if(npc.name==='Card Dealer'){
+        openCardShop();
+        return true;
+      }
       npcDialogActive=true;
       npcDialogLines=npc.dialog;
       npcDialogIdx=0;
@@ -1496,6 +1523,245 @@ function checkNPCInteraction(){
     }
   }
   return false;
+}
+
+// ═══════════════════════════════════════
+// SIGNPOST INTERACTION
+// ═══════════════════════════════════════
+function getSignpostMessage(mapIdx, tx_, ty){
+  if(mapIdx===0){
+    // Port Town signposts
+    if(tx_===13&&ty===5) return 'Welcome to Port Town! Explore the island to find cards.';
+    if(tx_===17&&ty===5) return 'Card Shop \u2014 trade your duplicates for cards you need.';
+    if(tx_===15&&ty===21) return 'The dock leads north to the Deep Forest.';
+  }
+  if(mapIdx===1){
+    // Forest signs (no explicit signposts in forest map, but generic)
+    return 'Deep Forest ahead. Cards drop from tall grass.';
+  }
+  if(mapIdx===2){
+    return 'Ancient Ruins \u2014 dangerous but rewarding.';
+  }
+  return 'A weathered signpost. The text is faded.';
+}
+
+function checkSignpostInteraction(){
+  const p=pl[0];
+  // Check the tile the player is facing
+  let fx=p.x, fy=p.y;
+  if(p.dir===0)fy++;else if(p.dir===2)fy--;
+  else if(p.dir===1)fx--;else if(p.dir===3)fx++;
+  const m=getMap();
+  if(fx>=0&&fx<MW&&fy>=0&&fy<MH&&m[fy]?.[fx]===19){
+    signpostActive=true;
+    signpostText=getSignpostMessage(currentMap, fx, fy);
+    signpostFrame=fr;
+    sfxConfirm();
+    return true;
+  }
+  return false;
+}
+
+function drawSignpostDialog(){
+  if(!signpostActive)return;
+  const dlgSlide=Math.min(1,(fr-signpostFrame)/6);
+  const dlgEase=easeInOut(dlgSlide);
+  const slideOff=74*(1-dlgEase);
+  g.globalAlpha=dlgEase;
+  win(4,H-80+slideOff,W-8,74);
+  win(8,H-88+slideOff,80,16);
+  tx('SIGNPOST',16,H-77+slideOff,5,'#806030');
+  // Word-wrap signpost text into 2 lines
+  const maxChars=52;
+  let line1=signpostText, line2='';
+  if(signpostText.length>maxChars){
+    let breakAt=signpostText.lastIndexOf(' ',maxChars);
+    if(breakAt<1)breakAt=maxChars;
+    line1=signpostText.substring(0,breakAt);
+    line2=signpostText.substring(breakAt+1);
+  }
+  tx(line1,16,H-56+slideOff,6,'#303028');
+  if(line2)tx(line2,16,H-42+slideOff,6,'#303028');
+  const arrowBounce=Math.sin(fr*0.15)*2;
+  tx('\u25BC',W-20,H-14+slideOff+arrowBounce,6,'#806030');
+  g.globalAlpha=1;
+}
+
+// ═══════════════════════════════════════
+// CARD SHOP
+// ═══════════════════════════════════════
+function openCardShop(){
+  shopActive=true;
+  shopSelectedIdx=0;
+  shopConfirm=false;
+  shopPhase='list';
+  shopResultText='';
+  sfxShop();
+}
+
+function getPlayerFilledSlots(){
+  const slots=[];
+  for(let i=0;i<5;i++){if(pl[0].cd[i]>0)slots.push(i);}
+  return slots;
+}
+
+function doShopTrade(){
+  const filled=getPlayerFilledSlots();
+  if(filled.length===0)return;
+  const slot=filled[shopSelectedIdx];
+  const oldCard=pl[0].cd[slot];
+  const oldName=CD[oldCard-1].n;
+  // Pick a random different card
+  let newCard;
+  do{ newCard=Math.floor(Math.random()*5)+1; }while(newCard===oldCard);
+  pl[0].cd[slot]=newCard;
+  const newName=CD[newCard-1].n;
+  shopResultText='Traded '+oldName+' for '+newName+'!';
+  shopResultFrame=fr;
+  shopPhase='result';
+  startCardAcquisition(newCard-1);
+  sfxCardGet();
+  lg.push('Shop: Traded '+oldName+' for '+newName+'!');
+  if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+}
+
+function drawCardShop(){
+  if(!shopActive)return;
+  // Darken background
+  bx(0,0,W,H,'rgba(0,0,0,.45)');
+  // Shop window
+  win(40,20,W-80,H-40);
+  tx('TRADE CARDS',W/2-60,48,8,'#806030');
+  // Divider line
+  bx(60,56,W-120,1,'#c0b898');
+
+  if(shopPhase==='list'){
+    const filled=getPlayerFilledSlots();
+    if(filled.length===0){
+      tx('You have no cards to trade!',60,90,6,'#989080');
+      tx('Press X to leave.',60,110,6,'#686068');
+    }else{
+      tx('Select a card to trade:',60,72,5,'#686068');
+      filled.forEach((slot,i)=>{
+        const cd=pl[0].cd[slot];
+        const cr=CD[cd-1];
+        const y=90+i*28;
+        if(i===shopSelectedIdx){
+          bx(58,y-8,W-116,24,'rgba(192,168,96,.2)');
+          tx('\u25B6',62,y+6,6,'#c04040');
+        }
+        // Mini card swatch
+        bx(80,y-4,16,16,cr.c);bx(81,y-3,14,14,cr.d);
+        tx(cr.i,83,y+9,8,'#fff');
+        tx(cr.n,104,y+6,6,i===shopSelectedIdx?'#c04040':'#303028');
+        tx(cr.f,200,y+6,5,'#989080');
+      });
+      tx('Z=Select  X=Leave',60,H-68,5,'#686068');
+    }
+  }else if(shopPhase==='confirm'){
+    const filled=getPlayerFilledSlots();
+    const slot=filled[shopSelectedIdx];
+    const cd=pl[0].cd[slot];
+    const cr=CD[cd-1];
+    // Show the card being traded
+    bx(W/2-30,80,60,84,cr.d);bx(W/2-28,82,56,80,cr.c);
+    tx(cr.i,W/2-8,120,18,'#fff');
+    tx(cr.n,W/2-20,170,7,'#fff');
+    tx('Trade '+cr.n+' for a',W/2-90,196,6,'#303028');
+    tx('random card?',W/2-54,212,6,'#303028');
+    tx('Z=Yes  X=No',W/2-50,236,6,'#c04040');
+  }else if(shopPhase==='result'){
+    tx(shopResultText,60,H/2,7,'#303028');
+    tx('Press Z to continue',60,H/2+24,5,'#686068');
+  }
+}
+
+// ═══════════════════════════════════════
+// RANDOM MAP EVENTS
+// ═══════════════════════════════════════
+function triggerRandomEvent(){
+  const events=[
+    {text:'A strong wind blows! Your area is revealed to rivals for 1 round.', action:'wind'},
+    {text:'You found a forgotten stash! +1 random card.', action:'card'},
+    {text:'A rival\'s scout passed by! You sense danger nearby.', action:'scout'},
+  ];
+  const ev=events[Math.floor(Math.random()*events.length)];
+  randomEventActive=true;
+  randomEventText=ev.text;
+  randomEventFrame=fr;
+  sfxEvent();
+
+  if(ev.action==='card'){
+    // Give a random card if slot available
+    let slot=-1;
+    for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
+    if(slot>=0){
+      const cardIdx=Math.floor(Math.random()*5);
+      pl[0].cd[slot]=cardIdx+1;
+      pl[0].cc++;
+      startCardAcquisition(cardIdx);
+      lg.push('Event: Found a '+CD[cardIdx].n+' in a forgotten stash!');
+      if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+    }else{
+      randomEventText='You found a forgotten stash... but your hand is full!';
+    }
+  }else if(ev.action==='wind'){
+    // Reveal player area to rivals (cosmetic - flash the minimap)
+    flash();
+    lg.push('Event: A strong wind revealed your position!');
+  }else if(ev.action==='scout'){
+    // Alert effect
+    rivalAlert=60;rivalAlertName='Scout';
+    lg.push('Event: A rival scout was spotted nearby!');
+  }
+}
+
+function drawRandomEvent(){
+  if(!randomEventActive)return;
+  const t=fr-randomEventFrame;
+  if(t>180){randomEventActive=false;return;}
+  const slideIn=Math.min(1,t/10);
+  const slideOut=t>150?Math.max(0,1-(t-150)/30):1;
+  const alpha=Math.min(slideIn,slideOut);
+  const ease=easeInOut(alpha);
+  const slideOff=50*(1-ease);
+  g.globalAlpha=ease;
+  win(20,H/2-40+slideOff,W-40,60);
+  win(28,H/2-50+slideOff,56,14);
+  tx('EVENT',36,H/2-39+slideOff,5,'#d8b028');
+  // Word-wrap
+  const maxChars=50;
+  let line1=randomEventText, line2='';
+  if(randomEventText.length>maxChars){
+    let breakAt=randomEventText.lastIndexOf(' ',maxChars);
+    if(breakAt<1)breakAt=maxChars;
+    line1=randomEventText.substring(0,breakAt);
+    line2=randomEventText.substring(breakAt+1);
+  }
+  tx(line1,36,H/2-16+slideOff,5,'#303028');
+  if(line2)tx(line2,36,H/2-4+slideOff,5,'#303028');
+  g.globalAlpha=1;
+}
+
+// ═══════════════════════════════════════
+// BATTLE ENCOUNTER EXCLAMATION
+// ═══════════════════════════════════════
+function drawEncounterExclamation(){
+  if(!encounterExclActive)return;
+  const t=fr-encounterExclFrame;
+  if(t>30){encounterExclActive=false;return;}
+  const bounce=Math.sin(t*0.5)*3;
+  const alpha=Math.min(1,t/5)*(t<25?1:Math.max(0,(30-t)/5));
+  g.globalAlpha=alpha;
+  // Player "!" bubble
+  const ppx=encounterExclPlayerX-camX, ppy=encounterExclPlayerY-camY-7;
+  bx(ppx+3,ppy-18+bounce,8,12,'#fff');bx(ppx+4,ppy-17+bounce,6,9,'#f0c830');
+  tx('!',ppx+5,ppy-8+bounce,8,'#c04040');
+  // Rival "!" bubble
+  const rpx=encounterExclRivalX-camX, rpy=encounterExclRivalY-camY-7;
+  bx(rpx+3,rpy-18+bounce,8,12,'#fff');bx(rpx+4,rpy-17+bounce,6,9,'#f0c830');
+  tx('!',rpx+5,rpy-8+bounce,8,'#c04040');
+  g.globalAlpha=1;
 }
 
 function drawNPCDialog(){
@@ -1891,7 +2157,18 @@ function dMap(){
   tx('BAR',100,hudY+12,5,'#3060b0');tx(sp.b+'',128,hudY+12,6,'#3868c0');
   tx('SCT',140,hudY+12,5,'#308030');tx(sp.c+'',168,hudY+12,6,'#38a038');
   tx(`(${pl[0].x},${pl[0].y})`,8,hudY+28,5,'#989080');
+  // Footstep counter
+  tx('STEPS:'+stepCounter,60,hudY+28,5,'#989080');
   for(let i=0;i<5;i++)drawMiniCard(184+i*22,hudY+6,pl[0].cd[i]);
+
+  // Card completion tracker
+  const cardTypes=hasUniqueCards(0);
+  const labels=['C','S','F','S','V'];
+  let tracker='';
+  for(let i=0;i<5;i++){
+    tracker+=labels[i]+(cardTypes.has(i+1)?'\u2713':'-')+' ';
+  }
+  tx(tracker.trim(),184,hudY+28,4,'#686068');
 
   const m=getMap();
   const tile=m[pl[0].y]?.[pl[0].x];
@@ -1923,8 +2200,20 @@ function dMap(){
   // NPC dialog overlay
   drawNPCDialog();
 
+  // Signpost dialog overlay
+  drawSignpostDialog();
+
+  // Card Shop overlay
+  drawCardShop();
+
   // Wild encounter overlay
   drawWildEncounter();
+
+  // Random event overlay
+  drawRandomEvent();
+
+  // Battle encounter exclamation
+  drawEncounterExclamation();
 
   // Rival alert
   if(rivalAlert>0){
@@ -2560,14 +2849,33 @@ function update(){
   }
 
   // Encounter check (only if rival on same map)
-  if(sc==='map'&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning){
+  if(sc==='map'&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning&&!encounterExclActive&&!shopActive&&!signpostActive){
     pl.slice(1).forEach((r,idx)=>{
       if(rivalMaps[idx]!==currentMap)return;
       if(Math.abs(r.x-pl[0].x)<=1&&Math.abs(r.y-pl[0].y)<=1&&Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y)===1){
         if(!encounterCooldown){
-          encounterCooldown=120;flash();sfxConfirm();
-          twSet('Wild '+r.n+' appeared! Entering battle...');
-          setTimeout(()=>{fadeOut(()=>{sc='act';actEnterFrame=fr;battlePhase='vs_splash';bpFrame=fr;fadeIn();});},1500);
+          encounterCooldown=120;
+          // Show "!" exclamation above both sprites, then freeze 0.5s before transition
+          encounterExclActive=true;
+          encounterExclFrame=fr;
+          encounterExclTarget=idx+1;
+          encounterExclPlayerX=pl[0].visualX;
+          encounterExclPlayerY=pl[0].visualY;
+          encounterExclRivalX=r.visualX;
+          encounterExclRivalY=r.visualY;
+          sfxEncounter();
+          // After 0.5s freeze (30 frames), do screen wipe transition
+          setTimeout(()=>{
+            encounterExclActive=false;
+            flash();
+            twSet('Wild '+r.n+' appeared! Entering battle...');
+            // Wipe transition (diagonal)
+            battleWipeActive=true;battleWipeFrame=fr;
+            setTimeout(()=>{
+              battleWipeActive=false;
+              fadeOut(()=>{sc='act';actEnterFrame=fr;battlePhase='vs_splash';bpFrame=fr;fadeIn();});
+            },600);
+          },500);
         }
       }
     });
@@ -2585,6 +2893,15 @@ function draw(){
   else if(sc==='victory')dVictory();
   drawCardAcquisition();
   if(flashT>0){bx(0,0,W,H,`rgba(255,255,255,${(flashT>10?1:flashT/10)*.8})`);}
+  // Battle wipe transition (diagonal split)
+  if(battleWipeActive){
+    const t=Math.min(1,(fr-battleWipeFrame)/36);
+    const ease=easeInOut(t);
+    const splitW=W*ease*1.2;
+    g.fillStyle='#181828';
+    g.beginPath();g.moveTo(0,0);g.lineTo(splitW,0);g.lineTo(splitW-W*0.3,H);g.lineTo(0,H);g.closePath();g.fill();
+    g.beginPath();g.moveTo(W,H);g.lineTo(W-splitW,H);g.lineTo(W-splitW+W*0.3,0);g.lineTo(W,0);g.closePath();g.fill();
+  }
   fadeDraw();
 }
 
@@ -2623,8 +2940,43 @@ document.addEventListener('keydown',e=>{
     return;
   }
 
+  // Signpost dialog handling
+  if(signpostActive){
+    if(e.code==='KeyZ'||e.code==='Space'||e.code==='KeyX'){signpostActive=false;sfxBack();}
+    return;
+  }
+
+  // Card Shop handling
+  if(shopActive){
+    const filled=getPlayerFilledSlots();
+    if(shopPhase==='list'){
+      if(filled.length>0){
+        if(e.code==='ArrowUp'){shopSelectedIdx=Math.max(0,shopSelectedIdx-1);sfxMove();}
+        if(e.code==='ArrowDown'){shopSelectedIdx=Math.min(filled.length-1,shopSelectedIdx+1);sfxMove();}
+        if(e.code==='KeyZ'){shopPhase='confirm';sfxSelect();}
+      }
+      if(e.code==='KeyX'){shopActive=false;sfxBack();}
+    }else if(shopPhase==='confirm'){
+      if(e.code==='KeyZ'){doShopTrade();}
+      if(e.code==='KeyX'){shopPhase='list';sfxBack();}
+    }else if(shopPhase==='result'){
+      if(e.code==='KeyZ'){shopPhase='list';shopSelectedIdx=0;sfxSelect();}
+      if(e.code==='KeyX'){shopActive=false;sfxBack();}
+    }
+    return;
+  }
+
+  // Random event dismiss
+  if(randomEventActive){
+    if(e.code==='KeyZ'||e.code==='Space'){randomEventActive=false;}
+    return;
+  }
+
   // Wild encounter - wait
   if(wildEncounterActive)return;
+
+  // Battle encounter exclamation or wipe - wait
+  if(encounterExclActive||battleWipeActive)return;
 
   if(sc==='map'){
     if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();return;}
@@ -2642,6 +2994,7 @@ document.addEventListener('keydown',e=>{
           pl[2].cd=[4,0,0,0,0];pl[2].cc=1;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
           edgeCacheDirty=true;fogCacheDirty=true;
           sp.s=3;sp.b=2;sp.c=1;rd=3;currentMap=0;
+          stepCounter=0;randomEventTimer=0;
           rivalMaps=[0,0];lg.length=0;lg.push('New game started!');
           treasures.forEach(t=>t.collected=false);
           fadeOut(()=>{sc='title';mo=false;fadeIn();ub();});
@@ -2650,9 +3003,10 @@ document.addEventListener('keydown',e=>{
       }
       if(e.code==='KeyX'){mo=false;menuOpenFrame=0;sfxBack();}
     }else{
-      // Z = interact with NPC
+      // Z = interact with NPC or signpost
       if(e.code==='KeyZ'){
         if(checkNPCInteraction())return;
+        if(checkSignpostInteraction())return;
       }
 
       const p=pl[0];let nx=p.x,ny=p.y;
@@ -2664,12 +3018,20 @@ document.addEventListener('keydown',e=>{
         const m=getMap();
         if(nx>=0&&nx<MW&&ny>=0&&ny<MH&&WALKABLE.has(m[ny]?.[nx])){
           p.x=nx;p.y=ny;p.step++;p.walkFrame=(p.walkFrame+1)%4;sfxMove();
+          stepCounter++;
           edgeCacheDirty=true;
           // Reveal fog around new position
           fogRevealRadius(currentMap,nx,ny,2);
           fogSave();
           const newTile=m[ny]?.[nx];
           if(newTile===1||newTile===7||newTile===11)spawnGrassParticles(nx*TW,ny*TH);
+
+          // Random map event every 200 steps
+          randomEventTimer++;
+          if(randomEventTimer>=200&&!randomEventActive&&!wildEncounterActive&&!cardAcqActive){
+            randomEventTimer=0;
+            triggerRandomEvent();
+          }
 
           // Check exit
           const exit=checkExitTile(nx,ny);
@@ -2679,7 +3041,7 @@ document.addEventListener('keydown',e=>{
           checkTreasure();
 
           // Check wild encounter
-          if(!cardAcqActive)tryWildEncounter();
+          if(!cardAcqActive&&!randomEventActive)tryWildEncounter();
         }
       }
     }
