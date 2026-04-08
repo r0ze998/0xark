@@ -3,655 +3,446 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK — GBA Edition</title>
+<title>0xARK</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-@font-face {
-  font-family: 'Pokemon';
-  src: url('https://cdn.jsdelivr.net/gh/pret/agbcc@master/lib/libgcc.a') format('truetype');
-}
-
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #1a1a2e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: monospace; }
+body {
+  background: #111122;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  min-height: 100vh;
+  font-family: 'Press Start 2P', monospace;
+  overflow: hidden;
+}
 
 #emulator {
-  background: #2d2d44;
-  padding: 32px;
-  border-radius: 16px;
-  box-shadow: 0 0 60px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.05);
+  background: linear-gradient(145deg, #2a2a40, #1e1e30);
+  padding: 24px 28px 20px;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  border: 2px solid #333355;
 }
 
-#screen {
-  width: 720px;
-  height: 480px;
-  background: #8bac0f;
-  position: relative;
-  overflow: hidden;
-  image-rendering: pixelated;
-  border: 3px solid #0f380f;
-  border-radius: 4px;
+#label {
+  text-align: center;
+  color: #555577;
+  font-size: 8px;
+  letter-spacing: 6px;
+  margin-bottom: 10px;
+}
+
+#screen-wrap {
+  background: #0a0a12;
+  padding: 6px;
+  border-radius: 6px;
+  border: 2px solid #222240;
 }
 
 canvas {
+  display: block;
   width: 720px;
   height: 480px;
   image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-radius: 2px;
 }
 
 #controls {
   display: flex;
   justify-content: center;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 .btn {
-  padding: 6px 16px;
-  background: #3d3d5c;
-  color: #8888aa;
-  border: none;
-  border-radius: 20px;
-  font-family: monospace;
-  font-size: 11px;
+  padding: 5px 14px;
+  background: #252540;
+  color: #6666888;
+  border: 1px solid #333355;
+  border-radius: 14px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
   cursor: pointer;
   letter-spacing: 1px;
+  transition: all 0.15s;
 }
-.btn:hover { background: #4d4d6c; color: #aaaacc; }
-.btn.active { background: #5865F2; color: white; }
+.btn:hover { background: #333355; color: #9999bb; border-color: #555577; }
+.btn.active { background: #4455aa; color: #eeeeff; border-color: #6677cc; box-shadow: 0 0 8px rgba(68,85,170,0.3); }
 
-#info {
-  color: #555577;
-  font-size: 10px;
+#hint {
+  color: #333350;
+  font-size: 6px;
   text-align: center;
-  margin-top: 12px;
+  margin-top: 10px;
   letter-spacing: 2px;
+}
+
+@media (max-width: 780px) {
+  canvas { width: 100vw; height: calc(100vw * 2 / 3); }
+  #emulator { padding: 8px; border-radius: 0; }
+  #screen-wrap { padding: 2px; }
 }
 </style>
 </head>
 <body>
 <div id="emulator">
-  <div id="screen">
-    <canvas id="game" width="240" height="160"></canvas>
+  <div id="label">0 x A R K</div>
+  <div id="screen-wrap">
+    <canvas id="game" width="360" height="240"></canvas>
   </div>
   <div id="controls">
     <button class="btn active" onclick="setScreen('map')">MAP</button>
-    <button class="btn" onclick="setScreen('action')">ACTION</button>
+    <button class="btn" onclick="setScreen('action')">BATTLE</button>
     <button class="btn" onclick="setScreen('cards')">CARDS</button>
     <button class="btn" onclick="setScreen('resolve')">LOG</button>
   </div>
-  <div id="info">SPACE: menu &nbsp; ARROWS: move &nbsp; Z: select &nbsp; X: back</div>
+  <div id="hint">ARROWS move &middot; SPACE menu &middot; Z select &middot; X back</div>
 </div>
 
 <script>
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-const W = 240, H = 160;
-const TILE = 16;
+const C = document.getElementById('game');
+const $ = C.getContext('2d');
+const W = 360, H = 240;
 
-// === COLOR PALETTE (FRLG-inspired) ===
-const PAL = {
-  bg: '#f8f8f0',
-  water: '#5090d8',
-  waterDark: '#3868b0',
-  grass: '#58a858',
-  grassDark: '#388038',
-  path: '#d8c888',
-  pathDark: '#b8a868',
-  sand: '#e8d8a8',
-  tree: '#306830',
-  treeTrunk: '#886830',
-  building: '#d87070',
-  buildingDark: '#a05050',
-  roof: '#c04040',
-  cave: '#484860',
-  caveDark: '#303040',
-  uiBg: '#f0e8d0',
-  uiBorder: '#484848',
-  uiText: '#383838',
-  uiBlue: '#3868b0',
-  uiRed: '#c04040',
-  uiHighlight: '#f8d030',
-  shadow: 'rgba(0,0,0,0.15)',
+// === PALETTE ===
+const P = {
+  water: '#4880c0', waterHi: '#68a0d8', waterDk: '#305898',
+  grass: '#50a050', grassHi: '#70c070', grassDk: '#388038',
+  path: '#d0c080', pathDk: '#b0a060',
+  sand: '#e0d0a0', sandDk: '#c8b888',
+  tree: '#286828', trunk: '#806030', canopy: '#38883a',
+  bldWall: '#d07070', bldRoof: '#b84040', bldDoor: '#604040',
+  cave: '#404858', caveDk: '#282838',
+  uiBg: '#f0e8d0', uiBdr: '#484050', uiTxt: '#303030',
+  uiBlue: '#3060b0', uiRed: '#c03030', uiGrn: '#308030',
+  uiHi: '#f0c830', uiShadow: 'rgba(0,0,0,0.12)',
+  white: '#f8f0e0', black: '#181820',
 };
 
-// === CARD DATA ===
+// === CARDS ===
 const CARDS = [
-  { id: 1, name: 'Crystal', color: '#58c8f8', icon: '◆', effect: 'Steal guaranteed' },
-  { id: 2, name: 'Shadow', color: '#8868a8', icon: '●', effect: 'Invisible 1 turn' },
-  { id: 3, name: 'Flame', color: '#e87058', icon: '▲', effect: 'Burn target card' },
-  { id: 4, name: 'Storm', color: '#f8d030', icon: '★', effect: 'Nullify barriers' },
-  { id: 5, name: 'Void', color: '#50b898', icon: '◎', effect: 'Copy target card' },
+  { id:1, name:'CRYSTAL', col:'#48b8e8', dk:'#2888b0', icon:'\u25C6', fx:'Steal x2' },
+  { id:2, name:'SHADOW',  col:'#8060a8', dk:'#604080', icon:'\u25CF', fx:'Invis 1T' },
+  { id:3, name:'FLAME',   col:'#e06848', dk:'#b04830', icon:'\u25B2', fx:'Burn card' },
+  { id:4, name:'STORM',   col:'#e8c030', dk:'#b89820', icon:'\u2605', fx:'No barrier' },
+  { id:5, name:'VOID',    col:'#40b090', dk:'#288068', icon:'\u25CE', fx:'Copy card' },
 ];
 
-// === MAP DATA (20x15) ===
-// 0=water, 1=grass, 2=path, 3=tree, 4=sand, 5=building, 6=cave
+// === MAP (20x15) ===
 const MAP = [
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,4,4,1,1,1,1,1,1,1,1,3,3,0,0,0,0,0],
-  [0,0,4,4,1,1,2,2,2,1,1,1,3,3,1,1,0,0,0,0],
-  [0,4,4,1,1,1,2,5,2,1,3,1,1,1,1,1,1,0,0,0],
-  [0,4,1,1,3,1,2,2,2,1,1,1,1,1,3,1,1,1,0,0],
-  [0,1,1,1,3,1,1,2,1,1,1,1,3,1,1,1,1,1,0,0],
-  [0,1,1,1,1,1,1,2,1,1,3,1,1,1,1,6,1,1,0,0],
-  [0,1,3,1,1,1,1,2,2,2,2,2,1,1,1,1,1,1,0,0],
+  [0,0,4,4,4,1,1,1,1,1,1,1,3,3,3,0,0,0,0,0],
+  [0,4,4,1,1,1,2,2,2,1,1,1,1,3,1,1,0,0,0,0],
+  [0,4,1,1,3,1,2,5,2,1,1,3,1,1,1,1,1,0,0,0],
+  [0,4,1,1,1,1,2,2,2,1,1,1,1,1,1,1,1,1,0,0],
+  [0,1,1,3,1,1,1,2,1,1,1,1,1,3,1,1,1,1,0,0],
+  [0,1,1,1,1,1,1,2,1,3,1,1,1,1,1,6,1,1,0,0],
+  [0,1,3,1,1,1,1,2,2,2,2,2,1,1,1,1,1,0,0,0],
   [0,1,1,1,1,3,1,1,1,1,1,2,1,1,3,1,1,0,0,0],
-  [0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,1,1,0,0,0],
+  [0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,1,0,0,0,0],
   [0,0,1,1,3,1,1,1,3,1,1,1,1,5,2,1,0,0,0,0],
   [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
-  [0,0,0,0,4,4,1,1,1,1,1,1,4,4,0,0,0,0,0,0],
-  [0,0,0,0,0,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0],
+  [0,0,0,4,4,1,1,1,1,1,1,1,4,4,0,0,0,0,0,0],
+  [0,0,0,0,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
 ];
 
-// === PLAYERS ===
+const TW = 18, TH = 16; // tile size at 360x240
+
+// === STATE ===
 const players = [
-  { x: 7, y: 3, color: '#58c8f8', name: 'You', cards: [1, 3, 0, 0, 0], cardCount: 2, dir: 0 },
-  { x: 13, y: 10, color: '#e870a0', name: 'Rival', cards: [2, 5, 0, 0, 0], cardCount: 2, dir: 2 },
-  { x: 4, y: 6, color: '#f8d030', name: 'Hunter', cards: [4, 0, 0, 0, 0], cardCount: 1, dir: 1 },
+  { x:7, y:3, col:'#48b8e8', name:'You', cards:[1,3,0,0,0], cc:2 },
+  { x:13, y:10, col:'#e068a0', name:'Rival', cards:[2,5,0,0,0], cc:2 },
+  { x:4, y:6, col:'#e8c030', name:'Hunter', cards:[4,0,0,0,0], cc:1 },
 ];
-
-const spells = { steal: 3, barrier: 2, scout: 1 };
-
-// === GAME STATE ===
-let currentScreen = 'map';
-let round = 1;
-let maxRounds = 25;
-let menuOpen = false;
-let menuIndex = 0;
-let actionIndex = 0;
-let selectedAction = null;
-let resolveLog = [
-  'Round 1: You drew Crystal!',
-  'Round 1: Rival used Steal on Hunter.',
-  'Round 1: Hunter used Barrier. Blocked!',
-  'Round 2: You used Scout on Rival.',
-  'Round 2: Rival has Shadow, Void.',
+const sp = { steal:3, barrier:2, scout:1 };
+let screen = 'map', menuOn = false, menuIdx = 0, actIdx = 0, frame = 0, waveT = 0;
+const logs = [
+  'R1: You drew Crystal!',
+  'R1: Rival used Steal on Hunter',
+  'R1: Hunter used Barrier - Blocked!',
+  'R2: You used Scout on Rival',
+  'R2: Rival has Shadow, Void',
+  'R3: Hunter drew Storm',
+  'R3: Rival used Shadow - Invisible!',
 ];
-let typewriterText = '';
-let typewriterTarget = '';
-let typewriterIndex = 0;
-let animFrame = 0;
+let round = 3;
 
-// Water animation
-let waterFrame = 0;
+// === DRAW HELPERS ===
+function box(x,y,w,h,c) { $.fillStyle=c; $.fillRect(x,y,w,h); }
+function txt(s,x,y,sz,c) { $.fillStyle=c||P.uiTxt; $.font=`${sz||8}px 'Press Start 2P',monospace`; $.fillText(s,x,y); }
 
-// === DRAWING FUNCTIONS ===
+function win(x,y,w,h) {
+  // outer border
+  box(x+1,y,w-2,h,P.uiBdr);
+  box(x,y+1,w,h-2,P.uiBdr);
+  // inner fill
+  box(x+2,y+1,w-4,h-2,P.uiBg);
+  box(x+1,y+2,w-2,h-4,P.uiBg);
+  // inner highlight
+  box(x+3,y+2,w-6,1,'rgba(255,255,255,0.3)');
+}
 
-function drawTile(x, y, type) {
-  const px = x * 12, py = y * 12; // scaled for 20x15 in 240x160 (leaving room for HUD)
-  const tileW = 12, tileH = 10;
-
-  switch(type) {
+// === TILES ===
+function tile(x,y,t) {
+  const px=x*TW, py=y*TH;
+  switch(t) {
     case 0: // water
-      ctx.fillStyle = (((x + y + waterFrame) % 3) === 0) ? PAL.waterDark : PAL.water;
-      ctx.fillRect(px, py, tileW, tileH);
-      // wave highlight
-      if ((x + waterFrame) % 4 === 0) {
-        ctx.fillStyle = '#78b8e8';
-        ctx.fillRect(px + 2, py + 3, 4, 1);
-      }
+      box(px,py,TW,TH, ((x+y+waveT)%3===0)?P.waterDk:P.water);
+      if((x+waveT)%5===0) box(px+4,py+5,6,2,P.waterHi);
+      if((x+y+waveT)%7===0) box(px+10,py+10,4,1,P.waterHi);
       break;
     case 1: // grass
-      ctx.fillStyle = PAL.grass;
-      ctx.fillRect(px, py, tileW, tileH);
-      // grass detail
-      if ((x * 7 + y * 13) % 5 === 0) {
-        ctx.fillStyle = PAL.grassDark;
-        ctx.fillRect(px + 3, py + 2, 2, 2);
-        ctx.fillRect(px + 8, py + 6, 2, 2);
-      }
+      box(px,py,TW,TH,P.grass);
+      if((x*7+y*13)%5===0){ box(px+4,py+3,3,3,P.grassDk); box(px+12,py+10,3,2,P.grassHi); }
+      if((x*3+y*11)%7===0) box(px+9,py+6,2,2,P.grassDk);
       break;
     case 2: // path
-      ctx.fillStyle = PAL.path;
-      ctx.fillRect(px, py, tileW, tileH);
-      ctx.fillStyle = PAL.pathDark;
-      ctx.fillRect(px, py + tileH - 1, tileW, 1);
+      box(px,py,TW,TH,P.path);
+      box(px,py+TH-2,TW,2,P.pathDk);
+      if((x+y)%4===0) box(px+6,py+4,2,2,P.pathDk);
       break;
     case 3: // tree
-      ctx.fillStyle = PAL.grass;
-      ctx.fillRect(px, py, tileW, tileH);
-      // trunk
-      ctx.fillStyle = PAL.treeTrunk;
-      ctx.fillRect(px + 4, py + 5, 4, 5);
-      // canopy
-      ctx.fillStyle = PAL.tree;
-      ctx.fillRect(px + 1, py, 10, 6);
-      ctx.fillStyle = '#48884a';
-      ctx.fillRect(px + 2, py + 1, 8, 4);
+      box(px,py,TW,TH,P.grass);
+      box(px+6,py+8,6,8,P.trunk);
+      box(px+1,py,16,9,P.tree);
+      box(px+3,py+1,12,7,P.canopy);
+      box(px+5,py+2,8,2,P.grassHi);
       break;
     case 4: // sand
-      ctx.fillStyle = PAL.sand;
-      ctx.fillRect(px, py, tileW, tileH);
-      if ((x + y) % 3 === 0) {
-        ctx.fillStyle = '#d0c888';
-        ctx.fillRect(px + 4, py + 4, 2, 1);
-      }
+      box(px,py,TW,TH,P.sand);
+      if((x+y)%3===0) box(px+7,py+7,3,2,P.sandDk);
       break;
     case 5: // building
-      ctx.fillStyle = PAL.path;
-      ctx.fillRect(px, py, tileW, tileH);
-      ctx.fillStyle = PAL.building;
-      ctx.fillRect(px + 1, py + 3, 10, 7);
-      ctx.fillStyle = PAL.roof;
-      ctx.fillRect(px, py, 12, 4);
-      ctx.fillStyle = PAL.buildingDark;
-      ctx.fillRect(px + 4, py + 6, 4, 4);
+      box(px,py,TW,TH,P.path);
+      box(px+1,py+5,16,11,P.bldWall);
+      box(px,py,18,6,P.bldRoof);
+      box(px+1,py+1,16,4,'#c85050');
+      box(px+6,py+9,6,7,P.bldDoor);
+      box(px+11,py+9,1,1,P.uiHi);
       break;
     case 6: // cave
-      ctx.fillStyle = PAL.grass;
-      ctx.fillRect(px, py, tileW, tileH);
-      ctx.fillStyle = PAL.cave;
-      ctx.fillRect(px + 1, py + 2, 10, 8);
-      ctx.fillStyle = PAL.caveDark;
-      ctx.fillRect(px + 3, py + 3, 6, 7);
+      box(px,py,TW,TH,P.grass);
+      box(px+1,py+3,16,13,P.cave);
+      box(px+4,py+5,10,11,P.caveDk);
+      box(px+5,py+3,8,3,P.cave);
+      // arch
+      box(px+3,py+3,2,2,'#585868');
+      box(px+13,py+3,2,2,'#585868');
       break;
   }
 }
 
-function drawSprite(player, isLocal) {
-  const px = player.x * 12, py = player.y * 10;
-  const f = Math.floor(animFrame / 15) % 2;
-
+function sprite(p) {
+  const px=p.x*TW+3, py=p.y*TH-2;
+  const bob=Math.floor(frame/12)%2;
   // shadow
-  ctx.fillStyle = PAL.shadow;
-  ctx.fillRect(px + 2, py + 8, 8, 3);
-
+  box(px+1,py+14,12,3,P.uiShadow);
   // body
-  ctx.fillStyle = player.color;
-  ctx.fillRect(px + 3, py + 2 + f, 6, 6);
-
+  box(px+2,py+4+bob,10,10,p.col);
+  box(px+3,py+5+bob,8,8,'rgba(255,255,255,0.15)');
   // head
-  ctx.fillStyle = '#f0e0c8';
-  ctx.fillRect(px + 4, py + f, 4, 3);
-
+  box(px+3,py+bob,8,5,'#f0dcc0');
+  box(px+4,py+1+bob,6,3,'#e8d0b0');
   // eyes
-  ctx.fillStyle = '#383838';
-  ctx.fillRect(px + 4, py + 1 + f, 1, 1);
-  ctx.fillRect(px + 7, py + 1 + f, 1, 1);
-
-  // card count bubble
-  ctx.fillStyle = '#f0e8d0';
-  ctx.fillRect(px + 8, py - 4, 8, 7);
-  ctx.strokeStyle = '#484848';
-  ctx.lineWidth = 0.5;
-  ctx.strokeRect(px + 8, py - 4, 8, 7);
-  ctx.fillStyle = '#383838';
-  ctx.font = '5px monospace';
-  ctx.fillText(player.cardCount.toString(), px + 10, py + 1);
+  box(px+4,py+2+bob,2,2,P.black);
+  box(px+8,py+2+bob,2,2,P.black);
+  box(px+5,py+2+bob,1,1,'#fff');
+  box(px+9,py+2+bob,1,1,'#fff');
+  // card bubble
+  box(px+12,py-6,14,10,P.uiBg);
+  $.strokeStyle=P.uiBdr; $.lineWidth=1; $.strokeRect(px+12,py-6,14,10);
+  txt(p.cc+'',px+15,py+1,6,P.uiTxt);
 }
+
+// === SCREENS ===
 
 function drawMap() {
-  // Draw tiles
-  for (let y = 0; y < 15; y++) {
-    for (let x = 0; x < 20; x++) {
-      drawTile(x, y, MAP[y][x]);
-    }
-  }
+  for(let y=0;y<15;y++) for(let x=0;x<20;x++) tile(x,y,MAP[y][x]);
+  [...players].sort((a,b)=>a.y-b.y).forEach(p=>sprite(p));
 
-  // Draw players (sorted by Y for overlap)
-  const sorted = [...players].sort((a, b) => a.y - b.y);
-  sorted.forEach((p, i) => drawSprite(p, i === 0));
+  // Bottom HUD
+  box(0,224,360,16,P.uiBg);
+  box(0,223,360,1,P.uiBdr);
+  txt(`R${round}/25`,4,235,6);
+  txt(`STL:${sp.steal}`,60,235,6,P.uiRed);
+  txt(`BAR:${sp.barrier}`,120,235,6,P.uiBlue);
+  txt(`SCT:${sp.scout}`,180,235,6,P.uiGrn);
 
-  // HUD bar at bottom
-  drawHUD();
-}
-
-function drawHUD() {
-  // Bottom bar
-  ctx.fillStyle = PAL.uiBg;
-  ctx.fillRect(0, 148, 240, 12);
-  ctx.fillStyle = PAL.uiBorder;
-  ctx.fillRect(0, 147, 240, 1);
-
-  ctx.fillStyle = PAL.uiText;
-  ctx.font = '5px monospace';
-  ctx.fillText(`R${round}/${maxRounds}`, 3, 156);
-  ctx.fillText(`STL:${spells.steal}`, 50, 156);
-  ctx.fillText(`BAR:${spells.barrier}`, 95, 156);
-  ctx.fillText(`SCT:${spells.scout}`, 140, 156);
-
-  // Mini card icons
-  for (let i = 0; i < 5; i++) {
-    const card = players[0].cards[i];
-    const cx = 190 + i * 10;
-    if (card > 0) {
-      ctx.fillStyle = CARDS[card - 1].color;
-      ctx.fillRect(cx, 150, 8, 8);
-      ctx.fillStyle = '#fff';
-      ctx.font = '4px monospace';
-      ctx.fillText(CARDS[card - 1].icon, cx + 2, 156);
-    } else {
-      ctx.fillStyle = '#c8c0a8';
-      ctx.fillRect(cx, 150, 8, 8);
-    }
+  for(let i=0;i<5;i++){
+    const c=players[0].cards[i], cx=260+i*18;
+    if(c>0){ box(cx,226,16,12,CARDS[c-1].col); txt(CARDS[c-1].icon,cx+4,236,7,'#fff'); }
+    else { box(cx,226,16,12,'#c0b898'); box(cx+1,227,14,10,'#d0c8a8'); }
   }
 }
 
 function drawMenu() {
-  // Semi-transparent overlay
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.fillRect(0, 0, 240, 160);
-
-  // Menu window (FRLG style)
-  drawWindow(150, 8, 82, 72);
-
-  const items = ['CARDS', 'MAP', 'SPELLS', 'LOG', 'CLOSE'];
-  items.forEach((item, i) => {
-    ctx.fillStyle = i === menuIndex ? PAL.uiRed : PAL.uiText;
-    ctx.font = '6px monospace';
-    ctx.fillText(item, 168, 24 + i * 12);
-    if (i === menuIndex) {
-      ctx.fillText('▶', 158, 24 + i * 12);
-    }
+  box(0,0,360,240,'rgba(0,0,0,0.35)');
+  win(220,12,130,110);
+  const items=['CARDS','MAP','BATTLE','LOG','CLOSE'];
+  items.forEach((it,i)=>{
+    const y=32+i*20;
+    if(i===menuIdx){ txt('\u25B6',232,y,7,P.uiRed); txt(it,248,y,7,P.uiRed); }
+    else txt(it,248,y,7);
   });
 }
 
-function drawWindow(x, y, w, h) {
-  // FRLG-style rounded window
-  ctx.fillStyle = PAL.uiBg;
-  ctx.fillRect(x + 2, y, w - 4, h);
-  ctx.fillRect(x, y + 2, w, h - 4);
-  ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+function drawAction() {
+  box(0,0,360,240,'#e8e0c8');
 
-  ctx.fillStyle = PAL.uiBorder;
-  // top
-  ctx.fillRect(x + 2, y, w - 4, 2);
-  // bottom
-  ctx.fillRect(x + 2, y + h - 2, w - 4, 2);
-  // left
-  ctx.fillRect(x, y + 2, 2, h - 4);
-  // right
-  ctx.fillRect(x + w - 2, y + 2, 2, h - 4);
-  // corners
-  ctx.fillRect(x + 1, y + 1, 1, 1);
-  ctx.fillRect(x + w - 2, y + 1, 1, 1);
-  ctx.fillRect(x + 1, y + h - 2, 1, 1);
-  ctx.fillRect(x + w - 2, y + h - 2, 1, 1);
-}
+  // Round
+  win(6,4,348,22); txt(`ROUND ${round} of 25`,110,20,8);
 
-function drawTextBox(text, y) {
-  drawWindow(4, y || 112, 232, 44);
-  ctx.fillStyle = PAL.uiText;
-  ctx.font = '6px monospace';
-
-  // Word wrap
-  const maxW = 210;
-  const words = text.split(' ');
-  let line = '', ly = (y || 112) + 14;
-  for (const word of words) {
-    const test = line + word + ' ';
-    if (ctx.measureText(test).width > maxW && line !== '') {
-      ctx.fillText(line.trim(), 14, ly);
-      line = word + ' ';
-      ly += 10;
+  // Hand
+  win(6,32,348,72);
+  txt('YOUR HAND',14,48,6,P.uiBdr);
+  for(let i=0;i<5;i++){
+    const c=players[0].cards[i], cx=16+i*66;
+    if(c>0){
+      const cd=CARDS[c-1];
+      box(cx,56,60,40,cd.col); box(cx+1,57,58,38,cd.dk);
+      box(cx+2,58,56,36,cd.col);
+      txt(cd.icon,cx+22,78,12,'#fff');
+      txt(cd.name,cx+6,96,5,'#fff');
     } else {
-      line = test;
-    }
-  }
-  ctx.fillText(line.trim(), 14, ly);
-
-  // Blinking cursor
-  if (Math.floor(animFrame / 20) % 2 === 0) {
-    ctx.fillText('▼', 222, (y || 112) + 38);
-  }
-}
-
-// === ACTION SCREEN ===
-
-function drawActionScreen() {
-  // Background
-  ctx.fillStyle = '#e8e0c8';
-  ctx.fillRect(0, 0, 240, 160);
-
-  // Round indicator
-  drawWindow(4, 4, 232, 18);
-  ctx.fillStyle = PAL.uiText;
-  ctx.font = '6px monospace';
-  ctx.fillText(`ROUND ${round} of ${maxRounds}`, 80, 16);
-
-  // Your hand
-  drawWindow(4, 26, 232, 50);
-  ctx.fillStyle = PAL.uiText;
-  ctx.font = '5px monospace';
-  ctx.fillText('YOUR HAND', 14, 38);
-
-  for (let i = 0; i < 5; i++) {
-    const cardId = players[0].cards[i];
-    const cx = 14 + i * 44;
-    if (cardId > 0) {
-      const card = CARDS[cardId - 1];
-      // Card bg
-      ctx.fillStyle = card.color;
-      ctx.fillRect(cx, 42, 38, 28);
-      ctx.fillStyle = '#fff';
-      ctx.font = '10px monospace';
-      ctx.fillText(card.icon, cx + 14, 56);
-      ctx.font = '4px monospace';
-      ctx.fillText(card.name, cx + 4, 66);
-    } else {
-      ctx.fillStyle = '#c8c0a8';
-      ctx.fillRect(cx, 42, 38, 28);
-      ctx.fillStyle = '#a8a090';
-      ctx.font = '8px monospace';
-      ctx.fillText('?', cx + 16, 58);
+      box(cx,56,60,40,'#c8c0a8'); box(cx+1,57,58,38,'#d8d0b8');
+      txt('?',cx+24,80,12,'#b0a890');
     }
   }
 
   // Action menu
-  drawWindow(4, 80, 130, 72);
-  const actions = [
-    { name: 'DRAW', desc: 'Draw from pool' },
-    { name: 'STEAL', desc: `(${spells.steal} left)` },
-    { name: 'BARRIER', desc: `(${spells.barrier} left)` },
-    { name: 'SCOUT', desc: `(${spells.scout} left)` },
-    { name: 'USE CARD', desc: 'Consume effect' },
+  win(6,112,190,120);
+  txt('ACTION',16,128,6,P.uiBdr);
+  const acts=[
+    {n:'DRAW',d:'from pool',c:P.uiTxt},
+    {n:'STEAL',d:`${sp.steal} left`,c:P.uiRed},
+    {n:'BARRIER',d:`${sp.barrier} left`,c:P.uiBlue},
+    {n:'SCOUT',d:`${sp.scout} left`,c:P.uiGrn},
+    {n:'USE CARD',d:'consume',c:'#806030'},
   ];
-  actions.forEach((a, i) => {
-    const ay = 92 + i * 12;
-    ctx.fillStyle = i === actionIndex ? PAL.uiRed : PAL.uiText;
-    ctx.font = '5px monospace';
-    if (i === actionIndex) ctx.fillText('▶', 12, ay);
-    ctx.fillText(a.name, 22, ay);
-    ctx.fillStyle = '#888878';
-    ctx.fillText(a.desc, 70, ay);
+  acts.forEach((a,i)=>{
+    const y=142+i*18;
+    const sel=i===actIdx;
+    if(sel){ txt('\u25B6',16,y,6,P.uiRed); box(14,y-9,178,16,'rgba(200,180,100,0.15)'); }
+    txt(a.n,30,y,6,sel?P.uiRed:a.c);
+    txt(a.d,120,y,5,'#908878');
   });
 
-  // Opponent info
-  drawWindow(140, 80, 96, 72);
-  ctx.fillStyle = PAL.uiText;
-  ctx.font = '5px monospace';
-  ctx.fillText('OPPONENTS', 150, 92);
-
-  players.slice(1).forEach((p, i) => {
-    const oy = 102 + i * 20;
-    ctx.fillStyle = p.color;
-    ctx.fillRect(150, oy, 6, 6);
-    ctx.fillStyle = PAL.uiText;
-    ctx.fillText(p.name, 160, oy + 5);
-    ctx.fillStyle = '#888878';
-    ctx.fillText(`${p.cardCount} cards`, 160, oy + 13);
+  // Opponents
+  win(204,112,150,120);
+  txt('RIVALS',214,128,6,P.uiBdr);
+  players.slice(1).forEach((p,i)=>{
+    const y=144+i*36;
+    box(214,y,10,10,p.col);
+    txt(p.name,230,y+8,6);
+    txt(`${p.cc} cards`,230,y+22,5,'#908878');
   });
 }
 
-// === CARDS SCREEN ===
+function drawCards() {
+  box(0,0,360,240,P.uiBlue);
+  win(10,6,340,28); txt('CARD COLLECTION',80,24,8);
 
-function drawCardsScreen() {
-  ctx.fillStyle = PAL.uiBlue;
-  ctx.fillRect(0, 0, 240, 160);
-
-  drawWindow(8, 4, 224, 20);
-  ctx.fillStyle = PAL.uiText;
-  ctx.font = '7px monospace';
-  ctx.fillText('CARD COLLECTION', 60, 18);
-
-  for (let i = 0; i < 5; i++) {
-    const cardId = players[0].cards[i];
-    const cy = 30 + i * 25;
-
-    drawWindow(8, cy, 224, 22);
-
-    if (cardId > 0) {
-      const card = CARDS[cardId - 1];
-      ctx.fillStyle = card.color;
-      ctx.fillRect(14, cy + 4, 14, 14);
-      ctx.fillStyle = '#fff';
-      ctx.font = '8px monospace';
-      ctx.fillText(card.icon, 17, cy + 14);
-
-      ctx.fillStyle = PAL.uiText;
-      ctx.font = '6px monospace';
-      ctx.fillText(card.name.toUpperCase(), 34, cy + 10);
-      ctx.fillStyle = '#888878';
-      ctx.font = '5px monospace';
-      ctx.fillText(card.effect, 34, cy + 18);
+  for(let i=0;i<5;i++){
+    const c=players[0].cards[i], cy=42+i*38;
+    win(10,cy,340,34);
+    if(c>0){
+      const cd=CARDS[c-1];
+      box(18,cy+6,24,22,cd.col); box(19,cy+7,22,20,cd.dk); box(20,cy+8,20,18,cd.col);
+      txt(cd.icon,25,cy+22,10,'#fff');
+      txt(cd.name,50,cy+16,7);
+      txt(cd.fx,50,cy+28,5,'#908878');
+      // right side: card type index
+      txt(`#${cd.id}/5`,300,cy+18,5,'#b0a898');
     } else {
-      ctx.fillStyle = '#a8a098';
-      ctx.font = '6px monospace';
-      ctx.fillText(`Slot ${i + 1} — Empty`, 34, cy + 14);
+      txt(`SLOT ${i+1}`,50,cy+18,6,'#a0988');
+      txt('Empty',50,cy+28,5,'#b0a898');
     }
   }
 }
 
-// === RESOLVE / LOG SCREEN ===
+function drawLog() {
+  box(0,0,360,240,'#202030');
+  win(6,4,348,22); txt('BATTLE LOG',120,20,8);
 
-function drawResolveScreen() {
-  ctx.fillStyle = '#282838';
-  ctx.fillRect(0, 0, 240, 160);
-
-  drawWindow(4, 4, 232, 18);
-  ctx.fillStyle = PAL.uiText;
-  ctx.font = '6px monospace';
-  ctx.fillText('BATTLE LOG', 85, 16);
-
-  resolveLog.forEach((log, i) => {
-    const ly = 30 + i * 14;
-    if (ly > 150) return;
-
-    drawWindow(4, ly, 232, 12);
-
-    // Color code by type
-    if (log.includes('Blocked') || log.includes('Barrier')) {
-      ctx.fillStyle = PAL.uiBlue;
-    } else if (log.includes('Steal') || log.includes('Flame')) {
-      ctx.fillStyle = PAL.uiRed;
-    } else if (log.includes('drew') || log.includes('Scout')) {
-      ctx.fillStyle = '#408840';
-    } else {
-      ctx.fillStyle = PAL.uiText;
-    }
-    ctx.font = '4px monospace';
-    ctx.fillText(log, 10, ly + 9);
+  logs.forEach((l,i)=>{
+    const y=34+i*26;
+    if(y>220) return;
+    win(6,y,348,22);
+    let c=P.uiTxt;
+    if(l.includes('Blocked')||l.includes('Barrier')) c=P.uiBlue;
+    else if(l.includes('Steal')||l.includes('Flame')||l.includes('Burn')) c=P.uiRed;
+    else if(l.includes('drew')||l.includes('Scout')) c=P.uiGrn;
+    else if(l.includes('Shadow')||l.includes('Invisible')) c='#8060a8';
+    txt(l,16,y+15,5,c);
   });
+
+  // Blinking cursor
+  if(Math.floor(frame/25)%2===0) txt('\u25BC',340,228,6,P.uiHi);
 }
 
-// === MAIN LOOP ===
+// === LOOP ===
 
 function update() {
-  animFrame++;
-  if (animFrame % 30 === 0) waterFrame++;
-
-  // Simple NPC movement
-  if (animFrame % 60 === 0) {
-    players.slice(1).forEach(p => {
-      const dx = Math.floor(Math.random() * 3) - 1;
-      const dy = Math.floor(Math.random() * 3) - 1;
-      const nx = p.x + dx, ny = p.y + dy;
-      if (nx >= 0 && nx < 20 && ny >= 0 && ny < 15) {
-        const tile = MAP[ny][nx];
-        if (tile !== 0 && tile !== 3) {
-          p.x = nx;
-          p.y = ny;
-        }
-      }
+  frame++;
+  if(frame%25===0) waveT++;
+  if(frame%50===0) {
+    players.slice(1).forEach(p=>{
+      const dx=Math.floor(Math.random()*3)-1, dy=Math.floor(Math.random()*3)-1;
+      const nx=p.x+dx, ny=p.y+dy;
+      if(nx>=0&&nx<20&&ny>=0&&ny<15&&MAP[ny][nx]!==0&&MAP[ny][nx]!==3){ p.x=nx; p.y=ny; }
     });
   }
 }
 
 function draw() {
-  ctx.clearRect(0, 0, W, H);
-
-  switch (currentScreen) {
-    case 'map':
-      drawMap();
-      if (menuOpen) drawMenu();
-      break;
-    case 'action':
-      drawActionScreen();
-      break;
-    case 'cards':
-      drawCardsScreen();
-      break;
-    case 'resolve':
-      drawResolveScreen();
-      break;
-  }
+  $.clearRect(0,0,W,H);
+  if(screen==='map'){ drawMap(); if(menuOn) drawMenu(); }
+  else if(screen==='action') drawAction();
+  else if(screen==='cards') drawCards();
+  else if(screen==='resolve') drawLog();
 }
 
-function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
+function loop() { update(); draw(); requestAnimationFrame(loop); }
 
 // === INPUT ===
-
-document.addEventListener('keydown', (e) => {
-  if (currentScreen === 'map') {
-    if (e.code === 'Space') {
-      menuOpen = !menuOpen;
-      menuIndex = 0;
-    }
-    if (menuOpen) {
-      if (e.code === 'ArrowUp') menuIndex = Math.max(0, menuIndex - 1);
-      if (e.code === 'ArrowDown') menuIndex = Math.min(4, menuIndex + 1);
-      if (e.code === 'KeyZ') {
-        const items = ['cards', 'map', 'action', 'resolve', 'close'];
-        if (items[menuIndex] === 'close') {
-          menuOpen = false;
-        } else {
-          currentScreen = items[menuIndex];
-          menuOpen = false;
-        }
+document.addEventListener('keydown',e=>{
+  if(screen==='map'){
+    if(e.code==='Space'){ menuOn=!menuOn; menuIdx=0; return; }
+    if(menuOn){
+      if(e.code==='ArrowUp') menuIdx=Math.max(0,menuIdx-1);
+      if(e.code==='ArrowDown') menuIdx=Math.min(4,menuIdx+1);
+      if(e.code==='KeyZ'){
+        const s=['cards','map','action','resolve','close'];
+        if(s[menuIdx]==='close') menuOn=false;
+        else { screen=s[menuIdx]; menuOn=false; updateBtns(); }
       }
     } else {
-      // Move player
-      const p = players[0];
-      let nx = p.x, ny = p.y;
-      if (e.code === 'ArrowUp') ny--;
-      if (e.code === 'ArrowDown') ny++;
-      if (e.code === 'ArrowLeft') nx--;
-      if (e.code === 'ArrowRight') nx++;
-      if (nx >= 0 && nx < 20 && ny >= 0 && ny < 15) {
-        const tile = MAP[ny][nx];
-        if (tile !== 0 && tile !== 3) {
-          p.x = nx;
-          p.y = ny;
-        }
-      }
+      const p=players[0]; let nx=p.x,ny=p.y;
+      if(e.code==='ArrowUp') ny--;
+      if(e.code==='ArrowDown') ny++;
+      if(e.code==='ArrowLeft') nx--;
+      if(e.code==='ArrowRight') nx++;
+      if(nx>=0&&nx<20&&ny>=0&&ny<15&&MAP[ny][nx]!==0&&MAP[ny][nx]!==3){ p.x=nx; p.y=ny; }
     }
   }
-  if (currentScreen === 'action') {
-    if (e.code === 'ArrowUp') actionIndex = Math.max(0, actionIndex - 1);
-    if (e.code === 'ArrowDown') actionIndex = Math.min(4, actionIndex + 1);
-    if (e.code === 'KeyZ') {
-      selectedAction = actionIndex;
-      resolveLog.push(`Round ${round}: You selected ${['Draw','Steal','Barrier','Scout','Use Card'][actionIndex]}!`);
-    }
+  if(screen==='action'){
+    if(e.code==='ArrowUp') actIdx=Math.max(0,actIdx-1);
+    if(e.code==='ArrowDown') actIdx=Math.min(4,actIdx+1);
+    if(e.code==='KeyZ') logs.push(`R${round}: You chose ${['Draw','Steal','Barrier','Scout','Use Card'][actIdx]}!`);
   }
-  if (e.code === 'KeyX') {
-    currentScreen = 'map';
-    menuOpen = false;
-  }
+  if(e.code==='KeyX'){ screen='map'; menuOn=false; updateBtns(); }
 });
 
-function setScreen(s) {
-  currentScreen = s;
-  menuOpen = false;
-  document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+function setScreen(s){ screen=s; menuOn=false; updateBtns(); }
+function updateBtns(){
+  document.querySelectorAll('.btn').forEach(b=>{
+    b.classList.toggle('active', b.textContent.toLowerCase()===screen || (b.textContent==='BATTLE'&&screen==='action') || (b.textContent==='LOG'&&screen==='resolve'));
+  });
 }
 
-// === START ===
-gameLoop();
+loop();
 </script>
 </body>
 </html>
