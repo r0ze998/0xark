@@ -6,443 +6,394 @@
 <title>0xARK</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  background: #111122;
-  display: flex; flex-direction: column;
-  justify-content: center; align-items: center;
-  min-height: 100vh;
-  font-family: 'Press Start 2P', monospace;
-  overflow: hidden;
-}
-
-#emulator {
-  background: linear-gradient(145deg, #2a2a40, #1e1e30);
-  padding: 24px 28px 20px;
-  border-radius: 20px;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
-  border: 2px solid #333355;
-}
-
-#label {
-  text-align: center;
-  color: #555577;
-  font-size: 8px;
-  letter-spacing: 6px;
-  margin-bottom: 10px;
-}
-
-#screen-wrap {
-  background: #0a0a12;
-  padding: 6px;
-  border-radius: 6px;
-  border: 2px solid #222240;
-}
-
-canvas {
-  display: block;
-  width: 720px;
-  height: 480px;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  border-radius: 2px;
-}
-
-#controls {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.btn {
-  padding: 5px 14px;
-  background: #252540;
-  color: #6666888;
-  border: 1px solid #333355;
-  border-radius: 14px;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 7px;
-  cursor: pointer;
-  letter-spacing: 1px;
-  transition: all 0.15s;
-}
-.btn:hover { background: #333355; color: #9999bb; border-color: #555577; }
-.btn.active { background: #4455aa; color: #eeeeff; border-color: #6677cc; box-shadow: 0 0 8px rgba(68,85,170,0.3); }
-
-#hint {
-  color: #333350;
-  font-size: 6px;
-  text-align: center;
-  margin-top: 10px;
-  letter-spacing: 2px;
-}
-
-@media (max-width: 780px) {
-  canvas { width: 100vw; height: calc(100vw * 2 / 3); }
-  #emulator { padding: 8px; border-radius: 0; }
-  #screen-wrap { padding: 2px; }
-}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#111118; display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh; font-family:'Press Start 2P',monospace; overflow:hidden; }
+#emu { background:linear-gradient(145deg,#2a2a3e,#1c1c2c); padding:20px 24px 16px; border-radius:16px; box-shadow:0 8px 40px rgba(0,0,0,0.6); border:2px solid #333350; }
+#lbl { text-align:center; color:#444460; font-size:7px; letter-spacing:6px; margin-bottom:8px; }
+#sw { background:#080810; padding:4px; border-radius:4px; border:2px solid #1a1a30; }
+canvas { display:block; width:720px; height:480px; image-rendering:pixelated; image-rendering:crisp-edges; }
+#ctrls { display:flex; justify-content:center; gap:6px; margin-top:10px; }
+.b { padding:4px 12px; background:#222238; color:#555570; border:1px solid #333350; border-radius:12px; font:7px 'Press Start 2P',monospace; cursor:pointer; transition:all .15s; }
+.b:hover { background:#2a2a44; color:#8888aa; }
+.b.a { background:#3848a0; color:#dde; border-color:#5060c0; box-shadow:0 0 6px rgba(56,72,160,0.3); }
+#h { color:#2a2a40; font-size:5px; text-align:center; margin-top:6px; letter-spacing:1px; }
+@media(max-width:780px){ canvas{width:100vw;height:calc(100vw*2/3)} #emu{padding:4px;border-radius:0} }
 </style>
 </head>
 <body>
-<div id="emulator">
-  <div id="label">0 x A R K</div>
-  <div id="screen-wrap">
-    <canvas id="game" width="360" height="240"></canvas>
-  </div>
-  <div id="controls">
-    <button class="btn active" onclick="setScreen('map')">MAP</button>
-    <button class="btn" onclick="setScreen('action')">BATTLE</button>
-    <button class="btn" onclick="setScreen('cards')">CARDS</button>
-    <button class="btn" onclick="setScreen('resolve')">LOG</button>
-  </div>
-  <div id="hint">ARROWS move &middot; SPACE menu &middot; Z select &middot; X back</div>
+<div id="emu">
+<div id="lbl">0 x A R K</div>
+<div id="sw"><canvas id="g" width="360" height="240"></canvas></div>
+<div id="ctrls">
+<button class="b a" onclick="ss('map')">MAP</button>
+<button class="b" onclick="ss('act')">BATTLE</button>
+<button class="b" onclick="ss('crd')">CARDS</button>
+<button class="b" onclick="ss('log')">LOG</button>
 </div>
-
+<div id="h">ARROWS move / SPACE menu / Z select / X back</div>
+</div>
 <script>
-const C = document.getElementById('game');
-const $ = C.getContext('2d');
-const W = 360, H = 240;
+const c=document.getElementById('g'),x=c.getContext('2d'),W=360,H=240;
 
-// === PALETTE ===
-const P = {
-  water: '#4880c0', waterHi: '#68a0d8', waterDk: '#305898',
-  grass: '#50a050', grassHi: '#70c070', grassDk: '#388038',
-  path: '#d0c080', pathDk: '#b0a060',
-  sand: '#e0d0a0', sandDk: '#c8b888',
-  tree: '#286828', trunk: '#806030', canopy: '#38883a',
-  bldWall: '#d07070', bldRoof: '#b84040', bldDoor: '#604040',
-  cave: '#404858', caveDk: '#282838',
-  uiBg: '#f0e8d0', uiBdr: '#484050', uiTxt: '#303030',
-  uiBlue: '#3060b0', uiRed: '#c03030', uiGrn: '#308030',
-  uiHi: '#f0c830', uiShadow: 'rgba(0,0,0,0.12)',
-  white: '#f8f0e0', black: '#181820',
-};
-
-// === CARDS ===
-const CARDS = [
-  { id:1, name:'CRYSTAL', col:'#48b8e8', dk:'#2888b0', icon:'\u25C6', fx:'Steal x2' },
-  { id:2, name:'SHADOW',  col:'#8060a8', dk:'#604080', icon:'\u25CF', fx:'Invis 1T' },
-  { id:3, name:'FLAME',   col:'#e06848', dk:'#b04830', icon:'\u25B2', fx:'Burn card' },
-  { id:4, name:'STORM',   col:'#e8c030', dk:'#b89820', icon:'\u2605', fx:'No barrier' },
-  { id:5, name:'VOID',    col:'#40b090', dk:'#288068', icon:'\u25CE', fx:'Copy card' },
-];
-
-// === MAP (20x15) ===
-const MAP = [
-  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,4,4,4,1,1,1,1,1,1,1,3,3,3,0,0,0,0,0],
-  [0,4,4,1,1,1,2,2,2,1,1,1,1,3,1,1,0,0,0,0],
-  [0,4,1,1,3,1,2,5,2,1,1,3,1,1,1,1,1,0,0,0],
-  [0,4,1,1,1,1,2,2,2,1,1,1,1,1,1,1,1,1,0,0],
-  [0,1,1,3,1,1,1,2,1,1,1,1,1,3,1,1,1,1,0,0],
-  [0,1,1,1,1,1,1,2,1,3,1,1,1,1,1,6,1,1,0,0],
-  [0,1,3,1,1,1,1,2,2,2,2,2,1,1,1,1,1,0,0,0],
-  [0,1,1,1,1,3,1,1,1,1,1,2,1,1,3,1,1,0,0,0],
-  [0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,1,0,0,0,0],
-  [0,0,1,1,3,1,1,1,3,1,1,1,1,5,2,1,0,0,0,0],
-  [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
-  [0,0,0,4,4,1,1,1,1,1,1,1,4,4,0,0,0,0,0,0],
-  [0,0,0,0,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-];
-
-const TW = 18, TH = 16; // tile size at 360x240
-
-// === STATE ===
-const players = [
-  { x:7, y:3, col:'#48b8e8', name:'You', cards:[1,3,0,0,0], cc:2 },
-  { x:13, y:10, col:'#e068a0', name:'Rival', cards:[2,5,0,0,0], cc:2 },
-  { x:4, y:6, col:'#e8c030', name:'Hunter', cards:[4,0,0,0,0], cc:1 },
-];
-const sp = { steal:3, barrier:2, scout:1 };
-let screen = 'map', menuOn = false, menuIdx = 0, actIdx = 0, frame = 0, waveT = 0;
-const logs = [
-  'R1: You drew Crystal!',
-  'R1: Rival used Steal on Hunter',
-  'R1: Hunter used Barrier - Blocked!',
-  'R2: You used Scout on Rival',
-  'R2: Rival has Shadow, Void',
-  'R3: Hunter drew Storm',
-  'R3: Rival used Shadow - Invisible!',
-];
-let round = 3;
-
-// === DRAW HELPERS ===
-function box(x,y,w,h,c) { $.fillStyle=c; $.fillRect(x,y,w,h); }
-function txt(s,x,y,sz,c) { $.fillStyle=c||P.uiTxt; $.font=`${sz||8}px 'Press Start 2P',monospace`; $.fillText(s,x,y); }
-
-function win(x,y,w,h) {
-  // outer border
-  box(x+1,y,w-2,h,P.uiBdr);
-  box(x,y+1,w,h-2,P.uiBdr);
-  // inner fill
-  box(x+2,y+1,w-4,h-2,P.uiBg);
-  box(x+1,y+2,w-2,h-4,P.uiBg);
-  // inner highlight
-  box(x+3,y+2,w-6,1,'rgba(255,255,255,0.3)');
+// FRLG Window — double border, white fill, rounded
+function win(l,t,w,h){
+  // Outer dark border
+  x.fillStyle='#484058';
+  x.fillRect(l+3,t,w-6,h);
+  x.fillRect(l,t+3,w,h-6);
+  x.fillRect(l+1,t+1,w-2,h-2);
+  x.fillRect(l+2,t+2,w-4,h-4);
+  // White fill
+  x.fillStyle='#f8f0e0';
+  x.fillRect(l+3,t+2,w-6,h-4);
+  x.fillRect(l+2,t+3,w-4,h-6);
+  // Inner border (thin dark line)
+  x.fillStyle='#686078';
+  x.fillRect(l+4,t+3,w-8,1);
+  x.fillRect(l+4,t+h-4,w-8,1);
+  x.fillRect(l+3,t+4,1,h-8);
+  x.fillRect(l+w-4,t+4,1,h-8);
+  // Top highlight
+  x.fillStyle='rgba(255,255,255,0.4)';
+  x.fillRect(l+5,t+4,w-10,1);
 }
 
-// === TILES ===
-function tile(x,y,t) {
-  const px=x*TW, py=y*TH;
-  switch(t) {
-    case 0: // water
-      box(px,py,TW,TH, ((x+y+waveT)%3===0)?P.waterDk:P.water);
-      if((x+waveT)%5===0) box(px+4,py+5,6,2,P.waterHi);
-      if((x+y+waveT)%7===0) box(px+10,py+10,4,1,P.waterHi);
-      break;
-    case 1: // grass
-      box(px,py,TW,TH,P.grass);
-      if((x*7+y*13)%5===0){ box(px+4,py+3,3,3,P.grassDk); box(px+12,py+10,3,2,P.grassHi); }
-      if((x*3+y*11)%7===0) box(px+9,py+6,2,2,P.grassDk);
-      break;
-    case 2: // path
-      box(px,py,TW,TH,P.path);
-      box(px,py+TH-2,TW,2,P.pathDk);
-      if((x+y)%4===0) box(px+6,py+4,2,2,P.pathDk);
-      break;
-    case 3: // tree
-      box(px,py,TW,TH,P.grass);
-      box(px+6,py+8,6,8,P.trunk);
-      box(px+1,py,16,9,P.tree);
-      box(px+3,py+1,12,7,P.canopy);
-      box(px+5,py+2,8,2,P.grassHi);
-      break;
-    case 4: // sand
-      box(px,py,TW,TH,P.sand);
-      if((x+y)%3===0) box(px+7,py+7,3,2,P.sandDk);
-      break;
-    case 5: // building
-      box(px,py,TW,TH,P.path);
-      box(px+1,py+5,16,11,P.bldWall);
-      box(px,py,18,6,P.bldRoof);
-      box(px+1,py+1,16,4,'#c85050');
-      box(px+6,py+9,6,7,P.bldDoor);
-      box(px+11,py+9,1,1,P.uiHi);
-      break;
-    case 6: // cave
-      box(px,py,TW,TH,P.grass);
-      box(px+1,py+3,16,13,P.cave);
-      box(px+4,py+5,10,11,P.caveDk);
-      box(px+5,py+3,8,3,P.cave);
-      // arch
-      box(px+3,py+3,2,2,'#585868');
-      box(px+13,py+3,2,2,'#585868');
-      break;
+function bx(l,t,w,h,c){ x.fillStyle=c; x.fillRect(l,t,w,h); }
+function tx(s,l,t,sz,c){ x.fillStyle=c||'#303028'; x.font=(sz||7)+"px 'Press Start 2P',monospace"; x.fillText(s,l,t); }
+
+// CARDS
+const CD=[
+  {n:'CRYSTAL',c:'#48b8e8',d:'#2080a8',i:'\u25C6',f:'Steal x2'},
+  {n:'SHADOW', c:'#7858a0',d:'#503878',i:'\u25CF',f:'Invis 1T'},
+  {n:'FLAME',  c:'#d85840',d:'#a83828',i:'\u25B2',f:'Burn card'},
+  {n:'STORM',  c:'#d8b028',d:'#a88818',i:'\u2605',f:'No barrier'},
+  {n:'VOID',   c:'#38a880',d:'#207858',i:'\u25CE',f:'Copy card'},
+];
+
+// MAP 20x15
+const M=[
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+[0,0,4,4,4,1,1,1,1,1,1,1,3,3,3,0,0,0,0,0],
+[0,4,4,1,1,1,2,2,2,1,1,1,1,3,1,1,0,0,0,0],
+[0,4,1,1,3,1,2,5,2,1,1,3,1,1,1,1,1,0,0,0],
+[0,4,1,1,1,1,2,2,2,1,1,1,1,1,1,1,1,1,0,0],
+[0,1,1,3,1,1,1,2,1,1,1,1,1,3,1,1,1,1,0,0],
+[0,1,1,1,1,1,1,2,1,3,1,1,1,1,1,6,1,1,0,0],
+[0,1,3,1,1,1,1,2,2,2,2,2,1,1,1,1,1,0,0,0],
+[0,1,1,1,1,3,1,1,1,1,1,2,1,1,3,1,1,0,0,0],
+[0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,1,0,0,0,0],
+[0,0,1,1,3,1,1,1,3,1,1,1,1,5,2,1,0,0,0,0],
+[0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
+[0,0,0,4,4,1,1,1,1,1,1,1,4,4,0,0,0,0,0,0],
+[0,0,0,0,4,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+];
+const TW=18,TH=16;
+
+const pl=[
+  {x:7,y:3,c:'#48b8e8',n:'You',cd:[1,3,0,0,0],cc:2},
+  {x:13,y:10,c:'#d860a0',n:'Rival',cd:[2,5,0,0,0],cc:2},
+  {x:4,y:6,c:'#d8b028',n:'Hunter',cd:[4,0,0,0,0],cc:1},
+];
+const sp={s:3,b:2,c:1};
+let sc='map',mo=false,mi=0,ai=0,fr=0,wt=0,rd=3;
+const lg=['R1: You drew Crystal!','R1: Rival used Steal on Hunter','R1: Hunter Barrier blocked it!','R2: Scout > Rival has Shadow,Void','R3: Hunter drew Storm','R3: Rival used Shadow!','R3: You used Steal on Rival - BLOCKED'];
+
+// TILES
+function tl(tx_,ty,t){
+  const px=tx_*TW,py=ty*TH;
+  const s1=(tx_*7+ty*13)%5, s2=(tx_*3+ty*11)%7, s3=(tx_+ty+wt)%3;
+  switch(t){
+  case 0: // water — animated waves
+    bx(px,py,TW,TH,s3===0?'#305898':'#4880c0');
+    if((tx_+wt)%4===0){ bx(px+3,py+4,5,1,'#68a0d8'); bx(px+10,py+10,4,1,'#68a0d8'); }
+    if((tx_+ty+wt)%6===0) bx(px+8,py+2,3,1,'#78b0e0');
+    break;
+  case 1: // grass — FRLG pattern
+    bx(px,py,TW,TH,'#58a858');
+    // dither pattern
+    for(let gy=0;gy<TH;gy+=4) for(let gx=0;gx<TW;gx+=4){
+      if((gx+gy+tx_*3+ty*5)%8<2) bx(px+gx,py+gy,2,2,'#48984a');
+    }
+    if(s1===0) bx(px+6,py+4,2,3,'#70c070');
+    if(s2===0){ bx(px+3,py+8,1,3,'#388838'); bx(px+12,py+2,1,3,'#388838'); }
+    break;
+  case 2: // path
+    bx(px,py,TW,TH,'#d0c080');
+    bx(px,py+TH-2,TW,2,'#b0a060');
+    bx(px,py,TW,1,'#e0d8a0');
+    if((tx_+ty)%3===0) bx(px+7,py+6,3,2,'#b8a868');
+    break;
+  case 3: // tree — fuller canopy
+    bx(px,py,TW,TH,'#58a858');
+    for(let gy=0;gy<TH;gy+=4) for(let gx=0;gx<TW;gx+=4){
+      if((gx+gy+tx_*3+ty*5)%8<2) bx(px+gx,py+gy,2,2,'#48984a');
+    }
+    bx(px+6,py+9,6,7,'#806030');
+    bx(px+7,py+10,4,6,'#906838');
+    bx(px,py+1,18,10,'#286828');
+    bx(px+1,py+2,16,8,'#38883a');
+    bx(px+2,py+3,14,5,'#48a848');
+    bx(px+4,py+2,10,2,'#58c058');
+    break;
+  case 4: // sand
+    bx(px,py,TW,TH,'#e0d0a0');
+    for(let sy=0;sy<TH;sy+=6) for(let sx=0;sx<TW;sx+=6){
+      if((sx+sy+tx_)%5<2) bx(px+sx,py+sy,2,1,'#c8b888');
+    }
+    break;
+  case 5: // building
+    bx(px,py,TW,TH,'#d0c080');
+    // walls
+    bx(px+1,py+6,16,10,'#c07070');
+    bx(px+2,py+7,14,8,'#d08080');
+    // roof
+    bx(px-1,py,20,7,'#a84040');
+    bx(px,py+1,18,5,'#c05050');
+    bx(px+2,py+2,14,2,'#d06060');
+    // door
+    bx(px+6,py+10,6,6,'#584040');
+    bx(px+7,py+11,4,5,'#483838');
+    bx(px+11,py+12,1,1,'#d8c030');
+    // window
+    bx(px+3,py+8,3,3,'#90d8f0');
+    bx(px+12,py+8,3,3,'#90d8f0');
+    break;
+  case 6: // cave
+    bx(px,py,TW,TH,'#58a858');
+    bx(px+1,py+4,16,12,'#484860');
+    bx(px+3,py+6,12,10,'#303040');
+    bx(px+5,py+4,8,3,'#484860');
+    // arch stones
+    bx(px+2,py+4,3,3,'#585868');
+    bx(px+13,py+4,3,3,'#585868');
+    bx(px+4,py+3,2,2,'#686878');
+    bx(px+12,py+3,2,2,'#686878');
+    break;
   }
 }
 
-function sprite(p) {
-  const px=p.x*TW+3, py=p.y*TH-2;
-  const bob=Math.floor(frame/12)%2;
+// SPRITE — proper GBA proportions (12x16)
+function spr(p,me){
+  const px=p.x*TW+3,py=p.y*TH-4;
+  const b=Math.floor(fr/10)%2;
   // shadow
-  box(px+1,py+14,12,3,P.uiShadow);
+  x.fillStyle='rgba(0,0,0,0.18)';
+  x.beginPath(); x.ellipse(px+6,py+16,5,2,0,0,Math.PI*2); x.fill();
+  // feet
+  bx(px+2,py+13+b,3,3,'#484040');
+  bx(px+8,py+13+b,3,3,'#484040');
   // body
-  box(px+2,py+4+bob,10,10,p.col);
-  box(px+3,py+5+bob,8,8,'rgba(255,255,255,0.15)');
+  bx(px+1,py+6+b,11,8,p.c);
+  bx(px+2,py+7+b,9,6,me?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.08)');
+  // arms
+  bx(px-1,py+7+b,3,5,p.c);
+  bx(px+11,py+7+b,3,5,p.c);
   // head
-  box(px+3,py+bob,8,5,'#f0dcc0');
-  box(px+4,py+1+bob,6,3,'#e8d0b0');
+  bx(px+1,py+b,11,7,'#f0dcc0');
+  bx(px+2,py+1+b,9,5,'#e8d0b0');
+  // hair
+  bx(px+1,py+b,11,3,p.c);
+  bx(px+2,py-1+b,9,2,p.c);
   // eyes
-  box(px+4,py+2+bob,2,2,P.black);
-  box(px+8,py+2+bob,2,2,P.black);
-  box(px+5,py+2+bob,1,1,'#fff');
-  box(px+9,py+2+bob,1,1,'#fff');
-  // card bubble
-  box(px+12,py-6,14,10,P.uiBg);
-  $.strokeStyle=P.uiBdr; $.lineWidth=1; $.strokeRect(px+12,py-6,14,10);
-  txt(p.cc+'',px+15,py+1,6,P.uiTxt);
+  bx(px+3,py+3+b,2,2,'#181820');
+  bx(px+8,py+3+b,2,2,'#181820');
+  bx(px+4,py+3+b,1,1,'#fff');
+  bx(px+9,py+3+b,1,1,'#fff');
+  // mouth
+  bx(px+5,py+5+b,3,1,'#c0a090');
+  // card count
+  win(px+12,py-8,20,14);
+  tx(p.cc+'',px+17,py+2,6);
 }
 
 // === SCREENS ===
 
-function drawMap() {
-  for(let y=0;y<15;y++) for(let x=0;x<20;x++) tile(x,y,MAP[y][x]);
-  [...players].sort((a,b)=>a.y-b.y).forEach(p=>sprite(p));
-
-  // Bottom HUD
-  box(0,224,360,16,P.uiBg);
-  box(0,223,360,1,P.uiBdr);
-  txt(`R${round}/25`,4,235,6);
-  txt(`STL:${sp.steal}`,60,235,6,P.uiRed);
-  txt(`BAR:${sp.barrier}`,120,235,6,P.uiBlue);
-  txt(`SCT:${sp.scout}`,180,235,6,P.uiGrn);
-
+function dMap(){
+  for(let y=0;y<15;y++) for(let _x=0;_x<20;_x++) tl(_x,y,M[y][_x]);
+  [...pl].sort((a,b)=>a.y-b.y).forEach((p,i)=>spr(p,i===0));
+  // HUD
+  win(0,222,360,18);
+  tx(`R${rd}/25`,8,236,6);
+  tx('STL',64,236,5,'#b04040'); tx(sp.s+'',94,236,6,'#c04848');
+  tx('BAR',112,236,5,'#3060b0'); tx(sp.b+'',142,236,6,'#3868c0');
+  tx('SCT',160,236,5,'#308030'); tx(sp.c+'',190,236,6,'#38a038');
+  // cards
   for(let i=0;i<5;i++){
-    const c=players[0].cards[i], cx=260+i*18;
-    if(c>0){ box(cx,226,16,12,CARDS[c-1].col); txt(CARDS[c-1].icon,cx+4,236,7,'#fff'); }
-    else { box(cx,226,16,12,'#c0b898'); box(cx+1,227,14,10,'#d0c8a8'); }
+    const cd=pl[0].cd[i],cx=216+i*28;
+    if(cd>0){
+      const c=CD[cd-1];
+      bx(cx,225,24,13,c.d); bx(cx+1,226,22,11,c.c);
+      tx(c.i,cx+7,236,8,'#fff');
+    } else {
+      bx(cx,225,24,13,'#c8c0a8'); bx(cx+1,226,22,11,'#d8d0b8');
+    }
   }
 }
 
-function drawMenu() {
-  box(0,0,360,240,'rgba(0,0,0,0.35)');
-  win(220,12,130,110);
-  const items=['CARDS','MAP','BATTLE','LOG','CLOSE'];
-  items.forEach((it,i)=>{
-    const y=32+i*20;
-    if(i===menuIdx){ txt('\u25B6',232,y,7,P.uiRed); txt(it,248,y,7,P.uiRed); }
-    else txt(it,248,y,7);
+function dMenu(){
+  bx(0,0,W,H,'rgba(0,0,0,0.3)');
+  win(224,8,128,118);
+  ['CARDS','MAP','BATTLE','LOG','CLOSE'].forEach((s,i)=>{
+    const y=28+i*20;
+    if(i===mi){ tx('\u25B6',236,y,7,'#c04040'); tx(s,252,y,7,'#c04040'); }
+    else tx(s,252,y,7);
   });
 }
 
-function drawAction() {
-  box(0,0,360,240,'#e8e0c8');
-
-  // Round
-  win(6,4,348,22); txt(`ROUND ${round} of 25`,110,20,8);
+function dAct(){
+  bx(0,0,W,H,'#e8e0c8');
+  win(4,2,352,24); tx(`ROUND ${rd} / 25`,108,18,8);
 
   // Hand
-  win(6,32,348,72);
-  txt('YOUR HAND',14,48,6,P.uiBdr);
+  win(4,30,352,78);
+  tx('YOUR HAND',14,46,6,'#686068');
   for(let i=0;i<5;i++){
-    const c=players[0].cards[i], cx=16+i*66;
-    if(c>0){
-      const cd=CARDS[c-1];
-      box(cx,56,60,40,cd.col); box(cx+1,57,58,38,cd.dk);
-      box(cx+2,58,56,36,cd.col);
-      txt(cd.icon,cx+22,78,12,'#fff');
-      txt(cd.name,cx+6,96,5,'#fff');
+    const cd=pl[0].cd[i],cx=12+i*68;
+    if(cd>0){
+      const c=CD[cd-1];
+      bx(cx,52,62,48,c.d);
+      bx(cx+2,54,58,44,c.c);
+      bx(cx+3,55,56,42,c.d);
+      bx(cx+4,56,54,40,c.c);
+      // icon
+      tx(c.i,cx+20,80,16,'#fff');
+      // label bg
+      bx(cx+2,90,58,10,'rgba(0,0,0,0.3)');
+      tx(c.n,cx+6,98,5,'#fff');
     } else {
-      box(cx,56,60,40,'#c8c0a8'); box(cx+1,57,58,38,'#d8d0b8');
-      txt('?',cx+24,80,12,'#b0a890');
+      bx(cx,52,62,48,'#c0b898');
+      bx(cx+2,54,58,44,'#d0c8a8');
+      tx('?',cx+24,82,14,'#a89880');
     }
   }
 
-  // Action menu
-  win(6,112,190,120);
-  txt('ACTION',16,128,6,P.uiBdr);
-  const acts=[
-    {n:'DRAW',d:'from pool',c:P.uiTxt},
-    {n:'STEAL',d:`${sp.steal} left`,c:P.uiRed},
-    {n:'BARRIER',d:`${sp.barrier} left`,c:P.uiBlue},
-    {n:'SCOUT',d:`${sp.scout} left`,c:P.uiGrn},
-    {n:'USE CARD',d:'consume',c:'#806030'},
+  // Actions
+  win(4,114,200,122);
+  tx('MOVE',14,130,5,'#686068');
+  const ac=[
+    {n:'DRAW',d:'from pool',c:'#303028'},
+    {n:'STEAL',d:sp.s+' left',c:'#b04040'},
+    {n:'BARRIER',d:sp.b+' left',c:'#3060b0'},
+    {n:'SCOUT',d:sp.c+' left',c:'#308030'},
+    {n:'USE CARD',d:'consume fx',c:'#806030'},
   ];
-  acts.forEach((a,i)=>{
-    const y=142+i*18;
-    const sel=i===actIdx;
-    if(sel){ txt('\u25B6',16,y,6,P.uiRed); box(14,y-9,178,16,'rgba(200,180,100,0.15)'); }
-    txt(a.n,30,y,6,sel?P.uiRed:a.c);
-    txt(a.d,120,y,5,'#908878');
+  ac.forEach((a,i)=>{
+    const y=144+i*18;
+    if(i===ai){ bx(12,y-9,190,16,'rgba(192,168,96,0.18)'); tx('\u25B6',14,y,6,'#c04040'); }
+    tx(a.n,28,y,6,i===ai?'#c04040':a.c);
+    tx(a.d,124,y,5,'#989080');
   });
 
-  // Opponents
-  win(204,112,150,120);
-  txt('RIVALS',214,128,6,P.uiBdr);
-  players.slice(1).forEach((p,i)=>{
-    const y=144+i*36;
-    box(214,y,10,10,p.col);
-    txt(p.name,230,y+8,6);
-    txt(`${p.cc} cards`,230,y+22,5,'#908878');
+  // Rivals
+  win(210,114,146,122);
+  tx('RIVALS',220,130,5,'#686068');
+  pl.slice(1).forEach((p,i)=>{
+    const y=144+i*44;
+    // mini sprite
+    bx(220,y-2,8,10,p.c);
+    bx(221,y-4,6,4,'#f0dcc0');
+    bx(222,y-3,1,1,'#181820');
+    bx(225,y-3,1,1,'#181820');
+    tx(p.n,234,y+4,6);
+    tx(p.cc+' cards',234,y+16,5,'#989080');
+    // bars
+    bx(234,y+22,80,4,'#d8d0c0');
+    bx(234,y+22,Math.min(80,p.cc*20),4,p.c);
   });
 }
 
-function drawCards() {
-  box(0,0,360,240,P.uiBlue);
-  win(10,6,340,28); txt('CARD COLLECTION',80,24,8);
+function dCrd(){
+  bx(0,0,W,H,'#3060b0');
+  // stars bg
+  for(let i=0;i<30;i++) bx((i*47+13)%350,(i*31+7)%230,2,2,'rgba(255,255,255,0.08)');
+  win(8,4,344,26); tx('CARD COLLECTION',84,22,7);
 
   for(let i=0;i<5;i++){
-    const c=players[0].cards[i], cy=42+i*38;
-    win(10,cy,340,34);
-    if(c>0){
-      const cd=CARDS[c-1];
-      box(18,cy+6,24,22,cd.col); box(19,cy+7,22,20,cd.dk); box(20,cy+8,20,18,cd.col);
-      txt(cd.icon,25,cy+22,10,'#fff');
-      txt(cd.name,50,cy+16,7);
-      txt(cd.fx,50,cy+28,5,'#908878');
-      // right side: card type index
-      txt(`#${cd.id}/5`,300,cy+18,5,'#b0a898');
+    const cd=pl[0].cd[i],cy=36+i*40;
+    win(8,cy,344,36);
+    if(cd>0){
+      const c=CD[cd-1];
+      // card icon box
+      bx(16,cy+6,28,24,c.d);
+      bx(17,cy+7,26,22,c.c);
+      tx(c.i,23,cy+24,12,'#fff');
+      // info
+      tx(c.n,52,cy+16,7);
+      tx(c.f,52,cy+28,5,'#908878');
+      tx('#'+c.n[0]+'/5',304,cy+20,5,'#b0a898');
     } else {
-      txt(`SLOT ${i+1}`,50,cy+18,6,'#a0988');
-      txt('Empty',50,cy+28,5,'#b0a898');
+      bx(16,cy+6,28,24,'#c0b898');
+      tx('EMPTY',52,cy+20,6,'#a09888');
     }
   }
 }
 
-function drawLog() {
-  box(0,0,360,240,'#202030');
-  win(6,4,348,22); txt('BATTLE LOG',120,20,8);
+function dLog(){
+  bx(0,0,W,H,'#181828');
+  win(4,2,352,24); tx('BATTLE LOG',116,18,7);
 
-  logs.forEach((l,i)=>{
-    const y=34+i*26;
-    if(y>220) return;
-    win(6,y,348,22);
-    let c=P.uiTxt;
-    if(l.includes('Blocked')||l.includes('Barrier')) c=P.uiBlue;
-    else if(l.includes('Steal')||l.includes('Flame')||l.includes('Burn')) c=P.uiRed;
-    else if(l.includes('drew')||l.includes('Scout')) c=P.uiGrn;
-    else if(l.includes('Shadow')||l.includes('Invisible')) c='#8060a8';
-    txt(l,16,y+15,5,c);
+  lg.forEach((l,i)=>{
+    const y=32+i*28; if(y>214) return;
+    win(4,y,352,24);
+    let c='#303028';
+    if(l.includes('Block')||l.includes('Barrier')) c='#3060b0';
+    else if(l.includes('Steal')||l.includes('Flame')||l.includes('Burn')) c='#c04040';
+    else if(l.includes('drew')||l.includes('Scout')) c='#308030';
+    else if(l.includes('Shadow')) c='#7858a0';
+    tx(l,14,y+16,5,c);
   });
 
-  // Blinking cursor
-  if(Math.floor(frame/25)%2===0) txt('\u25BC',340,228,6,P.uiHi);
+  if(Math.floor(fr/20)%2===0) tx('\u25BC',340,232,6,'#d8b028');
 }
 
-// === LOOP ===
-
-function update() {
-  frame++;
-  if(frame%25===0) waveT++;
-  if(frame%50===0) {
-    players.slice(1).forEach(p=>{
-      const dx=Math.floor(Math.random()*3)-1, dy=Math.floor(Math.random()*3)-1;
-      const nx=p.x+dx, ny=p.y+dy;
-      if(nx>=0&&nx<20&&ny>=0&&ny<15&&MAP[ny][nx]!==0&&MAP[ny][nx]!==3){ p.x=nx; p.y=ny; }
-    });
-  }
+// LOOP
+function up(){
+  fr++;
+  if(fr%20===0) wt++;
+  if(fr%45===0) pl.slice(1).forEach(p=>{
+    const dx=Math.floor(Math.random()*3)-1,dy=Math.floor(Math.random()*3)-1;
+    const nx=p.x+dx,ny=p.y+dy;
+    if(nx>=0&&nx<20&&ny>=0&&ny<15&&M[ny][nx]>0&&M[ny][nx]!==3){p.x=nx;p.y=ny;}
+  });
 }
 
-function draw() {
-  $.clearRect(0,0,W,H);
-  if(screen==='map'){ drawMap(); if(menuOn) drawMenu(); }
-  else if(screen==='action') drawAction();
-  else if(screen==='cards') drawCards();
-  else if(screen==='resolve') drawLog();
+function dr(){
+  x.clearRect(0,0,W,H);
+  if(sc==='map'){dMap();if(mo)dMenu();}
+  else if(sc==='act')dAct();
+  else if(sc==='crd')dCrd();
+  else if(sc==='log')dLog();
 }
 
-function loop() { update(); draw(); requestAnimationFrame(loop); }
+function lp(){up();dr();requestAnimationFrame(lp);}
 
-// === INPUT ===
 document.addEventListener('keydown',e=>{
-  if(screen==='map'){
-    if(e.code==='Space'){ menuOn=!menuOn; menuIdx=0; return; }
-    if(menuOn){
-      if(e.code==='ArrowUp') menuIdx=Math.max(0,menuIdx-1);
-      if(e.code==='ArrowDown') menuIdx=Math.min(4,menuIdx+1);
-      if(e.code==='KeyZ'){
-        const s=['cards','map','action','resolve','close'];
-        if(s[menuIdx]==='close') menuOn=false;
-        else { screen=s[menuIdx]; menuOn=false; updateBtns(); }
-      }
+  if(sc==='map'){
+    if(e.code==='Space'){mo=!mo;mi=0;return;}
+    if(mo){
+      if(e.code==='ArrowUp')mi=Math.max(0,mi-1);
+      if(e.code==='ArrowDown')mi=Math.min(4,mi+1);
+      if(e.code==='KeyZ'){const s=['crd','map','act','log'];if(mi===4)mo=false;else{sc=s[mi];mo=false;ub();}}
     } else {
-      const p=players[0]; let nx=p.x,ny=p.y;
-      if(e.code==='ArrowUp') ny--;
-      if(e.code==='ArrowDown') ny++;
-      if(e.code==='ArrowLeft') nx--;
-      if(e.code==='ArrowRight') nx++;
-      if(nx>=0&&nx<20&&ny>=0&&ny<15&&MAP[ny][nx]!==0&&MAP[ny][nx]!==3){ p.x=nx; p.y=ny; }
+      const p=pl[0];let nx=p.x,ny=p.y;
+      if(e.code==='ArrowUp')ny--;if(e.code==='ArrowDown')ny++;
+      if(e.code==='ArrowLeft')nx--;if(e.code==='ArrowRight')nx++;
+      if(nx>=0&&nx<20&&ny>=0&&ny<15&&M[ny][nx]>0&&M[ny][nx]!==3){p.x=nx;p.y=ny;}
     }
   }
-  if(screen==='action'){
-    if(e.code==='ArrowUp') actIdx=Math.max(0,actIdx-1);
-    if(e.code==='ArrowDown') actIdx=Math.min(4,actIdx+1);
-    if(e.code==='KeyZ') logs.push(`R${round}: You chose ${['Draw','Steal','Barrier','Scout','Use Card'][actIdx]}!`);
+  if(sc==='act'){
+    if(e.code==='ArrowUp')ai=Math.max(0,ai-1);
+    if(e.code==='ArrowDown')ai=Math.min(4,ai+1);
+    if(e.code==='KeyZ')lg.push('R'+rd+': You chose '+['Draw','Steal','Barrier','Scout','Use Card'][ai]+'!');
   }
-  if(e.code==='KeyX'){ screen='map'; menuOn=false; updateBtns(); }
+  if(e.code==='KeyX'){sc='map';mo=false;ub();}
 });
 
-function setScreen(s){ screen=s; menuOn=false; updateBtns(); }
-function updateBtns(){
-  document.querySelectorAll('.btn').forEach(b=>{
-    b.classList.toggle('active', b.textContent.toLowerCase()===screen || (b.textContent==='BATTLE'&&screen==='action') || (b.textContent==='LOG'&&screen==='resolve'));
-  });
-}
+function ss(s){sc=s;mo=false;ub();}
+function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle('a',['map','act','crd','log'][i]===sc));}
 
-loop();
+lp();
 </script>
 </body>
 </html>
