@@ -1585,9 +1585,9 @@ function drawEdgeBlending(startTX,startTY,endTX,endTY){
 }
 
 function drawAtmosphere(){
-  // Subtle noise overlay
-  if(fr%2===0){
-    for(let i=0;i<20;i++){
+  // Subtle noise overlay (every 4th frame, fewer points)
+  if(fr%4===0){
+    for(let i=0;i<8;i++){
       const nx=Math.floor(thRand(fr&255,i,500)*W);
       const ny=Math.floor(thRand(fr&255,i,510)*H);
       bx(nx,ny,1,1,'rgba(128,128,128,.03)');
@@ -1736,12 +1736,13 @@ function dMap(){
     for(let x=startTX;x<=endTX;x++){drawTile(x,y);}
   }
 
-  // Edge blending post-pass
-  drawEdgeBlending(startTX,startTY,endTX,endTY);
+  // Edge blending post-pass (every 3rd frame for performance)
+  if(fr%3===0) drawEdgeBlending(startTX,startTY,endTX,endTY);
 
   // ── FOG OF WAR OVERLAY ── (after tiles, before sprites)
   drawFogOverlay(startTX,startTY,endTX,endTY);
-  drawFogParticles();
+  // Fog particles only every other frame
+  if(fr%2===0) drawFogParticles();
 
   drawParticles(camX,camY);
   drawBirds();
@@ -2303,7 +2304,7 @@ document.addEventListener('keydown',e=>{
       fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN');
         // Reveal starting area
         fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-        fadeIn();twSet('Welcome to 0xARK Island! Explore and collect cards.');});
+        fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
     }
     return;
   }
