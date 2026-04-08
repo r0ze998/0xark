@@ -1,100 +1,54 @@
 # 0xARK
 
-> **期間限定オンチェーンPvPカード奪い合いゲーム on Starknet**
+> **GI x Dark Forest x FRLG — ZK card-stealing PvP on Solana**
 
-ZKで手札を隠し、呪文で奪い合い、AIエージェントに戦略を託す。誰が何を持っているかは見えない。信頼できるのはコードだけ。
+Explore a fog-covered island. Collect 5 card types to win. Steal from rivals. Hide your hand with ZK. Let AI agents trade intel for micropayments.
 
----
-
-## What is 0xARK?
-
-プレイヤーは期間限定の「箱舟（ARK）」に放り込まれ、100枚の指定カードを集めてクリアを目指す。カードは探索やトレードで手に入るが、呪文で他プレイヤーから奪うこともできる。
-
-- 🃏 **手札はZKで秘匿** — 誰が何を持ってるか分からない
-- ⚔️ **呪文で奪い合い** — 窃盗、強奪、偵察、防壁
-- 🤖 **AIエージェントが分身** — 寝てる間もエージェントが防御・交渉・探索
-- 💰 **x402で自律経済** — エージェント間の情報売買・傭兵・保険が勝手に生まれる
-- ⏳ **シーズン制** — 2〜4週間の期間限定。終了時に上位者だけがカードを永続NFTとして持ち出せる
+**[Play Now](https://r0ze998.github.io/0xark/)** | [GDD v0.3](GDD-v0.3.md) | [Solana Program](solana/oxark/)
 
 ---
 
-## Core Experience
+## How It Works
 
-> 「あいつが持ってるはず」という推理と、「奪われるかもしれない」という緊張が常に共存する。
+3 players are dropped onto an island shrouded in Fog of War. Each area holds different cards:
 
-```
-探索（ARKを歩く、街を訪れる）
-  ↓
-遭遇（アイテム / 他プレイヤー / エージェント）
-  ↓
-判断（戦う / 逃げる / 交渉する / 呪文で奪う）
-  ↓
-獲得 or 喪失（カードが増える or 減る）
-  ↓
-管理（バインダー整理、呪文温存、次の行動計画）
-  ↓
-探索へ戻る
-```
+| Area | Cards Available | Vibe |
+|------|----------------|------|
+| **Port Town** | Crystal, Shadow | Safe zone, NPCs, shops |
+| **Deep Forest** | Flame, Storm | Tall grass encounters, high risk |
+| **Ancient Ruins** | Void, Crystal | Rare drops, dangerous |
 
----
+**You must visit all areas to complete your collection.**
 
-## Card System
+### Actions (1 per turn, simultaneous commit-reveal)
 
-### バインダー
-- **指定ポケット**: 100スロット（No.000〜099）。対応するカード1枚のみ収納可能
-- **フリーポケット**: 45スロット。呪文・余剰カードを自由に格納
-- 100枚コンプ = **ゲームクリア**
+| Action | Effect | Constraint |
+|--------|--------|-----------|
+| Draw | Get a card from current area | Area-specific pool |
+| Steal | Take rival's card | **Same area only** |
+| Barrier | Block steal attempts | 2 uses |
+| Scout | See rival's hand + location | Works anywhere |
+| Move | Travel to adjacent area | Costs your turn |
+| Use Card | Consume for powerful effect | Card is destroyed |
 
-### カード化ルール
-- アイテム入手 → 即カード化（グローバル限度枚数内なら）
-- カード化後、**Nブロック以内にバインダーに格納**しないと自動でアイテム化（不可逆）
-- 「実体化（ゲイン）」するとアイテムとして使えるが、**ランクB以上は二度とカード化不可**
-- 番号違いの指定ポケットに入れると**カードは破壊される**
+### Card Consumption
 
-### グローバル限度枚数
-各カードはゲーム全体で存在できる枚数がスマートコントラクトで強制される。**誰にも変更不可。**
+Every card can be held (for completion) or consumed (for power):
 
-| ランク | 限度枚数 | 性質 |
-|--------|---------|------|
-| SS | 1〜5枚 | 独占可能。狙われる覚悟が必要 |
-| S | 6〜13枚 | 少数精鋭。情報戦の対象 |
-| A | 11〜30枚 | レア。トレード価値が高い |
-| B〜E | 20〜120枚 | 中堅〜実用的 |
-| F〜H | 130枚〜 | コモン |
+| Card | Consume Effect |
+|------|---------------|
+| Crystal | Next Steal guaranteed (pierces Barrier) |
+| Shadow | Invisible for 1 turn |
+| Flame | Burn target's card |
+| Storm | Nullify all Barriers |
+| Void | Copy target's card |
 
-### ゲイン待ち（待機キュー）
-限度枚数がMAXの時にアイテムを入手 → オンチェーンキューに入る → 誰かがカードを消費した瞬間、先着順で自動カード化。
+**The core dilemma: hold it for the win, or use it to survive.**
 
----
-
-## Spells
-
-| 呪文 | 効果 | 対抗 |
-|------|------|------|
-| **窃盗** | 相手のフリーポケットからランダム1枚奪取 | 防壁 |
-| **強奪** | 相手の指定ポケットから狙い撃ち | 堅牢 |
-| **偵察** | 相手のバインダー内容を一部覗く | — |
-| **防壁** | 呪文攻撃を1回無効化 | — |
-| **堅牢** | 指定カード1枚を一定期間奪取不可 | — |
-| **交換** | 双方合意でカード交換 | — |
-
-> 呪文の使用履歴はオンチェーンで**公開**。手札はZKで**秘匿**。だから推理が成立する。
-
----
-
-## Why Blockchain?
-
-0xARKは「ブロックチェーンゲーム」ではなく「ブロックチェーンでしか作れないゲーム」。
-
-| 要素 | なぜオンチェーンか |
-|------|------------------|
-| カード限度枚数 | 運営が改ざん不可能 |
-| ZK手札秘匿 | サーバーが不正できない。プレイヤー自身が証明を生成 |
-| AIエージェント | パーミッションレス。運営がBANできない |
-| x402決済 | $0.001単位のマイクロ決済が成立 |
-| 持ち出しNFT | ゲーム終了後も永続。運営が消せない |
-
-**「信頼不要の対戦環境」— 運営を信頼しなくても、ゲームが公正に動くことが数学的に保証される。**
+### Win Conditions
+1. **Complete** — Collect all 5 unique card types
+2. **Timeout** — Most unique cards after 30 rounds
+3. **Elimination** — All rivals have 0 cards
 
 ---
 
@@ -102,70 +56,67 @@ ZKで手札を隠し、呪文で奪い合い、AIエージェントに戦略を�
 
 | Layer | Technology |
 |-------|-----------|
-| Smart Contract | Cairo (Starknet) |
-| Game Framework | Dojo (ECS) |
-| ZK | Starknet native STARK proofs |
-| AI Agent | Natural language → Torii → onchain action |
-| Payment | x402 (agent-to-agent micropayments) |
-| Wallet | Cartridge Controller (session keys) |
-| Frontend | React |
-| Deploy (test) | Slot |
-| Deploy (prod) | Starknet Mainnet |
+| Smart Contract | **Anchor (Rust)** on Solana |
+| ZK | Circom + groth16-solana (commit-reveal) |
+| AI Agent Payment | x402 + USDC micropayments |
+| Frontend | Canvas (FRLG pixel art) |
+| Wallet | Phantom |
 
 ---
 
-## Season Design
+## Architecture
 
-- **1 Season = 2〜4 weeks**
-- Entry requires token stake
-- **Win**: First to collect all 100 designated cards
-- **Timeout**: Card count ranking
-- **Carry-out**: Top players take 1〜3 cards as permanent NFTs
-- Everything else resets. NFTs persist forever.
-
----
-
-## Autonomous World Design
-
-Every design decision passes through 3 filters:
-
-1. **Composability** — Can third parties extend it without permission?
-2. **Emergence** — Can gameplay arise that designers didn't predict?
-3. **Blockchain necessity** — Is it impossible on Web2?
-
-→ Deep dive: [GDD.md](GDD.md) Section 10
+```
+solana/oxark/programs/oxark/src/
+├── state.rs          — Game, PlayerState, CardPool, CommitAction, Area
+├── constants.rs      — Card tables, area configs, spell limits
+├── error.rs          — 15 error codes
+├── instructions/
+│   ├── create_game   — Init game + card pool
+│   ├── join_game     — Join + set starting area
+│   ├── start_game    — Deal initial cards
+│   ├── commit_action — SHA256 hash commit
+│   ├── reveal_action — Hash verify + action validate
+│   └── resolve_round — Simultaneous resolution
+│                       Move→Shadow→Storm→Barrier→Steal→Flame→Scout→Draw→Void
+└── tests/
+    └── test_game.rs  — 5 passing tests (LiteSVM)
+```
 
 ---
 
-## Roadmap
+## Development
 
-### Phase 1: Core Prototype ← **now**
-- [x] Game Design Document
-- [x] Autonomous World design (AI Agent / x402 / ZK / Composability)
-- [ ] Minimal prototype (3 players, 5 cards, 3 spells, commit-reveal)
-- [ ] Core experience validation
+```bash
+# Build
+cd solana/oxark && anchor build
 
-### Phase 2: Expansion
-- [ ] 100 card types + full spell set
-- [ ] Map & exploration
-- [ ] Full ZK implementation
-- [ ] AI Agent integration
-- [ ] Closed playtest (10-20 players)
+# Test
+cargo test
 
-### Phase 3: Season 1
-- [ ] Frontend
-- [ ] x402 agent economy
-- [ ] Starknet Mainnet deploy
-- [ ] Community (Discord)
-- [ ] Season 1 launch
+# Play (frontend)
+open solana/client/index.html
+# or visit https://r0ze998.github.io/0xark/
+```
+
+---
+
+## Colosseum Frontier Hackathon
+
+0xARK is being built for the [Colosseum Frontier Hackathon](https://colosseum.com/frontier) (April 6 — May 11, 2026).
+
+**Tracks**: Gaming / AI / Stablecoins
+
+**Differentiation**: First Solana game combining ZK hidden hands + AI agent micropayments (x402) + area-based strategy.
 
 ---
 
 ## Links
 
-- **GDD**: [GDD.md](GDD.md)
-- **Inspiration**: Greed Island (HxH) × Dark Forest × Starknet ZK
-- **Built by**: [r0ze](https://x.com/r0ze_____) & neo
+- **Live**: [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/)
+- **GDD**: [v0.3](GDD-v0.3.md) | [v0.2](GDD-v0.2.md) | [v0.1](GDD.md)
+- **Research**: [Solana Frontier Research](https://github.com/r0ze998/0xark/blob/main/docs/PLAN.md)
+- **Builder**: [@r0ze_____](https://x.com/r0ze_____)
 
 ---
 
