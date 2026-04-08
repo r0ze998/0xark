@@ -1,0 +1,35 @@
+use anchor_lang::prelude::*;
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("Game is not in lobby")]
+    NotInLobby,
+    #[msg("Game is full")]
+    GameFull,
+    #[msg("Not enough players")]
+    NotEnoughPlayers,
+    #[msg("Only host can start")]
+    NotHost,
+    #[msg("Not in commit phase")]
+    NotCommitPhase,
+    #[msg("Not in reveal phase")]
+    NotRevealPhase,
+    #[msg("Already committed")]
+    AlreadyCommitted,
+    #[msg("Already revealed")]
+    AlreadyRevealed,
+    #[msg("Not committed yet")]
+    NotCommitted,
+    #[msg("Hash mismatch")]
+    HashMismatch,
+    #[msg("Invalid action")]
+    InvalidAction,
+    #[msg("No spells left")]
+    NoSpellsLeft,
+    #[msg("Cannot target self")]
+    CannotTargetSelf,
+    #[msg("Card not found in hand")]
+    CardNotFound,
+    #[msg("Pool is empty")]
+    PoolEmpty,
+}

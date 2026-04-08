@@ -1,0 +1,331 @@
+use anchor_lang::prelude::*;
+use crate::constants::*;
+use crate::state::*;
+use crate::error::ErrorCode;
+
+#[derive(Accounts)]
+#[instruction(game_id: u64)]
+pub struct ResolveRound<'info> {
+    #[account(
+        mut,
+        seeds = [GAME_SEED, game_id.to_le_bytes().as_ref()],
+        bump = game.bump,
+    )]
+    pub game: Account<'info, Game>,
+    #[account(
+        mut,
+        seeds = [CARD_POOL_SEED, game_id.to_le_bytes().as_ref()],
+        bump = card_pool.bump,
+    )]
+    pub card_pool: Account<'info, CardPool>,
+    /// All player states passed as remaining accounts
+    pub caller: Signer<'info>,
+}
+
+pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
+    let game = &mut ctx.accounts.game;
+    require!(game.status == GameStatus::RevealPhase, ErrorCode::NotRevealPhase);
+    require!(game.reveal_count == game.player_count, ErrorCode::NotRevealPhase);
+
+    let pool = &mut ctx.accounts.card_pool;
+    let player_count = game.player_count as usize;
+
+    // Deserialize all player states from remaining accounts
+    let mut players: Vec<PlayerData> = Vec::with_capacity(player_count);
+    for account_info in ctx.remaining_accounts.iter().take(player_count) {
+        let data = account_info.try_borrow_data()?;
+        // Parse PlayerState from account data (skip 8-byte discriminator)
+        let ps_bytes = &data[8..];
+        let ps: PlayerState = PlayerState::try_from_slice(ps_bytes)
+            .map_err(|_| ErrorCode::InvalidAction)?;
+        players.push(PlayerData {
+            key: *account_info.key,
+            action: ActionType::from(ps.revealed_action),
+            target: ps.revealed_target,
+            cards: ps.cards,
+            card_count: ps.card_count,
+            steal_count: ps.steal_count,
+            barrier_count: ps.barrier_count,
+            scout_count: ps.scout_count,
+        });
+    }
+
+    // === Resolution Order ===
+    // 1. Shadow (invisibility)
+    let mut invisible: Vec<bool> = vec![false; player_count];
+    for (i, p) in players.iter_mut().enumerate() {
+        if p.action == ActionType::UseShadow {
+            invisible[i] = true;
+            remove_card(&mut p.cards, 2); // Remove Shadow card
+            p.card_count -= 1;
+            msg!("Player {} used Shadow — invisible this turn", p.key);
+        }
+    }
+
+    // 2. Storm (nullify all barriers)
+    let mut storm_active = false;
+    for p in players.iter_mut() {
+        if p.action == ActionType::UseStorm {
+            storm_active = true;
+            remove_card(&mut p.cards, 4); // Remove Storm card
+            p.card_count -= 1;
+            msg!("Player {} used Storm — all barriers nullified", p.key);
+        }
+    }
+
+    // 3. Barrier (mark protected, unless Storm active)
+    let mut barriered: Vec<bool> = vec![false; player_count];
+    for (i, p) in players.iter_mut().enumerate() {
+        if p.action == ActionType::Barrier && !storm_active {
+            barriered[i] = true;
+            p.barrier_count -= 1;
+            msg!("Player {} used Barrier", p.key);
+        } else if p.action == ActionType::Barrier && storm_active {
+            p.barrier_count -= 1;
+            msg!("Player {} Barrier was nullified by Storm", p.key);
+        }
+    }
+
+    // 4. Steal (take card, check barrier + invisibility + Crystal)
+    for i in 0..player_count {
+        if players[i].action == ActionType::Steal || players[i].action == ActionType::UseCrystal {
+            let target_key = players[i].target;
+            let is_crystal = players[i].action == ActionType::UseCrystal;
+
+            if let Some(ti) = players.iter().position(|p| p.key == target_key) {
+                let target_invisible = invisible[ti];
+                let target_barriered = barriered[ti];
+
+                if target_invisible {
+                    msg!("Steal failed: target {} is invisible", target_key);
+                } else if target_barriered && !is_crystal {
+                    msg!("Steal blocked by Barrier");
+                } else {
+                    // Steal succeeds
+                    let seed = game.round as u64 * 31 + i as u64 * 17;
+                    let stolen = steal_random_card(&mut players[ti].cards, seed);
+                    if stolen > 0 {
+                        place_card(&mut players[i].cards, stolen);
+                        players[i].card_count += 1;
+                        players[ti].card_count -= 1;
+                        msg!("Player {} stole card {} from {}", players[i].key, stolen, target_key);
+                    }
+                }
+
+                if is_crystal {
+                    remove_card(&mut players[i].cards, 1); // Remove Crystal
+                    players[i].card_count -= 1;
+                } else {
+                    players[i].steal_count -= 1;
+                }
+            }
+        }
+    }
+
+    // 5. Flame (destroy target's card)
+    for i in 0..player_count {
+        if players[i].action == ActionType::UseFlame {
+            let target_key = players[i].target;
+            if let Some(ti) = players.iter().position(|p| p.key == target_key) {
+                if !invisible[ti] {
+                    let seed = game.round as u64 * 37 + i as u64 * 13;
+                    let destroyed = steal_random_card(&mut players[ti].cards, seed);
+                    if destroyed > 0 {
+                        players[ti].card_count -= 1;
+                        // Card is destroyed, not transferred
+                        msg!("Player {} burned card {} from {}", players[i].key, destroyed, target_key);
+                    }
+                }
+            }
+            remove_card(&mut players[i].cards, 3); // Remove Flame
+            players[i].card_count -= 1;
+        }
+    }
+
+    // 6. Scout (reveal target's hand — emit event)
+    for i in 0..player_count {
+        if players[i].action == ActionType::Scout {
+            let target_key = players[i].target;
+            let target_cards = players.iter()
+                .find(|pp| pp.key == target_key)
+                .map(|pp| pp.cards)
+                .unwrap_or([0; 5]);
+            players[i].scout_count -= 1;
+            msg!("Player {} scouted {}: cards {:?}", players[i].key, target_key, target_cards);
+        }
+    }
+
+    // 7. Draw (from pool)
+    let clock = Clock::get()?;
+    let mut seed = clock.slot;
+    for (i, p) in players.iter_mut().enumerate() {
+        if p.action == ActionType::Draw {
+            let card_id = pick_card_from_pool(&mut pool.remaining, seed);
+            if card_id > 0 {
+                place_card(&mut p.cards, card_id);
+                p.card_count += 1;
+                game.cards_in_pool -= 1;
+                msg!("Player {} drew card {}", p.key, card_id);
+            }
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(i as u64);
+        }
+    }
+
+    // 8. Void (copy target's card)
+    for i in 0..player_count {
+        if players[i].action == ActionType::UseVoid {
+            let target_key = players[i].target;
+            if let Some(ti) = players.iter().position(|p| p.key == target_key) {
+                if !invisible[ti] && players[ti].card_count > 0 {
+                    // Pick a random card from target to copy
+                    let seed = game.round as u64 * 41 + i as u64 * 7;
+                    let copied = peek_random_card(&players[ti].cards, seed);
+                    if copied > 0 {
+                        place_card(&mut players[i].cards, copied);
+                        players[i].card_count += 1;
+                        msg!("Player {} copied card {} from {}", players[i].key, copied, target_key);
+                    }
+                }
+            }
+            remove_card(&mut players[i].cards, 5); // Remove Void
+            players[i].card_count -= 1;
+        }
+    }
+
+    // === Write back player states ===
+    for (idx, account_info) in ctx.remaining_accounts.iter().take(player_count).enumerate() {
+        let mut data = account_info.try_borrow_mut_data()?;
+        let p = &players[idx];
+        // Write cards and counts back (skip discriminator + game_id + player + player_index)
+        // Offset: 8 (disc) + 8 (game_id) + 32 (player) + 1 (index) = 49
+        data[49..54].copy_from_slice(&p.cards);
+        data[54] = p.card_count;
+        data[55] = p.steal_count;
+        data[56] = p.barrier_count;
+        data[57] = p.scout_count;
+        // Reset commit/reveal flags
+        data[58] = 0; // has_committed = false
+        data[59] = 0; // has_revealed = false
+    }
+
+    // === Check victory ===
+    let mut winner_key = Pubkey::default();
+
+    // Comp victory: 5 unique card types
+    for p in &players {
+        if count_unique_types(&p.cards) == TOTAL_CARD_TYPES {
+            winner_key = p.key;
+            break;
+        }
+    }
+
+    // Elimination victory: all others have 0 cards
+    if winner_key == Pubkey::default() {
+        let alive: Vec<&PlayerData> = players.iter().filter(|p| p.card_count > 0).collect();
+        if alive.len() == 1 {
+            winner_key = alive[0].key;
+        }
+    }
+
+    if winner_key != Pubkey::default() {
+        game.status = GameStatus::Finished;
+        game.winner = winner_key;
+        msg!("Game {} won by {}", game_id, winner_key);
+    } else if game.round >= game.max_rounds {
+        // Time's up — most unique cards wins
+        let best = players.iter().max_by_key(|p| count_unique_types(&p.cards)).unwrap();
+        game.status = GameStatus::Finished;
+        game.winner = best.key;
+        msg!("Game {} time up — winner {} with {} unique cards", game_id, best.key, count_unique_types(&best.cards));
+    } else {
+        // Next round
+        game.round += 1;
+        game.status = GameStatus::CommitPhase;
+        game.commit_count = 0;
+        game.reveal_count = 0;
+        msg!("Round {} resolved, advancing to round {}", game.round - 1, game.round);
+    }
+
+    Ok(())
+}
+
+// === Helper structs and functions ===
+
+struct PlayerData {
+    key: Pubkey,
+    action: ActionType,
+    target: Pubkey,
+    cards: [u8; 5],
+    card_count: u8,
+    steal_count: u8,
+    barrier_count: u8,
+    scout_count: u8,
+}
+
+fn remove_card(cards: &mut [u8; 5], card_id: u8) {
+    for slot in cards.iter_mut() {
+        if *slot == card_id {
+            *slot = 0;
+            return;
+        }
+    }
+}
+
+fn place_card(cards: &mut [u8; 5], card_id: u8) {
+    for slot in cards.iter_mut() {
+        if *slot == 0 {
+            *slot = card_id;
+            return;
+        }
+    }
+}
+
+fn steal_random_card(cards: &mut [u8; 5], seed: u64) -> u8 {
+    let filled: Vec<usize> = cards.iter().enumerate()
+        .filter(|(_, &c)| c > 0)
+        .map(|(i, _)| i)
+        .collect();
+    if filled.is_empty() {
+        return 0;
+    }
+    let pick = (seed as usize) % filled.len();
+    let idx = filled[pick];
+    let card_id = cards[idx];
+    cards[idx] = 0;
+    card_id
+}
+
+fn peek_random_card(cards: &[u8; 5], seed: u64) -> u8 {
+    let filled: Vec<u8> = cards.iter().filter(|&&c| c > 0).copied().collect();
+    if filled.is_empty() {
+        return 0;
+    }
+    filled[(seed as usize) % filled.len()]
+}
+
+fn pick_card_from_pool(remaining: &mut [u8; 5], seed: u64) -> u8 {
+    let total: u32 = remaining.iter().map(|&r| r as u32).sum();
+    if total == 0 {
+        return 0;
+    }
+    let pick = (seed % total as u64) as u32;
+    let mut cumulative: u32 = 0;
+    for i in 0..5 {
+        cumulative += remaining[i] as u32;
+        if pick < cumulative {
+            remaining[i] -= 1;
+            return (i + 1) as u8;
+        }
+    }
+    0
+}
+
+fn count_unique_types(cards: &[u8; 5]) -> u8 {
+    let mut seen = [false; 6]; // index 0 unused, 1-5 for card types
+    for &c in cards {
+        if c > 0 && c <= 5 {
+            seen[c as usize] = true;
+        }
+    }
+    seen.iter().filter(|&&s| s).count() as u8
+}
