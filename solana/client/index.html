@@ -90,8 +90,8 @@ const AC=new(window.AudioContext||window.webkitAudioContext)();
 let soundEnabled=localStorage.getItem('oxark_sound')!=='off';
 let audioResumed=false;
 function resumeAudio(){if(!audioResumed&&AC.state==='suspended'){AC.resume();audioResumed=true;}}
-document.addEventListener('keydown',resumeAudio,{once:false});
-document.addEventListener('click',resumeAudio,{once:false});
+document.addEventListener('keydown',resumeAudio,{once:true});
+document.addEventListener('click',resumeAudio,{once:true});
 
 // Noise buffer for wave/wind/whoosh effects
 const NOISE_LEN=AC.sampleRate*2;
@@ -657,22 +657,15 @@ function getNeighborType(m,x,y,dx,dy){
   return m[ny]?.[nx]??-1;
 }
 // Ground tile types (for edge blending)
-const GROUND_GRASS=new Set([1,7,11,3,8,9,12,13,19,20,28,29,30,23,24,26,27]);
 const GROUND_WATER=new Set([0,17]);
 const GROUND_SAND=new Set([4,10,14]);
-const GROUND_PATH=new Set([2]);
 const GROUND_MOUNTAIN=new Set([18,22]);
-function tileIsGrass(t){return GROUND_GRASS.has(t);}
-function tileIsWater(t){return GROUND_WATER.has(t);}
-function tileIsSand(t){return GROUND_SAND.has(t);}
-function tileIsPath(t){return GROUND_PATH.has(t);}
-function tileIsMountain(t){return GROUND_MOUNTAIN.has(t);}
 // Classify a tile to its base ground type
 function groundType(t){
-  if(tileIsWater(t))return'water';
-  if(tileIsSand(t))return'sand';
-  if(tileIsPath(t))return'path';
-  if(tileIsMountain(t))return'mountain';
+  if(GROUND_WATER.has(t))return'water';
+  if(GROUND_SAND.has(t))return'sand';
+  if(t===2)return'path';
+  if(GROUND_MOUNTAIN.has(t))return'mountain';
   return'grass';
 }
 
@@ -694,7 +687,7 @@ let titleMenuIdx=0;
 let saveIndicatorTimer=0;
 let autoSaveTimer=0;
 const AUTO_SAVE_INTERVAL=1800; // 30 seconds at 60fps
-let encounterCooldown=0,actEnterFrame=0;
+let encounterCooldown=0;
 let camX=0,camY=0,camTargetX=0,camTargetY=0;
 let mapTransitioning=false;
 
@@ -907,8 +900,6 @@ let shadowStepsLeft=0;
 const burnedTiles=[]; // {mapIdx, x, y} — tiles burned by Flame
 let mapCardUseActive=false, mapCardUseIdx=0;
 let mapCardDirSelect=false, mapCardDirIdx=0, mapCardPendingType=-1;
-const MAP_USABLE_CARDS=[3,2,5]; // Flame=3, Shadow=2, Void=5 (card IDs)
-const MAP_CARD_NAMES=['FLAME','SHADOW','VOID'];
 
 // SFX for new features
 function resetNewFeatureState(){
@@ -917,6 +908,25 @@ function resetNewFeatureState(){
   burnedTiles.length=0;shadowStepsLeft=0;fishingCooldownTimer=0;
   fishingActive=false;inBuilding=false;crystalRevealTimer=0;
   mapCardUseActive=false;fountainActive=false;
+}
+
+function resetGameState(startCards){
+  clearSave();fogClear();
+  const cards0=startCards?[1,3,0,0,0]:[0,0,0,0,0];
+  const cc0=startCards?2:0;
+  const cards1=startCards?[2,5,0,0,0]:[0,0,0,0,0];
+  const cc1=startCards?2:0;
+  const cards2=startCards?[4,0,0,0,0]:[0,0,0,0,0];
+  const cc2=startCards?1:0;
+  pl[0].cd=cards0;pl[0].cc=cc0;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
+  pl[1].cd=cards1;pl[1].cc=cc1;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
+  pl[2].cd=cards2;pl[2].cc=cc2;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
+  sp.s=3;sp.b=2;sp.c=1;rd=1;currentMap=0;stepCounter=0;randomEventTimer=0;
+  rivalMaps=[0,0];lg.length=0;lg.push(startCards?'New game started!':'New game started!');
+  treasures.forEach(t=>t.collected=false);
+  tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
+  resetNewFeatureState();
+  edgeCacheDirty=true;fogCacheDirty=true;
 }
 
 function sfxFishCast(){if(!soundEnabled)return;beep(300,.08,.06);setTimeout(()=>beep(200,.06,.05),80);}
@@ -2775,9 +2785,6 @@ function dMenu(){
 // BATTLE / ACTION SCREEN (FRLG STYLE)
 // ═══════════════════════════════════════
 
-// Battle animation particles
-const battleParticles=[];
-let battleAnimFrame=0;
 
 // New SFX for battle effects
 function sfxCrystal(){if(!soundEnabled)return;beep(880,.06,.07);setTimeout(()=>beep(1100,.04,.06),50);setTimeout(()=>beep(1320,.06,.07),100);setTimeout(()=>beep(1760,.08,.08),150);}
@@ -2975,11 +2982,6 @@ function drawBattleSprite(p,cx,cy,scale,facingAway){
       bx(ox+3*s,oy,8*s,3*s,hairC);bx(ox+2*s,oy,2*s,2*s,hairC);bx(ox+10*s,oy,2*s,2*s,hairC);
     }
   }
-}
-
-// Draw "HP bar" style but for card count on mini display
-function drawMiniSpriteBattle(p,cx,cy,scale){
-  drawBattleSprite(p,cx,cy,scale,false);
 }
 
 function drawVsSplash(){
@@ -3325,7 +3327,7 @@ function generateResolveEvents(){
       lg.push('R'+rd+': '+pl[1].n+' drew '+cr.n+'!');
     }else{
       // Rival hand full - discard random then draw
-      const discarded=removeCardFromPlayer(1,-1);
+      removeCardFromPlayer(1,-1);
       addCardToPlayer(1,cardId);
       events.push({type:'action',who:pl[1].n,action:'DRAW',text:pl[1].n+' swapped a card for '+cr.n+'!',effect:'card_get_rival'});
       lg.push('R'+rd+': '+pl[1].n+' swapped for '+cr.n+'!');
@@ -3366,7 +3368,7 @@ function generateResolveEvents(){
       events.push({type:'action',who:pl[2].n,action:'DRAW',text:pl[2].n+' used DRAW and got '+cr.n+'!',effect:'card_get_rival'});
       lg.push('R'+rd+': '+pl[2].n+' drew '+cr.n+'!');
     }else{
-      const discarded=removeCardFromPlayer(2,-1);
+      removeCardFromPlayer(2,-1);
       addCardToPlayer(2,cardId);
       events.push({type:'action',who:pl[2].n,action:'DRAW',text:pl[2].n+' swapped a card for '+cr.n+'!',effect:'card_get_rival'});
       lg.push('R'+rd+': '+pl[2].n+' swapped for '+cr.n+'!');
@@ -3754,7 +3756,6 @@ function drawCardAcquisition(){
     g.globalAlpha=Math.min(1,p.life/10);bx(p.x,p.y,2,2,p.c);g.globalAlpha=1;
   }
 
-  if(t===0){beep(440,.06);setTimeout(()=>beep(550,.06),80);setTimeout(()=>beep(660,.08),160);}
 }
 
 // ═══════════════════════════════════════
@@ -3827,7 +3828,7 @@ function dVictory(){
   }
 
   if(t>35){g.globalAlpha=Math.min(1,(t-35)/20);tx('CONGRATULATIONS!',W/2-128+1,81,12,'rgba(0,0,0,.2)');tx('CONGRATULATIONS!',W/2-128,80,12,'#c89820');g.globalAlpha=1;}
-  if(t>45){g.globalAlpha=Math.min(1,(t-45)/15);drawMiniSpriteBattle(pl[0],W/2,170,3);g.globalAlpha=1;}
+  if(t>45){g.globalAlpha=Math.min(1,(t-45)/15);drawBattleSprite(pl[0],W/2,170,3,false);g.globalAlpha=1;}
 
   if(t>60){
     const cardsT=t-60;
@@ -4790,7 +4791,7 @@ function update(){
             battleWipeActive=true;battleWipeFrame=fr;
             setTimeout(()=>{
               battleWipeActive=false;
-              fadeOut(()=>{sc='act';actEnterFrame=fr;battlePhase='vs_splash';bpFrame=fr;fadeIn();});
+              fadeOut(()=>{sc='act';battlePhase='vs_splash';bpFrame=fr;fadeIn();});
             },600);
           },500);
         }
@@ -4884,15 +4885,7 @@ document.addEventListener('keydown',e=>{
           });
         }else{
           // NEW GAME
-          clearSave();fogClear();
-          pl[0].cd=[1,3,0,0,0];pl[0].cc=2;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
-          pl[1].cd=[2,5,0,0,0];pl[1].cc=2;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
-          pl[2].cd=[4,0,0,0,0];pl[2].cc=1;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
-          sp.s=3;sp.b=2;sp.c=1;rd=1;stepCounter=0;randomEventTimer=0;
-          rivalMaps=[0,0];lg.length=0;lg.push('Game started. Collect all 5 card types to win!');
-          treasures.forEach(t=>t.collected=false);
-          tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
-          resetNewFeatureState();
+          resetGameState(true);
           fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Crystal & Shadow cards found here');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
             fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
@@ -5107,20 +5100,10 @@ document.addEventListener('keydown',e=>{
         }
         else if(mi===7){
           // NEW GAME: reset all state
-          clearSave();fogClear();
-          pl[0].cd=[1,3,0,0,0];pl[0].cc=2;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
-          pl[1].cd=[2,5,0,0,0];pl[1].cc=2;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
-          pl[2].cd=[4,0,0,0,0];pl[2].cc=1;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
-          edgeCacheDirty=true;fogCacheDirty=true;
-          sp.s=3;sp.b=2;sp.c=1;rd=1;currentMap=0;
-          stepCounter=0;randomEventTimer=0;
-          rivalMaps=[0,0];lg.length=0;lg.push('New game started!');
-          treasures.forEach(t=>t.collected=false);
-          tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
-          resetNewFeatureState();
+          resetGameState(true);
           fadeOut(()=>{sc='title';mo=false;fadeIn();ub();});
         }
-        else{fadeOut(()=>{sc=s[mi];mo=false;if(sc==='act'){actEnterFrame=fr;battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
+        else{fadeOut(()=>{sc=s[mi];mo=false;if(sc==='act'){battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
       }
       if(e.code==='KeyX'){mo=false;menuOpenFrame=0;sfxBack();}
     }else{
@@ -5300,16 +5283,7 @@ document.addEventListener('keydown',e=>{
       if(e.code==='KeyZ'){
         // Play again - reset all state
         sfxConfirm();
-        clearSave();fogClear();
-        pl[0].cd=[0,0,0,0,0];pl[0].cc=0;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
-        pl[1].cd=[0,0,0,0,0];pl[1].cc=0;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
-        pl[2].cd=[0,0,0,0,0];pl[2].cc=0;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
-        sp.s=3;sp.b=2;sp.c=1;rd=1;currentMap=0;stepCounter=0;randomEventTimer=0;
-        rivalMaps=[0,0];lg.length=0;lg.push('New game started!');
-        treasures.forEach(t=>t.collected=false);
-        tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
-        resetNewFeatureState();
-        edgeCacheDirty=true;fogCacheDirty=true;
+        resetGameState(false);
         fadeOut(()=>{sc='map';mo=false;showBanner('PORT TOWN','Crystal & Shadow cards found here');
           fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
           fadeIn();twSet('Welcome back! Collect all 5 card types to win!');ub();});
@@ -5325,7 +5299,7 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-function ss(s){sfxSelect();fadeOut(()=>{sc=s;mo=false;if(s==='act'){actEnterFrame=fr;battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
+function ss(s){sfxSelect();fadeOut(()=>{sc=s;mo=false;if(s==='act'){battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
 function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle('a',['map','act','crd','log'][i]===sc));}
 
 // ═══════════════════════════════════════
@@ -5357,7 +5331,8 @@ function saveGame(){
       usedCrystals:[...usedCrystals],
       campfireUsed:campfireUsed,
       burnedTiles:[...burnedTiles],
-      shadowStepsLeft:shadowStepsLeft
+      shadowStepsLeft:shadowStepsLeft,
+      fishingCooldownTimer:fishingCooldownTimer
     };
     localStorage.setItem(SAVE_KEY,JSON.stringify(data));
     saveIndicatorTimer=60;
@@ -5393,6 +5368,7 @@ function loadGame(){
     if(d.campfireUsed!==undefined)campfireUsed=d.campfireUsed;
     if(d.burnedTiles){burnedTiles.length=0;d.burnedTiles.forEach(t=>{burnedTiles.push(t);if(maps[t.mapIdx]&&maps[t.mapIdx][t.y])maps[t.mapIdx][t.y][t.x]=1;});}
     if(d.shadowStepsLeft!==undefined)shadowStepsLeft=d.shadowStepsLeft;
+    if(d.fishingCooldownTimer!==undefined)fishingCooldownTimer=d.fishingCooldownTimer;
     // Sync card counts from actual data to prevent drift
     syncCardCount(0);syncCardCount(1);syncCardCount(2);
     fogLoad();
