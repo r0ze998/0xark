@@ -17,6 +17,24 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 .b:hover{background:#2a2a44;color:#8888aa}.b.a{background:#3848a0;color:#dde;border-color:#5060c0;box-shadow:0 0 6px rgba(56,72,160,.3)}
 #h{color:#2a2a40;font-size:5px;text-align:center;margin-top:6px;letter-spacing:1px}
 @media(max-width:1000px){canvas{width:100vw;height:calc(100vw*2/3)}#emu{padding:4px;border-radius:0}}
+/* Touch Controls Overlay */
+#touch-overlay{display:none;position:fixed;bottom:0;left:0;right:0;height:180px;z-index:100;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#touch-overlay.active{display:block}
+#touch-overlay *{pointer-events:auto}
+.touch-btn{position:absolute;width:40px;height:40px;border-radius:10px;border:2px solid rgba(255,255,255,.25);background:rgba(30,30,50,.65);color:rgba(255,255,255,.7);font:10px 'Press Start 2P',monospace;display:flex;align-items:center;justify-content:center;transition:background .05s}
+.touch-btn.pressed{background:rgba(60,60,100,.85)}
+/* D-pad: bottom-left */
+#dpad-up{left:60px;bottom:128px}
+#dpad-down{left:60px;bottom:40px}
+#dpad-left{left:12px;bottom:84px}
+#dpad-right{left:108px;bottom:84px}
+/* A/B buttons: bottom-right */
+#btn-a{right:24px;bottom:108px;background:rgba(0,180,200,.45);border-color:rgba(0,220,255,.5);font-size:12px}
+#btn-a.pressed{background:rgba(0,180,200,.7)}
+#btn-b{right:80px;bottom:60px;background:rgba(200,50,60,.45);border-color:rgba(255,80,80,.5);font-size:12px}
+#btn-b.pressed{background:rgba(200,50,60,.7)}
+/* START button: bottom-center */
+#btn-start{left:50%;transform:translateX(-50%);bottom:12px;width:64px;height:24px;border-radius:12px;font-size:7px}
 </style>
 </head>
 <body>
@@ -30,6 +48,15 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <button class="b" onclick="ss('log')">LOG</button>
 </div>
 <div id="h">ARROWS move / SPACE menu / Z select / X back / M sound</div>
+</div>
+<div id="touch-overlay">
+<div class="touch-btn" id="dpad-up">&uarr;</div>
+<div class="touch-btn" id="dpad-down">&darr;</div>
+<div class="touch-btn" id="dpad-left">&larr;</div>
+<div class="touch-btn" id="dpad-right">&rarr;</div>
+<div class="touch-btn" id="btn-a">A</div>
+<div class="touch-btn" id="btn-b">B</div>
+<div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
 const c=document.getElementById('g'),W=480,H=320;
@@ -661,6 +688,10 @@ const pl=[
 
 const sp={s:3,b:2,c:1};
 let sc='title',mo=false,mi=0,ai=0,fr=0,wt=0,rd=3;
+let titleMenuIdx=0;
+let saveIndicatorTimer=0;
+let autoSaveTimer=0;
+const AUTO_SAVE_INTERVAL=1800; // 30 seconds at 60fps
 let encounterCooldown=0,actEnterFrame=0;
 let camX=0,camY=0,camTargetX=0,camTargetY=0;
 let mapTransitioning=false;
@@ -1457,6 +1488,7 @@ function doMapTransition(exit){
     // Reveal starting area on new map
     fogRevealRadius(currentMap,pl[0].x,pl[0].y,2);fogSave();
     showBanner(mapNames[currentMap]);
+    saveGame();
     fadeIn(()=>{mapTransitioning=false;});
   });
 }
@@ -1964,7 +1996,17 @@ function dTitle(){
   bx(200,190,8,10,'#183018');bx(230,192,6,8,'#1c381c');bx(270,188,10,14,'#183018');
   for(let i=0;i<5;i++){bx(130+i*10,216+i*6,220-i*20,2,`rgba(48,96,176,${.1-i*.015})`);}
 
-  if(Math.floor(fr/25)%2===0)tx('PRESS Z TO START',W/2-84,190,7,'#f0c830');
+  if(hasSave()){
+    // Show CONTINUE / NEW GAME options
+    const sel=titleMenuIdx||0;
+    const blink=Math.floor(fr/25)%2===0;
+    if(sel===0&&blink||sel!==0)tx('CONTINUE',W/2-44,178,7,sel===0?'#f0c830':'#888898');
+    if(sel===0)tx('\u25B6',W/2-60,178,7,'#f0c830');
+    if(sel===1&&blink||sel!==1)tx('NEW GAME',W/2-44,198,7,sel===1?'#f0c830':'#888898');
+    if(sel===1)tx('\u25B6',W/2-60,198,7,'#f0c830');
+  }else{
+    if(Math.floor(fr/25)%2===0)tx('PRESS Z TO START',W/2-84,190,7,'#f0c830');
+  }
   tx('v0.3  SOLANA',W/2-48,280,5,'#333350');
   tx('2026 r0ze',W/2-36,296,5,'#2a2a40');
 }
@@ -2337,6 +2379,16 @@ function dMap(){
   // Sound indicator
   tx(soundEnabled?'SND:ON':'SND:OFF',440,hudY+16,4,soundEnabled?'#60a060':'#a06060');
 
+  // Save indicator
+  if(saveIndicatorTimer>0){
+    const sa=Math.min(1,saveIndicatorTimer/15);
+    g.globalAlpha=sa;
+    // Floppy disk icon (5x5 pixel art)
+    bx(440,hudY+26,7,6,'#6080c0');bx(441,hudY+26,5,1,'#a0b0d0');bx(442,hudY+28,3,2,'#e0e0e0');
+    tx('SAVING...',412,hudY+28,3,'#6080c0');
+    g.globalAlpha=1;
+  }
+
   // Minimap
   drawMinimap();
 
@@ -2391,7 +2443,7 @@ function dMenu(){
   if(menuOpenFrame===0)menuOpenFrame=fr;
   const menuT=Math.min(1,(fr-menuOpenFrame)/8); // 8 frames to fully open
   const ease=easeInOut(menuT);
-  const menuW=Math.floor(132*ease),menuH=Math.floor(148*ease);
+  const menuW=Math.floor(132*ease),menuH=Math.floor(168*ease);
   const menuX=W-8-menuW,menuY=8;
   bx(0,0,W,H,`rgba(0,0,0,${0.35*ease})`);
   if(menuW>4&&menuH>4){
@@ -2399,15 +2451,16 @@ function dMenu(){
     if(ease>=0.7){
       const itemAlpha=Math.min(1,(ease-0.7)/0.3);
       g.globalAlpha=itemAlpha;
-      const items=['CARDS','MAP','BATTLE','LOG','NEW GAME','CLOSE'];
+      const items=['CARDS','MAP','BATTLE','LOG','SAVE','NEW GAME','CLOSE'];
       items.forEach((s,i)=>{
-        const y=28+i*20;
+        const y=26+i*18;
         // Smooth cursor bounce
         if(i===mi){
           const bounce=Math.sin(fr*0.15)*1.5;
-          tx('\u25B6',W-128+bounce,y,7,'#c04040');tx(s,W-114,y,7,i===4?'#d8b028':'#c04040');
+          const clr=(i===4?'#40a0d0':i===5?'#d8b028':'#c04040');
+          tx('\u25B6',W-128+bounce,y,7,clr);tx(s,W-114,y,7,clr);
         }
-        else tx(s,W-114,y,7,i===4?'#a08820':'#303028');
+        else tx(s,W-114,y,7,i===4?'#3080a0':i===5?'#a08820':'#303028');
       });
       g.globalAlpha=1;
     }
@@ -2934,6 +2987,13 @@ function update(){
   twTick();
   fadeUpdate();updateParticles();updateBanner();
   updateVisualPositions();updateAmbient();
+  // Save indicator countdown
+  if(saveIndicatorTimer>0)saveIndicatorTimer--;
+  // Auto-save every 30 seconds when on map
+  if(sc==='map'&&!mo){
+    autoSaveTimer++;
+    if(autoSaveTimer>=AUTO_SAVE_INTERVAL){autoSaveTimer=0;saveGame();}
+  }
   if(flashT>0)flashT-=dt;
   if(bpShakeTimer>0)bpShakeTimer-=dt;
   if(rivalAlert>0)rivalAlert-=dt;
@@ -3082,12 +3142,44 @@ document.addEventListener('keydown',e=>{
   }
 
   if(sc==='title'){
-    if(e.code==='KeyZ'){
-      sfxConfirm();
-      fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN');
-        // Reveal starting area
-        fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-        fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
+    if(hasSave()){
+      if(e.code==='ArrowUp'){titleMenuIdx=0;sfxMove();}
+      if(e.code==='ArrowDown'){titleMenuIdx=1;sfxMove();}
+      if(e.code==='KeyZ'){
+        sfxConfirm();
+        if(titleMenuIdx===0){
+          // CONTINUE
+          fadeOut(()=>{
+            if(loadGame()){
+              sc='map';showBanner(mapNames[currentMap]);
+              fadeIn();twSet('Welcome back!');
+            }else{
+              sc='map';currentMap=0;showBanner('PORT TOWN');
+              fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+              fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');
+            }
+          });
+        }else{
+          // NEW GAME
+          clearSave();fogClear();
+          pl[0].cd=[1,3,0,0,0];pl[0].cc=2;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
+          pl[1].cd=[2,5,0,0,0];pl[1].cc=2;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
+          pl[2].cd=[4,0,0,0,0];pl[2].cc=1;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
+          sp.s=3;sp.b=2;sp.c=1;rd=3;stepCounter=0;randomEventTimer=0;
+          rivalMaps=[0,0];lg.length=0;lg.push('Game started. Collect all 5 card types to win!');
+          treasures.forEach(t=>t.collected=false);
+          fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN');
+            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+            fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
+        }
+      }
+    }else{
+      if(e.code==='KeyZ'){
+        sfxConfirm();
+        fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN');
+          fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+          fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
+      }
     }
     return;
   }
@@ -3145,13 +3237,19 @@ document.addEventListener('keydown',e=>{
     if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();return;}
     if(mo){
       if(e.code==='ArrowUp'){mi=Math.max(0,mi-1);sfxMove();}
-      if(e.code==='ArrowDown'){mi=Math.min(5,mi+1);sfxMove();}
+      if(e.code==='ArrowDown'){mi=Math.min(6,mi+1);sfxMove();}
       if(e.code==='KeyZ'){
         sfxConfirm();const s=['crd','map','act','log'];
-        if(mi===5)mo=false;
+        if(mi===6)mo=false;
         else if(mi===4){
+          // SAVE
+          saveGame();
+          twSet('Game saved!');
+          mo=false;menuOpenFrame=0;
+        }
+        else if(mi===5){
           // NEW GAME: reset all state
-          fogClear();
+          clearSave();fogClear();
           pl[0].cd=[1,3,0,0,0];pl[0].cc=2;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
           pl[1].cd=[2,5,0,0,0];pl[1].cc=2;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
           pl[2].cd=[4,0,0,0,0];pl[2].cc=1;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
@@ -3224,6 +3322,7 @@ document.addEventListener('keydown',e=>{
     }else if(battlePhase==='result'){
       if(e.code==='KeyZ'){
         sfxConfirm();rd++;
+        saveGame();
         if(playerHasAllFive()){fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
         else if(rd>25){fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
         else{fadeOut(()=>{sc='map';mo=false;battlePhase='select';fadeIn();ub();});}
@@ -3244,6 +3343,145 @@ document.addEventListener('keydown',e=>{
 
 function ss(s){sfxSelect();fadeOut(()=>{sc=s;mo=false;if(s==='act'){actEnterFrame=fr;battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
 function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle('a',['map','act','crd','log'][i]===sc));}
+
+// ═══════════════════════════════════════
+// SAVE / LOAD SYSTEM
+// ═══════════════════════════════════════
+const SAVE_KEY='oxark_save';
+
+function saveGame(){
+  try{
+    const data={
+      px:pl[0].x, py:pl[0].y, pdir:pl[0].dir, pstep:pl[0].step,
+      pcd:[...pl[0].cd], pcc:pl[0].cc,
+      r1x:pl[1].x, r1y:pl[1].y, r1dir:pl[1].dir, r1cd:[...pl[1].cd], r1cc:pl[1].cc,
+      r2x:pl[2].x, r2y:pl[2].y, r2dir:pl[2].dir, r2cd:[...pl[2].cd], r2cc:pl[2].cc,
+      sps:sp.s, spb:sp.b, spc:sp.c,
+      rd:rd, stepCounter:stepCounter,
+      currentMap:currentMap,
+      rivalMaps:[...rivalMaps],
+      log:lg.slice(-20),
+      treasures:treasures.map(t=>t.collected),
+      sc:sc
+    };
+    localStorage.setItem(SAVE_KEY,JSON.stringify(data));
+    saveIndicatorTimer=60;
+  }catch(e){}
+}
+
+function loadGame(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)return false;
+    const d=JSON.parse(raw);
+    pl[0].x=d.px;pl[0].y=d.py;pl[0].dir=d.pdir;pl[0].step=d.pstep;
+    pl[0].cd=[...d.pcd];pl[0].cc=d.pcc;
+    pl[0].visualX=d.px*TW;pl[0].visualY=d.py*TH;pl[0].walkFrame=0;
+    pl[1].x=d.r1x;pl[1].y=d.r1y;pl[1].dir=d.r1dir;pl[1].cd=[...d.r1cd];pl[1].cc=d.r1cc;
+    pl[1].visualX=d.r1x*TW;pl[1].visualY=d.r1y*TH;pl[1].walkFrame=0;
+    pl[2].x=d.r2x;pl[2].y=d.r2y;pl[2].dir=d.r2dir;pl[2].cd=[...d.r2cd];pl[2].cc=d.r2cc;
+    pl[2].visualX=d.r2x*TW;pl[2].visualY=d.r2y*TH;pl[2].walkFrame=0;
+    sp.s=d.sps;sp.b=d.spb;sp.c=d.spc;
+    rd=d.rd;stepCounter=d.stepCounter;
+    currentMap=d.currentMap;
+    rivalMaps=[...d.rivalMaps];
+    lg.length=0;d.log.forEach(l=>lg.push(l));
+    d.treasures.forEach((c,i)=>{if(treasures[i])treasures[i].collected=c;});
+    fogLoad();
+    camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
+    camTargetX=camX;camTargetY=camY;
+    edgeCacheDirty=true;fogCacheDirty=true;
+    return true;
+  }catch(e){return false;}
+}
+
+function hasSave(){
+  try{return !!localStorage.getItem(SAVE_KEY);}catch(e){return false;}
+}
+
+function clearSave(){
+  try{localStorage.removeItem(SAVE_KEY);}catch(e){}
+}
+
+// ═══════════════════════════════════════
+// TOUCH CONTROLS
+// ═══════════════════════════════════════
+const isTouchDevice=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
+
+function simulateKey(code){
+  document.dispatchEvent(new KeyboardEvent('keydown',{code:code,bubbles:true}));
+}
+
+function haptic(){try{if(navigator.vibrate)navigator.vibrate(10);}catch(e){}}
+
+if(isTouchDevice){
+  document.getElementById('touch-overlay').classList.add('active');
+  // Also resume audio on touch
+  document.addEventListener('touchstart',resumeAudio,{once:false});
+
+  const btnMap={
+    'dpad-up':'ArrowUp','dpad-down':'ArrowDown','dpad-left':'ArrowLeft','dpad-right':'ArrowRight',
+    'btn-a':'KeyZ','btn-b':'KeyX','btn-start':'Space'
+  };
+  Object.keys(btnMap).forEach(id=>{
+    const el=document.getElementById(id);
+    el.addEventListener('touchstart',e=>{
+      e.preventDefault();
+      el.classList.add('pressed');
+      haptic();
+      simulateKey(btnMap[id]);
+    },{passive:false});
+    el.addEventListener('touchend',e=>{
+      e.preventDefault();
+      el.classList.remove('pressed');
+    },{passive:false});
+    el.addEventListener('touchcancel',e=>{
+      el.classList.remove('pressed');
+    });
+  });
+
+  // Swipe detection on canvas
+  let touchStartX=0,touchStartY=0,touchStartTime=0;
+  c.addEventListener('touchstart',e=>{
+    if(e.touches.length===1){
+      const t=e.touches[0];
+      touchStartX=t.clientX;touchStartY=t.clientY;
+      touchStartTime=Date.now();
+    }
+  },{passive:true});
+  c.addEventListener('touchend',e=>{
+    const elapsed=Date.now()-touchStartTime;
+    if(elapsed>300)return; // too slow for swipe
+    const ct=e.changedTouches[0];
+    const dx=ct.clientX-touchStartX,dy=ct.clientY-touchStartY;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<20){
+      // Tap: move toward tapped position
+      const rect=c.getBoundingClientRect();
+      const scaleX=W/rect.width,scaleY=H/rect.height;
+      const cx_=(ct.clientX-rect.left)*scaleX;
+      const cy_=(ct.clientY-rect.top)*scaleY;
+      if(sc==='map'&&!mo){
+        const worldX=cx_+camX,worldY=cy_+camY;
+        const tileX=Math.floor(worldX/TW),tileY=Math.floor(worldY/TH);
+        const pdx=tileX-pl[0].x,pdy=tileY-pl[0].y;
+        if(Math.abs(pdx)>=Math.abs(pdy)){
+          simulateKey(pdx>0?'ArrowRight':'ArrowLeft');
+        }else{
+          simulateKey(pdy>0?'ArrowDown':'ArrowUp');
+        }
+      }
+    }else{
+      // Swipe
+      if(Math.abs(dx)>Math.abs(dy)){
+        simulateKey(dx>0?'ArrowRight':'ArrowLeft');
+      }else{
+        simulateKey(dy>0?'ArrowDown':'ArrowUp');
+      }
+    }
+    haptic();
+  },{passive:true});
+}
 
 requestAnimationFrame(loop);
 </script>
