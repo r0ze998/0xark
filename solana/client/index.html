@@ -29,7 +29,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <button class="b" onclick="ss('crd')">CARDS</button>
 <button class="b" onclick="ss('log')">LOG</button>
 </div>
-<div id="h">ARROWS move / SPACE menu / Z select / X back</div>
+<div id="h">ARROWS move / SPACE menu / Z select / X back / M sound</div>
 </div>
 <script>
 const c=document.getElementById('g'),W=480,H=320;
@@ -60,19 +60,171 @@ let fogCacheLastCamX=-9999,fogCacheLastCamY=-9999;
 // AUDIO
 // ═══════════════════════════════════════
 const AC=new(window.AudioContext||window.webkitAudioContext)();
-function beep(f,d,v){try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=f;gn.gain.value=v||.08;o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+(d||.06));}catch(e){}}
-function sfxSelect(){beep(880,.04);setTimeout(()=>beep(1320,.04),40);}
-function sfxMove(){beep(440,.02,.05);}
-function sfxConfirm(){beep(660,.05);setTimeout(()=>beep(990,.08),60);}
-function sfxBack(){beep(330,.05,.06);}
-function sfxVictory(){beep(262,.1);setTimeout(()=>beep(330,.1),100);setTimeout(()=>beep(392,.1),200);setTimeout(()=>beep(523,.2),300);}
-function sfxCardGet(){beep(440,.06);setTimeout(()=>beep(550,.06),60);setTimeout(()=>beep(660,.08),120);}
-function sfxSlash(){try{const o=AC.createOscillator(),gn=AC.createGain();o.type='sawtooth';o.frequency.setValueAtTime(200,AC.currentTime);o.frequency.linearRampToValueAtTime(50,AC.currentTime+.1);gn.gain.value=.1;o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.1);}catch(e){}}
-function sfxShield(){try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.setValueAtTime(300,AC.currentTime);o.frequency.linearRampToValueAtTime(800,AC.currentTime+.08);gn.gain.value=.07;o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.08);}catch(e){}}
-function sfxDamage(){beep(100,.06,.1);setTimeout(()=>beep(100,.06,.1),80);}
-function sfxEncounter(){beep(220,.08,.07);setTimeout(()=>beep(330,.06,.07),80);setTimeout(()=>beep(440,.1,.08),160);}
-function sfxEvent(){beep(330,.06,.06);setTimeout(()=>beep(440,.04,.06),60);setTimeout(()=>beep(550,.06,.06),120);}
-function sfxShop(){beep(660,.04,.06);setTimeout(()=>beep(880,.06,.06),50);}
+let soundEnabled=localStorage.getItem('oxark_sound')!=='off';
+let audioResumed=false;
+function resumeAudio(){if(!audioResumed&&AC.state==='suspended'){AC.resume();audioResumed=true;}}
+document.addEventListener('keydown',resumeAudio,{once:false});
+document.addEventListener('click',resumeAudio,{once:false});
+
+// Noise buffer for wave/wind/whoosh effects
+const NOISE_LEN=AC.sampleRate*2;
+const noiseBuf=AC.createBuffer(1,NOISE_LEN,AC.sampleRate);
+(function(){const d=noiseBuf.getChannelData(0);for(let i=0;i<NOISE_LEN;i++)d[i]=Math.random()*2-1;})();
+
+function beep(f,d,v){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=f;gn.gain.value=v||.08;o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+(d||.06));}catch(e){}}
+function sfxSelect(){if(!soundEnabled)return;beep(880,.04);setTimeout(()=>beep(1320,.04),40);}
+function sfxMove(){if(!soundEnabled)return;beep(440,.02,.05);}
+function sfxConfirm(){if(!soundEnabled)return;beep(660,.05);setTimeout(()=>beep(990,.08),60);}
+function sfxBack(){if(!soundEnabled)return;beep(330,.05,.06);}
+function sfxVictory(){if(!soundEnabled)return;beep(262,.1);setTimeout(()=>beep(330,.1),100);setTimeout(()=>beep(392,.1),200);setTimeout(()=>beep(523,.2),300);}
+function sfxCardGet(){if(!soundEnabled)return;beep(440,.06);setTimeout(()=>beep(550,.06),60);setTimeout(()=>beep(660,.08),120);}
+function sfxSlash(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='sawtooth';o.frequency.setValueAtTime(200,AC.currentTime);o.frequency.linearRampToValueAtTime(50,AC.currentTime+.1);gn.gain.value=.1;o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.1);}catch(e){}}
+function sfxShield(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.setValueAtTime(300,AC.currentTime);o.frequency.linearRampToValueAtTime(800,AC.currentTime+.08);gn.gain.value=.07;o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.08);}catch(e){}}
+function sfxDamage(){if(!soundEnabled)return;beep(100,.06,.1);setTimeout(()=>beep(100,.06,.1),80);}
+function sfxEncounter(){if(!soundEnabled)return;beep(220,.08,.07);setTimeout(()=>beep(330,.06,.07),80);setTimeout(()=>beep(440,.1,.08),160);}
+function sfxEvent(){if(!soundEnabled)return;beep(330,.06,.06);setTimeout(()=>beep(440,.04,.06),60);setTimeout(()=>beep(550,.06,.06),120);}
+function sfxShop(){if(!soundEnabled)return;beep(660,.04,.06);setTimeout(()=>beep(880,.06,.06),50);}
+
+// ── NEW SFX ──
+function sfxStep(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='bandpass';f.frequency.value=800;f.Q.value=1;gn.gain.setValueAtTime(.02,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.02);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.02);}catch(e){}}
+function sfxGrassRustle(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='highpass';f.frequency.value=2000;gn.gain.setValueAtTime(.035,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.06);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.06);}catch(e){}}
+function sfxWaterNear(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='bandpass';f.frequency.value=600;f.Q.value=2;gn.gain.setValueAtTime(.03,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.08);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.08);}catch(e){}}
+function sfxDoorOpen(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(200,AC.currentTime);o.frequency.linearRampToValueAtTime(600,AC.currentTime+.12);gn.gain.setValueAtTime(.06,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.12);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.12);}catch(e){}}
+function sfxShopOpen(){if(!soundEnabled)return;try{const o1=AC.createOscillator(),o2=AC.createOscillator(),gn=AC.createGain();o1.type='square';o2.type='square';o1.frequency.value=880;o2.frequency.value=1100;gn.gain.value=.06;o1.connect(gn);gn.connect(AC.destination);o1.start();o1.stop(AC.currentTime+.06);setTimeout(()=>{try{o2.connect(gn);o2.start();o2.stop(AC.currentTime+.08);}catch(e){}},70);}catch(e){}}
+function sfxShopTrade(){if(!soundEnabled)return;try{const notes=[660,880,1100,1320];notes.forEach((f,i)=>{setTimeout(()=>{try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=f;gn.gain.setValueAtTime(.05,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.08);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.08);}catch(e){}},i*50);});}catch(e){}}
+function sfxSignRead(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=220;gn.gain.setValueAtTime(.06,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.06);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.06);}catch(e){}}
+function sfxMapChange(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='bandpass';f.frequency.setValueAtTime(3000,AC.currentTime);f.frequency.linearRampToValueAtTime(200,AC.currentTime+.25);f.Q.value=1;gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.25);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.25);}catch(e){}}
+function sfxEventAlert(){if(!soundEnabled)return;beep(550,.05,.06);setTimeout(()=>beep(730,.05,.06),60);setTimeout(()=>beep(880,.08,.07),120);}
+function sfxEncounterDramatic(){if(!soundEnabled)return;try{const notes=[220,330,220,440];const durs=[.08,.06,.08,.15];notes.forEach((f,i)=>{setTimeout(()=>{try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=f;gn.gain.setValueAtTime(.08,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+durs[i]);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+durs[i]);}catch(e){}},i*100);});}catch(e){}}
+
+// ── AREA-SPECIFIC AMBIENT LOOPS ──
+const ambientState={
+  currentArea:-1,
+  nodes:[], // active {source,gain,filter} sets
+  targetGain:0.04,
+  fadeSpeed:0.003,
+  birdTimer:0,
+  birdInterval:120+Math.random()*180
+};
+
+function createNoiseSource(loop){
+  const s=AC.createBufferSource();
+  s.buffer=noiseBuf;
+  s.loop=loop!==false;
+  return s;
+}
+
+function stopAmbientNodes(){
+  ambientState.nodes.forEach(n=>{
+    try{n.gain.gain.linearRampToValueAtTime(0,AC.currentTime+0.5);
+    setTimeout(()=>{try{n.source.stop();n.source.disconnect();}catch(e){}},600);
+    }catch(e){}
+  });
+  ambientState.nodes=[];
+}
+
+function startAmbientPort(){
+  // Gentle ocean wave: low-pass filtered noise with cycling volume
+  try{
+    const s=createNoiseSource();
+    const gn=AC.createGain();
+    const f=AC.createBiquadFilter();
+    f.type='lowpass';f.frequency.value=400;f.Q.value=0.5;
+    gn.gain.value=0;
+    s.connect(f);f.connect(gn);gn.connect(AC.destination);
+    s.start();
+    ambientState.nodes.push({source:s,gain:gn,filter:f,type:'wave'});
+  }catch(e){}
+}
+
+function startAmbientForest(){
+  // Subtle wind: band-pass filtered noise
+  try{
+    const s=createNoiseSource();
+    const gn=AC.createGain();
+    const f=AC.createBiquadFilter();
+    f.type='bandpass';f.frequency.value=800;f.Q.value=0.3;
+    gn.gain.value=0;
+    s.connect(f);f.connect(gn);gn.connect(AC.destination);
+    s.start();
+    ambientState.nodes.push({source:s,gain:gn,filter:f,type:'wind'});
+  }catch(e){}
+}
+
+function startAmbientRuins(){
+  // Low ominous drone: very low freq oscillator with tremolo
+  try{
+    const o=AC.createOscillator();
+    const gn=AC.createGain();
+    const lfo=AC.createOscillator();
+    const lfoGain=AC.createGain();
+    o.type='sawtooth';o.frequency.value=55;
+    lfo.type='sine';lfo.frequency.value=0.5;
+    lfoGain.gain.value=0.015;
+    gn.gain.value=0;
+    lfo.connect(lfoGain);lfoGain.connect(gn.gain);
+    o.connect(gn);gn.connect(AC.destination);
+    o.start();lfo.start();
+    ambientState.nodes.push({source:o,gain:gn,filter:null,type:'drone',lfo:lfo,lfoGain:lfoGain});
+  }catch(e){}
+}
+
+function updateAmbient(){
+  if(!soundEnabled||!audioResumed){
+    if(ambientState.nodes.length>0)stopAmbientNodes();
+    ambientState.currentArea=-1;
+    return;
+  }
+  // Only run ambient on map screen
+  if(sc!=='map'){
+    ambientState.nodes.forEach(n=>{
+      try{if(n.gain.gain.value>0.001)n.gain.gain.value=Math.max(0,n.gain.gain.value-ambientState.fadeSpeed);}catch(e){}
+    });
+    return;
+  }
+  // Switch ambient when map changes
+  if(ambientState.currentArea!==currentMap){
+    stopAmbientNodes();
+    ambientState.currentArea=currentMap;
+    if(currentMap===0)startAmbientPort();
+    else if(currentMap===1)startAmbientForest();
+    else if(currentMap===2)startAmbientRuins();
+  }
+  // Fade in active nodes
+  const tgt=ambientState.targetGain;
+  ambientState.nodes.forEach(n=>{
+    try{
+      const cur=n.gain.gain.value;
+      if(cur<tgt)n.gain.gain.value=Math.min(tgt,cur+ambientState.fadeSpeed);
+      // Cycling volume for ocean waves
+      if(n.type==='wave'){
+        const cycle=Math.sin(AC.currentTime*0.8)*0.5+0.5;
+        n.gain.gain.value=tgt*0.5+tgt*0.5*cycle;
+      }
+    }catch(e){}
+  });
+  // Bird chirps in forest (random intervals)
+  if(currentMap===1){
+    ambientState.birdTimer--;
+    if(ambientState.birdTimer<=0){
+      ambientState.birdTimer=80+Math.floor(Math.random()*200);
+      if(soundEnabled){
+        try{
+          const o=AC.createOscillator(),gn=AC.createGain();
+          o.type='sine';
+          const baseF=2000+Math.random()*1500;
+          o.frequency.setValueAtTime(baseF,AC.currentTime);
+          o.frequency.linearRampToValueAtTime(baseF+400,AC.currentTime+.03);
+          o.frequency.linearRampToValueAtTime(baseF-200,AC.currentTime+.06);
+          gn.gain.setValueAtTime(.025,AC.currentTime);
+          gn.gain.linearRampToValueAtTime(0,AC.currentTime+.08);
+          o.connect(gn);gn.connect(AC.destination);
+          o.start();o.stop(AC.currentTime+.08);
+        }catch(e){}
+      }
+    }
+  }
+}
 
 // ═══════════════════════════════════════
 // FRLG WINDOW SYSTEM
@@ -1290,7 +1442,7 @@ function checkExitTile(x,y){
 function doMapTransition(exit){
   if(mapTransitioning)return;
   mapTransitioning=true;
-  sfxConfirm();
+  sfxDoorOpen();sfxMapChange();
   fadeOut(()=>{
     currentMap=exit.targetMap;
     pl[0].x=exit.targetX;
@@ -1556,7 +1708,7 @@ function checkSignpostInteraction(){
     signpostActive=true;
     signpostText=getSignpostMessage(currentMap, fx, fy);
     signpostFrame=fr;
-    sfxConfirm();
+    sfxSignRead();
     return true;
   }
   return false;
@@ -1596,7 +1748,7 @@ function openCardShop(){
   shopConfirm=false;
   shopPhase='list';
   shopResultText='';
-  sfxShop();
+  sfxShopOpen();
 }
 
 function getPlayerFilledSlots(){
@@ -1620,7 +1772,7 @@ function doShopTrade(){
   shopResultFrame=fr;
   shopPhase='result';
   startCardAcquisition(newCard-1);
-  sfxCardGet();
+  sfxShopTrade();
   lg.push('Shop: Traded '+oldName+' for '+newName+'!');
   if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
 }
@@ -1689,7 +1841,7 @@ function triggerRandomEvent(){
   randomEventActive=true;
   randomEventText=ev.text;
   randomEventFrame=fr;
-  sfxEvent();
+  sfxEventAlert();
 
   if(ev.action==='card'){
     // Give a random card if slot available
@@ -2181,6 +2333,9 @@ function dMap(){
   // Exploration percentage
   const expPct=fogExploredPercent(currentMap);
   tx('MAP:'+expPct+'%',340,hudY+16,5,'#686068');
+
+  // Sound indicator
+  tx(soundEnabled?'SND:ON':'SND:OFF',440,hudY+16,4,soundEnabled?'#60a060':'#a06060');
 
   // Minimap
   drawMinimap();
@@ -2778,7 +2933,7 @@ function update(){
   if(fr%20===0)wt++;
   twTick();
   fadeUpdate();updateParticles();updateBanner();
-  updateVisualPositions();
+  updateVisualPositions();updateAmbient();
   if(flashT>0)flashT-=dt;
   if(bpShakeTimer>0)bpShakeTimer-=dt;
   if(rivalAlert>0)rivalAlert-=dt;
@@ -2863,7 +3018,7 @@ function update(){
           encounterExclPlayerY=pl[0].visualY;
           encounterExclRivalX=r.visualX;
           encounterExclRivalY=r.visualY;
-          sfxEncounter();
+          sfxEncounterDramatic();
           // After 0.5s freeze (30 frames), do screen wipe transition
           setTimeout(()=>{
             encounterExclActive=false;
@@ -2917,6 +3072,14 @@ function loop(now){
 // ═══════════════════════════════════════
 document.addEventListener('keydown',e=>{
   if(e.repeat)return;
+
+  // Sound toggle with M key
+  if(e.code==='KeyM'){
+    soundEnabled=!soundEnabled;
+    localStorage.setItem('oxark_sound',soundEnabled?'on':'off');
+    if(!soundEnabled){stopAmbientNodes();ambientState.currentArea=-1;}
+    return;
+  }
 
   if(sc==='title'){
     if(e.code==='KeyZ'){
@@ -3017,14 +3180,16 @@ document.addEventListener('keydown',e=>{
       if(nx!==p.x||ny!==p.y){
         const m=getMap();
         if(nx>=0&&nx<MW&&ny>=0&&ny<MH&&WALKABLE.has(m[ny]?.[nx])){
-          p.x=nx;p.y=ny;p.step++;p.walkFrame=(p.walkFrame+1)%4;sfxMove();
+          p.x=nx;p.y=ny;p.step++;p.walkFrame=(p.walkFrame+1)%4;sfxMove();sfxStep();
           stepCounter++;
           edgeCacheDirty=true;
           // Reveal fog around new position
           fogRevealRadius(currentMap,nx,ny,2);
           fogSave();
           const newTile=m[ny]?.[nx];
-          if(newTile===1||newTile===7||newTile===11)spawnGrassParticles(nx*TW,ny*TH);
+          if(newTile===1||newTile===7||newTile===11){spawnGrassParticles(nx*TW,ny*TH);sfxGrassRustle();}
+          // Water proximity sound
+          if(newTile!==0){const adj=[[nx-1,ny],[nx+1,ny],[nx,ny-1],[nx,ny+1]];if(adj.some(([ax,ay])=>ax>=0&&ax<MW&&ay>=0&&ay<MH&&m[ay]?.[ax]===0))sfxWaterNear();}
 
           // Random map event every 200 steps
           randomEventTimer++;
