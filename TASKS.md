@@ -5,13 +5,13 @@
 ### Priority 1: Game Completeness
 - [x] v16: 8 critical gameplay bugs fixed
 - [x] v17: Pixel-perfect rendering
-- [x] v18: Resolution upgrade 640x480
-- [ ] Battle UI redesign (FRLG-style opponent display, card effects)
-- [ ] Battle flow polish (clear round management, result summary)
-- [ ] Game balance testing (is 5-card completion achievable in reasonable time?)
+- [x] v18: Resolution upgrade 640x480, 16x16 tiles
+- [x] v19: Battle UI redesign (FRLG-style, sprites, effects, grid menu)
+- [ ] Game balance pass (encounter rates, card distribution, difficulty curve)
+- [ ] Edge case testing (hand full, all spells used, etc.)
 
 ### Priority 2: Blockchain
-- [ ] devnet deploy (blocked by faucet — retry hourly)
+- [ ] devnet deploy (faucet down 30+ hours — retry every attempt)
 - [ ] Phantom wallet connection in game client
 - [ ] On-chain commit-reveal flow in frontend
 
@@ -21,16 +21,22 @@
 - [ ] Pitch video script
 - [ ] Technical demo script
 
-## Completed
-- [x] v1-v10: Core game (maps, NPCs, battle, cards, fog)
-- [x] v11: Smooth animations
-- [x] v12: Shop, events, tutorial, card tracker
-- [x] v13: Ambient audio + SFX
-- [x] v14: Mobile touch + save/load
-- [x] v15: Minimap, day/night, visual polish
-- [x] Anchor program (7 instructions, area system)
-- [x] ZK circuit (Circom + Groth16, verified)
-- [x] x402 AI agent broker
-- [x] GDD v0.3
-- [x] README
-- [x] Arena submission draft
+## Version History
+- v1-v10: Core game (maps, NPCs, battle, cards, fog)
+- v11: Smooth animations, delta-time, offscreen caching
+- v12: Shop, events, tutorial, card tracker, battle wipe
+- v13: Ambient audio (ocean/wind/drone), 10 SFX, M mute
+- v14: Mobile touch D-pad, save/load, auto-save, CONTINUE
+- v15: Enhanced minimap, day/night cycle, NPC diamonds
+- v16: 8 bug fixes (completable game loop)
+- v17: Pixel-perfect integer rendering
+- v18: 640x480 resolution, 16x16 tiles, 16x24 sprites
+- v19: FRLG battle UI (arena bg, sprites, 2x2 grid, card effects)
+
+## Infrastructure
+- [x] Anchor program (7 instructions, area system, 5 tests)
+- [x] ZK circuit (Circom Poseidon, 264 constraints, proof verified)
+- [x] x402 AI agent broker (4 endpoints)
+- [x] Phantom wallet module
+- [x] Local validator deploy verified
+- [x] GDD v0.3, README, Arena draft, X drafts
