@@ -11,7 +11,7 @@ body{background:#111118;display:flex;flex-direction:column;justify-content:cente
 #emu{background:linear-gradient(145deg,#2a2a3e,#1c1c2c);padding:20px 24px 16px;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);border:2px solid #333350}
 #lbl{text-align:center;color:#444460;font-size:7px;letter-spacing:6px;margin-bottom:8px}
 #sw{background:#080810;padding:4px;border-radius:4px;border:2px solid #1a1a30}
-canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-rendering:crisp-edges}
+canvas{display:block;width:960px;height:640px;image-rendering:auto}
 #ctrls{display:flex;justify-content:center;gap:6px;margin-top:10px}
 .b{padding:4px 12px;background:#222238;color:#555570;border:1px solid #333350;border-radius:12px;font:7px 'Press Start 2P',monospace;cursor:pointer;transition:all .15s}
 .b:hover{background:#2a2a44;color:#8888aa}.b.a{background:#3848a0;color:#dde;border-color:#5060c0;box-shadow:0 0 6px rgba(56,72,160,.3)}
@@ -40,7 +40,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <body>
 <div id="emu">
 <div id="lbl">0 x A R K</div>
-<div id="sw"><canvas id="g" width="960" height="640"></canvas></div>
+<div id="sw"><canvas id="g" width="1920" height="1280"></canvas></div>
 <div id="ctrls">
 <button class="b a" onclick="ss('map')">MAP</button>
 <button class="b" onclick="ss('act')">BATTLE</button>
@@ -59,8 +59,13 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-const c=document.getElementById('g'),W=960,H=640;
+const c=document.getElementById('g');
+// Render at 2x internal resolution for smooth display
+const SCALE=2;
+c.width=960*SCALE;c.height=640*SCALE;
+const W=960,H=640; // Logical dimensions (all game code uses these)
 let g=c.getContext('2d');
+g.scale(SCALE,SCALE); // All drawing happens in logical coordinates, displayed at 2x
 const TW=32,TH=32;
 
 // ═══════════════════════════════════════
@@ -72,14 +77,16 @@ let lastTime=0,dt=1;
 
 // Offscreen canvas caches for edge blending and fog
 const edgeCanvas=document.createElement('canvas');
-edgeCanvas.width=W;edgeCanvas.height=H;
+edgeCanvas.width=W*SCALE;edgeCanvas.height=H*SCALE;
 const edgeCtx=edgeCanvas.getContext('2d');
+edgeCtx.scale(SCALE,SCALE);
 let edgeCacheDirty=true;
 let edgeCacheLastCamX=-9999,edgeCacheLastCamY=-9999;
 
 const fogCanvas=document.createElement('canvas');
-fogCanvas.width=W;fogCanvas.height=H;
+fogCanvas.width=W*SCALE;fogCanvas.height=H*SCALE;
 const fogCtx=fogCanvas.getContext('2d');
+fogCtx.scale(SCALE,SCALE);
 let fogCacheDirty=true;
 let fogCacheLastCamX=-9999,fogCacheLastCamY=-9999;
 
@@ -3126,7 +3133,7 @@ function dMap(){
       edgeCacheLastCamX=camX;edgeCacheLastCamY=camY;
       edgeCacheDirty=false;
     }
-    g.drawImage(edgeCanvas,0,0);
+    g.drawImage(edgeCanvas,0,0,W,H);
   }
 
   // ── FOG OF WAR OVERLAY ── (cached to offscreen canvas)
@@ -3141,7 +3148,7 @@ function dMap(){
       fogCacheLastCamX=camX;fogCacheLastCamY=camY;
       fogCacheDirty=false;
     }
-    g.drawImage(fogCanvas,0,0);
+    g.drawImage(fogCanvas,0,0,W,H);
   }
   // Fog particles only every other frame
   if(fr%2===0) drawFogParticles();
