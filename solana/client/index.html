@@ -333,6 +333,42 @@ for(let i=0;i<MW*MH;i++){
 }
 function tr(tx_,ty){return tileRand[(ty*MW+tx_)%(MW*MH)];}
 
+// ═══════════════════════════════════════
+// ORGANIC TERRAIN HELPERS
+// ═══════════════════════════════════════
+function tileHash(x,y){return((x*2654435761+y*40503)&0xFFFF);}
+function thRand(x,y,idx){return((tileHash(x,y)+idx*7919)&0xFFFF)/65535;}
+function getNeighborType(m,x,y,dx,dy){
+  const nx=x+dx,ny=y+dy;
+  if(nx<0||nx>=MW||ny<0||ny>=MH)return -1;
+  return m[ny]?.[nx]??-1;
+}
+// Ground tile types (for edge blending)
+const GROUND_GRASS=new Set([1,7,11,3,8,9,12,13,19,20,28,29,30,23,24,26,27]);
+const GROUND_WATER=new Set([0,17]);
+const GROUND_SAND=new Set([4,10,14]);
+const GROUND_PATH=new Set([2]);
+const GROUND_MOUNTAIN=new Set([18,22]);
+function tileIsGrass(t){return GROUND_GRASS.has(t);}
+function tileIsWater(t){return GROUND_WATER.has(t);}
+function tileIsSand(t){return GROUND_SAND.has(t);}
+function tileIsPath(t){return GROUND_PATH.has(t);}
+function tileIsMountain(t){return GROUND_MOUNTAIN.has(t);}
+// Classify a tile to its base ground type
+function groundType(t){
+  if(tileIsWater(t))return'water';
+  if(tileIsSand(t))return'sand';
+  if(tileIsPath(t))return'path';
+  if(tileIsMountain(t))return'mountain';
+  return'grass';
+}
+
+// Forest pollen particles
+const pollenParticles=[];
+for(let i=0;i<12;i++){
+  pollenParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.15+Math.random()*0.2,vy:-0.1+Math.random()*0.2,phase:Math.random()*Math.PI*2});
+}
+
 const pl=[
   {x:15,y:13,c:'#48b8e8',n:'You',cd:[1,3,0,0,0],cc:2,dir:0,step:0},
   {x:19,y:14,c:'#d860a0',n:'Rival',cd:[2,5,0,0,0],cc:2,dir:2,step:0},
@@ -379,27 +415,56 @@ function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,[1,7,11,3]);}
 
 function drawWater(px,py,tx_,ty){
   const f3=(wt+tx_+ty)%3;
+  const h=tileHash(tx_,ty);
   const nearLand_=isNearLand(tx_,ty);
-  const base=nearLand_?'#285888':'#3870a8';
-  const mid=nearLand_?'#306098':'#4888c0';
-  const light=nearLand_?'#3870a8':'#58a0d8';
-  bx(px,py,TW,TH,f3===0?base:f3===1?mid:light);
+  // Shade variation per tile
+  const rv=(h&7)-4;
+  const baseR=nearLand_?40+rv:56+rv,baseG=nearLand_?88+rv:112+rv,baseB=nearLand_?136+rv:168+rv;
+  const midR=baseR+8,midG=baseG+8,midB=baseB+8;
+  const lightR=baseR+16,lightG=baseG+16,lightB=baseB+16;
+  if(f3===0)bx(px,py,TW,TH,`rgb(${baseR},${baseG},${baseB})`);
+  else if(f3===1)bx(px,py,TW,TH,`rgb(${midR},${midG},${midB})`);
+  else bx(px,py,TW,TH,`rgb(${lightR},${lightG},${lightB})`);
+  // Depth variation: darker toward center of water body, lighter near land
+  if(nearLand_)bx(px,py,TW,TH,'rgba(80,140,180,.06)');
+  else bx(px,py,TW,TH,'rgba(0,20,40,.06)');
   const r=tr(tx_,ty);
-  if(f3===0){bx(px+Math.floor(r.a*8)+1,py+2,4,1,'#68a8d8');bx(px+Math.floor(r.b*6)+2,py+8,3,1,'#78b8e0');}
-  else if(f3===1){bx(px+Math.floor(r.c*7)+2,py+4,5,1,'#68a8d8');bx(px+Math.floor(r.d*5)+1,py+10,4,1,'#78b8e0');}
-  else{bx(px+Math.floor(r.e*9),py+3,3,1,'#78b8e0');bx(px+Math.floor(r.f*7)+1,py+7,5,1,'#68a8d8');bx(px+Math.floor(r.a*4)+4,py+11,3,1,'#88c0e8');}
-  if(nearLand_){bx(px,py,TW,1,'rgba(0,0,0,.1)');bx(px,py+TH-1,TW,1,'rgba(0,0,0,.05)');}
-  if((wt+tx_*3+ty*7)%8===0){const sx=px+Math.floor(r.g*11)+2,sy=py+Math.floor(r.h*9)+2;bx(sx,sy,1,1,'rgba(255,255,255,.6)');}
+  // Natural sine-wave lines offset by x position
+  const waveOff=Math.sin(wt*0.3+tx_*0.7)*2;
+  if(f3===0){bx(px+Math.floor(r.a*8)+1,py+2+Math.round(waveOff),4,1,'#68a8d8');bx(px+Math.floor(r.b*6)+2,py+8-Math.round(waveOff*.5),3,1,'#78b8e0');}
+  else if(f3===1){bx(px+Math.floor(r.c*7)+2,py+4+Math.round(waveOff*.7),5,1,'#68a8d8');bx(px+Math.floor(r.d*5)+1,py+10-Math.round(waveOff*.3),4,1,'#78b8e0');}
+  else{bx(px+Math.floor(r.e*9),py+3+Math.round(waveOff),3,1,'#78b8e0');bx(px+Math.floor(r.f*7)+1,py+7-Math.round(waveOff*.6),5,1,'#68a8d8');bx(px+Math.floor(r.a*4)+4,py+11,3,1,'#88c0e8');}
+  // Sparkle that appears/disappears
+  if((wt+tx_*3+ty*7)%8===0){const sx=px+Math.floor(r.g*11)+2,sy=py+Math.floor(r.h*9)+2;bx(sx,sy,1,1,'rgba(255,255,255,.7)');}
+  if((wt+tx_*5+ty*11)%12===0){const sx2=px+Math.floor(r.e*9)+1,sy2=py+Math.floor(r.f*7)+3;bx(sx2,sy2,1,1,'rgba(255,255,255,.45)');}
 }
 
 function drawGrass(px,py,tx_,ty){
-  bx(px,py,TW,TH,'#58a858');
+  const h=tileHash(tx_,ty);
+  // Per-tile shade variation +-5
+  const sv=((h&15)-8);
+  bx(px,py,TW,TH,`rgb(${88+sv},${168+sv},${88+sv})`);
   const r=tr(tx_,ty);
+  // Layer 1: darker grass pixels (hash-offset pattern)
+  const offX=(h>>4)&3, offY=(h>>6)&3;
   for(let gy=0;gy<TH;gy+=2)for(let gx=0;gx<TW;gx+=2){
-    if((gx+gy+tx_*3+ty*5)%6<2)bx(px+gx,py+gy,1,1,'#4c9c4c');
+    if(((gx+offX)+(gy+offY)+tx_*3+ty*5)%6<2)bx(px+gx,py+gy,1,1,`rgb(${76+sv},${156+sv},${76+sv})`);
   }
-  if(r.a>.7)bx(px+Math.floor(r.b*10)+1,py+Math.floor(r.c*8)+1,2,2,'#50a050');
-  if(r.d>.8)bx(px+Math.floor(r.e*8)+2,py+Math.floor(r.f*6)+3,1,2,'#48984a');
+  // Layer 2: lighter highlights (2-3 per tile)
+  for(let i=0;i<3;i++){
+    if(thRand(tx_,ty,i+10)>.55){
+      const hx=Math.floor(thRand(tx_,ty,i+20)*12)+1, hy=Math.floor(thRand(tx_,ty,i+30)*9)+1;
+      bx(px+hx,py+hy,1,1,`rgb(${100+sv},${188+sv},${100+sv})`);
+    }
+  }
+  // Layer 3: tiny flower dots (1 per ~4 tiles)
+  if((h&3)===0){
+    const fx=Math.floor(thRand(tx_,ty,40)*11)+2, fy=Math.floor(thRand(tx_,ty,41)*9)+2;
+    const fcolors=['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'];
+    bx(px+fx,py+fy,1,1,fcolors[h%5]);
+  }
+  if(r.a>.7)bx(px+Math.floor(r.b*10)+1,py+Math.floor(r.c*8)+1,2,2,`rgb(${80+sv},${160+sv},${80+sv})`);
+  if(r.d>.8)bx(px+Math.floor(r.e*8)+2,py+Math.floor(r.f*6)+3,1,2,`rgb(${72+sv},${152+sv},${74+sv})`);
   // Darken grass in ruins map
   if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.2)');}
 }
@@ -427,31 +492,66 @@ function drawTallGrass(px,py,tx_,ty){
 }
 
 function drawPath(px,py,tx_,ty){
-  bx(px,py,TW,TH,'#d0c080');
-  bx(px,py,1,TH,'#b8a868');bx(px+TW-1,py,1,TH,'#b8a868');
-  bx(px,py,TW,1,'#e0d8a0');bx(px,py+TH-1,TW,1,'#b0a060');
+  const h=tileHash(tx_,ty);
+  const sv=((h&7)-4);
+  bx(px,py,TW,TH,`rgb(${208+sv},${192+sv},${128+sv})`);
+  // Edge shadows on both sides (2px darker strips)
+  bx(px,py,2,TH,`rgb(${184+sv},${168+sv},${104+sv})`);
+  bx(px+TW-2,py,2,TH,`rgb(${184+sv},${168+sv},${104+sv})`);
+  // Worn center (slightly lighter strip)
+  bx(px+5,py,5,TH,`rgb(${216+sv},${200+sv},${140+sv})`);
+  bx(px,py,TW,1,`rgb(${224+sv},${216+sv},${160+sv})`);
+  bx(px,py+TH-1,TW,1,`rgb(${176+sv},${160+sv},${96+sv})`);
   const r=tr(tx_,ty);
-  if(r.a>.6)bx(px+Math.floor(r.b*10)+2,py+Math.floor(r.c*8)+2,2,1,'#b8a868');
-  if(r.d>.7)bx(px+Math.floor(r.e*8)+1,py+Math.floor(r.f*6)+4,1,2,'#c0b070');
-  if((tx_+ty)%3===0)bx(px+5,py+5,3,2,'#c8b878');
+  // Small pebbles (gray dots, 2-3 per tile)
+  for(let i=0;i<3;i++){
+    if(thRand(tx_,ty,i+50)>.45){
+      const pbx=Math.floor(thRand(tx_,ty,i+60)*11)+2, pby=Math.floor(thRand(tx_,ty,i+70)*9)+2;
+      bx(px+pbx,py+pby,1,1,'#a09878');
+    }
+  }
+  if(r.a>.6)bx(px+Math.floor(r.b*10)+2,py+Math.floor(r.c*8)+2,2,1,`rgb(${184+sv},${168+sv},${104+sv})`);
+  if(r.d>.7)bx(px+Math.floor(r.e*8)+1,py+Math.floor(r.f*6)+4,1,2,`rgb(${192+sv},${176+sv},${112+sv})`);
+  if((tx_+ty)%3===0)bx(px+5,py+5,3,2,`rgb(${200+sv},${184+sv},${120+sv})`);
   // Darken in ruins
   if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.15)');}
 }
 
 function drawSand(px,py,tx_,ty){
-  bx(px,py,TW,TH,'#e8d8a8');
+  const h=tileHash(tx_,ty);
+  const sv=((h&7)-4);
+  bx(px,py,TW,TH,`rgb(${232+sv},${216+sv},${168+sv})`);
   const r=tr(tx_,ty);
+  const offX=(h>>3)&3, offY=(h>>5)&3;
+  // Subtle noise
   for(let sy=0;sy<TH;sy+=3)for(let sx=0;sx<TW;sx+=3){
-    if((sx+sy+tx_)%4<1)bx(px+sx,py+sy,1,1,'#d8c898');
+    if(((sx+offX)+(sy+offY)+tx_)%4<1)bx(px+sx,py+sy,1,1,`rgb(${216+sv},${200+sv},${152+sv})`);
+  }
+  // Tiny shells (2-3 pixels, sparse)
+  if(thRand(tx_,ty,80)>.65){
+    const shx=Math.floor(thRand(tx_,ty,81)*11)+2, shy=Math.floor(thRand(tx_,ty,82)*8)+2;
+    bx(px+shx,py+shy,2,1,'#f0e8d8');bx(px+shx,py+shy+1,1,1,'#d0c0a0');
+  }
+  if(thRand(tx_,ty,83)>.75){
+    const shx2=Math.floor(thRand(tx_,ty,84)*9)+3, shy2=Math.floor(thRand(tx_,ty,85)*6)+4;
+    bx(px+shx2,py+shy2,1,1,'#e8e0c8');
   }
   if(r.a>.8){const sx=px+Math.floor(r.b*10)+2,sy=py+Math.floor(r.c*8)+2;bx(sx,sy,2,1,'#f0e8d0');bx(sx,sy+1,1,1,'#d0c0a0');}
-  if(isNearWater(tx_,ty)){bx(px,py+TH-3,TW,3,'#c8b888');if((wt+tx_)%3===0)bx(px,py+TH-2,TW,1,'#b8a878');}
+  // Wet sand gradient near water
+  if(isNearWater(tx_,ty)){
+    bx(px,py+TH-4,TW,4,`rgb(${200+sv},${184+sv},${136+sv})`);
+    bx(px,py+TH-3,TW,3,`rgb(${188+sv},${172+sv},${124+sv})`);
+    if((wt+tx_)%3===0)bx(px,py+TH-2,TW,1,`rgb(${176+sv},${160+sv},${112+sv})`);
+  }
 }
 
 function drawTree(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
-  g.fillStyle='rgba(0,0,0,.15)';g.beginPath();g.ellipse(px+7,py+TH-1,6,2,0,0,Math.PI*2);g.fill();
+  // Larger soft shadow
+  g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+7,py+TH,7,3,0,0,Math.PI*2);g.fill();
   bx(px+6,py+7,3,6,'#806030');bx(px+7,py+8,1,4,'#906838');
+  // Grass pixels at trunk base
+  bx(px+5,py+TH-2,1,1,'#48984a');bx(px+9,py+TH-2,1,1,'#50a050');
   bx(px+1,py+1,13,7,'#286828');bx(px+2,py,11,7,'#38883a');
   bx(px+3,py,9,6,'#48a848');bx(px+4,py+1,7,3,'#58c058');
   bx(px+4,py,5,1,'#68d068');bx(px+3,py+1,2,1,'#58c058');
@@ -459,8 +559,10 @@ function drawTree(px,py,tx_,ty){
 
 function drawPine(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
-  g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+7,py+TH-1,5,2,0,0,Math.PI*2);g.fill();
+  g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+7,py+TH,6,2.5,0,0,Math.PI*2);g.fill();
   bx(px+6,py+8,3,5,'#705828');bx(px+7,py+9,1,3,'#806030');
+  // Grass at trunk base
+  bx(px+5,py+TH-2,1,1,'#48984a');bx(px+9,py+TH-1,1,1,'#50a050');
   bx(px+2,py+6,11,3,'#206020');bx(px+3,py+5,9,2,'#287028');
   bx(px+3,py+3,9,3,'#287028');bx(px+4,py+2,7,2,'#308030');
   bx(px+4,py+1,7,2,'#308030');bx(px+5,py,5,2,'#38a038');
@@ -492,6 +594,8 @@ function darken(hex,amt){
 
 function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
   bx(px,py,TW,TH,'#d0c080');
+  // 1px darker base where wall meets ground
+  bx(px,py+TH-1,TW,1,'rgba(0,0,0,.15)');
   bx(px+1,py+5,13,8,wallColor);bx(px+2,py+6,11,6,lighten(wallColor,.1));
   bx(px,py+1,15,5,roofColor);bx(px+1,py+2,13,3,roofHighlight||lighten(roofColor,.15));
   bx(px,py+5,15,1,darken(roofColor,.15));
@@ -524,22 +628,27 @@ function drawCave(px,py,tx_,ty){
 }
 
 function drawMountain(px,py,tx_,ty){
-  bx(px,py,TW,TH,'#787888');
+  const h=tileHash(tx_,ty);
+  const sv=((h&7)-4);
+  bx(px,py,TW,TH,`rgb(${120+sv},${120+sv},${136+sv})`);
   const r=tr(tx_,ty);
+  const offX=(h>>4)&3;
   for(let ry=0;ry<TH;ry+=3)for(let rx=0;rx<TW;rx+=3){
-    if((rx+ry+tx_*5)%4<1)bx(px+rx,py+ry,2,2,'#686878');
-    if((rx+ry+ty*3)%5<1)bx(px+rx,py+ry,1,1,'#888898');
+    if((rx+offX+ry+tx_*5)%4<1)bx(px+rx,py+ry,2,2,`rgb(${104+sv},${104+sv},${120+sv})`);
+    if((rx+ry+ty*3)%5<1)bx(px+rx,py+ry,1,1,`rgb(${136+sv},${136+sv},${152+sv})`);
   }
   if(ty<=3){bx(px+3,py,9,2,'#c8c8d0');bx(px+5,py,5,1,'#e0e0e8');}
-  // Darker in ruins
   if(currentMap===2){bx(px,py,TW,TH,'rgba(10,0,20,.15)');}
 }
 
 function drawRock(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
+  // Grass/sand overlap at base
+  bx(px+2,py+10,1,1,'#50a050');bx(px+12,py+10,1,1,'#48984a');
   bx(px+3,py+3,9,8,'#707078');bx(px+4,py+2,7,8,'#808088');bx(px+5,py+3,5,5,'#909098');
   bx(px+4,py+2,3,1,'#a0a0a8');bx(px+3,py+3,1,2,'#888890');
-  bx(px+3,py+10,10,2,'rgba(0,0,0,.15)');
+  // Wider shadow
+  g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+7,py+TH,6,2,0,0,Math.PI*2);g.fill();
 }
 
 function drawFence(px,py,tx_,ty){
@@ -561,15 +670,20 @@ function drawDock(px,py,tx_,ty){
 
 function drawLake(px,py,tx_,ty){
   const f3=(wt+tx_+ty)%3;
-  bx(px,py,TW,TH,f3===0?'#2868a0':'#3878b0');
+  const h=tileHash(tx_,ty);
+  const rv=(h&5)-2;
+  bx(px,py,TW,TH,f3===0?`rgb(${40+rv},${104+rv},${160+rv})`:`rgb(${56+rv},${120+rv},${176+rv})`);
   const r=tr(tx_,ty);
-  if(f3===1){bx(px+Math.floor(r.a*8)+2,py+4,4,1,'#4888c0');bx(px+Math.floor(r.b*6)+1,py+9,3,1,'#5898d0');}
+  const waveOff=Math.sin(wt*0.3+tx_*0.5)*1.5;
+  if(f3===1){bx(px+Math.floor(r.a*8)+2,py+4+Math.round(waveOff),4,1,'#4888c0');bx(px+Math.floor(r.b*6)+1,py+9-Math.round(waveOff*.5),3,1,'#5898d0');}
+  // Sparkle
+  if((wt+tx_*3+ty*5)%10===0){bx(px+Math.floor(r.g*10)+2,py+Math.floor(r.h*8)+2,1,1,'rgba(255,255,255,.5)');}
   if(r.c>.85){
     const lx=px+Math.floor(r.d*8)+3,ly=py+Math.floor(r.e*6)+3;
     g.fillStyle='#48a050';g.beginPath();g.ellipse(lx,ly,3,2,0,0,Math.PI*2);g.fill();
     bx(lx,ly,1,1,'#e04060');
   }
-  if(isNearGrass(tx_,ty)){g.fillStyle='rgba(30,60,40,.15)';g.fillRect(px,py,TW,TH);}
+  if(isNearGrass(tx_,ty)){g.fillStyle='rgba(30,60,40,.12)';g.fillRect(px,py,TW,TH);}
 }
 
 // ── NEW TILE TYPES ──
@@ -1269,6 +1383,128 @@ function dTitle(){
 // ═══════════════════════════════════════
 const HUD_HEIGHT=40;
 
+function drawEdgeBlending(startTX,startTY,endTX,endTY){
+  const m=getMap();
+  for(let y=startTY;y<=endTY;y++){
+    for(let x=startTX;x<=endTX;x++){
+      const px=x*TW-camX,py=y*TH-camY;
+      if(px<-TW||px>W||py<-TH||py>H)continue;
+      const t=m[y]?.[x];
+      if(t===undefined)continue;
+      const gt=groundType(t);
+      const tUp=getNeighborType(m,x,y,0,-1),tDn=getNeighborType(m,x,y,0,1);
+      const tLf=getNeighborType(m,x,y,-1,0),tRt=getNeighborType(m,x,y,1,0);
+      const h=tileHash(x,y);
+      // Check each neighbor for different terrain
+      const dirs=[[tUp,0,-1],[tDn,0,1],[tLf,-1,0],[tRt,1,0]];
+      for(const [nt,dx,dy] of dirs){
+        if(nt<0)continue;
+        const ngt=groundType(nt);
+        if(ngt===gt)continue;
+        // Edge position
+        const isTop=dy===-1,isBot=dy===1,isLft=dx===-1,isRgt=dx===1;
+        // Grass-to-Water
+        if(gt==='grass'&&ngt==='water'){
+          if(isTop){for(let i=0;i<TW;i++){if(thRand(x,y,i+100)>.4)bx(px+i,py,1,2,'#3c8c3c');if(thRand(x,y,i+115)>.75)bx(px+i,py,1,1,'#4878a0');}}
+          if(isBot){for(let i=0;i<TW;i++){if(thRand(x,y,i+120)>.4)bx(px+i,py+TH-2,1,2,'#3c8c3c');if(thRand(x,y,i+135)>.75)bx(px+i,py+TH-1,1,1,'#4878a0');}}
+          if(isLft){for(let i=0;i<TH;i++){if(thRand(x,y,i+140)>.4)bx(px,py+i,2,1,'#3c8c3c');if(thRand(x,y,i+155)>.75)bx(px,py+i,1,1,'#4878a0');}}
+          if(isRgt){for(let i=0;i<TH;i++){if(thRand(x,y,i+160)>.4)bx(px+TW-2,py+i,2,1,'#3c8c3c');if(thRand(x,y,i+175)>.75)bx(px+TW-1,py+i,1,1,'#4878a0');}}
+        }
+        // Water-to-Sand (foam/surf line)
+        if(gt==='water'&&ngt==='sand'){
+          if(isTop){for(let i=0;i<TW;i++){if(thRand(x,y,i+180)>.3)bx(px+i,py,1,1,(wt+i)%3===0?'rgba(255,255,255,.5)':'rgba(180,220,240,.4)');}}
+          if(isBot){for(let i=0;i<TW;i++){if(thRand(x,y,i+190)>.3)bx(px+i,py+TH-1,1,1,(wt+i)%3===0?'rgba(255,255,255,.5)':'rgba(180,220,240,.4)');}}
+          if(isLft){for(let i=0;i<TH;i++){if(thRand(x,y,i+200)>.3)bx(px,py+i,1,1,(wt+i)%3===0?'rgba(255,255,255,.5)':'rgba(180,220,240,.4)');}}
+          if(isRgt){for(let i=0;i<TH;i++){if(thRand(x,y,i+210)>.3)bx(px+TW-1,py+i,1,1,(wt+i)%3===0?'rgba(255,255,255,.5)':'rgba(180,220,240,.4)');}}
+        }
+        // Sand-to-Water (foam from sand side)
+        if(gt==='sand'&&ngt==='water'){
+          if(isTop){bx(px,py,TW,2,'rgba(180,220,240,.15)');for(let i=0;i<TW;i++){if((wt+i+x)%4===0)bx(px+i,py,1,1,'rgba(255,255,255,.35)');}}
+          if(isBot){bx(px,py+TH-2,TW,2,'rgba(180,220,240,.15)');for(let i=0;i<TW;i++){if((wt+i+x)%4===0)bx(px+i,py+TH-1,1,1,'rgba(255,255,255,.35)');}}
+          if(isLft){bx(px,py,2,TH,'rgba(180,220,240,.15)');for(let i=0;i<TH;i++){if((wt+i+y)%4===0)bx(px,py+i,1,1,'rgba(255,255,255,.35)');}}
+          if(isRgt){bx(px+TW-2,py,2,TH,'rgba(180,220,240,.15)');for(let i=0;i<TH;i++){if((wt+i+y)%4===0)bx(px+TW-1,py+i,1,1,'rgba(255,255,255,.35)');}}
+        }
+        // Grass-to-Sand
+        if(gt==='grass'&&ngt==='sand'){
+          if(isTop){for(let i=0;i<TW;i++){const r2=thRand(x,y,i+220);if(r2>.3)bx(px+i,py,1,1,'#a0b868');if(r2>.6)bx(px+i,py+1,1,1,'#b8c878');}}
+          if(isBot){for(let i=0;i<TW;i++){const r2=thRand(x,y,i+230);if(r2>.3)bx(px+i,py+TH-1,1,1,'#a0b868');if(r2>.6)bx(px+i,py+TH-2,1,1,'#b8c878');}}
+          if(isLft){for(let i=0;i<TH;i++){const r2=thRand(x,y,i+240);if(r2>.3)bx(px,py+i,1,1,'#a0b868');if(r2>.6)bx(px+1,py+i,1,1,'#b8c878');}}
+          if(isRgt){for(let i=0;i<TH;i++){const r2=thRand(x,y,i+250);if(r2>.3)bx(px+TW-1,py+i,1,1,'#a0b868');if(r2>.6)bx(px+TW-2,py+i,1,1,'#b8c878');}}
+        }
+        // Sand-to-Grass
+        if(gt==='sand'&&ngt==='grass'){
+          if(isTop){for(let i=0;i<TW;i++){if(thRand(x,y,i+260)>.5)bx(px+i,py,1,1,'#c8c898');}}
+          if(isBot){for(let i=0;i<TW;i++){if(thRand(x,y,i+270)>.5)bx(px+i,py+TH-1,1,1,'#c8c898');}}
+          if(isLft){for(let i=0;i<TH;i++){if(thRand(x,y,i+280)>.5)bx(px,py+i,1,1,'#c8c898');}}
+          if(isRgt){for(let i=0;i<TH;i++){if(thRand(x,y,i+290)>.5)bx(px+TW-1,py+i,1,1,'#c8c898');}}
+        }
+        // Grass-to-Path (grass tufts on path edge)
+        if(gt==='path'&&ngt==='grass'){
+          if(isTop){for(let i=0;i<TW;i+=2){if(thRand(x,y,i+300)>.5)bx(px+i,py,1,2,'#68a868');}}
+          if(isBot){for(let i=0;i<TW;i+=2){if(thRand(x,y,i+310)>.5)bx(px+i,py+TH-2,1,2,'#68a868');}}
+          if(isLft){for(let i=0;i<TH;i+=2){if(thRand(x,y,i+320)>.5)bx(px,py+i,2,1,'#68a868');}}
+          if(isRgt){for(let i=0;i<TH;i+=2){if(thRand(x,y,i+330)>.5)bx(px+TW-2,py+i,2,1,'#68a868');}}
+        }
+        // Path-to-Grass (grass bleeds onto path)
+        if(gt==='grass'&&ngt==='path'){
+          if(isTop){for(let i=0;i<TW;i+=3){if(thRand(x,y,i+340)>.6)bx(px+i,py,1,1,'#b8b070');}}
+          if(isBot){for(let i=0;i<TW;i+=3){if(thRand(x,y,i+350)>.6)bx(px+i,py+TH-1,1,1,'#b8b070');}}
+          if(isLft){for(let i=0;i<TH;i+=3){if(thRand(x,y,i+360)>.6)bx(px,py+i,1,1,'#b8b070');}}
+          if(isRgt){for(let i=0;i<TH;i+=3){if(thRand(x,y,i+370)>.6)bx(px+TW-1,py+i,1,1,'#b8b070');}}
+        }
+        // Water-to-Grass (near-shore foam from water side)
+        if(gt==='water'&&ngt==='grass'){
+          if(isTop){for(let i=0;i<TW;i++){if(thRand(x,y,i+380)>.45){const wc=(wt+i)%3===0?'rgba(200,220,240,.35)':'rgba(160,200,230,.2)';bx(px+i,py,1,1,wc);}}}
+          if(isBot){for(let i=0;i<TW;i++){if(thRand(x,y,i+390)>.45){const wc=(wt+i)%3===0?'rgba(200,220,240,.35)':'rgba(160,200,230,.2)';bx(px+i,py+TH-1,1,1,wc);}}}
+          if(isLft){for(let i=0;i<TH;i++){if(thRand(x,y,i+400)>.45){const wc=(wt+i)%3===0?'rgba(200,220,240,.35)':'rgba(160,200,230,.2)';bx(px,py+i,1,1,wc);}}}
+          if(isRgt){for(let i=0;i<TH;i++){if(thRand(x,y,i+410)>.45){const wc=(wt+i)%3===0?'rgba(200,220,240,.35)':'rgba(160,200,230,.2)';bx(px+TW-1,py+i,1,1,wc);}}}
+        }
+        // Mountain/Grass transitions
+        if(gt==='grass'&&ngt==='mountain'){
+          if(isTop){for(let i=0;i<TW;i++){if(thRand(x,y,i+420)>.4)bx(px+i,py,1,1,'rgba(100,100,112,.3)');}}
+          if(isBot){for(let i=0;i<TW;i++){if(thRand(x,y,i+430)>.4)bx(px+i,py+TH-1,1,1,'rgba(100,100,112,.3)');}}
+          if(isLft){for(let i=0;i<TH;i++){if(thRand(x,y,i+440)>.4)bx(px,py+i,1,1,'rgba(100,100,112,.3)');}}
+          if(isRgt){for(let i=0;i<TH;i++){if(thRand(x,y,i+450)>.4)bx(px+TW-1,py+i,1,1,'rgba(100,100,112,.3)');}}
+        }
+      }
+    }
+  }
+}
+
+function drawAtmosphere(){
+  // Subtle noise overlay
+  if(fr%2===0){
+    for(let i=0;i<20;i++){
+      const nx=Math.floor(thRand(fr&255,i,500)*W);
+      const ny=Math.floor(thRand(fr&255,i,510)*H);
+      bx(nx,ny,1,1,'rgba(128,128,128,.03)');
+    }
+  }
+  // Ruins vignette
+  if(currentMap===2){
+    bx(0,0,W,8,'rgba(5,0,10,.12)');bx(0,H-48,W,8,'rgba(5,0,10,.12)');
+    bx(0,0,8,H-40,'rgba(5,0,10,.08)');bx(W-8,0,8,H-40,'rgba(5,0,10,.08)');
+    bx(0,0,W,3,'rgba(5,0,10,.06)');bx(0,H-43,W,3,'rgba(5,0,10,.06)');
+  }
+  // Forest floating pollen/dust
+  if(currentMap===1){
+    pollenParticles.forEach((p,i)=>{
+      p.x+=p.vx;
+      p.y+=Math.sin(fr*0.02+p.phase)*0.15+p.vy;
+      if(p.x>MW*TW)p.x=0;
+      if(p.y<0)p.y=MH*TH;
+      if(p.y>MH*TH)p.y=0;
+      const sx=p.x-camX,sy=p.y-camY;
+      if(sx>0&&sx<W&&sy>0&&sy<H-40){
+        const a=0.25+Math.sin(fr*0.03+i)*0.15;
+        g.globalAlpha=a;
+        bx(sx,sy,1,1,'#e8e8d0');
+        g.globalAlpha=1;
+      }
+    });
+  }
+}
+
 function dMap(){
   updateCamera();
 
@@ -1280,6 +1516,9 @@ function dMap(){
   for(let y=startTY;y<=endTY;y++){
     for(let x=startTX;x<=endTX;x++){drawTile(x,y);}
   }
+
+  // Edge blending post-pass
+  drawEdgeBlending(startTX,startTY,endTX,endTY);
 
   drawParticles(camX,camY);
   drawBirds();
@@ -1297,6 +1536,9 @@ function dMap(){
 
   // Darkness overlay for ruins
   if(currentMap===2){bx(0,0,W,H,'rgba(10,0,20,.12)');}
+
+  // Atmospheric effects
+  drawAtmosphere();
 
   // ── HUD BAR ──
   const hudY=H-HUD_HEIGHT;
