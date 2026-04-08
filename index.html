@@ -483,7 +483,7 @@ const cardAcqParticles=[];
 // ── Victory screen ──
 let victoryFrame=0,victoryCardsShown=0;
 
-const lg=['R1: You drew Crystal!','R1: Rival used Steal on Hunter','R1: Hunter Barrier - Blocked!','R2: Scout > Rival: Shadow,Void','R3: Hunter drew Storm','R3: Rival used Shadow!','R3: You Steal on Rival - BLOCKED'];
+const lg=['Game started. Collect all 5 card types to win!'];
 
 // ═══════════════════════════════════════
 // TILE RENDERING
@@ -1390,6 +1390,8 @@ function drawWildEncounter(){
   }else if(t>150||cardAcqDone){
     wildEncounterActive=false;
     cardAcqDone=false;
+    // Check win after acquiring a card
+    if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},500);}
   }
 }
 
@@ -1411,6 +1413,8 @@ function checkTreasure(){
         startCardAcquisition(t.card);
         twSet('You found a hidden '+cr.n+' card!');
         lg.push('Found hidden '+cr.n+'!');
+        // Check win after treasure
+        if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
       }else{
         twSet('Found a '+cr.n+' card but your hand is full!');
       }
@@ -1925,6 +1929,14 @@ function drawVsSplash(){
   if(t>=60){battlePhase='select';bpFrame=fr;}
 }
 
+function isActionAvailable(i){
+  if(i===1&&sp.s<=0)return false;
+  if(i===2&&sp.b<=0)return false;
+  if(i===3&&sp.c<=0)return false;
+  if(i===4&&pl[0].cc<=0)return false;
+  return true;
+}
+
 function drawSelectPhase(){
   const slideProgress=Math.min(1,(fr-bpFrame)/20);
   g.save();g.translate(-(1-slideProgress)*W,0);
@@ -1937,8 +1949,11 @@ function drawSelectPhase(){
   const acl=['#303028','#b04040','#3060b0','#308030','#806030'];
   ac.forEach((a,i)=>{
     const y=154+i*22;
-    if(i===ai){bx(12,y-9,248,18,'rgba(192,168,96,.18)');tx('\u25B6',14,y,6,'#c04040');}
-    tx(a,30,y,6,i===ai?'#c04040':acl[i]);tx(ad[i],150,y,5,'#989080');
+    const avail=isActionAvailable(i);
+    if(i===ai&&avail){bx(12,y-9,248,18,'rgba(192,168,96,.18)');tx('\u25B6',14,y,6,'#c04040');}
+    const col=avail?(i===ai?'#c04040':acl[i]):'#a0a0a0';
+    tx(a,30,y,6,col);tx(ad[i],150,y,5,avail?'#989080':'#b8b8b8');
+    if(!avail){bx(12,y-9,248,18,'rgba(160,160,160,.08)');}
   });
   drawBattleRivals();g.restore();
 }
@@ -1954,25 +1969,173 @@ function drawConfirmingPhase(){
   if(t>=120){battlePhase='resolving';bpFrame=fr;bpResolveIdx=0;bpResolveQueue=generateResolveEvents();}
 }
 
+// Area card tables: Port=[1,2](Crystal,Shadow), Forest=[3,4](Flame,Storm), Ruins=[5,1](Void,Crystal)
+const AREA_CARDS=[[1,2],[3,4],[5,1]];
+function pickAreaCard(){const ac=AREA_CARDS[currentMap]||[1,2];return ac[Math.floor(Math.random()*ac.length)];}
+function addCardToPlayer(pIdx,cardId){
+  const p=pl[pIdx];
+  for(let i=0;i<5;i++){if(p.cd[i]===0){p.cd[i]=cardId;p.cc++;return true;}}
+  return false;
+}
+function removeCardFromPlayer(pIdx,slotOrRandom){
+  const p=pl[pIdx];
+  if(slotOrRandom===-1){// random
+    const filled=[];for(let i=0;i<5;i++){if(p.cd[i]>0)filled.push(i);}
+    if(filled.length===0)return 0;
+    const slot=filled[Math.floor(Math.random()*filled.length)];
+    const card=p.cd[slot];p.cd[slot]=0;p.cc=Math.max(0,p.cc-1);return card;
+  }
+  const card=p.cd[slotOrRandom];if(card>0){p.cd[slotOrRandom]=0;p.cc=Math.max(0,p.cc-1);}return card;
+}
+function hasUniqueCards(pIdx){const s=new Set();pl[pIdx].cd.forEach(c=>{if(c>0)s.add(c);});return s;}
+function playerHasAllFive(){const s=hasUniqueCards(0);return s.has(1)&&s.has(2)&&s.has(3)&&s.has(4)&&s.has(5);}
+
+// Rival AI: choose an action index (0=Draw,1=Steal,2=Barrier,3=Scout)
+function rivalChooseAction(rIdx){
+  const r=pl[rIdx];
+  if(r.cc<2)return 0;// Draw if low
+  const roll=Math.random();
+  if(pl[0].cc>=3&&rivalMaps[rIdx-1]===currentMap){
+    if(roll<0.4)return 1;if(roll<0.7)return 0;return 2;
+  }
+  if(roll<0.5)return 0;if(roll<0.8)return 2;return 3;
+}
+
+let bpPlayerBarrier=false; // track if player used barrier this round
+let bpRivalActions=[0,0]; // track rival actions this round
+
 function generateResolveEvents(){
   const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];const events=[];
-  if(bpAction===0){
-    const cardNames=['CRYSTAL','SHADOW','FLAME','STORM','VOID'];
-    const drawn=cardNames[Math.floor(Math.random()*5)];
+  bpPlayerBarrier=(bpAction===2);
+  // Rival AI actions
+  bpRivalActions[0]=rivalChooseAction(1);
+  bpRivalActions[1]=rivalChooseAction(2);
+  const rivalBarriers=[bpRivalActions[0]===2,bpRivalActions[1]===2];
+
+  // ── PLAYER ACTION ──
+  if(bpAction===0){// DRAW
+    const cardId=pickAreaCard();const cr=CD[cardId-1];
     events.push({type:'action',who:'You',action:'DRAW',text:'You used DRAW!',effect:'none'});
-    events.push({type:'result',text:'You obtained '+drawn+'!',effect:'card_get',cardName:drawn});
-  }else if(bpAction===1){
-    events.push({type:'action',who:'You',action:'STEAL',text:'You used STEAL on Rival!',effect:'slash',target:1});
-    events.push({type:'result',text:'Steal was successful!',effect:'damage',target:1});
-  }else if(bpAction===2){
+    if(addCardToPlayer(0,cardId)){
+      events.push({type:'result',text:'You obtained '+cr.n+'!',effect:'card_get',cardName:cr.n});
+      lg.push('R'+rd+': You drew '+cr.n+'!');
+    }else{
+      events.push({type:'result',text:'Your hand is full!',effect:'none'});
+      lg.push('R'+rd+': Draw failed - hand full!');
+    }
+  }else if(bpAction===1){// STEAL
+    sp.s=Math.max(0,sp.s-1);
+    events.push({type:'action',who:'You',action:'STEAL',text:'You used STEAL on '+pl[1].n+'!',effect:'slash',target:1});
+    if(rivalBarriers[0]){
+      events.push({type:'result',text:pl[1].n+"'s BARRIER blocked your steal!",effect:'shield_block'});
+      lg.push('R'+rd+': Steal on '+pl[1].n+' - BLOCKED!');
+    }else if(pl[1].cc<=0){
+      events.push({type:'result',text:pl[1].n+' has no cards to steal!',effect:'none'});
+      lg.push('R'+rd+': Steal failed - '+pl[1].n+' has no cards!');
+    }else{
+      const stolen=removeCardFromPlayer(1,-1);
+      if(stolen>0&&addCardToPlayer(0,stolen)){
+        events.push({type:'result',text:'You stole '+CD[stolen-1].n+' from '+pl[1].n+'!',effect:'damage',target:1});
+        lg.push('R'+rd+': Stole '+CD[stolen-1].n+' from '+pl[1].n+'!');
+      }else{
+        events.push({type:'result',text:'Steal failed!',effect:'none'});
+        lg.push('R'+rd+': Steal failed!');
+      }
+    }
+  }else if(bpAction===2){// BARRIER
+    sp.b=Math.max(0,sp.b-1);
     events.push({type:'action',who:'You',action:'BARRIER',text:'You raised a BARRIER!',effect:'shield'});
-  }else{
-    events.push({type:'action',who:'You',action:actionNames[bpAction],text:'You used '+actionNames[bpAction]+'!',effect:'none'});
+    lg.push('R'+rd+': You raised a Barrier!');
+  }else if(bpAction===3){// SCOUT
+    sp.c=Math.max(0,sp.c-1);
+    events.push({type:'action',who:'You',action:'SCOUT',text:'You used SCOUT!',effect:'none'});
+    const rCards=pl[1].cd.filter(c=>c>0).map(c=>CD[c-1].n);
+    const scoutMsg=rCards.length>0?pl[1].n+' has: '+rCards.join(', '):pl[1].n+' has no cards!';
+    events.push({type:'result',text:scoutMsg,effect:'none'});
+    lg.push('R'+rd+': Scout > '+scoutMsg);
+  }else if(bpAction===4){// USE CARD
+    // Consume first card in hand for effect
+    const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
+    if(filled.length>0){
+      const slot=filled[0];const card=removeCardFromPlayer(0,slot);
+      const cr=CD[card-1];
+      events.push({type:'action',who:'You',action:'USE CARD',text:'You consumed '+cr.n+'!',effect:'none'});
+      // Apply effect based on card type
+      if(card===1){sp.s+=2;events.push({type:'result',text:'Crystal: +2 Steal charges!',effect:'card_get'});lg.push('R'+rd+': Used Crystal - +2 Steal!');}
+      else if(card===2){events.push({type:'result',text:'Shadow: Invisible this turn!',effect:'shield'});bpPlayerBarrier=true;lg.push('R'+rd+': Used Shadow - invisible!');}
+      else if(card===3){
+        const burned=removeCardFromPlayer(1,-1);
+        if(burned>0){events.push({type:'result',text:'Flame: Burned '+CD[burned-1].n+' from '+pl[1].n+'!',effect:'damage',target:1});lg.push('R'+rd+': Used Flame - burned '+CD[burned-1].n+'!');}
+        else{events.push({type:'result',text:'Flame: '+pl[1].n+' had no cards to burn!',effect:'none'});lg.push('R'+rd+': Flame fizzled!');}
+      }
+      else if(card===4){sp.b=0;events.push({type:'result',text:'Storm: Disabled all barriers!',effect:'none'});rivalBarriers[0]=false;rivalBarriers[1]=false;lg.push('R'+rd+': Used Storm - barriers disabled!');}
+      else if(card===5){
+        // Copy: duplicate a random card from rival
+        const rFilled=[];for(let i=0;i<5;i++){if(pl[1].cd[i]>0)rFilled.push(pl[1].cd[i]);}
+        if(rFilled.length>0){const copied=rFilled[Math.floor(Math.random()*rFilled.length)];addCardToPlayer(0,copied);events.push({type:'result',text:'Void: Copied '+CD[copied-1].n+' from '+pl[1].n+'!',effect:'card_get'});lg.push('R'+rd+': Used Void - copied '+CD[copied-1].n+'!');}
+        else{events.push({type:'result',text:'Void: Nothing to copy!',effect:'none'});lg.push('R'+rd+': Void fizzled!');}
+      }
+    }else{
+      events.push({type:'action',who:'You',action:'USE CARD',text:'No cards to use!',effect:'none'});
+    }
   }
-  events.push({type:'action',who:pl[1].n,action:'STEAL',text:pl[1].n+' used STEAL!',effect:'slash',target:0});
-  if(bpAction===2)events.push({type:'result',text:'But your BARRIER blocked it!',effect:'shield_block'});
-  else events.push({type:'result',text:'The STEAL hit you!',effect:'damage',target:0});
-  events.push({type:'action',who:pl[2].n,action:'DRAW',text:pl[2].n+' used DRAW and got FLAME!',effect:'card_get_rival'});
+
+  // ── RIVAL 1 ACTION ──
+  const r1Act=bpRivalActions[0];
+  if(r1Act===0){// Rival draws
+    const cardId=pickAreaCard();const cr=CD[cardId-1];
+    addCardToPlayer(1,cardId);
+    events.push({type:'action',who:pl[1].n,action:'DRAW',text:pl[1].n+' used DRAW and got '+cr.n+'!',effect:'card_get_rival'});
+    lg.push('R'+rd+': '+pl[1].n+' drew '+cr.n+'!');
+  }else if(r1Act===1){// Rival steals from player
+    events.push({type:'action',who:pl[1].n,action:'STEAL',text:pl[1].n+' used STEAL on you!',effect:'slash',target:0});
+    if(bpPlayerBarrier){
+      events.push({type:'result',text:'Your BARRIER blocked the steal!',effect:'shield_block'});
+      lg.push('R'+rd+': '+pl[1].n+' Steal - BLOCKED!');
+    }else if(pl[0].cc<=0){
+      events.push({type:'result',text:'You had no cards to steal!',effect:'none'});
+      lg.push('R'+rd+': '+pl[1].n+' Steal failed - you have no cards!');
+    }else{
+      const stolen=removeCardFromPlayer(0,-1);
+      if(stolen>0){addCardToPlayer(1,stolen);
+        events.push({type:'result',text:pl[1].n+' stole your '+CD[stolen-1].n+'!',effect:'damage',target:0});
+        lg.push('R'+rd+': '+pl[1].n+' stole your '+CD[stolen-1].n+'!');
+      }
+    }
+  }else if(r1Act===2){// Rival barrier (already tracked)
+    events.push({type:'action',who:pl[1].n,action:'BARRIER',text:pl[1].n+' raised a BARRIER!',effect:'shield'});
+    lg.push('R'+rd+': '+pl[1].n+' raised Barrier!');
+  }else{// Scout
+    events.push({type:'action',who:pl[1].n,action:'SCOUT',text:pl[1].n+' used SCOUT on you!',effect:'none'});
+    lg.push('R'+rd+': '+pl[1].n+' scouted you!');
+  }
+
+  // ── RIVAL 2 (HUNTER) ACTION ──
+  const r2Act=bpRivalActions[1];
+  if(r2Act===0){
+    const cardId=pickAreaCard();const cr=CD[cardId-1];
+    addCardToPlayer(2,cardId);
+    events.push({type:'action',who:pl[2].n,action:'DRAW',text:pl[2].n+' used DRAW and got '+cr.n+'!',effect:'card_get_rival'});
+    lg.push('R'+rd+': '+pl[2].n+' drew '+cr.n+'!');
+  }else if(r2Act===1){
+    events.push({type:'action',who:pl[2].n,action:'STEAL',text:pl[2].n+' tried STEAL!',effect:'slash',target:0});
+    if(bpPlayerBarrier){
+      events.push({type:'result',text:'Your BARRIER blocked it!',effect:'shield_block'});
+    }else if(pl[0].cc<=0){
+      events.push({type:'result',text:'You had no cards!',effect:'none'});
+    }else{
+      const stolen=removeCardFromPlayer(0,-1);
+      if(stolen>0){addCardToPlayer(2,stolen);
+        events.push({type:'result',text:pl[2].n+' stole your '+CD[stolen-1].n+'!',effect:'damage',target:0});
+        lg.push('R'+rd+': '+pl[2].n+' stole your '+CD[stolen-1].n+'!');
+      }
+    }
+  }else if(r2Act===2){
+    events.push({type:'action',who:pl[2].n,action:'BARRIER',text:pl[2].n+' raised a BARRIER!',effect:'shield'});
+  }else{
+    events.push({type:'action',who:pl[2].n,action:'SCOUT',text:pl[2].n+' used SCOUT!',effect:'none'});
+  }
+
   return events;
 }
 
@@ -2137,7 +2300,7 @@ function dVictory(){
     }
   }
 
-  if(t>130){g.globalAlpha=Math.min(1,(t-130)/15);win(W/2-130,262,260,26);tx(`Rounds: ${rd}/25  Stolen: 3  Barriers: 1`,W/2-118,280,5,'#686068');g.globalAlpha=1;}
+  if(t>130){g.globalAlpha=Math.min(1,(t-130)/15);win(W/2-130,262,260,26);tx(`Rounds: ${rd}/25  Cards: ${pl[0].cc}/5  Spells left: ${sp.s+sp.b+sp.c}`,W/2-118,280,5,'#686068');g.globalAlpha=1;}
   if(t>150){win(4,290,W-8,26);tx('You collected all 5 cards and completed the ARK!',12,308,5,'#303028');}
   if(t>170&&Math.floor(t/25)%2===0)tx('PRESS Z TO CONTINUE',W/2-100,H-4,6,'#c89820');
   if(t===31)sfxVictory();
@@ -2332,8 +2495,14 @@ document.addEventListener('keydown',e=>{
         sfxConfirm();const s=['crd','map','act','log'];
         if(mi===5)mo=false;
         else if(mi===4){
-          // NEW GAME: clear fog and restart
+          // NEW GAME: reset all state
           fogClear();
+          pl[0].cd=[1,3,0,0,0];pl[0].cc=2;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;
+          pl[1].cd=[2,5,0,0,0];pl[1].cc=2;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;
+          pl[2].cd=[4,0,0,0,0];pl[2].cc=1;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;
+          sp.s=3;sp.b=2;sp.c=1;rd=3;currentMap=0;
+          rivalMaps=[0,0];lg.length=0;lg.push('New game started!');
+          treasures.forEach(t=>t.collected=false);
           fadeOut(()=>{sc='title';mo=false;fadeIn();ub();});
         }
         else{fadeOut(()=>{sc=s[mi];mo=false;if(sc==='act'){actEnterFrame=fr;battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
@@ -2379,15 +2548,15 @@ document.addEventListener('keydown',e=>{
       if(e.code==='ArrowUp'){ai=Math.max(0,ai-1);sfxMove();}
       if(e.code==='ArrowDown'){ai=Math.min(4,ai+1);sfxMove();}
       if(e.code==='KeyZ'){
+        if(!isActionAvailable(ai)){sfxBack();return;}
         sfxConfirm();bpAction=ai;
-        lg.push('R'+rd+': You chose '+['Draw','Steal','Barrier','Scout','Use Card'][ai]+'!');
         battlePhase='confirming';bpFrame=fr;
       }
     }else if(battlePhase==='result'){
       if(e.code==='KeyZ'){
         sfxConfirm();rd++;
-        const allCards=pl[0].cd.every(c=>c>0);
-        if(allCards||rd>25){fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
+        if(playerHasAllFive()){fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
+        else if(rd>25){fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
         else{fadeOut(()=>{sc='map';mo=false;battlePhase='select';fadeIn();ub();});}
       }
     }
