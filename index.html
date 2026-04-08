@@ -280,6 +280,84 @@ function win(x,y,w,h){
 
 function bx(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}
 function tx(s,x,y,sz,c){g.fillStyle=c||'#303028';g.font=(sz||12)+"px 'Press Start 2P',monospace";g.fillText(s,x,y);}
+// Text with 1px shadow for readability (battle screens)
+function txShadow(s,x,y,sz,color,shadowColor){
+  const sc_=shadowColor||'rgba(0,0,0,0.7)';
+  g.font=(sz||12)+"px 'Press Start 2P',monospace";
+  g.fillStyle=sc_;g.fillText(s,x+1,y+1);
+  g.fillStyle=color||'#fff';g.fillText(s,x,y);
+}
+
+// ═══════════════════════════════════════
+// PHANTOM WALLET INTEGRATION
+// ═══════════════════════════════════════
+const WALLET_PROGRAM_ID='3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum';
+const WALLET_DEVNET_RPC='https://api.devnet.solana.com';
+let walletConnected=false;
+let walletPublicKey=null;
+let walletLastCommitHash=null;
+
+async function connectPhantom(){
+  if(!window.solana||!window.solana.isPhantom){
+    walletPublicKey=null;walletConnected=false;
+    return null;
+  }
+  try{
+    const resp=await window.solana.connect();
+    walletConnected=true;
+    walletPublicKey=resp.publicKey.toString();
+    console.log('Connected:',walletPublicKey);
+    return walletPublicKey;
+  }catch(err){
+    console.error('Wallet connection failed:',err);
+    walletConnected=false;walletPublicKey=null;
+    return null;
+  }
+}
+
+async function disconnectPhantom(){
+  if(window.solana){
+    try{await window.solana.disconnect();}catch(e){}
+  }
+  walletConnected=false;walletPublicKey=null;
+}
+
+function generateSalt(){return crypto.getRandomValues(new Uint8Array(32));}
+
+function base58Decode(str){
+  const ALPHABET='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const BASE=58;let result=[0];
+  for(const char of str){
+    let carry=ALPHABET.indexOf(char);
+    if(carry===-1)throw new Error('Invalid base58 character');
+    for(let j=0;j<result.length;j++){carry+=result[j]*BASE;result[j]=carry&0xff;carry>>=8;}
+    while(carry>0){result.push(carry&0xff);carry>>=8;}
+  }
+  for(const char of str){if(char!=='1')break;result.push(0);}
+  return new Uint8Array(result.reverse());
+}
+
+async function computeCommitHash(actionType,targetPubkey,salt){
+  const data=new Uint8Array(1+32+32);
+  data[0]=actionType;
+  const targetBytes=new Uint8Array(32);
+  if(targetPubkey){
+    try{const decoded=base58Decode(targetPubkey);targetBytes.set(decoded.slice(0,32));}catch(e){}
+  }
+  data.set(targetBytes,1);
+  data.set(salt,33);
+  const hashBuffer=await crypto.subtle.digest('SHA-256',data);
+  return new Uint8Array(hashBuffer);
+}
+
+function walletAddressTruncated(){
+  if(!walletPublicKey)return'';
+  return walletPublicKey.slice(0,4)+'..'+walletPublicKey.slice(-4);
+}
+
+function hexFromBytes(bytes){
+  return'0x'+Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,12)+'..';
+}
 
 // ═══════════════════════════════════════
 // TYPEWRITER
@@ -2238,10 +2316,10 @@ function drawMiniCard(x,y,cd){
     const cr=CD[cd-1];
     bx(x,y,28,20,cr.d);bx(x+1,y+1,26,18,cr.c);
     bx(x+2,y+2,24,12,cr.d);bx(x+3,y+3,22,10,'rgba(255,255,255,.15)');
-    tx(cr.i,x+8,y+12,9,'#fff');
-    bx(x+1,y+14,26,5,cr.d);tx(cr.n[0],x+9,y+19,6,'#fff');
+    txShadow(cr.i,x+7,y+12,9,'#fff','rgba(0,0,0,.5)');
+    bx(x+1,y+14,26,5,cr.d);txShadow(cr.n[0],x+8,y+19,7,'#fff','rgba(0,0,0,.5)');
   }else{
-    bx(x,y,28,20,'#c8c0a8');bx(x+1,y+1,26,18,'#d8d0b8');tx('?',x+9,y+15,8,'#a89880');
+    bx(x,y,28,20,'#c8c0a8');bx(x+1,y+1,26,18,'#d8d0b8');txShadow('?',x+8,y+15,8,'#a89880','rgba(0,0,0,.3)');
   }
 }
 
@@ -2857,8 +2935,31 @@ function dTitle(){
     if(sel===0)tx('\u25B6',W/2-76,340,10,'#f0c830');
     if(sel===1&&blink||sel!==1)tx('NEW GAME',W/2-52,372,10,sel===1?'#f0c830':'#888898');
     if(sel===1)tx('\u25B6',W/2-76,372,10,'#f0c830');
+    // CONNECT WALLET option
+    if(walletConnected){
+      tx(walletAddressTruncated(),W/2-52,404,8,'#40d080');
+      if(sel===2)tx('\u25B6',W/2-76,404,10,'#40d080');
+    }else{
+      if(sel===2&&blink||sel!==2)tx('CONNECT WALLET',W/2-80,404,10,sel===2?'#f0c830':'#888898');
+      if(sel===2)tx('\u25B6',W/2-104,404,10,'#f0c830');
+    }
   }else{
     if(Math.floor(fr/25)%2===0)tx('PRESS Z TO START',W/2-110,350,10,'#f0c830');
+    // CONNECT WALLET option below start
+    if(walletConnected){
+      tx(walletAddressTruncated(),W/2-52,390,8,'#40d080');
+    }else{
+      const sel2=titleMenuIdx||0;
+      const blink2=Math.floor(fr/25)%2===0;
+      if(sel2===1&&blink2||sel2!==1)tx('CONNECT WALLET',W/2-80,390,10,sel2===1?'#f0c830':'#888898');
+      if(sel2===1)tx('\u25B6',W/2-104,390,10,'#f0c830');
+    }
+  }
+  // On-chain / offline indicator
+  if(walletConnected){
+    tx('ON-CHAIN',W/2+100,560,7,'#40d080');
+  }else{
+    tx('OFFLINE',W/2+100,560,7,'#555570');
   }
   tx('v0.3  SOLANA',W/2-60,560,7,'#333350');
   tx('2026 r0ze',W/2-44,582,7,'#2a2a40');
@@ -3303,6 +3404,9 @@ function dMap(){
 
   // Sound indicator
   tx(soundEnabled?'SND:ON':'SND:OFF',750,hudY+22,6,soundEnabled?'#60a060':'#a06060');
+  // On-chain mode indicator
+  if(walletConnected){tx('ON-CHAIN',820,hudY+22,6,'#40d080');}
+  else{tx('OFFLINE',820,hudY+22,6,'#555570');}
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -3370,7 +3474,7 @@ function dMenu(){
   if(menuOpenFrame===0)menuOpenFrame=fr;
   const menuT=Math.min(1,(fr-menuOpenFrame)/8);
   const ease=easeInOut(menuT);
-  const menuW=Math.floor(190*ease),menuH=Math.floor(260*ease);
+  const menuW=Math.floor(190*ease),menuH=Math.floor(282*ease);
   const menuX=W-10-menuW,menuY=10;
   bx(0,0,W,H,`rgba(0,0,0,${0.35*ease})`);
   if(menuW>4&&menuH>4){
@@ -3378,15 +3482,18 @@ function dMenu(){
     if(ease>=0.7){
       const itemAlpha=Math.min(1,(ease-0.7)/0.3);
       g.globalAlpha=itemAlpha;
-      const items=['CARDS','MAP','BATTLE','LOG','USE CARD','DISCARD','SAVE','NEW GAME','CLOSE'];
+      const items=['CARDS','MAP','BATTLE','LOG','USE CARD','DISCARD','WALLET','SAVE','NEW GAME','CLOSE'];
       items.forEach((s,i)=>{
         const y=34+i*22;
+        const walletIdx=6;
+        let label=s;
+        if(i===walletIdx){label=walletConnected?'WALLET ('+walletAddressTruncated()+')':'WALLET (OFF)';}
         if(i===mi){
           const bounce=Math.sin(fr*0.15)*1.5;
-          const clr=(i===4?'#9060c0':i===5?'#b06030':i===6?'#40a0d0':i===7?'#d8b028':'#c04040');
-          tx('\u25B6',W-160+bounce,y,8,clr);tx(s,W-144,y,8,clr);
+          const clr=(i===4?'#9060c0':i===5?'#b06030':i===walletIdx?(walletConnected?'#40d080':'#888898'):i===7?'#40a0d0':i===8?'#d8b028':'#c04040');
+          tx('\u25B6',W-160+bounce,y,8,clr);tx(label,W-144,y,8,clr);
         }
-        else tx(s,W-144,y,8,i===4?'#7050a0':i===5?'#906030':i===6?'#3080a0':i===7?'#a08820':'#303028');
+        else tx(label,W-144,y,8,i===4?'#7050a0':i===5?'#906030':i===walletIdx?(walletConnected?'#308060':'#686868'):i===7?'#3080a0':i===8?'#a08820':'#303028');
       });
       g.globalAlpha=1;
     }
@@ -3507,18 +3614,18 @@ function drawOpponentInfoBox(){
   bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
   bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
   // Name
-  tx(rival.n,bx_+10,by_+18,9,'#383830');
+  txShadow(rival.n,bx_+10,by_+20,14,'#383830','rgba(200,180,140,.3)');
   // Area indicator
   const areaTag=mapNames[rivalMaps[0]]||'???';
-  tx(areaTag,bx_+10,by_+32,5,'#988870');
+  txShadow(areaTag,bx_+10,by_+36,8,'#988870','rgba(0,0,0,.15)');
   // Card bar (like HP bar)
-  tx('CARDS',bx_+120,by_+18,5,'#887858');
-  drawCardBar(bx_+156,by_+12,94,rival.cd,5);
+  txShadow('CARDS',bx_+120,by_+20,8,'#887858','rgba(0,0,0,.15)');
+  drawCardBar(bx_+168,by_+12,82,rival.cd,5);
   // Card count number
-  tx(rival.cc+'/5',bx_+200,by_+32,6,'#383830');
+  txShadow(rival.cc+'/5',bx_+200,by_+36,10,'#383830','rgba(0,0,0,.15)');
   // Spell indicators as small icons
-  bx(bx_+120,by_+28,6,6,'#b04040');bx(bx_+128,by_+35,5,'#686060');// S
-  bx(bx_+140,by_+28,6,6,'#3060b0');bx(bx_+148,by_+35,5,'#686060');// B
+  bx(bx_+120,by_+30,6,6,'#b04040');bx(bx_+128,by_+37,5,'#686060');// S
+  bx(bx_+140,by_+30,6,6,'#3060b0');bx(bx_+148,by_+37,5,'#686060');// B
 }
 
 // Draw FRLG-style player info box (bottom-right)
@@ -3530,24 +3637,24 @@ function drawPlayerInfoBox(){
   bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
   bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
   // Name
-  tx(pl[0].n,bx_+10,by_+18,9,'#383830');
+  txShadow(pl[0].n,bx_+10,by_+20,14,'#383830','rgba(200,180,140,.3)');
   // Card bar
-  tx('CARDS',bx_+10,by_+34,5,'#887858');
-  drawCardBar(bx_+48,by_+28,160,pl[0].cd,5);
-  tx(pl[0].cc+'/5',bx_+214,by_+34,6,'#383830');
+  txShadow('CARDS',bx_+10,by_+36,8,'#887858','rgba(0,0,0,.15)');
+  drawCardBar(bx_+60,by_+28,148,pl[0].cd,5);
+  txShadow(pl[0].cc+'/5',bx_+214,by_+36,10,'#383830','rgba(0,0,0,.15)');
   // Win indicator
   if(pl[0].cc>=4){
-    const flash=Math.sin(fr*0.15)*0.3+0.7;
-    g.globalAlpha=flash;
-    tx('5/5\u2192WIN!',bx_+180,by_+50,6,'#c04040');
+    const flash_=Math.sin(fr*0.15)*0.3+0.7;
+    g.globalAlpha=flash_;
+    txShadow('5/5\u2192WIN!',bx_+180,by_+52,10,'#c04040','rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
   // Spell counts
-  tx('STL:'+sp.s,bx_+10,by_+50,5,'#b04040');
-  tx('BAR:'+sp.b,bx_+70,by_+50,5,'#3060b0');
-  tx('SCT:'+sp.c,bx_+130,by_+50,5,'#308030');
+  txShadow('STL:'+sp.s,bx_+10,by_+52,8,'#b04040','rgba(0,0,0,.15)');
+  txShadow('BAR:'+sp.b,bx_+80,by_+52,8,'#3060b0','rgba(0,0,0,.15)');
+  txShadow('SCT:'+sp.c,bx_+150,by_+52,8,'#308030','rgba(0,0,0,.15)');
   // Area
-  tx(mapNames[currentMap],bx_+10,by_+62,5,'#988870');
+  txShadow(mapNames[currentMap],bx_+10,by_+64,8,'#988870','rgba(0,0,0,.15)');
 }
 
 // Draw battle sprite (front-facing for opponent, back-facing for player)
@@ -3615,8 +3722,7 @@ function drawVsSplash(){
   if(t>15){
     g.globalAlpha=Math.min(1,(t-15)/10);
     // VS with outline
-    tx('VS',W/2-30,H/2+14,36,'#000');
-    tx('VS',W/2-28,H/2+12,34,'#f0c830');
+    txShadow('VS',W/2-28,H/2+14,36,'#f0c830','#000');
     g.globalAlpha=1;
   }
   // Flash
@@ -3624,7 +3730,7 @@ function drawVsSplash(){
   // Area name
   if(t>20&&t<55){
     g.globalAlpha=Math.min(1,(t-20)/8,Math.max(0,(55-t)/8));
-    tx(mapNames[currentMap],W/2-60,H/2+40,7,'#fff');
+    txShadow(mapNames[currentMap],W/2-80,H/2+42,14,'#fff','rgba(0,0,0,.5)');
     g.globalAlpha=1;
   }
   if(t>=60){battlePhase='select';bpFrame=fr;}
@@ -3646,15 +3752,19 @@ const PHASE_LABELS={select:'COMMIT PHASE',confirming:'REVEALING...',resolving:'R
 function drawPhaseBanner(phase){
   const col=PHASE_COLORS[phase]||'#383830';
   const label=PHASE_LABELS[phase]||'';
-  bx(0,0,W,22,col);bx(0,20,W,2,'rgba(0,0,0,.3)');
+  bx(0,0,W,28,col);bx(0,26,W,2,'rgba(0,0,0,.3)');
   bx(0,0,W,1,'rgba(255,255,255,.2)');
   // Round info on left
-  tx('R'+rd+'/25',6,15,7,'#fff');
-  // Phase label centered
-  const labelW=label.length*7;
-  tx(label,W/2-labelW/2,15,7,'#fff');
+  txShadow('R'+rd+'/25',6,20,10,'#fff','rgba(0,0,0,.5)');
+  // Phase label centered (bigger, bold-like with shadow)
+  const labelW=label.length*10;
+  txShadow(label,W/2-labelW/2,20,16,'#fff','rgba(0,0,0,.5)');
   // Area on right
-  tx(mapNames[currentMap],W-120,15,6,'rgba(255,255,255,.7)');
+  txShadow(mapNames[currentMap],W-160,20,8,'rgba(255,255,255,.8)','rgba(0,0,0,.4)');
+  // Commit hash display during commit phase (wallet integration)
+  if(walletConnected&&walletLastCommitHash&&(phase==='confirming'||phase==='resolving')){
+    txShadow('Hash: '+walletLastCommitHash,W/2-100,38,5,'#80c0ff','rgba(0,0,0,.5)');
+  }
 }
 
 // Draw the battle arena with sprites
@@ -3671,7 +3781,7 @@ function drawBattleArena(){
 
 // FRLG-style 2x2 action grid
 function drawActionGrid(){
-  const gridX=8,gridY=H-148,cellW=140,cellH=36,gap=4;
+  const gridX=8,gridY=H-164,cellW=160,cellH=42,gap=4;
   const actions=[
     {name:'DRAW',desc:'from pool',col:'#303028',icon:'#48b8e8'},
     {name:'STEAL',desc:sp.s+' left',col:'#b04040',icon:'#b04040'},
@@ -3697,14 +3807,14 @@ function drawActionGrid(){
       // Icon square
       const iconCol=avail?actions[idx].icon:'#989088';
       bx(cx_+4,cy_+6,18,18,iconCol);bx(cx_+5,cy_+7,16,16,avail?'rgba(255,255,255,.2)':'rgba(0,0,0,.1)');
-      // Text
+      // Text (increased sizes for readability)
       const textCol=avail?(sel?'#c04040':actions[idx].col):'#a0a0a0';
-      tx(actions[idx].name,cx_+26,cy_+16,7,textCol);
-      tx(actions[idx].desc,cx_+26,cy_+28,5,avail?'#908878':'#b8b8b8');
+      txShadow(actions[idx].name,cx_+26,cy_+18,14,textCol,'rgba(0,0,0,.3)');
+      txShadow(actions[idx].desc,cx_+26,cy_+32,10,avail?'#908878':'#b8b8b8','rgba(0,0,0,.2)');
       // Cursor arrow
       if(sel&&avail){
         const bob_=Math.sin(fr*0.15)*2;
-        tx('\u25B6',cx_-10+bob_,cy_+18,7,'#c04040');
+        txShadow('\u25B6',cx_-12+bob_,cy_+20,10,'#c04040','rgba(0,0,0,.3)');
       }
     }
   }
@@ -3718,19 +3828,19 @@ function drawActionGrid(){
     bx(ucX,ucY,ucW,ucH,ucAvail?'#e8e0c8':'#c8c0b0');
   }
   bx(ucX+4,ucY+4,18,18,'#806030');bx(ucX+5,ucY+5,16,16,'rgba(255,255,255,.15)');
-  tx('USE CARD',ucX+26,ucY+16,7,ucAvail?(ucSel?'#c04040':'#806030'):'#a0a0a0');
-  tx('consume fx',ucX+120,ucY+16,5,ucAvail?'#908878':'#b8b8b8');
+  txShadow('USE CARD',ucX+26,ucY+18,14,ucAvail?(ucSel?'#c04040':'#806030'):'#a0a0a0','rgba(0,0,0,.3)');
+  txShadow('consume fx',ucX+140,ucY+18,10,ucAvail?'#908878':'#b8b8b8','rgba(0,0,0,.2)');
   if(ucSel&&ucAvail){
     const bob_=Math.sin(fr*0.15)*2;
-    tx('\u25B6',ucX-10+bob_,ucY+18,7,'#c04040');
+    txShadow('\u25B6',ucX-12+bob_,ucY+20,10,'#c04040','rgba(0,0,0,.3)');
   }
   // Hint when all spells exhausted
   if(sp.s<=0&&sp.b<=0&&sp.c<=0){
-    tx('No spells left! DRAW or USE CARD.',gridX+4,gridY+cellH*2+gap+ucH+14,5,'#c08040');
+    txShadow('No spells left! DRAW or USE CARD.',gridX+4,gridY+cellH*2+gap+ucH+14,8,'#c08040','rgba(0,0,0,.3)');
   }
   // Hint when both rivals have 0 cards
   if(bothRivalsEliminated()){
-    tx('Both rivals have no cards! Keep drawing.',gridX+4,gridY+cellH*2+gap+ucH+24,5,'#308030');
+    txShadow('Both rivals have no cards! Keep drawing.',gridX+4,gridY+cellH*2+gap+ucH+24,8,'#308030','rgba(0,0,0,.3)');
   }
 }
 
@@ -3747,27 +3857,27 @@ function drawSelectPhase(){
   if(bpCardSelectActive){
     bx(0,0,W,H,'rgba(0,0,0,.4)');
     const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
-    const mh=filled.length*32+48;
-    win(W/2-130,H/2-mh/2,260,mh);
-    tx('Use which card?',W/2-70,H/2-mh/2+22,7,'#806030');
+    const mh=filled.length*36+52;
+    win(W/2-150,H/2-mh/2,300,mh);
+    txShadow('Use which card?',W/2-80,H/2-mh/2+24,14,'#806030','rgba(0,0,0,.2)');
     filled.forEach((slot,j)=>{
       const cd=pl[0].cd[slot],cr=CD[cd-1];
-      const y=H/2-mh/2+38+j*32;
-      if(j===bpCardSelectIdx){bx(W/2-120,y-2,240,28,'rgba(192,168,96,.22)');tx('\u25B6',W/2-124,y+14,7,'#c04040');}
-      bx(W/2-108,y+2,20,20,cr.d);bx(W/2-106,y+4,16,16,cr.c);
-      tx(cr.n,W/2-82,y+16,7,j===bpCardSelectIdx?'#c04040':'#303028');
-      tx(cr.f,W/2+30,y+16,6,'#908878');
+      const y=H/2-mh/2+42+j*36;
+      if(j===bpCardSelectIdx){bx(W/2-140,y-2,280,32,'rgba(192,168,96,.22)');txShadow('\u25B6',W/2-144,y+16,10,'#c04040','rgba(0,0,0,.3)');}
+      bx(W/2-126,y+4,22,22,cr.d);bx(W/2-124,y+6,18,18,cr.c);
+      txShadow(cr.n,W/2-98,y+18,14,j===bpCardSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
+      txShadow(cr.f,W/2+40,y+18,10,'#908878','rgba(0,0,0,.15)');
     });
   }
   if(bpTargetSelectActive){
     bx(0,0,W,H,'rgba(0,0,0,.4)');
-    win(W/2-120,H/2-44,240,88);
-    tx('Target:',W/2-48,H/2-22,7,'#806030');
+    win(W/2-140,H/2-50,280,100);
+    txShadow('Target:',W/2-48,H/2-26,14,'#806030','rgba(0,0,0,.2)');
     for(let t=1;t<=2;t++){
-      const y=H/2-4+(t-1)*28;
-      if(t===bpTargetSelectIdx){bx(W/2-110,y-2,220,24,'rgba(192,168,96,.22)');tx('\u25B6',W/2-114,y+12,7,'#c04040');}
-      tx(pl[t].n,W/2-86,y+12,7,t===bpTargetSelectIdx?'#c04040':'#303028');
-      tx(pl[t].cc+' cards',W/2+40,y+12,6,'#908878');
+      const y=H/2-4+(t-1)*32;
+      if(t===bpTargetSelectIdx){bx(W/2-130,y-2,260,28,'rgba(192,168,96,.22)');txShadow('\u25B6',W/2-134,y+14,10,'#c04040','rgba(0,0,0,.3)');}
+      txShadow(pl[t].n,W/2-106,y+14,14,t===bpTargetSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
+      txShadow(pl[t].cc+' cards',W/2+40,y+14,10,'#908878','rgba(0,0,0,.15)');
     }
   }
   g.restore();
@@ -3780,11 +3890,19 @@ function drawConfirmingPhase(){
   drawOpponentInfoBox();
   drawPlayerInfoBox();
   // Text box at bottom
-  win(4,H-64,W-8,58);
+  win(4,H-70,W-8,64);
   const t=fr-bpFrame;const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
-  if(t<40)tx('You chose '+actionNames[bpAction]+'!',16,H-36,9,'#303028');
-  else if(t<80){const sp_=['|','/','-','\\'][Math.floor(t/4)%4];tx('Committing action... '+sp_,16,H-36,9,'#686068');}
-  else{tx('Waiting for others'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-36,9,'#686068');}
+  if(t<40)txShadow('You chose '+actionNames[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
+  else if(t<80){const sp_=['|','/','-','\\'][Math.floor(t/4)%4];txShadow('Committing action... '+sp_,16,H-38,14,'#686068','rgba(200,180,140,.3)');}
+  else{txShadow('Waiting for others'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-38,14,'#686068','rgba(200,180,140,.3)');}
+  // Generate and log commit hash when wallet connected
+  if(t===1&&walletConnected){
+    const salt=generateSalt();
+    computeCommitHash(bpAction,walletPublicKey,salt).then(hash=>{
+      walletLastCommitHash=hexFromBytes(hash);
+      lg.push('Commit hash: '+walletLastCommitHash);
+    }).catch(()=>{});
+  }
   if(t>=120){battlePhase='resolving';bpFrame=fr;bpResolveIdx=0;bpResolveQueue=generateResolveEvents();}
 }
 
@@ -4155,12 +4273,12 @@ function drawResolvingPhase(){
     bpResolveIdx=currentIdx;const ev=bpResolveQueue[currentIdx];const evT=t%eventDuration;
     // Typewriter text box at bottom
     const slideIn=Math.min(1,evT/12);const textX=W*(1-slideIn)+16*slideIn;
-    win(4,H-64,W-8,58);
-    tx(ev.text,textX,H-38,7,'#303028');
+    win(4,H-70,W-8,64);
+    txShadow(ev.text,textX,H-38,14,'#303028','rgba(200,180,140,.3)');
     // Brief pause indicator
     if(evT>38){
       const dotCount=Math.floor((evT-38)/4)%4;
-      tx('.'.repeat(dotCount),textX+ev.text.length*7+4,H-38,7,'#a09080');
+      txShadow('.'.repeat(dotCount),textX+ev.text.length*14+4,H-38,14,'#a09080','rgba(0,0,0,.2)');
     }
     // === EFFECT ANIMATIONS ===
     const playerCX=160,playerCY=H-130;
@@ -4203,7 +4321,7 @@ function drawResolvingPhase(){
       // "BLOCKED" text
       if(evT>5&&evT<25){
         g.globalAlpha=Math.min(1,(evT-5)/5)*Math.max(0,(25-evT)/10);
-        tx('BLOCKED!',playerCX-40,playerCY-40,8,'#4080ff');
+        txShadow('BLOCKED!',playerCX-50,playerCY-40,16,'#4080ff','rgba(0,0,30,.6)');
         g.globalAlpha=1;
       }
       g.restore();if(evT===1)sfxShield();
@@ -4278,19 +4396,19 @@ function drawResultPhase(){
   const slideIn_=Math.min(1,t/15);
   g.globalAlpha=slideIn_;
   win(panX,panY,panW,panH);
-  tx('ROUND '+rd+' COMPLETE',panX+panW/2-90,panY+24,8,'#308030');
+  txShadow('ROUND '+rd+' COMPLETE',panX+panW/2-110,panY+26,14,'#308030','rgba(0,0,0,.3)');
   // Card bar display
-  tx('Your cards:',panX+16,panY+48,6,'#686068');
+  txShadow('Your cards:',panX+16,panY+48,10,'#686068','rgba(0,0,0,.2)');
   for(let i=0;i<5;i++){
     const cd=pl[0].cd[i];
     const sx_=panX+110+i*38;
     if(cd>0){
       const cr=CD[cd-1];
       bx(sx_,panY+38,32,18,cr.d);bx(sx_+1,panY+39,30,16,cr.c);
-      tx(cr.n[0],sx_+10,panY+52,7,'#fff');
+      txShadow(cr.n[0],sx_+8,panY+53,12,'#fff','rgba(0,0,0,.5)');
     }else{
       bx(sx_,panY+38,32,18,'#c0b898');bx(sx_+1,panY+39,30,16,'#d0c8a8');
-      tx('-',sx_+12,panY+52,7,'#a89880');
+      txShadow('-',sx_+10,panY+53,12,'#a89880','rgba(0,0,0,.3)');
     }
   }
   // Recent events summary from resolve queue
@@ -4310,17 +4428,17 @@ function drawResultPhase(){
       else if(ev.text.includes('Shadow'))evCol='#7858a0';
       // Truncate long text
       const dispText=ev.text.length>42?ev.text.substring(0,40)+'..':ev.text;
-      tx(dispText,panX+16,lineY+12,5,evCol);
-      lineY+=16;
+      txShadow(dispText,panX+16,lineY+12,8,evCol,'rgba(0,0,0,.2)');
+      lineY+=18;
     }
   }
   g.globalAlpha=slideIn_;
   // Spell counts
-  tx('Spells: STL:'+sp.s+' BAR:'+sp.b+' SCT:'+sp.c,panX+16,panY+panH-30,6,'#988870');
+  txShadow('Spells: STL:'+sp.s+' BAR:'+sp.b+' SCT:'+sp.c,panX+16,panY+panH-30,10,'#988870','rgba(0,0,0,.2)');
   g.globalAlpha=1;
   // Press Z prompt
   if(t>25&&Math.floor(t/20)%2===0){
-    tx('PRESS Z TO CONTINUE',W/2-110,panY+panH+10,6,'#989080');
+    txShadow('PRESS Z TO CONTINUE',W/2-120,panY+panH+12,10,'#989080','rgba(0,0,0,.3)');
   }
 }
 
@@ -4377,7 +4495,7 @@ function drawCardAcquisition(){
   }
   g.globalAlpha=1;
 
-  if(t>=50&&t<90){win(W/2-140,cy_+ch/2+12,280,36);tx('You obtained '+cr.n+'!',W/2-120,cy_+ch/2+36,9,'#303028');}
+  if(t>=50&&t<90){win(W/2-150,cy_+ch/2+12,300,40);txShadow('You obtained '+cr.n+'!',W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');}
 
   for(let i=cardAcqParticles.length-1;i>=0;i--){
     const p=cardAcqParticles[i];p.x+=p.vx;p.y+=p.vy;p.life--;
@@ -5497,12 +5615,12 @@ document.addEventListener('keydown',e=>{
 
   if(sc==='title'){
     if(hasSave()){
-      if(e.code==='ArrowUp'){titleMenuIdx=0;sfxMove();}
-      if(e.code==='ArrowDown'){titleMenuIdx=1;sfxMove();}
+      if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxMove();}
+      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(2,titleMenuIdx+1);sfxMove();}
       if(e.code==='KeyZ'){
-        sfxConfirm();
         if(titleMenuIdx===0){
           // CONTINUE
+          sfxConfirm();
           fadeOut(()=>{
             if(loadGame()){
               sc='map';showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]+' cards found here');
@@ -5513,20 +5631,55 @@ document.addEventListener('keydown',e=>{
               fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');
             }
           });
-        }else{
+        }else if(titleMenuIdx===1){
           // NEW GAME
+          sfxConfirm();
           resetGameState(true);
           fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Crystal & Shadow cards found here');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
             fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
+        }else if(titleMenuIdx===2){
+          // CONNECT WALLET
+          sfxSelect();
+          if(walletConnected){
+            disconnectPhantom().then(()=>{lg.push('Wallet disconnected.');});
+          }else{
+            if(!window.solana||!window.solana.isPhantom){
+              twSet('Install Phantom wallet from phantom.app');
+            }else{
+              connectPhantom().then(addr=>{
+                if(addr){twSet('Connected: '+walletAddressTruncated());lg.push('Wallet connected: '+walletAddressTruncated());}
+                else{twSet('Connection cancelled.');}
+              }).catch(()=>{twSet('Connection failed.');});
+            }
+          }
         }
       }
     }else{
+      if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxMove();}
+      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(1,titleMenuIdx+1);sfxMove();}
       if(e.code==='KeyZ'){
-        sfxConfirm();
-        fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Crystal & Shadow cards found here');
-          fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-          fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
+        if(titleMenuIdx===0){
+          sfxConfirm();
+          fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Crystal & Shadow cards found here');
+            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+            fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
+        }else if(titleMenuIdx===1){
+          // CONNECT WALLET (no save)
+          sfxSelect();
+          if(walletConnected){
+            disconnectPhantom().then(()=>{lg.push('Wallet disconnected.');});
+          }else{
+            if(!window.solana||!window.solana.isPhantom){
+              twSet('Install Phantom wallet from phantom.app');
+            }else{
+              connectPhantom().then(addr=>{
+                if(addr){twSet('Connected: '+walletAddressTruncated());lg.push('Wallet connected: '+walletAddressTruncated());}
+                else{twSet('Connection cancelled.');}
+              }).catch(()=>{twSet('Connection failed.');});
+            }
+          }
+        }
       }
     }
     return;
@@ -5705,10 +5858,10 @@ document.addEventListener('keydown',e=>{
     if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();return;}
     if(mo){
       if(e.code==='ArrowUp'){mi=Math.max(0,mi-1);sfxMove();}
-      if(e.code==='ArrowDown'){mi=Math.min(8,mi+1);sfxMove();}
+      if(e.code==='ArrowDown'){mi=Math.min(9,mi+1);sfxMove();}
       if(e.code==='KeyZ'){
         sfxConfirm();const s=['crd','map','act','log'];
-        if(mi===8)mo=false;
+        if(mi===9)mo=false;
         else if(mi===4){
           // USE CARD on map
           mo=false;menuOpenFrame=0;
@@ -5723,12 +5876,28 @@ document.addEventListener('keydown',e=>{
           }else{twSet('No cards to discard!');mo=false;menuOpenFrame=0;}
         }
         else if(mi===6){
+          // WALLET
+          mo=false;menuOpenFrame=0;
+          if(walletConnected){
+            disconnectPhantom().then(()=>{twSet('Wallet disconnected.');lg.push('Wallet disconnected.');});
+          }else{
+            if(!window.solana||!window.solana.isPhantom){
+              twSet('Install Phantom wallet from phantom.app');
+            }else{
+              connectPhantom().then(addr=>{
+                if(addr){twSet('Connected: '+walletAddressTruncated());lg.push('Wallet connected: '+walletAddressTruncated());}
+                else{twSet('Connection cancelled.');}
+              }).catch(()=>{twSet('Connection failed.');});
+            }
+          }
+        }
+        else if(mi===7){
           // SAVE
           saveGame();
           twSet('Game saved!');
           mo=false;menuOpenFrame=0;
         }
-        else if(mi===7){
+        else if(mi===8){
           // NEW GAME: reset all state
           resetGameState(true);
           fadeOut(()=>{sc='title';mo=false;fadeIn();ub();});
@@ -5968,7 +6137,8 @@ function saveGame(){
       campfireUsed:campfireUsed,
       burnedTiles:[...burnedTiles],
       shadowStepsLeft:shadowStepsLeft,
-      fishingCooldownTimer:fishingCooldownTimer
+      fishingCooldownTimer:fishingCooldownTimer,
+      walletAddress:walletPublicKey||null
     };
     localStorage.setItem(SAVE_KEY,JSON.stringify(data));
     saveIndicatorTimer=60;
@@ -6017,6 +6187,7 @@ function loadGame(){
     if(d.burnedTiles){burnedTiles.length=0;d.burnedTiles.forEach(t=>{burnedTiles.push(t);if(maps[t.mapIdx]&&maps[t.mapIdx][t.y])maps[t.mapIdx][t.y][t.x]=1;});}
     if(d.shadowStepsLeft!==undefined)shadowStepsLeft=d.shadowStepsLeft;
     if(d.fishingCooldownTimer!==undefined)fishingCooldownTimer=d.fishingCooldownTimer;
+    if(d.walletAddress){walletPublicKey=d.walletAddress;walletConnected=true;}
     // Sync card counts from actual data to prevent drift
     syncCardCount(0);syncCardCount(1);syncCardCount(2);
     fogLoad();
