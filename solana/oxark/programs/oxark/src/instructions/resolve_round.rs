@@ -42,6 +42,8 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
             key: *account_info.key,
             action: ActionType::from(ps.revealed_action),
             target: ps.revealed_target,
+            area: ps.area,
+            move_target: ps.move_target,
             cards: ps.cards,
             card_count: ps.card_count,
             steal_count: ps.steal_count,
@@ -51,6 +53,18 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     }
 
     // === Resolution Order ===
+
+    // 0. Move (area transition — processed first so Steal etc. use new positions)
+    for p in players.iter_mut() {
+        if p.action == ActionType::Move {
+            let dest = p.move_target;
+            if dest < crate::constants::NUM_AREAS {
+                msg!("Player {} moved from area {} to area {}", p.key, p.area, dest);
+                p.area = dest;
+            }
+        }
+    }
+
     // 1. Shadow (invisibility)
     let mut invisible: Vec<bool> = vec![false; player_count];
     for (i, p) in players.iter_mut().enumerate() {
@@ -86,17 +100,20 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
         }
     }
 
-    // 4. Steal (take card, check barrier + invisibility + Crystal)
+    // 4. Steal (take card, check SAME AREA + barrier + invisibility + Crystal)
     for i in 0..player_count {
         if players[i].action == ActionType::Steal || players[i].action == ActionType::UseCrystal {
             let target_key = players[i].target;
             let is_crystal = players[i].action == ActionType::UseCrystal;
 
             if let Some(ti) = players.iter().position(|p| p.key == target_key) {
+                let same_area = players[i].area == players[ti].area;
                 let target_invisible = invisible[ti];
                 let target_barriered = barriered[ti];
 
-                if target_invisible {
+                if !same_area {
+                    msg!("Steal failed: target {} is in a different area", target_key);
+                } else if target_invisible {
                     msg!("Steal failed: target {} is invisible", target_key);
                 } else if target_barriered && !is_crystal {
                     msg!("Steal blocked by Barrier");
@@ -122,12 +139,14 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
         }
     }
 
-    // 5. Flame (destroy target's card)
+    // 5. Flame (destroy target's card — SAME AREA only)
     for i in 0..player_count {
         if players[i].action == ActionType::UseFlame {
             let target_key = players[i].target;
             if let Some(ti) = players.iter().position(|p| p.key == target_key) {
-                if !invisible[ti] {
+                if players[i].area != players[ti].area {
+                    msg!("Flame failed: target {} in different area", target_key);
+                } else if !invisible[ti] {
                     let seed = game.round as u64 * 37 + i as u64 * 13;
                     let destroyed = steal_random_card(&mut players[ti].cards, seed);
                     if destroyed > 0 {
@@ -155,28 +174,35 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
         }
     }
 
-    // 7. Draw (from pool)
+    // 7. Draw (from AREA-SPECIFIC pool)
     let clock = Clock::get()?;
     let mut seed = clock.slot;
     for (i, p) in players.iter_mut().enumerate() {
         if p.action == ActionType::Draw {
-            let card_id = pick_card_from_pool(&mut pool.remaining, seed);
+            // Only draw card types available in current area
+            let area_idx = p.area as usize;
+            let area_cards = if area_idx < 3 { crate::constants::AREA_CARDS[area_idx] } else { [1, 2] };
+            let card_id = pick_area_card_from_pool(&mut pool.remaining, seed, &area_cards);
             if card_id > 0 {
                 place_card(&mut p.cards, card_id);
                 p.card_count += 1;
                 game.cards_in_pool -= 1;
-                msg!("Player {} drew card {}", p.key, card_id);
+                msg!("Player {} drew card {} from area {}", p.key, card_id, p.area);
+            } else {
+                msg!("Player {} tried to draw but area pool empty", p.key);
             }
             seed = seed.wrapping_mul(6364136223846793005).wrapping_add(i as u64);
         }
     }
 
-    // 8. Void (copy target's card)
+    // 8. Void (copy target's card — SAME AREA only)
     for i in 0..player_count {
         if players[i].action == ActionType::UseVoid {
             let target_key = players[i].target;
             if let Some(ti) = players.iter().position(|p| p.key == target_key) {
-                if !invisible[ti] && players[ti].card_count > 0 {
+                if players[i].area != players[ti].area {
+                    msg!("Void failed: target {} in different area", target_key);
+                } else if !invisible[ti] && players[ti].card_count > 0 {
                     // Pick a random card from target to copy
                     let seed = game.round as u64 * 41 + i as u64 * 7;
                     let copied = peek_random_card(&players[ti].cards, seed);
@@ -196,16 +222,16 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     for (idx, account_info) in ctx.remaining_accounts.iter().take(player_count).enumerate() {
         let mut data = account_info.try_borrow_mut_data()?;
         let p = &players[idx];
-        // Write cards and counts back (skip discriminator + game_id + player + player_index)
-        // Offset: 8 (disc) + 8 (game_id) + 32 (player) + 1 (index) = 49
-        data[49..54].copy_from_slice(&p.cards);
-        data[54] = p.card_count;
-        data[55] = p.steal_count;
-        data[56] = p.barrier_count;
-        data[57] = p.scout_count;
+        // Offset: 8 (disc) + 8 (game_id) + 32 (player) + 1 (index) + 1 (area) = 50
+        data[49] = p.area;
+        data[50..55].copy_from_slice(&p.cards);
+        data[55] = p.card_count;
+        data[56] = p.steal_count;
+        data[57] = p.barrier_count;
+        data[58] = p.scout_count;
         // Reset commit/reveal flags
-        data[58] = 0; // has_committed = false
-        data[59] = 0; // has_revealed = false
+        data[59] = 0; // has_committed = false
+        data[60] = 0; // has_revealed = false
     }
 
     // === Check victory ===
@@ -255,6 +281,8 @@ struct PlayerData {
     key: Pubkey,
     action: ActionType,
     target: Pubkey,
+    area: u8,
+    move_target: u8,
     cards: [u8; 5],
     card_count: u8,
     steal_count: u8,
@@ -301,6 +329,30 @@ fn peek_random_card(cards: &[u8; 5], seed: u64) -> u8 {
         return 0;
     }
     filled[(seed as usize) % filled.len()]
+}
+
+fn pick_area_card_from_pool(remaining: &mut [u8; 5], seed: u64, area_cards: &[u8; 2]) -> u8 {
+    // Only consider card types available in this area
+    let mut total: u32 = 0;
+    for &cid in area_cards {
+        if cid > 0 && cid <= 5 {
+            total += remaining[(cid - 1) as usize] as u32;
+        }
+    }
+    if total == 0 { return 0; }
+    let pick = (seed % total as u64) as u32;
+    let mut cumulative: u32 = 0;
+    for &cid in area_cards {
+        if cid > 0 && cid <= 5 {
+            let idx = (cid - 1) as usize;
+            cumulative += remaining[idx] as u32;
+            if pick < cumulative {
+                remaining[idx] -= 1;
+                return cid;
+            }
+        }
+    }
+    0
 }
 
 fn pick_card_from_pool(remaining: &mut [u8; 5], seed: u64) -> u8 {
