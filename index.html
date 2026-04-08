@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0xARK — GBA Edition</title>
+<style>
+@font-face {
+  font-family: 'Pokemon';
+  src: url('https://cdn.jsdelivr.net/gh/pret/agbcc@master/lib/libgcc.a') format('truetype');
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: monospace; }
+
+#emulator {
+  background: #2d2d44;
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 0 60px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.05);
+}
+
+#screen {
+  width: 720px;
+  height: 480px;
+  background: #8bac0f;
+  position: relative;
+  overflow: hidden;
+  image-rendering: pixelated;
+  border: 3px solid #0f380f;
+  border-radius: 4px;
+}
+
+canvas {
+  width: 720px;
+  height: 480px;
+  image-rendering: pixelated;
+}
+
+#controls {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.btn {
+  padding: 6px 16px;
+  background: #3d3d5c;
+  color: #8888aa;
+  border: none;
+  border-radius: 20px;
+  font-family: monospace;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.btn:hover { background: #4d4d6c; color: #aaaacc; }
+.btn.active { background: #5865F2; color: white; }
+
+#info {
+  color: #555577;
+  font-size: 10px;
+  text-align: center;
+  margin-top: 12px;
+  letter-spacing: 2px;
+}
+</style>
+</head>
+<body>
+<div id="emulator">
+  <div id="screen">
+    <canvas id="game" width="240" height="160"></canvas>
+  </div>
+  <div id="controls">
+    <button class="btn active" onclick="setScreen('map')">MAP</button>
+    <button class="btn" onclick="setScreen('action')">ACTION</button>
+    <button class="btn" onclick="setScreen('cards')">CARDS</button>
+    <button class="btn" onclick="setScreen('resolve')">LOG</button>
+  </div>
+  <div id="info">SPACE: menu &nbsp; ARROWS: move &nbsp; Z: select &nbsp; X: back</div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = 240, H = 160;
+const TILE = 16;
+
+// === COLOR PALETTE (FRLG-inspired) ===
+const PAL = {
+  bg: '#f8f8f0',
+  water: '#5090d8',
+  waterDark: '#3868b0',
+  grass: '#58a858',
+  grassDark: '#388038',
+  path: '#d8c888',
+  pathDark: '#b8a868',
+  sand: '#e8d8a8',
+  tree: '#306830',
+  treeTrunk: '#886830',
+  building: '#d87070',
+  buildingDark: '#a05050',
+  roof: '#c04040',
+  cave: '#484860',
+  caveDark: '#303040',
+  uiBg: '#f0e8d0',
+  uiBorder: '#484848',
+  uiText: '#383838',
+  uiBlue: '#3868b0',
+  uiRed: '#c04040',
+  uiHighlight: '#f8d030',
+  shadow: 'rgba(0,0,0,0.15)',
+};
+
+// === CARD DATA ===
+const CARDS = [
+  { id: 1, name: 'Crystal', color: '#58c8f8', icon: '◆', effect: 'Steal guaranteed' },
+  { id: 2, name: 'Shadow', color: '#8868a8', icon: '●', effect: 'Invisible 1 turn' },
+  { id: 3, name: 'Flame', color: '#e87058', icon: '▲', effect: 'Burn target card' },
+  { id: 4, name: 'Storm', color: '#f8d030', icon: '★', effect: 'Nullify barriers' },
+  { id: 5, name: 'Void', color: '#50b898', icon: '◎', effect: 'Copy target card' },
+];
+
+// === MAP DATA (20x15) ===
+// 0=water, 1=grass, 2=path, 3=tree, 4=sand, 5=building, 6=cave
+const MAP = [
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,4,4,1,1,1,1,1,1,1,1,3,3,0,0,0,0,0],
+  [0,0,4,4,1,1,2,2,2,1,1,1,3,3,1,1,0,0,0,0],
+  [0,4,4,1,1,1,2,5,2,1,3,1,1,1,1,1,1,0,0,0],
+  [0,4,1,1,3,1,2,2,2,1,1,1,1,1,3,1,1,1,0,0],
+  [0,1,1,1,3,1,1,2,1,1,1,1,3,1,1,1,1,1,0,0],
+  [0,1,1,1,1,1,1,2,1,1,3,1,1,1,1,6,1,1,0,0],
+  [0,1,3,1,1,1,1,2,2,2,2,2,1,1,1,1,1,1,0,0],
+  [0,1,1,1,1,3,1,1,1,1,1,2,1,1,3,1,1,0,0,0],
+  [0,0,1,1,1,1,1,1,1,1,1,2,2,2,2,1,1,0,0,0],
+  [0,0,1,1,3,1,1,1,3,1,1,1,1,5,2,1,0,0,0,0],
+  [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
+  [0,0,0,0,4,4,1,1,1,1,1,1,4,4,0,0,0,0,0,0],
+  [0,0,0,0,0,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+];
+
+// === PLAYERS ===
+const players = [
+  { x: 7, y: 3, color: '#58c8f8', name: 'You', cards: [1, 3, 0, 0, 0], cardCount: 2, dir: 0 },
+  { x: 13, y: 10, color: '#e870a0', name: 'Rival', cards: [2, 5, 0, 0, 0], cardCount: 2, dir: 2 },
+  { x: 4, y: 6, color: '#f8d030', name: 'Hunter', cards: [4, 0, 0, 0, 0], cardCount: 1, dir: 1 },
+];
+
+const spells = { steal: 3, barrier: 2, scout: 1 };
+
+// === GAME STATE ===
+let currentScreen = 'map';
+let round = 1;
+let maxRounds = 25;
+let menuOpen = false;
+let menuIndex = 0;
+let actionIndex = 0;
+let selectedAction = null;
+let resolveLog = [
+  'Round 1: You drew Crystal!',
+  'Round 1: Rival used Steal on Hunter.',
+  'Round 1: Hunter used Barrier. Blocked!',
+  'Round 2: You used Scout on Rival.',
+  'Round 2: Rival has Shadow, Void.',
+];
+let typewriterText = '';
+let typewriterTarget = '';
+let typewriterIndex = 0;
+let animFrame = 0;
+
+// Water animation
+let waterFrame = 0;
+
+// === DRAWING FUNCTIONS ===
+
+function drawTile(x, y, type) {
+  const px = x * 12, py = y * 12; // scaled for 20x15 in 240x160 (leaving room for HUD)
+  const tileW = 12, tileH = 10;
+
+  switch(type) {
+    case 0: // water
+      ctx.fillStyle = (((x + y + waterFrame) % 3) === 0) ? PAL.waterDark : PAL.water;
+      ctx.fillRect(px, py, tileW, tileH);
+      // wave highlight
+      if ((x + waterFrame) % 4 === 0) {
+        ctx.fillStyle = '#78b8e8';
+        ctx.fillRect(px + 2, py + 3, 4, 1);
+      }
+      break;
+    case 1: // grass
+      ctx.fillStyle = PAL.grass;
+      ctx.fillRect(px, py, tileW, tileH);
+      // grass detail
+      if ((x * 7 + y * 13) % 5 === 0) {
+        ctx.fillStyle = PAL.grassDark;
+        ctx.fillRect(px + 3, py + 2, 2, 2);
+        ctx.fillRect(px + 8, py + 6, 2, 2);
+      }
+      break;
+    case 2: // path
+      ctx.fillStyle = PAL.path;
+      ctx.fillRect(px, py, tileW, tileH);
+      ctx.fillStyle = PAL.pathDark;
+      ctx.fillRect(px, py + tileH - 1, tileW, 1);
+      break;
+    case 3: // tree
+      ctx.fillStyle = PAL.grass;
+      ctx.fillRect(px, py, tileW, tileH);
+      // trunk
+      ctx.fillStyle = PAL.treeTrunk;
+      ctx.fillRect(px + 4, py + 5, 4, 5);
+      // canopy
+      ctx.fillStyle = PAL.tree;
+      ctx.fillRect(px + 1, py, 10, 6);
+      ctx.fillStyle = '#48884a';
+      ctx.fillRect(px + 2, py + 1, 8, 4);
+      break;
+    case 4: // sand
+      ctx.fillStyle = PAL.sand;
+      ctx.fillRect(px, py, tileW, tileH);
+      if ((x + y) % 3 === 0) {
+        ctx.fillStyle = '#d0c888';
+        ctx.fillRect(px + 4, py + 4, 2, 1);
+      }
+      break;
+    case 5: // building
+      ctx.fillStyle = PAL.path;
+      ctx.fillRect(px, py, tileW, tileH);
+      ctx.fillStyle = PAL.building;
+      ctx.fillRect(px + 1, py + 3, 10, 7);
+      ctx.fillStyle = PAL.roof;
+      ctx.fillRect(px, py, 12, 4);
+      ctx.fillStyle = PAL.buildingDark;
+      ctx.fillRect(px + 4, py + 6, 4, 4);
+      break;
+    case 6: // cave
+      ctx.fillStyle = PAL.grass;
+      ctx.fillRect(px, py, tileW, tileH);
+      ctx.fillStyle = PAL.cave;
+      ctx.fillRect(px + 1, py + 2, 10, 8);
+      ctx.fillStyle = PAL.caveDark;
+      ctx.fillRect(px + 3, py + 3, 6, 7);
+      break;
+  }
+}
+
+function drawSprite(player, isLocal) {
+  const px = player.x * 12, py = player.y * 10;
+  const f = Math.floor(animFrame / 15) % 2;
+
+  // shadow
+  ctx.fillStyle = PAL.shadow;
+  ctx.fillRect(px + 2, py + 8, 8, 3);
+
+  // body
+  ctx.fillStyle = player.color;
+  ctx.fillRect(px + 3, py + 2 + f, 6, 6);
+
+  // head
+  ctx.fillStyle = '#f0e0c8';
+  ctx.fillRect(px + 4, py + f, 4, 3);
+
+  // eyes
+  ctx.fillStyle = '#383838';
+  ctx.fillRect(px + 4, py + 1 + f, 1, 1);
+  ctx.fillRect(px + 7, py + 1 + f, 1, 1);
+
+  // card count bubble
+  ctx.fillStyle = '#f0e8d0';
+  ctx.fillRect(px + 8, py - 4, 8, 7);
+  ctx.strokeStyle = '#484848';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(px + 8, py - 4, 8, 7);
+  ctx.fillStyle = '#383838';
+  ctx.font = '5px monospace';
+  ctx.fillText(player.cardCount.toString(), px + 10, py + 1);
+}
+
+function drawMap() {
+  // Draw tiles
+  for (let y = 0; y < 15; y++) {
+    for (let x = 0; x < 20; x++) {
+      drawTile(x, y, MAP[y][x]);
+    }
+  }
+
+  // Draw players (sorted by Y for overlap)
+  const sorted = [...players].sort((a, b) => a.y - b.y);
+  sorted.forEach((p, i) => drawSprite(p, i === 0));
+
+  // HUD bar at bottom
+  drawHUD();
+}
+
+function drawHUD() {
+  // Bottom bar
+  ctx.fillStyle = PAL.uiBg;
+  ctx.fillRect(0, 148, 240, 12);
+  ctx.fillStyle = PAL.uiBorder;
+  ctx.fillRect(0, 147, 240, 1);
+
+  ctx.fillStyle = PAL.uiText;
+  ctx.font = '5px monospace';
+  ctx.fillText(`R${round}/${maxRounds}`, 3, 156);
+  ctx.fillText(`STL:${spells.steal}`, 50, 156);
+  ctx.fillText(`BAR:${spells.barrier}`, 95, 156);
+  ctx.fillText(`SCT:${spells.scout}`, 140, 156);
+
+  // Mini card icons
+  for (let i = 0; i < 5; i++) {
+    const card = players[0].cards[i];
+    const cx = 190 + i * 10;
+    if (card > 0) {
+      ctx.fillStyle = CARDS[card - 1].color;
+      ctx.fillRect(cx, 150, 8, 8);
+      ctx.fillStyle = '#fff';
+      ctx.font = '4px monospace';
+      ctx.fillText(CARDS[card - 1].icon, cx + 2, 156);
+    } else {
+      ctx.fillStyle = '#c8c0a8';
+      ctx.fillRect(cx, 150, 8, 8);
+    }
+  }
+}
+
+function drawMenu() {
+  // Semi-transparent overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(0, 0, 240, 160);
+
+  // Menu window (FRLG style)
+  drawWindow(150, 8, 82, 72);
+
+  const items = ['CARDS', 'MAP', 'SPELLS', 'LOG', 'CLOSE'];
+  items.forEach((item, i) => {
+    ctx.fillStyle = i === menuIndex ? PAL.uiRed : PAL.uiText;
+    ctx.font = '6px monospace';
+    ctx.fillText(item, 168, 24 + i * 12);
+    if (i === menuIndex) {
+      ctx.fillText('▶', 158, 24 + i * 12);
+    }
+  });
+}
+
+function drawWindow(x, y, w, h) {
+  // FRLG-style rounded window
+  ctx.fillStyle = PAL.uiBg;
+  ctx.fillRect(x + 2, y, w - 4, h);
+  ctx.fillRect(x, y + 2, w, h - 4);
+  ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+
+  ctx.fillStyle = PAL.uiBorder;
+  // top
+  ctx.fillRect(x + 2, y, w - 4, 2);
+  // bottom
+  ctx.fillRect(x + 2, y + h - 2, w - 4, 2);
+  // left
+  ctx.fillRect(x, y + 2, 2, h - 4);
+  // right
+  ctx.fillRect(x + w - 2, y + 2, 2, h - 4);
+  // corners
+  ctx.fillRect(x + 1, y + 1, 1, 1);
+  ctx.fillRect(x + w - 2, y + 1, 1, 1);
+  ctx.fillRect(x + 1, y + h - 2, 1, 1);
+  ctx.fillRect(x + w - 2, y + h - 2, 1, 1);
+}
+
+function drawTextBox(text, y) {
+  drawWindow(4, y || 112, 232, 44);
+  ctx.fillStyle = PAL.uiText;
+  ctx.font = '6px monospace';
+
+  // Word wrap
+  const maxW = 210;
+  const words = text.split(' ');
+  let line = '', ly = (y || 112) + 14;
+  for (const word of words) {
+    const test = line + word + ' ';
+    if (ctx.measureText(test).width > maxW && line !== '') {
+      ctx.fillText(line.trim(), 14, ly);
+      line = word + ' ';
+      ly += 10;
+    } else {
+      line = test;
+    }
+  }
+  ctx.fillText(line.trim(), 14, ly);
+
+  // Blinking cursor
+  if (Math.floor(animFrame / 20) % 2 === 0) {
+    ctx.fillText('▼', 222, (y || 112) + 38);
+  }
+}
+
+// === ACTION SCREEN ===
+
+function drawActionScreen() {
+  // Background
+  ctx.fillStyle = '#e8e0c8';
+  ctx.fillRect(0, 0, 240, 160);
+
+  // Round indicator
+  drawWindow(4, 4, 232, 18);
+  ctx.fillStyle = PAL.uiText;
+  ctx.font = '6px monospace';
+  ctx.fillText(`ROUND ${round} of ${maxRounds}`, 80, 16);
+
+  // Your hand
+  drawWindow(4, 26, 232, 50);
+  ctx.fillStyle = PAL.uiText;
+  ctx.font = '5px monospace';
+  ctx.fillText('YOUR HAND', 14, 38);
+
+  for (let i = 0; i < 5; i++) {
+    const cardId = players[0].cards[i];
+    const cx = 14 + i * 44;
+    if (cardId > 0) {
+      const card = CARDS[cardId - 1];
+      // Card bg
+      ctx.fillStyle = card.color;
+      ctx.fillRect(cx, 42, 38, 28);
+      ctx.fillStyle = '#fff';
+      ctx.font = '10px monospace';
+      ctx.fillText(card.icon, cx + 14, 56);
+      ctx.font = '4px monospace';
+      ctx.fillText(card.name, cx + 4, 66);
+    } else {
+      ctx.fillStyle = '#c8c0a8';
+      ctx.fillRect(cx, 42, 38, 28);
+      ctx.fillStyle = '#a8a090';
+      ctx.font = '8px monospace';
+      ctx.fillText('?', cx + 16, 58);
+    }
+  }
+
+  // Action menu
+  drawWindow(4, 80, 130, 72);
+  const actions = [
+    { name: 'DRAW', desc: 'Draw from pool' },
+    { name: 'STEAL', desc: `(${spells.steal} left)` },
+    { name: 'BARRIER', desc: `(${spells.barrier} left)` },
+    { name: 'SCOUT', desc: `(${spells.scout} left)` },
+    { name: 'USE CARD', desc: 'Consume effect' },
+  ];
+  actions.forEach((a, i) => {
+    const ay = 92 + i * 12;
+    ctx.fillStyle = i === actionIndex ? PAL.uiRed : PAL.uiText;
+    ctx.font = '5px monospace';
+    if (i === actionIndex) ctx.fillText('▶', 12, ay);
+    ctx.fillText(a.name, 22, ay);
+    ctx.fillStyle = '#888878';
+    ctx.fillText(a.desc, 70, ay);
+  });
+
+  // Opponent info
+  drawWindow(140, 80, 96, 72);
+  ctx.fillStyle = PAL.uiText;
+  ctx.font = '5px monospace';
+  ctx.fillText('OPPONENTS', 150, 92);
+
+  players.slice(1).forEach((p, i) => {
+    const oy = 102 + i * 20;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(150, oy, 6, 6);
+    ctx.fillStyle = PAL.uiText;
+    ctx.fillText(p.name, 160, oy + 5);
+    ctx.fillStyle = '#888878';
+    ctx.fillText(`${p.cardCount} cards`, 160, oy + 13);
+  });
+}
+
+// === CARDS SCREEN ===
+
+function drawCardsScreen() {
+  ctx.fillStyle = PAL.uiBlue;
+  ctx.fillRect(0, 0, 240, 160);
+
+  drawWindow(8, 4, 224, 20);
+  ctx.fillStyle = PAL.uiText;
+  ctx.font = '7px monospace';
+  ctx.fillText('CARD COLLECTION', 60, 18);
+
+  for (let i = 0; i < 5; i++) {
+    const cardId = players[0].cards[i];
+    const cy = 30 + i * 25;
+
+    drawWindow(8, cy, 224, 22);
+
+    if (cardId > 0) {
+      const card = CARDS[cardId - 1];
+      ctx.fillStyle = card.color;
+      ctx.fillRect(14, cy + 4, 14, 14);
+      ctx.fillStyle = '#fff';
+      ctx.font = '8px monospace';
+      ctx.fillText(card.icon, 17, cy + 14);
+
+      ctx.fillStyle = PAL.uiText;
+      ctx.font = '6px monospace';
+      ctx.fillText(card.name.toUpperCase(), 34, cy + 10);
+      ctx.fillStyle = '#888878';
+      ctx.font = '5px monospace';
+      ctx.fillText(card.effect, 34, cy + 18);
+    } else {
+      ctx.fillStyle = '#a8a098';
+      ctx.font = '6px monospace';
+      ctx.fillText(`Slot ${i + 1} — Empty`, 34, cy + 14);
+    }
+  }
+}
+
+// === RESOLVE / LOG SCREEN ===
+
+function drawResolveScreen() {
+  ctx.fillStyle = '#282838';
+  ctx.fillRect(0, 0, 240, 160);
+
+  drawWindow(4, 4, 232, 18);
+  ctx.fillStyle = PAL.uiText;
+  ctx.font = '6px monospace';
+  ctx.fillText('BATTLE LOG', 85, 16);
+
+  resolveLog.forEach((log, i) => {
+    const ly = 30 + i * 14;
+    if (ly > 150) return;
+
+    drawWindow(4, ly, 232, 12);
+
+    // Color code by type
+    if (log.includes('Blocked') || log.includes('Barrier')) {
+      ctx.fillStyle = PAL.uiBlue;
+    } else if (log.includes('Steal') || log.includes('Flame')) {
+      ctx.fillStyle = PAL.uiRed;
+    } else if (log.includes('drew') || log.includes('Scout')) {
+      ctx.fillStyle = '#408840';
+    } else {
+      ctx.fillStyle = PAL.uiText;
+    }
+    ctx.font = '4px monospace';
+    ctx.fillText(log, 10, ly + 9);
+  });
+}
+
+// === MAIN LOOP ===
+
+function update() {
+  animFrame++;
+  if (animFrame % 30 === 0) waterFrame++;
+
+  // Simple NPC movement
+  if (animFrame % 60 === 0) {
+    players.slice(1).forEach(p => {
+      const dx = Math.floor(Math.random() * 3) - 1;
+      const dy = Math.floor(Math.random() * 3) - 1;
+      const nx = p.x + dx, ny = p.y + dy;
+      if (nx >= 0 && nx < 20 && ny >= 0 && ny < 15) {
+        const tile = MAP[ny][nx];
+        if (tile !== 0 && tile !== 3) {
+          p.x = nx;
+          p.y = ny;
+        }
+      }
+    });
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  switch (currentScreen) {
+    case 'map':
+      drawMap();
+      if (menuOpen) drawMenu();
+      break;
+    case 'action':
+      drawActionScreen();
+      break;
+    case 'cards':
+      drawCardsScreen();
+      break;
+    case 'resolve':
+      drawResolveScreen();
+      break;
+  }
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// === INPUT ===
+
+document.addEventListener('keydown', (e) => {
+  if (currentScreen === 'map') {
+    if (e.code === 'Space') {
+      menuOpen = !menuOpen;
+      menuIndex = 0;
+    }
+    if (menuOpen) {
+      if (e.code === 'ArrowUp') menuIndex = Math.max(0, menuIndex - 1);
+      if (e.code === 'ArrowDown') menuIndex = Math.min(4, menuIndex + 1);
+      if (e.code === 'KeyZ') {
+        const items = ['cards', 'map', 'action', 'resolve', 'close'];
+        if (items[menuIndex] === 'close') {
+          menuOpen = false;
+        } else {
+          currentScreen = items[menuIndex];
+          menuOpen = false;
+        }
+      }
+    } else {
+      // Move player
+      const p = players[0];
+      let nx = p.x, ny = p.y;
+      if (e.code === 'ArrowUp') ny--;
+      if (e.code === 'ArrowDown') ny++;
+      if (e.code === 'ArrowLeft') nx--;
+      if (e.code === 'ArrowRight') nx++;
+      if (nx >= 0 && nx < 20 && ny >= 0 && ny < 15) {
+        const tile = MAP[ny][nx];
+        if (tile !== 0 && tile !== 3) {
+          p.x = nx;
+          p.y = ny;
+        }
+      }
+    }
+  }
+  if (currentScreen === 'action') {
+    if (e.code === 'ArrowUp') actionIndex = Math.max(0, actionIndex - 1);
+    if (e.code === 'ArrowDown') actionIndex = Math.min(4, actionIndex + 1);
+    if (e.code === 'KeyZ') {
+      selectedAction = actionIndex;
+      resolveLog.push(`Round ${round}: You selected ${['Draw','Steal','Barrier','Scout','Use Card'][actionIndex]}!`);
+    }
+  }
+  if (e.code === 'KeyX') {
+    currentScreen = 'map';
+    menuOpen = false;
+  }
+});
+
+function setScreen(s) {
+  currentScreen = s;
+  menuOpen = false;
+  document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// === START ===
+gameLoop();
+</script>
+</body>
+</html>
