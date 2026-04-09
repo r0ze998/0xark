@@ -2529,6 +2529,17 @@ let discardActive=false, discardSelIdx=0, discardPendingCard=-1, discardSource='
 let tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false,firstBattle:false};
 let tutorialMsg='', tutorialMsgTimer=0;
 
+// ── Intro tutorial (rules) ──
+let introActive=false, introPage=0, introFrame=0;
+const INTRO_PAGES=[
+  'Welcome to the ARK, sailor.\nThis island holds 5 ancient spirit cards.\nCollect all 5 to escape.',
+  'Explore the fog. Walk through\ntall grass to find cards.\nEach area has different spirits.',
+  'But you are not alone.\nRivals hunt the same cards.\nThey can STEAL yours.',
+  'In battle, choose an action:\n  DRAW - get a card\n  STEAL - take from a rival\n  BARRIER - block steals',
+  'Cards decay over time.\nUse them for power or hold\nthem to complete your set.',
+  'Good luck. Trust no one.',
+];
+
 // ── Battle encounter exclamation ──
 let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
@@ -2753,12 +2764,16 @@ function resetNewFeatureState(){
 
 function resetGameState(startCards){
   clearSave();fogClear();stakeDeposited=false;gameOverTimesUp=false;
-  const cards0=startCards?[1,3,0,0,0]:[0,0,0,0,0];
-  const cc0=startCards?2:0;
-  const cards1=startCards?[2,5,0,0,0]:[0,0,0,0,0];
-  const cc1=startCards?2:0;
-  const cards2=startCards?[4,0,0,0,0]:[0,0,0,0,0];
-  const cc2=startCards?1:0;
+  // Player starts with 0 cards (gets 1 random after intro tutorial)
+  const cards0=[0,0,0,0,0];
+  const cc0=0;
+  // Rivals start with 1 random card each
+  const r1Card=1+Math.floor(Math.random()*5);
+  const r2Card=1+Math.floor(Math.random()*5);
+  const cards1=[r1Card,0,0,0,0];
+  const cc1=1;
+  const cards2=[r2Card,0,0,0,0];
+  const cc2=1;
   pl[0].cd=cards0;pl[0].cc=cc0;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
   pl[1].cd=cards1;pl[1].cc=cc1;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
   pl[2].cd=cards2;pl[2].cc=cc2;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
@@ -6935,6 +6950,46 @@ function drawTutorialMsg(){
   g.globalAlpha=1;
 }
 
+function drawIntroTutorial(){
+  if(!introActive)return;
+  const t=fr-introFrame;
+  // Dark overlay
+  bx(0,0,W,H,'rgba(8,8,20,0.85)');
+  // Title
+  const titleAlpha=Math.min(1,t/20);
+  g.globalAlpha=titleAlpha;
+  txShadow('0xARK',W/2-64,80,24,'#f8f0e0','rgba(0,0,0,.6)');
+  txShadow('THE RULES',W/2-44,108,10,'#a07848','rgba(0,0,0,.4)');
+  // Page indicator
+  txShadow((introPage+1)+'/'+INTRO_PAGES.length,W/2-16,140,7,'#686068','rgba(0,0,0,.3)');
+  g.globalAlpha=1;
+  // Text window
+  const wx=W/2-240,wy=160,ww=480,wh=180;
+  win(wx,wy,ww,wh);
+  // Draw text with line breaks
+  const pageText=INTRO_PAGES[introPage];
+  const lines=pageText.split('\n');
+  lines.forEach((line,i)=>{
+    const fadeT=Math.max(0,t-5-i*8);
+    const lineAlpha=Math.min(1,fadeT/10);
+    g.globalAlpha=lineAlpha;
+    tx(line,wx+20,wy+30+i*28,9,'#484050');
+    g.globalAlpha=1;
+  });
+  // Bouncing arrow
+  if(t>30){
+    const bounce=Math.sin(fr*0.1)*3;
+    const blink=Math.floor(fr/20)%2===0;
+    if(blink)txShadow('\u25BC Z',wx+ww-60,wy+wh-20+bounce,8,FRLG.selHighlight,'rgba(0,0,0,.3)');
+  }
+  // Card preview on last page
+  if(introPage===INTRO_PAGES.length-1&&t>20){
+    g.globalAlpha=Math.min(1,(t-20)/15);
+    txShadow('You receive a spirit card...',W/2-100,wy+wh+20,8,'#f0c830','rgba(0,0,0,.4)');
+    g.globalAlpha=1;
+  }
+}
+
 // ═══════════════════════════════════════
 // AREA CARD INFO
 // ═══════════════════════════════════════
@@ -8514,6 +8569,7 @@ function draw(){
   drawCardAcquisition();
   drawDiscardOverlay();
   drawTutorialMsg();
+  drawIntroTutorial();
   if(!inBuilding&&sc==='map'){
     drawFishingOverlay();
     drawPuzzlePillars();
@@ -8574,6 +8630,26 @@ document.addEventListener('keydown',e=>{
     return;
   }
 
+  // Intro tutorial input
+  if(introActive){
+    if(e.code==='KeyZ'){
+      sfxConfirm();introFrame=fr;
+      introPage++;
+      if(introPage>=INTRO_PAGES.length){
+        introActive=false;
+        // Give random starter card + card acquisition animation
+        const starterCard=1+Math.floor(Math.random()*5); // 1-5 random
+        pl[0].cd[0]=starterCard;pl[0].cc=1;cardTimers[0]=Date.now();syncCardCount(0);
+        startCardAcquisition(starterCard-1);
+        lg.push('You received '+CD[starterCard-1].n+'!');
+        showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
+        twSet('Good luck, sailor. Collect all 5 spirits to escape the ARK.');
+      }
+    }
+    if(e.code==='KeyX'&&introPage>0){sfxBack();introPage--;introFrame=fr;}
+    return;
+  }
+
   // Multiplayer screen input handling
   if(sc==='title'&&mp.mpScreen!=='off'){
     if(mp.mpScreen==='select'){
@@ -8631,9 +8707,12 @@ document.addEventListener('keydown',e=>{
             fadeIn();twSet('Multiplayer game started!');
           }else{
             resetGameState(true);
+            // Give random starter card for multiplayer (no tutorial)
+            const mpCard=1+Math.floor(Math.random()*5);
+            pl[0].cd[0]=mpCard;pl[0].cc=1;cardTimers[0]=Date.now();syncCardCount(0);
             sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-            fadeIn();twSet('Multiplayer game started! Collect all 5 card types to win!');
+            fadeIn();twSet('Multiplayer started! You received '+CD[mpCard-1].n+'!');
           }
         });
       }
@@ -8662,9 +8741,10 @@ document.addEventListener('keydown',e=>{
         });
       }else{
         resetGameState(true);
-        fadeOut(()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
+        fadeOut(()=>{sc='map';currentMap=0;
           fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-          fadeIn();twSet('Welcome to the ARK! Stake deposited.');});
+          introActive=true;introPage=0;introFrame=fr;
+          fadeIn();});
       }
     }
     if(e.code==='KeyX'){sfxBack();stakeConfirmActive=false;}
@@ -8694,10 +8774,11 @@ document.addEventListener('keydown',e=>{
           sfxConfirm();
           if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
           resetGameState(true);
-          // Show opening story
-          fadeOut(()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
-            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();fadeIn();
-            twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');
+          // Show intro tutorial, then transition to map
+          fadeOut(()=>{sc='map';currentMap=0;
+            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+            introActive=true;introPage=0;introFrame=fr;
+            fadeIn();
           });
         }else if(titleMenuIdx===2){
           // CONNECT WALLET
@@ -8729,14 +8810,12 @@ document.addEventListener('keydown',e=>{
         if(titleMenuIdx===0){
           sfxConfirm();
           if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
-          // Show opening story for first-time play
+          // Show intro tutorial for first-time play
           resetGameState(true);
-          storyActive=true;storyFrame=0;
-          fadeOut(()=>{
-            const storyEnd=()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
+          fadeOut(()=>{sc='map';currentMap=0;
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-            twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');};
-            const checkStory=setInterval(()=>{if(!storyActive){clearInterval(checkStory);storyEnd();}},100);
+            introActive=true;introPage=0;introFrame=fr;
+            fadeIn();
           });
         }else if(titleMenuIdx===1){
           // CONNECT WALLET (no save)
