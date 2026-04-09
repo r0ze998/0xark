@@ -90,7 +90,7 @@ fn place_card_in_hand(cards: &mut [u8; 5], card_id: u8) {
 
 /// Unsafe helper to get mutable reference to PlayerState from raw account data
 /// Skips the 8-byte Anchor discriminator
-fn bytemuck_no_discriminator<'a>(data: &'a mut [u8]) -> Result<&'a mut PlayerState> {
+fn bytemuck_no_discriminator(data: &mut [u8]) -> Result<&mut PlayerState> {
     // For now, use unsafe transmute since we control the layout
     // In production, use proper deserialization
     let ps_data = &mut data[8..];

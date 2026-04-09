@@ -3,18 +3,15 @@ use anchor_lang::prelude::*;
 /// Card types (1-indexed, 0 = empty)
 /// 1=Aegis (Crystal Knight), 2=Umbra (Shadow Rogue), 3=Ignis (Fire Beast), 4=Tempest (Storm Prophet), 5=Nihil (Void Observer)
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Default)]
 pub enum GameStatus {
+    #[default]
     Lobby,
     CommitPhase,
     RevealPhase,
     Finished,
 }
 
-impl Default for GameStatus {
-    fn default() -> Self {
-        GameStatus::Lobby
-    }
-}
 
 /// Action types for commit-reveal
 /// 0=None, 1=Draw, 2=Steal, 3=Barrier, 4=Scout,

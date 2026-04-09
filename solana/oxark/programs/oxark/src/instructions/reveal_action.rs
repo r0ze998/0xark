@@ -45,7 +45,7 @@ pub fn handle_reveal(
     let mut hasher = Sha256::new();
     hasher.update([action_type]);
     hasher.update(target.as_ref());
-    hasher.update(&salt);
+    hasher.update(salt);
     let computed: [u8; 32] = hasher.finalize().into();
     require!(
         computed == ctx.accounts.commit.hash,
@@ -108,5 +108,5 @@ fn validate_action(ps: &PlayerState, at: ActionType, target: Pubkey, caller: Pub
 }
 
 fn has_card(cards: &[u8; 5], card_id: u8) -> bool {
-    cards.iter().any(|&c| c == card_id)
+    cards.contains(&card_id)
 }
