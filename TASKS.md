@@ -16,10 +16,12 @@
 - [x] On-chain commit-reveal flow in frontend (simulated mode, real TX when wallet connected)
 
 ### Priority 3: Submission Prep
-- [ ] Arena registration
-- [ ] X post #1 (development announcement)
-- [ ] Pitch video script
-- [ ] Technical demo script
+- [ ] Arena registration (needs web account)
+- [ ] X post #1 (draft ready, needs posting)
+- [x] Pitch video script (written, needs recording)
+- [x] Technical demo script (written, needs recording)
+- [x] GitHub Pages live demo (r0ze998.github.io/0xark)
+- [x] All submission materials updated with devnet program ID
 
 ## Version History
 - v1-v10: Core game (maps, NPCs, battle, cards, fog)
@@ -33,6 +35,7 @@
 - v18: 640x480 resolution, 16x16 tiles, 16x24 sprites
 - v19: FRLG battle UI (arena bg, sprites, 2x2 grid, card effects)
 - v20: Balance pass (steal bug fix, spell rebalance 2/3/2, streak cap 25%, rubber-banding, rival AI buff, rival win warning, spell recharge every 10 rounds, campfire decay extension, first-battle tutorial)
+- v21: Screen shake, card lost particles, devnet verification, best clear time tracking, clippy fixes
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)
@@ -41,5 +44,5 @@
 - [x] x402 AI agent broker (4 endpoints)
 - [x] Phantom wallet module (connected to devnet program)
 - [x] WebSocket multiplayer server (rooms, commit-reveal coordination)
-- [x] Game client v57 (9400+ lines, fully playable)
+- [x] Game client v59 (9500+ lines, fully playable, live on GitHub Pages)
 - [x] GDD v0.3, README v3, Arena draft, X drafts, Pitch + Demo scripts
