@@ -8,6 +8,15 @@ Explore fog-covered waters. Collect 5 spirit cards to escape. Steal from rivals 
 
 **[Play Now](https://r0ze998.github.io/0xark/)** | [GDD v0.3](GDD-v0.3.md) | [GitHub](https://github.com/r0ze998/0xark)
 
+![0xARK Gameplay](docs/screenshot-map.png)
+![0xARK Battle](docs/screenshot-battle.png)
+
+---
+
+## Why Solana?
+
+Sub-second finality makes simultaneous commit-reveal feel instant — no waiting 12s per round like on Ethereum. Low fees (~$0.00025/tx) make per-turn on-chain commits viable for a 30-round game. Solana's stablecoin infrastructure (USDC via SPL) powers the x402 AI agent micropayment economy at sub-cent costs that would be impossible on L1 Ethereum. And MagicBlock Ephemeral Rollups can push latency under 50ms for real-time multiplayer.
+
 ---
 
 ## How It Works
@@ -24,13 +33,13 @@ Explore fog-covered waters. Collect 5 spirit cards to escape. Steal from rivals 
 
 ### Spirit Cards
 
-| Spirit | Hold Effect | Consume Effect | Lore |
-|--------|-----------|---------------|------|
-| **AEGIS** | +1 toward completion | Guaranteed Steal (pierces Barrier) | "Shield of the last captain" |
-| **UMBRA** | +1 toward completion | Invisible for 1 turn | "The shadow that sails with no ship" |
-| **IGNIS** | +1 toward completion | Burn target's card | "Fire that never drowns" |
-| **TEMPEST** | +1 toward completion | Nullify all Barriers | "The storm answers to no flag" |
-| **NIHIL** | +1 toward completion | Copy target's card | "The void between the waves" |
+| Spirit | Consume Effect | Lore |
+|--------|---------------|------|
+| **AEGIS** | Guaranteed Steal (pierces Barrier) | "Shield of the last captain" |
+| **UMBRA** | Invisible for 1 turn | "The shadow that sails with no ship" |
+| **IGNIS** | Burn target's card | "Fire that never drowns" |
+| **TEMPEST** | Nullify all Barriers | "The storm answers to no flag" |
+| **NIHIL** | Copy target's card | "The void between the waves" |
 
 **The core dilemma: hold it for the win, or consume it to survive.**
 
@@ -45,6 +54,10 @@ Explore fog-covered waters. Collect 5 spirit cards to escape. Steal from rivals 
 | Move | Travel to adjacent area | Costs your turn |
 | Use Card | Consume for powerful effect | Card is destroyed |
 
+### ZK Commit-Reveal
+
+Players commit `Poseidon(action, target, salt)` on-chain as a hash. On reveal, a Groth16 ZK proof verifies the action matches the commit — without exposing it until all players have committed. This means no player can react to another's move. Built with Circom (264 constraints) and verified on-chain via groth16-solana at under 200K compute units.
+
 ### Win Conditions
 1. **Complete** — Collect all 5 unique spirit types
 2. **Timeout** — Most unique cards after 30 rounds
@@ -52,42 +65,28 @@ Explore fog-covered waters. Collect 5 spirit cards to escape. Steal from rivals 
 
 ---
 
-## Features
+## AI Agent Economy (x402)
 
-### Gameplay
-- 3 interconnected pirate-themed maps with Fog of War
-- Autonomous AI rivals with distinct personalities (Hunter vs Collector)
-- Card decay timer (180s — cards expire, creating urgency)
-- Threat compass, streak bonuses, area danger levels
-- Fishing, traps, puzzles, NPC trading post, object interactions
-- Map card effects (Ignis burns obstacles, Umbra grants stealth, Nihil phases through walls)
-- Battle QTE for critical actions
+AI agents observe game state via WebSocket and package intelligence as x402 paywall endpoints. Players (or their agents) pay USDC micropayments to query:
 
-### Multiplayer
-- WebSocket-based real-time multiplayer (2-3 players)
-- Room creation/joining with lobby UI
-- Commit-reveal synchronization across players
+| Endpoint | Price | Intel |
+|----------|-------|-------|
+| `/intel/location/:id` | $0.002 | Rival's current area |
+| `/intel/hand/:id` | $0.003 | Rival's card holdings |
+| `/intel/strategy` | $0.005 | Optimal next action based on game state analysis |
+| `/intel/market` | Free | Card pool remaining counts |
 
-### On-Chain
-- 11 Anchor instructions (create/join/start/commit/reveal/resolve/verify_zk/mint_nft/deposit_stake/claim_prize/initialize)
-- SHA256 commit-reveal with full round verification (8 tests passing)
-- ZK circuit (Circom Poseidon, 264 constraints, Groth16 proof verified)
-- Phantom wallet integration
-- Entry stake system (deposit/claim)
-- Card NFT minting for winners
+The agent server runs as a standalone Express service with x402 protocol compliance (HTTP 402 + `X-Payment-Required` header). Rival AI in-game also queries the strategy endpoint, making AI opponents smarter when the agent server is active. Revenue from intel queries is fully autonomous — no human intervention needed.
 
-### AI Agents (x402)
-- Information broker server with 4 intelligence endpoints
-- Location ($0.002), Hand ($0.003), Strategy ($0.005), Market (free)
-- x402 protocol compliant (HTTP 402 + USDC micropayments)
-- Rival AI enhanced by x402 strategy advice
+---
 
-### Visual
-- FRLG-authentic pixel art (Kenney Monochrome Pirates CC0 + custom sprites)
-- 960x640 canvas, 32x32 tiles, 2x supersampling
-- 5 animated character sprites with idle animations
-- Pirate ship, seagulls, monkeys, skull decorations
-- Day/night cycle, ambient audio per area
+## Business Model
+
+Free-to-play base game. Revenue streams:
+- **Entry stakes** — Players deposit SOL/USDC to join competitive games. Winner takes the pot. (Anchor `deposit_stake`/`claim_prize` instructions implemented.)
+- **Card NFTs** — Winners mint collected spirits as on-chain NFTs via Metaplex. (Anchor `mint_card_nft` instruction implemented.)
+- **x402 relay fees** — Protocol takes 5% cut on AI agent intel transactions.
+- **Season passes** — Future: time-limited seasons with unique card skins and leaderboards.
 
 ---
 
@@ -97,11 +96,45 @@ Explore fog-covered waters. Collect 5 spirit cards to escape. Steal from rivals 
 |-------|-----------|
 | Smart Contract | **Anchor (Rust)** on Solana — 11 instructions |
 | ZK | **Circom** + groth16-solana (Poseidon hash, 264 constraints) |
-| AI Agent | **x402** + USDC micropayments |
-| Multiplayer | **WebSocket** server (Node.js) |
-| Frontend | **Canvas** pixel art (8700+ lines) |
-| Assets | **Kenney** Monochrome Pirates (CC0) |
+| AI Agent | **x402** + USDC micropayments (Express server) |
+| Multiplayer | **WebSocket** server (Node.js, room-based) |
+| Frontend | **Canvas** pixel art (8700+ lines, FRLG-style) |
+| Assets | **Kenney** Monochrome Pirates (CC0) + custom sprites |
 | Wallet | **Phantom** |
+
+---
+
+## Quick Start
+
+```bash
+# 1. Play in browser (no install needed)
+open https://r0ze998.github.io/0xark/
+
+# 2. Build & test smart contract
+cd solana/oxark
+anchor build        # Compiles 11 instructions
+cargo test          # 8 tests passing (LiteSVM)
+                    # Tests: create → join → start → commit → reveal → resolve (full round)
+
+# 3. Deploy to local validator
+solana-test-validator --reset &
+anchor deploy       # Program ID: 3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum
+
+# 4. Start multiplayer server
+cd multiplayer
+npm install && npm start   # ws://localhost:3500
+
+# 5. Start AI agent broker
+cd x402
+npm install && node agent-broker.js   # http://localhost:3402
+
+# 6. Compile ZK circuit
+cd zk
+npm install
+circom circuits/commit_reveal.circom --r1cs --wasm --sym -o build/ -l node_modules
+# Proof generation: snarkjs groth16 prove ...
+# Verification: snarkjs groth16 verify ...   → OK!
+```
 
 ---
 
@@ -109,46 +142,34 @@ Explore fog-covered waters. Collect 5 spirit cards to escape. Steal from rivals 
 
 ```
 0xark/
-├── solana/oxark/          — Anchor smart contract
+├── solana/oxark/           — Anchor smart contract (Rust)
 │   ├── programs/oxark/src/
-│   │   ├── state.rs       — Game, PlayerState, CardPool, Area, Events
-│   │   ├── instructions/  — 11 instructions
-│   │   └── tests/         — 8 passing tests (LiteSVM)
-│   └── target/idl/        — Program IDL
-├── solana/client/          — Game client
-│   ├── index.html         — 8700+ line canvas game
-│   ├── pirates-tilemap.png — Kenney sprite sheet
-│   ├── wallet.js          — Phantom wallet module
-│   └── onchain.js         — On-chain transaction module
-├── zk/                     — ZK circuits
-│   ├── circuits/           — Circom commit-reveal circuit
-│   └── build/              — Proving keys, verification key
-├── x402/                   — AI agent broker
-│   └── agent-broker.js    — Express server, 4 endpoints
-├── multiplayer/            — WebSocket server
-│   └── server.js          — Room management, player sync
-└── docs/                   — GDD, scripts, research
-```
-
----
-
-## Quick Start
-
-```bash
-# Play (browser)
-open https://r0ze998.github.io/0xark/
-
-# Build smart contract
-cd solana/oxark && anchor build
-
-# Run tests (8/8 passing)
-cargo test
-
-# Start multiplayer server
-cd multiplayer && npm install && npm start
-
-# Start x402 agent
-cd x402 && npm install && node agent-broker.js
+│   │   ├── state.rs        — Game, PlayerState, CardPool, Area, Events
+│   │   ├── error.rs        — 20 error codes
+│   │   ├── instructions/   — 11 instructions
+│   │   │   ├── create_game, join_game, start_game
+│   │   │   ├── commit_action (SHA256 hash)
+│   │   │   ├── reveal_action (hash verify + validate)
+│   │   │   ├── resolve_round (Move→Shadow→Storm→Barrier→Steal→Flame→Scout→Draw→Void)
+│   │   │   ├── verify_zk_proof (Groth16 verification path)
+│   │   │   ├── mint_card_nft (Metaplex card NFTs)
+│   │   │   └── deposit_stake / claim_prize (entry fees)
+│   │   └── tests/          — 8 passing tests
+│   └── target/idl/         — Program IDL (11 instructions)
+├── solana/client/           — Game client
+│   ├── index.html          — 8700+ line canvas game
+│   ├── pirates-tilemap.png — Kenney sprite sheet (136 tiles)
+│   ├── wallet.js           — Phantom wallet module
+│   ├── onchain.js          — Transaction builder + state reader
+│   └── oxark-idl.json      — Program IDL for client
+├── zk/                      — ZK circuits
+│   ├── circuits/commit_reveal.circom  — Poseidon hash, 264 constraints
+│   └── build/verification_key.json   — Groth16 verification key
+├── x402/                    — AI agent broker
+│   └── agent-broker.js     — 4 intel endpoints, x402 protocol
+├── multiplayer/             — WebSocket server
+│   └── server.js           — Rooms, player sync, commit-reveal coordination
+└── docs/                    — GDD v0.3, pitch scripts, research
 ```
 
 ---
@@ -159,13 +180,13 @@ cd x402 && npm install && node agent-broker.js
 
 **Tracks**: Gaming / AI / Stablecoins
 
-**What's unique**: First Solana game combining ZK hidden information + pirate island exploration + AI agent micropayment economy.
+**What's unique**: First Solana game combining ZK hidden information + pirate island exploration + AI agent micropayment economy. No existing Colosseum hackathon winner has bridged Gaming + AI + Stablecoins tracks.
 
 ---
 
 ## Links
 
-- **Live**: [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/)
+- **Live Demo**: [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/)
 - **GitHub**: [github.com/r0ze998/0xark](https://github.com/r0ze998/0xark)
 - **GDD**: [v0.3](GDD-v0.3.md)
 - **Builder**: [@r0ze_____](https://x.com/r0ze_____)
