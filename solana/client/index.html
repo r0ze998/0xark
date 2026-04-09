@@ -2738,7 +2738,7 @@ function resetNewFeatureState(){
 }
 
 function resetGameState(startCards){
-  clearSave();fogClear();stakeDeposited=false;
+  clearSave();fogClear();stakeDeposited=false;gameOverTimesUp=false;
   const cards0=startCards?[1,3,0,0,0]:[0,0,0,0,0];
   const cc0=startCards?2:0;
   const cards1=startCards?[2,5,0,0,0]:[0,0,0,0,0];
@@ -2785,6 +2785,31 @@ function sfxQtePrompt(){if(!soundEnabled)return;beep(1000,.03,.08);setTimeout(()
 function sfxQteSuccess(){if(!soundEnabled)return;beep(880,.04,.07);setTimeout(()=>beep(1320,.06,.08),40);}
 function sfxQteMiss(){if(!soundEnabled)return;beep(200,.06,.05);}
 function sfxDangerRise(){if(!soundEnabled)return;beep(220,.06,.05);setTimeout(()=>beep(260,.06,.05),60);}
+
+// ── NEW SFX: AREA ENTRY, UNIQUE CARD STING, TENSION DRUM ──
+function sfxAreaEntry(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='bandpass';f.frequency.setValueAtTime(400,AC.currentTime);f.frequency.linearRampToValueAtTime(100,AC.currentTime+.5);f.Q.value=1;gn.gain.setValueAtTime(.12,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.5);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.5);const o=AC.createOscillator(),gn2=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(150,AC.currentTime);o.frequency.linearRampToValueAtTime(80,AC.currentTime+.4);gn2.gain.setValueAtTime(.06,AC.currentTime);gn2.gain.linearRampToValueAtTime(0,AC.currentTime+.4);o.connect(gn2);gn2.connect(AC.destination);o.start();o.stop(AC.currentTime+.4);}catch(e){}}
+function sfxUniqueCardSting(){if(!soundEnabled)return;try{const notes=[523,659,784,988,1047];notes.forEach((f,i)=>{setTimeout(()=>{try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=f;gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.15);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.15);}catch(e){}},i*80);});}catch(e){}}
+let tensionDrumNode=null,tensionDrumGain=null;
+function startTensionDrum(){if(!soundEnabled||tensionDrumNode)return;try{const o=AC.createOscillator(),gn=AC.createGain(),lfo=AC.createOscillator(),lfoG=AC.createGain();o.type='triangle';o.frequency.value=60;lfo.type='square';lfo.frequency.value=1.5;lfoG.gain.value=.04;gn.gain.value=0;lfo.connect(lfoG);lfoG.connect(gn.gain);o.connect(gn);gn.connect(AC.destination);o.start();lfo.start();tensionDrumNode=o;tensionDrumGain=gn;tensionDrumNode._lfo=lfo;}catch(e){}}
+function stopTensionDrum(){if(tensionDrumNode){try{tensionDrumGain.gain.linearRampToValueAtTime(0,AC.currentTime+0.3);setTimeout(()=>{try{tensionDrumNode.stop();tensionDrumNode._lfo.stop();tensionDrumNode.disconnect();}catch(e){}tensionDrumNode=null;tensionDrumGain=null;},400);}catch(e){tensionDrumNode=null;tensionDrumGain=null;}}}
+
+// ── SESSION STATS ──
+const STATS_KEY='oxark_stats';
+let stats={gamesPlayed:0,cardsCollected:0,cardsLost:0,stealsAttempted:0,stealsBlocked:0,scoutUses:0,stepsWalked:0,timePlayed:0,areaTime:[0,0,0],sessionStart:Date.now()};
+function loadStats(){try{const raw=localStorage.getItem(STATS_KEY);if(raw){const d=JSON.parse(raw);Object.keys(d).forEach(k=>{if(stats.hasOwnProperty(k))stats[k]=d[k];});}}catch(e){}}
+function saveStats(){try{stats.timePlayed=Math.floor((Date.now()-stats.sessionStart)/1000);localStorage.setItem(STATS_KEY,JSON.stringify(stats));}catch(e){}}
+loadStats();stats.sessionStart=Date.now();
+
+// ── OPENING STORY STATE ──
+let storyActive=false,storyFrame=0;
+const STORY_LINES=['Five ancient spirits guard a cursed island.','Collect them all to break the curse.','But you\'re not the only one searching...','Trust no one. Everything is secret.'];
+
+// ── CREDITS STATE ──
+let creditsActive=false,creditsFrame=0;
+const CREDITS_LINES=['','0 x A R K','','Created by r0ze','','Built for Colosseum Frontier 2026','','Powered by','Solana | Anchor | Circom | x402','','Pixel Art: Kenney (CC0)','Press Start 2P Font: Google Fonts','','Thanks for playing!',''];
+
+// ── GAME OVER (TIME'S UP) STATE ──
+let gameOverTimesUp=false;
 
 const lg=['Game started. Collect all 5 card types to win!'];
 
@@ -3858,7 +3883,7 @@ function checkExitTile(x,y){
 function doMapTransition(exit){
   if(mapTransitioning)return;
   mapTransitioning=true;
-  sfxDoorOpen();sfxMapChange();
+  sfxDoorOpen();sfxMapChange();sfxAreaEntry();
   const targetMapName=mapNames[exit.targetMap];
   const targetCardDesc=AREA_CARD_DESC[exit.targetMap];
   fadeOut(()=>{
@@ -4120,7 +4145,7 @@ function drawWildEncounter(){
     wildEncounterActive=false;
     cardAcqDone=false;
     // Check win after acquiring a card
-    if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},500);}
+    if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},500);}
   }
 }
 
@@ -4144,7 +4169,7 @@ function checkTreasure(){
         twSet('You found a hidden '+cr.n+' card!');
         lg.push('Found hidden '+cr.n+'!');
         // Check win after treasure
-        if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+        if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
       }else{
         // Hand full - offer discard
         discardActive=true;discardSelIdx=0;discardPendingCard=t.card+1;discardSource='wild';
@@ -4294,7 +4319,7 @@ function doShopTrade(){
   startCardAcquisition(newCard-1);
   sfxShopTrade();
   lg.push('Shop: Traded '+oldName+' for '+newName+'!');
-  if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+  if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
 }
 
 function drawCardShop(){
@@ -4369,7 +4394,7 @@ function triggerRandomEvent(){
       syncCardCount(0);
       startCardAcquisition(cardIdx);
       lg.push('Event: Found a '+CD[cardIdx].n+' in a forgotten stash!');
-      if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+      if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
     }else{
       // Hand full - offer discard
       discardActive=true;discardSelIdx=0;discardPendingCard=cardIdx+1;discardSource='wild';
@@ -4603,6 +4628,15 @@ function dTitle(){
   // "Built on Solana" branding at bottom
   drawSolanaLogo(W/2-120,548,10);
   tx('Built on Solana',W/2-104,552,7,'#9945FF');
+
+  // CREDITS button
+  {
+    const credSel=hasSave()?(titleMenuIdx===4):(titleMenuIdx===3);
+    const credY=hasSave()?440:430;
+    if(credSel){tx('\u25B6',W/2-66,credY,10,FRLG.selHighlight);}
+    const credBlink=Math.floor(fr/25)%2===0;
+    if(credSel&&credBlink||!credSel)tx('CREDITS',W/2-42,credY,10,credSel?FRLG.selHighlight:'#555570');
+  }
 
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#333350');
@@ -5510,7 +5544,7 @@ function dMenu(){
   if(menuOpenFrame===0)menuOpenFrame=fr;
   const menuT=Math.min(1,(fr-menuOpenFrame)/8);
   const ease=easeInOut(menuT);
-  const menuW=Math.floor(190*ease),menuH=Math.floor(300*ease);
+  const menuW=Math.floor(190*ease),menuH=Math.floor(320*ease);
   const menuX=W-10-menuW,menuY=10;
   bx(0,0,W,H,`rgba(0,0,0,${0.35*ease})`);
   if(menuW>4&&menuH>4){
@@ -5518,20 +5552,20 @@ function dMenu(){
     if(ease>=0.7){
       const itemAlpha=Math.min(1,(ease-0.7)/0.3);
       g.globalAlpha=itemAlpha;
-      const items=['CARDS','MAP','BATTLE','LOG','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','NEW GAME','CLOSE'];
+      const items=['CARDS','MAP','BATTLE','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','NEW GAME','CLOSE'];
       items.forEach((s,i)=>{
         const y=34+i*20;
-        const walletIdx=6;
-        const textSpdIdx=7;
+        const walletIdx=7;
+        const textSpdIdx=8;
         let label=s;
         if(i===walletIdx){label=walletConnected?'WALLET ('+walletAddressTruncated()+')':'WALLET (OFF)';}
         if(i===textSpdIdx){label='TEXT SPD: '+TEXT_SPEED_LABELS[textSpeedIdx];}
         if(i===mi){
           const bounce=Math.sin(fr*0.15)*1.5;
-          const clr=(i===4?'#9060c0':i===5?'#b06030':i===walletIdx?(walletConnected?'#40d080':'#888898'):i===textSpdIdx?'#c0a040':i===8?'#40a0d0':i===9?'#d8b028':'#c04040');
+          const clr=(i===4?'#3090c0':i===5?'#9060c0':i===6?'#b06030':i===walletIdx?(walletConnected?'#40d080':'#888898'):i===textSpdIdx?'#c0a040':i===9?'#40a0d0':i===10?'#d8b028':'#c04040');
           tx('\u25B6',W-160+bounce,y,8,clr);tx(label,W-144,y,8,clr);
         }
-        else tx(label,W-144,y,8,i===4?'#7050a0':i===5?'#906030':i===walletIdx?(walletConnected?'#308060':'#686868'):i===textSpdIdx?'#908040':i===8?'#3080a0':i===9?'#a08820':'#303028');
+        else tx(label,W-144,y,8,i===4?'#2878a0':i===5?'#7050a0':i===6?'#906030':i===walletIdx?(walletConnected?'#308060':'#686868'):i===textSpdIdx?'#908040':i===9?'#3080a0':i===10?'#a08820':'#303028');
       });
       g.globalAlpha=1;
     }
@@ -6138,7 +6172,8 @@ function pickAreaCardForMap(mapIdx){const ac=AREA_CARDS[mapIdx]||[1,2];return ac
 function syncCardCount(pIdx){const p=pl[pIdx];p.cc=p.cd.filter(c=>c>0).length;}
 function addCardToPlayer(pIdx,cardId){
   const p=pl[pIdx];
-  for(let i=0;i<5;i++){if(p.cd[i]===0){p.cd[i]=cardId;syncCardCount(pIdx);if(pIdx===0)cardTimers[i]=Date.now();return true;}}
+  const hadBefore=pIdx===0?hasUniqueCards(0):null;
+  for(let i=0;i<5;i++){if(p.cd[i]===0){p.cd[i]=cardId;syncCardCount(pIdx);if(pIdx===0){cardTimers[i]=Date.now();stats.cardsCollected++;if(hadBefore&&!hadBefore.has(cardId)){sfxUniqueCardSting();triggerProgressPulse();}}return true;}}
   return false;
 }
 function removeCardFromPlayer(pIdx,slotOrRandom){
@@ -6147,9 +6182,9 @@ function removeCardFromPlayer(pIdx,slotOrRandom){
     const filled=[];for(let i=0;i<5;i++){if(p.cd[i]>0)filled.push(i);}
     if(filled.length===0)return 0;
     const slot=filled[Math.floor(Math.random()*filled.length)];
-    const card=p.cd[slot];p.cd[slot]=0;if(pIdx===0)cardTimers[slot]=0;syncCardCount(pIdx);return card;
+    const card=p.cd[slot];p.cd[slot]=0;if(pIdx===0){cardTimers[slot]=0;stats.cardsLost++;}syncCardCount(pIdx);return card;
   }
-  const card=p.cd[slotOrRandom];if(card>0){p.cd[slotOrRandom]=0;if(pIdx===0)cardTimers[slotOrRandom]=0;syncCardCount(pIdx);}return card;
+  const card=p.cd[slotOrRandom];if(card>0){p.cd[slotOrRandom]=0;if(pIdx===0){cardTimers[slotOrRandom]=0;stats.cardsLost++;}syncCardCount(pIdx);}return card;
 }
 function hasUniqueCards(pIdx){const s=new Set();pl[pIdx].cd.forEach(c=>{if(c>0)s.add(c);});return s;}
 function playerHasAllFive(){const s=hasUniqueCards(0);return s.has(1)&&s.has(2)&&s.has(3)&&s.has(4)&&s.has(5);}
@@ -6223,11 +6258,12 @@ function generateResolveEvents(){
       lg.push('R'+rd+': Drew '+cr.n+' but hand full!');
     }
   }else if(bpAction===1){// STEAL
-    sp.s=Math.max(0,sp.s-1);
+    sp.s=Math.max(0,sp.s-1);stats.stealsAttempted++;
     const tgt=bpSelectedTarget; // 1=Rival, 2=Hunter
     const tgtBarrier=rivalBarriers[tgt-1];
     events.push({type:'action',who:'You',action:'STEAL',text:'You used STEAL on '+pl[tgt].n+'!',effect:'slash',target:tgt});
     if(tgtBarrier){
+      stats.stealsBlocked++;
       events.push({type:'result',text:pl[tgt].n+"'s BARRIER blocked your steal!",effect:'shield_block'});
       lg.push('R'+rd+': Steal on '+pl[tgt].n+' - BLOCKED!');
     }else if(pl[tgt].cc<=0){
@@ -6249,7 +6285,7 @@ function generateResolveEvents(){
     events.push({type:'action',who:'You',action:'BARRIER',text:'You raised a BARRIER!',effect:'shield'});
     lg.push('R'+rd+': You raised a Barrier!');
   }else if(bpAction===3){// SCOUT
-    sp.c=Math.max(0,sp.c-1);
+    sp.c=Math.max(0,sp.c-1);stats.scoutUses++;
     const tgt=bpSelectedTarget;
     events.push({type:'action',who:'You',action:'SCOUT',text:'You used SCOUT on '+pl[tgt].n+'!',effect:'none'});
     const rCards=pl[tgt].cd.filter(c=>c>0).map(c=>CD[c-1].n);
@@ -7072,7 +7108,7 @@ function fishingCatchCard(){
     startCardAcquisition(cardIdx);
     twSet('You caught a '+CD[cardIdx].n+' card!');
     lg.push('Fishing: Caught '+CD[cardIdx].n+'!');
-    if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+    if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
   }else{
     discardActive=true;discardSelIdx=0;discardPendingCard=cardIdx+1;discardSource='wild';
     twSet('Caught '+CD[cardIdx].n+'! Discard one to keep it.');
@@ -7171,7 +7207,7 @@ function checkPuzzleInteraction(){
           pl[0].cd[slot]=5;
           syncCardCount(0);
           startCardAcquisition(4);
-          if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+          if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
         }else{
           discardActive=true;discardSelIdx=0;discardPendingCard=5;discardSource='wild';
         }
@@ -7541,7 +7577,7 @@ function checkObjectInteraction(){
         startCardAcquisition(cardIdx);
         objectInteractMsg='A card fell from the tree!';
         lg.push('Shook tree: Found '+CD[cardIdx].n+'!');
-        if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+        if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
       }else{
         discardActive=true;discardSelIdx=0;discardPendingCard=cardIdx+1;discardSource='wild';
         objectInteractMsg='Found '+CD[cardIdx].n+'! Discard to keep.';
@@ -7574,7 +7610,7 @@ function checkObjectInteraction(){
         startCardAcquisition(cardId-1);
         objectInteractMsg='Found a hidden card under the rock!';
         lg.push('Rock: Found '+CD[cardId-1].n+'!');
-        if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+        if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
       }else{
         discardActive=true;discardSelIdx=0;discardPendingCard=cardId;discardSource='wild';
         objectInteractMsg='Found '+CD[cardId-1].n+'! Discard to keep.';
@@ -7661,7 +7697,7 @@ function doFountainExchange(){
   fountainResultTimer=120;
   lg.push('Fountain: Traded '+CD[oldCard-1].n+' for '+CD[newCard-1].n+'!');
   sfxShopTrade();
-  if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
+  if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
 }
 
 function drawObjectInteractMsg(){
@@ -7847,6 +7883,160 @@ function drawMapCardUseOverlay(){
 }
 
 // ═══════════════════════════════════════
+// STATS SCREEN
+// ═══════════════════════════════════════
+function dStats(){
+  bx(0,0,W,H,'#181828');
+  win(10,6,W-20,38);tx('SESSION STATS',W/2-80,32,10,FRLG.textColor);
+  const elapsed=Math.floor((Date.now()-stats.sessionStart)/1000);
+  const mins=Math.floor(elapsed/60),secs=elapsed%60;
+  const favIdx=stats.areaTime.indexOf(Math.max(...stats.areaTime));
+  const favArea=stats.areaTime[favIdx]>0?mapNames[favIdx]:'None yet';
+  const rows=[
+    ['Games Played',''+stats.gamesPlayed],
+    ['Cards Collected',''+stats.cardsCollected],
+    ['Cards Lost',''+stats.cardsLost],
+    ['Steals Attempted',''+stats.stealsAttempted],
+    ['Steals Blocked',''+stats.stealsBlocked],
+    ['Scout Uses',''+stats.scoutUses],
+    ['Steps Walked',''+stats.stepsWalked],
+    ['Time Played',mins+'m '+secs+'s'],
+    ['Favorite Area',favArea],
+    ['Current Round',''+rd+'/30'],
+  ];
+  rows.forEach((r,i)=>{
+    const y=52+i*44;
+    win(20,y,W-40,38);
+    txShadow(r[0],36,y+26,8,'#c8c0a0','rgba(0,0,0,.4)');
+    txShadow(r[1],W-200,y+26,8,'#f0e8c0','rgba(0,0,0,.4)');
+  });
+  win(W/2-100,H-38,200,28);
+  txShadow('X = Back',W/2-32,H-16,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
+}
+
+// ═══════════════════════════════════════
+// CREDITS SCREEN (scrolling text)
+// ═══════════════════════════════════════
+function dCredits(){
+  bx(0,0,W,H,'#0c0c18');
+  // Stars
+  for(let i=0;i<80;i++){
+    const sx=(i*47+13)%W,sy=(i*31+7)%H;
+    const a=Math.sin(creditsFrame*.02+i*1.7)*.35+.5;
+    bx(sx,sy,1,1,`rgba(255,255,255,${a*.3})`);
+  }
+  const scrollSpeed=0.6;
+  const startY=H;
+  const lineHeight=36;
+  CREDITS_LINES.forEach((line,i)=>{
+    const y=startY-creditsFrame*scrollSpeed+i*lineHeight;
+    if(y<-30||y>H+30)return;
+    const isTitle=(line==='0 x A R K');
+    const sz=isTitle?24:(line.length>30?6:10);
+    const col=isTitle?'#f8f0e0':(line.startsWith('Powered')?'#9945FF':(line.startsWith('Solana')?'#14F195':'#c8c0a0'));
+    const tw_=line.length*(isTitle?14:sz*0.7);
+    txShadow(line,W/2-tw_/2,y,sz,col,'rgba(0,0,0,.5)');
+  });
+  // End: loop or go back
+  const totalScroll=(CREDITS_LINES.length*lineHeight+H)/scrollSpeed;
+  if(creditsFrame>totalScroll){creditsActive=false;creditsFrame=0;}
+  // Back prompt
+  txShadow('X = Back',W/2-32,H-16,7,'#555570','rgba(0,0,0,.3)');
+}
+
+// ═══════════════════════════════════════
+// OPENING STORY SEQUENCE
+// ═══════════════════════════════════════
+function dStory(){
+  bx(0,0,W,H,'#000');
+  const lineTime=150; // frames per line (1s fade + 1.5s hold at 60fps)
+  STORY_LINES.forEach((line,i)=>{
+    const lineStart=i*lineTime;
+    const elapsed=storyFrame-lineStart;
+    if(elapsed<0)return;
+    let alpha=0;
+    if(elapsed<60)alpha=elapsed/60; // 1s fade in
+    else if(elapsed<150)alpha=1; // stay
+    else if(elapsed<180)alpha=1-(elapsed-150)/30; // 0.5s fade out
+    else return;
+    alpha=Math.max(0,Math.min(1,alpha));
+    g.globalAlpha=alpha;
+    const tw_=line.length*7;
+    txShadow(line,W/2-tw_/2,H/2-20+i*0,10,'#c8c0a0','rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  });
+  // Skip prompt
+  if(storyFrame>30){
+    const skipA=Math.sin(storyFrame*0.05)*0.2+0.5;
+    g.globalAlpha=skipA;
+    tx('Z = Skip',W-100,H-20,6,'#555570');
+    g.globalAlpha=1;
+  }
+}
+
+// ═══════════════════════════════════════
+// GAME OVER - TIME'S UP SCREEN
+// ═══════════════════════════════════════
+function dGameOver(){
+  const t=fr-victoryFrame;
+  if(t<30){bx(0,0,W,H,`rgba(0,0,0,${t/30})`);return;}
+  bx(0,0,W,H,'#0c0c18');
+  // Dramatic red flicker
+  const flicker=Math.sin(t*0.08)*0.03;
+  bx(0,0,W,H,`rgba(180,40,40,${flicker})`);
+
+  if(t>35){g.globalAlpha=Math.min(1,(t-35)/20);txShadow("TIME'S UP",W/2-100,80,20,'#d04040','rgba(0,0,0,.6)');g.globalAlpha=1;}
+  if(t>45){g.globalAlpha=Math.min(1,(t-45)/15);win(W/2-220,100,440,28);txShadow('SEASON 1 RESULTS',W/2-76,120,10,'#f0c830','rgba(0,0,0,.4)');g.globalAlpha=1;}
+
+  // Rank all 3 players by unique card count
+  if(t>60){
+    const rankings=[];
+    for(let i=0;i<3;i++){
+      const unique=hasUniqueCards(i).size;
+      rankings.push({idx:i,name:pl[i].n,unique:unique,cards:[...pl[i].cd]});
+    }
+    rankings.sort((a,b)=>b.unique-a.unique);
+    const medals=['1ST','2ND','3RD'];
+    const medalColors=['#f0c830','#c0c0c0','#c08040'];
+    rankings.forEach((r,rank)=>{
+      const fadeT=t-60-rank*20;
+      if(fadeT<0)return;
+      const alpha=Math.min(1,fadeT/15);
+      g.globalAlpha=alpha;
+      const y=148+rank*120;
+      const isPlayer=r.idx===0;
+      win(W/2-260,y,520,110);
+      // Medal
+      txShadow(medals[rank],W/2-240,y+30,14,medalColors[rank],'rgba(0,0,0,.4)');
+      // Name
+      txShadow(r.name,W/2-160,y+30,12,isPlayer?'#48b8e8':'#c8c0a0','rgba(0,0,0,.4)');
+      // Unique count
+      txShadow(r.unique+'/5 CARDS',W/2+120,y+30,10,r.unique>=5?'#40d040':'#c8c0a0','rgba(0,0,0,.4)');
+      // Show cards in a row
+      for(let ci=0;ci<5;ci++){
+        const cx_=W/2-140+ci*56;
+        const cy_=y+46;
+        if(r.cards[ci]>0){
+          drawCardFrame(cx_,cy_,46,56,r.cards[ci]-1,false);
+        }else{
+          bx(cx_,cy_,46,56,'#383848');bx(cx_+2,cy_+2,42,52,'#2a2a38');
+          tx('?',cx_+16,cy_+36,12,'#484858');
+        }
+      }
+      g.globalAlpha=1;
+    });
+  }
+
+  if(t>140){
+    g.globalAlpha=Math.min(1,(t-140)/15);
+    win(W/2-200,H-60,400,50);
+    const blink_=Math.floor(fr/25)%2===0;
+    if(blink_)txShadow('Z = Play Again    X = Title',W/2-140,H-30,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
+    g.globalAlpha=1;
+  }
+}
+
+// ═══════════════════════════════════════
 // GAME LOOP
 // ═══════════════════════════════════════
 function updateVisualPositions(){
@@ -7876,6 +8066,17 @@ function update(){
   if(fr%20===0)wt++;
   twTick();
   fadeUpdate();updateWipe();updateParticles();updateBanner();
+  // Track area time for stats (every 60 frames = 1 second)
+  if(sc==='map'&&fr%60===0&&currentMap>=0&&currentMap<3){stats.areaTime[currentMap]++;}
+  // Story sequence update
+  if(storyActive){storyFrame++;if(storyFrame>=STORY_LINES.length*150+60){storyActive=false;storyFrame=0;fadeIn();}}
+  // Credits scroll update
+  if(creditsActive){creditsFrame++;}
+  // Save stats periodically
+  if(fr%600===0)saveStats();
+  // Tension drum for nearby rivals
+  if(sc==='map'&&proximityDangerLevel>=3&&!tensionDrumNode){startTensionDrum();if(tensionDrumGain)try{tensionDrumGain.gain.linearRampToValueAtTime(proximityDangerLevel===4?0.05:0.025,AC.currentTime+0.2);}catch(e){}}
+  else if((sc!=='map'||proximityDangerLevel<3)&&tensionDrumNode){stopTensionDrum();}
   // Safety caps: prevent unbounded array growth
   if(particles.length>500)particles.splice(0,particles.length-500);
   if(lg.length>200)lg.splice(0,lg.length-200);
@@ -8094,9 +8295,11 @@ function dSplash(){
 
 function draw(){
   g.clearRect(0,0,W,H);
-  if(sc==='splash'){dSplash();}
+  if(storyActive){dStory();}
+  else if(sc==='splash'){dSplash();}
   else if(sc==='title'){
-    if(mp.mpScreen!=='off'){drawMPLobby();}
+    if(creditsActive){dCredits();}
+    else if(mp.mpScreen!=='off'){drawMPLobby();}
     else{dTitle();}
   }
   else if(sc==='map'){
@@ -8106,7 +8309,8 @@ function draw(){
   else if(sc==='act')dAct();
   else if(sc==='crd')dCrd();
   else if(sc==='log')dLog();
-  else if(sc==='victory')dVictory();
+  else if(sc==='stats')dStats();
+  else if(sc==='victory'){if(gameOverTimesUp)dGameOver();else dVictory();}
   drawCardAcquisition();
   drawDiscardOverlay();
   drawTutorialMsg();
@@ -8268,7 +8472,7 @@ document.addEventListener('keydown',e=>{
   if(sc==='title'){
     if(hasSave()){
       if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
-      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(3,titleMenuIdx+1);sfxCursor();}
+      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(4,titleMenuIdx+1);sfxCursor();}
       if(e.code==='KeyZ'){
         if(titleMenuIdx===0){
           // CONTINUE
@@ -8289,9 +8493,16 @@ document.addEventListener('keydown',e=>{
           sfxConfirm();
           if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
           resetGameState(true);
-          fadeOut(()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
+          // Show opening story
+          storyActive=true;storyFrame=0;
+          fadeOut(()=>{
+            // Story runs, then on completion or skip we fade in to map
+            const storyEnd=()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-            fadeIn();twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');});
+            twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');};
+            // Set up callback: story will fadeIn when done via update()
+            const checkStory=setInterval(()=>{if(!storyActive){clearInterval(checkStory);storyEnd();}},100);
+          });
         }else if(titleMenuIdx===2){
           // CONNECT WALLET
           sfxSelect();
@@ -8310,18 +8521,27 @@ document.addEventListener('keydown',e=>{
         }else if(titleMenuIdx===3){
           // MULTIPLAYER
           sfxSelect();mp.mpScreen='select';mp.mpMenuIdx=0;
+        }else if(titleMenuIdx===4){
+          // CREDITS
+          sfxSelect();creditsActive=true;creditsFrame=0;
         }
       }
     }else{
       if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
-      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(2,titleMenuIdx+1);sfxCursor();}
+      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(3,titleMenuIdx+1);sfxCursor();}
       if(e.code==='KeyZ'){
         if(titleMenuIdx===0){
           sfxConfirm();
           if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
-          fadeOut(()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
+          // Show opening story for first-time play
+          resetGameState(true);
+          storyActive=true;storyFrame=0;
+          fadeOut(()=>{
+            const storyEnd=()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-            fadeIn();twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');});
+            twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');};
+            const checkStory=setInterval(()=>{if(!storyActive){clearInterval(checkStory);storyEnd();}},100);
+          });
         }else if(titleMenuIdx===1){
           // CONNECT WALLET (no save)
           sfxSelect();
@@ -8340,6 +8560,9 @@ document.addEventListener('keydown',e=>{
         }else if(titleMenuIdx===2){
           // MULTIPLAYER (no save)
           sfxSelect();mp.mpScreen='select';mp.mpMenuIdx=0;
+        }else if(titleMenuIdx===3){
+          // CREDITS (no save)
+          sfxSelect();creditsActive=true;creditsFrame=0;
         }
       }
     }
@@ -8404,7 +8627,7 @@ document.addEventListener('keydown',e=>{
           discardActive=false;
           if(discardSource==='wild'||discardSource==='menu'){startCardAcquisition(discardPendingCard-1);}
           discardPendingCard=-1;discardSource='';
-          if(playerHasAllFive()){setTimeout(()=>{fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},500);}
+          if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},500);}
         }else{
           // Menu discard: just remove the card
           pl[0].cd[slot]=0;pl[0].cc=Math.max(0,pl[0].cc-1);
@@ -8591,16 +8814,21 @@ document.addEventListener('keydown',e=>{
     if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();return;}
     if(mo){
       if(e.code==='ArrowUp'){mi=Math.max(0,mi-1);sfxCursor();}
-      if(e.code==='ArrowDown'){mi=Math.min(10,mi+1);sfxCursor();}
+      if(e.code==='ArrowDown'){mi=Math.min(11,mi+1);sfxCursor();}
       if(e.code==='KeyZ'){
         sfxConfirm();const s=['crd','map','act','log'];
-        if(mi===10)mo=false;
+        if(mi===11)mo=false;
         else if(mi===4){
+          // STATS
+          mo=false;menuOpenFrame=0;
+          sc='stats';
+        }
+        else if(mi===5){
           // USE CARD on map
           mo=false;menuOpenFrame=0;
           openMapCardUse();
         }
-        else if(mi===5){
+        else if(mi===6){
           // DISCARD
           const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
           if(filled.length>0){
@@ -8608,7 +8836,7 @@ document.addEventListener('keydown',e=>{
             mo=false;menuOpenFrame=0;
           }else{twSet('No cards to discard!');mo=false;menuOpenFrame=0;}
         }
-        else if(mi===6){
+        else if(mi===7){
           // WALLET
           mo=false;menuOpenFrame=0;
           if(walletConnected){
@@ -8624,20 +8852,20 @@ document.addEventListener('keydown',e=>{
             }
           }
         }
-        else if(mi===7){
+        else if(mi===8){
           // TEXT SPEED
           textSpeedIdx=(textSpeedIdx+1)%3;
           localStorage.setItem('oxark_textspeed',String(textSpeedIdx));
           twSet('Text speed: '+TEXT_SPEED_LABELS[textSpeedIdx]);
           sfxCursor();
         }
-        else if(mi===8){
+        else if(mi===9){
           // SAVE
-          saveGame();
+          saveGame();saveStats();
           twSet('Game saved!');
           mo=false;menuOpenFrame=0;
         }
-        else if(mi===9){
+        else if(mi===10){
           // NEW GAME: reset all state
           resetGameState(true);
           fadeOut(()=>{sc='title';mo=false;fadeIn();ub();});
@@ -8706,7 +8934,7 @@ document.addEventListener('keydown',e=>{
         const m=getMap();
         if(nx>=0&&nx<MW&&ny>=0&&ny<MH&&WALKABLE.has(m[ny]?.[nx])){
           p.x=nx;p.y=ny;p.step++;p.walkFrame=(p.walkFrame+1)%4;sfxMove();sfxStep();
-          stepCounter++;
+          stepCounter++;stats.stepsWalked++;
           edgeCacheDirty=true;
           // Broadcast move to multiplayer
           mpBroadcastMove();
@@ -8832,8 +9060,8 @@ document.addEventListener('keydown',e=>{
           discardActive=true;discardSelIdx=0;discardPendingCard=pendCard;discardSource='wild';
         }
         saveGame();
-        if(playerHasAllFive()){fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
-        else if(rd>30){fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
+        if(playerHasAllFive()){gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
+        else if(rd>30){gameOverTimesUp=true;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
         else if(!discardActive){
           // Battle-to-map: quick slide-down wipe
           startWipe('vslide',16,()=>{
@@ -8845,22 +9073,42 @@ document.addEventListener('keydown',e=>{
     }
   }
 
+  // Story sequence input (Z to skip)
+  if(storyActive){
+    if(e.code==='KeyZ'){storyActive=false;storyFrame=0;fadeIn();}
+    return;
+  }
+
+  // Credits screen input
+  if(sc==='title'&&creditsActive){
+    if(e.code==='KeyX'||e.code==='KeyZ'){creditsActive=false;creditsFrame=0;sfxBack();}
+    return;
+  }
+
+  // Stats screen input
+  if(sc==='stats'){
+    if(e.code==='KeyX'||e.code==='KeyZ'){sfxBack();sc='map';ub();}
+    return;
+  }
+
   if(sc==='victory'){
-    if((fr-victoryFrame)>170){
+    const waitTime=gameOverTimesUp?140:170;
+    if((fr-victoryFrame)>waitTime){
       if(e.code==='KeyZ'){
         // Play again - reset all state
         sfxConfirm();
+        gameOverTimesUp=false;
         resetGameState(false);
         fadeOut(()=>{sc='map';mo=false;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
           fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
           fadeIn();twSet('Welcome back! Collect all 5 card types to win!');ub();});
       }
-      if(e.code==='KeyX'){sfxBack();fadeOut(()=>{sc='title';fadeIn();ub();});}
+      if(e.code==='KeyX'){sfxBack();gameOverTimesUp=false;fadeOut(()=>{sc='title';fadeIn();ub();});}
     }
     return;
   }
 
-  if(e.code==='KeyX'&&sc!=='title'&&sc!=='victory'){
+  if(e.code==='KeyX'&&sc!=='title'&&sc!=='victory'&&sc!=='stats'){
     if(sc==='act'&&battlePhase!=='select')return;
     sfxBack();fadeOut(()=>{sc='map';mo=false;battlePhase='select';fadeIn();ub();});
   }
