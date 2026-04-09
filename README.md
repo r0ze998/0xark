@@ -1,54 +1,93 @@
 # 0xARK
 
-> **GI x Dark Forest x FRLG — ZK card-stealing PvP on Solana**
+> **ZK Pirate Card Battle on Solana**
 
-Explore a fog-covered island. Collect 5 card types to win. Steal from rivals. Hide your hand with ZK. Let AI agents trade intel for micropayments.
+Five ancient spirits. Three players. One cursed island. Everything hidden.
 
-**[Play Now](https://r0ze998.github.io/0xark/)** | [GDD v0.3](GDD-v0.3.md) | [Solana Program](solana/oxark/)
+Explore fog-covered waters. Collect 5 spirit cards to escape. Steal from rivals who can't see you. Let AI agents trade intelligence for micropayments.
+
+**[Play Now](https://r0ze998.github.io/0xark/)** | [GDD v0.3](GDD-v0.3.md) | [GitHub](https://github.com/r0ze998/0xark)
 
 ---
 
 ## How It Works
 
-3 players are dropped onto an island shrouded in Fog of War. Each area holds different cards:
+3 players are dropped onto a cursed pirate island shrouded in Fog of War. Each area holds different spirit cards:
 
-| Area | Cards Available | Vibe |
-|------|----------------|------|
-| **Port Town** | Crystal, Shadow | Safe zone, NPCs, shops |
-| **Deep Forest** | Flame, Storm | Tall grass encounters, high risk |
-| **Ancient Ruins** | Void, Crystal | Rare drops, dangerous |
+| Area | Spirits Available | Vibe |
+|------|-------------------|------|
+| **Corsair Bay** | Aegis, Umbra | Pirate harbor, NPC traders, safe zone |
+| **Smuggler's Jungle** | Ignis, Tempest | Dense jungle, tall grass encounters, traps |
+| **Cursed Temple** | Nihil, Aegis | Ancient ruins, puzzles, rare drops |
 
-**You must visit all areas to complete your collection.**
+**You must explore all areas to complete your collection.**
 
-### Actions (1 per turn, simultaneous commit-reveal)
+### Spirit Cards
+
+| Spirit | Hold Effect | Consume Effect | Lore |
+|--------|-----------|---------------|------|
+| **AEGIS** | +1 toward completion | Guaranteed Steal (pierces Barrier) | "Shield of the last captain" |
+| **UMBRA** | +1 toward completion | Invisible for 1 turn | "The shadow that sails with no ship" |
+| **IGNIS** | +1 toward completion | Burn target's card | "Fire that never drowns" |
+| **TEMPEST** | +1 toward completion | Nullify all Barriers | "The storm answers to no flag" |
+| **NIHIL** | +1 toward completion | Copy target's card | "The void between the waves" |
+
+**The core dilemma: hold it for the win, or consume it to survive.**
+
+### Actions (simultaneous commit-reveal)
 
 | Action | Effect | Constraint |
 |--------|--------|-----------|
 | Draw | Get a card from current area | Area-specific pool |
 | Steal | Take rival's card | **Same area only** |
-| Barrier | Block steal attempts | 2 uses |
+| Barrier | Block steal attempts | Limited uses |
 | Scout | See rival's hand + location | Works anywhere |
 | Move | Travel to adjacent area | Costs your turn |
 | Use Card | Consume for powerful effect | Card is destroyed |
 
-### Card Consumption
-
-Every card can be held (for completion) or consumed (for power):
-
-| Card | Consume Effect |
-|------|---------------|
-| Crystal | Next Steal guaranteed (pierces Barrier) |
-| Shadow | Invisible for 1 turn |
-| Flame | Burn target's card |
-| Storm | Nullify all Barriers |
-| Void | Copy target's card |
-
-**The core dilemma: hold it for the win, or use it to survive.**
-
 ### Win Conditions
-1. **Complete** — Collect all 5 unique card types
+1. **Complete** — Collect all 5 unique spirit types
 2. **Timeout** — Most unique cards after 30 rounds
 3. **Elimination** — All rivals have 0 cards
+
+---
+
+## Features
+
+### Gameplay
+- 3 interconnected pirate-themed maps with Fog of War
+- Autonomous AI rivals with distinct personalities (Hunter vs Collector)
+- Card decay timer (180s — cards expire, creating urgency)
+- Threat compass, streak bonuses, area danger levels
+- Fishing, traps, puzzles, NPC trading post, object interactions
+- Map card effects (Ignis burns obstacles, Umbra grants stealth, Nihil phases through walls)
+- Battle QTE for critical actions
+
+### Multiplayer
+- WebSocket-based real-time multiplayer (2-3 players)
+- Room creation/joining with lobby UI
+- Commit-reveal synchronization across players
+
+### On-Chain
+- 11 Anchor instructions (create/join/start/commit/reveal/resolve/verify_zk/mint_nft/deposit_stake/claim_prize/initialize)
+- SHA256 commit-reveal with full round verification (8 tests passing)
+- ZK circuit (Circom Poseidon, 264 constraints, Groth16 proof verified)
+- Phantom wallet integration
+- Entry stake system (deposit/claim)
+- Card NFT minting for winners
+
+### AI Agents (x402)
+- Information broker server with 4 intelligence endpoints
+- Location ($0.002), Hand ($0.003), Strategy ($0.005), Market (free)
+- x402 protocol compliant (HTTP 402 + USDC micropayments)
+- Rival AI enhanced by x402 strategy advice
+
+### Visual
+- FRLG-authentic pixel art (Kenney Monochrome Pirates CC0 + custom sprites)
+- 960x640 canvas, 32x32 tiles, 2x supersampling
+- 5 animated character sprites with idle animations
+- Pirate ship, seagulls, monkeys, skull decorations
+- Day/night cycle, ambient audio per area
 
 ---
 
@@ -56,68 +95,83 @@ Every card can be held (for completion) or consumed (for power):
 
 | Layer | Technology |
 |-------|-----------|
-| Smart Contract | **Anchor (Rust)** on Solana |
-| ZK | Circom + groth16-solana (commit-reveal) |
-| AI Agent Payment | x402 + USDC micropayments |
-| Frontend | Canvas (FRLG pixel art) |
-| Wallet | Phantom |
+| Smart Contract | **Anchor (Rust)** on Solana — 11 instructions |
+| ZK | **Circom** + groth16-solana (Poseidon hash, 264 constraints) |
+| AI Agent | **x402** + USDC micropayments |
+| Multiplayer | **WebSocket** server (Node.js) |
+| Frontend | **Canvas** pixel art (8700+ lines) |
+| Assets | **Kenney** Monochrome Pirates (CC0) |
+| Wallet | **Phantom** |
 
 ---
 
 ## Architecture
 
 ```
-solana/oxark/programs/oxark/src/
-├── state.rs          — Game, PlayerState, CardPool, CommitAction, Area
-├── constants.rs      — Card tables, area configs, spell limits
-├── error.rs          — 15 error codes
-├── instructions/
-│   ├── create_game   — Init game + card pool
-│   ├── join_game     — Join + set starting area
-│   ├── start_game    — Deal initial cards
-│   ├── commit_action — SHA256 hash commit
-│   ├── reveal_action — Hash verify + action validate
-│   └── resolve_round — Simultaneous resolution
-│                       Move→Shadow→Storm→Barrier→Steal→Flame→Scout→Draw→Void
-└── tests/
-    └── test_game.rs  — 5 passing tests (LiteSVM)
+0xark/
+├── solana/oxark/          — Anchor smart contract
+│   ├── programs/oxark/src/
+│   │   ├── state.rs       — Game, PlayerState, CardPool, Area, Events
+│   │   ├── instructions/  — 11 instructions
+│   │   └── tests/         — 8 passing tests (LiteSVM)
+│   └── target/idl/        — Program IDL
+├── solana/client/          — Game client
+│   ├── index.html         — 8700+ line canvas game
+│   ├── pirates-tilemap.png — Kenney sprite sheet
+│   ├── wallet.js          — Phantom wallet module
+│   └── onchain.js         — On-chain transaction module
+├── zk/                     — ZK circuits
+│   ├── circuits/           — Circom commit-reveal circuit
+│   └── build/              — Proving keys, verification key
+├── x402/                   — AI agent broker
+│   └── agent-broker.js    — Express server, 4 endpoints
+├── multiplayer/            — WebSocket server
+│   └── server.js          — Room management, player sync
+└── docs/                   — GDD, scripts, research
 ```
 
 ---
 
-## Development
+## Quick Start
 
 ```bash
-# Build
+# Play (browser)
+open https://r0ze998.github.io/0xark/
+
+# Build smart contract
 cd solana/oxark && anchor build
 
-# Test
+# Run tests (8/8 passing)
 cargo test
 
-# Play (frontend)
-open solana/client/index.html
-# or visit https://r0ze998.github.io/0xark/
+# Start multiplayer server
+cd multiplayer && npm install && npm start
+
+# Start x402 agent
+cd x402 && npm install && node agent-broker.js
 ```
 
 ---
 
 ## Colosseum Frontier Hackathon
 
-0xARK is being built for the [Colosseum Frontier Hackathon](https://colosseum.com/frontier) (April 6 — May 11, 2026).
+0xARK is built for [Colosseum Frontier](https://colosseum.com/frontier) (April 6 — May 11, 2026).
 
 **Tracks**: Gaming / AI / Stablecoins
 
-**Differentiation**: First Solana game combining ZK hidden hands + AI agent micropayments (x402) + area-based strategy.
+**What's unique**: First Solana game combining ZK hidden information + pirate island exploration + AI agent micropayment economy.
 
 ---
 
 ## Links
 
 - **Live**: [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/)
-- **GDD**: [v0.3](GDD-v0.3.md) | [v0.2](GDD-v0.2.md) | [v0.1](GDD.md)
-- **Research**: [Solana Frontier Research](https://github.com/r0ze998/0xark/blob/main/docs/PLAN.md)
+- **GitHub**: [github.com/r0ze998/0xark](https://github.com/r0ze998/0xark)
+- **GDD**: [v0.3](GDD-v0.3.md)
 - **Builder**: [@r0ze_____](https://x.com/r0ze_____)
 
 ---
 
-*Design Philosophy: 触って面白い最小限のものを、ブレないビジョンで磨く。説明しない、足さない、削る。*
+*Design Philosophy: 触って面白い最小限のものを、ブレないビジョンで磨く。*
+
+*Assets: [Kenney Monochrome Pirates](https://kenney.nl/assets/monochrome-pirates) (CC0)*
