@@ -108,11 +108,17 @@ pub struct PlayerState {
     pub revealed_target: Pubkey,
     /// Move target area (if action is Move)
     pub move_target: u8,
+    /// Solana clock timestamp when each card slot was acquired (0 = empty/unset)
+    pub card_timestamps: [i64; 5],
     pub bump: u8,
 }
 
 impl PlayerState {
-    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 1;
+    // Original fields: 8 (disc) + 8 (game_id) + 32 (player) + 1 (index) + 1 (area)
+    //   + 5 (cards) + 1 (card_count) + 1 (steal) + 1 (barrier) + 1 (scout)
+    //   + 1 (committed) + 1 (revealed) + 1 (revealed_action) + 32 (revealed_target)
+    //   + 1 (move_target) + 40 (card_timestamps: 5 * i64) + 1 (bump)
+    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 40 + 1;
 }
 
 #[account]
@@ -140,4 +146,43 @@ pub struct CommitAction {
 
 impl CommitAction {
     pub const SIZE: usize = 8 + 8 + 1 + 32 + 32 + 1;
+}
+
+// === Anchor Events ===
+
+#[event]
+pub struct CardDrawn {
+    pub game_id: u64,
+    pub player: Pubkey,
+    pub card_id: u8,
+    pub area: u8,
+}
+
+#[event]
+pub struct CardStolen {
+    pub game_id: u64,
+    pub stealer: Pubkey,
+    pub victim: Pubkey,
+    pub card_id: u8,
+}
+
+#[event]
+pub struct RoundResolved {
+    pub game_id: u64,
+    pub round: u8,
+}
+
+#[event]
+pub struct GameFinishedEvent {
+    pub game_id: u64,
+    pub winner: Pubkey,
+    pub round: u8,
+}
+
+#[event]
+pub struct PlayerMoved {
+    pub game_id: u64,
+    pub player: Pubkey,
+    pub from_area: u8,
+    pub to_area: u8,
 }

@@ -32,4 +32,14 @@ pub enum ErrorCode {
     CardNotFound,
     #[msg("Pool is empty")]
     PoolEmpty,
+    #[msg("No cards left in area pool to draw")]
+    PoolEmptyForArea,
+    #[msg("Players must be in the same area")]
+    NotInSameArea,
+    #[msg("Area ID is out of range")]
+    InvalidArea,
+    #[msg("Game is already finished")]
+    GameFinished,
+    #[msg("Round limit reached")]
+    RoundLimitReached,
 }
