@@ -1534,6 +1534,28 @@ const burnedTiles=[]; // {mapIdx, x, y} — tiles burned by Flame
 let mapCardUseActive=false, mapCardUseIdx=0;
 let mapCardDirSelect=false, mapCardDirIdx=0, mapCardPendingType=-1;
 
+// ── TENSION MECHANICS ──
+// Card Decay Timer: each slot stores timestamp when card was acquired (0 = empty)
+const CARD_DECAY_MS=120000; // 120 seconds real-time
+const cardTimers=[0,0,0,0,0]; // parallel to pl[0].cd[5]
+let cardDecayWarningFlash=0; // frame counter for warning flash
+
+// Streak Bonus: consecutive successful actions
+let streakCount=0;
+let streakDisplayTimer=0; // frames to show streak pop animation
+let streakLostTimer=0; // frames to show streak lost
+
+// Area Danger Level: per-map dynamic danger
+const areaDanger=[0,0,0]; // 0.0 to 1.0 for each map
+const areaDangerStayTimer=[0,0,0]; // how long player has stayed on each map (frames)
+const DANGER_LOW_THRESH=0.33;
+const DANGER_HIGH_THRESH=0.66;
+
+// Quick-Time Event during battle resolution
+let qteActive=false, qteFrame=0, qteSuccess=false, qteWindow=30; // 0.5s at 60fps
+let qteKeyPressed=false, qteEventIdx=-1, qteType=''; // 'defend' or 'attack'
+let qteResultText='', qteResultTimer=0;
+
 // SFX for new features
 function resetNewFeatureState(){
   triggeredTraps.clear();shakenTrees.clear();pushedRocks.clear();usedCrystals.clear();
@@ -1542,6 +1564,12 @@ function resetNewFeatureState(){
   fishingActive=false;inBuilding=false;crystalRevealTimer=0;
   mapCardUseActive=false;fountainActive=false;
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
+  // Tension mechanics reset
+  for(let i=0;i<5;i++)cardTimers[i]=0;
+  streakCount=0;streakDisplayTimer=0;streakLostTimer=0;
+  areaDanger[0]=0;areaDanger[1]=0;areaDanger[2]=0;
+  areaDangerStayTimer[0]=0;areaDangerStayTimer[1]=0;areaDangerStayTimer[2]=0;
+  qteActive=false;qteKeyPressed=false;
 }
 
 function resetGameState(startCards){
@@ -1570,6 +1598,9 @@ function resetGameState(startCards){
   treasures.forEach(t=>t.collected=false);
   tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
   resetNewFeatureState();
+  // Set card timers for starting cards
+  const now=Date.now();
+  for(let i=0;i<5;i++){cardTimers[i]=(pl[0].cd[i]>0)?now:0;}
   edgeCacheDirty=true;fogCacheDirty=true;
 }
 
@@ -1581,6 +1612,14 @@ function sfxTrap(){if(!soundEnabled)return;beep(150,.08,.1);setTimeout(()=>beep(
 function sfxPuzzle(){if(!soundEnabled)return;beep(440,.06,.06);setTimeout(()=>beep(550,.06,.06),60);setTimeout(()=>beep(660,.06,.06),120);setTimeout(()=>beep(880,.1,.08),180);}
 function sfxBurn(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='bandpass';f.frequency.value=1500;f.Q.value=1;gn.gain.setValueAtTime(.1,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.2);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.2);}catch(e){}}
 function sfxPhase(){if(!soundEnabled)return;beep(600,.04,.06);setTimeout(()=>beep(400,.06,.05),50);setTimeout(()=>beep(800,.08,.06),100);}
+function sfxCardDecayWarn(){if(!soundEnabled)return;beep(200,.06,.06);setTimeout(()=>beep(150,.08,.06),60);}
+function sfxCardExpired(){if(!soundEnabled)return;beep(100,.12,.08);setTimeout(()=>beep(80,.1,.06),80);}
+function sfxStreakUp(){if(!soundEnabled)return;beep(660,.04,.06);setTimeout(()=>beep(880,.04,.06),40);setTimeout(()=>beep(1100,.06,.07),80);}
+function sfxStreakLost(){if(!soundEnabled)return;beep(300,.06,.06);setTimeout(()=>beep(200,.08,.05),60);}
+function sfxQtePrompt(){if(!soundEnabled)return;beep(1000,.03,.08);setTimeout(()=>beep(1200,.03,.08),30);}
+function sfxQteSuccess(){if(!soundEnabled)return;beep(880,.04,.07);setTimeout(()=>beep(1320,.06,.08),40);}
+function sfxQteMiss(){if(!soundEnabled)return;beep(200,.06,.05);}
+function sfxDangerRise(){if(!soundEnabled)return;beep(220,.06,.05);setTimeout(()=>beep(260,.06,.05),60);}
 
 const lg=['Game started. Collect all 5 card types to win!'];
 
@@ -2686,18 +2725,30 @@ function drawMinimap(){
 function tryWildEncounter(){
   const m=getMap();
   const tile=m[pl[0].y]?.[pl[0].x];
-  // Tall grass: 20% chance, regular grass: 8% chance
+  // Base rates: Tall grass 20%, regular grass 8%
+  // Streak bonus: +5% per streak level
+  // Danger LOW: +5% bonus to encounter rate
+  const streakBonus=streakCount*0.05;
+  const dangerBonus=areaDanger[currentMap]<DANGER_LOW_THRESH?0.05:0;
   if(tile===11){
-    if(Math.random()>0.20)return;
+    if(Math.random()>(0.20+streakBonus+dangerBonus))return;
   }else if(tile===1){
-    if(Math.random()>0.08)return;
+    if(Math.random()>(0.08+streakBonus+dangerBonus))return;
   }else{
     return;
   }
 
   // Determine card based on map
   let cardIdx;
-  if(currentMap===0){// Port Town
+  // Streak 5+: guaranteed unique card on next Draw
+  if(streakCount>=5){
+    const owned=hasUniqueCards(0);
+    const needed=[];
+    const ac=AREA_CARDS[currentMap]||[1,2];
+    ac.forEach(cid=>{if(!owned.has(cid))needed.push(cid-1);});
+    if(needed.length>0){cardIdx=needed[Math.floor(Math.random()*needed.length)];}
+    else{cardIdx=ac[Math.floor(Math.random()*ac.length)]-1;}
+  }else if(currentMap===0){// Port Town
     const roll=Math.random();
     if(roll<0.5)cardIdx=0;     // CRYSTAL
     else cardIdx=1;             // SHADOW
@@ -2738,9 +2789,13 @@ function drawWildEncounter(){
     for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
     if(slot>=0){
       pl[0].cd[slot]=wildEncounterCard+1;
+      cardTimers[slot]=Date.now();
       syncCardCount(0);
       startCardAcquisition(wildEncounterCard);
       lg.push('Wild: Found '+cr.n+' in '+mapNames[currentMap]+'!');
+      // Streak: check if this is a new unique type
+      const prevUnique=new Set();pl[0].cd.forEach((c,idx)=>{if(c>0&&idx!==slot)prevUnique.add(c);});
+      if(!prevUnique.has(wildEncounterCard+1)){streakCount++;streakDisplayTimer=60;sfxStreakUp();}
       // Tutorial: first card
       if(!tutorialFlags.gotFirstCard){tutorialFlags.gotFirstCard=true;tutorialMsg='Check your cards with SPACE > CARDS';tutorialMsgTimer=180;}
     }else{
@@ -2771,6 +2826,7 @@ function checkTreasure(){
       for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
       if(slot>=0){
         pl[0].cd[slot]=t.card+1;
+        cardTimers[slot]=Date.now();
         syncCardCount(0);
         startCardAcquisition(t.card);
         twSet('You found a hidden '+cr.n+' card!');
@@ -3579,7 +3635,72 @@ function dMap(){
   tx(`(${pl[0].x},${pl[0].y})`,10,hudY+52,7,'#989080');
   // Footstep counter
   tx('STEPS:'+stepCounter,100,hudY+52,7,'#989080');
-  for(let i=0;i<5;i++)drawMiniCard(310+i*34,hudY+14,pl[0].cd[i]);
+  for(let i=0;i<5;i++){
+    drawMiniCard(310+i*34,hudY+14,pl[0].cd[i]);
+    // Card decay timer bar under each card
+    if(pl[0].cd[i]>0&&cardTimers[i]>0){
+      const elapsed=Date.now()-cardTimers[i];
+      const remaining=Math.max(0,1-elapsed/CARD_DECAY_MS);
+      const barX_=310+i*34, barY_=hudY+36, barW_=28, barH_=3;
+      bx(barX_,barY_,barW_,barH_,'#1a1a30');
+      const col_=remaining>0.5?'#40d040':remaining>0.25?'#d0c040':'#d04040';
+      bx(barX_,barY_,Math.floor(barW_*remaining),barH_,col_);
+      // Flash red in last 15 seconds
+      if(CARD_DECAY_MS-elapsed<15000){
+        const flashA=Math.sin(fr*0.3)*0.4+0.4;
+        g.globalAlpha=flashA;
+        bx(310+i*34-1,hudY+13,30,28,'#d04040');
+        g.globalAlpha=1;
+      }
+    }
+  }
+
+  // Streak display
+  if(streakCount>0){
+    const streakCol=streakCount>=5?'#f0c830':streakCount>=3?'#e08040':'#c0c0c0';
+    const popScale=streakDisplayTimer>0?1+Math.sin(streakDisplayTimer*0.3)*0.15:1;
+    const sz=Math.floor(7*popScale);
+    txShadow('STREAK:'+streakCount+'x',310,hudY+44,sz,streakCol,'rgba(0,0,0,.5)');
+  }
+  if(streakLostTimer>0){
+    const la=streakLostTimer/60;
+    g.globalAlpha=la;
+    txShadow('STREAK LOST!',310,hudY+44,7,'#d04040','rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  }
+
+  // Area Danger Level display
+  const dangerVal=areaDanger[currentMap];
+  const dangerLabel=dangerVal>=DANGER_HIGH_THRESH?'HIGH':dangerVal>=DANGER_LOW_THRESH?'MED':'LOW';
+  const dangerCol=dangerVal>=DANGER_HIGH_THRESH?'#d04040':dangerVal>=DANGER_LOW_THRESH?'#d0a030':'#40a040';
+  tx('DANGER:'+dangerLabel,420,hudY+44,6,dangerCol);
+  // Danger meter bar
+  bx(420,hudY+48,60,3,'#282838');
+  bx(420,hudY+48,Math.floor(60*dangerVal),3,dangerCol);
+
+  // Rival Threat Indicator (compass arrow at top of screen)
+  for(let ri=0;ri<2;ri++){
+    if(rivalMaps[ri]!==currentMap)continue;
+    const r=pl[ri+1];
+    const dx=r.x-pl[0].x, dy=r.y-pl[0].y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<1)continue;
+    const angle=Math.atan2(dy,dx);
+    // Color based on distance
+    const arrowCol=dist<=5?'#d04040':dist<=12?'#d0a030':'#40a040';
+    // Draw arrow at top center
+    const arrowCX=W/2+(ri===0?-30:30), arrowCY=20;
+    g.save();
+    g.translate(arrowCX,arrowCY);
+    g.rotate(angle);
+    g.fillStyle=arrowCol;
+    g.beginPath();
+    g.moveTo(10,0);g.lineTo(-5,-5);g.lineTo(-5,5);
+    g.closePath();g.fill();
+    g.restore();
+    // Label
+    tx(pl[ri+1].n[0],arrowCX-3,arrowCY+14,5,arrowCol);
+  }
 
   // Card completion tracker
   const cardTypes=hasUniqueCards(0);
@@ -4113,7 +4234,7 @@ function pickAreaCardForMap(mapIdx){const ac=AREA_CARDS[mapIdx]||[1,2];return ac
 function syncCardCount(pIdx){const p=pl[pIdx];p.cc=p.cd.filter(c=>c>0).length;}
 function addCardToPlayer(pIdx,cardId){
   const p=pl[pIdx];
-  for(let i=0;i<5;i++){if(p.cd[i]===0){p.cd[i]=cardId;syncCardCount(pIdx);return true;}}
+  for(let i=0;i<5;i++){if(p.cd[i]===0){p.cd[i]=cardId;syncCardCount(pIdx);if(pIdx===0)cardTimers[i]=Date.now();return true;}}
   return false;
 }
 function removeCardFromPlayer(pIdx,slotOrRandom){
@@ -4122,9 +4243,9 @@ function removeCardFromPlayer(pIdx,slotOrRandom){
     const filled=[];for(let i=0;i<5;i++){if(p.cd[i]>0)filled.push(i);}
     if(filled.length===0)return 0;
     const slot=filled[Math.floor(Math.random()*filled.length)];
-    const card=p.cd[slot];p.cd[slot]=0;syncCardCount(pIdx);return card;
+    const card=p.cd[slot];p.cd[slot]=0;if(pIdx===0)cardTimers[slot]=0;syncCardCount(pIdx);return card;
   }
-  const card=p.cd[slotOrRandom];if(card>0){p.cd[slotOrRandom]=0;syncCardCount(pIdx);}return card;
+  const card=p.cd[slotOrRandom];if(card>0){p.cd[slotOrRandom]=0;if(pIdx===0)cardTimers[slotOrRandom]=0;syncCardCount(pIdx);}return card;
 }
 function hasUniqueCards(pIdx){const s=new Set();pl[pIdx].cd.forEach(c=>{if(c>0)s.add(c);});return s;}
 function playerHasAllFive(){const s=hasUniqueCards(0);return s.has(1)&&s.has(2)&&s.has(3)&&s.has(4)&&s.has(5);}
@@ -4188,6 +4309,9 @@ function generateResolveEvents(){
     if(addCardToPlayer(0,cardId)){
       events.push({type:'result',text:'You obtained '+cr.n+'!',effect:'card_get',cardName:cr.n});
       lg.push('R'+rd+': You drew '+cr.n+'!');
+      // Streak: new unique type?
+      const prevU=new Set();pl[0].cd.forEach(c=>{if(c>0&&c!==cardId)prevU.add(c);});
+      if(!prevU.has(cardId)){streakCount++;streakDisplayTimer=60;sfxStreakUp();}
     }else{
       // Hand full - store drawn card for discard prompt after resolve
       events.push({type:'result',text:'Hand full! You drew '+cr.n+' - discard one after battle.',effect:'none'});
@@ -4208,8 +4332,9 @@ function generateResolveEvents(){
     }else{
       const stolen=removeCardFromPlayer(tgt,-1);
       if(stolen>0&&addCardToPlayer(0,stolen)){
-        events.push({type:'result',text:'You stole '+CD[stolen-1].n+' from '+pl[tgt].n+'!',effect:'damage',target:tgt});
+        events.push({type:'result',text:'You stole '+CD[stolen-1].n+' from '+pl[tgt].n+'!',effect:'damage',target:tgt,isCritical:true});
         lg.push('R'+rd+': Stole '+CD[stolen-1].n+' from '+pl[tgt].n+'!');
+        streakCount++;streakDisplayTimer=60;sfxStreakUp();
       }else{
         events.push({type:'result',text:'Steal failed!',effect:'none'});
         lg.push('R'+rd+': Steal failed!');
@@ -4240,7 +4365,7 @@ function generateResolveEvents(){
       else if(card===3){
         const ftgt=bpSelectedTarget;
         const burned=removeCardFromPlayer(ftgt,-1);
-        if(burned>0){events.push({type:'result',text:'Flame: Burned '+CD[burned-1].n+' from '+pl[ftgt].n+'!',effect:'damage',target:ftgt});lg.push('R'+rd+': Used Flame - burned '+CD[burned-1].n+'!');}
+        if(burned>0){events.push({type:'result',text:'Flame: Burned '+CD[burned-1].n+' from '+pl[ftgt].n+'!',effect:'damage',target:ftgt,isCritical:true});lg.push('R'+rd+': Used Flame - burned '+CD[burned-1].n+'!');}
         else{events.push({type:'result',text:'Flame: '+pl[ftgt].n+' had no cards to burn!',effect:'none'});lg.push('R'+rd+': Flame fizzled!');}
       }
       else if(card===4){bpPlayerBarrier=false;events.push({type:'result',text:'Storm: All barriers disabled this round!',effect:'none'});rivalBarriers[0]=false;rivalBarriers[1]=false;lg.push('R'+rd+': Used Storm - barriers disabled!');}
@@ -4295,8 +4420,9 @@ function generateResolveEvents(){
           removeCardFromPlayer(1,-1);
           addCardToPlayer(1,stolen);
         }
-        events.push({type:'result',text:pl[1].n+' stole your '+CD[stolen-1].n+'!',effect:'damage',target:0});
+        events.push({type:'result',text:pl[1].n+' stole your '+CD[stolen-1].n+'!',effect:'damage',target:0,isCritical:true});
         lg.push('R'+rd+': '+pl[1].n+' stole your '+CD[stolen-1].n+'!');
+        if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
       }
     }
   }else if(r1Act===2){// Rival barrier (already tracked)
@@ -4333,8 +4459,9 @@ function generateResolveEvents(){
           removeCardFromPlayer(2,-1);
           addCardToPlayer(2,stolen);
         }
-        events.push({type:'result',text:pl[2].n+' stole your '+CD[stolen-1].n+'!',effect:'damage',target:0});
+        events.push({type:'result',text:pl[2].n+' stole your '+CD[stolen-1].n+'!',effect:'damage',target:0,isCritical:true});
         lg.push('R'+rd+': '+pl[2].n+' stole your '+CD[stolen-1].n+'!');
+        if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
       }
     }
   }else if(r2Act===2){
@@ -4471,6 +4598,13 @@ function drawResolvingPhase(){
   const t=fr-bpFrame,eventDuration=50,currentIdx=Math.floor(t/eventDuration);
   if(currentIdx<bpResolveQueue.length){
     bpResolveIdx=currentIdx;const ev=bpResolveQueue[currentIdx];const evT=t%eventDuration;
+    // Trigger QTE on critical events (Steal, Flame, Void) at frame 15
+    if(ev.isCritical&&evT===15&&!qteActive&&qteEventIdx!==currentIdx){
+      qteActive=true;qteFrame=0;qteKeyPressed=false;qteSuccess=false;
+      qteEventIdx=currentIdx;
+      qteType=(ev.target===0)?'defend':'attack';
+      sfxQtePrompt();
+    }
     // Typewriter text box at bottom
     const slideIn=Math.min(1,evT/12);const textX=W*(1-slideIn)+16*slideIn;
     win(4,H-70,W-8,64);
@@ -4572,6 +4706,29 @@ function drawResolvingPhase(){
     }
     if(ev.text&&ev.text.includes('Void')&&ev.type==='result'&&evT<35){
       drawVoidEffect(W/2,H/2-20,evT);
+    }
+    // QTE overlay
+    if(qteActive){
+      const qteProgress=qteFrame/qteWindow;
+      const qteAlpha=1-qteProgress*0.5;
+      g.globalAlpha=qteAlpha;
+      // Flash background
+      if(qteFrame%4<2)bx(W/2-100,H/2-60,200,50,'rgba(200,40,40,.4)');
+      // Prompt text
+      const promptText=qteType==='defend'?'PRESS Z TO BLOCK!':'PRESS Z FOR BONUS!';
+      txShadow(promptText,W/2-120,H/2-35,12,'#fff','rgba(200,40,40,.8)');
+      // Timer bar
+      bx(W/2-80,H/2-18,160,6,'#333');
+      bx(W/2-80,H/2-18,Math.floor(160*(1-qteProgress)),6,qteProgress<0.5?'#40d040':'#d04040');
+      g.globalAlpha=1;
+    }
+    // QTE result flash
+    if(qteResultTimer>0){
+      const ra=qteResultTimer/40;
+      g.globalAlpha=ra;
+      const rc=qteResultText==='BLOCKED!'||qteResultText==='BONUS!'?'#40d040':'#d04040';
+      txShadow(qteResultText,W/2-50,H/2-35,14,rc,'rgba(0,0,0,.6)');
+      g.globalAlpha=1;
     }
   }else{
     // Anti-softlock: if player has 0 cards and 0 spells after resolve, give a pity card
@@ -5007,6 +5164,8 @@ function checkForestTrap(){
     sfxTrap();
     flash();
     twSet('You triggered a trap!');
+    // Reset streak on trap
+    if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
     // Lose a random card
     const filled=[];
     for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
@@ -5721,6 +5880,78 @@ function update(){
   updateFootprints();
   updateProximityTension();
 
+  // ── CARD DECAY TIMER ──
+  if(sc==='map'||sc==='act'){
+    const now=Date.now();
+    for(let i=0;i<5;i++){
+      if(pl[0].cd[i]>0&&cardTimers[i]>0){
+        const elapsed=now-cardTimers[i];
+        if(elapsed>=CARD_DECAY_MS){
+          // Card expired!
+          const expiredName=CD[pl[0].cd[i]-1].n;
+          pl[0].cd[i]=0;cardTimers[i]=0;syncCardCount(0);
+          sfxCardExpired();
+          lg.push(expiredName+' card decayed and vanished!');
+          objectInteractMsg=expiredName+' expired!';objectInteractTimer=90;
+          // Reset streak on card expiry
+          if(streakCount>0){streakCount=0;streakLostTimer=60;}
+        }else if(CARD_DECAY_MS-elapsed<15000&&fr%30===0){
+          // Warning flash in last 15 seconds
+          cardDecayWarningFlash=10;
+          if(fr%60===0)sfxCardDecayWarn();
+        }
+      }
+    }
+    if(cardDecayWarningFlash>0)cardDecayWarningFlash--;
+  }
+
+  // ── STREAK DISPLAY TIMERS ──
+  if(streakDisplayTimer>0)streakDisplayTimer--;
+  if(streakLostTimer>0)streakLostTimer--;
+
+  // ── AREA DANGER LEVEL ──
+  if(sc==='map'&&!mo&&!inBuilding){
+    // Increase danger for current map
+    areaDangerStayTimer[currentMap]++;
+    // Danger increases from staying (slow)
+    if(areaDangerStayTimer[currentMap]%120===0){
+      areaDanger[currentMap]=Math.min(1,areaDanger[currentMap]+0.02);
+    }
+    // Danger increases when rivals are on same map
+    for(let ri=0;ri<2;ri++){
+      if(rivalMaps[ri]===currentMap&&fr%60===0){
+        areaDanger[currentMap]=Math.min(1,areaDanger[currentMap]+0.03);
+      }
+    }
+    // Danger decreases for maps player is NOT on
+    for(let mi=0;mi<3;mi++){
+      if(mi!==currentMap&&fr%90===0){
+        areaDanger[mi]=Math.max(0,areaDanger[mi]-0.02);
+        areaDangerStayTimer[mi]=Math.max(0,areaDangerStayTimer[mi]-30);
+      }
+    }
+    // Danger decreases when rivals leave
+    for(let mi=0;mi<3;mi++){
+      let rivalsHere=0;
+      for(let ri=0;ri<2;ri++){if(rivalMaps[ri]===mi)rivalsHere++;}
+      if(rivalsHere===0&&fr%120===0){
+        areaDanger[mi]=Math.max(0,areaDanger[mi]-0.01);
+      }
+    }
+  }
+
+  // ── QTE UPDATE ──
+  if(qteActive){
+    qteFrame++;
+    if(qteFrame>=qteWindow&&!qteKeyPressed){
+      // Missed QTE
+      qteActive=false;qteSuccess=false;
+      sfxQteMiss();
+      qteResultText='MISSED!';qteResultTimer=40;
+    }
+  }
+  if(qteResultTimer>0)qteResultTimer--;
+
   // Atmosphere log messages based on proximity (throttled)
   if(fr%300===0){
     for(let i=0;i<2;i++){
@@ -5746,7 +5977,9 @@ function update(){
     pl.slice(1).forEach((r,idx)=>{
       if(rivalMaps[idx]!==currentMap)return;
       const adjDist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
-      if(adjDist<=1&&adjDist>0){
+      // At HIGH danger, encounter triggers at distance 2 as well
+      const encounterDist=areaDanger[currentMap]>=DANGER_HIGH_THRESH?2:1;
+      if(adjDist<=encounterDist&&adjDist>0){
         if(!encounterCooldown){
           // Collector rival: 70% chance to flee instead of fight
           const ai=rivalAI[idx];
@@ -5984,7 +6217,7 @@ document.addEventListener('keydown',e=>{
         sfxConfirm();
         const discarded=pl[0].cd[slot];
         if(discardPendingCard>0){
-          pl[0].cd[slot]=discardPendingCard;
+          pl[0].cd[slot]=discardPendingCard;cardTimers[slot]=Date.now();
           lg.push('Discarded '+CD[discarded-1].n+', got '+CD[discardPendingCard-1].n+'!');
           discardActive=false;
           if(discardSource==='wild'||discardSource==='menu'){startCardAcquisition(discardPendingCard-1);}
@@ -6255,6 +6488,23 @@ document.addEventListener('keydown',e=>{
   }
 
   if(sc==='act'){
+    // QTE input during resolving phase
+    if(battlePhase==='resolving'&&qteActive&&!qteKeyPressed&&e.code==='KeyZ'){
+      qteKeyPressed=true;qteActive=false;qteSuccess=true;
+      sfxQteSuccess();
+      if(qteType==='defend'){
+        qteResultText='BLOCKED!';qteResultTimer=40;
+        // Halve steal damage: give back stolen card if possible
+        // (The steal already happened, so we give a pity boost instead)
+        sp.b=Math.min(sp.b+1,9);
+        lg.push('QTE success! Barrier charge restored!');
+      }else{
+        qteResultText='BONUS!';qteResultTimer=40;
+        // Attack bonus: extra steal charge
+        sp.s=Math.min(sp.s+1,9);
+        lg.push('QTE success! Steal charge bonus!');
+      }
+    }
     if(battlePhase==='select'&&bpCardSelectActive){
       // Card selection for USE CARD
       const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
@@ -6390,7 +6640,11 @@ function saveGame(){
       burnedTiles:[...burnedTiles],
       shadowStepsLeft:shadowStepsLeft,
       fishingCooldownTimer:fishingCooldownTimer,
-      walletAddress:walletPublicKey||null
+      walletAddress:walletPublicKey||null,
+      cardTimers:[...cardTimers],
+      streakCount:streakCount,
+      areaDanger:[...areaDanger],
+      areaDangerStayTimer:[...areaDangerStayTimer]
     };
     localStorage.setItem(SAVE_KEY,JSON.stringify(data));
     saveIndicatorTimer=60;
@@ -6440,6 +6694,11 @@ function loadGame(){
     if(d.shadowStepsLeft!==undefined)shadowStepsLeft=d.shadowStepsLeft;
     if(d.fishingCooldownTimer!==undefined)fishingCooldownTimer=d.fishingCooldownTimer;
     if(d.walletAddress){walletPublicKey=d.walletAddress;walletConnected=true;}
+    // Tension mechanics
+    if(d.cardTimers){for(let i=0;i<5;i++)cardTimers[i]=d.cardTimers[i]||0;}
+    if(d.streakCount!==undefined)streakCount=d.streakCount;
+    if(d.areaDanger){for(let i=0;i<3;i++)areaDanger[i]=d.areaDanger[i]||0;}
+    if(d.areaDangerStayTimer){for(let i=0;i<3;i++)areaDangerStayTimer[i]=d.areaDangerStayTimer[i]||0;}
     // Sync card counts from actual data to prevent drift
     syncCardCount(0);syncCardCount(1);syncCardCount(2);
     fogLoad();
