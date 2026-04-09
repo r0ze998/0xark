@@ -43,9 +43,9 @@ canvas{display:block;width:960px;height:640px;image-rendering:auto}
 <div id="sw"><canvas id="g" width="1920" height="1280"></canvas></div>
 <div id="ctrls">
 <button class="b a" onclick="ss('map')">MAP</button>
-<button class="b" onclick="ss('act')">BATTLE</button>
 <button class="b" onclick="ss('crd')">CARDS</button>
 <button class="b" onclick="ss('log')">LOG</button>
+<button class="b" onclick="ss('stats')">STATS</button>
 </div>
 <div id="h">ARROWS move / SPACE menu / Z select / X back / M sound / F fps</div>
 </div>
@@ -9110,7 +9110,7 @@ document.addEventListener('keydown',e=>{
 });
 
 function ss(s){sfxSelect();fadeOut(()=>{sc=s;mo=false;if(s==='act'){battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
-function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle('a',['map','act','crd','log'][i]===sc));}
+function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle('a',['map','crd','log','stats'][i]===sc));}
 
 // ═══════════════════════════════════════
 // SAVE / LOAD SYSTEM
