@@ -2892,7 +2892,7 @@ function drawGrass(px,py,tx_,ty){
   if(useKenney.grass){
     // Auto-tile: pick correct grass variant based on neighbors
     const h=tileHash(tx_,ty);
-    const kTile = getGrassTileVariant(tx_, ty_);
+    const kTile = getGrassTileVariant(tx_, ty);
     // Green base color
     const sv=((h&15)-8);
     const grassColor = `rgb(${88+sv},${168+sv},${88+sv})`;
