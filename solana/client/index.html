@@ -1359,6 +1359,38 @@ function stepToward(rIdx,goalX,goalY){
   return false;
 }
 
+// x402-enhanced rival AI: periodically fetch strategy from broker
+let x402RivalStrategyTimer=[0,0];
+let x402RivalLastAdvice=['',''];
+function x402MaybeEnhanceRival(aiIdx){
+  if(!x402Available)return;
+  x402RivalStrategyTimer[aiIdx]++;
+  // Check every ~15 seconds (900 frames)
+  if(x402RivalStrategyTimer[aiIdx]<900)return;
+  x402RivalStrategyTimer[aiIdx]=0;
+  const rIdx=aiIdx+1;
+  x402FetchIntel('/intel/strategy?player='+rIdx).then(data=>{
+    if(!data||!data.recommendation)return;
+    x402RivalLastAdvice[aiIdx]=data.recommendation;
+    const ai=rivalAI[aiIdx];
+    // If advice mentions a specific area, try to navigate there
+    if(data.recommendation.includes('Port Town')&&rivalMaps[aiIdx]!==0){
+      const ex=findExitToMap(rivalMaps[aiIdx],0);
+      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
+    }else if(data.recommendation.includes('Deep Forest')&&rivalMaps[aiIdx]!==1){
+      const ex=findExitToMap(rivalMaps[aiIdx],1);
+      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
+    }else if(data.recommendation.includes('Ancient Ruins')&&rivalMaps[aiIdx]!==2){
+      const ex=findExitToMap(rivalMaps[aiIdx],2);
+      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
+    }
+    // If advice mentions stealing and rival is hunter type, become more aggressive
+    if(data.recommendation.includes('Steal')&&ai.personality==='hunter'){
+      ai.moveInterval=Math.max(6,ai.moveInterval-2);
+    }
+  }).catch(()=>{});
+}
+
 // Rival picks a new goal based on personality
 function pickRivalGoal(aiIdx){
   const ai=rivalAI[aiIdx];
@@ -1436,6 +1468,9 @@ function updateRivalAI(aiIdx){
   const rIdx=aiIdx+1;
   const r=pl[rIdx];
   const rMap=rivalMaps[aiIdx];
+
+  // x402-enhanced AI: periodically consult broker for smarter decisions
+  x402MaybeEnhanceRival(aiIdx);
 
   // Decrement move timer
   ai.moveTimer--;
@@ -1837,6 +1872,74 @@ const BUILDING_INFO=[
 
 let buildingNpcDialog=false, buildingNpcLines=[], buildingNpcIdx=0, buildingNpcName='';
 let infoBrokerConfirm=false, infoBrokerResult='', infoBrokerResultTimer=0;
+
+// ═══════════════════════════════════════
+// x402 INTEGRATION
+// ═══════════════════════════════════════
+const X402_DEFAULT_URL='http://localhost:3402';
+let x402ServerUrl=localStorage.getItem('oxark_x402_url')||X402_DEFAULT_URL;
+let x402Available=false;
+let x402CheckTimer=0;
+let x402ShopOpen=false;
+let x402ShopIdx=0;
+let x402ShopResult='';
+let x402ShopResultTimer=0;
+let x402ShopLoading=false;
+const x402ShopItems=[
+  {label:'Rival Location',desc:'Where is the Rival?',price:'1 card',endpoint:'/intel/location/1'},
+  {label:'Hunter Location',desc:'Where is the Hunter?',price:'1 card',endpoint:'/intel/location/2'},
+  {label:'Rival Hand',desc:'What cards does Rival hold?',price:'1 card',endpoint:'/intel/hand/1'},
+  {label:'Strategy Advice',desc:'Best move right now',price:'2 cards',endpoint:'/intel/strategy',cardCost:2},
+  {label:'Market Data',desc:'Card pool status',price:'free',endpoint:'/intel/market',cardCost:0},
+];
+
+async function x402CheckServer(){
+  try{
+    const r=await fetch(x402ServerUrl+'/health',{signal:AbortSignal.timeout(1500)});
+    if(r.ok){const d=await r.json();x402Available=d.status==='ok';}
+    else x402Available=false;
+  }catch(e){x402Available=false;}
+}
+
+async function x402PushState(){
+  if(!x402Available)return;
+  try{
+    const statePayload={
+      players:pl.map((p,i)=>({
+        id:i,name:p.n,area:i===0?currentMap:(rivalMaps[i-1]??0),
+        cards:[...p.cd],cardCount:p.cd.filter(c=>c>0).length
+      })),
+      cardPool:{},
+      round:typeof turnCount!=='undefined'?turnCount:0,
+      currentMap:currentMap,
+      rivalMaps:[...rivalMaps],
+    };
+    await fetch(x402ServerUrl+'/update-state',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(statePayload),
+      signal:AbortSignal.timeout(2000)
+    });
+  }catch(e){}
+}
+
+async function x402FetchIntel(endpoint){
+  if(!x402Available)return null;
+  try{
+    const r=await fetch(x402ServerUrl+endpoint,{
+      headers:{'X-Payment':'local-dev-bypass'},
+      signal:AbortSignal.timeout(3000)
+    });
+    if(r.ok)return await r.json();
+    return null;
+  }catch(e){return null;}
+}
+
+function x402SetUrl(url){
+  x402ServerUrl=url;
+  localStorage.setItem('oxark_x402_url',url);
+  x402CheckServer();
+}
 
 // ═══════════════════════════════════════
 // FEATURE 4: INTERACTABLE OBJECTS
@@ -5745,7 +5848,12 @@ function drawBuildingInterior(){
   const hudY=H-40;
   win(0,hudY,W,40);
   tx(buildingType==='shop'?'CARD SHOP':'INFO BROKER',10,hudY+20,8,'#806030');
-  tx('Z=Interact  X=Exit  Arrows=Move',200,hudY+20,6,'#686068');
+  if(buildingType==='info'){
+    const statusClr=x402Available?'#40a060':'#605060';
+    const statusTxt=x402Available?'x402 ONLINE':'x402 OFFLINE';
+    tx(statusTxt,140,hudY+20,5,statusClr);
+  }
+  tx('Z=Interact  X=Exit  Arrows=Move',280,hudY+20,6,'#686068');
 
   // Building NPC dialog
   if(buildingNpcDialog){
@@ -5783,6 +5891,52 @@ function drawBuildingInterior(){
     }
     tx(l1,W/2-180,H/2-10,7,'#303028');
     if(l2)tx(l2,W/2-180,H/2+8,7,'#303028');
+    g.globalAlpha=1;
+  }
+
+  // x402 shop overlay
+  if(x402ShopOpen){
+    bx(0,0,W,H,'rgba(0,0,0,.5)');
+    const shopW=420,shopH=200;
+    const sx=W/2-shopW/2,sy=H/2-shopH/2;
+    win(sx,sy,shopW,shopH);
+    tx('BUY INTEL',sx+shopW/2-40,sy+18,9,'#c04040');
+    tx(x402Available?'x402 ONLINE':'OFFLINE',sx+shopW-80,sy+18,5,'#'+( x402Available?'40a060':'a04040'));
+    for(let i=0;i<x402ShopItems.length;i++){
+      const item=x402ShopItems[i];
+      const iy=sy+38+i*28;
+      const sel=i===x402ShopIdx;
+      if(sel)bx(sx+8,iy-4,shopW-16,24,'rgba(60,60,100,.4)');
+      tx((sel?'> ':' ')+item.label,sx+16,iy+8,7,sel?'#e0e0f0':'#808098');
+      tx(item.price,sx+shopW-100,iy+8,6,item.cardCost===0?'#40a060':'#c08040');
+    }
+    tx('Z=Buy  X=Close',sx+shopW/2-60,sy+shopH-18,6,'#686068');
+    if(x402ShopLoading){
+      bx(0,0,W,H,'rgba(0,0,0,.3)');
+      tx('Fetching intel...',W/2-70,H/2,8,'#80c0e0');
+    }
+  }
+
+  // x402 shop result overlay
+  if(x402ShopResultTimer>0&&!x402ShopOpen){
+    x402ShopResultTimer--;
+    const a=x402ShopResultTimer>20?1:x402ShopResultTimer/20;
+    g.globalAlpha=a;
+    win(W/2-220,H/2-50,440,100);
+    tx('INTEL REPORT',W/2-50,H/2-30,8,'#c04040');
+    // Word wrap the result
+    const maxC2=52;
+    const rr=x402ShopResult;
+    let rl1=rr,rl2='',rl3='';
+    if(rr.length>maxC2){
+      let b=rr.lastIndexOf(' ',maxC2);if(b<1)b=maxC2;
+      rl1=rr.substring(0,b);const rest=rr.substring(b+1);
+      if(rest.length>maxC2){let b2=rest.lastIndexOf(' ',maxC2);if(b2<1)b2=maxC2;rl2=rest.substring(0,b2);rl3=rest.substring(b2+1);}
+      else rl2=rest;
+    }
+    tx(rl1,W/2-200,H/2-8,6,'#303028');
+    if(rl2)tx(rl2,W/2-200,H/2+8,6,'#303028');
+    if(rl3)tx(rl3,W/2-200,H/2+24,6,'#303028');
     g.globalAlpha=1;
   }
 }
@@ -6195,6 +6349,10 @@ function update(){
     });
   }
 
+  // x402 server check every ~5 seconds (300 frames at 60fps)
+  x402CheckTimer++;
+  if(x402CheckTimer>=300){x402CheckTimer=0;x402CheckServer();}
+
   // Autonomous rival AI movement
   updateRivalAI(0);
   updateRivalAI(1);
@@ -6603,6 +6761,58 @@ document.addEventListener('keydown',e=>{
       if(e.code==='KeyX'){infoBrokerConfirm=false;sfxBack();}
       return;
     }
+    if(x402ShopOpen){
+      if(x402ShopLoading)return; // wait for response
+      if(e.code==='ArrowUp'){x402ShopIdx=Math.max(0,x402ShopIdx-1);sfxMove();}
+      if(e.code==='ArrowDown'){x402ShopIdx=Math.min(x402ShopItems.length-1,x402ShopIdx+1);sfxMove();}
+      if(e.code==='KeyZ'){
+        const item=x402ShopItems[x402ShopIdx];
+        const cost=item.cardCost!==undefined?item.cardCost:1;
+        const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
+        if(cost>0&&filled.length<cost){
+          x402ShopResult='Not enough cards! Need '+cost+'.';
+          x402ShopResultTimer=120;sfxBack();
+        }else{
+          // Pay cards if cost > 0
+          for(let c=0;c<cost;c++){
+            if(filled.length>c){const slot=filled[c];pl[0].cd[slot]=0;syncCardCount(0);}
+          }
+          x402ShopLoading=true;
+          x402PushState().then(()=>x402FetchIntel(item.endpoint)).then(data=>{
+            x402ShopLoading=false;
+            if(!data){
+              x402ShopResult='Server error. Cards refunded.';
+              // Refund not implemented for simplicity — server was available at menu open
+              x402ShopResultTimer=150;sfxBack();return;
+            }
+            // Format response based on endpoint type
+            if(item.endpoint.startsWith('/intel/location')){
+              x402ShopResult=data.playerName+' is in '+data.areaName+' ('+Math.round(data.confidence*100)+'% sure)';
+              lg.push('x402 Intel: '+data.playerName+' at '+data.areaName);
+            }else if(item.endpoint.startsWith('/intel/hand')){
+              const names=data.cards?data.cards.map(c=>c.name).join(', '):'none';
+              x402ShopResult=data.playerName+' holds: '+names+' ('+data.cardCount+' cards)';
+              lg.push('x402 Intel: '+data.playerName+' hand = '+names);
+            }else if(item.endpoint.startsWith('/intel/strategy')){
+              x402ShopResult=data.recommendation||'No advice available.';
+              lg.push('x402 Strategy: '+data.recommendation);
+            }else if(item.endpoint.startsWith('/intel/market')){
+              const total=data.totalCardsInPool||0;
+              x402ShopResult='Cards in pool: '+total+'. Check log for details.';
+              if(data.pool)data.pool.forEach(p=>lg.push('  '+p.cardName+': '+p.remaining+'/'+p.totalSupply));
+              lg.push('x402 Market: '+total+' cards remaining');
+            }
+            x402ShopResultTimer=300;sfxConfirm();
+          }).catch(()=>{x402ShopLoading=false;x402ShopResult='Connection lost.';x402ShopResultTimer=120;sfxBack();});
+        }
+      }
+      if(e.code==='KeyX'){x402ShopOpen=false;sfxBack();}
+      return;
+    }
+    if(x402ShopResultTimer>0){
+      if(e.code==='KeyZ'||e.code==='KeyX'){x402ShopResultTimer=0;sfxBack();}
+      return;
+    }
     if(e.code==='KeyX'){exitBuilding();return;}
     // Movement in building
     const bm=getBuildingMap();
@@ -6635,17 +6845,23 @@ document.addEventListener('keydown',e=>{
           if(buildingType==='shop'){
             openCardShop();
           }else if(buildingType==='info'){
-            // Info Broker interaction
-            const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
-            if(filled.length>0){
-              infoBrokerConfirm=true;
+            // Info Broker interaction — x402 shop or legacy card payment
+            if(x402Available){
+              x402ShopOpen=true;x402ShopIdx=0;x402ShopLoading=false;
+              x402PushState();
               sfxSelect();
             }else{
-              buildingNpcDialog=true;
-              buildingNpcLines=['I can tell you where','your rivals are.','But you need a card to pay!'];
-              buildingNpcIdx=0;
-              buildingNpcName='Info Broker';
-              sfxConfirm();
+              const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
+              if(filled.length>0){
+                infoBrokerConfirm=true;
+                sfxSelect();
+              }else{
+                buildingNpcDialog=true;
+                buildingNpcLines=['I can tell you where','your rivals are.','But you need a card to pay!'];
+                buildingNpcIdx=0;
+                buildingNpcName='Info Broker';
+                sfxConfirm();
+              }
             }
           }
         }
@@ -7117,6 +7333,9 @@ if(isTouchDevice){
     haptic();
   },{passive:true});
 }
+
+// Initial x402 server check
+x402CheckServer();
 
 requestAnimationFrame(loop);
 </script>
