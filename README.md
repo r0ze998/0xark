@@ -1,10 +1,10 @@
 # 0xARK
 
-> **ZK Pirate Card Battle on Solana**
+> **An on-chain card game where everything is secret.**
 
-Five ancient spirits. Three players. One cursed island. Everything hidden.
+Collect 5 spirits to win — but your hand is hidden, your rivals are invisible, and deception is your greatest weapon.
 
-Explore fog-covered waters. Collect 5 spirit cards to escape. Steal from rivals who can't see you. Let AI agents trade intelligence for micropayments.
+Explore a fog-covered pirate island. Steal cards from rivals you can't see. Hide your hand with zero-knowledge proofs. Let AI agents trade intelligence for micropayments.
 
 **[Play Now](https://r0ze998.github.io/0xark/)** | [GDD v0.3](GDD-v0.3.md) | [GitHub](https://github.com/r0ze998/0xark)
 

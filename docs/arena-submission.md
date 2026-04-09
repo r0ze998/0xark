@@ -4,10 +4,10 @@
 0xARK
 
 ## One-liner
-ZK card-stealing PvP game with Dark Forest fog of war and AI agent micropayments on Solana.
+An on-chain card game where everything is secret. Collect 5 spirits to win — but your hand is hidden, your rivals are invisible, and deception is your greatest weapon.
 
 ## Description
-0xARK drops 3 players onto a fog-covered island where each area holds different cards. Collect all 5 types to win — but your hand is hidden (ZK), your location is hidden (fog of war), and rivals can steal from you (if they're in the same area). Cards can be consumed for powerful effects, creating a constant dilemma: hold for completion or use for survival. AI agents trade intelligence via x402 USDC micropayments.
+0xARK is a ZK-powered information asymmetry card game on Solana. 3 players explore a fog-covered pirate island, collecting 5 spirit cards to escape. Your hand is hidden by zero-knowledge proofs. Your rivals are invisible behind fog of war. Every move is a gamble on incomplete information. Cards can be held for completion or consumed for powerful effects — creating a constant dilemma. AI agents autonomously trade intelligence via x402 USDC micropayments, turning information itself into a scarce, priced resource.
 
 ## Tracks
 - Gaming
