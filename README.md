@@ -15,7 +15,13 @@ Explore a fog-covered pirate island. Steal cards from rivals you can't see. Hide
 
 ## Why Solana?
 
-Sub-second finality makes simultaneous commit-reveal feel instant — no waiting 12s per round like on Ethereum. Low fees (~$0.00025/tx) make per-turn on-chain commits viable for a 30-round game. Solana's stablecoin infrastructure (USDC via SPL) powers the x402 AI agent micropayment economy at sub-cent costs that would be impossible on L1 Ethereum. And MagicBlock Ephemeral Rollups can push latency under 50ms for real-time multiplayer.
+Sub-second finality makes simultaneous commit-reveal feel instant — no waiting 12s per round like on Ethereum. Low fees (~$0.00025/tx) make per-turn on-chain commits viable for a 30-round game. Solana's stablecoin infrastructure (USDC via SPL) powers the x402 AI agent micropayment economy at sub-cent costs that would be impossible on L1 Ethereum. And MagicBlock Ephemeral Rollups can push latency under 50ms for real-time multiplayer. This makes Solana the only chain where a "pay-to-know" AI agent economy — micropayments for real-time game intel — is practically viable.
+
+---
+
+## Why It Matters
+
+0xARK demonstrates a practical, fun use-case for ZK on Solana in consumer gaming, combined with real economic activity via micropayments. It turns information asymmetry into a playable, monetizable mechanic — opening the door for a new category of "pay-to-know" AI agent economies on Solana. Perfect information is expensive. Deception is profitable.
 
 ---
 
