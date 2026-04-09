@@ -249,7 +249,52 @@ pixiLayers.fx.addChild(pxFadeOverlay);
 // ═══════════════════════════════════════
 const pxMenuContainer = new PIXI.Container();
 pxMenuContainer.visible = false;
+pxMenuContainer.x = W; // start offscreen right
 pixiLayers.ui.addChild(pxMenuContainer);
+
+// Build menu
+const MENU_ITEMS=['CARDS','MAP','BATTLE','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
+const MENU_COLORS=[0xF0E8C0,0xF0E8C0,0xC04040,0xF0E8C0,0x3090C0,0x9060C0,0xB06030,0x40D080,0xC0A040,0x40A0D0,0xD8B028,0xC04040,0x686868];
+const pxMenuBg = pxWin(200, 340);
+pxMenuContainer.addChild(pxMenuBg);
+const pxMenuTexts = [];
+const pxMenuCursor = pxCursor();
+pxMenuCursor.x = 8; pxMenuCursor.y = 0;
+pxMenuContainer.addChild(pxMenuCursor);
+MENU_ITEMS.forEach((item, i) => {
+  const t = new PIXI.Text(item, new PIXI.TextStyle({fontFamily:'VT323',fontSize:20,fill:MENU_COLORS[i]}));
+  t.x = 24; t.y = 12 + i * 24;
+  pxMenuContainer.addChild(t);
+  pxMenuTexts.push(t);
+});
+
+let pxMenuOpen = false;
+function pxOpenMenu() {
+  pxMenuOpen = true; pxMenuContainer.visible = true;
+  pxSlideIn(pxMenuContainer, W, W - 210, 10, 10, 0.15);
+}
+function pxCloseMenu() {
+  pxMenuOpen = false; pxMenuDim.visible = false;
+  pxSlideIn(pxMenuContainer, pxMenuContainer.x, W, 10, 10, 0.1, () => { pxMenuContainer.visible = false; });
+}
+function pxUpdateMenu() {
+  if (!pxMenuOpen) return;
+  // Update cursor position with bounce
+  const targetY = 15 + mi * 24;
+  pxMenuCursor.y = targetY + Math.sin(fr * 0.15) * 1.5;
+  // Update dynamic labels
+  const walletIdx = 7, textSpdIdx = 8;
+  if (pxMenuTexts[walletIdx]) pxMenuTexts[walletIdx].text = walletConnected ? 'WALLET (' + walletAddressTruncated() + ')' : 'WALLET (OFF)';
+  if (pxMenuTexts[textSpdIdx]) pxMenuTexts[textSpdIdx].text = 'TEXT SPD: ' + TEXT_SPEED_LABELS[textSpeedIdx];
+  // Highlight selected
+  pxMenuTexts.forEach((t, i) => { t.alpha = i === mi ? 1 : 0.65; });
+}
+
+// Dim overlay behind menu
+const pxMenuDim = new PIXI.Graphics();
+pxMenuDim.beginFill(0x000000, 0.4); pxMenuDim.drawRect(0, 0, W, H); pxMenuDim.endFill();
+pxMenuDim.visible = false;
+pixiLayers.ui.addChildAt(pxMenuDim, 0);
 
 // ═══════════════════════════════════════
 // PIXI TEXTBOX (bottom screen FRLG dialog)
@@ -305,8 +350,16 @@ function updatePixiHud(){
   pixiHud.cardProgress.style.fill=unique>=5?'#40d040':'#f0c830';
   // Rival warning
   pixiHud.rivalWarning.visible=rivalWinWarning>0&&Math.floor(fr/15)%2===0;
-  // Only show HUD on map screen
-  pixiLayers.ui.visible=(sc==='map'&&!introActive&&!mo);
+  // Show HUD on map screen, menu always available
+  const showHudText=(sc==='map'&&!introActive&&!mo);
+  pixiHud.seasonTimer.visible=showHudText;
+  pixiHud.battleCount.visible=showHudText;
+  pixiHud.cardProgress.visible=showHudText;
+  pixiHud.rivalWarning.visible=showHudText&&rivalWinWarning>0&&Math.floor(fr/15)%2===0;
+  // Update PixiJS menu
+  pxUpdateMenu();
+  // Sync menu close when mo changes
+  if(!mo&&pxMenuOpen){pxCloseMenu();}
 }
 
 // ═══════════════════════════════════════
@@ -5824,35 +5877,7 @@ function dMap(){
 // ═══════════════════════════════════════
 let menuOpenFrame=0;
 function dMenu(){
-  if(menuOpenFrame===0)menuOpenFrame=fr;
-  const menuT=Math.min(1,(fr-menuOpenFrame)/8);
-  const ease=easeInOut(menuT);
-  const menuW=Math.floor(190*ease),menuH=Math.floor(320*ease);
-  const menuX=W-10-menuW,menuY=10;
-  bx(0,0,W,H,`rgba(0,0,0,${0.35*ease})`);
-  if(menuW>4&&menuH>4){
-    win(menuX,menuY,menuW,menuH);
-    if(ease>=0.7){
-      const itemAlpha=Math.min(1,(ease-0.7)/0.3);
-      g.globalAlpha=itemAlpha;
-      const items=['CARDS','MAP','BATTLE','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
-      items.forEach((s,i)=>{
-        const y=34+i*20;
-        const walletIdx=7;
-        const textSpdIdx=8;
-        let label=s;
-        if(i===walletIdx){label=walletConnected?'WALLET ('+walletAddressTruncated()+')':'WALLET (OFF)';}
-        if(i===textSpdIdx){label='TEXT SPD: '+TEXT_SPEED_LABELS[textSpeedIdx];}
-        if(i===mi){
-          const bounce=Math.sin(fr*0.15)*1.5;
-          const clr=(i===4?'#3090c0':i===5?'#9060c0':i===6?'#b06030':i===walletIdx?(walletConnected?'#40d080':'#888898'):i===textSpdIdx?'#c0a040':i===9?'#40a0d0':i===10?'#d8b028':'#c04040');
-          tx('\u25B6',W-160+bounce,y,8,clr);tx(label,W-144,y,8,clr);
-        }
-        else tx(label,W-144,y,8,i===4?'#2878a0':i===5?'#7050a0':i===6?'#906030':i===walletIdx?(walletConnected?'#308060':'#686868'):i===textSpdIdx?'#908040':i===9?'#3080a0':i===10?'#a08820':'#303028');
-      });
-      g.globalAlpha=1;
-    }
-  }
+  // Menu rendering now handled by PixiJS (pxMenuContainer)
 }
 
 // ═══════════════════════════════════════
@@ -9341,7 +9366,7 @@ document.addEventListener('keydown',e=>{
   }
 
   if(sc==='map'){
-    if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();return;}
+    if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();if(mo){pxOpenMenu();pxMenuDim.visible=true;}else{pxCloseMenu();pxMenuDim.visible=false;}return;}
     if(mo){
       if(e.code==='ArrowUp'){mi=Math.max(0,mi-1);sfxCursor();}
       if(e.code==='ArrowDown'){mi=Math.min(12,mi+1);sfxCursor();}
