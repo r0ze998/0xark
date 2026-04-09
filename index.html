@@ -2537,7 +2537,7 @@ const INTRO_PAGES=[
   'But you are not alone.\nRivals hunt the same cards.\nThey can STEAL yours.',
   'In battle, choose an action:\n  DRAW - get a card\n  STEAL - take from a rival\n  BARRIER - block steals',
   'Cards decay over time.\nUse them for power or hold\nthem to complete your set.',
-  'Good luck. Trust no one.',
+  'The season lasts 7 days.\nFirst to collect all 5 wins.\nGood luck. Trust no one.',
 ];
 
 // ── Battle encounter exclamation ──
@@ -2778,6 +2778,7 @@ function resetGameState(startCards){
   pl[1].cd=cards1;pl[1].cc=cc1;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
   pl[2].cd=cards2;pl[2].cc=cc2;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
   sp.s=2;sp.b=3;sp.c=2;rd=1;currentMap=0;stepCounter=0;randomEventTimer=0;
+  initSeason();
   rivalMaps=[0,0];
   // Reset rival AI
   rivalAI[0].goalX=10;rivalAI[0].goalY=10;rivalAI[0].goalMap=0;rivalAI[0].state='exploring';
@@ -2837,8 +2838,25 @@ const STORY_LINES=['Five ancient spirits guard a cursed island.','Collect them a
 let creditsActive=false,creditsFrame=0;
 const CREDITS_LINES=['','0 x A R K','','Created by r0ze','','Built for Colosseum Frontier 2026','','Powered by','Solana | Anchor | Circom | x402','','Pixel Art: Kenney (CC0)','Press Start 2P Font: Google Fonts','','Thanks for playing!',''];
 
-// ── GAME OVER (TIME'S UP) STATE ──
-let gameOverTimesUp=false;
+// ── SEASON SYSTEM ──
+const SEASON_DURATION_MS=7*24*60*60*1000; // 7 days
+let seasonStartTime=0; // timestamp when current season started
+let seasonEndTime=0;   // timestamp when season ends
+let gameOverTimesUp=false; // true when season expired
+
+function initSeason(){
+  seasonStartTime=Date.now();
+  seasonEndTime=seasonStartTime+SEASON_DURATION_MS;
+}
+function getSeasonRemaining(){return Math.max(0,seasonEndTime-Date.now());}
+function formatTimeRemaining(ms){
+  if(ms<=0)return'ENDED';
+  const d=Math.floor(ms/86400000);const h=Math.floor((ms%86400000)/3600000);const m=Math.floor((ms%3600000)/60000);
+  if(d>0)return d+'d '+h+'h';
+  if(h>0)return h+'h '+m+'m';
+  return m+'m';
+}
+function getPlayElapsed(){return Date.now()-seasonStartTime;}
 
 const lg=['Game started. Collect all 5 card types to win!'];
 let logScrollOff=0;
@@ -5398,7 +5416,10 @@ function dMap(){
   // ── HUD BAR ──
   const hudY=H-HUD_HEIGHT;
   win(0,hudY,W,HUD_HEIGHT);
-  tx(`R${rd}/30`,10,hudY+28,10);
+  // Season timer
+  const _sr=getSeasonRemaining();const _srt=formatTimeRemaining(_sr);
+  const _sCol=_sr<3600000?'#d04040':_sr<86400000?'#d0a030':'#40a040';
+  tx(_srt,10,hudY+28,9,_sCol);
   tx('STL',100,hudY+22,8,'#b04040');tx(sp.s+'',142,hudY+22,9,'#c04848');
   tx('BAR',165,hudY+22,8,'#3060b0');tx(sp.b+'',207,hudY+22,9,'#3868c0');
   tx('SCT',230,hudY+22,8,'#308030');tx(sp.c+'',272,hudY+22,9,'#38a038');
@@ -5945,7 +5966,7 @@ function drawPhaseBanner(phase){
   bx(0,0,W,28,col);bx(0,26,W,2,'rgba(0,0,0,.3)');
   bx(0,0,W,1,'rgba(255,255,255,.2)');
   // Round info on left
-  txShadow('R'+rd+'/25',6,20,10,'#fff','rgba(0,0,0,.5)');
+  txShadow('BATTLE '+rd,6,20,10,'#fff','rgba(0,0,0,.5)');
   // Phase label centered (bigger, bold-like with shadow)
   const labelW=label.length*10;
   txShadow(label,W/2-labelW/2,20,16,'#fff','rgba(0,0,0,.5)');
@@ -6243,8 +6264,8 @@ function hasUniqueCards(pIdx){const s=new Set();pl[pIdx].cd.forEach(c=>{if(c>0)s
 function playerHasAllFive(){const s=hasUniqueCards(0);return s.has(1)&&s.has(2)&&s.has(3)&&s.has(4)&&s.has(5);}
 function checkWinAndTransition(delayMs){
   if(!playerHasAllFive())return;
-  // Record best clear
-  const clearTime=Math.floor((Date.now()-stats.sessionStart)/1000);
+  // Record best clear (elapsed from season start)
+  const clearTime=Math.floor(getPlayElapsed()/1000);
   if(stats.bestClearRounds===0||rd<stats.bestClearRounds){stats.bestClearRounds=rd;}
   if(stats.bestClearTime===0||clearTime<stats.bestClearTime){stats.bestClearTime=clearTime;}
   const d=(delayMs!==undefined)?delayMs:500;
@@ -7041,7 +7062,12 @@ function dVictory(){
     }
   }
 
-  if(t>130){g.globalAlpha=Math.min(1,(t-130)/15);win(W/2-180,420,360,34);tx(`Rounds: ${rd}/30  Cards: ${pl[0].cc}/5  Spells left: ${sp.s+sp.b+sp.c}`,W/2-168,444,7,'#686068');g.globalAlpha=1;}
+  if(t>130){
+    g.globalAlpha=Math.min(1,(t-130)/15);win(W/2-200,420,400,34);
+    const _elapsed=getPlayElapsed();const _em=Math.floor(_elapsed/60000);const _es=Math.floor((_elapsed%60000)/1000);
+    tx(`Time: ${_em}m${('0'+_es).slice(-2)}s  Battles: ${rd}  Cards: ${pl[0].cc}/5`,W/2-188,444,7,'#686068');
+    g.globalAlpha=1;
+  }
   if(t>140){
     // "Verified on Solana" branding
     g.globalAlpha=Math.min(1,(t-140)/15);
@@ -8090,7 +8116,8 @@ function dStats(){
     {label:'Play Time',value:mins+'m '+secs+'s',col:'#888898'},
     {label:'Cards Collected',value:''+stats.cardsCollected,col:'#888898'},
     {label:'Cards Lost',value:''+stats.cardsLost,col:'#888898'},
-    {label:'Current Round',value:rd+'/30',col:'#888898'},
+    {label:'Battles',value:''+rd,col:'#888898'},
+    {label:'Season Left',value:formatTimeRemaining(getSeasonRemaining()),col:getSeasonRemaining()<86400000?'#d0a030':'#888898'},
     {label:'',value:'',header:false,col:''},
     {label:'COMBAT',value:'',header:true,col:'#c04848'},
     {label:'Steals Attempted',value:''+stats.stealsAttempted,col:'#888898'},
@@ -8098,7 +8125,7 @@ function dStats(){
     {label:'Scout Uses',value:''+stats.scoutUses,col:'#888898'},
     {label:'Win Streak',value:''+streakCount,col:'#888898'},
     {label:'Steal Success',value:stats.stealsAttempted>0?Math.round((1-stats.stealsBlocked/(stats.stealsAttempted||1))*100)+'%':'--',col:'#888898'},
-    {label:'Best Clear',value:stats.bestClearRounds>0?'Round '+stats.bestClearRounds:'--',col:stats.bestClearRounds>0?'#f0c830':'#888898'},
+    {label:'Best Clear',value:stats.bestClearTime>0?Math.floor(stats.bestClearTime/60)+'m'+('0'+(stats.bestClearTime%60)).slice(-2)+'s':'--',col:stats.bestClearTime>0?'#f0c830':'#888898'},
     {label:'',value:'',header:false,col:''},
     {label:'AREA',value:'',header:true,col:'#f0c830'},
     {label:'Favorite Area',value:favArea,col:'#888898'},
@@ -8218,7 +8245,7 @@ function dGameOver(){
   const flicker=Math.sin(t*0.08)*0.03;
   bx(0,0,W,H,`rgba(180,40,40,${flicker})`);
 
-  if(t>35){g.globalAlpha=Math.min(1,(t-35)/20);txShadow("TIME'S UP",W/2-100,80,20,'#d04040','rgba(0,0,0,.6)');g.globalAlpha=1;}
+  if(t>35){g.globalAlpha=Math.min(1,(t-35)/20);txShadow('SEASON OVER',W/2-100,80,20,'#d04040','rgba(0,0,0,.6)');g.globalAlpha=1;}
   if(t>45){g.globalAlpha=Math.min(1,(t-45)/15);win(W/2-220,100,440,28);txShadow('SEASON 1 RESULTS',W/2-76,120,10,'#f0c830','rgba(0,0,0,.4)');g.globalAlpha=1;}
 
   // Rank all 3 players by unique card count
@@ -8379,6 +8406,12 @@ function update(){
     sfxDangerAlert();
   }
   if(maxRU<4)rivalWinWarningShown=false;
+
+  // ── SEASON EXPIRY CHECK ──
+  if(sc==='map'&&seasonEndTime>0&&Date.now()>=seasonEndTime&&!gameOverTimesUp){
+    gameOverTimesUp=true;stats.gamesPlayed++;saveStats();
+    fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});
+  }
 
   // ── CARD DECAY TIMER ──
   if(sc==='map'||sc==='act'){
@@ -9351,7 +9384,6 @@ document.addEventListener('keydown',e=>{
         }
         saveGame();
         if(playerHasAllFive()){checkWinAndTransition(0);}
-        else if(rd>30){gameOverTimesUp=true;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
         else if(!discardActive){
           // Battle-to-map: quick slide-down wipe
           startWipe('vslide',16,()=>{
@@ -9454,7 +9486,9 @@ function saveGame(){
       cardTimers:[...cardTimers],
       streakCount:streakCount,
       areaDanger:[...areaDanger],
-      areaDangerStayTimer:[...areaDangerStayTimer]
+      areaDangerStayTimer:[...areaDangerStayTimer],
+      seasonStartTime:seasonStartTime,
+      seasonEndTime:seasonEndTime
     };
     localStorage.setItem(SAVE_KEY,JSON.stringify(data));
     saveIndicatorTimer=60;
@@ -9509,6 +9543,9 @@ function loadGame(){
     if(d.streakCount!==undefined)streakCount=d.streakCount;
     if(d.areaDanger){for(let i=0;i<3;i++)areaDanger[i]=d.areaDanger[i]||0;}
     if(d.areaDangerStayTimer){for(let i=0;i<3;i++)areaDangerStayTimer[i]=d.areaDangerStayTimer[i]||0;}
+    // Season data
+    if(d.seasonStartTime){seasonStartTime=d.seasonStartTime;seasonEndTime=d.seasonEndTime||d.seasonStartTime+SEASON_DURATION_MS;}
+    else{initSeason();} // legacy saves: start fresh season
     // Sync card counts from actual data to prevent drift
     syncCardCount(0);syncCardCount(1);syncCardCount(2);
     fogLoad();
