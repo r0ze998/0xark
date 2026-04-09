@@ -356,8 +356,9 @@ function updatePixiHud(){
   pixiHud.battleCount.visible=showHudText;
   pixiHud.cardProgress.visible=showHudText;
   pixiHud.rivalWarning.visible=showHudText&&rivalWinWarning>0&&Math.floor(fr/15)%2===0;
-  // Update PixiJS menu
+  // Update PixiJS menu + intro
   pxUpdateMenu();
+  updatePixiIntro();
   // Sync menu close when mo changes
   if(!mo&&pxMenuOpen){pxCloseMenu();}
 }
@@ -7216,44 +7217,74 @@ function drawTutorialMsg(){
   g.globalAlpha=1;
 }
 
-function drawIntroTutorial(){
+// Intro tutorial: now PixiJS-native
+const pxIntro = new PIXI.Container();
+pxIntro.visible = false;
+pixiLayers.ui.addChild(pxIntro);
+// Dark overlay
+const pxIntroDim = new PIXI.Graphics();
+pxIntroDim.beginFill(0x08081A, 0.88); pxIntroDim.drawRect(0, 0, W, H); pxIntroDim.endFill();
+pxIntro.addChild(pxIntroDim);
+// Title
+const pxIntroTitle = pxTextShadow('0xARK', 42, 0xF8F0E0);
+pxIntroTitle.anchor = {x:0.5,y:0}; pxIntroTitle.x = W/2; pxIntroTitle.y = 50;
+pxIntro.addChild(pxIntroTitle);
+const pxIntroSub = pxTextShadow('THE RULES', 20, 0xA07848);
+pxIntroSub.anchor = {x:0.5,y:0}; pxIntroSub.x = W/2; pxIntroSub.y = 95;
+pxIntro.addChild(pxIntroSub);
+// Page indicator
+const pxIntroPage = pxTextShadow('1/6', 16, 0x686068);
+pxIntroPage.anchor = {x:0.5,y:0}; pxIntroPage.x = W/2; pxIntroPage.y = 120;
+pxIntro.addChild(pxIntroPage);
+// Window
+const pxIntroWin = pxWin(500, 200);
+pxIntroWin.x = W/2-250; pxIntroWin.y = 145;
+pxIntro.addChild(pxIntroWin);
+// Text content (3 lines)
+const pxIntroLines = [];
+for(let i=0;i<3;i++){
+  const lt = pxText('', 24, PX_FRLG.textColor);
+  lt.x = W/2-230; lt.y = 168 + i*36;
+  pxIntro.addChild(lt);
+  pxIntroLines.push(lt);
+}
+// Bouncing arrow
+const pxIntroArrow = pxTextShadow('\u25BC Z', 18, PX_FRLG.selHighlight);
+pxIntroArrow.x = W/2+180; pxIntroArrow.y = 320;
+pxIntro.addChild(pxIntroArrow);
+// Card teaser
+const pxIntroCardMsg = pxTextShadow('You receive a spirit card...', 20, 0xF0C830);
+pxIntroCardMsg.anchor = {x:0.5,y:0}; pxIntroCardMsg.x = W/2; pxIntroCardMsg.y = 360;
+pxIntroCardMsg.visible = false;
+pxIntro.addChild(pxIntroCardMsg);
+
+function updatePixiIntro(){
+  pxIntro.visible = introActive;
   if(!introActive)return;
-  const t=fr-introFrame;
-  // Dark overlay
-  bx(0,0,W,H,'rgba(8,8,20,0.85)');
-  // Title
-  const titleAlpha=Math.min(1,t/20);
-  g.globalAlpha=titleAlpha;
-  txShadow('0xARK',W/2-64,80,24,'#f8f0e0','rgba(0,0,0,.6)');
-  txShadow('THE RULES',W/2-44,108,10,'#a07848','rgba(0,0,0,.4)');
-  // Page indicator
-  txShadow((introPage+1)+'/'+INTRO_PAGES.length,W/2-16,140,7,'#686068','rgba(0,0,0,.3)');
-  g.globalAlpha=1;
-  // Text window
-  const wx=W/2-240,wy=160,ww=480,wh=180;
-  win(wx,wy,ww,wh);
-  // Draw text with line breaks
-  const pageText=INTRO_PAGES[introPage];
-  const lines=pageText.split('\n');
-  lines.forEach((line,i)=>{
-    const fadeT=Math.max(0,t-5-i*8);
-    const lineAlpha=Math.min(1,fadeT/10);
-    g.globalAlpha=lineAlpha;
-    tx(line,wx+20,wy+30+i*28,9,'#484050');
-    g.globalAlpha=1;
+  const t = fr - introFrame;
+  // Fade in title
+  pxIntroTitle.alpha = Math.min(1, t/20);
+  pxIntroSub.alpha = Math.min(1, t/20);
+  // Page number
+  pxIntroPage.text = (introPage+1)+'/'+INTRO_PAGES.length;
+  // Update text lines
+  const pageText = INTRO_PAGES[introPage];
+  const lines = pageText.split('\n');
+  pxIntroLines.forEach((lt, i) => {
+    lt.text = lines[i] || '';
+    const fadeT = Math.max(0, t - 5 - i*8);
+    lt.alpha = Math.min(1, fadeT/10);
   });
   // Bouncing arrow
-  if(t>30){
-    const bounce=Math.sin(fr*0.1)*3;
-    const blink=Math.floor(fr/20)%2===0;
-    if(blink)txShadow('\u25BC Z',wx+ww-60,wy+wh-20+bounce,8,FRLG.selHighlight,'rgba(0,0,0,.3)');
-  }
-  // Card preview on last page (only if player has no cards — first play)
-  if(introPage===INTRO_PAGES.length-1&&t>20&&pl[0].cd.filter(c=>c>0).length===0){
-    g.globalAlpha=Math.min(1,(t-20)/15);
-    txShadow('You receive a spirit card...',W/2-100,wy+wh+20,8,'#f0c830','rgba(0,0,0,.4)');
-    g.globalAlpha=1;
-  }
+  pxIntroArrow.y = 320 + Math.sin(fr*0.1)*3;
+  pxIntroArrow.visible = t > 30 && Math.floor(fr/20)%2===0;
+  // Card teaser on last page
+  pxIntroCardMsg.visible = introPage===INTRO_PAGES.length-1 && t>20 && pl[0].cd.filter(c=>c>0).length===0;
+  if(pxIntroCardMsg.visible) pxIntroCardMsg.alpha = Math.min(1,(t-20)/15);
+}
+
+function drawIntroTutorial(){
+  // Now handled by PixiJS (updatePixiIntro)
 }
 
 // ═══════════════════════════════════════
