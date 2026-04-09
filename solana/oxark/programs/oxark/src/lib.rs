@@ -63,4 +63,12 @@ pub mod oxark {
     pub fn mint_card_nft(ctx: Context<MintCardNft>, game_id: u64, card_id: u8) -> Result<()> {
         instructions::mint_card_nft::handle_mint_card_nft(ctx, game_id, card_id)
     }
+
+    pub fn deposit_stake(ctx: Context<DepositStake>, game_id: u64) -> Result<()> {
+        instructions::stake_entry::handle_deposit_stake(ctx, game_id)
+    }
+
+    pub fn claim_prize(ctx: Context<ClaimPrize>, game_id: u64) -> Result<()> {
+        instructions::stake_entry::handle_claim_prize(ctx, game_id)
+    }
 }
