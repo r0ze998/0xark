@@ -10,7 +10,7 @@
 body{background:#111118;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;font-family:'Press Start 2P',monospace;overflow:hidden}
 #emu{background:linear-gradient(145deg,#2a2a3e,#1c1c2c);padding:20px 24px 16px;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);border:2px solid #333350}
 #lbl{text-align:center;color:#444460;font-size:7px;letter-spacing:6px;margin-bottom:8px}
-#sw{background:#080810;padding:4px;border-radius:4px;border:2px solid #1a1a30}
+#sw{background:#080810;padding:4px;border-radius:4px;border:2px solid #1a1a30;box-shadow:inset 0 0 0 2px #2a2a48,inset 0 0 0 4px #0c0c18}
 canvas{display:block;width:960px;height:640px;image-rendering:auto}
 #ctrls{display:flex;justify-content:center;gap:6px;margin-top:10px}
 .b{padding:4px 12px;background:#222238;color:#555570;border:1px solid #333350;border-radius:12px;font:7px 'Press Start 2P',monospace;cursor:pointer;transition:all .15s}
@@ -95,6 +95,12 @@ let fogCacheLastCamX=-9999,fogCacheLastCamY=-9999;
 // ═══════════════════════════════════════
 const AC=new(window.AudioContext||window.webkitAudioContext)();
 let soundEnabled=localStorage.getItem('oxark_sound')!=='off';
+// FRLG Text Speed setting: 0=SLOW, 1=NORMAL, 2=FAST
+const TEXT_SPEEDS=[0.18,0.33,0.55];
+const TEXT_SPEED_LABELS=['SLOW','NORMAL','FAST'];
+let textSpeedIdx=parseInt(localStorage.getItem('oxark_textspeed')||'1',10);
+if(textSpeedIdx<0||textSpeedIdx>2)textSpeedIdx=1;
+function getTextSpeed(){return TEXT_SPEEDS[textSpeedIdx]||0.33;}
 let audioResumed=false;
 function resumeAudio(){if(!audioResumed&&AC.state==='suspended'){AC.resume();audioResumed=true;}}
 document.addEventListener('keydown',resumeAudio,{once:true});
@@ -108,6 +114,8 @@ const noiseBuf=AC.createBuffer(1,NOISE_LEN,AC.sampleRate);
 function beep(f,d,v){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=f;gn.gain.value=v||.08;o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+(d||.06));}catch(e){}}
 function sfxSelect(){if(!soundEnabled)return;beep(880,.04);setTimeout(()=>beep(1320,.04),40);}
 function sfxMove(){if(!soundEnabled)return;beep(440,.02,.05);}
+// FRLG-style distinct cursor click when moving between menu items
+function sfxCursor(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=1200;gn.gain.setValueAtTime(.04,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.02);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.02);}catch(e){}}
 function sfxConfirm(){if(!soundEnabled)return;beep(660,.05);setTimeout(()=>beep(990,.08),60);}
 function sfxBack(){if(!soundEnabled)return;beep(330,.05,.06);}
 function sfxVictory(){if(!soundEnabled)return;beep(262,.1);setTimeout(()=>beep(330,.1),100);setTimeout(()=>beep(392,.1),200);setTimeout(()=>beep(523,.2),300);}
@@ -360,6 +368,86 @@ function hexFromBytes(bytes){
 }
 
 // ═══════════════════════════════════════
+// ON-CHAIN TRANSACTION INTEGRATION
+// ═══════════════════════════════════════
+let onchainLastTxSig='';
+let onchainCommitPhase=false;
+let onchainRevealPhase=false;
+let onchainPendingSalt=null;
+
+// Generate a truncated fake tx signature for display
+function generateFakeTxSig(){
+  const bytes=crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
+}
+
+// Commit action on-chain (logs tx data, will send real tx when devnet ready)
+async function onchainCommit(gameId,actionType,target){
+  if(!walletConnected)return null;
+  const salt=generateSalt();
+  // Store salt in localStorage for reveal phase
+  const saltHex=Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('');
+  localStorage.setItem('oxark_onchain_salt',saltHex);
+  localStorage.setItem('oxark_onchain_action',String(actionType));
+  localStorage.setItem('oxark_onchain_target',String(target));
+  onchainPendingSalt=salt;
+
+  try{
+    const hash=await computeCommitHash(actionType,walletPublicKey,salt);
+    const hashHex=hexFromBytes(hash);
+    const txSig=generateFakeTxSig();
+    onchainLastTxSig=txSig;
+
+    console.log('[ON-CHAIN] Commit TX:',{
+      gameId,actionType,target,
+      commitHash:hashHex,
+      wallet:walletPublicKey,
+      txSig:'(simulated) '+txSig
+    });
+
+    return{hash:hashHex,salt:saltHex,txSig};
+  }catch(e){
+    console.error('[ON-CHAIN] Commit failed:',e);
+    return null;
+  }
+}
+
+// Reveal action on-chain (logs tx data, will send real tx when devnet ready)
+async function onchainReveal(gameId,actionType,target,salt){
+  if(!walletConnected)return null;
+  try{
+    const txSig=generateFakeTxSig();
+    onchainLastTxSig=txSig;
+
+    console.log('[ON-CHAIN] Reveal TX:',{
+      gameId,actionType,target,
+      salt:Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16)+'..',
+      wallet:walletPublicKey,
+      txSig:'(simulated) '+txSig
+    });
+
+    // Clear stored salt after reveal
+    localStorage.removeItem('oxark_onchain_salt');
+    localStorage.removeItem('oxark_onchain_action');
+    localStorage.removeItem('oxark_onchain_target');
+
+    return{txSig};
+  }catch(e){
+    console.error('[ON-CHAIN] Reveal failed:',e);
+    return null;
+  }
+}
+
+// Helper to add on-chain prefixed log entry
+function logOnchain(msg){
+  if(walletConnected){
+    lg.push('[ON-CHAIN] '+msg);
+  }else{
+    lg.push(msg);
+  }
+}
+
+// ═══════════════════════════════════════
 // TYPEWRITER
 // ═══════════════════════════════════════
 let twText='',twTarget='',twI=0,twDone=true,twAccum=0,twShowFrame=0;
@@ -367,8 +455,9 @@ function twSet(s){twTarget=s;twText='';twI=0;twDone=false;twAccum=0;twShowFrame=
 function twTick(){
   if(!twDone){
     twAccum+=dt;
-    while(twAccum>=0.33&&twI<twTarget.length){
-      twText+=twTarget[twI];twI++;twAccum-=0.33;
+    const spd=getTextSpeed();
+    while(twAccum>=spd&&twI<twTarget.length){
+      twText+=twTarget[twI];twI++;twAccum-=spd;
       if(twI>=twTarget.length)twDone=true;
     }
   }
@@ -4220,7 +4309,7 @@ function dMenu(){
   if(menuOpenFrame===0)menuOpenFrame=fr;
   const menuT=Math.min(1,(fr-menuOpenFrame)/8);
   const ease=easeInOut(menuT);
-  const menuW=Math.floor(190*ease),menuH=Math.floor(282*ease);
+  const menuW=Math.floor(190*ease),menuH=Math.floor(300*ease);
   const menuX=W-10-menuW,menuY=10;
   bx(0,0,W,H,`rgba(0,0,0,${0.35*ease})`);
   if(menuW>4&&menuH>4){
@@ -4228,18 +4317,20 @@ function dMenu(){
     if(ease>=0.7){
       const itemAlpha=Math.min(1,(ease-0.7)/0.3);
       g.globalAlpha=itemAlpha;
-      const items=['CARDS','MAP','BATTLE','LOG','USE CARD','DISCARD','WALLET','SAVE','NEW GAME','CLOSE'];
+      const items=['CARDS','MAP','BATTLE','LOG','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','NEW GAME','CLOSE'];
       items.forEach((s,i)=>{
-        const y=34+i*22;
+        const y=34+i*20;
         const walletIdx=6;
+        const textSpdIdx=7;
         let label=s;
         if(i===walletIdx){label=walletConnected?'WALLET ('+walletAddressTruncated()+')':'WALLET (OFF)';}
+        if(i===textSpdIdx){label='TEXT SPD: '+TEXT_SPEED_LABELS[textSpeedIdx];}
         if(i===mi){
           const bounce=Math.sin(fr*0.15)*1.5;
-          const clr=(i===4?'#9060c0':i===5?'#b06030':i===walletIdx?(walletConnected?'#40d080':'#888898'):i===7?'#40a0d0':i===8?'#d8b028':'#c04040');
+          const clr=(i===4?'#9060c0':i===5?'#b06030':i===walletIdx?(walletConnected?'#40d080':'#888898'):i===textSpdIdx?'#c0a040':i===8?'#40a0d0':i===9?'#d8b028':'#c04040');
           tx('\u25B6',W-160+bounce,y,8,clr);tx(label,W-144,y,8,clr);
         }
-        else tx(label,W-144,y,8,i===4?'#7050a0':i===5?'#906030':i===walletIdx?(walletConnected?'#308060':'#686868'):i===7?'#3080a0':i===8?'#a08820':'#303028');
+        else tx(label,W-144,y,8,i===4?'#7050a0':i===5?'#906030':i===walletIdx?(walletConnected?'#308060':'#686868'):i===textSpdIdx?'#908040':i===8?'#3080a0':i===9?'#a08820':'#303028');
       });
       g.globalAlpha=1;
     }
@@ -4507,6 +4598,11 @@ function drawPhaseBanner(phase){
   txShadow(label,W/2-labelW/2,20,16,'#fff','rgba(0,0,0,.5)');
   // Area on right
   txShadow(mapNames[currentMap],W-160,20,8,'rgba(255,255,255,.8)','rgba(0,0,0,.4)');
+  // TX indicator when on-chain mode active
+  if(walletConnected){
+    const txLabel=onchainLastTxSig?'TX:'+onchainLastTxSig.slice(0,8)+'..':'TX:--';
+    txShadow(txLabel,W-160,38,5,'#40d080','rgba(0,0,0,.5)');
+  }
   // Commit hash display during commit phase (wallet integration)
   if(walletConnected&&walletLastCommitHash&&(phase==='confirming'||phase==='resolving')){
     txShadow('Hash: '+walletLastCommitHash,W/2-100,38,5,'#80c0ff','rgba(0,0,0,.5)');
@@ -4639,16 +4735,44 @@ function drawConfirmingPhase(){
   // Text box at bottom
   win(4,H-70,W-8,64);
   const t=fr-bpFrame;const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
-  if(t<40)txShadow('You chose '+actionNames[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
-  else if(t<80){const sp_=['|','/','-','\\'][Math.floor(t/4)%4];txShadow('Committing action... '+sp_,16,H-38,14,'#686068','rgba(200,180,140,.3)');}
-  else{txShadow('Waiting for others'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-38,14,'#686068','rgba(200,180,140,.3)');}
+  if(walletConnected){
+    // On-chain flow: commit -> reveal -> resolve
+    if(t<40)txShadow('You chose '+actionNames[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
+    else if(t<70){const sp_=['|','/','-','\\'][Math.floor(t/4)%4];txShadow('Committing to chain... '+sp_,16,H-38,14,'#40d080','rgba(0,0,0,.3)');}
+    else if(t<100){const sp_=['|','/','-','\\'][Math.floor(t/4)%4];txShadow('Revealing... '+sp_,16,H-38,14,'#80c0ff','rgba(0,0,0,.3)');}
+    else{txShadow('Waiting for others'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-38,14,'#686068','rgba(200,180,140,.3)');}
+  }else{
+    if(t<40)txShadow('You chose '+actionNames[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
+    else if(t<80){const sp_=['|','/','-','\\'][Math.floor(t/4)%4];txShadow('Committing action... '+sp_,16,H-38,14,'#686068','rgba(200,180,140,.3)');}
+    else{txShadow('Waiting for others'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-38,14,'#686068','rgba(200,180,140,.3)');}
+  }
   // Generate and log commit hash when wallet connected
   if(t===1&&walletConnected){
+    onchainCommitPhase=true;
+    onchainCommit(rd,bpAction,bpSelectedTarget||0).then(result=>{
+      if(result){
+        walletLastCommitHash=result.hash;
+        logOnchain('Commit: '+result.hash+' TX:'+result.txSig.slice(0,8)+'..');
+      }
+      onchainCommitPhase=false;
+    }).catch(()=>{onchainCommitPhase=false;});
+  }
+  if(t===1&&!walletConnected){
     const salt=generateSalt();
     computeCommitHash(bpAction,walletPublicKey,salt).then(hash=>{
       walletLastCommitHash=hexFromBytes(hash);
       lg.push('Commit hash: '+walletLastCommitHash);
     }).catch(()=>{});
+  }
+  // On-chain reveal phase
+  if(t===70&&walletConnected&&onchainPendingSalt){
+    onchainRevealPhase=true;
+    onchainReveal(rd,bpAction,bpSelectedTarget||0,onchainPendingSalt).then(result=>{
+      if(result){
+        logOnchain('Reveal: TX:'+result.txSig.slice(0,8)+'..');
+      }
+      onchainRevealPhase=false;onchainPendingSalt=null;
+    }).catch(()=>{onchainRevealPhase=false;});
   }
   if(t>=120){battlePhase='resolving';bpFrame=fr;bpResolveIdx=0;bpResolveQueue=generateResolveEvents();}
 }
@@ -5458,7 +5582,8 @@ function dLog(){
   recentLogs.forEach((l,i)=>{
     const y=40+i*36;win(6,y,W-12,32);
     let cl='#303028';
-    if(l.includes('Block')||l.includes('Barrier'))cl='#3060b0';
+    if(l.startsWith('[ON-CHAIN]'))cl='#40d080';
+    else if(l.includes('Block')||l.includes('Barrier'))cl='#3060b0';
     else if(l.includes('Steal')||l.includes('Ignis'))cl='#c04040';
     else if(l.includes('drew')||l.includes('Scout')||l.includes('Found'))cl='#308030';
     else if(l.includes('Umbra'))cl='#7858a0';
@@ -6541,6 +6666,9 @@ function draw(){
   // Map loading screen
   drawMapLoadScreen();
   fadeDraw();
+  // FRLG-style decorative border around viewport
+  g.strokeStyle='#484058';g.lineWidth=2;g.strokeRect(1,1,W-2,H-2);
+  g.strokeStyle='#686078';g.lineWidth=1;g.strokeRect(3,3,W-6,H-6);
   // FPS counter (top-left, on top of everything)
   drawFPS();
 }
@@ -6573,8 +6701,8 @@ document.addEventListener('keydown',e=>{
 
   if(sc==='title'){
     if(hasSave()){
-      if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxMove();}
-      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(2,titleMenuIdx+1);sfxMove();}
+      if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
+      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(2,titleMenuIdx+1);sfxCursor();}
       if(e.code==='KeyZ'){
         if(titleMenuIdx===0){
           // CONTINUE
@@ -6614,8 +6742,8 @@ document.addEventListener('keydown',e=>{
         }
       }
     }else{
-      if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxMove();}
-      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(1,titleMenuIdx+1);sfxMove();}
+      if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
+      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(1,titleMenuIdx+1);sfxCursor();}
       if(e.code==='KeyZ'){
         if(titleMenuIdx===0){
           sfxConfirm();
@@ -6665,8 +6793,8 @@ document.addEventListener('keydown',e=>{
     const filled=getPlayerFilledSlots();
     if(shopPhase==='list'){
       if(filled.length>0){
-        if(e.code==='ArrowUp'){shopSelectedIdx=Math.max(0,shopSelectedIdx-1);sfxMove();}
-        if(e.code==='ArrowDown'){shopSelectedIdx=Math.min(filled.length-1,shopSelectedIdx+1);sfxMove();}
+        if(e.code==='ArrowUp'){shopSelectedIdx=Math.max(0,shopSelectedIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){shopSelectedIdx=Math.min(filled.length-1,shopSelectedIdx+1);sfxCursor();}
         if(e.code==='KeyZ'){shopPhase='confirm';sfxSelect();}
       }
       if(e.code==='KeyX'){shopActive=false;sfxBack();}
@@ -6688,8 +6816,8 @@ document.addEventListener('keydown',e=>{
 
   // Discard overlay handling
   if(discardActive){
-    if(e.code==='ArrowUp'){discardSelIdx=Math.max(0,discardSelIdx-1);sfxMove();}
-    if(e.code==='ArrowDown'){discardSelIdx=Math.min(4,discardSelIdx+1);sfxMove();}
+    if(e.code==='ArrowUp'){discardSelIdx=Math.max(0,discardSelIdx-1);sfxCursor();}
+    if(e.code==='ArrowDown'){discardSelIdx=Math.min(4,discardSelIdx+1);sfxCursor();}
     if(e.code==='KeyZ'){
       const slot=discardSelIdx;
       if(pl[0].cd[slot]>0){
@@ -6763,8 +6891,8 @@ document.addEventListener('keydown',e=>{
     }
     if(x402ShopOpen){
       if(x402ShopLoading)return; // wait for response
-      if(e.code==='ArrowUp'){x402ShopIdx=Math.max(0,x402ShopIdx-1);sfxMove();}
-      if(e.code==='ArrowDown'){x402ShopIdx=Math.min(x402ShopItems.length-1,x402ShopIdx+1);sfxMove();}
+      if(e.code==='ArrowUp'){x402ShopIdx=Math.max(0,x402ShopIdx-1);sfxCursor();}
+      if(e.code==='ArrowDown'){x402ShopIdx=Math.min(x402ShopItems.length-1,x402ShopIdx+1);sfxCursor();}
       if(e.code==='KeyZ'){
         const item=x402ShopItems[x402ShopIdx];
         const cost=item.cardCost!==undefined?item.cardCost:1;
@@ -6873,11 +7001,11 @@ document.addEventListener('keydown',e=>{
   if(sc==='map'){
     if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();return;}
     if(mo){
-      if(e.code==='ArrowUp'){mi=Math.max(0,mi-1);sfxMove();}
-      if(e.code==='ArrowDown'){mi=Math.min(9,mi+1);sfxMove();}
+      if(e.code==='ArrowUp'){mi=Math.max(0,mi-1);sfxCursor();}
+      if(e.code==='ArrowDown'){mi=Math.min(10,mi+1);sfxCursor();}
       if(e.code==='KeyZ'){
         sfxConfirm();const s=['crd','map','act','log'];
-        if(mi===9)mo=false;
+        if(mi===10)mo=false;
         else if(mi===4){
           // USE CARD on map
           mo=false;menuOpenFrame=0;
@@ -6908,12 +7036,19 @@ document.addEventListener('keydown',e=>{
           }
         }
         else if(mi===7){
+          // TEXT SPEED
+          textSpeedIdx=(textSpeedIdx+1)%3;
+          localStorage.setItem('oxark_textspeed',String(textSpeedIdx));
+          twSet('Text speed: '+TEXT_SPEED_LABELS[textSpeedIdx]);
+          sfxCursor();
+        }
+        else if(mi===8){
           // SAVE
           saveGame();
           twSet('Game saved!');
           mo=false;menuOpenFrame=0;
         }
-        else if(mi===8){
+        else if(mi===9){
           // NEW GAME: reset all state
           resetGameState(true);
           fadeOut(()=>{sc='title';mo=false;fadeIn();ub();});
@@ -6925,17 +7060,17 @@ document.addEventListener('keydown',e=>{
       // Map card use overlay input
       if(mapCardUseActive){
         if(mapCardDirSelect){
-          if(e.code==='ArrowUp'){mapCardDirIdx=2;sfxMove();}
-          if(e.code==='ArrowDown'){mapCardDirIdx=0;sfxMove();}
-          if(e.code==='ArrowLeft'){mapCardDirIdx=1;sfxMove();}
-          if(e.code==='ArrowRight'){mapCardDirIdx=3;sfxMove();}
+          if(e.code==='ArrowUp'){mapCardDirIdx=2;sfxCursor();}
+          if(e.code==='ArrowDown'){mapCardDirIdx=0;sfxCursor();}
+          if(e.code==='ArrowLeft'){mapCardDirIdx=1;sfxCursor();}
+          if(e.code==='ArrowRight'){mapCardDirIdx=3;sfxCursor();}
           if(e.code==='KeyZ'){sfxConfirm();executeDirCard(mapCardDirIdx);}
           if(e.code==='KeyX'){mapCardDirSelect=false;mapCardUseActive=false;sfxBack();}
           return;
         }
         const usable=getMapUsableCards();
-        if(e.code==='ArrowUp'){mapCardUseIdx=Math.max(0,mapCardUseIdx-1);sfxMove();}
-        if(e.code==='ArrowDown'){mapCardUseIdx=Math.min(usable.length-1,mapCardUseIdx+1);sfxMove();}
+        if(e.code==='ArrowUp'){mapCardUseIdx=Math.max(0,mapCardUseIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){mapCardUseIdx=Math.min(usable.length-1,mapCardUseIdx+1);sfxCursor();}
         if(e.code==='KeyZ'){
           sfxConfirm();
           const item=usable[mapCardUseIdx];
@@ -7045,8 +7180,8 @@ document.addEventListener('keydown',e=>{
     if(battlePhase==='select'&&bpCardSelectActive){
       // Card selection for USE CARD
       const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
-      if(e.code==='ArrowUp'){bpCardSelectIdx=Math.max(0,bpCardSelectIdx-1);sfxMove();}
-      if(e.code==='ArrowDown'){bpCardSelectIdx=Math.min(filled.length-1,bpCardSelectIdx+1);sfxMove();}
+      if(e.code==='ArrowUp'){bpCardSelectIdx=Math.max(0,bpCardSelectIdx-1);sfxCursor();}
+      if(e.code==='ArrowDown'){bpCardSelectIdx=Math.min(filled.length-1,bpCardSelectIdx+1);sfxCursor();}
       if(e.code==='KeyZ'){
         sfxConfirm();
         bpAction=4;bpCardSelectActive=false;
@@ -7057,7 +7192,7 @@ document.addEventListener('keydown',e=>{
       if(e.code==='KeyX'){bpCardSelectActive=false;sfxBack();}
     }else if(battlePhase==='select'&&bpTargetSelectActive){
       // Target selection for STEAL/SCOUT
-      if(e.code==='ArrowUp'||e.code==='ArrowDown'){bpTargetSelectIdx=bpTargetSelectIdx===1?2:1;sfxMove();}
+      if(e.code==='ArrowUp'||e.code==='ArrowDown'){bpTargetSelectIdx=bpTargetSelectIdx===1?2:1;sfxCursor();}
       if(e.code==='KeyZ'){
         sfxConfirm();bpTargetSelectActive=false;
         bpAction=bpPendingAction;bpSelectedTarget=bpTargetSelectIdx;
@@ -7067,20 +7202,20 @@ document.addEventListener('keydown',e=>{
     }else if(battlePhase==='select'){
       // 2x2 grid navigation: 0=DRAW(TL), 1=STEAL(TR), 2=BARRIER(BL), 3=SCOUT(BR), 4=USE CARD(below)
       if(e.code==='ArrowUp'){
-        if(ai===4){ai=2;sfxMove();}
-        else if(ai>=2){ai-=2;sfxMove();}
+        if(ai===4){ai=2;sfxCursor();}
+        else if(ai>=2){ai-=2;sfxCursor();}
       }
       if(e.code==='ArrowDown'){
-        if(ai<2){ai+=2;sfxMove();}
-        else if(ai<4){ai=4;sfxMove();}
+        if(ai<2){ai+=2;sfxCursor();}
+        else if(ai<4){ai=4;sfxCursor();}
       }
       if(e.code==='ArrowLeft'){
-        if(ai===1){ai=0;sfxMove();}
-        else if(ai===3){ai=2;sfxMove();}
+        if(ai===1){ai=0;sfxCursor();}
+        else if(ai===3){ai=2;sfxCursor();}
       }
       if(e.code==='ArrowRight'){
-        if(ai===0){ai=1;sfxMove();}
-        else if(ai===2){ai=3;sfxMove();}
+        if(ai===0){ai=1;sfxCursor();}
+        else if(ai===2){ai=3;sfxCursor();}
       }
       if(e.code==='KeyZ'){
         if(!isActionAvailable(ai)){sfxBack();return;}
