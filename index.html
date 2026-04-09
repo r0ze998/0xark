@@ -69,6 +69,227 @@ g.scale(SCALE,SCALE); // All drawing happens in logical coordinates, displayed a
 const TW=32,TH=32;
 
 // ═══════════════════════════════════════
+// KENNEY PIRATE SPRITE SHEET
+// ═══════════════════════════════════════
+const PIRATE_SHEET = new Image();
+PIRATE_SHEET.src = 'pirates-tilemap.png';
+let pirateSheetLoaded = false;
+PIRATE_SHEET.onload = () => { pirateSheetLoaded = true; };
+
+// Kenney tilemap: 272x128, 16x16 tiles, 1px spacing, 17 cols x 8 rows
+function drawKenneyTile(col, row, destX, destY, scale) {
+  if (!pirateSheetLoaded) return false;
+  const sx = col * 17;
+  const sy = row * 17;
+  g.drawImage(PIRATE_SHEET, sx, sy, 16, 16, destX, destY, 16 * scale, 16 * scale);
+  return true;
+}
+
+// Tinted version: draws monochrome Kenney tile with a color overlay
+// Uses an offscreen canvas to avoid corrupting the main context compositing
+const _kenneyTintCanvas = document.createElement('canvas');
+_kenneyTintCanvas.width = 64; _kenneyTintCanvas.height = 64;
+const _kenneyTintCtx = _kenneyTintCanvas.getContext('2d');
+
+function drawKenneyTileTinted(col, row, destX, destY, scale, color) {
+  if (!pirateSheetLoaded) return false;
+  const w = 16 * scale, h = 16 * scale;
+  // Ensure temp canvas is big enough
+  if (_kenneyTintCanvas.width < w || _kenneyTintCanvas.height < h) {
+    _kenneyTintCanvas.width = w; _kenneyTintCanvas.height = h;
+  }
+  _kenneyTintCtx.clearRect(0, 0, w, h);
+  _kenneyTintCtx.globalCompositeOperation = 'source-over';
+  _kenneyTintCtx.drawImage(PIRATE_SHEET, col * 17, row * 17, 16, 16, 0, 0, w, h);
+  _kenneyTintCtx.globalCompositeOperation = 'source-atop';
+  _kenneyTintCtx.fillStyle = color;
+  _kenneyTintCtx.fillRect(0, 0, w, h);
+  _kenneyTintCtx.globalCompositeOperation = 'source-over';
+  g.drawImage(_kenneyTintCanvas, 0, 0, w, h, destX, destY, w, h);
+  return true;
+}
+
+// Per-tile-type toggle: true = use Kenney sprites, false = keep fillRect art
+const useKenney = {
+  water: true,
+  grass: true,
+  path: true,
+  sand: true,
+  tree: true,
+  pine: true,
+  palm: true,
+  bush: true,
+  rock: true,
+  building: true,
+  dock: true,
+  fence: true,
+  signpost: true,
+  fountain: true,
+  mountain: true,
+  cave: true,
+  ruins: true,
+  treasure: true,
+  campfire: true,
+  mushroom: true,
+  // Keep custom art for these (Kenney monochrome doesn't add value)
+  flower: false,
+  tallGrass: false,
+  lake: false,
+  lighthouse: false,
+  lava: false,
+  crystal: false,
+  altar: false,
+  glowTile: false,
+};
+
+// Kenney tile coordinate map (col, row) for each game tile type
+// Based on Kenney Monochrome Pirates tileset layout
+const K = {
+  // Water variations
+  waterCenter:  [0, 0],
+  waterEdgeN:   [1, 0],
+  waterEdgeS:   [2, 0],
+  waterCorner:  [3, 0],
+  // Grass/terrain
+  grass1:       [4, 0],
+  grass2:       [5, 0],
+  grass3:       [6, 0],
+  grassAlt:     [7, 0],
+  // Sand
+  sand1:        [8, 0],
+  sand2:        [9, 0],
+  sandEdge:     [10, 0],
+  sandCorner:   [11, 0],
+  // Path/dirt
+  path1:        [12, 0],
+  path2:        [13, 0],
+  pathEdge:     [14, 0],
+  pathAlt:      [15, 0],
+  // Row 1 - more terrain & transitions
+  dirtRoad:     [16, 0],
+  terrain1:     [0, 1],
+  terrain2:     [1, 1],
+  terrain3:     [2, 1],
+  terrain4:     [3, 1],
+  terrain5:     [4, 1],
+  terrain6:     [5, 1],
+  terrain7:     [6, 1],
+  terrain8:     [7, 1],
+  terrain9:     [8, 1],
+  terrain10:    [9, 1],
+  terrain11:    [10, 1],
+  terrain12:    [11, 1],
+  terrain13:    [12, 1],
+  terrain14:    [13, 1],
+  terrain15:    [14, 1],
+  terrain16:    [15, 1],
+  // Row 2 - buildings
+  wall1:        [0, 2],
+  wall2:        [1, 2],
+  wall3:        [2, 2],
+  door:         [3, 2],
+  window1:      [4, 2],
+  window2:      [5, 2],
+  roofL:        [6, 2],
+  roofM:        [7, 2],
+  roofR:        [8, 2],
+  building1:    [9, 2],
+  building2:    [10, 2],
+  building3:    [11, 2],
+  chimney:      [12, 2],
+  sign:         [13, 2],
+  crate:        [14, 2],
+  barrel:       [15, 2],
+  // Row 3 - more structures
+  fenceH:       [0, 3],
+  fenceV:       [1, 3],
+  fencePost:    [2, 3],
+  dock1:        [3, 3],
+  dock2:        [4, 3],
+  bridge:       [5, 3],
+  well:         [6, 3],
+  fountain:     [7, 3],
+  lamp:         [8, 3],
+  bench:        [9, 3],
+  tree1:        [10, 3],
+  tree2:        [11, 3],
+  palm1:        [12, 3],
+  bush1:        [13, 3],
+  rock1:        [14, 3],
+  rock2:        [15, 3],
+  // Row 4 - ships
+  hullL:        [0, 4],
+  hullM:        [1, 4],
+  hullR:        [2, 4],
+  hullFront:    [3, 4],
+  hullBack:     [4, 4],
+  mast:         [5, 4],
+  sail1:        [6, 4],
+  sail2:        [7, 4],
+  sail3:        [8, 4],
+  flag:         [9, 4],
+  anchor:       [10, 4],
+  wheel:        [11, 4],
+  cannon:       [12, 4],
+  plank:        [13, 4],
+  rope:         [14, 4],
+  net:          [15, 4],
+  // Row 5 - more ship / sea
+  wave1:        [0, 5],
+  wave2:        [1, 5],
+  wave3:        [2, 5],
+  seaMonster:   [3, 5],
+  island:       [4, 5],
+  lighthouse:   [5, 5],
+  shipWreck:    [6, 5],
+  raft:         [7, 5],
+  rowboat:      [8, 5],
+  sails:        [9, 5],
+  crowsNest:    [10, 5],
+  porthole:     [11, 5],
+  rudder:       [12, 5],
+  figurehead:   [13, 5],
+  lifering:     [14, 5],
+  compass:      [15, 5],
+  // Row 6 - characters
+  pirate1:      [0, 6],
+  pirate2:      [1, 6],
+  pirate3:      [2, 6],
+  pirate4:      [3, 6],
+  captain:      [4, 6],
+  parrot:       [5, 6],
+  skeleton:     [6, 6],
+  ghost:        [7, 6],
+  crab:         [8, 6],
+  octopus:      [9, 6],
+  shark:        [10, 6],
+  fish:         [11, 6],
+  seagull:      [12, 6],
+  monkey:       [13, 6],
+  snake:        [14, 6],
+  rat:          [15, 6],
+  // Row 7 - items
+  chest:        [0, 7],
+  chestOpen:    [1, 7],
+  coin:         [2, 7],
+  gem:          [3, 7],
+  key:          [4, 7],
+  map:          [5, 7],
+  scroll:       [6, 7],
+  bottle:       [7, 7],
+  sword:        [8, 7],
+  hook:         [9, 7],
+  bomb:         [10, 7],
+  potion:       [11, 7],
+  spyglass:     [12, 7],
+  hat:          [13, 7],
+  skull:        [14, 7],
+  crossbones:   [15, 7],
+  campfire:     [16, 3],  // fallback to last col if present
+  mushroom1:    [16, 1],
+};
+
+// ═══════════════════════════════════════
 // SMOOTH ANIMATION UTILITIES
 // ═══════════════════════════════════════
 function lerp(a,b,t){return a+(b-a)*t;}
@@ -2472,34 +2693,51 @@ function isNearWater(tx_,ty){return isNearTileType(tx_,ty,[0,17]);}
 function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,[1,7,11,3]);}
 
 function drawWater(px,py,tx_,ty){
+  if(useKenney.water){
+    const nearLand_=isNearLand(tx_,ty);
+    // Pick wave variant based on tile hash for visual variety
+    const wv = tileHash(tx_,ty) % 3;
+    const kTile = wv === 0 ? K.waterCenter : wv === 1 ? K.waterEdgeN : K.waterEdgeS;
+    // Draw blue-tinted water base
+    const waterColor = nearLand_ ? 'rgba(36,100,160,0.95)' : 'rgba(48,120,180,0.95)';
+    bx(px,py,TW,TH,waterColor);
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, nearLand_ ? '#4090c0' : '#60b0e0')){
+      // Animated wave overlay from sprite sheet
+      const wavePhase = (wt + tx_) % 3;
+      if(wavePhase === 0) drawKenneyTileTinted(K.wave1[0], K.wave1[1], px, py, 2, 'rgba(120,200,240,0.3)');
+      else if(wavePhase === 1) drawKenneyTileTinted(K.wave2[0], K.wave2[1], px, py, 2, 'rgba(100,180,220,0.25)');
+      // Sparkles on top
+      if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.6)');}
+      // Foam near land
+      if(nearLand_){
+        for(let i=0;i<2;i++){
+          const bblX=px+Math.floor(thRand(tx_,ty,i+200)*28)+2;
+          const bblY=py+Math.floor(thRand(tx_,ty,i+210)*28)+2;
+          if((wt+i*3+tx_)%5<2){g.fillStyle='rgba(255,255,255,.35)';g.beginPath();g.arc(bblX,bblY,1.5,0,Math.PI*2);g.fill();}
+        }
+      }
+      return;
+    }
+  }
+  // Fallback: original fillRect water
   const f3=(wt+tx_+ty)%3;
   const h=tileHash(tx_,ty);
   const nearLand_=isNearLand(tx_,ty);
   const rv=(h&7)-4;
-  // Blue gradient: lighter top, darker bottom
   const baseR=nearLand_?36+rv:48+rv,baseG=nearLand_?80+rv:104+rv,baseB=nearLand_?128+rv:160+rv;
   const topR=baseR+20,topG=baseG+20,topB=baseB+20;
-  // Top half lighter
   bx(px,py,TW,TH/2,`rgb(${topR+f3*4},${topG+f3*4},${topB+f3*4})`);
-  // Bottom half darker
   bx(px,py+TH/2,TW,TH/2,`rgb(${baseR+f3*4},${baseG+f3*4},${baseB+f3*4})`);
-  // Mid gradient band
   bx(px,py+TH/2-2,TW,4,`rgb(${(topR+baseR)/2+f3*4|0},${(topG+baseG)/2+f3*4|0},${(topB+baseB)/2+f3*4|0})`);
-  // Depth variation
   if(nearLand_)bx(px,py,TW,TH,'rgba(80,140,180,.06)');
   else bx(px,py,TW,TH,'rgba(0,20,40,.08)');
   const r=tr(tx_,ty);
-  // 3 layers of animated wave lines at different heights
   const waveOff1=Math.sin(wt*0.3+tx_*0.7)*3;
   const waveOff2=Math.sin(wt*0.25+tx_*0.5+1.5)*2.5;
   const waveOff3=Math.sin(wt*0.35+tx_*0.9+3.0)*2;
-  // Wave layer 1 (top)
   for(let wx=0;wx<TW;wx+=2){const wy=6+Math.round(Math.sin(wt*0.3+wx*0.3+tx_)*1.5+waveOff1);bx(px+wx,py+wy,3,1,'rgba(104,168,216,.6)');}
-  // Wave layer 2 (mid)
   for(let wx=1;wx<TW;wx+=3){const wy=14+Math.round(Math.sin(wt*0.25+wx*0.25+ty)*1.2+waveOff2);bx(px+wx,py+wy,4,1,'rgba(120,184,224,.5)');}
-  // Wave layer 3 (bottom)
   for(let wx=0;wx<TW;wx+=2){const wy=22+Math.round(Math.sin(wt*0.35+wx*0.2+tx_+ty)*1+waveOff3);bx(px+wx,py+wy,3,1,'rgba(136,192,232,.4)');}
-  // Foam bubbles (small white circles)
   if(nearLand_){
     for(let i=0;i<3;i++){
       const bblX=px+Math.floor(thRand(tx_,ty,i+200)*28)+2;
@@ -2507,43 +2745,57 @@ function drawWater(px,py,tx_,ty){
       if((wt+i*3+tx_)%5<2){g.fillStyle='rgba(255,255,255,.35)';g.beginPath();g.arc(bblX,bblY,1.5,0,Math.PI*2);g.fill();}
     }
   }
-  // Shimmer color shifts per frame
   if(f3===1)bx(px,py,TW,TH,'rgba(100,180,220,.04)');
   if(f3===2)bx(px,py,TW,TH,'rgba(60,120,180,.04)');
-  // Sparkles
   if((wt+tx_*3+ty*7)%8===0){const sx=px+Math.floor(r.g*28)+2,sy=py+Math.floor(r.h*28)+2;bx(sx,sy,2,2,'rgba(255,255,255,.7)');}
   if((wt+tx_*5+ty*11)%12===0){const sx2=px+Math.floor(r.e*24)+3,sy2=py+Math.floor(r.f*24)+3;bx(sx2,sy2,2,1,'rgba(255,255,255,.45)');}
   if((wt+tx_*7+ty*3)%10===0){bx(px+Math.floor(r.a*26)+3,py+Math.floor(r.b*26)+3,1,2,'rgba(255,255,255,.3)');}
 }
 
 function drawGrass(px,py,tx_,ty){
+  if(useKenney.grass){
+    // Pick grass variant based on tile hash
+    const h=tileHash(tx_,ty);
+    const gv = h % 4;
+    const kTile = gv === 0 ? K.grass1 : gv === 1 ? K.grass2 : gv === 2 ? K.grass3 : K.grassAlt;
+    // Green base color
+    const sv=((h&15)-8);
+    const grassColor = `rgb(${88+sv},${168+sv},${88+sv})`;
+    bx(px,py,TW,TH,grassColor);
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${60+sv},${140+sv},${60+sv})`)){
+      // Wildflower dots overlay
+      if((h&3)===0){
+        const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
+        const fcolors=['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'];
+        bx(px+fx,py+fy,2,2,fcolors[h%5]);
+      }
+      if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.2)');}
+      return;
+    }
+  }
+  // Fallback: original fillRect grass
   const h=tileHash(tx_,ty);
   const sv=((h&15)-8);
-  // Base green with subtle value noise
   bx(px,py,TW,TH,`rgb(${88+sv},${168+sv},${88+sv})`);
   const r=tr(tx_,ty);
-  // Layer 1: value noise pattern (darker patches)
   const offX=(h>>4)&3, offY=(h>>6)&3;
   for(let gy=0;gy<TH;gy+=2)for(let gx=0;gx<TW;gx+=2){
     if(((gx+offX)+(gy+offY)+tx_*3+ty*5)%6<2)bx(px+gx,py+gy,2,2,`rgb(${76+sv},${156+sv},${76+sv})`);
   }
-  // Layer 2: lighter dappled highlights
   for(let i=0;i<8;i++){
     if(thRand(tx_,ty,i+10)>.4){
       const hx=Math.floor(thRand(tx_,ty,i+20)*28)+2, hy=Math.floor(thRand(tx_,ty,i+30)*28)+2;
       bx(px+hx,py+hy,2,1,`rgb(${100+sv},${188+sv},${100+sv})`);
     }
   }
-  // Layer 3: individual grass blades (2-3px wide, 4-8px tall)
   for(let i=0;i<6;i++){
     const bladeX=Math.floor(thRand(tx_,ty,i+50)*28)+2;
     const bladeH=4+Math.floor(thRand(tx_,ty,i+55)*5);
     const bladeY=TH-bladeH-Math.floor(thRand(tx_,ty,i+58)*8);
     const bladeGreen=thRand(tx_,ty,i+60)>.5?`rgb(${72+sv},${152+sv},${72+sv})`:`rgb(${96+sv},${180+sv},${96+sv})`;
     bx(px+bladeX,py+bladeY,2,bladeH,bladeGreen);
-    bx(px+bladeX,py+bladeY,3,1,bladeGreen); // blade tip wider
+    bx(px+bladeX,py+bladeY,3,1,bladeGreen);
   }
-  // Layer 4: wildflower dots (1-2 per tile)
   if((h&3)===0){
     const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
     const fcolors=['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'];
@@ -2555,7 +2807,6 @@ function drawGrass(px,py,tx_,ty){
     const fcolors2=['#d0e040','#e060a0','#40c0e0','#e0a030','#a040e0'];
     bx(px+fx2,py+fy2,2,2,fcolors2[(h>>3)%5]);
   }
-  // Shadow patches
   if(r.a>.75){bx(px+Math.floor(r.b*20)+4,py+Math.floor(r.c*20)+4,6,4,'rgba(0,40,0,.08)');}
   if(r.d>.8){bx(px+Math.floor(r.e*18)+4,py+Math.floor(r.f*18)+6,4,6,'rgba(0,40,0,.06)');}
   if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.2)');}
@@ -2595,68 +2846,93 @@ function drawTallGrass(px,py,tx_,ty){
 }
 
 function drawPath(px,py,tx_,ty){
+  if(useKenney.path){
+    const h=tileHash(tx_,ty);
+    const sv=((h&7)-4);
+    const pv = h % 2;
+    const kTile = pv === 0 ? K.path1 : K.path2;
+    bx(px,py,TW,TH,`rgb(${208+sv},${192+sv},${128+sv})`);
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${180+sv},${164+sv},${100+sv})`)){
+      // Pebbles overlay
+      for(let i=0;i<2;i++){
+        if(thRand(tx_,ty,i+50)>.5){
+          const pbx=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby=Math.floor(thRand(tx_,ty,i+70)*26)+3;
+          bx(px+pbx,py+pby,3,2,'#a09878');
+        }
+      }
+      if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.15)');}
+      return;
+    }
+  }
+  // Fallback: original fillRect path
   const h=tileHash(tx_,ty);
   const sv=((h&7)-4);
-  // Dirt base with grain texture
   bx(px,py,TW,TH,`rgb(${208+sv},${192+sv},${128+sv})`);
-  // Grain noise
   const offX=(h>>4)&3,offY=(h>>6)&3;
   for(let gy=0;gy<TH;gy+=3)for(let gx=0;gx<TW;gx+=3){
     if(((gx+offX)+(gy+offY)+tx_)%5<2)bx(px+gx,py+gy,2,1,`rgb(${196+sv},${180+sv},${116+sv})`);
   }
-  // Edge shadows (dirt-to-grass brownish-green at edges)
   bx(px,py,5,TH,`rgb(${184+sv},${168+sv},${104+sv})`);
   bx(px+TW-5,py,5,TH,`rgb(${184+sv},${168+sv},${104+sv})`);
-  // Brownish-green transition at very edge
   for(let gy=0;gy<TH;gy+=2){if(thRand(tx_,ty,gy+500)>.4)bx(px,py+gy,2,1,`rgb(${140+sv},${148+sv},${88+sv})`);if(thRand(tx_,ty,gy+510)>.4)bx(px+TW-2,py+gy,2,1,`rgb(${140+sv},${148+sv},${88+sv})`);}
-  // Worn center line (lighter)
   bx(px+10,py,12,TH,`rgb(${216+sv},${200+sv},${140+sv})`);
   bx(px+12,py,8,TH,`rgb(${220+sv},${204+sv},${148+sv})`);
-  // Top/bottom highlights/shadows
   bx(px,py,TW,2,`rgb(${224+sv},${216+sv},${160+sv})`);
   bx(px,py+TH-2,TW,2,`rgb(${176+sv},${160+sv},${96+sv})`);
   const r=tr(tx_,ty);
-  // Scattered pebbles (gray ovals, 3-4 per tile)
   for(let i=0;i<4;i++){
     if(thRand(tx_,ty,i+50)>.35){
       const pbx=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby=Math.floor(thRand(tx_,ty,i+70)*26)+3;
       bx(px+pbx,py+pby,3,2,'#a09878');bx(px+pbx,py+pby,2,1,'#b0a888');
     }
   }
-  // Footprint impressions occasionally
   if((tx_+ty)%5===0){bx(px+10,py+12,3,4,'rgba(160,144,96,.3)');bx(px+18,py+18,3,4,'rgba(160,144,96,.3)');}
   if(r.a>.6)bx(px+Math.floor(r.b*24)+4,py+Math.floor(r.c*24)+4,4,2,`rgb(${184+sv},${168+sv},${104+sv})`);
   if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.15)');}
 }
 
 function drawSand(px,py,tx_,ty){
+  if(useKenney.sand){
+    const h=tileHash(tx_,ty);
+    const sv=((h&7)-4);
+    const nearW=isNearWater(tx_,ty);
+    const kTile = nearW ? K.sandEdge : (h%2===0 ? K.sand1 : K.sand2);
+    bx(px,py,TW,TH,`rgb(${232+sv},${216+sv},${168+sv})`);
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${210+sv},${194+sv},${140+sv})`)){
+      // Shells overlay
+      if(thRand(tx_,ty,80)>.7){
+        const shx=Math.floor(thRand(tx_,ty,81)*28)+2, shy=Math.floor(thRand(tx_,ty,82)*26)+3;
+        bx(px+shx,py+shy,3,2,'#f0e8d8');
+      }
+      if(nearW){
+        bx(px,py+TH-4,TW,4,`rgb(${188+sv},${172+sv},${124+sv})`);
+      }
+      return;
+    }
+  }
+  // Fallback: original fillRect sand
   const h=tileHash(tx_,ty);
   const sv=((h&7)-4);
-  // Warm gradient base
   bx(px,py,TW,TH/2,`rgb(${236+sv},${220+sv},${172+sv})`);
   bx(px,py+TH/2,TW,TH/2,`rgb(${228+sv},${212+sv},${164+sv})`);
   const r=tr(tx_,ty);
   const offX=(h>>3)&3, offY=(h>>5)&3;
-  // Grain noise
   for(let sy=0;sy<TH;sy+=2)for(let sx=0;sx<TW;sx+=2){
     if(((sx+offX)+(sy+offY)+tx_)%5<1)bx(px+sx,py+sy,2,1,`rgb(${216+sv},${200+sv},${152+sv})`);
     if(((sx+offX+1)+(sy+offY+2)+ty)%7<1)bx(px+sx,py+sy,1,2,`rgb(${240+sv},${224+sv},${180+sv})`);
   }
-  // Scattered shells (tiny pale spots)
   for(let i=0;i<3;i++){
     if(thRand(tx_,ty,80+i)>.6){
       const shx=Math.floor(thRand(tx_,ty,81+i*3)*28)+2, shy=Math.floor(thRand(tx_,ty,82+i*3)*26)+3;
       bx(px+shx,py+shy,3,2,'#f0e8d8');bx(px+shx+1,py+shy,1,1,'#fff');bx(px+shx,py+shy+1,2,1,'#d0c0a0');
     }
   }
-  // Small dune ripple lines
   for(let i=0;i<3;i++){
     const ripY=6+i*10+Math.floor(thRand(tx_,ty,90+i)*4);
     for(let rx=0;rx<TW;rx+=2){
       if(thRand(tx_,ty,rx+100+i*20)>.3)bx(px+rx,py+ripY,3,1,`rgb(${220+sv},${204+sv},${156+sv})`);
     }
   }
-  // Wet sand strip near water
   if(isNearWater(tx_,ty)){
     bx(px,py+TH-8,TW,8,`rgb(${200+sv},${184+sv},${136+sv})`);
     bx(px,py+TH-6,TW,6,`rgb(${188+sv},${172+sv},${124+sv})`);
@@ -2666,37 +2942,44 @@ function drawSand(px,py,tx_,ty){
 }
 
 function drawTree(px,py,tx_,ty){
+  if(useKenney.tree){
+    drawGrass(px,py,tx_,ty);
+    const kTile = (tileHash(tx_,ty) % 2 === 0) ? K.tree1 : K.tree2;
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#2a7830')){
+      // Shadow beneath
+      g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
+      return;
+    }
+  }
+  // Fallback: original fillRect tree
   drawGrass(px,py,tx_,ty);
-  // Shadow ellipse beneath
   g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+16,py+TH-2,14,5,0,0,Math.PI*2);g.fill();
-  // Thick trunk (6px wide, bark texture)
   bx(px+13,py+16,6,14,'#806030');bx(px+14,py+17,4,12,'#906838');
-  // Bark horizontal lines
   bx(px+13,py+19,6,1,'#705028');bx(px+13,py+23,6,1,'#705028');bx(px+13,py+27,6,1,'#705028');
-  // Grass at trunk base
   bx(px+11,py+TH-3,2,2,'#48984a');bx(px+19,py+TH-3,2,2,'#50a050');
-  // Large canopy with 3 green shades
-  // Dark interior
   bx(px+2,py+2,28,14,'#286828');
-  // Mid tone
   bx(px+4,py+1,24,13,'#38883a');g.beginPath();g.ellipse(px+16,py+8,14,8,0,0,Math.PI*2);g.fillStyle='#38883a';g.fill();
-  // Light highlights
   bx(px+6,py+1,20,10,'#48a848');bx(px+8,py+2,16,6,'#58c058');
   bx(px+10,py+1,12,2,'#68d068');
-  // Leaf detail at canopy edges
   bx(px+2,py+4,3,2,'#306830');bx(px+27,py+5,3,2,'#306830');
   bx(px+4,py+13,4,2,'#306830');bx(px+24,py+12,4,2,'#306830');
   bx(px+6,py+1,4,1,'#58c058');bx(px+22,py+1,4,1,'#58c058');
 }
 
 function drawPine(px,py,tx_,ty){
+  if(useKenney.pine){
+    drawGrass(px,py,tx_,ty);
+    if(drawKenneyTileTinted(K.tree2[0], K.tree2[1], px, py, 2, '#206828')){
+      g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.ellipse(px+16,py+TH-2,10,3,0,0,Math.PI*2);g.fill();
+      return;
+    }
+  }
+  // Fallback
   drawGrass(px,py,tx_,ty);
   g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
-  // Trunk
   bx(px+13,py+20,6,10,'#705828');bx(px+14,py+21,4,8,'#806030');
   bx(px+13,py+23,6,1,'#604820');bx(px+13,py+27,6,1,'#604820');
   bx(px+11,py+TH-3,2,2,'#48984a');bx(px+19,py+TH-2,2,2,'#50a050');
-  // Triangular canopy layers (bottom to top, dark to light)
   bx(px+4,py+14,24,7,'#206020');bx(px+6,py+13,20,6,'#287028');
   bx(px+6,py+8,20,7,'#287028');bx(px+8,py+7,16,5,'#308030');
   bx(px+8,py+3,16,6,'#308030');bx(px+10,py+2,12,4,'#38a038');
@@ -2705,24 +2988,36 @@ function drawPine(px,py,tx_,ty){
 }
 
 function drawPalm(px,py,tx_,ty){
+  if(useKenney.palm){
+    drawSand(px,py,tx_,ty);
+    if(drawKenneyTileTinted(K.palm1[0], K.palm1[1], px, py, 2, '#3a8040')){
+      return;
+    }
+  }
+  // Fallback
   drawSand(px,py,tx_,ty);
-  // Curved trunk
   bx(px+13,py+12,6,18,'#a08050');bx(px+14,py+14,4,14,'#b09060');
   bx(px+12,py+10,5,4,'#a08050');bx(px+13,py+26,6,1,'#906838');
-  // Fronds (large palm leaves)
   bx(px+1,py,12,4,'#48a050');bx(px+19,py,12,4,'#48a050');
   bx(px+5,py+2,22,5,'#58b060');bx(px+3,py+4,10,4,'#48a050');bx(px+20,py+4,10,4,'#48a050');
   bx(px+8,py+6,16,3,'#58b060');bx(px+10,py+8,12,2,'#48a050');
-  // Coconuts
   bx(px+14,py+8,2,2,'#805020');bx(px+17,py+9,2,2,'#805020');
 }
 
 function drawBush(px,py,tx_,ty){
+  if(useKenney.bush){
+    drawGrass(px,py,tx_,ty);
+    if(drawKenneyTileTinted(K.bush1[0], K.bush1[1], px, py, 2, '#388838')){
+      // Berry dots on top
+      bx(px+10,py+14,2,2,'#c04040');bx(px+20,py+12,2,2,'#c04040');
+      return;
+    }
+  }
+  // Fallback
   drawGrass(px,py,tx_,ty);
   g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
   bx(px+4,py+10,24,18,'#287028');bx(px+6,py+8,20,18,'#388838');
   bx(px+8,py+8,16,12,'#48a048');bx(px+8,py+8,10,2,'#58b858');bx(px+6,py+10,4,2,'#48a048');
-  // Berry dots
   bx(px+10,py+14,2,2,'#c04040');bx(px+20,py+12,2,2,'#c04040');bx(px+14,py+18,2,2,'#c04040');
 }
 
@@ -2736,42 +3031,50 @@ function darken(hex,amt){
 }
 
 function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
-  // Foundation/base strip
+  if(useKenney.building){
+    // Draw path base, then building sprite tinted with wall color
+    bx(px,py,TW,TH,'#d0c080');
+    if(drawKenneyTileTinted(K.building1[0], K.building1[1], px, py, 2, wallColor)){
+      // Roof overlay tinted
+      drawKenneyTileTinted(K.roofM[0], K.roofM[1], px, py, 2, roofColor);
+      // Door overlay
+      drawKenneyTileTinted(K.door[0], K.door[1], px, py, 2, '#483838');
+      // Window highlights
+      bx(px+3,py+16,5,5,'#90d8f0');bx(px+24,py+16,5,5,'#90d8f0');
+      bx(px+3,py+16,2,2,'#c8f0ff');bx(px+24,py+16,2,2,'#c8f0ff');
+      // Door knob
+      bx(px+18,py+24,2,2,'#d8c030');
+      return;
+    }
+  }
+  // Fallback: original fillRect building
   bx(px,py+TH-3,TW,3,'#606058');bx(px+1,py+TH-2,TW-2,1,'#505048');
-  // Ground
   bx(px,py,TW,TH,'#d0c080');
   bx(px,py+TH-1,TW,1,'rgba(0,0,0,.15)');
-  // Wall with brick/stone texture
   bx(px+2,py+12,28,18,wallColor);bx(px+4,py+14,24,14,lighten(wallColor,.1));
-  // Visible individual bricks + mortar lines
   for(let by=12;by<TH-3;by+=4){
     const off=(Math.floor(by/4)%2)*4;
     for(let bbx=2;bbx<30;bbx+=8){
       bx(px+bbx+off,py+by,7,3,lighten(wallColor,.05));
-      bx(px+bbx+off,py+by+3,7,1,darken(wallColor,.08)); // mortar h
+      bx(px+bbx+off,py+by+3,7,1,darken(wallColor,.08));
     }
     for(let bbx=2;bbx<30;bbx+=8){
-      bx(px+bbx+off+7,py+by,1,4,darken(wallColor,.06)); // mortar v
+      bx(px+bbx+off+7,py+by,1,4,darken(wallColor,.06));
     }
   }
-  // Roof with shingle rows
   bx(px,py+2,TW,11,roofColor);bx(px+2,py+4,28,7,roofHighlight||lighten(roofColor,.15));
   bx(px,py+12,TW,2,darken(roofColor,.15));
   for(let rx=0;rx<TW;rx+=4){bx(px+rx,py+3,2,1,darken(roofColor,.1));bx(px+rx+2,py+6,2,1,darken(roofColor,.08));bx(px+rx,py+9,2,1,darken(roofColor,.06));}
-  // Door with knob and shadow
   bx(px+10,py+18,12,14,'#483838');bx(px+12,py+20,8,12,'#382828');
-  bx(px+18,py+24,2,2,'#d8c030'); // knob
-  bx(px+10,py+TH-1,12,1,'#a06030'); // doorstep
-  bx(px+10,py+18,12,2,'#584848'); // door top frame
-  // Windows with glass reflection
+  bx(px+18,py+24,2,2,'#d8c030');
+  bx(px+10,py+TH-1,12,1,'#a06030');
+  bx(px+10,py+18,12,2,'#584848');
   bx(px+2,py+16,7,7,'#90d8f0');bx(px+3,py+16,5,7,'#a8e0f8');
-  bx(px+3,py+16,2,2,'#c8f0ff'); // highlight
+  bx(px+3,py+16,2,2,'#c8f0ff');
   bx(px+23,py+16,7,7,'#90d8f0');bx(px+24,py+16,5,7,'#a8e0f8');
-  bx(px+24,py+16,2,2,'#c8f0ff'); // highlight
-  // Window frames
+  bx(px+24,py+16,2,2,'#c8f0ff');
   bx(px+2,py+19,7,1,'#686078');bx(px+23,py+19,7,1,'#686078');
   bx(px+5,py+16,1,7,'#686078');bx(px+26,py+16,1,7,'#686078');
-  // Chimney with smoke
   const r=tr(tx_,ty);
   if(r.a>.35){
     bx(px+24,py-2,5,6,'#805040');bx(px+25,py-1,3,4,'#906050');
@@ -2789,76 +3092,102 @@ function drawBuilding15(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#6080c0','#4060
 function drawBuilding16(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#60a070','#408050','#509060');}
 
 function drawCave(px,py,tx_,ty){
+  if(useKenney.cave){
+    bx(px,py,TW,TH,'#787888');
+    // Use rock tile tinted dark for cave appearance
+    if(drawKenneyTileTinted(K.rock2[0], K.rock2[1], px, py, 2, '#484858')){
+      // Dark cave entrance overlay
+      bx(px+8,py+12,16,18,'rgba(8,8,16,0.8)');
+      bx(px+10,py+14,12,16,'rgba(8,8,16,0.9)');
+      if((wt+tx_)%4<2){g.fillStyle='rgba(80,60,120,.25)';g.beginPath();g.arc(px+16,py+20,6,0,Math.PI*2);g.fill();}
+      return;
+    }
+  }
+  // Fallback
   bx(px,py,TW,TH,'#787888');bx(px+2,py+2,TW-4,TH-4,'#686878');
-  // Cave entrance arch
   bx(px+4,py+8,24,22,'#303040');bx(px+6,py+10,20,20,'#202030');bx(px+8,py+12,16,18,'#101020');
   bx(px+10,py+14,12,16,'#080810');
-  // Rock arch top
   bx(px+6,py+4,20,6,'#585868');bx(px+8,py+2,16,4,'#686878');bx(px+10,py,12,4,'#787888');
-  // Stalactites
   bx(px+10,py+10,2,4,'#484858');bx(px+18,py+8,2,6,'#484858');bx(px+22,py+11,2,3,'#484858');
-  // Floor rocks
   bx(px+4,py+TH-4,8,4,'#585868');bx(px+20,py+TH-4,8,4,'#585868');
-  // Mysterious glow
   if((wt+tx_)%4<2){g.fillStyle='rgba(80,60,120,.25)';g.beginPath();g.arc(px+16,py+20,6,0,Math.PI*2);g.fill();}
 }
 
 function drawMountain(px,py,tx_,ty){
+  if(useKenney.mountain){
+    const h=tileHash(tx_,ty);
+    const sv=((h&7)-4);
+    bx(px,py,TW,TH,`rgb(${120+sv},${120+sv},${136+sv})`);
+    if(drawKenneyTileTinted(K.rock1[0], K.rock1[1], px, py, 2, `rgb(${96+sv},${96+sv},${112+sv})`)){
+      if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');}
+      if(currentMap===2){bx(px,py,TW,TH,'rgba(10,0,20,.15)');}
+      return;
+    }
+  }
+  // Fallback
   const h=tileHash(tx_,ty);
   const sv=((h&7)-4);
   bx(px,py,TW,TH,`rgb(${120+sv},${120+sv},${136+sv})`);
   const r=tr(tx_,ty);
   const offX=(h>>4)&3;
-  // Rocky texture
   for(let ry=0;ry<TH;ry+=3)for(let rx=0;rx<TW;rx+=3){
     if((rx+offX+ry+tx_*5)%4<1)bx(px+rx,py+ry,3,3,`rgb(${104+sv},${104+sv},${120+sv})`);
     if((rx+ry+ty*3)%5<1)bx(px+rx,py+ry,2,1,`rgb(${136+sv},${136+sv},${152+sv})`);
   }
-  // Crevices
   if(r.a>.5)bx(px+Math.floor(r.b*24)+4,py+Math.floor(r.c*24)+4,1,6,`rgb(${96+sv},${96+sv},${108+sv})`);
   if(r.d>.6)bx(px+Math.floor(r.e*20)+6,py+Math.floor(r.f*20)+6,4,1,`rgb(${96+sv},${96+sv},${108+sv})`);
-  // Snow caps on top rows
   if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');bx(px+8,py+4,16,1,'#b8b8c0');}
   if(currentMap===2){bx(px,py,TW,TH,'rgba(10,0,20,.15)');}
 }
 
 function drawRock(px,py,tx_,ty){
+  if(useKenney.rock){
+    drawGrass(px,py,tx_,ty);
+    const kTile = (tileHash(tx_,ty) % 2 === 0) ? K.rock1 : K.rock2;
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#707880')){
+      g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
+      return;
+    }
+  }
+  // Fallback
   drawGrass(px,py,tx_,ty);
-  // Shadow
   g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+16,py+TH-2,14,5,0,0,Math.PI*2);g.fill();
-  // Grass overlap at base
   bx(px+4,py+24,2,2,'#50a050');bx(px+26,py+24,2,2,'#48984a');
-  // Rock body
   bx(px+6,py+6,20,20,'#707078');bx(px+8,py+4,16,20,'#808088');bx(px+10,py+6,12,14,'#909098');
-  // Highlights
   bx(px+8,py+4,8,2,'#a0a0a8');bx(px+6,py+6,2,6,'#888890');
-  // Cracks
   bx(px+14,py+10,1,8,'#606068');bx(px+10,py+14,6,1,'#606068');
 }
 
 function drawFence(px,py,tx_,ty){
+  if(useKenney.fence){
+    drawGrass(px,py,tx_,ty);
+    if(drawKenneyTileTinted(K.fenceH[0], K.fenceH[1], px, py, 2, '#a08050')){
+      return;
+    }
+  }
+  // Fallback
   drawGrass(px,py,tx_,ty);
-  // Posts
   bx(px+2,py+4,4,24,'#a08050');bx(px+26,py+4,4,24,'#a08050');
   bx(px+3,py+5,2,22,'#b09060');bx(px+27,py+5,2,22,'#b09060');
-  // Rails
   bx(px,py+10,TW,3,'#b89060');bx(px,py+20,TW,3,'#b89060');
   bx(px,py+10,TW,1,'#c8a070');bx(px,py+20,TW,1,'#c8a070');
-  // Post caps
   bx(px+2,py+2,4,2,'#c8a070');bx(px+26,py+2,4,2,'#c8a070');
 }
 
 function drawDock(px,py,tx_,ty){
+  if(useKenney.dock){
+    drawWater(px,py,tx_,ty);
+    if(drawKenneyTileTinted(K.dock1[0], K.dock1[1], px, py, 2, '#a08050')){
+      return;
+    }
+  }
+  // Fallback
   drawWater(px,py,tx_,ty);
   bx(px,py+4,TW,TH-5,'#a08050');
-  // Plank lines
   for(let i=0;i<TW;i+=6)bx(px+i,py+4,1,TH-5,'#806830');
-  // Plank grain
   for(let i=0;i<TW;i+=8){bx(px+i+2,py+10,3,1,'#907840');bx(px+i+3,py+20,2,1,'#907840');}
   bx(px,py+4,TW,2,'#b89060');
-  // Support beams
   bx(px,py,3,TH,'#806830');bx(px+TW-3,py,3,TH,'#806830');
-  // Nails/bolts
   if(ty>=22){bx(px+2,py+8,2,2,'#c8c088');bx(px+TW-4,py+8,2,2,'#c8c088');}
 }
 
@@ -2888,29 +3217,40 @@ function drawLake(px,py,tx_,ty){
 // ── NEW TILE TYPES ──
 
 function drawSignpost(px,py,tx_,ty){
+  if(useKenney.signpost){
+    drawGrass(px,py,tx_,ty);
+    if(drawKenneyTileTinted(K.sign[0], K.sign[1], px, py, 2, '#a08050')){
+      return;
+    }
+  }
+  // Fallback
   drawGrass(px,py,tx_,ty);
-  // Post
   bx(px+14,py+10,4,20,'#a08050');bx(px+15,py+12,2,16,'#b09060');
-  // Sign board
   bx(px+4,py+2,24,10,'#c0a060');bx(px+6,py+4,20,6,'#d0b070');
-  // Text lines
   bx(px+8,py+4,16,1,'#806030');bx(px+8,py+6,12,1,'#806030');bx(px+8,py+8,14,1,'#806030');
-  // Arrow
   bx(px+22,py+6,4,1,'#806030');bx(px+25,py+5,1,3,'#806030');
 }
 
 function drawFountain(px,py,tx_,ty){
+  if(useKenney.fountain){
+    drawPath(px,py,tx_,ty);
+    if(drawKenneyTileTinted(K.fountain[0], K.fountain[1], px, py, 2, '#708898')){
+      // Animated water spray on top
+      const f=(wt+tx_)%3;
+      if(f===0){bx(px+14,py+2,4,2,'#a0d0f0');bx(px+15,py,2,1,'#c0e0f8');}
+      else if(f===1){bx(px+14,py,4,2,'#a0d0f0');bx(px+12,py+2,2,2,'#80b8e0');}
+      // Basin water color
+      bx(px+6,py+18,20,8,'rgba(72,136,192,0.4)');
+      return;
+    }
+  }
+  // Fallback
   drawPath(px,py,tx_,ty);
-  // Basin
   bx(px+4,py+16,24,12,'#808898');bx(px+6,py+18,20,8,'#6878a0');
-  // Water in basin
   const f=(wt+tx_)%3;
   bx(px+6,py+18,20,8,f===0?'#4888c0':'#5898d0');
-  // Wave ripples in basin
   for(let wx=6;wx<26;wx+=4){const wy=20+Math.round(Math.sin(wt*0.4+wx*0.3)*0.5);bx(px+wx,py+wy,3,1,'rgba(255,255,255,.25)');}
-  // Center pillar
   bx(px+12,py+8,8,12,'#909898');bx(px+14,py+6,4,10,'#a0a8a8');
-  // Water spray (animated)
   if((wt)%2===0){
     bx(px+14,py+2,4,2,'#a0d0f0');bx(px+10,py+4,2,2,'#80b8e0');bx(px+20,py+4,2,2,'#80b8e0');
     bx(px+15,py,2,1,'#c0e0f8');
@@ -2918,7 +3258,6 @@ function drawFountain(px,py,tx_,ty){
     bx(px+14,py,4,2,'#a0d0f0');bx(px+12,py+2,2,2,'#80b8e0');bx(px+18,py+2,2,2,'#80b8e0');
     bx(px+15,py-1,2,1,'#c0e0f8');
   }
-  // Sparkle
   if((wt+tx_)%5===0)bx(px+8+Math.floor(tr(tx_,ty).a*14),py+18,2,1,'rgba(255,255,255,.6)');
 }
 
@@ -2939,25 +3278,33 @@ function drawLighthouse(px,py,tx_,ty){
 }
 
 function drawRuinsWall(px,py,tx_,ty){
+  if(useKenney.ruins){
+    bx(px,py,TW,TH,'#686870');
+    if(drawKenneyTileTinted(K.wall1[0], K.wall1[1], px, py, 2, '#787078')){
+      // Moss overlay
+      const r=tr(tx_,ty);
+      if(r.e>.5){bx(px+Math.floor(r.f*20)+2,py+TH-6,8,5,'#486848');}
+      bx(px,py,TW,TH,'rgba(0,0,20,.15)');
+      return;
+    }
+  }
+  // Fallback
   bx(px,py,TW,TH,'#686870');
   const r=tr(tx_,ty);
-  // Stone blocks with mortar
   for(let by=0;by<TH;by+=8){
     const off=(Math.floor(by/8)%2)*4;
     for(let bxx=0;bxx<TW;bxx+=8){
       const shade=((bxx+by+tx_)%3)*8;
       bx(px+bxx+off,py+by,7,7,`rgb(${96+shade},${88+shade},${80+shade})`);
-      bx(px+bxx+off,py+by+7,7,1,'#585860'); // mortar h
+      bx(px+bxx+off,py+by+7,7,1,'#585860');
     }
     for(let bxx=0;bxx<TW;bxx+=8){
-      bx(px+bxx+off+7,py+by,1,8,'#585860'); // mortar v
+      bx(px+bxx+off+7,py+by,1,8,'#585860');
     }
   }
-  // Cracks
   bx(px+Math.floor(r.a*20)+4,py+Math.floor(r.b*20)+4,1,8,'#484850');
   bx(px+Math.floor(r.c*16)+8,py+Math.floor(r.d*16)+2,4,1,'#484850');
   bx(px+Math.floor(r.a*12)+10,py+Math.floor(r.b*12)+8,1,6,'#484850');
-  // Moss
   if(r.e>.5){bx(px+Math.floor(r.f*20)+2,py+TH-6,8,5,'#486848');bx(px+Math.floor(r.g*16)+6,py+TH-4,6,2,'#588858');}
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
 }
@@ -3059,20 +3406,24 @@ function drawAltar(px,py,tx_,ty){
 }
 
 function drawMushroom(px,py,tx_,ty){
+  if(useKenney.mushroom){
+    drawGrass(px,py,tx_,ty);
+    if(drawKenneyTileTinted(K.mushroom1[0], K.mushroom1[1], px, py, 2, '#d84848')){
+      return;
+    }
+  }
+  // Fallback
   drawGrass(px,py,tx_,ty);
   const r=tr(tx_,ty);
-  // Mushroom 1 (large)
   bx(px+6,py+18,5,10,'#d8c8a0');bx(px+7,py+20,3,8,'#e0d0b0');
   bx(px+2,py+10,14,9,'#d84040');bx(px+4,py+8,10,9,'#e05050');
   bx(px+3,py+9,4,2,'#ea6060');
   bx(px+6,py+11,2,2,'#f0e0c0');bx(px+12,py+12,2,2,'#f0e0c0');bx(px+8,py+9,2,2,'#f0e0c0');
-  // Mushroom 2 (smaller)
   if(r.a>.3){
     bx(px+22,py+22,4,8,'#d8c8a0');
     bx(px+18,py+16,12,7,'#c83838');bx(px+20,py+14,8,7,'#d84848');
     bx(px+22,py+16,2,2,'#f0e0c0');bx(px+26,py+18,2,2,'#f0e0c0');
   }
-  // Mushroom 3 (tiny)
   if(r.b>.5){
     bx(px+14,py+26,2,4,'#d8c8a0');
     bx(px+12,py+23,6,4,'#c06030');bx(px+13,py+22,4,4,'#d07040');
@@ -3080,14 +3431,23 @@ function drawMushroom(px,py,tx_,ty){
 }
 
 function drawCampfire(px,py,tx_,ty){
+  if(useKenney.campfire){
+    drawGrass(px,py,tx_,ty);
+    if(drawKenneyTileTinted(K.campfire[0], K.campfire[1], px, py, 2, '#e87040')){
+      // Animated fire glow
+      g.fillStyle='rgba(255,160,40,.12)';g.beginPath();g.arc(px+16,py+16,14,0,Math.PI*2);g.fill();
+      if(fr%6<2){
+        bx(px+10+Math.floor(Math.random()*12),py+2+Math.floor(Math.random()*6),2,2,'#f8c060');
+      }
+      return;
+    }
+  }
+  // Fallback
   drawGrass(px,py,tx_,ty);
-  // Rocks around fire (ring)
   bx(px+6,py+22,4,4,'#606068');bx(px+22,py+22,4,4,'#606068');
   bx(px+4,py+20,3,3,'#585860');bx(px+25,py+20,3,3,'#585860');
   bx(px+8,py+24,16,4,'#505058');bx(px+10,py+26,12,2,'#606068');
-  // Logs
   bx(px+10,py+20,12,4,'#805830');bx(px+8,py+22,16,2,'#704820');
-  // Fire (animated, larger)
   const f=(wt)%3;
   if(f===0){
     bx(px+12,py+8,8,14,'#e87040');bx(px+14,py+6,4,6,'#f8a040');bx(px+10,py+12,2,6,'#d85830');bx(px+20,py+10,2,8,'#d85830');
@@ -3096,9 +3456,7 @@ function drawCampfire(px,py,tx_,ty){
   }else{
     bx(px+12,py+6,8,16,'#e87040');bx(px+14,py+4,4,4,'#f8a040');bx(px+12,py+10,2,8,'#d85830');bx(px+20,py+8,2,6,'#d85830');
   }
-  // Glow
   g.fillStyle='rgba(255,160,40,.12)';g.beginPath();g.arc(px+16,py+16,14,0,Math.PI*2);g.fill();
-  // Sparks
   if(fr%6<2){
     bx(px+10+Math.floor(Math.random()*12),py+2+Math.floor(Math.random()*6),2,2,'#f8c060');
     bx(px+8+Math.floor(Math.random()*16),py+Math.floor(Math.random()*4),1,1,'#f8e080');
@@ -3114,7 +3472,18 @@ function drawTreasure(px,py,tx_,ty){
   const pulse=Math.sin(fr*.08+tx_*3+ty*5)*.3+.6;
   const sparkPhase=Math.floor(fr*.15+tx_*2)%4;
   const colors=['#f8e060','#f0c830','#e8a020','#f8f0a0'];
-  // Star sparkles (larger orbit)
+  if(useKenney.treasure && drawKenneyTileTinted(K.chest[0], K.chest[1], px, py, 2, colors[sparkPhase])){
+    // Sparkle orbit around chest
+    for(let i=0;i<3;i++){
+      const angle=(fr*.03+i*2.1+tx_)%(Math.PI*2);
+      const dist=10+Math.sin(fr*.05+i)*3;
+      bx(px+16+Math.cos(angle)*dist,py+14+Math.sin(angle)*dist,2,2,`rgba(248,224,96,${pulse*.5})`);
+    }
+    g.fillStyle=`rgba(248,224,96,${pulse*.2})`;
+    g.beginPath();g.arc(px+16,py+16,10,0,Math.PI*2);g.fill();
+    return;
+  }
+  // Fallback sparkle effect
   for(let i=0;i<5;i++){
     const angle=(fr*.03+i*1.3+tx_)%(Math.PI*2);
     const dist=8+Math.sin(fr*.05+i)*3;
@@ -3122,7 +3491,6 @@ function drawTreasure(px,py,tx_,ty){
     const sy=py+14+Math.sin(angle)*dist;
     bx(sx,sy,3,3,`rgba(248,224,96,${pulse*.6})`);
   }
-  // Central glow
   g.fillStyle=`rgba(248,224,96,${pulse*.3})`;
   g.beginPath();g.arc(px+16,py+16,8,0,Math.PI*2);g.fill();
   bx(px+14,py+14,5,4,colors[sparkPhase]);
