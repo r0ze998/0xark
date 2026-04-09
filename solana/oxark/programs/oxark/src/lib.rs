@@ -71,4 +71,20 @@ pub mod oxark {
     pub fn claim_prize(ctx: Context<ClaimPrize>, game_id: u64) -> Result<()> {
         instructions::stake_entry::handle_claim_prize(ctx, game_id)
     }
+
+    pub fn create_season(ctx: Context<CreateSeason>, season_id: u32, entry_fee: u64, max_players: u32, duration_seconds: i64) -> Result<()> {
+        instructions::season::handle_create_season(ctx, season_id, entry_fee, max_players, duration_seconds)
+    }
+
+    pub fn end_season(ctx: Context<EndSeason>, season_id: u32) -> Result<()> {
+        instructions::season::handle_end_season(ctx, season_id)
+    }
+
+    pub fn register_agent(ctx: Context<RegisterAgent>, agent_id: u32, name_hash: [u8; 32], strategy_hash: [u8; 32], endpoint_hash: [u8; 32], price_per_query: u64) -> Result<()> {
+        instructions::agent_registry::handle_register_agent(ctx, agent_id, name_hash, strategy_hash, endpoint_hash, price_per_query)
+    }
+
+    pub fn deactivate_agent(ctx: Context<DeactivateAgent>, agent_id: u32) -> Result<()> {
+        instructions::agent_registry::handle_deactivate_agent(ctx, agent_id)
+    }
 }
