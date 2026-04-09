@@ -9,13 +9,13 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111118;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;font-family:'Press Start 2P',monospace;overflow:hidden}
 #emu{background:linear-gradient(145deg,#2a2a3e,#1c1c2c);padding:20px 24px 16px;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);border:2px solid #333350}
-#lbl{text-align:center;color:#444460;font-size:7px;letter-spacing:6px;margin-bottom:8px}
+#lbl{text-align:center;color:#444460;font-size:10px;letter-spacing:6px;margin-bottom:8px}
 #sw{background:#080810;padding:4px;border-radius:4px;border:2px solid #1a1a30;box-shadow:inset 0 0 0 2px #2a2a48,inset 0 0 0 4px #0c0c18}
 canvas{display:block;width:960px;height:640px;image-rendering:auto}
 #ctrls{display:flex;justify-content:center;gap:6px;margin-top:10px}
-.b{padding:4px 12px;background:#222238;color:#555570;border:1px solid #333350;border-radius:12px;font:7px 'Press Start 2P',monospace;cursor:pointer;transition:all .15s}
+.b{padding:4px 12px;background:#222238;color:#555570;border:1px solid #333350;border-radius:12px;font:10px 'Press Start 2P',monospace;cursor:pointer;transition:all .15s}
 .b:hover{background:#2a2a44;color:#8888aa}.b.a{background:#3848a0;color:#dde;border-color:#5060c0;box-shadow:0 0 6px rgba(56,72,160,.3)}
-#h{color:#2a2a40;font-size:5px;text-align:center;margin-top:6px;letter-spacing:1px}
+#h{color:#2a2a40;font-size:10px;text-align:center;margin-top:6px;letter-spacing:1px}
 @media(max-width:1000px){canvas{width:100vw;height:calc(100vw*2/3)}#emu{padding:4px;border-radius:0}}
 /* Touch Controls Overlay */
 #touch-overlay{display:none;position:fixed;bottom:0;left:0;right:0;height:180px;z-index:100;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
@@ -34,7 +34,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:auto}
 #btn-b{right:80px;bottom:60px;background:rgba(200,50,60,.45);border-color:rgba(255,80,80,.5);font-size:12px}
 #btn-b.pressed{background:rgba(200,50,60,.7)}
 /* START button: bottom-center */
-#btn-start{left:50%;transform:translateX(-50%);bottom:12px;width:64px;height:24px;border-radius:12px;font-size:7px}
+#btn-start{left:50%;transform:translateX(-50%);bottom:12px;width:64px;height:24px;border-radius:12px;font-size:10px}
 </style>
 </head>
 <body>
@@ -557,7 +557,8 @@ const _hasLetterSpacing=('letterSpacing' in g);
 function _setLS(v){if(_hasLetterSpacing)try{g.letterSpacing=v;}catch(e){}}
 function tx(s,x,y,sz,c){
   g.fillStyle=c||FRLG.textColor;
-  g.font=(sz||12)+"px 'Press Start 2P',monospace";
+  const finalSz=Math.max(10,sz||12);
+  g.font=finalSz+"px 'Press Start 2P',monospace";
   _setLS('1px');
   g.fillText(s,x,y);
   g.fillText(s,x+0.5,y); // slight bold effect
@@ -565,8 +566,9 @@ function tx(s,x,y,sz,c){
 }
 // Text with 1px shadow for readability (battle screens) — FRLG bold style
 function txShadow(s,x,y,sz,color,shadowColor){
-  const sc_=shadowColor||'rgba(0,0,0,0.7)';
-  g.font=(sz||12)+"px 'Press Start 2P',monospace";
+  const sc_=shadowColor||'rgba(0,0,0,0.85)';
+  const finalSz=Math.max(10,sz||12);
+  g.font=finalSz+"px 'Press Start 2P',monospace";
   _setLS('1px');
   g.fillStyle=sc_;g.fillText(s,x+1,y+1);
   g.fillStyle=color||'#fff';g.fillText(s,x,y);
@@ -2171,8 +2173,8 @@ function updateRivalAI(aiIdx){
   // If player is on same map and nearby, update last known
   if(rMap===currentMap){
     const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
-    // Hunter: always track if within 12 tiles
-    if(ai.personality==='hunter'&&dist<=12){
+    // Hunter: always track if within 10 tiles
+    if(ai.personality==='hunter'&&dist<=10){
       ai.lastKnownPlayerMap=currentMap;
       ai.lastKnownPlayerX=pl[0].x;
       ai.lastKnownPlayerY=pl[0].y;
@@ -2184,8 +2186,8 @@ function updateRivalAI(aiIdx){
       ai.lastKnownPlayerY=pl[0].y;
     }
 
-    // Hunter chases player directly if within 8 tiles
-    if(ai.personality==='hunter'&&dist<=8){
+    // Hunter chases player directly if within 7 tiles
+    if(ai.personality==='hunter'&&dist<=7){
       ai.goalX=pl[0].x;ai.goalY=pl[0].y;ai.goalMap=rMap;
       ai.state='hunting';
       ai.moveInterval=6; // faster when chasing
@@ -2680,7 +2682,7 @@ let mapCardDirSelect=false, mapCardDirIdx=0, mapCardPendingType=-1;
 
 // ── TENSION MECHANICS ──
 // Card Decay Timer: each slot stores timestamp when card was acquired (0 = empty)
-const CARD_DECAY_MS=180000; // 180 seconds (3 minutes) real-time
+const CARD_DECAY_MS=210000; // 210 seconds (3.5 minutes) real-time — slightly more breathing room
 const cardTimers=[0,0,0,0,0]; // parallel to pl[0].cd[5]
 let cardDecayWarningFlash=0; // frame counter for warning flash
 
@@ -2824,9 +2826,9 @@ function drawWater(px,py,tx_,ty){
     // Auto-tile: pick correct edge/corner/center based on neighbors
     const kTile = getWaterTileVariant(tx_, ty);
     // Draw blue-tinted water base
-    const waterColor = nearLand_ ? 'rgba(36,100,160,0.95)' : 'rgba(48,120,180,0.95)';
+    const waterColor = nearLand_ ? 'rgba(30,80,140,0.95)' : 'rgba(48,96,160,0.95)';
     bx(px,py,TW,TH,waterColor);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, nearLand_ ? '#4090c0' : '#60b0e0')){
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, nearLand_ ? '#3070a0' : '#4090c8')){
       // Animated wave overlay from sprite sheet
       const wavePhase = (wt + tx_) % 3;
       if(wavePhase === 0) drawKenneyTileTinted(K.wave1[0], K.wave1[1], px, py, 2, 'rgba(120,200,240,0.3)');
@@ -2884,9 +2886,9 @@ function drawGrass(px,py,tx_,ty){
     const kTile = getGrassTileVariant(tx_, ty);
     // Green base color
     const sv=((h&15)-8);
-    const grassColor = `rgb(${88+sv},${168+sv},${88+sv})`;
+    const grassColor = `rgb(${64+sv},${128+sv},${64+sv})`;
     bx(px,py,TW,TH,grassColor);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${60+sv},${140+sv},${60+sv})`)){
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${48+sv},${116+sv},${48+sv})`)){
       // Wildflower dots overlay
       if((h&3)===0){
         const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
@@ -2975,8 +2977,8 @@ function drawPath(px,py,tx_,ty){
     const sv=((h&7)-4);
     // Use land tile tinted dirt-brown for path
     const kTile = (h % 2 === 0) ? K.landCenter : K.landAlt;
-    bx(px,py,TW,TH,`rgb(${208+sv},${192+sv},${128+sv})`);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${180+sv},${164+sv},${100+sv})`)){
+    bx(px,py,TW,TH,`rgb(${176+sv},${144+sv},${88+sv})`);
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${160+sv},${128+sv},${80+sv})`)){
       // Pebbles overlay
       for(let i=0;i<2;i++){
         if(thRand(tx_,ty,i+50)>.5){
@@ -3022,8 +3024,8 @@ function drawSand(px,py,tx_,ty){
     const nearW=isNearWater(tx_,ty);
     // Use land tiles tinted sand-color for auto-tiled look
     const kTile = nearW ? K.landAlt : K.landCenter;
-    bx(px,py,TW,TH,`rgb(${232+sv},${216+sv},${168+sv})`);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${210+sv},${194+sv},${140+sv})`)){
+    bx(px,py,TW,TH,`rgb(${200+sv},${168+sv},${96+sv})`);
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${184+sv},${152+sv},${80+sv})`)){
       // Shells overlay
       if(thRand(tx_,ty,80)>.7){
         const shx=Math.floor(thRand(tx_,ty,81)*28)+2, shy=Math.floor(thRand(tx_,ty,82)*26)+3;
@@ -3070,7 +3072,7 @@ function drawTree(px,py,tx_,ty){
   if(useKenney.tree){
     drawGrass(px,py,tx_,ty);
     const kTile = (tileHash(tx_,ty) % 2 === 0) ? K.tree1 : K.tree2;
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#2a7830')){
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#305828')){
       // Shadow beneath
       g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
       return;
@@ -3094,7 +3096,7 @@ function drawTree(px,py,tx_,ty){
 function drawPine(px,py,tx_,ty){
   if(useKenney.pine){
     drawGrass(px,py,tx_,ty);
-    if(drawKenneyTileTinted(K.tree2[0], K.tree2[1], px, py, 2, '#206828')){
+    if(drawKenneyTileTinted(K.tree2[0], K.tree2[1], px, py, 2, '#284820')){
       g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.ellipse(px+16,py+TH-2,10,3,0,0,Math.PI*2);g.fill();
       return;
     }
@@ -3115,7 +3117,7 @@ function drawPine(px,py,tx_,ty){
 function drawPalm(px,py,tx_,ty){
   if(useKenney.palm){
     drawSand(px,py,tx_,ty);
-    if(drawKenneyTileTinted(K.palm1[0], K.palm1[1], px, py, 2, '#3a8040')){
+    if(drawKenneyTileTinted(K.palm1[0], K.palm1[1], px, py, 2, '#306830')){
       return;
     }
   }
@@ -3212,9 +3214,9 @@ function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
   }
 }
 
-function drawBuilding5(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#c07070','#a84040','#c05050');}
-function drawBuilding15(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#6080c0','#4060a0','#5070b0');}
-function drawBuilding16(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#60a070','#408050','#509060');}
+function drawBuilding5(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#c86050','#983030','#b84040');}
+function drawBuilding15(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#5878b8','#384898','#4868a8');}
+function drawBuilding16(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#50a060','#306840','#408850');}
 
 function drawCave(px,py,tx_,ty){
   if(useKenney.cave){
@@ -4057,9 +4059,9 @@ function tryWildEncounter(){
   const streakBonus=streakCount*0.05;
   const dangerBonus=areaDanger[currentMap]<DANGER_LOW_THRESH?0.05:0;
   if(tile===11){
-    if(Math.random()>(0.25+streakBonus+dangerBonus))return;
+    if(Math.random()>(0.30+streakBonus+dangerBonus))return; // tall grass: 30% base
   }else if(tile===1){
-    if(Math.random()>(0.12+streakBonus+dangerBonus))return;
+    if(Math.random()>(0.15+streakBonus+dangerBonus))return; // regular grass: 15% base
   }else{
     return;
   }
@@ -5995,19 +5997,27 @@ function drawSelectPhase(){
   drawActionGrid();
   // Card selection submenu for USE CARD
   if(bpCardSelectActive){
-    bx(0,0,W,H,'rgba(0,0,0,.4)');
+    bx(0,0,W,H,'rgba(0,0,0,.5)');
     const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
-    const mh=filled.length*36+52;
-    win(W/2-150,H/2-mh/2,300,mh);
-    txShadow('Use which card?',W/2-80,H/2-mh/2+24,14,'#806030','rgba(0,0,0,.2)');
+    // Larger card frames — 30% bigger
+    const cardH=48;
+    const mh=filled.length*cardH+56;
+    const cardW=380;
+    win(W/2-cardW/2,H/2-mh/2,cardW,mh);
+    txShadow('Use which card?',W/2-90,H/2-mh/2+26,14,'#806030','rgba(0,0,0,.2)');
+    // Spread cards out more if fewer in hand
+    const spacing=filled.length<=3?Math.min(cardH+8,(mh-56)/Math.max(1,filled.length)):cardH;
     filled.forEach((slot,j)=>{
       const cd=pl[0].cd[slot],cr=CD[cd-1];
-      const y=H/2-mh/2+42+j*36;
-      if(j===bpCardSelectIdx){bx(W/2-140,y-2,280,32,'rgba(192,168,96,.22)');txShadow('\u25B6',W/2-144,y+16,10,'#c04040','rgba(0,0,0,.3)');}
-      bx(W/2-126,y+4,22,22,cr.d);bx(W/2-124,y+6,18,18,cr.c);
-      drawCardCharacter(W/2-123,y+6,cd,0.7,fr);
-      txShadow(cr.n,W/2-98,y+18,14,j===bpCardSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
-      txShadow(cr.f,W/2+40,y+18,10,'#908878','rgba(0,0,0,.15)');
+      const y=H/2-mh/2+46+j*spacing;
+      if(j===bpCardSelectIdx){bx(W/2-cardW/2+8,y-4,cardW-16,cardH-4,'rgba(192,168,96,.25)');txShadow('\u25B6',W/2-cardW/2+4,y+20,12,'#c04040','rgba(0,0,0,.3)');}
+      // Larger card frame with character sprite
+      const frameX=W/2-cardW/2+28;
+      bx(frameX,y+2,36,36,cr.d);bx(frameX+2,y+4,32,32,cr.c);
+      drawCardCharacter(frameX+3,y+5,cd,1.2,fr);
+      // Card name clearly below/beside
+      txShadow(cr.n,frameX+44,y+20,14,j===bpCardSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
+      txShadow(cr.f,frameX+44,y+36,11,'#908878','rgba(0,0,0,.15)');
     });
   }
   if(bpTargetSelectActive){
@@ -7933,17 +7943,17 @@ function drawMapCardUseOverlay(){
 // STATS SCREEN
 // ═══════════════════════════════════════
 function dStats(){
-  // Blue background like FRLG pokemon summary
-  bx(0,0,W,H,'#182858');
-  // Subtle gradient overlay
-  for(let gy=0;gy<H;gy+=2){
-    const ga=gy/H*0.15;
-    bx(0,gy,W,2,`rgba(0,0,0,${ga})`);
+  // Dark background matching LOG screen
+  bx(0,0,W,H,'#0c0c18');
+  for(let i=0;i<120;i++){
+    const nx=(i*73+17)%W,ny=(i*41+23)%H;
+    const na=Math.random()*0.04;
+    bx(nx,ny,1,1,`rgba(255,255,255,${na})`);
   }
 
   // Header
-  win(20,10,W-40,44);
-  txShadow('SESSION STATS',W/2-110,40,14,'#f0e8c0','rgba(0,0,0,.5)');
+  win(16,10,W-32,42);
+  txShadow('SESSION STATS',W/2-110,38,14,'#f0e8c0','rgba(0,0,0,.5)');
 
   const elapsed=Math.floor((Date.now()-stats.sessionStart)/1000);
   const mins=Math.floor(elapsed/60),secs=elapsed%60;
@@ -7951,69 +7961,47 @@ function dStats(){
   const favArea=stats.areaTime[favIdx]>0?mapNames[favIdx]:'None yet';
   const totalAreaTime=stats.areaTime.reduce((a,b)=>a+b,0)||1;
 
-  // Left column: Game Stats
-  const lx=20,colW=(W-60)/2;
-  win(lx,64,colW,290);
-  txShadow('GAME',lx+20,90,12,'#f0c830','rgba(0,0,0,.4)');
-  // Separator line
-  bx(lx+16,96,colW-32,2,'#484870');
+  // Single window for all stats — clean list format
+  const padTop=60;
+  win(16,padTop-8,W-32,440);
 
-  const gameRows=[
-    ['Games',stats.gamesPlayed],
-    ['Steps',stats.stepsWalked],
-    ['Time',mins+'m '+secs+'s'],
-    ['Cards Got',stats.cardsCollected],
-    ['Cards Lost',stats.cardsLost],
-    ['Round',rd+'/30'],
+  const allRows=[
+    {label:'GAME',value:'',header:true,col:'#f0c830'},
+    {label:'Games Played',value:''+stats.gamesPlayed,col:'#888898'},
+    {label:'Steps Walked',value:''+stats.stepsWalked,col:'#888898'},
+    {label:'Play Time',value:mins+'m '+secs+'s',col:'#888898'},
+    {label:'Cards Collected',value:''+stats.cardsCollected,col:'#888898'},
+    {label:'Cards Lost',value:''+stats.cardsLost,col:'#888898'},
+    {label:'Current Round',value:rd+'/30',col:'#888898'},
+    {label:'',value:'',header:false,col:''},
+    {label:'COMBAT',value:'',header:true,col:'#c04848'},
+    {label:'Steals Attempted',value:''+stats.stealsAttempted,col:'#888898'},
+    {label:'Steals Blocked',value:''+stats.stealsBlocked,col:'#888898'},
+    {label:'Scout Uses',value:''+stats.scoutUses,col:'#888898'},
+    {label:'Win Streak',value:''+streakCount,col:'#888898'},
+    {label:'Steal Success',value:stats.stealsAttempted>0?Math.round((1-stats.stealsBlocked/(stats.stealsAttempted||1))*100)+'%':'--',col:'#888898'},
+    {label:'',value:'',header:false,col:''},
+    {label:'AREA',value:'',header:true,col:'#f0c830'},
+    {label:'Favorite Area',value:favArea,col:'#888898'},
   ];
-  gameRows.forEach((r,i)=>{
-    const y=108+i*40;
-    txShadow(r[0],lx+20,y+24,12,'#8888a8','rgba(0,0,0,.3)');
-    const valStr=''+r[1];
-    txShadow(valStr,lx+colW-30-valStr.length*10,y+24,14,'#f8f0e0','rgba(0,0,0,.4)');
+
+  let rowY=padTop+6;
+  allRows.forEach(r=>{
+    if(!r.label&&!r.value){rowY+=8;return;} // spacer
+    if(r.header){
+      txShadow(r.label,36,rowY+14,12,r.col,'rgba(0,0,0,.5)');
+      bx(36,rowY+20,W-104,1,'#282840');
+      rowY+=26;
+    }else{
+      txShadow(r.label,44,rowY+14,11,'#8888a8','rgba(0,0,0,.3)');
+      txShadow(r.value,W-60-r.value.length*10,rowY+14,12,'#f8f0e0','rgba(0,0,0,.4)');
+      bx(36,rowY+20,W-104,1,'#1a1a30');
+      rowY+=24;
+    }
   });
 
-  // Right column: Combat Stats
-  const rx=lx+colW+20;
-  win(rx,64,colW,290);
-  txShadow('COMBAT',rx+20,90,12,'#c04848','rgba(0,0,0,.4)');
-  bx(rx+16,96,colW-32,2,'#484870');
-
-  const combatRows=[
-    ['Steals',stats.stealsAttempted],
-    ['Blocks',stats.stealsBlocked],
-    ['Scouts',stats.scoutUses],
-    ['Streak',streakCount],
-  ];
-  combatRows.forEach((r,i)=>{
-    const y=108+i*40;
-    txShadow(r[0],rx+20,y+24,12,'#8888a8','rgba(0,0,0,.3)');
-    const valStr=''+r[1];
-    txShadow(valStr,rx+colW-30-valStr.length*10,y+24,14,'#f8f0e0','rgba(0,0,0,.4)');
-  });
-
-  // Visual bar: Steals attempted as bar chart (right column)
-  if(stats.stealsAttempted>0){
-    const barY=278;
-    const barMaxW=colW-50;
-    const blockRate=stats.stealsBlocked/(stats.stealsAttempted||1);
-    const successRate=1-blockRate;
-    txShadow('Steal Success',rx+20,barY,8,'#8888a8','rgba(0,0,0,.3)');
-    // Background bar
-    bx(rx+20,barY+6,barMaxW,12,'#282848');
-    // Success portion (green)
-    bx(rx+20,barY+6,Math.floor(barMaxW*successRate),12,'#40a848');
-    // Blocked portion (red)
-    bx(rx+20+Math.floor(barMaxW*successRate),barY+6,Math.floor(barMaxW*blockRate),12,'#c04040');
-    txShadow(Math.round(successRate*100)+'%',rx+barMaxW+30,barY+16,8,'#40a848','rgba(0,0,0,.3)');
-  }
-
-  // Bottom: Favorite Area with time distribution bar
-  win(20,366,W-40,90);
-  txShadow('AREA TIME',36,392,12,'#f0c830','rgba(0,0,0,.4)');
-
-  // Time distribution bar
-  const barX=36,barY_=404,barW=W-92,barH=16;
+  // Area time distribution bar at bottom of the single window
+  const barX=36,barY_=rowY+8,barW=W-104,barH=16;
   bx(barX,barY_,barW,barH,'#181838');
   const areaColors=['#3060b0','#308030','#803040'];
   let accX=barX;
@@ -8028,19 +8016,16 @@ function dStats(){
 
   // Legend below bar
   mapNames.forEach((name,ai_)=>{
-    const legendX=36+ai_*160;
+    const legendX=36+ai_*200;
     const legendY=barY_+28;
     bx(legendX,legendY-8,10,10,areaColors[ai_]);
     const pct=Math.round((stats.areaTime[ai_]/totalAreaTime)*100);
-    txShadow(name+' '+pct+'%',legendX+16,legendY,8,'#c8c0a0','rgba(0,0,0,.3)');
+    txShadow(name+' '+pct+'%',legendX+16,legendY,10,'#c8c0a0','rgba(0,0,0,.3)');
   });
-
-  // Favorite area highlight
-  txShadow('Favorite: '+favArea,W-300,392,10,'#f8f0e0','rgba(0,0,0,.4)');
 
   // Back prompt
   win(W/2-100,H-42,200,30);
-  txShadow('X = Back',W/2-32,H-22,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
+  txShadow('X = Back',W/2-32,H-22,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
 }
 
 // ═══════════════════════════════════════
