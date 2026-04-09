@@ -1610,7 +1610,7 @@ let rivalAlert=0, rivalAlertName='';
 // Rival AI state objects
 const rivalAI=[
   // Index 0 = pl[1] "Rival" — The Hunter (Aggressive)
-  {goalX:10,goalY:10,goalMap:0,personality:'hunter',moveTimer:0,moveInterval:10,
+  {goalX:10,goalY:10,goalMap:0,personality:'hunter',moveTimer:0,moveInterval:8,
    lastKnownPlayerMap:-1,lastKnownPlayerX:-1,lastKnownPlayerY:-1,
    state:'exploring',stateTimer:0,fleeDir:-1},
   // Index 1 = pl[2] "Hunter" — The Collector (Strategic)
@@ -1894,7 +1894,7 @@ function updateRivalAI(aiIdx){
     if(ai.personality==='hunter'&&dist<=8){
       ai.goalX=pl[0].x;ai.goalY=pl[0].y;ai.goalMap=rMap;
       ai.state='hunting';
-      ai.moveInterval=8; // faster when chasing
+      ai.moveInterval=6; // faster when chasing
     }
 
     // Collector flees if player within 5 tiles (70% chance)
@@ -1917,7 +1917,7 @@ function updateRivalAI(aiIdx){
     ai.stateTimer--;
     if(ai.stateTimer<=0){
       ai.state='exploring';
-      ai.moveInterval=ai.personality==='hunter'?10:12;
+      ai.moveInterval=ai.personality==='hunter'?8:12;
       pickRivalGoal(aiIdx);
     }
   }
@@ -1948,7 +1948,7 @@ function updateRivalAI(aiIdx){
       }
     }
     // Not on exit, pick new goal
-    ai.moveInterval=ai.personality==='hunter'?10:12;
+    ai.moveInterval=ai.personality==='hunter'?8:12;
     pickRivalGoal(aiIdx);
   }
 
@@ -1962,8 +1962,8 @@ function updateRivalAI(aiIdx){
     const m=maps[rMap];
     const tile=m[r.y]?.[r.x];
     let encounterChance=0;
-    if(tile===11)encounterChance=0.20;
-    else if(tile===1)encounterChance=0.08;
+    if(tile===11)encounterChance=0.25;
+    else if(tile===1)encounterChance=0.12;
     if(encounterChance>0&&Math.random()<encounterChance){
       const cardId=pickAreaCardForMap(rMap);
       if(addCardToPlayer(rIdx,cardId)){
@@ -2072,7 +2072,7 @@ const pl=[
   {x:6,y:11,c:'#d8b028',n:'Hunter',cd:[4,0,0,0,0],cc:1,dir:0,step:0,walkFrame:0,visualX:6*TW,visualY:11*TH},
 ];
 
-const sp={s:3,b:2,c:1};
+const sp={s:3,b:2,c:2};
 let sc='title',mo=false,mi=0,ai=0,fr=0,wt=0,rd=1;
 let titleMenuIdx=0;
 let saveIndicatorTimer=0;
@@ -2219,8 +2219,8 @@ let battleWipeActive=false, battleWipeFrame=0;
 
 // ── FISHING STATE (Port Town) ──
 let fishingActive=false, fishingPhase='idle', fishingTimer=0, fishingBiteFrame=0;
-let fishingCooldownTimer=0; // 30-sec cooldown (1800 frames)
-const FISHING_COOLDOWN=1800;
+let fishingCooldownTimer=0; // 15-sec cooldown (900 frames)
+const FISHING_COOLDOWN=900;
 
 // ── TRAPS STATE (Forest) ──
 const forestTraps=new Set(['1-6-6','1-20-12','1-12-18','1-32-14']); // mapIdx-x-y
@@ -2359,7 +2359,7 @@ let mapCardDirSelect=false, mapCardDirIdx=0, mapCardPendingType=-1;
 
 // ── TENSION MECHANICS ──
 // Card Decay Timer: each slot stores timestamp when card was acquired (0 = empty)
-const CARD_DECAY_MS=120000; // 120 seconds real-time
+const CARD_DECAY_MS=180000; // 180 seconds (3 minutes) real-time
 const cardTimers=[0,0,0,0,0]; // parallel to pl[0].cd[5]
 let cardDecayWarningFlash=0; // frame counter for warning flash
 
@@ -2387,6 +2387,13 @@ function resetNewFeatureState(){
   fishingActive=false;inBuilding=false;crystalRevealTimer=0;
   mapCardUseActive=false;fountainActive=false;
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
+  // Reset all UI overlay states
+  wildEncounterActive=false;npcDialogActive=false;shopActive=false;signpostActive=false;
+  discardActive=false;cardAcqActive=false;cardAcqDone=false;randomEventActive=false;
+  encounterExclActive=false;encounterCooldown=0;
+  x402ShopOpen=false;x402ShopLoading=false;x402ShopResult='';x402ShopResultTimer=0;
+  infoBrokerConfirm=false;infoBrokerResult='';infoBrokerResultTimer=0;
+  buildingNpcDialog=false;fountainConfirm=false;fountainResultTimer=0;
   // Tension mechanics reset
   for(let i=0;i<5;i++)cardTimers[i]=0;
   streakCount=0;streakDisplayTimer=0;streakLostTimer=0;
@@ -2406,11 +2413,11 @@ function resetGameState(startCards){
   pl[0].cd=cards0;pl[0].cc=cc0;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
   pl[1].cd=cards1;pl[1].cc=cc1;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
   pl[2].cd=cards2;pl[2].cc=cc2;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
-  sp.s=3;sp.b=2;sp.c=1;rd=1;currentMap=0;stepCounter=0;randomEventTimer=0;
+  sp.s=3;sp.b=2;sp.c=2;rd=1;currentMap=0;stepCounter=0;randomEventTimer=0;
   rivalMaps=[0,0];
   // Reset rival AI
   rivalAI[0].goalX=10;rivalAI[0].goalY=10;rivalAI[0].goalMap=0;rivalAI[0].state='exploring';
-  rivalAI[0].moveTimer=0;rivalAI[0].moveInterval=10;rivalAI[0].lastKnownPlayerMap=-1;
+  rivalAI[0].moveTimer=0;rivalAI[0].moveInterval=8;rivalAI[0].lastKnownPlayerMap=-1;
   rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;rivalAI[0].stateTimer=0;
   rivalAI[1].goalX=20;rivalAI[1].goalY=15;rivalAI[1].goalMap=1;rivalAI[1].state='exploring';
   rivalAI[1].moveTimer=0;rivalAI[1].moveInterval=12;rivalAI[1].lastKnownPlayerMap=-1;
@@ -3549,15 +3556,15 @@ function drawMinimap(){
 function tryWildEncounter(){
   const m=getMap();
   const tile=m[pl[0].y]?.[pl[0].x];
-  // Base rates: Tall grass 20%, regular grass 8%
+  // Base rates: Tall grass 25%, regular grass 12%
   // Streak bonus: +5% per streak level
   // Danger LOW: +5% bonus to encounter rate
   const streakBonus=streakCount*0.05;
   const dangerBonus=areaDanger[currentMap]<DANGER_LOW_THRESH?0.05:0;
   if(tile===11){
-    if(Math.random()>(0.20+streakBonus+dangerBonus))return;
+    if(Math.random()>(0.25+streakBonus+dangerBonus))return;
   }else if(tile===1){
-    if(Math.random()>(0.08+streakBonus+dangerBonus))return;
+    if(Math.random()>(0.12+streakBonus+dangerBonus))return;
   }else{
     return;
   }
@@ -3787,9 +3794,18 @@ function doShopTrade(){
   const slot=filled[shopSelectedIdx];
   const oldCard=pl[0].cd[slot];
   const oldName=CD[oldCard-1].n;
-  // Pick a random different card
+  // Pick a card type the player doesn't already have (if possible)
+  const ownedTypes=new Set();
+  pl[0].cd.forEach(c=>{if(c>0)ownedTypes.add(c);});
+  const unowned=[];
+  for(let i=1;i<=5;i++){if(!ownedTypes.has(i))unowned.push(i);}
   let newCard;
-  do{ newCard=Math.floor(Math.random()*5)+1; }while(newCard===oldCard);
+  if(unowned.length>0){
+    newCard=unowned[Math.floor(Math.random()*unowned.length)];
+  }else{
+    // Player has all 5 types already, just pick a random different card
+    do{ newCard=Math.floor(Math.random()*5)+1; }while(newCard===oldCard);
+  }
   pl[0].cd[slot]=newCard;
   const newName=CD[newCard-1].n;
   shopResultText='Traded '+oldName+' for '+newName+'!';
@@ -6839,6 +6855,10 @@ function update(){
   if(fr%20===0)wt++;
   twTick();
   fadeUpdate();updateWipe();updateParticles();updateBanner();
+  // Safety caps: prevent unbounded array growth
+  if(particles.length>500)particles.splice(0,particles.length-500);
+  if(lg.length>200)lg.splice(0,lg.length-200);
+  if(burnedTiles.length>500)burnedTiles.splice(0,burnedTiles.length-500);
   updateVisualPositions();updateAmbient();
   updateMapLoadScreen();updateFPS();
   // Save indicator countdown
@@ -6926,9 +6946,9 @@ function update(){
   if(sc==='map'&&!mo&&!inBuilding){
     // Increase danger for current map
     areaDangerStayTimer[currentMap]++;
-    // Danger increases from staying (slow)
+    // Danger increases from staying (faster to push movement between areas)
     if(areaDangerStayTimer[currentMap]%120===0){
-      areaDanger[currentMap]=Math.min(1,areaDanger[currentMap]+0.02);
+      areaDanger[currentMap]=Math.min(1,areaDanger[currentMap]+0.03);
     }
     // Danger increases when rivals are on same map
     for(let ri=0;ri<2;ri++){
@@ -7627,9 +7647,9 @@ document.addEventListener('keydown',e=>{
           // Check forest traps (skip if shadow active)
           if(shadowStepsLeft<=0)checkForestTrap();
 
-          // Random map event every 200 steps
+          // Random map event every 150 steps
           randomEventTimer++;
-          if(randomEventTimer>=200&&!randomEventActive&&!wildEncounterActive&&!cardAcqActive){
+          if(randomEventTimer>=150&&!randomEventActive&&!wildEncounterActive&&!cardAcqActive){
             randomEventTimer=0;
             triggerRandomEvent();
           }
