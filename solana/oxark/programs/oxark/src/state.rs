@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 /// Card types (1-indexed, 0 = empty)
-/// 1=Crystal, 2=Shadow, 3=Flame, 4=Storm, 5=Void
+/// 1=Aegis (Crystal Knight), 2=Umbra (Shadow Rogue), 3=Ignis (Fire Beast), 4=Tempest (Storm Prophet), 5=Nihil (Void Observer)
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GameStatus {
     Lobby,
