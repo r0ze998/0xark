@@ -25,10 +25,12 @@ Footprints in the grass tell you someone was here. But who? And where are they n
 ## Post 3: Tech
 
 0xARK is built on:
-- Anchor/Rust smart contracts (Solana)
+- Anchor/Rust smart contracts (Solana devnet: 2gMYz...7yt86)
 - Circom ZK circuits (Poseidon hash, Groth16 verification)
 - x402 AI agent micropayments (USDC)
 
 Commit-reveal so even we can't see your next move.
+
+Now live on devnet. 7 core instructions. 277KB optimized binary.
 
 GitHub: github.com/r0ze998/0xark

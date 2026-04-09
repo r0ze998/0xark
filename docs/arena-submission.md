@@ -20,6 +20,7 @@ Secretly commit actions on-chain → Reveal with ZK proofs → Resolve in dramat
 ## Links
 - **Live Demo**: https://r0ze998.github.io/0xark/
 - **GitHub**: https://github.com/r0ze998/0xark
+- **Devnet Program**: `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3` ([Explorer](https://explorer.solana.com/address/2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3?cluster=devnet))
 - **GDD**: https://github.com/r0ze998/0xark/blob/main/GDD-v0.3.md
 
 ## Tech Stack

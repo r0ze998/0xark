@@ -7,7 +7,7 @@
 ```
 0xark/
 ├── solana/oxark/     — Anchor smart contract (Rust)
-├── solana/client/    — Game client (Canvas, 7000 lines)
+├── solana/client/    — Game client (Canvas, 9500 lines)
 ├── zk/               — Circom ZK circuits
 └── x402/             — AI agent broker
 ```
@@ -16,9 +16,9 @@
 
 ## [0:30-1:00] Smart Contract
 
-*[Show: lib.rs with 8 instructions]*
+*[Show: lib.rs with 7 instructions]*
 
-"Eight Anchor instructions: create, join, start, commit, reveal, resolve, verify ZK proof, and initialize."
+"Seven core Anchor instructions deployed on devnet: initialize, create, join, start, commit, reveal, resolve. Program ID: 2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3."
 
 *[Show: state.rs]*
 
@@ -28,9 +28,9 @@
 
 "Resolution order matters: Move → Shadow → Storm → Barrier → Steal → Flame → Scout → Draw → Void. Same-area constraint for Steal, Flame, Void."
 
-*[Show: test results — 8/8 passing]*
+*[Show: test results — 7/7 passing]*
 
-"Full round test: create game, join two players, start, both commit SHA256 hashes, both reveal, resolve — verified the game advances to round 2."
+"Full round test: create game, join two players, start, both commit SHA256 hashes, both reveal, resolve — verified the game advances to round 2. All tests pass."
 
 ## [1:00-1:30] ZK Commit-Reveal
 
@@ -93,8 +93,8 @@ State Updated → Read via RPC → Update Client
 
 "The client handles offline simulation for instant gameplay. When connected to Solana, it sends real transactions."
 
-*[Show: IDL — 8 instructions]*
+*[Show: Solana Explorer — deployed program]*
 
-"Complete IDL with 8 instructions. Ready for devnet deployment."
+"Deployed and verified on devnet. 277KB optimized binary. 7 core instructions with IDL."
 
-"github.com/r0ze998/0xark — everything is open source."
+"github.com/r0ze998/0xark — everything is open source. Play at r0ze998.github.io/0xark"

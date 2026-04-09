@@ -48,7 +48,7 @@
 
 *[Show: code/architecture diagram]*
 
-"Built on Solana with Anchor. Eight on-chain instructions handling the full game lifecycle."
+"Built on Solana with Anchor. Seven core instructions deployed to devnet. Program verified on-chain."
 
 "ZK commit-reveal with Poseidon hash and Groth16 proofs. Your move is hidden until verification."
 
@@ -56,7 +56,7 @@
 
 *[Show: terminal with test results]*
 
-"Eight passing tests. Full round verified: create, join, start, commit, reveal, resolve."
+"Seven passing tests. Full round verified: create, join, start, commit, reveal, resolve."
 
 ## [2:00-2:30] Traction / Market
 
@@ -64,7 +64,7 @@
 
 "Playable right now at r0ze998.github.io/0xark"
 
-"31 versions. 7,000 lines of game client. Three maps. Five characters with unique abilities."
+"57 versions. 9,500 lines of game client. Three maps. Five characters with unique abilities. Deployed on devnet."
 
 "No existing Solana game combines ZK hidden information, area-based strategy, and AI agent economics."
 
