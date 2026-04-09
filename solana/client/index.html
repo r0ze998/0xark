@@ -2625,10 +2625,10 @@ const x402HowItWorksText=[
 
 async function x402CheckServer(){
   try{
-    const r=await fetch(x402ServerUrl+'/health',{signal:AbortSignal.timeout(1500)});
+    const r=await fetch(x402ServerUrl+'/health',{signal:AbortSignal.timeout(1500),mode:'no-cors'});
     if(r.ok){const d=await r.json();x402Available=d.status==='ok';}
     else x402Available=false;
-  }catch(e){x402Available=false;}
+  }catch(e){x402Available=false;/* silent — server not running */}
 }
 
 async function x402PushState(){
@@ -8120,7 +8120,7 @@ function update(){
 
   // x402 server check every ~5 seconds (300 frames at 60fps)
   x402CheckTimer++;
-  if(x402CheckTimer>=300){x402CheckTimer=0;x402CheckServer();}
+  if(x402CheckTimer>=1800){x402CheckTimer=0;x402CheckServer();} // check every 30s, not 5s
 
   // Multiplayer ping every 5 seconds
   if(mp.connected&&fr%300===0)mpPing();
