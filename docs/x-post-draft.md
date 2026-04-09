@@ -1,35 +1,34 @@
-# X Post Drafts — 0xARK Development Updates
+# X Post Drafts
 
-## Post 1: Announcement
+## Post 1: Dev Announcement (English)
 
 Building 0xARK for @ColosseumOrg Frontier.
 
-GI meets Dark Forest on Solana. ZK hidden hands, fog of war exploration, AI agents trading intel via x402.
+On-chain card game where everything is hidden. Your hand, your location, your next move — all secret.
 
-Playable demo: https://r0ze998.github.io/0xark/
+Explore a fog-covered island. Steal cards from rivals who can't see you. Or get robbed by someone you didn't know was there.
 
-## Post 2: Gameplay Demo (with GIF/video)
+Information has a price. AI agents sell it for $0.001 via x402.
 
-0xARK gameplay loop:
-- Explore fog-covered island
-- Find cards in tall grass (area-specific drops)
-- Encounter rivals → battle with hidden actions
-- Collect all 5 types to win
+Playable now: r0ze998.github.io/0xark/
 
-Each card can be held for completion or consumed for power. The dilemma is real.
+## Post 2: Gameplay (with video/GIF)
 
-[attach gameplay GIF]
+0xARK dev update:
 
-## Post 3: Tech Thread
+AI rivals that actually think. One hunts you down, the other runs away.
 
-0xARK tech stack:
+Footprints in the grass tell you someone was here. But who? And where are they now?
 
-Anchor/Rust smart contract with:
-- Commit-reveal (SHA256 hash verification)
-- Area-based card pools (Port/Forest/Ruins)
-- Same-area constraint for Steal/Flame/Void
-- Move action that costs your turn
+[gameplay clip: exploring, seeing footprints, heartbeat pulse, encounter]
 
-ZK + x402 coming next.
+## Post 3: Tech
 
-Built for @ColosseumOrg Frontier.
+0xARK is built on:
+- Anchor/Rust smart contracts (Solana)
+- Circom ZK circuits (Poseidon hash, Groth16 verification)
+- x402 AI agent micropayments (USDC)
+
+Commit-reveal so even we can't see your next move.
+
+GitHub: github.com/r0ze998/0xark
