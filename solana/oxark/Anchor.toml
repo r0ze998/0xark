@@ -8,8 +8,11 @@ skip-lint = false
 [programs.localnet]
 oxark = "3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum"
 
+[programs.devnet]
+oxark = "3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum"
+
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
