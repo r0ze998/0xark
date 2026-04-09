@@ -991,11 +991,11 @@ function drawParticles(cx,cy){
 // DATA
 // ═══════════════════════════════════════
 const CD=[
-  {n:'AEGIS',c:'#48b8e8',d:'#2088b0',h:'#80d0f0',a:'#c0c8d0',i:'\u25C6',f:'Steal x2',fl:'The last light on the island'},
-  {n:'UMBRA',c:'#7858a0',d:'#503878',h:'#a080c8',a:'#302050',i:'\u25CF',f:'Invis 1T',fl:'Unseen, yet always there'},
-  {n:'IGNIS',c:'#d85840',d:'#a83828',h:'#f08060',a:'#f0c040',i:'\u25B2',f:'Burn card',fl:'Destruction is protection'},
-  {n:'TEMPEST',c:'#d8b028',d:'#a88818',h:'#f0d850',a:'#ffffff',i:'\u2605',f:'No barrier',fl:'Rules exist to be broken'},
-  {n:'NIHIL',c:'#38a880',d:'#207858',h:'#60c8a8',a:'#ffffff',i:'\u25CE',f:'Copy card',fl:'I know what you hold'},
+  {n:'AEGIS',c:'#48b8e8',d:'#2088b0',h:'#80d0f0',a:'#c0c8d0',i:'\u25C6',f:'Steal x2',fl:'Shield of the last captain'},
+  {n:'UMBRA',c:'#7858a0',d:'#503878',h:'#a080c8',a:'#302050',i:'\u25CF',f:'Invis 1T',fl:'The shadow that sails with no ship'},
+  {n:'IGNIS',c:'#d85840',d:'#a83828',h:'#f08060',a:'#f0c040',i:'\u25B2',f:'Burn card',fl:'Fire that never drowns'},
+  {n:'TEMPEST',c:'#d8b028',d:'#a88818',h:'#f0d850',a:'#ffffff',i:'\u2605',f:'No barrier',fl:'The storm answers to no flag'},
+  {n:'NIHIL',c:'#38a880',d:'#207858',h:'#60c8a8',a:'#ffffff',i:'\u25CE',f:'Copy card',fl:'The void between the waves'},
 ];
 
 // ═══════════════════════════════════════
@@ -1438,7 +1438,7 @@ const MAP_RUINS=[
 ];
 
 const maps=[MAP_PORT, MAP_FOREST, MAP_RUINS];
-const mapNames=['PORT TOWN','DEEP FOREST','ANCIENT RUINS'];
+const mapNames=['CORSAIR BAY','SMUGGLERS JUNGLE','CURSED TEMPLE'];
 const mapColors=['#3060b0','#308030','#803040'];
 let currentMap=0;
 
@@ -1543,35 +1543,35 @@ fogLoad();
 // ── EXIT ZONES ──
 // Each exit: {map, fromMap, tiles:[[x,y],...], targetMap, targetX, targetY}
 const exits=[
-  // Port Town north exit -> Forest south entrance (land on path at col 2-3)
+  // Corsair Bay north exit -> Forest south entrance (land on path at col 2-3)
   {fromMap:0, tiles:[[15,1],[16,1]], targetMap:1, targetX:2, targetY:27},
-  // Forest south exit -> Port Town north entrance
+  // Forest south exit -> Corsair Bay north entrance
   {fromMap:1, tiles:[[2,28],[3,28],[23,28],[24,28]], targetMap:0, targetX:15, targetY:2},
   // Forest north exit -> Ruins south entrance
   {fromMap:1, tiles:[[14,1],[15,1],[16,1]], targetMap:2, targetX:4, targetY:28},
   // Ruins south exit -> Forest north entrance (land on path near row 2)
   {fromMap:2, tiles:[[4,28],[5,28]], targetMap:1, targetX:15, targetY:3},
-  // Ruins east exit -> Port Town (secret shortcut)
+  // Ruins east exit -> Corsair Bay (secret shortcut)
   {fromMap:2, tiles:[[37,20],[37,21]], targetMap:0, targetX:5, targetY:10},
 ];
 
 // ── NPC DATA ──
 const npcs=[
-  // Port Town NPCs
-  {map:0, x:8, y:6, type:0, name:'Card Dealer', dir:0,
-   dialog:['Welcome to the Card Shop!','I can trade cards...','(Coming soon)']},
-  {map:0, x:22, y:6, type:1, name:'Info Broker', dir:0,
-   dialog:['I know where the','other players are...','for a price. (x402)']},
-  {map:0, x:14, y:12, type:2, name:'Sailor', dir:2,
-   dialog:['The sea is calm today.','Perfect for sailing','to distant lands!']},
-  // Forest NPCs
-  {map:1, x:18, y:14, type:2, name:'Old Man', dir:0,
-   dialog:['The ruins hold','ancient power...','but beware.']},
-  {map:1, x:28, y:14, type:0, name:'Ranger', dir:1,
-   dialog:['Watch your step in','the tall grass.','Wild cards lurk there!']},
-  // Ruins NPCs
-  {map:2, x:15, y:22, type:1, name:'Guardian', dir:2,
-   dialog:['Only those with','courage may claim','the final card.']},
+  // Corsair Bay NPCs
+  {map:0, x:8, y:6, type:0, name:'Pirate Merchant', dir:0,
+   dialog:['Ahoy! Welcome to','me trading post!','(Coming soon)']},
+  {map:0, x:22, y:6, type:1, name:'Spy Master', dir:0,
+   dialog:['I know where the','other crews be...','for a price. (x402)']},
+  {map:0, x:14, y:12, type:2, name:'Old Sea Dog', dir:2,
+   dialog:['The tides be calm.','Good day to hunt','for spirit cards!']},
+  // Smuggler's Jungle NPCs
+  {map:1, x:18, y:14, type:2, name:'Jungle Hermit', dir:0,
+   dialog:['The temple holds','cursed power...','tread carefully.']},
+  {map:1, x:28, y:14, type:0, name:'Lookout', dir:1,
+   dialog:['Watch yer step in','the tall grass.','Wild cards lurk there!']},
+  // Cursed Temple NPCs
+  {map:2, x:15, y:22, type:1, name:'Temple Keeper', dir:2,
+   dialog:['Only those with','true grit may claim','the final card.']},
 ];
 
 // ── TREASURE DATA ──
@@ -1771,13 +1771,13 @@ function x402MaybeEnhanceRival(aiIdx){
     x402RivalLastAdvice[aiIdx]=data.recommendation;
     const ai=rivalAI[aiIdx];
     // If advice mentions a specific area, try to navigate there
-    if(data.recommendation.includes('Port Town')&&rivalMaps[aiIdx]!==0){
+    if((data.recommendation.includes('Corsair Bay')||data.recommendation.includes('Corsair Bay'))&&rivalMaps[aiIdx]!==0){
       const ex=findExitToMap(rivalMaps[aiIdx],0);
       if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
-    }else if(data.recommendation.includes('Deep Forest')&&rivalMaps[aiIdx]!==1){
+    }else if((data.recommendation.includes('Smugglers Jungle')||data.recommendation.includes('Smuggler'))&&rivalMaps[aiIdx]!==1){
       const ex=findExitToMap(rivalMaps[aiIdx],1);
       if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
-    }else if(data.recommendation.includes('Ancient Ruins')&&rivalMaps[aiIdx]!==2){
+    }else if((data.recommendation.includes('Cursed Temple')||data.recommendation.includes('Cursed Temple'))&&rivalMaps[aiIdx]!==2){
       const ex=findExitToMap(rivalMaps[aiIdx],2);
       if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
     }
@@ -2193,7 +2193,7 @@ let stepCounter=0;
 let randomEventTimer=0;
 let randomEventActive=false, randomEventText='', randomEventFrame=0;
 
-// ── Card Shop state ──
+// ── Trading Post state ──
 let shopActive=false, shopSelectedIdx=0, shopConfirm=false, shopResultText='', shopResultFrame=0, shopPhase='list';
 
 // ── Signpost state ──
@@ -2217,7 +2217,7 @@ let battleWipeActive=false, battleWipeFrame=0;
 // FEATURE 2: AREA-SPECIFIC EVENTS
 // ═══════════════════════════════════════
 
-// ── FISHING STATE (Port Town) ──
+// ── FISHING STATE (Corsair Bay) ──
 let fishingActive=false, fishingPhase='idle', fishingTimer=0, fishingBiteFrame=0;
 let fishingCooldownTimer=0; // 15-sec cooldown (900 frames)
 const FISHING_COOLDOWN=900;
@@ -2243,7 +2243,7 @@ let inBuilding=false, buildingType='', buildingPlayerX=4, buildingPlayerY=6;
 let buildingPlayerDir=0, buildingReturnX=0, buildingReturnY=0, buildingReturnMap=0;
 const BUILDING_W=10, BUILDING_H=8;
 
-// Card Shop interior map (10x8): 0=floor, 1=wall, 2=counter, 3=shelf, 4=exit, 5=npc
+// Trading Post interior map (10x8): 0=floor, 1=wall, 2=counter, 3=shelf, 4=exit, 5=npc
 const BUILDING_SHOP=[
   [1,1,1,1,1,1,1,1,1,1],
   [1,3,0,0,0,0,0,0,3,1],
@@ -2255,7 +2255,7 @@ const BUILDING_SHOP=[
   [1,1,1,1,4,4,1,1,1,1],
 ];
 
-// Info Broker interior map (10x8)
+// Spy Masters Den interior map (10x8)
 const BUILDING_INFO=[
   [1,1,1,1,1,1,1,1,1,1],
   [1,3,0,0,0,0,0,0,3,1],
@@ -3579,7 +3579,7 @@ function tryWildEncounter(){
     ac.forEach(cid=>{if(!owned.has(cid))needed.push(cid-1);});
     if(needed.length>0){cardIdx=needed[Math.floor(Math.random()*needed.length)];}
     else{cardIdx=ac[Math.floor(Math.random()*ac.length)]-1;}
-  }else if(currentMap===0){// Port Town
+  }else if(currentMap===0){// Corsair Bay
     const roll=Math.random();
     if(roll<0.5)cardIdx=0;     // AEGIS
     else cardIdx=1;             // UMBRA
@@ -3692,8 +3692,8 @@ function checkNPCInteraction(){
       if(npc.x<p.x)p.dir=1;else if(npc.x>p.x)p.dir=3;
       else if(npc.y<p.y)p.dir=2;else if(npc.y>p.y)p.dir=0;
 
-      // Card Dealer opens the shop instead of normal dialog
-      if(npc.name==='Card Dealer'){
+      // Pirate Merchant opens the shop instead of normal dialog
+      if(npc.name==='Pirate Merchant'){
         openCardShop();
         return true;
       }
@@ -3714,19 +3714,18 @@ function checkNPCInteraction(){
 // ═══════════════════════════════════════
 function getSignpostMessage(mapIdx, tx_, ty){
   if(mapIdx===0){
-    // Port Town signposts
-    if(tx_===13&&ty===5) return 'Welcome to Port Town! Explore the island to find cards.';
-    if(tx_===17&&ty===5) return 'Card Shop \u2014 trade your duplicates for cards you need.';
-    if(tx_===15&&ty===21) return 'The dock leads north to the Deep Forest.';
+    // Corsair Bay signposts
+    if(tx_===13&&ty===5) return 'Corsair Bay -- Aegis & Umbra spirits haunt these docks.';
+    if(tx_===17&&ty===5) return 'Trading Post -- swap yer duplicates for cards ye need.';
+    if(tx_===15&&ty===21) return 'Jungle trail north. Watch for smugglers.';
   }
   if(mapIdx===1){
-    // Forest signs (no explicit signposts in forest map, but generic)
-    return 'Deep Forest ahead. Cards drop from tall grass.';
+    return 'Smugglers Jungle -- spirits hide in the tall grass.';
   }
   if(mapIdx===2){
-    return 'Ancient Ruins \u2014 dangerous but rewarding.';
+    return 'Cursed Temple -- dangerous waters, rich plunder.';
   }
-  return 'A weathered signpost. The text is faded.';
+  return 'A salt-worn signpost. The text is barely legible.';
 }
 
 function checkSignpostInteraction(){
@@ -3771,7 +3770,7 @@ function drawSignpostDialog(){
 }
 
 // ═══════════════════════════════════════
-// CARD SHOP
+// TRADING POST
 // ═══════════════════════════════════════
 function openCardShop(){
   shopActive=true;
@@ -4016,12 +4015,46 @@ function dTitle(){
   tx('0xARK',W/2-96+1,191,32,'rgba(0,0,0,.4)');
   tx('0xARK',W/2-96,190,32,'#f8f0e0');
   if(Math.sin(fr*.02)>.3)tx('0xARK',W/2-96,190,32,'rgba(248,240,224,.15)');
-  tx('ZK CARD BATTLE',W/2-90,226,10,'#8888a0');
+  tx('ZK PIRATE CARD BATTLE',W/2-120,226,10,'#8888a0');
 
-  bx(W/2-160,400,320,5,'#183018');bx(W/2-140,395,280,5,'#1c381c');
-  bx(W/2-120,390,240,5,'#204020');bx(W/2-100,385,200,6,'#244824');
-  bx(W/2-70,375,10,12,'#183018');bx(W/2-30,378,8,10,'#1c381c');bx(W/2+30,372,12,16,'#183018');
-  for(let i=0;i<5;i++){bx(W/2-150+i*14,406+i*8,300-i*28,2,`rgba(48,96,176,${.1-i*.015})`);}
+  // Ship silhouette in background
+  {
+    const shipX=W/2-60,shipY=260+Math.sin(fr*0.015)*3;
+    // Hull
+    bx(shipX-40,shipY+20,120,14,'#181828');bx(shipX-30,shipY+34,100,6,'#181828');
+    bx(shipX-20,shipY+40,80,4,'#181828');
+    // Hull bow curve
+    bx(shipX+80,shipY+22,10,8,'#181828');bx(shipX+90,shipY+26,6,4,'#181828');
+    bx(shipX-50,shipY+22,10,8,'#181828');
+    // Mast
+    bx(shipX+10,shipY-50,4,70,'#1c1c30');
+    // Sail
+    bx(shipX-16,shipY-42,30,36,'#222240');bx(shipX-12,shipY-38,22,28,'#282848');
+    // Crow's nest
+    bx(shipX+6,shipY-54,12,4,'#1c1c30');
+    // Flag (pirate)
+    const flagWave=Math.sin(fr*0.08)*2;
+    bx(shipX+14,shipY-52+flagWave,16,10,'#1c1c30');
+    bx(shipX+18,shipY-50+flagWave,2,2,'#2a2a48');bx(shipX+22,shipY-50+flagWave,2,2,'#2a2a48');
+    bx(shipX+19,shipY-47+flagWave,4,2,'#2a2a48');
+    // Second mast (shorter)
+    bx(shipX+50,shipY-20,3,40,'#1c1c30');
+    bx(shipX+36,shipY-14,20,18,'#222240');
+    // Bowsprit
+    bx(shipX+88,shipY+18,20,2,'#1c1c30');
+  }
+  // Animated waves at bottom of title screen
+  for(let wx=0;wx<W;wx+=4){
+    const wy1=H-40+Math.sin(fr*0.04+wx*0.015)*6+Math.sin(fr*0.025+wx*0.008)*4;
+    const wy2=H-28+Math.sin(fr*0.035+wx*0.012+2)*5+Math.sin(fr*0.02+wx*0.01)*3;
+    const wy3=H-16+Math.sin(fr*0.03+wx*0.01+4)*4;
+    bx(wx,wy1,4,2,`rgba(32,64,128,0.4)`);
+    bx(wx,wy2,4,2,`rgba(40,80,150,0.35)`);
+    bx(wx,wy3,4,2,`rgba(48,96,176,0.3)`);
+  }
+  // Solid wave base fill
+  bx(0,H-20,W,20,'rgba(16,32,64,0.5)');
+  bx(0,H-10,W,10,'rgba(12,24,48,0.6)');
 
   if(hasSave()){
     const sel=titleMenuIdx||0;
@@ -4300,6 +4333,300 @@ function isVisibleThroughFog(tileX,tileY,playerDist){
   return(dx+dy)<=playerDist;
 }
 
+// ═══════════════════════════════════════
+// PIRATE THEME DECORATIONS
+// ═══════════════════════════════════════
+
+// Seagull state (Corsair Bay flying seagulls)
+const seagulls=[];
+for(let i=0;i<6;i++){
+  seagulls.push({
+    x:Math.random()*40*TW,
+    y:Math.random()*8*TW+2*TW,
+    vx:0.3+Math.random()*0.4,
+    phase:Math.random()*Math.PI*2,
+    arc:10+Math.random()*15
+  });
+}
+
+// Monkey state (Smuggler's Jungle)
+const monkeys=[];
+for(let i=0;i<4;i++){
+  monkeys.push({
+    treeX:5+Math.floor(Math.random()*25),
+    treeY:4+Math.floor(Math.random()*20),
+    offsetX:Math.random()*16,
+    offsetY:Math.random()*8,
+    hopTimer:Math.floor(Math.random()*120),
+    hopDir:1
+  });
+}
+
+// Water drip state (Cursed Temple)
+const waterDrips=[];
+for(let i=0;i<8;i++){
+  waterDrips.push({
+    x:4+Math.floor(Math.random()*30),
+    y:2+Math.floor(Math.random()*28),
+    dropY:0,
+    speed:0.4+Math.random()*0.3,
+    delay:Math.floor(Math.random()*90)
+  });
+}
+
+function drawPirateDecorations(){
+  if(currentMap===0){
+    // ── CORSAIR BAY DECORATIONS ──
+
+    // Docked ship at the pier (around dock area, tile coords ~14-18, 22-24)
+    {
+      const shipTX=16,shipTY=23;
+      const sx=shipTX*TW-camX,sy=shipTY*TH-camY;
+      if(sx>-120&&sx<W+60&&sy>-80&&sy<H+40){
+        // Hull (brown wooden ship)
+        bx(sx-30,sy+8,90,16,'#705028');bx(sx-20,sy+24,70,8,'#604020');
+        bx(sx-10,sy+32,50,4,'#503018');
+        // Hull stripe
+        bx(sx-28,sy+12,86,2,'#806838');
+        // Bow
+        bx(sx+60,sy+10,14,10,'#705028');bx(sx+74,sy+14,6,4,'#604020');
+        // Stern
+        bx(sx-34,sy+6,8,18,'#604020');bx(sx-38,sy+4,6,12,'#503018');
+        // Mast
+        bx(sx+14,sy-40,4,48,'#906838');
+        // Sail (slightly billowing)
+        const billowSail=Math.sin(fr*0.03)*2;
+        bx(sx-4+billowSail,sy-34,24,28,'#e8e0c8');bx(sx-2+billowSail,sy-30,20,20,'#f0e8d0');
+        // Sail ropes
+        bx(sx+16,sy-40,1,6,'#504030');bx(sx+14,sy-40,1,6,'#504030');
+        // Crow's nest
+        bx(sx+10,sy-44,12,4,'#806030');
+        // Pirate flag
+        const flagW=Math.sin(fr*0.06)*1.5;
+        bx(sx+18,sy-42+flagW,14,8,'#181820');
+        // Skull on flag (tiny)
+        bx(sx+22,sy-41+flagW,2,2,'#c0c0c0');bx(sx+26,sy-41+flagW,2,2,'#c0c0c0');
+        bx(sx+23,sy-39+flagW,4,1,'#c0c0c0');
+        // Rope/anchor at hull side
+        bx(sx-26,sy+6,2,20,'#908060');
+        // Anchor shape
+        bx(sx-28,sy+26,6,2,'#606060');bx(sx-26,sy+28,2,4,'#606060');
+        bx(sx-30,sy+30,2,2,'#606060');bx(sx-22,sy+30,2,2,'#606060');
+      }
+    }
+
+    // Barrel stacks near warehouses (around building area ~8-10, 8-9)
+    const barrelSpots=[[9,8],[10,8],[9,9],[21,8],[22,8]];
+    barrelSpots.forEach(([btx,bty])=>{
+      const bpx=btx*TW-camX,bpy=bty*TH-camY;
+      if(bpx>-TW&&bpx<W+TW&&bpy>-TW&&bpy<H+TW&&fogRevealed[0][bty]?.[btx]){
+        // Barrel 1
+        bx(bpx+2,bpy+12,12,14,'#906838');bx(bpx+4,bpy+14,8,10,'#a07848');
+        bx(bpx+2,bpy+14,12,2,'#705028');bx(bpx+2,bpy+22,12,2,'#705028');
+        // Barrel 2 (stacked)
+        if((btx+bty)%2===0){
+          bx(bpx+16,bpy+14,12,12,'#906838');bx(bpx+18,bpy+16,8,8,'#a07848');
+          bx(bpx+16,bpy+16,12,2,'#705028');bx(bpx+16,bpy+22,12,2,'#705028');
+        }
+      }
+    });
+
+    // Rope coils near dock
+    const ropeSpots=[[12,22],[18,22]];
+    ropeSpots.forEach(([rtx,rty])=>{
+      const rpx=rtx*TW-camX,rpy=rty*TH-camY;
+      if(rpx>-TW&&rpx<W+TW&&rpy>-TW&&rpy<H+TW&&fogRevealed[0][rty]?.[rtx]){
+        g.fillStyle='#a09060';g.beginPath();g.ellipse(rpx+16,rpy+22,6,4,0,0,Math.PI*2);g.fill();
+        g.fillStyle='#b0a070';g.beginPath();g.ellipse(rpx+16,rpy+22,4,2,0,0,Math.PI*2);g.fill();
+        bx(rpx+14,rpy+18,4,4,'#a09060');
+      }
+    });
+
+    // Seagulls flying over water
+    seagulls.forEach(sg=>{
+      sg.x+=sg.vx;
+      if(sg.x>42*TW)sg.x=-20;
+      const sgPx=sg.x-camX;
+      const sgPy=sg.y-camY+Math.sin(fr*0.04+sg.phase)*sg.arc;
+      if(sgPx>-10&&sgPx<W+10&&sgPy>-10&&sgPy<H){
+        // Body (white dot)
+        bx(sgPx,sgPy,3,2,'#e8e8e8');
+        // Wings (flapping)
+        if(Math.sin(fr*0.12+sg.phase)>0){
+          bx(sgPx-3,sgPy-1,3,1,'#d8d8d8');bx(sgPx+3,sgPy-1,3,1,'#d8d8d8');
+        }else{
+          bx(sgPx-3,sgPy+1,3,1,'#d8d8d8');bx(sgPx+3,sgPy+1,3,1,'#d8d8d8');
+        }
+      }
+    });
+
+  }else if(currentMap===1){
+    // ── SMUGGLER'S JUNGLE DECORATIONS ──
+
+    // Vine/hanging rope elements on some trees
+    const m=getMap();
+    for(let vy=Math.max(0,Math.floor(camY/TH));vy<=Math.min(MH-1,Math.ceil((camY+H)/TH));vy++){
+      for(let vx=Math.max(0,Math.floor(camX/TW));vx<=Math.min(MW-1,Math.ceil((camX+W)/TW));vx++){
+        if(m[vy]?.[vx]===3&&fogRevealed[1][vy]?.[vx]&&((vx*7+vy*13)%5===0)){
+          const vpx=vx*TW-camX,vpy=vy*TH-camY;
+          // Hanging vine
+          const vineLen=12+((vx*3+vy*5)%8);
+          for(let vi=0;vi<vineLen;vi++){
+            const vox=Math.sin(fr*0.02+vi*0.3+vx)*1.5;
+            bx(vpx+8+vox,vpy+14+vi*2,2,2,'#387830');
+          }
+          // Second vine on some trees
+          if((vx+vy)%3===0){
+            for(let vi=0;vi<vineLen-4;vi++){
+              const vox2=Math.sin(fr*0.025+vi*0.25+vy)*1.2;
+              bx(vpx+22+vox2,vpy+16+vi*2,1,2,'#306828');
+            }
+          }
+        }
+      }
+    }
+
+    // Hidden treasure chest (visible after fog reveal)
+    // Place at a specific tile that looks good
+    const chestTX=15,chestTY=8;
+    if(fogRevealed[1][chestTY]?.[chestTX]){
+      const cpx=chestTX*TW-camX,cpy=chestTY*TH-camY;
+      if(cpx>-TW&&cpx<W+TW&&cpy>-TH&&cpy<H+TH){
+        // Chest body
+        bx(cpx+8,cpy+18,16,10,'#906828');bx(cpx+10,cpy+20,12,6,'#a07838');
+        // Chest lid
+        bx(cpx+8,cpy+14,16,5,'#805820');bx(cpx+10,cpy+15,12,3,'#906828');
+        // Lock/latch
+        bx(cpx+14,cpy+17,4,3,'#d0a030');bx(cpx+15,cpy+18,2,2,'#e0b040');
+        // Sparkle (subtle hint)
+        if(fr%60<20){
+          const sparkA=(Math.sin(fr*0.15)*0.3+0.5);
+          g.globalAlpha=sparkA;
+          bx(cpx+16,cpy+12,2,2,'#f0d050');
+          g.globalAlpha=1;
+        }
+      }
+    }
+
+    // Monkeys in trees
+    monkeys.forEach(mk=>{
+      mk.hopTimer--;
+      if(mk.hopTimer<=0){
+        mk.hopTimer=80+Math.floor(Math.random()*100);
+        mk.hopDir=-mk.hopDir;
+        mk.offsetX=Math.random()*12;
+      }
+      const mtx=mk.treeX,mty=mk.treeY;
+      const mm=getMap();
+      if(mm[mty]?.[mtx]!==3)return;
+      if(!fogRevealed[1][mty]?.[mtx])return;
+      const mpx=mtx*TW-camX+mk.offsetX,mpy=mty*TH-camY+4+mk.offsetY;
+      if(mpx<-TW||mpx>W+TW||mpy<-TH||mpy>H+TH)return;
+      const hopBob=mk.hopTimer<10?Math.abs(Math.sin(mk.hopTimer*0.5))*4:0;
+      // Body
+      bx(mpx+2,mpy+6-hopBob,6,5,'#8B5E3C');
+      // Head
+      bx(mpx+3,mpy+2-hopBob,4,4,'#A06B3F');
+      // Face
+      bx(mpx+4,mpy+3-hopBob,1,1,'#2a1a0a');bx(mpx+6,mpy+3-hopBob,1,1,'#2a1a0a');
+      // Tail
+      const tailCurl=Math.sin(fr*0.05+mtx)*2;
+      bx(mpx+8,mpy+8-hopBob+tailCurl,1,3,'#8B5E3C');
+      bx(mpx+9,mpy+10-hopBob+tailCurl,1,2,'#8B5E3C');
+    });
+
+  }else if(currentMap===2){
+    // ── CURSED TEMPLE DECORATIONS ──
+
+    // Skull decorations on walls
+    const m=getMap();
+    for(let sy=Math.max(0,Math.floor(camY/TH));sy<=Math.min(MH-1,Math.ceil((camY+H)/TH));sy++){
+      for(let sx=Math.max(0,Math.floor(camX/TW));sx<=Math.min(MW-1,Math.ceil((camX+W)/TW));sx++){
+        if(m[sy]?.[sx]===22&&fogRevealed[2][sy]?.[sx]&&((sx*11+sy*7)%7===0)){
+          const spx=sx*TW-camX,spy=sy*TH-camY;
+          // Skull shape
+          bx(spx+12,spy+4,8,7,'#c8c0a8');bx(spx+13,spy+3,6,2,'#c8c0a8');
+          // Eye sockets
+          bx(spx+13,spy+6,2,2,'#383840');bx(spx+17,spy+6,2,2,'#383840');
+          // Nose
+          bx(spx+15,spy+8,2,1,'#a09888');
+          // Jaw
+          bx(spx+13,spy+10,6,2,'#b0a890');
+          bx(spx+14,spy+11,1,1,'#383840');bx(spx+16,spy+11,1,1,'#383840');bx(spx+18,spy+11,1,1,'#383840');
+          // Ghostly glow around skull
+          const glowA=Math.sin(fr*0.04+sx*2+sy*3)*0.1+0.12;
+          g.globalAlpha=glowA;
+          g.fillStyle='#806090';g.beginPath();g.arc(spx+16,spy+8,10,0,Math.PI*2);g.fill();
+          g.globalAlpha=1;
+        }
+      }
+    }
+
+    // Dripping water effect from ceiling tiles
+    waterDrips.forEach(wd=>{
+      if(!fogRevealed[2][wd.y]?.[wd.x])return;
+      const m2=getMap();
+      if(m2[wd.y]?.[wd.x]!==22)return;
+      const wpx=wd.x*TW-camX+12+((wd.x*5)%12),wpy=wd.y*TH-camY+TH;
+      if(wpx<-4||wpx>W+4||wpy<-40||wpy>H+4)return;
+      wd.delay--;
+      if(wd.delay>0)return;
+      wd.dropY+=wd.speed;
+      if(wd.dropY>24){
+        wd.dropY=0;
+        wd.delay=40+Math.floor(Math.random()*60);
+      }
+      // Water droplet
+      bx(wpx,wpy+wd.dropY,2,3,'#4888c0');
+      bx(wpx,wpy+wd.dropY,1,2,'#6aa8e0');
+      // Splash at bottom
+      if(wd.dropY>20){
+        const splA=1-(wd.dropY-20)/4;
+        g.globalAlpha=splA*0.5;
+        bx(wpx-2,wpy+24,2,1,'#4888c0');bx(wpx+2,wpy+24,2,1,'#4888c0');
+        g.globalAlpha=1;
+      }
+    });
+
+    // Ghostly glow in darker areas (near lava/crystal tiles)
+    for(let gy=Math.max(0,Math.floor(camY/TH));gy<=Math.min(MH-1,Math.ceil((camY+H)/TH));gy++){
+      for(let gx=Math.max(0,Math.floor(camX/TW));gx<=Math.min(MW-1,Math.ceil((camX+W)/TW));gx++){
+        const gt=m[gy]?.[gx];
+        if((gt===25||gt===26)&&fogRevealed[2][gy]?.[gx]){
+          const gpx=gx*TW-camX+16,gpy=gy*TH-camY+16;
+          if(gpx>-20&&gpx<W+20&&gpy>-20&&gpy<H+20){
+            const glowPulse=Math.sin(fr*0.03+gx*3+gy*5)*0.06+0.08;
+            g.globalAlpha=glowPulse;
+            g.fillStyle=gt===25?'#f08040':'#80c0f0';
+            g.beginPath();g.arc(gpx,gpy,20,0,Math.PI*2);g.fill();
+            g.globalAlpha=1;
+          }
+        }
+      }
+    }
+
+    // Pirate flag on the altar (tile 27)
+    for(let ay=Math.max(0,Math.floor(camY/TH));ay<=Math.min(MH-1,Math.ceil((camY+H)/TH));ay++){
+      for(let ax=Math.max(0,Math.floor(camX/TW));ax<=Math.min(MW-1,Math.ceil((camX+W)/TW));ax++){
+        if(m[ay]?.[ax]===27&&fogRevealed[2][ay]?.[ax]){
+          const apx=ax*TW-camX,apy=ay*TH-camY;
+          if(apx>-TW&&apx<W+TW&&apy>-TH-20&&apy<H+TH){
+            // Flag pole
+            bx(apx+22,apy-16,2,20,'#808088');
+            // Pirate flag
+            const fw=Math.sin(fr*0.05)*1;
+            bx(apx+24,apy-14+fw,12,8,'#181820');
+            // Skull and crossbones on flag
+            bx(apx+28,apy-13+fw,2,2,'#c0c0b0');bx(apx+31,apy-13+fw,2,2,'#c0c0b0');
+            bx(apx+29,apy-11+fw,3,1,'#c0c0b0');
+            bx(apx+27,apy-9+fw,2,1,'#c0c0b0');bx(apx+33,apy-9+fw,2,1,'#c0c0b0');
+          }
+        }
+      }
+    }
+  }
+}
+
 function dMap(){
   updateCamera();
 
@@ -4360,6 +4687,7 @@ function dMap(){
 
   drawParticles(camX,camY);
   drawBirds();
+  drawPirateDecorations();
 
   // Draw footprints on revealed grass tiles
   footprints.forEach(fp=>{
@@ -4621,7 +4949,7 @@ function dMap(){
   // Signpost dialog overlay
   drawSignpostDialog();
 
-  // Card Shop overlay
+  // Trading Post overlay
   drawCardShop();
 
   // Wild encounter overlay
@@ -5905,8 +6233,8 @@ function drawTutorialMsg(){
 // ═══════════════════════════════════════
 // AREA CARD INFO
 // ═══════════════════════════════════════
-const AREA_CARD_DESC=['Aegis & Umbra spirits','Ignis & Tempest spirits','Nihil & Aegis spirits'];
-const CARD_AREA_INFO=['Port Town, Ruins','Port Town','Forest','Forest','Ruins'];
+const AREA_CARD_DESC=['Aegis & Umbra spirits haunt the docks','Ignis & Tempest spirits roam the jungle','Nihil & Aegis spirits guard the temple'];
+const CARD_AREA_INFO=['Corsair Bay, Temple','Corsair Bay','Jungle','Jungle','Temple'];
 // Card IDs: 1=AEGIS, 2=UMBRA, 3=IGNIS, 4=TEMPEST, 5=NIHIL
 
 // ═══════════════════════════════════════
@@ -6016,7 +6344,7 @@ function dLog(){
 }
 
 // ═══════════════════════════════════════
-// FISHING MINIGAME (Port Town)
+// FISHING MINIGAME (Corsair Bay docks)
 // ═══════════════════════════════════════
 function canFish(){
   if(currentMap!==0||fishingCooldownTimer>0||inBuilding)return false;
@@ -6078,7 +6406,7 @@ function fishingCatchCard(){
   fishingPhase='catch';
   fishingTimer=90;
   sfxFishCatch();
-  // Random Port Town card (Aegis or Umbra)
+  // Random dock spirit card (Aegis or Umbra)
   const cardIdx=Math.random()<0.5?0:1;
   let slot=-1;
   for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
@@ -6283,15 +6611,15 @@ function checkBuildingEntry(){
   else if(p.dir===1)fx--;else if(p.dir===3)fx++;
   if(fx>=0&&fx<MW&&fy>=0&&fy<MH){
     const t=m[fy]?.[fx];
-    // Card Shop door (building type 5 at specific locations)
-    // Check for Card Dealer NPC building - tile 5 in Port Town
+    // Trading Post door (building type 5 at specific locations)
+    // Check for Pirate Merchant NPC building - tile 5 in Corsair Bay
     if(currentMap===0&&t===5){
-      // Check which building: (8,5) is card shop, (22,5)=info broker area -> (22,6 door)
+      // Check which building: (8,5) is trading post, (22,5)=spy master area -> (22,6 door)
       if(fx===8&&fy===5){enterBuilding('shop',fx,fy);return true;}
       if(fx===20&&fy===11){enterBuilding('shop',fx,fy);return true;}
     }
     if(currentMap===0&&t===15){
-      // Blue building = Info Broker
+      // Blue building = Spy Masters Den
       if(fx===22&&fy===5){enterBuilding('info',fx,fy);return true;}
     }
   }
@@ -6390,7 +6718,7 @@ function drawBuildingInterior(){
   // HUD for building
   const hudY=H-40;
   win(0,hudY,W,40);
-  tx(buildingType==='shop'?'CARD SHOP':'INFO BROKER',10,hudY+20,8,'#806030');
+  tx(buildingType==='shop'?'TRADING POST':'SPY MASTERS DEN',10,hudY+20,8,'#806030');
   if(buildingType==='info'){
     const statusClr=x402Available?'#40a060':'#605060';
     const statusTxt=x402Available?'x402 ONLINE':'x402 OFFLINE';
@@ -6583,7 +6911,7 @@ function checkObjectInteraction(){
     return true;
   }
 
-  // Fountain interaction (type 20, Port Town)
+  // Fountain interaction (type 20, Corsair Bay)
   if(ft.tile===20&&currentMap===0){
     const filled=[];
     for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
@@ -7190,7 +7518,7 @@ document.addEventListener('keydown',e=>{
             fadeIn();twSet('Multiplayer game started!');
           }else{
             resetGameState(true);
-            sc='map';currentMap=0;showBanner('PORT TOWN','Aegis & Umbra spirits found here');
+            sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
             fadeIn();twSet('Multiplayer game started! Collect all 5 card types to win!');
           }
@@ -7213,18 +7541,18 @@ document.addEventListener('keydown',e=>{
               sc='map';showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]+' cards found here');
               fadeIn();twSet('Welcome back!');
             }else{
-              sc='map';currentMap=0;showBanner('PORT TOWN','Aegis & Umbra spirits found here');
+              sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
               fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-              fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');
+              fadeIn();twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');
             }
           });
         }else if(titleMenuIdx===1){
           // NEW GAME
           sfxConfirm();
           resetGameState(true);
-          fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Aegis & Umbra spirits found here');
+          fadeOut(()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-            fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
+            fadeIn();twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');});
         }else if(titleMenuIdx===2){
           // CONNECT WALLET
           sfxSelect();
@@ -7251,9 +7579,9 @@ document.addEventListener('keydown',e=>{
       if(e.code==='KeyZ'){
         if(titleMenuIdx===0){
           sfxConfirm();
-          fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Aegis & Umbra spirits found here');
+          fadeOut(()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-            fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
+            fadeIn();twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');});
         }else if(titleMenuIdx===1){
           // CONNECT WALLET (no save)
           sfxSelect();
@@ -7295,7 +7623,7 @@ document.addEventListener('keydown',e=>{
     return;
   }
 
-  // Card Shop handling
+  // Trading Post handling
   if(shopActive){
     const filled=getPlayerFilledSlots();
     if(shopPhase==='list'){
@@ -7386,7 +7714,7 @@ document.addEventListener('keydown',e=>{
           const hunterArea=mapNames[rivalMaps[1]]||'???';
           infoBrokerResult='Rival is in '+rivalArea+'. Hunter is in '+hunterArea+'.';
           infoBrokerResultTimer=240;
-          lg.push('Info Broker: Rival='+rivalArea+', Hunter='+hunterArea+' (paid '+CD[lost-1].n+')');
+          lg.push('Spy Master: Rival='+rivalArea+', Hunter='+hunterArea+' (paid '+CD[lost-1].n+')');
           sfxConfirm();
         }else{
           infoBrokerResult='You have no cards to pay!';
@@ -7480,7 +7808,7 @@ document.addEventListener('keydown',e=>{
           if(buildingType==='shop'){
             openCardShop();
           }else if(buildingType==='info'){
-            // Info Broker interaction — x402 shop or legacy card payment
+            // Spy Master interaction — x402 shop or legacy card payment
             if(x402Available){
               x402ShopOpen=true;x402ShopIdx=0;x402ShopLoading=false;
               x402PushState();
@@ -7492,9 +7820,9 @@ document.addEventListener('keydown',e=>{
                 sfxSelect();
               }else{
                 buildingNpcDialog=true;
-                buildingNpcLines=['I can tell you where','your rivals are.','But you need a card to pay!'];
+                buildingNpcLines=['I know where the','other crews be sailin.','But ye need a card to pay!'];
                 buildingNpcIdx=0;
-                buildingNpcName='Info Broker';
+                buildingNpcName='Spy Master';
                 sfxConfirm();
               }
             }
@@ -7769,7 +8097,7 @@ document.addEventListener('keydown',e=>{
         // Play again - reset all state
         sfxConfirm();
         resetGameState(false);
-        fadeOut(()=>{sc='map';mo=false;showBanner('PORT TOWN','Aegis & Umbra spirits found here');
+        fadeOut(()=>{sc='map';mo=false;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
           fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
           fadeIn();twSet('Welcome back! Collect all 5 card types to win!');ub();});
       }
