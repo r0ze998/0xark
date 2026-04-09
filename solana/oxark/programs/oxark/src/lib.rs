@@ -48,4 +48,15 @@ pub mod oxark {
     pub fn resolve_round(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
         instructions::resolve_round::handle_resolve(ctx, game_id)
     }
+
+    pub fn verify_zk_proof(
+        ctx: Context<VerifyZkProof>,
+        game_id: u64,
+        proof_a: [u8; 64],
+        proof_b: [u8; 128],
+        proof_c: [u8; 64],
+        public_inputs: [u8; 32],
+    ) -> Result<()> {
+        instructions::verify_zk_proof::handle_verify_zk(ctx, game_id, proof_a, proof_b, proof_c, public_inputs)
+    }
 }
