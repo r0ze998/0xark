@@ -1993,7 +1993,7 @@ function findCardMap(rIdx){
   const r=pl[rIdx];
   const has=new Set();
   r.cd.forEach(c=>{if(c>0)has.add(c);});
-  // AREA_CARDS: Port=[1,2](Aegis,Umbra), Forest=[3,4](Ignis,Tempest), Ruins=[5,1](Nihil,Aegis)
+  // AREA_CARDS: Port=[1,2](Aegis,Umbra), Forest=[3,4,5](Ignis,Tempest,Nihil), Ruins=[5,2,4](Nihil,Umbra,Tempest)
   const needs=[];
   for(let i=1;i<=5;i++){if(!has.has(i))needs.push(i);}
   if(needs.length===0)return Math.floor(Math.random()*3);
@@ -2809,7 +2809,7 @@ function stopTensionDrum(){if(tensionDrumNode){try{tensionDrumGain.gain.linearRa
 
 // ── SESSION STATS ──
 const STATS_KEY='oxark_stats';
-let stats={gamesPlayed:0,cardsCollected:0,cardsLost:0,stealsAttempted:0,stealsBlocked:0,scoutUses:0,stepsWalked:0,timePlayed:0,areaTime:[0,0,0],sessionStart:Date.now()};
+let stats={gamesPlayed:0,cardsCollected:0,cardsLost:0,stealsAttempted:0,stealsBlocked:0,scoutUses:0,stepsWalked:0,timePlayed:0,areaTime:[0,0,0],sessionStart:Date.now(),bestClearRounds:0,bestClearTime:0};
 function loadStats(){try{const raw=localStorage.getItem(STATS_KEY);if(raw){const d=JSON.parse(raw);Object.keys(d).forEach(k=>{if(stats.hasOwnProperty(k))stats[k]=d[k];});}}catch(e){}}
 function saveStats(){try{stats.timePlayed=Math.floor((Date.now()-stats.sessionStart)/1000);localStorage.setItem(STATS_KEY,JSON.stringify(stats));}catch(e){}}
 loadStats();stats.sessionStart=Date.now();
@@ -6228,6 +6228,10 @@ function hasUniqueCards(pIdx){const s=new Set();pl[pIdx].cd.forEach(c=>{if(c>0)s
 function playerHasAllFive(){const s=hasUniqueCards(0);return s.has(1)&&s.has(2)&&s.has(3)&&s.has(4)&&s.has(5);}
 function checkWinAndTransition(delayMs){
   if(!playerHasAllFive())return;
+  // Record best clear
+  const clearTime=Math.floor((Date.now()-stats.sessionStart)/1000);
+  if(stats.bestClearRounds===0||rd<stats.bestClearRounds){stats.bestClearRounds=rd;}
+  if(stats.bestClearTime===0||clearTime<stats.bestClearTime){stats.bestClearTime=clearTime;}
   const d=(delayMs!==undefined)?delayMs:500;
   if(d>0){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},d);}
   else{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
@@ -6935,7 +6939,7 @@ function drawTutorialMsg(){
 // AREA CARD INFO
 // ═══════════════════════════════════════
 const AREA_CARD_DESC=['Aegis & Umbra spirits haunt the docks','Ignis, Tempest & Nihil spirits roam the jungle','Nihil, Umbra & Tempest spirits guard the temple'];
-const CARD_AREA_INFO=['Corsair Bay, Temple','Corsair Bay','Jungle','Jungle','Temple'];
+const CARD_AREA_INFO=['Corsair Bay','Corsair Bay, Temple','Jungle','Jungle, Temple','Jungle, Temple'];
 // Card IDs: 1=AEGIS, 2=UMBRA, 3=IGNIS, 4=TEMPEST, 5=NIHIL
 
 // ═══════════════════════════════════════
@@ -7031,7 +7035,9 @@ function dVictory(){
     g.globalAlpha=Math.min(1,(t-172)/15);
     win(W/2-160,578,320,28);
     tx('LEGENDS',W/2-30,590,7,'#f0c830');
-    tx('FASTEST CLEAR: --:-- by ???',W/2-106,602,6,'#686068');
+    const bcr=stats.bestClearRounds;const bct=stats.bestClearTime;
+    const bcText=bcr>0?'BEST: Round '+bcr+' ('+Math.floor(bct/60)+'m'+('0'+(bct%60)).slice(-2)+'s)':'FASTEST CLEAR: --:-- by ???';
+    tx(bcText,W/2-120,602,6,bcr>0?'#f0c830':'#686068');
     g.globalAlpha=1;
   }
   if(t>176){
@@ -8037,6 +8043,7 @@ function dStats(){
     {label:'Scout Uses',value:''+stats.scoutUses,col:'#888898'},
     {label:'Win Streak',value:''+streakCount,col:'#888898'},
     {label:'Steal Success',value:stats.stealsAttempted>0?Math.round((1-stats.stealsBlocked/(stats.stealsAttempted||1))*100)+'%':'--',col:'#888898'},
+    {label:'Best Clear',value:stats.bestClearRounds>0?'Round '+stats.bestClearRounds:'--',col:stats.bestClearRounds>0?'#f0c830':'#888898'},
     {label:'',value:'',header:false,col:''},
     {label:'AREA',value:'',header:true,col:'#f0c830'},
     {label:'Favorite Area',value:favArea,col:'#888898'},
