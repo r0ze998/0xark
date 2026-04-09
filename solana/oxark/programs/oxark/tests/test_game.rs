@@ -246,3 +246,51 @@ fn test_create_and_start_game() {
     let game_data = svm.get_account(&game_key).unwrap();
     assert!(game_data.lamports > 0, "Game should exist after start");
 }
+
+#[test]
+fn test_commit_action() {
+    let (mut svm, host) = setup();
+    let player2 = Keypair::new();
+    svm.airdrop(&player2.pubkey(), 10_000_000_000).unwrap();
+
+    let game_id: u64 = 42;
+    let (game_key, _) = game_pda(game_id);
+    let (pool_key, _) = card_pool_pda(game_id);
+    let (hp, _) = player_pda(game_id, &host.pubkey());
+    let (p2p, _) = player_pda(game_id, &player2.pubkey());
+
+    // Create + Join + Join + Start
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::CreateGame { game_id, max_players: 2 }.data(),
+        oxark::accounts::CreateGame { game: game_key, card_pool: pool_key, host: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::JoinGame { game_id }.data(),
+        oxark::accounts::JoinGame { game: game_key, player_state: hp, player: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::JoinGame { game_id }.data(),
+        oxark::accounts::JoinGame { game: game_key, player_state: p2p, player: player2.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &player2);
+    let mut sa = oxark::accounts::StartGame { game: game_key, card_pool: pool_key, host: host.pubkey() }.to_account_metas(None);
+    sa.push(solana_instruction::AccountMeta::new(hp, false));
+    sa.push(solana_instruction::AccountMeta::new(p2p, false));
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::StartGame { game_id }.data(), sa), &host);
+
+    // Now in CommitPhase (round 1). Commit action for host.
+    let round: u8 = 1;
+    let hash = [0u8; 32]; // dummy hash for testing
+    let (commit_pda, _) = commit_pda(game_id, round, &host.pubkey());
+
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::CommitAction { game_id, hash }.data(),
+        oxark::accounts::CommitActionCtx {
+            game: game_key,
+            player_state: hp,
+            commit: commit_pda,
+            player: host.pubkey(),
+            system_program: solana_sdk_ids::system_program::id(),
+        }.to_account_metas(None)), &host);
+
+    // Verify commit account exists
+    let commit_data = svm.get_account(&commit_pda).unwrap();
+    assert!(commit_data.lamports > 0, "Commit should exist");
+}
