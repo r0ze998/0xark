@@ -6,3 +6,6 @@ target/
 .DS_Store
 contracts/manifests/
 .vite
+*.bak
+solana/client/index.html.bak
+solana/client/pirates-tilemap-b64.txt
