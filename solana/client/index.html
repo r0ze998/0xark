@@ -60,12 +60,10 @@ canvas{display:block;width:960px;height:640px;image-rendering:auto}
 </div>
 <script>
 const c=document.getElementById('g');
-// Render at 2x internal resolution for smooth display
-const SCALE=2;
-c.width=960*SCALE;c.height=640*SCALE;
-const W=960,H=640; // Logical dimensions (all game code uses these)
+const SCALE=1;
+c.width=960;c.height=640;
+const W=960,H=640;
 let g=c.getContext('2d');
-g.scale(SCALE,SCALE); // All drawing happens in logical coordinates, displayed at 2x
 const TW=32,TH=32;
 
 // ═══════════════════════════════════════
