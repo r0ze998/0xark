@@ -371,3 +371,94 @@ fn test_full_commit_reveal_round() {
     let game_data = svm.get_account(&game_key).unwrap();
     assert!(game_data.lamports > 0, "Game should exist after reveals");
 }
+
+#[test]
+fn test_full_round_with_resolve() {
+    let (mut svm, host) = setup();
+    let player2 = Keypair::new();
+    svm.airdrop(&player2.pubkey(), 10_000_000_000).unwrap();
+
+    let game_id: u64 = 200;
+    let (game_key, _) = game_pda(game_id);
+    let (pool_key, _) = card_pool_pda(game_id);
+    let (hp, _) = player_pda(game_id, &host.pubkey());
+    let (p2p, _) = player_pda(game_id, &player2.pubkey());
+
+    // === Create game ===
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::CreateGame { game_id, max_players: 2 }.data(),
+        oxark::accounts::CreateGame { game: game_key, card_pool: pool_key, host: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
+
+    // === Join both players ===
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::JoinGame { game_id }.data(),
+        oxark::accounts::JoinGame { game: game_key, player_state: hp, player: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::JoinGame { game_id }.data(),
+        oxark::accounts::JoinGame { game: game_key, player_state: p2p, player: player2.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &player2);
+
+    // === Start game ===
+    let mut sa = oxark::accounts::StartGame { game: game_key, card_pool: pool_key, host: host.pubkey() }.to_account_metas(None);
+    sa.push(solana_instruction::AccountMeta::new(hp, false));
+    sa.push(solana_instruction::AccountMeta::new(p2p, false));
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::StartGame { game_id }.data(), sa), &host);
+
+    // === COMMIT PHASE (round 1) ===
+    let round: u8 = 1;
+    let zero_target = solana_pubkey::Pubkey::default();
+    let salt1 = [11u8; 32];
+    let salt2 = [22u8; 32];
+
+    // Both players commit Draw (action_type=1) with proper SHA256 hashes
+    let hash1 = compute_hash(1, &zero_target, &salt1);
+    let (c1, _) = commit_pda(game_id, round, &host.pubkey());
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::CommitAction { game_id, hash: hash1 }.data(),
+        oxark::accounts::CommitActionCtx { game: game_key, player_state: hp, commit: c1, player: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
+
+    let hash2 = compute_hash(1, &zero_target, &salt2);
+    let (c2, _) = commit_pda(game_id, round, &player2.pubkey());
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::CommitAction { game_id, hash: hash2 }.data(),
+        oxark::accounts::CommitActionCtx { game: game_key, player_state: p2p, commit: c2, player: player2.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &player2);
+
+    // === REVEAL PHASE ===
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt1 }.data(),
+        oxark::accounts::RevealActionCtx { game: game_key, player_state: hp, commit: c1, player: host.pubkey() }.to_account_metas(None)), &host);
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt2 }.data(),
+        oxark::accounts::RevealActionCtx { game: game_key, player_state: p2p, commit: c2, player: player2.pubkey() }.to_account_metas(None)), &player2);
+
+    // === RESOLVE ROUND ===
+    // Build the ResolveRound instruction with both player state PDAs as remaining_accounts
+    let mut resolve_accounts = oxark::accounts::ResolveRound {
+        game: game_key,
+        card_pool: pool_key,
+        caller: host.pubkey(),
+    }
+    .to_account_metas(None);
+    // Append both player state PDAs as writable remaining accounts
+    resolve_accounts.push(solana_instruction::AccountMeta::new(hp, false));
+    resolve_accounts.push(solana_instruction::AccountMeta::new(p2p, false));
+
+    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
+        &oxark::instruction::ResolveRound { game_id }.data(),
+        resolve_accounts), &host);
+
+    // === VERIFY: game advanced to round 2 (CommitPhase) ===
+    let game_data = svm.get_account(&game_key).unwrap();
+    assert!(game_data.lamports > 0, "Game should exist after resolve");
+
+    // Deserialize game state to check round
+    // Layout: 8 (discriminator) + 8 (game_id) + 32 (host) + 1 (status) + 1 (round) ...
+    let data = &game_data.data;
+    let status_byte = data[8 + 8 + 32]; // GameStatus offset
+    let round_byte = data[8 + 8 + 32 + 1]; // round offset
+
+    // status should be CommitPhase (1) since game is not finished
+    assert_eq!(status_byte, 1, "Game status should be CommitPhase (1) after resolve");
+    // round should be 2
+    assert_eq!(round_byte, 2, "Game round should be 2 after first resolve");
+}
