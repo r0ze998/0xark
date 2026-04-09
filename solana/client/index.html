@@ -143,151 +143,189 @@ const useKenney = {
 };
 
 // Kenney tile coordinate map (col, row) for each game tile type
-// Based on Kenney Monochrome Pirates tileset layout
+// Mapped from Kenney Monochrome Pirates tileset (17 cols x 8 rows, 16x16px, 1px spacing)
+// Verified by visual inspection of tilemap.png
 const K = {
-  // Water variations
-  waterCenter:  [0, 0],
-  waterEdgeN:   [1, 0],
-  waterEdgeS:   [2, 0],
-  waterCorner:  [3, 0],
-  // Grass/terrain
-  grass1:       [4, 0],
-  grass2:       [5, 0],
-  grass3:       [6, 0],
-  grassAlt:     [7, 0],
-  // Sand
-  sand1:        [8, 0],
-  sand2:        [9, 0],
-  sandEdge:     [10, 0],
-  sandCorner:   [11, 0],
-  // Path/dirt
-  path1:        [12, 0],
-  path2:        [13, 0],
-  pathEdge:     [14, 0],
-  pathAlt:      [15, 0],
-  // Row 1 - more terrain & transitions
-  dirtRoad:     [16, 0],
-  terrain1:     [0, 1],
-  terrain2:     [1, 1],
-  terrain3:     [2, 1],
-  terrain4:     [3, 1],
-  terrain5:     [4, 1],
-  terrain6:     [5, 1],
-  terrain7:     [6, 1],
-  terrain8:     [7, 1],
-  terrain9:     [8, 1],
-  terrain10:    [9, 1],
-  terrain11:    [10, 1],
-  terrain12:    [11, 1],
-  terrain13:    [12, 1],
-  terrain14:    [13, 1],
-  terrain15:    [14, 1],
-  terrain16:    [15, 1],
-  // Row 2 - buildings
-  wall1:        [0, 2],
-  wall2:        [1, 2],
-  wall3:        [2, 2],
-  door:         [3, 2],
-  window1:      [4, 2],
-  window2:      [5, 2],
-  roofL:        [6, 2],
-  roofM:        [7, 2],
-  roofR:        [8, 2],
-  building1:    [9, 2],
-  building2:    [10, 2],
-  building3:    [11, 2],
-  chimney:      [12, 2],
-  sign:         [13, 2],
-  crate:        [14, 2],
-  barrel:       [15, 2],
-  // Row 3 - more structures
-  fenceH:       [0, 3],
-  fenceV:       [1, 3],
-  fencePost:    [2, 3],
-  dock1:        [3, 3],
-  dock2:        [4, 3],
-  bridge:       [5, 3],
-  well:         [6, 3],
-  fountain:     [7, 3],
-  lamp:         [8, 3],
-  bench:        [9, 3],
-  tree1:        [10, 3],
-  tree2:        [11, 3],
-  palm1:        [12, 3],
-  bush1:        [13, 3],
-  rock1:        [14, 3],
-  rock2:        [15, 3],
-  // Row 4 - ships
-  hullL:        [0, 4],
-  hullM:        [1, 4],
-  hullR:        [2, 4],
-  hullFront:    [3, 4],
-  hullBack:     [4, 4],
-  mast:         [5, 4],
-  sail1:        [6, 4],
-  sail2:        [7, 4],
-  sail3:        [8, 4],
-  flag:         [9, 4],
-  anchor:       [10, 4],
-  wheel:        [11, 4],
-  cannon:       [12, 4],
-  plank:        [13, 4],
-  rope:         [14, 4],
-  net:          [15, 4],
-  // Row 5 - more ship / sea
-  wave1:        [0, 5],
-  wave2:        [1, 5],
-  wave3:        [2, 5],
-  seaMonster:   [3, 5],
-  island:       [4, 5],
-  lighthouse:   [5, 5],
-  shipWreck:    [6, 5],
-  raft:         [7, 5],
-  rowboat:      [8, 5],
-  sails:        [9, 5],
-  crowsNest:    [10, 5],
-  porthole:     [11, 5],
-  rudder:       [12, 5],
-  figurehead:   [13, 5],
-  lifering:     [14, 5],
-  compass:      [15, 5],
-  // Row 6 - characters
-  pirate1:      [0, 6],
-  pirate2:      [1, 6],
-  pirate3:      [2, 6],
-  pirate4:      [3, 6],
-  captain:      [4, 6],
-  parrot:       [5, 6],
-  skeleton:     [6, 6],
-  ghost:        [7, 6],
-  crab:         [8, 6],
-  octopus:      [9, 6],
-  shark:        [10, 6],
-  fish:         [11, 6],
-  seagull:      [12, 6],
-  monkey:       [13, 6],
-  snake:        [14, 6],
-  rat:          [15, 6],
-  // Row 7 - items
-  chest:        [0, 7],
-  chestOpen:    [1, 7],
-  coin:         [2, 7],
-  gem:          [3, 7],
-  key:          [4, 7],
-  map:          [5, 7],
-  scroll:       [6, 7],
-  bottle:       [7, 7],
-  sword:        [8, 7],
-  hook:         [9, 7],
-  bomb:         [10, 7],
-  potion:       [11, 7],
-  spyglass:     [12, 7],
-  hat:          [13, 7],
-  skull:        [14, 7],
-  crossbones:   [15, 7],
-  campfire:     [16, 3],  // fallback to last col if present
-  mushroom1:    [16, 1],
+  // ── WATER & TERRAIN TRANSITIONS (rows 0-1, cols 0-5) ──
+  // The top-left area contains water body + land transition tiles
+  treasureMap:  [0, 0],   // treasure/island map icon
+  waterCenter:  [1, 0],   // open water (light, center)
+  waterEdgeL:   [2, 0],   // water with land on left
+  waterCornerTL:[3, 0],   // water corner: land top-left
+  waterEdgeB:   [4, 0],   // water with land below
+  waterEdgeR:   [5, 0],   // water with land on right
+
+  // Row 1 terrain transitions
+  waterEdgeT:   [0, 1],   // water with land above
+  waterCornerTR:[1, 1],   // water corner: land top-right
+  waterCornerBL:[2, 1],   // water corner: land bottom-left
+  waterCornerBR:[3, 1],   // water corner: land bottom-right
+  landCenter:   [4, 1],   // solid land/grass center
+  landAlt:      [5, 1],   // alternate land tile
+
+  // ── LARGE SHIP (rows 0-4, cols 6-16) ──
+  // The right side of the tilemap is a large multi-tile ship
+  shipTL:       [6, 0],
+  shipTC1:      [7, 0],
+  shipTC2:      [8, 0],
+  shipTC3:      [9, 0],
+  shipTC4:      [10, 0],
+  shipTC5:      [11, 0],
+  shipTR:       [12, 0],
+
+  // ── STRUCTURES & BUILDINGS (rows 2-3, cols 0-5) ──
+  wall1:        [0, 2],   // stone wall variant 1
+  wall2:        [1, 2],   // stone wall variant 2
+  wall3:        [2, 2],   // stone wall variant 3
+  door:         [3, 2],   // wooden door
+  window1:      [4, 2],   // window variant 1
+  window2:      [5, 2],   // window variant 2
+
+  fenceH:       [0, 3],   // horizontal fence
+  fenceV:       [1, 3],   // vertical fence
+  fencePost:    [2, 3],   // fence post / corner
+  dock1:        [3, 3],   // dock plank
+  dock2:        [4, 3],   // dock post
+  bridge:       [5, 3],   // bridge segment
+
+  // ── PROPS & VEGETATION (row 3, cols 6-16) ──
+  well:         [6, 3],   // water well
+  fountain:     [7, 3],   // stone fountain
+  lamp:         [8, 3],   // street lamp
+  bench:        [9, 3],   // wooden bench
+  tree1:        [10, 3],  // leafy tree
+  tree2:        [11, 3],  // pine/conifer tree
+  palm1:        [12, 3],  // palm tree
+  bush1:        [13, 3],  // bush/shrub
+  rock1:        [14, 3],  // large rock
+  rock2:        [15, 3],  // small rock
+  campfire:     [16, 3],  // campfire
+
+  // ── SMALL ITEMS (rows 4-5, cols 0-5) ──
+  anchor:       [0, 4],   // ship anchor
+  wheel:        [1, 4],   // ship wheel
+  cannon:       [2, 4],   // cannon
+  barrel:       [3, 4],   // barrel
+  crate:        [4, 4],   // wooden crate
+  sign:         [5, 4],   // signpost
+
+  flag:         [0, 5],   // pirate flag
+  bottle:       [1, 5],   // message bottle
+  rope:         [2, 5],   // coiled rope
+  net:          [3, 5],   // fishing net
+  compass:      [4, 5],   // compass
+  spyglass:     [5, 5],   // spyglass/telescope
+
+  // ── BUILDING PIECES (row 2, cols 6-16) ──
+  roofL:        [6, 2],   // roof left end
+  roofM:        [7, 2],   // roof middle
+  roofR:        [8, 2],   // roof right end
+  building1:    [9, 2],   // building facade 1
+  building2:    [10, 2],  // building facade 2
+  building3:    [11, 2],  // building facade 3
+  chimney:      [12, 2],  // chimney
+
+  // ── SEA EFFECTS (row 4-5, cols 6-16) ──
+  wave1:        [6, 4],   // wave animation frame 1
+  wave2:        [7, 4],   // wave animation frame 2
+  wave3:        [8, 4],   // wave animation frame 3
+  plank:        [9, 4],   // wooden plank
+  hullL:        [10, 4],
+  hullM:        [11, 4],
+  hullR:        [12, 4],
+
+  // ── CHARACTERS (row 6) ──
+  pirate1:      [0, 6],   // pirate with bandana
+  pirate2:      [1, 6],   // pirate with hat
+  pirate3:      [2, 6],   // pirate with eyepatch
+  pirate4:      [3, 6],   // pirate crew
+  captain:      [4, 6],   // captain
+  parrot:       [5, 6],   // parrot
+  skeleton:     [6, 6],   // skeleton
+  ghost:        [7, 6],   // ghost
+  crab:         [8, 6],   // crab
+  octopus:      [9, 6],   // octopus
+  shark:        [10, 6],  // shark
+  fish:         [11, 6],  // fish
+  seagull:      [12, 6],  // seagull
+  monkey:       [13, 6],  // monkey
+  snake:        [14, 6],  // snake
+  rat:          [15, 6],  // rat
+  mushroom1:    [16, 6],  // mushroom (last col)
+
+  // ── ITEMS (row 7) ──
+  chest:        [0, 7],   // closed treasure chest
+  chestOpen:    [1, 7],   // open treasure chest
+  coin:         [2, 7],   // gold coin
+  gem:          [3, 7],   // gemstone
+  key:          [4, 7],   // key
+  map:          [5, 7],   // treasure map scroll
+  scroll:       [6, 7],   // scroll
+  sword:        [7, 7],   // sword
+  hook:         [8, 7],   // pirate hook
+  bomb:         [9, 7],   // bomb
+  potion:       [10, 7],  // potion bottle
+  hat:          [11, 7],  // pirate hat
+  skull:        [12, 7],  // skull
+  crossbones:   [13, 7],  // skull & crossbones
+  lifering:     [14, 7],  // life ring
+  jollyRoger:   [15, 7],  // jolly roger flag
 };
+
+// ═══════════════════════════════════════
+// AUTO-TILING: neighbor-aware tile selection
+// ═══════════════════════════════════════
+// Water types for neighbor checks
+const WATER_TILES = new Set([0, 17]);
+const LAND_TILES = new Set([1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,22,23,24,25,26,27,28,29,30]);
+
+function getWaterTileVariant(tx_, ty_) {
+  const m = getMap();
+  const get = (dx, dy) => {
+    const nx = tx_ + dx, ny = ty_ + dy;
+    if (nx < 0 || nx >= MW || ny < 0 || ny >= MH) return 0; // out of bounds = water
+    return m[ny]?.[nx] ?? 0;
+  };
+  const landUp    = LAND_TILES.has(get(0, -1));
+  const landDown  = LAND_TILES.has(get(0,  1));
+  const landLeft  = LAND_TILES.has(get(-1, 0));
+  const landRight = LAND_TILES.has(get( 1, 0));
+
+  // Corners (two adjacent land sides)
+  if (landUp && landLeft)  return K.waterCornerTL;
+  if (landUp && landRight) return K.waterCornerTR;
+  if (landDown && landLeft)  return K.waterCornerBL;
+  if (landDown && landRight) return K.waterCornerBR;
+
+  // Edges (one land side)
+  if (landUp)    return K.waterEdgeT;
+  if (landDown)  return K.waterEdgeB;
+  if (landLeft)  return K.waterEdgeL;
+  if (landRight) return K.waterEdgeR;
+
+  // Open water center
+  return K.waterCenter;
+}
+
+function getGrassTileVariant(tx_, ty_) {
+  const m = getMap();
+  const get = (dx, dy) => {
+    const nx = tx_ + dx, ny = ty_ + dy;
+    if (nx < 0 || nx >= MW || ny < 0 || ny >= MH) return 1;
+    return m[ny]?.[nx] ?? 1;
+  };
+  // Check if neighbor is non-grass (water, sand, path, etc.)
+  const diffUp    = WATER_TILES.has(get(0, -1)) || get(0, -1) === 4;
+  const diffDown  = WATER_TILES.has(get(0,  1)) || get(0,  1) === 4;
+  const diffLeft  = WATER_TILES.has(get(-1, 0)) || get(-1, 0) === 4;
+  const diffRight = WATER_TILES.has(get( 1, 0)) || get( 1, 0) === 4;
+
+  // If near an edge, use alternate land tile for subtle variation
+  if (diffUp || diffDown || diffLeft || diffRight) return K.landAlt;
+
+  // Interior grass: alternate between two variants
+  return (tileHash(tx_, ty_) % 2 === 0) ? K.landCenter : K.landAlt;
+}
 
 // ═══════════════════════════════════════
 // SMOOTH ANIMATION UTILITIES
@@ -2695,9 +2733,8 @@ function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,[1,7,11,3]);}
 function drawWater(px,py,tx_,ty){
   if(useKenney.water){
     const nearLand_=isNearLand(tx_,ty);
-    // Pick wave variant based on tile hash for visual variety
-    const wv = tileHash(tx_,ty) % 3;
-    const kTile = wv === 0 ? K.waterCenter : wv === 1 ? K.waterEdgeN : K.waterEdgeS;
+    // Auto-tile: pick correct edge/corner/center based on neighbors
+    const kTile = getWaterTileVariant(tx_, ty_);
     // Draw blue-tinted water base
     const waterColor = nearLand_ ? 'rgba(36,100,160,0.95)' : 'rgba(48,120,180,0.95)';
     bx(px,py,TW,TH,waterColor);
@@ -2754,10 +2791,9 @@ function drawWater(px,py,tx_,ty){
 
 function drawGrass(px,py,tx_,ty){
   if(useKenney.grass){
-    // Pick grass variant based on tile hash
+    // Auto-tile: pick correct grass variant based on neighbors
     const h=tileHash(tx_,ty);
-    const gv = h % 4;
-    const kTile = gv === 0 ? K.grass1 : gv === 1 ? K.grass2 : gv === 2 ? K.grass3 : K.grassAlt;
+    const kTile = getGrassTileVariant(tx_, ty_);
     // Green base color
     const sv=((h&15)-8);
     const grassColor = `rgb(${88+sv},${168+sv},${88+sv})`;
@@ -2849,8 +2885,8 @@ function drawPath(px,py,tx_,ty){
   if(useKenney.path){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
-    const pv = h % 2;
-    const kTile = pv === 0 ? K.path1 : K.path2;
+    // Use land tile tinted dirt-brown for path
+    const kTile = (h % 2 === 0) ? K.landCenter : K.landAlt;
     bx(px,py,TW,TH,`rgb(${208+sv},${192+sv},${128+sv})`);
     if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${180+sv},${164+sv},${100+sv})`)){
       // Pebbles overlay
@@ -2896,7 +2932,8 @@ function drawSand(px,py,tx_,ty){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
     const nearW=isNearWater(tx_,ty);
-    const kTile = nearW ? K.sandEdge : (h%2===0 ? K.sand1 : K.sand2);
+    // Use land tiles tinted sand-color for auto-tiled look
+    const kTile = nearW ? K.landAlt : K.landCenter;
     bx(px,py,TW,TH,`rgb(${232+sv},${216+sv},${168+sv})`);
     if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${210+sv},${194+sv},${140+sv})`)){
       // Shells overlay
