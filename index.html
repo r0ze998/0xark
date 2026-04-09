@@ -269,31 +269,55 @@ function updateAmbient(){
 }
 
 // ═══════════════════════════════════════
-// FRLG WINDOW SYSTEM
+// FRLG WINDOW SYSTEM (pixel-perfect FRLG palette)
 // ═══════════════════════════════════════
+// FRLG palette constants
+const FRLG={
+  winBg:'#F8F0D0',       // warm cream background
+  borderOuter:'#484050',  // dark purple-gray border
+  borderInner:'#888078',  // medium gray inner border
+  textColor:'#383830',    // warm dark text
+  selHighlight:'#F8D830', // golden yellow selection
+  hpGreen:'#58A850',
+  hpYellow:'#F8C838',
+  hpRed:'#E85048',
+};
 function win(x,y,w,h){
-  g.fillStyle='#484058';
+  g.fillStyle=FRLG.borderOuter;
   g.fillRect(x+4,y,w-8,1);g.fillRect(x+3,y+1,w-6,1);g.fillRect(x+2,y+2,w-4,1);g.fillRect(x+1,y+3,w-2,1);
   g.fillRect(x+1,y+h-4,w-2,1);g.fillRect(x+2,y+h-3,w-4,1);g.fillRect(x+3,y+h-2,w-6,1);g.fillRect(x+4,y+h-1,w-8,1);
   g.fillRect(x,y+4,1,h-8);g.fillRect(x+1,y+3,1,h-6);g.fillRect(x+2,y+2,1,h-4);g.fillRect(x+3,y+1,1,h-2);
   g.fillRect(x+w-1,y+4,1,h-8);g.fillRect(x+w-2,y+3,1,h-6);g.fillRect(x+w-3,y+2,1,h-4);g.fillRect(x+w-4,y+1,1,h-2);
-  g.fillStyle='#686078';
+  g.fillStyle=FRLG.borderInner;
   g.fillRect(x+4,y+4,w-8,1);g.fillRect(x+4,y+h-5,w-8,1);
   g.fillRect(x+4,y+4,1,h-8);g.fillRect(x+w-5,y+4,1,h-8);
-  g.fillStyle='#f8f0e0';
+  g.fillStyle=FRLG.winBg;
   g.fillRect(x+5,y+5,w-10,h-10);
   g.fillStyle='rgba(255,255,255,.4)';
   g.fillRect(x+6,y+5,w-12,1);g.fillRect(x+5,y+6,1,h-12);
 }
 
 function bx(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}
-function tx(s,x,y,sz,c){g.fillStyle=c||'#303028';g.font=(sz||12)+"px 'Press Start 2P',monospace";g.fillText(s,x,y);}
-// Text with 1px shadow for readability (battle screens)
+// FRLG-style text: 1px letter spacing + slight bold via double draw at 0.5px offset
+const _hasLetterSpacing=('letterSpacing' in g);
+function _setLS(v){if(_hasLetterSpacing)try{g.letterSpacing=v;}catch(e){}}
+function tx(s,x,y,sz,c){
+  g.fillStyle=c||FRLG.textColor;
+  g.font=(sz||12)+"px 'Press Start 2P',monospace";
+  _setLS('1px');
+  g.fillText(s,x,y);
+  g.fillText(s,x+0.5,y); // slight bold effect
+  _setLS('0px');
+}
+// Text with 1px shadow for readability (battle screens) — FRLG bold style
 function txShadow(s,x,y,sz,color,shadowColor){
   const sc_=shadowColor||'rgba(0,0,0,0.7)';
   g.font=(sz||12)+"px 'Press Start 2P',monospace";
+  _setLS('1px');
   g.fillStyle=sc_;g.fillText(s,x+1,y+1);
   g.fillStyle=color||'#fff';g.fillText(s,x,y);
+  g.fillText(s,x+0.5,y); // slight bold effect
+  _setLS('0px');
 }
 
 // ═══════════════════════════════════════
@@ -444,6 +468,290 @@ function logOnchain(msg){
     lg.push('[ON-CHAIN] '+msg);
   }else{
     lg.push(msg);
+  }
+}
+
+// ═══════════════════════════════════════
+// MULTIPLAYER SYSTEM (WebSocket client)
+// ═══════════════════════════════════════
+let mp={
+  connected:false,
+  ws:null,
+  serverUrl:'ws://localhost:3500',
+  roomId:null,
+  playerId:null,
+  playerCount:0,
+  otherPlayers:[], // [{id, name, area, cardCount, x, y}]
+  phase:'lobby', // lobby, playing, finished
+  pendingActions:[],
+  pingMs:0,
+  pingColor:'#40d040', // green/yellow/red
+  lastPingTime:0,
+  reconnectAttempts:0,
+  maxReconnectAttempts:5,
+  disconnectMsg:'',
+  disconnectTimer:0,
+  lobbyPlayers:[], // [{id, name, ready}]
+  roomInput:'',
+  mpMenuIdx:0, // 0=CREATE ROOM, 1=JOIN ROOM
+  mpScreen:'off', // off, select, create, join, lobby
+};
+
+function mpConnect(roomId,isCreate){
+  if(mp.ws)mpDisconnect();
+  mp.reconnectAttempts=0;
+  mp.disconnectMsg='';mp.disconnectTimer=0;
+  try{
+    const url=mp.serverUrl+'?room='+encodeURIComponent(roomId)+(isCreate?'&create=1':'');
+    mp.ws=new WebSocket(url);
+    mp.ws.onopen=function(){
+      mp.connected=true;mp.roomId=roomId;
+      mp.phase='lobby';mp.reconnectAttempts=0;
+      mp.lastPingTime=performance.now();
+      lg.push('[MP] Connected to room '+roomId);
+    };
+    mp.ws.onmessage=function(evt){
+      try{
+        const msg=JSON.parse(evt.data);
+        mpHandleMessage(msg);
+      }catch(e){}
+    };
+    mp.ws.onclose=function(){
+      const wasConnected=mp.connected;
+      mp.connected=false;mp.ws=null;
+      if(wasConnected){
+        mp.disconnectMsg='CONNECTION LOST - switching to AI';
+        mp.disconnectTimer=180; // 3 seconds
+        lg.push('[MP] Disconnected from server.');
+        // Attempt reconnect
+        if(mp.reconnectAttempts<mp.maxReconnectAttempts&&mp.roomId){
+          mp.reconnectAttempts++;
+          setTimeout(()=>{if(!mp.connected&&mp.roomId)mpConnect(mp.roomId,false);},2000);
+        }
+      }
+    };
+    mp.ws.onerror=function(){
+      mp.disconnectMsg='CONNECTION ERROR';mp.disconnectTimer=120;
+    };
+  }catch(e){
+    mp.disconnectMsg='FAILED TO CONNECT';mp.disconnectTimer=120;
+  }
+}
+
+function mpDisconnect(){
+  if(mp.ws){try{mp.ws.close();}catch(e){}}
+  mp.ws=null;mp.connected=false;mp.roomId=null;mp.playerId=null;
+  mp.playerCount=0;mp.otherPlayers=[];mp.phase='lobby';
+  mp.lobbyPlayers=[];mp.mpScreen='off';
+}
+
+function mpSend(obj){
+  if(mp.ws&&mp.ws.readyState===WebSocket.OPEN){
+    try{mp.ws.send(JSON.stringify(obj));}catch(e){}
+  }
+}
+
+function mpHandleMessage(msg){
+  if(msg.type==='welcome'){
+    mp.playerId=msg.playerId;
+    mp.roomId=msg.roomId;
+  }else if(msg.type==='lobby_update'){
+    mp.lobbyPlayers=msg.players||[];
+    mp.playerCount=mp.lobbyPlayers.length;
+  }else if(msg.type==='game_start'){
+    mp.phase='playing';
+    mp.otherPlayers=msg.players?msg.players.filter(p=>p.id!==mp.playerId):[];
+  }else if(msg.type==='player_move'){
+    const op=mp.otherPlayers.find(p=>p.id===msg.id);
+    if(op){op.x=msg.x;op.y=msg.y;op.area=msg.area;}
+  }else if(msg.type==='player_join'){
+    if(mp.phase==='playing'){
+      const exists=mp.otherPlayers.find(p=>p.id===msg.id);
+      if(!exists)mp.otherPlayers.push({id:msg.id,name:msg.name||'Player',area:0,cardCount:0,x:15,y:13});
+    }
+  }else if(msg.type==='player_leave'){
+    mp.otherPlayers=mp.otherPlayers.filter(p=>p.id!==msg.id);
+    mp.playerCount=mp.otherPlayers.length+1;
+  }else if(msg.type==='battle_action'){
+    mp.pendingActions.push(msg);
+  }else if(msg.type==='pong'){
+    mp.pingMs=Math.round(performance.now()-mp.lastPingTime);
+    mp.pingColor=mp.pingMs<80?'#40d040':mp.pingMs<200?FRLG.hpYellow:FRLG.hpRed;
+  }
+}
+
+// Broadcast player movement
+function mpBroadcastMove(){
+  if(!mp.connected||mp.phase!=='playing')return;
+  mpSend({type:'move',x:pl[0].x,y:pl[0].y,area:currentMap});
+}
+
+// Broadcast battle action
+function mpBroadcastBattleAction(action,target){
+  if(!mp.connected||mp.phase!=='playing')return;
+  mpSend({type:'battle_action',action:action,target:target});
+}
+
+// Ping server periodically
+function mpPing(){
+  if(!mp.connected)return;
+  mp.lastPingTime=performance.now();
+  mpSend({type:'ping'});
+}
+
+// Generate a random room ID
+function mpGenerateRoomId(){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id='';
+  for(let i=0;i<6;i++)id+=chars[Math.floor(Math.random()*chars.length)];
+  return id;
+}
+
+// Draw multiplayer lobby UI (FRLG-style windows)
+function drawMPLobby(){
+  bx(0,0,W,H,'#0c0c18');
+  // Stars
+  for(let i=0;i<60;i++){
+    const sx=(i*47+13)%W,sy=(i*31+7)%320;
+    const a=Math.sin(fr*.03+i*1.7)*.35+.5;
+    bx(sx,sy,1,1,`rgba(255,255,255,${a*.3})`);
+  }
+
+  if(mp.mpScreen==='select'){
+    // Room entry UI
+    win(W/2-180,120,360,340);
+    tx('MULTIPLAYER',W/2-72,160,12,FRLG.selHighlight);
+    // CREATE ROOM
+    const sel0=mp.mpMenuIdx===0;
+    if(sel0)bx(W/2-160,190,320,36,'rgba(248,216,48,.12)');
+    if(sel0)tx('\u25B6',W/2-160,214,10,FRLG.selHighlight);
+    tx('CREATE ROOM',W/2-70,214,10,sel0?FRLG.selHighlight:'#888898');
+    tx('Host a new game',W/2-80,236,6,'#686068');
+    // JOIN ROOM
+    const sel1=mp.mpMenuIdx===1;
+    if(sel1)bx(W/2-160,260,320,36,'rgba(248,216,48,.12)');
+    if(sel1)tx('\u25B6',W/2-160,284,10,FRLG.selHighlight);
+    tx('JOIN ROOM',W/2-58,284,10,sel1?FRLG.selHighlight:'#888898');
+    tx('Enter a room code',W/2-80,306,6,'#686068');
+    // BACK
+    const sel2=mp.mpMenuIdx===2;
+    if(sel2)tx('\u25B6',W/2-60,360,10,FRLG.selHighlight);
+    tx('BACK',W/2-24,360,10,sel2?FRLG.selHighlight:'#888898');
+    // Connection status
+    tx(mp.connected?'CONNECTED':'NOT CONNECTED',W/2-70,420,6,mp.connected?'#40d080':'#a06060');
+  }else if(mp.mpScreen==='join'){
+    // Join room: enter room code
+    win(W/2-180,150,360,240);
+    tx('JOIN ROOM',W/2-56,186,12,FRLG.selHighlight);
+    tx('Enter Room Code:',W/2-90,220,8,FRLG.textColor);
+    // Room code display
+    win(W/2-80,236,160,32);
+    const displayCode=mp.roomInput+(Math.floor(fr/30)%2===0?'_':'');
+    tx(displayCode,W/2-60,260,14,FRLG.textColor);
+    tx('Type code, Z to connect',W/2-100,290,6,'#686068');
+    tx('X to go back',W/2-50,310,6,'#686068');
+  }else if(mp.mpScreen==='create'){
+    // Creating room...
+    win(W/2-180,150,360,240);
+    tx('CREATE ROOM',W/2-70,186,12,FRLG.selHighlight);
+    if(mp.roomId){
+      tx('Room Code:',W/2-56,224,8,FRLG.textColor);
+      win(W/2-60,236,120,32);
+      tx(mp.roomId,W/2-44,260,14,'#40d080');
+      tx('Share this code!',W/2-70,290,7,'#686068');
+      tx('Waiting for players...',W/2-90,320,6,'#888898');
+    }else{
+      tx('Connecting...',W/2-60,250,8,'#888898');
+    }
+  }else if(mp.mpScreen==='lobby'){
+    // Lobby: show connected players, START button
+    win(W/2-200,80,400,440);
+    tx('ROOM: '+(mp.roomId||'???'),W/2-80,116,12,FRLG.selHighlight);
+    // Connected players list
+    tx('PLAYERS:',W/2-48,150,8,FRLG.textColor);
+    const players=mp.lobbyPlayers;
+    for(let i=0;i<Math.min(players.length,3);i++){
+      const py_=174+i*40;
+      win(W/2-160,py_,320,34);
+      const pc=i===0?'#48b8e8':i===1?'#d860a0':'#d8b028';
+      bx(W/2-148,py_+8,18,18,pc);
+      tx(players[i].name||('Player '+(i+1)),W/2-120,py_+24,8,FRLG.textColor);
+      tx(players[i].ready?'READY':'WAITING',W/2+80,py_+24,6,players[i].ready?'#40d080':'#a09888');
+    }
+    // Empty slots
+    for(let i=players.length;i<3;i++){
+      const py_=174+i*40;
+      win(W/2-160,py_,320,34);
+      tx('Waiting...',W/2-50,py_+24,8,'#686068');
+    }
+    // Player count
+    tx('ONLINE: '+mp.playerCount+'/3',W/2-56,320,8,mp.playerCount>=2?'#40d080':'#a09888');
+    // Ping
+    if(mp.connected){
+      bx(W/2+70,312,6,6,mp.pingColor);
+      tx(mp.pingMs+'ms',W/2+80,320,6,mp.pingColor);
+    }
+    // START button (only if 2+ players)
+    const canStart=mp.playerCount>=2;
+    const startSel=mp.mpMenuIdx===0;
+    if(canStart){
+      if(startSel)bx(W/2-80,360,160,36,'rgba(248,216,48,.15)');
+      tx('START',W/2-32,384,14,startSel?FRLG.selHighlight:'#40d080');
+    }else{
+      tx('Need 2+ players',W/2-70,384,8,'#686068');
+    }
+    // LEAVE
+    tx('X = Leave Room',W/2-60,430,6,'#a06060');
+  }
+}
+
+// Draw other multiplayer players on map as real sprites
+function drawMPPlayers(){
+  if(!mp.connected||mp.phase!=='playing')return;
+  mp.otherPlayers.forEach(op=>{
+    if(op.area!==currentMap)return;
+    const sx=op.x*TW-camX,sy=op.y*TH-camY-16;
+    if(sx<-TW*2||sx>W+TW||sy<-TH*2||sy>H+TH)return;
+    // Draw as colored sprite (like player but different color)
+    const spriteColors=['#d860a0','#d8b028','#48b8e8'];
+    const ci=mp.otherPlayers.indexOf(op)%3;
+    const col=spriteColors[ci];
+    // Body
+    bx(sx+6,sy+8,20,16,col);bx(sx+8,sy+10,16,12,'rgba(255,255,255,.15)');
+    // Head
+    bx(sx+8,sy,16,12,'#f0dcc0');bx(sx+10,sy+2,12,8,'#e8d0b0');
+    // Eyes
+    bx(sx+11,sy+5,3,3,'#181820');bx(sx+18,sy+5,3,3,'#181820');
+    // Legs
+    bx(sx+9,sy+24,6,8,'#4050a0');bx(sx+17,sy+24,6,8,'#4050a0');
+    bx(sx+8,sy+30,7,4,'#383030');bx(sx+17,sy+30,7,4,'#383030');
+    // Player name above sprite
+    const nameW=(op.name||'Player').length*6;
+    bx(sx+16-nameW/2-2,sy-12,nameW+4,10,'rgba(0,0,0,.5)');
+    tx(op.name||'Player',sx+16-nameW/2,sy-4,5,'#fff');
+  });
+}
+
+// Draw multiplayer connection status in HUD
+function drawMPStatus(){
+  if(!mp.connected&&mp.disconnectTimer<=0)return;
+  // Disconnect message
+  if(mp.disconnectTimer>0){
+    mp.disconnectTimer--;
+    const a=Math.min(1,mp.disconnectTimer/30);
+    g.globalAlpha=a;
+    win(W/2-200,H/2-30,400,60);
+    tx(mp.disconnectMsg,W/2-180,H/2+2,8,'#d04040');
+    g.globalAlpha=1;
+    return;
+  }
+  // Online indicator (top-right of HUD when on map)
+  if(sc==='map'&&mp.phase==='playing'){
+    const statusX=W-130,statusY=4;
+    bx(statusX,statusY,120,16,'rgba(0,0,0,.5)');
+    tx('ONLINE:'+mp.playerCount+'/3',statusX+4,statusY+12,6,'#40d080');
+    // Ping dot
+    bx(statusX+104,statusY+5,6,6,mp.pingColor);
   }
 }
 
@@ -3664,10 +3972,12 @@ function drawNPCDialog(){
   const wrapped2=rawLine2?wrapText(rawLine2,maxChars):[];
   const allLines=[...wrapped1,...wrapped2].slice(0,3);
   allLines.forEach((l,i)=>{
-    tx(l,20,H-70+slideOff+i*16,7,'#303028');
+    tx(l,20,H-70+slideOff+i*16,7,FRLG.textColor);
   });
-  const arrowBounce=Math.sin(fr*0.15)*2;
-  tx('\u25BC',W-24,H-18+slideOff+arrowBounce,7,'#c04040');
+  // FRLG-style bouncing triangle at bottom-right (bounces 2px every 0.5s = 30 frames)
+  const hasMore=(npcDialogIdx+2)<npcDialogLines.length;
+  const arrowBounce=hasMore?Math.floor(Math.sin(fr*Math.PI/30)*2):0;
+  tx('\u25BC',W-24,H-18+slideOff+arrowBounce,7,FRLG.selHighlight);
   g.globalAlpha=1;
 }
 
@@ -3700,29 +4010,37 @@ function dTitle(){
   if(hasSave()){
     const sel=titleMenuIdx||0;
     const blink=Math.floor(fr/25)%2===0;
-    if(sel===0&&blink||sel!==0)tx('CONTINUE',W/2-52,340,10,sel===0?'#f0c830':'#888898');
-    if(sel===0)tx('\u25B6',W/2-76,340,10,'#f0c830');
-    if(sel===1&&blink||sel!==1)tx('NEW GAME',W/2-52,372,10,sel===1?'#f0c830':'#888898');
-    if(sel===1)tx('\u25B6',W/2-76,372,10,'#f0c830');
+    if(sel===0&&blink||sel!==0)tx('CONTINUE',W/2-52,320,10,sel===0?FRLG.selHighlight:'#888898');
+    if(sel===0)tx('\u25B6',W/2-76,320,10,FRLG.selHighlight);
+    if(sel===1&&blink||sel!==1)tx('NEW GAME',W/2-52,350,10,sel===1?FRLG.selHighlight:'#888898');
+    if(sel===1)tx('\u25B6',W/2-76,350,10,FRLG.selHighlight);
     // CONNECT WALLET option
     if(walletConnected){
-      tx(walletAddressTruncated(),W/2-52,404,8,'#40d080');
-      if(sel===2)tx('\u25B6',W/2-76,404,10,'#40d080');
+      tx(walletAddressTruncated(),W/2-52,380,8,'#40d080');
+      if(sel===2)tx('\u25B6',W/2-76,380,10,'#40d080');
     }else{
-      if(sel===2&&blink||sel!==2)tx('CONNECT WALLET',W/2-80,404,10,sel===2?'#f0c830':'#888898');
-      if(sel===2)tx('\u25B6',W/2-104,404,10,'#f0c830');
+      if(sel===2&&blink||sel!==2)tx('CONNECT WALLET',W/2-80,380,10,sel===2?FRLG.selHighlight:'#888898');
+      if(sel===2)tx('\u25B6',W/2-104,380,10,FRLG.selHighlight);
     }
+    // MULTIPLAYER option
+    if(sel===3&&blink||sel!==3)tx('MULTIPLAYER',W/2-68,410,10,sel===3?FRLG.selHighlight:'#888898');
+    if(sel===3)tx('\u25B6',W/2-92,410,10,FRLG.selHighlight);
+    if(mp.connected)tx('ONLINE',W/2+60,410,6,'#40d080');
   }else{
-    if(Math.floor(fr/25)%2===0)tx('PRESS Z TO START',W/2-110,350,10,'#f0c830');
+    if(Math.floor(fr/25)%2===0)tx('PRESS Z TO START',W/2-110,330,10,FRLG.selHighlight);
     // CONNECT WALLET option below start
+    const sel2=titleMenuIdx||0;
+    const blink2=Math.floor(fr/25)%2===0;
     if(walletConnected){
-      tx(walletAddressTruncated(),W/2-52,390,8,'#40d080');
+      tx(walletAddressTruncated(),W/2-52,370,8,'#40d080');
     }else{
-      const sel2=titleMenuIdx||0;
-      const blink2=Math.floor(fr/25)%2===0;
-      if(sel2===1&&blink2||sel2!==1)tx('CONNECT WALLET',W/2-80,390,10,sel2===1?'#f0c830':'#888898');
-      if(sel2===1)tx('\u25B6',W/2-104,390,10,'#f0c830');
+      if(sel2===1&&blink2||sel2!==1)tx('CONNECT WALLET',W/2-80,370,10,sel2===1?FRLG.selHighlight:'#888898');
+      if(sel2===1)tx('\u25B6',W/2-104,370,10,FRLG.selHighlight);
     }
+    // MULTIPLAYER option (no save)
+    if(sel2===2&&blink2||sel2!==2)tx('MULTIPLAYER',W/2-68,400,10,sel2===2?FRLG.selHighlight:'#888898');
+    if(sel2===2)tx('\u25B6',W/2-92,400,10,FRLG.selHighlight);
+    if(mp.connected)tx('ONLINE',W/2+60,400,6,'#40d080');
   }
   // On-chain / offline indicator
   if(walletConnected){
@@ -4098,6 +4416,9 @@ function dMap(){
   // Atmospheric effects
   drawAtmosphere();
 
+  // Multiplayer other players
+  drawMPPlayers();
+
   // Player status effects (sparkle, exhausted, card get)
   drawPlayerStatusEffects();
 
@@ -4258,15 +4579,23 @@ function dMap(){
   // Minimap
   drawMinimap();
 
-  // Textbox with slide-up animation
+  // Textbox with slide-up animation and FRLG bouncing arrow
   if(!twDone){
     const tbSlide=Math.min(1,(fr-twShowFrame)/6);
     const tbEase=easeInOut(tbSlide);
     const tbY=hudY-56+52*(1-tbEase);
     g.globalAlpha=tbEase;
     win(4,tbY,W-8,52);
-    tx(twText,14,tbY+32,8);
-    if(twDone&&Math.floor(fr/20)%2===0)tx('\u25BC',W-24,tbY+46,8,'#c04040');
+    tx(twText,14,tbY+32,8,FRLG.textColor);
+    // FRLG-style bouncing triangle at bottom-right
+    if(twDone){
+      // Stationary when no more text
+      tx('\u25BC',W-24,tbY+46,8,FRLG.selHighlight);
+    }else{
+      // Bouncing 2px every 0.5s when there's more text
+      const bounce=Math.floor(Math.sin(fr*Math.PI/30)*2);
+      tx('\u25BC',W-24,tbY+46+bounce,8,FRLG.selHighlight);
+    }
     g.globalAlpha=1;
   }
 
@@ -4350,93 +4679,166 @@ function sfxStorm(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),
 function sfxVoid(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(600,AC.currentTime);o.frequency.linearRampToValueAtTime(200,AC.currentTime+.15);gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.15);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.15);}catch(e){}}
 
 function drawBattleBG(){
-  // Area-specific gradient backgrounds
+  // FRLG-style layered battle backgrounds: sky/ceiling + horizon + terrain + raised platforms
+  const horizonY=Math.floor(H*0.42); // horizon line dividing sky and ground
+  const groundY=H-100; // where the ground terrain starts
+  const playerPlatY=H-70; // player platform top
+  const enemyPlatY=horizonY+30; // enemy platform top
+
   if(currentMap===0){
-    // Port: ocean/dock scene
-    for(let y=0;y<H;y++){
-      const t=y/H;
-      const r=Math.floor(lerp(100,140,t));
-      const gv=Math.floor(lerp(160,200,t));
-      const b=Math.floor(lerp(220,240,t));
+    // PORT: Sky layer (blue gradient)
+    for(let y=0;y<horizonY;y++){
+      const t=y/horizonY;
+      const r=Math.floor(lerp(130,180,t));
+      const gv=Math.floor(lerp(190,220,t));
+      const b=Math.floor(lerp(240,250,t));
       bx(0,y,W,1,`rgb(${r},${gv},${b})`);
     }
-    // Waves at bottom
-    for(let i=0;i<8;i++){
-      const wy=H-80+i*12+Math.sin(fr*0.04+i)*4;
-      bx(0,wy,W,2,`rgba(255,255,255,${0.08-i*0.008})`);
-    }
-    // Dock/pier lines
-    bx(0,H-40,W,4,'#8B7355');bx(0,H-36,W,1,'#A08860');
-    for(let x=20;x<W;x+=60){bx(x,H-60,6,24,'#7B6345');bx(x+1,H-59,4,22,'#8B7355');}
-  }else if(currentMap===1){
-    // Forest: trees and grass
-    for(let y=0;y<H;y++){
-      const t=y/H;
-      const r=Math.floor(lerp(60,100,t));
-      const gv=Math.floor(lerp(120,160,t));
-      const b=Math.floor(lerp(60,80,t));
+    // Horizon line (bright band)
+    bx(0,horizonY-2,W,4,'rgba(255,255,255,.15)');
+    // Ocean/ground layer below horizon
+    for(let y=horizonY;y<H;y++){
+      const t=(y-horizonY)/(H-horizonY);
+      const r=Math.floor(lerp(80,100,t));
+      const gv=Math.floor(lerp(140,160,t));
+      const b=Math.floor(lerp(200,180,t));
       bx(0,y,W,1,`rgb(${r},${gv},${b})`);
     }
-    // Tree silhouettes in back
+    // Waves
     for(let i=0;i<6;i++){
-      const tx_=30+i*110+Math.sin(i*2.3)*20;
-      const th=60+Math.sin(i*1.7)*20;
-      bx(tx_+8,20,8,th,'#2a5030');
+      const wy=horizonY+20+i*18+Math.sin(fr*0.04+i)*4;
+      bx(0,wy,W,2,`rgba(255,255,255,${0.1-i*0.012})`);
+    }
+    // Player raised platform (dock wood)
+    bx(40,playerPlatY,320,12,'#8B7355');bx(40,playerPlatY,320,2,'#A08860');
+    bx(40,playerPlatY+12,320,50,'#7B6345');
+    for(let x=50;x<350;x+=40){bx(x,playerPlatY+2,2,10,'#6B5335');}
+    // Enemy raised platform (distant dock)
+    bx(W-380,enemyPlatY,300,8,'#9B8365');bx(W-380,enemyPlatY,300,2,'#B09870');
+    bx(W-380,enemyPlatY+8,300,30,'#8B7355');
+  }else if(currentMap===1){
+    // FOREST: Sky/canopy layer
+    for(let y=0;y<horizonY;y++){
+      const t=y/horizonY;
+      const r=Math.floor(lerp(60,90,t));
+      const gv=Math.floor(lerp(100,140,t));
+      const b=Math.floor(lerp(60,70,t));
+      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
+    }
+    // Tree silhouettes in sky area (background layer)
+    for(let i=0;i<8;i++){
+      const tx_=20+i*90+Math.sin(i*2.3)*15;
+      const th=50+Math.sin(i*1.7)*20;
+      bx(tx_+8,horizonY-th-10,8,th+10,'#1a3820');
       for(let j=0;j<3;j++){
-        const tw=36-j*8,ty_=20+j*14-th*0.1;
-        bx(tx_+12-tw/2,ty_+j*6,tw,18-j*4,'#3a6840');
+        const tw=40-j*10,ty_=horizonY-th+j*16;
+        bx(tx_+12-tw/2,ty_,tw,20-j*4,'#2a4830');
       }
     }
-    // Grass tufts
-    for(let x=0;x<W;x+=16){
-      const h=4+Math.sin(x*0.3+fr*0.02)*2;
-      bx(x,H-38-h,3,h+2,'#4a8848');
-      bx(x+6,H-36-h*0.7,2,h,'#5a9858');
-    }
-  }else{
-    // Ruins: stone walls and torches
-    for(let y=0;y<H;y++){
-      const t=y/H;
-      const r=Math.floor(lerp(50,80,t));
-      const gv=Math.floor(lerp(45,70,t));
-      const b=Math.floor(lerp(60,90,t));
+    // Horizon line (grass edge)
+    bx(0,horizonY-2,W,4,'#3a6838');
+    // Grass terrain layer
+    for(let y=horizonY;y<H;y++){
+      const t=(y-horizonY)/(H-horizonY);
+      const r=Math.floor(lerp(70,90,t));
+      const gv=Math.floor(lerp(140,110,t));
+      const b=Math.floor(lerp(60,50,t));
       bx(0,y,W,1,`rgb(${r},${gv},${b})`);
     }
-    // Stone pillars
+    // Grass tufts across terrain
+    for(let x=0;x<W;x+=14){
+      const h=4+Math.sin(x*0.3+fr*0.02)*2;
+      bx(x,horizonY-h+2,3,h+2,'#4a8848');
+      bx(x+6,horizonY-h*0.7+2,2,h,'#5a9858');
+    }
+    // Player raised platform (grassy mound)
+    bx(30,playerPlatY,340,10,'#4a7840');bx(30,playerPlatY,340,2,'#5a8850');
+    bx(30,playerPlatY+10,340,50,'#3a5830');
+    for(let x=40;x<360;x+=20){const gh=3+Math.sin(x*0.5)*2;bx(x,playerPlatY-gh,3,gh,'#5a9850');}
+    // Enemy raised platform (distant grassy mound)
+    bx(W-400,enemyPlatY,320,8,'#5a8848');bx(W-400,enemyPlatY,320,2,'#6a9858');
+    bx(W-400,enemyPlatY+8,320,25,'#3a5830');
+  }else{
+    // RUINS: Ceiling/stone layer
+    for(let y=0;y<horizonY;y++){
+      const t=y/horizonY;
+      const r=Math.floor(lerp(40,60,t));
+      const gv=Math.floor(lerp(35,55,t));
+      const b=Math.floor(lerp(50,70,t));
+      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
+    }
+    // Stone pillars in background
     for(let i=0;i<4;i++){
       const px_=60+i*160;
-      bx(px_,10,24,H-50,'#605848');bx(px_+2,10,20,H-50,'#706858');
-      bx(px_-4,8,32,8,'#706858');bx(px_-2,10,28,4,'#807868');
-      // Torch flames
+      bx(px_,10,24,horizonY-10,'#504840');bx(px_+2,10,20,horizonY-10,'#605850');
+      bx(px_-4,8,32,8,'#605850');bx(px_-2,10,28,4,'#706860');
+      // Torch flames at top
       const flicker=Math.sin(fr*0.15+i*2)*2;
       bx(px_+8,4+flicker,8,6,'#e08020');bx(px_+9,2+flicker,6,4,'#f0c040');
       bx(px_+10,0+flicker,4,3,'#f8e060');
     }
+    // Horizon line (stone shelf)
+    bx(0,horizonY-2,W,6,'#605848');bx(0,horizonY-2,W,2,'#807868');
+    // Rocky floor layer
+    for(let y=horizonY;y<H;y++){
+      const t=(y-horizonY)/(H-horizonY);
+      const r=Math.floor(lerp(55,75,t));
+      const gv=Math.floor(lerp(48,65,t));
+      const b=Math.floor(lerp(55,70,t));
+      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
+    }
     // Cracks in floor
     for(let i=0;i<5;i++){
-      const cx_=40+i*130,cy_=H-30;
-      bx(cx_,cy_,12,1,'#403830');bx(cx_+4,cy_+1,8,1,'#403830');
+      const cx_=40+i*130;
+      bx(cx_,horizonY+40+i*12,12,1,'#403830');bx(cx_+4,horizonY+41+i*12,8,1,'#403830');
     }
+    // Player raised platform (stone slab)
+    bx(40,playerPlatY,320,10,'#706858');bx(40,playerPlatY,320,2,'#908068');
+    bx(40,playerPlatY+10,320,50,'#504840');
+    // Enemy raised platform (distant stone slab)
+    bx(W-380,enemyPlatY,300,8,'#807868');bx(W-380,enemyPlatY,300,2,'#908878');
+    bx(W-380,enemyPlatY+8,300,25,'#605850');
   }
-  // Ground platform
-  bx(0,H-34,W,34,'#706048');bx(0,H-34,W,2,'#908068');bx(0,H-32,W,1,'rgba(255,255,255,.1)');
 }
 
-// Draw FRLG-style card count bar (like HP bar)
+// Draw FRLG-style card count bar (like HP bar) with rounded container and segmented fill
 function drawCardBar(x,y,w,cards,maxCards){
-  // Bar background
-  bx(x,y,w,6,'#383830');bx(x+1,y+1,w-2,4,'#505040');
-  // Segments
-  const segW=Math.floor((w-4)/maxCards);
+  const filledCount=cards.filter(c=>c>0).length;
+  // "CARDS" label to the left
+  // (label is drawn by callers)
+  // Rounded rectangle container
+  const barH=10,r=3;
+  // Outer border (rounded)
+  g.fillStyle=FRLG.borderOuter;
+  g.fillRect(x+r,y,w-r*2,barH);
+  g.fillRect(x,y+r,r,barH-r*2);
+  g.fillRect(x+w-r,y+r,r,barH-r*2);
+  g.fillRect(x+1,y+1,r-1,r-1);g.fillRect(x+w-r,y+1,r-1,r-1);
+  g.fillRect(x+1,y+barH-r,r-1,r-1);g.fillRect(x+w-r,y+barH-r,r-1,r-1);
+  // Inner bg
+  bx(x+2,y+2,w-4,barH-4,'#282820');
+  // Segmented fill
+  const segW=Math.floor((w-6)/maxCards);
+  // Color based on card count: 0-2 = green, 3 = yellow, 4-5 = gold with glow
+  const barColor=filledCount<=2?FRLG.hpGreen:filledCount===3?FRLG.hpYellow:'#F0C830';
   for(let i=0;i<maxCards;i++){
-    const sx=x+2+i*segW;
+    const sx=x+3+i*segW;
     if(i<cards.length&&cards[i]>0){
-      const cr=CD[cards[i]-1];
-      bx(sx,y+1,segW-1,4,cr.c);
-      bx(sx,y+1,segW-1,1,'rgba(255,255,255,.3)');
+      bx(sx,y+2,segW-1,barH-4,barColor);
+      bx(sx,y+2,segW-1,Math.floor((barH-4)/2),'rgba(255,255,255,.25)');
+      // Segment divider
+      if(i<maxCards-1)bx(sx+segW-1,y+2,1,barH-4,'rgba(0,0,0,.3)');
     }else{
-      bx(sx,y+1,segW-1,4,'#282820');
+      bx(sx,y+2,segW-1,barH-4,'#1a1a18');
+      if(i<maxCards-1)bx(sx+segW-1,y+2,1,barH-4,'rgba(0,0,0,.2)');
     }
+  }
+  // Gold glow for 4-5 cards
+  if(filledCount>=4){
+    const glow=Math.sin(fr*0.12)*0.15+0.15;
+    g.globalAlpha=glow;
+    bx(x-2,y-2,w+4,barH+4,'#F0C830');
+    g.globalAlpha=1;
   }
 }
 
@@ -6478,9 +6880,16 @@ function update(){
   x402CheckTimer++;
   if(x402CheckTimer>=300){x402CheckTimer=0;x402CheckServer();}
 
-  // Autonomous rival AI movement
-  updateRivalAI(0);
-  updateRivalAI(1);
+  // Multiplayer ping every 5 seconds
+  if(mp.connected&&fr%300===0)mpPing();
+  // Multiplayer disconnect timer
+  if(mp.disconnectTimer>0)mp.disconnectTimer--;
+
+  // Autonomous rival AI movement (skip if multiplayer replaces rivals)
+  if(!mp.connected||mp.phase!=='playing'){
+    updateRivalAI(0);
+    updateRivalAI(1);
+  }
   updateFootprints();
   updateProximityTension();
 
@@ -6630,7 +7039,10 @@ function update(){
 
 function draw(){
   g.clearRect(0,0,W,H);
-  if(sc==='title')dTitle();
+  if(sc==='title'){
+    if(mp.mpScreen!=='off'){drawMPLobby();}
+    else{dTitle();}
+  }
   else if(sc==='map'){
     if(inBuilding){drawBuildingInterior();}
     else{dMap();if(mo)dMenu();}
@@ -6658,6 +7070,8 @@ function draw(){
       tx('UMBRA:'+shadowStepsLeft,px-16,py-24,5,'#9060c0');
     }
   }
+  // Multiplayer connection status overlay
+  drawMPStatus();
   // Card collection progress bar (always visible on map)
   drawCardProgressBar();
   if(flashT>0){bx(0,0,W,H,`rgba(255,255,255,${(flashT>10?1:flashT/10)*.8})`);}
@@ -6667,8 +7081,8 @@ function draw(){
   drawMapLoadScreen();
   fadeDraw();
   // FRLG-style decorative border around viewport
-  g.strokeStyle='#484058';g.lineWidth=2;g.strokeRect(1,1,W-2,H-2);
-  g.strokeStyle='#686078';g.lineWidth=1;g.strokeRect(3,3,W-6,H-6);
+  g.strokeStyle=FRLG.borderOuter;g.lineWidth=2;g.strokeRect(1,1,W-2,H-2);
+  g.strokeStyle=FRLG.borderInner;g.lineWidth=1;g.strokeRect(3,3,W-6,H-6);
   // FPS counter (top-left, on top of everything)
   drawFPS();
 }
@@ -6699,10 +7113,77 @@ document.addEventListener('keydown',e=>{
     return;
   }
 
+  // Multiplayer screen input handling
+  if(sc==='title'&&mp.mpScreen!=='off'){
+    if(mp.mpScreen==='select'){
+      if(e.code==='ArrowUp'){mp.mpMenuIdx=Math.max(0,mp.mpMenuIdx-1);sfxCursor();}
+      if(e.code==='ArrowDown'){mp.mpMenuIdx=Math.min(2,mp.mpMenuIdx+1);sfxCursor();}
+      if(e.code==='KeyZ'){
+        if(mp.mpMenuIdx===0){
+          // CREATE ROOM
+          sfxConfirm();
+          const rid=mpGenerateRoomId();
+          mp.roomInput='';
+          mpConnect(rid,true);
+          mp.mpScreen='create';
+        }else if(mp.mpMenuIdx===1){
+          // JOIN ROOM
+          sfxConfirm();
+          mp.roomInput='';
+          mp.mpScreen='join';
+        }else if(mp.mpMenuIdx===2){
+          // BACK
+          sfxBack();mp.mpScreen='off';
+        }
+      }
+      if(e.code==='KeyX'){mp.mpScreen='off';sfxBack();}
+    }else if(mp.mpScreen==='join'){
+      // Text input for room code
+      if(e.code==='KeyX'){mp.mpScreen='select';sfxBack();}
+      else if(e.code==='KeyZ'&&mp.roomInput.length>=4){
+        sfxConfirm();mpConnect(mp.roomInput,false);mp.mpScreen='lobby';
+      }else if(e.code==='Backspace'){mp.roomInput=mp.roomInput.slice(0,-1);sfxCursor();}
+      else if(e.key&&e.key.length===1&&mp.roomInput.length<6){
+        mp.roomInput+=e.key.toUpperCase();sfxCursor();
+      }
+    }else if(mp.mpScreen==='create'){
+      if(e.code==='KeyX'){mpDisconnect();mp.mpScreen='select';sfxBack();}
+      else if(e.code==='KeyZ'&&mp.connected){mp.mpScreen='lobby';sfxConfirm();}
+    }else if(mp.mpScreen==='lobby'){
+      if(e.code==='KeyX'){mpDisconnect();mp.mpScreen='select';sfxBack();}
+      else if(e.code==='KeyZ'&&mp.playerCount>=2){
+        // Start game
+        sfxConfirm();
+        mpSend({type:'start_game'});
+        mp.phase='playing';
+        // Replace AI rivals with real players
+        if(mp.otherPlayers.length>0){
+          pl[1].n=mp.otherPlayers[0].name||'Player 2';
+        }
+        if(mp.otherPlayers.length>1){
+          pl[2].n=mp.otherPlayers[1].name||'Player 3';
+        }
+        mp.mpScreen='off'; // reset screen state
+        fadeOut(()=>{
+          if(loadGame()){
+            sc='map';showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]+' cards found here');
+            fadeIn();twSet('Multiplayer game started!');
+          }else{
+            resetGameState(true);
+            sc='map';currentMap=0;showBanner('PORT TOWN','Aegis & Umbra spirits found here');
+            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+            fadeIn();twSet('Multiplayer game started! Collect all 5 card types to win!');
+          }
+        });
+      }
+    }
+    return;
+  }
+
   if(sc==='title'){
     if(hasSave()){
       if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
-      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(2,titleMenuIdx+1);sfxCursor();}
+      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(3,titleMenuIdx+1);sfxCursor();}
       if(e.code==='KeyZ'){
         if(titleMenuIdx===0){
           // CONTINUE
@@ -6739,11 +7220,14 @@ document.addEventListener('keydown',e=>{
               }).catch(()=>{twSet('Connection failed.');});
             }
           }
+        }else if(titleMenuIdx===3){
+          // MULTIPLAYER
+          sfxSelect();mp.mpScreen='select';mp.mpMenuIdx=0;
         }
       }
     }else{
       if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
-      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(1,titleMenuIdx+1);sfxCursor();}
+      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(2,titleMenuIdx+1);sfxCursor();}
       if(e.code==='KeyZ'){
         if(titleMenuIdx===0){
           sfxConfirm();
@@ -6765,6 +7249,9 @@ document.addEventListener('keydown',e=>{
               }).catch(()=>{twSet('Connection failed.');});
             }
           }
+        }else if(titleMenuIdx===2){
+          // MULTIPLAYER (no save)
+          sfxSelect();mp.mpScreen='select';mp.mpMenuIdx=0;
         }
       }
     }
@@ -7119,6 +7606,8 @@ document.addEventListener('keydown',e=>{
           p.x=nx;p.y=ny;p.step++;p.walkFrame=(p.walkFrame+1)%4;sfxMove();sfxStep();
           stepCounter++;
           edgeCacheDirty=true;
+          // Broadcast move to multiplayer
+          mpBroadcastMove();
           // Leave player footprint
           footprints.push({map:currentMap,x:nx,y:ny,age:0});
           // Reveal fog around new position
@@ -7227,6 +7716,7 @@ document.addEventListener('keydown',e=>{
           bpTargetSelectActive=true;bpTargetSelectIdx=1;bpPendingAction=ai;sfxSelect();
         }else{
           sfxConfirm();bpAction=ai;
+          mpBroadcastBattleAction(ai,bpSelectedTarget);
           battlePhase='confirming';bpFrame=fr;
         }
       }
