@@ -2810,6 +2810,7 @@ const CREDITS_LINES=['','0 x A R K','','Created by r0ze','','Built for Colosseum
 let gameOverTimesUp=false;
 
 const lg=['Game started. Collect all 5 card types to win!'];
+let logScrollOff=0;
 
 // ═══════════════════════════════════════
 // TILE RENDERING
@@ -7014,25 +7015,81 @@ function dCrd(){
 // LOG SCREEN
 // ═══════════════════════════════════════
 function dLog(){
-  bx(0,0,W,H,'#181828');win(6,4,W-12,34);tx('BATTLE LOG',W/2-60,28,10);
-  const maxVisible=Math.floor((H-50)/36);
-  const recentLogs=lg.slice(-maxVisible).reverse();
-  recentLogs.forEach((l,i)=>{
-    const y=40+i*36;win(6,y,W-12,32);
-    let cl='#303028';
-    if(l.startsWith('[ON-CHAIN]'))cl='#40d080';
-    else if(l.includes('Block')||l.includes('Barrier'))cl='#3060b0';
-    else if(l.includes('Steal')||l.includes('Ignis'))cl='#c04040';
-    else if(l.includes('drew')||l.includes('Scout')||l.includes('Found'))cl='#308030';
-    else if(l.includes('Umbra'))cl='#7858a0';
-    else if(l.includes('Wild'))cl='#d8b028';
-    else if(l.includes('sense')||l.includes('tense')||l.includes('close'))cl='#a04040';
-    else if(l.includes('Footprints')||l.includes('passed'))cl='#887050';
-    else if(l.includes('ambush')||l.includes('running'))cl='#d06030';
-    else if(l.includes('entered'))cl='#c06040';
-    tx(l,16,y+22,6,cl);
+  // Dark background with subtle noise
+  bx(0,0,W,H,'#0c0c18');
+  for(let i=0;i<120;i++){
+    const nx=(i*73+17)%W,ny=(i*41+23)%H;
+    const na=Math.random()*0.04;
+    bx(nx,ny,1,1,`rgba(255,255,255,${na})`);
+  }
+
+  // BATTLE LOG header in FRLG window
+  win(16,10,W-32,42);
+  txShadow('BATTLE LOG',W/2-90,38,14,'#f0e8c0','rgba(0,0,0,.5)');
+
+  // Scrollable log entries
+  const entryH=62;
+  const maxVisible=8;
+  const padTop=60;
+  const totalEntries=lg.length;
+  const maxScroll=Math.max(0,totalEntries-maxVisible);
+  logScrollOff=Math.max(0,Math.min(logScrollOff,maxScroll));
+  const startIdx=Math.max(0,totalEntries-maxVisible-logScrollOff);
+  const endIdx=Math.min(totalEntries,startIdx+maxVisible);
+  const visibleLogs=lg.slice(startIdx,endIdx);
+
+  visibleLogs.forEach((l,i)=>{
+    const y=padTop+i*entryH;
+    // Determine entry type and border color
+    let borderCol='#505060'; // gray=system default
+    let typeLabel='SYS';
+    if(l.includes('Steal')||l.includes('Ignis')||l.includes('ambush')||l.includes('running')){borderCol='#c04040';typeLabel='ATK';}
+    else if(l.includes('Block')||l.includes('Barrier')){borderCol='#3868c0';typeLabel='DEF';}
+    else if(l.includes('drew')||l.includes('Scout')||l.includes('Found')){borderCol='#40a848';typeLabel='SCT';}
+    else if(l.includes('Umbra')){borderCol='#8860b0';typeLabel='SHD';}
+    else if(l.includes('Wild')||l.includes('Fishing')){borderCol='#d0a820';typeLabel='GET';}
+    else if(l.startsWith('[ON-CHAIN]')){borderCol='#40d080';typeLabel='SOL';}
+    else if(l.includes('sense')||l.includes('tense')||l.includes('close')){borderCol='#c04040';typeLabel='!!!';}
+    else if(l.includes('entered')){borderCol='#c06840';typeLabel='MAP';}
+    else if(l.includes('Footprints')||l.includes('passed')){borderCol='#907858';typeLabel='TRK';}
+
+    // Mini FRLG window for each entry
+    win(24,y,W-48,entryH-6);
+
+    // Color-coded left border stripe
+    bx(29,y+8,5,entryH-22,borderCol);
+
+    // Round/index number on left
+    const entryNum=startIdx+i+1;
+    txShadow(String(entryNum).padStart(3,' '),42,y+22,10,'#585868','rgba(0,0,0,.3)');
+
+    // Type label
+    txShadow(typeLabel,42,y+40,8,borderCol,'rgba(0,0,0,.3)');
+
+    // Log text - truncate if too long
+    const maxChars=58;
+    const displayText=l.length>maxChars?l.substring(0,maxChars)+'...':l;
+    txShadow(displayText,100,y+30,12,'#e8e0d0','rgba(0,0,0,.4)');
   });
-  if(Math.floor(fr/20)%2===0)tx('\u25BC',W-24,H-14,7,'#d8b028');
+
+  // Scroll indicators
+  if(logScrollOff<maxScroll){
+    // More entries above (older)
+    const blink=Math.floor(fr/20)%2===0;
+    if(blink)txShadow('\u25B2  older',W/2-50,padTop-6,8,'#d8b028','rgba(0,0,0,.4)');
+  }
+  if(logScrollOff>0){
+    // More entries below (newer)
+    const blink=Math.floor(fr/20)%2===0;
+    if(blink)txShadow('\u25BC  newer',W/2-50,padTop+maxVisible*entryH+6,8,'#d8b028','rgba(0,0,0,.4)');
+  }
+
+  // Entry count
+  txShadow(totalEntries+' entries',W-180,H-18,8,'#484858','rgba(0,0,0,.3)');
+
+  // Back prompt
+  win(W/2-100,H-38,200,28);
+  txShadow('X = Back',W/2-32,H-16,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
 }
 
 // ═══════════════════════════════════════
@@ -7886,32 +7943,114 @@ function drawMapCardUseOverlay(){
 // STATS SCREEN
 // ═══════════════════════════════════════
 function dStats(){
-  bx(0,0,W,H,'#181828');
-  win(10,6,W-20,38);tx('SESSION STATS',W/2-80,32,10,FRLG.textColor);
+  // Blue background like FRLG pokemon summary
+  bx(0,0,W,H,'#182858');
+  // Subtle gradient overlay
+  for(let gy=0;gy<H;gy+=2){
+    const ga=gy/H*0.15;
+    bx(0,gy,W,2,`rgba(0,0,0,${ga})`);
+  }
+
+  // Header
+  win(20,10,W-40,44);
+  txShadow('SESSION STATS',W/2-110,40,14,'#f0e8c0','rgba(0,0,0,.5)');
+
   const elapsed=Math.floor((Date.now()-stats.sessionStart)/1000);
   const mins=Math.floor(elapsed/60),secs=elapsed%60;
   const favIdx=stats.areaTime.indexOf(Math.max(...stats.areaTime));
   const favArea=stats.areaTime[favIdx]>0?mapNames[favIdx]:'None yet';
-  const rows=[
-    ['Games Played',''+stats.gamesPlayed],
-    ['Cards Collected',''+stats.cardsCollected],
-    ['Cards Lost',''+stats.cardsLost],
-    ['Steals Attempted',''+stats.stealsAttempted],
-    ['Steals Blocked',''+stats.stealsBlocked],
-    ['Scout Uses',''+stats.scoutUses],
-    ['Steps Walked',''+stats.stepsWalked],
-    ['Time Played',mins+'m '+secs+'s'],
-    ['Favorite Area',favArea],
-    ['Current Round',''+rd+'/30'],
+  const totalAreaTime=stats.areaTime.reduce((a,b)=>a+b,0)||1;
+
+  // Left column: Game Stats
+  const lx=20,colW=(W-60)/2;
+  win(lx,64,colW,290);
+  txShadow('GAME',lx+20,90,12,'#f0c830','rgba(0,0,0,.4)');
+  // Separator line
+  bx(lx+16,96,colW-32,2,'#484870');
+
+  const gameRows=[
+    ['Games',stats.gamesPlayed],
+    ['Steps',stats.stepsWalked],
+    ['Time',mins+'m '+secs+'s'],
+    ['Cards Got',stats.cardsCollected],
+    ['Cards Lost',stats.cardsLost],
+    ['Round',rd+'/30'],
   ];
-  rows.forEach((r,i)=>{
-    const y=52+i*44;
-    win(20,y,W-40,38);
-    txShadow(r[0],36,y+26,8,'#c8c0a0','rgba(0,0,0,.4)');
-    txShadow(r[1],W-200,y+26,8,'#f0e8c0','rgba(0,0,0,.4)');
+  gameRows.forEach((r,i)=>{
+    const y=108+i*40;
+    txShadow(r[0],lx+20,y+24,12,'#8888a8','rgba(0,0,0,.3)');
+    const valStr=''+r[1];
+    txShadow(valStr,lx+colW-30-valStr.length*10,y+24,14,'#f8f0e0','rgba(0,0,0,.4)');
   });
-  win(W/2-100,H-38,200,28);
-  txShadow('X = Back',W/2-32,H-16,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
+
+  // Right column: Combat Stats
+  const rx=lx+colW+20;
+  win(rx,64,colW,290);
+  txShadow('COMBAT',rx+20,90,12,'#c04848','rgba(0,0,0,.4)');
+  bx(rx+16,96,colW-32,2,'#484870');
+
+  const combatRows=[
+    ['Steals',stats.stealsAttempted],
+    ['Blocks',stats.stealsBlocked],
+    ['Scouts',stats.scoutUses],
+    ['Streak',streakCount],
+  ];
+  combatRows.forEach((r,i)=>{
+    const y=108+i*40;
+    txShadow(r[0],rx+20,y+24,12,'#8888a8','rgba(0,0,0,.3)');
+    const valStr=''+r[1];
+    txShadow(valStr,rx+colW-30-valStr.length*10,y+24,14,'#f8f0e0','rgba(0,0,0,.4)');
+  });
+
+  // Visual bar: Steals attempted as bar chart (right column)
+  if(stats.stealsAttempted>0){
+    const barY=278;
+    const barMaxW=colW-50;
+    const blockRate=stats.stealsBlocked/(stats.stealsAttempted||1);
+    const successRate=1-blockRate;
+    txShadow('Steal Success',rx+20,barY,8,'#8888a8','rgba(0,0,0,.3)');
+    // Background bar
+    bx(rx+20,barY+6,barMaxW,12,'#282848');
+    // Success portion (green)
+    bx(rx+20,barY+6,Math.floor(barMaxW*successRate),12,'#40a848');
+    // Blocked portion (red)
+    bx(rx+20+Math.floor(barMaxW*successRate),barY+6,Math.floor(barMaxW*blockRate),12,'#c04040');
+    txShadow(Math.round(successRate*100)+'%',rx+barMaxW+30,barY+16,8,'#40a848','rgba(0,0,0,.3)');
+  }
+
+  // Bottom: Favorite Area with time distribution bar
+  win(20,366,W-40,90);
+  txShadow('AREA TIME',36,392,12,'#f0c830','rgba(0,0,0,.4)');
+
+  // Time distribution bar
+  const barX=36,barY_=404,barW=W-92,barH=16;
+  bx(barX,barY_,barW,barH,'#181838');
+  const areaColors=['#3060b0','#308030','#803040'];
+  let accX=barX;
+  stats.areaTime.forEach((t,ai_)=>{
+    const ratio=t/totalAreaTime;
+    const segW=Math.max(0,Math.floor(barW*ratio));
+    if(segW>0){
+      bx(accX,barY_,segW,barH,areaColors[ai_]);
+      accX+=segW;
+    }
+  });
+
+  // Legend below bar
+  mapNames.forEach((name,ai_)=>{
+    const legendX=36+ai_*160;
+    const legendY=barY_+28;
+    bx(legendX,legendY-8,10,10,areaColors[ai_]);
+    const pct=Math.round((stats.areaTime[ai_]/totalAreaTime)*100);
+    txShadow(name+' '+pct+'%',legendX+16,legendY,8,'#c8c0a0','rgba(0,0,0,.3)');
+  });
+
+  // Favorite area highlight
+  txShadow('Favorite: '+favArea,W-300,392,10,'#f8f0e0','rgba(0,0,0,.4)');
+
+  // Back prompt
+  win(W/2-100,H-42,200,30);
+  txShadow('X = Back',W/2-32,H-22,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
 }
 
 // ═══════════════════════════════════════
@@ -9077,6 +9216,14 @@ document.addEventListener('keydown',e=>{
   // Credits screen input
   if(sc==='title'&&creditsActive){
     if(e.code==='KeyX'||e.code==='KeyZ'){creditsActive=false;creditsFrame=0;sfxBack();}
+    return;
+  }
+
+  // Log screen input (scroll + back)
+  if(sc==='log'){
+    if(e.code==='ArrowUp'){logScrollOff=Math.min(logScrollOff+1,Math.max(0,lg.length-8));sfxCursor();}
+    if(e.code==='ArrowDown'){logScrollOff=Math.max(0,logScrollOff-1);sfxCursor();}
+    if(e.code==='KeyX'||e.code==='KeyZ'){sfxBack();logScrollOff=0;sc='map';ub();}
     return;
   }
 
