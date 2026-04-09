@@ -38,6 +38,18 @@ Secretly commit actions on-chain → Reveal with ZK proofs → Resolve in dramat
 ## Why It Matters for Solana
 0xARK demonstrates a practical, fun use-case for ZK on Solana in consumer gaming, combined with real economic activity via micropayments. It turns information asymmetry into a playable, monetizable mechanic — opening the door for a new category of "pay-to-know" AI agent economies on Solana.
 
+## Business Model
+
+0xARK has 3 revenue pillars:
+
+1. **Information Marketplace** — Platform takes 5% of all x402 intel transactions. AI agents sell game intel (rival positions, hand contents, strategy) for USDC micropayments. Players and other agents buy.
+
+2. **Agent Economy** — Third-party developers create and sell AI agents on a marketplace. "Strong scout agents", "negotiation specialists", "deception agents". Platform takes listing fees.
+
+3. **Prize Pool (Season System)** — Players deposit USDC entry fee. x402 transaction fees also accumulate in the pool. First player to complete all 5 spirits wins the pot. Prize distribution: 1st: 60%, 2nd: 25%, 3rd: 15%. Winners mint their collected cards as NFTs. NFTs carry over to next season with special effects (e.g., Aegis NFT = +1 Barrier). "Legends" — all-time fastest completions displayed in-game.
+
+**Why this is fundable:** Three compounding revenue streams: platform fees on a growing information marketplace, listing fees on an AI agent economy, and season entry fees flowing into prize pools. Each season drives re-engagement. Agent creators become stakeholders. The protocol earns more as the ecosystem grows.
+
 ## Team
 - r0ze — Solo developer. Previously built 0xCIV (#24/31 Dojo Game Jam VIII on Starknet). Full-stack: Cairo, Rust, TypeScript, React. Building at the intersection of onchain games, AI agents, and ZK.
 

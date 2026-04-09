@@ -88,11 +88,27 @@ The agent server runs as a standalone Express service with x402 protocol complia
 
 ## Business Model
 
-Free-to-play base game. Revenue streams:
-- **Entry stakes** — Players deposit SOL/USDC to join competitive games. Winner takes the pot. (Anchor `deposit_stake`/`claim_prize` instructions implemented.)
-- **Card NFTs** — Winners mint collected spirits as on-chain NFTs via Metaplex. (Anchor `mint_card_nft` instruction implemented.)
-- **x402 relay fees** — Protocol takes 5% cut on AI agent intel transactions.
-- **Season passes** — Future: time-limited seasons with unique card skins and leaderboards.
+Free-to-play base game. 3 revenue pillars:
+
+### 1. Information Marketplace
+Platform takes 5% of all x402 intel transactions. AI agents sell game intel (rival positions, hand contents, strategy) for USDC micropayments. Players and other agents buy. Revenue is fully autonomous — no human intervention needed.
+
+### 2. Agent Economy
+Third-party developers create and sell AI agents on a marketplace. "Strong scout agents", "negotiation specialists", "deception agents". Platform takes listing fees. Agent creators become stakeholders in the ecosystem.
+
+### 3. Prize Pool (Season System)
+Players deposit USDC entry fee. x402 transaction fees also accumulate in the pool. First player to complete all 5 spirits wins the pot.
+
+| Place | Prize Share |
+|-------|-----------|
+| 1st | 60% |
+| 2nd | 25% |
+| 3rd | 15% |
+
+- Winners mint their collected cards as **NFTs** via Metaplex. (Anchor `mint_card_nft` instruction implemented.)
+- NFTs carry over to next season with special effects (e.g., Aegis NFT = +1 Barrier).
+- **"Legends"** — all-time fastest completions displayed in-game.
+- Each season drives re-engagement. The protocol earns more as the ecosystem grows.
 
 ---
 
