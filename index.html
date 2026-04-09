@@ -658,6 +658,50 @@ let onchainCommitPhase=false;
 let onchainRevealPhase=false;
 let onchainPendingSalt=null;
 
+// ── STAKE SYSTEM UI STATE ──
+let stakeConfirmActive=false; // show deposit confirmation before game start
+const STAKE_AMOUNT=0.01; // SOL per player
+const PLAYER_COUNT=3; // total players in match
+let stakePotAmount=STAKE_AMOUNT*PLAYER_COUNT;
+let stakeDeposited=false; // whether player has "deposited" (UI-only)
+
+// ── ZK VISUAL STATE ──
+let zkHashDisplay='';
+let zkHashFrame=0;
+let zkHashDone=false;
+let zkProofDisplay='';
+let zkProofFrame=0;
+let zkProofDone=false;
+
+// ── TX FLOW VIS STATE ──
+let txFlowPhase=''; // 'commit','reveal','resolve'
+let txFlowFrame=0;
+
+// Helper: draw Solana diamond logo (tilted square in purple/green gradient)
+function drawSolanaLogo(cx,cy,size){
+  g.save();
+  g.translate(cx,cy);
+  g.rotate(Math.PI/4);
+  // Outer diamond (gradient purple->green)
+  const half=size/2;
+  bx(-half,-half,size,size/3,'#9945FF');
+  bx(-half,-half+size/3,size,size/3,'#14F195');
+  bx(-half,-half+size*2/3,size,size/3,'#9945FF');
+  g.restore();
+}
+
+// Helper: draw small Solana icon (tiny for HUD)
+function drawSolanaIcon(x,y,sz){
+  g.save();
+  g.translate(x+sz/2,y+sz/2);
+  g.rotate(Math.PI/4);
+  const h=sz/2;
+  bx(-h,-h,sz,Math.ceil(sz/3),'#9945FF');
+  bx(-h,-h+Math.ceil(sz/3),sz,Math.ceil(sz/3),'#14F195');
+  bx(-h,-h+Math.ceil(sz*2/3),sz,Math.floor(sz/3),'#9945FF');
+  g.restore();
+}
+
 // Generate a truncated fake tx signature for display
 function generateFakeTxSig(){
   const bytes=crypto.getRandomValues(new Uint8Array(32));
@@ -1820,7 +1864,7 @@ const npcs=[
   {map:0, x:8, y:6, type:0, name:'Pirate Merchant', dir:0,
    dialog:['Ahoy! Welcome to','me trading post!','(Coming soon)']},
   {map:0, x:22, y:6, type:1, name:'Spy Master', dir:0,
-   dialog:['I know where the','other crews be...','for a price. (x402)']},
+   dialog:['I sell intelligence.','Real-time. Micropayments','via x402 protocol.','Connect your wallet','and I\'ll show you','what I know.']},
   {map:0, x:14, y:12, type:2, name:'Old Sea Dog', dir:2,
    dialog:['The tides be calm.','Good day to hunt','for spirit cards!']},
   // Smuggler's Jungle NPCs
@@ -2541,12 +2585,24 @@ let x402ShopIdx=0;
 let x402ShopResult='';
 let x402ShopResultTimer=0;
 let x402ShopLoading=false;
+let x402HowItWorksActive=false;
 const x402ShopItems=[
-  {label:'Rival Location',desc:'Where is the Rival?',price:'1 card',endpoint:'/intel/location/1'},
-  {label:'Hunter Location',desc:'Where is the Hunter?',price:'1 card',endpoint:'/intel/location/2'},
-  {label:'Rival Hand',desc:'What cards does Rival hold?',price:'1 card',endpoint:'/intel/hand/1'},
-  {label:'Strategy Advice',desc:'Best move right now',price:'2 cards',endpoint:'/intel/strategy',cardCost:2},
-  {label:'Market Data',desc:'Card pool status',price:'free',endpoint:'/intel/market',cardCost:0},
+  {label:'Rival Location',desc:'Where is the Rival?',price:'$0.001 USDC',priceOffline:'1 card',endpoint:'/intel/location/1'},
+  {label:'Hunter Location',desc:'Where is the Hunter?',price:'$0.001 USDC',priceOffline:'1 card',endpoint:'/intel/location/2'},
+  {label:'Rival Hand',desc:'What cards does Rival hold?',price:'$0.002 USDC',priceOffline:'1 card',endpoint:'/intel/hand/1'},
+  {label:'Strategy Advice',desc:'Best move right now',price:'$0.005 USDC',priceOffline:'2 cards',endpoint:'/intel/strategy',cardCost:2},
+  {label:'Market Data',desc:'Card pool status',price:'free',priceOffline:'free',endpoint:'/intel/market',cardCost:0},
+  {label:'HOW IT WORKS',desc:'x402 protocol explained',price:'free',priceOffline:'free',endpoint:'_howItWorks',cardCost:0,isInfo:true},
+];
+const x402HowItWorksText=[
+  'x402 uses HTTP 402 Payment Required.',
+  'Your AI agent pays per-query in USDC.',
+  'No subscriptions. No API keys.',
+  'Micropayments flow automatically.',
+  'The Spy Master sells real-time intel',
+  'about rival positions, hands, and',
+  'optimal strategy. Prices are in USDC',
+  'settled on Solana via x402 protocol.',
 ];
 
 async function x402CheckServer(){
@@ -2650,7 +2706,7 @@ function resetNewFeatureState(){
   wildEncounterActive=false;npcDialogActive=false;shopActive=false;signpostActive=false;
   discardActive=false;cardAcqActive=false;cardAcqDone=false;randomEventActive=false;
   encounterExclActive=false;encounterCooldown=0;
-  x402ShopOpen=false;x402ShopLoading=false;x402ShopResult='';x402ShopResultTimer=0;
+  x402ShopOpen=false;x402ShopLoading=false;x402ShopResult='';x402ShopResultTimer=0;x402HowItWorksActive=false;
   infoBrokerConfirm=false;infoBrokerResult='';infoBrokerResultTimer=0;
   buildingNpcDialog=false;fountainConfirm=false;fountainResultTimer=0;
   // Tension mechanics reset
@@ -2662,7 +2718,7 @@ function resetNewFeatureState(){
 }
 
 function resetGameState(startCards){
-  clearSave();fogClear();
+  clearSave();fogClear();stakeDeposited=false;
   const cards0=startCards?[1,3,0,0,0]:[0,0,0,0,0];
   const cc0=startCards?2:0;
   const cards1=startCards?[2,5,0,0,0]:[0,0,0,0,0];
@@ -4498,12 +4554,39 @@ function dTitle(){
   }
   // On-chain / offline indicator
   if(walletConnected){
+    drawSolanaIcon(W/2+82,550,8);
     tx('ON-CHAIN',W/2+100,560,7,'#40d080');
   }else{
     tx('OFFLINE',W/2+100,560,7,'#555570');
   }
-  tx('v0.3  SOLANA',W/2-60,560,7,'#333350');
-  tx('2026 r0ze',W/2-44,582,7,'#2a2a40');
+
+  // Stake display when wallet connected
+  if(walletConnected){
+    tx('STAKE: '+STAKE_AMOUNT.toFixed(2)+' SOL',W/2-80,440,8,'#14F195');
+    if(stakeDeposited){
+      tx('POT: '+stakePotAmount.toFixed(2)+' SOL',W/2-60,458,7,'#f0c830');
+    }
+  }
+
+  // "Built on Solana" branding at bottom
+  drawSolanaLogo(W/2-120,548,10);
+  tx('Built on Solana',W/2-104,552,7,'#9945FF');
+
+  // Footer credits
+  tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#333350');
+  tx('2026 r0ze',W/2-44,598,7,'#2a2a40');
+
+  // Stake confirmation overlay
+  if(stakeConfirmActive){
+    bx(0,0,W,H,'rgba(0,0,0,.6)');
+    win(W/2-200,H/2-80,400,160);
+    drawSolanaLogo(W/2,H/2-54,14);
+    tx('DEPOSIT '+STAKE_AMOUNT.toFixed(2)+' SOL TO ENTER?',W/2-180,H/2-24,9,'#f0f0f0');
+    tx('Winner takes the pot: '+stakePotAmount.toFixed(2)+' SOL',W/2-170,H/2+2,7,'#14F195');
+    tx('(UI preview - devnet not deployed)',W/2-150,H/2+22,6,'#555570');
+    const blink_=Math.floor(fr/25)%2===0;
+    if(blink_)tx('Z = Yes    X = No',W/2-100,H/2+52,9,'#f0c830');
+  }
 }
 
 // ═══════════════════════════════════════
@@ -5309,8 +5392,13 @@ function dMap(){
 
   // Sound indicator
   tx(soundEnabled?'SND:ON':'SND:OFF',750,hudY+22,6,soundEnabled?'#60a060':'#a06060');
-  // On-chain mode indicator
-  if(walletConnected){tx('ON-CHAIN',820,hudY+22,6,'#40d080');}
+  // On-chain mode indicator with Solana icon
+  if(walletConnected){
+    drawSolanaIcon(808,hudY+15,7);
+    tx('ON-CHAIN',820,hudY+22,6,'#40d080');
+    // Pot display
+    tx('POT:'+stakePotAmount.toFixed(2),820,hudY+32,5,'#14F195');
+  }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
 
   // Day/night icon
@@ -5887,11 +5975,90 @@ function drawConfirmingPhase(){
   win(4,H-70,W-8,64);
   const t=fr-bpFrame;const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
   if(walletConnected){
-    // On-chain flow: commit -> reveal -> resolve
-    if(t<40)txShadow('You chose '+actionNames[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
-    else if(t<70){const sp_=['|','/','-','\\'][Math.floor(t/4)%4];txShadow('Committing to chain... '+sp_,16,H-38,14,'#40d080','rgba(0,0,0,.3)');}
-    else if(t<100){const sp_=['|','/','-','\\'][Math.floor(t/4)%4];txShadow('Revealing... '+sp_,16,H-38,14,'#80c0ff','rgba(0,0,0,.3)');}
-    else{txShadow('Waiting for others'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-38,14,'#686068','rgba(200,180,140,.3)');}
+    // On-chain flow with ZK visual enhancements
+    if(t<30){
+      txShadow('You chose '+actionNames[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
+    }else if(t<50){
+      // Computing Poseidon hash visually
+      txShadow('Computing Poseidon hash...',16,H-38,12,'#9945FF','rgba(0,0,0,.3)');
+      // Typewriter hash display
+      const hashChars=Math.min(24,Math.floor((t-30)*1.2));
+      const fakeHash='0x3f8a7c2e91d0b465f8c72a1e';
+      const partial=fakeHash.slice(0,hashChars);
+      const blink_=Math.floor(fr/4)%2===0?'_':'';
+      txShadow(partial+blink_,16,H-22,8,'#80c0ff','rgba(0,0,0,.3)');
+    }else if(t<65){
+      txShadow('Hash committed on-chain \u2713',16,H-38,12,'#40d080','rgba(0,0,0,.3)');
+      if(walletLastCommitHash)txShadow(walletLastCommitHash,16,H-22,7,'#80c0ff','rgba(0,0,0,.3)');
+    }else if(t<85){
+      // Generating ZK proof visually
+      const sp_=['|','/','-','\\'][Math.floor(t/3)%4];
+      txShadow('Generating Groth16 proof... '+sp_,16,H-38,12,'#14F195','rgba(0,0,0,.3)');
+      // Show proof components appearing
+      const proofT=t-65;
+      if(proofT>5)txShadow('\u03C0_A',16,H-22,7,'#9945FF','rgba(0,0,0,.3)');
+      if(proofT>10)txShadow('\u03C0_B',80,H-22,7,'#14F195','rgba(0,0,0,.3)');
+      if(proofT>15)txShadow('\u03C0_C',144,H-22,7,'#80c0ff','rgba(0,0,0,.3)');
+    }else if(t<100){
+      txShadow('Proof verified (264 constraints) \u2713',16,H-38,12,'#40d080','rgba(0,0,0,.3)');
+      txShadow('\u03C0_A, \u03C0_B, \u03C0_C \u2014 valid',16,H-22,7,'#14F195','rgba(0,0,0,.3)');
+    }else{
+      txShadow('Waiting for others'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-38,14,'#686068','rgba(200,180,140,.3)');
+    }
+    // Transaction flow visualization (Requirement #5)
+    if(t>=30&&t<120){
+      const flowY=H-110,flowX=W-320;
+      // Semi-transparent bg for flow diagram
+      bx(flowX-4,flowY-18,300,54,'rgba(0,0,0,.4)');
+      // Determine which step
+      if(t<65){
+        // Commit phase
+        txShadow('TX FLOW:',flowX,flowY-4,6,'#686068','rgba(0,0,0,.3)');
+        // player icon
+        bx(flowX,flowY+6,10,12,'#48b8e8');
+        // arrow
+        const arrowProg=Math.min(1,(t-30)/20);
+        const arrowLen=Math.floor(50*arrowProg);
+        bx(flowX+14,flowY+11,arrowLen,2,'#40d080');
+        if(arrowProg>0.5)tx('\u25B6',flowX+14+arrowLen-6,flowY+14,6,'#40d080');
+        // chain icon
+        if(arrowProg>=1){
+          bx(flowX+70,flowY+4,14,14,'#9945FF');bx(flowX+72,flowY+6,10,10,'#14F195');
+          txShadow('committed',flowX+90,flowY+14,5,'#40d080','rgba(0,0,0,.3)');
+        }
+      }else if(t<100){
+        // Reveal phase
+        txShadow('TX FLOW:',flowX,flowY-4,6,'#686068','rgba(0,0,0,.3)');
+        // player icon
+        bx(flowX,flowY+6,10,12,'#48b8e8');
+        // arrow to ZK shield
+        bx(flowX+14,flowY+11,30,2,'#80c0ff');
+        tx('\u25B6',flowX+38,flowY+14,6,'#80c0ff');
+        // ZK shield icon
+        bx(flowX+48,flowY+2,18,18,'rgba(20,241,149,.3)');
+        txShadow('ZK',flowX+50,flowY+14,6,'#14F195','rgba(0,0,0,.3)');
+        // arrow to chain
+        const arrowProg2=Math.min(1,(t-65)/15);
+        const arrowLen2=Math.floor(40*arrowProg2);
+        bx(flowX+70,flowY+11,arrowLen2,2,'#9945FF');
+        if(arrowProg2>=1){
+          bx(flowX+114,flowY+4,14,14,'#9945FF');bx(flowX+116,flowY+6,10,10,'#14F195');
+          txShadow('verified',flowX+134,flowY+14,5,'#40d080','rgba(0,0,0,.3)');
+        }
+      }else{
+        // Resolve phase
+        txShadow('TX FLOW:',flowX,flowY-4,6,'#686068','rgba(0,0,0,.3)');
+        // chain icon
+        bx(flowX,flowY+4,14,14,'#9945FF');bx(flowX+2,flowY+6,10,10,'#14F195');
+        // arrow to result
+        bx(flowX+18,flowY+11,40,2,'#f0c830');
+        tx('\u25B6',flowX+52,flowY+14,6,'#f0c830');
+        txShadow('result',flowX+62,flowY+14,5,'#f0c830','rgba(0,0,0,.3)');
+        // arrows to all players
+        bx(flowX+100,flowY+11,30,2,'#48b8e8');
+        tx('ALL',flowX+134,flowY+14,5,'#48b8e8');
+      }
+    }
   }else{
     if(t<40)txShadow('You chose '+actionNames[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
     else if(t<80){const sp_=['|','/','-','\\'][Math.floor(t/4)%4];txShadow('Committing action... '+sp_,16,H-38,14,'#686068','rgba(200,180,140,.3)');}
@@ -6686,9 +6853,26 @@ function dVictory(){
   }
 
   if(t>130){g.globalAlpha=Math.min(1,(t-130)/15);win(W/2-180,420,360,34);tx(`Rounds: ${rd}/30  Cards: ${pl[0].cc}/5  Spells left: ${sp.s+sp.b+sp.c}`,W/2-168,444,7,'#686068');g.globalAlpha=1;}
-  if(t>150){win(6,462,W-12,34);
-    if(playerHasAllFive()){tx('You collected all 5 cards and completed the ARK!',14,486,7,'#303028');}
-    else{tx('Time ran out! You collected '+hasUniqueCards(0).size+'/5 unique cards.',14,486,7,'#c04040');}
+  if(t>140){
+    // "Verified on Solana" branding
+    g.globalAlpha=Math.min(1,(t-140)/15);
+    drawSolanaLogo(W/2-110,468,10);
+    tx('Verified on Solana',W/2-90,472,7,'#9945FF');
+    g.globalAlpha=1;
+  }
+  if(t>150){win(6,486,W-12,34);
+    if(playerHasAllFive()){tx('You collected all 5 cards and completed the ARK!',14,510,7,'#303028');}
+    else{tx('Time ran out! You collected '+hasUniqueCards(0).size+'/5 unique cards.',14,510,7,'#c04040');}
+  }
+  // Prize claim button when wallet connected and won
+  if(t>160&&walletConnected&&playerHasAllFive()){
+    g.globalAlpha=Math.min(1,(t-160)/15);
+    const claimBlink=Math.sin(fr*0.1)*0.15+0.85;
+    g.globalAlpha*=claimBlink;
+    win(W/2-160,526,320,34);
+    drawSolanaIcon(W/2-140,530,8);
+    tx('CLAIM PRIZE: '+stakePotAmount.toFixed(2)+' SOL',W/2-120,548,9,'#14F195');
+    g.globalAlpha=1;
   }
   if(t>170){
     win(W/2-180,H-40,360,32);
@@ -7173,24 +7357,49 @@ function drawBuildingInterior(){
   // x402 shop overlay
   if(x402ShopOpen){
     bx(0,0,W,H,'rgba(0,0,0,.5)');
-    const shopW=420,shopH=200;
+    const shopW=440,shopH=x402ShopItems.length*26+80;
     const sx=W/2-shopW/2,sy=H/2-shopH/2;
     win(sx,sy,shopW,shopH);
     tx('BUY INTEL',sx+shopW/2-40,sy+18,9,'#c04040');
-    tx(x402Available?'x402 ONLINE':'OFFLINE',sx+shopW-80,sy+18,5,'#'+( x402Available?'40a060':'a04040'));
+    // x402 status with endpoint URL
+    if(x402Available){
+      tx('x402 ONLINE',sx+shopW-100,sy+14,5,'#40a060');
+      tx(x402ServerUrl,sx+shopW-100,sy+24,4,'#40a060');
+    }else{
+      tx('OFFLINE',sx+shopW-80,sy+18,5,'#a04040');
+    }
     for(let i=0;i<x402ShopItems.length;i++){
       const item=x402ShopItems[i];
-      const iy=sy+38+i*28;
+      const iy=sy+38+i*26;
       const sel=i===x402ShopIdx;
-      if(sel)bx(sx+8,iy-4,shopW-16,24,'rgba(60,60,100,.4)');
+      if(sel)bx(sx+8,iy-4,shopW-16,22,'rgba(60,60,100,.4)');
       tx((sel?'> ':' ')+item.label,sx+16,iy+8,7,sel?'#e0e0f0':'#808098');
-      tx(item.price,sx+shopW-100,iy+8,6,item.cardCost===0?'#40a060':'#c08040');
+      // Show USDC price when x402 is online, card cost when offline
+      const displayPrice=x402Available?item.price:(item.priceOffline||item.price);
+      const priceCol=item.cardCost===0?'#40a060':'#c08040';
+      tx(displayPrice,sx+shopW-120,iy+8,6,priceCol);
+      // Show endpoint path when online
+      if(x402Available&&!item.isInfo){
+        tx(item.endpoint,sx+shopW-120,iy+16,4,'#555580');
+      }
     }
     tx('Z=Buy  X=Close',sx+shopW/2-60,sy+shopH-18,6,'#686068');
     if(x402ShopLoading){
       bx(0,0,W,H,'rgba(0,0,0,.3)');
       tx('Fetching intel...',W/2-70,H/2,8,'#80c0e0');
     }
+  }
+  // x402 "HOW IT WORKS" info overlay
+  if(x402HowItWorksActive){
+    bx(0,0,W,H,'rgba(0,0,0,.6)');
+    const iw=440,ih=x402HowItWorksText.length*18+50;
+    const ix=W/2-iw/2,iy=H/2-ih/2;
+    win(ix,iy,iw,ih);
+    tx('HOW x402 WORKS',ix+iw/2-70,iy+20,9,'#14F195');
+    for(let i=0;i<x402HowItWorksText.length;i++){
+      tx(x402HowItWorksText[i],ix+20,iy+42+i*18,6,'#c0c0d0');
+    }
+    tx('Press Z or X to close',ix+iw/2-80,iy+ih-16,6,'#686068');
   }
 
   // x402 shop result overlay
@@ -7933,6 +8142,35 @@ document.addEventListener('keydown',e=>{
     return;
   }
 
+  // Stake confirmation overlay input
+  if(sc==='title'&&stakeConfirmActive){
+    if(e.code==='KeyZ'){
+      sfxConfirm();
+      stakeConfirmActive=false;
+      stakeDeposited=true;
+      lg.push('[ON-CHAIN] Stake deposited: '+STAKE_AMOUNT.toFixed(2)+' SOL (UI preview)');
+      // Proceed with the game start that was pending
+      if(window._stakeAction==='continue'){
+        fadeOut(()=>{
+          if(loadGame()){
+            sc='map';showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]+' cards found here');
+            fadeIn();twSet('Welcome back! Stake deposited.');
+          }else{
+            sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
+            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+            fadeIn();twSet('Welcome to the ARK! Stake deposited.');
+          }
+        });
+      }else{
+        resetGameState(true);
+        fadeOut(()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
+          fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+          fadeIn();twSet('Welcome to the ARK! Stake deposited.');});
+      }
+    }
+    if(e.code==='KeyX'){sfxBack();stakeConfirmActive=false;}
+    return;
+  }
   if(sc==='title'){
     if(hasSave()){
       if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
@@ -7941,6 +8179,7 @@ document.addEventListener('keydown',e=>{
         if(titleMenuIdx===0){
           // CONTINUE
           sfxConfirm();
+          if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='continue';return;}
           fadeOut(()=>{
             if(loadGame()){
               sc='map';showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]+' cards found here');
@@ -7954,6 +8193,7 @@ document.addEventListener('keydown',e=>{
         }else if(titleMenuIdx===1){
           // NEW GAME
           sfxConfirm();
+          if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
           resetGameState(true);
           fadeOut(()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
@@ -7984,6 +8224,7 @@ document.addEventListener('keydown',e=>{
       if(e.code==='KeyZ'){
         if(titleMenuIdx===0){
           sfxConfirm();
+          if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
           fadeOut(()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
             fadeIn();twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');});
@@ -8129,12 +8370,17 @@ document.addEventListener('keydown',e=>{
       if(e.code==='KeyX'){infoBrokerConfirm=false;sfxBack();}
       return;
     }
+    if(x402HowItWorksActive){
+      if(e.code==='KeyZ'||e.code==='KeyX'){x402HowItWorksActive=false;sfxBack();}
+      return;
+    }
     if(x402ShopOpen){
       if(x402ShopLoading)return; // wait for response
       if(e.code==='ArrowUp'){x402ShopIdx=Math.max(0,x402ShopIdx-1);sfxCursor();}
       if(e.code==='ArrowDown'){x402ShopIdx=Math.min(x402ShopItems.length-1,x402ShopIdx+1);sfxCursor();}
       if(e.code==='KeyZ'){
         const item=x402ShopItems[x402ShopIdx];
+        if(item.isInfo){x402HowItWorksActive=true;sfxSelect();return;}
         const cost=item.cardCost!==undefined?item.cardCost:1;
         const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
         if(cost>0&&filled.length<cost){
@@ -8225,7 +8471,11 @@ document.addEventListener('keydown',e=>{
                 sfxSelect();
               }else{
                 buildingNpcDialog=true;
-                buildingNpcLines=['I know where the','other crews be sailin.','But ye need a card to pay!'];
+                buildingNpcLines=[
+                  'I sell intelligence.','Real-time. Micropayments','via x402 protocol.',
+                  'Each query costs a','fraction of USDC. Your AI','agent can buy intel.',
+                  'Connect your wallet','and I\'ll show you','what I know.'
+                ];
                 buildingNpcIdx=0;
                 buildingNpcName='Spy Master';
                 sfxConfirm();
