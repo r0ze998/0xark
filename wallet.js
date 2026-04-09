@@ -1,7 +1,7 @@
 // Phantom Wallet Integration for 0xARK
 // This module handles wallet connection and transaction signing
 
-const PROGRAM_ID = '3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum';
+const PROGRAM_ID = '2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3';
 const DEVNET_RPC = 'https://api.devnet.solana.com';
 
 let walletConnected = false;
