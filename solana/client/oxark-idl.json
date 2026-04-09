@@ -764,6 +764,73 @@
       ]
     }
   ],
+  "events": [
+    {
+      "name": "CardDrawn",
+      "discriminator": [
+        142,
+        210,
+        202,
+        117,
+        222,
+        153,
+        86,
+        100
+      ]
+    },
+    {
+      "name": "CardStolen",
+      "discriminator": [
+        61,
+        36,
+        87,
+        199,
+        238,
+        236,
+        239,
+        151
+      ]
+    },
+    {
+      "name": "GameFinishedEvent",
+      "discriminator": [
+        23,
+        227,
+        204,
+        194,
+        33,
+        108,
+        97,
+        163
+      ]
+    },
+    {
+      "name": "PlayerMoved",
+      "discriminator": [
+        167,
+        114,
+        108,
+        144,
+        204,
+        62,
+        98,
+        128
+      ]
+    },
+    {
+      "name": "RoundResolved",
+      "discriminator": [
+        204,
+        146,
+        253,
+        187,
+        8,
+        61,
+        75,
+        29
+      ]
+    }
+  ],
   "errors": [
     {
       "code": 6000,
@@ -839,9 +906,58 @@
       "code": 6014,
       "name": "PoolEmpty",
       "msg": "Pool is empty"
+    },
+    {
+      "code": 6015,
+      "name": "PoolEmptyForArea",
+      "msg": "No cards left in area pool to draw"
+    },
+    {
+      "code": 6016,
+      "name": "NotInSameArea",
+      "msg": "Players must be in the same area"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidArea",
+      "msg": "Area ID is out of range"
+    },
+    {
+      "code": 6018,
+      "name": "GameFinished",
+      "msg": "Game is already finished"
+    },
+    {
+      "code": 6019,
+      "name": "RoundLimitReached",
+      "msg": "Round limit reached"
     }
   ],
   "types": [
+    {
+      "name": "CardDrawn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
+            "type": "u8"
+          },
+          {
+            "name": "area",
+            "type": "u8"
+          }
+        ]
+      }
+    },
     {
       "name": "CardPool",
       "type": {
@@ -865,6 +981,30 @@
           },
           {
             "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardStolen",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "stealer",
+            "type": "pubkey"
+          },
+          {
+            "name": "victim",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
             "type": "u8"
           }
         ]
@@ -964,10 +1104,30 @@
       }
     },
     {
+      "name": "GameFinishedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "GameStatus",
       "docs": [
         "Card types (1-indexed, 0 = empty)",
-        "1=Crystal, 2=Shadow, 3=Flame, 4=Storm, 5=Void"
+        "1=Aegis (Crystal Knight), 2=Umbra (Shadow Rogue), 3=Ignis (Fire Beast), 4=Tempest (Storm Prophet), 5=Nihil (Void Observer)"
       ],
       "type": {
         "kind": "enum",
@@ -983,6 +1143,30 @@
           },
           {
             "name": "Finished"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerMoved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "from_area",
+            "type": "u8"
+          },
+          {
+            "name": "to_area",
+            "type": "u8"
           }
         ]
       }
@@ -1063,7 +1247,35 @@
             "type": "u8"
           },
           {
+            "name": "card_timestamps",
+            "docs": [
+              "Solana clock timestamp when each card slot was acquired (0 = empty/unset)"
+            ],
+            "type": {
+              "array": [
+                "i64",
+                5
+              ]
+            }
+          },
+          {
             "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoundResolved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "round",
             "type": "u8"
           }
         ]
