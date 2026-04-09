@@ -2376,7 +2376,8 @@ const pl=[
 ];
 
 const sp={s:3,b:2,c:2};
-let sc='title',mo=false,mi=0,ai=0,fr=0,wt=0,rd=1;
+let sc='splash',mo=false,mi=0,ai=0,fr=0,wt=0,rd=1;
+let splashFrame=0;
 let titleMenuIdx=0;
 let saveIndicatorTimer=0;
 let autoSaveTimer=0;
@@ -2595,14 +2596,15 @@ const x402ShopItems=[
   {label:'HOW IT WORKS',desc:'x402 protocol explained',price:'free',priceOffline:'free',endpoint:'_howItWorks',cardCost:0,isInfo:true},
 ];
 const x402HowItWorksText=[
-  'x402 uses HTTP 402 Payment Required.',
-  'Your AI agent pays per-query in USDC.',
+  'Perfect information is expensive.',
+  'Deception is profitable.',
+  '',
+  'AI agents sell real intel for USDC',
+  'micropayments via x402 protocol.',
   'No subscriptions. No API keys.',
   'Micropayments flow automatically.',
-  'The Spy Master sells real-time intel',
-  'about rival positions, hands, and',
-  'optimal strategy. Prices are in USDC',
-  'settled on Solana via x402 protocol.',
+  'HTTP 402 Payment Required \u2014',
+  'a pay-to-know economy on Solana.',
 ];
 
 async function x402CheckServer(){
@@ -4477,6 +4479,7 @@ function dTitle(){
   tx('0xARK',W/2-96,190,32,'#f8f0e0');
   if(Math.sin(fr*.02)>.3)tx('0xARK',W/2-96,190,32,'rgba(248,240,224,.15)');
   tx('EVERYTHING IS SECRET',W/2-104,226,10,'#8888a0');
+  tx('Deception is profitable.',W/2-88,242,8,'#a07848');
 
   // Ship silhouette in background
   {
@@ -5977,7 +5980,8 @@ function drawConfirmingPhase(){
   if(walletConnected){
     // On-chain flow with ZK visual enhancements
     if(t<30){
-      txShadow('You chose '+actionNames[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
+      txShadow('Secretly committing on-chain...',16,H-38,14,'#303028','rgba(200,180,140,.3)');
+      txShadow('No one can see your move until everyone commits.',16,H-18,7,'#686068','rgba(200,180,140,.3)');
     }else if(t<50){
       // Computing Poseidon hash visually
       txShadow('Computing Poseidon hash...',16,H-38,12,'#9945FF','rgba(0,0,0,.3)');
@@ -6829,6 +6833,7 @@ function dVictory(){
   }
 
   if(t>35){g.globalAlpha=Math.min(1,(t-35)/20);tx('CONGRATULATIONS!',W/2-140+1,101,14,'rgba(0,0,0,.2)');tx('CONGRATULATIONS!',W/2-140,100,14,'#c89820');g.globalAlpha=1;}
+  if(t>40){g.globalAlpha=Math.min(1,(t-40)/15);tx('Information asymmetry is the ultimate weapon',W/2-180,124,7,'#a07848');g.globalAlpha=1;}
   if(t>45){g.globalAlpha=Math.min(1,(t-45)/15);drawBattleSprite(pl[0],W/2,200,3,false);g.globalAlpha=1;}
 
   if(t>60){
@@ -7999,9 +8004,24 @@ function update(){
   }
 }
 
+function dSplash(){
+  splashFrame++;
+  const t=splashFrame;
+  bx(0,0,W,H,'#111118');
+  if(t<120){
+    const alpha=t<15?t/15:t>100?(120-t)/20:1;
+    g.globalAlpha=alpha;
+    tx('ZK-powered information asymmetry',W/2-200,H/2-20,10,'#9945FF');
+    tx('Built on Solana',W/2-80,H/2+10,10,'#14F195');
+    g.globalAlpha=1;
+  }
+  if(t>=120){fadeOut(()=>{sc='title';fadeIn();});}
+}
+
 function draw(){
   g.clearRect(0,0,W,H);
-  if(sc==='title'){
+  if(sc==='splash'){dSplash();}
+  else if(sc==='title'){
     if(mp.mpScreen!=='off'){drawMPLobby();}
     else{dTitle();}
   }
@@ -8619,7 +8639,7 @@ document.addEventListener('keydown',e=>{
           const newTile=m[ny]?.[nx];
           if(newTile===1||newTile===7||newTile===11){spawnGrassParticles(nx*TW,ny*TH);sfxGrassRustle();}
           // Tutorial triggers
-          if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Collect all 5 card types to win! Explore the island.';tutorialMsgTimer=240;}
+          if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Commit in secret. Reveal with proof. The fog hides everything \u2014 but information has a price.';tutorialMsgTimer=300;}
           if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}
           // Water proximity sound
           if(newTile!==0){const adj=[[nx-1,ny],[nx+1,ny],[nx,ny-1],[nx,ny+1]];if(adj.some(([ax,ay])=>ax>=0&&ax<MW&&ay>=0&&ay<MH&&m[ay]?.[ax]===0))sfxWaterNear();}
