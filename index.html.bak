@@ -9,13 +9,13 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111118;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;font-family:'Press Start 2P',monospace;overflow:hidden}
 #emu{background:linear-gradient(145deg,#2a2a3e,#1c1c2c);padding:20px 24px 16px;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);border:2px solid #333350}
-#lbl{text-align:center;color:#444460;font-size:10px;letter-spacing:6px;margin-bottom:8px}
+#lbl{text-align:center;color:#444460;font-size:7px;letter-spacing:6px;margin-bottom:8px}
 #sw{background:#080810;padding:4px;border-radius:4px;border:2px solid #1a1a30;box-shadow:inset 0 0 0 2px #2a2a48,inset 0 0 0 4px #0c0c18}
 canvas{display:block;width:960px;height:640px;image-rendering:auto}
 #ctrls{display:flex;justify-content:center;gap:6px;margin-top:10px}
-.b{padding:4px 12px;background:#222238;color:#555570;border:1px solid #333350;border-radius:12px;font:10px 'Press Start 2P',monospace;cursor:pointer;transition:all .15s}
+.b{padding:4px 12px;background:#222238;color:#555570;border:1px solid #333350;border-radius:12px;font:7px 'Press Start 2P',monospace;cursor:pointer;transition:all .15s}
 .b:hover{background:#2a2a44;color:#8888aa}.b.a{background:#3848a0;color:#dde;border-color:#5060c0;box-shadow:0 0 6px rgba(56,72,160,.3)}
-#h{color:#2a2a40;font-size:10px;text-align:center;margin-top:6px;letter-spacing:1px}
+#h{color:#2a2a40;font-size:5px;text-align:center;margin-top:6px;letter-spacing:1px}
 @media(max-width:1000px){canvas{width:100vw;height:calc(100vw*2/3)}#emu{padding:4px;border-radius:0}}
 /* Touch Controls Overlay */
 #touch-overlay{display:none;position:fixed;bottom:0;left:0;right:0;height:180px;z-index:100;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
@@ -34,7 +34,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:auto}
 #btn-b{right:80px;bottom:60px;background:rgba(200,50,60,.45);border-color:rgba(255,80,80,.5);font-size:12px}
 #btn-b.pressed{background:rgba(200,50,60,.7)}
 /* START button: bottom-center */
-#btn-start{left:50%;transform:translateX(-50%);bottom:12px;width:64px;height:24px;border-radius:12px;font-size:10px}
+#btn-start{left:50%;transform:translateX(-50%);bottom:12px;width:64px;height:24px;border-radius:12px;font-size:7px}
 </style>
 </head>
 <body>
@@ -60,6 +60,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:auto}
 </div>
 <script>
 const c=document.getElementById('g');
+const SCALE=1;
 c.width=960;c.height=640;
 const W=960,H=640;
 let g=c.getContext('2d');
@@ -333,14 +334,16 @@ let lastTime=0,dt=1;
 
 // Offscreen canvas caches for edge blending and fog
 const edgeCanvas=document.createElement('canvas');
-edgeCanvas.width=W;edgeCanvas.height=H;
+edgeCanvas.width=W*SCALE;edgeCanvas.height=H*SCALE;
 const edgeCtx=edgeCanvas.getContext('2d');
+edgeCtx.scale(SCALE,SCALE);
 let edgeCacheDirty=true;
 let edgeCacheLastCamX=-9999,edgeCacheLastCamY=-9999;
 
 const fogCanvas=document.createElement('canvas');
-fogCanvas.width=W;fogCanvas.height=H;
+fogCanvas.width=W*SCALE;fogCanvas.height=H*SCALE;
 const fogCtx=fogCanvas.getContext('2d');
+fogCtx.scale(SCALE,SCALE);
 let fogCacheDirty=true;
 let fogCacheLastCamX=-9999,fogCacheLastCamY=-9999;
 
@@ -381,7 +384,7 @@ function sfxEncounter(){if(!soundEnabled)return;beep(220,.08,.07);setTimeout(()=
 function sfxEvent(){if(!soundEnabled)return;beep(330,.06,.06);setTimeout(()=>beep(440,.04,.06),60);setTimeout(()=>beep(550,.06,.06),120);}
 function sfxShop(){if(!soundEnabled)return;beep(660,.04,.06);setTimeout(()=>beep(880,.06,.06),50);}
 
-// ── ENVIRONMENTAL SFX ──
+// ── NEW SFX ──
 function sfxStep(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='bandpass';f.frequency.value=800;f.Q.value=1;gn.gain.setValueAtTime(.02,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.02);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.02);}catch(e){}}
 function sfxGrassRustle(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='highpass';f.frequency.value=2000;gn.gain.setValueAtTime(.035,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.06);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.06);}catch(e){}}
 function sfxWaterNear(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='bandpass';f.frequency.value=600;f.Q.value=2;gn.gain.setValueAtTime(.03,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.08);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.08);}catch(e){}}
@@ -557,8 +560,7 @@ const _hasLetterSpacing=('letterSpacing' in g);
 function _setLS(v){if(_hasLetterSpacing)try{g.letterSpacing=v;}catch(e){}}
 function tx(s,x,y,sz,c){
   g.fillStyle=c||FRLG.textColor;
-  const finalSz=Math.max(10,sz||12);
-  g.font=finalSz+"px 'Press Start 2P',monospace";
+  g.font=(sz||12)+"px 'Press Start 2P',monospace";
   _setLS('1px');
   g.fillText(s,x,y);
   g.fillText(s,x+0.5,y); // slight bold effect
@@ -566,9 +568,8 @@ function tx(s,x,y,sz,c){
 }
 // Text with 1px shadow for readability (battle screens) — FRLG bold style
 function txShadow(s,x,y,sz,color,shadowColor){
-  const sc_=shadowColor||'rgba(0,0,0,0.85)';
-  const finalSz=Math.max(10,sz||12);
-  g.font=finalSz+"px 'Press Start 2P',monospace";
+  const sc_=shadowColor||'rgba(0,0,0,0.7)';
+  g.font=(sz||12)+"px 'Press Start 2P',monospace";
   _setLS('1px');
   g.fillStyle=sc_;g.fillText(s,x+1,y+1);
   g.fillStyle=color||'#fff';g.fillText(s,x,y);
@@ -579,12 +580,11 @@ function txShadow(s,x,y,sz,color,shadowColor){
 // ═══════════════════════════════════════
 // PHANTOM WALLET INTEGRATION
 // ═══════════════════════════════════════
-const WALLET_PROGRAM_ID='2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3';
+const WALLET_PROGRAM_ID='3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum';
 const WALLET_DEVNET_RPC='https://api.devnet.solana.com';
 let walletConnected=false;
 let walletPublicKey=null;
 let walletLastCommitHash=null;
-let programVerified=false; // true if on-chain program confirmed on devnet
 
 async function connectPhantom(){
   if(!window.solana||!window.solana.isPhantom){
@@ -596,8 +596,6 @@ async function connectPhantom(){
     walletConnected=true;
     walletPublicKey=resp.publicKey.toString();
     console.log('Connected:',walletPublicKey);
-    // Verify program exists on devnet
-    verifyProgram();
     return walletPublicKey;
   }catch(err){
     console.error('Wallet connection failed:',err);
@@ -610,16 +608,7 @@ async function disconnectPhantom(){
   if(window.solana){
     try{await window.solana.disconnect();}catch(e){}
   }
-  walletConnected=false;walletPublicKey=null;programVerified=false;
-}
-
-async function verifyProgram(){
-  try{
-    const res=await fetch(WALLET_DEVNET_RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getAccountInfo',params:[WALLET_PROGRAM_ID,{encoding:'base64'}]})});
-    const data=await res.json();
-    programVerified=!!(data.result&&data.result.value&&data.result.value.executable);
-    if(programVerified)lg.push('[ON-CHAIN] Program verified on devnet!');
-  }catch(e){programVerified=false;}
+  walletConnected=false;walletPublicKey=null;
 }
 
 function generateSalt(){return crypto.getRandomValues(new Uint8Array(32));}
@@ -674,9 +663,17 @@ const PLAYER_COUNT=3; // total players in match
 let stakePotAmount=STAKE_AMOUNT*PLAYER_COUNT;
 let stakeDeposited=false; // whether player has "deposited" (UI-only)
 
+// ── ZK VISUAL STATE ──
+let zkHashDisplay='';
+let zkHashFrame=0;
+let zkHashDone=false;
+let zkProofDisplay='';
+let zkProofFrame=0;
+let zkProofDone=false;
 
-
-
+// ── TX FLOW VIS STATE ──
+let txFlowPhase=''; // 'commit','reveal','resolve'
+let txFlowFrame=0;
 
 // Helper: draw Solana diamond logo (tilted square in purple/green gradient)
 function drawSolanaLogo(cx,cy,size){
@@ -1101,8 +1098,6 @@ function fadeUpdate(){
 function fadeDraw(){if(fadeAlpha>0){bx(0,0,W,H,`rgba(0,0,0,${fadeAlpha})`);}}
 let flashT=0;
 function flash(){flashT=20;}
-let shakeT=0,shakeIntensity=0;
-function screenShake(intensity,duration){shakeT=duration||8;shakeIntensity=intensity||3;}
 
 // ═══════════════════════════════════════
 // SCREEN TRANSITION WIPES
@@ -1937,8 +1932,6 @@ const FOOTPRINT_MAX_AGE=3600; // 60 seconds at 60fps
 let proximityPulseTimer=0;
 let proximityDangerLevel=0; // 0=none, 1=same map, 2=within 8, 3=within 5, 4=within 2
 let rivalDangerAlertShown=false;
-let rivalWinWarning=0; // 0=safe, 1=rival has 4 unique, 2=rival has 5 (they won)
-let rivalWinWarningShown=false;
 
 // Danger drone SFX
 let dangerDroneNode=null,dangerDroneGain=null;
@@ -2189,8 +2182,8 @@ function updateRivalAI(aiIdx){
   // If player is on same map and nearby, update last known
   if(rMap===currentMap){
     const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
-    // Hunter: always track if within 10 tiles
-    if(ai.personality==='hunter'&&dist<=10){
+    // Hunter: always track if within 12 tiles
+    if(ai.personality==='hunter'&&dist<=12){
       ai.lastKnownPlayerMap=currentMap;
       ai.lastKnownPlayerX=pl[0].x;
       ai.lastKnownPlayerY=pl[0].y;
@@ -2202,8 +2195,8 @@ function updateRivalAI(aiIdx){
       ai.lastKnownPlayerY=pl[0].y;
     }
 
-    // Hunter chases player directly if within 7 tiles
-    if(ai.personality==='hunter'&&dist<=7){
+    // Hunter chases player directly if within 8 tiles
+    if(ai.personality==='hunter'&&dist<=8){
       ai.goalX=pl[0].x;ai.goalY=pl[0].y;ai.goalMap=rMap;
       ai.state='hunting';
       ai.moveInterval=6; // faster when chasing
@@ -2320,7 +2313,7 @@ function updateProximityTension(){
   // "!" alert when rival first gets within 2 tiles
   if(proximityDangerLevel>=4&&!rivalDangerAlertShown){
     rivalDangerAlertShown=true;
-    sfxDangerAlert();screenShake(2,4);
+    sfxDangerAlert();
     lg.push('! Something is very close!');
   }
   if(proximityDangerLevel<4)rivalDangerAlertShown=false;
@@ -2360,7 +2353,7 @@ function getNeighborType(m,x,y,dx,dy){
   return m[ny]?.[nx]??-1;
 }
 // Ground tile types (for edge blending)
-const GROUND_WATER=WATER_TILES;
+const GROUND_WATER=new Set([0,17]);
 const GROUND_SAND=new Set([4,10,14]);
 const GROUND_MOUNTAIN=new Set([18,22]);
 // Classify a tile to its base ground type
@@ -2384,7 +2377,7 @@ const pl=[
   {x:6,y:11,c:'#d8b028',n:'Hunter',cd:[4,0,0,0,0],cc:1,dir:0,step:0,walkFrame:0,visualX:6*TW,visualY:11*TH},
 ];
 
-const sp={s:2,b:3,c:2};
+const sp={s:3,b:2,c:2};
 let sc='title',mo=false,mi=0,ai=0,fr=0,wt=0,rd=1;
 let splashFrame=0;
 let titleMenuIdx=0;
@@ -2437,10 +2430,8 @@ function drawDayNightIcon(ix,iy){
 
 // ── PLAYER STATUS EFFECTS ──
 let cardGetAnimTimer=0,cardGetAnimX=0,cardGetAnimY=0;
-let cardLostAnimTimer=0,cardLostAnimX=0,cardLostAnimY=0;
 const statusSparkles=[];
 function triggerCardGetAnim(px,py){cardGetAnimTimer=40;cardGetAnimX=px;cardGetAnimY=py;}
-function triggerCardLostAnim(px,py){cardLostAnimTimer=40;cardLostAnimX=px;cardLostAnimY=py;for(let i=0;i<8;i++){particles.push({x:px+16,y:py+12,vx:(Math.random()-.5)*3,vy:-Math.random()*2-0.5,life:15+Math.random()*10,c:Math.random()>.3?'#d04040':'#ff6060'});}}
 function drawPlayerStatusEffects(){
   const p=pl[0];
   const px=p.visualX-camX,py=p.visualY-camY-16;
@@ -2487,14 +2478,6 @@ function drawPlayerStatusEffects(){
     g.globalAlpha=1;
     cardGetAnimTimer--;
   }
-  if(cardLostAnimTimer>0){
-    const progress=1-cardLostAnimTimer/40;
-    const floatY=cardLostAnimY+progress*16;
-    g.globalAlpha=1-progress;
-    tx('-',cardLostAnimX+8,floatY,8,'#d04040');
-    g.globalAlpha=1;
-    cardLostAnimTimer--;
-  }
 }
 
 // ── Battle phase system ──
@@ -2526,17 +2509,18 @@ let signpostActive=false, signpostText='', signpostFrame=0;
 let discardActive=false, discardSelIdx=0, discardPendingCard=-1, discardSource='';
 
 // ── Tutorial system ──
-let tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false,firstBattle:false};
+let tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
 let tutorialMsg='', tutorialMsgTimer=0;
 
 // ── Battle encounter exclamation ──
 let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
 
-
+// ── Battle wipe transition ──
+let battleWipeActive=false, battleWipeFrame=0;
 
 // ═══════════════════════════════════════
-// AREA-SPECIFIC EVENTS
+// FEATURE 2: AREA-SPECIFIC EVENTS
 // ═══════════════════════════════════════
 
 // ── FISHING STATE (Corsair Bay) ──
@@ -2559,7 +2543,7 @@ const puzzleColors=['#c04040','#4060c0','#d0c040']; // red, blue, yellow
 const puzzleNames=['FIRE','WATER','LIGHT'];
 
 // ═══════════════════════════════════════
-// ENTERABLE BUILDINGS
+// FEATURE 3: ENTERABLE BUILDINGS
 // ═══════════════════════════════════════
 let inBuilding=false, buildingType='', buildingPlayerX=4, buildingPlayerY=6;
 let buildingPlayerDir=0, buildingReturnX=0, buildingReturnY=0, buildingReturnMap=0;
@@ -2688,7 +2672,7 @@ function x402SetUrl(url){
 }
 
 // ═══════════════════════════════════════
-// INTERACTABLE OBJECTS
+// FEATURE 4: INTERACTABLE OBJECTS
 // ═══════════════════════════════════════
 const shakenTrees=new Set(); // "mapIdx-x-y"
 const pushedRocks=new Set();
@@ -2699,7 +2683,7 @@ let crystalRevealTimer=0; // frames remaining for crystal rival reveal
 let objectInteractMsg='', objectInteractTimer=0;
 
 // ═══════════════════════════════════════
-// CARDS USED ON MAP
+// FEATURE 5: CARDS USED ON MAP
 // ═══════════════════════════════════════
 let shadowStepsLeft=0;
 const burnedTiles=[]; // {mapIdx, x, y} — tiles burned by Flame
@@ -2708,7 +2692,7 @@ let mapCardDirSelect=false, mapCardDirIdx=0, mapCardPendingType=-1;
 
 // ── TENSION MECHANICS ──
 // Card Decay Timer: each slot stores timestamp when card was acquired (0 = empty)
-const CARD_DECAY_MS=210000; // 210 seconds (3.5 minutes) real-time — slightly more breathing room
+const CARD_DECAY_MS=180000; // 180 seconds (3 minutes) real-time
 const cardTimers=[0,0,0,0,0]; // parallel to pl[0].cd[5]
 let cardDecayWarningFlash=0; // frame counter for warning flash
 
@@ -2762,7 +2746,7 @@ function resetGameState(startCards){
   pl[0].cd=cards0;pl[0].cc=cc0;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
   pl[1].cd=cards1;pl[1].cc=cc1;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
   pl[2].cd=cards2;pl[2].cc=cc2;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
-  sp.s=2;sp.b=3;sp.c=2;rd=1;currentMap=0;stepCounter=0;randomEventTimer=0;
+  sp.s=3;sp.b=2;sp.c=2;rd=1;currentMap=0;stepCounter=0;randomEventTimer=0;
   rivalMaps=[0,0];
   // Reset rival AI
   rivalAI[0].goalX=10;rivalAI[0].goalY=10;rivalAI[0].goalMap=0;rivalAI[0].state='exploring';
@@ -2775,7 +2759,7 @@ function resetGameState(startCards){
   stopDangerDrone();
   lg.length=0;lg.push(startCards?'New game started!':'New game started!');
   treasures.forEach(t=>t.collected=false);
-  tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false,firstBattle:false};
+  tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
   resetNewFeatureState();
   // Set card timers for starting cards
   const now=Date.now();
@@ -2798,9 +2782,9 @@ function sfxStreakLost(){if(!soundEnabled)return;beep(300,.06,.06);setTimeout(()
 function sfxQtePrompt(){if(!soundEnabled)return;beep(1000,.03,.08);setTimeout(()=>beep(1200,.03,.08),30);}
 function sfxQteSuccess(){if(!soundEnabled)return;beep(880,.04,.07);setTimeout(()=>beep(1320,.06,.08),40);}
 function sfxQteMiss(){if(!soundEnabled)return;beep(200,.06,.05);}
+function sfxDangerRise(){if(!soundEnabled)return;beep(220,.06,.05);setTimeout(()=>beep(260,.06,.05),60);}
 
-
-// ── AREA ENTRY, UNIQUE CARD STING, TENSION DRUM SFX ──
+// ── NEW SFX: AREA ENTRY, UNIQUE CARD STING, TENSION DRUM ──
 function sfxAreaEntry(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='bandpass';f.frequency.setValueAtTime(400,AC.currentTime);f.frequency.linearRampToValueAtTime(100,AC.currentTime+.5);f.Q.value=1;gn.gain.setValueAtTime(.12,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.5);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.5);const o=AC.createOscillator(),gn2=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(150,AC.currentTime);o.frequency.linearRampToValueAtTime(80,AC.currentTime+.4);gn2.gain.setValueAtTime(.06,AC.currentTime);gn2.gain.linearRampToValueAtTime(0,AC.currentTime+.4);o.connect(gn2);gn2.connect(AC.destination);o.start();o.stop(AC.currentTime+.4);}catch(e){}}
 function sfxUniqueCardSting(){if(!soundEnabled)return;try{const notes=[523,659,784,988,1047];notes.forEach((f,i)=>{setTimeout(()=>{try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=f;gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.15);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.15);}catch(e){}},i*80);});}catch(e){}}
 let tensionDrumNode=null,tensionDrumGain=null;
@@ -2850,11 +2834,11 @@ function drawWater(px,py,tx_,ty){
   if(useKenney.water){
     const nearLand_=isNearLand(tx_,ty);
     // Auto-tile: pick correct edge/corner/center based on neighbors
-    const kTile = getWaterTileVariant(tx_, ty);
+    const kTile = getWaterTileVariant(tx_, ty_);
     // Draw blue-tinted water base
-    const waterColor = nearLand_ ? 'rgba(30,80,140,0.95)' : 'rgba(48,96,160,0.95)';
+    const waterColor = nearLand_ ? 'rgba(36,100,160,0.95)' : 'rgba(48,120,180,0.95)';
     bx(px,py,TW,TH,waterColor);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, nearLand_ ? '#3070a0' : '#4090c8')){
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, nearLand_ ? '#4090c0' : '#60b0e0')){
       // Animated wave overlay from sprite sheet
       const wavePhase = (wt + tx_) % 3;
       if(wavePhase === 0) drawKenneyTileTinted(K.wave1[0], K.wave1[1], px, py, 2, 'rgba(120,200,240,0.3)');
@@ -2912,9 +2896,9 @@ function drawGrass(px,py,tx_,ty){
     const kTile = getGrassTileVariant(tx_, ty);
     // Green base color
     const sv=((h&15)-8);
-    const grassColor = `rgb(${64+sv},${128+sv},${64+sv})`;
+    const grassColor = `rgb(${88+sv},${168+sv},${88+sv})`;
     bx(px,py,TW,TH,grassColor);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${48+sv},${116+sv},${48+sv})`)){
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${60+sv},${140+sv},${60+sv})`)){
       // Wildflower dots overlay
       if((h&3)===0){
         const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
@@ -3003,8 +2987,8 @@ function drawPath(px,py,tx_,ty){
     const sv=((h&7)-4);
     // Use land tile tinted dirt-brown for path
     const kTile = (h % 2 === 0) ? K.landCenter : K.landAlt;
-    bx(px,py,TW,TH,`rgb(${176+sv},${144+sv},${88+sv})`);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${160+sv},${128+sv},${80+sv})`)){
+    bx(px,py,TW,TH,`rgb(${208+sv},${192+sv},${128+sv})`);
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${180+sv},${164+sv},${100+sv})`)){
       // Pebbles overlay
       for(let i=0;i<2;i++){
         if(thRand(tx_,ty,i+50)>.5){
@@ -3050,8 +3034,8 @@ function drawSand(px,py,tx_,ty){
     const nearW=isNearWater(tx_,ty);
     // Use land tiles tinted sand-color for auto-tiled look
     const kTile = nearW ? K.landAlt : K.landCenter;
-    bx(px,py,TW,TH,`rgb(${200+sv},${168+sv},${96+sv})`);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${184+sv},${152+sv},${80+sv})`)){
+    bx(px,py,TW,TH,`rgb(${232+sv},${216+sv},${168+sv})`);
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${210+sv},${194+sv},${140+sv})`)){
       // Shells overlay
       if(thRand(tx_,ty,80)>.7){
         const shx=Math.floor(thRand(tx_,ty,81)*28)+2, shy=Math.floor(thRand(tx_,ty,82)*26)+3;
@@ -3098,7 +3082,7 @@ function drawTree(px,py,tx_,ty){
   if(useKenney.tree){
     drawGrass(px,py,tx_,ty);
     const kTile = (tileHash(tx_,ty) % 2 === 0) ? K.tree1 : K.tree2;
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#305828')){
+    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#2a7830')){
       // Shadow beneath
       g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
       return;
@@ -3122,7 +3106,7 @@ function drawTree(px,py,tx_,ty){
 function drawPine(px,py,tx_,ty){
   if(useKenney.pine){
     drawGrass(px,py,tx_,ty);
-    if(drawKenneyTileTinted(K.tree2[0], K.tree2[1], px, py, 2, '#284820')){
+    if(drawKenneyTileTinted(K.tree2[0], K.tree2[1], px, py, 2, '#206828')){
       g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.ellipse(px+16,py+TH-2,10,3,0,0,Math.PI*2);g.fill();
       return;
     }
@@ -3143,7 +3127,7 @@ function drawPine(px,py,tx_,ty){
 function drawPalm(px,py,tx_,ty){
   if(useKenney.palm){
     drawSand(px,py,tx_,ty);
-    if(drawKenneyTileTinted(K.palm1[0], K.palm1[1], px, py, 2, '#306830')){
+    if(drawKenneyTileTinted(K.palm1[0], K.palm1[1], px, py, 2, '#3a8040')){
       return;
     }
   }
@@ -3240,9 +3224,9 @@ function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
   }
 }
 
-function drawBuilding5(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#c86050','#983030','#b84040');}
-function drawBuilding15(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#5878b8','#384898','#4868a8');}
-function drawBuilding16(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#50a060','#306840','#408850');}
+function drawBuilding5(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#c07070','#a84040','#c05050');}
+function drawBuilding15(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#6080c0','#4060a0','#5070b0');}
+function drawBuilding16(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#60a070','#408050','#509060');}
 
 function drawCave(px,py,tx_,ty){
   if(useKenney.cave){
@@ -4082,16 +4066,12 @@ function tryWildEncounter(){
   // Base rates: Tall grass 25%, regular grass 12%
   // Streak bonus: +5% per streak level
   // Danger LOW: +5% bonus to encounter rate
-  const streakBonus=Math.min(streakCount*0.05,0.25); // cap at +25%
+  const streakBonus=streakCount*0.05;
   const dangerBonus=areaDanger[currentMap]<DANGER_LOW_THRESH?0.05:0;
-  // Rubber-banding: +10% encounter rate when behind on unique cards (fewer than rivals)
-  const playerUnique=hasUniqueCards(0).size;
-  const maxRivalUnique=Math.max(hasUniqueCards(1).size,hasUniqueCards(2).size);
-  const rubberBand=playerUnique<maxRivalUnique?0.10:0;
   if(tile===11){
-    if(Math.random()>(0.30+streakBonus+dangerBonus+rubberBand))return; // tall grass: 30% base
+    if(Math.random()>(0.25+streakBonus+dangerBonus))return;
   }else if(tile===1){
-    if(Math.random()>(0.15+streakBonus+dangerBonus+rubberBand))return; // regular grass: 15% base
+    if(Math.random()>(0.12+streakBonus+dangerBonus))return;
   }else{
     return;
   }
@@ -4112,14 +4092,14 @@ function tryWildEncounter(){
     else cardIdx=1;             // UMBRA
   }else if(currentMap===1){// Forest
     const roll=Math.random();
-    if(roll<0.40)cardIdx=2;     // IGNIS (40%)
-    else if(roll<0.80)cardIdx=3; // TEMPEST (40%)
-    else cardIdx=4;              // NIHIL (20% cross-area)
+    if(roll<0.4)cardIdx=2;     // IGNIS
+    else if(roll<0.8)cardIdx=3; // TEMPEST
+    else cardIdx=0;             // AEGIS
   }else{// Ruins
     const roll=Math.random();
-    if(roll<0.40)cardIdx=4;     // NIHIL (40%)
-    else if(roll<0.70)cardIdx=1; // UMBRA (30%)
-    else cardIdx=3;              // TEMPEST (30% cross-area)
+    if(roll<0.4)cardIdx=4;     // NIHIL
+    else if(roll<0.7)cardIdx=1; // UMBRA
+    else cardIdx=0;             // AEGIS
   }
 
   wildEncounterActive=true;
@@ -4166,7 +4146,7 @@ function drawWildEncounter(){
     wildEncounterActive=false;
     cardAcqDone=false;
     // Check win after acquiring a card
-    checkWinAndTransition(500);
+    if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},500);}
   }
 }
 
@@ -4190,7 +4170,7 @@ function checkTreasure(){
         twSet('You found a hidden '+cr.n+' card!');
         lg.push('Found hidden '+cr.n+'!');
         // Check win after treasure
-        checkWinAndTransition(2000);
+        if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
       }else{
         // Hand full - offer discard
         discardActive=true;discardSelIdx=0;discardPendingCard=t.card+1;discardSource='wild';
@@ -4340,7 +4320,7 @@ function doShopTrade(){
   startCardAcquisition(newCard-1);
   sfxShopTrade();
   lg.push('Shop: Traded '+oldName+' for '+newName+'!');
-  checkWinAndTransition(2000);
+  if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
 }
 
 function drawCardShop(){
@@ -4412,11 +4392,10 @@ function triggerRandomEvent(){
     for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
     if(slot>=0){
       pl[0].cd[slot]=cardIdx+1;
-      cardTimers[slot]=Date.now();
       syncCardCount(0);
       startCardAcquisition(cardIdx);
       lg.push('Event: Found a '+CD[cardIdx].n+' in a forgotten stash!');
-      checkWinAndTransition(2000);
+      if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
     }else{
       // Hand full - offer discard
       discardActive=true;discardSelIdx=0;discardPendingCard=cardIdx+1;discardSource='wild';
@@ -4634,7 +4613,7 @@ function dTitle(){
   // On-chain / offline indicator
   if(walletConnected){
     drawSolanaIcon(W/2+82,550,8);
-    tx(programVerified?'VERIFIED':'ON-CHAIN',W/2+100,560,7,programVerified?'#14F195':'#40d080');
+    tx('ON-CHAIN',W/2+100,560,7,'#40d080');
   }else{
     tx('OFFLINE',W/2+100,560,7,'#555570');
   }
@@ -5433,11 +5412,6 @@ function dMap(){
   bx(420,hudY+48,60,3,'#282838');
   bx(420,hudY+48,Math.floor(60*dangerVal),3,dangerCol);
 
-  // Rival near-win warning (flashing)
-  if(rivalWinWarning>0&&Math.floor(fr/15)%2===0){
-    txShadow('RIVAL NEAR WIN!',520,hudY+44,6,'#d04040','rgba(0,0,0,.5)');
-  }
-
   // Rival Threat Indicator (compass arrow at top of screen)
   for(let ri=0;ri<2;ri++){
     if(rivalMaps[ri]!==currentMap)continue;
@@ -5796,8 +5770,8 @@ function drawOpponentInfoBox(){
   // Card count number
   txShadow(rival.cc+'/5',bx_+200,by_+36,10,'#383830','rgba(0,0,0,.15)');
   // Spell indicators as small icons
-  bx(bx_+120,by_+30,6,6,'#b04040');tx('S',bx_+128,by_+37,5,'#686060');
-  bx(bx_+140,by_+30,6,6,'#3060b0');tx('B',bx_+148,by_+37,5,'#686060');
+  bx(bx_+120,by_+30,6,6,'#b04040');bx(bx_+128,by_+37,5,'#686060');// S
+  bx(bx_+140,by_+30,6,6,'#3060b0');bx(bx_+148,by_+37,5,'#686060');// B
 }
 
 // Draw FRLG-style player info box (bottom-right)
@@ -5905,10 +5879,7 @@ function drawVsSplash(){
     txShadow(mapNames[currentMap],W/2-80,H/2+42,14,'#fff','rgba(0,0,0,.5)');
     g.globalAlpha=1;
   }
-  if(t>=60){
-    battlePhase='select';bpFrame=fr;
-    if(!tutorialFlags.firstBattle){tutorialFlags.firstBattle=true;tutorialMsg='Pick an action! DRAW cards, STEAL from rivals, or BARRIER to defend.';tutorialMsgTimer=240;}
-  }
+  if(t>=60){battlePhase='select';bpFrame=fr;}
 }
 
 function isActionAvailable(i){
@@ -6035,27 +6006,19 @@ function drawSelectPhase(){
   drawActionGrid();
   // Card selection submenu for USE CARD
   if(bpCardSelectActive){
-    bx(0,0,W,H,'rgba(0,0,0,.5)');
+    bx(0,0,W,H,'rgba(0,0,0,.4)');
     const filled=[];for(let i=0;i<5;i++){if(pl[0].cd[i]>0)filled.push(i);}
-    // Larger card frames — 30% bigger
-    const cardH=48;
-    const mh=filled.length*cardH+56;
-    const cardW=380;
-    win(W/2-cardW/2,H/2-mh/2,cardW,mh);
-    txShadow('Use which card?',W/2-90,H/2-mh/2+26,14,'#806030','rgba(0,0,0,.2)');
-    // Spread cards out more if fewer in hand
-    const spacing=filled.length<=3?Math.min(cardH+8,(mh-56)/Math.max(1,filled.length)):cardH;
+    const mh=filled.length*36+52;
+    win(W/2-150,H/2-mh/2,300,mh);
+    txShadow('Use which card?',W/2-80,H/2-mh/2+24,14,'#806030','rgba(0,0,0,.2)');
     filled.forEach((slot,j)=>{
       const cd=pl[0].cd[slot],cr=CD[cd-1];
-      const y=H/2-mh/2+46+j*spacing;
-      if(j===bpCardSelectIdx){bx(W/2-cardW/2+8,y-4,cardW-16,cardH-4,'rgba(192,168,96,.25)');txShadow('\u25B6',W/2-cardW/2+4,y+20,12,'#c04040','rgba(0,0,0,.3)');}
-      // Larger card frame with character sprite
-      const frameX=W/2-cardW/2+28;
-      bx(frameX,y+2,36,36,cr.d);bx(frameX+2,y+4,32,32,cr.c);
-      drawCardCharacter(frameX+3,y+5,cd,1.2,fr);
-      // Card name clearly below/beside
-      txShadow(cr.n,frameX+44,y+20,14,j===bpCardSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
-      txShadow(cr.f,frameX+44,y+36,11,'#908878','rgba(0,0,0,.15)');
+      const y=H/2-mh/2+42+j*36;
+      if(j===bpCardSelectIdx){bx(W/2-140,y-2,280,32,'rgba(192,168,96,.22)');txShadow('\u25B6',W/2-144,y+16,10,'#c04040','rgba(0,0,0,.3)');}
+      bx(W/2-126,y+4,22,22,cr.d);bx(W/2-124,y+6,18,18,cr.c);
+      drawCardCharacter(W/2-123,y+6,cd,0.7,fr);
+      txShadow(cr.n,W/2-98,y+18,14,j===bpCardSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
+      txShadow(cr.f,W/2+40,y+18,10,'#908878','rgba(0,0,0,.15)');
     });
   }
   if(bpTargetSelectActive){
@@ -6203,8 +6166,8 @@ function drawConfirmingPhase(){
   if(t>=120){battlePhase='resolving';bpFrame=fr;bpResolveIdx=0;bpResolveQueue=generateResolveEvents();}
 }
 
-// Area card tables: Port=[1,2](Aegis,Umbra), Forest=[3,4,5](Ignis,Tempest,Nihil), Ruins=[5,2,4](Nihil,Umbra,Tempest)
-const AREA_CARDS=[[1,2],[3,4,5],[5,2,4]];
+// Area card tables: Port=[1,2](Aegis,Umbra), Forest=[3,4](Ignis,Tempest), Ruins=[5,1](Nihil,Aegis)
+const AREA_CARDS=[[1,2],[3,4],[5,1]];
 function pickAreaCard(){return pickAreaCardForMap(currentMap);}
 function pickAreaCardForMap(mapIdx){const ac=AREA_CARDS[mapIdx]||[1,2];return ac[Math.floor(Math.random()*ac.length)];}
 function syncCardCount(pIdx){const p=pl[pIdx];p.cc=p.cd.filter(c=>c>0).length;}
@@ -6226,12 +6189,6 @@ function removeCardFromPlayer(pIdx,slotOrRandom){
 }
 function hasUniqueCards(pIdx){const s=new Set();pl[pIdx].cd.forEach(c=>{if(c>0)s.add(c);});return s;}
 function playerHasAllFive(){const s=hasUniqueCards(0);return s.has(1)&&s.has(2)&&s.has(3)&&s.has(4)&&s.has(5);}
-function checkWinAndTransition(delayMs){
-  if(!playerHasAllFive())return;
-  const d=(delayMs!==undefined)?delayMs:500;
-  if(d>0){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},d);}
-  else{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
-}
 
 // Rival AI: choose an action index (0=Draw,1=Steal,2=Barrier,3=Scout)
 function rivalChooseAction(rIdx){
@@ -6257,20 +6214,15 @@ function rivalChooseAction(rIdx){
     }
     if(roll<0.4)return 1;if(roll<0.7)return 0;return 3;
   }else{
-    // Collector: mostly Draw + Barrier, but will steal when behind
+    // Collector: mostly Draw + Barrier
     if(rUnique.size>=4){
-      if(roll<0.5)return 2;// barrier to protect lead
-      if(roll<0.8)return 0;// draw to complete set
-      return 3;// scout to plan
+      if(roll<0.6)return 2;// barrier to protect
+      if(roll<0.9)return 0;// draw to fill
+      return 2;// more barrier
     }
-    // Steal if player has cards collector needs and collector has 3+ cards
-    const playerCards=hasUniqueCards(0);
-    const needsFromPlayer=rCardCount>=3&&playerCards.size>rUnique.size;
-    if(needsFromPlayer&&roll<0.20)return 1;// opportunistic steal (20%)
-    if(roll<0.45)return 0;// draw (45%)
-    if(roll<0.75)return 2;// barrier (30%)
-    if(roll<0.90)return 3;// scout (15%)
-    return 0;// draw fallback
+    if(roll<0.5)return 0;// draw
+    if(roll<0.8)return 2;// barrier
+    return 0;// more draw
   }
 }
 
@@ -6323,12 +6275,6 @@ function generateResolveEvents(){
       if(stolen>0&&addCardToPlayer(0,stolen)){
         events.push({type:'result',text:'You stole '+CD[stolen-1].n+' from '+pl[tgt].n+'!',effect:'damage',target:tgt,isCritical:true});
         lg.push('R'+rd+': Stole '+CD[stolen-1].n+' from '+pl[tgt].n+'!');
-        streakCount++;streakDisplayTimer=60;sfxStreakUp();
-      }else if(stolen>0){
-        // Hand full — queue discard prompt so stolen card isn't lost
-        events.push({type:'result',text:'You stole '+CD[stolen-1].n+' but hand full! Discard one after battle.',effect:'damage',target:tgt,isCritical:true});
-        events._pendingDrawCard=stolen;
-        lg.push('R'+rd+': Stole '+CD[stolen-1].n+' - hand full!');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
       }else{
         events.push({type:'result',text:'Steal failed!',effect:'none'});
@@ -6417,7 +6363,6 @@ function generateResolveEvents(){
         }
         events.push({type:'result',text:pl[1].n+' stole your '+CD[stolen-1].n+'!',effect:'damage',target:0,isCritical:true});
         lg.push('R'+rd+': '+pl[1].n+' stole your '+CD[stolen-1].n+'!');
-        screenShake(4,10);
         if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
       }
     }
@@ -6457,7 +6402,6 @@ function generateResolveEvents(){
         }
         events.push({type:'result',text:pl[2].n+' stole your '+CD[stolen-1].n+'!',effect:'damage',target:0,isCritical:true});
         lg.push('R'+rd+': '+pl[2].n+' stole your '+CD[stolen-1].n+'!');
-        screenShake(4,10);
         if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
       }
     }
@@ -7084,8 +7028,8 @@ function dLog(){
   txShadow('BATTLE LOG',W/2-90,38,14,'#f0e8c0','rgba(0,0,0,.5)');
 
   // Scrollable log entries
-  const entryH=32;
-  const maxVisible=14;
+  const entryH=62;
+  const maxVisible=8;
   const padTop=60;
   const totalEntries=lg.length;
   const maxScroll=Math.max(0,totalEntries-maxVisible);
@@ -7094,29 +7038,38 @@ function dLog(){
   const endIdx=Math.min(totalEntries,startIdx+maxVisible);
   const visibleLogs=lg.slice(startIdx,endIdx);
 
-  // Single window for all entries
-  win(16,padTop-8,W-32,maxVisible*entryH+16);
-
   visibleLogs.forEach((l,i)=>{
-    const y=padTop+i*entryH+4;
-    // Determine entry color
-    let col='#888898';
-    if(l.includes('Steal')||l.includes('Ignis')||l.includes('ambush')){col='#e06060';}
-    else if(l.includes('Block')||l.includes('Barrier')){col='#6090d0';}
-    else if(l.includes('drew')||l.includes('Scout')||l.includes('Found')){col='#60c060';}
-    else if(l.includes('Umbra')){col='#a878c8';}
-    else if(l.includes('Wild')||l.includes('Fishing')){col='#e0c040';}
-    else if(l.startsWith('[ON-CHAIN]')){col='#50e090';}
-    else if(l.includes('entered')){col='#d08050';}
+    const y=padTop+i*entryH;
+    // Determine entry type and border color
+    let borderCol='#505060'; // gray=system default
+    let typeLabel='SYS';
+    if(l.includes('Steal')||l.includes('Ignis')||l.includes('ambush')||l.includes('running')){borderCol='#c04040';typeLabel='ATK';}
+    else if(l.includes('Block')||l.includes('Barrier')){borderCol='#3868c0';typeLabel='DEF';}
+    else if(l.includes('drew')||l.includes('Scout')||l.includes('Found')){borderCol='#40a848';typeLabel='SCT';}
+    else if(l.includes('Umbra')){borderCol='#8860b0';typeLabel='SHD';}
+    else if(l.includes('Wild')||l.includes('Fishing')){borderCol='#d0a820';typeLabel='GET';}
+    else if(l.startsWith('[ON-CHAIN]')){borderCol='#40d080';typeLabel='SOL';}
+    else if(l.includes('sense')||l.includes('tense')||l.includes('close')){borderCol='#c04040';typeLabel='!!!';}
+    else if(l.includes('entered')){borderCol='#c06840';typeLabel='MAP';}
+    else if(l.includes('Footprints')||l.includes('passed')){borderCol='#907858';typeLabel='TRK';}
 
-    // Color dot + text — bright white text for readability
-    bx(30,y+4,6,6,col);
-    const maxChars=68;
+    // Mini FRLG window for each entry
+    win(24,y,W-48,entryH-6);
+
+    // Color-coded left border stripe
+    bx(29,y+8,5,entryH-22,borderCol);
+
+    // Round/index number on left
+    const entryNum=startIdx+i+1;
+    txShadow(String(entryNum).padStart(3,' '),42,y+22,10,'#585868','rgba(0,0,0,.3)');
+
+    // Type label
+    txShadow(typeLabel,42,y+40,8,borderCol,'rgba(0,0,0,.3)');
+
+    // Log text - truncate if too long
+    const maxChars=58;
     const displayText=l.length>maxChars?l.substring(0,maxChars)+'...':l;
-    txShadow(displayText,44,y+10,11,col,'#000');
-
-    // Thin separator line
-    if(i<visibleLogs.length-1) bx(30,y+entryH-2,W-76,1,'#1a1a30');
+    txShadow(displayText,100,y+30,12,'#e8e0d0','rgba(0,0,0,.4)');
   });
 
   // Scroll indicators
@@ -7208,12 +7161,11 @@ function fishingCatchCard(){
   for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
   if(slot>=0){
     pl[0].cd[slot]=cardIdx+1;
-    cardTimers[slot]=Date.now();
     syncCardCount(0);
     startCardAcquisition(cardIdx);
     twSet('You caught a '+CD[cardIdx].n+' card!');
     lg.push('Fishing: Caught '+CD[cardIdx].n+'!');
-    checkWinAndTransition(2000);
+    if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
   }else{
     discardActive=true;discardSelIdx=0;discardPendingCard=cardIdx+1;discardSource='wild';
     twSet('Caught '+CD[cardIdx].n+'! Discard one to keep it.');
@@ -7310,10 +7262,9 @@ function checkPuzzleInteraction(){
         for(let j=0;j<5;j++){if(pl[0].cd[j]===0){slot=j;break;}}
         if(slot>=0){
           pl[0].cd[slot]=5;
-          cardTimers[slot]=Date.now();
           syncCardCount(0);
           startCardAcquisition(4);
-          checkWinAndTransition(2000);
+          if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
         }else{
           discardActive=true;discardSelIdx=0;discardPendingCard=5;discardSource='wild';
         }
@@ -7679,12 +7630,11 @@ function checkObjectInteraction(){
       for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
       if(slot>=0){
         pl[0].cd[slot]=cardIdx+1;
-        cardTimers[slot]=Date.now();
         syncCardCount(0);
         startCardAcquisition(cardIdx);
         objectInteractMsg='A card fell from the tree!';
         lg.push('Shook tree: Found '+CD[cardIdx].n+'!');
-        checkWinAndTransition(2000);
+        if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
       }else{
         discardActive=true;discardSelIdx=0;discardPendingCard=cardIdx+1;discardSource='wild';
         objectInteractMsg='Found '+CD[cardIdx].n+'! Discard to keep.';
@@ -7713,12 +7663,11 @@ function checkObjectInteraction(){
       for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
       if(slot>=0){
         pl[0].cd[slot]=cardId;
-        cardTimers[slot]=Date.now();
         syncCardCount(0);
         startCardAcquisition(cardId-1);
         objectInteractMsg='Found a hidden card under the rock!';
         lg.push('Rock: Found '+CD[cardId-1].n+'!');
-        checkWinAndTransition(2000);
+        if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
       }else{
         discardActive=true;discardSelIdx=0;discardPendingCard=cardId;discardSource='wild';
         objectInteractMsg='Found '+CD[cardId-1].n+'! Discard to keep.';
@@ -7743,13 +7692,7 @@ function checkObjectInteraction(){
     if(sp.s<3){sp.s++;objectInteractMsg='Rested by campfire. +1 Steal charge!';lg.push('Campfire: +1 Steal!');}
     else if(sp.b<3){sp.b++;objectInteractMsg='Rested by campfire. +1 Barrier charge!';lg.push('Campfire: +1 Barrier!');}
     else if(sp.c<3){sp.c++;objectInteractMsg='Rested by campfire. +1 Scout charge!';lg.push('Campfire: +1 Scout!');}
-    else{
-      // All spells full — extend nearest-to-expiry card timer by 60s
-      let nearestSlot=-1,nearestAge=0;
-      for(let i=0;i<5;i++){if(cardTimers[i]>0){const age=Date.now()-cardTimers[i];if(age>nearestAge){nearestAge=age;nearestSlot=i;}}}
-      if(nearestSlot>=0){cardTimers[nearestSlot]+=60000;objectInteractMsg='Rested. '+CD[pl[0].cd[nearestSlot]-1].n+' decay slowed!';lg.push('Campfire: Extended '+CD[pl[0].cd[nearestSlot]-1].n+' timer!');}
-      else{objectInteractMsg='Rested, but nothing to restore.';}
-    }
+    else{objectInteractMsg='Rested, but all spells are full.';}
     objectInteractTimer=120;
     return true;
   }
@@ -7811,7 +7754,7 @@ function doFountainExchange(){
   fountainResultTimer=120;
   lg.push('Fountain: Traded '+CD[oldCard-1].n+' for '+CD[newCard-1].n+'!');
   sfxShopTrade();
-  checkWinAndTransition(2000);
+  if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},2000);}
 }
 
 function drawObjectInteractMsg(){
@@ -8000,17 +7943,17 @@ function drawMapCardUseOverlay(){
 // STATS SCREEN
 // ═══════════════════════════════════════
 function dStats(){
-  // Dark background matching LOG screen
-  bx(0,0,W,H,'#0c0c18');
-  for(let i=0;i<120;i++){
-    const nx=(i*73+17)%W,ny=(i*41+23)%H;
-    const na=Math.random()*0.04;
-    bx(nx,ny,1,1,`rgba(255,255,255,${na})`);
+  // Blue background like FRLG pokemon summary
+  bx(0,0,W,H,'#182858');
+  // Subtle gradient overlay
+  for(let gy=0;gy<H;gy+=2){
+    const ga=gy/H*0.15;
+    bx(0,gy,W,2,`rgba(0,0,0,${ga})`);
   }
 
   // Header
-  win(16,10,W-32,42);
-  txShadow('SESSION STATS',W/2-110,38,14,'#f0e8c0','rgba(0,0,0,.5)');
+  win(20,10,W-40,44);
+  txShadow('SESSION STATS',W/2-110,40,14,'#f0e8c0','rgba(0,0,0,.5)');
 
   const elapsed=Math.floor((Date.now()-stats.sessionStart)/1000);
   const mins=Math.floor(elapsed/60),secs=elapsed%60;
@@ -8018,47 +7961,69 @@ function dStats(){
   const favArea=stats.areaTime[favIdx]>0?mapNames[favIdx]:'None yet';
   const totalAreaTime=stats.areaTime.reduce((a,b)=>a+b,0)||1;
 
-  // Single window for all stats — clean list format
-  const padTop=60;
-  win(16,padTop-8,W-32,440);
+  // Left column: Game Stats
+  const lx=20,colW=(W-60)/2;
+  win(lx,64,colW,290);
+  txShadow('GAME',lx+20,90,12,'#f0c830','rgba(0,0,0,.4)');
+  // Separator line
+  bx(lx+16,96,colW-32,2,'#484870');
 
-  const allRows=[
-    {label:'GAME',value:'',header:true,col:'#f0c830'},
-    {label:'Games Played',value:''+stats.gamesPlayed,col:'#888898'},
-    {label:'Steps Walked',value:''+stats.stepsWalked,col:'#888898'},
-    {label:'Play Time',value:mins+'m '+secs+'s',col:'#888898'},
-    {label:'Cards Collected',value:''+stats.cardsCollected,col:'#888898'},
-    {label:'Cards Lost',value:''+stats.cardsLost,col:'#888898'},
-    {label:'Current Round',value:rd+'/30',col:'#888898'},
-    {label:'',value:'',header:false,col:''},
-    {label:'COMBAT',value:'',header:true,col:'#c04848'},
-    {label:'Steals Attempted',value:''+stats.stealsAttempted,col:'#888898'},
-    {label:'Steals Blocked',value:''+stats.stealsBlocked,col:'#888898'},
-    {label:'Scout Uses',value:''+stats.scoutUses,col:'#888898'},
-    {label:'Win Streak',value:''+streakCount,col:'#888898'},
-    {label:'Steal Success',value:stats.stealsAttempted>0?Math.round((1-stats.stealsBlocked/(stats.stealsAttempted||1))*100)+'%':'--',col:'#888898'},
-    {label:'',value:'',header:false,col:''},
-    {label:'AREA',value:'',header:true,col:'#f0c830'},
-    {label:'Favorite Area',value:favArea,col:'#888898'},
+  const gameRows=[
+    ['Games',stats.gamesPlayed],
+    ['Steps',stats.stepsWalked],
+    ['Time',mins+'m '+secs+'s'],
+    ['Cards Got',stats.cardsCollected],
+    ['Cards Lost',stats.cardsLost],
+    ['Round',rd+'/30'],
   ];
-
-  let rowY=padTop+6;
-  allRows.forEach(r=>{
-    if(!r.label&&!r.value){rowY+=8;return;} // spacer
-    if(r.header){
-      txShadow(r.label,36,rowY+14,12,r.col,'rgba(0,0,0,.5)');
-      bx(36,rowY+20,W-104,1,'#282840');
-      rowY+=26;
-    }else{
-      txShadow(r.label,44,rowY+14,11,'#8888a8','rgba(0,0,0,.3)');
-      txShadow(r.value,W-60-r.value.length*10,rowY+14,12,'#f8f0e0','rgba(0,0,0,.4)');
-      bx(36,rowY+20,W-104,1,'#1a1a30');
-      rowY+=24;
-    }
+  gameRows.forEach((r,i)=>{
+    const y=108+i*40;
+    txShadow(r[0],lx+20,y+24,12,'#8888a8','rgba(0,0,0,.3)');
+    const valStr=''+r[1];
+    txShadow(valStr,lx+colW-30-valStr.length*10,y+24,14,'#f8f0e0','rgba(0,0,0,.4)');
   });
 
-  // Area time distribution bar at bottom of the single window
-  const barX=36,barY_=rowY+8,barW=W-104,barH=16;
+  // Right column: Combat Stats
+  const rx=lx+colW+20;
+  win(rx,64,colW,290);
+  txShadow('COMBAT',rx+20,90,12,'#c04848','rgba(0,0,0,.4)');
+  bx(rx+16,96,colW-32,2,'#484870');
+
+  const combatRows=[
+    ['Steals',stats.stealsAttempted],
+    ['Blocks',stats.stealsBlocked],
+    ['Scouts',stats.scoutUses],
+    ['Streak',streakCount],
+  ];
+  combatRows.forEach((r,i)=>{
+    const y=108+i*40;
+    txShadow(r[0],rx+20,y+24,12,'#8888a8','rgba(0,0,0,.3)');
+    const valStr=''+r[1];
+    txShadow(valStr,rx+colW-30-valStr.length*10,y+24,14,'#f8f0e0','rgba(0,0,0,.4)');
+  });
+
+  // Visual bar: Steals attempted as bar chart (right column)
+  if(stats.stealsAttempted>0){
+    const barY=278;
+    const barMaxW=colW-50;
+    const blockRate=stats.stealsBlocked/(stats.stealsAttempted||1);
+    const successRate=1-blockRate;
+    txShadow('Steal Success',rx+20,barY,8,'#8888a8','rgba(0,0,0,.3)');
+    // Background bar
+    bx(rx+20,barY+6,barMaxW,12,'#282848');
+    // Success portion (green)
+    bx(rx+20,barY+6,Math.floor(barMaxW*successRate),12,'#40a848');
+    // Blocked portion (red)
+    bx(rx+20+Math.floor(barMaxW*successRate),barY+6,Math.floor(barMaxW*blockRate),12,'#c04040');
+    txShadow(Math.round(successRate*100)+'%',rx+barMaxW+30,barY+16,8,'#40a848','rgba(0,0,0,.3)');
+  }
+
+  // Bottom: Favorite Area with time distribution bar
+  win(20,366,W-40,90);
+  txShadow('AREA TIME',36,392,12,'#f0c830','rgba(0,0,0,.4)');
+
+  // Time distribution bar
+  const barX=36,barY_=404,barW=W-92,barH=16;
   bx(barX,barY_,barW,barH,'#181838');
   const areaColors=['#3060b0','#308030','#803040'];
   let accX=barX;
@@ -8073,16 +8038,19 @@ function dStats(){
 
   // Legend below bar
   mapNames.forEach((name,ai_)=>{
-    const legendX=36+ai_*200;
+    const legendX=36+ai_*160;
     const legendY=barY_+28;
     bx(legendX,legendY-8,10,10,areaColors[ai_]);
     const pct=Math.round((stats.areaTime[ai_]/totalAreaTime)*100);
-    txShadow(name+' '+pct+'%',legendX+16,legendY,10,'#c8c0a0','rgba(0,0,0,.3)');
+    txShadow(name+' '+pct+'%',legendX+16,legendY,8,'#c8c0a0','rgba(0,0,0,.3)');
   });
+
+  // Favorite area highlight
+  txShadow('Favorite: '+favArea,W-300,392,10,'#f8f0e0','rgba(0,0,0,.4)');
 
   // Back prompt
   win(W/2-100,H-42,200,30);
-  txShadow('X = Back',W/2-32,H-22,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
+  txShadow('X = Back',W/2-32,H-22,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
 }
 
 // ═══════════════════════════════════════
@@ -8306,18 +8274,6 @@ function update(){
   updateFootprints();
   updateProximityTension();
 
-  // ── RIVAL WIN WARNING ──
-  const r1u=hasUniqueCards(1).size,r2u=hasUniqueCards(2).size;
-  const maxRU=Math.max(r1u,r2u);
-  rivalWinWarning=maxRU>=4?1:0;
-  if(maxRU>=4&&!rivalWinWarningShown){
-    rivalWinWarningShown=true;
-    const whoClose=r1u>=4?pl[1].n:pl[2].n;
-    lg.push('WARNING: '+whoClose+' has '+maxRU+'/5 spirits! Stop them!');
-    sfxDangerAlert();
-  }
-  if(maxRU<4)rivalWinWarningShown=false;
-
   // ── CARD DECAY TIMER ──
   if(sc==='map'||sc==='act'){
     const now=Date.now();
@@ -8328,8 +8284,7 @@ function update(){
           // Card expired!
           const expiredName=CD[pl[0].cd[i]-1].n;
           pl[0].cd[i]=0;cardTimers[i]=0;syncCardCount(0);
-          sfxCardExpired();screenShake(3,6);
-          triggerCardLostAnim(pl[0].visualX-camX,pl[0].visualY-camY-16);
+          sfxCardExpired();
           lg.push(expiredName+' card decayed and vanished!');
           objectInteractMsg=expiredName+' expired!';objectInteractTimer=90;
           // Reset streak on card expiry
@@ -8479,15 +8434,6 @@ function dSplash(){
 
 function draw(){
   g.clearRect(0,0,W,H);
-  // Global screen shake
-  let _shaking=false;
-  if(shakeT>0){
-    _shaking=true;
-    const sx=Math.round((Math.random()-0.5)*shakeIntensity*(shakeT/8));
-    const sy=Math.round((Math.random()-0.5)*shakeIntensity*(shakeT/8));
-    g.save();g.translate(sx,sy);
-    shakeT--;
-  }
   if(storyActive){dStory();}
   else if(sc==='splash'){dSplash();}
   else if(sc==='title'){
@@ -8538,7 +8484,6 @@ function draw(){
   g.strokeStyle=FRLG.borderInner;g.lineWidth=1;g.strokeRect(3,3,W-6,H-6);
   // FPS counter (top-left, on top of everything)
   drawFPS();
-  if(_shaking)g.restore();
 }
 
 function loop(now){
@@ -8816,7 +8761,7 @@ document.addEventListener('keydown',e=>{
           discardActive=false;
           if(discardSource==='wild'||discardSource==='menu'){startCardAcquisition(discardPendingCard-1);}
           discardPendingCard=-1;discardSource='';
-          checkWinAndTransition(500);
+          if(playerHasAllFive()){setTimeout(()=>{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});},500);}
         }else{
           // Menu discard: just remove the card
           pl[0].cd[slot]=0;pl[0].cc=Math.max(0,pl[0].cc-1);
@@ -9242,14 +9187,6 @@ document.addEventListener('keydown',e=>{
     }else if(battlePhase==='result'){
       if(e.code==='KeyZ'){
         sfxConfirm();rd++;
-        // Every 10 rounds: recharge 1 depleted spell (prevents late-game stalemate)
-        if(rd%10===0){
-          let recharged=false;
-          if(sp.s<2){sp.s++;recharged=true;}
-          if(sp.b<3){sp.b++;recharged=true;}
-          if(sp.c<2){sp.c++;recharged=true;}
-          if(recharged){lg.push('R'+rd+': Spell energy restored!');}
-        }
         // Check if there's a pending draw card needing discard
         if(bpResolveQueue&&bpResolveQueue._pendingDrawCard>0){
           const pendCard=bpResolveQueue._pendingDrawCard;
@@ -9257,7 +9194,7 @@ document.addEventListener('keydown',e=>{
           discardActive=true;discardSelIdx=0;discardPendingCard=pendCard;discardSource='wild';
         }
         saveGame();
-        if(playerHasAllFive()){checkWinAndTransition(0);}
+        if(playerHasAllFive()){gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
         else if(rd>30){gameOverTimesUp=true;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
         else if(!discardActive){
           // Battle-to-map: quick slide-down wipe
