@@ -7023,8 +7023,8 @@ function dLog(){
   txShadow('BATTLE LOG',W/2-90,38,14,'#f0e8c0','rgba(0,0,0,.5)');
 
   // Scrollable log entries
-  const entryH=62;
-  const maxVisible=8;
+  const entryH=32;
+  const maxVisible=14;
   const padTop=60;
   const totalEntries=lg.length;
   const maxScroll=Math.max(0,totalEntries-maxVisible);
@@ -7033,38 +7033,29 @@ function dLog(){
   const endIdx=Math.min(totalEntries,startIdx+maxVisible);
   const visibleLogs=lg.slice(startIdx,endIdx);
 
+  // Single window for all entries
+  win(16,padTop-8,W-32,maxVisible*entryH+16);
+
   visibleLogs.forEach((l,i)=>{
-    const y=padTop+i*entryH;
-    // Determine entry type and border color
-    let borderCol='#505060'; // gray=system default
-    let typeLabel='SYS';
-    if(l.includes('Steal')||l.includes('Ignis')||l.includes('ambush')||l.includes('running')){borderCol='#c04040';typeLabel='ATK';}
-    else if(l.includes('Block')||l.includes('Barrier')){borderCol='#3868c0';typeLabel='DEF';}
-    else if(l.includes('drew')||l.includes('Scout')||l.includes('Found')){borderCol='#40a848';typeLabel='SCT';}
-    else if(l.includes('Umbra')){borderCol='#8860b0';typeLabel='SHD';}
-    else if(l.includes('Wild')||l.includes('Fishing')){borderCol='#d0a820';typeLabel='GET';}
-    else if(l.startsWith('[ON-CHAIN]')){borderCol='#40d080';typeLabel='SOL';}
-    else if(l.includes('sense')||l.includes('tense')||l.includes('close')){borderCol='#c04040';typeLabel='!!!';}
-    else if(l.includes('entered')){borderCol='#c06840';typeLabel='MAP';}
-    else if(l.includes('Footprints')||l.includes('passed')){borderCol='#907858';typeLabel='TRK';}
+    const y=padTop+i*entryH+4;
+    // Determine entry color
+    let col='#888898';
+    if(l.includes('Steal')||l.includes('Ignis')||l.includes('ambush')){col='#e06060';}
+    else if(l.includes('Block')||l.includes('Barrier')){col='#6090d0';}
+    else if(l.includes('drew')||l.includes('Scout')||l.includes('Found')){col='#60c060';}
+    else if(l.includes('Umbra')){col='#a878c8';}
+    else if(l.includes('Wild')||l.includes('Fishing')){col='#e0c040';}
+    else if(l.startsWith('[ON-CHAIN]')){col='#50e090';}
+    else if(l.includes('entered')){col='#d08050';}
 
-    // Mini FRLG window for each entry
-    win(24,y,W-48,entryH-6);
-
-    // Color-coded left border stripe
-    bx(29,y+8,5,entryH-22,borderCol);
-
-    // Round/index number on left
-    const entryNum=startIdx+i+1;
-    txShadow(String(entryNum).padStart(3,' '),42,y+22,10,'#585868','rgba(0,0,0,.3)');
-
-    // Type label
-    txShadow(typeLabel,42,y+40,8,borderCol,'rgba(0,0,0,.3)');
-
-    // Log text - truncate if too long
-    const maxChars=58;
+    // Color dot + text on clean background
+    bx(30,y+4,6,6,col);
+    const maxChars=68;
     const displayText=l.length>maxChars?l.substring(0,maxChars)+'...':l;
-    txShadow(displayText,100,y+30,12,'#e8e0d0','rgba(0,0,0,.4)');
+    txShadow(displayText,44,y+10,10,'#d8d0c0','rgba(0,0,0,.4)');
+
+    // Thin separator line
+    if(i<visibleLogs.length-1) bx(30,y+entryH-2,W-76,1,'#1a1a30');
   });
 
   // Scroll indicators
