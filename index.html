@@ -602,148 +602,296 @@ const CD=[
 ];
 
 // ═══════════════════════════════════════
-// CARD CHARACTER SPRITES (pixel art)
+// CARD CHARACTER SPRITES (pixel art) — with idle animations
 // ═══════════════════════════════════════
-function drawCardCharacter(x,y,cardId,scale){
+
+// Particle pools for each character (indexed by cardId 1-5)
+const charParticles={1:[],2:[],3:[],4:[],5:[]};
+const CHAR_PARTICLE_MAX=3;
+
+// Card reveal animation state: {cardId, startFrame, done}
+let cardRevealState=null;
+function startCardReveal(cardId){cardRevealState={cardId:cardId,startFrame:fr,done:false};}
+function getRevealProgress(cardId){
+  if(!cardRevealState||cardRevealState.cardId!==cardId)return 1;
+  const elapsed=fr-cardRevealState.startFrame;
+  if(elapsed>=30){cardRevealState.done=true;return 1;}
+  return elapsed/30;
+}
+// Reveal sparkle particles
+const revealSparkles=[];
+
+function drawCardCharacter(x,y,cardId,scale,time){
   const s=scale||1;
-  function px(rx,ry,w,h,c){g.fillStyle=c;g.fillRect(x+rx*s,y+ry*s,w*s,h*s);}
+  const t=(typeof time==='number')?time:((typeof fr!=='undefined')?fr:0);
+  // Reveal: if this card is being revealed, apply silhouette->color effect
+  const revealProg=getRevealProgress(cardId);
+  const revealing=revealProg<1;
+
+  function px(rx,ry,w,h,c){
+    let finalColor=c;
+    if(revealing){
+      // Reveal from top to bottom: pixels above the reveal line show color, below show black
+      const pixelNormY=ry/20; // normalize to 0..1 range (char is ~20px tall)
+      if(pixelNormY>revealProg){
+        finalColor='#111118';
+      }
+    }
+    g.fillStyle=finalColor;g.fillRect(x+rx*s,y+ry*s,w*s,h*s);
+  }
 
   if(cardId===1){
     // AEGIS — Crystal Knight
+    // Idle: body sway
+    const sway=Math.sin(t*0.035)*1; // 1px left/right, ~3s cycle at 60fps
+    const shieldGlow=0.3+0.3*Math.sin(t*0.052); // pulse ~2s cycle
+    const shieldBright='rgba(255,255,255,'+shieldGlow.toFixed(2)+')';
+    // Crystal crest sparkle
+    const sparkleOn=(Math.sin(t*0.08)>0.85);
+
     // Helmet crest (blue crystal)
-    px(6,0,4,2,'#80d0f0');px(7,0,2,1,'#b0e8ff');
-    px(5,2,6,1,'#48b8e8');px(6,1,4,1,'#48b8e8');
+    px(6+sway,0,4,2,'#80d0f0');px(7+sway,0,2,1,'#b0e8ff');
+    px(5+sway,2,6,1,'#48b8e8');px(6+sway,1,4,1,'#48b8e8');
+    if(sparkleOn)px(8+sway,0,1,1,'#ffffff');
     // Helmet body
-    px(4,3,8,3,'#c0c8d0');px(5,3,6,1,'#d8dce0');
+    px(4+sway,3,8,3,'#c0c8d0');px(5+sway,3,6,1,'#d8dce0');
     // Visor with glowing blue eyes
-    px(4,6,8,2,'#808890');px(5,6,2,1,'#48b8e8');px(9,6,2,1,'#48b8e8');
-    px(5,7,2,1,'#2088b0');px(9,7,2,1,'#2088b0');
+    px(4+sway,6,8,2,'#808890');px(5+sway,6,2,1,'#48b8e8');px(9+sway,6,2,1,'#48b8e8');
+    px(5+sway,7,2,1,'#2088b0');px(9+sway,7,2,1,'#2088b0');
     // Armor body
-    px(3,8,10,2,'#c0c8d0');px(4,8,8,1,'#d8dce0');
-    px(3,10,10,4,'#a0a8b8');px(4,10,8,3,'#c0c8d0');
+    px(3+sway,8,10,2,'#c0c8d0');px(4+sway,8,8,1,'#d8dce0');
+    px(3+sway,10,10,4,'#a0a8b8');px(4+sway,10,8,3,'#c0c8d0');
     // Blue trim on armor
-    px(3,10,1,4,'#48b8e8');px(12,10,1,4,'#48b8e8');
-    px(5,13,6,1,'#2088b0');
-    // Shield in left hand
-    px(0,9,3,5,'#2088b0');px(0,10,3,3,'#48b8e8');
-    px(1,10,1,3,'#ffffff');px(0,11,3,1,'#ffffff');
+    px(3+sway,10,1,4,'#48b8e8');px(12+sway,10,1,4,'#48b8e8');
+    px(5+sway,13,6,1,'#2088b0');
+    // Shield in left hand — with glow pulse
+    px(0+sway,9,3,5,'#2088b0');px(0+sway,10,3,3,'#48b8e8');
+    px(1+sway,10,1,3,'#ffffff');px(0+sway,11,3,1,'#ffffff');
+    // Shield glow overlay
+    px(0+sway,9,3,5,shieldBright);
     // Right arm
-    px(13,9,2,4,'#c0c8d0');px(14,10,1,2,'#a0a8b8');
-    // Legs with boots
+    px(13+sway,9,2,4,'#c0c8d0');px(14+sway,10,1,2,'#a0a8b8');
+    // Legs with boots (no sway — grounded)
     px(5,14,2,4,'#a0a8b8');px(9,14,2,4,'#a0a8b8');
     px(4,17,3,2,'#606870');px(9,17,3,2,'#606870');
     px(4,18,4,1,'#484850');px(9,18,4,1,'#484850');
     // Armor highlight
-    px(6,9,4,1,'rgba(255,255,255,0.25)');
+    px(6+sway,9,4,1,'rgba(255,255,255,0.25)');
   }else if(cardId===2){
     // UMBRA — Shadow Rogue
+    // Idle: cloak edge waver, eye glow pulse, shadow particles
+    const eyeGlow=(Math.sin(t*0.035)>0.7)?1:0; // bright flash every ~3s
+    const eyeColor=eyeGlow?'#e0a0ff':'#c080ff';
+    const eyeColor2=eyeGlow?'#c080e0':'#a060d0';
+    // Cloak bottom waver offsets
+    const w0=Math.round(Math.sin(t*0.06)*1);
+    const w1=Math.round(Math.sin(t*0.06+1.5)*1);
+    const w2=Math.round(Math.sin(t*0.06+3.0)*1);
+
     // Hood top
     px(5,0,6,2,'#503878');px(4,2,8,2,'#503878');
     px(6,0,4,1,'#604090');
     // Hood sides
     px(3,4,10,3,'#503878');px(4,4,8,2,'#604090');
     // Glowing purple eyes
-    px(5,5,2,1,'#c080ff');px(9,5,2,1,'#c080ff');
-    px(5,6,2,1,'#a060d0');px(9,6,2,1,'#a060d0');
+    px(5,5,2,1,eyeColor);px(9,5,2,1,eyeColor);
+    px(5,6,2,1,eyeColor2);px(9,6,2,1,eyeColor2);
     // Cloak body
     px(2,7,12,4,'#503878');px(3,7,10,3,'#604090');
     px(4,7,8,2,'#7858a0');
     // Crescent moon on chest
     px(7,8,1,2,'#a080c8');px(6,9,1,1,'#a080c8');px(8,9,1,1,'#a080c8');
-    // Lower cloak (tattered)
-    px(2,11,12,4,'#503878');px(3,11,10,3,'#604090');
-    px(1,14,2,2,'#503878');px(13,14,2,2,'#503878');
-    // Wispy edges
-    px(1,15,1,2,'#402868');px(14,15,1,2,'#402868');
-    px(4,15,2,1,'#7858a0');px(10,15,2,1,'#7858a0');
-    // Shadow trail below
-    px(3,16,10,1,'#402868');px(4,17,8,1,'#302050');
-    px(5,18,6,1,'#201840');px(6,19,4,1,'rgba(48,32,80,0.5)');
+    // Lower cloak (tattered) — with waver
+    px(2+w0,11,12,4,'#503878');px(3,11,10,3,'#604090');
+    px(1+w1,14,2,2,'#503878');px(13+w2,14,2,2,'#503878');
+    // Wispy edges — with waver
+    px(1+w1,15,1,2,'#402868');px(14+w2,15,1,2,'#402868');
+    px(4+w0,15,2,1,'#7858a0');px(10+w0,15,2,1,'#7858a0');
+    // Shadow trail below — with waver
+    px(3+w0,16,10,1,'#402868');px(4+w1,17,8,1,'#302050');
+    px(5+w2,18,6,1,'#201840');px(6,19,4,1,'rgba(48,32,80,0.5)');
     // Cloak highlight
     px(4,4,1,3,'#a080c8');px(11,4,1,3,'#a080c8');
+
+    // Shadow particles drifting down
+    const pp=charParticles[2];
+    if(t%20===0&&pp.length<CHAR_PARTICLE_MAX){
+      pp.push({rx:4+Math.random()*8,ry:16,life:15+Math.random()*10});
+    }
+    for(let i=pp.length-1;i>=0;i--){
+      const p=pp[i];p.ry+=0.3;p.life--;
+      if(p.life<=0){pp.splice(i,1);continue;}
+      const a=Math.min(1,p.life/8);
+      g.fillStyle='rgba(48,32,80,'+a.toFixed(2)+')';
+      g.fillRect(x+p.rx*s,y+p.ry*s,s,s);
+    }
   }else if(cardId===3){
     // IGNIS — Fire Beast (four-legged wolf/fox)
-    // Horns (burning)
-    px(3,0,2,3,'#f0c040');px(3,0,1,1,'#ffe060');
-    px(11,0,2,3,'#f0c040');px(12,0,1,1,'#ffe060');
+    // Idle: flame flicker on horns/tail, body crouch, ember particles
+    const crouch=Math.round(Math.sin(t*0.07)*1); // 1px up/down, ~1.5s cycle
+    const flamePhase=(Math.floor(t/8)%2===0); // alternate flame shapes every 8 frames
+
+    // Horns (burning) — flickering between two shapes
+    if(flamePhase){
+      px(3,0+crouch,2,3,'#f0c040');px(3,0+crouch,1,1,'#ffe060');
+      px(11,0+crouch,2,3,'#f0c040');px(12,0+crouch,1,1,'#ffe060');
+    }else{
+      px(3,1+crouch,2,2,'#ffe060');px(4,0+crouch,1,1,'#f0c040');
+      px(11,1+crouch,2,2,'#ffe060');px(12,0+crouch,1,1,'#f0c040');
+    }
     // Head
-    px(4,3,8,4,'#d85840');px(5,3,6,3,'#e87060');
+    px(4,3+crouch,8,4,'#d85840');px(5,3+crouch,6,3,'#e87060');
     // Glowing yellow eyes
-    px(5,4,2,2,'#f0c040');px(9,4,2,2,'#f0c040');
-    px(6,5,1,1,'#d85840');px(10,5,1,1,'#d85840');
+    px(5,4+crouch,2,2,'#f0c040');px(9,4+crouch,2,2,'#f0c040');
+    px(6,5+crouch,1,1,'#d85840');px(10,5+crouch,1,1,'#d85840');
     // Open mouth with teeth
-    px(6,7,4,2,'#a83828');px(7,7,1,1,'#ffffff');px(9,7,1,1,'#ffffff');
+    px(6,7+crouch,4,2,'#a83828');px(7,7+crouch,1,1,'#ffffff');px(9,7+crouch,1,1,'#ffffff');
     // Fur body
-    px(2,8,12,5,'#d85840');px(3,8,10,4,'#e87060');
+    px(2,8+crouch,12,5,'#d85840');px(3,8+crouch,10,4,'#e87060');
     // Flame patterns on body
-    px(4,9,2,2,'#f08060');px(8,8,3,2,'#f08060');px(11,9,1,3,'#f0c040');
+    px(4,9+crouch,2,2,'#f08060');px(8,8+crouch,3,2,'#f08060');px(11,9+crouch,1,3,'#f0c040');
     // Front legs
     px(3,13,2,5,'#d85840');px(6,13,2,5,'#d85840');
     px(3,17,2,1,'#a83828');px(6,17,2,1,'#a83828');
     // Back legs
     px(9,13,2,5,'#d85840');px(12,13,2,5,'#d85840');
     px(9,17,2,1,'#a83828');px(12,17,2,1,'#a83828');
-    // Flame-tipped tail
-    px(14,7,2,2,'#d85840');px(15,6,2,2,'#f08060');px(16,5,2,2,'#f0c040');px(17,4,1,2,'#ffe060');
+    // Flame-tipped tail — flickering
+    if(flamePhase){
+      px(14,7+crouch,2,2,'#d85840');px(15,6+crouch,2,2,'#f08060');px(16,5+crouch,2,2,'#f0c040');px(17,4+crouch,1,2,'#ffe060');
+    }else{
+      px(14,7+crouch,2,2,'#d85840');px(15,6+crouch,2,2,'#f0c040');px(16,5+crouch,1,3,'#ffe060');px(17,5+crouch,1,1,'#f08060');
+    }
     // Body highlight
-    px(5,8,6,1,'rgba(255,255,255,0.15)');
+    px(5,8+crouch,6,1,'rgba(255,255,255,0.15)');
+
+    // Ember particles floating up
+    const pp=charParticles[3];
+    if(t%12===0&&pp.length<CHAR_PARTICLE_MAX){
+      pp.push({rx:4+Math.random()*8,ry:8+crouch,life:18+Math.random()*8,c:Math.random()>0.5?'#f0c040':'#f08060'});
+    }
+    for(let i=pp.length-1;i>=0;i--){
+      const p=pp[i];p.ry-=0.35;p.rx+=Math.sin(t*0.1+i)*0.15;p.life--;
+      if(p.life<=0){pp.splice(i,1);continue;}
+      const a=Math.min(1,p.life/10);
+      g.fillStyle=p.c;g.globalAlpha=a;
+      g.fillRect(x+p.rx*s,y+p.ry*s,s,s);
+      g.globalAlpha=1;
+    }
   }else if(cardId===4){
     // TEMPEST — Storm Prophet (floating cloud being)
+    // Idle: float up/down, lightning sparks, cloud shape shift
+    const floatY=Math.sin(t*0.052)*2; // 2px range, ~2s cycle
+    const cloudShift=Math.round(Math.sin(t*0.04)*1); // 1px cloud variation
+
     // Head/face area
-    px(5,0,6,3,'#d8b028');px(6,0,4,2,'#f0d850');
+    px(5,0+floatY,6,3,'#d8b028');px(6,0+floatY,4,2,'#f0d850');
     // Golden eyes
-    px(6,2,2,1,'#ffffff');px(9,2,1,1,'#ffffff');
-    px(6,3,2,1,'#d8b028');px(9,3,1,1,'#d8b028');
-    // Upper body (swirling cloud)
-    px(3,4,10,3,'#e0d0a0');px(4,4,8,2,'#f0e8c0');
+    px(6,2+floatY,2,1,'#ffffff');px(9,2+floatY,1,1,'#ffffff');
+    px(6,3+floatY,2,1,'#d8b028');px(9,3+floatY,1,1,'#d8b028');
+    // Upper body (swirling cloud) — with shift
+    px(3+cloudShift,4+floatY,10,3,'#e0d0a0');px(4+cloudShift,4+floatY,8,2,'#f0e8c0');
     // Lightning bolt on chest
-    px(7,5,2,1,'#ffffff');px(6,6,2,1,'#ffffff');px(7,7,2,1,'#ffffff');px(8,8,2,1,'#ffffff');
-    // Cloud arms
-    px(1,5,2,3,'#e0d0a0');px(0,6,2,2,'#d0c890');
-    px(13,5,2,3,'#e0d0a0');px(14,6,2,2,'#d0c890');
-    // Mid body (cloud swirl)
-    px(2,7,12,4,'#e0d0a0');px(3,7,10,3,'#f0e8c0');
-    px(4,8,3,2,'#f8f0d0');px(9,9,3,1,'#f8f0d0');
-    // Lightning sparks (static, toggle-able)
-    const spark=(typeof fr!=='undefined')?(fr%20<10):true;
-    if(spark){
-      px(1,4,1,1,'#ffffff');px(14,3,1,1,'#ffffff');px(0,8,1,1,'#f0d850');
-    }else{
-      px(15,5,1,1,'#ffffff');px(0,3,1,1,'#ffffff');px(14,9,1,1,'#f0d850');
+    px(7,5+floatY,2,1,'#ffffff');px(6,6+floatY,2,1,'#ffffff');px(7,7+floatY,2,1,'#ffffff');px(8,8+floatY,2,1,'#ffffff');
+    // Cloud arms — with shift
+    px(1+cloudShift,5+floatY,2,3,'#e0d0a0');px(0+cloudShift,6+floatY,2,2,'#d0c890');
+    px(13-cloudShift,5+floatY,2,3,'#e0d0a0');px(14-cloudShift,6+floatY,2,2,'#d0c890');
+    // Mid body (cloud swirl) — with shift
+    px(2+cloudShift,7+floatY,12,4,'#e0d0a0');px(3+cloudShift,7+floatY,10,3,'#f0e8c0');
+    px(4,8+floatY,3,2,'#f8f0d0');px(9,9+floatY,3,1,'#f8f0d0');
+    // Lightning sparks — random positions that flash for ~2 frames
+    const sparkPositions=[
+      {rx:1,ry:4},{rx:14,ry:3},{rx:0,ry:8},{rx:15,ry:5},{rx:0,ry:3},{rx:14,ry:9},
+      {rx:-1,ry:6},{rx:16,ry:7},{rx:2,ry:2},{rx:13,ry:10}
+    ];
+    // Pick 1-2 sparks based on time, each visible for 2 frames
+    for(let si=0;si<sparkPositions.length;si++){
+      const sparkPhase=(t+si*7)%18;
+      if(sparkPhase<2){
+        const sp=sparkPositions[si];
+        px(sp.rx,sp.ry+floatY,1,1,'#ffffff');
+      }
     }
     // Cloud lower body (no legs)
-    px(3,11,10,2,'#d0c890');px(4,11,8,1,'#e0d0a0');
-    px(4,13,8,2,'#c8c080');px(5,13,6,1,'#d0c890');
+    px(3-cloudShift,11+floatY,10,2,'#d0c890');px(4-cloudShift,11+floatY,8,1,'#e0d0a0');
+    px(4,13+floatY,8,2,'#c8c080');px(5,13+floatY,6,1,'#d0c890');
     // Wispy cloud bottom
-    px(5,15,6,1,'#b8b070');px(6,16,4,1,'#a8a060');
-    px(7,17,2,1,'rgba(168,160,96,0.5)');
+    px(5,15+floatY,6,1,'#b8b070');px(6,16+floatY,4,1,'#a8a060');
+    px(7,17+floatY,2,1,'rgba(168,160,96,0.5)');
   }else if(cardId===5){
     // NIHIL — Void Observer (ghost with single eye)
-    // Aura glow
-    px(3,0,10,1,'rgba(96,200,168,0.2)');px(2,1,12,1,'rgba(96,200,168,0.15)');
+    // Idle: eye pulse, body sway, vortex rotation, tentacle wave
+    const sway=Math.sin(t*0.042)*1; // 1px sway, ~2.5s cycle
+    const eyePulse=Math.sin(t*0.07); // ~1.5s cycle
+    const eyeExtra=(eyePulse>0.3)?1:0; // eye grows 1px when pulse is high
+    // Vortex spiral rotation — shift spiral line positions
+    const spiralPhase=Math.floor(t/10)%4;
+    // Tentacle wave
+    const tw0=Math.round(Math.sin(t*0.05)*1);
+    const tw1=Math.round(Math.sin(t*0.05+1.5)*1);
+    const tw2=Math.round(Math.sin(t*0.05+3.0)*1);
+
+    // Aura glow — pulsing
+    const auraBright=0.15+0.1*Math.sin(t*0.04);
+    px(3+sway,0,10,1,'rgba(96,200,168,'+auraBright.toFixed(2)+')');
+    px(2+sway,1,12,1,'rgba(96,200,168,'+(auraBright*0.75).toFixed(2)+')');
     // Upper body (spiral start)
-    px(4,1,8,3,'#38a880');px(5,1,6,2,'#48b898');
-    // Large single eye
-    px(5,4,6,4,'#ffffff');px(6,4,4,3,'#e8f0e8');
+    px(4+sway,1,8,3,'#38a880');px(5+sway,1,6,2,'#48b898');
+    // Large single eye — with pulse
+    px(5+sway-eyeExtra,4-eyeExtra,6+eyeExtra*2,4+eyeExtra,'#ffffff');
+    px(6+sway-eyeExtra,4-eyeExtra,4+eyeExtra*2,3+eyeExtra,'#e8f0e8');
     // Teal iris
-    px(7,5,3,2,'#38a880');px(7,5,2,2,'#60c8a8');
+    px(7+sway,5,3,2,'#38a880');px(7+sway,5,2,2,'#60c8a8');
     // Pupil
-    px(8,5,1,2,'#207858');
+    px(8+sway,5,1,2,'#207858');
     // Eye highlight
-    px(6,4,1,1,'rgba(255,255,255,0.7)');
-    // Vortex body (spiral pattern)
-    px(3,8,10,2,'#38a880');px(4,8,8,1,'#48b898');
-    px(2,10,12,2,'#207858');px(3,10,10,1,'#38a880');
-    // Spiral lines
-    px(5,9,2,1,'#60c8a8');px(9,10,2,1,'#60c8a8');px(4,11,2,1,'#60c8a8');px(10,8,1,1,'#60c8a8');
+    px(6+sway-eyeExtra,4-eyeExtra,1,1,'rgba(255,255,255,0.7)');
+    // Vortex body (spiral pattern) — with sway
+    px(3+sway,8,10,2,'#38a880');px(4+sway,8,8,1,'#48b898');
+    px(2+sway,10,12,2,'#207858');px(3+sway,10,10,1,'#38a880');
+    // Spiral lines — rotating positions
+    const spiralPositions=[
+      [{rx:5,ry:9},{rx:9,ry:10},{rx:4,ry:11},{rx:10,ry:8}],
+      [{rx:6,ry:8},{rx:10,ry:9},{rx:5,ry:10},{rx:9,ry:11}],
+      [{rx:7,ry:8},{rx:10,ry:10},{rx:6,ry:11},{rx:8,ry:9}],
+      [{rx:8,ry:9},{rx:5,ry:10},{rx:9,ry:11},{rx:6,ry:8}]
+    ];
+    const sp=spiralPositions[spiralPhase];
+    for(let si=0;si<sp.length;si++){
+      px(sp[si].rx+sway,sp[si].ry,2,1,'#60c8a8');
+    }
     // Lower body
-    px(3,12,10,2,'#207858');px(4,12,8,1,'#38a880');
-    px(4,14,8,2,'#186848');px(5,14,6,1,'#207858');
-    // Tentacle wisps at bottom
-    px(4,16,2,2,'#186848');px(7,16,2,3,'#186848');px(11,16,2,2,'#186848');
-    px(4,17,1,1,'#105838');px(7,18,2,1,'#105838');px(12,17,1,1,'#105838');
-    // Faint aura
-    px(2,4,1,8,'rgba(96,200,168,0.15)');px(13,4,1,8,'rgba(96,200,168,0.15)');
+    px(3+sway,12,10,2,'#207858');px(4+sway,12,8,1,'#38a880');
+    px(4+sway,14,8,2,'#186848');px(5+sway,14,6,1,'#207858');
+    // Tentacle wisps at bottom — waving
+    px(4+tw0,16,2,2,'#186848');px(7+tw1,16,2,3,'#186848');px(11+tw2,16,2,2,'#186848');
+    px(4+tw0,17,1,1,'#105838');px(7+tw1,18,2,1,'#105838');px(12+tw2,17,1,1,'#105838');
+    // Faint aura — with sway
+    px(2+sway,4,1,8,'rgba(96,200,168,'+auraBright.toFixed(2)+')');
+    px(13+sway,4,1,8,'rgba(96,200,168,'+auraBright.toFixed(2)+')');
+  }
+
+  // Reveal sparkle burst when fully revealed
+  if(cardRevealState&&cardRevealState.cardId===cardId&&cardRevealState.done){
+    // Spawn sparkles once
+    if(revealSparkles.length===0){
+      for(let i=0;i<8;i++){
+        const angle=Math.PI*2*i/8;
+        revealSparkles.push({
+          rx:8,ry:10,
+          vx:Math.cos(angle)*0.8,vy:Math.sin(angle)*0.8,
+          life:12+Math.random()*6
+        });
+      }
+    }
+    for(let i=revealSparkles.length-1;i>=0;i--){
+      const p=revealSparkles[i];p.rx+=p.vx;p.ry+=p.vy;p.life--;
+      if(p.life<=0){revealSparkles.splice(i,1);continue;}
+      const a=Math.min(1,p.life/8);
+      g.fillStyle='rgba(255,255,255,'+a.toFixed(2)+')';
+      g.fillRect(x+p.rx*s,y+p.ry*s,s,s);
+    }
+    if(revealSparkles.length===0)cardRevealState=null;
   }
 }
 
@@ -764,7 +912,7 @@ function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
   const charW=16*charScale, charH=20*charScale;
   const charX=cx_+cw/2-charW/2;
   const charY=cy_+4+ch*0.3-charH/2;
-  drawCardCharacter(charX,charY,cardIdx+1,charScale);
+  drawCardCharacter(charX,charY,cardIdx+1,charScale,fr);
   // Small type icon in top-left
   const icons=['\u26E8','\u263D','\u2632','\u26A1','\u25C9'];
   tx(icons[cardIdx]||'',cx_+5,cy_+12,Math.max(4,Math.floor(6*charScale/1.5)),cr.h||'#fff');
@@ -2699,7 +2847,7 @@ function drawMiniCard(x,y,cd){
     bx(x,y,28,20,cr.d);bx(x+1,y+1,26,18,cr.c);
     bx(x+2,y+2,24,12,cr.d);bx(x+3,y+3,22,10,'rgba(255,255,255,.15)');
     // Tiny character sprite (scale 0.5)
-    drawCardCharacter(x+6,y+1,cd,0.5);
+    drawCardCharacter(x+6,y+1,cd,0.5,fr);
     bx(x+1,y+14,26,5,cr.d);txShadow(cr.n[0],x+8,y+19,7,'#fff','rgba(0,0,0,.5)');
   }else{
     bx(x,y,28,20,'#c8c0a8');bx(x+1,y+1,26,18,'#d8d0b8');txShadow('?',x+8,y+15,8,'#a89880','rgba(0,0,0,.3)');
@@ -3179,7 +3327,7 @@ function drawCardShop(){
           tx('\u25B6',72,y+8,7,'#c04040');
         }
         bx(92,y-4,20,20,cr.d);bx(93,y-3,18,18,cr.c);
-        drawCardCharacter(94,y-2,cd,0.7);
+        drawCardCharacter(94,y-2,cd,0.7,fr);
         tx(cr.n,120,y+8,7,i===shopSelectedIdx?'#c04040':'#303028');
         tx(cr.f,260,y+8,6,'#989080');
       });
@@ -4360,7 +4508,7 @@ function drawSelectPhase(){
       const y=H/2-mh/2+42+j*36;
       if(j===bpCardSelectIdx){bx(W/2-140,y-2,280,32,'rgba(192,168,96,.22)');txShadow('\u25B6',W/2-144,y+16,10,'#c04040','rgba(0,0,0,.3)');}
       bx(W/2-126,y+4,22,22,cr.d);bx(W/2-124,y+6,18,18,cr.c);
-      drawCardCharacter(W/2-123,y+6,cd,0.7);
+      drawCardCharacter(W/2-123,y+6,cd,0.7,fr);
       txShadow(cr.n,W/2-98,y+18,14,j===bpCardSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
       txShadow(cr.f,W/2+40,y+18,10,'#908878','rgba(0,0,0,.15)');
     });
@@ -5019,6 +5167,8 @@ function dAct(){
 function startCardAcquisition(cardIdx){
   cardAcqActive=true;cardAcqFrame=fr;cardAcqCard=cardIdx;cardAcqDone=false;
   cardAcqParticles.length=0;sfxCardGet();
+  // Start reveal animation (silhouette -> color over 30 frames)
+  startCardReveal(cardIdx+1);
   // Trigger floating "+" effect
   triggerCardGetAnim(pl[0].visualX-camX,pl[0].visualY-camY-7);
   // Pulse the progress bar
@@ -5084,7 +5234,7 @@ function drawDiscardOverlay(){
     if(cd>0){
       const cr=CD[cd-1];
       bx(W/2-158,cy+6,28,28,cr.d);bx(W/2-156,cy+8,24,24,cr.c);
-      drawCardCharacter(W/2-155,cy+8,cd,0.9);
+      drawCardCharacter(W/2-155,cy+8,cd,0.9,fr);
       tx(cr.n,W/2-120,cy+22,7,sel?'#c04040':'#303028');tx(cr.f,W/2-120,cy+34,6,'#908878');
     }else{
       tx('(empty)',W/2-120,cy+22,7,'#a09888');
@@ -5971,7 +6121,7 @@ function drawMapCardUseOverlay(){
       tx('\u25B6',W/2-134,y+14,7,'#c04040');
     }
     bx(W/2-118,y+2,20,20,cr.d);bx(W/2-116,y+4,16,16,cr.c);
-    drawCardCharacter(W/2-115,y+3,item.cardId,0.6);
+    drawCardCharacter(W/2-115,y+3,item.cardId,0.6,fr);
     tx(item.name,W/2-92,y+14,7,j===mapCardUseIdx?'#c04040':'#303028');
     tx(item.desc,W/2+10,y+14,5,'#908878');
   });
