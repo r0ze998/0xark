@@ -3839,6 +3839,8 @@ function drawBirds(){
 // CAMERA
 // ═══════════════════════════════════════
 function updateCamera(){
+  // Always reveal fog around player position
+  fogRevealRadius(currentMap,pl[0].x,pl[0].y,2);
   const px=pl[0].visualX+TW/2,py=pl[0].visualY+TH/2;
   camTargetX=px-W/2;camTargetY=py-(H-HUD_HEIGHT)/2;
   const maxX=MW*TW-W,maxY=MH*TH-H;
