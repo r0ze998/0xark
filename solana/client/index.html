@@ -5594,7 +5594,7 @@ function dMenu(){
     if(ease>=0.7){
       const itemAlpha=Math.min(1,(ease-0.7)/0.3);
       g.globalAlpha=itemAlpha;
-      const items=['CARDS','MAP','BATTLE','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','NEW GAME','CLOSE'];
+      const items=['CARDS','MAP','BATTLE','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
       items.forEach((s,i)=>{
         const y=34+i*20;
         const walletIdx=7;
@@ -6982,8 +6982,8 @@ function drawIntroTutorial(){
     const blink=Math.floor(fr/20)%2===0;
     if(blink)txShadow('\u25BC Z',wx+ww-60,wy+wh-20+bounce,8,FRLG.selHighlight,'rgba(0,0,0,.3)');
   }
-  // Card preview on last page
-  if(introPage===INTRO_PAGES.length-1&&t>20){
+  // Card preview on last page (only if player has no cards — first play)
+  if(introPage===INTRO_PAGES.length-1&&t>20&&pl[0].cd.filter(c=>c>0).length===0){
     g.globalAlpha=Math.min(1,(t-20)/15);
     txShadow('You receive a spirit card...',W/2-100,wy+wh+20,8,'#f0c830','rgba(0,0,0,.4)');
     g.globalAlpha=1;
@@ -8637,13 +8637,15 @@ document.addEventListener('keydown',e=>{
       introPage++;
       if(introPage>=INTRO_PAGES.length){
         introActive=false;
-        // Give random starter card + card acquisition animation
-        const starterCard=1+Math.floor(Math.random()*5); // 1-5 random
-        pl[0].cd[0]=starterCard;pl[0].cc=1;cardTimers[0]=Date.now();syncCardCount(0);
-        startCardAcquisition(starterCard-1);
-        lg.push('You received '+CD[starterCard-1].n+'!');
-        showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
-        twSet('Good luck, sailor. Collect all 5 spirits to escape the ARK.');
+        // Give random starter card only on first play (player has 0 cards)
+        if(pl[0].cd.filter(c=>c>0).length===0){
+          const starterCard=1+Math.floor(Math.random()*5);
+          pl[0].cd[0]=starterCard;pl[0].cc=1;cardTimers[0]=Date.now();syncCardCount(0);
+          startCardAcquisition(starterCard-1);
+          lg.push('You received '+CD[starterCard-1].n+'!');
+          showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
+          twSet('Good luck, sailor. Collect all 5 spirits to escape the ARK.');
+        }
       }
     }
     if(e.code==='KeyX'&&introPage>0){sfxBack();introPage--;introFrame=fr;}
@@ -9089,10 +9091,10 @@ document.addEventListener('keydown',e=>{
     if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();return;}
     if(mo){
       if(e.code==='ArrowUp'){mi=Math.max(0,mi-1);sfxCursor();}
-      if(e.code==='ArrowDown'){mi=Math.min(11,mi+1);sfxCursor();}
+      if(e.code==='ArrowDown'){mi=Math.min(12,mi+1);sfxCursor();}
       if(e.code==='KeyZ'){
         sfxConfirm();const s=['crd','map','act','log'];
-        if(mi===11)mo=false;
+        if(mi===12)mo=false;
         else if(mi===4){
           // STATS
           mo=false;menuOpenFrame=0;
@@ -9141,6 +9143,11 @@ document.addEventListener('keydown',e=>{
           mo=false;menuOpenFrame=0;
         }
         else if(mi===10){
+          // RULES: show intro tutorial again
+          mo=false;menuOpenFrame=0;
+          introActive=true;introPage=0;introFrame=fr;
+        }
+        else if(mi===11){
           // NEW GAME: reset all state
           resetGameState(true);
           fadeOut(()=>{sc='title';mo=false;fadeIn();ub();});
