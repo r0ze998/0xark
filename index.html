@@ -8494,14 +8494,9 @@ document.addEventListener('keydown',e=>{
           if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
           resetGameState(true);
           // Show opening story
-          storyActive=true;storyFrame=0;
-          fadeOut(()=>{
-            // Story runs, then on completion or skip we fade in to map
-            const storyEnd=()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
-            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
-            twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');};
-            // Set up callback: story will fadeIn when done via update()
-            const checkStory=setInterval(()=>{if(!storyActive){clearInterval(checkStory);storyEnd();}},100);
+          fadeOut(()=>{sc='map';currentMap=0;showBanner('CORSAIR BAY','Aegis & Umbra spirits haunt the docks');
+            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();fadeIn();
+            twSet('Welcome to the ARK, sailor! Five spirits guard this cursed island.');
           });
         }else if(titleMenuIdx===2){
           // CONNECT WALLET
