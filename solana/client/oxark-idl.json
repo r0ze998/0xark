@@ -8,6 +8,84 @@
   },
   "instructions": [
     {
+      "name": "claim_prize",
+      "discriminator": [
+        157,
+        233,
+        139,
+        121,
+        246,
+        62,
+        234,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "game",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stake_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "commit_action",
       "discriminator": [
         75,
@@ -208,6 +286,84 @@
       ]
     },
     {
+      "name": "deposit_stake",
+      "discriminator": [
+        160,
+        167,
+        9,
+        220,
+        74,
+        243,
+        228,
+        43
+      ],
+      "accounts": [
+        {
+          "name": "game",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stake_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "initialize",
       "discriminator": [
         175,
@@ -297,6 +453,86 @@
         {
           "name": "game_id",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "mint_card_nft",
+      "discriminator": [
+        234,
+        240,
+        66,
+        205,
+        104,
+        91,
+        164,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "game",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u64"
+        },
+        {
+          "name": "card_id",
+          "type": "u8"
         }
       ]
     },
@@ -762,6 +998,19 @@
         244,
         195
       ]
+    },
+    {
+      "name": "StakeVault",
+      "discriminator": [
+        192,
+        112,
+        65,
+        125,
+        129,
+        151,
+        173,
+        226
+      ]
     }
   ],
   "events": [
@@ -776,6 +1025,19 @@
         153,
         86,
         100
+      ]
+    },
+    {
+      "name": "CardNftMinted",
+      "discriminator": [
+        171,
+        14,
+        4,
+        219,
+        46,
+        4,
+        105,
+        153
       ]
     },
     {
@@ -815,6 +1077,19 @@
         62,
         98,
         128
+      ]
+    },
+    {
+      "name": "PrizeClaimed",
+      "discriminator": [
+        213,
+        150,
+        192,
+        76,
+        199,
+        33,
+        212,
+        38
       ]
     },
     {
@@ -953,6 +1228,26 @@
           },
           {
             "name": "area",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardNftMinted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
             "type": "u8"
           }
         ]
@@ -1266,6 +1561,26 @@
       }
     },
     {
+      "name": "PrizeClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "RoundResolved",
       "type": {
         "kind": "struct",
@@ -1276,6 +1591,43 @@
           },
           {
             "name": "round",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StakeVault",
+      "docs": [
+        "Entry stake system for competitive play.",
+        "Players deposit SOL (or USDC in Phase 2) when joining a game.",
+        "Winner takes the entire pot when the game ends.",
+        "",
+        "Phase 1: SOL-based staking (simpler, no SPL token dependency)",
+        "Phase 2: USDC staking via SPL token transfers",
+        "Stake vault PDA that holds entry fees"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "total_staked",
+            "type": "u64"
+          },
+          {
+            "name": "stake_per_player",
+            "type": "u64"
+          },
+          {
+            "name": "claimed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
             "type": "u8"
           }
         ]
