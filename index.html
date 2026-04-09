@@ -118,10 +118,183 @@ pixiHud.cardProgress.x=W-140;pixiHud.cardProgress.y=2;
 pixiHud.rivalWarning.x=W/2-80;pixiHud.rivalWarning.y=42;pixiHud.rivalWarning.visible=false;
 Object.values(pixiHud).forEach(t=>pixiLayers.ui.addChild(t));
 
+// ═══════════════════════════════════════
+// PIXI FRLG UI FRAMEWORK
+// ═══════════════════════════════════════
+const PX_FRLG = {
+  winBg: 0xF8F0D0,
+  borderOuter: 0x484050,
+  borderInner: 0x888078,
+  textColor: 0x383830,
+  selHighlight: 0xF8D830,
+  hpGreen: 0x58A850,
+  hpYellow: 0xF8C838,
+  hpRed: 0xE85048,
+};
+
+// Create a FRLG-style window as PIXI.Graphics
+function pxWin(w, h) {
+  const g = new PIXI.Graphics();
+  const bo = PX_FRLG.borderOuter, bi = PX_FRLG.borderInner, bg = PX_FRLG.winBg;
+  // Outer border (rounded rect via pixel rows)
+  g.beginFill(bo);
+  g.drawRoundedRect(0, 0, w, h, 6);
+  g.endFill();
+  // Inner border
+  g.beginFill(bi);
+  g.drawRoundedRect(3, 3, w-6, h-6, 4);
+  g.endFill();
+  // Background fill
+  g.beginFill(bg);
+  g.drawRoundedRect(5, 5, w-10, h-10, 3);
+  g.endFill();
+  // Top-left highlight
+  g.beginFill(0xFFFFFF, 0.35);
+  g.drawRect(6, 5, w-12, 1);
+  g.drawRect(5, 6, 1, h-12);
+  g.endFill();
+  return g;
+}
+
+// Create styled text (FRLG dark on cream)
+function pxText(str, size, color) {
+  return new PIXI.Text(str, new PIXI.TextStyle({
+    fontFamily: 'VT323',
+    fontSize: size || 20,
+    fill: color || PX_FRLG.textColor,
+    letterSpacing: 1,
+  }));
+}
+
+// Create text with drop shadow (for dark backgrounds)
+function pxTextShadow(str, size, color) {
+  return new PIXI.Text(str, new PIXI.TextStyle({
+    fontFamily: 'VT323',
+    fontSize: size || 20,
+    fill: color || 0xF0E8C0,
+    dropShadow: true,
+    dropShadowColor: 0x000000,
+    dropShadowDistance: 1,
+    dropShadowAlpha: 0.8,
+    letterSpacing: 1,
+  }));
+}
+
+// Typewriter text component
+class PxTypewriter {
+  constructor(style, maxWidth) {
+    this.text = new PIXI.Text('', style || new PIXI.TextStyle({fontFamily:'VT323',fontSize:22,fill:PX_FRLG.textColor,wordWrap:true,wordWrapWidth:maxWidth||440}));
+    this.target = '';
+    this.current = '';
+    this.idx = 0;
+    this.done = true;
+    this.speed = 2; // frames per char
+    this.accum = 0;
+  }
+  set(str) { this.target = str; this.current = ''; this.idx = 0; this.done = false; this.accum = 0; this.text.text = ''; }
+  tick(dt) {
+    if (this.done) return;
+    this.accum += dt;
+    while (this.accum >= this.speed && this.idx < this.target.length) {
+      this.current += this.target[this.idx]; this.idx++; this.accum -= this.speed;
+      if (this.idx >= this.target.length) this.done = true;
+    }
+    this.text.text = this.current;
+  }
+  skip() { this.current = this.target; this.idx = this.target.length; this.done = true; this.text.text = this.current; }
+}
+
+// Bouncing cursor sprite (golden triangle)
+function pxCursor() {
+  const g = new PIXI.Graphics();
+  g.beginFill(PX_FRLG.selHighlight);
+  g.moveTo(0, 0); g.lineTo(8, 5); g.lineTo(0, 10); g.closePath();
+  g.endFill();
+  return g;
+}
+
+// HP bar component
+function pxHPBar(w, h, ratio) {
+  const g = new PIXI.Graphics();
+  // Background
+  g.beginFill(0x282838); g.drawRect(0, 0, w, h); g.endFill();
+  // Fill
+  const col = ratio > 0.5 ? PX_FRLG.hpGreen : ratio > 0.25 ? PX_FRLG.hpYellow : PX_FRLG.hpRed;
+  g.beginFill(col); g.drawRect(0, 0, Math.floor(w * ratio), h); g.endFill();
+  return g;
+}
+
+// Slide-in animation helper
+function pxSlideIn(container, fromX, toX, fromY, toY, duration, onComplete) {
+  let t = 0;
+  const ticker = () => {
+    t += pixiApp.ticker.deltaMS / 1000;
+    const p = Math.min(1, t / duration);
+    const ease = 1 - Math.pow(1 - p, 3); // easeOutCubic
+    container.x = fromX + (toX - fromX) * ease;
+    container.y = fromY + (toY - fromY) * ease;
+    if (p >= 1) { pixiApp.ticker.remove(ticker); if (onComplete) onComplete(); }
+  };
+  pixiApp.ticker.add(ticker);
+}
+
+// Fade overlay for transitions
+const pxFadeOverlay = new PIXI.Graphics();
+pxFadeOverlay.beginFill(0x000000); pxFadeOverlay.drawRect(0, 0, W, H); pxFadeOverlay.endFill();
+pxFadeOverlay.alpha = 0;
+pixiLayers.fx.addChild(pxFadeOverlay);
+
+// ═══════════════════════════════════════
+// PIXI MENU SYSTEM
+// ═══════════════════════════════════════
+const pxMenuContainer = new PIXI.Container();
+pxMenuContainer.visible = false;
+pixiLayers.ui.addChild(pxMenuContainer);
+
+// ═══════════════════════════════════════
+// PIXI TEXTBOX (bottom screen FRLG dialog)
+// ═══════════════════════════════════════
+const pxTextbox = new PIXI.Container();
+pxTextbox.visible = false;
+const pxTextboxBg = pxWin(W - 40, 80);
+pxTextboxBg.x = 20; pxTextboxBg.y = H - 100;
+pxTextbox.addChild(pxTextboxBg);
+const pxTextboxTw = new PxTypewriter(
+  new PIXI.TextStyle({fontFamily:'VT323',fontSize:22,fill:PX_FRLG.textColor,wordWrap:true,wordWrapWidth:W-80}),
+  W - 80
+);
+pxTextboxTw.text.x = 36; pxTextboxTw.text.y = H - 88;
+pxTextbox.addChild(pxTextboxTw.text);
+// Bouncing advance arrow
+const pxTextboxArrow = pxTextShadow('\u25BC', 18, PX_FRLG.selHighlight);
+pxTextboxArrow.x = W - 60; pxTextboxArrow.y = H - 30;
+pxTextbox.addChild(pxTextboxArrow);
+pixiLayers.ui.addChild(pxTextbox);
+
+// Show/hide PIXI textbox
+function pxShowTextbox(str) {
+  pxTextbox.visible = true;
+  pxTextboxTw.set(str);
+}
+function pxHideTextbox() { pxTextbox.visible = false; }
+
 // Update PixiJS HUD each frame (called from game loop)
 function updatePixiHud(){
   // Update canvas texture
   canvasTex.update();
+  // Update typewriter
+  pxTextboxTw.tick(dt||1);
+  // Bounce textbox arrow + auto-hide
+  if(pxTextbox.visible){
+    pxTextboxArrow.y = H - 30 + Math.sin(fr * 0.12) * 3;
+    pxTextboxArrow.visible = pxTextboxTw.done;
+    // Auto-hide after 4 seconds of done
+    if(pxTextboxTw.done){
+      if(!pxTextbox._hideTimer)pxTextbox._hideTimer=0;
+      pxTextbox._hideTimer++;
+      if(pxTextbox._hideTimer>240){pxTextbox.visible=false;pxTextbox._hideTimer=0;}
+    }else{pxTextbox._hideTimer=0;}
+  }
   // Season timer
   const sr=getSeasonRemaining();
   pixiHud.seasonTimer.text=formatTimeRemaining(sr);
@@ -1132,7 +1305,7 @@ function drawMPStatus(){
 // TYPEWRITER
 // ═══════════════════════════════════════
 let twText='',twTarget='',twI=0,twDone=true,twAccum=0,twShowFrame=0;
-function twSet(s){twTarget=s;twText='';twI=0;twDone=false;twAccum=0;twShowFrame=fr;}
+function twSet(s){twTarget=s;twText='';twI=0;twDone=false;twAccum=0;twShowFrame=fr;pxShowTextbox(s);}
 function twTick(){
   if(!twDone){
     twAccum+=dt;
@@ -5613,25 +5786,7 @@ function dMap(){
   // Minimap
   drawMinimap();
 
-  // Textbox with slide-up animation and FRLG bouncing arrow
-  if(!twDone){
-    const tbSlide=Math.min(1,(fr-twShowFrame)/6);
-    const tbEase=easeInOut(tbSlide);
-    const tbY=hudY-56+52*(1-tbEase);
-    g.globalAlpha=tbEase;
-    win(4,tbY,W-8,52);
-    tx(twText,14,tbY+32,8,FRLG.textColor);
-    // FRLG-style bouncing triangle at bottom-right
-    if(twDone){
-      // Stationary when no more text
-      tx('\u25BC',W-24,tbY+46,8,FRLG.selHighlight);
-    }else{
-      // Bouncing 2px every 0.5s when there's more text
-      const bounce=Math.floor(Math.sin(fr*Math.PI/30)*2);
-      tx('\u25BC',W-24,tbY+46+bounce,8,FRLG.selHighlight);
-    }
-    g.globalAlpha=1;
-  }
+  // Textbox: now handled by PixiJS overlay (pxTextbox)
 
   // NPC dialog overlay
   drawNPCDialog();
