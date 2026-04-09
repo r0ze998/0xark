@@ -579,11 +579,12 @@ function txShadow(s,x,y,sz,color,shadowColor){
 // ═══════════════════════════════════════
 // PHANTOM WALLET INTEGRATION
 // ═══════════════════════════════════════
-const WALLET_PROGRAM_ID='3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum';
+const WALLET_PROGRAM_ID='2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3';
 const WALLET_DEVNET_RPC='https://api.devnet.solana.com';
 let walletConnected=false;
 let walletPublicKey=null;
 let walletLastCommitHash=null;
+let programVerified=false; // true if on-chain program confirmed on devnet
 
 async function connectPhantom(){
   if(!window.solana||!window.solana.isPhantom){
@@ -595,6 +596,8 @@ async function connectPhantom(){
     walletConnected=true;
     walletPublicKey=resp.publicKey.toString();
     console.log('Connected:',walletPublicKey);
+    // Verify program exists on devnet
+    verifyProgram();
     return walletPublicKey;
   }catch(err){
     console.error('Wallet connection failed:',err);
@@ -607,7 +610,16 @@ async function disconnectPhantom(){
   if(window.solana){
     try{await window.solana.disconnect();}catch(e){}
   }
-  walletConnected=false;walletPublicKey=null;
+  walletConnected=false;walletPublicKey=null;programVerified=false;
+}
+
+async function verifyProgram(){
+  try{
+    const res=await fetch(WALLET_DEVNET_RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getAccountInfo',params:[WALLET_PROGRAM_ID,{encoding:'base64'}]})});
+    const data=await res.json();
+    programVerified=!!(data.result&&data.result.value&&data.result.value.executable);
+    if(programVerified)lg.push('[ON-CHAIN] Program verified on devnet!');
+  }catch(e){programVerified=false;}
 }
 
 function generateSalt(){return crypto.getRandomValues(new Uint8Array(32));}
@@ -1923,6 +1935,8 @@ const FOOTPRINT_MAX_AGE=3600; // 60 seconds at 60fps
 let proximityPulseTimer=0;
 let proximityDangerLevel=0; // 0=none, 1=same map, 2=within 8, 3=within 5, 4=within 2
 let rivalDangerAlertShown=false;
+let rivalWinWarning=0; // 0=safe, 1=rival has 4 unique, 2=rival has 5 (they won)
+let rivalWinWarningShown=false;
 
 // Danger drone SFX
 let dangerDroneNode=null,dangerDroneGain=null;
@@ -2368,7 +2382,7 @@ const pl=[
   {x:6,y:11,c:'#d8b028',n:'Hunter',cd:[4,0,0,0,0],cc:1,dir:0,step:0,walkFrame:0,visualX:6*TW,visualY:11*TH},
 ];
 
-const sp={s:3,b:2,c:2};
+const sp={s:2,b:3,c:2};
 let sc='title',mo=false,mi=0,ai=0,fr=0,wt=0,rd=1;
 let splashFrame=0;
 let titleMenuIdx=0;
@@ -2500,7 +2514,7 @@ let signpostActive=false, signpostText='', signpostFrame=0;
 let discardActive=false, discardSelIdx=0, discardPendingCard=-1, discardSource='';
 
 // ── Tutorial system ──
-let tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
+let tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false,firstBattle:false};
 let tutorialMsg='', tutorialMsgTimer=0;
 
 // ── Battle encounter exclamation ──
@@ -2736,7 +2750,7 @@ function resetGameState(startCards){
   pl[0].cd=cards0;pl[0].cc=cc0;pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
   pl[1].cd=cards1;pl[1].cc=cc1;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
   pl[2].cd=cards2;pl[2].cc=cc2;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
-  sp.s=3;sp.b=2;sp.c=2;rd=1;currentMap=0;stepCounter=0;randomEventTimer=0;
+  sp.s=2;sp.b=3;sp.c=2;rd=1;currentMap=0;stepCounter=0;randomEventTimer=0;
   rivalMaps=[0,0];
   // Reset rival AI
   rivalAI[0].goalX=10;rivalAI[0].goalY=10;rivalAI[0].goalMap=0;rivalAI[0].state='exploring';
@@ -2749,7 +2763,7 @@ function resetGameState(startCards){
   stopDangerDrone();
   lg.length=0;lg.push(startCards?'New game started!':'New game started!');
   treasures.forEach(t=>t.collected=false);
-  tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false};
+  tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false,firstBattle:false};
   resetNewFeatureState();
   // Set card timers for starting cards
   const now=Date.now();
@@ -4056,12 +4070,16 @@ function tryWildEncounter(){
   // Base rates: Tall grass 25%, regular grass 12%
   // Streak bonus: +5% per streak level
   // Danger LOW: +5% bonus to encounter rate
-  const streakBonus=streakCount*0.05;
+  const streakBonus=Math.min(streakCount*0.05,0.25); // cap at +25%
   const dangerBonus=areaDanger[currentMap]<DANGER_LOW_THRESH?0.05:0;
+  // Rubber-banding: +10% encounter rate when behind on unique cards (fewer than rivals)
+  const playerUnique=hasUniqueCards(0).size;
+  const maxRivalUnique=Math.max(hasUniqueCards(1).size,hasUniqueCards(2).size);
+  const rubberBand=playerUnique<maxRivalUnique?0.10:0;
   if(tile===11){
-    if(Math.random()>(0.30+streakBonus+dangerBonus))return; // tall grass: 30% base
+    if(Math.random()>(0.30+streakBonus+dangerBonus+rubberBand))return; // tall grass: 30% base
   }else if(tile===1){
-    if(Math.random()>(0.15+streakBonus+dangerBonus))return; // regular grass: 15% base
+    if(Math.random()>(0.15+streakBonus+dangerBonus+rubberBand))return; // regular grass: 15% base
   }else{
     return;
   }
@@ -4082,14 +4100,14 @@ function tryWildEncounter(){
     else cardIdx=1;             // UMBRA
   }else if(currentMap===1){// Forest
     const roll=Math.random();
-    if(roll<0.4)cardIdx=2;     // IGNIS
-    else if(roll<0.8)cardIdx=3; // TEMPEST
-    else cardIdx=0;             // AEGIS
+    if(roll<0.40)cardIdx=2;     // IGNIS (40%)
+    else if(roll<0.80)cardIdx=3; // TEMPEST (40%)
+    else cardIdx=4;              // NIHIL (20% cross-area)
   }else{// Ruins
     const roll=Math.random();
-    if(roll<0.4)cardIdx=4;     // NIHIL
-    else if(roll<0.7)cardIdx=1; // UMBRA
-    else cardIdx=0;             // AEGIS
+    if(roll<0.40)cardIdx=4;     // NIHIL (40%)
+    else if(roll<0.70)cardIdx=1; // UMBRA (30%)
+    else cardIdx=3;              // TEMPEST (30% cross-area)
   }
 
   wildEncounterActive=true;
@@ -4604,7 +4622,7 @@ function dTitle(){
   // On-chain / offline indicator
   if(walletConnected){
     drawSolanaIcon(W/2+82,550,8);
-    tx('ON-CHAIN',W/2+100,560,7,'#40d080');
+    tx(programVerified?'VERIFIED':'ON-CHAIN',W/2+100,560,7,programVerified?'#14F195':'#40d080');
   }else{
     tx('OFFLINE',W/2+100,560,7,'#555570');
   }
@@ -5403,6 +5421,11 @@ function dMap(){
   bx(420,hudY+48,60,3,'#282838');
   bx(420,hudY+48,Math.floor(60*dangerVal),3,dangerCol);
 
+  // Rival near-win warning (flashing)
+  if(rivalWinWarning>0&&Math.floor(fr/15)%2===0){
+    txShadow('RIVAL NEAR WIN!',520,hudY+44,6,'#d04040','rgba(0,0,0,.5)');
+  }
+
   // Rival Threat Indicator (compass arrow at top of screen)
   for(let ri=0;ri<2;ri++){
     if(rivalMaps[ri]!==currentMap)continue;
@@ -5870,7 +5893,10 @@ function drawVsSplash(){
     txShadow(mapNames[currentMap],W/2-80,H/2+42,14,'#fff','rgba(0,0,0,.5)');
     g.globalAlpha=1;
   }
-  if(t>=60){battlePhase='select';bpFrame=fr;}
+  if(t>=60){
+    battlePhase='select';bpFrame=fr;
+    if(!tutorialFlags.firstBattle){tutorialFlags.firstBattle=true;tutorialMsg='Pick an action! DRAW cards, STEAL from rivals, or BARRIER to defend.';tutorialMsgTimer=240;}
+  }
 }
 
 function isActionAvailable(i){
@@ -6165,8 +6191,8 @@ function drawConfirmingPhase(){
   if(t>=120){battlePhase='resolving';bpFrame=fr;bpResolveIdx=0;bpResolveQueue=generateResolveEvents();}
 }
 
-// Area card tables: Port=[1,2](Aegis,Umbra), Forest=[3,4](Ignis,Tempest), Ruins=[5,1](Nihil,Aegis)
-const AREA_CARDS=[[1,2],[3,4],[5,1]];
+// Area card tables: Port=[1,2](Aegis,Umbra), Forest=[3,4,5](Ignis,Tempest,Nihil), Ruins=[5,2,4](Nihil,Umbra,Tempest)
+const AREA_CARDS=[[1,2],[3,4,5],[5,2,4]];
 function pickAreaCard(){return pickAreaCardForMap(currentMap);}
 function pickAreaCardForMap(mapIdx){const ac=AREA_CARDS[mapIdx]||[1,2];return ac[Math.floor(Math.random()*ac.length)];}
 function syncCardCount(pIdx){const p=pl[pIdx];p.cc=p.cd.filter(c=>c>0).length;}
@@ -6219,15 +6245,20 @@ function rivalChooseAction(rIdx){
     }
     if(roll<0.4)return 1;if(roll<0.7)return 0;return 3;
   }else{
-    // Collector: mostly Draw + Barrier
+    // Collector: mostly Draw + Barrier, but will steal when behind
     if(rUnique.size>=4){
-      if(roll<0.6)return 2;// barrier to protect
-      if(roll<0.9)return 0;// draw to fill
-      return 2;// more barrier
+      if(roll<0.5)return 2;// barrier to protect lead
+      if(roll<0.8)return 0;// draw to complete set
+      return 3;// scout to plan
     }
-    if(roll<0.5)return 0;// draw
-    if(roll<0.8)return 2;// barrier
-    return 0;// more draw
+    // Steal if player has cards collector needs and collector has 3+ cards
+    const playerCards=hasUniqueCards(0);
+    const needsFromPlayer=rCardCount>=3&&playerCards.size>rUnique.size;
+    if(needsFromPlayer&&roll<0.20)return 1;// opportunistic steal (20%)
+    if(roll<0.45)return 0;// draw (45%)
+    if(roll<0.75)return 2;// barrier (30%)
+    if(roll<0.90)return 3;// scout (15%)
+    return 0;// draw fallback
   }
 }
 
@@ -6280,6 +6311,12 @@ function generateResolveEvents(){
       if(stolen>0&&addCardToPlayer(0,stolen)){
         events.push({type:'result',text:'You stole '+CD[stolen-1].n+' from '+pl[tgt].n+'!',effect:'damage',target:tgt,isCritical:true});
         lg.push('R'+rd+': Stole '+CD[stolen-1].n+' from '+pl[tgt].n+'!');
+        streakCount++;streakDisplayTimer=60;sfxStreakUp();
+      }else if(stolen>0){
+        // Hand full — queue discard prompt so stolen card isn't lost
+        events.push({type:'result',text:'You stole '+CD[stolen-1].n+' but hand full! Discard one after battle.',effect:'damage',target:tgt,isCritical:true});
+        events._pendingDrawCard=stolen;
+        lg.push('R'+rd+': Stole '+CD[stolen-1].n+' - hand full!');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
       }else{
         events.push({type:'result',text:'Steal failed!',effect:'none'});
@@ -7692,7 +7729,13 @@ function checkObjectInteraction(){
     if(sp.s<3){sp.s++;objectInteractMsg='Rested by campfire. +1 Steal charge!';lg.push('Campfire: +1 Steal!');}
     else if(sp.b<3){sp.b++;objectInteractMsg='Rested by campfire. +1 Barrier charge!';lg.push('Campfire: +1 Barrier!');}
     else if(sp.c<3){sp.c++;objectInteractMsg='Rested by campfire. +1 Scout charge!';lg.push('Campfire: +1 Scout!');}
-    else{objectInteractMsg='Rested, but all spells are full.';}
+    else{
+      // All spells full — extend nearest-to-expiry card timer by 60s
+      let nearestSlot=-1,nearestAge=0;
+      for(let i=0;i<5;i++){if(cardTimers[i]>0){const age=Date.now()-cardTimers[i];if(age>nearestAge){nearestAge=age;nearestSlot=i;}}}
+      if(nearestSlot>=0){cardTimers[nearestSlot]+=60000;objectInteractMsg='Rested. '+CD[pl[0].cd[nearestSlot]-1].n+' decay slowed!';lg.push('Campfire: Extended '+CD[pl[0].cd[nearestSlot]-1].n+' timer!');}
+      else{objectInteractMsg='Rested, but nothing to restore.';}
+    }
     objectInteractTimer=120;
     return true;
   }
@@ -8248,6 +8291,18 @@ function update(){
   }
   updateFootprints();
   updateProximityTension();
+
+  // ── RIVAL WIN WARNING ──
+  const r1u=hasUniqueCards(1).size,r2u=hasUniqueCards(2).size;
+  const maxRU=Math.max(r1u,r2u);
+  rivalWinWarning=maxRU>=4?1:0;
+  if(maxRU>=4&&!rivalWinWarningShown){
+    rivalWinWarningShown=true;
+    const whoClose=r1u>=4?pl[1].n:pl[2].n;
+    lg.push('WARNING: '+whoClose+' has '+maxRU+'/5 spirits! Stop them!');
+    sfxDangerAlert();
+  }
+  if(maxRU<4)rivalWinWarningShown=false;
 
   // ── CARD DECAY TIMER ──
   if(sc==='map'||sc==='act'){
@@ -9162,6 +9217,14 @@ document.addEventListener('keydown',e=>{
     }else if(battlePhase==='result'){
       if(e.code==='KeyZ'){
         sfxConfirm();rd++;
+        // Every 10 rounds: recharge 1 depleted spell (prevents late-game stalemate)
+        if(rd%10===0){
+          let recharged=false;
+          if(sp.s<2){sp.s++;recharged=true;}
+          if(sp.b<3){sp.b++;recharged=true;}
+          if(sp.c<2){sp.c++;recharged=true;}
+          if(recharged){lg.push('R'+rd+': Spell energy restored!');}
+        }
         // Check if there's a pending draw card needing discard
         if(bpResolveQueue&&bpResolveQueue._pendingDrawCard>0){
           const pendCard=bpResolveQueue._pendingDrawCard;

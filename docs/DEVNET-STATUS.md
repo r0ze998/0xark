@@ -1,23 +1,30 @@
 # Devnet Deploy Status
 
-## Issue
-Solana devnet faucet has been rate-limited/down since 2026-04-08 ~14:00 JST.
-As of 2026-04-09 ~12:00 JST, still unable to obtain SOL.
+## DEPLOYED ✅
+- **Program ID**: `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3`
+- **Deployed**: 2026-04-10 ~00:20 JST
+- **Binary Size**: 277KB (optimized with opt-level="z")
+- **Cost**: 1.93 SOL rent-exempt
+- **Upgrade Authority**: DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R
 
-## Verified Working
-- Local validator deploy: ✅ (Program ID: 3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum)
-- All 5 tests pass against local validator: ✅
-- Anchor build (release + test): ✅
+## Active Instructions (7)
+1. `initialize` — Global state setup
+2. `create_game` — Create a new game room
+3. `join_game` — Join an existing game
+4. `start_game` — Start the game (host only)
+5. `commit_action` — Submit SHA256 hash of action+salt
+6. `reveal_action` — Reveal action with salt verification
+7. `resolve_round` — Process all actions, update state
 
-## Workarounds Tried
-1. `solana airdrop` — rate limited
-2. `devnet-pow mine` — RPC timeout
-3. Different RPC endpoints (Helius, Ankr) — auth required
-4. Web faucet (faucet.solana.com) — no programmatic API
-5. New keypair — still rate limited (global limit)
-6. Various amounts (0.1 - 5 SOL) — all fail
+## Deferred Instructions (for mainnet)
+- `verify_zk_proof` — On-chain Groth16 ZK proof verification
+- `mint_card_nft` — Mint collected cards as NFTs
+- `deposit_stake` / `claim_prize` — Entry fee + prize pool
+- `create_season` / `end_season` — Season management
+- `register_agent` / `deactivate_agent` — AI agent registry
 
-## Next Steps
-- User can try `! solana airdrop 2 --url devnet` from their terminal (different IP)
-- User can use https://faucet.solana.com/ with CAPTCHA
-- Deploy address: DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R (needs 2+ SOL)
+## Optimization Notes
+- Reduced from 450KB to 277KB (38% reduction)
+- `opt-level = "z"` in Cargo profile
+- Removed non-essential instructions (re-added post-hackathon)
+- Fits within 2 SOL faucet budget

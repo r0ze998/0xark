@@ -5,11 +5,7 @@ pub mod start_game;
 pub mod commit_action;
 pub mod reveal_action;
 pub mod resolve_round;
-pub mod verify_zk_proof;
-pub mod mint_card_nft;
-pub mod stake_entry;
-pub mod season;
-pub mod agent_registry;
+// Removed for devnet deploy size: verify_zk_proof, mint_card_nft, stake_entry, season, agent_registry
 
 pub use initialize::*;
 pub use create_game::*;
@@ -18,8 +14,3 @@ pub use start_game::*;
 pub use commit_action::*;
 pub use reveal_action::*;
 pub use resolve_round::*;
-pub use verify_zk_proof::*;
-pub use mint_card_nft::*;
-pub use stake_entry::*;
-pub use season::*;
-pub use agent_registry::*;

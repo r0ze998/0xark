@@ -5,10 +5,10 @@ package_manager = "yarn"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-oxark = "3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum"
-
 [programs.devnet]
+oxark = "2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3"
+
+[programs.localnet]
 oxark = "3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum"
 
 [provider]

@@ -140,7 +140,7 @@ cargo test          # 8 tests passing (LiteSVM)
 
 # 3. Deploy to local validator
 solana-test-validator --reset &
-anchor deploy       # Program ID: 3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum
+anchor deploy       # Program ID: 2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3
 
 # 4. Start multiplayer server
 cd multiplayer
@@ -177,7 +177,7 @@ circom circuits/commit_reveal.circom --r1cs --wasm --sym -o build/ -l node_modul
 │   │   │   ├── mint_card_nft (Metaplex card NFTs)
 │   │   │   └── deposit_stake / claim_prize (entry fees)
 │   │   └── tests/          — 8 passing tests
-│   └── target/idl/         — Program IDL (11 instructions)
+│   └── target/idl/         — Program IDL (7 core instructions)
 ├── solana/client/           — Game client
 │   ├── index.html          — 8700+ line canvas game
 │   ├── pirates-tilemap.png — Kenney sprite sheet (136 tiles)
