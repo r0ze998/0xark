@@ -7048,11 +7048,11 @@ function dLog(){
     else if(l.startsWith('[ON-CHAIN]')){col='#50e090';}
     else if(l.includes('entered')){col='#d08050';}
 
-    // Color dot + text on clean background
+    // Color dot + text — bright white text for readability
     bx(30,y+4,6,6,col);
     const maxChars=68;
     const displayText=l.length>maxChars?l.substring(0,maxChars)+'...':l;
-    txShadow(displayText,44,y+10,10,'#d8d0c0','rgba(0,0,0,.4)');
+    txShadow(displayText,44,y+10,11,col,'#000');
 
     // Thin separator line
     if(i<visibleLogs.length-1) bx(30,y+entryH-2,W-76,1,'#1a1a30');
