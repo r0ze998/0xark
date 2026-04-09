@@ -59,4 +59,8 @@ pub mod oxark {
     ) -> Result<()> {
         instructions::verify_zk_proof::handle_verify_zk(ctx, game_id, proof_a, proof_b, proof_c, public_inputs)
     }
+
+    pub fn mint_card_nft(ctx: Context<MintCardNft>, game_id: u64, card_id: u8) -> Result<()> {
+        instructions::mint_card_nft::handle_mint_card_nft(ctx, game_id, card_id)
+    }
 }
