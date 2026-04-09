@@ -594,12 +594,187 @@ function drawParticles(cx,cy){
 // DATA
 // ═══════════════════════════════════════
 const CD=[
-  {n:'CRYSTAL',c:'#48b8e8',d:'#2080a8',i:'\u25C6',f:'Steal x2'},
-  {n:'SHADOW',c:'#7858a0',d:'#503878',i:'\u25CF',f:'Invis 1T'},
-  {n:'FLAME',c:'#d85840',d:'#a83828',i:'\u25B2',f:'Burn card'},
-  {n:'STORM',c:'#d8b028',d:'#a88818',i:'\u2605',f:'No barrier'},
-  {n:'VOID',c:'#38a880',d:'#207858',i:'\u25CE',f:'Copy card'},
+  {n:'AEGIS',c:'#48b8e8',d:'#2088b0',h:'#80d0f0',a:'#c0c8d0',i:'\u25C6',f:'Steal x2',fl:'The last light on the island'},
+  {n:'UMBRA',c:'#7858a0',d:'#503878',h:'#a080c8',a:'#302050',i:'\u25CF',f:'Invis 1T',fl:'Unseen, yet always there'},
+  {n:'IGNIS',c:'#d85840',d:'#a83828',h:'#f08060',a:'#f0c040',i:'\u25B2',f:'Burn card',fl:'Destruction is protection'},
+  {n:'TEMPEST',c:'#d8b028',d:'#a88818',h:'#f0d850',a:'#ffffff',i:'\u2605',f:'No barrier',fl:'Rules exist to be broken'},
+  {n:'NIHIL',c:'#38a880',d:'#207858',h:'#60c8a8',a:'#ffffff',i:'\u25CE',f:'Copy card',fl:'I know what you hold'},
 ];
+
+// ═══════════════════════════════════════
+// CARD CHARACTER SPRITES (pixel art)
+// ═══════════════════════════════════════
+function drawCardCharacter(x,y,cardId,scale){
+  const s=scale||1;
+  function px(rx,ry,w,h,c){g.fillStyle=c;g.fillRect(x+rx*s,y+ry*s,w*s,h*s);}
+
+  if(cardId===1){
+    // AEGIS — Crystal Knight
+    // Helmet crest (blue crystal)
+    px(6,0,4,2,'#80d0f0');px(7,0,2,1,'#b0e8ff');
+    px(5,2,6,1,'#48b8e8');px(6,1,4,1,'#48b8e8');
+    // Helmet body
+    px(4,3,8,3,'#c0c8d0');px(5,3,6,1,'#d8dce0');
+    // Visor with glowing blue eyes
+    px(4,6,8,2,'#808890');px(5,6,2,1,'#48b8e8');px(9,6,2,1,'#48b8e8');
+    px(5,7,2,1,'#2088b0');px(9,7,2,1,'#2088b0');
+    // Armor body
+    px(3,8,10,2,'#c0c8d0');px(4,8,8,1,'#d8dce0');
+    px(3,10,10,4,'#a0a8b8');px(4,10,8,3,'#c0c8d0');
+    // Blue trim on armor
+    px(3,10,1,4,'#48b8e8');px(12,10,1,4,'#48b8e8');
+    px(5,13,6,1,'#2088b0');
+    // Shield in left hand
+    px(0,9,3,5,'#2088b0');px(0,10,3,3,'#48b8e8');
+    px(1,10,1,3,'#ffffff');px(0,11,3,1,'#ffffff');
+    // Right arm
+    px(13,9,2,4,'#c0c8d0');px(14,10,1,2,'#a0a8b8');
+    // Legs with boots
+    px(5,14,2,4,'#a0a8b8');px(9,14,2,4,'#a0a8b8');
+    px(4,17,3,2,'#606870');px(9,17,3,2,'#606870');
+    px(4,18,4,1,'#484850');px(9,18,4,1,'#484850');
+    // Armor highlight
+    px(6,9,4,1,'rgba(255,255,255,0.25)');
+  }else if(cardId===2){
+    // UMBRA — Shadow Rogue
+    // Hood top
+    px(5,0,6,2,'#503878');px(4,2,8,2,'#503878');
+    px(6,0,4,1,'#604090');
+    // Hood sides
+    px(3,4,10,3,'#503878');px(4,4,8,2,'#604090');
+    // Glowing purple eyes
+    px(5,5,2,1,'#c080ff');px(9,5,2,1,'#c080ff');
+    px(5,6,2,1,'#a060d0');px(9,6,2,1,'#a060d0');
+    // Cloak body
+    px(2,7,12,4,'#503878');px(3,7,10,3,'#604090');
+    px(4,7,8,2,'#7858a0');
+    // Crescent moon on chest
+    px(7,8,1,2,'#a080c8');px(6,9,1,1,'#a080c8');px(8,9,1,1,'#a080c8');
+    // Lower cloak (tattered)
+    px(2,11,12,4,'#503878');px(3,11,10,3,'#604090');
+    px(1,14,2,2,'#503878');px(13,14,2,2,'#503878');
+    // Wispy edges
+    px(1,15,1,2,'#402868');px(14,15,1,2,'#402868');
+    px(4,15,2,1,'#7858a0');px(10,15,2,1,'#7858a0');
+    // Shadow trail below
+    px(3,16,10,1,'#402868');px(4,17,8,1,'#302050');
+    px(5,18,6,1,'#201840');px(6,19,4,1,'rgba(48,32,80,0.5)');
+    // Cloak highlight
+    px(4,4,1,3,'#a080c8');px(11,4,1,3,'#a080c8');
+  }else if(cardId===3){
+    // IGNIS — Fire Beast (four-legged wolf/fox)
+    // Horns (burning)
+    px(3,0,2,3,'#f0c040');px(3,0,1,1,'#ffe060');
+    px(11,0,2,3,'#f0c040');px(12,0,1,1,'#ffe060');
+    // Head
+    px(4,3,8,4,'#d85840');px(5,3,6,3,'#e87060');
+    // Glowing yellow eyes
+    px(5,4,2,2,'#f0c040');px(9,4,2,2,'#f0c040');
+    px(6,5,1,1,'#d85840');px(10,5,1,1,'#d85840');
+    // Open mouth with teeth
+    px(6,7,4,2,'#a83828');px(7,7,1,1,'#ffffff');px(9,7,1,1,'#ffffff');
+    // Fur body
+    px(2,8,12,5,'#d85840');px(3,8,10,4,'#e87060');
+    // Flame patterns on body
+    px(4,9,2,2,'#f08060');px(8,8,3,2,'#f08060');px(11,9,1,3,'#f0c040');
+    // Front legs
+    px(3,13,2,5,'#d85840');px(6,13,2,5,'#d85840');
+    px(3,17,2,1,'#a83828');px(6,17,2,1,'#a83828');
+    // Back legs
+    px(9,13,2,5,'#d85840');px(12,13,2,5,'#d85840');
+    px(9,17,2,1,'#a83828');px(12,17,2,1,'#a83828');
+    // Flame-tipped tail
+    px(14,7,2,2,'#d85840');px(15,6,2,2,'#f08060');px(16,5,2,2,'#f0c040');px(17,4,1,2,'#ffe060');
+    // Body highlight
+    px(5,8,6,1,'rgba(255,255,255,0.15)');
+  }else if(cardId===4){
+    // TEMPEST — Storm Prophet (floating cloud being)
+    // Head/face area
+    px(5,0,6,3,'#d8b028');px(6,0,4,2,'#f0d850');
+    // Golden eyes
+    px(6,2,2,1,'#ffffff');px(9,2,1,1,'#ffffff');
+    px(6,3,2,1,'#d8b028');px(9,3,1,1,'#d8b028');
+    // Upper body (swirling cloud)
+    px(3,4,10,3,'#e0d0a0');px(4,4,8,2,'#f0e8c0');
+    // Lightning bolt on chest
+    px(7,5,2,1,'#ffffff');px(6,6,2,1,'#ffffff');px(7,7,2,1,'#ffffff');px(8,8,2,1,'#ffffff');
+    // Cloud arms
+    px(1,5,2,3,'#e0d0a0');px(0,6,2,2,'#d0c890');
+    px(13,5,2,3,'#e0d0a0');px(14,6,2,2,'#d0c890');
+    // Mid body (cloud swirl)
+    px(2,7,12,4,'#e0d0a0');px(3,7,10,3,'#f0e8c0');
+    px(4,8,3,2,'#f8f0d0');px(9,9,3,1,'#f8f0d0');
+    // Lightning sparks (static, toggle-able)
+    const spark=(typeof fr!=='undefined')?(fr%20<10):true;
+    if(spark){
+      px(1,4,1,1,'#ffffff');px(14,3,1,1,'#ffffff');px(0,8,1,1,'#f0d850');
+    }else{
+      px(15,5,1,1,'#ffffff');px(0,3,1,1,'#ffffff');px(14,9,1,1,'#f0d850');
+    }
+    // Cloud lower body (no legs)
+    px(3,11,10,2,'#d0c890');px(4,11,8,1,'#e0d0a0');
+    px(4,13,8,2,'#c8c080');px(5,13,6,1,'#d0c890');
+    // Wispy cloud bottom
+    px(5,15,6,1,'#b8b070');px(6,16,4,1,'#a8a060');
+    px(7,17,2,1,'rgba(168,160,96,0.5)');
+  }else if(cardId===5){
+    // NIHIL — Void Observer (ghost with single eye)
+    // Aura glow
+    px(3,0,10,1,'rgba(96,200,168,0.2)');px(2,1,12,1,'rgba(96,200,168,0.15)');
+    // Upper body (spiral start)
+    px(4,1,8,3,'#38a880');px(5,1,6,2,'#48b898');
+    // Large single eye
+    px(5,4,6,4,'#ffffff');px(6,4,4,3,'#e8f0e8');
+    // Teal iris
+    px(7,5,3,2,'#38a880');px(7,5,2,2,'#60c8a8');
+    // Pupil
+    px(8,5,1,2,'#207858');
+    // Eye highlight
+    px(6,4,1,1,'rgba(255,255,255,0.7)');
+    // Vortex body (spiral pattern)
+    px(3,8,10,2,'#38a880');px(4,8,8,1,'#48b898');
+    px(2,10,12,2,'#207858');px(3,10,10,1,'#38a880');
+    // Spiral lines
+    px(5,9,2,1,'#60c8a8');px(9,10,2,1,'#60c8a8');px(4,11,2,1,'#60c8a8');px(10,8,1,1,'#60c8a8');
+    // Lower body
+    px(3,12,10,2,'#207858');px(4,12,8,1,'#38a880');
+    px(4,14,8,2,'#186848');px(5,14,6,1,'#207858');
+    // Tentacle wisps at bottom
+    px(4,16,2,2,'#186848');px(7,16,2,3,'#186848');px(11,16,2,2,'#186848');
+    px(4,17,1,1,'#105838');px(7,18,2,1,'#105838');px(12,17,1,1,'#105838');
+    // Faint aura
+    px(2,4,1,8,'rgba(96,200,168,0.15)');px(13,4,1,8,'rgba(96,200,168,0.15)');
+  }
+}
+
+// Draw card frame with character sprite inside
+function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
+  const cr=CD[cardIdx];if(!cr)return;
+  // Outer border
+  bx(cx_,cy_,cw,ch,cr.d);
+  // Inner gradient bg
+  bx(cx_+2,cy_+2,cw-4,ch-4,cr.c);
+  bx(cx_+2,cy_+2,cw-4,Math.floor(ch/3),'rgba(0,0,0,0.15)');
+  bx(cx_+2,cy_+ch-Math.floor(ch/3),cw-4,Math.floor(ch/3)-2,'rgba(255,255,255,0.08)');
+  // Inner card art area
+  bx(cx_+4,cy_+4,cw-8,ch*0.6,cr.d);
+  bx(cx_+5,cy_+5,cw-10,ch*0.6-2,'rgba(255,255,255,0.08)');
+  // Character sprite centered in art area
+  const charScale=Math.max(0.4,Math.min(3,cw/28));
+  const charW=16*charScale, charH=20*charScale;
+  const charX=cx_+cw/2-charW/2;
+  const charY=cy_+4+ch*0.3-charH/2;
+  drawCardCharacter(charX,charY,cardIdx+1,charScale);
+  // Small type icon in top-left
+  const icons=['\u26E8','\u263D','\u2632','\u26A1','\u25C9'];
+  tx(icons[cardIdx]||'',cx_+5,cy_+12,Math.max(4,Math.floor(6*charScale/1.5)),cr.h||'#fff');
+  // Card name at bottom
+  if(showName!==false){
+    bx(cx_+2,cy_+ch-Math.floor(ch*0.25),cw-4,Math.floor(ch*0.25)-2,'rgba(0,0,0,0.3)');
+    const nameSz=Math.max(4,Math.min(9,Math.floor(cw/9)));
+    txShadow(cr.n,cx_+cw/2-cr.n.length*nameSz/2.2,cy_+ch-Math.floor(ch*0.12),nameSz,'#fff','rgba(0,0,0,0.5)');
+  }
+}
 
 // ═══════════════════════════════════════
 // MULTI-MAP SYSTEM
@@ -856,9 +1031,9 @@ const npcs=[
 
 // ── TREASURE DATA ──
 const treasures=[
-  {map:1, x:7, y:4, card:2, collected:false},   // Forest: SHADOW
-  {map:1, x:29, y:16, card:0, collected:false},  // Forest: CRYSTAL
-  {map:2, x:16, y:13, card:4, collected:false},   // Ruins: VOID
+  {map:1, x:7, y:4, card:2, collected:false},   // Forest: UMBRA
+  {map:1, x:29, y:16, card:0, collected:false},  // Forest: AEGIS
+  {map:2, x:16, y:13, card:4, collected:false},   // Ruins: NIHIL
 ];
 
 // ── BIRD SPRITES (Forest wildlife) ──
@@ -961,7 +1136,7 @@ function findCardMap(rIdx){
   const r=pl[rIdx];
   const has=new Set();
   r.cd.forEach(c=>{if(c>0)has.add(c);});
-  // AREA_CARDS: Port=[1,2], Forest=[3,4], Ruins=[5,1]
+  // AREA_CARDS: Port=[1,2](Aegis,Umbra), Forest=[3,4](Ignis,Tempest), Ruins=[5,1](Nihil,Aegis)
   const needs=[];
   for(let i=1;i<=5;i++){if(!has.has(i))needs.push(i);}
   if(needs.length===0)return Math.floor(Math.random()*3);
@@ -2523,7 +2698,8 @@ function drawMiniCard(x,y,cd){
     const cr=CD[cd-1];
     bx(x,y,28,20,cr.d);bx(x+1,y+1,26,18,cr.c);
     bx(x+2,y+2,24,12,cr.d);bx(x+3,y+3,22,10,'rgba(255,255,255,.15)');
-    txShadow(cr.i,x+7,y+12,9,'#fff','rgba(0,0,0,.5)');
+    // Tiny character sprite (scale 0.5)
+    drawCardCharacter(x+6,y+1,cd,0.5);
     bx(x+1,y+14,26,5,cr.d);txShadow(cr.n[0],x+8,y+19,7,'#fff','rgba(0,0,0,.5)');
   }else{
     bx(x,y,28,20,'#c8c0a8');bx(x+1,y+1,26,18,'#d8d0b8');txShadow('?',x+8,y+15,8,'#a89880','rgba(0,0,0,.3)');
@@ -2750,18 +2926,18 @@ function tryWildEncounter(){
     else{cardIdx=ac[Math.floor(Math.random()*ac.length)]-1;}
   }else if(currentMap===0){// Port Town
     const roll=Math.random();
-    if(roll<0.5)cardIdx=0;     // CRYSTAL
-    else cardIdx=1;             // SHADOW
+    if(roll<0.5)cardIdx=0;     // AEGIS
+    else cardIdx=1;             // UMBRA
   }else if(currentMap===1){// Forest
     const roll=Math.random();
-    if(roll<0.4)cardIdx=2;     // FLAME
-    else if(roll<0.8)cardIdx=3; // STORM
-    else cardIdx=0;             // CRYSTAL
+    if(roll<0.4)cardIdx=2;     // IGNIS
+    else if(roll<0.8)cardIdx=3; // TEMPEST
+    else cardIdx=0;             // AEGIS
   }else{// Ruins
     const roll=Math.random();
-    if(roll<0.4)cardIdx=4;     // VOID
-    else if(roll<0.7)cardIdx=1; // SHADOW
-    else cardIdx=0;             // CRYSTAL
+    if(roll<0.4)cardIdx=4;     // NIHIL
+    else if(roll<0.7)cardIdx=1; // UMBRA
+    else cardIdx=0;             // AEGIS
   }
 
   wildEncounterActive=true;
@@ -3002,8 +3178,8 @@ function drawCardShop(){
           bx(68,y-8,W-136,28,'rgba(192,168,96,.2)');
           tx('\u25B6',72,y+8,7,'#c04040');
         }
-        bx(92,y-4,20,20,cr.c);bx(93,y-3,18,18,cr.d);
-        tx(cr.i,95,y+13,10,'#fff');
+        bx(92,y-4,20,20,cr.d);bx(93,y-3,18,18,cr.c);
+        drawCardCharacter(94,y-2,cd,0.7);
         tx(cr.n,120,y+8,7,i===shopSelectedIdx?'#c04040':'#303028');
         tx(cr.f,260,y+8,6,'#989080');
       });
@@ -3014,9 +3190,7 @@ function drawCardShop(){
     const slot=filled[shopSelectedIdx];
     const cd=pl[0].cd[slot];
     const cr=CD[cd-1];
-    bx(W/2-35,100,70,100,cr.d);bx(W/2-33,102,66,96,cr.c);
-    tx(cr.i,W/2-10,150,22,'#fff');
-    tx(cr.n,W/2-24,210,9,'#fff');
+    drawCardFrame(W/2-35,100,70,100,cd-1,true);
     tx('Trade '+cr.n+' for a',W/2-110,250,7,'#303028');
     tx('random card?',W/2-64,272,7,'#303028');
     tx('Z=Yes  X=No',W/2-60,300,7,'#c04040');
@@ -4186,6 +4360,7 @@ function drawSelectPhase(){
       const y=H/2-mh/2+42+j*36;
       if(j===bpCardSelectIdx){bx(W/2-140,y-2,280,32,'rgba(192,168,96,.22)');txShadow('\u25B6',W/2-144,y+16,10,'#c04040','rgba(0,0,0,.3)');}
       bx(W/2-126,y+4,22,22,cr.d);bx(W/2-124,y+6,18,18,cr.c);
+      drawCardCharacter(W/2-123,y+6,cd,0.7);
       txShadow(cr.n,W/2-98,y+18,14,j===bpCardSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
       txShadow(cr.f,W/2+40,y+18,10,'#908878','rgba(0,0,0,.15)');
     });
@@ -4227,7 +4402,7 @@ function drawConfirmingPhase(){
   if(t>=120){battlePhase='resolving';bpFrame=fr;bpResolveIdx=0;bpResolveQueue=generateResolveEvents();}
 }
 
-// Area card tables: Port=[1,2](Crystal,Shadow), Forest=[3,4](Flame,Storm), Ruins=[5,1](Void,Crystal)
+// Area card tables: Port=[1,2](Aegis,Umbra), Forest=[3,4](Ignis,Tempest), Ruins=[5,1](Nihil,Aegis)
 const AREA_CARDS=[[1,2],[3,4],[5,1]];
 function pickAreaCard(){return pickAreaCardForMap(currentMap);}
 function pickAreaCardForMap(mapIdx){const ac=AREA_CARDS[mapIdx]||[1,2];return ac[Math.floor(Math.random()*ac.length)];}
@@ -4360,15 +4535,15 @@ function generateResolveEvents(){
       const cr=CD[card-1];
       events.push({type:'action',who:'You',action:'USE CARD',text:'You consumed '+cr.n+'!',effect:'none'});
       // Apply effect based on card type
-      if(card===1){sp.s+=2;events.push({type:'result',text:'Crystal: +2 Steal charges!',effect:'card_get'});lg.push('R'+rd+': Used Crystal - +2 Steal!');}
-      else if(card===2){events.push({type:'result',text:'Shadow: Invisible this turn!',effect:'shield'});bpPlayerBarrier=true;lg.push('R'+rd+': Used Shadow - invisible!');}
+      if(card===1){sp.s+=2;events.push({type:'result',text:'Aegis: +2 Steal charges!',effect:'card_get'});lg.push('R'+rd+': Used Aegis - +2 Steal!');}
+      else if(card===2){events.push({type:'result',text:'Umbra: Invisible this turn!',effect:'shield'});bpPlayerBarrier=true;lg.push('R'+rd+': Used Umbra - invisible!');}
       else if(card===3){
         const ftgt=bpSelectedTarget;
         const burned=removeCardFromPlayer(ftgt,-1);
-        if(burned>0){events.push({type:'result',text:'Flame: Burned '+CD[burned-1].n+' from '+pl[ftgt].n+'!',effect:'damage',target:ftgt,isCritical:true});lg.push('R'+rd+': Used Flame - burned '+CD[burned-1].n+'!');}
-        else{events.push({type:'result',text:'Flame: '+pl[ftgt].n+' had no cards to burn!',effect:'none'});lg.push('R'+rd+': Flame fizzled!');}
+        if(burned>0){events.push({type:'result',text:'Ignis: Burned '+CD[burned-1].n+' from '+pl[ftgt].n+'!',effect:'damage',target:ftgt,isCritical:true});lg.push('R'+rd+': Used Ignis - burned '+CD[burned-1].n+'!');}
+        else{events.push({type:'result',text:'Ignis: '+pl[ftgt].n+' had no cards to burn!',effect:'none'});lg.push('R'+rd+': Ignis fizzled!');}
       }
-      else if(card===4){bpPlayerBarrier=false;events.push({type:'result',text:'Storm: All barriers disabled this round!',effect:'none'});rivalBarriers[0]=false;rivalBarriers[1]=false;lg.push('R'+rd+': Used Storm - barriers disabled!');}
+      else if(card===4){bpPlayerBarrier=false;events.push({type:'result',text:'Tempest: All barriers disabled this round!',effect:'none'});rivalBarriers[0]=false;rivalBarriers[1]=false;lg.push('R'+rd+': Used Tempest - barriers disabled!');}
       else if(card===5){
         // Copy: duplicate a random card from target
         const vtgt=bpSelectedTarget;
@@ -4376,14 +4551,14 @@ function generateResolveEvents(){
         if(rFilled.length>0){
           const copied=rFilled[Math.floor(Math.random()*rFilled.length)];
           if(addCardToPlayer(0,copied)){
-            events.push({type:'result',text:'Void: Copied '+CD[copied-1].n+' from '+pl[vtgt].n+'!',effect:'card_get'});lg.push('R'+rd+': Used Void - copied '+CD[copied-1].n+'!');
+            events.push({type:'result',text:'Nihil: Copied '+CD[copied-1].n+' from '+pl[vtgt].n+'!',effect:'card_get'});lg.push('R'+rd+': Used Nihil - copied '+CD[copied-1].n+'!');
           }else{
-            events.push({type:'result',text:'Void: Copied '+CD[copied-1].n+' but hand full! Discard after battle.',effect:'none'});
+            events.push({type:'result',text:'Nihil: Copied '+CD[copied-1].n+' but hand full! Discard after battle.',effect:'none'});
             events._pendingDrawCard=copied;
-            lg.push('R'+rd+': Void copied '+CD[copied-1].n+' - hand full!');
+            lg.push('R'+rd+': Nihil copied '+CD[copied-1].n+' - hand full!');
           }
         }
-        else{events.push({type:'result',text:'Void: Nothing to copy!',effect:'none'});lg.push('R'+rd+': Void fizzled!');}
+        else{events.push({type:'result',text:'Nihil: Nothing to copy!',effect:'none'});lg.push('R'+rd+': Nihil fizzled!');}
       }
     }else{
       events.push({type:'action',who:'You',action:'USE CARD',text:'No cards to use!',effect:'none'});
@@ -4692,19 +4867,19 @@ function drawResolvingPhase(){
       if(evT===1)sfxCardGet();
     }
     // Card consumption effect animations based on card name in event text
-    if(ev.text&&ev.text.includes('Crystal')&&ev.type==='result'&&evT<35){
+    if(ev.text&&ev.text.includes('Aegis')&&ev.type==='result'&&evT<35){
       drawCrystalEffect(playerCX,playerCY,evT);
     }
-    if(ev.text&&ev.text.includes('Shadow')&&ev.type==='result'&&evT<30){
+    if(ev.text&&ev.text.includes('Umbra')&&ev.type==='result'&&evT<30){
       drawShadowEffect(playerCX,playerCY,evT);
     }
-    if(ev.text&&ev.text.includes('Flame')&&ev.type==='result'&&evT<35){
+    if(ev.text&&ev.text.includes('Ignis')&&ev.type==='result'&&evT<35){
       drawFlameEffect(W/2,H/2-20,evT);
     }
-    if(ev.text&&ev.text.includes('Storm')&&ev.type==='result'&&evT<25){
+    if(ev.text&&ev.text.includes('Tempest')&&ev.type==='result'&&evT<25){
       drawStormEffect(evT);
     }
-    if(ev.text&&ev.text.includes('Void')&&ev.type==='result'&&evT<35){
+    if(ev.text&&ev.text.includes('Nihil')&&ev.type==='result'&&evT<35){
       drawVoidEffect(W/2,H/2-20,evT);
     }
     // QTE overlay
@@ -4813,7 +4988,7 @@ function drawResultPhase(){
       if(ev.text.includes('stole')||ev.text.includes('Burn'))evCol='#c04040';
       else if(ev.text.includes('obtained')||ev.text.includes('got'))evCol='#308030';
       else if(ev.text.includes('BARRIER')||ev.text.includes('BLOCKED'))evCol='#3060b0';
-      else if(ev.text.includes('Shadow'))evCol='#7858a0';
+      else if(ev.text.includes('Umbra'))evCol='#7858a0';
       // Truncate long text
       const dispText=ev.text.length>54?ev.text.substring(0,52)+'..':ev.text;
       txShadow(dispText,panX+16,lineY+10,7,evCol,'rgba(0,0,0,.2)');
@@ -4873,16 +5048,8 @@ function drawCardAcquisition(){
 
   const cw=60*scale,ch=84*scale;
   g.globalAlpha=alpha;
-  bx(cx_-cw/2,cy_-ch/2,cw,ch,cr.d);bx(cx_-cw/2+2*scale,cy_-ch/2+2*scale,cw-4*scale,ch-4*scale,cr.c);
-  if(scale>.4){
-    bx(cx_-cw/2+4*scale,cy_-ch/2+4*scale,cw-8*scale,(ch-8*scale)*.6,cr.d);
-    bx(cx_-cw/2+5*scale,cy_-ch/2+5*scale,cw-10*scale,(ch-10*scale)*.55,'rgba(255,255,255,.12)');
-    const iconSz=Math.max(6,Math.floor(18*scale));tx(cr.i,cx_-iconSz/2,cy_-ch/4+iconSz,iconSz,'#fff');
-  }
-  if(scale>.6){
-    bx(cx_-cw/2+4*scale,cy_+ch*.2,cw-8*scale,ch*.2,'rgba(0,0,0,.25)');
-    tx(cr.n,cx_-cw/4,cy_+ch*.3+Math.max(4,Math.floor(7*scale)),Math.max(4,Math.floor(7*scale)),'#fff');
-  }
+  // Draw card frame with character
+  drawCardFrame(cx_-cw/2,cy_-ch/2,cw,ch,cardAcqCard,scale>.6);
   g.globalAlpha=1;
 
   if(t>=50&&t<90){win(W/2-150,cy_+ch/2+12,300,40);txShadow('You obtained '+cr.n+'!',W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');}
@@ -4916,7 +5083,8 @@ function drawDiscardOverlay(){
     if(sel)bx(W/2-168,cy,336,40,'rgba(192,168,96,.22)');
     if(cd>0){
       const cr=CD[cd-1];
-      bx(W/2-158,cy+6,28,28,cr.d);bx(W/2-156,cy+8,24,24,cr.c);tx(cr.i,W/2-150,cy+28,12,'#fff');
+      bx(W/2-158,cy+6,28,28,cr.d);bx(W/2-156,cy+8,24,24,cr.c);
+      drawCardCharacter(W/2-155,cy+8,cd,0.9);
       tx(cr.n,W/2-120,cy+22,7,sel?'#c04040':'#303028');tx(cr.f,W/2-120,cy+34,6,'#908878');
     }else{
       tx('(empty)',W/2-120,cy+22,7,'#a09888');
@@ -4942,8 +5110,9 @@ function drawTutorialMsg(){
 // ═══════════════════════════════════════
 // AREA CARD INFO
 // ═══════════════════════════════════════
-const AREA_CARD_DESC=['Crystal & Shadow','Flame & Storm','Void & Crystal'];
+const AREA_CARD_DESC=['Aegis & Umbra spirits','Ignis & Tempest spirits','Nihil & Aegis spirits'];
 const CARD_AREA_INFO=['Port Town, Ruins','Port Town','Forest','Forest','Ruins'];
+// Card IDs: 1=AEGIS, 2=UMBRA, 3=IGNIS, 4=TEMPEST, 5=NIHIL
 
 // ═══════════════════════════════════════
 // VICTORY SCREEN
@@ -4976,9 +5145,7 @@ function dVictory(){
       g.globalAlpha=slideIn;g.save();g.translate(cx_,cy_);g.rotate(angle*.3);
       const cd=pl[0].cd[i];
       if(cd>0){
-        const cr=CD[cd-1];
-        bx(-25,-35,50,70,cr.d);bx(-23,-33,46,66,cr.c);bx(-21,-31,42,44,cr.d);bx(-20,-30,40,42,'rgba(255,255,255,.12)');
-        tx(cr.i,-8,0,14,'#fff');bx(-23,12,46,16,'rgba(0,0,0,.25)');bx(-22,13,44,14,cr.d);tx(cr.n,-18,25,5,'#fff');
+        drawCardFrame(-25,-35,50,70,cd-1,true);
       }else{bx(-25,-35,50,70,'#c0b898');bx(-23,-33,46,66,'#d0c8a8');tx('?',-8,5,14,'#a89880');}
       g.restore();g.globalAlpha=1;
       if(cardT>0&&cardT<20&&cd>0){
@@ -5014,9 +5181,12 @@ function dCrd(){
     win(10,cy,W-20,106);
     if(cd>0){
       const cr=CD[cd-1];
-      bx(24,cy+12,76,76,cr.d);bx(26,cy+14,72,72,cr.c);bx(28,cy+16,68,68,'rgba(0,0,0,.08)');bx(30,cy+18,64,64,cr.c);
-      tx(cr.i,48,cy+64,28,'#fff');tx(cr.n,116,cy+38,10);tx(cr.f,116,cy+58,8,'#908878');
+      // Large character card frame (scale 2)
+      drawCardFrame(24,cy+8,76,88,cd-1,true);
+      tx(cr.n,116,cy+38,10);tx(cr.f,116,cy+58,8,'#908878');
       tx(CARD_AREA_INFO[cd-1],116,cy+78,6,'#8088a0');
+      // Flavor text
+      if(cr.fl)tx('"'+cr.fl+'"',116,cy+92,5,'#6878a8');
       for(let s=0;s<3;s++)tx('\u2605',W-100+s*20,cy+38,9,s<2?'#d8b028':'#c0b898');
       tx('#'+cr.n[0]+'/5',W-100,cy+62,7,'#b0a898');
     }else{
@@ -5036,9 +5206,9 @@ function dLog(){
     const y=40+i*36;win(6,y,W-12,32);
     let cl='#303028';
     if(l.includes('Block')||l.includes('Barrier'))cl='#3060b0';
-    else if(l.includes('Steal')||l.includes('Flame'))cl='#c04040';
+    else if(l.includes('Steal')||l.includes('Ignis'))cl='#c04040';
     else if(l.includes('drew')||l.includes('Scout')||l.includes('Found'))cl='#308030';
-    else if(l.includes('Shadow'))cl='#7858a0';
+    else if(l.includes('Umbra'))cl='#7858a0';
     else if(l.includes('Wild'))cl='#d8b028';
     else if(l.includes('sense')||l.includes('tense')||l.includes('close'))cl='#a04040';
     else if(l.includes('Footprints')||l.includes('passed'))cl='#887050';
@@ -5112,7 +5282,7 @@ function fishingCatchCard(){
   fishingPhase='catch';
   fishingTimer=90;
   sfxFishCatch();
-  // Random Port Town card (Crystal or Shadow)
+  // Random Port Town card (Aegis or Umbra)
   const cardIdx=Math.random()<0.5?0:1;
   let slot=-1;
   for(let i=0;i<5;i++){if(pl[0].cd[i]===0){slot=i;break;}}
@@ -5664,9 +5834,9 @@ function getMapUsableCards(){
   const result=[];
   for(let i=0;i<5;i++){
     const cd=pl[0].cd[i];
-    if(cd===3)result.push({slot:i,cardId:3,name:'FLAME',desc:'Burn tree/bush ahead'});
-    else if(cd===2)result.push({slot:i,cardId:2,name:'SHADOW',desc:'Invisible 30 steps'});
-    else if(cd===5)result.push({slot:i,cardId:5,name:'VOID',desc:'Phase through wall'});
+    if(cd===3)result.push({slot:i,cardId:3,name:'IGNIS',desc:'Burn tree/bush ahead'});
+    else if(cd===2)result.push({slot:i,cardId:2,name:'UMBRA',desc:'Invisible 30 steps'});
+    else if(cd===5)result.push({slot:i,cardId:5,name:'NIHIL',desc:'Phase through wall'});
   }
   return result;
 }
@@ -5674,7 +5844,7 @@ function getMapUsableCards(){
 function openMapCardUse(){
   const usable=getMapUsableCards();
   if(usable.length===0){
-    twSet('No usable cards! Flame/Shadow/Void work on the map.');
+    twSet('No usable cards! Ignis/Umbra/Nihil work on the map.');
     return;
   }
   mapCardUseActive=true;
@@ -5697,7 +5867,7 @@ function executeMapCard(cardId,slot){
     mapCardUseActive=false;
     sfxShadow();
     twSet('You became invisible for 30 steps!');
-    lg.push('Used Shadow on map: 30 invisible steps!');
+    lg.push('Used Umbra on map: 30 invisible steps!');
   }else if(cardId===5){
     // Void: phase through wall in direction
     mapCardDirSelect=true;
@@ -5732,7 +5902,7 @@ function executeDirCard(dir){
           sfxBurn();
           flash();
           twSet('The obstacle burns away!');
-          lg.push('Used Flame: burned tile at ('+tx_+','+ty_+')');
+          lg.push('Used Ignis: burned tile at ('+tx_+','+ty_+')');
         }
       }else{
         twSet('Nothing to burn there.');
@@ -5753,7 +5923,7 @@ function executeDirCard(dir){
         sfxPhase();
         flash();
         twSet('You phase through the obstacle!');
-        lg.push('Used Void: phased to ('+fx+','+fy+')');
+        lg.push('Used Nihil: phased to ('+fx+','+fy+')');
       }
     }else{
       twSet('Cannot phase there - no walkable tile beyond.');
@@ -5801,6 +5971,7 @@ function drawMapCardUseOverlay(){
       tx('\u25B6',W/2-134,y+14,7,'#c04040');
     }
     bx(W/2-118,y+2,20,20,cr.d);bx(W/2-116,y+4,16,16,cr.c);
+    drawCardCharacter(W/2-115,y+3,item.cardId,0.6);
     tx(item.name,W/2-92,y+14,7,j===mapCardUseIdx?'#c04040':'#303028');
     tx(item.desc,W/2+10,y+14,5,'#908878');
   });
@@ -6051,7 +6222,7 @@ function draw(){
       g.globalAlpha=0.4;
       bx(px-4,py-4,40,56,'rgba(80,40,160,.3)');
       g.globalAlpha=1;
-      tx('SHADOW:'+shadowStepsLeft,px-16,py-24,5,'#9060c0');
+      tx('UMBRA:'+shadowStepsLeft,px-16,py-24,5,'#9060c0');
     }
   }
   // Card collection progress bar (always visible on map)
@@ -6105,7 +6276,7 @@ document.addEventListener('keydown',e=>{
               sc='map';showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]+' cards found here');
               fadeIn();twSet('Welcome back!');
             }else{
-              sc='map';currentMap=0;showBanner('PORT TOWN','Crystal & Shadow cards found here');
+              sc='map';currentMap=0;showBanner('PORT TOWN','Aegis & Umbra spirits found here');
               fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
               fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');
             }
@@ -6114,7 +6285,7 @@ document.addEventListener('keydown',e=>{
           // NEW GAME
           sfxConfirm();
           resetGameState(true);
-          fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Crystal & Shadow cards found here');
+          fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Aegis & Umbra spirits found here');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
             fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
         }else if(titleMenuIdx===2){
@@ -6140,7 +6311,7 @@ document.addEventListener('keydown',e=>{
       if(e.code==='KeyZ'){
         if(titleMenuIdx===0){
           sfxConfirm();
-          fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Crystal & Shadow cards found here');
+          fadeOut(()=>{sc='map';currentMap=0;showBanner('PORT TOWN','Aegis & Umbra spirits found here');
             fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
             fadeIn();twSet('Welcome to 0xARK! Walk into tall grass to find cards. Collect all 5 types to win!');});
         }else if(titleMenuIdx===1){
@@ -6587,7 +6758,7 @@ document.addEventListener('keydown',e=>{
         // Play again - reset all state
         sfxConfirm();
         resetGameState(false);
-        fadeOut(()=>{sc='map';mo=false;showBanner('PORT TOWN','Crystal & Shadow cards found here');
+        fadeOut(()=>{sc='map';mo=false;showBanner('PORT TOWN','Aegis & Umbra spirits found here');
           fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
           fadeIn();twSet('Welcome back! Collect all 5 card types to win!');ub();});
       }
