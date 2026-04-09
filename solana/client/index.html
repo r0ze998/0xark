@@ -47,7 +47,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:auto}
 <button class="b" onclick="ss('crd')">CARDS</button>
 <button class="b" onclick="ss('log')">LOG</button>
 </div>
-<div id="h">ARROWS move / SPACE menu / Z select / X back / M sound</div>
+<div id="h">ARROWS move / SPACE menu / Z select / X back / M sound / F fps</div>
 </div>
 <div id="touch-overlay">
 <div class="touch-btn" id="dpad-up">&uarr;</div>
@@ -396,6 +396,174 @@ function fadeUpdate(){
 function fadeDraw(){if(fadeAlpha>0){bx(0,0,W,H,`rgba(0,0,0,${fadeAlpha})`);}}
 let flashT=0;
 function flash(){flashT=20;}
+
+// ═══════════════════════════════════════
+// SCREEN TRANSITION WIPES
+// ═══════════════════════════════════════
+// Wipe types: 'hswipe' (horizontal FRLG-style), 'vslide' (vertical slide-down), 'door_open', 'door_close'
+let wipeActive=false, wipeType='hswipe', wipeProgress=0, wipeCallback=null, wipeDuration=30;
+let wipeDoorX=0, wipeDoorY=0; // door position in screen coords for door wipe
+
+function startWipe(type, duration, cb, doorX, doorY){
+  wipeActive=true; wipeType=type; wipeProgress=0; wipeDuration=duration||30; wipeCallback=cb;
+  wipeDoorX=doorX||W/2; wipeDoorY=doorY||H/2;
+}
+function updateWipe(){
+  if(!wipeActive)return;
+  wipeProgress+=dt;
+  if(wipeProgress>=wipeDuration){
+    wipeActive=false;
+    if(wipeCallback){wipeCallback();wipeCallback=null;}
+  }
+}
+function drawWipe(){
+  if(!wipeActive)return;
+  const t=Math.min(1,wipeProgress/wipeDuration);
+  const ease=easeInOut(t);
+  if(wipeType==='hswipe'){
+    // Horizontal wipe like FRLG wild encounter — black bars sweep from edges
+    const barW=Math.floor(W*ease);
+    // Alternating horizontal stripes sweep from left and right
+    const stripeH=Math.ceil(H/8);
+    for(let i=0;i<8;i++){
+      const fromLeft=(i%2===0);
+      const sx=fromLeft?0:W-barW;
+      bx(sx,i*stripeH,barW,stripeH,'#181828');
+    }
+  }else if(wipeType==='hswipe_out'){
+    // Reverse horizontal wipe — stripes retract
+    const barW=Math.floor(W*(1-ease));
+    const stripeH=Math.ceil(H/8);
+    for(let i=0;i<8;i++){
+      const fromLeft=(i%2===0);
+      const sx=fromLeft?0:W-barW;
+      bx(sx,i*stripeH,barW,stripeH,'#181828');
+    }
+  }else if(wipeType==='vslide'){
+    // Vertical slide-down wipe
+    const barH=Math.floor(H*ease);
+    bx(0,0,W,barH,'#181828');
+  }else if(wipeType==='vslide_out'){
+    // Reverse slide-down
+    const barH=Math.floor(H*(1-ease));
+    bx(0,0,W,barH,'#181828');
+  }else if(wipeType==='door_open'){
+    // Dark rectangle expanding from door position
+    const maxW=W, maxH=H;
+    const cw=Math.floor(maxW*ease), ch=Math.floor(maxH*ease);
+    const cx=wipeDoorX-cw/2, cy=wipeDoorY-ch/2;
+    bx(cx,cy,cw,ch,'#080810');
+  }else if(wipeType==='door_close'){
+    // Dark rectangle shrinking to door position
+    const maxW=W, maxH=H;
+    const cw=Math.floor(maxW*(1-ease)), ch=Math.floor(maxH*(1-ease));
+    const cx=wipeDoorX-cw/2, cy=wipeDoorY-ch/2;
+    bx(cx,cy,cw,ch,'#080810');
+  }
+}
+
+// ═══════════════════════════════════════
+// MAP LOADING SCREEN
+// ═══════════════════════════════════════
+let mapLoadScreenActive=false, mapLoadScreenFrame=0, mapLoadScreenName='', mapLoadScreenCards='';
+const MAP_LOAD_DURATION=30; // ~0.5 seconds at 60fps
+
+function showMapLoadScreen(name, cards){
+  mapLoadScreenActive=true;
+  mapLoadScreenFrame=0;
+  mapLoadScreenName=name;
+  mapLoadScreenCards=cards||'';
+}
+function updateMapLoadScreen(){
+  if(!mapLoadScreenActive)return;
+  mapLoadScreenFrame++;
+  if(mapLoadScreenFrame>=MAP_LOAD_DURATION)mapLoadScreenActive=false;
+}
+function drawMapLoadScreen(){
+  if(!mapLoadScreenActive)return;
+  const t=mapLoadScreenFrame/MAP_LOAD_DURATION;
+  // Fade in first half, fade out second half
+  let alpha;
+  if(t<0.3) alpha=t/0.3;
+  else if(t>0.7) alpha=(1-t)/0.3;
+  else alpha=1;
+  alpha=Math.max(0,Math.min(1,alpha));
+  g.globalAlpha=alpha;
+  bx(0,0,W,H,'#0c0c18');
+  // Map name large
+  const nameW=mapLoadScreenName.length*16;
+  txShadow(mapLoadScreenName,W/2-nameW/2,H/2-10,16,'#f8f0e0','rgba(0,0,0,.6)');
+  // Available cards
+  if(mapLoadScreenCards){
+    const cardsW=mapLoadScreenCards.length*6;
+    txShadow(mapLoadScreenCards,W/2-cardsW/2,H/2+20,6,'#c8c0a0','rgba(0,0,0,.4)');
+  }
+  // Decorative line
+  bx(W/2-80,H/2+4,160,1,'rgba(200,180,140,.5)');
+  g.globalAlpha=1;
+}
+
+// ═══════════════════════════════════════
+// FPS COUNTER (toggle with F key)
+// ═══════════════════════════════════════
+let fpsCounterVisible=false, fpsFrames=0, fpsLast=performance.now(), fpsDisplay=60;
+function updateFPS(){
+  fpsFrames++;
+  const now=performance.now();
+  if(now-fpsLast>=1000){
+    fpsDisplay=fpsFrames;
+    fpsFrames=0;
+    fpsLast=now;
+  }
+}
+function drawFPS(){
+  if(!fpsCounterVisible)return;
+  const col=fpsDisplay>=50?'#40d040':fpsDisplay>=30?'#d0d040':'#d04040';
+  bx(2,2,48,14,'rgba(0,0,0,.6)');
+  tx('FPS:'+fpsDisplay,4,12,6,col);
+}
+
+// ═══════════════════════════════════════
+// CARD COLLECTION PROGRESS BAR
+// ═══════════════════════════════════════
+let progressBarPulseTimer=0;
+function triggerProgressPulse(){progressBarPulseTimer=60;}
+function drawCardProgressBar(){
+  if(sc!=='map'||mo||inBuilding)return;
+  // Draw above game viewport, below the emulator frame
+  const barY=2, barX=W/2-120, barW=240, barH=12;
+  const segW=barW/5;
+  // Background
+  bx(barX-1,barY-1,barW+2,barH+2,'#1a1a30');
+  bx(barX,barY,barW,barH,'#282838');
+  // Segments
+  const uniqueCards=new Set();
+  pl[0].cd.forEach(c=>{if(c>0)uniqueCards.add(c);});
+  for(let i=0;i<5;i++){
+    const sx=barX+i*segW;
+    const hasCard=uniqueCards.has(i+1);
+    if(hasCard){
+      const cr=CD[i];
+      bx(sx+1,barY+1,segW-2,barH-2,cr.c);
+      bx(sx+1,barY+1,segW-2,Math.floor((barH-2)/2),'rgba(255,255,255,.2)');
+    }else{
+      bx(sx+1,barY+1,segW-2,barH-2,'#383848');
+    }
+    // Segment divider
+    if(i<4)bx(sx+segW,barY,1,barH,'#1a1a30');
+  }
+  // Text
+  const count=uniqueCards.size;
+  txShadow(count+'/5 CARDS',barX+barW+8,barY+10,7,count>=5?'#40d040':'#c8c0a0','rgba(0,0,0,.4)');
+  // Pulse glow when new card added
+  if(progressBarPulseTimer>0){
+    progressBarPulseTimer--;
+    const pulse=Math.sin(progressBarPulseTimer*0.2)*0.3+0.3;
+    g.globalAlpha=pulse;
+    bx(barX-3,barY-3,barW+6,barH+6,'#f0c830');
+    g.globalAlpha=1;
+  }
+}
 
 // ═══════════════════════════════════════
 // GRASS PARTICLES
@@ -2340,6 +2508,8 @@ function doMapTransition(exit){
   if(mapTransitioning)return;
   mapTransitioning=true;
   sfxDoorOpen();sfxMapChange();
+  const targetMapName=mapNames[exit.targetMap];
+  const targetCardDesc=AREA_CARD_DESC[exit.targetMap];
   fadeOut(()=>{
     currentMap=exit.targetMap;
     pl[0].x=exit.targetX;
@@ -2353,6 +2523,8 @@ function doMapTransition(exit){
     particles.length=0;
     // Reveal starting area on new map
     fogRevealRadius(currentMap,pl[0].x,pl[0].y,2);fogSave();
+    // Show map loading screen
+    showMapLoadScreen(targetMapName,'Available cards: '+targetCardDesc);
     showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]+' cards found here');
     saveGame();
     // Tutorial: first map change
@@ -2625,9 +2797,13 @@ function checkNPCInteraction(){
     // Check if adjacent
     const dx=Math.abs(p.x-npc.x),dy=Math.abs(p.y-npc.y);
     if(dx+dy===1){
-      // Face the player
+      // NPC faces the player
       if(p.x<npc.x)npc.dir=1;else if(p.x>npc.x)npc.dir=3;
       else if(p.y<npc.y)npc.dir=2;else npc.dir=0;
+
+      // Player auto-faces the NPC
+      if(npc.x<p.x)p.dir=1;else if(npc.x>p.x)p.dir=3;
+      else if(npc.y<p.y)p.dir=2;else if(npc.y>p.y)p.dir=0;
 
       // Card Dealer opens the shop instead of normal dialog
       if(npc.name==='Card Dealer'){
@@ -2884,6 +3060,23 @@ function drawEncounterExclamation(){
   g.globalAlpha=1;
 }
 
+function wrapText(text,maxChars){
+  if(text.length<=maxChars)return[text];
+  const words=text.split(' ');
+  const lines=[];
+  let cur='';
+  for(const w of words){
+    if(cur.length+w.length+1>maxChars){
+      if(cur)lines.push(cur);
+      cur=w;
+    }else{
+      cur=cur?cur+' '+w:w;
+    }
+  }
+  if(cur)lines.push(cur);
+  return lines;
+}
+
 function drawNPCDialog(){
   if(!npcDialogActive)return;
   const dlgSlide=Math.min(1,(fr-npcDialogOpenFrame)/6);
@@ -2893,10 +3086,16 @@ function drawNPCDialog(){
   win(6,H-100+slideOff,W-12,90);
   win(10,H-110+slideOff,npcDialogName.length*9+20,20);
   tx(npcDialogName,20,H-95+slideOff,7,'#c04040');
-  const line=npcDialogLines[npcDialogIdx]||'';
-  const line2=npcDialogLines[npcDialogIdx+1]||'';
-  tx(line,20,H-70+slideOff,7,'#303028');
-  if(line2)tx(line2,20,H-52+slideOff,7,'#303028');
+  // Combine current dialog lines and wrap properly
+  const rawLine=npcDialogLines[npcDialogIdx]||'';
+  const rawLine2=npcDialogLines[npcDialogIdx+1]||'';
+  const maxChars=52;
+  const wrapped1=wrapText(rawLine,maxChars);
+  const wrapped2=rawLine2?wrapText(rawLine2,maxChars):[];
+  const allLines=[...wrapped1,...wrapped2].slice(0,3);
+  allLines.forEach((l,i)=>{
+    tx(l,20,H-70+slideOff+i*16,7,'#303028');
+  });
   const arrowBounce=Math.sin(fr*0.15)*2;
   tx('\u25BC',W-24,H-18+slideOff+arrowBounce,7,'#c04040');
   g.globalAlpha=1;
@@ -3223,7 +3422,8 @@ function dMap(){
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
-  {
+  // Skip entirely if frame rate is very low (dt > 2 means < 30fps)
+  if(dt<=2){
     const camMoved=Math.abs(camX-edgeCacheLastCamX)>0.5||Math.abs(camY-edgeCacheLastCamY)>0.5;
     if(edgeCacheDirty||camMoved){
       edgeCtx.clearRect(0,0,W,H);
@@ -4392,49 +4592,80 @@ function drawResultPhase(){
   drawPlayerInfoBox();
   const t=fr-bpFrame;
   // Summary panel in center
-  const panW=360,panH=200,panX=W/2-panW/2,panY=H/2-panH/2-10;
+  const panW=500,panH=280,panX=W/2-panW/2,panY=H/2-panH/2-10;
   const slideIn_=Math.min(1,t/15);
   g.globalAlpha=slideIn_;
   win(panX,panY,panW,panH);
-  txShadow('ROUND '+rd+' COMPLETE',panX+panW/2-110,panY+26,14,'#308030','rgba(0,0,0,.3)');
-  // Card bar display
-  txShadow('Your cards:',panX+16,panY+48,10,'#686068','rgba(0,0,0,.2)');
-  for(let i=0;i<5;i++){
-    const cd=pl[0].cd[i];
-    const sx_=panX+110+i*38;
-    if(cd>0){
-      const cr=CD[cd-1];
-      bx(sx_,panY+38,32,18,cr.d);bx(sx_+1,panY+39,30,16,cr.c);
-      txShadow(cr.n[0],sx_+8,panY+53,12,'#fff','rgba(0,0,0,.5)');
-    }else{
-      bx(sx_,panY+38,32,18,'#c0b898');bx(sx_+1,panY+39,30,16,'#d0c8a8');
-      txShadow('-',sx_+10,panY+53,12,'#a89880','rgba(0,0,0,.3)');
+  txShadow('ROUND '+rd+' SUMMARY',panX+panW/2-100,panY+22,14,'#308030','rgba(0,0,0,.3)');
+  // Divider
+  bx(panX+16,panY+30,panW-32,1,'rgba(200,180,140,.3)');
+
+  // Side-by-side rival actions
+  const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
+  const colW=Math.floor((panW-48)/3);
+  const players=[{idx:0,name:'You',action:bpAction},{idx:1,name:pl[1].n,action:bpRivalActions[0]},{idx:2,name:pl[2].n,action:bpRivalActions[1]}];
+  players.forEach((p_,col)=>{
+    const cx_=panX+16+col*(colW+8);
+    const cy_=panY+38;
+    const actAlpha=Math.min(1,Math.max(0,(t-15-col*6)/8));
+    if(actAlpha<=0)return;
+    g.globalAlpha=actAlpha*slideIn_;
+    // Name header
+    const nameCol=col===0?'#4080d0':col===1?'#d060a0':'#d0a030';
+    txShadow(p_.name,cx_+4,cy_+12,9,nameCol,'rgba(0,0,0,.2)');
+    // Action
+    const actName=actionNames[p_.action]||'???';
+    let actCol='#686068';
+    if(p_.action===0)actCol='#48b8e8';
+    else if(p_.action===1)actCol='#b04040';
+    else if(p_.action===2)actCol='#3060b0';
+    else if(p_.action===3)actCol='#308030';
+    else if(p_.action===4)actCol='#806030';
+    txShadow(actName,cx_+4,cy_+28,8,actCol,'rgba(0,0,0,.2)');
+    // Card count
+    const cc=pl[p_.idx].cd.filter(c=>c>0).length;
+    txShadow(cc+'/5 cards',cx_+4,cy_+42,7,'#988870','rgba(0,0,0,.15)');
+    // Mini card bar
+    for(let i=0;i<5;i++){
+      const cd=pl[p_.idx].cd[i];
+      const sx_=cx_+4+i*22;
+      if(cd>0){
+        const cr=CD[cd-1];
+        bx(sx_,cy_+48,20,10,cr.d);bx(sx_+1,cy_+49,18,8,cr.c);
+      }else{
+        bx(sx_,cy_+48,20,10,'#383838');
+      }
     }
-  }
+  });
+  g.globalAlpha=slideIn_;
+
+  // Divider before events
+  bx(panX+16,panY+108,panW-32,1,'rgba(200,180,140,.2)');
+
   // Recent events summary from resolve queue
   if(bpResolveQueue&&bpResolveQueue.length>0){
-    let lineY=panY+68;
-    const maxEvents=Math.min(bpResolveQueue.length,5);
+    let lineY=panY+112;
+    const maxEvents=Math.min(bpResolveQueue.length,7);
     for(let i=0;i<maxEvents;i++){
       const ev=bpResolveQueue[i];
       if(!ev.text)continue;
-      const evAlpha=Math.min(1,Math.max(0,(t-15-i*4)/8));
+      const evAlpha=Math.min(1,Math.max(0,(t-20-i*3)/8));
       if(evAlpha<=0)continue;
-      g.globalAlpha=evAlpha;
+      g.globalAlpha=evAlpha*slideIn_;
       let evCol='#686068';
       if(ev.text.includes('stole')||ev.text.includes('Burn'))evCol='#c04040';
       else if(ev.text.includes('obtained')||ev.text.includes('got'))evCol='#308030';
       else if(ev.text.includes('BARRIER')||ev.text.includes('BLOCKED'))evCol='#3060b0';
       else if(ev.text.includes('Shadow'))evCol='#7858a0';
       // Truncate long text
-      const dispText=ev.text.length>42?ev.text.substring(0,40)+'..':ev.text;
-      txShadow(dispText,panX+16,lineY+12,8,evCol,'rgba(0,0,0,.2)');
-      lineY+=18;
+      const dispText=ev.text.length>54?ev.text.substring(0,52)+'..':ev.text;
+      txShadow(dispText,panX+16,lineY+10,7,evCol,'rgba(0,0,0,.2)');
+      lineY+=16;
     }
   }
   g.globalAlpha=slideIn_;
   // Spell counts
-  txShadow('Spells: STL:'+sp.s+' BAR:'+sp.b+' SCT:'+sp.c,panX+16,panY+panH-30,10,'#988870','rgba(0,0,0,.2)');
+  txShadow('Spells: STL:'+sp.s+' BAR:'+sp.b+' SCT:'+sp.c,panX+16,panY+panH-24,9,'#988870','rgba(0,0,0,.2)');
   g.globalAlpha=1;
   // Press Z prompt
   if(t>25&&Math.floor(t/20)%2===0){
@@ -4458,6 +4689,8 @@ function startCardAcquisition(cardIdx){
   cardAcqParticles.length=0;sfxCardGet();
   // Trigger floating "+" effect
   triggerCardGetAnim(pl[0].visualX-camX,pl[0].visualY-camY-7);
+  // Pulse the progress bar
+  triggerProgressPulse();
 }
 
 function drawCardAcquisition(){
@@ -4888,18 +5121,26 @@ function enterBuilding(type,doorX,doorY){
   buildingPlayerX=4;
   buildingPlayerY=6;
   buildingPlayerDir=2;
-  inBuilding=true;
   sfxDoorOpen();
-  fadeOut(()=>{fadeIn();});
+  // Door opening animation: dark rectangle expanding from door position
+  const doorScreenX=doorX*TW-camX+TW/2;
+  const doorScreenY=doorY*TH-camY+TH/2;
+  startWipe('door_open',20,()=>{
+    inBuilding=true;
+    startWipe('door_close',15);
+  },doorScreenX,doorScreenY);
 }
 
 function exitBuilding(){
-  inBuilding=false;
-  pl[0].x=buildingReturnX;
-  pl[0].y=buildingReturnY;
-  currentMap=buildingReturnMap;
   sfxDoorOpen();
-  fadeOut(()=>{fadeIn();});
+  // Door close animation then restore map
+  startWipe('door_open',15,()=>{
+    inBuilding=false;
+    pl[0].x=buildingReturnX;
+    pl[0].y=buildingReturnY;
+    currentMap=buildingReturnMap;
+    startWipe('door_close',15,null,W/2,H/2);
+  },W/2,H/2);
 }
 
 function getBuildingMap(){
@@ -5436,8 +5677,9 @@ function update(){
   fr++;
   if(fr%20===0)wt++;
   twTick();
-  fadeUpdate();updateParticles();updateBanner();
+  fadeUpdate();updateWipe();updateParticles();updateBanner();
   updateVisualPositions();updateAmbient();
+  updateMapLoadScreen();updateFPS();
   // Save indicator countdown
   if(saveIndicatorTimer>0)saveIndicatorTimer--;
   // Auto-save every 30 seconds when on map
@@ -5536,11 +5778,11 @@ function update(){
             encounterExclActive=false;
             flash();
             twSet(isRivalInitiated?rivalName+' ambushed you! Battle!':'Wild '+rivalName+' appeared! Entering battle...');
-            battleWipeActive=true;battleWipeFrame=fr;
-            setTimeout(()=>{
-              battleWipeActive=false;
-              fadeOut(()=>{sc='act';battlePhase='vs_splash';bpFrame=fr;fadeIn();});
-            },600);
+            // Use horizontal wipe like FRLG wild encounter
+            startWipe('hswipe',24,()=>{
+              sc='act';battlePhase='vs_splash';bpFrame=fr;
+              startWipe('hswipe_out',18);
+            });
           },500);
         }
       }
@@ -5579,17 +5821,16 @@ function draw(){
       tx('SHADOW:'+shadowStepsLeft,px-16,py-24,5,'#9060c0');
     }
   }
+  // Card collection progress bar (always visible on map)
+  drawCardProgressBar();
   if(flashT>0){bx(0,0,W,H,`rgba(255,255,255,${(flashT>10?1:flashT/10)*.8})`);}
-  // Battle wipe transition (diagonal split)
-  if(battleWipeActive){
-    const t=Math.min(1,(fr-battleWipeFrame)/36);
-    const ease=easeInOut(t);
-    const splitW=W*ease*1.2;
-    g.fillStyle='#181828';
-    g.beginPath();g.moveTo(0,0);g.lineTo(splitW,0);g.lineTo(splitW-W*0.3,H);g.lineTo(0,H);g.closePath();g.fill();
-    g.beginPath();g.moveTo(W,H);g.lineTo(W-splitW,H);g.lineTo(W-splitW+W*0.3,0);g.lineTo(W,0);g.closePath();g.fill();
-  }
+  // Screen transition wipes (replaces old battleWipe)
+  drawWipe();
+  // Map loading screen
+  drawMapLoadScreen();
   fadeDraw();
+  // FPS counter (top-left, on top of everything)
+  drawFPS();
 }
 
 function loop(now){
@@ -5610,6 +5851,11 @@ document.addEventListener('keydown',e=>{
     soundEnabled=!soundEnabled;
     localStorage.setItem('oxark_sound',soundEnabled?'on':'off');
     if(!soundEnabled){stopAmbientNodes();ambientState.currentArea=-1;}
+    return;
+  }
+  // FPS counter toggle with F key
+  if(e.code==='KeyF'){
+    fpsCounterVisible=!fpsCounterVisible;
     return;
   }
 
@@ -5768,7 +6014,7 @@ document.addEventListener('keydown',e=>{
   if(wildEncounterActive)return;
 
   // Battle encounter exclamation or wipe - wait
-  if(encounterExclActive||battleWipeActive)return;
+  if(encounterExclActive||wipeActive)return;
 
   if(sc==='map'&&inBuilding){
     // Building interior input
@@ -6074,7 +6320,13 @@ document.addEventListener('keydown',e=>{
         saveGame();
         if(playerHasAllFive()){fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
         else if(rd>30){fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
-        else if(!discardActive){fadeOut(()=>{sc='map';mo=false;battlePhase='select';fadeIn();ub();});}
+        else if(!discardActive){
+          // Battle-to-map: quick slide-down wipe
+          startWipe('vslide',16,()=>{
+            sc='map';mo=false;battlePhase='select';ub();
+            startWipe('vslide_out',16);
+          });
+        }
       }
     }
   }
