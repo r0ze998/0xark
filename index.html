@@ -9031,8 +9031,8 @@ function update(){
   // Multiplayer disconnect timer
   if(mp.disconnectTimer>0)mp.disconnectTimer--;
 
-  // Autonomous rival AI movement (skip if multiplayer replaces rivals)
-  if(!mp.connected||mp.phase!=='playing'){
+  // Autonomous rival AI movement (skip during intro or multiplayer)
+  if(!introActive&&(!mp.connected||mp.phase!=='playing')){
     updateRivalAI(0);
     updateRivalAI(1);
   }
@@ -9151,7 +9151,7 @@ function update(){
   }
 
   // Encounter check (player walks to rival OR rival walks to player)
-  if(sc==='map'&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning&&!encounterExclActive&&!shopActive&&!signpostActive&&!inBuilding&&shadowStepsLeft<=0){
+  if(sc==='map'&&!introActive&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning&&!encounterExclActive&&!shopActive&&!signpostActive&&!inBuilding&&shadowStepsLeft<=0){
     pl.slice(1).forEach((r,idx)=>{
       if(rivalMaps[idx]!==currentMap)return;
       const adjDist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
