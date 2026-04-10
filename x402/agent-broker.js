@@ -46,8 +46,8 @@ let gameState = {
   rivalAI: [],
 };
 
-const CARD_NAMES = ['', 'Crystal', 'Shadow', 'Flame', 'Storm', 'Void'];
-const AREA_NAMES = ['Port Town', 'Deep Forest', 'Ancient Ruins'];
+const CARD_NAMES = ['', 'AEGIS', 'UMBRA', 'IGNIS', 'TEMPEST', 'NIHIL'];
+const AREA_NAMES = ['Corsair Bay', 'Smugglers Jungle', 'Cursed Temple'];
 
 // Endpoint price catalog
 const ENDPOINTS = [
@@ -221,6 +221,36 @@ function analyzeStrategy(requesterId = 0) {
     confidence = 0.60;
   }
 
+  // Predict rival actions based on personality and state
+  const predictions = others.map((o, idx) => {
+    const oCards = o.cards.filter(c => c > 0).length;
+    const oUnique = new Set(o.cards.filter(c => c > 0)).size;
+    const aiData = gameState.rivalAI?.[idx];
+    const personality = aiData?.personality || (idx === 0 ? 'collector' : 'hunter');
+
+    let predictedAction = 'DRAW';
+    let actionConfidence = 0.5;
+
+    if (personality === 'hunter') {
+      if (oUnique >= 4) { predictedAction = 'BARRIER'; actionConfidence = 0.7; }
+      else if (cardCount >= 2) { predictedAction = 'STEAL'; actionConfidence = 0.65; }
+      else { predictedAction = 'DRAW'; actionConfidence = 0.6; }
+    } else {
+      if (oUnique >= 4) { predictedAction = 'BARRIER'; actionConfidence = 0.75; }
+      else if (oCards >= 3 && cardCount > oUnique) { predictedAction = 'STEAL'; actionConfidence = 0.4; }
+      else { predictedAction = 'DRAW'; actionConfidence = 0.65; }
+    }
+
+    return {
+      name: o.name,
+      personality,
+      cardCount: oCards,
+      uniqueCards: oUnique,
+      predictedAction,
+      actionConfidence,
+    };
+  });
+
   return {
     round: gameState.round,
     requesterId,
@@ -228,6 +258,7 @@ function analyzeStrategy(requesterId = 0) {
     yourCards: requester.cards.filter(c => c > 0).map(c => CARD_NAMES[c]),
     missing: missing.map(c => CARD_NAMES[c]),
     nearbyThreats: nearbyThreats.map(t => t.name),
+    rivalPredictions: predictions,
     poolRemaining,
     recommendation: advice,
     confidence,
