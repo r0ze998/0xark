@@ -258,8 +258,9 @@ const pxVisionOverlay = new PIXI.Graphics();
 pixiLayers.fx.addChild(pxVisionOverlay);
 
 function updatePixiVision(){
+  if(sc!=='map'||introActive){pxVisionOverlay.visible=false;return;}
+  pxVisionOverlay.visible=true;
   pxVisionOverlay.clear();
-  if(sc!=='map'||introActive)return;
   // Skip on mobile for performance (canvas gradient is sufficient)
   if(isTouchDevice)return;
   // Draw dark overlay with circular hole at player position
@@ -2999,7 +3000,7 @@ const x402HowItWorksText=[
 
 async function x402CheckServer(){
   try{
-    const r=await fetch(x402ServerUrl+'/health',{signal:AbortSignal.timeout(1500),mode:'no-cors'});
+    const r=await fetch(x402ServerUrl+'/health',{signal:AbortSignal.timeout(1500)});
     if(r.ok){const d=await r.json();x402Available=d.status==='ok';}
     else x402Available=false;
   }catch(e){x402Available=false;/* silent — server not running */}
@@ -3178,8 +3179,7 @@ function saveStats(){try{stats.timePlayed=Math.floor((Date.now()-stats.sessionSt
 loadStats();stats.sessionStart=Date.now();
 
 // ── OPENING STORY STATE ──
-// Story system removed — replaced by intro tutorial (INTRO_PAGES)
-let storyActive=false,storyFrame=0;
+// (story system removed — replaced by intro tutorial)
 
 // ── CREDITS STATE ──
 let creditsActive=false,creditsFrame=0;
@@ -8959,8 +8959,8 @@ function draw(){
     g.save();g.translate(sx,sy);
     shakeT--;
   }
-  // (story sequence removed)
-  else if(sc==='splash'){dSplash();}
+  // Screen dispatch (independent of shake)
+  if(sc==='splash'){dSplash();}
   else if(sc==='title'){
     if(creditsActive){dCredits();}
     else if(mp.mpScreen!=='off'){drawMPLobby();}
@@ -9395,16 +9395,18 @@ document.addEventListener('keydown',e=>{
           x402ShopResult='Not enough cards! Need '+cost+'.';
           x402ShopResultTimer=120;sfxBack();
         }else{
-          // Pay cards if cost > 0
+          // Pay cards if cost > 0 (save for refund on error)
+          const paidCards=[];
           for(let c=0;c<cost;c++){
-            if(filled.length>c){const slot=filled[c];pl[0].cd[slot]=0;syncCardCount(0);}
+            if(filled.length>c){paidCards.push(pl[0].cd[filled[c]]);pl[0].cd[filled[c]]=0;syncCardCount(0);}
           }
           x402ShopLoading=true;
           x402PushState().then(()=>x402FetchIntel(item.endpoint)).then(data=>{
             x402ShopLoading=false;
             if(!data){
+              // Refund paid cards on server error
+              for(let c=0;c<cost;c++){if(c<filled.length){pl[0].cd[filled[c]]=paidCards[c];syncCardCount(0);}}
               x402ShopResult='Server error. Cards refunded.';
-              // Refund not implemented for simplicity — server was available at menu open
               x402ShopResultTimer=150;sfxBack();return;
             }
             // Format response based on endpoint type
@@ -9678,12 +9680,12 @@ document.addEventListener('keydown',e=>{
         qteResultText='BLOCKED!';qteResultTimer=40;
         // Halve steal damage: give back stolen card if possible
         // (The steal already happened, so we give a pity boost instead)
-        sp.b=Math.min(sp.b+1,9);
+        sp.b=Math.min(sp.b+1,3);
         lg.push('QTE success! Barrier charge restored!');
       }else{
         qteResultText='BONUS!';qteResultTimer=40;
         // Attack bonus: extra steal charge
-        sp.s=Math.min(sp.s+1,9);
+        sp.s=Math.min(sp.s+1,3);
         lg.push('QTE success! Steal charge bonus!');
       }
     }
@@ -9772,8 +9774,8 @@ document.addEventListener('keydown',e=>{
   }
 
   // Story sequence input (Z to skip)
-  if(storyActive){
-    if(e.code==='KeyZ'){storyActive=false;storyFrame=0;fadeIn();}
+  if(false){ // story system removed
+    if(e.code==='KeyZ'){}
     return;
   }
 
@@ -9913,7 +9915,8 @@ function loadGame(){
     if(d.burnedTiles){burnedTiles.length=0;d.burnedTiles.forEach(t=>{burnedTiles.push(t);if(maps[t.mapIdx]&&maps[t.mapIdx][t.y])maps[t.mapIdx][t.y][t.x]=1;});}
     if(d.shadowStepsLeft!==undefined)shadowStepsLeft=d.shadowStepsLeft;
     if(d.fishingCooldownTimer!==undefined)fishingCooldownTimer=d.fishingCooldownTimer;
-    if(d.walletAddress){walletPublicKey=d.walletAddress;walletConnected=true;}
+    // Wallet: store address for display but don't set connected (requires re-connect)
+    if(d.walletAddress){walletPublicKey=d.walletAddress;}
     // Tension mechanics
     if(d.cardTimers){for(let i=0;i<5;i++)cardTimers[i]=d.cardTimers[i]||0;}
     if(d.streakCount!==undefined)streakCount=d.streakCount;
@@ -9954,7 +9957,7 @@ function haptic(){try{if(navigator.vibrate)navigator.vibrate(10);}catch(e){}}
 if(isTouchDevice){
   document.getElementById('touch-overlay').classList.add('active');
   // Also resume audio on touch
-  document.addEventListener('touchstart',resumeAudio,{once:false});
+  document.addEventListener('touchstart',resumeAudio,{once:true});
 
   const btnMap={
     'dpad-up':'ArrowUp','dpad-down':'ArrowDown','dpad-left':'ArrowLeft','dpad-right':'ArrowRight',
