@@ -893,20 +893,37 @@ const FRLG={
   hpGreen:'#58A850',
   hpYellow:'#F8C838',
   hpRed:'#E85048',
+  // FRLG theme variants (selectable)
+  themes:{
+    red:   {winBg:'#F8E0D0',borderOuter:'#504040',borderInner:'#887068'},
+    blue:  {winBg:'#D0E0F8',borderOuter:'#404060',borderInner:'#687888'},
+    green: {winBg:'#D8F0D0',borderOuter:'#405040',borderInner:'#688868'},
+    gold:  {winBg:'#F8F0D0',borderOuter:'#484050',borderInner:'#888078'}, // default
+  },
 };
+let frlgTheme='gold'; // current theme
+function getFRLGColors(){
+  const t=FRLG.themes[frlgTheme]||FRLG.themes.gold;
+  return{winBg:t.winBg,borderOuter:t.borderOuter,borderInner:t.borderInner};
+}
 function win(x,y,w,h){
-  g.fillStyle=FRLG.borderOuter;
+  const tc=getFRLGColors();
+  g.fillStyle=tc.borderOuter;
   g.fillRect(x+4,y,w-8,1);g.fillRect(x+3,y+1,w-6,1);g.fillRect(x+2,y+2,w-4,1);g.fillRect(x+1,y+3,w-2,1);
   g.fillRect(x+1,y+h-4,w-2,1);g.fillRect(x+2,y+h-3,w-4,1);g.fillRect(x+3,y+h-2,w-6,1);g.fillRect(x+4,y+h-1,w-8,1);
   g.fillRect(x,y+4,1,h-8);g.fillRect(x+1,y+3,1,h-6);g.fillRect(x+2,y+2,1,h-4);g.fillRect(x+3,y+1,1,h-2);
   g.fillRect(x+w-1,y+4,1,h-8);g.fillRect(x+w-2,y+3,1,h-6);g.fillRect(x+w-3,y+2,1,h-4);g.fillRect(x+w-4,y+1,1,h-2);
-  g.fillStyle=FRLG.borderInner;
+  g.fillStyle=tc.borderInner;
   g.fillRect(x+4,y+4,w-8,1);g.fillRect(x+4,y+h-5,w-8,1);
   g.fillRect(x+4,y+4,1,h-8);g.fillRect(x+w-5,y+4,1,h-8);
-  g.fillStyle=FRLG.winBg;
+  g.fillStyle=tc.winBg;
   g.fillRect(x+5,y+5,w-10,h-10);
+  // Top-left highlight (light catches top edge)
   g.fillStyle='rgba(255,255,255,.4)';
   g.fillRect(x+6,y+5,w-12,1);g.fillRect(x+5,y+6,1,h-12);
+  // Bottom-right inner shadow (FRLG depth effect)
+  g.fillStyle='rgba(0,0,0,.08)';
+  g.fillRect(x+6,y+h-6,w-12,1);g.fillRect(x+w-6,y+6,1,h-12);
 }
 
 function bx(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}
@@ -1623,6 +1640,31 @@ function drawWipe(){
     // Reverse slide-down
     const barH=Math.floor(H*(1-ease));
     bx(0,0,W,barH,'#181828');
+  }else if(wipeType==='mosaic'){
+    // FRLG-style mosaic pixelation wipe — screen pixelates then goes black
+    const pixelSize=Math.max(2,Math.floor(ease*32));
+    if(ease<0.7){
+      // Pixelate phase: draw screen at reduced resolution
+      g.imageSmoothingEnabled=false;
+      // Draw current screen scaled down then back up for pixelation effect
+      const sw=Math.max(1,Math.floor(W/pixelSize)),sh=Math.max(1,Math.floor(H/pixelSize));
+      g.drawImage(c,0,0,W,H,0,0,sw,sh);
+      g.drawImage(c,0,0,sw,sh,0,0,W,H);
+    }else{
+      // Fade to black
+      bx(0,0,W,H,`rgba(24,24,40,${(ease-0.7)/0.3})`);
+    }
+  }else if(wipeType==='mosaic_out'){
+    // Reverse mosaic — de-pixelate from black
+    if(ease<0.3){
+      bx(0,0,W,H,`rgba(24,24,40,${1-ease/0.3})`);
+    }else{
+      const pixelSize=Math.max(2,Math.floor((1-ease)*32));
+      g.imageSmoothingEnabled=false;
+      const sw=Math.max(1,Math.floor(W/pixelSize)),sh=Math.max(1,Math.floor(H/pixelSize));
+      g.drawImage(c,0,0,W,H,0,0,sw,sh);
+      g.drawImage(c,0,0,sw,sh,0,0,W,H);
+    }
   }else if(wipeType==='door_open'){
     // Dark rectangle expanding from door position
     const maxW=W, maxH=H;
@@ -9050,10 +9092,10 @@ function update(){
             encounterExclActive=false;
             flash();
             twSet(isRivalInitiated?rivalName+' ambushed you! Battle!':'Wild '+rivalName+' appeared! Entering battle...');
-            // Use horizontal wipe like FRLG wild encounter
-            startWipe('hswipe',24,()=>{
+            // FRLG-style mosaic pixelation wipe into battle
+            startWipe('mosaic',30,()=>{
               sc='act';battlePhase='vs_splash';bpFrame=fr;
-              startWipe('hswipe_out',18);
+              startWipe('mosaic_out',20);
             });
           },500);
         }
