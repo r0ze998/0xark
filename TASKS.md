@@ -39,14 +39,18 @@
 - v22: VT323 font, 7-day season system (no round limit), intro tutorial + random card
 - v23: PixiJS WebGL renderer, FRLG UI framework, native menu/textbox/intro
 - v24: Circular fog of war (Iwayama Tunnel style), PixiJS particles
+- v25: Refactor + mobile touch improvements (52px buttons, D-pad hold repeat, canvas direct on mobile)
+- v26: 2 CRITICAL + 5 HIGH bug fixes (draw dispatch, x402 CORS, QTE cap, wallet security, refund)
+- v27: Browser snarkjs ZK proof generation, real Phantom→devnet TX, AI agent rival prediction
+- v28: FRLG polish (window themes, mosaic wipe, title sparkles, player aura, 30fps mobile throttle)
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)
 - [x] Program ID: 2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3
-- [x] ZK circuit (Circom Poseidon, 264 constraints, proof verified)
-- [x] x402 AI agent broker (4 endpoints)
-- [x] Phantom wallet module (connected to devnet program)
+- [x] ZK circuit (Circom Poseidon, 264 constraints) + browser snarkjs proof generation
+- [x] x402 AI agent broker (4 endpoints + rival prediction engine)
+- [x] Phantom wallet (real devnet transactions via @solana/web3.js)
 - [x] WebSocket multiplayer server (rooms, commit-reveal coordination)
-- [x] PixiJS v7 WebGL renderer + FRLG UI framework
-- [x] Game client v70 (9990 lines, fully playable, live on GitHub Pages)
+- [x] PixiJS v7 WebGL renderer + FRLG UI framework (menus, textbox, intro, title effects, player aura)
+- [x] Game client v80 (10315 lines, fully playable, live on GitHub Pages, mobile optimized)
 - [x] GDD v0.3, README v3, Arena draft, X drafts, Pitch + Demo scripts
