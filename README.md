@@ -15,7 +15,7 @@ Explore a fog-covered pirate island. Steal cards from rivals you can't see. Hide
 
 ## Why Solana?
 
-Sub-second finality makes simultaneous commit-reveal feel instant — no waiting 12s per round like on Ethereum. Low fees (~$0.00025/tx) make per-turn on-chain commits viable for a 30-round game. Solana's stablecoin infrastructure (USDC via SPL) powers the x402 AI agent micropayment economy at sub-cent costs that would be impossible on L1 Ethereum. And MagicBlock Ephemeral Rollups can push latency under 50ms for real-time multiplayer. This makes Solana the only chain where a "pay-to-know" AI agent economy — micropayments for real-time game intel — is practically viable.
+Sub-second finality makes simultaneous commit-reveal feel instant — no waiting 12s per round like on Ethereum. Low fees (~$0.00025/tx) make per-turn on-chain commits viable across a 7-day season. Solana's stablecoin infrastructure (USDC via SPL) powers the x402 AI agent micropayment economy at sub-cent costs that would be impossible on L1 Ethereum. And MagicBlock Ephemeral Rollups can push latency under 50ms for real-time multiplayer. This makes Solana the only chain where a "pay-to-know" AI agent economy — micropayments for real-time game intel — is practically viable.
 
 ---
 
@@ -65,8 +65,8 @@ Sub-second finality makes simultaneous commit-reveal feel instant — no waiting
 Players commit `Poseidon(action, target, salt)` on-chain as a hash. On reveal, a Groth16 ZK proof verifies the action matches the commit — without exposing it until all players have committed. This means no player can react to another's move. Built with Circom (264 constraints) and verified on-chain via groth16-solana at under 200K compute units.
 
 ### Win Conditions
-1. **Complete** — Collect all 5 unique spirit types
-2. **Timeout** — Most unique cards after 30 rounds
+1. **Complete** — First to collect all 5 unique spirit types wins the season
+2. **Season End** — Most unique cards when the 7-day season expires
 3. **Elimination** — All rivals have 0 cards
 
 ---
@@ -116,13 +116,13 @@ Players deposit USDC entry fee. x402 transaction fees also accumulate in the poo
 
 | Layer | Technology |
 |-------|-----------|
-| Smart Contract | **Anchor (Rust)** on Solana — 11 instructions |
-| ZK | **Circom** + groth16-solana (Poseidon hash, 264 constraints) |
-| AI Agent | **x402** + USDC micropayments (Express server) |
+| Smart Contract | **Anchor (Rust)** on Solana — 7 core instructions (devnet deployed) |
+| ZK | **Circom** + **snarkjs** (Poseidon hash, 264 constraints, browser proof generation) |
+| AI Agent | **x402** + USDC micropayments (Express, rival prediction engine) |
 | Multiplayer | **WebSocket** server (Node.js, room-based) |
-| Frontend | **Canvas** pixel art (8700+ lines, FRLG-style) |
+| Frontend | **PixiJS** WebGL + Canvas 2D (10,000+ lines, FRLG-style UI) |
 | Assets | **Kenney** Monochrome Pirates (CC0) + custom sprites |
-| Wallet | **Phantom** |
+| Wallet | **Phantom** + **@solana/web3.js** (real devnet transactions) |
 
 ---
 
@@ -134,8 +134,8 @@ open https://r0ze998.github.io/0xark/
 
 # 2. Build & test smart contract
 cd solana/oxark
-anchor build        # Compiles 11 instructions
-cargo test          # 8 tests passing (LiteSVM)
+anchor build        # Compiles 7 core instructions (277KB optimized)
+cargo test          # 7 tests passing (LiteSVM)
                     # Tests: create → join → start → commit → reveal → resolve (full round)
 
 # 3. Deploy to local validator
