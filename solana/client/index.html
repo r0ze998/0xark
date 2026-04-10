@@ -255,6 +255,32 @@ pxFadeOverlay.beginFill(0x000000); pxFadeOverlay.drawRect(0, 0, W, H); pxFadeOve
 pxFadeOverlay.alpha = 0;
 pixiLayers.fx.addChild(pxFadeOverlay);
 
+// PixiJS player aura (golden glow when close to winning)
+const pxPlayerAura = new PIXI.Graphics();
+pixiLayers.fx.addChild(pxPlayerAura);
+
+function updatePixiPlayerAura(){
+  pxPlayerAura.clear();
+  if(sc!=='map'||introActive){return;}
+  const unique=hasUniqueCards(0).size;
+  if(unique<4)return;
+  const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
+  const intensity=unique===5?1:0.6;
+  const pulse=Math.sin(fr*0.1)*0.15+0.85;
+  // Golden radial glow
+  for(let r=60;r>20;r-=8){
+    pxPlayerAura.beginFill(0xF0C830,0.04*intensity*pulse);
+    pxPlayerAura.drawCircle(px,py,r);
+    pxPlayerAura.endFill();
+  }
+  // Sparkle particles around player occasionally
+  if(fr%8===0){
+    const angle=Math.random()*Math.PI*2;
+    const dist=30+Math.random()*20;
+    pxSpawnParticle(px+Math.cos(angle)*dist, py+Math.sin(angle)*dist, 0xF0C830, 1, 1, 20);
+  }
+}
+
 // PixiJS circular vision overlay (Iwayama Tunnel style)
 const pxVisionOverlay = new PIXI.Graphics();
 pixiLayers.fx.addChild(pxVisionOverlay);
@@ -483,12 +509,13 @@ function updatePixiHud(){
   pixiHud.battleCount.visible=showHudText;
   pixiHud.cardProgress.visible=showHudText;
   pixiHud.rivalWarning.visible=showHudText&&rivalWinWarning>0&&Math.floor(fr/15)%2===0;
-  // Update PixiJS menu + intro + particles + vision + title
+  // Update PixiJS menu + intro + particles + vision + title + aura
   pxUpdateMenu();
   updatePixiIntro();
   pxUpdateParticles();
   updatePixiVision();
   updatePixiTitleEffects();
+  updatePixiPlayerAura();
   // Sync menu close when mo changes
   if(!mo&&pxMenuOpen){pxCloseMenu();}
 }
