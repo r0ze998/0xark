@@ -36,6 +36,9 @@
 - v19: FRLG battle UI (arena bg, sprites, 2x2 grid, card effects)
 - v20: Balance pass (steal bug fix, spell rebalance 2/3/2, streak cap 25%, rubber-banding, rival AI buff, rival win warning, spell recharge every 10 rounds, campfire decay extension, first-battle tutorial)
 - v21: Screen shake, card lost particles, devnet verification, best clear time tracking, clippy fixes
+- v22: VT323 font, 7-day season system (no round limit), intro tutorial + random card
+- v23: PixiJS WebGL renderer, FRLG UI framework, native menu/textbox/intro
+- v24: Circular fog of war (Iwayama Tunnel style), PixiJS particles
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)
@@ -44,5 +47,6 @@
 - [x] x402 AI agent broker (4 endpoints)
 - [x] Phantom wallet module (connected to devnet program)
 - [x] WebSocket multiplayer server (rooms, commit-reveal coordination)
-- [x] Game client v59 (9500+ lines, fully playable, live on GitHub Pages)
+- [x] PixiJS v7 WebGL renderer + FRLG UI framework
+- [x] Game client v70 (9990 lines, fully playable, live on GitHub Pages)
 - [x] GDD v0.3, README v3, Arena draft, X drafts, Pitch + Demo scripts
