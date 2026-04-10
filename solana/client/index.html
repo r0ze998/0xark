@@ -13,8 +13,9 @@ body{background:#111118;display:flex;flex-direction:column;justify-content:cente
 #lbl{text-align:center;color:#444460;font-size:10px;letter-spacing:6px;margin-bottom:8px}
 #sw{background:#080810;padding:4px;border-radius:4px;border:2px solid #1a1a30;box-shadow:inset 0 0 0 2px #2a2a48,inset 0 0 0 4px #0c0c18}
 canvas{display:block;width:960px;height:640px;image-rendering:auto}
-#pixi-wrap{position:relative;width:960px;height:640px}
-#pixi-wrap canvas{position:absolute;top:0;left:0;touch-action:none}
+#g{display:none!important}
+#pixi-wrap{position:relative;width:960px;height:640px;overflow:hidden}
+#pixi-wrap canvas{width:960px;height:640px;touch-action:none}
 #ctrls{display:flex;justify-content:center;gap:6px;margin-top:10px}
 .b{padding:4px 12px;background:#222238;color:#555570;border:1px solid #333350;border-radius:12px;font:14px 'VT323',monospace;cursor:pointer;transition:all .15s}
 .b:hover{background:#2a2a44;color:#8888aa}.b.a{background:#3848a0;color:#dde;border-color:#5060c0;box-shadow:0 0 6px rgba(56,72,160,.3)}
