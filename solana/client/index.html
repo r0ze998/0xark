@@ -255,11 +255,11 @@ function updatePixiVision(){
   if(isTouchDevice)return;
   // Draw dark overlay with circular hole at player position
   const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
-  pxVisionOverlay.beginFill(0x000000, 0.45);
+  pxVisionOverlay.beginFill(0x000000, 0.35);
   pxVisionOverlay.drawRect(0, 0, W, H);
   pxVisionOverlay.endFill();
   pxVisionOverlay.beginHole();
-  pxVisionOverlay.drawCircle(px, py, 140);
+  pxVisionOverlay.drawCircle(px, py, 180);
   pxVisionOverlay.endHole();
 }
 
@@ -5634,11 +5634,16 @@ function dMap(){
   // Skip heavy gradient on mobile every other frame for perf
   if(!isTouchDevice||fr%2===0){
     const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
-    const innerR=80, outerR=200;
+    const innerR=120, outerR=320;
     const grad=g.createRadialGradient(px,py,innerR,px,py,outerR);
     grad.addColorStop(0,'rgba(0,0,0,0)');
-    grad.addColorStop(0.6,'rgba(0,0,0,0.3)');
-    grad.addColorStop(1,'rgba(0,0,0,0.7)');
+    grad.addColorStop(0.15,'rgba(0,0,0,0)');
+    grad.addColorStop(0.3,'rgba(0,0,0,0.05)');
+    grad.addColorStop(0.45,'rgba(0,0,0,0.12)');
+    grad.addColorStop(0.6,'rgba(0,0,0,0.25)');
+    grad.addColorStop(0.75,'rgba(0,0,0,0.45)');
+    grad.addColorStop(0.88,'rgba(0,0,0,0.65)');
+    grad.addColorStop(1,'rgba(0,0,0,0.82)');
     g.fillStyle=grad;
     g.fillRect(0,0,W,H);
   }
