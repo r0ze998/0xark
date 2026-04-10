@@ -244,6 +244,25 @@ pxFadeOverlay.beginFill(0x000000); pxFadeOverlay.drawRect(0, 0, W, H); pxFadeOve
 pxFadeOverlay.alpha = 0;
 pixiLayers.fx.addChild(pxFadeOverlay);
 
+// PixiJS circular vision overlay (Iwayama Tunnel style)
+const pxVisionOverlay = new PIXI.Graphics();
+pixiLayers.fx.addChild(pxVisionOverlay);
+
+function updatePixiVision(){
+  pxVisionOverlay.clear();
+  if(sc!=='map'||introActive)return;
+  // Draw dark overlay with circular hole at player position
+  const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
+  // Outer darkness
+  pxVisionOverlay.beginFill(0x000000, 0.45);
+  pxVisionOverlay.drawRect(0, 0, W, H);
+  pxVisionOverlay.endFill();
+  // Cut a soft circle (using beginHole)
+  pxVisionOverlay.beginHole();
+  pxVisionOverlay.drawCircle(px, py, 140);
+  pxVisionOverlay.endHole();
+}
+
 // PixiJS particle pool for sparkle effects
 const pxParticles = [];
 function pxSpawnParticle(x, y, color, count, speed, life) {
@@ -382,10 +401,11 @@ function updatePixiHud(){
   pixiHud.battleCount.visible=showHudText;
   pixiHud.cardProgress.visible=showHudText;
   pixiHud.rivalWarning.visible=showHudText&&rivalWinWarning>0&&Math.floor(fr/15)%2===0;
-  // Update PixiJS menu + intro + particles
+  // Update PixiJS menu + intro + particles + vision
   pxUpdateMenu();
   updatePixiIntro();
   pxUpdateParticles();
+  updatePixiVision();
   // Sync menu close when mo changes
   if(!mo&&pxMenuOpen){pxCloseMenu();}
 }
@@ -5609,6 +5629,17 @@ function dMap(){
       fogCacheDirty=false;
     }
     g.drawImage(fogCanvas,0,0,W,H);
+  }
+  // ── CIRCULAR VISIBILITY (Iwayama Tunnel style) ──
+  {
+    const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
+    const innerR=80, outerR=200; // radius of clear vision and total fade
+    const grad=g.createRadialGradient(px,py,innerR,px,py,outerR);
+    grad.addColorStop(0,'rgba(0,0,0,0)');
+    grad.addColorStop(0.6,'rgba(0,0,0,0.3)');
+    grad.addColorStop(1,'rgba(0,0,0,0.7)');
+    g.fillStyle=grad;
+    g.fillRect(0,0,W,H);
   }
   // Fog particles only every other frame
   if(fr%2===0) drawFogParticles();
