@@ -25,20 +25,20 @@ canvas{display:block;width:960px;height:640px;image-rendering:auto}
 #touch-overlay{display:none;position:fixed;bottom:0;left:0;right:0;height:180px;z-index:100;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 #touch-overlay.active{display:block}
 #touch-overlay *{pointer-events:auto}
-.touch-btn{position:absolute;width:40px;height:40px;border-radius:10px;border:2px solid rgba(255,255,255,.25);background:rgba(30,30,50,.65);color:rgba(255,255,255,.7);font:14px 'VT323',monospace;display:flex;align-items:center;justify-content:center;transition:background .05s}
-.touch-btn.pressed{background:rgba(60,60,100,.85)}
+.touch-btn{position:absolute;width:52px;height:52px;border-radius:14px;border:2px solid rgba(255,255,255,.3);background:rgba(30,30,50,.7);color:rgba(255,255,255,.8);font:16px 'VT323',monospace;display:flex;align-items:center;justify-content:center;transition:background .05s;-webkit-tap-highlight-color:transparent}
+.touch-btn.pressed{background:rgba(80,80,140,.85);border-color:rgba(255,255,255,.5)}
 /* D-pad: bottom-left */
-#dpad-up{left:60px;bottom:128px}
-#dpad-down{left:60px;bottom:40px}
-#dpad-left{left:12px;bottom:84px}
-#dpad-right{left:108px;bottom:84px}
+#dpad-up{left:64px;bottom:148px}
+#dpad-down{left:64px;bottom:38px}
+#dpad-left{left:8px;bottom:93px}
+#dpad-right{left:120px;bottom:93px}
 /* A/B buttons: bottom-right */
-#btn-a{right:24px;bottom:108px;background:rgba(0,180,200,.45);border-color:rgba(0,220,255,.5);font-size:12px}
-#btn-a.pressed{background:rgba(0,180,200,.7)}
-#btn-b{right:80px;bottom:60px;background:rgba(200,50,60,.45);border-color:rgba(255,80,80,.5);font-size:12px}
-#btn-b.pressed{background:rgba(200,50,60,.7)}
+#btn-a{right:20px;bottom:118px;width:56px;height:56px;background:rgba(0,180,200,.5);border-color:rgba(0,220,255,.5);font-size:16px}
+#btn-a.pressed{background:rgba(0,180,200,.8)}
+#btn-b{right:84px;bottom:58px;width:56px;height:56px;background:rgba(200,50,60,.5);border-color:rgba(255,80,80,.5);font-size:16px}
+#btn-b.pressed{background:rgba(200,50,60,.8)}
 /* START button: bottom-center */
-#btn-start{left:50%;transform:translateX(-50%);bottom:12px;width:64px;height:24px;border-radius:12px;font-size:10px}
+#btn-start{left:50%;transform:translateX(-50%);bottom:10px;width:72px;height:28px;border-radius:14px;font-size:12px}
 </style>
 </head>
 <body>
@@ -899,8 +899,6 @@ function win(x,y,w,h){
 
 function bx(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}
 // FRLG-style text: 1px letter spacing + slight bold via double draw at 0.5px offset
-const _hasLetterSpacing=('letterSpacing' in g);
-function _setLS(v){if(_hasLetterSpacing)try{g.letterSpacing=v;}catch(e){}}
 function tx(s,x,y,sz,c){
   g.fillStyle=c||FRLG.textColor;
   const finalSz=Math.max(12,Math.round((sz||12)*1.4));
@@ -3171,8 +3169,8 @@ function saveStats(){try{stats.timePlayed=Math.floor((Date.now()-stats.sessionSt
 loadStats();stats.sessionStart=Date.now();
 
 // ── OPENING STORY STATE ──
+// Story system removed — replaced by intro tutorial (INTRO_PAGES)
 let storyActive=false,storyFrame=0;
-const STORY_LINES=['Five ancient spirits guard a cursed island.','Collect them all to break the curse.','But you\'re not the only one searching...','Trust no one. Everything is secret.'];
 
 // ── CREDITS STATE ──
 let creditsActive=false,creditsFrame=0;
@@ -8548,35 +8546,7 @@ function dCredits(){
   txShadow('X = Back',W/2-32,H-16,7,'#555570','rgba(0,0,0,.3)');
 }
 
-// ═══════════════════════════════════════
-// OPENING STORY SEQUENCE
-// ═══════════════════════════════════════
-function dStory(){
-  bx(0,0,W,H,'#000');
-  const lineTime=150; // frames per line (1s fade + 1.5s hold at 60fps)
-  STORY_LINES.forEach((line,i)=>{
-    const lineStart=i*lineTime;
-    const elapsed=storyFrame-lineStart;
-    if(elapsed<0)return;
-    let alpha=0;
-    if(elapsed<60)alpha=elapsed/60; // 1s fade in
-    else if(elapsed<150)alpha=1; // stay
-    else if(elapsed<180)alpha=1-(elapsed-150)/30; // 0.5s fade out
-    else return;
-    alpha=Math.max(0,Math.min(1,alpha));
-    g.globalAlpha=alpha;
-    const tw_=line.length*7;
-    txShadow(line,W/2-tw_/2,H/2-20+i*0,10,'#c8c0a0','rgba(0,0,0,.5)');
-    g.globalAlpha=1;
-  });
-  // Skip prompt
-  if(storyFrame>30){
-    const skipA=Math.sin(storyFrame*0.05)*0.2+0.5;
-    g.globalAlpha=skipA;
-    tx('Z = Skip',W-100,H-20,6,'#555570');
-    g.globalAlpha=1;
-  }
-}
+// Story sequence removed — replaced by PixiJS intro tutorial
 
 // ═══════════════════════════════════════
 // GAME OVER - TIME'S UP SCREEN
@@ -8673,7 +8643,7 @@ function update(){
   // Track area time for stats (every 60 frames = 1 second)
   if(sc==='map'&&fr%60===0&&currentMap>=0&&currentMap<3){stats.areaTime[currentMap]++;}
   // Story sequence update
-  if(storyActive){storyFrame++;if(storyFrame>=STORY_LINES.length*150+60){storyActive=false;storyFrame=0;fadeIn();}}
+  // Story update removed (replaced by intro tutorial)
   // Credits scroll update
   if(creditsActive){creditsFrame++;}
   // Save stats periodically
@@ -8927,7 +8897,7 @@ function draw(){
     g.save();g.translate(sx,sy);
     shakeT--;
   }
-  if(storyActive){dStory();}
+  // (story sequence removed)
   else if(sc==='splash'){dSplash();}
   else if(sc==='title'){
     if(creditsActive){dCredits();}
@@ -9928,6 +9898,8 @@ if(isTouchDevice){
     'dpad-up':'ArrowUp','dpad-down':'ArrowDown','dpad-left':'ArrowLeft','dpad-right':'ArrowRight',
     'btn-a':'KeyZ','btn-b':'KeyX','btn-start':'Space'
   };
+  const dpadIds=new Set(['dpad-up','dpad-down','dpad-left','dpad-right']);
+  const holdIntervals={};
   Object.keys(btnMap).forEach(id=>{
     const el=document.getElementById(id);
     el.addEventListener('touchstart',e=>{
@@ -9935,10 +9907,18 @@ if(isTouchDevice){
       el.classList.add('pressed');
       haptic();
       simulateKey(btnMap[id]);
+      // D-pad: repeat while held (200ms delay, then 120ms interval)
+      if(dpadIds.has(id)){
+        clearInterval(holdIntervals[id]);
+        holdIntervals[id]=setTimeout(()=>{
+          holdIntervals[id]=setInterval(()=>{simulateKey(btnMap[id]);},120);
+        },200);
+      }
     },{passive:false});
     el.addEventListener('touchend',e=>{
       e.preventDefault();
       el.classList.remove('pressed');
+      if(dpadIds.has(id)){clearInterval(holdIntervals[id]);clearTimeout(holdIntervals[id]);holdIntervals[id]=null;}
     },{passive:false});
     el.addEventListener('touchcancel',e=>{
       el.classList.remove('pressed');
