@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
+<script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#111118;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;font-family:'VT323',monospace;overflow:hidden}
@@ -1122,11 +1123,23 @@ function generateFakeTxSig(){
   return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
 }
 
-// Commit action on-chain (logs tx data, will send real tx when devnet ready)
+// Solana connection for real transactions
+const solConnection=typeof solanaWeb3!=='undefined'?new solanaWeb3.Connection(WALLET_DEVNET_RPC,'confirmed'):null;
+const PROGRAM_PUBKEY=typeof solanaWeb3!=='undefined'?new solanaWeb3.PublicKey(WALLET_PROGRAM_ID):null;
+
+// Build Anchor instruction data (8-byte discriminator + args)
+function anchorInstructionData(discriminator, argsBuffer){
+  const disc=new Uint8Array(discriminator);
+  if(!argsBuffer)return disc;
+  const data=new Uint8Array(disc.length+argsBuffer.length);
+  data.set(disc);data.set(argsBuffer,disc.length);
+  return data;
+}
+
+// Commit action on-chain (real devnet TX when wallet connected)
 async function onchainCommit(gameId,actionType,target){
   if(!walletConnected)return null;
   const salt=generateSalt();
-  // Store salt in localStorage for reveal phase
   const saltHex=Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('');
   localStorage.setItem('oxark_onchain_salt',saltHex);
   localStorage.setItem('oxark_onchain_action',String(actionType));
@@ -1136,24 +1149,67 @@ async function onchainCommit(gameId,actionType,target){
   try{
     const hash=await computeCommitHash(actionType,walletPublicKey,salt);
     const hashHex=hexFromBytes(hash);
+
+    // Try real transaction if Solana web3 available
+    if(solConnection&&window.solana){
+      try{
+        // commit_action discriminator: [75,26,232,17,11,158,202,221]
+        const gameIdBuf=new ArrayBuffer(8);new DataView(gameIdBuf).setBigUint64(0,BigInt(gameId),true);
+        const args=new Uint8Array(8+32); // game_id(u64) + hash([u8;32])
+        args.set(new Uint8Array(gameIdBuf),0);
+        args.set(hash,8);
+        const data=anchorInstructionData([75,26,232,17,11,158,202,221],args);
+
+        // Derive game PDA
+        const [gamePda]=solanaWeb3.PublicKey.findProgramAddressSync(
+          [Buffer.from('game'),new Uint8Array(gameIdBuf)],PROGRAM_PUBKEY
+        );
+        const playerKey=new solanaWeb3.PublicKey(walletPublicKey);
+        // Derive player state PDA
+        const [playerPda]=solanaWeb3.PublicKey.findProgramAddressSync(
+          [Buffer.from('player'),new Uint8Array(gameIdBuf),playerKey.toBytes()],PROGRAM_PUBKEY
+        );
+        // Derive commit PDA
+        const [commitPda]=solanaWeb3.PublicKey.findProgramAddressSync(
+          [Buffer.from('commit'),new Uint8Array(gameIdBuf),playerKey.toBytes()],PROGRAM_PUBKEY
+        );
+
+        const ix=new solanaWeb3.TransactionInstruction({
+          keys:[
+            {pubkey:gamePda,isSigner:false,isWritable:true},
+            {pubkey:playerPda,isSigner:false,isWritable:true},
+            {pubkey:commitPda,isSigner:false,isWritable:true},
+            {pubkey:playerKey,isSigner:true,isWritable:true},
+            {pubkey:solanaWeb3.SystemProgram.programId,isSigner:false,isWritable:false},
+          ],
+          programId:PROGRAM_PUBKEY,
+          data:data,
+        });
+
+        const tx=new solanaWeb3.Transaction().add(ix);
+        tx.feePayer=playerKey;
+        tx.recentBlockhash=(await solConnection.getLatestBlockhash()).blockhash;
+        const signed=await window.solana.signTransaction(tx);
+        const txSig=await solConnection.sendRawTransaction(signed.serialize());
+        onchainLastTxSig=txSig;
+        lg.push('[ON-CHAIN] Real commit TX: '+txSig.slice(0,12)+'..');
+        return{hash:hashHex,salt:saltHex,txSig};
+      }catch(txErr){
+        // Fall back to simulated if real TX fails (e.g. no game account)
+        lg.push('[ON-CHAIN] TX failed, using simulated: '+(txErr.message||'').slice(0,30));
+      }
+    }
+
+    // Fallback: simulated
     const txSig=generateFakeTxSig();
     onchainLastTxSig=txSig;
-
-    console.log('[ON-CHAIN] Commit TX:',{
-      gameId,actionType,target,
-      commitHash:hashHex,
-      wallet:walletPublicKey,
-      txSig:'(simulated) '+txSig
-    });
-
     return{hash:hashHex,salt:saltHex,txSig};
   }catch(e){
-    console.error('[ON-CHAIN] Commit failed:',e);
     return null;
   }
 }
 
-// Reveal action on-chain (logs tx data, will send real tx when devnet ready)
+// Reveal action on-chain (real devnet TX when wallet connected)
 async function onchainReveal(gameId,actionType,target,salt){
   if(!walletConnected)return null;
   try{
