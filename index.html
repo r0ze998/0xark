@@ -1844,7 +1844,7 @@ function drawFPS(){
 let progressBarPulseTimer=0;
 function triggerProgressPulse(){progressBarPulseTimer=60;}
 function drawCardProgressBar(){
-  if(sc!=='map'||mo||inBuilding)return;
+  if(sc!=='map'||mo||inBuilding||introActive)return;
   // Draw above game viewport, below the emulator frame
   const barY=2, barX=W/2-120, barW=240, barH=12;
   const segW=barW/5;
@@ -1870,6 +1870,14 @@ function drawCardProgressBar(){
   // Text
   const count=uniqueCards.size;
   txShadow(count+'/5 CARDS',barX+barW+8,barY+10,7,count>=5?'#40d040':'#c8c0a0','rgba(0,0,0,.4)');
+  // Objective hint: next card to find + location
+  if(count<5){
+    const missing=[];for(let i=1;i<=5;i++)if(!uniqueCards.has(i))missing.push(i);
+    const nextCard=missing[0];
+    const nextCr=CD[nextCard-1];
+    const location=CARD_AREA_INFO[nextCard-1]||'Unknown';
+    txShadow('NEXT: '+nextCr.n+' ('+location+')',barX,barY+24,7,'#f0c830','rgba(0,0,0,.5)');
+  }
   // Pulse glow when new card added
   if(progressBarPulseTimer>0){
     progressBarPulseTimer--;
