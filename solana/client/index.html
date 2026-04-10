@@ -1876,7 +1876,9 @@ function drawCardProgressBar(){
     const nextCard=missing[0];
     const nextCr=CD[nextCard-1];
     const location=CARD_AREA_INFO[nextCard-1]||'Unknown';
-    txShadow('NEXT: '+nextCr.n+' ('+location+')',barX,barY+24,7,'#f0c830','rgba(0,0,0,.5)');
+    // Background for readability
+    bx(barX-2,barY+16,barW+4,14,'rgba(8,8,20,.6)');
+    txShadow('NEXT: '+nextCr.n+' in '+location,barX+2,barY+26,7,nextCr.c||'#f0c830','rgba(0,0,0,.7)');
   }
   // Pulse glow when new card added
   if(progressBarPulseTimer>0){
