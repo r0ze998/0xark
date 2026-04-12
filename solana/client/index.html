@@ -5195,17 +5195,16 @@ function doShopTrade(){
   const slot=filled[shopSelectedIdx];
   const oldCard=pl[0].cd[slot];
   const oldName=CD[oldCard-1].n;
-  // Pick a card type the player doesn't already have (if possible)
-  const ownedTypes=new Set();
-  pl[0].cd.forEach(c=>{if(c>0)ownedTypes.add(c);});
+  // Pick a card the player doesn't already have in hand (if possible)
+  const ownedInHand=new Set(pl[0].cd.filter(c=>c>0));
   const unowned=[];
-  for(let i=1;i<=5;i++){if(!ownedTypes.has(i))unowned.push(i);}
+  for(let i=1;i<=60;i++){if(!ownedInHand.has(i))unowned.push(i);}
   let newCard;
   if(unowned.length>0){
     newCard=unowned[Math.floor(Math.random()*unowned.length)];
   }else{
-    // Player has all 5 types already, just pick a random different card
-    do{ newCard=Math.floor(Math.random()*5)+1; }while(newCard===oldCard);
+    // All 60 in hand — just pick a random different card
+    do{ newCard=Math.floor(Math.random()*60)+1; }while(newCard===oldCard);
   }
   pl[0].cd[slot]=newCard;
   const newName=CD[newCard-1].n;
@@ -7110,7 +7109,7 @@ const DUNGEON_FLOOR_CARDS=[
 function pickAreaCard(){return pickAreaCardForMap(currentMap);}
 function pickAreaCardForMap(mapIdx){
   const ac=DUNGEON_FLOOR_CARDS[mapIdx];
-  if(!ac||ac.length===0)return 1+(Math.floor(Math.random()*5)); // fallback
+  if(!ac||ac.length===0)return 1+(Math.floor(Math.random()*60)); // fallback: any card
   return ac[Math.floor(Math.random()*ac.length)];
 }
 function syncCardCount(pIdx){
@@ -8919,7 +8918,7 @@ function doFountainExchange(){
   const slot=filled[Math.floor(Math.random()*filled.length)];
   const oldCard=pl[0].cd[slot];
   let newCard;
-  do{newCard=Math.floor(Math.random()*5)+1;}while(newCard===oldCard);
+  do{newCard=Math.floor(Math.random()*60)+1;}while(newCard===oldCard);
   pl[0].cd[slot]=newCard;
   syncCardCount(0);
   startCardAcquisition(newCard-1);
@@ -9404,7 +9403,7 @@ function update(){
   if(maxRU>=4&&!rivalWinWarningShown){
     rivalWinWarningShown=true;
     const whoClose=r1u>=4?pl[1].n:pl[2].n;
-    lg.push('WARNING: '+whoClose+' has '+maxRU+'/5 spirits! Stop them!');
+    lg.push('WARNING: '+whoClose+' has '+maxRU+'/60 cards! Stop them!');
     sfxDangerAlert();
   }
   if(maxRU<4)rivalWinWarningShown=false;
