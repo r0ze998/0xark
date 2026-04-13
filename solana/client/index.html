@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v30</title>
+<title>0xARK v31</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -10003,15 +10003,31 @@ document.addEventListener('keydown',e=>{
       introPage++;
       if(introPage>=INTRO_PAGES.length){
         introActive=false;
-        // Give random starter card only on first play (player has 0 cards)
-        if(pl[0].cd.filter(c=>c>0).length===0){
-          const starterCard=1+Math.floor(Math.random()*5);
-          pl[0].cd[0]=starterCard;pl[0].cc=1;cardTimers[0]=Date.now();syncCardCount(0);
-          startCardAcquisition(starterCard-1);
-          lg.push('You received '+CD[starterCard-1].n+'!');
-          showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-          twSet('Welcome! You have 3 starter cards. Enter the dungeon to collect more!');
+        if(sc==='title'){
+          // New game flow: fade out → land in はじまりのまち (town)
+          fadeOut(()=>{
+            sc='map';currentMap=0;inDungeon=false;currentFloor=0;
+            pl[0].x=15;pl[0].y=13;pl[0].dir=0;
+            pl[0].visualX=15*TW;pl[0].visualY=13*TH;
+            fogRevealAll(0);fogSave();
+            encounterCooldown=600;
+            // Give 3 starter cards on first play
+            if(pl[0].cd.filter(c=>c>0).length===0){
+              const starterCards=[4,13,25]; // Strike, Guard, Dash
+              starterCards.forEach((cid,i)=>{pl[0].cd[i]=cid;pl[0].vault.add(cid);});
+              pl[0].cc=3;syncCardCount(0);
+              lg.push('You received: '+starterCards.map(id=>CD[id-1].n).join(', ')+'!');
+            }
+            camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
+            camTargetX=camX;camTargetY=camY;
+            edgeCacheDirty=true;fogCacheDirty=true;
+            showBanner('はじまりの街','Your adventure begins here — safe zone');
+            twSet('Welcome to はじまりのまち! Enter the dungeon to collect cards.');
+            saveGame();
+            fadeIn();
+          });
         }
+        // else: reviewing rules from in-game (sc==='map') — just close the overlay
       }
     }
     if(e.code==='KeyX'&&introPage>0){sfxBack();introPage--;introFrame=fr;}
@@ -10109,11 +10125,8 @@ document.addEventListener('keydown',e=>{
         });
       }else{
         resetGameState(true);
-        fadeOut(()=>{sc='map';currentMap=0;
-          fogRevealAll(0); // Town is safe — reveal entire starting area
-          fogSave();
-          introActive=true;introPage=0;introFrame=fr;
-          fadeIn();});
+        // Show intro tutorial on title screen, then land in town
+        fadeOut(()=>{introActive=true;introPage=0;introFrame=fr;fadeIn();});
       }
     }
     if(e.code==='KeyX'){sfxBack();stakeConfirmActive=false;}
@@ -10143,9 +10156,9 @@ document.addEventListener('keydown',e=>{
           sfxConfirm();
           if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
           resetGameState(true);
-          // Show intro tutorial, then transition to map
-          fadeOut(()=>{sc='map';currentMap=0;
-            fogRevealAll(0);fogSave();
+          // Show intro tutorial ON title screen, then land in town when done
+          fadeOut(()=>{
+            // Stay on title screen during tutorial — map only shown after intro completes
             introActive=true;introPage=0;introFrame=fr;
             fadeIn();
           });
@@ -10186,10 +10199,9 @@ document.addEventListener('keydown',e=>{
         if(titleMenuIdx===0){
           sfxConfirm();
           if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
-          // Show intro tutorial for first-time play
+          // Show intro tutorial ON title screen, then land in town when done
           resetGameState(true);
-          fadeOut(()=>{sc='map';currentMap=0;
-            fogRevealAll(0);fogSave();
+          fadeOut(()=>{
             introActive=true;introPage=0;introFrame=fr;
             fadeIn();
           });
@@ -10783,7 +10795,7 @@ document.addEventListener('keydown',e=>{
         else if(!discardActive){
           // Battle-to-map: quick slide-down wipe
           startWipe('vslide',16,()=>{
-            sc='map';mo=false;battlePhase='select';ub();
+            sc='map';mo=false;battlePhase='select';encounterCooldown=300;ub();
             startWipe('vslide_out',16);
           });
         }
@@ -10857,7 +10869,7 @@ function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle(
 // SAVE / LOAD SYSTEM
 // ═══════════════════════════════════════
 const SAVE_KEY='oxark_save';
-const SAVE_VERSION=30; // bump when save format changes — old saves auto-wiped
+const SAVE_VERSION=31; // bump when save format changes — old saves auto-wiped
 // Auto-wipe incompatible old saves on load (also wipe legacy saves with no version key)
 try{const sv=localStorage.getItem('oxark_save_ver');if(!sv||parseInt(sv)<SAVE_VERSION){localStorage.removeItem(SAVE_KEY);localStorage.removeItem('oxark_fog');console.log('[0xARK] Old save wiped (v'+(sv||'legacy')+'→v'+SAVE_VERSION+')');}localStorage.setItem('oxark_save_ver',String(SAVE_VERSION));}catch(e){}
 
