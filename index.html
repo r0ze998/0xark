@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v76</title>
+<title>0xARK v77</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -1959,6 +1959,92 @@ function drawRunSummary(){
 }
 
 // ═══════════════════════════════════════
+// v77: QUICK HAND INSPECT OVERLAY
+// ═══════════════════════════════════════
+function updateHandInspect(){
+  if(!handInspectActive)return;
+  handInspectFrame++;
+  if(handInspectFrame>=handInspectAutoDismiss)handInspectActive=false;
+}
+function drawHandInspect(){
+  if(!handInspectActive||sc!=='map')return;
+  const t=Math.min(1,handInspectFrame/10);
+  const fadeOut_=handInspectFrame>handInspectAutoDismiss-20?
+    Math.max(0,(handInspectAutoDismiss-handInspectFrame)/20):1;
+  const alpha=t*fadeOut_;
+
+  g.globalAlpha=alpha*0.88;
+  bx(0,0,W,H,'rgba(0,0,0,.75)');
+  g.globalAlpha=alpha;
+
+  const filled=[];
+  for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
+  const total=filled.length;
+  if(total===0){
+    txShadow('Hand is empty.',W/2-60,H/2,9,'#888898','rgba(0,0,0,.5)');
+    g.globalAlpha=1;return;
+  }
+
+  // Header
+  txShadow('YOUR HAND',W/2-52,40,10,'#c8d0f0','rgba(0,0,0,.5)');
+  txShadow(total+'/'+HAND_SIZE+' cards',W/2-30,56,6,'#8890b0','rgba(0,0,0,.4)');
+  bx(40,62,W-80,1,'#30305060');
+
+  // Card grid: up to 8 cards in 2 rows
+  const cols=Math.min(4,total),rows=Math.ceil(total/4);
+  const cw=160,ch=180,padX=(W-(cols*cw))/2,padY=80;
+
+  filled.forEach((slot,i)=>{
+    const cid=pl[0].cd[slot];if(!cid)return;
+    const cr=CD[cid-1];
+    const col_=i%cols,row_=Math.floor(i/cols);
+    const cx_=padX+col_*cw+8,cy_=padY+row_*ch;
+
+    // Card background
+    bx(cx_,cy_,cw-16,ch-8,cr.d);
+    bx(cx_+1,cy_+1,cw-18,ch-10,cr.c);
+
+    // Card art
+    bx(cx_+2,cy_+2,cw-20,72,cr.d);
+    drawCardCharacter(cx_+(cw-20)/2-10,cy_+4,cid,1.6,fr);
+
+    // Rarity stars
+    const rarC=RARITY_COLOR[cr.r]||'#888';
+    for(let s=0;s<cr.r;s++)tx('\u2605',cx_+4+s*10,cy_+80,6,rarC);
+
+    // Card name
+    const nfs=Math.max(7,Math.min(11,Math.floor((cw-24)/(cr.n.length*0.7))));
+    txShadow(cr.n,cx_+(cw-16)/2-(cr.n.length*nfs/2.4),cy_+94,nfs,'#f0e8d0','rgba(0,0,0,.4)');
+
+    // Effect
+    tx(cr.f||'',cx_+4,cy_+112,5,'#c0b888');
+
+    // Decay bar + time
+    if(cardTimers[slot]>0){
+      const elapsed=Date.now()-cardTimers[slot];
+      const remFrac=Math.max(0,1-elapsed/CARD_DECAY_MS);
+      const remMs=Math.max(0,CARD_DECAY_MS-elapsed);
+      const barW=cw-24;
+      bx(cx_+4,cy_+ch-24,barW,5,'#181828');
+      const barCol=remFrac>0.5?'#40d040':remFrac>0.25?'#d0c040':'#d04040';
+      bx(cx_+4,cy_+ch-24,Math.floor(barW*remFrac),5,barCol);
+      const secs=Math.ceil(remMs/1000);
+      const mm=Math.floor(secs/60),ss=secs%60;
+      const timeStr=mm>0?mm+'m'+('0'+ss).slice(-2)+'s':ss+'s';
+      tx(timeStr,cx_+4,cy_+ch-10,5,barCol);
+    }else{
+      tx('SAFE',cx_+4,cy_+ch-10,5,'#508050');
+    }
+  });
+
+  // Dismiss hint
+  const blinkA=0.5+Math.sin(handInspectFrame*0.12)*0.4;
+  g.globalAlpha=alpha*blinkA;
+  tx('TAB or any key to close',W/2-64,H-20,6,'#808890');
+  g.globalAlpha=1;
+}
+
+// ═══════════════════════════════════════
 // v73: RIVAL INTEL DISPATCH TICKER
 // ═══════════════════════════════════════
 function updateRivalNews(){
@@ -3033,6 +3119,9 @@ let proximityDangerLevel=0; // 0=none, 1=same map, 2=within 8, 3=within 5, 4=wit
 let rivalDangerAlertShown=false;
 let rivalWinWarning=0; // 0=safe, 1=rival has 4+ cards (alert), 2=rival has 5 (full hand — danger)
 let rivalWinWarningShown=false;
+// v77: Quick hand inspect overlay
+let handInspectActive=false, handInspectFrame=0, handInspectAutoDismiss=300; // 5s
+
 // v73: Rival intel dispatch ticker
 const rivalNewsQueue=[];     // pending news items {text, rivalIdx, rarity}
 let rivalNewsCurrent=null;   // currently displayed item
@@ -4133,6 +4222,8 @@ function resetNewFeatureState(){
   rivalNewsQueue.length=0;rivalNewsCurrent=null;rivalNewsFrame=0;
   // v72: clear run summary
   dungeonRunSnapshot=null;runSummaryActive=false;runSummaryData=null;
+  // v77: clear hand inspect
+  handInspectActive=false;handInspectFrame=0;
 }
 
 function resetGameState(startCards){
@@ -7499,7 +7590,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v76',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v77',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11332,7 +11423,7 @@ function update(){
   if(lg.length>200)lg.splice(0,lg.length-200);
   if(burnedTiles.length>500)burnedTiles.splice(0,burnedTiles.length-500);
   updateVisualPositions();updateAmbient();
-  updateMapLoadScreen();updateRunSummary();updateRivalNews();updateFPS();
+  updateMapLoadScreen();updateRunSummary();updateRivalNews();updateHandInspect();updateFPS();
   // Save indicator countdown
   if(saveIndicatorTimer>0)saveIndicatorTimer--;
   // Auto-save every 30 seconds when on map
@@ -11667,6 +11758,8 @@ function draw(){
   drawRunSummary();
   // v73: Rival intel dispatch ticker
   drawRivalNews();
+  // v77: Quick hand inspect
+  drawHandInspect();
   // FRLG-style decorative border around viewport
   g.strokeStyle=FRLG.borderOuter;g.lineWidth=2;g.strokeRect(1,1,W-2,H-2);
   g.strokeStyle=FRLG.borderInner;g.lineWidth=1;g.strokeRect(3,3,W-6,H-6);
@@ -11697,6 +11790,11 @@ document.addEventListener('keydown',e=>{
 
   // v72: Dismiss dungeon run summary on any key
   if(runSummaryActive){runSummaryActive=false;runSummaryData=null;return;}
+  // v77: Hand inspect overlay — Tab to open/close, any key to dismiss
+  if(handInspectActive){handInspectActive=false;return;}
+  if(e.code==='Tab'&&sc==='map'&&inDungeon&&!mo&&!npcDialogActive&&!shopActive&&!gachaActive&&!marketActive){
+    e.preventDefault();handInspectActive=true;handInspectFrame=0;sfxSelect();return;
+  }
 
   // Sound toggle with M key
   if(e.code==='KeyM'){
