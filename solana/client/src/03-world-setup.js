@@ -1,0 +1,831 @@
+const exits=[
+  // Town dungeon portal (glow tiles x=27 y=11-13) → Dungeon Floor 1
+  {fromMap:0, tiles:[[27,11],[27,12],[27,13]],
+   targetMap:1, targetX:3, targetY:14},
+  // Dungeon Floor 1 exit tile (30) → Town
+  {fromMap:1, tiles:[[3,14],[3,15],[4,14],[4,15]], targetMap:0, targetX:35, targetY:13, isEscape:true},
+  // Dungeon Floor 1 → Floor 2 (glow tile stairway)
+  {fromMap:1, tiles:[[36,14],[36,15],[37,14],[37,15]], targetMap:2, targetX:3, targetY:14},
+  // Dungeon Floor 2 → Floor 1 (escape)
+  {fromMap:2, tiles:[[3,14],[3,15],[4,14],[4,15]], targetMap:1, targetX:36, targetY:14, isEscape:true},
+  // Dungeon Floor 2 → Floor 3
+  {fromMap:2, tiles:[[36,14],[36,15],[37,14],[37,15]], targetMap:3, targetX:3, targetY:14},
+  // Dungeon Floor 3 → Floor 2 (escape)
+  {fromMap:3, tiles:[[3,14],[3,15],[4,14],[4,15]], targetMap:2, targetX:36, targetY:14, isEscape:true},
+  // Dungeon Floor 3 → Floor 4
+  {fromMap:3, tiles:[[36,14],[36,15],[37,14],[37,15]], targetMap:4, targetX:3, targetY:14},
+  // Dungeon Floor 4 → Floor 3 (escape)
+  {fromMap:4, tiles:[[3,14],[3,15],[4,14],[4,15]], targetMap:3, targetX:36, targetY:14, isEscape:true},
+  // Dungeon Floor 4 → Floor 5
+  {fromMap:4, tiles:[[36,14],[36,15],[37,14],[37,15]], targetMap:5, targetX:3, targetY:14},
+  // Dungeon Floor 5 → Floor 4 (deepest floor, no lower)
+  {fromMap:5, tiles:[[3,14],[3,15],[4,14],[4,15]], targetMap:4, targetX:36, targetY:14, isEscape:true},
+];
+
+// ── NPC DATA ── (GDD v1.0: Town NPCs + Dungeon Entrance)
+// homeX/homeY = spawn position; npc wanders within 2 tiles; moveTimer = frames until next step
+function makeNpc(map,x,y,type,name,dir,dialog){
+  return{map,x,y,homeX:x,homeY:y,type,name,dir,dialog,
+         moveTimer:120+Math.floor(Math.random()*240),visualX:x*TW,visualY:y*TH,walkFrame:0,walking:false};
+}
+const npcs=[
+  makeNpc(0,8,6,0,'Card Merchant',0,['Welcome to the','0xARK Marketplace!','Press Z to browse','your cards and','view listings.','Trade safely here!']),
+  makeNpc(0,22,6,1,'Trade Master',0,['Looking for a','specific card?','Make an offer and','other players will','see it here.','Good luck hunting!']),
+  makeNpc(0,14,12,2,'Gacha Keeper',2,['Try your luck!','Common 0.01 SOL','Rare 0.05 SOL','Epic 0.20 SOL','Deeper floors give','rarer drop tables!']),
+  makeNpc(0,18,18,0,'ARK Guide',0,['Collect all 60 cards','to win the Prize Pool!','Cards: Attack / Defense','Flee / Magic / Heal','STEAL rivals in battle.','Deeper dungeon = rarer!']),
+  makeNpc(0,26,14,1,'Dungeon Porter',3,['Dungeon entrance','is to the east!','Cards DECAY over time','while underground.','Escape west to return','to town safely.']),
+  // v74: Alchemist NPC — card synthesis
+  makeNpc(0,10,18,3,'Alchemist',0,['I can fuse cards into','higher rarities!','Bring me 3 cards','of the same rarity.','I will forge them','into something greater.']),
+];
+// v82: init ambient bubble state on each NPC
+npcs.forEach(n=>{n.bubbleTimer=0;n.bubbleText='';n.bubbleCooldown=Math.floor(Math.random()*300);});
+
+// ── TREASURE DATA (GDD v1.0) ──
+// Treasure pool per floor depth (1-indexed card IDs matching DUNGEON_FLOOR_CARDS)
+const TREASURE_POOL_PER_FLOOR=[
+  [],
+  [4,5,13,14,25,26],   // Floor 1: Common/Uncommon
+  [6,7,15,16,27,28],   // Floor 2: Uncommon
+  [8,9,10,17,18,29],   // Floor 3: Rare
+  [11,20,21,32,46,47], // Floor 4: Epic
+  [1,2,12,23,24,48],   // Floor 5: Legendary
+];
+// Built dynamically from tile 30 positions; entry stair (3,14) excluded
+const DUNGEON_ENTRY_EXCLUDE=new Set(['1-3-14','2-3-14','3-3-14','4-3-14','5-3-14']);
+const treasures=[];
+(function buildTreasures(){
+  for(let f=1;f<=MAX_DUNGEON_FLOORS;f++){
+    const m=maps[f];
+    const pool=TREASURE_POOL_PER_FLOOR[f];
+    let poolIdx=0;
+    for(let y=0;y<MH;y++){
+      for(let x=0;x<MW;x++){
+        if(m[y]?.[x]===30&&!DUNGEON_ENTRY_EXCLUDE.has(f+'-'+x+'-'+y)){
+          const cardId1=pool[poolIdx%pool.length]; // 1-indexed
+          treasures.push({map:f,x,y,card:cardId1-1,collected:false}); // 0-indexed for CD[]
+          poolIdx++;
+        }
+      }
+    }
+  }
+})();
+
+// ── BIRD SPRITES (Forest wildlife) ──
+const birds=[];
+for(let i=0;i<5;i++){
+  birds.push({x:5+Math.floor(Math.random()*30), y:5+Math.floor(Math.random()*20), vx:0, vy:0, timer:30+Math.floor(Math.random()*60), map:1});
+}
+
+// ── LOCATION BANNER ──
+let bannerText='', bannerTimer=0, bannerPhase=0; // 0=slide in, 1=hold, 2=slide out
+let bannerSubText='';
+function showBanner(text,sub){
+  bannerText=text;
+  bannerSubText=sub||'';
+  bannerTimer=0;
+  bannerPhase=0;
+}
+
+// ── NPC DIALOG STATE ──
+let npcDialogActive=false, npcDialogLines=[], npcDialogIdx=0, npcDialogName='', npcDialogOpenFrame=0;
+
+// ── v84: TOWN WEATHER ──
+let townWeather='clear'; // 'clear'|'rain'|'fog'
+let townWeatherAlpha=1.0; // 0→1 fade-in for current weather
+let townWeatherTimer=0; // counts frames; cycles at WEATHER_CYCLE_FRAMES
+const WEATHER_CYCLE_FRAMES=4800; // ~80 seconds per weather state at 60fps
+
+// ── WILD ENCOUNTER STATE ──
+let wildEncounterActive=false, wildEncounterCard=-1, wildEncounterFrame=0;
+
+// ── RIVAL AI SYSTEM ──
+let rivalMaps=[1,1]; // GDD v1.0: rivals start in dungeon floor 1
+let rivalAlert=0, rivalAlertName='';
+
+// Rival AI state objects
+const rivalAI=[
+  // Index 0 = pl[1] "VEGA" — The Hunter (Aggressive, hot-pink)
+  {goalX:10,goalY:10,goalMap:0,personality:'hunter',moveTimer:0,moveInterval:8,
+   lastKnownPlayerMap:-1,lastKnownPlayerX:-1,lastKnownPlayerY:-1,
+   state:'exploring',stateTimer:0,fleeDir:-1,huntCooldown:0},
+  // Index 1 = pl[2] "MIRA" — The Collector (Strategic, gold)
+  {goalX:20,goalY:15,goalMap:1,personality:'collector',moveTimer:0,moveInterval:12,
+   lastKnownPlayerMap:-1,lastKnownPlayerX:-1,lastKnownPlayerY:-1,
+   state:'exploring',stateTimer:0,fleeDir:-1,huntCooldown:0}
+];
+
+// v79: Run mission definitions
+const RUN_MISSION_DEFS=[
+  {type:'reach_floor',desc:'Reach Floor III',goal:3,reward:'+1 STL',rewardKey:'stl1'},
+  {type:'battle_rival',desc:'Battle any rival',goal:1,reward:'+1 BAR',rewardKey:'bar1'},
+  {type:'new_cards',  desc:'Collect 3 new cards',goal:3,reward:'+1 SCT',rewardKey:'sct1'},
+  {type:'steal_win',  desc:'Steal from a rival',goal:1,reward:'+2 STL',rewardKey:'stl2'},
+  {type:'survive',    desc:'Fight 3 battle rounds',goal:3,reward:'Spell refill',rewardKey:'refill'},
+];
+
+// Rival pre-battle taunts indexed by [rivalIdx][random]
+const RIVAL_TAUNTS=[
+  // VEGA — aggressive, short and sharp
+  ['Your cards are mine.','Hand them over, slowly.','I never lose twice.','Don\'t blink.','Run if you want. I\'ll find you.'],
+  // MIRA — strategic, calm
+  ['I\'ve been watching your moves.','Interesting deck. I want it.','Every card has a price.','I always get what I collect.','Nothing personal. Just rare cards.'],
+];
+
+// Footprints system: {map, x, y, age}
+const footprints=[];
+const FOOTPRINT_MAX_AGE=3600; // 60 seconds at 60fps
+
+// Proximity tension state
+let proximityPulseTimer=0;
+let proximityDangerLevel=0; // 0=none, 1=same map, 2=within 8, 3=within 5, 4=within 2
+let rivalDangerAlertShown=false;
+let rivalWinWarning=0; // 0=safe, 1=rival has 4+ cards (alert), 2=rival has 5 (full hand — danger)
+let rivalWinWarningShown=false;
+// v77: Quick hand inspect overlay
+let handInspectActive=false, handInspectFrame=0, handInspectAutoDismiss=300; // 5s
+
+// v73: Rival intel dispatch ticker
+const rivalNewsQueue=[];     // pending news items {text, rivalIdx, rarity}
+let rivalNewsCurrent=null;   // currently displayed item
+let rivalNewsFrame=0;        // how long current item has been shown
+const RIVAL_NEWS_DURATION=240; // ~4 seconds at 60fps
+
+// Proximity taunt state — rival says something when close
+let proximityTauntTimer=0;   // cooldown before next taunt (frames)
+let proximityTauntText='';   // current taunt being displayed
+let proximityTauntRival=-1;  // which rival (1 or 2)
+let proximityTauntFrame=0;   // when taunt started
+
+// Close-range taunts indexed by [rivalIdx=0/1][sub]
+const PROXIMITY_TAUNTS=[
+  // VEGA — close-range aggression
+  ['Found you.','Hand over the cards.','Nowhere to run.','I can smell your cards.','Dead end.'],
+  // MIRA — close-range strategy
+  ['I\'ve been tracking you.','Nice collection you have.','Let\'s make this quick.','Your cards belong in my set.','I calculated this route.'],
+];
+
+// Danger drone SFX
+let dangerDroneNode=null,dangerDroneGain=null;
+function startDangerDrone(){
+  if(!soundEnabled||dangerDroneNode)return;
+  try{
+    const o=AC.createOscillator(),gn=AC.createGain();
+    o.type='sine';o.frequency.value=55;
+    gn.gain.value=0;
+    o.connect(gn);gn.connect(AC.destination);
+    o.start();
+    dangerDroneNode=o;dangerDroneGain=gn;
+  }catch(e){}
+}
+function stopDangerDrone(){
+  if(dangerDroneNode){
+    try{dangerDroneGain.gain.linearRampToValueAtTime(0,AC.currentTime+0.3);
+    setTimeout(()=>{try{dangerDroneNode.stop();dangerDroneNode.disconnect();}catch(e){}dangerDroneNode=null;dangerDroneGain=null;},400);
+    }catch(e){dangerDroneNode=null;dangerDroneGain=null;}
+  }
+}
+function sfxDangerAlert(){if(!soundEnabled)return;beep(200,.1,.08);setTimeout(()=>beep(300,.08,.07),100);}
+
+// Find a walkable tile near (x,y) on mapIdx for rival goal
+function findWalkableTile(mapIdx,nearX,nearY,radius){
+  const m=maps[mapIdx];
+  for(let attempt=0;attempt<40;attempt++){
+    const rx=nearX+Math.floor(Math.random()*radius*2)-radius;
+    const ry=nearY+Math.floor(Math.random()*radius*2)-radius;
+    if(rx>=1&&rx<MW-1&&ry>=1&&ry<MH-1&&WALKABLE.has(m[ry]?.[rx])){
+      return{x:rx,y:ry};
+    }
+  }
+  return null;
+}
+
+// Find tall grass patches on a map
+function findGrassPatch(mapIdx){
+  const m=maps[mapIdx];
+  const patches=[];
+  for(let y=2;y<MH-2;y++){
+    for(let x=2;x<MW-2;x++){
+      if(m[y][x]===11)patches.push({x,y});
+    }
+  }
+  if(patches.length===0)return null;
+  return patches[Math.floor(Math.random()*patches.length)];
+}
+
+// Find which dungeon floor map has cards a rival needs
+function findCardMap(rIdx){
+  const r=pl[rIdx];
+  const has=new Set(r.cd.filter(c=>c>0));
+  // Score each floor map (1-5) by how many cards it offers that rival doesn't have
+  const scored=[];
+  for(let m=1;m<=MAX_DUNGEON_FLOORS;m++){
+    const pool=AREA_CARDS[m]||[];
+    const score=pool.filter(c=>!has.has(c)).length;
+    scored.push({map:m,score});
+  }
+  scored.sort((a,b)=>b.score-a.score);
+  // Go to the floor with most needed cards; fallback to random dungeon floor
+  if(scored[0]&&scored[0].score>0)return scored[0].map;
+  return 1+Math.floor(Math.random()*MAX_DUNGEON_FLOORS);
+}
+
+// Find exit from current map to target map
+function findExitToMap(fromMap,toMap){
+  for(const ex of exits){
+    if(ex.fromMap===fromMap&&ex.targetMap===toMap){
+      return{x:ex.tiles[0][0],y:ex.tiles[0][1],targetMap:ex.targetMap,targetX:ex.targetX,targetY:ex.targetY};
+    }
+  }
+  return null;
+}
+
+// Simple step toward goal: reduce dx or dy by 1, prefer walkable+path tiles
+function stepToward(rIdx,goalX,goalY){
+  const p=pl[rIdx];
+  const mapIdx=rivalMaps[rIdx-1];
+  const m=maps[mapIdx];
+  const dx=goalX-p.x;
+  const dy=goalY-p.y;
+  if(dx===0&&dy===0)return false;
+
+  // Candidate steps in priority order
+  const candidates=[];
+  if(Math.abs(dx)>=Math.abs(dy)){
+    if(dx!==0)candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
+    if(dy!==0)candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
+    // Diagonal alternatives
+    if(dx!==0&&dy!==0){
+      candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
+      candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
+    }
+  }else{
+    if(dy!==0)candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
+    if(dx!==0)candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
+    if(dx!==0&&dy!==0){
+      candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
+      candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
+    }
+  }
+  // Random perpendicular as last resort
+  if(candidates.length<3){
+    const perp=[{nx:p.x+1,ny:p.y},{nx:p.x-1,ny:p.y},{nx:p.x,ny:p.y+1},{nx:p.x,ny:p.y-1}];
+    perp.sort(()=>Math.random()-0.5);
+    perp.forEach(c=>candidates.push(c));
+  }
+
+  // Pick best walkable candidate, preferring path tiles
+  for(const c of candidates){
+    if(c.nx>=0&&c.nx<MW&&c.ny>=0&&c.ny<MH&&WALKABLE.has(m[c.ny]?.[c.nx])){
+      // Set direction
+      const sdx=c.nx-p.x,sdy=c.ny-p.y;
+      if(sdy>0)p.dir=0;else if(sdx<0)p.dir=1;
+      else if(sdy<0)p.dir=2;else if(sdx>0)p.dir=3;
+      p.x=c.nx;p.y=c.ny;p.step++;
+      return true;
+    }
+  }
+  return false;
+}
+
+// x402-enhanced rival AI: periodically fetch strategy from broker
+let x402RivalStrategyTimer=[0,0];
+let x402RivalLastAdvice=['',''];
+function x402MaybeEnhanceRival(aiIdx){
+  if(!x402Available)return;
+  x402RivalStrategyTimer[aiIdx]++;
+  // Check every ~15 seconds (900 frames)
+  if(x402RivalStrategyTimer[aiIdx]<900)return;
+  x402RivalStrategyTimer[aiIdx]=0;
+  const rIdx=aiIdx+1;
+  x402FetchIntel('/intel/strategy?player='+rIdx).then(data=>{
+    if(!data||!data.recommendation)return;
+    x402RivalLastAdvice[aiIdx]=data.recommendation;
+    const ai=rivalAI[aiIdx];
+    // If advice mentions a specific area, try to navigate there
+    if((data.recommendation.includes('Corsair Bay')||data.recommendation.includes('Corsair Bay'))&&rivalMaps[aiIdx]!==0){
+      const ex=findExitToMap(rivalMaps[aiIdx],0);
+      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
+    }else if((data.recommendation.includes('Smugglers Jungle')||data.recommendation.includes('Smuggler'))&&rivalMaps[aiIdx]!==1){
+      const ex=findExitToMap(rivalMaps[aiIdx],1);
+      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
+    }else if((data.recommendation.includes('Cursed Temple')||data.recommendation.includes('Cursed Temple'))&&rivalMaps[aiIdx]!==2){
+      const ex=findExitToMap(rivalMaps[aiIdx],2);
+      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
+    }
+    // If advice mentions stealing and rival is hunter type, become more aggressive
+    if(data.recommendation.includes('Steal')&&ai.personality==='hunter'){
+      ai.moveInterval=Math.max(6,ai.moveInterval-2);
+    }
+  }).catch(()=>{});
+}
+
+// Rival picks a new goal based on personality
+function pickRivalGoal(aiIdx){
+  const ai=rivalAI[aiIdx];
+  const rIdx=aiIdx+1; // pl index
+  const r=pl[rIdx];
+  const rMap=rivalMaps[aiIdx];
+  const rCards=r.cd.filter(c=>c>0).length;
+
+  if(ai.personality==='hunter'){
+    // The Hunter - Aggressive
+    // Priority 1: If knows player location, move toward them
+    if(ai.lastKnownPlayerMap>=0&&ai.lastKnownPlayerMap===rMap){
+      ai.goalX=ai.lastKnownPlayerX;
+      ai.goalY=ai.lastKnownPlayerY;
+      ai.goalMap=rMap;
+      ai.state='hunting';
+      return;
+    }
+    // Priority 2: If < 3 cards, go get cards
+    if(rCards<3){
+      const needMap=findCardMap(rIdx);
+      if(needMap!==rMap){
+        // Navigate to exit
+        const ex=findExitToMap(rMap,needMap);
+        if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.goalMap=rMap;ai.state='exploring';return;}
+      }
+      const grass=findGrassPatch(rMap);
+      if(grass){ai.goalX=grass.x;ai.goalY=grass.y;ai.goalMap=rMap;ai.state='exploring';return;}
+    }
+    // Priority 3: Has 3+ cards, hunt the player
+    if(ai.lastKnownPlayerMap>=0&&ai.lastKnownPlayerMap!==rMap){
+      const ex=findExitToMap(rMap,ai.lastKnownPlayerMap);
+      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.goalMap=rMap;ai.state='hunting';return;}
+    }
+    // Default: explore randomly
+    const t=findWalkableTile(rMap,Math.floor(MW/2),Math.floor(MH/2),15);
+    if(t){ai.goalX=t.x;ai.goalY=t.y;ai.goalMap=rMap;}
+    ai.state='exploring';
+  }else{
+    // The Collector - Strategic
+    // Priority 1: Go to area with missing cards
+    const needMap=findCardMap(rIdx);
+    if(needMap!==rMap){
+      // Avoid the aggressive rival's map if possible
+      const aggressiveMap=rivalMaps[0];
+      if(needMap===aggressiveMap&&rCards>=2){
+        // Try alternate map
+        const altMaps=[0,1,2].filter(m=>m!==rMap&&m!==aggressiveMap);
+        const altNeed=altMaps.find(m=>{
+          const mc=[[1,2],[3,4],[5,1]][m];
+          const has=new Set();r.cd.forEach(c=>{if(c>0)has.add(c);});
+          return mc.some(c=>!has.has(c));
+        });
+        if(altNeed!==undefined){
+          const ex=findExitToMap(rMap,altNeed);
+          if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.goalMap=rMap;ai.state='exploring';return;}
+        }
+      }
+      const ex=findExitToMap(rMap,needMap);
+      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.goalMap=rMap;ai.state='exploring';return;}
+    }
+    // Priority 2: Walk to tall grass
+    const grass=findGrassPatch(rMap);
+    if(grass){ai.goalX=grass.x;ai.goalY=grass.y;ai.goalMap=rMap;ai.state='exploring';return;}
+    // Default: explore
+    const t=findWalkableTile(rMap,Math.floor(MW/2),Math.floor(MH/2),15);
+    if(t){ai.goalX=t.x;ai.goalY=t.y;ai.goalMap=rMap;}
+    ai.state='exploring';
+  }
+}
+
+// Update single rival AI each frame
+function updateRivalAI(aiIdx){
+  const ai=rivalAI[aiIdx];
+  const rIdx=aiIdx+1;
+  const r=pl[rIdx];
+  const rMap=rivalMaps[aiIdx];
+
+  // Freeze all rival movement while encounter cooldown is active (map transition grace period).
+  // This prevents rivals from walking toward the player entry point during the 8s safe window.
+  if(encounterCooldown>0)return;
+
+  // x402-enhanced AI: periodically consult broker for smarter decisions
+  x402MaybeEnhanceRival(aiIdx);
+
+  // Decrement move timer
+  ai.moveTimer--;
+  if(ai.moveTimer>0)return;
+  ai.moveTimer=ai.moveInterval+Math.floor(Math.random()*4); // 8-14 frames
+
+  // Countdown per-rival hunt cooldown (prevents immediate hunting after grace period)
+  if(ai.huntCooldown>0)ai.huntCooldown--;
+
+  // If player is on same map and nearby, update last known
+  if(rMap===currentMap){
+    const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+    // Hunter: track if within 6 tiles (reduced from 10 to avoid instant detection at spawn)
+    if(ai.personality==='hunter'&&dist<=6){
+      ai.lastKnownPlayerMap=currentMap;
+      ai.lastKnownPlayerX=pl[0].x;
+      ai.lastKnownPlayerY=pl[0].y;
+    }
+    // Collector: only track if within 5 tiles
+    if(ai.personality==='collector'&&dist<=5){
+      ai.lastKnownPlayerMap=currentMap;
+      ai.lastKnownPlayerX=pl[0].x;
+      ai.lastKnownPlayerY=pl[0].y;
+    }
+
+    // Hunter chases player if within 4 tiles AND hunt cooldown has expired
+    // (reduced from 7 to 4 — player must actually be nearby before being hunted)
+    if(ai.personality==='hunter'&&dist<=4&&ai.huntCooldown<=0){
+      ai.goalX=pl[0].x;ai.goalY=pl[0].y;ai.goalMap=rMap;
+      ai.state='hunting';
+      ai.moveInterval=6; // faster when chasing
+    }
+
+    // Collector flees if player within 4 tiles (70% chance)
+    if(ai.personality==='collector'&&dist<=4&&ai.state!=='fleeing'){
+      if(Math.random()<0.7){
+        ai.state='fleeing';
+        ai.stateTimer=6; // flee for 6 steps
+        // Move away from player
+        const fdx=r.x-pl[0].x;const fdy=r.y-pl[0].y;
+        const fx=r.x+(fdx>0?8:-8);const fy=r.y+(fdy>0?8:-8);
+        const clamped=findWalkableTile(rMap,Math.max(2,Math.min(MW-3,fx)),Math.max(2,Math.min(MH-3,fy)),5);
+        if(clamped){ai.goalX=clamped.x;ai.goalY=clamped.y;ai.goalMap=rMap;}
+        ai.moveInterval=6; // flee fast
+      }
+    }
+  }
+
+  // Fleeing countdown
+  if(ai.state==='fleeing'){
+    ai.stateTimer--;
+    if(ai.stateTimer<=0){
+      ai.state='exploring';
+      ai.moveInterval=ai.personality==='hunter'?8:12;
+      pickRivalGoal(aiIdx);
+    }
+  }
+
+  // Check if at goal
+  const atGoal=Math.abs(r.x-ai.goalX)<=1&&Math.abs(r.y-ai.goalY)<=1;
+  if(atGoal){
+    // Check if standing on exit tile
+    for(const ex of exits){
+      if(ex.fromMap===rMap){
+        for(const [etx,ety] of ex.tiles){
+          if(r.x===etx&&r.y===ety){
+            // Transition rival to new map
+            const oldMap=rMap;
+            rivalMaps[aiIdx]=ex.targetMap;
+            r.x=ex.targetX;r.y=ex.targetY;
+            r.visualX=ex.targetX*TW;r.visualY=ex.targetY*TH;
+            // Alert if entered player's map
+            if(ex.targetMap===currentMap&&oldMap!==currentMap){
+              rivalAlert=90;rivalAlertName=r.n;
+              flash();beep(660,.04,.06);
+              lg.push('You sense movement... '+r.n+' entered the area!');
+            }
+            // v73: News ticker for floor transitions
+            if(inDungeon&&ex.targetMap>0){
+              const flNums=['','I','II','III','IV','V'];
+              const dir=ex.targetMap>oldMap?'descended to':'retreated to';
+              rivalNewsQueue.push({text:r.n+' '+dir+' FLOOR '+(flNums[ex.targetMap]||ex.targetMap),rivalIdx:aiIdx,rarity:0});
+            }
+            pickRivalGoal(aiIdx);
+            return;
+          }
+        }
+      }
+    }
+    // Not on exit, pick new goal
+    ai.moveInterval=ai.personality==='hunter'?8:12;
+    pickRivalGoal(aiIdx);
+  }
+
+  // Take a step toward goal
+  const moved=stepToward(rIdx,ai.goalX,ai.goalY);
+  if(moved){
+    // Add footprint
+    footprints.push({map:rMap,x:r.x,y:r.y,age:0,ri:rIdx});
+
+    // Card encounter from grass (same chances as player)
+    const m=maps[rMap];
+    const tile=m[r.y]?.[r.x];
+    let encounterChance=0;
+    if(tile===11)encounterChance=0.25;
+    else if(tile===1)encounterChance=0.12;
+    if(encounterChance>0&&Math.random()<encounterChance){
+      const cardId=pickAreaCardForMap(rMap);
+      if(addCardToPlayer(rIdx,cardId)){
+        // Log if player is on same map
+        if(rMap===currentMap){
+          lg.push(r.n+' found a card nearby...');
+        }
+      }
+    }
+  }else{
+    // Stuck: pick new goal
+    pickRivalGoal(aiIdx);
+  }
+}
+
+// Update proximity tension based on rival distances
+// Rival background activity: rivals collect cards from dungeon floors when player is also in dungeon
+// This creates a genuine race feeling — rivals aren't static outside of battle
+function updateRivalActivity(){
+  if(sc!=='map'||!inDungeon)return;
+  for(let ri=0;ri<2;ri++){
+    if(rivalBgTimer[ri]>0){rivalBgTimer[ri]--;continue;}
+    // Timer expired: rival collects a card from their current floor
+    const rMap=rivalMaps[ri];
+    if(rMap<=0){rivalBgTimer[ri]=3600;continue;} // rival in town, long wait
+    const pool=DUNGEON_FLOOR_CARDS[rMap];
+    if(!pool||pool.length===0){rivalBgTimer[ri]=1800;continue;}
+    const cardId=pool[Math.floor(Math.random()*pool.length)];
+    const cr=CD[cardId-1];
+    const rName=pl[ri+1].n;
+    const rivalHandCount=pl[ri+1].cd.filter(c=>c>0).length;
+    // Only collect if they have room or swap
+    if(rivalHandCount<5){
+      addCardToPlayer(ri+1,cardId);
+    }else{
+      removeCardFromPlayer(ri+1,-1);
+      addCardToPlayer(ri+1,cardId);
+    }
+    // Log this as a world event (with color hint in text)
+    const floorName='Floor '+rMap;
+    lg.push('['+rName+'] found '+cr.n+' on '+floorName+'! ('+RARITY_LABEL[cr.r]+')');
+    // v73: Push to rival intel ticker for all finds
+    const floorNums=['','I','II','III','IV','V'];
+    rivalNewsQueue.push({
+      text:rName+' seized '+cr.n+' on FLOOR '+(floorNums[rMap]||rMap),
+      rivalIdx:ri,rarity:cr.r
+    });
+    // Show HUD hint for rare+ rival finds (keep existing fallback)
+    if(cr.r>=4&&(!tutorialMsg||tutorialMsgTimer<40)){
+      const rarLabel=RARITY_LABEL[cr.r]||'';
+      tutorialMsg=rName+' found '+cr.n+'! ('+rarLabel+')';tutorialMsgTimer=140;
+    }
+    // Contextual commentary based on rival personality and situation
+    const newCount=pl[ri+1].cd.filter(c=>c>0).length;
+    if(newCount>=4){
+      lg.push('[WARNING] '+rName+' is stacking cards. Intercept them!');
+      if(!rivalWinWarningShown){sfxDangerAlert();}
+      // v73: Danger alert in ticker
+      rivalNewsQueue.push({text:'⚠ '+rName+' holds '+newCount+' cards — INTERCEPT!',rivalIdx:ri,rarity:5});
+    }
+    // Next background collection: 45-75 seconds (2700-4500 frames) — varies by personality
+    const baseDelay=ri===0?2700:3600; // VEGA more aggressive/frequent
+    rivalBgTimer[ri]=baseDelay+Math.floor(Math.random()*1800);
+  }
+}
+
+function updateProximityTension(){
+  let maxDanger=0;
+  for(let i=0;i<2;i++){
+    if(rivalMaps[i]!==currentMap)continue;
+    const r=pl[i+1];
+    const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+    let danger=1; // same map
+    if(dist<=8)danger=2;
+    if(dist<=5)danger=3;
+    if(dist<=2)danger=4;
+    if(danger>maxDanger)maxDanger=danger;
+  }
+  proximityDangerLevel=maxDanger;
+
+  // Danger drone audio
+  if(proximityDangerLevel>=3){
+    startDangerDrone();
+    if(dangerDroneGain){
+      const targetVol=proximityDangerLevel===4?0.06:0.03;
+      try{dangerDroneGain.gain.linearRampToValueAtTime(targetVol,AC.currentTime+0.1);}catch(e){}
+    }
+  }else{
+    stopDangerDrone();
+  }
+
+  // "!" alert when rival first gets within 2 tiles
+  if(proximityDangerLevel>=4&&!rivalDangerAlertShown){
+    rivalDangerAlertShown=true;
+    sfxDangerAlert();screenShake(2,4);
+    lg.push('! Something is very close!');
+  }
+  if(proximityDangerLevel<4)rivalDangerAlertShown=false;
+
+  // Proximity taunt: when danger >= 3 (within 5 tiles), rivals occasionally speak
+  if(proximityDangerLevel>=3&&proximityTauntTimer<=0&&proximityTauntText===''){
+    // Find the closest rival on this map
+    let closestDist=999,closestRivalIdx=-1;
+    for(let i=0;i<2;i++){
+      if(rivalMaps[i]!==currentMap)continue;
+      const r=pl[i+1];
+      const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+      if(dist<closestDist){closestDist=dist;closestRivalIdx=i;}
+    }
+    if(closestRivalIdx>=0){
+      const taunts=PROXIMITY_TAUNTS[closestRivalIdx];
+      proximityTauntText=taunts[Math.floor(Math.random()*taunts.length)];
+      proximityTauntRival=closestRivalIdx+1; // pl index 1 or 2
+      proximityTauntFrame=fr;
+      proximityTauntTimer=360; // 6s cooldown between taunts
+    }
+  }
+  if(proximityTauntTimer>0)proximityTauntTimer--;
+  if(proximityTauntText!==''&&fr-proximityTauntFrame>90)proximityTauntText=''; // 1.5s display
+  if(proximityDangerLevel<3){proximityTauntText='';proximityTauntTimer=0;}
+}
+
+// Update footprints aging
+function updateFootprints(){
+  for(let i=footprints.length-1;i>=0;i--){
+    footprints[i].age++;
+    if(footprints[i].age>=FOOTPRINT_MAX_AGE){
+      footprints.splice(i,1);
+    }
+  }
+  // Cap footprint count
+  while(footprints.length>200)footprints.shift();
+}
+
+// NPC wander system — town NPCs slowly pace within 2 tiles of home
+function updateNPCWander(){
+  if(inDungeon||npcDialogActive||sc!=='map')return;
+  const m=maps[0]; // town map only
+  npcs.forEach(npc=>{
+    if(npc.map!==0)return;
+    // Smooth visual walk
+    const dx=npc.x*TW-npc.visualX,dy=npc.y*TH-npc.visualY;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist>1){
+      npc.visualX+=dx*0.15;npc.visualY+=dy*0.15;
+      npc.walking=true;npc.walkFrame+=0.25;
+    }else{
+      npc.visualX=npc.x*TW;npc.visualY=npc.y*TH;npc.walking=false;
+    }
+    // Wander timer
+    if(npc.moveTimer>0){npc.moveTimer--;return;}
+    // Choose new position within wander radius of home
+    const dirs=[[0,-1],[0,1],[-1,0],[1,0],[0,0],[0,0]]; // bias toward staying
+    const d=dirs[Math.floor(Math.random()*dirs.length)];
+    const nx=npc.x+d[0],ny=npc.y+d[1];
+    // Must stay within 2 tiles of home, on walkable tile, not on player or other NPC
+    const withinHome=Math.abs(nx-npc.homeX)<=2&&Math.abs(ny-npc.homeY)<=2;
+    const walkable=WALKABLE.has(m[ny]?.[nx]);
+    const onPlayer=(nx===pl[0].x&&ny===pl[0].y);
+    const onNpc=npcs.some(o=>o!==npc&&o.x===nx&&o.y===ny);
+    if(withinHome&&walkable&&!onPlayer&&!onNpc){
+      // Face movement direction
+      if(d[0]<0)npc.dir=3;
+      else if(d[0]>0)npc.dir=1;
+      else if(d[1]<0)npc.dir=0;
+      else if(d[1]>0)npc.dir=2;
+      npc.x=nx;npc.y=ny;
+    }else if(d[0]===0&&d[1]===0){
+      // Idle: occasionally turn to face a random direction
+      if(Math.random()<0.4)npc.dir=Math.floor(Math.random()*4);
+    }
+    npc.moveTimer=180+Math.floor(Math.random()*300); // 3-8 seconds between moves
+  });
+  // v82: proximity ambient speech bubbles (2-3 tiles away, not adjacent — adjacent opens dialog/UI)
+  if(!npcDialogActive&&currentMap===0&&!inDungeon){
+    npcs.forEach(npc=>{
+      if(npc.map!==0)return;
+      if(npc.bubbleTimer>0){npc.bubbleTimer--;return;}
+      if(npc.bubbleCooldown>0){npc.bubbleCooldown--;return;}
+      const bdx=Math.abs(pl[0].x-npc.x),bdy=Math.abs(pl[0].y-npc.y);
+      const dist=bdx+bdy;
+      if(dist>=2&&dist<=3){
+        const pool=getNPCAmbientLines(npc);
+        if(pool.length>0){
+          npc.bubbleText=pool[Math.floor(Math.random()*pool.length)];
+          npc.bubbleTimer=170;
+          npc.bubbleCooldown=500+Math.floor(Math.random()*300);
+        }
+      }
+    });
+  }
+}
+
+// v84: Town weather update — cycles clear/fog/rain slowly
+function updateTownWeather(){
+  if(inDungeon||currentMap!==0||sc!=='map')return;
+  if(townWeatherAlpha<1)townWeatherAlpha=Math.min(1,townWeatherAlpha+1/150);
+  townWeatherTimer++;
+  if(townWeatherTimer>=WEATHER_CYCLE_FRAMES){
+    townWeatherTimer=0;
+    townWeatherAlpha=0;
+    const next=['clear','fog','rain'].filter(w=>w!==townWeather);
+    townWeather=next[Math.floor(Math.random()*next.length)];
+  }
+}
+
+// v84: Town weather draw — layered atmospheric effects
+function drawTownWeather(){
+  if(inDungeon||currentMap!==0)return;
+  const wa=townWeatherAlpha;
+  if(wa<=0.02)return;
+  if(townWeather==='rain'){
+    // Falling rain lines (stateless — driven by frame counter)
+    g.save();
+    for(let i=0;i<55;i++){
+      const seed=i*137;
+      const rx=((fr*0.7+seed*19+camX*0.2)%(W+120))-60;
+      const ry=(fr*4+seed*11)%(H+80)-40;
+      g.globalAlpha=wa*(0.3+seed%3*0.1);
+      g.strokeStyle='rgba(160,190,240,0.9)';g.lineWidth=1;
+      g.beginPath();g.moveTo(rx,ry);g.lineTo(rx-3,ry+10);g.stroke();
+    }
+    g.globalAlpha=1;
+    // Ground ripples at bottom portion of screen
+    for(let i=0;i<10;i++){
+      const seed=i*193;
+      const ripX=((fr*0.6+seed*27)%(W+80))-40;
+      const ripPhase=(fr*0.5+seed*7)%80/80;
+      const ripR=ripPhase*14;
+      const ripA=wa*(1-ripPhase)*0.35;
+      if(ripA>0.02){
+        g.globalAlpha=ripA;
+        g.strokeStyle='rgba(160,200,240,0.7)';g.lineWidth=1;
+        g.beginPath();g.ellipse(ripX,H-15-seed%40,ripR,ripR*0.3,0,0,Math.PI*2);g.stroke();
+      }
+    }
+    // Subtle blue tint overlay
+    g.globalAlpha=wa*0.07;
+    g.fillStyle='rgba(100,140,200,1)';g.fillRect(0,0,W,H);
+    g.globalAlpha=1;
+    g.restore();
+  } else if(townWeather==='fog'){
+    g.save();
+    // Wispy horizontal fog bands at different heights
+    for(let i=0;i<12;i++){
+      const seed=i*97;
+      const fogX=((fr*0.25+seed*53)%(W+320))-160;
+      const fogY=60+seed%4*70+Math.sin(fr*0.015+i*1.3)*12;
+      const fogW=160+seed%5*50;
+      const fogAlpha=wa*(0.12+seed%3*0.04);
+      g.globalAlpha=fogAlpha;
+      const grd=g.createLinearGradient(fogX,fogY,fogX+fogW,fogY);
+      grd.addColorStop(0,'rgba(210,220,230,0)');
+      grd.addColorStop(0.25,'rgba(210,220,230,1)');
+      grd.addColorStop(0.75,'rgba(210,220,230,1)');
+      grd.addColorStop(1,'rgba(210,220,230,0)');
+      g.fillStyle=grd;
+      g.fillRect(fogX,fogY-20,fogW,40);
+    }
+    // Edge vignette — fog thickens at screen edges
+    g.globalAlpha=wa*0.2;
+    const vgr=g.createRadialGradient(W/2,H/2,W*0.3,W/2,H/2,W*0.7);
+    vgr.addColorStop(0,'rgba(190,200,210,0)');
+    vgr.addColorStop(1,'rgba(190,200,210,0.85)');
+    g.fillStyle=vgr;g.fillRect(0,0,W,H);
+    g.globalAlpha=1;
+    g.restore();
+  } else {
+    // Clear: drifting sunlight dust motes
+    g.save();
+    for(let i=0;i<22;i++){
+      const seed=i*151;
+      const mx=((seed*37+fr*0.08)%W);
+      const my=H-((fr*0.4+seed*23)%(H+60))-10;
+      if(my<-8||my>H+8)continue;
+      const ms=0.5+(seed%4)*0.4;
+      g.globalAlpha=wa*0.28*(0.5+Math.sin(fr*0.04+i)*0.5);
+      g.fillStyle='rgba(255,240,190,1)';
+      g.beginPath();g.arc(mx,my,ms,0,Math.PI*2);g.fill();
+    }
+    g.globalAlpha=1;
+    g.restore();
+  }
+}
+
+function drawFootprints(){
+  if(!inDungeon)return;
+  // VEGA=pink, MIRA=gold
+  const rivalCols=['#d860a0','#d8b028'];
+  footprints.forEach(fp=>{
+    if(fp.map!==currentMap)return;
+    if(!fogRevealed[currentMap][fp.y]?.[fp.x])return;
+    const ageFrac=fp.age/FOOTPRINT_MAX_AGE; // 0=fresh, 1=old
+    const alpha=(1-ageFrac)*0.55; // fade as they age
+    if(alpha<0.04)return;
+    const sx=fp.x*TW-camX+TW/2-2;
+    const sy=fp.y*TH-camY+TH/2-1;
+    if(sx<-4||sx>W+4||sy<-4||sy>H+4)return;
+    const col=rivalCols[fp.ri]||'#888888';
+    // Two small boot-print dots side by side
+    const offset=(fp.age%4<2)?-1:1; // alternate left/right footstep
+    g.globalAlpha=alpha;
+    g.fillStyle=col;
+    g.fillRect(sx+offset,sy,2,3);
+    g.fillRect(sx+offset+3,sy+1,2,2);
+    g.globalAlpha=1;
+  });
+}
+
+// Pre-generate random values for tile detail (per map, reuse with offset)
+const tileRand=[];
+for(let i=0;i<MW*MH;i++){
+  tileRand.push({
+    a:Math.random(),b:Math.random(),c:Math.random(),
+    d:Math.random(),e:Math.random(),f:Math.random(),
+    g:Math.random(),h:Math.random()
+  });
+}
+function tr(tx_,ty){return tileRand[(ty*MW+tx_)%(MW*MH)];}
+

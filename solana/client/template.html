@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0xARK v100</title>
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="expires" content="0">
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
+<script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111118;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;font-family:'VT323',monospace;overflow:hidden}
+#emu{background:linear-gradient(145deg,#2a2a3e,#1c1c2c);padding:20px 24px 16px;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);border:2px solid #333350}
+#lbl{text-align:center;color:#444460;font-size:10px;letter-spacing:6px;margin-bottom:8px}
+#sw{background:#080810;padding:4px;border-radius:4px;border:2px solid #1a1a30;box-shadow:inset 0 0 0 2px #2a2a48,inset 0 0 0 4px #0c0c18}
+canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-rendering:crisp-edges}
+/* #g.desktop-hidden no longer needed — game canvas shown directly */
+#pixi-wrap{position:relative;width:960px;height:640px;overflow:hidden}
+#pixi-wrap canvas{width:960px;height:640px;touch-action:none}
+#ctrls{display:flex;justify-content:center;gap:6px;margin-top:10px}
+.b{padding:4px 12px;background:#222238;color:#555570;border:1px solid #333350;border-radius:12px;font:14px 'VT323',monospace;cursor:pointer;transition:all .15s}
+.b:hover{background:#2a2a44;color:#8888aa}.b.a{background:#3848a0;color:#dde;border-color:#5060c0;box-shadow:0 0 6px rgba(56,72,160,.3)}
+#h{color:#2a2a40;font-size:10px;text-align:center;margin-top:6px;letter-spacing:1px}
+@media(max-width:1000px){canvas{width:100vw!important;height:calc(100vw*2/3)!important}#emu{padding:4px;border-radius:0}#pixi-wrap{width:100vw!important;height:calc(100vw*2/3)!important}}
+/* Touch Controls Overlay */
+#touch-overlay{display:none;position:fixed;bottom:0;left:0;right:0;height:180px;z-index:100;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#touch-overlay.active{display:block}
+#touch-overlay *{pointer-events:auto}
+.touch-btn{position:absolute;width:52px;height:52px;border-radius:14px;border:2px solid rgba(255,255,255,.3);background:rgba(30,30,50,.7);color:rgba(255,255,255,.8);font:16px 'VT323',monospace;display:flex;align-items:center;justify-content:center;transition:background .05s;-webkit-tap-highlight-color:transparent}
+.touch-btn.pressed{background:rgba(80,80,140,.85);border-color:rgba(255,255,255,.5)}
+/* D-pad: bottom-left */
+#dpad-up{left:64px;bottom:148px}
+#dpad-down{left:64px;bottom:38px}
+#dpad-left{left:8px;bottom:93px}
+#dpad-right{left:120px;bottom:93px}
+/* A/B buttons: bottom-right */
+#btn-a{right:20px;bottom:118px;width:56px;height:56px;background:rgba(0,180,200,.5);border-color:rgba(0,220,255,.5);font-size:16px}
+#btn-a.pressed{background:rgba(0,180,200,.8)}
+#btn-b{right:84px;bottom:58px;width:56px;height:56px;background:rgba(200,50,60,.5);border-color:rgba(255,80,80,.5);font-size:16px}
+#btn-b.pressed{background:rgba(200,50,60,.8)}
+/* START button: bottom-center */
+#btn-start{left:50%;transform:translateX(-50%);bottom:10px;width:72px;height:28px;border-radius:14px;font-size:12px}
+</style>
+</head>
+<body>
+<div id="emu">
+<div id="lbl">0 x A R K</div>
+<div id="sw"><div id="pixi-wrap"><canvas id="g" width="960" height="640" style="display:none"></canvas></div></div>
+<div id="ctrls">
+<button class="b a" onclick="ss('map')">MAP</button>
+<button class="b" onclick="ss('crd')">CARDS</button>
+<button class="b" onclick="ss('log')">LOG</button>
+<button class="b" onclick="ss('stats')">STATS</button>
+</div>
+<div id="h">ARROWS move / SPACE menu / Z select / X back / M sound / F fps</div>
+</div>
+<div id="touch-overlay">
+<div class="touch-btn" id="dpad-up">&uarr;</div>
+<div class="touch-btn" id="dpad-down">&darr;</div>
+<div class="touch-btn" id="dpad-left">&larr;</div>
+<div class="touch-btn" id="dpad-right">&rarr;</div>
+<div class="touch-btn" id="btn-a">A</div>
+<div class="touch-btn" id="btn-b">B</div>
+<div class="touch-btn" id="btn-start">START</div>
+</div>
+<!-- GAME_SCRIPT -->
+</body>
+</html>

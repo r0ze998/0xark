@@ -68,6 +68,10 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/01-foundation.js
+// PixiJS setup · FRLG UI · audio · wallet · ZK · multiplayer · transitions · overlays
+// ───────────────────────────────────────────────────────────────────────
 // Unregister any service workers and clear caches to prevent stale version serving
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(regs=>{regs.forEach(r=>r.unregister());});}
 if('caches' in window){caches.keys().then(names=>{names.forEach(n=>caches.delete(n));});}
@@ -2227,6 +2231,11 @@ function drawParticles(cx,cy){
   });
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/02-data.js
+// Card definitions (CD[]) · map tile arrays (MAP_PORT, MAP_FOREST, MAP_RUINS, dungeonFloors)
+// ───────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════
 // DATA
 // ═══════════════════════════════════════
@@ -3029,6 +3038,11 @@ fogLoad();
 // Town→Dungeon: walk to east edge of town (x=38-39)
 // Dungeon floor→next floor: step on glow tile at far end
 // Dungeon floor→town (escape): step on treasure tile near entrance
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/03-world-setup.js
+// exits[] · npcs[] · fog-of-war system · terrain rendering helpers
+// ───────────────────────────────────────────────────────────────────────
 const exits=[
   // Town dungeon portal (glow tiles x=27 y=11-13) → Dungeon Floor 1
   {fromMap:0, tiles:[[27,11],[27,12],[27,13]],
@@ -3860,6 +3874,11 @@ for(let i=0;i<MW*MH;i++){
 }
 function tr(tx_,ty){return tileRand[(ty*MW+tx_)%(MW*MH)];}
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/04-state.js
+// Global game-state variables · card timers/decay · rival AI background · quest missions
+// ───────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════
 // ORGANIC TERRAIN HELPERS
 // ═══════════════════════════════════════
@@ -4537,6 +4556,11 @@ function getPlayElapsed(){return Date.now()-seasonStartTime;}
 const lg=['Game started. Collect all 60 cards to win the Prize Pool!'];
 let logScrollOff=0;
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/05-rendering.js
+// Tile rendering (TILE section) · card character sprites (drawCardCharacter) · sprite animation
+// ───────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════
 // TILE RENDERING
 // ═══════════════════════════════════════
@@ -5636,6 +5660,11 @@ function drawMiniCard(x,y,cd){
   }
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/06-world-systems.js
+// Camera · card mini-art · map transitions · location banner · minimap · encounters · NPCs · trading
+// ───────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════
 // MAP TRANSITION
 // ═══════════════════════════════════════
@@ -6865,6 +6894,11 @@ function dTitle(){
 }
 
 // ═══════════════════════════════════════
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/07-screens.js
+// MAP SCREEN (dMap) · fog rendering · pirate decorations · MENU · BATTLE/ACTION SCREEN
+// ───────────────────────────────────────────────────────────────────────
 // MAP SCREEN
 // ═══════════════════════════════════════
 const HUD_HEIGHT=72;
@@ -10141,6 +10175,11 @@ function dAct(){
 }
 
 // ═══════════════════════════════════════
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/08-ui.js
+// Card acquisition · discard · tutorial · victory · CARDS collection · LOG · town shops · buildings · stats
+// ───────────────────────────────────────────────────────────────────────
 // CARD ACQUISITION ANIMATION
 // ═══════════════════════════════════════
 function startCardAcquisition(cardIdx){
@@ -12403,6 +12442,11 @@ function dGameOver(){
 }
 
 // ═══════════════════════════════════════
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/09-game-loop.js
+// Main update() + draw() game loop · screen routing (title/map/battle/crd/log/stats)
+// ───────────────────────────────────────────────────────────────────────
 // GAME LOOP
 // ═══════════════════════════════════════
 function updateVisualPositions(){
@@ -12830,6 +12874,11 @@ function loop(now){
 }
 
 // ═══════════════════════════════════════
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/10-input.js
+// Keyboard event handlers · touch controls (d-pad, A/B buttons)
+// ───────────────────────────────────────────────────────────────────────
 // INPUT
 // ═══════════════════════════════════════
 document.addEventListener('keydown',e=>{
@@ -13821,6 +13870,11 @@ document.addEventListener('keydown',e=>{
 function ss(s){sfxSelect();fadeOut(()=>{sc=s;mo=false;if(s==='act'){battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
 function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle('a',['map','crd','log','stats'][i]===sc));}
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/11-save-init.js
+// Save/load system · game initialization · requestAnimationFrame bootstrap
+// ───────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════
 // SAVE / LOAD SYSTEM
 // ═══════════════════════════════════════
@@ -14062,6 +14116,8 @@ if(isTouchDevice){
 x402CheckServer();
 
 requestAnimationFrame(loop);
+
+
 </script>
 </body>
 </html>
