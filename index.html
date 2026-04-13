@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v85</title>
+<title>0xARK v86</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -4074,6 +4074,7 @@ const MARKET_PAGE_SIZE=12; // 4×3
 
 // ── Gacha state ──
 let gachaActive=false, gachaPhase='menu', gachaSelectedTier=0, gachaResultCard=-1, gachaResultFrame=0, gachaSpinFrame=0;
+let gachaHistory=[]; // v86: last pulls [{cardId, rarity}] (max 8)
 const GACHA_TIERS=[
   {name:'Common Draw',   cost:0.01, label:'0.01 SOL', pool:'common',  rarities:[1,1,1,1,2]},   // 80% r1, 20% r2
   {name:'Rare Draw',     cost:0.05, label:'0.05 SOL', pool:'rare',    rarities:[2,2,3,3,3]},   // r2-r3
@@ -4139,6 +4140,7 @@ let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
 // v83: Card-lost animation — card flies to rival when stolen from player
 // v84: Town weather system — dynamic clear/rain/fog with particles and fog wisps
 // v85: Floor-clear fanfare overlay — cinematic card reward on floor descent
+// v86: Gacha pull history panel — last 8 pulls shown beside gacha menu
 let encounterRivalLine=''; // context-sensitive line for exclamation animation
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
 
@@ -7890,7 +7892,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v85',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v86',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -10905,6 +10907,28 @@ function drawBuildingInterior(){
       const pityCol=gachaPityCount>=7?'#f0c830':gachaPityCount>=4?'#e08040':'#686878';
       tx('PITY: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' — RARE SOON!':''),gx+16,gy+gh-40,6,pityCol);
       tx('[Z] Draw   [X] Cancel',gx+16,gy+gh-26,7,'#686878');
+      // v86: Pull history panel (right of main panel)
+      if(gachaHistory.length>0){
+        const hx=gx+gw+8,hy=gy,hw=180,hh=gh;
+        win(hx,hy,hw,hh);
+        bx(hx,hy,hw,28,'#1a1a30');
+        txShadow('RECENT',hx+hw/2-36,hy+20,11,'#c8b870','rgba(0,0,0,.4)');
+        bx(hx,hy+28,hw,1,'#282848');
+        const rarLabels=['','Common','Uncommon','Rare','Epic','Legendary'];
+        const rarColors_=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
+        gachaHistory.forEach((h,i)=>{
+          const hy2=hy+36+i*36;
+          const cr3=CD[h.cardId-1];
+          const rcol3=rarColors_[h.rarity]||'#888888';
+          // Rarity dot
+          bx(hx+10,hy2-6,10,10,rcol3);
+          // Card name
+          const nm=cr3.n.length>14?cr3.n.substring(0,13)+'.':cr3.n;
+          tx(nm,hx+26,hy2+2,7,i===0?'#f8f0e0':'#a0a0a0');
+          // Rarity label tiny
+          tx(rarLabels[h.rarity]||'',hx+26,hy2+14,5,rcol3);
+        });
+      }
     }else if(gachaPhase==='spinning'){
       gachaSpinFrame++;
       const sf=gachaSpinFrame;
@@ -12632,6 +12656,9 @@ document.addEventListener('keydown',e=>{
             twSet('Hand full! Discard a card to make room for '+cr.n+'.');
           }
           lg.push('[GACHA] Got '+cr.n+' ('+RARITY_LABEL[cr.r]+')!');
+          // v86: record in history
+          gachaHistory.unshift({cardId:gachaResultCard,rarity:cr.r});
+          if(gachaHistory.length>8)gachaHistory.pop();
           sfxConfirm();
           checkWinAndTransition(2000);
         }
