@@ -2710,15 +2710,15 @@ const exits=[
 const npcs=[
   // Town NPCs (map 0 = はじまりのまち)
   {map:0, x:8, y:6, type:0, name:'Card Merchant', dir:0,
-   dialog:['Welcome to the','Card Marketplace!','Buy & sell your cards','here in safety.','(Shop: coming soon)']},
+   dialog:['Welcome to the','0xARK Marketplace!','Press Z to browse','your cards and','view listings.','Trade safely here!']},
   {map:0, x:22, y:6, type:1, name:'Trade Master', dir:0,
-   dialog:['Looking for a','specific card?','List a trade offer','and players will','find you here.','(Trades: coming soon)']},
+   dialog:['Looking for a','specific card?','Make an offer and','other players will','see it here.','Good luck hunting!']},
   {map:0, x:14, y:12, type:2, name:'Gacha Keeper', dir:2,
-   dialog:['Try your luck!','Pay SOL or x402','for a random card.','Deeper dungeons =','rarer rewards!','(Gacha: coming soon)']},
+   dialog:['Try your luck!','Common 0.01 SOL','Rare 0.05 SOL','Epic 0.20 SOL','Deeper floors give','rarer drop tables!']},
   {map:0, x:18, y:18, type:0, name:'ARK Guide', dir:0,
-   dialog:['Welcome, traveler!','Collect all 60 cards','to win the Prize Pool.','Enter the dungeon','to find rare cards.','Deeper = more danger!']},
+   dialog:['Collect all 60 cards','to win the Prize Pool!','Cards: Attack / Defense','Flee / Magic / Heal','STEAL rivals in battle.','Deeper dungeon = rarer!']},
   {map:0, x:26, y:14, type:1, name:'Dungeon Porter', dir:3,
-   dialog:['The dungeon entrance','lies to the east.','Beware — cards you','carry can be lost','to other players!','Prepare your deck.']},
+   dialog:['Dungeon entrance','is to the east!','Cards DECAY over time','while underground.','Escape west to return','to town safely.']},
 ];
 
 // ── TREASURE DATA (GDD v1.0) ──
@@ -5195,18 +5195,28 @@ function checkNPCInteraction(){
 // ═══════════════════════════════════════
 function getSignpostMessage(mapIdx, tx_, ty){
   if(mapIdx===0){
-    // Corsair Bay signposts
-    if(tx_===13&&ty===5) return 'Corsair Bay -- Aegis & Umbra spirits haunt these docks.';
-    if(tx_===17&&ty===5) return 'Trading Post -- swap yer duplicates for cards ye need.';
-    if(tx_===15&&ty===21) return 'Jungle trail north. Watch for smugglers.';
+    // はじまりのまち signposts
+    if(tx_===13&&ty===5) return 'Marketplace -- buy, sell and trade cards safely here.';
+    if(tx_===17&&ty===5) return 'Gacha Machine -- spend SOL for a random card draw.';
+    if(tx_===15&&ty===21) return 'Town Square -- a safe zone. No battles occur here.';
+    return 'はじまりのまち -- a safe haven between dungeon runs.';
   }
   if(mapIdx===1){
-    return 'Smugglers Jungle -- spirits hide in the tall grass.';
+    return 'Dungeon B1 -- AI rivals and players lurk here. Cards decay!';
   }
   if(mapIdx===2){
-    return 'Cursed Temple -- dangerous waters, rich plunder.';
+    return 'Dungeon B2 -- Uncommon cards found here. Stay sharp!';
   }
-  return 'A salt-worn signpost. The text is barely legible.';
+  if(mapIdx===3){
+    return 'Dungeon B3 -- Rare cards await. High danger zone.';
+  }
+  if(mapIdx===4){
+    return 'Dungeon B4 -- Epic cards hide in the shadows.';
+  }
+  if(mapIdx===5){
+    return 'Dungeon B5 -- Legendary territory. Only the brave survive.';
+  }
+  return 'A faded signpost. The writing is hard to read.';
 }
 
 function checkSignpostInteraction(){
