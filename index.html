@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v73</title>
+<title>0xARK v74</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -2943,6 +2943,8 @@ const npcs=[
   makeNpc(0,14,12,2,'Gacha Keeper',2,['Try your luck!','Common 0.01 SOL','Rare 0.05 SOL','Epic 0.20 SOL','Deeper floors give','rarer drop tables!']),
   makeNpc(0,18,18,0,'ARK Guide',0,['Collect all 60 cards','to win the Prize Pool!','Cards: Attack / Defense','Flee / Magic / Heal','STEAL rivals in battle.','Deeper dungeon = rarer!']),
   makeNpc(0,26,14,1,'Dungeon Porter',3,['Dungeon entrance','is to the east!','Cards DECAY over time','while underground.','Escape west to return','to town safely.']),
+  // v74: Alchemist NPC — card synthesis
+  makeNpc(0,10,18,3,'Alchemist',0,['I can fuse cards into','higher rarities!','Bring me 3 cards','of the same rarity.','I will forge them','into something greater.']),
 ];
 
 // ── TREASURE DATA (GDD v1.0) ──
@@ -3830,6 +3832,8 @@ let randomEventActive=false, randomEventText='', randomEventFrame=0;
 
 // ── Trading Post state ──
 let shopActive=false, shopSelectedIdx=0, shopConfirm=false, shopResultText='', shopResultFrame=0, shopPhase='list';
+// v74: Synthesis (Alchemist NPC) state
+let synthActive=false, synthPhase='pick', synthSelected=[], synthRarityFilter=1, synthResultCard=-1, synthResultFrame=0;
 
 // ── Dungeon entry confirmation ──
 let dungeonConfirmActive=false, dungeonConfirmExit=null;
@@ -4112,7 +4116,7 @@ function resetNewFeatureState(){
   mapCardUseActive=false;fountainActive=false;
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;proximityTauntText='';proximityTauntTimer=0;
   // Reset all UI overlay states
-  wildEncounterActive=false;npcDialogActive=false;shopActive=false;signpostActive=false;gachaActive=false;marketActive=false;dungeonConfirmActive=false;
+  wildEncounterActive=false;npcDialogActive=false;shopActive=false;signpostActive=false;gachaActive=false;marketActive=false;dungeonConfirmActive=false;synthActive=false;
   discardActive=false;cardAcqActive=false;cardAcqDone=false;randomEventActive=false;
   encounterExclActive=false;
   x402ShopOpen=false;x402ShopLoading=false;x402ShopResult='';x402ShopResultTimer=0;x402HowItWorksActive=false;agentMarketplaceActive=false;
@@ -5798,6 +5802,12 @@ function checkNPCInteraction(){
         sfxShopOpen();
         return true;
       }
+      // v74: Alchemist opens synthesis
+      if(npc.name==='Alchemist'){
+        synthActive=true;synthPhase='pick';synthSelected=[];synthRarityFilter=1;synthResultCard=-1;
+        sfxShopOpen();
+        return true;
+      }
       npcDialogActive=true;
       npcDialogLines=npc.dialog;
       npcDialogIdx=0;
@@ -5989,6 +5999,110 @@ function drawCardShop(){
     tx(shopResultText,70,H/2,9,'#303028');
     tx('Press Z to continue',70,H/2+30,6,'#686068');
   }
+}
+
+// ═══════════════════════════════════════
+// v74: SYNTHESIS (ALCHEMIST) SYSTEM
+// ═══════════════════════════════════════
+function doSynthesis(){
+  // Validate: 3 cards of same rarity selected
+  if(synthSelected.length!==3)return;
+  const cards=synthSelected.map(slot=>pl[0].cd[slot]);
+  const rarities=cards.map(cid=>CD[cid-1]?.r||1);
+  const r=rarities[0];
+  if(!rarities.every(rv=>rv===r))return;
+  if(r>=5)return; // can't upgrade legendary
+  const targetRarity=r+1;
+  // Pool of target rarity cards not yet in vault
+  const vault_=pl[0].vault||new Set();
+  const targetPool=[];
+  for(let i=1;i<=60;i++){const cr=CD[i-1];if(cr&&cr.r===targetRarity&&!vault_.has(i))targetPool.push(i);}
+  // Fallback: any card of target rarity
+  const anyPool=[];
+  for(let i=1;i<=60;i++){const cr=CD[i-1];if(cr&&cr.r===targetRarity)anyPool.push(i);}
+  const pool=targetPool.length>0?targetPool:anyPool;
+  if(pool.length===0){synthPhase='result';synthResultCard=-1;synthResultFrame=fr;return;}
+  // Consume the 3 cards (sorted descending to avoid index shift issues)
+  const sortedSlots=[...synthSelected].sort((a,b)=>b-a);
+  sortedSlots.forEach(slot=>{removeCardFromPlayer(0,slot);cardTimers[slot]=0;});
+  // Give new card
+  const newId=pool[Math.floor(Math.random()*pool.length)];
+  const added=addCardToPlayer(0,newId);
+  if(!added){discardActive=true;discardSelIdx=0;discardPendingCard=newId;discardSource='wild';}
+  synthResultCard=newId;
+  synthPhase='result';synthResultFrame=fr;
+  const cr=CD[newId-1];
+  lg.push('[SYNTHESIS] Fused 3x '+RARITY_LABEL[r]+' → '+cr.n+' ('+RARITY_LABEL[cr.r]+')!');
+  sfxCardGet();screenShake(3,6);
+}
+
+function drawSynthesisShop(){
+  if(!synthActive)return;
+  bx(0,0,W,H,'rgba(0,0,0,.5)');
+  win(40,20,W-80,H-40);
+  txShadow('ALCHEMIST — SYNTHESIS',W/2-100,50,10,'#c08030','rgba(0,0,0,.3)');
+  bx(60,60,W-120,1,'#c0b898');
+
+  if(synthPhase==='result'){
+    const t=fr-synthResultFrame;
+    if(synthResultCard>0){
+      const cr=CD[synthResultCard-1];
+      const rCol=RARITY_COLOR[cr.r]||'#c8c0a0';
+      txShadow('SYNTHESIS SUCCESS!',W/2-88,90,10,'#40d080','rgba(0,0,0,.3)');
+      drawCardFrame(W/2-50,110,100,140,synthResultCard-1,true);
+      txShadow(cr.n,W/2-cr.n.length*5,262,11,rCol,'rgba(0,0,0,.3)');
+      txShadow(RARITY_LABEL[cr.r],W/2-32,280,7,rCol,'rgba(0,0,0,.2)');
+    }else{
+      txShadow('No cards of that rarity to forge.',W/2-140,H/2,8,'#d04040','rgba(0,0,0,.2)');
+    }
+    if(fr-synthResultFrame>40)tx('Press X to close',W/2-64,H-80,7,'#686068');
+    return;
+  }
+
+  // Phase: pick — show rarity filter tabs and cards
+  // Rarity tabs
+  const rarLabels=['','Common','Uncommon','Rare','Epic'];
+  const tabY=78;const tabW=88;
+  rarLabels.forEach((rl,ri)=>{
+    if(ri===0)return;
+    const tabX=60+(ri-1)*tabW;
+    const sel=synthRarityFilter===ri;
+    bx(tabX,tabY,tabW-4,20,sel?'#806030':'rgba(80,70,50,.5)');
+    if(sel){bx(tabX,tabY,tabW-4,1,'#d0b060');bx(tabX,tabY+19,tabW-4,1,'#d0b060');}
+    tx(rl,tabX+4,tabY+13,6,sel?'#f8e8c0':'#a09070');
+  });
+
+  const filled=getPlayerFilledSlots().filter(s=>{
+    const cid=pl[0].cd[s];return cid>0&&CD[cid-1]?.r===synthRarityFilter;
+  });
+
+  if(filled.length===0){
+    tx('No '+rarLabels[synthRarityFilter]+' cards in hand.',80,120,7,'#989080');
+  }else{
+    const needed=3-synthSelected.length;
+    const nextRar=RARITY_COLOR[synthRarityFilter+1]||'#c8c0a0';
+    tx('Select 3 cards → get 1 '+(rarLabels[synthRarityFilter+1]||'?')+' card',80,108,6,'#c0a060');
+    tx(needed>0?'Need '+needed+' more':'3 selected — press Z to synthesize!',80,122,6,needed===0?'#40d080':'#808880');
+
+    const cols=4,cellW=120,cellH=48;
+    filled.forEach((slot,i)=>{
+      const cid=pl[0].cd[slot],cr=CD[cid-1];
+      const col=i%cols,row=Math.floor(i/cols);
+      const cx=80+col*cellW,cy=138+row*cellH;
+      const isSel=synthSelected.includes(slot);
+      bx(cx,cy,cellW-8,cellH-4,isSel?'rgba(192,168,96,.3)':'rgba(40,36,28,.6)');
+      if(isSel){bx(cx,cy,2,cellH-4,'#c0a040');tx('\u2713',cx+cellW-20,cy+14,9,'#c0a040');}
+      bx(cx+4,cy+4,20,20,cr.d);bx(cx+5,cy+5,18,18,cr.c);
+      drawCardCharacter(cx+6,cy+6,cid,0.7,fr);
+      tx(cr.n,cx+30,cy+14,6,isSel?'#f8e8c0':'#c0b898');
+      tx(cr.f,cx+30,cy+26,5,'#908878');
+    });
+  }
+
+  // Legend
+  const tgt=rarLabels[synthRarityFilter+1];
+  if(tgt)tx('3× '+rarLabels[synthRarityFilter]+' → 1× '+tgt,80,H-88,6,'#806030');
+  tx('← → change rarity  Z=select/confirm  X=close',80,H-68,5,'#686068');
 }
 
 // ═══════════════════════════════════════
@@ -7370,7 +7484,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v73',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v74',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11340,6 +11454,7 @@ function draw(){
   drawDiscardOverlay();
   drawDungeonConfirm();
   drawMarketplace();
+  drawSynthesisShop();
   drawTutorialMsg();
   drawIntroTutorial();
   if(!inBuilding&&sc==='map'){
@@ -11730,6 +11845,31 @@ document.addEventListener('keydown',e=>{
   }
 
   // Trading Post handling
+  // v74: Synthesis shop input
+  if(synthActive){
+    if(synthPhase==='result'){
+      if(e.code==='KeyX'||e.code==='KeyZ'){synthActive=false;sfxBack();}
+      return;
+    }
+    // Rarity tab navigation with left/right
+    if(e.code==='ArrowLeft'){synthRarityFilter=Math.max(1,synthRarityFilter-1);synthSelected=[];sfxCursor();}
+    if(e.code==='ArrowRight'){synthRarityFilter=Math.min(4,synthRarityFilter+1);synthSelected=[];sfxCursor();}
+    if(e.code==='KeyZ'){
+      // If 3 selected → synthesize
+      if(synthSelected.length===3){doSynthesis();return;}
+      // Else select next available card of filtered rarity
+      const avail=getPlayerFilledSlots().filter(s=>{
+        const cid=pl[0].cd[s];return cid>0&&CD[cid-1]?.r===synthRarityFilter&&!synthSelected.includes(s);
+      });
+      if(avail.length>0){synthSelected.push(avail[0]);sfxSelect();}
+    }
+    if(e.code==='KeyX'){
+      if(synthSelected.length>0){synthSelected.pop();sfxBack();}
+      else{synthActive=false;sfxBack();}
+    }
+    return;
+  }
+
   if(shopActive){
     const filled=getPlayerFilledSlots();
     if(shopPhase==='list'){
@@ -12449,7 +12589,7 @@ function loadGame(){
     // Clear all battle/encounter state
     wildEncounterActive=false;encounterCooldown=180;battlePhase='select';
     encounterExclActive=false;mapTransitioning=false;npcDialogActive=false;
-    gachaActive=false;marketActive=false;dungeonConfirmActive=false;shopActive=false;
+    gachaActive=false;marketActive=false;dungeonConfirmActive=false;shopActive=false;synthActive=false;
     // Season data
     if(d.seasonStartTime){seasonStartTime=d.seasonStartTime;seasonEndTime=d.seasonEndTime||d.seasonStartTime+SEASON_DURATION_MS;}
     else{initSeason();} // legacy saves: start fresh season
