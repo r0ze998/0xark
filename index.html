@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v51</title>
+<title>0xARK v52</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -17,8 +17,8 @@ body{background:#111118;display:flex;flex-direction:column;justify-content:cente
 #emu{background:linear-gradient(145deg,#2a2a3e,#1c1c2c);padding:20px 24px 16px;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);border:2px solid #333350}
 #lbl{text-align:center;color:#444460;font-size:10px;letter-spacing:6px;margin-bottom:8px}
 #sw{background:#080810;padding:4px;border-radius:4px;border:2px solid #1a1a30;box-shadow:inset 0 0 0 2px #2a2a48,inset 0 0 0 4px #0c0c18}
-canvas{display:block;width:960px;height:640px;image-rendering:auto}
-#g.desktop-hidden{display:none!important}
+canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-rendering:crisp-edges}
+/* #g.desktop-hidden no longer needed — game canvas shown directly */
 #pixi-wrap{position:relative;width:960px;height:640px;overflow:hidden}
 #pixi-wrap canvas{width:960px;height:640px;touch-action:none}
 #ctrls{display:flex;justify-content:center;gap:6px;margin-top:10px}
@@ -5756,7 +5756,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v51',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v52',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6357,18 +6357,21 @@ function dMap(){
   }
   // ── CIRCULAR VISIBILITY (Iwayama Tunnel style) — dungeon only ──
   // Town is a safe zone, no dark vignette. Dungeon only.
+  // Each floor has a subtle color tint that intensifies as the player goes deeper.
   if(inDungeon&&(!isTouchDevice||fr%2===0)){
     const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
     const innerR=120, outerR=320;
     const grad=g.createRadialGradient(px,py,innerR,px,py,outerR);
+    // Floor-depth color tints: deeper = warmer/more ominous
+    const floorTint=['rgba(0,0,0','rgba(15,5,35','rgba(25,5,40','rgba(35,8,28','rgba(40,5,8','rgba(50,0,0'][currentFloor]||'rgba(0,0,0';
     grad.addColorStop(0,'rgba(0,0,0,0)');
     grad.addColorStop(0.15,'rgba(0,0,0,0)');
     grad.addColorStop(0.3,'rgba(0,0,0,0.05)');
     grad.addColorStop(0.45,'rgba(0,0,0,0.12)');
-    grad.addColorStop(0.6,'rgba(0,0,0,0.25)');
-    grad.addColorStop(0.75,'rgba(0,0,0,0.45)');
-    grad.addColorStop(0.88,'rgba(0,0,0,0.65)');
-    grad.addColorStop(1,'rgba(0,0,0,0.82)');
+    grad.addColorStop(0.6,floorTint+',0.25)');
+    grad.addColorStop(0.75,floorTint+',0.46)');
+    grad.addColorStop(0.88,floorTint+',0.66)');
+    grad.addColorStop(1,floorTint+',0.82)');
     g.fillStyle=grad;
     g.fillRect(0,0,W,H);
   }
@@ -6390,6 +6393,37 @@ function dMap(){
       g.globalAlpha=0.4+pulse*0.6;
       txShadow('▼',entX-4,entY+14,10,'#80e0ff','rgba(0,0,0,.5)');
       g.globalAlpha=1;
+    }
+  }
+
+  // ── DUNGEON STAIRCASE NAVIGATION LABELS (dungeon only) ──
+  // Shows ◀ ESCAPE near the exit stairs and DEEPER ▶ near the descent stairs
+  // Only rendered when the staircase tile has been fog-revealed
+  if(inDungeon){
+    const stairPulse=Math.abs(Math.sin(fr*0.055))*0.45+0.55;
+    // ESCAPE stairs: fixed at x=3, y=14 in all dungeon floors
+    const escScrX=3*TW-camX+TW/2, escScrY=13*TH-camY-8;
+    if(fogRevealed[currentMap]?.[14]?.[3]&&escScrX>-100&&escScrX<W+100&&escScrY>-30&&escScrY<H){
+      g.globalAlpha=stairPulse*0.9;
+      txShadow('◀ ESCAPE',escScrX-44,escScrY,8,'#40e090','rgba(0,0,0,.75)');
+      g.globalAlpha=1;
+    }
+    // DEEPER stairs: fixed at x=36, y=14; not shown on final floor
+    if(currentFloor<MAX_DUNGEON_FLOORS){
+      const depScrX=36*TW-camX+TW/2, depScrY=13*TH-camY-8;
+      if(fogRevealed[currentMap]?.[14]?.[36]&&depScrX>-100&&depScrX<W+100&&depScrY>-30&&depScrY<H){
+        g.globalAlpha=stairPulse*0.9;
+        txShadow('DEEPER ▶',depScrX-40,depScrY,8,'#e06848','rgba(0,0,0,.75)');
+        g.globalAlpha=1;
+      }
+    }else{
+      // Floor 5: no deeper exit — label it as the deepest
+      const deepScrX=36*TW-camX+TW/2, deepScrY=13*TH-camY-8;
+      if(fogRevealed[currentMap]?.[14]?.[36]&&deepScrX>-100&&deepScrX<W+100&&deepScrY>-30&&deepScrY<H){
+        g.globalAlpha=0.6;
+        txShadow('★ DEEPEST',deepScrX-46,deepScrY,8,'#f0c840','rgba(0,0,0,.75)');
+        g.globalAlpha=1;
+      }
     }
   }
 
@@ -6674,7 +6708,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v51',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v52',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8300,8 +8334,12 @@ function drawTutorialMsg(){
   tutorialMsgTimer--;
   const alpha=tutorialMsgTimer>20?1:tutorialMsgTimer/20;
   g.globalAlpha=alpha;
-  win(W/2-200,H-86,400,36);
-  tx(tutorialMsg,W/2-190,H-60,6,'#3060b0');
+  // Wider window with colored header stripe
+  const tmW=440,tmH=44,tmX=W/2-tmW/2,tmY=H-90;
+  win(tmX,tmY,tmW,tmH);
+  bx(tmX,tmY,tmW,3,'#3060b0');
+  txShadow('HINT',tmX+8,tmY+16,8,'#3060b0','rgba(0,0,0,.3)');
+  txShadow(tutorialMsg,tmX+46,tmY+16,7,'#e8e0c8','rgba(0,0,0,.4)');
   g.globalAlpha=1;
 }
 
