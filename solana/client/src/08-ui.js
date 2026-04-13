@@ -856,7 +856,7 @@ function drawCardDetailPanel(){
 // LOG SCREEN
 // ═══════════════════════════════════════
 function dLog(){
-  // Dark background with subtle noise
+  // v120: Log screen overhaul — event icons + stats header
   bx(0,0,W,H,'#0c0c18');
   for(let i=0;i<120;i++){
     const nx=(i*73+17)%W,ny=(i*41+23)%H;
@@ -864,14 +864,32 @@ function dLog(){
     bx(nx,ny,1,1,`rgba(255,255,255,${na})`);
   }
 
-  // BATTLE LOG header in FRLG window
-  win(16,10,W-32,42);
-  txShadow('BATTLE LOG',W/2-90,38,14,'#f0e8c0','rgba(0,0,0,.5)');
+  // Header
+  win(16,10,W-32,38);
+  txShadow('BATTLE LOG',W/2-80,34,12,'#f0e8c0','rgba(0,0,0,.5)');
+
+  // v120: Compact stats banner (battles / cards gained / cards lost / collection)
+  const vaultSz=pl[0].vault?pl[0].vault.size:0;
+  const statBannerY=52;
+  win(16,statBannerY,W-32,26);
+  bx(16,statBannerY,W-32,2,'#3048a0');
+  const statParts=[
+    {icon:'\u2694',val:rd,col:'#c04848',label:'btl'},
+    {icon:'\u2605',val:stats.cardsCollected,col:'#50e090',label:'got'},
+    {icon:'\u2717',val:stats.cardsLost,col:'#d04040',label:'lost'},
+    {icon:'\u2660',val:vaultSz+'/60',col:vaultSz>=60?'#f0c830':'#7888c8',label:''},
+  ];
+  statParts.forEach((s,si)=>{
+    const sx=36+si*230;
+    tx(s.icon,sx,statBannerY+18,8,s.col);
+    tx(s.val+'',sx+12,statBannerY+18,8,'#f0e8d0');
+    if(s.label) tx(s.label,sx+12+String(s.val).length*7,statBannerY+18,6,'#505070');
+  });
 
   // Scrollable log entries
-  const entryH=32;
+  const entryH=30;
   const maxVisible=14;
-  const padTop=60;
+  const padTop=84;
   const totalEntries=lg.length;
   const maxScroll=Math.max(0,totalEntries-maxVisible);
   logScrollOff=Math.max(0,Math.min(logScrollOff,maxScroll));
@@ -880,47 +898,67 @@ function dLog(){
   const visibleLogs=lg.slice(startIdx,endIdx);
 
   // Single window for all entries
-  win(16,padTop-8,W-32,maxVisible*entryH+16);
+  win(16,padTop-6,W-32,maxVisible*entryH+12);
 
   visibleLogs.forEach((l,i)=>{
-    const y=padTop+i*entryH+4;
-    // Determine entry color
-    let col='#888898';
-    if(l.includes('Steal')||l.includes('Ignis')||l.includes('ambush')){col='#e06060';}
-    else if(l.includes('Block')||l.includes('Barrier')){col='#6090d0';}
-    else if(l.includes('drew')||l.includes('Scout')||l.includes('Found')){col='#60c060';}
-    else if(l.includes('Umbra')){col='#a878c8';}
-    else if(l.includes('Wild')||l.includes('Fishing')){col='#e0c040';}
-    else if(l.startsWith('[ON-CHAIN]')){col='#50e090';}
-    else if(l.includes('entered')){col='#d08050';}
-
-    // Color dot + text — bright white text for readability
-    bx(30,y+4,6,6,col);
-    const maxChars=68;
-    const displayText=l.length>maxChars?l.substring(0,maxChars)+'...':l;
-    txShadow(displayText,44,y+10,11,col,'#000');
-
-    // Thin separator line
-    if(i<visibleLogs.length-1) bx(30,y+entryH-2,W-76,1,'#1a1a30');
+    const y=padTop+i*entryH;
+    // v120: event-type icon instead of plain dot
+    let col='#888898',icon='\u00B7'; // · default
+    if(l.includes('stole')||l.includes('Steal')||l.includes('STEAL')||l.includes('ambush')){
+      col='#e06060';icon='\u2694'; // ⚔
+    }else if(l.includes('Block')||l.includes('Barrier')||l.includes('BARRIER')){
+      col='#6090d0';icon='\u25A0'; // ■
+    }else if(l.includes('Scout')||l.includes('SCOUT')){
+      col='#40b860';icon='\u25CE'; // ◎
+    }else if(l.includes('drew')||l.includes('obtained')||l.includes('Found')||l.includes('got a')||l.includes('Wild:')){
+      col='#60c060';icon='\u2605'; // ★
+    }else if(l.includes('Fishing')){
+      col='#e0c040';icon='\u223F'; // ∿
+    }else if(l.startsWith('[ON-CHAIN]')){
+      col='#50e090';icon='\u26D3'; // ⛓
+    }else if(l.includes('entered')||l.includes('Escaped')||l.includes('DUNGEON')){
+      col='#d08050';icon='\u25B6'; // ▶
+    }else if(l.includes('MISSION')){
+      col='#f0c830';icon='\u25C6'; // ◆
+    }else if(l.includes('Event:')||l.includes('Campfire')||l.includes('Altar')){
+      col='#c060c0';icon='\u26A1'; // ⚡
+    }else if(l.includes('Umbra')||l.includes('Ignis')){
+      col='#a878c8';icon='\u2620'; // ☠
+    }else if(l.includes('Back in town')||l.includes('spell energy')){
+      col='#40a040';icon='\u2605';
+    }
+    // Recent entries (last 3) get slight highlight
+    const isRecent=totalEntries-logScrollOff-endIdx+i>=totalEntries-3;
+    if(isRecent&&logScrollOff===0){
+      g.globalAlpha=0.12;bx(22,y,W-44,entryH-2,col);g.globalAlpha=1;
+    }
+    // Icon box
+    bx(24,y+6,16,16,'rgba(0,0,0,.5)');
+    bx(24,y+6,16,1,col);
+    tx(icon,25,y+18,8,col);
+    // Entry text
+    const maxChars=70;
+    const displayText=l.length>maxChars?l.substring(0,maxChars)+'..':l;
+    txShadow(displayText,46,y+18,10,col,'rgba(0,0,0,.7)');
+    // Thin separator
+    if(i<visibleLogs.length-1) bx(40,y+entryH-2,W-80,1,'#161628');
   });
 
   // Scroll indicators
   if(logScrollOff<maxScroll){
-    // More entries above (older)
     const blink=Math.floor(fr/20)%2===0;
-    if(blink)txShadow('\u25B2  older',W/2-50,padTop-6,8,'#d8b028','rgba(0,0,0,.4)');
+    if(blink)txShadow('\u25B2 older',W/2-40,padTop-4,7,'#d8b028','rgba(0,0,0,.4)');
   }
   if(logScrollOff>0){
-    // More entries below (newer)
     const blink=Math.floor(fr/20)%2===0;
-    if(blink)txShadow('\u25BC  newer',W/2-50,padTop+maxVisible*entryH+6,8,'#d8b028','rgba(0,0,0,.4)');
+    if(blink)txShadow('\u25BC newer',W/2-40,padTop+maxVisible*entryH+6,7,'#d8b028','rgba(0,0,0,.4)');
   }
 
   // Entry count
-  txShadow(totalEntries+' entries',W-180,H-18,8,'#484858','rgba(0,0,0,.3)');
+  txShadow(totalEntries+' entries',W-140,H-16,7,'#484858','rgba(0,0,0,.3)');
 
   // Back prompt
-  win(W/2-100,H-38,200,28);
+  win(W/2-100,H-36,200,26);
   txShadow('X = Back',W/2-32,H-16,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
 }
 
