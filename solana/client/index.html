@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v79</title>
+<title>0xARK v80</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7666,7 +7666,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v79',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v80',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -9457,21 +9457,57 @@ function drawCardAcquisition(){
 function drawDungeonConfirm(){
   if(!dungeonConfirmActive)return;
   bx(0,0,W,H,'rgba(0,0,0,.65)');
-  const cw=380,ch=200,cx_=W/2-cw/2,cy_=H/2-ch/2;
+  // v80: Expanded panel with intel briefing
+  const cw=460,ch=300,cx_=W/2-cw/2,cy_=H/2-ch/2;
   win(cx_,cy_,cw,ch);
   bx(cx_,cy_,cw,28,'#1a0a0a');
   txShadow('ENTER DUNGEON?',cx_+cw/2-80,cy_+20,11,'#d04040','rgba(0,0,0,.5)');
   const handCount=pl[0].cd.filter(c=>c>0).length;
   const vaultSize=pl[0].vault?pl[0].vault.size:0;
-  tx('Cards in hand: '+handCount,cx_+20,cy_+50,8,'#c8c0a0');
-  tx('Vault (unique): '+vaultSize+'/60',cx_+20,cy_+66,8,'#c8c0a0');
-  bx(cx_+12,cy_+86,cw-24,1,'#282848');
-  tx('WARNING: Cards in your hand decay in the dungeon!',cx_+12,cy_+100,6,'#d06030');
-  tx('Battle: rivals can STEAL your cards each round.',cx_+12,cy_+115,6,'#d06030');
-  tx('Escape: follow the \u2190 green arrows back to town.',cx_+12,cy_+130,6,'#40b060');
-  bx(cx_+12,cy_+148,cw-24,1,'#282848');
+  tx('Cards in hand: '+handCount+'     Vault: '+vaultSize+'/60',cx_+20,cy_+50,8,'#c8c0a0');
+  bx(cx_+12,cy_+60,cw-24,1,'#282848');
+  tx('\u26A0 Cards decay in 3.5 min — escape before they vanish!',cx_+12,cy_+74,6,'#d06030');
+  tx('\u2694 Rivals can STEAL your cards each battle round.',cx_+12,cy_+89,6,'#d06030');
+  tx('\u2190 Green arrows lead back to town safely.',cx_+12,cy_+104,6,'#40b060');
+
+  // v80: Intel briefing section
+  bx(cx_+12,cy_+116,cw-24,1,'#282858');
+  txShadow('INTEL BRIEFING',cx_+20,cy_+130,7,'#7898c8','rgba(0,0,0,.4)');
+  const flNums_=['TOWN','B1','B2','B3','B4','B5'];
+  let intelY=cy_+146;
+  // Rival positions + card counts
+  for(let ri=0;ri<2;ri++){
+    const r=pl[ri+1];
+    const rFloor=rivalMaps[ri];
+    const rcc=r.cd.filter(c=>c>0).length;
+    const rCol=ri===0?'#d060a0':'#d0a030';
+    const rLoc=flNums_[rFloor]||'B?';
+    const rThreat=rcc>=4?' \u26A0 RICH TARGET':rcc===0?' (no cards)':'';
+    tx(r.n+': '+rLoc+'  '+rcc+'\u2660 cards'+rThreat,cx_+20,intelY,7,rcc>=4?'#d04040':rCol);
+    intelY+=16;
+  }
+  // Uncollected chests on floor 1
+  const f1Uncollected=treasures.filter(t=>t.map===1&&!t.collected).length;
+  const f1Total=treasures.filter(t=>t.map===1).length;
+  if(f1Uncollected>0){
+    tx('B1 treasure: '+f1Uncollected+'/'+f1Total+' chests uncollected',cx_+20,intelY,7,'#c0a840');
+    intelY+=16;
+  }
+  // Active run mission reminder (last mission if failed)
+  if(runMission&&!runMission.completed){
+    tx('Last mission failed: '+runMission.desc,cx_+20,intelY,6,'#808878');
+    intelY+=14;
+  }
+  // Gacha pity count
+  const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
+  if(gachaPityCount>0){
+    const pityCol=pityLeft<=2?'#f0c830':pityLeft<=5?'#d0a030':'#686868';
+    tx('Gacha pity: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' — RARE SOON!':''),cx_+20,intelY,6,pityCol);
+  }
+
+  bx(cx_+12,cy_+ch-34,cw-24,1,'#282848');
   const blink_=Math.floor(fr/22)%2===0;
-  if(blink_)txShadow('[Z] ENTER   [X] STAY',cx_+cw/2-90,cy_+170,10,'#f0c830','rgba(0,0,0,.5)');
+  if(blink_)txShadow('[Z] ENTER   [X] STAY',cx_+cw/2-90,cy_+ch-14,10,'#f0c830','rgba(0,0,0,.5)');
 }
 
 // ── MARKETPLACE OVERLAY ──
