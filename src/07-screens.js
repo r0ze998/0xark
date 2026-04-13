@@ -1256,7 +1256,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v123',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v124',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -2188,6 +2188,63 @@ function drawSelectPhase(){
       }
       g.globalAlpha=1;
     }
+  }
+  // v124: STEAL target preview panel (shown when STEAL is highlighted, mirrors DRAW pool panel)
+  if(ai===1&&!bpCardSelectActive&&!bpTargetSelectActive&&sp.s>0){
+    const vsRival=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
+    const target=pl[vsRival];
+    const tCC=target.cd.filter(c=>c>0).length;
+    const sd=bpScoutedCards[vsRival-1];
+    const tBarrier=bpRivalActions[vsRival-1]===2;
+    const rCol=vsRival===1?'#d060a0':'#d0a030';
+    const typeC={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
+    const scoutLines=sd&&sd.cards.length>0?sd.cards.length:tCC;
+    const ppW=220,ppH=60+Math.min(5,Math.max(1,scoutLines))*26;
+    const ppX=328,ppY=H-164;
+    const slideA=Math.min(1,(fr-bpFrame)/10);
+    g.globalAlpha=slideA*0.95;
+    win(ppX,ppY,ppW,ppH);
+    bx(ppX,ppY,ppW,3,rCol);
+    txShadow('STEAL TARGET',ppX+8,ppY+20,9,'#d04040','rgba(0,0,0,.3)');
+    txShadow(target.n,ppX+ppW-8-target.n.length*6,ppY+20,7,rCol,'rgba(0,0,0,.2)');
+    bx(ppX+6,ppY+26,ppW-12,1,'rgba(200,180,100,.2)');
+    if(tBarrier){
+      bx(ppX+8,ppY+34,ppW-16,22,'rgba(40,60,140,.6)');
+      bx(ppX+8,ppY+34,ppW-16,1,'#3060b0');
+      txShadow('\u26CA BARRIER — steal blocked',ppX+12,ppY+50,7,'#6080d0','rgba(0,0,0,.3)');
+    }else if(tCC===0){
+      txShadow('No cards to steal',ppX+10,ppY+48,7,'#888898','rgba(0,0,0,.2)');
+    }else if(sd&&sd.cards.length>0){
+      // Scouted intel — show card details
+      const staleRd=rd-sd.round;
+      const stLabel=staleRd>0?'scouted R'+sd.round:'fresh intel';
+      txShadow('\u{1F50D} '+stLabel,ppX+10,ppY+33,5,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
+      const show_=sd.cards.slice(0,Math.min(4,sd.cards.length));
+      show_.forEach((c,ci)=>{
+        const rar=c.r||1;const rarCol=RARITY_COLOR[rar]||'#888888';
+        const tCol_=typeC[c.t]||'#808898';
+        const py2=ppY+38+ci*26;
+        const dimC=staleRd>1?0.45:0.85;
+        g.globalAlpha=slideA*dimC;
+        bx(ppX+10,py2-8,12,16,tCol_);bx(ppX+11,py2-7,10,14,'rgba(0,0,0,.4)');
+        tx(c.t?c.t[0].toUpperCase():'?',ppX+13,py2+4,6,'#fff');
+        tx(c.n,ppX+28,py2+2,7,staleRd>1?'#888870':'#e8e0c8');
+        for(let s=0;s<rar;s++)tx('\u2605',ppX+ppW-8-(rar-s)*9,py2+2,5,rarCol);
+        g.globalAlpha=slideA*0.95;
+      });
+      if(sd.cards.length>4){txShadow('+'+(sd.cards.length-4)+' more...',ppX+10,ppY+ppH-12,6,'#686878','rgba(0,0,0,.2)');}
+    }else{
+      // Unknown hand — show mystery card silhouettes
+      for(let i=0;i<Math.min(tCC,4);i++){
+        const py2=ppY+36+i*26;
+        bx(ppX+10,py2-8,12,16,'#201828');bx(ppX+11,py2-7,10,14,'#1a1020');
+        tx('?',ppX+14,py2+4,7,'#2030a0');
+        tx('Unknown card',ppX+28,py2+2,7,'#3a3060');
+      }
+      if(tCC>4){txShadow('+'+(tCC-4)+' more hidden',ppX+10,ppY+ppH-12,6,'#303050','rgba(0,0,0,.2)');}
+      txShadow('SCOUT to reveal',ppX+10,ppY+ppH-32,5,'#608060','rgba(0,0,0,.2)');
+    }
+    g.globalAlpha=1;
   }
   // v90: Battle round history panel (right side, shown from round 2 onward)
   if(battleRoundHistory.length>0&&!bpCardSelectActive&&!bpTargetSelectActive){
