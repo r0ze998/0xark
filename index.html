@@ -4911,12 +4911,20 @@ function doMapTransition(exit){
       if(pool&&pool.length>0){
         const rewardCard=pool[Math.floor(Math.random()*pool.length)];
         setTimeout(()=>{
-          if(addCardToPlayer(0,rewardCard)){
-            const cr=CD[rewardCard-1];
+          const cr=CD[rewardCard-1];
+          const flAdded=addCardToPlayer(0,rewardCard);
+          if(flAdded){
             objectInteractMsg='FLOOR '+clearedFloor+' CLEAR! Got '+cr.n+'!';
             objectInteractTimer=150;
             sfxUniqueCardSting();screenShake(2,4);
             lg.push('[FLOOR CLEAR] B'+clearedFloor+' cleared! Earned: '+cr.n+' ('+RARITY_LABEL[cr.r]+')');
+          }else{
+            // Hand full — still got it in vault; prompt discard
+            discardActive=true;discardSelIdx=0;discardPendingCard=rewardCard;discardSource='wild';
+            objectInteractMsg='FLOOR '+clearedFloor+' CLEAR! Got '+cr.n+' (discard to make room)!';
+            objectInteractTimer=150;
+            sfxUniqueCardSting();screenShake(2,4);
+            lg.push('[FLOOR CLEAR] B'+clearedFloor+' cleared! Earned: '+cr.n+' — hand full, discard one.');
           }
         },800);
       }
