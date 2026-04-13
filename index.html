@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v86</title>
+<title>0xARK v87</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -4038,6 +4038,33 @@ function drawPlayerStatusEffects(){
     g.globalAlpha=1;
     cardLostAnimTimer--;
   }
+
+  // v87: World-space player status bubble in dungeon
+  if(inDungeon){
+    const hc=pl[0].cd.filter(c=>c>0).length;
+    // Find most critical decay
+    let minRemaining=Infinity;
+    for(let i=0;i<HAND_SIZE;i++){
+      if(pl[0].cd[i]>0&&cardTimers[i]>0){
+        const rem=CARD_DECAY_MS-(Date.now()-cardTimers[i]);
+        if(rem<minRemaining)minRemaining=rem;
+      }
+    }
+    const hasCritical=minRemaining<60000&&minRemaining>0;
+    const isUrgent=minRemaining<20000&&minRemaining>0;
+    const bubbleAlpha=isUrgent?(0.7+Math.sin(fr*0.3)*0.3):hasCritical?0.65:0.45;
+    const bubbleCol=isUrgent?'#ff4040':hasCritical?'#e08030':'#506880';
+    const cardStr='\u2660'+hc;
+    const decStr=hasCritical?(' '+Math.ceil(minRemaining/1000)+'s'):'';
+    const fullStr=cardStr+decStr;
+    const bW=fullStr.length*5+12;
+    const bX=px+16-bW/2,bY=py-36;
+    g.globalAlpha=bubbleAlpha;
+    bx(bX,bY,bW,13,'rgba(4,4,14,.88)');
+    bx(bX,bY,bW,1,bubbleCol);
+    tx(fullStr,bX+4,bY+11,5,isUrgent?'#ff8080':hasCritical?'#e8b060':'#90b0c0');
+    g.globalAlpha=1;
+  }
 }
 
 // ── Battle phase system ──
@@ -4141,6 +4168,7 @@ let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
 // v84: Town weather system — dynamic clear/rain/fog with particles and fog wisps
 // v85: Floor-clear fanfare overlay — cinematic card reward on floor descent
 // v86: Gacha pull history panel — last 8 pulls shown beside gacha menu
+// v87: World-space player status bubble — card count + decay timer above sprite
 let encounterRivalLine=''; // context-sensitive line for exclamation animation
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
 
@@ -7892,7 +7920,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v86',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v87',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
