@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v59</title>
+<title>0xARK v60</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -2849,6 +2849,20 @@ let rivalDangerAlertShown=false;
 let rivalWinWarning=0; // 0=safe, 1=rival has 4+ cards (alert), 2=rival has 5 (full hand — danger)
 let rivalWinWarningShown=false;
 
+// Proximity taunt state — rival says something when close
+let proximityTauntTimer=0;   // cooldown before next taunt (frames)
+let proximityTauntText='';   // current taunt being displayed
+let proximityTauntRival=-1;  // which rival (1 or 2)
+let proximityTauntFrame=0;   // when taunt started
+
+// Close-range taunts indexed by [rivalIdx=0/1][sub]
+const PROXIMITY_TAUNTS=[
+  // VEGA — close-range aggression
+  ['Found you.','Hand over the cards.','Nowhere to run.','I can smell your cards.','Dead end.'],
+  // MIRA — close-range strategy
+  ['I\'ve been tracking you.','Nice collection you have.','Let\'s make this quick.','Your cards belong in my set.','I calculated this route.'],
+];
+
 // Danger drone SFX
 let dangerDroneNode=null,dangerDroneGain=null;
 function startDangerDrone(){
@@ -3236,6 +3250,28 @@ function updateProximityTension(){
     lg.push('! Something is very close!');
   }
   if(proximityDangerLevel<4)rivalDangerAlertShown=false;
+
+  // Proximity taunt: when danger >= 3 (within 5 tiles), rivals occasionally speak
+  if(proximityDangerLevel>=3&&proximityTauntTimer<=0&&proximityTauntText===''){
+    // Find the closest rival on this map
+    let closestDist=999,closestRivalIdx=-1;
+    for(let i=0;i<2;i++){
+      if(rivalMaps[i]!==currentMap)continue;
+      const r=pl[i+1];
+      const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+      if(dist<closestDist){closestDist=dist;closestRivalIdx=i;}
+    }
+    if(closestRivalIdx>=0){
+      const taunts=PROXIMITY_TAUNTS[closestRivalIdx];
+      proximityTauntText=taunts[Math.floor(Math.random()*taunts.length)];
+      proximityTauntRival=closestRivalIdx+1; // pl index 1 or 2
+      proximityTauntFrame=fr;
+      proximityTauntTimer=360; // 6s cooldown between taunts
+    }
+  }
+  if(proximityTauntTimer>0)proximityTauntTimer--;
+  if(proximityTauntText!==''&&fr-proximityTauntFrame>90)proximityTauntText=''; // 1.5s display
+  if(proximityDangerLevel<3){proximityTauntText='';proximityTauntTimer=0;}
 }
 
 // Update footprints aging
@@ -3743,7 +3779,7 @@ function resetNewFeatureState(){
   burnedTiles.length=0;shadowStepsLeft=0;fishingCooldownTimer=0;
   fishingActive=false;inBuilding=false;crystalRevealTimer=0;
   mapCardUseActive=false;fountainActive=false;
-  footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
+  footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;proximityTauntText='';proximityTauntTimer=0;
   // Reset all UI overlay states
   wildEncounterActive=false;npcDialogActive=false;shopActive=false;signpostActive=false;gachaActive=false;marketActive=false;dungeonConfirmActive=false;
   discardActive=false;cardAcqActive=false;cardAcqDone=false;randomEventActive=false;
@@ -3787,7 +3823,7 @@ function resetGameState(startCards){
   rivalAI[1].goalX=32;rivalAI[1].goalY=18;rivalAI[1].goalMap=1;rivalAI[1].state='exploring';
   rivalAI[1].moveTimer=0;rivalAI[1].moveInterval=14;rivalAI[1].lastKnownPlayerMap=-1;
   rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;rivalAI[1].stateTimer=0;rivalAI[1].huntCooldown=0;
-  footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
+  footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;proximityTauntText='';proximityTauntTimer=0;
   stopDangerDrone();
   lg.length=0;
   lg.push('New game! Starter cards: '+starterCards.map(id=>CD[id-1].n).join(', '));
@@ -5565,12 +5601,28 @@ function drawCardShop(){
 // RANDOM MAP EVENTS
 // ═══════════════════════════════════════
 function triggerRandomEvent(){
-  const events=[
-    {text:'A strong wind blows! Your area is revealed to rivals for 1 round.', action:'wind'},
+  // Base events (all floors)
+  const baseEvents=[
+    {text:'A strong wind blows! Your area is revealed to rivals.', action:'wind'},
     {text:'You found a forgotten stash! +1 random card.', action:'card'},
     {text:'A rival\'s scout passed by! You sense danger nearby.', action:'scout'},
+    {text:'You hear echoing footsteps... something is close.', action:'tension'},
+    {text:'The walls feel closer here. Decay quickens!', action:'decay_warn'},
   ];
-  const ev=events[Math.floor(Math.random()*events.length)];
+  // Floor-specific bonus events
+  const floorEvents=[
+    [], // Town
+    [{text:'A trail of footprints leads to a hidden card!', action:'card'}],   // Floor 1
+    [{text:'Mushroom spores fill the air... you feel sluggish.', action:'tension'}],  // Floor 2
+    [{text:'Ancient runes flare! Spell energy restored.', action:'spell_restore'}],   // Floor 3
+    [{text:'A dark force drains your cards faster! Beware.', action:'decay_warn'}],  // Floor 4
+    [{text:'The deepest floor trembles. A legendary card stirs!', action:'card'},     // Floor 5
+     {text:'VEGA\'s voice echoes: "This floor is mine."', action:'rival_taunt'},
+     {text:'MIRA\'s voice: "The legendary cards end here."', action:'rival_taunt'}],
+  ];
+  const floorExtra=floorEvents[currentFloor]||[];
+  const allEvents=[...baseEvents,...floorExtra];
+  const ev=allEvents[Math.floor(Math.random()*allEvents.length)];
   randomEventActive=true;
   randomEventText=ev.text;
   randomEventFrame=fr;
@@ -5602,6 +5654,29 @@ function triggerRandomEvent(){
     // Alert effect
     rivalAlert=60;rivalAlertName='Scout';
     lg.push('Event: A rival scout was spotted nearby!');
+  }else if(ev.action==='tension'){
+    // Atmospheric — tension music spike
+    screenShake(1,3);
+    lg.push('Event: You sense a presence nearby...');
+  }else if(ev.action==='decay_warn'){
+    // Speed up decay on the oldest hand card by 20s as penalty
+    let oldest=-1,oldestAge=0;
+    for(let i=0;i<HAND_SIZE;i++){
+      if(cardTimers[i]>0){const age=Date.now()-cardTimers[i];if(age>oldestAge){oldestAge=age;oldest=i;}}
+    }
+    if(oldest>=0){cardTimers[oldest]-=20000;sfxDangerAlert();}
+    lg.push('Event: Dark energy accelerated card decay!');
+  }else if(ev.action==='spell_restore'){
+    // Restore 1 of each depleted spell type
+    let restored=false;
+    if(sp.s<3){sp.s++;restored=true;}
+    if(sp.b<3){sp.b++;restored=true;}
+    if(sp.c<3){sp.c++;restored=true;}
+    if(restored){sfxCrystal();lg.push('Event: Ancient runes restored spell energy!');}
+  }else if(ev.action==='rival_taunt'){
+    // Just a flavor event — tension shake
+    screenShake(2,3);flash();
+    lg.push('Event: A rival\'s voice echoes from the deep...');
   }
 }
 
@@ -6857,6 +6932,30 @@ function dMap(){
 
   // Battle encounter exclamation
   drawEncounterExclamation();
+
+  // Proximity taunt speech bubble
+  if(proximityTauntText&&proximityTauntRival>=1&&rivalMaps[proximityTauntRival-1]===currentMap){
+    const tRival=pl[proximityTauntRival];
+    if(isVisibleThroughFog(tRival.x,tRival.y,5)){
+      const tAge=fr-proximityTauntFrame;
+      const tAlpha=Math.min(1,tAge/8)*(tAge<75?1:Math.max(0,(90-tAge)/15));
+      if(tAlpha>0){
+        g.globalAlpha=tAlpha;
+        const spx=tRival.visualX-camX;const spy=tRival.visualY-camY-20;
+        const bW=proximityTauntText.length*6+12;const bH=16;
+        // Speech bubble with tail
+        bx(spx-bW/2+8,spy-bH-4,bW,bH+4,'rgba(255,255,255,.92)');
+        bx(spx-bW/2+8,spy-bH-4,bW,1,'#c0b890');bx(spx-bW/2+8,spy-1,bW,1,'#c0b890');
+        // Bubble tail (small triangle pointing down at the rival)
+        g.fillStyle='rgba(255,255,255,.92)';
+        g.beginPath();g.moveTo(spx+6,spy);g.lineTo(spx+12,spy+4);g.lineTo(spx+14,spy);g.closePath();g.fill();
+        const rNameCol=(proximityTauntRival===1)?'#d860a0':'#d8b028';
+        tx(pl[proximityTauntRival].n,spx-bW/2+12,spy-bH+4,5,rNameCol);
+        tx(proximityTauntText,spx-bW/2+12,spy-5,6,'#303028');
+        g.globalAlpha=1;
+      }
+    }
+  }
 
   // Rival alert
   if(rivalAlert>0){
