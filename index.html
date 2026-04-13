@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v99</title>
+<title>0xARK v100</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -8004,7 +8004,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v99',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v100',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8060,6 +8060,47 @@ function dMap(){
       if(r.floor>0){const fStr='B'+r.floor;tx(fStr,sbX+76,ry+12,6,r.col);}
       // Leader crown
       if(isLeader){tx('\u2605',sbX+sbW-22,ry+6,5,'#f0c830');}
+    });
+    g.globalAlpha=1;
+  }
+
+  // v100: Card race tracker — persistent panel showing all three players racing toward 60/60
+  if(sc==='map'){
+    const rcW=148,rcH=76,rcX=W-rcW-10,rcY=8;
+    const myUniq=pl[0].vault?pl[0].vault.size:0;
+    const vegaUniq=new Set(pl[1].cd.filter(c=>c>0)).size;
+    const miraUniq=new Set(pl[2].cd.filter(c=>c>0)).size;
+    const racers=[
+      {name:'YOU',cnt:myUniq,col:'#78c0f0'},
+      {name:pl[1].n,cnt:vegaUniq,col:'#e060a0'},
+      {name:pl[2].n,cnt:miraUniq,col:'#d0a030'}
+    ].sort((a,b)=>b.cnt-a.cnt);
+    g.globalAlpha=0.90;
+    bx(rcX,rcY,rcW,rcH,'#080816');
+    bx(rcX,rcY,rcW,2,'#f0c830');
+    bx(rcX,rcY+2,1,rcH-2,'#282848');
+    bx(rcX+rcW-1,rcY+2,1,rcH-2,'#282848');
+    bx(rcX,rcY+rcH-1,rcW,1,'#282848');
+    txShadow('\u2694 CARD RACE',rcX+8,rcY+16,7,'#f0c830','rgba(0,0,0,.4)');
+    // Pulsing LIVE dot
+    const livePulse=0.55+0.45*Math.sin(fr*0.12);
+    g.globalAlpha=0.9*livePulse;
+    bx(rcX+rcW-12,rcY+8,6,6,'#40e080');
+    g.globalAlpha=0.9;
+    bx(rcX+4,rcY+20,rcW-8,1,'rgba(200,180,100,.25)');
+    // Racer rows (sorted by count)
+    const barMax=76;
+    racers.forEach((r,i)=>{
+      const ry=rcY+24+i*16;
+      const isLeader=i===0;
+      g.globalAlpha=0.9*(isLeader?1:0.72);
+      tx(isLeader?'\u2605':String(i+1),rcX+6,ry+10,isLeader?7:5,isLeader?'#f0c830':'#666680');
+      const nm=r.name.length>4?r.name.slice(0,4):r.name;
+      txShadow(nm,rcX+18,ry+10,6,r.col,'rgba(0,0,0,.3)');
+      const barW=Math.round(barMax*(r.cnt/60));
+      bx(rcX+44,ry+2,barMax,7,'#1a1a30');
+      bx(rcX+44,ry+2,barW,7,r.col);
+      tx(r.cnt+'/60',rcX+44+barMax+3,ry+10,5,isLeader?'#e8e0c0':'#787890');
     });
     g.globalAlpha=1;
   }
