@@ -43,6 +43,12 @@
 - v26: 2 CRITICAL + 5 HIGH bug fixes (draw dispatch, x402 CORS, QTE cap, wallet security, refund)
 - v27: Browser snarkjs ZK proof generation, real Phantom→devnet TX, AI agent rival prediction
 - v28: FRLG polish (window themes, mosaic wipe, title sparkles, player aura, 30fps mobile throttle)
+- v43-v44: Vault-aware card giving (fishing, puzzle, fountain, gacha, wild, tree, rock)
+- v45: Target select FLED display in battle
+- v46: Victory screen layout fix (no overlap)
+- v47-v48: Black flash fix attempt (PixiJS ticker control)
+- v49: Black flash root fix — game canvas shown directly, PixiJS as transparent UI overlay only
+- v50: Dark vignette removed from town (safe zone); pulsing DUNGEON label at entrance
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)
@@ -52,5 +58,5 @@
 - [x] Phantom wallet (real devnet transactions via @solana/web3.js)
 - [x] WebSocket multiplayer server (rooms, commit-reveal coordination)
 - [x] PixiJS v7 WebGL renderer + FRLG UI framework (menus, textbox, intro, title effects, player aura)
-- [x] Game client v80 (10315 lines, fully playable, live on GitHub Pages, mobile optimized)
+- [x] Game client v50 (fully playable, live on GitHub Pages, mobile optimized)
 - [x] GDD v0.3, README v3, Arena draft, X drafts, Pitch + Demo scripts
