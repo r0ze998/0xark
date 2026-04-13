@@ -8424,9 +8424,9 @@ function dCrd(){
   }
   // Navigation
   win(10,H-30,W-20,24);
-  if(crdPage>0)tx('\u25C4 Z=PREV',20,H-12,7,'#8090c0');
-  tx('PAGE '+(crdPage+1)+'/5',W/2-40,H-12,8,'#c0c8e0');
-  if(crdPage<4)tx('NEXT Z= \u25BA',W-110,H-12,7,'#8090c0');
+  if(crdPage>0)tx('\u25C4 ←=PREV',20,H-12,7,'#8090c0');
+  tx(typeNames[crdPage]+' '+(crdPage+1)+'/5',W/2-40,H-12,8,typeColors[crdPage]);
+  if(crdPage<4)tx('NEXT= \u25BA Z',W-90,H-12,7,'#8090c0');
   tx('X=BACK',W/2+60,H-12,7,'#686878');
 }
 
@@ -10795,7 +10795,9 @@ document.addEventListener('keydown',e=>{
   // Card collection screen input (page navigation)
   if(sc==='crd'){
     if(e.code==='ArrowRight'||e.code==='KeyZ'){crdPage=Math.min(4,crdPage+1);sfxCursor();}
-    if(e.code==='ArrowLeft'){crdPage=Math.max(0,crdPage-1);sfxCursor();}
+    if(e.code==='ArrowLeft'||e.code==='KeyA'){crdPage=Math.max(0,crdPage-1);sfxCursor();}
+    if(e.code==='ArrowUp'||e.code==='Digit1'){crdPage=0;sfxCursor();}
+    if(e.code==='ArrowDown'||e.code==='Digit5'){crdPage=4;sfxCursor();}
     if(e.code==='KeyX'){sfxBack();sc='map';ub();}
     return;
   }
