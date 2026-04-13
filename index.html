@@ -6951,7 +6951,7 @@ function drawVsSplash(){
     g.globalAlpha=1;
   }
   if(t>=60){
-    battlePhase='select';bpFrame=fr;
+    battlePhase='select';bpFrame=fr;bpRdIncremented=false;
     if(!tutorialFlags.firstBattle){tutorialFlags.firstBattle=true;tutorialMsg='Pick an action! DRAW cards, STEAL from rivals, or BARRIER to defend.';tutorialMsgTimer=240;}
   }
 }
@@ -7379,6 +7379,7 @@ function rivalChooseAction(rIdx){
 
 let bpPlayerBarrier=false; // track if player used barrier this round
 let bpRivalActions=[0,0]; // track rival actions this round
+let bpRdIncremented=false; // guard: prevent double-increment of rd when pending discard
 let bpCardSelectActive=false, bpCardSelectIdx=0; // USE CARD selection
 let bpTargetSelectActive=false, bpTargetSelectIdx=1; // STEAL/SCOUT target selection
 let bpPendingAction=-1; // action waiting for target/card selection
@@ -10868,16 +10869,19 @@ document.addEventListener('keydown',e=>{
           });
           return;
         }
-        rd++;
-        // Every 10 rounds: recharge 1 depleted spell (prevents late-game stalemate)
-        if(rd%10===0){
-          let recharged=false;
-          if(sp.s<2){sp.s++;recharged=true;}
-          if(sp.b<3){sp.b++;recharged=true;}
-          if(sp.c<2){sp.c++;recharged=true;}
-          if(recharged){lg.push('R'+rd+': Spell energy restored!');}
+        if(!bpRdIncremented){
+          bpRdIncremented=true;
+          rd++;
+          // Every 10 rounds: recharge 1 depleted spell (prevents late-game stalemate)
+          if(rd%10===0){
+            let recharged=false;
+            if(sp.s<2){sp.s++;recharged=true;}
+            if(sp.b<3){sp.b++;recharged=true;}
+            if(sp.c<2){sp.c++;recharged=true;}
+            if(recharged){lg.push('R'+rd+': Spell energy restored!');}
+          }
         }
-        // Check if there's a pending draw card needing discard
+        // Check if there's a pending draw card needing discard (only on first Z press)
         if(bpResolveQueue&&bpResolveQueue._pendingDrawCard>0){
           const pendCard=bpResolveQueue._pendingDrawCard;
           bpResolveQueue._pendingDrawCard=0;
