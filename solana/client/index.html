@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v68</title>
+<title>0xARK v69</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7088,7 +7088,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v68',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v69',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -7383,9 +7383,16 @@ function drawOpponentInfoBox(){
   const rival=pl[1]; // Primary opponent (VEGA)
   let sx=0,sy=0;
   if(bpShakeTarget===1&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
-  // Expand box when tells are visible during select
+  // Expand box when tells are visible during select, or when scout intel is known
   const showTells=(battlePhase==='select'&&bpRivalTells[0]!==''&&bpRivalTells[1]!=='');
-  const bx_=8+sx,by_=16+sy,bw=300,bh=showTells?100:64;
+  const showScout0=!!bpScoutedCards[0],showScout1=!!bpScoutedCards[1];
+  const hasScout=showScout0||showScout1;
+  const bx_=8+sx,by_=16+sy,bw=300;
+  // Height: base 64, +36 for tells, +16 per scouted rival
+  let bh=64;
+  if(showTells)bh=100;
+  if(showScout0)bh+=16;
+  if(showScout1)bh+=16;
   bx(bx_,by_,bw,bh,'#f8f0d8');bx(bx_,by_,bw,2,'#c8c0a0');bx(bx_,by_+bh-2,bw,2,'#a89878');
   bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
   bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
@@ -7404,7 +7411,7 @@ function drawOpponentInfoBox(){
     tx(bpRivalTells[0],bx_+8,by_+44,6,'#505040');
     g.globalAlpha=1;
   }
-  // Separator
+  // Separator: base at by_+44, pushed down if tells are showing
   const sepY=showTells?by_+52:by_+44;
   bx(bx_+8,sepY,bw-16,1,'#c8c0a0');
   // Rival 2 (MIRA)
@@ -7423,6 +7430,32 @@ function drawOpponentInfoBox(){
       g.globalAlpha=tellFade2*0.85;
       bx(bx_+4,sepY+26,bw-8,14,'rgba(232,216,168,.6)');
       tx(bpRivalTells[1],bx_+8,sepY+36,6,'#505040');
+      g.globalAlpha=1;
+    }
+  }
+  // Scout intel — persists for the rest of the battle (shown below rival info)
+  if(hasScout){
+    const typeColors={attack:'#e05840',defense:'#48b8e8',flee:'#38c080',magic:'#d8b028',recovery:'#e0c040'};
+    const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#fff8e0'];
+    let intelY=by_+bh-4;
+    // Show R1 intel
+    if(showScout0){
+      intelY=by_+bh-(showScout1?32:16);
+      const sd=bpScoutedCards[0];
+      const staleLabel=rd-sd.round>0?'(R'+(sd.round)+')':'';
+      g.globalAlpha=rd-sd.round>1?0.55:0.85;
+      bx(bx_+4,intelY,bw-8,14,'rgba(200,220,250,.3)');
+      tx('\u{1F50D}'+pl[1].n[0]+': '+(sd.cards.length>0?sd.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel,bx_+8,intelY+11,5,'#3060b0');
+      g.globalAlpha=1;
+    }
+    // Show R2 intel
+    if(showScout1){
+      const sd2=bpScoutedCards[1];
+      const intelY2=by_+bh-16;
+      const staleLabel2=rd-sd2.round>0?'(R'+(sd2.round)+')':'';
+      g.globalAlpha=rd-sd2.round>1?0.55:0.85;
+      bx(bx_+4,intelY2,bw-8,14,'rgba(240,220,180,.3)');
+      tx('\u{1F50D}'+pl[2].n[0]+': '+(sd2.cards.length>0?sd2.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel2,bx_+8,intelY2+11,5,'#806030');
       g.globalAlpha=1;
     }
   }
@@ -7571,7 +7604,7 @@ function drawVsSplash(){
   }
 
   if(t>=60){
-    battlePhase='select';bpFrame=fr;bpRdIncremented=false;bpActionsGenerated=false;
+    battlePhase='select';bpFrame=fr;bpRdIncremented=false;bpActionsGenerated=false;bpScoutedCards=[null,null];
     generateRivalTells(); // pre-generate rival actions + tells for this round
     if(!tutorialFlags.firstBattle){
       const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'the rival';
@@ -8035,6 +8068,7 @@ let bpRivalTells=['','']; // body-language tells shown during select phase
 let bpTellWasAccurate=[false,false]; // whether each rival's tell matched actual action
 let bpRdIncremented=false; // guard: prevent double-increment of rd when pending discard
 let bpActionsGenerated=false; // guard: only generate once per round
+let bpScoutedCards=[null,null]; // [{round,cards:[{n,r,t}]}, null] — persists until battle ends
 
 // Rival tells: atmospheric body-language hints (65% accurate, 35% misleading)
 const RIVAL_BATTLE_TELLS=[
@@ -8142,10 +8176,13 @@ function generateResolveEvents(){
     sp.c=Math.max(0,sp.c-1);stats.scoutUses++;
     const tgt=bpSelectedTarget;
     events.push({type:'action',who:'You',action:'SCOUT',text:'You used SCOUT on '+pl[tgt].n+'!',effect:'none'});
-    const rCards=pl[tgt].cd.filter(c=>c>0).map(c=>CD[c-1].n);
-    const scoutMsg=rCards.length>0?pl[tgt].n+' has: '+rCards.join(', '):pl[tgt].n+' has no cards!';
+    const rCards=pl[tgt].cd.filter(c=>c>0).map(c=>CD[c-1]);
+    const rCardNames=rCards.map(c=>c.n);
+    const scoutMsg=rCardNames.length>0?pl[tgt].n+' has: '+rCardNames.join(', '):pl[tgt].n+' has no cards!';
     events.push({type:'result',text:scoutMsg,effect:'none'});
     lg.push('R'+rd+': Scout > '+scoutMsg);
+    // Persist scout intel in opponent info box
+    bpScoutedCards[tgt-1]={round:rd,cards:rCards.map(c=>({n:c.n,r:c.r,t:c.t}))};
   }else if(bpAction===4){// USE CARD
     // Consume selected card in hand for effect based on card TYPE (not ID)
     const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
