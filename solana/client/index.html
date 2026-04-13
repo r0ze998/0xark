@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v56</title>
+<title>0xARK v57</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -2513,13 +2513,37 @@ function generateDungeonFloor(floorNum,seed){
         map[y][x]=(edgeX&&edgeY)?8:(edgeX||edgeY)?8:1;
       }
     }
-    // Add some variety inside room
+    // Add floor-specific variety inside room
     for(let y=r.y+1;y<r.y+r.h-1;y++){
       for(let x=r.x+1;x<r.x+r.w-1;x++){
         const rv=rng(y*100+x+floorNum*7777);
-        if(rv<0.05)map[y][x]=7;      // flower
-        if(rv>0.95)map[y][x]=24;     // glow tile
-        if(rv>0.88&&rv<0.90)map[y][x]=26; // crystal
+        if(floorNum===1){
+          // Floor 1: Flowers and occasional glow tiles — bright, not too threatening
+          if(rv<0.06)map[y][x]=7;       // flower (bright)
+          if(rv>0.95)map[y][x]=24;      // glow tile
+          if(rv>0.90&&rv<0.92)map[y][x]=26; // crystal
+        }else if(floorNum===2){
+          // Floor 2: Mushrooms appear — darker, more organic feel
+          if(rv<0.06)map[y][x]=28;      // mushroom (replaces flower)
+          if(rv>0.93)map[y][x]=26;      // crystal
+          if(rv>0.88&&rv<0.90)map[y][x]=24; // glow tile (less common)
+        }else if(floorNum===3){
+          // Floor 3: Altars and crystals — ancient, mystical
+          if(rv<0.04)map[y][x]=27;      // altar
+          if(rv>0.94)map[y][x]=26;      // crystal
+          if(rv>0.90&&rv<0.92)map[y][x]=28; // mushroom
+        }else if(floorNum===4){
+          // Floor 4: Lava seeping in — dangerous
+          if(rv<0.05)map[y][x]=25;      // lava crack
+          if(rv>0.94)map[y][x]=27;      // altar (eerie)
+          if(rv>0.88&&rv<0.90)map[y][x]=26; // crystal (rare)
+        }else if(floorNum===5){
+          // Floor 5: Lava pools and altars dominate — deepest, most dangerous
+          if(rv<0.07)map[y][x]=25;      // lava (common)
+          if(rv>0.93)map[y][x]=27;      // altar
+          if(rv>0.89&&rv<0.91)map[y][x]=26; // crystal (rare jewel)
+          if(rv>0.85&&rv<0.87)map[y][x]=24; // glow tile (blood rune feel)
+        }
       }
     }
   }
@@ -5803,7 +5827,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v56',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v57',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6761,7 +6785,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v56',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v57',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
