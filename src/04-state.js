@@ -675,3 +675,18 @@ function getPlayElapsed(){return Date.now()-seasonStartTime;}
 const lg=['Game started. Collect all 60 cards to win the Prize Pool!'];
 let logScrollOff=0;
 
+// v105: Collection milestone toast
+const CARD_MILESTONES=[5,10,20,30,45,50,55];
+const CARD_MILESTONE_MSG={
+  5:'FIRST STEPS — 5 cards!',
+  10:'GROWING COLLECTION — 10 cards!',
+  20:'NOTABLE COLLECTOR — 20/60!',
+  30:'HALFWAY THERE — 30/60!',
+  45:'ALMOST COMPLETE — 45/60!',
+  50:'INCREDIBLE — 50/60!',
+  55:'SO CLOSE — 55/60!'
+};
+let milestoneToastText='';
+let milestoneToastFrame=-999;
+const milestonesReached=new Set();
+

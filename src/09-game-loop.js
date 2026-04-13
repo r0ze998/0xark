@@ -111,6 +111,19 @@ function update(){
   }
   if(maxRU<4)rivalWinWarningShown=false;
 
+  // ── v105: COLLECTION MILESTONE CHECK ──
+  if(pl[0].vault&&pl[0].vault.size>0){
+    const vs=pl[0].vault.size;
+    for(const m of CARD_MILESTONES){
+      if(vs>=m&&!milestonesReached.has(m)){
+        milestonesReached.add(m);
+        milestoneToastText=CARD_MILESTONE_MSG[m]||'';
+        milestoneToastFrame=fr;
+        if(vs<60){sfxStreakUp();}
+      }
+    }
+  }
+
   // ── SEASON EXPIRY CHECK ──
   if(sc==='map'&&seasonEndTime>0&&Date.now()>=seasonEndTime&&!gameOverTimesUp){
     gameOverTimesUp=true;stats.gamesPlayed++;saveStats();
