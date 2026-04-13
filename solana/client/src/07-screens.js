@@ -1172,7 +1172,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v110',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v111',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -3332,6 +3332,54 @@ function drawResultPhase(){
   // Spell counts
   txShadow('Spells: STL:'+sp.s+' BAR:'+sp.b+' SCT:'+sp.c,panX+16,panY+panH-24,9,'#988870','rgba(0,0,0,.2)');
   g.globalAlpha=1;
+
+  // v111: Stolen/gained card showcase — prominent display of card won this round
+  if(t>18&&bpResolveQueue&&bpResolveQueue.length>0){
+    const stealEv=bpResolveQueue.find(e=>e.effect==='steal_get'&&e.stolenId>0);
+    const drawEv=!stealEv&&bpResolveQueue.find(e=>e.effect==='card_get');
+    const showcaseId=stealEv?stealEv.stolenId:(drawEv&&bpResolveQueue._pendingDrawCard>0?bpResolveQueue._pendingDrawCard:0);
+    if(showcaseId>0&&CD[showcaseId-1]){
+      const scr=CD[showcaseId-1];
+      const showcaseAlpha=Math.min(1,(t-18)/14);
+      const popT=Math.min(1,(t-18)/10);
+      const popScale=0.5+popT*0.5; // zoom from 50% to 100%
+      const sCX=panX+panW-62,sCY=panY+panH/2;
+      const rar=scr.r||1;
+      const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
+      const rcol=rarCols[rar]||'#d85840';
+      // Glow halo behind card
+      if(rar>=3){
+        const glowR=22+rar*6+Math.sin(fr*0.12)*4;
+        g.save();
+        g.globalAlpha=showcaseAlpha*(0.15+Math.sin(fr*0.1)*0.08);
+        const grd=g.createRadialGradient(sCX,sCY,0,sCX,sCY,glowR);
+        grd.addColorStop(0,rcol.replace('#','rgba(').replace(')','').slice(0,-1)+',0.5)');
+        grd.addColorStop(1,'rgba(0,0,0,0)');
+        g.fillStyle=rcol;g.globalAlpha=showcaseAlpha*(0.2+Math.sin(fr*0.1)*0.1);
+        g.beginPath();g.arc(sCX,sCY,glowR,0,Math.PI*2);g.fill();
+        g.restore();
+      }
+      // Card art (scaled up)
+      g.save();
+      g.globalAlpha=showcaseAlpha;
+      g.translate(sCX,sCY);g.scale(popScale,popScale);
+      bx(-22,-32,44,60,scr.d);bx(-20,-30,40,56,scr.c);
+      bx(-20,-30,40,38,scr.d);bx(-19,-29,38,36,'rgba(255,255,255,.12)');
+      drawCardCharacter(-18,-28,showcaseId,1.5,fr);
+      bx(-20,10,40,18,scr.d);
+      txShadow(scr.n,-20+2,24,9,'#fff','rgba(0,0,0,.5)');
+      // Rarity border color
+      bx(-22,-32,44,2,rcol);
+      g.restore();
+      // Card name and effect label below showcase
+      g.globalAlpha=showcaseAlpha*0.9;
+      const gotLabel=stealEv?'STOLEN!':'ACQUIRED!';
+      const gotCol=stealEv?rcol:'#50e090';
+      txShadow(gotLabel,sCX-25,sCY+34,9,gotCol,'rgba(0,0,0,.5)');
+      txShadow(scr.f,sCX-25,sCY+48,7,'#988870','rgba(0,0,0,.3)');
+      g.globalAlpha=1;
+    }
+  }
 
   // Rival post-battle reaction (appears after t>30)
   if(t>30){
