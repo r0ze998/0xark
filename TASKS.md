@@ -49,6 +49,8 @@
 - v47-v48: Black flash fix attempt (PixiJS ticker control)
 - v49: Black flash root fix — game canvas shown directly, PixiJS as transparent UI overlay only
 - v50: Dark vignette removed from town (safe zone); pulsing DUNGEON label at entrance
+- v51: Transparent PixiJS overlay (root fix for black flash); image-rendering:pixelated; double-render eliminated
+- v52: Dungeon staircase labels (◀ ESCAPE / DEEPER ▶); floor-depth color tint (deeper = warmer); improved tutorial hint panel
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)
@@ -58,5 +60,5 @@
 - [x] Phantom wallet (real devnet transactions via @solana/web3.js)
 - [x] WebSocket multiplayer server (rooms, commit-reveal coordination)
 - [x] PixiJS v7 WebGL renderer + FRLG UI framework (menus, textbox, intro, title effects, player aura)
-- [x] Game client v50 (fully playable, live on GitHub Pages, mobile optimized)
+- [x] Game client v52 (fully playable, live on GitHub Pages, mobile optimized)
 - [x] GDD v0.3, README v3, Arena draft, X drafts, Pitch + Demo scripts
