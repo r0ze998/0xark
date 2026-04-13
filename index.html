@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v65</title>
+<title>0xARK v66</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -3579,9 +3579,25 @@ const GACHA_TIERS=[
   {name:'Rare Draw',     cost:0.05, label:'0.05 SOL', pool:'rare',    rarities:[2,2,3,3,3]},   // r2-r3
   {name:'Epic Draw',     cost:0.20, label:'0.20 SOL', pool:'epic',    rarities:[3,4,4,4,5]},   // r3-r5
 ];
+let gachaPityCount=0; // pulls since last rare+ draw
+let gachaPityTriggered=false; // whether last pull was a pity guarantee
+const GACHA_PITY_THRESHOLD=10; // guarantee rare+ after this many pulls
+
 function gachaPickCard(tierIdx){
   const t=GACHA_TIERS[tierIdx];
-  const r=t.rarities[Math.floor(Math.random()*t.rarities.length)];
+  let r;
+  // Pity system: guarantee rare (3+) after GACHA_PITY_THRESHOLD non-rare pulls
+  const forcePity=gachaPityCount>=GACHA_PITY_THRESHOLD;
+  if(forcePity){
+    // Force rare+ from tier's available rarities
+    const rareRarities=t.rarities.filter(rr=>rr>=3);
+    r=rareRarities.length>0?rareRarities[Math.floor(Math.random()*rareRarities.length)]:t.rarities[t.rarities.length-1];
+    gachaPityCount=0;gachaPityTriggered=true;
+  }else{
+    r=t.rarities[Math.floor(Math.random()*t.rarities.length)];
+    gachaPityTriggered=false;
+    if(r>=3)gachaPityCount=0; else gachaPityCount++;
+  }
   const pool=CD.map((_,i)=>i+1).filter(id=>CD[id-1].r===r);
   if(pool.length===0)return 1+Math.floor(Math.random()*60);
   // Prefer cards player hasn't collected yet (vault-new)
@@ -6977,7 +6993,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v65',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v66',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -9702,19 +9718,86 @@ function drawBuildingInterior(){
         if(isSelected)tx('\u25b6',gx+gw-30,ty_+26,8,'#f8c840');
       });
       bx(gx+12,gy+gh-44,gw-24,1,'#282848');
+      // Pity counter
+      const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
+      const pityCol=gachaPityCount>=7?'#f0c830':gachaPityCount>=4?'#e08040':'#686878';
+      tx('PITY: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' — RARE SOON!':''),gx+16,gy+gh-40,6,pityCol);
       tx('[Z] Draw   [X] Cancel',gx+16,gy+gh-26,7,'#686878');
     }else if(gachaPhase==='spinning'){
       gachaSpinFrame++;
-      // Spinning animation — cycle through card icons
-      const spinIdx=Math.floor(gachaSpinFrame/4)%60;
-      const spinCr=CD[spinIdx];
-      const spinPulse=0.6+0.4*Math.sin(gachaSpinFrame*0.3);
-      g.globalAlpha=spinPulse;
-      bx(W/2-30,H/2-40,60,80,'#282848');
-      tx('?',W/2-10,H/2+8,20,spinCr.c||'#f8c840');
-      g.globalAlpha=1;
-      tx('Drawing...',W/2-44,H/2+58,10,'#a0a8c0');
-      if(gachaSpinFrame>50){gachaPhase='result';gachaResultFrame=fr;}
+      const sf=gachaSpinFrame;
+      // Know the result card already — use its rarity for color teaser
+      const resultCr=gachaResultCard>0?CD[gachaResultCard-1]:null;
+      const rar=resultCr?resultCr.r:1;
+      const rarCol=RARITY_COLOR[rar]||'#f8c840';
+      const cx_=W/2,cy_=H/2-20;
+      // Phase 1 (0-30): Dark energy sphere gathering
+      if(sf<30){
+        const grow=sf/30;
+        const pulse=0.5+0.5*Math.sin(sf*0.4);
+        // Pulsing dark sphere
+        const r1=20+grow*30;
+        const grd=g.createRadialGradient(cx_,cy_,0,cx_,cy_,r1);
+        grd.addColorStop(0,'rgba(40,20,80,.8)');
+        grd.addColorStop(0.7,'rgba(20,10,40,.6)');
+        grd.addColorStop(1,'rgba(0,0,0,0)');
+        g.fillStyle=grd;g.fillRect(cx_-r1-5,cy_-r1-5,r1*2+10,r1*2+10);
+        // Energy sparks converging to center
+        for(let i=0;i<8;i++){
+          const ang=sf*0.1+i*(Math.PI*2/8);
+          const dist=(1-grow)*80+8;
+          g.fillStyle=`rgba(120,80,220,${pulse*.8})`;
+          g.fillRect(cx_+Math.cos(ang)*dist-2,cy_+Math.sin(ang)*dist-2,4,4);
+        }
+        txShadow('DRAWING...',cx_-52,cy_+62,9,'#6060a0','rgba(0,0,0,.5)');
+      }
+      // Phase 2 (30-55): Sphere cracks — rarity color teaser
+      else if(sf<55){
+        const prog=(sf-30)/25;
+        const glowR=50+prog*20;
+        const glowGrd=g.createRadialGradient(cx_,cy_,0,cx_,cy_,glowR);
+        glowGrd.addColorStop(0,rarCol.replace('#','rgba(').split('').join('')); // approximate
+        g.globalAlpha=prog*0.6;
+        // Simplified: just draw color rings
+        g.strokeStyle=rarCol;g.lineWidth=2+prog*4;
+        g.globalAlpha=prog*0.5;
+        g.beginPath();g.arc(cx_,cy_,glowR*0.6,0,Math.PI*2);g.stroke();
+        g.beginPath();g.arc(cx_,cy_,glowR*0.3,0,Math.PI*2);g.stroke();
+        g.globalAlpha=1;
+        // Pulsing ? symbol in rarity color
+        const qPulse=0.5+0.5*Math.sin(sf*0.5);
+        g.globalAlpha=qPulse;
+        txShadow('?',cx_-12,cy_+12,24,rarCol,'rgba(0,0,0,.6)');
+        g.globalAlpha=1;
+        txShadow('Something is emerging...',cx_-88,cy_+62,8,rarCol,'rgba(0,0,0,.4)');
+      }
+      // Phase 3 (55-75): Card silhouette materializes
+      else if(sf<75){
+        const prog=(sf-55)/20;
+        const cardW_=80,cardH_=110;
+        const cardX_=cx_-cardW_/2,cardY_=cy_-cardH_/2;
+        // Silhouette (dark with rarity border)
+        bx(cardX_,cardY_,cardW_,cardH_,rarCol);
+        bx(cardX_+2,cardY_+2,cardW_-4,cardH_-4,'#0c0c20');
+        // Rarity color seeps in proportionally
+        g.globalAlpha=prog;
+        if(gachaResultCard>0){drawCardFrame(cardX_,cardY_,cardW_,cardH_,gachaResultCard-1,true);}
+        g.globalAlpha=1;
+        // Rarity burst sparks
+        for(let i=0;i<6;i++){
+          const ang=sf*0.12+i*(Math.PI*2/6);
+          const dist=60+prog*30;
+          g.globalAlpha=0.8*(1-prog)*0.5;
+          g.fillStyle=rarCol;g.fillRect(cx_+Math.cos(ang)*dist-3,cy_+Math.sin(ang)*dist-3,6,6);
+          g.globalAlpha=1;
+        }
+      }
+      // Transition to result
+      if(sf>=75){
+        gachaPhase='result';gachaResultFrame=fr;
+        if(rar>=4)screenShake(rar-2,rar*3);
+        if(rar>=5)flash();
+      }
     }else if(gachaPhase==='result'&&gachaResultCard>0){
       const t2=fr-gachaResultFrame;
       const cr=CD[gachaResultCard-1];
@@ -9729,6 +9812,12 @@ function drawBuildingInterior(){
       // Is new?
       const isNew=!pl[0].vault||!pl[0].vault.has(gachaResultCard);
       if(isNew&&t2>15){txShadow('NEW!',W/2+40,H/2-60,12,'#f0c830','rgba(0,0,0,.6)');}
+      // Pity pull indicator
+      if(gachaPityTriggered&&t2>20){
+        const ppA=Math.min(1,(t2-20)/8);g.globalAlpha=ppA;
+        txShadow('PITY PULL!',gx+gw/2-50,gy+gh-54,10,'#f0c830','rgba(0,0,0,.5)');
+        g.globalAlpha=1;
+      }
       g.globalAlpha=1;
       if(t2>30){tx('[Z] Take   [X] Close',gx+16,gy+gh-36,7,'#686878');}
     }
