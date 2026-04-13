@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v39</title>
+<title>0xARK v40</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -3445,7 +3445,7 @@ const INTRO_PAGES=[
   'Welcome to はじまりのまち!\nArrows:Move  Z:Confirm  X:Back\nSPACE:Menu',
   'You start with 3 cards.\nCollect all 60 cards\nto win the Prize Pool.',
   'This Town is your safe base.\nVisit shops, use gacha, trade.\nNo enemies here — rest easy.',
-  'Enter the Dungeon to the EAST.\nDeeper floors = rarer cards.\nCard decay is active inside!',
+  'Enter the Dungeon to the EAST.\nCards decay — escape WEST to town!\nDeeper floors = rarer cards.',
   'Encounter rivals to battle.\nSTEAL their cards to collect.\nFlee cards let you escape safely.',
   'First to collect all 60 wins.\nCards are NFTs on Solana.\nGood luck. Trust no one.',
 ];
@@ -5738,7 +5738,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v39',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v40',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6642,7 +6642,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v39',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v40',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -9469,18 +9469,17 @@ function executeMapCard(cardId,slot){
     mapCardPendingType=29;
     return;
   }else if(cardId===35){
-    // ARK GATE: instant escape from dungeon to town (consume card)
-    pl[0].cd[slot]=0;cardTimers[slot]=0;
-    syncCardCount(0);
+    // ARK GATE: instant escape from dungeon to town (dungeon-only)
     mapCardUseActive=false;
     if(!inDungeon){twSet('ARK GATE only works in the dungeon!');return;}
+    pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
     sfxMapChange();sfxAreaEntry();
     lg.push('Used ARK GATE — escaped dungeon instantly!');
     startWipe('vslide',16,()=>{
       currentMap=0;inDungeon=false;currentFloor=0;
       pl[0].x=35;pl[0].y=13;pl[0].dir=1;
       pl[0].visualX=35*TW;pl[0].visualY=13*TH;
-      for(let i=0;i<HAND_SIZE;i++)cardTimers[i]=0; // pause card decay in town
+      for(let i=0;i<HAND_SIZE;i++)cardTimers[i]=0;
       sp.s=2;sp.b=3;sp.c=2;
       fogRevealAll(0);fogSave();
       encounterCooldown=600;
@@ -9493,11 +9492,10 @@ function executeMapCard(cardId,slot){
       startWipe('vslide_out',16);
     });
   }else if(cardId===36){
-    // GENESIS: escape dungeon to town (consume card)
-    pl[0].cd[slot]=0;cardTimers[slot]=0;
-    syncCardCount(0);
+    // GENESIS: escape dungeon to town (dungeon-only)
     mapCardUseActive=false;
     if(!inDungeon){twSet('GENESIS only works in the dungeon!');return;}
+    pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
     sfxMapChange();sfxAreaEntry();
     lg.push('Used GENESIS — escaped dungeon instantly!');
     startWipe('vslide',16,()=>{
@@ -9512,7 +9510,7 @@ function executeMapCard(cardId,slot){
       camTargetX=camX;camTargetY=camY;
       edgeCacheDirty=true;fogCacheDirty=true;
       showBanner('はじまりの街','GENESIS: Reborn in town!');
-      twSet('GENESIS activated! Escaped with all cards intact — back to safety!');
+      twSet('GENESIS activated! Escaped — cards intact, back to safety!');
       saveGame();
       startWipe('vslide_out',16);
     });
