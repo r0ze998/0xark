@@ -5137,22 +5137,19 @@ function drawWildEncounter(){
     // Start card acquisition
     const cr=CD[wildEncounterCard];
     // Find empty slot
-    let slot=-1;
-    for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===0){slot=i;break;}}
-    if(slot>=0){
-      pl[0].cd[slot]=wildEncounterCard+1;
-      cardTimers[slot]=Date.now();
-      syncCardCount(0);
+    const wildCardId=wildEncounterCard+1;
+    const wasInVault=pl[0].vault&&pl[0].vault.has(wildCardId);
+    const wAdded=addCardToPlayer(0,wildCardId); // updates vault + hand
+    if(wAdded){
       startCardAcquisition(wildEncounterCard);
       lg.push('Wild: Found '+cr.n+' in '+mapNames[currentMap]+'!');
-      // Streak: check if this is a new unique type
-      const prevUnique=new Set();pl[0].cd.forEach((c,idx)=>{if(c>0&&idx!==slot)prevUnique.add(c);});
-      if(!prevUnique.has(wildEncounterCard+1)){streakCount++;streakDisplayTimer=60;sfxStreakUp();}
+      // Streak: new unique card
+      if(!wasInVault){streakCount++;streakDisplayTimer=60;sfxStreakUp();}
       // Tutorial: first card
       if(!tutorialFlags.gotFirstCard){tutorialFlags.gotFirstCard=true;tutorialMsg='Check your cards with SPACE > CARDS';tutorialMsgTimer=180;}
     }else{
-      // Hand full - offer discard
-      discardActive=true;discardSelIdx=0;discardPendingCard=wildEncounterCard+1;discardSource='wild';
+      // Hand full - offer discard (vault already updated by addCardToPlayer)
+      discardActive=true;discardSelIdx=0;discardPendingCard=wildCardId;discardSource='wild';
     }
   }else if(discardActive){
     // Wait for discard dialog
@@ -5173,21 +5170,16 @@ function checkTreasure(){
     if(t.map===currentMap&&t.x===pl[0].x&&t.y===pl[0].y){
       t.collected=true;
       const cr=CD[t.card];
-      // Find empty slot
-      let slot=-1;
-      for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===0){slot=i;break;}}
-      if(slot>=0){
-        pl[0].cd[slot]=t.card+1;
-        cardTimers[slot]=Date.now();
-        syncCardCount(0);
+      const treasureCardId=t.card+1;
+      const tAdded=addCardToPlayer(0,treasureCardId); // updates vault + hand
+      if(tAdded){
         startCardAcquisition(t.card);
         twSet('You found a hidden '+cr.n+' card!');
         lg.push('Found hidden '+cr.n+'!');
-        // Check win after treasure
         checkWinAndTransition(2000);
       }else{
-        // Hand full - offer discard
-        discardActive=true;discardSelIdx=0;discardPendingCard=t.card+1;discardSource='wild';
+        // Hand full - offer discard (vault already updated by addCardToPlayer)
+        discardActive=true;discardSelIdx=0;discardPendingCard=treasureCardId;discardSource='wild';
         twSet('Found a '+cr.n+' card! Discard one to keep it.');
       }
       return;
@@ -5347,14 +5339,20 @@ function doShopTrade(){
     // All 60 in hand — just pick a random different card
     do{ newCard=Math.floor(Math.random()*60)+1; }while(newCard===oldCard);
   }
-  pl[0].cd[slot]=newCard;
+  // Check if new card is a first-time unique before adding
+  const isNewUnique=pl[0].vault&&!pl[0].vault.has(newCard);
+  // Use proper card management: clear old slot then add new card
+  pl[0].cd[slot]=0;cardTimers[slot]=0;
+  syncCardCount(0);
+  // Add new card via addCardToPlayer so vault is updated properly
+  addCardToPlayer(0,newCard);
   const newName=CD[newCard-1].n;
-  shopResultText='Traded '+oldName+' for '+newName+'!';
+  shopResultText='Traded '+oldName+' for '+newName+'!'+(isNewUnique?' NEW UNIQUE!':'');
   shopResultFrame=fr;
   shopPhase='result';
   startCardAcquisition(newCard-1);
   sfxShopTrade();
-  lg.push('Shop: Traded '+oldName+' for '+newName+'!');
+  lg.push('Shop: Traded '+oldName+' → '+newName+(isNewUnique?' (NEW UNIQUE!)':'')+'!');
   checkWinAndTransition(2000);
 }
 
@@ -5425,17 +5423,13 @@ function triggerRandomEvent(){
     const pool=AREA_CARDS[currentMap]||AREA_CARDS[1];
     const cardId=pool[Math.floor(Math.random()*pool.length)]; // 1-indexed
     const cardIdx=cardId-1; // 0-indexed for CD[]
-    let slot=-1;
-    for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===0){slot=i;break;}}
-    if(slot>=0){
-      pl[0].cd[slot]=cardId;
-      cardTimers[slot]=Date.now();
-      syncCardCount(0);
+    const evAdded=addCardToPlayer(0,cardId); // updates vault + hand
+    if(evAdded){
       startCardAcquisition(cardIdx);
       lg.push('Event: Found a '+CD[cardIdx].n+' in a forgotten stash!');
       checkWinAndTransition(2000);
     }else{
-      // Hand full - offer discard
+      // Hand full - offer discard (vault already updated by addCardToPlayer)
       discardActive=true;discardSelIdx=0;discardPendingCard=cardId;discardSource='wild';
       randomEventText='Found a '+CD[cardIdx].n+'! Discard one to keep it.';
     }
@@ -9141,12 +9135,8 @@ function checkObjectInteraction(){
       const treePool=AREA_CARDS[currentMap]||AREA_CARDS[1];
       const treeCardId=treePool[Math.floor(Math.random()*treePool.length)];
       const cardIdx=treeCardId-1;
-      let slot=-1;
-      for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===0){slot=i;break;}}
-      if(slot>=0){
-        pl[0].cd[slot]=treeCardId;
-        cardTimers[slot]=Date.now();
-        syncCardCount(0);
+      const treeAdded=addCardToPlayer(0,treeCardId); // updates vault + hand
+      if(treeAdded){
         startCardAcquisition(cardIdx);
         objectInteractMsg='A card fell from the tree!';
         lg.push('Shook tree: Found '+CD[cardIdx].n+'!');
@@ -9175,12 +9165,8 @@ function checkObjectInteraction(){
     if(Math.random()<0.2){
       const areaCards=AREA_CARDS[currentMap]||AREA_CARDS[1];
       const cardId=areaCards[Math.floor(Math.random()*areaCards.length)];
-      let slot=-1;
-      for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===0){slot=i;break;}}
-      if(slot>=0){
-        pl[0].cd[slot]=cardId;
-        cardTimers[slot]=Date.now();
-        syncCardCount(0);
+      const rockAdded=addCardToPlayer(0,cardId); // updates vault + hand
+      if(rockAdded){
         startCardAcquisition(cardId-1);
         objectInteractMsg='Found a hidden card under the rock!';
         lg.push('Rock: Found '+CD[cardId-1].n+'!');
@@ -10359,10 +10345,16 @@ document.addEventListener('keydown',e=>{
       if(e.code==='KeyZ'||e.code==='KeyX'){
         if(e.code==='KeyZ'&&gachaResultCard>0){
           // Give card to player
-          addCardToPlayer(0,gachaResultCard);
+          const gAdded=addCardToPlayer(0,gachaResultCard);
           const cr=CD[gachaResultCard-1];
+          if(!gAdded){
+            // Hand full — show discard prompt
+            discardActive=true;discardSelIdx=0;discardPendingCard=gachaResultCard;discardSource='wild';
+            twSet('Hand full! Discard a card to make room for '+cr.n+'.');
+          }
           lg.push('[GACHA] Got '+cr.n+' ('+RARITY_LABEL[cr.r]+')!');
           sfxConfirm();
+          checkWinAndTransition(2000);
         }
         gachaActive=false;gachaResultCard=-1;
         sfxBack();
@@ -10407,7 +10399,13 @@ document.addEventListener('keydown',e=>{
         sfxConfirm();
         const discarded=pl[0].cd[slot];
         if(discardPendingCard>0){
-          pl[0].cd[slot]=discardPendingCard;cardTimers[slot]=Date.now();
+          // Remove old card, place pending card in its slot
+          pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
+          // Ensure vault updated (idempotent — addCardToPlayer already did this in most paths)
+          if(pl[0].vault&&!pl[0].vault.has(discardPendingCard)){
+            pl[0].vault.add(discardPendingCard);sfxUniqueCardSting();triggerProgressPulse();stats.cardsCollected++;
+          }
+          pl[0].cd[slot]=discardPendingCard;cardTimers[slot]=Date.now();syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+', got '+CD[discardPendingCard-1].n+'!');
           discardActive=false;
           if(discardSource==='wild'||discardSource==='menu'){startCardAcquisition(discardPendingCard-1);}
