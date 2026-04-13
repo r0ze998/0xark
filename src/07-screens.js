@@ -1256,7 +1256,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v126',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v127',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1823,6 +1823,10 @@ function drawPlayerInfoBox(){
 // Draw battle sprite (front-facing for opponent, back-facing for player)
 function drawBattleSprite(p,cx,cy,scale,facingAway){
   const s=scale;
+  // v127: Idle breathing bob — each character breathes out of phase
+  const breathPhase=p===pl[0]?0:p===pl[1]?1.1:2.3;
+  const breathAmp=scale*0.5;
+  cy=cy+Math.round(Math.sin(fr*0.055+breathPhase)*breathAmp);
   const w=14*s,h=20*s;
   const ox=cx-w/2,oy=cy-h/2;
   // Shadow

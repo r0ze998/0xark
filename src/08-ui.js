@@ -225,9 +225,10 @@ function drawDiscardOverlay(){
     const previewX=W/2+90,previewY=panY+34;
     bx(previewX,previewY,116,88,pendCr.d);bx(previewX+1,previewY+1,114,86,pendCr.c);
     drawCardCharacter(previewX+4,previewY+4,discardPendingCard,1.4,fr);
-    tx('INCOMING:',previewX,previewY+68,5,'#a09080');
-    txShadow(pendCr.n,previewX,previewY+80,6,rarCol,'rgba(0,0,0,.3)');
-    tx(pendCr.f||'',previewX,previewY+90,5,'#c0b888');
+    tx('INCOMING:',previewX,previewY+66,5,'#a09080');
+    txShadow(pendCr.n,previewX,previewY+78,7,rarCol,'rgba(0,0,0,.3)');
+    for(let s=0;s<(pendCr.r||1);s++)tx('\u2605',previewX+s*10,previewY+89,8,rarCol);
+    tx(pendCr.f||'',previewX,previewY+100,5,'#c0b888');
   }else{
     txShadow('DISCARD a card',W/2-70,panY+20,10,'#b06030','rgba(0,0,0,.4)');
   }
@@ -245,6 +246,8 @@ function drawDiscardOverlay(){
       bx(W/2-200,cy+6,28,28,cr.d);bx(W/2-198,cy+8,24,24,cr.c);
       drawCardCharacter(W/2-197,cy+8,cd,0.9,fr);
       tx(cr.n,W/2-160,cy+18,7,sel?'#c04040':'#303028');
+      // v127: rarity stars inline
+      {const rar=cr.r||1;const rarCol=RARITY_COLOR[rar]||'#888898';for(let s=0;s<rar;s++)tx('\u2605',W/2-36+s*7,cy+18,5,rarCol);}
       // v78: show decay timer
       if(cardTimers[i]>0){
         const remMs=Math.max(0,CARD_DECAY_MS-(Date.now()-cardTimers[i]));
