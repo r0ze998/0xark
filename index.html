@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v122</title>
+<title>0xARK v123</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -6982,7 +6982,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v122',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v123',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -8264,7 +8264,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v122',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v123',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8777,9 +8777,23 @@ function drawPlayerInfoBox(){
     g.globalAlpha=1;
   }
   // Spell counts
-  txShadow('STL:'+sp.s,bx_+10,by_+52,8,'#b04040','rgba(0,0,0,.15)');
-  txShadow('BAR:'+sp.b,bx_+80,by_+52,8,'#3060b0','rgba(0,0,0,.15)');
-  txShadow('SCT:'+sp.c,bx_+150,by_+52,8,'#308030','rgba(0,0,0,.15)');
+  // v123: Spell charge orb pips — consistent with HUD orbs
+  {const sOrbs=[
+    {lbl:'STL',val:sp.s,max:3,fill:'#c04848',empty:'#2a1010',warn:sp.s===0,lCol:'#b04040'},
+    {lbl:'BAR',val:sp.b,max:3,fill:'#3868c0',empty:'#101028',warn:false,lCol:'#3060b0'},
+    {lbl:'SCT',val:sp.c,max:3,fill:'#38a038',empty:'#0e1e0e',warn:sp.c===0,lCol:'#308030'},
+  ];const oW=6,oH=6,oG=2;
+  sOrbs.forEach((s,si)=>{
+    const ox=bx_+10+si*97,oy=by_+44;
+    const lc=s.warn&&Math.floor(fr/12)%2===0?'#ff5040':s.lCol;
+    txShadow(s.lbl,ox,oy+10,6,lc,'rgba(0,0,0,.2)');
+    for(let o=0;o<s.max;o++){
+      const filled=o<s.val;
+      bx(ox+26+o*(oW+oG),oy+2,oW,oH,filled?s.fill:s.empty);
+      if(filled)bx(ox+26+o*(oW+oG)+1,oy+3,2,1,'rgba(255,255,255,.3)');
+    }
+    if(s.val>s.max)tx('+'+(s.val-s.max),ox+26+s.max*(oW+oG)+2,oy+9,5,'#f0c830');
+  });}
   // Area
   txShadow(mapNames[currentMap],bx_+10,by_+64,8,'#988870','rgba(0,0,0,.15)');
   // v104: Hand type composition strip — colored dots grouped by card type
@@ -10499,8 +10513,23 @@ function drawResultPhase(){
     }
   }
   g.globalAlpha=slideIn_;
-  // Spell counts
-  txShadow('Spells: STL:'+sp.s+' BAR:'+sp.b+' SCT:'+sp.c,panX+16,panY+panH-24,9,'#988870','rgba(0,0,0,.2)');
+  // v123: Spell counts with orb pips (consistent with HUD)
+  {const rOrbs=[
+    {lbl:'STL',val:sp.s,max:3,fill:'#c04848',empty:'#2a1010',lCol:'#b04040'},
+    {lbl:'BAR',val:sp.b,max:3,fill:'#3868c0',empty:'#101028',lCol:'#3060b0'},
+    {lbl:'SCT',val:sp.c,max:3,fill:'#38a038',empty:'#0e1e0e',lCol:'#308030'},
+  ];const rOW=5,rOH=5,rOG=2;
+  txShadow('SPELLS:',panX+16,panY+panH-20,7,'#988870','rgba(0,0,0,.2)');
+  rOrbs.forEach((s,si)=>{
+    const ox=panX+74+si*116,oy=panY+panH-28;
+    txShadow(s.lbl,ox,oy+10,6,s.lCol,'rgba(0,0,0,.2)');
+    for(let o=0;o<s.max;o++){
+      const filled=o<s.val;
+      bx(ox+26+o*(rOW+rOG),oy+2,rOW,rOH,filled?s.fill:s.empty);
+      if(filled)bx(ox+26+o*(rOW+rOG)+1,oy+3,1,1,'rgba(255,255,255,.3)');
+    }
+    if(s.val>s.max)tx('+'+(s.val-s.max),ox+26+s.max*(rOW+rOG)+2,oy+9,5,'#f0c830');
+  });}
   g.globalAlpha=1;
 
   // v111: Stolen/gained card showcase — prominent display of card won this round
