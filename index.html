@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v112</title>
+<title>0xARK v113</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -4399,6 +4399,8 @@ let mapCardDirSelect=false, mapCardDirIdx=0, mapCardPendingType=-1;
 const CARD_DECAY_MS=210000; // 210 seconds (3.5 minutes) real-time — slightly more breathing room
 const cardTimers=new Array(HAND_SIZE).fill(0); // parallel to pl[0].cd[HAND_SIZE] — only active in dungeon
 const decayWarn=new Array(HAND_SIZE).fill(0); // 0=none,1=50%warned,2=30swarned,3=criticalwarned per slot
+// v113: Card slot shatter animation state (frame when shattering began, 0=inactive)
+const cardShatterTimers=new Array(HAND_SIZE).fill(0);
 let cardDecayWarningFlash=0; // frame counter for warning flash
 let escapeUrgencyActive=false; // true when any card has <30s remaining in dungeon
 let escapeUrgencyPulse=0; // frame counter for escape urgency animation
@@ -6948,7 +6950,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v112',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v113',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -7970,6 +7972,39 @@ function dMap(){
         }
       }
     }
+    // v113: Card slot shatter animation (slot recently expired)
+    if(pl[0].cd[i]===0&&cardShatterTimers[i]>0){
+      const shAge=fr-cardShatterTimers[i];
+      if(shAge<40){
+        const shA=Math.max(0,1-shAge/40);
+        const mx_=310+i*HUD_CARD_SPACING,my_=hudY+14;
+        g.globalAlpha=shA;
+        // Shattered card base
+        bx(mx_,my_,28,20,'#601010');
+        // Crack overlay — diagonal shards
+        g.globalAlpha=shA*0.8;
+        bx(mx_,my_,2,20,'#c03030');bx(mx_+26,my_,2,20,'#c03030');
+        bx(mx_,my_,28,2,'#c03030');bx(mx_,my_+18,28,2,'#c03030');
+        bx(mx_+6,my_+2,2,16,'#c05050');bx(mx_+14,my_+4,2,12,'#c05050');
+        bx(mx_+20,my_+2,2,8,'#c05050');
+        // Flying shard particles
+        for(let s=0;s<5;s++){
+          const sx_=mx_+4+s*5+(Math.sin(shAge*0.3+s)*shAge*0.4);
+          const sy_=my_+2+s*3-(shAge*0.5+s*1.2);
+          const sa=Math.max(0,shA*(1-s*0.15));
+          g.globalAlpha=sa;
+          bx(sx_,sy_,3,3,'#d04040');
+        }
+        // "DECAYED" label
+        g.globalAlpha=shA;
+        txShadow('LOST',mx_,my_+10,5,'#ff4040','rgba(0,0,0,.6)');
+        g.globalAlpha=1;
+        // Auto-clear after animation
+        if(shAge>=40)cardShatterTimers[i]=0;
+      }else{
+        cardShatterTimers[i]=0;
+      }
+    }
     // Card decay timer bar under each card
     if(pl[0].cd[i]>0&&cardTimers[i]>0){
       const elapsed=Date.now()-cardTimers[i];
@@ -8165,7 +8200,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v112',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v113',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -12864,6 +12899,7 @@ function update(){
         if(elapsed>=CARD_DECAY_MS){
           // Card expired in dungeon!
           const expiredName=CD[pl[0].cd[i]-1].n;
+          cardShatterTimers[i]=fr; // v113: trigger HUD shatter animation before clearing
           pl[0].cd[i]=0;cardTimers[i]=0;decayWarn[i]=0;syncCardCount(0);
           sfxCardExpired();screenShake(3,6);
           triggerCardLostAnim(pl[0].visualX-camX,pl[0].visualY-camY-16);

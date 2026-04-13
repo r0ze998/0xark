@@ -141,6 +141,7 @@ function update(){
         if(elapsed>=CARD_DECAY_MS){
           // Card expired in dungeon!
           const expiredName=CD[pl[0].cd[i]-1].n;
+          cardShatterTimers[i]=fr; // v113: trigger HUD shatter animation before clearing
           pl[0].cd[i]=0;cardTimers[i]=0;decayWarn[i]=0;syncCardCount(0);
           sfxCardExpired();screenShake(3,6);
           triggerCardLostAnim(pl[0].visualX-camX,pl[0].visualY-camY-16);

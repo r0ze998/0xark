@@ -518,6 +518,8 @@ let mapCardDirSelect=false, mapCardDirIdx=0, mapCardPendingType=-1;
 const CARD_DECAY_MS=210000; // 210 seconds (3.5 minutes) real-time — slightly more breathing room
 const cardTimers=new Array(HAND_SIZE).fill(0); // parallel to pl[0].cd[HAND_SIZE] — only active in dungeon
 const decayWarn=new Array(HAND_SIZE).fill(0); // 0=none,1=50%warned,2=30swarned,3=criticalwarned per slot
+// v113: Card slot shatter animation state (frame when shattering began, 0=inactive)
+const cardShatterTimers=new Array(HAND_SIZE).fill(0);
 let cardDecayWarningFlash=0; // frame counter for warning flash
 let escapeUrgencyActive=false; // true when any card has <30s remaining in dungeon
 let escapeUrgencyPulse=0; // frame counter for escape urgency animation
