@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v95</title>
+<title>0xARK v96</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -4097,6 +4097,7 @@ let bpShakeTarget=-1,bpShakeTimer=0;
 
 // ── Card acquisition animation ──
 let cardAcqActive=false,cardAcqFrame=0,cardAcqCard=-1,cardAcqDone=false;
+let cardAcqIsNew=false,cardAcqWasNew=false; // v96: track first-time unique card
 const cardAcqParticles=[];
 
 // ── Victory screen ──
@@ -7944,7 +7945,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v95',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v96',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -9033,6 +9034,7 @@ function addCardToPlayer(pIdx,cardId){
   const hadVaultBefore=pIdx===0&&p.vault?p.vault.has(cardId):null;
   // Add to vault (player only) — tracks all unique cards ever collected
   if(pIdx===0&&p.vault&&!p.vault.has(cardId)){
+    cardAcqWasNew=true; // v96: flag for NEW badge in acquisition animation
     p.vault.add(cardId);
     sfxUniqueCardSting();triggerProgressPulse();
     stats.cardsCollected++;
@@ -10042,6 +10044,7 @@ function dAct(){
 // CARD ACQUISITION ANIMATION
 // ═══════════════════════════════════════
 function startCardAcquisition(cardIdx){
+  cardAcqIsNew=cardAcqWasNew;cardAcqWasNew=false; // v96: consume new-card flag
   cardAcqActive=true;cardAcqFrame=fr;cardAcqCard=cardIdx;cardAcqDone=false;
   cardAcqParticles.length=0;sfxCardGet();
   // PixiJS sparkle burst
@@ -10082,7 +10085,28 @@ function drawCardAcquisition(){
   drawCardFrame(cx_-cw/2,cy_-ch/2,cw,ch,cardAcqCard,scale>.6);
   g.globalAlpha=1;
 
-  if(t>=50&&t<90){win(W/2-150,cy_+ch/2+12,300,40);txShadow('You obtained '+cr.n+'!',W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');}
+  if(t>=50&&t<90){
+    win(W/2-150,cy_+ch/2+12,300,40);
+    txShadow('You obtained '+cr.n+'!',W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');
+    // v96: NEW card badge — shown when first time in vault
+    if(cardAcqIsNew){
+      const newBadgeAlpha=t<60?(t-50)/10:t>82?(90-t)/8:1;
+      const vaultTotal=pl[0].vault?pl[0].vault.size:0;
+      const newLabel='\u2605 NEW!  '+vaultTotal+'/60';
+      const newLW=newLabel.length*6+14;
+      g.globalAlpha=newBadgeAlpha;
+      bx(W/2-newLW/2,cy_+ch/2-12,newLW,16,'rgba(0,0,0,.7)');
+      bx(W/2-newLW/2,cy_+ch/2-12,newLW,1,'#f0c830');
+      bx(W/2-newLW/2,cy_+ch/2+4,newLW,1,'#f0c830');
+      g.font='bold 9px VT323, monospace';
+      g.textAlign='center';
+      g.fillStyle='#f0e040';
+      g.shadowColor='#f0c830';g.shadowBlur=10;
+      g.fillText(newLabel,W/2,cy_+ch/2);
+      g.shadowBlur=0;g.textAlign='left';
+      g.globalAlpha=1;
+    }
+  }
 
   for(let i=cardAcqParticles.length-1;i>=0;i--){
     const p=cardAcqParticles[i];p.x+=p.vx;p.y+=p.vy;p.life--;
