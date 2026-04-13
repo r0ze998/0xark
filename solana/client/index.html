@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v50</title>
+<title>0xARK v51</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -97,6 +97,8 @@ if(!_isMobile){
   _pixiView.style.cssText='display:block;position:absolute;top:0;left:0;width:960px;height:640px;touch-action:none;';
   document.getElementById('pixi-wrap').appendChild(_pixiView);
   pixiApp.stop();
+  // Remove the Application's internal render listener so ticker.update() doesn't double-render
+  try{pixiApp.ticker.remove(pixiApp.render,pixiApp);}catch(e){}
 }else{
   // Mobile: show canvas directly, PixiJS runs offscreen for UI objects only
   c.style.display='block';
@@ -5754,7 +5756,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v50',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v51',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6672,7 +6674,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v50',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v51',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
