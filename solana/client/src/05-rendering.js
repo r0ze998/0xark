@@ -1084,6 +1084,8 @@ function updateCamera(){
 // ═══════════════════════════════════════
 // CARD MINI ART
 // ═══════════════════════════════════════
+// v103: Card type indicator colors for HUD mini-cards
+const CARD_TYPE_COL={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
 function drawMiniCard(x,y,cd){
   if(cd>0){
     const cr=CD[cd-1];
@@ -1092,6 +1094,9 @@ function drawMiniCard(x,y,cd){
     // Tiny character sprite (scale 0.5)
     drawCardCharacter(x+6,y+1,cd,0.5,fr);
     bx(x+1,y+14,26,5,cr.d);txShadow(cr.n[0],x+8,y+19,7,'#fff','rgba(0,0,0,.5)');
+    // v103: 2px type-color strip along the top border for instant hand-composition read
+    const typeCol=CARD_TYPE_COL[cr.t]||'#808080';
+    bx(x+1,y,26,2,typeCol);
   }else{
     bx(x,y,28,20,'#c8c0a8');bx(x+1,y+1,26,18,'#d8d0b8');txShadow('?',x+8,y+15,8,'#a89880','rgba(0,0,0,.3)');
   }
