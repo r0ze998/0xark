@@ -609,11 +609,32 @@ function dCrd(){
       // Special effect
       if(cr.f)tx(cr.f,cx+4,cy+CARD_H-6,5,'#c0b888');
     }else{
-      // Unknown card
-      bx(cx+4,cy+4,CARD_W-8,CARD_H-8,'#0c0c20');
-      tx('?',cx+CARD_W/2-8,cy+CARD_H/2+8,20,'#2a2a40');
-      // Show rarity as hint
-      for(let s=0;s<(cr.r||1);s++)tx('\u2605',cx+4+s*10,cy+CARD_H-16,6,'#2a2a40');
+      // v116: Decorative card back — geometric mystery pattern
+      bx(cx+4,cy+4,CARD_W-8,CARD_H-8,'#080818');
+      // Checkerboard micro-pattern with slow pulse per slot
+      const cellSz_=6;
+      g.globalAlpha=0.10+0.04*Math.sin(fr*0.025+cardIdx*0.55);
+      for(let row_=0;row_<Math.ceil((CARD_H-8)/cellSz_);row_++){
+        for(let col_=0;col_<Math.ceil((CARD_W-8)/cellSz_);col_++){
+          if((row_+col_)%2===0) bx(cx+4+col_*cellSz_,cy+4+row_*cellSz_,cellSz_-1,cellSz_-1,'#162090');
+        }
+      }
+      g.globalAlpha=1;
+      // Corner bracket ornaments
+      bx(cx+7,cy+7,7,1,'#2030b8');bx(cx+7,cy+7,1,7,'#2030b8');
+      bx(cx+CARD_W-14,cy+7,7,1,'#2030b8');bx(cx+CARD_W-8,cy+7,1,7,'#2030b8');
+      bx(cx+7,cy+CARD_H-8,7,1,'#2030b8');bx(cx+7,cy+CARD_H-14,1,7,'#2030b8');
+      bx(cx+CARD_W-14,cy+CARD_H-8,7,1,'#2030b8');bx(cx+CARD_W-8,cy+CARD_H-14,1,7,'#2030b8');
+      // Central pulsing "?" emblem
+      const pu_=0.5+Math.sin(fr*0.05+cardIdx*0.7)*0.5;
+      g.globalAlpha=pu_*0.35;
+      bx(cx+CARD_W/2-7,cy+CARD_H/2-9,14,14,'#2030b0');
+      g.globalAlpha=0.55+pu_*0.45;
+      tx('?',cx+CARD_W/2-5,cy+CARD_H/2+5,10,'#2840d0');
+      g.globalAlpha=1;
+      // Rarity hint stars (dim blue-tone)
+      const rar_=cr.r||1;
+      for(let s_=0;s_<rar_;s_++) tx('\u2605',cx+4+s_*10,cy+CARD_H-16,6,'#1e2858');
     }
     // v93: Rival ownership dots + IN HAND badge
     {
