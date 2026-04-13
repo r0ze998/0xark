@@ -5589,7 +5589,7 @@ function dTitle(){
 
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#333350');
-  tx('2026 r0ze',W/2-44,598,7,'#2a2a40');
+  tx('2026 r0ze  v29',W/2-60,598,7,'#2a2a40');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -10833,13 +10833,21 @@ function loadGame(){
     if(d.streakCount!==undefined)streakCount=d.streakCount;
     if(d.areaDanger){for(let i=0;i<FOG_MAP_COUNT;i++)areaDanger[i]=d.areaDanger[i]||0;}
     if(d.areaDangerStayTimer){for(let i=0;i<FOG_MAP_COUNT;i++)areaDangerStayTimer[i]=d.areaDangerStayTimer[i]||0;}
-    // GDD v1.0: if old save has rivals in town, move them to dungeon
-    if(d.rivalMaps&&(d.rivalMaps[0]===0||d.rivalMaps[1]===0)){
-      if(rivalMaps[0]===0){rivalMaps[0]=1;pl[1].x=8;pl[1].y=10;pl[1].visualX=8*TW;pl[1].visualY=10*TH;}
-      if(rivalMaps[1]===0){rivalMaps[1]=1;pl[2].x=28;pl[2].y=18;pl[2].visualX=28*TW;pl[2].visualY=18*TH;}
-    }
-    // Reset any battle state that may have been saved mid-fight
-    wildEncounterActive=false;encounterCooldown=60;battlePhase='select';
+    // GDD v1.0: ALWAYS return player to town on load (safe zone)
+    // Prevents immediate encounters if player was in dungeon when they saved
+    currentMap=0;inDungeon=false;currentFloor=0;
+    pl[0].x=15;pl[0].y=13;pl[0].dir=0;
+    pl[0].visualX=15*TW;pl[0].visualY=13*TH;
+    // Always put rivals in dungeon (not town)
+    rivalMaps=[1,1];
+    pl[1].x=8;pl[1].y=10;pl[1].visualX=8*TW;pl[1].visualY=10*TH;
+    pl[2].x=28;pl[2].y=18;pl[2].visualX=28*TW;pl[2].visualY=18*TH;
+    // Pause card timers (in town, no decay)
+    for(let i=0;i<HAND_SIZE;i++)cardTimers[i]=0;
+    // Clear all battle/encounter state
+    wildEncounterActive=false;encounterCooldown=180;battlePhase='select';
+    encounterExclActive=false;mapTransitioning=false;npcDialogActive=false;
+    gachaActive=false;marketActive=false;dungeonConfirmActive=false;shopActive=false;
     // Season data
     if(d.seasonStartTime){seasonStartTime=d.seasonStartTime;seasonEndTime=d.seasonEndTime||d.seasonStartTime+SEASON_DURATION_MS;}
     else{initSeason();} // legacy saves: start fresh season
