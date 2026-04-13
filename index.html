@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v121</title>
+<title>0xARK v122</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -6982,7 +6982,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v121',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v122',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -8264,7 +8264,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v121',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v122',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -12895,8 +12895,49 @@ function dStats(){
 
   // Single window for all stats — clean list format
   const padTop=60;
-  win(16,padTop-8,W-32,440);
+  win(16,padTop-8,W-32,500);
 
+  // v122: Vault progress hero section
+  const vaultSize=pl[0].vault?pl[0].vault.size:0;
+  const vaultRatio=Math.min(1,vaultSize/60);
+  const vpY=padTop+6;
+  txShadow('VAULT',36,vpY+14,9,'#f0c830','rgba(0,0,0,.4)');
+  const vNumStr=vaultSize+'/60';
+  const vNumCol=vaultSize>=60?'#ffe080':vaultSize>=48?'#d0c040':'#f0e8d0';
+  txShadow(vNumStr,100,vpY+14,11,vNumCol,'rgba(0,0,0,.4)');
+  const vpbX=170,vpbY=vpY+1,vpbW=W-230,vpbH=16;
+  bx(vpbX,vpbY,vpbW,vpbH,'#181838');
+  if(vaultSize>0){
+    const fW=Math.floor(vpbW*vaultRatio);
+    const pulse_=0.8+Math.sin(fr*0.08)*0.2;
+    const fc_=vaultSize>=60?`rgba(255,220,60,${pulse_})`:vaultSize>=48?`rgba(160,200,50,${pulse_})`:`rgba(40,180,80,${pulse_})`;
+    bx(vpbX,vpbY,fW,vpbH,fc_);
+    bx(vpbX,vpbY,fW,2,'rgba(255,255,255,.22)');
+  }
+  // Milestone ticks at 25%, 50%, 75%
+  [15,30,45].forEach(m_=>{const mx_=vpbX+Math.floor(vpbW*(m_/60));bx(mx_,vpbY,1,vpbH,'rgba(255,255,255,.15)');});
+  bx(vpbX,vpbY,vpbW,1,'#282848');bx(vpbX,vpbY+vpbH,vpbW,1,'#282848');
+  if(vaultSize>=60){
+    const cA_=0.5+Math.sin(fr*0.14)*0.45;
+    g.globalAlpha=cA_;
+    txShadow('\u2605 COMPLETE! \u2605',vpbX+vpbW/2-56,vpbY+13,8,'#ffe080','rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  }
+  // Rarity pip breakdown below bar
+  const rarCount_=[0,0,0,0,0];
+  if(pl[0].vault){pl[0].vault.forEach(cid_=>{const cr_=CD[cid_-1];if(cr_)rarCount_[(cr_.r||1)-1]++;});}
+  const rarPipCols=['#808898','#50d060','#b060e0','#e0a020','#ffe080'];
+  const rarPipLabels=['C','U','R','E','L'];
+  let rPX=vpbX;
+  rarPipLabels.forEach((lab_,ri_)=>{
+    if(rarCount_[ri_]===0)return;
+    bx(rPX,vpbY+vpbH+3,9,9,rarPipCols[ri_]);
+    tx(lab_+':'+rarCount_[ri_],rPX+11,vpbY+vpbH+11,7,'#c0b8a0');
+    rPX+=36;
+  });
+  bx(36,vpbY+vpbH+18,W-104,1,'#282840');
+
+  const stealSuccessPct=stats.stealsAttempted>0?Math.round((1-stats.stealsBlocked/(stats.stealsAttempted||1))*100):0;
   const allRows=[
     {label:'GAME',value:'',header:true,col:'#f0c830'},
     {label:'Games Played',value:''+stats.gamesPlayed,col:'#888898'},
@@ -12911,26 +12952,36 @@ function dStats(){
     {label:'Steals Attempted',value:''+stats.stealsAttempted,col:'#888898'},
     {label:'Steals Blocked',value:''+stats.stealsBlocked,col:'#888898'},
     {label:'Scout Uses',value:''+stats.scoutUses,col:'#888898'},
-    {label:'Win Streak',value:''+streakCount,col:'#888898'},
-    {label:'Steal Success',value:stats.stealsAttempted>0?Math.round((1-stats.stealsBlocked/(stats.stealsAttempted||1))*100)+'%':'--',col:'#888898'},
+    {label:'Win Streak',value:''+streakCount,bar:streakCount>0?{val:Math.min(streakCount,10),max:10,col:'#f0c830'}:null,col:'#888898'},
+    {label:'Steal Success',value:stats.stealsAttempted>0?stealSuccessPct+'%':'--',bar:stats.stealsAttempted>0?{val:stealSuccessPct,max:100,col:stealSuccessPct>=70?'#40d080':'#d08030'}:null,col:'#888898'},
     {label:'Best Clear',value:stats.bestClearTime>0?Math.floor(stats.bestClearTime/60)+'m'+('0'+(stats.bestClearTime%60)).slice(-2)+'s':'--',col:stats.bestClearTime>0?'#f0c830':'#888898'},
     {label:'',value:'',header:false,col:''},
     {label:'AREA',value:'',header:true,col:'#f0c830'},
     {label:'Favorite Area',value:favArea,col:'#888898'},
   ];
 
-  let rowY=padTop+6;
+  let rowY=vpbY+vpbH+24;
   allRows.forEach(r=>{
-    if(!r.label&&!r.value){rowY+=8;return;} // spacer
+    if(!r.label&&!r.value){rowY+=6;return;} // spacer
     if(r.header){
       txShadow(r.label,36,rowY+14,12,r.col,'rgba(0,0,0,.5)');
       bx(36,rowY+20,W-104,1,'#282840');
       rowY+=26;
     }else{
       txShadow(r.label,44,rowY+14,11,'#8888a8','rgba(0,0,0,.3)');
-      txShadow(r.value,W-60-r.value.length*10,rowY+14,12,'#f8f0e0','rgba(0,0,0,.4)');
+      // Inline mini-bar for rows that have one
+      if(r.bar){
+        const mbX=W-200,mbY=rowY+6,mbW=100,mbH=10;
+        bx(mbX,mbY,mbW,mbH,'#181838');
+        const mbFill=Math.floor(mbW*(r.bar.val/r.bar.max));
+        if(mbFill>0)bx(mbX,mbY,mbFill,mbH,r.bar.col);
+        bx(mbX,mbY,mbW,1,'#282848');
+        txShadow(r.value,mbX+mbW+6,rowY+14,11,'#f8f0e0','rgba(0,0,0,.4)');
+      }else{
+        txShadow(r.value,W-60-r.value.length*10,rowY+14,12,'#f8f0e0','rgba(0,0,0,.4)');
+      }
       bx(36,rowY+20,W-104,1,'#1a1a30');
-      rowY+=24;
+      rowY+=22;
     }
   });
 
