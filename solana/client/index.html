@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v93</title>
+<title>0xARK v94</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7921,7 +7921,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v93',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v94',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -7937,6 +7937,49 @@ function dMap(){
 
   // Minimap
   drawMinimap();
+
+  // v94: Town rivalry scoreboard (shown only in town, top-left panel)
+  if(currentMap===0&&!inDungeon&&sc==='map'){
+    const myUniq=pl[0].vault?pl[0].vault.size:0;
+    const vegaCards=pl[1].cd.filter(c=>c>0).length;
+    const miraCards=pl[2].cd.filter(c=>c>0).length;
+    // Use vault-proxy for rivals (their hand as unique cards approximation)
+    const vegaUniq=new Set(pl[1].cd.filter(c=>c>0)).size;
+    const miraUniq=new Set(pl[2].cd.filter(c=>c>0)).size;
+    // Sort by unique count descending
+    const rankings=[
+      {name:'YOU',uniq:myUniq,hand:pl[0].cd.filter(c=>c>0).length,col:'#78c0f0',floor:0},
+      {name:pl[1].n,uniq:vegaUniq,hand:vegaCards,col:'#e060a0',floor:rivalMaps[0]},
+      {name:pl[2].n,uniq:miraUniq,hand:miraCards,col:'#d0a030',floor:rivalMaps[1]}
+    ].sort((a,b)=>b.uniq-a.uniq);
+    const mmH_=90; // match minimap height
+    const sbW=156,sbH=88,sbX=12,sbY=H-HUD_HEIGHT-sbH-mmH_-24;
+    const pnlAlpha=0.92;
+    g.globalAlpha=pnlAlpha;
+    win(sbX,sbY,sbW,sbH);
+    bx(sbX,sbY,sbW,3,'#f0c830');
+    g.globalAlpha=pnlAlpha;
+    txShadow('\u2694 STANDINGS',sbX+8,sbY+18,8,'#f0c830','rgba(0,0,0,.4)');
+    bx(sbX+4,sbY+22,sbW-8,1,'rgba(200,180,100,.3)');
+    rankings.forEach((r,ri)=>{
+      const ry=sbY+28+ri*18;
+      const isLeader=ri===0;
+      g.globalAlpha=pnlAlpha*(isLeader?1:0.8);
+      // Rank number
+      tx((ri+1)+'.',sbX+8,ry+12,isLeader?9:7,isLeader?'#f0c830':'#808080');
+      // Name (truncated)
+      const nm=r.name.length>5?r.name.slice(0,5):r.name;
+      txShadow(nm,sbX+22,ry+12,isLeader?8:7,r.col,'rgba(0,0,0,.3)');
+      // Unique card count (most important)
+      const uniqStr=r.uniq+'/60';
+      txShadow(uniqStr,sbX+sbW-8-uniqStr.length*6,ry+12,isLeader?8:7,'#e8e0c0','rgba(0,0,0,.3)');
+      // Floor indicator (for rivals)
+      if(r.floor>0){const fStr='B'+r.floor;tx(fStr,sbX+76,ry+12,6,r.col);}
+      // Leader crown
+      if(isLeader){tx('\u2605',sbX+sbW-22,ry+6,5,'#f0c830');}
+    });
+    g.globalAlpha=1;
+  }
 
   // Textbox (canvas fallback for mobile, PixiJS on desktop)
   if(_isMobile&&!twDone){
