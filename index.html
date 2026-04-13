@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v80</title>
+<title>0xARK v81</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -4016,6 +4016,8 @@ const INTRO_PAGES=[
 
 // ── Battle encounter exclamation ──
 let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
+// v81: Pre-battle rival dialogue
+let encounterRivalLine=''; // context-sensitive line for exclamation animation
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
 
 
@@ -4225,7 +4227,7 @@ function resetNewFeatureState(){
   burnedTiles.length=0;shadowStepsLeft=0;fishingCooldownTimer=0;
   fishingActive=false;inBuilding=false;crystalRevealTimer=0;
   mapCardUseActive=false;fountainActive=false;
-  footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;proximityTauntText='';proximityTauntTimer=0;
+  footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;proximityTauntText='';proximityTauntTimer=0;encounterRivalLine='';
   // Reset all UI overlay states
   wildEncounterActive=false;npcDialogActive=false;shopActive=false;signpostActive=false;gachaActive=false;marketActive=false;dungeonConfirmActive=false;synthActive=false;
   discardActive=false;cardAcqActive=false;cardAcqDone=false;randomEventActive=false;
@@ -4277,7 +4279,7 @@ function resetGameState(startCards){
   rivalAI[1].goalX=32;rivalAI[1].goalY=18;rivalAI[1].goalMap=1;rivalAI[1].state='exploring';
   rivalAI[1].moveTimer=0;rivalAI[1].moveInterval=14;rivalAI[1].lastKnownPlayerMap=-1;
   rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;rivalAI[1].stateTimer=0;rivalAI[1].huntCooldown=0;
-  footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;proximityTauntText='';proximityTauntTimer=0;
+  footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;proximityTauntText='';proximityTauntTimer=0;encounterRivalLine='';
   rivalBgTimer[0]=1800;rivalBgTimer[1]=2400;
   stopDangerDrone();
   lg.length=0;
@@ -6386,6 +6388,21 @@ function drawEncounterExclamation(){
     bx(rpx-nameW/2+8,rpy-38+bounce,nameW,13,'rgba(0,0,0,.7)');
     tx(rName,rpx-nameW/2+10,rpy-27+bounce,7,rNameCol);
   }
+  // v81: Pre-battle dialogue speech bubble (appears t>12, fades at t>24)
+  if(t>12&&encounterRivalLine){
+    const lineAlpha=Math.min(1,(t-12)/6)*Math.max(0,(30-t)/8);
+    g.globalAlpha=lineAlpha*alpha;
+    const lineW=Math.min(200,encounterRivalLine.length*6+16);
+    const lineX=rpx+14, lineY=rpy-56+bounce;
+    bx(lineX,lineY,lineW,16,'rgba(8,8,16,.85)');
+    bx(lineX,lineY,lineW,1,'rgba(200,180,120,.4)');
+    bx(lineX,lineY+15,lineW,1,'rgba(200,180,120,.25)');
+    // Speech bubble triangle pointer
+    bx(lineX+4,lineY+16,4,2,'rgba(8,8,16,.85)');
+    const rNameCol2=(encounterExclTarget===1)?'#f080c0':'#f0c830';
+    tx('\u201C'+encounterRivalLine+'\u201D',lineX+4,lineY+12,5,rNameCol2);
+    g.globalAlpha=1;
+  }
   g.globalAlpha=1;
 }
 
@@ -7666,7 +7683,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v80',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v81',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11796,6 +11813,21 @@ function update(){
           sfxEncounterDramatic();
           const rivalName=r.n;
           const isRivalInitiated=ai.state==='hunting';
+          // v81: choose context-sensitive pre-battle line
+          const rCards=r.cd.filter(c=>c>0).length;
+          const pCards=pl[0].cd.filter(c=>c>0).length;
+          const vegaLines_hunt=['Hand them over.','I\'ve been tracking you.','No escape now.','You\'re mine.','Found you.'];
+          const vegaLines_surp=['You... found me?','Unexpected.','Bold move.','You\'re braver than I thought.','So you came to me.'];
+          const miraLines_hunt=['Precisely where I expected you.','I need those cards.','Calculations confirmed.','You are the target.','Step aside.'];
+          const miraLines_surp=['Oh? You found me.','Hmm. Interesting.','You have good instincts.','I didn\'t predict this.','Clever approach.'];
+          const rich=rCards>=3;
+          if(idx===0){// VEGA
+            const pool=isRivalInitiated?vegaLines_hunt:vegaLines_surp;
+            encounterRivalLine=(rich?'I have '+rCards+' cards. ':'')+pool[Math.floor(Math.random()*pool.length)];
+          }else{// MIRA
+            const pool=isRivalInitiated?miraLines_hunt:miraLines_surp;
+            encounterRivalLine=(rCards===0?'I have nothing to lose. ':'')+pool[Math.floor(Math.random()*pool.length)];
+          }
           setTimeout(()=>{
             encounterExclActive=false;
             flash();
