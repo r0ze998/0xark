@@ -1205,10 +1205,26 @@ function dTitle(){
     if(credSel&&credBlink||!credSel)tx('CREDITS',W/2-42,credY,10,credSel?FRLG.selHighlight:'#555570');
   }
 
+  // v107: Save progress preview on title screen
+  if(hasSave()&&pl[0].vault){
+    const svSize=pl[0].vault.size;
+    const svPct=Math.floor(svSize/60*100);
+    const previewY=488;
+    const barW=160;const barX=W/2-barW/2;
+    // Progress bar
+    bx(barX,previewY,barW,8,'#181828');
+    bx(barX,previewY,Math.round(barW*svSize/60),8,svSize>=60?'#f0c830':'#4070d0');
+    bx(barX,previewY,barW,1,'#282848');bx(barX,previewY+7,barW,1,'#282848');
+    // Collection text
+    const progStr=svSize+'/60 cards collected ('+svPct+'%)';
+    txShadow(progStr,W/2-progStr.length*4,previewY+22,7,'#a0a8c0','rgba(0,0,0,.4)');
+    // Steps
+    txShadow('Steps: '+stepCounter,W/2-50,previewY+36,6,'#686880','rgba(0,0,0,.3)');
+  }
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v58',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v107',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
