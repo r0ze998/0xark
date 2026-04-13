@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v44</title>
+<title>0xARK v45</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -5758,7 +5758,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v44',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v45',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6662,7 +6662,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v44',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v45',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -7234,9 +7234,12 @@ function drawSelectPhase(){
     txShadow('Target:',W/2-48,H/2-26,14,'#806030','rgba(0,0,0,.2)');
     for(let t=1;t<=2;t++){
       const y=H/2-4+(t-1)*32;
+      const tFled=pl[t].cd.filter(c=>c>0).length===0;
       if(t===bpTargetSelectIdx){bx(W/2-130,y-2,260,28,'rgba(192,168,96,.22)');txShadow('\u25B6',W/2-134,y+14,10,'#c04040','rgba(0,0,0,.3)');}
+      g.globalAlpha=tFled?0.45:1;
       txShadow(pl[t].n,W/2-106,y+14,14,t===bpTargetSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
-      txShadow(pl[t].cc+' cards',W/2+40,y+14,10,'#908878','rgba(0,0,0,.15)');
+      txShadow(tFled?'FLED':pl[t].cc+' cards',W/2+40,y+14,10,tFled?'#a04040':'#908878','rgba(0,0,0,.15)');
+      g.globalAlpha=1;
     }
   }
   g.restore();
