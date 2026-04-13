@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v61</title>
+<title>0xARK v62</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -3755,7 +3755,10 @@ let mapCardDirSelect=false, mapCardDirIdx=0, mapCardPendingType=-1;
 // Card Decay Timer: each slot stores timestamp when card was acquired (0 = empty)
 const CARD_DECAY_MS=210000; // 210 seconds (3.5 minutes) real-time — slightly more breathing room
 const cardTimers=new Array(HAND_SIZE).fill(0); // parallel to pl[0].cd[HAND_SIZE] — only active in dungeon
+const decayWarn=new Array(HAND_SIZE).fill(0); // 0=none,1=50%warned,2=30swarned,3=criticalwarned per slot
 let cardDecayWarningFlash=0; // frame counter for warning flash
+let escapeUrgencyActive=false; // true when any card has <30s remaining in dungeon
+let escapeUrgencyPulse=0; // frame counter for escape urgency animation
 
 // Streak Bonus: consecutive successful actions
 let streakCount=0;
@@ -3789,7 +3792,8 @@ function resetNewFeatureState(){
   infoBrokerConfirm=false;infoBrokerResult='';infoBrokerResultTimer=0;
   buildingNpcDialog=false;fountainConfirm=false;fountainResultTimer=0;
   // Tension mechanics reset
-  for(let i=0;i<HAND_SIZE;i++)cardTimers[i]=0;
+  for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;decayWarn[i]=0;}
+  escapeUrgencyActive=false;escapeUrgencyPulse=0;
   streakCount=0;streakDisplayTimer=0;streakLostTimer=0;
   for(let i=0;i<FOG_MAP_COUNT;i++){areaDanger[i]=0;areaDangerStayTimer[i]=0;}
   qteActive=false;qteKeyPressed=false;
@@ -3834,7 +3838,8 @@ function resetGameState(startCards){
     firstFloor2:false,firstFloor3:false,firstFloor4:false,firstFloor5:false,firstGacha:false};
   resetNewFeatureState();
   // Card timers: inactive in town at start (decay only starts when entering dungeon)
-  for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;}
+  for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;decayWarn[i]=0;}
+  escapeUrgencyActive=false;escapeUrgencyPulse=0;
   edgeCacheDirty=true;fogCacheDirty=true;
 }
 
@@ -6797,17 +6802,24 @@ function dMap(){
     // Card decay timer bar under each card
     if(pl[0].cd[i]>0&&cardTimers[i]>0){
       const elapsed=Date.now()-cardTimers[i];
-      const remaining=Math.max(0,1-elapsed/CARD_DECAY_MS);
+      const remainFrac=Math.max(0,1-elapsed/CARD_DECAY_MS);
+      const remainMs=Math.max(0,CARD_DECAY_MS-elapsed);
       const barX_=310+i*HUD_CARD_SPACING, barY_=hudY+36, barW_=24, barH_=3;
       bx(barX_,barY_,barW_,barH_,'#1a1a30');
-      const col_=remaining>0.5?'#40d040':remaining>0.25?'#d0c040':'#d04040';
-      bx(barX_,barY_,Math.floor(barW_*remaining),barH_,col_);
-      // Flash red in last 15 seconds
-      if(CARD_DECAY_MS-elapsed<15000){
+      const col_=remainFrac>0.5?'#40d040':remainFrac>0.25?'#d0c040':'#d04040';
+      bx(barX_,barY_,Math.floor(barW_*remainFrac),barH_,col_);
+      // Flash red overlay in last 15 seconds
+      if(remainMs<15000){
         const flashA=Math.sin(fr*0.3)*0.4+0.4;
         g.globalAlpha=flashA;
         bx(310+i*HUD_CARD_SPACING-1,hudY+13,26,26,'#d04040');
         g.globalAlpha=1;
+      }
+      // Countdown seconds when <30s
+      if(remainMs<30000){
+        const secs=Math.ceil(remainMs/1000);
+        const cntCol=remainMs<10000?'#ff4040':remainMs<20000?'#ff9020':'#ffe040';
+        txShadow(secs+'s',310+i*HUD_CARD_SPACING+3,hudY+26,6,cntCol,'rgba(0,0,0,.7)');
       }
     }
   }
@@ -6815,6 +6827,18 @@ function dMap(){
   const handTotal=pl[0].cd.filter(c=>c>0).length;
   if(handTotal>HUD_CARD_SLOTS){
     tx('+'+(handTotal-HUD_CARD_SLOTS),310+HUD_CARD_SLOTS*HUD_CARD_SPACING+2,hudY+26,7,'#c8c0a0');
+  }
+
+  // Escape urgency banner: pulsing "ESCAPE TO TOWN!" when any card is critically decaying
+  if(escapeUrgencyActive&&inDungeon){
+    const epAlpha=0.55+Math.sin(escapeUrgencyPulse*0.18)*0.45;
+    g.globalAlpha=epAlpha;
+    const epW=180,epX=W/2-epW/2,epY=hudY-20;
+    bx(epX,epY,epW,16,'rgba(180,30,30,.85)');
+    bx(epX,epY,epW,2,'#ff6040');
+    bx(epX,epY+14,epW,2,'#ff6040');
+    txShadow('ESCAPE TO TOWN!',epX+epW/2-54,epY+11,8,'#fff8e0','rgba(0,0,0,.6)');
+    g.globalAlpha=1;
   }
 
   // Streak display
@@ -6906,7 +6930,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v58',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v62',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -7733,7 +7757,7 @@ function addCardToPlayer(pIdx,cardId){
   for(let i=0;i<handLimit;i++){
     if(p.cd[i]===0){
       p.cd[i]=cardId;syncCardCount(pIdx);
-      if(pIdx===0){cardTimers[i]=inDungeon?Date.now():0;if(hadVaultBefore===null)stats.cardsCollected++;}
+      if(pIdx===0){cardTimers[i]=inDungeon?Date.now():0;decayWarn[i]=0;if(hadVaultBefore===null)stats.cardsCollected++;}
       return true;
     }
   }
@@ -7747,9 +7771,9 @@ function removeCardFromPlayer(pIdx,slotOrRandom){
     const filled=[];for(let i=0;i<handLimit;i++){if(p.cd[i]>0)filled.push(i);}
     if(filled.length===0)return 0;
     const slot=filled[Math.floor(Math.random()*filled.length)];
-    const card=p.cd[slot];p.cd[slot]=0;if(pIdx===0){cardTimers[slot]=0;stats.cardsLost++;}syncCardCount(pIdx);return card;
+    const card=p.cd[slot];p.cd[slot]=0;if(pIdx===0){cardTimers[slot]=0;decayWarn[slot]=0;stats.cardsLost++;}syncCardCount(pIdx);return card;
   }
-  const card=p.cd[slotOrRandom];if(card>0){p.cd[slotOrRandom]=0;if(pIdx===0){cardTimers[slotOrRandom]=0;stats.cardsLost++;}syncCardCount(pIdx);}return card;
+  const card=p.cd[slotOrRandom];if(card>0){p.cd[slotOrRandom]=0;if(pIdx===0){cardTimers[slotOrRandom]=0;decayWarn[slotOrRandom]=0;stats.cardsLost++;}syncCardCount(pIdx);}return card;
 }
 function hasUniqueCards(pIdx){
   // For player: return vault (all ever collected); for rivals: derive from hand
@@ -9924,7 +9948,8 @@ function executeMapCard(cardId,slot){
       currentMap=0;inDungeon=false;currentFloor=0;
       pl[0].x=35;pl[0].y=13;pl[0].dir=1;
       pl[0].visualX=35*TW;pl[0].visualY=13*TH;
-      for(let i=0;i<HAND_SIZE;i++)cardTimers[i]=0;
+      for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;decayWarn[i]=0;}
+      escapeUrgencyActive=false;escapeUrgencyPulse=0;
       sp.s=2;sp.b=3;sp.c=2;
       fogRevealAll(0);fogSave();
       encounterCooldown=600;
@@ -9947,7 +9972,8 @@ function executeMapCard(cardId,slot){
       currentMap=0;inDungeon=false;currentFloor=0;
       pl[0].x=35;pl[0].y=13;pl[0].dir=1;
       pl[0].visualX=35*TW;pl[0].visualY=13*TH;
-      for(let i=0;i<HAND_SIZE;i++)cardTimers[i]=0;
+      for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;decayWarn[i]=0;}
+      escapeUrgencyActive=false;escapeUrgencyPulse=0;
       sp.s=2;sp.b=3;sp.c=2;
       fogRevealAll(0);fogSave();
       encounterCooldown=600;
@@ -10397,25 +10423,56 @@ function update(){
   // ── CARD DECAY TIMER (GDD v1.0: only active in dungeon, town is safe) ──
   if((sc==='map'||sc==='act')&&inDungeon){
     const now=Date.now();
+    let anyCardCritical=false;
     for(let i=0;i<HAND_SIZE;i++){
       if(pl[0].cd[i]>0&&cardTimers[i]>0){
         const elapsed=now-cardTimers[i];
+        const remaining=CARD_DECAY_MS-elapsed;
         if(elapsed>=CARD_DECAY_MS){
           // Card expired in dungeon!
           const expiredName=CD[pl[0].cd[i]-1].n;
-          pl[0].cd[i]=0;cardTimers[i]=0;syncCardCount(0);
+          pl[0].cd[i]=0;cardTimers[i]=0;decayWarn[i]=0;syncCardCount(0);
           sfxCardExpired();screenShake(3,6);
           triggerCardLostAnim(pl[0].visualX-camX,pl[0].visualY-camY-16);
           lg.push('[DUNGEON] '+expiredName+' decayed — escape to Town to preserve cards!');
-          objectInteractMsg=expiredName+' expired!';objectInteractTimer=90;
+          tutorialMsg=expiredName+' DECAYED! Escape to Town!';tutorialMsgTimer=200;
           if(streakCount>0){streakCount=0;streakLostTimer=60;}
-        }else if(CARD_DECAY_MS-elapsed<15000&&fr%30===0){
-          cardDecayWarningFlash=10;
-          if(fr%60===0)sfxCardDecayWarn();
+        }else{
+          const cardName=CD[pl[0].cd[i]-1].n;
+          // 50% decay warning (one-time per card)
+          if(elapsed>=CARD_DECAY_MS*0.5&&decayWarn[i]<1){
+            decayWarn[i]=1;
+            if(!tutorialMsg||tutorialMsgTimer<60){
+              tutorialMsg=cardName+': halfway. Head back to Town!';tutorialMsgTimer=180;
+            }
+          }
+          // 30-second warning
+          if(remaining<30000&&decayWarn[i]<2){
+            decayWarn[i]=2;sfxCardDecayWarn();screenShake(1,3);
+            objectInteractMsg=cardName+' FADING! 30s!';objectInteractTimer=90;
+          }
+          // 10-second critical warning
+          if(remaining<10000&&decayWarn[i]<3){
+            decayWarn[i]=3;sfxDangerAlert();screenShake(2,4);
+            objectInteractMsg=cardName+' CRITICAL! RUN!';objectInteractTimer=90;
+          }
+          // Flashing at <15s
+          if(remaining<15000){
+            anyCardCritical=true;
+            if(fr%30===0)cardDecayWarningFlash=10;
+            if(fr%60===0)sfxCardDecayWarn();
+          }
+          // Escape urgency (any card <30s)
+          if(remaining<30000)anyCardCritical=true;
         }
       }
     }
+    escapeUrgencyActive=anyCardCritical;
+    if(escapeUrgencyActive)escapeUrgencyPulse++;
+    else escapeUrgencyPulse=0;
     if(cardDecayWarningFlash>0)cardDecayWarningFlash--;
+  }else{
+    escapeUrgencyActive=false;escapeUrgencyPulse=0;
   }
 
   // ── STREAK DISPLAY TIMERS ──
@@ -10606,6 +10663,14 @@ function draw(){
   // Card collection progress bar (always visible on map)
   drawCardProgressBar();
   if(flashT>0){bx(0,0,W,H,`rgba(255,255,255,${(flashT>10?1:flashT/10)*.8})`);}
+  // Decay vignette: red edges when any card critically decaying
+  if(escapeUrgencyActive&&inDungeon&&(sc==='map'||sc==='act')){
+    const vigA=(0.15+Math.sin(escapeUrgencyPulse*0.15)*0.1)*Math.min(1,escapeUrgencyPulse/30);
+    const vg=g.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    vg.addColorStop(1,`rgba(200,20,20,${vigA.toFixed(2)})`);
+    g.fillStyle=vg;g.fillRect(0,0,W,H);
+  }
   // Screen transition wipes (replaces old battleWipe)
   drawWipe();
   // Map loading screen
@@ -11672,7 +11737,8 @@ function loadGame(){
     pl[1].x=8;pl[1].y=10;pl[1].visualX=8*TW;pl[1].visualY=10*TH;
     pl[2].x=28;pl[2].y=18;pl[2].visualX=28*TW;pl[2].visualY=18*TH;
     // Pause card timers (in town, no decay)
-    for(let i=0;i<HAND_SIZE;i++)cardTimers[i]=0;
+    for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;decayWarn[i]=0;}
+    escapeUrgencyActive=false;escapeUrgencyPulse=0;
     // Clear all battle/encounter state
     wildEncounterActive=false;encounterCooldown=180;battlePhase='select';
     encounterExclActive=false;mapTransitioning=false;npcDialogActive=false;
