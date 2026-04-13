@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v62</title>
+<title>0xARK v64</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -6931,7 +6931,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v62',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v64',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -7782,6 +7782,15 @@ function addCardToPlayer(pIdx,cardId){
     p.vault.add(cardId);
     sfxUniqueCardSting();triggerProgressPulse();
     stats.cardsCollected++;
+    // Vault milestone celebrations
+    const ms=p.vault.size;
+    const milestones={10:'10 CARDS!',20:'20 CARDS!',30:'HALFWAY THERE!',40:'40 CARDS!',50:'50 CARDS! SO CLOSE!',55:'55 CARDS!',59:'ONE MORE!'};
+    if(milestones[ms]){
+      setTimeout(()=>{
+        tutorialMsg='\u2605 '+milestones[ms]+' '+ms+'/60 collected!';tutorialMsgTimer=260;
+        if(ms>=50)screenShake(2,4);
+      },400);
+    }
   }
   // Add to hand if room
   for(let i=0;i<handLimit;i++){
@@ -7952,14 +7961,16 @@ function generateResolveEvents(){
     }else{
       const stolen=removeCardFromPlayer(tgt,-1);
       if(stolen>0&&addCardToPlayer(0,stolen)){
-        events.push({type:'result',text:'You stole '+CD[stolen-1].n+' from '+pl[tgt].n+'!',effect:'damage',target:tgt,isCritical:true});
-        lg.push('R'+rd+': Stole '+CD[stolen-1].n+' from '+pl[tgt].n+'!');
+        const stolenCard=CD[stolen-1];
+        events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'!',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r});
+        lg.push('R'+rd+': Stole '+stolenCard.n+' from '+pl[tgt].n+'! ('+RARITY_LABEL[stolenCard.r]+')');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
       }else if(stolen>0){
         // Hand full — queue discard prompt so stolen card isn't lost
-        events.push({type:'result',text:'You stole '+CD[stolen-1].n+' but hand full! Discard one after battle.',effect:'damage',target:tgt,isCritical:true});
+        const stolenCard=CD[stolen-1];
+        events.push({type:'result',text:'You stole '+stolenCard.n+' but hand full! Discard one after battle.',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r});
         events._pendingDrawCard=stolen;
-        lg.push('R'+rd+': Stole '+CD[stolen-1].n+' - hand full!');
+        lg.push('R'+rd+': Stole '+stolenCard.n+' - hand full!');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
       }else{
         events.push({type:'result',text:'Steal failed!',effect:'none'});
@@ -7992,11 +8003,13 @@ function generateResolveEvents(){
         if(Math.random()<0.2+cr.r*0.15){
           const stolen=removeCardFromPlayer(tgt,-1);
           if(stolen>0&&addCardToPlayer(0,stolen)){
-            events.push({type:'result',text:cr.n+': Power steal! Got '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true});
-            lg.push('R'+rd+': '+cr.n+' power steal → '+CD[stolen-1].n+'!');streakCount++;streakDisplayTimer=60;sfxStreakUp();
+            const sc_=CD[stolen-1];
+            events.push({type:'result',text:cr.n+': Power steal! Got '+sc_.n+'!',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:sc_.r});
+            lg.push('R'+rd+': '+cr.n+' power steal → '+sc_.n+'! ('+RARITY_LABEL[sc_.r]+')');streakCount++;streakDisplayTimer=60;sfxStreakUp();
           }else if(stolen>0){
             events._pendingDrawCard=stolen;
-            events.push({type:'result',text:cr.n+': Power stole '+CD[stolen-1].n+'! Hand full — discard after.',effect:'damage',target:tgt,isCritical:true});
+            const sc_=CD[stolen-1];
+            events.push({type:'result',text:cr.n+': Power stole '+sc_.n+'! Hand full — discard after.',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:sc_.r});
           }else{events.push({type:'result',text:cr.n+': No cards to steal from '+pl[tgt].n+'!',effect:'none'});}
         }else{
           events.push({type:'result',text:cr.n+': Strike landed but foe dodged!',effect:'slash',target:tgt});
@@ -8343,6 +8356,59 @@ function drawResolvingPhase(){
       bx(oppCX-10,riseY-14,20,28,'#d85840');bx(oppCX-8,riseY-12,16,24,'#e87060');
       tx('\u25B2',oppCX-4,riseY+6,8,'#fff');
       if(evT===1)sfxCardGet();
+    }
+    if(ev.effect==='steal_get'&&evT<50){
+      // Dramatic steal animation: card trajectory from rival to player + rarity burst
+      const rar=ev.rarity||1;
+      const rarCols=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
+      const rarGlow=['','rgba(80,200,80,.3)','rgba(80,144,240,.3)','rgba(176,80,224,.4)','rgba(224,160,32,.5)','rgba(255,248,200,.6)'];
+      const rcol=rarCols[rar]||'#d85840';
+      const rglow=rarGlow[rar]||'rgba(200,80,80,.3)';
+      // Card moves from rival (oppCX) to player (playerCX) over 30 frames
+      const prog=Math.min(1,evT/30);
+      const cx_=oppCX+(playerCX-oppCX)*prog;
+      const cy_=oppCY-30*Math.sin(prog*Math.PI); // arc trajectory
+      const scl_=Math.min(1,evT/8);
+      const cw_=36*scl_,ch_=50*scl_;
+      // Glow burst at card position
+      if(evT<30){
+        const glA=0.6*(1-prog);
+        g.globalAlpha=glA;
+        const grd=g.createRadialGradient(cx_,cy_,0,cx_,cy_,30+rar*8);
+        grd.addColorStop(0,rglow.replace('.3','.'+(0.6+rar*.06).toFixed(2)));
+        grd.addColorStop(1,'rgba(0,0,0,0)');
+        g.fillStyle=grd;g.fillRect(cx_-40,cy_-40,80,80);
+        g.globalAlpha=1;
+      }
+      // Card frame (colored by rarity)
+      bx(cx_-cw_/2,cy_-ch_/2,cw_,ch_,rcol);
+      bx(cx_-cw_/2+2,cy_-ch_/2+2,cw_-4,ch_-4,ev.stolenId?CD[ev.stolenId-1].c||'#303028':'#e87060');
+      if(scl_>.5&&ev.stolenId){drawCardCharacter(cx_-cw_/2+2,cy_-ch_/2+2,ev.stolenId,scl_*0.6,fr);}
+      // Rarity sparks orbit
+      const sparkCount=2+rar*2;
+      for(let i=0;i<sparkCount;i++){
+        const ang=evT*0.25+i*(Math.PI*2/sparkCount);
+        const dist=16+evT*0.6;
+        const sa=Math.max(0,1-evT/50);
+        g.globalAlpha=sa;
+        bx(cx_+Math.cos(ang)*dist-2,cy_+Math.sin(ang)*dist-2,4,4,rcol);
+        g.globalAlpha=1;
+      }
+      // Arrival: screen flash proportional to rarity (only once at frame 30)
+      if(evT===30){
+        if(rar>=4){flash();}
+        sfxCardGet();
+        // High rarity: extra shake
+        if(rar>=3)screenShake(rar-1,rar*2);
+      }
+      // "STOLEN!" text appears during flight
+      if(evT>10&&evT<40){
+        const stA=Math.min(1,(evT-10)/5)*Math.max(0,(40-evT)/8);
+        g.globalAlpha=stA;
+        const stLabel=rar>=5?'LEGENDARY STEAL!':rar>=4?'EPIC STEAL!':rar>=3?'RARE STEAL!':'STOLEN!';
+        txShadow(stLabel,W/2-60,playerCY-80,rar>=4?14:10,rcol,'rgba(0,0,0,.5)');
+        g.globalAlpha=1;
+      }
     }
     // Card consumption effect animations based on card name in event text
     if(ev.text&&ev.text.includes('Aegis')&&ev.type==='result'&&evT<35){
