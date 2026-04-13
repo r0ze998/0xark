@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v37</title>
+<title>0xARK v38</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -5724,7 +5724,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v37',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v38',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6600,7 +6600,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v37',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v38',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -9359,7 +9359,7 @@ function getMapUsableCards(){
   // Returns [{slot, cardId, name}] for cards that can be used on map
   // Card 2=UMBRA: stealth, Card 3=IGNIS: burn, Card 28=PHASE: walk through walls,
   // Card 29=BLINK: teleport, Card 30=SHADOW: longer stealth
-  const MAP_CARD_IDS=new Set([2,3,28,29,30]);
+  const MAP_CARD_IDS=new Set([2,3,28,29,30,35,36]);
   const result=[];
   for(let i=0;i<HAND_SIZE;i++){
     const cd=pl[0].cd[i];
@@ -9371,6 +9371,8 @@ function getMapUsableCards(){
     else if(cd===28)desc='Phase through wall in direction';
     else if(cd===29)desc='Teleport 5 tiles in direction';
     else if(cd===30)desc='Invisible 60 steps';
+    else if(cd===35)desc='Escape to Town instantly!';
+    else if(cd===36)desc='Escape & restart from Town';
     result.push({slot:i,cardId:cd,name:cr.n,desc});
   }
   return result;
@@ -9379,7 +9381,7 @@ function getMapUsableCards(){
 function openMapCardUse(){
   const usable=getMapUsableCards();
   if(usable.length===0){
-    twSet('No usable cards! UMBRA/IGNIS/PHASE/BLINK/SHADOW can be used on the map.');
+    twSet('No usable cards! UMBRA/IGNIS/PHASE/BLINK/SHADOW/ARK GATE/GENESIS can be used on the map.');
     return;
   }
   mapCardUseActive=true;
@@ -9424,6 +9426,54 @@ function executeMapCard(cardId,slot){
     mapCardDirIdx=pl[0].dir;
     mapCardPendingType=29;
     return;
+  }else if(cardId===35){
+    // ARK GATE: instant escape from dungeon to town (consume card)
+    pl[0].cd[slot]=0;cardTimers[slot]=0;
+    syncCardCount(0);
+    mapCardUseActive=false;
+    if(!inDungeon){twSet('ARK GATE only works in the dungeon!');return;}
+    sfxMapChange();sfxAreaEntry();
+    lg.push('Used ARK GATE — escaped dungeon instantly!');
+    startWipe('vslide',16,()=>{
+      currentMap=0;inDungeon=false;currentFloor=0;
+      pl[0].x=35;pl[0].y=13;pl[0].dir=1;
+      pl[0].visualX=35*TW;pl[0].visualY=13*TH;
+      for(let i=0;i<HAND_SIZE;i++)cardTimers[i]=0; // pause card decay in town
+      sp.s=2;sp.b=3;sp.c=2;
+      fogRevealAll(0);fogSave();
+      encounterCooldown=600;
+      camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
+      camTargetX=camX;camTargetY=camY;
+      edgeCacheDirty=true;fogCacheDirty=true;
+      showBanner('はじまりの街','ARK GATE: Escaped from dungeon!');
+      twSet('ARK GATE activated! Cards preserved — you\'re safe in town.');
+      saveGame();
+      startWipe('vslide_out',16);
+    });
+  }else if(cardId===36){
+    // GENESIS: escape dungeon to town (consume card)
+    pl[0].cd[slot]=0;cardTimers[slot]=0;
+    syncCardCount(0);
+    mapCardUseActive=false;
+    if(!inDungeon){twSet('GENESIS only works in the dungeon!');return;}
+    sfxMapChange();sfxAreaEntry();
+    lg.push('Used GENESIS — escaped dungeon instantly!');
+    startWipe('vslide',16,()=>{
+      currentMap=0;inDungeon=false;currentFloor=0;
+      pl[0].x=35;pl[0].y=13;pl[0].dir=1;
+      pl[0].visualX=35*TW;pl[0].visualY=13*TH;
+      for(let i=0;i<HAND_SIZE;i++)cardTimers[i]=0;
+      sp.s=2;sp.b=3;sp.c=2;
+      fogRevealAll(0);fogSave();
+      encounterCooldown=600;
+      camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
+      camTargetX=camX;camTargetY=camY;
+      edgeCacheDirty=true;fogCacheDirty=true;
+      showBanner('はじまりの街','GENESIS: Reborn in town!');
+      twSet('GENESIS activated! Escaped with all cards intact — back to safety!');
+      saveGame();
+      startWipe('vslide_out',16);
+    });
   }
 }
 
