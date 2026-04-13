@@ -3342,6 +3342,14 @@ let randomEventActive=false, randomEventText='', randomEventFrame=0;
 // ── Trading Post state ──
 let shopActive=false, shopSelectedIdx=0, shopConfirm=false, shopResultText='', shopResultFrame=0, shopPhase='list';
 
+// ── Dungeon entry confirmation ──
+let dungeonConfirmActive=false, dungeonConfirmExit=null;
+
+// ── Marketplace state ──
+let marketActive=false, marketTab=0, marketPage=0, marketFilter='all';
+const MARKET_TABS=['MY CARDS','BROWSE','SELL'];
+const MARKET_PAGE_SIZE=12; // 4×3
+
 // ── Gacha state ──
 let gachaActive=false, gachaPhase='menu', gachaSelectedTier=0, gachaResultCard=-1, gachaResultFrame=0, gachaSpinFrame=0;
 const GACHA_TIERS=[
@@ -3586,7 +3594,7 @@ function resetNewFeatureState(){
   mapCardUseActive=false;fountainActive=false;
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
   // Reset all UI overlay states
-  wildEncounterActive=false;npcDialogActive=false;shopActive=false;signpostActive=false;gachaActive=false;
+  wildEncounterActive=false;npcDialogActive=false;shopActive=false;signpostActive=false;gachaActive=false;marketActive=false;dungeonConfirmActive=false;
   discardActive=false;cardAcqActive=false;cardAcqDone=false;randomEventActive=false;
   encounterExclActive=false;encounterCooldown=0;
   x402ShopOpen=false;x402ShopLoading=false;x402ShopResult='';x402ShopResultTimer=0;x402HowItWorksActive=false;agentMarketplaceActive=false;
@@ -5138,6 +5146,12 @@ function checkNPCInteraction(){
         sfxShopOpen();
         return true;
       }
+      // Card Merchant opens marketplace
+      if(npc.name==='Card Merchant'){
+        marketActive=true;marketTab=0;marketPage=0;
+        sfxShopOpen();
+        return true;
+      }
       npcDialogActive=true;
       npcDialogLines=npc.dialog;
       npcDialogIdx=0;
@@ -5576,6 +5590,9 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#333350');
   tx('2026 r0ze',W/2-44,598,7,'#2a2a40');
+
+  // Dungeon entry confirmation overlay (shown on map, not title)
+  // (rendered in drawMap via dungeonConfirmActive flag)
 
   // Stake confirmation overlay
   if(stakeConfirmActive){
@@ -7865,6 +7882,102 @@ function drawCardAcquisition(){
 // ═══════════════════════════════════════
 // DISCARD OVERLAY
 // ═══════════════════════════════════════
+// ── DUNGEON ENTRY CONFIRMATION ──
+function drawDungeonConfirm(){
+  if(!dungeonConfirmActive)return;
+  bx(0,0,W,H,'rgba(0,0,0,.65)');
+  const cw=380,ch=200,cx_=W/2-cw/2,cy_=H/2-ch/2;
+  win(cx_,cy_,cw,ch);
+  bx(cx_,cy_,cw,28,'#1a0a0a');
+  txShadow('ENTER DUNGEON?',cx_+cw/2-80,cy_+20,11,'#d04040','rgba(0,0,0,.5)');
+  const handCount=pl[0].cd.filter(c=>c>0).length;
+  const vaultSize=pl[0].vault?pl[0].vault.size:0;
+  tx('Cards in hand: '+handCount,cx_+20,cy_+50,8,'#c8c0a0');
+  tx('Vault (unique): '+vaultSize+'/60',cx_+20,cy_+66,8,'#c8c0a0');
+  bx(cx_+12,cy_+86,cw-24,1,'#282848');
+  tx('WARNING: Cards in your hand decay in the dungeon!',cx_+12,cy_+100,6,'#d06030');
+  tx('Defeat = lose a card to opponent.',cx_+12,cy_+115,6,'#d06030');
+  tx('Escape anytime using the entrance (west side).',cx_+12,cy_+130,6,'#a0a0c0');
+  bx(cx_+12,cy_+148,cw-24,1,'#282848');
+  const blink_=Math.floor(fr/22)%2===0;
+  if(blink_)txShadow('[Z] ENTER   [X] STAY',cx_+cw/2-90,cy_+170,10,'#f0c830','rgba(0,0,0,.5)');
+}
+
+// ── MARKETPLACE OVERLAY ──
+function drawMarketplace(){
+  if(!marketActive)return;
+  bx(0,0,W,H,'rgba(0,0,0,.75)');
+  const mw=W-60,mh=H-40,mx=30,my=20;
+  win(mx,my,mw,mh);
+  bx(mx,my,mw,28,'#0a1a0a');
+  txShadow('CARD MARKETPLACE',mx+mw/2-90,my+20,12,'#40d080','rgba(0,0,0,.5)');
+  // Tabs
+  MARKET_TABS.forEach((tab,i)=>{
+    const isActive=marketTab===i;
+    const tw=100,tx2=mx+12+i*104;
+    bx(tx2,my+32,tw,22,isActive?'#1a3a1a':'#0a120a');
+    if(isActive)bx(tx2,my+32,tw,2,'#40d080');
+    tx(tab,tx2+10,my+48,7,isActive?'#40d080':'#506850');
+  });
+
+  const vault=pl[0].vault||new Set();
+  const vaultArr=[...vault];
+
+  if(marketTab===0){
+    // MY CARDS — show vault collection
+    tx('Your collection ('+vaultArr.length+'/60):',mx+12,my+68,8,'#c8c0a0');
+    const typeFilter=['attack','defense','flee','magic','recovery'];
+    const typeLabel=['ATK','DEF','FLY','MAG','REC'];
+    const typeColor=['#e05840','#48b8e8','#38c080','#d8b028','#e0c040'];
+    let yi=my+82;
+    typeFilter.forEach((typ,ti)=>{
+      const cards=vaultArr.filter(id=>CD[id-1]&&CD[id-1].t===typ);
+      if(cards.length===0)return;
+      tx(typeLabel[ti]+' ('+cards.length+'):',mx+14,yi+10,7,typeColor[ti]);yi+=16;
+      cards.slice(0,8).forEach((id,ci)=>{
+        const cr=CD[id-1];
+        const cx2=mx+14+ci*72;
+        if(cx2+68>mx+mw-12){return;}
+        bx(cx2,yi,66,16,cr.d+'33');
+        bx(cx2,yi,3,16,cr.c);
+        tx(cr.n,cx2+6,yi+12,5,cr.h||'#f8f0e0');
+        tx('★'.repeat(cr.r),cx2+6,yi+24,4,RARITY_COLOR[cr.r]);
+      });
+      if(cards.length>8)tx('+'+(cards.length-8)+' more',mx+14+8*72,yi+12,5,'#888898');
+      yi+=30;
+    });
+  }else if(marketTab===1){
+    // BROWSE — placeholder for on-chain listings
+    tx('On-chain marketplace listings:',mx+12,my+68,8,'#c8c0a0');
+    bx(mx+12,my+86,mw-24,1,'#1a3a1a');
+    // Show mock listings
+    const mockListings=[
+      {seller:'Rival',card:6,price:'0.05'},
+      {seller:'Hunter',card:20,price:'0.08'},
+      {seller:'???',card:45,price:'0.15'},
+      {seller:'???',card:1,price:'0.99'},
+    ];
+    mockListings.forEach((listing,li)=>{
+      const cr=CD[listing.card-1];
+      const ly=my+100+li*40;
+      bx(mx+12,ly,mw-24,36,'#0d200d');
+      drawMiniCard(mx+18,ly+8,listing.card);
+      tx(cr.n,mx+52,ly+14,8,cr.c);
+      tx(RARITY_LABEL[cr.r],mx+52,ly+26,6,RARITY_COLOR[cr.r]);
+      tx(listing.seller,mx+mw-180,ly+14,7,'#888898');
+      tx(listing.price+' SOL',mx+mw-110,ly+14,9,'#14F195');
+      tx('[BUY]',mx+mw-60,ly+22,7,'#40d040');
+    });
+    tx('(On-chain trading: coming in next sprint)',mx+12,my+mh-50,6,'#404850');
+  }else if(marketTab===2){
+    // SELL — list a card from hand
+    tx('Select a card to list for sale:',mx+12,my+68,8,'#c8c0a0');
+    tx('(Listing feature: coming soon)',mx+12,my+90,7,'#404850');
+  }
+  bx(mx+12,my+mh-46,mw-24,1,'#1a3a1a');
+  tx('[←/→] Tabs   [X] Close',mx+14,my+mh-26,7,'#506850');
+}
+
 function drawDiscardOverlay(){
   if(!discardActive)return;
   bx(0,0,W,H,'rgba(0,0,0,.55)');
@@ -9704,6 +9817,8 @@ function draw(){
   else if(sc==='victory'){if(gameOverTimesUp)dGameOver();else dVictory();}
   drawCardAcquisition();
   drawDiscardOverlay();
+  drawDungeonConfirm();
+  drawMarketplace();
   drawTutorialMsg();
   drawIntroTutorial();
   if(!inBuilding&&sc==='map'){
@@ -10000,6 +10115,21 @@ document.addEventListener('keydown',e=>{
   // Signpost dialog handling
   if(signpostActive){
     if(e.code==='KeyZ'||e.code==='Space'||e.code==='KeyX'){signpostActive=false;sfxBack();}
+    return;
+  }
+
+  // Dungeon entry confirmation
+  if(dungeonConfirmActive){
+    if(e.code==='KeyZ'){dungeonConfirmActive=false;sfxConfirm();doMapTransition(dungeonConfirmExit);}
+    if(e.code==='KeyX'){dungeonConfirmActive=false;sfxBack();}
+    return;
+  }
+
+  // Marketplace
+  if(marketActive){
+    if(e.code==='ArrowLeft'){marketTab=Math.max(0,marketTab-1);sfxCursor();}
+    if(e.code==='ArrowRight'){marketTab=Math.min(MARKET_TABS.length-1,marketTab+1);sfxCursor();}
+    if(e.code==='KeyX'){marketActive=false;sfxBack();}
     return;
   }
 
@@ -10420,7 +10550,15 @@ document.addEventListener('keydown',e=>{
 
           // Check exit
           const exit=checkExitTile(nx,ny);
-          if(exit){doMapTransition(exit);return;}
+          if(exit){
+            // Confirm before entering dungeon from town
+            if(!inDungeon&&exit.targetMap>0){
+              dungeonConfirmActive=true;dungeonConfirmExit=exit;
+            }else{
+              doMapTransition(exit);
+            }
+            return;
+          }
 
           // Check treasure
           checkTreasure();
