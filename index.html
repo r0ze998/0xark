@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v84</title>
+<title>0xARK v85</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -4138,6 +4138,7 @@ let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
 // v82: Dynamic NPC dialogue + proximity speech bubbles
 // v83: Card-lost animation — card flies to rival when stolen from player
 // v84: Town weather system — dynamic clear/rain/fog with particles and fog wisps
+// v85: Floor-clear fanfare overlay — cinematic card reward on floor descent
 let encounterRivalLine=''; // context-sensitive line for exclamation animation
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
 
@@ -4305,6 +4306,9 @@ let campfireUsed=false;
 let fountainActive=false, fountainConfirm=false, fountainResult='', fountainResultTimer=0;
 let crystalRevealTimer=0; // frames remaining for crystal rival reveal
 let objectInteractMsg='', objectInteractTimer=0;
+// v85: Floor-clear fanfare overlay
+let floorFanfareActive=false, floorFanfareTimer=0;
+let floorFanfareData=null; // {floor, cardId, rarity, isNew}
 // Rival background activity: rivals collect cards from dungeon floors periodically
 const rivalBgTimer=[0,0]; // countdown frames until next background card collection per rival
 
@@ -5745,6 +5749,9 @@ function doMapTransition(exit){
             screenShake(2,4);
             lg.push('[FLOOR CLEAR] B'+clearedFloor+' cleared! Earned: '+cr.n+' — hand full, discard one.');
           }
+          // v85: floor-clear fanfare overlay
+          floorFanfareActive=true;floorFanfareTimer=0;
+          floorFanfareData={floor:clearedFloor,cardId:rewardCard,rarity:cr.r,isNew:isNewUnique};
         },800);
       }
     }
@@ -7883,7 +7890,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v84',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v85',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11292,6 +11299,77 @@ function doFountainExchange(){
   checkWinAndTransition(2000);
 }
 
+// v85: Floor-clear fanfare — dramatic cinematic overlay on floor descent
+function drawFloorClearFanfare(){
+  if(!floorFanfareActive||!floorFanfareData)return;
+  floorFanfareTimer++;
+  const maxT=130;
+  if(floorFanfareTimer>maxT){floorFanfareActive=false;floorFanfareData=null;return;}
+  const t=floorFanfareTimer;
+  const d=floorFanfareData;
+  // Fade in 0-15, hold 15-110, fade out 110-130
+  const alpha=t<15?t/15:t>110?(maxT-t)/20:1;
+  const rar=d.rarity;
+  const rarCols=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
+  const rcol=rarCols[rar]||'#c0c0c0';
+  const floorNums=['','I','II','III','IV','V'];
+  // Dim background overlay
+  g.globalAlpha=alpha*0.78;
+  g.fillStyle='rgba(4,4,14,1)';g.fillRect(0,0,W,H);
+  g.globalAlpha=1;
+  // Panel
+  const pw=440,ph=220,px_=W/2-pw/2,py_=H/2-ph/2-20;
+  g.globalAlpha=alpha;
+  win(px_,py_,pw,ph);
+  // Rarity-colored header bar
+  bx(px_,py_,pw,3,rcol);
+  bx(px_,py_+ph-1,pw,1,'rgba(200,180,100,.3)');
+  // "FLOOR X CLEARED!" header
+  const flRoman=floorNums[d.floor]||d.floor;
+  txShadow('FLOOR '+flRoman+' CLEARED',px_+pw/2-130,py_+28,16,'#f0e0a0','rgba(0,0,0,.6)');
+  bx(px_+16,py_+34,pw-32,1,'rgba(200,180,100,.2)');
+  // Card display (left side of panel)
+  const cX=px_+60,cY=py_+80;
+  const cw_=56,ch_=80;
+  // Rarity glow behind card
+  const glA=0.5+Math.sin(t*0.12)*0.2;
+  g.globalAlpha=alpha*glA;
+  const grd=g.createRadialGradient(cX+cw_/2,cY+ch_/2,0,cX+cw_/2,cY+ch_/2,50);
+  grd.addColorStop(0,rcol.replace('#','rgba(').replace(/([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/,
+    (_,r,g_,b)=>`${parseInt(r,16)},${parseInt(g_,16)},${parseInt(b,16)}`)+',0.5)').replace('rgba(','rgba(').replace('#','')||'rgba(200,160,80,0.5)';
+  // Simpler glow:
+  g.globalAlpha=alpha*glA*0.55;
+  bx(cX-12,cY-12,cw_+24,ch_+24,rcol+'40'||'rgba(200,160,80,.3)');
+  g.globalAlpha=alpha;
+  // Card frame
+  const cr2=CD[d.cardId-1];
+  bx(cX,cY,cw_,ch_,cr2.d);bx(cX+2,cY+2,cw_-4,ch_-4,cr2.c);
+  drawCardCharacter(cX+4,cY+4,d.cardId,1.8,fr+t);
+  // Rarity orbit sparks
+  const sparkCount=2+rar*2;
+  for(let i=0;i<sparkCount;i++){
+    const ang=t*0.12+i*(Math.PI*2/sparkCount);
+    const dist=38+Math.sin(t*0.1)*4;
+    g.globalAlpha=alpha*0.75;
+    bx(cX+cw_/2+Math.cos(ang)*dist-2,cY+ch_/2+Math.sin(ang)*dist-2,4,4,rcol);
+  }
+  g.globalAlpha=alpha;
+  // Card info (right side)
+  const infoX=cX+cw_+24;
+  txShadow(d.isNew?'NEW CARD!':'GOT:',infoX,py_+68,9,'#a09878','rgba(0,0,0,.3)');
+  txShadow(cr2.n,infoX,py_+90,12,d.isNew?rcol:'#e8e0c8','rgba(0,0,0,.4)');
+  const rarLabel=['','Common','Uncommon','Rare','Epic','Legendary'];
+  txShadow(rarLabel[rar]||'',infoX,py_+110,9,rcol,'rgba(0,0,0,.3)');
+  txShadow(cr2.f||'',infoX,py_+128,7,'#888878','rgba(0,0,0,.2)');
+  // "Continue deeper" footer
+  if(t>50){
+    const ftA=Math.min(1,(t-50)/20);
+    g.globalAlpha=alpha*ftA*(0.5+Math.abs(Math.sin(t*0.06))*0.5);
+    txShadow('Descending deeper...',px_+pw/2-90,py_+ph-22,8,'#686880','rgba(0,0,0,.3)');
+  }
+  g.globalAlpha=1;
+}
+
 function drawObjectInteractMsg(){
   if(objectInteractTimer<=0)return;
   objectInteractTimer--;
@@ -12173,6 +12251,7 @@ function draw(){
     drawPuzzlePillars();
     drawPuzzleMessage();
     drawObjectInteractMsg();
+    drawFloorClearFanfare(); // v85
     drawExitProximityTooltip();
     drawFountainDialog();
     drawMapCardUseOverlay();
