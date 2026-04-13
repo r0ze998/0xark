@@ -7449,37 +7449,62 @@ function generateResolveEvents(){
     events.push({type:'result',text:scoutMsg,effect:'none'});
     lg.push('R'+rd+': Scout > '+scoutMsg);
   }else if(bpAction===4){// USE CARD
-    // Consume selected card in hand for effect
+    // Consume selected card in hand for effect based on card TYPE (not ID)
     const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
     if(filled.length>0){
       const slot=bpSelectedCardSlot;const card=removeCardFromPlayer(0,slot);
       const cr=CD[card-1];
       events.push({type:'action',who:'You',action:'USE CARD',text:'You consumed '+cr.n+'!',effect:'none'});
-      // Apply effect based on card type
-      if(card===1){sp.s+=2;events.push({type:'result',text:'Aegis: +2 Steal charges!',effect:'card_get'});lg.push('R'+rd+': Used Aegis - +2 Steal!');}
-      else if(card===2){events.push({type:'result',text:'Umbra: Invisible this turn!',effect:'shield'});bpPlayerBarrier=true;lg.push('R'+rd+': Used Umbra - invisible!');}
-      else if(card===3){
-        const ftgt=bpSelectedTarget;
-        const burned=removeCardFromPlayer(ftgt,-1);
-        if(burned>0){events.push({type:'result',text:'Ignis: Burned '+CD[burned-1].n+' from '+pl[ftgt].n+'!',effect:'damage',target:ftgt,isCritical:true});lg.push('R'+rd+': Used Ignis - burned '+CD[burned-1].n+'!');}
-        else{events.push({type:'result',text:'Ignis: '+pl[ftgt].n+' had no cards to burn!',effect:'none'});lg.push('R'+rd+': Ignis fizzled!');}
-      }
-      else if(card===4){bpPlayerBarrier=false;events.push({type:'result',text:'Tempest: All barriers disabled this round!',effect:'none'});rivalBarriers[0]=false;rivalBarriers[1]=false;lg.push('R'+rd+': Used Tempest - barriers disabled!');}
-      else if(card===5){
-        // Copy: duplicate a random card from target
-        const vtgt=bpSelectedTarget;
-        const rFilled=[];for(let i=0;i<5;i++){if(pl[vtgt].cd[i]>0)rFilled.push(pl[vtgt].cd[i]);}
-        if(rFilled.length>0){
-          const copied=rFilled[Math.floor(Math.random()*rFilled.length)];
-          if(addCardToPlayer(0,copied)){
-            events.push({type:'result',text:'Nihil: Copied '+CD[copied-1].n+' from '+pl[vtgt].n+'!',effect:'card_get'});lg.push('R'+rd+': Used Nihil - copied '+CD[copied-1].n+'!');
-          }else{
-            events.push({type:'result',text:'Nihil: Copied '+CD[copied-1].n+' but hand full! Discard after battle.',effect:'none'});
-            events._pendingDrawCard=copied;
-            lg.push('R'+rd+': Nihil copied '+CD[copied-1].n+' - hand full!');
-          }
+      const tgt=bpSelectedTarget;
+      // Effect scales with rarity (r=1 common, r=5 legendary)
+      if(cr.t==='attack'){
+        // Attack: force steal (ignore barrier) — power scales with rarity
+        if(Math.random()<0.2+cr.r*0.15){
+          const stolen=removeCardFromPlayer(tgt,-1);
+          if(stolen>0&&addCardToPlayer(0,stolen)){
+            events.push({type:'result',text:cr.n+': Power steal! Got '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true});
+            lg.push('R'+rd+': '+cr.n+' power steal → '+CD[stolen-1].n+'!');streakCount++;streakDisplayTimer=60;sfxStreakUp();
+          }else if(stolen>0){
+            events._pendingDrawCard=stolen;
+            events.push({type:'result',text:cr.n+': Power stole '+CD[stolen-1].n+'! Hand full — discard after.',effect:'damage',target:tgt,isCritical:true});
+          }else{events.push({type:'result',text:cr.n+': No cards to steal from '+pl[tgt].n+'!',effect:'none'});}
+        }else{
+          events.push({type:'result',text:cr.n+': Strike landed but foe dodged!',effect:'slash',target:tgt});
+          lg.push('R'+rd+': '+cr.n+' strike — missed steal!');
         }
-        else{events.push({type:'result',text:'Nihil: Nothing to copy!',effect:'none'});lg.push('R'+rd+': Nihil fizzled!');}
+      }else if(cr.t==='defense'){
+        // Defense: barrier + restore spell energy
+        bpPlayerBarrier=true;
+        const restore=Math.min(2,Math.ceil(cr.r/2));
+        sp.b=Math.min(5,sp.b+restore);
+        events.push({type:'result',text:cr.n+': Barrier raised! +'+restore+' barrier charge.',effect:'shield'});
+        lg.push('R'+rd+': '+cr.n+' barrier +'+restore+'!');
+      }else if(cr.t==='flee'){
+        // Flee: escape battle immediately (no card loss)
+        events.push({type:'result',text:cr.n+': ESCAPED! No cards lost this round!',effect:'shield'});
+        lg.push('R'+rd+': '+cr.n+' — escaped battle!');
+        events._escaped=true; // signal battle result handler to skip to map immediately
+      }else if(cr.t==='magic'){
+        // Magic: strip all barriers + guaranteed steal attempt
+        rivalBarriers[0]=false;rivalBarriers[1]=false;bpPlayerBarrier=false;
+        const stolen=removeCardFromPlayer(tgt,-1);
+        if(stolen>0&&addCardToPlayer(0,stolen)){
+          events.push({type:'result',text:cr.n+': Magic strike! Barriers nulled + stole '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true});
+          lg.push('R'+rd+': '+cr.n+' magic steal → '+CD[stolen-1].n+'!');streakCount++;streakDisplayTimer=60;sfxStreakUp();
+        }else if(stolen>0){
+          events._pendingDrawCard=stolen;
+          events.push({type:'result',text:cr.n+': Stole '+CD[stolen-1].n+'! Hand full — discard.',effect:'damage',target:tgt,isCritical:true});
+        }else{
+          events.push({type:'result',text:cr.n+': Barriers nulled! '+pl[tgt].n+' had no cards.',effect:'none'});
+          lg.push('R'+rd+': '+cr.n+' barriers cleared — no steal!');
+        }
+      }else if(cr.t==='recovery'){
+        // Recovery: restore all spell energy
+        sp.s=Math.min(5,sp.s+Math.ceil(cr.r/2));
+        sp.b=Math.min(5,sp.b+1);
+        sp.c=Math.min(3,sp.c+1);
+        events.push({type:'result',text:cr.n+': Restored spell energy! +'+Math.ceil(cr.r/2)+' Steal, +1 Barrier, +1 Scout.',effect:'card_get'});
+        lg.push('R'+rd+': '+cr.n+' restored energy!');
       }
     }else{
       events.push({type:'action',who:'You',action:'USE CARD',text:'No cards to use!',effect:'none'});
@@ -10775,7 +10800,18 @@ document.addEventListener('keydown',e=>{
       }
     }else if(battlePhase==='result'){
       if(e.code==='KeyZ'){
-        sfxConfirm();rd++;
+        sfxConfirm();
+        // Flee card: skip round increment, go directly to map
+        if(bpResolveQueue&&bpResolveQueue._escaped){
+          saveGame();
+          startWipe('vslide',16,()=>{
+            sc='map';mo=false;battlePhase='select';encounterCooldown=600;ub();
+            twSet('Escaped safely!');
+            startWipe('vslide_out',16);
+          });
+          return;
+        }
+        rd++;
         // Every 10 rounds: recharge 1 depleted spell (prevents late-game stalemate)
         if(rd%10===0){
           let recharged=false;
