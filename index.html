@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v67</title>
+<title>0xARK v68</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -3194,7 +3194,7 @@ function updateRivalAI(aiIdx){
   const moved=stepToward(rIdx,ai.goalX,ai.goalY);
   if(moved){
     // Add footprint
-    footprints.push({map:rMap,x:r.x,y:r.y,age:0});
+    footprints.push({map:rMap,x:r.x,y:r.y,age:0,ri:rIdx});
 
     // Card encounter from grass (same chances as player)
     const m=maps[rMap];
@@ -3326,6 +3326,30 @@ function updateFootprints(){
   }
   // Cap footprint count
   while(footprints.length>200)footprints.shift();
+}
+
+function drawFootprints(){
+  if(!inDungeon)return;
+  // VEGA=pink, MIRA=gold
+  const rivalCols=['#d860a0','#d8b028'];
+  footprints.forEach(fp=>{
+    if(fp.map!==currentMap)return;
+    if(!fogRevealed[currentMap][fp.y]?.[fp.x])return;
+    const ageFrac=fp.age/FOOTPRINT_MAX_AGE; // 0=fresh, 1=old
+    const alpha=(1-ageFrac)*0.55; // fade as they age
+    if(alpha<0.04)return;
+    const sx=fp.x*TW-camX+TW/2-2;
+    const sy=fp.y*TH-camY+TH/2-1;
+    if(sx<-4||sx>W+4||sy<-4||sy>H+4)return;
+    const col=rivalCols[fp.ri]||'#888888';
+    // Two small boot-print dots side by side
+    const offset=(fp.age%4<2)?-1:1; // alternate left/right footstep
+    g.globalAlpha=alpha;
+    g.fillStyle=col;
+    g.fillRect(sx+offset,sy,2,3);
+    g.fillRect(sx+offset+3,sy+1,2,2);
+    g.globalAlpha=1;
+  });
 }
 
 // Pre-generate random values for tile detail (per map, reuse with offset)
@@ -6680,6 +6704,7 @@ function dMap(){
     g.restore();
   }
 
+  drawFootprints();
   drawParticles(camX,camY);
   drawBirds();
   drawPirateDecorations();
@@ -7016,6 +7041,27 @@ function dMap(){
   bx(310,hudY+60,Math.floor(60*vaultPct),3,vaultCol);
   tx('HAND:'+handCount,382,hudY+56,6,'#686068');
 
+  // Footprint trail indicator: show fresh rival tracks on this floor
+  if(inDungeon){
+    const rivalCols=['#d860a0','#d8b028'];
+    const rivalNames=[pl[1].n[0],pl[2].n[0]];
+    let trailX=430;
+    for(let ri=0;ri<2;ri++){
+      const freshTracks=footprints.filter(fp=>fp.ri===ri&&fp.map===currentMap&&fp.age<900);
+      if(freshTracks.length>0){
+        const freshest=Math.min(...freshTracks.map(fp=>fp.age));
+        const freshAlpha=freshest<180?1:freshest<600?0.7:0.45;
+        g.globalAlpha=freshAlpha;
+        // Small boot icon (two dots)
+        g.fillStyle=rivalCols[ri];
+        g.fillRect(trailX,hudY+52,2,3);g.fillRect(trailX+3,hudY+53,2,2);
+        g.globalAlpha=1;
+        tx(rivalNames[ri]+'!',trailX+6,hudY+57,6,rivalCols[ri]);
+        trailX+=26;
+      }
+    }
+  }
+
   const m=getMap();
   const tile=m[pl[0].y]?.[pl[0].x];
   let locName=mapNames[currentMap];
@@ -7042,7 +7088,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v67',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v68',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
