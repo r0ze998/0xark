@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v47</title>
+<title>0xARK v48</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -94,7 +94,7 @@ if(!_isMobile){
   document.getElementById('pixi-wrap').appendChild(pixiApp.view);
   pixiApp.view.style.width='960px';pixiApp.view.style.height='640px';
   c.classList.add('desktop-hidden');
-  pixiApp.ticker.stop(); // Stop auto-rendering; we drive it manually from our game loop
+  pixiApp.stop(); // Stop auto-rendering (removes internal render callback + stops ticker)
 }else{
   // Mobile: show canvas directly, PixiJS runs offscreen for UI objects only
   c.style.display='block';
@@ -4929,12 +4929,6 @@ function doMapTransition(exit){
         }
       }
     }
-    // Show map loading screen
-    if(inDungeon){
-      showMapLoadScreen('DUNGEON FLOOR '+currentFloor,'Danger! Card decay active. '+(exit.isEscape?'Escaped safely.':''));
-    }else{
-      showMapLoadScreen('TOWN - はじまりのまち','Safe zone. Card decay paused.');
-    }
     showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]);
     // Town rest: restore spell energy to full when returning to safe zone
     if(!inDungeon){sp.s=2;sp.b=3;sp.c=2;lg.push('Back in town — spell energy restored!');}
@@ -5760,7 +5754,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v47',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v48',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6664,7 +6658,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v47',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v48',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
