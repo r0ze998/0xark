@@ -5064,9 +5064,10 @@ function doMapTransition(exit){
     for(let i=0;i<HAND_SIZE;i++){
       if(pl[0].cd[i]>0){
         if(inDungeon&&cardTimers[i]===0)cardTimers[i]=now; // start decay in dungeon
-        if(!inDungeon)cardTimers[i]=0; // pause decay in town
+        if(!inDungeon){cardTimers[i]=0;decayWarn[i]=0;} // pause decay in town, reset warnings
       }
     }
+    if(!inDungeon){escapeUrgencyActive=false;escapeUrgencyPulse=0;}
     // Floor clear card reward: descending to deeper floor (not escaping back up)
     if(inDungeon&&!exit.isEscape&&exit.fromMap>0){
       const clearedFloor=exit.fromMap; // the floor we just cleared
@@ -7222,28 +7223,51 @@ function drawCardBar(x,y,w,cards,maxCards){
 
 // Draw FRLG-style opponent info box (top-left)
 function drawOpponentInfoBox(){
-  const rival=pl[1]; // Primary opponent
+  const rival=pl[1]; // Primary opponent (VEGA)
   let sx=0,sy=0;
   if(bpShakeTarget===1&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
-  // FRLG info box shape (wider to fit both rivals)
-  const bx_=8+sx,by_=16+sy,bw=300,bh=64;
+  // Expand box when tells are visible during select
+  const showTells=(battlePhase==='select'&&bpRivalTells[0]!==''&&bpRivalTells[1]!=='');
+  const bx_=8+sx,by_=16+sy,bw=300,bh=showTells?100:64;
   bx(bx_,by_,bw,bh,'#f8f0d8');bx(bx_,by_,bw,2,'#c8c0a0');bx(bx_,by_+bh-2,bw,2,'#a89878');
   bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
   bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
-  // Rival 1
+  // Rival 1 (VEGA)
   txShadow(rival.n,bx_+10,by_+20,12,'#383830','rgba(200,180,140,.3)');
   txShadow('CARDS',bx_+120,by_+20,7,'#887858','rgba(0,0,0,.15)');
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
   txShadow(rival.cc+'/5',bx_+202,by_+34,8,'#383830','rgba(0,0,0,.15)');
-  // Rival 2 (Hunter) — mini info row below
+  // Near-win warning
+  if(hasUniqueCards(1).size>=4){const wFlash=Math.floor(fr/12)%2===0;if(wFlash)txShadow('! DANGER',bx_+10,by_+34,7,'#c04040','rgba(0,0,0,.2)');}
+  // Tell for Rival 1 (during select only)
+  if(showTells&&bpRivalTells[0]){
+    const tellFade=Math.min(1,(fr-bpFrame)/12);
+    g.globalAlpha=tellFade*0.85;
+    bx(bx_+4,by_+34,bw-8,14,'rgba(232,216,168,.6)');
+    tx(bpRivalTells[0],bx_+8,by_+44,6,'#505040');
+    g.globalAlpha=1;
+  }
+  // Separator
+  const sepY=showTells?by_+52:by_+44;
+  bx(bx_+8,sepY,bw-16,1,'#c8c0a0');
+  // Rival 2 (MIRA)
   const hunter=pl[2];
   const r2alive=hunter.cd.filter(c=>c>0).length>0;
-  bx(bx_+8,by_+44,bw-16,1,'#c8c0a0');
   const hunterCol=r2alive?'#986840':'#c04040';
-  txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,by_+58,9,hunterCol,'rgba(0,0,0,.15)');
+  txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.15)');
   if(r2alive){
-    drawCardBar(bx_+168,by_+50,80,hunter.cd,5);
-    txShadow(hunter.cc+'/5',bx_+202,by_+58,7,'#686060','rgba(0,0,0,.1)');
+    drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
+    txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,'#686060','rgba(0,0,0,.1)');
+    // Near-win warning for MIRA
+    if(hasUniqueCards(2).size>=4){const wFlash2=Math.floor(fr/12)%2===0;if(wFlash2)txShadow('! DANGER',bx_+10,sepY+28,6,'#c04040','rgba(0,0,0,.2)');}
+    // Tell for Rival 2 (during select only)
+    if(showTells&&bpRivalTells[1]){
+      const tellFade2=Math.min(1,(fr-bpFrame)/12);
+      g.globalAlpha=tellFade2*0.85;
+      bx(bx_+4,sepY+26,bw-8,14,'rgba(232,216,168,.6)');
+      tx(bpRivalTells[1],bx_+8,sepY+36,6,'#505040');
+      g.globalAlpha=1;
+    }
   }
 }
 
@@ -7390,8 +7414,14 @@ function drawVsSplash(){
   }
 
   if(t>=60){
-    battlePhase='select';bpFrame=fr;bpRdIncremented=false;
-    if(!tutorialFlags.firstBattle){const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'the rival';tutorialFlags.firstBattle=true;tutorialMsg='Battle vs '+rName+'! DRAW cards, STEAL theirs, or BARRIER to defend.';tutorialMsgTimer=240;}
+    battlePhase='select';bpFrame=fr;bpRdIncremented=false;bpActionsGenerated=false;
+    generateRivalTells(); // pre-generate rival actions + tells for this round
+    if(!tutorialFlags.firstBattle){
+      const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'the rival';
+      tutorialFlags.firstBattle=true;
+      tutorialMsg='Battle vs '+rName+'! Watch their body language — tells hint at their move!';
+      tutorialMsgTimer=260;
+    }
   }
 }
 
@@ -7834,8 +7864,49 @@ function rivalChooseAction(rIdx){
 }
 
 let bpPlayerBarrier=false; // track if player used barrier this round
-let bpRivalActions=[0,0]; // track rival actions this round
+let bpRivalActions=[0,0]; // track rival actions this round (pre-generated at select start)
+let bpRivalTells=['','']; // body-language tells shown during select phase
+let bpTellWasAccurate=[false,false]; // whether each rival's tell matched actual action
 let bpRdIncremented=false; // guard: prevent double-increment of rd when pending discard
+let bpActionsGenerated=false; // guard: only generate once per round
+
+// Rival tells: atmospheric body-language hints (65% accurate, 35% misleading)
+const RIVAL_BATTLE_TELLS=[
+  // VEGA (index 0) — physical, predatory
+  {
+    0:['VEGA scans the dungeon floor...','VEGA reaches into the ether.','VEGA draws from the dark.'],
+    1:['VEGA\'s eyes lock onto your hand.','VEGA steps forward hungrily.','VEGA narrows their eyes.'],
+    2:['VEGA plants both feet firmly.','VEGA braces, arms crossed.','VEGA shields their cards.'],
+    3:['VEGA tilts their head, watching.','VEGA studies the battlefield.','VEGA assesses the odds.'],
+  },
+  // MIRA (index 1) — calculated, collector
+  {
+    0:['MIRA reaches toward the pile...','MIRA is adding to her set.','MIRA scans the floor carefully.'],
+    1:['MIRA steps forward, purposeful.','MIRA watches your cards closely.','MIRA calculates the exchange.'],
+    2:['MIRA folds her arms.','MIRA builds a quiet wall.','MIRA shields her collection.'],
+    3:['MIRA glances between both hands.','MIRA notes something quietly.','MIRA evaluates everything.'],
+  },
+];
+
+function generateRivalTells(){
+  bpRivalActions[0]=rivalChooseAction(1);
+  bpRivalActions[1]=rivalChooseAction(2);
+  bpActionsGenerated=true;
+  for(let ri=0;ri<2;ri++){
+    const actualAct=bpRivalActions[ri];
+    const tells=RIVAL_BATTLE_TELLS[ri];
+    let actForTell=actualAct;
+    const isMisdirect=Math.random()<0.35;
+    // 35% misdirection: pick a different action's tells
+    if(isMisdirect){
+      const others=[0,1,2,3].filter(a=>a!==actualAct);
+      actForTell=others[Math.floor(Math.random()*others.length)];
+    }
+    bpTellWasAccurate[ri]=!isMisdirect;
+    const pool=tells[actForTell]||tells[0];
+    bpRivalTells[ri]=pool[Math.floor(Math.random()*pool.length)];
+  }
+}
 let bpCardSelectActive=false, bpCardSelectIdx=0; // USE CARD selection
 let bpTargetSelectActive=false, bpTargetSelectIdx=1; // STEAL/SCOUT target selection
 let bpPendingAction=-1; // action waiting for target/card selection
@@ -7845,9 +7916,9 @@ let bpSelectedTarget=1; // which player index to target for STEAL/SCOUT
 function generateResolveEvents(){
   const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];const events=[];
   bpPlayerBarrier=(bpAction===2);
-  // Rival AI actions
-  bpRivalActions[0]=rivalChooseAction(1);
-  bpRivalActions[1]=rivalChooseAction(2);
+  // Rival AI actions: use pre-generated (from generateRivalTells at select start)
+  // If not pre-generated yet (edge case), generate now without tells
+  if(!bpActionsGenerated){bpRivalActions[0]=rivalChooseAction(1);bpRivalActions[1]=rivalChooseAction(2);}
   const rivalBarriers=[bpRivalActions[0]===2,bpRivalActions[1]===2];
 
   // ── PLAYER ACTION ──
@@ -8452,6 +8523,18 @@ function drawResultPhase(){
       txShadow(rName+':',reactX+8,reactY+16,9,rNameCol,'rgba(0,0,0,.4)');
       txShadow('\u201C'+reaction+'\u201D',reactX+70,reactY+16,9,'#f0e8c8','rgba(0,0,0,.4)');
     }
+    g.globalAlpha=1;
+  }
+
+  // Tell accuracy reveal (appears at t>35, subtle footer)
+  if(t>35&&bpRivalTells[0]!==''){
+    const tellFadeA=Math.min(1,(t-35)/10);
+    g.globalAlpha=tellFadeA*0.75;
+    const actNames=['DRAW','STEAL','BARRIER','SCOUT'];
+    const r1correct=bpTellWasAccurate[0];const r2correct=bpTellWasAccurate[1];
+    const r1col=r1correct?'#40c040':'#c04040';
+    const r2col=r2correct?'#40c040':'#c04040';
+    txShadow(pl[1].n+':'+(r1correct?'\u2713 read':'x misread')+' | '+pl[2].n+':'+(r2correct?'\u2713 read':'x misread'),panX+16,panY+panH-8,7,'#888878','rgba(0,0,0,.2)');
     g.globalAlpha=1;
   }
 
