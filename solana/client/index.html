@@ -411,7 +411,7 @@ pxMenuContainer.x = W; // start offscreen right
 pixiLayers.ui.addChild(pxMenuContainer);
 
 // Build menu
-const MENU_ITEMS=['CARDS','MAP','BATTLE','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
+const MENU_ITEMS=['CARDS','MAP','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
 const MENU_COLORS=[0xF0E8C0,0xF0E8C0,0xC04040,0xF0E8C0,0x3090C0,0x9060C0,0xB06030,0x40D080,0xC0A040,0x40A0D0,0xD8B028,0xC04040,0x686868];
 const pxMenuBg = pxWin(200, 340);
 pxMenuContainer.addChild(pxMenuBg);
@@ -6638,7 +6638,7 @@ function dMenu(){
     if(ease>=0.7){
       const itemAlpha=Math.min(1,(ease-0.7)/0.3);
       g.globalAlpha=itemAlpha;
-      const items=['CARDS','MAP','BATTLE','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
+      const items=['CARDS','MAP','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
       items.forEach((s,i)=>{
         const y=34+i*22;
         if(i===mi){tx('\u25B6',W-166,y,9,FRLG.selHighlight);tx(s,W-148,y,9,FRLG.selHighlight);}
@@ -10512,21 +10512,21 @@ document.addEventListener('keydown',e=>{
     if(e.code==='Space'){mo=!mo;mi=0;menuOpenFrame=0;sfxSelect();if(!_isMobile){if(mo){pxOpenMenu();pxMenuDim.visible=true;}else{pxCloseMenu();pxMenuDim.visible=false;}}return;}
     if(mo){
       if(e.code==='ArrowUp'){mi=Math.max(0,mi-1);sfxCursor();}
-      if(e.code==='ArrowDown'){mi=Math.min(12,mi+1);sfxCursor();}
+      if(e.code==='ArrowDown'){mi=Math.min(11,mi+1);sfxCursor();}
       if(e.code==='KeyZ'){
-        sfxConfirm();const s=['crd','map','act','log'];
-        if(mi===12)mo=false;
-        else if(mi===4){
+        sfxConfirm();const s=['crd','map','log']; // BATTLE removed — only via dungeon encounter
+        if(mi===11)mo=false;
+        else if(mi===3){
           // STATS
           mo=false;menuOpenFrame=0;
           sc='stats';
         }
-        else if(mi===5){
+        else if(mi===4){
           // USE CARD on map
           mo=false;menuOpenFrame=0;
           openMapCardUse();
         }
-        else if(mi===6){
+        else if(mi===5){
           // DISCARD
           const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
           if(filled.length>0){
@@ -10534,7 +10534,7 @@ document.addEventListener('keydown',e=>{
             mo=false;menuOpenFrame=0;
           }else{twSet('No cards to discard!');mo=false;menuOpenFrame=0;}
         }
-        else if(mi===7){
+        else if(mi===6){
           // WALLET
           mo=false;menuOpenFrame=0;
           if(walletConnected){
@@ -10550,30 +10550,30 @@ document.addEventListener('keydown',e=>{
             }
           }
         }
-        else if(mi===8){
+        else if(mi===7){
           // TEXT SPEED
           textSpeedIdx=(textSpeedIdx+1)%3;
           localStorage.setItem('oxark_textspeed',String(textSpeedIdx));
           twSet('Text speed: '+TEXT_SPEED_LABELS[textSpeedIdx]);
           sfxCursor();
         }
-        else if(mi===9){
+        else if(mi===8){
           // SAVE
           saveGame();saveStats();
           twSet('Game saved!');
           mo=false;menuOpenFrame=0;
         }
-        else if(mi===10){
+        else if(mi===9){
           // RULES: show intro tutorial again
           mo=false;menuOpenFrame=0;
           introActive=true;introPage=0;introFrame=fr;
         }
-        else if(mi===11){
+        else if(mi===10){
           // NEW GAME: reset all state
           resetGameState(true);
           fadeOut(()=>{sc='title';mo=false;fadeIn();ub();});
         }
-        else{fadeOut(()=>{sc=s[mi];mo=false;if(sc==='act'){battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
+        else{fadeOut(()=>{sc=s[mi];mo=false;fadeIn();ub();});}
       }
       if(e.code==='KeyX'){mo=false;menuOpenFrame=0;sfxBack();}
     }else{
