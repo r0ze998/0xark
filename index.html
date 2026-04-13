@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v78</title>
+<title>0xARK v79</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -1798,6 +1798,9 @@ let mapLoadScreenFloor=0; // 0=town/generic, 1-5=dungeon floor
 // v72: Dungeon Run Summary
 let dungeonRunSnapshot=null; // snapshot when entering dungeon
 let runSummaryActive=false, runSummaryFrame=0, runSummaryData=null;
+// v79: Active Run Mission
+let runMission=null; // {type,desc,progress,goal,reward,rewardKey,completed,rewardGiven}
+let roundsThisRun=0; // battle rounds completed this dungeon run
 const MAP_LOAD_DURATION=80; // ~1.3 seconds at 60fps — dramatic pause
 
 function showMapLoadScreen(name, cards, floor){
@@ -1905,7 +1908,8 @@ function drawRunSummary(){
   const d=runSummaryData;
   const t=Math.min(1,runSummaryFrame/30); // 0.5s slide-in
   const slideY=(1-t)*60;
-  const panelW=320,panelH=Math.max(160,140+d.lostCards.length*18);
+  const missionExtra=d.missionDesc?44:0;
+  const panelW=320,panelH=Math.max(160,140+d.lostCards.length*18)+missionExtra;
   const px=W/2-panelW/2,py=H/2-panelH/2+slideY;
 
   // Dim background
@@ -1948,11 +1952,20 @@ function drawRunSummary(){
     tx('All cards preserved!',px+20,py+90,7,'#50e090');
   }
 
+  // v79: Mission result section
+  if(d.missionDesc){
+    const mSecY=py+panelH-missionExtra-2;
+    bx(px+20,mSecY,panelW-40,1,'#103030');
+    const mWon=!!d.missionReward;
+    txShadow('\u2605 MISSION: '+d.missionDesc,px+20,mSecY+14,7,'#f0c830','rgba(0,0,0,.4)');
+    txShadow('REWARD: '+d.missionReward,px+20,mSecY+30,7,'#50e090','rgba(0,0,0,.3)');
+  }
+
   // Dismiss hint — blink after 2s
   if(runSummaryFrame>120){
     const blinkA=0.5+Math.sin(runSummaryFrame*0.1)*0.4;
     g.globalAlpha=t*blinkA;
-    tx('[ PRESS ANY KEY ]',px+panelW/2-56,py+panelH-18,6,'#808890');
+    tx('[ PRESS ANY KEY ]',px+panelW/2-56,py+panelH-10,6,'#808890');
     g.globalAlpha=t;
   }
   g.globalAlpha=1;
@@ -3101,6 +3114,15 @@ const rivalAI=[
    state:'exploring',stateTimer:0,fleeDir:-1,huntCooldown:0}
 ];
 
+// v79: Run mission definitions
+const RUN_MISSION_DEFS=[
+  {type:'reach_floor',desc:'Reach Floor III',goal:3,reward:'+1 STL',rewardKey:'stl1'},
+  {type:'battle_rival',desc:'Battle any rival',goal:1,reward:'+1 BAR',rewardKey:'bar1'},
+  {type:'new_cards',  desc:'Collect 3 new cards',goal:3,reward:'+1 SCT',rewardKey:'sct1'},
+  {type:'steal_win',  desc:'Steal from a rival',goal:1,reward:'+2 STL',rewardKey:'stl2'},
+  {type:'survive',    desc:'Fight 3 battle rounds',goal:3,reward:'Spell refill',rewardKey:'refill'},
+];
+
 // Rival pre-battle taunts indexed by [rivalIdx][random]
 const RIVAL_TAUNTS=[
   // VEGA — aggressive, short and sharp
@@ -4221,7 +4243,7 @@ function resetNewFeatureState(){
   // v73: clear rival news ticker
   rivalNewsQueue.length=0;rivalNewsCurrent=null;rivalNewsFrame=0;
   // v72: clear run summary
-  dungeonRunSnapshot=null;runSummaryActive=false;runSummaryData=null;
+  dungeonRunSnapshot=null;runSummaryActive=false;runSummaryData=null;runMission=null;roundsThisRun=0;
   // v77: clear hand inspect
   handInspectActive=false;handInspectFrame=0;
 }
@@ -5460,6 +5482,11 @@ function doMapTransition(exit){
     if(exit.fromMap===0&&exit.targetMap===1){
       // v72: Snapshot state at dungeon entry so we can show run summary on exit
       dungeonRunSnapshot={cards:[...pl[0].cd],vaultSize:pl[0].vault?pl[0].vault.size:0,deepestFloor:0};
+      // v79: Generate a random run mission
+      const _mDef=RUN_MISSION_DEFS[Math.floor(Math.random()*RUN_MISSION_DEFS.length)];
+      runMission={..._mDef,progress:0,completed:false,rewardGiven:false};
+      roundsThisRun=0;
+      lg.push('MISSION: '+runMission.desc+' → '+runMission.reward);
       pl[1].x=8;pl[1].y=10;pl[1].visualX=8*TW;pl[1].visualY=10*TH;
       pl[2].x=28;pl[2].y=18;pl[2].visualX=28*TW;pl[2].visualY=18*TH;
       rivalMaps=[1,1];
@@ -5496,6 +5523,11 @@ function doMapTransition(exit){
     if(inDungeon&&dungeonRunSnapshot&&currentFloor>dungeonRunSnapshot.deepestFloor){
       dungeonRunSnapshot.deepestFloor=currentFloor;
     }
+    // v79: Track reach_floor mission progress
+    if(inDungeon&&runMission&&runMission.type==='reach_floor'&&!runMission.completed&&currentFloor>=runMission.goal){
+      runMission.progress=currentFloor;runMission.completed=true;sfxStreakUp();
+      lg.push('MISSION PROGRESS: Reached floor '+currentFloor+'!');
+    }
     // v72: On town return, compute and show run summary
     if(!inDungeon&&dungeonRunSnapshot){
       const snap=dungeonRunSnapshot;
@@ -5518,6 +5550,28 @@ function doMapTransition(exit){
     }
     // Town rest: restore spell energy to full when returning to safe zone
     if(!inDungeon){sp.s=2;sp.b=3;sp.c=2;lg.push('Back in town — spell energy restored!');}
+    // v79: Apply run mission reward on town return
+    if(!inDungeon&&runMission&&runMission.completed&&!runMission.rewardGiven){
+      runMission.rewardGiven=true;
+      const rk=runMission.rewardKey;
+      if(rk==='stl1'){sp.s=Math.min(6,sp.s+1);}
+      else if(rk==='bar1'){sp.b=Math.min(6,sp.b+1);}
+      else if(rk==='sct1'){sp.c=Math.min(6,sp.c+1);}
+      else if(rk==='stl2'){sp.s=Math.min(6,sp.s+2);}
+      else if(rk==='refill'){sp.s=Math.max(sp.s,3);sp.b=Math.max(sp.b,4);sp.c=Math.max(sp.c,3);}
+      else if(rk==='bonus_card'){
+        const bPool=DUNGEON_FLOOR_CARDS[3]||DUNGEON_FLOOR_CARDS[2];
+        const bVault=pl[0].vault||new Set();
+        const bNew=bPool.filter(id=>!bVault.has(id));
+        const bUsePool=bNew.length>0?bNew:bPool;
+        const bCard=bUsePool[Math.floor(Math.random()*bUsePool.length)];
+        addCardToPlayer(0,bCard);
+      }
+      if(runSummaryData){runSummaryData.missionDesc=runMission.desc;runSummaryData.missionReward=runMission.reward;}
+      lg.push('MISSION COMPLETE: '+runMission.desc+' → '+runMission.reward);
+      sfxStreakUp();
+    }
+    if(!inDungeon){runMission=null;}
     // Pause/resume card timers based on dungeon state
     const now=Date.now();
     for(let i=0;i<HAND_SIZE;i++){
@@ -7453,6 +7507,28 @@ function dMap(){
     tx('+'+(handTotal-HUD_CARD_SLOTS),310+HUD_CARD_SLOTS*HUD_CARD_SPACING+2,hudY+26,7,'#c8c0a0');
   }
 
+  // v79: Active run mission strip (dungeon only)
+  if(runMission&&inDungeon&&sc==='map'){
+    const mDone=runMission.completed;
+    const mCol=mDone?'#50e090':'#c0b870';
+    const mIcon=mDone?'\u2713':'\u25CB'; // ✓ or ○
+    // Progress suffix
+    let mProg='';
+    if(!mDone){
+      if(runMission.type==='new_cards'||runMission.type==='survive'||runMission.type==='battle_rival'||runMission.type==='steal_win'){
+        mProg=' '+runMission.progress+'/'+runMission.goal;
+      }
+    }
+    const mText=mIcon+' '+runMission.desc+mProg;
+    const mRewText=runMission.reward;
+    g.globalAlpha=mDone?1:0.72;
+    bx(6,hudY+34,188,14,'rgba(0,0,16,.6)');
+    bx(6,hudY+34,2,14,mDone?'#50e090':'#c0a840');
+    tx(mText,12,hudY+44,5,mCol);
+    tx(mRewText,140,hudY+44,5,mDone?'#50c080':'#888870');
+    g.globalAlpha=1;
+  }
+
   // Escape urgency banner: pulsing "ESCAPE TO TOWN!" when any card is critically decaying
   if(escapeUrgencyActive&&inDungeon){
     const epAlpha=0.55+Math.sin(escapeUrgencyPulse*0.18)*0.45;
@@ -7590,7 +7666,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v78',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v79',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8474,6 +8550,10 @@ function addCardToPlayer(pIdx,cardId){
     p.vault.add(cardId);
     sfxUniqueCardSting();triggerProgressPulse();
     stats.cardsCollected++;
+    // v79: track new_cards mission
+    if(runMission&&runMission.type==='new_cards'&&!runMission.completed){
+      runMission.progress++;if(runMission.progress>=runMission.goal){runMission.completed=true;sfxStreakUp();}
+    }
     // Vault milestone celebrations
     const ms=p.vault.size;
     const milestones={10:'10 CARDS!',20:'20 CARDS!',30:'HALFWAY THERE!',40:'40 CARDS!',50:'50 CARDS! SO CLOSE!',55:'55 CARDS!',59:'ONE MORE!'};
@@ -8658,6 +8738,8 @@ function generateResolveEvents(){
         events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'!',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r});
         lg.push('R'+rd+': Stole '+stolenCard.n+' from '+pl[tgt].n+'! ('+RARITY_LABEL[stolenCard.r]+')');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
+        // v79: track steal_win mission
+        if(runMission&&runMission.type==='steal_win'&&!runMission.completed){runMission.progress=1;runMission.completed=true;}
       }else if(stolen>0){
         // Hand full — queue discard prompt so stolen card isn't lost
         const stolenCard=CD[stolen-1];
@@ -11686,6 +11768,10 @@ function update(){
             startWipe('mosaic',30,()=>{
               sc='act';battlePhase='vs_splash';bpFrame=fr;
               startWipe('mosaic_out',20);
+              // v79: track battle_rival mission
+              if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){
+                runMission.progress=1;runMission.completed=true;sfxStreakUp();
+              }
             });
           },500);
         }
@@ -12672,7 +12758,12 @@ document.addEventListener('keydown',e=>{
         }
         if(!bpRdIncremented){
           bpRdIncremented=true;
-          rd++;
+          rd++;roundsThisRun++;
+          // v79: track survive mission
+          if(runMission&&runMission.type==='survive'&&!runMission.completed){
+            runMission.progress=roundsThisRun;
+            if(roundsThisRun>=runMission.goal){runMission.completed=true;sfxStreakUp();}
+          }
           // Every 10 rounds: recharge 1 depleted spell (prevents late-game stalemate)
           if(rd%10===0){
             let recharged=false;
