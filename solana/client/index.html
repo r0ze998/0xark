@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v82</title>
+<title>0xARK v83</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -4038,6 +4038,7 @@ const INTRO_PAGES=[
 let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
 // v81: Pre-battle rival dialogue
 // v82: Dynamic NPC dialogue + proximity speech bubbles
+// v83: Card-lost animation — card flies to rival when stolen from player
 let encounterRivalLine=''; // context-sensitive line for exclamation animation
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
 
@@ -7776,7 +7777,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v82',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v83',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8972,7 +8973,7 @@ function generateResolveEvents(){
           removeCardFromPlayer(1,-1);
           addCardToPlayer(1,stolen);
         }
-        events.push({type:'result',text:pl[1].n+' stole your '+CD[stolen-1].n+'!',effect:'damage',target:0,isCritical:true});
+        events.push({type:'result',text:pl[1].n+' stole your '+CD[stolen-1].n+'!',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:0}); // v83
         lg.push('R'+rd+': '+pl[1].n+' stole your '+CD[stolen-1].n+'!');
         screenShake(4,10);
         if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
@@ -9012,7 +9013,7 @@ function generateResolveEvents(){
           removeCardFromPlayer(2,-1);
           addCardToPlayer(2,stolen);
         }
-        events.push({type:'result',text:pl[2].n+' stole your '+CD[stolen-1].n+'!',effect:'damage',target:0,isCritical:true});
+        events.push({type:'result',text:pl[2].n+' stole your '+CD[stolen-1].n+'!',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:1}); // v83
         lg.push('R'+rd+': '+pl[2].n+' stole your '+CD[stolen-1].n+'!');
         screenShake(4,10);
         if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
@@ -9224,7 +9225,77 @@ function drawResolvingPhase(){
         g.globalAlpha=0.5;bx(tgtCX-30,tgtCY-40,60,80,'#ff4040');g.globalAlpha=1;
       }
     }
-    else if(ev.effect!=='damage'&&evT>20)bpShakeTimer=0;
+    else if(ev.effect!=='damage'&&ev.effect!=='card_lost'&&evT>20)bpShakeTimer=0;
+    // v83: card-lost animation — card flies from player to rival with red trail
+    if(ev.effect==='card_lost'&&evT<50){
+      const rar=ev.rarity||1;
+      const ri=ev.rivalIdx||0; // 0=VEGA(pl1), 1=MIRA(pl2)
+      const rivalCX=ri===0?oppCX:W-310;
+      const rivalCY=ri===0?oppCY:140;
+      const rivalCol=ri===0?'#f080c0':'#f0c830';
+      // Card travels from player to rival over 32 frames
+      const prog=Math.min(1,evT/32);
+      const eased=prog<0.5?2*prog*prog:1-Math.pow(-2*prog+2,2)/2; // ease-in-out
+      const cx_=playerCX+(rivalCX-playerCX)*eased;
+      const cy_=playerCY+(rivalCY-playerCY)*eased-28*Math.sin(eased*Math.PI);
+      const scl_=Math.max(0.3,1-eased*0.6);
+      const cw_=36*scl_,ch_=50*scl_;
+      // Red glow that follows card
+      const glA=0.5*(1-eased);
+      if(glA>0.02){
+        g.globalAlpha=glA;
+        const grd=g.createRadialGradient(cx_,cy_,0,cx_,cy_,28);
+        grd.addColorStop(0,'rgba(200,40,40,.7)');grd.addColorStop(1,'rgba(0,0,0,0)');
+        g.fillStyle=grd;g.fillRect(cx_-32,cy_-32,64,64);
+        g.globalAlpha=1;
+      }
+      // Card shards/spin: rotate as it leaves
+      const angle=eased*Math.PI*1.5;
+      g.save();g.translate(cx_,cy_);g.rotate(angle);
+      bx(-cw_/2,-ch_/2,cw_,ch_,'#c03030');
+      bx(-cw_/2+2,-ch_/2+2,cw_-4,ch_-4,ev.stolenId?CD[ev.stolenId-1].c||'#303028':'#603020');
+      if(scl_>0.4&&ev.stolenId){drawCardCharacter(-cw_/2+2,-ch_/2+2,ev.stolenId,scl_*0.55,fr);}
+      g.restore();
+      // Red particle trail behind card
+      for(let i=0;i<6;i++){
+        const tp=Math.max(0,eased-(i+1)*0.04);
+        const tx_=playerCX+(rivalCX-playerCX)*tp;
+        const ty_=playerCY+(rivalCY-playerCY)*tp-28*Math.sin(tp*Math.PI);
+        const ta=(1-i/6)*0.5*(1-eased);
+        g.globalAlpha=ta;
+        bx(tx_-3,ty_-3,6,6,i<3?'#c03020':'#804020');
+        g.globalAlpha=1;
+      }
+      // Scratch marks at player origin early in animation
+      if(evT<12){
+        const scrA=(12-evT)/12;
+        g.globalAlpha=scrA*0.7;
+        g.save();g.strokeStyle='#c03030';g.lineWidth=2;
+        for(let s=0;s<3;s++){
+          g.beginPath();g.moveTo(playerCX-18+s*10,playerCY-20);g.lineTo(playerCX-10+s*10,playerCY+20);g.stroke();
+        }
+        g.restore();g.globalAlpha=1;
+      }
+      // "STOLEN!" flash at player position early
+      if(evT>6&&evT<22){
+        const flA=Math.min(1,(evT-6)/4)*Math.max(0,(22-evT)/6);
+        g.globalAlpha=flA;
+        txShadow('CARD STOLEN!',playerCX-70,playerCY-60,rar>=4?13:10,'#ff4040','rgba(0,0,0,.6)');
+        g.globalAlpha=1;
+      }
+      // Rival catches card at arrival (frame 32+)
+      if(evT>=32&&evT<50){
+        const catchA=Math.min(1,(evT-32)/6);
+        g.globalAlpha=catchA;
+        const catchStr=rar>=4?rivalCol:rivalCol;
+        bx(rivalCX-14,rivalCY-22,28,42,rivalCol);bx(rivalCX-12,rivalCY-20,24,38,'rgba(0,0,0,.3)');
+        const catchPulse=(evT-32)*3;
+        if(catchPulse<40){g.strokeStyle=rivalCol;g.lineWidth=2;g.beginPath();g.arc(rivalCX,rivalCY,catchPulse,0,Math.PI*2);g.stroke();}
+        g.globalAlpha=1;
+      }
+      if(evT===2)sfxDamage();
+      if(evT===32){screenShake(3,8);}
+    }
     if(ev.effect==='card_get'&&evT<35){
       // Card rising with sparkles
       const cardY=playerCY+30-evT*2;const scale_=Math.min(1,evT/15);
