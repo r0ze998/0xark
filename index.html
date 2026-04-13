@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v92</title>
+<title>0xARK v93</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7921,7 +7921,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v92',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v93',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -10547,6 +10547,30 @@ function dCrd(){
       // Show rarity as hint
       for(let s=0;s<(cr.r||1);s++)tx('\u2605',cx+4+s*10,cy+CARD_H-16,6,'#2a2a40');
     }
+    // v93: Rival ownership dots + IN HAND badge
+    {
+      const vegaHas=pl[1].cd.some(c=>c===cardId);
+      const miraHas=pl[2].cd.some(c=>c===cardId);
+      const inHand=pl[0].cd.some(c=>c===cardId);
+      let dotX=cx+CARD_W-6;
+      if(vegaHas){bx(dotX-10,cy+4,8,8,'#e060a0');dotX-=10;}
+      if(miraHas){bx(dotX-10,cy+4,8,8,'#d0a030');dotX-=10;}
+      if(inHand&&owned){
+        // "HAND" badge at bottom
+        bx(cx+CARD_W-30,cy+CARD_H-14,28,12,'rgba(40,120,40,.85)');
+        bx(cx+CARD_W-30,cy+CARD_H-14,28,1,'#60e060');
+        tx('HAND',cx+CARD_W-27,cy+CARD_H-5,5,'#60e060');
+      }
+    }
+  }
+  // v93: Legend for dots
+  {
+    const vegaTotal=pl[1].cd.filter(c=>c>0).length;
+    const miraTotal=pl[2].cd.filter(c=>c>0).length;
+    bx(W-190,12,8,8,'#e060a0');
+    tx('V:'+vegaTotal,W-180,22,6,'#e060a0');
+    bx(W-158,12,8,8,'#d0a030');
+    tx('M:'+miraTotal,W-148,22,6,'#d0a030');
   }
   // Navigation
   win(10,H-30,W-20,24);
