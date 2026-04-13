@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v36</title>
+<title>0xARK v37</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -5724,7 +5724,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v36',W-40,14,10,'#b0b0ff','rgba(0,0,0,0.6)');
+  txShadow('v37',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6475,7 +6475,15 @@ function dMap(){
   // Location indicator: Town or Dungeon floor
   if(inDungeon){
     txShadow('B'+currentFloor,10,hudY+52,9,'#d0b020','rgba(0,0,0,.4)');
-    tx('DUNGEON',30,hudY+52,7,'#a07820');
+    // Show SAFE countdown while encounter cooldown is active
+    if(encounterCooldown>0){
+      const safeAlpha=0.6+Math.sin(fr*0.15)*0.4;
+      g.globalAlpha=safeAlpha;
+      txShadow('SAFE '+(Math.ceil(encounterCooldown/60))+'s',30,hudY+52,8,'#40e080','rgba(0,0,0,.5)');
+      g.globalAlpha=1;
+    }else{
+      tx('DUNGEON',30,hudY+52,7,'#a07820');
+    }
   }else{
     tx('TOWN',10,hudY+52,7,'#40a040');
   }
@@ -6592,7 +6600,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  tx('v36',938,hudY+56,6,'#333350');
+  txShadow('v37',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11006,7 +11014,7 @@ function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle(
 // SAVE / LOAD SYSTEM
 // ═══════════════════════════════════════
 const SAVE_KEY='oxark_save';
-const SAVE_VERSION=32; // bump when save format changes — old saves auto-wiped
+const SAVE_VERSION=37; // bump when save format changes — old saves auto-wiped
 // Auto-wipe incompatible old saves on load (also wipe legacy saves with no version key)
 try{const sv=localStorage.getItem('oxark_save_ver');if(!sv||parseInt(sv)<SAVE_VERSION){localStorage.removeItem(SAVE_KEY);localStorage.removeItem('oxark_fog');lg.push('[SAVE] Old save wiped (v'+(sv||'legacy')+'→v'+SAVE_VERSION+')');}localStorage.setItem('oxark_save_ver',String(SAVE_VERSION));}catch(e){}
 
