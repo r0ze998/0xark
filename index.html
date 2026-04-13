@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v58</title>
+<title>0xARK v59</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -2820,14 +2820,22 @@ let rivalAlert=0, rivalAlertName='';
 
 // Rival AI state objects
 const rivalAI=[
-  // Index 0 = pl[1] "Rival" — The Hunter (Aggressive)
+  // Index 0 = pl[1] "VEGA" — The Hunter (Aggressive, hot-pink)
   {goalX:10,goalY:10,goalMap:0,personality:'hunter',moveTimer:0,moveInterval:8,
    lastKnownPlayerMap:-1,lastKnownPlayerX:-1,lastKnownPlayerY:-1,
    state:'exploring',stateTimer:0,fleeDir:-1,huntCooldown:0},
-  // Index 1 = pl[2] "Hunter" — The Collector (Strategic)
+  // Index 1 = pl[2] "MIRA" — The Collector (Strategic, gold)
   {goalX:20,goalY:15,goalMap:1,personality:'collector',moveTimer:0,moveInterval:12,
    lastKnownPlayerMap:-1,lastKnownPlayerX:-1,lastKnownPlayerY:-1,
    state:'exploring',stateTimer:0,fleeDir:-1,huntCooldown:0}
+];
+
+// Rival pre-battle taunts indexed by [rivalIdx][random]
+const RIVAL_TAUNTS=[
+  // VEGA — aggressive, short and sharp
+  ['Your cards are mine.','Hand them over, slowly.','I never lose twice.','Don\'t blink.','Run if you want. I\'ll find you.'],
+  // MIRA — strategic, calm
+  ['I\'ve been watching your moves.','Interesting deck. I want it.','Every card has a price.','I always get what I collect.','Nothing personal. Just rare cards.'],
 ];
 
 // Footprints system: {map, x, y, age}
@@ -3287,8 +3295,8 @@ for(let i=0;i<12;i++){
 function makeEmptyHand(){return new Array(HAND_SIZE).fill(0);}
 const pl=[
   {x:15,y:13,c:'#48b8e8',n:'You',   cd:makeEmptyHand(),vault:new Set(),cc:0,dir:0,step:0,walkFrame:0,visualX:15*TW,visualY:13*TH},
-  {x:8, y:10,c:'#d860a0',n:'Rival', cd:[2,5,0,0,0],cc:2,dir:2,step:0,walkFrame:0,visualX:8*TW,visualY:10*TH},
-  {x:28,y:18,c:'#d8b028',n:'Hunter',cd:[4,0,0,0,0],cc:1,dir:0,step:0,walkFrame:0,visualX:28*TW,visualY:18*TH},
+  {x:8, y:10,c:'#d860a0',n:'VEGA',  cd:[2,5,0,0,0],cc:2,dir:2,step:0,walkFrame:0,visualX:8*TW,visualY:10*TH},
+  {x:28,y:18,c:'#d8b028',n:'MIRA', cd:[4,0,0,0,0],cc:1,dir:0,step:0,walkFrame:0,visualX:28*TW,visualY:18*TH},
 ];
 
 const sp={s:2,b:3,c:2};
@@ -3519,10 +3527,13 @@ let tutorialMsg='', tutorialMsgTimer=0;
 let introActive=false, introPage=0, introFrame=0;
 const INTRO_PAGES=[
   'Welcome to はじまりのまち!\nArrows:Move  Z:Confirm  X:Back\nSPACE:Menu',
-  'You start with 3 cards.\nCollect all 60 cards\nto win the Prize Pool.',
-  'This Town is your safe base.\nVisit shops, use gacha, trade.\nNo enemies here — rest easy.',
-  'Enter the Dungeon to the EAST.\nCards decay — escape WEST to town!\nDeeper floors = rarer cards.',
-  'Encounter rivals to battle.\nSTEAL their cards to collect.\nFlee cards let you escape safely.',
+  'You start with 3 cards.\nCollect all 60 cards\nto win the Prize Pool!',
+  'Town is your safe base.\nShop, Gacha, Trade here.\nNo enemies here — rest easy.',
+  'Enter the Dungeon to the EAST.\nCards in hand DECAY over time!\nEscape WEST before they crumble.',
+  'Card Decay: 3.5 min per card.\nDecay bars shown under each card.\nLava tiles accelerate decay!',
+  'Battle actions cost Spell energy.\nSTEAL costs 1S  BARRIER costs 1B\nSCOUT costs 1C  (shown top-left)',
+  'VEGA (hunter) chases you hard.\nMIRA (collector) plays strategic.\nSTEAL to take their cards!',
+  'USE CARD in battle:\nAttack=force steal, Flee=escape,\nMagic=strip all barriers!',
   'First to collect all 60 wins.\nCards are NFTs on Solana.\nGood luck. Trust no one.',
 ];
 
@@ -5635,10 +5646,18 @@ function drawEncounterExclamation(){
   const ppx=encounterExclPlayerX-camX, ppy=encounterExclPlayerY-camY-8;
   bx(ppx+3,ppy-22+bounce,10,14,'#fff');bx(ppx+4,ppy-21+bounce,8,11,'#f0c830');
   tx('!',ppx+5,ppy-10+bounce,10,'#c04040');
-  // Rival "!" bubble
+  // Rival "!" bubble with rival name tag
   const rpx=encounterExclRivalX-camX, rpy=encounterExclRivalY-camY-8;
   bx(rpx+3,rpy-22+bounce,10,14,'#fff');bx(rpx+4,rpy-21+bounce,8,11,'#f0c830');
   tx('!',rpx+5,rpy-10+bounce,10,'#c04040');
+  // Show rival name tag above "!" — appears after t>6
+  if(t>6){
+    const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'???';
+    const rNameCol=(encounterExclTarget===1)?'#f080c0':'#f0c830';
+    const nameW=rName.length*6+4;
+    bx(rpx-nameW/2+8,rpy-38+bounce,nameW,13,'rgba(0,0,0,.7)');
+    tx(rName,rpx-nameW/2+10,rpy-27+bounce,7,rNameCol);
+  }
   g.globalAlpha=1;
 }
 
@@ -6542,6 +6561,13 @@ function dMap(){
     if(i!==0){
       const spx=p.visualX-camX,spy=p.visualY-camY-16;
       drawRivalAlertAnim(p,spx,spy);
+      // Rival name label above sprite (always visible when in view)
+      const rNameCol=(i===1)?'#f080c0':'#f0c830';
+      const rCards=p.cd.filter(c=>c>0).length;
+      const rLabel=p.n+(rCards>0?' '+rCards+'c':'');
+      const lW=rLabel.length*5+6;
+      bx(spx+8-lW/2,spy-44,lW,11,'rgba(0,0,0,.65)');
+      tx(rLabel,spx+8-lW/2+3,spy-35,6,rNameCol);
     }
   });
 
@@ -7168,23 +7194,58 @@ function drawVsSplash(){
   const rSlide=Math.min(1,t/30);
   const rX=W+60-rSlide*(W/4+20);
   // Show the rival that triggered this encounter (encounterExclTarget tracks which one)
-  const vsSplashRival=pl[encounterExclTarget>=1&&encounterExclTarget<=2?encounterExclTarget:1];
+  const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
+  const vsSplashRival=pl[vsRivalIdx];
   drawBattleSprite(vsSplashRival,rX,H/2-10,3,false);
+
+  // Player name (left side, slides in)
+  if(t>10){
+    const nameAlpha=Math.min(1,(t-10)/10);
+    g.globalAlpha=nameAlpha;
+    txShadow('YOU',60,H/2-60,14,'#78c0f0','rgba(0,0,0,.6)');
+    const yourCards=pl[0].cd.filter(c=>c>0).length;
+    txShadow(yourCards+' card'+(yourCards!==1?'s':''),60,H/2-42,8,'rgba(255,255,255,.6)','rgba(0,0,0,.4)');
+    g.globalAlpha=1;
+  }
+
+  // Rival name (right side, slides in)
+  if(t>10){
+    const nameAlpha=Math.min(1,(t-10)/10);
+    g.globalAlpha=nameAlpha;
+    const rivalNameCol=vsRivalIdx===1?'#f080c0':'#f0c830';
+    const rivalPersonality=vsRivalIdx===1?'THE HUNTER':'THE COLLECTOR';
+    const rivalNameX=W-220;
+    txShadow(vsSplashRival.n,rivalNameX,H/2-60,14,rivalNameCol,'rgba(0,0,0,.6)');
+    txShadow(rivalPersonality,rivalNameX,H/2-42,8,'rgba(255,255,255,.5)','rgba(0,0,0,.4)');
+    const rivalCards=vsSplashRival.cd.filter(c=>c>0).length;
+    txShadow(rivalCards+' card'+(rivalCards!==1?'s':''),rivalNameX,H/2-28,7,'rgba(255,255,255,.5)','rgba(0,0,0,.35)');
+    g.globalAlpha=1;
+  }
+
   // VS text
   if(t>15){
     g.globalAlpha=Math.min(1,(t-15)/10);
-    // VS with outline
     txShadow('VS',W/2-28,H/2+14,36,'#f0c830','#000');
     g.globalAlpha=1;
   }
   // Flash
   if(t>=28&&t<=35){bx(0,0,W,H,`rgba(255,255,255,${(35-t)/7*.9})`);}
-  // Area name
-  if(t>20&&t<55){
-    g.globalAlpha=Math.min(1,(t-20)/8,Math.max(0,(55-t)/8));
-    txShadow(mapNames[currentMap],W/2-80,H/2+42,14,'#fff','rgba(0,0,0,.5)');
+
+  // Rival taunt (appears after flash, fades out before transition)
+  if(t>36&&t<58){
+    const tntAlpha=Math.min(1,(t-36)/8,Math.max(0,(58-t)/6));
+    g.globalAlpha=tntAlpha;
+    const aiIdx=vsRivalIdx-1; // 0 for VEGA, 1 for MIRA
+    const taunts=RIVAL_TAUNTS[aiIdx]||RIVAL_TAUNTS[0];
+    // Use bpFrame as seed for consistent taunt per battle
+    const taunt=taunts[Math.floor(bpFrame/7)%taunts.length];
+    // Dark pill behind taunt text
+    const tntW=taunt.length*8+20;
+    bx(W/2-tntW/2,H/2+24,tntW,22,'rgba(0,0,0,.6)');
+    txShadow('\u201C'+taunt+'\u201D',W/2-tntW/2+10,H/2+40,9,'#f0e8c8','rgba(0,0,0,.5)');
     g.globalAlpha=1;
   }
+
   if(t>=60){
     battlePhase='select';bpFrame=fr;bpRdIncremented=false;
     if(!tutorialFlags.firstBattle){tutorialFlags.firstBattle=true;tutorialMsg='Pick an action! DRAW cards, STEAL from rivals, or BARRIER to defend.';tutorialMsgTimer=240;}
@@ -8202,6 +8263,55 @@ function drawResultPhase(){
   // Spell counts
   txShadow('Spells: STL:'+sp.s+' BAR:'+sp.b+' SCT:'+sp.c,panX+16,panY+panH-24,9,'#988870','rgba(0,0,0,.2)');
   g.globalAlpha=1;
+
+  // Rival post-battle reaction (appears after t>30)
+  if(t>30){
+    const reactAlpha=Math.min(1,(t-30)/10);
+    g.globalAlpha=reactAlpha;
+    // Determine who benefited from this round
+    const evTexts=(bpResolveQueue||[]).map(e=>e.text||'').join(' ');
+    const playerStole=evTexts.includes('You stole')||evTexts.includes('Power steal!')||evTexts.includes('Magic strike!');
+    const rivalStole=evTexts.includes('stole your')||evTexts.includes('STOLE');
+    // Choose reacting rival: prefer the targeted rival, fall back to encounter initiator
+    const reactRivalIdx=(bpSelectedTarget>=1&&bpSelectedTarget<=2)?bpSelectedTarget:((encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1);
+    const reactAiIdx=reactRivalIdx-1;
+    let reaction='';
+    if(playerStole){
+      // Player got a card — rival reacts with anger/grudging respect
+      const loseLines=[
+        ['Next time.','I wasn\'t ready.','Lucky. Just luck.','That card was nothing.','Remember this feeling.'],
+        ['Interesting move.','You surprised me.','I\'ll adapt.','Well played. Once.','I\'ll be taking it back.'],
+      ];
+      const lines=loseLines[reactAiIdx]||loseLines[0];
+      reaction=lines[Math.floor(bpFrame/13)%lines.length];
+    }else if(rivalStole){
+      // Rival got a card — gloats
+      const winLines=[
+        ['Mine now.','Easy.','Too slow.','This collection grows.','Don\'t fight the inevitable.'],
+        ['As predicted.','Filed away safely.','My collection expands.','Thank you for that.','Perfect addition.'],
+      ];
+      const lines=winLines[reactAiIdx]||winLines[0];
+      reaction=lines[Math.floor(bpFrame/13)%lines.length];
+    }else{
+      // Draw / neither got cards
+      const drawLines=[
+        ['Boring. Move.','Next time I\'ll have you.','Stay sharp.','Waste of my time.','...'],
+        ['Inconclusive.','We\'ll settle this later.','Calculations updated.','Stalemate. For now.','Hmm.'],
+      ];
+      const lines=drawLines[reactAiIdx]||drawLines[0];
+      reaction=lines[Math.floor(bpFrame/13)%lines.length];
+    }
+    if(reaction){
+      const rName=pl[reactRivalIdx].n;
+      const rNameCol=reactRivalIdx===1?'#f080c0':'#f0c830';
+      const reactX=panX;const reactY=panY-36;
+      bx(reactX,reactY-4,panW,30,'rgba(0,0,0,.5)');
+      txShadow(rName+':',reactX+8,reactY+16,9,rNameCol,'rgba(0,0,0,.4)');
+      txShadow('\u201C'+reaction+'\u201D',reactX+70,reactY+16,9,'#f0e8c8','rgba(0,0,0,.4)');
+    }
+    g.globalAlpha=1;
+  }
+
   // Press Z prompt
   if(t>25&&Math.floor(t/20)%2===0){
     txShadow('PRESS Z TO CONTINUE',W/2-120,panY+panH+12,10,'#989080','rgba(0,0,0,.3)');
@@ -11110,7 +11220,7 @@ document.addEventListener('keydown',e=>{
             screenShake(2,4);
           }
           // Tutorial triggers
-          if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Commit in secret. Reveal with proof. The fog hides everything \u2014 but information has a price.';tutorialMsgTimer=300;}
+          if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
           if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}
           // Water proximity sound
           if(newTile!==0){const adj=[[nx-1,ny],[nx+1,ny],[nx,ny-1],[nx,ny+1]];if(adj.some(([ax,ay])=>ax>=0&&ax<MW&&ay>=0&&ay<MH&&m[ay]?.[ax]===0))sfxWaterNear();}
