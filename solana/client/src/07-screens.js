@@ -996,6 +996,39 @@ function dMap(){
         }
       }
     }
+    // v113: Card slot shatter animation (slot recently expired)
+    if(pl[0].cd[i]===0&&cardShatterTimers[i]>0){
+      const shAge=fr-cardShatterTimers[i];
+      if(shAge<40){
+        const shA=Math.max(0,1-shAge/40);
+        const mx_=310+i*HUD_CARD_SPACING,my_=hudY+14;
+        g.globalAlpha=shA;
+        // Shattered card base
+        bx(mx_,my_,28,20,'#601010');
+        // Crack overlay — diagonal shards
+        g.globalAlpha=shA*0.8;
+        bx(mx_,my_,2,20,'#c03030');bx(mx_+26,my_,2,20,'#c03030');
+        bx(mx_,my_,28,2,'#c03030');bx(mx_,my_+18,28,2,'#c03030');
+        bx(mx_+6,my_+2,2,16,'#c05050');bx(mx_+14,my_+4,2,12,'#c05050');
+        bx(mx_+20,my_+2,2,8,'#c05050');
+        // Flying shard particles
+        for(let s=0;s<5;s++){
+          const sx_=mx_+4+s*5+(Math.sin(shAge*0.3+s)*shAge*0.4);
+          const sy_=my_+2+s*3-(shAge*0.5+s*1.2);
+          const sa=Math.max(0,shA*(1-s*0.15));
+          g.globalAlpha=sa;
+          bx(sx_,sy_,3,3,'#d04040');
+        }
+        // "DECAYED" label
+        g.globalAlpha=shA;
+        txShadow('LOST',mx_,my_+10,5,'#ff4040','rgba(0,0,0,.6)');
+        g.globalAlpha=1;
+        // Auto-clear after animation
+        if(shAge>=40)cardShatterTimers[i]=0;
+      }else{
+        cardShatterTimers[i]=0;
+      }
+    }
     // Card decay timer bar under each card
     if(pl[0].cd[i]>0&&cardTimers[i]>0){
       const elapsed=Date.now()-cardTimers[i];
@@ -1191,7 +1224,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v112',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v113',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
