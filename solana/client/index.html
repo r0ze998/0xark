@@ -3342,6 +3342,21 @@ let randomEventActive=false, randomEventText='', randomEventFrame=0;
 // ── Trading Post state ──
 let shopActive=false, shopSelectedIdx=0, shopConfirm=false, shopResultText='', shopResultFrame=0, shopPhase='list';
 
+// ── Gacha state ──
+let gachaActive=false, gachaPhase='menu', gachaSelectedTier=0, gachaResultCard=-1, gachaResultFrame=0, gachaSpinFrame=0;
+const GACHA_TIERS=[
+  {name:'Common Draw',   cost:0.01, label:'0.01 SOL', pool:'common',  rarities:[1,1,1,1,2]},   // 80% r1, 20% r2
+  {name:'Rare Draw',     cost:0.05, label:'0.05 SOL', pool:'rare',    rarities:[2,2,3,3,3]},   // r2-r3
+  {name:'Epic Draw',     cost:0.20, label:'0.20 SOL', pool:'epic',    rarities:[3,4,4,4,5]},   // r3-r5
+];
+function gachaPickCard(tierIdx){
+  const t=GACHA_TIERS[tierIdx];
+  const r=t.rarities[Math.floor(Math.random()*t.rarities.length)];
+  const pool=CD.map((_,i)=>i+1).filter(id=>CD[id-1].r===r);
+  if(pool.length===0)return 1+Math.floor(Math.random()*60);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
 // ── Signpost state ──
 let signpostActive=false, signpostText='', signpostFrame=0;
 
@@ -3571,7 +3586,7 @@ function resetNewFeatureState(){
   mapCardUseActive=false;fountainActive=false;
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
   // Reset all UI overlay states
-  wildEncounterActive=false;npcDialogActive=false;shopActive=false;signpostActive=false;
+  wildEncounterActive=false;npcDialogActive=false;shopActive=false;signpostActive=false;gachaActive=false;
   discardActive=false;cardAcqActive=false;cardAcqDone=false;randomEventActive=false;
   encounterExclActive=false;encounterCooldown=0;
   x402ShopOpen=false;x402ShopLoading=false;x402ShopResult='';x402ShopResultTimer=0;x402HowItWorksActive=false;agentMarketplaceActive=false;
@@ -4794,6 +4809,23 @@ function doMapTransition(exit){
         if(!inDungeon)cardTimers[i]=0; // pause decay in town
       }
     }
+    // Floor clear card reward: descending to deeper floor (not escaping back up)
+    if(inDungeon&&!exit.isEscape&&exit.fromMap>0){
+      const clearedFloor=exit.fromMap; // the floor we just cleared
+      const pool=DUNGEON_FLOOR_CARDS[clearedFloor];
+      if(pool&&pool.length>0){
+        const rewardCard=pool[Math.floor(Math.random()*pool.length)];
+        setTimeout(()=>{
+          if(addCardToPlayer(0,rewardCard)){
+            const cr=CD[rewardCard-1];
+            objectInteractMsg='FLOOR '+clearedFloor+' CLEAR! Got '+cr.n+'!';
+            objectInteractTimer=150;
+            sfxUniqueCardSting();screenShake(2,4);
+            lg.push('[FLOOR CLEAR] B'+clearedFloor+' cleared! Earned: '+cr.n+' ('+RARITY_LABEL[cr.r]+')');
+          }
+        },800);
+      }
+    }
     saveGame();
     if(!tutorialFlags.firstMapChange){tutorialFlags.firstMapChange=true;tutorialMsg=inDungeon?'Dungeon! Cards decay here — escape to save them.':'Town! Cards are safe here.';tutorialMsgTimer=220;}
     fadeIn(()=>{mapTransitioning=false;});
@@ -5098,6 +5130,12 @@ function checkNPCInteraction(){
       // Pirate Merchant opens the shop instead of normal dialog
       if(npc.name==='Pirate Merchant'){
         openCardShop();
+        return true;
+      }
+      // Gacha Keeper opens the gacha
+      if(npc.name==='Gacha Keeper'){
+        gachaActive=true;gachaPhase='menu';gachaSelectedTier=0;gachaResultCard=-1;gachaSpinFrame=0;
+        sfxShopOpen();
         return true;
       }
       npcDialogActive=true;
@@ -8679,6 +8717,70 @@ function drawBuildingInterior(){
     g.globalAlpha=1;
   }
 
+  // ── GACHA OVERLAY ──
+  if(gachaActive){
+    bx(0,0,W,H,'rgba(0,0,0,.7)');
+    const gw=400,gh=340,gx=W/2-gw/2,gy=H/2-gh/2;
+    win(gx,gy,gw,gh);
+    // Header
+    bx(gx,gy,gw,28,'#1a1a30');
+    txShadow('GACHA',gx+gw/2-42,gy+20,14,'#f8c840','rgba(0,0,0,.5)');
+    // Vault progress
+    const vSize=pl[0].vault?pl[0].vault.size:0;
+    txShadow('Collection: '+vSize+'/60',gx+8,gy+40,7,'#c8c0a0','rgba(0,0,0,.3)');
+
+    if(gachaPhase==='menu'){
+      tx('Choose a draw type:',gx+16,gy+58,8,'#d0c8a0');
+      GACHA_TIERS.forEach((t,i)=>{
+        const isSelected=gachaSelectedTier===i;
+        const ty_=gy+76+i*62;
+        bx(gx+12,ty_,gw-24,54,isSelected?'#2a2a50':'#181828');
+        if(isSelected)bx(gx+12,ty_,gw-24,54,'rgba(248,200,64,.1)');
+        bx(gx+12,ty_,3,54,isSelected?'#f8c840':'#3a3a60');
+        tx(t.name,gx+22,ty_+14,9,isSelected?'#f8f0e0':'#b0a8c0');
+        tx(t.label,gx+22,ty_+28,8,'#f0c040');
+        // Rarity preview dots
+        const uniqueR=[...new Set(t.rarities)].sort();
+        uniqueR.forEach((r,ri)=>{
+          const dotX=gx+gw-80+ri*14;
+          bx(dotX,ty_+14,10,10,RARITY_COLOR[r]);
+          tx('★',dotX,ty_+25,5,RARITY_COLOR[r]);
+        });
+        if(isSelected)tx('\u25b6',gx+gw-30,ty_+26,8,'#f8c840');
+      });
+      bx(gx+12,gy+gh-44,gw-24,1,'#282848');
+      tx('[Z] Draw   [X] Cancel',gx+16,gy+gh-26,7,'#686878');
+    }else if(gachaPhase==='spinning'){
+      gachaSpinFrame++;
+      // Spinning animation — cycle through card icons
+      const spinIdx=Math.floor(gachaSpinFrame/4)%60;
+      const spinCr=CD[spinIdx];
+      const spinPulse=0.6+0.4*Math.sin(gachaSpinFrame*0.3);
+      g.globalAlpha=spinPulse;
+      bx(W/2-30,H/2-40,60,80,'#282848');
+      tx('?',W/2-10,H/2+8,20,spinCr.c||'#f8c840');
+      g.globalAlpha=1;
+      tx('Drawing...',W/2-44,H/2+58,10,'#a0a8c0');
+      if(gachaSpinFrame>50){gachaPhase='result';gachaResultFrame=fr;}
+    }else if(gachaPhase==='result'&&gachaResultCard>0){
+      const t2=fr-gachaResultFrame;
+      const cr=CD[gachaResultCard-1];
+      const slideIn=Math.min(1,t2/20);
+      g.globalAlpha=slideIn;
+      // Card display
+      const cardX=W/2-50,cardY=H/2-70;
+      drawCardFrame(cardX,cardY,100,130,gachaResultCard-1,true);
+      // Rarity label
+      bx(gx+gw/2-60,gy+gh-90,120,20,RARITY_COLOR[cr.r]+'33');
+      txShadow(RARITY_LABEL[cr.r]+'  '+cr.n,gx+gw/2-56,gy+gh-76,9,RARITY_COLOR[cr.r],'rgba(0,0,0,.5)');
+      // Is new?
+      const isNew=!pl[0].vault||!pl[0].vault.has(gachaResultCard);
+      if(isNew&&t2>15){txShadow('NEW!',W/2+40,H/2-60,12,'#f0c830','rgba(0,0,0,.6)');}
+      g.globalAlpha=1;
+      if(t2>30){tx('[Z] Take   [X] Close',gx+16,gy+gh-36,7,'#686878');}
+    }
+  }
+
   // x402 shop overlay
   if(x402ShopOpen){
     bx(0,0,W,H,'rgba(0,0,0,.5)');
@@ -9901,6 +10003,36 @@ document.addEventListener('keydown',e=>{
     return;
   }
 
+  // Gacha handling
+  if(gachaActive){
+    if(gachaPhase==='menu'){
+      if(e.code==='ArrowUp'){gachaSelectedTier=Math.max(0,gachaSelectedTier-1);sfxCursor();}
+      if(e.code==='ArrowDown'){gachaSelectedTier=Math.min(GACHA_TIERS.length-1,gachaSelectedTier+1);sfxCursor();}
+      if(e.code==='KeyZ'){
+        // Start gacha spin
+        gachaPhase='spinning';gachaSpinFrame=0;
+        // Determine result card now (hidden until spin ends)
+        gachaResultCard=gachaPickCard(gachaSelectedTier);
+        sfxShopTrade();
+        lg.push('[GACHA] '+GACHA_TIERS[gachaSelectedTier].name+' ('+GACHA_TIERS[gachaSelectedTier].label+')...');
+      }
+      if(e.code==='KeyX'){gachaActive=false;sfxBack();}
+    }else if(gachaPhase==='result'){
+      if(e.code==='KeyZ'||e.code==='KeyX'){
+        if(e.code==='KeyZ'&&gachaResultCard>0){
+          // Give card to player
+          addCardToPlayer(0,gachaResultCard);
+          const cr=CD[gachaResultCard-1];
+          lg.push('[GACHA] Got '+cr.n+' ('+RARITY_LABEL[cr.r]+')!');
+          sfxConfirm();
+        }
+        gachaActive=false;gachaResultCard=-1;
+        sfxBack();
+      }
+    }
+    return;
+  }
+
   // Trading Post handling
   if(shopActive){
     const filled=getPlayerFilledSlots();
@@ -10561,8 +10693,15 @@ function loadGame(){
     // Tension mechanics
     if(d.cardTimers){for(let i=0;i<HAND_SIZE;i++)cardTimers[i]=d.cardTimers[i]||0;}
     if(d.streakCount!==undefined)streakCount=d.streakCount;
-    if(d.areaDanger){for(let i=0;i<3;i++)areaDanger[i]=d.areaDanger[i]||0;}
-    if(d.areaDangerStayTimer){for(let i=0;i<3;i++)areaDangerStayTimer[i]=d.areaDangerStayTimer[i]||0;}
+    if(d.areaDanger){for(let i=0;i<FOG_MAP_COUNT;i++)areaDanger[i]=d.areaDanger[i]||0;}
+    if(d.areaDangerStayTimer){for(let i=0;i<FOG_MAP_COUNT;i++)areaDangerStayTimer[i]=d.areaDangerStayTimer[i]||0;}
+    // GDD v1.0: if old save has rivals in town, move them to dungeon
+    if(d.rivalMaps&&(d.rivalMaps[0]===0||d.rivalMaps[1]===0)){
+      if(rivalMaps[0]===0){rivalMaps[0]=1;pl[1].x=8;pl[1].y=10;pl[1].visualX=8*TW;pl[1].visualY=10*TH;}
+      if(rivalMaps[1]===0){rivalMaps[1]=1;pl[2].x=28;pl[2].y=18;pl[2].visualX=28*TW;pl[2].visualY=18*TH;}
+    }
+    // Reset any battle state that may have been saved mid-fight
+    wildEncounterActive=false;encounterCooldown=60;battlePhase='select';
     // Season data
     if(d.seasonStartTime){seasonStartTime=d.seasonStartTime;seasonEndTime=d.seasonEndTime||d.seasonStartTime+SEASON_DURATION_MS;}
     else{initSeason();} // legacy saves: start fresh season
