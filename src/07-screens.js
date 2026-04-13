@@ -1224,7 +1224,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v113',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v114',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -2617,7 +2617,7 @@ function generateResolveEvents(){
     events.push({type:'action',who:'You',action:'DRAW',text:'You used DRAW!',effect:'none'});
     const wasInHandBefore=pl[0].cd.some(c=>c===cardId); // capture before addCardToPlayer modifies hand
     if(addCardToPlayer(0,cardId)){
-      events.push({type:'result',text:'You obtained '+cr.n+'!',effect:'card_get',cardName:cr.n});
+      events.push({type:'result',text:'You obtained '+cr.n+'!',effect:'card_get',cardName:cr.n,cardId:cardId});
       lg.push('R'+rd+': You drew '+cr.n+'!');
       // Streak: new unique type (not already in hand before this draw)
       if(!wasInHandBefore){streakCount++;streakDisplayTimer=60;sfxStreakUp();}
@@ -3094,12 +3094,44 @@ function drawResolvingPhase(){
       if(evT===32){screenShake(3,8);}
     }
     if(ev.effect==='card_get'&&evT<35){
-      // Card rising with sparkles
+      // v114: Card rising with actual art and rarity glow
       const cardY=playerCY+30-evT*2;const scale_=Math.min(1,evT/15);
       const cw_=40*scale_,ch_=56*scale_;
-      bx(playerCX-cw_/2,cardY-ch_/2,cw_,ch_,'#d85840');
-      bx(playerCX-cw_/2+2,cardY-ch_/2+2,cw_-4,ch_-4,'#e87060');
-      if(scale_>.5)tx('\u25B2',playerCX-6,cardY+4,Math.floor(12*scale_),'#fff');
+      if(ev.cardId>0&&CD[ev.cardId-1]){
+        const dcr=CD[ev.cardId-1];
+        const rar=dcr.r||1;
+        const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
+        const rcol=rarCols[rar]||'#d85840';
+        // Rarity glow halo
+        if(rar>=2){
+          const glA=0.25*(1-evT/35)*scale_;
+          g.globalAlpha=glA;
+          g.fillStyle=rcol;
+          g.beginPath();g.arc(playerCX,cardY,18+rar*5,0,Math.PI*2);g.fill();
+          g.globalAlpha=1;
+        }
+        // Actual card art
+        g.save();g.translate(playerCX,cardY);g.scale(scale_,scale_);
+        bx(-20,-28,40,56,dcr.d);bx(-18,-26,36,52,dcr.c);
+        bx(-18,-26,36,36,dcr.d);bx(-17,-25,34,34,'rgba(255,255,255,.12)');
+        if(scale_>0.4)drawCardCharacter(-16,-24,ev.cardId,1.3,fr);
+        bx(-18,10,36,16,dcr.d);
+        if(scale_>0.5)txShadow(dcr.n,-18+2,22,7,'#fff','rgba(0,0,0,.5)');
+        // Rarity border
+        bx(-20,-28,40,2,rcol);
+        g.restore();
+        // Card name flash at peak
+        if(evT>12&&evT<28){
+          const nA=Math.min(1,(evT-12)/4)*Math.max(0,(28-evT)/6);
+          g.globalAlpha=nA;
+          txShadow(dcr.n,playerCX-dcr.n.length*5,cardY-40,10,rcol,'rgba(0,0,0,.5)');
+          g.globalAlpha=1;
+        }
+      }else{
+        bx(playerCX-cw_/2,cardY-ch_/2,cw_,ch_,'#d85840');
+        bx(playerCX-cw_/2+2,cardY-ch_/2+2,cw_-4,ch_-4,'#e87060');
+        if(scale_>.5)tx('\u25B2',playerCX-6,cardY+4,Math.floor(12*scale_),'#fff');
+      }
       for(let i=0;i<8;i++){
         const ang=i*(Math.PI*2/8)+evT*.15,dist=12+evT*.8;
         const pa=Math.max(0,1-evT/35);
