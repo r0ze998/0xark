@@ -953,6 +953,30 @@ function dMap(){
   const HUD_CARD_SPACING=30;
   for(let i=0;i<HUD_CARD_SLOTS;i++){
     drawMiniCard(310+i*HUD_CARD_SPACING,hudY+14,pl[0].cd[i]);
+    // v108: Rarity glow border for Epic (R4) and Legendary (R5) HUD mini-cards
+    if(pl[0].cd[i]>0){
+      const cr_=CD[pl[0].cd[i]-1];
+      if(cr_.r>=4){
+        const mx_=310+i*HUD_CARD_SPACING,my_=hudY+14;
+        if(cr_.r===5){
+          // Legendary: pulsing white-gold double border
+          const pulse_=0.5+Math.sin(fr*0.08+i*0.7)*0.5;
+          g.globalAlpha=0.45+pulse_*0.45;
+          bx(mx_-1,my_-1,30,1,'#ffe080');bx(mx_-1,my_+20,30,1,'#ffe080');
+          bx(mx_-1,my_-1,1,22,'#ffe080');bx(mx_+28,my_-1,1,22,'#ffe080');
+          g.globalAlpha=pulse_*0.35;
+          bx(mx_-2,my_-2,32,1,'#ffffff');bx(mx_-2,my_+21,32,1,'#ffffff');
+          bx(mx_-2,my_-2,1,24,'#ffffff');bx(mx_+30,my_-2,1,24,'#ffffff');
+          g.globalAlpha=1;
+        }else{
+          // Epic: static gold border
+          g.globalAlpha=0.65;
+          bx(mx_-1,my_-1,30,1,'#c8a820');bx(mx_-1,my_+20,30,1,'#c8a820');
+          bx(mx_-1,my_-1,1,22,'#c8a820');bx(mx_+28,my_-1,1,22,'#c8a820');
+          g.globalAlpha=1;
+        }
+      }
+    }
     // Card decay timer bar under each card
     if(pl[0].cd[i]>0&&cardTimers[i]>0){
       const elapsed=Date.now()-cardTimers[i];
@@ -1148,7 +1172,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v107',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v108',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
