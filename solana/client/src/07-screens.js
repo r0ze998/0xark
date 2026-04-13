@@ -1137,7 +1137,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v100',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v101',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1764,7 +1764,7 @@ const PHASE_LABELS={select:'COMMIT PHASE',confirming:'REVEALING...',resolving:'R
 function drawPhaseBanner(phase){
   const col=PHASE_COLORS[phase]||'#383830';
   const label=PHASE_LABELS[phase]||'';
-  bx(0,0,W,28,col);bx(0,26,W,2,'rgba(0,0,0,.3)');
+  bx(0,0,W,28,col);
   bx(0,0,W,1,'rgba(255,255,255,.2)');
   // Round info on left
   txShadow('BATTLE '+rd,6,20,10,'#fff','rgba(0,0,0,.5)');
@@ -1781,6 +1781,18 @@ function drawPhaseBanner(phase){
   // Commit hash display during commit phase (wallet integration)
   if(walletConnected&&walletLastCommitHash&&(phase==='confirming'||phase==='resolving')){
     txShadow('Hash: '+walletLastCommitHash,W/2-100,38,5,'#80c0ff','rgba(0,0,0,.5)');
+  }
+  // v101: Battle momentum strip — card gain/loss net balance shown as a tug-of-war bar
+  bx(0,26,W,3,'rgba(0,0,0,.55)');
+  if(battleRoundHistory.length>0){
+    const net=battleRoundHistory.reduce((s,h)=>s+(h.got?1:0)-(h.lost?1:0),0);
+    const norm=Math.max(-1,Math.min(1,net/Math.max(1,battleRoundHistory.length)));
+    if(norm>0){bx(W/2,26,(W/2)*norm,3,'#40b0e8');}
+    else if(norm<0){bx(W/2+(W/2)*norm,26,-(W/2)*norm,3,'#d04040');}
+    const ta=0.35+Math.sin(fr*0.12)*0.25;
+    g.globalAlpha=ta;bx(W/2-1,26,2,3,'#ffffff');g.globalAlpha=1;
+  }else{
+    bx(W/2-1,26,2,3,'rgba(255,255,255,.2)');
   }
 }
 
