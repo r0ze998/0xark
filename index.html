@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v69</title>
+<title>0xARK v70</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -1794,13 +1794,15 @@ function drawWipe(){
 // MAP LOADING SCREEN
 // ═══════════════════════════════════════
 let mapLoadScreenActive=false, mapLoadScreenFrame=0, mapLoadScreenName='', mapLoadScreenCards='';
-const MAP_LOAD_DURATION=30; // ~0.5 seconds at 60fps
+let mapLoadScreenFloor=0; // 0=town/generic, 1-5=dungeon floor
+const MAP_LOAD_DURATION=80; // ~1.3 seconds at 60fps — dramatic pause
 
-function showMapLoadScreen(name, cards){
+function showMapLoadScreen(name, cards, floor){
   mapLoadScreenActive=true;
   mapLoadScreenFrame=0;
   mapLoadScreenName=name;
   mapLoadScreenCards=cards||'';
+  mapLoadScreenFloor=floor||0;
 }
 function updateMapLoadScreen(){
   if(!mapLoadScreenActive)return;
@@ -1810,24 +1812,81 @@ function updateMapLoadScreen(){
 function drawMapLoadScreen(){
   if(!mapLoadScreenActive)return;
   const t=mapLoadScreenFrame/MAP_LOAD_DURATION;
-  // Fade in first half, fade out second half
+  // Fade in quickly, hold, fade out at end
   let alpha;
-  if(t<0.3) alpha=t/0.3;
-  else if(t>0.7) alpha=(1-t)/0.3;
+  if(t<0.15) alpha=t/0.15;
+  else if(t>0.85) alpha=(1-t)/0.15;
   else alpha=1;
   alpha=Math.max(0,Math.min(1,alpha));
+
+  const fl=mapLoadScreenFloor;
+  const isDungeon=fl>0;
+  // Floor atmosphere colors
+  const atmosBg=['#0c0c18','#1a1828','#0d1a10','#1c1608','#1a0808','#200404'][fl]||'#0c0c18';
+  const atmosAccent=['#c8c0a0','#a8a0c0','#70b870','#d0a840','#d06040','#e06020'][fl]||'#c8c0a0';
+
   g.globalAlpha=alpha;
-  bx(0,0,W,H,'#0c0c18');
-  // Map name large
-  const nameW=mapLoadScreenName.length*16;
-  txShadow(mapLoadScreenName,W/2-nameW/2,H/2-10,16,'#f8f0e0','rgba(0,0,0,.6)');
-  // Available cards
-  if(mapLoadScreenCards){
-    const cardsW=mapLoadScreenCards.length*6;
-    txShadow(mapLoadScreenCards,W/2-cardsW/2,H/2+20,6,'#c8c0a0','rgba(0,0,0,.4)');
+  bx(0,0,W,H,atmosBg);
+
+  if(isDungeon){
+    // Dramatic: falling pixel particles (dungeon descent effect)
+    for(let i=0;i<30;i++){
+      const px_=((i*1237+mapLoadScreenFrame*3)%1000/1000)*W;
+      const py_=((i*3141+mapLoadScreenFrame*4)%1000/1000)*(H+40)-20;
+      const pa=0.3+Math.sin(mapLoadScreenFrame*0.08+i*0.7)*0.3;
+      g.globalAlpha=alpha*pa;
+      g.fillStyle=atmosAccent;
+      g.fillRect(px_,py_,2,4);
+    }
+    g.globalAlpha=alpha;
+
+    // Floor number — huge
+    const floorNums=['','I','II','III','IV','V'];
+    const floorNum=floorNums[fl]||String(fl);
+    const floorLabel='FLOOR '+floorNum;
+    const flLabelW=floorLabel.length*20;
+    // Glowing floor number
+    const glowA=0.12+Math.sin(mapLoadScreenFrame*0.12)*0.08;
+    g.globalAlpha=alpha*glowA;
+    g.font='bold 120px VT323, monospace';
+    g.textAlign='center';
+    g.fillStyle=atmosAccent;
+    g.fillText(floorLabel,W/2,H/2+45);
+    g.textAlign='left';
+    g.globalAlpha=alpha;
+
+    txShadow(floorLabel,W/2-flLabelW/2,H/2-5,20,atmosAccent,'rgba(0,0,0,.7)');
+
+    // Horizontal decorative lines
+    bx(W/2-120,H/2+6,240,1,atmosAccent+'80');
+
+    // Atmosphere description
+    const flAtmosDesc=[
+      '','Ancient dust settles...','Mushroom spores drift in the dark...',
+      'Crumbling ruins whisper old secrets...','Embers drift upward from below...',
+      'The heat here is nearly unbearable...'
+    ];
+    const atmDesc=flAtmosDesc[fl]||'';
+    if(atmDesc&&t>0.2&&t<0.9){
+      const txtAlpha=t>0.2&&t<0.3?(t-0.2)/0.1:t>0.8?(1-t)/0.1:1;
+      g.globalAlpha=alpha*txtAlpha*0.75;
+      txShadow(atmDesc,W/2-atmDesc.length*4,H/2+24,8,'#a09080','rgba(0,0,0,.5)');
+      g.globalAlpha=alpha;
+    }
+
+    // Card rarity hint at bottom
+    if(mapLoadScreenCards&&t>0.25){
+      txShadow(mapLoadScreenCards,W/2-mapLoadScreenCards.length*4,H/2+46,7,atmosAccent,'rgba(0,0,0,.5)');
+    }
+  }else{
+    // Town/generic: simple name display
+    const nameW=mapLoadScreenName.length*8;
+    txShadow(mapLoadScreenName,W/2-nameW,H/2-10,16,'#f8f0e0','rgba(0,0,0,.6)');
+    if(mapLoadScreenCards){
+      txShadow(mapLoadScreenCards,W/2-mapLoadScreenCards.length*3,H/2+20,6,'#c8c0a0','rgba(0,0,0,.4)');
+    }
+    bx(W/2-80,H/2+4,160,1,'rgba(200,180,140,.5)');
   }
-  // Decorative line
-  bx(W/2-80,H/2+4,160,1,'rgba(200,180,140,.5)');
   g.globalAlpha=1;
 }
 
@@ -5207,6 +5266,10 @@ function doMapTransition(exit){
         tutorialMsgTimer=280;
       }
     }
+    // Show dramatic floor card for dungeon transitions
+    if(inDungeon&&!exit.isEscape){
+      showMapLoadScreen(mapNames[currentMap],AREA_CARD_DESC[currentMap],currentFloor);
+    }
     fadeIn(()=>{mapTransitioning=false;});
   });
 }
@@ -7088,7 +7151,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v69',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v70',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11090,9 +11153,9 @@ function draw(){
   }
   // Screen transition wipes (replaces old battleWipe)
   drawWipe();
-  // Map loading screen
-  drawMapLoadScreen();
   fadeDraw();
+  // Map loading screen (drawn AFTER fade so it's always visible)
+  drawMapLoadScreen();
   // FRLG-style decorative border around viewport
   g.strokeStyle=FRLG.borderOuter;g.lineWidth=2;g.strokeRect(1,1,W-2,H-2);
   g.strokeStyle=FRLG.borderInner;g.lineWidth=1;g.strokeRect(3,3,W-6,H-6);
