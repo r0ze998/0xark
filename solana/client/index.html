@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v54</title>
+<title>0xARK v55</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -3303,14 +3303,54 @@ function drawDayNightOverlay(){
     return;
   }
   const dn=getDayNightPhase();
-  if(dn.phase==='dawn'){
-    g.fillStyle='rgba(255,200,100,0.05)';g.fillRect(0,0,W,H-HUD_HEIGHT);
-  }else if(dn.phase==='dusk'){
-    g.fillStyle='rgba(255,100,80,0.06)';g.fillRect(0,0,W,H-HUD_HEIGHT);
-  }else if(dn.phase==='night'){
-    g.fillStyle='rgba(20,20,80,0.12)';g.fillRect(0,0,W,H-HUD_HEIGHT);
+  const townH=H-HUD_HEIGHT;
+  // Town: lantern glow spots at NPC positions (warm, safe feeling vs dungeon dark)
+  // NPC screen positions (world→screen via camera)
+  if(currentMap===0){
+    const lanternSpots=[
+      {wx:8,wy:6,r:64,col:'255,200,80'},   // Card Merchant
+      {wx:22,wy:6,r:56,col:'255,180,80'},   // Trade Master
+      {wx:14,wy:12,r:72,col:'255,160,60'},  // Gacha Keeper
+      {wx:18,wy:18,r:60,col:'200,220,255'}, // ARK Guide (cooler blue-white)
+      {wx:26,wy:14,r:52,col:'255,200,100'}, // Dungeon Porter
+    ];
+    let lanternAlpha=0;
+    if(dn.phase==='dusk')lanternAlpha=dn.t*0.18;
+    else if(dn.phase==='night')lanternAlpha=0.22+Math.sin(fr*0.02)*0.04;
+    else if(dn.phase==='dawn')lanternAlpha=(1-dn.t)*0.14;
+    if(lanternAlpha>0){
+      for(const ls of lanternSpots){
+        const sx=ls.wx*TW-camX+TW/2,sy=ls.wy*TH-camY+TH/2;
+        if(sx<-ls.r||sx>W+ls.r||sy<-ls.r||sy>townH+ls.r)continue;
+        if(!fogRevealed[0]?.[ls.wy]?.[ls.wx])continue;
+        const lg2=g.createRadialGradient(sx,sy,0,sx,sy,ls.r);
+        lg2.addColorStop(0,`rgba(${ls.col},${lanternAlpha})`);
+        lg2.addColorStop(0.5,`rgba(${ls.col},${lanternAlpha*0.4})`);
+        lg2.addColorStop(1,'rgba(0,0,0,0)');
+        g.fillStyle=lg2;g.fillRect(Math.max(0,sx-ls.r),Math.max(0,sy-ls.r),ls.r*2,Math.min(townH,ls.r*2));
+      }
+    }
   }
-  // day = no overlay
+  // Phase overlays
+  if(dn.phase==='dawn'){
+    g.fillStyle='rgba(255,200,100,0.05)';g.fillRect(0,0,W,townH);
+  }else if(dn.phase==='dusk'){
+    g.fillStyle=`rgba(255,100,80,${0.06+dn.t*0.04})`;g.fillRect(0,0,W,townH);
+  }else if(dn.phase==='night'){
+    g.fillStyle='rgba(20,20,80,0.12)';g.fillRect(0,0,W,townH);
+    // Night: warm inner glow at town center (feels like firelight far away)
+    if(currentMap===0){
+      const townCX=15*TW-camX,townCY=12*TH-camY;
+      const gc=g.createRadialGradient(townCX,townCY,30,townCX,townCY,350);
+      gc.addColorStop(0,'rgba(255,140,40,0.04)');
+      gc.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=gc;g.fillRect(0,0,W,townH);
+    }
+  }
+  // day = soft warm sunlight tint (barely visible, just a touch of warmth)
+  else if(dn.phase==='day'){
+    g.fillStyle='rgba(255,240,200,0.02)';g.fillRect(0,0,W,townH);
+  }
 }
 function drawDayNightIcon(ix,iy){
   const dn=getDayNightPhase();
@@ -5763,7 +5803,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v54',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v55',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6715,7 +6755,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v54',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v55',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
