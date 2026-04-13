@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v127</title>
+<title>0xARK v128</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -5974,6 +5974,35 @@ function drawMinimap(){
     }
   }
 
+  // v128: Encounter zone shimmer overlay — amber for tall grass (30%), yellow-green for regular (15%)
+  if(inDungeon){
+    for(let ty=0;ty<MH;ty+=2){
+      for(let tx_=0;tx_<MW;tx_+=2){
+        const rev2=fogRevealed[currentMap][ty]?.[tx_]||
+                   fogRevealed[currentMap][ty]?.[tx_+1]||
+                   fogRevealed[currentMap][ty+1]?.[tx_]||
+                   fogRevealed[currentMap][ty+1]?.[tx_+1];
+        if(!rev2)continue;
+        const t2=m[ty]?.[tx_];
+        let encRate=0;
+        if(t2===11)encRate=0.30;
+        else if(t2===1)encRate=0.15;
+        if(encRate===0)continue;
+        // Per-tile phase offset creates rolling shimmer across the map
+        const phase=(tx_*3+ty*7)&15;
+        const shimmer=Math.sin(fr*0.07+phase*0.39)*0.5+0.5;
+        const alpha=(encRate>0.25?0.22:0.12)*shimmer;
+        const eCol=encRate>0.25?`rgba(255,160,30,${alpha})`:`rgba(180,240,80,${alpha})`;
+        bx(mx+tx_*sx,my+ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),eCol);
+      }
+    }
+    // Tiny legend: amber dot = tall grass (30%), yellow-green = regular grass (15%)
+    bx(mx+2,my+mmH-9,4,4,'rgba(255,160,30,0.65)');
+    tx('30%',mx+7,my+mmH-5,4,'rgba(220,160,60,0.7)');
+    bx(mx+26,my+mmH-9,4,4,'rgba(180,240,80,0.55)');
+    tx('15%',mx+31,my+mmH-5,4,'rgba(160,200,80,0.7)');
+  }
+
   // Exit locations as blinking white dots (pulse)
   const exitPulse=Math.sin(fr*0.15)*0.4+0.6;
   exits.forEach(e=>{
@@ -6982,7 +7011,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v127',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v128',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
