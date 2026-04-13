@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v81</title>
+<title>0xARK v82</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -3045,6 +3045,8 @@ const npcs=[
   // v74: Alchemist NPC — card synthesis
   makeNpc(0,10,18,3,'Alchemist',0,['I can fuse cards into','higher rarities!','Bring me 3 cards','of the same rarity.','I will forge them','into something greater.']),
 ];
+// v82: init ambient bubble state on each NPC
+npcs.forEach(n=>{n.bubbleTimer=0;n.bubbleText='';n.bubbleCooldown=Math.floor(Math.random()*300);});
 
 // ── TREASURE DATA (GDD v1.0) ──
 // Treasure pool per floor depth (1-indexed card IDs matching DUNGEON_FLOOR_CARDS)
@@ -3682,6 +3684,24 @@ function updateNPCWander(){
     }
     npc.moveTimer=180+Math.floor(Math.random()*300); // 3-8 seconds between moves
   });
+  // v82: proximity ambient speech bubbles (2-3 tiles away, not adjacent — adjacent opens dialog/UI)
+  if(!npcDialogActive&&currentMap===0&&!inDungeon){
+    npcs.forEach(npc=>{
+      if(npc.map!==0)return;
+      if(npc.bubbleTimer>0){npc.bubbleTimer--;return;}
+      if(npc.bubbleCooldown>0){npc.bubbleCooldown--;return;}
+      const bdx=Math.abs(pl[0].x-npc.x),bdy=Math.abs(pl[0].y-npc.y);
+      const dist=bdx+bdy;
+      if(dist>=2&&dist<=3){
+        const pool=getNPCAmbientLines(npc);
+        if(pool.length>0){
+          npc.bubbleText=pool[Math.floor(Math.random()*pool.length)];
+          npc.bubbleTimer=170;
+          npc.bubbleCooldown=500+Math.floor(Math.random()*300);
+        }
+      }
+    });
+  }
 }
 
 function drawFootprints(){
@@ -4017,6 +4037,7 @@ const INTRO_PAGES=[
 // ── Battle encounter exclamation ──
 let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
 // v81: Pre-battle rival dialogue
+// v82: Dynamic NPC dialogue + proximity speech bubbles
 let encounterRivalLine=''; // context-sensitive line for exclamation animation
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
 
@@ -5392,6 +5413,19 @@ function drawNPCSprite(npc){
     bx(dx_+2,dy_+6,2,2,diaC);
     bx(dx_+2,dy_+4,2,2,diaH);
   }
+  // v82: ambient speech bubble (proximity hint)
+  if(npc.bubbleTimer>0&&npc.bubbleText){
+    const bfAlpha=npc.bubbleTimer<25?npc.bubbleTimer/25:Math.min(1,(170-npc.bubbleTimer+25)/12);
+    g.globalAlpha=Math.max(0,Math.min(1,bfAlpha));
+    const bW=Math.min(npc.bubbleText.length*5+16,150);
+    const bX=px+16-bW/2,bY=py-62;
+    bx(bX,bY,bW,16,'rgba(8,8,18,.92)');
+    bx(bX,bY,bW,1,'rgba(200,180,100,.55)');
+    bx(bX,bY+15,bW,1,'rgba(200,180,100,.25)');
+    bx(bX+bW/2-2,bY+16,4,3,'rgba(8,8,18,.92)'); // tail
+    tx(npc.bubbleText,bX+5,bY+13,5,'#e8e0c0');
+    g.globalAlpha=1;
+  }
 }
 
 // ── BIRD SPRITES ──
@@ -5918,6 +5952,65 @@ function checkTreasure(){
   }
 }
 
+// v82: Dynamic NPC dialogue — context-aware lines per game state
+function getNPCDialog(npc){
+  const vaultSz=pl[0].vault?pl[0].vault.size:0;
+  const lastRun=runSummaryData;
+  if(npc.name==='Card Merchant'){
+    if(vaultSz===0)return['Just starting out?','Browse our listings!','Common cards are','a great foundation.','Every legend begins','with card #1.'];
+    if(vaultSz<10)return[vaultSz+' cards so far!','Check listings for','cards you are missing.','Buy, sell, or trade','safely here in town.','Good hunting!'];
+    if(vaultSz<30)return[''+vaultSz+'/60 collected!','Looking to fill gaps?','Check our listings.','Rarer cards fetch','higher prices here.','Trade wisely!'];
+    if(vaultSz<50)return[''+vaultSz+'/60 — impressive!','Any specific cards','you still need?','I can help source','hard-to-find ones.','Ask anytime!'];
+    return[''+vaultSz+'/60 cards!','You\'re almost there.','Check rare listings','before your next run.','Don\'t let rivals','beat you to it!'];
+  }
+  if(npc.name==='Trade Master'){
+    if(vaultSz<10)return['Build your collection','first, adventurer.','Trade when you have','duplicate cards to spare.','Come back later','once you\'ve explored!'];
+    const rn2=pl[1].cd.filter(c=>c>0).length;
+    const rn3=pl[2].cd.filter(c=>c>0).length;
+    return['You hold '+vaultSz+' unique cards.','VEGA carries '+rn2+'.','MIRA carries '+rn3+'.','Got duplicates?','Let\'s make a deal.','Fair trades — always.'];
+  }
+  if(npc.name==='ARK Guide'){
+    if(vaultSz<4)return['Collect all 60 cards','to win the Prize Pool!','Cards: Attack / Defense','Flee / Magic / Heal','STEAL rivals in battle.','Deeper dungeon = rarer!'];
+    if(vaultSz<12)return['The dungeon has','5 floors total.','Each floor hides','rarer cards below.','Always escape west','before cards decay!'];
+    if(vaultSz<25)return['VEGA hunts players','without mercy.','MIRA calculates','every encounter odds.','Learn their patterns','to survive longer!'];
+    if(vaultSz<45)return[''+vaultSz+'/60 cards!','The Alchemist fuses','3 same-rarity cards','into a rarer one.','Powerful shortcut','for rare gaps.'];
+    return[''+vaultSz+'/60 — so close!','Every single card','matters at this stage.','Guard your hand well.','One bad battle','could slow you down!'];
+  }
+  if(npc.name==='Dungeon Porter'){
+    if(lastRun&&lastRun.cardsGained>0)return['Welcome back!','You look like you','scored big this run!',lastRun.cardsGained+' card'+(lastRun.cardsGained>1?'s':'')+' gained.','Ready to dive again?','Dungeon is east.'];
+    if(lastRun&&lastRun.cardsGained===0)return['Rough run?','Even empty hands','teach hard lessons.','The dungeon doesn\'t','give up its secrets','without a fight.'];
+    return['Dungeon entrance','is to the east!','Cards DECAY over time','while underground.','Escape west to return','to town safely.'];
+  }
+  if(npc.name==='Alchemist'){
+    const rarityCounts={};
+    pl[0].cd.filter(c=>c>0).forEach(c=>{const r=CD[c-1]?.r||1;rarityCounts[r]=(rarityCounts[r]||0)+1;});
+    const canSynth=Object.values(rarityCounts).some(cnt=>cnt>=3);
+    if(canSynth)return['I sense synthesis','potential in your hand!','Bring me 3 cards','of matching rarity.','I will forge them','into something rarer.'];
+    return['I can fuse cards into','higher rarities!','Bring me 3 cards','of the same rarity.','I will forge them','into something greater.'];
+  }
+  return npc.dialog;
+}
+
+// v82: ambient short lines per NPC (shown as proximity bubbles)
+function getNPCAmbientLines(npc){
+  const vaultSz=pl[0].vault?pl[0].vault.size:0;
+  if(npc.name==='Card Merchant'){
+    if(vaultSz>=50)return['Last few cards left!','Rare listings posted.'];
+    if(vaultSz>=20)return['Good stock today!','Looking to sell?','Come browse!'];
+    return['Psst! Fresh listings!','Fair prices here!','Come take a look!'];
+  }
+  if(npc.name==='Trade Master')return['Got duplicates?','Looking to trade?','Best rates in town.'];
+  if(npc.name==='Gacha Keeper'){
+    if(gachaPityCount>7)return['Your luck is due...','One more pull?'];
+    if(gachaPityCount>3)return['Luck is building up!','Keep trying!'];
+    return['Try your luck!','Rare cards await!','Lucky draw today?'];
+  }
+  if(npc.name==='ARK Guide')return['Need a tip?','Every card counts!','Ask me anything.'];
+  if(npc.name==='Dungeon Porter')return['Ready to dive?','Cards decay below!','East leads to danger.'];
+  if(npc.name==='Alchemist')return['Bring me three cards.','I forge rarities.','Synthesis awaits!'];
+  return[];
+}
+
 // ═══════════════════════════════════════
 // NPC INTERACTION
 // ═══════════════════════════════════════
@@ -5956,7 +6049,7 @@ function checkNPCInteraction(){
         return true;
       }
       npcDialogActive=true;
-      npcDialogLines=npc.dialog;
+      npcDialogLines=getNPCDialog(npc); // v82: context-aware dialog
       npcDialogIdx=0;
       npcDialogName=npc.name;
       npcDialogOpenFrame=fr;
@@ -7683,7 +7776,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v81',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v82',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
