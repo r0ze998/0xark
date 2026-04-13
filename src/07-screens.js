@@ -1256,7 +1256,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v130',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v131',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -3720,6 +3720,29 @@ function drawResultPhase(){
     else if(p_.action===2)actCol='#3060b0';
     else if(p_.action===3)actCol='#308030';
     else if(p_.action===4)actCol='#806030';
+    // v131: compact action icon (10×10) beside the action name
+    {const ric=actCol,rix=cx_+4,riy=cy_+18;
+    if(p_.action===0){ // DRAW: card outline + down arrow
+      bx(rix,riy+1,8,8,'rgba(0,0,0,.25)');bx(rix+1,riy,8,8,actCol==='#686068'?'#555':'#1c3846');
+      bx(rix+1,riy,8,1,ric);bx(rix+1,riy+8,8,1,ric);bx(rix+1,riy,1,9,ric);bx(rix+8,riy,1,9,ric);
+      bx(rix+4,riy+2,2,3,ric);bx(rix+3,riy+4,4,1,ric);bx(rix+4,riy+5,2,1,ric);
+    }else if(p_.action===1){ // STEAL: claw silhouette
+      bx(rix,riy+5,7,4,ric);bx(rix+1,riy+3,2,3,ric);bx(rix+3,riy+1,2,5,ric);bx(rix+5,riy+3,2,3,ric);
+    }else if(p_.action===2){ // BARRIER: shield
+      bx(rix+2,riy,6,1,ric);bx(rix,riy+1,10,4,ric);bx(rix+1,riy+5,8,2,ric);
+      bx(rix+3,riy+7,4,1,ric);bx(rix+4,riy+8,2,1,ric);
+      bx(rix+4,riy+1,2,5,'rgba(255,255,255,.35)');bx(rix+2,riy+3,6,1,'rgba(255,255,255,.25)');
+    }else if(p_.action===3){ // SCOUT: eye/lens
+      bx(rix+1,riy+2,2,4,ric);bx(rix+7,riy+2,2,4,ric);
+      bx(rix+3,riy+1,4,1,ric);bx(rix+3,riy+7,4,1,ric);
+      bx(rix+2,riy+2,1,1,ric);bx(rix+7,riy+2,1,1,ric);
+      bx(rix+4,riy+3,2,3,ric);bx(rix+4,riy+3,1,1,'rgba(255,255,255,.5)');
+    }else{ // USE CARD: card + bolt
+      bx(rix,riy,8,10,'rgba(0,0,0,.2)');bx(rix+1,riy+1,7,9,'#3a2810');
+      bx(rix+1,riy+1,7,1,'#806030');bx(rix+1,riy+9,7,1,'#806030');
+      bx(rix+1,riy+1,1,9,'#806030');bx(rix+7,riy+1,1,9,'#806030');
+      bx(rix+5,riy+2,2,3,'#f0c030');bx(rix+4,riy+4,3,1,'#f0c030');bx(rix+4,riy+5,2,3,'#f0c030');
+    }}
     txShadow(actName,cx_+4,cy_+28,8,actCol,'rgba(0,0,0,.2)');
     // Card count
     const cc=pl[p_.idx].cd.filter(c=>c>0).length;
