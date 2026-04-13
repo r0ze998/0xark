@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v116</title>
+<title>0xARK v117</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -6950,7 +6950,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v116',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v117',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -8200,7 +8200,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v116',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v117',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11183,6 +11183,91 @@ function dCrd(){
     tx('V:'+vegaTotal,W-180,22,6,'#e060a0');
     bx(W-158,12,8,8,'#d0a030');
     tx('M:'+miraTotal,W-148,22,6,'#d0a030');
+  }
+  // v117: Persistent card info sidebar (right of grid)
+  {
+    const sidX=394,sidY=68,sidW=W-sidX-10,sidH=H-sidY-36;
+    const typeStart=crdPage*12;
+    const cardIdx=typeStart+crdCursor;
+    const cr=CD[cardIdx]||CD[0];
+    const cardId=cardIdx+1;
+    const vault=pl[0].vault||new Set();
+    const owned=vault.has(cardId);
+    const rar=cr.r||1;
+    const rarColor=RARITY_COLOR[rar]||'#888898';
+    const rarNames=['','Common','Uncommon','Rare','Epic','Legendary'];
+    const typeFullNames={attack:'ATTACK',defense:'DEFENSE',flee:'FLIGHT',magic:'MAGIC',recovery:'RECOVERY'};
+    // Panel background
+    win(sidX,sidY,sidW,sidH);
+    bx(sidX+2,sidY+2,sidW-4,sidH-4,owned?cr.c:'#0e0c1a');
+    // Art area
+    const artH=170;
+    bx(sidX+2,sidY+2,sidW-4,artH,owned?cr.d:'#08071a');
+    if(owned){
+      drawCardCharacter(sidX+sidW/2-20,sidY+10,cardId,2.8,fr);
+      // Rarity glow for epic/legendary
+      if(rar>=4){
+        const gp=0.3+Math.sin(fr*0.06+cardIdx*0.5)*0.3;
+        g.globalAlpha=gp;
+        bx(sidX+2,sidY+2,sidW-4,artH,rar===5?'rgba(255,220,80,.1)':'rgba(200,160,30,.07)');
+        g.globalAlpha=1;
+      }
+    }else{
+      // Mystery pattern in art area
+      const cellSz=10;
+      g.globalAlpha=0.08+0.04*Math.sin(fr*0.02+cardIdx*0.4);
+      for(let r2=0;r2<Math.ceil(artH/cellSz);r2++){
+        for(let c2=0;c2<Math.ceil((sidW-4)/cellSz);c2++){
+          if((r2+c2)%2===0) bx(sidX+2+c2*cellSz,sidY+2+r2*cellSz,cellSz-1,cellSz-1,'#162090');
+        }
+      }
+      g.globalAlpha=1;
+      const pu=0.5+Math.sin(fr*0.05+cardIdx*0.7)*0.5;
+      g.globalAlpha=pu*0.5;
+      bx(sidX+sidW/2-20,sidY+artH/2-24,40,40,'#1830b0');
+      g.globalAlpha=pu*0.9;
+      tx('?',sidX+sidW/2-22,sidY+artH/2+22,36,'#2840d0');
+      g.globalAlpha=1;
+    }
+    // Card number badge
+    bx(sidX+4,sidY+4,24,14,'rgba(0,0,0,.6)');
+    tx('#'+String(cardId).padStart(2,'0'),sidX+5,sidY+15,6,owned?'#b0b8d0':'#2a2a60');
+    // Info block
+    const infoY=sidY+artH+14;
+    // Card name
+    const nameStr=owned?cr.n:'?????';
+    const nameFs=Math.min(14,Math.max(8,Math.floor(sidW*0.85/(Math.max(1,nameStr.length)*0.72))));
+    tx(nameStr,sidX+12,infoY,nameFs,owned?'#f0e8d0':'#202060');
+    // Rarity row
+    for(let s=0;s<rar;s++) tx('\u2605',sidX+12+s*14,infoY+20,10,owned?rarColor:'#1e2858');
+    tx(rarNames[rar]||'',sidX+12+rar*14+6,infoY+20,7,owned?rarColor:'#1e2858');
+    // Type label
+    tx(typeFullNames[cr.t]||'',sidX+12,infoY+38,8,owned?cr.h||'#888898':'#1e2a6a');
+    // Effect text
+    if(cr.f){
+      const effStr=owned?cr.f:'[locked]';
+      tx(effStr,sidX+12,infoY+56,owned?7:6,owned?'#c0b888':'#1a2060');
+    }
+    // Source hint
+    const srcStr=getCardSourceHint(cardId);
+    tx('Find: '+srcStr,sidX+12,infoY+74,6,owned?'#686878':'#141848');
+    // Status badge at bottom
+    const badgeY=sidY+sidH-22;
+    bx(sidX+2,badgeY-2,sidW-4,1,'rgba(255,255,255,.06)');
+    if(owned){
+      const inHand=pl[0].cd.some(c=>c===cardId);
+      const vegaHas=pl[1].cd.some(c=>c===cardId);
+      const miraHas=pl[2].cd.some(c=>c===cardId);
+      bx(sidX+8,badgeY,80,16,inHand?'rgba(40,120,40,.8)':'rgba(30,60,120,.8)');
+      tx(inHand?'IN YOUR HAND':'COLLECTED',sidX+10,badgeY+13,6,inHand?'#60e060':'#80b0f0');
+      if(vegaHas){bx(sidX+96,badgeY,54,16,'rgba(180,40,100,.7)');tx('VEGA HOLDS',sidX+98,badgeY+13,5,'#e060a0');}
+      if(miraHas){bx(sidX+158,badgeY,54,16,'rgba(160,120,20,.7)');tx('MIRA HOLDS',sidX+160,badgeY+13,5,'#d0a030');}
+    }else{
+      bx(sidX+8,badgeY,90,16,'rgba(30,20,50,.8)');
+      tx('NOT YET OBTAINED',sidX+10,badgeY+13,6,'#3a3060');
+    }
+    // Z=detail hint
+    tx('Z \u25BA full detail',sidX+sidW-80,badgeY+13,5,'#2a2a50');
   }
   // Navigation
   win(10,H-30,W-20,24);
