@@ -175,11 +175,14 @@ function handleMessage(ws, msg) {
         player.x = msg.x;
         player.y = msg.y;
         player.area = msg.area;
-        broadcast(room, {
+        // ZK fog-of-war: only broadcast position to players who are close enough
+        // to have the mover in their visible range (Manhattan dist <= 3, same area).
+        // Town (area 0) is the safe zone — always visible to all.
+        broadcastProximity(room, ws.playerId, {
           type: 'player_moved',
           playerId: ws.playerId,
           x: msg.x, y: msg.y, area: msg.area,
-        }, ws.playerId);
+        });
       }
       break;
     }
@@ -231,6 +234,26 @@ function broadcast(room, msg, excludeId) {
   const data = JSON.stringify(msg);
   room.players.forEach((p) => {
     if (p.id !== excludeId && p.ws.readyState === 1) {
+      p.ws.send(data);
+    }
+  });
+}
+
+// ZK-aware broadcast: only send position update to recipients who are close
+// enough to see the mover (Manhattan distance <= 3, same area).
+// Town (area 0) is a safe zone — positions always visible there.
+const ZK_VISIBLE_RADIUS = 3;
+function broadcastProximity(room, moverId, msg) {
+  const mover = room.players.get(moverId);
+  if (!mover) return;
+  const data = JSON.stringify(msg);
+  room.players.forEach((p) => {
+    if (p.id === moverId || p.ws.readyState !== 1) return;
+    // Town is fully visible; dungeon uses proximity check
+    const sameTown = mover.area === 0 && p.area === 0;
+    const sameArea = mover.area === p.area;
+    const dist = Math.abs(mover.x - p.x) + Math.abs(mover.y - p.y);
+    if (sameTown || (sameArea && dist <= ZK_VISIBLE_RADIUS)) {
       p.ws.send(data);
     }
   });
