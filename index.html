@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v64</title>
+<title>0xARK v65</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -3218,6 +3218,48 @@ function updateRivalAI(aiIdx){
 }
 
 // Update proximity tension based on rival distances
+// Rival background activity: rivals collect cards from dungeon floors when player is also in dungeon
+// This creates a genuine race feeling — rivals aren't static outside of battle
+function updateRivalActivity(){
+  if(sc!=='map'||!inDungeon)return;
+  for(let ri=0;ri<2;ri++){
+    if(rivalBgTimer[ri]>0){rivalBgTimer[ri]--;continue;}
+    // Timer expired: rival collects a card from their current floor
+    const rMap=rivalMaps[ri];
+    if(rMap<=0){rivalBgTimer[ri]=3600;continue;} // rival in town, long wait
+    const pool=DUNGEON_FLOOR_CARDS[rMap];
+    if(!pool||pool.length===0){rivalBgTimer[ri]=1800;continue;}
+    const cardId=pool[Math.floor(Math.random()*pool.length)];
+    const cr=CD[cardId-1];
+    const rName=pl[ri+1].n;
+    const rivalHandCount=pl[ri+1].cd.filter(c=>c>0).length;
+    // Only collect if they have room or swap
+    if(rivalHandCount<5){
+      addCardToPlayer(ri+1,cardId);
+    }else{
+      removeCardFromPlayer(ri+1,-1);
+      addCardToPlayer(ri+1,cardId);
+    }
+    // Log this as a world event (with color hint in text)
+    const floorName='Floor '+rMap;
+    lg.push('['+rName+'] found '+cr.n+' on '+floorName+'! ('+RARITY_LABEL[cr.r]+')');
+    // Show HUD hint for rare+ rival finds
+    if(cr.r>=3&&(!tutorialMsg||tutorialMsgTimer<40)){
+      const rarLabel=RARITY_LABEL[cr.r]||'';
+      tutorialMsg=rName+' found '+cr.n+'! ('+rarLabel+')';tutorialMsgTimer=140;
+    }
+    // Contextual commentary based on rival personality and situation
+    const newCount=pl[ri+1].cd.filter(c=>c>0).length;
+    if(newCount>=4){
+      lg.push('[WARNING] '+rName+' is stacking cards. Intercept them!');
+      if(!rivalWinWarningShown){sfxDangerAlert();}
+    }
+    // Next background collection: 45-75 seconds (2700-4500 frames) — varies by personality
+    const baseDelay=ri===0?2700:3600; // VEGA more aggressive/frequent
+    rivalBgTimer[ri]=baseDelay+Math.floor(Math.random()*1800);
+  }
+}
+
 function updateProximityTension(){
   let maxDanger=0;
   for(let i=0;i<2;i++){
@@ -3742,6 +3784,8 @@ let campfireUsed=false;
 let fountainActive=false, fountainConfirm=false, fountainResult='', fountainResultTimer=0;
 let crystalRevealTimer=0; // frames remaining for crystal rival reveal
 let objectInteractMsg='', objectInteractTimer=0;
+// Rival background activity: rivals collect cards from dungeon floors periodically
+const rivalBgTimer=[0,0]; // countdown frames until next background card collection per rival
 
 // ═══════════════════════════════════════
 // CARDS USED ON MAP
@@ -3796,6 +3840,7 @@ function resetNewFeatureState(){
   escapeUrgencyActive=false;escapeUrgencyPulse=0;
   streakCount=0;streakDisplayTimer=0;streakLostTimer=0;
   for(let i=0;i<FOG_MAP_COUNT;i++){areaDanger[i]=0;areaDangerStayTimer[i]=0;}
+  rivalBgTimer[0]=1800;rivalBgTimer[1]=2400; // stagger initial timers (30s/40s)
   qteActive=false;qteKeyPressed=false;
 }
 
@@ -3829,6 +3874,7 @@ function resetGameState(startCards){
   rivalAI[1].moveTimer=0;rivalAI[1].moveInterval=14;rivalAI[1].lastKnownPlayerMap=-1;
   rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;rivalAI[1].stateTimer=0;rivalAI[1].huntCooldown=0;
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;proximityTauntText='';proximityTauntTimer=0;
+  rivalBgTimer[0]=1800;rivalBgTimer[1]=2400;
   stopDangerDrone();
   lg.length=0;
   lg.push('New game! Starter cards: '+starterCards.map(id=>CD[id-1].n).join(', '));
@@ -6931,7 +6977,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v64',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v65',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -10549,6 +10595,7 @@ function update(){
     updateRivalAI(1);
   }
   updateFootprints();
+  updateRivalActivity();
   updateProximityTension();
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
