@@ -10050,7 +10050,7 @@ document.addEventListener('keydown',e=>{
             const mpCard=1+Math.floor(Math.random()*5);
             pl[0].cd[0]=mpCard;pl[0].cc=1;cardTimers[0]=Date.now();syncCardCount(0);
             sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+            fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
             fadeIn();twSet('Multiplayer started! You received '+CD[mpCard-1].n+'!');
           }
         });
@@ -10074,14 +10074,19 @@ document.addEventListener('keydown',e=>{
             fadeIn();twSet('Welcome back! Stake deposited.');
           }else{
             sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+            fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
             fadeIn();twSet('Stake deposited! Collect 60 cards to win the Prize Pool.');
           }
         });
       }else{
         resetGameState(true);
         fadeOut(()=>{sc='map';currentMap=0;
-          fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+          fogRevealRadius(0,pl[0].x,pl[0].y,5);
+          // Pre-reveal dungeon portal and nearby NPCs so player can orient themselves
+          fogRevealRadius(0,27,12,2); // dungeon portal area
+          fogRevealRadius(0,8,6,2);   // Card Merchant
+          fogRevealRadius(0,14,12,2); // Gacha Keeper
+          fogSave();
           introActive=true;introPage=0;introFrame=fr;
           fadeIn();});
       }
@@ -10104,7 +10109,7 @@ document.addEventListener('keydown',e=>{
               fadeIn();twSet('Welcome back! You\'re in town — safe zone.');
             }else{
               sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-              fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+              fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
               fadeIn();twSet('Welcome to はじまりのまち! Enter the dungeon to collect cards.');
             }
           });
@@ -10115,7 +10120,7 @@ document.addEventListener('keydown',e=>{
           resetGameState(true);
           // Show intro tutorial, then transition to map
           fadeOut(()=>{sc='map';currentMap=0;
-            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+            fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
             introActive=true;introPage=0;introFrame=fr;
             fadeIn();
           });
@@ -10159,7 +10164,7 @@ document.addEventListener('keydown',e=>{
           // Show intro tutorial for first-time play
           resetGameState(true);
           fadeOut(()=>{sc='map';currentMap=0;
-            fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+            fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
             introActive=true;introPage=0;introFrame=fr;
             fadeIn();
           });
@@ -10613,8 +10618,8 @@ document.addEventListener('keydown',e=>{
           mpBroadcastMove();
           // Leave player footprint
           footprints.push({map:currentMap,x:nx,y:ny,age:0});
-          // Reveal fog around new position
-          fogRevealRadius(currentMap,nx,ny,2);
+          // Reveal fog around new position (town reveals more; dungeon tighter for tension)
+          fogRevealRadius(currentMap,nx,ny,inDungeon?2:3);
           fogSave();
           const newTile=m[ny]?.[nx];
           if(newTile===1||newTile===7||newTile===11){spawnGrassParticles(nx*TW,ny*TH);sfxGrassRustle();}
@@ -10804,7 +10809,7 @@ document.addEventListener('keydown',e=>{
         gameOverTimesUp=false;
         resetGameState(false);
         fadeOut(()=>{sc='map';mo=false;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-          fogRevealRadius(0,pl[0].x,pl[0].y,2);fogSave();
+          fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
           fadeIn();twSet('Welcome back! Collect all 60 cards to win!');ub();});
       }
       if(e.code==='KeyX'){sfxBack();gameOverTimesUp=false;fadeOut(()=>{sc='title';fadeIn();ub();});}
