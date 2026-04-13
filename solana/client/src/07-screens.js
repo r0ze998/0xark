@@ -1256,7 +1256,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v125',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v126',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -2243,6 +2243,68 @@ function drawSelectPhase(){
       }
       if(tCC>4){txShadow('+'+(tCC-4)+' more hidden',ppX+10,ppY+ppH-12,6,'#303050','rgba(0,0,0,.2)');}
       txShadow('SCOUT to reveal',ppX+10,ppY+ppH-32,5,'#608060','rgba(0,0,0,.2)');
+    }
+    g.globalAlpha=1;
+  }
+  // v126: BARRIER prediction panel (shown when BARRIER is highlighted)
+  if(ai===2&&!bpCardSelectActive&&!bpTargetSelectActive&&sp.b>0){
+    const ppX=328,ppW=220;
+    const slideA=Math.min(1,(fr-bpFrame)/10);
+    // Analyze recent steal history
+    const recentRounds=battleRoundHistory.slice(0,Math.min(4,battleRoundHistory.length));
+    const totalSteals=recentRounds.filter(h=>h.r1a===1||h.r2a===1).length;
+    const lastRound=battleRoundHistory[0];
+    const theyStoleLast=lastRound&&(lastRound.r1a===1||lastRound.r2a===1);
+    const barrierActive=bpPlayerBarrier;
+    // Threat level: 0-3
+    const threatLvl=Math.min(3,totalSteals+(theyStoleLast?1:0));
+    const threatCols=['#50b050','#c0b030','#d07030','#d04040'];
+    const threatLabels=['LOW','MED','HIGH','MAX'];
+    const threatCol=threatCols[threatLvl];
+    const ppH=barrierActive?70:70+Math.max(0,recentRounds.length)*18;
+    const panY=H-164-Math.max(0,ppH-80);
+    g.globalAlpha=slideA*0.95;
+    win(ppX,panY,ppW,ppH);
+    bx(ppX,panY,ppW,3,'#3060b0');
+    txShadow('BARRIER ANALYSIS',ppX+8,panY+18,8,'#3060b0','rgba(0,0,0,.3)');
+    bx(ppX+6,panY+22,ppW-12,1,'rgba(200,180,100,.2)');
+    if(barrierActive){
+      bx(ppX+8,panY+30,ppW-16,28,'rgba(20,40,120,.5)');
+      bx(ppX+8,panY+30,ppW-16,1,'#3060b0');
+      txShadow('\u26CA BARRIER ALREADY ACTIVE',ppX+12,panY+44,7,'#4080d0','rgba(0,0,0,.3)');
+      txShadow('Using again extends duration',ppX+12,panY+56,6,'#6090c0','rgba(0,0,0,.2)');
+    }else{
+      // Threat meter bar
+      txShadow('STEAL THREAT:',ppX+8,panY+34,7,'#908878','rgba(0,0,0,.2)');
+      txShadow(threatLabels[threatLvl],ppX+ppW-8-threatLabels[threatLvl].length*8,panY+34,8,threatCol,'rgba(0,0,0,.3)');
+      const tmX=ppX+8,tmY=panY+38,tmW=ppW-16,tmH=8;
+      bx(tmX,tmY,tmW,tmH,'#181838');
+      if(threatLvl>0)bx(tmX,tmY,Math.floor(tmW*(threatLvl/3)),tmH,threatCol);
+      bx(tmX,tmY,tmW,1,'#282848');
+      // Recent round action breakdown
+      if(recentRounds.length>0){
+        bx(ppX+6,panY+52,ppW-12,1,'rgba(200,180,100,.15)');
+        txShadow('RECENT ROUNDS:',ppX+8,panY+64,6,'#888870','rgba(0,0,0,.2)');
+        recentRounds.forEach((h,ri)=>{
+          const hy=panY+68+ri*18;
+          tx('R'+h.rd,ppX+8,hy+10,6,'#686860');
+          // V action
+          const vStole=h.r1a===1;
+          bx(ppX+28,hy,24,14,'rgba(0,0,0,.4)');
+          bx(ppX+28,hy,24,1,vStole?'#d04040':'#686060');
+          tx('V:'+(vStole?'STL':h.r1a===2?'BAR':h.r1a===0?'DRW':'SCT'),ppX+30,hy+10,5,vStole?'#d04040':'#687070');
+          // M action
+          const mStole=h.r2a===1;
+          bx(ppX+56,hy,24,14,'rgba(0,0,0,.4)');
+          bx(ppX+56,hy,24,1,mStole?'#d04040':'#686060');
+          tx('M:'+(mStole?'STL':h.r2a===2?'BAR':h.r2a===0?'DRW':'SCT'),ppX+58,hy+10,5,mStole?'#d04040':'#687070');
+          // Outcome
+          if(h.lost){bx(ppX+84,hy,30,14,'rgba(80,0,0,.4)');tx('STOLEN',ppX+86,hy+10,5,'#d04040');}
+          else if(h.got){bx(ppX+84,hy,20,14,'rgba(0,40,0,.4)');tx('+CARD',ppX+86,hy+10,5,'#40a050');}
+        });
+      }else{
+        txShadow('No history yet',ppX+8,panY+56,6,'#686870','rgba(0,0,0,.2)');
+      }
     }
     g.globalAlpha=1;
   }
