@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v75</title>
+<title>0xARK v76</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7402,6 +7402,19 @@ function dMap(){
     txShadow('RIVAL NEAR WIN!',520,hudY+44,6,'#d04040','rgba(0,0,0,.5)');
   }
 
+  // v76: Off-floor rival summary (shown when rival is on a different floor)
+  const flNums_=['','I','II','III','IV','V'];
+  for(let ri=0;ri<2;ri++){
+    if(rivalMaps[ri]===currentMap)continue;
+    const rp=pl[ri+1];
+    const rFloor=rivalMaps[ri];
+    const rcc2=rp.cd.filter(c=>c>0).length;
+    const rCol=ri===0?'#d060a0':'#d0a030';
+    const labelY=hudY+4+ri*14;
+    const labelX=W-200;
+    tx(rp.n[0]+' F'+(flNums_[rFloor]||rFloor)+' '+rcc2+'♠',labelX,labelY,5,rcc2>=4?'#d04040':rCol);
+  }
+
   // Rival Threat Indicator (compass arrow at top of screen)
   for(let ri=0;ri<2;ri++){
     if(rivalMaps[ri]!==currentMap)continue;
@@ -7422,8 +7435,10 @@ function dMap(){
     g.moveTo(10,0);g.lineTo(-5,-5);g.lineTo(-5,5);
     g.closePath();g.fill();
     g.restore();
-    // Label
+    // Label + card count
+    const rcc=pl[ri+1].cd.filter(c=>c>0).length;
     tx(pl[ri+1].n[0],arrowCX-3,arrowCY+14,5,arrowCol);
+    tx(rcc+'♠',arrowCX-5,arrowCY+24,5,rcc>=4?'#d04040':arrowCol);
   }
 
   // Vault/hand status (progress toward 60-card goal)
@@ -7484,7 +7499,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v75',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v76',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -10767,6 +10782,50 @@ function drawObjectInteractMsg(){
   g.globalAlpha=1;
 }
 
+// v76: Exit proximity tooltip — show destination info when near an exit
+function drawExitProximityTooltip(){
+  if(!inDungeon||sc!=='map'||mapTransitioning)return;
+  const p=pl[0];
+  // Find nearest exit tile within 2 tiles
+  let nearExit=null,nearDist=99;
+  for(const ex of exits){
+    if(ex.fromMap!==currentMap)continue;
+    for(const [etx,ety] of ex.tiles){
+      const d=Math.abs(p.x-etx)+Math.abs(p.y-ety);
+      if(d<=2&&d<nearDist){nearDist=d;nearExit=ex;}
+    }
+  }
+  if(!nearExit)return;
+
+  const isEsc=nearExit.isEscape;
+  const targetFloor=nearExit.targetMap;
+  const flNums=['','I','II','III','IV','V'];
+  const rarLabels=['','Common','Uncommon','Rare','Epic','Legendary'];
+  const rarCols=['','#888898','#60b060','#6090d8','#c060c0','#f0c830'];
+  // Determine rarity tier for target floor
+  const floorRar=[0,1,2,3,4,5]; // floor → rarity
+  const mainRar=isEsc?0:Math.min(5,floorRar[targetFloor]||1);
+
+  const ttW=200,ttH=isEsc?44:62;
+  const ttX=W/2-ttW/2,ttY=H-HUD_HEIGHT-ttH-56;
+
+  // Background
+  const bgCol=isEsc?'rgba(20,50,20,.92)':'rgba(20,20,50,.92)';
+  bx(ttX,ttY,ttW,ttH,bgCol);
+  bx(ttX,ttY,ttW,1,isEsc?'#40c060':'#6080c0');
+  bx(ttX,ttY+ttH-1,ttW,1,isEsc?'#40c060':'#6080c0');
+
+  const arrow=isEsc?'↖ ESCAPE':'↘ DESCEND';
+  const dest=isEsc?'← TOWN':'FLOOR '+(flNums[targetFloor]||targetFloor);
+  tx(arrow,ttX+10,ttY+14,6,isEsc?'#50e080':'#a0b0d8');
+  txShadow(dest,ttX+ttW/2-dest.length*4.5,ttY+30,9,isEsc?'#40e070':'#c8d8f0','rgba(0,0,0,.5)');
+
+  if(!isEsc&&mainRar>0){
+    const rarTxt=rarLabels[mainRar]+' cards';
+    tx(rarTxt,ttX+ttW/2-rarTxt.length*3,ttY+46,6,rarCols[mainRar]||'#888');
+  }
+}
+
 function drawFountainDialog(){
   if(!fountainActive)return;
   if(fountainConfirm){
@@ -11574,6 +11633,7 @@ function draw(){
     drawPuzzlePillars();
     drawPuzzleMessage();
     drawObjectInteractMsg();
+    drawExitProximityTooltip();
     drawFountainDialog();
     drawMapCardUseOverlay();
     // Shadow effect on player sprite
