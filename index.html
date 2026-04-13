@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v88</title>
+<title>0xARK v89</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7921,7 +7921,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v88',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v89',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -9563,27 +9563,112 @@ function drawResolvingPhase(){
     if(ev.text&&ev.text.includes('Nihil')&&ev.type==='result'&&evT<35){
       drawVoidEffect(W/2,H/2-20,evT);
     }
-    // QTE overlay
+    // v89: Enhanced QTE overlay
     if(qteActive){
       const qteProgress=qteFrame/qteWindow;
-      const qteAlpha=1-qteProgress*0.5;
-      g.globalAlpha=qteAlpha;
-      // Flash background
-      if(qteFrame%4<2)bx(W/2-100,H/2-60,200,50,'rgba(200,40,40,.4)');
-      // Prompt text
-      const promptText=qteType==='defend'?'PRESS Z TO BLOCK!':'PRESS Z FOR BONUS!';
-      txShadow(promptText,W/2-120,H/2-35,12,'#fff','rgba(200,40,40,.8)');
-      // Timer bar
-      bx(W/2-80,H/2-18,160,6,'#333');
-      bx(W/2-80,H/2-18,Math.floor(160*(1-qteProgress)),6,qteProgress<0.5?'#40d040':'#d04040');
+      const isUrgent=qteProgress>0.6;
+      const isCritical=qteProgress>0.8;
+      const isDefend=qteType==='defend';
+      // Fullscreen edge vignette pulse
+      const vigIntensity=isCritical?(0.35+Math.sin(fr*0.6)*0.15):isUrgent?0.18:0;
+      if(vigIntensity>0){
+        const vigCol=isDefend?`rgba(220,40,40,${vigIntensity})`:`rgba(40,160,240,${vigIntensity})`;
+        const vig=g.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.75);
+        vig.addColorStop(0,'rgba(0,0,0,0)');
+        vig.addColorStop(1,vigCol);
+        g.globalAlpha=1;
+        g.fillStyle=vig;
+        g.fillRect(0,0,W,H);
+      }
+      // Main QTE panel
+      const qPW=360,qPH=110;
+      const qPX=W/2-qPW/2, qPY=H/2-qPH/2-20;
+      // Slide in on frame 0-8
+      const slideIn=Math.min(1,qteFrame/8);
+      const slideY=qPY+(1-slideIn)*30;
+      // Panel background with glow border
+      const accentCol=isDefend?
+        (isCritical?'#ff3030':isUrgent?'#f08030':'#f0a000'):
+        (isCritical?'#4080ff':isUrgent?'#30c0f0':'#30d080');
+      g.globalAlpha=0.97*slideIn;
+      // Shadow
+      g.shadowBlur=isCritical?24:14;
+      g.shadowColor=accentCol;
+      bx(qPX,slideY,qPW,qPH,'rgba(4,6,18,.96)');
+      g.shadowBlur=0;
+      // Top accent bar
+      bx(qPX,slideY,qPW,4,accentCol);
+      // Side accent lines
+      bx(qPX,slideY,2,qPH,accentCol);
+      bx(qPX+qPW-2,slideY,2,qPH,accentCol);
+      g.globalAlpha=slideIn;
+      // Action label (top-left small)
+      const labelText=isDefend?'INCOMING STEAL':'BONUS STRIKE';
+      tx(labelText,qPX+12,slideY+18,7,'rgba(200,200,200,.6)');
+      // Z key icon (right side)
+      const kx=qPX+qPW-52,ky=slideY+qPH/2-18;
+      bx(kx,ky,36,36,'rgba(20,20,40,.9)');
+      bx(kx,ky,36,1,accentCol);bx(kx,ky,1,36,accentCol);
+      bx(kx,ky+35,36,1,accentCol);bx(kx+35,ky,1,36,accentCol);
+      // Pulsing glow on key
+      const kPulse=0.6+Math.sin(fr*0.4)*0.4;
+      g.globalAlpha=kPulse*slideIn;
+      g.shadowBlur=12;g.shadowColor=accentCol;
+      tx('Z',kx+8,ky+30,22,accentCol);
+      g.shadowBlur=0;
+      g.globalAlpha=slideIn;
+      // Main prompt text with scale pulse
+      const pScale=isCritical?(1+Math.sin(fr*0.5)*0.06):1;
+      const promptText=isDefend?'PRESS Z TO BLOCK!':'PRESS Z FOR BONUS!';
+      const pFontSz=Math.round(15*pScale);
+      g.save();
+      g.translate(qPX+qPW/2-56,slideY+60);
+      g.scale(pScale,pScale);
+      g.shadowBlur=8;g.shadowColor=accentCol;
+      g.fillStyle=isCritical?'#ffffff':isUrgent?'#ffe080':'#e8e8e8';
+      g.font=`bold ${pFontSz}px monospace`;
+      g.fillText(promptText,0,0);
+      g.shadowBlur=0;
+      g.restore();
+      // Countdown bar background
+      const barW=qPW-24,barH=10;
+      const barX=qPX+12,barY=slideY+qPH-22;
+      bx(barX,barY,barW,barH,'rgba(0,0,0,.6)');
+      bx(barX,barY,barW,1,'rgba(255,255,255,.1)');
+      // Countdown fill — depletes left to right
+      const fillW=Math.max(0,Math.floor(barW*(1-qteProgress)));
+      const barCol=isCritical?'#ff3030':isUrgent?'#f08030':'#40d080';
+      if(fillW>0){
+        const barGrad=g.createLinearGradient(barX,barY,barX+fillW,barY);
+        barGrad.addColorStop(0,barCol);
+        barGrad.addColorStop(1,isCritical?'#ff8060':isUrgent?'#f0d030':'#80f0a0');
+        g.fillStyle=barGrad;
+        g.fillRect(barX,barY,fillW,barH);
+      }
+      // Bar border
+      bx(barX,barY,barW,1,accentCol);
+      bx(barX,barY+barH,barW,1,accentCol);
+      // Tick marks on bar
+      for(let i=1;i<5;i++){const tx_=barX+Math.floor(barW*i/5);bx(tx_,barY,1,barH,'rgba(0,0,0,.3)');}
       g.globalAlpha=1;
     }
-    // QTE result flash
+    // QTE result flash (v89: bigger, positioned above battle area)
     if(qteResultTimer>0){
-      const ra=qteResultTimer/40;
+      const ra=Math.min(1,qteResultTimer/12);
+      const isSuccess=qteResultText==='BLOCKED!'||qteResultText==='BONUS!';
+      const rc=isSuccess?'#40ff60':'#ff4040';
+      const rScale=qteResultTimer>30?1+(qteResultTimer-30)/10*0.3:1;
       g.globalAlpha=ra;
-      const rc=qteResultText==='BLOCKED!'||qteResultText==='BONUS!'?'#40d040':'#d04040';
-      txShadow(qteResultText,W/2-50,H/2-35,14,rc,'rgba(0,0,0,.6)');
+      g.save();
+      g.translate(W/2,H/2-20);
+      g.scale(rScale,rScale);
+      g.shadowBlur=20;g.shadowColor=rc;
+      g.fillStyle=rc;
+      g.font=`bold 28px monospace`;
+      const rw=g.measureText(qteResultText).width;
+      g.fillText(qteResultText,-rw/2,0);
+      g.shadowBlur=0;
+      g.restore();
       g.globalAlpha=1;
     }
   }else{
