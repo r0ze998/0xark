@@ -1611,6 +1611,9 @@ function drawMPPlayers(){
   if(!mp.connected||mp.phase!=='playing')return;
   mp.otherPlayers.forEach(op=>{
     if(op.area!==currentMap)return;
+    // ZK fog-of-war: in dungeon, only render if tile is revealed AND within visible radius
+    // Town (map 0) is always visible — no fog restriction
+    if(inDungeon&&!isVisibleThroughFog(op.x,op.y,3))return;
     const sx=op.x*TW-camX,sy=op.y*TH-camY-16;
     if(sx<-TW*2||sx>W+TW||sy<-TH*2||sy>H+TH)return;
     // Draw as colored sprite (like player but different color)
@@ -4889,6 +4892,15 @@ function doMapTransition(exit){
     // Reveal starting area on new map (larger radius so entry area is immediately visible)
     if(inDungeon){fogRevealRadius(currentMap,pl[0].x,pl[0].y,4);fogSave();}
     else{fogRevealAll(currentMap);fogSave();}
+    // When entering floor 1 from town, spread rivals to safe starting positions far from entrance
+    // This prevents immediate encounters caused by AI roaming during town/title time
+    if(exit.fromMap===0&&exit.targetMap===1){
+      pl[1].x=8;pl[1].y=10;pl[1].visualX=8*TW;pl[1].visualY=10*TH;
+      pl[2].x=28;pl[2].y=18;pl[2].visualX=28*TW;pl[2].visualY=18*TH;
+      rivalMaps=[1,1];
+      rivalAI[0].goalX=15;rivalAI[0].goalY=14;rivalAI[0].state='exploring';
+      rivalAI[1].goalX=25;rivalAI[1].goalY=14;rivalAI[1].state='exploring';
+    }
     // Show map loading screen
     if(inDungeon){
       showMapLoadScreen('DUNGEON FLOOR '+currentFloor,'Danger! Card decay active. '+(exit.isEscape?'Escaped safely.':''));
@@ -4935,9 +4947,9 @@ function doMapTransition(exit){
       }
     }
     saveGame();
-    // Grace period: prevent encounters for 5 seconds after any map transition
+    // Grace period: prevent encounters for 8 seconds after any map transition
     // This stops rivals from immediately ambushing the player on dungeon entry
-    encounterCooldown=300;
+    encounterCooldown=480;
     if(!tutorialFlags.firstMapChange){tutorialFlags.firstMapChange=true;tutorialMsg=inDungeon?'Dungeon! Cards decay here — escape to save them.':'Town! Cards are safe here.';tutorialMsgTimer=220;}
     fadeIn(()=>{mapTransitioning=false;});
   });
@@ -9788,8 +9800,8 @@ function update(){
   // Multiplayer disconnect timer
   if(mp.disconnectTimer>0)mp.disconnectTimer--;
 
-  // Autonomous rival AI movement (skip during intro or multiplayer)
-  if(!introActive&&(!mp.connected||mp.phase!=='playing')){
+  // Autonomous rival AI movement (only on map/act screens, skip during intro/title/splash/multiplayer)
+  if(sc!=='title'&&sc!=='splash'&&!introActive&&(!mp.connected||mp.phase!=='playing')){
     updateRivalAI(0);
     updateRivalAI(1);
   }
