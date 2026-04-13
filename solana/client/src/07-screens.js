@@ -1148,7 +1148,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v103',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v104',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1609,7 +1609,7 @@ function drawOpponentInfoBox(){
 function drawPlayerInfoBox(){
   let sx=0,sy=0;
   if(bpShakeTarget===0&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
-  const bx_=W-310+sx,by_=H-140+sy,bw=300,bh=72;
+  const bx_=W-310+sx,by_=H-154+sy,bw=300,bh=86; // v104: +14px for hand type row
   bx(bx_,by_,bw,bh,'#f8f0d8');bx(bx_,by_,bw,2,'#c8c0a0');bx(bx_,by_+bh-2,bw,2,'#a89878');
   bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
   bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
@@ -1632,6 +1632,36 @@ function drawPlayerInfoBox(){
   txShadow('SCT:'+sp.c,bx_+150,by_+52,8,'#308030','rgba(0,0,0,.15)');
   // Area
   txShadow(mapNames[currentMap],bx_+10,by_+64,8,'#988870','rgba(0,0,0,.15)');
+  // v104: Hand type composition strip — colored dots grouped by card type
+  {
+    const TYPES=['attack','defense','flee','magic','recovery'];
+    const TYPE_ABB=['ATK','DEF','FLY','MAG','REC'];
+    const TYPE_C={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
+    const counts={};
+    TYPES.forEach(t=>counts[t]=0);
+    pl[0].cd.forEach(id=>{if(id>0&&CD[id-1])counts[CD[id-1].t]=(counts[CD[id-1].t]||0)+1;});
+    bx(bx_+4,by_+68,bw-8,1,'rgba(180,160,120,.3)');
+    let dotX=bx_+8;
+    TYPES.forEach((t,ti)=>{
+      const cnt=counts[t];
+      if(cnt===0)return;
+      const col=TYPE_C[t];
+      for(let d=0;d<cnt;d++){bx(dotX+d*6,by_+74,5,5,col);}
+      dotX+=cnt*6+3;
+    });
+    // Labels for non-zero types on the right side
+    let labelX=bx_+bw-8;
+    TYPES.slice().reverse().forEach((t,ti)=>{
+      const cnt=counts[t];
+      if(cnt===0)return;
+      const col=TYPE_C[t];
+      const lbl=TYPE_ABB[4-ti]+':'+cnt;
+      labelX-=lbl.length*5+4;
+      g.globalAlpha=0.7;
+      tx(lbl,labelX,by_+80,5,col);
+      g.globalAlpha=1;
+    });
+  }
 }
 
 // Draw battle sprite (front-facing for opponent, back-facing for player)
