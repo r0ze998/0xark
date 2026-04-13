@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v43</title>
+<title>0xARK v44</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -3426,7 +3426,11 @@ function gachaPickCard(tierIdx){
   const r=t.rarities[Math.floor(Math.random()*t.rarities.length)];
   const pool=CD.map((_,i)=>i+1).filter(id=>CD[id-1].r===r);
   if(pool.length===0)return 1+Math.floor(Math.random()*60);
-  return pool[Math.floor(Math.random()*pool.length)];
+  // Prefer cards player hasn't collected yet (vault-new)
+  const vault_g=pl[0].vault||new Set();
+  const newPool_g=pool.filter(id=>!vault_g.has(id));
+  const usePool_g=newPool_g.length>0?newPool_g:pool;
+  return usePool_g[Math.floor(Math.random()*usePool_g.length)];
 }
 
 // ── Signpost state ──
@@ -5176,8 +5180,11 @@ function tryWildEncounter(){
     if(needed.length>0){cardIdx=needed[Math.floor(Math.random()*needed.length)]-1;}
     else{cardIdx=floorPool[Math.floor(Math.random()*floorPool.length)]-1;}
   }else{
-    // Normal: pick random card from floor pool (0-indexed for wildEncounterCard)
-    cardIdx=floorPool[Math.floor(Math.random()*floorPool.length)]-1;
+    // Normal: prefer vault-new card from floor pool
+    const vault_w=pl[0].vault||new Set();
+    const wNewPool=floorPool.filter(id=>!vault_w.has(id));
+    const wPool=wNewPool.length>0?wNewPool:floorPool;
+    cardIdx=wPool[Math.floor(Math.random()*wPool.length)]-1;
   }
 
   wildEncounterActive=true;
@@ -5751,7 +5758,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v43',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v44',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6655,7 +6662,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v43',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v44',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -9261,9 +9268,11 @@ function checkObjectInteraction(){
     }
     shakenTrees.add(key);
     if(Math.random()<0.1){
-      // 10% chance: card falls out (from floor pool)
+      // 10% chance: card falls out — prefer vault-new
       const treePool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-      const treeCardId=treePool[Math.floor(Math.random()*treePool.length)];
+      const vault_t=pl[0].vault||new Set();
+      const treeNewPool=treePool.filter(id=>!vault_t.has(id));
+      const treeCardId=(treeNewPool.length>0?treeNewPool:treePool)[Math.floor(Math.random()*(treeNewPool.length>0?treeNewPool:treePool).length)];
       const cardIdx=treeCardId-1;
       const treeAdded=addCardToPlayer(0,treeCardId); // updates vault + hand
       if(treeAdded){
@@ -9294,7 +9303,9 @@ function checkObjectInteraction(){
     sfxSelect();
     if(Math.random()<0.2){
       const areaCards=AREA_CARDS[currentMap]||AREA_CARDS[1];
-      const cardId=areaCards[Math.floor(Math.random()*areaCards.length)];
+      const vault_r=pl[0].vault||new Set();
+      const rockNewPool=areaCards.filter(id=>!vault_r.has(id));
+      const cardId=(rockNewPool.length>0?rockNewPool:areaCards)[Math.floor(Math.random()*(rockNewPool.length>0?rockNewPool:areaCards).length)];
       const rockAdded=addCardToPlayer(0,cardId); // updates vault + hand
       if(rockAdded){
         startCardAcquisition(cardId-1);
