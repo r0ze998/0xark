@@ -4882,8 +4882,9 @@ function doMapTransition(exit){
     camTargetX=camX;camTargetY=camY;
     edgeCacheDirty=true;fogCacheDirty=true;
     particles.length=0;
-    // Reveal starting area on new map
-    fogRevealRadius(currentMap,pl[0].x,pl[0].y,2);fogSave();
+    // Reveal starting area on new map (larger radius so entry area is immediately visible)
+    if(inDungeon){fogRevealRadius(currentMap,pl[0].x,pl[0].y,4);fogSave();}
+    else{fogRevealAll(currentMap);fogSave();}
     // Show map loading screen
     if(inDungeon){
       showMapLoadScreen('DUNGEON FLOOR '+currentFloor,'Danger! Card decay active. '+(exit.isEscape?'Escaped safely.':''));
@@ -10636,8 +10637,8 @@ document.addEventListener('keydown',e=>{
           mpBroadcastMove();
           // Leave player footprint
           footprints.push({map:currentMap,x:nx,y:ny,age:0});
-          // Reveal fog around new position (town reveals more; dungeon tighter for tension)
-          fogRevealRadius(currentMap,nx,ny,inDungeon?2:3);
+          // Reveal fog around new position (town already fully revealed; dungeon radius 3 for playability)
+          if(inDungeon)fogRevealRadius(currentMap,nx,ny,3);
           fogSave();
           const newTile=m[ny]?.[nx];
           if(newTile===1||newTile===7||newTile===11){spawnGrassParticles(nx*TW,ny*TH);sfxGrassRustle();}
