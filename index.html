@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v45</title>
+<title>0xARK v46</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -5758,7 +5758,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v45',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v46',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6662,7 +6662,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v45',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v46',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8459,69 +8459,66 @@ function dVictory(){
     }
   }
 
+  // Stats + Solana row (same height range, side by side)
   if(t>130){
-    g.globalAlpha=Math.min(1,(t-130)/15);win(W/2-200,420,400,34);
+    g.globalAlpha=Math.min(1,(t-130)/15);
+    win(W/2-200,420,400,28);
     const _elapsed=getPlayElapsed();const _em=Math.floor(_elapsed/60000);const _es=Math.floor((_elapsed%60000)/1000);
     const vaultSize=pl[0].vault?pl[0].vault.size:0;
-    tx(`Time: ${_em}m${('0'+_es).slice(-2)}s  Battles: ${rd}  Cards: ${vaultSize}/60`,W/2-188,444,7,'#686068');
+    tx(`Time: ${_em}m${('0'+_es).slice(-2)}s   Battles: ${rd}   Cards: ${vaultSize}/60`,W/2-188,440,7,'#686068');
     g.globalAlpha=1;
   }
+  // "You collected all 60" message
   if(t>140){
-    // "Verified on Solana" branding
-    g.globalAlpha=Math.min(1,(t-140)/15);
-    drawSolanaLogo(W/2-110,468,10);
-    tx('Verified on Solana',W/2-90,472,7,'#9945FF');
-    g.globalAlpha=1;
-  }
-  if(t>150){win(6,486,W-12,34);
-    if(playerHasAllSixty()){tx('You collected all 60 cards and claimed the Prize Pool!',14,510,7,'#303028');}
-    else{tx('Time ran out! You collected '+hasUniqueCards(0).size+'/60 unique cards.',14,510,7,'#c04040');}
+    win(6,456,W-12,28);
+    if(playerHasAllSixty()){tx('You collected all 60 cards and claimed the Prize Pool!',14,476,7,'#303028');}
+    else{tx('Time ran out! You collected '+hasUniqueCards(0).size+'/60 unique cards.',14,476,7,'#c04040');}
   }
   // Prize distribution display
-  if(t>155){
-    g.globalAlpha=Math.min(1,(t-155)/15);
-    win(W/2-200,462,400,24);
-    tx('1ST: 60%  |  2ND: 25%  |  3RD: 15%',W/2-150,480,7,'#f0c830');
+  if(t>148){
+    g.globalAlpha=Math.min(1,(t-148)/15);
+    win(W/2-200,490,400,22);
+    tx('1ST: 60%  |  2ND: 25%  |  3RD: 15%',W/2-150,506,7,'#f0c830');
+    g.globalAlpha=1;
+  }
+  // "Verified on Solana" branding
+  if(t>152){
+    g.globalAlpha=Math.min(1,(t-152)/15);
+    drawSolanaLogo(W/2-110,518,10);
+    tx('Verified on Solana',W/2-90,522,7,'#9945FF');
     g.globalAlpha=1;
   }
   // Prize claim button when wallet connected and won
-  if(t>160&&walletConnected&&playerHasAllSixty()){
-    g.globalAlpha=Math.min(1,(t-160)/15);
+  if(t>158&&walletConnected&&playerHasAllSixty()){
+    g.globalAlpha=Math.min(1,(t-158)/15);
     const claimBlink=Math.sin(fr*0.1)*0.15+0.85;
     g.globalAlpha*=claimBlink;
-    win(W/2-160,490,320,34);
-    drawSolanaIcon(W/2-140,494,8);
-    tx('CLAIM PRIZE: '+stakePotAmount.toFixed(2)+' SOL',W/2-120,512,9,'#14F195');
+    win(W/2-160,540,320,28);
+    drawSolanaIcon(W/2-140,544,8);
+    tx('CLAIM PRIZE: '+stakePotAmount.toFixed(2)+' SOL',W/2-120,558,9,'#14F195');
     g.globalAlpha=1;
   }
   // MINT YOUR CARDS AS NFTs button
-  if(t>165&&playerHasAllSixty()){
-    g.globalAlpha=Math.min(1,(t-165)/15);
+  if(t>162&&playerHasAllSixty()){
+    g.globalAlpha=Math.min(1,(t-162)/15);
     const mintBlink=Math.sin(fr*0.08)*0.12+0.88;
     g.globalAlpha*=mintBlink;
-    win(W/2-140,528,280,28);
-    tx('MINT YOUR CARDS AS NFTs',W/2-108,548,8,'#9945FF');
+    win(W/2-140,572,280,24);
+    tx('MINT YOUR CARDS AS NFTs',W/2-108,590,8,'#9945FF');
     g.globalAlpha=1;
   }
-  // Eternal inscription message
-  if(t>168){
-    g.globalAlpha=Math.min(1,(t-168)/15);
-    tx('Your name will be etched in the ARK forever.',W/2-178,568,6,'#a07848');
-    g.globalAlpha=1;
-  }
-  // LEGENDS section placeholder
-  if(t>172){
-    g.globalAlpha=Math.min(1,(t-172)/15);
-    win(W/2-160,578,320,28);
-    tx('LEGENDS',W/2-30,590,7,'#f0c830');
+  // Eternal inscription + LEGENDS
+  if(t>166){
+    g.globalAlpha=Math.min(1,(t-166)/15);
+    win(W/2-160,600,320,22);
     const bcr=stats.bestClearRounds;const bct=stats.bestClearTime;
-    const bcText=bcr>0?'BEST: Round '+bcr+' ('+Math.floor(bct/60)+'m'+('0'+(bct%60)).slice(-2)+'s)':'FASTEST CLEAR: --:-- by ???';
-    tx(bcText,W/2-120,602,6,bcr>0?'#f0c830':'#686068');
+    const bcText=bcr>0?'BEST: Round '+bcr+' ('+Math.floor(bct/60)+'m'+('0'+(bct%60)).slice(-2)+'s)':'BEST CLEAR: not yet recorded';
+    tx(bcText,W/2-140,616,6,bcr>0?'#f0c830':'#686068');
     g.globalAlpha=1;
   }
-  if(t>176){
-    win(W/2-180,H-28,360,24);
-    tx('Z=Play Again   X=Title Screen',W/2-160,H-8,7,'#c89820');
+  if(t>170){
+    win(W/2-180,H-24,360,20);
+    tx('Z=Play Again   X=Title Screen',W/2-140,H-6,7,'#c89820');
   }
   if(t===31)sfxVictory();
 }
