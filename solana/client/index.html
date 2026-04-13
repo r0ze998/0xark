@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v42</title>
+<title>0xARK v43</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -5751,7 +5751,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v42',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v43',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6655,7 +6655,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v42',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v43',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8726,9 +8726,12 @@ function fishingCatchCard(){
   fishingPhase='catch';
   fishingTimer=90;
   sfxFishCatch();
-  // Random dock spirit card from current floor pool
+  // Random dock spirit card — prefer vault-new
   const pool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-  const cardId=pool[Math.floor(Math.random()*pool.length)];
+  const vault_f=pl[0].vault||new Set();
+  const newPool_f=pool.filter(id=>!vault_f.has(id));
+  const usePool_f=newPool_f.length>0?newPool_f:pool;
+  const cardId=usePool_f[Math.floor(Math.random()*usePool_f.length)];
   const cardIdx=cardId-1;
   const fAdded=addCardToPlayer(0,cardId); // updates vault + hand
   if(fAdded){
@@ -8827,9 +8830,11 @@ function checkPuzzleInteraction(){
         puzzleMessageTimer=180;
         twSet('The passage opens! A void card appears!');
         lg.push('Ruins puzzle solved!');
-        // Give a rare card from the current floor pool
+        // Give a rare card from the current floor pool — prefer vault-new
         const pzPool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-        const pzCard=pzPool[Math.floor(Math.random()*pzPool.length)];
+        const vault_pz=pl[0].vault||new Set();
+        const pzNewPool=pzPool.filter(id=>!vault_pz.has(id));
+        const pzCard=(pzNewPool.length>0?pzNewPool:pzPool)[Math.floor(Math.random()*(pzNewPool.length>0?pzNewPool:pzPool).length)];
         const pzAdded=addCardToPlayer(0,pzCard); // updates vault + hand
         if(pzAdded){
           startCardAcquisition(pzCard-1);
@@ -9376,11 +9381,21 @@ function doFountainExchange(){
   const filled=[];
   for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
   if(filled.length===0)return;
-  // Remove random card, give different random card
+  // Remove random card, give vault-new card if possible
   const slot=filled[Math.floor(Math.random()*filled.length)];
   const oldCard=pl[0].cd[slot];
+  const vault_fn=pl[0].vault||new Set();
+  const ownedInHand_fn=new Set(pl[0].cd.filter(c=>c>0));
+  const fnNew=[],fnOwned=[];
+  for(let i=1;i<=60;i++){
+    if(i===oldCard)continue;
+    if(!vault_fn.has(i))fnNew.push(i);
+    else if(!ownedInHand_fn.has(i))fnOwned.push(i);
+  }
   let newCard;
-  do{newCard=Math.floor(Math.random()*60)+1;}while(newCard===oldCard);
+  if(fnNew.length>0)newCard=fnNew[Math.floor(Math.random()*fnNew.length)];
+  else if(fnOwned.length>0)newCard=fnOwned[Math.floor(Math.random()*fnOwned.length)];
+  else{do{newCard=Math.floor(Math.random()*60)+1;}while(newCard===oldCard);}
   pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0); // clear old slot
   addCardToPlayer(0,newCard); // updates vault + hand
   startCardAcquisition(newCard-1);
