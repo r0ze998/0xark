@@ -631,6 +631,25 @@ function dMap(){
     g.fillStyle=grad;
     g.fillRect(0,0,W,H);
   }
+  // v112: Danger ambient vignette — red/amber edge when area danger is elevated
+  if(inDungeon){
+    const dangerV=areaDanger[currentMap]||0;
+    if(dangerV>=DANGER_LOW_THRESH){
+      const isHigh=dangerV>=DANGER_HIGH_THRESH;
+      const pulse=Math.sin(fr*(isHigh?0.07:0.04))*0.5+0.5;
+      const baseA=isHigh?0.08+pulse*0.08:0.04+pulse*0.04;
+      const vigCol=isHigh?`rgba(180,20,20,${baseA})`:`rgba(160,90,0,${baseA})`;
+      const vig=g.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.9);
+      vig.addColorStop(0,'rgba(0,0,0,0)');
+      vig.addColorStop(1,vigCol);
+      g.fillStyle=vig;g.fillRect(0,0,W,H);
+      // HIGH danger: brief scan-line flash every ~160 frames
+      if(isHigh&&fr%160<4){
+        const fA=0.08*(1-fr%160/4);
+        g.globalAlpha=fA;bx(0,0,W,H,'#c01010');g.globalAlpha=1;
+      }
+    }
+  }
   // Fog particles only every other frame
   if(fr%2===0) drawFogParticles();
 
@@ -1172,7 +1191,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v111',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v112',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
