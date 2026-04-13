@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v60</title>
+<title>0xARK v61</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -3556,7 +3556,8 @@ let signpostActive=false, signpostText='', signpostFrame=0;
 let discardActive=false, discardSelIdx=0, discardPendingCard=-1, discardSource='';
 
 // ── Tutorial system ──
-let tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false,firstBattle:false};
+let tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false,firstBattle:false,
+  firstFloor2:false,firstFloor3:false,firstFloor4:false,firstFloor5:false,firstGacha:false};
 let tutorialMsg='', tutorialMsgTimer=0;
 
 // ── Intro tutorial (rules) ──
@@ -3802,12 +3803,12 @@ function resetGameState(startCards){
   const vault0=new Set();
   starterCards.forEach((cid,i)=>{cards0[i]=cid;vault0.add(cid);});
   const cc0=vault0.size;
-  // Rivals start with 1 random card each (keep 5-slot format)
-  // GDD v1.0: Rivals spawn in dungeon floor 1, not in town
-  const r1Card=1+Math.floor(Math.random()*12); // common attack cards (1-12)
-  const r2Card=13+Math.floor(Math.random()*12); // common defense cards (13-24)
-  const cards1=[r1Card,0,0,0,0];const cc1=1;
-  const cards2=[r2Card,0,0,0,0];const cc2=1;
+  // VEGA (hunter): starts with 2 aggressive attack cards — SLASH(5) + STRIKE(4) for floor 1
+  // MIRA (collector): starts with 2 strategic defense/flee cards — GUARD(13) + PARRY(14)
+  const vegaCards=[5,4,0,0,0];  // SLASH + STRIKE (both common attack)
+  const miraCards=[13,14,0,0,0]; // GUARD + PARRY (both common defense)
+  const cards1=vegaCards;const cc1=2;
+  const cards2=miraCards;const cc2=2;
   pl[0].cd=cards0;pl[0].vault=vault0;pl[0].cc=cc0;
   pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
   // Rivals start on dungeon floor 1, spread apart
@@ -3829,7 +3830,8 @@ function resetGameState(startCards){
   lg.push('New game! Starter cards: '+starterCards.map(id=>CD[id-1].n).join(', '));
   lg.push('Collect all 60 cards to win the Prize Pool!');
   treasures.forEach(t=>t.collected=false);
-  tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false,firstBattle:false};
+  tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false,firstBattle:false,
+    firstFloor2:false,firstFloor3:false,firstFloor4:false,firstFloor5:false,firstGacha:false};
   resetNewFeatureState();
   // Card timers: inactive in town at start (decay only starts when entering dungeon)
   for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;}
@@ -5096,6 +5098,23 @@ function doMapTransition(exit){
     // This stops rivals from immediately ambushing the player on dungeon entry
     encounterCooldown=480;
     if(!tutorialFlags.firstMapChange){tutorialFlags.firstMapChange=true;tutorialMsg=inDungeon?'Dungeon! Cards decay here — escape to save them.':'Town! Cards are safe here.';tutorialMsgTimer=220;}
+    // Floor-specific first-visit narrative messages
+    if(inDungeon){
+      const floorMsgs=[
+        '','', // floor 0 and 1 handled by firstMapChange
+        'Floor 2: Uncommon cards. Watch for mushroom spores and MIRA\'s traps.',
+        'Floor 3: Rare cards. Ancient altars can restore or extend your cards!',
+        'Floor 4: Epic cards dwell here. VEGA hunts aggressively — keep moving.',
+        'Floor 5: LEGENDARY cards. The deepest floor. Lava destroys cards. Be quick.',
+      ];
+      const flagKeys=['','','firstFloor2','firstFloor3','firstFloor4','firstFloor5'];
+      const fKey=flagKeys[currentFloor];
+      if(fKey&&!tutorialFlags[fKey]){
+        tutorialFlags[fKey]=true;
+        tutorialMsg=floorMsgs[currentFloor];
+        tutorialMsgTimer=280;
+      }
+    }
     fadeIn(()=>{mapTransitioning=false;});
   });
 }
@@ -5395,6 +5414,7 @@ function checkNPCInteraction(){
       // Gacha Keeper opens the gacha
       if(npc.name==='Gacha Keeper'){
         gachaActive=true;gachaPhase='menu';gachaSelectedTier=0;gachaResultCard=-1;gachaSpinFrame=0;
+        if(!tutorialFlags.firstGacha){tutorialFlags.firstGacha=true;setTimeout(()=>{tutorialMsg='Gacha: Z=Draw, X=Cancel. Higher tiers = rarer cards!';tutorialMsgTimer=200;},100);}
         sfxShopOpen();
         return true;
       }
@@ -7347,7 +7367,7 @@ function drawVsSplash(){
 
   if(t>=60){
     battlePhase='select';bpFrame=fr;bpRdIncremented=false;
-    if(!tutorialFlags.firstBattle){tutorialFlags.firstBattle=true;tutorialMsg='Pick an action! DRAW cards, STEAL from rivals, or BARRIER to defend.';tutorialMsgTimer=240;}
+    if(!tutorialFlags.firstBattle){const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'the rival';tutorialFlags.firstBattle=true;tutorialMsg='Battle vs '+rName+'! DRAW cards, STEAL theirs, or BARRIER to defend.';tutorialMsgTimer=240;}
   }
 }
 
@@ -8552,8 +8572,8 @@ function drawMarketplace(){
     bx(mx+12,my+86,mw-24,1,'#1a3a1a');
     // Show mock listings
     const mockListings=[
-      {seller:'Rival',card:6,price:'0.05'},
-      {seller:'Hunter',card:20,price:'0.08'},
+      {seller:'VEGA',card:6,price:'0.05'},
+      {seller:'MIRA',card:20,price:'0.08'},
       {seller:'???',card:45,price:'0.15'},
       {seller:'???',card:1,price:'0.99'},
     ];
