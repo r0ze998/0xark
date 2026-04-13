@@ -6932,7 +6932,9 @@ function drawVsSplash(){
   drawBattleSprite(pl[0],pX,H/2-10,3,true);
   const rSlide=Math.min(1,t/30);
   const rX=W+60-rSlide*(W/4+20);
-  drawBattleSprite(pl[1],rX,H/2-10,3,false);
+  // Show the rival that triggered this encounter (encounterExclTarget tracks which one)
+  const vsSplashRival=pl[encounterExclTarget>=1&&encounterExclTarget<=2?encounterExclTarget:1];
+  drawBattleSprite(vsSplashRival,rX,H/2-10,3,false);
   // VS text
   if(t>15){
     g.globalAlpha=Math.min(1,(t-15)/10);
@@ -7395,12 +7397,12 @@ function generateResolveEvents(){
   if(bpAction===0){// DRAW
     const cardId=pickAreaCard();const cr=CD[cardId-1];
     events.push({type:'action',who:'You',action:'DRAW',text:'You used DRAW!',effect:'none'});
+    const wasInHandBefore=pl[0].cd.some(c=>c===cardId); // capture before addCardToPlayer modifies hand
     if(addCardToPlayer(0,cardId)){
       events.push({type:'result',text:'You obtained '+cr.n+'!',effect:'card_get',cardName:cr.n});
       lg.push('R'+rd+': You drew '+cr.n+'!');
-      // Streak: new unique type?
-      const prevU=new Set();pl[0].cd.forEach(c=>{if(c>0&&c!==cardId)prevU.add(c);});
-      if(!prevU.has(cardId)){streakCount++;streakDisplayTimer=60;sfxStreakUp();}
+      // Streak: new unique type (not already in hand before this draw)
+      if(!wasInHandBefore){streakCount++;streakDisplayTimer=60;sfxStreakUp();}
     }else{
       // Hand full - store drawn card for discard prompt after resolve
       events.push({type:'result',text:'Hand full! You drew '+cr.n+' - discard one after battle.',effect:'none'});
@@ -9392,7 +9394,7 @@ function executeDirCard(dir){
         let slot=-1;
         for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===3){slot=i;break;}}
         if(slot>=0){
-          pl[0].cd[slot]=0;
+          pl[0].cd[slot]=0;cardTimers[slot]=0;
           syncCardCount(0);
           // Replace tile with grass
           maps[currentMap][ty_][tx_]=1;
@@ -10410,7 +10412,7 @@ document.addEventListener('keydown',e=>{
           if(pl[0].vault&&!pl[0].vault.has(discardPendingCard)){
             pl[0].vault.add(discardPendingCard);sfxUniqueCardSting();triggerProgressPulse();stats.cardsCollected++;
           }
-          pl[0].cd[slot]=discardPendingCard;cardTimers[slot]=Date.now();syncCardCount(0);
+          pl[0].cd[slot]=discardPendingCard;cardTimers[slot]=inDungeon?Date.now():0;syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+', got '+CD[discardPendingCard-1].n+'!');
           discardActive=false;
           if(discardSource==='wild'||discardSource==='menu'){startCardAcquisition(discardPendingCard-1);}
@@ -10418,7 +10420,7 @@ document.addEventListener('keydown',e=>{
           checkWinAndTransition(500);
         }else{
           // Menu discard: just remove the card
-          pl[0].cd[slot]=0;pl[0].cc=Math.max(0,pl[0].cc-1);
+          pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+'!');
           discardActive=false;discardPendingCard=-1;discardSource='';
         }
