@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v48</title>
+<title>0xARK v49</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -84,17 +84,19 @@ const _isMobile=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
 PIXI.BaseTexture.defaultOptions.scaleMode = PIXI.SCALE_MODES.NEAREST;
 const pixiApp = new PIXI.Application({
   width: W, height: H,
-  backgroundColor: 0x0c0c18,
+  backgroundAlpha: 0, // Transparent background — game canvas shown directly below PixiJS UI overlay
   antialias: false,
   roundPixels: true,
-  autoStart: false, // Disable auto-tick to prevent black flashes between our game loop frames
+  autoStart: false,
 });
 if(!_isMobile){
-  // Desktop: use PixiJS WebGL renderer
-  document.getElementById('pixi-wrap').appendChild(pixiApp.view);
-  pixiApp.view.style.width='960px';pixiApp.view.style.height='640px';
-  c.classList.add('desktop-hidden');
-  pixiApp.stop(); // Stop auto-rendering (removes internal render callback + stops ticker)
+  // Desktop: game canvas shown directly; PixiJS canvas overlaid as transparent UI layer only
+  // This eliminates the black flash caused by WebGL framebuffer clear when uploading canvas texture
+  c.style.display='block';
+  const _pixiView=pixiApp.view;
+  _pixiView.style.cssText='display:block;position:absolute;top:0;left:0;width:960px;height:640px;touch-action:none;';
+  document.getElementById('pixi-wrap').appendChild(_pixiView);
+  pixiApp.stop();
 }else{
   // Mobile: show canvas directly, PixiJS runs offscreen for UI objects only
   c.style.display='block';
@@ -110,10 +112,10 @@ pixiApp.stage.addChild(pixiLayers.game);
 pixiApp.stage.addChild(pixiLayers.ui);
 pixiApp.stage.addChild(pixiLayers.fx);
 
-// Bridge: render existing canvas as PixiJS texture
+// Canvas texture kept for compat; game canvas is shown directly — NOT rendered via PixiJS sprite
 const canvasTex = PIXI.Texture.from(c);
 const gameSprite = new PIXI.Sprite(canvasTex);
-pixiLayers.game.addChild(gameSprite);
+// gameSprite NOT added to stage — canvas c displayed directly below transparent PixiJS overlay
 
 // UI text style presets
 const UI_STYLE = {
@@ -294,11 +296,10 @@ const pxVisionOverlay = new PIXI.Graphics();
 pixiLayers.fx.addChild(pxVisionOverlay);
 
 function updatePixiVision(){
-  if(sc!=='map'||introActive){pxVisionOverlay.visible=false;return;}
+  // Vision overlay only in dungeon — town is safe zone with no dark vignette
+  if(sc!=='map'||introActive||!inDungeon||isTouchDevice){pxVisionOverlay.visible=false;return;}
   pxVisionOverlay.visible=true;
   pxVisionOverlay.clear();
-  // Skip on mobile for performance (canvas gradient is sufficient)
-  if(isTouchDevice)return;
   // Draw dark overlay with circular hole at player position
   const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
   pxVisionOverlay.beginFill(0x000000, 0.35);
@@ -487,8 +488,7 @@ function pxHideTextbox() { pxTextbox.visible = false; }
 // Update PixiJS HUD each frame (called from game loop)
 function updatePixiHud(){
   if(_isMobile)return; // mobile: canvas shown directly, skip PixiJS overhead
-  // Update canvas texture
-  canvasTex.update();
+  // canvasTex.update() removed — canvas c shown directly below PixiJS overlay (no texture upload)
   // Update typewriter
   pxTextboxTw.tick(dt||1);
   // Bounce textbox arrow + auto-hide
@@ -5754,7 +5754,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v48',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v49',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6353,9 +6353,9 @@ function dMap(){
     }
     g.drawImage(fogCanvas,0,0,W,H);
   }
-  // ── CIRCULAR VISIBILITY (Iwayama Tunnel style) ──
-  // Skip heavy gradient on mobile every other frame for perf
-  if(!isTouchDevice||fr%2===0){
+  // ── CIRCULAR VISIBILITY (Iwayama Tunnel style) — dungeon only ──
+  // Town is a safe zone, no dark vignette. Dungeon only.
+  if(inDungeon&&(!isTouchDevice||fr%2===0)){
     const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
     const innerR=120, outerR=320;
     const grad=g.createRadialGradient(px,py,innerR,px,py,outerR);
@@ -6658,7 +6658,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v48',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v49',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
