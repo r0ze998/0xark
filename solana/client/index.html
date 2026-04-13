@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v87</title>
+<title>0xARK v88</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -4169,6 +4169,7 @@ let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
 // v85: Floor-clear fanfare overlay — cinematic card reward on floor descent
 // v86: Gacha pull history panel — last 8 pulls shown beside gacha menu
 // v87: World-space player status bubble — card count + decay timer above sprite
+// v88: Battle DRAW pool preview — shows floor card pool when DRAW is selected
 let encounterRivalLine=''; // context-sensitive line for exclamation animation
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
 
@@ -7920,7 +7921,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v87',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v88',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8583,6 +8584,40 @@ function drawSelectPhase(){
   drawOpponentInfoBox();
   drawPlayerInfoBox();
   drawActionGrid();
+  // v88: DRAW pool preview panel (shown when DRAW is highlighted)
+  if(ai===0&&!bpCardSelectActive&&!bpTargetSelectActive){
+    const pool=DUNGEON_FLOOR_CARDS[currentMap];
+    if(pool&&pool.length>0){
+      const vault_=pl[0].vault||new Set();
+      // Show up to 4 cards from pool, marking unowned
+      const previewCards=pool.slice(0,Math.min(4,pool.length));
+      const ppW=220,ppH=60+previewCards.length*26;
+      const ppX=328,ppY=H-164;
+      const slideA=Math.min(1,(fr-bpFrame)/10);
+      g.globalAlpha=slideA*0.95;
+      win(ppX,ppY,ppW,ppH);
+      bx(ppX,ppY,ppW,3,'#48b8e8');
+      txShadow('FLOOR POOL',ppX+8,ppY+20,9,'#48b8e8','rgba(0,0,0,.3)');
+      txShadow(mapNames[currentMap],ppX+ppW-8-mapNames[currentMap].length*5,ppY+20,6,'#686878','rgba(0,0,0,.2)');
+      bx(ppX+6,ppY+26,ppW-12,1,'rgba(200,180,100,.2)');
+      previewCards.forEach((cid,pi)=>{
+        const cr=CD[cid-1];const rar=cr.r||1;
+        const rarCol=RARITY_COLOR[rar]||'#888888';
+        const owned=vault_.has(cid);
+        const py2=ppY+32+pi*26;
+        bx(ppX+10,py2-8,12,16,cr.d);bx(ppX+11,py2-7,10,14,cr.c);
+        drawCardCharacter(ppX+11,py2-7,cid,0.45,fr);
+        const nCol=owned?'#888878':'#e8e0c8';
+        tx(cr.n,ppX+28,py2+2,7,nCol);
+        for(let s=0;s<rar;s++)tx('\u2605',ppX+ppW-8-(rar-s)*9,py2+2,5,rarCol);
+        if(!owned){tx('NEW',ppX+ppW-8-rar*9-26,py2+2,5,'#50e090');}
+      });
+      if(pool.length>4){
+        txShadow('+'+(pool.length-4)+' more...',ppX+10,ppY+ppH-12,6,'#686878','rgba(0,0,0,.2)');
+      }
+      g.globalAlpha=1;
+    }
+  }
   // Card selection submenu for USE CARD
   if(bpCardSelectActive){
     bx(0,0,W,H,'rgba(0,0,0,.5)');
