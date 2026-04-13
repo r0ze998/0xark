@@ -4899,7 +4899,9 @@ function doMapTransition(exit){
       pl[2].x=28;pl[2].y=18;pl[2].visualX=28*TW;pl[2].visualY=18*TH;
       rivalMaps=[1,1];
       rivalAI[0].goalX=32;rivalAI[0].goalY=12;rivalAI[0].state='exploring';
+      rivalAI[0].lastKnownPlayerMap=-1;rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;
       rivalAI[1].goalX=32;rivalAI[1].goalY=18;rivalAI[1].state='exploring';
+      rivalAI[1].lastKnownPlayerMap=-1;rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;
     }
     // For ANY dungeon floor transition: if a rival is on the destination floor and within 8 tiles
     // of the player entry point, push them to a safe position far from the entrance.
