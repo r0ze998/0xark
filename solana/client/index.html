@@ -2511,29 +2511,55 @@ function generateDungeonFloor(floorNum,seed){
       }
     }
   }
+  // Helper: carve L-shaped corridor between two points
+  function carveCorridor(x1,y1,x2,y2){
+    const lx=Math.min(x1,x2),rx=Math.max(x1,x2);
+    const ty=Math.min(y1,y2),by=Math.max(y1,y2);
+    for(let x=lx;x<=rx;x++){if(map[y1][x]===18)map[y1][x]=2;}
+    for(let y=ty;y<=by;y++){if(map[y][x2]===18)map[y][x2]=2;}
+  }
   // Connect rooms with corridors (L-shaped)
   for(let i=0;i<rooms.length-1;i++){
     const a=rooms[i],b=rooms[i+1];
     const ax=Math.floor(a.x+a.w/2),ay=Math.floor(a.y+a.h/2);
     const bx=Math.floor(b.x+b.w/2),by=Math.floor(b.y+b.h/2);
-    // Horizontal then vertical
-    const mx=Math.min(ax,bx),mxe=Math.max(ax,bx);
-    for(let x=mx;x<=mxe;x++){if(map[ay][x]===18)map[ay][x]=2;}
-    const my=Math.min(ay,by),mye=Math.max(ay,by);
-    for(let y=my;y<=mye;y++){if(map[y][bx]===18)map[y][bx]=2;}
+    carveCorridor(ax,ay,bx,by);
   }
-  // Place dungeon entrance/exit
+  // ── Fixed exit positions (must match exits[] array) ──
+  // Up-stairs (entry from floor above / escape back up): x=3-4, y=14-15
+  // Down-stairs (descent to next floor):                  x=36-37, y=14-15
+  const ENTRY_X=3,ENTRY_Y=14; // stairs up / escape
+  const DESCEND_X=36,DESCEND_Y=14; // stairs down
+  // Carve entry area and connect to first room center
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+    const ex=Math.max(1,Math.min(MW-2,ENTRY_X+dx));
+    const ey=Math.max(1,Math.min(MH-2,ENTRY_Y+dy));
+    if(map[ey][ex]===18)map[ey][ex]=2;
+  }
+  map[ENTRY_Y][ENTRY_X]=30; // stairs-up tile (treasure/special)
+  map[ENTRY_Y][ENTRY_X+1]=2;
+  // Carve descend area and connect to last room center
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+    const ex=Math.max(1,Math.min(MW-2,DESCEND_X+dx));
+    const ey=Math.max(1,Math.min(MH-2,DESCEND_Y+dy));
+    if(map[ey][ex]===18)map[ey][ex]=2;
+  }
+  map[DESCEND_Y][DESCEND_X]=24; // stairs-down tile (glow)
+  map[DESCEND_Y][DESCEND_X-1]=2;
+  // Connect entry to first room
   if(rooms.length>0){
-    const first=rooms[0];map[first.y+1][first.x+1]=30;  // exit marker (treasure tile)
+    const fr0=rooms[0];
+    carveCorridor(ENTRY_X+1,ENTRY_Y,Math.floor(fr0.x+fr0.w/2),Math.floor(fr0.y+fr0.h/2));
   }
-  if(rooms.length>1){
-    const last=rooms[rooms.length-1];
-    map[last.y+Math.floor(last.h/2)][last.x+Math.floor(last.w/2)]=24; // stairs down (glow)
+  // Connect last room to descend
+  if(rooms.length>0){
+    const lr=rooms[rooms.length-1];
+    carveCorridor(Math.floor(lr.x+lr.w/2),Math.floor(lr.y+lr.h/2),DESCEND_X-1,DESCEND_Y);
   }
-  // Chest/treasure in deep room
+  // Chest/treasure in mid room
   if(rooms.length>=3){
     const mid=rooms[Math.floor(rooms.length/2)];
-    map[mid.y+2][mid.x+2]=30;
+    if(mid.y+2<mid.y+mid.h-1&&mid.x+2<mid.x+mid.w-1)map[mid.y+2][mid.x+2]=30;
   }
   // Rock outcroppings along walls
   for(let y=2;y<MH-2;y++){for(let x=2;x<MW-2;x++){
@@ -5591,8 +5617,8 @@ function dTitle(){
   }
 
   // Footer credits
-  tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#333350');
-  tx('v29',W/2-14,598,8,'#6060a0');
+  tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
+  txShadow('v29',W/2-14,598,9,'#b0b0ff','rgba(0,0,0,0.6)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
