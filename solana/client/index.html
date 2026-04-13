@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v55</title>
+<title>0xARK v56</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -5803,7 +5803,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v55',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v56',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6724,10 +6724,16 @@ function dMap(){
     tx(pl[ri+1].n[0],arrowCX-3,arrowCY+14,5,arrowCol);
   }
 
-  // Vault/hand status
+  // Vault/hand status (progress toward 60-card goal)
   const vaultCount=pl[0].vault?pl[0].vault.size:0;
   const handCount=pl[0].cd.filter(c=>c>0).length;
-  tx('VAULT:'+vaultCount+' HAND:'+handCount,310,hudY+52,6,'#686068');
+  const vaultPct=vaultCount/60;
+  const vaultCol=vaultCount>=50?'#f0c830':vaultCount>=30?'#e08040':vaultCount>=10?'#40c060':'#686068';
+  tx('CARDS:'+vaultCount+'/60',310,hudY+56,7,vaultCol);
+  // Tiny collection progress bar
+  bx(310,hudY+60,60,3,'#282838');
+  bx(310,hudY+60,Math.floor(60*vaultPct),3,vaultCol);
+  tx('HAND:'+handCount,382,hudY+56,6,'#686068');
 
   const m=getMap();
   const tile=m[pl[0].y]?.[pl[0].x];
@@ -6755,7 +6761,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v55',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v56',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
