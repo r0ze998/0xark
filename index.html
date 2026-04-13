@@ -2734,7 +2734,7 @@ let npcDialogActive=false, npcDialogLines=[], npcDialogIdx=0, npcDialogName='', 
 let wildEncounterActive=false, wildEncounterCard=-1, wildEncounterFrame=0;
 
 // ── RIVAL AI SYSTEM ──
-let rivalMaps=[0,0]; // which map rival and hunter are on
+let rivalMaps=[1,1]; // GDD v1.0: rivals start in dungeon floor 1
 let rivalAlert=0, rivalAlertName='';
 
 // Rival AI state objects
@@ -3203,8 +3203,8 @@ for(let i=0;i<12;i++){
 function makeEmptyHand(){return new Array(HAND_SIZE).fill(0);}
 const pl=[
   {x:15,y:13,c:'#48b8e8',n:'You',   cd:makeEmptyHand(),vault:new Set(),cc:0,dir:0,step:0,walkFrame:0,visualX:15*TW,visualY:13*TH},
-  {x:19,y:14,c:'#d860a0',n:'Rival', cd:[2,5,0,0,0],cc:2,dir:2,step:0,walkFrame:0,visualX:19*TW,visualY:14*TH},
-  {x:6, y:11, c:'#d8b028',n:'Hunter',cd:[4,0,0,0,0],cc:1,dir:0,step:0,walkFrame:0,visualX:6*TW,visualY:11*TH},
+  {x:8, y:10,c:'#d860a0',n:'Rival', cd:[2,5,0,0,0],cc:2,dir:2,step:0,walkFrame:0,visualX:8*TW,visualY:10*TH},
+  {x:28,y:18,c:'#d8b028',n:'Hunter',cd:[4,0,0,0,0],cc:1,dir:0,step:0,walkFrame:0,visualX:28*TW,visualY:18*TH},
 ];
 
 const sp={s:2,b:3,c:2};
@@ -3593,23 +3593,25 @@ function resetGameState(startCards){
   starterCards.forEach((cid,i)=>{cards0[i]=cid;vault0.add(cid);});
   const cc0=vault0.size;
   // Rivals start with 1 random card each (keep 5-slot format)
-  const r1Card=1+Math.floor(Math.random()*5);
-  const r2Card=1+Math.floor(Math.random()*5);
+  // GDD v1.0: Rivals spawn in dungeon floor 1, not in town
+  const r1Card=1+Math.floor(Math.random()*12); // common attack cards (1-12)
+  const r2Card=13+Math.floor(Math.random()*12); // common defense cards (13-24)
   const cards1=[r1Card,0,0,0,0];const cc1=1;
   const cards2=[r2Card,0,0,0,0];const cc2=1;
   pl[0].cd=cards0;pl[0].vault=vault0;pl[0].cc=cc0;
   pl[0].x=15;pl[0].y=13;pl[0].dir=0;pl[0].step=0;pl[0].visualX=15*TW;pl[0].visualY=13*TH;pl[0].walkFrame=0;
-  pl[1].cd=cards1;pl[1].cc=cc1;pl[1].x=19;pl[1].y=14;pl[1].dir=2;pl[1].step=0;pl[1].visualX=19*TW;pl[1].visualY=14*TH;pl[1].walkFrame=0;
-  pl[2].cd=cards2;pl[2].cc=cc2;pl[2].x=6;pl[2].y=11;pl[2].dir=0;pl[2].step=0;pl[2].visualX=6*TW;pl[2].visualY=11*TH;pl[2].walkFrame=0;
+  // Rivals start on dungeon floor 1, spread apart
+  pl[1].cd=cards1;pl[1].cc=cc1;pl[1].x=8;pl[1].y=10;pl[1].dir=2;pl[1].step=0;pl[1].visualX=8*TW;pl[1].visualY=10*TH;pl[1].walkFrame=0;
+  pl[2].cd=cards2;pl[2].cc=cc2;pl[2].x=28;pl[2].y=18;pl[2].dir=0;pl[2].step=0;pl[2].visualX=28*TW;pl[2].visualY=18*TH;pl[2].walkFrame=0;
   sp.s=2;sp.b=3;sp.c=2;rd=1;currentMap=0;inDungeon=false;currentFloor=0;stepCounter=0;randomEventTimer=0;
   initSeason();
-  rivalMaps=[0,0];
-  // Reset rival AI
-  rivalAI[0].goalX=10;rivalAI[0].goalY=10;rivalAI[0].goalMap=0;rivalAI[0].state='exploring';
-  rivalAI[0].moveTimer=0;rivalAI[0].moveInterval=8;rivalAI[0].lastKnownPlayerMap=-1;
+  rivalMaps=[1,1]; // GDD v1.0: rivals start in dungeon floor 1
+  // Reset rival AI — explore dungeon floor 1
+  rivalAI[0].goalX=15;rivalAI[0].goalY=14;rivalAI[0].goalMap=1;rivalAI[0].state='exploring';
+  rivalAI[0].moveTimer=0;rivalAI[0].moveInterval=10;rivalAI[0].lastKnownPlayerMap=-1;
   rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;rivalAI[0].stateTimer=0;
-  rivalAI[1].goalX=20;rivalAI[1].goalY=15;rivalAI[1].goalMap=1;rivalAI[1].state='exploring';
-  rivalAI[1].moveTimer=0;rivalAI[1].moveInterval=12;rivalAI[1].lastKnownPlayerMap=-1;
+  rivalAI[1].goalX=25;rivalAI[1].goalY=14;rivalAI[1].goalMap=1;rivalAI[1].state='exploring';
+  rivalAI[1].moveTimer=0;rivalAI[1].moveInterval=14;rivalAI[1].lastKnownPlayerMap=-1;
   rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;rivalAI[1].stateTimer=0;
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
   stopDangerDrone();
@@ -3619,9 +3621,8 @@ function resetGameState(startCards){
   treasures.forEach(t=>t.collected=false);
   tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapChange:false,firstBattle:false};
   resetNewFeatureState();
-  // Set card timers (only active in dungeon — town is safe)
-  const now=Date.now();
-  for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=(pl[0].cd[i]>0)?now:0;}
+  // Card timers: inactive in town at start (decay only starts when entering dungeon)
+  for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;}
   edgeCacheDirty=true;fogCacheDirty=true;
 }
 
@@ -9506,7 +9507,8 @@ function update(){
   }
 
   // Encounter check (player walks to rival OR rival walks to player)
-  if(sc==='map'&&!introActive&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning&&!encounterExclActive&&!shopActive&&!signpostActive&&!inBuilding&&shadowStepsLeft<=0){
+  // GDD v1.0: Town (map 0) is a safe zone — no PvP encounters allowed
+  if(sc==='map'&&inDungeon&&!introActive&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning&&!encounterExclActive&&!shopActive&&!signpostActive&&!inBuilding&&shadowStepsLeft<=0){
     pl.slice(1).forEach((r,idx)=>{
       if(rivalMaps[idx]!==currentMap)return;
       const adjDist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
