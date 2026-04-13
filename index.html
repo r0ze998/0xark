@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v31</title>
+<title>0xARK v32</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -440,10 +440,11 @@ function pxUpdateMenu() {
   // Update cursor position with bounce
   const targetY = 15 + mi * 24;
   pxMenuCursor.y = targetY + Math.sin(fr * 0.15) * 1.5;
-  // Update dynamic labels
-  const walletIdx = 7, textSpdIdx = 8;
-  if (pxMenuTexts[walletIdx]) pxMenuTexts[walletIdx].text = walletConnected ? 'WALLET (' + walletAddressTruncated() + ')' : 'WALLET (OFF)';
-  if (pxMenuTexts[textSpdIdx]) pxMenuTexts[textSpdIdx].text = 'TEXT SPD: ' + TEXT_SPEED_LABELS[textSpeedIdx];
+  // Update dynamic labels (indices must match MENU_ITEMS order)
+  const walletIdx = MENU_ITEMS.indexOf('WALLET');
+  const textSpdIdx = MENU_ITEMS.indexOf('TEXT SPD');
+  if (walletIdx>=0&&pxMenuTexts[walletIdx]) pxMenuTexts[walletIdx].text = walletConnected ? 'WALLET (' + walletAddressTruncated() + ')' : 'WALLET (OFF)';
+  if (textSpdIdx>=0&&pxMenuTexts[textSpdIdx]) pxMenuTexts[textSpdIdx].text = 'TEXT SPD: ' + TEXT_SPEED_LABELS[textSpeedIdx];
   // Highlight selected
   pxMenuTexts.forEach((t, i) => { t.alpha = i === mi ? 1 : 0.65; });
 }
@@ -2808,7 +2809,7 @@ const FOOTPRINT_MAX_AGE=3600; // 60 seconds at 60fps
 let proximityPulseTimer=0;
 let proximityDangerLevel=0; // 0=none, 1=same map, 2=within 8, 3=within 5, 4=within 2
 let rivalDangerAlertShown=false;
-let rivalWinWarning=0; // 0=safe, 1=rival has 4 unique, 2=rival has 5 (they won)
+let rivalWinWarning=0; // 0=safe, 1=rival has 4+ cards (alert), 2=rival has 5 (full hand — danger)
 let rivalWinWarningShown=false;
 
 // Danger drone SFX
@@ -2859,26 +2860,21 @@ function findGrassPatch(mapIdx){
   return patches[Math.floor(Math.random()*patches.length)];
 }
 
-// Find which map has cards a rival needs
+// Find which dungeon floor map has cards a rival needs
 function findCardMap(rIdx){
   const r=pl[rIdx];
-  const has=new Set();
-  r.cd.forEach(c=>{if(c>0)has.add(c);});
-  // AREA_CARDS: Port=[1,2](Aegis,Umbra), Forest=[3,4,5](Ignis,Tempest,Nihil), Ruins=[5,2,4](Nihil,Umbra,Tempest)
-  const needs=[];
-  for(let i=1;i<=5;i++){if(!has.has(i))needs.push(i);}
-  if(needs.length===0)return Math.floor(Math.random()*3);
-  // Find map that provides needed cards
-  const mapCards=[[1,2],[3,4],[5,1]];
+  const has=new Set(r.cd.filter(c=>c>0));
+  // Score each floor map (1-5) by how many cards it offers that rival doesn't have
   const scored=[];
-  for(let m=0;m<3;m++){
-    let score=0;
-    mapCards[m].forEach(c=>{if(needs.includes(c))score++;});
+  for(let m=1;m<=MAX_DUNGEON_FLOORS;m++){
+    const pool=AREA_CARDS[m]||[];
+    const score=pool.filter(c=>!has.has(c)).length;
     scored.push({map:m,score});
   }
   scored.sort((a,b)=>b.score-a.score);
-  if(scored[0].score>0)return scored[0].map;
-  return Math.floor(Math.random()*3);
+  // Go to the floor with most needed cards; fallback to random dungeon floor
+  if(scored[0]&&scored[0].score>0)return scored[0].map;
+  return 1+Math.floor(Math.random()*MAX_DUNGEON_FLOORS);
 }
 
 // Find exit from current map to target map
@@ -5106,30 +5102,18 @@ function tryWildEncounter(){
     return;
   }
 
-  // Determine card based on map
+  // Determine card based on current dungeon floor pool
+  const floorPool=AREA_CARDS[currentMap]||AREA_CARDS[1];
   let cardIdx;
-  // Streak 5+: guaranteed unique card on next Draw
+  // Streak 5+: pick an unowned card from the floor pool (guaranteed new unique if possible)
   if(streakCount>=5){
     const owned=hasUniqueCards(0);
-    const needed=[];
-    const ac=AREA_CARDS[currentMap]||[1,2];
-    ac.forEach(cid=>{if(!owned.has(cid))needed.push(cid-1);});
-    if(needed.length>0){cardIdx=needed[Math.floor(Math.random()*needed.length)];}
-    else{cardIdx=ac[Math.floor(Math.random()*ac.length)]-1;}
-  }else if(currentMap===0){// Corsair Bay
-    const roll=Math.random();
-    if(roll<0.5)cardIdx=0;     // AEGIS
-    else cardIdx=1;             // UMBRA
-  }else if(currentMap===1){// Forest
-    const roll=Math.random();
-    if(roll<0.40)cardIdx=2;     // IGNIS (40%)
-    else if(roll<0.80)cardIdx=3; // TEMPEST (40%)
-    else cardIdx=4;              // NIHIL (20% cross-area)
-  }else{// Ruins
-    const roll=Math.random();
-    if(roll<0.40)cardIdx=4;     // NIHIL (40%)
-    else if(roll<0.70)cardIdx=1; // UMBRA (30%)
-    else cardIdx=3;              // TEMPEST (30% cross-area)
+    const needed=floorPool.filter(cid=>!owned.has(cid));
+    if(needed.length>0){cardIdx=needed[Math.floor(Math.random()*needed.length)]-1;}
+    else{cardIdx=floorPool[Math.floor(Math.random()*floorPool.length)]-1;}
+  }else{
+    // Normal: pick random card from floor pool (0-indexed for wildEncounterCard)
+    cardIdx=floorPool[Math.floor(Math.random()*floorPool.length)]-1;
   }
 
   wildEncounterActive=true;
@@ -5437,12 +5421,14 @@ function triggerRandomEvent(){
   sfxEventAlert();
 
   if(ev.action==='card'){
-    // Give a random card if slot available
-    const cardIdx=Math.floor(Math.random()*5);
+    // Give a random card from current floor pool
+    const pool=AREA_CARDS[currentMap]||AREA_CARDS[1];
+    const cardId=pool[Math.floor(Math.random()*pool.length)]; // 1-indexed
+    const cardIdx=cardId-1; // 0-indexed for CD[]
     let slot=-1;
     for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===0){slot=i;break;}}
     if(slot>=0){
-      pl[0].cd[slot]=cardIdx+1;
+      pl[0].cd[slot]=cardId;
       cardTimers[slot]=Date.now();
       syncCardCount(0);
       startCardAcquisition(cardIdx);
@@ -5450,7 +5436,7 @@ function triggerRandomEvent(){
       checkWinAndTransition(2000);
     }else{
       // Hand full - offer discard
-      discardActive=true;discardSelIdx=0;discardPendingCard=cardIdx+1;discardSource='wild';
+      discardActive=true;discardSelIdx=0;discardPendingCard=cardId;discardSource='wild';
       randomEventText='Found a '+CD[cardIdx].n+'! Discard one to keep it.';
     }
   }else if(ev.action==='wind'){
@@ -6868,10 +6854,10 @@ function drawPlayerInfoBox(){
   drawCardBar(bx_+60,by_+28,148,pl[0].cd,Math.min(HAND_SIZE,10));
   txShadow(hasUniqueCards(0).size+'/60',bx_+214,by_+36,9,'#383830','rgba(0,0,0,.15)');
   // Win indicator (60/60)
-  if(hasUniqueCards(0).size>=10){
+  if(hasUniqueCards(0).size>=60){
     const flash_=Math.sin(fr*0.15)*0.3+0.7;
     g.globalAlpha=flash_;
-    txShadow('5/5\u2192WIN!',bx_+180,by_+52,10,'#c04040','rgba(0,0,0,.3)');
+    txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,'#c04040','rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
   // Spell counts
@@ -7274,6 +7260,15 @@ const DUNGEON_FLOOR_CARDS=[
   [8,9,10,17,18,19,29,30,31,43,44,45,53,54,55], // Floor 3: Rare
   [11,20,21,22,32,33,34,46,47,56,57,58],     // Floor 4: Epic
   [1,2,12,23,24,35,36,37,38,48,59,60],       // Floor 5: Legendary (including originals)
+];
+// AREA_CARDS: 1-indexed card pools per map (same as DUNGEON_FLOOR_CARDS, used by encounters/rocks)
+const AREA_CARDS=[
+  [4,5,13,14,25,26,39,40,49,50],    // map 0 Town (fallback only — encounters blocked in town)
+  [4,5,13,14,25,26,39,40,49,50],    // map 1 Floor 1: Common/Uncommon
+  [6,7,15,16,27,28,41,42,51,52],    // map 2 Floor 2: Uncommon
+  [8,9,10,17,18,19,29,30,31,43,44,45,53,54,55], // map 3 Floor 3: Rare
+  [11,20,21,22,32,33,34,46,47,56,57,58], // map 4 Floor 4: Epic
+  [1,2,12,23,24,35,36,37,38,48,59,60],  // map 5 Floor 5: Legendary
 ];
 function pickAreaCard(){return pickAreaCardForMap(currentMap);}
 function pickAreaCardForMap(mapIdx){
@@ -8072,7 +8067,7 @@ function drawMarketplace(){
       const cards=vaultArr.filter(id=>CD[id-1]&&CD[id-1].t===typ);
       if(cards.length===0)return;
       tx(typeLabel[ti]+' ('+cards.length+'):',mx+14,yi+10,7,typeColor[ti]);yi+=16;
-      cards.slice(0,8).forEach((id,ci)=>{
+      cards.slice(0,12).forEach((id,ci)=>{
         const cr=CD[id-1];
         const cx2=mx+14+ci*72;
         if(cx2+68>mx+mw-12){return;}
@@ -8081,7 +8076,7 @@ function drawMarketplace(){
         tx(cr.n,cx2+6,yi+12,5,cr.h||'#f8f0e0');
         tx('★'.repeat(cr.r),cx2+6,yi+24,4,RARITY_COLOR[cr.r]);
       });
-      if(cards.length>8)tx('+'+(cards.length-8)+' more',mx+14+8*72,yi+12,5,'#888898');
+      if(cards.length>12)tx('+'+(cards.length-12)+' more',mx+14+12*72,yi+12,5,'#888898');
       yi+=30;
     });
   }else if(marketTab===1){
@@ -9142,12 +9137,14 @@ function checkObjectInteraction(){
     }
     shakenTrees.add(key);
     if(Math.random()<0.1){
-      // 10% chance: card falls out
-      const cardIdx=Math.floor(Math.random()*5);
+      // 10% chance: card falls out (from floor pool)
+      const treePool=AREA_CARDS[currentMap]||AREA_CARDS[1];
+      const treeCardId=treePool[Math.floor(Math.random()*treePool.length)];
+      const cardIdx=treeCardId-1;
       let slot=-1;
       for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===0){slot=i;break;}}
       if(slot>=0){
-        pl[0].cd[slot]=cardIdx+1;
+        pl[0].cd[slot]=treeCardId;
         cardTimers[slot]=Date.now();
         syncCardCount(0);
         startCardAcquisition(cardIdx);
@@ -9155,7 +9152,7 @@ function checkObjectInteraction(){
         lg.push('Shook tree: Found '+CD[cardIdx].n+'!');
         checkWinAndTransition(2000);
       }else{
-        discardActive=true;discardSelIdx=0;discardPendingCard=cardIdx+1;discardSource='wild';
+        discardActive=true;discardSelIdx=0;discardPendingCard=treeCardId;discardSource='wild';
         objectInteractMsg='Found '+CD[cardIdx].n+'! Discard to keep.';
       }
     }else{
@@ -9176,7 +9173,7 @@ function checkObjectInteraction(){
     pushedRocks.add(key);
     sfxSelect();
     if(Math.random()<0.2){
-      const areaCards=AREA_CARDS[currentMap]||[1,2];
+      const areaCards=AREA_CARDS[currentMap]||AREA_CARDS[1];
       const cardId=areaCards[Math.floor(Math.random()*areaCards.length)];
       let slot=-1;
       for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===0){slot=i;break;}}
@@ -9318,12 +9315,21 @@ function drawFountainDialog(){
 // ═══════════════════════════════════════
 function getMapUsableCards(){
   // Returns [{slot, cardId, name}] for cards that can be used on map
+  // Card 2=UMBRA: stealth, Card 3=IGNIS: burn, Card 28=PHASE: walk through walls,
+  // Card 29=BLINK: teleport, Card 30=SHADOW: longer stealth
+  const MAP_CARD_IDS=new Set([2,3,28,29,30]);
   const result=[];
   for(let i=0;i<HAND_SIZE;i++){
     const cd=pl[0].cd[i];
-    if(cd===3)result.push({slot:i,cardId:3,name:'IGNIS',desc:'Burn tree/bush ahead'});
-    else if(cd===2)result.push({slot:i,cardId:2,name:'UMBRA',desc:'Invisible 30 steps'});
-    else if(cd===5)result.push({slot:i,cardId:5,name:'NIHIL',desc:'Phase through wall'});
+    if(!MAP_CARD_IDS.has(cd))continue;
+    const cr=CD[cd-1];
+    let desc='';
+    if(cd===2)desc='Invisible 30 steps';
+    else if(cd===3)desc='Burn tree/bush ahead';
+    else if(cd===28)desc='Phase through wall in direction';
+    else if(cd===29)desc='Teleport 5 tiles in direction';
+    else if(cd===30)desc='Invisible 60 steps';
+    result.push({slot:i,cardId:cd,name:cr.n,desc});
   }
   return result;
 }
@@ -9331,7 +9337,7 @@ function getMapUsableCards(){
 function openMapCardUse(){
   const usable=getMapUsableCards();
   if(usable.length===0){
-    twSet('No usable cards! Ignis/Umbra/Nihil work on the map.');
+    twSet('No usable cards! UMBRA/IGNIS/PHASE/BLINK/SHADOW can be used on the map.');
     return;
   }
   mapCardUseActive=true;
@@ -9341,25 +9347,40 @@ function openMapCardUse(){
 
 function executeMapCard(cardId,slot){
   if(cardId===3){
-    // Flame: burn tree/bush in direction
+    // IGNIS: burn tree/bush in direction
     mapCardDirSelect=true;
     mapCardDirIdx=pl[0].dir;
     mapCardPendingType=3;
     return;
   }else if(cardId===2){
-    // Shadow: invisible 30 steps
-    pl[0].cd[slot]=0;
+    // UMBRA: invisible 30 steps
+    pl[0].cd[slot]=0;cardTimers[slot]=0;
     syncCardCount(0);
     shadowStepsLeft=30;
     mapCardUseActive=false;
     sfxShadow();
-    twSet('You became invisible for 30 steps!');
-    lg.push('Used Umbra on map: 30 invisible steps!');
-  }else if(cardId===5){
-    // Void: phase through wall in direction
+    twSet('UMBRA: You became invisible for 30 steps!');
+    lg.push('Used UMBRA on map: 30 invisible steps!');
+  }else if(cardId===30){
+    // SHADOW: invisible 60 steps (longer stealth)
+    pl[0].cd[slot]=0;cardTimers[slot]=0;
+    syncCardCount(0);
+    shadowStepsLeft=60;
+    mapCardUseActive=false;
+    sfxShadow();
+    twSet('SHADOW: You became invisible for 60 steps!');
+    lg.push('Used SHADOW on map: 60 invisible steps!');
+  }else if(cardId===28){
+    // PHASE: walk through wall in direction
     mapCardDirSelect=true;
     mapCardDirIdx=pl[0].dir;
-    mapCardPendingType=5;
+    mapCardPendingType=28;
+    return;
+  }else if(cardId===29){
+    // BLINK: teleport 5 tiles in direction
+    mapCardDirSelect=true;
+    mapCardDirIdx=pl[0].dir;
+    mapCardPendingType=29;
     return;
   }
 }
@@ -9395,25 +9416,53 @@ function executeDirCard(dir){
         twSet('Nothing to burn there.');
       }
     }
-  }else if(mapCardPendingType===5){
-    // Void: phase through wall (teleport 2 tiles)
+  }else if(mapCardPendingType===28){
+    // PHASE: walk through 1 wall tile (2 tiles in direction)
     const fx=p.x+dx*2,fy=p.y+dy*2;
     if(fx>=0&&fx<MW&&fy>=0&&fy<MH&&WALKABLE.has(m[fy]?.[fx])){
       let slot=-1;
-      for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===5){slot=i;break;}}
+      for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===28){slot=i;break;}}
       if(slot>=0){
-        pl[0].cd[slot]=0;
+        pl[0].cd[slot]=0;cardTimers[slot]=0;
         syncCardCount(0);
-        p.x=fx;p.y=fy;
-        fogRevealRadius(currentMap,fx,fy,2);fogSave();
+        p.x=fx;p.y=fy;p.visualX=fx*TW;p.visualY=fy*TH;
+        fogRevealRadius(currentMap,fx,fy,3);fogSave();
         edgeCacheDirty=true;
         sfxPhase();
         flash();
-        twSet('You phase through the obstacle!');
-        lg.push('Used Nihil: phased to ('+fx+','+fy+')');
+        twSet('PHASE: You walked through the wall!');
+        lg.push('Used PHASE: phased to ('+fx+','+fy+')');
       }
     }else{
-      twSet('Cannot phase there - no walkable tile beyond.');
+      twSet('Cannot phase there — no walkable tile beyond.');
+    }
+  }else if(mapCardPendingType===29){
+    // BLINK: teleport up to 5 tiles in direction
+    const origX=p.x,origY=p.y;
+    let bestX=p.x,bestY=p.y;
+    for(let step=1;step<=5;step++){
+      const nx=p.x+dx*step,ny=p.y+dy*step;
+      if(nx<0||nx>=MW||ny<0||ny>=MH)break;
+      if(WALKABLE.has(m[ny]?.[nx])){bestX=nx;bestY=ny;}
+      else break;
+    }
+    if(bestX!==origX||bestY!==origY){
+      let slot=-1;
+      for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]===29){slot=i;break;}}
+      if(slot>=0){
+        pl[0].cd[slot]=0;cardTimers[slot]=0;
+        syncCardCount(0);
+        const dist=Math.abs(bestX-origX)+Math.abs(bestY-origY);
+        p.x=bestX;p.y=bestY;p.visualX=bestX*TW;p.visualY=bestY*TH;
+        fogRevealRadius(currentMap,bestX,bestY,3);fogSave();
+        edgeCacheDirty=true;
+        sfxPhase();
+        flash();
+        twSet('BLINK: Teleported '+dist+' tiles!');
+        lg.push('Used BLINK: teleported to ('+bestX+','+bestY+')');
+      }
+    }else{
+      twSet('BLINK: No open tile to teleport to!');
     }
   }
   mapCardDirSelect=false;
@@ -9972,7 +10021,7 @@ function draw(){
       g.globalAlpha=0.4;
       bx(px-4,py-4,40,56,'rgba(80,40,160,.3)');
       g.globalAlpha=1;
-      tx('UMBRA:'+shadowStepsLeft,px-16,py-24,5,'#9060c0');
+      tx('STEALTH:'+shadowStepsLeft,px-20,py-24,5,'#9060c0');
     }
   }
   // Multiplayer connection status overlay
@@ -10118,12 +10167,13 @@ document.addEventListener('keydown',e=>{
             fadeIn();twSet('Multiplayer game started!');
           }else{
             resetGameState(true);
-            // Give random starter card for multiplayer (no tutorial)
-            const mpCard=1+Math.floor(Math.random()*5);
-            pl[0].cd[0]=mpCard;pl[0].cc=1;cardTimers[0]=Date.now();syncCardCount(0);
+            // Give starter cards for multiplayer (no tutorial) — one attack, one defense, one flee
+            const mpStarters=[4,13,25]; // BARRAGE, GUARD, DASH
+            mpStarters.forEach((cid,si)=>{pl[0].cd[si]=cid;pl[0].vault.add(cid);});
+            pl[0].cc=3;syncCardCount(0);
             sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
             fogRevealAll(0);fogSave();
-            fadeIn();twSet('Multiplayer started! You received '+CD[mpCard-1].n+'!');
+            fadeIn();twSet('Multiplayer started! Starter cards: '+mpStarters.map(id=>CD[id-1].n).join(', ')+'!');
           }
         });
       }
@@ -10907,7 +10957,7 @@ function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle(
 // SAVE / LOAD SYSTEM
 // ═══════════════════════════════════════
 const SAVE_KEY='oxark_save';
-const SAVE_VERSION=31; // bump when save format changes — old saves auto-wiped
+const SAVE_VERSION=32; // bump when save format changes — old saves auto-wiped
 // Auto-wipe incompatible old saves on load (also wipe legacy saves with no version key)
 try{const sv=localStorage.getItem('oxark_save_ver');if(!sv||parseInt(sv)<SAVE_VERSION){localStorage.removeItem(SAVE_KEY);localStorage.removeItem('oxark_fog');console.log('[0xARK] Old save wiped (v'+(sv||'legacy')+'→v'+SAVE_VERSION+')');}localStorage.setItem('oxark_save_ver',String(SAVE_VERSION));}catch(e){}
 
