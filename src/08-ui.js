@@ -534,17 +534,38 @@ function dCrd(){
   tx('CARD COLLECTION',W/2-100,32,10);
   // Progress bar
   const pct=collected/60;
-  bx(W-220,12,160,14,'#1a1a30');
-  bx(W-220,12,Math.round(160*pct),14,collected>=60?'#f0c830':'#5080d0');
+  const barX_=W-220,barY_=12,barW_=160,barH_=14;
+  bx(barX_,barY_,barW_,barH_,'#1a1a30');
+  bx(barX_,barY_,Math.round(barW_*pct),barH_,collected>=60?'#f0c830':'#5080d0');
   tx(collected+'/60',W-52,28,8,collected>=60?'#f0c830':'#c0d0f0');
-  // Type tabs (5 types)
+  // v115: Milestone tick marks on progress bar
+  CARD_MILESTONES.forEach(m=>{
+    const tx_=barX_+Math.round(barW_*m/60);
+    const reached=collected>=m;
+    const tickCol=reached?'#f0c830':'#303048';
+    bx(tx_-1,barY_-3,2,barH_+6,tickCol);
+    if(reached){
+      g.globalAlpha=0.5+Math.sin(fr*0.08+m)*0.3;
+      bx(tx_-2,barY_-4,4,2,'#f0c830');
+      g.globalAlpha=1;
+    }
+  });
+  // Type tabs (5 types) with completion count
   const typeNames=['ATK','DEF','FLY','MAG','REC'];
   const typeColors=['#e05840','#48b8e8','#38c080','#d8b028','#e0c040'];
   for(let ti=0;ti<5;ti++){
     const tx2=10+ti*58,bw=54;
     const isActive=crdPage===ti;
+    // Count owned cards in this type (12 per type)
+    const typeOwned=Array.from({length:12},(_,j)=>ti*12+j+1).filter(id=>vault.has(id)).length;
+    const typeComplete=typeOwned>=12;
     bx(tx2,46,bw,22,isActive?typeColors[ti]:'#1a1a30');
     tx(typeNames[ti],tx2+12,62,8,isActive?'#fff':typeColors[ti]);
+    // v115: Completion count badge in top-right of each tab
+    const countStr=typeOwned+'/12';
+    tx(countStr,tx2+bw-countStr.length*5-2,54,5,typeComplete?'#f0c830':isActive?'rgba(255,255,255,.7)':'rgba(128,128,160,.6)');
+    // Gold star if complete
+    if(typeComplete){const s=Math.sin(fr*0.08+ti)*0.2+0.8;g.globalAlpha=s;tx('\u2605',tx2+4,54,5,'#f0c830');g.globalAlpha=1;}
   }
   // Card grid: 4×3 = 12 cards per page
   const typeStart=crdPage*12;
