@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v72</title>
+<title>0xARK v73</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -1959,6 +1959,63 @@ function drawRunSummary(){
 }
 
 // ═══════════════════════════════════════
+// v73: RIVAL INTEL DISPATCH TICKER
+// ═══════════════════════════════════════
+function updateRivalNews(){
+  if(rivalNewsCurrent){
+    rivalNewsFrame++;
+    if(rivalNewsFrame>=RIVAL_NEWS_DURATION){
+      rivalNewsCurrent=null;
+      rivalNewsFrame=0;
+    }
+  }else if(rivalNewsQueue.length>0){
+    rivalNewsCurrent=rivalNewsQueue.shift();
+    rivalNewsFrame=0;
+  }
+}
+function drawRivalNews(){
+  if(!rivalNewsCurrent||!inDungeon)return;
+  const t=rivalNewsFrame/RIVAL_NEWS_DURATION;
+  // slide in from left in first 8 frames, hold, slide out at end
+  const slideIn=Math.min(1,rivalNewsFrame/8);
+  const slideOut=t>0.85?Math.max(0,(1-t)/0.15):1;
+  const alpha=slideIn*slideOut;
+  if(alpha<0.02)return;
+
+  const rivalCols=[['#d860a0','#401028'],['#d8b028','#402808']]; // VEGA pink, MIRA gold
+  const item=rivalNewsCurrent;
+  const rCols=item.rivalIdx>=0&&item.rivalIdx<2?rivalCols[item.rivalIdx]:['#80c0d0','#102028'];
+  const [nameCol,bgTint]=rCols;
+  // Rarity tint for the card name color
+  const rarCol=['#888898','#888898','#60b060','#6090d8','#c060c0','#f0c830'][item.rarity]||'#a0a0b0';
+
+  const msgW=Math.min(300,item.text.length*6+32);
+  const msgH=28;
+  const mx=8;
+  const my=H-HUD_HEIGHT-msgH-8;
+  const slideX=(1-slideIn)*-(msgW+mx);
+
+  g.globalAlpha=alpha;
+  // Background
+  bx(mx+slideX,my,msgW,msgH,bgTint);
+  bx(mx+slideX,my,3,msgH,nameCol); // color accent bar
+  bx(mx+slideX,my,msgW,1,'rgba(255,255,255,0.12)');
+  bx(mx+slideX,my+msgH-1,msgW,1,'rgba(0,0,0,0.5)');
+
+  // INTEL label
+  g.font='bold 7px monospace';g.fillStyle=nameCol;
+  g.fillText('INTEL',mx+slideX+8,my+9);
+
+  // Main message
+  g.font='7px monospace';g.fillStyle='#e8e0d0';
+  const textX=mx+slideX+8;
+  const maxChars=Math.floor((msgW-20)/6);
+  const display=item.text.length>maxChars?item.text.substring(0,maxChars-1)+'…':item.text;
+  g.fillText(display,textX,my+20);
+  g.globalAlpha=1;
+}
+
+// ═══════════════════════════════════════
 // FPS COUNTER (toggle with F key)
 // ═══════════════════════════════════════
 let fpsCounterVisible=false, fpsFrames=0, fpsLast=performance.now(), fpsDisplay=60;
@@ -2974,6 +3031,11 @@ let proximityDangerLevel=0; // 0=none, 1=same map, 2=within 8, 3=within 5, 4=wit
 let rivalDangerAlertShown=false;
 let rivalWinWarning=0; // 0=safe, 1=rival has 4+ cards (alert), 2=rival has 5 (full hand — danger)
 let rivalWinWarningShown=false;
+// v73: Rival intel dispatch ticker
+const rivalNewsQueue=[];     // pending news items {text, rivalIdx, rarity}
+let rivalNewsCurrent=null;   // currently displayed item
+let rivalNewsFrame=0;        // how long current item has been shown
+const RIVAL_NEWS_DURATION=240; // ~4 seconds at 60fps
 
 // Proximity taunt state — rival says something when close
 let proximityTauntTimer=0;   // cooldown before next taunt (frames)
@@ -3305,6 +3367,12 @@ function updateRivalAI(aiIdx){
               flash();beep(660,.04,.06);
               lg.push('You sense movement... '+r.n+' entered the area!');
             }
+            // v73: News ticker for floor transitions
+            if(inDungeon&&ex.targetMap>0){
+              const flNums=['','I','II','III','IV','V'];
+              const dir=ex.targetMap>oldMap?'descended to':'retreated to';
+              rivalNewsQueue.push({text:r.n+' '+dir+' FLOOR '+(flNums[ex.targetMap]||ex.targetMap),rivalIdx:aiIdx,rarity:0});
+            }
             pickRivalGoal(aiIdx);
             return;
           }
@@ -3369,8 +3437,14 @@ function updateRivalActivity(){
     // Log this as a world event (with color hint in text)
     const floorName='Floor '+rMap;
     lg.push('['+rName+'] found '+cr.n+' on '+floorName+'! ('+RARITY_LABEL[cr.r]+')');
-    // Show HUD hint for rare+ rival finds
-    if(cr.r>=3&&(!tutorialMsg||tutorialMsgTimer<40)){
+    // v73: Push to rival intel ticker for all finds
+    const floorNums=['','I','II','III','IV','V'];
+    rivalNewsQueue.push({
+      text:rName+' seized '+cr.n+' on FLOOR '+(floorNums[rMap]||rMap),
+      rivalIdx:ri,rarity:cr.r
+    });
+    // Show HUD hint for rare+ rival finds (keep existing fallback)
+    if(cr.r>=4&&(!tutorialMsg||tutorialMsgTimer<40)){
       const rarLabel=RARITY_LABEL[cr.r]||'';
       tutorialMsg=rName+' found '+cr.n+'! ('+rarLabel+')';tutorialMsgTimer=140;
     }
@@ -3379,6 +3453,8 @@ function updateRivalActivity(){
     if(newCount>=4){
       lg.push('[WARNING] '+rName+' is stacking cards. Intercept them!');
       if(!rivalWinWarningShown){sfxDangerAlert();}
+      // v73: Danger alert in ticker
+      rivalNewsQueue.push({text:'⚠ '+rName+' holds '+newCount+' cards — INTERCEPT!',rivalIdx:ri,rarity:5});
     }
     // Next background collection: 45-75 seconds (2700-4500 frames) — varies by personality
     const baseDelay=ri===0?2700:3600; // VEGA more aggressive/frequent
@@ -4049,6 +4125,10 @@ function resetNewFeatureState(){
   for(let i=0;i<FOG_MAP_COUNT;i++){areaDanger[i]=0;areaDangerStayTimer[i]=0;}
   rivalBgTimer[0]=1800;rivalBgTimer[1]=2400; // stagger initial timers (30s/40s)
   qteActive=false;qteKeyPressed=false;
+  // v73: clear rival news ticker
+  rivalNewsQueue.length=0;rivalNewsCurrent=null;rivalNewsFrame=0;
+  // v72: clear run summary
+  dungeonRunSnapshot=null;runSummaryActive=false;runSummaryData=null;
 }
 
 function resetGameState(startCards){
@@ -7290,7 +7370,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v72',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v73',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -10967,7 +11047,7 @@ function update(){
   if(lg.length>200)lg.splice(0,lg.length-200);
   if(burnedTiles.length>500)burnedTiles.splice(0,burnedTiles.length-500);
   updateVisualPositions();updateAmbient();
-  updateMapLoadScreen();updateRunSummary();updateFPS();
+  updateMapLoadScreen();updateRunSummary();updateRivalNews();updateFPS();
   // Save indicator countdown
   if(saveIndicatorTimer>0)saveIndicatorTimer--;
   // Auto-save every 30 seconds when on map
@@ -11298,6 +11378,8 @@ function draw(){
   drawMapLoadScreen();
   // v72: Dungeon run summary (after fade, on top of everything except border/fps)
   drawRunSummary();
+  // v73: Rival intel dispatch ticker
+  drawRivalNews();
   // FRLG-style decorative border around viewport
   g.strokeStyle=FRLG.borderOuter;g.lineWidth=2;g.strokeRect(1,1,W-2,H-2);
   g.strokeStyle=FRLG.borderInner;g.lineWidth=1;g.strokeRect(3,3,W-6,H-6);
