@@ -1069,7 +1069,7 @@ async function connectPhantom(){
     const resp=await window.solana.connect();
     walletConnected=true;
     walletPublicKey=resp.publicKey.toString();
-    console.log('Connected:',walletPublicKey);
+    lg.push('[WALLET] Connected: '+walletPublicKey.slice(0,8)+'..');
     // Verify program exists on devnet
     verifyProgram();
     return walletPublicKey;
@@ -1340,12 +1340,8 @@ async function onchainReveal(gameId,actionType,target,salt){
     const txSig=generateFakeTxSig();
     onchainLastTxSig=txSig;
 
-    console.log('[ON-CHAIN] Reveal TX:',{
-      gameId,actionType,target,
-      salt:Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16)+'..',
-      wallet:walletPublicKey,
-      txSig:'(simulated) '+txSig
-    });
+    const saltHex2=Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16)+'..';
+    lg.push('[ON-CHAIN] Reveal TX (sim): action='+actionType+' salt='+saltHex2);
 
     // Clear stored salt after reveal
     localStorage.removeItem('oxark_onchain_salt');
@@ -3693,11 +3689,11 @@ function resetGameState(startCards){
   sp.s=2;sp.b=3;sp.c=2;rd=1;currentMap=0;inDungeon=false;currentFloor=0;stepCounter=0;randomEventTimer=0;encounterCooldown=600;
   initSeason();
   rivalMaps=[1,1]; // GDD v1.0: rivals start in dungeon floor 1
-  // Reset rival AI — explore dungeon floor 1
-  rivalAI[0].goalX=15;rivalAI[0].goalY=14;rivalAI[0].goalMap=1;rivalAI[0].state='exploring';
+  // Reset rival AI — explore toward far end of floor 1 (away from entrance at x=3)
+  rivalAI[0].goalX=32;rivalAI[0].goalY=12;rivalAI[0].goalMap=1;rivalAI[0].state='exploring';
   rivalAI[0].moveTimer=0;rivalAI[0].moveInterval=10;rivalAI[0].lastKnownPlayerMap=-1;
   rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;rivalAI[0].stateTimer=0;
-  rivalAI[1].goalX=25;rivalAI[1].goalY=14;rivalAI[1].goalMap=1;rivalAI[1].state='exploring';
+  rivalAI[1].goalX=32;rivalAI[1].goalY=18;rivalAI[1].goalMap=1;rivalAI[1].state='exploring';
   rivalAI[1].moveTimer=0;rivalAI[1].moveInterval=14;rivalAI[1].lastKnownPlayerMap=-1;
   rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;rivalAI[1].stateTimer=0;
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
@@ -4893,13 +4889,15 @@ function doMapTransition(exit){
     if(inDungeon){fogRevealRadius(currentMap,pl[0].x,pl[0].y,4);fogSave();}
     else{fogRevealAll(currentMap);fogSave();}
     // When entering floor 1 from town, spread rivals to safe starting positions far from entrance
-    // This prevents immediate encounters caused by AI roaming during town/title time
+    // This prevents immediate encounters caused by AI roaming during town/title time.
+    // Rivals' initial goals point toward the FAR end of the dungeon (near floor 2 exit at x=36)
+    // so they walk AWAY from the player's entry point (x=3) for the full cooldown window.
     if(exit.fromMap===0&&exit.targetMap===1){
       pl[1].x=8;pl[1].y=10;pl[1].visualX=8*TW;pl[1].visualY=10*TH;
       pl[2].x=28;pl[2].y=18;pl[2].visualX=28*TW;pl[2].visualY=18*TH;
       rivalMaps=[1,1];
-      rivalAI[0].goalX=15;rivalAI[0].goalY=14;rivalAI[0].state='exploring';
-      rivalAI[1].goalX=25;rivalAI[1].goalY=14;rivalAI[1].state='exploring';
+      rivalAI[0].goalX=32;rivalAI[0].goalY=12;rivalAI[0].state='exploring';
+      rivalAI[1].goalX=32;rivalAI[1].goalY=18;rivalAI[1].state='exploring';
     }
     // Show map loading screen
     if(inDungeon){
@@ -5701,7 +5699,7 @@ function dTitle(){
 
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
-  txShadow('v34',W/2-14,598,9,'#b0b0ff','rgba(0,0,0,0.6)');
+  txShadow('v35',W/2-14,598,9,'#b0b0ff','rgba(0,0,0,0.6)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
