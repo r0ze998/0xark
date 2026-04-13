@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v66</title>
+<title>0xARK v67</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -6216,7 +6216,19 @@ function drawFogOverlay(startTX,startTY,endTX,endTY){
   }
 }
 
+// Floor atmosphere config: [fogCol, ambientCol, ambientCount, ambientSpeedY, ambientSize]
+const FLOOR_ATMOS=[
+  ['#404060','rgba(255,255,255,.06)',0,-0.3,2], // town: no dungeon atmos
+  ['#303050','rgba(200,200,240,.08)',20,-0.4,1], // F1: subtle dust
+  ['#204030','rgba(100,220,80,.1)',28,-0.2,2],   // F2: spores (green drift)
+  ['#504020','rgba(240,200,60,.09)',22,-0.5,2],  // F3: golden motes
+  ['#500820','rgba(220,80,30,.12)',32,0.3,2],    // F4: embers (drift UP wrong — embers go UP)
+  ['#601008','rgba(255,120,20,.15)',40,-0.8,3],  // F5: lava sparks
+];
+
 function drawFogParticles(){
+  const atmos=FLOOR_ATMOS[inDungeon?currentFloor:0]||FLOOR_ATMOS[0];
+  const [fogCol,ambCol,ambCount,ambVY,ambSz]=atmos;
   fogParticles.forEach((p,i)=>{
     p.x+=p.vx;
     p.y+=Math.sin(fr*0.015+p.phase)*0.1+p.vy;
@@ -6225,17 +6237,38 @@ function drawFogParticles(){
     if(p.y>MH*TH)p.y=0;
     const sx=p.x-camX,sy=p.y-camY;
     if(sx>0&&sx<W&&sy>0&&sy<H-HUD_HEIGHT){
-      // Only show particles over hidden tiles
+      // Fog particles over hidden tiles
       const tileX=Math.floor(p.x/TW),tileY=Math.floor(p.y/TH);
       if(tileX>=0&&tileX<MW&&tileY>=0&&tileY<MH&&!fogRevealed[currentMap][tileY]?.[tileX]){
         const a=0.15+Math.sin(fr*0.02+i*0.7)*0.1;
         g.globalAlpha=Math.max(0,a);
-        g.fillStyle='#404060';
+        g.fillStyle=fogCol;
         g.fillRect(sx,sy,1,1);
         g.globalAlpha=1;
       }
     }
   });
+  // Floor-specific ambient particles over revealed tiles (dungeon only)
+  if(!inDungeon||ambCount===0)return;
+  const seed=fr*0.02;
+  for(let i=0;i<ambCount;i++){
+    // Deterministic pseudo-random position based on frame+index
+    const px=((i*1237+fr*3)%1000/1000)*MW*TW;
+    const py=((i*4321+fr*2)%1000/1000)*MH*TH;
+    // Drift upward/downward over time
+    const dpy=py+Math.sin(seed+i*1.3)*20+fr*ambVY*(1+i%3)*0.3;
+    const dpyWrapped=((dpy%MH*TH)+MH*TH)%(MH*TH);
+    const sx=px-camX,sy=dpyWrapped-camY;
+    if(sx<-4||sx>W+4||sy<-4||sy>H+4)continue;
+    const tileX=Math.floor(px/TW),tileY=Math.floor(dpyWrapped/TH);
+    if(tileX<0||tileX>=MW||tileY<0||tileY>=MH)continue;
+    if(!fogRevealed[currentMap][tileY]?.[tileX])continue;
+    const pulse=0.5+0.5*Math.sin(seed*1.5+i*2.1);
+    g.globalAlpha=pulse*0.7;
+    g.fillStyle=ambCol;
+    g.fillRect(sx,sy,ambSz,ambSz);
+    g.globalAlpha=1;
+  }
 }
 
 function drawRivalAlertAnim(p,px,py){
@@ -6631,6 +6664,22 @@ function dMap(){
   // Fog particles only every other frame
   if(fr%2===0) drawFogParticles();
 
+  // Floor watermark label (dungeon only, large semi-transparent)
+  if(inDungeon&&currentFloor>0){
+    const FLOOR_NAMES=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','FLOOR V'];
+    const floorLabel=FLOOR_NAMES[currentFloor]||('FLOOR '+currentFloor);
+    const wmAlpha=0.05+Math.sin(fr*0.008)*0.02;
+    g.save();
+    g.globalAlpha=wmAlpha;
+    g.font='bold 96px VT323, monospace';
+    g.textAlign='center';
+    g.fillStyle='#ffffff';
+    g.fillText(floorLabel,W/2,(H-HUD_HEIGHT)/2+36);
+    g.globalAlpha=1;
+    g.textAlign='left';
+    g.restore();
+  }
+
   drawParticles(camX,camY);
   drawBirds();
   drawPirateDecorations();
@@ -6993,7 +7042,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v66',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v67',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
