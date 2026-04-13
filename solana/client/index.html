@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v108</title>
+<title>0xARK v109</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -6911,7 +6911,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v108',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v109',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -8109,7 +8109,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v108',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v109',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8342,7 +8342,7 @@ function drawBattleBG(){
   const playerPlatY=H-70; // player platform top
   const enemyPlatY=horizonY+30; // enemy platform top
 
-  if(currentMap===0){
+  if(currentMap===0&&!inDungeon){
     // PORT: Sky layer (blue gradient)
     for(let y=0;y<horizonY;y++){
       const t=y/horizonY;
@@ -8373,88 +8373,105 @@ function drawBattleBG(){
     // Enemy raised platform (distant dock)
     bx(W-380,enemyPlatY,300,8,'#9B8365');bx(W-380,enemyPlatY,300,2,'#B09870');
     bx(W-380,enemyPlatY+8,300,30,'#8B7355');
-  }else if(currentMap===1){
-    // FOREST: Sky/canopy layer
-    for(let y=0;y<horizonY;y++){
-      const t=y/horizonY;
-      const r=Math.floor(lerp(60,90,t));
-      const gv=Math.floor(lerp(100,140,t));
-      const b=Math.floor(lerp(60,70,t));
-      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
-    }
-    // Tree silhouettes in sky area (background layer)
-    for(let i=0;i<8;i++){
-      const tx_=20+i*90+Math.sin(i*2.3)*15;
-      const th=50+Math.sin(i*1.7)*20;
-      bx(tx_+8,horizonY-th-10,8,th+10,'#1a3820');
-      for(let j=0;j<3;j++){
-        const tw=40-j*10,ty_=horizonY-th+j*16;
-        bx(tx_+12-tw/2,ty_,tw,20-j*4,'#2a4830');
-      }
-    }
-    // Horizon line (grass edge)
-    bx(0,horizonY-2,W,4,'#3a6838');
-    // Grass terrain layer
-    for(let y=horizonY;y<H;y++){
-      const t=(y-horizonY)/(H-horizonY);
-      const r=Math.floor(lerp(70,90,t));
-      const gv=Math.floor(lerp(140,110,t));
-      const b=Math.floor(lerp(60,50,t));
-      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
-    }
-    // Grass tufts across terrain
-    for(let x=0;x<W;x+=14){
-      const h=4+Math.sin(x*0.3+fr*0.02)*2;
-      bx(x,horizonY-h+2,3,h+2,'#4a8848');
-      bx(x+6,horizonY-h*0.7+2,2,h,'#5a9858');
-    }
-    // Player raised platform (grassy mound)
-    bx(30,playerPlatY,340,10,'#4a7840');bx(30,playerPlatY,340,2,'#5a8850');
-    bx(30,playerPlatY+10,340,50,'#3a5830');
-    for(let x=40;x<360;x+=20){const gh=3+Math.sin(x*0.5)*2;bx(x,playerPlatY-gh,3,gh,'#5a9850');}
-    // Enemy raised platform (distant grassy mound)
-    bx(W-400,enemyPlatY,320,8,'#5a8848');bx(W-400,enemyPlatY,320,2,'#6a9858');
-    bx(W-400,enemyPlatY+8,320,25,'#3a5830');
   }else{
-    // RUINS: Ceiling/stone layer
+    // v109: Per-floor dungeon battle atmosphere (Floors 1-5 escalating dread)
+    const floorAtm=[
+      // [ceilR,ceilG,ceilB, floorR,floorG,floorB, pillarCol, pillarHl, platCol, platHl]
+      null, // index 0 unused
+      [42,38,52, 55,50,62, '#504850','#606060', '#706858','#908070'], // F1: stone grey
+      [32,28,42, 42,36,50, '#403848','#504858', '#605048','#807060'], // F2: deeper, cooler
+      [28,20,48, 38,28,58, '#503868','#705890', '#604868','#907898'], // F3: crystal purple
+      [48,22,18, 60,28,22, '#603828','#804838', '#703828','#904840'], // F4: lava red
+      [12,10,18, 18,14,22, '#201828','#302030', '#282028','#403040'], // F5: void/darkness
+    ];
+    const fl=Math.max(1,Math.min(5,currentFloor||1));
+    const a=floorAtm[fl]||floorAtm[1];
+    // Ceiling layer (gradient from darker to floor base)
     for(let y=0;y<horizonY;y++){
       const t=y/horizonY;
-      const r=Math.floor(lerp(40,60,t));
-      const gv=Math.floor(lerp(35,55,t));
-      const b=Math.floor(lerp(50,70,t));
+      const r=Math.floor(lerp(a[0]*0.6,a[0],t));
+      const gv=Math.floor(lerp(a[1]*0.6,a[1],t));
+      const b=Math.floor(lerp(a[2]*0.6,a[2],t));
       bx(0,y,W,1,`rgb(${r},${gv},${b})`);
     }
-    // Stone pillars in background
+    // Background pillars (style varies by floor)
     for(let i=0;i<4;i++){
       const px_=60+i*160;
-      bx(px_,10,24,horizonY-10,'#504840');bx(px_+2,10,20,horizonY-10,'#605850');
-      bx(px_-4,8,32,8,'#605850');bx(px_-2,10,28,4,'#706860');
-      // Torch flames at top
-      const flicker=Math.sin(fr*0.15+i*2)*2;
-      bx(px_+8,4+flicker,8,6,'#e08020');bx(px_+9,2+flicker,6,4,'#f0c040');
-      bx(px_+10,0+flicker,4,3,'#f8e060');
+      bx(px_,10,24,horizonY-10,a[6]);bx(px_+2,10,20,horizonY-10,a[7]);
+      bx(px_-4,8,32,8,a[7]);bx(px_-2,10,28,4,a[6]);
+      if(fl<=3){
+        // Torch flames (present on F1-F3, extinguished deeper)
+        const flamCol=fl===3?'#a040d0':fl===2?'#d06020':'#e08020';
+        const glowCol=fl===3?'#c070f0':fl===2?'#f08040':'#f0c040';
+        const flicker=Math.sin(fr*0.15+i*2)*2;
+        bx(px_+8,4+flicker,8,6,flamCol);bx(px_+9,2+flicker,6,4,glowCol);
+        bx(px_+10,0+flicker,4,3,'rgba(255,255,200,.8)');
+      }else if(fl===4){
+        // F4: lava glow seeping from base of pillars
+        const lavaA=0.4+Math.sin(fr*0.08+i)*0.2;
+        g.globalAlpha=lavaA;bx(px_-2,horizonY-16,28,16,'#d03010');g.globalAlpha=1;
+      }else{
+        // F5: void cracks emitting purple light
+        const voidA=0.3+Math.sin(fr*0.06+i*1.3)*0.2;
+        g.globalAlpha=voidA;bx(px_+4,horizonY-24,16,24,'#6030a0');g.globalAlpha=1;
+      }
     }
-    // Horizon line (stone shelf)
-    bx(0,horizonY-2,W,6,'#605848');bx(0,horizonY-2,W,2,'#807868');
-    // Rocky floor layer
+    // F3-specific: crystal shards scattered in background
+    if(fl===3){
+      for(let i=0;i<6;i++){
+        const csx=80+i*120,csy=horizonY-20-Math.abs(Math.sin(i*1.7))*30;
+        const crystA=0.5+Math.sin(fr*0.07+i)*0.25;
+        g.globalAlpha=crystA;
+        bx(csx,csy,4,18,'#7050c0');bx(csx+1,csy,2,12,'#a080e0');
+        g.globalAlpha=1;
+      }
+    }
+    // F4-specific: ember particles rising
+    if(fl===4){
+      for(let i=0;i<8;i++){
+        const emberPhase=(fr*0.03+i*0.7)%(1);
+        const ex_=80+i*100+Math.sin(i*2.1)*20;
+        const ey_=H-(emberPhase*H*0.6)-20;
+        const ea=Math.sin(emberPhase*Math.PI)*0.7;
+        g.globalAlpha=ea;
+        bx(ex_,ey_,2,2,'#f06020');
+        g.globalAlpha=1;
+      }
+    }
+    // Horizon line
+    bx(0,horizonY-2,W,6,a[6]);bx(0,horizonY-2,W,2,a[7]);
+    // Floor gradient
     for(let y=horizonY;y<H;y++){
       const t=(y-horizonY)/(H-horizonY);
-      const r=Math.floor(lerp(55,75,t));
-      const gv=Math.floor(lerp(48,65,t));
-      const b=Math.floor(lerp(55,70,t));
+      const r=Math.floor(lerp(a[3],a[3]+20,t));
+      const gv=Math.floor(lerp(a[4],a[4]+18,t));
+      const b=Math.floor(lerp(a[5],a[5]+20,t));
       bx(0,y,W,1,`rgb(${r},${gv},${b})`);
     }
-    // Cracks in floor
-    for(let i=0;i<5;i++){
-      const cx_=40+i*130;
-      bx(cx_,horizonY+40+i*12,12,1,'#403830');bx(cx_+4,horizonY+41+i*12,8,1,'#403830');
+    // Floor cracks (more pronounced on deeper floors)
+    const crackCount=2+fl*1;
+    for(let i=0;i<crackCount;i++){
+      const cx_=30+i*Math.floor(W/crackCount);
+      const crackCol=fl>=4?'#d03010':fl===3?'#503080':'#403830';
+      bx(cx_,horizonY+30+i*8,14+fl*2,1,crackCol);
+      bx(cx_+4,horizonY+31+i*8,10+fl,1,crackCol);
+      if(fl>=4){// lava seep in cracks
+        const seepA=0.3+Math.sin(fr*0.1+i)*0.2;
+        g.globalAlpha=seepA;bx(cx_+1,horizonY+30+i*8,12,1,'#f06020');g.globalAlpha=1;
+      }
     }
-    // Player raised platform (stone slab)
-    bx(40,playerPlatY,320,10,'#706858');bx(40,playerPlatY,320,2,'#908068');
-    bx(40,playerPlatY+10,320,50,'#504840');
-    // Enemy raised platform (distant stone slab)
-    bx(W-380,enemyPlatY,300,8,'#807868');bx(W-380,enemyPlatY,300,2,'#908878');
-    bx(W-380,enemyPlatY+8,300,25,'#605850');
+    // Player platform
+    bx(40,playerPlatY,320,10,a[8]);bx(40,playerPlatY,320,2,a[9]);
+    bx(40,playerPlatY+10,320,50,a[6]);
+    // Enemy platform
+    bx(W-380,enemyPlatY,300,8,a[9]);bx(W-380,enemyPlatY,300,2,a[9]);
+    bx(W-380,enemyPlatY+8,300,25,a[6]);
+    // Floor depth label (subtle, top-center)
+    const flNames=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','THE DEEP'];
+    const flCol=fl===5?'#8060c0':fl===4?'#c05040':fl===3?'#9060c0':'#707888';
+    g.globalAlpha=0.35;
+    tx(flNames[fl],W/2-30,16,6,flCol);
+    g.globalAlpha=1;
   }
 }
 
