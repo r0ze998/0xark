@@ -3256,6 +3256,18 @@ function getDayNightPhase(){
   return{phase:'night',t:(mins-15)/5};
 }
 function drawDayNightOverlay(){
+  // Dungeon atmosphere: dark blue-purple tint + strong vignette
+  if(inDungeon){
+    const depth=currentFloor;
+    const alpha=0.06+depth*0.015; // deeper = darker
+    g.fillStyle=`rgba(10,0,30,${alpha})`;g.fillRect(0,0,W,H-HUD_HEIGHT);
+    // Vignette (radial gradient from edges)
+    const grad=g.createRadialGradient(W/2,H/2,W*0.25,W/2,H/2,W*0.72);
+    grad.addColorStop(0,'rgba(0,0,0,0)');
+    grad.addColorStop(1,`rgba(0,0,${depth*4},${0.25+depth*0.04})`);
+    g.fillStyle=grad;g.fillRect(0,0,W,H-HUD_HEIGHT);
+    return;
+  }
   const dn=getDayNightPhase();
   if(dn.phase==='dawn'){
     g.fillStyle='rgba(255,200,100,0.05)';g.fillRect(0,0,W,H-HUD_HEIGHT);
@@ -3815,6 +3827,20 @@ function drawWater(px,py,tx_,ty){
 }
 
 function drawGrass(px,py,tx_,ty){
+  // Dungeon floors: draw as stone tiles, not grass
+  if(currentMap>0){
+    const h=tileHash(tx_,ty);
+    const sv=((h&7)-4);
+    const depth=currentMap; // deeper = darker stone
+    const base=48-depth*3,hi=66-depth*3;
+    bx(px,py,TW,TH,`rgb(${base+sv},${base+sv},${base+sv+8})`);
+    // Stone texture: subtle grid lines
+    bx(px,py,TW,1,`rgba(0,0,0,.1)`);
+    bx(px,py,1,TH,`rgba(0,0,0,.1)`);
+    // Subtle variation dots
+    if((h&15)<3)bx(px+Math.floor(thRand(tx_,ty,1)*28)+2,py+Math.floor(thRand(tx_,ty,2)*28)+2,2,2,`rgb(${hi+sv},${hi+sv},${hi+sv+4})`);
+    return;
+  }
   if(useKenney.grass){
     // Auto-tile: pick correct grass variant based on neighbors
     const h=tileHash(tx_,ty);
@@ -3907,6 +3933,17 @@ function drawTallGrass(px,py,tx_,ty){
 }
 
 function drawPath(px,py,tx_,ty){
+  // Dungeon corridors: draw as darker stone, slightly different from room floors
+  if(currentMap>0){
+    const h=tileHash(tx_,ty);
+    const sv=((h&7)-4);
+    const depth=currentMap;
+    const base=38-depth*2;
+    bx(px,py,TW,TH,`rgb(${base+sv},${base+sv},${base+sv+6})`);
+    bx(px,py,TW,2,`rgba(0,0,0,.12)`);
+    bx(px,py,2,TH,`rgba(0,0,0,.12)`);
+    return;
+  }
   if(useKenney.path){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
@@ -6376,7 +6413,13 @@ function dMap(){
   tx('STL',100,hudY+22,8,'#b04040');tx(sp.s+'',142,hudY+22,9,'#c04848');
   tx('BAR',165,hudY+22,8,'#3060b0');tx(sp.b+'',207,hudY+22,9,'#3868c0');
   tx('SCT',230,hudY+22,8,'#308030');tx(sp.c+'',272,hudY+22,9,'#38a038');
-  tx(`(${pl[0].x},${pl[0].y})`,10,hudY+52,7,'#989080');
+  // Location indicator: Town or Dungeon floor
+  if(inDungeon){
+    txShadow('B'+currentFloor,10,hudY+52,9,'#d0b020','rgba(0,0,0,.4)');
+    tx('DUNGEON',30,hudY+52,7,'#a07820');
+  }else{
+    tx('TOWN',10,hudY+52,7,'#40a040');
+  }
   // Footstep counter
   tx('STEPS:'+stepCounter,100,hudY+52,7,'#989080');
   // Show first 8 hand cards in HUD (slots 0-7)
