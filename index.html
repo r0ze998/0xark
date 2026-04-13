@@ -2604,6 +2604,11 @@ for(let i=0;i<40;i++){
   fogParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.1+Math.random()*0.15,vy:-0.05+Math.random()*0.1,phase:Math.random()*Math.PI*2,life:Math.random()});
 }
 
+function fogRevealAll(mapIdx){
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)fogRevealed[mapIdx][y][x]=true;
+  fogCacheDirty=true;
+}
+
 function fogRevealRadius(mapIdx,cx,cy,radius){
   let changed=false;
   for(let dy=-radius;dy<=radius;dy++){
@@ -5679,7 +5684,7 @@ function dTitle(){
 
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
-  txShadow('v29',W/2-14,598,9,'#b0b0ff','rgba(0,0,0,0.6)');
+  txShadow('v30',W/2-14,598,9,'#b0b0ff','rgba(0,0,0,0.6)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -10064,7 +10069,7 @@ document.addEventListener('keydown',e=>{
             const mpCard=1+Math.floor(Math.random()*5);
             pl[0].cd[0]=mpCard;pl[0].cc=1;cardTimers[0]=Date.now();syncCardCount(0);
             sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-            fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
+            fogRevealAll(0);fogSave();
             fadeIn();twSet('Multiplayer started! You received '+CD[mpCard-1].n+'!');
           }
         });
@@ -10088,18 +10093,14 @@ document.addEventListener('keydown',e=>{
             fadeIn();twSet('Welcome back! Stake deposited.');
           }else{
             sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-            fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
+            fogRevealAll(0);fogSave();
             fadeIn();twSet('Stake deposited! Collect 60 cards to win the Prize Pool.');
           }
         });
       }else{
         resetGameState(true);
         fadeOut(()=>{sc='map';currentMap=0;
-          fogRevealRadius(0,pl[0].x,pl[0].y,5);
-          // Pre-reveal dungeon portal and nearby NPCs so player can orient themselves
-          fogRevealRadius(0,27,12,2); // dungeon portal area
-          fogRevealRadius(0,8,6,2);   // Card Merchant
-          fogRevealRadius(0,14,12,2); // Gacha Keeper
+          fogRevealAll(0); // Town is safe — reveal entire starting area
           fogSave();
           introActive=true;introPage=0;introFrame=fr;
           fadeIn();});
@@ -10123,7 +10124,7 @@ document.addEventListener('keydown',e=>{
               fadeIn();twSet('Welcome back! You\'re in town — safe zone.');
             }else{
               sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-              fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
+              fogRevealAll(0);fogSave();
               fadeIn();twSet('Welcome to はじまりのまち! Enter the dungeon to collect cards.');
             }
           });
@@ -10134,7 +10135,7 @@ document.addEventListener('keydown',e=>{
           resetGameState(true);
           // Show intro tutorial, then transition to map
           fadeOut(()=>{sc='map';currentMap=0;
-            fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
+            fogRevealAll(0);fogSave();
             introActive=true;introPage=0;introFrame=fr;
             fadeIn();
           });
@@ -10178,7 +10179,7 @@ document.addEventListener('keydown',e=>{
           // Show intro tutorial for first-time play
           resetGameState(true);
           fadeOut(()=>{sc='map';currentMap=0;
-            fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
+            fogRevealAll(0);fogSave();
             introActive=true;introPage=0;introFrame=fr;
             fadeIn();
           });
@@ -10825,7 +10826,7 @@ document.addEventListener('keydown',e=>{
         gameOverTimesUp=false;
         resetGameState(false);
         fadeOut(()=>{sc='map';mo=false;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-          fogRevealRadius(0,pl[0].x,pl[0].y,5);fogSave();
+          fogRevealAll(0);fogSave();
           fadeIn();twSet('Welcome back! Collect all 60 cards to win!');ub();});
       }
       if(e.code==='KeyX'){sfxBack();gameOverTimesUp=false;fadeOut(()=>{sc='title';fadeIn();ub();});}
@@ -10846,9 +10847,9 @@ function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle(
 // SAVE / LOAD SYSTEM
 // ═══════════════════════════════════════
 const SAVE_KEY='oxark_save';
-const SAVE_VERSION=29; // bump when save format changes — old saves auto-wiped
-// Auto-wipe incompatible old saves on load
-try{const sv=localStorage.getItem('oxark_save_ver');if(sv&&parseInt(sv)<SAVE_VERSION){localStorage.removeItem(SAVE_KEY);console.log('[0xARK] Old save wiped (v'+sv+'→v'+SAVE_VERSION+')');}localStorage.setItem('oxark_save_ver',String(SAVE_VERSION));}catch(e){}
+const SAVE_VERSION=30; // bump when save format changes — old saves auto-wiped
+// Auto-wipe incompatible old saves on load (also wipe legacy saves with no version key)
+try{const sv=localStorage.getItem('oxark_save_ver');if(!sv||parseInt(sv)<SAVE_VERSION){localStorage.removeItem(SAVE_KEY);localStorage.removeItem('oxark_fog');console.log('[0xARK] Old save wiped (v'+(sv||'legacy')+'→v'+SAVE_VERSION+')');}localStorage.setItem('oxark_save_ver',String(SAVE_VERSION));}catch(e){}
 
 function saveGame(){
   try{
@@ -10968,6 +10969,8 @@ function loadGame(){
     // Sync card counts from actual data to prevent drift
     syncCardCount(0);syncCardCount(1);syncCardCount(2);
     fogLoad();
+    // Town is always fully visible (safe zone — no fog needed)
+    fogRevealAll(0);
     camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
     camTargetX=camX;camTargetY=camY;
     edgeCacheDirty=true;fogCacheDirty=true;
