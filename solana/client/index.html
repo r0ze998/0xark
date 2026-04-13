@@ -4898,6 +4898,8 @@ function doMapTransition(exit){
       showMapLoadScreen('TOWN - はじまりのまち','Safe zone. Card decay paused.');
     }
     showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]);
+    // Town rest: restore spell energy to full when returning to safe zone
+    if(!inDungeon){sp.s=2;sp.b=3;sp.c=2;lg.push('Back in town — spell energy restored!');}
     // Pause/resume card timers based on dungeon state
     const now=Date.now();
     for(let i=0;i<HAND_SIZE;i++){
