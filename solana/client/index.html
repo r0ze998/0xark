@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v111</title>
+<title>0xARK v112</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -6948,7 +6948,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v111',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v112',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -7605,6 +7605,25 @@ function dMap(){
     g.fillStyle=grad;
     g.fillRect(0,0,W,H);
   }
+  // v112: Danger ambient vignette — red/amber edge when area danger is elevated
+  if(inDungeon){
+    const dangerV=areaDanger[currentMap]||0;
+    if(dangerV>=DANGER_LOW_THRESH){
+      const isHigh=dangerV>=DANGER_HIGH_THRESH;
+      const pulse=Math.sin(fr*(isHigh?0.07:0.04))*0.5+0.5;
+      const baseA=isHigh?0.08+pulse*0.08:0.04+pulse*0.04;
+      const vigCol=isHigh?`rgba(180,20,20,${baseA})`:`rgba(160,90,0,${baseA})`;
+      const vig=g.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.9);
+      vig.addColorStop(0,'rgba(0,0,0,0)');
+      vig.addColorStop(1,vigCol);
+      g.fillStyle=vig;g.fillRect(0,0,W,H);
+      // HIGH danger: brief scan-line flash every ~160 frames
+      if(isHigh&&fr%160<4){
+        const fA=0.08*(1-fr%160/4);
+        g.globalAlpha=fA;bx(0,0,W,H,'#c01010');g.globalAlpha=1;
+      }
+    }
+  }
   // Fog particles only every other frame
   if(fr%2===0) drawFogParticles();
 
@@ -8146,7 +8165,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v111',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v112',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
