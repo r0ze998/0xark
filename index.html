@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v32</title>
+<title>0xARK v36</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -4892,16 +4892,34 @@ function doMapTransition(exit){
     // Reveal starting area on new map (larger radius so entry area is immediately visible)
     if(inDungeon){fogRevealRadius(currentMap,pl[0].x,pl[0].y,4);fogSave();}
     else{fogRevealAll(currentMap);fogSave();}
-    // When entering floor 1 from town, spread rivals to safe starting positions far from entrance
+    // When entering floor 1 from town, spread rivals to safe starting positions far from entrance.
     // This prevents immediate encounters caused by AI roaming during town/title time.
-    // Rivals' initial goals point toward the FAR end of the dungeon (near floor 2 exit at x=36)
-    // so they walk AWAY from the player's entry point (x=3) for the full cooldown window.
     if(exit.fromMap===0&&exit.targetMap===1){
       pl[1].x=8;pl[1].y=10;pl[1].visualX=8*TW;pl[1].visualY=10*TH;
       pl[2].x=28;pl[2].y=18;pl[2].visualX=28*TW;pl[2].visualY=18*TH;
       rivalMaps=[1,1];
       rivalAI[0].goalX=32;rivalAI[0].goalY=12;rivalAI[0].state='exploring';
       rivalAI[1].goalX=32;rivalAI[1].goalY=18;rivalAI[1].state='exploring';
+    }
+    // For ANY dungeon floor transition: if a rival is on the destination floor and within 8 tiles
+    // of the player entry point, push them to a safe position far from the entrance.
+    // Player enters going DOWN at (3,14), UP at (36,14).
+    // Push rivals to the OPPOSITE end of the floor from the player's entry point.
+    if(inDungeon){
+      const entryX=pl[0].x;const entryY=pl[0].y;
+      const safeX=entryX<20?30:6; // if entering from left (x=3), push to right (x=30); vice versa
+      for(let ri=0;ri<2;ri++){
+        if(rivalMaps[ri]===currentMap){
+          const dist=Math.abs(pl[ri+1].x-entryX)+Math.abs(pl[ri+1].y-entryY);
+          if(dist<=8){
+            // Rival is too close to entry — push them to the safe end
+            const safeY=ri===0?10:18;
+            pl[ri+1].x=safeX;pl[ri+1].y=safeY;
+            pl[ri+1].visualX=safeX*TW;pl[ri+1].visualY=safeY*TH;
+            rivalAI[ri].goalX=safeX;rivalAI[ri].goalY=safeY;rivalAI[ri].state='exploring';
+          }
+        }
+      }
     }
     // Show map loading screen
     if(inDungeon){
@@ -5703,7 +5721,8 @@ function dTitle(){
 
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
-  txShadow('v36',W/2-14,598,9,'#b0b0ff','rgba(0,0,0,0.6)');
+  // Version label — shown in top-right for easy reference
+  txShadow('v36',W-40,14,10,'#b0b0ff','rgba(0,0,0,0.6)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
