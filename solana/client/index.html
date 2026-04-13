@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v96</title>
+<title>0xARK v97</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7740,6 +7740,29 @@ function dMap(){
     }else{
       tx('DUNGEON',30,hudY+52,7,'#a07820');
     }
+    // v97: Escape compass — directional arrow toward the nearest escape exit
+    {
+      const escExit=exits.find(e=>e.fromMap===currentMap&&e.isEscape);
+      if(escExit&&escExit.tiles.length>0){
+        const [etx,ety]=escExit.tiles[0];
+        const dx=etx-pl[0].x,dy=ety-pl[0].y;
+        const distTiles=Math.sqrt(dx*dx+dy*dy);
+        if(distTiles<=4){
+          const neA=0.65+Math.sin(fr*0.28)*0.35;
+          g.globalAlpha=neA;
+          txShadow('\u2190NEAR',73,hudY+52,6,'#40e090','rgba(0,0,0,.5)');
+          g.globalAlpha=1;
+        }else{
+          const angle=Math.atan2(dy,dx);
+          // Map angle to 8-directional arrow
+          const dirs=['\u2192','\u2198','\u2193','\u2199','\u2190','\u2196','\u2191','\u2197'];
+          const didx=((Math.round(angle/(Math.PI/4))+8)%8);
+          g.globalAlpha=0.55;
+          tx(dirs[didx]+'ESC',73,hudY+52,6,'#60b868');
+          g.globalAlpha=1;
+        }
+      }
+    }
   }else{
     tx('TOWN',10,hudY+52,7,'#40a040');
   }
@@ -7945,7 +7968,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v96',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v97',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
