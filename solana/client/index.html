@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v83</title>
+<title>0xARK v84</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -3097,6 +3097,12 @@ function showBanner(text,sub){
 // ── NPC DIALOG STATE ──
 let npcDialogActive=false, npcDialogLines=[], npcDialogIdx=0, npcDialogName='', npcDialogOpenFrame=0;
 
+// ── v84: TOWN WEATHER ──
+let townWeather='clear'; // 'clear'|'rain'|'fog'
+let townWeatherAlpha=1.0; // 0→1 fade-in for current weather
+let townWeatherTimer=0; // counts frames; cycles at WEATHER_CYCLE_FRAMES
+const WEATHER_CYCLE_FRAMES=4800; // ~80 seconds per weather state at 60fps
+
 // ── WILD ENCOUNTER STATE ──
 let wildEncounterActive=false, wildEncounterCard=-1, wildEncounterFrame=0;
 
@@ -3704,6 +3710,98 @@ function updateNPCWander(){
   }
 }
 
+// v84: Town weather update — cycles clear/fog/rain slowly
+function updateTownWeather(){
+  if(inDungeon||currentMap!==0||sc!=='map')return;
+  if(townWeatherAlpha<1)townWeatherAlpha=Math.min(1,townWeatherAlpha+1/150);
+  townWeatherTimer++;
+  if(townWeatherTimer>=WEATHER_CYCLE_FRAMES){
+    townWeatherTimer=0;
+    townWeatherAlpha=0;
+    const next=['clear','fog','rain'].filter(w=>w!==townWeather);
+    townWeather=next[Math.floor(Math.random()*next.length)];
+  }
+}
+
+// v84: Town weather draw — layered atmospheric effects
+function drawTownWeather(){
+  if(inDungeon||currentMap!==0)return;
+  const wa=townWeatherAlpha;
+  if(wa<=0.02)return;
+  if(townWeather==='rain'){
+    // Falling rain lines (stateless — driven by frame counter)
+    g.save();
+    for(let i=0;i<55;i++){
+      const seed=i*137;
+      const rx=((fr*0.7+seed*19+camX*0.2)%(W+120))-60;
+      const ry=(fr*4+seed*11)%(H+80)-40;
+      g.globalAlpha=wa*(0.3+seed%3*0.1);
+      g.strokeStyle='rgba(160,190,240,0.9)';g.lineWidth=1;
+      g.beginPath();g.moveTo(rx,ry);g.lineTo(rx-3,ry+10);g.stroke();
+    }
+    g.globalAlpha=1;
+    // Ground ripples at bottom portion of screen
+    for(let i=0;i<10;i++){
+      const seed=i*193;
+      const ripX=((fr*0.6+seed*27)%(W+80))-40;
+      const ripPhase=(fr*0.5+seed*7)%80/80;
+      const ripR=ripPhase*14;
+      const ripA=wa*(1-ripPhase)*0.35;
+      if(ripA>0.02){
+        g.globalAlpha=ripA;
+        g.strokeStyle='rgba(160,200,240,0.7)';g.lineWidth=1;
+        g.beginPath();g.ellipse(ripX,H-15-seed%40,ripR,ripR*0.3,0,0,Math.PI*2);g.stroke();
+      }
+    }
+    // Subtle blue tint overlay
+    g.globalAlpha=wa*0.07;
+    g.fillStyle='rgba(100,140,200,1)';g.fillRect(0,0,W,H);
+    g.globalAlpha=1;
+    g.restore();
+  } else if(townWeather==='fog'){
+    g.save();
+    // Wispy horizontal fog bands at different heights
+    for(let i=0;i<12;i++){
+      const seed=i*97;
+      const fogX=((fr*0.25+seed*53)%(W+320))-160;
+      const fogY=60+seed%4*70+Math.sin(fr*0.015+i*1.3)*12;
+      const fogW=160+seed%5*50;
+      const fogAlpha=wa*(0.12+seed%3*0.04);
+      g.globalAlpha=fogAlpha;
+      const grd=g.createLinearGradient(fogX,fogY,fogX+fogW,fogY);
+      grd.addColorStop(0,'rgba(210,220,230,0)');
+      grd.addColorStop(0.25,'rgba(210,220,230,1)');
+      grd.addColorStop(0.75,'rgba(210,220,230,1)');
+      grd.addColorStop(1,'rgba(210,220,230,0)');
+      g.fillStyle=grd;
+      g.fillRect(fogX,fogY-20,fogW,40);
+    }
+    // Edge vignette — fog thickens at screen edges
+    g.globalAlpha=wa*0.2;
+    const vgr=g.createRadialGradient(W/2,H/2,W*0.3,W/2,H/2,W*0.7);
+    vgr.addColorStop(0,'rgba(190,200,210,0)');
+    vgr.addColorStop(1,'rgba(190,200,210,0.85)');
+    g.fillStyle=vgr;g.fillRect(0,0,W,H);
+    g.globalAlpha=1;
+    g.restore();
+  } else {
+    // Clear: drifting sunlight dust motes
+    g.save();
+    for(let i=0;i<22;i++){
+      const seed=i*151;
+      const mx=((seed*37+fr*0.08)%W);
+      const my=H-((fr*0.4+seed*23)%(H+60))-10;
+      if(my<-8||my>H+8)continue;
+      const ms=0.5+(seed%4)*0.4;
+      g.globalAlpha=wa*0.28*(0.5+Math.sin(fr*0.04+i)*0.5);
+      g.fillStyle='rgba(255,240,190,1)';
+      g.beginPath();g.arc(mx,my,ms,0,Math.PI*2);g.fill();
+    }
+    g.globalAlpha=1;
+    g.restore();
+  }
+}
+
 function drawFootprints(){
   if(!inDungeon)return;
   // VEGA=pink, MIRA=gold
@@ -4039,6 +4137,7 @@ let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
 // v81: Pre-battle rival dialogue
 // v82: Dynamic NPC dialogue + proximity speech bubbles
 // v83: Card-lost animation — card flies to rival when stolen from player
+// v84: Town weather system — dynamic clear/rain/fog with particles and fog wisps
 let encounterRivalLine=''; // context-sensitive line for exclamation animation
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
 
@@ -7360,6 +7459,7 @@ function dMap(){
   drawParticles(camX,camY);
   drawBirds();
   drawPirateDecorations();
+  drawTownWeather(); // v84: weather overlay (after pirate decor, before NPCs)
 
   // ── DUNGEON ENTRANCE LABEL (town only) ──
   if(!inDungeon&&currentMap===0){
@@ -7776,8 +7876,14 @@ function dMap(){
     tx('S1',904,hudY+24,7,'#f0c830');
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
+  // v84: Town weather indicator
+  if(!inDungeon&&currentMap===0){
+    const wIcon=townWeather==='rain'?'\u2614':townWeather==='fog'?'\u2601':'\u2600';
+    const wCol=townWeather==='rain'?'#80a0d0':townWeather==='fog'?'#a0a8b0':'#f0c830';
+    txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
+  }
   // Version label in HUD (bottom-right corner)
-  txShadow('v83',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v84',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11800,6 +11906,7 @@ function update(){
   updateRivalActivity();
   updateProximityTension();
   updateNPCWander();
+  updateTownWeather(); // v84
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
   const r1u=hasUniqueCards(1).size,r2u=hasUniqueCards(2).size;
