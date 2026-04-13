@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v89</title>
+<title>0xARK v90</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7921,7 +7921,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v89',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v90',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8618,6 +8618,50 @@ function drawSelectPhase(){
       g.globalAlpha=1;
     }
   }
+  // v90: Battle round history panel (right side, shown from round 2 onward)
+  if(battleRoundHistory.length>0&&!bpCardSelectActive&&!bpTargetSelectActive){
+    const ACT_ABBR=['DRW','STL','BAR','SCT','CRD'];
+    const ACT_COL=['#48b8e8','#d04040','#3060b0','#38a038','#c08030'];
+    const histCount=Math.min(3,battleRoundHistory.length);
+    const hpW=178,hpH=28+histCount*22;
+    const hpX=W-hpW-8,hpY=130;
+    const histAlpha=Math.min(1,(fr-bpFrame)/12)*0.95;
+    g.globalAlpha=histAlpha;
+    win(hpX,hpY,hpW,hpH);
+    bx(hpX,hpY,hpW,3,'#806030'); // amber top border
+    txShadow('ROUND LOG',hpX+8,hpY+18,8,'#c0a060','rgba(0,0,0,.3)');
+    bx(hpX+6,hpY+22,hpW-12,1,'rgba(200,180,100,.2)');
+    for(let i=0;i<histCount;i++){
+      const h=battleRoundHistory[i];
+      const hy=hpY+28+i*22;
+      const rowA=i===0?1:0.7-i*0.1;
+      g.globalAlpha=histAlpha*rowA;
+      // Round label
+      tx('R'+h.rd,hpX+6,hy+12,6,i===0?'#e8e0c0':'#888070');
+      // Player action badge
+      const pCol=ACT_COL[h.pa]||'#888';
+      bx(hpX+28,hy,34,16,'rgba(0,0,0,.5)');
+      bx(hpX+28,hy,34,1,pCol);
+      tx('YOU',hpX+30,hy+7,5,'rgba(200,200,200,.5)');
+      tx(ACT_ABBR[h.pa]||'???',hpX+30,hy+14,6,pCol);
+      // Rival 1 action (VEGA)
+      const r1Col=ACT_COL[h.r1a]||'#888';
+      bx(hpX+66,hy,34,16,'rgba(0,0,0,.5)');
+      bx(hpX+66,hy,34,1,'#d060a0');
+      tx('V',hpX+68,hy+7,5,'rgba(200,160,180,.5)');
+      tx(ACT_ABBR[h.r1a]||'???',hpX+68,hy+14,6,r1Col);
+      // Rival 2 action (MIRA)
+      const r2Col=ACT_COL[h.r2a]||'#888';
+      bx(hpX+104,hy,34,16,'rgba(0,0,0,.5)');
+      bx(hpX+104,hy,34,1,'#d0a030');
+      tx('M',hpX+106,hy+7,5,'rgba(200,180,100,.5)');
+      tx(ACT_ABBR[h.r2a]||'???',hpX+106,hy+14,6,r2Col);
+      // Outcome dot
+      if(h.got){g.globalAlpha=histAlpha*rowA;bx(hpX+hpW-16,hy+4,8,8,'#40d080');}
+      else if(h.lost){g.globalAlpha=histAlpha*rowA;bx(hpX+hpW-16,hy+4,8,8,'#d04040');}
+    }
+    g.globalAlpha=1;
+  }
   // Card selection submenu for USE CARD
   if(bpCardSelectActive){
     bx(0,0,W,H,'rgba(0,0,0,.5)');
@@ -8940,6 +8984,7 @@ let bpTellWasAccurate=[false,false]; // whether each rival's tell matched actual
 let bpRdIncremented=false; // guard: prevent double-increment of rd when pending discard
 let bpActionsGenerated=false; // guard: only generate once per round
 let bpScoutedCards=[null,null]; // [{round,cards:[{n,r,t}]}, null] — persists until battle ends
+let battleRoundHistory=[]; // v90: [{rd,pa,r1a,r2a,outcome}] per round (pa=playerAction 0-4)
 
 // Rival tells: atmospheric body-language hints (65% accurate, 35% misleading)
 const RIVAL_BATTLE_TELLS=[
@@ -12356,6 +12401,7 @@ function update(){
             // FRLG-style mosaic pixelation wipe into battle
             startWipe('mosaic',30,()=>{
               sc='act';battlePhase='vs_splash';bpFrame=fr;
+              battleRoundHistory=[]; // v90: reset round history on new battle
               startWipe('mosaic_out',20);
               // v79: track battle_rival mission
               if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){
@@ -13350,6 +13396,14 @@ document.addEventListener('keydown',e=>{
           return;
         }
         if(!bpRdIncremented){
+          // v90: record this round's actions before incrementing rd
+          {
+            const evTexts=(bpResolveQueue||[]).map(e=>e.text||'').join(' ');
+            const gotCard=evTexts.includes('obtained')||evTexts.includes('You stole')||evTexts.includes('Power steal')||evTexts.includes('Magic strike');
+            const lostCard=evTexts.includes('stole your')||evTexts.includes('STOLE');
+            battleRoundHistory.unshift({rd:rd,pa:bpAction,r1a:bpRivalActions[0],r2a:bpRivalActions[1],got:gotCard,lost:lostCard});
+            if(battleRoundHistory.length>4)battleRoundHistory.pop();
+          }
           bpRdIncremented=true;
           rd++;roundsThisRun++;
           // v79: track survive mission
