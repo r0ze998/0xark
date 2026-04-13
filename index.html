@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v91</title>
+<title>0xARK v92</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7921,7 +7921,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v91',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v92',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8545,6 +8545,45 @@ function drawActionGrid(){
       if(sel&&avail){
         const bob_=Math.sin(fr*0.15)*2;
         txShadow('\u25B6',cx_-12+bob_,cy_+20,10,'#c04040','rgba(0,0,0,.3)');
+      }
+      // v92: Smart context badges (top-right corner of each cell)
+      if(avail&&battlePhase==='select'){
+        let badge='',badgeCol='#606060',badgeBg='rgba(0,0,0,.35)';
+        const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
+        if(idx===0){// DRAW — show if floor pool has new cards for player
+          const pool_=DUNGEON_FLOOR_CARDS[currentMap]||[];
+          const vault_=pl[0].vault||new Set();
+          const newInPool=pool_.filter(id=>!vault_.has(id)).length;
+          if(newInPool>0){badge='+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';}
+          else if(pool_.length>0){badge='ALL OWNED';badgeCol='#888870';badgeBg='rgba(0,0,0,.3)';}
+        }else if(idx===1){// STEAL — show barrier state of primary target
+          const tgtBarrier=bpRivalActions[vsRivalIdx-1]===2;
+          const lastRound=battleRoundHistory[0];
+          const theyStole=lastRound&&(lastRound.r1a===1||lastRound.r2a===1);
+          if(tgtBarrier){badge='BLOCKED';badgeCol='#6080d0';badgeBg='rgba(10,20,60,.6)';}
+          else if(pl[vsRivalIdx].cc===0){badge='NO CARDS';badgeCol='#808880';badgeBg='rgba(0,0,0,.35)';}
+          else{badge='\u2714 OPEN';badgeCol='#e08030';badgeBg='rgba(40,20,0,.6)';}
+        }else if(idx===2){// BARRIER — advise based on last round rival action
+          const lastRound=battleRoundHistory[0];
+          if(lastRound&&(lastRound.r1a===1||lastRound.r2a===1)){badge='NEEDED';badgeCol='#e05040';badgeBg='rgba(40,0,0,.6)';}
+          else if(bpPlayerBarrier){badge='ACTIVE';badgeCol='#4080d0';badgeBg='rgba(0,20,50,.6)';}
+          else{badge='OPTIONAL';badgeCol='#608880';badgeBg='rgba(0,0,0,.35)';}
+        }else if(idx===3){// SCOUT — show staleness
+          const sc0=bpScoutedCards[vsRivalIdx-1];
+          if(sc0&&sc0.round===rd){badge='FRESH';badgeCol='#50e090';badgeBg='rgba(0,30,10,.6)';}
+          else if(sc0&&rd-sc0.round<=1){badge='R'+(sc0.round)+' DATA';badgeCol='#c0b030';badgeBg='rgba(30,20,0,.6)';}
+          else if(sc0){badge='STALE';badgeCol='#888870';badgeBg='rgba(0,0,0,.35)';}
+          else{badge='UNSCOUTED';badgeCol='#b0b0a0';badgeBg='rgba(0,0,0,.3)';}
+        }
+        if(badge){
+          const bW=badge.length*5+8,bH=11;
+          const bx_=cx_+cellW-bW-4,by_=cy_+4;
+          g.globalAlpha=sel?0.95:0.7;
+          bx(bx_,by_,bW,bH,badgeBg);
+          bx(bx_,by_,bW,1,badgeCol);
+          tx(badge,bx_+3,by_+9,5,badgeCol);
+          g.globalAlpha=1;
+        }
       }
     }
   }
