@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v53</title>
+<title>0xARK v54</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -2799,11 +2799,11 @@ const rivalAI=[
   // Index 0 = pl[1] "Rival" — The Hunter (Aggressive)
   {goalX:10,goalY:10,goalMap:0,personality:'hunter',moveTimer:0,moveInterval:8,
    lastKnownPlayerMap:-1,lastKnownPlayerX:-1,lastKnownPlayerY:-1,
-   state:'exploring',stateTimer:0,fleeDir:-1},
+   state:'exploring',stateTimer:0,fleeDir:-1,huntCooldown:0},
   // Index 1 = pl[2] "Hunter" — The Collector (Strategic)
   {goalX:20,goalY:15,goalMap:1,personality:'collector',moveTimer:0,moveInterval:12,
    lastKnownPlayerMap:-1,lastKnownPlayerX:-1,lastKnownPlayerY:-1,
-   state:'exploring',stateTimer:0,fleeDir:-1}
+   state:'exploring',stateTimer:0,fleeDir:-1,huntCooldown:0}
 ];
 
 // Footprints system: {map, x, y, age}
@@ -3062,31 +3062,35 @@ function updateRivalAI(aiIdx){
   if(ai.moveTimer>0)return;
   ai.moveTimer=ai.moveInterval+Math.floor(Math.random()*4); // 8-14 frames
 
+  // Countdown per-rival hunt cooldown (prevents immediate hunting after grace period)
+  if(ai.huntCooldown>0)ai.huntCooldown--;
+
   // If player is on same map and nearby, update last known
   if(rMap===currentMap){
     const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
-    // Hunter: always track if within 10 tiles
-    if(ai.personality==='hunter'&&dist<=10){
+    // Hunter: track if within 6 tiles (reduced from 10 to avoid instant detection at spawn)
+    if(ai.personality==='hunter'&&dist<=6){
       ai.lastKnownPlayerMap=currentMap;
       ai.lastKnownPlayerX=pl[0].x;
       ai.lastKnownPlayerY=pl[0].y;
     }
-    // Collector: only track if within 6 tiles
-    if(ai.personality==='collector'&&dist<=6){
+    // Collector: only track if within 5 tiles
+    if(ai.personality==='collector'&&dist<=5){
       ai.lastKnownPlayerMap=currentMap;
       ai.lastKnownPlayerX=pl[0].x;
       ai.lastKnownPlayerY=pl[0].y;
     }
 
-    // Hunter chases player directly if within 7 tiles
-    if(ai.personality==='hunter'&&dist<=7){
+    // Hunter chases player if within 4 tiles AND hunt cooldown has expired
+    // (reduced from 7 to 4 — player must actually be nearby before being hunted)
+    if(ai.personality==='hunter'&&dist<=4&&ai.huntCooldown<=0){
       ai.goalX=pl[0].x;ai.goalY=pl[0].y;ai.goalMap=rMap;
       ai.state='hunting';
       ai.moveInterval=6; // faster when chasing
     }
 
-    // Collector flees if player within 5 tiles (70% chance)
-    if(ai.personality==='collector'&&dist<=5&&ai.state!=='fleeing'){
+    // Collector flees if player within 4 tiles (70% chance)
+    if(ai.personality==='collector'&&dist<=4&&ai.state!=='fleeing'){
       if(Math.random()<0.7){
         ai.state='fleeing';
         ai.stateTimer=6; // flee for 6 steps
@@ -3704,10 +3708,10 @@ function resetGameState(startCards){
   // Reset rival AI — explore toward far end of floor 1 (away from entrance at x=3)
   rivalAI[0].goalX=32;rivalAI[0].goalY=12;rivalAI[0].goalMap=1;rivalAI[0].state='exploring';
   rivalAI[0].moveTimer=0;rivalAI[0].moveInterval=10;rivalAI[0].lastKnownPlayerMap=-1;
-  rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;rivalAI[0].stateTimer=0;
+  rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;rivalAI[0].stateTimer=0;rivalAI[0].huntCooldown=0;
   rivalAI[1].goalX=32;rivalAI[1].goalY=18;rivalAI[1].goalMap=1;rivalAI[1].state='exploring';
   rivalAI[1].moveTimer=0;rivalAI[1].moveInterval=14;rivalAI[1].lastKnownPlayerMap=-1;
-  rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;rivalAI[1].stateTimer=0;
+  rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;rivalAI[1].stateTimer=0;rivalAI[1].huntCooldown=0;
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;
   stopDangerDrone();
   lg.length=0;
@@ -4908,8 +4912,10 @@ function doMapTransition(exit){
       rivalMaps=[1,1];
       rivalAI[0].goalX=32;rivalAI[0].goalY=12;rivalAI[0].state='exploring';
       rivalAI[0].lastKnownPlayerMap=-1;rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;
+      rivalAI[0].huntCooldown=900; // 15s before hunter can pursue (on top of the 8s grace period)
       rivalAI[1].goalX=32;rivalAI[1].goalY=18;rivalAI[1].state='exploring';
       rivalAI[1].lastKnownPlayerMap=-1;rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;
+      rivalAI[1].huntCooldown=600; // 10s extra cooldown for collector
     }
     // For ANY dungeon floor transition: if a rival is on the destination floor and within 8 tiles
     // of the player entry point, push them to a safe position far from the entrance.
@@ -4927,6 +4933,7 @@ function doMapTransition(exit){
             pl[ri+1].x=safeX;pl[ri+1].y=safeY;
             pl[ri+1].visualX=safeX*TW;pl[ri+1].visualY=safeY*TH;
             rivalAI[ri].goalX=safeX;rivalAI[ri].goalY=safeY;rivalAI[ri].state='exploring';
+            rivalAI[ri].huntCooldown=600; // 10s before rival can hunt on new floor
           }
         }
       }
@@ -5756,7 +5763,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v53',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v54',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6708,7 +6715,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v53',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v54',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
