@@ -937,6 +937,17 @@ function dMap(){
   }
   // Footstep counter
   tx('STEPS:'+stepCounter,100,hudY+52,7,'#989080');
+  // v102: Dungeon exploration % — revealed walkable tiles / total walkable tiles
+  if(inDungeon&&maps[currentMap]){
+    const m_=maps[currentMap];
+    let total=0,revealed=0;
+    for(let y=0;y<MH;y++){for(let x=0;x<MW;x++){if(WALKABLE.has(m_[y]?.[x])){total++;if(fogRevealed[currentMap][y]?.[x])revealed++;}}}
+    if(total>0){
+      const pct=Math.floor(revealed/total*100);
+      const expCol=pct<30?'#888878':pct<70?'#a0c080':'#40d080';
+      tx('EXP:'+pct+'%',182,hudY+52,7,expCol);
+    }
+  }
   // Show first 8 hand cards in HUD (slots 0-7)
   const HUD_CARD_SLOTS=Math.min(8,HAND_SIZE);
   const HUD_CARD_SPACING=30;
@@ -1137,7 +1148,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v101',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v102',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
