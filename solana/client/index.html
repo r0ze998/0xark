@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v41</title>
+<title>0xARK v42</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -5751,7 +5751,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v41',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v42',W-40,14,12,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -6655,7 +6655,7 @@ function dMap(){
   }
   else{tx('OFFLINE',820,hudY+22,6,'#555570');}
   // Version label in HUD (bottom-right corner)
-  txShadow('v41',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v42',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -6926,24 +6926,26 @@ function drawOpponentInfoBox(){
   const rival=pl[1]; // Primary opponent
   let sx=0,sy=0;
   if(bpShakeTarget===1&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
-  // FRLG info box shape
-  const bx_=8+sx,by_=16+sy,bw=260,bh=52;
+  // FRLG info box shape (wider to fit both rivals)
+  const bx_=8+sx,by_=16+sy,bw=300,bh=64;
   bx(bx_,by_,bw,bh,'#f8f0d8');bx(bx_,by_,bw,2,'#c8c0a0');bx(bx_,by_+bh-2,bw,2,'#a89878');
   bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
   bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
-  // Name
-  txShadow(rival.n,bx_+10,by_+20,14,'#383830','rgba(200,180,140,.3)');
-  // Area indicator
-  const areaTag=mapNames[rivalMaps[0]]||'???';
-  txShadow(areaTag,bx_+10,by_+36,8,'#988870','rgba(0,0,0,.15)');
-  // Card bar (like HP bar)
-  txShadow('CARDS',bx_+120,by_+20,8,'#887858','rgba(0,0,0,.15)');
-  drawCardBar(bx_+168,by_+12,82,rival.cd,5);
-  // Card count number
-  txShadow(rival.cc+'/5',bx_+200,by_+36,9,'#383830','rgba(0,0,0,.15)');
-  // Spell indicators as small icons
-  bx(bx_+120,by_+30,6,6,'#b04040');tx('S',bx_+128,by_+37,5,'#686060');
-  bx(bx_+140,by_+30,6,6,'#3060b0');tx('B',bx_+148,by_+37,5,'#686060');
+  // Rival 1
+  txShadow(rival.n,bx_+10,by_+20,12,'#383830','rgba(200,180,140,.3)');
+  txShadow('CARDS',bx_+120,by_+20,7,'#887858','rgba(0,0,0,.15)');
+  drawCardBar(bx_+168,by_+12,80,rival.cd,5);
+  txShadow(rival.cc+'/5',bx_+202,by_+34,8,'#383830','rgba(0,0,0,.15)');
+  // Rival 2 (Hunter) — mini info row below
+  const hunter=pl[2];
+  const r2alive=hunter.cd.filter(c=>c>0).length>0;
+  bx(bx_+8,by_+44,bw-16,1,'#c8c0a0');
+  const hunterCol=r2alive?'#986840':'#c04040';
+  txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,by_+58,9,hunterCol,'rgba(0,0,0,.15)');
+  if(r2alive){
+    drawCardBar(bx_+168,by_+50,80,hunter.cd,5);
+    txShadow(hunter.cc+'/5',bx_+202,by_+58,7,'#686060','rgba(0,0,0,.1)');
+  }
 }
 
 // Draw FRLG-style player info box (bottom-right)
@@ -7097,14 +7099,27 @@ function drawPhaseBanner(phase){
 
 // Draw the battle arena with sprites
 function drawBattleArena(){
-  // Player sprite (bottom-left, from behind like Pokemon trainer)
+  // Player sprite (bottom-center-left, from behind like Pokemon trainer)
   let psx=0,psy=0;
   if(bpShakeTarget===0&&bpShakeTimer>0){psx=Math.sin(bpShakeTimer*1.2)*4;psy=Math.cos(bpShakeTimer*1.6)*2;}
-  drawBattleSprite(pl[0],160+psx,H-130+psy,3,true);
-  // Opponent sprite (top-right, facing you)
+  drawBattleSprite(pl[0],180+psx,H-130+psy,3,true);
+  // Rival 1 sprite (top-right, facing player) — primary opponent
   let osx=0,osy=0;
   if(bpShakeTarget===1&&bpShakeTimer>0){osx=Math.sin(bpShakeTimer*1.2)*4;osy=Math.cos(bpShakeTimer*1.6)*2;}
-  drawBattleSprite(pl[1],W-200+osx,130+osy,3,false);
+  drawBattleSprite(pl[1],W-160+osx,110+osy,3,false);
+  // Rival 2 sprite (top-center-right, slightly smaller — 2nd enemy)
+  let o2sx=0,o2sy=0;
+  if(bpShakeTarget===2&&bpShakeTimer>0){o2sx=Math.sin(bpShakeTimer*1.2)*4;o2sy=Math.cos(bpShakeTimer*1.6)*2;}
+  const r2alive=pl[2].cd.filter(c=>c>0).length>0;
+  g.globalAlpha=r2alive?0.85:0.3;
+  drawBattleSprite(pl[2],W-310+o2sx,140+o2sy,2.2,false);
+  g.globalAlpha=1;
+  // Rival 2 name tag
+  if(!r2alive){
+    txShadow('FLED',W-310,175,7,'#c04040','rgba(0,0,0,.4)');
+  }else{
+    txShadow(pl[2].n,W-330,175,6,'#986840','rgba(0,0,0,.3)');
+  }
 }
 
 // FRLG-style 2x2 action grid
