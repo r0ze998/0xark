@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v29</title>
+<title>0xARK v30</title>
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="expires" content="0">
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
@@ -65,6 +68,9 @@ canvas{display:block;width:960px;height:640px;image-rendering:auto}
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
+// Unregister any service workers and clear caches to prevent stale version serving
+if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(regs=>{regs.forEach(r=>r.unregister());});}
+if('caches' in window){caches.keys().then(names=>{names.forEach(n=>caches.delete(n));});}
 const c=document.getElementById('g');
 c.width=960;c.height=640;
 const W=960,H=640;
