@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v97</title>
+<title>0xARK v98</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7622,6 +7622,38 @@ function dMap(){
     }
   });
 
+  // v98: Rival proximity echo — pulsing "?" ring at fog boundary when rival is nearby but hidden
+  if(inDungeon){
+    pl.slice(1).forEach((rp,idx)=>{
+      if(rivalMaps[idx]!==currentMap)return;
+      if(isVisibleThroughFog(rp.x,rp.y,3))return;
+      const dx=rp.x-pl[0].x,dy=rp.y-pl[0].y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist>10||dist<1)return;
+      const nx=dx/dist,ny=dy/dist;
+      const edgeX=(pl[0].x+nx*3.8)*TW-camX+TW/2;
+      const edgeY=(pl[0].y+ny*3.8)*TH-camY+TH/2;
+      if(edgeX<-20||edgeX>W+20||edgeY<-20||edgeY>H+20)return;
+      const rivalCol=idx===0?'#e060a0':'#d0a030';
+      const pPeriod=80+idx*16;
+      const pPhase=(fr%pPeriod)/pPeriod;
+      const ringA=Math.max(0,1-pPhase*2)*(1-dist/10)*0.65;
+      if(ringA<0.03)return;
+      const ringR=4+pPhase*14;
+      g.globalAlpha=ringA;
+      g.strokeStyle=rivalCol;g.lineWidth=1.5;
+      g.beginPath();g.arc(edgeX,edgeY,ringR,0,Math.PI*2);g.stroke();
+      if(pPhase<0.28){
+        g.globalAlpha=ringA*(1-pPhase/0.28);
+        g.font='bold 8px VT323, monospace';
+        g.fillStyle=rivalCol;g.shadowColor=rivalCol;g.shadowBlur=4;
+        g.textAlign='center';g.fillText('?',edgeX,edgeY+3);
+        g.textAlign='left';g.shadowBlur=0;
+      }
+      g.globalAlpha=1;g.lineWidth=1;
+    });
+  }
+
   // Draw exit tile markers in dungeon (visible when revealed by fog)
   if(inDungeon){
     exits.forEach(ex=>{
@@ -7968,7 +8000,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v97',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v98',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
