@@ -913,9 +913,41 @@ function dMap(){
   const _sr=getSeasonRemaining();const _srt=formatTimeRemaining(_sr);
   const _sCol=_sr<3600000?'#d04040':_sr<86400000?'#d0a030':'#40a040';
   tx(_srt,10,hudY+28,9,_sCol);
-  tx('STL',100,hudY+22,8,'#b04040');tx(sp.s+'',142,hudY+22,9,'#c04848');
-  tx('BAR',165,hudY+22,8,'#3060b0');tx(sp.b+'',207,hudY+22,9,'#3868c0');
-  tx('SCT',230,hudY+22,8,'#308030');tx(sp.c+'',272,hudY+22,9,'#38a038');
+  // v118: Spell charge orb indicators (visual pips replace plain numbers)
+  {
+    const spells=[
+      {label:'STL',val:sp.s,max:3,cx:100,fill:'#c04848',empty:'#2a1010',warn:sp.s===0},
+      {label:'BAR',val:sp.b,max:3,cx:175,fill:'#3868c0',empty:'#101028',warn:sp.b===0},
+      {label:'SCT',val:sp.c,max:3,cx:250,fill:'#38a038',empty:'#0e1e0e',warn:sp.c===0},
+    ];
+    spells.forEach(s=>{
+      // Label
+      const lCol=s.warn?'#804040':s.label==='STL'?'#b04040':s.label==='BAR'?'#3060b0':'#308030';
+      tx(s.label,s.cx,hudY+20,7,lCol);
+      // Pip row (3 orbs, 7×7px each, 4px gap)
+      const orbX=s.cx+26,orbY=hudY+12,orbW=7,orbH=7,orbGap=4;
+      for(let o=0;o<s.max;o++){
+        const filled=o<s.val;
+        const ox=orbX+o*(orbW+orbGap);
+        bx(ox,orbY,orbW,orbH,filled?s.fill:s.empty);
+        if(filled){
+          // Glint on top-left corner
+          bx(ox+1,orbY+1,2,1,'rgba(255,255,255,.35)');
+        }
+      }
+      // Bonus charges beyond max (e.g. from chests) shown as "+N"
+      if(s.val>s.max){
+        tx('+'+(s.val-s.max),orbX+s.max*(orbW+orbGap)+2,hudY+20,6,'#f0c830');
+      }
+      // Depleted flash warning
+      if(s.warn){
+        const wA=0.4+Math.sin(fr*0.18)*0.4;
+        g.globalAlpha=wA;
+        bx(s.cx-2,hudY+10,orbX+s.max*(orbW+orbGap)-s.cx+2,orbH+2,'rgba(180,40,40,.15)');
+        g.globalAlpha=1;
+      }
+    });
+  }
   // Location indicator: Town or Dungeon floor
   if(inDungeon){
     txShadow('B'+currentFloor,10,hudY+52,9,'#d0b020','rgba(0,0,0,.4)');
@@ -1224,7 +1256,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v117',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v118',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
