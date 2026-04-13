@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v128</title>
+<title>0xARK v129</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7011,7 +7011,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v128',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v129',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -8293,7 +8293,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v127',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v129',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -9107,9 +9107,51 @@ function drawActionGrid(){
       }else{
         bx(cx_,cy_,cellW,cellH,avail?'#e8e0c8':'#c8c0b0');
       }
-      // Icon square
+      // v129: Themed pixel-art icons
       const iconCol=avail?actions[idx].icon:'#989088';
-      bx(cx_+4,cy_+6,18,18,iconCol);bx(cx_+5,cy_+7,16,16,avail?'rgba(255,255,255,.2)':'rgba(0,0,0,.1)');
+      const ic=iconCol,ix=cx_+4,iy=cy_+6;
+      if(!avail){
+        bx(ix,iy,18,18,'#989088');bx(ix+1,iy+1,16,16,'rgba(0,0,0,.1)');
+      }else if(idx===0){ // DRAW: card outline + down-arrow
+        bx(ix+3,iy+1,12,15,'rgba(0,0,0,.28)');    // drop shadow
+        bx(ix+2,iy,12,15,'#1c3846');               // card body
+        bx(ix+2,iy,12,1,ic);bx(ix+2,iy+14,12,1,ic); // top/bottom borders
+        bx(ix+2,iy,1,15,ic);bx(ix+13,iy,1,15,ic);   // side borders
+        bx(ix+7,iy+3,2,5,ic);                        // arrow shaft
+        bx(ix+5,iy+7,6,2,ic);                        // arrowhead wide
+        bx(ix+6,iy+9,4,1,ic);                        // arrowhead mid
+        bx(ix+7,iy+10,2,1,ic);                       // arrowhead tip
+      }else if(idx===1){ // STEAL: claw/hand
+        bx(ix+1,iy+10,12,6,ic);                      // palm
+        for(let fi=0;fi<4;fi++){                      // four fingers
+          const fx=ix+1+fi*3;
+          const fh=4+(fi===1||fi===2?2:0);            // middle fingers taller
+          bx(fx,iy+10-fh,2,fh,ic);
+        }
+        bx(ix+14,iy+5,3,1,'rgba(255,255,255,.5)');   // motion lines
+        bx(ix+14,iy+8,3,1,'rgba(255,255,255,.38)');
+        bx(ix+14,iy+11,3,1,'rgba(255,255,255,.25)');
+      }else if(idx===2){ // BARRIER: pentagon shield
+        bx(ix+4,iy,10,1,ic);                         // top arc
+        bx(ix+2,iy+1,14,6,ic);                       // upper body
+        bx(ix+2,iy+7,14,2,ic);
+        bx(ix+3,iy+9,12,2,ic);                       // taper
+        bx(ix+5,iy+11,8,2,ic);
+        bx(ix+7,iy+13,4,2,ic);                       // point
+        bx(ix+8,iy+15,2,1,ic);
+        bx(ix+4,iy+1,10,6,'rgba(0,0,100,.45)');      // inner fill
+        bx(ix+8,iy+2,2,8,'rgba(255,255,255,.5)');    // emblem cross
+        bx(ix+5,iy+5,8,2,'rgba(255,255,255,.5)');
+      }else if(idx===3){ // SCOUT: magnifying glass
+        bx(ix+2,iy+3,2,5,ic);bx(ix+12,iy+3,2,5,ic);  // lens sides
+        bx(ix+4,iy+1,6,2,ic);bx(ix+4,iy+10,6,2,ic);  // lens top/bottom
+        bx(ix+3,iy+2,2,1,ic);bx(ix+11,iy+2,2,1,ic);  // corners
+        bx(ix+3,iy+11,2,1,ic);bx(ix+11,iy+11,2,1,ic);
+        bx(ix+6,iy+4,4,5,ic);                         // pupil fill
+        bx(ix+7,iy+5,2,2,'rgba(255,255,255,.55)');    // pupil glint
+        bx(ix+12,iy+10,2,2,ic);bx(ix+13,iy+12,2,2,ic); // handle
+        bx(ix+14,iy+14,2,2,ic);bx(ix+15,iy+16,2,1,ic);
+      }
       // Text (increased sizes for readability)
       const textCol=avail?(sel?'#c04040':actions[idx].col):'#a0a0a0';
       txShadow(actions[idx].name,cx_+26,cy_+18,14,textCol,'rgba(0,0,0,.3)');
@@ -9169,7 +9211,17 @@ function drawActionGrid(){
   }else{
     bx(ucX,ucY,ucW,ucH,ucAvail?'#e8e0c8':'#c8c0b0');
   }
-  bx(ucX+4,ucY+4,18,18,'#806030');bx(ucX+5,ucY+5,16,16,'rgba(255,255,255,.15)');
+  // v129: USE CARD icon — card with lightning bolt
+  {const uix=ucX+4,uiy=ucY+4;
+  bx(uix+3,uiy+1,12,15,'rgba(0,0,0,.25)');    // shadow
+  bx(uix+2,uiy,12,15,'#3a2810');              // card body
+  bx(uix+2,uiy,12,1,'#806030');bx(uix+2,uiy+14,12,1,'#806030'); // borders
+  bx(uix+2,uiy,1,15,'#806030');bx(uix+13,uiy,1,15,'#806030');
+  bx(uix+8,uiy+2,3,4,'#f0c030');             // bolt top
+  bx(uix+6,uiy+6,5,2,'#f0c030');             // bolt middle
+  bx(uix+7,uiy+8,3,4,'#f0c030');             // bolt bottom
+  bx(uix+9,uiy+3,1,2,'rgba(255,255,255,.5)');// bolt glint
+  }
   txShadow('USE CARD',ucX+26,ucY+18,14,ucAvail?(ucSel?'#c04040':'#806030'):'#a0a0a0','rgba(0,0,0,.3)');
   const _handCount=pl[0].cd.filter(c=>c>0).length;
   txShadow(_handCount>0?_handCount+' card'+(+_handCount!==1?'s':'')+' ready':'hand empty',ucX+140,ucY+18,10,ucAvail?'#908878':'#b8b8b8','rgba(0,0,0,.2)');
