@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v90</title>
+<title>0xARK v91</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7921,7 +7921,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v90',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v91',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8686,6 +8686,54 @@ function drawSelectPhase(){
       txShadow(cr.n,frameX+44,y+20,14,j===bpCardSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
       txShadow(cr.f,frameX+44,y+36,11,'#908878','rgba(0,0,0,.15)');
     });
+    // v91: Effect preview panel for selected card (shown to the right of card list)
+    if(filled.length>0&&bpCardSelectIdx>=0&&bpCardSelectIdx<filled.length){
+      const selSlot=filled[bpCardSelectIdx];
+      const selCard=pl[0].cd[selSlot];
+      if(selCard>0){
+        const scr=CD[selCard-1];
+        // Type → effect description + color
+        const TYPE_INFO={
+          attack:  {col:'#e05040',label:'ATTACK',lines:['Force steal (ignores barrier).','Success rate scales with rarity.','Higher rarity = more reliable.']},
+          defense: {col:'#4080d0',label:'DEFENSE',lines:['Raises Barrier this round.','Restores +'+(Math.ceil(scr.r/2))+' Barrier charges.','Protects against incoming Steal.']},
+          flee:    {col:'#40c080',label:'FLEE',lines:['Ends battle immediately.','No cards lost this round.','Use when overwhelmed.']},
+          magic:   {col:'#c070e0',label:'MAGIC',lines:['Nullifies ALL barriers.','Guaranteed steal attempt.','Cannot be blocked this round.']},
+          recovery:{col:'#e0c030',label:'RECOVERY',lines:['Restores spell energy:','+'+Math.ceil(scr.r/2)+' Steal, +1 Barrier, +1 Scout.','Use when spells are depleted.']}
+        };
+        const ti=TYPE_INFO[scr.t]||{col:'#888',label:'UNKNOWN',lines:['Unknown effect.','','']};
+        const epW=200,epH=120;
+        const epX=W/2+cardW/2+12;
+        const epY=H/2-epH/2;
+        // Clamp to screen
+        const finalEpX=Math.min(epX,W-epW-8);
+        const prevAlpha=Math.min(1,(fr-bpFrame)/8);
+        g.globalAlpha=prevAlpha*0.97;
+        win(finalEpX,epY,epW,epH);
+        // Colored top bar matching card type
+        bx(finalEpX,epY,epW,4,ti.col);
+        g.globalAlpha=prevAlpha;
+        // Card type badge
+        bx(finalEpX+8,epY+10,epW-16,16,'rgba(0,0,0,.5)');
+        txShadow(ti.label,finalEpX+12,epY+22,8,ti.col,'rgba(0,0,0,.4)');
+        // Rarity stars
+        const rarCol=RARITY_COLOR[scr.r]||'#888';
+        for(let s=0;s<scr.r;s++)tx('\u2605',finalEpX+epW-8-(scr.r-s)*10,epY+22,7,rarCol);
+        // Divider
+        bx(finalEpX+8,epY+30,epW-16,1,'rgba(200,180,100,.25)');
+        // Effect description lines
+        ti.lines.forEach((ln,li)=>{
+          if(ln)tx(ln,finalEpX+10,epY+44+li*18,6,li===0?'#e8e0c0':'#a09888');
+        });
+        // Large card character display
+        const previewSz=1.8;
+        const pcX=finalEpX+epW-42,pcY=epY+epH-48;
+        g.globalAlpha=prevAlpha*0.25;
+        bx(pcX-2,pcY-2,40,40,scr.d);
+        g.globalAlpha=prevAlpha*0.5;
+        drawCardCharacter(pcX,pcY,selCard,previewSz,fr);
+        g.globalAlpha=1;
+      }
+    }
   }
   if(bpTargetSelectActive){
     bx(0,0,W,H,'rgba(0,0,0,.4)');
