@@ -59,6 +59,8 @@ function loadGame(){
     pl[0].x=d.px;pl[0].y=d.py;pl[0].dir=d.pdir;pl[0].step=d.pstep;
     pl[0].cd=[...d.pcd];pl[0].cc=d.pcc;
     pl[0].vault=d.pvault?new Set(d.pvault):new Set(d.pcd.filter(c=>c>0)); // restore vault
+    // v105: pre-populate milestones already reached so old thresholds don't retrigger on load
+    if(pl[0].vault.size>0){CARD_MILESTONES.forEach(m=>{if(pl[0].vault.size>=m)milestonesReached.add(m);});}
     pl[0].visualX=d.px*TW;pl[0].visualY=d.py*TH;pl[0].walkFrame=0;
     pl[1].x=d.r1x;pl[1].y=d.r1y;pl[1].dir=d.r1dir;pl[1].cd=[...d.r1cd];pl[1].cc=d.r1cc;
     pl[1].visualX=d.r1x*TW;pl[1].visualY=d.r1y*TH;pl[1].walkFrame=0;

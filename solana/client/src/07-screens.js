@@ -1148,7 +1148,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v104',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v105',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1246,6 +1246,23 @@ function dMap(){
       bx(rcX+44,ry+2,barW,7,r.col);
       tx(r.cnt+'/60',rcX+44+barMax+3,ry+10,5,isLeader?'#e8e0c0':'#787890');
     });
+    g.globalAlpha=1;
+  }
+
+  // v105: Collection milestone toast — golden banner at top-center
+  if(milestoneToastText&&fr-milestoneToastFrame<210){
+    const tAge=fr-milestoneToastFrame;
+    const tAlpha=tAge<12?tAge/12:tAge>180?Math.max(0,(210-tAge)/30):1;
+    const slideY=tAge<12?(1-tAge/12)*-32:0;
+    const toastW=milestoneToastText.length*8+24;
+    const toastX=W/2-toastW/2,toastY=40+slideY;
+    g.globalAlpha=tAlpha;
+    bx(toastX,toastY,toastW,24,'rgba(10,8,20,.88)');
+    bx(toastX,toastY,toastW,2,'#f0c830');
+    bx(toastX,toastY+22,toastW,2,'#f0c830');
+    bx(toastX,toastY,1,24,'#f0c830');
+    bx(toastX+toastW-1,toastY,1,24,'#f0c830');
+    txShadow('\u2605 '+milestoneToastText+' \u2605',toastX+12,toastY+17,8,'#f0e040','rgba(0,0,0,.6)');
     g.globalAlpha=1;
   }
 
