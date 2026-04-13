@@ -1256,7 +1256,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v124',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v125',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -2245,6 +2245,53 @@ function drawSelectPhase(){
       txShadow('SCOUT to reveal',ppX+10,ppY+ppH-32,5,'#608060','rgba(0,0,0,.2)');
     }
     g.globalAlpha=1;
+  }
+  // v125: SCOUT intel preview panel (shown when SCOUT is highlighted)
+  if(ai===3&&!bpCardSelectActive&&!bpTargetSelectActive&&sp.c>0){
+    const vsRival=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
+    const target=pl[vsRival];
+    const sd0=bpScoutedCards[0],sd1=bpScoutedCards[1];
+    const typeC={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
+    const ppX=328,ppW=220;
+    const slideA=Math.min(1,(fr-bpFrame)/10);
+    // Show both rivals' intel state
+    const rivalInfo=[
+      {ri:1,p:pl[1],sd:sd0,col:'#d060a0',label:'VEGA'},
+      {ri:2,p:pl[2],sd:sd1,col:'#d0a030',label:'MIRA'},
+    ];
+    let panY=H-164;
+    rivalInfo.forEach(rv=>{
+      const ccnt=rv.p.cd.filter(c=>c>0).length;
+      if(ccnt===0&&!rv.sd)return;
+      const panH=rv.sd&&rv.sd.cards.length>0?54+Math.min(4,rv.sd.cards.length)*22:46;
+      g.globalAlpha=slideA*0.95;
+      win(ppX,panY,ppW,panH);
+      bx(ppX,panY,ppW,3,rv.col);
+      txShadow('SCOUT: '+rv.label,ppX+8,panY+18,8,'#38a038','rgba(0,0,0,.3)');
+      if(rv.sd&&rv.sd.cards.length>0){
+        const staleRd=rd-rv.sd.round;
+        const stLabel=staleRd>0?'R'+rv.sd.round+' data':'fresh';
+        txShadow(stLabel,ppX+ppW-8-stLabel.length*5,panY+18,6,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
+        bx(ppX+6,panY+24,ppW-12,1,'rgba(200,180,100,.2)');
+        rv.sd.cards.slice(0,4).forEach((c,ci)=>{
+          const tCol_=typeC[c.t]||'#808898';
+          const rar=c.r||1;const rarCol=RARITY_COLOR[rar]||'#888898';
+          const py2=panY+28+ci*22;
+          const dimA=staleRd>1?0.5:0.9;
+          g.globalAlpha=slideA*dimA;
+          bx(ppX+8,py2-6,10,14,tCol_);bx(ppX+9,py2-5,8,12,'rgba(0,0,0,.4)');
+          tx(c.t?c.t[0].toUpperCase():'?',ppX+11,py2+5,5,'#fff');
+          tx(c.n,ppX+22,py2+2,6,staleRd>1?'#888870':'#e0d8c0');
+          for(let s=0;s<rar;s++)tx('\u2605',ppX+ppW-8-(rar-s)*8,py2+2,5,rarCol);
+          g.globalAlpha=slideA*0.95;
+        });
+      }else{
+        txShadow('\u2753 '+ccnt+' card'+(ccnt!==1?'s':''),ppX+8,panY+36,8,'#506840','rgba(0,0,0,.2)');
+        bx(ppX+8,panY+40,ppW-16,1,'rgba(200,180,100,.1)');
+      }
+      g.globalAlpha=1;
+      panY-=panH+6;
+    });
   }
   // v90: Battle round history panel (right side, shown from round 2 onward)
   if(battleRoundHistory.length>0&&!bpCardSelectActive&&!bpTargetSelectActive){
