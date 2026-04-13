@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v98</title>
+<title>0xARK v99</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -7568,19 +7568,23 @@ function dMap(){
     }
   }
 
-  // Draw footprints on revealed grass tiles
+  // Draw footprints on revealed grass tiles — v99: color-coded by rival (VEGA=pink, MIRA=amber)
   footprints.forEach(fp=>{
     if(fp.map!==currentMap)return;
     if(!fogRevealed[currentMap][fp.y]?.[fp.x])return;
-    const m=maps[currentMap];
-    const tile=m[fp.y]?.[fp.x];
+    const m_=maps[currentMap];
+    const tile=m_[fp.y]?.[fp.x];
     if(tile!==1&&tile!==11&&tile!==7)return;
     const fpx=fp.x*TW-camX;const fpy=fp.y*TH-camY;
     if(fpx<-TW||fpx>W||fpy<-TH||fpy>H)return;
-    const alpha=Math.max(0,1-fp.age/FOOTPRINT_MAX_AGE)*0.35;
+    const ageFrac=Math.max(0,1-fp.age/FOOTPRINT_MAX_AGE);
+    const alpha=ageFrac*0.42;
+    // v99: color and size by rival identity
+    const fpCol=fp.ri===1?'#e060a0':fp.ri===2?'#c09020':'#3a3828'; // VEGA pink, MIRA amber, neutral dark
+    const sz=fp.ri?Math.max(3,Math.floor(4*ageFrac)+2):4; // rival footprints slightly larger when fresh
     g.globalAlpha=alpha;
-    bx(fpx+8,fpy+20,4,4,'#3a3828');
-    bx(fpx+18,fpy+24,4,4,'#3a3828');
+    bx(fpx+8,fpy+20,sz,sz,fpCol);
+    bx(fpx+18,fpy+24,sz,sz,fpCol);
     g.globalAlpha=1;
   });
 
@@ -8000,7 +8004,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v98',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v99',935,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
