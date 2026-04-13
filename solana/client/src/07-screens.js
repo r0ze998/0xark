@@ -1148,7 +1148,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v105',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v106',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1753,6 +1753,9 @@ function drawVsSplash(){
     txShadow('YOU',60,H/2-60,14,'#78c0f0','rgba(0,0,0,.6)');
     const yourCards=pl[0].cd.filter(c=>c>0).length;
     txShadow(yourCards+' card'+(yourCards!==1?'s':''),60,H/2-42,8,'rgba(255,255,255,.6)','rgba(0,0,0,.4)');
+    // v106: hand power score = sum of card rarities
+    const yourPwr=pl[0].cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
+    txShadow('PWR:'+yourPwr,60,H/2-26,7,'#78c0f0','rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
 
@@ -1767,6 +1770,26 @@ function drawVsSplash(){
     txShadow(rivalPersonality,rivalNameX,H/2-42,8,'rgba(255,255,255,.5)','rgba(0,0,0,.4)');
     const rivalCards=vsSplashRival.cd.filter(c=>c>0).length;
     txShadow(rivalCards+' card'+(rivalCards!==1?'s':''),rivalNameX,H/2-28,7,'rgba(255,255,255,.5)','rgba(0,0,0,.35)');
+    // v106: rival power + advantage label
+    const rivalPwr=vsSplashRival.cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
+    txShadow('PWR:'+rivalPwr,rivalNameX,H/2-12,7,rivalNameCol,'rgba(0,0,0,.35)');
+    g.globalAlpha=1;
+  }
+
+  // v106: power assessment label — appears between power scores
+  if(t>20){
+    const assAlpha=Math.min(1,(t-20)/10);
+    g.globalAlpha=assAlpha;
+    const yourPwr2=pl[0].cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
+    const rivalPwr2=vsSplashRival.cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
+    const diff=yourPwr2-rivalPwr2;
+    let assLabel,assCol;
+    if(diff>=4){assLabel='ADVANTAGE';assCol='#40d080';}
+    else if(diff<=-4){assLabel='OUTMATCHED';assCol='#d04040';}
+    else{assLabel='BALANCED';assCol='#d0c040';}
+    const assW=assLabel.length*9+16;
+    bx(W/2-assW/2,H/2-80,assW,20,'rgba(0,0,0,.5)');
+    txShadow(assLabel,W/2-assW/2+8,H/2-64,10,assCol,'rgba(0,0,0,.5)');
     g.globalAlpha=1;
   }
 
