@@ -2853,8 +2853,10 @@ function hasUniqueCards(pIdx){
   const s=new Set();pl[pIdx].cd.forEach(c=>{if(c>0)s.add(c);});return s;
 }
 function playerHasAllSixty(){return pl[0].vault&&pl[0].vault.size>=60;}
+let _winTransitionPending=false; // guard against double-win transition
 function checkWinAndTransition(delayMs){
-  if(!playerHasAllSixty())return;
+  if(!playerHasAllSixty()||_winTransitionPending)return;
+  _winTransitionPending=true;
   // Record best clear (elapsed from season start)
   const clearTime=Math.floor(getPlayElapsed()/1000);
   if(stats.bestClearRounds===0||rd<stats.bestClearRounds){stats.bestClearRounds=rd;}

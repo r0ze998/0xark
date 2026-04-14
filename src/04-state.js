@@ -593,7 +593,7 @@ function resetNewFeatureState(){
 }
 
 function resetGameState(startCards){
-  clearSave();fogClear();stakeDeposited=false;gameOverTimesUp=false;
+  clearSave();fogClear();stakeDeposited=false;gameOverTimesUp=false;_winTransitionPending=false;
   // Player: reset hand + vault; give 3 starter cards (one per type: attack, defense, flee)
   const starterCards=[4,13,25]; // Strike(attack), Guard(defense), Dash(flee) - all Common
   const cards0=makeEmptyHand();
