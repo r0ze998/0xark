@@ -706,7 +706,7 @@ document.addEventListener('keydown',e=>{
         return;
       }
 
-      // Z = interact with NPC, signpost, building, puzzle, objects, or fish
+      // Z = interact / wait (dungeon)
       if(e.code==='KeyZ'){
         if(checkNPCInteraction())return;
         if(checkSignpostInteraction())return;
@@ -715,6 +715,12 @@ document.addEventListener('keydown',e=>{
         if(checkObjectInteraction())return;
         // Fishing check
         if(canFish()){startFishing();return;}
+        // v155: In dungeon with no interaction — Z = wait (pass turn, rivals advance one step)
+        if(inDungeon){
+          processDungeonTurn();
+          sfxStep&&sfxStep();
+          return;
+        }
       }
 
       const p=pl[0];let nx=p.x,ny=p.y;
@@ -732,8 +738,8 @@ document.addEventListener('keydown',e=>{
           mpBroadcastMove();
           // Leave player footprint
           footprints.push({map:currentMap,x:nx,y:ny,age:0});
-          // Reveal fog around new position (town already fully revealed; dungeon radius 3 for playability)
-          if(inDungeon)fogRevealRadius(currentMap,nx,ny,3);
+          // v155: Dungeon fog — room-based reveal (PMD-style: entering a room reveals whole room)
+          if(inDungeon){fogRevealCurrentRoom(currentMap,nx,ny);fogRevealRadius(currentMap,nx,ny,2);}
           fogSave();
           const newTile=m[ny]?.[nx];
           if(newTile===1||newTile===7||newTile===11){spawnGrassParticles(nx*TW,ny*TH);sfxGrassRustle();}
@@ -746,6 +752,9 @@ document.addEventListener('keydown',e=>{
             if(objectInteractTimer<=0){objectInteractMsg='Lava! Cards decaying faster!';objectInteractTimer=60;}
             screenShake(2,4);
           }
+          // v155: Turn-based dungeon — rivals take one step per player step
+          if(inDungeon){processDungeonTurn();checkFloorItemPickup(nx,ny);}
+
           // Tutorial triggers
           if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
           if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}

@@ -101,6 +101,7 @@ function update(){
   updateProximityTension();
   updateNPCWander();
   updateTownWeather(); // v84
+  updateFloorTitle(); // v155: PMD floor title card
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
   const r1u=hasUniqueCards(1).size,r2u=hasUniqueCards(2).size;

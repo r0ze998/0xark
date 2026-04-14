@@ -411,53 +411,113 @@ function drawCardCharacter(x,y,cardId,scale,time){
 }
 
 // Draw card frame with character sprite inside
+// Card rarity accent colors (C U R E L)
+const CARD_RARITY_COL=['#606870','#4888d0','#8848d0','#c89020','#e8c840'];
+const CARD_RARITY_DIM=['#303438','#243858','#381858','#484010','#584810'];
+const CARD_RARITY_LABEL=['COMMON','UNCOMMON','RARE','EPIC','LEGENDARY'];
+const CARD_TYPE_ICON={attack:'\u2694',defense:'\u25C6',flee:'\u21af',magic:'\u2605',recovery:'\u2665'};
+
 function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
   const cr=CD[cardIdx];if(!cr)return;
-  // Rarity glow border (animated, drawn under frame so it peeks out)
-  if(cr.r>=3){
-    const rarGlowCols=['','','','#9040d0','#d09020','#f0d040'];
-    const rc=rarGlowCols[cr.r]||'#f0c830';
-    const glA=0.25+0.2*Math.sin((typeof fr!=='undefined'?fr:0)*0.08);
-    g.globalAlpha=glA;
-    const glw=cr.r>=5?3:2;
-    g.strokeStyle=rc;g.lineWidth=glw;g.strokeRect(cx_-glw/2,cy_-glw/2,cw+glw,ch+glw);
-    // Second outer ring for Legendary
-    if(cr.r>=5){
-      const glA2=0.15+0.15*Math.sin((typeof fr!=='undefined'?fr:0)*0.05+1);
-      g.globalAlpha=glA2;g.lineWidth=1;g.strokeRect(cx_-4,cy_-4,cw+8,ch+8);
+  const rar=Math.max(1,Math.min(5,cr.r||1));
+  const rarCol=CARD_RARITY_COL[rar-1];
+  const rarDim=CARD_RARITY_DIM[rar-1];
+  const t=(typeof fr!=='undefined'?fr:0);
+  const pulse=0.5+0.5*Math.sin(t*0.07);
+
+  // ── Outer rarity glow (rare+) ──
+  if(rar>=3){
+    const glowA=(rar>=5?0.5:rar>=4?0.38:0.25)*pulse;
+    g.globalAlpha=glowA;
+    g.shadowColor=rarCol;g.shadowBlur=rar>=5?14:8;
+    g.strokeStyle=rarCol;g.lineWidth=rar>=5?2:1.5;
+    g.strokeRect(cx_-1,cy_-1,cw+2,ch+2);
+    g.shadowBlur=0;g.globalAlpha=1;
+    if(rar>=5){
+      g.globalAlpha=glowA*0.5;g.lineWidth=1;
+      g.strokeRect(cx_-4,cy_-4,cw+8,ch+8);g.globalAlpha=1;
     }
+  }
+
+  // ── Card body — dark with rarity-tinted edge ──
+  // Outer frame (rarity color)
+  bx(cx_,cy_,cw,ch,rarDim);
+  // 1px inner border (rarity lit)
+  bx(cx_+1,cy_+1,cw-2,ch-2,rarCol.replace('#','#').slice(0,4)+'404');
+  g.globalAlpha=0.35;bx(cx_+1,cy_+1,cw-2,ch-2,rarCol);g.globalAlpha=1;
+  // Card body
+  bx(cx_+2,cy_+2,cw-4,ch-4,'#08101e');
+
+  // ── Type color header band (top ~22% of card) ──
+  const headerH=Math.floor(ch*0.22);
+  bx(cx_+2,cy_+2,cw-4,headerH,cr.d||'#102030');
+  // Diagonal stripe accent on header
+  g.save();g.rect(cx_+2,cy_+2,cw-4,headerH);g.clip();
+  g.globalAlpha=0.12;g.fillStyle=cr.h||'#ffffff';
+  for(let si=-ch;si<cw+ch;si+=6)g.fillRect(cx_+si,cy_+2,3,headerH*2);
+  g.restore();g.globalAlpha=1;
+  // Header bottom divider
+  bx(cx_+2,cy_+2+headerH,cw-4,1,rarCol);
+  g.globalAlpha=0.3;bx(cx_+2,cy_+2+headerH+1,cw-4,1,cr.c||'#406080');g.globalAlpha=1;
+
+  // ── Type icon + rarity dot (header area) ──
+  const iSz=Math.max(5,Math.floor(cw/7));
+  const icon=CARD_TYPE_ICON[cr.t]||'\u2605';
+  txShadow(icon,cx_+5,cy_+2+headerH-2,iSz,cr.h||'#fff','rgba(0,0,0,.7)');
+  // Rarity dot (top-right of header)
+  const dotX=cx_+cw-6-rar*4;
+  for(let ri=0;ri<rar;ri++){
+    const dc=ri<rar?rarCol:'#202840';
+    bx(cx_+cw-6-(ri)*5,cy_+5,3,3,dc);
+  }
+
+  // ── Art area (between header and name plate) ──
+  const nameH=Math.floor(ch*0.22);
+  const artY=cy_+2+headerH+2;
+  const artH=ch-4-headerH-nameH-2;
+  // Art bg (slightly lit hull)
+  bx(cx_+2,artY,cw-4,artH,'#0a1424');
+  // Subtle diagonal pattern
+  g.save();g.rect(cx_+2,artY,cw-4,artH);g.clip();
+  g.globalAlpha=0.04;g.fillStyle=cr.c||'#406080';
+  for(let si=-artH;si<cw+artH;si+=4)g.fillRect(cx_+si,artY,2,artH*2);
+  g.restore();g.globalAlpha=1;
+  // Character sprite centered in art area
+  const charScale=Math.max(0.35,Math.min(2.5,cw/28));
+  drawCardCharacter(cx_+cw/2-8*charScale,artY+artH/2-10*charScale,cardIdx+1,charScale,t);
+
+  // ── Name plate (bottom) ──
+  const npY=cy_+ch-nameH-2;
+  bx(cx_+2,npY,cw-4,nameH,cr.d||'#102030');
+  g.globalAlpha=0.08;bx(cx_+2,npY,cw-4,nameH,rarCol);g.globalAlpha=1;
+  // Top divider of name plate
+  bx(cx_+2,npY,cw-4,1,rarCol);
+  // Card name
+  const nameSz=Math.max(4,Math.min(8,Math.floor(cw/8)));
+  const nameY=npY+Math.floor(nameH*0.55);
+  txShadow(cr.n,cx_+cw/2-cr.n.length*nameSz/2.1,nameY,nameSz,ARK.textBright,'rgba(0,0,0,.8)');
+  // Rarity label (very small, below name)
+  if(nameH>16&&rar>=3){
+    const rlSz=Math.max(3,Math.floor(cw/13));
+    g.globalAlpha=0.7;
+    tx(CARD_RARITY_LABEL[rar-1],cx_+cw/2-CARD_RARITY_LABEL[rar-1].length*rlSz/2.1,npY+nameH-3,rlSz,rarCol);
     g.globalAlpha=1;
   }
-  // Outer border
-  bx(cx_,cy_,cw,ch,cr.d);
-  // Inner gradient bg
-  bx(cx_+2,cy_+2,cw-4,ch-4,cr.c);
-  bx(cx_+2,cy_+2,cw-4,Math.floor(ch/3),'rgba(0,0,0,0.15)');
-  bx(cx_+2,cy_+ch-Math.floor(ch/3),cw-4,Math.floor(ch/3)-2,'rgba(255,255,255,0.08)');
-  // Inner card art area
-  bx(cx_+4,cy_+4,cw-8,ch*0.6,cr.d);
-  bx(cx_+5,cy_+5,cw-10,ch*0.6-2,'rgba(255,255,255,0.08)');
-  // Character sprite centered in art area
-  const charScale=Math.max(0.4,Math.min(3,cw/28));
-  const charW=16*charScale, charH=20*charScale;
-  const charX=cx_+cw/2-charW/2;
-  const charY=cy_+4+ch*0.3-charH/2;
-  drawCardCharacter(charX,charY,cardIdx+1,charScale,fr);
-  // Small type icon in top-left
-  const icons=['\u26E8','\u263D','\u2632','\u26A1','\u25C9'];
-  tx(icons[cardIdx]||'',cx_+5,cy_+12,Math.max(4,Math.floor(6*charScale/1.5)),cr.h||'#fff');
-  // Rarity corner sparkles for Legendary
-  if(cr.r>=5){
-    const sp=(typeof fr!=='undefined'?fr:0)*0.12;
-    if(Math.sin(sp)>0.6){bx(cx_-1,cy_-1,2,2,'#ffffff');bx(cx_+cw-1,cy_-1,2,2,'#ffffff');}
-    if(Math.sin(sp+1)>0.6){bx(cx_-1,cy_+ch-1,2,2,'#ffffff');bx(cx_+cw-1,cy_+ch-1,2,2,'#ffffff');}
+
+  // ── Legendary corner sparkles ──
+  if(rar>=5){
+    const sp=t*0.12;
+    const sc='#ffffff';
+    if(Math.sin(sp)>0.5){bx(cx_,cy_,2,2,sc);bx(cx_+cw-2,cy_,2,2,sc);}
+    if(Math.sin(sp+0.8)>0.5){bx(cx_,cy_+ch-2,2,2,sc);bx(cx_+cw-2,cy_+ch-2,2,2,sc);}
+    if(Math.sin(sp+1.6)>0.7){bx(cx_+Math.floor(cw/2),cy_,1,2,sc);bx(cx_,cy_+Math.floor(ch/2),2,1,sc);}
   }
-  // Card name at bottom
-  if(showName!==false){
-    bx(cx_+2,cy_+ch-Math.floor(ch*0.25),cw-4,Math.floor(ch*0.25)-2,'rgba(0,0,0,0.3)');
-    const nameSz=Math.max(4,Math.min(9,Math.floor(cw/9)));
-    txShadow(cr.n,cx_+cw/2-cr.n.length*nameSz/2.2,cy_+ch-Math.floor(ch*0.12),nameSz,'#fff','rgba(0,0,0,0.5)');
-  }
+
+  // ── Outer frame corner overlays (rivet-style) ──
+  bx(cx_,cy_,4,1,rarCol);bx(cx_,cy_,1,4,rarCol);
+  bx(cx_+cw-4,cy_,4,1,rarCol);bx(cx_+cw-1,cy_,1,4,rarCol);
+  bx(cx_,cy_+ch-1,4,1,rarCol);bx(cx_,cy_+ch-4,1,4,rarCol);
+  bx(cx_+cw-4,cy_+ch-1,4,1,rarCol);bx(cx_+cw-1,cy_+ch-4,1,4,rarCol);
 }
 
 // ═══════════════════════════════════════
@@ -699,12 +759,17 @@ function generateDungeonFloor(floorNum,seed){
   for(let y=2;y<MH-2;y++){for(let x=2;x<MW-2;x++){
     if(map[y][x]===18&&rng(y*200+x+floorNum*3333)<0.02)map[y][x]=8;
   }}
-  return map;
+  return {map,rooms};
 }
 
 // Generate dungeon floors
 const dungeonFloors=[];
-for(let f=1;f<=MAX_DUNGEON_FLOORS;f++)dungeonFloors.push(generateDungeonFloor(f,12345+f*7919));
+const dungeonRooms=[null]; // index 0 = town (no rooms)
+for(let f=1;f<=MAX_DUNGEON_FLOORS;f++){
+  const result=generateDungeonFloor(f,12345+f*7919);
+  dungeonFloors.push(result.map);
+  dungeonRooms.push(result.rooms);
+}
 
 // Map array: index 0 = Town, indices 1..MAX_DUNGEON_FLOORS = dungeon floors
 const maps=[MAP_PORT,...dungeonFloors];
@@ -756,6 +821,42 @@ function fogRevealRadius(mapIdx,cx,cy,radius){
     }
   }
   if(changed)fogCacheDirty=true;
+}
+
+// Reveal every tile inside a given room object {x,y,w,h}
+function fogRevealRoom(mapIdx,room){
+  if(!room)return;
+  let changed=false;
+  for(let ry=room.y;ry<room.y+room.h;ry++){
+    for(let rx=room.x;rx<room.x+room.w;rx++){
+      if(rx>=0&&rx<MW&&ry>=0&&ry<MH&&!fogRevealed[mapIdx][ry][rx]){
+        fogRevealed[mapIdx][ry][rx]=true;changed=true;
+      }
+    }
+  }
+  // Also reveal 1-tile border around room (catches corridors leading in)
+  for(let ry=room.y-1;ry<=room.y+room.h;ry++){
+    for(let rx=room.x-1;rx<=room.x+room.w;rx++){
+      if(rx>=0&&rx<MW&&ry>=0&&ry<MH&&!fogRevealed[mapIdx][ry][rx]){
+        fogRevealed[mapIdx][ry][rx]=true;changed=true;
+      }
+    }
+  }
+  if(changed)fogCacheDirty=true;
+}
+
+// Check if player is inside a dungeon room; if so reveal the whole room
+function fogRevealCurrentRoom(mapIdx,px,py){
+  const rooms=dungeonRooms[mapIdx];
+  if(!rooms)return;
+  for(const r of rooms){
+    if(px>=r.x&&px<r.x+r.w&&py>=r.y&&py<r.y+r.h){
+      fogRevealRoom(mapIdx,r);
+      return;
+    }
+  }
+  // Not in a room — corridor: just do radius reveal
+  fogRevealRadius(mapIdx,px,py,2);
 }
 
 function fogSave(){

@@ -69,6 +69,9 @@
 - refactor: split 07-screens.js (4132 lines) → 07-map.js / 07-battle.js / 07-battle-resolve.js
 - refactor: split 08-ui.js (2536 lines) → 08-overlays.js / 08-world-interact.js / 08-screens.js
 - build: MODULES array updated (11 → 17 files); output unchanged (15552 lines)
+- test: 53 unit tests for card engine (node tests/card-engine.test.js — all pass)
+- infra: ecosystem.config.cjs (pm2) + start.sh for x402 broker + multiplayer server startup
+- v151: victory screen C=Claim Prize (simulated tx) + M=Mint NFTs (60-card sequential mint with progress bar)
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)

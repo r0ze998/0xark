@@ -1,4 +1,104 @@
 // ═══════════════════════════════════════
+// v155: DUNGEON TURN SYSTEM
+// ═══════════════════════════════════════
+
+// Advance one dungeon turn: each rival takes one step
+function processDungeonTurn(){
+  if(!inDungeon)return;
+  if(encounterCooldown>0)return; // let game loop decrement
+  dungeonTurnStep(0);
+  dungeonTurnStep(1);
+  // Immediately check if any rival landed adjacent — fire encounter without waiting for next frame
+  checkDungeonRivalEncounter();
+}
+
+// Check if a rival just stepped adjacent to the player; trigger encounter if so
+// (mirrors the encounter check in the game loop but called explicitly after each turn)
+function checkDungeonRivalEncounter(){
+  if(!inDungeon||encounterCooldown>0||encounterExclActive||wildEncounterActive||mapTransitioning||mo||shadowStepsLeft>0)return;
+  pl.slice(1).forEach((r,idx)=>{
+    if(rivalMaps[idx]!==currentMap)return;
+    if(encounterCooldown>0||encounterExclActive)return;
+    const adjDist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+    if(adjDist===1){
+      // Trigger encounter — set cooldown so game-loop check doesn't double-fire
+      encounterCooldown=120;
+      const ai=rivalAI[idx];
+      // Collector may still flee
+      if(ai.personality==='collector'&&ai.state!=='fleeing'&&Math.random()<0.7){
+        ai.state='fleeing';ai.stateTimer=8;ai.moveInterval=5;
+        const fdx=r.x-pl[0].x;const fdy=r.y-pl[0].y;
+        const fx=r.x+(fdx!==0?fdx*5:0);const fy=r.y+(fdy!==0?fdy*5:0);
+        const flee=findWalkableTile(rivalMaps[idx],Math.max(2,Math.min(MW-3,fx)),Math.max(2,Math.min(MH-3,fy)),5);
+        if(flee){ai.goalX=flee.x;ai.goalY=flee.y;ai.goalMap=rivalMaps[idx];}
+        lg.push(r.n+' is trying to run away!');
+        return;
+      }
+      encounterExclActive=true;encounterExclFrame=fr;
+      encounterExclTarget=idx+1;
+      encounterExclPlayerX=pl[0].visualX;encounterExclPlayerY=pl[0].visualY;
+      encounterExclRivalX=r.visualX;encounterExclRivalY=r.visualY;
+      sfxEncounterDramatic();hitPause(4);
+      const rCards=r.cd.filter(c=>c>0).length;
+      const isHunting=ai.state==='hunting';
+      const vegaLines=['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Cornered. Just like the crew.','Nowhere left to run.'];
+      const miraLines=['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','The ARK crew fell to logic. So will you.'];
+      encounterRivalLine=idx===0?vegaLines[Math.floor(Math.random()*vegaLines.length)]:miraLines[Math.floor(Math.random()*miraLines.length)];
+      setTimeout(()=>{
+        encounterExclActive=false;flash();
+        twSet(isHunting?r.n+' ambushed you! Battle!':r.n+' appeared! Battle!');
+        startWipe('mosaic',30,()=>{
+          sc='act';battlePhase='vs_splash';bpFrame=fr;
+          battleRoundHistory=[];
+          startWipe('mosaic_out',20);
+          if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){runMission.progress=1;runMission.completed=true;sfxStreakUp();}
+        });
+      },500);
+    }
+  });
+}
+
+// Place floor items in dungeon rooms (called on fresh dungeon generation)
+function placeFloorItems(mapIdx,rooms){
+  if(!rooms||rooms.length===0)return;
+  floorItems[mapIdx]=[];
+  const pool=AREA_CARDS[mapIdx]||AREA_CARDS[1]||[];
+  if(pool.length===0)return;
+  // Skip the first room (entrance area) and last room (near stairs)
+  const eligible=rooms.slice(1,rooms.length-1);
+  if(eligible.length===0)eligible.push(rooms[Math.floor(rooms.length/2)]);
+  // Place 1-2 items per eligible room
+  for(const r of eligible){
+    const count=1+(mapIdx>=4?1:0); // deeper floors: more items
+    for(let i=0;i<count&&i<2;i++){
+      const ix=r.x+1+Math.floor(Math.random()*(r.w-2));
+      const iy=r.y+1+Math.floor(Math.random()*(r.h-2));
+      // Pick card from pool, biased toward rarer on deeper floors
+      const cardId=pool[Math.floor(Math.random()*pool.length)];
+      floorItems[mapIdx].push({x:ix,y:iy,cardId,glow:Math.random()*Math.PI*2});
+    }
+  }
+}
+
+// Check if player stepped on a floor item, auto-pick it up
+function checkFloorItemPickup(nx,ny){
+  const items=floorItems[currentMap];
+  if(!items||items.length===0)return;
+  const idx=items.findIndex(it=>it.x===nx&&it.y===ny);
+  if(idx===-1)return;
+  const it=items.splice(idx,1)[0];
+  const cr=CD[it.cardId-1];if(!cr)return;
+  // Add to player hand/vault
+  const placed=addCardToPlayer(0,it.cardId);
+  triggerCardGetBurst(nx*TW+TW/2,ny*TH+TH/2,cr.c||'#f0c030');
+  hitPause(4);
+  sfxCardGet();
+  startCardAcquisition(it.cardId);
+  checkWinAndTransition(1500);
+  lg.push('Found '+cr.n+' on the floor!');
+}
+
+// ═══════════════════════════════════════
 // MAP TRANSITION
 // ═══════════════════════════════════════
 function checkExitTile(x,y){
@@ -37,6 +137,23 @@ function doMapTransition(exit){
     // When entering floor 1 from town, spread rivals to safe starting positions far from entrance.
     // This prevents immediate encounters caused by AI roaming during town/title time.
     if(exit.fromMap===0&&exit.targetMap===1){
+      // v155: Regenerate all dungeon floors fresh every run (PMD-style: new dungeon each run)
+      const runSeed=Date.now();
+      dungeonSeedThisRun=runSeed;
+      for(let f=1;f<=MAX_DUNGEON_FLOORS;f++){
+        const result=generateDungeonFloor(f,runSeed+f*7919);
+        maps[f]=result.map;
+        dungeonRooms[f]=result.rooms;
+        // Reset fog for this dungeon floor
+        for(let ry=0;ry<MH;ry++)for(let rx=0;rx<MW;rx++)fogRevealed[f][ry][rx]=false;
+        // Place floor items
+        placeFloorItems(f,result.rooms);
+      }
+      fogCacheDirty=true;
+      // Reveal starting area of floor 1 for the player
+      fogRevealRadius(1,exit.targetX,exit.targetY,4);
+      fogSave();
+
       // v72: Snapshot state at dungeon entry so we can show run summary on exit
       dungeonRunSnapshot={cards:[...pl[0].cd],vaultSize:pl[0].vault?pl[0].vault.size:0,deepestFloor:0};
       // v79: Generate a random run mission
@@ -49,10 +166,10 @@ function doMapTransition(exit){
       rivalMaps=[1,1];
       rivalAI[0].goalX=32;rivalAI[0].goalY=12;rivalAI[0].state='exploring';
       rivalAI[0].lastKnownPlayerMap=-1;rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;
-      rivalAI[0].huntCooldown=900; // 15s before hunter can pursue (on top of the 8s grace period)
+      rivalAI[0].huntCooldown=30; // v155: ~30 player steps grace (real-time handled by encounterCooldown)
       rivalAI[1].goalX=32;rivalAI[1].goalY=18;rivalAI[1].state='exploring';
       rivalAI[1].lastKnownPlayerMap=-1;rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;
-      rivalAI[1].huntCooldown=600; // 10s extra cooldown for collector
+      rivalAI[1].huntCooldown=15; // v155: collector shorter grace
     }
     // For ANY dungeon floor transition: if a rival is on the destination floor and within 8 tiles
     // of the player entry point, push them to a safe position far from the entrance.
@@ -75,7 +192,9 @@ function doMapTransition(exit){
         }
       }
     }
-    showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]);
+    // v155: PMD-style floor title card for dungeon floors; simple banner for town
+    if(inDungeon){showFloorTitle(currentFloor);}
+    else{showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]);}
     // v72: Track deepest floor reached
     if(inDungeon&&dungeonRunSnapshot&&currentFloor>dungeonRunSnapshot.deepestFloor){
       dungeonRunSnapshot.deepestFloor=currentFloor;
@@ -205,6 +324,88 @@ function doMapTransition(exit){
     }
     fadeIn(()=>{mapTransitioning=false;});
   });
+}
+
+// ═══════════════════════════════════════
+// v155: PMD-STYLE FLOOR TITLE CARD
+// ═══════════════════════════════════════
+let floorTitleFrame=0,floorTitleActive=false,floorTitleFloor=0;
+const FLOOR_TITLE_DURATION=130; // ~2.2s at 60fps
+
+const FLOOR_THEMES=[
+  null, // 0=town
+  {danger:'★☆☆☆☆',note:'Scattered cards. Watch your step.'},
+  {danger:'★★☆☆☆',note:'The archives whisper. MIRA was here.'},
+  {danger:'★★★☆☆',note:'Echoes of the crew. Proceed carefully.'},
+  {danger:'★★★★☆',note:'The vault trembles. VEGA hunts below.'},
+  {danger:'★★★★★',note:'The ARK Core. One heir. No mercy.'},
+];
+
+function showFloorTitle(floorNum){
+  floorTitleActive=true;
+  floorTitleFrame=0;
+  floorTitleFloor=floorNum;
+}
+
+function updateFloorTitle(){
+  if(!floorTitleActive)return;
+  floorTitleFrame++;
+  if(floorTitleFrame>FLOOR_TITLE_DURATION)floorTitleActive=false;
+}
+
+function drawFloorTitle(){
+  if(!floorTitleActive)return;
+  const t=floorTitleFrame;
+  const dur=FLOOR_TITLE_DURATION;
+  // Fade in 0-20, hold 20-100, fade out 100-dur
+  let alpha=0;
+  if(t<20)alpha=t/20;
+  else if(t<100)alpha=1;
+  else alpha=Math.max(0,1-(t-100)/(dur-100));
+  if(alpha<=0.01)return;
+
+  const f=floorTitleFloor;
+  const floorName=mapNames[f]||('FLOOR '+f);
+  const theme=FLOOR_THEMES[f]||{danger:'★☆☆☆☆',note:''};
+  const floorNums=['','B1','B2','B3','B4','B5'];
+  const flNum=floorNums[f]||('B'+f);
+  const floorColors=['#302848','#403058','#503060','#403850','#503848'];
+  const bgCol=floorColors[f-1]||'#302848';
+
+  // Full-screen panel (centered, 80% width)
+  const pw=Math.floor(W*0.78),ph=100;
+  const px=(W-pw)/2,py=(H-ph)/2-10;
+  g.globalAlpha=alpha*0.94;
+  // Background
+  g.fillStyle=bgCol;g.fillRect(px,py,pw,ph);
+  // Border
+  g.globalAlpha=alpha;
+  g.strokeStyle='rgba(200,180,140,.6)';g.lineWidth=2;g.strokeRect(px+1,py+1,pw-2,ph-2);
+  g.strokeStyle='rgba(255,255,255,.15)';g.lineWidth=1;g.strokeRect(px+3,py+3,pw-6,ph-6);
+
+  // Floor number (large, left side)
+  g.globalAlpha=alpha;
+  tx(flNum,px+18,py+52,36,'rgba(255,255,255,.12)'); // ghost behind
+  tx(flNum,px+16,py+50,36,'#f0e8c0');
+  // Vertical separator
+  g.globalAlpha=alpha*0.4;
+  g.fillStyle='rgba(200,180,140,.5)';g.fillRect(px+80,py+12,1,ph-24);
+  g.globalAlpha=alpha;
+  // Floor name (right of separator)
+  const nameParts=floorName.split(' — ');
+  const flNameOnly=nameParts[1]||floorName;
+  tx(flNameOnly,px+90,py+30,8,'#f8f0e0');
+  // Danger stars
+  tx(theme.danger,px+90,py+48,7,'#e0a030');
+  // Flavor note
+  tx(theme.note,px+90,py+65,5,'#c0b898');
+  // "Press Z to explore" hint at bottom
+  if(t>60&&t<dur-20){
+    const hint='EXPLORE';
+    g.globalAlpha=alpha*(0.5+0.4*Math.sin(t*0.15));
+    tx(hint,px+pw-hint.length*4-12,py+ph-12,6,'#a0c8a0');
+  }
+  g.globalAlpha=1;
 }
 
 // ═══════════════════════════════════════

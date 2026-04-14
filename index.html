@@ -1001,66 +1001,80 @@ function updateAmbient(){
 // FRLG window system (canvas 2D) · bx/tx/win primitives · drawCardFrame · crypto utils · ZK proof system · Solana/wallet/blockchain helpers
 // ───────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════
-// FRLG WINDOW SYSTEM (pixel-perfect FRLG palette)
+// 0xARK DESIGN SYSTEM — "Deep ARK" (v156)
+// Maritime arcana: deep navy · brass gold · bioluminescent teal
 // ═══════════════════════════════════════
-// FRLG palette constants
-const FRLG={
-  winBg:'#F8F0D0',       // warm cream background
-  borderOuter:'#484050',  // dark purple-gray border
-  borderInner:'#888078',  // medium gray inner border
-  textColor:'#383830',    // warm dark text
-  selHighlight:'#F8D830', // golden yellow selection
-  hpGreen:'#58A850',
-  hpYellow:'#F8C838',
-  hpRed:'#E85048',
-  // FRLG theme variants (selectable)
-  themes:{
-    red:   {winBg:'#F8E0D0',borderOuter:'#504040',borderInner:'#887068'},
-    blue:  {winBg:'#D0E0F8',borderOuter:'#404060',borderInner:'#687888'},
-    green: {winBg:'#D8F0D0',borderOuter:'#405040',borderInner:'#688868'},
-    gold:  {winBg:'#F8F0D0',borderOuter:'#484050',borderInner:'#888078'}, // default
-  },
+const ARK={
+  bg:       '#06080f',  // void — page background
+  panel:    '#0b1020',  // hull — panel bg
+  panelMid: '#0e1428',  // inner hull
+  panelLit: '#131c36',  // lit panel
+  border:   '#1c2a50',  // cold steel
+  borderLit:'#2e4480',  // steel highlight
+  gold:     '#c8a448',  // brass
+  goldDim:  '#7a6028',  // tarnished brass
+  goldBright:'#e8c870', // polished brass
+  teal:     '#2898a8',  // bioluminescent
+  tealDim:  '#186070',
+  tealBright:'#50c8d8',
+  text:     '#d8d4c0',  // aged parchment
+  textDim:  '#6878a0',  // weathered
+  textBright:'#f0ecd8', // fresh parchment
+  danger:   '#b83030',
+  dangerBright:'#e04848',
+  safe:     '#2a7a48',
+  safeBright:'#48c070',
+  water:    '#080f20',
+  rarC:['#707880','#5090d0','#9050d8','#c09020','#e8c840'], // rarity tints C/U/R/E/L
 };
-let frlgTheme='gold'; // current theme
-function getFRLGColors(){
-  const t=FRLG.themes[frlgTheme]||FRLG.themes.gold;
-  return{winBg:t.winBg,borderOuter:t.borderOuter,borderInner:t.borderInner};
-}
-function win(x,y,w,h){
-  const tc=getFRLGColors();
-  g.fillStyle=tc.borderOuter;
-  g.fillRect(x+4,y,w-8,1);g.fillRect(x+3,y+1,w-6,1);g.fillRect(x+2,y+2,w-4,1);g.fillRect(x+1,y+3,w-2,1);
-  g.fillRect(x+1,y+h-4,w-2,1);g.fillRect(x+2,y+h-3,w-4,1);g.fillRect(x+3,y+h-2,w-6,1);g.fillRect(x+4,y+h-1,w-8,1);
-  g.fillRect(x,y+4,1,h-8);g.fillRect(x+1,y+3,1,h-6);g.fillRect(x+2,y+2,1,h-4);g.fillRect(x+3,y+1,1,h-2);
-  g.fillRect(x+w-1,y+4,1,h-8);g.fillRect(x+w-2,y+3,1,h-6);g.fillRect(x+w-3,y+2,1,h-4);g.fillRect(x+w-4,y+1,1,h-2);
-  g.fillStyle=tc.borderInner;
-  g.fillRect(x+4,y+4,w-8,1);g.fillRect(x+4,y+h-5,w-8,1);
-  g.fillRect(x+4,y+4,1,h-8);g.fillRect(x+w-5,y+4,1,h-8);
-  g.fillStyle=tc.winBg;
-  g.fillRect(x+5,y+5,w-10,h-10);
-  // Top-left highlight (light catches top edge)
-  g.fillStyle='rgba(255,255,255,.4)';
-  g.fillRect(x+6,y+5,w-12,1);g.fillRect(x+5,y+6,1,h-12);
-  // Bottom-right inner shadow (FRLG depth effect)
-  g.fillStyle='rgba(0,0,0,.08)';
-  g.fillRect(x+6,y+h-6,w-12,1);g.fillRect(x+w-6,y+6,1,h-12);
+// Keep FRLG object for legacy text color refs (mapped to ARK values)
+const FRLG={
+  textColor:ARK.text,
+  selHighlight:ARK.gold,
+  hpGreen:ARK.safeBright,
+  hpYellow:'#d0a030',
+  hpRed:ARK.dangerBright,
+};
+
+// ── Main panel window — dark maritime instrument style ──
+function win(x,y,w,h,accent){
+  const ac=accent||ARK.gold;
+  // Outermost border (1px)
+  g.fillStyle=ARK.border;g.fillRect(x,y,w,1);g.fillRect(x,y+h-1,w,1);g.fillRect(x,y,1,h);g.fillRect(x+w-1,y,1,h);
+  // Outer fill
+  g.fillStyle=ARK.panel;g.fillRect(x+1,y+1,w-2,h-2);
+  // Inner inset border
+  g.fillStyle=ARK.borderLit;g.fillRect(x+3,y+3,w-6,1);g.fillRect(x+3,y+h-4,w-6,1);g.fillRect(x+3,y+3,1,h-6);g.fillRect(x+w-4,y+3,1,h-6);
+  // Inner content fill
+  g.fillStyle=ARK.panelMid;g.fillRect(x+4,y+4,w-8,h-8);
+  // Gold accent top line
+  g.fillStyle=ARK.goldDim;g.fillRect(x+5,y+4,w-10,1);
+  // Corner brass rivets
+  g.fillStyle=ac;
+  g.fillRect(x+2,y+2,3,3);g.fillRect(x+w-5,y+2,3,3);
+  g.fillRect(x+2,y+h-5,3,3);g.fillRect(x+w-5,y+h-5,3,3);
+  // Inner rivets (subtle)
+  g.fillStyle=ARK.goldDim;
+  g.fillRect(x+5,y+5,1,1);g.fillRect(x+w-6,y+5,1,1);
+  g.fillRect(x+5,y+h-6,1,1);g.fillRect(x+w-6,y+h-6,1,1);
+  // Subtle scanline texture
+  g.fillStyle='rgba(0,0,0,.06)';
+  for(let sy=y+6;sy<y+h-6;sy+=2)g.fillRect(x+5,sy,w-10,1);
 }
 
 function bx(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}
-// FRLG-style text: 1px letter spacing + slight bold via double draw at 0.5px offset
 function tx(s,x,y,sz,c){
-  g.fillStyle=c||FRLG.textColor;
+  g.fillStyle=c||ARK.text;
   const finalSz=Math.max(12,Math.round((sz||12)*1.4));
   g.font=finalSz+"px 'VT323',monospace";
   g.fillText(s,x,y);
 }
-// Text with 1px shadow for readability (battle screens) — FRLG bold style
 function txShadow(s,x,y,sz,color,shadowColor){
-  const sc_=shadowColor||'rgba(0,0,0,0.85)';
+  const sc_=shadowColor||'rgba(0,0,0,0.9)';
   const finalSz=Math.max(12,Math.round((sz||12)*1.4));
   g.font=finalSz+"px 'VT323',monospace";
-  g.fillStyle=sc_;g.fillText(s,x+1,y+1);
-  g.fillStyle=color||'#fff';g.fillText(s,x,y);
+  g.fillStyle=sc_;g.fillText(s,x+1,y+1);g.fillText(s,x-1,y+1);
+  g.fillStyle=color||ARK.text;g.fillText(s,x,y);
 }
 
 // ═══════════════════════════════════════
@@ -2748,53 +2762,113 @@ function drawCardCharacter(x,y,cardId,scale,time){
 }
 
 // Draw card frame with character sprite inside
+// Card rarity accent colors (C U R E L)
+const CARD_RARITY_COL=['#606870','#4888d0','#8848d0','#c89020','#e8c840'];
+const CARD_RARITY_DIM=['#303438','#243858','#381858','#484010','#584810'];
+const CARD_RARITY_LABEL=['COMMON','UNCOMMON','RARE','EPIC','LEGENDARY'];
+const CARD_TYPE_ICON={attack:'\u2694',defense:'\u25C6',flee:'\u21af',magic:'\u2605',recovery:'\u2665'};
+
 function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
   const cr=CD[cardIdx];if(!cr)return;
-  // Rarity glow border (animated, drawn under frame so it peeks out)
-  if(cr.r>=3){
-    const rarGlowCols=['','','','#9040d0','#d09020','#f0d040'];
-    const rc=rarGlowCols[cr.r]||'#f0c830';
-    const glA=0.25+0.2*Math.sin((typeof fr!=='undefined'?fr:0)*0.08);
-    g.globalAlpha=glA;
-    const glw=cr.r>=5?3:2;
-    g.strokeStyle=rc;g.lineWidth=glw;g.strokeRect(cx_-glw/2,cy_-glw/2,cw+glw,ch+glw);
-    // Second outer ring for Legendary
-    if(cr.r>=5){
-      const glA2=0.15+0.15*Math.sin((typeof fr!=='undefined'?fr:0)*0.05+1);
-      g.globalAlpha=glA2;g.lineWidth=1;g.strokeRect(cx_-4,cy_-4,cw+8,ch+8);
+  const rar=Math.max(1,Math.min(5,cr.r||1));
+  const rarCol=CARD_RARITY_COL[rar-1];
+  const rarDim=CARD_RARITY_DIM[rar-1];
+  const t=(typeof fr!=='undefined'?fr:0);
+  const pulse=0.5+0.5*Math.sin(t*0.07);
+
+  // ── Outer rarity glow (rare+) ──
+  if(rar>=3){
+    const glowA=(rar>=5?0.5:rar>=4?0.38:0.25)*pulse;
+    g.globalAlpha=glowA;
+    g.shadowColor=rarCol;g.shadowBlur=rar>=5?14:8;
+    g.strokeStyle=rarCol;g.lineWidth=rar>=5?2:1.5;
+    g.strokeRect(cx_-1,cy_-1,cw+2,ch+2);
+    g.shadowBlur=0;g.globalAlpha=1;
+    if(rar>=5){
+      g.globalAlpha=glowA*0.5;g.lineWidth=1;
+      g.strokeRect(cx_-4,cy_-4,cw+8,ch+8);g.globalAlpha=1;
     }
+  }
+
+  // ── Card body — dark with rarity-tinted edge ──
+  // Outer frame (rarity color)
+  bx(cx_,cy_,cw,ch,rarDim);
+  // 1px inner border (rarity lit)
+  bx(cx_+1,cy_+1,cw-2,ch-2,rarCol.replace('#','#').slice(0,4)+'404');
+  g.globalAlpha=0.35;bx(cx_+1,cy_+1,cw-2,ch-2,rarCol);g.globalAlpha=1;
+  // Card body
+  bx(cx_+2,cy_+2,cw-4,ch-4,'#08101e');
+
+  // ── Type color header band (top ~22% of card) ──
+  const headerH=Math.floor(ch*0.22);
+  bx(cx_+2,cy_+2,cw-4,headerH,cr.d||'#102030');
+  // Diagonal stripe accent on header
+  g.save();g.rect(cx_+2,cy_+2,cw-4,headerH);g.clip();
+  g.globalAlpha=0.12;g.fillStyle=cr.h||'#ffffff';
+  for(let si=-ch;si<cw+ch;si+=6)g.fillRect(cx_+si,cy_+2,3,headerH*2);
+  g.restore();g.globalAlpha=1;
+  // Header bottom divider
+  bx(cx_+2,cy_+2+headerH,cw-4,1,rarCol);
+  g.globalAlpha=0.3;bx(cx_+2,cy_+2+headerH+1,cw-4,1,cr.c||'#406080');g.globalAlpha=1;
+
+  // ── Type icon + rarity dot (header area) ──
+  const iSz=Math.max(5,Math.floor(cw/7));
+  const icon=CARD_TYPE_ICON[cr.t]||'\u2605';
+  txShadow(icon,cx_+5,cy_+2+headerH-2,iSz,cr.h||'#fff','rgba(0,0,0,.7)');
+  // Rarity dot (top-right of header)
+  const dotX=cx_+cw-6-rar*4;
+  for(let ri=0;ri<rar;ri++){
+    const dc=ri<rar?rarCol:'#202840';
+    bx(cx_+cw-6-(ri)*5,cy_+5,3,3,dc);
+  }
+
+  // ── Art area (between header and name plate) ──
+  const nameH=Math.floor(ch*0.22);
+  const artY=cy_+2+headerH+2;
+  const artH=ch-4-headerH-nameH-2;
+  // Art bg (slightly lit hull)
+  bx(cx_+2,artY,cw-4,artH,'#0a1424');
+  // Subtle diagonal pattern
+  g.save();g.rect(cx_+2,artY,cw-4,artH);g.clip();
+  g.globalAlpha=0.04;g.fillStyle=cr.c||'#406080';
+  for(let si=-artH;si<cw+artH;si+=4)g.fillRect(cx_+si,artY,2,artH*2);
+  g.restore();g.globalAlpha=1;
+  // Character sprite centered in art area
+  const charScale=Math.max(0.35,Math.min(2.5,cw/28));
+  drawCardCharacter(cx_+cw/2-8*charScale,artY+artH/2-10*charScale,cardIdx+1,charScale,t);
+
+  // ── Name plate (bottom) ──
+  const npY=cy_+ch-nameH-2;
+  bx(cx_+2,npY,cw-4,nameH,cr.d||'#102030');
+  g.globalAlpha=0.08;bx(cx_+2,npY,cw-4,nameH,rarCol);g.globalAlpha=1;
+  // Top divider of name plate
+  bx(cx_+2,npY,cw-4,1,rarCol);
+  // Card name
+  const nameSz=Math.max(4,Math.min(8,Math.floor(cw/8)));
+  const nameY=npY+Math.floor(nameH*0.55);
+  txShadow(cr.n,cx_+cw/2-cr.n.length*nameSz/2.1,nameY,nameSz,ARK.textBright,'rgba(0,0,0,.8)');
+  // Rarity label (very small, below name)
+  if(nameH>16&&rar>=3){
+    const rlSz=Math.max(3,Math.floor(cw/13));
+    g.globalAlpha=0.7;
+    tx(CARD_RARITY_LABEL[rar-1],cx_+cw/2-CARD_RARITY_LABEL[rar-1].length*rlSz/2.1,npY+nameH-3,rlSz,rarCol);
     g.globalAlpha=1;
   }
-  // Outer border
-  bx(cx_,cy_,cw,ch,cr.d);
-  // Inner gradient bg
-  bx(cx_+2,cy_+2,cw-4,ch-4,cr.c);
-  bx(cx_+2,cy_+2,cw-4,Math.floor(ch/3),'rgba(0,0,0,0.15)');
-  bx(cx_+2,cy_+ch-Math.floor(ch/3),cw-4,Math.floor(ch/3)-2,'rgba(255,255,255,0.08)');
-  // Inner card art area
-  bx(cx_+4,cy_+4,cw-8,ch*0.6,cr.d);
-  bx(cx_+5,cy_+5,cw-10,ch*0.6-2,'rgba(255,255,255,0.08)');
-  // Character sprite centered in art area
-  const charScale=Math.max(0.4,Math.min(3,cw/28));
-  const charW=16*charScale, charH=20*charScale;
-  const charX=cx_+cw/2-charW/2;
-  const charY=cy_+4+ch*0.3-charH/2;
-  drawCardCharacter(charX,charY,cardIdx+1,charScale,fr);
-  // Small type icon in top-left
-  const icons=['\u26E8','\u263D','\u2632','\u26A1','\u25C9'];
-  tx(icons[cardIdx]||'',cx_+5,cy_+12,Math.max(4,Math.floor(6*charScale/1.5)),cr.h||'#fff');
-  // Rarity corner sparkles for Legendary
-  if(cr.r>=5){
-    const sp=(typeof fr!=='undefined'?fr:0)*0.12;
-    if(Math.sin(sp)>0.6){bx(cx_-1,cy_-1,2,2,'#ffffff');bx(cx_+cw-1,cy_-1,2,2,'#ffffff');}
-    if(Math.sin(sp+1)>0.6){bx(cx_-1,cy_+ch-1,2,2,'#ffffff');bx(cx_+cw-1,cy_+ch-1,2,2,'#ffffff');}
+
+  // ── Legendary corner sparkles ──
+  if(rar>=5){
+    const sp=t*0.12;
+    const sc='#ffffff';
+    if(Math.sin(sp)>0.5){bx(cx_,cy_,2,2,sc);bx(cx_+cw-2,cy_,2,2,sc);}
+    if(Math.sin(sp+0.8)>0.5){bx(cx_,cy_+ch-2,2,2,sc);bx(cx_+cw-2,cy_+ch-2,2,2,sc);}
+    if(Math.sin(sp+1.6)>0.7){bx(cx_+Math.floor(cw/2),cy_,1,2,sc);bx(cx_,cy_+Math.floor(ch/2),2,1,sc);}
   }
-  // Card name at bottom
-  if(showName!==false){
-    bx(cx_+2,cy_+ch-Math.floor(ch*0.25),cw-4,Math.floor(ch*0.25)-2,'rgba(0,0,0,0.3)');
-    const nameSz=Math.max(4,Math.min(9,Math.floor(cw/9)));
-    txShadow(cr.n,cx_+cw/2-cr.n.length*nameSz/2.2,cy_+ch-Math.floor(ch*0.12),nameSz,'#fff','rgba(0,0,0,0.5)');
-  }
+
+  // ── Outer frame corner overlays (rivet-style) ──
+  bx(cx_,cy_,4,1,rarCol);bx(cx_,cy_,1,4,rarCol);
+  bx(cx_+cw-4,cy_,4,1,rarCol);bx(cx_+cw-1,cy_,1,4,rarCol);
+  bx(cx_,cy_+ch-1,4,1,rarCol);bx(cx_,cy_+ch-4,1,4,rarCol);
+  bx(cx_+cw-4,cy_+ch-1,4,1,rarCol);bx(cx_+cw-1,cy_+ch-4,1,4,rarCol);
 }
 
 // ═══════════════════════════════════════
@@ -3036,12 +3110,17 @@ function generateDungeonFloor(floorNum,seed){
   for(let y=2;y<MH-2;y++){for(let x=2;x<MW-2;x++){
     if(map[y][x]===18&&rng(y*200+x+floorNum*3333)<0.02)map[y][x]=8;
   }}
-  return map;
+  return {map,rooms};
 }
 
 // Generate dungeon floors
 const dungeonFloors=[];
-for(let f=1;f<=MAX_DUNGEON_FLOORS;f++)dungeonFloors.push(generateDungeonFloor(f,12345+f*7919));
+const dungeonRooms=[null]; // index 0 = town (no rooms)
+for(let f=1;f<=MAX_DUNGEON_FLOORS;f++){
+  const result=generateDungeonFloor(f,12345+f*7919);
+  dungeonFloors.push(result.map);
+  dungeonRooms.push(result.rooms);
+}
 
 // Map array: index 0 = Town, indices 1..MAX_DUNGEON_FLOORS = dungeon floors
 const maps=[MAP_PORT,...dungeonFloors];
@@ -3093,6 +3172,42 @@ function fogRevealRadius(mapIdx,cx,cy,radius){
     }
   }
   if(changed)fogCacheDirty=true;
+}
+
+// Reveal every tile inside a given room object {x,y,w,h}
+function fogRevealRoom(mapIdx,room){
+  if(!room)return;
+  let changed=false;
+  for(let ry=room.y;ry<room.y+room.h;ry++){
+    for(let rx=room.x;rx<room.x+room.w;rx++){
+      if(rx>=0&&rx<MW&&ry>=0&&ry<MH&&!fogRevealed[mapIdx][ry][rx]){
+        fogRevealed[mapIdx][ry][rx]=true;changed=true;
+      }
+    }
+  }
+  // Also reveal 1-tile border around room (catches corridors leading in)
+  for(let ry=room.y-1;ry<=room.y+room.h;ry++){
+    for(let rx=room.x-1;rx<=room.x+room.w;rx++){
+      if(rx>=0&&rx<MW&&ry>=0&&ry<MH&&!fogRevealed[mapIdx][ry][rx]){
+        fogRevealed[mapIdx][ry][rx]=true;changed=true;
+      }
+    }
+  }
+  if(changed)fogCacheDirty=true;
+}
+
+// Check if player is inside a dungeon room; if so reveal the whole room
+function fogRevealCurrentRoom(mapIdx,px,py){
+  const rooms=dungeonRooms[mapIdx];
+  if(!rooms)return;
+  for(const r of rooms){
+    if(px>=r.x&&px<r.x+r.w&&py>=r.y&&py<r.y+r.h){
+      fogRevealRoom(mapIdx,r);
+      return;
+    }
+  }
+  // Not in a room — corridor: just do radius reveal
+  fogRevealRadius(mapIdx,px,py,2);
 }
 
 function fogSave(){
@@ -3557,12 +3672,87 @@ function pickRivalGoal(aiIdx){
   }
 }
 
+// v155: Turn-based single step for a rival in dungeon (bypasses real-time timer)
+function dungeonTurnStep(aiIdx){
+  const ai=rivalAI[aiIdx];
+  const rIdx=aiIdx+1;
+  const r=pl[rIdx];
+  const rMap=rivalMaps[aiIdx];
+  if(encounterCooldown>0)return;
+  if(ai.huntCooldown>0)ai.huntCooldown--;
+  // Update detection based on distance
+  if(rMap===currentMap){
+    const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+    // Always track player position when on same floor (needed for hunting)
+    ai.lastKnownPlayerMap=currentMap;
+    ai.lastKnownPlayerX=pl[0].x;ai.lastKnownPlayerY=pl[0].y;
+    // Hunter: redirect to player once huntCooldown expires (any distance on same floor)
+    if(ai.personality==='hunter'&&ai.huntCooldown<=0){
+      ai.goalX=pl[0].x;ai.goalY=pl[0].y;ai.goalMap=rMap;ai.state='hunting';ai.moveInterval=5;
+    }
+    // Collector: flee when player is within 6 tiles
+    if(ai.personality==='collector'&&dist<=6&&ai.state!=='fleeing'){
+      if(Math.random()<0.7){
+        ai.state='fleeing';ai.stateTimer=8;ai.moveInterval=5;
+        const fdx=r.x-pl[0].x;const fdy=r.y-pl[0].y;
+        const fx=r.x+(fdx>0?10:-10);const fy=r.y+(fdy>0?10:-10);
+        const clamped=findWalkableTile(rMap,Math.max(2,Math.min(MW-3,fx)),Math.max(2,Math.min(MH-3,fy)),6);
+        if(clamped){ai.goalX=clamped.x;ai.goalY=clamped.y;ai.goalMap=rMap;}
+      } else {
+        // 30% chance MIRA also hunts (she has enough cards)
+        if(ai.huntCooldown<=0){ai.goalX=pl[0].x;ai.goalY=pl[0].y;ai.state='hunting';ai.moveInterval=6;}
+      }
+    }
+  }
+  if(ai.state==='fleeing'){
+    ai.stateTimer--;if(ai.stateTimer<=0){ai.state='exploring';ai.moveInterval=ai.personality==='hunter'?8:12;pickRivalGoal(aiIdx);}
+  }
+  const atGoal=Math.abs(r.x-ai.goalX)<=1&&Math.abs(r.y-ai.goalY)<=1;
+  if(atGoal){
+    for(const ex of exits){
+      if(ex.fromMap===rMap){
+        for(const [etx,ety] of ex.tiles){
+          if(r.x===etx&&r.y===ety){
+            const oldMap=rMap;rivalMaps[aiIdx]=ex.targetMap;
+            r.x=ex.targetX;r.y=ex.targetY;r.visualX=ex.targetX*TW;r.visualY=ex.targetY*TH;
+            if(ex.targetMap===currentMap&&oldMap!==currentMap){
+              rivalAlert=90;rivalAlertName=r.n;flash();beep(660,.04,.06);
+              lg.push('You sense movement... '+r.n+' entered the area!');
+            }
+            if(inDungeon&&ex.targetMap>0){
+              const flNums=['','I','II','III','IV','V'];
+              const dir=ex.targetMap>oldMap?'descended to':'retreated to';
+              rivalNewsQueue.push({text:r.n+' '+dir+' FLOOR '+(flNums[ex.targetMap]||ex.targetMap),rivalIdx:aiIdx,rarity:0});
+            }
+            pickRivalGoal(aiIdx);return;
+          }
+        }
+      }
+    }
+    ai.moveInterval=ai.personality==='hunter'?8:12;pickRivalGoal(aiIdx);
+  }
+  const moved=stepToward(rIdx,ai.goalX,ai.goalY);
+  if(moved){
+    footprints.push({map:rMap,x:r.x,y:r.y,age:0,ri:rIdx});
+    const m=maps[rMap];const tile=m[r.y]?.[r.x];
+    let encounterChance=0;
+    if(tile===11)encounterChance=0.25;else if(tile===1)encounterChance=0.12;
+    if(encounterChance>0&&Math.random()<encounterChance){
+      const cardId=pickAreaCardForMap(rMap);
+      if(addCardToPlayer(rIdx,cardId)&&rMap===currentMap)lg.push(r.n+' found a card nearby...');
+    }
+  }else{pickRivalGoal(aiIdx);}
+}
+
 // Update single rival AI each frame
 function updateRivalAI(aiIdx){
   const ai=rivalAI[aiIdx];
   const rIdx=aiIdx+1;
   const r=pl[rIdx];
   const rMap=rivalMaps[aiIdx];
+
+  // v155: In dungeon, rivals move per-turn (called by processDungeonTurn), not real-time
+  if(inDungeon)return;
 
   // Freeze all rival movement while encounter cooldown is active (map transition grace period).
   // This prevents rivals from walking toward the player entry point during the 8s safe window.
@@ -4049,6 +4239,12 @@ const AUTO_SAVE_INTERVAL=1800; // 30 seconds at 60fps
 let encounterCooldown=0;
 let camX=0,camY=0,camTargetX=0,camTargetY=0;
 let mapTransitioning=false;
+
+// ── DUNGEON TURN SYSTEM (v155) ──
+// floorItems: per-map array of {x,y,cardId,glow} items lying on the floor
+const floorItems={}; // floorItems[mapIdx] = [{x,y,cardId,glow}]
+// Track whether dungeon has been freshly generated this run
+let dungeonSeedThisRun=0;
 
 // ── DAY/NIGHT VISUAL CYCLE ──
 const dayNightStartTime=Date.now();
@@ -4805,18 +5001,36 @@ function drawWater(px,py,tx_,ty){
 }
 
 function drawGrass(px,py,tx_,ty){
-  // Dungeon floors: draw as stone tiles, not grass
+  // Dungeon room floors: waterlogged ship planks / hull interior
   if(currentMap>0){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
-    const depth=currentMap; // deeper = darker stone
-    const base=48-depth*3,hi=66-depth*3;
-    bx(px,py,TW,TH,`rgb(${base+sv},${base+sv},${base+sv+8})`);
-    // Stone texture: subtle grid lines
-    bx(px,py,TW,1,`rgba(0,0,0,.1)`);
-    bx(px,py,1,TH,`rgba(0,0,0,.1)`);
-    // Subtle variation dots
-    if((h&15)<3)bx(px+Math.floor(thRand(tx_,ty,1)*28)+2,py+Math.floor(thRand(tx_,ty,2)*28)+2,2,2,`rgb(${hi+sv},${hi+sv},${hi+sv+4})`);
+    const depth=currentMap;
+    // Plank base color — dark wood, deeper = more blue-tinted (water seeping in)
+    const rBase=20+sv,gBase=22+sv,bBase=28+sv*2+depth*3;
+    bx(px,py,TW,TH,`rgb(${rBase},${gBase},${bBase})`);
+    // Plank grain lines (horizontal, spaced 4px)
+    const grainOff=(h>>3)&3;
+    for(let gy=grainOff;gy<TH;gy+=4){
+      const gv=((h+gy*3)&7)-4;
+      g.fillStyle=`rgba(${gv>0?255:0},${gv>0?255:0},${gv>0?255:0},${Math.abs(gv)*0.012+0.04})`;
+      g.fillRect(px,py+gy,TW,1);
+    }
+    // Plank edge shadow (left+top)
+    bx(px,py,TW,1,`rgba(0,0,0,.18)`);
+    bx(px,py,1,TH,`rgba(0,0,0,.12)`);
+    // Occasional glint (water pooling)
+    if((h&31)<2){
+      const gx=Math.floor(thRand(tx_,ty,1)*22)+4,gy=Math.floor(thRand(tx_,ty,2)*22)+4;
+      const glA=0.1+0.1*Math.sin((typeof fr!=='undefined'?fr:0)*0.05+tx_*0.3);
+      g.globalAlpha=glA;bx(px+gx,py+gy,3,1,'#6090b8');bx(px+gx+1,py+gy-1,1,3,'#5080a8');g.globalAlpha=1;
+    }
+    // Deep floor (B4-B5): bioluminescent moss dots
+    if(depth>=4&&(h&15)<2){
+      const mx=Math.floor(thRand(tx_,ty,3)*24)+3,my=Math.floor(thRand(tx_,ty,4)*24)+3;
+      const mA=0.3+0.2*Math.sin((typeof fr!=='undefined'?fr:0)*0.06+ty*0.5);
+      g.globalAlpha=mA;bx(px+mx,py+my,2,2,'#28c8a0');g.globalAlpha=1;
+    }
     return;
   }
   if(useKenney.grass){
@@ -4911,15 +5125,37 @@ function drawTallGrass(px,py,tx_,ty){
 }
 
 function drawPath(px,py,tx_,ty){
-  // Dungeon corridors: draw as darker stone, slightly different from room floors
+  // Dungeon corridors: hull passage — dark steel plate with rivets and seams
   if(currentMap>0){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
     const depth=currentMap;
-    const base=38-depth*2;
-    bx(px,py,TW,TH,`rgb(${base+sv},${base+sv},${base+sv+6})`);
-    bx(px,py,TW,2,`rgba(0,0,0,.12)`);
-    bx(px,py,2,TH,`rgba(0,0,0,.12)`);
+    // Base: dark steel, slightly bluer at deeper floors
+    const rB=12+sv,gB=16+sv,bB=24+sv+depth*2;
+    bx(px,py,TW,TH,`rgb(${rB},${gB},${bB})`);
+    // Horizontal metal plate seams (every 8px)
+    const plateOff=(h>>3)&7;
+    for(let gy=plateOff;gy<TH;gy+=8){
+      g.fillStyle='rgba(0,0,0,.22)';g.fillRect(px,py+gy,TW,1);
+      g.fillStyle='rgba(255,255,255,.04)';g.fillRect(px,py+gy+1,TW,1);
+    }
+    // Rivet pairs at seam intersections
+    const r1x=4+((h>>4)&10),r2x=20+((h>>2)&10);
+    const rivY=(plateOff+4)%TH;
+    bx(px+r1x,py+rivY,2,2,'rgba(180,150,80,.3)');
+    bx(px+r1x+1,py+rivY,1,1,'rgba(255,230,140,.2)');
+    bx(px+r2x,py+rivY,2,2,'rgba(180,150,80,.3)');
+    bx(px+r2x+1,py+rivY,1,1,'rgba(255,230,140,.2)');
+    // Edge shadow (wall-meets-floor shadow line)
+    bx(px,py,TW,1,'rgba(0,0,0,.35)');
+    bx(px,py,1,TH,'rgba(0,0,0,.22)');
+    bx(px+TW-1,py,1,TH,'rgba(0,0,0,.14)');
+    // Occasional water pool glint (flooding at deeper floors)
+    if((h&23)===0){
+      const gx=Math.floor(thRand(tx_,ty,5)*22)+4,gy=Math.floor(thRand(tx_,ty,6)*22)+4;
+      const glA=0.07+0.06*Math.sin((typeof fr!=='undefined'?fr:0)*0.04+tx_*0.4);
+      g.globalAlpha=glA;bx(px+gx,py+gy,5,2,'#2a4060');g.globalAlpha=1;
+    }
     return;
   }
   if(useKenney.path){
@@ -5191,6 +5427,46 @@ function drawCave(px,py,tx_,ty){
 }
 
 function drawMountain(px,py,tx_,ty){
+  // Dungeon walls: impenetrable hull steel — riveted, welded, dark
+  if(currentMap>0){
+    const h=tileHash(tx_,ty);
+    const sv=((h&7)-4);
+    const depth=currentMap;
+    // Deep near-black blue-steel
+    const rB=8+sv,gB=10+sv,bB=16+sv+depth;
+    bx(px,py,TW,TH,`rgb(${rB},${gB},${bB})`);
+    // Horizontal rivet rows (every 8px, staggered)
+    const rivOff=(h>>3)&3;
+    for(let ry=rivOff*4+2;ry<TH;ry+=9){
+      const r1x=3+((h>>4)&7),r2x=18+((h>>6)&7);
+      // Rivet body
+      bx(px+r1x,py+ry,3,3,'rgba(80,70,40,.5)');
+      bx(px+r1x+1,py+ry,2,1,'rgba(200,160,80,.22)');
+      bx(px+r2x,py+ry,3,3,'rgba(80,70,40,.5)');
+      bx(px+r2x+1,py+ry,2,1,'rgba(200,160,80,.22)');
+    }
+    // Vertical reinforcement seam
+    if((h&3)===0){
+      const sx=5+((h>>6)&20);
+      g.fillStyle='rgba(0,0,0,.25)';g.fillRect(px+sx,py,2,TH);
+      g.fillStyle='rgba(255,255,255,.025)';g.fillRect(px+sx+2,py,1,TH);
+    }
+    // Horizontal weld line
+    const weldY=(h&15)+6;
+    g.fillStyle='rgba(0,0,0,.28)';g.fillRect(px,py+weldY,TW,2);
+    g.fillStyle='rgba(255,255,255,.025)';g.fillRect(px,py+weldY+2,TW,1);
+    // Top/left edge highlight (faint steel sheen)
+    bx(px,py,TW,1,'rgba(255,255,255,.06)');
+    bx(px,py,1,TH,'rgba(255,255,255,.04)');
+    // Deep floors: rust stain or barnacle patch
+    if(depth>=3&&(h&7)===0){
+      const bx_=Math.floor(thRand(tx_,ty,7)*20)+4,by_=Math.floor(thRand(tx_,ty,8)*20)+4;
+      g.globalAlpha=0.22;
+      bx(px+bx_,py+by_,6,4,depth>=4?'#1e2a08':'#3c1e08');
+      g.globalAlpha=1;
+    }
+    return;
+  }
   if(useKenney.mountain){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
@@ -5405,19 +5681,38 @@ function drawRuinsPillar(px,py,tx_,ty){
 }
 
 function drawGlowTile(px,py,tx_,ty){
+  if(currentMap>0){
+    // Dungeon arcane rune tile — plank base with ARK teal runes + brass center
+    drawGrass(px,py,tx_,ty);
+    const cfr=typeof fr!=='undefined'?fr:0;
+    const pulse=Math.sin(cfr*.06+tx_*2+ty*3)*.35+.55;
+    // Teal rune field
+    bx(px+4,py+4,TW-8,TH-8,`rgba(40,152,168,${pulse*.4})`);
+    // Rune border lines (ARK teal)
+    const teal=`rgba(60,200,220,${pulse*.65})`;
+    bx(px+6,py+6,2,TH-12,teal);bx(px+TW-8,py+6,2,TH-12,teal);
+    bx(px+6,py+6,TW-12,2,teal);bx(px+6,py+TH-8,TW-12,2,teal);
+    // Inner rune cross
+    bx(px+14,py+8,4,TH-16,teal);bx(px+8,py+14,TW-16,4,teal);
+    // Brass gold center node (ARK accent)
+    const gold=`rgba(200,164,72,${pulse*.75})`;
+    g.fillStyle=gold;g.beginPath();g.arc(px+TW/2,py+TH/2,4,0,Math.PI*2);g.fill();
+    bx(px+13,py+13,6,6,`rgba(240,200,80,${pulse*.4})`);
+    // Glow halo
+    g.fillStyle=`rgba(40,152,168,${pulse*.14})`;
+    g.beginPath();g.arc(px+TW/2,py+TH/2,13,0,Math.PI*2);g.fill();
+    return;
+  }
   drawGrass(px,py,tx_,ty);
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
   const pulse=Math.sin(fr*.06+tx_*2+ty*3)*.3+.5;
   const color=((tx_+ty)%2===0)?`rgba(80,200,220,${pulse*.4})`:`rgba(160,80,200,${pulse*.4})`;
   bx(px+2,py+2,TW-4,TH-4,color);
   bx(px+4,py+4,TW-8,TH-8,color);
-  // Rune pattern (detailed)
   const bright=((tx_+ty)%2===0)?`rgba(120,240,255,${pulse*.6})`:`rgba(200,120,255,${pulse*.6})`;
   bx(px+6,py+6,2,TH-12,bright);bx(px+TW-8,py+6,2,TH-12,bright);
   bx(px+6,py+6,TW-12,2,bright);bx(px+6,py+TH-8,TW-12,2,bright);
-  // Inner rune cross
   bx(px+14,py+8,4,TH-16,bright);bx(px+8,py+14,TW-16,4,bright);
-  // Center glow
   g.fillStyle=bright;g.beginPath();g.arc(px+16,py+16,4,0,Math.PI*2);g.fill();
 }
 
@@ -5443,42 +5738,89 @@ function drawLava(px,py,tx_,ty){
 }
 
 function drawCrystal(px,py,tx_,ty){
+  if(currentMap>0){
+    // Dungeon crystal: deep ARK maritime crystal — teal-shifted per floor
+    drawGrass(px,py,tx_,ty);
+    const cfr=typeof fr!=='undefined'?fr:0;
+    const r=tr(tx_,ty);
+    const depth=currentMap;
+    // Color shifts deeper — teal→sapphire
+    const hue=depth<=2?'#28a8c0':depth===3?'#1880c8':'#1058d0';
+    const hueD=depth<=2?'#166878':depth===3?'#104868':'#0c3080';
+    const hueL=depth<=2?'#50d0e8':depth===3?'#40b0e0':'#3088e0';
+    // Crystal cluster
+    bx(px+10,py+4,12,22,hue);bx(px+8,py+10,16,12,hue);
+    bx(px+12,py+2,8,5,hueL);
+    // Secondary shards
+    bx(px+4,py+12,6,14,hueD);bx(px+22,py+8,6,16,hueD);
+    // Inner facet face (lighter)
+    bx(px+12,py+6,4,10,hueL);bx(px+14,py+4,2,5,'rgba(255,255,255,.4)');
+    // Specular glint
+    const sparkle=Math.sin(cfr*.1+tx_*5+ty*7)>.45;
+    if(sparkle){bx(px+15,py+8,3,2,'#fff');bx(px+10,py+15,2,2,'rgba(255,255,255,.8)');}
+    // Sub-facet texture
+    bx(px+10,py+10,2,8,'rgba(255,255,255,.06)');
+    // Glow halo (ARK teal)
+    g.fillStyle=`rgba(30,140,200,${.16+Math.sin(cfr*.05+tx_+ty)*.09})`;
+    g.beginPath();g.arc(px+16,py+16,11,0,Math.PI*2);g.fill();
+    return;
+  }
   drawGrass(px,py,tx_,ty);
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
   const r=tr(tx_,ty);
   const hue=((tx_+ty)%3===0)?'#80c0e0':((tx_+ty)%3===1)?'#a080d0':'#60e0a0';
-  // Crystal cluster - main shard
   bx(px+10,py+4,12,22,hue);bx(px+8,py+10,16,12,hue);
   bx(px+12,py+2,8,4,lighten(hue,.2));
-  // Secondary shards
   bx(px+4,py+12,6,14,darken(hue,.1));bx(px+22,py+8,6,16,darken(hue,.1));
-  // Facet highlights
   bx(px+12,py+6,4,8,lighten(hue,.25));bx(px+14,py+4,2,4,'rgba(255,255,255,.3)');
-  // Sparkle
   const sparkle=Math.sin(fr*.1+tx_*5+ty*7)>.5;
   if(sparkle){bx(px+16,py+8,2,2,'#fff');bx(px+10,py+14,2,2,'rgba(255,255,255,.7)');}
-  // Glow
   g.fillStyle=`rgba(160,200,255,${.12+Math.sin(fr*.05+tx_+ty)*.06})`;
   g.beginPath();g.arc(px+16,py+16,10,0,Math.PI*2);g.fill();
 }
 
 function drawAltar(px,py,tx_,ty){
+  if(currentMap>0){
+    // Dungeon altar: weathered dark steel with brass ARK gold accents
+    drawGrass(px,py,tx_,ty);
+    const cfr=typeof fr!=='undefined'?fr:0;
+    const pulse=Math.sin(cfr*.04)*.3+.5;
+    // Base slab — dark plate steel
+    bx(px+2,py+20,28,10,'#101620');bx(px+4,py+18,24,10,'#18202c');
+    // Top surface
+    bx(px+6,py+14,20,5,'#1e2830');bx(px+8,py+12,16,4,'#242e3c');
+    // Brass trim lines (ARK.gold = #c8a448)
+    bx(px+6,py+14,20,1,'#a08028');bx(px+4,py+18,24,1,'#7a6018');
+    bx(px+2,py+20,28,1,'#584810');
+    // Corner brass rivets
+    bx(px+4,py+19,3,3,'#b89030');bx(px+5,py+19,1,1,'rgba(255,220,100,.3)');
+    bx(px+25,py+19,3,3,'#b89030');bx(px+26,py+19,1,1,'rgba(255,220,100,.3)');
+    // Scanlines on base
+    for(let sy=0;sy<10;sy+=2){g.fillStyle='rgba(0,0,0,.07)';g.fillRect(px+2,py+20+sy,28,1);}
+    // Glow on altar top (brass gold)
+    bx(px+10,py+12,12,3,`rgba(200,164,72,${pulse*.42})`);
+    // Floating brass orb
+    const orbY=py+4+Math.sin(cfr*.05)*3;
+    g.fillStyle=`rgba(200,164,72,${pulse*.65})`;
+    g.beginPath();g.arc(px+16,orbY,5,0,Math.PI*2);g.fill();
+    g.fillStyle=`rgba(240,200,80,${pulse*.22})`;
+    g.beginPath();g.arc(px+16,orbY,10,0,Math.PI*2);g.fill();
+    // Arcane inscriptions on base
+    bx(px+8,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);bx(px+20,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);
+    bx(px+14,py+24,4,1,`rgba(200,164,72,${pulse*.25})`);
+    return;
+  }
   drawGrass(px,py,tx_,ty);
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
-  // Altar base
   bx(px+2,py+20,28,10,'#606068');bx(px+4,py+18,24,10,'#707078');
-  // Altar top
   bx(px+6,py+14,20,5,'#808088');bx(px+8,py+12,16,4,'#909098');
-  // Glow on altar
   const pulse=Math.sin(fr*.04)*.3+.5;
   bx(px+10,py+12,12,3,`rgba(200,160,255,${pulse*.5})`);
-  // Floating orb
   const orbY=py+4+Math.sin(fr*.05)*3;
   g.fillStyle=`rgba(200,160,255,${pulse*.7})`;
   g.beginPath();g.arc(px+16,orbY,5,0,Math.PI*2);g.fill();
   g.fillStyle=`rgba(255,220,255,${pulse*.4})`;
   g.beginPath();g.arc(px+16,orbY,10,0,Math.PI*2);g.fill();
-  // Rune engravings on stone
   bx(px+8,py+22,4,2,`rgba(200,160,255,${pulse*.3})`);bx(px+20,py+22,4,2,`rgba(200,160,255,${pulse*.3})`);
 }
 
@@ -5616,89 +5958,182 @@ function drawTile(tx_,ty){
 // ═══════════════════════════════════════
 // SPRITES
 // ═══════════════════════════════════════
+// Character identity palette
+// pl[0] Protagonist: navy maritime coat + brass trim, dark hair
+// pl[1] Vega rival:  deep crimson coat, auburn hair
+// pl[2] Mira rival:  dark jade coat, silver-white hair
 function drawSprite(p,isPlayer){
   const px=p.visualX-camX,py=p.visualY-camY-16;
   if(px<-48||px>W+48||py<-56||py>H+56)return;
   const wf=p.walkFrame%4;
   const bob=(wf===1||wf===3)?2:0;
   const d=p.dir;
+  const isP0=p===pl[0],isP1=p===pl[1],isP2=p===pl[2];
 
   // Shadow
-  g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(px+16,py+46,12,5,0,0,Math.PI*2);g.fill();
+  g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(px+16,py+46,12,4,0,0,Math.PI*2);g.fill();
 
-  // Shoes/feet (visible with detail)
-  if(wf===1){bx(px+4,py+42+bob,8,4,'#383030');bx(px+5,py+42+bob,6,3,'#484040');bx(px+20,py+40+bob,8,4,'#383030');bx(px+21,py+40+bob,6,3,'#484040');}
-  else if(wf===3){bx(px+8,py+40+bob,8,4,'#383030');bx(px+9,py+40+bob,6,3,'#484040');bx(px+18,py+42+bob,8,4,'#383030');bx(px+19,py+42+bob,6,3,'#484040');}
-  else{bx(px+6,py+42+bob,8,4,'#383030');bx(px+7,py+42+bob,6,3,'#484040');bx(px+18,py+42+bob,8,4,'#383030');bx(px+19,py+42+bob,6,3,'#484040');}
+  // --- OUTFIT PALETTE ---
+  let coatC,coatH,coatD,trimC,pantsC,pantsH,bootC,skinC,hairC,hairH,hairAcc;
+  if(isP0){
+    coatC='#1c3060';coatH='#2448a0';coatD='#0e1c3c';trimC='#c8a448';
+    pantsC='#18283c';pantsH='#223048';bootC='#201820';
+    skinC='#e8d4b8';hairC='#1a1820';hairH='#2a2830';hairAcc='#3a3848';
+  }else if(isP1){
+    coatC='#6c1018';coatH='#a82028';coatD='#400810';trimC='#e0b040';
+    pantsC='#2c1820';pantsH='#381e28';bootC='#1a1010';
+    skinC='#e8cca8';hairC='#6c3010';hairH='#884020';hairAcc='#a85028';
+  }else{
+    coatC='#183038';coatH='#285060';coatD='#0c1c24';trimC='#28c8a8';
+    pantsC='#141e28';pantsH='#1c2a38';bootC='#0c1418';
+    skinC='#dcc8b0';hairC='#c8c8d0';hairH='#d8d8e0';hairAcc='#a8a8b8';
+  }
 
-  // Legs
-  bx(px+6,py+34+bob,10,10,'#4050a0');bx(px+16,py+34+bob,10,10,'#4050a0');
-  if(wf===1){bx(px+6,py+34+bob,10,8,'#3848a0');bx(px+16,py+36+bob,10,8,'#3848a0');}
-  else if(wf===3){bx(px+6,py+36+bob,10,8,'#3848a0');bx(px+16,py+34+bob,10,8,'#3848a0');}
+  // === BOOTS / FEET ===
+  if(wf===1){
+    bx(px+4,py+42+bob,9,5,bootC);bx(px+5,py+42+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+    bx(px+19,py+40+bob,9,5,bootC);bx(px+20,py+40+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+  }else if(wf===3){
+    bx(px+8,py+40+bob,9,5,bootC);bx(px+9,py+40+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+    bx(px+17,py+42+bob,9,5,bootC);bx(px+18,py+42+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+  }else{
+    bx(px+5,py+42+bob,9,5,bootC);bx(px+6,py+42+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+    bx(px+18,py+42+bob,9,5,bootC);bx(px+19,py+42+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+  }
+  // Boot cuff trim line
+  bx(px+5,py+42+bob,18,1,trimC==='#c8a448'?'#382820':'rgba(255,255,255,.08)');
 
-  let shirtC,shirtH,hairC,hairH;
-  if(p===pl[0]){shirtC='#4080d0';shirtH='#5090e0';hairC='#282830';hairH='#383840';}
-  else if(p===pl[1]){shirtC='#d060a0';shirtH='#e070b0';hairC='#804020';hairH='#905030';}
-  else{shirtC='#d0a030';shirtH='#e0b040';hairC='#585040';hairH='#686058';}
+  // === PANTS / LEGS ===
+  bx(px+6,py+34+bob,10,10,pantsC);bx(px+16,py+34+bob,10,10,pantsC);
+  if(wf===1){bx(px+6,py+34+bob,10,8,pantsH);bx(px+16,py+36+bob,10,8,pantsH);}
+  else if(wf===3){bx(px+6,py+36+bob,10,8,pantsH);bx(px+16,py+34+bob,10,8,pantsH);}
+  // Pants crease stripe
+  bx(px+10,py+34+bob,2,10,'rgba(255,255,255,.05)');bx(px+20,py+34+bob,2,10,'rgba(255,255,255,.05)');
 
-  // Body (24px wide, 20px tall)
-  bx(px+4,py+18+bob,24,18,shirtC);bx(px+6,py+20+bob,20,14,shirtH);
-  bx(px+10,py+18+bob,12,2,'#f0dcc0'); // collar
+  // === BELT ===
+  bx(px+4,py+33+bob,24,3,coatD);
+  bx(px+14,py+32+bob,4,4,trimC);  // belt buckle
+  bx(px+15,py+33+bob,2,2,'rgba(255,255,255,.3)'); // buckle glint
 
-  // Arms (8px wide each side)
-  if(d===1){bx(px-4,py+20+bob,8,12,shirtC);bx(px+28,py+20+bob,4,12,shirtC);}
-  else if(d===3){bx(px+28,py+20+bob,8,12,shirtC);bx(px,py+20+bob,4,12,shirtC);}
-  else{bx(px-2,py+20+bob,8,12,shirtC);bx(px+26,py+20+bob,8,12,shirtC);}
+  // === COAT / BODY ===
+  bx(px+4,py+14+bob,24,20,coatC);bx(px+6,py+16+bob,20,16,coatH);
+  // Coat darker sides
+  bx(px+4,py+14+bob,3,20,coatD);bx(px+25,py+14+bob,3,20,coatD);
+  // Front closure (center seam)
+  bx(px+15,py+14+bob,2,20,'rgba(0,0,0,.2)');
+  // Collar (raised) — skin showing at throat
+  bx(px+10,py+14+bob,12,4,coatC);
+  bx(px+13,py+14+bob,6,3,skinC);
+  // Collar fold lines
+  bx(px+10,py+14+bob,4,1,coatD);bx(px+18,py+14+bob,4,1,coatD);
+  // Trim accent on coat hem
+  bx(px+4,py+32+bob,24,1,trimC==='#c8a448'?'rgba(200,164,72,.4)':trimC==='#e0b040'?'rgba(220,176,60,.35)':'rgba(40,200,168,.35)');
+  // Lapel triangle (P0 only: officer look)
+  if(isP0){bx(px+10,py+16+bob,6,8,coatD);bx(px+16,py+16+bob,6,8,coatD);}
+  // P1: double-breasted stud row
+  if(isP1){
+    bx(px+12,py+17+bob,2,2,trimC);bx(px+12,py+22+bob,2,2,trimC);bx(px+12,py+27+bob,2,2,trimC);
+    bx(px+18,py+17+bob,2,2,trimC);bx(px+18,py+22+bob,2,2,trimC);bx(px+18,py+27+bob,2,2,trimC);
+  }
+  // P2: trim piping along coat edge
+  if(isP2){
+    bx(px+4,py+14+bob,1,20,trimC);bx(px+27,py+14+bob,1,20,trimC);
+  }
+  // Shoulder pads (top of coat)
+  bx(px+4,py+14+bob,7,4,isP0?'#1a3872':isP1?'#7c1820':coatC);
+  bx(px+21,py+14+bob,7,4,isP0?'#1a3872':isP1?'#7c1820':coatC);
 
-  // Hands
-  if(d===1){bx(px-4,py+30+bob,6,4,'#e8d0b0');bx(px+28,py+30+bob,4,4,'#e8d0b0');}
-  else if(d===3){bx(px+30,py+30+bob,6,4,'#e8d0b0');bx(px,py+30+bob,4,4,'#e8d0b0');}
-  else{bx(px-2,py+30+bob,6,4,'#e8d0b0');bx(px+28,py+30+bob,6,4,'#e8d0b0');}
+  // === ARMS ===
+  if(d===1){
+    bx(px-4,py+18+bob,8,14,coatC);bx(px-4,py+18+bob,3,14,coatD);
+    bx(px+28,py+18+bob,4,14,coatC);
+  }else if(d===3){
+    bx(px+28,py+18+bob,8,14,coatC);bx(px+33,py+18+bob,3,14,coatD);
+    bx(px,py+18+bob,4,14,coatC);
+  }else{
+    bx(px-2,py+18+bob,8,14,coatC);bx(px-2,py+18+bob,3,14,coatD);
+    bx(px+26,py+18+bob,8,14,coatC);bx(px+31,py+18+bob,3,14,coatD);
+  }
+  // Cuff trim
+  if(d===1){bx(px-4,py+30+bob,8,2,trimC==='#c8a448'?'rgba(200,164,72,.5)':trimC==='#e0b040'?'rgba(224,176,64,.4)':'rgba(40,200,168,.4)');}
+  else if(d===3){bx(px+28,py+30+bob,8,2,trimC==='#c8a448'?'rgba(200,164,72,.5)':trimC==='#e0b040'?'rgba(224,176,64,.4)':'rgba(40,200,168,.4)');}
+  else{bx(px-2,py+30+bob,8,2,'rgba(200,160,60,.3)');bx(px+26,py+30+bob,8,2,'rgba(200,160,60,.3)');}
 
-  // Head (20px wide, 14px tall)
-  bx(px+6,py+2+bob,20,16,'#f0dcc0');bx(px+8,py+4+bob,16,12,'#e8d0b0');
+  // === HANDS ===
+  const handC=skinC;
+  if(d===1){bx(px-4,py+30+bob,6,5,handC);bx(px+28,py+30+bob,5,5,handC);}
+  else if(d===3){bx(px+31,py+30+bob,6,5,handC);bx(px,py+30+bob,5,5,handC);}
+  else{bx(px-2,py+30+bob,6,5,handC);bx(px+28,py+30+bob,6,5,handC);}
+
+  // === HEAD ===
+  bx(px+7,py+2+bob,18,16,skinC);bx(px+9,py+4+bob,14,12,'rgba(0,0,0,.04)');
+  // Jaw shadow
+  bx(px+7,py+14+bob,18,4,'rgba(0,0,0,.08)');
+  // Ear dots
+  bx(px+6,py+7+bob,2,4,skinC);bx(px+24,py+7+bob,2,4,skinC);
 
   if(d===2){
     // Facing away
-    bx(px+6,py+bob,20,12,hairC);bx(px+8,py+bob,16,14,hairC);bx(px+10,py+2+bob,12,10,hairH);
+    bx(px+6,py-2+bob,20,14,hairC);bx(px+8,py+bob,16,14,hairC);bx(px+10,py+2+bob,12,10,hairH);
+    if(isP0){bx(px+6,py+bob,4,10,hairAcc);bx(px+22,py+bob,4,10,hairAcc);}// side tufts
+    if(isP1){bx(px+6,py+6+bob,4,8,hairAcc);}// long side lock
   }else if(d===0){
-    // Facing forward - eyes 4x4 with 2x2 highlight
-    bx(px+10,py+8+bob,4,4,'#181820');bx(px+18,py+8+bob,4,4,'#181820');
-    bx(px+10,py+8+bob,2,2,'#fff');bx(px+18,py+8+bob,2,2,'#fff');
-    bx(px+14,py+14+bob,4,2,'#c0a090'); // mouth
-    if(p===pl[0]){
-      bx(px+6,py+bob,20,6,hairC);bx(px+4,py+bob,4,4,hairC);bx(px+24,py+bob,4,4,hairC);
-      bx(px+8,py-2+bob,6,2,hairC);bx(px+18,py-2+bob,6,2,hairC);bx(px+12,py-4+bob,4,2,hairC);
-      bx(px+10,py+bob,4,2,hairH);bx(px+20,py+bob,2,2,hairH);
-    }else if(p===pl[1]){
-      bx(px+6,py+bob,20,6,hairC);bx(px+4,py+2+bob,4,14,hairC);bx(px+24,py+2+bob,4,14,hairC);
-      bx(px+8,py-2+bob,16,4,hairC);bx(px+6,py+bob,4,2,hairH);bx(px+18,py+bob,4,2,hairH);
+    // Facing forward
+    bx(px+9,py+7+bob,4,5,'#181820');bx(px+19,py+7+bob,4,5,'#181820');// eyes
+    bx(px+9,py+7+bob,2,2,'#fff');bx(px+19,py+7+bob,2,2,'#fff');// glint
+    // Iris detail
+    if(isP0){bx(px+10,py+9+bob,2,2,'#2858a8');}
+    else if(isP1){bx(px+10,py+9+bob,2,2,'#a02020');}
+    else{bx(px+10,py+9+bob,2,2,'#20a088');}
+    // Eyebrows
+    bx(px+9,py+6+bob,4,1,hairC);bx(px+19,py+6+bob,4,1,hairC);
+    // Nose dot
+    bx(px+15,py+12+bob,2,1,'rgba(0,0,0,.12)');
+    // Mouth
+    bx(px+13,py+15+bob,5,2,'rgba(0,0,0,.15)');
+    // Hair (front)
+    if(isP0){
+      bx(px+6,py-2+bob,20,6,hairC);bx(px+4,py+bob,4,5,hairC);bx(px+24,py+bob,4,5,hairC);
+      bx(px+8,py-4+bob,6,2,hairC);bx(px+18,py-4+bob,6,2,hairC);bx(px+12,py-6+bob,4,3,hairC);
+      bx(px+10,py-2+bob,5,3,hairH);// highlight streak
+    }else if(isP1){
+      bx(px+6,py-2+bob,20,6,hairC);bx(px+4,py+2+bob,4,16,hairC);bx(px+24,py+2+bob,4,16,hairC);
+      bx(px+8,py-4+bob,16,5,hairC);bx(px+6,py+bob,4,3,hairH);bx(px+16,py-2+bob,6,3,hairH);
     }else{
-      bx(px+4,py+bob,24,6,'#d0a030');bx(px+6,py-2+bob,20,4,'#d0a030');
-      bx(px+2,py+4+bob,28,2,'#b08820');bx(px+8,py+bob,12,2,'#e0b040');
+      // Mira: silvery pulled-back hair with side strand
+      bx(px+6,py-2+bob,20,6,hairC);bx(px+4,py+bob,4,10,hairC);
+      bx(px+8,py-4+bob,16,5,hairC);bx(px+10,py-2+bob,8,3,hairH);
+      bx(px+24,py+bob,3,8,hairAcc);// silver strand right
     }
   }else{
     // Side view
     const flip=d===3;
-    const eyeX=flip?px+18:px+8;
-    bx(eyeX,py+8+bob,4,4,'#181820');bx(eyeX,py+8+bob,2,2,'#fff');
-    bx(flip?px+14:px+12,py+14+bob,4,2,'#c0a090');
-    if(p===pl[0]){
-      bx(px+6,py+bob,20,6,hairC);bx(flip?px+22:px+4,py+bob,6,8,hairC);
-      bx(flip?px+24:px+2,py-2+bob,4,4,hairC);bx(px+10,py+bob,6,2,hairH);
-    }else if(p===pl[1]){
-      bx(px+6,py+bob,20,6,hairC);bx(flip?px+24:px+4,py+2+bob,4,14,hairC);
-      bx(px+8,py-2+bob,16,4,hairC);
+    const eyeX=flip?px+17:px+9;
+    bx(eyeX,py+7+bob,4,5,'#181820');bx(eyeX,py+7+bob,2,2,'#fff');
+    // Iris
+    if(isP0){bx(eyeX+1,py+9+bob,2,2,'#2858a8');}
+    else if(isP1){bx(eyeX+1,py+9+bob,2,2,'#a02020');}
+    else{bx(eyeX+1,py+9+bob,2,2,'#20a088');}
+    bx(eyeX,py+6+bob,4,1,hairC);// eyebrow
+    bx(flip?px+14:px+12,py+15+bob,5,2,'rgba(0,0,0,.12)');// mouth
+    // Hair (side)
+    if(isP0){
+      bx(px+6,py-2+bob,20,6,hairC);bx(flip?px+22:px+4,py+bob,6,10,hairC);
+      bx(flip?px+24:px+2,py-2+bob,4,5,hairC);bx(px+10,py-2+bob,6,3,hairH);
+    }else if(isP1){
+      bx(px+6,py-2+bob,20,6,hairC);bx(flip?px+24:px+4,py+2+bob,4,16,hairC);
+      bx(px+8,py-4+bob,16,5,hairC);bx(flip?px+20:px+8,py-2+bob,6,3,hairH);
     }else{
-      bx(px+4,py+bob,24,6,'#d0a030');bx(flip?px+26:px,py+2+bob,6,4,'#b08820');
-      bx(px+8,py+bob,10,2,'#e0b040');
+      bx(px+6,py-2+bob,20,6,hairC);bx(flip?px+22:px+4,py+bob,5,10,hairC);
+      bx(px+8,py-4+bob,16,5,hairC);bx(px+10,py-2+bob,8,3,hairH);
     }
   }
 
+  // === CC COUNTER BADGE ===
   if(isPlayer){
-    const bx_=px+28,by_=py-10;win(bx_,by_,28,18);tx(p.cc+'',bx_+9,by_+15,8,'#303028');
+    const bx_=px+28,by_=py-10;win(bx_,by_,28,18);tx(p.cc+'',bx_+9,by_+15,8,'#c8b888');
   }else if(isVisibleThroughFog(p.x,p.y,3)){
-    bx(px+28,py-8,22,16,'rgba(0,0,0,.35)');win(px+28,py-10,22,16);tx(p.cc+'',px+34,py+4,7,'#303028');
+    bx(px+28,py-8,22,16,'rgba(0,0,0,.4)');win(px+28,py-10,22,16);tx(p.cc+'',px+34,py+4,7,'#c8b888');
   }
 }
 
@@ -5814,20 +6249,29 @@ function updateCamera(){
 // CARD MINI ART
 // ═══════════════════════════════════════
 // v103: Card type indicator colors for HUD mini-cards
-const CARD_TYPE_COL={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
+const CARD_TYPE_COL={attack:'#c83838',defense:'#3888c8',flee:'#30b870',magic:'#a840c0',recovery:'#c8a830'};
 function drawMiniCard(x,y,cd){
   if(cd>0){
     const cr=CD[cd-1];
-    bx(x,y,28,20,cr.d);bx(x+1,y+1,26,18,cr.c);
-    bx(x+2,y+2,24,12,cr.d);bx(x+3,y+3,22,10,'rgba(255,255,255,.15)');
-    // Tiny character sprite (scale 0.5)
+    // Dark ARK card body
+    bx(x,y,28,20,'#060e18');bx(x+1,y+1,26,18,cr.d);
+    bx(x+2,y+2,24,12,cr.d);bx(x+3,y+3,22,10,'rgba(0,0,0,.35)');
+    // Character art area (darker)
+    bx(x+2,y+2,24,12,'rgba(0,0,0,.2)');
+    // Tiny character sprite
     drawCardCharacter(x+6,y+1,cd,0.5,fr);
-    bx(x+1,y+14,26,5,cr.d);txShadow(cr.n[0],x+8,y+19,7,'#fff','rgba(0,0,0,.5)');
-    // v103: 2px type-color strip along the top border for instant hand-composition read
+    // Name band
+    bx(x+1,y+14,26,5,cr.d);txShadow(cr.n[0],x+8,y+19,7,'#e8e0d0','rgba(0,0,0,.6)');
+    // Type color top strip
     const typeCol=CARD_TYPE_COL[cr.t]||'#808080';
     bx(x+1,y,26,2,typeCol);
+    // Corner glint
+    bx(x+1,y+1,3,1,'rgba(255,255,255,.2)');bx(x+1,y+1,1,3,'rgba(255,255,255,.15)');
   }else{
-    bx(x,y,28,20,'#c8c0a8');bx(x+1,y+1,26,18,'#d8d0b8');txShadow('?',x+8,y+15,8,'#a89880','rgba(0,0,0,.3)');
+    // Empty slot — dark ARK panel
+    bx(x,y,28,20,'#080e18');bx(x+1,y+1,26,18,'#0c1420');
+    bx(x,y,28,1,'rgba(200,164,72,.15)');bx(x,y,1,20,'rgba(200,164,72,.1)');
+    txShadow('\u2014',x+10,y+15,8,'#2a3848','rgba(0,0,0,.3)');
   }
 }
 
@@ -5836,6 +6280,106 @@ function drawMiniCard(x,y,cd){
 // MODULE: src/06-world-systems.js
 // Camera · card mini-art · map transitions · location banner · minimap · encounters · NPCs · trading
 // ───────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════
+// v155: DUNGEON TURN SYSTEM
+// ═══════════════════════════════════════
+
+// Advance one dungeon turn: each rival takes one step
+function processDungeonTurn(){
+  if(!inDungeon)return;
+  if(encounterCooldown>0)return; // let game loop decrement
+  dungeonTurnStep(0);
+  dungeonTurnStep(1);
+  // Immediately check if any rival landed adjacent — fire encounter without waiting for next frame
+  checkDungeonRivalEncounter();
+}
+
+// Check if a rival just stepped adjacent to the player; trigger encounter if so
+// (mirrors the encounter check in the game loop but called explicitly after each turn)
+function checkDungeonRivalEncounter(){
+  if(!inDungeon||encounterCooldown>0||encounterExclActive||wildEncounterActive||mapTransitioning||mo||shadowStepsLeft>0)return;
+  pl.slice(1).forEach((r,idx)=>{
+    if(rivalMaps[idx]!==currentMap)return;
+    if(encounterCooldown>0||encounterExclActive)return;
+    const adjDist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+    if(adjDist===1){
+      // Trigger encounter — set cooldown so game-loop check doesn't double-fire
+      encounterCooldown=120;
+      const ai=rivalAI[idx];
+      // Collector may still flee
+      if(ai.personality==='collector'&&ai.state!=='fleeing'&&Math.random()<0.7){
+        ai.state='fleeing';ai.stateTimer=8;ai.moveInterval=5;
+        const fdx=r.x-pl[0].x;const fdy=r.y-pl[0].y;
+        const fx=r.x+(fdx!==0?fdx*5:0);const fy=r.y+(fdy!==0?fdy*5:0);
+        const flee=findWalkableTile(rivalMaps[idx],Math.max(2,Math.min(MW-3,fx)),Math.max(2,Math.min(MH-3,fy)),5);
+        if(flee){ai.goalX=flee.x;ai.goalY=flee.y;ai.goalMap=rivalMaps[idx];}
+        lg.push(r.n+' is trying to run away!');
+        return;
+      }
+      encounterExclActive=true;encounterExclFrame=fr;
+      encounterExclTarget=idx+1;
+      encounterExclPlayerX=pl[0].visualX;encounterExclPlayerY=pl[0].visualY;
+      encounterExclRivalX=r.visualX;encounterExclRivalY=r.visualY;
+      sfxEncounterDramatic();hitPause(4);
+      const rCards=r.cd.filter(c=>c>0).length;
+      const isHunting=ai.state==='hunting';
+      const vegaLines=['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Cornered. Just like the crew.','Nowhere left to run.'];
+      const miraLines=['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','The ARK crew fell to logic. So will you.'];
+      encounterRivalLine=idx===0?vegaLines[Math.floor(Math.random()*vegaLines.length)]:miraLines[Math.floor(Math.random()*miraLines.length)];
+      setTimeout(()=>{
+        encounterExclActive=false;flash();
+        twSet(isHunting?r.n+' ambushed you! Battle!':r.n+' appeared! Battle!');
+        startWipe('mosaic',30,()=>{
+          sc='act';battlePhase='vs_splash';bpFrame=fr;
+          battleRoundHistory=[];
+          startWipe('mosaic_out',20);
+          if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){runMission.progress=1;runMission.completed=true;sfxStreakUp();}
+        });
+      },500);
+    }
+  });
+}
+
+// Place floor items in dungeon rooms (called on fresh dungeon generation)
+function placeFloorItems(mapIdx,rooms){
+  if(!rooms||rooms.length===0)return;
+  floorItems[mapIdx]=[];
+  const pool=AREA_CARDS[mapIdx]||AREA_CARDS[1]||[];
+  if(pool.length===0)return;
+  // Skip the first room (entrance area) and last room (near stairs)
+  const eligible=rooms.slice(1,rooms.length-1);
+  if(eligible.length===0)eligible.push(rooms[Math.floor(rooms.length/2)]);
+  // Place 1-2 items per eligible room
+  for(const r of eligible){
+    const count=1+(mapIdx>=4?1:0); // deeper floors: more items
+    for(let i=0;i<count&&i<2;i++){
+      const ix=r.x+1+Math.floor(Math.random()*(r.w-2));
+      const iy=r.y+1+Math.floor(Math.random()*(r.h-2));
+      // Pick card from pool, biased toward rarer on deeper floors
+      const cardId=pool[Math.floor(Math.random()*pool.length)];
+      floorItems[mapIdx].push({x:ix,y:iy,cardId,glow:Math.random()*Math.PI*2});
+    }
+  }
+}
+
+// Check if player stepped on a floor item, auto-pick it up
+function checkFloorItemPickup(nx,ny){
+  const items=floorItems[currentMap];
+  if(!items||items.length===0)return;
+  const idx=items.findIndex(it=>it.x===nx&&it.y===ny);
+  if(idx===-1)return;
+  const it=items.splice(idx,1)[0];
+  const cr=CD[it.cardId-1];if(!cr)return;
+  // Add to player hand/vault
+  const placed=addCardToPlayer(0,it.cardId);
+  triggerCardGetBurst(nx*TW+TW/2,ny*TH+TH/2,cr.c||'#f0c030');
+  hitPause(4);
+  sfxCardGet();
+  startCardAcquisition(it.cardId);
+  checkWinAndTransition(1500);
+  lg.push('Found '+cr.n+' on the floor!');
+}
+
 // ═══════════════════════════════════════
 // MAP TRANSITION
 // ═══════════════════════════════════════
@@ -5875,6 +6419,23 @@ function doMapTransition(exit){
     // When entering floor 1 from town, spread rivals to safe starting positions far from entrance.
     // This prevents immediate encounters caused by AI roaming during town/title time.
     if(exit.fromMap===0&&exit.targetMap===1){
+      // v155: Regenerate all dungeon floors fresh every run (PMD-style: new dungeon each run)
+      const runSeed=Date.now();
+      dungeonSeedThisRun=runSeed;
+      for(let f=1;f<=MAX_DUNGEON_FLOORS;f++){
+        const result=generateDungeonFloor(f,runSeed+f*7919);
+        maps[f]=result.map;
+        dungeonRooms[f]=result.rooms;
+        // Reset fog for this dungeon floor
+        for(let ry=0;ry<MH;ry++)for(let rx=0;rx<MW;rx++)fogRevealed[f][ry][rx]=false;
+        // Place floor items
+        placeFloorItems(f,result.rooms);
+      }
+      fogCacheDirty=true;
+      // Reveal starting area of floor 1 for the player
+      fogRevealRadius(1,exit.targetX,exit.targetY,4);
+      fogSave();
+
       // v72: Snapshot state at dungeon entry so we can show run summary on exit
       dungeonRunSnapshot={cards:[...pl[0].cd],vaultSize:pl[0].vault?pl[0].vault.size:0,deepestFloor:0};
       // v79: Generate a random run mission
@@ -5887,10 +6448,10 @@ function doMapTransition(exit){
       rivalMaps=[1,1];
       rivalAI[0].goalX=32;rivalAI[0].goalY=12;rivalAI[0].state='exploring';
       rivalAI[0].lastKnownPlayerMap=-1;rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;
-      rivalAI[0].huntCooldown=900; // 15s before hunter can pursue (on top of the 8s grace period)
+      rivalAI[0].huntCooldown=30; // v155: ~30 player steps grace (real-time handled by encounterCooldown)
       rivalAI[1].goalX=32;rivalAI[1].goalY=18;rivalAI[1].state='exploring';
       rivalAI[1].lastKnownPlayerMap=-1;rivalAI[1].lastKnownPlayerX=-1;rivalAI[1].lastKnownPlayerY=-1;
-      rivalAI[1].huntCooldown=600; // 10s extra cooldown for collector
+      rivalAI[1].huntCooldown=15; // v155: collector shorter grace
     }
     // For ANY dungeon floor transition: if a rival is on the destination floor and within 8 tiles
     // of the player entry point, push them to a safe position far from the entrance.
@@ -5913,7 +6474,9 @@ function doMapTransition(exit){
         }
       }
     }
-    showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]);
+    // v155: PMD-style floor title card for dungeon floors; simple banner for town
+    if(inDungeon){showFloorTitle(currentFloor);}
+    else{showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]);}
     // v72: Track deepest floor reached
     if(inDungeon&&dungeonRunSnapshot&&currentFloor>dungeonRunSnapshot.deepestFloor){
       dungeonRunSnapshot.deepestFloor=currentFloor;
@@ -6043,6 +6606,88 @@ function doMapTransition(exit){
     }
     fadeIn(()=>{mapTransitioning=false;});
   });
+}
+
+// ═══════════════════════════════════════
+// v155: PMD-STYLE FLOOR TITLE CARD
+// ═══════════════════════════════════════
+let floorTitleFrame=0,floorTitleActive=false,floorTitleFloor=0;
+const FLOOR_TITLE_DURATION=130; // ~2.2s at 60fps
+
+const FLOOR_THEMES=[
+  null, // 0=town
+  {danger:'★☆☆☆☆',note:'Scattered cards. Watch your step.'},
+  {danger:'★★☆☆☆',note:'The archives whisper. MIRA was here.'},
+  {danger:'★★★☆☆',note:'Echoes of the crew. Proceed carefully.'},
+  {danger:'★★★★☆',note:'The vault trembles. VEGA hunts below.'},
+  {danger:'★★★★★',note:'The ARK Core. One heir. No mercy.'},
+];
+
+function showFloorTitle(floorNum){
+  floorTitleActive=true;
+  floorTitleFrame=0;
+  floorTitleFloor=floorNum;
+}
+
+function updateFloorTitle(){
+  if(!floorTitleActive)return;
+  floorTitleFrame++;
+  if(floorTitleFrame>FLOOR_TITLE_DURATION)floorTitleActive=false;
+}
+
+function drawFloorTitle(){
+  if(!floorTitleActive)return;
+  const t=floorTitleFrame;
+  const dur=FLOOR_TITLE_DURATION;
+  // Fade in 0-20, hold 20-100, fade out 100-dur
+  let alpha=0;
+  if(t<20)alpha=t/20;
+  else if(t<100)alpha=1;
+  else alpha=Math.max(0,1-(t-100)/(dur-100));
+  if(alpha<=0.01)return;
+
+  const f=floorTitleFloor;
+  const floorName=mapNames[f]||('FLOOR '+f);
+  const theme=FLOOR_THEMES[f]||{danger:'★☆☆☆☆',note:''};
+  const floorNums=['','B1','B2','B3','B4','B5'];
+  const flNum=floorNums[f]||('B'+f);
+  const floorColors=['#302848','#403058','#503060','#403850','#503848'];
+  const bgCol=floorColors[f-1]||'#302848';
+
+  // Full-screen panel (centered, 80% width)
+  const pw=Math.floor(W*0.78),ph=100;
+  const px=(W-pw)/2,py=(H-ph)/2-10;
+  g.globalAlpha=alpha*0.94;
+  // Background
+  g.fillStyle=bgCol;g.fillRect(px,py,pw,ph);
+  // Border
+  g.globalAlpha=alpha;
+  g.strokeStyle='rgba(200,180,140,.6)';g.lineWidth=2;g.strokeRect(px+1,py+1,pw-2,ph-2);
+  g.strokeStyle='rgba(255,255,255,.15)';g.lineWidth=1;g.strokeRect(px+3,py+3,pw-6,ph-6);
+
+  // Floor number (large, left side)
+  g.globalAlpha=alpha;
+  tx(flNum,px+18,py+52,36,'rgba(255,255,255,.12)'); // ghost behind
+  tx(flNum,px+16,py+50,36,'#f0e8c0');
+  // Vertical separator
+  g.globalAlpha=alpha*0.4;
+  g.fillStyle='rgba(200,180,140,.5)';g.fillRect(px+80,py+12,1,ph-24);
+  g.globalAlpha=alpha;
+  // Floor name (right of separator)
+  const nameParts=floorName.split(' — ');
+  const flNameOnly=nameParts[1]||floorName;
+  tx(flNameOnly,px+90,py+30,8,'#f8f0e0');
+  // Danger stars
+  tx(theme.danger,px+90,py+48,7,'#e0a030');
+  // Flavor note
+  tx(theme.note,px+90,py+65,5,'#c0b898');
+  // "Press Z to explore" hint at bottom
+  if(t>60&&t<dur-20){
+    const hint='EXPLORE';
+    g.globalAlpha=alpha*(0.5+0.4*Math.sin(t*0.15));
+    tx(hint,px+pw-hint.length*4-12,py+ph-12,6,'#a0c8a0');
+  }
+  g.globalAlpha=1;
 }
 
 // ═══════════════════════════════════════
@@ -8032,6 +8677,42 @@ function dMap(){
     });
   }
 
+  // v155: Draw floor items (cards lying on dungeon ground)
+  if(inDungeon){
+    const items=floorItems[currentMap];
+    if(items&&items.length>0){
+      for(const it of items){
+        if(!fogRevealed[currentMap][it.y]?.[it.x])continue;
+        const ipx=it.x*TW-camX,ipy=it.y*TH-camY;
+        if(ipx<-TW||ipx>W||ipy<-TH||ipy>H)continue;
+        const cr=CD[it.cardId-1];if(!cr)continue;
+        // Rarity glow colors
+        const rarCols=['#808080','#60b0ff','#a060e0','#d09020','#f0d040'];
+        const rarCol=rarCols[Math.min(cr.r-1,4)]||'#f0c030';
+        const glowPulse=0.55+0.35*Math.sin(fr*0.1+it.glow);
+        // Glow halo
+        g.globalAlpha=glowPulse*0.5;
+        const grd=g.createRadialGradient(ipx+TW/2,ipy+TH/2,2,ipx+TW/2,ipy+TH/2,12);
+        grd.addColorStop(0,rarCol);grd.addColorStop(1,'rgba(0,0,0,0)');
+        g.fillStyle=grd;g.fillRect(ipx,ipy,TW,TH);
+        g.globalAlpha=1;
+        // Card mini sprite (6×8 rectangle at center)
+        const cx2=ipx+TW/2-3,cy2=ipy+TH/2-4;
+        bx(cx2,cy2,6,8,'#1a1a2e');
+        bx(cx2+1,cy2+1,4,6,rarCol);
+        // Pulsing border
+        g.globalAlpha=glowPulse;
+        g.strokeStyle=rarCol;g.lineWidth=1;g.strokeRect(cx2-1,cy2-1,8,10);
+        g.globalAlpha=1;
+        // Label above on hover (always show rarity initial)
+        const abb=['C','U','R','E','L'][Math.min(cr.r-1,4)]||'?';
+        g.globalAlpha=0.7;
+        tx(abb,cx2-1,cy2-2,5,rarCol);
+        g.globalAlpha=1;
+      }
+    }
+  }
+
   // Draw exit tile markers in dungeon (visible when revealed by fog)
   if(inDungeon){
     exits.forEach(ex=>{
@@ -8500,7 +9181,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v154',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v156',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8683,6 +9364,8 @@ function dMap(){
 
   // Location banner
   drawBanner();
+  // v155: PMD-style floor title card (draws over everything when active)
+  drawFloorTitle();
 }
 
 // ═══════════════════════════════════════
@@ -8967,85 +9650,81 @@ function drawOpponentInfoBox(){
   if(showTells)bh=100;
   if(showScout0)bh+=16;
   if(showScout1)bh+=16;
-  bx(bx_,by_,bw,bh,'#f8f0d8');bx(bx_,by_,bw,2,'#c8c0a0');bx(bx_,by_+bh-2,bw,2,'#a89878');
-  bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
-  bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
+  win(bx_,by_,bw,bh);
+  // Crimson top bar for rival danger indicator
+  bx(bx_+4,by_+4,bw-8,22,'rgba(80,10,10,.5)');
   // Rival 1 (VEGA)
-  txShadow(rival.n,bx_+10,by_+20,12,'#383830','rgba(200,180,140,.3)');
-  txShadow('CARDS',bx_+120,by_+20,7,'#887858','rgba(0,0,0,.15)');
+  txShadow(rival.n,bx_+10,by_+20,12,'#d06080','rgba(0,0,0,.5)');
+  txShadow('CARDS',bx_+120,by_+20,7,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
   const r1Cards=rival.cd.filter(c=>c>0).length;
-  const r1DangerColor=r1Cards>=4?'#d04040':r1Cards>=3?'#d08030':'#383830';
-  txShadow(rival.cc+'/5',bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.15)');
-  // Near-win warning — red background pill + pulsing text
+  const r1DangerColor=r1Cards>=4?ARK.dangerBright:r1Cards>=3?'#d08030':ARK.textDim;
+  txShadow(rival.cc+'/5',bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.3)');
+  // Near-win warning
   if(r1Cards>=4){
     const wA=0.5+Math.sin(fr*0.18)*0.5;
-    g.globalAlpha=wA*0.85;
-    bx(bx_+6,by_+27,76,13,'#c04040');
+    g.globalAlpha=wA*0.9;
+    bx(bx_+6,by_+27,76,13,ARK.danger);
     g.globalAlpha=1;
-    txShadow(r1Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,by_+37,6,'#ffffff','rgba(0,0,0,.5)');
+    txShadow(r1Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,by_+37,6,'#fff','rgba(0,0,0,.6)');
   }
   // Tell for Rival 1 (during select only)
   if(showTells&&bpRivalTells[0]){
     const tellFade=Math.min(1,(fr-bpFrame)/12);
     g.globalAlpha=tellFade*0.85;
-    bx(bx_+4,by_+34,bw-8,14,'rgba(232,216,168,.6)');
-    tx(bpRivalTells[0],bx_+8,by_+44,6,'#505040');
+    bx(bx_+4,by_+34,bw-8,14,'rgba(40,100,130,.4)');
+    tx(bpRivalTells[0],bx_+8,by_+44,6,ARK.tealBright);
     g.globalAlpha=1;
   }
-  // Separator: base at by_+44, pushed down if tells are showing
+  // Separator
   const sepY=showTells?by_+52:by_+44;
-  bx(bx_+8,sepY,bw-16,1,'#c8c0a0');
+  bx(bx_+8,sepY,bw-16,1,ARK.border);
   // Rival 2 (MIRA)
   const hunter=pl[2];
   const r2alive=hunter.cd.filter(c=>c>0).length>0;
-  const hunterCol=r2alive?'#986840':'#c04040';
-  txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.15)');
+  const hunterCol=r2alive?ARK.gold:ARK.dangerBright;
+  txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.4)');
   if(r2alive){
     drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
     const r2Cards=hunter.cd.filter(c=>c>0).length;
-    const r2DangerColor=r2Cards>=4?'#d04040':r2Cards>=3?'#d08030':'#686060';
-    txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.1)');
+    const r2DangerColor=r2Cards>=4?ARK.dangerBright:r2Cards>=3?'#d08030':ARK.textDim;
+    txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.3)');
     // Near-win warning for MIRA
     if(r2Cards>=4){
       const wA2=0.5+Math.sin(fr*0.18+1)*0.5;
-      g.globalAlpha=wA2*0.75;
-      bx(bx_+6,sepY+19,70,12,'#c04040');
+      g.globalAlpha=wA2*0.8;
+      bx(bx_+6,sepY+19,70,12,ARK.danger);
       g.globalAlpha=1;
-      txShadow(r2Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,sepY+28,6,'#ffffff','rgba(0,0,0,.5)');
+      txShadow(r2Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,sepY+28,6,'#fff','rgba(0,0,0,.6)');
     }
-    // Tell for Rival 2 (during select only)
+    // Tell for Rival 2
     if(showTells&&bpRivalTells[1]){
       const tellFade2=Math.min(1,(fr-bpFrame)/12);
       g.globalAlpha=tellFade2*0.85;
-      bx(bx_+4,sepY+26,bw-8,14,'rgba(232,216,168,.6)');
-      tx(bpRivalTells[1],bx_+8,sepY+36,6,'#505040');
+      bx(bx_+4,sepY+26,bw-8,14,'rgba(80,60,10,.4)');
+      tx(bpRivalTells[1],bx_+8,sepY+36,6,ARK.gold);
       g.globalAlpha=1;
     }
   }
-  // Scout intel — persists for the rest of the battle (shown below rival info)
+  // Scout intel
   if(hasScout){
-    const typeColors={attack:'#e05840',defense:'#48b8e8',flee:'#38c080',magic:'#d8b028',recovery:'#e0c040'};
-    const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#fff8e0'];
     let intelY=by_+bh-4;
-    // Show R1 intel
     if(showScout0){
       intelY=by_+bh-(showScout1?32:16);
       const sd=bpScoutedCards[0];
       const staleLabel=rd-sd.round>0?'(R'+(sd.round)+')':'';
-      g.globalAlpha=rd-sd.round>1?0.55:0.85;
-      bx(bx_+4,intelY,bw-8,14,'rgba(200,220,250,.3)');
-      tx('\u{1F50D}'+pl[1].n[0]+': '+(sd.cards.length>0?sd.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel,bx_+8,intelY+11,5,'#3060b0');
+      g.globalAlpha=rd-sd.round>1?0.5:0.85;
+      bx(bx_+4,intelY,bw-8,14,'rgba(30,80,120,.4)');
+      tx('\u{1F50D}'+pl[1].n[0]+': '+(sd.cards.length>0?sd.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel,bx_+8,intelY+11,5,ARK.tealBright);
       g.globalAlpha=1;
     }
-    // Show R2 intel
     if(showScout1){
       const sd2=bpScoutedCards[1];
       const intelY2=by_+bh-16;
       const staleLabel2=rd-sd2.round>0?'(R'+(sd2.round)+')':'';
-      g.globalAlpha=rd-sd2.round>1?0.55:0.85;
-      bx(bx_+4,intelY2,bw-8,14,'rgba(240,220,180,.3)');
-      tx('\u{1F50D}'+pl[2].n[0]+': '+(sd2.cards.length>0?sd2.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel2,bx_+8,intelY2+11,5,'#806030');
+      g.globalAlpha=rd-sd2.round>1?0.5:0.85;
+      bx(bx_+4,intelY2,bw-8,14,'rgba(80,60,10,.35)');
+      tx('\u{1F50D}'+pl[2].n[0]+': '+(sd2.cards.length>0?sd2.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel2,bx_+8,intelY2+11,5,ARK.gold);
       g.globalAlpha=1;
     }
   }
@@ -9056,51 +9735,50 @@ function drawPlayerInfoBox(){
   let sx=0,sy=0;
   if(bpShakeTarget===0&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
   const bx_=W-310+sx,by_=H-154+sy,bw=300,bh=86; // v104: +14px for hand type row
-  bx(bx_,by_,bw,bh,'#f8f0d8');bx(bx_,by_,bw,2,'#c8c0a0');bx(bx_,by_+bh-2,bw,2,'#a89878');
-  bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
-  bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
+  win(bx_,by_,bw,bh);
+  // Navy top bar for player identity
+  bx(bx_+4,by_+4,bw-8,22,'rgba(10,24,60,.55)');
   // Name
-  txShadow(pl[0].n,bx_+10,by_+20,14,'#383830','rgba(200,180,140,.3)');
+  txShadow(pl[0].n,bx_+10,by_+20,14,ARK.textBright,'rgba(0,0,0,.5)');
   // Card bar
-  txShadow('CARDS',bx_+10,by_+36,8,'#887858','rgba(0,0,0,.15)');
+  txShadow('CARDS',bx_+10,by_+36,8,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+60,by_+28,148,pl[0].cd,Math.min(HAND_SIZE,10));
-  txShadow(hasUniqueCards(0).size+'/60',bx_+214,by_+36,9,'#383830','rgba(0,0,0,.15)');
+  txShadow(hasUniqueCards(0).size+'/60',bx_+214,by_+36,9,ARK.gold,'rgba(0,0,0,.3)');
   // Win indicator (60/60)
   if(hasUniqueCards(0).size>=60){
     const flash_=Math.sin(fr*0.15)*0.3+0.7;
     g.globalAlpha=flash_;
-    txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,'#c04040','rgba(0,0,0,.3)');
+    txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,ARK.goldBright,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
-  // Spell counts
-  // v123: Spell charge orb pips — consistent with HUD orbs
+  // Spell charge orb pips
   {const sOrbs=[
-    {lbl:'STL',val:sp.s,max:3,fill:'#c04848',empty:'#2a1010',warn:sp.s===0,lCol:'#b04040'},
-    {lbl:'BAR',val:sp.b,max:3,fill:'#3868c0',empty:'#101028',warn:false,lCol:'#3060b0'},
-    {lbl:'SCT',val:sp.c,max:3,fill:'#38a038',empty:'#0e1e0e',warn:sp.c===0,lCol:'#308030'},
+    {lbl:'STL',val:sp.s,max:3,fill:'#c04848',empty:'#2a1010',warn:sp.s===0,lCol:'#d05050'},
+    {lbl:'BAR',val:sp.b,max:3,fill:'#3868c0',empty:'#101028',warn:false,lCol:'#4878d0'},
+    {lbl:'SCT',val:sp.c,max:3,fill:'#38a038',empty:'#0e1e0e',warn:sp.c===0,lCol:'#48b048'},
   ];const oW=6,oH=6,oG=2;
   sOrbs.forEach((s,si)=>{
     const ox=bx_+10+si*97,oy=by_+44;
-    const lc=s.warn&&Math.floor(fr/12)%2===0?'#ff5040':s.lCol;
-    txShadow(s.lbl,ox,oy+10,6,lc,'rgba(0,0,0,.2)');
+    const lc=s.warn&&Math.floor(fr/12)%2===0?ARK.dangerBright:s.lCol;
+    txShadow(s.lbl,ox,oy+10,6,lc,'rgba(0,0,0,.3)');
     for(let o=0;o<s.max;o++){
       const filled=o<s.val;
       bx(ox+26+o*(oW+oG),oy+2,oW,oH,filled?s.fill:s.empty);
       if(filled)bx(ox+26+o*(oW+oG)+1,oy+3,2,1,'rgba(255,255,255,.3)');
     }
-    if(s.val>s.max)tx('+'+(s.val-s.max),ox+26+s.max*(oW+oG)+2,oy+9,5,'#f0c830');
+    if(s.val>s.max)tx('+'+(s.val-s.max),ox+26+s.max*(oW+oG)+2,oy+9,5,ARK.goldBright);
   });}
-  // Area
-  txShadow(mapNames[currentMap],bx_+10,by_+64,8,'#988870','rgba(0,0,0,.15)');
-  // v104: Hand type composition strip — colored dots grouped by card type
+  // Area label
+  txShadow(mapNames[currentMap],bx_+10,by_+64,8,ARK.textDim,'rgba(0,0,0,.3)');
+  // Hand type composition strip
   {
     const TYPES=['attack','defense','flee','magic','recovery'];
     const TYPE_ABB=['ATK','DEF','FLY','MAG','REC'];
-    const TYPE_C={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
+    const TYPE_C={attack:'#c83838',defense:'#3888c8',flee:'#30b870',magic:'#a840c0',recovery:'#c8a830'};
     const counts={};
     TYPES.forEach(t=>counts[t]=0);
     pl[0].cd.forEach(id=>{if(id>0&&CD[id-1])counts[CD[id-1].t]=(counts[CD[id-1].t]||0)+1;});
-    bx(bx_+4,by_+68,bw-8,1,'rgba(180,160,120,.3)');
+    bx(bx_+4,by_+68,bw-8,1,ARK.border);
     let dotX=bx_+8;
     TYPES.forEach((t,ti)=>{
       const cnt=counts[t];
@@ -9109,7 +9787,6 @@ function drawPlayerInfoBox(){
       for(let d=0;d<cnt;d++){bx(dotX+d*6,by_+74,5,5,col);}
       dotX+=cnt*6+3;
     });
-    // Labels for non-zero types on the right side
     let labelX=bx_+bw-8;
     TYPES.slice().reverse().forEach((t,ti)=>{
       const cnt=counts[t];
@@ -9117,7 +9794,7 @@ function drawPlayerInfoBox(){
       const col=TYPE_C[t];
       const lbl=TYPE_ABB[4-ti]+':'+cnt;
       labelX-=lbl.length*5+4;
-      g.globalAlpha=0.7;
+      g.globalAlpha=0.75;
       tx(lbl,labelX,by_+80,5,col);
       g.globalAlpha=1;
     });
@@ -9377,10 +10054,12 @@ function drawActionGrid(){
       const sel=(idx===ai&&!bpCardSelectActive&&!bpTargetSelectActive);
       // Cell background
       if(sel&&avail){
-        bx(cx_,cy_,cellW,cellH,'#f8f0d8');bx(cx_,cy_,cellW,1,'#d0c8a0');
-        bx(cx_,cy_+cellH-1,cellW,1,'#a89878');
+        bx(cx_,cy_,cellW,cellH,'#1c2c50');bx(cx_,cy_,cellW,1,ARK.gold);
+        bx(cx_,cy_+cellH-1,cellW,1,ARK.goldDim);
+        bx(cx_,cy_,1,cellH,ARK.gold);bx(cx_+cellW-1,cy_,1,cellH,ARK.goldDim);
       }else{
-        bx(cx_,cy_,cellW,cellH,avail?'#e8e0c8':'#c8c0b0');
+        bx(cx_,cy_,cellW,cellH,avail?'#0e1828':'#0a1018');
+        bx(cx_,cy_,cellW,1,avail?ARK.border:'#111820');
       }
       // v129: Themed pixel-art icons
       const iconCol=avail?actions[idx].icon:'#989088';
@@ -9428,13 +10107,13 @@ function drawActionGrid(){
         bx(ix+14,iy+14,2,2,ic);bx(ix+15,iy+16,2,1,ic);
       }
       // Text (increased sizes for readability)
-      const textCol=avail?(sel?'#c04040':actions[idx].col):'#a0a0a0';
-      txShadow(actions[idx].name,cx_+26,cy_+18,14,textCol,'rgba(0,0,0,.3)');
-      txShadow(actions[idx].desc,cx_+26,cy_+32,10,avail?'#908878':'#b8b8b8','rgba(0,0,0,.2)');
+      const textCol=avail?(sel?ARK.goldBright:actions[idx].col):ARK.textDim;
+      txShadow(actions[idx].name,cx_+26,cy_+18,14,textCol,'rgba(0,0,0,.4)');
+      txShadow(actions[idx].desc,cx_+26,cy_+32,10,avail?ARK.textDim:'#404858','rgba(0,0,0,.3)');
       // Cursor arrow
       if(sel&&avail){
         const bob_=Math.sin(fr*0.15)*2;
-        txShadow('\u25B6',cx_-12+bob_,cy_+20,10,'#c04040','rgba(0,0,0,.3)');
+        txShadow('\u25B6',cx_-12+bob_,cy_+20,10,ARK.gold,'rgba(0,0,0,.4)');
       }
       // v92: Smart context badges (top-right corner of each cell)
       if(avail&&battlePhase==='select'){
@@ -9482,27 +10161,30 @@ function drawActionGrid(){
   const ucAvail=isActionAvailable(4);
   const ucSel=(ai===4&&!bpCardSelectActive&&!bpTargetSelectActive);
   if(ucSel&&ucAvail){
-    bx(ucX,ucY,ucW,ucH,'#f8f0d8');bx(ucX,ucY,ucW,1,'#d0c8a0');
+    bx(ucX,ucY,ucW,ucH,'#1c2c50');bx(ucX,ucY,ucW,1,ARK.gold);
+    bx(ucX,ucY+ucH-1,ucW,1,ARK.goldDim);
+    bx(ucX,ucY,1,ucH,ARK.gold);bx(ucX+ucW-1,ucY,1,ucH,ARK.goldDim);
   }else{
-    bx(ucX,ucY,ucW,ucH,ucAvail?'#e8e0c8':'#c8c0b0');
+    bx(ucX,ucY,ucW,ucH,ucAvail?'#0e1828':'#0a1018');
+    bx(ucX,ucY,ucW,1,ucAvail?ARK.border:'#111820');
   }
-  // v129: USE CARD icon — card with lightning bolt
+  // USE CARD icon — card with lightning bolt
   {const uix=ucX+4,uiy=ucY+4;
-  bx(uix+3,uiy+1,12,15,'rgba(0,0,0,.25)');    // shadow
-  bx(uix+2,uiy,12,15,'#3a2810');              // card body
-  bx(uix+2,uiy,12,1,'#806030');bx(uix+2,uiy+14,12,1,'#806030'); // borders
-  bx(uix+2,uiy,1,15,'#806030');bx(uix+13,uiy,1,15,'#806030');
-  bx(uix+8,uiy+2,3,4,'#f0c030');             // bolt top
-  bx(uix+6,uiy+6,5,2,'#f0c030');             // bolt middle
-  bx(uix+7,uiy+8,3,4,'#f0c030');             // bolt bottom
-  bx(uix+9,uiy+3,1,2,'rgba(255,255,255,.5)');// bolt glint
+  bx(uix+3,uiy+1,12,15,'rgba(0,0,0,.25)');
+  bx(uix+2,uiy,12,15,'#1c2c40');
+  bx(uix+2,uiy,12,1,ARK.goldDim);bx(uix+2,uiy+14,12,1,ARK.goldDim);
+  bx(uix+2,uiy,1,15,ARK.goldDim);bx(uix+13,uiy,1,15,ARK.goldDim);
+  bx(uix+8,uiy+2,3,4,ARK.gold);
+  bx(uix+6,uiy+6,5,2,ARK.gold);
+  bx(uix+7,uiy+8,3,4,ARK.gold);
+  bx(uix+9,uiy+3,1,2,'rgba(255,255,255,.5)');
   }
-  txShadow('USE CARD',ucX+26,ucY+18,14,ucAvail?(ucSel?'#c04040':'#806030'):'#a0a0a0','rgba(0,0,0,.3)');
+  txShadow('USE CARD',ucX+26,ucY+18,14,ucAvail?(ucSel?ARK.goldBright:ARK.gold):ARK.textDim,'rgba(0,0,0,.4)');
   const _handCount=pl[0].cd.filter(c=>c>0).length;
-  txShadow(_handCount>0?_handCount+' card'+(+_handCount!==1?'s':'')+' ready':'hand empty',ucX+140,ucY+18,10,ucAvail?'#908878':'#b8b8b8','rgba(0,0,0,.2)');
+  txShadow(_handCount>0?_handCount+' card'+(+_handCount!==1?'s':'')+' ready':'hand empty',ucX+140,ucY+18,10,ucAvail?ARK.textDim:'#404858','rgba(0,0,0,.3)');
   if(ucSel&&ucAvail){
     const bob_=Math.sin(fr*0.15)*2;
-    txShadow('\u25B6',ucX-12+bob_,ucY+20,10,'#c04040','rgba(0,0,0,.3)');
+    txShadow('\u25B6',ucX-12+bob_,ucY+20,10,ARK.gold,'rgba(0,0,0,.4)');
   }
   // Hint when all spells exhausted
   if(sp.s<=0&&sp.b<=0&&sp.c<=0){
@@ -14077,6 +14759,7 @@ function update(){
   updateProximityTension();
   updateNPCWander();
   updateTownWeather(); // v84
+  updateFloorTitle(); // v155: PMD floor title card
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
   const r1u=hasUniqueCards(1).size,r2u=hasUniqueCards(2).size;
@@ -15132,7 +15815,7 @@ document.addEventListener('keydown',e=>{
         return;
       }
 
-      // Z = interact with NPC, signpost, building, puzzle, objects, or fish
+      // Z = interact / wait (dungeon)
       if(e.code==='KeyZ'){
         if(checkNPCInteraction())return;
         if(checkSignpostInteraction())return;
@@ -15141,6 +15824,12 @@ document.addEventListener('keydown',e=>{
         if(checkObjectInteraction())return;
         // Fishing check
         if(canFish()){startFishing();return;}
+        // v155: In dungeon with no interaction — Z = wait (pass turn, rivals advance one step)
+        if(inDungeon){
+          processDungeonTurn();
+          sfxStep&&sfxStep();
+          return;
+        }
       }
 
       const p=pl[0];let nx=p.x,ny=p.y;
@@ -15158,8 +15847,8 @@ document.addEventListener('keydown',e=>{
           mpBroadcastMove();
           // Leave player footprint
           footprints.push({map:currentMap,x:nx,y:ny,age:0});
-          // Reveal fog around new position (town already fully revealed; dungeon radius 3 for playability)
-          if(inDungeon)fogRevealRadius(currentMap,nx,ny,3);
+          // v155: Dungeon fog — room-based reveal (PMD-style: entering a room reveals whole room)
+          if(inDungeon){fogRevealCurrentRoom(currentMap,nx,ny);fogRevealRadius(currentMap,nx,ny,2);}
           fogSave();
           const newTile=m[ny]?.[nx];
           if(newTile===1||newTile===7||newTile===11){spawnGrassParticles(nx*TW,ny*TH);sfxGrassRustle();}
@@ -15172,6 +15861,9 @@ document.addEventListener('keydown',e=>{
             if(objectInteractTimer<=0){objectInteractMsg='Lava! Cards decaying faster!';objectInteractTimer=60;}
             screenShake(2,4);
           }
+          // v155: Turn-based dungeon — rivals take one step per player step
+          if(inDungeon){processDungeonTurn();checkFloorItemPickup(nx,ny);}
+
           // Tutorial triggers
           if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
           if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}

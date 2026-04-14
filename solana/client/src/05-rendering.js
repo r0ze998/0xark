@@ -76,18 +76,36 @@ function drawWater(px,py,tx_,ty){
 }
 
 function drawGrass(px,py,tx_,ty){
-  // Dungeon floors: draw as stone tiles, not grass
+  // Dungeon room floors: waterlogged ship planks / hull interior
   if(currentMap>0){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
-    const depth=currentMap; // deeper = darker stone
-    const base=48-depth*3,hi=66-depth*3;
-    bx(px,py,TW,TH,`rgb(${base+sv},${base+sv},${base+sv+8})`);
-    // Stone texture: subtle grid lines
-    bx(px,py,TW,1,`rgba(0,0,0,.1)`);
-    bx(px,py,1,TH,`rgba(0,0,0,.1)`);
-    // Subtle variation dots
-    if((h&15)<3)bx(px+Math.floor(thRand(tx_,ty,1)*28)+2,py+Math.floor(thRand(tx_,ty,2)*28)+2,2,2,`rgb(${hi+sv},${hi+sv},${hi+sv+4})`);
+    const depth=currentMap;
+    // Plank base color — dark wood, deeper = more blue-tinted (water seeping in)
+    const rBase=20+sv,gBase=22+sv,bBase=28+sv*2+depth*3;
+    bx(px,py,TW,TH,`rgb(${rBase},${gBase},${bBase})`);
+    // Plank grain lines (horizontal, spaced 4px)
+    const grainOff=(h>>3)&3;
+    for(let gy=grainOff;gy<TH;gy+=4){
+      const gv=((h+gy*3)&7)-4;
+      g.fillStyle=`rgba(${gv>0?255:0},${gv>0?255:0},${gv>0?255:0},${Math.abs(gv)*0.012+0.04})`;
+      g.fillRect(px,py+gy,TW,1);
+    }
+    // Plank edge shadow (left+top)
+    bx(px,py,TW,1,`rgba(0,0,0,.18)`);
+    bx(px,py,1,TH,`rgba(0,0,0,.12)`);
+    // Occasional glint (water pooling)
+    if((h&31)<2){
+      const gx=Math.floor(thRand(tx_,ty,1)*22)+4,gy=Math.floor(thRand(tx_,ty,2)*22)+4;
+      const glA=0.1+0.1*Math.sin((typeof fr!=='undefined'?fr:0)*0.05+tx_*0.3);
+      g.globalAlpha=glA;bx(px+gx,py+gy,3,1,'#6090b8');bx(px+gx+1,py+gy-1,1,3,'#5080a8');g.globalAlpha=1;
+    }
+    // Deep floor (B4-B5): bioluminescent moss dots
+    if(depth>=4&&(h&15)<2){
+      const mx=Math.floor(thRand(tx_,ty,3)*24)+3,my=Math.floor(thRand(tx_,ty,4)*24)+3;
+      const mA=0.3+0.2*Math.sin((typeof fr!=='undefined'?fr:0)*0.06+ty*0.5);
+      g.globalAlpha=mA;bx(px+mx,py+my,2,2,'#28c8a0');g.globalAlpha=1;
+    }
     return;
   }
   if(useKenney.grass){
@@ -182,15 +200,37 @@ function drawTallGrass(px,py,tx_,ty){
 }
 
 function drawPath(px,py,tx_,ty){
-  // Dungeon corridors: draw as darker stone, slightly different from room floors
+  // Dungeon corridors: hull passage — dark steel plate with rivets and seams
   if(currentMap>0){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
     const depth=currentMap;
-    const base=38-depth*2;
-    bx(px,py,TW,TH,`rgb(${base+sv},${base+sv},${base+sv+6})`);
-    bx(px,py,TW,2,`rgba(0,0,0,.12)`);
-    bx(px,py,2,TH,`rgba(0,0,0,.12)`);
+    // Base: dark steel, slightly bluer at deeper floors
+    const rB=12+sv,gB=16+sv,bB=24+sv+depth*2;
+    bx(px,py,TW,TH,`rgb(${rB},${gB},${bB})`);
+    // Horizontal metal plate seams (every 8px)
+    const plateOff=(h>>3)&7;
+    for(let gy=plateOff;gy<TH;gy+=8){
+      g.fillStyle='rgba(0,0,0,.22)';g.fillRect(px,py+gy,TW,1);
+      g.fillStyle='rgba(255,255,255,.04)';g.fillRect(px,py+gy+1,TW,1);
+    }
+    // Rivet pairs at seam intersections
+    const r1x=4+((h>>4)&10),r2x=20+((h>>2)&10);
+    const rivY=(plateOff+4)%TH;
+    bx(px+r1x,py+rivY,2,2,'rgba(180,150,80,.3)');
+    bx(px+r1x+1,py+rivY,1,1,'rgba(255,230,140,.2)');
+    bx(px+r2x,py+rivY,2,2,'rgba(180,150,80,.3)');
+    bx(px+r2x+1,py+rivY,1,1,'rgba(255,230,140,.2)');
+    // Edge shadow (wall-meets-floor shadow line)
+    bx(px,py,TW,1,'rgba(0,0,0,.35)');
+    bx(px,py,1,TH,'rgba(0,0,0,.22)');
+    bx(px+TW-1,py,1,TH,'rgba(0,0,0,.14)');
+    // Occasional water pool glint (flooding at deeper floors)
+    if((h&23)===0){
+      const gx=Math.floor(thRand(tx_,ty,5)*22)+4,gy=Math.floor(thRand(tx_,ty,6)*22)+4;
+      const glA=0.07+0.06*Math.sin((typeof fr!=='undefined'?fr:0)*0.04+tx_*0.4);
+      g.globalAlpha=glA;bx(px+gx,py+gy,5,2,'#2a4060');g.globalAlpha=1;
+    }
     return;
   }
   if(useKenney.path){
@@ -462,6 +502,46 @@ function drawCave(px,py,tx_,ty){
 }
 
 function drawMountain(px,py,tx_,ty){
+  // Dungeon walls: impenetrable hull steel — riveted, welded, dark
+  if(currentMap>0){
+    const h=tileHash(tx_,ty);
+    const sv=((h&7)-4);
+    const depth=currentMap;
+    // Deep near-black blue-steel
+    const rB=8+sv,gB=10+sv,bB=16+sv+depth;
+    bx(px,py,TW,TH,`rgb(${rB},${gB},${bB})`);
+    // Horizontal rivet rows (every 8px, staggered)
+    const rivOff=(h>>3)&3;
+    for(let ry=rivOff*4+2;ry<TH;ry+=9){
+      const r1x=3+((h>>4)&7),r2x=18+((h>>6)&7);
+      // Rivet body
+      bx(px+r1x,py+ry,3,3,'rgba(80,70,40,.5)');
+      bx(px+r1x+1,py+ry,2,1,'rgba(200,160,80,.22)');
+      bx(px+r2x,py+ry,3,3,'rgba(80,70,40,.5)');
+      bx(px+r2x+1,py+ry,2,1,'rgba(200,160,80,.22)');
+    }
+    // Vertical reinforcement seam
+    if((h&3)===0){
+      const sx=5+((h>>6)&20);
+      g.fillStyle='rgba(0,0,0,.25)';g.fillRect(px+sx,py,2,TH);
+      g.fillStyle='rgba(255,255,255,.025)';g.fillRect(px+sx+2,py,1,TH);
+    }
+    // Horizontal weld line
+    const weldY=(h&15)+6;
+    g.fillStyle='rgba(0,0,0,.28)';g.fillRect(px,py+weldY,TW,2);
+    g.fillStyle='rgba(255,255,255,.025)';g.fillRect(px,py+weldY+2,TW,1);
+    // Top/left edge highlight (faint steel sheen)
+    bx(px,py,TW,1,'rgba(255,255,255,.06)');
+    bx(px,py,1,TH,'rgba(255,255,255,.04)');
+    // Deep floors: rust stain or barnacle patch
+    if(depth>=3&&(h&7)===0){
+      const bx_=Math.floor(thRand(tx_,ty,7)*20)+4,by_=Math.floor(thRand(tx_,ty,8)*20)+4;
+      g.globalAlpha=0.22;
+      bx(px+bx_,py+by_,6,4,depth>=4?'#1e2a08':'#3c1e08');
+      g.globalAlpha=1;
+    }
+    return;
+  }
   if(useKenney.mountain){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
@@ -676,19 +756,38 @@ function drawRuinsPillar(px,py,tx_,ty){
 }
 
 function drawGlowTile(px,py,tx_,ty){
+  if(currentMap>0){
+    // Dungeon arcane rune tile — plank base with ARK teal runes + brass center
+    drawGrass(px,py,tx_,ty);
+    const cfr=typeof fr!=='undefined'?fr:0;
+    const pulse=Math.sin(cfr*.06+tx_*2+ty*3)*.35+.55;
+    // Teal rune field
+    bx(px+4,py+4,TW-8,TH-8,`rgba(40,152,168,${pulse*.4})`);
+    // Rune border lines (ARK teal)
+    const teal=`rgba(60,200,220,${pulse*.65})`;
+    bx(px+6,py+6,2,TH-12,teal);bx(px+TW-8,py+6,2,TH-12,teal);
+    bx(px+6,py+6,TW-12,2,teal);bx(px+6,py+TH-8,TW-12,2,teal);
+    // Inner rune cross
+    bx(px+14,py+8,4,TH-16,teal);bx(px+8,py+14,TW-16,4,teal);
+    // Brass gold center node (ARK accent)
+    const gold=`rgba(200,164,72,${pulse*.75})`;
+    g.fillStyle=gold;g.beginPath();g.arc(px+TW/2,py+TH/2,4,0,Math.PI*2);g.fill();
+    bx(px+13,py+13,6,6,`rgba(240,200,80,${pulse*.4})`);
+    // Glow halo
+    g.fillStyle=`rgba(40,152,168,${pulse*.14})`;
+    g.beginPath();g.arc(px+TW/2,py+TH/2,13,0,Math.PI*2);g.fill();
+    return;
+  }
   drawGrass(px,py,tx_,ty);
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
   const pulse=Math.sin(fr*.06+tx_*2+ty*3)*.3+.5;
   const color=((tx_+ty)%2===0)?`rgba(80,200,220,${pulse*.4})`:`rgba(160,80,200,${pulse*.4})`;
   bx(px+2,py+2,TW-4,TH-4,color);
   bx(px+4,py+4,TW-8,TH-8,color);
-  // Rune pattern (detailed)
   const bright=((tx_+ty)%2===0)?`rgba(120,240,255,${pulse*.6})`:`rgba(200,120,255,${pulse*.6})`;
   bx(px+6,py+6,2,TH-12,bright);bx(px+TW-8,py+6,2,TH-12,bright);
   bx(px+6,py+6,TW-12,2,bright);bx(px+6,py+TH-8,TW-12,2,bright);
-  // Inner rune cross
   bx(px+14,py+8,4,TH-16,bright);bx(px+8,py+14,TW-16,4,bright);
-  // Center glow
   g.fillStyle=bright;g.beginPath();g.arc(px+16,py+16,4,0,Math.PI*2);g.fill();
 }
 
@@ -714,42 +813,89 @@ function drawLava(px,py,tx_,ty){
 }
 
 function drawCrystal(px,py,tx_,ty){
+  if(currentMap>0){
+    // Dungeon crystal: deep ARK maritime crystal — teal-shifted per floor
+    drawGrass(px,py,tx_,ty);
+    const cfr=typeof fr!=='undefined'?fr:0;
+    const r=tr(tx_,ty);
+    const depth=currentMap;
+    // Color shifts deeper — teal→sapphire
+    const hue=depth<=2?'#28a8c0':depth===3?'#1880c8':'#1058d0';
+    const hueD=depth<=2?'#166878':depth===3?'#104868':'#0c3080';
+    const hueL=depth<=2?'#50d0e8':depth===3?'#40b0e0':'#3088e0';
+    // Crystal cluster
+    bx(px+10,py+4,12,22,hue);bx(px+8,py+10,16,12,hue);
+    bx(px+12,py+2,8,5,hueL);
+    // Secondary shards
+    bx(px+4,py+12,6,14,hueD);bx(px+22,py+8,6,16,hueD);
+    // Inner facet face (lighter)
+    bx(px+12,py+6,4,10,hueL);bx(px+14,py+4,2,5,'rgba(255,255,255,.4)');
+    // Specular glint
+    const sparkle=Math.sin(cfr*.1+tx_*5+ty*7)>.45;
+    if(sparkle){bx(px+15,py+8,3,2,'#fff');bx(px+10,py+15,2,2,'rgba(255,255,255,.8)');}
+    // Sub-facet texture
+    bx(px+10,py+10,2,8,'rgba(255,255,255,.06)');
+    // Glow halo (ARK teal)
+    g.fillStyle=`rgba(30,140,200,${.16+Math.sin(cfr*.05+tx_+ty)*.09})`;
+    g.beginPath();g.arc(px+16,py+16,11,0,Math.PI*2);g.fill();
+    return;
+  }
   drawGrass(px,py,tx_,ty);
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
   const r=tr(tx_,ty);
   const hue=((tx_+ty)%3===0)?'#80c0e0':((tx_+ty)%3===1)?'#a080d0':'#60e0a0';
-  // Crystal cluster - main shard
   bx(px+10,py+4,12,22,hue);bx(px+8,py+10,16,12,hue);
   bx(px+12,py+2,8,4,lighten(hue,.2));
-  // Secondary shards
   bx(px+4,py+12,6,14,darken(hue,.1));bx(px+22,py+8,6,16,darken(hue,.1));
-  // Facet highlights
   bx(px+12,py+6,4,8,lighten(hue,.25));bx(px+14,py+4,2,4,'rgba(255,255,255,.3)');
-  // Sparkle
   const sparkle=Math.sin(fr*.1+tx_*5+ty*7)>.5;
   if(sparkle){bx(px+16,py+8,2,2,'#fff');bx(px+10,py+14,2,2,'rgba(255,255,255,.7)');}
-  // Glow
   g.fillStyle=`rgba(160,200,255,${.12+Math.sin(fr*.05+tx_+ty)*.06})`;
   g.beginPath();g.arc(px+16,py+16,10,0,Math.PI*2);g.fill();
 }
 
 function drawAltar(px,py,tx_,ty){
+  if(currentMap>0){
+    // Dungeon altar: weathered dark steel with brass ARK gold accents
+    drawGrass(px,py,tx_,ty);
+    const cfr=typeof fr!=='undefined'?fr:0;
+    const pulse=Math.sin(cfr*.04)*.3+.5;
+    // Base slab — dark plate steel
+    bx(px+2,py+20,28,10,'#101620');bx(px+4,py+18,24,10,'#18202c');
+    // Top surface
+    bx(px+6,py+14,20,5,'#1e2830');bx(px+8,py+12,16,4,'#242e3c');
+    // Brass trim lines (ARK.gold = #c8a448)
+    bx(px+6,py+14,20,1,'#a08028');bx(px+4,py+18,24,1,'#7a6018');
+    bx(px+2,py+20,28,1,'#584810');
+    // Corner brass rivets
+    bx(px+4,py+19,3,3,'#b89030');bx(px+5,py+19,1,1,'rgba(255,220,100,.3)');
+    bx(px+25,py+19,3,3,'#b89030');bx(px+26,py+19,1,1,'rgba(255,220,100,.3)');
+    // Scanlines on base
+    for(let sy=0;sy<10;sy+=2){g.fillStyle='rgba(0,0,0,.07)';g.fillRect(px+2,py+20+sy,28,1);}
+    // Glow on altar top (brass gold)
+    bx(px+10,py+12,12,3,`rgba(200,164,72,${pulse*.42})`);
+    // Floating brass orb
+    const orbY=py+4+Math.sin(cfr*.05)*3;
+    g.fillStyle=`rgba(200,164,72,${pulse*.65})`;
+    g.beginPath();g.arc(px+16,orbY,5,0,Math.PI*2);g.fill();
+    g.fillStyle=`rgba(240,200,80,${pulse*.22})`;
+    g.beginPath();g.arc(px+16,orbY,10,0,Math.PI*2);g.fill();
+    // Arcane inscriptions on base
+    bx(px+8,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);bx(px+20,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);
+    bx(px+14,py+24,4,1,`rgba(200,164,72,${pulse*.25})`);
+    return;
+  }
   drawGrass(px,py,tx_,ty);
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
-  // Altar base
   bx(px+2,py+20,28,10,'#606068');bx(px+4,py+18,24,10,'#707078');
-  // Altar top
   bx(px+6,py+14,20,5,'#808088');bx(px+8,py+12,16,4,'#909098');
-  // Glow on altar
   const pulse=Math.sin(fr*.04)*.3+.5;
   bx(px+10,py+12,12,3,`rgba(200,160,255,${pulse*.5})`);
-  // Floating orb
   const orbY=py+4+Math.sin(fr*.05)*3;
   g.fillStyle=`rgba(200,160,255,${pulse*.7})`;
   g.beginPath();g.arc(px+16,orbY,5,0,Math.PI*2);g.fill();
   g.fillStyle=`rgba(255,220,255,${pulse*.4})`;
   g.beginPath();g.arc(px+16,orbY,10,0,Math.PI*2);g.fill();
-  // Rune engravings on stone
   bx(px+8,py+22,4,2,`rgba(200,160,255,${pulse*.3})`);bx(px+20,py+22,4,2,`rgba(200,160,255,${pulse*.3})`);
 }
 
@@ -887,89 +1033,182 @@ function drawTile(tx_,ty){
 // ═══════════════════════════════════════
 // SPRITES
 // ═══════════════════════════════════════
+// Character identity palette
+// pl[0] Protagonist: navy maritime coat + brass trim, dark hair
+// pl[1] Vega rival:  deep crimson coat, auburn hair
+// pl[2] Mira rival:  dark jade coat, silver-white hair
 function drawSprite(p,isPlayer){
   const px=p.visualX-camX,py=p.visualY-camY-16;
   if(px<-48||px>W+48||py<-56||py>H+56)return;
   const wf=p.walkFrame%4;
   const bob=(wf===1||wf===3)?2:0;
   const d=p.dir;
+  const isP0=p===pl[0],isP1=p===pl[1],isP2=p===pl[2];
 
   // Shadow
-  g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(px+16,py+46,12,5,0,0,Math.PI*2);g.fill();
+  g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(px+16,py+46,12,4,0,0,Math.PI*2);g.fill();
 
-  // Shoes/feet (visible with detail)
-  if(wf===1){bx(px+4,py+42+bob,8,4,'#383030');bx(px+5,py+42+bob,6,3,'#484040');bx(px+20,py+40+bob,8,4,'#383030');bx(px+21,py+40+bob,6,3,'#484040');}
-  else if(wf===3){bx(px+8,py+40+bob,8,4,'#383030');bx(px+9,py+40+bob,6,3,'#484040');bx(px+18,py+42+bob,8,4,'#383030');bx(px+19,py+42+bob,6,3,'#484040');}
-  else{bx(px+6,py+42+bob,8,4,'#383030');bx(px+7,py+42+bob,6,3,'#484040');bx(px+18,py+42+bob,8,4,'#383030');bx(px+19,py+42+bob,6,3,'#484040');}
+  // --- OUTFIT PALETTE ---
+  let coatC,coatH,coatD,trimC,pantsC,pantsH,bootC,skinC,hairC,hairH,hairAcc;
+  if(isP0){
+    coatC='#1c3060';coatH='#2448a0';coatD='#0e1c3c';trimC='#c8a448';
+    pantsC='#18283c';pantsH='#223048';bootC='#201820';
+    skinC='#e8d4b8';hairC='#1a1820';hairH='#2a2830';hairAcc='#3a3848';
+  }else if(isP1){
+    coatC='#6c1018';coatH='#a82028';coatD='#400810';trimC='#e0b040';
+    pantsC='#2c1820';pantsH='#381e28';bootC='#1a1010';
+    skinC='#e8cca8';hairC='#6c3010';hairH='#884020';hairAcc='#a85028';
+  }else{
+    coatC='#183038';coatH='#285060';coatD='#0c1c24';trimC='#28c8a8';
+    pantsC='#141e28';pantsH='#1c2a38';bootC='#0c1418';
+    skinC='#dcc8b0';hairC='#c8c8d0';hairH='#d8d8e0';hairAcc='#a8a8b8';
+  }
 
-  // Legs
-  bx(px+6,py+34+bob,10,10,'#4050a0');bx(px+16,py+34+bob,10,10,'#4050a0');
-  if(wf===1){bx(px+6,py+34+bob,10,8,'#3848a0');bx(px+16,py+36+bob,10,8,'#3848a0');}
-  else if(wf===3){bx(px+6,py+36+bob,10,8,'#3848a0');bx(px+16,py+34+bob,10,8,'#3848a0');}
+  // === BOOTS / FEET ===
+  if(wf===1){
+    bx(px+4,py+42+bob,9,5,bootC);bx(px+5,py+42+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+    bx(px+19,py+40+bob,9,5,bootC);bx(px+20,py+40+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+  }else if(wf===3){
+    bx(px+8,py+40+bob,9,5,bootC);bx(px+9,py+40+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+    bx(px+17,py+42+bob,9,5,bootC);bx(px+18,py+42+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+  }else{
+    bx(px+5,py+42+bob,9,5,bootC);bx(px+6,py+42+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+    bx(px+18,py+42+bob,9,5,bootC);bx(px+19,py+42+bob,7,3,trimC==='#c8a448'?'#2a2020':'#1a1212');
+  }
+  // Boot cuff trim line
+  bx(px+5,py+42+bob,18,1,trimC==='#c8a448'?'#382820':'rgba(255,255,255,.08)');
 
-  let shirtC,shirtH,hairC,hairH;
-  if(p===pl[0]){shirtC='#4080d0';shirtH='#5090e0';hairC='#282830';hairH='#383840';}
-  else if(p===pl[1]){shirtC='#d060a0';shirtH='#e070b0';hairC='#804020';hairH='#905030';}
-  else{shirtC='#d0a030';shirtH='#e0b040';hairC='#585040';hairH='#686058';}
+  // === PANTS / LEGS ===
+  bx(px+6,py+34+bob,10,10,pantsC);bx(px+16,py+34+bob,10,10,pantsC);
+  if(wf===1){bx(px+6,py+34+bob,10,8,pantsH);bx(px+16,py+36+bob,10,8,pantsH);}
+  else if(wf===3){bx(px+6,py+36+bob,10,8,pantsH);bx(px+16,py+34+bob,10,8,pantsH);}
+  // Pants crease stripe
+  bx(px+10,py+34+bob,2,10,'rgba(255,255,255,.05)');bx(px+20,py+34+bob,2,10,'rgba(255,255,255,.05)');
 
-  // Body (24px wide, 20px tall)
-  bx(px+4,py+18+bob,24,18,shirtC);bx(px+6,py+20+bob,20,14,shirtH);
-  bx(px+10,py+18+bob,12,2,'#f0dcc0'); // collar
+  // === BELT ===
+  bx(px+4,py+33+bob,24,3,coatD);
+  bx(px+14,py+32+bob,4,4,trimC);  // belt buckle
+  bx(px+15,py+33+bob,2,2,'rgba(255,255,255,.3)'); // buckle glint
 
-  // Arms (8px wide each side)
-  if(d===1){bx(px-4,py+20+bob,8,12,shirtC);bx(px+28,py+20+bob,4,12,shirtC);}
-  else if(d===3){bx(px+28,py+20+bob,8,12,shirtC);bx(px,py+20+bob,4,12,shirtC);}
-  else{bx(px-2,py+20+bob,8,12,shirtC);bx(px+26,py+20+bob,8,12,shirtC);}
+  // === COAT / BODY ===
+  bx(px+4,py+14+bob,24,20,coatC);bx(px+6,py+16+bob,20,16,coatH);
+  // Coat darker sides
+  bx(px+4,py+14+bob,3,20,coatD);bx(px+25,py+14+bob,3,20,coatD);
+  // Front closure (center seam)
+  bx(px+15,py+14+bob,2,20,'rgba(0,0,0,.2)');
+  // Collar (raised) — skin showing at throat
+  bx(px+10,py+14+bob,12,4,coatC);
+  bx(px+13,py+14+bob,6,3,skinC);
+  // Collar fold lines
+  bx(px+10,py+14+bob,4,1,coatD);bx(px+18,py+14+bob,4,1,coatD);
+  // Trim accent on coat hem
+  bx(px+4,py+32+bob,24,1,trimC==='#c8a448'?'rgba(200,164,72,.4)':trimC==='#e0b040'?'rgba(220,176,60,.35)':'rgba(40,200,168,.35)');
+  // Lapel triangle (P0 only: officer look)
+  if(isP0){bx(px+10,py+16+bob,6,8,coatD);bx(px+16,py+16+bob,6,8,coatD);}
+  // P1: double-breasted stud row
+  if(isP1){
+    bx(px+12,py+17+bob,2,2,trimC);bx(px+12,py+22+bob,2,2,trimC);bx(px+12,py+27+bob,2,2,trimC);
+    bx(px+18,py+17+bob,2,2,trimC);bx(px+18,py+22+bob,2,2,trimC);bx(px+18,py+27+bob,2,2,trimC);
+  }
+  // P2: trim piping along coat edge
+  if(isP2){
+    bx(px+4,py+14+bob,1,20,trimC);bx(px+27,py+14+bob,1,20,trimC);
+  }
+  // Shoulder pads (top of coat)
+  bx(px+4,py+14+bob,7,4,isP0?'#1a3872':isP1?'#7c1820':coatC);
+  bx(px+21,py+14+bob,7,4,isP0?'#1a3872':isP1?'#7c1820':coatC);
 
-  // Hands
-  if(d===1){bx(px-4,py+30+bob,6,4,'#e8d0b0');bx(px+28,py+30+bob,4,4,'#e8d0b0');}
-  else if(d===3){bx(px+30,py+30+bob,6,4,'#e8d0b0');bx(px,py+30+bob,4,4,'#e8d0b0');}
-  else{bx(px-2,py+30+bob,6,4,'#e8d0b0');bx(px+28,py+30+bob,6,4,'#e8d0b0');}
+  // === ARMS ===
+  if(d===1){
+    bx(px-4,py+18+bob,8,14,coatC);bx(px-4,py+18+bob,3,14,coatD);
+    bx(px+28,py+18+bob,4,14,coatC);
+  }else if(d===3){
+    bx(px+28,py+18+bob,8,14,coatC);bx(px+33,py+18+bob,3,14,coatD);
+    bx(px,py+18+bob,4,14,coatC);
+  }else{
+    bx(px-2,py+18+bob,8,14,coatC);bx(px-2,py+18+bob,3,14,coatD);
+    bx(px+26,py+18+bob,8,14,coatC);bx(px+31,py+18+bob,3,14,coatD);
+  }
+  // Cuff trim
+  if(d===1){bx(px-4,py+30+bob,8,2,trimC==='#c8a448'?'rgba(200,164,72,.5)':trimC==='#e0b040'?'rgba(224,176,64,.4)':'rgba(40,200,168,.4)');}
+  else if(d===3){bx(px+28,py+30+bob,8,2,trimC==='#c8a448'?'rgba(200,164,72,.5)':trimC==='#e0b040'?'rgba(224,176,64,.4)':'rgba(40,200,168,.4)');}
+  else{bx(px-2,py+30+bob,8,2,'rgba(200,160,60,.3)');bx(px+26,py+30+bob,8,2,'rgba(200,160,60,.3)');}
 
-  // Head (20px wide, 14px tall)
-  bx(px+6,py+2+bob,20,16,'#f0dcc0');bx(px+8,py+4+bob,16,12,'#e8d0b0');
+  // === HANDS ===
+  const handC=skinC;
+  if(d===1){bx(px-4,py+30+bob,6,5,handC);bx(px+28,py+30+bob,5,5,handC);}
+  else if(d===3){bx(px+31,py+30+bob,6,5,handC);bx(px,py+30+bob,5,5,handC);}
+  else{bx(px-2,py+30+bob,6,5,handC);bx(px+28,py+30+bob,6,5,handC);}
+
+  // === HEAD ===
+  bx(px+7,py+2+bob,18,16,skinC);bx(px+9,py+4+bob,14,12,'rgba(0,0,0,.04)');
+  // Jaw shadow
+  bx(px+7,py+14+bob,18,4,'rgba(0,0,0,.08)');
+  // Ear dots
+  bx(px+6,py+7+bob,2,4,skinC);bx(px+24,py+7+bob,2,4,skinC);
 
   if(d===2){
     // Facing away
-    bx(px+6,py+bob,20,12,hairC);bx(px+8,py+bob,16,14,hairC);bx(px+10,py+2+bob,12,10,hairH);
+    bx(px+6,py-2+bob,20,14,hairC);bx(px+8,py+bob,16,14,hairC);bx(px+10,py+2+bob,12,10,hairH);
+    if(isP0){bx(px+6,py+bob,4,10,hairAcc);bx(px+22,py+bob,4,10,hairAcc);}// side tufts
+    if(isP1){bx(px+6,py+6+bob,4,8,hairAcc);}// long side lock
   }else if(d===0){
-    // Facing forward - eyes 4x4 with 2x2 highlight
-    bx(px+10,py+8+bob,4,4,'#181820');bx(px+18,py+8+bob,4,4,'#181820');
-    bx(px+10,py+8+bob,2,2,'#fff');bx(px+18,py+8+bob,2,2,'#fff');
-    bx(px+14,py+14+bob,4,2,'#c0a090'); // mouth
-    if(p===pl[0]){
-      bx(px+6,py+bob,20,6,hairC);bx(px+4,py+bob,4,4,hairC);bx(px+24,py+bob,4,4,hairC);
-      bx(px+8,py-2+bob,6,2,hairC);bx(px+18,py-2+bob,6,2,hairC);bx(px+12,py-4+bob,4,2,hairC);
-      bx(px+10,py+bob,4,2,hairH);bx(px+20,py+bob,2,2,hairH);
-    }else if(p===pl[1]){
-      bx(px+6,py+bob,20,6,hairC);bx(px+4,py+2+bob,4,14,hairC);bx(px+24,py+2+bob,4,14,hairC);
-      bx(px+8,py-2+bob,16,4,hairC);bx(px+6,py+bob,4,2,hairH);bx(px+18,py+bob,4,2,hairH);
+    // Facing forward
+    bx(px+9,py+7+bob,4,5,'#181820');bx(px+19,py+7+bob,4,5,'#181820');// eyes
+    bx(px+9,py+7+bob,2,2,'#fff');bx(px+19,py+7+bob,2,2,'#fff');// glint
+    // Iris detail
+    if(isP0){bx(px+10,py+9+bob,2,2,'#2858a8');}
+    else if(isP1){bx(px+10,py+9+bob,2,2,'#a02020');}
+    else{bx(px+10,py+9+bob,2,2,'#20a088');}
+    // Eyebrows
+    bx(px+9,py+6+bob,4,1,hairC);bx(px+19,py+6+bob,4,1,hairC);
+    // Nose dot
+    bx(px+15,py+12+bob,2,1,'rgba(0,0,0,.12)');
+    // Mouth
+    bx(px+13,py+15+bob,5,2,'rgba(0,0,0,.15)');
+    // Hair (front)
+    if(isP0){
+      bx(px+6,py-2+bob,20,6,hairC);bx(px+4,py+bob,4,5,hairC);bx(px+24,py+bob,4,5,hairC);
+      bx(px+8,py-4+bob,6,2,hairC);bx(px+18,py-4+bob,6,2,hairC);bx(px+12,py-6+bob,4,3,hairC);
+      bx(px+10,py-2+bob,5,3,hairH);// highlight streak
+    }else if(isP1){
+      bx(px+6,py-2+bob,20,6,hairC);bx(px+4,py+2+bob,4,16,hairC);bx(px+24,py+2+bob,4,16,hairC);
+      bx(px+8,py-4+bob,16,5,hairC);bx(px+6,py+bob,4,3,hairH);bx(px+16,py-2+bob,6,3,hairH);
     }else{
-      bx(px+4,py+bob,24,6,'#d0a030');bx(px+6,py-2+bob,20,4,'#d0a030');
-      bx(px+2,py+4+bob,28,2,'#b08820');bx(px+8,py+bob,12,2,'#e0b040');
+      // Mira: silvery pulled-back hair with side strand
+      bx(px+6,py-2+bob,20,6,hairC);bx(px+4,py+bob,4,10,hairC);
+      bx(px+8,py-4+bob,16,5,hairC);bx(px+10,py-2+bob,8,3,hairH);
+      bx(px+24,py+bob,3,8,hairAcc);// silver strand right
     }
   }else{
     // Side view
     const flip=d===3;
-    const eyeX=flip?px+18:px+8;
-    bx(eyeX,py+8+bob,4,4,'#181820');bx(eyeX,py+8+bob,2,2,'#fff');
-    bx(flip?px+14:px+12,py+14+bob,4,2,'#c0a090');
-    if(p===pl[0]){
-      bx(px+6,py+bob,20,6,hairC);bx(flip?px+22:px+4,py+bob,6,8,hairC);
-      bx(flip?px+24:px+2,py-2+bob,4,4,hairC);bx(px+10,py+bob,6,2,hairH);
-    }else if(p===pl[1]){
-      bx(px+6,py+bob,20,6,hairC);bx(flip?px+24:px+4,py+2+bob,4,14,hairC);
-      bx(px+8,py-2+bob,16,4,hairC);
+    const eyeX=flip?px+17:px+9;
+    bx(eyeX,py+7+bob,4,5,'#181820');bx(eyeX,py+7+bob,2,2,'#fff');
+    // Iris
+    if(isP0){bx(eyeX+1,py+9+bob,2,2,'#2858a8');}
+    else if(isP1){bx(eyeX+1,py+9+bob,2,2,'#a02020');}
+    else{bx(eyeX+1,py+9+bob,2,2,'#20a088');}
+    bx(eyeX,py+6+bob,4,1,hairC);// eyebrow
+    bx(flip?px+14:px+12,py+15+bob,5,2,'rgba(0,0,0,.12)');// mouth
+    // Hair (side)
+    if(isP0){
+      bx(px+6,py-2+bob,20,6,hairC);bx(flip?px+22:px+4,py+bob,6,10,hairC);
+      bx(flip?px+24:px+2,py-2+bob,4,5,hairC);bx(px+10,py-2+bob,6,3,hairH);
+    }else if(isP1){
+      bx(px+6,py-2+bob,20,6,hairC);bx(flip?px+24:px+4,py+2+bob,4,16,hairC);
+      bx(px+8,py-4+bob,16,5,hairC);bx(flip?px+20:px+8,py-2+bob,6,3,hairH);
     }else{
-      bx(px+4,py+bob,24,6,'#d0a030');bx(flip?px+26:px,py+2+bob,6,4,'#b08820');
-      bx(px+8,py+bob,10,2,'#e0b040');
+      bx(px+6,py-2+bob,20,6,hairC);bx(flip?px+22:px+4,py+bob,5,10,hairC);
+      bx(px+8,py-4+bob,16,5,hairC);bx(px+10,py-2+bob,8,3,hairH);
     }
   }
 
+  // === CC COUNTER BADGE ===
   if(isPlayer){
-    const bx_=px+28,by_=py-10;win(bx_,by_,28,18);tx(p.cc+'',bx_+9,by_+15,8,'#303028');
+    const bx_=px+28,by_=py-10;win(bx_,by_,28,18);tx(p.cc+'',bx_+9,by_+15,8,'#c8b888');
   }else if(isVisibleThroughFog(p.x,p.y,3)){
-    bx(px+28,py-8,22,16,'rgba(0,0,0,.35)');win(px+28,py-10,22,16);tx(p.cc+'',px+34,py+4,7,'#303028');
+    bx(px+28,py-8,22,16,'rgba(0,0,0,.4)');win(px+28,py-10,22,16);tx(p.cc+'',px+34,py+4,7,'#c8b888');
   }
 }
 
@@ -1085,20 +1324,29 @@ function updateCamera(){
 // CARD MINI ART
 // ═══════════════════════════════════════
 // v103: Card type indicator colors for HUD mini-cards
-const CARD_TYPE_COL={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
+const CARD_TYPE_COL={attack:'#c83838',defense:'#3888c8',flee:'#30b870',magic:'#a840c0',recovery:'#c8a830'};
 function drawMiniCard(x,y,cd){
   if(cd>0){
     const cr=CD[cd-1];
-    bx(x,y,28,20,cr.d);bx(x+1,y+1,26,18,cr.c);
-    bx(x+2,y+2,24,12,cr.d);bx(x+3,y+3,22,10,'rgba(255,255,255,.15)');
-    // Tiny character sprite (scale 0.5)
+    // Dark ARK card body
+    bx(x,y,28,20,'#060e18');bx(x+1,y+1,26,18,cr.d);
+    bx(x+2,y+2,24,12,cr.d);bx(x+3,y+3,22,10,'rgba(0,0,0,.35)');
+    // Character art area (darker)
+    bx(x+2,y+2,24,12,'rgba(0,0,0,.2)');
+    // Tiny character sprite
     drawCardCharacter(x+6,y+1,cd,0.5,fr);
-    bx(x+1,y+14,26,5,cr.d);txShadow(cr.n[0],x+8,y+19,7,'#fff','rgba(0,0,0,.5)');
-    // v103: 2px type-color strip along the top border for instant hand-composition read
+    // Name band
+    bx(x+1,y+14,26,5,cr.d);txShadow(cr.n[0],x+8,y+19,7,'#e8e0d0','rgba(0,0,0,.6)');
+    // Type color top strip
     const typeCol=CARD_TYPE_COL[cr.t]||'#808080';
     bx(x+1,y,26,2,typeCol);
+    // Corner glint
+    bx(x+1,y+1,3,1,'rgba(255,255,255,.2)');bx(x+1,y+1,1,3,'rgba(255,255,255,.15)');
   }else{
-    bx(x,y,28,20,'#c8c0a8');bx(x+1,y+1,26,18,'#d8d0b8');txShadow('?',x+8,y+15,8,'#a89880','rgba(0,0,0,.3)');
+    // Empty slot — dark ARK panel
+    bx(x,y,28,20,'#080e18');bx(x+1,y+1,26,18,'#0c1420');
+    bx(x,y,28,1,'rgba(200,164,72,.15)');bx(x,y,1,20,'rgba(200,164,72,.1)');
+    txShadow('\u2014',x+10,y+15,8,'#2a3848','rgba(0,0,0,.3)');
   }
 }
 
