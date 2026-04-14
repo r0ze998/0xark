@@ -1256,7 +1256,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v133',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v134',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1618,6 +1618,45 @@ function drawBattleBG(){
     const flCol=fl===5?'#8060c0':fl===4?'#c05040':fl===3?'#9060c0':'#707888';
     g.globalAlpha=0.35;
     tx(flNames[fl],W/2-30,16,6,flCol);
+    g.globalAlpha=1;
+  }
+  // v134: Rival-themed atmospheric overlay — VEGA (magenta) or MIRA (gold)
+  const vsRiv=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
+  if(vsRiv===1){
+    // VEGA: dark magenta screen-edge vignette + drifting orbs
+    const vigV=g.createRadialGradient(W*0.7,H*0.25,H*0.1,W*0.7,H*0.25,H*0.65);
+    vigV.addColorStop(0,'rgba(0,0,0,0)');vigV.addColorStop(1,'rgba(160,20,100,0.14)');
+    g.fillStyle=vigV;g.fillRect(0,0,W,H);
+    // Three drifting dark-energy orbs near VEGA's side
+    for(let i=0;i<3;i++){
+      const phase=fr*0.018+i*2.1;
+      const ox=W-220+Math.cos(phase)*28+i*22;
+      const oy=100+Math.sin(phase*0.7)*22+i*16;
+      const ora=0.12+Math.sin(phase*1.3)*0.06;
+      g.globalAlpha=ora;
+      g.fillStyle='#c040a0';
+      g.beginPath();g.arc(ox,oy,5+i*2,0,Math.PI*2);g.fill();
+      g.globalAlpha=ora*0.4;
+      g.beginPath();g.arc(ox,oy,10+i*3,0,Math.PI*2);g.fill();
+    }
+    g.globalAlpha=1;
+  }else{
+    // MIRA: warm amber screen-edge vignette + drifting coin sparks
+    const vigM=g.createRadialGradient(W*0.75,H*0.2,H*0.1,W*0.75,H*0.2,H*0.65);
+    vigM.addColorStop(0,'rgba(0,0,0,0)');vigM.addColorStop(1,'rgba(160,120,0,0.13)');
+    g.fillStyle=vigM;g.fillRect(0,0,W,H);
+    // Drifting coin-glint sparks near MIRA's side
+    for(let i=0;i<4;i++){
+      const phase=fr*0.022+i*1.6;
+      const ox=W-290+Math.cos(phase)*24+i*18;
+      const oy=120+Math.sin(phase*0.6)*18+i*14;
+      const ora=0.10+Math.sin(phase*1.1)*0.05;
+      g.globalAlpha=ora;
+      bx(ox-2,oy-2,4,4,'#e0c040');
+      g.globalAlpha=ora*0.45;
+      bx(ox-4,oy-4,8,1,'#f0e060');bx(ox-4,oy+3,8,1,'#f0e060');
+      bx(ox-4,oy-4,1,8,'#f0e060');bx(ox+3,oy-4,1,8,'#f0e060');
+    }
     g.globalAlpha=1;
   }
 }
