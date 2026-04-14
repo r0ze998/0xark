@@ -3034,8 +3034,12 @@ function generateResolveEvents(){
   }else if(bpAction===4){// USE CARD
     // Consume selected card in hand for effect based on card TYPE (not ID)
     const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
-    if(filled.length>0){
-      const slot=bpSelectedCardSlot;const card=removeCardFromPlayer(0,slot);
+    // Safety: if selected slot is now empty (decayed between select and resolve), fallback to any filled slot
+    const safeSlot=(pl[0].cd[bpSelectedCardSlot]>0)?bpSelectedCardSlot:(filled[0]??-1);
+    if(filled.length>0&&safeSlot>=0){
+      const slot=safeSlot;const card=removeCardFromPlayer(0,slot);
+      if(!card||!CD[card-1]){events.push({type:'result',text:'Your card vanished before use!',effect:'none'});lg.push('R'+rd+': USE CARD — card gone');
+      }else{
       const cr=CD[card-1];
       events.push({type:'action',who:'You',action:'USE CARD',text:'You consumed '+cr.n+'!',effect:'none'});
       const tgt=bpSelectedTarget;
@@ -3091,6 +3095,7 @@ function generateResolveEvents(){
         events.push({type:'result',text:cr.n+': Restored spell energy! +'+Math.ceil(cr.r/2)+' Steal, +1 Barrier, +1 Scout.',effect:'card_get'});
         lg.push('R'+rd+': '+cr.n+' restored energy!');
       }
+      } // end else(card valid)
     }else{
       events.push({type:'action',who:'You',action:'USE CARD',text:'No cards to use!',effect:'none'});
     }
