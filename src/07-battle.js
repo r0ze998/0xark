@@ -400,7 +400,7 @@ function drawPlayerInfoBox(){
 // Draw battle sprite (front-facing for opponent, back-facing for player)
 function drawBattleSprite(p,cx,cy,scale,facingAway){
   const s=scale;
-  // v127: Idle breathing bob — each character breathes out of phase
+  // Idle breathing bob — each character breathes out of phase
   const breathPhase=p===pl[0]?0:p===pl[1]?1.1:2.3;
   const breathAmp=scale*0.5;
   cy=cy+Math.round(Math.sin(fr*0.055+breathPhase)*breathAmp);
@@ -408,34 +408,49 @@ function drawBattleSprite(p,cx,cy,scale,facingAway){
   const ox=cx-w/2,oy=cy-h/2;
   // Shadow
   g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(cx,oy+h+2*s,w*.5,h*.12,0,0,Math.PI*2);g.fill();
+
+  // === KENNEY BATTLE SPRITE ===
+  if(pirateSheetLoaded){
+    const kChar=p===pl[0]?K.captain:(p===pl[1]?K.pirate2:K.pirate3);
+    // Glow aura
+    const glowC=p===pl[0]?'rgba(40,88,200,.22)':p===pl[1]?'rgba(200,32,40,.22)':'rgba(40,180,160,.22)';
+    g.fillStyle=glowC;g.beginPath();g.ellipse(cx,cy,w*.45,h*.55,0,0,Math.PI*2);g.fill();
+    // Scale the 16px sprite to battle size (scale*2 for tile size = 32px baseline)
+    const tileScale=s/1.0; // s=3 → 48px sprite
+    const sprW=16*tileScale*2, sprH=16*tileScale*2;
+    const sx=cx-sprW/2, sy=cy-sprH/2;
+    if(facingAway){
+      // Player faces away: flip vertically (mirror top-to-bottom look, not perfect but readable)
+      g.save();g.translate(sx+sprW,sy);g.scale(-1,1);
+      drawKenneyTile(kChar[0],kChar[1],0,0,tileScale*2);
+      // Back overlay to distinguish from front
+      g.fillStyle='rgba(0,0,0,.18)';g.fillRect(0,0,sprW,sprH*0.4);
+      g.restore();
+    }else{
+      drawKenneyTile(kChar[0],kChar[1],sx,sy,tileScale*2);
+    }
+    return;
+  }
+
+  // === FALLBACK FILLRECT BATTLE SPRITE ===
   let shirtC,shirtH,hairC,hairH;
   if(p===pl[0]){shirtC='#4080d0';shirtH='#5090e0';hairC='#282830';hairH='#383840';}
   else if(p===pl[1]){shirtC='#d060a0';shirtH='#e070b0';hairC='#804020';hairH='#905030';}
   else{shirtC='#d0a030';shirtH='#e0b040';hairC='#585040';hairH='#686058';}
-  // Feet
   bx(ox+2*s,oy+17*s,4*s,3*s,'#383030');bx(ox+8*s,oy+17*s,4*s,3*s,'#383030');
-  // Pants
   bx(ox+3*s,oy+14*s,8*s,4*s,'#4050a0');
-  // Body
   bx(ox+2*s,oy+8*s,10*s,7*s,shirtC);bx(ox+3*s,oy+9*s,8*s,5*s,shirtH);
-  // Arms
   bx(ox-1*s,oy+9*s,4*s,6*s,shirtC);bx(ox+11*s,oy+9*s,4*s,6*s,shirtC);
-  // Hands
   bx(ox-1*s,oy+14*s,3*s,2*s,'#e8d0b0');bx(ox+12*s,oy+14*s,3*s,2*s,'#e8d0b0');
-  // Head
   bx(ox+3*s,oy+1*s,8*s,8*s,'#f0dcc0');bx(ox+4*s,oy+2*s,6*s,6*s,'#e8d0b0');
   if(facingAway){
-    // Back of head (player's view in Pokemon)
     bx(ox+3*s,oy,8*s,6*s,hairC);bx(ox+4*s,oy+s,6*s,5*s,hairH);
     bx(ox+2*s,oy+s,2*s,3*s,hairC);bx(ox+10*s,oy+s,2*s,3*s,hairC);
-    // Backpack detail
     bx(ox+4*s,oy+10*s,6*s,3*s,'#305080');bx(ox+5*s,oy+11*s,4*s,1*s,'#4070a0');
   }else{
-    // Front face (opponent view)
     bx(ox+4*s,oy+4*s,2*s,2*s,'#181820');bx(ox+8*s,oy+4*s,2*s,2*s,'#181820');
     bx(ox+4*s,oy+4*s,s,s,'#fff');bx(ox+8*s,oy+4*s,s,s,'#fff');
     bx(ox+6*s,oy+7*s,2*s,s,'#c0a090');
-    // Hair
     if(p===pl[1]){
       bx(ox+3*s,oy,8*s,3*s,hairC);bx(ox+2*s,oy+s,2*s,7*s,hairC);bx(ox+10*s,oy+s,2*s,7*s,hairC);
       bx(ox+4*s,oy-s,6*s,2*s,hairC);
