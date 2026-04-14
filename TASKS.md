@@ -53,6 +53,13 @@
 - v52: Dungeon staircase labels (◀ ESCAPE / DEEPER ▶); floor-depth color tint (deeper = warmer); improved tutorial hint panel
 - v137: ZK proof commit hash fixed (poseidon-lite), onchain commit includes round in PDA seeds, real reveal TX, x402 broker rewritten (GDD v1.0: 60 cards, VEGA/MIRA), README with technical architecture
 - v138: x402 shop VEGA/MIRA labels+prices fixed, vault state push fixed (60-slot), response parsers match broker schema, MIRA Hand intel added, ZK artifacts at repo root (GitHub Pages), periodic broker sync post-battle + every 2min, title screen prize pool display
+- v141: fix rival steal missing result event when player hand empty (both rivals)
+- v142: fix x402 broker always receiving round:0 (turnCount undefined → use rd)
+- v143: fix checkForestTrap bypassing removeCardFromPlayer (missing decayWarn/stats reset)
+- v144: fix discard handler not resetting decayWarn — new card inherited stale warning state
+- v145: guard checkWinAndTransition against double-fire (stats.gamesPlayed++ safe)
+- v146: fix NPC wander facing direction (inverted vs player/rival convention)
+- v147: guard USE CARD against decayed-slot crash in generateResolveEvents
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)
