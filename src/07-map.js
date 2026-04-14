@@ -810,6 +810,42 @@ function dMap(){
     });
   }
 
+  // v155: Draw floor items (cards lying on dungeon ground)
+  if(inDungeon){
+    const items=floorItems[currentMap];
+    if(items&&items.length>0){
+      for(const it of items){
+        if(!fogRevealed[currentMap][it.y]?.[it.x])continue;
+        const ipx=it.x*TW-camX,ipy=it.y*TH-camY;
+        if(ipx<-TW||ipx>W||ipy<-TH||ipy>H)continue;
+        const cr=CD[it.cardId-1];if(!cr)continue;
+        // Rarity glow colors
+        const rarCols=['#808080','#60b0ff','#a060e0','#d09020','#f0d040'];
+        const rarCol=rarCols[Math.min(cr.r-1,4)]||'#f0c030';
+        const glowPulse=0.55+0.35*Math.sin(fr*0.1+it.glow);
+        // Glow halo
+        g.globalAlpha=glowPulse*0.5;
+        const grd=g.createRadialGradient(ipx+TW/2,ipy+TH/2,2,ipx+TW/2,ipy+TH/2,12);
+        grd.addColorStop(0,rarCol);grd.addColorStop(1,'rgba(0,0,0,0)');
+        g.fillStyle=grd;g.fillRect(ipx,ipy,TW,TH);
+        g.globalAlpha=1;
+        // Card mini sprite (6×8 rectangle at center)
+        const cx2=ipx+TW/2-3,cy2=ipy+TH/2-4;
+        bx(cx2,cy2,6,8,'#1a1a2e');
+        bx(cx2+1,cy2+1,4,6,rarCol);
+        // Pulsing border
+        g.globalAlpha=glowPulse;
+        g.strokeStyle=rarCol;g.lineWidth=1;g.strokeRect(cx2-1,cy2-1,8,10);
+        g.globalAlpha=1;
+        // Label above on hover (always show rarity initial)
+        const abb=['C','U','R','E','L'][Math.min(cr.r-1,4)]||'?';
+        g.globalAlpha=0.7;
+        tx(abb,cx2-1,cy2-2,5,rarCol);
+        g.globalAlpha=1;
+      }
+    }
+  }
+
   // Draw exit tile markers in dungeon (visible when revealed by fog)
   if(inDungeon){
     exits.forEach(ex=>{
@@ -1278,7 +1314,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v154',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v156',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1461,6 +1497,8 @@ function dMap(){
 
   // Location banner
   drawBanner();
+  // v155: PMD-style floor title card (draws over everything when active)
+  drawFloorTitle();
 }
 
 // ═══════════════════════════════════════

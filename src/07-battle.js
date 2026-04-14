@@ -246,85 +246,81 @@ function drawOpponentInfoBox(){
   if(showTells)bh=100;
   if(showScout0)bh+=16;
   if(showScout1)bh+=16;
-  bx(bx_,by_,bw,bh,'#f8f0d8');bx(bx_,by_,bw,2,'#c8c0a0');bx(bx_,by_+bh-2,bw,2,'#a89878');
-  bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
-  bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
+  win(bx_,by_,bw,bh);
+  // Crimson top bar for rival danger indicator
+  bx(bx_+4,by_+4,bw-8,22,'rgba(80,10,10,.5)');
   // Rival 1 (VEGA)
-  txShadow(rival.n,bx_+10,by_+20,12,'#383830','rgba(200,180,140,.3)');
-  txShadow('CARDS',bx_+120,by_+20,7,'#887858','rgba(0,0,0,.15)');
+  txShadow(rival.n,bx_+10,by_+20,12,'#d06080','rgba(0,0,0,.5)');
+  txShadow('CARDS',bx_+120,by_+20,7,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
   const r1Cards=rival.cd.filter(c=>c>0).length;
-  const r1DangerColor=r1Cards>=4?'#d04040':r1Cards>=3?'#d08030':'#383830';
-  txShadow(rival.cc+'/5',bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.15)');
-  // Near-win warning — red background pill + pulsing text
+  const r1DangerColor=r1Cards>=4?ARK.dangerBright:r1Cards>=3?'#d08030':ARK.textDim;
+  txShadow(rival.cc+'/5',bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.3)');
+  // Near-win warning
   if(r1Cards>=4){
     const wA=0.5+Math.sin(fr*0.18)*0.5;
-    g.globalAlpha=wA*0.85;
-    bx(bx_+6,by_+27,76,13,'#c04040');
+    g.globalAlpha=wA*0.9;
+    bx(bx_+6,by_+27,76,13,ARK.danger);
     g.globalAlpha=1;
-    txShadow(r1Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,by_+37,6,'#ffffff','rgba(0,0,0,.5)');
+    txShadow(r1Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,by_+37,6,'#fff','rgba(0,0,0,.6)');
   }
   // Tell for Rival 1 (during select only)
   if(showTells&&bpRivalTells[0]){
     const tellFade=Math.min(1,(fr-bpFrame)/12);
     g.globalAlpha=tellFade*0.85;
-    bx(bx_+4,by_+34,bw-8,14,'rgba(232,216,168,.6)');
-    tx(bpRivalTells[0],bx_+8,by_+44,6,'#505040');
+    bx(bx_+4,by_+34,bw-8,14,'rgba(40,100,130,.4)');
+    tx(bpRivalTells[0],bx_+8,by_+44,6,ARK.tealBright);
     g.globalAlpha=1;
   }
-  // Separator: base at by_+44, pushed down if tells are showing
+  // Separator
   const sepY=showTells?by_+52:by_+44;
-  bx(bx_+8,sepY,bw-16,1,'#c8c0a0');
+  bx(bx_+8,sepY,bw-16,1,ARK.border);
   // Rival 2 (MIRA)
   const hunter=pl[2];
   const r2alive=hunter.cd.filter(c=>c>0).length>0;
-  const hunterCol=r2alive?'#986840':'#c04040';
-  txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.15)');
+  const hunterCol=r2alive?ARK.gold:ARK.dangerBright;
+  txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.4)');
   if(r2alive){
     drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
     const r2Cards=hunter.cd.filter(c=>c>0).length;
-    const r2DangerColor=r2Cards>=4?'#d04040':r2Cards>=3?'#d08030':'#686060';
-    txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.1)');
+    const r2DangerColor=r2Cards>=4?ARK.dangerBright:r2Cards>=3?'#d08030':ARK.textDim;
+    txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.3)');
     // Near-win warning for MIRA
     if(r2Cards>=4){
       const wA2=0.5+Math.sin(fr*0.18+1)*0.5;
-      g.globalAlpha=wA2*0.75;
-      bx(bx_+6,sepY+19,70,12,'#c04040');
+      g.globalAlpha=wA2*0.8;
+      bx(bx_+6,sepY+19,70,12,ARK.danger);
       g.globalAlpha=1;
-      txShadow(r2Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,sepY+28,6,'#ffffff','rgba(0,0,0,.5)');
+      txShadow(r2Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,sepY+28,6,'#fff','rgba(0,0,0,.6)');
     }
-    // Tell for Rival 2 (during select only)
+    // Tell for Rival 2
     if(showTells&&bpRivalTells[1]){
       const tellFade2=Math.min(1,(fr-bpFrame)/12);
       g.globalAlpha=tellFade2*0.85;
-      bx(bx_+4,sepY+26,bw-8,14,'rgba(232,216,168,.6)');
-      tx(bpRivalTells[1],bx_+8,sepY+36,6,'#505040');
+      bx(bx_+4,sepY+26,bw-8,14,'rgba(80,60,10,.4)');
+      tx(bpRivalTells[1],bx_+8,sepY+36,6,ARK.gold);
       g.globalAlpha=1;
     }
   }
-  // Scout intel — persists for the rest of the battle (shown below rival info)
+  // Scout intel
   if(hasScout){
-    const typeColors={attack:'#e05840',defense:'#48b8e8',flee:'#38c080',magic:'#d8b028',recovery:'#e0c040'};
-    const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#fff8e0'];
     let intelY=by_+bh-4;
-    // Show R1 intel
     if(showScout0){
       intelY=by_+bh-(showScout1?32:16);
       const sd=bpScoutedCards[0];
       const staleLabel=rd-sd.round>0?'(R'+(sd.round)+')':'';
-      g.globalAlpha=rd-sd.round>1?0.55:0.85;
-      bx(bx_+4,intelY,bw-8,14,'rgba(200,220,250,.3)');
-      tx('\u{1F50D}'+pl[1].n[0]+': '+(sd.cards.length>0?sd.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel,bx_+8,intelY+11,5,'#3060b0');
+      g.globalAlpha=rd-sd.round>1?0.5:0.85;
+      bx(bx_+4,intelY,bw-8,14,'rgba(30,80,120,.4)');
+      tx('\u{1F50D}'+pl[1].n[0]+': '+(sd.cards.length>0?sd.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel,bx_+8,intelY+11,5,ARK.tealBright);
       g.globalAlpha=1;
     }
-    // Show R2 intel
     if(showScout1){
       const sd2=bpScoutedCards[1];
       const intelY2=by_+bh-16;
       const staleLabel2=rd-sd2.round>0?'(R'+(sd2.round)+')':'';
-      g.globalAlpha=rd-sd2.round>1?0.55:0.85;
-      bx(bx_+4,intelY2,bw-8,14,'rgba(240,220,180,.3)');
-      tx('\u{1F50D}'+pl[2].n[0]+': '+(sd2.cards.length>0?sd2.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel2,bx_+8,intelY2+11,5,'#806030');
+      g.globalAlpha=rd-sd2.round>1?0.5:0.85;
+      bx(bx_+4,intelY2,bw-8,14,'rgba(80,60,10,.35)');
+      tx('\u{1F50D}'+pl[2].n[0]+': '+(sd2.cards.length>0?sd2.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel2,bx_+8,intelY2+11,5,ARK.gold);
       g.globalAlpha=1;
     }
   }
@@ -335,51 +331,50 @@ function drawPlayerInfoBox(){
   let sx=0,sy=0;
   if(bpShakeTarget===0&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
   const bx_=W-310+sx,by_=H-154+sy,bw=300,bh=86; // v104: +14px for hand type row
-  bx(bx_,by_,bw,bh,'#f8f0d8');bx(bx_,by_,bw,2,'#c8c0a0');bx(bx_,by_+bh-2,bw,2,'#a89878');
-  bx(bx_,by_,2,bh,'#c8c0a0');bx(bx_+bw-2,by_,2,bh,'#a89878');
-  bx(bx_+2,by_+2,bw-4,bh-4,'#f8f0d8');
+  win(bx_,by_,bw,bh);
+  // Navy top bar for player identity
+  bx(bx_+4,by_+4,bw-8,22,'rgba(10,24,60,.55)');
   // Name
-  txShadow(pl[0].n,bx_+10,by_+20,14,'#383830','rgba(200,180,140,.3)');
+  txShadow(pl[0].n,bx_+10,by_+20,14,ARK.textBright,'rgba(0,0,0,.5)');
   // Card bar
-  txShadow('CARDS',bx_+10,by_+36,8,'#887858','rgba(0,0,0,.15)');
+  txShadow('CARDS',bx_+10,by_+36,8,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+60,by_+28,148,pl[0].cd,Math.min(HAND_SIZE,10));
-  txShadow(hasUniqueCards(0).size+'/60',bx_+214,by_+36,9,'#383830','rgba(0,0,0,.15)');
+  txShadow(hasUniqueCards(0).size+'/60',bx_+214,by_+36,9,ARK.gold,'rgba(0,0,0,.3)');
   // Win indicator (60/60)
   if(hasUniqueCards(0).size>=60){
     const flash_=Math.sin(fr*0.15)*0.3+0.7;
     g.globalAlpha=flash_;
-    txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,'#c04040','rgba(0,0,0,.3)');
+    txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,ARK.goldBright,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
-  // Spell counts
-  // v123: Spell charge orb pips — consistent with HUD orbs
+  // Spell charge orb pips
   {const sOrbs=[
-    {lbl:'STL',val:sp.s,max:3,fill:'#c04848',empty:'#2a1010',warn:sp.s===0,lCol:'#b04040'},
-    {lbl:'BAR',val:sp.b,max:3,fill:'#3868c0',empty:'#101028',warn:false,lCol:'#3060b0'},
-    {lbl:'SCT',val:sp.c,max:3,fill:'#38a038',empty:'#0e1e0e',warn:sp.c===0,lCol:'#308030'},
+    {lbl:'STL',val:sp.s,max:3,fill:'#c04848',empty:'#2a1010',warn:sp.s===0,lCol:'#d05050'},
+    {lbl:'BAR',val:sp.b,max:3,fill:'#3868c0',empty:'#101028',warn:false,lCol:'#4878d0'},
+    {lbl:'SCT',val:sp.c,max:3,fill:'#38a038',empty:'#0e1e0e',warn:sp.c===0,lCol:'#48b048'},
   ];const oW=6,oH=6,oG=2;
   sOrbs.forEach((s,si)=>{
     const ox=bx_+10+si*97,oy=by_+44;
-    const lc=s.warn&&Math.floor(fr/12)%2===0?'#ff5040':s.lCol;
-    txShadow(s.lbl,ox,oy+10,6,lc,'rgba(0,0,0,.2)');
+    const lc=s.warn&&Math.floor(fr/12)%2===0?ARK.dangerBright:s.lCol;
+    txShadow(s.lbl,ox,oy+10,6,lc,'rgba(0,0,0,.3)');
     for(let o=0;o<s.max;o++){
       const filled=o<s.val;
       bx(ox+26+o*(oW+oG),oy+2,oW,oH,filled?s.fill:s.empty);
       if(filled)bx(ox+26+o*(oW+oG)+1,oy+3,2,1,'rgba(255,255,255,.3)');
     }
-    if(s.val>s.max)tx('+'+(s.val-s.max),ox+26+s.max*(oW+oG)+2,oy+9,5,'#f0c830');
+    if(s.val>s.max)tx('+'+(s.val-s.max),ox+26+s.max*(oW+oG)+2,oy+9,5,ARK.goldBright);
   });}
-  // Area
-  txShadow(mapNames[currentMap],bx_+10,by_+64,8,'#988870','rgba(0,0,0,.15)');
-  // v104: Hand type composition strip — colored dots grouped by card type
+  // Area label
+  txShadow(mapNames[currentMap],bx_+10,by_+64,8,ARK.textDim,'rgba(0,0,0,.3)');
+  // Hand type composition strip
   {
     const TYPES=['attack','defense','flee','magic','recovery'];
     const TYPE_ABB=['ATK','DEF','FLY','MAG','REC'];
-    const TYPE_C={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
+    const TYPE_C={attack:'#c83838',defense:'#3888c8',flee:'#30b870',magic:'#a840c0',recovery:'#c8a830'};
     const counts={};
     TYPES.forEach(t=>counts[t]=0);
     pl[0].cd.forEach(id=>{if(id>0&&CD[id-1])counts[CD[id-1].t]=(counts[CD[id-1].t]||0)+1;});
-    bx(bx_+4,by_+68,bw-8,1,'rgba(180,160,120,.3)');
+    bx(bx_+4,by_+68,bw-8,1,ARK.border);
     let dotX=bx_+8;
     TYPES.forEach((t,ti)=>{
       const cnt=counts[t];
@@ -388,7 +383,6 @@ function drawPlayerInfoBox(){
       for(let d=0;d<cnt;d++){bx(dotX+d*6,by_+74,5,5,col);}
       dotX+=cnt*6+3;
     });
-    // Labels for non-zero types on the right side
     let labelX=bx_+bw-8;
     TYPES.slice().reverse().forEach((t,ti)=>{
       const cnt=counts[t];
@@ -396,7 +390,7 @@ function drawPlayerInfoBox(){
       const col=TYPE_C[t];
       const lbl=TYPE_ABB[4-ti]+':'+cnt;
       labelX-=lbl.length*5+4;
-      g.globalAlpha=0.7;
+      g.globalAlpha=0.75;
       tx(lbl,labelX,by_+80,5,col);
       g.globalAlpha=1;
     });
@@ -656,10 +650,12 @@ function drawActionGrid(){
       const sel=(idx===ai&&!bpCardSelectActive&&!bpTargetSelectActive);
       // Cell background
       if(sel&&avail){
-        bx(cx_,cy_,cellW,cellH,'#f8f0d8');bx(cx_,cy_,cellW,1,'#d0c8a0');
-        bx(cx_,cy_+cellH-1,cellW,1,'#a89878');
+        bx(cx_,cy_,cellW,cellH,'#1c2c50');bx(cx_,cy_,cellW,1,ARK.gold);
+        bx(cx_,cy_+cellH-1,cellW,1,ARK.goldDim);
+        bx(cx_,cy_,1,cellH,ARK.gold);bx(cx_+cellW-1,cy_,1,cellH,ARK.goldDim);
       }else{
-        bx(cx_,cy_,cellW,cellH,avail?'#e8e0c8':'#c8c0b0');
+        bx(cx_,cy_,cellW,cellH,avail?'#0e1828':'#0a1018');
+        bx(cx_,cy_,cellW,1,avail?ARK.border:'#111820');
       }
       // v129: Themed pixel-art icons
       const iconCol=avail?actions[idx].icon:'#989088';
@@ -707,13 +703,13 @@ function drawActionGrid(){
         bx(ix+14,iy+14,2,2,ic);bx(ix+15,iy+16,2,1,ic);
       }
       // Text (increased sizes for readability)
-      const textCol=avail?(sel?'#c04040':actions[idx].col):'#a0a0a0';
-      txShadow(actions[idx].name,cx_+26,cy_+18,14,textCol,'rgba(0,0,0,.3)');
-      txShadow(actions[idx].desc,cx_+26,cy_+32,10,avail?'#908878':'#b8b8b8','rgba(0,0,0,.2)');
+      const textCol=avail?(sel?ARK.goldBright:actions[idx].col):ARK.textDim;
+      txShadow(actions[idx].name,cx_+26,cy_+18,14,textCol,'rgba(0,0,0,.4)');
+      txShadow(actions[idx].desc,cx_+26,cy_+32,10,avail?ARK.textDim:'#404858','rgba(0,0,0,.3)');
       // Cursor arrow
       if(sel&&avail){
         const bob_=Math.sin(fr*0.15)*2;
-        txShadow('\u25B6',cx_-12+bob_,cy_+20,10,'#c04040','rgba(0,0,0,.3)');
+        txShadow('\u25B6',cx_-12+bob_,cy_+20,10,ARK.gold,'rgba(0,0,0,.4)');
       }
       // v92: Smart context badges (top-right corner of each cell)
       if(avail&&battlePhase==='select'){
@@ -761,27 +757,30 @@ function drawActionGrid(){
   const ucAvail=isActionAvailable(4);
   const ucSel=(ai===4&&!bpCardSelectActive&&!bpTargetSelectActive);
   if(ucSel&&ucAvail){
-    bx(ucX,ucY,ucW,ucH,'#f8f0d8');bx(ucX,ucY,ucW,1,'#d0c8a0');
+    bx(ucX,ucY,ucW,ucH,'#1c2c50');bx(ucX,ucY,ucW,1,ARK.gold);
+    bx(ucX,ucY+ucH-1,ucW,1,ARK.goldDim);
+    bx(ucX,ucY,1,ucH,ARK.gold);bx(ucX+ucW-1,ucY,1,ucH,ARK.goldDim);
   }else{
-    bx(ucX,ucY,ucW,ucH,ucAvail?'#e8e0c8':'#c8c0b0');
+    bx(ucX,ucY,ucW,ucH,ucAvail?'#0e1828':'#0a1018');
+    bx(ucX,ucY,ucW,1,ucAvail?ARK.border:'#111820');
   }
-  // v129: USE CARD icon — card with lightning bolt
+  // USE CARD icon — card with lightning bolt
   {const uix=ucX+4,uiy=ucY+4;
-  bx(uix+3,uiy+1,12,15,'rgba(0,0,0,.25)');    // shadow
-  bx(uix+2,uiy,12,15,'#3a2810');              // card body
-  bx(uix+2,uiy,12,1,'#806030');bx(uix+2,uiy+14,12,1,'#806030'); // borders
-  bx(uix+2,uiy,1,15,'#806030');bx(uix+13,uiy,1,15,'#806030');
-  bx(uix+8,uiy+2,3,4,'#f0c030');             // bolt top
-  bx(uix+6,uiy+6,5,2,'#f0c030');             // bolt middle
-  bx(uix+7,uiy+8,3,4,'#f0c030');             // bolt bottom
-  bx(uix+9,uiy+3,1,2,'rgba(255,255,255,.5)');// bolt glint
+  bx(uix+3,uiy+1,12,15,'rgba(0,0,0,.25)');
+  bx(uix+2,uiy,12,15,'#1c2c40');
+  bx(uix+2,uiy,12,1,ARK.goldDim);bx(uix+2,uiy+14,12,1,ARK.goldDim);
+  bx(uix+2,uiy,1,15,ARK.goldDim);bx(uix+13,uiy,1,15,ARK.goldDim);
+  bx(uix+8,uiy+2,3,4,ARK.gold);
+  bx(uix+6,uiy+6,5,2,ARK.gold);
+  bx(uix+7,uiy+8,3,4,ARK.gold);
+  bx(uix+9,uiy+3,1,2,'rgba(255,255,255,.5)');
   }
-  txShadow('USE CARD',ucX+26,ucY+18,14,ucAvail?(ucSel?'#c04040':'#806030'):'#a0a0a0','rgba(0,0,0,.3)');
+  txShadow('USE CARD',ucX+26,ucY+18,14,ucAvail?(ucSel?ARK.goldBright:ARK.gold):ARK.textDim,'rgba(0,0,0,.4)');
   const _handCount=pl[0].cd.filter(c=>c>0).length;
-  txShadow(_handCount>0?_handCount+' card'+(+_handCount!==1?'s':'')+' ready':'hand empty',ucX+140,ucY+18,10,ucAvail?'#908878':'#b8b8b8','rgba(0,0,0,.2)');
+  txShadow(_handCount>0?_handCount+' card'+(+_handCount!==1?'s':'')+' ready':'hand empty',ucX+140,ucY+18,10,ucAvail?ARK.textDim:'#404858','rgba(0,0,0,.3)');
   if(ucSel&&ucAvail){
     const bob_=Math.sin(fr*0.15)*2;
-    txShadow('\u25B6',ucX-12+bob_,ucY+20,10,'#c04040','rgba(0,0,0,.3)');
+    txShadow('\u25B6',ucX-12+bob_,ucY+20,10,ARK.gold,'rgba(0,0,0,.4)');
   }
   // Hint when all spells exhausted
   if(sp.s<=0&&sp.b<=0&&sp.c<=0){

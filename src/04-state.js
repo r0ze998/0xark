@@ -47,6 +47,12 @@ let encounterCooldown=0;
 let camX=0,camY=0,camTargetX=0,camTargetY=0;
 let mapTransitioning=false;
 
+// ── DUNGEON TURN SYSTEM (v155) ──
+// floorItems: per-map array of {x,y,cardId,glow} items lying on the floor
+const floorItems={}; // floorItems[mapIdx] = [{x,y,cardId,glow}]
+// Track whether dungeon has been freshly generated this run
+let dungeonSeedThisRun=0;
+
 // ── DAY/NIGHT VISUAL CYCLE ──
 const dayNightStartTime=Date.now();
 const DAY_CYCLE_MS=20*60*1000; // 20 minutes full cycle

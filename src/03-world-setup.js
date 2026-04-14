@@ -392,12 +392,87 @@ function pickRivalGoal(aiIdx){
   }
 }
 
+// v155: Turn-based single step for a rival in dungeon (bypasses real-time timer)
+function dungeonTurnStep(aiIdx){
+  const ai=rivalAI[aiIdx];
+  const rIdx=aiIdx+1;
+  const r=pl[rIdx];
+  const rMap=rivalMaps[aiIdx];
+  if(encounterCooldown>0)return;
+  if(ai.huntCooldown>0)ai.huntCooldown--;
+  // Update detection based on distance
+  if(rMap===currentMap){
+    const dist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
+    // Always track player position when on same floor (needed for hunting)
+    ai.lastKnownPlayerMap=currentMap;
+    ai.lastKnownPlayerX=pl[0].x;ai.lastKnownPlayerY=pl[0].y;
+    // Hunter: redirect to player once huntCooldown expires (any distance on same floor)
+    if(ai.personality==='hunter'&&ai.huntCooldown<=0){
+      ai.goalX=pl[0].x;ai.goalY=pl[0].y;ai.goalMap=rMap;ai.state='hunting';ai.moveInterval=5;
+    }
+    // Collector: flee when player is within 6 tiles
+    if(ai.personality==='collector'&&dist<=6&&ai.state!=='fleeing'){
+      if(Math.random()<0.7){
+        ai.state='fleeing';ai.stateTimer=8;ai.moveInterval=5;
+        const fdx=r.x-pl[0].x;const fdy=r.y-pl[0].y;
+        const fx=r.x+(fdx>0?10:-10);const fy=r.y+(fdy>0?10:-10);
+        const clamped=findWalkableTile(rMap,Math.max(2,Math.min(MW-3,fx)),Math.max(2,Math.min(MH-3,fy)),6);
+        if(clamped){ai.goalX=clamped.x;ai.goalY=clamped.y;ai.goalMap=rMap;}
+      } else {
+        // 30% chance MIRA also hunts (she has enough cards)
+        if(ai.huntCooldown<=0){ai.goalX=pl[0].x;ai.goalY=pl[0].y;ai.state='hunting';ai.moveInterval=6;}
+      }
+    }
+  }
+  if(ai.state==='fleeing'){
+    ai.stateTimer--;if(ai.stateTimer<=0){ai.state='exploring';ai.moveInterval=ai.personality==='hunter'?8:12;pickRivalGoal(aiIdx);}
+  }
+  const atGoal=Math.abs(r.x-ai.goalX)<=1&&Math.abs(r.y-ai.goalY)<=1;
+  if(atGoal){
+    for(const ex of exits){
+      if(ex.fromMap===rMap){
+        for(const [etx,ety] of ex.tiles){
+          if(r.x===etx&&r.y===ety){
+            const oldMap=rMap;rivalMaps[aiIdx]=ex.targetMap;
+            r.x=ex.targetX;r.y=ex.targetY;r.visualX=ex.targetX*TW;r.visualY=ex.targetY*TH;
+            if(ex.targetMap===currentMap&&oldMap!==currentMap){
+              rivalAlert=90;rivalAlertName=r.n;flash();beep(660,.04,.06);
+              lg.push('You sense movement... '+r.n+' entered the area!');
+            }
+            if(inDungeon&&ex.targetMap>0){
+              const flNums=['','I','II','III','IV','V'];
+              const dir=ex.targetMap>oldMap?'descended to':'retreated to';
+              rivalNewsQueue.push({text:r.n+' '+dir+' FLOOR '+(flNums[ex.targetMap]||ex.targetMap),rivalIdx:aiIdx,rarity:0});
+            }
+            pickRivalGoal(aiIdx);return;
+          }
+        }
+      }
+    }
+    ai.moveInterval=ai.personality==='hunter'?8:12;pickRivalGoal(aiIdx);
+  }
+  const moved=stepToward(rIdx,ai.goalX,ai.goalY);
+  if(moved){
+    footprints.push({map:rMap,x:r.x,y:r.y,age:0,ri:rIdx});
+    const m=maps[rMap];const tile=m[r.y]?.[r.x];
+    let encounterChance=0;
+    if(tile===11)encounterChance=0.25;else if(tile===1)encounterChance=0.12;
+    if(encounterChance>0&&Math.random()<encounterChance){
+      const cardId=pickAreaCardForMap(rMap);
+      if(addCardToPlayer(rIdx,cardId)&&rMap===currentMap)lg.push(r.n+' found a card nearby...');
+    }
+  }else{pickRivalGoal(aiIdx);}
+}
+
 // Update single rival AI each frame
 function updateRivalAI(aiIdx){
   const ai=rivalAI[aiIdx];
   const rIdx=aiIdx+1;
   const r=pl[rIdx];
   const rMap=rivalMaps[aiIdx];
+
+  // v155: In dungeon, rivals move per-turn (called by processDungeonTurn), not real-time
+  if(inDungeon)return;
 
   // Freeze all rival movement while encounter cooldown is active (map transition grace period).
   // This prevents rivals from walking toward the player entry point during the 8s safe window.

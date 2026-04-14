@@ -1,64 +1,78 @@
 // ═══════════════════════════════════════
-// FRLG WINDOW SYSTEM (pixel-perfect FRLG palette)
+// 0xARK DESIGN SYSTEM — "Deep ARK" (v156)
+// Maritime arcana: deep navy · brass gold · bioluminescent teal
 // ═══════════════════════════════════════
-// FRLG palette constants
-const FRLG={
-  winBg:'#F8F0D0',       // warm cream background
-  borderOuter:'#484050',  // dark purple-gray border
-  borderInner:'#888078',  // medium gray inner border
-  textColor:'#383830',    // warm dark text
-  selHighlight:'#F8D830', // golden yellow selection
-  hpGreen:'#58A850',
-  hpYellow:'#F8C838',
-  hpRed:'#E85048',
-  // FRLG theme variants (selectable)
-  themes:{
-    red:   {winBg:'#F8E0D0',borderOuter:'#504040',borderInner:'#887068'},
-    blue:  {winBg:'#D0E0F8',borderOuter:'#404060',borderInner:'#687888'},
-    green: {winBg:'#D8F0D0',borderOuter:'#405040',borderInner:'#688868'},
-    gold:  {winBg:'#F8F0D0',borderOuter:'#484050',borderInner:'#888078'}, // default
-  },
+const ARK={
+  bg:       '#06080f',  // void — page background
+  panel:    '#0b1020',  // hull — panel bg
+  panelMid: '#0e1428',  // inner hull
+  panelLit: '#131c36',  // lit panel
+  border:   '#1c2a50',  // cold steel
+  borderLit:'#2e4480',  // steel highlight
+  gold:     '#c8a448',  // brass
+  goldDim:  '#7a6028',  // tarnished brass
+  goldBright:'#e8c870', // polished brass
+  teal:     '#2898a8',  // bioluminescent
+  tealDim:  '#186070',
+  tealBright:'#50c8d8',
+  text:     '#d8d4c0',  // aged parchment
+  textDim:  '#6878a0',  // weathered
+  textBright:'#f0ecd8', // fresh parchment
+  danger:   '#b83030',
+  dangerBright:'#e04848',
+  safe:     '#2a7a48',
+  safeBright:'#48c070',
+  water:    '#080f20',
+  rarC:['#707880','#5090d0','#9050d8','#c09020','#e8c840'], // rarity tints C/U/R/E/L
 };
-let frlgTheme='gold'; // current theme
-function getFRLGColors(){
-  const t=FRLG.themes[frlgTheme]||FRLG.themes.gold;
-  return{winBg:t.winBg,borderOuter:t.borderOuter,borderInner:t.borderInner};
-}
-function win(x,y,w,h){
-  const tc=getFRLGColors();
-  g.fillStyle=tc.borderOuter;
-  g.fillRect(x+4,y,w-8,1);g.fillRect(x+3,y+1,w-6,1);g.fillRect(x+2,y+2,w-4,1);g.fillRect(x+1,y+3,w-2,1);
-  g.fillRect(x+1,y+h-4,w-2,1);g.fillRect(x+2,y+h-3,w-4,1);g.fillRect(x+3,y+h-2,w-6,1);g.fillRect(x+4,y+h-1,w-8,1);
-  g.fillRect(x,y+4,1,h-8);g.fillRect(x+1,y+3,1,h-6);g.fillRect(x+2,y+2,1,h-4);g.fillRect(x+3,y+1,1,h-2);
-  g.fillRect(x+w-1,y+4,1,h-8);g.fillRect(x+w-2,y+3,1,h-6);g.fillRect(x+w-3,y+2,1,h-4);g.fillRect(x+w-4,y+1,1,h-2);
-  g.fillStyle=tc.borderInner;
-  g.fillRect(x+4,y+4,w-8,1);g.fillRect(x+4,y+h-5,w-8,1);
-  g.fillRect(x+4,y+4,1,h-8);g.fillRect(x+w-5,y+4,1,h-8);
-  g.fillStyle=tc.winBg;
-  g.fillRect(x+5,y+5,w-10,h-10);
-  // Top-left highlight (light catches top edge)
-  g.fillStyle='rgba(255,255,255,.4)';
-  g.fillRect(x+6,y+5,w-12,1);g.fillRect(x+5,y+6,1,h-12);
-  // Bottom-right inner shadow (FRLG depth effect)
-  g.fillStyle='rgba(0,0,0,.08)';
-  g.fillRect(x+6,y+h-6,w-12,1);g.fillRect(x+w-6,y+6,1,h-12);
+// Keep FRLG object for legacy text color refs (mapped to ARK values)
+const FRLG={
+  textColor:ARK.text,
+  selHighlight:ARK.gold,
+  hpGreen:ARK.safeBright,
+  hpYellow:'#d0a030',
+  hpRed:ARK.dangerBright,
+};
+
+// ── Main panel window — dark maritime instrument style ──
+function win(x,y,w,h,accent){
+  const ac=accent||ARK.gold;
+  // Outermost border (1px)
+  g.fillStyle=ARK.border;g.fillRect(x,y,w,1);g.fillRect(x,y+h-1,w,1);g.fillRect(x,y,1,h);g.fillRect(x+w-1,y,1,h);
+  // Outer fill
+  g.fillStyle=ARK.panel;g.fillRect(x+1,y+1,w-2,h-2);
+  // Inner inset border
+  g.fillStyle=ARK.borderLit;g.fillRect(x+3,y+3,w-6,1);g.fillRect(x+3,y+h-4,w-6,1);g.fillRect(x+3,y+3,1,h-6);g.fillRect(x+w-4,y+3,1,h-6);
+  // Inner content fill
+  g.fillStyle=ARK.panelMid;g.fillRect(x+4,y+4,w-8,h-8);
+  // Gold accent top line
+  g.fillStyle=ARK.goldDim;g.fillRect(x+5,y+4,w-10,1);
+  // Corner brass rivets
+  g.fillStyle=ac;
+  g.fillRect(x+2,y+2,3,3);g.fillRect(x+w-5,y+2,3,3);
+  g.fillRect(x+2,y+h-5,3,3);g.fillRect(x+w-5,y+h-5,3,3);
+  // Inner rivets (subtle)
+  g.fillStyle=ARK.goldDim;
+  g.fillRect(x+5,y+5,1,1);g.fillRect(x+w-6,y+5,1,1);
+  g.fillRect(x+5,y+h-6,1,1);g.fillRect(x+w-6,y+h-6,1,1);
+  // Subtle scanline texture
+  g.fillStyle='rgba(0,0,0,.06)';
+  for(let sy=y+6;sy<y+h-6;sy+=2)g.fillRect(x+5,sy,w-10,1);
 }
 
 function bx(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}
-// FRLG-style text: 1px letter spacing + slight bold via double draw at 0.5px offset
 function tx(s,x,y,sz,c){
-  g.fillStyle=c||FRLG.textColor;
+  g.fillStyle=c||ARK.text;
   const finalSz=Math.max(12,Math.round((sz||12)*1.4));
   g.font=finalSz+"px 'VT323',monospace";
   g.fillText(s,x,y);
 }
-// Text with 1px shadow for readability (battle screens) — FRLG bold style
 function txShadow(s,x,y,sz,color,shadowColor){
-  const sc_=shadowColor||'rgba(0,0,0,0.85)';
+  const sc_=shadowColor||'rgba(0,0,0,0.9)';
   const finalSz=Math.max(12,Math.round((sz||12)*1.4));
   g.font=finalSz+"px 'VT323',monospace";
-  g.fillStyle=sc_;g.fillText(s,x+1,y+1);
-  g.fillStyle=color||'#fff';g.fillText(s,x,y);
+  g.fillStyle=sc_;g.fillText(s,x+1,y+1);g.fillText(s,x-1,y+1);
+  g.fillStyle=color||ARK.text;g.fillText(s,x,y);
 }
 
 // ═══════════════════════════════════════
