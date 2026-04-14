@@ -253,9 +253,17 @@ function drawOpponentInfoBox(){
   txShadow(rival.n,bx_+10,by_+20,12,'#383830','rgba(200,180,140,.3)');
   txShadow('CARDS',bx_+120,by_+20,7,'#887858','rgba(0,0,0,.15)');
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
-  txShadow(rival.cc+'/5',bx_+202,by_+34,8,'#383830','rgba(0,0,0,.15)');
-  // Near-win warning
-  if(hasUniqueCards(1).size>=4){const wFlash=Math.floor(fr/12)%2===0;if(wFlash)txShadow('! DANGER',bx_+10,by_+34,7,'#c04040','rgba(0,0,0,.2)');}
+  const r1Cards=rival.cd.filter(c=>c>0).length;
+  const r1DangerColor=r1Cards>=4?'#d04040':r1Cards>=3?'#d08030':'#383830';
+  txShadow(rival.cc+'/5',bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.15)');
+  // Near-win warning — red background pill + pulsing text
+  if(r1Cards>=4){
+    const wA=0.5+Math.sin(fr*0.18)*0.5;
+    g.globalAlpha=wA*0.85;
+    bx(bx_+6,by_+27,76,13,'#c04040');
+    g.globalAlpha=1;
+    txShadow(r1Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,by_+37,6,'#ffffff','rgba(0,0,0,.5)');
+  }
   // Tell for Rival 1 (during select only)
   if(showTells&&bpRivalTells[0]){
     const tellFade=Math.min(1,(fr-bpFrame)/12);
@@ -274,9 +282,17 @@ function drawOpponentInfoBox(){
   txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.15)');
   if(r2alive){
     drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
-    txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,'#686060','rgba(0,0,0,.1)');
+    const r2Cards=hunter.cd.filter(c=>c>0).length;
+    const r2DangerColor=r2Cards>=4?'#d04040':r2Cards>=3?'#d08030':'#686060';
+    txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.1)');
     // Near-win warning for MIRA
-    if(hasUniqueCards(2).size>=4){const wFlash2=Math.floor(fr/12)%2===0;if(wFlash2)txShadow('! DANGER',bx_+10,sepY+28,6,'#c04040','rgba(0,0,0,.2)');}
+    if(r2Cards>=4){
+      const wA2=0.5+Math.sin(fr*0.18+1)*0.5;
+      g.globalAlpha=wA2*0.75;
+      bx(bx_+6,sepY+19,70,12,'#c04040');
+      g.globalAlpha=1;
+      txShadow(r2Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,sepY+28,6,'#ffffff','rgba(0,0,0,.5)');
+    }
     // Tell for Rival 2 (during select only)
     if(showTells&&bpRivalTells[1]){
       const tellFade2=Math.min(1,(fr-bpFrame)/12);

@@ -1246,10 +1246,13 @@ function dMap(){
   const m=getMap();
   const tile=m[pl[0].y]?.[pl[0].x];
   let locName=mapNames[currentMap];
-  if(tile===2)locName+=' - PATH';
-  else if(tile===11)locName+=' - GRASS';
-  else if(tile===10)locName+=' - DOCK';
-  tx(locName,560,hudY+52,6,'#686068');
+  if(!inDungeon){
+    if(tile===2)locName+=' — PATH';
+    else if(tile===11)locName+=' — GRASS';
+    else if(tile===10)locName+=' — DOCK';
+  }
+  const locCol=inDungeon?'#a09060':'#686068';
+  tx(locName,560,hudY+52,inDungeon?7:6,locCol);
 
   // Exploration percentage
   const expPct=fogExploredPercent(currentMap);
@@ -1274,8 +1277,8 @@ function dMap(){
     const wCol=townWeather==='rain'?'#80a0d0':townWeather==='fog'?'#a0a8b0':'#f0c830';
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
-  // Version label in HUD (bottom-right corner)
-  txShadow('v138',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  // Version label in HUD (bottom-right corner) — matches current build
+  txShadow('v154',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
