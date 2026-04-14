@@ -5001,34 +5001,28 @@ function drawWater(px,py,tx_,ty){
 }
 
 function drawGrass(px,py,tx_,ty){
-  // Dungeon room floors: waterlogged ship planks / hull interior
+  // Dungeon room floors — Kenney plank tile tinted dark maritime
   if(currentMap>0){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
     const depth=currentMap;
-    // Plank base color — dark wood, deeper = more blue-tinted (water seeping in)
-    const rBase=20+sv,gBase=22+sv,bBase=28+sv*2+depth*3;
-    bx(px,py,TW,TH,`rgb(${rBase},${gBase},${bBase})`);
-    // Plank grain lines (horizontal, spaced 4px)
-    const grainOff=(h>>3)&3;
-    for(let gy=grainOff;gy<TH;gy+=4){
-      const gv=((h+gy*3)&7)-4;
-      g.fillStyle=`rgba(${gv>0?255:0},${gv>0?255:0},${gv>0?255:0},${Math.abs(gv)*0.012+0.04})`;
-      g.fillRect(px,py+gy,TW,1);
-    }
-    // Plank edge shadow (left+top)
-    bx(px,py,TW,1,`rgba(0,0,0,.18)`);
-    bx(px,py,1,TH,`rgba(0,0,0,.12)`);
-    // Occasional glint (water pooling)
+    // Base: dark hull interior, bluer at depth
+    const rb=16+sv,gb=20+sv,bb=28+sv+depth*2;
+    bx(px,py,TW,TH,`rgb(${rb},${gb},${bb})`);
+    // Kenney plank tile silhouette (slightly lighter = shows texture)
+    drawKenneyTileTinted(K.plank[0],K.plank[1],px,py,2,`rgb(${rb+8},${gb+8},${bb+8})`);
+    // Occasional water glint
     if((h&31)<2){
       const gx=Math.floor(thRand(tx_,ty,1)*22)+4,gy=Math.floor(thRand(tx_,ty,2)*22)+4;
-      const glA=0.1+0.1*Math.sin((typeof fr!=='undefined'?fr:0)*0.05+tx_*0.3);
-      g.globalAlpha=glA;bx(px+gx,py+gy,3,1,'#6090b8');bx(px+gx+1,py+gy-1,1,3,'#5080a8');g.globalAlpha=1;
+      const cfr=typeof fr!=='undefined'?fr:0;
+      const glA=0.12+0.1*Math.sin(cfr*0.05+tx_*0.3);
+      g.globalAlpha=glA;bx(px+gx,py+gy,3,1,'#4880a8');g.globalAlpha=1;
     }
-    // Deep floor (B4-B5): bioluminescent moss dots
+    // Bioluminescent moss (B4-B5)
     if(depth>=4&&(h&15)<2){
       const mx=Math.floor(thRand(tx_,ty,3)*24)+3,my=Math.floor(thRand(tx_,ty,4)*24)+3;
-      const mA=0.3+0.2*Math.sin((typeof fr!=='undefined'?fr:0)*0.06+ty*0.5);
+      const cfr=typeof fr!=='undefined'?fr:0;
+      const mA=0.3+0.2*Math.sin(cfr*0.06+ty*0.5);
       g.globalAlpha=mA;bx(px+mx,py+my,2,2,'#28c8a0');g.globalAlpha=1;
     }
     return;
@@ -5125,7 +5119,7 @@ function drawTallGrass(px,py,tx_,ty){
 }
 
 function drawPath(px,py,tx_,ty){
-  // Dungeon corridors: hull passage — dark steel plate with rivets and seams
+  // Dungeon corridors: hull passage — Kenney hull texture tinted dark steel
   if(currentMap>0){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
@@ -5133,20 +5127,24 @@ function drawPath(px,py,tx_,ty){
     // Base: dark steel, slightly bluer at deeper floors
     const rB=12+sv,gB=16+sv,bB=24+sv+depth*2;
     bx(px,py,TW,TH,`rgb(${rB},${gB},${bB})`);
-    // Horizontal metal plate seams (every 8px)
-    const plateOff=(h>>3)&7;
-    for(let gy=plateOff;gy<TH;gy+=8){
-      g.fillStyle='rgba(0,0,0,.22)';g.fillRect(px,py+gy,TW,1);
-      g.fillStyle='rgba(255,255,255,.04)';g.fillRect(px,py+gy+1,TW,1);
+    // Kenney hull tile as texture overlay
+    if(pirateSheetLoaded){
+      drawKenneyTileTinted(K.hullM[0],K.hullM[1],px,py,2,`rgb(${rB+7},${gB+7},${bB+7})`);
+    } else {
+      // Horizontal metal plate seams (every 8px)
+      const plateOff=(h>>3)&7;
+      for(let gy=plateOff;gy<TH;gy+=8){
+        g.fillStyle='rgba(0,0,0,.22)';g.fillRect(px,py+gy,TW,1);
+        g.fillStyle='rgba(255,255,255,.04)';g.fillRect(px,py+gy+1,TW,1);
+      }
+      const r1x=4+((h>>4)&10),r2x=20+((h>>2)&10);
+      const rivY=((h>>3)&7+4)%TH;
+      bx(px+r1x,py+rivY,2,2,'rgba(180,150,80,.3)');
+      bx(px+r1x+1,py+rivY,1,1,'rgba(255,230,140,.2)');
+      bx(px+r2x,py+rivY,2,2,'rgba(180,150,80,.3)');
+      bx(px+r2x+1,py+rivY,1,1,'rgba(255,230,140,.2)');
     }
-    // Rivet pairs at seam intersections
-    const r1x=4+((h>>4)&10),r2x=20+((h>>2)&10);
-    const rivY=(plateOff+4)%TH;
-    bx(px+r1x,py+rivY,2,2,'rgba(180,150,80,.3)');
-    bx(px+r1x+1,py+rivY,1,1,'rgba(255,230,140,.2)');
-    bx(px+r2x,py+rivY,2,2,'rgba(180,150,80,.3)');
-    bx(px+r2x+1,py+rivY,1,1,'rgba(255,230,140,.2)');
-    // Edge shadow (wall-meets-floor shadow line)
+    // Edge shadow on top of texture
     bx(px,py,TW,1,'rgba(0,0,0,.35)');
     bx(px,py,1,TH,'rgba(0,0,0,.22)');
     bx(px+TW-1,py,1,TH,'rgba(0,0,0,.14)');
@@ -5427,7 +5425,7 @@ function drawCave(px,py,tx_,ty){
 }
 
 function drawMountain(px,py,tx_,ty){
-  // Dungeon walls: impenetrable hull steel — riveted, welded, dark
+  // Dungeon walls: impenetrable hull steel — Kenney wall tile tinted near-black
   if(currentMap>0){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
@@ -5435,30 +5433,32 @@ function drawMountain(px,py,tx_,ty){
     // Deep near-black blue-steel
     const rB=8+sv,gB=10+sv,bB=16+sv+depth;
     bx(px,py,TW,TH,`rgb(${rB},${gB},${bB})`);
-    // Horizontal rivet rows (every 8px, staggered)
-    const rivOff=(h>>3)&3;
-    for(let ry=rivOff*4+2;ry<TH;ry+=9){
-      const r1x=3+((h>>4)&7),r2x=18+((h>>6)&7);
-      // Rivet body
-      bx(px+r1x,py+ry,3,3,'rgba(80,70,40,.5)');
-      bx(px+r1x+1,py+ry,2,1,'rgba(200,160,80,.22)');
-      bx(px+r2x,py+ry,3,3,'rgba(80,70,40,.5)');
-      bx(px+r2x+1,py+ry,2,1,'rgba(200,160,80,.22)');
+    // Kenney wall tile as texture — alternate wall1/wall2 per tile
+    if(pirateSheetLoaded){
+      const kWall=(h&1)?K.wall1:K.wall2;
+      drawKenneyTileTinted(kWall[0],kWall[1],px,py,2,`rgb(${rB+5},${gB+5},${bB+5})`);
+    } else {
+      const rivOff=(h>>3)&3;
+      for(let ry=rivOff*4+2;ry<TH;ry+=9){
+        const r1x=3+((h>>4)&7),r2x=18+((h>>6)&7);
+        bx(px+r1x,py+ry,3,3,'rgba(80,70,40,.5)');
+        bx(px+r1x+1,py+ry,2,1,'rgba(200,160,80,.22)');
+        bx(px+r2x,py+ry,3,3,'rgba(80,70,40,.5)');
+        bx(px+r2x+1,py+ry,2,1,'rgba(200,160,80,.22)');
+      }
+      if((h&3)===0){
+        const sx=5+((h>>6)&20);
+        g.fillStyle='rgba(0,0,0,.25)';g.fillRect(px+sx,py,2,TH);
+        g.fillStyle='rgba(255,255,255,.025)';g.fillRect(px+sx+2,py,1,TH);
+      }
     }
-    // Vertical reinforcement seam
-    if((h&3)===0){
-      const sx=5+((h>>6)&20);
-      g.fillStyle='rgba(0,0,0,.25)';g.fillRect(px+sx,py,2,TH);
-      g.fillStyle='rgba(255,255,255,.025)';g.fillRect(px+sx+2,py,1,TH);
-    }
-    // Horizontal weld line
+    // Weld line & edge highlights on top of texture
     const weldY=(h&15)+6;
     g.fillStyle='rgba(0,0,0,.28)';g.fillRect(px,py+weldY,TW,2);
     g.fillStyle='rgba(255,255,255,.025)';g.fillRect(px,py+weldY+2,TW,1);
-    // Top/left edge highlight (faint steel sheen)
     bx(px,py,TW,1,'rgba(255,255,255,.06)');
     bx(px,py,1,TH,'rgba(255,255,255,.04)');
-    // Deep floors: rust stain or barnacle patch
+    // Deep floors: barnacle/rust stain
     if(depth>=3&&(h&7)===0){
       const bx_=Math.floor(thRand(tx_,ty,7)*20)+4,by_=Math.floor(thRand(tx_,ty,8)*20)+4;
       g.globalAlpha=0.22;
@@ -5973,6 +5973,31 @@ function drawSprite(p,isPlayer){
   // Shadow
   g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(px+16,py+46,12,4,0,0,Math.PI*2);g.fill();
 
+  // === KENNEY SPRITE PATH ===
+  if(pirateSheetLoaded){
+    const kChar=isP0?K.captain:(isP1?K.pirate2:K.pirate3);
+    // Glow aura behind sprite
+    const glowC=isP0?'rgba(40,88,200,.18)':isP1?'rgba(200,32,40,.18)':'rgba(40,180,160,.18)';
+    g.fillStyle=glowC;g.beginPath();g.ellipse(px+16,py+24+bob,18,24,0,0,Math.PI*2);g.fill();
+    // Draw sprite: flip horizontally for d===1 (facing left)
+    if(d===1){
+      g.save();g.translate(px+32,py+bob);g.scale(-1,1);
+      drawKenneyTile(kChar[0],kChar[1],0,0,2);
+      g.restore();
+    }else{
+      drawKenneyTile(kChar[0],kChar[1],px,py+bob,2);
+      // Facing away: dark overlay for silhouette effect
+      if(d===2){bx(px,py+bob,TW,TH,'rgba(0,0,0,.22)');}
+    }
+    // CC badge
+    if(isPlayer){
+      const bx_=px+28,by_=py-10;win(bx_,by_,28,18);tx(p.cc+'',bx_+9,by_+15,8,'#c8b888');
+    }else if(isVisibleThroughFog(p.x,p.y,3)){
+      bx(px+28,py-8,22,16,'rgba(0,0,0,.4)');win(px+28,py-10,22,16);tx(p.cc+'',px+34,py+4,7,'#c8b888');
+    }
+    return;
+  }
+
   // --- OUTFIT PALETTE ---
   let coatC,coatH,coatD,trimC,pantsC,pantsH,bootC,skinC,hairC,hairH,hairAcc;
   if(isP0){
@@ -6150,25 +6175,33 @@ function drawNPCSprite(npc){
 
   g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(px+16,py+46,12,5,0,0,Math.PI*2);g.fill();
 
-  // Shoes
-  bx(px+6,py+42,8,4,'#483020');bx(px+18,py+42,8,4,'#483020');
-
+  // === KENNEY NPC SPRITE PATH ===
+  if(pirateSheetLoaded){
+    // NPC type 0→pirate1, type 1→skeleton, type 2→pirate3
+    const kNpc=npc.type===0?K.pirate1:(npc.type===1?K.skeleton:K.pirate3);
+    const glowC=npc.type===0?'rgba(120,60,180,.14)':npc.type===1?'rgba(60,180,100,.14)':'rgba(180,160,60,.14)';
+    g.fillStyle=glowC;g.beginPath();g.ellipse(px+16,py+24,16,22,0,0,Math.PI*2);g.fill();
+    if(d===1){
+      g.save();g.translate(px+32,py);g.scale(-1,1);
+      drawKenneyTile(kNpc[0],kNpc[1],0,0,2);
+      g.restore();
+    }else{
+      drawKenneyTile(kNpc[0],kNpc[1],px,py,2);
+      if(d===2){bx(px,py,TW,TH,'rgba(0,0,0,.2)');}
+    }
+  } else {
+  // Fallback fillRect NPC
   let shirtC,shirtH,hairC,pantsC;
   if(npc.type===0){shirtC='#8050a0';shirtH='#9060b0';hairC='#404048';pantsC='#384060';}
   else if(npc.type===1){shirtC='#407048';shirtH='#508058';hairC='#604830';pantsC='#304838';}
   else{shirtC='#b0a898';shirtH='#c0b8a8';hairC='#c0b8b0';pantsC='#585058';}
-
-  // Pants
+  bx(px+6,py+42,8,4,'#483020');bx(px+18,py+42,8,4,'#483020');
   bx(px+6,py+34,10,10,pantsC);bx(px+16,py+34,10,10,pantsC);
-  // Body
   bx(px+4,py+18,24,18,shirtC);bx(px+6,py+20,20,14,shirtH);
   bx(px+10,py+18,12,2,'#f0dcc0');
-  // Arms
   bx(px-2,py+20,8,12,shirtC);bx(px+26,py+20,8,12,shirtC);
   bx(px-2,py+30,6,4,'#e8d0b0');bx(px+28,py+30,6,4,'#e8d0b0');
-  // Head
   bx(px+6,py+2,20,16,'#f0dcc0');bx(px+8,py+4,16,12,'#e8d0b0');
-
   if(d===0||d===2){
     if(d===0){
       bx(px+10,py+8,4,4,'#181820');bx(px+18,py+8,4,4,'#181820');
@@ -6181,6 +6214,7 @@ function drawNPCSprite(npc){
     bx(eyeX,py+8,4,4,'#181820');bx(eyeX,py+8,2,2,'#fff');
     bx(px+6,py,20,6,hairC);
   }
+  } // end fallback
 
   // Diamond indicator
   if(npc.map===currentMap){
@@ -9181,7 +9215,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v156',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v157',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -9804,7 +9838,7 @@ function drawPlayerInfoBox(){
 // Draw battle sprite (front-facing for opponent, back-facing for player)
 function drawBattleSprite(p,cx,cy,scale,facingAway){
   const s=scale;
-  // v127: Idle breathing bob — each character breathes out of phase
+  // Idle breathing bob — each character breathes out of phase
   const breathPhase=p===pl[0]?0:p===pl[1]?1.1:2.3;
   const breathAmp=scale*0.5;
   cy=cy+Math.round(Math.sin(fr*0.055+breathPhase)*breathAmp);
@@ -9812,34 +9846,49 @@ function drawBattleSprite(p,cx,cy,scale,facingAway){
   const ox=cx-w/2,oy=cy-h/2;
   // Shadow
   g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(cx,oy+h+2*s,w*.5,h*.12,0,0,Math.PI*2);g.fill();
+
+  // === KENNEY BATTLE SPRITE ===
+  if(pirateSheetLoaded){
+    const kChar=p===pl[0]?K.captain:(p===pl[1]?K.pirate2:K.pirate3);
+    // Glow aura
+    const glowC=p===pl[0]?'rgba(40,88,200,.22)':p===pl[1]?'rgba(200,32,40,.22)':'rgba(40,180,160,.22)';
+    g.fillStyle=glowC;g.beginPath();g.ellipse(cx,cy,w*.45,h*.55,0,0,Math.PI*2);g.fill();
+    // Scale the 16px sprite to battle size (scale*2 for tile size = 32px baseline)
+    const tileScale=s/1.0; // s=3 → 48px sprite
+    const sprW=16*tileScale*2, sprH=16*tileScale*2;
+    const sx=cx-sprW/2, sy=cy-sprH/2;
+    if(facingAway){
+      // Player faces away: flip vertically (mirror top-to-bottom look, not perfect but readable)
+      g.save();g.translate(sx+sprW,sy);g.scale(-1,1);
+      drawKenneyTile(kChar[0],kChar[1],0,0,tileScale*2);
+      // Back overlay to distinguish from front
+      g.fillStyle='rgba(0,0,0,.18)';g.fillRect(0,0,sprW,sprH*0.4);
+      g.restore();
+    }else{
+      drawKenneyTile(kChar[0],kChar[1],sx,sy,tileScale*2);
+    }
+    return;
+  }
+
+  // === FALLBACK FILLRECT BATTLE SPRITE ===
   let shirtC,shirtH,hairC,hairH;
   if(p===pl[0]){shirtC='#4080d0';shirtH='#5090e0';hairC='#282830';hairH='#383840';}
   else if(p===pl[1]){shirtC='#d060a0';shirtH='#e070b0';hairC='#804020';hairH='#905030';}
   else{shirtC='#d0a030';shirtH='#e0b040';hairC='#585040';hairH='#686058';}
-  // Feet
   bx(ox+2*s,oy+17*s,4*s,3*s,'#383030');bx(ox+8*s,oy+17*s,4*s,3*s,'#383030');
-  // Pants
   bx(ox+3*s,oy+14*s,8*s,4*s,'#4050a0');
-  // Body
   bx(ox+2*s,oy+8*s,10*s,7*s,shirtC);bx(ox+3*s,oy+9*s,8*s,5*s,shirtH);
-  // Arms
   bx(ox-1*s,oy+9*s,4*s,6*s,shirtC);bx(ox+11*s,oy+9*s,4*s,6*s,shirtC);
-  // Hands
   bx(ox-1*s,oy+14*s,3*s,2*s,'#e8d0b0');bx(ox+12*s,oy+14*s,3*s,2*s,'#e8d0b0');
-  // Head
   bx(ox+3*s,oy+1*s,8*s,8*s,'#f0dcc0');bx(ox+4*s,oy+2*s,6*s,6*s,'#e8d0b0');
   if(facingAway){
-    // Back of head (player's view in Pokemon)
     bx(ox+3*s,oy,8*s,6*s,hairC);bx(ox+4*s,oy+s,6*s,5*s,hairH);
     bx(ox+2*s,oy+s,2*s,3*s,hairC);bx(ox+10*s,oy+s,2*s,3*s,hairC);
-    // Backpack detail
     bx(ox+4*s,oy+10*s,6*s,3*s,'#305080');bx(ox+5*s,oy+11*s,4*s,1*s,'#4070a0');
   }else{
-    // Front face (opponent view)
     bx(ox+4*s,oy+4*s,2*s,2*s,'#181820');bx(ox+8*s,oy+4*s,2*s,2*s,'#181820');
     bx(ox+4*s,oy+4*s,s,s,'#fff');bx(ox+8*s,oy+4*s,s,s,'#fff');
     bx(ox+6*s,oy+7*s,2*s,s,'#c0a090');
-    // Hair
     if(p===pl[1]){
       bx(ox+3*s,oy,8*s,3*s,hairC);bx(ox+2*s,oy+s,2*s,7*s,hairC);bx(ox+10*s,oy+s,2*s,7*s,hairC);
       bx(ox+4*s,oy-s,6*s,2*s,hairC);
