@@ -62,6 +62,9 @@
 - v147: guard USE CARD against decayed-slot crash in generateResolveEvents
 - v148: checkWinAndTransition after floor-clear card reward (win-miss if card 60 arrived via floor clear)
 - v149: checkWinAndTransition after synthesis and mission bonus_card (same win-miss pattern)
+- v150: reset gachaPityCount and milestonesReached on new game (milestone toasts retrigger correctly)
+- fix: multiplayer server disconnect stall — remove player from commits/reveals on close, re-check thresholds
+- fix: x402 agent-broker usedSignatures Set cap at 10k with LRU eviction (prevents unbounded memory growth)
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)
