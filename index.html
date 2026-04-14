@@ -3420,23 +3420,27 @@ function x402MaybeEnhanceRival(aiIdx){
   x402RivalStrategyTimer[aiIdx]=0;
   const rIdx=aiIdx+1;
   x402FetchIntel('/intel/strategy?player='+rIdx).then(data=>{
-    if(!data||!data.recommendation)return;
-    x402RivalLastAdvice[aiIdx]=data.recommendation;
+    if(!data||!data.recommendedAction)return;
+    x402RivalLastAdvice[aiIdx]=data.recommendedAction;
     const ai=rivalAI[aiIdx];
-    // If advice mentions a specific area, try to navigate there
-    if((data.recommendation.includes('Corsair Bay')||data.recommendation.includes('Corsair Bay'))&&rivalMaps[aiIdx]!==0){
-      const ex=findExitToMap(rivalMaps[aiIdx],0);
-      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
-    }else if((data.recommendation.includes('Smugglers Jungle')||data.recommendation.includes('Smuggler'))&&rivalMaps[aiIdx]!==1){
-      const ex=findExitToMap(rivalMaps[aiIdx],1);
-      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
-    }else if((data.recommendation.includes('Cursed Temple')||data.recommendation.includes('Cursed Temple'))&&rivalMaps[aiIdx]!==2){
-      const ex=findExitToMap(rivalMaps[aiIdx],2);
-      if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
+    // Map GDD v1.0 broker floor names to map indices
+    const floorNameToIdx={'Town':0,'B1':1,'B2':2,'B3':3,'B4':4,'B5':5};
+    // MOVE: navigate to the broker-recommended floor
+    if(data.recommendedAction==='MOVE'&&data.recommendedFloor){
+      const targetMap=floorNameToIdx[data.recommendedFloor]??-1;
+      if(targetMap>0&&targetMap!==rivalMaps[aiIdx]){
+        const ex=findExitToMap(rivalMaps[aiIdx],targetMap);
+        if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.state='exploring';}
+      }
     }
-    // If advice mentions stealing and rival is hunter type, become more aggressive
-    if(data.recommendation.includes('Steal')&&ai.personality==='hunter'){
+    // STEAL: hunter becomes more aggressive
+    if(data.recommendedAction==='STEAL'&&ai.personality==='hunter'){
       ai.moveInterval=Math.max(6,ai.moveInterval-2);
+    }
+    // DRAW: seek tall grass on current floor
+    if(data.recommendedAction==='DRAW'){
+      const grass=findGrassPatch(rivalMaps[aiIdx]);
+      if(grass){ai.goalX=grass.x;ai.goalY=grass.y;ai.state='exploring';}
     }
   }).catch(()=>{});
 }
@@ -3484,16 +3488,14 @@ function pickRivalGoal(aiIdx){
     // Priority 1: Go to area with missing cards
     const needMap=findCardMap(rIdx);
     if(needMap!==rMap){
-      // Avoid the aggressive rival's map if possible
-      const aggressiveMap=rivalMaps[0];
-      if(needMap===aggressiveMap&&rCards>=2){
-        // Try alternate map
-        const altMaps=[0,1,2].filter(m=>m!==rMap&&m!==aggressiveMap);
-        const altNeed=altMaps.find(m=>{
-          const mc=[[1,2],[3,4],[5,1]][m];
-          const has=new Set();r.cd.forEach(c=>{if(c>0)has.add(c);});
-          return mc.some(c=>!has.has(c));
-        });
+      // Avoid the hunter rival's floor if possible (VEGA = rivalAI[0] = pl[1])
+      const hunterMap=rivalMaps[0];
+      if(needMap===hunterMap&&rCards>=2){
+        // Try alternate dungeon floor (1-MAX_DUNGEON_FLOORS, avoiding current and hunter's floor)
+        const altMaps=[];
+        for(let m=1;m<=MAX_DUNGEON_FLOORS;m++){if(m!==rMap&&m!==hunterMap)altMaps.push(m);}
+        const has=new Set(r.cd.filter(c=>c>0));
+        const altNeed=altMaps.find(m=>{const pool=AREA_CARDS[m]||[];return pool.some(c=>!has.has(c));});
         if(altNeed!==undefined){
           const ex=findExitToMap(rMap,altNeed);
           if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.goalMap=rMap;ai.state='exploring';return;}
@@ -7111,7 +7113,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v138',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v139',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
