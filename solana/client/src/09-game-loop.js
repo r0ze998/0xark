@@ -23,6 +23,8 @@ function updateVisualPositions(){
 }
 
 function update(){
+  // Hitpause: freeze game simulation for N frames (visual impact on steal/card-get)
+  if(hitPauseFrames>0){hitPauseFrames--;return;}
   fr++;
   if(fr%20===0)wt++;
   twTick();

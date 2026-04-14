@@ -145,6 +145,7 @@ let cardLostAnimTimer=0,cardLostAnimX=0,cardLostAnimY=0;
 const statusSparkles=[];
 function triggerCardGetAnim(px,py){cardGetAnimTimer=40;cardGetAnimX=px;cardGetAnimY=py;}
 function triggerCardLostAnim(px,py){cardLostAnimTimer=40;cardLostAnimX=px;cardLostAnimY=py;for(let i=0;i<8;i++){particles.push({x:px+16,y:py+12,vx:(Math.random()-.5)*3,vy:-Math.random()*2-0.5,life:15+Math.random()*10,c:Math.random()>.3?'#d04040':'#ff6060'});}}
+function triggerCardGetBurst(px,py,col){const cnt=12;for(let i=0;i<cnt;i++){const ang=(i/cnt)*Math.PI*2+Math.random()*0.4;const spd=1.8+Math.random()*2.8;particles.push({x:px,y:py,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-2,life:18+Math.random()*14,c:Math.random()>.35?col||'#f0c030':'#ffffff'});}}
 function drawPlayerStatusEffects(){
   const p=pl[0];
   const px=p.visualX-camX,py=p.visualY-camY-16;
@@ -312,15 +313,15 @@ let tutorialMsg='', tutorialMsgTimer=0;
 // ── Intro tutorial (rules) ──
 let introActive=false, introPage=0, introFrame=0;
 const INTRO_PAGES=[
-  'Welcome to はじまりのまち!\nArrows:Move  Z:Confirm  X:Back\nSPACE:Menu',
-  'You start with 3 cards.\nCollect all 60 cards\nto win the Prize Pool!',
-  'Town is your safe base.\nShop, Gacha, Trade here.\nNo enemies here — rest easy.',
-  'Enter the Dungeon to the EAST.\nCards in hand DECAY over time!\nEscape WEST before they crumble.',
-  'Card Decay: 3.5 min per card.\nDecay bars shown under each card.\nLava tiles accelerate decay!',
-  'Battle actions cost Spell energy.\nSTEAL costs 1S  BARRIER costs 1B\nSCOUT costs 1C  (shown top-left)',
-  'VEGA (hunter) chases you hard.\nMIRA (collector) plays strategic.\nSTEAL to take their cards!',
-  'USE CARD in battle:\nAttack=force steal, Flee=escape,\nMagic=strip all barriers!',
-  'First to collect all 60 wins.\nCards are NFTs on Solana.\nGood luck. Trust no one.',
+  'Welcome to はじまりのまち —\nthe only safe harbor on ARK Isle.\nArrows:Move  Z:Confirm  X:Back',
+  'Long ago, the ARK vessel sank here.\nIts crew sealed their power into\n60 arcane cards — scattered across the isle.',
+  'Collect all 60 cards.\nInherit the ARK\'s legacy.\nClaim the Prize Pool. First to 60 wins.',
+  'Town is your sanctuary.\nShop, Gacha, Trade, Synthesize here.\nNo battles in town — rest safely.',
+  'The Dungeon lies to the EAST.\nCards DECAY underground — 3.5 min.\nEscape WEST before they crumble.',
+  'Battle uses Spell energy (top-left).\nSTEAL=1S  BARRIER=1B  SCOUT=1C\nDepleted energy = EXHAUSTED.',
+  'VEGA: relentless hunter.\nTracks and takes without mercy.\nMIRA: cold strategist. Calculates all.',
+  'USE CARD in battle:\nAttack=force steal  Flee=escape\nMagic=strip all barriers!',
+  'Information is power.\nThe x402 Broker sells rival intel.\nGood luck. Trust no one.',
 ];
 
 // ── Battle encounter exclamation ──

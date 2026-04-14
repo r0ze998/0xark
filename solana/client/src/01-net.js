@@ -329,6 +329,8 @@ let flashT=0;
 function flash(){flashT=20;}
 let shakeT=0,shakeIntensity=0;
 function screenShake(intensity,duration){shakeT=duration||8;shakeIntensity=intensity||3;}
+let hitPauseFrames=0;
+function hitPause(frames){hitPauseFrames=Math.max(hitPauseFrames,frames||4);}
 
 // ═══════════════════════════════════════
 // SCREEN TRANSITION WIPES

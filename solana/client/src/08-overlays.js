@@ -4,6 +4,12 @@ function startCardAcquisition(cardIdx){
   cardAcqIsNew=cardAcqWasNew;cardAcqWasNew=false; // v96: consume new-card flag
   cardAcqActive=true;cardAcqFrame=fr;cardAcqCard=cardIdx;cardAcqDone=false;
   cardAcqParticles.length=0;sfxCardGet();
+  // Particle burst (canvas layer) scaled by rarity
+  const _acqCr=CD[cardIdx];
+  const _acqRarCols=['','#888898','#50d060','#b060e0','#e0a020','#ffe080'];
+  const _acqCol=_acqRarCols[_acqCr?.r||1]||'#f0c030';
+  triggerCardGetBurst(pl[0].visualX-camX,pl[0].visualY-camY-8,_acqCol);
+  if((_acqCr?.r||1)>=3){hitPause((_acqCr?.r||1)>=4?4:2);}
   // PixiJS sparkle burst
   const cardColors=[0x4080D0,0x9060C0,0xD04040,0xD0A030,0x404060];
   pxSpawnParticle(W/2,H/2,cardColors[cardIdx%5]||0xF0C830,12,3,25);

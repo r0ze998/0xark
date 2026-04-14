@@ -316,7 +316,12 @@ function drawResolvingPhase(){
         g.globalAlpha=1;
       }
       if(evT===2)sfxDamage();
-      if(evT===32){screenShake(3,8);}
+      if(evT===32){
+        screenShake(rar>=3?5:3, rar>=3?12:8);
+        hitPause(rar>=4?6:rar>=3?5:4);
+        // Impact flash — brief white overlay
+        bx(0,0,W,H,rar>=3?'rgba(255,255,255,0.28)':'rgba(255,255,255,0.18)');
+      }
     }
     if(ev.effect==='card_get'&&evT<35){
       // v114: Card rising with actual art and rarity glow
@@ -453,19 +458,22 @@ function drawResolvingPhase(){
         bx(cx_+Math.cos(ang)*dist-2,cy_+Math.sin(ang)*dist-2,4,4,rcol);
         g.globalAlpha=1;
       }
-      // Arrival: screen flash proportional to rarity (only once at frame 30)
+      // Arrival: screen flash + burst + hitpause proportional to rarity (only once at frame 30)
       if(evT===30){
         if(rar>=4){flash();}
         sfxCardGet();
-        // High rarity: extra shake
-        if(rar>=3)screenShake(rar-1,rar*2);
+        screenShake(rar>=3?rar:2, rar>=3?rar*3:4);
+        hitPause(rar>=5?5:rar>=4?4:rar>=3?3:2);
+        triggerCardGetBurst(playerCX,playerCY-20,rcol);
       }
-      // "STOLEN!" text appears during flight
-      if(evT>10&&evT<40){
-        const stA=Math.min(1,(evT-10)/5)*Math.max(0,(40-evT)/8);
+      // Rarity label: size and boldness scale with rarity
+      if(evT>8&&evT<45){
+        const stA=Math.min(1,(evT-8)/5)*Math.max(0,(45-evT)/8);
+        const stLabel=rar>=5?'LEGENDARY!':rar>=4?'EPIC CARD!':rar>=3?'RARE CARD!':rar>=2?'GOT IT!':'CARD TAKEN!';
+        const stSz=rar>=5?17:rar>=4?15:rar>=3?13:10;
+        const bounce=rar>=3?Math.max(0,Math.sin((evT-8)*0.25)*4):0;
         g.globalAlpha=stA;
-        const stLabel=rar>=5?'LEGENDARY STEAL!':rar>=4?'EPIC STEAL!':rar>=3?'RARE STEAL!':'STOLEN!';
-        txShadow(stLabel,W/2-60,playerCY-80,rar>=4?14:10,rcol,'rgba(0,0,0,.5)');
+        txShadow(stLabel,W/2-stLabel.length*stSz*0.3,playerCY-85-bounce,stSz,rcol,'rgba(0,0,0,.6)');
         g.globalAlpha=1;
       }
     }
