@@ -60,6 +60,8 @@
 - v145: guard checkWinAndTransition against double-fire (stats.gamesPlayed++ safe)
 - v146: fix NPC wander facing direction (inverted vs player/rival convention)
 - v147: guard USE CARD against decayed-slot crash in generateResolveEvents
+- v148: checkWinAndTransition after floor-clear card reward (win-miss if card 60 arrived via floor clear)
+- v149: checkWinAndTransition after synthesis and mission bonus_card (same win-miss pattern)
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)

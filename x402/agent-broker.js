@@ -25,8 +25,20 @@ const PORT = 3402;
 const RECIPIENT_WALLET = process.env.BROKER_WALLET || 'DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R';
 const DEVNET_RPC = 'https://api.devnet.solana.com';
 
-// Replay protection
+// Replay protection — cap at 10k entries to prevent unbounded growth (demo/devnet only)
 const usedSignatures = new Set();
+const MAX_SIG_CACHE = 10000;
+function trackSignature(sig) {
+  if (usedSignatures.size >= MAX_SIG_CACHE) {
+    // Evict oldest ~1k entries (Set preserves insertion order)
+    let evicted = 0;
+    for (const s of usedSignatures) {
+      usedSignatures.delete(s);
+      if (++evicted >= 1000) break;
+    }
+  }
+  usedSignatures.add(sig);
+}
 
 // ═══════════════════════════════════════
 // GAME STATE (updated by POST /update-state)
@@ -101,7 +113,7 @@ async function verifyPayment(signature, expectedAmountUSDC) {
         const raw = Number(info.amount ?? info.tokenAmount?.amount ?? 0);
         const amountUSDC = raw / Math.pow(10, decimals);
         if (amountUSDC >= expectedAmountUSDC) {
-          usedSignatures.add(signature);
+          trackSignature(signature);
           return { ok: true, amount: amountUSDC };
         }
       }

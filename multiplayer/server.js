@@ -62,9 +62,27 @@ wss.on('connection', (ws) => {
     if (ws.roomId && rooms.has(ws.roomId)) {
       const room = rooms.get(ws.roomId);
       room.players.delete(ws.playerId);
+      // Remove disconnected player from commit/reveal maps so in-progress rounds can resolve
+      room.commits.delete(ws.playerId);
+      room.reveals.delete(ws.playerId);
       broadcast(room, { type: 'player_left', playerId: ws.playerId });
       if (room.players.size === 0) {
         rooms.delete(ws.roomId);
+        return;
+      }
+      // If a round was in progress and remaining players already satisfied the threshold, advance
+      if (room.state === 'playing') {
+        if (room.commits.size > 0 && room.commits.size === room.players.size) {
+          broadcast(room, { type: 'all_committed', round: room.round });
+        }
+        if (room.reveals.size > 0 && room.reveals.size === room.players.size) {
+          const actions = {};
+          room.reveals.forEach((v, k) => { actions[k] = v; });
+          broadcast(room, { type: 'all_revealed', actions, round: room.round });
+          room.round++;
+          room.commits.clear();
+          room.reveals.clear();
+        }
       }
     }
   });
