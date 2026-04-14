@@ -123,6 +123,7 @@ function doMapTransition(exit){
         const bUsePool=bNew.length>0?bNew:bPool;
         const bCard=bUsePool[Math.floor(Math.random()*bUsePool.length)];
         addCardToPlayer(0,bCard);
+        checkWinAndTransition(2000); // v149: card 60 could come from mission bonus_card
       }
       if(runSummaryData){runSummaryData.missionDesc=runMission.desc;runSummaryData.missionReward=runMission.reward;}
       lg.push('MISSION COMPLETE: '+runMission.desc+' → '+runMission.reward);
@@ -861,6 +862,7 @@ function doSynthesis(){
   const cr=CD[newId-1];
   lg.push('[SYNTHESIS] Fused 3x '+RARITY_LABEL[r]+' → '+cr.n+' ('+RARITY_LABEL[cr.r]+')!');
   sfxCardGet();screenShake(3,6);
+  checkWinAndTransition(2000); // v149: card 60 could come from synthesis
 }
 
 function drawSynthesisShop(){
@@ -1325,7 +1327,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v148',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v149',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
