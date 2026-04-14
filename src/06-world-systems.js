@@ -152,11 +152,13 @@ function doMapTransition(exit){
           const cr=CD[rewardCard-1];
           const isNewUnique=!(pl[0].vault&&pl[0].vault.has(rewardCard));
           const flAdded=addCardToPlayer(0,rewardCard); // vault sting fires inside if new unique
+          const _fcRarCols=['','#888898','#50d060','#b060e0','#e0a020','#ffe080'];
           if(flAdded){
             objectInteractMsg='FLOOR '+clearedFloor+' CLEAR! Got '+cr.n+'!';
             objectInteractTimer=150;
             if(!isNewUnique)sfxCardGet(); // only play extra sound for duplicates (unique sting already fired)
-            screenShake(2,4);
+            screenShake(cr.r>=3?cr.r:2,cr.r>=3?cr.r*3:4);
+            triggerCardGetBurst(pl[0].visualX-camX,pl[0].visualY-camY-8,_fcRarCols[cr.r]||'#f0c030');
             lg.push('[FLOOR CLEAR] B'+clearedFloor+' cleared! Earned: '+cr.n+' ('+RARITY_LABEL[cr.r]+')');
           }else{
             // Hand full — still got it in vault; prompt discard
@@ -861,7 +863,10 @@ function doSynthesis(){
   synthPhase='result';synthResultFrame=fr;
   const cr=CD[newId-1];
   lg.push('[SYNTHESIS] Fused 3x '+RARITY_LABEL[r]+' → '+cr.n+' ('+RARITY_LABEL[cr.r]+')!');
-  sfxCardGet();screenShake(3,6);
+  const _synthRarCols=['','#888898','#50d060','#b060e0','#e0a020','#ffe080'];
+  sfxCardGet();screenShake(cr.r>=3?cr.r:3,cr.r>=3?cr.r*3:6);
+  triggerCardGetBurst(pl[0].visualX-camX,pl[0].visualY-camY-8,_synthRarCols[cr.r]||'#f0c030');
+  if(cr.r>=3)hitPause(cr.r>=4?4:3);
   checkWinAndTransition(2000); // v149: card 60 could come from synthesis
 }
 
@@ -1327,7 +1332,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v152',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v153',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
