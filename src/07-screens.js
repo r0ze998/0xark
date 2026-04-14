@@ -1256,7 +1256,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v134',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v135',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -2590,6 +2590,29 @@ function drawConfirmingPhase(){
   drawBattleArena();
   drawOpponentInfoBox();
   drawPlayerInfoBox();
+  // v135: Action commitment shout — brief screen-center flash of chosen action name
+  {const t0=fr-bpFrame;
+  if(t0<16){
+    const aNames=['DRAW!','STEAL!','BARRIER!','SCOUT!','USE CARD!'];
+    const aColors=['#48b8e8','#d04040','#3060b0','#308030','#c08030'];
+    const act=Math.min(bpAction,4);const aCol=aColors[act];
+    const aName=aNames[act];
+    const fadeIn=Math.min(1,t0/5);const fadeOut=t0>9?Math.max(0,(16-t0)/7):1;
+    const shoutA=fadeIn*fadeOut;
+    const sz=Math.floor(12+Math.min(1,t0/7)*28); // font size 12→40 as it snaps in
+    const textW=aName.length*sz*0.62;
+    const shoutX=W/2-textW/2,shoutY=H/2-20;
+    // Background color burst
+    g.globalAlpha=shoutA*0.18;
+    bx(0,shoutY-sz-16,W,sz+40,aCol);
+    // Horizontal scanline accent
+    g.globalAlpha=shoutA*0.55;
+    bx(0,shoutY-sz/2,W,2,'rgba(255,255,255,.3)');
+    // Action name text
+    g.globalAlpha=shoutA;
+    txShadow(aName,shoutX,shoutY+sz*0.8,sz,aCol,'rgba(0,0,0,0.85)');
+    g.globalAlpha=1;
+  }}
   // Text box at bottom
   win(4,H-70,W-8,64);
   const t=fr-bpFrame;const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
