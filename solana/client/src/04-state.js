@@ -480,7 +480,7 @@ async function x402PushState(){
         cardCount:i===0?(p.vault instanceof Set?p.vault.size:p.cd.filter(c=>c>0).length):p.cd.filter(c=>c>0).length
       })),
       cardPool:{},
-      round:typeof turnCount!=='undefined'?turnCount:0,
+      round:rd||0,
       currentMap:currentMap,
       rivalMaps:[...rivalMaps],
     };
