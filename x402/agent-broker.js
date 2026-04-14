@@ -35,11 +35,11 @@ const usedSignatures = new Set();
 const FLOOR_NAMES = { 0: 'Town', 1: 'B1', 2: 'B2', 3: 'B3', 4: 'B4', 5: 'B5' };
 const FLOOR_RARITY = {
   0: 'Town (no drops)',
-  1: 'Common cards (1-12)',
-  2: 'Uncommon cards (13-24)',
-  3: 'Rare cards (25-36)',
-  4: 'Epic cards (37-48)',
-  5: 'Legendary cards (49-60)',
+  1: 'Starter set — 10 cards (all 5 types)',
+  2: 'Advanced set — 10 cards (all 5 types)',
+  3: 'Expert set — 15 cards (all 5 types)',
+  4: 'Elite set — 12 cards (all 5 types)',
+  5: 'Legendary set — 12 cards incl. AEGIS & UMBRA',
 };
 
 let gameState = {

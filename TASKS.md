@@ -51,6 +51,8 @@
 - v50: Dark vignette removed from town (safe zone); pulsing DUNGEON label at entrance
 - v51: Transparent PixiJS overlay (root fix for black flash); image-rendering:pixelated; double-render eliminated
 - v52: Dungeon staircase labels (◀ ESCAPE / DEEPER ▶); floor-depth color tint (deeper = warmer); improved tutorial hint panel
+- v137: ZK proof commit hash fixed (poseidon-lite), onchain commit includes round in PDA seeds, real reveal TX, x402 broker rewritten (GDD v1.0: 60 cards, VEGA/MIRA), README with technical architecture
+- v138: x402 shop VEGA/MIRA labels+prices fixed, vault state push fixed (60-slot), response parsers match broker schema, MIRA Hand intel added, ZK artifacts at repo root (GitHub Pages), periodic broker sync post-battle + every 2min, title screen prize pool display
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)
