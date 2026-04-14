@@ -500,22 +500,30 @@ document.addEventListener('keydown',e=>{
               x402ShopResult='Server error. Cards refunded.';
               x402ShopResultTimer=150;sfxBack();return;
             }
-            // Format response based on endpoint type
+            // Format response based on endpoint type (matches agent-broker.js response schema)
             if(item.endpoint.startsWith('/intel/location')){
-              x402ShopResult=data.playerName+' is in '+data.areaName+' ('+Math.round(data.confidence*100)+'% sure)';
-              lg.push('x402 Intel: '+data.playerName+' at '+data.areaName);
+              const who=data.name||'?';
+              const where=data.floorName||data.floor||'?';
+              const drops=data.floorDrops?(' — '+data.floorDrops):'';
+              x402ShopResult=who+' is on '+where+drops;
+              lg.push('x402 Intel: '+who+' at '+where);
             }else if(item.endpoint.startsWith('/intel/hand')){
-              const names=data.cards?data.cards.map(c=>c.name).join(', '):'none';
-              x402ShopResult=data.playerName+' holds: '+names+' ('+data.cardCount+' cards)';
-              lg.push('x402 Intel: '+data.playerName+' hand = '+names);
+              const who=data.name||'?';
+              const unique=data.uniqueCount??data.totalHeld??0;
+              const cardList=data.cards?data.cards.slice(0,6).map(c=>'#'+c.cardId).join(' '):'none';
+              x402ShopResult=who+' holds '+unique+' unique cards. '+cardList;
+              lg.push('x402 Intel: '+who+' hand ('+unique+' unique) = '+cardList);
             }else if(item.endpoint.startsWith('/intel/strategy')){
-              x402ShopResult=data.recommendation||'No advice available.';
-              lg.push('x402 Strategy: '+data.recommendation);
+              const act=data.recommendedAction||'?';
+              const why=data.reasoning||'';
+              const conf=data.confidence?(' ('+Math.round(data.confidence*100)+'%)'):'';
+              x402ShopResult=act+conf+': '+why;
+              lg.push('x402 Strategy: '+act+' — '+why);
             }else if(item.endpoint.startsWith('/intel/market')){
-              const total=data.totalCardsInPool||0;
-              x402ShopResult='Cards in pool: '+total+'. Check log for details.';
-              if(data.pool)data.pool.forEach(p=>lg.push('  '+p.cardName+': '+p.remaining+'/'+p.totalSupply));
-              lg.push('x402 Market: '+total+' cards remaining');
+              const avail=data.availableCards??data.totalCards??0;
+              x402ShopResult='Available: '+avail+'/60 cards. See log.';
+              if(data.byFloor)data.byFloor.forEach(f=>lg.push('  '+f.floor+': '+f.available+'/'+f.total+' available'));
+              lg.push('x402 Market: '+avail+' cards unclaimed');
             }
             x402ShopResultTimer=300;sfxConfirm();
           }).catch(()=>{x402ShopLoading=false;x402ShopResult='Connection lost.';x402ShopResultTimer=120;sfxBack();});

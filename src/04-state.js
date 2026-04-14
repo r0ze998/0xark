@@ -408,9 +408,10 @@ let x402ShopResultTimer=0;
 let x402ShopLoading=false;
 let x402HowItWorksActive=false;
 const x402ShopItems=[
-  {label:'Rival Location',desc:'Where is the Rival?',price:'$0.001 USDC',priceOffline:'1 card',endpoint:'/intel/location/1'},
-  {label:'Hunter Location',desc:'Where is the Hunter?',price:'$0.001 USDC',priceOffline:'1 card',endpoint:'/intel/location/2'},
-  {label:'Rival Hand',desc:'What cards does Rival hold?',price:'$0.002 USDC',priceOffline:'1 card',endpoint:'/intel/hand/1'},
+  {label:'VEGA Location',desc:'Where is VEGA?',price:'$0.002 USDC',priceOffline:'1 card',endpoint:'/intel/location/1'},
+  {label:'MIRA Location',desc:'Where is MIRA?',price:'$0.002 USDC',priceOffline:'1 card',endpoint:'/intel/location/2'},
+  {label:'VEGA Hand',desc:'What cards does VEGA hold?',price:'$0.003 USDC',priceOffline:'1 card',endpoint:'/intel/hand/1'},
+  {label:'MIRA Hand',desc:'What cards does MIRA hold?',price:'$0.003 USDC',priceOffline:'1 card',endpoint:'/intel/hand/2'},
   {label:'Strategy Advice',desc:'Best move right now',price:'$0.005 USDC',priceOffline:'2 cards',endpoint:'/intel/strategy',cardCost:2},
   {label:'Market Data',desc:'Card pool status',price:'free',priceOffline:'free',endpoint:'/intel/market',cardCost:0},
   {label:'HOW IT WORKS',desc:'x402 protocol explained',price:'free',priceOffline:'free',endpoint:'_howItWorks',cardCost:0,isInfo:true},
@@ -452,10 +453,31 @@ async function x402CheckServer(){
 async function x402PushState(){
   if(!x402Available)return;
   try{
+    // Build 60-slot card arrays: player uses vault (full unique set), rivals use cd array
+    const buildPlayerCards=(p,i)=>{
+      if(i===0){
+        // Player: vault is a Set of unique card IDs collected; expand to 60-slot array
+        const arr=new Array(60).fill(0);
+        if(p.vault instanceof Set){
+          let slot=0;
+          for(const cid of p.vault){if(cid>0&&cid<=60&&slot<60)arr[slot++]=cid;}
+        } else {
+          // fallback: use cd array
+          for(let s=0;s<Math.min(p.cd.length,60);s++)arr[s]=p.cd[s]||0;
+        }
+        return arr;
+      } else {
+        // Rivals: cd is their hand (5 slots), pad to 60
+        const arr=new Array(60).fill(0);
+        for(let s=0;s<Math.min((p.cd||[]).length,60);s++)arr[s]=(p.cd||[])[s]||0;
+        return arr;
+      }
+    };
     const statePayload={
       players:pl.map((p,i)=>({
         id:i,name:p.n,area:i===0?currentMap:(rivalMaps[i-1]??0),
-        cards:[...p.cd],cardCount:p.cd.filter(c=>c>0).length
+        cards:buildPlayerCards(p,i),
+        cardCount:i===0?(p.vault instanceof Set?p.vault.size:p.cd.filter(c=>c>0).length):p.cd.filter(c=>c>0).length
       })),
       cardPool:{},
       round:typeof turnCount!=='undefined'?turnCount:0,

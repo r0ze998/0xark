@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0xARK v137</title>
+<title>0xARK v138</title>
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
@@ -4366,9 +4366,10 @@ let x402ShopResultTimer=0;
 let x402ShopLoading=false;
 let x402HowItWorksActive=false;
 const x402ShopItems=[
-  {label:'Rival Location',desc:'Where is the Rival?',price:'$0.001 USDC',priceOffline:'1 card',endpoint:'/intel/location/1'},
-  {label:'Hunter Location',desc:'Where is the Hunter?',price:'$0.001 USDC',priceOffline:'1 card',endpoint:'/intel/location/2'},
-  {label:'Rival Hand',desc:'What cards does Rival hold?',price:'$0.002 USDC',priceOffline:'1 card',endpoint:'/intel/hand/1'},
+  {label:'VEGA Location',desc:'Where is VEGA?',price:'$0.002 USDC',priceOffline:'1 card',endpoint:'/intel/location/1'},
+  {label:'MIRA Location',desc:'Where is MIRA?',price:'$0.002 USDC',priceOffline:'1 card',endpoint:'/intel/location/2'},
+  {label:'VEGA Hand',desc:'What cards does VEGA hold?',price:'$0.003 USDC',priceOffline:'1 card',endpoint:'/intel/hand/1'},
+  {label:'MIRA Hand',desc:'What cards does MIRA hold?',price:'$0.003 USDC',priceOffline:'1 card',endpoint:'/intel/hand/2'},
   {label:'Strategy Advice',desc:'Best move right now',price:'$0.005 USDC',priceOffline:'2 cards',endpoint:'/intel/strategy',cardCost:2},
   {label:'Market Data',desc:'Card pool status',price:'free',priceOffline:'free',endpoint:'/intel/market',cardCost:0},
   {label:'HOW IT WORKS',desc:'x402 protocol explained',price:'free',priceOffline:'free',endpoint:'_howItWorks',cardCost:0,isInfo:true},
@@ -4410,10 +4411,31 @@ async function x402CheckServer(){
 async function x402PushState(){
   if(!x402Available)return;
   try{
+    // Build 60-slot card arrays: player uses vault (full unique set), rivals use cd array
+    const buildPlayerCards=(p,i)=>{
+      if(i===0){
+        // Player: vault is a Set of unique card IDs collected; expand to 60-slot array
+        const arr=new Array(60).fill(0);
+        if(p.vault instanceof Set){
+          let slot=0;
+          for(const cid of p.vault){if(cid>0&&cid<=60&&slot<60)arr[slot++]=cid;}
+        } else {
+          // fallback: use cd array
+          for(let s=0;s<Math.min(p.cd.length,60);s++)arr[s]=p.cd[s]||0;
+        }
+        return arr;
+      } else {
+        // Rivals: cd is their hand (5 slots), pad to 60
+        const arr=new Array(60).fill(0);
+        for(let s=0;s<Math.min((p.cd||[]).length,60);s++)arr[s]=(p.cd||[])[s]||0;
+        return arr;
+      }
+    };
     const statePayload={
       players:pl.map((p,i)=>({
         id:i,name:p.n,area:i===0?currentMap:(rivalMaps[i-1]??0),
-        cards:[...p.cd],cardCount:p.cd.filter(c=>c>0).length
+        cards:buildPlayerCards(p,i),
+        cardCount:i===0?(p.vault instanceof Set?p.vault.size:p.cd.filter(c=>c>0).length):p.cd.filter(c=>c>0).length
       })),
       cardPool:{},
       round:typeof turnCount!=='undefined'?turnCount:0,
@@ -7088,7 +7110,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v137',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v138',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -8389,7 +8411,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v137',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v138',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -14724,22 +14746,30 @@ document.addEventListener('keydown',e=>{
               x402ShopResult='Server error. Cards refunded.';
               x402ShopResultTimer=150;sfxBack();return;
             }
-            // Format response based on endpoint type
+            // Format response based on endpoint type (matches agent-broker.js response schema)
             if(item.endpoint.startsWith('/intel/location')){
-              x402ShopResult=data.playerName+' is in '+data.areaName+' ('+Math.round(data.confidence*100)+'% sure)';
-              lg.push('x402 Intel: '+data.playerName+' at '+data.areaName);
+              const who=data.name||'?';
+              const where=data.floorName||data.floor||'?';
+              const drops=data.floorDrops?(' — '+data.floorDrops):'';
+              x402ShopResult=who+' is on '+where+drops;
+              lg.push('x402 Intel: '+who+' at '+where);
             }else if(item.endpoint.startsWith('/intel/hand')){
-              const names=data.cards?data.cards.map(c=>c.name).join(', '):'none';
-              x402ShopResult=data.playerName+' holds: '+names+' ('+data.cardCount+' cards)';
-              lg.push('x402 Intel: '+data.playerName+' hand = '+names);
+              const who=data.name||'?';
+              const unique=data.uniqueCount??data.totalHeld??0;
+              const cardList=data.cards?data.cards.slice(0,6).map(c=>'#'+c.cardId).join(' '):'none';
+              x402ShopResult=who+' holds '+unique+' unique cards. '+cardList;
+              lg.push('x402 Intel: '+who+' hand ('+unique+' unique) = '+cardList);
             }else if(item.endpoint.startsWith('/intel/strategy')){
-              x402ShopResult=data.recommendation||'No advice available.';
-              lg.push('x402 Strategy: '+data.recommendation);
+              const act=data.recommendedAction||'?';
+              const why=data.reasoning||'';
+              const conf=data.confidence?(' ('+Math.round(data.confidence*100)+'%)'):'';
+              x402ShopResult=act+conf+': '+why;
+              lg.push('x402 Strategy: '+act+' — '+why);
             }else if(item.endpoint.startsWith('/intel/market')){
-              const total=data.totalCardsInPool||0;
-              x402ShopResult='Cards in pool: '+total+'. Check log for details.';
-              if(data.pool)data.pool.forEach(p=>lg.push('  '+p.cardName+': '+p.remaining+'/'+p.totalSupply));
-              lg.push('x402 Market: '+total+' cards remaining');
+              const avail=data.availableCards??data.totalCards??0;
+              x402ShopResult='Available: '+avail+'/60 cards. See log.';
+              if(data.byFloor)data.byFloor.forEach(f=>lg.push('  '+f.floor+': '+f.available+'/'+f.total+' available'));
+              lg.push('x402 Market: '+avail+' cards unclaimed');
             }
             x402ShopResultTimer=300;sfxConfirm();
           }).catch(()=>{x402ShopLoading=false;x402ShopResult='Connection lost.';x402ShopResultTimer=120;sfxBack();});
