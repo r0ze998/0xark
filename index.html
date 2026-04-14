@@ -4553,7 +4553,7 @@ function resetNewFeatureState(){
 }
 
 function resetGameState(startCards){
-  clearSave();fogClear();stakeDeposited=false;gameOverTimesUp=false;
+  clearSave();fogClear();stakeDeposited=false;gameOverTimesUp=false;_winTransitionPending=false;
   // Player: reset hand + vault; give 3 starter cards (one per type: attack, defense, flee)
   const starterCards=[4,13,25]; // Strike(attack), Guard(defense), Dash(flee) - all Common
   const cards0=makeEmptyHand();
@@ -7113,7 +7113,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v144',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v145',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -9992,8 +9992,10 @@ function hasUniqueCards(pIdx){
   const s=new Set();pl[pIdx].cd.forEach(c=>{if(c>0)s.add(c);});return s;
 }
 function playerHasAllSixty(){return pl[0].vault&&pl[0].vault.size>=60;}
+let _winTransitionPending=false; // guard against double-win transition
 function checkWinAndTransition(delayMs){
-  if(!playerHasAllSixty())return;
+  if(!playerHasAllSixty()||_winTransitionPending)return;
+  _winTransitionPending=true;
   // Record best clear (elapsed from season start)
   const clearTime=Math.floor(getPlayElapsed()/1000);
   if(stats.bestClearRounds===0||rd<stats.bestClearRounds){stats.bestClearRounds=rd;}
