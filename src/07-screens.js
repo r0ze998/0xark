@@ -2732,32 +2732,37 @@ function drawConfirmingPhase(){
     }
     else{txShadow('Resolving'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-38,14,'#686068','rgba(200,180,140,.3)');}
   }
-  // Generate and log commit hash when wallet connected
+  // Commit phase: on-chain TX + ZK proof (both paths)
   if(t===1&&walletConnected){
     onchainCommitPhase=true;
-    onchainCommit(rd,bpAction,bpSelectedTarget||0).then(result=>{
+    onchainCommit(rd,bpAction,encounterExclTarget||0).then(result=>{
       if(result){
         walletLastCommitHash=result.hash;
-        logOnchain('Commit: '+result.hash+' TX:'+result.txSig.slice(0,8)+'..');
+        logOnchain('Commit: '+result.hash.slice(0,10)+'..'+'  TX:'+result.txSig.slice(0,8)+'..');
+        // Generate ZK proof using the same salt that was committed on-chain
+        if(onchainPendingSalt){
+          zkProofStatus='generating';
+          zkGenerateProof(bpAction+1, encounterExclTarget||0, onchainPendingSalt);
+        }
       }
       onchainCommitPhase=false;
     }).catch(()=>{onchainCommitPhase=false;});
   }
   if(t===1&&!walletConnected){
     const salt=generateSalt();
-    computeCommitHash(bpAction,walletPublicKey,salt).then(hash=>{
+    computeCommitHash(bpAction,new Uint8Array(32),salt).then(hash=>{
       walletLastCommitHash=hexFromBytes(hash);
-      lg.push('Commit hash: '+walletLastCommitHash);
+      lg.push('Commit hash: '+walletLastCommitHash.slice(0,10)+'..');
     }).catch(()=>{});
-    // Generate ZK proof in parallel (demo: proves knowledge of action without revealing)
-    zkGenerateProof(bpAction+1, bpSelectedTarget||0, salt);
+    // ZK proof: proves knowledge of action preimage without wallet
+    zkGenerateProof(bpAction+1, encounterExclTarget||0, salt);
   }
   // On-chain reveal phase
   if(t===70&&walletConnected&&onchainPendingSalt){
     onchainRevealPhase=true;
-    onchainReveal(rd,bpAction,bpSelectedTarget||0,onchainPendingSalt).then(result=>{
+    onchainReveal(rd,bpAction,encounterExclTarget||0,onchainPendingSalt).then(result=>{
       if(result){
-        logOnchain('Reveal: TX:'+result.txSig.slice(0,8)+'..');
+        logOnchain('Reveal TX:'+result.txSig.slice(0,8)+'..');
       }
       onchainRevealPhase=false;onchainPendingSalt=null;
     }).catch(()=>{onchainRevealPhase=false;});
