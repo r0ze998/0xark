@@ -65,6 +65,15 @@ function build() {
   fs.writeFileSync(OUT_GAME, output);
   fs.writeFileSync(OUT_ROOT, output);
 
+  // Copy ZK artifacts to root so GitHub Pages can serve them alongside root index.html
+  const ZK_FILES = ['commit_reveal.wasm', 'commit_reveal_final.zkey', 'verification_key.json'];
+  const REPO_ROOT = path.join(ROOT, '../../');
+  for (const f of ZK_FILES) {
+    const src = path.join(ROOT, f);
+    const dst = path.join(REPO_ROOT, f);
+    if (fs.existsSync(src)) fs.copyFileSync(src, dst);
+  }
+
   const lineCount = output.split('\n').length;
   const moduleCount = MODULES.length;
   const totalSrcLines = MODULES.reduce((sum, { file }) => {
