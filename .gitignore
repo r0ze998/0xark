@@ -2,6 +2,8 @@ node_modules/
 dist/
 target/
 *.log
+logs/*.log
+logs/*.pid
 .env
 .DS_Store
 contracts/manifests/

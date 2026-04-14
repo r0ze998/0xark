@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node build.js",
     "watch": "node -e \"const{execSync}=require('child_process');const{watch}=require('fs');console.log('Watching src/ for changes...');watch('src/',{recursive:true},(ev,f)=>{if(!f.endsWith('.js'))return;console.log('Changed:',f);try{execSync('node build.js',{stdio:'inherit'});}catch(e){}});\" ",
-    "dev": "npm run build && npm run watch"
+    "dev": "npm run build && npm run watch",
+    "test": "node ../../tests/card-engine.test.js"
   },
   "engines": {
     "node": ">=16"
