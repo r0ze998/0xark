@@ -1,80 +1,70 @@
 /**
  * 0xARK x402 Information Broker Agent
  *
- * An AI agent that sells game intelligence via x402 micropayments.
- * Players (or their AI agents) can pay USDC to learn:
- * - Where a rival is (area information)
- * - What cards a rival holds
- * - Strategic advice based on game state
+ * Sells game intelligence via x402 micropayments (USDC on Solana).
+ * Players pay to learn rival positions, card holdings, and strategy.
  *
- * Each request costs $0.001-$0.005 USDC via x402 protocol.
- *
- * Usage:
- *   node agent-broker.js
+ * GDD v1.0: 60 unique cards, 5 dungeon floors (B1-B5), rivals VEGA & MIRA.
  *
  * Endpoints:
- *   GET  /intel/location/:playerId  — $0.002 — Returns player's current area
- *   GET  /intel/hand/:playerId      — $0.003 — Returns player's card holdings
- *   GET  /intel/strategy            — $0.005 — Returns optimal next action
- *   GET  /intel/market              — free   — Returns card pool status
- *   GET  /status                    — free   — Returns all endpoints with prices
- *   GET  /health                    — free   — Health check
- *   POST /update-state              — free   — Push current game state from client
+ *   GET  /intel/location/:playerId  — $0.002 USDC — Rival floor position
+ *   GET  /intel/hand/:playerId      — $0.003 USDC — Rival card holdings
+ *   GET  /intel/strategy            — $0.005 USDC — Optimal next action
+ *   GET  /intel/market              — free         — Card pool status
+ *   GET  /status                    — free         — Endpoint catalog
+ *   GET  /health                    — free         — Health check
+ *   POST /update-state              — free         — Push game state from client
  */
 
 import express from 'express';
+import { Connection } from '@solana/web3.js';
 
 const app = express();
 const PORT = 3402;
 
-const RECIPIENT_WALLET = '0xARK_BROKER_WALLET';
+const RECIPIENT_WALLET = process.env.BROKER_WALLET || 'DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R';
+const DEVNET_RPC = 'https://api.devnet.solana.com';
+
+// Replay protection
+const usedSignatures = new Set();
 
 // ═══════════════════════════════════════
-// DYNAMIC GAME STATE
+// GAME STATE (updated by POST /update-state)
 // ═══════════════════════════════════════
 
-// Default state — overwritten by POST /update-state from the game client
-let gameState = {
-  players: [
-    { id: 0, name: 'Player', area: 0, cards: [1, 3, 0, 0, 0], cardCount: 2 },
-    { id: 1, name: 'Rival', area: 1, cards: [2, 5, 0, 0, 0], cardCount: 2 },
-    { id: 2, name: 'Hunter', area: 2, cards: [4, 0, 0, 0, 0], cardCount: 1 },
-  ],
-  cardPool: { 1: 1, 2: 1, 3: 2, 4: 2, 5: 1 },
-  round: 5,
-  rivalMaps: [0, 0],
-  rivalAI: [],
+const FLOOR_NAMES = { 0: 'Town', 1: 'B1', 2: 'B2', 3: 'B3', 4: 'B4', 5: 'B5' };
+const FLOOR_RARITY = {
+  0: 'Town (no drops)',
+  1: 'Common cards (1-12)',
+  2: 'Uncommon cards (13-24)',
+  3: 'Rare cards (25-36)',
+  4: 'Epic cards (37-48)',
+  5: 'Legendary cards (49-60)',
 };
 
-const CARD_NAMES = ['', 'AEGIS', 'UMBRA', 'IGNIS', 'TEMPEST', 'NIHIL'];
-const AREA_NAMES = ['Corsair Bay', 'Smugglers Jungle', 'Cursed Temple'];
-
-// Endpoint price catalog
-const ENDPOINTS = [
-  { path: '/intel/location/:playerId', method: 'GET', price: 0.002, currency: 'USDC', description: 'Player location intelligence' },
-  { path: '/intel/hand/:playerId', method: 'GET', price: 0.003, currency: 'USDC', description: 'Player hand intelligence' },
-  { path: '/intel/strategy', method: 'GET', price: 0.005, currency: 'USDC', description: 'Strategic analysis' },
-  { path: '/intel/market', method: 'GET', price: 0, currency: 'USDC', description: 'Card pool status (free)' },
-  { path: '/status', method: 'GET', price: 0, currency: 'USDC', description: 'Endpoint catalog (free)' },
-  { path: '/health', method: 'GET', price: 0, currency: 'USDC', description: 'Health check (free)' },
-  { path: '/update-state', method: 'POST', price: 0, currency: 'USDC', description: 'Push game state from client (free)' },
-];
+let gameState = {
+  players: [
+    { id: 0, name: 'Player', area: 0, cards: new Array(60).fill(0), cardCount: 0 },
+    { id: 1, name: 'VEGA',   area: 0, cards: new Array(60).fill(0), cardCount: 0 },
+    { id: 2, name: 'MIRA',   area: 0, cards: new Array(60).fill(0), cardCount: 0 },
+  ],
+  currentMap: 0,
+  rivalMaps: [0, 0],
+  round: 0,
+  _lastUpdate: null,
+};
 
 // ═══════════════════════════════════════
 // MIDDLEWARE
 // ═══════════════════════════════════════
 
 app.use(express.json());
-
-// CORS — allow the game client to call from any origin
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Payment');
   res.setHeader('Access-Control-Expose-Headers', 'X-Payment-Required');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
@@ -83,185 +73,171 @@ app.use((req, res, next) => {
 // ═══════════════════════════════════════
 
 /**
- * Verify a Solana transaction signature for x402 payment.
- * In production this would check the on-chain USDC transfer via RPC.
- * For now it logs the signature and accepts any non-empty value.
+ * Verify a Solana tx signature confirms a USDC transfer >= expectedAmountUSDC
+ * to RECIPIENT_WALLET. Prevents replay via usedSignatures set.
+ * Dev bypass: X-Payment: local-dev-bypass
  */
-function verifyPayment(signature, expectedAmount, description) {
-  console.log(`[x402] Verifying payment for "${description}"`);
-  console.log(`[x402]   Signature : ${signature}`);
-  console.log(`[x402]   Expected  : $${expectedAmount} USDC`);
-  console.log(`[x402]   Recipient : ${RECIPIENT_WALLET}`);
-  // TODO: Use @solana/web3.js to confirm the transaction on-chain:
-  //   1. Fetch transaction by signature
-  //   2. Confirm it transfers >= expectedAmount USDC to RECIPIENT_WALLET
-  //   3. Confirm it is finalized (not just confirmed)
-  //   4. Prevent replay by tracking used signatures
-  return true;
+async function verifyPayment(signature, expectedAmountUSDC) {
+  if (signature === 'local-dev-bypass') return { ok: true, simulated: true };
+  if (usedSignatures.has(signature)) {
+    return { ok: false, reason: 'Signature already used (replay attempt)' };
+  }
+  try {
+    const connection = new Connection(DEVNET_RPC, 'confirmed');
+    const tx = await connection.getParsedTransaction(signature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    });
+    if (!tx) return { ok: false, reason: 'Transaction not found on devnet' };
+    if (tx.meta?.err) return { ok: false, reason: 'Transaction failed on-chain' };
+
+    // Scan for SPL token transfer >= expectedAmount to RECIPIENT_WALLET
+    const ixs = tx.transaction.message.instructions;
+    for (const ix of ixs) {
+      const t = ix.parsed?.type;
+      if (t === 'transfer' || t === 'transferChecked') {
+        const info = ix.parsed.info;
+        const decimals = info.tokenAmount?.decimals ?? 6;
+        const raw = Number(info.amount ?? info.tokenAmount?.amount ?? 0);
+        const amountUSDC = raw / Math.pow(10, decimals);
+        if (amountUSDC >= expectedAmountUSDC) {
+          usedSignatures.add(signature);
+          return { ok: true, amount: amountUSDC };
+        }
+      }
+    }
+    return { ok: false, reason: `No USDC transfer >= $${expectedAmountUSDC} found` };
+  } catch (e) {
+    return { ok: false, reason: 'RPC error: ' + e.message };
+  }
 }
 
-/**
- * x402 payment middleware.
- * If X-Payment header is present, verify it. Otherwise return 402 with
- * the x402 protocol payload in both the response body and the
- * X-Payment-Required header.
- */
-function requirePayment(amount, description) {
-  return (req, res, next) => {
-    // Free endpoints skip payment
-    if (amount <= 0) return next();
-
+function requirePayment(amountUSDC, description) {
+  return async (req, res, next) => {
+    if (amountUSDC <= 0) return next();
     const payment = req.headers['x-payment'];
-
     if (!payment) {
-      const paymentRequired = {
+      const payload = {
         version: 1,
         scheme: 'exact',
-        network: 'solana-mainnet',
-        amount,
+        network: 'solana-devnet',
+        amount: amountUSDC,
         currency: 'USDC',
         recipient: RECIPIENT_WALLET,
         description,
       };
-
-      res.setHeader('X-Payment-Required', JSON.stringify(paymentRequired));
-      return res.status(402).json({
-        error: 'Payment Required',
-        x402: paymentRequired,
-      });
+      res.setHeader('X-Payment-Required', JSON.stringify(payload));
+      return res.status(402).json({ error: 'Payment Required', x402: payload });
     }
-
-    // Verify the provided Solana transaction signature
-    const valid = verifyPayment(payment, amount, description);
-    if (!valid) {
-      return res.status(402).json({
-        error: 'Payment verification failed',
-        details: 'The provided transaction signature could not be verified.',
-      });
+    const result = await verifyPayment(payment, amountUSDC);
+    if (!result.ok) {
+      return res.status(402).json({ error: 'Payment verification failed', reason: result.reason });
     }
-
-    console.log(`[x402] Payment accepted: $${amount} USDC for "${description}"`);
+    if (!result.simulated) {
+      console.log(`[x402] Verified $${amountUSDC} USDC for "${description}"`);
+    }
     next();
   };
 }
 
 // ═══════════════════════════════════════
-// STRATEGY ENGINE
+// STRATEGY ENGINE (GDD v1.0 — 60 cards)
 // ═══════════════════════════════════════
 
-/**
- * Analyze game state and produce strategic advice.
- * Accepts an optional requesterId (0 = player, 1+ = rival AI).
- */
+function uniqueCards(cards) {
+  return new Set(cards.filter(c => c > 0));
+}
+
 function analyzeStrategy(requesterId = 0) {
-  const requester = gameState.players[requesterId];
-  if (!requester) return { recommendation: 'Unknown player.', confidence: 0 };
+  const me = gameState.players[requesterId];
+  if (!me) return { error: 'Player not found' };
 
-  const requesterCards = new Set(requester.cards.filter(c => c > 0));
-  const missing = [1, 2, 3, 4, 5].filter(c => !requesterCards.has(c));
-  const cardCount = requesterCards.size;
-  const others = gameState.players.filter((_, i) => i !== requesterId);
+  const myFloor = requesterId === 0
+    ? gameState.currentMap
+    : (gameState.rivalMaps[requesterId - 1] ?? 0);
+  const myUnique = uniqueCards(me.cards).size;
+  const toWin = 60 - myUnique;
 
-  // Determine threats: who is on the same map?
-  const requesterMap = requesterId === 0
-    ? (gameState.currentMap ?? requester.area)
-    : (gameState.rivalMaps?.[requesterId - 1] ?? requester.area);
+  // Optimal floor for collection progress
+  let targetFloor = 1;
+  if (myUnique >= 48) targetFloor = 5;
+  else if (myUnique >= 36) targetFloor = 4;
+  else if (myUnique >= 24) targetFloor = 3;
+  else if (myUnique >= 12) targetFloor = 2;
 
-  const nearbyThreats = others.filter((o, idx) => {
-    const oMap = idx === 0
-      ? (gameState.currentMap ?? o.area)
-      : (gameState.rivalMaps?.[idx - 1] ?? o.area);
-    return oMap === requesterMap;
-  });
+  const rivals = gameState.players
+    .filter((_, i) => i !== requesterId)
+    .map((p, idx) => {
+      const rIdx = requesterId === 0 ? idx : (idx >= requesterId - 1 ? idx + 1 : idx);
+      const floor = p.id === 0
+        ? gameState.currentMap
+        : (gameState.rivalMaps[p.id - 1] ?? 0);
+      return { ...p, floor, unique: uniqueCards(p.cards).size };
+    });
 
-  // Card pool availability
-  const poolRemaining = gameState.cardPool
-    ? Object.values(gameState.cardPool).reduce((a, b) => a + b, 0)
-    : 0;
+  const sameFloor = rivals.filter(r => r.floor === myFloor);
+  const leader = [...rivals].sort((a, b) => b.unique - a.unique)[0];
 
-  let advice = '';
-  let confidence = 0.75;
+  // Determine best action
+  let action, reasoning, confidence;
 
-  if (missing.length === 0) {
-    advice = 'You have all 5 crystals! Head to the Ancient Ruins altar to win.';
-    confidence = 1.0;
-  } else if (missing.length === 1) {
-    const needed = CARD_NAMES[missing[0]];
-    const bestArea = missing[0] <= 2 ? 'Port Town' : missing[0] <= 4 ? 'Deep Forest' : 'Ancient Ruins';
-    if (nearbyThreats.length > 0) {
-      advice = `You need ${needed}. Best area: ${bestArea}. WARNING: ${nearbyThreats.map(t => t.name).join(', ')} nearby — use Barrier before Drawing.`;
-      confidence = 0.85;
-    } else {
-      advice = `You need ${needed}. Go to ${bestArea} and Draw. Coast is clear — no rivals nearby.`;
+  if (sameFloor.length > 0) {
+    const threat = sameFloor.sort((a, b) => b.unique - a.unique)[0];
+    if (myUnique >= 55) {
+      action = 'BARRIER';
+      reasoning = `You have ${myUnique}/60 — protect your progress. ${threat.name} on same floor.`;
       confidence = 0.90;
-    }
-  } else if (missing.length <= 3 && cardCount >= 2) {
-    // Mid-game: balance drawing and defense
-    const weakest = [...others].sort((a, b) =>
-      a.cards.filter(c => c > 0).length - b.cards.filter(c => c > 0).length
-    )[0];
-    if (weakest && weakest.cards.filter(c => c > 0).length >= 3) {
-      advice = `Consider Stealing from ${weakest.name} (${weakest.cards.filter(c => c > 0).length} cards). You still need: ${missing.map(c => CARD_NAMES[c]).join(', ')}.`;
+    } else if (threat.unique <= myUnique - 5) {
+      action = 'DRAW';
+      reasoning = `${threat.name} is far behind (${threat.unique}). Draw freely on ${FLOOR_NAMES[myFloor]}.`;
+      confidence = 0.80;
+    } else if (threat.unique > myUnique) {
+      action = 'STEAL';
+      reasoning = `${threat.name} leads (${threat.unique} vs ${myUnique}). Steal to catch up.`;
+      confidence = 0.70;
     } else {
-      advice = `Focus on Drawing. You need: ${missing.map(c => CARD_NAMES[c]).join(', ')}. ${poolRemaining} cards remain in the pool.`;
+      action = 'DRAW';
+      reasoning = `${threat.name} nearby. Draw — ${FLOOR_RARITY[myFloor]}.`;
+      confidence = 0.65;
     }
-    confidence = 0.70;
+  } else if (myFloor !== targetFloor) {
+    action = 'MOVE';
+    reasoning = `No rivals on this floor. Move to ${FLOOR_NAMES[targetFloor]} for ${FLOOR_RARITY[targetFloor]}.`;
+    confidence = 0.85;
   } else {
-    // Early game or behind
-    const weakest = [...others].sort((a, b) =>
-      a.cards.filter(c => c > 0).length - b.cards.filter(c => c > 0).length
-    )[0];
-    if (weakest && weakest.cards.filter(c => c > 0).length <= 1) {
-      advice = `Explore and Draw aggressively. ${weakest.name} is weak (${weakest.cards.filter(c => c > 0).length} cards) — avoid them, focus on cards.`;
-    } else if (nearbyThreats.length > 0) {
-      advice = `Rivals nearby! Move to a safer area first, then Draw. You need ${missing.length} more cards.`;
-    } else {
-      advice = `Explore and Draw. You need: ${missing.map(c => CARD_NAMES[c]).join(', ')}. Head to tall grass patches for better odds.`;
-    }
-    confidence = 0.60;
+    action = 'DRAW';
+    reasoning = `Clear floor. Draw — ${FLOOR_RARITY[myFloor]}. ${toWin} cards to go.`;
+    confidence = 0.90;
   }
 
-  // Predict rival actions based on personality and state
-  const predictions = others.map((o, idx) => {
-    const oCards = o.cards.filter(c => c > 0).length;
-    const oUnique = new Set(o.cards.filter(c => c > 0)).size;
-    const aiData = gameState.rivalAI?.[idx];
-    const personality = aiData?.personality || (idx === 0 ? 'collector' : 'hunter');
-
-    let predictedAction = 'DRAW';
-    let actionConfidence = 0.5;
-
-    if (personality === 'hunter') {
-      if (oUnique >= 4) { predictedAction = 'BARRIER'; actionConfidence = 0.7; }
-      else if (cardCount >= 2) { predictedAction = 'STEAL'; actionConfidence = 0.65; }
-      else { predictedAction = 'DRAW'; actionConfidence = 0.6; }
-    } else {
-      if (oUnique >= 4) { predictedAction = 'BARRIER'; actionConfidence = 0.75; }
-      else if (oCards >= 3 && cardCount > oUnique) { predictedAction = 'STEAL'; actionConfidence = 0.4; }
-      else { predictedAction = 'DRAW'; actionConfidence = 0.65; }
-    }
-
+  // Rival behavior predictions (VEGA = aggressive, MIRA = strategic)
+  const predictions = rivals.map(r => {
+    const isVEGA = r.name === 'VEGA';
+    const isAhead = r.unique > myUnique;
+    const predicted = isVEGA
+      ? (isAhead ? 'BARRIER' : 'STEAL')
+      : (r.floor >= 4 ? 'DRAW' : 'SCOUT');
     return {
-      name: o.name,
-      personality,
-      cardCount: oCards,
-      uniqueCards: oUnique,
-      predictedAction,
-      actionConfidence,
+      name: r.name,
+      floor: FLOOR_NAMES[r.floor] ?? `B${r.floor}`,
+      uniqueCards: r.unique,
+      sameFloor: r.floor === myFloor,
+      predictedAction: predicted,
+      threat: r.floor === myFloor ? 'HIGH' : 'LOW',
     };
   });
 
   return {
     round: gameState.round,
-    requesterId,
-    requesterName: requester.name,
-    yourCards: requester.cards.filter(c => c > 0).map(c => CARD_NAMES[c]),
-    missing: missing.map(c => CARD_NAMES[c]),
-    nearbyThreats: nearbyThreats.map(t => t.name),
-    rivalPredictions: predictions,
-    poolRemaining,
-    recommendation: advice,
+    yourUniqueCards: myUnique,
+    toWin,
+    currentFloor: FLOOR_NAMES[myFloor] ?? `B${myFloor}`,
+    recommendedFloor: FLOOR_NAMES[targetFloor] ?? `B${targetFloor}`,
+    recommendedAction: action,
+    reasoning,
     confidence,
+    rivals: predictions,
+    leaderGap: leader ? leader.unique - myUnique : 0,
     timestamp: Date.now(),
   };
 }
@@ -270,145 +246,143 @@ function analyzeStrategy(requesterId = 0) {
 // ENDPOINTS
 // ═══════════════════════════════════════
 
-// Location intel
 app.get('/intel/location/:playerId',
-  requirePayment(0.002, 'Player location intelligence'),
+  requirePayment(0.002, 'Rival floor position'),
   (req, res) => {
     const pid = parseInt(req.params.playerId);
-    const player = gameState.players[pid];
-    if (!player) return res.status(404).json({ error: 'Player not found' });
-
-    // Use rivalMaps for rivals, currentMap for player 0
-    let area = player.area;
-    if (pid === 0 && gameState.currentMap !== undefined) {
-      area = gameState.currentMap;
-    } else if (pid > 0 && gameState.rivalMaps?.[pid - 1] !== undefined) {
-      area = gameState.rivalMaps[pid - 1];
-    }
-
+    const p = gameState.players[pid];
+    if (!p) return res.status(404).json({ error: 'Player not found' });
+    const floor = pid === 0
+      ? gameState.currentMap
+      : (gameState.rivalMaps[pid - 1] ?? 0);
     res.json({
       playerId: pid,
-      playerName: player.name,
-      area,
-      areaName: AREA_NAMES[area] || 'Unknown',
-      confidence: 0.95,
+      name: p.name,
+      floor,
+      floorName: FLOOR_NAMES[floor] ?? `B${floor}`,
+      floorDrops: FLOOR_RARITY[floor] ?? 'Unknown',
       timestamp: Date.now(),
     });
   }
 );
 
-// Hand intel
 app.get('/intel/hand/:playerId',
-  requirePayment(0.003, 'Player hand intelligence'),
+  requirePayment(0.003, 'Rival card holdings'),
   (req, res) => {
     const pid = parseInt(req.params.playerId);
-    const player = gameState.players[pid];
-    if (!player) return res.status(404).json({ error: 'Player not found' });
-
-    const cards = player.cards
-      .filter(c => c > 0)
-      .map(c => ({ id: c, name: CARD_NAMES[c] }));
-
+    const p = gameState.players[pid];
+    if (!p) return res.status(404).json({ error: 'Player not found' });
+    const held = p.cards
+      .map((v, i) => ({ slot: i, cardId: v }))
+      .filter(c => c.cardId > 0);
     res.json({
       playerId: pid,
-      playerName: player.name,
-      cardCount: cards.length,
-      cards,
-      confidence: 0.90,
+      name: p.name,
+      uniqueCount: uniqueCards(p.cards).size,
+      totalHeld: held.length,
+      cards: held,
       timestamp: Date.now(),
     });
   }
 );
 
-// Strategy advice
 app.get('/intel/strategy',
   requirePayment(0.005, 'Strategic analysis'),
   (req, res) => {
-    const requesterId = parseInt(req.query.player || '0');
-    res.json(analyzeStrategy(requesterId));
+    const pid = parseInt(req.query.player ?? '0');
+    res.json(analyzeStrategy(pid));
   }
 );
 
-// Market data (free)
-app.get('/intel/market',
-  (req, res) => {
-    const pool = Object.entries(gameState.cardPool).map(([id, remaining]) => ({
-      cardId: parseInt(id),
-      cardName: CARD_NAMES[parseInt(id)],
-      remaining,
-      totalSupply: 3,
-    }));
-
-    res.json({
-      round: gameState.round,
-      pool,
-      totalCardsInPool: Object.values(gameState.cardPool).reduce((a, b) => a + b, 0),
-      timestamp: Date.now(),
-    });
+app.get('/intel/market', (req, res) => {
+  const heldCount = new Array(61).fill(0);
+  for (const p of gameState.players) {
+    for (const c of p.cards) { if (c > 0 && c <= 60) heldCount[c]++; }
   }
-);
+  const pool = Array.from({ length: 60 }, (_, i) => ({
+    cardId: i + 1,
+    heldByPlayers: heldCount[i + 1],
+    available: heldCount[i + 1] === 0,
+    floor: Math.min(5, Math.ceil((i + 1) / 12)),
+  }));
+  res.json({
+    round: gameState.round,
+    totalCards: 60,
+    availableCards: pool.filter(c => c.available).length,
+    byFloor: [1, 2, 3, 4, 5].map(f => ({
+      floor: FLOOR_NAMES[f],
+      available: pool.filter(c => c.floor === f && c.available).length,
+      total: 12,
+    })),
+    pool,
+    timestamp: Date.now(),
+  });
+});
 
-// Status — endpoint catalog with prices
 app.get('/status', (req, res) => {
   res.json({
-    agent: '0xARK Information Broker',
-    version: '0.2.0',
-    network: 'solana-mainnet',
-    currency: 'USDC',
+    agent: '0xARK Information Broker v1.0',
+    network: 'solana-devnet',
     recipient: RECIPIENT_WALLET,
-    endpoints: ENDPOINTS,
-    gameStateAge: gameState._lastUpdate
+    endpoints: [
+      { path: '/intel/location/:id', price: '$0.002 USDC', desc: 'Rival floor position' },
+      { path: '/intel/hand/:id',     price: '$0.003 USDC', desc: 'Rival card holdings' },
+      { path: '/intel/strategy',     price: '$0.005 USDC', desc: 'Strategic analysis' },
+      { path: '/intel/market',       price: 'free',         desc: 'Card pool status (60 cards)' },
+    ],
+    stateAge: gameState._lastUpdate
       ? `${Math.round((Date.now() - gameState._lastUpdate) / 1000)}s ago`
       : 'using defaults',
     timestamp: Date.now(),
   });
 });
 
-// Health check (free)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    agent: '0xARK Information Broker',
-    version: '0.2.0',
+    agent: '0xARK Information Broker v1.0',
     hasLiveState: !!gameState._lastUpdate,
+    rivalFloors: {
+      VEGA: FLOOR_NAMES[gameState.rivalMaps[0]] ?? 'unknown',
+      MIRA: FLOOR_NAMES[gameState.rivalMaps[1]] ?? 'unknown',
+    },
   });
 });
 
-// Accept game state push from client
 app.post('/update-state', (req, res) => {
   const body = req.body;
-  if (!body || !body.players) {
-    return res.status(400).json({ error: 'Invalid state: players array required' });
+  if (!body || !Array.isArray(body.players)) {
+    return res.status(400).json({ error: 'players array required' });
   }
-
   gameState = {
     ...gameState,
-    players: body.players,
-    cardPool: body.cardPool || gameState.cardPool,
-    round: body.round ?? gameState.round,
+    players: body.players.map(p => ({
+      ...p,
+      cards: Array.isArray(p.cards) ? p.cards : new Array(60).fill(0),
+    })),
     currentMap: body.currentMap ?? gameState.currentMap,
-    rivalMaps: body.rivalMaps || gameState.rivalMaps,
-    rivalAI: body.rivalAI || gameState.rivalAI,
+    rivalMaps: Array.isArray(body.rivalMaps) ? body.rivalMaps : gameState.rivalMaps,
+    round: body.round ?? gameState.round,
     _lastUpdate: Date.now(),
   };
-
-  console.log(`[x402] Game state updated — round ${gameState.round}, ${gameState.players.length} players`);
-  res.json({ status: 'ok', round: gameState.round, timestamp: Date.now() });
+  console.log(`[state] round=${gameState.round} playerFloor=${gameState.currentMap} VEGA=B${gameState.rivalMaps[0]} MIRA=B${gameState.rivalMaps[1]}`);
+  res.json({ status: 'ok', round: gameState.round });
 });
 
 // ═══════════════════════════════════════
 // EXPORTS & STARTUP
 // ═══════════════════════════════════════
 
-export { app, gameState, analyzeStrategy, verifyPayment, CARD_NAMES, AREA_NAMES };
+export { app, gameState, analyzeStrategy, FLOOR_NAMES, FLOOR_RARITY };
 
 app.listen(PORT, () => {
-  console.log(`0xARK x402 Information Broker running on port ${PORT}`);
-  console.log(`Endpoints:`);
-  for (const ep of ENDPOINTS) {
-    const price = ep.price > 0 ? `$${ep.price}` : 'free';
-    console.log(`  ${ep.method.padEnd(4)} ${ep.path.padEnd(30)} — ${price}`);
-  }
-  console.log(`\nCORS enabled for all origins`);
-  console.log(`x402 protocol: Solana mainnet / USDC`);
+  console.log(`\n0xARK x402 Information Broker v1.0`);
+  console.log(`Port: ${PORT}   Recipient: ${RECIPIENT_WALLET}`);
+  console.log(`\nEndpoints:`);
+  console.log(`  GET  /intel/location/:id   $0.002 USDC`);
+  console.log(`  GET  /intel/hand/:id       $0.003 USDC`);
+  console.log(`  GET  /intel/strategy       $0.005 USDC`);
+  console.log(`  GET  /intel/market         free`);
+  console.log(`  POST /update-state         free`);
+  console.log(`\nDev bypass: X-Payment: local-dev-bypass\n`);
 });
