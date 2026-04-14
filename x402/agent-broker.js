@@ -37,7 +37,7 @@ const FLOOR_RARITY = {
   0: 'Town (no drops)',
   1: 'Starter set — 10 cards (all 5 types)',
   2: 'Advanced set — 10 cards (all 5 types)',
-  3: 'Expert set — 15 cards (all 5 types)',
+  3: 'Expert set — 16 cards (all 5 types)',
   4: 'Elite set — 12 cards (all 5 types)',
   5: 'Legendary set — 12 cards incl. AEGIS & UMBRA',
 };

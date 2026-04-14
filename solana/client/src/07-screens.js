@@ -2777,7 +2777,7 @@ const DUNGEON_FLOOR_CARDS=[
   [],                                           // map 0 = Town: no drops
   [4,5,13,14,25,26,39,40,49,50],              // Floor 1: Common/Uncommon
   [6,7,15,16,27,28,41,42,51,52],              // Floor 2: Uncommon
-  [8,9,10,17,18,19,29,30,31,43,44,45,53,54,55], // Floor 3: Rare
+  [3,8,9,10,17,18,19,29,30,31,43,44,45,53,54,55], // Floor 3: Rare (16 cards — IGNIS added)
   [11,20,21,22,32,33,34,46,47,56,57,58],     // Floor 4: Epic
   [1,2,12,23,24,35,36,37,38,48,59,60],       // Floor 5: Legendary (including originals)
 ];
@@ -2786,7 +2786,7 @@ const AREA_CARDS=[
   [4,5,13,14,25,26,39,40,49,50],    // map 0 Town (fallback only — encounters blocked in town)
   [4,5,13,14,25,26,39,40,49,50],    // map 1 Floor 1: Common/Uncommon
   [6,7,15,16,27,28,41,42,51,52],    // map 2 Floor 2: Uncommon
-  [8,9,10,17,18,19,29,30,31,43,44,45,53,54,55], // map 3 Floor 3: Rare
+  [3,8,9,10,17,18,19,29,30,31,43,44,45,53,54,55], // map 3 Floor 3: Rare
   [11,20,21,22,32,33,34,46,47,56,57,58], // map 4 Floor 4: Epic
   [1,2,12,23,24,35,36,37,38,48,59,60],  // map 5 Floor 5: Legendary
 ];
