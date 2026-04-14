@@ -503,10 +503,18 @@ function drawVsSplash(){
     g.globalAlpha=1;
   }
 
-  // VS text
+  // VS text with pop-in scale + glow pulse
+  if(t===16){hitPause(3);}
   if(t>15){
-    g.globalAlpha=Math.min(1,(t-15)/10);
+    const vsA=Math.min(1,(t-15)/8);
+    const vsScale=t<20?1+(20-t)*0.08:1;   // slight overshoot pop-in
+    const glowA=vsA*0.5*(0.7+Math.sin(t*0.3)*0.3);
+    g.globalAlpha=glowA;
+    g.fillStyle='rgba(240,200,48,0.35)';g.beginPath();g.arc(W/2-8,H/2+30,28*vsScale,0,Math.PI*2);g.fill();
+    g.globalAlpha=vsA;
+    g.save();g.translate(W/2-8,H/2+30);g.scale(vsScale,vsScale);g.translate(-(W/2-8),-(H/2+30));
     txShadow('VS',W/2-28,H/2+14,36,'#f0c830','#000');
+    g.restore();
     g.globalAlpha=1;
   }
   // Flash

@@ -3259,10 +3259,10 @@ const RUN_MISSION_DEFS=[
 
 // Rival pre-battle taunts indexed by [rivalIdx][random]
 const RIVAL_TAUNTS=[
-  // VEGA — aggressive, short and sharp
-  ['Your cards are mine.','Hand them over, slowly.','I never lose twice.','Don\'t blink.','Run if you want. I\'ll find you.'],
-  // MIRA — strategic, calm
-  ['I\'ve been watching your moves.','Interesting deck. I want it.','Every card has a price.','I always get what I collect.','Nothing personal. Just rare cards.'],
+  // VEGA — predator, ARK hunter, short and sharp
+  ['Your cards are mine.','The ARK chose me. Not you.','I never lose twice.','Don\'t blink.','I hunted the crew. I\'ll hunt you.','The deep vault is mine.','Run. I enjoy the chase.'],
+  // MIRA — cold archivist, calculated
+  ['I\'ve archived every move you\'ve made.','Your card composition is... suboptimal.','Every card has a price. I know yours.','The ARK\'s crew failed by emotion. You will too.','Nothing personal. Just Legendary cards.','My model had you losing three rounds ago.'],
 ];
 
 // Footprints system: {map, x, y, age}
@@ -6863,17 +6863,23 @@ function drawEncounterExclamation(){
   if(!encounterExclActive)return;
   const t=fr-encounterExclFrame;
   if(t>30){encounterExclActive=false;return;}
-  const bounce=Math.sin(t*0.5)*3;
-  const alpha=Math.min(1,t/5)*(t<25?1:Math.max(0,(30-t)/5));
+  // Overshoot pop-in scale: 0→1.4→1.0 over first 8 frames
+  const rawScl=t<4?(t/4)*1.4:t<8?1.4-(t-4)*0.1:1.0;
+  const bounce=t>=8?Math.sin(t*0.5)*2:0;
+  const alpha=Math.min(1,t/4)*(t<25?1:Math.max(0,(30-t)/5));
   g.globalAlpha=alpha;
-  // Player "!" bubble
+  // Player "!" bubble with pop scale
   const ppx=encounterExclPlayerX-camX, ppy=encounterExclPlayerY-camY-8;
+  g.save();g.translate(ppx+8,ppy-15+bounce);g.scale(rawScl,rawScl);g.translate(-ppx-8,-ppy+15-bounce);
   bx(ppx+3,ppy-22+bounce,10,14,'#fff');bx(ppx+4,ppy-21+bounce,8,11,'#f0c830');
   tx('!',ppx+5,ppy-10+bounce,10,'#c04040');
-  // Rival "!" bubble with rival name tag
+  g.restore();
+  // Rival "!" bubble with pop scale
   const rpx=encounterExclRivalX-camX, rpy=encounterExclRivalY-camY-8;
+  g.save();g.translate(rpx+8,rpy-15+bounce);g.scale(rawScl,rawScl);g.translate(-rpx-8,-rpy+15-bounce);
   bx(rpx+3,rpy-22+bounce,10,14,'#fff');bx(rpx+4,rpy-21+bounce,8,11,'#f0c830');
   tx('!',rpx+5,rpy-10+bounce,10,'#c04040');
+  g.restore();
   // Show rival name tag above "!" — appears after t>6
   if(t>6){
     const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'???';
@@ -9164,10 +9170,18 @@ function drawVsSplash(){
     g.globalAlpha=1;
   }
 
-  // VS text
+  // VS text with pop-in scale + glow pulse
+  if(t===16){hitPause(3);}
   if(t>15){
-    g.globalAlpha=Math.min(1,(t-15)/10);
+    const vsA=Math.min(1,(t-15)/8);
+    const vsScale=t<20?1+(20-t)*0.08:1;   // slight overshoot pop-in
+    const glowA=vsA*0.5*(0.7+Math.sin(t*0.3)*0.3);
+    g.globalAlpha=glowA;
+    g.fillStyle='rgba(240,200,48,0.35)';g.beginPath();g.arc(W/2-8,H/2+30,28*vsScale,0,Math.PI*2);g.fill();
+    g.globalAlpha=vsA;
+    g.save();g.translate(W/2-8,H/2+30);g.scale(vsScale,vsScale);g.translate(-(W/2-8),-(H/2+30));
     txShadow('VS',W/2-28,H/2+14,36,'#f0c830','#000');
+    g.restore();
     g.globalAlpha=1;
   }
   // Flash
@@ -14182,6 +14196,7 @@ function update(){
           encounterExclRivalX=r.visualX;
           encounterExclRivalY=r.visualY;
           sfxEncounterDramatic();
+          hitPause(3); // freeze-frame dramatic tension at encounter trigger
           const rivalName=r.n;
           const isRivalInitiated=ai.state==='hunting';
           // v81: choose context-sensitive pre-battle line

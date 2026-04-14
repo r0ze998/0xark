@@ -1056,17 +1056,23 @@ function drawEncounterExclamation(){
   if(!encounterExclActive)return;
   const t=fr-encounterExclFrame;
   if(t>30){encounterExclActive=false;return;}
-  const bounce=Math.sin(t*0.5)*3;
-  const alpha=Math.min(1,t/5)*(t<25?1:Math.max(0,(30-t)/5));
+  // Overshoot pop-in scale: 0→1.4→1.0 over first 8 frames
+  const rawScl=t<4?(t/4)*1.4:t<8?1.4-(t-4)*0.1:1.0;
+  const bounce=t>=8?Math.sin(t*0.5)*2:0;
+  const alpha=Math.min(1,t/4)*(t<25?1:Math.max(0,(30-t)/5));
   g.globalAlpha=alpha;
-  // Player "!" bubble
+  // Player "!" bubble with pop scale
   const ppx=encounterExclPlayerX-camX, ppy=encounterExclPlayerY-camY-8;
+  g.save();g.translate(ppx+8,ppy-15+bounce);g.scale(rawScl,rawScl);g.translate(-ppx-8,-ppy+15-bounce);
   bx(ppx+3,ppy-22+bounce,10,14,'#fff');bx(ppx+4,ppy-21+bounce,8,11,'#f0c830');
   tx('!',ppx+5,ppy-10+bounce,10,'#c04040');
-  // Rival "!" bubble with rival name tag
+  g.restore();
+  // Rival "!" bubble with pop scale
   const rpx=encounterExclRivalX-camX, rpy=encounterExclRivalY-camY-8;
+  g.save();g.translate(rpx+8,rpy-15+bounce);g.scale(rawScl,rawScl);g.translate(-rpx-8,-rpy+15-bounce);
   bx(rpx+3,rpy-22+bounce,10,14,'#fff');bx(rpx+4,rpy-21+bounce,8,11,'#f0c830');
   tx('!',rpx+5,rpy-10+bounce,10,'#c04040');
+  g.restore();
   // Show rival name tag above "!" — appears after t>6
   if(t>6){
     const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'???';
