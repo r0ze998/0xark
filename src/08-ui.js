@@ -1089,12 +1089,12 @@ function checkForestTrap(){
     for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
     if(filled.length>0){
       const slot=filled[Math.floor(Math.random()*filled.length)];
-      const lost=pl[0].cd[slot];
-      pl[0].cd[slot]=0;
-      syncCardCount(0);
+      const lost=removeCardFromPlayer(0,slot); // resets cardTimers/decayWarn/stats.cardsLost
+      if(lost>0){
       lg.push('Trap! Lost '+CD[lost-1].n+'!');
       objectInteractMsg='Lost '+CD[lost-1].n+' to a trap!';
       objectInteractTimer=120;
+      }
     }else{
       lg.push('Trap triggered but you had no cards!');
       objectInteractMsg='Trap triggered! Lucky - no cards to lose.';

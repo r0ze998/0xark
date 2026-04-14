@@ -7113,7 +7113,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v142',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v143',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -12358,12 +12358,12 @@ function checkForestTrap(){
     for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
     if(filled.length>0){
       const slot=filled[Math.floor(Math.random()*filled.length)];
-      const lost=pl[0].cd[slot];
-      pl[0].cd[slot]=0;
-      syncCardCount(0);
+      const lost=removeCardFromPlayer(0,slot); // resets cardTimers/decayWarn/stats.cardsLost
+      if(lost>0){
       lg.push('Trap! Lost '+CD[lost-1].n+'!');
       objectInteractMsg='Lost '+CD[lost-1].n+' to a trap!';
       objectInteractTimer=120;
+      }
     }else{
       lg.push('Trap triggered but you had no cards!');
       objectInteractMsg='Trap triggered! Lucky - no cards to lose.';
