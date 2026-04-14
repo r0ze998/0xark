@@ -69,8 +69,8 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 </div>
 <script>
 // ───────────────────────────────────────────────────────────────────────
-// MODULE: src/01-foundation.js
-// PixiJS setup · FRLG UI · audio · wallet · ZK · multiplayer · transitions · overlays
+// MODULE: src/01-pixi.js
+// PixiJS canvas setup · FRLG UI framework (PixiJS) · title effects · particles · menu · textbox · HUD · tile drawing · lerp/easeInOut · audio system
 // ───────────────────────────────────────────────────────────────────────
 // Unregister any service workers and clear caches to prevent stale version serving
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(regs=>{regs.forEach(r=>r.unregister());});}
@@ -995,6 +995,11 @@ function updateAmbient(){
   }
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/01-draw.js
+// FRLG window system (canvas 2D) · bx/tx/win primitives · drawCardFrame · crypto utils · ZK proof system · Solana/wallet/blockchain helpers
+// ───────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════
 // FRLG WINDOW SYSTEM (pixel-perfect FRLG palette)
 // ═══════════════════════════════════════
@@ -1449,6 +1454,11 @@ function logOnchain(msg){
   }
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/01-net.js
+// WebSocket multiplayer client · typewriter text · fade/wipe transitions · screen shake · hand inspect · rival news display · run summary
+// ───────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════
 // MULTIPLAYER SYSTEM (WebSocket client)
 // ═══════════════════════════════════════
@@ -7140,8 +7150,8 @@ function dTitle(){
 // ═══════════════════════════════════════
 
 // ───────────────────────────────────────────────────────────────────────
-// MODULE: src/07-screens.js
-// MAP SCREEN (dMap) · fog rendering · pirate decorations · MENU · BATTLE/ACTION SCREEN
+// MODULE: src/07-map.js
+// Terrain edge blending · atmosphere · fog of war · rival alert anim · pirate decorations · dMap (main world render) · dMenu
 // ───────────────────────────────────────────────────────────────────────
 // MAP SCREEN
 // ═══════════════════════════════════════
@@ -8634,6 +8644,11 @@ function dMenu(){
   }
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/07-battle.js
+// Battle screen FRLG rendering · card bar · opponent/player info boxes · VS splash · phase banner · action grid · select/confirming phases · card engine (addCardToPlayer/removeCardFromPlayer/checkWinAndTransition) · rival AI · generateResolveEvents
+// ───────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════
 // BATTLE / ACTION SCREEN (FRLG STYLE)
 // ═══════════════════════════════════════
@@ -10337,6 +10352,11 @@ function generateResolveEvents(){
   return events;
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/07-battle-resolve.js
+// Card effect animations (crystal/shadow/flame/storm/void) · drawResolvingPhase · drawResultPhase · dAct
+// ───────────────────────────────────────────────────────────────────────
 // Card effect animation helpers
 function drawCrystalEffect(cx_,cy_,evT){
   // Blue energy spiral around player sprite, then lightning bolt
@@ -11277,8 +11297,8 @@ function dAct(){
 // ═══════════════════════════════════════
 
 // ───────────────────────────────────────────────────────────────────────
-// MODULE: src/08-ui.js
-// Card acquisition · discard · tutorial · victory · CARDS collection · LOG · town shops · buildings · stats
+// MODULE: src/08-overlays.js
+// Card acquisition animation · dungeon confirm · marketplace · discard overlay · tutorial · intro · victory screen · cards collection screen · card detail panel · log screen
 // ───────────────────────────────────────────────────────────────────────
 // CARD ACQUISITION ANIMATION
 // ═══════════════════════════════════════
@@ -12247,6 +12267,11 @@ function dLog(){
   txShadow('X = Back',W/2-32,H-16,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/08-world-interact.js
+// Fishing minigame · forest trap · puzzle pillars · buildings interior · object interactions · fountain exchange
+// ───────────────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════
 // FISHING MINIGAME (Corsair Bay docks)
 // ═══════════════════════════════════════
@@ -13124,6 +13149,11 @@ function doFountainExchange(){
   checkWinAndTransition(2000);
 }
 
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/08-screens.js
+// Floor-clear fanfare · object interact messages · exit tooltip · map card use overlay · stats screen · credits · game over screen
+// ───────────────────────────────────────────────────────────────────────
 // v85: Floor-clear fanfare — dramatic cinematic overlay on floor descent
 function drawFloorClearFanfare(){
   if(!floorFanfareActive||!floorFanfareData)return;
