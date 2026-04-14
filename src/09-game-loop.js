@@ -293,10 +293,10 @@ function update(){
           // v81: choose context-sensitive pre-battle line
           const rCards=r.cd.filter(c=>c>0).length;
           const pCards=pl[0].cd.filter(c=>c>0).length;
-          const vegaLines_hunt=['Hand them over.','I\'ve been tracking you.','No escape now.','You\'re mine.','Found you.'];
-          const vegaLines_surp=['You... found me?','Unexpected.','Bold move.','You\'re braver than I thought.','So you came to me.'];
-          const miraLines_hunt=['Precisely where I expected you.','I need those cards.','Calculations confirmed.','You are the target.','Step aside.'];
-          const miraLines_surp=['Oh? You found me.','Hmm. Interesting.','You have good instincts.','I didn\'t predict this.','Clever approach.'];
+          const vegaLines_hunt=['Hand over the cards. Now.','I\'ve been tracking you since B1.','The ARK\'s legacy is mine.','No walls stop a hunter.','Cornered. Just like the crew.'];
+          const vegaLines_surp=['You... found me first?','Reckless. I respect it.','Bold. The ARK liked bold.','Didn\'t expect prey to hunt.','So you\'ve learned something.'];
+          const miraLines_hunt=['I mapped every route. You had no chance.','The ARK crew fell to calculation. So will you.','Your card count fell below threshold. Engaging.','Probability of your escape: zero.','Precisely where my model predicted.'];
+          const miraLines_surp=['A variable I didn\'t account for.','Interesting. You deviated from the pattern.','You read the dungeon well. Respect.','My model was wrong. Recalculating.','Even the ARK surprised its own crew once.'];
           const rich=rCards>=3;
           if(idx===0){// VEGA
             const pool=isRivalInitiated?vegaLines_hunt:vegaLines_surp;

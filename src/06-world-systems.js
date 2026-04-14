@@ -558,16 +558,16 @@ function getNPCDialog(npc){
     return['You hold '+vaultSz+' unique cards.','VEGA carries '+rn2+'.','MIRA carries '+rn3+'.','Got duplicates?','Let\'s make a deal.','Fair trades — always.'];
   }
   if(npc.name==='ARK Guide'){
-    if(vaultSz<4)return['Collect all 60 cards','to win the Prize Pool!','Cards: Attack / Defense','Flee / Magic / Heal','STEAL rivals in battle.','Deeper dungeon = rarer!'];
-    if(vaultSz<12)return['The dungeon has','5 floors total.','Each floor hides','rarer cards below.','Always escape west','before cards decay!'];
-    if(vaultSz<25)return['VEGA hunts players','without mercy.','MIRA calculates','every encounter odds.','Learn their patterns','to survive longer!'];
-    if(vaultSz<45)return[''+vaultSz+'/60 cards!','The Alchemist fuses','3 same-rarity cards','into a rarer one.','Powerful shortcut','for rare gaps.'];
-    return[''+vaultSz+'/60 — so close!','Every single card','matters at this stage.','Guard your hand well.','One bad battle','could slow you down!'];
+    if(vaultSz<4)return['Long ago, the ARK','sank near this isle.','Its crew sealed power','into 60 arcane cards.','Collect all 60','to claim the legacy!'];
+    if(vaultSz<12)return['The dungeon is the','sunken ARK itself.','B1: Sunken Galleries','B3: Echo Chambers','B5: ARK Core — deepest.','Rarer cards below!'];
+    if(vaultSz<25)return['VEGA: former sea-hunter.','Relentless. Predatory.','MIRA: cold archivist.','Models every move.','They both want','what the ARK hid.'];
+    if(vaultSz<45)return[''+vaultSz+'/60 cards!','The Alchemist fuses','3 same-rarity cards','into a rarer one.','The ARK crew used','this very method.'];
+    return[''+vaultSz+'/60 — almost there!','The ARK\'s original crew','never finished this.','You just might.','Guard your hand.','The end is near.'];
   }
   if(npc.name==='Dungeon Porter'){
-    if(lastRun&&lastRun.cardsGained>0)return['Welcome back!','You look like you','scored big this run!',lastRun.cardsGained+' card'+(lastRun.cardsGained>1?'s':'')+' gained.','Ready to dive again?','Dungeon is east.'];
-    if(lastRun&&lastRun.cardsGained===0)return['Rough run?','Even empty hands','teach hard lessons.','The dungeon doesn\'t','give up its secrets','without a fight.'];
-    return['Dungeon entrance','is to the east!','Cards DECAY over time','while underground.','Escape west to return','to town safely.'];
+    if(lastRun&&lastRun.cardsGained>0)return['Back alive — good.','The ARK keeps score.',''+lastRun.cardsGained+' card'+(lastRun.cardsGained>1?'s':'')+' gained.','The crew would\'ve','been proud of that.','Ready to go again?'];
+    if(lastRun&&lastRun.cardsGained===0)return['Empty-handed again.','The ARK doesn\'t forgive','careless explorers.','But it doesn\'t','forget brave ones either.','Try a safer floor.'];
+    return['East is the dungeon —','the sunken ARK vessel.','Cards DECAY in 3.5 min.','Escape west before','they crumble to nothing.','I\'ll keep the light on.'];
   }
   if(npc.name==='Alchemist'){
     const rarityCounts={};
@@ -593,8 +593,8 @@ function getNPCAmbientLines(npc){
     if(gachaPityCount>3)return['Luck is building up!','Keep trying!'];
     return['Try your luck!','Rare cards await!','Lucky draw today?'];
   }
-  if(npc.name==='ARK Guide')return['Need a tip?','Every card counts!','Ask me anything.'];
-  if(npc.name==='Dungeon Porter')return['Ready to dive?','Cards decay below!','East leads to danger.'];
+  if(npc.name==='ARK Guide')return['The ARK waits below.','60 cards. One heir.','Ask me anything.'];
+  if(npc.name==='Dungeon Porter')return['Sunken halls await.','Cards decay fast below!','Come back in one piece.'];
   if(npc.name==='Alchemist')return['Bring me three cards.','I forge rarities.','Synthesis awaits!'];
   return[];
 }
@@ -656,25 +656,25 @@ function getSignpostMessage(mapIdx, tx_, ty){
     // はじまりのまち signposts
     if(tx_===13&&ty===5) return 'Marketplace -- buy, sell and trade cards safely here.';
     if(tx_===17&&ty===5) return 'Gacha Machine -- spend SOL for a random card draw.';
-    if(tx_===15&&ty===21) return 'Town Square -- a safe zone. No battles occur here.';
-    return 'はじまりのまち -- a safe haven between dungeon runs.';
+    if(tx_===15&&ty===21) return 'Town Square -- safe harbor. The ARK\'s shadow falls east. No battles here.';
+    return 'はじまりのまち -- the only light left on ARK Isle. Rest while you can.';
   }
   if(mapIdx===1){
-    return 'Dungeon B1 -- AI rivals and players lurk here. Cards decay!';
+    return 'SUNKEN GALLERIES (B1) -- the ARK\'s outer hull. Common & Uncommon cards drift through flooded corridors. Cards decay at 3.5 min.';
   }
   if(mapIdx===2){
-    return 'Dungeon B2 -- Uncommon cards found here. Stay sharp!';
+    return 'DROWNED ARCHIVES (B2) -- the ARK\'s library. Scholars sealed Uncommon cards here when the vessel sank. Rivals grow bolder.';
   }
   if(mapIdx===3){
-    return 'Dungeon B3 -- Rare cards await. High danger zone.';
+    return 'ECHO CHAMBERS (B3) -- the engine room. Old power still hums. Rare cards vibrate with residual force. High danger.';
   }
   if(mapIdx===4){
-    return 'Dungeon B4 -- Epic cards hide in the shadows.';
+    return 'THE DEEP VAULT (B4) -- the ARK crew\'s treasury. Epic cards sealed by hand. Very few explorers return from here.';
   }
   if(mapIdx===5){
-    return 'Dungeon B5 -- Legendary territory. Only the brave survive.';
+    return 'ARK CORE (B5) -- the heart of the sunken vessel. Legendary cards wait for the one who inherits the ARK\'s legacy. Turn back now or claim everything.';
   }
-  return 'A faded signpost. The writing is hard to read.';
+  return 'A salt-eaten signpost. Most of the writing has washed away.';
 }
 
 function checkSignpostInteraction(){
@@ -1327,7 +1327,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v151',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v152',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

@@ -687,7 +687,7 @@ for(let f=1;f<=MAX_DUNGEON_FLOORS;f++)dungeonFloors.push(generateDungeonFloor(f,
 
 // Map array: index 0 = Town, indices 1..MAX_DUNGEON_FLOORS = dungeon floors
 const maps=[MAP_PORT,...dungeonFloors];
-const mapNames=['TOWN - はじまりのまち',...Array.from({length:MAX_DUNGEON_FLOORS},(_,i)=>'DUNGEON FLOOR '+(i+1))];
+const mapNames=['TOWN - はじまりのまち','SUNKEN GALLERIES — B1','DROWNED ARCHIVES — B2','ECHO CHAMBERS — B3','THE DEEP VAULT — B4','ARK CORE — B5'];
 const mapColors=['#3060b0','#302848','#403058','#503060','#403850','#503848'];
 let currentMap=0;
 
