@@ -1256,7 +1256,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v132',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v133',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -3237,6 +3237,58 @@ function drawResolvingPhase(){
     // === EFFECT ANIMATIONS ===
     const playerCX=160,playerCY=H-130;
     const oppCX=W-200,oppCY=130;
+    // v133: Round clash reveal — both action panels slide in from sides, collide, burst
+    if(currentIdx===0&&evT<40){
+      const aNames=['DRAW','STEAL','BARRIER','SCOUT','CARD'];
+      const aColors=['#2a6080','#a03030','#3060b0','#308030','#806030'];
+      const pAct=Math.min(bpAction,4),rAct=Math.min(bpRivalActions[0],3);
+      const pCol=aColors[pAct],rCol=aColors[rAct];
+      const clashCX=W/2,clashCY=220;
+      const pW=88,pH=44;
+      // Ease-out slide: 0-13 in, 14-26 hold, 27-39 fade
+      const rawT=Math.min(1,evT/13);
+      const eo=t=>1-(1-t)*(1-t);
+      const slide=eo(rawT);
+      const fadeA=evT>26?Math.max(0,1-(evT-26)/14):1;
+      // Player panel: slides from left side (80) to clashCX-pW-8
+      const pEndX=clashCX-pW-8;
+      const pX=80+(pEndX-80)*slide;
+      // Rival panel: slides from right side (W-80-pW) to clashCX+8
+      const rEndX=clashCX+8;
+      const rX=(W-80-pW)+(rEndX-(W-80-pW))*slide;
+      g.globalAlpha=fadeA;
+      // Player action panel
+      bx(pX,clashCY,pW,pH,'rgba(8,8,20,.8)');
+      bx(pX,clashCY,pW,2,pCol);bx(pX,clashCY+pH-2,pW,2,pCol);
+      bx(pX,clashCY,2,pH,pCol);bx(pX+pW-2,clashCY,2,pH,pCol);
+      txShadow('YOU',pX+6,clashCY+13,7,'rgba(200,200,200,.65)','rgba(0,0,0,.3)');
+      txShadow(aNames[pAct],pX+6,clashCY+30,12,pCol,'rgba(0,0,0,.6)');
+      // Rival action panel
+      bx(rX,clashCY,pW,pH,'rgba(8,8,20,.8)');
+      bx(rX,clashCY,pW,2,rCol);bx(rX,clashCY+pH-2,pW,2,rCol);
+      bx(rX,clashCY,2,pH,rCol);bx(rX+pW-2,clashCY,2,pH,rCol);
+      txShadow(pl[1].n,rX+6,clashCY+13,7,'rgba(200,200,200,.65)','rgba(0,0,0,.3)');
+      txShadow(aNames[rAct],rX+6,clashCY+30,12,rCol,'rgba(0,0,0,.6)');
+      // "VS" label, appears as panels close in (slide>0.7)
+      if(slide>0.7){
+        const vsA=Math.min(1,(slide-0.7)/0.3)*fadeA;
+        g.globalAlpha=vsA;
+        txShadow('VS',clashCX-12,clashCY-18,14,'#fff8d0','rgba(0,0,0,.75)');
+      }
+      // Burst sparks at collision moment (evT 13-24)
+      if(evT>=13&&evT<24){
+        const bt=evT-13;
+        const ba=Math.max(0,1-bt/11)*fadeA;
+        for(let i=0;i<10;i++){
+          const ang=i*(Math.PI*2/10)+bt*0.12;
+          const dist=bt*7;
+          g.globalAlpha=ba*(0.5+0.5*Math.sin(ang+bt*0.4));
+          bx(clashCX+Math.cos(ang)*dist-1,clashCY+pH/2+Math.sin(ang)*dist*0.45-1,3,3,'#ffe060');
+        }
+        if(evT===13){sfxSlash();}
+      }
+      g.globalAlpha=1;
+    }
     if(ev.effect==='slash'&&evT<25){
       const tgtCX=ev.target===0?playerCX:oppCX;
       const tgtCY=ev.target===0?playerCY:oppCY;
