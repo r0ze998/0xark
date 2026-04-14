@@ -79,9 +79,10 @@ function update(){
     });
   }
 
-  // x402 server check every ~5 seconds (300 frames at 60fps)
+  // x402 server check every 30s; state push every 2min to keep broker in sync
   x402CheckTimer++;
-  if(x402CheckTimer>=1800){x402CheckTimer=0;x402CheckServer();} // check every 30s, not 5s
+  if(x402CheckTimer>=1800){x402CheckTimer=0;x402CheckServer();}
+  if(x402Available&&fr%7200===0){x402PushState();} // push every ~2 min at 60fps
 
   // Multiplayer ping every 5 seconds
   if(mp.connected&&fr%300===0)mpPing();

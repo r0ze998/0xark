@@ -3868,6 +3868,7 @@ function drawResolvingPhase(){
       lg.push('R'+rd+': A wandering spirit gave you '+CD[pityCard-1].n+'!');
     }
     battlePhase='result';bpFrame=fr;bpShakeTarget=-1;bpShakeTimer=0;
+    if(x402Available)x402PushState(); // sync broker with post-battle card state
   }
 }
 
