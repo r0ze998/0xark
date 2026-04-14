@@ -1146,23 +1146,43 @@ function drawNPCDialog(){
 // TITLE SCREEN
 // ═══════════════════════════════════════
 function dTitle(){
-  bx(0,0,W,H,'#0c0c18');
-  for(let i=0;i<120;i++){const a=.18-i*.0015;bx(0,i,W,1,`rgba(48,96,176,${Math.max(0,a)})`);}
+  bx(0,0,W,H,'#080c1a');
+  // Deep ocean gradient from top
+  for(let i=0;i<200;i++){const a=.22-i*.0011;bx(0,i,W,1,`rgba(28,56,140,${Math.max(0,a)})`);}
+  // Underwater caustic light rays — slow diagonal sweeping beams
+  for(let b=0;b<6;b++){
+    const bx_=((b*120+fr*0.3)%640)-60;
+    const ba=0.04+0.03*Math.sin(fr*0.02+b);
+    g.globalAlpha=ba;
+    g.fillStyle='rgba(80,140,220,1)';
+    g.beginPath();g.moveTo(bx_,0);g.lineTo(bx_+30,0);g.lineTo(bx_+30+80,H*0.55);g.lineTo(bx_+80,H*0.55);g.closePath();g.fill();
+    g.globalAlpha=1;
+  }
+  // Stars / particles
   for(let i=0;i<80;i++){
     const sx=(i*47+13)%W,sy=(i*31+7)%320;
     const a=Math.sin(fr*.03+i*1.7)*.35+.5;
-    bx(sx,sy,i%7===0?2:1,i%7===0?2:1,`rgba(255,255,255,${a*.4})`);
+    bx(sx,sy,i%7===0?2:1,i%7===0?2:1,`rgba(255,255,255,${a*.35})`);
+  }
+  // Rising bubbles (3 slow bubbles)
+  for(let b=0;b<3;b++){
+    const bsy=H-((fr*0.4+b*200)%480);
+    const bsx=100+b*180+Math.sin(fr*0.03+b)*15;
+    const ba=Math.min(1,Math.min(bsy/120,(H-bsy)/60)*0.5);
+    g.globalAlpha=ba;g.strokeStyle='rgba(120,180,255,0.6)';g.lineWidth=1;
+    g.beginPath();g.arc(bsx,bsy,2+b,0,Math.PI*2);g.stroke();
+    g.globalAlpha=1;
   }
   if(fr%200<15){
     const sx=150+fr%200*10,sy=40+fr%200*2;
     for(let t=0;t<6;t++)bx(sx-t*4,sy-t,2,1,`rgba(255,255,255,${.4-t*.06})`);
   }
 
-  tx('0xARK',W/2-96+1,191,32,'rgba(0,0,0,.4)');
+  tx('0xARK',W/2-96+1,191,32,'rgba(0,0,0,.45)');
   tx('0xARK',W/2-96,190,32,'#f8f0e0');
-  if(Math.sin(fr*.02)>.3)tx('0xARK',W/2-96,190,32,'rgba(248,240,224,.15)');
-  tx('EVERYTHING IS SECRET',W/2-104,226,10,'#8888a0');
-  tx('Deception is profitable.',W/2-88,242,8,'#a07848');
+  if(Math.sin(fr*.02)>.3)tx('0xARK',W/2-96,190,32,'rgba(248,240,224,.12)');
+  tx('60 CARDS. ONE HEIR. FIRST TO WIN TAKES ALL.',W/2-184,226,7,'#7080a0');
+  tx('The ARK sank here. Its power waits.',W/2-128,240,7,'#a07848');
 
   // SEASON 1 badge
   const s1Blink=Math.sin(fr*0.06)*0.15+0.85;
@@ -1338,7 +1358,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v153',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v154',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

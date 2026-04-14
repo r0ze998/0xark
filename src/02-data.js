@@ -413,6 +413,21 @@ function drawCardCharacter(x,y,cardId,scale,time){
 // Draw card frame with character sprite inside
 function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
   const cr=CD[cardIdx];if(!cr)return;
+  // Rarity glow border (animated, drawn under frame so it peeks out)
+  if(cr.r>=3){
+    const rarGlowCols=['','','','#9040d0','#d09020','#f0d040'];
+    const rc=rarGlowCols[cr.r]||'#f0c830';
+    const glA=0.25+0.2*Math.sin((typeof fr!=='undefined'?fr:0)*0.08);
+    g.globalAlpha=glA;
+    const glw=cr.r>=5?3:2;
+    g.strokeStyle=rc;g.lineWidth=glw;g.strokeRect(cx_-glw/2,cy_-glw/2,cw+glw,ch+glw);
+    // Second outer ring for Legendary
+    if(cr.r>=5){
+      const glA2=0.15+0.15*Math.sin((typeof fr!=='undefined'?fr:0)*0.05+1);
+      g.globalAlpha=glA2;g.lineWidth=1;g.strokeRect(cx_-4,cy_-4,cw+8,ch+8);
+    }
+    g.globalAlpha=1;
+  }
   // Outer border
   bx(cx_,cy_,cw,ch,cr.d);
   // Inner gradient bg
@@ -431,6 +446,12 @@ function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
   // Small type icon in top-left
   const icons=['\u26E8','\u263D','\u2632','\u26A1','\u25C9'];
   tx(icons[cardIdx]||'',cx_+5,cy_+12,Math.max(4,Math.floor(6*charScale/1.5)),cr.h||'#fff');
+  // Rarity corner sparkles for Legendary
+  if(cr.r>=5){
+    const sp=(typeof fr!=='undefined'?fr:0)*0.12;
+    if(Math.sin(sp)>0.6){bx(cx_-1,cy_-1,2,2,'#ffffff');bx(cx_+cw-1,cy_-1,2,2,'#ffffff');}
+    if(Math.sin(sp+1)>0.6){bx(cx_-1,cy_+ch-1,2,2,'#ffffff');bx(cx_+cw-1,cy_+ch-1,2,2,'#ffffff');}
+  }
   // Card name at bottom
   if(showName!==false){
     bx(cx_+2,cy_+ch-Math.floor(ch*0.25),cw-4,Math.floor(ch*0.25)-2,'rgba(0,0,0,0.3)');
