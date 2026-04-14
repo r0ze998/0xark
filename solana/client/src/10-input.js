@@ -394,12 +394,12 @@ document.addEventListener('keydown',e=>{
         const discarded=pl[0].cd[slot];
         if(discardPendingCard>0){
           // Remove old card, place pending card in its slot
-          pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
+          pl[0].cd[slot]=0;cardTimers[slot]=0;decayWarn[slot]=0;syncCardCount(0);
           // Ensure vault updated (idempotent — addCardToPlayer already did this in most paths)
           if(pl[0].vault&&!pl[0].vault.has(discardPendingCard)){
             pl[0].vault.add(discardPendingCard);sfxUniqueCardSting();triggerProgressPulse();stats.cardsCollected++;
           }
-          pl[0].cd[slot]=discardPendingCard;cardTimers[slot]=inDungeon?Date.now():0;syncCardCount(0);
+          pl[0].cd[slot]=discardPendingCard;cardTimers[slot]=inDungeon?Date.now():0;decayWarn[slot]=0;syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+', got '+CD[discardPendingCard-1].n+'!');
           discardActive=false;
           if(discardSource==='wild'||discardSource==='menu'){startCardAcquisition(discardPendingCard-1);}
@@ -407,7 +407,7 @@ document.addEventListener('keydown',e=>{
           checkWinAndTransition(500);
         }else{
           // Menu discard: just remove the card
-          pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
+          pl[0].cd[slot]=0;cardTimers[slot]=0;decayWarn[slot]=0;syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+'!');
           discardActive=false;discardPendingCard=-1;discardSource='';
         }
