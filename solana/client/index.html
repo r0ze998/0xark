@@ -2273,17 +2273,27 @@ function drawCardProgressBar(){
     bx(barX,barY,Math.floor(barW*pct),barH,fillColor);
     bx(barX,barY,Math.floor(barW*pct),Math.floor(barH/2),'rgba(255,255,255,.15)');
   }
-  // Milestone markers at 10, 20, 30, 40, 50
+  // Milestone markers at 10, 20, 30, 40, 50 with labels
+  const mileLabels=[10,20,30,40,50];
   for(let m=1;m<=5;m++){
     const mx=barX+Math.floor(barW*m*10/60);
-    bx(mx,barY,1,barH,'#1a1a30');
+    const reached=vaultSize>=m*10;
+    bx(mx,barY,1,barH,reached?'rgba(255,255,255,.3)':'#1a1a30');
+    // Tick label below bar
+    const mlbl=mileLabels[m-1]+'';
+    const mlblA=reached?0.8:0.35;
+    g.globalAlpha=mlblA;
+    tx(mlbl,mx-mlbl.length*2,barY+barH+6,4,reached?fillColor:'#888898');
+    g.globalAlpha=1;
   }
   // Text
   const countLabel=vaultSize+'/60';
   txShadow(countLabel,barX+barW+8,barY+9,7,vaultSize>=60?'#40d040':'#c8c0a0','rgba(0,0,0,.4)');
-  // Dungeon floor indicator
+  // Dungeon floor indicator — show floor name abbreviation
   if(inDungeon){
-    txShadow('B'+currentFloor,barX-30,barY+9,7,'#d8b028','rgba(0,0,0,.4)');
+    const floorAbbr=['','SG','DA','EC','DV','AC'];
+    const floorLabel=(floorAbbr[currentFloor]||'B'+currentFloor);
+    txShadow(floorLabel,barX-30,barY+9,7,'#d8b028','rgba(0,0,0,.4)');
   }
   // Pulse glow when new card added
   if(progressBarPulseTimer>0){
@@ -8458,10 +8468,13 @@ function dMap(){
   const m=getMap();
   const tile=m[pl[0].y]?.[pl[0].x];
   let locName=mapNames[currentMap];
-  if(tile===2)locName+=' - PATH';
-  else if(tile===11)locName+=' - GRASS';
-  else if(tile===10)locName+=' - DOCK';
-  tx(locName,560,hudY+52,6,'#686068');
+  if(!inDungeon){
+    if(tile===2)locName+=' — PATH';
+    else if(tile===11)locName+=' — GRASS';
+    else if(tile===10)locName+=' — DOCK';
+  }
+  const locCol=inDungeon?'#a09060':'#686068';
+  tx(locName,560,hudY+52,inDungeon?7:6,locCol);
 
   // Exploration percentage
   const expPct=fogExploredPercent(currentMap);
@@ -8486,8 +8499,8 @@ function dMap(){
     const wCol=townWeather==='rain'?'#80a0d0':townWeather==='fog'?'#a0a8b0':'#f0c830';
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
-  // Version label in HUD (bottom-right corner)
-  txShadow('v138',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  // Version label in HUD (bottom-right corner) — matches current build
+  txShadow('v154',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -8961,9 +8974,17 @@ function drawOpponentInfoBox(){
   txShadow(rival.n,bx_+10,by_+20,12,'#383830','rgba(200,180,140,.3)');
   txShadow('CARDS',bx_+120,by_+20,7,'#887858','rgba(0,0,0,.15)');
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
-  txShadow(rival.cc+'/5',bx_+202,by_+34,8,'#383830','rgba(0,0,0,.15)');
-  // Near-win warning
-  if(hasUniqueCards(1).size>=4){const wFlash=Math.floor(fr/12)%2===0;if(wFlash)txShadow('! DANGER',bx_+10,by_+34,7,'#c04040','rgba(0,0,0,.2)');}
+  const r1Cards=rival.cd.filter(c=>c>0).length;
+  const r1DangerColor=r1Cards>=4?'#d04040':r1Cards>=3?'#d08030':'#383830';
+  txShadow(rival.cc+'/5',bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.15)');
+  // Near-win warning — red background pill + pulsing text
+  if(r1Cards>=4){
+    const wA=0.5+Math.sin(fr*0.18)*0.5;
+    g.globalAlpha=wA*0.85;
+    bx(bx_+6,by_+27,76,13,'#c04040');
+    g.globalAlpha=1;
+    txShadow(r1Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,by_+37,6,'#ffffff','rgba(0,0,0,.5)');
+  }
   // Tell for Rival 1 (during select only)
   if(showTells&&bpRivalTells[0]){
     const tellFade=Math.min(1,(fr-bpFrame)/12);
@@ -8982,9 +9003,17 @@ function drawOpponentInfoBox(){
   txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.15)');
   if(r2alive){
     drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
-    txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,'#686060','rgba(0,0,0,.1)');
+    const r2Cards=hunter.cd.filter(c=>c>0).length;
+    const r2DangerColor=r2Cards>=4?'#d04040':r2Cards>=3?'#d08030':'#686060';
+    txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.1)');
     // Near-win warning for MIRA
-    if(hasUniqueCards(2).size>=4){const wFlash2=Math.floor(fr/12)%2===0;if(wFlash2)txShadow('! DANGER',bx_+10,sepY+28,6,'#c04040','rgba(0,0,0,.2)');}
+    if(r2Cards>=4){
+      const wA2=0.5+Math.sin(fr*0.18+1)*0.5;
+      g.globalAlpha=wA2*0.75;
+      bx(bx_+6,sepY+19,70,12,'#c04040');
+      g.globalAlpha=1;
+      txShadow(r2Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,sepY+28,6,'#ffffff','rgba(0,0,0,.5)');
+    }
     // Tell for Rival 2 (during select only)
     if(showTells&&bpRivalTells[1]){
       const tellFade2=Math.min(1,(fr-bpFrame)/12);
