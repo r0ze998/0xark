@@ -974,6 +974,39 @@ document.addEventListener('keydown',e=>{
   if(sc==='victory'){
     const waitTime=gameOverTimesUp?140:170;
     if((fr-victoryFrame)>waitTime){
+      // C — claim prize (wallet connected required)
+      if(e.code==='KeyC'&&playerHasAllSixty()&&walletConnected&&!victoryClaimed){
+        sfxConfirm();
+        // Simulate claim: generate fake tx sig, log it
+        const sig=generateFakeTxSig()+'...';
+        victoryClaimedTx=sig;
+        victoryClaimed=true;
+        lg.push('[ON-CHAIN] Prize claimed: '+stakePotAmount.toFixed(2)+' SOL → TX: '+sig);
+        screenShake(2,6);
+        return;
+      }
+      // M — mint all collected cards as NFTs
+      if(e.code==='KeyM'&&playerHasAllSixty()&&!victoryMinted&&!victoryMinting){
+        sfxSelect();
+        victoryMinting=true;victoryMintProgress=0;
+        const allCards=[...pl[0].vault];
+        let idx=0;
+        function mintNext(){
+          if(idx>=allCards.length){
+            victoryMinted=true;victoryMinting=false;
+            sfxVictory();
+            lg.push('[ON-CHAIN] Minted '+allCards.length+' card NFTs to wallet.');
+            return;
+          }
+          const cardId=allCards[idx++];
+          const cr=CD[cardId-1];
+          victoryMintProgress=idx;
+          lg.push('[MINT] '+cr.n+' ('+RARITY_LABEL[cr.r]+') → TX: '+generateFakeTxSig());
+          setTimeout(mintNext,60); // ~60ms per card = ~3.6s for 60 cards
+        }
+        mintNext();
+        return;
+      }
       if(e.code==='KeyZ'){
         // Play again - reset all state
         sfxConfirm();

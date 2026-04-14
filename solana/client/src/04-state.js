@@ -240,6 +240,7 @@ const cardAcqParticles=[];
 
 // ── Victory screen ──
 let victoryFrame=0,victoryCardsShown=0;
+let victoryClaimed=false,victoryClaimedTx='',victoryMinted=false,victoryMintProgress=0,victoryMinting=false;
 
 // ── Footstep counter ──
 let stepCounter=0;
@@ -583,6 +584,7 @@ function resetNewFeatureState(){
   streakCount=0;streakDisplayTimer=0;streakLostTimer=0;
   gachaPityCount=0;gachaPityTriggered=false; // v150: reset pity counter per game
   milestonesReached.clear(); // v150: allow milestone toasts to retrigger in new game
+  victoryClaimed=false;victoryClaimedTx='';victoryMinted=false;victoryMintProgress=0;victoryMinting=false; // v151
   for(let i=0;i<FOG_MAP_COUNT;i++){areaDanger[i]=0;areaDangerStayTimer[i]=0;}
   rivalBgTimer[0]=1800;rivalBgTimer[1]=2400; // stagger initial timers (30s/40s)
   qteActive=false;qteKeyPressed=false;
