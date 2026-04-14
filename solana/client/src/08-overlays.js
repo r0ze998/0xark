@@ -383,12 +383,12 @@ function drawIntroTutorial(){
 // AREA CARD INFO
 // ═══════════════════════════════════════
 const AREA_CARD_DESC=[
-  'Safe zone — visit shops & trade cards',  // Town
-  'Common & Uncommon cards roam here',     // Floor 1
-  'Uncommon cards drop from enemies',       // Floor 2
-  'Rare cards guard these corridors',       // Floor 3
-  'Epic cards dwell in the dark',           // Floor 4
-  'Legendary cards await the brave',        // Floor 5
+  'The only safe harbor left on ARK Isle',            // Town
+  'Common & Uncommon cards haunt the flooded halls',  // B1 Sunken Galleries
+  'Drowned scholars left Uncommon cards behind',      // B2 Drowned Archives
+  'Ancient engines hum — Rare cards pulse within',    // B3 Echo Chambers
+  'Epic cards sealed here by the ARK\'s last crew',   // B4 The Deep Vault
+  'The ARK\'s heart. Legendary cards await an heir',  // B5 ARK Core
 ];
 // Card area location info (indexed by card rarity)
 const CARD_AREA_INFO=CD.map(card=>{
