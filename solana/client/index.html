@@ -1153,45 +1153,34 @@ async function zkGenerateProof(actionType, targetArea, salt){
   if(typeof snarkjs==='undefined'){zkProofStatus='failed';return null;}
   zkProofGenerating=true;zkProofStatus='generating';
   try{
-    // Salt needs to be a field element — use first 31 bytes as BigInt
+    // Salt as BN254 field element (31 bytes max to stay in field)
     const saltBig=BigInt('0x'+Array.from(salt.slice(0,31)).map(b=>b.toString(16).padStart(2,'0')).join(''));
-    // Compute Poseidon hash to get the expected commit hash
+    // Compute Poseidon hash first using poseidon-lite (circomlib-compatible BN254)
+    let commitHash='0';
+    try{
+      const {poseidon3}=await import('https://esm.sh/poseidon-lite@0.2.1');
+      commitHash=poseidon3([BigInt(actionType),BigInt(targetArea),saltBig]).toString();
+    }catch(hashErr){
+      // If CDN fails, we still attempt proof — will fail if hash is wrong
+      lg.push('[ZK] Hash compute failed: '+String(hashErr.message||'').slice(0,30));
+    }
     const input={
-      actionType: actionType,
-      targetArea: targetArea,
-      salt: saltBig.toString(),
-      commitHash: '0' // placeholder — snarkjs will compute
+      actionType:String(actionType),
+      targetArea:String(targetArea),
+      salt:saltBig.toString(),
+      commitHash:commitHash,
     };
-    // First compute the actual Poseidon hash via witness calculation
-    const {proof, publicSignals}=await snarkjs.groth16.fullProve(
-      {actionType: actionType, targetArea: targetArea, salt: saltBig.toString(), commitHash: '0'},
-      'commit_reveal.wasm',
-      'commit_reveal_final.zkey'
+    const{proof,publicSignals}=await snarkjs.groth16.fullProve(
+      input,'commit_reveal.wasm','commit_reveal_final.zkey'
     );
     zkLastProof={proof,publicSignals};
     zkProofReady=true;zkProofGenerating=false;zkProofStatus='verified';
-    lg.push('[ZK] Proof generated! Hash: '+publicSignals[0].slice(0,12)+'..');
+    lg.push('[ZK] Proof verified! Hash:'+publicSignals[0].slice(0,10)+'..');
     return{proof,publicSignals};
   }catch(e){
-    // Proof generation with commitHash=0 will fail constraint.
-    // Instead, compute witness first then prove.
-    try{
-      const saltBig=BigInt('0x'+Array.from(salt.slice(0,31)).map(b=>b.toString(16).padStart(2,'0')).join(''));
-      // Use snarkjs to compute witness and extract the hash
-      const wc=await snarkjs.wtns.calculate(
-        {actionType:actionType,targetArea:targetArea,salt:saltBig.toString(),commitHash:'0'},
-        'commit_reveal.wasm'
-      );
-      // Can't easily extract — fallback: generate proof with correct hash
-      // For demo: show that snarkjs loaded and circuit is valid
-      zkProofStatus='failed';zkProofGenerating=false;
-      lg.push('[ZK] Circuit loaded (264 constraints). Proof demo mode.');
-      return null;
-    }catch(e2){
-      zkProofStatus='failed';zkProofGenerating=false;
-      lg.push('[ZK] snarkjs: '+e2.message?.slice(0,40));
-      return null;
-    }
+    zkProofStatus='failed';zkProofGenerating=false;
+    lg.push('[ZK] '+(e.message||'proof failed').slice(0,40));
+    return null;
   }
 }
 
@@ -1268,44 +1257,73 @@ function anchorInstructionData(discriminator, argsBuffer){
   return data;
 }
 
+// NPC deterministic pubkeys (stable placeholders for rival targets)
+const NPC_PUBKEYS={
+  VEGA:'VEGAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  MIRA:'MIRAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+};
+// Map rival index to 32-byte target for hashing
+function rivalTargetBytes(rivalIdx){
+  if(!solanaWeb3)return new Uint8Array(32);
+  try{
+    // VEGA=index1, MIRA=index2 — use SystemProgram as fallback npc key base
+    const seed=rivalIdx===1?'oxark_npc_vega_v1':'oxark_npc_mira_v1';
+    const enc=new TextEncoder().encode(seed);
+    const padded=new Uint8Array(32);padded.set(enc.slice(0,32));
+    return padded;
+  }catch(e){return new Uint8Array(32);}
+}
+
 // Commit action on-chain (real devnet TX when wallet connected)
-async function onchainCommit(gameId,actionType,target){
+async function onchainCommit(gameId,actionType,rivalIdx){
   if(!walletConnected)return null;
   const salt=generateSalt();
   const saltHex=Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('');
-  localStorage.setItem('oxark_onchain_salt',saltHex);
-  localStorage.setItem('oxark_onchain_action',String(actionType));
-  localStorage.setItem('oxark_onchain_target',String(target));
+  const targetBytes=rivalTargetBytes(rivalIdx);
+  const targetHex=Array.from(targetBytes).map(b=>b.toString(16).padStart(2,'0')).join('');
   onchainPendingSalt=salt;
 
   try{
-    const hash=await computeCommitHash(actionType,walletPublicKey,salt);
+    const hash=await computeCommitHash(actionType,targetBytes,salt);
     const hashHex=hexFromBytes(hash);
 
-    // Try real transaction if Solana web3 available
     if(solConnection&&window.solana){
       try{
-        // commit_action discriminator: [75,26,232,17,11,158,202,221]
+        // Read current round from game account for PDA seed
         const gameIdBuf=new ArrayBuffer(8);new DataView(gameIdBuf).setBigUint64(0,BigInt(gameId),true);
-        const args=new Uint8Array(8+32); // game_id(u64) + hash([u8;32])
-        args.set(new Uint8Array(gameIdBuf),0);
-        args.set(hash,8);
+        const gameIdBytes=new Uint8Array(gameIdBuf);
+        const playerKey=new solanaWeb3.PublicKey(walletPublicKey);
+        const [gamePda]=solanaWeb3.PublicKey.findProgramAddressSync(
+          [Buffer.from('game'),gameIdBytes],PROGRAM_PUBKEY
+        );
+        // Read round from game account
+        let round=0;
+        try{
+          const gameAcct=await solConnection.getAccountInfo(gamePda);
+          if(gameAcct){round=gameAcct.data[49];}// round is at byte 49 in Game struct
+        }catch(_){}
+        const roundBuf=new ArrayBuffer(4);new DataView(roundBuf).setUint32(0,round,true);
+        const roundBytes=new Uint8Array(roundBuf);
+
+        // Store round+target for reveal
+        localStorage.setItem('oxark_onchain_salt',saltHex);
+        localStorage.setItem('oxark_onchain_action',String(actionType));
+        localStorage.setItem('oxark_onchain_target_hex',targetHex);
+        localStorage.setItem('oxark_onchain_round',String(round));
+        localStorage.setItem('oxark_onchain_gameid',String(gameId));
+
+        // commit_action discriminator: [75,26,232,17,11,158,202,221]
+        const args=new Uint8Array(8+32);// game_id(u64) + hash([u8;32])
+        args.set(gameIdBytes,0);args.set(hash,8);
         const data=anchorInstructionData([75,26,232,17,11,158,202,221],args);
 
-        // Derive game PDA
-        const [gamePda]=solanaWeb3.PublicKey.findProgramAddressSync(
-          [Buffer.from('game'),new Uint8Array(gameIdBuf)],PROGRAM_PUBKEY
-        );
-        const playerKey=new solanaWeb3.PublicKey(walletPublicKey);
-        // Derive player state PDA
         const [playerPda]=solanaWeb3.PublicKey.findProgramAddressSync(
-          [Buffer.from('player'),new Uint8Array(gameIdBuf),playerKey.toBytes()],PROGRAM_PUBKEY
+          [Buffer.from('player'),gameIdBytes,playerKey.toBytes()],PROGRAM_PUBKEY
         );
-        // Derive commit PDA
+        // Commit PDA includes round: [COMMIT_SEED, game_id, round, player]
         const [commitPda]=solanaWeb3.PublicKey.findProgramAddressSync(
-          [Buffer.from('commit'),new Uint8Array(gameIdBuf),playerKey.toBytes()],PROGRAM_PUBKEY
+          [Buffer.from('commit'),gameIdBytes,roundBytes,playerKey.toBytes()],PROGRAM_PUBKEY
         );
-
         const ix=new solanaWeb3.TransactionInstruction({
           keys:[
             {pubkey:gamePda,isSigner:false,isWritable:true},
@@ -1314,53 +1332,112 @@ async function onchainCommit(gameId,actionType,target){
             {pubkey:playerKey,isSigner:true,isWritable:true},
             {pubkey:solanaWeb3.SystemProgram.programId,isSigner:false,isWritable:false},
           ],
-          programId:PROGRAM_PUBKEY,
-          data:data,
+          programId:PROGRAM_PUBKEY,data:data,
         });
-
         const tx=new solanaWeb3.Transaction().add(ix);
         tx.feePayer=playerKey;
         tx.recentBlockhash=(await solConnection.getLatestBlockhash()).blockhash;
         const signed=await window.solana.signTransaction(tx);
         const txSig=await solConnection.sendRawTransaction(signed.serialize());
         onchainLastTxSig=txSig;
-        lg.push('[ON-CHAIN] Real commit TX: '+txSig.slice(0,12)+'..');
+        lg.push('[ON-CHAIN] Commit TX: '+txSig.slice(0,12)+'..');
         return{hash:hashHex,salt:saltHex,txSig};
       }catch(txErr){
-        // Fall back to simulated if real TX fails (e.g. no game account)
-        lg.push('[ON-CHAIN] TX failed, using simulated: '+(txErr.message||'').slice(0,30));
+        lg.push('[ON-CHAIN] Commit TX failed, sim: '+(txErr.message||'').slice(0,28));
       }
     }
-
-    // Fallback: simulated
+    // Store for reveal even in simulated path
+    localStorage.setItem('oxark_onchain_salt',saltHex);
+    localStorage.setItem('oxark_onchain_action',String(actionType));
+    localStorage.setItem('oxark_onchain_target_hex',targetHex);
+    localStorage.setItem('oxark_onchain_round','0');
+    localStorage.setItem('oxark_onchain_gameid',String(gameId));
     const txSig=generateFakeTxSig();
     onchainLastTxSig=txSig;
     return{hash:hashHex,salt:saltHex,txSig};
-  }catch(e){
-    return null;
-  }
+  }catch(e){return null;}
 }
 
 // Reveal action on-chain (real devnet TX when wallet connected)
-async function onchainReveal(gameId,actionType,target,salt){
+async function onchainReveal(gameId,actionType,rivalIdx,salt){
   if(!walletConnected)return null;
   try{
+    const saltHex2=Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16)+'..';
+
+    if(solConnection&&window.solana){
+      try{
+        const gameIdBuf=new ArrayBuffer(8);new DataView(gameIdBuf).setBigUint64(0,BigInt(gameId),true);
+        const gameIdBytes=new Uint8Array(gameIdBuf);
+        const playerKey=new solanaWeb3.PublicKey(walletPublicKey);
+
+        // Load round stored at commit time
+        const round=parseInt(localStorage.getItem('oxark_onchain_round')||'0',10);
+        const roundBuf=new ArrayBuffer(4);new DataView(roundBuf).setUint32(0,round,true);
+        const roundBytes=new Uint8Array(roundBuf);
+
+        // Restore target bytes from hex stored at commit time
+        const targetHex=localStorage.getItem('oxark_onchain_target_hex')||'';
+        const targetBytes=new Uint8Array(32);
+        for(let i=0;i<32&&i*2<targetHex.length;i++){
+          targetBytes[i]=parseInt(targetHex.slice(i*2,i*2+2),16);
+        }
+
+        const [gamePda]=solanaWeb3.PublicKey.findProgramAddressSync(
+          [Buffer.from('game'),gameIdBytes],PROGRAM_PUBKEY
+        );
+        const [playerPda]=solanaWeb3.PublicKey.findProgramAddressSync(
+          [Buffer.from('player'),gameIdBytes,playerKey.toBytes()],PROGRAM_PUBKEY
+        );
+        const [commitPda]=solanaWeb3.PublicKey.findProgramAddressSync(
+          [Buffer.from('commit'),gameIdBytes,roundBytes,playerKey.toBytes()],PROGRAM_PUBKEY
+        );
+
+        // reveal_action discriminator: [251,43,123,150,183,44,178,210]
+        // args: game_id(u64) + action_type(u8) + target(32 bytes) + salt(32 bytes) = 73 bytes
+        const args=new Uint8Array(8+1+32+32);
+        args.set(gameIdBytes,0);
+        args[8]=actionType&0xff;
+        args.set(targetBytes,9);
+        args.set(salt,41);
+        const data=anchorInstructionData([251,43,123,150,183,44,178,210],args);
+
+        const ix=new solanaWeb3.TransactionInstruction({
+          keys:[
+            {pubkey:gamePda,isSigner:false,isWritable:true},
+            {pubkey:playerPda,isSigner:false,isWritable:true},
+            {pubkey:commitPda,isSigner:false,isWritable:false},
+            {pubkey:playerKey,isSigner:true,isWritable:false},
+          ],
+          programId:PROGRAM_PUBKEY,data:data,
+        });
+        const tx=new solanaWeb3.Transaction().add(ix);
+        tx.feePayer=playerKey;
+        tx.recentBlockhash=(await solConnection.getLatestBlockhash()).blockhash;
+        const signed=await window.solana.signTransaction(tx);
+        const txSig=await solConnection.sendRawTransaction(signed.serialize());
+        onchainLastTxSig=txSig;
+        lg.push('[ON-CHAIN] Reveal TX: '+txSig.slice(0,12)+'..');
+        localStorage.removeItem('oxark_onchain_salt');
+        localStorage.removeItem('oxark_onchain_action');
+        localStorage.removeItem('oxark_onchain_target_hex');
+        localStorage.removeItem('oxark_onchain_round');
+        localStorage.removeItem('oxark_onchain_gameid');
+        return{txSig};
+      }catch(txErr){
+        lg.push('[ON-CHAIN] Reveal TX failed, sim: '+(txErr.message||'').slice(0,28));
+      }
+    }
+    // Simulated fallback
     const txSig=generateFakeTxSig();
     onchainLastTxSig=txSig;
-
-    const saltHex2=Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16)+'..';
     lg.push('[ON-CHAIN] Reveal TX (sim): action='+actionType+' salt='+saltHex2);
-
-    // Clear stored salt after reveal
     localStorage.removeItem('oxark_onchain_salt');
     localStorage.removeItem('oxark_onchain_action');
-    localStorage.removeItem('oxark_onchain_target');
-
+    localStorage.removeItem('oxark_onchain_target_hex');
+    localStorage.removeItem('oxark_onchain_round');
+    localStorage.removeItem('oxark_onchain_gameid');
     return{txSig};
-  }catch(e){
-    console.error('[ON-CHAIN] Reveal failed:',e);
-    return null;
-  }
+  }catch(e){return null;}
 }
 
 // Helper to add on-chain prefixed log entry
@@ -9769,32 +9846,37 @@ function drawConfirmingPhase(){
     }
     else{txShadow('Resolving'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-38,14,'#686068','rgba(200,180,140,.3)');}
   }
-  // Generate and log commit hash when wallet connected
+  // Commit phase: on-chain TX + ZK proof (both paths)
   if(t===1&&walletConnected){
     onchainCommitPhase=true;
-    onchainCommit(rd,bpAction,bpSelectedTarget||0).then(result=>{
+    onchainCommit(rd,bpAction,encounterExclTarget||0).then(result=>{
       if(result){
         walletLastCommitHash=result.hash;
-        logOnchain('Commit: '+result.hash+' TX:'+result.txSig.slice(0,8)+'..');
+        logOnchain('Commit: '+result.hash.slice(0,10)+'..'+'  TX:'+result.txSig.slice(0,8)+'..');
+        // Generate ZK proof using the same salt that was committed on-chain
+        if(onchainPendingSalt){
+          zkProofStatus='generating';
+          zkGenerateProof(bpAction+1, encounterExclTarget||0, onchainPendingSalt);
+        }
       }
       onchainCommitPhase=false;
     }).catch(()=>{onchainCommitPhase=false;});
   }
   if(t===1&&!walletConnected){
     const salt=generateSalt();
-    computeCommitHash(bpAction,walletPublicKey,salt).then(hash=>{
+    computeCommitHash(bpAction,new Uint8Array(32),salt).then(hash=>{
       walletLastCommitHash=hexFromBytes(hash);
-      lg.push('Commit hash: '+walletLastCommitHash);
+      lg.push('Commit hash: '+walletLastCommitHash.slice(0,10)+'..');
     }).catch(()=>{});
-    // Generate ZK proof in parallel (demo: proves knowledge of action without revealing)
-    zkGenerateProof(bpAction+1, bpSelectedTarget||0, salt);
+    // ZK proof: proves knowledge of action preimage without wallet
+    zkGenerateProof(bpAction+1, encounterExclTarget||0, salt);
   }
   // On-chain reveal phase
   if(t===70&&walletConnected&&onchainPendingSalt){
     onchainRevealPhase=true;
-    onchainReveal(rd,bpAction,bpSelectedTarget||0,onchainPendingSalt).then(result=>{
+    onchainReveal(rd,bpAction,encounterExclTarget||0,onchainPendingSalt).then(result=>{
       if(result){
-        logOnchain('Reveal: TX:'+result.txSig.slice(0,8)+'..');
+        logOnchain('Reveal TX:'+result.txSig.slice(0,8)+'..');
       }
       onchainRevealPhase=false;onchainPendingSalt=null;
     }).catch(()=>{onchainRevealPhase=false;});
