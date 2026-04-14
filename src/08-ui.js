@@ -2422,13 +2422,42 @@ function dCredits(){
 function dGameOver(){
   const t=fr-victoryFrame;
   if(t<30){bx(0,0,W,H,`rgba(0,0,0,${t/30})`);return;}
-  bx(0,0,W,H,'#0c0c18');
-  // Dramatic red flicker
-  const flicker=Math.sin(t*0.08)*0.03;
-  bx(0,0,W,H,`rgba(180,40,40,${flicker})`);
+  bx(0,0,W,H,'#0a0a14');
+  // Falling ember/ash particles
+  for(let i=0;i<32;i++){
+    const seed=i*1337;const spd=0.6+i*0.04;
+    const px_=((seed*73+t*(0.3+i*0.015))%W+W)%W;
+    const py_=((seed*41+t*spd)%H+H)%H;
+    const pa=0.25+Math.sin(t*0.04+i*0.7)*0.15;
+    const pc=['#d03030','#e04020','#c02828','#f03030'][i%4];
+    bx(px_,py_,2,2,pc);
+    g.globalAlpha=pa*0.15;g.fillStyle=pc;
+    g.beginPath();g.arc(px_+1,py_+1,4,0,Math.PI*2);g.fill();
+    g.globalAlpha=1;
+  }
+  // Radial vignette for cinematic depth
+  {const vg=g.createRadialGradient(W/2,H/2,H*0.18,W/2,H/2,H*0.72);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,0.55)');
+  g.fillStyle=vg;g.fillRect(0,0,W,H);}
 
-  if(t>35){g.globalAlpha=Math.min(1,(t-35)/20);txShadow('SEASON OVER',W/2-100,80,20,'#d04040','rgba(0,0,0,.6)');g.globalAlpha=1;}
-  if(t>45){g.globalAlpha=Math.min(1,(t-45)/15);win(W/2-220,100,440,28);txShadow('SEASON 1 RESULTS',W/2-76,120,10,'#f0c830','rgba(0,0,0,.4)');g.globalAlpha=1;}
+  // SEASON OVER — pulsing glow halo behind title
+  if(t>35){
+    const titleA=Math.min(1,(t-35)/20);
+    const pulse=0.55+Math.sin(t*0.07)*0.45;
+    g.globalAlpha=titleA*pulse*0.35;
+    g.fillStyle='#cc2020';
+    g.shadowBlur=50;g.shadowColor='#ff1010';
+    g.fillRect(W/2-168,44,336,50);
+    g.shadowBlur=0;g.globalAlpha=titleA;
+    txShadow('SEASON OVER',W/2-152,96,24,'#ff4444','rgba(0,0,0,.75)');
+    g.globalAlpha=1;
+  }
+  if(t>45){
+    g.globalAlpha=Math.min(1,(t-45)/15);
+    win(W/2-220,104,440,24);
+    txShadow('SEASON 1 RESULTS',W/2-76,122,9,'#f0c830','rgba(0,0,0,.4)');
+    g.globalAlpha=1;
+  }
 
   // Rank all 3 players by unique card count
   if(t>60){
@@ -2440,40 +2469,66 @@ function dGameOver(){
     rankings.sort((a,b)=>b.unique-a.unique);
     const medals=['1ST','2ND','3RD'];
     const medalColors=['#f0c830','#c0c0c0','#c08040'];
+    const rowH=116;
     rankings.forEach((r,rank)=>{
-      const fadeT=t-60-rank*20;
+      const fadeT=t-60-rank*22;
       if(fadeT<0)return;
-      const alpha=Math.min(1,fadeT/15);
+      const alpha=Math.min(1,fadeT/12);
       g.globalAlpha=alpha;
-      const y=148+rank*120;
+      const y=136+rank*rowH;
       const isPlayer=r.idx===0;
-      win(W/2-260,y,520,110);
-      // Medal
-      txShadow(medals[rank],W/2-240,y+30,14,medalColors[rank],'rgba(0,0,0,.4)');
-      // Name
-      txShadow(r.name,W/2-160,y+30,12,isPlayer?'#48b8e8':'#c8c0a0','rgba(0,0,0,.4)');
-      // Unique count
-      txShadow(r.unique+'/60',W/2+140,y+30,10,r.unique>=60?'#40d040':'#c8c0a0','rgba(0,0,0,.4)');
-      // Show cards in a row
-      for(let ci=0;ci<5;ci++){
-        const cx_=W/2-140+ci*56;
-        const cy_=y+46;
-        if(r.cards[ci]>0){
-          drawCardFrame(cx_,cy_,46,56,r.cards[ci]-1,false);
-        }else{
-          bx(cx_,cy_,46,56,'#383848');bx(cx_+2,cy_+2,42,52,'#2a2a38');
-          tx('?',cx_+16,cy_+36,12,'#484858');
-        }
+      // Player row gets a subtle blue glow bg + left accent stripe
+      if(isPlayer){
+        g.globalAlpha=alpha*(0.10+Math.sin(fr*0.05)*0.03);
+        g.fillStyle='#1a3060';g.fillRect(W/2-262,y-2,524,rowH-2);
+        g.globalAlpha=alpha;
+        win(W/2-260,y,520,rowH-4);
+        g.fillStyle='#48b8e8';g.fillRect(W/2-260,y,3,rowH-4);
+      }else{
+        win(W/2-260,y,520,rowH-4);
+      }
+      // Medal badge — bounces in after row appears
+      const bounceT=Math.max(0,fadeT-8);
+      const bounce=bounceT<8?1+Math.sin(bounceT/8*Math.PI)*0.12:1;
+      g.save();g.translate(W/2-230,y+26);g.scale(bounce,bounce);
+      g.globalAlpha=alpha*0.85;g.fillStyle=medalColors[rank];
+      g.beginPath();g.arc(0,0,20,0,Math.PI*2);g.fill();
+      g.globalAlpha=alpha*0.3;g.fillStyle='#000';
+      g.beginPath();g.arc(0,0,20,0,Math.PI*2);g.fill();
+      g.globalAlpha=alpha;
+      txShadow(medals[rank],-22,8,7,medalColors[rank],'rgba(0,0,0,.5)');
+      g.restore();g.globalAlpha=alpha;
+      // Name + card count
+      txShadow(r.name,W/2-196,y+26,11,isPlayer?'#48b8e8':'#c8c0a0','rgba(0,0,0,.4)');
+      txShadow(r.unique+'/60',W/2+120,y+24,13,r.unique>=60?'#40d040':medalColors[rank],'rgba(0,0,0,.4)');
+      // Progress bar (animates fill)
+      const barX=W/2-196,barY=y+44,barW=330,barH_=7;
+      bx(barX,barY,barW,barH_,'#161626');
+      const pct=r.unique/60;
+      const animPct=pct*Math.min(1,(fadeT-4)/22);
+      const barFill=Math.round(barW*animPct);
+      if(barFill>0){
+        bx(barX,barY,barFill,barH_,medalColors[rank]);
+        g.globalAlpha=alpha*0.45;g.fillStyle=medalColors[rank];
+        g.beginPath();g.arc(barX+barFill,barY+barH_/2,barH_/2+2,0,Math.PI*2);g.fill();
+        g.globalAlpha=alpha;
+      }
+      tx(Math.round(pct*100)+'%',barX+barW+5,barY+7,6,'#706878');
+      // 4 sample cards (right side)
+      for(let ci=0;ci<4;ci++){
+        const cx_=W/2+160+ci*42,cy_=y+54;
+        if(r.cards[ci]>0){drawCardFrame(cx_,cy_,36,50,r.cards[ci]-1,false);}
+        else{bx(cx_,cy_,36,50,'#222232');tx('?',cx_+11,cy_+30,9,'#343444');}
       }
       g.globalAlpha=1;
     });
   }
 
-  if(t>140){
-    g.globalAlpha=Math.min(1,(t-140)/15);
-    win(W/2-200,H-60,400,50);
+  if(t>148){
+    g.globalAlpha=Math.min(1,(t-148)/15);
+    win(W/2-200,H-52,400,42);
     const blink_=Math.floor(fr/25)%2===0;
-    if(blink_)txShadow('Z = Play Again    X = Title',W/2-140,H-30,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
+    if(blink_)txShadow('Z = Play Again    X = Title',W/2-130,H-24,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
 }
