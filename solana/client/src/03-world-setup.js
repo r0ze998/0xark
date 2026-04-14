@@ -672,11 +672,11 @@ function updateNPCWander(){
     const onPlayer=(nx===pl[0].x&&ny===pl[0].y);
     const onNpc=npcs.some(o=>o!==npc&&o.x===nx&&o.y===ny);
     if(withinHome&&walkable&&!onPlayer&&!onNpc){
-      // Face movement direction
-      if(d[0]<0)npc.dir=3;
-      else if(d[0]>0)npc.dir=1;
-      else if(d[1]<0)npc.dir=0;
-      else if(d[1]>0)npc.dir=2;
+      // Face movement direction (dir: 0=down,1=left,2=up,3=right — matches player/rival convention)
+      if(d[0]<0)npc.dir=1;
+      else if(d[0]>0)npc.dir=3;
+      else if(d[1]<0)npc.dir=2;
+      else if(d[1]>0)npc.dir=0;
       npc.x=nx;npc.y=ny;
     }else if(d[0]===0&&d[1]===0){
       // Idle: occasionally turn to face a random direction
