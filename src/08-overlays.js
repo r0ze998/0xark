@@ -482,37 +482,52 @@ function dVictory(){
     tx('Verified on Solana',W/2-90,522,7,'#9945FF');
     g.globalAlpha=1;
   }
-  // Prize claim button when wallet connected and won
-  if(t>158&&walletConnected&&playerHasAllSixty()){
+  // Prize claim button — C to trigger
+  if(t>158&&playerHasAllSixty()){
     g.globalAlpha=Math.min(1,(t-158)/15);
-    const claimBlink=Math.sin(fr*0.1)*0.15+0.85;
-    g.globalAlpha*=claimBlink;
-    win(W/2-160,540,320,28);
-    drawSolanaIcon(W/2-140,544,8);
-    tx('CLAIM PRIZE: '+stakePotAmount.toFixed(2)+' SOL',W/2-120,558,9,'#14F195');
+    win(W/2-190,536,380,28);
+    drawSolanaIcon(W/2-170,540,8);
+    if(victoryClaimed){
+      tx('\u2713 Prize Claimed! TX: '+victoryClaimedTx,W/2-148,554,7,'#14F195');
+    }else if(walletConnected){
+      const claimBlink=Math.sin(fr*0.1)*0.15+0.85;
+      g.globalAlpha*=claimBlink;
+      tx('[C] CLAIM PRIZE: '+stakePotAmount.toFixed(2)+' SOL',W/2-148,554,8,'#14F195');
+    }else{
+      tx('Connect wallet to claim '+stakePotAmount.toFixed(2)+' SOL prize',W/2-165,554,7,'#686868');
+    }
     g.globalAlpha=1;
   }
-  // MINT YOUR CARDS AS NFTs button
+  // MINT YOUR CARDS AS NFTs button — M to trigger
   if(t>162&&playerHasAllSixty()){
     g.globalAlpha=Math.min(1,(t-162)/15);
-    const mintBlink=Math.sin(fr*0.08)*0.12+0.88;
-    g.globalAlpha*=mintBlink;
-    win(W/2-140,572,280,24);
-    tx('MINT YOUR CARDS AS NFTs',W/2-108,590,8,'#9945FF');
+    win(W/2-180,568,360,24);
+    if(victoryMinted){
+      tx('\u2713 60 Cards minted as NFTs!',W/2-120,584,8,'#9945FF');
+    }else if(victoryMinting){
+      const bar=Math.floor((victoryMintProgress/60)*28);
+      bx(W/2-140,573,bar*5,14,'rgba(153,69,255,.5)');
+      tx('Minting '+victoryMintProgress+'/60...',W/2-80,584,8,'#c090ff');
+    }else{
+      const mintBlink=Math.sin(fr*0.08)*0.12+0.88;
+      g.globalAlpha*=mintBlink;
+      tx('[M] MINT YOUR CARDS AS NFTs',W/2-130,584,8,'#9945FF');
+    }
     g.globalAlpha=1;
   }
   // Eternal inscription + LEGENDS
   if(t>166){
     g.globalAlpha=Math.min(1,(t-166)/15);
-    win(W/2-160,600,320,22);
+    win(W/2-160,596,320,22);
     const bcr=stats.bestClearRounds;const bct=stats.bestClearTime;
     const bcText=bcr>0?'BEST: Round '+bcr+' ('+Math.floor(bct/60)+'m'+('0'+(bct%60)).slice(-2)+'s)':'BEST CLEAR: not yet recorded';
-    tx(bcText,W/2-140,616,6,bcr>0?'#f0c830':'#686068');
+    tx(bcText,W/2-140,612,6,bcr>0?'#f0c830':'#686068');
     g.globalAlpha=1;
   }
   if(t>170){
-    win(W/2-180,H-24,360,20);
-    tx('Z=Play Again   X=Title Screen',W/2-140,H-6,7,'#c89820');
+    win(W/2-200,H-24,400,20);
+    const hints=playerHasAllSixty()?'C=Claim  M=Mint  Z=Play Again  X=Title':'Z=Play Again   X=Title Screen';
+    tx(hints,W/2-190,H-6,7,'#c89820');
   }
   if(t===31)sfxVictory();
 }
