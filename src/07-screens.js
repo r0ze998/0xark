@@ -998,6 +998,25 @@ function dMap(){
       const expCol=pct<30?'#888878':pct<70?'#a0c080':'#40d080';
       tx('EXP:'+pct+'%',182,hudY+52,7,expCol);
     }
+    // v136: Rival floor trackers — V:B2 / M:B3 so player knows where rivals are
+    {const vegaMap=rivalMaps[0],miraMap=rivalMaps[1];
+    const vegaLbl='V:'+(vegaMap===0?'TWN':'B'+vegaMap);
+    const miraLbl='M:'+(miraMap===0?'TWN':'B'+miraMap);
+    // Highlight when rival is on SAME floor as player (danger)
+    const vegaSame=vegaMap===currentMap;const miraSame=miraMap===currentMap;
+    const vegaAlpha=vegaSame?(0.7+Math.sin(fr*0.18)*0.3):0.55;
+    const miraAlpha=miraSame?(0.7+Math.sin(fr*0.18+1)*0.3):0.55;
+    const vegaCol=vegaSame?'#f080c0':'#806070';
+    const miraCol=miraSame?'#f0c830':'#807060';
+    const vegaCards=pl[1].cd.filter(c=>c>0).length;
+    const miraCards=pl[2].cd.filter(c=>c>0).length;
+    const vegaFull=vegaLbl+' '+vegaCards+'c';
+    const miraFull=miraLbl+' '+miraCards+'c';
+    g.globalAlpha=vegaAlpha;
+    tx(vegaFull,240,hudY+52,6,vegaCol);
+    g.globalAlpha=miraAlpha;
+    tx(miraFull,286,hudY+52,6,miraCol);
+    g.globalAlpha=1;}
   }
   // Show first 8 hand cards in HUD (slots 0-7)
   const HUD_CARD_SLOTS=Math.min(8,HAND_SIZE);
@@ -1256,7 +1275,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner)
-  txShadow('v135',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v136',930,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
