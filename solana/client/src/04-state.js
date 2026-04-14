@@ -581,6 +581,8 @@ function resetNewFeatureState(){
   for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;decayWarn[i]=0;}
   escapeUrgencyActive=false;escapeUrgencyPulse=0;
   streakCount=0;streakDisplayTimer=0;streakLostTimer=0;
+  gachaPityCount=0;gachaPityTriggered=false; // v150: reset pity counter per game
+  milestonesReached.clear(); // v150: allow milestone toasts to retrigger in new game
   for(let i=0;i<FOG_MAP_COUNT;i++){areaDanger[i]=0;areaDangerStayTimer[i]=0;}
   rivalBgTimer[0]=1800;rivalBgTimer[1]=2400; // stagger initial timers (30s/40s)
   qteActive=false;qteKeyPressed=false;
