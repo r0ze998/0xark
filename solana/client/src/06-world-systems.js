@@ -1157,8 +1157,9 @@ function dTitle(){
   tx('SEASON 1',W/2-30,264,7,'#f0c830');
   g.globalAlpha=1;
 
-  // Prize pool placeholder
-  tx('PRIZE POOL: -- USDC',W/2-86,280,7,'#14F195');
+  // Prize pool display — show actual pot if wallet connected
+  const prizeStr=walletConnected&&stakePotAmount>0?'PRIZE POOL: '+stakePotAmount.toFixed(2)+' SOL':'PRIZE POOL: -- USDC';
+  tx(prizeStr,W/2-86,280,7,'#14F195');
 
   // Ship silhouette in background
   {
