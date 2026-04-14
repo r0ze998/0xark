@@ -65,6 +65,10 @@
 - v150: reset gachaPityCount and milestonesReached on new game (milestone toasts retrigger correctly)
 - fix: multiplayer server disconnect stall — remove player from commits/reveals on close, re-check thresholds
 - fix: x402 agent-broker usedSignatures Set cap at 10k with LRU eviction (prevents unbounded memory growth)
+- refactor: split 01-foundation.js (2236 lines) → 01-pixi.js / 01-draw.js / 01-net.js
+- refactor: split 07-screens.js (4132 lines) → 07-map.js / 07-battle.js / 07-battle-resolve.js
+- refactor: split 08-ui.js (2536 lines) → 08-overlays.js / 08-world-interact.js / 08-screens.js
+- build: MODULES array updated (11 → 17 files); output unchanged (15552 lines)
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)
