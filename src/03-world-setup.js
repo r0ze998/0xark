@@ -125,10 +125,10 @@ const RUN_MISSION_DEFS=[
 
 // Rival pre-battle taunts indexed by [rivalIdx][random]
 const RIVAL_TAUNTS=[
-  // VEGA — aggressive, short and sharp
-  ['Your cards are mine.','Hand them over, slowly.','I never lose twice.','Don\'t blink.','Run if you want. I\'ll find you.'],
-  // MIRA — strategic, calm
-  ['I\'ve been watching your moves.','Interesting deck. I want it.','Every card has a price.','I always get what I collect.','Nothing personal. Just rare cards.'],
+  // VEGA — predator, ARK hunter, short and sharp
+  ['Your cards are mine.','The ARK chose me. Not you.','I never lose twice.','Don\'t blink.','I hunted the crew. I\'ll hunt you.','The deep vault is mine.','Run. I enjoy the chase.'],
+  // MIRA — cold archivist, calculated
+  ['I\'ve archived every move you\'ve made.','Your card composition is... suboptimal.','Every card has a price. I know yours.','The ARK\'s crew failed by emotion. You will too.','Nothing personal. Just Legendary cards.','My model had you losing three rounds ago.'],
 ];
 
 // Footprints system: {map, x, y, age}

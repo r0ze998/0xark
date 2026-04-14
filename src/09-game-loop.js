@@ -290,6 +290,7 @@ function update(){
           encounterExclRivalX=r.visualX;
           encounterExclRivalY=r.visualY;
           sfxEncounterDramatic();
+          hitPause(3); // freeze-frame dramatic tension at encounter trigger
           const rivalName=r.n;
           const isRivalInitiated=ai.state==='hunting';
           // v81: choose context-sensitive pre-battle line
