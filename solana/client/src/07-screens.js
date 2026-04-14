@@ -3128,6 +3128,9 @@ function generateResolveEvents(){
         lg.push('R'+rd+': '+pl[1].n+' stole your '+CD[stolen-1].n+'!');
         screenShake(4,10);
         if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
+      }else{
+        events.push({type:'result',text:'You had no cards to steal!',effect:'none'});
+        lg.push('R'+rd+': '+pl[1].n+' Steal failed - hand empty!');
       }
     }
   }else if(r1Act===2){// Rival barrier (already tracked)
@@ -3168,6 +3171,9 @@ function generateResolveEvents(){
         lg.push('R'+rd+': '+pl[2].n+' stole your '+CD[stolen-1].n+'!');
         screenShake(4,10);
         if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
+      }else{
+        events.push({type:'result',text:'You had no cards to steal!',effect:'none'});
+        lg.push('R'+rd+': '+pl[2].n+' Steal failed - hand empty!');
       }
     }
   }else if(r2Act===2){
