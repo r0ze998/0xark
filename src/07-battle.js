@@ -253,7 +253,7 @@ function drawOpponentInfoBox(){
   txShadow(rival.n,bx_+10,by_+20,12,'#d06080','rgba(0,0,0,.5)');
   txShadow('CARDS',bx_+120,by_+20,7,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
-  const r1Cards=rival.cd.filter(c=>c>0).length;
+  const r1Cards=cardCount(rival);
   const r1DangerColor=r1Cards>=4?ARK.dangerBright:r1Cards>=3?'#d08030':ARK.textDim;
   txShadow(rival.cc+'/5',bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.3)');
   // Near-win warning
@@ -277,12 +277,12 @@ function drawOpponentInfoBox(){
   bx(bx_+8,sepY,bw-16,1,ARK.border);
   // Rival 2 (MIRA)
   const hunter=pl[2];
-  const r2alive=hunter.cd.filter(c=>c>0).length>0;
+  const r2alive=cardCount(hunter)>0;
   const hunterCol=r2alive?ARK.gold:ARK.dangerBright;
   txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.4)');
   if(r2alive){
     drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
-    const r2Cards=hunter.cd.filter(c=>c>0).length;
+    const r2Cards=cardCount(hunter);
     const r2DangerColor=r2Cards>=4?ARK.dangerBright:r2Cards>=3?'#d08030':ARK.textDim;
     txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.3)');
     // Near-win warning for MIRA
@@ -486,7 +486,7 @@ function drawVsSplash(){
     const nameAlpha=Math.min(1,(t-10)/10);
     g.globalAlpha=nameAlpha;
     txShadow('YOU',60,H/2-60,14,'#78c0f0','rgba(0,0,0,.6)');
-    const yourCards=pl[0].cd.filter(c=>c>0).length;
+    const yourCards=cardCount(pl[0]);
     txShadow(yourCards+' card'+(yourCards!==1?'s':''),60,H/2-42,8,'rgba(255,255,255,.6)','rgba(0,0,0,.4)');
     // v106: hand power score = sum of card rarities
     const yourPwr=pl[0].cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
@@ -503,7 +503,7 @@ function drawVsSplash(){
     const rivalNameX=W-220;
     txShadow(vsSplashRival.n,rivalNameX,H/2-60,14,rivalNameCol,'rgba(0,0,0,.6)');
     txShadow(rivalPersonality,rivalNameX,H/2-42,8,'rgba(255,255,255,.5)','rgba(0,0,0,.4)');
-    const rivalCards=vsSplashRival.cd.filter(c=>c>0).length;
+    const rivalCards=cardCount(vsSplashRival);
     txShadow(rivalCards+' card'+(rivalCards!==1?'s':''),rivalNameX,H/2-28,7,'rgba(255,255,255,.5)','rgba(0,0,0,.35)');
     // v106: rival power + advantage label
     const rivalPwr=vsSplashRival.cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
@@ -576,10 +576,10 @@ function isActionAvailable(i){
   if(i===1&&sp.s<=0)return false;
   if(i===2&&sp.b<=0)return false;
   if(i===3&&sp.c<=0)return false;
-  if(i===4&&pl[0].cd.filter(c=>c>0).length<=0)return false;
+  if(i===4&&cardCount(pl[0])<=0)return false;
   return true;
 }
-function bothRivalsEliminated(){return pl[1].cd.filter(c=>c>0).length===0&&pl[2].cd.filter(c=>c>0).length===0;}
+function bothRivalsEliminated(){return cardCount(pl[1])===0&&cardCount(pl[2])===0;}
 
 // Phase banner colors and text
 const PHASE_COLORS={select:'#3060b0',confirming:'#d8b028',resolving:'#c04040',result:'#308030'};
@@ -633,7 +633,7 @@ function drawBattleArena(){
   // Rival 2 sprite (top-center-right, slightly smaller — 2nd enemy)
   let o2sx=0,o2sy=0;
   if(bpShakeTarget===2&&bpShakeTimer>0){o2sx=Math.sin(bpShakeTimer*1.2)*4;o2sy=Math.cos(bpShakeTimer*1.6)*2;}
-  const r2alive=pl[2].cd.filter(c=>c>0).length>0;
+  const r2alive=cardCount(pl[2])>0;
   g.globalAlpha=r2alive?0.85:0.3;
   drawBattleSprite(pl[2],W-310+o2sx,140+o2sy,2.2,false);
   g.globalAlpha=1;
@@ -791,7 +791,7 @@ function drawActionGrid(){
   bx(uix+9,uiy+3,1,2,'rgba(255,255,255,.5)');
   }
   txShadow('USE CARD',ucX+26,ucY+18,14,ucAvail?(ucSel?ARK.goldBright:ARK.gold):ARK.textDim,'rgba(0,0,0,.4)');
-  const _handCount=pl[0].cd.filter(c=>c>0).length;
+  const _handCount=cardCount(pl[0]);
   txShadow(_handCount>0?_handCount+' card'+(+_handCount!==1?'s':'')+' ready':'hand empty',ucX+140,ucY+18,10,ucAvail?ARK.textDim:'#404858','rgba(0,0,0,.3)');
   if(ucSel&&ucAvail){
     const bob_=Math.sin(fr*0.15)*2;
@@ -854,7 +854,7 @@ function drawSelectPhase(){
   if(ai===1&&!bpCardSelectActive&&!bpTargetSelectActive&&sp.s>0){
     const vsRival=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
     const target=pl[vsRival];
-    const tCC=target.cd.filter(c=>c>0).length;
+    const tCC=cardCount(target);
     const sd=bpScoutedCards[vsRival-1];
     const tBarrier=bpRivalActions[vsRival-1]===2;
     const rCol=vsRival===1?'#d060a0':'#d0a030';
@@ -984,7 +984,7 @@ function drawSelectPhase(){
     ];
     let panY=H-164;
     rivalInfo.forEach(rv=>{
-      const ccnt=rv.p.cd.filter(c=>c>0).length;
+      const ccnt=cardCount(rv.p);
       if(ccnt===0&&!rv.sd)return;
       const panH=rv.sd&&rv.sd.cards.length>0?54+Math.min(4,rv.sd.cards.length)*22:46;
       g.globalAlpha=slideA*0.95;
@@ -1139,7 +1139,7 @@ function drawSelectPhase(){
     txShadow('Target:',W/2-48,H/2-26,14,'#806030','rgba(0,0,0,.2)');
     for(let t=1;t<=2;t++){
       const y=H/2-4+(t-1)*32;
-      const tFled=pl[t].cd.filter(c=>c>0).length===0;
+      const tFled=cardCount(pl[t])===0;
       if(t===bpTargetSelectIdx){bx(W/2-130,y-2,260,28,'rgba(192,168,96,.22)');txShadow('\u25B6',W/2-134,y+14,10,'#c04040','rgba(0,0,0,.3)');}
       g.globalAlpha=tFled?0.45:1;
       txShadow(pl[t].n,W/2-106,y+14,14,t===bpTargetSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
@@ -1337,16 +1337,16 @@ const AREA_CARDS=[
   [11,20,21,22,32,33,34,46,47,56,57,58], // map 4 Floor 4: Epic
   [1,2,12,23,24,35,36,37,38,48,59,60],  // map 5 Floor 5: Legendary
 ];
-function pickAreaCard(){return pickAreaCardForMap(currentMap);}
 function pickAreaCardForMap(mapIdx){
   const ac=DUNGEON_FLOOR_CARDS[mapIdx];
   if(!ac||ac.length===0)return 1+(Math.floor(Math.random()*60)); // fallback: any card
   return ac[Math.floor(Math.random()*ac.length)];
 }
+function cardCount(p){ return p.cd.filter(c=>c>0).length; }
 function syncCardCount(pIdx){
   const p=pl[pIdx];
   if(pIdx===0&&p.vault){p.cc=p.vault.size;}
-  else{p.cc=p.cd.filter(c=>c>0).length;}
+  else{p.cc=cardCount(p);}
 }
 function addCardToPlayer(pIdx,cardId){
   const p=pl[pIdx];
@@ -1418,7 +1418,7 @@ function rivalChooseAction(rIdx){
   const r=pl[rIdx];
   const aiIdx=rIdx-1;
   const ai=rivalAI[aiIdx];
-  const rCardCount=r.cd.filter(c=>c>0).length;
+  const rCardCount=cardCount(r);
   if(rCardCount<2)return 0;// Draw if low
   const roll=Math.random();
   const rUnique=hasUniqueCards(rIdx);
@@ -1430,7 +1430,7 @@ function rivalChooseAction(rIdx){
       if(roll<0.7)return 1;// steal
       return 3;// scout
     }
-    if(pl[0].cd.filter(c=>c>0).length>=2){
+    if(cardCount(pl[0])>=2){
       if(roll<0.5)return 1;// steal from player
       if(roll<0.75)return 3;// scout player
       return 0;// draw
@@ -1516,7 +1516,7 @@ function generateResolveEvents(){
 
   // ── PLAYER ACTION ──
   if(bpAction===0){// DRAW
-    const cardId=pickAreaCard();const cr=CD[cardId-1];
+    const cardId=pickAreaCardForMap(currentMap);const cr=CD[cardId-1];
     events.push({type:'action',who:'You',action:'DRAW',text:'You used DRAW!',effect:'none'});
     const wasInHandBefore=pl[0].cd.some(c=>c===cardId); // capture before addCardToPlayer modifies hand
     if(addCardToPlayer(0,cardId)){
