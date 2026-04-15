@@ -785,11 +785,12 @@ function generateDungeonFloor(floorNum,seed){
   return {map,rooms};
 }
 
-// Generate dungeon floors
+// Generate dungeon floors — random seed every page load (PMD-style: new dungeon each run)
 const dungeonFloors=[];
 const dungeonRooms=[null]; // index 0 = town (no rooms)
+const _initDungeonSeed=Date.now();
 for(let f=1;f<=MAX_DUNGEON_FLOORS;f++){
-  const result=generateDungeonFloor(f,12345+f*7919);
+  const result=generateDungeonFloor(f,_initDungeonSeed+f*7919);
   dungeonFloors.push(result.map);
   dungeonRooms.push(result.rooms);
 }
