@@ -844,8 +844,11 @@ function dMap(){
     if(!getBgSheet(currentMap)){
       g.drawImage(tileCanvas,0,0,W,H);
     }
-    // Animated stair glows — drawn on main canvas every frame (bypass static tile cache)
-    if(inDungeon) drawDungeonStairGlows(startTX,startTY,endTX,endTY);
+    // Animated dungeon tile overlays — drawn on main canvas every frame (bypass static tile cache)
+    if(inDungeon){
+      drawDungeonStairGlows(startTX,startTY,endTX,endTY);
+      drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY);
+    }
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
@@ -1577,7 +1580,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v202',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v203',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
