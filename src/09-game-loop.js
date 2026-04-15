@@ -1,7 +1,33 @@
 // GAME LOOP
 // ═══════════════════════════════════════
+
+// Held-key continuous movement (overworld only — dungeon stays turn-based per press)
+const _MOVE_REPEAT_INITIAL = 10; // frames to wait before repeat kicks in after first press
+const _MOVE_REPEAT_RATE    = 7;  // frames between each repeated step while holding
+let _moveRepeatTimer = _MOVE_REPEAT_INITIAL;
+
+function processHeldMovement(){
+  // Only in map mode, no overlays, no dungeon (dungeon stays turn-based)
+  if(sc!=='map'||inDungeon||mo||npcDialogActive||shopActive||gachaActive||marketActive||
+     battlePhase||introActive||handInspectActive||fishingActive||
+     mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive)return;
+  _moveRepeatTimer++;
+  if(_moveRepeatTimer < _MOVE_REPEAT_RATE) return;
+  _moveRepeatTimer = 0;
+  let mdx=0,mdy=0;
+  if(keysHeld.has('ArrowUp'))     mdy=-1;
+  else if(keysHeld.has('ArrowDown')) mdy=1;
+  if(keysHeld.has('ArrowLeft'))   mdx=-1;
+  else if(keysHeld.has('ArrowRight'))mdx=1;
+  if(mdx===0&&mdy===0)return;
+  if(tryMovePlayer(mdx,mdy)){
+    checkTreasure();
+    if(!cardAcqActive&&!randomEventActive&&shadowStepsLeft<=0)tryWildEncounter();
+  }
+}
+
 function updateVisualPositions(){
-  const lerpT=1-Math.pow(1-0.25,dt);
+  const lerpT=1-Math.pow(1-0.35,dt); // Increased from 0.25 → 0.35 for snappier response
   pl.forEach(p=>{
     const targetX=p.x*TW, targetY=p.y*TH;
     p.visualX=lerp(p.visualX,targetX,lerpT);
@@ -44,6 +70,7 @@ function update(){
   if(particles.length>500)particles.splice(0,particles.length-500);
   if(lg.length>200)lg.splice(0,lg.length-200);
   if(burnedTiles.length>500)burnedTiles.splice(0,burnedTiles.length-500);
+  processHeldMovement();
   updateVisualPositions();updateAmbient();
   updateMapLoadScreen();updateRunSummary();updateRivalNews();updateHandInspect();updateFPS();
   // Save indicator countdown
