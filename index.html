@@ -8460,7 +8460,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v177',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v178',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -9882,7 +9882,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v177',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v178',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -15443,7 +15443,7 @@ function processHeldMovement(){
   // Only in map mode, no overlays, no dungeon (dungeon stays turn-based)
   if(sc!=='map'||inDungeon||mo||npcDialogActive||shopActive||gachaActive||marketActive||
      battlePhase||introActive||handInspectActive||fishingActive||
-     mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive)return;
+     mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive||mapTransitioning)return;
   _moveRepeatAccumMs+=dt*16.67;
   if(_moveRepeatAccumMs < _MOVE_REPEAT_MS) return;
   _moveRepeatAccumMs=0;
@@ -16680,7 +16680,7 @@ document.addEventListener('keydown',e=>{
       if(e.code==='ArrowLeft')mdx=-1;
       if(e.code==='ArrowRight')mdx=1;
       if(mdx!==0||mdy!==0){
-        _moveRepeatTimer=_MOVE_REPEAT_INITIAL; // reset hold-repeat timer on fresh press
+        _moveRepeatAccumMs=0; // reset so processHeldMovement waits full interval before firing
         if(tryMovePlayer(mdx,mdy)){
           checkTreasure();
           if(!cardAcqActive&&!randomEventActive&&shadowStepsLeft<=0)tryWildEncounter();

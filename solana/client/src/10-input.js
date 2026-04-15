@@ -777,7 +777,7 @@ document.addEventListener('keydown',e=>{
       if(e.code==='ArrowLeft')mdx=-1;
       if(e.code==='ArrowRight')mdx=1;
       if(mdx!==0||mdy!==0){
-        _moveRepeatTimer=_MOVE_REPEAT_INITIAL; // reset hold-repeat timer on fresh press
+        _moveRepeatAccumMs=0; // reset so processHeldMovement waits full interval before firing
         if(tryMovePlayer(mdx,mdy)){
           checkTreasure();
           if(!cardAcqActive&&!randomEventActive&&shadowStepsLeft<=0)tryWildEncounter();

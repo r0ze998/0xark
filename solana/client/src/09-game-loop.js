@@ -10,7 +10,7 @@ function processHeldMovement(){
   // Only in map mode, no overlays, no dungeon (dungeon stays turn-based)
   if(sc!=='map'||inDungeon||mo||npcDialogActive||shopActive||gachaActive||marketActive||
      battlePhase||introActive||handInspectActive||fishingActive||
-     mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive)return;
+     mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive||mapTransitioning)return;
   _moveRepeatAccumMs+=dt*16.67;
   if(_moveRepeatAccumMs < _MOVE_REPEAT_MS) return;
   _moveRepeatAccumMs=0;
