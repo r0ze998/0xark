@@ -93,7 +93,7 @@ document.addEventListener('keydown',e=>{
             }
             camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
             camTargetX=camX;camTargetY=camY;
-            edgeCacheDirty=true;fogCacheDirty=true;
+            tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
             showBanner('はじまりの街','Your adventure begins here — safe zone');
             twSet('Welcome to はじまりのまち! Enter the dungeon to collect cards.');
             saveGame();

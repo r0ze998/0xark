@@ -235,7 +235,7 @@ function executeMapCard(cardId,slot){
       encounterCooldown=600;
       camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
       camTargetX=camX;camTargetY=camY;
-      edgeCacheDirty=true;fogCacheDirty=true;
+      tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
       showBanner('はじまりの街','ARK GATE: Escaped from dungeon!');
       twSet('ARK GATE activated! Cards preserved — you\'re safe in town.');
       saveGame();
@@ -259,7 +259,7 @@ function executeMapCard(cardId,slot){
       encounterCooldown=600;
       camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
       camTargetX=camX;camTargetY=camY;
-      edgeCacheDirty=true;fogCacheDirty=true;
+      tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
       showBanner('はじまりの街','GENESIS: Reborn in town!');
       twSet('GENESIS activated! Escaped — cards intact, back to safety!');
       saveGame();
@@ -289,7 +289,7 @@ function executeDirCard(dir){
           // Replace tile with grass
           maps[currentMap][ty_][tx_]=1;
           burnedTiles.push({mapIdx:currentMap,x:tx_,y:ty_});
-          edgeCacheDirty=true;
+          tileCacheDirty=true;edgeCacheDirty=true;
           sfxBurn();
           flash();
           twSet('The obstacle burns away!');
@@ -310,7 +310,7 @@ function executeDirCard(dir){
         syncCardCount(0);
         p.x=fx;p.y=fy;p.visualX=fx*TW;p.visualY=fy*TH;
         fogRevealRadius(currentMap,fx,fy,3);fogSave();
-        edgeCacheDirty=true;
+        tileCacheDirty=true;edgeCacheDirty=true;
         sfxPhase();
         flash();
         twSet('PHASE: You walked through the wall!');
@@ -338,7 +338,7 @@ function executeDirCard(dir){
         const dist=Math.abs(bestX-origX)+Math.abs(bestY-origY);
         p.x=bestX;p.y=bestY;p.visualX=bestX*TW;p.visualY=bestY*TH;
         fogRevealRadius(currentMap,bestX,bestY,3);fogSave();
-        edgeCacheDirty=true;
+        tileCacheDirty=true;edgeCacheDirty=true;
         sfxPhase();
         flash();
         twSet('BLINK: Teleported '+dist+' tiles!');

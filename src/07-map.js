@@ -564,21 +564,36 @@ function dMap(){
   const endTX=Math.min(MW-1,Math.ceil((camX+W)/TW));
   const endTY=Math.min(MH-1,Math.ceil((camY+H)/TH));
 
-  for(let y=startTY;y<=endTY;y++){
-    for(let x=startTX;x<=endTX;x++){
-      // Skip tiles fully hidden by fog (no adjacent revealed tiles)
-      if(!fogRevealed[currentMap][y]?.[x]){
-        let anyNeighborRevealed=false;
-        for(let dy=-1;dy<=1&&!anyNeighborRevealed;dy++){
-          for(let dx=-1;dx<=1&&!anyNeighborRevealed;dx++){
-            const ny=y+dy,nx=x+dx;
-            if(ny>=0&&ny<MH&&nx>=0&&nx<MW&&fogRevealed[currentMap][ny]?.[nx])anyNeighborRevealed=true;
+  // ── TILE LAYER CACHE ── only redraw tiles when camera moves or map changes
+  {
+    const camMoved=Math.abs(camX-tileCacheLastCamX)>0.5||Math.abs(camY-tileCacheLastCamY)>0.5;
+    const mapChanged=currentMap!==tileCacheLastMap;
+    if(tileCacheDirty||camMoved||mapChanged){
+      tileCtx.clearRect(0,0,W,H);
+      const mainCtx=g;
+      g=tileCtx;
+      g.imageSmoothingEnabled=false;
+      for(let y=startTY;y<=endTY;y++){
+        for(let x=startTX;x<=endTX;x++){
+          if(!fogRevealed[currentMap][y]?.[x]){
+            let anyNeighborRevealed=false;
+            for(let dy=-1;dy<=1&&!anyNeighborRevealed;dy++){
+              for(let dx=-1;dx<=1&&!anyNeighborRevealed;dx++){
+                const ny=y+dy,nx=x+dx;
+                if(ny>=0&&ny<MH&&nx>=0&&nx<MW&&fogRevealed[currentMap][ny]?.[nx])anyNeighborRevealed=true;
+              }
+            }
+            if(!anyNeighborRevealed)continue;
           }
+          drawTile(x,y);
         }
-        if(!anyNeighborRevealed)continue;
       }
-      drawTile(x,y);
+      g=mainCtx;
+      tileCacheLastCamX=camX;tileCacheLastCamY=camY;tileCacheLastMap=currentMap;
+      tileCacheDirty=false;
     }
+    g.imageSmoothingEnabled=false;
+    g.drawImage(tileCanvas,0,0,W,H);
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
@@ -1314,7 +1329,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v160',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v161',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);

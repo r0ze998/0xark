@@ -607,7 +607,6 @@ const WT = {
 function drawWorldTile(col, row, destX, destY) {
   if (!worldSheetLoaded) return false;
   const sx = col * 32, sy = row * 32;
-  g.imageSmoothingEnabled = false;
   g.drawImage(WORLD_SHEET, sx, sy, 32, 32, destX, destY, 32, 32);
   return true;
 }
@@ -880,7 +879,15 @@ function lerp(a,b,t){return a+(b-a)*t;}
 function easeInOut(t){return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);}
 let lastTime=0,dt=1;
 
-// Offscreen canvas caches for edge blending and fog
+// Offscreen canvas caches for tile layer, edge blending, and fog
+const tileCanvas=document.createElement('canvas');
+tileCanvas.width=W;tileCanvas.height=H;
+const tileCtx=tileCanvas.getContext('2d');
+tileCtx.imageSmoothingEnabled=false;
+let tileCacheDirty=true;
+let tileCacheLastCamX=-9999,tileCacheLastCamY=-9999;
+let tileCacheLastMap=-1;
+
 const edgeCanvas=document.createElement('canvas');
 edgeCanvas.width=W;edgeCanvas.height=H;
 const edgeCtx=edgeCanvas.getContext('2d');
@@ -892,6 +899,9 @@ fogCanvas.width=W;fogCanvas.height=H;
 const fogCtx=fogCanvas.getContext('2d');
 let fogCacheDirty=true;
 let fogCacheLastCamX=-9999,fogCacheLastCamY=-9999;
+
+// Set imageSmoothingEnabled=false globally on main context once canvases exist
+g.imageSmoothingEnabled=false;
 
 // ═══════════════════════════════════════
 // AUDIO
@@ -4919,7 +4929,7 @@ function resetGameState(startCards){
   // Card timers: inactive in town at start (decay only starts when entering dungeon)
   for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;decayWarn[i]=0;}
   escapeUrgencyActive=false;escapeUrgencyPulse=0;
-  edgeCacheDirty=true;fogCacheDirty=true;
+  tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
 }
 
 function sfxFishCast(){if(!soundEnabled)return;beep(300,.08,.06);setTimeout(()=>beep(200,.06,.05),80);}
@@ -6495,7 +6505,7 @@ function doMapTransition(exit){
     // Snap camera
     camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
     camTargetX=camX;camTargetY=camY;
-    edgeCacheDirty=true;fogCacheDirty=true;
+    tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
     particles.length=0;
     // Reveal starting area on new map (larger radius so entry area is immediately visible)
     if(inDungeon){fogRevealRadius(currentMap,pl[0].x,pl[0].y,4);fogSave();}
@@ -8515,21 +8525,36 @@ function dMap(){
   const endTX=Math.min(MW-1,Math.ceil((camX+W)/TW));
   const endTY=Math.min(MH-1,Math.ceil((camY+H)/TH));
 
-  for(let y=startTY;y<=endTY;y++){
-    for(let x=startTX;x<=endTX;x++){
-      // Skip tiles fully hidden by fog (no adjacent revealed tiles)
-      if(!fogRevealed[currentMap][y]?.[x]){
-        let anyNeighborRevealed=false;
-        for(let dy=-1;dy<=1&&!anyNeighborRevealed;dy++){
-          for(let dx=-1;dx<=1&&!anyNeighborRevealed;dx++){
-            const ny=y+dy,nx=x+dx;
-            if(ny>=0&&ny<MH&&nx>=0&&nx<MW&&fogRevealed[currentMap][ny]?.[nx])anyNeighborRevealed=true;
+  // ── TILE LAYER CACHE ── only redraw tiles when camera moves or map changes
+  {
+    const camMoved=Math.abs(camX-tileCacheLastCamX)>0.5||Math.abs(camY-tileCacheLastCamY)>0.5;
+    const mapChanged=currentMap!==tileCacheLastMap;
+    if(tileCacheDirty||camMoved||mapChanged){
+      tileCtx.clearRect(0,0,W,H);
+      const mainCtx=g;
+      g=tileCtx;
+      g.imageSmoothingEnabled=false;
+      for(let y=startTY;y<=endTY;y++){
+        for(let x=startTX;x<=endTX;x++){
+          if(!fogRevealed[currentMap][y]?.[x]){
+            let anyNeighborRevealed=false;
+            for(let dy=-1;dy<=1&&!anyNeighborRevealed;dy++){
+              for(let dx=-1;dx<=1&&!anyNeighborRevealed;dx++){
+                const ny=y+dy,nx=x+dx;
+                if(ny>=0&&ny<MH&&nx>=0&&nx<MW&&fogRevealed[currentMap][ny]?.[nx])anyNeighborRevealed=true;
+              }
+            }
+            if(!anyNeighborRevealed)continue;
           }
+          drawTile(x,y);
         }
-        if(!anyNeighborRevealed)continue;
       }
-      drawTile(x,y);
+      g=mainCtx;
+      tileCacheLastCamX=camX;tileCacheLastCamY=camY;tileCacheLastMap=currentMap;
+      tileCacheDirty=false;
     }
+    g.imageSmoothingEnabled=false;
+    g.drawImage(tileCanvas,0,0,W,H);
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
@@ -9265,7 +9290,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v160',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v161',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -14295,7 +14320,7 @@ function executeMapCard(cardId,slot){
       encounterCooldown=600;
       camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
       camTargetX=camX;camTargetY=camY;
-      edgeCacheDirty=true;fogCacheDirty=true;
+      tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
       showBanner('はじまりの街','ARK GATE: Escaped from dungeon!');
       twSet('ARK GATE activated! Cards preserved — you\'re safe in town.');
       saveGame();
@@ -14319,7 +14344,7 @@ function executeMapCard(cardId,slot){
       encounterCooldown=600;
       camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
       camTargetX=camX;camTargetY=camY;
-      edgeCacheDirty=true;fogCacheDirty=true;
+      tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
       showBanner('はじまりの街','GENESIS: Reborn in town!');
       twSet('GENESIS activated! Escaped — cards intact, back to safety!');
       saveGame();
@@ -14349,7 +14374,7 @@ function executeDirCard(dir){
           // Replace tile with grass
           maps[currentMap][ty_][tx_]=1;
           burnedTiles.push({mapIdx:currentMap,x:tx_,y:ty_});
-          edgeCacheDirty=true;
+          tileCacheDirty=true;edgeCacheDirty=true;
           sfxBurn();
           flash();
           twSet('The obstacle burns away!');
@@ -14370,7 +14395,7 @@ function executeDirCard(dir){
         syncCardCount(0);
         p.x=fx;p.y=fy;p.visualX=fx*TW;p.visualY=fy*TH;
         fogRevealRadius(currentMap,fx,fy,3);fogSave();
-        edgeCacheDirty=true;
+        tileCacheDirty=true;edgeCacheDirty=true;
         sfxPhase();
         flash();
         twSet('PHASE: You walked through the wall!');
@@ -14398,7 +14423,7 @@ function executeDirCard(dir){
         const dist=Math.abs(bestX-origX)+Math.abs(bestY-origY);
         p.x=bestX;p.y=bestY;p.visualX=bestX*TW;p.visualY=bestY*TH;
         fogRevealRadius(currentMap,bestX,bestY,3);fogSave();
-        edgeCacheDirty=true;
+        tileCacheDirty=true;edgeCacheDirty=true;
         sfxPhase();
         flash();
         twSet('BLINK: Teleported '+dist+' tiles!');
@@ -14759,18 +14784,18 @@ function dGameOver(){
 // ═══════════════════════════════════════
 
 // Held-key continuous movement (overworld only — dungeon stays turn-based per press)
-const _MOVE_REPEAT_INITIAL = 10; // frames to wait before repeat kicks in after first press
-const _MOVE_REPEAT_RATE    = 7;  // frames between each repeated step while holding
-let _moveRepeatTimer = _MOVE_REPEAT_INITIAL;
+// Time-based so movement rate is consistent regardless of fps
+const _MOVE_REPEAT_MS     = 115; // ms between steps while holding (~8.7Hz)
+let _moveRepeatAccumMs    = _MOVE_REPEAT_MS; // start ready so first step fires immediately
 
 function processHeldMovement(){
   // Only in map mode, no overlays, no dungeon (dungeon stays turn-based)
   if(sc!=='map'||inDungeon||mo||npcDialogActive||shopActive||gachaActive||marketActive||
      battlePhase||introActive||handInspectActive||fishingActive||
      mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive)return;
-  _moveRepeatTimer++;
-  if(_moveRepeatTimer < _MOVE_REPEAT_RATE) return;
-  _moveRepeatTimer = 0;
+  _moveRepeatAccumMs+=dt*16.67;
+  if(_moveRepeatAccumMs < _MOVE_REPEAT_MS) return;
+  _moveRepeatAccumMs=0;
   let mdx=0,mdy=0;
   if(keysHeld.has('ArrowUp'))     mdy=-1;
   else if(keysHeld.has('ArrowDown')) mdy=1;
@@ -14784,7 +14809,7 @@ function processHeldMovement(){
 }
 
 function updateVisualPositions(){
-  const lerpT=1-Math.pow(1-0.35,dt); // Increased from 0.25 → 0.35 for snappier response
+  const lerpT=1-Math.pow(1-0.45,dt); // Fast lerp for snappy tile-step feel
   pl.forEach(p=>{
     const targetX=p.x*TW, targetY=p.y*TH;
     p.visualX=lerp(p.visualX,targetX,lerpT);
@@ -15328,7 +15353,7 @@ document.addEventListener('keydown',e=>{
             }
             camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
             camTargetX=camX;camTargetY=camY;
-            edgeCacheDirty=true;fogCacheDirty=true;
+            tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
             showBanner('はじまりの街','Your adventure begins here — safe zone');
             twSet('Welcome to はじまりのまち! Enter the dungeon to collect cards.');
             saveGame();
@@ -16399,7 +16424,7 @@ function loadGame(){
     fogRevealAll(0);
     camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
     camTargetX=camX;camTargetY=camY;
-    edgeCacheDirty=true;fogCacheDirty=true;
+    tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
     return true;
   }catch(e){return false;}
 }

@@ -129,7 +129,7 @@ function doMapTransition(exit){
     // Snap camera
     camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
     camTargetX=camX;camTargetY=camY;
-    edgeCacheDirty=true;fogCacheDirty=true;
+    tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
     particles.length=0;
     // Reveal starting area on new map (larger radius so entry area is immediately visible)
     if(inDungeon){fogRevealRadius(currentMap,pl[0].x,pl[0].y,4);fogSave();}

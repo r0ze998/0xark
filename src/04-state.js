@@ -650,7 +650,7 @@ function resetGameState(startCards){
   // Card timers: inactive in town at start (decay only starts when entering dungeon)
   for(let i=0;i<HAND_SIZE;i++){cardTimers[i]=0;decayWarn[i]=0;}
   escapeUrgencyActive=false;escapeUrgencyPulse=0;
-  edgeCacheDirty=true;fogCacheDirty=true;
+  tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
 }
 
 function sfxFishCast(){if(!soundEnabled)return;beep(300,.08,.06);setTimeout(()=>beep(200,.06,.05),80);}
