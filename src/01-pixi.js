@@ -704,7 +704,7 @@ function drawZeldaChar(charIdx, dir, frame, destX, destY, scale) {
 const ZELDA_OVER_SHEET = new Image();
 ZELDA_OVER_SHEET.src = 'zelda-overworld.png';
 let zeldaOverLoaded = false;
-ZELDA_OVER_SHEET.onload = () => { zeldaOverLoaded = true; };
+ZELDA_OVER_SHEET.onload = () => { zeldaOverLoaded = true; if(typeof tileCacheDirty!=='undefined')tileCacheDirty=true; };
 
 // Zelda overworld tile coordinates [col, row] (16×16 each)
 const ZO = {

@@ -17,140 +17,38 @@ function isNearWater(tx_,ty){return isNearTileType(tx_,ty,[0,17]);}
 function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,[1,7,11,3]);}
 
 function drawWater(px,py,tx_,ty){
-  if(currentMap===0){
-    const nearLand_=isNearLand(tx_,ty);
-    const h=tileHash(tx_,ty);
-    // Zelda water — unified art style
-    if(drawZeldaOverTile(ZO.water[0], ZO.water[1], px, py, 2)){
-      // Animated sparkle overlay
-      if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
-      // Foam near land
-      if(nearLand_){
-        for(let i=0;i<2;i++){
-          const bblX=px+Math.floor(thRand(tx_,ty,i+200)*28)+2;
-          const bblY=py+Math.floor(thRand(tx_,ty,i+210)*28)+2;
-          if((wt+i*3+tx_)%5<2){g.fillStyle='rgba(255,255,255,.3)';g.beginPath();g.arc(bblX,bblY,1.5,0,Math.PI*2);g.fill();}
-        }
-      }
-      return;
-    }
+  // Zelda water tile — unified art style
+  if(drawZeldaOverTile(ZO.water[0], ZO.water[1], px, py, 2)){
+    // Sparkle overlay
+    if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
+    return;
   }
-  // Fallback: original fillRect water
-  const f3=(wt+tx_+ty)%3;
-  const h=tileHash(tx_,ty);
-  const nearLand_=isNearLand(tx_,ty);
-  const rv=(h&7)-4;
-  const baseR=nearLand_?36+rv:48+rv,baseG=nearLand_?80+rv:104+rv,baseB=nearLand_?128+rv:160+rv;
-  const topR=baseR+20,topG=baseG+20,topB=baseB+20;
-  bx(px,py,TW,TH/2,`rgb(${topR+f3*4},${topG+f3*4},${topB+f3*4})`);
-  bx(px,py+TH/2,TW,TH/2,`rgb(${baseR+f3*4},${baseG+f3*4},${baseB+f3*4})`);
-  bx(px,py+TH/2-2,TW,4,`rgb(${(topR+baseR)/2+f3*4|0},${(topG+baseG)/2+f3*4|0},${(topB+baseB)/2+f3*4|0})`);
-  if(nearLand_)bx(px,py,TW,TH,'rgba(80,140,180,.06)');
-  else bx(px,py,TW,TH,'rgba(0,20,40,.08)');
-  const r=tr(tx_,ty);
-  const waveOff1=Math.sin(wt*0.3+tx_*0.7)*3;
-  const waveOff2=Math.sin(wt*0.25+tx_*0.5+1.5)*2.5;
-  const waveOff3=Math.sin(wt*0.35+tx_*0.9+3.0)*2;
-  for(let wx=0;wx<TW;wx+=2){const wy=6+Math.round(Math.sin(wt*0.3+wx*0.3+tx_)*1.5+waveOff1);bx(px+wx,py+wy,3,1,'rgba(104,168,216,.6)');}
-  for(let wx=1;wx<TW;wx+=3){const wy=14+Math.round(Math.sin(wt*0.25+wx*0.25+ty)*1.2+waveOff2);bx(px+wx,py+wy,4,1,'rgba(120,184,224,.5)');}
-  for(let wx=0;wx<TW;wx+=2){const wy=22+Math.round(Math.sin(wt*0.35+wx*0.2+tx_+ty)*1+waveOff3);bx(px+wx,py+wy,3,1,'rgba(136,192,232,.4)');}
-  if(nearLand_){
-    for(let i=0;i<3;i++){
-      const bblX=px+Math.floor(thRand(tx_,ty,i+200)*28)+2;
-      const bblY=py+Math.floor(thRand(tx_,ty,i+210)*28)+2;
-      if((wt+i*3+tx_)%5<2){g.fillStyle='rgba(255,255,255,.35)';g.beginPath();g.arc(bblX,bblY,1.5,0,Math.PI*2);g.fill();}
-    }
-  }
-  if(f3===1)bx(px,py,TW,TH,'rgba(100,180,220,.04)');
-  if(f3===2)bx(px,py,TW,TH,'rgba(60,120,180,.04)');
-  if((wt+tx_*3+ty*7)%8===0){const sx=px+Math.floor(r.g*28)+2,sy=py+Math.floor(r.h*28)+2;bx(sx,sy,2,2,'rgba(255,255,255,.7)');}
-  if((wt+tx_*5+ty*11)%12===0){const sx2=px+Math.floor(r.e*24)+3,sy2=py+Math.floor(r.f*24)+3;bx(sx2,sy2,2,1,'rgba(255,255,255,.45)');}
-  if((wt+tx_*7+ty*3)%10===0){bx(px+Math.floor(r.a*26)+3,py+Math.floor(r.b*26)+3,1,2,'rgba(255,255,255,.3)');}
+  // Fallback: solid blue
+  bx(px,py,TW,TH,'#3060a0');
+  if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
 }
 
 function drawGrass(px,py,tx_,ty){
-  // Dungeon room floors — Kenney plank tile tinted dark maritime
+  // Dungeon floor
   if(currentMap>0){
     const h=tileHash(tx_,ty);
     const depth=currentMap;
-    // Dungeon FLOOR: alternate between plain and glyph tile for visual variety
     const floorIdx=(h&3)===0?DT.floorGlyph:(h&3)===1?DT.floorAlt:DT.floorPlain;
-    if(!drawDungeonTile(floorIdx,px,py,2)){
-      bx(px,py,TW,TH,'#1a1820');
-    }
-    // Depth darkening overlay at deeper floors
+    if(!drawDungeonTile(floorIdx,px,py,2)) bx(px,py,TW,TH,'#1a1820');
     if(depth>1){g.globalAlpha=Math.min(0.45,(depth-1)*0.12);bx(px,py,TW,TH,'#000510');g.globalAlpha=1;}
-    // Occasional gem glint (green teal at depths)
-    if((h&31)<2){
-      const cfr=typeof fr!=='undefined'?fr:0;
-      const glA=0.3+0.2*Math.sin(cfr*0.05+tx_*0.3);
-      g.globalAlpha=glA;drawDungeonTile(DT.floorGem,px,py,2);g.globalAlpha=1;
-    }
+    if((h&31)<2){const glA=0.3+0.2*Math.sin((typeof fr!=='undefined'?fr:0)*0.05+tx_*0.3);g.globalAlpha=glA;drawDungeonTile(DT.floorGem,px,py,2);g.globalAlpha=1;}
     return;
   }
-  if(currentMap===0){
-    const h=tileHash(tx_,ty);
-    // Zelda-like overworld — unified art style
-    const zoTile = (h%3===1) ? ZO.grassAlt : ZO.grass;
-    if(drawZeldaOverTile(zoTile[0], zoTile[1], px, py, 2)){
-      // Wildflower dots overlay
-      if((h&3)===0){
-        const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
-        const fcolors=['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'];
-        bx(px+fx,py+fy,2,2,fcolors[h%5]);
-      }
-      return;
-    }
-    // LPC terrain fallback
-    const gv=h%3;
-    const wCol=gv===0?WT.grass[0]:gv===1?WT.grassAlt[0]:WT.grassEdge[0];
-    const wRow=gv===0?WT.grass[1]:gv===1?WT.grassAlt[1]:WT.grassEdge[1];
-    if(drawWorldTile(wCol, wRow, px, py)){
-      if((h&3)===0){
-        const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
-        const fcolors=['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'];
-        bx(px+fx,py+fy,2,2,fcolors[h%5]);
-      }
-      return;
-    }
-  }
-  // Fallback: original fillRect grass
+  // Overworld: zelda grass tile — unified art style
   const h=tileHash(tx_,ty);
-  const sv=((h&15)-8);
-  bx(px,py,TW,TH,`rgb(${88+sv},${168+sv},${88+sv})`);
-  const r=tr(tx_,ty);
-  const offX=(h>>4)&3, offY=(h>>6)&3;
-  for(let gy=0;gy<TH;gy+=2)for(let gx=0;gx<TW;gx+=2){
-    if(((gx+offX)+(gy+offY)+tx_*3+ty*5)%6<2)bx(px+gx,py+gy,2,2,`rgb(${76+sv},${156+sv},${76+sv})`);
+  const zoTile=(h%3===1)?ZO.grassAlt:ZO.grass;
+  if(drawZeldaOverTile(zoTile[0],zoTile[1],px,py,2)){
+    if((h&3)===0){const fx=Math.floor(thRand(tx_,ty,40)*26)+3,fy=Math.floor(thRand(tx_,ty,41)*26)+3;bx(px+fx,py+fy,2,2,['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'][h%5]);}
+    return;
   }
-  for(let i=0;i<8;i++){
-    if(thRand(tx_,ty,i+10)>.4){
-      const hx=Math.floor(thRand(tx_,ty,i+20)*28)+2, hy=Math.floor(thRand(tx_,ty,i+30)*28)+2;
-      bx(px+hx,py+hy,2,1,`rgb(${100+sv},${188+sv},${100+sv})`);
-    }
-  }
-  for(let i=0;i<6;i++){
-    const bladeX=Math.floor(thRand(tx_,ty,i+50)*28)+2;
-    const bladeH=4+Math.floor(thRand(tx_,ty,i+55)*5);
-    const bladeY=TH-bladeH-Math.floor(thRand(tx_,ty,i+58)*8);
-    const bladeGreen=thRand(tx_,ty,i+60)>.5?`rgb(${72+sv},${152+sv},${72+sv})`:`rgb(${96+sv},${180+sv},${96+sv})`;
-    bx(px+bladeX,py+bladeY,2,bladeH,bladeGreen);
-    bx(px+bladeX,py+bladeY,3,1,bladeGreen);
-  }
-  if((h&3)===0){
-    const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
-    const fcolors=['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'];
-    bx(px+fx,py+fy,2,2,fcolors[h%5]);
-    bx(px+fx,py+fy,1,1,'#fff');
-  }
-  if((h&7)===1){
-    const fx2=Math.floor(thRand(tx_,ty,42)*24)+4, fy2=Math.floor(thRand(tx_,ty,43)*24)+4;
-    const fcolors2=['#d0e040','#e060a0','#40c0e0','#e0a030','#a040e0'];
-    bx(px+fx2,py+fy2,2,2,fcolors2[(h>>3)%5]);
-  }
-  if(r.a>.75){bx(px+Math.floor(r.b*20)+4,py+Math.floor(r.c*20)+4,6,4,'rgba(0,40,0,.08)');}
-  if(r.d>.8){bx(px+Math.floor(r.e*18)+4,py+Math.floor(r.f*18)+6,4,6,'rgba(0,40,0,.06)');}
-  if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.2)');}
+  // Fallback: solid green
+  bx(px,py,TW,TH,'#58a858');
+  if((h&3)===0){const fx=Math.floor(thRand(tx_,ty,40)*26)+3,fy=Math.floor(thRand(tx_,ty,41)*26)+3;bx(px+fx,py+fy,2,2,['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'][h%5]);}
 }
 
 function drawFlower(px,py,tx_,ty){
@@ -187,7 +85,6 @@ function drawTallGrass(px,py,tx_,ty){
 }
 
 function drawPath(px,py,tx_,ty){
-  // Dungeon corridors: hull passage — Kenney hull texture tinted dark steel
   if(currentMap>0){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
@@ -226,153 +123,35 @@ function drawPath(px,py,tx_,ty){
     }
     return;
   }
-  if(currentMap===0){
-    const h=tileHash(tx_,ty);
-    // Zelda path — unified art style
-    if(drawZeldaOverTile(ZO.path[0], ZO.path[1], px, py, 2)){
-      for(let i=0;i<2;i++){
-        if(thRand(tx_,ty,i+50)>.5){
-          const pbx_=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby_=Math.floor(thRand(tx_,ty,i+70)*26)+3;
-          bx(px+pbx_,py+pby_,3,2,'#a09878');
-        }
-      }
-      return;
-    }
-    // LPC fallback
-    const dCol=(h&1)?WT.dirtAlt[0]:WT.dirt[0];
-    const dRow=(h&1)?WT.dirtAlt[1]:WT.dirt[1];
-    if(drawWorldTile(dCol, dRow, px, py)){
-      for(let i=0;i<2;i++){
-        if(thRand(tx_,ty,i+50)>.5){
-          const pbx_=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby_=Math.floor(thRand(tx_,ty,i+70)*26)+3;
-          bx(px+pbx_,py+pby_,3,2,'#a09878');
-        }
-      }
-      return;
-    }
-  }
-  // Fallback: original fillRect path
-  const h=tileHash(tx_,ty);
-  const sv=((h&7)-4);
-  bx(px,py,TW,TH,`rgb(${208+sv},${192+sv},${128+sv})`);
-  const offX=(h>>4)&3,offY=(h>>6)&3;
-  for(let gy=0;gy<TH;gy+=3)for(let gx=0;gx<TW;gx+=3){
-    if(((gx+offX)+(gy+offY)+tx_)%5<2)bx(px+gx,py+gy,2,1,`rgb(${196+sv},${180+sv},${116+sv})`);
-  }
-  bx(px,py,5,TH,`rgb(${184+sv},${168+sv},${104+sv})`);
-  bx(px+TW-5,py,5,TH,`rgb(${184+sv},${168+sv},${104+sv})`);
-  for(let gy=0;gy<TH;gy+=2){if(thRand(tx_,ty,gy+500)>.4)bx(px,py+gy,2,1,`rgb(${140+sv},${148+sv},${88+sv})`);if(thRand(tx_,ty,gy+510)>.4)bx(px+TW-2,py+gy,2,1,`rgb(${140+sv},${148+sv},${88+sv})`);}
-  bx(px+10,py,12,TH,`rgb(${216+sv},${200+sv},${140+sv})`);
-  bx(px+12,py,8,TH,`rgb(${220+sv},${204+sv},${148+sv})`);
-  bx(px,py,TW,2,`rgb(${224+sv},${216+sv},${160+sv})`);
-  bx(px,py+TH-2,TW,2,`rgb(${176+sv},${160+sv},${96+sv})`);
-  const r=tr(tx_,ty);
-  for(let i=0;i<4;i++){
-    if(thRand(tx_,ty,i+50)>.35){
-      const pbx=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby=Math.floor(thRand(tx_,ty,i+70)*26)+3;
-      bx(px+pbx,py+pby,3,2,'#a09878');bx(px+pbx,py+pby,2,1,'#b0a888');
-    }
-  }
-  if((tx_+ty)%5===0){bx(px+10,py+12,3,4,'rgba(160,144,96,.3)');bx(px+18,py+18,3,4,'rgba(160,144,96,.3)');}
-  if(r.a>.6)bx(px+Math.floor(r.b*24)+4,py+Math.floor(r.c*24)+4,4,2,`rgb(${184+sv},${168+sv},${104+sv})`);
-  if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.15)');}
+  // Overworld: zelda path tile
+  if(drawZeldaOverTile(ZO.path[0],ZO.path[1],px,py,2)) return;
+  // Fallback: solid dirt
+  bx(px,py,TW,TH,'#c8a868');
 }
 
 function drawSand(px,py,tx_,ty){
-  if(currentMap===0){
-    const h=tileHash(tx_,ty);
-    const nearW=isNearWater(tx_,ty);
-    // LPC terrain sand tiles
-    const sCol=(nearW||h&1)?WT.sandAlt[0]:WT.sand[0];
-    const sRow=(nearW||h&1)?WT.sandAlt[1]:WT.sand[1];
-    if(drawWorldTile(sCol, sRow, px, py)){
-      // Shell details
-      if(thRand(tx_,ty,80)>.7){
-        const shx=Math.floor(thRand(tx_,ty,81)*28)+2, shy=Math.floor(thRand(tx_,ty,82)*26)+3;
-        bx(px+shx,py+shy,3,2,'#f0e8d8');
-      }
-      return;
-    }
-  }
-  // Fallback: original fillRect sand
-  const h=tileHash(tx_,ty);
-  const sv=((h&7)-4);
-  bx(px,py,TW,TH/2,`rgb(${236+sv},${220+sv},${172+sv})`);
-  bx(px,py+TH/2,TW,TH/2,`rgb(${228+sv},${212+sv},${164+sv})`);
-  const r=tr(tx_,ty);
-  const offX=(h>>3)&3, offY=(h>>5)&3;
-  for(let sy=0;sy<TH;sy+=2)for(let sx=0;sx<TW;sx+=2){
-    if(((sx+offX)+(sy+offY)+tx_)%5<1)bx(px+sx,py+sy,2,1,`rgb(${216+sv},${200+sv},${152+sv})`);
-    if(((sx+offX+1)+(sy+offY+2)+ty)%7<1)bx(px+sx,py+sy,1,2,`rgb(${240+sv},${224+sv},${180+sv})`);
-  }
-  for(let i=0;i<3;i++){
-    if(thRand(tx_,ty,80+i)>.6){
-      const shx=Math.floor(thRand(tx_,ty,81+i*3)*28)+2, shy=Math.floor(thRand(tx_,ty,82+i*3)*26)+3;
-      bx(px+shx,py+shy,3,2,'#f0e8d8');bx(px+shx+1,py+shy,1,1,'#fff');bx(px+shx,py+shy+1,2,1,'#d0c0a0');
-    }
-  }
-  for(let i=0;i<3;i++){
-    const ripY=6+i*10+Math.floor(thRand(tx_,ty,90+i)*4);
-    for(let rx=0;rx<TW;rx+=2){
-      if(thRand(tx_,ty,rx+100+i*20)>.3)bx(px+rx,py+ripY,3,1,`rgb(${220+sv},${204+sv},${156+sv})`);
-    }
-  }
-  if(isNearWater(tx_,ty)){
-    bx(px,py+TH-8,TW,8,`rgb(${200+sv},${184+sv},${136+sv})`);
-    bx(px,py+TH-6,TW,6,`rgb(${188+sv},${172+sv},${124+sv})`);
-    bx(px,py+TH-3,TW,3,`rgb(${180+sv},${164+sv},${116+sv})`);
-    if((wt+tx_)%3===0)bx(px,py+TH-2,TW,1,`rgb(${172+sv},${156+sv},${108+sv})`);
-  }
+  if(drawZeldaOverTile(ZO.sand[0],ZO.sand[1],px,py,2)) return;
+  // Fallback: solid sand
+  bx(px,py,TW,TH,'#d4b878');
 }
 
 function drawTree(px,py,tx_,ty){
-  // Zelda tree — unified art style
   drawGrass(px,py,tx_,ty);
-  if(drawZeldaOverTile(ZO.tree[0], ZO.tree[1], px, py, 2)){
-    g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
+  if(drawZeldaOverTile(ZO.tree[0],ZO.tree[1],px,py,2)){
+    g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
     return;
   }
-  if(useKenney.tree){
-    const kTile = (tileHash(tx_,ty) % 2 === 0) ? K.tree1 : K.tree2;
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#305828')){
-      g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
-      return;
-    }
-  }
-  // Fallback: original fillRect tree
-  drawGrass(px,py,tx_,ty);
-  g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+16,py+TH-2,14,5,0,0,Math.PI*2);g.fill();
-  bx(px+13,py+16,6,14,'#806030');bx(px+14,py+17,4,12,'#906838');
-  bx(px+13,py+19,6,1,'#705028');bx(px+13,py+23,6,1,'#705028');bx(px+13,py+27,6,1,'#705028');
-  bx(px+11,py+TH-3,2,2,'#48984a');bx(px+19,py+TH-3,2,2,'#50a050');
-  bx(px+2,py+2,28,14,'#286828');
-  bx(px+4,py+1,24,13,'#38883a');g.beginPath();g.ellipse(px+16,py+8,14,8,0,0,Math.PI*2);g.fillStyle='#38883a';g.fill();
-  bx(px+6,py+1,20,10,'#48a848');bx(px+8,py+2,16,6,'#58c058');
-  bx(px+10,py+1,12,2,'#68d068');
-  bx(px+2,py+4,3,2,'#306830');bx(px+27,py+5,3,2,'#306830');
-  bx(px+4,py+13,4,2,'#306830');bx(px+24,py+12,4,2,'#306830');
-  bx(px+6,py+1,4,1,'#58c058');bx(px+22,py+1,4,1,'#58c058');
+  // Fallback: solid green canopy
+  bx(px+4,py+2,24,22,'#2d6e2d');g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
 }
 
 function drawPine(px,py,tx_,ty){
-  if(useKenney.pine){
-    drawGrass(px,py,tx_,ty);
-    if(drawKenneyTileTinted(K.tree2[0], K.tree2[1], px, py, 2, '#284820')){
-      g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.ellipse(px+16,py+TH-2,10,3,0,0,Math.PI*2);g.fill();
-      return;
-    }
-  }
-  // Fallback
   drawGrass(px,py,tx_,ty);
-  g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
-  bx(px+13,py+20,6,10,'#705828');bx(px+14,py+21,4,8,'#806030');
-  bx(px+13,py+23,6,1,'#604820');bx(px+13,py+27,6,1,'#604820');
-  bx(px+11,py+TH-3,2,2,'#48984a');bx(px+19,py+TH-2,2,2,'#50a050');
-  bx(px+4,py+14,24,7,'#206020');bx(px+6,py+13,20,6,'#287028');
-  bx(px+6,py+8,20,7,'#287028');bx(px+8,py+7,16,5,'#308030');
-  bx(px+8,py+3,16,6,'#308030');bx(px+10,py+2,12,4,'#38a038');
-  bx(px+12,py+0,8,3,'#48b848');bx(px+14,py-1,4,2,'#58c858');
-  bx(px+15,py-2,2,1,'#68d868');
+  if(drawZeldaOverTile(ZO.tree[0],ZO.tree[1],px,py,2)){
+    g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.ellipse(px+16,py+TH-2,10,3,0,0,Math.PI*2);g.fill();
+    return;
+  }
+  bx(px+8,py+2,16,26,'#1e5a1e');g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.ellipse(px+16,py+TH-2,10,3,0,0,Math.PI*2);g.fill();
 }
 
 function drawPalm(px,py,tx_,ty){
@@ -393,24 +172,12 @@ function drawPalm(px,py,tx_,ty){
 }
 
 function drawBush(px,py,tx_,ty){
-  // Zelda bush — unified art style
   drawGrass(px,py,tx_,ty);
-  if(drawZeldaOverTile(ZO.bush[0], ZO.bush[1], px, py, 2)){
+  if(drawZeldaOverTile(ZO.bush[0],ZO.bush[1],px,py,2)){
     bx(px+10,py+14,2,2,'#c04040');bx(px+20,py+12,2,2,'#c04040');
     return;
   }
-  if(useKenney.bush){
-    if(drawKenneyTileTinted(K.bush1[0], K.bush1[1], px, py, 2, '#388838')){
-      bx(px+10,py+14,2,2,'#c04040');bx(px+20,py+12,2,2,'#c04040');
-      return;
-    }
-  }
-  // Fallback
-  drawGrass(px,py,tx_,ty);
-  g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
-  bx(px+4,py+10,24,18,'#287028');bx(px+6,py+8,20,18,'#388838');
-  bx(px+8,py+8,16,12,'#48a048');bx(px+8,py+8,10,2,'#58b858');bx(px+6,py+10,4,2,'#48a048');
-  bx(px+10,py+14,2,2,'#c04040');bx(px+20,py+12,2,2,'#c04040');bx(px+14,py+18,2,2,'#c04040');
+  bx(px+6,py+10,20,16,'#388838');bx(px+10,py+14,2,2,'#c04040');bx(px+20,py+12,2,2,'#c04040');
 }
 
 function _parseHex(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return[r,g,b];}
@@ -546,58 +313,24 @@ function drawMountain(px,py,tx_,ty){
     }
     return;
   }
-  // Zelda cliff tile — unified art style
-  { const h=tileHash(tx_,ty);
-    const sv=((h&7)-4);
-    bx(px,py,TW,TH,`rgb(${110+sv},${108+sv},${124+sv})`);
-    if(drawZeldaOverTile(ZO.cliff[0], ZO.cliff[1], px, py, 2)){
-      if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');}
-      if(currentMap===2){bx(px,py,TW,TH,'rgba(10,0,20,.15)');}
-      return;
-    }
+  // Zelda cliff tile
+  if(drawZeldaOverTile(ZO.cliff[0],ZO.cliff[1],px,py,2)){
+    if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');}
+    return;
   }
-  if(useKenney.mountain){
-    const h=tileHash(tx_,ty);
-    const sv=((h&7)-4);
-    bx(px,py,TW,TH,`rgb(${120+sv},${120+sv},${136+sv})`);
-    if(drawKenneyTileTinted(K.rock1[0], K.rock1[1], px, py, 2, `rgb(${96+sv},${96+sv},${112+sv})`)){
-      if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');}
-      if(currentMap===2){bx(px,py,TW,TH,'rgba(10,0,20,.15)');}
-      return;
-    }
-  }
-  // Fallback
-  const h=tileHash(tx_,ty);
-  const sv=((h&7)-4);
-  bx(px,py,TW,TH,`rgb(${120+sv},${120+sv},${136+sv})`);
-  const r=tr(tx_,ty);
-  const offX=(h>>4)&3;
-  for(let ry=0;ry<TH;ry+=3)for(let rx=0;rx<TW;rx+=3){
-    if((rx+offX+ry+tx_*5)%4<1)bx(px+rx,py+ry,3,3,`rgb(${104+sv},${104+sv},${120+sv})`);
-    if((rx+ry+ty*3)%5<1)bx(px+rx,py+ry,2,1,`rgb(${136+sv},${136+sv},${152+sv})`);
-  }
-  if(r.a>.5)bx(px+Math.floor(r.b*24)+4,py+Math.floor(r.c*24)+4,1,6,`rgb(${96+sv},${96+sv},${108+sv})`);
-  if(r.d>.6)bx(px+Math.floor(r.e*20)+6,py+Math.floor(r.f*20)+6,4,1,`rgb(${96+sv},${96+sv},${108+sv})`);
-  if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');bx(px+8,py+4,16,1,'#b8b8c0');}
-  if(currentMap===2){bx(px,py,TW,TH,'rgba(10,0,20,.15)');}
+  // Fallback: solid gray cliff
+  bx(px,py,TW,TH,'#7a7888');
+  if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');}
 }
 
 function drawRock(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
-  if(useKenney.rock){
-    const kTile = (tileHash(tx_,ty) % 2 === 0) ? K.rock1 : K.rock2;
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#707880')){
-      g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
-      return;
-    }
+  if(drawZeldaOverTile(ZO.bush[0],ZO.bush[1],px,py,2)){
+    g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
+    return;
   }
   // Fallback
-  drawGrass(px,py,tx_,ty);
-  g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+16,py+TH-2,14,5,0,0,Math.PI*2);g.fill();
-  bx(px+4,py+24,2,2,'#50a050');bx(px+26,py+24,2,2,'#48984a');
-  bx(px+6,py+6,20,20,'#707078');bx(px+8,py+4,16,20,'#808088');bx(px+10,py+6,12,14,'#909098');
-  bx(px+8,py+4,8,2,'#a0a0a8');bx(px+6,py+6,2,6,'#888890');
-  bx(px+14,py+10,1,8,'#606068');bx(px+10,py+14,6,1,'#606068');
+  bx(px+6,py+6,20,20,'#808088');g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
 }
 
 function drawFence(px,py,tx_,ty){
