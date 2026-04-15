@@ -793,12 +793,19 @@ function updateTownWeather(){
 }
 
 // v84: Town weather draw — layered atmospheric effects
+// Weather canvas cache for fog (gradient-heavy) — update every 4 frames
+const _weatherCanvas=document.createElement('canvas');
+_weatherCanvas.width=W;_weatherCanvas.height=H;
+const _weatherCtx=_weatherCanvas.getContext('2d');
+let _weatherLastFr=-99,_weatherLastType='';
+
 function drawTownWeather(){
   if(inDungeon||currentMap!==0)return;
   const wa=townWeatherAlpha;
   if(wa<=0.02)return;
   if(townWeather==='rain'){
-    // Falling rain lines (stateless — driven by frame counter)
+    // Only redraw rain every 2nd frame
+    if(fr%2!==0)return;
     g.save();
     for(let i=0;i<55;i++){
       const seed=i*137;
@@ -828,31 +835,32 @@ function drawTownWeather(){
     g.globalAlpha=1;
     g.restore();
   } else if(townWeather==='fog'){
-    g.save();
-    // Wispy horizontal fog bands at different heights
-    for(let i=0;i<12;i++){
-      const seed=i*97;
-      const fogX=((fr*0.25+seed*53)%(W+320))-160;
-      const fogY=60+seed%4*70+Math.sin(fr*0.015+i*1.3)*12;
-      const fogW=160+seed%5*50;
-      const fogAlpha=wa*(0.12+seed%3*0.04);
-      g.globalAlpha=fogAlpha;
-      const grd=g.createLinearGradient(fogX,fogY,fogX+fogW,fogY);
-      grd.addColorStop(0,'rgba(210,220,230,0)');
-      grd.addColorStop(0.25,'rgba(210,220,230,1)');
-      grd.addColorStop(0.75,'rgba(210,220,230,1)');
-      grd.addColorStop(1,'rgba(210,220,230,0)');
-      g.fillStyle=grd;
-      g.fillRect(fogX,fogY-20,fogW,40);
+    // Fog: expensive gradients — cache to offscreen canvas, update every 4 frames
+    if(fr-_weatherLastFr>=4||_weatherLastType!=='fog'){
+      _weatherCtx.clearRect(0,0,W,H);
+      for(let i=0;i<12;i++){
+        const seed=i*97;
+        const fogX=((fr*0.25+seed*53)%(W+320))-160;
+        const fogY=60+seed%4*70+Math.sin(fr*0.015+i*1.3)*12;
+        const fogW=160+seed%5*50;
+        const fogAlpha=wa*(0.12+seed%3*0.04);
+        _weatherCtx.globalAlpha=fogAlpha;
+        const grd=_weatherCtx.createLinearGradient(fogX,fogY,fogX+fogW,fogY);
+        grd.addColorStop(0,'rgba(210,220,230,0)');
+        grd.addColorStop(0.25,'rgba(210,220,230,1)');
+        grd.addColorStop(0.75,'rgba(210,220,230,1)');
+        grd.addColorStop(1,'rgba(210,220,230,0)');
+        _weatherCtx.fillStyle=grd;_weatherCtx.fillRect(fogX,fogY-20,fogW,40);
+      }
+      _weatherCtx.globalAlpha=wa*0.2;
+      const vgr=_weatherCtx.createRadialGradient(W/2,H/2,W*0.3,W/2,H/2,W*0.7);
+      vgr.addColorStop(0,'rgba(190,200,210,0)');
+      vgr.addColorStop(1,'rgba(190,200,210,0.85)');
+      _weatherCtx.fillStyle=vgr;_weatherCtx.fillRect(0,0,W,H);
+      _weatherCtx.globalAlpha=1;
+      _weatherLastFr=fr;_weatherLastType='fog';
     }
-    // Edge vignette — fog thickens at screen edges
-    g.globalAlpha=wa*0.2;
-    const vgr=g.createRadialGradient(W/2,H/2,W*0.3,W/2,H/2,W*0.7);
-    vgr.addColorStop(0,'rgba(190,200,210,0)');
-    vgr.addColorStop(1,'rgba(190,200,210,0.85)');
-    g.fillStyle=vgr;g.fillRect(0,0,W,H);
-    g.globalAlpha=1;
-    g.restore();
+    g.drawImage(_weatherCanvas,0,0,W,H);
   } else {
     // Clear: drifting sunlight dust motes
     g.save();

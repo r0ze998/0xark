@@ -2,6 +2,13 @@
 // ═══════════════════════════════════════
 const HUD_HEIGHT=72;
 
+// Pre-built edge gradients for map boundary vignette (avoids creating gradient objects every frame)
+const _edgeFade=20;
+const _mapEdgeGradL=(()=>{const gr=g.createLinearGradient(0,0,_edgeFade,0);gr.addColorStop(0,'#000');gr.addColorStop(1,'rgba(0,0,0,0)');return gr;})();
+const _mapEdgeGradR=(()=>{const gr=g.createLinearGradient(W-_edgeFade,0,W,0);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'#000');return gr;})();
+const _mapEdgeGradT=(()=>{const gr=g.createLinearGradient(0,0,0,_edgeFade);gr.addColorStop(0,'#000');gr.addColorStop(1,'rgba(0,0,0,0)');return gr;})();
+const _mapEdgeGradB=(()=>{const gr=g.createLinearGradient(0,H-HUD_HEIGHT-_edgeFade,0,H-HUD_HEIGHT);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'#000');return gr;})();
+
 function drawEdgeBlending(startTX,startTY,endTX,endTY){
   const m=getMap();
   for(let y=startTY;y<=endTY;y++){
@@ -626,39 +633,43 @@ function dMap(){
     }
     g.drawImage(fogCanvas,0,0,W,H);
   }
-  // ── CIRCULAR VISIBILITY (Iwayama Tunnel style) — dungeon only ──
-  // Town is a safe zone, no dark vignette. Dungeon only.
-  // Each floor has a subtle color tint that intensifies as the player goes deeper.
-  if(inDungeon&&(!isTouchDevice||fr%2===0)){
-    const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
-    const innerR=120, outerR=320;
-    const grad=g.createRadialGradient(px,py,innerR,px,py,outerR);
-    // Floor-depth color tints: deeper = warmer/more ominous
-    const floorTint=['rgba(0,0,0','rgba(15,5,35','rgba(25,5,40','rgba(35,8,28','rgba(40,5,8','rgba(50,0,0'][currentFloor]||'rgba(0,0,0';
-    grad.addColorStop(0,'rgba(0,0,0,0)');
-    grad.addColorStop(0.15,'rgba(0,0,0,0)');
-    grad.addColorStop(0.3,'rgba(0,0,0,0.05)');
-    grad.addColorStop(0.45,'rgba(0,0,0,0.12)');
-    grad.addColorStop(0.6,floorTint+',0.25)');
-    grad.addColorStop(0.75,floorTint+',0.46)');
-    grad.addColorStop(0.88,floorTint+',0.66)');
-    grad.addColorStop(1,floorTint+',0.82)');
-    g.fillStyle=grad;
-    g.fillRect(0,0,W,H);
+  // ── CIRCULAR VISIBILITY (dungeon only) — cached to offscreen canvas ──
+  if(inDungeon){
+    const _vpx=pl[0].visualX-camX+TW/2, _vpy=pl[0].visualY-camY+TH/2;
+    if(Math.abs(_vpx-_dvLastPX)>1||Math.abs(_vpy-_dvLastPY)>1||currentFloor!==_dvLastFloor){
+      dungeonVigCtx.clearRect(0,0,W,H);
+      const innerR=120,outerR=320;
+      const grad=dungeonVigCtx.createRadialGradient(_vpx,_vpy,innerR,_vpx,_vpy,outerR);
+      const floorTint=['rgba(0,0,0','rgba(15,5,35','rgba(25,5,40','rgba(35,8,28','rgba(40,5,8','rgba(50,0,0'][currentFloor]||'rgba(0,0,0';
+      grad.addColorStop(0,'rgba(0,0,0,0)');
+      grad.addColorStop(0.15,'rgba(0,0,0,0)');
+      grad.addColorStop(0.3,'rgba(0,0,0,0.05)');
+      grad.addColorStop(0.45,'rgba(0,0,0,0.12)');
+      grad.addColorStop(0.6,floorTint+',0.25)');
+      grad.addColorStop(0.75,floorTint+',0.46)');
+      grad.addColorStop(0.88,floorTint+',0.66)');
+      grad.addColorStop(1,floorTint+',0.82)');
+      dungeonVigCtx.fillStyle=grad;
+      dungeonVigCtx.fillRect(0,0,W,H);
+      _dvLastPX=_vpx;_dvLastPY=_vpy;_dvLastFloor=currentFloor;
+    }
+    g.drawImage(dungeonVigCanvas,0,0,W,H);
   }
-  // v112: Danger ambient vignette — red/amber edge when area danger is elevated
+  // v112: Danger ambient vignette — flat color rect (avoid per-frame gradient creation)
   if(inDungeon){
     const dangerV=areaDanger[currentMap]||0;
     if(dangerV>=DANGER_LOW_THRESH){
       const isHigh=dangerV>=DANGER_HIGH_THRESH;
       const pulse=Math.sin(fr*(isHigh?0.07:0.04))*0.5+0.5;
       const baseA=isHigh?0.08+pulse*0.08:0.04+pulse*0.04;
-      const vigCol=isHigh?`rgba(180,20,20,${baseA})`:`rgba(160,90,0,${baseA})`;
-      const vig=g.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.9);
-      vig.addColorStop(0,'rgba(0,0,0,0)');
-      vig.addColorStop(1,vigCol);
-      g.fillStyle=vig;g.fillRect(0,0,W,H);
-      // HIGH danger: brief scan-line flash every ~160 frames
+      // Use radial gradient only every 3rd frame for pulse; blit flat color in between
+      if(fr%3===0){
+        const vigCol=isHigh?`rgba(180,20,20,${baseA})`:`rgba(160,90,0,${baseA})`;
+        const vig=g.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.9);
+        vig.addColorStop(0,'rgba(0,0,0,0)');
+        vig.addColorStop(1,vigCol);
+        g.fillStyle=vig;g.fillRect(0,0,W,H);
+      }
       if(isHigh&&fr%160<4){
         const fA=0.08*(1-fr%160/4);
         g.globalAlpha=fA;bx(0,0,W,H,'#c01010');g.globalAlpha=1;
@@ -686,9 +697,9 @@ function dMap(){
 
   drawFootprints();
   drawParticles(camX,camY);
-  drawBirds();
-  drawPirateDecorations();
-  drawTownWeather(); // v84: weather overlay (after pirate decor, before NPCs)
+  if(fr%2===0)drawBirds();
+  if(fr%2===0)drawPirateDecorations(); // throttle: flag/sail animations are slow anyway
+  drawTownWeather();
 
   // ── DUNGEON ENTRANCE LABEL (town only) ──
   if(!inDungeon&&currentMap===0){
@@ -919,38 +930,25 @@ function dMap(){
   // Player status effects (sparkle, exhausted, card get)
   drawPlayerStatusEffects();
 
-  // Map edge gradient polish (darken edges when camera near map bounds)
+  // Map edge gradient polish — pre-built gradients, vary by globalAlpha only
   {
     const maxX=MW*TW-W,maxY=MH*TH-(H-HUD_HEIGHT);
     const edgeFade=20;
-    // Left edge
     if(camX<edgeFade){
-      const a=0.15*(1-camX/edgeFade);
-      const gr=g.createLinearGradient(0,0,edgeFade,0);
-      gr.addColorStop(0,'rgba(0,0,0,'+a+')');gr.addColorStop(1,'rgba(0,0,0,0)');
-      g.fillStyle=gr;g.fillRect(0,0,edgeFade,H-HUD_HEIGHT);
+      g.globalAlpha=0.15*(1-camX/edgeFade);
+      g.fillStyle=_mapEdgeGradL;g.fillRect(0,0,edgeFade,H-HUD_HEIGHT);g.globalAlpha=1;
     }
-    // Right edge
     if(camX>maxX-edgeFade){
-      const a=0.15*Math.min(1,(camX-(maxX-edgeFade))/edgeFade);
-      const gr=g.createLinearGradient(W-edgeFade,0,W,0);
-      gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,'+a+')');
-      g.fillStyle=gr;g.fillRect(W-edgeFade,0,edgeFade,H-HUD_HEIGHT);
+      g.globalAlpha=0.15*Math.min(1,(camX-(maxX-edgeFade))/edgeFade);
+      g.fillStyle=_mapEdgeGradR;g.fillRect(W-edgeFade,0,edgeFade,H-HUD_HEIGHT);g.globalAlpha=1;
     }
-    // Top edge
     if(camY<edgeFade){
-      const a=0.15*(1-camY/edgeFade);
-      const gr=g.createLinearGradient(0,0,0,edgeFade);
-      gr.addColorStop(0,'rgba(0,0,0,'+a+')');gr.addColorStop(1,'rgba(0,0,0,0)');
-      g.fillStyle=gr;g.fillRect(0,0,W,edgeFade);
+      g.globalAlpha=0.15*(1-camY/edgeFade);
+      g.fillStyle=_mapEdgeGradT;g.fillRect(0,0,W,edgeFade);g.globalAlpha=1;
     }
-    // Bottom edge
     if(camY>maxY-edgeFade){
-      const a=0.15*Math.min(1,(camY-(maxY-edgeFade))/edgeFade);
-      const hud=H-HUD_HEIGHT;
-      const gr=g.createLinearGradient(0,hud-edgeFade,0,hud);
-      gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,'+a+')');
-      g.fillStyle=gr;g.fillRect(0,hud-edgeFade,W,edgeFade);
+      g.globalAlpha=0.15*Math.min(1,(camY-(maxY-edgeFade))/edgeFade);
+      g.fillStyle=_mapEdgeGradB;g.fillRect(0,H-HUD_HEIGHT-edgeFade,W,edgeFade);g.globalAlpha=1;
     }
   }
 
@@ -1329,7 +1327,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v161',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v162',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
