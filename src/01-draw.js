@@ -466,3 +466,168 @@ function logOnchain(msg){
   }
 }
 
+// ── On-chain instruction helpers ──────────────────────────────────────────
+// Discriminators: sha256("global:<name>")[0..8]
+const DISC={
+  create_game:    [124,69,75,66,184,220,72,206],
+  join_game:      [107,112,18,38,56,173,60,128],
+  start_game:     [249,47,252,172,184,162,245,14],
+  resolve_round:  [165,114,237,158,1,36,70,254],
+  deposit_stake:  [160,167,9,220,74,243,228,43],
+  claim_prize:    [157,233,139,121,246,62,234,235],
+};
+
+function gameIdBuf(id){
+  const b=new ArrayBuffer(8);new DataView(b).setBigUint64(0,BigInt(id),true);
+  return new Uint8Array(b);
+}
+
+function _gamePDA(gameId){
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [Buffer.from('game'),gameIdBuf(gameId)],PROGRAM_PUBKEY)[0];
+}
+function _playerPDA(gameId,pk){
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [Buffer.from('player'),gameIdBuf(gameId),pk.toBytes()],PROGRAM_PUBKEY)[0];
+}
+function _cardPoolPDA(gameId){
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [Buffer.from('card_pool'),gameIdBuf(gameId)],PROGRAM_PUBKEY)[0];
+}
+function _stakeVaultPDA(gameId){
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [Buffer.from('stake_vault'),gameIdBuf(gameId)],PROGRAM_PUBKEY)[0];
+}
+
+async function _sendIx(keys,data){
+  if(!solConnection||!window.solana)throw new Error('No wallet/connection');
+  const ix=new solanaWeb3.TransactionInstruction({keys,programId:PROGRAM_PUBKEY,data});
+  const tx=new solanaWeb3.Transaction().add(ix);
+  tx.feePayer=window.solana.publicKey;
+  tx.recentBlockhash=(await solConnection.getLatestBlockhash()).blockhash;
+  const signed=await window.solana.signTransaction(tx);
+  const sig=await solConnection.sendRawTransaction(signed.serialize());
+  await solConnection.confirmTransaction(sig,'confirmed');
+  return sig;
+}
+
+async function onchainCreateGame(gameId,maxPlayers){
+  if(!walletConnected)return null;
+  try{
+    const payer=window.solana.publicKey;
+    const gid=gameIdBuf(gameId);
+    const gamePDA=_gamePDA(gameId);
+    const poolPDA=_cardPoolPDA(gameId);
+    // disc(8)+game_id(8)+max_players(1)=17
+    const data=new Uint8Array(17);
+    data.set(DISC.create_game,0);data.set(gid,8);data[16]=maxPlayers&0xff;
+    const sig=await _sendIx([
+      {pubkey:payer,isSigner:true,isWritable:true},
+      {pubkey:gamePDA,isSigner:false,isWritable:true},
+      {pubkey:poolPDA,isSigner:false,isWritable:true},
+      {pubkey:solanaWeb3.SystemProgram.programId,isSigner:false,isWritable:false},
+    ],data);
+    lg.push('[ON-CHAIN] CreateGame TX: '+sig.slice(0,12)+'..');
+    return sig;
+  }catch(e){lg.push('[ON-CHAIN] CreateGame failed: '+(e.message||'').slice(0,40));return null;}
+}
+
+async function onchainJoinGame(gameId){
+  if(!walletConnected)return null;
+  try{
+    const payer=window.solana.publicKey;
+    const gid=gameIdBuf(gameId);
+    const gamePDA=_gamePDA(gameId);
+    const playerPDA=_playerPDA(gameId,payer);
+    // disc(8)+game_id(8)=16
+    const data=new Uint8Array(16);
+    data.set(DISC.join_game,0);data.set(gid,8);
+    const sig=await _sendIx([
+      {pubkey:payer,isSigner:true,isWritable:true},
+      {pubkey:gamePDA,isSigner:false,isWritable:true},
+      {pubkey:playerPDA,isSigner:false,isWritable:true},
+      {pubkey:solanaWeb3.SystemProgram.programId,isSigner:false,isWritable:false},
+    ],data);
+    lg.push('[ON-CHAIN] JoinGame TX: '+sig.slice(0,12)+'..');
+    return sig;
+  }catch(e){lg.push('[ON-CHAIN] JoinGame failed: '+(e.message||'').slice(0,40));return null;}
+}
+
+async function onchainStartGame(gameId){
+  if(!walletConnected)return null;
+  try{
+    const payer=window.solana.publicKey;
+    const gid=gameIdBuf(gameId);
+    const gamePDA=_gamePDA(gameId);
+    const data=new Uint8Array(16);
+    data.set(DISC.start_game,0);data.set(gid,8);
+    const sig=await _sendIx([
+      {pubkey:payer,isSigner:true,isWritable:true},
+      {pubkey:gamePDA,isSigner:false,isWritable:true},
+    ],data);
+    lg.push('[ON-CHAIN] StartGame TX: '+sig.slice(0,12)+'..');
+    return sig;
+  }catch(e){lg.push('[ON-CHAIN] StartGame failed: '+(e.message||'').slice(0,40));return null;}
+}
+
+async function onchainResolveRound(gameId){
+  if(!walletConnected)return null;
+  try{
+    const payer=window.solana.publicKey;
+    const gid=gameIdBuf(gameId);
+    const gamePDA=_gamePDA(gameId);
+    const poolPDA=_cardPoolPDA(gameId);
+    const data=new Uint8Array(16);
+    data.set(DISC.resolve_round,0);data.set(gid,8);
+    const sig=await _sendIx([
+      {pubkey:payer,isSigner:true,isWritable:true},
+      {pubkey:gamePDA,isSigner:false,isWritable:true},
+      {pubkey:poolPDA,isSigner:false,isWritable:true},
+    ],data);
+    lg.push('[ON-CHAIN] ResolveRound TX: '+sig.slice(0,12)+'..');
+    return sig;
+  }catch(e){lg.push('[ON-CHAIN] ResolveRound failed: '+(e.message||'').slice(0,40));return null;}
+}
+
+async function onchainDepositStake(gameId){
+  if(!walletConnected)return null;
+  try{
+    const payer=window.solana.publicKey;
+    const gid=gameIdBuf(gameId);
+    const gamePDA=_gamePDA(gameId);
+    const vaultPDA=_stakeVaultPDA(gameId);
+    const data=new Uint8Array(16);
+    data.set(DISC.deposit_stake,0);data.set(gid,8);
+    const sig=await _sendIx([
+      {pubkey:payer,isSigner:true,isWritable:true},
+      {pubkey:gamePDA,isSigner:false,isWritable:false},
+      {pubkey:vaultPDA,isSigner:false,isWritable:true},
+      {pubkey:solanaWeb3.SystemProgram.programId,isSigner:false,isWritable:false},
+    ],data);
+    lg.push('[ON-CHAIN] DepositStake TX: '+sig.slice(0,12)+'..');
+    return sig;
+  }catch(e){lg.push('[ON-CHAIN] DepositStake failed: '+(e.message||'').slice(0,40));return null;}
+}
+
+async function onchainClaimPrize(gameId){
+  if(!walletConnected)return null;
+  try{
+    const payer=window.solana.publicKey;
+    const gid=gameIdBuf(gameId);
+    const gamePDA=_gamePDA(gameId);
+    const playerPDA=_playerPDA(gameId,payer);
+    const vaultPDA=_stakeVaultPDA(gameId);
+    const data=new Uint8Array(16);
+    data.set(DISC.claim_prize,0);data.set(gid,8);
+    const sig=await _sendIx([
+      {pubkey:payer,isSigner:true,isWritable:true},
+      {pubkey:gamePDA,isSigner:false,isWritable:false},
+      {pubkey:playerPDA,isSigner:false,isWritable:false},
+      {pubkey:vaultPDA,isSigner:false,isWritable:true},
+      {pubkey:solanaWeb3.SystemProgram.programId,isSigner:false,isWritable:false},
+    ],data);
+    lg.push('[ON-CHAIN] ClaimPrize TX: '+sig.slice(0,12)+'..');
+    return sig;
+  }catch(e){lg.push('[ON-CHAIN] ClaimPrize failed: '+(e.message||'').slice(0,40));return null;}
+}
+
