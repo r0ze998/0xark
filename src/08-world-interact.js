@@ -427,15 +427,16 @@ function drawBuildingInterior(){
     bx(0,0,W,H,'rgba(0,0,0,.7)');
     const gw=400,gh=340,gx=W/2-gw/2,gy=H/2-gh/2;
     win(gx,gy,gw,gh);
-    // Header
-    bx(gx,gy,gw,28,'#1a1a30');
-    txShadow('GACHA',gx+gw/2-42,gy+20,14,'#f8c840','rgba(0,0,0,.5)');
+    // Header — rune glow behind title
+    bx(gx,gy,gw,28,'#100820');
+    g.globalAlpha=0.25+Math.sin(fr*0.06)*0.12;bx(gx,gy,gw,28,ARK.rune);g.globalAlpha=1;
+    txShadow('RUNE SUMMON',gx+gw/2-68,gy+20,12,'#f8c840','rgba(0,0,0,.5)');
     // Vault progress
     const vSize=pl[0].vault?pl[0].vault.size:0;
-    txShadow('Collection: '+vSize+'/60',gx+8,gy+40,7,'#c8c0a0','rgba(0,0,0,.3)');
+    txShadow('Reliquary: '+vSize+'/60',gx+8,gy+40,7,'#c8c0a0','rgba(0,0,0,.3)');
 
     if(gachaPhase==='menu'){
-      txShadow('Choose a draw type:',gx+16,gy+58,8,'#d0c8a0','rgba(0,0,0,.3)');
+      txShadow('Choose a ritual:',gx+16,gy+58,8,'#d0c8a0','rgba(0,0,0,.3)');
       GACHA_TIERS.forEach((t,i)=>{
         const isSelected=gachaSelectedTier===i;
         const ty_=gy+76+i*62;
@@ -457,8 +458,8 @@ function drawBuildingInterior(){
       // Pity counter
       const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
       const pityCol=gachaPityCount>=7?'#f0c830':gachaPityCount>=4?'#e08040':'#686878';
-      txShadow('PITY: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' \u2014 RARE SOON!':''),gx+16,gy+gh-40,6,pityCol,'rgba(0,0,0,.3)');
-      txShadow('[Z] Draw   [X] Cancel',gx+16,gy+gh-26,7,'#8888a0','rgba(0,0,0,.3)');
+      txShadow('PRAYER: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' \u2014 RELIC NEARS!':''),gx+16,gy+gh-40,6,pityCol,'rgba(0,0,0,.3)');
+      txShadow('[Z] Invoke   [X] Retreat',gx+16,gy+gh-26,7,'#8888a0','rgba(0,0,0,.3)');
       // Pull history panel (right of main panel)
       if(gachaHistory.length>0){
         const hx=gx+gw+8,hy=gy,hw=180,hh=gh;

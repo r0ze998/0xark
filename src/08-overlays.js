@@ -464,8 +464,15 @@ function dVictory(){
     bx(px_,py_,3,2,['#d8b028','#f0c830','#e8a020','#f8e060'][i%4]);
   }
 
-  if(t>35){g.globalAlpha=Math.min(1,(t-35)/20);txShadow('CONGRATULATIONS!',W/2-140,100,14,'#c89820','rgba(0,0,0,.5)');g.globalAlpha=1;}
-  if(t>40){g.globalAlpha=Math.min(1,(t-40)/15);txShadow('Information asymmetry is the ultimate weapon',W/2-180,124,7,'#a07848','rgba(0,0,0,.5)');g.globalAlpha=1;}
+  if(t>35){
+    g.globalAlpha=Math.min(1,(t-35)/20);
+    // Purple rune aura behind title
+    g.globalAlpha*=0.3+Math.sin(fr*0.08)*0.15;bx(W/2-160,84,320,28,ARK.rune);
+    g.globalAlpha=Math.min(1,(t-35)/20);
+    txShadow('THE SEAL IS BROKEN',W/2-144,100,14,'#c89820','rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  }
+  if(t>40){g.globalAlpha=Math.min(1,(t-40)/15);txShadow('Information asymmetry is the ultimate weapon',W/2-180,124,7,'#c08848','rgba(0,0,0,.5)');g.globalAlpha=1;}
   if(t>45){g.globalAlpha=Math.min(1,(t-45)/15);drawBattleSprite(pl[0],W/2,200,3,false);g.globalAlpha=1;}
 
   if(t>60){
@@ -524,7 +531,7 @@ function dVictory(){
   if(t>152){
     g.globalAlpha=Math.min(1,(t-152)/15);
     drawSolanaLogo(W/2-110,518,10);
-    txShadow('Verified on Solana',W/2-90,522,7,'#9945FF','rgba(0,0,0,.4)');
+    txShadow('Soul-inscribed on Solana',W/2-106,522,7,'#9945FF','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
   // Prize claim button — C to trigger
@@ -533,11 +540,11 @@ function dVictory(){
     win(W/2-190,536,380,28);
     drawSolanaIcon(W/2-170,540,8);
     if(victoryClaimed){
-      txShadow('\u2713 Prize Claimed! TX: '+victoryClaimedTx,W/2-148,554,7,'#14F195','rgba(0,0,0,.4)');
+      txShadow('\u2713 Grand Seal Claimed! TX: '+victoryClaimedTx,W/2-162,554,7,'#14F195','rgba(0,0,0,.4)');
     }else if(walletConnected){
       const claimBlink=Math.sin(fr*0.1)*0.15+0.85;
       g.globalAlpha*=claimBlink;
-      txShadow('[C] CLAIM PRIZE: '+stakePotAmount.toFixed(2)+' SOL',W/2-148,554,8,'#14F195','rgba(0,0,0,.4)');
+      txShadow('[C] BREAK THE SEAL: '+stakePotAmount.toFixed(2)+' SOL',W/2-165,554,8,'#14F195','rgba(0,0,0,.4)');
     }else{
       txShadow('Connect wallet to claim '+stakePotAmount.toFixed(2)+' SOL prize',W/2-165,554,7,'#686868','rgba(0,0,0,.35)');
     }
@@ -548,15 +555,15 @@ function dVictory(){
     g.globalAlpha=Math.min(1,(t-162)/15);
     win(W/2-180,568,360,24);
     if(victoryMinted){
-      txShadow('\u2713 60 Cards minted as NFTs!',W/2-120,584,8,'#9945FF','rgba(0,0,0,.4)');
+      txShadow('\u2713 60 Relics soul-bound on Solana!',W/2-160,584,8,'#9945FF','rgba(0,0,0,.4)');
     }else if(victoryMinting){
       const bar=Math.floor((victoryMintProgress/60)*28);
       bx(W/2-140,573,bar*5,14,'rgba(153,69,255,.5)');
-      txShadow('Minting '+victoryMintProgress+'/60...',W/2-80,584,8,'#c090ff','rgba(0,0,0,.4)');
+      txShadow('Inscribing '+victoryMintProgress+'/60...',W/2-88,584,8,'#c090ff','rgba(0,0,0,.4)');
     }else{
       const mintBlink=Math.sin(fr*0.08)*0.12+0.88;
       g.globalAlpha*=mintBlink;
-      txShadow('[M] MINT YOUR CARDS AS NFTs',W/2-130,584,8,'#9945FF','rgba(0,0,0,.4)');
+      txShadow('[M] INSCRIBE SOULS ON SOLANA',W/2-148,584,8,'#9945FF','rgba(0,0,0,.4)');
     }
     g.globalAlpha=1;
   }
