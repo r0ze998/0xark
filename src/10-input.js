@@ -78,9 +78,11 @@ document.addEventListener('keydown',e=>{
       if(introPage>=INTRO_PAGES.length){
         introActive=false;
         if(sc==='title'){
-          // New game flow: fade out → land in はじまりのまち (town)
+          // Set sc='map' immediately so any Z presses during the fade don't re-trigger
+          // the title screen new-game handler (which would restart the intro loop).
+          sc='map';
           fadeOut(()=>{
-            sc='map';currentMap=0;inDungeon=false;currentFloor=0;
+            currentMap=0;inDungeon=false;currentFloor=0;
             pl[0].x=15;pl[0].y=13;pl[0].dir=0;
             pl[0].visualX=15*TW;pl[0].visualY=13*TH;
             fogRevealAll(0);fogSave();
