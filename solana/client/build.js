@@ -89,6 +89,16 @@ function build() {
     { src: 'zelda-like-gfx/gfx/Overworld.png', dst: 'zelda-overworld.png' },
     { src: 'zelda-like-gfx/gfx/cave.png',      dst: 'zelda-cave.png'      },
     { src: 'zelda-like-gfx/gfx/objects.png',   dst: 'zelda-objects.png'   },
+    // Craftpix asset sheets
+    { src: 'craftpix-exterior.png', dst: 'craftpix-exterior.png' },
+    { src: 'craftpix-walls.png',    dst: 'craftpix-walls.png'    },
+    { src: 'craftpix-ground.png',   dst: 'craftpix-ground.png'   },
+    { src: 'craftpix-trees.png',    dst: 'craftpix-trees.png'    },
+    { src: 'craftpix-ruins1.png',   dst: 'craftpix-ruins1.png'   },
+    { src: 'craftpix-ruins2.png',   dst: 'craftpix-ruins2.png'   },
+    { src: 'craftpix-ruins3.png',   dst: 'craftpix-ruins3.png'   },
+    { src: 'craftpix-ruins4.png',   dst: 'craftpix-ruins4.png'   },
+    { src: 'craftpix-ruins5.png',   dst: 'craftpix-ruins5.png'   },
     // Midjourney map backgrounds (optional — only copied if they exist)
     { src: 'bg-town.jpg',      dst: 'bg-town.jpg'      },
     { src: 'bg-dungeon1.jpg',  dst: 'bg-dungeon1.jpg'  },

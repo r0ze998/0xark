@@ -655,6 +655,58 @@ function drawDungeonTile(idx, destX, destY, scale) {
 }
 
 // ═══════════════════════════════════════
+// CRAFTPIX ASSET SHEETS
+// craftpix-exterior.png : 240x800 — town buildings, trees, props (16px base grid)
+// craftpix-walls.png    : 144x176 — dungeon walls/floor tiles
+// craftpix-ground.png   : 336x288 — grass/dirt scatter details
+// craftpix-ruins1-5.png : individual ruin prop sprites (blue-gray, dark texture)
+// craftpix-trees.png    : animated trees spritesheet
+// ═══════════════════════════════════════
+const CPX_EXT   = new Image(); CPX_EXT.src   = 'craftpix-exterior.png';
+const CPX_WALL  = new Image(); CPX_WALL.src  = 'craftpix-walls.png';
+const CPX_GND   = new Image(); CPX_GND.src   = 'craftpix-ground.png';
+const CPX_TREES = new Image(); CPX_TREES.src = 'craftpix-trees.png';
+let cpxExtLoaded=false, cpxWallLoaded=false, cpxGndLoaded=false, cpxTreesLoaded=false;
+CPX_EXT.onload  = ()=>{ cpxExtLoaded=true; };
+CPX_WALL.onload = ()=>{ cpxWallLoaded=true; };
+CPX_GND.onload  = ()=>{ cpxGndLoaded=true; };
+CPX_TREES.onload= ()=>{ cpxTreesLoaded=true; };
+
+// Ruins props: 5 individual images per color variant
+const CPX_RUINS = Array.from({length:5},(_,i)=>{ const img=new Image(); img.src=`craftpix-ruins${i+1}.png`; return img; });
+const cpxRuinsLoaded = Array(5).fill(false);
+CPX_RUINS.forEach((img,i)=>{ img.onload=()=>{ cpxRuinsLoaded[i]=true; }; });
+
+// Draw a region from the exterior sheet at 1× scale (16px tiles)
+// sx,sy = source pixel coords in craftpix-exterior.png; sw,sh = source size
+function drawCpxExt(sx,sy,sw,sh,destX,destY,scale){
+  if(!cpxExtLoaded)return false;
+  const s=scale||2;
+  g.imageSmoothingEnabled=false;
+  g.drawImage(CPX_EXT,sx,sy,sw,sh,destX,destY,sw*s,sh*s);
+  return true;
+}
+
+// Draw dungeon wall/floor region from craftpix-walls.png
+function drawCpxWall(sx,sy,sw,sh,destX,destY,scale){
+  if(!cpxWallLoaded)return false;
+  const s=scale||2;
+  g.imageSmoothingEnabled=false;
+  g.drawImage(CPX_WALL,sx,sy,sw,sh,destX,destY,sw*s,sh*s);
+  return true;
+}
+
+// Draw a ruins prop (idx 0-4) at dest position, optionally scaled
+function drawCpxRuin(idx,destX,destY,scale){
+  if(!cpxRuinsLoaded[idx])return false;
+  const img=CPX_RUINS[idx];
+  const s=scale||1;
+  g.imageSmoothingEnabled=false;
+  g.drawImage(img,0,0,img.naturalWidth,img.naturalHeight,destX,destY,img.naturalWidth*s,img.naturalHeight*s);
+  return true;
+}
+
+// ═══════════════════════════════════════
 // MIDJOURNEY MAP BACKGROUNDS
 // bg-town.jpg   : port town night scene   (map 0)
 // bg-dungeon1.jpg : shallow dungeon       (maps 1-2)
@@ -6010,6 +6062,21 @@ function drawMountain(px,py,tx_,ty){
     }
     return;
   }
+  // Craftpix ruins: ruins2(idx1)=80×80 → scale 0.4 → 32×32, ruins1(idx0)=112×128 → scale 0.25 → 28×32
+  { const h=tileHash(tx_,ty);
+    const sv=((h&7)-4);
+    bx(px,py,TW,TH,`rgb(${110+sv},${108+sv},${124+sv})`);
+    const rIdx=(h&3)===0?0:1; // ruins1 or ruins2 for variety
+    const sc=rIdx===0?0.25:0.4;
+    const ox=rIdx===0?2:0, oy=rIdx===0?0:0;
+    if(drawCpxRuin(rIdx,px+ox,py+oy,sc)){
+      // shadow under
+      g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(px+16,py+TH-2,14,4,0,0,Math.PI*2);g.fill();
+      if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');}
+      if(currentMap===2){bx(px,py,TW,TH,'rgba(10,0,20,.15)');}
+      return;
+    }
+  }
   if(useKenney.mountain){
     const h=tileHash(tx_,ty);
     const sv=((h&7)-4);
@@ -6037,8 +6104,14 @@ function drawMountain(px,py,tx_,ty){
 }
 
 function drawRock(px,py,tx_,ty){
+  drawGrass(px,py,tx_,ty);
+  // Craftpix Blue-gray ruins: ruins5=32x32, ruins4=48x48
+  const rIdx=(tileHash(tx_,ty)%2===0)?4:3; // ruins5 or ruins4
+  if(drawCpxRuin(rIdx,px+(rIdx===3?-8:0),py+(rIdx===3?-8:0),1)){
+    g.fillStyle='rgba(0,0,0,.15)';g.beginPath();g.ellipse(px+16,py+TH-2,14,4,0,0,Math.PI*2);g.fill();
+    return;
+  }
   if(useKenney.rock){
-    drawGrass(px,py,tx_,ty);
     const kTile = (tileHash(tx_,ty) % 2 === 0) ? K.rock1 : K.rock2;
     if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#707880')){
       g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
@@ -6174,10 +6247,22 @@ function drawLighthouse(px,py,tx_,ty){
 }
 
 function drawRuinsWall(px,py,tx_,ty){
+  // Craftpix: ruins3(idx2)=48×64 → scale 0.5 → 24×32, ruins2(idx1)=80×80 → scale 0.4 → 32×32
+  { const h=tileHash(tx_,ty);
+    const rIdx=(h&1)===0?2:1; // ruins3 or ruins2
+    const sc=rIdx===2?0.5:0.4;
+    const ox=rIdx===2?4:0; // center ruins3 (24px wide → offset 4)
+    bx(px,py,TW,TH,'#5c5c64');
+    if(drawCpxRuin(rIdx,px+ox,py,sc)){
+      const r=tr(tx_,ty);
+      if(r.e>.5){bx(px+Math.floor(r.f*20)+2,py+TH-6,8,5,'#486848');}
+      bx(px,py,TW,TH,'rgba(0,0,20,.12)');
+      return;
+    }
+  }
   if(useKenney.ruins){
     bx(px,py,TW,TH,'#686870');
     if(drawKenneyTileTinted(K.wall1[0], K.wall1[1], px, py, 2, '#787078')){
-      // Moss overlay
       const r=tr(tx_,ty);
       if(r.e>.5){bx(px+Math.floor(r.f*20)+2,py+TH-6,8,5,'#486848');}
       bx(px,py,TW,TH,'rgba(0,0,20,.15)');
