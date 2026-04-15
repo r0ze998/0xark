@@ -7353,16 +7353,18 @@ function drawBanner(){
     const t=Math.min(1,(bannerTimer-110)/30);
     slideX=W*t*t;
   }
-  // Dark bar
+  // Dark bar with gradient tint
   const barH=bannerSubText?40:28;
-  g.fillStyle='rgba(20,16,24,.85)';
+  g.fillStyle='rgba(20,16,24,.88)';
   g.fillRect(slideX,8,W,barH);
-  // Subtle border
-  g.fillStyle='rgba(200,180,140,.4)';
+  // Accent lines
+  g.fillStyle='rgba(240,200,100,.35)';
   g.fillRect(slideX,7,W,1);g.fillRect(slideX,8+barH,W,1);
-  // Text
-  tx(bannerText,slideX+W/2-bannerText.length*5,26,10,'#f8f0e0');
-  if(bannerSubText)tx(bannerSubText,slideX+W/2-bannerSubText.length*3,40,6,'#c8c0a0');
+  g.fillStyle='rgba(200,180,140,.15)';
+  g.fillRect(slideX,9,W,1);
+  // Text with shadow
+  txShadow(bannerText,slideX+W/2-bannerText.length*5,26,10,'#f8f0e0','rgba(0,0,0,.6)');
+  if(bannerSubText)txShadow(bannerSubText,slideX+W/2-bannerSubText.length*3,40,6,'#c8b880','rgba(0,0,0,.4)');
 }
 
 // ═══════════════════════════════════════
@@ -8720,6 +8722,53 @@ function drawAtmosphere(){
   // v186: Per-floor dungeon edge vignette — color-coded screen border glow
   if(inDungeon&&currentFloor>=1&&currentFloor<=5){
     drawDungeonVignette();
+  }
+  // v192: Town ambient particles — golden motes (magic energy) + sea-breeze wisps
+  if(!inDungeon&&currentMap===0){
+    drawTownAmbientParticles();
+  }
+}
+
+// v192: Town ambient screen-space particles — deterministic, no state required
+// Golden motes: card magic rising from ARK vaults. Cyan wisps: sea breeze from the harbor.
+function drawTownAmbientParticles(){
+  const visH=H-HUD_HEIGHT;
+  const tf=fr; // frame counter, used for time
+
+  // 14 golden magic motes — float upward with sinusoidal sway
+  for(let i=0;i<14;i++){
+    const h1=(i*2237+1873)>>>0;
+    const startX=((h1*7481)>>>0)%W;
+    const period=140+((h1*1021)>>>0)%60; // 140..199 frames per cycle
+    const phase=(tf+i*37)%period;
+    const prog=phase/period;
+    const x=startX+Math.sin(tf*0.018+i*1.7)*16;
+    // Rise from bottom half, fade in/out
+    const y=visH*0.85-prog*visH*0.7;
+    if(y<0||y>visH)continue;
+    const edgeFade=Math.min(1,Math.min(prog*4,((1-prog)*4)));
+    const alpha=(0.12+0.06*Math.sin(tf*0.025+i*0.9))*edgeFade;
+    const sz=1+((h1*1033)>>>0)%2;
+    g.globalAlpha=alpha;
+    g.fillStyle='#f8d840';
+    g.fillRect(x,y,sz,sz);
+    g.globalAlpha=1;
+  }
+
+  // 8 sea-breeze wisps — drift sideways, very faint cyan
+  for(let i=0;i<8;i++){
+    const h2=((i*1777+7919)>>>0);
+    const startY=40+((h2*3761)>>>0)%(visH-80);
+    const period2=100+((h2*901)>>>0)%50;
+    const phase2=(tf+i*53)%period2;
+    const prog2=phase2/period2;
+    const x2=(prog2*W+((h2*877)>>>0)%120)%W;
+    const edgeFade2=Math.min(1,Math.min(prog2*5,(1-prog2)*5));
+    const alpha2=(0.09+0.04*Math.sin(tf*0.02+i*1.1))*edgeFade2;
+    g.globalAlpha=alpha2;
+    g.fillStyle='#b8d8f0';
+    g.fillRect(x2,startY+Math.sin(tf*0.015+i*0.8)*8,2,1);
+    g.globalAlpha=1;
   }
 }
 
@@ -10098,7 +10147,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v191',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v192',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);

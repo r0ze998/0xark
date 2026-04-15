@@ -535,16 +535,18 @@ function drawBanner(){
     const t=Math.min(1,(bannerTimer-110)/30);
     slideX=W*t*t;
   }
-  // Dark bar
+  // Dark bar with gradient tint
   const barH=bannerSubText?40:28;
-  g.fillStyle='rgba(20,16,24,.85)';
+  g.fillStyle='rgba(20,16,24,.88)';
   g.fillRect(slideX,8,W,barH);
-  // Subtle border
-  g.fillStyle='rgba(200,180,140,.4)';
+  // Accent lines
+  g.fillStyle='rgba(240,200,100,.35)';
   g.fillRect(slideX,7,W,1);g.fillRect(slideX,8+barH,W,1);
-  // Text
-  tx(bannerText,slideX+W/2-bannerText.length*5,26,10,'#f8f0e0');
-  if(bannerSubText)tx(bannerSubText,slideX+W/2-bannerSubText.length*3,40,6,'#c8c0a0');
+  g.fillStyle='rgba(200,180,140,.15)';
+  g.fillRect(slideX,9,W,1);
+  // Text with shadow
+  txShadow(bannerText,slideX+W/2-bannerText.length*5,26,10,'#f8f0e0','rgba(0,0,0,.6)');
+  if(bannerSubText)txShadow(bannerSubText,slideX+W/2-bannerSubText.length*3,40,6,'#c8b880','rgba(0,0,0,.4)');
 }
 
 // ═══════════════════════════════════════
