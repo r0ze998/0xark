@@ -362,18 +362,18 @@ function doMapTransition(exit){
 }
 
 // ═══════════════════════════════════════
-// v155: PMD-STYLE FLOOR TITLE CARD
+// PMD-STYLE FLOOR TITLE CARD (v164 dramatic rewrite)
 // ═══════════════════════════════════════
 let floorTitleFrame=0,floorTitleActive=false,floorTitleFloor=0;
-const FLOOR_TITLE_DURATION=130; // ~2.2s at 60fps
+const FLOOR_TITLE_DURATION=200; // ~3.3s at 60fps
 
 const FLOOR_THEMES=[
   null, // 0=town
-  {danger:'★☆☆☆☆',note:'Scattered cards. Watch your step.'},
-  {danger:'★★☆☆☆',note:'The archives whisper. MIRA was here.'},
-  {danger:'★★★☆☆',note:'Echoes of the crew. Proceed carefully.'},
-  {danger:'★★★★☆',note:'The vault trembles. VEGA hunts below.'},
-  {danger:'★★★★★',note:'The ARK Core. One heir. No mercy.'},
+  {danger:1,sub:'SUNKEN GALLERIES',note:'Scattered cards. Watch your step.',accent:'#6090e0',bg:'#0a0c20',stripe:'#1a2048'},
+  {danger:2,sub:'DROWNED ARCHIVES',note:'The archives whisper. MIRA was here.',accent:'#8060c0',bg:'#0c0820',stripe:'#241840'},
+  {danger:3,sub:'ECHO CHAMBERS',note:'Echoes of the crew. Proceed carefully.',accent:'#b050a0',bg:'#100820',stripe:'#2c1040'},
+  {danger:4,sub:'THE DEEP VAULT',note:'The vault trembles. VEGA hunts below.',accent:'#d04060',bg:'#120608',stripe:'#301020'},
+  {danger:5,sub:'ARK CORE',note:'The ARK Core. One heir. No mercy.',accent:'#e0a020',bg:'#120800',stripe:'#301000'},
 ];
 
 function showFloorTitle(floorNum){
@@ -392,54 +392,122 @@ function drawFloorTitle(){
   if(!floorTitleActive)return;
   const t=floorTitleFrame;
   const dur=FLOOR_TITLE_DURATION;
-  // Fade in 0-20, hold 20-100, fade out 100-dur
-  let alpha=0;
-  if(t<20)alpha=t/20;
-  else if(t<100)alpha=1;
-  else alpha=Math.max(0,1-(t-100)/(dur-100));
-  if(alpha<=0.01)return;
-
+  const theme=FLOOR_THEMES[floorTitleFloor]||FLOOR_THEMES[1];
   const f=floorTitleFloor;
-  const floorName=mapNames[f]||('FLOOR '+f);
-  const theme=FLOOR_THEMES[f]||{danger:'★☆☆☆☆',note:''};
+
+  // ── Phase timing ──
+  // 0-15: full-screen wipe (horizontal bars slide in from right)
+  // 15-50: hold full-screen with pulsing floor number
+  // 50-80: floor name types in letter by letter
+  // 80-160: hold with scanlines, danger stars appear
+  // 160-200: fade out
+  let globalAlpha=1;
+  if(t<10)globalAlpha=t/10;
+  else if(t>160)globalAlpha=Math.max(0,1-(t-160)/40);
+
+  // ── Full-screen black overlay ──
+  g.globalAlpha=globalAlpha*0.88;
+  g.fillStyle=theme.bg;
+  g.fillRect(0,0,W,H);
+
+  // ── Animated stripe bars (PMD-style horizontal bands) ──
+  const STRIPE_H=6,STRIPE_GAP=18;
+  g.globalAlpha=globalAlpha*0.18;
+  g.fillStyle=theme.stripe;
+  for(let sy=0;sy<H;sy+=STRIPE_GAP){
+    const slideX=t<20?W*(1-t/20):0;
+    g.fillRect(slideX,sy,W,STRIPE_H);
+  }
+
+  // ── Accent top bar ──
+  g.globalAlpha=globalAlpha*(t<15?t/15:1);
+  const barGrad=g.createLinearGradient(0,0,W,0);
+  barGrad.addColorStop(0,'rgba(0,0,0,0)');
+  barGrad.addColorStop(0.3,theme.accent);
+  barGrad.addColorStop(0.7,theme.accent);
+  barGrad.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=barGrad;g.fillRect(0,H/2-56,W,3);
+
+  // ── Accent bottom bar ──
+  g.fillRect(0,H/2+52,W,3);
+
+  // ── FLOOR NUMBER (giant, centered, glowing) ──
   const floorNums=['','B1','B2','B3','B4','B5'];
   const flNum=floorNums[f]||('B'+f);
-  const floorColors=['#302848','#403058','#503060','#403850','#503848'];
-  const bgCol=floorColors[f-1]||'#302848';
+  const numAlpha=t<20?Math.max(0,(t-10)/10):1;
+  const numPulse=1+Math.sin(t*0.08)*0.04;
+  // Glow shadow
+  g.globalAlpha=globalAlpha*numAlpha*0.4;
+  g.font=`bold ${Math.floor(72*numPulse)}px monospace`;
+  g.textAlign='center';
+  g.fillStyle=theme.accent;
+  g.fillText(flNum,W/2+2,H/2+26+2);
+  // Main text
+  g.globalAlpha=globalAlpha*numAlpha;
+  g.fillStyle='#ffffff';
+  g.fillText(flNum,W/2,H/2+26);
+  g.textAlign='left';
 
-  // Full-screen panel (centered, 80% width)
-  const pw=Math.floor(W*0.78),ph=100;
-  const px=(W-pw)/2,py=(H-ph)/2-10;
-  g.globalAlpha=alpha*0.94;
-  // Background
-  g.fillStyle=bgCol;g.fillRect(px,py,pw,ph);
-  // Border
-  g.globalAlpha=alpha;
-  g.strokeStyle='rgba(200,180,140,.6)';g.lineWidth=2;g.strokeRect(px+1,py+1,pw-2,ph-2);
-  g.strokeStyle='rgba(255,255,255,.15)';g.lineWidth=1;g.strokeRect(px+3,py+3,pw-6,ph-6);
-
-  // Floor number (large, left side)
-  g.globalAlpha=alpha;
-  tx(flNum,px+18,py+52,36,'rgba(255,255,255,.12)'); // ghost behind
-  tx(flNum,px+16,py+50,36,'#f0e8c0');
-  // Vertical separator
-  g.globalAlpha=alpha*0.4;
-  g.fillStyle='rgba(200,180,140,.5)';g.fillRect(px+80,py+12,1,ph-24);
-  g.globalAlpha=alpha;
-  // Floor name (right of separator)
-  const nameParts=floorName.split(' — ');
-  const flNameOnly=nameParts[1]||floorName;
-  tx(flNameOnly,px+90,py+30,8,'#f8f0e0');
-  // Danger stars
-  tx(theme.danger,px+90,py+48,7,'#e0a030');
-  // Flavor note
-  tx(theme.note,px+90,py+65,5,'#c0b898');
-  // "Press Z to explore" hint at bottom
-  if(t>60&&t<dur-20){
-    const hint='EXPLORE';
-    g.globalAlpha=alpha*(0.5+0.4*Math.sin(t*0.15));
-    tx(hint,px+pw-hint.length*4-12,py+ph-12,6,'#a0c8a0');
+  // ── SUB LABEL (typewriter effect, starts at t=50) ──
+  if(t>=50){
+    const charCount=Math.floor((t-50)/1.5);
+    const subStr=theme.sub.slice(0,charCount);
+    const subAlpha=Math.min(1,(t-50)/10);
+    g.globalAlpha=globalAlpha*subAlpha;
+    g.font='bold 8px monospace';g.textAlign='center';
+    g.fillStyle=theme.accent;
+    g.fillText(subStr,W/2,H/2-38);
+    g.textAlign='left';
   }
+
+  // ── DANGER LEVEL (bar-style, appears at t=80) ──
+  if(t>=80){
+    const dangerAlpha=Math.min(1,(t-80)/15);
+    const d=theme.danger;
+    const barW=80,barH=5,barX=W/2-barW/2,barY=H/2+42;
+    // Background track
+    g.globalAlpha=globalAlpha*dangerAlpha*0.35;
+    g.fillStyle='#ffffff';g.fillRect(barX,barY,barW,barH);
+    // Filled portion
+    g.globalAlpha=globalAlpha*dangerAlpha;
+    const fillGrad=g.createLinearGradient(barX,0,barX+barW,0);
+    fillGrad.addColorStop(0,'#50c0ff');
+    fillGrad.addColorStop(0.4,theme.accent);
+    fillGrad.addColorStop(1,'#ff3030');
+    g.fillStyle=fillGrad;
+    const fillW=Math.min(barW,barW*(d/5)*(t<95?(t-80)/15:1));
+    g.fillRect(barX,barY,fillW,barH);
+    // Label
+    g.globalAlpha=globalAlpha*dangerAlpha*0.7;
+    g.font='5px monospace';g.textAlign='center';
+    g.fillStyle='#c8c8d8';
+    g.fillText('DANGER  '+('■'.repeat(d))+'□'.repeat(5-d),W/2,barY+barH+8);
+    g.textAlign='left';
+  }
+
+  // ── FLAVOR TEXT (appears at t=100) ──
+  if(t>=100){
+    const noteAlpha=Math.min(1,(t-100)/20);
+    g.globalAlpha=globalAlpha*noteAlpha*0.65;
+    g.font='6px monospace';g.textAlign='center';
+    g.fillStyle='#a8a8b8';
+    g.fillText(theme.note,W/2,H/2+68);
+    g.textAlign='left';
+  }
+
+  // ── Corner decorations ──
+  g.globalAlpha=globalAlpha*(t<20?t/20:1)*0.5;
+  g.strokeStyle=theme.accent;g.lineWidth=1;
+  const cd=12; // corner decoration size
+  // top-left
+  g.beginPath();g.moveTo(32,H/2-60);g.lineTo(32,H/2-60+cd);g.moveTo(32,H/2-60);g.lineTo(32+cd,H/2-60);g.stroke();
+  // top-right
+  g.beginPath();g.moveTo(W-32,H/2-60);g.lineTo(W-32,H/2-60+cd);g.moveTo(W-32,H/2-60);g.lineTo(W-32-cd,H/2-60);g.stroke();
+  // bottom-left
+  g.beginPath();g.moveTo(32,H/2+56);g.lineTo(32,H/2+56-cd);g.moveTo(32,H/2+56);g.lineTo(32+cd,H/2+56);g.stroke();
+  // bottom-right
+  g.beginPath();g.moveTo(W-32,H/2+56);g.lineTo(W-32,H/2+56-cd);g.moveTo(W-32,H/2+56);g.lineTo(W-32-cd,H/2+56);g.stroke();
+
   g.globalAlpha=1;
 }
 
