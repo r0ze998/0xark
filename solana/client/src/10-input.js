@@ -1,5 +1,50 @@
 // INPUT
 // ═══════════════════════════════════════
+
+// Held-key tracking for smooth continuous movement
+const keysHeld = new Set();
+document.addEventListener('keyup', e => { keysHeld.delete(e.code); });
+
+// Extract move logic so both keydown and held-key loop can call it
+function tryMovePlayer(dx, dy) {
+  const p = pl[0];
+  const nx = p.x + dx, ny = p.y + dy;
+  if(dx < 0) p.dir = 1; else if(dx > 0) p.dir = 3;
+  if(dy < 0) p.dir = 2; else if(dy > 0) p.dir = 0;
+  const m = getMap();
+  if(nx < 0 || nx >= MW || ny < 0 || ny >= MH) return false;
+  if(!WALKABLE.has(m[ny]?.[nx])) return false;
+  p.x = nx; p.y = ny; p.step++; p.walkFrame = (p.walkFrame + 1) % 4;
+  sfxMove(); sfxStep();
+  stepCounter++; stats.stepsWalked++;
+  edgeCacheDirty = true;
+  mpBroadcastMove();
+  footprints.push({map:currentMap, x:nx, y:ny, age:0});
+  if(inDungeon){ fogRevealCurrentRoom(currentMap,nx,ny); fogRevealRadius(currentMap,nx,ny,2); }
+  fogSave();
+  const newTile = m[ny]?.[nx];
+  if(newTile===1||newTile===7||newTile===11){ spawnGrassParticles(nx*TW,ny*TH); sfxGrassRustle(); }
+  if(newTile===25&&inDungeon){
+    for(let li=0;li<HAND_SIZE;li++){if(cardTimers[li]>0)cardTimers[li]-=30000;}
+    if(objectInteractTimer<=0){objectInteractMsg='Lava! Cards decaying faster!';objectInteractTimer=60;}
+    screenShake(2,4);
+  }
+  if(inDungeon){ processDungeonTurn(); checkFloorItemPickup(nx,ny); }
+  if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
+  if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}
+  if(newTile!==0){const adj=[[nx-1,ny],[nx+1,ny],[nx,ny-1],[nx,ny+1]];if(adj.some(([ax,ay])=>ax>=0&&ax<MW&&ay>=0&&ay<MH&&m[ay]?.[ax]===0))sfxWaterNear();}
+  if(shadowStepsLeft>0)shadowStepsLeft--;
+  if(shadowStepsLeft<=0)checkForestTrap();
+  randomEventTimer++;
+  if(randomEventTimer>=150&&!randomEventActive&&!wildEncounterActive&&!cardAcqActive){randomEventTimer=0;triggerRandomEvent();}
+  const exit = checkExitTile(nx,ny);
+  if(exit){
+    if(!inDungeon&&exit.targetMap>0){dungeonConfirmActive=true;dungeonConfirmExit=exit;}
+    else{doMapTransition(exit);}
+  }
+  return true;
+}
+
 document.addEventListener('keydown',e=>{
   if(e.repeat)return;
 
@@ -723,73 +768,15 @@ document.addEventListener('keydown',e=>{
         }
       }
 
-      const p=pl[0];let nx=p.x,ny=p.y;
-      if(e.code==='ArrowUp'){ny--;p.dir=2;}
-      if(e.code==='ArrowDown'){ny++;p.dir=0;}
-      if(e.code==='ArrowLeft'){nx--;p.dir=1;}
-      if(e.code==='ArrowRight'){nx++;p.dir=3;}
-      if(nx!==p.x||ny!==p.y){
-        const m=getMap();
-        if(nx>=0&&nx<MW&&ny>=0&&ny<MH&&WALKABLE.has(m[ny]?.[nx])){
-          p.x=nx;p.y=ny;p.step++;p.walkFrame=(p.walkFrame+1)%4;sfxMove();sfxStep();
-          stepCounter++;stats.stepsWalked++;
-          edgeCacheDirty=true;
-          // Broadcast move to multiplayer
-          mpBroadcastMove();
-          // Leave player footprint
-          footprints.push({map:currentMap,x:nx,y:ny,age:0});
-          // v155: Dungeon fog — room-based reveal (PMD-style: entering a room reveals whole room)
-          if(inDungeon){fogRevealCurrentRoom(currentMap,nx,ny);fogRevealRadius(currentMap,nx,ny,2);}
-          fogSave();
-          const newTile=m[ny]?.[nx];
-          if(newTile===1||newTile===7||newTile===11){spawnGrassParticles(nx*TW,ny*TH);sfxGrassRustle();}
-          // Lava tile: accelerates card decay for all hand cards (+30s of aging per step)
-          // cardTimers[i] stores start time; subtract 30s to make elapsed appear 30s longer
-          if(newTile===25&&inDungeon){
-            for(let li=0;li<HAND_SIZE;li++){
-              if(cardTimers[li]>0)cardTimers[li]-=30000;
-            }
-            if(objectInteractTimer<=0){objectInteractMsg='Lava! Cards decaying faster!';objectInteractTimer=60;}
-            screenShake(2,4);
-          }
-          // v155: Turn-based dungeon — rivals take one step per player step
-          if(inDungeon){processDungeonTurn();checkFloorItemPickup(nx,ny);}
-
-          // Tutorial triggers
-          if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
-          if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}
-          // Water proximity sound
-          if(newTile!==0){const adj=[[nx-1,ny],[nx+1,ny],[nx,ny-1],[nx,ny+1]];if(adj.some(([ax,ay])=>ax>=0&&ax<MW&&ay>=0&&ay<MH&&m[ay]?.[ax]===0))sfxWaterNear();}
-
-          // Shadow step countdown
-          if(shadowStepsLeft>0)shadowStepsLeft--;
-
-          // Check forest traps (skip if shadow active)
-          if(shadowStepsLeft<=0)checkForestTrap();
-
-          // Random map event every 150 steps
-          randomEventTimer++;
-          if(randomEventTimer>=150&&!randomEventActive&&!wildEncounterActive&&!cardAcqActive){
-            randomEventTimer=0;
-            triggerRandomEvent();
-          }
-
-          // Check exit
-          const exit=checkExitTile(nx,ny);
-          if(exit){
-            // Confirm before entering dungeon from town
-            if(!inDungeon&&exit.targetMap>0){
-              dungeonConfirmActive=true;dungeonConfirmExit=exit;
-            }else{
-              doMapTransition(exit);
-            }
-            return;
-          }
-
-          // Check treasure
+      let mdx=0,mdy=0;
+      if(e.code==='ArrowUp')mdy=-1;
+      if(e.code==='ArrowDown')mdy=1;
+      if(e.code==='ArrowLeft')mdx=-1;
+      if(e.code==='ArrowRight')mdx=1;
+      if(mdx!==0||mdy!==0){
+        _moveRepeatTimer=_MOVE_REPEAT_INITIAL; // reset hold-repeat timer on fresh press
+        if(tryMovePlayer(mdx,mdy)){
           checkTreasure();
-
-          // Check wild encounter (skip if shadow active)
           if(!cardAcqActive&&!randomEventActive&&shadowStepsLeft<=0)tryWildEncounter();
         }
       }
