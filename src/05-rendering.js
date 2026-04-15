@@ -79,13 +79,11 @@ function drawGrass(px,py,tx_,ty){
   // Dungeon room floors — Kenney plank tile tinted dark maritime
   if(currentMap>0){
     const h=tileHash(tx_,ty);
-    const sv=((h&7)-4);
     const depth=currentMap;
-    // Base: dark hull interior, bluer at depth
-    const rb=16+sv,gb=20+sv,bb=28+sv+depth*2;
-    bx(px,py,TW,TH,`rgb(${rb},${gb},${bb})`);
-    // Kenney plank tile silhouette (slightly lighter = shows texture)
-    drawKenneyTileTinted(K.plank[0],K.plank[1],px,py,2,`rgb(${rb+8},${gb+8},${bb+8})`);
+    // Full-color Kenney plank tile, then heavy dark overlay → actual wood texture shows through
+    drawKenneyTile(K.plank[0],K.plank[1],px,py,2);
+    const depth_alpha=0.72+depth*0.03;
+    bx(px,py,TW,TH,`rgba(4,8,20,${Math.min(0.84,depth_alpha)})`);
     // Occasional water glint
     if((h&31)<2){
       const gx=Math.floor(thRand(tx_,ty,1)*22)+4,gy=Math.floor(thRand(tx_,ty,2)*22)+4;
@@ -202,9 +200,10 @@ function drawPath(px,py,tx_,ty){
     // Base: dark steel, slightly bluer at deeper floors
     const rB=12+sv,gB=16+sv,bB=24+sv+depth*2;
     bx(px,py,TW,TH,`rgb(${rB},${gB},${bB})`);
-    // Kenney hull tile as texture overlay
+    // Full-color Kenney hull tile + dark overlay for corridor steel look
     if(pirateSheetLoaded){
-      drawKenneyTileTinted(K.hullM[0],K.hullM[1],px,py,2,`rgb(${rB+7},${gB+7},${bB+7})`);
+      drawKenneyTile(K.hullM[0],K.hullM[1],px,py,2);
+      bx(px,py,TW,TH,`rgba(2,6,18,${Math.min(0.82,0.70+depth*0.04)})`);
     } else {
       // Horizontal metal plate seams (every 8px)
       const plateOff=(h>>3)&7;
@@ -508,10 +507,11 @@ function drawMountain(px,py,tx_,ty){
     // Deep near-black blue-steel
     const rB=8+sv,gB=10+sv,bB=16+sv+depth;
     bx(px,py,TW,TH,`rgb(${rB},${gB},${bB})`);
-    // Kenney wall tile as texture — alternate wall1/wall2 per tile
+    // Full-color Kenney wall tile + near-opaque dark overlay — stone texture shows in shadows
     if(pirateSheetLoaded){
       const kWall=(h&1)?K.wall1:K.wall2;
-      drawKenneyTileTinted(kWall[0],kWall[1],px,py,2,`rgb(${rB+5},${gB+5},${bB+5})`);
+      drawKenneyTile(kWall[0],kWall[1],px,py,2);
+      bx(px,py,TW,TH,`rgba(0,2,10,${Math.min(0.88,0.76+depth*0.04)})`);
     } else {
       const rivOff=(h>>3)&3;
       for(let ry=rivOff*4+2;ry<TH;ry+=9){
