@@ -10090,7 +10090,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v189',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v190',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -15057,7 +15057,8 @@ function drawObjectInteractMsg(){
   const alpha=objectInteractTimer>20?1:objectInteractTimer/20;
   g.globalAlpha=alpha;
   win(W/2-200,H/2-20,400,36);
-  tx(objectInteractMsg,W/2-190,H/2+4,6,'#303028');
+  bx(W/2-200,H/2-20,4,36,'#c0a040');
+  txShadow(objectInteractMsg,W/2-190,H/2+4,7,'#e8e0c0','rgba(0,0,0,.4)');
   g.globalAlpha=1;
 }
 
@@ -15094,14 +15095,14 @@ function drawExitProximityTooltip(){
   bx(ttX,ttY,ttW,1,isEsc?'#40c060':'#6080c0');
   bx(ttX,ttY+ttH-1,ttW,1,isEsc?'#40c060':'#6080c0');
 
-  const arrow=isEsc?'↖ ESCAPE':'↘ DESCEND';
-  const dest=isEsc?'← TOWN':'FLOOR '+(flNums[targetFloor]||targetFloor);
-  tx(arrow,ttX+10,ttY+14,6,isEsc?'#50e080':'#a0b0d8');
+  const arrow=isEsc?'\u2196 ESCAPE':'\u2198 DESCEND';
+  const dest=isEsc?'\u2190 TOWN':'FLOOR '+(flNums[targetFloor]||targetFloor);
+  txShadow(arrow,ttX+10,ttY+14,6,isEsc?'#50e080':'#a0b0d8','rgba(0,0,0,.4)');
   txShadow(dest,ttX+ttW/2-dest.length*4.5,ttY+30,9,isEsc?'#40e070':'#c8d8f0','rgba(0,0,0,.5)');
 
   if(!isEsc&&mainRar>0){
     const rarTxt=rarLabels[mainRar]+' cards';
-    tx(rarTxt,ttX+ttW/2-rarTxt.length*3,ttY+46,6,rarCols[mainRar]||'#888');
+    txShadow(rarTxt,ttX+ttW/2-rarTxt.length*3,ttY+46,6,rarCols[mainRar]||'#888','rgba(0,0,0,.3)');
   }
 }
 
@@ -15110,16 +15111,19 @@ function drawFountainDialog(){
   if(fountainConfirm){
     bx(0,0,W,H,'rgba(0,0,0,.4)');
     win(W/2-180,H/2-50,360,100);
-    tx('Toss a card into the fountain?',W/2-160,H/2-24,7,'#303028');
-    tx('You will get a random card back.',W/2-160,H/2-4,6,'#686068');
-    tx('Z=Yes  X=No',W/2-60,H/2+24,7,'#c04040');
+    bx(W/2-180,H/2-50,360,28,'#0a1a2a');
+    bx(W/2-180,H/2-50,4,28,'#3060b0');
+    txShadow('FOUNTAIN',W/2-40,H/2-34,10,'#80c0e0','rgba(0,0,0,.5)');
+    txShadow('Toss a card in? You\u2019ll get a random card back.',W/2-160,H/2-4,7,'#c0d0e0','rgba(0,0,0,.3)');
+    txShadow('[Z] Yes   [X] No',W/2-64,H/2+30,7,'#c06040','rgba(0,0,0,.3)');
   }
   if(fountainResultTimer>0){
     fountainResultTimer--;
     const a=fountainResultTimer>20?1:fountainResultTimer/20;
     g.globalAlpha=a;
     win(W/2-180,H/2-20,360,36);
-    tx(fountainResult,W/2-170,H/2+4,6,'#3060b0');
+    bx(W/2-180,H/2-20,4,36,'#3060b0');
+    txShadow(fountainResult,W/2-170,H/2+4,7,'#80c0e0','rgba(0,0,0,.4)');
     g.globalAlpha=1;
     if(fountainResultTimer<=0)fountainActive=false;
   }
@@ -15343,40 +15347,43 @@ function drawMapCardUseOverlay(){
     // Direction selection
     bx(0,0,W,H,'rgba(0,0,0,.45)');
     win(W/2-120,H/2-50,240,100);
-    tx('Select direction:',W/2-80,H/2-26,7,'#806030');
+    bx(W/2-120,H/2-50,240,28,'#181008');
+    bx(W/2-120,H/2-50,4,28,'#c0a040');
+    txShadow('Select direction:',W/2-72,H/2-30,7,'#d0b860','rgba(0,0,0,.4)');
     const dirNames=['DOWN','LEFT','UP','RIGHT'];
     const dirCodes=[0,1,2,3];
     for(let i=0;i<4;i++){
       const y=H/2-6+Math.floor(i/2)*22;
       const x=W/2-100+(i%2)*120;
-      if(dirCodes[i]===mapCardDirIdx){
-        tx('\u25B6',x-10,y+12,7,'#c04040');
-        tx(dirNames[i],x,y+12,7,'#c04040');
-      }else{
-        tx(dirNames[i],x,y+12,7,'#303028');
-      }
+      const isSel=dirCodes[i]===mapCardDirIdx;
+      if(isSel)tx('\u25B6',x-10,y+12,7,'#c04040');
+      txShadow(dirNames[i],x,y+12,7,isSel?'#e06050':'#b0a890','rgba(0,0,0,.3)');
     }
-    tx('Z=Confirm  X=Cancel',W/2-90,H/2+42,5,'#686068');
+    txShadow('[Z] Confirm   [X] Cancel',W/2-86,H/2+42,6,'#8888a0','rgba(0,0,0,.3)');
     return;
   }
 
   bx(0,0,W,H,'rgba(0,0,0,.45)');
   const mh=usable.length*32+48;
   win(W/2-140,H/2-mh/2,280,mh);
-  tx('USE CARD ON MAP',W/2-80,H/2-mh/2+22,7,'#806030');
+  bx(W/2-140,H/2-mh/2,280,28,'#181008');
+  bx(W/2-140,H/2-mh/2,4,28,'#c0a040');
+  txShadow('USE CARD ON MAP',W/2-76,H/2-mh/2+20,7,'#d0b860','rgba(0,0,0,.4)');
   usable.forEach((item,j)=>{
     const cr=CD[item.cardId-1];
     const y=H/2-mh/2+38+j*32;
-    if(j===mapCardUseIdx){
-      bx(W/2-130,y-2,260,28,'rgba(192,168,96,.22)');
+    const sel=j===mapCardUseIdx;
+    if(sel){
+      bx(W/2-130,y-2,260,28,'rgba(192,168,96,.18)');
+      bx(W/2-130,y-2,3,28,'#c04040');
       tx('\u25B6',W/2-134,y+14,7,'#c04040');
     }
     bx(W/2-118,y+2,20,20,cr.d);bx(W/2-116,y+4,16,16,cr.c);
     drawCardCharacter(W/2-115,y+3,item.cardId,0.6,fr);
-    tx(item.name,W/2-92,y+14,7,j===mapCardUseIdx?'#c04040':'#303028');
-    tx(item.desc,W/2+10,y+14,5,'#908878');
+    txShadow(item.name,W/2-92,y+14,7,sel?'#e06050':'#d0c8a8','rgba(0,0,0,.3)');
+    txShadow(item.desc,W/2+10,y+14,5,'#a09880','rgba(0,0,0,.2)');
   });
-  tx('Z=Use  X=Cancel',W/2-70,H/2+mh/2-10,5,'#686068');
+  txShadow('[Z] Use   [X] Cancel',W/2-68,H/2+mh/2-10,6,'#8888a0','rgba(0,0,0,.3)');
 }
 
 // ═══════════════════════════════════════
