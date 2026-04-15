@@ -805,7 +805,7 @@ function lerp(a,b,t){return a+(b-a)*t;}
 function easeInOut(t){return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);}
 let lastTime=0,dt=1;
 
-// Offscreen canvas caches for tile layer, edge blending, and fog
+// Offscreen canvas caches for tile layer, edge blending, fog, vignette, and atmosphere
 const tileCanvas=document.createElement('canvas');
 tileCanvas.width=W;tileCanvas.height=H;
 const tileCtx=tileCanvas.getContext('2d');
@@ -825,6 +825,19 @@ fogCanvas.width=W;fogCanvas.height=H;
 const fogCtx=fogCanvas.getContext('2d');
 let fogCacheDirty=true;
 let fogCacheLastCamX=-9999,fogCacheLastCamY=-9999;
+
+// Dungeon vignette (radial cone) — cached per player visual position + floor
+const dungeonVigCanvas=document.createElement('canvas');
+dungeonVigCanvas.width=W;dungeonVigCanvas.height=H;
+const dungeonVigCtx=dungeonVigCanvas.getContext('2d');
+let _dvLastPX=-9999,_dvLastPY=-9999,_dvLastFloor=-1;
+
+// Atmosphere canvas — day/night overlay cached per camera pos + phase
+const atmosCanvas=document.createElement('canvas');
+atmosCanvas.width=W;atmosCanvas.height=H;
+const atmosCtx=atmosCanvas.getContext('2d');
+let _atmosDirty=true;
+let _atmosLastCamX=-9999,_atmosLastCamY=-9999,_atmosLastPhase='';
 
 // Set imageSmoothingEnabled=false globally on main context once canvases exist
 g.imageSmoothingEnabled=false;

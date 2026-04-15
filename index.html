@@ -879,7 +879,7 @@ function lerp(a,b,t){return a+(b-a)*t;}
 function easeInOut(t){return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);}
 let lastTime=0,dt=1;
 
-// Offscreen canvas caches for tile layer, edge blending, and fog
+// Offscreen canvas caches for tile layer, edge blending, fog, vignette, and atmosphere
 const tileCanvas=document.createElement('canvas');
 tileCanvas.width=W;tileCanvas.height=H;
 const tileCtx=tileCanvas.getContext('2d');
@@ -899,6 +899,19 @@ fogCanvas.width=W;fogCanvas.height=H;
 const fogCtx=fogCanvas.getContext('2d');
 let fogCacheDirty=true;
 let fogCacheLastCamX=-9999,fogCacheLastCamY=-9999;
+
+// Dungeon vignette (radial cone) — cached per player visual position + floor
+const dungeonVigCanvas=document.createElement('canvas');
+dungeonVigCanvas.width=W;dungeonVigCanvas.height=H;
+const dungeonVigCtx=dungeonVigCanvas.getContext('2d');
+let _dvLastPX=-9999,_dvLastPY=-9999,_dvLastFloor=-1;
+
+// Atmosphere canvas — day/night overlay cached per camera pos + phase
+const atmosCanvas=document.createElement('canvas');
+atmosCanvas.width=W;atmosCanvas.height=H;
+const atmosCtx=atmosCanvas.getContext('2d');
+let _atmosDirty=true;
+let _atmosLastCamX=-9999,_atmosLastCamY=-9999,_atmosLastPhase='';
 
 // Set imageSmoothingEnabled=false globally on main context once canvases exist
 g.imageSmoothingEnabled=false;
@@ -4159,12 +4172,19 @@ function updateTownWeather(){
 }
 
 // v84: Town weather draw — layered atmospheric effects
+// Weather canvas cache for fog (gradient-heavy) — update every 4 frames
+const _weatherCanvas=document.createElement('canvas');
+_weatherCanvas.width=W;_weatherCanvas.height=H;
+const _weatherCtx=_weatherCanvas.getContext('2d');
+let _weatherLastFr=-99,_weatherLastType='';
+
 function drawTownWeather(){
   if(inDungeon||currentMap!==0)return;
   const wa=townWeatherAlpha;
   if(wa<=0.02)return;
   if(townWeather==='rain'){
-    // Falling rain lines (stateless — driven by frame counter)
+    // Only redraw rain every 2nd frame
+    if(fr%2!==0)return;
     g.save();
     for(let i=0;i<55;i++){
       const seed=i*137;
@@ -4194,31 +4214,32 @@ function drawTownWeather(){
     g.globalAlpha=1;
     g.restore();
   } else if(townWeather==='fog'){
-    g.save();
-    // Wispy horizontal fog bands at different heights
-    for(let i=0;i<12;i++){
-      const seed=i*97;
-      const fogX=((fr*0.25+seed*53)%(W+320))-160;
-      const fogY=60+seed%4*70+Math.sin(fr*0.015+i*1.3)*12;
-      const fogW=160+seed%5*50;
-      const fogAlpha=wa*(0.12+seed%3*0.04);
-      g.globalAlpha=fogAlpha;
-      const grd=g.createLinearGradient(fogX,fogY,fogX+fogW,fogY);
-      grd.addColorStop(0,'rgba(210,220,230,0)');
-      grd.addColorStop(0.25,'rgba(210,220,230,1)');
-      grd.addColorStop(0.75,'rgba(210,220,230,1)');
-      grd.addColorStop(1,'rgba(210,220,230,0)');
-      g.fillStyle=grd;
-      g.fillRect(fogX,fogY-20,fogW,40);
+    // Fog: expensive gradients — cache to offscreen canvas, update every 4 frames
+    if(fr-_weatherLastFr>=4||_weatherLastType!=='fog'){
+      _weatherCtx.clearRect(0,0,W,H);
+      for(let i=0;i<12;i++){
+        const seed=i*97;
+        const fogX=((fr*0.25+seed*53)%(W+320))-160;
+        const fogY=60+seed%4*70+Math.sin(fr*0.015+i*1.3)*12;
+        const fogW=160+seed%5*50;
+        const fogAlpha=wa*(0.12+seed%3*0.04);
+        _weatherCtx.globalAlpha=fogAlpha;
+        const grd=_weatherCtx.createLinearGradient(fogX,fogY,fogX+fogW,fogY);
+        grd.addColorStop(0,'rgba(210,220,230,0)');
+        grd.addColorStop(0.25,'rgba(210,220,230,1)');
+        grd.addColorStop(0.75,'rgba(210,220,230,1)');
+        grd.addColorStop(1,'rgba(210,220,230,0)');
+        _weatherCtx.fillStyle=grd;_weatherCtx.fillRect(fogX,fogY-20,fogW,40);
+      }
+      _weatherCtx.globalAlpha=wa*0.2;
+      const vgr=_weatherCtx.createRadialGradient(W/2,H/2,W*0.3,W/2,H/2,W*0.7);
+      vgr.addColorStop(0,'rgba(190,200,210,0)');
+      vgr.addColorStop(1,'rgba(190,200,210,0.85)');
+      _weatherCtx.fillStyle=vgr;_weatherCtx.fillRect(0,0,W,H);
+      _weatherCtx.globalAlpha=1;
+      _weatherLastFr=fr;_weatherLastType='fog';
     }
-    // Edge vignette — fog thickens at screen edges
-    g.globalAlpha=wa*0.2;
-    const vgr=g.createRadialGradient(W/2,H/2,W*0.3,W/2,H/2,W*0.7);
-    vgr.addColorStop(0,'rgba(190,200,210,0)');
-    vgr.addColorStop(1,'rgba(190,200,210,0.85)');
-    g.fillStyle=vgr;g.fillRect(0,0,W,H);
-    g.globalAlpha=1;
-    g.restore();
+    g.drawImage(_weatherCanvas,0,0,W,H);
   } else {
     // Clear: drifting sunlight dust motes
     g.save();
@@ -4343,81 +4364,98 @@ function getDayNightPhase(){
   if(mins<15)return{phase:'dusk',t:(mins-10)/5};
   return{phase:'night',t:(mins-15)/5};
 }
+// Pre-built dungeon atmosphere vignette gradients (one per floor, static)
+const _dungeonAtmosGrads=[];
+function _buildDungeonAtmosGrad(depth){
+  if(_dungeonAtmosGrads[depth])return _dungeonAtmosGrads[depth];
+  const offC=document.createElement('canvas');offC.width=W;offC.height=H-HUD_HEIGHT;
+  const offX=offC.getContext('2d');
+  const alpha=0.06+depth*0.015;
+  offX.fillStyle=`rgba(10,0,30,${alpha})`;offX.fillRect(0,0,W,H-HUD_HEIGHT);
+  const grad=offX.createRadialGradient(W/2,(H-HUD_HEIGHT)/2,W*0.25,W/2,(H-HUD_HEIGHT)/2,W*0.72);
+  grad.addColorStop(0,'rgba(0,0,0,0)');
+  grad.addColorStop(1,`rgba(0,0,${depth*4},${0.25+depth*0.04})`);
+  offX.fillStyle=grad;offX.fillRect(0,0,W,H-HUD_HEIGHT);
+  _dungeonAtmosGrads[depth]=offC;
+  return offC;
+}
+// Pre-built overworld vignette (static, camera-independent)
+let _overworldVigCanvas=null;
+function _buildOverworldVig(){
+  if(_overworldVigCanvas)return _overworldVigCanvas;
+  const offC=document.createElement('canvas');offC.width=W;offC.height=H-HUD_HEIGHT;
+  const offX=offC.getContext('2d');
+  const vg=offX.createRadialGradient(W/2,(H-HUD_HEIGHT)/2,W*0.28,W/2,(H-HUD_HEIGHT)/2,W*0.72);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,0.07)');
+  offX.fillStyle=vg;offX.fillRect(0,0,W,H-HUD_HEIGHT);
+  _overworldVigCanvas=offC;
+  return offC;
+}
+
 function drawDayNightOverlay(){
-  // Dungeon atmosphere: dark blue-purple tint + strong vignette
+  // Dungeon atmosphere: pre-built per-floor canvas
   if(inDungeon){
-    const depth=currentFloor;
-    const alpha=0.06+depth*0.015; // deeper = darker
-    g.fillStyle=`rgba(10,0,30,${alpha})`;g.fillRect(0,0,W,H-HUD_HEIGHT);
-    // Vignette (radial gradient from edges)
-    const grad=g.createRadialGradient(W/2,H/2,W*0.25,W/2,H/2,W*0.72);
-    grad.addColorStop(0,'rgba(0,0,0,0)');
-    grad.addColorStop(1,`rgba(0,0,${depth*4},${0.25+depth*0.04})`);
-    g.fillStyle=grad;g.fillRect(0,0,W,H-HUD_HEIGHT);
+    g.drawImage(_buildDungeonAtmosGrad(currentFloor),0,0);
     return;
   }
   const dn=getDayNightPhase();
   const townH=H-HUD_HEIGHT;
-  // Town: lantern glow spots at NPC positions (warm, safe feeling vs dungeon dark)
-  // NPC screen positions (world→screen via camera)
-  if(currentMap===0){
-    const lanternSpots=[
-      {wx:8,wy:6,r:64,col:'255,200,80'},   // Card Merchant
-      {wx:22,wy:6,r:56,col:'255,180,80'},   // Trade Master
-      {wx:14,wy:12,r:72,col:'255,160,60'},  // Gacha Keeper
-      {wx:18,wy:18,r:60,col:'200,220,255'}, // ARK Guide (cooler blue-white)
-      {wx:26,wy:14,r:52,col:'255,200,100'}, // Dungeon Porter
-    ];
-    let lanternAlpha=0;
-    if(dn.phase==='dusk')lanternAlpha=dn.t*0.18;
-    else if(dn.phase==='night')lanternAlpha=0.22+Math.sin(fr*0.02)*0.04;
-    else if(dn.phase==='dawn')lanternAlpha=(1-dn.t)*0.14;
-    if(lanternAlpha>0){
-      for(const ls of lanternSpots){
-        const sx=ls.wx*TW-camX+TW/2,sy=ls.wy*TH-camY+TH/2;
-        if(sx<-ls.r||sx>W+ls.r||sy<-ls.r||sy>townH+ls.r)continue;
-        if(!fogRevealed[0]?.[ls.wy]?.[ls.wx])continue;
-        const lg2=g.createRadialGradient(sx,sy,0,sx,sy,ls.r);
-        lg2.addColorStop(0,`rgba(${ls.col},${lanternAlpha})`);
-        lg2.addColorStop(0.5,`rgba(${ls.col},${lanternAlpha*0.4})`);
-        lg2.addColorStop(1,'rgba(0,0,0,0)');
-        g.fillStyle=lg2;g.fillRect(Math.max(0,sx-ls.r),Math.max(0,sy-ls.r),ls.r*2,Math.min(townH,ls.r*2));
+  // Atmosphere canvas: only redraw when camera moves or phase changes
+  const camMoved=Math.abs(camX-_atmosLastCamX)>0.5||Math.abs(camY-_atmosLastCamY)>0.5;
+  const phaseKey=dn.phase+Math.round(dn.t*8);
+  if(_atmosDirty||camMoved||phaseKey!==_atmosLastPhase){
+    atmosCtx.clearRect(0,0,W,H);
+    // Lantern glow spots — cached to atmosCanvas
+    if(currentMap===0){
+      const lanternSpots=[
+        {wx:8,wy:6,r:64,col:'255,200,80'},
+        {wx:22,wy:6,r:56,col:'255,180,80'},
+        {wx:14,wy:12,r:72,col:'255,160,60'},
+        {wx:18,wy:18,r:60,col:'200,220,255'},
+        {wx:26,wy:14,r:52,col:'255,200,100'},
+      ];
+      let lanternAlpha=0;
+      if(dn.phase==='dusk')lanternAlpha=dn.t*0.18;
+      else if(dn.phase==='night')lanternAlpha=0.20;
+      else if(dn.phase==='dawn')lanternAlpha=(1-dn.t)*0.14;
+      if(lanternAlpha>0){
+        for(const ls of lanternSpots){
+          const sx=ls.wx*TW-camX+TW/2,sy=ls.wy*TH-camY+TH/2;
+          if(sx<-ls.r||sx>W+ls.r||sy<-ls.r||sy>townH+ls.r)continue;
+          if(!fogRevealed[0]?.[ls.wy]?.[ls.wx])continue;
+          const lg2=atmosCtx.createRadialGradient(sx,sy,0,sx,sy,ls.r);
+          lg2.addColorStop(0,`rgba(${ls.col},${lanternAlpha})`);
+          lg2.addColorStop(0.5,`rgba(${ls.col},${lanternAlpha*0.4})`);
+          lg2.addColorStop(1,'rgba(0,0,0,0)');
+          atmosCtx.fillStyle=lg2;atmosCtx.fillRect(Math.max(0,sx-ls.r),Math.max(0,sy-ls.r),ls.r*2,Math.min(townH,ls.r*2));
+        }
       }
     }
-  }
-  // Phase overlays (stronger with LPC tileset)
-  if(dn.phase==='dawn'){
-    g.fillStyle=`rgba(255,180,80,${0.10+dn.t*0.04})`;g.fillRect(0,0,W,townH);
-  }else if(dn.phase==='dusk'){
-    g.fillStyle=`rgba(220,70,40,${0.10+dn.t*0.08})`;g.fillRect(0,0,W,townH);
-    // Golden horizon band
-    const hg=g.createLinearGradient(0,0,0,townH);
-    hg.addColorStop(0,`rgba(240,140,30,${0.06+dn.t*0.06})`);
-    hg.addColorStop(0.4,'rgba(0,0,0,0)');
-    g.fillStyle=hg;g.fillRect(0,0,W,townH);
-  }else if(dn.phase==='night'){
-    g.fillStyle=`rgba(10,12,60,${0.22+dn.t*0.06})`;g.fillRect(0,0,W,townH);
-    // Night: warm inner glow at town center (feels like firelight far away)
-    if(currentMap===0){
-      const townCX=15*TW-camX,townCY=12*TH-camY;
-      const gc=g.createRadialGradient(townCX,townCY,30,townCX,townCY,350);
-      gc.addColorStop(0,'rgba(255,140,40,0.06)');
-      gc.addColorStop(1,'rgba(0,0,0,0)');
-      g.fillStyle=gc;g.fillRect(0,0,W,townH);
+    // Phase flat overlays
+    if(dn.phase==='dawn'){
+      atmosCtx.fillStyle=`rgba(255,180,80,${0.10+dn.t*0.04})`;atmosCtx.fillRect(0,0,W,townH);
+    }else if(dn.phase==='dusk'){
+      atmosCtx.fillStyle=`rgba(220,70,40,${0.10+dn.t*0.08})`;atmosCtx.fillRect(0,0,W,townH);
+      const hg=atmosCtx.createLinearGradient(0,0,0,townH);
+      hg.addColorStop(0,`rgba(240,140,30,${0.06+dn.t*0.06})`);
+      hg.addColorStop(0.4,'rgba(0,0,0,0)');
+      atmosCtx.fillStyle=hg;atmosCtx.fillRect(0,0,W,townH);
+    }else if(dn.phase==='night'){
+      atmosCtx.fillStyle=`rgba(10,12,60,${0.22+dn.t*0.06})`;atmosCtx.fillRect(0,0,W,townH);
+      if(currentMap===0){
+        const townCX=15*TW-camX,townCY=12*TH-camY;
+        const gc=atmosCtx.createRadialGradient(townCX,townCY,30,townCX,townCY,350);
+        gc.addColorStop(0,'rgba(255,140,40,0.06)');gc.addColorStop(1,'rgba(0,0,0,0)');
+        atmosCtx.fillStyle=gc;atmosCtx.fillRect(0,0,W,townH);
+      }
+    }else if(dn.phase==='day'){
+      atmosCtx.fillStyle='rgba(255,250,220,0.04)';atmosCtx.fillRect(0,0,W,townH);
     }
+    _atmosLastCamX=camX;_atmosLastCamY=camY;_atmosLastPhase=phaseKey;_atmosDirty=false;
   }
-  // day = soft warm sunlight tint
-  else if(dn.phase==='day'){
-    g.fillStyle='rgba(255,250,220,0.04)';g.fillRect(0,0,W,townH);
-  }
-  // Overworld ambient vignette (always, not dungeon)
-  if(!inDungeon){
-    const vg=g.createRadialGradient(W/2,(H-HUD_HEIGHT)/2,W*0.28,W/2,(H-HUD_HEIGHT)/2,W*0.72);
-    vg.addColorStop(0,'rgba(0,0,0,0)');
-    const nightBoost=dn.phase==='night'?0.18:dn.phase==='dusk'?0.10:0.06;
-    vg.addColorStop(1,`rgba(0,0,0,${nightBoost})`);
-    g.fillStyle=vg;g.fillRect(0,0,W,H-HUD_HEIGHT);
-  }
+  g.drawImage(atmosCanvas,0,0,W,H);
+  // Static overworld vignette blit (pre-built once)
+  g.drawImage(_buildOverworldVig(),0,0);
 }
 function drawDayNightIcon(ix,iy){
   const dn=getDayNightPhase();
@@ -7963,6 +8001,13 @@ function dTitle(){
 // ═══════════════════════════════════════
 const HUD_HEIGHT=72;
 
+// Pre-built edge gradients for map boundary vignette (avoids creating gradient objects every frame)
+const _edgeFade=20;
+const _mapEdgeGradL=(()=>{const gr=g.createLinearGradient(0,0,_edgeFade,0);gr.addColorStop(0,'#000');gr.addColorStop(1,'rgba(0,0,0,0)');return gr;})();
+const _mapEdgeGradR=(()=>{const gr=g.createLinearGradient(W-_edgeFade,0,W,0);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'#000');return gr;})();
+const _mapEdgeGradT=(()=>{const gr=g.createLinearGradient(0,0,0,_edgeFade);gr.addColorStop(0,'#000');gr.addColorStop(1,'rgba(0,0,0,0)');return gr;})();
+const _mapEdgeGradB=(()=>{const gr=g.createLinearGradient(0,H-HUD_HEIGHT-_edgeFade,0,H-HUD_HEIGHT);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'#000');return gr;})();
+
 function drawEdgeBlending(startTX,startTY,endTX,endTY){
   const m=getMap();
   for(let y=startTY;y<=endTY;y++){
@@ -8587,39 +8632,43 @@ function dMap(){
     }
     g.drawImage(fogCanvas,0,0,W,H);
   }
-  // ── CIRCULAR VISIBILITY (Iwayama Tunnel style) — dungeon only ──
-  // Town is a safe zone, no dark vignette. Dungeon only.
-  // Each floor has a subtle color tint that intensifies as the player goes deeper.
-  if(inDungeon&&(!isTouchDevice||fr%2===0)){
-    const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
-    const innerR=120, outerR=320;
-    const grad=g.createRadialGradient(px,py,innerR,px,py,outerR);
-    // Floor-depth color tints: deeper = warmer/more ominous
-    const floorTint=['rgba(0,0,0','rgba(15,5,35','rgba(25,5,40','rgba(35,8,28','rgba(40,5,8','rgba(50,0,0'][currentFloor]||'rgba(0,0,0';
-    grad.addColorStop(0,'rgba(0,0,0,0)');
-    grad.addColorStop(0.15,'rgba(0,0,0,0)');
-    grad.addColorStop(0.3,'rgba(0,0,0,0.05)');
-    grad.addColorStop(0.45,'rgba(0,0,0,0.12)');
-    grad.addColorStop(0.6,floorTint+',0.25)');
-    grad.addColorStop(0.75,floorTint+',0.46)');
-    grad.addColorStop(0.88,floorTint+',0.66)');
-    grad.addColorStop(1,floorTint+',0.82)');
-    g.fillStyle=grad;
-    g.fillRect(0,0,W,H);
+  // ── CIRCULAR VISIBILITY (dungeon only) — cached to offscreen canvas ──
+  if(inDungeon){
+    const _vpx=pl[0].visualX-camX+TW/2, _vpy=pl[0].visualY-camY+TH/2;
+    if(Math.abs(_vpx-_dvLastPX)>1||Math.abs(_vpy-_dvLastPY)>1||currentFloor!==_dvLastFloor){
+      dungeonVigCtx.clearRect(0,0,W,H);
+      const innerR=120,outerR=320;
+      const grad=dungeonVigCtx.createRadialGradient(_vpx,_vpy,innerR,_vpx,_vpy,outerR);
+      const floorTint=['rgba(0,0,0','rgba(15,5,35','rgba(25,5,40','rgba(35,8,28','rgba(40,5,8','rgba(50,0,0'][currentFloor]||'rgba(0,0,0';
+      grad.addColorStop(0,'rgba(0,0,0,0)');
+      grad.addColorStop(0.15,'rgba(0,0,0,0)');
+      grad.addColorStop(0.3,'rgba(0,0,0,0.05)');
+      grad.addColorStop(0.45,'rgba(0,0,0,0.12)');
+      grad.addColorStop(0.6,floorTint+',0.25)');
+      grad.addColorStop(0.75,floorTint+',0.46)');
+      grad.addColorStop(0.88,floorTint+',0.66)');
+      grad.addColorStop(1,floorTint+',0.82)');
+      dungeonVigCtx.fillStyle=grad;
+      dungeonVigCtx.fillRect(0,0,W,H);
+      _dvLastPX=_vpx;_dvLastPY=_vpy;_dvLastFloor=currentFloor;
+    }
+    g.drawImage(dungeonVigCanvas,0,0,W,H);
   }
-  // v112: Danger ambient vignette — red/amber edge when area danger is elevated
+  // v112: Danger ambient vignette — flat color rect (avoid per-frame gradient creation)
   if(inDungeon){
     const dangerV=areaDanger[currentMap]||0;
     if(dangerV>=DANGER_LOW_THRESH){
       const isHigh=dangerV>=DANGER_HIGH_THRESH;
       const pulse=Math.sin(fr*(isHigh?0.07:0.04))*0.5+0.5;
       const baseA=isHigh?0.08+pulse*0.08:0.04+pulse*0.04;
-      const vigCol=isHigh?`rgba(180,20,20,${baseA})`:`rgba(160,90,0,${baseA})`;
-      const vig=g.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.9);
-      vig.addColorStop(0,'rgba(0,0,0,0)');
-      vig.addColorStop(1,vigCol);
-      g.fillStyle=vig;g.fillRect(0,0,W,H);
-      // HIGH danger: brief scan-line flash every ~160 frames
+      // Use radial gradient only every 3rd frame for pulse; blit flat color in between
+      if(fr%3===0){
+        const vigCol=isHigh?`rgba(180,20,20,${baseA})`:`rgba(160,90,0,${baseA})`;
+        const vig=g.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.9);
+        vig.addColorStop(0,'rgba(0,0,0,0)');
+        vig.addColorStop(1,vigCol);
+        g.fillStyle=vig;g.fillRect(0,0,W,H);
+      }
       if(isHigh&&fr%160<4){
         const fA=0.08*(1-fr%160/4);
         g.globalAlpha=fA;bx(0,0,W,H,'#c01010');g.globalAlpha=1;
@@ -8647,9 +8696,9 @@ function dMap(){
 
   drawFootprints();
   drawParticles(camX,camY);
-  drawBirds();
-  drawPirateDecorations();
-  drawTownWeather(); // v84: weather overlay (after pirate decor, before NPCs)
+  if(fr%2===0)drawBirds();
+  if(fr%2===0)drawPirateDecorations(); // throttle: flag/sail animations are slow anyway
+  drawTownWeather();
 
   // ── DUNGEON ENTRANCE LABEL (town only) ──
   if(!inDungeon&&currentMap===0){
@@ -8880,38 +8929,25 @@ function dMap(){
   // Player status effects (sparkle, exhausted, card get)
   drawPlayerStatusEffects();
 
-  // Map edge gradient polish (darken edges when camera near map bounds)
+  // Map edge gradient polish — pre-built gradients, vary by globalAlpha only
   {
     const maxX=MW*TW-W,maxY=MH*TH-(H-HUD_HEIGHT);
     const edgeFade=20;
-    // Left edge
     if(camX<edgeFade){
-      const a=0.15*(1-camX/edgeFade);
-      const gr=g.createLinearGradient(0,0,edgeFade,0);
-      gr.addColorStop(0,'rgba(0,0,0,'+a+')');gr.addColorStop(1,'rgba(0,0,0,0)');
-      g.fillStyle=gr;g.fillRect(0,0,edgeFade,H-HUD_HEIGHT);
+      g.globalAlpha=0.15*(1-camX/edgeFade);
+      g.fillStyle=_mapEdgeGradL;g.fillRect(0,0,edgeFade,H-HUD_HEIGHT);g.globalAlpha=1;
     }
-    // Right edge
     if(camX>maxX-edgeFade){
-      const a=0.15*Math.min(1,(camX-(maxX-edgeFade))/edgeFade);
-      const gr=g.createLinearGradient(W-edgeFade,0,W,0);
-      gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,'+a+')');
-      g.fillStyle=gr;g.fillRect(W-edgeFade,0,edgeFade,H-HUD_HEIGHT);
+      g.globalAlpha=0.15*Math.min(1,(camX-(maxX-edgeFade))/edgeFade);
+      g.fillStyle=_mapEdgeGradR;g.fillRect(W-edgeFade,0,edgeFade,H-HUD_HEIGHT);g.globalAlpha=1;
     }
-    // Top edge
     if(camY<edgeFade){
-      const a=0.15*(1-camY/edgeFade);
-      const gr=g.createLinearGradient(0,0,0,edgeFade);
-      gr.addColorStop(0,'rgba(0,0,0,'+a+')');gr.addColorStop(1,'rgba(0,0,0,0)');
-      g.fillStyle=gr;g.fillRect(0,0,W,edgeFade);
+      g.globalAlpha=0.15*(1-camY/edgeFade);
+      g.fillStyle=_mapEdgeGradT;g.fillRect(0,0,W,edgeFade);g.globalAlpha=1;
     }
-    // Bottom edge
     if(camY>maxY-edgeFade){
-      const a=0.15*Math.min(1,(camY-(maxY-edgeFade))/edgeFade);
-      const hud=H-HUD_HEIGHT;
-      const gr=g.createLinearGradient(0,hud-edgeFade,0,hud);
-      gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,'+a+')');
-      g.fillStyle=gr;g.fillRect(0,hud-edgeFade,W,edgeFade);
+      g.globalAlpha=0.15*Math.min(1,(camY-(maxY-edgeFade))/edgeFade);
+      g.fillStyle=_mapEdgeGradB;g.fillRect(0,H-HUD_HEIGHT-edgeFade,W,edgeFade);g.globalAlpha=1;
     }
   }
 
@@ -9290,7 +9326,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v161',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v162',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -14853,6 +14889,10 @@ function update(){
   if(lg.length>200)lg.splice(0,lg.length-200);
   if(burnedTiles.length>500)burnedTiles.splice(0,burnedTiles.length-500);
   processHeldMovement();
+  // Slow-refresh tile cache so animated dungeon glow tiles still pulse (~4fps animation)
+  if(inDungeon&&fr%15===0)tileCacheDirty=true;
+  // Refresh atmosphere cache on lantern flicker cadence
+  if(!inDungeon&&fr%90===0)_atmosDirty=true;
   updateVisualPositions();updateAmbient();
   updateMapLoadScreen();updateRunSummary();updateRivalNews();updateHandInspect();updateFPS();
   // Save indicator countdown

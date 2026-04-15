@@ -71,6 +71,10 @@ function update(){
   if(lg.length>200)lg.splice(0,lg.length-200);
   if(burnedTiles.length>500)burnedTiles.splice(0,burnedTiles.length-500);
   processHeldMovement();
+  // Slow-refresh tile cache so animated dungeon glow tiles still pulse (~4fps animation)
+  if(inDungeon&&fr%15===0)tileCacheDirty=true;
+  // Refresh atmosphere cache on lantern flicker cadence
+  if(!inDungeon&&fr%90===0)_atmosDirty=true;
   updateVisualPositions();updateAmbient();
   updateMapLoadScreen();updateRunSummary();updateRivalNews();updateHandInspect();updateFPS();
   // Save indicator countdown
