@@ -8414,7 +8414,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v175',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v176',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -9774,7 +9774,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v175',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v176',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -15873,9 +15873,11 @@ document.addEventListener('keydown',e=>{
       if(introPage>=INTRO_PAGES.length){
         introActive=false;
         if(sc==='title'){
-          // New game flow: fade out → land in はじまりのまち (town)
+          // Set sc='map' immediately so any Z presses during the fade don't re-trigger
+          // the title screen new-game handler (which would restart the intro loop).
+          sc='map';
           fadeOut(()=>{
-            sc='map';currentMap=0;inDungeon=false;currentFloor=0;
+            currentMap=0;inDungeon=false;currentFloor=0;
             pl[0].x=15;pl[0].y=13;pl[0].dir=0;
             pl[0].visualX=15*TW;pl[0].visualY=13*TH;
             fogRevealAll(0);fogSave();
