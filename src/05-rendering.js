@@ -37,6 +37,18 @@ function drawGrass(px,py,tx_,ty){
     if(!drawDungeonTile(floorIdx,px,py,2)) bx(px,py,TW,TH,'#1a1820');
     if(depth>1){g.globalAlpha=Math.min(0.45,(depth-1)*0.12);bx(px,py,TW,TH,'#000510');g.globalAlpha=1;}
     if((h&31)<2){const glA=0.3+0.2*Math.sin((typeof fr!=='undefined'?fr:0)*0.05+tx_*0.3);g.globalAlpha=glA;drawDungeonTile(DT.floorGem,px,py,2);g.globalAlpha=1;}
+    // Per-floor atmospheric detail: subtle color-coded glints on select tiles
+    {const fT=(typeof fr!=='undefined'?fr:0);
+    if(depth===3&&(h&19)===0){// F3: crystal shard glint
+      const gA=0.18+0.12*Math.sin(fT*0.1+tx_*0.5+ty*0.4);
+      g.globalAlpha=gA;bx(px+6,py+6,4,1,'#c080f0');bx(px+7,py+7,2,2,'#d0a0ff');bx(px+8,py+6,1,4,'#c080f0');g.globalAlpha=1;
+    }else if(depth===4&&(h&15)===0){// F4: ember glow on floor
+      const eA=0.12+0.1*Math.sin(fT*0.14+tx_*0.8);
+      g.globalAlpha=eA;bx(px+10,py+8,3,3,'#e04010');bx(px+11,py+9,1,1,'#f0a040');g.globalAlpha=1;
+    }else if(depth===5&&(h&11)===0){// F5: void ripple (hollow square)
+      const vA=0.10+0.08*Math.sin(fT*0.09+tx_*0.6+ty*0.7);
+      g.globalAlpha=vA;g.strokeStyle='#6030a0';g.lineWidth=1;g.strokeRect(px+8,py+8,16,16);g.globalAlpha=1;
+    }}
     return;
   }
   // Overworld: zelda grass tile — unified art style
