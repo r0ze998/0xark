@@ -8231,15 +8231,34 @@ function wrapText(text,maxChars){
   return lines;
 }
 
+// v184: NPC identity colors — match role to accent color
+const NPC_ACCENT={
+  'Card Merchant':'#4080d0',
+  'Trade Master':'#30b080',
+  'Gacha Keeper':'#c070d0',
+  'ARK Guide':'#f0c030',
+  'Dungeon Porter':'#e06848',
+  'Alchemist':'#40c0c0',
+};
 function drawNPCDialog(){
   if(!npcDialogActive)return;
   const dlgSlide=Math.min(1,(fr-npcDialogOpenFrame)/6);
   const dlgEase=easeInOut(dlgSlide);
   const slideOff=90*(1-dlgEase);
+  const accent=NPC_ACCENT[npcDialogName]||'#c04040';
   g.globalAlpha=dlgEase;
-  win(6,H-100+slideOff,W-12,90);
-  win(10,H-110+slideOff,npcDialogName.length*9+20,20);
-  tx(npcDialogName,20,H-95+slideOff,7,'#c04040');
+
+  // Main dialog box
+  const dlgY=H-100+slideOff;
+  win(6,dlgY,W-12,90);
+  // Accent bar on left edge — NPC identity color
+  bx(6,dlgY,3,90,accent);
+  // Name badge (colored accent top-bar)
+  const nbW=npcDialogName.length*7+24;
+  win(10,H-112+slideOff,nbW,18);
+  bx(10,H-112+slideOff,nbW,2,accent);
+  txShadow(npcDialogName,20,H-97+slideOff,7,accent,'rgba(0,0,0,.35)');
+
   // Combine current dialog lines and wrap properly
   const rawLine=npcDialogLines[npcDialogIdx]||'';
   const rawLine2=npcDialogLines[npcDialogIdx+1]||'';
@@ -8248,12 +8267,23 @@ function drawNPCDialog(){
   const wrapped2=rawLine2?wrapText(rawLine2,maxChars):[];
   const allLines=[...wrapped1,...wrapped2].slice(0,3);
   allLines.forEach((l,i)=>{
-    tx(l,20,H-70+slideOff+i*16,7,FRLG.textColor);
+    txShadow(l,20,H-70+slideOff+i*16,7,FRLG.textColor,'rgba(0,0,0,.25)');
   });
+
+  // Progress indicator: show line X/total as small dots bottom-left
+  const totalLines=npcDialogLines.length;
+  if(totalLines>2){
+    const maxDots=Math.min(totalLines,8);
+    for(let d=0;d<maxDots;d++){
+      const active=d===Math.floor(npcDialogIdx/2);
+      bx(20+d*8,dlgY+80,6,3,active?accent:'rgba(200,180,100,.25)');
+    }
+  }
+
   // FRLG-style bouncing triangle at bottom-right (bounces 2px every 0.5s = 30 frames)
   const hasMore=(npcDialogIdx+2)<npcDialogLines.length;
   const arrowBounce=hasMore?Math.floor(Math.sin(fr*Math.PI/30)*2):0;
-  tx('\u25BC',W-24,H-18+slideOff+arrowBounce,7,FRLG.selHighlight);
+  txShadow('\u25BC',W-24,H-18+slideOff+arrowBounce,7,accent,'rgba(0,0,0,.4)');
   g.globalAlpha=1;
 }
 
@@ -9971,7 +10001,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v183',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v184',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
