@@ -7453,9 +7453,9 @@ function drawMinimap(){
     }
     // Tiny legend: amber dot = tall grass (30%), yellow-green = regular grass (15%)
     bx(mx+2,my+mmH-9,4,4,'rgba(255,160,30,0.65)');
-    tx('30%',mx+7,my+mmH-5,4,'rgba(220,160,60,0.7)');
+    txShadow('30%',mx+7,my+mmH-5,4,'rgba(220,160,60,0.7)','rgba(0,0,0,.3)');
     bx(mx+26,my+mmH-9,4,4,'rgba(180,240,80,0.55)');
-    tx('15%',mx+31,my+mmH-5,4,'rgba(160,200,80,0.7)');
+    txShadow('15%',mx+31,my+mmH-5,4,'rgba(160,200,80,0.7)','rgba(0,0,0,.3)');
   }
 
   // Exit locations as blinking white dots (pulse)
@@ -7533,7 +7533,7 @@ function drawMinimap(){
   g.globalAlpha=1;
 
   // Map name above minimap
-  tx(mapNames[currentMap],mx,my-5,4,mapColors[currentMap]);
+  txShadow(mapNames[currentMap],mx,my-5,4,mapColors[currentMap],'rgba(0,0,0,.4)');
 }
 
 // ═══════════════════════════════════════
@@ -7612,7 +7612,7 @@ function drawWildEncounter(){
     bx(W/2-silW/2+4,riseY+4,silW-8,Math.round(silH*0.6),wRcol);
     g.globalAlpha=prog;
     // "?" on silhouette
-    tx('?',W/2-9,riseY+silH/2+8,20,'#1c1c48');
+    txShadow('?',W/2-9,riseY+silH/2+8,20,'#1c1c48','rgba(0,0,0,.5)');
     // Orbiting rarity sparks
     for(let oi=0;oi<wRar+3;oi++){
       const ang=t*0.2+oi*(Math.PI*2/(wRar+3));
@@ -7843,7 +7843,7 @@ function drawSignpostDialog(){
   g.globalAlpha=dlgEase;
   win(6,H-100+slideOff,W-12,90);
   win(10,H-110+slideOff,96,20);
-  tx('SIGNPOST',20,H-95+slideOff,6,'#806030');
+  txShadow('SIGNPOST',20,H-95+slideOff,6,'#806030','rgba(0,0,0,.4)');
   const maxChars=52;
   let line1=signpostText, line2='';
   if(signpostText.length>maxChars){
@@ -7852,10 +7852,10 @@ function drawSignpostDialog(){
     line1=signpostText.substring(0,breakAt);
     line2=signpostText.substring(breakAt+1);
   }
-  tx(line1,20,H-70+slideOff,7,'#303028');
-  if(line2)tx(line2,20,H-52+slideOff,7,'#303028');
+  txShadow(line1,20,H-70+slideOff,7,'#303028','rgba(255,255,255,.15)');
+  if(line2)txShadow(line2,20,H-52+slideOff,7,'#303028','rgba(255,255,255,.15)');
   const arrowBounce=Math.sin(fr*0.15)*2;
-  tx('\u25BC',W-24,H-18+slideOff+arrowBounce,7,'#806030');
+  txShadow('\u25BC',W-24,H-18+slideOff+arrowBounce,7,'#806030','rgba(0,0,0,.4)');
   g.globalAlpha=1;
 }
 
@@ -8075,7 +8075,7 @@ function drawSynthesisShop(){
     }else{
       txShadow('No cards of that rarity to forge.',W/2-140,H/2,8,'#d04040','rgba(0,0,0,.2)');
     }
-    if(fr-synthResultFrame>40)tx('Press X to close',W/2-64,H-80,7,'#686068');
+    if(fr-synthResultFrame>40)txShadow('Press X to close',W/2-64,H-80,7,'#686068','rgba(0,0,0,.35)');
     return;
   }
 
@@ -8089,7 +8089,7 @@ function drawSynthesisShop(){
     const sel=synthRarityFilter===ri;
     bx(tabX,tabY,tabW-4,20,sel?'#806030':'rgba(80,70,50,.5)');
     if(sel){bx(tabX,tabY,tabW-4,1,'#d0b060');bx(tabX,tabY+19,tabW-4,1,'#d0b060');}
-    tx(rl,tabX+4,tabY+13,6,sel?'#f8e8c0':'#a09070');
+    txShadow(rl,tabX+4,tabY+13,6,sel?'#f8e8c0':'#a09070','rgba(0,0,0,.35)');
   });
 
   const filled=getPlayerFilledSlots().filter(s=>{
@@ -8097,12 +8097,12 @@ function drawSynthesisShop(){
   });
 
   if(filled.length===0){
-    tx('No '+rarLabels[synthRarityFilter]+' cards in hand.',80,120,7,'#989080');
+    txShadow('No '+rarLabels[synthRarityFilter]+' cards in hand.',80,120,7,'#989080','rgba(0,0,0,.3)');
   }else{
     const needed=3-synthSelected.length;
     const nextRar=RARITY_COLOR[synthRarityFilter+1]||'#c8c0a0';
-    tx('Select 3 cards → get 1 '+(rarLabels[synthRarityFilter+1]||'?')+' card',80,108,6,'#c0a060');
-    tx(needed>0?'Need '+needed+' more':'3 selected — press Z to synthesize!',80,122,6,needed===0?'#40d080':'#808880');
+    txShadow('Select 3 cards → get 1 '+(rarLabels[synthRarityFilter+1]||'?')+' card',80,108,6,'#c0a060','rgba(0,0,0,.3)');
+    txShadow(needed>0?'Need '+needed+' more':'3 selected — press Z to synthesize!',80,122,6,needed===0?'#40d080':'#808880','rgba(0,0,0,.3)');
 
     const cols=4,cellW=120,cellH=48;
     filled.forEach((slot,i)=>{
@@ -8111,18 +8111,18 @@ function drawSynthesisShop(){
       const cx=80+col*cellW,cy=138+row*cellH;
       const isSel=synthSelected.includes(slot);
       bx(cx,cy,cellW-8,cellH-4,isSel?'rgba(192,168,96,.3)':'rgba(40,36,28,.6)');
-      if(isSel){bx(cx,cy,2,cellH-4,'#c0a040');tx('\u2713',cx+cellW-20,cy+14,9,'#c0a040');}
+      if(isSel){bx(cx,cy,2,cellH-4,'#c0a040');txShadow('\u2713',cx+cellW-20,cy+14,9,'#c0a040','rgba(0,0,0,.4)');}
       bx(cx+4,cy+4,20,20,cr.d);bx(cx+5,cy+5,18,18,cr.c);
       drawCardCharacter(cx+6,cy+6,cid,0.7,fr);
-      tx(cr.n,cx+30,cy+14,6,isSel?'#f8e8c0':'#c0b898');
-      tx(cr.f,cx+30,cy+26,5,'#908878');
+      txShadow(cr.n,cx+30,cy+14,6,isSel?'#f8e8c0':'#c0b898','rgba(0,0,0,.3)');
+      txShadow(cr.f,cx+30,cy+26,5,'#908878','rgba(0,0,0,.2)');
     });
   }
 
   // Legend
   const tgt=rarLabels[synthRarityFilter+1];
-  if(tgt)tx('3× '+rarLabels[synthRarityFilter]+' → 1× '+tgt,80,H-88,6,'#806030');
-  tx('← → change rarity  Z=select/confirm  X=close',80,H-68,5,'#686068');
+  if(tgt)txShadow('3× '+rarLabels[synthRarityFilter]+' → 1× '+tgt,80,H-88,6,'#806030','rgba(0,0,0,.3)');
+  txShadow('← → change rarity  Z=select/confirm  X=close',80,H-68,5,'#686068','rgba(0,0,0,.3)');
 }
 
 // ═══════════════════════════════════════
@@ -8220,7 +8220,7 @@ function drawRandomEvent(){
   g.globalAlpha=ease;
   win(24,H/2-50+slideOff,W-48,74);
   win(32,H/2-62+slideOff,70,18);
-  tx('EVENT',42,H/2-48+slideOff,7,'#d8b028');
+  txShadow('EVENT',42,H/2-48+slideOff,7,'#d8b028','rgba(0,0,0,.4)');
   // Word-wrap
   const maxChars=50;
   let line1=randomEventText, line2='';
@@ -8230,8 +8230,8 @@ function drawRandomEvent(){
     line1=randomEventText.substring(0,breakAt);
     line2=randomEventText.substring(breakAt+1);
   }
-  tx(line1,42,H/2-22+slideOff,7,'#303028');
-  if(line2)tx(line2,42,H/2-6+slideOff,7,'#303028');
+  txShadow(line1,42,H/2-22+slideOff,7,'#303028','rgba(255,255,255,.15)');
+  if(line2)txShadow(line2,42,H/2-6+slideOff,7,'#303028','rgba(255,255,255,.15)');
   g.globalAlpha=1;
 }
 
@@ -8251,13 +8251,13 @@ function drawEncounterExclamation(){
   const ppx=encounterExclPlayerX-camX, ppy=encounterExclPlayerY-camY-8;
   g.save();g.translate(ppx+8,ppy-15+bounce);g.scale(rawScl,rawScl);g.translate(-ppx-8,-ppy+15-bounce);
   bx(ppx+3,ppy-22+bounce,10,14,'#fff');bx(ppx+4,ppy-21+bounce,8,11,'#f0c830');
-  tx('!',ppx+5,ppy-10+bounce,10,'#c04040');
+  txShadow('!',ppx+5,ppy-10+bounce,10,'#c04040','rgba(0,0,0,.4)');
   g.restore();
   // Rival "!" bubble with pop scale
   const rpx=encounterExclRivalX-camX, rpy=encounterExclRivalY-camY-8;
   g.save();g.translate(rpx+8,rpy-15+bounce);g.scale(rawScl,rawScl);g.translate(-rpx-8,-rpy+15-bounce);
   bx(rpx+3,rpy-22+bounce,10,14,'#fff');bx(rpx+4,rpy-21+bounce,8,11,'#f0c830');
-  tx('!',rpx+5,rpy-10+bounce,10,'#c04040');
+  txShadow('!',rpx+5,rpy-10+bounce,10,'#c04040','rgba(0,0,0,.4)');
   g.restore();
   // Show rival name tag above "!" — appears after t>6
   if(t>6){
@@ -8265,7 +8265,7 @@ function drawEncounterExclamation(){
     const rNameCol=(encounterExclTarget===1)?'#f080c0':'#f0c830';
     const nameW=rName.length*6+4;
     bx(rpx-nameW/2+8,rpy-38+bounce,nameW,13,'rgba(0,0,0,.7)');
-    tx(rName,rpx-nameW/2+10,rpy-27+bounce,7,rNameCol);
+    txShadow(rName,rpx-nameW/2+10,rpy-27+bounce,7,rNameCol,'rgba(0,0,0,.5)');
   }
   // v81: Pre-battle dialogue speech bubble (appears t>12, fades at t>24)
   if(t>12&&encounterRivalLine){
@@ -8279,7 +8279,7 @@ function drawEncounterExclamation(){
     // Speech bubble triangle pointer
     bx(lineX+4,lineY+16,4,2,'rgba(8,8,16,.85)');
     const rNameCol2=(encounterExclTarget===1)?'#f080c0':'#f0c830';
-    tx('\u201C'+encounterRivalLine+'\u201D',lineX+4,lineY+12,5,rNameCol2);
+    txShadow('\u201C'+encounterRivalLine+'\u201D',lineX+4,lineY+12,5,rNameCol2,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
   g.globalAlpha=1;
@@ -8394,23 +8394,23 @@ function dTitle(){
     for(let t=0;t<6;t++)bx(sx-t*4,sy-t,2,1,`rgba(255,255,255,${.4-t*.06})`);
   }
 
-  tx('0xARK',W/2-96+1,191,32,'rgba(0,0,0,.45)');
-  tx('0xARK',W/2-96,190,32,'#f8f0e0');
+  txShadow('0xARK',W/2-96+1,191,32,'rgba(0,0,0,.45)','rgba(0,0,0,.6)');
+  txShadow('0xARK',W/2-96,190,32,'#f8f0e0','rgba(0,0,32,.7)');
   if(Math.sin(fr*.02)>.3)tx('0xARK',W/2-96,190,32,'rgba(248,240,224,.12)');
-  tx('60 CARDS. ONE HEIR. FIRST TO WIN TAKES ALL.',W/2-184,226,7,'#7080a0');
-  tx('The ARK sank here. Its power waits.',W/2-128,240,7,'#a07848');
+  txShadow('60 CARDS. ONE HEIR. FIRST TO WIN TAKES ALL.',W/2-184,226,7,'#7080a0','rgba(0,0,0,.5)');
+  txShadow('The ARK sank here. Its power waits.',W/2-128,240,7,'#a07848','rgba(0,0,0,.5)');
 
   // SEASON 1 badge
   const s1Blink=Math.sin(fr*0.06)*0.15+0.85;
   g.globalAlpha=s1Blink;
   bx(W/2-36,252,72,16,'rgba(200,152,32,.25)');
   bx(W/2-35,253,70,14,'rgba(200,152,32,.12)');
-  tx('SEASON 1',W/2-30,264,7,'#f0c830');
+  txShadow('SEASON 1',W/2-30,264,7,'#f0c830','rgba(0,0,0,.4)');
   g.globalAlpha=1;
 
   // Prize pool display — show actual pot if wallet connected
   const prizeStr=walletConnected&&stakePotAmount>0?'PRIZE POOL: '+stakePotAmount.toFixed(2)+' SOL':'PRIZE POOL: -- USDC';
-  tx(prizeStr,W/2-86,280,7,'#14F195');
+  txShadow(prizeStr,W/2-86,280,7,'#14F195','rgba(0,0,0,.5)');
 
   // Ship silhouette in background
   {
@@ -8491,68 +8491,68 @@ function dTitle(){
   if(hasSave()){
     const sel=titleMenuIdx||0;
     const blink=Math.floor(fr/25)%2===0;
-    if(sel===0&&blink||sel!==0)tx('CONTINUE',W/2-52,320,10,sel===0?FRLG.selHighlight:'#888898');
-    if(sel===0)tx('\u25B6',W/2-76,320,10,FRLG.selHighlight);
-    if(sel===1&&blink||sel!==1)tx('NEW GAME',W/2-52,350,10,sel===1?FRLG.selHighlight:'#888898');
-    if(sel===1)tx('\u25B6',W/2-76,350,10,FRLG.selHighlight);
+    if(sel===0&&blink||sel!==0)txShadow('CONTINUE',W/2-52,320,10,sel===0?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
+    if(sel===0)txShadow('\u25B6',W/2-76,320,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
+    if(sel===1&&blink||sel!==1)txShadow('NEW GAME',W/2-52,350,10,sel===1?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
+    if(sel===1)txShadow('\u25B6',W/2-76,350,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
     // CONNECT WALLET option
     if(walletConnected){
-      tx(walletAddressTruncated(),W/2-52,380,8,'#40d080');
-      if(sel===2)tx('\u25B6',W/2-76,380,10,'#40d080');
+      txShadow(walletAddressTruncated(),W/2-52,380,8,'#40d080','rgba(0,0,0,.4)');
+      if(sel===2)txShadow('\u25B6',W/2-76,380,10,'#40d080','rgba(0,0,0,.4)');
     }else{
-      if(sel===2&&blink||sel!==2)tx('CONNECT WALLET',W/2-80,380,10,sel===2?FRLG.selHighlight:'#888898');
-      if(sel===2)tx('\u25B6',W/2-104,380,10,FRLG.selHighlight);
+      if(sel===2&&blink||sel!==2)txShadow('CONNECT WALLET',W/2-80,380,10,sel===2?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
+      if(sel===2)txShadow('\u25B6',W/2-104,380,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
     }
     // MULTIPLAYER option
-    if(sel===3&&blink||sel!==3)tx('MULTIPLAYER',W/2-68,410,10,sel===3?FRLG.selHighlight:'#888898');
-    if(sel===3)tx('\u25B6',W/2-92,410,10,FRLG.selHighlight);
-    if(mp.connected)tx('ONLINE',W/2+60,410,6,'#40d080');
+    if(sel===3&&blink||sel!==3)txShadow('MULTIPLAYER',W/2-68,410,10,sel===3?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
+    if(sel===3)txShadow('\u25B6',W/2-92,410,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
+    if(mp.connected)txShadow('ONLINE',W/2+60,410,6,'#40d080','rgba(0,0,0,.4)');
     // CLEAR SAVE (sel===4)
-    if(sel===4&&blink||sel!==4)tx('CLEAR SAVE DATA',W/2-88,440,10,sel===4?'#d04040':'#555570');
-    if(sel===4)tx('\u25B6',W/2-112,440,10,'#d04040');
+    if(sel===4&&blink||sel!==4)txShadow('CLEAR SAVE DATA',W/2-88,440,10,sel===4?'#d04040':'#555570','rgba(0,0,0,.5)');
+    if(sel===4)txShadow('\u25B6',W/2-112,440,10,'#d04040','rgba(0,0,0,.4)');
   }else{
-    if(Math.floor(fr/25)%2===0)tx('PRESS Z TO START',W/2-110,330,10,FRLG.selHighlight);
+    if(Math.floor(fr/25)%2===0)txShadow('PRESS Z TO START',W/2-110,330,10,FRLG.selHighlight,'rgba(0,0,0,.5)');
     // CONNECT WALLET option below start
     const sel2=titleMenuIdx||0;
     const blink2=Math.floor(fr/25)%2===0;
     if(walletConnected){
-      tx(walletAddressTruncated(),W/2-52,370,8,'#40d080');
+      txShadow(walletAddressTruncated(),W/2-52,370,8,'#40d080','rgba(0,0,0,.4)');
     }else{
-      if(sel2===1&&blink2||sel2!==1)tx('CONNECT WALLET',W/2-80,370,10,sel2===1?FRLG.selHighlight:'#888898');
-      if(sel2===1)tx('\u25B6',W/2-104,370,10,FRLG.selHighlight);
+      if(sel2===1&&blink2||sel2!==1)txShadow('CONNECT WALLET',W/2-80,370,10,sel2===1?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
+      if(sel2===1)txShadow('\u25B6',W/2-104,370,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
     }
     // MULTIPLAYER option (no save)
-    if(sel2===2&&blink2||sel2!==2)tx('MULTIPLAYER',W/2-68,400,10,sel2===2?FRLG.selHighlight:'#888898');
-    if(sel2===2)tx('\u25B6',W/2-92,400,10,FRLG.selHighlight);
-    if(mp.connected)tx('ONLINE',W/2+60,400,6,'#40d080');
+    if(sel2===2&&blink2||sel2!==2)txShadow('MULTIPLAYER',W/2-68,400,10,sel2===2?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
+    if(sel2===2)txShadow('\u25B6',W/2-92,400,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
+    if(mp.connected)txShadow('ONLINE',W/2+60,400,6,'#40d080','rgba(0,0,0,.4)');
   }
   // On-chain / offline indicator
   if(walletConnected){
     drawSolanaIcon(W/2+82,550,8);
-    tx(programVerified?'VERIFIED':'ON-CHAIN',W/2+100,560,7,programVerified?'#14F195':'#40d080');
+    txShadow(programVerified?'VERIFIED':'ON-CHAIN',W/2+100,560,7,programVerified?'#14F195':'#40d080','rgba(0,0,0,.4)');
   }else{
-    tx('OFFLINE',W/2+100,560,7,'#555570');
+    txShadow('OFFLINE',W/2+100,560,7,'#555570','rgba(0,0,0,.35)');
   }
 
   // Stake display when wallet connected (placed below menu items)
   if(walletConnected){
-    tx('STAKE: '+STAKE_AMOUNT.toFixed(2)+' SOL',W/2-70,496,8,'#14F195');
+    txShadow('STAKE: '+STAKE_AMOUNT.toFixed(2)+' SOL',W/2-70,496,8,'#14F195','rgba(0,0,0,.4)');
     if(stakeDeposited){
-      tx('POT: '+stakePotAmount.toFixed(2)+' SOL',W/2-50,512,7,'#f0c830');
+      txShadow('POT: '+stakePotAmount.toFixed(2)+' SOL',W/2-50,512,7,'#f0c830','rgba(0,0,0,.4)');
     }
   }
 
   // "Built on Solana" branding at bottom
   drawSolanaLogo(W/2-120,548,10);
-  tx('Built on Solana',W/2-104,552,7,'#9945FF');
+  txShadow('Built on Solana',W/2-104,552,7,'#9945FF','rgba(0,0,0,.5)');
 
   // CREDITS button (hasSave: idx5 y=470; no save: idx3 y=430)
   {
     const credSel=hasSave()?(titleMenuIdx===5):(titleMenuIdx===3);
     const credY=hasSave()?470:430;
-    if(credSel){tx('\u25B6',W/2-66,credY,10,FRLG.selHighlight);}
+    if(credSel){txShadow('\u25B6',W/2-66,credY,10,FRLG.selHighlight,'rgba(0,0,0,.4)');}
     const credBlink=Math.floor(fr/25)%2===0;
-    if(credSel&&credBlink||!credSel)tx('CREDITS',W/2-42,credY,10,credSel?FRLG.selHighlight:'#555570');
+    if(credSel&&credBlink||!credSel)txShadow('CREDITS',W/2-42,credY,10,credSel?FRLG.selHighlight:'#555570','rgba(0,0,0,.5)');
   }
 
   // v107: Save progress preview on title screen
@@ -8572,9 +8572,9 @@ function dTitle(){
     txShadow('Steps: '+stepCounter,W/2-50,previewY+36,6,'#686880','rgba(0,0,0,.3)');
   }
   // Footer credits
-  tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
+  txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v182',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v196',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -8584,11 +8584,11 @@ function dTitle(){
     bx(0,0,W,H,'rgba(0,0,0,.6)');
     win(W/2-200,H/2-80,400,160);
     drawSolanaLogo(W/2,H/2-54,14);
-    tx('DEPOSIT '+STAKE_AMOUNT.toFixed(2)+' SOL TO ENTER?',W/2-180,H/2-24,9,'#f0f0f0');
-    tx('Winner takes the pot: '+stakePotAmount.toFixed(2)+' SOL',W/2-170,H/2+2,7,'#14F195');
-    tx('(UI preview - devnet not deployed)',W/2-150,H/2+22,6,'#555570');
+    txShadow('DEPOSIT '+STAKE_AMOUNT.toFixed(2)+' SOL TO ENTER?',W/2-180,H/2-24,9,'#f0f0f0','rgba(0,0,0,.5)');
+    txShadow('Winner takes the pot: '+stakePotAmount.toFixed(2)+' SOL',W/2-170,H/2+2,7,'#14F195','rgba(0,0,0,.4)');
+    txShadow('(UI preview - devnet not deployed)',W/2-150,H/2+22,6,'#555570','rgba(0,0,0,.35)');
     const blink_=Math.floor(fr/25)%2===0;
-    if(blink_)tx('Z = Yes    X = No',W/2-100,H/2+52,9,'#f0c830');
+    if(blink_)txShadow('Z = Yes    X = No',W/2-100,H/2+52,9,'#f0c830','rgba(0,0,0,.4)');
   }
 }
 
@@ -10161,7 +10161,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v195',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v196',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
