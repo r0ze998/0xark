@@ -1312,6 +1312,91 @@ async function zkVerifyProof(){
   }catch(e){lg.push('[ZK] Verify error');return false;}
 }
 
+// Convert snarkjs decimal-string field element to 32-byte big-endian Uint8Array
+function _fieldToBE32(decStr){
+  let hex=BigInt(decStr).toString(16);
+  if(hex.length>64)hex=hex.slice(-64);
+  hex=hex.padStart(64,'0');
+  const out=new Uint8Array(32);
+  for(let i=0;i<32;i++)out[i]=parseInt(hex.slice(i*2,i*2+2),16);
+  return out;
+}
+
+// Serialize snarkjs Groth16 proof to on-chain byte arrays:
+//   proof_a  → [u8;64]  : x(32BE) || y(32BE)
+//   proof_b  → [u8;128] : x1(32) || x0(32) || y1(32) || y0(32)  (G2 coords swapped)
+//   proof_c  → [u8;64]  : x(32BE) || y(32BE)
+//   pub_inp  → [u8;32]  : public signal[0] as 32-byte BE
+function zkSerializeProof(proof,publicSignals){
+  const a=new Uint8Array(64);
+  a.set(_fieldToBE32(proof.pi_a[0]),0);
+  a.set(_fieldToBE32(proof.pi_a[1]),32);
+
+  const b=new Uint8Array(128);
+  // BN254 G2 uses (x1,x0) / (y1,y0) — snarkjs stores [x0,x1] and [y0,y1]
+  b.set(_fieldToBE32(proof.pi_b[0][1]),0);   // x1
+  b.set(_fieldToBE32(proof.pi_b[0][0]),32);  // x0
+  b.set(_fieldToBE32(proof.pi_b[1][1]),64);  // y1
+  b.set(_fieldToBE32(proof.pi_b[1][0]),96);  // y0
+
+  const c=new Uint8Array(64);
+  c.set(_fieldToBE32(proof.pi_c[0]),0);
+  c.set(_fieldToBE32(proof.pi_c[1]),32);
+
+  const pub=_fieldToBE32(publicSignals[0]);
+
+  return{proof_a:a,proof_b:b,proof_c:c,public_inputs:pub};
+}
+
+// ─── Instruction: verify_zk_proof ────────────────────────────────────────────
+// disc: sha256("global:verify_zk_proof")[0..8]
+const DISC_VERIFY_ZK=[251,39,91,14,62,74,223,108];
+
+async function onchainVerifyZk(gameId,proof,publicSignals){
+  if(!walletConnected||!proof||!publicSignals)return null;
+  try{
+    const{proof_a,proof_b,proof_c,public_inputs}=zkSerializeProof(proof,publicSignals);
+    const payer=window.solana.publicKey;
+    const gid=gameIdBuf(gameId);
+    const gamePDA=_gamePDA(gameId);
+    const playerPDA=_playerPDA(gameId,payer);
+
+    // Read round for commit PDA seed (same as in onchainCommit)
+    let round=0;
+    try{
+      const gameAcct=await solConnection.getAccountInfo(gamePDA);
+      if(gameAcct){round=gameAcct.data[49];}
+    }catch(_){}
+    const roundBuf=new ArrayBuffer(1);new DataView(roundBuf).setUint8(0,round&0xff);
+    const roundBytes=new Uint8Array(roundBuf);
+
+    const[commitPDA]=solanaWeb3.PublicKey.findProgramAddressSync(
+      [Buffer.from('commit'),gid,roundBytes,payer.toBytes()],PROGRAM_PUBKEY
+    );
+
+    // Instruction data: disc(8) + game_id(8) + proof_a(64) + proof_b(128) + proof_c(64) + public_inputs(32) = 304 bytes
+    const data=new Uint8Array(304);
+    data.set(DISC_VERIFY_ZK,0);
+    data.set(gid,8);
+    data.set(proof_a,16);
+    data.set(proof_b,80);
+    data.set(proof_c,208);
+    data.set(public_inputs,272);
+
+    const sig=await _sendIx([
+      {pubkey:gamePDA,   isSigner:false,isWritable:false},
+      {pubkey:playerPDA, isSigner:false,isWritable:false},
+      {pubkey:commitPDA, isSigner:false,isWritable:false},
+      {pubkey:payer,     isSigner:true, isWritable:false},
+    ],data);
+    lg.push('[ZK] On-chain verify TX: '+sig.slice(0,12)+'..');
+    return sig;
+  }catch(e){
+    lg.push('[ZK] On-chain verify failed: '+(e.message||'').slice(0,40));
+    return null;
+  }
+}
+
 // ═══════════════════════════════════════
 // ON-CHAIN TRANSACTION INTEGRATION
 // ═══════════════════════════════════════
@@ -1540,6 +1625,10 @@ async function onchainReveal(gameId,actionType,rivalIdx,salt){
         localStorage.removeItem('oxark_onchain_target_hex');
         localStorage.removeItem('oxark_onchain_round');
         localStorage.removeItem('oxark_onchain_gameid');
+        // Submit ZK proof on-chain after successful reveal (background)
+        if(zkLastProof){
+          onchainVerifyZk(gameId,zkLastProof.proof,zkLastProof.publicSignals).catch(()=>{});
+        }
         return{txSig};
       }catch(txErr){
         lg.push('[ON-CHAIN] Reveal TX failed, sim: '+(txErr.message||'').slice(0,28));
@@ -9733,7 +9822,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v168',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v169',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
