@@ -574,7 +574,7 @@ function drawPirateDecorations(){
 // Y-sorted craftpix tree rendering: only draws tiles whose row is in [tyMin, tyMax).
 // Called twice from dMap() — once before sprites (bg pass) and once after (fg pass).
 function drawCpxTreesInRange(tyMin,tyMax){
-  if(cpxTreesLoaded===0)return;
+  if(cpxForestLoaded===0)return;
   const isJungle=(currentMap===1);
   const fogMap=fogRevealed[currentMap];
   const mt=getMap();
@@ -596,8 +596,8 @@ function drawCpxTreesInRange(tyMin,tyMax){
       if(isJungle){
         if(tt!==3&&tt!==7&&tt!==12)continue;
         if(th%4!==1)continue;
-        const jIdx=((th>>>2)+3)%CPX_TREES.length;
-        const jImg=CPX_TREES[jIdx];
+        const jIdx=((th>>>2)+3)%CPX_FOREST.length;
+        const jImg=CPX_FOREST[jIdx];
         if(!jImg.complete||!jImg.naturalWidth)continue;
         const isMega=jImg.naturalWidth===256;
         const jdW=isMega?80:64;
@@ -609,8 +609,8 @@ function drawCpxTreesInRange(tyMin,tyMax){
         g.restore();
       }else{
         if((tt===3||tt===7||tt===12)&&th%3===0){
-          const tIdx=(th>>>2)%CPX_TREES.length;
-          const tImg=CPX_TREES[tIdx];
+          const tIdx=(th>>>2)%CPX_FOREST.length;
+          const tImg=CPX_FOREST[tIdx];
           if(!tImg.complete||!tImg.naturalWidth)continue;
           const isMega=tImg.naturalWidth===256;
           const tdW=isMega?72:56;
@@ -1411,7 +1411,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v180',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v181',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
