@@ -24,8 +24,8 @@ function checkDungeonRivalEncounter(){
       // Trigger encounter — set cooldown so game-loop check doesn't double-fire
       encounterCooldown=120;
       const ai=rivalAI[idx];
-      // Collector may still flee
-      if(ai.personality==='collector'&&ai.state!=='fleeing'&&Math.random()<0.7){
+      // Collector no longer flees in dungeon — battle always starts on encounter
+      if(false&&ai.personality==='collector'&&ai.state!=='fleeing'&&Math.random()<0.05){
         ai.state='fleeing';ai.stateTimer=8;ai.moveInterval=5;
         const fdx=r.x-pl[0].x;const fdy=r.y-pl[0].y;
         const fx=r.x+(fdx!==0?fdx*5:0);const fy=r.y+(fdy!==0?fdy*5:0);
@@ -296,6 +296,39 @@ function doMapTransition(exit){
         },800);
       }
     }
+    // ── GOAL EXIT: Floor 5 cleared — legendary card fanfare ──
+    if(exit.isGoal){
+      const legendPool=DUNGEON_FLOOR_CARDS[5]||[]; // floor 5 = legendary pool
+      const vault_=pl[0].vault||new Set();
+      const newPool=legendPool.filter(id=>!vault_.has(id));
+      const usePool=newPool.length>0?newPool:legendPool;
+      // Give 2 legendary cards as goal reward
+      const reward1=usePool[Math.floor(Math.random()*usePool.length)];
+      const reward2=usePool[Math.floor(Math.random()*usePool.length)];
+      [reward1,reward2].forEach((rid,ri)=>{
+        if(!rid)return;
+        setTimeout(()=>{
+          const cr=CD[rid-1];
+          if(!cr)return;
+          const isNew=!(pl[0].vault&&pl[0].vault.has(rid));
+          addCardToPlayer(0,rid);
+          triggerCardGetBurst(W/2,H/2,'#ffe080');
+          screenShake(5,12);
+          sfxStreakUp();
+          lg.push('[DUNGEON CLEARED] Legendary reward: '+cr.n+'!');
+          if(ri===0){
+            objectInteractMsg='DUNGEON CLEARED! Legendary: '+cr.n+'!';
+            objectInteractTimer=260;
+          }
+        },1200+ri*1800);
+      });
+      // Special goal fanfare screen
+      setTimeout(()=>{
+        floorFanfareActive=true;floorFanfareTimer=0;
+        floorFanfareData={floor:5,cardId:reward1,rarity:5,isNew:!(pl[0].vault&&pl[0].vault.has(reward1)),isGoal:true};
+      },600);
+      checkWinAndTransition(4000);
+    }
     saveGame();
     // Grace period: prevent encounters for 8 seconds after any map transition
     // This stops rivals from immediately ambushing the player on dungeon entry
@@ -321,6 +354,8 @@ function doMapTransition(exit){
     // Show dramatic floor card for dungeon transitions
     if(inDungeon&&!exit.isEscape){
       showMapLoadScreen(mapNames[currentMap],AREA_CARD_DESC[currentMap],currentFloor);
+    }else if(exit.isGoal){
+      showBanner('DUNGEON CLEARED','All 5 floors conquered!');
     }
     fadeIn(()=>{mapTransitioning=false;});
   });
@@ -578,7 +613,7 @@ function drawMinimap(){
     exits.forEach(ex=>{
       if(ex.fromMap!==currentMap)return;
       ex.tiles.forEach(([etx,ety])=>{
-        const col=ex.isEscape?'#40e060':'#e0c040'; // green=town escape, yellow=deeper
+        const col=ex.isGoal?'#ffe060':ex.isEscape?'#40e060':'#e0c040'; // gold=goal, green=escape, yellow=deeper
         const edx=mx+etx*sx,edy=my+ety*sy;
         g.globalAlpha=0.8+Math.sin(fr*0.1)*0.2;
         bx(edx,edy,Math.max(2,sx),Math.max(2,sy),col);

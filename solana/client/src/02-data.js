@@ -644,121 +644,144 @@ const MAX_DUNGEON_FLOORS=5;
 let inDungeon=false;   // true when player is on a dungeon floor
 let currentFloor=0;    // 1-5, 0 when in town
 
-// Procedural dungeon floor generator — returns a 30×40 tile map
+// Procedural dungeon floor generator — PMD Red Rescue Team style
+// BSP sector-based room placement, 1-tile corridors, dedicated stair tiles
 function generateDungeonFloor(floorNum,seed){
   const map=[];
   const rng=(n)=>{let h=seed^(n*2654435761+floorNum*40503);h^=h>>>16;h=(h*0x45d9f3b)>>>0;h^=h>>>16;return(h&0xFFFF)/65535;};
   // Fill with walls
   for(let y=0;y<MH;y++){map[y]=[];for(let x=0;x<MW;x++)map[y][x]=18;}
-  // Carve rooms
-  const rooms=[];
-  const ROOM_COUNT=4+floorNum;
-  for(let ri=0;ri<ROOM_COUNT*8&&rooms.length<ROOM_COUNT;ri++){
-    const rw=5+Math.floor(rng(ri*3)*6);
-    const rh=4+Math.floor(rng(ri*3+1)*5);
-    const rx=1+Math.floor(rng(ri*3+2)*(MW-rw-2));
-    const ry=1+Math.floor(rng(ri*3+3)*(MH-rh-2));
-    // Check overlap
-    let ok=true;
-    for(const r of rooms){if(rx<r.x+r.w+2&&rx+rw>r.x-2&&ry<r.y+r.h+2&&ry+rh>r.y-2){ok=false;break;}}
-    if(ok){rooms.push({x:rx,y:ry,w:rw,h:rh});}
-  }
-  // Carve room tiles
-  for(const r of rooms){
-    for(let y=r.y;y<r.y+r.h;y++){
-      for(let x=r.x;x<r.x+r.w;x++){
-        const edgeX=(x===r.x||x===r.x+r.w-1),edgeY=(y===r.y||y===r.y+r.h-1);
-        map[y][x]=(edgeX&&edgeY)?8:(edgeX||edgeY)?8:1;
-      }
-    }
-    // Add floor-specific variety inside room
-    for(let y=r.y+1;y<r.y+r.h-1;y++){
-      for(let x=r.x+1;x<r.x+r.w-1;x++){
-        const rv=rng(y*100+x+floorNum*7777);
+
+  // ── FLOOR-SPECIFIC DECOR FUNCTION ──
+  function addRoomDecor(r){
+    for(let ry=r.y+1;ry<r.y+r.h-1;ry++){
+      for(let rx=r.x+1;rx<r.x+r.w-1;rx++){
+        if(r.isBoss&&rx===r.cx&&ry===r.cy){map[ry][rx]=27;continue;} // boss room altar center
+        const rv=rng(ry*100+rx+floorNum*7777);
         if(floorNum===1){
-          // Floor 1: Flowers and occasional glow tiles — bright, not too threatening
-          if(rv<0.06)map[y][x]=7;       // flower (bright)
-          if(rv>0.95)map[y][x]=24;      // glow tile
-          if(rv>0.90&&rv<0.92)map[y][x]=26; // crystal
+          if(rv<0.05)map[ry][rx]=7;
+          else if(rv>0.96)map[ry][rx]=26;
         }else if(floorNum===2){
-          // Floor 2: Mushrooms appear — darker, more organic feel
-          if(rv<0.06)map[y][x]=28;      // mushroom (replaces flower)
-          if(rv>0.93)map[y][x]=26;      // crystal
-          if(rv>0.88&&rv<0.90)map[y][x]=24; // glow tile (less common)
+          if(rv<0.05)map[ry][rx]=28;
+          else if(rv>0.95)map[ry][rx]=26;
         }else if(floorNum===3){
-          // Floor 3: Altars and crystals — ancient, mystical
-          if(rv<0.04)map[y][x]=27;      // altar
-          if(rv>0.94)map[y][x]=26;      // crystal
-          if(rv>0.90&&rv<0.92)map[y][x]=28; // mushroom
+          if(rv<0.04)map[ry][rx]=27;
+          else if(rv>0.95)map[ry][rx]=26;
+          else if(rv>0.90&&rv<0.92)map[ry][rx]=28;
         }else if(floorNum===4){
-          // Floor 4: Lava seeping in — dangerous
-          if(rv<0.05)map[y][x]=25;      // lava crack
-          if(rv>0.94)map[y][x]=27;      // altar (eerie)
-          if(rv>0.88&&rv<0.90)map[y][x]=26; // crystal (rare)
+          if(rv<0.06)map[ry][rx]=25;
+          else if(rv>0.94)map[ry][rx]=27;
         }else if(floorNum===5){
-          // Floor 5: Lava pools and altars dominate — deepest, most dangerous
-          if(rv<0.07)map[y][x]=25;      // lava (common)
-          if(rv>0.93)map[y][x]=27;      // altar
-          if(rv>0.89&&rv<0.91)map[y][x]=26; // crystal (rare jewel)
-          if(rv>0.85&&rv<0.87)map[y][x]=24; // glow tile (blood rune feel)
+          if(rv<0.08)map[ry][rx]=25;
+          else if(rv>0.94)map[ry][rx]=27;
+          else if(rv>0.90&&rv<0.92)map[ry][rx]=26;
         }
       }
     }
   }
-  // Helper: carve L-shaped corridor between two points
-  function carveCorridor(x1,y1,x2,y2){
-    const lx=Math.min(x1,x2),rx=Math.max(x1,x2);
-    const ty=Math.min(y1,y2),by=Math.max(y1,y2);
-    for(let x=lx;x<=rx;x++){if(map[y1][x]===18)map[y1][x]=2;}
-    for(let y=ty;y<=by;y++){if(map[y][x2]===18)map[y][x2]=2;}
+
+  // ── BSP SECTOR GRID ──
+  const ENTRY_X=3,ENTRY_Y=14;
+  const DESCEND_X=36,DESCEND_Y=14;
+  const GCOLS=floorNum<=2?4:5; // 4 or 5 sector columns
+  const GROWS=3;               // always 3 sector rows
+  const SW=Math.floor((MW-2)/GCOLS);
+  const SH=Math.floor((MH-2)/GROWS);
+  const rooms=[];
+
+  for(let sr=0;sr<GROWS;sr++){
+    for(let sc=0;sc<GCOLS;sc++){
+      const si=sr*GCOLS+sc;
+      // Always place room in first and last sector; 15% skip elsewhere
+      if(si>0&&si<GCOLS*GROWS-1&&rng(si*100+floorNum*13)<0.15)continue;
+      // Room size: PMD-style small-medium rooms (4-9 wide, 3-6 tall)
+      const rw=4+Math.floor(rng(si*10+1+floorNum)*5);
+      const rh=3+Math.floor(rng(si*10+2+floorNum)*3);
+      // Position within sector
+      const sx=1+sc*SW;const sy=1+sr*SH;
+      const maxRX=Math.min(MW-rw-2,sx+SW-rw-1);
+      const maxRY=Math.min(MH-rh-2,sy+SH-rh-1);
+      if(maxRX<sx||maxRY<sy)continue;
+      const rx=sx+Math.floor(rng(si*10+3+floorNum)*(maxRX-sx+1));
+      const ry=sy+Math.floor(rng(si*10+4+floorNum)*(maxRY-sy+1));
+      if(rx<1||ry<1||rx+rw>=MW-1||ry+rh>=MH-1)continue;
+      rooms.push({x:rx,y:ry,w:rw,h:rh,cx:Math.floor(rx+rw/2),cy:Math.floor(ry+rh/2),si});
+    }
   }
-  // Connect rooms with corridors (L-shaped)
-  for(let i=0;i<rooms.length-1;i++){
-    const a=rooms[i],b=rooms[i+1];
-    const ax=Math.floor(a.x+a.w/2),ay=Math.floor(a.y+a.h/2);
-    const bx=Math.floor(b.x+b.w/2),by=Math.floor(b.y+b.h/2);
-    carveCorridor(ax,ay,bx,by);
+
+  // Floor 5: Special large boss room in center
+  if(floorNum===5){
+    const bw=10,bh=7;
+    const bx_=Math.floor(MW/2-bw/2),by_=Math.floor(MH/2-bh/2);
+    if(bx_>1&&by_>1&&bx_+bw<MW-1&&by_+bh<MH-1){
+      rooms.push({x:bx_,y:by_,w:bw,h:bh,cx:Math.floor(bx_+bw/2),cy:Math.floor(by_+bh/2),isBoss:true,si:999});
+    }
   }
-  // ── Fixed exit positions (must match exits[] array) ──
-  // Up-stairs (entry from floor above / escape back up): x=3-4, y=14-15
-  // Down-stairs (descent to next floor):                  x=36-37, y=14-15
-  const ENTRY_X=3,ENTRY_Y=14; // stairs up / escape
-  const DESCEND_X=36,DESCEND_Y=14; // stairs down
-  // Carve entry area and connect to first room center
-  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+
+  // Carve rooms (PMD: interior is walkable, no separate edge type — walls are the uncarved tiles)
+  for(const r of rooms){
+    for(let ry=r.y;ry<r.y+r.h;ry++)
+      for(let rx=r.x;rx<r.x+r.w;rx++)
+        map[ry][rx]=1;
+    if(!r.isBoss)addRoomDecor(r);
+  }
+
+  // 1-tile wide L-shaped corridors connecting rooms
+  function carveCorridor(x1,y1,x2,y2,si_){
+    // Alternate H-first vs V-first per sector for variety
+    const hFirst=rng(si_*17+x1+y2)<0.5;
+    if(hFirst){
+      for(let x=Math.min(x1,x2);x<=Math.max(x1,x2);x++)if(map[y1][x]===18)map[y1][x]=2;
+      for(let y=Math.min(y1,y2);y<=Math.max(y1,y2);y++)if(map[y][x2]===18)map[y][x2]=2;
+    }else{
+      for(let y=Math.min(y1,y2);y<=Math.max(y1,y2);y++)if(map[y][x1]===18)map[y][x1]=2;
+      for(let x=Math.min(x1,x2);x<=Math.max(x1,x2);x++)if(map[y2][x]===18)map[y2][x]=2;
+    }
+  }
+
+  // Connect rooms in sector order (chain + cross-connect for loops)
+  if(rooms.length>1){
+    const sorted=[...rooms].sort((a,b)=>a.si-b.si);
+    for(let i=0;i<sorted.length-1;i++){
+      carveCorridor(sorted[i].cx,sorted[i].cy,sorted[i+1].cx,sorted[i+1].cy,sorted[i].si);
+    }
+    // Extra connection for larger floors (prevents dead ends)
+    if(rooms.length>=4){
+      const a=sorted[0],b=sorted[Math.floor(sorted.length/2)];
+      carveCorridor(a.cx,a.cy,b.cx,b.cy,a.si+500);
+    }
+  }
+
+  // ── FIXED STAIR POSITIONS ──
+  // Carve entry area (up-stairs / escape)
+  for(let dy=-1;dy<=1;dy++)for(let dx=0;dx<=2;dx++){
     const ex=Math.max(1,Math.min(MW-2,ENTRY_X+dx));
     const ey=Math.max(1,Math.min(MH-2,ENTRY_Y+dy));
-    if(map[ey][ex]===18)map[ey][ex]=2;
+    map[ey][ex]=2;
   }
-  map[ENTRY_Y][ENTRY_X]=30; // stairs-up tile (treasure/special)
-  map[ENTRY_Y][ENTRY_X+1]=2;
-  // Carve descend area and connect to last room center
-  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+  map[ENTRY_Y][ENTRY_X]=32; // tile 32 = STAIRS_UP (dedicated)
+  // Carve descend area (down-stairs)
+  for(let dy=-1;dy<=1;dy++)for(let dx=-2;dx<=0;dx++){
     const ex=Math.max(1,Math.min(MW-2,DESCEND_X+dx));
     const ey=Math.max(1,Math.min(MH-2,DESCEND_Y+dy));
-    if(map[ey][ex]===18)map[ey][ex]=2;
+    map[ey][ex]=2;
   }
-  map[DESCEND_Y][DESCEND_X]=24; // stairs-down tile (glow)
-  map[DESCEND_Y][DESCEND_X-1]=2;
-  // Connect entry to first room
+  map[DESCEND_Y][DESCEND_X]=31; // tile 31 = STAIRS_DOWN (dedicated)
+  // Connect entry/descend to nearest room
   if(rooms.length>0){
-    const fr0=rooms[0];
-    carveCorridor(ENTRY_X+1,ENTRY_Y,Math.floor(fr0.x+fr0.w/2),Math.floor(fr0.y+fr0.h/2));
+    const nearEntry=rooms.reduce((a,b)=>Math.abs(b.cx-ENTRY_X)+Math.abs(b.cy-ENTRY_Y)<Math.abs(a.cx-ENTRY_X)+Math.abs(a.cy-ENTRY_Y)?b:a);
+    carveCorridor(ENTRY_X+2,ENTRY_Y,nearEntry.cx,nearEntry.cy,0);
+    const nearDesc=rooms.reduce((a,b)=>Math.abs(b.cx-DESCEND_X)+Math.abs(b.cy-DESCEND_Y)<Math.abs(a.cx-DESCEND_X)+Math.abs(a.cy-DESCEND_Y)?b:a);
+    carveCorridor(DESCEND_X-2,DESCEND_Y,nearDesc.cx,nearDesc.cy,GCOLS*GROWS-1);
   }
-  // Connect last room to descend
-  if(rooms.length>0){
-    const lr=rooms[rooms.length-1];
-    carveCorridor(Math.floor(lr.x+lr.w/2),Math.floor(lr.y+lr.h/2),DESCEND_X-1,DESCEND_Y);
-  }
-  // Chest/treasure in mid room
-  if(rooms.length>=3){
-    const mid=rooms[Math.floor(rooms.length/2)];
+
+  // Treasure chest in a mid room (not the boss room)
+  const midRooms=rooms.filter(r=>!r.isBoss&&r.si!==0&&r.si!==GCOLS*GROWS-1);
+  if(midRooms.length>0){
+    const mid=midRooms[Math.floor(midRooms.length/2)];
     if(mid.y+2<mid.y+mid.h-1&&mid.x+2<mid.x+mid.w-1)map[mid.y+2][mid.x+2]=30;
   }
-  // Rock outcroppings along walls
-  for(let y=2;y<MH-2;y++){for(let x=2;x<MW-2;x++){
-    if(map[y][x]===18&&rng(y*200+x+floorNum*3333)<0.02)map[y][x]=8;
-  }}
+
   return {map,rooms};
 }
 
@@ -780,8 +803,8 @@ let currentMap=0;
 // Map dimensions helper
 function getMap(){return maps[currentMap];}
 
-// Walkable tiles
-const WALKABLE=new Set([1,2,4,7,10,11,24,25,30]); // 25=lava walkable but dangerous in deep dungeon
+// Walkable tiles (31=stairs-down, 32=stairs-up are new dedicated stair tiles)
+const WALKABLE=new Set([1,2,4,7,10,11,24,25,30,31,32]);
 
 // ═══════════════════════════════════════
 // FOG OF WAR SYSTEM

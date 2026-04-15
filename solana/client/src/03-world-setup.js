@@ -18,8 +18,10 @@ const exits=[
   {fromMap:4, tiles:[[3,14],[3,15],[4,14],[4,15]], targetMap:3, targetX:36, targetY:14, isEscape:true},
   // Dungeon Floor 4 → Floor 5
   {fromMap:4, tiles:[[36,14],[36,15],[37,14],[37,15]], targetMap:5, targetX:3, targetY:14},
-  // Dungeon Floor 5 → Floor 4 (deepest floor, no lower)
+  // Dungeon Floor 5 → Floor 4 (escape up)
   {fromMap:5, tiles:[[3,14],[3,15],[4,14],[4,15]], targetMap:4, targetX:36, targetY:14, isEscape:true},
+  // Dungeon Floor 5 GOAL — clears dungeon, returns to Town with legendary card reward
+  {fromMap:5, tiles:[[36,14],[36,15],[37,14],[37,15]], targetMap:0, targetX:35, targetY:13, isGoal:true},
 ];
 
 // ── NPC DATA ── (GDD v1.0: Town NPCs + Dungeon Entrance)

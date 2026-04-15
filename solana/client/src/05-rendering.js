@@ -959,6 +959,58 @@ function drawTreasure(px,py,tx_,ty){
   bx(px+14,py+14,5,4,colors[sparkPhase]);
 }
 
+function drawStairsDown(px,py,tx_,ty){
+  // Dungeon staircase descending — stone spiral with golden glow at bottom
+  drawGrass(px,py,tx_,ty);
+  if(!fogRevealed[currentMap]?.[ty]?.[tx_])return;
+  const pulse=Math.sin(fr*.07+tx_*2+ty*3)*.25+.75;
+  // Stone surround
+  bx(px+4,py+4,24,24,'#2a2030');
+  bx(px+6,py+6,20,20,'#1a1520');
+  // Step edges (perspective from above)
+  bx(px+8,py+8,16,3,'#3a3050');bx(px+9,py+11,14,3,'#302840');bx(px+10,py+14,12,3,'#282040');
+  bx(px+11,py+17,10,3,'#201830');bx(px+12,py+20,8,3,'#181028');
+  // Downward glow (gold on floor 5 goal, purple elsewhere)
+  const glowA=currentMap>=5?`rgba(220,160,0,${pulse*.5})`:`rgba(80,40,180,${pulse*.45})`;
+  const glowB=currentMap>=5?`rgba(255,220,40,${pulse*.3})`:`rgba(140,80,255,${pulse*.25})`;
+  const arrowCol=currentMap>=5?`rgba(255,240,80,${pulse*.9})`:`rgba(200,160,255,${pulse*.8})`;
+  g.fillStyle=glowA;g.beginPath();g.ellipse(px+16,py+24,7,4,0,0,Math.PI*2);g.fill();
+  g.fillStyle=glowB;g.beginPath();g.ellipse(px+16,py+24,11,6,0,0,Math.PI*2);g.fill();
+  // Arrow indicator
+  g.fillStyle=arrowCol;
+  g.beginPath();g.moveTo(px+16,py+26);g.lineTo(px+12,py+20);g.lineTo(px+20,py+20);g.closePath();g.fill();
+  // Floor label (GOAL on B5F since it leads to victory)
+  const label=currentMap>=5?'GOAL':`B${currentMap+1}F`;
+  g.font='bold 6px monospace';g.fillStyle=currentMap>=5?`rgba(255,220,80,${pulse*.9})`:`rgba(220,200,255,${pulse*.9})`;
+  g.textAlign='center';g.fillText(label,px+16,py+14);g.textAlign='left';
+}
+
+function drawStairsUp(px,py,tx_,ty){
+  // Dungeon staircase ascending — lighter stone with sky-blue tint
+  drawGrass(px,py,tx_,ty);
+  if(!fogRevealed[currentMap]?.[ty]?.[tx_])return;
+  const pulse=Math.sin(fr*.06+tx_*3+ty*2)*.2+.8;
+  // Stone surround
+  bx(px+4,py+4,24,24,'#1c2a2a');
+  bx(px+6,py+6,20,20,'#141e20');
+  // Step edges going up
+  bx(px+12,py+8,8,3,'#283840');bx(px+11,py+11,10,3,'#2a3e48');
+  bx(px+10,py+14,12,3,'#2c4450');bx(px+9,py+17,14,3,'#2e4858');
+  bx(px+8,py+20,16,3,'#304c5c');
+  // Upward glow at top
+  g.fillStyle=`rgba(40,120,200,${pulse*.4})`;
+  g.beginPath();g.ellipse(px+16,py+8,7,4,0,0,Math.PI*2);g.fill();
+  g.fillStyle=`rgba(80,180,255,${pulse*.2})`;
+  g.beginPath();g.ellipse(px+16,py+8,11,6,0,0,Math.PI*2);g.fill();
+  // Arrow indicator
+  g.fillStyle=`rgba(140,220,255,${pulse*.8})`;
+  g.beginPath();g.moveTo(px+16,py+6);g.lineTo(px+12,py+12);g.lineTo(px+20,py+12);g.closePath();g.fill();
+  // Floor label
+  const upLabel=currentMap<=1?'EXIT':`B${currentMap-1}F`;
+  g.font='bold 6px monospace';g.fillStyle=`rgba(160,230,255,${pulse*.9})`;
+  g.textAlign='center';g.fillText(upLabel,px+16,py+22);g.textAlign='left';
+}
+
 function drawTile(tx_,ty){
   const px=tx_*TW-camX,py=ty*TH-camY;
   if(px<-TW||px>W||py<-TH||py>H)return;
@@ -996,6 +1048,8 @@ function drawTile(tx_,ty){
     case 28:drawMushroom(px,py,tx_,ty);break;
     case 29:drawCampfire(px,py,tx_,ty);break;
     case 30:drawTreasure(px,py,tx_,ty);break;
+    case 31:drawStairsDown(px,py,tx_,ty);break;
+    case 32:drawStairsUp(px,py,tx_,ty);break;
   }
 }
 
