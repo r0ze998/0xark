@@ -549,14 +549,6 @@ function drawMountain(px,py,tx_,ty){
 
 function drawRock(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
-  // Craftpix ruins prop: sparse placement — only ~1 in 5 rock tiles get a prop
-  if((tileHash(tx_,ty)%5)===0){
-    const rIdx=(tileHash(tx_,ty)%2===0)?4:3; // ruins5(32×32) or ruins4(48×48)
-    if(drawCpxRuin(rIdx,px+(rIdx===3?-8:0),py+(rIdx===3?-8:0),1)){
-      g.fillStyle='rgba(0,0,0,.15)';g.beginPath();g.ellipse(px+16,py+TH-2,14,4,0,0,Math.PI*2);g.fill();
-      return;
-    }
-  }
   if(useKenney.rock){
     const kTile = (tileHash(tx_,ty) % 2 === 0) ? K.rock1 : K.rock2;
     if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#707880')){
