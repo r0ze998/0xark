@@ -1031,7 +1031,7 @@ function dMap(){
       const rLabel=p.n+(rCards>0?' '+rCards+'c':'');
       const lW=rLabel.length*5+6;
       bx(spx+8-lW/2,spy-44,lW,11,'rgba(0,0,0,.65)');
-      tx(rLabel,spx+8-lW/2+3,spy-35,6,rNameCol);
+      txShadow(rLabel,spx+8-lW/2+3,spy-35,6,rNameCol,'rgba(0,0,0,.5)');
     }
   });
 
@@ -1100,7 +1100,7 @@ function dMap(){
         // Label above on hover (always show rarity initial)
         const abb=['C','U','R','E','L'][Math.min(cr.r-1,4)]||'?';
         g.globalAlpha=0.7;
-        tx(abb,cx2-1,cy2-2,5,rarCol);
+        txShadow(abb,cx2-1,cy2-2,5,rarCol,'rgba(0,0,0,.5)');
         g.globalAlpha=1;
       }
     }
@@ -1195,7 +1195,7 @@ function dMap(){
   // Season timer
   const _sr=getSeasonRemaining();const _srt=formatTimeRemaining(_sr);
   const _sCol=_sr<3600000?'#d04040':_sr<86400000?'#d0a030':'#40a040';
-  tx(_srt,10,hudY+28,9,_sCol);
+  txShadow(_srt,10,hudY+28,9,_sCol,'rgba(0,0,0,.45)');
   // v118: Spell charge orb indicators (visual pips replace plain numbers)
   {
     const spells=[
@@ -1206,7 +1206,7 @@ function dMap(){
     spells.forEach(s=>{
       // Label
       const lCol=s.warn?'#804040':s.label==='STL'?'#b04040':s.label==='BAR'?'#3060b0':'#308030';
-      tx(s.label,s.cx,hudY+20,7,lCol);
+      txShadow(s.label,s.cx,hudY+20,7,lCol,'rgba(0,0,0,.35)');
       // Pip row (3 orbs, 7×7px each, 4px gap)
       const orbX=s.cx+26,orbY=hudY+12,orbW=7,orbH=7,orbGap=4;
       for(let o=0;o<s.max;o++){
@@ -1220,7 +1220,7 @@ function dMap(){
       }
       // Bonus charges beyond max (e.g. from chests) shown as "+N"
       if(s.val>s.max){
-        tx('+'+(s.val-s.max),orbX+s.max*(orbW+orbGap)+2,hudY+20,6,'#f0c830');
+        txShadow('+'+(s.val-s.max),orbX+s.max*(orbW+orbGap)+2,hudY+20,6,'#f0c830','rgba(0,0,0,.4)');
       }
       // Depleted flash warning
       if(s.warn){
@@ -1241,7 +1241,7 @@ function dMap(){
       txShadow('SAFE '+(Math.ceil(encounterCooldown/60))+'s',30,hudY+52,8,'#40e080','rgba(0,0,0,.5)');
       g.globalAlpha=1;
     }else{
-      tx('DUNGEON',30,hudY+52,7,'#a07820');
+      txShadow('DUNGEON',30,hudY+52,7,'#a07820','rgba(0,0,0,.4)');
     }
     // v97: Escape compass — directional arrow toward the nearest escape exit
     {
@@ -1261,16 +1261,16 @@ function dMap(){
           const dirs=['\u2192','\u2198','\u2193','\u2199','\u2190','\u2196','\u2191','\u2197'];
           const didx=((Math.round(angle/(Math.PI/4))+8)%8);
           g.globalAlpha=0.55;
-          tx(dirs[didx]+'ESC',73,hudY+52,6,'#60b868');
+          txShadow(dirs[didx]+'ESC',73,hudY+52,6,'#60b868','rgba(0,0,0,.4)');
           g.globalAlpha=1;
         }
       }
     }
   }else{
-    tx('TOWN',10,hudY+52,7,'#40a040');
+    txShadow('TOWN',10,hudY+52,7,'#40a040','rgba(0,0,0,.4)');
   }
   // Footstep counter
-  tx('STEPS:'+stepCounter,100,hudY+52,7,'#989080');
+  txShadow('STEPS:'+stepCounter,100,hudY+52,7,'#989080','rgba(0,0,0,.35)');
   // v102: Dungeon exploration % — revealed walkable tiles / total walkable tiles
   if(inDungeon&&maps[currentMap]){
     const m_=maps[currentMap];
@@ -1279,7 +1279,7 @@ function dMap(){
     if(total>0){
       const pct=Math.floor(revealed/total*100);
       const expCol=pct<30?'#888878':pct<70?'#a0c080':'#40d080';
-      tx('EXP:'+pct+'%',182,hudY+52,7,expCol);
+      txShadow('EXP:'+pct+'%',182,hudY+52,7,expCol,'rgba(0,0,0,.35)');
     }
     // v136: Rival floor trackers — V:B2 / M:B3 so player knows where rivals are
     {const vegaMap=rivalMaps[0],miraMap=rivalMaps[1];
@@ -1296,9 +1296,9 @@ function dMap(){
     const vegaFull=vegaLbl+' '+vegaCards+'c';
     const miraFull=miraLbl+' '+miraCards+'c';
     g.globalAlpha=vegaAlpha;
-    tx(vegaFull,240,hudY+52,6,vegaCol);
+    txShadow(vegaFull,240,hudY+52,6,vegaCol,'rgba(0,0,0,.35)');
     g.globalAlpha=miraAlpha;
-    tx(miraFull,286,hudY+52,6,miraCol);
+    txShadow(miraFull,286,hudY+52,6,miraCol,'rgba(0,0,0,.35)');
     g.globalAlpha=1;}
   }
   // Show first 8 hand cards in HUD (slots 0-7)
@@ -1390,7 +1390,7 @@ function dMap(){
   // Show overflow count if hand has more than 8 cards
   const handTotal=pl[0].cd.filter(c=>c>0).length;
   if(handTotal>HUD_CARD_SLOTS){
-    tx('+'+(handTotal-HUD_CARD_SLOTS),310+HUD_CARD_SLOTS*HUD_CARD_SPACING+2,hudY+26,7,'#c8c0a0');
+    txShadow('+'+(handTotal-HUD_CARD_SLOTS),310+HUD_CARD_SLOTS*HUD_CARD_SPACING+2,hudY+26,7,'#c8c0a0','rgba(0,0,0,.4)');
   }
 
   // v79: Active run mission strip (dungeon only)
@@ -1410,8 +1410,8 @@ function dMap(){
     g.globalAlpha=mDone?1:0.72;
     bx(6,hudY+34,188,14,'rgba(0,0,16,.6)');
     bx(6,hudY+34,2,14,mDone?'#50e090':'#c0a840');
-    tx(mText,12,hudY+44,5,mCol);
-    tx(mRewText,140,hudY+44,5,mDone?'#50c080':'#888870');
+    txShadow(mText,12,hudY+44,5,mCol,'rgba(0,0,0,.4)');
+    txShadow(mRewText,140,hudY+44,5,mDone?'#50c080':'#888870','rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
 
@@ -1445,7 +1445,7 @@ function dMap(){
   const dangerVal=areaDanger[currentMap];
   const dangerLabel=dangerVal>=DANGER_HIGH_THRESH?'HIGH':dangerVal>=DANGER_LOW_THRESH?'MED':'LOW';
   const dangerCol=dangerVal>=DANGER_HIGH_THRESH?'#d04040':dangerVal>=DANGER_LOW_THRESH?'#d0a030':'#40a040';
-  tx('DANGER:'+dangerLabel,420,hudY+44,6,dangerCol);
+  txShadow('DANGER:'+dangerLabel,420,hudY+44,6,dangerCol,'rgba(0,0,0,.4)');
   // Danger meter bar
   bx(420,hudY+48,60,3,'#282838');
   bx(420,hudY+48,Math.floor(60*dangerVal),3,dangerCol);
@@ -1465,7 +1465,7 @@ function dMap(){
     const rCol=ri===0?'#d060a0':'#d0a030';
     const labelY=hudY+4+ri*14;
     const labelX=W-200;
-    tx(rp.n[0]+' F'+(flNums_[rFloor]||rFloor)+' '+rcc2+'♠',labelX,labelY,5,rcc2>=4?'#d04040':rCol);
+    txShadow(rp.n[0]+' F'+(flNums_[rFloor]||rFloor)+' '+rcc2+'♠',labelX,labelY,5,rcc2>=4?'#d04040':rCol,'rgba(0,0,0,.4)');
   }
 
   // Rival Threat Indicator (compass arrow at top of screen)
@@ -1490,8 +1490,8 @@ function dMap(){
     g.restore();
     // Label + card count
     const rcc=pl[ri+1].cd.filter(c=>c>0).length;
-    tx(pl[ri+1].n[0],arrowCX-3,arrowCY+14,5,arrowCol);
-    tx(rcc+'♠',arrowCX-5,arrowCY+24,5,rcc>=4?'#d04040':arrowCol);
+    txShadow(pl[ri+1].n[0],arrowCX-3,arrowCY+14,5,arrowCol,'rgba(0,0,0,.5)');
+    txShadow(rcc+'♠',arrowCX-5,arrowCY+24,5,rcc>=4?'#d04040':arrowCol,'rgba(0,0,0,.5)');
   }
 
   // Vault/hand status (progress toward 60-card goal)
@@ -1499,11 +1499,11 @@ function dMap(){
   const handCount=pl[0].cd.filter(c=>c>0).length;
   const vaultPct=vaultCount/60;
   const vaultCol=vaultCount>=50?'#f0c830':vaultCount>=30?'#e08040':vaultCount>=10?'#40c060':'#686068';
-  tx('CARDS:'+vaultCount+'/60',310,hudY+56,7,vaultCol);
+  txShadow('CARDS:'+vaultCount+'/60',310,hudY+56,7,vaultCol,'rgba(0,0,0,.4)');
   // Tiny collection progress bar
   bx(310,hudY+60,60,3,'#282838');
   bx(310,hudY+60,Math.floor(60*vaultPct),3,vaultCol);
-  tx('HAND:'+handCount,382,hudY+56,6,'#686068');
+  txShadow('HAND:'+handCount,382,hudY+56,6,'#686068','rgba(0,0,0,.35)');
 
   // Footprint trail indicator: show fresh rival tracks on this floor
   if(inDungeon){
@@ -1520,7 +1520,7 @@ function dMap(){
         g.fillStyle=rivalCols[ri];
         g.fillRect(trailX,hudY+52,2,3);g.fillRect(trailX+3,hudY+53,2,2);
         g.globalAlpha=1;
-        tx(rivalNames[ri]+'!',trailX+6,hudY+57,6,rivalCols[ri]);
+        txShadow(rivalNames[ri]+'!',trailX+6,hudY+57,6,rivalCols[ri],'rgba(0,0,0,.4)');
         trailX+=26;
       }
     }
@@ -1535,25 +1535,25 @@ function dMap(){
     else if(tile===10)locName+=' — DOCK';
   }
   const locCol=inDungeon?'#a09060':'#686068';
-  tx(locName,560,hudY+52,inDungeon?7:6,locCol);
+  txShadow(locName,560,hudY+52,inDungeon?7:6,locCol,'rgba(0,0,0,.35)');
 
   // Exploration percentage
   const expPct=fogExploredPercent(currentMap);
-  tx('MAP:'+expPct+'%',560,hudY+22,8,'#686068');
+  txShadow('MAP:'+expPct+'%',560,hudY+22,8,'#686068','rgba(0,0,0,.35)');
 
   // Sound indicator
-  tx(soundEnabled?'SND:ON':'SND:OFF',750,hudY+22,6,soundEnabled?'#60a060':'#a06060');
+  txShadow(soundEnabled?'SND:ON':'SND:OFF',750,hudY+22,6,soundEnabled?'#60a060':'#a06060','rgba(0,0,0,.35)');
   // On-chain mode indicator with Solana icon
   if(walletConnected){
     drawSolanaIcon(808,hudY+15,7);
-    tx('ON-CHAIN',820,hudY+22,6,'#40d080');
+    txShadow('ON-CHAIN',820,hudY+22,6,'#40d080','rgba(0,0,0,.4)');
     // Pot display
-    tx('POT:'+stakePotAmount.toFixed(2),820,hudY+32,5,'#14F195');
+    txShadow('POT:'+stakePotAmount.toFixed(2),820,hudY+32,5,'#14F195','rgba(0,0,0,.4)');
     // Season 1 indicator (competitive mode)
     bx(900,hudY+14,24,14,'rgba(200,152,32,.3)');
-    tx('S1',904,hudY+24,7,'#f0c830');
+    txShadow('S1',904,hudY+24,7,'#f0c830','rgba(0,0,0,.4)');
   }
-  else{tx('OFFLINE',820,hudY+22,6,'#555570');}
+  else{txShadow('OFFLINE',820,hudY+22,6,'#555570','rgba(0,0,0,.35)');}
   // v84: Town weather indicator
   if(!inDungeon&&currentMap===0){
     const wIcon=townWeather==='rain'?'\u2614':townWeather==='fog'?'\u2601':'\u2600';
@@ -1561,7 +1561,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v193',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v194',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1571,7 +1571,7 @@ function dMap(){
     const sa=Math.min(1,saveIndicatorTimer/15);
     g.globalAlpha=sa;
     bx(752,hudY+44,7,6,'#6080c0');bx(753,hudY+44,5,1,'#a0b0d0');bx(754,hudY+46,3,2,'#e0e0e0');
-    tx('SAVING...',720,hudY+52,5,'#6080c0');
+    txShadow('SAVING...',720,hudY+52,5,'#6080c0','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
 
@@ -1606,7 +1606,7 @@ function dMap(){
       const isLeader=ri===0;
       g.globalAlpha=pnlAlpha*(isLeader?1:0.8);
       // Rank number
-      tx((ri+1)+'.',sbX+8,ry+12,isLeader?9:7,isLeader?'#f0c830':'#808080');
+      txShadow((ri+1)+'.',sbX+8,ry+12,isLeader?9:7,isLeader?'#f0c830':'#808080','rgba(0,0,0,.4)');
       // Name (truncated)
       const nm=r.name.length>5?r.name.slice(0,5):r.name;
       txShadow(nm,sbX+22,ry+12,isLeader?8:7,r.col,'rgba(0,0,0,.3)');
@@ -1614,9 +1614,9 @@ function dMap(){
       const uniqStr=r.uniq+'/60';
       txShadow(uniqStr,sbX+sbW-8-uniqStr.length*6,ry+12,isLeader?8:7,'#e8e0c0','rgba(0,0,0,.3)');
       // Floor indicator (for rivals)
-      if(r.floor>0){const fStr='B'+r.floor;tx(fStr,sbX+76,ry+12,6,r.col);}
+      if(r.floor>0){const fStr='B'+r.floor;txShadow(fStr,sbX+76,ry+12,6,r.col,'rgba(0,0,0,.35)');}
       // Leader crown
-      if(isLeader){tx('\u2605',sbX+sbW-22,ry+6,5,'#f0c830');}
+      if(isLeader){txShadow('\u2605',sbX+sbW-22,ry+6,5,'#f0c830','rgba(0,0,0,.4)');}
     });
     g.globalAlpha=1;
   }
@@ -1651,13 +1651,13 @@ function dMap(){
       const ry=rcY+24+i*16;
       const isLeader=i===0;
       g.globalAlpha=0.9*(isLeader?1:0.72);
-      tx(isLeader?'\u2605':String(i+1),rcX+6,ry+10,isLeader?7:5,isLeader?'#f0c830':'#666680');
+      txShadow(isLeader?'\u2605':String(i+1),rcX+6,ry+10,isLeader?7:5,isLeader?'#f0c830':'#666680','rgba(0,0,0,.4)');
       const nm=r.name.length>4?r.name.slice(0,4):r.name;
       txShadow(nm,rcX+18,ry+10,6,r.col,'rgba(0,0,0,.3)');
       const barW=Math.round(barMax*(r.cnt/60));
       bx(rcX+44,ry+2,barMax,7,'#1a1a30');
       bx(rcX+44,ry+2,barW,7,r.col);
-      tx(r.cnt+'/60',rcX+44+barMax+3,ry+10,5,isLeader?'#e8e0c0':'#787890');
+      txShadow(r.cnt+'/60',rcX+44+barMax+3,ry+10,5,isLeader?'#e8e0c0':'#787890','rgba(0,0,0,.35)');
     });
     g.globalAlpha=1;
   }
@@ -1685,9 +1685,9 @@ function dMap(){
     const tbY=hudY-56+52*(1-easeInOut(tbSlide));
     g.globalAlpha=easeInOut(tbSlide);
     win(4,tbY,W-8,52);
-    tx(twText,14,tbY+32,8,FRLG.textColor);
+    txShadow(twText,14,tbY+32,8,FRLG.textColor,'rgba(0,0,0,.35)');
     const bounce=Math.floor(Math.sin(fr*Math.PI/30)*2);
-    tx('\u25BC',W-24,tbY+46+bounce,8,FRLG.selHighlight);
+    txShadow('\u25BC',W-24,tbY+46+bounce,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
 
@@ -1726,8 +1726,8 @@ function dMap(){
         g.fillStyle='rgba(255,255,255,.92)';
         g.beginPath();g.moveTo(spx+6,spy);g.lineTo(spx+12,spy+4);g.lineTo(spx+14,spy);g.closePath();g.fill();
         const rNameCol=(proximityTauntRival===1)?'#d860a0':'#d8b028';
-        tx(pl[proximityTauntRival].n,spx-bW/2+12,spy-bH+4,5,rNameCol);
-        tx(proximityTauntText,spx-bW/2+12,spy-5,6,'#303028');
+        txShadow(pl[proximityTauntRival].n,spx-bW/2+12,spy-bH+4,5,rNameCol,'rgba(0,0,0,.3)');
+        txShadow(proximityTauntText,spx-bW/2+12,spy-5,6,'#303028','rgba(255,255,255,.2)');
         g.globalAlpha=1;
       }
     }
@@ -1738,7 +1738,7 @@ function dMap(){
     const a=Math.min(1,rivalAlert/30);
     g.globalAlpha=a;
     win(W/2-120,6,240,24);
-    tx(rivalAlertName+' entered your map!',W/2-110,22,6,'#c04040');
+    txShadow(rivalAlertName+' entered your map!',W/2-110,22,6,'#c04040','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
 
@@ -1769,8 +1769,8 @@ function dMenu(){
       const items=['CARDS','MAP','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
       items.forEach((s,i)=>{
         const y=34+i*22;
-        if(i===mi){tx('\u25B6',W-166,y,9,FRLG.selHighlight);tx(s,W-148,y,9,FRLG.selHighlight);}
-        else tx(s,W-148,y,9,'#686068');
+        if(i===mi){txShadow('\u25B6',W-166,y,9,FRLG.selHighlight,'rgba(0,0,0,.4)');txShadow(s,W-148,y,9,FRLG.selHighlight,'rgba(0,0,0,.4)');}
+        else txShadow(s,W-148,y,9,'#686068','rgba(0,0,0,.35)');
       });
       g.globalAlpha=1;
     }
