@@ -2664,32 +2664,31 @@ function drawRunSummary(){
   // Floor depth
   const floorNums=['','I','II','III','IV','V'];
   const floorTxt='Deepest floor: FLOOR '+(floorNums[d.deepest]||d.deepest);
-  tx(floorTxt,px+20,py+46,7,'#c8c0a0');
+  txShadow(floorTxt,px+20,py+46,7,'#c8c0a0','rgba(0,0,0,.3)');
 
   // Cards collected
   const gainColor=d.cardsGained>0?'#50e090':'#888898';
-  tx('Cards collected: '+(d.cardsGained>0?'+':'')+d.cardsGained,px+20,py+64,7,gainColor);
+  txShadow('Cards collected: '+(d.cardsGained>0?'+':'')+d.cardsGained,px+20,py+64,7,gainColor,'rgba(0,0,0,.3)');
 
   // Cards lost
   if(d.lostCards.length>0){
     bx(px+20,py+76,panelW-40,1,'#301010');
-    tx('Cards lost:',px+20,py+90,7,'#d06060');
+    txShadow('Cards lost:',px+20,py+90,7,'#d06060','rgba(0,0,0,.3)');
     d.lostCards.forEach((cr,i)=>{
       const ly=py+107+i*18;
       const rCol=['','#888898','#60b060','#6090d8','#c060c0','#f0c830'][cr.r]||'#888898';
-      tx('✗ '+cr.n,px+28,ly,6,'#f06060');
-      tx((['','C','U','R','E','L'][cr.r]||'?'),px+panelW-40,ly,6,rCol);
+      txShadow('\u2717 '+cr.n,px+28,ly,6,'#f06060','rgba(0,0,0,.3)');
+      txShadow((['','C','U','R','E','L'][cr.r]||'?'),px+panelW-40,ly,6,rCol,'rgba(0,0,0,.3)');
     });
   }else{
     bx(px+20,py+76,panelW-40,1,'#103010');
-    tx('All cards preserved!',px+20,py+90,7,'#50e090');
+    txShadow('All cards preserved!',px+20,py+90,7,'#50e090','rgba(0,0,0,.3)');
   }
 
   // v79: Mission result section
   if(d.missionDesc){
     const mSecY=py+panelH-missionExtra-2;
     bx(px+20,mSecY,panelW-40,1,'#103030');
-    const mWon=!!d.missionReward;
     txShadow('\u2605 MISSION: '+d.missionDesc,px+20,mSecY+14,7,'#f0c830','rgba(0,0,0,.4)');
     txShadow('REWARD: '+d.missionReward,px+20,mSecY+30,7,'#50e090','rgba(0,0,0,.3)');
   }
@@ -2698,7 +2697,7 @@ function drawRunSummary(){
   if(runSummaryFrame>120){
     const blinkA=0.5+Math.sin(runSummaryFrame*0.1)*0.4;
     g.globalAlpha=t*blinkA;
-    tx('[ PRESS ANY KEY ]',px+panelW/2-56,py+panelH-10,6,'#808890');
+    txShadow('[ PRESS ANY KEY ]',px+panelW/2-56,py+panelH-10,6,'#9098b0','rgba(0,0,0,.4)');
     g.globalAlpha=t;
   }
   g.globalAlpha=1;
@@ -2746,24 +2745,33 @@ function drawHandInspect(){
     const col_=i%cols,row_=Math.floor(i/cols);
     const cx_=padX+col_*cw+8,cy_=padY+row_*ch;
 
+    // Rarity glow behind card for rare+
+    const rarC=RARITY_COLOR[cr.r]||'#888';
+    if((cr.r||1)>=3){
+      const glPulse=0.18+0.06*Math.sin(fr*0.07+i*1.4);
+      g.globalAlpha=alpha*glPulse;
+      bx(cx_-4,cy_-4,cw-8,ch,rarC+'80'||'rgba(0,0,0,.1)');
+      g.globalAlpha=alpha;
+    }
+
     // Card background
     bx(cx_,cy_,cw-16,ch-8,cr.d);
     bx(cx_+1,cy_+1,cw-18,ch-10,cr.c);
+    if((cr.r||1)>=3){bx(cx_,cy_,2,ch-8,rarC);} // left rarity accent bar
 
     // Card art
     bx(cx_+2,cy_+2,cw-20,72,cr.d);
     drawCardCharacter(cx_+(cw-20)/2-10,cy_+4,cid,1.6,fr);
 
     // Rarity stars
-    const rarC=RARITY_COLOR[cr.r]||'#888';
     for(let s=0;s<cr.r;s++)tx('\u2605',cx_+4+s*10,cy_+80,6,rarC);
 
     // Card name
     const nfs=Math.max(7,Math.min(11,Math.floor((cw-24)/(cr.n.length*0.7))));
     txShadow(cr.n,cx_+(cw-16)/2-(cr.n.length*nfs/2.4),cy_+94,nfs,'#f0e8d0','rgba(0,0,0,.4)');
 
-    // Effect
-    tx(cr.f||'',cx_+4,cy_+112,5,'#c0b888');
+    // Effect / flavor text
+    txShadow(cr.f||'',cx_+4,cy_+112,5,'#c0b888','rgba(0,0,0,.2)');
 
     // Decay bar + time
     if(cardTimers[slot]>0){
@@ -2777,16 +2785,16 @@ function drawHandInspect(){
       const secs=Math.ceil(remMs/1000);
       const mm=Math.floor(secs/60),ss=secs%60;
       const timeStr=mm>0?mm+'m'+('0'+ss).slice(-2)+'s':ss+'s';
-      tx(timeStr,cx_+4,cy_+ch-10,5,barCol);
+      txShadow(timeStr,cx_+4,cy_+ch-10,5,barCol,'rgba(0,0,0,.3)');
     }else{
-      tx('SAFE',cx_+4,cy_+ch-10,5,'#508050');
+      txShadow('SAFE',cx_+4,cy_+ch-10,5,'#60c060','rgba(0,0,0,.3)');
     }
   });
 
-  // Dismiss hint
+  // Dismiss hint (blink)
   const blinkA=0.5+Math.sin(handInspectFrame*0.12)*0.4;
   g.globalAlpha=alpha*blinkA;
-  tx('TAB or any key to close',W/2-64,H-20,6,'#808890');
+  txShadow('TAB or any key to close',W/2-64,H-20,6,'#9098b0','rgba(0,0,0,.4)');
   g.globalAlpha=1;
 }
 
@@ -10090,7 +10098,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v190',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v191',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
