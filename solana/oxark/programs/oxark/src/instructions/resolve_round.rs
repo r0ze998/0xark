@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use crate::constants::*;
 use crate::state::*;
 use crate::error::ErrorCode;
+use sha2::{Sha256, Digest};
 
 #[derive(Accounts)]
 #[instruction(game_id: u64)]
@@ -26,6 +27,9 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     let game = &mut ctx.accounts.game;
     require!(game.status == GameStatus::RevealPhase, ErrorCode::NotRevealPhase);
     require!(game.reveal_count == game.player_count, ErrorCode::NotRevealPhase);
+
+    // Get clock once at the top — used for all randomness in this instruction
+    let clock = Clock::get()?;
 
     let pool = &mut ctx.accounts.card_pool;
     let player_count = game.player_count as usize;
@@ -118,8 +122,15 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                 } else if target_barriered && !is_crystal {
                     msg!("Steal blocked by Barrier");
                 } else {
-                    // Steal succeeds
-                    let seed = game.round as u64 * 31 + i as u64 * 17;
+                    // Steal succeeds — use sha2-derived seed for card selection
+                    let steal_input: [u8; 16] = {
+                        let mut b = [0u8; 16];
+                        b[..8].copy_from_slice(&clock.slot.to_le_bytes());
+                        b[8..].copy_from_slice(&(game.round as u64 * 1000 + i as u64).to_le_bytes());
+                        b
+                    };
+                    let steal_hash = Sha256::digest(&steal_input);
+                    let seed = u64::from_le_bytes(steal_hash[..8].try_into().unwrap());
                     let stolen = steal_random_card(&mut players[ti].cards, seed);
                     if stolen > 0 {
                         place_card(&mut players[i].cards, stolen);
@@ -147,7 +158,14 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                 if players[i].area != players[ti].area {
                     msg!("Flame failed: target {} in different area", target_key);
                 } else if !invisible[ti] {
-                    let seed = game.round as u64 * 37 + i as u64 * 13;
+                    let flame_input: [u8; 16] = {
+                        let mut b = [0u8; 16];
+                        b[..8].copy_from_slice(&clock.unix_timestamp.to_le_bytes());
+                        b[8..].copy_from_slice(&(game.round as u64 * 2000 + i as u64).to_le_bytes());
+                        b
+                    };
+                    let flame_hash = Sha256::digest(&flame_input);
+                    let seed = u64::from_le_bytes(flame_hash[..8].try_into().unwrap());
                     let destroyed = steal_random_card(&mut players[ti].cards, seed);
                     if destroyed > 0 {
                         players[ti].card_count -= 1;
@@ -175,8 +193,17 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     }
 
     // 7. Draw (from AREA-SPECIFIC pool)
-    let clock = Clock::get()?;
-    let mut seed = clock.slot;
+    // Mix slot + unix_timestamp + round + caller key to make seed unpredictable.
+    // Using sha2 prevents slot-manipulation attacks by validators/frontrunners.
+    let caller_key = ctx.accounts.caller.key();
+    let mut seed_input = [0u8; 48];
+    seed_input[..8].copy_from_slice(&clock.slot.to_le_bytes());
+    seed_input[8..16].copy_from_slice(&clock.unix_timestamp.to_le_bytes());
+    seed_input[16..24].copy_from_slice(&(game.round as u64).to_le_bytes());
+    seed_input[24..].copy_from_slice(&caller_key.to_bytes()[..24]);
+    let hash = Sha256::digest(&seed_input);
+    let mut seed = u64::from_le_bytes(hash[..8].try_into().unwrap());
+
     for (i, p) in players.iter_mut().enumerate() {
         if p.action == ActionType::Draw {
             // Only draw card types available in current area
@@ -191,7 +218,10 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
             } else {
                 msg!("Player {} tried to draw but area pool empty", p.key);
             }
-            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(i as u64);
+            // Re-hash for each draw to ensure independent randomness per player
+            let next_hash = Sha256::digest(&seed.to_le_bytes());
+            seed = u64::from_le_bytes(next_hash[..8].try_into().unwrap())
+                .wrapping_add(i as u64 * 0x9e3779b97f4a7c15);
         }
     }
 
@@ -204,7 +234,14 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                     msg!("Void failed: target {} in different area", target_key);
                 } else if !invisible[ti] && players[ti].card_count > 0 {
                     // Pick a random card from target to copy
-                    let seed = game.round as u64 * 41 + i as u64 * 7;
+                    let void_input: [u8; 16] = {
+                        let mut b = [0u8; 16];
+                        b[..8].copy_from_slice(&clock.slot.to_le_bytes());
+                        b[8..].copy_from_slice(&(game.round as u64 * 3000 + i as u64).to_le_bytes());
+                        b
+                    };
+                    let void_hash = Sha256::digest(&void_input);
+                    let seed = u64::from_le_bytes(void_hash[..8].try_into().unwrap());
                     let copied = peek_random_card(&players[ti].cards, seed);
                     if copied > 0 {
                         place_card(&mut players[i].cards, copied);

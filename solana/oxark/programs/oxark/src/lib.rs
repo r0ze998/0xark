@@ -49,7 +49,66 @@ pub mod oxark {
         instructions::resolve_round::handle_resolve(ctx, game_id)
     }
 
-    // NOTE: verify_zk_proof, mint_card_nft, stake_entry, season, agent_registry removed for devnet deploy size.
-    // ZK verification demonstrated via off-chain circom circuit. Re-added for mainnet.
-    // These will be re-added post-hackathon when mainnet budget allows larger program.
+    /// ZK proof verification for commit-reveal privacy.
+    /// Verifies Groth16 proof that Poseidon(action, target, salt) == commitHash.
+    pub fn verify_zk_proof(
+        ctx: Context<VerifyZkProof>,
+        game_id: u64,
+        proof_a: [u8; 64],
+        proof_b: [u8; 128],
+        proof_c: [u8; 64],
+        public_inputs: [u8; 32],
+    ) -> Result<()> {
+        instructions::verify_zk_proof::handle_verify_zk(ctx, game_id, proof_a, proof_b, proof_c, public_inputs)
+    }
+
+    /// Mint a card as a permanent NFT (winners only).
+    pub fn mint_card_nft(ctx: Context<MintCardNft>, game_id: u64, card_id: u8) -> Result<()> {
+        instructions::mint_card_nft::handle_mint_card_nft(ctx, game_id, card_id)
+    }
+
+    /// Deposit entry stake into prize vault.
+    pub fn deposit_stake(ctx: Context<DepositStake>, game_id: u64) -> Result<()> {
+        instructions::stake_entry::handle_deposit_stake(ctx, game_id)
+    }
+
+    /// Claim prize pool after winning a game.
+    pub fn claim_prize(ctx: Context<ClaimPrize>, game_id: u64) -> Result<()> {
+        instructions::stake_entry::handle_claim_prize(ctx, game_id)
+    }
+
+    /// Create a competitive season with entry fees and prize pool.
+    pub fn create_season(
+        ctx: Context<CreateSeason>,
+        season_id: u32,
+        entry_fee: u64,
+        max_players: u32,
+        duration_seconds: i64,
+    ) -> Result<()> {
+        instructions::season::handle_create_season(ctx, season_id, entry_fee, max_players, duration_seconds)
+    }
+
+    /// End a season and emit leaderboard results.
+    pub fn end_season(ctx: Context<EndSeason>, season_id: u32) -> Result<()> {
+        instructions::season::handle_end_season(ctx, season_id)
+    }
+
+    /// Register an AI agent in the on-chain agent marketplace.
+    pub fn register_agent(
+        ctx: Context<RegisterAgent>,
+        agent_id: u32,
+        name_hash: [u8; 32],
+        strategy_hash: [u8; 32],
+        endpoint_hash: [u8; 32],
+        price_per_query: u64,
+    ) -> Result<()> {
+        instructions::agent_registry::handle_register_agent(
+            ctx, agent_id, name_hash, strategy_hash, endpoint_hash, price_per_query,
+        )
+    }
+
+    /// Deactivate an AI agent listing.
+    pub fn deactivate_agent(ctx: Context<DeactivateAgent>, agent_id: u32) -> Result<()> {
+        instructions::agent_registry::handle_deactivate_agent(ctx, agent_id)
+    }
 }
