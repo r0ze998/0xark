@@ -104,6 +104,17 @@ function build() {
     { src: 'bg-dungeon1.jpg',  dst: 'bg-dungeon1.jpg'  },
     { src: 'bg-dungeon2.jpg',  dst: 'bg-dungeon2.jpg'  },
     { src: 'bg-dungeon3.jpg',  dst: 'bg-dungeon3.jpg'  },
+    // Craftpix forest object sprites (top-down pixel art trees/mushrooms)
+    { src: 'cpx-forest-Curved_tree1.png',           dst: 'cpx-forest-Curved_tree1.png'           },
+    { src: 'cpx-forest-Curved_tree2.png',           dst: 'cpx-forest-Curved_tree2.png'           },
+    { src: 'cpx-forest-Willow1.png',                dst: 'cpx-forest-Willow1.png'                },
+    { src: 'cpx-forest-Willow2.png',                dst: 'cpx-forest-Willow2.png'                },
+    { src: 'cpx-forest-Blue-green_balls_tree1.png', dst: 'cpx-forest-Blue-green_balls_tree1.png' },
+    { src: 'cpx-forest-Luminous_tree1.png',         dst: 'cpx-forest-Luminous_tree1.png'         },
+    { src: 'cpx-forest-Mega_tree1.png',             dst: 'cpx-forest-Mega_tree1.png'             },
+    { src: 'cpx-forest-Mega_tree2.png',             dst: 'cpx-forest-Mega_tree2.png'             },
+    { src: 'cpx-forest-Beige_green_mushroom1.png',  dst: 'cpx-forest-Beige_green_mushroom1.png'  },
+    { src: 'cpx-forest-Beige_green_mushroom2.png',  dst: 'cpx-forest-Beige_green_mushroom2.png'  },
   ];
   let copiedPngs = 0;
   for (const { src, dst } of PNG_FILES) {

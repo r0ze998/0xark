@@ -378,6 +378,43 @@ function drawPirateDecorations(){
       }
     });
 
+    // ── CRAFTPIX OVERWORLD TREE DECORATIONS ──
+    // Sparse craftpix forest props on ~33% of overworld tree tiles for visual variety.
+    // Drawn after tile cache so they can extend slightly above the tile row naturally.
+    if(cpxTreesLoaded>0){
+      const mt=getMap();
+      g.imageSmoothingEnabled=true;
+      for(let ty=Math.max(0,Math.floor((camY-72)/TH));ty<=Math.min(MH-1,Math.ceil((camY+H)/TH));ty++){
+        for(let tx=Math.max(0,Math.floor((camX-72)/TW));tx<=Math.min(MW-1,Math.ceil((camX+W)/TW));tx++){
+          if(!fogRevealed[0][ty]?.[tx])continue;
+          const tt=mt[ty]?.[tx];
+          const th=tileHash(tx,ty);
+          const tpx=tx*TW-camX,tpy=ty*TH-camY;
+          if((tt===3||tt===7||tt===12)&&th%3===0){
+            // Tree tile: draw craftpix tree prop
+            const tIdx=(th>>>2)%CPX_TREES.length;
+            const tImg=CPX_TREES[tIdx];
+            if(!tImg.complete||!tImg.naturalWidth)continue;
+            const isMega=tImg.naturalWidth===256;
+            const tdW=isMega?72:56; // slightly smaller than 2 tiles to preserve zelda tile peek
+            g.globalAlpha=0.88;
+            g.drawImage(tImg,tpx+(TW-tdW)/2,tpy+TH-tdW,tdW,tdW);
+            g.globalAlpha=1;
+          }else if(tt===11&&th%9===0){
+            // Tall grass tile: occasional mushroom
+            const mIdx=(th>>>3)%CPX_MUSHROOMS.length;
+            const mImg=CPX_MUSHROOMS[mIdx];
+            if(!mImg.complete||!mImg.naturalWidth)continue;
+            const mdW=16;
+            g.globalAlpha=0.82;
+            g.drawImage(mImg,tpx+(TW-mdW)/2+((th&3)-1)*5,tpy+TH-mdW,mdW,mdW);
+            g.globalAlpha=1;
+          }
+        }
+      }
+      g.imageSmoothingEnabled=false;
+    }
+
     // Seagulls flying over water
     seagulls.forEach(sg=>{
       sg.x+=sg.vx;
@@ -398,6 +435,31 @@ function drawPirateDecorations(){
 
   }else if(currentMap===1){
     // ── SMUGGLER'S JUNGLE DECORATIONS ──
+
+    // ── CRAFTPIX JUNGLE TREE DECORATIONS ──
+    if(cpxTreesLoaded>0){
+      const mj=getMap();
+      g.imageSmoothingEnabled=true;
+      for(let jy=Math.max(0,Math.floor((camY-72)/TH));jy<=Math.min(MH-1,Math.ceil((camY+H)/TH));jy++){
+        for(let jx=Math.max(0,Math.floor((camX-72)/TW));jx<=Math.min(MW-1,Math.ceil((camX+W)/TW));jx++){
+          if(!fogRevealed[1][jy]?.[jx])continue;
+          const jt=mj[jy]?.[jx];
+          if(jt!==3&&jt!==7&&jt!==12)continue;
+          const jh=tileHash(jx,jy);
+          if(jh%4!==1)continue; // ~25% of jungle tree tiles
+          const jIdx=((jh>>>2)+3)%CPX_TREES.length; // offset idx for jungle variety
+          const jImg=CPX_TREES[jIdx];
+          if(!jImg.complete||!jImg.naturalWidth)continue;
+          const isMega=jImg.naturalWidth===256;
+          const jdW=isMega?80:64;
+          const jvpx=jx*TW-camX,jvpy=jy*TH-camY;
+          g.globalAlpha=0.9;
+          g.drawImage(jImg,jvpx+(TW-jdW)/2,jvpy+TH-jdW,jdW,jdW);
+          g.globalAlpha=1;
+        }
+      }
+      g.imageSmoothingEnabled=false;
+    }
 
     // Vine/hanging rope elements on some trees
     const m=getMap();
@@ -1334,7 +1396,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v176',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v177',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
