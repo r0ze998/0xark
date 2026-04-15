@@ -10090,7 +10090,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v187',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v188',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -13208,54 +13208,72 @@ function drawDungeonConfirm(){
   if(blink_)txShadow('[Z] ENTER   [X] STAY',cx_+cw/2-90,cy_+ch-14,10,'#f0c830','rgba(0,0,0,.5)');
 }
 
-// ── MARKETPLACE OVERLAY ──
+// ── MARKETPLACE OVERLAY (v188: slide-in + polish) ──
+let marketOpenFrame_=0;
 function drawMarketplace(){
-  if(!marketActive)return;
-  bx(0,0,W,H,'rgba(0,0,0,.75)');
+  if(!marketActive){marketOpenFrame_=0;return;}
+  if(!marketOpenFrame_)marketOpenFrame_=fr;
   const mw=W-60,mh=H-40,mx=30,my=20;
-  win(mx,my,mw,mh);
-  bx(mx,my,mw,28,'#0a1a0a');
-  txShadow('CARD MARKETPLACE',mx+mw/2-90,my+20,12,'#40d080','rgba(0,0,0,.5)');
+  // Slide in from top (easeOut cubic, 10 frames)
+  const tSlide=Math.min(1,(fr-marketOpenFrame_)/10);
+  const eSlide=1-Math.pow(1-tSlide,3);
+  const myA=my-(1-eSlide)*mh;
+
+  bx(0,0,W,H,'rgba(0,0,0,.75)');
+  win(mx,myA,mw,mh);
+  // Header: dark green + left accent bar
+  bx(mx,myA,mw,28,'#061806');
+  bx(mx,myA,4,28,'#40d080');
+  txShadow('CARD MARKETPLACE',mx+mw/2-90,myA+20,12,'#40d080','rgba(0,0,0,.5)');
+
+  // Collection progress bar directly below header
+  const vault=pl[0].vault||new Set();
+  const vaultArr=[...vault];
+  const collFrac=Math.min(1,vaultArr.length/60);
+  const barW=mw-24;
+  bx(mx+12,myA+30,barW,5,'#0a180a');
+  bx(mx+12,myA+30,Math.floor(barW*collFrac),5,'#40d080');
+  txShadow(vaultArr.length+'/60 collected',mx+mw-100,myA+25,6,'#60c880','rgba(0,0,0,.3)');
+
   // Tabs
   MARKET_TABS.forEach((tab,i)=>{
     const isActive=marketTab===i;
     const tw=100,tx2=mx+12+i*104;
-    bx(tx2,my+32,tw,22,isActive?'#1a3a1a':'#0a120a');
-    if(isActive)bx(tx2,my+32,tw,2,'#40d080');
-    tx(tab,tx2+10,my+48,7,isActive?'#40d080':'#506850');
+    bx(tx2,myA+37,tw,22,isActive?'#122812':'#080e08');
+    bx(tx2,myA+37,tw,isActive?2:1,isActive?'#40d080':'#1a3a1a');
+    if(isActive)bx(tx2,myA+37,2,22,'#40d080');
+    txShadow(tab,tx2+8,myA+53,7,isActive?'#40d080':'#4a6a4a',isActive?'rgba(0,0,0,.3)':'rgba(0,0,0,.15)');
   });
 
-  const vault=pl[0].vault||new Set();
-  const vaultArr=[...vault];
+  const contentY=myA+63;
 
   if(marketTab===0){
-    // MY CARDS — show vault collection
-    tx('Your collection ('+vaultArr.length+'/60):',mx+12,my+68,8,'#c8c0a0');
+    // MY CARDS — vault collection grouped by type
+    txShadow('Your collection:',mx+12,contentY+14,8,'#a8c8a8','rgba(0,0,0,.3)');
     const typeFilter=['attack','defense','flee','magic','recovery'];
     const typeLabel=['ATK','DEF','FLY','MAG','REC'];
     const typeColor=['#e05840','#48b8e8','#38c080','#d8b028','#e0c040'];
-    let yi=my+82;
+    let yi=contentY+22;
     typeFilter.forEach((typ,ti)=>{
       const cards=vaultArr.filter(id=>CD[id-1]&&CD[id-1].t===typ);
       if(cards.length===0)return;
-      tx(typeLabel[ti]+' ('+cards.length+'):',mx+14,yi+10,7,typeColor[ti]);yi+=16;
+      txShadow(typeLabel[ti]+' ('+cards.length+')',mx+14,yi+10,7,typeColor[ti],'rgba(0,0,0,.3)');yi+=16;
       cards.slice(0,12).forEach((id,ci)=>{
         const cr=CD[id-1];
         const cx2=mx+14+ci*72;
-        if(cx2+68>mx+mw-12){return;}
+        if(cx2+68>mx+mw-12)return;
         bx(cx2,yi,66,16,cr.d+'33');
-        bx(cx2,yi,3,16,cr.c);
-        tx(cr.n,cx2+6,yi+12,5,cr.h||'#f8f0e0');
-        tx('★'.repeat(cr.r),cx2+6,yi+24,4,RARITY_COLOR[cr.r]);
+        bx(cx2,yi,3,16,RARITY_COLOR[cr.r]||cr.c);
+        txShadow(cr.n,cx2+6,yi+12,5,cr.h||'#f8f0e0','rgba(0,0,0,.3)');
+        for(let s=0;s<(cr.r||1);s++)tx('\u2605',cx2+6+s*8,yi+24,4,RARITY_COLOR[cr.r]);
       });
-      if(cards.length>12)tx('+'+(cards.length-12)+' more',mx+14+12*72,yi+12,5,'#888898');
+      if(cards.length>12)txShadow('+'+(cards.length-12)+' more',mx+14+12*72,yi+12,5,'#888898','rgba(0,0,0,.3)');
       yi+=30;
     });
   }else if(marketTab===1){
-    // BROWSE — placeholder for on-chain listings
-    tx('On-chain marketplace listings:',mx+12,my+68,8,'#c8c0a0');
-    bx(mx+12,my+86,mw-24,1,'#1a3a1a');
-    // Show mock listings
+    // BROWSE
+    txShadow('On-chain marketplace listings:',mx+12,contentY+14,8,'#a8c8a8','rgba(0,0,0,.3)');
+    bx(mx+12,contentY+24,mw-24,1,'#1a3a1a');
     const mockListings=[
       {seller:'VEGA',card:6,price:'0.05'},
       {seller:'MIRA',card:20,price:'0.08'},
@@ -13263,24 +13281,25 @@ function drawMarketplace(){
       {seller:'???',card:1,price:'0.99'},
     ];
     mockListings.forEach((listing,li)=>{
-      const cr=CD[listing.card-1];
-      const ly=my+100+li*40;
-      bx(mx+12,ly,mw-24,36,'#0d200d');
-      drawMiniCard(mx+18,ly+8,listing.card);
-      tx(cr.n,mx+52,ly+14,8,cr.c);
-      tx(RARITY_LABEL[cr.r],mx+52,ly+26,6,RARITY_COLOR[cr.r]);
-      tx(listing.seller,mx+mw-180,ly+14,7,'#888898');
-      tx(listing.price+' SOL',mx+mw-110,ly+14,9,'#14F195');
-      tx('[BUY]',mx+mw-60,ly+22,7,'#40d040');
+      const cr=CD[listing.card-1];if(!cr)return;
+      const ly=contentY+32+li*40;
+      bx(mx+12,ly,mw-24,36,'#0b1a0b');
+      bx(mx+12,ly,3,36,RARITY_COLOR[cr.r]||'#888898');
+      drawMiniCard(mx+20,ly+8,listing.card);
+      txShadow(cr.n,mx+54,ly+14,8,cr.c||'#d0c8a8','rgba(0,0,0,.3)');
+      txShadow(RARITY_LABEL[cr.r],mx+54,ly+26,6,RARITY_COLOR[cr.r],'rgba(0,0,0,.3)');
+      txShadow(listing.seller,mx+mw-178,ly+14,7,'#9898a8','rgba(0,0,0,.3)');
+      txShadow(listing.price+' SOL',mx+mw-108,ly+14,9,'#14F195','rgba(0,0,0,.4)');
+      tx('[BUY]',mx+mw-58,ly+22,7,'#40d040');
     });
-    tx('(On-chain trading: coming in next sprint)',mx+12,my+mh-50,6,'#404850');
+    txShadow('(On-chain trading: coming soon)',mx+12,myA+mh-52,6,'#304830','rgba(0,0,0,.3)');
   }else if(marketTab===2){
-    // SELL — list a card from hand
-    tx('Select a card to list for sale:',mx+12,my+68,8,'#c8c0a0');
-    tx('(Listing feature: coming soon)',mx+12,my+90,7,'#404850');
+    // SELL
+    txShadow('Select a card to list for sale:',mx+12,contentY+14,8,'#a8c8a8','rgba(0,0,0,.3)');
+    txShadow('(Listing feature: coming soon)',mx+12,contentY+36,7,'#304030','rgba(0,0,0,.3)');
   }
-  bx(mx+12,my+mh-46,mw-24,1,'#1a3a1a');
-  tx('[←/→] Tabs   [X] Close',mx+14,my+mh-26,7,'#506850');
+  bx(mx+12,myA+mh-46,mw-24,1,'#1a3a1a');
+  txShadow('[←/→] Tabs   \u2502   [X] Close',mx+14,myA+mh-26,7,'#4a7a4a','rgba(0,0,0,.3)');
 }
 
 // v187: discard overlay — slide-in + polish (local frame tracker avoids multi-file edit)
