@@ -131,7 +131,7 @@ function loadGame(){
     fogRevealAll(0);
     camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
     camTargetX=camX;camTargetY=camY;
-    edgeCacheDirty=true;fogCacheDirty=true;
+    tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
     return true;
   }catch(e){return false;}
 }

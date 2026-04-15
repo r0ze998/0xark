@@ -2,18 +2,18 @@
 // ═══════════════════════════════════════
 
 // Held-key continuous movement (overworld only — dungeon stays turn-based per press)
-const _MOVE_REPEAT_INITIAL = 10; // frames to wait before repeat kicks in after first press
-const _MOVE_REPEAT_RATE    = 7;  // frames between each repeated step while holding
-let _moveRepeatTimer = _MOVE_REPEAT_INITIAL;
+// Time-based so movement rate is consistent regardless of fps
+const _MOVE_REPEAT_MS     = 115; // ms between steps while holding (~8.7Hz)
+let _moveRepeatAccumMs    = _MOVE_REPEAT_MS; // start ready so first step fires immediately
 
 function processHeldMovement(){
   // Only in map mode, no overlays, no dungeon (dungeon stays turn-based)
   if(sc!=='map'||inDungeon||mo||npcDialogActive||shopActive||gachaActive||marketActive||
      battlePhase||introActive||handInspectActive||fishingActive||
      mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive)return;
-  _moveRepeatTimer++;
-  if(_moveRepeatTimer < _MOVE_REPEAT_RATE) return;
-  _moveRepeatTimer = 0;
+  _moveRepeatAccumMs+=dt*16.67;
+  if(_moveRepeatAccumMs < _MOVE_REPEAT_MS) return;
+  _moveRepeatAccumMs=0;
   let mdx=0,mdy=0;
   if(keysHeld.has('ArrowUp'))     mdy=-1;
   else if(keysHeld.has('ArrowDown')) mdy=1;
@@ -27,7 +27,7 @@ function processHeldMovement(){
 }
 
 function updateVisualPositions(){
-  const lerpT=1-Math.pow(1-0.35,dt); // Increased from 0.25 → 0.35 for snappier response
+  const lerpT=1-Math.pow(1-0.45,dt); // Fast lerp for snappy tile-step feel
   pl.forEach(p=>{
     const targetX=p.x*TW, targetY=p.y*TH;
     p.visualX=lerp(p.visualX,targetX,lerpT);

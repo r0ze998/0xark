@@ -506,6 +506,38 @@ function drawKenneyTileTinted(col, row, destX, destY, scale, color) {
 }
 
 // ═══════════════════════════════════════
+// WORLD TILESET (LPC Terrain v7, CC-BY-SA 3.0)
+// world-tileset.png: 1024x2048, 32x32 tiles, 32 cols x 64 rows
+// ═══════════════════════════════════════
+const WORLD_SHEET = new Image();
+WORLD_SHEET.src = 'world-tileset.png';
+let worldSheetLoaded = false;
+WORLD_SHEET.onload = () => { worldSheetLoaded = true; };
+
+// LPC tile coordinate map (col, row) — identified by color sampling
+// Each tile drawn at scale 1 = 32x32, matching game TW/TH
+const WT = {
+  grass:      [1,  8],  // solid green grass center
+  grassAlt:   [2,  9],  // grass variant
+  grassEdge:  [4, 10],  // grass with edge detail
+  dirt:       [3,  1],  // dirt/brown ground
+  dirtAlt:    [4,  1],  // dirt variant
+  sand:       [16, 8],  // sandy/beige ground
+  sandAlt:    [17, 9],  // sand variant
+  water:      [4, 14],  // deep blue water
+  waterAlt:   [5, 15],  // water variant
+  waterShore: [22,14],  // water with lighter shore look
+  snow:       [18, 9],  // white/snow tile
+};
+
+function drawWorldTile(col, row, destX, destY) {
+  if (!worldSheetLoaded) return false;
+  const sx = col * 32, sy = row * 32;
+  g.drawImage(WORLD_SHEET, sx, sy, 32, 32, destX, destY, 32, 32);
+  return true;
+}
+
+// ═══════════════════════════════════════
 // DUNGEON TILESET (Kenney Tiny Dungeon, CC0)
 // dungeon-tileset.png: 11 cols x 2 rows, 16x16 tiles, 1px gap
 // ═══════════════════════════════════════
@@ -773,7 +805,15 @@ function lerp(a,b,t){return a+(b-a)*t;}
 function easeInOut(t){return t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);}
 let lastTime=0,dt=1;
 
-// Offscreen canvas caches for edge blending and fog
+// Offscreen canvas caches for tile layer, edge blending, and fog
+const tileCanvas=document.createElement('canvas');
+tileCanvas.width=W;tileCanvas.height=H;
+const tileCtx=tileCanvas.getContext('2d');
+tileCtx.imageSmoothingEnabled=false;
+let tileCacheDirty=true;
+let tileCacheLastCamX=-9999,tileCacheLastCamY=-9999;
+let tileCacheLastMap=-1;
+
 const edgeCanvas=document.createElement('canvas');
 edgeCanvas.width=W;edgeCanvas.height=H;
 const edgeCtx=edgeCanvas.getContext('2d');
@@ -785,6 +825,9 @@ fogCanvas.width=W;fogCanvas.height=H;
 const fogCtx=fogCanvas.getContext('2d');
 let fogCacheDirty=true;
 let fogCacheLastCamX=-9999,fogCacheLastCamY=-9999;
+
+// Set imageSmoothingEnabled=false globally on main context once canvases exist
+g.imageSmoothingEnabled=false;
 
 // ═══════════════════════════════════════
 // AUDIO
