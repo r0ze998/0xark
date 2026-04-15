@@ -571,6 +571,9 @@ function dMap(){
   const endTX=Math.min(MW-1,Math.ceil((camX+W)/TW));
   const endTY=Math.min(MH-1,Math.ceil((camY+H)/TH));
 
+  // ── MIDJOURNEY BACKGROUND LAYER ── drawn first, tiles + fog overlay on top
+  drawMapBg(currentMap);
+
   // ── TILE LAYER CACHE ── only redraw tiles when camera moves or map changes
   {
     const camMoved=Math.abs(camX-tileCacheLastCamX)>0.5||Math.abs(camY-tileCacheLastCamY)>0.5;
@@ -600,7 +603,10 @@ function dMap(){
       tileCacheDirty=false;
     }
     g.imageSmoothingEnabled=false;
+    // When Midjourney bg is loaded, draw tile layer semi-transparent so bg shows through
+    if(getBgSheet(currentMap)){g.globalAlpha=0.52;}
     g.drawImage(tileCanvas,0,0,W,H);
+    g.globalAlpha=1;
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
