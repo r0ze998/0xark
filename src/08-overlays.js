@@ -200,7 +200,7 @@ function drawMarketplace(){
         bx(cx2,yi,66,16,cr.d+'33');
         bx(cx2,yi,3,16,RARITY_COLOR[cr.r]||cr.c);
         txShadow(cr.n,cx2+6,yi+12,5,cr.h||'#f8f0e0','rgba(0,0,0,.3)');
-        for(let s=0;s<(cr.r||1);s++)tx('\u2605',cx2+6+s*8,yi+24,4,RARITY_COLOR[cr.r]);
+        for(let s=0;s<(cr.r||1);s++)txShadow('\u2605',cx2+6+s*8,yi+24,4,RARITY_COLOR[cr.r],'rgba(0,0,0,.3)');
       });
       if(cards.length>12)txShadow('+'+(cards.length-12)+' more',mx+14+12*72,yi+12,5,'#888898','rgba(0,0,0,.3)');
       yi+=30;
@@ -225,7 +225,7 @@ function drawMarketplace(){
       txShadow(RARITY_LABEL[cr.r],mx+54,ly+26,6,RARITY_COLOR[cr.r],'rgba(0,0,0,.3)');
       txShadow(listing.seller,mx+mw-178,ly+14,7,'#9898a8','rgba(0,0,0,.3)');
       txShadow(listing.price+' SOL',mx+mw-108,ly+14,9,'#14F195','rgba(0,0,0,.4)');
-      tx('[BUY]',mx+mw-58,ly+22,7,'#40d040');
+      txShadow('[BUY]',mx+mw-58,ly+22,7,'#40d040','rgba(0,0,0,.4)');
     });
     txShadow('(On-chain trading: coming soon)',mx+12,myA+mh-52,6,'#304830','rgba(0,0,0,.3)');
   }else if(marketTab===2){
@@ -268,7 +268,7 @@ function drawDiscardOverlay(){
     drawCardCharacter(previewX+4,previewY+4,discardPendingCard,1.4,fr);
     txShadow('INCOMING:',previewX,previewY+66,5,'#c0a880','rgba(0,0,0,.3)');
     txShadow(pendCr.n,previewX,previewY+78,7,headerRarCol,'rgba(0,0,0,.3)');
-    for(let s=0;s<(pendCr.r||1);s++)tx('\u2605',previewX+s*10,previewY+89,8,headerRarCol);
+    for(let s=0;s<(pendCr.r||1);s++)txShadow('\u2605',previewX+s*10,previewY+89,8,headerRarCol,'rgba(0,0,0,.3)');
     txShadow(pendCr.f||'',previewX,previewY+100,5,'#c0b888','rgba(0,0,0,.3)');
   }else{
     txShadow('DISCARD a card',W/2-70,panY+20,10,'#b06030','rgba(0,0,0,.4)');
@@ -292,7 +292,7 @@ function drawDiscardOverlay(){
       drawCardCharacter(W/2-197,cy+8,cd,0.9,fr);
       txShadow(cr.n,W/2-160,cy+18,7,sel?'#ff6060':'#d0c8a8','rgba(0,0,0,.35)');
       // Rarity stars inline
-      {const rar=cr.r||1;const rc=RARITY_COLOR[rar]||'#888898';for(let s=0;s<rar;s++)tx('\u2605',W/2-36+s*7,cy+18,5,rc);}
+      {const rar=cr.r||1;const rc=RARITY_COLOR[rar]||'#888898';for(let s=0;s<rar;s++)txShadow('\u2605',W/2-36+s*7,cy+18,5,rc,'rgba(0,0,0,.3)');}
       // Decay timer bar
       if(cardTimers[i]>0){
         const remMs=Math.max(0,CARD_DECAY_MS-(Date.now()-cardTimers[i]));
@@ -310,7 +310,7 @@ function drawDiscardOverlay(){
     }else{
       txShadow('(empty slot)',W/2-160,cy+22,6,'#706050','rgba(0,0,0,.3)');
     }
-    if(sel)tx('\u25B6',W/2-214,cy+24,7,'#c04040');
+    if(sel)txShadow('\u25B6',W/2-214,cy+24,7,'#c04040','rgba(0,0,0,.4)');
   }
   txShadow('[Z] Discard  \u2502  [X] Skip',W/2-80,panY+panH-12,7,'#a898c8','rgba(0,0,0,.4)');
 }
@@ -413,7 +413,7 @@ function drawIntroTutorial(){
   const lines=INTRO_PAGES[introPage].split('\n');
   lines.forEach((line,i)=>{
     g.globalAlpha=Math.min(1,Math.max(0,t-5-i*8)/10);
-    tx(line,wx+20,wy+30+i*28,9,'#484050');
+    txShadow(line,wx+20,wy+30+i*28,9,'#484050','rgba(255,255,255,.15)');
     g.globalAlpha=1;
   });
   if(t>30&&Math.floor(fr/20)%2===0)txShadow('\u25BC Z',wx+ww-60,wy+wh-20+Math.sin(fr*0.1)*3,8,FRLG.selHighlight,'rgba(0,0,0,.3)');
@@ -464,8 +464,8 @@ function dVictory(){
     bx(px_,py_,3,2,['#d8b028','#f0c830','#e8a020','#f8e060'][i%4]);
   }
 
-  if(t>35){g.globalAlpha=Math.min(1,(t-35)/20);tx('CONGRATULATIONS!',W/2-140+1,101,14,'rgba(0,0,0,.2)');tx('CONGRATULATIONS!',W/2-140,100,14,'#c89820');g.globalAlpha=1;}
-  if(t>40){g.globalAlpha=Math.min(1,(t-40)/15);tx('Information asymmetry is the ultimate weapon',W/2-180,124,7,'#a07848');g.globalAlpha=1;}
+  if(t>35){g.globalAlpha=Math.min(1,(t-35)/20);txShadow('CONGRATULATIONS!',W/2-140,100,14,'#c89820','rgba(0,0,0,.5)');g.globalAlpha=1;}
+  if(t>40){g.globalAlpha=Math.min(1,(t-40)/15);txShadow('Information asymmetry is the ultimate weapon',W/2-180,124,7,'#a07848','rgba(0,0,0,.5)');g.globalAlpha=1;}
   if(t>45){g.globalAlpha=Math.min(1,(t-45)/15);drawBattleSprite(pl[0],W/2,200,3,false);g.globalAlpha=1;}
 
   if(t>60){
@@ -504,27 +504,27 @@ function dVictory(){
     win(W/2-200,420,400,28);
     const _elapsed=getPlayElapsed();const _em=Math.floor(_elapsed/60000);const _es=Math.floor((_elapsed%60000)/1000);
     const vaultSize=pl[0].vault?pl[0].vault.size:0;
-    tx(`Time: ${_em}m${('0'+_es).slice(-2)}s   Battles: ${rd}   Cards: ${vaultSize}/60`,W/2-188,440,7,'#686068');
+    txShadow(`Time: ${_em}m${('0'+_es).slice(-2)}s   Battles: ${rd}   Cards: ${vaultSize}/60`,W/2-188,440,7,'#686068','rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
   // "You collected all 60" message
   if(t>140){
     win(6,456,W-12,28);
-    if(playerHasAllSixty()){tx('You collected all 60 cards and claimed the Prize Pool!',14,476,7,'#303028');}
-    else{tx('Time ran out! You collected '+hasUniqueCards(0).size+'/60 unique cards.',14,476,7,'#c04040');}
+    if(playerHasAllSixty()){txShadow('You collected all 60 cards and claimed the Prize Pool!',14,476,7,'#303028','rgba(255,255,255,.15)');}
+    else{txShadow('Time ran out! You collected '+hasUniqueCards(0).size+'/60 unique cards.',14,476,7,'#c04040','rgba(0,0,0,.35)');}
   }
   // Prize distribution display
   if(t>148){
     g.globalAlpha=Math.min(1,(t-148)/15);
     win(W/2-200,490,400,22);
-    tx('1ST: 60%  |  2ND: 25%  |  3RD: 15%',W/2-150,506,7,'#f0c830');
+    txShadow('1ST: 60%  |  2ND: 25%  |  3RD: 15%',W/2-150,506,7,'#f0c830','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
   // "Verified on Solana" branding
   if(t>152){
     g.globalAlpha=Math.min(1,(t-152)/15);
     drawSolanaLogo(W/2-110,518,10);
-    tx('Verified on Solana',W/2-90,522,7,'#9945FF');
+    txShadow('Verified on Solana',W/2-90,522,7,'#9945FF','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
   // Prize claim button — C to trigger
@@ -533,13 +533,13 @@ function dVictory(){
     win(W/2-190,536,380,28);
     drawSolanaIcon(W/2-170,540,8);
     if(victoryClaimed){
-      tx('\u2713 Prize Claimed! TX: '+victoryClaimedTx,W/2-148,554,7,'#14F195');
+      txShadow('\u2713 Prize Claimed! TX: '+victoryClaimedTx,W/2-148,554,7,'#14F195','rgba(0,0,0,.4)');
     }else if(walletConnected){
       const claimBlink=Math.sin(fr*0.1)*0.15+0.85;
       g.globalAlpha*=claimBlink;
-      tx('[C] CLAIM PRIZE: '+stakePotAmount.toFixed(2)+' SOL',W/2-148,554,8,'#14F195');
+      txShadow('[C] CLAIM PRIZE: '+stakePotAmount.toFixed(2)+' SOL',W/2-148,554,8,'#14F195','rgba(0,0,0,.4)');
     }else{
-      tx('Connect wallet to claim '+stakePotAmount.toFixed(2)+' SOL prize',W/2-165,554,7,'#686868');
+      txShadow('Connect wallet to claim '+stakePotAmount.toFixed(2)+' SOL prize',W/2-165,554,7,'#686868','rgba(0,0,0,.35)');
     }
     g.globalAlpha=1;
   }
@@ -548,15 +548,15 @@ function dVictory(){
     g.globalAlpha=Math.min(1,(t-162)/15);
     win(W/2-180,568,360,24);
     if(victoryMinted){
-      tx('\u2713 60 Cards minted as NFTs!',W/2-120,584,8,'#9945FF');
+      txShadow('\u2713 60 Cards minted as NFTs!',W/2-120,584,8,'#9945FF','rgba(0,0,0,.4)');
     }else if(victoryMinting){
       const bar=Math.floor((victoryMintProgress/60)*28);
       bx(W/2-140,573,bar*5,14,'rgba(153,69,255,.5)');
-      tx('Minting '+victoryMintProgress+'/60...',W/2-80,584,8,'#c090ff');
+      txShadow('Minting '+victoryMintProgress+'/60...',W/2-80,584,8,'#c090ff','rgba(0,0,0,.4)');
     }else{
       const mintBlink=Math.sin(fr*0.08)*0.12+0.88;
       g.globalAlpha*=mintBlink;
-      tx('[M] MINT YOUR CARDS AS NFTs',W/2-130,584,8,'#9945FF');
+      txShadow('[M] MINT YOUR CARDS AS NFTs',W/2-130,584,8,'#9945FF','rgba(0,0,0,.4)');
     }
     g.globalAlpha=1;
   }
@@ -566,13 +566,13 @@ function dVictory(){
     win(W/2-160,596,320,22);
     const bcr=stats.bestClearRounds;const bct=stats.bestClearTime;
     const bcText=bcr>0?'BEST: Round '+bcr+' ('+Math.floor(bct/60)+'m'+('0'+(bct%60)).slice(-2)+'s)':'BEST CLEAR: not yet recorded';
-    tx(bcText,W/2-140,612,6,bcr>0?'#f0c830':'#686068');
+    txShadow(bcText,W/2-140,612,6,bcr>0?'#f0c830':'#686068','rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
   if(t>170){
     win(W/2-200,H-24,400,20);
     const hints=playerHasAllSixty()?'C=Claim  M=Mint  Z=Play Again  X=Title':'Z=Play Again   X=Title Screen';
-    tx(hints,W/2-190,H-6,7,'#c89820');
+    txShadow(hints,W/2-190,H-6,7,'#c89820','rgba(0,0,0,.4)');
   }
   if(t===31)sfxVictory();
 }
@@ -594,13 +594,13 @@ function dCrd(){
   const vault=pl[0].vault||new Set();
   const collected=vault.size;
   win(10,6,W-20,38);
-  tx('CARD COLLECTION',W/2-100,32,10);
+  txShadow('CARD COLLECTION',W/2-100,32,10,'#f0e8d0','rgba(0,0,0,.5)');
   // Progress bar
   const pct=collected/60;
   const barX_=W-220,barY_=12,barW_=160,barH_=14;
   bx(barX_,barY_,barW_,barH_,'#1a1a30');
   bx(barX_,barY_,Math.round(barW_*pct),barH_,collected>=60?'#f0c830':'#5080d0');
-  tx(collected+'/60',W-52,28,8,collected>=60?'#f0c830':'#c0d0f0');
+  txShadow(collected+'/60',W-52,28,8,collected>=60?'#f0c830':'#c0d0f0','rgba(0,0,0,.4)');
   // v115: Milestone tick marks on progress bar
   CARD_MILESTONES.forEach(m=>{
     const tx_=barX_+Math.round(barW_*m/60);
@@ -623,12 +623,12 @@ function dCrd(){
     const typeOwned=Array.from({length:12},(_,j)=>ti*12+j+1).filter(id=>vault.has(id)).length;
     const typeComplete=typeOwned>=12;
     bx(tx2,46,bw,22,isActive?typeColors[ti]:'#1a1a30');
-    tx(typeNames[ti],tx2+12,62,8,isActive?'#fff':typeColors[ti]);
+    txShadow(typeNames[ti],tx2+12,62,8,isActive?'#fff':typeColors[ti],'rgba(0,0,0,.4)');
     // v115: Completion count badge in top-right of each tab
     const countStr=typeOwned+'/12';
-    tx(countStr,tx2+bw-countStr.length*5-2,54,5,typeComplete?'#f0c830':isActive?'rgba(255,255,255,.7)':'rgba(128,128,160,.6)');
+    txShadow(countStr,tx2+bw-countStr.length*5-2,54,5,typeComplete?'#f0c830':isActive?'rgba(255,255,255,.7)':'rgba(128,128,160,.6)','rgba(0,0,0,.35)');
     // Gold star if complete
-    if(typeComplete){const s=Math.sin(fr*0.08+ti)*0.2+0.8;g.globalAlpha=s;tx('\u2605',tx2+4,54,5,'#f0c830');g.globalAlpha=1;}
+    if(typeComplete){const s=Math.sin(fr*0.08+ti)*0.2+0.8;g.globalAlpha=s;txShadow('\u2605',tx2+4,54,5,'#f0c830','rgba(0,0,0,.3)');g.globalAlpha=1;}
   }
   // Card grid: 4×3 = 12 cards per page
   const typeStart=crdPage*12;
@@ -663,14 +663,14 @@ function dCrd(){
       // Rarity stars
       const rar=cr.r||1;
       const rarColor=RARITY_COLOR[rar]||'#888898';
-      for(let s=0;s<rar;s++)tx('\u2605',cx+4+s*10,cy+CARD_H*0.55+12,7,rarColor);
+      for(let s=0;s<rar;s++)txShadow('\u2605',cx+4+s*10,cy+CARD_H*0.55+12,7,rarColor,'rgba(0,0,0,.3)');
       // Card name
       const nameFs=Math.max(5,Math.min(8,Math.floor(CARD_W/(cr.n.length*0.7))));
-      tx(cr.n,cx+CARD_W/2-cr.n.length*nameFs/2.4,cy+CARD_H*0.55+26,nameFs,'#f0e8d0');
+      txShadow(cr.n,cx+CARD_W/2-cr.n.length*nameFs/2.4,cy+CARD_H*0.55+26,nameFs,'#f0e8d0','rgba(0,0,0,.35)');
       // Type label
-      tx(CARD_TYPE_LABEL[cr.t]||'',cx+4,cy+CARD_H-16,5,cr.h||'#888');
+      txShadow(CARD_TYPE_LABEL[cr.t]||'',cx+4,cy+CARD_H-16,5,cr.h||'#888','rgba(0,0,0,.3)');
       // Special effect
-      if(cr.f)tx(cr.f,cx+4,cy+CARD_H-6,5,'#c0b888');
+      if(cr.f)txShadow(cr.f,cx+4,cy+CARD_H-6,5,'#c0b888','rgba(0,0,0,.3)');
     }else{
       // v116: Decorative card back — geometric mystery pattern
       bx(cx+4,cy+4,CARD_W-8,CARD_H-8,'#080818');
@@ -693,11 +693,11 @@ function dCrd(){
       g.globalAlpha=pu_*0.35;
       bx(cx+CARD_W/2-7,cy+CARD_H/2-9,14,14,'#2030b0');
       g.globalAlpha=0.55+pu_*0.45;
-      tx('?',cx+CARD_W/2-5,cy+CARD_H/2+5,10,'#2840d0');
+      txShadow('?',cx+CARD_W/2-5,cy+CARD_H/2+5,10,'#2840d0','rgba(0,0,0,.3)');
       g.globalAlpha=1;
       // Rarity hint stars (dim blue-tone)
       const rar_=cr.r||1;
-      for(let s_=0;s_<rar_;s_++) tx('\u2605',cx+4+s_*10,cy+CARD_H-16,6,'#1e2858');
+      for(let s_=0;s_<rar_;s_++) txShadow('\u2605',cx+4+s_*10,cy+CARD_H-16,6,'#1e2858','rgba(0,0,0,.3)');
     }
     // v93: Rival ownership dots + IN HAND badge
     {
@@ -711,7 +711,7 @@ function dCrd(){
         // "HAND" badge at bottom
         bx(cx+CARD_W-30,cy+CARD_H-14,28,12,'rgba(40,120,40,.85)');
         bx(cx+CARD_W-30,cy+CARD_H-14,28,1,'#60e060');
-        tx('HAND',cx+CARD_W-27,cy+CARD_H-5,5,'#60e060');
+        txShadow('HAND',cx+CARD_W-27,cy+CARD_H-5,5,'#60e060','rgba(0,0,0,.35)');
       }
     }
   }
@@ -720,9 +720,9 @@ function dCrd(){
     const vegaTotal=pl[1].cd.filter(c=>c>0).length;
     const miraTotal=pl[2].cd.filter(c=>c>0).length;
     bx(W-190,12,8,8,'#e060a0');
-    tx('V:'+vegaTotal,W-180,22,6,'#e060a0');
+    txShadow('V:'+vegaTotal,W-180,22,6,'#e060a0','rgba(0,0,0,.35)');
     bx(W-158,12,8,8,'#d0a030');
-    tx('M:'+miraTotal,W-148,22,6,'#d0a030');
+    txShadow('M:'+miraTotal,W-148,22,6,'#d0a030','rgba(0,0,0,.35)');
   }
   // v117: Persistent card info sidebar (right of grid)
   {
@@ -766,31 +766,31 @@ function dCrd(){
       g.globalAlpha=pu*0.5;
       bx(sidX+sidW/2-20,sidY+artH/2-24,40,40,'#1830b0');
       g.globalAlpha=pu*0.9;
-      tx('?',sidX+sidW/2-22,sidY+artH/2+22,36,'#2840d0');
+      txShadow('?',sidX+sidW/2-22,sidY+artH/2+22,36,'#2840d0','rgba(0,0,0,.3)');
       g.globalAlpha=1;
     }
     // Card number badge
     bx(sidX+4,sidY+4,24,14,'rgba(0,0,0,.6)');
-    tx('#'+String(cardId).padStart(2,'0'),sidX+5,sidY+15,6,owned?'#b0b8d0':'#2a2a60');
+    txShadow('#'+String(cardId).padStart(2,'0'),sidX+5,sidY+15,6,owned?'#b0b8d0':'#2a2a60','rgba(0,0,0,.4)');
     // Info block
     const infoY=sidY+artH+14;
     // Card name
     const nameStr=owned?cr.n:'?????';
     const nameFs=Math.min(14,Math.max(8,Math.floor(sidW*0.85/(Math.max(1,nameStr.length)*0.72))));
-    tx(nameStr,sidX+12,infoY,nameFs,owned?'#f0e8d0':'#202060');
+    txShadow(nameStr,sidX+12,infoY,nameFs,owned?'#f0e8d0':'#202060','rgba(0,0,0,.4)');
     // Rarity row
-    for(let s=0;s<rar;s++) tx('\u2605',sidX+12+s*14,infoY+20,10,owned?rarColor:'#1e2858');
-    tx(rarNames[rar]||'',sidX+12+rar*14+6,infoY+20,7,owned?rarColor:'#1e2858');
+    for(let s=0;s<rar;s++) txShadow('\u2605',sidX+12+s*14,infoY+20,10,owned?rarColor:'#1e2858','rgba(0,0,0,.3)');
+    txShadow(rarNames[rar]||'',sidX+12+rar*14+6,infoY+20,7,owned?rarColor:'#1e2858','rgba(0,0,0,.3)');
     // Type label
-    tx(typeFullNames[cr.t]||'',sidX+12,infoY+38,8,owned?cr.h||'#888898':'#1e2a6a');
+    txShadow(typeFullNames[cr.t]||'',sidX+12,infoY+38,8,owned?cr.h||'#888898':'#1e2a6a','rgba(0,0,0,.35)');
     // Effect text
     if(cr.f){
       const effStr=owned?cr.f:'[locked]';
-      tx(effStr,sidX+12,infoY+56,owned?7:6,owned?'#c0b888':'#1a2060');
+      txShadow(effStr,sidX+12,infoY+56,owned?7:6,owned?'#c0b888':'#1a2060','rgba(0,0,0,.3)');
     }
     // Source hint
     const srcStr=getCardSourceHint(cardId);
-    tx('Find: '+srcStr,sidX+12,infoY+74,6,owned?'#686878':'#141848');
+    txShadow('Find: '+srcStr,sidX+12,infoY+74,6,owned?'#686878':'#141848','rgba(0,0,0,.35)');
     // Status badge at bottom
     const badgeY=sidY+sidH-22;
     bx(sidX+2,badgeY-2,sidW-4,1,'rgba(255,255,255,.06)');
@@ -799,22 +799,22 @@ function dCrd(){
       const vegaHas=pl[1].cd.some(c=>c===cardId);
       const miraHas=pl[2].cd.some(c=>c===cardId);
       bx(sidX+8,badgeY,80,16,inHand?'rgba(40,120,40,.8)':'rgba(30,60,120,.8)');
-      tx(inHand?'IN YOUR HAND':'COLLECTED',sidX+10,badgeY+13,6,inHand?'#60e060':'#80b0f0');
-      if(vegaHas){bx(sidX+96,badgeY,54,16,'rgba(180,40,100,.7)');tx('VEGA HOLDS',sidX+98,badgeY+13,5,'#e060a0');}
-      if(miraHas){bx(sidX+158,badgeY,54,16,'rgba(160,120,20,.7)');tx('MIRA HOLDS',sidX+160,badgeY+13,5,'#d0a030');}
+      txShadow(inHand?'IN YOUR HAND':'COLLECTED',sidX+10,badgeY+13,6,inHand?'#60e060':'#80b0f0','rgba(0,0,0,.35)');
+      if(vegaHas){bx(sidX+96,badgeY,54,16,'rgba(180,40,100,.7)');txShadow('VEGA HOLDS',sidX+98,badgeY+13,5,'#e060a0','rgba(0,0,0,.3)');}
+      if(miraHas){bx(sidX+158,badgeY,54,16,'rgba(160,120,20,.7)');txShadow('MIRA HOLDS',sidX+160,badgeY+13,5,'#d0a030','rgba(0,0,0,.3)');}
     }else{
       bx(sidX+8,badgeY,90,16,'rgba(30,20,50,.8)');
-      tx('NOT YET OBTAINED',sidX+10,badgeY+13,6,'#3a3060');
+      txShadow('NOT YET OBTAINED',sidX+10,badgeY+13,6,'#3a3060','rgba(0,0,0,.3)');
     }
     // Z=detail hint
-    tx('Z \u25BA full detail',sidX+sidW-80,badgeY+13,5,'#2a2a50');
+    txShadow('Z \u25BA full detail',sidX+sidW-80,badgeY+13,5,'#2a2a50','rgba(0,0,0,.3)');
   }
   // Navigation
   win(10,H-30,W-20,24);
-  if(crdPage>0)tx('\u25C4 ←=PREV TYPE',20,H-12,7,'#8090c0');
-  tx(typeNames[crdPage]+' '+(crdPage+1)+'/5',W/2-52,H-12,8,typeColors[crdPage]);
-  if(crdPage<4)tx('NEXT TYPE= \u25BA',W-120,H-12,7,'#8090c0');
-  tx('Z=DETAIL  X=BACK',W/2+16,H-12,7,'#686878');
+  if(crdPage>0)txShadow('\u25C4 ←=PREV TYPE',20,H-12,7,'#8090c0','rgba(0,0,0,.35)');
+  txShadow(typeNames[crdPage]+' '+(crdPage+1)+'/5',W/2-52,H-12,8,typeColors[crdPage],'rgba(0,0,0,.4)');
+  if(crdPage<4)txShadow('NEXT TYPE= \u25BA',W-120,H-12,7,'#8090c0','rgba(0,0,0,.35)');
+  txShadow('Z=DETAIL  X=BACK',W/2+16,H-12,7,'#686878','rgba(0,0,0,.35)');
 }
 
 // ═══════════════════════════════════════
@@ -858,14 +858,14 @@ function drawCardDetailPanel(){
   const artH=160;
   bx(px_+2,py_+2,pw-4,artH,owned?cr.d:'#0e0c18');
   if(owned){drawCardCharacter(px_+pw/2-16,py_+8,cardId,2.2,fr);}
-  else{tx('?',px_+pw/2-18,py_+artH/2+16,40,'#201e38');}
+  else{txShadow('?',px_+pw/2-18,py_+artH/2+16,40,'#201e38','rgba(0,0,0,.3)');}
 
   // Rarity stars
   const rar=cr.r||1;
   const rarCol=RARITY_COLOR[rar]||'#888898';
   const rarLabel=RARITY_LABEL[rar]||'';
-  for(let s=0;s<rar;s++)tx('\u2605',px_+14+s*18,py_+artH+18,10,rarCol);
-  tx(rarLabel,px_+14+rar*18+6,py_+artH+18,7,rarCol);
+  for(let s=0;s<rar;s++)txShadow('\u2605',px_+14+s*18,py_+artH+18,10,rarCol,'rgba(0,0,0,.35)');
+  txShadow(rarLabel,px_+14+rar*18+6,py_+artH+18,7,rarCol,'rgba(0,0,0,.35)');
 
   // Card name
   const nameFs=Math.max(10,Math.min(16,Math.floor(pw/(cr.n.length*0.72))));
@@ -873,14 +873,14 @@ function drawCardDetailPanel(){
 
   // Type
   const tLabel={attack:'ATTACK',defense:'DEFENSE',flee:'FLEE',magic:'MAGIC',heal:'HEAL'}[cr.t]||cr.t.toUpperCase();
-  tx(tLabel,px_+pw/2-tLabel.length*3.5,py_+artH+50,7,owned?(cr.h||'#aaa'):'#40385a');
+  txShadow(tLabel,px_+pw/2-tLabel.length*3.5,py_+artH+50,7,owned?(cr.h||'#aaa'):'#40385a','rgba(0,0,0,.35)');
 
   // Separator
   bx(px_+20,py_+artH+58,pw-40,1,owned?cr.h+'80':'#20183040');
 
   // Effect / ability
   if(cr.f){
-    tx('ABILITY: '+cr.f,px_+20,py_+artH+76,7,owned?'#f0e0c0':'#403858');
+    txShadow('ABILITY: '+cr.f,px_+20,py_+artH+76,7,owned?'#f0e0c0':'#403858','rgba(0,0,0,.35)');
   }
 
   // Flavor text
@@ -895,24 +895,24 @@ function drawCardDetailPanel(){
     if(line.trim())lines.push(line.trim());
     lines.forEach((ln,li)=>{
       g.globalAlpha=0.7;
-      tx('\u201C'+ln+(li===lines.length-1?'\u201D':''),px_+20,py_+artH+96+li*16,6,'#c0b888');
+      txShadow('\u201C'+ln+(li===lines.length-1?'\u201D':''),px_+20,py_+artH+96+li*16,6,'#c0b888','rgba(0,0,0,.3)');
       g.globalAlpha=1;
     });
   }else if(!owned){
-    tx('??? — Card not yet collected',px_+20,py_+artH+96,6,'#302848');
+    txShadow('??? — Card not yet collected',px_+20,py_+artH+96,6,'#302848','rgba(0,0,0,.3)');
   }
 
   // Source hint
   const src=getCardSourceHint(cardId);
-  tx('Found: '+src,px_+20,py_+ph-44,6,owned?'#908880':'#302848');
+  txShadow('Found: '+src,px_+20,py_+ph-44,6,owned?'#908880':'#302848','rgba(0,0,0,.35)');
 
   // In-hand indicator
   const inHand=pl[0].cd.includes(cardId);
-  if(inHand)tx('\u2665 IN HAND',px_+20,py_+ph-28,6,'#d08050');
-  else if(owned)tx('\u2713 IN VAULT',px_+20,py_+ph-28,6,'#50b050');
-  else tx('\u2715 NOT COLLECTED',px_+20,py_+ph-28,6,'#604060');
+  if(inHand)txShadow('\u2665 IN HAND',px_+20,py_+ph-28,6,'#d08050','rgba(0,0,0,.35)');
+  else if(owned)txShadow('\u2713 IN VAULT',px_+20,py_+ph-28,6,'#50b050','rgba(0,0,0,.35)');
+  else txShadow('\u2715 NOT COLLECTED',px_+20,py_+ph-28,6,'#604060','rgba(0,0,0,.3)');
 
-  tx('X = BACK',px_+pw-70,py_+ph-28,6,'#686878');
+  txShadow('X = BACK',px_+pw-70,py_+ph-28,6,'#686878','rgba(0,0,0,.35)');
 }
 
 // ═══════════════════════════════════════
@@ -944,9 +944,9 @@ function dLog(){
   ];
   statParts.forEach((s,si)=>{
     const sx=36+si*230;
-    tx(s.icon,sx,statBannerY+18,8,s.col);
-    tx(s.val+'',sx+12,statBannerY+18,8,'#f0e8d0');
-    if(s.label) tx(s.label,sx+12+String(s.val).length*7,statBannerY+18,6,'#505070');
+    txShadow(s.icon,sx,statBannerY+18,8,s.col,'rgba(0,0,0,.35)');
+    txShadow(s.val+'',sx+12,statBannerY+18,8,'#f0e8d0','rgba(0,0,0,.35)');
+    if(s.label) txShadow(s.label,sx+12+String(s.val).length*7,statBannerY+18,6,'#505070','rgba(0,0,0,.3)');
   });
 
   // Scrollable log entries
@@ -998,7 +998,7 @@ function dLog(){
     // Icon box
     bx(24,y+6,16,16,'rgba(0,0,0,.5)');
     bx(24,y+6,16,1,col);
-    tx(icon,25,y+18,8,col);
+    txShadow(icon,25,y+18,8,col,'rgba(0,0,0,.35)');
     // Entry text
     const maxChars=70;
     const displayText=l.length>maxChars?l.substring(0,maxChars)+'..':l;
