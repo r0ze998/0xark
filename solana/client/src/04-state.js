@@ -332,14 +332,6 @@ const INTRO_PAGES=[
 
 // ── Battle encounter exclamation ──
 let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
-// v81: Pre-battle rival dialogue
-// v82: Dynamic NPC dialogue + proximity speech bubbles
-// v83: Card-lost animation — card flies to rival when stolen from player
-// v84: Town weather system — dynamic clear/rain/fog with particles and fog wisps
-// v85: Floor-clear fanfare overlay — cinematic card reward on floor descent
-// v86: Gacha pull history panel — last 8 pulls shown beside gacha menu
-// v87: World-space player status bubble — card count + decay timer above sprite
-// v88: Battle DRAW pool preview — shows floor card pool when DRAW is selected
 let encounterRivalLine=''; // context-sensitive line for exclamation animation
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
 

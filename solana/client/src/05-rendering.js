@@ -402,14 +402,10 @@ function drawBush(px,py,tx_,ty){
   bx(px+10,py+14,2,2,'#c04040');bx(px+20,py+12,2,2,'#c04040');bx(px+14,py+18,2,2,'#c04040');
 }
 
-function lighten(hex,amt){
-  const r=parseInt(hex.slice(1,3),16),g_=parseInt(hex.slice(3,5),16),b_=parseInt(hex.slice(5,7),16);
-  return `rgb(${Math.min(255,r+amt*255)},${Math.min(255,g_+amt*255)},${Math.min(255,b_+amt*255)})`;
-}
-function darken(hex,amt){
-  const r=parseInt(hex.slice(1,3),16),g_=parseInt(hex.slice(3,5),16),b_=parseInt(hex.slice(5,7),16);
-  return `rgb(${Math.max(0,r-amt*255)},${Math.max(0,g_-amt*255)},${Math.max(0,b_-amt*255)})`;
-}
+function _parseHex(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return[r,g,b];}
+function lighten(hex,amt){const[r,g,b]=_parseHex(hex);return`rgb(${Math.min(255,r+amt*255|0)},${Math.min(255,g+amt*255|0)},${Math.min(255,b+amt*255|0)})`;}
+function darken(hex,amt){const[r,g,b]=_parseHex(hex);return`rgb(${Math.max(0,r-amt*255|0)},${Math.max(0,g-amt*255|0)},${Math.max(0,b-amt*255|0)})`;}
+
 
 function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
   if(useKenney.building){
