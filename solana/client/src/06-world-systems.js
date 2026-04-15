@@ -24,16 +24,7 @@ function checkDungeonRivalEncounter(){
       // Trigger encounter — set cooldown so game-loop check doesn't double-fire
       encounterCooldown=120;
       const ai=rivalAI[idx];
-      // Collector no longer flees in dungeon — battle always starts on encounter
-      if(false&&ai.personality==='collector'&&ai.state!=='fleeing'&&Math.random()<0.05){
-        ai.state='fleeing';ai.stateTimer=8;ai.moveInterval=5;
-        const fdx=r.x-pl[0].x;const fdy=r.y-pl[0].y;
-        const fx=r.x+(fdx!==0?fdx*5:0);const fy=r.y+(fdy!==0?fdy*5:0);
-        const flee=findWalkableTile(rivalMaps[idx],Math.max(2,Math.min(MW-3,fx)),Math.max(2,Math.min(MH-3,fy)),5);
-        if(flee){ai.goalX=flee.x;ai.goalY=flee.y;ai.goalMap=rivalMaps[idx];}
-        lg.push(r.n+' is trying to run away!');
-        return;
-      }
+      // Dungeon encounters always battle — no collector flee
       encounterExclActive=true;encounterExclFrame=fr;
       encounterExclTarget=idx+1;
       encounterExclPlayerX=pl[0].visualX;encounterExclPlayerY=pl[0].visualY;
@@ -161,8 +152,17 @@ function doMapTransition(exit){
       runMission={..._mDef,progress:0,completed:false,rewardGiven:false};
       roundsThisRun=0;
       lg.push('MISSION: '+runMission.desc+' → '+runMission.reward);
-      pl[1].x=8;pl[1].y=10;pl[1].visualX=8*TW;pl[1].visualY=10*TH;
-      pl[2].x=28;pl[2].y=18;pl[2].visualX=28*TW;pl[2].visualY=18*TH;
+      // Spawn rivals at actual room centers so they don't embed in walls
+      {
+        const fl1Rooms=dungeonRooms[1]||[];
+        // Prefer rooms in the right half of the map (away from player entry at x=3)
+        const rightRooms=fl1Rooms.filter(r=>r.cx>20);
+        const allRight=rightRooms.length>0?rightRooms:fl1Rooms;
+        const r1=allRight[0]||{cx:32,cy:10};
+        const r2=allRight[allRight.length-1]||{cx:32,cy:20};
+        pl[1].x=r1.cx;pl[1].y=r1.cy;pl[1].visualX=r1.cx*TW;pl[1].visualY=r1.cy*TH;
+        pl[2].x=r2.cx;pl[2].y=r2.cy;pl[2].visualX=r2.cx*TW;pl[2].visualY=r2.cy*TH;
+      }
       rivalMaps=[1,1];
       rivalAI[0].goalX=32;rivalAI[0].goalY=12;rivalAI[0].state='exploring';
       rivalAI[0].lastKnownPlayerMap=-1;rivalAI[0].lastKnownPlayerX=-1;rivalAI[0].lastKnownPlayerY=-1;

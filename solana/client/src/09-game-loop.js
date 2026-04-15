@@ -298,21 +298,7 @@ function update(){
       const encounterDist=areaDanger[currentMap]>=DANGER_HIGH_THRESH?2:1;
       if(adjDist<=encounterDist&&adjDist>0){
         if(!encounterCooldown){
-          // Collector rival: 70% chance to flee instead of fight
-          const ai=rivalAI[idx];
-          if(ai.personality==='collector'&&ai.state!=='fleeing'&&Math.random()<0.7){
-            ai.state='fleeing';
-            ai.stateTimer=6;
-            ai.moveInterval=6;
-            const fdx=r.x-pl[0].x;const fdy=r.y-pl[0].y;
-            const fx=r.x+(fdx!==0?fdx*4:0);const fy=r.y+(fdy!==0?fdy*4:0);
-            const flee=findWalkableTile(rivalMaps[idx],Math.max(2,Math.min(MW-3,fx)),Math.max(2,Math.min(MH-3,fy)),5);
-            if(flee){ai.goalX=flee.x;ai.goalY=flee.y;ai.goalMap=rivalMaps[idx];}
-            lg.push(r.n+' is trying to run away!');
-            encounterCooldown=60;
-            return;
-          }
-
+          // Dungeon encounters always start battle — no fleeing
           encounterCooldown=120;
           encounterExclActive=true;
           encounterExclFrame=fr;
