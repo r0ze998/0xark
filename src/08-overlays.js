@@ -214,27 +214,39 @@ function drawMarketplace(){
   tx('[←/→] Tabs   [X] Close',mx+14,my+mh-26,7,'#506850');
 }
 
+// v187: discard overlay — slide-in + polish (local frame tracker avoids multi-file edit)
+let discardOpenFrame_=0;
 function drawDiscardOverlay(){
-  if(!discardActive)return;
-  bx(0,0,W,H,'rgba(0,0,0,.65)');
+  if(!discardActive){discardOpenFrame_=0;return;}
+  if(!discardOpenFrame_)discardOpenFrame_=fr;
   const discardVisible=Math.min(HAND_SIZE,8);
   const panH=60+discardVisible*44+28;
-  const panY=Math.max(10,H/2-panH/2-20);
-  win(W/2-220,panY,440,panH);
-  bx(W/2-220,panY,440,28,'#1a0808');
+  const panYBase=Math.max(10,H/2-panH/2-20);
+  // Slide in from above (easeOut cubic, 8 frames)
+  const tSlide=Math.min(1,(fr-discardOpenFrame_)/8);
+  const eSlide=1-Math.pow(1-tSlide,3);
+  const panY=panYBase-(1-eSlide)*panH;
 
-  if(discardPendingCard>0){
-    txShadow('HAND FULL — Discard a card',W/2-100,panY+20,10,'#d04040','rgba(0,0,0,.4)');
-    // Show incoming card preview on right side
-    const pendCr=CD[discardPendingCard-1];
-    const rarCol=RARITY_COLOR[pendCr.r]||'#888898';
+  bx(0,0,W,H,'rgba(0,0,0,.65)');
+  win(W/2-220,panY,440,panH);
+
+  // Header: dark background + incoming card rarity accent stripe
+  const pendCr=discardPendingCard>0?CD[discardPendingCard-1]:null;
+  const headerRarCol=pendCr?(RARITY_COLOR[pendCr.r]||'#c04040'):'#b06030';
+  bx(W/2-220,panY,440,28,'#100810');
+  bx(W/2-220,panY,4,28,headerRarCol);
+
+  if(pendCr){
+    txShadow('HAND FULL \u2014 Discard a card',W/2-96,panY+20,10,'#d04040','rgba(0,0,0,.4)');
+    // Incoming card preview (right side of panel)
     const previewX=W/2+90,previewY=panY+34;
     bx(previewX,previewY,116,88,pendCr.d);bx(previewX+1,previewY+1,114,86,pendCr.c);
+    bx(previewX,previewY,3,88,headerRarCol); // rarity left bar on preview
     drawCardCharacter(previewX+4,previewY+4,discardPendingCard,1.4,fr);
-    tx('INCOMING:',previewX,previewY+66,5,'#a09080');
-    txShadow(pendCr.n,previewX,previewY+78,7,rarCol,'rgba(0,0,0,.3)');
-    for(let s=0;s<(pendCr.r||1);s++)tx('\u2605',previewX+s*10,previewY+89,8,rarCol);
-    tx(pendCr.f||'',previewX,previewY+100,5,'#c0b888');
+    txShadow('INCOMING:',previewX,previewY+66,5,'#c0a880','rgba(0,0,0,.3)');
+    txShadow(pendCr.n,previewX,previewY+78,7,headerRarCol,'rgba(0,0,0,.3)');
+    for(let s=0;s<(pendCr.r||1);s++)tx('\u2605',previewX+s*10,previewY+89,8,headerRarCol);
+    txShadow(pendCr.f||'',previewX,previewY+100,5,'#c0b888','rgba(0,0,0,.3)');
   }else{
     txShadow('DISCARD a card',W/2-70,panY+20,10,'#b06030','rgba(0,0,0,.4)');
   }
@@ -246,15 +258,19 @@ function drawDiscardOverlay(){
     if(i>=HAND_SIZE)break;
     const cd=pl[0].cd[i],cy=panY+36+vi*44;
     const sel=(i===discardSelIdx);
-    if(sel){bx(W/2-208,cy,202,40,'rgba(192,168,96,.22)');bx(W/2-208,cy,202,1,'#c0a040');}
+    if(sel){
+      bx(W/2-208,cy,202,40,'rgba(192,80,80,.18)');
+      bx(W/2-208,cy,202,1,'#c04040');
+      bx(W/2-208,cy,3,40,'#c04040'); // selected: red left accent bar
+    }
     if(cd>0){
       const cr=CD[cd-1];
       bx(W/2-200,cy+6,28,28,cr.d);bx(W/2-198,cy+8,24,24,cr.c);
       drawCardCharacter(W/2-197,cy+8,cd,0.9,fr);
-      tx(cr.n,W/2-160,cy+18,7,sel?'#c04040':'#303028');
-      // v127: rarity stars inline
-      {const rar=cr.r||1;const rarCol=RARITY_COLOR[rar]||'#888898';for(let s=0;s<rar;s++)tx('\u2605',W/2-36+s*7,cy+18,5,rarCol);}
-      // v78: show decay timer
+      txShadow(cr.n,W/2-160,cy+18,7,sel?'#ff6060':'#d0c8a8','rgba(0,0,0,.35)');
+      // Rarity stars inline
+      {const rar=cr.r||1;const rc=RARITY_COLOR[rar]||'#888898';for(let s=0;s<rar;s++)tx('\u2605',W/2-36+s*7,cy+18,5,rc);}
+      // Decay timer bar
       if(cardTimers[i]>0){
         const remMs=Math.max(0,CARD_DECAY_MS-(Date.now()-cardTimers[i]));
         const remFrac=remMs/CARD_DECAY_MS;
@@ -264,16 +280,16 @@ function drawDiscardOverlay(){
         const barCol=remFrac>0.5?'#40d040':remFrac>0.25?'#d0c040':'#d04040';
         bx(W/2-160,cy+28,80,3,'#181828');
         bx(W/2-160,cy+28,Math.floor(80*remFrac),3,barCol);
-        tx(timeStr,W/2-74,cy+32,5,remFrac<0.25?'#d04040':'#808878');
+        txShadow(timeStr,W/2-74,cy+32,5,remFrac<0.25?'#ff5050':'#b0b090','rgba(0,0,0,.3)');
       }else{
-        tx('safe',W/2-160,cy+32,5,'#508050');
+        txShadow('safe',W/2-160,cy+32,5,'#60c060','rgba(0,0,0,.3)');
       }
     }else{
-      tx('(empty slot)',W/2-160,cy+22,6,'#a09888');
+      txShadow('(empty slot)',W/2-160,cy+22,6,'#706050','rgba(0,0,0,.3)');
     }
     if(sel)tx('\u25B6',W/2-214,cy+24,7,'#c04040');
   }
-  tx('Z=Discard  X=Skip',W/2-80,panY+panH-14,6,'#686068');
+  txShadow('[Z] Discard  \u2502  [X] Skip',W/2-80,panY+panH-12,7,'#a898c8','rgba(0,0,0,.4)');
 }
 
 // ═══════════════════════════════════════
