@@ -71,8 +71,8 @@ function update(){
   if(lg.length>200)lg.splice(0,lg.length-200);
   if(burnedTiles.length>500)burnedTiles.splice(0,burnedTiles.length-500);
   processHeldMovement();
-  // FRLG dungeon tiles are static — tile cache only invalidates on camera move/map change
-  // (no per-frame dirty-marking needed; visual tiles have no time-based animation)
+  // Invalidate tile cache when wt changes (every 20 frames) — lava/campfire use wt for animation
+  if(wt!==_tileCacheLastWt){tileCacheDirty=true;_tileCacheLastWt=wt;}
   // Refresh atmosphere cache on lantern flicker cadence
   if(!inDungeon&&fr%90===0)_atmosDirty=true;
   updateVisualPositions();updateAmbient();

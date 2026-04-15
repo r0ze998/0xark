@@ -1012,6 +1012,7 @@ tileCtx.imageSmoothingEnabled=false;
 let tileCacheDirty=true;
 let tileCacheLastCamX=-9999,tileCacheLastCamY=-9999;
 let tileCacheLastMap=-1;
+let _tileCacheLastWt=-1; // track wt changes for lava/campfire animation
 
 const edgeCanvas=document.createElement('canvas');
 edgeCanvas.width=W;edgeCanvas.height=H;

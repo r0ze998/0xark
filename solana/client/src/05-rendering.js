@@ -515,15 +515,9 @@ function drawRuinsPillar(px,py,tx_,ty){
 
 function drawGlowTile(px,py,tx_,ty){
   if(currentMap>0){
-    // Dungeon special tile: gem floor with pulsing teal glow
+    // Dungeon special: gem floor — static base only (animated glow in drawDungeonAnimatedOverlays)
     drawGrass(px,py,tx_,ty);
-    const cfr=typeof fr!=='undefined'?fr:0;
-    const pulse=Math.sin(cfr*.06+tx_*2+ty*3)*.35+.55;
-    // Draw gem tile on top
-    if(dungeonSheetLoaded){g.globalAlpha=pulse*0.9;drawDungeonTile(DT.floorGem,px,py,2);g.globalAlpha=1;}
-    // Teal glow halo
-    g.fillStyle=`rgba(40,200,160,${pulse*.22})`;
-    g.beginPath();g.arc(px+TW/2,py+TH/2,15,0,Math.PI*2);g.fill();
+    if(dungeonSheetLoaded){g.globalAlpha=0.7;drawDungeonTile(DT.floorGem,px,py,2);g.globalAlpha=1;}
     return;
   }
   drawGrass(px,py,tx_,ty);
@@ -562,30 +556,17 @@ function drawLava(px,py,tx_,ty){
 
 function drawCrystal(px,py,tx_,ty){
   if(currentMap>0){
-    // Dungeon crystal: deep ARK maritime crystal — teal-shifted per floor
+    // Dungeon crystal — static body only (sparkle + glow halo in drawDungeonAnimatedOverlays)
     drawGrass(px,py,tx_,ty);
-    const cfr=typeof fr!=='undefined'?fr:0;
-    const r=tr(tx_,ty);
     const depth=currentMap;
-    // Color shifts deeper — teal→sapphire
     const hue=depth<=2?'#28a8c0':depth===3?'#1880c8':'#1058d0';
     const hueD=depth<=2?'#166878':depth===3?'#104868':'#0c3080';
     const hueL=depth<=2?'#50d0e8':depth===3?'#40b0e0':'#3088e0';
-    // Crystal cluster
     bx(px+10,py+4,12,22,hue);bx(px+8,py+10,16,12,hue);
     bx(px+12,py+2,8,5,hueL);
-    // Secondary shards
     bx(px+4,py+12,6,14,hueD);bx(px+22,py+8,6,16,hueD);
-    // Inner facet face (lighter)
     bx(px+12,py+6,4,10,hueL);bx(px+14,py+4,2,5,'rgba(255,255,255,.4)');
-    // Specular glint
-    const sparkle=Math.sin(cfr*.1+tx_*5+ty*7)>.45;
-    if(sparkle){bx(px+15,py+8,3,2,'#fff');bx(px+10,py+15,2,2,'rgba(255,255,255,.8)');}
-    // Sub-facet texture
     bx(px+10,py+10,2,8,'rgba(255,255,255,.06)');
-    // Glow halo (ARK teal)
-    g.fillStyle=`rgba(30,140,200,${.16+Math.sin(cfr*.05+tx_+ty)*.09})`;
-    g.beginPath();g.arc(px+16,py+16,11,0,Math.PI*2);g.fill();
     return;
   }
   drawGrass(px,py,tx_,ty);
@@ -604,33 +585,15 @@ function drawCrystal(px,py,tx_,ty){
 
 function drawAltar(px,py,tx_,ty){
   if(currentMap>0){
-    // Dungeon altar: weathered dark steel with brass ARK gold accents
+    // Dungeon altar — static stone base only (floating orb + pulse in drawDungeonAnimatedOverlays)
     drawGrass(px,py,tx_,ty);
-    const cfr=typeof fr!=='undefined'?fr:0;
-    const pulse=Math.sin(cfr*.04)*.3+.5;
-    // Base slab — dark plate steel
     bx(px+2,py+20,28,10,'#101620');bx(px+4,py+18,24,10,'#18202c');
-    // Top surface
     bx(px+6,py+14,20,5,'#1e2830');bx(px+8,py+12,16,4,'#242e3c');
-    // Brass trim lines (ARK.gold = #c8a448)
     bx(px+6,py+14,20,1,'#a08028');bx(px+4,py+18,24,1,'#7a6018');
     bx(px+2,py+20,28,1,'#584810');
-    // Corner brass rivets
     bx(px+4,py+19,3,3,'#b89030');bx(px+5,py+19,1,1,'rgba(255,220,100,.3)');
     bx(px+25,py+19,3,3,'#b89030');bx(px+26,py+19,1,1,'rgba(255,220,100,.3)');
-    // Scanlines on base
     for(let sy=0;sy<10;sy+=2){g.fillStyle='rgba(0,0,0,.07)';g.fillRect(px+2,py+20+sy,28,1);}
-    // Glow on altar top (brass gold)
-    bx(px+10,py+12,12,3,`rgba(200,164,72,${pulse*.42})`);
-    // Floating brass orb
-    const orbY=py+4+Math.sin(cfr*.05)*3;
-    g.fillStyle=`rgba(200,164,72,${pulse*.65})`;
-    g.beginPath();g.arc(px+16,orbY,5,0,Math.PI*2);g.fill();
-    g.fillStyle=`rgba(240,200,80,${pulse*.22})`;
-    g.beginPath();g.arc(px+16,orbY,10,0,Math.PI*2);g.fill();
-    // Arcane inscriptions on base
-    bx(px+8,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);bx(px+20,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);
-    bx(px+14,py+24,4,1,`rgba(200,164,72,${pulse*.25})`);
     return;
   }
   drawGrass(px,py,tx_,ty);
@@ -801,6 +764,46 @@ function drawDungeonStairGlows(startTX,startTY,endTX,endTY){
         g.beginPath();g.ellipse(px+16,py+8,11,6,0,0,Math.PI*2);g.fill();
         g.fillStyle=`rgba(140,220,255,${pulse*.8})`;
         g.beginPath();g.moveTo(px+16,py+6);g.lineTo(px+12,py+12);g.lineTo(px+20,py+12);g.closePath();g.fill();
+      }
+    }
+  }
+}
+
+// Animated dungeon decor overlays — glow tile, crystal sparkles, altar orb
+// Drawn every frame on main canvas (bypass static tile cache)
+function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
+  if(!inDungeon)return;
+  const m=getMap();
+  for(let y=startTY;y<=endTY;y++){
+    for(let x=startTX;x<=endTX;x++){
+      const t=m[y]?.[x];
+      if(t!==24&&t!==26&&t!==27)continue;
+      if(!fogRevealed[currentMap]?.[y]?.[x])continue;
+      const px=x*TW-camX,py=y*TH-camY;
+      if(px<-TW||px>W||py<-TH||py>H)continue;
+      if(t===24){
+        // Glow tile: pulsing teal halo
+        const pulse=Math.sin(fr*.06+x*2+y*3)*.35+.55;
+        g.fillStyle=`rgba(40,200,160,${pulse*.22})`;
+        g.beginPath();g.arc(px+TW/2,py+TH/2,15,0,Math.PI*2);g.fill();
+      }else if(t===26){
+        // Crystal: sparkle glint + glow halo
+        const sparkle=Math.sin(fr*.1+x*5+y*7)>.45;
+        if(sparkle){bx(px+15,py+8,3,2,'#fff');bx(px+10,py+15,2,2,'rgba(255,255,255,.8)');}
+        g.fillStyle=`rgba(30,140,200,${.16+Math.sin(fr*.05+x+y)*.09})`;
+        g.beginPath();g.arc(px+16,py+16,11,0,Math.PI*2);g.fill();
+      }else if(t===27){
+        // Altar: floating brass orb + pulse glow
+        const pulse=Math.sin(fr*.04)*.3+.5;
+        const orbY=py+4+Math.sin(fr*.05)*3;
+        g.fillStyle=`rgba(200,164,72,${pulse*.65})`;
+        g.beginPath();g.arc(px+16,orbY,5,0,Math.PI*2);g.fill();
+        g.fillStyle=`rgba(240,200,80,${pulse*.22})`;
+        g.beginPath();g.arc(px+16,orbY,10,0,Math.PI*2);g.fill();
+        bx(px+10,py+12,12,3,`rgba(200,164,72,${pulse*.42})`);
+        bx(px+8,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);
+        bx(px+20,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);
+        bx(px+14,py+24,4,1,`rgba(200,164,72,${pulse*.25})`);
       }
     }
   }
