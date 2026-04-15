@@ -435,21 +435,21 @@ function drawBuildingInterior(){
     txShadow('Collection: '+vSize+'/60',gx+8,gy+40,7,'#c8c0a0','rgba(0,0,0,.3)');
 
     if(gachaPhase==='menu'){
-      tx('Choose a draw type:',gx+16,gy+58,8,'#d0c8a0');
+      txShadow('Choose a draw type:',gx+16,gy+58,8,'#d0c8a0','rgba(0,0,0,.3)');
       GACHA_TIERS.forEach((t,i)=>{
         const isSelected=gachaSelectedTier===i;
         const ty_=gy+76+i*62;
         bx(gx+12,ty_,gw-24,54,isSelected?'#2a2a50':'#181828');
-        if(isSelected)bx(gx+12,ty_,gw-24,54,'rgba(248,200,64,.1)');
+        if(isSelected)bx(gx+12,ty_,gw-24,54,'rgba(248,200,64,.08)');
         bx(gx+12,ty_,3,54,isSelected?'#f8c840':'#3a3a60');
-        tx(t.name,gx+22,ty_+14,9,isSelected?'#f8f0e0':'#b0a8c0');
-        tx(t.label,gx+22,ty_+28,8,'#f0c040');
+        txShadow(t.name,gx+22,ty_+14,9,isSelected?'#f8f0e0':'#b0a8c0',isSelected?'rgba(0,0,0,.4)':'rgba(0,0,0,.2)');
+        txShadow(t.label,gx+22,ty_+28,8,'#f0c040','rgba(0,0,0,.3)');
         // Rarity preview dots
         const uniqueR=[...new Set(t.rarities)].sort();
         uniqueR.forEach((r,ri)=>{
           const dotX=gx+gw-80+ri*14;
           bx(dotX,ty_+14,10,10,RARITY_COLOR[r]);
-          tx('★',dotX,ty_+25,5,RARITY_COLOR[r]);
+          tx('\u2605',dotX,ty_+25,5,RARITY_COLOR[r]);
         });
         if(isSelected)tx('\u25b6',gx+gw-30,ty_+26,8,'#f8c840');
       });
@@ -457,28 +457,26 @@ function drawBuildingInterior(){
       // Pity counter
       const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
       const pityCol=gachaPityCount>=7?'#f0c830':gachaPityCount>=4?'#e08040':'#686878';
-      tx('PITY: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' — RARE SOON!':''),gx+16,gy+gh-40,6,pityCol);
-      tx('[Z] Draw   [X] Cancel',gx+16,gy+gh-26,7,'#686878');
-      // v86: Pull history panel (right of main panel)
+      txShadow('PITY: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' \u2014 RARE SOON!':''),gx+16,gy+gh-40,6,pityCol,'rgba(0,0,0,.3)');
+      txShadow('[Z] Draw   [X] Cancel',gx+16,gy+gh-26,7,'#8888a0','rgba(0,0,0,.3)');
+      // Pull history panel (right of main panel)
       if(gachaHistory.length>0){
         const hx=gx+gw+8,hy=gy,hw=180,hh=gh;
         win(hx,hy,hw,hh);
         bx(hx,hy,hw,28,'#1a1a30');
+        bx(hx,hy,4,28,'#c8b870'); // gold left accent
         txShadow('RECENT',hx+hw/2-36,hy+20,11,'#c8b870','rgba(0,0,0,.4)');
         bx(hx,hy+28,hw,1,'#282848');
         const rarLabels=['','Common','Uncommon','Rare','Epic','Legendary'];
         const rarColors_=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
         gachaHistory.forEach((h,i)=>{
           const hy2=hy+36+i*36;
-          const cr3=CD[h.cardId-1];
+          const cr3=CD[h.cardId-1];if(!cr3)return;
           const rcol3=rarColors_[h.rarity]||'#888888';
-          // Rarity dot
           bx(hx+10,hy2-6,10,10,rcol3);
-          // Card name
           const nm=cr3.n.length>14?cr3.n.substring(0,13)+'.':cr3.n;
-          tx(nm,hx+26,hy2+2,7,i===0?'#f8f0e0':'#a0a0a0');
-          // Rarity label tiny
-          tx(rarLabels[h.rarity]||'',hx+26,hy2+14,5,rcol3);
+          txShadow(nm,hx+26,hy2+2,7,i===0?'#f8f0e0':'#909090','rgba(0,0,0,.3)');
+          txShadow(rarLabels[h.rarity]||'',hx+26,hy2+14,5,rcol3,'rgba(0,0,0,.3)');
         });
       }
     }else if(gachaPhase==='spinning'){
@@ -577,43 +575,42 @@ function drawBuildingInterior(){
         g.globalAlpha=1;
       }
       g.globalAlpha=1;
-      if(t2>30){tx('[Z] Take   [X] Close',gx+16,gy+gh-36,7,'#686878');}
+      if(t2>30){txShadow('[Z] Take   [X] Close',gx+16,gy+gh-36,7,'#8888a0','rgba(0,0,0,.3)');}
     }
   }
 
-  // x402 shop overlay
+  // x402 shop overlay (v189: txShadow polish)
   if(x402ShopOpen){
     bx(0,0,W,H,'rgba(0,0,0,.5)');
     const shopW=440,shopH=x402ShopItems.length*26+80;
     const sx=W/2-shopW/2,sy=H/2-shopH/2;
     win(sx,sy,shopW,shopH);
-    tx('BUY INTEL',sx+shopW/2-40,sy+18,9,'#c04040');
-    // x402 status with endpoint URL
+    bx(sx,sy,shopW,28,'#1a0a0a');
+    bx(sx,sy,4,28,'#c04040');
+    txShadow('BUY INTEL',sx+shopW/2-40,sy+20,9,'#c04040','rgba(0,0,0,.5)');
     if(x402Available){
-      tx('x402 ONLINE',sx+shopW-100,sy+14,5,'#40a060');
-      tx(x402ServerUrl,sx+shopW-100,sy+24,4,'#40a060');
+      txShadow('x402 ONLINE',sx+shopW-104,sy+14,5,'#40a060','rgba(0,0,0,.3)');
+      txShadow(x402ServerUrl,sx+shopW-104,sy+24,4,'#306840','rgba(0,0,0,.3)');
     }else{
-      tx('OFFLINE',sx+shopW-80,sy+18,5,'#a04040');
+      txShadow('OFFLINE',sx+shopW-82,sy+18,5,'#a04040','rgba(0,0,0,.3)');
     }
     for(let i=0;i<x402ShopItems.length;i++){
       const item=x402ShopItems[i];
       const iy=sy+38+i*26;
       const sel=i===x402ShopIdx;
-      if(sel)bx(sx+8,iy-4,shopW-16,22,'rgba(60,60,100,.4)');
-      tx((sel?'> ':' ')+item.label,sx+16,iy+8,7,sel?'#e0e0f0':'#808098');
-      // Show USDC price when x402 is online, card cost when offline
+      if(sel){bx(sx+8,iy-4,shopW-16,22,'rgba(60,60,100,.35)');bx(sx+8,iy-4,3,22,'#c04040');}
+      txShadow((sel?'\u25b6 ':' ')+item.label,sx+16,iy+8,7,sel?'#e0d8f0':'#808098','rgba(0,0,0,.3)');
       const displayPrice=x402Available?item.price:(item.priceOffline||item.price);
       const priceCol=item.cardCost===0?'#40a060':'#c08040';
-      tx(displayPrice,sx+shopW-120,iy+8,6,priceCol);
-      // Show endpoint path when online
+      txShadow(displayPrice,sx+shopW-120,iy+8,6,priceCol,'rgba(0,0,0,.3)');
       if(x402Available&&!item.isInfo){
-        tx(item.endpoint,sx+shopW-120,iy+16,4,'#555580');
+        txShadow(item.endpoint,sx+shopW-120,iy+16,4,'#505070','rgba(0,0,0,.2)');
       }
     }
-    tx('Z=Buy  X=Close',sx+shopW/2-60,sy+shopH-18,6,'#686068');
+    txShadow('[Z] Buy   [X] Close',sx+shopW/2-64,sy+shopH-18,6,'#8888a0','rgba(0,0,0,.3)');
     if(x402ShopLoading){
       bx(0,0,W,H,'rgba(0,0,0,.3)');
-      tx('Fetching intel...',W/2-70,H/2,8,'#80c0e0');
+      txShadow('Fetching intel...',W/2-70,H/2,8,'#80c0e0','rgba(0,0,0,.4)');
     }
   }
   // x402 "HOW IT WORKS" info overlay
@@ -622,11 +619,12 @@ function drawBuildingInterior(){
     const iw=440,ih=x402HowItWorksText.length*18+50;
     const ix=W/2-iw/2,iy=H/2-ih/2;
     win(ix,iy,iw,ih);
-    tx('HOW x402 WORKS',ix+iw/2-70,iy+20,9,'#14F195');
+    bx(ix,iy,iw,28,'#061a12');bx(ix,iy,4,28,'#14F195');
+    txShadow('HOW x402 WORKS',ix+iw/2-70,iy+20,9,'#14F195','rgba(0,0,0,.5)');
     for(let i=0;i<x402HowItWorksText.length;i++){
-      tx(x402HowItWorksText[i],ix+20,iy+42+i*18,6,'#c0c0d0');
+      txShadow(x402HowItWorksText[i],ix+20,iy+44+i*18,6,'#b0c0c8','rgba(0,0,0,.3)');
     }
-    tx('Press Z or X to close',ix+iw/2-80,iy+ih-16,6,'#686068');
+    txShadow('[Z] / [X] Close',ix+iw/2-56,iy+ih-16,6,'#508878','rgba(0,0,0,.3)');
   }
   // AGENT MARKETPLACE overlay
   if(agentMarketplaceActive){
@@ -634,11 +632,12 @@ function drawBuildingInterior(){
     const amw=440,amh=agentMarketplaceText.length*18+50;
     const amx=W/2-amw/2,amy=H/2-amh/2;
     win(amx,amy,amw,amh);
-    tx('AGENT MARKETPLACE',amx+amw/2-80,amy+20,9,'#9945FF');
+    bx(amx,amy,amw,28,'#10081a');bx(amx,amy,4,28,'#9945FF');
+    txShadow('AGENT MARKETPLACE',amx+amw/2-80,amy+20,9,'#9945FF','rgba(0,0,0,.5)');
     for(let i=0;i<agentMarketplaceText.length;i++){
-      tx(agentMarketplaceText[i],amx+20,amy+42+i*18,6,'#c0c0d0');
+      txShadow(agentMarketplaceText[i],amx+20,amy+44+i*18,6,'#b0a8c8','rgba(0,0,0,.3)');
     }
-    tx('Press Z or X to close',amx+amw/2-80,amy+amh-16,6,'#686068');
+    txShadow('[Z] / [X] Close',amx+amw/2-56,amy+amh-16,6,'#706898','rgba(0,0,0,.3)');
   }
 
   // x402 shop result overlay

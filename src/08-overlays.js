@@ -82,29 +82,36 @@ function drawCardAcquisition(){
 // ═══════════════════════════════════════
 // DISCARD OVERLAY
 // ═══════════════════════════════════════
-// ── DUNGEON ENTRY CONFIRMATION ──
+// ── DUNGEON ENTRY CONFIRMATION (v189: txShadow + slide) ──
+let dungeonConfirmOpenFrame_=0;
 function drawDungeonConfirm(){
-  if(!dungeonConfirmActive)return;
+  if(!dungeonConfirmActive){dungeonConfirmOpenFrame_=0;return;}
+  if(!dungeonConfirmOpenFrame_)dungeonConfirmOpenFrame_=fr;
+  const cw=460,ch=300;
+  const cyBase=H/2-ch/2;
+  // Slide in from above (easeOut, 7 frames)
+  const tSlide=Math.min(1,(fr-dungeonConfirmOpenFrame_)/7);
+  const eSlide=1-Math.pow(1-tSlide,3);
+  const cx_=W/2-cw/2,cy_=cyBase-(1-eSlide)*ch;
+
   bx(0,0,W,H,'rgba(0,0,0,.65)');
-  // v80: Expanded panel with intel briefing
-  const cw=460,ch=300,cx_=W/2-cw/2,cy_=H/2-ch/2;
   win(cx_,cy_,cw,ch);
   bx(cx_,cy_,cw,28,'#1a0a0a');
+  bx(cx_,cy_,4,28,'#d04040'); // red left accent
   txShadow('ENTER DUNGEON?',cx_+cw/2-80,cy_+20,11,'#d04040','rgba(0,0,0,.5)');
   const handCount=pl[0].cd.filter(c=>c>0).length;
   const vaultSize=pl[0].vault?pl[0].vault.size:0;
-  tx('Cards in hand: '+handCount+'     Vault: '+vaultSize+'/60',cx_+20,cy_+50,8,'#c8c0a0');
+  txShadow('Cards in hand: '+handCount+'     Vault: '+vaultSize+'/60',cx_+20,cy_+50,8,'#c8c0a0','rgba(0,0,0,.3)');
   bx(cx_+12,cy_+60,cw-24,1,'#282848');
-  tx('\u26A0 Cards decay in 3.5 min — escape before they vanish!',cx_+12,cy_+74,6,'#d06030');
-  tx('\u2694 Rivals can STEAL your cards each battle round.',cx_+12,cy_+89,6,'#d06030');
-  tx('\u2190 Green arrows lead back to town safely.',cx_+12,cy_+104,6,'#40b060');
+  txShadow('\u26A0 Cards decay in 3.5 min \u2014 escape before they vanish!',cx_+12,cy_+74,6,'#d06030','rgba(0,0,0,.3)');
+  txShadow('\u2694 Rivals can STEAL your cards each battle round.',cx_+12,cy_+89,6,'#d06030','rgba(0,0,0,.3)');
+  txShadow('\u2190 Green arrows lead back to town safely.',cx_+12,cy_+104,6,'#40b060','rgba(0,0,0,.3)');
 
-  // v80: Intel briefing section
+  // Intel briefing section
   bx(cx_+12,cy_+116,cw-24,1,'#282858');
   txShadow('INTEL BRIEFING',cx_+20,cy_+130,7,'#7898c8','rgba(0,0,0,.4)');
   const flNums_=['TOWN','B1','B2','B3','B4','B5'];
   let intelY=cy_+146;
-  // Rival positions + card counts
   for(let ri=0;ri<2;ri++){
     const r=pl[ri+1];
     const rFloor=rivalMaps[ri];
@@ -112,26 +119,23 @@ function drawDungeonConfirm(){
     const rCol=ri===0?'#d060a0':'#d0a030';
     const rLoc=flNums_[rFloor]||'B?';
     const rThreat=rcc>=4?' \u26A0 RICH TARGET':rcc===0?' (no cards)':'';
-    tx(r.n+': '+rLoc+'  '+rcc+'\u2660 cards'+rThreat,cx_+20,intelY,7,rcc>=4?'#d04040':rCol);
+    txShadow(r.n+': '+rLoc+'  '+rcc+'\u2660'+rThreat,cx_+20,intelY,7,rcc>=4?'#e05050':rCol,'rgba(0,0,0,.3)');
     intelY+=16;
   }
-  // Uncollected chests on floor 1
   const f1Uncollected=treasures.filter(t=>t.map===1&&!t.collected).length;
   const f1Total=treasures.filter(t=>t.map===1).length;
   if(f1Uncollected>0){
-    tx('B1 treasure: '+f1Uncollected+'/'+f1Total+' chests uncollected',cx_+20,intelY,7,'#c0a840');
+    txShadow('\u25cf B1 chests: '+f1Uncollected+'/'+f1Total+' uncollected',cx_+20,intelY,7,'#c0a840','rgba(0,0,0,.3)');
     intelY+=16;
   }
-  // Active run mission reminder (last mission if failed)
   if(runMission&&!runMission.completed){
-    tx('Last mission failed: '+runMission.desc,cx_+20,intelY,6,'#808878');
+    txShadow('Mission failed: '+runMission.desc,cx_+20,intelY,6,'#707868','rgba(0,0,0,.3)');
     intelY+=14;
   }
-  // Gacha pity count
   const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
   if(gachaPityCount>0){
     const pityCol=pityLeft<=2?'#f0c830':pityLeft<=5?'#d0a030':'#686868';
-    tx('Gacha pity: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' — RARE SOON!':''),cx_+20,intelY,6,pityCol);
+    txShadow('Gacha pity: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' \u2014 RARE SOON!':''),cx_+20,intelY,6,pityCol,'rgba(0,0,0,.3)');
   }
 
   bx(cx_+12,cy_+ch-34,cw-24,1,'#282848');
