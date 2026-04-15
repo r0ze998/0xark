@@ -120,7 +120,7 @@ function loadGame(){
     // Clear all battle/encounter state
     wildEncounterActive=false;encounterCooldown=180;battlePhase='select';
     encounterExclActive=false;mapTransitioning=false;npcDialogActive=false;
-    gachaActive=false;marketActive=false;dungeonConfirmActive=false;shopActive=false;synthActive=false;
+    gachaActive=false;marketActive=false;dungeonConfirmActive=false;shopActive=false;synthActive=false;introActive=false;
     // Season data
     if(d.seasonStartTime){seasonStartTime=d.seasonStartTime;seasonEndTime=d.seasonEndTime||d.seasonStartTime+SEASON_DURATION_MS;}
     else{initSeason();} // legacy saves: start fresh season
