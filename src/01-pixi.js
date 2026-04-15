@@ -505,6 +505,49 @@ function drawKenneyTileTinted(col, row, destX, destY, scale, color) {
   return true;
 }
 
+// ═══════════════════════════════════════
+// DUNGEON TILESET (Kenney Tiny Dungeon, CC0)
+// dungeon-tileset.png: 11 cols x 2 rows, 16x16 tiles, 1px gap
+// ═══════════════════════════════════════
+const DUNGEON_SHEET = new Image();
+DUNGEON_SHEET.src = 'dungeon-tileset.png';
+let dungeonSheetLoaded = false;
+DUNGEON_SHEET.onload = () => { dungeonSheetLoaded = true; };
+
+// Tile index → pixel position in sheet: col = idx%11, row = idx//11, x = col*17, y = row*17
+const DT = {
+  wallBrick:   0,   // solid red brick wall
+  wallTop:     1,   // brick wall with stone cap
+  wallDark:    2,   // dark brick variant
+  platform:    3,   // stone platform/shelf
+  platformC:   4,   // platform center
+  wallLight:   5,   // lighter brick wall
+  doorFrame:   6,   // blue/tech door frame
+  floorGlyph:  7,   // gray stone with circular glyph
+  floorGem:    8,   // gray stone with green gem
+  floorChest:  9,   // gray stone with chest feature
+  chest:       10,  // orange chest/box
+  chestAlt:    11,  // chest variant / first of row2
+  floorPlain:  14,  // plain gray stone floor
+  floorAlt:    15,  // alt gray stone floor
+  pillar:      16,  // vertical pillar element
+  gargoyle1:   17,  // stone face left
+  gargoyle2:   18,  // stone face center
+  gargoyle3:   19,  // stone face right
+};
+
+function drawDungeonTile(idx, destX, destY, scale) {
+  if (!dungeonSheetLoaded) return false;
+  const col = idx % 11;
+  const row = Math.floor(idx / 11);
+  const sx = col * 17;
+  const sy = row * 17;
+  const dw = 16 * scale, dh = 16 * scale;
+  g.imageSmoothingEnabled = false;
+  g.drawImage(DUNGEON_SHEET, sx, sy, 16, 16, destX, destY, dw, dh);
+  return true;
+}
+
 // Per-tile-type toggle: true = use Kenney sprites, false = keep fillRect art
 const useKenney = {
   water: true,

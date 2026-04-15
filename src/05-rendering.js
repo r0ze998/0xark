@@ -80,23 +80,18 @@ function drawGrass(px,py,tx_,ty){
   if(currentMap>0){
     const h=tileHash(tx_,ty);
     const depth=currentMap;
-    // Full-color Kenney plank tile, then heavy dark overlay → actual wood texture shows through
-    drawKenneyTile(K.plank[0],K.plank[1],px,py,2);
-    const depth_alpha=0.72+depth*0.03;
-    bx(px,py,TW,TH,`rgba(4,8,20,${Math.min(0.84,depth_alpha)})`);
-    // Occasional water glint
-    if((h&31)<2){
-      const gx=Math.floor(thRand(tx_,ty,1)*22)+4,gy=Math.floor(thRand(tx_,ty,2)*22)+4;
-      const cfr=typeof fr!=='undefined'?fr:0;
-      const glA=0.12+0.1*Math.sin(cfr*0.05+tx_*0.3);
-      g.globalAlpha=glA;bx(px+gx,py+gy,3,1,'#4880a8');g.globalAlpha=1;
+    // Dungeon FLOOR: alternate between plain and glyph tile for visual variety
+    const floorIdx=(h&3)===0?DT.floorGlyph:(h&3)===1?DT.floorAlt:DT.floorPlain;
+    if(!drawDungeonTile(floorIdx,px,py,2)){
+      bx(px,py,TW,TH,'#1a1820');
     }
-    // Bioluminescent moss (B4-B5)
-    if(depth>=4&&(h&15)<2){
-      const mx=Math.floor(thRand(tx_,ty,3)*24)+3,my=Math.floor(thRand(tx_,ty,4)*24)+3;
+    // Depth darkening overlay at deeper floors
+    if(depth>1){g.globalAlpha=Math.min(0.45,(depth-1)*0.12);bx(px,py,TW,TH,'#000510');g.globalAlpha=1;}
+    // Occasional gem glint (green teal at depths)
+    if((h&31)<2){
       const cfr=typeof fr!=='undefined'?fr:0;
-      const mA=0.3+0.2*Math.sin(cfr*0.06+ty*0.5);
-      g.globalAlpha=mA;bx(px+mx,py+my,2,2,'#28c8a0');g.globalAlpha=1;
+      const glA=0.3+0.2*Math.sin(cfr*0.05+tx_*0.3);
+      g.globalAlpha=glA;drawDungeonTile(DT.floorGem,px,py,2);g.globalAlpha=1;
     }
     return;
   }
@@ -200,10 +195,11 @@ function drawPath(px,py,tx_,ty){
     // Base: dark steel, slightly bluer at deeper floors
     const rB=12+sv,gB=16+sv,bB=24+sv+depth*2;
     bx(px,py,TW,TH,`rgb(${rB},${gB},${bB})`);
-    // Full-color Kenney hull tile + dark overlay for corridor steel look
-    if(pirateSheetLoaded){
-      drawKenneyTile(K.hullM[0],K.hullM[1],px,py,2);
-      bx(px,py,TW,TH,`rgba(2,6,18,${Math.min(0.82,0.70+depth*0.04)})`);
+    // Dungeon corridor: platform/shelf tile (stone floor variant)
+    if(dungeonSheetLoaded){
+      const cIdx=(tileHash(tx_,ty)&1)?DT.platform:DT.floorPlain;
+      drawDungeonTile(cIdx,px,py,2);
+      if(depth>1){g.globalAlpha=Math.min(0.4,(depth-1)*0.1);bx(px,py,TW,TH,'#000408');g.globalAlpha=1;}
     } else {
       // Horizontal metal plate seams (every 8px)
       const plateOff=(h>>3)&7;
@@ -507,11 +503,12 @@ function drawMountain(px,py,tx_,ty){
     // Deep near-black blue-steel
     const rB=8+sv,gB=10+sv,bB=16+sv+depth;
     bx(px,py,TW,TH,`rgb(${rB},${gB},${bB})`);
-    // Full-color Kenney wall tile + near-opaque dark overlay — stone texture shows in shadows
-    if(pirateSheetLoaded){
-      const kWall=(h&1)?K.wall1:K.wall2;
-      drawKenneyTile(kWall[0],kWall[1],px,py,2);
-      bx(px,py,TW,TH,`rgba(0,2,10,${Math.min(0.88,0.76+depth*0.04)})`);
+    // Dungeon WALL: red brick tile — proper dungeon feel
+    if(dungeonSheetLoaded){
+      const wIdx=(h&3)===0?DT.wallDark:(h&3)===1?DT.wallLight:DT.wallBrick;
+      drawDungeonTile(wIdx,px,py,2);
+      // Deep floors: extra darkness
+      if(depth>2){g.globalAlpha=Math.min(0.5,(depth-2)*0.15);bx(px,py,TW,TH,'#000000');g.globalAlpha=1;}
     } else {
       const rivOff=(h>>3)&3;
       for(let ry=rivOff*4+2;ry<TH;ry+=9){
@@ -757,25 +754,15 @@ function drawRuinsPillar(px,py,tx_,ty){
 
 function drawGlowTile(px,py,tx_,ty){
   if(currentMap>0){
-    // Dungeon arcane rune tile — plank base with ARK teal runes + brass center
+    // Dungeon special tile: gem floor with pulsing teal glow
     drawGrass(px,py,tx_,ty);
     const cfr=typeof fr!=='undefined'?fr:0;
     const pulse=Math.sin(cfr*.06+tx_*2+ty*3)*.35+.55;
-    // Teal rune field
-    bx(px+4,py+4,TW-8,TH-8,`rgba(40,152,168,${pulse*.4})`);
-    // Rune border lines (ARK teal)
-    const teal=`rgba(60,200,220,${pulse*.65})`;
-    bx(px+6,py+6,2,TH-12,teal);bx(px+TW-8,py+6,2,TH-12,teal);
-    bx(px+6,py+6,TW-12,2,teal);bx(px+6,py+TH-8,TW-12,2,teal);
-    // Inner rune cross
-    bx(px+14,py+8,4,TH-16,teal);bx(px+8,py+14,TW-16,4,teal);
-    // Brass gold center node (ARK accent)
-    const gold=`rgba(200,164,72,${pulse*.75})`;
-    g.fillStyle=gold;g.beginPath();g.arc(px+TW/2,py+TH/2,4,0,Math.PI*2);g.fill();
-    bx(px+13,py+13,6,6,`rgba(240,200,80,${pulse*.4})`);
-    // Glow halo
-    g.fillStyle=`rgba(40,152,168,${pulse*.14})`;
-    g.beginPath();g.arc(px+TW/2,py+TH/2,13,0,Math.PI*2);g.fill();
+    // Draw gem tile on top
+    if(dungeonSheetLoaded){g.globalAlpha=pulse*0.9;drawDungeonTile(DT.floorGem,px,py,2);g.globalAlpha=1;}
+    // Teal glow halo
+    g.fillStyle=`rgba(40,200,160,${pulse*.22})`;
+    g.beginPath();g.arc(px+TW/2,py+TH/2,15,0,Math.PI*2);g.fill();
     return;
   }
   drawGrass(px,py,tx_,ty);
