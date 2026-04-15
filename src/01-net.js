@@ -147,92 +147,92 @@ function drawMPLobby(){
   if(mp.mpScreen==='select'){
     // Room entry UI
     win(W/2-180,120,360,340);
-    tx('MULTIPLAYER',W/2-72,160,12,FRLG.selHighlight);
+    txShadow('MULTIPLAYER',W/2-72,160,12,FRLG.selHighlight,'rgba(0,0,0,.5)');
     // CREATE ROOM
     const sel0=mp.mpMenuIdx===0;
     if(sel0)bx(W/2-160,190,320,36,'rgba(248,216,48,.12)');
-    if(sel0)tx('\u25B6',W/2-160,214,10,FRLG.selHighlight);
-    tx('CREATE ROOM',W/2-70,214,10,sel0?FRLG.selHighlight:'#888898');
-    tx('Host a new game',W/2-80,236,6,'#686068');
+    if(sel0)txShadow('\u25B6',W/2-160,214,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
+    txShadow('CREATE ROOM',W/2-70,214,10,sel0?FRLG.selHighlight:'#888898','rgba(0,0,0,.4)');
+    txShadow('Host a new game',W/2-80,236,6,'#686068','rgba(0,0,0,.35)');
     // JOIN ROOM
     const sel1=mp.mpMenuIdx===1;
     if(sel1)bx(W/2-160,260,320,36,'rgba(248,216,48,.12)');
-    if(sel1)tx('\u25B6',W/2-160,284,10,FRLG.selHighlight);
-    tx('JOIN ROOM',W/2-58,284,10,sel1?FRLG.selHighlight:'#888898');
-    tx('Enter a room code',W/2-80,306,6,'#686068');
+    if(sel1)txShadow('\u25B6',W/2-160,284,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
+    txShadow('JOIN ROOM',W/2-58,284,10,sel1?FRLG.selHighlight:'#888898','rgba(0,0,0,.4)');
+    txShadow('Enter a room code',W/2-80,306,6,'#686068','rgba(0,0,0,.35)');
     // BACK
     const sel2=mp.mpMenuIdx===2;
-    if(sel2)tx('\u25B6',W/2-60,360,10,FRLG.selHighlight);
-    tx('BACK',W/2-24,360,10,sel2?FRLG.selHighlight:'#888898');
+    if(sel2)txShadow('\u25B6',W/2-60,360,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
+    txShadow('BACK',W/2-24,360,10,sel2?FRLG.selHighlight:'#888898','rgba(0,0,0,.4)');
     // Connection status
-    tx(mp.connected?'CONNECTED':'NOT CONNECTED',W/2-70,420,6,mp.connected?'#40d080':'#a06060');
+    txShadow(mp.connected?'CONNECTED':'NOT CONNECTED',W/2-70,420,6,mp.connected?'#40d080':'#a06060','rgba(0,0,0,.35)');
   }else if(mp.mpScreen==='join'){
     // Join room: enter room code
     win(W/2-180,150,360,240);
-    tx('JOIN ROOM',W/2-56,186,12,FRLG.selHighlight);
-    tx('Enter Room Code:',W/2-90,220,8,FRLG.textColor);
+    txShadow('JOIN ROOM',W/2-56,186,12,FRLG.selHighlight,'rgba(0,0,0,.5)');
+    txShadow('Enter Room Code:',W/2-90,220,8,FRLG.textColor,'rgba(0,0,0,.35)');
     // Room code display
     win(W/2-80,236,160,32);
     const displayCode=mp.roomInput+(Math.floor(fr/30)%2===0?'_':'');
-    tx(displayCode,W/2-60,260,14,FRLG.textColor);
-    tx('Type code, Z to connect',W/2-100,290,6,'#686068');
-    tx('X to go back',W/2-50,310,6,'#686068');
+    txShadow(displayCode,W/2-60,260,14,FRLG.textColor,'rgba(0,0,0,.4)');
+    txShadow('Type code, Z to connect',W/2-100,290,6,'#686068','rgba(0,0,0,.35)');
+    txShadow('X to go back',W/2-50,310,6,'#686068','rgba(0,0,0,.35)');
   }else if(mp.mpScreen==='create'){
     // Creating room...
     win(W/2-180,150,360,240);
-    tx('CREATE ROOM',W/2-70,186,12,FRLG.selHighlight);
+    txShadow('CREATE ROOM',W/2-70,186,12,FRLG.selHighlight,'rgba(0,0,0,.5)');
     if(mp.roomId){
-      tx('Room Code:',W/2-56,224,8,FRLG.textColor);
+      txShadow('Room Code:',W/2-56,224,8,FRLG.textColor,'rgba(0,0,0,.35)');
       win(W/2-60,236,120,32);
-      tx(mp.roomId,W/2-44,260,14,'#40d080');
-      tx('Share this code!',W/2-70,290,7,'#686068');
-      tx('Waiting for players...',W/2-90,320,6,'#888898');
+      txShadow(mp.roomId,W/2-44,260,14,'#40d080','rgba(0,0,0,.4)');
+      txShadow('Share this code!',W/2-70,290,7,'#686068','rgba(0,0,0,.35)');
+      txShadow('Waiting for players...',W/2-90,320,6,'#888898','rgba(0,0,0,.35)');
     }else{
-      tx('Connecting...',W/2-60,250,8,'#888898');
+      txShadow('Connecting...',W/2-60,250,8,'#888898','rgba(0,0,0,.35)');
     }
   }else if(mp.mpScreen==='lobby'){
     // Lobby: show connected players, START button
     win(W/2-200,80,400,440);
-    tx('ROOM: '+(mp.roomId||'???'),W/2-80,116,12,FRLG.selHighlight);
+    txShadow('ROOM: '+(mp.roomId||'???'),W/2-80,116,12,FRLG.selHighlight,'rgba(0,0,0,.5)');
     // Connected players list
-    tx('PLAYERS:',W/2-48,150,8,FRLG.textColor);
+    txShadow('PLAYERS:',W/2-48,150,8,FRLG.textColor,'rgba(0,0,0,.35)');
     const players=mp.lobbyPlayers;
     for(let i=0;i<Math.min(players.length,3);i++){
       const py_=174+i*40;
       win(W/2-160,py_,320,34);
       const pc=i===0?'#48b8e8':i===1?'#d860a0':'#d8b028';
       bx(W/2-148,py_+8,18,18,pc);
-      tx(players[i].name||('Player '+(i+1)),W/2-120,py_+24,8,FRLG.textColor);
-      tx(players[i].ready?'READY':'WAITING',W/2+80,py_+24,6,players[i].ready?'#40d080':'#a09888');
+      txShadow(players[i].name||('Player '+(i+1)),W/2-120,py_+24,8,FRLG.textColor,'rgba(0,0,0,.35)');
+      txShadow(players[i].ready?'READY':'WAITING',W/2+80,py_+24,6,players[i].ready?'#40d080':'#a09888','rgba(0,0,0,.35)');
     }
     // Empty slots
     for(let i=players.length;i<3;i++){
       const py_=174+i*40;
       win(W/2-160,py_,320,34);
-      tx('Waiting...',W/2-50,py_+24,8,'#686068');
+      txShadow('Waiting...',W/2-50,py_+24,8,'#686068','rgba(0,0,0,.35)');
     }
     // Player count
-    tx('ONLINE: '+mp.playerCount+'/3',W/2-56,320,8,mp.playerCount>=2?'#40d080':'#a09888');
+    txShadow('ONLINE: '+mp.playerCount+'/3',W/2-56,320,8,mp.playerCount>=2?'#40d080':'#a09888','rgba(0,0,0,.35)');
     // Ping
     if(mp.connected){
       bx(W/2+70,312,6,6,mp.pingColor);
-      tx(mp.pingMs+'ms',W/2+80,320,6,mp.pingColor);
+      txShadow(mp.pingMs+'ms',W/2+80,320,6,mp.pingColor,'rgba(0,0,0,.35)');
     }
     // START button (only if 2+ players)
     const canStart=mp.playerCount>=2;
     const startSel=mp.mpMenuIdx===0;
     if(canStart){
       if(startSel)bx(W/2-80,360,160,36,'rgba(248,216,48,.15)');
-      tx('START',W/2-32,384,14,startSel?FRLG.selHighlight:'#40d080');
+      txShadow('START',W/2-32,384,14,startSel?FRLG.selHighlight:'#40d080','rgba(0,0,0,.4)');
     }else{
-      tx('Need 2+ players',W/2-70,384,8,'#686068');
+      txShadow('Need 2+ players',W/2-70,384,8,'#686068','rgba(0,0,0,.35)');
     }
     // Entry fee and pot display
     win(W/2-140,400,280,24);
-    tx('ENTRY FEE: 0.01 SOL',W/2-80,416,7,'#14F195');
-    tx('CURRENT POT: 0.03 SOL',W/2-86,432,7,'#f0c830');
+    txShadow('ENTRY FEE: 0.01 SOL',W/2-80,416,7,'#14F195','rgba(0,0,0,.4)');
+    txShadow('CURRENT POT: 0.03 SOL',W/2-86,432,7,'#f0c830','rgba(0,0,0,.4)');
     // LEAVE
-    tx('X = Leave Room',W/2-60,456,6,'#a06060');
+    txShadow('X = Leave Room',W/2-60,456,6,'#a06060','rgba(0,0,0,.35)');
   }
 }
 
@@ -262,7 +262,7 @@ function drawMPPlayers(){
     // Player name above sprite
     const nameW=(op.name||'Player').length*6;
     bx(sx+16-nameW/2-2,sy-12,nameW+4,10,'rgba(0,0,0,.5)');
-    tx(op.name||'Player',sx+16-nameW/2,sy-4,5,'#fff');
+    txShadow(op.name||'Player',sx+16-nameW/2,sy-4,5,'#fff','rgba(0,0,0,.4)');
   });
 }
 
@@ -275,7 +275,7 @@ function drawMPStatus(){
     const a=Math.min(1,mp.disconnectTimer/30);
     g.globalAlpha=a;
     win(W/2-200,H/2-30,400,60);
-    tx(mp.disconnectMsg,W/2-180,H/2+2,8,'#d04040');
+    txShadow(mp.disconnectMsg,W/2-180,H/2+2,8,'#d04040','rgba(0,0,0,.4)');
     g.globalAlpha=1;
     return;
   }
@@ -283,7 +283,7 @@ function drawMPStatus(){
   if(sc==='map'&&mp.phase==='playing'){
     const statusX=W-130,statusY=4;
     bx(statusX,statusY,120,16,'rgba(0,0,0,.5)');
-    tx('ONLINE:'+mp.playerCount+'/3',statusX+4,statusY+12,6,'#40d080');
+    txShadow('ONLINE:'+mp.playerCount+'/3',statusX+4,statusY+12,6,'#40d080','rgba(0,0,0,.4)');
     // Ping dot
     bx(statusX+104,statusY+5,6,6,mp.pingColor);
   }
@@ -686,7 +686,7 @@ function drawHandInspect(){
     drawCardCharacter(cx_+(cw-20)/2-10,cy_+4,cid,1.6,fr);
 
     // Rarity stars
-    for(let s=0;s<cr.r;s++)tx('\u2605',cx_+4+s*10,cy_+80,6,rarC);
+    for(let s=0;s<cr.r;s++)txShadow('\u2605',cx_+4+s*10,cy_+80,6,rarC,'rgba(0,0,0,.3)');
 
     // Card name
     const nfs=Math.max(7,Math.min(11,Math.floor((cw-24)/(cr.n.length*0.7))));
@@ -794,7 +794,7 @@ function drawFPS(){
   if(!fpsCounterVisible)return;
   const col=fpsDisplay>=50?'#40d040':fpsDisplay>=30?'#d0d040':'#d04040';
   bx(2,2,48,14,'rgba(0,0,0,.6)');
-  tx('FPS:'+fpsDisplay,4,12,6,col);
+  txShadow('FPS:'+fpsDisplay,4,12,6,col,'rgba(0,0,0,.4)');
 }
 
 // ═══════════════════════════════════════
@@ -830,7 +830,7 @@ function drawCardProgressBar(){
     const mlbl=mileLabels[m-1]+'';
     const mlblA=reached?0.8:0.35;
     g.globalAlpha=mlblA;
-    tx(mlbl,mx-mlbl.length*2,barY+barH+6,4,reached?fillColor:'#888898');
+    txShadow(mlbl,mx-mlbl.length*2,barY+barH+6,4,reached?fillColor:'#888898','rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
   // Text

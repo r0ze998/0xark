@@ -109,7 +109,7 @@ function drawVoidEffect(cx_,cy_,evT){
     const cardX=lerp(cx_+60,cx_-60,t_);
     const cardY=cy_-10+Math.sin(t_*Math.PI)*-20;
     bx(cardX-6,cardY-8,12,16,'#7858a0');bx(cardX-5,cardY-7,10,14,'#9878c0');
-    tx('?',cardX-3,cardY+4,6,'#fff');
+    txShadow('?',cardX-3,cardY+4,6,'#fff','rgba(0,0,0,.35)');
   }
   g.globalAlpha=1;g.restore();
 }
@@ -360,7 +360,7 @@ function drawResolvingPhase(){
       }else{
         bx(playerCX-cw_/2,cardY-ch_/2,cw_,ch_,'#d85840');
         bx(playerCX-cw_/2+2,cardY-ch_/2+2,cw_-4,ch_-4,'#e87060');
-        if(scale_>.5)tx('\u25B2',playerCX-6,cardY+4,Math.floor(12*scale_),'#fff');
+        if(scale_>.5)txShadow('\u25B2',playerCX-6,cardY+4,Math.floor(12*scale_),'#fff','rgba(0,0,0,.35)');
       }
       for(let i=0;i<8;i++){
         const ang=i*(Math.PI*2/8)+evT*.15,dist=12+evT*.8;
@@ -411,7 +411,7 @@ function drawResolvingPhase(){
       }else{
         bx(rcx-cw_/2,cardY-ch_/2,cw_,ch_,'#d85840');
         bx(rcx-cw_/2+2,cardY-ch_/2+2,cw_-4,ch_-4,'#e87060');
-        if(scale_>.5)tx('\u25B2',rcx-6,cardY+4,Math.floor(12*scale_),'#fff');
+        if(scale_>.5)txShadow('\u25B2',rcx-6,cardY+4,Math.floor(12*scale_),'#fff','rgba(0,0,0,.35)');
       }
       // Hostile red-orange orbiting sparks
       for(let i=0;i<6;i++){
@@ -620,7 +620,7 @@ function drawResolvingPhase(){
       g.globalAlpha=slideIn;
       // Action label (top-left small)
       const labelText=isDefend?'INCOMING STEAL':'BONUS STRIKE';
-      tx(labelText,qPX+12,slideY+18,7,'rgba(200,200,200,.6)');
+      txShadow(labelText,qPX+12,slideY+18,7,'rgba(200,200,200,.6)','rgba(0,0,0,.3)');
       // Z key icon (right side)
       const kx=qPX+qPW-52,ky=slideY+qPH/2-18;
       bx(kx,ky,36,36,'rgba(20,20,40,.9)');
@@ -630,7 +630,7 @@ function drawResolvingPhase(){
       const kPulse=0.6+Math.sin(fr*0.4)*0.4;
       g.globalAlpha=kPulse*slideIn;
       g.shadowBlur=12;g.shadowColor=accentCol;
-      tx('Z',kx+8,ky+30,22,accentCol);
+      txShadow('Z',kx+8,ky+30,22,accentCol,'rgba(0,0,0,.4)');
       g.shadowBlur=0;
       g.globalAlpha=slideIn;
       // Main prompt text with scale pulse
@@ -817,7 +817,7 @@ function drawResultPhase(){
       bx(ox+26+o*(rOW+rOG),oy+2,rOW,rOH,filled?s.fill:s.empty);
       if(filled)bx(ox+26+o*(rOW+rOG)+1,oy+3,1,1,'rgba(255,255,255,.3)');
     }
-    if(s.val>s.max)tx('+'+(s.val-s.max),ox+26+s.max*(rOW+rOG)+2,oy+9,5,'#f0c830');
+    if(s.val>s.max)txShadow('+'+(s.val-s.max),ox+26+s.max*(rOW+rOG)+2,oy+9,5,'#f0c830','rgba(0,0,0,.35)');
   });}
   g.globalAlpha=1;
 

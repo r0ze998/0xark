@@ -500,7 +500,7 @@ function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
   if(nameH>16&&rar>=3){
     const rlSz=Math.max(3,Math.floor(cw/13));
     g.globalAlpha=0.7;
-    tx(CARD_RARITY_LABEL[rar-1],cx_+cw/2-CARD_RARITY_LABEL[rar-1].length*rlSz/2.1,npY+nameH-3,rlSz,rarCol);
+    txShadow(CARD_RARITY_LABEL[rar-1],cx_+cw/2-CARD_RARITY_LABEL[rar-1].length*rlSz/2.1,npY+nameH-3,rlSz,rarCol,'rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
 

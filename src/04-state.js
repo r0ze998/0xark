@@ -191,7 +191,7 @@ function drawPlayerStatusEffects(){
   if(sp.s<=0&&sp.b<=0&&sp.c<=0){
     const flicker=Math.sin(fr*0.2)*0.2+0.8;
     g.globalAlpha=flicker;
-    tx('EXHAUSTED',px-32,py-16,5,'#d04040');
+    txShadow('EXHAUSTED',px-32,py-16,5,'#d04040','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
 
@@ -224,7 +224,7 @@ function drawPlayerStatusEffects(){
     const progress=1-cardGetAnimTimer/40;
     const floatY=cardGetAnimY-progress*24;
     g.globalAlpha=1-progress;
-    tx('+',cardGetAnimX+8,floatY,8,'#40d040');
+    txShadow('+',cardGetAnimX+8,floatY,8,'#40d040','rgba(0,0,0,.35)');
     g.globalAlpha=1;
     cardGetAnimTimer--;
   }
@@ -232,7 +232,7 @@ function drawPlayerStatusEffects(){
     const progress=1-cardLostAnimTimer/40;
     const floatY=cardLostAnimY+progress*16;
     g.globalAlpha=1-progress;
-    tx('-',cardLostAnimX+8,floatY,8,'#d04040');
+    txShadow('-',cardLostAnimX+8,floatY,8,'#d04040','rgba(0,0,0,.35)');
     g.globalAlpha=1;
     cardLostAnimTimer--;
   }
@@ -260,7 +260,7 @@ function drawPlayerStatusEffects(){
     g.globalAlpha=bubbleAlpha;
     bx(bX,bY,bW,13,'rgba(4,4,14,.88)');
     bx(bX,bY,bW,1,bubbleCol);
-    tx(fullStr,bX+4,bY+11,5,isUrgent?'#ff8080':hasCritical?'#e8b060':'#90b0c0');
+    txShadow(fullStr,bX+4,bY+11,5,isUrgent?'#ff8080':hasCritical?'#e8b060':'#90b0c0','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
 }

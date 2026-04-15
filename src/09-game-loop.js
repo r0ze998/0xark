@@ -357,8 +357,8 @@ function dSplash(){
   if(t<120){
     const alpha=t<15?t/15:t>100?(120-t)/20:1;
     g.globalAlpha=alpha;
-    tx('ZK-powered information asymmetry',W/2-200,H/2-20,10,'#9945FF');
-    tx('Built on Solana',W/2-80,H/2+10,10,'#14F195');
+    txShadow('ZK-powered information asymmetry',W/2-200,H/2-20,10,'#9945FF','rgba(0,0,0,.5)');
+    txShadow('Built on Solana',W/2-80,H/2+10,10,'#14F195','rgba(0,0,0,.5)');
     g.globalAlpha=1;
   }
   if(t>=120){fadeOut(()=>{sc='title';fadeIn();});}
@@ -413,7 +413,7 @@ function draw(){
       g.globalAlpha=0.4;
       bx(px-4,py-4,40,56,'rgba(80,40,160,.3)');
       g.globalAlpha=1;
-      tx('STEALTH:'+shadowStepsLeft,px-20,py-24,5,'#9060c0');
+      txShadow('STEALTH:'+shadowStepsLeft,px-20,py-24,5,'#9060c0','rgba(0,0,0,.4)');
     }
   }
   // Multiplayer connection status overlay
