@@ -106,25 +106,38 @@ function drawDayNightOverlay(){
       }
     }
   }
-  // Phase overlays
+  // Phase overlays (stronger with LPC tileset)
   if(dn.phase==='dawn'){
-    g.fillStyle='rgba(255,200,100,0.05)';g.fillRect(0,0,W,townH);
+    g.fillStyle=`rgba(255,180,80,${0.10+dn.t*0.04})`;g.fillRect(0,0,W,townH);
   }else if(dn.phase==='dusk'){
-    g.fillStyle=`rgba(255,100,80,${0.06+dn.t*0.04})`;g.fillRect(0,0,W,townH);
+    g.fillStyle=`rgba(220,70,40,${0.10+dn.t*0.08})`;g.fillRect(0,0,W,townH);
+    // Golden horizon band
+    const hg=g.createLinearGradient(0,0,0,townH);
+    hg.addColorStop(0,`rgba(240,140,30,${0.06+dn.t*0.06})`);
+    hg.addColorStop(0.4,'rgba(0,0,0,0)');
+    g.fillStyle=hg;g.fillRect(0,0,W,townH);
   }else if(dn.phase==='night'){
-    g.fillStyle='rgba(20,20,80,0.12)';g.fillRect(0,0,W,townH);
+    g.fillStyle=`rgba(10,12,60,${0.22+dn.t*0.06})`;g.fillRect(0,0,W,townH);
     // Night: warm inner glow at town center (feels like firelight far away)
     if(currentMap===0){
       const townCX=15*TW-camX,townCY=12*TH-camY;
       const gc=g.createRadialGradient(townCX,townCY,30,townCX,townCY,350);
-      gc.addColorStop(0,'rgba(255,140,40,0.04)');
+      gc.addColorStop(0,'rgba(255,140,40,0.06)');
       gc.addColorStop(1,'rgba(0,0,0,0)');
       g.fillStyle=gc;g.fillRect(0,0,W,townH);
     }
   }
-  // day = soft warm sunlight tint (barely visible, just a touch of warmth)
+  // day = soft warm sunlight tint
   else if(dn.phase==='day'){
-    g.fillStyle='rgba(255,240,200,0.02)';g.fillRect(0,0,W,townH);
+    g.fillStyle='rgba(255,250,220,0.04)';g.fillRect(0,0,W,townH);
+  }
+  // Overworld ambient vignette (always, not dungeon)
+  if(!inDungeon){
+    const vg=g.createRadialGradient(W/2,(H-HUD_HEIGHT)/2,W*0.28,W/2,(H-HUD_HEIGHT)/2,W*0.72);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    const nightBoost=dn.phase==='night'?0.18:dn.phase==='dusk'?0.10:0.06;
+    vg.addColorStop(1,`rgba(0,0,0,${nightBoost})`);
+    g.fillStyle=vg;g.fillRect(0,0,W,H-HUD_HEIGHT);
   }
 }
 function drawDayNightIcon(ix,iy){
