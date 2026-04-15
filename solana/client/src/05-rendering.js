@@ -20,10 +20,8 @@ function drawWater(px,py,tx_,ty){
   if(currentMap===0){
     const nearLand_=isNearLand(tx_,ty);
     const h=tileHash(tx_,ty);
-    // LPC terrain water tiles
-    const wtCol = nearLand_ ? WT.waterShore[0] : ((h&1)?WT.waterAlt[0]:WT.water[0]);
-    const wtRow = nearLand_ ? WT.waterShore[1] : ((h&1)?WT.waterAlt[1]:WT.water[1]);
-    if(drawWorldTile(wtCol, wtRow, px, py)){
+    // Zelda water — unified art style
+    if(drawZeldaOverTile(ZO.water[0], ZO.water[1], px, py, 2)){
       // Animated sparkle overlay
       if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
       // Foam near land
@@ -92,12 +90,22 @@ function drawGrass(px,py,tx_,ty){
   }
   if(currentMap===0){
     const h=tileHash(tx_,ty);
-    // LPC terrain grass tiles — alternate 3 variants by tile hash
+    // Zelda-like overworld — unified art style
+    const zoTile = (h%3===1) ? ZO.grassAlt : ZO.grass;
+    if(drawZeldaOverTile(zoTile[0], zoTile[1], px, py, 2)){
+      // Wildflower dots overlay
+      if((h&3)===0){
+        const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
+        const fcolors=['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'];
+        bx(px+fx,py+fy,2,2,fcolors[h%5]);
+      }
+      return;
+    }
+    // LPC terrain fallback
     const gv=h%3;
     const wCol=gv===0?WT.grass[0]:gv===1?WT.grassAlt[0]:WT.grassEdge[0];
     const wRow=gv===0?WT.grass[1]:gv===1?WT.grassAlt[1]:WT.grassEdge[1];
     if(drawWorldTile(wCol, wRow, px, py)){
-      // Wildflower dots overlay
       if((h&3)===0){
         const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
         const fcolors=['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'];
@@ -220,11 +228,20 @@ function drawPath(px,py,tx_,ty){
   }
   if(currentMap===0){
     const h=tileHash(tx_,ty);
-    // LPC terrain dirt/path tiles
+    // Zelda path — unified art style
+    if(drawZeldaOverTile(ZO.path[0], ZO.path[1], px, py, 2)){
+      for(let i=0;i<2;i++){
+        if(thRand(tx_,ty,i+50)>.5){
+          const pbx_=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby_=Math.floor(thRand(tx_,ty,i+70)*26)+3;
+          bx(px+pbx_,py+pby_,3,2,'#a09878');
+        }
+      }
+      return;
+    }
+    // LPC fallback
     const dCol=(h&1)?WT.dirtAlt[0]:WT.dirt[0];
     const dRow=(h&1)?WT.dirtAlt[1]:WT.dirt[1];
     if(drawWorldTile(dCol, dRow, px, py)){
-      // Pebbles overlay
       for(let i=0;i<2;i++){
         if(thRand(tx_,ty,i+50)>.5){
           const pbx_=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby_=Math.floor(thRand(tx_,ty,i+70)*26)+3;
@@ -309,11 +326,15 @@ function drawSand(px,py,tx_,ty){
 }
 
 function drawTree(px,py,tx_,ty){
+  // Zelda tree — unified art style
+  drawGrass(px,py,tx_,ty);
+  if(drawZeldaOverTile(ZO.tree[0], ZO.tree[1], px, py, 2)){
+    g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
+    return;
+  }
   if(useKenney.tree){
-    drawGrass(px,py,tx_,ty);
     const kTile = (tileHash(tx_,ty) % 2 === 0) ? K.tree1 : K.tree2;
     if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, '#305828')){
-      // Shadow beneath
       g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
       return;
     }
@@ -372,10 +393,14 @@ function drawPalm(px,py,tx_,ty){
 }
 
 function drawBush(px,py,tx_,ty){
+  // Zelda bush — unified art style
+  drawGrass(px,py,tx_,ty);
+  if(drawZeldaOverTile(ZO.bush[0], ZO.bush[1], px, py, 2)){
+    bx(px+10,py+14,2,2,'#c04040');bx(px+20,py+12,2,2,'#c04040');
+    return;
+  }
   if(useKenney.bush){
-    drawGrass(px,py,tx_,ty);
     if(drawKenneyTileTinted(K.bush1[0], K.bush1[1], px, py, 2, '#388838')){
-      // Berry dots on top
       bx(px+10,py+14,2,2,'#c04040');bx(px+20,py+12,2,2,'#c04040');
       return;
     }
@@ -520,6 +545,16 @@ function drawMountain(px,py,tx_,ty){
       g.globalAlpha=1;
     }
     return;
+  }
+  // Zelda cliff tile — unified art style
+  { const h=tileHash(tx_,ty);
+    const sv=((h&7)-4);
+    bx(px,py,TW,TH,`rgb(${110+sv},${108+sv},${124+sv})`);
+    if(drawZeldaOverTile(ZO.cliff[0], ZO.cliff[1], px, py, 2)){
+      if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');}
+      if(currentMap===2){bx(px,py,TW,TH,'rgba(10,0,20,.15)');}
+      return;
+    }
   }
   if(useKenney.mountain){
     const h=tileHash(tx_,ty);
