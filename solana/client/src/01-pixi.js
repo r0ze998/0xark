@@ -580,6 +580,66 @@ function drawDungeonTile(idx, destX, destY, scale) {
   return true;
 }
 
+// ═══════════════════════════════════════
+// ZELDA-LIKE CHARACTER SPRITES (CC0 / public domain)
+// zelda-character.png: 272x256, 16x16 tiles, 17 cols x 16 rows, no gap
+// Layout: each character occupies 3 cols (walk frames) × 4 rows (directions)
+//   charIdx 0 → cols 0-2   (protagonist)
+//   charIdx 1 → cols 3-5   (rival 1)
+//   charIdx 2 → cols 6-8   (rival 2)
+//   charIdx 3 → cols 9-11  (NPC type A)
+//   charIdx 4 → cols 12-14 (NPC type B)
+// Frame:  0=left-stride, 1=neutral, 2=right-stride
+// Dir row: 0=down, 1=left, 2=right, 3=up
+// ═══════════════════════════════════════
+const ZELDA_CHAR_SHEET = new Image();
+ZELDA_CHAR_SHEET.src = 'zelda-character.png';
+let zeldaCharLoaded = false;
+ZELDA_CHAR_SHEET.onload = () => { zeldaCharLoaded = true; };
+
+function drawZeldaChar(charIdx, dir, frame, destX, destY, scale) {
+  if (!zeldaCharLoaded) return false;
+  const baseCol = charIdx * 3;
+  const col = baseCol + (frame % 3);
+  const row = dir;  // 0=down,1=left,2=right,3=up
+  const sx = col * 16, sy = row * 16;
+  g.imageSmoothingEnabled = false;
+  g.drawImage(ZELDA_CHAR_SHEET, sx, sy, 16, 16, destX, destY, 16 * scale, 16 * scale);
+  return true;
+}
+
+// ═══════════════════════════════════════
+// ZELDA-LIKE OVERWORLD TILES (CC0 / public domain)
+// zelda-overworld.png: 640x576, 16x16 tiles, 40 cols x 36 rows, no gap
+// ═══════════════════════════════════════
+const ZELDA_OVER_SHEET = new Image();
+ZELDA_OVER_SHEET.src = 'zelda-overworld.png';
+let zeldaOverLoaded = false;
+ZELDA_OVER_SHEET.onload = () => { zeldaOverLoaded = true; };
+
+// Zelda overworld tile coordinates [col, row] (16×16 each)
+const ZO = {
+  grass:     [0, 0],    // green grass
+  grassAlt:  [1, 0],    // grass variant
+  path:      [2, 1],    // dirt path
+  water:     [0, 4],    // water
+  sand:      [4, 2],    // sand/beach
+  tree:      [0, 8],    // tree top (2x2 tile structure)
+  bush:      [3, 8],    // bush
+  house1:    [4, 4],    // house wall
+  roof:      [4, 3],    // roof
+  cliff:     [0, 6],    // cliff/wall
+  dock:      [6, 6],    // dock planks
+};
+
+function drawZeldaOverTile(col, row, destX, destY, scale) {
+  if (!zeldaOverLoaded) return false;
+  const s = scale || 2;
+  g.imageSmoothingEnabled = false;
+  g.drawImage(ZELDA_OVER_SHEET, col * 16, row * 16, 16, 16, destX, destY, 16 * s, 16 * s);
+  return true;
+}
+
 // Per-tile-type toggle: true = use Kenney sprites, false = keep fillRect art
 const useKenney = {
   water: true,
