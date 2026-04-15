@@ -17,26 +17,21 @@ function isNearWater(tx_,ty){return isNearTileType(tx_,ty,[0,17]);}
 function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,[1,7,11,3]);}
 
 function drawWater(px,py,tx_,ty){
-  if(useKenney.water){
+  if(currentMap===0){
     const nearLand_=isNearLand(tx_,ty);
-    // Auto-tile: pick correct edge/corner/center based on neighbors
-    const kTile = getWaterTileVariant(tx_, ty);
-    // Draw blue-tinted water base
-    const waterColor = nearLand_ ? 'rgba(30,80,140,0.95)' : 'rgba(48,96,160,0.95)';
-    bx(px,py,TW,TH,waterColor);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, nearLand_ ? '#3070a0' : '#4090c8')){
-      // Animated wave overlay from sprite sheet
-      const wavePhase = (wt + tx_) % 3;
-      if(wavePhase === 0) drawKenneyTileTinted(K.wave1[0], K.wave1[1], px, py, 2, 'rgba(120,200,240,0.3)');
-      else if(wavePhase === 1) drawKenneyTileTinted(K.wave2[0], K.wave2[1], px, py, 2, 'rgba(100,180,220,0.25)');
-      // Sparkles on top
-      if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.6)');}
+    const h=tileHash(tx_,ty);
+    // LPC terrain water tiles
+    const wtCol = nearLand_ ? WT.waterShore[0] : ((h&1)?WT.waterAlt[0]:WT.water[0]);
+    const wtRow = nearLand_ ? WT.waterShore[1] : ((h&1)?WT.waterAlt[1]:WT.water[1]);
+    if(drawWorldTile(wtCol, wtRow, px, py)){
+      // Animated sparkle overlay
+      if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
       // Foam near land
       if(nearLand_){
         for(let i=0;i<2;i++){
           const bblX=px+Math.floor(thRand(tx_,ty,i+200)*28)+2;
           const bblY=py+Math.floor(thRand(tx_,ty,i+210)*28)+2;
-          if((wt+i*3+tx_)%5<2){g.fillStyle='rgba(255,255,255,.35)';g.beginPath();g.arc(bblX,bblY,1.5,0,Math.PI*2);g.fill();}
+          if((wt+i*3+tx_)%5<2){g.fillStyle='rgba(255,255,255,.3)';g.beginPath();g.arc(bblX,bblY,1.5,0,Math.PI*2);g.fill();}
         }
       }
       return;
@@ -95,22 +90,19 @@ function drawGrass(px,py,tx_,ty){
     }
     return;
   }
-  if(useKenney.grass){
-    // Auto-tile: pick correct grass variant based on neighbors
+  if(currentMap===0){
     const h=tileHash(tx_,ty);
-    const kTile = getGrassTileVariant(tx_, ty);
-    // Green base color
-    const sv=((h&15)-8);
-    const grassColor = `rgb(${64+sv},${128+sv},${64+sv})`;
-    bx(px,py,TW,TH,grassColor);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${48+sv},${116+sv},${48+sv})`)){
+    // LPC terrain grass tiles — alternate 3 variants by tile hash
+    const gv=h%3;
+    const wCol=gv===0?WT.grass[0]:gv===1?WT.grassAlt[0]:WT.grassEdge[0];
+    const wRow=gv===0?WT.grass[1]:gv===1?WT.grassAlt[1]:WT.grassEdge[1];
+    if(drawWorldTile(wCol, wRow, px, py)){
       // Wildflower dots overlay
       if((h&3)===0){
         const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
         const fcolors=['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'];
         bx(px+fx,py+fy,2,2,fcolors[h%5]);
       }
-      if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.2)');}
       return;
     }
   }
@@ -226,21 +218,19 @@ function drawPath(px,py,tx_,ty){
     }
     return;
   }
-  if(useKenney.path){
+  if(currentMap===0){
     const h=tileHash(tx_,ty);
-    const sv=((h&7)-4);
-    // Use land tile tinted dirt-brown for path
-    const kTile = (h % 2 === 0) ? K.landCenter : K.landAlt;
-    bx(px,py,TW,TH,`rgb(${176+sv},${144+sv},${88+sv})`);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${160+sv},${128+sv},${80+sv})`)){
+    // LPC terrain dirt/path tiles
+    const dCol=(h&1)?WT.dirtAlt[0]:WT.dirt[0];
+    const dRow=(h&1)?WT.dirtAlt[1]:WT.dirt[1];
+    if(drawWorldTile(dCol, dRow, px, py)){
       // Pebbles overlay
       for(let i=0;i<2;i++){
         if(thRand(tx_,ty,i+50)>.5){
-          const pbx=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby=Math.floor(thRand(tx_,ty,i+70)*26)+3;
-          bx(px+pbx,py+pby,3,2,'#a09878');
+          const pbx_=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby_=Math.floor(thRand(tx_,ty,i+70)*26)+3;
+          bx(px+pbx_,py+pby_,3,2,'#a09878');
         }
       }
-      if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.15)');}
       return;
     }
   }
@@ -272,21 +262,17 @@ function drawPath(px,py,tx_,ty){
 }
 
 function drawSand(px,py,tx_,ty){
-  if(useKenney.sand){
+  if(currentMap===0){
     const h=tileHash(tx_,ty);
-    const sv=((h&7)-4);
     const nearW=isNearWater(tx_,ty);
-    // Use land tiles tinted sand-color for auto-tiled look
-    const kTile = nearW ? K.landAlt : K.landCenter;
-    bx(px,py,TW,TH,`rgb(${200+sv},${168+sv},${96+sv})`);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${184+sv},${152+sv},${80+sv})`)){
-      // Shells overlay
+    // LPC terrain sand tiles
+    const sCol=(nearW||h&1)?WT.sandAlt[0]:WT.sand[0];
+    const sRow=(nearW||h&1)?WT.sandAlt[1]:WT.sand[1];
+    if(drawWorldTile(sCol, sRow, px, py)){
+      // Shell details
       if(thRand(tx_,ty,80)>.7){
         const shx=Math.floor(thRand(tx_,ty,81)*28)+2, shy=Math.floor(thRand(tx_,ty,82)*26)+3;
         bx(px+shx,py+shy,3,2,'#f0e8d8');
-      }
-      if(nearW){
-        bx(px,py+TH-4,TW,4,`rgb(${188+sv},${172+sv},${124+sv})`);
       }
       return;
     }

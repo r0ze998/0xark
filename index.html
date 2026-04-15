@@ -580,6 +580,39 @@ function drawKenneyTileTinted(col, row, destX, destY, scale, color) {
 }
 
 // ═══════════════════════════════════════
+// WORLD TILESET (LPC Terrain v7, CC-BY-SA 3.0)
+// world-tileset.png: 1024x2048, 32x32 tiles, 32 cols x 64 rows
+// ═══════════════════════════════════════
+const WORLD_SHEET = new Image();
+WORLD_SHEET.src = 'world-tileset.png';
+let worldSheetLoaded = false;
+WORLD_SHEET.onload = () => { worldSheetLoaded = true; };
+
+// LPC tile coordinate map (col, row) — identified by color sampling
+// Each tile drawn at scale 1 = 32x32, matching game TW/TH
+const WT = {
+  grass:      [1,  8],  // solid green grass center
+  grassAlt:   [2,  9],  // grass variant
+  grassEdge:  [4, 10],  // grass with edge detail
+  dirt:       [3,  1],  // dirt/brown ground
+  dirtAlt:    [4,  1],  // dirt variant
+  sand:       [16, 8],  // sandy/beige ground
+  sandAlt:    [17, 9],  // sand variant
+  water:      [4, 14],  // deep blue water
+  waterAlt:   [5, 15],  // water variant
+  waterShore: [22,14],  // water with lighter shore look
+  snow:       [18, 9],  // white/snow tile
+};
+
+function drawWorldTile(col, row, destX, destY) {
+  if (!worldSheetLoaded) return false;
+  const sx = col * 32, sy = row * 32;
+  g.imageSmoothingEnabled = false;
+  g.drawImage(WORLD_SHEET, sx, sy, 32, 32, destX, destY, 32, 32);
+  return true;
+}
+
+// ═══════════════════════════════════════
 // DUNGEON TILESET (Kenney Tiny Dungeon, CC0)
 // dungeon-tileset.png: 11 cols x 2 rows, 16x16 tiles, 1px gap
 // ═══════════════════════════════════════
@@ -4342,25 +4375,38 @@ function drawDayNightOverlay(){
       }
     }
   }
-  // Phase overlays
+  // Phase overlays (stronger with LPC tileset)
   if(dn.phase==='dawn'){
-    g.fillStyle='rgba(255,200,100,0.05)';g.fillRect(0,0,W,townH);
+    g.fillStyle=`rgba(255,180,80,${0.10+dn.t*0.04})`;g.fillRect(0,0,W,townH);
   }else if(dn.phase==='dusk'){
-    g.fillStyle=`rgba(255,100,80,${0.06+dn.t*0.04})`;g.fillRect(0,0,W,townH);
+    g.fillStyle=`rgba(220,70,40,${0.10+dn.t*0.08})`;g.fillRect(0,0,W,townH);
+    // Golden horizon band
+    const hg=g.createLinearGradient(0,0,0,townH);
+    hg.addColorStop(0,`rgba(240,140,30,${0.06+dn.t*0.06})`);
+    hg.addColorStop(0.4,'rgba(0,0,0,0)');
+    g.fillStyle=hg;g.fillRect(0,0,W,townH);
   }else if(dn.phase==='night'){
-    g.fillStyle='rgba(20,20,80,0.12)';g.fillRect(0,0,W,townH);
+    g.fillStyle=`rgba(10,12,60,${0.22+dn.t*0.06})`;g.fillRect(0,0,W,townH);
     // Night: warm inner glow at town center (feels like firelight far away)
     if(currentMap===0){
       const townCX=15*TW-camX,townCY=12*TH-camY;
       const gc=g.createRadialGradient(townCX,townCY,30,townCX,townCY,350);
-      gc.addColorStop(0,'rgba(255,140,40,0.04)');
+      gc.addColorStop(0,'rgba(255,140,40,0.06)');
       gc.addColorStop(1,'rgba(0,0,0,0)');
       g.fillStyle=gc;g.fillRect(0,0,W,townH);
     }
   }
-  // day = soft warm sunlight tint (barely visible, just a touch of warmth)
+  // day = soft warm sunlight tint
   else if(dn.phase==='day'){
-    g.fillStyle='rgba(255,240,200,0.02)';g.fillRect(0,0,W,townH);
+    g.fillStyle='rgba(255,250,220,0.04)';g.fillRect(0,0,W,townH);
+  }
+  // Overworld ambient vignette (always, not dungeon)
+  if(!inDungeon){
+    const vg=g.createRadialGradient(W/2,(H-HUD_HEIGHT)/2,W*0.28,W/2,(H-HUD_HEIGHT)/2,W*0.72);
+    vg.addColorStop(0,'rgba(0,0,0,0)');
+    const nightBoost=dn.phase==='night'?0.18:dn.phase==='dusk'?0.10:0.06;
+    vg.addColorStop(1,`rgba(0,0,0,${nightBoost})`);
+    g.fillStyle=vg;g.fillRect(0,0,W,H-HUD_HEIGHT);
   }
 }
 function drawDayNightIcon(ix,iy){
@@ -4977,26 +5023,21 @@ function isNearWater(tx_,ty){return isNearTileType(tx_,ty,[0,17]);}
 function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,[1,7,11,3]);}
 
 function drawWater(px,py,tx_,ty){
-  if(useKenney.water){
+  if(currentMap===0){
     const nearLand_=isNearLand(tx_,ty);
-    // Auto-tile: pick correct edge/corner/center based on neighbors
-    const kTile = getWaterTileVariant(tx_, ty);
-    // Draw blue-tinted water base
-    const waterColor = nearLand_ ? 'rgba(30,80,140,0.95)' : 'rgba(48,96,160,0.95)';
-    bx(px,py,TW,TH,waterColor);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, nearLand_ ? '#3070a0' : '#4090c8')){
-      // Animated wave overlay from sprite sheet
-      const wavePhase = (wt + tx_) % 3;
-      if(wavePhase === 0) drawKenneyTileTinted(K.wave1[0], K.wave1[1], px, py, 2, 'rgba(120,200,240,0.3)');
-      else if(wavePhase === 1) drawKenneyTileTinted(K.wave2[0], K.wave2[1], px, py, 2, 'rgba(100,180,220,0.25)');
-      // Sparkles on top
-      if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.6)');}
+    const h=tileHash(tx_,ty);
+    // LPC terrain water tiles
+    const wtCol = nearLand_ ? WT.waterShore[0] : ((h&1)?WT.waterAlt[0]:WT.water[0]);
+    const wtRow = nearLand_ ? WT.waterShore[1] : ((h&1)?WT.waterAlt[1]:WT.water[1]);
+    if(drawWorldTile(wtCol, wtRow, px, py)){
+      // Animated sparkle overlay
+      if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
       // Foam near land
       if(nearLand_){
         for(let i=0;i<2;i++){
           const bblX=px+Math.floor(thRand(tx_,ty,i+200)*28)+2;
           const bblY=py+Math.floor(thRand(tx_,ty,i+210)*28)+2;
-          if((wt+i*3+tx_)%5<2){g.fillStyle='rgba(255,255,255,.35)';g.beginPath();g.arc(bblX,bblY,1.5,0,Math.PI*2);g.fill();}
+          if((wt+i*3+tx_)%5<2){g.fillStyle='rgba(255,255,255,.3)';g.beginPath();g.arc(bblX,bblY,1.5,0,Math.PI*2);g.fill();}
         }
       }
       return;
@@ -5055,22 +5096,19 @@ function drawGrass(px,py,tx_,ty){
     }
     return;
   }
-  if(useKenney.grass){
-    // Auto-tile: pick correct grass variant based on neighbors
+  if(currentMap===0){
     const h=tileHash(tx_,ty);
-    const kTile = getGrassTileVariant(tx_, ty);
-    // Green base color
-    const sv=((h&15)-8);
-    const grassColor = `rgb(${64+sv},${128+sv},${64+sv})`;
-    bx(px,py,TW,TH,grassColor);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${48+sv},${116+sv},${48+sv})`)){
+    // LPC terrain grass tiles — alternate 3 variants by tile hash
+    const gv=h%3;
+    const wCol=gv===0?WT.grass[0]:gv===1?WT.grassAlt[0]:WT.grassEdge[0];
+    const wRow=gv===0?WT.grass[1]:gv===1?WT.grassAlt[1]:WT.grassEdge[1];
+    if(drawWorldTile(wCol, wRow, px, py)){
       // Wildflower dots overlay
       if((h&3)===0){
         const fx=Math.floor(thRand(tx_,ty,40)*26)+3, fy=Math.floor(thRand(tx_,ty,41)*26)+3;
         const fcolors=['#e04060','#e0d040','#e080c0','#e08030','#40a0e0'];
         bx(px+fx,py+fy,2,2,fcolors[h%5]);
       }
-      if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.2)');}
       return;
     }
   }
@@ -5186,21 +5224,19 @@ function drawPath(px,py,tx_,ty){
     }
     return;
   }
-  if(useKenney.path){
+  if(currentMap===0){
     const h=tileHash(tx_,ty);
-    const sv=((h&7)-4);
-    // Use land tile tinted dirt-brown for path
-    const kTile = (h % 2 === 0) ? K.landCenter : K.landAlt;
-    bx(px,py,TW,TH,`rgb(${176+sv},${144+sv},${88+sv})`);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${160+sv},${128+sv},${80+sv})`)){
+    // LPC terrain dirt/path tiles
+    const dCol=(h&1)?WT.dirtAlt[0]:WT.dirt[0];
+    const dRow=(h&1)?WT.dirtAlt[1]:WT.dirt[1];
+    if(drawWorldTile(dCol, dRow, px, py)){
       // Pebbles overlay
       for(let i=0;i<2;i++){
         if(thRand(tx_,ty,i+50)>.5){
-          const pbx=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby=Math.floor(thRand(tx_,ty,i+70)*26)+3;
-          bx(px+pbx,py+pby,3,2,'#a09878');
+          const pbx_=Math.floor(thRand(tx_,ty,i+60)*26)+3, pby_=Math.floor(thRand(tx_,ty,i+70)*26)+3;
+          bx(px+pbx_,py+pby_,3,2,'#a09878');
         }
       }
-      if(currentMap===2){bx(px,py,TW,TH,'rgba(0,0,20,.15)');}
       return;
     }
   }
@@ -5232,21 +5268,17 @@ function drawPath(px,py,tx_,ty){
 }
 
 function drawSand(px,py,tx_,ty){
-  if(useKenney.sand){
+  if(currentMap===0){
     const h=tileHash(tx_,ty);
-    const sv=((h&7)-4);
     const nearW=isNearWater(tx_,ty);
-    // Use land tiles tinted sand-color for auto-tiled look
-    const kTile = nearW ? K.landAlt : K.landCenter;
-    bx(px,py,TW,TH,`rgb(${200+sv},${168+sv},${96+sv})`);
-    if(drawKenneyTileTinted(kTile[0], kTile[1], px, py, 2, `rgb(${184+sv},${152+sv},${80+sv})`)){
-      // Shells overlay
+    // LPC terrain sand tiles
+    const sCol=(nearW||h&1)?WT.sandAlt[0]:WT.sand[0];
+    const sRow=(nearW||h&1)?WT.sandAlt[1]:WT.sand[1];
+    if(drawWorldTile(sCol, sRow, px, py)){
+      // Shell details
       if(thRand(tx_,ty,80)>.7){
         const shx=Math.floor(thRand(tx_,ty,81)*28)+2, shy=Math.floor(thRand(tx_,ty,82)*26)+3;
         bx(px+shx,py+shy,3,2,'#f0e8d8');
-      }
-      if(nearW){
-        bx(px,py+TH-4,TW,4,`rgb(${188+sv},${172+sv},${124+sv})`);
       }
       return;
     }
@@ -9233,7 +9265,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v158',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v160',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
