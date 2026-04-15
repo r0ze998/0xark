@@ -868,6 +868,48 @@ document.addEventListener('keydown',e=>{
           });
           return;
         }
+        // Player HP defeat: lose weakest card to the rival who last stole, retreat
+        if(bpResolveQueue&&bpResolveQueue._playerDefeated&&!bpRdIncremented){
+          bpRdIncremented=true;rd++;roundsThisRun++;
+          // Lose the weakest (lowest rarity) card in hand
+          let worstSlot=-1,worstRar=99;
+          for(let i=0;i<HAND_SIZE;i++){
+            const cid=pl[0].cd[i];
+            if(cid>0&&CD[cid-1].r<worstRar){worstRar=CD[cid-1].r;worstSlot=i;}
+          }
+          if(worstSlot>=0){
+            const lostId=pl[0].cd[worstSlot];
+            const winnerIdx=(bpRivalActions[0]===1)?1:2;
+            addCardToPlayer(winnerIdx,lostId);
+            pl[0].cd[worstSlot]=0;pl[0].cc=pl[0].cd.filter(c=>c>0).length;
+            lg.push('DEFEATED! Lost '+CD[lostId-1].n+' to '+pl[winnerIdx].n+'.');
+            twSet('Defeated! Lost '+CD[lostId-1].n+'...');
+          }else{lg.push('DEFEATED! No cards to lose.');}
+          saveGame();
+          startWipe('vslide',16,()=>{
+            sc='map';mo=false;battlePhase='select';encounterCooldown=600;
+            bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];
+            startWipe('vslide_out',16);ub();
+          });
+          return;
+        }
+        // Rival KO: KO'd rivals immediately surrender all cards to player
+        if(bpResolveQueue&&(bpResolveQueue._rival1KO||bpResolveQueue._rival2KO)){
+          [1,2].forEach(ri=>{
+            const key=ri===1?'_rival1KO':'_rival2KO';
+            if(!bpResolveQueue[key])return;
+            bpResolveQueue[key]=false;
+            // Transfer all KO'd rival cards to player
+            for(let i=0;i<HAND_SIZE;i++){
+              const cid=pl[ri].cd[i];
+              if(cid>0){if(!addCardToPlayer(0,cid)){}; pl[ri].cd[i]=0;}
+            }
+            pl[ri].cc=0;
+            lg.push(pl[ri].n+' KO\'d! All cards claimed!');
+            twSet(pl[ri].n+' KO\'d!');
+            bpHP[ri]=0;
+          });
+        }
         if(!bpRdIncremented){
           // v90: record this round's actions before incrementing rd
           {
