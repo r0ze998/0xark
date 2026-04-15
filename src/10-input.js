@@ -3,7 +3,8 @@
 
 // Held-key tracking for smooth continuous movement
 const keysHeld = new Set();
-document.addEventListener('keyup', e => { keysHeld.delete(e.code); });
+document.addEventListener('keydown', e => { keysHeld.add(e.code); });
+document.addEventListener('keyup',   e => { keysHeld.delete(e.code); });
 
 // Extract move logic so both keydown and held-key loop can call it
 function tryMovePlayer(dx, dy) {
