@@ -1023,24 +1023,30 @@ document.addEventListener('keydown',e=>{
         screenShake(2,6);
         return;
       }
-      // M — mint all collected cards as NFTs
+      // M — mint all collected cards as NFTs (real on-chain SPL tokens when wallet connected)
       if(e.code==='KeyM'&&playerHasAllSixty()&&!victoryMinted&&!victoryMinting){
         sfxSelect();
         victoryMinting=true;victoryMintProgress=0;
         const allCards=[...pl[0].vault];
+        const gameId=Date.now()&0xffffffff; // deterministic per session
         let idx=0;
-        function mintNext(){
+        async function mintNext(){
           if(idx>=allCards.length){
             victoryMinted=true;victoryMinting=false;
             sfxVictory();
-            lg.push('[ON-CHAIN] Minted '+allCards.length+' card NFTs to wallet.');
+            lg.push('[ON-CHAIN] Minted '+allCards.length+' card NFTs!');
             return;
           }
           const cardId=allCards[idx++];
           const cr=CD[cardId-1];
           victoryMintProgress=idx;
-          lg.push('[MINT] '+cr.n+' ('+RARITY_LABEL[cr.r]+') → TX: '+generateFakeTxSig());
-          setTimeout(mintNext,60); // ~60ms per card = ~3.6s for 60 cards
+          let sig;
+          if(walletConnected&&typeof onchainMintCard==='function'){
+            sig=await onchainMintCard(gameId,cardId);
+          }
+          if(!sig){sig='sim:'+generateFakeTxSig();}
+          lg.push('[NFT] '+cr.n+' ('+RARITY_LABEL[cr.r]+') TX:'+sig.slice(0,12)+'..');
+          setTimeout(mintNext,walletConnected?1200:60);
         }
         mintNext();
         return;
