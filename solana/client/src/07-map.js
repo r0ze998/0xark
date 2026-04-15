@@ -133,6 +133,10 @@ function drawAtmosphere(){
   if(inDungeon&&currentFloor>=1&&currentFloor<=5){
     drawDungeonAmbientParticles();
   }
+  // v186: Per-floor dungeon edge vignette — color-coded screen border glow
+  if(inDungeon&&currentFloor>=1&&currentFloor<=5){
+    drawDungeonVignette();
+  }
 }
 
 // v183: Dungeon ambient particles — screen-space, deterministic, per-floor visual identity
@@ -190,6 +194,44 @@ function drawDungeonAmbientParticles(){
     }
     g.globalAlpha=1;
   }
+}
+
+// v186: Per-floor dungeon vignette — colored edge glow using canvas gradient strips
+// Each floor has a distinctive border color that immediately signals depth
+const DUNGEON_VIGNETTE_COL=[
+  null,
+  'rgba(80,140,200,',  // B1: blue-grey seawater glow
+  'rgba(60,140,80,',   // B2: moss-green mold light
+  'rgba(140,60,200,',  // B3: crystal purple resonance
+  'rgba(200,80,20,',   // B4: ember orange heat
+  'rgba(100,20,160,',  // B5: void purple darkness
+];
+function drawDungeonVignette(){
+  const depth=currentFloor;
+  const col=DUNGEON_VIGNETTE_COL[depth];if(!col)return;
+  const visH=H-HUD_HEIGHT;
+  // Breathing pulse tied to depth — deeper = faster pulse for tension
+  const pulse=0.30+0.08*Math.sin(fr*(0.02+depth*0.008));
+  // Draw edge strips using canvas gradients for smooth fade-in from edges
+  const edgeW=44; // glow band width in pixels
+  g.save();
+  // Top edge
+  const gT=g.createLinearGradient(0,0,0,edgeW);
+  gT.addColorStop(0,col+pulse+')');gT.addColorStop(1,col+'0)');
+  g.fillStyle=gT;g.fillRect(0,0,W,edgeW);
+  // Bottom edge (above HUD)
+  const gB=g.createLinearGradient(0,visH,0,visH-edgeW);
+  gB.addColorStop(0,col+pulse+')');gB.addColorStop(1,col+'0)');
+  g.fillStyle=gB;g.fillRect(0,visH-edgeW,W,edgeW);
+  // Left edge
+  const gL=g.createLinearGradient(0,0,edgeW,0);
+  gL.addColorStop(0,col+pulse+')');gL.addColorStop(1,col+'0)');
+  g.fillStyle=gL;g.fillRect(0,0,edgeW,visH);
+  // Right edge
+  const gR=g.createLinearGradient(W,0,W-edgeW,0);
+  gR.addColorStop(0,col+pulse+')');gR.addColorStop(1,col+'0)');
+  g.fillStyle=gR;g.fillRect(W-edgeW,0,edgeW,visH);
+  g.restore();
 }
 
 // ═══════════════════════════════════════
@@ -1472,7 +1514,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v185',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v186',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
