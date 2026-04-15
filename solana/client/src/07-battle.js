@@ -251,6 +251,17 @@ function drawOpponentInfoBox(){
   bx(bx_+4,by_+4,bw-8,22,'rgba(80,10,10,.5)');
   // Rival 1 (VEGA)
   txShadow(rival.n,bx_+10,by_+20,12,'#d06080','rgba(0,0,0,.5)');
+  // HP hearts rival 1
+  {const r1hp=bpHP[1],hx=bx_+80,hy=by_+9;
+  const dmgFlash1=bpHPDmgAnim[1]>0&&Math.floor(fr/3)%2===0;
+  for(let h=0;h<BATTLE_HP_MAX;h++){
+    const filled=h<r1hp;
+    const hc=filled?(dmgFlash1?'#ff8888':'#e84040'):'#401818';
+    const hhi=hx+h*14,hhj=hy;
+    bx(hhi+1,hhj,3,1,hc);bx(hhi,hhj+1,6,1,hc);bx(hhi,hhj+2,6,2,hc);
+    bx(hhi+1,hhj+4,4,1,hc);bx(hhi+2,hhj+5,2,1,hc);bx(hhi+3,hhj+6,1,1,hc);
+    if(filled)bx(hhi+1,hhj+2,1,1,'rgba(255,255,255,.4)');
+  }}
   txShadow('CARDS',bx_+120,by_+20,7,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
   const r1Cards=cardCount(rival);
@@ -280,6 +291,17 @@ function drawOpponentInfoBox(){
   const r2alive=cardCount(hunter)>0;
   const hunterCol=r2alive?ARK.gold:ARK.dangerBright;
   txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.4)');
+  // HP hearts rival 2
+  if(r2alive){const r2hp=bpHP[2],hx=bx_+80,hy=sepY+7;
+  const dmgFlash2=bpHPDmgAnim[2]>0&&Math.floor(fr/3)%2===0;
+  for(let h=0;h<BATTLE_HP_MAX;h++){
+    const filled=h<r2hp;
+    const hc=filled?(dmgFlash2?'#ffcc88':'#e8a040'):'#402018';
+    const hhi=hx+h*14,hhj=hy;
+    bx(hhi+1,hhj,3,1,hc);bx(hhi,hhj+1,6,1,hc);bx(hhi,hhj+2,6,2,hc);
+    bx(hhi+1,hhj+4,4,1,hc);bx(hhi+2,hhj+5,2,1,hc);bx(hhi+3,hhj+6,1,1,hc);
+    if(filled)bx(hhi+1,hhj+2,1,1,'rgba(255,255,255,.4)');
+  }}
   if(r2alive){
     drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
     const r2Cards=cardCount(hunter);
@@ -336,6 +358,19 @@ function drawPlayerInfoBox(){
   bx(bx_+4,by_+4,bw-8,22,'rgba(10,24,60,.55)');
   // Name
   txShadow(pl[0].n,bx_+10,by_+20,14,ARK.textBright,'rgba(0,0,0,.5)');
+  // HP hearts (player)
+  {const php=bpHP[0],hx=bx_+90,hy=by_+9;
+  const dmgFlash=bpHPDmgAnim[0]>0&&Math.floor(fr/3)%2===0;
+  for(let h=0;h<BATTLE_HP_MAX;h++){
+    const filled=h<php;
+    const hc=filled?(dmgFlash?'#ff8888':'#e84040'):'#401818';
+    const hhi=hx+h*18,hhj=hy;
+    bx(hhi+2,hhj,4,1,hc);bx(hhi,hhj+1,8,1,hc);
+    bx(hhi,hhj+2,8,3,hc);bx(hhi+1,hhj+5,6,1,hc);
+    bx(hhi+2,hhj+6,4,1,hc);bx(hhi+3,hhj+7,2,1,hc);
+    bx(hhi+4,hhj+8,1,1,hc);
+    if(filled){bx(hhi+1,hhj+2,2,1,'rgba(255,255,255,.35)');}
+  }}
   // Card bar
   txShadow('CARDS',bx_+10,by_+36,8,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+60,by_+28,148,pl[0].cd,Math.min(HAND_SIZE,10));
@@ -1546,17 +1581,24 @@ function generateResolveEvents(){
       const stolen=removeCardFromPlayer(tgt,-1);
       if(stolen>0&&addCardToPlayer(0,stolen)){
         const stolenCard=CD[stolen-1];
-        events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'!',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r});
-        lg.push('R'+rd+': Stole '+stolenCard.n+' from '+pl[tgt].n+'! ('+RARITY_LABEL[stolenCard.r]+')');
+        // Successful steal → target loses 1 HP
+        bpHP[tgt]=Math.max(0,bpHP[tgt]-1);bpHPDmgAnim[tgt]=20;
+        if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
+        if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
+        events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'! (-1 HP)',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r});
+        lg.push('R'+rd+': Stole '+stolenCard.n+' from '+pl[tgt].n+'! ('+RARITY_LABEL[stolenCard.r]+') -HP');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
         // v79: track steal_win mission
         if(runMission&&runMission.type==='steal_win'&&!runMission.completed){runMission.progress=1;runMission.completed=true;}
       }else if(stolen>0){
         // Hand full — queue discard prompt so stolen card isn't lost
         const stolenCard=CD[stolen-1];
+        bpHP[tgt]=Math.max(0,bpHP[tgt]-1);bpHPDmgAnim[tgt]=20;
+        if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
+        if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
         events.push({type:'result',text:'You stole '+stolenCard.n+' but hand full! Discard one after battle.',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r});
         events._pendingDrawCard=stolen;
-        lg.push('R'+rd+': Stole '+stolenCard.n+' - hand full!');
+        lg.push('R'+rd+': Stole '+stolenCard.n+' - hand full! -HP');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
       }else{
         events.push({type:'result',text:'Steal failed!',effect:'none'});
@@ -1592,55 +1634,67 @@ function generateResolveEvents(){
       const tgt=bpSelectedTarget;
       // Effect scales with rarity (r=1 common, r=5 legendary)
       if(cr.t==='attack'){
-        // Attack: force steal (ignore barrier) — power scales with rarity
+        // Attack: deal 1 HP damage + force steal (ignore barrier) — power scales with rarity
+        const dmg=Math.min(2,1+Math.floor((cr.r-1)/2));
+        bpHP[tgt]=Math.max(0,bpHP[tgt]-dmg);bpHPDmgAnim[tgt]=20;
+        if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
+        if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
         if(Math.random()<0.2+cr.r*0.15){
           const stolen=removeCardFromPlayer(tgt,-1);
           if(stolen>0&&addCardToPlayer(0,stolen)){
             const sc_=CD[stolen-1];
-            events.push({type:'result',text:cr.n+': Power steal! Got '+sc_.n+'!',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:sc_.r});
-            lg.push('R'+rd+': '+cr.n+' power steal → '+sc_.n+'! ('+RARITY_LABEL[sc_.r]+')');streakCount++;streakDisplayTimer=60;sfxStreakUp();
+            events.push({type:'result',text:cr.n+': -'+dmg+' HP! Power steal! Got '+sc_.n+'!',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:sc_.r});
+            lg.push('R'+rd+': '+cr.n+' -'+dmg+'HP power steal → '+sc_.n+'! ('+RARITY_LABEL[sc_.r]+')');streakCount++;streakDisplayTimer=60;sfxStreakUp();
           }else if(stolen>0){
             events._pendingDrawCard=stolen;
             const sc_=CD[stolen-1];
-            events.push({type:'result',text:cr.n+': Power stole '+sc_.n+'! Hand full — discard after.',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:sc_.r});
-          }else{events.push({type:'result',text:cr.n+': No cards to steal from '+pl[tgt].n+'!',effect:'none'});}
+            events.push({type:'result',text:cr.n+': -'+dmg+' HP! Stole '+sc_.n+'! Hand full.',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:sc_.r});
+          }else{events.push({type:'result',text:cr.n+': -'+dmg+' HP damage! '+pl[tgt].n+' has no cards.',effect:'none'});}
         }else{
           events.push({type:'result',text:cr.n+': Strike landed but foe dodged!',effect:'slash',target:tgt});
           lg.push('R'+rd+': '+cr.n+' strike — missed steal!');
         }
       }else if(cr.t==='defense'){
-        // Defense: barrier + restore spell energy
+        // Defense: barrier + restore spell energy + heal 1 HP
         bpPlayerBarrier=true;
         const restore=Math.min(2,Math.ceil(cr.r/2));
         sp.b=Math.min(5,sp.b+restore);
-        events.push({type:'result',text:cr.n+': Barrier raised! +'+restore+' barrier charge.',effect:'shield'});
-        lg.push('R'+rd+': '+cr.n+' barrier +'+restore+'!');
+        const healed=bpHP[0]<BATTLE_HP_MAX;
+        if(healed)bpHP[0]=Math.min(BATTLE_HP_MAX,bpHP[0]+1);
+        events.push({type:'result',text:cr.n+': Barrier! +'+restore+' charge.'+(healed?' Restored 1 HP!':''),effect:'shield'});
+        lg.push('R'+rd+': '+cr.n+' barrier +'+restore+(healed?' +HP':'')+'!');
       }else if(cr.t==='flee'){
         // Flee: escape battle immediately (no card loss)
         events.push({type:'result',text:cr.n+': ESCAPED! No cards lost this round!',effect:'shield'});
         lg.push('R'+rd+': '+cr.n+' — escaped battle!');
         events._escaped=true; // signal battle result handler to skip to map immediately
       }else if(cr.t==='magic'){
-        // Magic: strip all barriers + guaranteed steal attempt
+        // Magic: strip all barriers + 2 HP damage to both rivals + guaranteed steal
         rivalBarriers[0]=false;rivalBarriers[1]=false;bpPlayerBarrier=false;
+        bpHP[1]=Math.max(0,bpHP[1]-2);bpHP[2]=Math.max(0,bpHP[2]-1);
+        bpHPDmgAnim[1]=20;bpHPDmgAnim[2]=20;
         const stolen=removeCardFromPlayer(tgt,-1);
         if(stolen>0&&addCardToPlayer(0,stolen)){
-          events.push({type:'result',text:cr.n+': Magic strike! Barriers nulled + stole '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true});
-          lg.push('R'+rd+': '+cr.n+' magic steal → '+CD[stolen-1].n+'!');streakCount++;streakDisplayTimer=60;sfxStreakUp();
+          events.push({type:'result',text:cr.n+': Magic! -2 HP all rivals. Stole '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true});
+          lg.push('R'+rd+': '+cr.n+' magic → '+CD[stolen-1].n+' stolen! -HP rivals');streakCount++;streakDisplayTimer=60;sfxStreakUp();
         }else if(stolen>0){
           events._pendingDrawCard=stolen;
-          events.push({type:'result',text:cr.n+': Stole '+CD[stolen-1].n+'! Hand full — discard.',effect:'damage',target:tgt,isCritical:true});
+          events.push({type:'result',text:cr.n+': Magic! Barriers nulled. Stole '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true});
         }else{
-          events.push({type:'result',text:cr.n+': Barriers nulled! '+pl[tgt].n+' had no cards.',effect:'none'});
-          lg.push('R'+rd+': '+cr.n+' barriers cleared — no steal!');
+          events.push({type:'result',text:cr.n+': Magic! Barriers nulled. -HP rivals.',effect:'none'});
+          lg.push('R'+rd+': '+cr.n+' magic — barriers cleared, HP drained!');
         }
+        // Check rival KO by HP
+        if(bpHP[1]<=0){events._rival1KO=true;}
+        if(bpHP[2]<=0){events._rival2KO=true;}
       }else if(cr.t==='recovery'){
-        // Recovery: restore all spell energy
+        // Recovery: restore all spell energy + 1 HP
         sp.s=Math.min(5,sp.s+Math.ceil(cr.r/2));
         sp.b=Math.min(5,sp.b+1);
         sp.c=Math.min(3,sp.c+1);
-        events.push({type:'result',text:cr.n+': Restored spell energy! +'+Math.ceil(cr.r/2)+' Steal, +1 Barrier, +1 Scout.',effect:'card_get'});
-        lg.push('R'+rd+': '+cr.n+' restored energy!');
+        bpHP[0]=Math.min(BATTLE_HP_MAX,bpHP[0]+1);
+        events.push({type:'result',text:cr.n+': Recovery! +'+Math.ceil(cr.r/2)+' Steal, +1 Barrier, +1 Scout. +1 HP!',effect:'card_get'});
+        lg.push('R'+rd+': '+cr.n+' restored energy + HP!');
       }
       } // end else(card valid)
     }else{
@@ -1674,12 +1728,14 @@ function generateResolveEvents(){
       const stolen=removeCardFromPlayer(0,-1);
       if(stolen>0){
         if(!addCardToPlayer(1,stolen)){
-          // Rival hand full, discard their weakest then add
           removeCardFromPlayer(1,-1);
           addCardToPlayer(1,stolen);
         }
-        events.push({type:'result',text:pl[1].n+' stole your '+CD[stolen-1].n+'!',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:0}); // v83
-        lg.push('R'+rd+': '+pl[1].n+' stole your '+CD[stolen-1].n+'!');
+        // Rival steal success → player loses 1 HP
+        bpHP[0]=Math.max(0,bpHP[0]-1);bpHPDmgAnim[0]=20;
+        if(bpHP[0]<=0)events._playerDefeated=true;
+        events.push({type:'result',text:pl[1].n+' stole your '+CD[stolen-1].n+'! (-1 HP)',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:0});
+        lg.push('R'+rd+': '+pl[1].n+' stole your '+CD[stolen-1].n+'! -HP');
         screenShake(4,10);
         if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
       }else{
@@ -1721,8 +1777,11 @@ function generateResolveEvents(){
           removeCardFromPlayer(2,-1);
           addCardToPlayer(2,stolen);
         }
-        events.push({type:'result',text:pl[2].n+' stole your '+CD[stolen-1].n+'!',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:1}); // v83
-        lg.push('R'+rd+': '+pl[2].n+' stole your '+CD[stolen-1].n+'!');
+        // Rival steal success → player loses 1 HP
+        bpHP[0]=Math.max(0,bpHP[0]-1);bpHPDmgAnim[0]=20;
+        if(bpHP[0]<=0)events._playerDefeated=true;
+        events.push({type:'result',text:pl[2].n+' stole your '+CD[stolen-1].n+'! (-1 HP)',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:1});
+        lg.push('R'+rd+': '+pl[2].n+' stole your '+CD[stolen-1].n+'! -HP');
         screenShake(4,10);
         if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
       }else{

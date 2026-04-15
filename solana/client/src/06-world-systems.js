@@ -41,6 +41,7 @@ function checkDungeonRivalEncounter(){
         startWipe('mosaic',30,()=>{
           sc='act';battlePhase='vs_splash';bpFrame=fr;
           battleRoundHistory=[];
+          bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];
           startWipe('mosaic_out',20);
           if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){runMission.progress=1;runMission.completed=true;sfxStreakUp();}
         });
