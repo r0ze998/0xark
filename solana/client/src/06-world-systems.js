@@ -1530,43 +1530,56 @@ function drawNPCDialog(){
 // TITLE SCREEN
 // ═══════════════════════════════════════
 function dTitle(){
-  bx(0,0,W,H,'#080c1a');
-  // Deep ocean gradient from top
-  for(let i=0;i<200;i++){const a=.22-i*.0011;bx(0,i,W,1,`rgba(28,56,140,${Math.max(0,a)})`);}
-  // Underwater caustic light rays — slow diagonal sweeping beams
-  for(let b=0;b<6;b++){
-    const bx_=((b*120+fr*0.3)%640)-60;
-    const ba=0.04+0.03*Math.sin(fr*0.02+b);
+  bx(0,0,W,H,'#060612');
+  // Gothic void gradient — deep purple-black from top
+  for(let i=0;i<280;i++){const a=.28-i*.001;bx(0,i,W,1,`rgba(40,16,80,${Math.max(0,a)})`);}
+  // Ethereal void pillars — slow vertical light columns
+  for(let b=0;b<5;b++){
+    const bx_=(b*136+fr*0.08)%W;
+    const ba=0.025+0.02*Math.sin(fr*0.015+b*1.2);
     g.globalAlpha=ba;
-    g.fillStyle='rgba(80,140,220,1)';
-    g.beginPath();g.moveTo(bx_,0);g.lineTo(bx_+30,0);g.lineTo(bx_+30+80,H*0.55);g.lineTo(bx_+80,H*0.55);g.closePath();g.fill();
+    g.fillStyle=`rgba(${80+b*12},${20+b*8},${180+b*12},1)`;
+    g.beginPath();g.moveTo(bx_,0);g.lineTo(bx_+18,0);g.lineTo(bx_+60,H);g.lineTo(bx_+42,H);g.closePath();g.fill();
     g.globalAlpha=1;
   }
-  // Stars / particles
+  // Stars / arcane motes
   for(let i=0;i<80;i++){
-    const sx=(i*47+13)%W,sy=(i*31+7)%320;
+    const sx=(i*47+13)%W,sy=(i*31+7)%340;
     const a=Math.sin(fr*.03+i*1.7)*.35+.5;
-    bx(sx,sy,i%7===0?2:1,i%7===0?2:1,`rgba(255,255,255,${a*.35})`);
+    const purp=i%9===0;
+    bx(sx,sy,i%7===0?2:1,i%7===0?2:1,purp?`rgba(180,80,255,${a*.45})`:`rgba(220,200,255,${a*.28})`);
   }
-  // Rising bubbles (3 slow bubbles)
-  for(let b=0;b<3;b++){
-    const bsy=H-((fr*0.4+b*200)%480);
-    const bsx=100+b*180+Math.sin(fr*0.03+b)*15;
-    const ba=Math.min(1,Math.min(bsy/120,(H-bsy)/60)*0.5);
-    g.globalAlpha=ba;g.strokeStyle='rgba(120,180,255,0.6)';g.lineWidth=1;
-    g.beginPath();g.arc(bsx,bsy,2+b,0,Math.PI*2);g.stroke();
+  // Rising rune wisps — small cross shapes drifting upward
+  for(let b=0;b<5;b++){
+    const bsy=H-((fr*0.5+b*140)%560);
+    const bsx=80+b*110+Math.sin(fr*0.025+b)*22;
+    const ba=Math.min(1,Math.min(bsy/100,(H-bsy)/50)*0.6);
+    g.globalAlpha=ba*0.5;
+    const rc=b%2===0?ARK.rune:'#c8a448';
+    // Pixel cross rune
+    bx(bsx-3,bsy,6,1,rc);bx(bsx,bsy-3,1,6,rc);
     g.globalAlpha=1;
   }
+  // Horizontal rune-grid lines (very subtle, gothic cathedral feel)
+  g.globalAlpha=0.04;
+  for(let gy_=60;gy_<H;gy_+=80)bx(0,gy_,W,1,'#9945FF');
+  g.globalAlpha=1;
   if(fr%200<15){
     const sx=150+fr%200*10,sy=40+fr%200*2;
     for(let t=0;t<6;t++)bx(sx-t*4,sy-t,2,1,`rgba(255,255,255,${.4-t*.06})`);
   }
 
-  txShadow('0xARK',W/2-96+1,191,32,'rgba(0,0,0,.45)','rgba(0,0,0,.6)');
-  txShadow('0xARK',W/2-96,190,32,'#f8f0e0','rgba(0,0,32,.7)');
+  // Title rune halo
+  g.globalAlpha=0.12+Math.sin(fr*0.04)*0.06;
+  bx(W/2-130,172,260,40,'#9945FF');
+  g.globalAlpha=1;
+  // Title layers — purple ghost → sharp main
+  txShadow('0xARK',W/2-96+2,192,32,'rgba(153,69,255,.35)','rgba(0,0,0,0)');
+  txShadow('0xARK',W/2-96+1,191,32,'rgba(0,0,0,.5)','rgba(0,0,0,.6)');
+  txShadow('0xARK',W/2-96,190,32,'#f8f0e0','rgba(0,0,32,.8)');
   if(Math.sin(fr*.02)>.3)tx('0xARK',W/2-96,190,32,'rgba(248,240,224,.12)');
-  txShadow('60 CARDS. ONE HEIR. FIRST TO WIN TAKES ALL.',W/2-184,226,7,'#7080a0','rgba(0,0,0,.5)');
-  txShadow('The ARK sank here. Its power waits.',W/2-128,240,7,'#a07848','rgba(0,0,0,.5)');
+  txShadow('60 CARDS. ONE HEIR. FIRST TO WIN TAKES ALL.',W/2-184,226,7,'#8090b8','rgba(0,0,0,.5)');
+  txShadow('The ARK sank here. Its power waits.',W/2-128,240,7,'#c08848','rgba(0,0,0,.5)');
 
   // SEASON 1 badge
   const s1Blink=Math.sin(fr*0.06)*0.15+0.85;
@@ -1576,9 +1589,11 @@ function dTitle(){
   txShadow('SEASON 1',W/2-30,264,7,'#f0c830','rgba(0,0,0,.4)');
   g.globalAlpha=1;
 
-  // Prize pool display — show actual pot if wallet connected
-  const prizeStr=walletConnected&&stakePotAmount>0?'PRIZE POOL: '+stakePotAmount.toFixed(2)+' SOL':'PRIZE POOL: -- USDC';
-  txShadow(prizeStr,W/2-86,280,7,'#14F195','rgba(0,0,0,.5)');
+  // Grand Seal display — show actual pot if wallet connected
+  const prizeStr=walletConnected&&stakePotAmount>0?'GRAND SEAL: '+stakePotAmount.toFixed(2)+' SOL':'GRAND SEAL: awaiting souls';
+  // Rune glow behind prize text
+  g.globalAlpha=0.18+Math.sin(fr*0.05)*0.08;bx(W/2-100,268,200,16,ARK.rune);g.globalAlpha=1;
+  txShadow(prizeStr,W/2-96,280,7,'#14F195','rgba(0,0,0,.5)');
 
   // Ship silhouette in background
   {
@@ -1668,8 +1683,8 @@ function dTitle(){
       txShadow(walletAddressTruncated(),W/2-52,380,8,'#40d080','rgba(0,0,0,.4)');
       if(sel===2)txShadow('\u25B6',W/2-76,380,10,'#40d080','rgba(0,0,0,.4)');
     }else{
-      if(sel===2&&blink||sel!==2)txShadow('CONNECT WALLET',W/2-80,380,10,sel===2?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
-      if(sel===2)txShadow('\u25B6',W/2-104,380,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
+      if(sel===2&&blink||sel!==2)txShadow('BIND VAULT',W/2-60,380,10,sel===2?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
+      if(sel===2)txShadow('\u25B6',W/2-84,380,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
     }
     // MULTIPLAYER option
     if(sel===3&&blink||sel!==3)txShadow('MULTIPLAYER',W/2-68,410,10,sel===3?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
@@ -1686,8 +1701,8 @@ function dTitle(){
     if(walletConnected){
       txShadow(walletAddressTruncated(),W/2-52,370,8,'#40d080','rgba(0,0,0,.4)');
     }else{
-      if(sel2===1&&blink2||sel2!==1)txShadow('CONNECT WALLET',W/2-80,370,10,sel2===1?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
-      if(sel2===1)txShadow('\u25B6',W/2-104,370,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
+      if(sel2===1&&blink2||sel2!==1)txShadow('BIND VAULT',W/2-60,370,10,sel2===1?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
+      if(sel2===1)txShadow('\u25B6',W/2-84,370,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
     }
     // MULTIPLAYER option (no save)
     if(sel2===2&&blink2||sel2!==2)txShadow('MULTIPLAYER',W/2-68,400,10,sel2===2?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
@@ -1704,9 +1719,9 @@ function dTitle(){
 
   // Stake display when wallet connected (placed below menu items)
   if(walletConnected){
-    txShadow('STAKE: '+STAKE_AMOUNT.toFixed(2)+' SOL',W/2-70,496,8,'#14F195','rgba(0,0,0,.4)');
+    txShadow('OFFERING: '+STAKE_AMOUNT.toFixed(2)+' SOL',W/2-82,496,8,'#14F195','rgba(0,0,0,.4)');
     if(stakeDeposited){
-      txShadow('POT: '+stakePotAmount.toFixed(2)+' SOL',W/2-50,512,7,'#f0c830','rgba(0,0,0,.4)');
+      txShadow('SEAL POT: '+stakePotAmount.toFixed(2)+' SOL',W/2-76,512,7,'#f0c830','rgba(0,0,0,.4)');
     }
   }
 
@@ -1742,7 +1757,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v198',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v199',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -1752,8 +1767,8 @@ function dTitle(){
     bx(0,0,W,H,'rgba(0,0,0,.6)');
     win(W/2-200,H/2-80,400,160);
     drawSolanaLogo(W/2,H/2-54,14);
-    txShadow('DEPOSIT '+STAKE_AMOUNT.toFixed(2)+' SOL TO ENTER?',W/2-180,H/2-24,9,'#f0f0f0','rgba(0,0,0,.5)');
-    txShadow('Winner takes the pot: '+stakePotAmount.toFixed(2)+' SOL',W/2-170,H/2+2,7,'#14F195','rgba(0,0,0,.4)');
+    txShadow('OFFER '+STAKE_AMOUNT.toFixed(2)+' SOL TO BREAK THE SEAL?',W/2-200,H/2-24,9,'#f0f0f0','rgba(0,0,0,.5)');
+    txShadow('Victor claims the Grand Seal: '+stakePotAmount.toFixed(2)+' SOL',W/2-190,H/2+2,7,'#14F195','rgba(0,0,0,.4)');
     txShadow('(UI preview - devnet not deployed)',W/2-150,H/2+22,6,'#555570','rgba(0,0,0,.35)');
     const blink_=Math.floor(fr/25)%2===0;
     if(blink_)txShadow('Z = Yes    X = No',W/2-100,H/2+52,9,'#f0c830','rgba(0,0,0,.4)');

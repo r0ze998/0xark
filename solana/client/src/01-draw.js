@@ -1,17 +1,17 @@
 // ═══════════════════════════════════════
-// 0xARK DESIGN SYSTEM — "Deep ARK" (v156)
-// Maritime arcana: deep navy · brass gold · bioluminescent teal
+// 0xARK DESIGN SYSTEM — "Dark Arcana" (v199)
+// Gothic dark fantasy: void purple · amber gold · arcane rune · bioluminescent teal
 // ═══════════════════════════════════════
 const ARK={
-  bg:       '#06080f',  // void — page background
-  panel:    '#0b1020',  // hull — panel bg
-  panelMid: '#0e1428',  // inner hull
-  panelLit: '#131c36',  // lit panel
-  border:   '#1c2a50',  // cold steel
-  borderLit:'#2e4480',  // steel highlight
-  gold:     '#c8a448',  // brass
-  goldDim:  '#7a6028',  // tarnished brass
-  goldBright:'#e8c870', // polished brass
+  bg:       '#080810',  // void — deep purple-black
+  panel:    '#0c0b1e',  // dark indigo hull
+  panelMid: '#0e0c22',  // deep indigo interior
+  panelLit: '#141228',  // lit arcane panel
+  border:   '#201a48',  // muted purple border
+  borderLit:'#2e2060',  // arcane highlight
+  gold:     '#c8a448',  // amber brass
+  goldDim:  '#7a6028',  // tarnished amber
+  goldBright:'#e8c870', // polished amber
   teal:     '#2898a8',  // bioluminescent
   tealDim:  '#186070',
   tealBright:'#50c8d8',
@@ -23,6 +23,9 @@ const ARK={
   safe:     '#2a7a48',
   safeBright:'#48c070',
   water:    '#080f20',
+  rune:     '#9945FF',  // arcane rune purple (NFT / blockchain)
+  runeDim:  '#4a1a8a',  // dim rune
+  runeBright:'#c060ff', // bright rune glow
   rarC:['#707880','#5090d0','#9050d8','#c09020','#e8c840'], // rarity tints C/U/R/E/L
 };
 // Keep FRLG object for legacy text color refs (mapped to ARK values)
@@ -34,30 +37,52 @@ const FRLG={
   hpRed:ARK.dangerBright,
 };
 
-// ── Main panel window — dark maritime instrument style ──
+// ── Main panel window — dark gothic arcane style ──
 function win(x,y,w,h,accent){
   const ac=accent||ARK.gold;
-  // Outermost border (1px)
+  // Outermost border (1px, purple-dark)
   g.fillStyle=ARK.border;g.fillRect(x,y,w,1);g.fillRect(x,y+h-1,w,1);g.fillRect(x,y,1,h);g.fillRect(x+w-1,y,1,h);
   // Outer fill
   g.fillStyle=ARK.panel;g.fillRect(x+1,y+1,w-2,h-2);
-  // Inner inset border
+  // Subtle arcane inner tint
+  g.globalAlpha=0.05;g.fillStyle=ARK.rune;g.fillRect(x+1,y+1,w-2,h-2);g.globalAlpha=1;
+  // Inner inset border (arcane purple highlight)
   g.fillStyle=ARK.borderLit;g.fillRect(x+3,y+3,w-6,1);g.fillRect(x+3,y+h-4,w-6,1);g.fillRect(x+3,y+3,1,h-6);g.fillRect(x+w-4,y+3,1,h-6);
   // Inner content fill
   g.fillStyle=ARK.panelMid;g.fillRect(x+4,y+4,w-8,h-8);
-  // Gold accent top line
+  // Amber accent top line
   g.fillStyle=ARK.goldDim;g.fillRect(x+5,y+4,w-10,1);
-  // Corner brass rivets
+  // Corner gothic rune cross ornaments
   g.fillStyle=ac;
-  g.fillRect(x+2,y+2,3,3);g.fillRect(x+w-5,y+2,3,3);
-  g.fillRect(x+2,y+h-5,3,3);g.fillRect(x+w-5,y+h-5,3,3);
-  // Inner rivets (subtle)
+  // TL cross
+  g.fillRect(x+1,y+3,5,1);g.fillRect(x+3,y+1,1,5);
+  // TR cross
+  g.fillRect(x+w-6,y+3,5,1);g.fillRect(x+w-4,y+1,1,5);
+  // BL cross
+  g.fillRect(x+1,y+h-4,5,1);g.fillRect(x+3,y+h-6,1,5);
+  // BR cross
+  g.fillRect(x+w-6,y+h-4,5,1);g.fillRect(x+w-4,y+h-6,1,5);
+  // Center dot of each cross (goldDim)
   g.fillStyle=ARK.goldDim;
-  g.fillRect(x+5,y+5,1,1);g.fillRect(x+w-6,y+5,1,1);
-  g.fillRect(x+5,y+h-6,1,1);g.fillRect(x+w-6,y+h-6,1,1);
+  g.fillRect(x+3,y+3,1,1);g.fillRect(x+w-4,y+3,1,1);
+  g.fillRect(x+3,y+h-4,1,1);g.fillRect(x+w-4,y+h-4,1,1);
   // Subtle scanline texture
   g.fillStyle='rgba(0,0,0,.06)';
   for(let sy=y+6;sy<y+h-6;sy+=2)g.fillRect(x+5,sy,w-10,1);
+}
+
+// ── Legendary card rune glow — draw pulsing arcane aura outside a rect ──
+function drawRuneGlow(x,y,w,h,col,fr_){
+  const pulse=0.4+Math.sin((fr_||0)*0.06)*0.4;
+  g.globalAlpha=pulse*0.6;
+  // Outer blur layers (4 concentric outlines)
+  const glowSteps=[[2,'rgba(153,69,255,.5)'],[4,'rgba(153,69,255,.25)'],[6,'rgba(192,96,255,.12)'],[9,'rgba(153,69,255,.05)']];
+  glowSteps.forEach(([d,c])=>{g.fillStyle=c;g.fillRect(x-d,y-d,w+d*2,h+d*2);g.fillRect(x-d+1,y-d+1,w+d*2-2,h+d*2-2,);});
+  // Bright inner rim
+  g.globalAlpha=pulse*0.9;g.fillStyle=col||ARK.rune;
+  g.fillRect(x-1,y,w+2,1);g.fillRect(x-1,y+h,w+2,1);
+  g.fillRect(x-1,y,1,h+1);g.fillRect(x+w,y,1,h+1);
+  g.globalAlpha=1;
 }
 
 function bx(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}

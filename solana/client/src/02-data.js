@@ -504,13 +504,29 @@ function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
     g.globalAlpha=1;
   }
 
-  // ── Legendary corner sparkles ──
+  // ── Legendary rune glow + corner sparkles ──
   if(rar>=5){
+    // Pulsing purple aura around entire card
+    drawRuneGlow(cx_,cy_,cw,ch,ARK.rune,t);
     const sp=t*0.12;
     const sc='#ffffff';
     if(Math.sin(sp)>0.5){bx(cx_,cy_,2,2,sc);bx(cx_+cw-2,cy_,2,2,sc);}
     if(Math.sin(sp+0.8)>0.5){bx(cx_,cy_+ch-2,2,2,sc);bx(cx_+cw-2,cy_+ch-2,2,2,sc);}
     if(Math.sin(sp+1.6)>0.7){bx(cx_+Math.floor(cw/2),cy_,1,2,sc);bx(cx_,cy_+Math.floor(ch/2),2,1,sc);}
+    // Tiny rune cross sparkles at card corners
+    const rsp=t*0.08;
+    if(Math.sin(rsp)>0.3){
+      g.globalAlpha=Math.sin(rsp)*0.7;
+      bx(cx_-3,cy_+Math.floor(ch/2),6,1,ARK.rune);bx(cx_+Math.floor(cw/2)-1,cy_-3,1,6,ARK.rune);
+      g.globalAlpha=1;
+    }
+  }else if(rar>=4){
+    // Epic: subtle gold glow
+    const pulse=0.2+Math.sin(t*0.06)*0.15;
+    g.globalAlpha=pulse;
+    bx(cx_-1,cy_,cw+2,1,'#e0a020');bx(cx_-1,cy_+ch,cw+2,1,'#e0a020');
+    bx(cx_-1,cy_,1,ch+1,'#e0a020');bx(cx_+cw,cy_,1,ch+1,'#e0a020');
+    g.globalAlpha=1;
   }
 
   // ── Outer frame corner overlays (rivet-style) ──
