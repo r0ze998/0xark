@@ -581,6 +581,58 @@ function drawDungeonTile(idx, destX, destY, scale) {
 }
 
 // ═══════════════════════════════════════
+// CRAFTPIX ASSET SHEETS
+// craftpix-exterior.png : 240x800 — town buildings, trees, props (16px base grid)
+// craftpix-walls.png    : 144x176 — dungeon walls/floor tiles
+// craftpix-ground.png   : 336x288 — grass/dirt scatter details
+// craftpix-ruins1-5.png : individual ruin prop sprites (blue-gray, dark texture)
+// craftpix-trees.png    : animated trees spritesheet
+// ═══════════════════════════════════════
+const CPX_EXT   = new Image(); CPX_EXT.src   = 'craftpix-exterior.png';
+const CPX_WALL  = new Image(); CPX_WALL.src  = 'craftpix-walls.png';
+const CPX_GND   = new Image(); CPX_GND.src   = 'craftpix-ground.png';
+const CPX_TREES = new Image(); CPX_TREES.src = 'craftpix-trees.png';
+let cpxExtLoaded=false, cpxWallLoaded=false, cpxGndLoaded=false, cpxTreesLoaded=false;
+CPX_EXT.onload  = ()=>{ cpxExtLoaded=true; };
+CPX_WALL.onload = ()=>{ cpxWallLoaded=true; };
+CPX_GND.onload  = ()=>{ cpxGndLoaded=true; };
+CPX_TREES.onload= ()=>{ cpxTreesLoaded=true; };
+
+// Ruins props: 5 individual images per color variant
+const CPX_RUINS = Array.from({length:5},(_,i)=>{ const img=new Image(); img.src=`craftpix-ruins${i+1}.png`; return img; });
+const cpxRuinsLoaded = Array(5).fill(false);
+CPX_RUINS.forEach((img,i)=>{ img.onload=()=>{ cpxRuinsLoaded[i]=true; }; });
+
+// Draw a region from the exterior sheet at 1× scale (16px tiles)
+// sx,sy = source pixel coords in craftpix-exterior.png; sw,sh = source size
+function drawCpxExt(sx,sy,sw,sh,destX,destY,scale){
+  if(!cpxExtLoaded)return false;
+  const s=scale||2;
+  g.imageSmoothingEnabled=false;
+  g.drawImage(CPX_EXT,sx,sy,sw,sh,destX,destY,sw*s,sh*s);
+  return true;
+}
+
+// Draw dungeon wall/floor region from craftpix-walls.png
+function drawCpxWall(sx,sy,sw,sh,destX,destY,scale){
+  if(!cpxWallLoaded)return false;
+  const s=scale||2;
+  g.imageSmoothingEnabled=false;
+  g.drawImage(CPX_WALL,sx,sy,sw,sh,destX,destY,sw*s,sh*s);
+  return true;
+}
+
+// Draw a ruins prop (idx 0-4) at dest position, optionally scaled
+function drawCpxRuin(idx,destX,destY,scale){
+  if(!cpxRuinsLoaded[idx])return false;
+  const img=CPX_RUINS[idx];
+  const s=scale||1;
+  g.imageSmoothingEnabled=false;
+  g.drawImage(img,0,0,img.naturalWidth,img.naturalHeight,destX,destY,img.naturalWidth*s,img.naturalHeight*s);
+  return true;
+}
+
+// ═══════════════════════════════════════
 // MIDJOURNEY MAP BACKGROUNDS
 // bg-town.jpg   : port town night scene   (map 0)
 // bg-dungeon1.jpg : shallow dungeon       (maps 1-2)
