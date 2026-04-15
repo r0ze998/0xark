@@ -1071,7 +1071,28 @@ function drawSprite(p,isPlayer){
   // Shadow
   g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(px+16,py+46,12,4,0,0,Math.PI*2);g.fill();
 
-  // === KENNEY SPRITE PATH ===
+  // Walk animation: frame 0=neutral, 1=left-stride, 2=neutral, 3=right-stride
+  const zFrame=[1,0,1,2][wf];
+  // Direction: 0=down, 1=left, 2=right, 3=up
+  const zDir=[0,1,2,3][d]||0;
+  const charIdx=isP0?0:isP1?1:2;
+
+  // === ZELDA-LIKE CHARACTER SPRITES (best quality) ===
+  if(zeldaCharLoaded){
+    const glowC=isP0?'rgba(40,88,200,.18)':isP1?'rgba(200,32,40,.18)':'rgba(40,180,160,.18)';
+    g.fillStyle=glowC;g.beginPath();g.ellipse(px+16,py+24+bob,18,24,0,0,Math.PI*2);g.fill();
+    // Zelda sprites are 16x16 drawn at 2x = 32x32
+    drawZeldaChar(charIdx,zDir,zFrame,px,py+bob,2);
+    // CC badge
+    if(isPlayer){
+      const bx_=px+28,by_=py-10;win(bx_,by_,28,18);tx(p.cc+'',bx_+9,by_+15,8,'#c8b888');
+    }else if(isVisibleThroughFog(p.x,p.y,3)){
+      bx(px+28,py-8,22,16,'rgba(0,0,0,.4)');win(px+28,py-10,22,16);tx(p.cc+'',px+34,py+4,7,'#c8b888');
+    }
+    return;
+  }
+
+  // === KENNEY SPRITE PATH (fallback) ===
   if(pirateSheetLoaded){
     const kChar=isP0?K.captain:(isP1?K.pirate2:K.pirate3);
     // Glow aura behind sprite
@@ -1273,8 +1294,16 @@ function drawNPCSprite(npc){
 
   g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(px+16,py+46,12,5,0,0,Math.PI*2);g.fill();
 
-  // === KENNEY NPC SPRITE PATH ===
-  if(pirateSheetLoaded){
+  // === ZELDA-LIKE NPC SPRITES (best quality) ===
+  const npcZFrame=[1,0,1,2][walkFrame%4]||1;
+  const npcZDir=[0,1,2,3][d]||0;
+  const npcCharIdx=npc.type===0?3:npc.type===1?4:3; // NPC chars at indices 3,4
+  if(zeldaCharLoaded){
+    const glowC=npc.type===0?'rgba(120,60,180,.14)':npc.type===1?'rgba(60,180,100,.14)':'rgba(180,160,60,.14)';
+    g.fillStyle=glowC;g.beginPath();g.ellipse(px+16,py+24,16,22,0,0,Math.PI*2);g.fill();
+    drawZeldaChar(npcCharIdx,npcZDir,npcZFrame,px,py,2);
+  } else if(pirateSheetLoaded){
+  // === KENNEY NPC SPRITE PATH (fallback) ===
     // NPC type 0→pirate1, type 1→skeleton, type 2→pirate3
     const kNpc=npc.type===0?K.pirate1:(npc.type===1?K.skeleton:K.pirate3);
     const glowC=npc.type===0?'rgba(120,60,180,.14)':npc.type===1?'rgba(60,180,100,.14)':'rgba(180,160,60,.14)';

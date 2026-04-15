@@ -71,7 +71,7 @@ function build() {
   fs.writeFileSync(OUT_GAME, output);
   fs.writeFileSync(OUT_ROOT, output);
 
-  // Copy ZK artifacts to root so GitHub Pages can serve them alongside root index.html
+  // Copy ZK artifacts + PNG tilesets to root so GitHub Pages can serve them alongside root index.html
   const ZK_FILES = ['commit_reveal.wasm', 'commit_reveal_final.zkey', 'verification_key.json'];
   const REPO_ROOT = path.join(ROOT, '../../');
   for (const f of ZK_FILES) {
@@ -79,6 +79,24 @@ function build() {
     const dst = path.join(REPO_ROOT, f);
     if (fs.existsSync(src)) fs.copyFileSync(src, dst);
   }
+  // Copy PNG tilesets (game references them as root-relative paths when served from GitHub Pages)
+  const PNG_FILES = [
+    { src: 'pirates-tilemap.png',    dst: 'pirates-tilemap.png'    },
+    { src: 'world-tileset.png',      dst: 'world-tileset.png'      },
+    { src: 'dungeon-tileset.png',    dst: 'dungeon-tileset.png'    },
+    { src: 'overworld-rpg-tileset.png', dst: 'overworld-rpg-tileset.png' },
+    { src: 'zelda-like-gfx/gfx/character.png', dst: 'zelda-character.png' },
+    { src: 'zelda-like-gfx/gfx/Overworld.png', dst: 'zelda-overworld.png' },
+    { src: 'zelda-like-gfx/gfx/cave.png',      dst: 'zelda-cave.png'      },
+    { src: 'zelda-like-gfx/gfx/objects.png',   dst: 'zelda-objects.png'   },
+  ];
+  let copiedPngs = 0;
+  for (const { src, dst } of PNG_FILES) {
+    const srcPath = path.join(ROOT, src);
+    const dstPath = path.join(REPO_ROOT, dst);
+    if (fs.existsSync(srcPath)) { fs.copyFileSync(srcPath, dstPath); copiedPngs++; }
+  }
+  if (copiedPngs > 0) console.log(`  PNGs copied:  ${copiedPngs} tileset files → repo root`);
 
   const lineCount = output.split('\n').length;
   const moduleCount = MODULES.length;
