@@ -1122,20 +1122,34 @@ function drawNPCSprite(npc){
   }
   } // end fallback
 
-  // Diamond indicator
+  // v193: Diamond indicator — enhanced proximity version shows [Z] prompt when adjacent
   if(npc.map===currentMap){
     const bobY=Math.sin(fr*0.08)*3;
     let diaC,diaH;
     if(npc.type===0){diaC='#4080d0';diaH='#60a0e8';}
     else if(npc.type===1){diaC='#40b060';diaH='#60d080';}
     else{diaC='#d0b040';diaH='#e8d060';}
-    const dx_=px+14,dy_=py-28+bobY;
-    bx(dx_+2,dy_,2,2,diaC);
-    bx(dx_,dy_+2,6,2,diaC);
-    bx(dx_+2,dy_+2,2,2,diaH);
-    bx(dx_,dy_+4,6,2,diaC);
-    bx(dx_+2,dy_+6,2,2,diaC);
-    bx(dx_+2,dy_+4,2,2,diaH);
+
+    const pdx=Math.abs((pl[0].visualX/TW|0)-npc.x),pdy=Math.abs((pl[0].visualY/TH|0)-npc.y);
+    const nearInteract=pdx+pdy<=2&&!npcDialogActive&&!shopActive&&!gachaActive&&!marketActive&&sc==='map';
+    if(nearInteract){
+      // Larger, faster-pulsing diamond + [Z] prompt
+      const pulse=0.7+0.3*Math.sin(fr*0.18);
+      const dx_=px+13,dy_=py-32+bobY*1.6;
+      bx(dx_+3,dy_,2,2,diaH);
+      bx(dx_,dy_+3,8,2,diaC);bx(dx_+2,dy_+3,4,2,diaH);
+      bx(dx_,dy_+5,8,2,diaC);bx(dx_+2,dy_+5,4,2,diaH);
+      bx(dx_+3,dy_+8,2,2,diaC);
+      g.globalAlpha=pulse;
+      txShadow('[Z]',dx_-1,dy_+22,7,diaH,'rgba(0,0,0,.5)');
+      g.globalAlpha=1;
+    }else{
+      const dx_=px+14,dy_=py-28+bobY;
+      bx(dx_+2,dy_,2,2,diaC);
+      bx(dx_,dy_+2,6,2,diaC);bx(dx_+2,dy_+2,2,2,diaH);
+      bx(dx_,dy_+4,6,2,diaC);
+      bx(dx_+2,dy_+6,2,2,diaC);bx(dx_+2,dy_+4,2,2,diaH);
+    }
   }
   // v82: ambient speech bubble (proximity hint)
   if(npc.bubbleTimer>0&&npc.bubbleText){
@@ -1146,8 +1160,8 @@ function drawNPCSprite(npc){
     bx(bX,bY,bW,16,'rgba(8,8,18,.92)');
     bx(bX,bY,bW,1,'rgba(200,180,100,.55)');
     bx(bX,bY+15,bW,1,'rgba(200,180,100,.25)');
-    bx(bX+bW/2-2,bY+16,4,3,'rgba(8,8,18,.92)'); // tail
-    tx(npc.bubbleText,bX+5,bY+13,5,'#e8e0c0');
+    bx(bX+bW/2-2,bY+16,4,3,'rgba(8,8,18,.92)');
+    txShadow(npc.bubbleText,bX+5,bY+13,5,'#e8e0c0','rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
 }
