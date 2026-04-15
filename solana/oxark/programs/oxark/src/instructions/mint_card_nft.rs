@@ -1,41 +1,65 @@
 use anchor_lang::prelude::*;
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token::{self, Mint, MintTo, SetAuthority, Token, TokenAccount},
+};
 use crate::constants::*;
 use crate::state::*;
 use crate::error::ErrorCode;
 
-/// Mint a card as an NFT when the game is won.
-/// Winners can "carry out" their collected cards as permanent NFTs.
-///
-/// This instruction creates an SPL token mint + metadata for each card.
-/// Uses Metaplex Token Metadata program for on-chain metadata.
-///
-/// Phase 1: Simplified — creates a basic SPL token representing the card.
-/// Phase 2: Full Metaplex integration with images, attributes, royalties.
+/// Seed for deterministic card mint PDAs: ["card_mint", game_id_le8, card_id]
+pub const CARD_MINT_SEED: &[u8] = b"card_mint";
 
+/// Mint a card as an SPL NFT (supply=1, decimals=0, frozen authority).
+/// Only the game winner can call this. Creates one unique token per card_id per game.
+///
+/// Client must derive the PDA and ATA before sending this instruction.
 #[derive(Accounts)]
 #[instruction(game_id: u64, card_id: u8)]
 pub struct MintCardNft<'info> {
+    /// Verify game is finished and caller is the winner
     #[account(
         seeds = [GAME_SEED, game_id.to_le_bytes().as_ref()],
         bump = game.bump,
         constraint = game.status == GameStatus::Finished @ ErrorCode::GameFinished,
-        constraint = game.winner == player.key() @ ErrorCode::NotHost, // reuse error: only winner can mint
+        constraint = game.winner == player.key() @ ErrorCode::NotHost,
     )]
     pub game: Account<'info, Game>,
+
+    /// Verify player actually participated in this game
     #[account(
         seeds = [PLAYER_SEED, game_id.to_le_bytes().as_ref(), player.key().as_ref()],
         bump = player_state.bump,
     )]
     pub player_state: Account<'info, PlayerState>,
+
+    /// Deterministic SPL Mint PDA — one per (game_id, card_id)
+    #[account(
+        init,
+        payer = player,
+        mint::decimals = 0,
+        mint::authority = card_mint,  // PDA self-authority for CPI mint_to
+        seeds = [CARD_MINT_SEED, game_id.to_le_bytes().as_ref(), &[card_id]],
+        bump,
+    )]
+    pub card_mint: Account<'info, Mint>,
+
+    /// Player's associated token account for this card mint
+    #[account(
+        init,
+        payer = player,
+        associated_token::mint = card_mint,
+        associated_token::authority = player,
+    )]
+    pub player_token_account: Account<'info, TokenAccount>,
+
     #[account(mut)]
     pub player: Signer<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
-    // In production, add:
-    // pub token_program: Program<'info, Token>,
-    // pub token_mint: Account<'info, Mint>,
-    // pub token_account: Account<'info, TokenAccount>,
-    // pub metadata_program: UncheckedAccount<'info>, // Metaplex
-    // pub metadata_account: UncheckedAccount<'info>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 pub fn handle_mint_card_nft(
@@ -43,59 +67,57 @@ pub fn handle_mint_card_nft(
     game_id: u64,
     card_id: u8,
 ) -> Result<()> {
-    let ps = &ctx.accounts.player_state;
+    let game_id_bytes = game_id.to_le_bytes();
+    let card_id_bytes = [card_id];
+    let bump = ctx.bumps.card_mint;
+    let signer_seeds: &[&[&[u8]]] = &[&[
+        CARD_MINT_SEED,
+        &game_id_bytes,
+        &card_id_bytes,
+        &[bump],
+    ]];
 
-    // Verify the player actually holds this card
-    let has_card = ps.cards.iter().any(|&c| c == card_id);
-    require!(has_card, ErrorCode::CardNotFound);
+    // 1. Mint exactly 1 token to the player's ATA (PDA signs as mint authority)
+    token::mint_to(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            MintTo {
+                mint: ctx.accounts.card_mint.to_account_info(),
+                to: ctx.accounts.player_token_account.to_account_info(),
+                authority: ctx.accounts.card_mint.to_account_info(),
+            },
+            signer_seeds,
+        ),
+        1,
+    )?;
 
-    // Card metadata
-    let card_names = ["", "Aegis", "Umbra", "Ignis", "Tempest", "Nihil"];
-    let card_descriptions = [
-        "",
-        "The Crystal Knight — The last light on the island",
-        "The Shadow Rogue — Unseen, yet always there",
-        "The Fire Beast — Destruction is protection",
-        "The Storm Prophet — Rules exist to be broken",
-        "The Void Observer — I know what you hold",
-    ];
+    // 2. Remove mint authority (freeze — no more can ever be minted)
+    token::set_authority(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            SetAuthority {
+                current_authority: ctx.accounts.card_mint.to_account_info(),
+                account_or_mint: ctx.accounts.card_mint.to_account_info(),
+            },
+            signer_seeds,
+        ),
+        anchor_spl::token::spl_token::instruction::AuthorityType::MintTokens,
+        None, // remove mint authority permanently
+    )?;
 
-    let name = if (card_id as usize) < card_names.len() {
-        card_names[card_id as usize]
-    } else {
-        "Unknown"
-    };
-
-    let description = if (card_id as usize) < card_descriptions.len() {
-        card_descriptions[card_id as usize]
-    } else {
-        "Unknown card"
-    };
-
-    // In production:
-    // 1. Create SPL token mint with 0 decimals, supply 1
-    // 2. Mint 1 token to player's associated token account
-    // 3. Create Metaplex metadata with:
-    //    - name: "0xARK: {card_name}"
-    //    - symbol: "ARK"
-    //    - uri: "https://0xark.gg/metadata/{card_id}.json"
-    //    - attributes: game_id, round_won, card_type, rarity
-    // 4. Freeze the mint authority (no more can be minted)
-
-    msg!(
-        "NFT minted for game {} card {} ({}) — {}",
-        game_id,
-        card_id,
-        name,
-        description
-    );
-
-    // Emit event
     emit!(CardNftMinted {
         game_id,
         player: ctx.accounts.player.key(),
         card_id,
     });
+
+    msg!(
+        "0xARK NFT minted: game={} card={} mint={} player={}",
+        game_id,
+        card_id,
+        ctx.accounts.card_mint.key(),
+        ctx.accounts.player.key()
+    );
 
     Ok(())
 }

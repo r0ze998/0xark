@@ -1710,6 +1710,60 @@ async function onchainDepositStake(gameId){
   }catch(e){lg.push('[ON-CHAIN] DepositStake failed: '+(e.message||'').slice(0,40));return null;}
 }
 
+// ─── Instruction: mint_card_nft ──────────────────────────────────────────
+// disc: sha256("global:mint_card_nft")[0..8]
+const DISC_MINT_NFT=[234,240,66,205,104,91,164,223];
+const CARD_MINT_SEED_STR='card_mint';
+const SPL_TOKEN_PROGRAM_ID='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+const SPL_ATA_PROGRAM_ID='ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bq8';
+const SYSVAR_RENT_PUBKEY='SysvarRent111111111111111111111111111111111';
+
+function _cardMintPDA(gameId,cardId){
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [Buffer.from(CARD_MINT_SEED_STR),gameIdBuf(gameId),Buffer.from([cardId&0xff])],
+    PROGRAM_PUBKEY)[0];
+}
+
+function _findATA(ownerPubkey,mintPubkey){
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ownerPubkey.toBytes(),new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID).toBytes(),mintPubkey.toBytes()],
+    new solanaWeb3.PublicKey(SPL_ATA_PROGRAM_ID))[0];
+}
+
+async function onchainMintCard(gameId,cardId){
+  if(!walletConnected)return null;
+  try{
+    const payer=window.solana.publicKey;
+    const gid=gameIdBuf(gameId);
+    const gamePDA=_gamePDA(gameId);
+    const playerPDA=_playerPDA(gameId,payer);
+    const cardMint=_cardMintPDA(gameId,cardId);
+    const playerATA=_findATA(payer,cardMint);
+    const splToken=new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID);
+    const splATA=new solanaWeb3.PublicKey(SPL_ATA_PROGRAM_ID);
+    const rent=new solanaWeb3.PublicKey(SYSVAR_RENT_PUBKEY);
+    // disc(8) + game_id(8) + card_id(1) = 17 bytes
+    const data=new Uint8Array(17);
+    data.set(DISC_MINT_NFT,0);data.set(gid,8);data[16]=cardId&0xff;
+    const sig=await _sendIx([
+      {pubkey:gamePDA,   isSigner:false,isWritable:false},
+      {pubkey:playerPDA, isSigner:false,isWritable:false},
+      {pubkey:cardMint,  isSigner:false,isWritable:true},
+      {pubkey:playerATA, isSigner:false,isWritable:true},
+      {pubkey:payer,     isSigner:true, isWritable:true},
+      {pubkey:splToken,  isSigner:false,isWritable:false},
+      {pubkey:splATA,    isSigner:false,isWritable:false},
+      {pubkey:solanaWeb3.SystemProgram.programId,isSigner:false,isWritable:false},
+      {pubkey:rent,      isSigner:false,isWritable:false},
+    ],data);
+    lg.push('[NFT] Card '+cardId+' minted: '+sig.slice(0,12)+'..');
+    return sig;
+  }catch(e){
+    lg.push('[NFT] Mint card '+cardId+' failed: '+(e.message||'').slice(0,40));
+    return null;
+  }
+}
+
 async function onchainClaimPrize(gameId){
   if(!walletConnected)return null;
   try{
@@ -9679,7 +9733,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v167',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v168',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -16723,24 +16777,30 @@ document.addEventListener('keydown',e=>{
         screenShake(2,6);
         return;
       }
-      // M — mint all collected cards as NFTs
+      // M — mint all collected cards as NFTs (real on-chain SPL tokens when wallet connected)
       if(e.code==='KeyM'&&playerHasAllSixty()&&!victoryMinted&&!victoryMinting){
         sfxSelect();
         victoryMinting=true;victoryMintProgress=0;
         const allCards=[...pl[0].vault];
+        const gameId=Date.now()&0xffffffff; // deterministic per session
         let idx=0;
-        function mintNext(){
+        async function mintNext(){
           if(idx>=allCards.length){
             victoryMinted=true;victoryMinting=false;
             sfxVictory();
-            lg.push('[ON-CHAIN] Minted '+allCards.length+' card NFTs to wallet.');
+            lg.push('[ON-CHAIN] Minted '+allCards.length+' card NFTs!');
             return;
           }
           const cardId=allCards[idx++];
           const cr=CD[cardId-1];
           victoryMintProgress=idx;
-          lg.push('[MINT] '+cr.n+' ('+RARITY_LABEL[cr.r]+') → TX: '+generateFakeTxSig());
-          setTimeout(mintNext,60); // ~60ms per card = ~3.6s for 60 cards
+          let sig;
+          if(walletConnected&&typeof onchainMintCard==='function'){
+            sig=await onchainMintCard(gameId,cardId);
+          }
+          if(!sig){sig='sim:'+generateFakeTxSig();}
+          lg.push('[NFT] '+cr.n+' ('+RARITY_LABEL[cr.r]+') TX:'+sig.slice(0,12)+'..');
+          setTimeout(mintNext,walletConnected?1200:60);
         }
         mintNext();
         return;

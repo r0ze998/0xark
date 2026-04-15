@@ -609,6 +609,60 @@ async function onchainDepositStake(gameId){
   }catch(e){lg.push('[ON-CHAIN] DepositStake failed: '+(e.message||'').slice(0,40));return null;}
 }
 
+// ─── Instruction: mint_card_nft ──────────────────────────────────────────
+// disc: sha256("global:mint_card_nft")[0..8]
+const DISC_MINT_NFT=[234,240,66,205,104,91,164,223];
+const CARD_MINT_SEED_STR='card_mint';
+const SPL_TOKEN_PROGRAM_ID='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+const SPL_ATA_PROGRAM_ID='ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bq8';
+const SYSVAR_RENT_PUBKEY='SysvarRent111111111111111111111111111111111';
+
+function _cardMintPDA(gameId,cardId){
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [Buffer.from(CARD_MINT_SEED_STR),gameIdBuf(gameId),Buffer.from([cardId&0xff])],
+    PROGRAM_PUBKEY)[0];
+}
+
+function _findATA(ownerPubkey,mintPubkey){
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ownerPubkey.toBytes(),new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID).toBytes(),mintPubkey.toBytes()],
+    new solanaWeb3.PublicKey(SPL_ATA_PROGRAM_ID))[0];
+}
+
+async function onchainMintCard(gameId,cardId){
+  if(!walletConnected)return null;
+  try{
+    const payer=window.solana.publicKey;
+    const gid=gameIdBuf(gameId);
+    const gamePDA=_gamePDA(gameId);
+    const playerPDA=_playerPDA(gameId,payer);
+    const cardMint=_cardMintPDA(gameId,cardId);
+    const playerATA=_findATA(payer,cardMint);
+    const splToken=new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID);
+    const splATA=new solanaWeb3.PublicKey(SPL_ATA_PROGRAM_ID);
+    const rent=new solanaWeb3.PublicKey(SYSVAR_RENT_PUBKEY);
+    // disc(8) + game_id(8) + card_id(1) = 17 bytes
+    const data=new Uint8Array(17);
+    data.set(DISC_MINT_NFT,0);data.set(gid,8);data[16]=cardId&0xff;
+    const sig=await _sendIx([
+      {pubkey:gamePDA,   isSigner:false,isWritable:false},
+      {pubkey:playerPDA, isSigner:false,isWritable:false},
+      {pubkey:cardMint,  isSigner:false,isWritable:true},
+      {pubkey:playerATA, isSigner:false,isWritable:true},
+      {pubkey:payer,     isSigner:true, isWritable:true},
+      {pubkey:splToken,  isSigner:false,isWritable:false},
+      {pubkey:splATA,    isSigner:false,isWritable:false},
+      {pubkey:solanaWeb3.SystemProgram.programId,isSigner:false,isWritable:false},
+      {pubkey:rent,      isSigner:false,isWritable:false},
+    ],data);
+    lg.push('[NFT] Card '+cardId+' minted: '+sig.slice(0,12)+'..');
+    return sig;
+  }catch(e){
+    lg.push('[NFT] Mint card '+cardId+' failed: '+(e.message||'').slice(0,40));
+    return null;
+  }
+}
+
 async function onchainClaimPrize(gameId){
   if(!walletConnected)return null;
   try{
