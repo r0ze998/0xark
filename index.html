@@ -807,8 +807,9 @@ function drawZeldaOverTile(col, row, destX, destY, scale) {
 // CRAFTPIX FOREST OBJECT SPRITES
 // Individual top-down pixel art tree/mushroom PNGs (CC licensed from craftpix.net)
 // ═══════════════════════════════════════
-const CPX_TREES = [];
-const _cpxTreeFiles = [
+// CPX_FOREST: individual craftpix top-down tree/mushroom PNGs (different from CPX_TREES spritesheet)
+const CPX_FOREST = [];
+const _cpxForestFiles = [
   'cpx-forest-Curved_tree1.png',          // 128x128
   'cpx-forest-Curved_tree2.png',          // 128x128
   'cpx-forest-Willow1.png',               // 128x128
@@ -818,13 +819,13 @@ const _cpxTreeFiles = [
   'cpx-forest-Mega_tree1.png',            // 256x256
   'cpx-forest-Mega_tree2.png',            // 128x128
 ];
-let cpxTreesLoaded = 0;
-_cpxTreeFiles.forEach(f => {
+let cpxForestLoaded = 0; // count of successfully loaded forest props
+_cpxForestFiles.forEach(f => {
   const img = new Image();
   img.src = f;
-  img.onload = () => { cpxTreesLoaded++; if(typeof tileCacheDirty!=='undefined')tileCacheDirty=true; };
+  img.onload = () => { cpxForestLoaded++; if(typeof tileCacheDirty!=='undefined')tileCacheDirty=true; };
   img.onerror = () => {}; // silently skip missing files
-  CPX_TREES.push(img);
+  CPX_FOREST.push(img);
 });
 const CPX_MUSHROOMS = [];
 const _cpxMushFiles = [
@@ -834,7 +835,7 @@ const _cpxMushFiles = [
 _cpxMushFiles.forEach(f => {
   const img = new Image();
   img.src = f;
-  img.onload = () => { cpxTreesLoaded++; };
+  img.onload = () => { cpxForestLoaded++; };
   img.onerror = () => {};
   CPX_MUSHROOMS.push(img);
 });
@@ -8460,7 +8461,7 @@ function dTitle(){
   // Footer credits
   tx('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460');
   // Version label — shown in top-right for easy reference
-  txShadow('v180',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v181',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -9060,7 +9061,7 @@ function drawPirateDecorations(){
 // Y-sorted craftpix tree rendering: only draws tiles whose row is in [tyMin, tyMax).
 // Called twice from dMap() — once before sprites (bg pass) and once after (fg pass).
 function drawCpxTreesInRange(tyMin,tyMax){
-  if(cpxTreesLoaded===0)return;
+  if(cpxForestLoaded===0)return;
   const isJungle=(currentMap===1);
   const fogMap=fogRevealed[currentMap];
   const mt=getMap();
@@ -9082,8 +9083,8 @@ function drawCpxTreesInRange(tyMin,tyMax){
       if(isJungle){
         if(tt!==3&&tt!==7&&tt!==12)continue;
         if(th%4!==1)continue;
-        const jIdx=((th>>>2)+3)%CPX_TREES.length;
-        const jImg=CPX_TREES[jIdx];
+        const jIdx=((th>>>2)+3)%CPX_FOREST.length;
+        const jImg=CPX_FOREST[jIdx];
         if(!jImg.complete||!jImg.naturalWidth)continue;
         const isMega=jImg.naturalWidth===256;
         const jdW=isMega?80:64;
@@ -9095,8 +9096,8 @@ function drawCpxTreesInRange(tyMin,tyMax){
         g.restore();
       }else{
         if((tt===3||tt===7||tt===12)&&th%3===0){
-          const tIdx=(th>>>2)%CPX_TREES.length;
-          const tImg=CPX_TREES[tIdx];
+          const tIdx=(th>>>2)%CPX_FOREST.length;
+          const tImg=CPX_FOREST[tIdx];
           if(!tImg.complete||!tImg.naturalWidth)continue;
           const isMega=tImg.naturalWidth===256;
           const tdW=isMega?72:56;
@@ -9897,7 +9898,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v180',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v181',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);

@@ -733,8 +733,9 @@ function drawZeldaOverTile(col, row, destX, destY, scale) {
 // CRAFTPIX FOREST OBJECT SPRITES
 // Individual top-down pixel art tree/mushroom PNGs (CC licensed from craftpix.net)
 // ═══════════════════════════════════════
-const CPX_TREES = [];
-const _cpxTreeFiles = [
+// CPX_FOREST: individual craftpix top-down tree/mushroom PNGs (different from CPX_TREES spritesheet)
+const CPX_FOREST = [];
+const _cpxForestFiles = [
   'cpx-forest-Curved_tree1.png',          // 128x128
   'cpx-forest-Curved_tree2.png',          // 128x128
   'cpx-forest-Willow1.png',               // 128x128
@@ -744,13 +745,13 @@ const _cpxTreeFiles = [
   'cpx-forest-Mega_tree1.png',            // 256x256
   'cpx-forest-Mega_tree2.png',            // 128x128
 ];
-let cpxTreesLoaded = 0;
-_cpxTreeFiles.forEach(f => {
+let cpxForestLoaded = 0; // count of successfully loaded forest props
+_cpxForestFiles.forEach(f => {
   const img = new Image();
   img.src = f;
-  img.onload = () => { cpxTreesLoaded++; if(typeof tileCacheDirty!=='undefined')tileCacheDirty=true; };
+  img.onload = () => { cpxForestLoaded++; if(typeof tileCacheDirty!=='undefined')tileCacheDirty=true; };
   img.onerror = () => {}; // silently skip missing files
-  CPX_TREES.push(img);
+  CPX_FOREST.push(img);
 });
 const CPX_MUSHROOMS = [];
 const _cpxMushFiles = [
@@ -760,7 +761,7 @@ const _cpxMushFiles = [
 _cpxMushFiles.forEach(f => {
   const img = new Image();
   img.src = f;
-  img.onload = () => { cpxTreesLoaded++; };
+  img.onload = () => { cpxForestLoaded++; };
   img.onerror = () => {};
   CPX_MUSHROOMS.push(img);
 });
