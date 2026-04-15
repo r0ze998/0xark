@@ -8628,6 +8628,67 @@ function drawAtmosphere(){
       }
     });
   }
+  // v183: Per-floor dungeon ambient screen-space particles (over revealed tiles)
+  if(inDungeon&&currentFloor>=1&&currentFloor<=5){
+    drawDungeonAmbientParticles();
+  }
+}
+
+// v183: Dungeon ambient particles — screen-space, deterministic, per-floor visual identity
+function drawDungeonAmbientParticles(){
+  const depth=currentFloor;
+  const visH=H-HUD_HEIGHT;
+  // [count, color, vx/frame, vy/frame, sway amplitude, particle width, particle height, base alpha]
+  const CFG=[
+    null,
+    // B1 SUNKEN GALLERIES: seawater dripping from hull seams — thin vertical streaks, fall fast
+    {n:16,col:'#6090b8',vx:0.05,vy:1.1,sway:3,sw:1,sh:4,a:0.20},
+    // B2 DROWNED ARCHIVES: ancient paper motes — drift sideways, slow tumble
+    {n:20,col:'#c8b888',vx:0.35,vy:0.08,sway:5,sw:2,sh:1,a:0.18},
+    // B3 ECHO CHAMBERS: crystal resonance sparks — rise upward, pulse size
+    {n:18,col:'#c080ff',vx:-0.08,vy:-0.85,sway:4,sw:2,sh:2,a:0.28},
+    // B4 DEEP VAULT: ember ash — diagonal fall, flicker
+    {n:22,col:'#d05020',vx:0.22,vy:0.65,sway:6,sw:2,sh:2,a:0.24},
+    // B5 ARK CORE: void wisps — nearly static, appear/disappear, larger
+    {n:14,col:'#8030c0',vx:0.04,vy:-0.15,sway:9,sw:3,sh:3,a:0.22},
+  ];
+  const c=CFG[depth];if(!c)return;
+
+  for(let i=0;i<c.n;i++){
+    // Deterministic seed per particle (large primes for good distribution)
+    const h0=((i*2239+3571)>>>0)%10007;
+    const h1=((i*1889+7127)>>>0)%10007;
+    const h2=((i*1277+5381)>>>0)%10007;
+    // Base position — spread across full screen
+    const baseX=(h0/10007)*W;
+    const baseY=(h1/10007)*visH;
+    const phase=h2/10007*Math.PI*2;
+
+    // Animated position — wrap modulo screen size
+    const px=((baseX+c.vx*fr)%W+W)%W;
+    const py=((baseY+c.vy*fr+c.sway*Math.sin(fr*0.028+phase))%visH+visH)%visH;
+
+    // Void wisps (B5): pulse in/out instead of steady glow
+    let alpha=c.a;
+    if(depth===5){alpha=c.a*(0.4+0.6*Math.abs(Math.sin(fr*0.05+phase*2)));}
+    else if(depth===3){alpha=c.a*(0.5+0.5*Math.sin(fr*0.09+phase));}// crystal pulse
+    else if(depth===4&&fr%6===0){alpha=c.a*(0.3+Math.random()*0.7);}// ember flicker
+
+    g.globalAlpha=alpha;
+    // B3 crystal sparks: draw cross shape for sparkle feel
+    if(depth===3){
+      bx(px|0,py|0,c.sw,c.sh,c.col);
+      if(alpha>0.2){bx((px-1)|0,(py+c.sh/2)|0,c.sw+2,1,'rgba(220,180,255,.4)');}
+    }else if(depth===1){
+      // Water drip: thin streak
+      bx(px|0,py|0,1,c.sh,c.col);
+      g.globalAlpha=alpha*0.4;
+      bx(px|0,(py+c.sh)|0,1,1,c.col);// drip tail fade
+    }else{
+      bx(px|0,py|0,c.sw,c.sh,c.col);
+    }
+    g.globalAlpha=1;
+  }
 }
 
 // ═══════════════════════════════════════
@@ -9910,7 +9971,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v182',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v183',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
