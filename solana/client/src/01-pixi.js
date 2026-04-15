@@ -12,11 +12,13 @@ const TW=32,TH=32;
 // ═══════════════════════════════════════
 const _isMobile=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
 PIXI.BaseTexture.defaultOptions.scaleMode = PIXI.SCALE_MODES.NEAREST;
+PIXI.settings.ROUND_PIXELS = true; // pixel-perfect snapping globally
 const pixiApp = new PIXI.Application({
   width: W, height: H,
   backgroundAlpha: 0, // Transparent background — game canvas shown directly below PixiJS UI overlay
   antialias: false,
   roundPixels: true,
+  resolution: 1,       // force 1:1 pixel mapping — no DPR scaling
   autoStart: false,
 });
 if(!_isMobile){
@@ -24,7 +26,8 @@ if(!_isMobile){
   // This eliminates the black flash caused by WebGL framebuffer clear when uploading canvas texture
   c.style.display='block';
   const _pixiView=pixiApp.view;
-  _pixiView.style.cssText='display:block;position:absolute;top:0;left:0;width:960px;height:640px;touch-action:none;';
+  // image-rendering:pixelated ensures WebGL canvas stays crisp on scaled displays
+  _pixiView.style.cssText='display:block;position:absolute;top:0;left:0;width:960px;height:640px;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges;';
   document.getElementById('pixi-wrap').appendChild(_pixiView);
   pixiApp.stop();
   // Remove the Application's internal render listener so ticker.update() doesn't double-render
