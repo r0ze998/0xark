@@ -1038,6 +1038,20 @@ const atmosCtx=atmosCanvas.getContext('2d');
 let _atmosDirty=true;
 let _atmosLastCamX=-9999,_atmosLastCamY=-9999,_atmosLastPhase='';
 
+// Ambient particle cache — dungeon/town floating particles (update every 2 frames)
+const partCanvas=document.createElement('canvas');
+partCanvas.width=W;partCanvas.height=H;
+const partCtx=partCanvas.getContext('2d');
+let _partFrame=-9999;
+let _partMap=-1;
+
+// Dungeon edge vignette cache — breathing color edge strips (update every 3 frames)
+const dvigCanvas=document.createElement('canvas');
+dvigCanvas.width=W;dvigCanvas.height=H;
+const dvigCtx=dvigCanvas.getContext('2d');
+let _dvigFrame=-9999;
+let _dvigFloor=-1;
+
 // Set imageSmoothingEnabled=false globally on main context once canvases exist
 g.imageSmoothingEnabled=false;
 
