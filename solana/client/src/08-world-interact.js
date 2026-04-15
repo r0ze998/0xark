@@ -88,8 +88,8 @@ function drawFishingOverlay(){
     const px=pl[0].visualX-camX+8,py=pl[0].visualY-camY-30+bobY;
     bx(px-6,py-4,12,16,'#fff');
     bx(px-5,py-3,10,14,'#f0c830');
-    tx('!',px-4,py+8,12,'#c04040');
-    tx('Z NOW!',px-18,py+16,5,'#c04040');
+    txShadow('!',px-4,py+8,12,'#c04040','rgba(0,0,0,.4)');
+    txShadow('Z NOW!',px-18,py+16,5,'#c04040','rgba(0,0,0,.4)');
   }else if(fishingPhase==='waiting'){
     // Show bobber animation
     const px=pl[0].visualX-camX,py=pl[0].visualY-camY;
@@ -199,7 +199,7 @@ function drawPuzzlePillars(){
       bx(px+3,py,10,3,col);
       // Label
       const label=puzzleNames[puzzleStoneOrder[i]][0];
-      tx(label,px+5,py+13,5,'#fff');
+      txShadow(label,px+5,py+13,5,'#fff','rgba(0,0,0,.4)');
       // Glow
       const pulse=Math.sin(fr*.06+i*2)*.2+.4;
       g.fillStyle=col.replace(')',`,${pulse})`).replace('rgb','rgba');
@@ -217,7 +217,7 @@ function drawPuzzleMessage(){
   const alpha=puzzleMessageTimer>20?1:puzzleMessageTimer/20;
   g.globalAlpha=alpha;
   win(W/2-160,H/2-20,320,36);
-  tx(puzzleMessage,W/2-140,H/2+4,7,'#d0c040');
+  txShadow(puzzleMessage,W/2-140,H/2+4,7,'#d0c040','rgba(0,0,0,.4)');
   g.globalAlpha=1;
 }
 
@@ -335,7 +335,7 @@ function drawBuildingInterior(){
         bx(px+6,py+2,tileSize-12,tileSize-4,'#382828');
         // Arrow indicator
         const bob=Math.sin(fr*0.1)*2;
-        tx('EXIT',px+4,py+tileSize/2+4+bob,5,'#f0c830');
+        txShadow('EXIT',px+4,py+tileSize/2+4+bob,5,'#f0c830','rgba(0,0,0,.4)');
       }else if(t===5){
         // NPC position (floor underneath)
         bx(px,py,tileSize,tileSize,'#c0b090');
@@ -375,13 +375,13 @@ function drawBuildingInterior(){
   // HUD for building
   const hudY=H-40;
   win(0,hudY,W,40);
-  tx(buildingType==='shop'?'TRADING POST':'SPY MASTERS DEN',10,hudY+20,8,'#806030');
+  txShadow(buildingType==='shop'?'TRADING POST':'SPY MASTERS DEN',10,hudY+20,8,'#806030','rgba(0,0,0,.4)');
   if(buildingType==='info'){
     const statusClr=x402Available?'#40a060':'#605060';
     const statusTxt=x402Available?'x402 ONLINE':'x402 OFFLINE';
-    tx(statusTxt,140,hudY+20,5,statusClr);
+    txShadow(statusTxt,140,hudY+20,5,statusClr,'rgba(0,0,0,.35)');
   }
-  tx('Z=Interact  X=Exit  Arrows=Move',280,hudY+20,6,'#686068');
+  txShadow('Z=Interact  X=Exit  Arrows=Move',280,hudY+20,6,'#686068','rgba(0,0,0,.35)');
 
   // Building NPC dialog
   if(buildingNpcDialog){
@@ -389,19 +389,19 @@ function drawBuildingInterior(){
     const line2=buildingNpcLines[buildingNpcIdx+1]||'';
     win(6,H-120,W-12,70);
     win(10,H-130,buildingNpcName.length*9+20,20);
-    tx(buildingNpcName,20,H-115,7,'#c04040');
-    tx(line,20,H-90,7,'#303028');
-    if(line2)tx(line2,20,H-72,7,'#303028');
+    txShadow(buildingNpcName,20,H-115,7,'#c04040','rgba(0,0,0,.4)');
+    txShadow(line,20,H-90,7,'#303028','rgba(255,255,255,.15)');
+    if(line2)txShadow(line2,20,H-72,7,'#303028','rgba(255,255,255,.15)');
     const arrowBounce=Math.sin(fr*0.15)*2;
-    tx('\u25BC',W-24,H-58+arrowBounce,7,'#c04040');
+    txShadow('\u25BC',W-24,H-58+arrowBounce,7,'#c04040','rgba(0,0,0,.4)');
   }
 
   // Info broker confirm/result
   if(infoBrokerConfirm){
     bx(0,0,W,H,'rgba(0,0,0,.4)');
     win(W/2-180,H/2-60,360,120);
-    tx('Pay 1 card for rival locations?',W/2-160,H/2-30,7,'#303028');
-    tx('Z=Yes  X=No',W/2-60,H/2+10,7,'#c04040');
+    txShadow('Pay 1 card for rival locations?',W/2-160,H/2-30,7,'#303028','rgba(255,255,255,.15)');
+    txShadow('Z=Yes  X=No',W/2-60,H/2+10,7,'#c04040','rgba(0,0,0,.4)');
   }
   if(infoBrokerResultTimer>0){
     infoBrokerResultTimer--;
@@ -417,8 +417,8 @@ function drawBuildingInterior(){
       l1=infoBrokerResult.substring(0,brk);
       l2=infoBrokerResult.substring(brk+1);
     }
-    tx(l1,W/2-180,H/2-10,7,'#303028');
-    if(l2)tx(l2,W/2-180,H/2+8,7,'#303028');
+    txShadow(l1,W/2-180,H/2-10,7,'#303028','rgba(255,255,255,.15)');
+    if(l2)txShadow(l2,W/2-180,H/2+8,7,'#303028','rgba(255,255,255,.15)');
     g.globalAlpha=1;
   }
 
@@ -449,9 +449,9 @@ function drawBuildingInterior(){
         uniqueR.forEach((r,ri)=>{
           const dotX=gx+gw-80+ri*14;
           bx(dotX,ty_+14,10,10,RARITY_COLOR[r]);
-          tx('\u2605',dotX,ty_+25,5,RARITY_COLOR[r]);
+          txShadow('\u2605',dotX,ty_+25,5,RARITY_COLOR[r],'rgba(0,0,0,.3)');
         });
-        if(isSelected)tx('\u25b6',gx+gw-30,ty_+26,8,'#f8c840');
+        if(isSelected)txShadow('\u25b6',gx+gw-30,ty_+26,8,'#f8c840','rgba(0,0,0,.35)');
       });
       bx(gx+12,gy+gh-44,gw-24,1,'#282848');
       // Pity counter
@@ -646,7 +646,7 @@ function drawBuildingInterior(){
     const a=x402ShopResultTimer>20?1:x402ShopResultTimer/20;
     g.globalAlpha=a;
     win(W/2-220,H/2-50,440,100);
-    tx('INTEL REPORT',W/2-50,H/2-30,8,'#c04040');
+    txShadow('INTEL REPORT',W/2-50,H/2-30,8,'#c04040','rgba(0,0,0,.4)');
     // Word wrap the result
     const maxC2=52;
     const rr=x402ShopResult;
@@ -657,9 +657,9 @@ function drawBuildingInterior(){
       if(rest.length>maxC2){let b2=rest.lastIndexOf(' ',maxC2);if(b2<1)b2=maxC2;rl2=rest.substring(0,b2);rl3=rest.substring(b2+1);}
       else rl2=rest;
     }
-    tx(rl1,W/2-200,H/2-8,6,'#303028');
-    if(rl2)tx(rl2,W/2-200,H/2+8,6,'#303028');
-    if(rl3)tx(rl3,W/2-200,H/2+24,6,'#303028');
+    txShadow(rl1,W/2-200,H/2-8,6,'#303028','rgba(255,255,255,.15)');
+    if(rl2)txShadow(rl2,W/2-200,H/2+8,6,'#303028','rgba(255,255,255,.15)');
+    if(rl3)txShadow(rl3,W/2-200,H/2+24,6,'#303028','rgba(255,255,255,.15)');
     g.globalAlpha=1;
   }
 }

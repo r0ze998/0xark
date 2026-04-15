@@ -864,9 +864,9 @@ function drawSprite(p,isPlayer){
     drawZeldaChar(charIdx,zDir,zFrame,px,py+bob,2);
     // CC badge
     if(isPlayer){
-      const bx_=px+28,by_=py-10;win(bx_,by_,28,18);tx(p.cc+'',bx_+9,by_+15,8,'#c8b888');
+      const bx_=px+28,by_=py-10;win(bx_,by_,28,18);txShadow(p.cc+'',bx_+9,by_+15,8,'#c8b888','rgba(0,0,0,.4)');
     }else if(isVisibleThroughFog(p.x,p.y,3)){
-      bx(px+28,py-8,22,16,'rgba(0,0,0,.4)');win(px+28,py-10,22,16);tx(p.cc+'',px+34,py+4,7,'#c8b888');
+      bx(px+28,py-8,22,16,'rgba(0,0,0,.4)');win(px+28,py-10,22,16);txShadow(p.cc+'',px+34,py+4,7,'#c8b888','rgba(0,0,0,.4)');
     }
     return;
   }
@@ -889,9 +889,9 @@ function drawSprite(p,isPlayer){
     }
     // CC badge
     if(isPlayer){
-      const bx_=px+28,by_=py-10;win(bx_,by_,28,18);tx(p.cc+'',bx_+9,by_+15,8,'#c8b888');
+      const bx_=px+28,by_=py-10;win(bx_,by_,28,18);txShadow(p.cc+'',bx_+9,by_+15,8,'#c8b888','rgba(0,0,0,.4)');
     }else if(isVisibleThroughFog(p.x,p.y,3)){
-      bx(px+28,py-8,22,16,'rgba(0,0,0,.4)');win(px+28,py-10,22,16);tx(p.cc+'',px+34,py+4,7,'#c8b888');
+      bx(px+28,py-8,22,16,'rgba(0,0,0,.4)');win(px+28,py-10,22,16);txShadow(p.cc+'',px+34,py+4,7,'#c8b888','rgba(0,0,0,.4)');
     }
     return;
   }
@@ -1054,9 +1054,9 @@ function drawSprite(p,isPlayer){
 
   // === CC COUNTER BADGE ===
   if(isPlayer){
-    const bx_=px+28,by_=py-10;win(bx_,by_,28,18);tx(p.cc+'',bx_+9,by_+15,8,'#c8b888');
+    const bx_=px+28,by_=py-10;win(bx_,by_,28,18);txShadow(p.cc+'',bx_+9,by_+15,8,'#c8b888','rgba(0,0,0,.4)');
   }else if(isVisibleThroughFog(p.x,p.y,3)){
-    bx(px+28,py-8,22,16,'rgba(0,0,0,.4)');win(px+28,py-10,22,16);tx(p.cc+'',px+34,py+4,7,'#c8b888');
+    bx(px+28,py-8,22,16,'rgba(0,0,0,.4)');win(px+28,py-10,22,16);txShadow(p.cc+'',px+34,py+4,7,'#c8b888','rgba(0,0,0,.4)');
   }
 }
 
