@@ -1112,6 +1112,20 @@ const atmosCtx=atmosCanvas.getContext('2d');
 let _atmosDirty=true;
 let _atmosLastCamX=-9999,_atmosLastCamY=-9999,_atmosLastPhase='';
 
+// Ambient particle cache — dungeon/town floating particles (update every 2 frames)
+const partCanvas=document.createElement('canvas');
+partCanvas.width=W;partCanvas.height=H;
+const partCtx=partCanvas.getContext('2d');
+let _partFrame=-9999;
+let _partMap=-1;
+
+// Dungeon edge vignette cache — breathing color edge strips (update every 3 frames)
+const dvigCanvas=document.createElement('canvas');
+dvigCanvas.width=W;dvigCanvas.height=H;
+const dvigCtx=dvigCanvas.getContext('2d');
+let _dvigFrame=-9999;
+let _dvigFloor=-1;
+
 // Set imageSmoothingEnabled=false globally on main context once canvases exist
 g.imageSmoothingEnabled=false;
 
@@ -1335,6 +1349,8 @@ const FRLG={
   hpGreen:ARK.safeBright,
   hpYellow:'#d0a030',
   hpRed:ARK.dangerBright,
+  borderOuter:ARK.borderLit,   // viewport outer border
+  borderInner:ARK.border,      // viewport inner border
 };
 
 // ── Main panel window — dark gothic arcane style ──
@@ -6379,36 +6395,25 @@ function drawTreasure(px,py,tx_,ty){
 }
 
 function drawStairsDown(px,py,tx_,ty){
-  // Dungeon staircase descending — stone spiral with golden glow at bottom
+  // Static base — drawn into tile cache (no animation)
   drawGrass(px,py,tx_,ty);
   if(!fogRevealed[currentMap]?.[ty]?.[tx_])return;
-  const pulse=Math.sin(fr*.07+tx_*2+ty*3)*.25+.75;
   // Stone surround
   bx(px+4,py+4,24,24,'#2a2030');
   bx(px+6,py+6,20,20,'#1a1520');
   // Step edges (perspective from above)
   bx(px+8,py+8,16,3,'#3a3050');bx(px+9,py+11,14,3,'#302840');bx(px+10,py+14,12,3,'#282040');
   bx(px+11,py+17,10,3,'#201830');bx(px+12,py+20,8,3,'#181028');
-  // Downward glow (gold on floor 5 goal, purple elsewhere)
-  const glowA=currentMap>=5?`rgba(220,160,0,${pulse*.5})`:`rgba(80,40,180,${pulse*.45})`;
-  const glowB=currentMap>=5?`rgba(255,220,40,${pulse*.3})`:`rgba(140,80,255,${pulse*.25})`;
-  const arrowCol=currentMap>=5?`rgba(255,240,80,${pulse*.9})`:`rgba(200,160,255,${pulse*.8})`;
-  g.fillStyle=glowA;g.beginPath();g.ellipse(px+16,py+24,7,4,0,0,Math.PI*2);g.fill();
-  g.fillStyle=glowB;g.beginPath();g.ellipse(px+16,py+24,11,6,0,0,Math.PI*2);g.fill();
-  // Arrow indicator
-  g.fillStyle=arrowCol;
-  g.beginPath();g.moveTo(px+16,py+26);g.lineTo(px+12,py+20);g.lineTo(px+20,py+20);g.closePath();g.fill();
-  // Floor label (GOAL on B5F since it leads to victory)
+  // Static label
   const label=currentMap>=5?'GOAL':`B${currentMap+1}F`;
-  g.font='bold 6px monospace';g.fillStyle=currentMap>=5?`rgba(255,220,80,${pulse*.9})`:`rgba(220,200,255,${pulse*.9})`;
+  g.font='bold 6px monospace';g.fillStyle=currentMap>=5?'rgba(255,220,80,.7)':'rgba(200,160,255,.7)';
   g.textAlign='center';g.fillText(label,px+16,py+14);g.textAlign='left';
 }
 
 function drawStairsUp(px,py,tx_,ty){
-  // Dungeon staircase ascending — lighter stone with sky-blue tint
+  // Static base — drawn into tile cache (no animation)
   drawGrass(px,py,tx_,ty);
   if(!fogRevealed[currentMap]?.[ty]?.[tx_])return;
-  const pulse=Math.sin(fr*.06+tx_*3+ty*2)*.2+.8;
   // Stone surround
   bx(px+4,py+4,24,24,'#1c2a2a');
   bx(px+6,py+6,20,20,'#141e20');
@@ -6416,18 +6421,45 @@ function drawStairsUp(px,py,tx_,ty){
   bx(px+12,py+8,8,3,'#283840');bx(px+11,py+11,10,3,'#2a3e48');
   bx(px+10,py+14,12,3,'#2c4450');bx(px+9,py+17,14,3,'#2e4858');
   bx(px+8,py+20,16,3,'#304c5c');
-  // Upward glow at top
-  g.fillStyle=`rgba(40,120,200,${pulse*.4})`;
-  g.beginPath();g.ellipse(px+16,py+8,7,4,0,0,Math.PI*2);g.fill();
-  g.fillStyle=`rgba(80,180,255,${pulse*.2})`;
-  g.beginPath();g.ellipse(px+16,py+8,11,6,0,0,Math.PI*2);g.fill();
-  // Arrow indicator
-  g.fillStyle=`rgba(140,220,255,${pulse*.8})`;
-  g.beginPath();g.moveTo(px+16,py+6);g.lineTo(px+12,py+12);g.lineTo(px+20,py+12);g.closePath();g.fill();
-  // Floor label
+  // Static label
   const upLabel=currentMap<=1?'EXIT':`B${currentMap-1}F`;
-  g.font='bold 6px monospace';g.fillStyle=`rgba(160,230,255,${pulse*.9})`;
+  g.font='bold 6px monospace';g.fillStyle='rgba(140,220,255,.7)';
   g.textAlign='center';g.fillText(upLabel,px+16,py+22);g.textAlign='left';
+}
+
+// Animated stair glow overlays — drawn every frame OVER the tile cache (not inside it)
+// Called from dMap() after tile cache drawImage
+function drawDungeonStairGlows(startTX,startTY,endTX,endTY){
+  const m=getMap();
+  for(let y=startTY;y<=endTY;y++){
+    for(let x=startTX;x<=endTX;x++){
+      const t=m[y]?.[x];
+      if(t!==31&&t!==32)continue;
+      if(!fogRevealed[currentMap]?.[y]?.[x])continue;
+      const px=x*TW-camX,py=y*TH-camY;
+      if(px<-TW||px>W||py<-TH||py>H)continue;
+      if(t===31){
+        // Down staircase glow
+        const pulse=Math.sin(fr*.07+x*2+y*3)*.25+.75;
+        const glowA=currentMap>=5?`rgba(220,160,0,${pulse*.5})`:`rgba(80,40,180,${pulse*.45})`;
+        const glowB=currentMap>=5?`rgba(255,220,40,${pulse*.3})`:`rgba(140,80,255,${pulse*.25})`;
+        const arrowCol=currentMap>=5?`rgba(255,240,80,${pulse*.9})`:`rgba(200,160,255,${pulse*.8})`;
+        g.fillStyle=glowA;g.beginPath();g.ellipse(px+16,py+24,7,4,0,0,Math.PI*2);g.fill();
+        g.fillStyle=glowB;g.beginPath();g.ellipse(px+16,py+24,11,6,0,0,Math.PI*2);g.fill();
+        g.fillStyle=arrowCol;
+        g.beginPath();g.moveTo(px+16,py+26);g.lineTo(px+12,py+20);g.lineTo(px+20,py+20);g.closePath();g.fill();
+      }else{
+        // Up staircase glow
+        const pulse=Math.sin(fr*.06+x*3+y*2)*.2+.8;
+        g.fillStyle=`rgba(40,120,200,${pulse*.4})`;
+        g.beginPath();g.ellipse(px+16,py+8,7,4,0,0,Math.PI*2);g.fill();
+        g.fillStyle=`rgba(80,180,255,${pulse*.2})`;
+        g.beginPath();g.ellipse(px+16,py+8,11,6,0,0,Math.PI*2);g.fill();
+        g.fillStyle=`rgba(140,220,255,${pulse*.8})`;
+        g.beginPath();g.moveTo(px+16,py+6);g.lineTo(px+12,py+12);g.lineTo(px+20,py+12);g.closePath();g.fill();
+      }
+    }
+  }
 }
 
 function drawTile(tx_,ty){
@@ -8633,7 +8665,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v201',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v202',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -8788,17 +8820,38 @@ function drawAtmosphere(){
       }
     });
   }
-  // v183: Per-floor dungeon ambient screen-space particles (over revealed tiles)
+  // Dungeon ambient particles — cached to partCanvas, rebuilt every 2 frames
   if(inDungeon&&currentFloor>=1&&currentFloor<=5){
-    drawDungeonAmbientParticles();
+    if(fr-_partFrame>=2||_partMap!==currentMap){
+      partCtx.clearRect(0,0,W,H);
+      const _mc=g;g=partCtx;
+      drawDungeonAmbientParticles();
+      g=_mc;
+      _partFrame=fr;_partMap=currentMap;
+    }
+    g.drawImage(partCanvas,0,0,W,H);
   }
-  // v186: Per-floor dungeon edge vignette — color-coded screen border glow
+  // Dungeon edge vignette — cached to dvigCanvas, rebuilt every 3 frames (breathing pulse still smooth)
   if(inDungeon&&currentFloor>=1&&currentFloor<=5){
-    drawDungeonVignette();
+    if(fr-_dvigFrame>=3||_dvigFloor!==currentFloor){
+      dvigCtx.clearRect(0,0,W,H);
+      const _mc=g;g=dvigCtx;
+      drawDungeonVignette();
+      g=_mc;
+      _dvigFrame=fr;_dvigFloor=currentFloor;
+    }
+    g.drawImage(dvigCanvas,0,0,W,H);
   }
-  // v192: Town ambient particles — golden motes (magic energy) + sea-breeze wisps
+  // Town ambient particles — cached to partCanvas, rebuilt every 2 frames
   if(!inDungeon&&currentMap===0){
-    drawTownAmbientParticles();
+    if(fr-_partFrame>=2||_partMap!==currentMap){
+      partCtx.clearRect(0,0,W,H);
+      const _mc=g;g=partCtx;
+      drawTownAmbientParticles();
+      g=_mc;
+      _partFrame=fr;_partMap=currentMap;
+    }
+    g.drawImage(partCanvas,0,0,W,H);
   }
 }
 
@@ -8916,28 +8969,21 @@ function drawDungeonVignette(){
   const depth=currentFloor;
   const col=DUNGEON_VIGNETTE_COL[depth];if(!col)return;
   const visH=H-HUD_HEIGHT;
-  // Breathing pulse tied to depth — deeper = faster pulse for tension
   const pulse=0.30+0.08*Math.sin(fr*(0.02+depth*0.008));
-  // Draw edge strips using canvas gradients for smooth fade-in from edges
-  const edgeW=44; // glow band width in pixels
-  g.save();
-  // Top edge
+  const edgeW=44;
+  // No save/restore needed — only fillStyle changes (no transforms or clip)
   const gT=g.createLinearGradient(0,0,0,edgeW);
   gT.addColorStop(0,col+pulse+')');gT.addColorStop(1,col+'0)');
   g.fillStyle=gT;g.fillRect(0,0,W,edgeW);
-  // Bottom edge (above HUD)
   const gB=g.createLinearGradient(0,visH,0,visH-edgeW);
   gB.addColorStop(0,col+pulse+')');gB.addColorStop(1,col+'0)');
   g.fillStyle=gB;g.fillRect(0,visH-edgeW,W,edgeW);
-  // Left edge
   const gL=g.createLinearGradient(0,0,edgeW,0);
   gL.addColorStop(0,col+pulse+')');gL.addColorStop(1,col+'0)');
   g.fillStyle=gL;g.fillRect(0,0,edgeW,visH);
-  // Right edge
   const gR=g.createLinearGradient(W,0,W-edgeW,0);
   gR.addColorStop(0,col+pulse+')');gR.addColorStop(1,col+'0)');
   g.fillStyle=gR;g.fillRect(W-edgeW,0,edgeW,visH);
-  g.restore();
 }
 
 // ═══════════════════════════════════════
@@ -9489,6 +9535,8 @@ function dMap(){
     if(!getBgSheet(currentMap)){
       g.drawImage(tileCanvas,0,0,W,H);
     }
+    // Animated stair glows — drawn on main canvas every frame (bypass static tile cache)
+    if(inDungeon) drawDungeonStairGlows(startTX,startTY,endTX,endTY);
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
@@ -10220,7 +10268,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v201',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v202',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -15895,8 +15943,8 @@ function update(){
   if(lg.length>200)lg.splice(0,lg.length-200);
   if(burnedTiles.length>500)burnedTiles.splice(0,burnedTiles.length-500);
   processHeldMovement();
-  // Slow-refresh tile cache so animated dungeon glow tiles still pulse (~4fps animation)
-  if(inDungeon&&fr%15===0)tileCacheDirty=true;
+  // FRLG dungeon tiles are static — tile cache only invalidates on camera move/map change
+  // (no per-frame dirty-marking needed; visual tiles have no time-based animation)
   // Refresh atmosphere cache on lantern flicker cadence
   if(!inDungeon&&fr%90===0)_atmosDirty=true;
   updateVisualPositions();updateAmbient();

@@ -35,6 +35,8 @@ const FRLG={
   hpGreen:ARK.safeBright,
   hpYellow:'#d0a030',
   hpRed:ARK.dangerBright,
+  borderOuter:ARK.borderLit,   // viewport outer border
+  borderInner:ARK.border,      // viewport inner border
 };
 
 // ── Main panel window — dark gothic arcane style ──

@@ -129,17 +129,38 @@ function drawAtmosphere(){
       }
     });
   }
-  // v183: Per-floor dungeon ambient screen-space particles (over revealed tiles)
+  // Dungeon ambient particles — cached to partCanvas, rebuilt every 2 frames
   if(inDungeon&&currentFloor>=1&&currentFloor<=5){
-    drawDungeonAmbientParticles();
+    if(fr-_partFrame>=2||_partMap!==currentMap){
+      partCtx.clearRect(0,0,W,H);
+      const _mc=g;g=partCtx;
+      drawDungeonAmbientParticles();
+      g=_mc;
+      _partFrame=fr;_partMap=currentMap;
+    }
+    g.drawImage(partCanvas,0,0,W,H);
   }
-  // v186: Per-floor dungeon edge vignette — color-coded screen border glow
+  // Dungeon edge vignette — cached to dvigCanvas, rebuilt every 3 frames (breathing pulse still smooth)
   if(inDungeon&&currentFloor>=1&&currentFloor<=5){
-    drawDungeonVignette();
+    if(fr-_dvigFrame>=3||_dvigFloor!==currentFloor){
+      dvigCtx.clearRect(0,0,W,H);
+      const _mc=g;g=dvigCtx;
+      drawDungeonVignette();
+      g=_mc;
+      _dvigFrame=fr;_dvigFloor=currentFloor;
+    }
+    g.drawImage(dvigCanvas,0,0,W,H);
   }
-  // v192: Town ambient particles — golden motes (magic energy) + sea-breeze wisps
+  // Town ambient particles — cached to partCanvas, rebuilt every 2 frames
   if(!inDungeon&&currentMap===0){
-    drawTownAmbientParticles();
+    if(fr-_partFrame>=2||_partMap!==currentMap){
+      partCtx.clearRect(0,0,W,H);
+      const _mc=g;g=partCtx;
+      drawTownAmbientParticles();
+      g=_mc;
+      _partFrame=fr;_partMap=currentMap;
+    }
+    g.drawImage(partCanvas,0,0,W,H);
   }
 }
 
@@ -257,28 +278,21 @@ function drawDungeonVignette(){
   const depth=currentFloor;
   const col=DUNGEON_VIGNETTE_COL[depth];if(!col)return;
   const visH=H-HUD_HEIGHT;
-  // Breathing pulse tied to depth — deeper = faster pulse for tension
   const pulse=0.30+0.08*Math.sin(fr*(0.02+depth*0.008));
-  // Draw edge strips using canvas gradients for smooth fade-in from edges
-  const edgeW=44; // glow band width in pixels
-  g.save();
-  // Top edge
+  const edgeW=44;
+  // No save/restore needed — only fillStyle changes (no transforms or clip)
   const gT=g.createLinearGradient(0,0,0,edgeW);
   gT.addColorStop(0,col+pulse+')');gT.addColorStop(1,col+'0)');
   g.fillStyle=gT;g.fillRect(0,0,W,edgeW);
-  // Bottom edge (above HUD)
   const gB=g.createLinearGradient(0,visH,0,visH-edgeW);
   gB.addColorStop(0,col+pulse+')');gB.addColorStop(1,col+'0)');
   g.fillStyle=gB;g.fillRect(0,visH-edgeW,W,edgeW);
-  // Left edge
   const gL=g.createLinearGradient(0,0,edgeW,0);
   gL.addColorStop(0,col+pulse+')');gL.addColorStop(1,col+'0)');
   g.fillStyle=gL;g.fillRect(0,0,edgeW,visH);
-  // Right edge
   const gR=g.createLinearGradient(W,0,W-edgeW,0);
   gR.addColorStop(0,col+pulse+')');gR.addColorStop(1,col+'0)');
   g.fillStyle=gR;g.fillRect(W-edgeW,0,edgeW,visH);
-  g.restore();
 }
 
 // ═══════════════════════════════════════
@@ -830,6 +844,8 @@ function dMap(){
     if(!getBgSheet(currentMap)){
       g.drawImage(tileCanvas,0,0,W,H);
     }
+    // Animated stair glows — drawn on main canvas every frame (bypass static tile cache)
+    if(inDungeon) drawDungeonStairGlows(startTX,startTY,endTX,endTY);
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
@@ -1561,7 +1577,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v201',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v202',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
