@@ -612,9 +612,8 @@ function drawMapBg(mapIdx){
   const bg=getBgSheet(mapIdx);
   if(!bg)return;
   g.imageSmoothingEnabled=true;
-  g.globalAlpha=0.88; // slight transparency so tile overlays blend
-  g.drawImage(bg,-camX,-camY,MW*TW,MH*TH);
   g.globalAlpha=1;
+  g.drawImage(bg,-camX,-camY,MW*TW,MH*TH);
   g.imageSmoothingEnabled=false;
 }
 

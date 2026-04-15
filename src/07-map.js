@@ -603,10 +603,11 @@ function dMap(){
       tileCacheDirty=false;
     }
     g.imageSmoothingEnabled=false;
-    // When Midjourney bg is loaded, draw tile layer semi-transparent so bg shows through
-    if(getBgSheet(currentMap)){g.globalAlpha=0.52;}
-    g.drawImage(tileCanvas,0,0,W,H);
-    g.globalAlpha=1;
+    // When Midjourney bg is loaded: skip tile layer (bg IS the ground)
+    // Only draw tiles when there's no bg (fallback procedural rendering)
+    if(!getBgSheet(currentMap)){
+      g.drawImage(tileCanvas,0,0,W,H);
+    }
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
