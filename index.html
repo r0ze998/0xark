@@ -655,6 +655,44 @@ function drawDungeonTile(idx, destX, destY, scale) {
 }
 
 // ═══════════════════════════════════════
+// MIDJOURNEY MAP BACKGROUNDS
+// bg-town.jpg   : port town night scene   (map 0)
+// bg-dungeon1.jpg : shallow dungeon       (maps 1-2)
+// bg-dungeon2.jpg : mid dungeon           (maps 3-4)
+// bg-dungeon3.jpg : deepest floor         (map 5)
+// All 1280x960 (4:3) — drawn as scrolling base layer behind tiles
+// ═══════════════════════════════════════
+const BG_SHEETS = [null,null,null,null]; // indices: 0=town, 1=dung1-2, 2=dung3-4, 3=dung5
+const BG_LOADED = [false,false,false,false];
+const BG_FILES  = ['bg-town.jpg','bg-dungeon1.jpg','bg-dungeon2.jpg','bg-dungeon3.jpg'];
+BG_FILES.forEach((f,i)=>{
+  const img=new Image();
+  img.src=f;
+  img.onload=()=>{BG_SHEETS[i]=img;BG_LOADED[i]=true;};
+  // no error handler — graceful fallback to tile-only rendering
+});
+
+// Returns the bg image for a given map index (0=town, 1-5=dungeon)
+function getBgSheet(mapIdx){
+  if(mapIdx===0)return BG_LOADED[0]?BG_SHEETS[0]:null;
+  if(mapIdx<=2)return BG_LOADED[1]?BG_SHEETS[1]:null;
+  if(mapIdx<=4)return BG_LOADED[2]?BG_SHEETS[2]:null;
+  return BG_LOADED[3]?BG_SHEETS[3]:null;
+}
+
+// Draw Midjourney background behind tiles — scrolls with camera
+// World is MW×MH tiles = 1280×960px; bg image matches exactly
+function drawMapBg(mapIdx){
+  const bg=getBgSheet(mapIdx);
+  if(!bg)return;
+  g.imageSmoothingEnabled=true;
+  g.globalAlpha=0.88; // slight transparency so tile overlays blend
+  g.drawImage(bg,-camX,-camY,MW*TW,MH*TH);
+  g.globalAlpha=1;
+  g.imageSmoothingEnabled=false;
+}
+
+// ═══════════════════════════════════════
 // ZELDA-LIKE CHARACTER SPRITES (CC0 / public domain)
 // zelda-character.png: 272x256, 16x16 tiles, 17 cols x 16 rows, no gap
 // Layout: each character occupies 3 cols (walk frames) × 4 rows (directions)
@@ -9155,6 +9193,9 @@ function dMap(){
   const endTX=Math.min(MW-1,Math.ceil((camX+W)/TW));
   const endTY=Math.min(MH-1,Math.ceil((camY+H)/TH));
 
+  // ── MIDJOURNEY BACKGROUND LAYER ── drawn first, tiles + fog overlay on top
+  drawMapBg(currentMap);
+
   // ── TILE LAYER CACHE ── only redraw tiles when camera moves or map changes
   {
     const camMoved=Math.abs(camX-tileCacheLastCamX)>0.5||Math.abs(camY-tileCacheLastCamY)>0.5;
@@ -9184,7 +9225,10 @@ function dMap(){
       tileCacheDirty=false;
     }
     g.imageSmoothingEnabled=false;
+    // When Midjourney bg is loaded, draw tile layer semi-transparent so bg shows through
+    if(getBgSheet(currentMap)){g.globalAlpha=0.52;}
     g.drawImage(tileCanvas,0,0,W,H);
+    g.globalAlpha=1;
   }
 
   // Edge blending post-pass (cached to offscreen canvas)

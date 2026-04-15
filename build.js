@@ -89,6 +89,11 @@ function build() {
     { src: 'zelda-like-gfx/gfx/Overworld.png', dst: 'zelda-overworld.png' },
     { src: 'zelda-like-gfx/gfx/cave.png',      dst: 'zelda-cave.png'      },
     { src: 'zelda-like-gfx/gfx/objects.png',   dst: 'zelda-objects.png'   },
+    // Midjourney map backgrounds (optional — only copied if they exist)
+    { src: 'bg-town.jpg',      dst: 'bg-town.jpg'      },
+    { src: 'bg-dungeon1.jpg',  dst: 'bg-dungeon1.jpg'  },
+    { src: 'bg-dungeon2.jpg',  dst: 'bg-dungeon2.jpg'  },
+    { src: 'bg-dungeon3.jpg',  dst: 'bg-dungeon3.jpg'  },
   ];
   let copiedPngs = 0;
   for (const { src, dst } of PNG_FILES) {
