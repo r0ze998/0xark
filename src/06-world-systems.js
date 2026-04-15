@@ -1034,6 +1034,7 @@ function openCardShop(){
   shopConfirm=false;
   shopPhase='list';
   shopResultText='';
+  shopOpenFrame=fr;
   sfxShopOpen();
 }
 
@@ -1089,51 +1090,97 @@ function doShopTrade(){
 
 function drawCardShop(){
   if(!shopActive)return;
-  // Darken background
-  bx(0,0,W,H,'rgba(0,0,0,.45)');
-  // Shop window
-  win(50,25,W-100,H-50);
-  tx('TRADE CARDS',W/2-70,58,10,'#806030');
-  // Divider line
-  bx(70,68,W-140,1,'#c0b898');
+  // Slide-in animation
+  const dlgSlide=Math.min(1,(fr-shopOpenFrame)/8);
+  const dlgEase=easeInOut(dlgSlide);
+  const slideOff=(H-50)*(1-dlgEase);
+  bx(0,0,W,H,'rgba(0,0,0,.5)');
+  g.globalAlpha=dlgEase;
+  const wX=50,wY=25+slideOff,wW=W-100,wH=H-50;
+  win(wX,wY,wW,wH);
+  // Gold header bar
+  bx(wX,wY,wW,3,'#c0a030');
+  bx(wX,wY,3,wH,'#c0a030');
+  txShadow('TRADE CARDS',W/2-80,wY+28,12,'#f0c830','rgba(0,0,0,.4)');
+  bx(wX+16,wY+36,wW-32,1,'rgba(200,180,100,.3)');
 
   if(shopPhase==='list'){
     const filled=getPlayerFilledSlots();
     if(filled.length===0){
-      tx('You have no cards to trade!',70,110,7,'#989080');
-      tx('Press X to leave.',70,134,7,'#686068');
+      txShadow('You have no cards to trade.',wX+24,wY+80,8,'#989080','rgba(0,0,0,.2)');
+      txShadow('Press X to leave.',wX+24,wY+102,7,'#686068','rgba(0,0,0,.15)');
     }else{
-      tx('Select a card to trade:',70,86,6,'#686068');
+      txShadow('Select a card to offer:',wX+24,wY+56,7,'#988868','rgba(0,0,0,.2)');
       filled.forEach((slot,i)=>{
         const cd=pl[0].cd[slot];
         const cr=CD[cd-1];
-        const y=108+i*34;
-        if(i===shopSelectedIdx){
-          bx(68,y-8,W-136,28,'rgba(192,168,96,.2)');
-          tx('\u25B6',72,y+8,7,'#c04040');
+        const rowH=38,ry=wY+68+i*rowH;
+        const isSel=i===shopSelectedIdx;
+        const rarCol=RARITY_COLOR[cr.r]||'#888898';
+        // Row highlight
+        if(isSel){
+          bx(wX+8,ry-4,wW-16,rowH-2,'rgba(192,168,96,.2)');
+          bx(wX+8,ry-4,3,rowH-2,rarCol);
+          const bob=Math.sin(fr*0.15)*2;
+          txShadow('\u25B6',wX+14+bob,ry+16,9,'#c04040','rgba(0,0,0,.4)');
+        }else{
+          bx(wX+8,ry-4,3,rowH-2,'rgba(200,180,100,.15)');
         }
-        bx(92,y-4,20,20,cr.d);bx(93,y-3,18,18,cr.c);
-        drawCardCharacter(94,y-2,cd,0.7,fr);
-        tx(cr.n,120,y+8,7,i===shopSelectedIdx?'#c04040':'#303028');
-        tx(cr.f,260,y+8,6,'#989080');
+        // Card mini frame + sprite
+        bx(wX+24,ry,24,26,cr.d);bx(wX+25,ry+1,22,24,cr.c);
+        drawCardCharacter(wX+26,ry+2,cd,0.9,fr);
+        // Name + flavor text
+        txShadow(cr.n,wX+56,ry+14,10,isSel?'#f0e0a0':'#e0d8c0','rgba(0,0,0,.3)');
+        txShadow(cr.f,wX+56,ry+28,7,'#988878','rgba(0,0,0,.2)');
+        // Rarity stars (right side)
+        for(let s=0;s<cr.r;s++)bx(wW-20-s*10,ry+10,7,7,rarCol);
       });
-      tx('Z=Select  X=Leave',70,H-80,6,'#686068');
+      txShadow('Z=Select   X=Leave',wX+24,wY+wH-24,7,'#686868','rgba(0,0,0,.2)');
     }
   }else if(shopPhase==='confirm'){
     const filled=getPlayerFilledSlots();
     const slot=filled[shopSelectedIdx];
     const cd=pl[0].cd[slot];
     const cr=CD[cd-1];
+    const rarCol=RARITY_COLOR[cr.r]||'#888898';
     const vaultSz=pl[0].vault?pl[0].vault.size:0;
-    drawCardFrame(W/2-35,100,70,100,cd-1,true);
-    tx('Trade '+cr.n+' for a',W/2-110,250,7,'#303028');
-    tx('card you don\'t have yet?',W/2-120,272,7,'#303028');
-    tx('('+vaultSz+'/60 collected)',W/2-72,292,6,'#806030');
-    tx('Z=Yes  X=No',W/2-60,316,7,'#c04040');
+    // Centered card preview with rarity glow
+    const cX=W/2-40,cY=wY+60;
+    g.globalAlpha=dlgEase*0.3;
+    bx(cX-6,cY-6,92,112,rarCol);
+    g.globalAlpha=dlgEase;
+    drawCardFrame(cX,cY,80,100,cd-1,true);
+    // Rarity label
+    txShadow(RARITY_LABEL[cr.r]||'',W/2-32,cY+110,8,rarCol,'rgba(0,0,0,.3)');
+    // Trade description
+    txShadow('Trade  '+cr.n+'  for a card you don\'t have?',W/2-200,wY+wH-120,8,'#e0d8c0','rgba(0,0,0,.3)');
+    txShadow('('+vaultSz+'/60 collected)',W/2-68,wY+wH-100,7,'#c0a030','rgba(0,0,0,.25)');
+    // Confirm buttons
+    bx(W/2-80,wY+wH-74,72,24,'rgba(0,80,0,.35)');bx(W/2-80,wY+wH-74,72,1,'#30a030');
+    txShadow('Z YES',W/2-66,wY+wH-58,9,'#40d080','rgba(0,0,0,.4)');
+    bx(W/2+14,wY+wH-74,60,24,'rgba(80,0,0,.35)');bx(W/2+14,wY+wH-74,60,1,'#a03030');
+    txShadow('X  NO',W/2+18,wY+wH-58,9,'#d04040','rgba(0,0,0,.4)');
   }else if(shopPhase==='result'){
-    tx(shopResultText,70,H/2,9,'#303028');
-    tx('Press Z to continue',70,H/2+30,6,'#686068');
+    // Animated result text
+    const rAge=fr-shopResultFrame;
+    const rA=Math.min(1,rAge/12);
+    g.globalAlpha=dlgEase*rA;
+    const isSuccess=shopResultText.includes('Traded');
+    const rCol=isSuccess?'#40d080':'#d04040';
+    txShadow(isSuccess?'TRADE COMPLETE!':'TRADE FAILED',W/2-100,wY+wH/2-30,14,rCol,'rgba(0,0,0,.4)');
+    // Show result detail below
+    if(shopResultText&&rAge>8){
+      // Wrap result text
+      const maxC=48;
+      let t1=shopResultText,t2='';
+      if(shopResultText.length>maxC){const b=shopResultText.lastIndexOf(' ',maxC);if(b>0){t1=shopResultText.slice(0,b);t2=shopResultText.slice(b+1);}}
+      txShadow(t1,W/2-160,wY+wH/2+4,8,'#e0d8c0','rgba(0,0,0,.3)');
+      if(t2)txShadow(t2,W/2-160,wY+wH/2+20,8,'#e0d8c0','rgba(0,0,0,.3)');
+    }
+    if(rAge>20)txShadow('Press Z to continue',W/2-90,wY+wH-32,7,'#989080','rgba(0,0,0,.2)');
+    g.globalAlpha=dlgEase;
   }
+  g.globalAlpha=1;
 }
 
 // ═══════════════════════════════════════

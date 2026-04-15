@@ -291,7 +291,7 @@ let randomEventTimer=0;
 let randomEventActive=false, randomEventText='', randomEventFrame=0;
 
 // ── Trading Post state ──
-let shopActive=false, shopSelectedIdx=0, shopConfirm=false, shopResultText='', shopResultFrame=0, shopPhase='list';
+let shopActive=false, shopSelectedIdx=0, shopConfirm=false, shopResultText='', shopResultFrame=0, shopPhase='list', shopOpenFrame=0;
 // v74: Synthesis (Alchemist NPC) state
 let synthActive=false, synthPhase='pick', synthSelected=[], synthRarityFilter=1, synthResultCard=-1, synthResultFrame=0;
 
