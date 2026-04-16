@@ -1436,12 +1436,13 @@ function win(x,y,w,h,accent){
 }
 
 // ── Legendary card rune glow — draw pulsing arcane aura outside a rect ──
+// v259: Hoisted glow step arrays — eliminates 4 tuple-array literals per drawRuneGlow call
+const _GLOW_D=[2,4,6,9],_GLOW_C=['rgba(153,69,255,.5)','rgba(153,69,255,.25)','rgba(192,96,255,.12)','rgba(153,69,255,.05)'];
 function drawRuneGlow(x,y,w,h,col,fr_){
   const pulse=0.4+Math.sin((fr_||0)*0.06)*0.4;
   g.globalAlpha=pulse*0.6;
   // Outer blur layers (4 concentric outlines)
-  const glowSteps=[[2,'rgba(153,69,255,.5)'],[4,'rgba(153,69,255,.25)'],[6,'rgba(192,96,255,.12)'],[9,'rgba(153,69,255,.05)']];
-  glowSteps.forEach(([d,c])=>{g.fillStyle=c;g.fillRect(x-d,y-d,w+d*2,h+d*2);g.fillRect(x-d+1,y-d+1,w+d*2-2,h+d*2-2,);});
+  for(let _gi=0;_gi<4;_gi++){const d=_GLOW_D[_gi];g.fillStyle=_GLOW_C[_gi];g.fillRect(x-d,y-d,w+d*2,h+d*2);g.fillRect(x-d+1,y-d+1,w+d*2-2,h+d*2-2);}
   // Bright inner rim
   g.globalAlpha=pulse*0.9;g.fillStyle=col||ARK.rune;
   g.fillRect(x-1,y,w+2,1);g.fillRect(x-1,y+h,w+2,1);
@@ -13060,6 +13061,9 @@ function generateResolveEvents(){
 // MODULE: src/07-battle-resolve.js
 // Card effect animations (crystal/shadow/flame/storm/void) · drawResolvingPhase · drawResultPhase · dAct
 // ───────────────────────────────────────────────────────────────────────
+// v259: Cache evTexts per resolve sequence — eliminates map+join alloc every resolve frame
+let _bpEvTextsCache='',_bpEvTextsCacheRef=null;
+function _getBpEvTexts(q){if(q===_bpEvTextsCacheRef)return _bpEvTextsCache;_bpEvTextsCacheRef=q;let s='';for(let i=0;i<q.length;i++){if(q[i].text)s+=q[i].text+' ';}return(_bpEvTextsCache=s);}
 // v253: Static arrays for battle-resolve rOrbs — eliminates 3-object array per resolve frame
 const _RORB_LBL=['STL','BAR','SCT'],_RORB_FILL=['#c04848','#3868c0','#38a038'],_RORB_EMPTY=['#2a1010','#101028','#0e1e0e'],_RORB_LCOL=['#b04040','#3060b0','#308030'];
 // v234: Pre-baked defeat vignette + card-hit glow — more gradient eliminations
@@ -14024,7 +14028,7 @@ function drawResultPhase(){
     const reactAlpha=Math.min(1,(t-30)/10);
     g.globalAlpha=reactAlpha;
     // Determine who benefited from this round
-    const evTexts=(bpResolveQueue||[]).map(e=>e.text||'').join(' ');
+    const evTexts=bpResolveQueue?_getBpEvTexts(bpResolveQueue):'';
     const playerStole=evTexts.includes('You stole')||evTexts.includes('Power steal!')||evTexts.includes('Magic strike!');
     const rivalStole=evTexts.includes('stole your')||evTexts.includes('STOLE');
     // Choose reacting rival: prefer the targeted rival, fall back to encounter initiator
