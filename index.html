@@ -10783,6 +10783,61 @@ function dMenu(){
 // BATTLE / ACTION SCREEN (FRLG STYLE)
 // ═══════════════════════════════════════
 
+// v221: Pre-baked battle BG static layers — eliminates per-frame gradient creation during battle
+// Dungeon floor atmosphere data (shared between baking and runtime animated draws)
+const _floorAtm=[
+  null, // index 0 unused
+  [42,38,52, 55,50,62, '#504850','#606060', '#706858','#908070'], // F1: stone grey
+  [32,28,42, 42,36,50, '#403848','#504858', '#605048','#807060'], // F2: deeper, cooler
+  [28,20,48, 38,28,58, '#503868','#705890', '#604868','#907898'], // F3: crystal purple
+  [48,22,18, 60,28,22, '#603828','#804838', '#703828','#904840'], // F4: lava red
+  [12,10,18, 18,14,22, '#201828','#302030', '#282028','#403040'], // F5: void/darkness
+];
+const _btlHorizonY=Math.floor(H*0.42),_btlPlayerPlatY=H-70,_btlEnemyPlatY=Math.floor(H*0.42)+30;
+(function _bakeBattleBGs(){
+  // Helper: create offscreen canvas and temporarily redirect g to it
+  function bake(drawFn){
+    const c=document.createElement('canvas');c.width=W;c.height=H;
+    const ctx=c.getContext('2d');const _mc=g;g=ctx;drawFn();g=_mc;return c;
+  }
+  // Town BG (static layers: sky, ocean, platforms — waves excluded)
+  window._btlBgTown=bake(()=>{
+    const hy=_btlHorizonY,py=_btlPlayerPlatY,ey=_btlEnemyPlatY;
+    const gd=g.createLinearGradient(0,0,0,hy);gd.addColorStop(0,'rgb(130,190,240)');gd.addColorStop(1,'rgb(180,220,250)');g.fillStyle=gd;g.fillRect(0,0,W,hy);
+    bx(0,hy-2,W,4,'rgba(255,255,255,.15)');
+    const gd2=g.createLinearGradient(0,hy,0,H);gd2.addColorStop(0,'rgb(80,140,200)');gd2.addColorStop(1,'rgb(100,160,180)');g.fillStyle=gd2;g.fillRect(0,hy,W,H-hy);
+    bx(40,py,320,12,'#8B7355');bx(40,py,320,2,'#A08860');bx(40,py+12,320,50,'#7B6345');
+    for(let x=50;x<350;x+=40){bx(x,py+2,2,10,'#6B5335');}
+    bx(W-380,ey,300,8,'#9B8365');bx(W-380,ey,300,2,'#B09870');bx(W-380,ey+8,300,30,'#8B7355');
+  });
+  // Dungeon BG per floor (static layers: ceiling, pillar structure, horizon, floor, cracks, platforms, label)
+  window._btlBgDungeon=[null];
+  for(let fl=1;fl<=5;fl++){
+    const a=_floorAtm[fl];
+    window._btlBgDungeon.push(bake(()=>{
+      const hy=_btlHorizonY,py=_btlPlayerPlatY,ey=_btlEnemyPlatY;
+      const gd=g.createLinearGradient(0,0,0,hy);
+      gd.addColorStop(0,`rgb(${Math.floor(a[0]*.6)},${Math.floor(a[1]*.6)},${Math.floor(a[2]*.6)})`);
+      gd.addColorStop(1,`rgb(${a[0]},${a[1]},${a[2]})`);
+      g.fillStyle=gd;g.fillRect(0,0,W,hy);
+      for(let i=0;i<4;i++){const px_=60+i*160;bx(px_,10,24,hy-10,a[6]);bx(px_+2,10,20,hy-10,a[7]);bx(px_-4,8,32,8,a[7]);bx(px_-2,10,28,4,a[6]);}
+      bx(0,hy-2,W,6,a[6]);bx(0,hy-2,W,2,a[7]);
+      const gd2=g.createLinearGradient(0,hy,0,H);
+      gd2.addColorStop(0,`rgb(${a[3]},${a[4]},${a[5]})`);
+      gd2.addColorStop(1,`rgb(${a[3]+20},${a[4]+18},${a[5]+20})`);
+      g.fillStyle=gd2;g.fillRect(0,hy,W,H-hy);
+      const cc=2+fl;for(let i=0;i<cc;i++){
+        const cx_=30+i*Math.floor(W/cc);const crk=fl>=4?'#d03010':fl===3?'#503080':'#403830';
+        bx(cx_,hy+30+i*8,14+fl*2,1,crk);bx(cx_+4,hy+31+i*8,10+fl,1,crk);
+      }
+      bx(40,py,320,10,a[8]);bx(40,py,320,2,a[9]);bx(40,py+10,320,50,a[6]);
+      bx(W-380,ey,300,8,a[9]);bx(W-380,ey,300,2,a[9]);bx(W-380,ey+8,300,25,a[6]);
+      const flN=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','THE DEEP'];
+      const flC=fl===5?'#8060c0':fl===4?'#c05040':fl===3?'#9060c0':'#707888';
+      g.globalAlpha=0.35;txShadow(flN[fl],W/2-30,16,6,flC,'rgba(0,0,0,.4)');g.globalAlpha=1;
+    }));
+  }
+})();
 
 // New SFX for battle effects
 function sfxCrystal(){if(!soundEnabled)return;beep(880,.06,.07);setTimeout(()=>beep(1100,.04,.06),50);setTimeout(()=>beep(1320,.06,.07),100);setTimeout(()=>beep(1760,.08,.08),150);}
@@ -10792,76 +10847,43 @@ function sfxStorm(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),
 function sfxVoid(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(600,AC.currentTime);o.frequency.linearRampToValueAtTime(200,AC.currentTime+.15);gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.15);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.15);}catch(e){}}
 
 function drawBattleBG(){
-  // FRLG-style layered battle backgrounds: sky/ceiling + horizon + terrain + raised platforms
-  const horizonY=Math.floor(H*0.42); // horizon line dividing sky and ground
-  const groundY=H-100; // where the ground terrain starts
-  const playerPlatY=H-70; // player platform top
-  const enemyPlatY=horizonY+30; // enemy platform top
+  // FRLG-style layered battle backgrounds — static layers from pre-baked canvases, animated on top
+  const horizonY=_btlHorizonY;
+  const playerPlatY=_btlPlayerPlatY;
+  const enemyPlatY=_btlEnemyPlatY;
 
   if(currentMap===0&&!inDungeon){
-    // PORT: Sky layer — linear gradient (replaces per-row loop)
-    {const gd=g.createLinearGradient(0,0,0,horizonY);
-    gd.addColorStop(0,'rgb(130,190,240)');gd.addColorStop(1,'rgb(180,220,250)');
-    g.fillStyle=gd;g.fillRect(0,0,W,horizonY);}
-    // Horizon line (bright band)
-    bx(0,horizonY-2,W,4,'rgba(255,255,255,.15)');
-    // Ocean/ground — linear gradient
-    {const gd=g.createLinearGradient(0,horizonY,0,H);
-    gd.addColorStop(0,'rgb(80,140,200)');gd.addColorStop(1,'rgb(100,160,180)');
-    g.fillStyle=gd;g.fillRect(0,horizonY,W,H-horizonY);}
-    // Waves
+    // Blit pre-baked static layers (sky + ocean + platforms)
+    g.drawImage(_btlBgTown,0,0);
+    // Waves (animated — fr-dependent)
     for(let i=0;i<6;i++){
       const wy=horizonY+20+i*18+Math.sin(fr*0.04+i)*4;
       bx(0,wy,W,2,`rgba(255,255,255,${0.1-i*0.012})`);
     }
-    // Player raised platform (dock wood)
-    bx(40,playerPlatY,320,12,'#8B7355');bx(40,playerPlatY,320,2,'#A08860');
-    bx(40,playerPlatY+12,320,50,'#7B6345');
-    for(let x=50;x<350;x+=40){bx(x,playerPlatY+2,2,10,'#6B5335');}
-    // Enemy raised platform (distant dock)
-    bx(W-380,enemyPlatY,300,8,'#9B8365');bx(W-380,enemyPlatY,300,2,'#B09870');
-    bx(W-380,enemyPlatY+8,300,30,'#8B7355');
   }else{
-    // v109: Per-floor dungeon battle atmosphere (Floors 1-5 escalating dread)
-    const floorAtm=[
-      // [ceilR,ceilG,ceilB, floorR,floorG,floorB, pillarCol, pillarHl, platCol, platHl]
-      null, // index 0 unused
-      [42,38,52, 55,50,62, '#504850','#606060', '#706858','#908070'], // F1: stone grey
-      [32,28,42, 42,36,50, '#403848','#504858', '#605048','#807060'], // F2: deeper, cooler
-      [28,20,48, 38,28,58, '#503868','#705890', '#604868','#907898'], // F3: crystal purple
-      [48,22,18, 60,28,22, '#603828','#804838', '#703828','#904840'], // F4: lava red
-      [12,10,18, 18,14,22, '#201828','#302030', '#282028','#403040'], // F5: void/darkness
-    ];
+    // Dungeon battle BG — blit pre-baked static layers, then draw animated elements on top
     const fl=Math.max(1,Math.min(5,currentFloor||1));
-    const a=floorAtm[fl]||floorAtm[1];
-    // Ceiling — linear gradient (replaces per-row loop)
-    {const gd=g.createLinearGradient(0,0,0,horizonY);
-    gd.addColorStop(0,`rgb(${Math.floor(a[0]*.6)},${Math.floor(a[1]*.6)},${Math.floor(a[2]*.6)})`);
-    gd.addColorStop(1,`rgb(${a[0]},${a[1]},${a[2]})`);
-    g.fillStyle=gd;g.fillRect(0,0,W,horizonY);}
-    // Background pillars (style varies by floor)
+    const a=_floorAtm[fl]||_floorAtm[1];
+    g.drawImage(_btlBgDungeon[fl],0,0);
+    // Animated elements drawn on top of baked canvas:
+    // Pillar-top animations (torches / lava glow / void cracks)
     for(let i=0;i<4;i++){
       const px_=60+i*160;
-      bx(px_,10,24,horizonY-10,a[6]);bx(px_+2,10,20,horizonY-10,a[7]);
-      bx(px_-4,8,32,8,a[7]);bx(px_-2,10,28,4,a[6]);
       if(fl<=3){
-        // Torch flames (present on F1-F3, extinguished deeper)
         const flamCol=fl===3?'#a040d0':fl===2?'#d06020':'#e08020';
         const glowCol=fl===3?'#c070f0':fl===2?'#f08040':'#f0c040';
         const flicker=Math.sin(fr*0.15+i*2)*2;
         bx(px_+8,4+flicker,8,6,flamCol);bx(px_+9,2+flicker,6,4,glowCol);
         bx(px_+10,0+flicker,4,3,'rgba(255,255,200,.8)');
       }else if(fl===4){
-        // F4: lava glow seeping from base of pillars
         const lavaA=0.4+Math.sin(fr*0.08+i)*0.2;
         g.globalAlpha=lavaA;bx(px_-2,horizonY-16,28,16,'#d03010');g.globalAlpha=1;
       }else{
-        // F5: void cracks emitting purple light
         const voidA=0.3+Math.sin(fr*0.06+i*1.3)*0.2;
         g.globalAlpha=voidA;bx(px_+4,horizonY-24,16,24,'#6030a0');g.globalAlpha=1;
       }
     }
-    // F3-specific: crystal shards scattered in background
+    // F3: crystal shard shimmer
     if(fl===3){
       for(let i=0;i<6;i++){
         const csx=80+i*120,csy=horizonY-20-Math.abs(Math.sin(i*1.7))*30;
@@ -10871,44 +10893,22 @@ function drawBattleBG(){
         g.globalAlpha=1;
       }
     }
-    // F4-specific: ember particles rising
+    // F4: rising ember particles + crack lava seep
     if(fl===4){
       for(let i=0;i<8;i++){
-        const emberPhase=(fr*0.03+i*0.7)%(1);
+        const emberPhase=(fr*0.03+i*0.7)%1;
         const ex_=80+i*100+Math.sin(i*2.1)*20;
         const ey_=H-(emberPhase*H*0.6)-20;
         const ea=Math.sin(emberPhase*Math.PI)*0.7;
-        g.globalAlpha=ea;
-        bx(ex_,ey_,2,2,'#f06020');
-        g.globalAlpha=1;
+        g.globalAlpha=ea;bx(ex_,ey_,2,2,'#f06020');g.globalAlpha=1;
       }
-    }
-    // Horizon line
-    bx(0,horizonY-2,W,6,a[6]);bx(0,horizonY-2,W,2,a[7]);
-    // Floor — linear gradient
-    {const gd=g.createLinearGradient(0,horizonY,0,H);
-    gd.addColorStop(0,`rgb(${a[3]},${a[4]},${a[5]})`);
-    gd.addColorStop(1,`rgb(${a[3]+20},${a[4]+18},${a[5]+20})`);
-    g.fillStyle=gd;g.fillRect(0,horizonY,W,H-horizonY);}
-    // Floor cracks (more pronounced on deeper floors)
-    const crackCount=2+fl*1;
-    for(let i=0;i<crackCount;i++){
-      const cx_=30+i*Math.floor(W/crackCount);
-      const crackCol=fl>=4?'#d03010':fl===3?'#503080':'#403830';
-      bx(cx_,horizonY+30+i*8,14+fl*2,1,crackCol);
-      bx(cx_+4,horizonY+31+i*8,10+fl,1,crackCol);
-      if(fl>=4){// lava seep in cracks
+      const cc=2+fl;for(let i=0;i<cc;i++){
+        const cx_=30+i*Math.floor(W/cc);
         const seepA=0.3+Math.sin(fr*0.1+i)*0.2;
         g.globalAlpha=seepA;bx(cx_+1,horizonY+30+i*8,12,1,'#f06020');g.globalAlpha=1;
       }
     }
-    // Player platform
-    bx(40,playerPlatY,320,10,a[8]);bx(40,playerPlatY,320,2,a[9]);
-    bx(40,playerPlatY+10,320,50,a[6]);
-    // Enemy platform
-    bx(W-380,enemyPlatY,300,8,a[9]);bx(W-380,enemyPlatY,300,2,a[9]);
-    bx(W-380,enemyPlatY+8,300,25,a[6]);
-    // v210: Center downward light — adds depth/sense of light source above arena
+    // Center downward light pulse (fr-dependent alpha)
     {const lightPulse=0.08+0.025*Math.sin(fr*0.04);
     const lg_=g.createLinearGradient(0,horizonY,0,playerPlatY);
     lg_.addColorStop(0,'rgba(255,240,200,0)');
@@ -10916,12 +10916,6 @@ function drawBattleBG(){
     lg_.addColorStop(1,'rgba(255,240,200,0)');
     const lx=W*0.35,lw=W*0.3;
     g.fillStyle=lg_;g.fillRect(lx,horizonY,lw,playerPlatY-horizonY);}
-    // Floor depth label (subtle, top-center)
-    const flNames=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','THE DEEP'];
-    const flCol=fl===5?'#8060c0':fl===4?'#c05040':fl===3?'#9060c0':'#707888';
-    g.globalAlpha=0.35;
-    txShadow(flNames[fl],W/2-30,16,6,flCol,'rgba(0,0,0,.4)');
-    g.globalAlpha=1;
   }
   // v134: Rival-themed atmospheric overlay — VEGA (magenta) or MIRA (gold)
   // v210: vignette pre-baked to offscreen canvas — drawImage replaces createRadialGradient per frame
