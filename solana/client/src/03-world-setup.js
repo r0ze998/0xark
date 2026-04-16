@@ -919,7 +919,7 @@ function drawFootprints(){
     const sx=fp.x*TW-camX+TW/2-2;
     const sy=fp.y*TH-camY+TH/2-1;
     if(sx<-4||sx>W+4||sy<-4||sy>H+4)continue;
-    const col=_FP_RIVAL_COLS[fp.ri]||'#888888';
+    const col=_FP_RIVAL_COLS[fp.ri-1]||'#888888'; // v286: ri is 1-based (pl index), array is 0-based
     // Two small boot-print dots side by side
     const offset=(fp.age%4<2)?-1:1; // alternate left/right footstep
     g.globalAlpha=alpha;
