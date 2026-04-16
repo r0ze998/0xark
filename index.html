@@ -6013,6 +6013,20 @@ function _updateLavaFlow(){
   const sw=Math.sin(wt*0.2),cw=Math.cos(wt*0.2);
   for(let k=0;k<64;k++)_LAVA_FLOW_V[k]=(sw*_LAVA_FLOW_CI[k]+cw*_LAVA_FLOW_SI[k])*0.5+0.5;
 }
+// v390: pre-baked spatial phases for water waveOff: sin/cos(tx*0.5) for tx=0..39
+const _WAVE_TX_SI=new Float32Array(40);const _WAVE_TX_CI=new Float32Array(40);
+for(let i=0;i<40;i++){_WAVE_TX_SI[i]=Math.sin(i*0.5);_WAVE_TX_CI[i]=Math.cos(i*0.5);}
+// v390: pre-baked spatial phases for boat waves: sin/cos(wx*0.3) for wx=6,10,14,18,22
+const _BOAT_WX_SI5=new Float32Array([Math.sin(1.8),Math.sin(3.0),Math.sin(4.2),Math.sin(5.4),Math.sin(6.6)]);
+const _BOAT_WX_CI5=new Float32Array([Math.cos(1.8),Math.cos(3.0),Math.cos(4.2),Math.cos(5.4),Math.cos(6.6)]);
+// v390: dirty-flag cache for wt-based sin/cos (wt changes every 20 frames — 3fps)
+let _wtWavePrev=-1,_wt_sw3=0,_wt_cw3=0,_wt_sw4=0,_wt_cw4=0;
+function _updateWtWaveCache(){
+  if(_wtWavePrev===wt)return;
+  _wtWavePrev=wt;
+  _wt_sw3=Math.sin(wt*0.3);_wt_cw3=Math.cos(wt*0.3);
+  _wt_sw4=Math.sin(wt*0.4);_wt_cw4=Math.cos(wt*0.4);
+}
 // v366: grass blade sin/cos for i*0.7 (8 blades per tile)
 const _GRASS_SI7=new Float32Array(8);const _GRASS_CI7=new Float32Array(8);
 for(let i=0;i<8;i++){_GRASS_SI7[i]=Math.sin(i*0.7);_GRASS_CI7[i]=Math.cos(i*0.7);}
@@ -6440,7 +6454,9 @@ function drawLake(px,py,tx_,ty){
   const r=tr(tx_,ty);
   // v364: Gentle wave lines — use pre-baked _WATER_WAVE1/2 tables (sin computed once per 20 frames)
   _updateWaterWaves(); // no-op if wt unchanged
-  const waveOff=Math.sin(wt*0.3+tx_*0.5)*2; // per-tile offset still needs trig (tx_ varies)
+  // v390: sin-addition eliminates per-tile Math.sin — wt cache+pre-baked tx spatial phases
+  _updateWtWaveCache();
+  const waveOff=(_wt_sw3*_WAVE_TX_CI[tx_%40]+_wt_cw3*_WAVE_TX_SI[tx_%40])*2;
   for(let i=0;i<11;i++){const wy=8+Math.round(_WATER_WAVE1[i]+waveOff);bx(px+i*3,py+wy,4,1,'rgba(72,136,192,.5)');}
   for(let i=0;i<11;i++){const wy=20+Math.round(_WATER_WAVE2[i]+waveOff*.5);bx(px+i*3+1,py+wy,3,1,'rgba(88,152,208,.4)');}
   // Sparkle
@@ -6489,7 +6505,9 @@ function drawFountain(px,py,tx_,ty){
   bx(px+4,py+16,24,12,'#808898');bx(px+6,py+18,20,8,'#6878a0');
   const f=(wt+tx_)%3;
   bx(px+6,py+18,20,8,f===0?'#4888c0':'#5898d0');
-  for(let wx=6;wx<26;wx+=4){const wy=20+Math.round(Math.sin(wt*0.4+wx*0.3)*0.5);bx(px+wx,py+wy,3,1,'rgba(255,255,255,.25)');}
+  // v390: sin-addition with pre-baked _BOAT_WX_SI5/CI5 (wx=6,10,14,18,22 → indices 0-4)
+  _updateWtWaveCache();
+  let _bwi=0;for(let wx=6;wx<26;wx+=4){const wy=20+Math.round((_wt_sw4*_BOAT_WX_CI5[_bwi]+_wt_cw4*_BOAT_WX_SI5[_bwi])*0.5);bx(px+wx,py+wy,3,1,'rgba(255,255,255,.25)');_bwi++;}
   bx(px+12,py+8,8,12,'#909898');bx(px+14,py+6,4,10,'#a0a8a8');
   if((wt)%2===0){
     bx(px+14,py+2,4,2,'#a0d0f0');bx(px+10,py+4,2,2,'#80b8e0');bx(px+20,py+4,2,2,'#80b8e0');
@@ -6959,8 +6977,8 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
       if(wavePhase<0.18){
         const wp=wavePhase/0.18;
         const wy=py+4+Math.floor(TH*0.3*wp);
-        // v239: globalAlpha+solid white replaces template literal per wave glint
-        g.globalAlpha=Math.sin(wp*Math.PI)*0.22;g.fillStyle='#ffffff';g.fillRect(px+2,wy,TW-4,1);g.globalAlpha=1;
+        // v390: parabola 4x(1-x) ≈ sin(πx) for x∈[0,1] — eliminates per-glint Math.sin
+        g.globalAlpha=(4*wp*(1-wp))*0.22;g.fillStyle='#ffffff';g.fillRect(px+2,wy,TW-4,1);g.globalAlpha=1;
       }
       // Sparkle glints: pseudo-random positions per tile+time
       const sphase=(fr*0.04+x*13+y*7);
@@ -8350,7 +8368,7 @@ function drawWildEncounter(){
     const wRar=(wCr&&wCr.r)||1;
     const wRcol=_WLD_RAR_COLS[wRar]||'#f0c830'; // v262: hoisted
     const prog=Math.min(1,t/24);
-    const pulse=0.5+Math.sin(t*0.35)*0.5;
+    const pulse=0.5+Math.sin(t*0.35)*0.5; // 1 call (varies with animation-local t)
     // Dim overlay
     g.globalAlpha=Math.min(0.85,prog*0.85);
     bx(0,0,W,H,'rgba(0,0,0,1)');
@@ -8367,13 +8385,22 @@ function drawWildEncounter(){
     g.globalAlpha=prog;
     // "?" on silhouette
     txShadow('?',W/2-9,riseY+silH/2+8,20,'#1c1c48','rgba(0,0,0,.5)');
-    // Orbiting rarity sparks
-    for(let oi=0;oi<wRar+3;oi++){
-      const ang=t*0.2+oi*(Math.PI*2/(wRar+3));
-      const dist=38+Math.sin(t*0.18+oi)*8;
+    // Orbiting rarity sparks — v394: sin-addition + Euler recurrence (3*N → 6 sin/cos calls total)
+    {const N_=wRar+3;
+    const _t18S=Math.sin(t*0.18),_t18C=Math.cos(t*0.18); // for dist: sin(t*0.18+oi)
+    const _t20S=Math.sin(t*0.2),_t20C=Math.cos(t*0.2);   // for ang temporal part
+    const _oStep=Math.PI*2/N_,_oSS=Math.sin(_oStep),_oSC=Math.cos(_oStep);
+    let _si=0,_ci=1; // spatial state for i*(2π/N_)
+    for(let oi=0;oi<N_;oi++){
+      // ang = t*0.2 + oi*(2π/N_); sin-addition via spatial Euler state (_si,_ci)
+      const _ac=_t20C*_ci-_t20S*_si; // cos(ang)
+      const _as=_t20S*_ci+_t20C*_si; // sin(ang)
+      // dist = 38 + sin(t*0.18+oi)*8; sin-addition: oi is integer so sin(oi)=_IDX_SI[oi]
+      const dist=38+(_t18S*_IDX_CI[oi]+_t18C*_IDX_SI[oi])*8;
       g.globalAlpha=prog*pulse*0.8;
-      bx(W/2+Math.cos(ang)*dist-2,riseY+silH/2+Math.sin(ang)*dist-2,5,5,wRcol);
-    }
+      bx(W/2+_ac*dist-2,riseY+silH/2+_as*dist-2,5,5,wRcol);
+      const _ns=_si*_oSC+_ci*_oSS;_ci=_ci*_oSC-_si*_oSS;_si=_ns; // Euler advance
+    }}
     g.globalAlpha=prog;
     // Text panel just below silhouette
     win(W/2-148,riseY+silH+10,296,36);
@@ -9253,6 +9280,8 @@ const _moonDiskCanvas=(()=>{
   return c;
 })();
 let _orbitCacheSz=-1,_orbitCacheCards=[]; // v273: title orbit vault cache
+// v394: Euler recurrence cache for title orbit — recomputed only when orbitCount changes
+let _titleOrbitN=0,_titleOrbitSS=0,_titleOrbitSC=1;
 function dTitle(){
   bx(0,0,W,H,'#060612');
   // v225: pre-baked void gradient (was createLinearGradient every frame)
@@ -9290,7 +9319,7 @@ function dTitle(){
     const sp2=sShotPhase/20;
     const shotX=W*0.08+sp2*W*0.45;
     const shotY=30+sp2*100;
-    const shotA=Math.sin(sp2*Math.PI)*0.9;
+    const shotA=4*sp2*(1-sp2)*0.9; // v394: parabola ≈ sin(π*sp2) for sp2∈[0,1]
     for(let t=0;t<7;t++){
       g.globalAlpha=shotA*(1-t/7)*0.8;
       bx((shotX-t*9)|0,(shotY-t*6)|0,2,1,'#d8d0ff');
@@ -9403,18 +9432,24 @@ function dTitle(){
     const orbitCX=W/2-96+64; // centered on "0xARK" title
     const orbitCY=196;
     const orbitRX=140,orbitRY=52;
-    const orbitSpeed=0.006;
+    // v394: sin-addition + Euler recurrence — 2 sin/cos calls/frame instead of 3*N
+    if(_titleOrbitN!==orbitCount){_titleOrbitN=orbitCount;const _s=Math.PI*2/orbitCount;_titleOrbitSS=Math.sin(_s);_titleOrbitSC=Math.cos(_s);}
+    let _tOsi=0,_tOci=1; // spatial state: (si,ci)=(sin(i*2π/N),cos(i*2π/N)), start at i=0
     for(let i=0;i<orbitCount;i++){
-      const angle=fr*orbitSpeed+i*(Math.PI*2/orbitCount);
-      const ox=orbitCX+Math.cos(angle)*orbitRX;
-      const oy=orbitCY+Math.sin(angle)*orbitRY;
+      // angle(i) = fr*0.006 + i*(2π/N); use sin-addition with cached _sFr006/_cFr006
+      const _ac=_cFr006*_tOci-_sFr006*_tOsi; // cos(angle)
+      const _as=_sFr006*_tOci+_cFr006*_tOsi; // sin(angle) = depth
+      const ox=orbitCX+_ac*orbitRX;
+      const oy=orbitCY+_as*orbitRY;
       // Depth cue: cards behind title (sin<0) are dimmer
-      const depth=Math.sin(angle);
+      const depth=_as;
       const alpha=0.28+Math.max(0,depth)*0.35;
       const scale_=0.75+Math.max(0,depth)*0.25;
       const cid=orbitCards[i];
       const cr=CD[cid-1];
       // Skip cards behind the title text (depth<-0.2) so text stays readable
+      // Euler advance before continue so state stays correct for next iteration
+      const _ns=_tOsi*_titleOrbitSC+_tOci*_titleOrbitSS;_tOci=_tOci*_titleOrbitSC-_tOsi*_titleOrbitSS;_tOsi=_ns;
       if(depth<-0.2)continue;
       g.globalAlpha=alpha;
       g.save();
@@ -11698,6 +11733,23 @@ const _BTL_CRYST_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_CI[i]=Mat
 const _BTL_EMBER_X=new Float32Array(8);for(let i=0;i<8;i++)_BTL_EMBER_X[i]=Math.sin(i*2.1)*20; // ember X offset (frame-independent)
 const _BTL_SEEP_SI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_SEEP_SI[i]=Math.sin(i);    // sin(i) lava seep
 const _BTL_SEEP_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_SEEP_CI[i]=Math.cos(i);
+// v392: pre-baked spatial phases for VEGA orbs (phase=fr*0.018+i*2.1, i=0..2)
+// and for MIRA sparks (phase=fr*0.022+i*1.6, i=0..3)
+// sin-addition: cos(fr*K+i*A) = cos(fr*K)*cos(i*A) - sin(fr*K)*sin(i*A)
+const _VEGA_CI21=new Float32Array(3);const _VEGA_SI21=new Float32Array(3);
+const _VEGA_CI147=new Float32Array(3);const _VEGA_SI147=new Float32Array(3); // i*2.1*0.7=i*1.47
+const _VEGA_CI273=new Float32Array(3);const _VEGA_SI273=new Float32Array(3); // i*2.1*1.3=i*2.73
+const _MIRA_CI16=new Float32Array(4);const _MIRA_SI16=new Float32Array(4);
+const _MIRA_CI096=new Float32Array(4);const _MIRA_SI096=new Float32Array(4); // i*1.6*0.6=i*0.96
+const _MIRA_CI176=new Float32Array(4);const _MIRA_SI176=new Float32Array(4); // i*1.6*1.1=i*1.76
+(()=>{
+  for(let i=0;i<3;i++){_VEGA_CI21[i]=Math.cos(i*2.1);_VEGA_SI21[i]=Math.sin(i*2.1);}
+  for(let i=0;i<3;i++){_VEGA_CI147[i]=Math.cos(i*1.47);_VEGA_SI147[i]=Math.sin(i*1.47);}
+  for(let i=0;i<3;i++){_VEGA_CI273[i]=Math.cos(i*2.73);_VEGA_SI273[i]=Math.sin(i*2.73);}
+  for(let i=0;i<4;i++){_MIRA_CI16[i]=Math.cos(i*1.6);_MIRA_SI16[i]=Math.sin(i*1.6);}
+  for(let i=0;i<4;i++){_MIRA_CI096[i]=Math.cos(i*0.96);_MIRA_SI096[i]=Math.sin(i*0.96);}
+  for(let i=0;i<4;i++){_MIRA_CI176[i]=Math.cos(i*1.76);_MIRA_SI176[i]=Math.sin(i*1.76);}
+})();
 const _ACTION_NAMES=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
 // v305: pre-baked BATTLE round header labels; cache TX sig truncation
 const _BATTLE_HDR=['','BATTLE 1','BATTLE 2','BATTLE 3','BATTLE 4','BATTLE 5','BATTLE 6','BATTLE 7','BATTLE 8','BATTLE 9','BATTLE 10'];
@@ -11910,13 +11962,13 @@ function drawBattleBG(){
         g.globalAlpha=1;
       }
     }
-    // F4: rising ember particles + crack lava seep — v360: pre-baked ember X offsets
+    // F4: rising ember particles + crack lava seep — v392: parabola replaces sin(phase*π)
     if(fl===4){
       for(let i=0;i<8;i++){
         const emberPhase=(fr*0.03+i*0.7)%1;
         const ex_=80+i*100+_BTL_EMBER_X[i];
         const ey_=H-(emberPhase*H*0.6)-20;
-        const ea=Math.sin(emberPhase*Math.PI)*0.7;
+        const ea=4*emberPhase*(1-emberPhase)*0.7; // sin(phase*π) ≈ 4x(1-x)
         g.globalAlpha=ea;bx(ex_,ey_,2,2,'#f06020');g.globalAlpha=1;
       }
       const cc=2+fl;for(let i=0;i<cc;i++){
@@ -11938,32 +11990,36 @@ function drawBattleBG(){
   if(vsRiv===1){
     // VEGA: dark magenta screen-edge vignette + drifting orbs
     g.drawImage(_btlVigVega,0,0);
-    // Three drifting dark-energy orbs near VEGA's side (pre-baked canvases)
+    // Three drifting dark-energy orbs — v392: 6 trig calls total (was 9)
+    {const _vS=Math.sin(fr*0.018),_vC=Math.cos(fr*0.018);
+    const _v7S=Math.sin(fr*0.0126),_v7C=Math.cos(fr*0.0126);
+    const _v13S=Math.sin(fr*0.0234),_v13C=Math.cos(fr*0.0234);
     for(let i=0;i<3;i++){
-      const phase=fr*0.018+i*2.1;
-      const ox=W-220+Math.cos(phase)*28+i*22;
-      const oy=100+Math.sin(phase*0.7)*22+i*16;
-      const ora=0.12+Math.sin(phase*1.3)*0.06;
+      const ox=W-220+(_vC*_VEGA_CI21[i]-_vS*_VEGA_SI21[i])*28+i*22;
+      const oy=100+(_v7S*_VEGA_CI147[i]+_v7C*_VEGA_SI147[i])*22+i*16;
+      const ora=0.12+(_v13S*_VEGA_CI273[i]+_v13C*_VEGA_SI273[i])*0.06;
       const vo=_vegaOrbs[i];
       g.globalAlpha=ora;g.drawImage(vo[0].canvas,(ox-vo[0].hw)|0,(oy-vo[0].hw)|0);
       g.globalAlpha=ora*0.4;g.drawImage(vo[1].canvas,(ox-vo[1].hw)|0,(oy-vo[1].hw)|0);
-    }
+    }}
     g.globalAlpha=1;
   }else{
     // MIRA: warm amber screen-edge vignette + drifting coin sparks
     g.drawImage(_btlVigMira,0,0);
-    // Drifting coin-glint sparks near MIRA's side
+    // Drifting coin-glint sparks — v392: 6 trig calls total (was 12)
+    {const _mS=Math.sin(fr*0.022),_mC=Math.cos(fr*0.022);
+    const _m6S=Math.sin(fr*0.0132),_m6C=Math.cos(fr*0.0132);
+    const _m11S=Math.sin(fr*0.0242),_m11C=Math.cos(fr*0.0242);
     for(let i=0;i<4;i++){
-      const phase=fr*0.022+i*1.6;
-      const ox=W-290+Math.cos(phase)*24+i*18;
-      const oy=120+Math.sin(phase*0.6)*18+i*14;
-      const ora=0.10+Math.sin(phase*1.1)*0.05;
+      const ox=W-290+(_mC*_MIRA_CI16[i]-_mS*_MIRA_SI16[i])*24+i*18;
+      const oy=120+(_m6S*_MIRA_CI096[i]+_m6C*_MIRA_SI096[i])*18+i*14;
+      const ora=0.10+(_m11S*_MIRA_CI176[i]+_m11C*_MIRA_SI176[i])*0.05;
       g.globalAlpha=ora;
       bx(ox-2,oy-2,4,4,'#e0c040');
       g.globalAlpha=ora*0.45;
       bx(ox-4,oy-4,8,1,'#f0e060');bx(ox-4,oy+3,8,1,'#f0e060');
       bx(ox-4,oy-4,1,8,'#f0e060');bx(ox+3,oy-4,1,8,'#f0e060');
-    }
+    }}
     g.globalAlpha=1;
   }
 }
@@ -13790,6 +13846,22 @@ function generateResolveEvents(){
 // MODULE: src/07-battle-resolve.js
 // Card effect animations (crystal/shadow/flame/storm/void) · drawResolvingPhase · drawResultPhase · dAct
 // ───────────────────────────────────────────────────────────────────────
+// v390: pre-baked orbital angle tables for battle particle effects (N=5,6,8,10,12)
+// sin-addition: cos(evT*K + i*2π/N) = cos(evT*K)*CI[i] - sin(evT*K)*SI[i]
+const _ORB_SI5=new Float32Array(5);const _ORB_CI5=new Float32Array(5);
+const _ORB_SI6=new Float32Array(6);const _ORB_CI6=new Float32Array(6);
+const _ORB_SI8=new Float32Array(8);const _ORB_CI8=new Float32Array(8);
+const _ORB_SI10=new Float32Array(10);const _ORB_CI10=new Float32Array(10);
+const _ORB_SI12=new Float32Array(12);const _ORB_CI12=new Float32Array(12);
+const _FLAME_DIST13=new Float32Array(12); // Math.sin(i*1.3)*8 for i=0..11 (static dist modifier)
+(()=>{const _PI2=Math.PI*2;
+  for(let i=0;i<5;i++){_ORB_SI5[i]=Math.sin(i*_PI2/5);_ORB_CI5[i]=Math.cos(i*_PI2/5);}
+  for(let i=0;i<6;i++){_ORB_SI6[i]=Math.sin(i*_PI2/6);_ORB_CI6[i]=Math.cos(i*_PI2/6);}
+  for(let i=0;i<8;i++){_ORB_SI8[i]=Math.sin(i*_PI2/8);_ORB_CI8[i]=Math.cos(i*_PI2/8);}
+  for(let i=0;i<10;i++){_ORB_SI10[i]=Math.sin(i*_PI2/10);_ORB_CI10[i]=Math.cos(i*_PI2/10);}
+  for(let i=0;i<12;i++){_ORB_SI12[i]=Math.sin(i*_PI2/12);_ORB_CI12[i]=Math.cos(i*_PI2/12);}
+  for(let i=0;i<12;i++)_FLAME_DIST13[i]=Math.sin(i*1.3)*8;
+})();
 // v262: Hoist resolve per-frame inline literals
 const _RES_ACT_NAMES=['DRAW','STEAL','BARRIER','SCOUT','CARD'];
 // v327: pre-baked resolve/result screen strings
@@ -13844,6 +13916,22 @@ const _cardRarGlow=(()=>{
     return {canvas:c,hw};
   });
 })();
+// v391: Pre-baked steal glow radials (5 rarities, radii 38-70, inner colors fixed)
+// Eliminates createRadialGradient per frame during steal animation (30 frames × rare events)
+// Also fixes color-string replace bug for rar>=3 (original replace('.3',...) found no match)
+const _stealGlowCanvases=(()=>{
+  const inner=['','rgba(80,200,80,0.66)','rgba(80,144,240,0.72)','rgba(176,80,224,0.78)','rgba(224,160,32,0.84)','rgba(255,248,200,0.90)'];
+  return inner.map((col,rar)=>{
+    if(!rar)return null;
+    const r=30+rar*8,sz=(r+2)*2;
+    const c=document.createElement('canvas');c.width=sz;c.height=sz;
+    const ctx=c.getContext('2d');
+    const grd=ctx.createRadialGradient(sz/2,sz/2,0,sz/2,sz/2,r);
+    grd.addColorStop(0,col);grd.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,sz,sz);
+    return {c,r,sz};
+  });
+})();
 // v231: Pre-baked QTE vignette canvases — replaces createRadialGradient per frame
 // Baked at alpha=1; drawn with globalAlpha=vigIntensity for correct compositing
 const _qteVigDefend=(()=>{
@@ -13867,13 +13955,13 @@ function drawCrystalEffect(cx_,cy_,evT){
   if(evT===1)sfxCrystal();
   const a=Math.max(0,1-evT/35);
   g.save();g.globalAlpha=a;
+  // v390: sin-addition with _ORB_SI8/CI8 — 2 trig calls instead of 16
+  {const _eS=Math.sin(evT*0.2),_eC=Math.cos(evT*0.2),_dist=20+evT*1.5;
   for(let i=0;i<8;i++){
-    const ang=evT*0.2+i*(Math.PI*2/8);
-    const dist=20+evT*1.5;
-    const px_=cx_+Math.cos(ang)*dist;
-    const py_=cy_+Math.sin(ang)*dist*0.6;
+    const px_=cx_+(_eC*_ORB_CI8[i]-_eS*_ORB_SI8[i])*_dist;
+    const py_=cy_+(_eS*_ORB_CI8[i]+_eC*_ORB_SI8[i])*_dist*0.6;
     bx(px_-2,py_-2,4,4,'#48b8e8');bx(px_-1,py_-1,2,2,'#a0e0ff');
-  }
+  }}
   // Lightning bolt at mid-animation
   if(evT>15&&evT<30){
     g.globalAlpha=(30-evT)/15;g.strokeStyle='#64c8ff';g.lineWidth=2;
@@ -13897,10 +13985,11 @@ function drawShadowEffect(cx_,cy_,evT){
     bx(cx_-25,cy_-30,50,60,'rgba(80,40,120,.4)');
     g.globalAlpha=1;
   }
-  // Dark particles rising
+  // Dark particles rising — v390: sin-addition with _IDX_SI/CI
   {const pa=Math.max(0,1-evT/30);g.globalAlpha=pa;
+  const _sS=Math.sin(evT*0.2),_sC=Math.cos(evT*0.2);
   for(let i=0;i<6;i++){
-    const px_=cx_-15+i*6+Math.sin(evT*0.2+i)*4,py_=cy_+20-evT*1.5-i*3;
+    const px_=cx_-15+i*6+(_sS*_IDX_CI[i]+_sC*_IDX_SI[i])*4,py_=cy_+20-evT*1.5-i*3;
     g.fillStyle='#501e78';g.fillRect(px_,py_,3,3);
     g.fillStyle='#8c50b4';g.fillRect(px_+1,py_+1,1,1);
   }g.globalAlpha=1;}
@@ -13909,10 +13998,13 @@ function drawShadowEffect(cx_,cy_,evT){
 function drawFlameEffect(cx_,cy_,evT){
   if(evT===1)sfxFlame();
   // Fire particles erupting from center
+  // v390: sin-addition with _ORB_SI12/CI12; pre-baked dist via _FLAME_DIST13 — 2 trig calls vs 24
   {const pa=Math.max(0,1-evT/35);g.globalAlpha=pa;
+  const _eS=Math.sin(evT*0.05),_eC=Math.cos(evT*0.05),_evT05=evT*0.5;
   for(let i=0;i<12;i++){
-    const ang=i*(Math.PI*2/12)+evT*0.05,dist=evT*2+Math.sin(i*1.3)*8;
-    const px_=cx_+Math.cos(ang)*dist,py_=cy_+Math.sin(ang)*dist*0.5-evT*0.5;
+    const dist=evT*2+_FLAME_DIST13[i];
+    const px_=cx_+(_eC*_ORB_CI12[i]-_eS*_ORB_SI12[i])*dist;
+    const py_=cy_+(_eS*_ORB_CI12[i]+_eC*_ORB_SI12[i])*dist*0.5-_evT05;
     const sz=4-evT*0.08;
     if(sz>0){g.fillStyle='#dc5028';g.fillRect(px_-sz/2,py_-sz/2,sz,sz);g.fillStyle='#ffc83c';g.fillRect(px_-sz/4,py_-sz/4,sz/2,sz/2);}
   }g.globalAlpha=1;}
@@ -13934,9 +14026,11 @@ function drawStormEffect(evT){
   // Lightning bolts across top
   if(evT<25){
     const a=Math.max(0,1-evT/25);
+    // v390: sin-addition with _IDX_SI/CI — sin(evT+i) = sin(evT)*CI[i]+cos(evT)*SI[i]
+    const _stS=Math.sin(evT),_stC=Math.cos(evT);
     g.globalAlpha=a;g.strokeStyle='#ffffc8';g.lineWidth=3;
     for(let i=0;i<3;i++){
-      const sx_=80+i*200+Math.sin(evT+i)*20;
+      const sx_=80+i*200+(_stS*_IDX_CI[i]+_stC*_IDX_SI[i])*20;
       g.beginPath();g.moveTo(sx_,0);
       g.lineTo(sx_+15,40);g.lineTo(sx_-10,80);g.lineTo(sx_+20,120);
       g.stroke();
@@ -13953,19 +14047,22 @@ function drawVoidEffect(cx_,cy_,evT){
   // Purple vortex in center
   const a=Math.max(0,1-evT/35);
   g.save();g.globalAlpha=a;
+  // v390: sin-addition for orbital and per-particle dist — 4 trig calls vs 30
+  {const _eS3=Math.sin(evT*0.3),_eC3=Math.cos(evT*0.3);
+  const _eS5=Math.sin(evT*0.5),_eC5=Math.cos(evT*0.5);
+  const _base=30-evT*0.3;
   for(let i=0;i<10;i++){
-    const ang=evT*0.3+i*(Math.PI*2/10);
-    const dist=30-evT*0.3+Math.sin(evT*0.5+i)*5;
-    const px_=cx_+Math.cos(ang)*dist;
-    const py_=cy_+Math.sin(ang)*dist*0.6;
+    const dist=_base+(_eS5*_IDX_CI[i]+_eC5*_IDX_SI[i])*5;
+    const px_=cx_+(_eC3*_ORB_CI10[i]-_eS3*_ORB_SI10[i])*dist;
+    const py_=cy_+(_eS3*_ORB_CI10[i]+_eC3*_ORB_SI10[i])*dist*0.6;
     g.fillStyle='#6432a0';g.fillRect(px_-2,py_-2,4,4);
     g.fillStyle='#b464dc';g.fillRect(px_-1,py_-1,2,2);
-  }
-  // Card shape flying
+  }}
+  // Card shape flying — v390: parabola approx for arc (4x(1-x) ≈ sin(πx))
   if(evT>10&&evT<30){
     const t_=(evT-10)/20;
     const cardX=lerp(cx_+60,cx_-60,t_);
-    const cardY=cy_-10+Math.sin(t_*Math.PI)*-20;
+    const cardY=cy_-10+4*t_*(1-t_)*-20;
     bx(cardX-6,cardY-8,12,16,'#7858a0');bx(cardX-5,cardY-7,10,14,'#9878c0');
     txShadow('?',cardX-3,cardY+4,6,'#fff','rgba(0,0,0,.35)');
   }
@@ -14042,12 +14139,15 @@ function drawResolvingPhase(){
       if(evT>=13&&evT<24){
         const bt=evT-13;
         const ba=Math.max(0,1-bt/11)*fadeA;
+        // v390: sin-addition for orbital and compound alpha — 4 trig calls vs 30
+        {const _bS=Math.sin(bt*0.12),_bC=Math.cos(bt*0.12),_dist=bt*7;
+        const _b4S=Math.sin(bt*0.4),_b4C=Math.cos(bt*0.4);
         for(let i=0;i<10;i++){
-          const ang=i*(Math.PI*2/10)+bt*0.12;
-          const dist=bt*7;
-          g.globalAlpha=ba*(0.5+0.5*Math.sin(ang+bt*0.4));
-          bx(clashCX+Math.cos(ang)*dist-1,clashCY+pH/2+Math.sin(ang)*dist*0.45-1,3,3,'#ffe060');
-        }
+          const _ac=_bC*_ORB_CI10[i]-_bS*_ORB_SI10[i],_as=_bS*_ORB_CI10[i]+_bC*_ORB_SI10[i];
+          // sin(ang+bt*0.4) = _as*_b4C + _ac*_b4S (sin-addition, no extra trig)
+          g.globalAlpha=ba*(0.5+0.5*(_as*_b4C+_ac*_b4S));
+          bx(clashCX+_ac*_dist-1,clashCY+pH/2+_as*_dist*0.45-1,3,3,'#ffe060');
+        }}
         if(evT===13){sfxSlash();}
       }
       g.globalAlpha=1;
@@ -14117,7 +14217,8 @@ function drawResolvingPhase(){
       const prog=Math.min(1,evT/32);
       const eased=prog<0.5?2*prog*prog:1-Math.pow(-2*prog+2,2)/2; // ease-in-out
       const cx_=playerCX+(rivalCX-playerCX)*eased;
-      const cy_=playerCY+(rivalCY-playerCY)*eased-28*Math.sin(eased*Math.PI);
+      // v390: parabola 4x(1-x) ≈ sin(πx) for arc trajectory
+      const cy_=playerCY+(rivalCY-playerCY)*eased-112*eased*(1-eased);
       const scl_=Math.max(0.3,1-eased*0.6);
       const cw_=36*scl_,ch_=50*scl_;
       // Red glow that follows card
@@ -14136,7 +14237,7 @@ function drawResolvingPhase(){
       for(let i=0;i<6;i++){
         const tp=Math.max(0,eased-(i+1)*0.04);
         const tx_=playerCX+(rivalCX-playerCX)*tp;
-        const ty_=playerCY+(rivalCY-playerCY)*tp-28*Math.sin(tp*Math.PI);
+        const ty_=playerCY+(rivalCY-playerCY)*tp-112*tp*(1-tp); // v390: parabola
         const ta=(1-i/6)*0.5*(1-eased);
         g.globalAlpha=ta;
         bx(tx_-3,ty_-3,6,6,i<3?'#c03020':'#804020');
@@ -14213,8 +14314,10 @@ function drawResolvingPhase(){
         bx(playerCX-cw_/2+2,cardY-ch_/2+2,cw_-4,ch_-4,'#e87060');
         if(scale_>.5)txShadow('\u25B2',playerCX-6,cardY+4,Math.floor(12*scale_),'#fff','rgba(0,0,0,.35)');
       }
+      // v390: sin-addition with _ORB_SI8/CI8 — 2 trig calls vs 16
       {const pa=Math.max(0,1-evT/35);g.globalAlpha=pa;g.fillStyle='#ffffc8';
-      for(let i=0;i<8;i++){const ang=i*(Math.PI*2/8)+evT*.15,dist=12+evT*.8;g.fillRect(playerCX+Math.cos(ang)*dist,cardY+Math.sin(ang)*dist,3,3);}
+      const _eS=Math.sin(evT*.15),_eC=Math.cos(evT*.15),_dist=12+evT*.8;
+      for(let i=0;i<8;i++){g.fillRect(playerCX+(_eC*_ORB_CI8[i]-_eS*_ORB_SI8[i])*_dist,cardY+(_eS*_ORB_CI8[i]+_eC*_ORB_SI8[i])*_dist,3,3);}
       g.globalAlpha=1;}
       if(evT===1)sfxCardGet();
     }
@@ -14259,9 +14362,10 @@ function drawResolvingPhase(){
         bx(rcx-cw_/2+2,cardY-ch_/2+2,cw_-4,ch_-4,'#e87060');
         if(scale_>.5)txShadow('\u25B2',rcx-6,cardY+4,Math.floor(12*scale_),'#fff','rgba(0,0,0,.35)');
       }
-      // Hostile red-orange orbiting sparks
+      // Hostile red-orange orbiting sparks — v390: sin-addition with _ORB_SI6/CI6
       {const pa=Math.max(0,1-evT/35);g.globalAlpha=pa;g.fillStyle='#dc6432';
-      for(let i=0;i<6;i++){const ang=i*(Math.PI*2/6)+evT*.18,dist=10+evT*.7;g.fillRect(rcx+Math.cos(ang)*dist,cardY+Math.sin(ang)*dist,3,3);}
+      const _eS=Math.sin(evT*.18),_eC=Math.cos(evT*.18),_dist=10+evT*.7;
+      for(let i=0;i<6;i++){g.fillRect(rcx+(_eC*_ORB_CI6[i]-_eS*_ORB_SI6[i])*_dist,cardY+(_eS*_ORB_CI6[i]+_eC*_ORB_SI6[i])*_dist,3,3);}
       g.globalAlpha=1;}
       if(evT===1)sfxCardGet();
     }
@@ -14273,17 +14377,15 @@ function drawResolvingPhase(){
       // Card moves from rival (oppCX) to player (playerCX) over 30 frames
       const prog=Math.min(1,evT/30);
       const cx_=oppCX+(playerCX-oppCX)*prog;
-      const cy_=oppCY-30*Math.sin(prog*Math.PI); // arc trajectory
+      const cy_=oppCY-120*prog*(1-prog); // v390: parabola ≈ sin(πx) arc
       const scl_=Math.min(1,evT/8);
       const cw_=36*scl_,ch_=50*scl_;
-      // Glow burst at card position
-      if(evT<30){
+      // Glow burst at card position — v391: pre-baked canvas replaces per-frame gradient
+      if(evT<30&&_stealGlowCanvases[rar]){
         const glA=0.6*(1-prog);
+        const sg=_stealGlowCanvases[rar];
         g.globalAlpha=glA;
-        const grd=g.createRadialGradient(cx_,cy_,0,cx_,cy_,30+rar*8);
-        grd.addColorStop(0,rglow.replace('.3','.'+(0.6+rar*.06).toFixed(2)));
-        grd.addColorStop(1,'rgba(0,0,0,0)');
-        g.fillStyle=grd;g.fillRect(cx_-40,cy_-40,80,80);
+        g.drawImage(sg.c,(cx_-sg.sz/2)|0,(cy_-sg.sz/2)|0);
         g.globalAlpha=1;
       }
       // v214: Card frame with rotation — card spins as it arcs through the air
@@ -14295,15 +14397,21 @@ function drawResolvingPhase(){
       if(scl_>.5&&ev.stolenId){drawCardCharacter(-cw_/2+2,-ch_/2+2,ev.stolenId,scl_*0.6,fr);}
       g.restore();}
       // Rarity sparks orbit
+      // v390: sin-addition for orbiting sparks — 2 trig calls regardless of sparkCount
       const sparkCount=2+rar*2;
+      {const _spS=Math.sin(evT*0.25),_spC=Math.cos(evT*0.25);
+      const _spDist=16+evT*0.6,_sa=Math.max(0,1-evT/50);
+      const _spStep=Math.PI*2/sparkCount;
+      const _spSStep=Math.sin(_spStep),_spCStep=Math.cos(_spStep);
+      let _ss=0,_sc=1; // sin(0), cos(0) — advances by _spStep each iteration (Euler)
       for(let i=0;i<sparkCount;i++){
-        const ang=evT*0.25+i*(Math.PI*2/sparkCount);
-        const dist=16+evT*0.6;
-        const sa=Math.max(0,1-evT/50);
-        g.globalAlpha=sa;
-        bx(cx_+Math.cos(ang)*dist-2,cy_+Math.sin(ang)*dist-2,4,4,rcol);
+        const ang_c=_spC*_sc-_spS*_ss,ang_s=_spS*_sc+_spC*_ss;
+        g.globalAlpha=_sa;
+        bx(cx_+ang_c*_spDist-2,cy_+ang_s*_spDist-2,4,4,rcol);
         g.globalAlpha=1;
-      }
+        // advance Euler: (sc,ss) rotated by _spStep
+        const _ns=_ss*_spCStep+_sc*_spSStep;_sc=_sc*_spCStep-_ss*_spSStep;_ss=_ns;
+      }}
       // Arrival: screen flash + burst + hitpause proportional to rarity (only once at frame 30)
       if(evT===30){
         if(rar>=4){flash();}
@@ -14317,6 +14425,7 @@ function drawResolvingPhase(){
         const stA=Math.min(1,(evT-8)/5)*Math.max(0,(45-evT)/8);
         const stLabel=rar>=5?'LEGENDARY!':rar>=4?'EPIC CARD!':rar>=3?'RARE CARD!':rar>=2?'GOT IT!':'CARD TAKEN!';
         const stSz=rar>=5?17:rar>=4?15:rar>=3?13:10;
+        // v390: parabola-style clamp — sin((evT-8)*0.25) cycles, use as-is (1 minor call stays)
         const bounce=rar>=3?Math.max(0,Math.sin((evT-8)*0.25)*4):0;
         g.globalAlpha=stA;
         txShadow(stLabel,W/2-stLabel.length*stSz*0.3,playerCY-85-bounce,stSz,rcol,'rgba(0,0,0,.6)');
@@ -14384,14 +14493,16 @@ function drawResolvingPhase(){
       g.globalAlpha=beamAlpha*0.35;
       bx(tgtCX-beamW/2,beamY-6,beamW,10,'rgba(0,200,80,.18)'); // soft glow above
       g.globalAlpha=1;
-      // Orbiting scan particles
+      // Orbiting scan particles — v390: sin-addition, hoist dist out of loop
+      {const _eS22=Math.sin(evT*0.22),_eC22=Math.cos(evT*0.22);
+      const _dist=20+Math.sin(evT*0.15)*5; // 1 call, was 5 (hoisted out of loop)
+      const _eS18=Math.sin(evT*0.18),_eC18=Math.cos(evT*0.18);
       for(let i=0;i<5;i++){
-        const ang=evT*0.22+i*(Math.PI*2/5);
-        const dist=20+Math.sin(evT*0.15)*5;
-        const pa=beamAlpha*(0.4+Math.sin(evT*0.18+i)*0.4);
+        const _ac=_eC22*_ORB_CI5[i]-_eS22*_ORB_SI5[i],_as=_eS22*_ORB_CI5[i]+_eC22*_ORB_SI5[i];
+        const pa=beamAlpha*(0.4+(_eS18*_IDX_CI[i]+_eC18*_IDX_SI[i])*0.4);
         g.globalAlpha=pa;
-        bx(tgtCX+Math.cos(ang)*dist-1,tgtCY+Math.sin(ang)*dist*0.6-1,2,2,'#40e090');
-      }
+        bx(tgtCX+_ac*_dist-1,tgtCY+_as*_dist*0.6-1,2,2,'#40e090');
+      }}
       g.globalAlpha=1;
       // "SCOUTING" text flash
       if(evT>6&&evT<36){
@@ -14434,14 +14545,17 @@ function drawResolvingPhase(){
         g.setLineDash([]);
         g.globalAlpha=1;
       }
-      // Hostile orbiting particles (red/orange)
+      // Hostile orbiting particles — v390: sin-addition, hoist dist, +π via negation of CI/SI
+      {const _eS25=Math.sin(evT*0.25),_eC25=Math.cos(evT*0.25);
+      const _dist=18+Math.sin(evT*0.18)*4; // 1 call, hoisted out of loop
+      const _eS20=Math.sin(evT*0.2),_eC20=Math.cos(evT*0.2);
       for(let i=0;i<5;i++){
-        const ang=evT*0.25+i*(Math.PI*2/5)+Math.PI;
-        const dist=18+Math.sin(evT*0.18)*4;
-        const pa=beamAlpha*(0.35+Math.sin(evT*0.2+i)*0.35);
+        // ang+π: cos(ang+π)=-cos(ang), sin(ang+π)=-sin(ang)
+        const _ac=-(_eC25*_ORB_CI5[i]-_eS25*_ORB_SI5[i]),_as=-(_eS25*_ORB_CI5[i]+_eC25*_ORB_SI5[i]);
+        const pa=beamAlpha*(0.35+(_eS20*_IDX_CI[i]+_eC20*_IDX_SI[i])*0.35);
         g.globalAlpha=pa;
-        bx(dstCX+Math.cos(ang)*dist-1,dstCY+Math.sin(ang)*dist*0.55-1,2,2,'#ff5020');
-      }
+        bx(dstCX+_ac*_dist-1,dstCY+_as*_dist*0.55-1,2,2,'#ff5020');
+      }}
       g.globalAlpha=1;
       // "SCANNING..." flash text near player (hostile amber)
       if(evT>5&&evT<38){
@@ -14963,11 +15077,13 @@ function drawCardAcquisition(){
     g.beginPath();g.arc(cx_,cy_,ringR+6,0,Math.PI*2);g.fill();
     g.globalAlpha=ringPulse*(isEpicPlus?0.35:0.18);
     g.beginPath();g.arc(cx_,cy_,ringR+14,0,Math.PI*2);g.fill();
-    // Spinning sparkle dots for epic/legendary
+    // Spinning sparkle dots — v393: sin-addition with _sFr07/_cFr07 + _ORB_SI6/CI6
+    // (fr*0.07 ≡ π/3 per step; _ORB_CI6[si]=cos(si*π/3), _ORB_SI6[si]=sin(si*π/3))
     if(isEpicPlus){
+      const _rr4=ringR+4;
       for(let si=0;si<6;si++){
-        const sang=fr*0.07+si*(Math.PI/3);
-        const sx=cx_+Math.cos(sang)*(ringR+4),sy=cy_+Math.sin(sang)*(ringR+4);
+        const sx=cx_+(_cFr07*_ORB_CI6[si]-_sFr07*_ORB_SI6[si])*_rr4;
+        const sy=cy_+(_sFr07*_ORB_CI6[si]+_cFr07*_ORB_SI6[si])*_rr4;
         g.globalAlpha=0.7*ringPulse;bx(sx-1,sy-1,3,3,rarCol);
       }
     }
@@ -15482,11 +15598,15 @@ function dVictory(){
       const cd=_vcHandBuf[si];
       drawCardFrame(-22,-32,44,62,cd-1,true);
       g.restore();g.globalAlpha=1;
+      // v393: N=4 orbit unrolled — sin(i*π/2) = {0,1,0,-1}, cos = {1,0,-1,0}
       if(cardT>0&&cardT<20){
-        for(let s=0;s<4;s++){
-          const sa=s*(Math.PI*2/4)+cardT*.2,sd=8+cardT*.6;
-          g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle='#ffffc8';g.fillRect(cx_+Math.cos(sa)*sd,cy_+Math.sin(sa)*sd,2,2);g.globalAlpha=1;
-        }
+        const _spS=Math.sin(cardT*.2),_spC=Math.cos(cardT*.2),_spd=8+cardT*.6;
+        g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle='#ffffc8';
+        g.fillRect(cx_+_spC*_spd,cy_+_spS*_spd,2,2);
+        g.fillRect(cx_-_spS*_spd,cy_+_spC*_spd,2,2);
+        g.fillRect(cx_-_spC*_spd,cy_-_spS*_spd,2,2);
+        g.fillRect(cx_+_spS*_spd,cy_-_spC*_spd,2,2);
+        g.globalAlpha=1;
       }
     }
     // Vault count display
@@ -16529,12 +16649,14 @@ function drawBuildingInterior(){
         grd.addColorStop(0.7,'rgba(20,10,40,.6)');
         grd.addColorStop(1,'rgba(0,0,0,0)');
         g.fillStyle=grd;g.fillRect(cx_-r1-5,cy_-r1-5,r1*2+10,r1*2+10);
-        // Energy sparks converging to center
+        // Energy sparks converging — v394: sin-addition with _ORB_SI8/CI8 (16→2 trig calls)
+        {const _g1S=Math.sin(sf*0.1),_g1C=Math.cos(sf*0.1),_gd=(1-grow)*80+8;
         g.globalAlpha=pulse*.8;g.fillStyle='#7850dc';
         for(let i=0;i<8;i++){
-          const ang=sf*0.1+i*(Math.PI*2/8),dist=(1-grow)*80+8;
-          g.fillRect(cx_+Math.cos(ang)*dist-2,cy_+Math.sin(ang)*dist-2,4,4);
-        }
+          const _ac=_g1C*_ORB_CI8[i]-_g1S*_ORB_SI8[i];
+          const _as=_g1S*_ORB_CI8[i]+_g1C*_ORB_SI8[i];
+          g.fillRect(cx_+_ac*_gd-2,cy_+_as*_gd-2,4,4);
+        }}
         g.globalAlpha=1;
         txShadow('DRAWING...',cx_-52,cy_+62,9,'#6060a0','rgba(0,0,0,.5)');
       }
@@ -16568,14 +16690,15 @@ function drawBuildingInterior(){
         g.globalAlpha=prog;
         if(gachaResultCard>0){drawCardFrame(cardX_,cardY_,cardW_,cardH_,gachaResultCard-1,true);}
         g.globalAlpha=1;
-        // Rarity burst sparks
+        // Rarity burst sparks — v394: sin-addition with _ORB_SI6/CI6 (12→2 trig calls)
+        {const _g3S=Math.sin(sf*0.12),_g3C=Math.cos(sf*0.12),_gd3=60+prog*30;
+        g.globalAlpha=0.8*(1-prog)*0.5;g.fillStyle=rarCol;
         for(let i=0;i<6;i++){
-          const ang=sf*0.12+i*(Math.PI*2/6);
-          const dist=60+prog*30;
-          g.globalAlpha=0.8*(1-prog)*0.5;
-          g.fillStyle=rarCol;g.fillRect(cx_+Math.cos(ang)*dist-3,cy_+Math.sin(ang)*dist-3,6,6);
-          g.globalAlpha=1;
+          const _ac=_g3C*_ORB_CI6[i]-_g3S*_ORB_SI6[i];
+          const _as=_g3S*_ORB_CI6[i]+_g3C*_ORB_SI6[i];
+          g.fillRect(cx_+_ac*_gd3-3,cy_+_as*_gd3-3,6,6);
         }
+        g.globalAlpha=1;}
       }
       // Transition to result
       if(sf>=75){
@@ -17011,13 +17134,15 @@ function drawFloorClearFanfare(){
     txShadow('THE ARK IS OPEN',px_+pw/2-140,py_+22,18,'#ffe080','rgba(0,0,0,.8)');
     g.globalAlpha=alpha;
     txShadow('DUNGEON CLEARED!',px_+pw/2-126,py_+44,11,'#f0c040','rgba(0,0,0,.5)');
-    // Extra star burst decoration
+    // Extra star burst — v393: sin-addition + hoist dist (was sin called 8+8=16 times/frame)
+    {const _s01=Math.sin(t*0.1),_c01=Math.cos(t*0.1);
+    const _sd=52+Math.sin(t*0.08)*6; // hoisted: was inside loop (same value every iteration)
+    const _s12=Math.sin(t*0.12),_c12=Math.cos(t*0.12);
     for(let si=0;si<8;si++){
-      const sa=t*0.1+si*(Math.PI*2/8);
-      const sd=52+Math.sin(t*0.08)*6;
-      g.globalAlpha=alpha*(0.4+Math.sin(t*0.12+si)*0.3);
-      bx(px_+pw/2+Math.cos(sa)*sd-2,py_+34+Math.sin(sa)*10-2,4,4,'#ffe080');
-    }
+      const _ac=_c01*_ORB_CI8[si]-_s01*_ORB_SI8[si],_as=_s01*_ORB_CI8[si]+_c01*_ORB_SI8[si];
+      g.globalAlpha=alpha*(0.4+(_s12*_IDX_CI[si]+_c12*_IDX_SI[si])*0.3);
+      bx(px_+pw/2+_ac*_sd-2,py_+34+_as*10-2,4,4,'#ffe080');
+    }}
     g.globalAlpha=alpha;
     bx(px_+16,py_+52,pw-32,1,'rgba(255,224,128,.3)');
   }else if(rar>=4){
@@ -17026,13 +17151,21 @@ function drawFloorClearFanfare(){
     g.globalAlpha=alpha*hPulse;
     txShadow(_FLOOR_CLEARED_LBL[d.floor]||('FLOOR '+flRoman+' CLEARED'),px_+pw/2-130,py_+22,16,rcol,'rgba(0,0,0,.7)'); // v330
     g.globalAlpha=alpha;
-    // Extra accent sparkles for epic/legendary
-    for(let si=0;si<(rar===5?6:4);si++){
-      const sa=t*0.15+si*(Math.PI*2/(rar===5?6:4));
-      const sd=36+Math.sin(t*0.09)*4;
-      g.globalAlpha=alpha*(0.5+Math.sin(t*0.13+si)*0.25);
-      bx(px_+pw/2+Math.cos(sa)*sd-2,py_+26+Math.sin(sa)*8-2,3,3,rcol);
-    }
+    // Epic/Legendary sparkles — v393: sin-addition, hoist dist, use ORB tables
+    {const _nc=rar===5?6:4;
+    const _s15=Math.sin(t*0.15),_c15=Math.cos(t*0.15);
+    const _sd=36+Math.sin(t*0.09)*4; // hoisted from loop
+    const _s13=Math.sin(t*0.13),_c13=Math.cos(t*0.13);
+    const _orbSI=rar===5?_ORB_SI6:_ORB_SI10,_orbCI=rar===5?_ORB_CI6:_ORB_CI10;
+    // N=4 uses ORB_SI10[0,2,5,7] (approx), but simplest: use Euler recurrence
+    const _step=Math.PI*2/_nc,_ss=Math.sin(_step),_sc=Math.cos(_step);
+    let _si=0,_ci=1; // starting at i=0: sin(0)=0, cos(0)=1
+    for(let si=0;si<_nc;si++){
+      const _as=_s15*_ci+_c15*_si,_ac=_c15*_ci-_s15*_si; // sin/cos(t*0.15+si*step)
+      g.globalAlpha=alpha*(0.5+(_s13*_IDX_CI[si]+_c13*_IDX_SI[si])*0.25);
+      bx(px_+pw/2+_ac*_sd-2,py_+26+_as*8-2,3,3,rcol);
+      const _ns=_si*_sc+_ci*_ss;_ci=_ci*_sc-_si*_ss;_si=_ns; // Euler advance
+    }}
     g.globalAlpha=alpha;
     bx(px_+16,py_+34,pw-32,1,rcol+'60');
   }else{
@@ -17051,15 +17184,21 @@ function drawFloorClearFanfare(){
   const cr2=CD[d.cardId-1];
   bx(cX,cY,cw_,ch_,cr2.d);bx(cX+2,cY+2,cw_-4,ch_-4,cr2.c);
   drawCardCharacter(cX+4,cY+4,d.cardId,1.8,fr+t);
-  // Rarity orbit sparks (more for goal)
+  // Rarity orbit sparks — v393: sin-addition + Euler recurrence + hoist dist
   const sparkCount=d.isGoal?12:2+rar*2;
   const sparkDist=d.isGoal?52:38;
+  {const _tK=t*(d.isGoal?0.08:0.12);
+  const _sK=Math.sin(_tK),_cK=Math.cos(_tK);
+  const _dist=sparkDist+Math.sin(t*0.1)*4; // hoisted from loop
+  const _sq=d.isGoal?0.9:0.75,_sz=d.isGoal?5:4;
+  const _step=Math.PI*2/sparkCount,_ss=Math.sin(_step),_sc=Math.cos(_step);
+  let _si=0,_ci=1;
   for(let i=0;i<sparkCount;i++){
-    const ang=t*(d.isGoal?0.08:0.12)+i*(Math.PI*2/sparkCount);
-    const dist=sparkDist+Math.sin(t*0.1)*4;
-    g.globalAlpha=alpha*(d.isGoal?0.9:0.75);
-    bx(cX+cw_/2+Math.cos(ang)*dist-2,cY+ch_/2+Math.sin(ang)*dist-2,d.isGoal?5:4,d.isGoal?5:4,rcol);
-  }
+    const _ac=_cK*_ci-_sK*_si,_as=_sK*_ci+_cK*_si;
+    g.globalAlpha=alpha*_sq;
+    bx(cX+cw_/2+_ac*_dist-2,cY+ch_/2+_as*_dist-2,_sz,_sz,rcol);
+    const _ns=_si*_sc+_ci*_ss;_ci=_ci*_sc-_si*_ss;_si=_ns;
+  }}
   g.globalAlpha=alpha;
   // Card info (right side)
   const infoX=cX+cw_+24;
@@ -17719,7 +17858,7 @@ function dGameOver(){
 const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
 // v355: per-frame sin/cos cache — computed once at draw() start, reused across all draw functions
 let _sBpST12=0,_cBpST12=0,_cBpST16=0; // bpShakeTimer-based shake — computed once per frame in draw()
-let _sFr007=0,_cFr007=0,_sFr008=0,_sFr012=0,_sFr015=0,_cFr015=0,_sFr018=0,_cFr018=0,_sFr02=0,_cFr02=0,_sFr022=0,_cFr022=0,_sFr025=0,_cFr025=0,_sFr028=0,_cFr028=0,_sFr03=0,_cFr03=0,_sFr035=0,_cFr035=0,_sFr042=0,_cFr042=0,_sFr04=0,_cFr04=0,_sFr045=0,_cFr045=0,_sFr05=0,_cFr05=0,_sFr052=0,_cFr052=0,_sFr055=0,_cFr055=0,_sFr06=0,_cFr06=0,_sFr07=0,_cFr07=0,_sFr08=0,_cFr08=0,_sFr09=0,_cFr09=0,_sFr10=0,_cFr10=0,_sFr12=0,_cFr12=0,_sFr15=0,_cFr15=0,_sFr18=0,_cFr18=0,_sFr20=0,_cFr20=0,_sFr25=0,_cFr25=0,_sFr28=0,_sFr30=0,_cFr30=0;
+let _sFr006=0,_cFr006=0,_sFr007=0,_cFr007=0,_sFr008=0,_sFr012=0,_sFr015=0,_cFr015=0,_sFr018=0,_cFr018=0,_sFr02=0,_cFr02=0,_sFr022=0,_cFr022=0,_sFr025=0,_cFr025=0,_sFr028=0,_cFr028=0,_sFr03=0,_cFr03=0,_sFr035=0,_cFr035=0,_sFr042=0,_cFr042=0,_sFr04=0,_cFr04=0,_sFr045=0,_cFr045=0,_sFr05=0,_cFr05=0,_sFr052=0,_cFr052=0,_sFr055=0,_cFr055=0,_sFr06=0,_cFr06=0,_sFr07=0,_cFr07=0,_sFr08=0,_cFr08=0,_sFr09=0,_cFr09=0,_sFr10=0,_cFr10=0,_sFr12=0,_cFr12=0,_sFr15=0,_cFr15=0,_sFr18=0,_cFr18=0,_sFr20=0,_cFr20=0,_sFr25=0,_cFr25=0,_sFr28=0,_sFr30=0,_cFr30=0;
 // v364: water wave lookup tables (11 px columns each, depend on wt not fr — update when wt changes)
 // wx step=3 starting at 0: wx=0,3,6,9,12,15,18,21,24,27,30 (11 entries)
 // wx step=3 starting at 1: wx=1,4,7,10,13,16,19,22,25,28,31 (11 entries)
@@ -18116,6 +18255,7 @@ function draw(){
   if(bpShakeTimer>0){_sBpST12=Math.sin(bpShakeTimer*1.2);_cBpST12=Math.cos(bpShakeTimer*1.2);_cBpST16=Math.cos(bpShakeTimer*1.6);}else{_sBpST12=0;_cBpST12=1;_cBpST16=1;}
   // v355: compute shared per-frame sin/cos once (saves ~50+ Math.sin calls/frame)
   const _fr2=fr*0.02,_fr3=fr*0.03,_fr4=fr*0.04,_fr5=fr*0.05,_fr015=fr*0.015;
+  _sFr006=Math.sin(fr*0.006);_cFr006=Math.cos(fr*0.006);
   _sFr02=Math.sin(_fr2);_cFr02=Math.cos(_fr2);_sFr022=Math.sin(fr*0.022);_cFr022=Math.cos(fr*0.022);_sFr028=Math.sin(fr*0.028);_cFr028=Math.cos(fr*0.028);
   _sFr025=Math.sin(fr*0.025);_cFr025=Math.cos(fr*0.025);
   _sFr03=Math.sin(_fr3);_cFr03=Math.cos(_fr3);

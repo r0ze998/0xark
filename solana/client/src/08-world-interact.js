@@ -521,12 +521,14 @@ function drawBuildingInterior(){
         grd.addColorStop(0.7,'rgba(20,10,40,.6)');
         grd.addColorStop(1,'rgba(0,0,0,0)');
         g.fillStyle=grd;g.fillRect(cx_-r1-5,cy_-r1-5,r1*2+10,r1*2+10);
-        // Energy sparks converging to center
+        // Energy sparks converging — v394: sin-addition with _ORB_SI8/CI8 (16→2 trig calls)
+        {const _g1S=Math.sin(sf*0.1),_g1C=Math.cos(sf*0.1),_gd=(1-grow)*80+8;
         g.globalAlpha=pulse*.8;g.fillStyle='#7850dc';
         for(let i=0;i<8;i++){
-          const ang=sf*0.1+i*(Math.PI*2/8),dist=(1-grow)*80+8;
-          g.fillRect(cx_+Math.cos(ang)*dist-2,cy_+Math.sin(ang)*dist-2,4,4);
-        }
+          const _ac=_g1C*_ORB_CI8[i]-_g1S*_ORB_SI8[i];
+          const _as=_g1S*_ORB_CI8[i]+_g1C*_ORB_SI8[i];
+          g.fillRect(cx_+_ac*_gd-2,cy_+_as*_gd-2,4,4);
+        }}
         g.globalAlpha=1;
         txShadow('DRAWING...',cx_-52,cy_+62,9,'#6060a0','rgba(0,0,0,.5)');
       }
@@ -560,14 +562,15 @@ function drawBuildingInterior(){
         g.globalAlpha=prog;
         if(gachaResultCard>0){drawCardFrame(cardX_,cardY_,cardW_,cardH_,gachaResultCard-1,true);}
         g.globalAlpha=1;
-        // Rarity burst sparks
+        // Rarity burst sparks — v394: sin-addition with _ORB_SI6/CI6 (12→2 trig calls)
+        {const _g3S=Math.sin(sf*0.12),_g3C=Math.cos(sf*0.12),_gd3=60+prog*30;
+        g.globalAlpha=0.8*(1-prog)*0.5;g.fillStyle=rarCol;
         for(let i=0;i<6;i++){
-          const ang=sf*0.12+i*(Math.PI*2/6);
-          const dist=60+prog*30;
-          g.globalAlpha=0.8*(1-prog)*0.5;
-          g.fillStyle=rarCol;g.fillRect(cx_+Math.cos(ang)*dist-3,cy_+Math.sin(ang)*dist-3,6,6);
-          g.globalAlpha=1;
+          const _ac=_g3C*_ORB_CI6[i]-_g3S*_ORB_SI6[i];
+          const _as=_g3S*_ORB_CI6[i]+_g3C*_ORB_SI6[i];
+          g.fillRect(cx_+_ac*_gd3-3,cy_+_as*_gd3-3,6,6);
         }
+        g.globalAlpha=1;}
       }
       // Transition to result
       if(sf>=75){
