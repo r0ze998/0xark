@@ -1,3 +1,5 @@
+// v253: Static arrays for battle-resolve rOrbs — eliminates 3-object array per resolve frame
+const _RORB_LBL=['STL','BAR','SCT'],_RORB_FILL=['#c04848','#3868c0','#38a038'],_RORB_EMPTY=['#2a1010','#101028','#0e1e0e'],_RORB_LCOL=['#b04040','#3060b0','#308030'];
 // v234: Pre-baked defeat vignette + card-hit glow — more gradient eliminations
 // Defeat vignette: createRadialGradient(W/2,H/2,60,W/2,H/2,W*0.6), outer rgba(200,10,10,1)
 // draw with globalAlpha=defPulse*0.25
@@ -751,27 +753,24 @@ function drawResolvingPhase(){
       g.globalAlpha=1;
     }
     // v216: Rival KO overlay — pulsing red "KO!" above sprite when HP hits 0
-    [1,2].forEach(ri=>{
-      if(bpHP[ri]!==0)return;
+    for(let ri=1;ri<=2;ri++){
+      if(bpHP[ri]!==0)continue;
       const koCX=ri===1?oppCX:W-310;
       const koCY=ri===1?oppCY:140;
       const koPulse=0.65+0.35*Math.sin(fr*0.3);
-      // Tinted flash behind sprite
       g.globalAlpha=koPulse*0.3;bx(koCX-32,koCY-48,64,80,'#c02020');g.globalAlpha=1;
-      // KO! text with scale bounce
       const koScale=1+Math.max(0,Math.sin(fr*0.18)*0.12);
       g.save();g.translate(koCX,koCY-58);g.scale(koScale,koScale);
       g.globalAlpha=koPulse*0.95;
       txShadow('KO!',-(ri===1?14:16),0,20,'#ff3030','rgba(0,0,0,.85)');
       g.restore();g.globalAlpha=1;
-      // Faint X marks over sprite
       g.globalAlpha=koPulse*0.35;
       for(let xi=0;xi<4;xi++){
         const xOff=koCX-14+xi*10,yOff=koCY-22+((xi%2)*8);
         bx(xOff,yOff,2,2,'#ff2020');bx(xOff+2,yOff-2,2,2,'#ff2020');
       }
       g.globalAlpha=1;
-    });
+    }
     // v216: Player defeat flash — red vignette + "DEFEATED!" when player HP 0
     if(bpHP[0]===0){
       const defPulse=0.5+0.5*Math.sin(fr*0.22);
@@ -812,37 +811,39 @@ function drawResultPhase(){
   // Side-by-side rival actions
   const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
   const colW=Math.floor((panW-48)/3);
-  const players=[{idx:0,name:'You',action:bpAction},{idx:1,name:pl[1].n,action:bpRivalActions[0]},{idx:2,name:pl[2].n,action:bpRivalActions[1]}];
-  players.forEach((p_,col)=>{
+  const _pActions=[bpAction,bpRivalActions[0],bpRivalActions[1]];
+  const _pNames=['You',pl[1].n,pl[2].n];
+  for(let col=0;col<3;col++){
+    const p_action=_pActions[col],p_name=_pNames[col];
     const cx_=panX+16+col*(colW+8);
     const cy_=panY+38;
     const actAlpha=Math.min(1,Math.max(0,(t-15-col*6)/8));
-    if(actAlpha<=0)return;
+    if(actAlpha<=0)continue;
     g.globalAlpha=actAlpha*slideIn_;
     // Name header
     const nameCol=col===0?'#4080d0':col===1?'#d060a0':'#d0a030';
-    txShadow(p_.name,cx_+4,cy_+12,9,nameCol,'rgba(0,0,0,.2)');
+    txShadow(p_name,cx_+4,cy_+12,9,nameCol,'rgba(0,0,0,.2)');
     // Action
-    const actName=actionNames[p_.action]||'???';
+    const actName=actionNames[p_action]||'???';
     let actCol='#686068';
-    if(p_.action===0)actCol='#48b8e8';
-    else if(p_.action===1)actCol='#b04040';
-    else if(p_.action===2)actCol='#3060b0';
-    else if(p_.action===3)actCol='#308030';
-    else if(p_.action===4)actCol='#806030';
+    if(p_action===0)actCol='#48b8e8';
+    else if(p_action===1)actCol='#b04040';
+    else if(p_action===2)actCol='#3060b0';
+    else if(p_action===3)actCol='#308030';
+    else if(p_action===4)actCol='#806030';
     // v131: compact action icon (10×10) beside the action name
     {const ric=actCol,rix=cx_+4,riy=cy_+18;
-    if(p_.action===0){ // DRAW: card outline + down arrow
+    if(p_action===0){ // DRAW: card outline + down arrow
       bx(rix,riy+1,8,8,'rgba(0,0,0,.25)');bx(rix+1,riy,8,8,actCol==='#686068'?'#555':'#1c3846');
       bx(rix+1,riy,8,1,ric);bx(rix+1,riy+8,8,1,ric);bx(rix+1,riy,1,9,ric);bx(rix+8,riy,1,9,ric);
       bx(rix+4,riy+2,2,3,ric);bx(rix+3,riy+4,4,1,ric);bx(rix+4,riy+5,2,1,ric);
-    }else if(p_.action===1){ // STEAL: claw silhouette
+    }else if(p_action===1){ // STEAL: claw silhouette
       bx(rix,riy+5,7,4,ric);bx(rix+1,riy+3,2,3,ric);bx(rix+3,riy+1,2,5,ric);bx(rix+5,riy+3,2,3,ric);
-    }else if(p_.action===2){ // BARRIER: shield
+    }else if(p_action===2){ // BARRIER: shield
       bx(rix+2,riy,6,1,ric);bx(rix,riy+1,10,4,ric);bx(rix+1,riy+5,8,2,ric);
       bx(rix+3,riy+7,4,1,ric);bx(rix+4,riy+8,2,1,ric);
       bx(rix+4,riy+1,2,5,'rgba(255,255,255,.35)');bx(rix+2,riy+3,6,1,'rgba(255,255,255,.25)');
-    }else if(p_.action===3){ // SCOUT: eye/lens
+    }else if(p_action===3){ // SCOUT: eye/lens
       bx(rix+1,riy+2,2,4,ric);bx(rix+7,riy+2,2,4,ric);
       bx(rix+3,riy+1,4,1,ric);bx(rix+3,riy+7,4,1,ric);
       bx(rix+2,riy+2,1,1,ric);bx(rix+7,riy+2,1,1,ric);
@@ -855,11 +856,11 @@ function drawResultPhase(){
     }}
     txShadow(actName,cx_+4,cy_+28,8,actCol,'rgba(0,0,0,.2)');
     // Card count
-    const cc=cdCount(pl[p_.idx].cd);
+    const cc=cdCount(pl[col].cd);
     txShadow(cc+'/5 cards',cx_+4,cy_+42,7,'#988870','rgba(0,0,0,.15)');
     // Mini card bar
     for(let i=0;i<5;i++){
-      const cd=pl[p_.idx].cd[i];
+      const cd=pl[col].cd[i];
       const sx_=cx_+4+i*22;
       if(cd>0){
         const cr=CD[cd-1];
@@ -868,7 +869,7 @@ function drawResultPhase(){
         bx(sx_,cy_+48,20,10,'#383838');
       }
     }
-  });
+  }
   g.globalAlpha=slideIn_;
 
   // Divider before events
@@ -897,22 +898,18 @@ function drawResultPhase(){
   }
   g.globalAlpha=slideIn_;
   // v123: Spell counts with orb pips (consistent with HUD)
-  {const rOrbs=[
-    {lbl:'STL',val:sp.s,max:3,fill:'#c04848',empty:'#2a1010',lCol:'#b04040'},
-    {lbl:'BAR',val:sp.b,max:3,fill:'#3868c0',empty:'#101028',lCol:'#3060b0'},
-    {lbl:'SCT',val:sp.c,max:3,fill:'#38a038',empty:'#0e1e0e',lCol:'#308030'},
-  ];const rOW=5,rOH=5,rOG=2;
+  {const _rSpVals=[sp.s,sp.b,sp.c];const rOW=5,rOH=5,rOG=2;
   txShadow('SPELLS:',panX+16,panY+panH-20,7,'#988870','rgba(0,0,0,.2)');
-  rOrbs.forEach((s,si)=>{
-    const ox=panX+74+si*116,oy=panY+panH-28;
-    txShadow(s.lbl,ox,oy+10,6,s.lCol,'rgba(0,0,0,.2)');
-    for(let o=0;o<s.max;o++){
-      const filled=o<s.val;
-      bx(ox+26+o*(rOW+rOG),oy+2,rOW,rOH,filled?s.fill:s.empty);
+  for(let si=0;si<3;si++){
+    const val=_rSpVals[si];const ox=panX+74+si*116,oy=panY+panH-28;
+    txShadow(_RORB_LBL[si],ox,oy+10,6,_RORB_LCOL[si],'rgba(0,0,0,.2)');
+    for(let o=0;o<3;o++){
+      const filled=o<val;
+      bx(ox+26+o*(rOW+rOG),oy+2,rOW,rOH,filled?_RORB_FILL[si]:_RORB_EMPTY[si]);
       if(filled)bx(ox+26+o*(rOW+rOG)+1,oy+3,1,1,'rgba(255,255,255,.3)');
     }
-    if(s.val>s.max)txShadow('+'+(s.val-s.max),ox+26+s.max*(rOW+rOG)+2,oy+9,5,'#f0c830','rgba(0,0,0,.35)');
-  });}
+    if(val>3)txShadow('+'+(val-3),ox+26+3*(rOW+rOG)+2,oy+9,5,'#f0c830','rgba(0,0,0,.35)');
+  }}
   g.globalAlpha=1;
 
   // v111: Stolen/gained card showcase — prominent display of card won this round
