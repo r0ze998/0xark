@@ -6603,7 +6603,8 @@ function drawGlowTile(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
   // v367: sin-addition with cached _sFr06/_cFr06 (no Math.sin per tile)
-  const _slg=Math.sin(tx_*2+ty*3),_clg=Math.cos(tx_*2+ty*3);
+  // v399: use _NSIN/_NCOS table (tx_*2+ty*3 ≤ 170 < 512, integer radians — table was designed for this)
+  const _slg=_NSIN[tx_*2+ty*3],_clg=_NCOS[tx_*2+ty*3];
   const pulse=(_sFr06*_clg+_cFr06*_slg)*.3+.5;
   const isTeal=(tx_+ty)%2===0;
   // v239: globalAlpha+solid hex replaces template literal rgba string allocations per tile per frame
@@ -6634,8 +6635,8 @@ function drawLava(px,py,tx_,ty){
   // Bubbles
   if(f===0){g.drawImage(_lavaBubble3,(px+Math.floor(r.a*24)+1)|0,(py+5)|0);}
   if(f===2){g.drawImage(_lavaBubble2,(px+Math.floor(r.c*20)+4)|0,(py+18)|0);}
-  // Glow — v367: sin-addition with _sFr04/_cFr04 (no Math.sin per tile)
-  const _stxy=Math.sin(tx_+ty),_ctxy=Math.cos(tx_+ty);
+  // Glow — v367: sin-addition with _sFr04/_cFr04 — v399: _NSIN/_NCOS table (tx_+ty ≤ 68 < 512)
+  const _stxy=_NSIN[tx_+ty],_ctxy=_NCOS[tx_+ty];
   g.globalAlpha=.1+(_sFr04*_ctxy+_cFr04*_stxy)*.05;g.fillStyle='#ffa028';g.fillRect(px,py,TW,TH);g.globalAlpha=1;
   // Bright cracks
   bx(px+Math.floor(r.e*24)+2,py+Math.floor(r.f*24)+2,4,1,'#f8c060');
@@ -6765,8 +6766,8 @@ function drawTreasure(px,py,tx_,ty){
   const t=treasureByPos.get(currentMap+'-'+tx_+'-'+ty); // v282: O(1) map lookup
   if(t&&t.collected)return;
   if(!fogRevealed[currentMap][ty]?.[tx_])return;
-  // v367: sin-addition with _sFr08/_cFr08 (no Math.sin per tile)
-  const _stc=Math.sin(tx_*3+ty*5),_ctc=Math.cos(tx_*3+ty*5);
+  // v367: sin-addition with _sFr08/_cFr08 — v399: _NSIN/_NCOS table (tx_*3+ty*5 ≤ 262 < 512)
+  const _stc=_NSIN[tx_*3+ty*5],_ctc=_NCOS[tx_*3+ty*5];
   const pulse=(_sFr08*_ctc+_cFr08*_stc)*.3+.6;
   const sparkPhase=Math.floor(fr*.15+tx_*2)%4;
   const colors=['#f8e060','#f0c830','#e8a020','#f8f0a0'];
