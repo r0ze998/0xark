@@ -11147,7 +11147,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v332',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v333',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -14678,7 +14678,8 @@ function drawDungeonConfirm(){
     const rCol=ri===0?'#d060a0':'#d0a030';
     const rLoc=_DNG_FLOOR_LABELS[rFloor]||'B?';
     const rThreat=rcc>=4?' \u26A0 RICH TARGET':rcc===0?' (no cards)':'';
-    txShadow(r.n+': '+rLoc+'  '+rcc+'\u2660'+rThreat,cx_+20,intelY,7,rcc>=4?'#e05050':rCol,'rgba(0,0,0,.3)');
+    const _riKey=rFloor*10+rcc;if(_rIntelKey[ri]!==_riKey){_rIntelKey[ri]=_riKey;_rIntelLbl[ri]=r.n+': '+rLoc+'  '+rcc+'\u2660'+rThreat;} // v333: lazy
+    txShadow(_rIntelLbl[ri],cx_+20,intelY,7,rcc>=4?'#e05050':rCol,'rgba(0,0,0,.3)');
     intelY+=16;
   }
   // v265: allocation-free counting (was filter×2 per frame while confirm open)
@@ -14695,7 +14696,7 @@ function drawDungeonConfirm(){
   const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
   if(gachaPityCount>0){
     const pityCol=pityLeft<=2?'#f0c830':pityLeft<=5?'#d0a030':'#686868';
-    txShadow('Gacha pity: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' \u2014 RARE SOON!':''),cx_+20,intelY,6,pityCol,'rgba(0,0,0,.3)');
+    txShadow(_GACHA_PITY_LBL[gachaPityCount]||('Gacha pity: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD),cx_+20,intelY,6,pityCol,'rgba(0,0,0,.3)'); // v333
   }
 
   bx(cx_+12,cy_+ch-34,cw-24,1,'#282848');
@@ -14723,6 +14724,12 @@ const _INSCRIBING_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('Inscribing 
 const _INTRO_PG_LBL=(()=>{const a=[];for(let i=0;i<INTRO_PAGES.length;i++)a.push((i+1)+'/'+INTRO_PAGES.length);return a;})();
 let _dunStatsLbl='',_dunStatsKey=-1; // dungeon confirm stats lazy (key=handCount*100+vaultSize)
 const _mktTabLbl=['','','','',''],_mktTabKey=[-1,-1,-1,-1,-1]; // marketplace type tab labels
+// v333: pre-baked gacha pity labels 0..GACHA_PITY_THRESHOLD
+const _GACHA_PITY_LBL=(()=>{const a=[];for(let i=0;i<=GACHA_PITY_THRESHOLD;i++)a.push('Gacha pity: '+i+'/'+GACHA_PITY_THRESHOLD+(GACHA_PITY_THRESHOLD-i<=3?' \u2014 RARE SOON!':''));return a;})();
+// v333: lazy rival intel strip labels for dungeon confirm (key = rFloor*10+rcc per rival)
+let _rIntelLbl=['',''],_rIntelKey=[-1,-1];
+// v333: marketplace listing price labels (baked from _MKT_LISTINGS static data)
+const _MKT_LISTING_PRICE_LBL=_MKT_LISTINGS.map(l=>l.price+' SOL');
 const _LOG_STAT_LABELS=['btl','got','lost',''];
 // v256: Hoisted market overlay statics — eliminates per-frame inline literal allocs
 const _MKT_TYPE_FILTER=['attack','defense','flee','magic','recovery'];
@@ -14805,7 +14812,7 @@ function drawMarketplace(){
         txShadow(cr.n,cx2+6,yi+12,5,cr.h||'#f8f0e0','rgba(0,0,0,.3)');
         for(let s=0;s<(cr.r||1);s++)txShadow('\u2605',cx2+6+s*8,yi+24,4,RARITY_COLOR[cr.r],'rgba(0,0,0,.3)');
       }
-      if(cards.length>12)txShadow('+'+(cards.length-12)+' more',mx+14+12*72,yi+12,5,'#888898','rgba(0,0,0,.3)');
+      if(cards.length>12)txShadow(_MORE_LBL[cards.length-12]||('+'+( cards.length-12)+' more'),mx+14+12*72,yi+12,5,'#888898','rgba(0,0,0,.3)'); // v333: reuse _MORE_LBL
       yi+=30;
     }
   }else if(marketTab===1){
@@ -14821,7 +14828,7 @@ function drawMarketplace(){
       txShadow(cr.n,mx+54,ly+14,8,cr.c||'#d0c8a8','rgba(0,0,0,.3)');
       txShadow(RARITY_LABEL[cr.r],mx+54,ly+26,6,RARITY_COLOR[cr.r],'rgba(0,0,0,.3)');
       txShadow(listing.seller,mx+mw-178,ly+14,7,'#9898a8','rgba(0,0,0,.3)');
-      txShadow(listing.price+' SOL',mx+mw-108,ly+14,9,'#14F195','rgba(0,0,0,.4)');
+      txShadow(_MKT_LISTING_PRICE_LBL[li]||(listing.price+' SOL'),mx+mw-108,ly+14,9,'#14F195','rgba(0,0,0,.4)'); // v333
       txShadow('[BUY]',mx+mw-58,ly+22,7,'#40d040','rgba(0,0,0,.4)');
     }
     txShadow('(On-chain trading: coming soon)',mx+12,myA+mh-52,6,'#304830','rgba(0,0,0,.3)');
