@@ -11089,7 +11089,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v310',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v311',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11623,12 +11623,15 @@ function drawOpponentInfoBox(){
   if(bpShakeTarget===1&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
   // Expand box when tells are visible during select, or when scout intel is known
   const showTells=(battlePhase==='select'&&bpRivalTells[0]!==''&&bpRivalTells[1]!=='');
+  // v311: tell accuracy reveal — first 45 frames of resolving phase
+  const _revT=fr-bpFrame;
+  const showAccuracyReveal=(battlePhase==='resolving'&&_revT<45&&bpRivalTells[0]!=='');
   const showScout0=!!bpScoutedCards[0],showScout1=!!bpScoutedCards[1];
   const hasScout=showScout0||showScout1;
   const bx_=8+sx,by_=16+sy,bw=300;
-  // Height: base 64, +36 for tells, +16 per scouted rival
+  // Height: base 64, +36 for tells/reveal, +16 per scouted rival
   let bh=64;
-  if(showTells)bh=100;
+  if(showTells||showAccuracyReveal)bh=100;
   if(showScout0)bh+=16;
   if(showScout1)bh+=16;
   win(bx_,by_,bw,bh);
@@ -11668,8 +11671,17 @@ function drawOpponentInfoBox(){
     txShadow(bpRivalTells[0],bx_+8,by_+44,6,ARK.tealBright,'rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
+  // v311: tell accuracy reveal block for rival 1
+  if(showAccuracyReveal){
+    const _revA=_revT<35?Math.min(1,_revT/8):(45-_revT)/10;
+    const _acc0=bpTellWasAccurate[0];
+    g.globalAlpha=_revA*0.92;
+    bx(bx_+4,by_+34,bw-8,14,_acc0?'rgba(20,80,40,.5)':'rgba(80,20,20,.5)');
+    txShadow(_acc0?'\u2713 TELL WAS TRUE':'\u2717 VEGA BLUFFED',bx_+8,by_+44,6,_acc0?'#50d080':'#d05050','rgba(0,0,0,.3)');
+    g.globalAlpha=1;
+  }
   // Separator
-  const sepY=showTells?by_+52:by_+44;
+  const sepY=(showTells||showAccuracyReveal)?by_+52:by_+44;
   bx(bx_+8,sepY,bw-16,1,ARK.border);
   // Rival 2 (MIRA)
   const hunter=pl[2];
@@ -11706,6 +11718,15 @@ function drawOpponentInfoBox(){
       g.globalAlpha=tellFade2*0.85;
       bx(bx_+4,sepY+26,bw-8,14,'rgba(80,60,10,.4)');
       txShadow(bpRivalTells[1],bx_+8,sepY+36,6,ARK.gold,'rgba(0,0,0,.3)');
+      g.globalAlpha=1;
+    }
+    // v311: tell accuracy reveal block for rival 2 (MIRA)
+    if(showAccuracyReveal&&bpRivalTells[1]){
+      const _revA=_revT<35?Math.min(1,_revT/8):(45-_revT)/10;
+      const _acc1=bpTellWasAccurate[1];
+      g.globalAlpha=_revA*0.88;
+      bx(bx_+4,sepY+26,bw-8,14,_acc1?'rgba(20,80,40,.5)':'rgba(80,20,20,.5)');
+      txShadow(_acc1?'\u2713 TELL WAS TRUE':'\u2717 MIRA BLUFFED',bx_+8,sepY+36,6,_acc1?'#50d080':'#d05050','rgba(0,0,0,.3)');
       g.globalAlpha=1;
     }
   }
@@ -11759,9 +11780,10 @@ function drawPlayerInfoBox(){
   // Card bar
   txShadow('CARDS',bx_+10,by_+36,8,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+60,by_+28,148,pl[0].cd,Math.min(HAND_SIZE,10));
-  txShadow(hasUniqueCards(0).size+'/60',bx_+214,by_+36,9,ARK.gold,'rgba(0,0,0,.3)');
+  const _vSz=hasUniqueCards(0).size; // v311: cache to avoid double-call + use pre-baked _UNIQ60
+  txShadow(_UNIQ60[_vSz]||(_vSz+'/60'),bx_+214,by_+36,9,ARK.gold,'rgba(0,0,0,.3)');
   // Win indicator (60/60)
-  if(hasUniqueCards(0).size>=60){
+  if(_vSz>=60){
     const flash_=Math.sin(fr*0.15)*0.3+0.7;
     g.globalAlpha=flash_;
     txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,ARK.goldBright,'rgba(0,0,0,.4)');
@@ -12950,17 +12972,17 @@ const _TELL_OTHERS=[[1,2,3],[0,2,3],[0,1,3],[0,1,2]];
 const RIVAL_BATTLE_TELLS=[
   // VEGA (index 0) — physical, predatory
   {
-    0:['VEGA scans the dungeon floor...','VEGA reaches into the ether.','VEGA draws from the dark.'],
-    1:['VEGA\'s eyes lock onto your hand.','VEGA steps forward hungrily.','VEGA narrows their eyes.'],
-    2:['VEGA plants both feet firmly.','VEGA braces, arms crossed.','VEGA shields their cards.'],
-    3:['VEGA tilts their head, watching.','VEGA studies the battlefield.','VEGA assesses the odds.'],
+    0:['VEGA scans the dungeon floor...','VEGA reaches into the ether.','VEGA draws from the dark.','VEGA\'s gaze drifts down.','VEGA breathes slowly, patient.'],
+    1:['VEGA\'s eyes lock onto your hand.','VEGA steps forward hungrily.','VEGA narrows their eyes.','VEGA grins, low and quiet.','VEGA\'s fingers flex.'],
+    2:['VEGA plants both feet firmly.','VEGA braces, arms crossed.','VEGA shields their cards.','VEGA stands unmoved.','VEGA exhales — ready.'],
+    3:['VEGA tilts their head, watching.','VEGA studies the battlefield.','VEGA assesses the odds.','VEGA\'s gaze sweeps the room.','VEGA stores information silently.'],
   },
   // MIRA (index 1) — calculated, collector
   {
-    0:['MIRA reaches toward the pile...','MIRA is adding to her set.','MIRA scans the floor carefully.'],
-    1:['MIRA steps forward, purposeful.','MIRA watches your cards closely.','MIRA calculates the exchange.'],
-    2:['MIRA folds her arms.','MIRA builds a quiet wall.','MIRA shields her collection.'],
-    3:['MIRA glances between both hands.','MIRA notes something quietly.','MIRA evaluates everything.'],
+    0:['MIRA reaches toward the pile...','MIRA is adding to her set.','MIRA scans the floor carefully.','MIRA traces the floor pattern.','MIRA is methodical, precise.'],
+    1:['MIRA steps forward, purposeful.','MIRA watches your cards closely.','MIRA calculates the exchange.','MIRA identifies her target.','MIRA adjusts her stance slightly.'],
+    2:['MIRA folds her arms.','MIRA builds a quiet wall.','MIRA shields her collection.','MIRA won\'t show her hand.','MIRA is unreadable.'],
+    3:['MIRA glances between both hands.','MIRA notes something quietly.','MIRA evaluates everything.','MIRA catalogs in silence.','MIRA sees the whole board.'],
   },
 ];
 
