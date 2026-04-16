@@ -9,6 +9,9 @@ const _mapEdgeGradR=(()=>{const gr=g.createLinearGradient(W-_edgeFade,0,W,0);gr.
 const _mapEdgeGradT=(()=>{const gr=g.createLinearGradient(0,0,0,_edgeFade);gr.addColorStop(0,'#000');gr.addColorStop(1,'rgba(0,0,0,0)');return gr;})();
 const _mapEdgeGradB=(()=>{const gr=g.createLinearGradient(0,H-HUD_HEIGHT-_edgeFade,0,H-HUD_HEIGHT);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'#000');return gr;})();
 
+// v219: Pre-baked proximity danger vignette — avoid createRadialGradient every frame
+const _proxVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H-HUD_HEIGHT;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,(H-HUD_HEIGHT)/2,W*0.3,W/2,(H-HUD_HEIGHT)/2,W*0.7);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(180,30,30,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H-HUD_HEIGHT);return c;})();
+
 function drawEdgeBlending(startTX,startTY,endTX,endTY){
   const m=getMap();
   for(let y=startTY;y<=endTY;y++){
@@ -300,9 +303,14 @@ function drawDungeonVignette(){
 // ═══════════════════════════════════════
 // v212: Pre-parsed fog RGB per map index for floor-colored fog edges
 const _FOG_RGB=FOG_COLORS.map(h=>{const r=parseInt(h.slice(1,3),16),g_=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return[r,g_,b];});
+// v219: Pre-computed fog gradient color strings per map — avoids template literal creation every frame
+const _FOG_GRAD_COLS=_FOG_RGB.map(([r,g_,b])=>{
+  const steps=8;
+  return Array.from({length:steps},(_,s)=>`rgba(${r},${g_},${b},${(0.06+s*0.1).toFixed(2)})`);
+});
 function drawFogOverlay(startTX,startTY,endTX,endTY){
   const fogC=FOG_COLORS[currentMap];
-  const [fr_,fg_,fb_]=_FOG_RGB[currentMap]||[10,10,20];
+  const gradCols=_FOG_GRAD_COLS[currentMap]||_FOG_GRAD_COLS[0];
   for(let y=startTY;y<=endTY;y++){
     for(let x=startTX;x<=endTX;x++){
       const px=x*TW-camX,py=y*TH-camY;
@@ -314,11 +322,9 @@ function drawFogOverlay(startTX,startTY,endTX,endTY){
           const nx=x+dx,ny=y+dy;
           const neighborHidden=(nx<0||nx>=MW||ny<0||ny>=MH||!fogRevealed[currentMap][ny]?.[nx]);
           if(neighborHidden){
-            // v212: 8-step gradient with floor-specific fog color (was 4 steps, hardcoded dark)
-            const gradSteps=8;
-            for(let s=0;s<gradSteps;s++){
-              const alpha=0.06+s*0.1; // 0.06→0.76 across 8px
-              const col=`rgba(${fr_},${fg_},${fb_},${alpha})`;
+            // v212: 8-step gradient with floor-specific fog color (v219: pre-computed strings)
+            for(let s=0;s<8;s++){
+              const col=gradCols[s];
               if(dy===-1){bx(px,py+s,TW,1,col);}
               else if(dy===1){bx(px,py+TH-1-s,TW,1,col);}
               else if(dx===-1){bx(px+s,py,1,TH,col);}
@@ -1197,12 +1203,7 @@ function dMap(){
     const a=pulse*pulseAlpha;
     if(a>0.005){
       g.globalAlpha=a;
-      // Red vignette on edges
-      const grad=g.createRadialGradient(W/2,H/2,W*0.3,W/2,H/2,W*0.7);
-      grad.addColorStop(0,'rgba(0,0,0,0)');
-      grad.addColorStop(1,'rgba(180,30,30,1)');
-      g.fillStyle=grad;
-      g.fillRect(0,0,W,H-HUD_HEIGHT);
+      g.drawImage(_proxVigCanvas,0,0);
       g.globalAlpha=1;
     }
   }
