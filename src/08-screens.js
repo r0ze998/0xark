@@ -13,6 +13,8 @@ const _RAR_PIP_LBLS=['C','U','R','E','L'];
 const _MEDALS=['1ST','2ND','3RD'],_MEDAL_COLS=['#f0c830','#c0c0c0','#c08040'];
 // v323: pre-baked percent labels 0%–100%
 const _PCT_LBL=(()=>{const a=[];for(let i=0;i<=100;i++)a.push(i+'%');return a;})();
+// v330: pre-baked floor-clear fanfare labels (index = floor, 1-5)
+const _FLOOR_CLEARED_LBL=(()=>{const a=[];for(let i=0;i<6;i++)a.push('FLOOR '+(_FLOOR_NUMS[i]||('B'+i))+' CLEARED');return a;})();
 // v235: Pre-baked game-over screen assets — 32 arc/frame + 1 gradient/frame eliminated
 // Vignette: rgba(0,0,0,0.55) outer stop, drawn once per frame at alpha=1
 const _goVignette=(()=>{
@@ -107,7 +109,7 @@ function drawFloorClearFanfare(){
     // v308: Epic/Legendary non-goal — pulsing title with rarity color
     const hPulse=0.80+Math.sin(t*0.16)*0.20;
     g.globalAlpha=alpha*hPulse;
-    txShadow('FLOOR '+flRoman+' CLEARED',px_+pw/2-130,py_+22,16,rcol,'rgba(0,0,0,.7)');
+    txShadow(_FLOOR_CLEARED_LBL[d.floor]||('FLOOR '+flRoman+' CLEARED'),px_+pw/2-130,py_+22,16,rcol,'rgba(0,0,0,.7)'); // v330
     g.globalAlpha=alpha;
     // Extra accent sparkles for epic/legendary
     for(let si=0;si<(rar===5?6:4);si++){
@@ -119,7 +121,7 @@ function drawFloorClearFanfare(){
     g.globalAlpha=alpha;
     bx(px_+16,py_+34,pw-32,1,rcol+'60');
   }else{
-    txShadow('FLOOR '+flRoman+' CLEARED',px_+pw/2-130,py_+28,16,'#f0e0a0','rgba(0,0,0,.6)');
+    txShadow(_FLOOR_CLEARED_LBL[d.floor]||('FLOOR '+flRoman+' CLEARED'),px_+pw/2-130,py_+28,16,'#f0e0a0','rgba(0,0,0,.6)'); // v330
     bx(px_+16,py_+34,pw-32,1,'rgba(200,180,100,.2)');
   }
   // Card display (left side of panel)
