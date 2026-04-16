@@ -55,6 +55,8 @@ const TREASURE_POOL_PER_FLOOR=[
 // Built dynamically from tile 30 positions; entry stair (3,14) excluded
 const DUNGEON_ENTRY_EXCLUDE=new Set(['1-3-14','2-3-14','3-3-14','4-3-14','5-3-14']);
 const treasures=[];
+// v282: treasure lookup Map for O(1) tile-render check (replaces per-frame .find() scan)
+const treasureByPos=new Map(); // key="mapf-x-y", value=treasure obj
 (function buildTreasures(){
   for(let f=1;f<=MAX_DUNGEON_FLOORS;f++){
     const m=maps[f];
@@ -64,7 +66,9 @@ const treasures=[];
       for(let x=0;x<MW;x++){
         if(m[y]?.[x]===30&&!DUNGEON_ENTRY_EXCLUDE.has(f+'-'+x+'-'+y)){
           const cardId1=pool[poolIdx%pool.length]; // 1-indexed
-          treasures.push({map:f,x,y,card:cardId1-1,collected:false}); // 0-indexed for CD[]
+          const t={map:f,x,y,card:cardId1-1,collected:false}; // 0-indexed for CD[]
+          treasures.push(t);
+          treasureByPos.set(f+'-'+x+'-'+y,t);
           poolIdx++;
         }
       }
@@ -723,11 +727,14 @@ function updateFootprints(){
 }
 
 // NPC wander system — town NPCs slowly pace within 2 tiles of home
+// v282: hoisted NPC wander direction table
+const _NPC_DIRS=[[0,-1],[0,1],[-1,0],[1,0],[0,0],[0,0]]; // bias toward staying
 function updateNPCWander(){
   if(inDungeon||npcDialogActive||sc!=='map')return;
   const m=maps[0]; // town map only
-  npcs.forEach(npc=>{
-    if(npc.map!==0)return;
+  for(let _ni=0;_ni<npcs.length;_ni++){
+    const npc=npcs[_ni];
+    if(npc.map!==0)continue;
     // Smooth visual walk
     const dx=npc.x*TW-npc.visualX,dy=npc.y*TH-npc.visualY;
     const dist=Math.sqrt(dx*dx+dy*dy);
@@ -738,16 +745,15 @@ function updateNPCWander(){
       npc.visualX=npc.x*TW;npc.visualY=npc.y*TH;npc.walking=false;
     }
     // Wander timer
-    if(npc.moveTimer>0){npc.moveTimer--;return;}
+    if(npc.moveTimer>0){npc.moveTimer--;continue;}
     // Choose new position within wander radius of home
-    const dirs=[[0,-1],[0,1],[-1,0],[1,0],[0,0],[0,0]]; // bias toward staying
-    const d=dirs[Math.floor(Math.random()*dirs.length)];
+    const d=_NPC_DIRS[Math.floor(Math.random()*_NPC_DIRS.length)]; // v282: hoisted
     const nx=npc.x+d[0],ny=npc.y+d[1];
     // Must stay within 2 tiles of home, on walkable tile, not on player or other NPC
     const withinHome=Math.abs(nx-npc.homeX)<=2&&Math.abs(ny-npc.homeY)<=2;
     const walkable=WALKABLE.has(m[ny]?.[nx]);
     const onPlayer=(nx===pl[0].x&&ny===pl[0].y);
-    const onNpc=npcs.some(o=>o!==npc&&o.x===nx&&o.y===ny);
+    let onNpc=false;for(let _oi=0;_oi<npcs.length;_oi++){const o=npcs[_oi];if(o!==npc&&o.x===nx&&o.y===ny){onNpc=true;break;}}
     if(withinHome&&walkable&&!onPlayer&&!onNpc){
       // Face movement direction (dir: 0=down,1=left,2=up,3=right — matches player/rival convention)
       if(d[0]<0)npc.dir=1;
@@ -760,13 +766,14 @@ function updateNPCWander(){
       if(Math.random()<0.4)npc.dir=Math.floor(Math.random()*4);
     }
     npc.moveTimer=180+Math.floor(Math.random()*300); // 3-8 seconds between moves
-  });
+  }
   // v82: proximity ambient speech bubbles (2-3 tiles away, not adjacent — adjacent opens dialog/UI)
   if(!npcDialogActive&&currentMap===0&&!inDungeon){
-    npcs.forEach(npc=>{
-      if(npc.map!==0)return;
-      if(npc.bubbleTimer>0){npc.bubbleTimer--;return;}
-      if(npc.bubbleCooldown>0){npc.bubbleCooldown--;return;}
+    for(let _ni=0;_ni<npcs.length;_ni++){
+      const npc=npcs[_ni];
+      if(npc.map!==0)continue;
+      if(npc.bubbleTimer>0){npc.bubbleTimer--;continue;}
+      if(npc.bubbleCooldown>0){npc.bubbleCooldown--;continue;}
       const bdx=Math.abs(pl[0].x-npc.x),bdy=Math.abs(pl[0].y-npc.y);
       const dist=bdx+bdy;
       if(dist>=2&&dist<=3){
@@ -777,7 +784,7 @@ function updateNPCWander(){
           npc.bubbleCooldown=500+Math.floor(Math.random()*300);
         }
       }
-    });
+    }
   }
 }
 
@@ -898,20 +905,21 @@ function drawTownWeather(){
   }
 }
 
+// v282: hoisted footprint colors
+const _FP_RIVAL_COLS=['#d860a0','#d8b028'];
 function drawFootprints(){
   if(!inDungeon)return;
-  // VEGA=pink, MIRA=gold
-  const rivalCols=['#d860a0','#d8b028'];
-  footprints.forEach(fp=>{
-    if(fp.map!==currentMap)return;
-    if(!fogRevealed[currentMap][fp.y]?.[fp.x])return;
+  for(let _fpi=0;_fpi<footprints.length;_fpi++){
+    const fp=footprints[_fpi];
+    if(fp.map!==currentMap)continue;
+    if(!fogRevealed[currentMap][fp.y]?.[fp.x])continue;
     const ageFrac=fp.age/FOOTPRINT_MAX_AGE; // 0=fresh, 1=old
     const alpha=(1-ageFrac)*0.55; // fade as they age
-    if(alpha<0.04)return;
+    if(alpha<0.04)continue;
     const sx=fp.x*TW-camX+TW/2-2;
     const sy=fp.y*TH-camY+TH/2-1;
-    if(sx<-4||sx>W+4||sy<-4||sy>H+4)return;
-    const col=rivalCols[fp.ri]||'#888888';
+    if(sx<-4||sx>W+4||sy<-4||sy>H+4)continue;
+    const col=_FP_RIVAL_COLS[fp.ri]||'#888888';
     // Two small boot-print dots side by side
     const offset=(fp.age%4<2)?-1:1; // alternate left/right footstep
     g.globalAlpha=alpha;
@@ -919,7 +927,7 @@ function drawFootprints(){
     g.fillRect(sx+offset,sy,2,3);
     g.fillRect(sx+offset+3,sy+1,2,2);
     g.globalAlpha=1;
-  });
+  }
 }
 
 // Pre-generate random values for tile detail (per map, reuse with offset)

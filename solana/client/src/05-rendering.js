@@ -803,7 +803,7 @@ function drawCampfire(px,py,tx_,ty){
 function drawTreasure(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(currentMap===2)bx(px,py,TW,TH,'rgba(0,0,20,.15)');
-  const t=treasures.find(t=>t.map===currentMap&&t.x===tx_&&t.y===ty);
+  const t=treasureByPos.get(currentMap+'-'+tx_+'-'+ty); // v282: O(1) map lookup
   if(t&&t.collected)return;
   if(!fogRevealed[currentMap][ty]?.[tx_])return;
   const pulse=Math.sin(fr*.08+tx_*3+ty*5)*.3+.6;
