@@ -9341,6 +9341,9 @@ const _RAR_ABB=['C','U','R','E','L'];
 const _WATER_FOAM_LT='rgba(200,220,240,.35)',_WATER_FOAM_DK='rgba(160,200,230,.2)'; // water-grass edge
 const _LDR_RANK=['1.','2.','3.']; // leaderboard rank labels
 const _RCC_SPADE=['0\u2660','1\u2660','2\u2660','3\u2660','4\u2660','5\u2660']; // rival card count + spade icon
+// v309: pre-baked countdown + leaderboard uniq strings
+const _SECS_STR=(()=>{const a=[];for(let i=0;i<=60;i++)a.push(i+'s');return a;})();
+const _UNIQ60=(()=>{const a=[];for(let i=0;i<=60;i++)a.push(i+'/60');return a;})();
 let _rLblCache=['','']; let _rLblKey=[-1,-1]; // rival sprite label cache [VEGA,MIRA]
 let _vegaLblCache=''; let _vegaLblKey=-1; // vega HUD label cache (key=vegaMap*10+vegaCards)
 let _miraLblCache=''; let _miraLblKey=-1; // mira HUD label cache
@@ -10868,6 +10871,13 @@ function dMap(){
       bx(barX_,barY_,barW_,barH_,'#1a1a30');
       const col_=remainFrac>0.5?'#40d040':remainFrac>0.25?'#d0c040':'#d04040';
       bx(barX_,barY_,Math.floor(barW_*remainFrac),barH_,col_);
+      // v309: amber border glow when 75% decayed (last ~37s) — early panic warning
+      if(remainFrac<0.25){
+        const amberA=(0.3+Math.sin(fr*0.2)*0.2);
+        g.globalAlpha=amberA;
+        bx(310+i*HUD_CARD_SPACING-2,hudY+12,28,28,'#d0a020');
+        g.globalAlpha=1;
+      }
       // Flash red overlay in last 15 seconds
       if(remainMs<15000){
         const flashA=Math.sin(fr*0.3)*0.4+0.4;
@@ -10875,11 +10885,11 @@ function dMap(){
         bx(310+i*HUD_CARD_SPACING-1,hudY+13,26,26,'#d04040');
         g.globalAlpha=1;
       }
-      // Countdown seconds when <30s
+      // Countdown seconds when <30s — v309: pre-baked string
       if(remainMs<30000){
         const secs=Math.ceil(remainMs/1000);
         const cntCol=remainMs<10000?'#ff4040':remainMs<20000?'#ff9020':'#ffe040';
-        txShadow(secs+'s',310+i*HUD_CARD_SPACING+3,hudY+26,6,cntCol,'rgba(0,0,0,.7)');
+        txShadow(_SECS_STR[secs]||secs+'s',310+i*HUD_CARD_SPACING+3,hudY+26,6,cntCol,'rgba(0,0,0,.7)');
       }
     }
   }
@@ -11055,7 +11065,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v308',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v309',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11103,7 +11113,7 @@ function dMap(){
       txShadow(_LDR_RANK[ri],sbX+8,ry+12,isLeader?9:7,isLeader?'#f0c830':'#808080','rgba(0,0,0,.4)'); // v304
       const nm=r.name.length>5?r.name.slice(0,5):r.name;
       txShadow(nm,sbX+22,ry+12,isLeader?8:7,r.col,'rgba(0,0,0,.3)');
-      const uniqStr=r.uniq+'/60';
+      const uniqStr=_UNIQ60[r.uniq]||r.uniq+'/60'; // v309: pre-baked
       txShadow(uniqStr,sbX+sbW-8-uniqStr.length*6,ry+12,isLeader?8:7,'#e8e0c0','rgba(0,0,0,.3)');
       if(r.floor>0){txShadow(_WLD_FLOOR_NUMS[r.floor]||'B'+r.floor,sbX+76,ry+12,6,r.col,'rgba(0,0,0,.35)');} // v304
       if(isLeader){txShadow('\u2605',sbX+sbW-22,ry+6,5,'#f0c830','rgba(0,0,0,.4)');}
