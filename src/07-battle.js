@@ -33,6 +33,7 @@ function _getTypeInfo(t,r){
 }
 // v266: reusable slot buffer for USE CARD select — eliminates filled=[] per frame while card select open
 const _csFilledBuf=new Int8Array(7);
+const _BTYPE_MAP={attack:0,defense:1,flee:2,magic:3,recovery:4}; // v277: hoisted from hand type strip
 const _BTYPES=['attack','defense','flee','magic','recovery'],_BTYPE_ABB=['ATK','DEF','FLY','MAG','REC'],_BTYPE_COL=['#c83838','#3888c8','#30b870','#a840c0','#c8a830'];
 const _btCounts=new Int32Array(5); // reused each frame, zero-filled
 // v245: Pre-baked VS gold circle — eliminates arc per battle-intro frame
@@ -455,11 +456,10 @@ function drawPlayerInfoBox(){
     txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,ARK.goldBright,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
-  // v274: Spell charge orb pips — direct access, no array alloc
-  {const _spArr=[sp.s,sp.b,sp.c]; // only 3 ints, typed tuple
-  const oW=6,oH=6,oG=2,blink=Math.floor(fr/12)%2===0;
+  // v277: Spell charge orb pips — si-indexed direct access, zero arrays
+  {const oW=6,oH=6,oG=2,blink=Math.floor(fr/12)%2===0;
   for(let si=0;si<3;si++){
-    const ox=bx_+10+si*97,oy=by_+44,val=_spArr[si];
+    const ox=bx_+10+si*97,oy=by_+44,val=si===0?sp.s:si===1?sp.b:sp.c;
     const spWarn=(si===0&&sp.s===0)||(si===2&&sp.c===0);
     const lc=spWarn&&blink?ARK.dangerBright:_BORB_LCOL[si];
     txShadow(_BORB_LBL[si],ox,oy+10,6,lc,'rgba(0,0,0,.3)');
@@ -475,8 +475,7 @@ function drawPlayerInfoBox(){
   // Hand type composition strip (v250: reused Int32Array, no new arrays)
   {
     _btCounts[0]=_btCounts[1]=_btCounts[2]=_btCounts[3]=_btCounts[4]=0;
-    const _typeMap={attack:0,defense:1,flee:2,magic:3,recovery:4};
-    for(let _ci=0,_cl=pl[0].cd.length;_ci<_cl;_ci++){const id=pl[0].cd[_ci];if(id>0&&CD[id-1]){const ti=_typeMap[CD[id-1].t];if(ti!==undefined)_btCounts[ti]++;}}
+    for(let _ci=0,_cl=pl[0].cd.length;_ci<_cl;_ci++){const id=pl[0].cd[_ci];if(id>0&&CD[id-1]){const ti=_BTYPE_MAP[CD[id-1].t];if(ti!==undefined)_btCounts[ti]++;}} // v277: _typeMap hoisted
     bx(bx_+4,by_+68,bw-8,1,ARK.border);
     let dotX=bx_+8;
     for(let ti=0;ti<5;ti++){
