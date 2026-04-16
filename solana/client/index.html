@@ -2690,24 +2690,21 @@ function drawMapLoadScreen(){
     // v95: Rival threat warning — show rivals already present on this floor
     if(t>0.38&&t<0.90){
       const warnAlpha=t<0.48?(t-0.38)/0.10:t>0.82?(0.90-t)/0.08:1;
-      const rivalsHere=[];
-      if(rivalMaps[0]===mapLoadScreenFloor)rivalsHere.push({name:pl[1].n,cards:pl[1].cd.filter(c=>c>0).length,col:'#e060a0'});
-      if(rivalMaps[1]===mapLoadScreenFloor)rivalsHere.push({name:pl[2].n,cards:pl[2].cd.filter(c=>c>0).length,col:'#d0a030'});
-      if(rivalsHere.length>0){
-        const baseY=H/2+60;
-        g.textAlign='center';
-        rivalsHere.forEach((rv,i)=>{
-          const wTxt='\u26a0 '+rv.name+': '+rv.cards+' cards \u2014 HERE';
-          g.globalAlpha=alpha*warnAlpha*0.9;
-          g.font='bold 9px VT323, monospace';
-          g.fillStyle=rv.col;
-          g.shadowColor=rv.col;g.shadowBlur=8;
-          g.fillText(wTxt,W/2,baseY+i*14);
-          g.shadowBlur=0;
-        });
-        g.textAlign='left';
-        g.globalAlpha=alpha;
+      // v270: inline rival check — no rivalsHere array or cd.filter per frame
+      let _rhN=0;
+      g.textAlign='center';g.font='bold 9px VT323, monospace';
+      const _rhBaseY=H/2+60;
+      if(rivalMaps[0]===mapLoadScreenFloor){
+        const _wTxt='\u26a0 '+pl[1].n+': '+cdCount(pl[1].cd)+' cards \u2014 HERE';
+        g.globalAlpha=alpha*warnAlpha*0.9;g.fillStyle='#e060a0';g.shadowColor='#e060a0';g.shadowBlur=8;
+        g.fillText(_wTxt,W/2,_rhBaseY+_rhN*14);g.shadowBlur=0;_rhN++;
       }
+      if(rivalMaps[1]===mapLoadScreenFloor){
+        const _wTxt='\u26a0 '+pl[2].n+': '+cdCount(pl[2].cd)+' cards \u2014 HERE';
+        g.globalAlpha=alpha*warnAlpha*0.9;g.fillStyle='#d0a030';g.shadowColor='#d0a030';g.shadowBlur=8;
+        g.fillText(_wTxt,W/2,_rhBaseY+_rhN*14);g.shadowBlur=0;_rhN++;
+      }
+      g.textAlign='left';g.globalAlpha=alpha;
     }
 
     // Card rarity hint at bottom
@@ -9197,7 +9194,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v270',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v271',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -10974,7 +10971,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v270',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v271',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
