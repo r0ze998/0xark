@@ -9183,6 +9183,11 @@ const _mapEdgeGradB=(()=>{const gr=g.createLinearGradient(0,H-HUD_HEIGHT-_edgeFa
 // v219: Pre-baked proximity danger vignette — avoid createRadialGradient every frame
 const _proxVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H-HUD_HEIGHT;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,(H-HUD_HEIGHT)/2,W*0.3,W/2,(H-HUD_HEIGHT)/2,W*0.7);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(180,30,30,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H-HUD_HEIGHT);return c;})();
 
+// v244: Pre-baked map decoration arc canvases — spider glow, glow-items, rope coil
+const _spiderGlowCanvas=(()=>{const c=document.createElement('canvas');c.width=22;c.height=22;const ctx=c.getContext('2d');ctx.fillStyle='#806090';ctx.beginPath();ctx.arc(11,11,10,0,Math.PI*2);ctx.fill();return c;})();
+const _glowItemOrangeCanvas=(()=>{const c=document.createElement('canvas');c.width=42;c.height=42;const ctx=c.getContext('2d');ctx.fillStyle='#f08040';ctx.beginPath();ctx.arc(21,21,20,0,Math.PI*2);ctx.fill();return c;})();
+const _glowItemBlueCanvas=(()=>{const c=document.createElement('canvas');c.width=42;c.height=42;const ctx=c.getContext('2d');ctx.fillStyle='#80c0f0';ctx.beginPath();ctx.arc(21,21,20,0,Math.PI*2);ctx.fill();return c;})();
+const _ropeCoilCanvas=(()=>{const c=document.createElement('canvas');c.width=14;c.height=10;const ctx=c.getContext('2d');ctx.fillStyle='#a09060';ctx.beginPath();ctx.ellipse(7,6,6,4,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b0a070';ctx.beginPath();ctx.ellipse(7,6,4,2,0,0,Math.PI*2);ctx.fill();return c;})();
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -9854,8 +9859,7 @@ function drawPirateDecorations(){
     ropeSpots.forEach(([rtx,rty])=>{
       const rpx=rtx*TW-camX,rpy=rty*TH-camY;
       if(rpx>-TW&&rpx<W+TW&&rpy>-TW&&rpy<H+TW&&fogRevealed[0][rty]?.[rtx]){
-        g.fillStyle='#a09060';g.beginPath();g.ellipse(rpx+16,rpy+22,6,4,0,0,Math.PI*2);g.fill();
-        g.fillStyle='#b0a070';g.beginPath();g.ellipse(rpx+16,rpy+22,4,2,0,0,Math.PI*2);g.fill();
+        g.drawImage(_ropeCoilCanvas,(rpx+9)|0,(rpy+16)|0);
         bx(rpx+14,rpy+18,4,4,'#a09060');
       }
     });
@@ -9982,7 +9986,7 @@ function drawPirateDecorations(){
           // Ghostly glow around skull
           const glowA=Math.sin(fr*0.04+sx*2+sy*3)*0.1+0.12;
           g.globalAlpha=glowA;
-          g.fillStyle='#806090';g.beginPath();g.arc(spx+16,spy+8,10,0,Math.PI*2);g.fill();
+          g.drawImage(_spiderGlowCanvas,(spx+5)|0,(spy-3)|0);
           g.globalAlpha=1;
         }
       }
@@ -10023,8 +10027,7 @@ function drawPirateDecorations(){
           if(gpx>-20&&gpx<W+20&&gpy>-20&&gpy<H+20){
             const glowPulse=Math.sin(fr*0.03+gx*3+gy*5)*0.06+0.08;
             g.globalAlpha=glowPulse;
-            g.fillStyle=gt===25?'#f08040':'#80c0f0';
-            g.beginPath();g.arc(gpx,gpy,20,0,Math.PI*2);g.fill();
+            g.drawImage(gt===25?_glowItemOrangeCanvas:_glowItemBlueCanvas,(gpx-21)|0,(gpy-21)|0);
             g.globalAlpha=1;
           }
         }
@@ -15149,6 +15152,22 @@ function dLog(){
 // MODULE: src/08-world-interact.js
 // Fishing minigame · forest trap · puzzle pillars · buildings interior · object interactions · fountain exchange
 // ───────────────────────────────────────────────────────────────────────
+// v244: Pre-baked arc canvases for world interactions
+const _puzzleGlowCanvases=(()=>{
+  const cols=['#c04040','#4060c0','#d0c040'];
+  return cols.map(col=>{
+    const c=document.createElement('canvas');c.width=18;c.height=18;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(9,9,8,0,Math.PI*2);ctx.fill();
+    return c;
+  });
+})();
+const _fishBobberCanvas=(()=>{
+  const c=document.createElement('canvas');c.width=8;c.height=8;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#c04040';ctx.beginPath();ctx.arc(4,4,3,0,Math.PI*2);ctx.fill();
+  return c;
+})();
 // ═══════════════════════════════════════
 // FISHING MINIGAME (Corsair Bay docks)
 // ═══════════════════════════════════════
@@ -15248,7 +15267,7 @@ function drawFishingOverlay(){
     if(pl[0].dir===0){by_+=20;}else if(pl[0].dir===2){by_-=20;}
     else if(pl[0].dir===1){bx_-=20;}else{bx_+=20;}
     const bob=Math.sin(fr*0.1)*2;
-    g.fillStyle='#c04040';g.beginPath();g.arc(bx_+8,by_+bob,3,0,Math.PI*2);g.fill();
+    g.drawImage(_fishBobberCanvas,(bx_+4+.5)|0,(by_+bob-3+.5)|0);
     // Line from player to bobber
     g.strokeStyle='#a0a0a0';g.lineWidth=1;
     g.beginPath();g.moveTo(px+8,py);g.lineTo(bx_+8,by_+bob);g.stroke();
@@ -15351,10 +15370,11 @@ function drawPuzzlePillars(){
       // Label
       const label=puzzleNames[puzzleStoneOrder[i]][0];
       txShadow(label,px+5,py+13,5,'#fff','rgba(0,0,0,.4)');
-      // Glow — globalAlpha+solid avoids per-frame hex parsing + template literal + arc alloc
+      // v244: pre-baked canvas replaces arc per frame
       const pulse=Math.sin(fr*.06+i*2)*.2+.4;
-      g.globalAlpha=pulse;g.fillStyle=col;
-      g.beginPath();g.arc(px+8,py+8,8,0,Math.PI*2);g.fill();
+      const ci=puzzleStoneOrder[i];
+      g.globalAlpha=pulse;
+      g.drawImage(_puzzleGlowCanvases[ci],(px+.5)|0,(py+.5)|0);
       g.globalAlpha=1;
     }
   }
