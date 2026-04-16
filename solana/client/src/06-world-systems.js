@@ -1,3 +1,5 @@
+// v330: lazy cache for trade dialog vault display (key=vaultSz)
+let _tradeVaultLbl='',_tradeVaultKey=-1;
 // v254: Hoisted static arrays — eliminates per-frame inline literal allocation in synthesis + NPC dialog render
 const _SYNTH_RAR_LABELS=['','Common','Uncommon','Rare','Epic'];
 // v301: synthesis burst color by rarity — was inline local per doSynthesis call
@@ -1226,7 +1228,8 @@ function drawCardShop(){
     txShadow(RARITY_LABEL[cr.r]||'',W/2-32,cY+110,8,rarCol,'rgba(0,0,0,.3)');
     // Trade description
     txShadow('Trade  '+cr.n+'  for a card you don\'t have?',W/2-200,wY+wH-120,8,'#e0d8c0','rgba(0,0,0,.3)');
-    txShadow('('+vaultSz+'/60 collected)',W/2-68,wY+wH-100,7,'#c0a030','rgba(0,0,0,.25)');
+    if(_tradeVaultKey!==vaultSz){_tradeVaultKey=vaultSz;_tradeVaultLbl='('+(_UNIQ60[vaultSz]||(vaultSz+'/60'))+' collected)';} // v330: lazy
+    txShadow(_tradeVaultLbl,W/2-68,wY+wH-100,7,'#c0a030','rgba(0,0,0,.25)');
     // Confirm buttons
     bx(W/2-80,wY+wH-74,72,24,'rgba(0,80,0,.35)');bx(W/2-80,wY+wH-74,72,1,'#30a030');
     txShadow('Z YES',W/2-66,wY+wH-58,9,'#40d080','rgba(0,0,0,.4)');

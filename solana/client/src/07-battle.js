@@ -527,6 +527,16 @@ function drawPlayerInfoBox(){
   }}
   // Area label
   txShadow(mapNames[currentMap],bx_+10,by_+64,8,ARK.textDim,'rgba(0,0,0,.3)');
+  // v330: most critical card decay countdown (shown when < 60s remaining during dungeon battle)
+  if(inDungeon){
+    let _minRem=Infinity;
+    for(let _di=0;_di<HAND_SIZE;_di++){if(pl[0].cd[_di]>0&&cardTimers[_di]>0){const _r=Math.max(0,CARD_DECAY_MS-(Date.now()-cardTimers[_di]));if(_r<_minRem)_minRem=_r;}}
+    if(_minRem<60000){
+      const _dsec=Math.ceil(_minRem/1000);
+      const _dcol=_minRem<15000?'#ff4040':_minRem<30000?'#ff9020':'#ffe040';
+      txShadow(_SECS_STR[_dsec]||(_dsec+'s'),bx_+bw-38,by_+64,8,_dcol,'rgba(0,0,0,.3)');
+    }
+  }
   // Hand type composition strip (v250: reused Int32Array, no new arrays)
   {
     _btCounts[0]=_btCounts[1]=_btCounts[2]=_btCounts[3]=_btCounts[4]=0;
