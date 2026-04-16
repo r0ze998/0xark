@@ -1,5 +1,7 @@
 // v254: Hoisted static arrays — eliminates per-frame inline literal allocation in synthesis + NPC dialog render
 const _SYNTH_RAR_LABELS=['','Common','Uncommon','Rare','Epic'];
+// v301: synthesis burst color by rarity — was inline local per doSynthesis call
+const _SYNTH_RAR_BURST=['','#888898','#50d060','#b060e0','#e0a020','#ffe080'];
 // v262: Additional per-frame inline literals hoisted
 const _WLD_FLOOR_NUMS=['','B1','B2','B3','B4','B5'];
 
@@ -900,8 +902,7 @@ function getNPCDialog(npc){
   }
   if(npc.name==='Trade Master'){
     if(vaultSz<10)return['Build your collection','first, adventurer.','Trade when you have','duplicate cards to spare.','Come back later','once you\'ve explored!'];
-    const rn2=pl[1].cd.filter(c=>c>0).length;
-    const rn3=pl[2].cd.filter(c=>c>0).length;
+    const rn2=cdCount(pl[1].cd);const rn3=cdCount(pl[2].cd); // v301: cdCount, no filter
     return['You hold '+vaultSz+' unique cards.','VEGA carries '+rn2+'.','MIRA carries '+rn3+'.','Got duplicates?','Let\'s make a deal.','Fair trades — always.'];
   }
   if(npc.name==='ARK Guide'){
@@ -919,7 +920,7 @@ function getNPCDialog(npc){
   if(npc.name==='Alchemist'){
     const rarityCounts={};
     for(let _ai=0,_al=pl[0].cd.length;_ai<_al;_ai++){const _c=pl[0].cd[_ai];if(_c>0){const r=CD[_c-1]?.r||1;rarityCounts[r]=(rarityCounts[r]||0)+1;}}
-    const canSynth=Object.values(rarityCounts).some(cnt=>cnt>=3);
+    let canSynth=false;for(const _r in rarityCounts){if(rarityCounts[_r]>=3){canSynth=true;break;}} // v301: loop replaces Object.values().some()
     if(canSynth)return['I sense synthesis','potential in your hand!','Bring me 3 cards','of matching rarity.','I will forge them','into something rarer.'];
     return['I can fuse cards into','higher rarities!','Bring me 3 cards','of the same rarity.','I will forge them','into something greater.'];
   }
@@ -1251,9 +1252,12 @@ function doSynthesis(){
   for(let i=1;i<=60;i++){const cr=CD[i-1];if(cr&&cr.r===targetRarity)anyPool.push(i);}
   const pool=targetPool.length>0?targetPool:anyPool;
   if(pool.length===0){synthPhase='result';synthResultCard=-1;synthResultFrame=fr;return;}
-  // Consume the 3 cards (sorted descending to avoid index shift issues)
-  const sortedSlots=[...synthSelected].sort((a,b)=>b-a);
-  sortedSlots.forEach(slot=>{removeCardFromPlayer(0,slot);cardTimers[slot]=0;});
+  // Consume 3 cards in descending slot order to avoid index shift (v301: no spread+sort alloc)
+  const s0=synthSelected[0],s1=synthSelected[1],s2=synthSelected[2];
+  const _sMax=Math.max(s0,s1,s2),_sMin=Math.min(s0,s1,s2),_sMid=s0+s1+s2-_sMax-_sMin;
+  removeCardFromPlayer(0,_sMax);cardTimers[_sMax]=0;
+  removeCardFromPlayer(0,_sMid);cardTimers[_sMid]=0;
+  removeCardFromPlayer(0,_sMin);cardTimers[_sMin]=0;
   // Give new card
   const newId=pool[Math.floor(Math.random()*pool.length)];
   const added=addCardToPlayer(0,newId);
@@ -1262,9 +1266,8 @@ function doSynthesis(){
   synthPhase='result';synthResultFrame=fr;
   const cr=CD[newId-1];
   lg.push('[SYNTHESIS] Fused 3x '+RARITY_LABEL[r]+' → '+cr.n+' ('+RARITY_LABEL[cr.r]+')!');
-  const _synthRarCols=['','#888898','#50d060','#b060e0','#e0a020','#ffe080'];
   sfxCardGet();screenShake(cr.r>=3?cr.r:3,cr.r>=3?cr.r*3:6);
-  triggerCardGetBurst(pl[0].visualX-camX,pl[0].visualY-camY-8,_synthRarCols[cr.r]||'#f0c030');
+  triggerCardGetBurst(pl[0].visualX-camX,pl[0].visualY-camY-8,_SYNTH_RAR_BURST[cr.r]||'#f0c030'); // v301
   if(cr.r>=3)hitPause(cr.r>=4?4:3);
   checkWinAndTransition(2000); // v149: card 60 could come from synthesis
 }
