@@ -1,5 +1,9 @@
 // v329: prayer pity lazy cache (key=gachaPityCount)
 let _prayerLblCache='',_prayerLblKey=-1;
+// v334: gacha result label lazy cache (key=gachaResultCard)
+let _gachaRevLblCache='',_gachaRevLblKey=-1;
+// v334: reliquary vault label lazy cache (key=vaultSize)
+let _reliqVaultLbl='',_reliqVaultKey=-1;
 // v257: Pre-computed gacha unique rarities — eliminates Set+spread+sort per gacha render frame
 // (GACHA_TIERS defined in 04-state.js, loaded before this file in build order)
 const _GACHA_UNIQUE_R=GACHA_TIERS.map(t=>[...new Set(t.rarities)].sort());
@@ -450,7 +454,8 @@ function drawBuildingInterior(){
     txShadow('RUNE SUMMON',gx+gw/2-68,gy+20,12,'#f8c840','rgba(0,0,0,.5)');
     // Vault progress
     const vSize=pl[0].vault?pl[0].vault.size:0;
-    txShadow('Reliquary: '+(_UNIQ60[vSize]||(vSize+'/60')),gx+8,gy+40,7,'#c8c0a0','rgba(0,0,0,.3)'); // v323
+    if(_reliqVaultKey!==vSize){_reliqVaultKey=vSize;_reliqVaultLbl='Reliquary: '+(_UNIQ60[vSize]||(vSize+'/60'));} // v334: lazy
+  txShadow(_reliqVaultLbl,gx+8,gy+40,7,'#c8c0a0','rgba(0,0,0,.3)');
 
     if(gachaPhase==='menu'){
       txShadow('Choose a ritual:',gx+16,gy+58,8,'#d0c8a0','rgba(0,0,0,.3)');
@@ -580,7 +585,8 @@ function drawBuildingInterior(){
       drawCardFrame(cardX,cardY,100,130,gachaResultCard-1,true);
       // Rarity label
       bx(gx+gw/2-60,gy+gh-90,120,20,RARITY_COLOR[cr.r]+'33');
-      txShadow(RARITY_LABEL[cr.r]+'  '+cr.n,gx+gw/2-56,gy+gh-76,9,RARITY_COLOR[cr.r],'rgba(0,0,0,.5)');
+      if(_gachaRevLblKey!==gachaResultCard){_gachaRevLblKey=gachaResultCard;_gachaRevLblCache=RARITY_LABEL[cr.r]+'  '+cr.n;} // v334: lazy
+      txShadow(_gachaRevLblCache,gx+gw/2-56,gy+gh-76,9,RARITY_COLOR[cr.r],'rgba(0,0,0,.5)');
       // Is new?
       const isNew=!pl[0].vault||!pl[0].vault.has(gachaResultCard);
       if(isNew&&t2>15){txShadow('NEW!',W/2+40,H/2-60,12,'#f0c830','rgba(0,0,0,.6)');}
