@@ -2006,7 +2006,7 @@ function dMap(){
     g.globalAlpha=easeInOut(tbSlide);
     win(4,tbY,W-8,52);
     txShadow(twText,14,tbY+32,8,FRLG.textColor,'rgba(0,0,0,.35)');
-    const bounce=Math.floor(Math.sin(fr*Math.PI/30)*2);
+    const bounce=Math.floor(_BOUNCE60[fr%60]*2);
     txShadow('\u25BC',W-24,tbY+46+bounce,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }

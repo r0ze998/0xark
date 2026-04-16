@@ -1,6 +1,11 @@
 // ═══════════════════════════════════════
 // MULTIPLAYER SYSTEM (WebSocket client)
 // ═══════════════════════════════════════
+// v381: pre-baked tables for MP lobby trig — star twinkle (60 entries, step 1.7) + card glow (8 entries, step 1.4)
+const _MPSTAR_SI17=new Float32Array(60);const _MPSTAR_CI17=new Float32Array(60);
+const _MPCARD_SI14=new Float32Array(8);const _MPCARD_CI14=new Float32Array(8);
+for(let i=0;i<60;i++){_MPSTAR_SI17[i]=Math.sin(i*1.7);_MPSTAR_CI17[i]=Math.cos(i*1.7);}
+for(let i=0;i<8;i++){_MPCARD_SI14[i]=Math.sin(i*1.4);_MPCARD_CI14[i]=Math.cos(i*1.4);}
 let mp={
   connected:false,
   ws:null,
@@ -139,7 +144,7 @@ function drawMPLobby(){
   bx(0,0,W,H,'#0c0c18');
   // Stars
   g.fillStyle='#ffffff';
-  for(let i=0;i<60;i++){const sx=(i*47+13)%W,sy=(i*31+7)%320;const a=Math.sin(fr*.03+i*1.7)*.35+.5;g.globalAlpha=a*.3;g.fillRect(sx,sy,1,1);}
+  for(let i=0;i<60;i++){const sx=(i*47+13)%W,sy=(i*31+7)%320;const a=(_sFr03*_MPSTAR_CI17[i]+_cFr03*_MPSTAR_SI17[i])*.35+.5;g.globalAlpha=a*.3;g.fillRect(sx,sy,1,1);}
   g.globalAlpha=1;
 
   if(mp.mpScreen==='select'){
@@ -697,7 +702,7 @@ function drawHandInspect(){
     // Rarity glow behind card for rare+
     const rarC=RARITY_COLOR[cr.r]||'#888';
     if((cr.r||1)>=3){
-      const glPulse=0.18+0.06*Math.sin(fr*0.07+i*1.4);
+      const glPulse=0.18+0.06*(_sFr07*_MPCARD_CI14[i<8?i:7]+_cFr07*_MPCARD_SI14[i<8?i:7]);
       g.globalAlpha=alpha*glPulse;
       bx(cx_-4,cy_-4,cw-8,ch,rarC+'80'||'rgba(0,0,0,.1)');
       g.globalAlpha=alpha;

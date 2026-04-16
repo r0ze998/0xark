@@ -382,7 +382,7 @@ function pxUpdateMenu() {
   if (!pxMenuOpen) return;
   // Update cursor position with bounce
   const targetY = 15 + mi * 24;
-  pxMenuCursor.y = targetY + Math.sin(fr * 0.15) * 1.5;
+  pxMenuCursor.y = targetY + _sFr15 * 1.5;
   // Update dynamic labels (indices must match MENU_ITEMS order)
   const walletIdx = MENU_ITEMS.indexOf('WALLET');
   const textSpdIdx = MENU_ITEMS.indexOf('TEXT SPD');
