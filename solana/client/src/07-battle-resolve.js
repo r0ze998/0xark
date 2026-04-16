@@ -17,6 +17,20 @@ const _btlCardHitGlow=(()=>{
   ctx.fillStyle=grd;ctx.fillRect(0,0,64,64);return c;
 })();
 
+// v238: Pre-baked card rarity glow halo canvases (per rarity r=23/28/33/38/43, 5 colors)
+// card_get draws arc(playerCX,cardY,18+rar*5) with globalAlpha=glA and fillStyle=rcol
+// Pre-bake at alpha=1; draw with globalAlpha=glA
+const _cardRarGlow=(()=>{
+  const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
+  return rarCols.map((col,i)=>{
+    if(!i)return null;
+    const r=18+i*5,hw=r+4;
+    const c=document.createElement('canvas');c.width=hw*2;c.height=hw*2;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(hw,hw,r,0,Math.PI*2);ctx.fill();
+    return {canvas:c,hw};
+  });
+})();
 // v231: Pre-baked QTE vignette canvases — replaces createRadialGradient per frame
 // Baked at alpha=1; drawn with globalAlpha=vigIntensity for correct compositing
 const _qteVigDefend=(()=>{
@@ -365,12 +379,10 @@ function drawResolvingPhase(){
         const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
         const rcol=rarCols[rar]||'#d85840';
         // Rarity glow halo
-        if(rar>=2){
+        if(rar>=2&&_cardRarGlow[rar]){
           const glA=0.25*(1-evT/35)*scale_;
-          g.globalAlpha=glA;
-          g.fillStyle=rcol;
-          g.beginPath();g.arc(playerCX,cardY,18+rar*5,0,Math.PI*2);g.fill();
-          g.globalAlpha=1;
+          const cg=_cardRarGlow[rar];
+          g.globalAlpha=glA;g.drawImage(cg.canvas,(playerCX-cg.hw)|0,(cardY-cg.hw)|0);g.globalAlpha=1;
         }
         // Actual card art
         g.save();g.translate(playerCX,cardY);g.scale(scale_,scale_);
@@ -415,12 +427,10 @@ function drawResolvingPhase(){
         const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
         const rcol=rarCols[rar]||'#d85840';
         // Rarity glow halo
-        if(rar>=2){
+        if(rar>=2&&_cardRarGlow[rar]){
           const glA=0.22*(1-evT/35)*scale_;
-          g.globalAlpha=glA;
-          g.fillStyle=rcol;
-          g.beginPath();g.arc(rcx,cardY,18+rar*5,0,Math.PI*2);g.fill();
-          g.globalAlpha=1;
+          const cg=_cardRarGlow[rar];
+          g.globalAlpha=glA;g.drawImage(cg.canvas,(rcx-cg.hw)|0,(cardY-cg.hw)|0);g.globalAlpha=1;
         }
         // Actual card art (scaled, translated to rival position)
         g.save();g.translate(rcx,cardY);g.scale(scale_,scale_);

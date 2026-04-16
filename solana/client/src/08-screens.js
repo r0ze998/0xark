@@ -18,6 +18,32 @@ const _goEmbers=(()=>{
   });
 })();
 
+// v238: Pre-baked medal badge circles (r=20, 3 colors) + bar end-cap circles (r=6, 3 colors)
+const _medalBadge=(()=>{
+  const cols=['#f0c830','#c0c0c0','#c08040'];
+  return cols.map(col=>{
+    const c=document.createElement('canvas');c.width=42;c.height=42;
+    const ctx=c.getContext('2d');
+    // Medal fill (drawn at alpha=0.85)
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(21,21,20,0,Math.PI*2);ctx.fill();
+    return c;
+  });
+})();
+const _medalBlackOverlay=(()=>{
+  const c=document.createElement('canvas');c.width=42;c.height=42;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#000';ctx.beginPath();ctx.arc(21,21,20,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+const _barEndCaps=(()=>{
+  const cols=['#f0c830','#c0c0c0','#c08040'];
+  return cols.map(col=>{
+    const c=document.createElement('canvas');c.width=13;c.height=13;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(6,6,6,0,Math.PI*2);ctx.fill();
+    return c;
+  });
+})();
 // v85: Floor-clear fanfare — dramatic cinematic overlay on floor descent
 function drawFloorClearFanfare(){
   if(!floorFanfareActive||!floorFanfareData)return;
@@ -52,11 +78,6 @@ function drawFloorClearFanfare(){
   const cw_=56,ch_=80;
   // Rarity glow behind card
   const glA=0.5+Math.sin(t*0.12)*0.2;
-  g.globalAlpha=alpha*glA;
-  const grd=g.createRadialGradient(cX+cw_/2,cY+ch_/2,0,cX+cw_/2,cY+ch_/2,50);
-  grd.addColorStop(0,rcol.replace('#','rgba(').replace(/([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/,
-    (_,r,g_,b)=>`${parseInt(r,16)},${parseInt(g_,16)},${parseInt(b,16)}`)+',0.5)').replace('rgba(','rgba(').replace('#','')||'rgba(200,160,80,0.5)';
-  // Simpler glow:
   g.globalAlpha=alpha*glA*0.55;
   bx(cX-12,cY-12,cw_+24,ch_+24,rcol+'40'||'rgba(200,160,80,.3)');
   g.globalAlpha=alpha;
@@ -670,10 +691,10 @@ function dGameOver(){
       const bounceT=Math.max(0,fadeT-8);
       const bounce=bounceT<8?1+Math.sin(bounceT/8*Math.PI)*0.12:1;
       g.save();g.translate(W/2-230,y+26);g.scale(bounce,bounce);
-      g.globalAlpha=alpha*0.85;g.fillStyle=medalColors[rank];
-      g.beginPath();g.arc(0,0,20,0,Math.PI*2);g.fill();
-      g.globalAlpha=alpha*0.3;g.fillStyle='#000';
-      g.beginPath();g.arc(0,0,20,0,Math.PI*2);g.fill();
+      if(_medalBadge[rank]){
+        g.globalAlpha=alpha*0.85;g.drawImage(_medalBadge[rank],-21,-21);
+        g.globalAlpha=alpha*0.3;g.drawImage(_medalBlackOverlay,-21,-21);
+      }
       g.globalAlpha=alpha;
       txShadow(medals[rank],-22,8,7,medalColors[rank],'rgba(0,0,0,.5)');
       g.restore();g.globalAlpha=alpha;
@@ -688,8 +709,8 @@ function dGameOver(){
       const barFill=Math.round(barW*animPct);
       if(barFill>0){
         bx(barX,barY,barFill,barH_,medalColors[rank]);
-        g.globalAlpha=alpha*0.45;g.fillStyle=medalColors[rank];
-        g.beginPath();g.arc(barX+barFill,barY+barH_/2,barH_/2+2,0,Math.PI*2);g.fill();
+        g.globalAlpha=alpha*0.45;
+        if(_barEndCaps[rank])g.drawImage(_barEndCaps[rank],(barX+barFill-6)|0,(barY-3)|0);
         g.globalAlpha=alpha;
       }
       txShadow(Math.round(pct*100)+'%',barX+barW+5,barY+7,6,'#706878','rgba(0,0,0,.35)');
