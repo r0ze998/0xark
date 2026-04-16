@@ -5721,7 +5721,7 @@ function resetGameState(startCards){
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;proximityTauntText='';proximityTauntTimer=0;encounterRivalLine='';
   rivalBgTimer[0]=1800;rivalBgTimer[1]=2400;
   stopDangerDrone();
-  lg.length=0;
+  lg.length=0;_lgMeta.length=0; // v303: reset log meta cache with log
   lg.push('New game! Starter cards: '+starterCards.map(id=>CD[id-1].n).join(', '));
   lg.push('Collect all 60 cards to win the Prize Pool!');
   treasures.forEach(t=>t.collected=false);
@@ -7360,6 +7360,12 @@ function drawMiniCard(x,y,cd){
 const _SYNTH_RAR_LABELS=['','Common','Uncommon','Rare','Epic'];
 // v301: synthesis burst color by rarity — was inline local per doSynthesis call
 const _SYNTH_RAR_BURST=['','#888898','#50d060','#b060e0','#e0a020','#ffe080'];
+// v303: pre-baked danger bar strings (index = danger level 0-5); eliminates repeat()+concat per frame
+const _DANGER_BARS=['□□□□□','■□□□□','■■□□□','■■■□□','■■■■□','■■■■■'];
+// v303: pre-baked synthesis status strings — avoids string concat every frame in synthesis UI
+const _SYNTH_NO_CARDS=['','No Common cards in hand.','No Uncommon cards in hand.','No Rare cards in hand.','No Epic cards in hand.'];
+const _SYNTH_UPGRADE=['','Select 3 cards → get 1 Uncommon card','Select 3 cards → get 1 Rare card','Select 3 cards → get 1 Epic card','Select 3 cards → get 1 ? card'];
+const _SYNTH_NEED=['3 selected — press Z to synthesize!','Need 1 more','Need 2 more','Need 3 more'];
 // v262: Additional per-frame inline literals hoisted
 const _WLD_FLOOR_NUMS=['','B1','B2','B3','B4','B5'];
 
@@ -7893,7 +7899,7 @@ function drawFloorTitle(){
     g.globalAlpha=globalAlpha*dangerAlpha*0.7;
     g.font='5px monospace';g.textAlign='center';
     g.fillStyle='#c8c8d8';
-    g.fillText('DANGER  '+('■'.repeat(d))+'□'.repeat(5-d),W/2,barY+barH+8);
+    g.fillText('DANGER  '+_DANGER_BARS[d],W/2,barY+barH+8); // v303: pre-baked string
     g.textAlign='left';
   }
 
@@ -8668,11 +8674,11 @@ function drawSynthesisShop(){
   for(let _si=0;_si<HAND_SIZE;_si++){const _cid=pl[0].cd[_si];if(_cid>0&&CD[_cid-1]?.r===synthRarityFilter)_synthSlotsBuf[_sfN2++]=_si;}
 
   if(_sfN2===0){
-    txShadow('No '+_SYNTH_RAR_LABELS[synthRarityFilter]+' cards in hand.',80,120,7,'#989080','rgba(0,0,0,.3)');
+    txShadow(_SYNTH_NO_CARDS[synthRarityFilter],80,120,7,'#989080','rgba(0,0,0,.3)'); // v303
   }else{
     const needed=3-synthSelected.length;
-    txShadow('Select 3 cards → get 1 '+(_SYNTH_RAR_LABELS[synthRarityFilter+1]||'?')+' card',80,108,6,'#c0a060','rgba(0,0,0,.3)');
-    txShadow(needed>0?'Need '+needed+' more':'3 selected — press Z to synthesize!',80,122,6,needed===0?'#40d080':'#808880','rgba(0,0,0,.3)');
+    txShadow(_SYNTH_UPGRADE[synthRarityFilter]||_SYNTH_UPGRADE[4],80,108,6,'#c0a060','rgba(0,0,0,.3)'); // v303
+    txShadow(_SYNTH_NEED[needed]||_SYNTH_NEED[0],80,122,6,needed===0?'#40d080':'#808880','rgba(0,0,0,.3)'); // v303
 
     const cols=4,cellW=120,cellH=48;
     for(let i=0;i<_sfN2;i++){
@@ -11032,7 +11038,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v302',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v303',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -14225,6 +14231,23 @@ function dAct(){
 // MODULE: src/08-overlays.js
 // Card acquisition animation · dungeon confirm · marketplace · discard overlay · tutorial · intro · victory screen · cards collection screen · card detail panel · log screen
 // ───────────────────────────────────────────────────────────────────────
+// v303: log entry classification cache — classify once per entry, O(1) on repeat frames
+const _lgMeta=[]; // parallel to lg[]; entries: {col, icon}; cleared when lg resets
+function _classifyLog(l){
+  if(l.includes('stole')||l.includes('Steal')||l.includes('STEAL')||l.includes('ambush'))return{col:'#e06060',icon:'\u2694'};
+  if(l.includes('Block')||l.includes('Barrier')||l.includes('BARRIER'))return{col:'#6090d0',icon:'\u25A0'};
+  if(l.includes('Scout')||l.includes('SCOUT'))return{col:'#40b860',icon:'\u25CE'};
+  if(l.includes('drew')||l.includes('obtained')||l.includes('Found')||l.includes('got a')||l.includes('Wild:'))return{col:'#60c060',icon:'\u2605'};
+  if(l.includes('Fishing'))return{col:'#e0c040',icon:'\u223F'};
+  if(l.startsWith('[ON-CHAIN]'))return{col:'#50e090',icon:'\u26D3'};
+  if(l.includes('entered')||l.includes('Escaped')||l.includes('DUNGEON'))return{col:'#d08050',icon:'\u25B6'};
+  if(l.includes('MISSION'))return{col:'#f0c830',icon:'\u25C6'};
+  if(l.includes('Event:')||l.includes('Campfire')||l.includes('Altar'))return{col:'#c060c0',icon:'\u26A1'};
+  if(l.includes('Umbra')||l.includes('Ignis'))return{col:'#a878c8',icon:'\u2620'};
+  if(l.includes('Back in town')||l.includes('spell energy'))return{col:'#40a040',icon:'\u2605'};
+  return{col:'#888898',icon:'\u00B7'};
+}
+
 // CARD ACQUISITION ANIMATION
 // ═══════════════════════════════════════
 function startCardAcquisition(cardIdx){
@@ -15253,32 +15276,10 @@ function dLog(){
   win(16,padTop-6,W-32,maxVisible*entryH+12);
 
   for(let i=0;i<visibleCount;i++){
-    const l=lg[startIdx+i];const y=padTop+i*entryH;
-    // v120: event-type icon instead of plain dot
-    let col='#888898',icon='\u00B7'; // · default
-    if(l.includes('stole')||l.includes('Steal')||l.includes('STEAL')||l.includes('ambush')){
-      col='#e06060';icon='\u2694'; // ⚔
-    }else if(l.includes('Block')||l.includes('Barrier')||l.includes('BARRIER')){
-      col='#6090d0';icon='\u25A0'; // ■
-    }else if(l.includes('Scout')||l.includes('SCOUT')){
-      col='#40b860';icon='\u25CE'; // ◎
-    }else if(l.includes('drew')||l.includes('obtained')||l.includes('Found')||l.includes('got a')||l.includes('Wild:')){
-      col='#60c060';icon='\u2605'; // ★
-    }else if(l.includes('Fishing')){
-      col='#e0c040';icon='\u223F'; // ∿
-    }else if(l.startsWith('[ON-CHAIN]')){
-      col='#50e090';icon='\u26D3'; // ⛓
-    }else if(l.includes('entered')||l.includes('Escaped')||l.includes('DUNGEON')){
-      col='#d08050';icon='\u25B6'; // ▶
-    }else if(l.includes('MISSION')){
-      col='#f0c830';icon='\u25C6'; // ◆
-    }else if(l.includes('Event:')||l.includes('Campfire')||l.includes('Altar')){
-      col='#c060c0';icon='\u26A1'; // ⚡
-    }else if(l.includes('Umbra')||l.includes('Ignis')){
-      col='#a878c8';icon='\u2620'; // ☠
-    }else if(l.includes('Back in town')||l.includes('spell energy')){
-      col='#40a040';icon='\u2605';
-    }
+    const _lgIdx=startIdx+i;const l=lg[_lgIdx];const y=padTop+i*entryH;
+    // v303: lazy classify — compute once per entry index, O(1) on repeat frames
+    if(!_lgMeta[_lgIdx])_lgMeta[_lgIdx]=_classifyLog(l);
+    const{col,icon}=_lgMeta[_lgIdx];
     // Recent entries (last 3) get slight highlight
     const isRecent=totalEntries-logScrollOff-endIdx+i>=totalEntries-3;
     if(isRecent&&logScrollOff===0){
@@ -18646,7 +18647,7 @@ function loadGame(){
         }
       });
     }
-    lg.length=0;d.log.forEach(l=>lg.push(l));
+    lg.length=0;_lgMeta.length=0;d.log.forEach(l=>lg.push(l)); // v303: reset meta cache with log
     d.treasures.forEach((c,i)=>{if(treasures[i])treasures[i].collected=c;});
     if(d.tutorialFlags)tutorialFlags={...tutorialFlags,...d.tutorialFlags};
     if(d.randomEventTimer!==undefined)randomEventTimer=d.randomEventTimer;

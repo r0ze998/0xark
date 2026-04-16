@@ -1,3 +1,20 @@
+// v303: log entry classification cache — classify once per entry, O(1) on repeat frames
+const _lgMeta=[]; // parallel to lg[]; entries: {col, icon}; cleared when lg resets
+function _classifyLog(l){
+  if(l.includes('stole')||l.includes('Steal')||l.includes('STEAL')||l.includes('ambush'))return{col:'#e06060',icon:'\u2694'};
+  if(l.includes('Block')||l.includes('Barrier')||l.includes('BARRIER'))return{col:'#6090d0',icon:'\u25A0'};
+  if(l.includes('Scout')||l.includes('SCOUT'))return{col:'#40b860',icon:'\u25CE'};
+  if(l.includes('drew')||l.includes('obtained')||l.includes('Found')||l.includes('got a')||l.includes('Wild:'))return{col:'#60c060',icon:'\u2605'};
+  if(l.includes('Fishing'))return{col:'#e0c040',icon:'\u223F'};
+  if(l.startsWith('[ON-CHAIN]'))return{col:'#50e090',icon:'\u26D3'};
+  if(l.includes('entered')||l.includes('Escaped')||l.includes('DUNGEON'))return{col:'#d08050',icon:'\u25B6'};
+  if(l.includes('MISSION'))return{col:'#f0c830',icon:'\u25C6'};
+  if(l.includes('Event:')||l.includes('Campfire')||l.includes('Altar'))return{col:'#c060c0',icon:'\u26A1'};
+  if(l.includes('Umbra')||l.includes('Ignis'))return{col:'#a878c8',icon:'\u2620'};
+  if(l.includes('Back in town')||l.includes('spell energy'))return{col:'#40a040',icon:'\u2605'};
+  return{col:'#888898',icon:'\u00B7'};
+}
+
 // CARD ACQUISITION ANIMATION
 // ═══════════════════════════════════════
 function startCardAcquisition(cardIdx){
@@ -1026,32 +1043,10 @@ function dLog(){
   win(16,padTop-6,W-32,maxVisible*entryH+12);
 
   for(let i=0;i<visibleCount;i++){
-    const l=lg[startIdx+i];const y=padTop+i*entryH;
-    // v120: event-type icon instead of plain dot
-    let col='#888898',icon='\u00B7'; // · default
-    if(l.includes('stole')||l.includes('Steal')||l.includes('STEAL')||l.includes('ambush')){
-      col='#e06060';icon='\u2694'; // ⚔
-    }else if(l.includes('Block')||l.includes('Barrier')||l.includes('BARRIER')){
-      col='#6090d0';icon='\u25A0'; // ■
-    }else if(l.includes('Scout')||l.includes('SCOUT')){
-      col='#40b860';icon='\u25CE'; // ◎
-    }else if(l.includes('drew')||l.includes('obtained')||l.includes('Found')||l.includes('got a')||l.includes('Wild:')){
-      col='#60c060';icon='\u2605'; // ★
-    }else if(l.includes('Fishing')){
-      col='#e0c040';icon='\u223F'; // ∿
-    }else if(l.startsWith('[ON-CHAIN]')){
-      col='#50e090';icon='\u26D3'; // ⛓
-    }else if(l.includes('entered')||l.includes('Escaped')||l.includes('DUNGEON')){
-      col='#d08050';icon='\u25B6'; // ▶
-    }else if(l.includes('MISSION')){
-      col='#f0c830';icon='\u25C6'; // ◆
-    }else if(l.includes('Event:')||l.includes('Campfire')||l.includes('Altar')){
-      col='#c060c0';icon='\u26A1'; // ⚡
-    }else if(l.includes('Umbra')||l.includes('Ignis')){
-      col='#a878c8';icon='\u2620'; // ☠
-    }else if(l.includes('Back in town')||l.includes('spell energy')){
-      col='#40a040';icon='\u2605';
-    }
+    const _lgIdx=startIdx+i;const l=lg[_lgIdx];const y=padTop+i*entryH;
+    // v303: lazy classify — compute once per entry index, O(1) on repeat frames
+    if(!_lgMeta[_lgIdx])_lgMeta[_lgIdx]=_classifyLog(l);
+    const{col,icon}=_lgMeta[_lgIdx];
     // Recent entries (last 3) get slight highlight
     const isRecent=totalEntries-logScrollOff-endIdx+i>=totalEntries-3;
     if(isRecent&&logScrollOff===0){

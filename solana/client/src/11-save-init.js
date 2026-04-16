@@ -84,7 +84,7 @@ function loadGame(){
         }
       });
     }
-    lg.length=0;d.log.forEach(l=>lg.push(l));
+    lg.length=0;_lgMeta.length=0;d.log.forEach(l=>lg.push(l)); // v303: reset meta cache with log
     d.treasures.forEach((c,i)=>{if(treasures[i])treasures[i].collected=c;});
     if(d.tutorialFlags)tutorialFlags={...tutorialFlags,...d.tutorialFlags};
     if(d.randomEventTimer!==undefined)randomEventTimer=d.randomEventTimer;

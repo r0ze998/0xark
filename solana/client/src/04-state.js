@@ -680,7 +680,7 @@ function resetGameState(startCards){
   footprints.length=0;proximityDangerLevel=0;rivalDangerAlertShown=false;proximityTauntText='';proximityTauntTimer=0;encounterRivalLine='';
   rivalBgTimer[0]=1800;rivalBgTimer[1]=2400;
   stopDangerDrone();
-  lg.length=0;
+  lg.length=0;_lgMeta.length=0; // v303: reset log meta cache with log
   lg.push('New game! Starter cards: '+starterCards.map(id=>CD[id-1].n).join(', '));
   lg.push('Collect all 60 cards to win the Prize Pool!');
   treasures.forEach(t=>t.collected=false);
