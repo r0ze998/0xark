@@ -1,3 +1,8 @@
+// v257: Pre-computed gacha unique rarities — eliminates Set+spread+sort per gacha render frame
+// (GACHA_TIERS defined in 04-state.js, loaded before this file in build order)
+const _GACHA_UNIQUE_R=GACHA_TIERS.map(t=>[...new Set(t.rarities)].sort());
+const _GACHA_RAR_LBLS=['','Common','Uncommon','Rare','Epic','Legendary'];
+const _GACHA_RAR_COLS=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
 // v244: Pre-baked arc canvases for world interactions
 const _puzzleGlowCanvases=(()=>{
   const cols=['#c04040','#4060c0','#d0c040'];
@@ -452,23 +457,23 @@ function drawBuildingInterior(){
 
     if(gachaPhase==='menu'){
       txShadow('Choose a ritual:',gx+16,gy+58,8,'#d0c8a0','rgba(0,0,0,.3)');
-      GACHA_TIERS.forEach((t,i)=>{
-        const isSelected=gachaSelectedTier===i;
+      for(let i=0;i<GACHA_TIERS.length;i++){
+        const t=GACHA_TIERS[i];const isSelected=gachaSelectedTier===i;
         const ty_=gy+76+i*62;
         bx(gx+12,ty_,gw-24,54,isSelected?'#2a2a50':'#181828');
         if(isSelected)bx(gx+12,ty_,gw-24,54,'rgba(248,200,64,.08)');
         bx(gx+12,ty_,3,54,isSelected?'#f8c840':'#3a3a60');
         txShadow(t.name,gx+22,ty_+14,9,isSelected?'#f8f0e0':'#b0a8c0',isSelected?'rgba(0,0,0,.4)':'rgba(0,0,0,.2)');
         txShadow(t.label,gx+22,ty_+28,8,'#f0c040','rgba(0,0,0,.3)');
-        // Rarity preview dots
-        const uniqueR=[...new Set(t.rarities)].sort();
-        uniqueR.forEach((r,ri)=>{
-          const dotX=gx+gw-80+ri*14;
+        // Rarity preview dots (_GACHA_UNIQUE_R pre-computed at module scope)
+        const uniqueR=_GACHA_UNIQUE_R[i];
+        for(let ri=0;ri<uniqueR.length;ri++){
+          const r=uniqueR[ri];const dotX=gx+gw-80+ri*14;
           bx(dotX,ty_+14,10,10,RARITY_COLOR[r]);
           txShadow('\u2605',dotX,ty_+25,5,RARITY_COLOR[r],'rgba(0,0,0,.3)');
-        });
+        }
         if(isSelected)txShadow('\u25b6',gx+gw-30,ty_+26,8,'#f8c840','rgba(0,0,0,.35)');
-      });
+      }
       bx(gx+12,gy+gh-44,gw-24,1,'#282848');
       // Pity counter
       const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
@@ -483,17 +488,16 @@ function drawBuildingInterior(){
         bx(hx,hy,4,28,'#c8b870'); // gold left accent
         txShadow('RECENT',hx+hw/2-36,hy+20,11,'#c8b870','rgba(0,0,0,.4)');
         bx(hx,hy+28,hw,1,'#282848');
-        const rarLabels=['','Common','Uncommon','Rare','Epic','Legendary'];
-        const rarColors_=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
-        gachaHistory.forEach((h,i)=>{
-          const hy2=hy+36+i*36;
-          const cr3=CD[h.cardId-1];if(!cr3)return;
-          const rcol3=rarColors_[h.rarity]||'#888888';
+        // _GACHA_RAR_LBLS/_GACHA_RAR_COLS hoisted to module scope
+        for(let i=0;i<gachaHistory.length;i++){
+          const h=gachaHistory[i];const hy2=hy+36+i*36;
+          const cr3=CD[h.cardId-1];if(!cr3)continue;
+          const rcol3=_GACHA_RAR_COLS[h.rarity]||'#888888';
           bx(hx+10,hy2-6,10,10,rcol3);
           const nm=cr3.n.length>14?cr3.n.substring(0,13)+'.':cr3.n;
           txShadow(nm,hx+26,hy2+2,7,i===0?'#f8f0e0':'#909090','rgba(0,0,0,.3)');
-          txShadow(rarLabels[h.rarity]||'',hx+26,hy2+14,5,rcol3,'rgba(0,0,0,.3)');
-        });
+          txShadow(_GACHA_RAR_LBLS[h.rarity]||'',hx+26,hy2+14,5,rcol3,'rgba(0,0,0,.3)');
+        }
       }
     }else if(gachaPhase==='spinning'){
       gachaSpinFrame++;
