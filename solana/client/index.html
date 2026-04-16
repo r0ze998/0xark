@@ -5982,11 +5982,22 @@ function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
   if(r.a>.35){
     bx(px+24,py-2,5,6,'#805040');bx(px+25,py-1,3,4,'#906050');
     bx(px+24,py+4,5,2,'#705040');
-    if((wt+tx_)%4<2){
-      g.fillStyle='rgba(200,200,210,.25)';
-      g.fillRect(px+25,py-5+Math.sin(fr*.1)*.8,2,3);
-      g.fillRect(px+26,py-8+Math.sin(fr*.08+1)*.6,1,2);
+    // v215: Chimney smoke — rising puff particles with wind drift
+    {const csx=px+26,csy=py-2;
+    const windX=Math.sin(fr*0.007+tx_)*1.2;
+    for(let p=0;p<5;p++){
+      const phase=(fr+p*11+tx_*7)%55;
+      if(phase>53)continue;
+      const prog=phase/53;
+      const sx_=csx+windX*prog*14;
+      const sy_=csy-prog*38;
+      const sz=1+prog*5;
+      const sa=0.38*(1-prog)*(0.7+0.3*Math.sin(fr*0.12+p));
+      if(sa<0.02)continue;
+      g.globalAlpha=sa;
+      bx(sx_-sz*.5|0,sy_-sz*.5|0,sz|0,sz|0,p%2===0?'rgba(210,205,220,1)':'rgba(195,190,208,1)');
     }
+    g.globalAlpha=1;}
   }
 }
 
@@ -6552,6 +6563,38 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
         bx(px+8,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);
         bx(px+20,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);
         bx(px+14,py+24,4,1,`rgba(200,164,72,${pulse*.25})`);
+      }
+    }
+  }
+}
+
+// v215: Town animated overlays — water sparkles + wave glints drawn each frame on main canvas
+function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
+  if(inDungeon)return;
+  const m=getMap();
+  for(let y=startTY;y<=endTY;y++){
+    for(let x=startTX;x<=endTX;x++){
+      const t=m[y]?.[x];
+      if(t!==0)continue; // only water (tile 0)
+      const px=x*TW-camX,py=y*TH-camY;
+      if(px<-TW||px>W+TW||py<-TH||py>H+TH)continue;
+      // Wave shimmer strips — horizontal glints that sweep across tile
+      const wavePhase=((fr*0.018+x*0.6+y*0.4))%(1);
+      if(wavePhase<0.18){
+        const wp=wavePhase/0.18;
+        const wy=py+4+Math.floor(TH*0.3*wp);
+        const wa=(Math.sin(wp*Math.PI)*0.22).toFixed(3);
+        bx(px+2,wy,TW-4,1,`rgba(255,255,255,${wa})`);
+      }
+      // Sparkle glints: pseudo-random positions per tile+time
+      const sphase=(fr*0.04+x*13+y*7);
+      if((sphase|0)%11===0){
+        const sx=px+((x*37+y*61+fr)%24)+4;
+        const sy=py+((x*19+y*43+fr)%20)+4;
+        const sa=0.35+0.25*Math.sin(fr*0.1+x+y);
+        g.globalAlpha=sa;
+        bx(sx,sy,2,1,'#c8e8ff');bx(sx,sy,1,2,'#c8e8ff');
+        g.globalAlpha=1;
       }
     }
   }
@@ -9684,6 +9727,8 @@ function dMap(){
       drawDungeonStairGlows(startTX,startTY,endTX,endTY);
       drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY);
     }
+    // v215: Animated town tile overlays (water sparkles/waves — every other frame for perf)
+    if(!inDungeon&&fr%2===0){drawTownAnimatedOverlays(startTX,startTY,endTX,endTY);}
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
@@ -9783,6 +9828,25 @@ function dMap(){
   if(fr%2===0)drawBirds();
   if(fr%2===0)drawPirateDecorations(); // ship/barrels/vines/seagulls (no trees)
   drawTownWeather();
+  // v215: Cloud shadows — softly drifting shadow patches on overworld ground
+  if(!inDungeon){
+    const visH=H-HUD_HEIGHT;
+    for(let ci=0;ci<4;ci++){
+      const period=820+ci*160;
+      const cphase=(fr+ci*260+ci*ci*50)%period;
+      const cx_=((cphase/period)*W*1.5)-W*0.25+camX%TW*0.08; // slow cam-coupled drift
+      const cy_=visH*(0.22+ci*0.17)+Math.sin(ci*1.7+fr*0.004)*12;
+      if(cx_<-220||cx_>W+220)continue;
+      const csw=200+ci*35,csh=44+ci*10;
+      g.globalAlpha=0.03+ci*0.008;
+      g.fillStyle='#202034';
+      g.beginPath();g.ellipse(cx_,cy_,csw,csh,0,0,Math.PI*2);g.fill();
+      // Soft inner darker core
+      g.globalAlpha=0.02+ci*0.005;
+      g.beginPath();g.ellipse(cx_,cy_,csw*0.55,csh*0.55,0,0,Math.PI*2);g.fill();
+      g.globalAlpha=1;
+    }
+  }
   // Y-sorted trees BG pass: trees with base ABOVE (north of) player drawn before sprites
   if(!inDungeon)drawCpxTreesInRange(0,pl[0].y+1);
 
