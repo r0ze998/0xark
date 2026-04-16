@@ -70,6 +70,8 @@ let _alertLblCache='',_alertLblRef=''; // rival alert label (key=rivalAlertName)
 // v319: pre-baked distance-tile strings + near-win lazy cache
 const _DIST_T=(()=>{const a=[];for(let i=0;i<=50;i++)a.push(i+'t');return a;})();
 let _nearWinStr='RIVAL NEAR WIN!',_nearWinKey=-1;
+// v344: milestone toast lazy cache (active ~210 frames)
+let _milestoneLbl='',_milestoneRef='';
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -1802,7 +1804,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v343',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v344',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1913,7 +1915,8 @@ function dMap(){
     bx(toastX,toastY+22,toastW,2,'#f0c830');
     bx(toastX,toastY,1,24,'#f0c830');
     bx(toastX+toastW-1,toastY,1,24,'#f0c830');
-    txShadow('\u2605 '+milestoneToastText+' \u2605',toastX+12,toastY+17,8,'#f0e040','rgba(0,0,0,.6)');
+    if(_milestoneRef!==milestoneToastText){_milestoneRef=milestoneToastText;_milestoneLbl='\u2605 '+milestoneToastText+' \u2605';}
+    txShadow(_milestoneLbl,toastX+12,toastY+17,8,'#f0e040','rgba(0,0,0,.6)'); // v344: lazy cache
     g.globalAlpha=1;
   }
 

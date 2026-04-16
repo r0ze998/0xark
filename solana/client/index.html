@@ -7394,6 +7394,10 @@ function drawMiniCard(x,y,cd){
 // ───────────────────────────────────────────────────────────────────────
 // v330: lazy cache for trade dialog vault display (key=vaultSz)
 let _tradeVaultLbl='',_tradeVaultKey=-1;
+// v344: lazy caches for title-screen progress and trade overlay labels
+let _titleProgLbl='',_titleProgKey=-1;
+let _titleStepsLbl='',_titleStepsKey=-1;
+let _tradeDescLbl='',_tradeDescRef=null;
 // v254: Hoisted static arrays — eliminates per-frame inline literal allocation in synthesis + NPC dialog render
 const _SYNTH_RAR_LABELS=['','Common','Uncommon','Rare','Epic'];
 // v301: synthesis burst color by rarity — was inline local per doSynthesis call
@@ -7413,6 +7417,8 @@ const _STAKE_OFFERING_LBL='OFFERING: '+STAKE_AMOUNT.toFixed(2)+' SOL';
 const _SEAL_POT_LBL='SEAL POT: '+stakePotAmount.toFixed(2)+' SOL';
 const _STAKE_CONFIRM_LBL='OFFER '+STAKE_AMOUNT.toFixed(2)+' SOL TO BREAK THE SEAL?';
 const _SEAL_CLAIM_LBL='Victor claims the Grand Seal: '+stakePotAmount.toFixed(2)+' SOL';
+// v344: lazy cache for encounter speech bubble (changes only when encounterRivalLine changes)
+let _encLineLblCache='',_encLineLblRef=null;
 
 // v296: Floor-specific atmosphere log messages (ARK lore flavor, one per floor per ~10s tick)
 const _FLOOR_ATMOS=[
@@ -8627,8 +8633,9 @@ function drawCardShop(){
     drawCardFrame(cX,cY,80,100,cd-1,true);
     // Rarity label
     txShadow(RARITY_LABEL[cr.r]||'',W/2-32,cY+110,8,rarCol,'rgba(0,0,0,.3)');
-    // Trade description
-    txShadow('Trade  '+cr.n+'  for a card you don\'t have?',W/2-200,wY+wH-120,8,'#e0d8c0','rgba(0,0,0,.3)');
+    // Trade description — v344: lazy cache keyed on card reference
+    if(_tradeDescRef!==cr){_tradeDescRef=cr;_tradeDescLbl='Trade  '+cr.n+'  for a card you don\'t have?';}
+    txShadow(_tradeDescLbl,W/2-200,wY+wH-120,8,'#e0d8c0','rgba(0,0,0,.3)');
     if(_tradeVaultKey!==vaultSz){_tradeVaultKey=vaultSz;_tradeVaultLbl='('+(_UNIQ60[vaultSz]||(vaultSz+'/60'))+' collected)';} // v330: lazy
     txShadow(_tradeVaultLbl,W/2-68,wY+wH-100,7,'#c0a030','rgba(0,0,0,.25)');
     // Confirm buttons
@@ -8917,7 +8924,8 @@ function drawEncounterExclamation(){
     // Speech bubble triangle pointer
     bx(lineX+4,lineY+16,4,2,'rgba(8,8,16,.85)');
     const rNameCol2=(encounterExclTarget===1)?'#f080c0':'#f0c830';
-    txShadow('\u201C'+encounterRivalLine+'\u201D',lineX+4,lineY+12,5,rNameCol2,'rgba(0,0,0,.4)');
+    if(_encLineLblRef!==encounterRivalLine){_encLineLblRef=encounterRivalLine;_encLineLblCache='\u201C'+encounterRivalLine+'\u201D';}
+    txShadow(_encLineLblCache,lineX+4,lineY+12,5,rNameCol2,'rgba(0,0,0,.4)'); // v344: lazy cache
     g.globalAlpha=1;
   }
   g.globalAlpha=1;
@@ -9318,11 +9326,12 @@ function dTitle(){
     bx(barX,previewY,barW,8,'#181828');
     bx(barX,previewY,Math.round(barW*svSize/60),8,svSize>=60?'#f0c830':'#4070d0');
     bx(barX,previewY,barW,1,'#282848');bx(barX,previewY+7,barW,1,'#282848');
-    // Collection text
-    const progStr=svSize+'/60 cards collected ('+svPct+'%)';
-    txShadow(progStr,W/2-progStr.length*4,previewY+22,7,'#a0a8c0','rgba(0,0,0,.4)');
-    // Steps
-    txShadow('Steps: '+stepCounter,W/2-50,previewY+36,6,'#686880','rgba(0,0,0,.3)');
+    // Collection text — v344: lazy cache (svSize drives svPct too)
+    if(_titleProgKey!==svSize){_titleProgKey=svSize;_titleProgLbl=svSize+'/60 cards collected ('+svPct+'%)';}
+    txShadow(_titleProgLbl,W/2-_titleProgLbl.length*4,previewY+22,7,'#a0a8c0','rgba(0,0,0,.4)');
+    // Steps — v344: lazy cache
+    if(_titleStepsKey!==stepCounter){_titleStepsKey=stepCounter;_titleStepsLbl='Steps: '+stepCounter;}
+    txShadow(_titleStepsLbl,W/2-50,previewY+36,6,'#686880','rgba(0,0,0,.3)');
   }
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
@@ -9423,6 +9432,8 @@ let _alertLblCache='',_alertLblRef=''; // rival alert label (key=rivalAlertName)
 // v319: pre-baked distance-tile strings + near-win lazy cache
 const _DIST_T=(()=>{const a=[];for(let i=0;i<=50;i++)a.push(i+'t');return a;})();
 let _nearWinStr='RIVAL NEAR WIN!',_nearWinKey=-1;
+// v344: milestone toast lazy cache (active ~210 frames)
+let _milestoneLbl='',_milestoneRef='';
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -11155,7 +11166,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v343',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v344',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11266,7 +11277,8 @@ function dMap(){
     bx(toastX,toastY+22,toastW,2,'#f0c830');
     bx(toastX,toastY,1,24,'#f0c830');
     bx(toastX+toastW-1,toastY,1,24,'#f0c830');
-    txShadow('\u2605 '+milestoneToastText+' \u2605',toastX+12,toastY+17,8,'#f0e040','rgba(0,0,0,.6)');
+    if(_milestoneRef!==milestoneToastText){_milestoneRef=milestoneToastText;_milestoneLbl='\u2605 '+milestoneToastText+' \u2605';}
+    txShadow(_milestoneLbl,toastX+12,toastY+17,8,'#f0e040','rgba(0,0,0,.6)'); // v344: lazy cache
     g.globalAlpha=1;
   }
 
