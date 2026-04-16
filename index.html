@@ -13073,6 +13073,12 @@ function generateResolveEvents(){
 // MODULE: src/07-battle-resolve.js
 // Card effect animations (crystal/shadow/flame/storm/void) · drawResolvingPhase · drawResultPhase · dAct
 // ───────────────────────────────────────────────────────────────────────
+// v262: Hoist resolve per-frame inline literals
+const _RES_ACT_NAMES=['DRAW','STEAL','BARRIER','SCOUT','CARD'];
+const _RES_ACT_COLS=['#2a6080','#a03030','#3060b0','#308030','#806030'];
+const _RES_RAR_COLS=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
+const _RES_STEAL_COLS=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
+const _RES_STEAL_GLOW=['','rgba(80,200,80,.3)','rgba(80,144,240,.3)','rgba(176,80,224,.4)','rgba(224,160,32,.5)','rgba(255,248,200,.6)'];
 // v259: Cache evTexts per resolve sequence — eliminates map+join alloc every resolve frame
 let _bpEvTextsCache='',_bpEvTextsCacheRef=null;
 function _getBpEvTexts(q){if(q===_bpEvTextsCacheRef)return _bpEvTextsCache;_bpEvTextsCacheRef=q;let s='';for(let i=0;i<q.length;i++){if(q[i].text)s+=q[i].text+' ';}return(_bpEvTextsCache=s);}
@@ -13269,10 +13275,8 @@ function drawResolvingPhase(){
     const oppCX=W-200,oppCY=130;
     // v133: Round clash reveal — both action panels slide in from sides, collide, burst
     if(currentIdx===0&&evT<40){
-      const aNames=['DRAW','STEAL','BARRIER','SCOUT','CARD'];
-      const aColors=['#2a6080','#a03030','#3060b0','#308030','#806030'];
-      const pAct=Math.min(bpAction,4),rAct=Math.min(bpRivalActions[0],3);
-      const pCol=aColors[pAct],rCol=aColors[rAct];
+      const pAct=Math.min(bpAction,4),rAct=Math.min(bpRivalActions[0],3); // v262: hoisted
+      const pCol=_RES_ACT_COLS[pAct],rCol=_RES_ACT_COLS[rAct];
       const clashCX=W/2,clashCY=220;
       const pW=88,pH=44;
       // Ease-out slide: 0-13 in, 14-26 hold, 27-39 fade
@@ -13292,13 +13296,13 @@ function drawResolvingPhase(){
       bx(pX,clashCY,pW,2,pCol);bx(pX,clashCY+pH-2,pW,2,pCol);
       bx(pX,clashCY,2,pH,pCol);bx(pX+pW-2,clashCY,2,pH,pCol);
       txShadow('YOU',pX+6,clashCY+13,7,'rgba(200,200,200,.65)','rgba(0,0,0,.3)');
-      txShadow(aNames[pAct],pX+6,clashCY+30,12,pCol,'rgba(0,0,0,.6)');
+      txShadow(_RES_ACT_NAMES[pAct],pX+6,clashCY+30,12,pCol,'rgba(0,0,0,.6)');
       // Rival action panel
       bx(rX,clashCY,pW,pH,'rgba(8,8,20,.8)');
       bx(rX,clashCY,pW,2,rCol);bx(rX,clashCY+pH-2,pW,2,rCol);
       bx(rX,clashCY,2,pH,rCol);bx(rX+pW-2,clashCY,2,pH,rCol);
       txShadow(pl[1].n,rX+6,clashCY+13,7,'rgba(200,200,200,.65)','rgba(0,0,0,.3)');
-      txShadow(aNames[rAct],rX+6,clashCY+30,12,rCol,'rgba(0,0,0,.6)');
+      txShadow(_RES_ACT_NAMES[rAct],rX+6,clashCY+30,12,rCol,'rgba(0,0,0,.6)');
       // "VS" label, appears as panels close in (slide>0.7)
       if(slide>0.7){
         const vsA=Math.min(1,(slide-0.7)/0.3)*fadeA;
@@ -13451,8 +13455,7 @@ function drawResolvingPhase(){
       if(ev.cardId>0&&CD[ev.cardId-1]){
         const dcr=CD[ev.cardId-1];
         const rar=dcr.r||1;
-        const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
-        const rcol=rarCols[rar]||'#d85840';
+        const rcol=_RES_RAR_COLS[rar]||'#d85840'; // v262: hoisted
         // Rarity glow halo
         if(rar>=2&&_cardRarGlow[rar]){
           const glA=0.25*(1-evT/35)*scale_;
@@ -13497,8 +13500,7 @@ function drawResolvingPhase(){
       if(ev.cardId>0&&CD[ev.cardId-1]){
         const dcr=CD[ev.cardId-1];
         const rar=dcr.r||1;
-        const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
-        const rcol=rarCols[rar]||'#d85840';
+        const rcol=_RES_RAR_COLS[rar]||'#d85840'; // v262: hoisted
         // Rarity glow halo
         if(rar>=2&&_cardRarGlow[rar]){
           const glA=0.22*(1-evT/35)*scale_;
@@ -13537,10 +13539,8 @@ function drawResolvingPhase(){
     if(ev.effect==='steal_get'&&evT<50){
       // Dramatic steal animation: card trajectory from rival to player + rarity burst
       const rar=ev.rarity||1;
-      const rarCols=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
-      const rarGlow=['','rgba(80,200,80,.3)','rgba(80,144,240,.3)','rgba(176,80,224,.4)','rgba(224,160,32,.5)','rgba(255,248,200,.6)'];
-      const rcol=rarCols[rar]||'#d85840';
-      const rglow=rarGlow[rar]||'rgba(200,80,80,.3)';
+      const rcol=_RES_STEAL_COLS[rar]||'#d85840'; // v262: hoisted
+      const rglow=_RES_STEAL_GLOW[rar]||'rgba(200,80,80,.3)';
       // Card moves from rival (oppCX) to player (playerCX) over 30 frames
       const prog=Math.min(1,evT/30);
       const cx_=oppCX+(playerCX-oppCX)*prog;
@@ -13887,7 +13887,7 @@ function drawResultPhase(){
   bx(panX+16,panY+30,panW-32,1,'rgba(200,180,140,.3)');
 
   // Side-by-side rival actions
-  const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
+  // v262: actionNames hoisted to _ACTION_NAMES (defined in 07-battle.js, available in bundle)
   const colW=Math.floor((panW-48)/3);
   const _pActions=[bpAction,bpRivalActions[0],bpRivalActions[1]];
   const _pNames=['You',pl[1].n,pl[2].n];
@@ -13902,7 +13902,7 @@ function drawResultPhase(){
     const nameCol=col===0?'#4080d0':col===1?'#d060a0':'#d0a030';
     txShadow(p_name,cx_+4,cy_+12,9,nameCol,'rgba(0,0,0,.2)');
     // Action
-    const actName=actionNames[p_action]||'???';
+    const actName=_ACTION_NAMES[p_action]||'???'; // v262: use hoisted constant
     let actCol='#686068';
     if(p_action===0)actCol='#48b8e8';
     else if(p_action===1)actCol='#b04040';
@@ -14002,8 +14002,7 @@ function drawResultPhase(){
       const popScale=0.5+popT*0.5; // zoom from 50% to 100%
       const sCX=panX+panW-62,sCY=panY+panH/2;
       const rar=scr.r||1;
-      const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
-      const rcol=rarCols[rar]||'#d85840';
+      const rcol=_RES_RAR_COLS[rar]||'#d85840'; // v262: hoisted
       // Glow halo behind card
       if(rar>=3&&_cardRarGlow[rar]){
         // v243: pre-baked drawImage replaces createRadialGradient+arc per frame
@@ -14087,8 +14086,7 @@ function drawResultPhase(){
   if(t>35&&bpRivalTells[0]!==''){
     const tellFadeA=Math.min(1,(t-35)/10);
     g.globalAlpha=tellFadeA*0.75;
-    const actNames=['DRAW','STEAL','BARRIER','SCOUT'];
-    const r1correct=bpTellWasAccurate[0];const r2correct=bpTellWasAccurate[1];
+    const r1correct=bpTellWasAccurate[0]; // v262: removed unused actNamesconst r2correct=bpTellWasAccurate[1];
     const r1col=r1correct?'#40c040':'#c04040';
     const r2col=r2correct?'#40c040':'#c04040';
     txShadow(pl[1].n+':'+(r1correct?'\u2713 read':'x misread')+' | '+pl[2].n+':'+(r2correct?'\u2713 read':'x misread'),panX+16,panY+panH-8,7,'#888878','rgba(0,0,0,.2)');
