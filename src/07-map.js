@@ -476,16 +476,13 @@ function drawDungeonAmbientParticles(){
   const depth=currentFloor;
   const visH=H-HUD_HEIGHT;
   const c=_DUNG_AMB_CFG[depth];if(!c)return;
-  // v359: pre-compute per-frame trig values once; use sin-addition in loop
-  const _fr028=fr*0.028,_s028=Math.sin(_fr028),_c028=Math.cos(_fr028);
-  const _fr09=fr*0.09,_s09=Math.sin(_fr09),_c09=Math.cos(_fr09);
-  // _sFr05/_cFr05 already computed in draw() for fr*0.05 (depth-5 wisps)
+  // v388: use global frame cache for dungeon ambient sway — was locally computed
   const n=c.n;
   for(let i=0;i<n;i++){
     const sd=_DUNG_AMB_SEEDS[i];
     const baseX=sd.bxF*W, baseY=sd.byF*visH;
-    // Sway via sin-addition: sin(fr*0.028+phase) = _s028*cosPh + _c028*sinPh
-    const sway=sd.sinPh*_c028+sd.cosPh*_s028;
+    // Sway via sin-addition: sin(fr*0.028+phase) = _sFr028*cosPh + _cFr028*sinPh
+    const sway=sd.sinPh*_cFr028+sd.cosPh*_sFr028;
     const px=((baseX+c.vx*fr)%W+W)%W;
     const py=((baseY+c.vy*fr+c.sway*sway)%visH+visH)%visH;
 
@@ -495,8 +492,8 @@ function drawDungeonAmbientParticles(){
       const sv=sd.sin2Ph*_cFr05+sd.cos2Ph*_sFr05;
       alpha=c.a*(0.4+0.6*Math.abs(sv));
     }else if(depth===3){
-      // sin(fr*0.09+phase) via sin-addition
-      alpha=c.a*(0.5+0.5*(sd.sinPh*_c09+sd.cosPh*_s09));
+      // sin(fr*0.09+phase) via sin-addition — uses global _sFr09/_cFr09 cache
+      alpha=c.a*(0.5+0.5*(sd.sinPh*_cFr09+sd.cosPh*_sFr09));
     }else if(depth===4&&fr%6===0){alpha=c.a*(0.3+Math.random()*0.7);}
 
     g.globalAlpha=alpha;
@@ -675,18 +672,20 @@ function drawFogParticles(){
   // Batch fillStyle outside loop (same for all particles)
   g.fillStyle=fogCol;
   const visH=H-HUD_HEIGHT;
+  const _fogMap=fogRevealed[currentMap]; // v388: hoist map lookup outside loop
+  const _MWTW=MW*TW,_MHTH=MH*TH;
   for(let i=0,l=fogParticles.length;i<l;i++){
     const p=fogParticles[i];
     p.x+=p.vx;
     p.y+=(sinFr*p.cosPh+cosFr*p.sinPh)*0.1+p.vy;
-    if(p.x>MW*TW)p.x=0;
-    if(p.y<0)p.y=MH*TH;
-    if(p.y>MH*TH)p.y=0;
+    if(p.x>_MWTW)p.x=0;
+    if(p.y<0)p.y=_MHTH;
+    if(p.y>_MHTH)p.y=0;
     const sx=p.x-camX,sy=p.y-camY;
     if(sx>0&&sx<W&&sy>0&&sy<visH){
       const tileX=p.x/TW|0,tileY=p.y/TH|0;
-      if(tileX>=0&&tileX<MW&&tileY>=0&&tileY<MH&&!fogRevealed[currentMap][tileY]?.[tileX]){
-        g.globalAlpha=Math.max(0,0.15+(_sFr02*p.cosIPh+_cFr02*p.sinIPh)*0.1); // v355: sin-addition
+      if(tileX>=0&&tileX<MW&&tileY>=0&&tileY<MH&&!_fogMap[tileY][tileX]){
+        g.globalAlpha=Math.max(0,0.15+(_sFr02*p.cosIPh+_cFr02*p.sinIPh)*0.1);
         g.fillRect(sx|0,sy|0,1,1);
       }
     }
