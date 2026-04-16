@@ -109,6 +109,9 @@ const _MOTE_SI21=new Float32Array(40);const _MOTE_CI21=new Float32Array(40);
 for(let i=0;i<40;i++){_MOTE_SI21[i]=Math.sin(i*2.1);_MOTE_CI21[i]=Math.cos(i*2.1);}
 // v369: phase offset constants for sin-addition (eliminates Math.sin(fr*x+offset))
 const _MAP_SIN1=Math.sin(1),_MAP_COS1=Math.cos(1);
+// v373: pre-baked sprite aura phase (i*1.1 for i=0..2 — player+rival1+rival2 dungeon aura)
+const _AURA_SI11=new Float32Array(3);const _AURA_CI11=new Float32Array(3);
+for(let i=0;i<3;i++){_AURA_SI11[i]=Math.sin(i*1.1);_AURA_CI11[i]=Math.cos(i*1.1);}
 // v365: pre-baked vine segment sin/cos — eliminates Math.sin per-segment in forest vine loops
 // vi*0.3 variant (main vine, up to 20 segments)
 const _VINE_SI3=new Float32Array(20);const _VINE_CI3=new Float32Array(20);
@@ -853,15 +856,15 @@ function drawPirateDecorations(){
           const vpx=vx*TW-camX,vpy=vy*TH-camY;
           // Hanging vine — v365: sin-addition with pre-baked vi*0.3 tables (2 trig/tile, 0/segment)
           const vineLen=12+((vx*3+vy*5)%8);
-          const _svx=Math.sin(fr*0.02+vx),_cvx=Math.cos(fr*0.02+vx);
+          const _svx=_sFr02*_IDX_CI[vx]+_cFr02*_IDX_SI[vx],_cvx=_cFr02*_IDX_CI[vx]-_sFr02*_IDX_SI[vx]; // v373: sin-addition (vx 0-39)
           for(let vi=0;vi<vineLen;vi++){
             const vox=(_svx*_VINE_CI3[vi]+_cvx*_VINE_SI3[vi])*1.5;
             bx(vpx+8+vox,vpy+14+vi*2,2,2,'#387830');
           }
           // Second vine on some trees
           if((vx+vy)%3===0){
-            const _svy=_sFr025*Math.cos(vy)+_cFr025*Math.sin(vy);
-            const _cvy=_cFr025*Math.cos(vy)-_sFr025*Math.sin(vy);
+            const _svy=_sFr025*_IDX_CI[vy]+_cFr025*_IDX_SI[vy]; // v373: sin-addition (vy 0-39)
+            const _cvy=_cFr025*_IDX_CI[vy]-_sFr025*_IDX_SI[vy];
             for(let vi=0;vi<vineLen-4;vi++){
               const vox2=(_svy*_VINE_CI25[vi]+_cvy*_VINE_SI25[vi])*1.2;
               bx(vpx+22+vox2,vpy+16+vi*2,1,2,'#306828');
@@ -1331,7 +1334,7 @@ function dMap(){
     // v227: dungeon aura — pre-baked per-floor canvas, modulated by globalAlpha=pulse
     if(inDungeon&&currentFloor>=1&&currentFloor<=5){
       const spx=p.visualX-camX+TW/2,spy=p.visualY-camY+TH*0.7;
-      const pulse=0.08+0.05*Math.sin(fr*0.045+i*1.1);
+      const pulse=0.08+0.05*(_sFr045*_AURA_CI11[i]+_cFr045*_AURA_SI11[i]); // v373: sin-addition
       g.globalAlpha=pulse;
       g.drawImage(_dungeonAuraCanvas[currentFloor],(spx-26)|0,(spy-26)|0);
       g.globalAlpha=1;
