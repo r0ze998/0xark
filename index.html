@@ -13238,6 +13238,41 @@ function drawResolvingPhase(){
       g.restore();
       g.globalAlpha=1;
     }
+    // v216: Rival KO overlay — pulsing red "KO!" above sprite when HP hits 0
+    [1,2].forEach(ri=>{
+      if(bpHP[ri]!==0)return;
+      const koCX=ri===1?oppCX:W-310;
+      const koCY=ri===1?oppCY:140;
+      const koPulse=0.65+0.35*Math.sin(fr*0.3);
+      // Tinted flash behind sprite
+      g.globalAlpha=koPulse*0.3;bx(koCX-32,koCY-48,64,80,'#c02020');g.globalAlpha=1;
+      // KO! text with scale bounce
+      const koScale=1+Math.max(0,Math.sin(fr*0.18)*0.12);
+      g.save();g.translate(koCX,koCY-58);g.scale(koScale,koScale);
+      g.globalAlpha=koPulse*0.95;
+      txShadow('KO!',-(ri===1?14:16),0,20,'#ff3030','rgba(0,0,0,.85)');
+      g.restore();g.globalAlpha=1;
+      // Faint X marks over sprite
+      g.globalAlpha=koPulse*0.35;
+      for(let xi=0;xi<4;xi++){
+        const xOff=koCX-14+xi*10,yOff=koCY-22+((xi%2)*8);
+        bx(xOff,yOff,2,2,'#ff2020');bx(xOff+2,yOff-2,2,2,'#ff2020');
+      }
+      g.globalAlpha=1;
+    });
+    // v216: Player defeat flash — red vignette + "DEFEATED!" when player HP 0
+    if(bpHP[0]===0){
+      const defPulse=0.5+0.5*Math.sin(fr*0.22);
+      g.globalAlpha=defPulse*0.25;
+      const defVig=g.createRadialGradient(W/2,H/2,60,W/2,H/2,W*0.6);
+      defVig.addColorStop(0,'rgba(0,0,0,0)');defVig.addColorStop(1,'rgba(200,10,10,1)');
+      g.fillStyle=defVig;g.fillRect(0,0,W,H);
+      g.globalAlpha=1;
+      const defScale=1+Math.sin(fr*0.15)*0.06;
+      g.save();g.translate(W/2,H/2-30);g.scale(defScale,defScale);
+      txShadow('DEFEATED!',-42,0,18,'#ff4040','rgba(0,0,0,.9)');
+      g.restore();
+    }
   }else{
     // Anti-softlock: if player has 0 cards and 0 spells after resolve, give a pity card
     if(pl[0].cd.filter(c=>c>0).length===0&&sp.s<=0&&sp.b<=0&&sp.c<=0){
