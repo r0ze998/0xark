@@ -3,8 +3,8 @@
 const HUD_HEIGHT=72;
 // v220: Card-count helper — avoids .filter().length array allocation on every frame
 function cdCount(cd){let n=0;for(let i=0,l=cd.length;i<l;i++)if(cd[i]>0)n++;return n;}
-// v248: Unique card count — avoids new Set(cd.filter()) double-allocation on every frame
-function cdUniq(cd){const s=new Set();for(let i=0,l=cd.length;i<l;i++)if(cd[i]>0)s.add(cd[i]);return s.size;}
+// v260: Unique card count — allocation-free (5-slot hand, simple dedup check)
+function cdUniq(cd){let n=0;for(let i=0,l=cd.length;i<l;i++){const c=cd[i];if(c<=0)continue;let dup=false;for(let j=0;j<i;j++){if(cd[j]===c){dup=true;break;}}if(!dup)n++;}return n;}
 
 // Pre-built edge gradients for map boundary vignette (avoids creating gradient objects every frame)
 const _edgeFade=20;
