@@ -9624,19 +9624,23 @@ const _FOG_GRAD_COLS=_FOG_RGB.map(([r,g_,b])=>{
   const steps=8;
   return Array.from({length:steps},(_,s)=>`rgba(${r},${g_},${b},${(0.06+s*0.1).toFixed(2)})`);
 });
+// v247: Hoisted fog direction offsets — avoids allocating [[0,-1],[0,1],[-1,0],[1,0]] per tile
+const _FOG_DX=[0,0,-1,1],_FOG_DY=[-1,1,0,0];
 function drawFogOverlay(startTX,startTY,endTX,endTY){
   const fogC=FOG_COLORS[currentMap];
   const gradCols=_FOG_GRAD_COLS[currentMap]||_FOG_GRAD_COLS[0];
+  const fogMap=fogRevealed[currentMap];
   for(let y=startTY;y<=endTY;y++){
+    const fogRow=fogMap[y];
     for(let x=startTX;x<=endTX;x++){
       const px=x*TW-camX,py=y*TH-camY;
       if(px<-TW||px>W||py<-TH||py>H)continue;
-      if(fogRevealed[currentMap][y]&&fogRevealed[currentMap][y][x]){
-        // Revealed tile: check edges for fog gradient
-        const dirs=[[0,-1],[0,1],[-1,0],[1,0]]; // up,down,left,right
-        for(const [dx,dy] of dirs){
+      if(fogRow&&fogRow[x]){
+        // Revealed tile: check edges for fog gradient (4 directions, no array alloc per tile)
+        for(let d=0;d<4;d++){
+          const dx=_FOG_DX[d],dy=_FOG_DY[d];
           const nx=x+dx,ny=y+dy;
-          const neighborHidden=(nx<0||nx>=MW||ny<0||ny>=MH||!fogRevealed[currentMap][ny]?.[nx]);
+          const neighborHidden=(nx<0||nx>=MW||ny<0||ny>=MH||!fogMap[ny]?.[nx]);
           if(neighborHidden){
             // v212: 8-step gradient with floor-specific fog color (v219: pre-computed strings)
             for(let s=0;s<8;s++){
