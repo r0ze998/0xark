@@ -4,6 +4,7 @@
 // v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
 const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
 // v355: per-frame sin/cos cache — computed once at draw() start, reused across all draw functions
+let _sBpST12=0,_cBpST12=0,_cBpST16=0; // bpShakeTimer-based shake — computed once per frame in draw()
 let _sFr007=0,_cFr007=0,_sFr008=0,_sFr012=0,_sFr015=0,_cFr015=0,_sFr018=0,_cFr018=0,_sFr02=0,_cFr02=0,_sFr022=0,_cFr022=0,_sFr025=0,_cFr025=0,_sFr03=0,_cFr03=0,_sFr035=0,_cFr035=0,_sFr04=0,_cFr04=0,_sFr045=0,_cFr045=0,_sFr05=0,_cFr05=0,_sFr055=0,_cFr055=0,_sFr06=0,_cFr06=0,_sFr07=0,_cFr07=0,_sFr08=0,_cFr08=0,_sFr10=0,_cFr10=0,_sFr12=0,_cFr12=0,_sFr15=0,_cFr15=0,_sFr18=0,_cFr18=0,_sFr20=0,_cFr20=0,_sFr25=0,_cFr25=0,_sFr28=0,_sFr30=0,_cFr30=0;
 // v364: water wave lookup tables (11 px columns each, depend on wt not fr — update when wt changes)
 // wx step=3 starting at 0: wx=0,3,6,9,12,15,18,21,24,27,30 (11 entries)
@@ -397,6 +398,8 @@ function draw(){
   g.fillStyle='#070d1a';g.fillRect(0,0,W,H);
   // v246: reset txShadow state cache each frame
   _lastFontSz=-1;_shadowReady=false;
+  // v388: battle shake cache — computed once only when shake is active
+  if(bpShakeTimer>0){_sBpST12=Math.sin(bpShakeTimer*1.2);_cBpST12=Math.cos(bpShakeTimer*1.2);_cBpST16=Math.cos(bpShakeTimer*1.6);}else{_sBpST12=0;_cBpST12=1;_cBpST16=1;}
   // v355: compute shared per-frame sin/cos once (saves ~50+ Math.sin calls/frame)
   const _fr2=fr*0.02,_fr3=fr*0.03,_fr4=fr*0.04,_fr5=fr*0.05,_fr015=fr*0.015;
   _sFr02=Math.sin(_fr2);_cFr02=Math.cos(_fr2);_sFr022=Math.sin(fr*0.022);_cFr022=Math.cos(fr*0.022);
