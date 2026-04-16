@@ -1230,6 +1230,158 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=shadowAlpha*1.5;
     px(11,7,2,5,'#2a3848');px(12,6,1,2,'#40607a'); // dagger
     g.globalAlpha=1;
+  }else if(_cn==='THUNDER'){
+    // THUNDER — Chain Bolt (One strike, many wounds, Rare magic)
+    // Idle: lightning bolt branches, static sparks, flash pulses
+    const boltFlash=Math.floor(t/4)%4; // bolt phase
+    const staticSpark=Math.floor(t/6)%6;
+    const flashPulse=0.4+0.4*_sFr08;
+    // Storm sky background
+    g.globalAlpha=flashPulse*0.12;px(-1,-1,18,22,'#404010');g.globalAlpha=1;
+    // Main lightning bolt (jagged, top to bottom)
+    if(boltFlash===0){px(8,0,2,3,'#fff080');px(7,3,3,2,'#f8d040');px(9,5,3,2,'#fff080');px(8,7,3,3,'#f8d040');px(7,10,4,3,'#fff080');px(9,13,2,3,'#f8d040');}
+    else if(boltFlash===1){px(7,0,3,3,'#fff080');px(9,3,2,3,'#f8e040');px(8,6,3,2,'#fff080');px(7,8,4,3,'#f8d040');px(9,11,2,4,'#fff080');}
+    else if(boltFlash===2){px(8,0,3,4,'#ffffff');px(6,4,5,2,'#fff080');px(8,6,3,3,'#ffffff');px(7,9,4,2,'#f8e040');px(9,11,2,5,'#ffffff');}
+    else{px(7,0,4,3,'#fff080');px(9,3,3,2,'#f8d040');px(7,5,4,3,'#fff080');px(8,8,3,4,'#f8d040');px(7,12,3,3,'#fff080');}
+    // Chain arc branches (secondary bolts)
+    g.globalAlpha=0.6+flashPulse*0.2;
+    px(8,5,5,1,'#f8d040');px(3,8,6,1,'#e8c030');px(10,10,5,1,'#f8d040');
+    g.globalAlpha=1;
+    // Ground impact (radial sparks at base)
+    g.globalAlpha=flashPulse*0.8;
+    px(5,17,6,1,'#f8e040');px(4,16,2,2,'#f0c020');px(10,16,2,2,'#f0c020');
+    g.globalAlpha=1;
+    // Static sparks (6 positions)
+    const _tsx=[1,3,7,11,13,8],_tsy=[6,2,4,3,7,11];
+    g.globalAlpha=0.5+flashPulse*0.3;px(_tsx[staticSpark],_tsy[staticSpark],2,2,'#ffffff');g.globalAlpha=1;
+    // Electric glow overlay on bolt
+    g.globalAlpha=flashPulse*0.4;px(6,0,4,18,'#d8d020');g.globalAlpha=1;
+  }else if(_cn==='VENOM'){
+    // VENOM — Poison Blade (Death on the blade tip, Rare attack)
+    // Idle: venom drips, purple-green poison cloud, fang gleam
+    const venomDrip=Math.floor(t/10)%5; // drip position
+    const poisonPulse=0.3+0.4*_sFr06;
+    const fangSheen=_sFr08>0.7;
+    // Poison cloud aura
+    g.globalAlpha=poisonPulse*0.15;px(-1,-1,18,22,'#502858');g.globalAlpha=1;
+    // Serpent head (top)
+    px(5,0,6,4,'#5a3068');px(6,1,4,2,'#703878');
+    // Forked tongue
+    px(7,3,1,3,'#c04848');px(9,4,1,2,'#c04848');px(8,3,2,2,'#a03838');
+    // Venom fangs (gleaming)
+    px(6,2,2,3,'#e8e0d0');px(10,2,2,3,'#e8e0d0');
+    if(fangSheen){px(6,2,1,1,'#ffffff');px(10,2,1,1,'#ffffff');}
+    // Serpent eyes (slit pupils, eerie)
+    px(6,1,2,1,'#40a840');px(10,1,2,1,'#40a840');px(7,1,1,1,'#286028');px(11,1,1,1,'#286028');
+    // Serpent coiled body
+    px(3,4,10,3,'#5a3068');px(4,4,8,2,'#703878');
+    px(2,7,12,3,'#5a3068');px(3,7,10,2,'#703878');
+    px(4,10,8,3,'#5a3068');px(5,10,6,2,'#703878');
+    // Scales pattern
+    px(4,5,2,1,'#402050');px(8,5,2,1,'#402050');px(3,8,2,1,'#402050');px(7,8,2,1,'#402050');px(11,8,2,1,'#402050');
+    // Venom drip (animated)
+    const _vdx=[6,8,5,10,7],_vdy=[12,13,15,14,16];
+    g.globalAlpha=0.7;px(_vdx[venomDrip],_vdy[venomDrip],1,2,'#90e060');g.globalAlpha=1;
+    g.globalAlpha=0.4;px(_vdx[(venomDrip+2)%5]+1,_vdy[(venomDrip+2)%5]+1,1,1,'#70c040');g.globalAlpha=1;
+    // Poison puddle at base
+    g.globalAlpha=poisonPulse*0.5;px(4,16,8,2,'#40a030');px(5,17,6,1,'#60c050');g.globalAlpha=1;
+  }else if(_cn==='BLINK'){
+    // BLINK — Teleport (Here and gone and here, Rare flee)
+    // Idle: after-images at 3 positions, flash burst, location swap
+    const blinkPh=Math.floor(t/8)%3; // 3 blink positions
+    const flashA=0.3+0.4*_sFr08;
+    const trailFade=0.15+0.15*_sFr04;
+    // Teleport flash aura
+    g.globalAlpha=flashA*0.12;px(-1,-1,18,22,'#40c898');g.globalAlpha=1;
+    // After-image trails at previous positions (faded)
+    const _bposx=[1,13,7],_bposy=[4,8,2]; // 3 positions
+    for(let _bi=0;_bi<3;_bi++){
+      if(_bi===blinkPh)continue; // skip current position (drawn solid)
+      g.globalAlpha=trailFade;
+      // Silhouette at past position
+      px(_bposx[_bi]+2,_bposy[_bi],4,6,'#48c898');
+      px(_bposx[_bi]+3,_bposy[_bi]+6,2,3,'#48c898');
+      g.globalAlpha=1;
+    }
+    // Current position (bright, solid)
+    const _cpx=_bposx[blinkPh],_cpy=_bposy[blinkPh];
+    // Figure head
+    px(_cpx+2,_cpy,4,4,'#50d0a0');px(_cpx+3,_cpy+1,2,2,'#70e8c0');
+    // Eyes
+    px(_cpx+3,_cpy+1,1,1,'#c0f8e8');px(_cpx+5,_cpy+1,1,1,'#c0f8e8');
+    // Body (slim, aerodynamic)
+    px(_cpx+1,_cpy+4,6,5,'#40b888');px(_cpx+2,_cpy+4,4,4,'#50c898');
+    // Legs
+    px(_cpx+2,_cpy+9,2,4,'#40b888');px(_cpx+4,_cpy+9,2,4,'#40b888');
+    // Teleport ring (where they just left)
+    g.globalAlpha=flashA*0.6;
+    const _prv=(blinkPh+2)%3;
+    px(_bposx[_prv],_bposy[_prv]+4,8,1,'#48c898');
+    px(_bposx[_prv],_bposy[_prv]+4,1,6,'#48c898');px(_bposx[_prv]+7,_bposy[_prv]+4,1,6,'#48c898');
+    px(_bposx[_prv],_bposy[_prv]+9,8,1,'#48c898');
+    g.globalAlpha=1;
+  }else if(_cn==='MIRROR'){
+    // MIRROR — Spell Reflect (The face in still water, Rare defense)
+    // Idle: reflection ripples, mirror surface shimmers, spell bounces
+    const ripple=Math.floor(t/8)%4; // ripple expansion
+    const shimmer=0.4+0.3*_sFr04;
+    const bouncePos=Math.floor(t/12)%3;
+    // Mirror frame (ornate, polished)
+    // Outer frame (dark metal)
+    px(2,0,12,2,'#606048');px(0,2,2,14,'#606048');px(14,2,2,14,'#606048');px(2,16,12,2,'#606048');
+    // Frame corners (decorative)
+    px(1,1,2,2,'#788060');px(13,1,2,2,'#788060');px(1,15,2,2,'#788060');px(13,15,2,2,'#788060');
+    // Frame highlight
+    px(2,0,12,1,'#888870');px(0,2,1,14,'#808868');
+    // Mirror surface (pale blue-grey, reflective)
+    px(2,2,12,14,'#c8d8e0');px(3,3,10,12,'#d8e8f0');
+    // Reflection shimmer
+    g.globalAlpha=shimmer*0.5;px(3,3,10,4,'rgba(255,255,255,.4)');g.globalAlpha=1;
+    // Ripple rings from center (expanding, 4 phases)
+    g.globalAlpha=0.3+shimmer*0.2;
+    const _rrw=[2,4,6,8],_rrh=[1,2,3,4];
+    const rrw=_rrw[ripple],rrh=_rrh[ripple];
+    px(8-rrw/2,9-rrh/2,rrw,1,'#a0b8c8');
+    px(8-rrw/2,9+rrh/2,rrw,1,'#a0b8c8');
+    px(8-rrw/2,9-rrh/2,1,rrh,'#a0b8c8');
+    px(8+rrw/2,9-rrh/2,1,rrh,'#a0b8c8');
+    g.globalAlpha=1;
+    // Reflected spell (bouncing back)
+    const _bsx=[3,8,12],_bsy=[8,5,10];
+    g.globalAlpha=0.6;px(_bsx[bouncePos],_bsy[bouncePos],3,2,'#f8e040');g.globalAlpha=1;
+    // Mirror sheen diagonal
+    g.globalAlpha=shimmer*0.4;px(3,3,5,1,'#ffffff');px(4,4,4,1,'rgba(255,255,255,.6)');g.globalAlpha=1;
+  }else if(_cn==='LIFEDRAIN'){
+    // LIFEDRAIN — Steal HP (Your health, my health, Rare recovery)
+    // Idle: life energy siphon beam, red/orange vitality orb, drain pulse
+    const drainPulse=Math.floor(t/6)%4; // drain phase
+    const vitaGlow=0.4+0.4*_sFr06;
+    const beamPh=0.3+0.4*_sFr04;
+    // Dark drain aura
+    g.globalAlpha=vitaGlow*0.15;px(-1,-1,18,22,'#602820');g.globalAlpha=1;
+    // Victim silhouette (top, fading)
+    g.globalAlpha=0.3+drainPulse*0.1;
+    // Victim figure (weakening, grey)
+    px(9,1,4,4,'#706860');px(10,2,2,2,'#807870');
+    px(8,5,6,5,'#585048');px(9,5,4,4,'#605850');
+    px(9,10,2,4,'#484038');
+    g.globalAlpha=1;
+    // Drain beam (connects victim to caster)
+    g.globalAlpha=beamPh*0.7;
+    px(7,4,3,12,'#c06030');px(8,5,2,10,'#e08040');
+    g.globalAlpha=1;
+    // Life orb (growing at caster end)
+    const orbR=2+drainPulse;
+    g.globalAlpha=vitaGlow*0.6;px(6-orbR/2,14,orbR,orbR,'#e07030');g.globalAlpha=1;
+    g.globalAlpha=vitaGlow*0.8;px(7,15,2,2,'#f0a060');g.globalAlpha=1;
+    // Energy sparks along beam
+    const _lix=[7,8,9,7],_liy=[6,8,10,12];
+    g.globalAlpha=0.6+vitaGlow*0.2;px(_lix[drainPulse],_liy[drainPulse],2,1,'#f0c070');g.globalAlpha=1;
+    // Caster figure (bottom, receiving life)
+    px(3,14,6,5,'#a04020');px(4,14,4,4,'#c05030');
+    px(4,10,4,4,'#b04828');px(5,11,2,2,'#c05030');
+    px(5,8,2,3,'#d06038'); // head
+    px(5,8,2,1,'#e07848');px(6,9,1,1,'#f09060'); // face highlight
   }
 
   // Generic renderer for all other cards (type-based pixel art)
@@ -1239,7 +1391,8 @@ function drawCardCharacter(x,y,cardId,scale,time){
      _cn==='PHOENIX'||_cn==='PHANTOM'||_cn==='GRAVITY'||
      _cn==='CRYSTAL'||_cn==='MAELSTROM'||_cn==='ELIXIR'||
      _cn==='NULLIFY'||_cn==='VOIDSTEP'||_cn==='HOLY LIGHT'||
-     _cn==='INFERNO'||_cn==='BLIZZARD'||_cn==='BERSERK'||_cn==='FORTRESS'||_cn==='SHADOW'){
+     _cn==='INFERNO'||_cn==='BLIZZARD'||_cn==='BERSERK'||_cn==='FORTRESS'||_cn==='SHADOW'||
+     _cn==='THUNDER'||_cn==='VENOM'||_cn==='BLINK'||_cn==='MIRROR'||_cn==='LIFEDRAIN'){
     // named sprites already drawn above — fall through to sparkle/reveal below
   } else {
     const cr=CD[cardId-1];if(!cr)return;
