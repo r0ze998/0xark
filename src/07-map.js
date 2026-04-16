@@ -1456,7 +1456,8 @@ function dMap(){
         const epx=etx*TW-camX,epy=ety*TH-camY;
         if(epx<-TW||epx>W||epy<-TH||epy>H)continue;
         // v368: sin-addition with cached _sFr08/_cFr08 (no Math.sin per exit tile)
-        const _set=Math.sin(etx+ety),_cet=Math.cos(etx+ety);
+        // v400: _NSIN/_NCOS table (etx+ety is integer, ≤78 < 512)
+        const _set=_NSIN[etx+ety],_cet=_NCOS[etx+ety];
         const pulse=(_sFr08*_cet+_cFr08*_set)*0.35+0.65;
         // v359: sin(fr*0.1) = sin(2*fr*0.05) = 2*_sFr05*_cFr05 (double-angle)
         const bob=4*_sFr05*_cFr05; // == 2*sin(fr*0.1)
