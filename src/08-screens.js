@@ -1,3 +1,11 @@
+// v262: Hoist screen per-frame inline literals
+const _SCR_RAR_COLS=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
+const _SCR_RAR_NAMES=['','Common','Uncommon','Rare','Epic','Legendary'];
+const _SCR_EXIT_RAR_COLS=['','#888898','#60b060','#6090d8','#c060c0','#f0c830'];
+const _SCR_DIR_NAMES=['DOWN','LEFT','UP','RIGHT'];
+const _SCR_EMBER_COLS=['#d03030','#e04020','#c02828','#f03030'];
+const _SCR_AREA_COLS=['#3060b0','#302848','#403058','#503060','#403850','#503848'];
+const _SCR_AREA_NAMES=['TOWN','B1','B2','B3','B4','B5'];
 // v255: Hoisted stats screen statics — eliminates inline array allocs per stats/log frame
 const _VAULT_MILESTONES=[15,30,45]; // tick marks at 25%/50%/75% of 60-card bar
 const _RAR_PIP_COLS=['#808898','#50d060','#b060e0','#e0a020','#ffe080'];
@@ -60,9 +68,7 @@ function drawFloorClearFanfare(){
   // Fade in 0-15, hold 15-110, fade out 110-130
   const alpha=t<15?t/15:t>110?(maxT-t)/20:1;
   const rar=d.rarity;
-  const rarCols=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
-  const rcol=rarCols[rar]||'#c0c0c0';
-  const floorNums=['','I','II','III','IV','V'];
+  const rcol=_SCR_RAR_COLS[rar]||'#c0c0c0'; // v262: hoisted
   // Dim background overlay
   g.globalAlpha=alpha*0.78;
   g.fillStyle='rgba(4,4,14,1)';g.fillRect(0,0,W,H);
@@ -75,7 +81,7 @@ function drawFloorClearFanfare(){
   bx(px_,py_,pw,3,rcol);
   bx(px_,py_+ph-1,pw,1,'rgba(200,180,100,.3)');
   // "FLOOR X CLEARED!" header
-  const flRoman=floorNums[d.floor]||d.floor;
+  const flRoman=_FLOOR_NUMS[d.floor]||d.floor; // v262: use _FLOOR_NUMS from 07-map.js
   txShadow('FLOOR '+flRoman+' CLEARED',px_+pw/2-130,py_+28,16,'#f0e0a0','rgba(0,0,0,.6)');
   bx(px_+16,py_+34,pw-32,1,'rgba(200,180,100,.2)');
   // Card display (left side of panel)
@@ -103,8 +109,7 @@ function drawFloorClearFanfare(){
   const infoX=cX+cw_+24;
   txShadow(d.isNew?'NEW CARD!':'GOT:',infoX,py_+68,9,'#a09878','rgba(0,0,0,.3)');
   txShadow(cr2.n,infoX,py_+90,12,d.isNew?rcol:'#e8e0c8','rgba(0,0,0,.4)');
-  const rarLabel=['','Common','Uncommon','Rare','Epic','Legendary'];
-  txShadow(rarLabel[rar]||'',infoX,py_+110,9,rcol,'rgba(0,0,0,.3)');
+  txShadow(_SCR_RAR_NAMES[rar]||'',infoX,py_+110,9,rcol,'rgba(0,0,0,.3)'); // v262: hoisted
   txShadow(cr2.f||'',infoX,py_+128,7,'#888878','rgba(0,0,0,.2)');
   // "Continue deeper" footer
   if(t>50){
@@ -143,9 +148,7 @@ function drawExitProximityTooltip(){
 
   const isEsc=nearExit.isEscape;
   const targetFloor=nearExit.targetMap;
-  const flNums=['','I','II','III','IV','V'];
-  const rarLabels=['','Common','Uncommon','Rare','Epic','Legendary'];
-  const rarCols=['','#888898','#60b060','#6090d8','#c060c0','#f0c830'];
+  // v262: flNums, rarLabels, rarCols hoisted to _FLOOR_NUMS, _SCR_RAR_NAMES, _SCR_EXIT_RAR_COLS
   // Determine rarity tier for target floor
   const floorRar=[0,1,2,3,4,5]; // floor → rarity
   const mainRar=isEsc?0:Math.min(5,floorRar[targetFloor]||1);
@@ -160,13 +163,13 @@ function drawExitProximityTooltip(){
   bx(ttX,ttY+ttH-1,ttW,1,isEsc?'#40c060':'#6080c0');
 
   const arrow=isEsc?'\u2196 ESCAPE':'\u2198 DESCEND';
-  const dest=isEsc?'\u2190 TOWN':'FLOOR '+(flNums[targetFloor]||targetFloor);
+  const dest=isEsc?'\u2190 TOWN':'FLOOR '+(_FLOOR_NUMS[targetFloor]||targetFloor); // v262: hoisted
   txShadow(arrow,ttX+10,ttY+14,6,isEsc?'#50e080':'#a0b0d8','rgba(0,0,0,.4)');
   txShadow(dest,ttX+ttW/2-dest.length*4.5,ttY+30,9,isEsc?'#40e070':'#c8d8f0','rgba(0,0,0,.5)');
 
   if(!isEsc&&mainRar>0){
-    const rarTxt=rarLabels[mainRar]+' cards';
-    txShadow(rarTxt,ttX+ttW/2-rarTxt.length*3,ttY+46,6,rarCols[mainRar]||'#888','rgba(0,0,0,.3)');
+    const rarTxt=_SCR_RAR_NAMES[mainRar]+' cards'; // v262: hoisted
+    txShadow(rarTxt,ttX+ttW/2-rarTxt.length*3,ttY+46,6,_SCR_EXIT_RAR_COLS[mainRar]||'#888','rgba(0,0,0,.3)');
   }
 }
 
@@ -414,14 +417,13 @@ function drawMapCardUseOverlay(){
     bx(W/2-120,H/2-50,240,28,'#181008');
     bx(W/2-120,H/2-50,4,28,'#c0a040');
     txShadow('Select direction:',W/2-72,H/2-30,7,'#d0b860','rgba(0,0,0,.4)');
-    const dirNames=['DOWN','LEFT','UP','RIGHT'];
-    const dirCodes=[0,1,2,3];
+    // v262: dirNames hoisted to _SCR_DIR_NAMES; dirCodes removed (isSel uses i directly)
     for(let i=0;i<4;i++){
       const y=H/2-6+Math.floor(i/2)*22;
       const x=W/2-100+(i%2)*120;
-      const isSel=dirCodes[i]===mapCardDirIdx;
+      const isSel=i===mapCardDirIdx;
       if(isSel)txShadow('\u25B6',x-10,y+12,7,'#c04040','rgba(0,0,0,.4)');
-      txShadow(dirNames[i],x,y+12,7,isSel?'#e06050':'#b0a890','rgba(0,0,0,.3)');
+      txShadow(_SCR_DIR_NAMES[i],x,y+12,7,isSel?'#e06050':'#b0a890','rgba(0,0,0,.3)');
     }
     txShadow('[Z] Confirm   [X] Cancel',W/2-86,H/2+42,6,'#8888a0','rgba(0,0,0,.3)');
     return;
@@ -565,20 +567,19 @@ function dStats(){
   // Area time distribution bar at bottom of the single window
   const barX=36,barY_=rowY+8,barW=W-104,barH=16;
   bx(barX,barY_,barW,barH,'#181838');
-  const areaColors=['#3060b0','#302848','#403058','#503060','#403850','#503848'];
-  const _aN=['TOWN','B1','B2','B3','B4','B5'];
+  // v262: areaColors, _aN hoisted to _SCR_AREA_COLS, _SCR_AREA_NAMES
   let accX=barX;
   for(let ai_=0;ai_<stats.areaTime.length;ai_++){
     const segW=Math.max(0,Math.floor(barW*(stats.areaTime[ai_]/totalAreaTime)));
-    if(segW>0){bx(accX,barY_,segW,barH,areaColors[ai_%areaColors.length]);accX+=segW;}
+    if(segW>0){bx(accX,barY_,segW,barH,_SCR_AREA_COLS[ai_%_SCR_AREA_COLS.length]);accX+=segW;}
   }
 
   // Legend below bar (show town + floors compactly)
-  for(let ai_=0;ai_<_aN.length;ai_++){
+  for(let ai_=0;ai_<_SCR_AREA_NAMES.length;ai_++){
     const legendX=36+ai_*120,legendY=barY_+28;
-    bx(legendX,legendY-8,10,10,areaColors[ai_%areaColors.length]);
+    bx(legendX,legendY-8,10,10,_SCR_AREA_COLS[ai_%_SCR_AREA_COLS.length]);
     const pct=Math.round(((stats.areaTime[ai_]||0)/totalAreaTime)*100);
-    txShadow(_aN[ai_]+' '+pct+'%',legendX+14,legendY,8,'#c8c0a0','rgba(0,0,0,.3)');
+    txShadow(_SCR_AREA_NAMES[ai_]+' '+pct+'%',legendX+14,legendY,8,'#c8c0a0','rgba(0,0,0,.3)');
   }
 
   // Back prompt
@@ -632,7 +633,7 @@ function dGameOver(){
     const px_=((seed*73+t*(0.3+i*0.015))%W+W)%W;
     const py_=((seed*41+t*spd)%H+H)%H;
     const pa=0.25+Math.sin(t*0.04+i*0.7)*0.15;
-    const pc=['#d03030','#e04020','#c02828','#f03030'][i%4];
+    const pc=_SCR_EMBER_COLS[i%4]; // v262: hoisted
     bx(px_,py_,2,2,pc);
     g.globalAlpha=pa*0.15;g.drawImage(_goEmbers[i%4],(px_-4)|0,(py_-4)|0);g.globalAlpha=1;
   }
