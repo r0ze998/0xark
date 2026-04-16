@@ -4,6 +4,9 @@
 
 // v262: Hoist battle per-frame inline literals to module scope
 const _ACTION_NAMES=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
+// v305: pre-baked BATTLE round header labels; cache TX sig truncation
+const _BATTLE_HDR=['','BATTLE 1','BATTLE 2','BATTLE 3','BATTLE 4','BATTLE 5','BATTLE 6','BATTLE 7','BATTLE 8','BATTLE 9','BATTLE 10'];
+let _txLblCache='TX:--',_txLblSig='';
 const _ACTION_NAMES_EX=['DRAW!','STEAL!','BARRIER!','SCOUT!','USE CARD!'];
 const _ACTION_COLORS_EX=['#48b8e8','#d04040','#3060b0','#308030','#c08030'];
 const __ACT_ABBR=['DRW','STL','BAR','SCT','CRD'],__ACT_COL=['#48b8e8','#d04040','#3060b0','#38a038','#c08030'];
@@ -694,7 +697,7 @@ function drawPhaseBanner(phase){
   bx(0,0,W,28,col);
   bx(0,0,W,1,'rgba(255,255,255,.2)');
   // Round info on left
-  txShadow('BATTLE '+rd,6,20,10,'#fff','rgba(0,0,0,.5)');
+  txShadow(_BATTLE_HDR[rd]||'BATTLE '+rd,6,20,10,'#fff','rgba(0,0,0,.5)'); // v305
   // Phase label centered (bigger, bold-like with shadow)
   const labelW=label.length*10;
   txShadow(label,W/2-labelW/2,20,16,'#fff','rgba(0,0,0,.5)');
@@ -702,8 +705,10 @@ function drawPhaseBanner(phase){
   txShadow(mapNames[currentMap],W-160,20,8,'rgba(255,255,255,.8)','rgba(0,0,0,.4)');
   // TX indicator when on-chain mode active
   if(walletConnected){
-    const txLabel=onchainLastTxSig?'TX:'+onchainLastTxSig.slice(0,8)+'..':'TX:--';
-    txShadow(txLabel,W-160,38,5,'#40d080','rgba(0,0,0,.5)');
+    // v305: cache TX label — only rebuild when sig changes, not every frame
+    const _curSig=onchainLastTxSig||'';
+    if(_txLblSig!==_curSig){_txLblSig=_curSig;_txLblCache=_curSig?'TX:'+_curSig.slice(0,8)+'..':'TX:--';}
+    txShadow(_txLblCache,W-160,38,5,'#40d080','rgba(0,0,0,.5)');
   }
   // Commit hash display during commit phase (wallet integration)
   if(walletConnected&&walletLastCommitHash&&(phase==='confirming'||phase==='resolving')){
@@ -1456,7 +1461,10 @@ function drawConfirmingPhase(){
       onchainRevealPhase=false;onchainPendingSalt=null;
     }).catch(()=>{onchainRevealPhase=false;});
   }
-  if(t>=120){battlePhase='resolving';bpFrame=fr;bpResolveIdx=0;bpResolveQueue=generateResolveEvents();}
+  if(t>=120){battlePhase='resolving';bpFrame=fr;bpResolveIdx=0;bpResolveQueue=generateResolveEvents();
+    // v305: pre-truncate long event texts once; eliminates per-frame substring in drawResultPhase
+    for(let _ei=0;_ei<bpResolveQueue.length;_ei++){const _e=bpResolveQueue[_ei];if(_e.text&&_e.text.length>54)_e.text=_e.text.substring(0,52)+'..';}
+  }
 }
 
 // Dungeon floor card drop tables (GDD v1.0)
