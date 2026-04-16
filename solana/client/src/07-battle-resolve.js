@@ -1,3 +1,22 @@
+// v234: Pre-baked defeat vignette + card-hit glow — more gradient eliminations
+// Defeat vignette: createRadialGradient(W/2,H/2,60,W/2,H/2,W*0.6), outer rgba(200,10,10,1)
+// draw with globalAlpha=defPulse*0.25
+const _btlDefeatVig=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createRadialGradient(W/2,H/2,60,W/2,H/2,W*0.6);
+  grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(200,10,10,1)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;
+})();
+// Card-hit glow: r=28 red radial, baked at inner .7 alpha, draw with globalAlpha=glA
+const _btlCardHitGlow=(()=>{
+  const c=document.createElement('canvas');c.width=64;c.height=64;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createRadialGradient(32,32,0,32,32,28);
+  grd.addColorStop(0,'rgba(200,40,40,.7)');grd.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,64,64);return c;
+})();
+
 // v231: Pre-baked QTE vignette canvases — replaces createRadialGradient per frame
 // Baked at alpha=1; drawn with globalAlpha=vigIntensity for correct compositing
 const _qteVigDefend=(()=>{
@@ -282,11 +301,7 @@ function drawResolvingPhase(){
       // Red glow that follows card
       const glA=0.5*(1-eased);
       if(glA>0.02){
-        g.globalAlpha=glA;
-        const grd=g.createRadialGradient(cx_,cy_,0,cx_,cy_,28);
-        grd.addColorStop(0,'rgba(200,40,40,.7)');grd.addColorStop(1,'rgba(0,0,0,0)');
-        g.fillStyle=grd;g.fillRect(cx_-32,cy_-32,64,64);
-        g.globalAlpha=1;
+        g.globalAlpha=glA;g.drawImage(_btlCardHitGlow,(cx_-32)|0,(cy_-32)|0);g.globalAlpha=1;
       }
       // Card shards/spin: rotate as it leaves
       const angle=eased*Math.PI*1.5;
@@ -756,11 +771,7 @@ function drawResolvingPhase(){
     // v216: Player defeat flash — red vignette + "DEFEATED!" when player HP 0
     if(bpHP[0]===0){
       const defPulse=0.5+0.5*Math.sin(fr*0.22);
-      g.globalAlpha=defPulse*0.25;
-      const defVig=g.createRadialGradient(W/2,H/2,60,W/2,H/2,W*0.6);
-      defVig.addColorStop(0,'rgba(0,0,0,0)');defVig.addColorStop(1,'rgba(200,10,10,1)');
-      g.fillStyle=defVig;g.fillRect(0,0,W,H);
-      g.globalAlpha=1;
+      g.globalAlpha=defPulse*0.25;g.drawImage(_btlDefeatVig,0,0);g.globalAlpha=1;
       const defScale=1+Math.sin(fr*0.15)*0.06;
       g.save();g.translate(W/2,H/2-30);g.scale(defScale,defScale);
       txShadow('DEFEATED!',-42,0,18,'#ff4040','rgba(0,0,0,.9)');
