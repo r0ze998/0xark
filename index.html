@@ -9801,6 +9801,12 @@ const _cloudCanvases=(()=>{
   return cvs;
 })();
 
+// v389: pre-allocated direction data — eliminates 5 array objects × visible tiles per frame
+const _EB_NT=[0,0,0,0]; // neighbor tile type (filled per tile)
+const _EB_ISTOP=[true,false,false,false];
+const _EB_ISBOT=[false,true,false,false];
+const _EB_ISLFT=[false,false,true,false];
+const _EB_ISRGT=[false,false,false,true];
 function drawEdgeBlending(startTX,startTY,endTX,endTY){
   const m=getMap();
   for(let y=startTY;y<=endTY;y++){
@@ -9813,14 +9819,14 @@ function drawEdgeBlending(startTX,startTY,endTX,endTY){
       const tUp=getNeighborType(m,x,y,0,-1),tDn=getNeighborType(m,x,y,0,1);
       const tLf=getNeighborType(m,x,y,-1,0),tRt=getNeighborType(m,x,y,1,0);
       const h=tileHash(x,y);
-      // Check each neighbor for different terrain
-      const dirs=[[tUp,0,-1],[tDn,0,1],[tLf,-1,0],[tRt,1,0]];
-      for(const [nt,dx,dy] of dirs){
+      // Fill direction buffer (no per-tile allocation)
+      _EB_NT[0]=tUp;_EB_NT[1]=tDn;_EB_NT[2]=tLf;_EB_NT[3]=tRt;
+      for(let _di=0;_di<4;_di++){
+        const nt=_EB_NT[_di];
         if(nt<0)continue;
         const ngt=groundType(nt);
         if(ngt===gt)continue;
-        // Edge position
-        const isTop=dy===-1,isBot=dy===1,isLft=dx===-1,isRgt=dx===1;
+        const isTop=_EB_ISTOP[_di],isBot=_EB_ISBOT[_di],isLft=_EB_ISLFT[_di],isRgt=_EB_ISRGT[_di];
         // Grass-to-Water
         if(gt==='grass'&&ngt==='water'){
           if(isTop){for(let i=0;i<TW;i++){if(thRand(x,y,i+100)>.4)bx(px+i,py,1,2,'#3c8c3c');if(thRand(x,y,i+115)>.75)bx(px+i,py,1,1,'#4878a0');}}
