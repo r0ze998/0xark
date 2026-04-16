@@ -11183,7 +11183,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v350',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v352',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11466,6 +11466,7 @@ const _GROTH16_SNARK_SPIN=['Generating Groth16 proof (snarkjs)... |','Generating
 const _GROTH16_VIS_SPIN=['Generating Groth16 proof... |','Generating Groth16 proof... /','Generating Groth16 proof... -','Generating Groth16 proof... \\'];
 const _ROUND_LBL=['R0','R1','R2','R3','R4','R5','R6','R7','R8','R9','R10'];
 const _SCOUTED_RD=['scouted R0','scouted R1','scouted R2','scouted R3','scouted R4','scouted R5','scouted R6','scouted R7','scouted R8','scouted R9','scouted R10'];
+const _SCOUTED_ICON_LBL=(()=>{const a=['\uD83D\uDD0D fresh intel'];for(let i=0;i<_SCOUTED_RD.length;i++)a.push('\uD83D\uDD0D '+_SCOUTED_RD[i]);return a;})(); // v352: pre-baked \u{1F50D}+label
 const _V_ACT_LBL=['V:DRW','V:STL','V:BAR','V:SCT','V:CRD'];
 const _M_ACT_LBL=['M:DRW','M:STL','M:BAR','M:SCT','M:CRD'];
 // v336: pre-baked "You chose X!" labels — eliminates per-frame string concat during confirming phase
@@ -12541,8 +12542,8 @@ function drawSelectPhase(){
     }else if(sd&&sd.cards.length>0){
       // Scouted intel — show card details
       const staleRd=rd-sd.round;
-      const stLabel=staleRd>0?(_SCOUTED_RD[sd.round]||'scouted R'+sd.round):'fresh intel'; // v316
-      txShadow('\u{1F50D} '+stLabel,ppX+10,ppY+33,5,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
+      const _scIconLbl=staleRd>0?(_SCOUTED_ICON_LBL[sd.round+1]||('\uD83D\uDD0D scouted R'+sd.round)):_SCOUTED_ICON_LBL[0]; // v352: pre-baked
+      txShadow(_scIconLbl,ppX+10,ppY+33,5,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
       if(_scoutedSliceRef!==sd){_scoutedSliceRef=sd;_scoutedSlice=sd.cards.slice(0,Math.min(4,sd.cards.length));} // v306: cache slice
       const show_=_scoutedSlice;
       for(let ci=0;ci<show_.length;ci++){
@@ -14748,8 +14749,8 @@ function drawDungeonConfirm(){
   for(let _ti=0;_ti<treasures.length;_ti++){const _tr=treasures[_ti];if(_tr.map===1){f1Total++;if(!_tr.collected)f1Uncollected++;}}
   // v339: B1 danger level indicator
   {const _dv=areaDanger[1]||0;const _di=_dv>=DANGER_HIGH_THRESH?2:_dv>=DANGER_LOW_THRESH?1:0;
-  const _dlbl=['SAFE','LOW DANGER','HIGH DANGER'][_di];const _dcol=['#40b060','#d0a030','#d04040'][_di];
-  txShadow('\u26A0 B1: '+_dlbl,cx_+cw-110,cy_+50,7,_dcol,'rgba(0,0,0,.3)');}
+  const _dcol=['#40b060','#d0a030','#d04040'][_di];
+  txShadow(_B1_DANGER_LBL[_di],cx_+cw-110,cy_+50,7,_dcol,'rgba(0,0,0,.3)');}
   if(f1Uncollected>0){
     const _ck=f1Uncollected*100+f1Total;if(_f1ChestKey!==_ck){_f1ChestKey=_ck;_f1ChestLbl='\u25cf B1 chests: '+f1Uncollected+'/'+f1Total+' uncollected';} // v339: lazy cache
     txShadow(_f1ChestLbl,cx_+20,intelY,7,'#c0a840','rgba(0,0,0,.3)');
@@ -14800,6 +14801,8 @@ const _MKT_LISTING_PRICE_LBL=_MKT_LISTINGS.map(l=>l.price+' SOL');
 const _LOG_STAT_LABELS=['btl','got','lost',''];
 // v338: pre-baked card decay countdown strings 0..210s (CARD_DECAY_MS=210000)
 const _DECAY_TIME_LBL=(()=>{const a=[];for(let s=0;s<=300;s++){const mm=Math.floor(s/60),ss2=s%60;a.push(mm>0?mm+'m'+(ss2<10?'0':'')+ss2+'s':s+'s');}return a;})();
+// v352: pre-baked B1 danger labels
+const _B1_DANGER_LBL=['\u26A0 B1: SAFE','\u26A0 B1: LOW DANGER','\u26A0 B1: HIGH DANGER'];
 // v339: lazy cache for B1 chest intel label in dungeon confirm
 let _f1ChestLbl='',_f1ChestKey=-1;
 // v345: lazy cache for mission desc label in dungeon confirm

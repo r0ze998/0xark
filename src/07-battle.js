@@ -61,6 +61,7 @@ const _GROTH16_SNARK_SPIN=['Generating Groth16 proof (snarkjs)... |','Generating
 const _GROTH16_VIS_SPIN=['Generating Groth16 proof... |','Generating Groth16 proof... /','Generating Groth16 proof... -','Generating Groth16 proof... \\'];
 const _ROUND_LBL=['R0','R1','R2','R3','R4','R5','R6','R7','R8','R9','R10'];
 const _SCOUTED_RD=['scouted R0','scouted R1','scouted R2','scouted R3','scouted R4','scouted R5','scouted R6','scouted R7','scouted R8','scouted R9','scouted R10'];
+const _SCOUTED_ICON_LBL=(()=>{const a=['\uD83D\uDD0D fresh intel'];for(let i=0;i<_SCOUTED_RD.length;i++)a.push('\uD83D\uDD0D '+_SCOUTED_RD[i]);return a;})(); // v352: pre-baked \u{1F50D}+label
 const _V_ACT_LBL=['V:DRW','V:STL','V:BAR','V:SCT','V:CRD'];
 const _M_ACT_LBL=['M:DRW','M:STL','M:BAR','M:SCT','M:CRD'];
 // v336: pre-baked "You chose X!" labels — eliminates per-frame string concat during confirming phase
@@ -1136,8 +1137,8 @@ function drawSelectPhase(){
     }else if(sd&&sd.cards.length>0){
       // Scouted intel — show card details
       const staleRd=rd-sd.round;
-      const stLabel=staleRd>0?(_SCOUTED_RD[sd.round]||'scouted R'+sd.round):'fresh intel'; // v316
-      txShadow('\u{1F50D} '+stLabel,ppX+10,ppY+33,5,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
+      const _scIconLbl=staleRd>0?(_SCOUTED_ICON_LBL[sd.round+1]||('\uD83D\uDD0D scouted R'+sd.round)):_SCOUTED_ICON_LBL[0]; // v352: pre-baked
+      txShadow(_scIconLbl,ppX+10,ppY+33,5,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
       if(_scoutedSliceRef!==sd){_scoutedSliceRef=sd;_scoutedSlice=sd.cards.slice(0,Math.min(4,sd.cards.length));} // v306: cache slice
       const show_=_scoutedSlice;
       for(let ci=0;ci<show_.length;ci++){
