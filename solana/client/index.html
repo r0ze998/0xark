@@ -4068,6 +4068,113 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=glowPulse*0.6;
     px(1,8,1,1,'#f0c040');px(14,9,1,1,'#f8d060');px(1,12,1,1,'#f0c040');
     g.globalAlpha=1;
+  }else if(_cn==='NULLIFY'){
+    // NULLIFY — Perfect Cancel (cancel attack, Epic defense)
+    // Idle: hexagonal barrier pulses, nullification ring expands, static sparks
+    const nullPulse=0.4+0.4*_sFr035;
+    const staticPh=Math.floor(t/5)%6; // spark position
+    const hexExpand=Math.floor(t/10)%3; // barrier expansion
+    // Null field background (dark blue-grey)
+    g.globalAlpha=nullPulse*0.12;px(-1,-1,18,22,'#2848a0');g.globalAlpha=1;
+    // Hexagonal barrier frame (outer)
+    px(4,0,8,2,'#3878b0');px(2,2,4,2,'#3878b0');px(10,2,4,2,'#3878b0');
+    px(1,4,2,8,'#3878b0');px(13,4,2,8,'#3878b0');
+    px(2,12,4,2,'#3878b0');px(10,12,4,2,'#3878b0');px(4,14,8,2,'#3878b0');
+    // Inner barrier fill (semi-transparent)
+    g.globalAlpha=nullPulse*0.3;px(2,2,12,12,'#1838a0');g.globalAlpha=1;
+    // NULLIFY slash (X through the barrier — the cancellation)
+    g.globalAlpha=nullPulse*0.8;
+    // Diagonal slash 1 (top-left to bottom-right)
+    px(3,2,2,2,'#80c0f0');px(5,4,2,2,'#5898d0');px(7,6,2,2,'#80c0f0');px(9,8,2,2,'#5898d0');px(11,10,2,2,'#80c0f0');
+    // Diagonal slash 2 (top-right to bottom-left)
+    px(11,2,2,2,'#80c0f0');px(9,4,2,2,'#5898d0');px(7,6,2,2,'#80c0f0');px(5,8,2,2,'#5898d0');px(3,10,2,2,'#80c0f0');
+    g.globalAlpha=1;
+    // Center void (pure cancel point)
+    px(7,7,2,2,'#0a1020');
+    // Expanding null ring (3 phases)
+    g.globalAlpha=nullPulse*(0.6-hexExpand*0.15);
+    if(hexExpand===0){px(5,5,6,1,'#5898d0');px(5,10,6,1,'#5898d0');px(5,5,1,6,'#5898d0');px(10,5,1,6,'#5898d0');}
+    else if(hexExpand===1){px(4,4,8,1,'#4888c8');px(4,11,8,1,'#4888c8');px(4,4,1,8,'#4888c8');px(11,4,1,8,'#4888c8');}
+    else{px(3,3,10,1,'#3878b8');px(3,12,10,1,'#3878b8');px(3,3,1,10,'#3878b8');px(12,3,1,10,'#3878b8');}
+    g.globalAlpha=1;
+    // Static sparks (6 positions cycling)
+    const _nsx=[2,7,12,13,7,1],_nsy=[7,1,7,7,13,7];
+    g.globalAlpha=0.7;px(_nsx[staticPh],_nsy[staticPh],2,1,'#a0d0f0');g.globalAlpha=1;
+  }else if(_cn==='VOIDSTEP'){
+    // VOIDSTEP — Dimension Hop (one foot in another world, Epic flee)
+    // Idle: half-body phases, void portal below, dimensional drift
+    const voidPh=0.5+0.5*_sFr025; // phase shift
+    const stepCyc=Math.floor(t/8)%4; // step cycle
+    const portalSpin=Math.floor(t/6)%8; // portal swirl
+    // Void aura
+    g.globalAlpha=voidPh*0.12;px(-1,-1,18,22,'#283840');g.globalAlpha=1;
+    // Void portal beneath feet (dimensional gateway)
+    const _pvx=[7,9,10,9,7,5,4,5],_pvy=[14,14,15,16,17,16,15,14];
+    g.globalAlpha=0.4+voidPh*0.3;
+    px(_pvx[portalSpin],_pvy[portalSpin],2,2,'#487888');
+    px(_pvx[(portalSpin+4)%8],_pvy[(portalSpin+4)%8],2,2,'#68a8b8');
+    g.globalAlpha=1;
+    // Portal ring on floor
+    px(4,16,8,1,'#305860');px(3,15,2,2,'#305860');px(11,15,2,2,'#305860');
+    // Character body — half materialized (main-world half)
+    g.globalAlpha=0.8+voidPh*0.15;
+    // Upper body (solid)
+    px(5,2,6,4,'#486878');px(6,3,4,2,'#68908a');
+    // Eyes (teal glow)
+    px(6,3,2,1,'#c0d8e0');px(9,3,2,1,'#c0d8e0');
+    // Torso
+    px(4,6,8,4,'#486878');px(5,7,6,2,'#68908a');
+    // Arms
+    px(1,6,4,3,'#486878');px(12,6,4,3,'#486878');
+    g.globalAlpha=1;
+    // Lower body — phasing (void-world half, faded)
+    g.globalAlpha=voidPh*0.45;
+    px(4,10,8,4,'#305060');px(5,11,6,2,'#486070');
+    px(4,14,3,3,'#284858');px(9,14,3,3,'#284858');
+    g.globalAlpha=1;
+    // Void effect (ripples around transition point)
+    g.globalAlpha=0.5;
+    px(3,10,10,1,'#405868');px(4,10,8,1,'#486878');
+    g.globalAlpha=1;
+    // Step cycle trace (dimensional footprint)
+    const _ftrx=[4,6,9,11],_ftry=[17,18,18,17];
+    g.globalAlpha=0.25;px(_ftrx[stepCyc],_ftry[stepCyc],2,1,'#68a8b8');g.globalAlpha=1;
+  }else if(_cn==='HOLY LIGHT'){
+    // HOLY LIGHT — Divine Radiance (heal and purify, Epic recovery)
+    // Idle: light column pulses, holy rays rotate, purification shimmer
+    const holyPulse=0.4+0.4*_sFr06;
+    const rayRot=Math.floor(t/5)%8; // ray rotation
+    const purity=0.3+0.4*_sFr035;
+    // Warm golden radiance
+    g.globalAlpha=holyPulse*0.18;px(-1,-1,18,22,'#f8f060');g.globalAlpha=1;
+    // Holy light column (vertical beam from above)
+    g.globalAlpha=purity*0.6;px(6,0,4,18,'#f8f090');g.globalAlpha=1;
+    g.globalAlpha=purity*0.3;px(5,0,6,18,'#ffffc0');g.globalAlpha=1;
+    g.globalAlpha=purity*0.15;px(4,0,8,18,'#ffffe8');g.globalAlpha=1;
+    // Rotating holy rays (8 positions)
+    const _hrx=[7,9,10,9,7,5,4,5],_hry=[1,2,5,9,11,9,5,2];
+    g.globalAlpha=holyPulse*0.8;
+    px(_hrx[rayRot],_hry[rayRot],2,3,'#ffffff');
+    px(_hrx[(rayRot+4)%8],_hry[(rayRot+4)%8],2,3,'#f8f0a0');
+    g.globalAlpha=holyPulse*0.4;
+    px(_hrx[(rayRot+2)%8],_hry[(rayRot+2)%8],1,2,'#f8e870');
+    px(_hrx[(rayRot+6)%8],_hry[(rayRot+6)%8],1,2,'#f8e870');
+    g.globalAlpha=1;
+    // Central divine figure (abstract light being — cross/star shape)
+    px(7,3,2,10,'#f0c840');px(4,7,8,2,'#f0c840'); // cross body
+    px(7,3,2,10,'#f8e870'); // center highlight
+    // Horizontal cross glow
+    g.globalAlpha=holyPulse*0.6;px(3,7,10,2,'#f8f090');g.globalAlpha=1;
+    // Vertical cross glow
+    g.globalAlpha=purity*0.5;px(7,2,2,12,'#ffffff');g.globalAlpha=1;
+    // Cross center (pure white)
+    px(7,7,2,2,'#ffffff');
+    g.globalAlpha=holyPulse*0.9;px(7,7,2,2,'#ffffff');g.globalAlpha=1;
+    // Purification sparkles (4 corners)
+    g.globalAlpha=purity*0.7;
+    px(2,3,2,2,'#f8f090');px(12,3,2,2,'#f8f090');
+    px(2,13,2,2,'#f8f090');px(12,13,2,2,'#f8f090');
+    g.globalAlpha=1;
   }
 
   // Generic renderer for all other cards (type-based pixel art)
@@ -4075,7 +4182,8 @@ function drawCardCharacter(x,y,cardId,scale,time){
      _cn==='VOIDBLADE'||_cn==='TITAN'||_cn==='GENESIS'||_cn==='SINGULARITY'||_cn==='ARK BLESS'||
      _cn==='SANCTUARY'||_cn==='GEN PULSE'||_cn==='REAPER'||_cn==='ARK GATE'||
      _cn==='PHOENIX'||_cn==='PHANTOM'||_cn==='GRAVITY'||
-     _cn==='CRYSTAL'||_cn==='MAELSTROM'||_cn==='ELIXIR'){
+     _cn==='CRYSTAL'||_cn==='MAELSTROM'||_cn==='ELIXIR'||
+     _cn==='NULLIFY'||_cn==='VOIDSTEP'||_cn==='HOLY LIGHT'){
     // named sprites already drawn above — fall through to sparkle/reveal below
   } else {
     const cr=CD[cardId-1];if(!cr)return;
