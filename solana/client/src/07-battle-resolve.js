@@ -786,6 +786,17 @@ function drawResolvingPhase(){
       txShadow('DEFEATED!',-42,0,18,'#ff4040','rgba(0,0,0,.9)');
       g.restore();
     }
+    // v312: Streak pop flash during resolve events
+    if(streakDisplayTimer>0&&streakCount>0){
+      const _spA=Math.min(1,streakDisplayTimer/14);
+      const _scol=streakCount>=5?'#f0c830':streakCount>=3?'#e08040':'#a0e080';
+      const _spX=W-138,_spY=68;
+      g.globalAlpha=_spA*0.95;
+      bx(_spX,_spY-14,128,20,'rgba(0,0,0,.7)');
+      bx(_spX,_spY-14,128,2,_scol);
+      txShadow('\u2605 STREAK '+streakCount+'x',_spX+8,_spY+1,9,_scol,'rgba(0,0,0,.5)');
+      g.globalAlpha=1;
+    }
   }else{
     // Anti-softlock: if player has 0 cards and 0 spells after resolve, give a pity card
     if(cdCount(pl[0].cd)===0&&sp.s<=0&&sp.b<=0&&sp.c<=0){
@@ -861,9 +872,14 @@ function drawResultPhase(){
       bx(rix+5,riy+2,2,3,'#f0c030');bx(rix+4,riy+4,3,1,'#f0c030');bx(rix+4,riy+5,2,3,'#f0c030');
     }}
     txShadow(actName,cx_+4,cy_+28,8,actCol,'rgba(0,0,0,.2)');
-    // Card count
+    // Card count + v312: delta from round start
     const cc=cdCount(pl[col].cd);
     txShadow(cc+'/5 cards',cx_+4,cy_+42,7,'#988870','rgba(0,0,0,.15)');
+    const _delta=cc-bpPreRoundCards[col];
+    if(_delta!==0){
+      const _dc=_delta>0?'#50d080':'#d05050';
+      txShadow((_delta>0?'+':'')+_delta,cx_+colW-8,cy_+42,8,_dc,'rgba(0,0,0,.3)');
+    }
     // Mini card bar
     for(let i=0;i<5;i++){
       const cd=pl[col].cd[i];

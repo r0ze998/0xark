@@ -1649,6 +1649,7 @@ function rivalChooseAction(rIdx){
 let bpPlayerBarrier=false; // track if player used barrier this round
 let bpRivalActions=[0,0]; // track rival actions this round (pre-generated at select start)
 let bpRivalTells=['','']; // body-language tells shown during select phase
+let bpPreRoundCards=[0,0,0]; // v312: card counts at round start, for delta display in result
 let bpTellWasAccurate=[false,false]; // whether each rival's tell matched actual action
 let bpRdIncremented=false; // guard: prevent double-increment of rd when pending discard
 let bpActionsGenerated=false; // guard: only generate once per round
@@ -1682,6 +1683,7 @@ function generateRivalTells(){
   bpRivalActions[0]=rivalChooseAction(1);
   bpRivalActions[1]=rivalChooseAction(2);
   bpActionsGenerated=true;
+  bpPreRoundCards[0]=cdCount(pl[0].cd);bpPreRoundCards[1]=cdCount(pl[1].cd);bpPreRoundCards[2]=cdCount(pl[2].cd); // v312: capture pre-round counts
   for(let ri=0;ri<2;ri++){
     const actualAct=bpRivalActions[ri];
     const tells=RIVAL_BATTLE_TELLS[ri];
