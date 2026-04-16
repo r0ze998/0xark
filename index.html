@@ -2411,20 +2411,20 @@ function drawMPLobby(){
   }
 }
 
+// v281: hoisted MP player sprite colors
+const _MP_SPRITE_COLS=['#d860a0','#d8b028','#48b8e8'];
 // Draw other multiplayer players on map as real sprites
 function drawMPPlayers(){
   if(!mp.connected||mp.phase!=='playing')return;
-  mp.otherPlayers.forEach(op=>{
-    if(op.area!==currentMap)return;
+  for(let _mpi=0;_mpi<mp.otherPlayers.length;_mpi++){
+    const op=mp.otherPlayers[_mpi];
+    if(op.area!==currentMap)continue;
     // ZK fog-of-war: in dungeon, only render if tile is revealed AND within visible radius
     // Town (map 0) is always visible — no fog restriction
-    if(inDungeon&&!isVisibleThroughFog(op.x,op.y,3))return;
+    if(inDungeon&&!isVisibleThroughFog(op.x,op.y,3))continue;
     const sx=op.x*TW-camX,sy=op.y*TH-camY-16;
-    if(sx<-TW*2||sx>W+TW||sy<-TH*2||sy>H+TH)return;
-    // Draw as colored sprite (like player but different color)
-    const spriteColors=['#d860a0','#d8b028','#48b8e8'];
-    const ci=mp.otherPlayers.indexOf(op)%3;
-    const col=spriteColors[ci];
+    if(sx<-TW*2||sx>W+TW||sy<-TH*2||sy>H+TH)continue;
+    const col=_MP_SPRITE_COLS[_mpi%3];
     // Body
     bx(sx+6,sy+8,20,16,col);bx(sx+8,sy+10,16,12,'rgba(255,255,255,.15)');
     // Head
@@ -2438,7 +2438,7 @@ function drawMPPlayers(){
     const nameW=(op.name||'Player').length*6;
     bx(sx+16-nameW/2-2,sy-12,nameW+4,10,'rgba(0,0,0,.5)');
     txShadow(op.name||'Player',sx+16-nameW/2,sy-4,5,'#fff','rgba(0,0,0,.4)');
-  });
+  }
 }
 
 // Draw multiplayer connection status in HUD
@@ -2768,12 +2768,12 @@ function drawRunSummary(){
   if(d.lostCards.length>0){
     bx(px+20,py+76,panelW-40,1,'#301010');
     txShadow('Cards lost:',px+20,py+90,7,'#d06060','rgba(0,0,0,.3)');
-    d.lostCards.forEach((cr,i)=>{
-      const ly=py+107+i*18;
+    for(let _lci=0;_lci<d.lostCards.length;_lci++){
+      const cr=d.lostCards[_lci],ly=py+107+_lci*18;
       const rCol=['','#888898','#60b060','#6090d8','#c060c0','#f0c830'][cr.r]||'#888898';
       txShadow('\u2717 '+cr.n,px+28,ly,6,'#f06060','rgba(0,0,0,.3)');
       txShadow((['','C','U','R','E','L'][cr.r]||'?'),px+panelW-40,ly,6,rCol,'rgba(0,0,0,.3)');
-    });
+    }
   }else{
     bx(px+20,py+76,panelW-40,1,'#103010');
     txShadow('All cards preserved!',px+20,py+90,7,'#50e090','rgba(0,0,0,.3)');
@@ -10983,7 +10983,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v280',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v281',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
