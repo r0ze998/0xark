@@ -5896,6 +5896,9 @@ for(let i=0;i<40;i++){
   _LAVA_SX18[i]=Math.sin(i*1.8);_LAVA_CX18[i]=Math.cos(i*1.8);
   _LAVA_SY21[i]=Math.sin(i*2.1);_LAVA_CY21[i]=Math.cos(i*2.1);
 }
+// v394: 8-entry walkBob table — NPC walk cycle steps by 0.25, period=2, 8 unique sin values
+const _WALK_BOB8=new Float32Array(8);
+for(let i=0;i<8;i++)_WALK_BOB8[i]=Math.sin(i*Math.PI*0.25)*2;
 // v251: Pre-baked lake tile color strings — eliminates template literal creation per lake tile per dirty frame
 // rv=(h&5)-2; h&5 ∈ {0,1,4,5} → rv ∈ {-2,-1,2,3}. Indexed by h&5 (sparse array, slots 2,3 unused).
 const _LAKE_TOP_F3 =['rgb(46,110,166)','rgb(47,111,167)',null,null,'rgb(50,114,170)','rgb(51,115,171)'];
@@ -7331,7 +7334,8 @@ function drawNPCSprite(npc){
   const vx=(npc.visualX!==undefined)?npc.visualX:npc.x*TW;
   const vy=(npc.visualY!==undefined)?npc.visualY:npc.y*TH;
   // Walk bob: slight vertical bounce while walking
-  const walkBob=(npc.walking&&npc.walkFrame!==undefined)?Math.sin(npc.walkFrame*Math.PI)*2:0;
+  // v394: table lookup (walkFrame steps by 0.25 → exact multiples of 1/4, 8 unique values)
+  const walkBob=(npc.walking&&npc.walkFrame!==undefined)?_WALK_BOB8[(npc.walkFrame*4|0)%8]:0;
   const px=vx-camX,py=vy-camY-16+walkBob;
   if(px<-48||px>W+48||py<-56||py>H+56)return;
   const d=npc.dir;
