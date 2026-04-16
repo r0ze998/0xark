@@ -838,9 +838,11 @@ for(let m=0;m<FOG_MAP_COUNT;m++){
 // Fog color tints: town=blue-black, dungeon floors=deep purple-black
 const FOG_COLORS=['#0a0a1e','#0a0818','#0c0818','#0e0820','#0c0a1c','#100818'];
 // Fog particle pool for atmospheric drifting specks over hidden areas
+// v229: pre-compute sinPh/cosPh at creation so sin-addition formula avoids per-frame sin() calls
 const fogParticles=[];
 for(let i=0;i<40;i++){
-  fogParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.1+Math.random()*0.15,vy:-0.05+Math.random()*0.1,phase:Math.random()*Math.PI*2,life:Math.random()});
+  const phase=Math.random()*Math.PI*2;
+  fogParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.1+Math.random()*0.15,vy:-0.05+Math.random()*0.1,phase,sinPh:Math.sin(phase),cosPh:Math.cos(phase),life:Math.random()});
 }
 
 function fogRevealAll(mapIdx){
