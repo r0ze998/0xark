@@ -847,7 +847,7 @@ for(let i=0;i<40;i++){
 
 function fogRevealAll(mapIdx){
   for(let y=0;y<MH;y++)for(let x=0;x<MW;x++)fogRevealed[mapIdx][y][x]=true;
-  fogCacheDirty=true;
+  fogCacheDirty=true;_fogPctDirty[mapIdx]=true;
 }
 
 function fogRevealRadius(mapIdx,cx,cy,radius){
@@ -868,7 +868,7 @@ function fogRevealRadius(mapIdx,cx,cy,radius){
     }
   }
   if(changed){
-    fogCacheDirty=true;
+    fogCacheDirty=true;_fogPctDirty[mapIdx]=true;
     // v218: Fog-reveal sparkle particles — brief shimmer on newly uncovered tiles
     if(particles&&newlyRevealed.length>0&&newlyRevealed.length<30){
       newlyRevealed.forEach(([rx,ry])=>{
@@ -904,7 +904,7 @@ function fogRevealRoom(mapIdx,room){
     }
   }
   if(changed){
-    fogCacheDirty=true;
+    fogCacheDirty=true;_fogPctDirty[mapIdx]=true;
     // v218: Room discovery burst — sprinkle sparkle particles across newly revealed room
     if(particles&&newRoomTiles>=4){
       const roomCX=(room.x+room.w/2)*TW,roomCY=(room.y+room.h/2)*TH;
@@ -977,18 +977,22 @@ function fogClear(){
   fogSave();
 }
 
+// v280: exploration % cache — avoids 1200-cell scan every frame; dirty when fog changes
+const _fogPctCache=new Array(FOG_MAP_COUNT).fill(-1);
+const _fogPctDirty=new Array(FOG_MAP_COUNT).fill(true);
 function fogExploredPercent(mapIdx){
+  if(!_fogPctDirty[mapIdx]&&_fogPctCache[mapIdx]>=0)return _fogPctCache[mapIdx];
+  _fogPctDirty[mapIdx]=false;
   const m=maps[mapIdx];
   let total=0,revealed=0;
   for(let y=0;y<MH;y++){
     for(let x=0;x<MW;x++){
-      if(WALKABLE.has(m[y]?.[x])){
-        total++;
-        if(fogRevealed[mapIdx][y][x])revealed++;
-      }
+      if(WALKABLE.has(m[y]?.[x])){total++;if(fogRevealed[mapIdx][y][x])revealed++;}
     }
   }
-  return total===0?0:Math.round((revealed/total)*100);
+  const pct=total===0?0:Math.round((revealed/total)*100);
+  _fogPctCache[mapIdx]=pct;
+  return pct;
 }
 
 // Tile noise hash for fog texture

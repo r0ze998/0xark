@@ -971,6 +971,8 @@ function drawCpxTreesInRange(tyMin,tyMax){
   g.imageSmoothingEnabled=false;
 }
 
+// v280: escape exit cache — exits[] is static, only re-find when currentMap changes
+let _escExitCache=null,_escExitForMap=-1;
 function dMap(){
   updateCamera();
 
@@ -1406,9 +1408,9 @@ function dMap(){
   // v118: Spell charge orb indicators (visual pips replace plain numbers)
   // v247: static arrays instead of per-frame object literals + forEach
   {
-    const _spVals=[sp.s,sp.b,sp.c]; // v262: only dynamic part; statics hoisted
     for(let si=0;si<3;si++){
-      const sVal=_spVals[si],sCX=_ORB_SCX[si],warn=sVal===0;
+      const sVal=si===0?sp.s:si===1?sp.b:sp.c; // v280: no array alloc
+      const sCX=_ORB_SCX[si],warn=sVal===0;
       const lCol=warn?'#804040':_ORB_SLC[si];
       txShadow(_ORB_SL[si],sCX,hudY+20,7,lCol,'rgba(0,0,0,.35)');
       const orbX=sCX+26,orbY=hudY+12,orbW=7,orbH=7,orbGap=4;
@@ -1436,9 +1438,10 @@ function dMap(){
     }else{
       txShadow('DUNGEON',30,hudY+52,7,'#a07820','rgba(0,0,0,.4)');
     }
-    // v97: Escape compass — directional arrow toward the nearest escape exit
+    // v97/v280: Escape compass — cached per currentMap (exits[] is static)
     {
-      const escExit=exits.find(e=>e.fromMap===currentMap&&e.isEscape);
+      if(_escExitForMap!==currentMap){_escExitForMap=currentMap;_escExitCache=exits.find(e=>e.fromMap===currentMap&&e.isEscape)||null;}
+      const escExit=_escExitCache;
       if(escExit&&escExit.tiles.length>0){
         const [etx,ety]=escExit.tiles[0];
         const dx=etx-pl[0].x,dy=ety-pl[0].y;
@@ -1463,16 +1466,11 @@ function dMap(){
   }
   // Footstep counter
   txShadow('STEPS:'+stepCounter,100,hudY+52,7,'#989080','rgba(0,0,0,.35)');
-  // v102: Dungeon exploration % — revealed walkable tiles / total walkable tiles
+  // v102/v280: Dungeon exploration % — cached via fogExploredPercent (only recomputed on fog change)
   if(inDungeon&&maps[currentMap]){
-    const m_=maps[currentMap];
-    let total=0,revealed=0;
-    for(let y=0;y<MH;y++){for(let x=0;x<MW;x++){if(WALKABLE.has(m_[y]?.[x])){total++;if(fogRevealed[currentMap][y]?.[x])revealed++;}}}
-    if(total>0){
-      const pct=Math.floor(revealed/total*100);
-      const expCol=pct<30?'#888878':pct<70?'#a0c080':'#40d080';
-      txShadow('EXP:'+pct+'%',182,hudY+52,7,expCol,'rgba(0,0,0,.35)');
-    }
+    const pct=fogExploredPercent(currentMap);
+    const expCol=pct<30?'#888878':pct<70?'#a0c080':'#40d080';
+    txShadow('EXP:'+pct+'%',182,hudY+52,7,expCol,'rgba(0,0,0,.35)');
     // v136: Rival floor trackers — V:B2 / M:B3 so player knows where rivals are
     {const vegaMap=rivalMaps[0],miraMap=rivalMaps[1];
     const vegaLbl='V:'+(vegaMap===0?'TWN':'B'+vegaMap);
@@ -1751,7 +1749,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v278',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v280',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
