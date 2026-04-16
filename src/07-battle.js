@@ -63,6 +63,8 @@ const _ROUND_LBL=['R0','R1','R2','R3','R4','R5','R6','R7','R8','R9','R10'];
 const _SCOUTED_RD=['scouted R0','scouted R1','scouted R2','scouted R3','scouted R4','scouted R5','scouted R6','scouted R7','scouted R8','scouted R9','scouted R10'];
 const _V_ACT_LBL=['V:DRW','V:STL','V:BAR','V:SCT','V:CRD'];
 const _M_ACT_LBL=['M:DRW','M:STL','M:BAR','M:SCT','M:CRD'];
+// v336: pre-baked "You chose X!" labels — eliminates per-frame string concat during confirming phase
+const _CHOSE_LBL=_ACTION_NAMES.map(n=>'You chose '+n+'!');
 function _getTypeInfo(t,r){
   if(t==='defense')return _DEF_TYPE_INFOS[Math.min(4,(r||1)-1)];
   if(t==='recovery')return _REC_TYPE_INFOS[Math.min(4,(r||1)-1)];
@@ -1408,7 +1410,7 @@ function drawSelectPhase(){
       if(t===bpTargetSelectIdx){bx(W/2-130,y-2,260,28,'rgba(192,168,96,.22)');txShadow('\u25B6',W/2-134,y+14,10,'#c04040','rgba(0,0,0,.3)');}
       g.globalAlpha=tFled?0.45:1;
       txShadow(pl[t].n,W/2-106,y+14,14,t===bpTargetSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
-      txShadow(tFled?'FLED':pl[t].cc+' cards',W/2+40,y+14,10,tFled?'#a04040':'#908878','rgba(0,0,0,.15)');
+      txShadow(tFled?'FLED':(_SPLASH_CARD_LBL[pl[t].cc]||(pl[t].cc+' cards')),W/2+40,y+14,10,tFled?'#a04040':'#908878','rgba(0,0,0,.15)');
       g.globalAlpha=1;
     }
   }
@@ -1541,7 +1543,7 @@ function drawConfirmingPhase(){
       }
     }
   }else{
-    if(t<40)txShadow('You chose '+_ACTION_NAMES[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
+    if(t<40)txShadow(_CHOSE_LBL[bpAction]||('You chose '+_ACTION_NAMES[bpAction]+'!'),16,H-38,14,'#303028','rgba(200,180,140,.3)');
     else if(t<60){txShadow(_POSEIDON_SPIN[Math.floor(t/4)%4],16,H-38,12,'#9945FF','rgba(0,0,0,.3)');} // v316
     else if(t<80){
       txShadow((zkProofStatus==='verified'?_ZK_VERIFIED_SPIN:_ZK_PROOF_SPIN)[Math.floor(t/3)%4],16,H-38,12,zkProofStatus==='verified'?'#40d080':'#14F195','rgba(0,0,0,.3)'); // v316
