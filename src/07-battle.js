@@ -226,6 +226,39 @@ function drawCardBar(x,y,w,cards,maxCards){
   }
 }
 
+// v230: Pre-baked battle sprite shadow/glow ellipses — replaces per-frame ellipse() calls
+// Shadow ellipse (dark oval under sprite feet): one per scale variant
+const _btlShadow3=(()=>{
+  const c=document.createElement('canvas');c.width=48;c.height=20;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(24,10,21,7.2,0,0,Math.PI*2);ctx.fill();
+  return c;
+})(); // scale=3 sprites
+const _btlShadow22=(()=>{
+  const c=document.createElement('canvas');c.width=36;c.height=16;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(18,8,15.4,5.3,0,0,Math.PI*2);ctx.fill();
+  return c;
+})(); // scale=2.2 sprites
+// Glow aura ellipses: one per character (color-coded)
+function _mkGlow(sw,sh,col){
+  const c=document.createElement('canvas');c.width=sw*2+4;c.height=sh*2+4;
+  const ctx=c.getContext('2d');const cx_=sw+2,cy_=sh+2;
+  ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(cx_,cy_,sw,sh,0,0,Math.PI*2);ctx.fill();
+  return {canvas:c,hw:sw+2,hh:sh+2};
+}
+const _btlGlowPlayer=_mkGlow(19,33,'rgba(40,88,200,.22)');   // player (scale 3)
+const _btlGlowVega=_mkGlow(19,33,'rgba(200,32,40,.22)');     // VEGA (scale 3)
+const _btlGlowMira=_mkGlow(14,24,'rgba(40,180,160,.22)');    // MIRA (scale 2.2)
+// Low-HP battle vignette (pre-baked at alpha=1, globalAlpha=dangerPulse at draw time)
+const _btlLowHpVig=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createRadialGradient(W/2,H/2,H*0.28,W/2,H/2,H*0.72);
+  grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(200,20,20,1)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;
+})();
+
 // Draw FRLG-style opponent info box (top-left)
 function drawOpponentInfoBox(){
   const rival=pl[1]; // Primary opponent (VEGA)
@@ -436,15 +469,16 @@ function drawBattleSprite(p,cx,cy,scale,facingAway){
   cy=cy+Math.round(Math.sin(fr*0.055+breathPhase)*breathAmp);
   const w=14*s,h=20*s;
   const ox=cx-w/2,oy=cy-h/2;
-  // Shadow
-  g.fillStyle='rgba(0,0,0,.25)';g.beginPath();g.ellipse(cx,oy+h+2*s,w*.5,h*.12,0,0,Math.PI*2);g.fill();
+  // Shadow (pre-baked canvas — no path/rasterize overhead)
+  const _shC=s>=2.5?_btlShadow3:_btlShadow22,_shHW=s>=2.5?24:18,_shHH=s>=2.5?10:8;
+  g.drawImage(_shC,(cx-_shHW)|0,(oy+h+2*s-_shHH)|0);
 
   // === KENNEY BATTLE SPRITE ===
   if(pirateSheetLoaded){
     const kChar=p===pl[0]?K.captain:(p===pl[1]?K.pirate2:K.pirate3);
     // Glow aura
-    const glowC=p===pl[0]?'rgba(40,88,200,.22)':p===pl[1]?'rgba(200,32,40,.22)':'rgba(40,180,160,.22)';
-    g.fillStyle=glowC;g.beginPath();g.ellipse(cx,cy,w*.45,h*.55,0,0,Math.PI*2);g.fill();
+    const gc=p===pl[0]?_btlGlowPlayer:p===pl[1]?_btlGlowVega:_btlGlowMira;
+    g.drawImage(gc.canvas,(cx-gc.hw)|0,(cy-gc.hh)|0);
     // Scale the 16px sprite to battle size (scale*2 for tile size = 32px baseline)
     const tileScale=s/1.0; // s=3 → 48px sprite
     const sprW=16*tileScale*2, sprH=16*tileScale*2;
@@ -1218,10 +1252,7 @@ function drawSelectPhase(){
   // v217: Low HP danger pulse — screen-edge red vignette when player HP critical
   if(bpHP[0]===1){
     const dangerPulse=0.25+0.22*Math.sin(fr*0.28);
-    const dVig=g.createRadialGradient(W/2,H/2,H*0.28,W/2,H/2,H*0.72);
-    dVig.addColorStop(0,'rgba(0,0,0,0)');
-    dVig.addColorStop(1,`rgba(200,20,20,${dangerPulse})`);
-    g.fillStyle=dVig;g.fillRect(0,0,W,H);
+    g.globalAlpha=dangerPulse;g.drawImage(_btlLowHpVig,0,0);g.globalAlpha=1;
     // "DANGER" text, very faint, top-center
     const dA=0.12+0.10*Math.sin(fr*0.28);
     g.globalAlpha=dA;
