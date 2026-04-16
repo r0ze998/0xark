@@ -7328,6 +7328,10 @@ function drawMiniCard(x,y,cd){
 // ───────────────────────────────────────────────────────────────────────
 // v254: Hoisted static arrays — eliminates per-frame inline literal allocation in synthesis + NPC dialog render
 const _SYNTH_RAR_LABELS=['','Common','Uncommon','Rare','Epic'];
+// v262: Additional per-frame inline literals hoisted
+const _WLD_FLOOR_NUMS=['','B1','B2','B3','B4','B5'];
+const _WLD_RAR_COLS=['','#888898','#50d060','#6090f0','#c060e0','#fff8a0'];
+const _TITLE_VOID_COLS=['#5014b4','#5c1cc0','#6824cc','#742cd8','#8034e4'];
 // ═══════════════════════════════════════
 // v155: DUNGEON TURN SYSTEM
 // ═══════════════════════════════════════
@@ -7762,8 +7766,7 @@ function drawFloorTitle(){
   g.fillRect(0,H/2+52,W,3);
 
   // ── FLOOR NUMBER (giant, centered, glowing) ──
-  const floorNums=['','B1','B2','B3','B4','B5'];
-  const flNum=floorNums[f]||('B'+f);
+  const flNum=_WLD_FLOOR_NUMS[f]||('B'+f); // v262: hoisted
   const numAlpha=t<20?Math.max(0,(t-10)/10):1;
   const numPulse=1+Math.sin(t*0.08)*0.04;
   // Glow shadow
@@ -8089,8 +8092,7 @@ function drawWildEncounter(){
     // v119: Dramatic silhouette reveal — rarity-hinted card appearance
     const wCr=CD[wildEncounterCard];
     const wRar=(wCr&&wCr.r)||1;
-    const wRarCols=['','#888898','#50d060','#6090f0','#c060e0','#fff8a0'];
-    const wRcol=wRarCols[wRar]||'#f0c830';
+    const wRcol=_WLD_RAR_COLS[wRar]||'#f0c830'; // v262: hoisted
     const prog=Math.min(1,t/24);
     const pulse=0.5+Math.sin(t*0.35)*0.5;
     // Dim overlay
@@ -8908,7 +8910,7 @@ function dTitle(){
     const bx_=(b*136+fr*0.08)%W;
     const ba=0.025+0.02*Math.sin(fr*0.015+b*1.2);
     g.globalAlpha=ba;
-    g.fillStyle=['#5014b4','#5c1cc0','#6824cc','#742cd8','#8034e4'][b];
+    g.fillStyle=_TITLE_VOID_COLS[b]; // v262: hoisted
     g.beginPath();g.moveTo(bx_,0);g.lineTo(bx_+18,0);g.lineTo(bx_+60,H);g.lineTo(bx_+42,H);g.closePath();g.fill();
     g.globalAlpha=1;
   }
