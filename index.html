@@ -11182,7 +11182,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v349',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v350',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -17723,7 +17723,7 @@ function update(){
           sfxEncounterDramatic();
           hitPause(3); // freeze-frame dramatic tension at encounter trigger
           const rivalName=r.n;
-          const isRivalInitiated=ai.state==='hunting';
+          const isRivalInitiated=rivalAI[idx].state==='hunting'; // v350: fix — ai is battle cursor int, not rival AI obj
           // v294: use floor+hunt-tiered dialog (mirrors checkDungeonRivalEncounter path)
           const rCards=cdCount(r.cd);
           const base=_pickRivalLine(idx,isRivalInitiated);
