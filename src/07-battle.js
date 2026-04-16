@@ -931,12 +931,17 @@ function drawActionGrid(){
       if(avail&&battlePhase==='select'){
         let badge='',badgeCol='#606060',badgeBg='rgba(0,0,0,.35)';
         const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
-        if(idx===0){// DRAW — show if floor pool has new cards for player
+        if(idx===0){// DRAW — show rarity tier of best unowned card in pool (v326)
           const pool_=DUNGEON_FLOOR_CARDS[currentMap]||[];
           const vault_=pl[0].vault||new Set();
-          let newInPool=0;for(let _pi=0;_pi<pool_.length;_pi++){if(!vault_.has(pool_[_pi]))newInPool++;} // v272: no filter alloc
-          if(newInPool>0){badge=_NEW_IN_POOL[newInPool]||'+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';} // v320
-          else if(pool_.length>0){badge='ALL OWNED';badgeCol='#888870';badgeBg='rgba(0,0,0,.3)';}
+          let newInPool=0,maxNewRar=0;
+          for(let _pi=0;_pi<pool_.length;_pi++){const _cid=pool_[_pi];if(!vault_.has(_cid)){newInPool++;const _cr=CD[_cid-1];if(_cr&&_cr.r>maxNewRar)maxNewRar=_cr.r;}}
+          if(newInPool>0){
+            if(maxNewRar>=5){badge='\u2605 LEGEND';badgeCol='#ffe080';badgeBg='rgba(40,30,0,.7)';}
+            else if(maxNewRar>=4){badge='\u2605 EPIC';badgeCol='#f0c030';badgeBg='rgba(30,20,0,.7)';}
+            else if(maxNewRar>=3){badge='\u2605 RARE';badgeCol='#b060e0';badgeBg='rgba(20,5,30,.7)';}
+            else{badge=_NEW_IN_POOL[newInPool]||'+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';}
+          }else if(pool_.length>0){badge='ALL OWNED';badgeCol='#888870';badgeBg='rgba(0,0,0,.3)';}
         }else if(idx===1){// STEAL — show barrier state + scouted rarity when known (v322)
           const tgtBarrier=bpRivalActions[vsRivalIdx-1]===2;
           if(tgtBarrier){badge='BLOCKED';badgeCol='#6080d0';badgeBg='rgba(10,20,60,.6)';}
@@ -952,9 +957,9 @@ function drawActionGrid(){
               badgeBg=_maxR>=4?'rgba(40,30,0,.6)':'rgba(40,20,0,.6)';
             }else{badge='\u2714 OPEN';badgeCol='#e08030';badgeBg='rgba(40,20,0,.6)';}
           }
-        }else if(idx===2){// BARRIER — advise based on last round rival action
-          const lastRound=battleRoundHistory[0];
-          if(lastRound&&(lastRound.r1a===1||lastRound.r2a===1)){badge='NEEDED';badgeCol='#e05040';badgeBg='rgba(40,0,0,.6)';}
+        }else if(idx===2){// BARRIER — use this round's rival action prediction (v326)
+          const rivalPlanSteal=bpRivalActions[vsRivalIdx-1]===1;
+          if(rivalPlanSteal&&!bpPlayerBarrier){badge='DEFEND!';badgeCol='#e05040';badgeBg='rgba(40,0,0,.6)';}
           else if(bpPlayerBarrier){badge='ACTIVE';badgeCol='#4080d0';badgeBg='rgba(0,20,50,.6)';}
           else{badge='OPTIONAL';badgeCol='#608880';badgeBg='rgba(0,0,0,.35)';}
         }else if(idx===3){// SCOUT — show staleness

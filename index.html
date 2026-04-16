@@ -9404,10 +9404,11 @@ let _mapLblCache='MAP:0%',_mapLblKey=-1; // map exploration % lazy cache
 let _timeLblMapCache='',_timeLblMapMin=-1; // season timer lazy cache for canvas HUD (per minute)
 // v324: pre-baked small positive-int labels (+0…+20) for overflow counts
 const _PLUS_INT=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('+'+i);return a;})();
-// v325: lazy caches for rival off-floor HUD strip, trail exclamation, pot display
+// v325-v326: lazy caches for rival off-floor HUD strip, trail exclamation, pot display, rival alert
 let _rInfoLbl=['',''],_rInfoKey=[-1,-1]; // rival HUD info strip (key=rFloor*10+rcc2)
 let _trailLbl=['',''],_trailNm=['','']; // rival trail '!' label (key=player name[0])
 let _potLblCache='POT:0.00',_potLblRef=-1; // POT: display (key=stakePotAmount*100|0)
+let _alertLblCache='',_alertLblRef=''; // rival alert label (key=rivalAlertName)
 // v319: pre-baked distance-tile strings + near-win lazy cache
 const _DIST_T=(()=>{const a=[];for(let i=0;i<=50;i++)a.push(i+'t');return a;})();
 let _nearWinStr='RIVAL NEAR WIN!',_nearWinKey=-1;
@@ -11143,7 +11144,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v325',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v326',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11317,7 +11318,8 @@ function dMap(){
     const a=Math.min(1,rivalAlert/30);
     g.globalAlpha=a;
     win(W/2-120,6,240,24);
-    txShadow(rivalAlertName+' entered your map!',W/2-110,22,6,'#c04040','rgba(0,0,0,.4)');
+    if(_alertLblRef!==rivalAlertName){_alertLblRef=rivalAlertName;_alertLblCache=rivalAlertName+' entered your map!';} // v326: lazy
+    txShadow(_alertLblCache,W/2-110,22,6,'#c04040','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
 
@@ -12293,12 +12295,17 @@ function drawActionGrid(){
       if(avail&&battlePhase==='select'){
         let badge='',badgeCol='#606060',badgeBg='rgba(0,0,0,.35)';
         const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
-        if(idx===0){// DRAW — show if floor pool has new cards for player
+        if(idx===0){// DRAW — show rarity tier of best unowned card in pool (v326)
           const pool_=DUNGEON_FLOOR_CARDS[currentMap]||[];
           const vault_=pl[0].vault||new Set();
-          let newInPool=0;for(let _pi=0;_pi<pool_.length;_pi++){if(!vault_.has(pool_[_pi]))newInPool++;} // v272: no filter alloc
-          if(newInPool>0){badge=_NEW_IN_POOL[newInPool]||'+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';} // v320
-          else if(pool_.length>0){badge='ALL OWNED';badgeCol='#888870';badgeBg='rgba(0,0,0,.3)';}
+          let newInPool=0,maxNewRar=0;
+          for(let _pi=0;_pi<pool_.length;_pi++){const _cid=pool_[_pi];if(!vault_.has(_cid)){newInPool++;const _cr=CD[_cid-1];if(_cr&&_cr.r>maxNewRar)maxNewRar=_cr.r;}}
+          if(newInPool>0){
+            if(maxNewRar>=5){badge='\u2605 LEGEND';badgeCol='#ffe080';badgeBg='rgba(40,30,0,.7)';}
+            else if(maxNewRar>=4){badge='\u2605 EPIC';badgeCol='#f0c030';badgeBg='rgba(30,20,0,.7)';}
+            else if(maxNewRar>=3){badge='\u2605 RARE';badgeCol='#b060e0';badgeBg='rgba(20,5,30,.7)';}
+            else{badge=_NEW_IN_POOL[newInPool]||'+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';}
+          }else if(pool_.length>0){badge='ALL OWNED';badgeCol='#888870';badgeBg='rgba(0,0,0,.3)';}
         }else if(idx===1){// STEAL — show barrier state + scouted rarity when known (v322)
           const tgtBarrier=bpRivalActions[vsRivalIdx-1]===2;
           if(tgtBarrier){badge='BLOCKED';badgeCol='#6080d0';badgeBg='rgba(10,20,60,.6)';}
@@ -12314,9 +12321,9 @@ function drawActionGrid(){
               badgeBg=_maxR>=4?'rgba(40,30,0,.6)':'rgba(40,20,0,.6)';
             }else{badge='\u2714 OPEN';badgeCol='#e08030';badgeBg='rgba(40,20,0,.6)';}
           }
-        }else if(idx===2){// BARRIER — advise based on last round rival action
-          const lastRound=battleRoundHistory[0];
-          if(lastRound&&(lastRound.r1a===1||lastRound.r2a===1)){badge='NEEDED';badgeCol='#e05040';badgeBg='rgba(40,0,0,.6)';}
+        }else if(idx===2){// BARRIER — use this round's rival action prediction (v326)
+          const rivalPlanSteal=bpRivalActions[vsRivalIdx-1]===1;
+          if(rivalPlanSteal&&!bpPlayerBarrier){badge='DEFEND!';badgeCol='#e05040';badgeBg='rgba(40,0,0,.6)';}
           else if(bpPlayerBarrier){badge='ACTIVE';badgeCol='#4080d0';badgeBg='rgba(0,20,50,.6)';}
           else{badge='OPTIONAL';badgeCol='#608880';badgeBg='rgba(0,0,0,.35)';}
         }else if(idx===3){// SCOUT — show staleness
