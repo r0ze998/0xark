@@ -81,6 +81,15 @@ const charParticles={};
 for(let _ci=1;_ci<=60;_ci++)charParticles[_ci]=[];
 const CHAR_PARTICLE_MAX=3;
 
+// v354: pre-baked rgba tables for card animation — eliminates .toFixed string alloc per frame
+const _RGBA_W101=(()=>{const a=new Array(101);for(let i=0;i<=100;i++)a[i]='rgba(255,255,255,'+(i/100).toFixed(2)+')';return a;})();
+const _RGBA_VOID101=(()=>{const a=new Array(101);for(let i=0;i<=100;i++)a[i]='rgba(48,32,80,'+(i/100).toFixed(2)+')';return a;})();
+const _RGBA_AURA101=(()=>{const a=new Array(101);for(let i=0;i<=100;i++)a[i]='rgba(96,200,168,'+(i/100).toFixed(2)+')';return a;})();
+function _rw(v){return _RGBA_W101[Math.min(100,Math.max(0,v*100+0.5|0))];}
+function _rv(v){return _RGBA_VOID101[Math.min(100,Math.max(0,v*100+0.5|0))];}
+function _ra(v){return _RGBA_AURA101[Math.min(100,Math.max(0,v*100+0.5|0))];}
+// v354: pre-baked per-card full glow rgba table [cardIdx][alpha0-100] — zero alloc per frame
+const _CARD_GLOW_RGBA=(()=>{const t=[];for(let i=0;i<CD.length;i++){const cr=CD[i];const r=parseInt(cr.c.slice(1,3),16),g_=parseInt(cr.c.slice(3,5),16),b=parseInt(cr.c.slice(5,7),16);const a=new Array(101);for(let j=0;j<=100;j++)a[j]='rgba('+r+','+g_+','+b+','+(j/100).toFixed(2)+')';t.push(a);}return t;})();
 // Card reveal animation state: {cardId, startFrame, done}
 let cardRevealState=null;
 function startCardReveal(cardId){cardRevealState={cardId:cardId,startFrame:fr,done:false};}
@@ -117,7 +126,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     // Idle: body sway
     const sway=Math.sin(t*0.035)*1; // 1px left/right, ~3s cycle at 60fps
     const shieldGlow=0.3+0.3*Math.sin(t*0.052); // pulse ~2s cycle
-    const shieldBright='rgba(255,255,255,'+shieldGlow.toFixed(2)+')';
+    const shieldBright=_rw(shieldGlow);
     // Crystal crest sparkle
     const sparkleOn=(Math.sin(t*0.08)>0.85);
 
@@ -194,7 +203,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
       const p=pp[i];p.ry+=0.3;p.life--;
       if(p.life<=0){pp.splice(i,1);continue;}
       const a=Math.min(1,p.life/8);
-      g.fillStyle='rgba(48,32,80,'+a.toFixed(2)+')';
+      g.fillStyle=_rv(a);
       g.fillRect(x+p.rx*s,y+p.ry*s,s,s);
     }
   }else if(cardId===3){
@@ -305,8 +314,8 @@ function drawCardCharacter(x,y,cardId,scale,time){
 
     // Aura glow — pulsing
     const auraBright=0.15+0.1*Math.sin(t*0.04);
-    px(3+sway,0,10,1,'rgba(96,200,168,'+auraBright.toFixed(2)+')');
-    px(2+sway,1,12,1,'rgba(96,200,168,'+(auraBright*0.75).toFixed(2)+')');
+    px(3+sway,0,10,1,_ra(auraBright));
+    px(2+sway,1,12,1,_ra(auraBright*0.75));
     // Upper body (spiral start)
     px(4+sway,1,8,3,'#38a880');px(5+sway,1,6,2,'#48b898');
     // Large single eye — with pulse
@@ -339,8 +348,8 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(4+tw0,16,2,2,'#186848');px(7+tw1,16,2,3,'#186848');px(11+tw2,16,2,2,'#186848');
     px(4+tw0,17,1,1,'#105838');px(7+tw1,18,2,1,'#105838');px(12+tw2,17,1,1,'#105838');
     // Faint aura — with sway
-    px(2+sway,4,1,8,'rgba(96,200,168,'+auraBright.toFixed(2)+')');
-    px(13+sway,4,1,8,'rgba(96,200,168,'+auraBright.toFixed(2)+')');
+    px(2+sway,4,1,8,_ra(auraBright));
+    px(13+sway,4,1,8,_ra(auraBright));
   }
 
   // Generic renderer for cards 6-60 (type-based pixel art)
@@ -350,7 +359,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     const bob=Math.sin(t*0.05)*1.5;
     const glow=0.15+0.2*Math.sin(t*0.04+cardId);
     // Outer glow for Epic/Legendary
-    if(rar>=4){const gc='rgba('+parseInt(cr.c.slice(1,3),16)+','+parseInt(cr.c.slice(3,5),16)+','+parseInt(cr.c.slice(5,7),16)+','+glow.toFixed(2)+')';px(-1,-1,18,22,gc);}
+    if(rar>=4){px(-1,-1,18,22,_CARD_GLOW_RGBA[cardId-1][Math.min(100,Math.max(0,glow*100+0.5|0))]);} // v354: zero-alloc glow
     if(type==='attack'){
       // Sword silhouette
       px(7,1+bob,2,8,cr.h);px(7,1+bob,2,6,cr.c);
@@ -373,13 +382,13 @@ function drawCardCharacter(x,y,cardId,scale,time){
       px(7,1+bob,2,10,cr.d);px(6,1+bob,4,1,cr.c);
       const orb=0.3+0.3*Math.sin(t*0.06+cardId);
       px(4,11+bob,8,6,cr.d);px(5,11+bob,6,5,cr.c);px(6,12+bob,4,3,cr.h);
-      px(7,13+bob,2,1,'rgba(255,255,255,'+orb.toFixed(2)+')');
+      px(7,13+bob,2,1,_rw(orb));
       if(rar>=3){px(5,11+bob,6,2,'rgba(255,255,255,0.3)');}
     }else{
       // Recovery: cross / leaf
       px(7,2+bob,2,12,cr.c);px(3,6+bob,10,2,cr.c);
       px(7,2+bob,2,4,cr.h);px(3,6+bob,4,1,cr.h);
-      if(rar>=3){const hg=0.2+0.3*Math.sin(t*0.05+cardId);px(5,4+bob,6,6,'rgba(255,255,255,'+hg.toFixed(2)+')');}
+      if(rar>=3){const hg=0.2+0.3*Math.sin(t*0.05+cardId);px(5,4+bob,6,6,_rw(hg));}
     }
     // Rarity stars at bottom
     for(let ri=0;ri<rar;ri++)px(2+ri*3,17,2,2,cr.h);
@@ -403,7 +412,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
       const p=revealSparkles[i];p.rx+=p.vx;p.ry+=p.vy;p.life--;
       if(p.life<=0){revealSparkles.splice(i,1);continue;}
       const a=Math.min(1,p.life/8);
-      g.fillStyle='rgba(255,255,255,'+a.toFixed(2)+')';
+      g.fillStyle=_rw(a);
       g.fillRect(x+p.rx*s,y+p.ry*s,s,s);
     }
     if(revealSparkles.length===0)cardRevealState=null;
