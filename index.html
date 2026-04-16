@@ -3902,27 +3902,46 @@ function fogRevealAll(mapIdx){
 
 function fogRevealRadius(mapIdx,cx,cy,radius){
   let changed=false;
+  const newlyRevealed=[];
   for(let dy=-radius;dy<=radius;dy++){
     for(let dx=-radius;dx<=radius;dx++){
       if(Math.abs(dx)+Math.abs(dy)<=radius){
         const nx=cx+dx,ny=cy+dy;
         if(nx>=0&&nx<MW&&ny>=0&&ny<MH){
-          if(!fogRevealed[mapIdx][ny][nx]){fogRevealed[mapIdx][ny][nx]=true;changed=true;}
+          if(!fogRevealed[mapIdx][ny][nx]){
+            fogRevealed[mapIdx][ny][nx]=true;changed=true;
+            // v218: Only spawn sparkles on outer edge of reveal radius (newly exposed tiles)
+            if(Math.abs(dx)+Math.abs(dy)===radius)newlyRevealed.push([nx,ny]);
+          }
         }
       }
     }
   }
-  if(changed)fogCacheDirty=true;
+  if(changed){
+    fogCacheDirty=true;
+    // v218: Fog-reveal sparkle particles — brief shimmer on newly uncovered tiles
+    if(particles&&newlyRevealed.length>0&&newlyRevealed.length<30){
+      newlyRevealed.forEach(([rx,ry])=>{
+        if(Math.random()>0.5)return; // sparse, not every tile
+        particles.push({
+          x:rx*TW+TW/2,y:ry*TH+TH/2,
+          vx:(Math.random()-.5)*0.8,vy:-Math.random()*0.6-0.2,
+          life:14+Math.random()*8,c:'rgba(180,220,255,1)'
+        });
+      });
+    }
+  }
 }
 
 // Reveal every tile inside a given room object {x,y,w,h}
 function fogRevealRoom(mapIdx,room){
   if(!room)return;
   let changed=false;
+  let newRoomTiles=0;
   for(let ry=room.y;ry<room.y+room.h;ry++){
     for(let rx=room.x;rx<room.x+room.w;rx++){
       if(rx>=0&&rx<MW&&ry>=0&&ry<MH&&!fogRevealed[mapIdx][ry][rx]){
-        fogRevealed[mapIdx][ry][rx]=true;changed=true;
+        fogRevealed[mapIdx][ry][rx]=true;changed=true;newRoomTiles++;
       }
     }
   }
@@ -3934,7 +3953,25 @@ function fogRevealRoom(mapIdx,room){
       }
     }
   }
-  if(changed)fogCacheDirty=true;
+  if(changed){
+    fogCacheDirty=true;
+    // v218: Room discovery burst — sprinkle sparkle particles across newly revealed room
+    if(particles&&newRoomTiles>=4){
+      const roomCX=(room.x+room.w/2)*TW,roomCY=(room.y+room.h/2)*TH;
+      const burstCount=Math.min(10,newRoomTiles);
+      for(let bi=0;bi<burstCount;bi++){
+        const bx_=room.x*TW+Math.random()*room.w*TW;
+        const by_=room.y*TH+Math.random()*room.h*TH;
+        const ang=(bi/burstCount)*Math.PI*2;
+        particles.push({
+          x:bx_,y:by_,
+          vx:Math.cos(ang)*1.1*(0.5+Math.random()),
+          vy:Math.sin(ang)*0.7*(0.5+Math.random())-0.8,
+          life:18+Math.random()*12,c:'rgba(220,240,255,1)'
+        });
+      }
+    }
+  }
 }
 
 // Check if player is inside a dungeon room; if so reveal the whole room
