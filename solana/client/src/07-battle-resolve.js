@@ -772,9 +772,9 @@ function drawResolvingPhase(){
       if(bpHP[ri]!==0)continue;
       const koCX=ri===1?oppCX:W-310;
       const koCY=ri===1?oppCY:140;
-      const koPulse=0.65+0.35*Math.sin(fr*0.3);
+      const koPulse=0.65+0.35*_sFr30; // v369: cached
       g.globalAlpha=koPulse*0.3;bx(koCX-32,koCY-48,64,80,'#c02020');g.globalAlpha=1;
-      const koScale=1+Math.max(0,Math.sin(fr*0.18)*0.12);
+      const koScale=1+Math.max(0,_sFr18*0.12); // v369: cached
       g.save();g.translate(koCX,koCY-58);g.scale(koScale,koScale);
       g.globalAlpha=koPulse*0.95;
       txShadow('KO!',-(ri===1?14:16),0,20,'#ff3030','rgba(0,0,0,.85)');
@@ -790,7 +790,7 @@ function drawResolvingPhase(){
     if(bpHP[0]===0){
       const defPulse=0.5+0.5*Math.sin(fr*0.22);
       g.globalAlpha=defPulse*0.25;g.drawImage(_btlDefeatVig,0,0);g.globalAlpha=1;
-      const defScale=1+Math.sin(fr*0.15)*0.06;
+      const defScale=1+_sFr15*0.06; // v369: cached
       g.save();g.translate(W/2,H/2-30);g.scale(defScale,defScale);
       txShadow('DEFEATED!',-42,0,18,'#ff4040','rgba(0,0,0,.9)');
       g.restore();

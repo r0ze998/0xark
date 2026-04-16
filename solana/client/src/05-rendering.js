@@ -1475,7 +1475,7 @@ function drawNPCSprite(npc){
     const nearInteract=pdx+pdy<=2&&!npcDialogActive&&!shopActive&&!gachaActive&&!marketActive&&sc==='map';
     if(nearInteract){
       // Larger, faster-pulsing diamond + [Z] prompt
-      const pulse=0.7+0.3*Math.sin(fr*0.18);
+      const pulse=0.7+0.3*_sFr18; // v369: cached
       const dx_=px+13,dy_=py-32+bobY*1.6;
       bx(dx_+3,dy_,2,2,diaH);
       bx(dx_,dy_+3,8,2,diaC);bx(dx_+2,dy_+3,4,2,diaH);

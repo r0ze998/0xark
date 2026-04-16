@@ -80,8 +80,8 @@ function drawCardAcquisition(){
 
   // v222: Rarity glow ring behind card during hold phase
   if(t>=50&&t<90){
-    const ringPulse=0.6+0.4*Math.sin(fr*0.2);
-    const ringR=48+Math.sin(fr*0.15)*4;
+    const ringPulse=0.6+0.4*_sFr20; // v369: cached
+    const ringR=48+_sFr15*4; // v369: cached
     g.globalAlpha=ringPulse*(isEpicPlus?0.55:0.3);
     g.fillStyle=rarCol;
     g.beginPath();g.arc(cx_,cy_,ringR+6,0,Math.PI*2);g.fill();
@@ -764,7 +764,7 @@ function dCrd(){
     const cx=gridX+col*(CARD_W+PAD),cy=gridY+row*(CARD_H+PAD);
     // v75: cursor highlight
     if(i===crdCursor){
-      const pulse=Math.sin(fr*0.15)*0.15+0.85;
+      const pulse=_sFr15*0.15+0.85; // v369: cached
       g.globalAlpha=pulse;
       bx(cx-2,cy-2,CARD_W+4,CARD_H+4,'rgba(200,180,100,.35)');
       bx(cx-2,cy-2,CARD_W+4,1,'#d0b050');

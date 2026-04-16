@@ -12,6 +12,8 @@ const _BTL_LAVA_SI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_LAVA_SI[i]=Math.
 const _BTL_LAVA_CI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_LAVA_CI[i]=Math.cos(i);
 const _BTL_VOID_SI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_VOID_SI[i]=Math.sin(i*1.3); // sin(i*1.3) void pulse
 const _BTL_VOID_CI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_VOID_CI[i]=Math.cos(i*1.3);
+// v369: phase offset constants for sin-addition (sin(fr*x+offset) without per-frame trig)
+const _BTL_SIN1=Math.sin(1),_BTL_COS1=Math.cos(1),_BTL_SIN14=Math.sin(1.4),_BTL_COS14=Math.cos(1.4);
 const _BTL_CRYST_ABS=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_ABS[i]=Math.abs(Math.sin(i*1.7)); // crystal Y offset (frame-independent)
 const _BTL_CRYST_SI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_SI[i]=Math.sin(i);  // sin(i) crystal shimmer
 const _BTL_CRYST_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_CI[i]=Math.cos(i);
@@ -194,8 +196,8 @@ function drawBattleBG(){
     const fl=Math.max(1,Math.min(5,currentFloor||1));
     const a=_floorAtm[fl]||_floorAtm[1];
     g.drawImage(_btlBgDungeon[fl],0,0);
-    // v368: use global per-frame cache for 0.08 and 0.07; compute 0.15 once locally
-    const _s15=Math.sin(fr*0.15),_c15=Math.cos(fr*0.15);
+    // v369: use global per-frame cache for 0.15 as well
+    const _s15=_sFr15,_c15=_cFr15;
     const _s08=_sFr08,_c08=_cFr08; // global cache
     const _s07=_sFr07,_c07=_cFr07; // global cache
     // sin/cos(fr*0.1) = double-angle of fr*0.05
@@ -416,7 +418,7 @@ function drawOpponentInfoBox(){
   txShadow(_CARDS_OVER5[rival.cc]||(rival.cc+'/5'),bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.3)'); // v318
   // Near-win warning
   if(r1Cards>=4){
-    const wA=0.5+Math.sin(fr*0.18)*0.5;
+    const wA=0.5+_sFr18*0.5; // v369: cached
     g.globalAlpha=wA*0.9;
     bx(bx_+6,by_+27,76,13,ARK.danger);
     g.globalAlpha=1;
@@ -466,7 +468,7 @@ function drawOpponentInfoBox(){
     txShadow(_CARDS_OVER5[hunter.cc]||(hunter.cc+'/5'),bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.3)'); // v318
     // Near-win warning for MIRA
     if(r2Cards>=4){
-      const wA2=0.5+Math.sin(fr*0.18+1)*0.5;
+      const wA2=0.5+(_sFr18*_BTL_COS1+_cFr18*_BTL_SIN1)*0.5; // v369: sin-addition
       g.globalAlpha=wA2*0.8;
       bx(bx_+6,sepY+19,70,12,ARK.danger);
       g.globalAlpha=1;
@@ -546,7 +548,7 @@ function drawPlayerInfoBox(){
   txShadow(_UNIQ60[_vSz]||(_vSz+'/60'),bx_+214,by_+36,9,ARK.gold,'rgba(0,0,0,.3)');
   // Win indicator (60/60)
   if(_vSz>=60){
-    const flash_=Math.sin(fr*0.15)*0.3+0.7;
+    const flash_=_sFr15*0.3+0.7; // v369: cached
     g.globalAlpha=flash_;
     txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,ARK.goldBright,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
@@ -856,7 +858,7 @@ function drawBattleArena(){
   }
   // v217: Tell speech bubbles — "!" floats above rival when their intent is known
   if(battlePhase==='select'&&bpRivalTells[0]){
-    const tellPulse=0.7+0.3*Math.sin(fr*0.25);
+    const tellPulse=0.7+0.3*_sFr25; // v369: cached
     // VEGA tell bubble (rival 1)
     const vbX=W-168,vbY=60;
     const vbW=18,vbH=18;
@@ -870,7 +872,7 @@ function drawBattleArena(){
     g.globalAlpha=1;
   }
   if(battlePhase==='select'&&bpRivalTells[1]&&r2alive){
-    const tellPulse2=0.7+0.3*Math.sin(fr*0.25+1.4);
+    const tellPulse2=0.7+0.3*(_sFr25*_BTL_COS14+_cFr25*_BTL_SIN14); // v369: sin-addition
     // MIRA tell bubble (rival 2)
     const mbX=W-318,mbY=88;
     const mbW=18,mbH=18;
@@ -971,7 +973,7 @@ function drawActionGrid(){
         const shimY=cy_+Math.floor(((fr*0.7)%(cellH-4)))+2;
         g.globalAlpha=0.12;bx(cx_+1,shimY,cellW-2,2,'#f0e080');g.globalAlpha=1;
         // Brighter inner glow behind action name area
-        const glowA=0.08+0.05*Math.sin(fr*0.18);
+        const glowA=0.08+0.05*_sFr18; // v369: cached
         g.globalAlpha=glowA;bx(cx_+24,cy_+6,cellW-28,cellH-10,'#f0c830');g.globalAlpha=1;
         txShadow(actions[idx].name,cx_+26,cy_+20,16,textCol,'rgba(0,0,0,.5)');
       }else{
@@ -980,7 +982,7 @@ function drawActionGrid(){
       txShadow(actions[idx].desc,cx_+26,cy_+32,10,avail?ARK.textDim:'#404858','rgba(0,0,0,.3)');
       // Cursor arrow
       if(sel&&avail){
-        const bob_=Math.sin(fr*0.15)*2;
+        const bob_=_sFr15*2; // v369: cached
         txShadow('\u25B6',cx_-12+bob_,cy_+22,10,ARK.gold,'rgba(0,0,0,.4)');
       }
       // v92: Smart context badges (top-right corner of each cell)
@@ -1069,7 +1071,7 @@ function drawActionGrid(){
   const _handCount=cardCount(pl[0]);
   txShadow(_handCount>0?(_HAND_READY_LBL[_handCount]||_handCount+' cards ready'):'hand empty',ucX+140,ucY+18,10,ucAvail?ARK.textDim:'#404858','rgba(0,0,0,.3)'); // v320
   if(ucSel&&ucAvail){
-    const bob_=Math.sin(fr*0.15)*2;
+    const bob_=_sFr15*2; // v369: cached
     txShadow('\u25B6',ucX-12+bob_,ucY+20,10,ARK.gold,'rgba(0,0,0,.4)');
   }
   // Hint when all spells exhausted
@@ -1356,13 +1358,13 @@ function drawSelectPhase(){
     }
     // v315: momentum badge when strongly positive or negative
     if(_battleRoundNet>=3){
-      const mbA=0.7+Math.sin(fr*0.2)*0.3;
+      const mbA=0.7+_sFr20*0.3; // v369: cached
       g.globalAlpha=histAlpha*mbA;
       bx(hpX+4,hpY+hpH,hpW-8,14,'rgba(20,80,40,.6)');
       txShadow('\u25B2 ON A ROLL!',hpX+10,hpY+hpH+11,6,'#50d080','rgba(0,0,0,.3)');
       g.globalAlpha=1;
     }else if(_battleRoundNet<=-3){
-      const mbA=0.7+Math.sin(fr*0.2)*0.3;
+      const mbA=0.7+_sFr20*0.3; // v369: cached
       g.globalAlpha=histAlpha*mbA;
       bx(hpX+4,hpY+hpH,hpW-8,14,'rgba(80,20,20,.6)');
       txShadow('\u25BC UNDER PRESSURE',hpX+10,hpY+hpH+11,6,'#d05050','rgba(0,0,0,.3)');
@@ -1456,10 +1458,10 @@ function drawSelectPhase(){
   }
   // v217: Low HP danger pulse — screen-edge red vignette when player HP critical
   if(bpHP[0]===1){
-    const dangerPulse=0.25+0.22*Math.sin(fr*0.28);
+    const dangerPulse=0.25+0.22*_sFr28; // v369: cached
     g.globalAlpha=dangerPulse;g.drawImage(_btlLowHpVig,0,0);g.globalAlpha=1;
     // "DANGER" text, very faint, top-center
-    const dA=0.12+0.10*Math.sin(fr*0.28);
+    const dA=0.12+0.10*_sFr28; // v369: cached
     g.globalAlpha=dA;
     txShadow('! CRITICAL !',W/2-56,H-8,8,'#ff4040','rgba(0,0,0,.5)');
     g.globalAlpha=1;

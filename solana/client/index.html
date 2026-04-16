@@ -5297,7 +5297,7 @@ function drawPlayerStatusEffects(){
 
   // EXHAUSTED indicator
   if(sp.s<=0&&sp.b<=0&&sp.c<=0){
-    const flicker=Math.sin(fr*0.2)*0.2+0.8;
+    const flicker=_sFr20*0.2+0.8; // v369: cached
     g.globalAlpha=flicker;
     txShadow('EXHAUSTED',px-32,py-16,5,'#d04040','rgba(0,0,0,.4)');
     g.globalAlpha=1;
@@ -5358,7 +5358,7 @@ function drawPlayerStatusEffects(){
     }
     const hasCritical=minRemaining<60000&&minRemaining>0;
     const isUrgent=minRemaining<20000&&minRemaining>0;
-    const bubbleAlpha=isUrgent?(0.7+Math.sin(fr*0.3)*0.3):hasCritical?0.65:0.45;
+    const bubbleAlpha=isUrgent?(0.7+_sFr30*0.3):hasCritical?0.65:0.45; // v369: cached
     const bubbleCol=isUrgent?'#ff4040':hasCritical?'#e08030':'#506880';
     const cardStr='\u2660'+hc;
     const decStr=hasCritical?(' '+Math.ceil(minRemaining/1000)+'s'):'';
@@ -7341,7 +7341,7 @@ function drawNPCSprite(npc){
     const nearInteract=pdx+pdy<=2&&!npcDialogActive&&!shopActive&&!gachaActive&&!marketActive&&sc==='map';
     if(nearInteract){
       // Larger, faster-pulsing diamond + [Z] prompt
-      const pulse=0.7+0.3*Math.sin(fr*0.18);
+      const pulse=0.7+0.3*_sFr18; // v369: cached
       const dx_=px+13,dy_=py-32+bobY*1.6;
       bx(dx_+3,dy_,2,2,diaH);
       bx(dx_,dy_+3,8,2,diaC);bx(dx_+2,dy_+3,4,2,diaH);
@@ -8162,7 +8162,7 @@ function drawMinimap(){
   }
 
   // ── Dynamic dots: exits, NPCs, traps, rivals, player (all cheap, per-frame) ──
-  const exitPulse=Math.sin(fr*0.15)*0.4+0.6;
+  const exitPulse=_sFr15*0.4+0.6; // v369: cached
   for(let _ei=0,_el=exits.length;_ei<_el;_ei++){
     const e=exits[_ei];
     if(e.fromMap===currentMap){
@@ -8216,7 +8216,7 @@ function drawMinimap(){
       }
     }
   }
-  const playerPulse=Math.sin(fr*0.2)*0.3+0.7;
+  const playerPulse=_sFr20*0.3+0.7; // v369: cached
   g.globalAlpha=playerPulse;
   bx(mx+pl[0].x*sx-1,my+pl[0].y*sy-1,3,3,'#fff');bx(mx+pl[0].x*sx,my+pl[0].y*sy,1,1,'#40f040');
   g.globalAlpha=1;
@@ -8546,7 +8546,7 @@ function drawSignpostDialog(){
   }
   txShadow(line1,20,H-70+slideOff,7,'#303028','rgba(255,255,255,.15)');
   if(line2)txShadow(line2,20,H-52+slideOff,7,'#303028','rgba(255,255,255,.15)');
-  const arrowBounce=Math.sin(fr*0.15)*2;
+  const arrowBounce=_sFr15*2; // v369: cached
   txShadow('\u25BC',W-24,H-18+slideOff+arrowBounce,7,'#806030','rgba(0,0,0,.4)');
   g.globalAlpha=1;
 }
@@ -8654,7 +8654,7 @@ function drawCardShop(){
         if(isSel){
           bx(wX+8,ry-4,wW-16,rowH-2,'rgba(192,168,96,.2)');
           bx(wX+8,ry-4,3,rowH-2,rarCol);
-          const bob=Math.sin(fr*0.15)*2;
+          const bob=_sFr15*2; // v369: cached
           txShadow('\u25B6',wX+14+bob,ry+16,9,'#c04040','rgba(0,0,0,.4)');
         }else{
           bx(wX+8,ry-4,3,rowH-2,'rgba(200,180,100,.15)');
@@ -9587,6 +9587,8 @@ const _MOTE_SI13=new Float32Array(40);const _MOTE_CI13=new Float32Array(40);
 for(let i=0;i<40;i++){_MOTE_SI13[i]=Math.sin(i*1.3);_MOTE_CI13[i]=Math.cos(i*1.3);}
 const _MOTE_SI21=new Float32Array(40);const _MOTE_CI21=new Float32Array(40);
 for(let i=0;i<40;i++){_MOTE_SI21[i]=Math.sin(i*2.1);_MOTE_CI21[i]=Math.cos(i*2.1);}
+// v369: phase offset constants for sin-addition (eliminates Math.sin(fr*x+offset))
+const _MAP_SIN1=Math.sin(1),_MAP_COS1=Math.cos(1);
 // v365: pre-baked vine segment sin/cos — eliminates Math.sin per-segment in forest vine loops
 // vi*0.3 variant (main vine, up to 20 segments)
 const _VINE_SI3=new Float32Array(20);const _VINE_CI3=new Float32Array(20);
@@ -10363,7 +10365,7 @@ function drawPirateDecorations(){
         bx(cpx+14,cpy+17,4,3,'#d0a030');bx(cpx+15,cpy+18,2,2,'#e0b040');
         // Sparkle (subtle hint)
         if(fr%60<20){
-          const sparkA=(Math.sin(fr*0.15)*0.3+0.5);
+          const sparkA=(_sFr15*0.3+0.5); // v369: cached
           g.globalAlpha=sparkA;
           bx(cpx+16,cpy+12,2,2,'#f0d050');
           g.globalAlpha=1;
@@ -10682,7 +10684,7 @@ function dMap(){
   // Floor watermark label (dungeon only, large semi-transparent, floor-themed color)
   if(inDungeon&&currentFloor>0){
     const floorLabel=_FLOOR_NAMES[currentFloor]||('FLOOR '+currentFloor);
-    const wmAlpha=0.07+Math.sin(fr*0.008)*0.025;
+    const wmAlpha=0.07+Math.sin(fr*0.008)*0.025; // fr*0.008 too slow to cache — per-frame call
     g.save();
     g.globalAlpha=wmAlpha;
     g.font='bold 96px VT323, monospace';
@@ -11008,7 +11010,7 @@ function dMap(){
       }
       if(sVal>3){txShadow(_PLUS_INT[sVal-3]||('+'+( sVal-3)),orbX+3*(orbW+orbGap)+2,hudY+20,6,'#f0c830','rgba(0,0,0,.4)');} // v325
       if(warn){
-        const wA=0.4+Math.sin(fr*0.18)*0.4;
+        const wA=0.4+_sFr18*0.4; // v369: cached
         g.globalAlpha=wA;bx(sCX-2,hudY+10,orbX+3*(orbW+orbGap)-sCX+2,orbH+2,'rgba(180,40,40,.15)');g.globalAlpha=1;
       }
     }
@@ -11018,7 +11020,7 @@ function dMap(){
     txShadow(_B_FLOOR[currentFloor]||('B'+currentFloor),10,hudY+52,9,'#d0b020','rgba(0,0,0,.4)'); // v314
     // Show SAFE countdown while encounter cooldown is active
     if(encounterCooldown>0){
-      const safeAlpha=0.6+Math.sin(fr*0.15)*0.4;
+      const safeAlpha=0.6+_sFr15*0.4; // v369: cached
       g.globalAlpha=safeAlpha;
       const _safeSecs=Math.min(11,Math.ceil(encounterCooldown/60));
       txShadow(_SAFE_SECS[_safeSecs],30,hudY+52,8,'#40e080','rgba(0,0,0,.5)'); // v314
@@ -11035,7 +11037,7 @@ function dMap(){
         const dx=etx-pl[0].x,dy=ety-pl[0].y;
         const distTiles=Math.sqrt(dx*dx+dy*dy);
         if(distTiles<=4){
-          const neA=0.65+Math.sin(fr*0.28)*0.35;
+          const neA=0.65+_sFr28*0.35; // v369: cached
           g.globalAlpha=neA;
           txShadow('\u2190NEAR',73,hudY+52,6,'#40e090','rgba(0,0,0,.5)');
           g.globalAlpha=1;
@@ -11070,8 +11072,8 @@ function dMap(){
     if(_miraLblKey!==_mk){_miraLblKey=_mk;_miraLblCache='M:'+(miraMap===0?'TWN':'B'+miraMap)+' '+miraCards+'c';}
     // Highlight when rival is on SAME floor as player (danger)
     const vegaSame=vegaMap===currentMap;const miraSame=miraMap===currentMap;
-    const vegaAlpha=vegaSame?(0.7+Math.sin(fr*0.18)*0.3):0.55;
-    const miraAlpha=miraSame?(0.7+Math.sin(fr*0.18+1)*0.3):0.55;
+    const vegaAlpha=vegaSame?(0.7+_sFr18*0.3):0.55; // v369: cached
+    const miraAlpha=miraSame?(0.7+(_sFr18*_MAP_COS1+_cFr18*_MAP_SIN1)*0.3):0.55; // v369: sin-addition
     const vegaCol=vegaSame?'#f080c0':'#806070';
     const miraCol=miraSame?'#f0c830':'#807060';
     g.globalAlpha=vegaAlpha;
@@ -11153,14 +11155,14 @@ function dMap(){
       bx(barX_,barY_,Math.floor(barW_*remainFrac),barH_,col_);
       // v309: amber border glow when 75% decayed (last ~37s) — early panic warning
       if(remainFrac<0.25){
-        const amberA=(0.3+Math.sin(fr*0.2)*0.2);
+        const amberA=(0.3+_sFr20*0.2); // v369: cached
         g.globalAlpha=amberA;
         bx(310+i*HUD_CARD_SPACING-2,hudY+12,28,28,'#d0a020');
         g.globalAlpha=1;
       }
       // Flash red overlay in last 15 seconds
       if(remainMs<15000){
-        const flashA=Math.sin(fr*0.3)*0.4+0.4;
+        const flashA=_sFr30*0.4+0.4; // v369: cached
         g.globalAlpha=flashA;
         bx(310+i*HUD_CARD_SPACING-1,hudY+13,26,26,'#d04040');
         g.globalAlpha=1;
@@ -11591,6 +11593,8 @@ const _BTL_LAVA_SI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_LAVA_SI[i]=Math.
 const _BTL_LAVA_CI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_LAVA_CI[i]=Math.cos(i);
 const _BTL_VOID_SI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_VOID_SI[i]=Math.sin(i*1.3); // sin(i*1.3) void pulse
 const _BTL_VOID_CI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_VOID_CI[i]=Math.cos(i*1.3);
+// v369: phase offset constants for sin-addition (sin(fr*x+offset) without per-frame trig)
+const _BTL_SIN1=Math.sin(1),_BTL_COS1=Math.cos(1),_BTL_SIN14=Math.sin(1.4),_BTL_COS14=Math.cos(1.4);
 const _BTL_CRYST_ABS=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_ABS[i]=Math.abs(Math.sin(i*1.7)); // crystal Y offset (frame-independent)
 const _BTL_CRYST_SI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_SI[i]=Math.sin(i);  // sin(i) crystal shimmer
 const _BTL_CRYST_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_CI[i]=Math.cos(i);
@@ -11773,8 +11777,8 @@ function drawBattleBG(){
     const fl=Math.max(1,Math.min(5,currentFloor||1));
     const a=_floorAtm[fl]||_floorAtm[1];
     g.drawImage(_btlBgDungeon[fl],0,0);
-    // v368: use global per-frame cache for 0.08 and 0.07; compute 0.15 once locally
-    const _s15=Math.sin(fr*0.15),_c15=Math.cos(fr*0.15);
+    // v369: use global per-frame cache for 0.15 as well
+    const _s15=_sFr15,_c15=_cFr15;
     const _s08=_sFr08,_c08=_cFr08; // global cache
     const _s07=_sFr07,_c07=_cFr07; // global cache
     // sin/cos(fr*0.1) = double-angle of fr*0.05
@@ -11995,7 +11999,7 @@ function drawOpponentInfoBox(){
   txShadow(_CARDS_OVER5[rival.cc]||(rival.cc+'/5'),bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.3)'); // v318
   // Near-win warning
   if(r1Cards>=4){
-    const wA=0.5+Math.sin(fr*0.18)*0.5;
+    const wA=0.5+_sFr18*0.5; // v369: cached
     g.globalAlpha=wA*0.9;
     bx(bx_+6,by_+27,76,13,ARK.danger);
     g.globalAlpha=1;
@@ -12045,7 +12049,7 @@ function drawOpponentInfoBox(){
     txShadow(_CARDS_OVER5[hunter.cc]||(hunter.cc+'/5'),bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.3)'); // v318
     // Near-win warning for MIRA
     if(r2Cards>=4){
-      const wA2=0.5+Math.sin(fr*0.18+1)*0.5;
+      const wA2=0.5+(_sFr18*_BTL_COS1+_cFr18*_BTL_SIN1)*0.5; // v369: sin-addition
       g.globalAlpha=wA2*0.8;
       bx(bx_+6,sepY+19,70,12,ARK.danger);
       g.globalAlpha=1;
@@ -12125,7 +12129,7 @@ function drawPlayerInfoBox(){
   txShadow(_UNIQ60[_vSz]||(_vSz+'/60'),bx_+214,by_+36,9,ARK.gold,'rgba(0,0,0,.3)');
   // Win indicator (60/60)
   if(_vSz>=60){
-    const flash_=Math.sin(fr*0.15)*0.3+0.7;
+    const flash_=_sFr15*0.3+0.7; // v369: cached
     g.globalAlpha=flash_;
     txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,ARK.goldBright,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
@@ -12435,7 +12439,7 @@ function drawBattleArena(){
   }
   // v217: Tell speech bubbles — "!" floats above rival when their intent is known
   if(battlePhase==='select'&&bpRivalTells[0]){
-    const tellPulse=0.7+0.3*Math.sin(fr*0.25);
+    const tellPulse=0.7+0.3*_sFr25; // v369: cached
     // VEGA tell bubble (rival 1)
     const vbX=W-168,vbY=60;
     const vbW=18,vbH=18;
@@ -12449,7 +12453,7 @@ function drawBattleArena(){
     g.globalAlpha=1;
   }
   if(battlePhase==='select'&&bpRivalTells[1]&&r2alive){
-    const tellPulse2=0.7+0.3*Math.sin(fr*0.25+1.4);
+    const tellPulse2=0.7+0.3*(_sFr25*_BTL_COS14+_cFr25*_BTL_SIN14); // v369: sin-addition
     // MIRA tell bubble (rival 2)
     const mbX=W-318,mbY=88;
     const mbW=18,mbH=18;
@@ -12550,7 +12554,7 @@ function drawActionGrid(){
         const shimY=cy_+Math.floor(((fr*0.7)%(cellH-4)))+2;
         g.globalAlpha=0.12;bx(cx_+1,shimY,cellW-2,2,'#f0e080');g.globalAlpha=1;
         // Brighter inner glow behind action name area
-        const glowA=0.08+0.05*Math.sin(fr*0.18);
+        const glowA=0.08+0.05*_sFr18; // v369: cached
         g.globalAlpha=glowA;bx(cx_+24,cy_+6,cellW-28,cellH-10,'#f0c830');g.globalAlpha=1;
         txShadow(actions[idx].name,cx_+26,cy_+20,16,textCol,'rgba(0,0,0,.5)');
       }else{
@@ -12559,7 +12563,7 @@ function drawActionGrid(){
       txShadow(actions[idx].desc,cx_+26,cy_+32,10,avail?ARK.textDim:'#404858','rgba(0,0,0,.3)');
       // Cursor arrow
       if(sel&&avail){
-        const bob_=Math.sin(fr*0.15)*2;
+        const bob_=_sFr15*2; // v369: cached
         txShadow('\u25B6',cx_-12+bob_,cy_+22,10,ARK.gold,'rgba(0,0,0,.4)');
       }
       // v92: Smart context badges (top-right corner of each cell)
@@ -12648,7 +12652,7 @@ function drawActionGrid(){
   const _handCount=cardCount(pl[0]);
   txShadow(_handCount>0?(_HAND_READY_LBL[_handCount]||_handCount+' cards ready'):'hand empty',ucX+140,ucY+18,10,ucAvail?ARK.textDim:'#404858','rgba(0,0,0,.3)'); // v320
   if(ucSel&&ucAvail){
-    const bob_=Math.sin(fr*0.15)*2;
+    const bob_=_sFr15*2; // v369: cached
     txShadow('\u25B6',ucX-12+bob_,ucY+20,10,ARK.gold,'rgba(0,0,0,.4)');
   }
   // Hint when all spells exhausted
@@ -12935,13 +12939,13 @@ function drawSelectPhase(){
     }
     // v315: momentum badge when strongly positive or negative
     if(_battleRoundNet>=3){
-      const mbA=0.7+Math.sin(fr*0.2)*0.3;
+      const mbA=0.7+_sFr20*0.3; // v369: cached
       g.globalAlpha=histAlpha*mbA;
       bx(hpX+4,hpY+hpH,hpW-8,14,'rgba(20,80,40,.6)');
       txShadow('\u25B2 ON A ROLL!',hpX+10,hpY+hpH+11,6,'#50d080','rgba(0,0,0,.3)');
       g.globalAlpha=1;
     }else if(_battleRoundNet<=-3){
-      const mbA=0.7+Math.sin(fr*0.2)*0.3;
+      const mbA=0.7+_sFr20*0.3; // v369: cached
       g.globalAlpha=histAlpha*mbA;
       bx(hpX+4,hpY+hpH,hpW-8,14,'rgba(80,20,20,.6)');
       txShadow('\u25BC UNDER PRESSURE',hpX+10,hpY+hpH+11,6,'#d05050','rgba(0,0,0,.3)');
@@ -13035,10 +13039,10 @@ function drawSelectPhase(){
   }
   // v217: Low HP danger pulse — screen-edge red vignette when player HP critical
   if(bpHP[0]===1){
-    const dangerPulse=0.25+0.22*Math.sin(fr*0.28);
+    const dangerPulse=0.25+0.22*_sFr28; // v369: cached
     g.globalAlpha=dangerPulse;g.drawImage(_btlLowHpVig,0,0);g.globalAlpha=1;
     // "DANGER" text, very faint, top-center
-    const dA=0.12+0.10*Math.sin(fr*0.28);
+    const dA=0.12+0.10*_sFr28; // v369: cached
     g.globalAlpha=dA;
     txShadow('! CRITICAL !',W/2-56,H-8,8,'#ff4040','rgba(0,0,0,.5)');
     g.globalAlpha=1;
@@ -14463,9 +14467,9 @@ function drawResolvingPhase(){
       if(bpHP[ri]!==0)continue;
       const koCX=ri===1?oppCX:W-310;
       const koCY=ri===1?oppCY:140;
-      const koPulse=0.65+0.35*Math.sin(fr*0.3);
+      const koPulse=0.65+0.35*_sFr30; // v369: cached
       g.globalAlpha=koPulse*0.3;bx(koCX-32,koCY-48,64,80,'#c02020');g.globalAlpha=1;
-      const koScale=1+Math.max(0,Math.sin(fr*0.18)*0.12);
+      const koScale=1+Math.max(0,_sFr18*0.12); // v369: cached
       g.save();g.translate(koCX,koCY-58);g.scale(koScale,koScale);
       g.globalAlpha=koPulse*0.95;
       txShadow('KO!',-(ri===1?14:16),0,20,'#ff3030','rgba(0,0,0,.85)');
@@ -14481,7 +14485,7 @@ function drawResolvingPhase(){
     if(bpHP[0]===0){
       const defPulse=0.5+0.5*Math.sin(fr*0.22);
       g.globalAlpha=defPulse*0.25;g.drawImage(_btlDefeatVig,0,0);g.globalAlpha=1;
-      const defScale=1+Math.sin(fr*0.15)*0.06;
+      const defScale=1+_sFr15*0.06; // v369: cached
       g.save();g.translate(W/2,H/2-30);g.scale(defScale,defScale);
       txShadow('DEFEATED!',-42,0,18,'#ff4040','rgba(0,0,0,.9)');
       g.restore();
@@ -14843,8 +14847,8 @@ function drawCardAcquisition(){
 
   // v222: Rarity glow ring behind card during hold phase
   if(t>=50&&t<90){
-    const ringPulse=0.6+0.4*Math.sin(fr*0.2);
-    const ringR=48+Math.sin(fr*0.15)*4;
+    const ringPulse=0.6+0.4*_sFr20; // v369: cached
+    const ringR=48+_sFr15*4; // v369: cached
     g.globalAlpha=ringPulse*(isEpicPlus?0.55:0.3);
     g.fillStyle=rarCol;
     g.beginPath();g.arc(cx_,cy_,ringR+6,0,Math.PI*2);g.fill();
@@ -15527,7 +15531,7 @@ function dCrd(){
     const cx=gridX+col*(CARD_W+PAD),cy=gridY+row*(CARD_H+PAD);
     // v75: cursor highlight
     if(i===crdCursor){
-      const pulse=Math.sin(fr*0.15)*0.15+0.85;
+      const pulse=_sFr15*0.15+0.85; // v369: cached
       g.globalAlpha=pulse;
       bx(cx-2,cy-2,CARD_W+4,CARD_H+4,'rgba(200,180,100,.35)');
       bx(cx-2,cy-2,CARD_W+4,1,'#d0b050');
@@ -16003,7 +16007,7 @@ function drawFishingOverlay(){
   if(!fishingActive)return;
   if(fishingPhase==='bite'){
     // Show "!" indicator
-    const bobY=Math.sin(fr*0.3)*3;
+    const bobY=_sFr30*3; // v369: cached
     const px=pl[0].visualX-camX+8,py=pl[0].visualY-camY-30+bobY;
     bx(px-6,py-4,12,16,'#fff');
     bx(px-5,py-3,10,14,'#f0c830');
@@ -16308,7 +16312,7 @@ function drawBuildingInterior(){
     txShadow(buildingNpcName,20,H-115,7,'#c04040','rgba(0,0,0,.4)');
     txShadow(line,20,H-90,7,'#303028','rgba(255,255,255,.15)');
     if(line2)txShadow(line2,20,H-72,7,'#303028','rgba(255,255,255,.15)');
-    const arrowBounce=Math.sin(fr*0.15)*2;
+    const arrowBounce=_sFr15*2; // v369: cached
     txShadow('\u25BC',W-24,H-58+arrowBounce,7,'#c04040','rgba(0,0,0,.4)');
   }
 
@@ -17605,7 +17609,7 @@ function dGameOver(){
 // v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
 const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
 // v355: per-frame sin/cos cache — computed once at draw() start, reused across all draw functions
-let _sFr015=0,_cFr015=0,_sFr018=0,_cFr018=0,_sFr02=0,_cFr02=0,_sFr025=0,_cFr025=0,_sFr03=0,_cFr03=0,_sFr04=0,_cFr04=0,_sFr05=0,_cFr05=0,_sFr06=0,_cFr06=0,_sFr055=0,_sFr07=0,_cFr07=0,_sFr08=0,_cFr08=0,_sFr10=0,_cFr10=0,_sFr12=0,_cFr12=0;
+let _sFr015=0,_cFr015=0,_sFr018=0,_cFr018=0,_sFr02=0,_cFr02=0,_sFr025=0,_cFr025=0,_sFr03=0,_cFr03=0,_sFr04=0,_cFr04=0,_sFr05=0,_cFr05=0,_sFr06=0,_cFr06=0,_sFr055=0,_sFr07=0,_cFr07=0,_sFr08=0,_cFr08=0,_sFr10=0,_cFr10=0,_sFr12=0,_cFr12=0,_sFr15=0,_cFr15=0,_sFr18=0,_cFr18=0,_sFr20=0,_sFr25=0,_cFr25=0,_sFr28=0,_sFr30=0;
 // v364: water wave lookup tables (11 px columns each, depend on wt not fr — update when wt changes)
 // wx step=3 starting at 0: wx=0,3,6,9,12,15,18,21,24,27,30 (11 entries)
 // wx step=3 starting at 1: wx=1,4,7,10,13,16,19,22,25,28,31 (11 entries)
@@ -18008,6 +18012,7 @@ function draw(){
   _sFr015=Math.sin(_fr015);_cFr015=Math.cos(_fr015);_sFr018=Math.sin(fr*0.018);_cFr018=Math.cos(fr*0.018);
   _sFr06=Math.sin(fr*0.06);_cFr06=Math.cos(fr*0.06);_sFr055=Math.sin(fr*0.055);_sFr07=Math.sin(fr*0.07);_cFr07=Math.cos(fr*0.07);_sFr08=Math.sin(fr*0.08);_cFr08=Math.cos(fr*0.08);_sFr10=Math.sin(fr*0.1);_cFr10=Math.cos(fr*0.1);
   const _fr12=fr*0.12;_sFr12=Math.sin(_fr12);_cFr12=Math.cos(_fr12);
+  _sFr15=Math.sin(fr*0.15);_cFr15=Math.cos(fr*0.15);_sFr18=Math.sin(fr*0.18);_cFr18=Math.cos(fr*0.18);_sFr20=Math.sin(fr*0.2);_sFr25=Math.sin(fr*0.25);_cFr25=Math.cos(fr*0.25);_sFr28=Math.sin(fr*0.28);_sFr30=Math.sin(fr*0.3);
   // Global screen shake
   let _shaking=false;
   if(shakeT>0){

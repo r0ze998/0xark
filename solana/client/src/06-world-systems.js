@@ -718,7 +718,7 @@ function drawMinimap(){
   }
 
   // ── Dynamic dots: exits, NPCs, traps, rivals, player (all cheap, per-frame) ──
-  const exitPulse=Math.sin(fr*0.15)*0.4+0.6;
+  const exitPulse=_sFr15*0.4+0.6; // v369: cached
   for(let _ei=0,_el=exits.length;_ei<_el;_ei++){
     const e=exits[_ei];
     if(e.fromMap===currentMap){
@@ -772,7 +772,7 @@ function drawMinimap(){
       }
     }
   }
-  const playerPulse=Math.sin(fr*0.2)*0.3+0.7;
+  const playerPulse=_sFr20*0.3+0.7; // v369: cached
   g.globalAlpha=playerPulse;
   bx(mx+pl[0].x*sx-1,my+pl[0].y*sy-1,3,3,'#fff');bx(mx+pl[0].x*sx,my+pl[0].y*sy,1,1,'#40f040');
   g.globalAlpha=1;
@@ -1102,7 +1102,7 @@ function drawSignpostDialog(){
   }
   txShadow(line1,20,H-70+slideOff,7,'#303028','rgba(255,255,255,.15)');
   if(line2)txShadow(line2,20,H-52+slideOff,7,'#303028','rgba(255,255,255,.15)');
-  const arrowBounce=Math.sin(fr*0.15)*2;
+  const arrowBounce=_sFr15*2; // v369: cached
   txShadow('\u25BC',W-24,H-18+slideOff+arrowBounce,7,'#806030','rgba(0,0,0,.4)');
   g.globalAlpha=1;
 }
@@ -1210,7 +1210,7 @@ function drawCardShop(){
         if(isSel){
           bx(wX+8,ry-4,wW-16,rowH-2,'rgba(192,168,96,.2)');
           bx(wX+8,ry-4,3,rowH-2,rarCol);
-          const bob=Math.sin(fr*0.15)*2;
+          const bob=_sFr15*2; // v369: cached
           txShadow('\u25B6',wX+14+bob,ry+16,9,'#c04040','rgba(0,0,0,.4)');
         }else{
           bx(wX+8,ry-4,3,rowH-2,'rgba(200,180,100,.15)');
