@@ -11055,7 +11055,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v307',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v308',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -16299,6 +16299,9 @@ const _barEndCaps=(()=>{
     return c;
   });
 })();
+// v308: rarity-aware fanfare labels + extra visual intensity for Epic/Legendary finds
+const _FANFARE_LBL=['','NEW CARD!','NEW CARD!','RARE FIND!','EPIC FIND!','LEGENDARY FIND!'];
+const _FANFARE_LBL_COL=['','#e8e8e8','#e8e8e8',null,null,null]; // null = use rcol for R4/R5
 // v85: Floor-clear fanfare — dramatic cinematic overlay on floor descent
 function drawFloorClearFanfare(){
   if(!floorFanfareActive||!floorFanfareData)return;
@@ -16340,6 +16343,21 @@ function drawFloorClearFanfare(){
     }
     g.globalAlpha=alpha;
     bx(px_+16,py_+52,pw-32,1,'rgba(255,224,128,.3)');
+  }else if(rar>=4){
+    // v308: Epic/Legendary non-goal — pulsing title with rarity color
+    const hPulse=0.80+Math.sin(t*0.16)*0.20;
+    g.globalAlpha=alpha*hPulse;
+    txShadow('FLOOR '+flRoman+' CLEARED',px_+pw/2-130,py_+22,16,rcol,'rgba(0,0,0,.7)');
+    g.globalAlpha=alpha;
+    // Extra accent sparkles for epic/legendary
+    for(let si=0;si<(rar===5?6:4);si++){
+      const sa=t*0.15+si*(Math.PI*2/(rar===5?6:4));
+      const sd=36+Math.sin(t*0.09)*4;
+      g.globalAlpha=alpha*(0.5+Math.sin(t*0.13+si)*0.25);
+      bx(px_+pw/2+Math.cos(sa)*sd-2,py_+26+Math.sin(sa)*8-2,3,3,rcol);
+    }
+    g.globalAlpha=alpha;
+    bx(px_+16,py_+34,pw-32,1,rcol+'60');
   }else{
     txShadow('FLOOR '+flRoman+' CLEARED',px_+pw/2-130,py_+28,16,'#f0e0a0','rgba(0,0,0,.6)');
     bx(px_+16,py_+34,pw-32,1,'rgba(200,180,100,.2)');
@@ -16368,9 +16386,13 @@ function drawFloorClearFanfare(){
   g.globalAlpha=alpha;
   // Card info (right side)
   const infoX=cX+cw_+24;
-  const infoTopLbl=d.isGoal?'LEGENDARY REWARD!':(d.isNew?'NEW CARD!':'GOT:');
+  // v308: rarity-aware top label — Legendary/Epic/Rare get distinct shouts
+  const infoTopLbl=d.isGoal?'LEGENDARY REWARD!':(d.isNew?(_FANFARE_LBL[rar]||'NEW CARD!'):'GOT:');
   const infoTopCol=d.isGoal?'#ffe080':(d.isNew?rcol:'#a09878');
-  txShadow(infoTopLbl,infoX,py_+68,9,infoTopCol,'rgba(0,0,0,.3)');
+  const _lblPulse=rar>=4?(0.85+Math.sin(t*0.18)*0.15):1; // pulse label for Epic/Legendary
+  g.globalAlpha=alpha*_lblPulse;
+  txShadow(infoTopLbl,infoX,py_+68,rar>=4?10:9,infoTopCol,'rgba(0,0,0,.3)');
+  g.globalAlpha=alpha;
   txShadow(cr2.n,infoX,py_+90,12,d.isNew?rcol:'#e8e0c8','rgba(0,0,0,.4)');
   txShadow(_SCR_RAR_NAMES[rar]||'',infoX,py_+110,9,rcol,'rgba(0,0,0,.3)'); // v262: hoisted
   txShadow(cr2.f||'',infoX,py_+128,7,'#888878','rgba(0,0,0,.2)');
@@ -17495,6 +17517,30 @@ const _VEGA_WIN=['Mine now.','As expected.','Collect the spoils.','The ARK rewar
 const _MIRA_WIN=['Outcome nominal.','Your card is now an asset.','Transfer complete. As computed.','Data confirms: you are suboptimal.','Deviation corrected.'];
 const _VEGA_KO=['You cheated.','This isn\'t over.','The ARK will remember this.','I underestimated you. Once.','Take them. You\'ve earned nothing yet.'];
 const _MIRA_KO=['Recalculating...','Model error. Noted.','This outcome was <1% probability.','You disrupted the variable. Impressive.','Retreat. New strategy required.'];
+// v308: context-aware win quips based on how the battle actually unfolded
+const _VEGA_WIN_STEAL=['Your cards were never yours.','Hunters take what they want.','Hesitation is a gift to me.'];
+const _VEGA_WIN_BARRIERBRK=['Your shield was paper.','Barriers mean nothing to me.','Defense is just a slower loss.'];
+const _MIRA_WIN_DOMINATED=['Outcome: decisive. Next.','Your hand was statistically inferior.','The gap was too large to overcome.'];
+const _MIRA_WIN_CLOSE=['Closer than projected. Noted.','Margin: 0.3 rounds. You improved.','Near-optimal play. Still insufficient.'];
+function _pickDefeatContext(q,winnerIdx){
+  if(!q||!q.length)return null;
+  let rivalSteals=0,playerBarrierBroken=false,playerStole=false;
+  for(let _qi=0;_qi<q.length;_qi++){
+    const ev=q[_qi];
+    if(ev.effect==='steal_get'&&ev.who!=='You')rivalSteals++;
+    if(ev.effect==='barrier_break'&&ev.who==='You')playerBarrierBroken=true;
+    if(ev.effect==='steal_get'&&ev.who==='You')playerStole=true;
+  }
+  const pool=winnerIdx===1?_VEGA_WIN:_MIRA_WIN;
+  if(winnerIdx===1){
+    if(rivalSteals>=2)return _VEGA_WIN_STEAL[Math.floor(Math.random()*_VEGA_WIN_STEAL.length)];
+    if(playerBarrierBroken)return _VEGA_WIN_BARRIERBRK[Math.floor(Math.random()*_VEGA_WIN_BARRIERBRK.length)];
+  }else{
+    if(rivalSteals>=2)return _MIRA_WIN_DOMINATED[Math.floor(Math.random()*_MIRA_WIN_DOMINATED.length)];
+    if(playerStole)return _MIRA_WIN_CLOSE[Math.floor(Math.random()*_MIRA_WIN_CLOSE.length)];
+  }
+  return pool[Math.floor(Math.random()*pool.length)];
+}
 
 // Held-key tracking for smooth continuous movement
 const keysHeld = new Set();
@@ -18389,9 +18435,8 @@ document.addEventListener('keydown',e=>{
             const winnerIdx=(bpRivalActions[0]===1)?1:2;
             addCardToPlayer(winnerIdx,lostId);
             pl[0].cd[worstSlot]=0;pl[0].cc=pl[0].cd.filter(c=>c>0).length;
-            // v287/v295: post-battle winner quip (module-scope arrays)
-            const _winnerPool=winnerIdx===1?_VEGA_WIN:_MIRA_WIN;
-            const _quip=pl[winnerIdx].n+': "'+_winnerPool[Math.floor(Math.random()*_winnerPool.length)]+'"';
+            // v308: context-aware winner quip (analyzes bpResolveQueue events)
+            const _quip=pl[winnerIdx].n+': "'+(_pickDefeatContext(bpResolveQueue,winnerIdx)||(winnerIdx===1?_VEGA_WIN:_MIRA_WIN)[0])+'"';
             lg.push('DEFEATED! Lost '+CD[lostId-1].n+' to '+pl[winnerIdx].n+'. '+_quip);
             twSet('Defeated! Lost '+CD[lostId-1].n+'... '+_quip);
           }else{lg.push('DEFEATED! No cards to lose.');}

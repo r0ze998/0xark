@@ -6,6 +6,30 @@ const _VEGA_WIN=['Mine now.','As expected.','Collect the spoils.','The ARK rewar
 const _MIRA_WIN=['Outcome nominal.','Your card is now an asset.','Transfer complete. As computed.','Data confirms: you are suboptimal.','Deviation corrected.'];
 const _VEGA_KO=['You cheated.','This isn\'t over.','The ARK will remember this.','I underestimated you. Once.','Take them. You\'ve earned nothing yet.'];
 const _MIRA_KO=['Recalculating...','Model error. Noted.','This outcome was <1% probability.','You disrupted the variable. Impressive.','Retreat. New strategy required.'];
+// v308: context-aware win quips based on how the battle actually unfolded
+const _VEGA_WIN_STEAL=['Your cards were never yours.','Hunters take what they want.','Hesitation is a gift to me.'];
+const _VEGA_WIN_BARRIERBRK=['Your shield was paper.','Barriers mean nothing to me.','Defense is just a slower loss.'];
+const _MIRA_WIN_DOMINATED=['Outcome: decisive. Next.','Your hand was statistically inferior.','The gap was too large to overcome.'];
+const _MIRA_WIN_CLOSE=['Closer than projected. Noted.','Margin: 0.3 rounds. You improved.','Near-optimal play. Still insufficient.'];
+function _pickDefeatContext(q,winnerIdx){
+  if(!q||!q.length)return null;
+  let rivalSteals=0,playerBarrierBroken=false,playerStole=false;
+  for(let _qi=0;_qi<q.length;_qi++){
+    const ev=q[_qi];
+    if(ev.effect==='steal_get'&&ev.who!=='You')rivalSteals++;
+    if(ev.effect==='barrier_break'&&ev.who==='You')playerBarrierBroken=true;
+    if(ev.effect==='steal_get'&&ev.who==='You')playerStole=true;
+  }
+  const pool=winnerIdx===1?_VEGA_WIN:_MIRA_WIN;
+  if(winnerIdx===1){
+    if(rivalSteals>=2)return _VEGA_WIN_STEAL[Math.floor(Math.random()*_VEGA_WIN_STEAL.length)];
+    if(playerBarrierBroken)return _VEGA_WIN_BARRIERBRK[Math.floor(Math.random()*_VEGA_WIN_BARRIERBRK.length)];
+  }else{
+    if(rivalSteals>=2)return _MIRA_WIN_DOMINATED[Math.floor(Math.random()*_MIRA_WIN_DOMINATED.length)];
+    if(playerStole)return _MIRA_WIN_CLOSE[Math.floor(Math.random()*_MIRA_WIN_CLOSE.length)];
+  }
+  return pool[Math.floor(Math.random()*pool.length)];
+}
 
 // Held-key tracking for smooth continuous movement
 const keysHeld = new Set();
@@ -900,9 +924,8 @@ document.addEventListener('keydown',e=>{
             const winnerIdx=(bpRivalActions[0]===1)?1:2;
             addCardToPlayer(winnerIdx,lostId);
             pl[0].cd[worstSlot]=0;pl[0].cc=pl[0].cd.filter(c=>c>0).length;
-            // v287/v295: post-battle winner quip (module-scope arrays)
-            const _winnerPool=winnerIdx===1?_VEGA_WIN:_MIRA_WIN;
-            const _quip=pl[winnerIdx].n+': "'+_winnerPool[Math.floor(Math.random()*_winnerPool.length)]+'"';
+            // v308: context-aware winner quip (analyzes bpResolveQueue events)
+            const _quip=pl[winnerIdx].n+': "'+(_pickDefeatContext(bpResolveQueue,winnerIdx)||(winnerIdx===1?_VEGA_WIN:_MIRA_WIN)[0])+'"';
             lg.push('DEFEATED! Lost '+CD[lostId-1].n+' to '+pl[winnerIdx].n+'. '+_quip);
             twSet('Defeated! Lost '+CD[lostId-1].n+'... '+_quip);
           }else{lg.push('DEFEATED! No cards to lose.');}
