@@ -235,7 +235,8 @@ function drawAtmosphere(){
   }
   // Forest floating pollen/dust
   if(currentMap===1){
-    pollenParticles.forEach((p,i)=>{
+    for(let _pi=0,_pl=pollenParticles.length;_pi<_pl;_pi++){
+      const p=pollenParticles[_pi];
       p.x+=p.vx;
       p.y+=Math.sin(fr*0.02+p.phase)*0.15+p.vy;
       if(p.x>MW*TW)p.x=0;
@@ -243,12 +244,12 @@ function drawAtmosphere(){
       if(p.y>MH*TH)p.y=0;
       const sx=p.x-camX,sy=p.y-camY;
       if(sx>0&&sx<W&&sy>0&&sy<H-HUD_HEIGHT){
-        const a=0.25+Math.sin(fr*0.03+i)*0.15;
+        const a=0.25+Math.sin(fr*0.03+_pi)*0.15;
         g.globalAlpha=a;
         bx(sx,sy,1,1,'#e8e8d0');
         g.globalAlpha=1;
       }
-    });
+    }
   }
   // Dungeon ambient particles — cached to partCanvas, rebuilt every 2 frames
   if(inDungeon&&currentFloor>=1&&currentFloor<=5){
@@ -706,22 +707,21 @@ function drawPirateDecorations(){
     // (code removed from here — see drawCpxTreesInRange below)
 
     // Seagulls flying over water
-    seagulls.forEach(sg=>{
+    for(let _si=0,_sl=seagulls.length;_si<_sl;_si++){
+      const sg=seagulls[_si];
       sg.x+=sg.vx;
       if(sg.x>42*TW)sg.x=-20;
       const sgPx=sg.x-camX;
       const sgPy=sg.y-camY+Math.sin(fr*0.04+sg.phase)*sg.arc;
       if(sgPx>-10&&sgPx<W+10&&sgPy>-10&&sgPy<H){
-        // Body (white dot)
         bx(sgPx,sgPy,3,2,'#e8e8e8');
-        // Wings (flapping)
         if(Math.sin(fr*0.12+sg.phase)>0){
           bx(sgPx-3,sgPy-1,3,1,'#d8d8d8');bx(sgPx+3,sgPy-1,3,1,'#d8d8d8');
         }else{
           bx(sgPx-3,sgPy+1,3,1,'#d8d8d8');bx(sgPx+3,sgPy+1,3,1,'#d8d8d8');
         }
       }
-    });
+    }
 
   }else if(currentMap===1){
     // ── SMUGGLER'S JUNGLE DECORATIONS ──
@@ -776,7 +776,8 @@ function drawPirateDecorations(){
     }
 
     // Monkeys in trees
-    monkeys.forEach(mk=>{
+    for(let _mi=0,_ml=monkeys.length;_mi<_ml;_mi++){
+      const mk=monkeys[_mi];
       mk.hopTimer--;
       if(mk.hopTimer<=0){
         mk.hopTimer=80+Math.floor(Math.random()*100);
@@ -785,22 +786,18 @@ function drawPirateDecorations(){
       }
       const mtx=mk.treeX,mty=mk.treeY;
       const mm=getMap();
-      if(mm[mty]?.[mtx]!==3)return;
-      if(!fogRevealed[1][mty]?.[mtx])return;
+      if(mm[mty]?.[mtx]!==3)continue;
+      if(!fogRevealed[1][mty]?.[mtx])continue;
       const mpx=mtx*TW-camX+mk.offsetX,mpy=mty*TH-camY+4+mk.offsetY;
-      if(mpx<-TW||mpx>W+TW||mpy<-TH||mpy>H+TH)return;
+      if(mpx<-TW||mpx>W+TW||mpy<-TH||mpy>H+TH)continue;
       const hopBob=mk.hopTimer<10?Math.abs(Math.sin(mk.hopTimer*0.5))*4:0;
-      // Body
       bx(mpx+2,mpy+6-hopBob,6,5,'#8B5E3C');
-      // Head
       bx(mpx+3,mpy+2-hopBob,4,4,'#A06B3F');
-      // Face
       bx(mpx+4,mpy+3-hopBob,1,1,'#2a1a0a');bx(mpx+6,mpy+3-hopBob,1,1,'#2a1a0a');
-      // Tail
       const tailCurl=Math.sin(fr*0.05+mtx)*2;
       bx(mpx+8,mpy+8-hopBob+tailCurl,1,3,'#8B5E3C');
       bx(mpx+9,mpy+10-hopBob+tailCurl,1,2,'#8B5E3C');
-    });
+    }
 
   }else if(currentMap===2){
     // ── CURSED TEMPLE DECORATIONS ──
@@ -830,14 +827,15 @@ function drawPirateDecorations(){
     }
 
     // Dripping water effect from ceiling tiles
-    waterDrips.forEach(wd=>{
-      if(!fogRevealed[2][wd.y]?.[wd.x])return;
+    for(let _wi=0,_wl=waterDrips.length;_wi<_wl;_wi++){
+      const wd=waterDrips[_wi];
+      if(!fogRevealed[2][wd.y]?.[wd.x])continue;
       const m2=getMap();
-      if(m2[wd.y]?.[wd.x]!==22)return;
+      if(m2[wd.y]?.[wd.x]!==22)continue;
       const wpx=wd.x*TW-camX+12+((wd.x*5)%12),wpy=wd.y*TH-camY+TH;
-      if(wpx<-4||wpx>W+4||wpy<-40||wpy>H+4)return;
+      if(wpx<-4||wpx>W+4||wpy<-40||wpy>H+4)continue;
       wd.delay--;
-      if(wd.delay>0)return;
+      if(wd.delay>0)continue;
       wd.dropY+=wd.speed;
       if(wd.dropY>24){
         wd.dropY=0;
@@ -853,7 +851,7 @@ function drawPirateDecorations(){
         bx(wpx-2,wpy+24,2,1,'#4888c0');bx(wpx+2,wpy+24,2,1,'#4888c0');
         g.globalAlpha=1;
       }
-    });
+    }
 
     // Ghostly glow in darker areas (near lava/crystal tiles)
     for(let gy=Math.max(0,Math.floor(camY/TH));gy<=Math.min(MH-1,Math.ceil((camY+H)/TH));gy++){
@@ -1747,7 +1745,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v250',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v251',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);

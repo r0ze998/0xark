@@ -1,6 +1,14 @@
 // ═══════════════════════════════════════
 // TILE RENDERING
 // ═══════════════════════════════════════
+// v251: Pre-baked lake tile color strings — eliminates template literal creation per lake tile per dirty frame
+// rv=(h&5)-2; h&5 ∈ {0,1,4,5} → rv ∈ {-2,-1,2,3}. Indexed by h&5 (sparse array, slots 2,3 unused).
+const _LAKE_TOP_F3 =['rgb(46,110,166)','rgb(47,111,167)',null,null,'rgb(50,114,170)','rgb(51,115,171)'];
+const _LAKE_TOP_NF3=['rgb(58,122,178)','rgb(59,123,179)',null,null,'rgb(62,126,182)','rgb(63,127,183)'];
+const _LAKE_BOT_F3 =['rgb(34,98,154)', 'rgb(35,99,155)', null,null,'rgb(38,102,158)','rgb(39,103,159)'];
+const _LAKE_BOT_NF3=['rgb(46,110,166)','rgb(47,111,167)',null,null,'rgb(50,114,170)','rgb(51,115,171)'];
+// v251: Pre-baked stone shade strings for drawRuinsWall fallback — shade = (idx%3)*8 ∈ {0,8,16}
+const _STONE_SHADE=['rgb(96,88,80)','rgb(104,96,88)','rgb(112,104,96)'];
 // v232: Pre-baked tile shadows — replaces per-frame g.ellipse() on every visible tree/rock
 // Tree shadow: ellipse(px+16,py+30,12,4) @.12 → 28×10, center(14,5), draw@(px+2,py+25)
 const _tileShadowTree=(()=>{
@@ -494,10 +502,15 @@ function drawDock(px,py,tx_,ty){
 function drawLake(px,py,tx_,ty){
   const f3=(wt+tx_+ty)%3;
   const h=tileHash(tx_,ty);
-  const rv=(h&5)-2;
-  // Gradient top-bottom
-  bx(px,py,TW,TH/2,f3===0?`rgb(${48+rv},${112+rv},${168+rv})`:`rgb(${60+rv},${124+rv},${180+rv})`);
-  bx(px,py+TH/2,TW,TH/2,f3===0?`rgb(${36+rv},${100+rv},${156+rv})`:`rgb(${48+rv},${112+rv},${168+rv})`);
+  const hk=h&5;
+  // v251: use pre-baked color strings instead of template literals
+  if(f3===0){
+    bx(px,py,TW,TH/2,_LAKE_TOP_F3[hk]);
+    bx(px,py+TH/2,TW,TH/2,_LAKE_BOT_F3[hk]);
+  }else{
+    bx(px,py,TW,TH/2,_LAKE_TOP_NF3[hk]);
+    bx(px,py+TH/2,TW,TH/2,_LAKE_BOT_NF3[hk]);
+  }
   const r=tr(tx_,ty);
   // Gentle wave lines
   const waveOff=Math.sin(wt*0.3+tx_*0.5)*2;
@@ -593,8 +606,7 @@ function drawRuinsWall(px,py,tx_,ty){
   for(let by=0;by<TH;by+=8){
     const off=(Math.floor(by/8)%2)*4;
     for(let bxx=0;bxx<TW;bxx+=8){
-      const shade=((bxx+by+tx_)%3)*8;
-      bx(px+bxx+off,py+by,7,7,`rgb(${96+shade},${88+shade},${80+shade})`);
+      bx(px+bxx+off,py+by,7,7,_STONE_SHADE[(bxx+by+tx_)%3]);
       bx(px+bxx+off,py+by+7,7,1,'#585860');
     }
     for(let bxx=0;bxx<TW;bxx+=8){
