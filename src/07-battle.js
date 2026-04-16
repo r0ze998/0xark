@@ -65,6 +65,9 @@ const _V_ACT_LBL=['V:DRW','V:STL','V:BAR','V:SCT','V:CRD'];
 const _M_ACT_LBL=['M:DRW','M:STL','M:BAR','M:SCT','M:CRD'];
 // v336: pre-baked "You chose X!" labels — eliminates per-frame string concat during confirming phase
 const _CHOSE_LBL=_ACTION_NAMES.map(n=>'You chose '+n+'!');
+// v337: lazy cache for scout intel labels — eliminates 3 concats/frame per visible scout row
+let _sIntelCache0='',_sIntelRef0=null,_sIntelStale0=-1;
+let _sIntelCache1='',_sIntelRef1=null,_sIntelStale1=-1;
 function _getTypeInfo(t,r){
   if(t==='defense')return _DEF_TYPE_INFOS[Math.min(4,(r||1)-1)];
   if(t==='recovery')return _REC_TYPE_INFOS[Math.min(4,(r||1)-1)];
@@ -464,19 +467,21 @@ function drawOpponentInfoBox(){
     if(showScout0){
       intelY=by_+bh-(showScout1?32:16);
       const sd=bpScoutedCards[0];
-      const staleLabel=rd-sd.round>0?(_STALE_RD_LBL[sd.round]||'(R'+sd.round+')'):''; // v318
-      g.globalAlpha=rd-sd.round>1?0.5:0.85;
+      const _s0=rd-sd.round; // v337: stale diff for cache key
+      if(_sIntelRef0!==sd||_sIntelStale0!==_s0){_sIntelRef0=sd;_sIntelStale0=_s0;_sIntelCache0='\u{1F50D}'+pl[1].n[0]+': '+(sd.nameStr||'empty')+(_s0>0?(_STALE_RD_LBL[sd.round]||'(R'+sd.round+')'):'');}
+      g.globalAlpha=_s0>1?0.5:0.85;
       bx(bx_+4,intelY,bw-8,14,'rgba(30,80,120,.4)');
-      txShadow('\u{1F50D}'+pl[1].n[0]+': '+(sd.nameStr||'empty')+staleLabel,bx_+8,intelY+11,5,ARK.tealBright,'rgba(0,0,0,.3)'); // v261: pre-joined
+      txShadow(_sIntelCache0,bx_+8,intelY+11,5,ARK.tealBright,'rgba(0,0,0,.3)'); // v337: lazy-cached
       g.globalAlpha=1;
     }
     if(showScout1){
       const sd2=bpScoutedCards[1];
       const intelY2=by_+bh-16;
-      const staleLabel2=rd-sd2.round>0?(_STALE_RD_LBL[sd2.round]||'(R'+sd2.round+')'):''; // v318
-      g.globalAlpha=rd-sd2.round>1?0.5:0.85;
+      const _s1=rd-sd2.round; // v337: stale diff for cache key
+      if(_sIntelRef1!==sd2||_sIntelStale1!==_s1){_sIntelRef1=sd2;_sIntelStale1=_s1;_sIntelCache1='\u{1F50D}'+pl[2].n[0]+': '+(sd2.nameStr||'empty')+(_s1>0?(_STALE_RD_LBL[sd2.round]||'(R'+sd2.round+')'):'');}
+      g.globalAlpha=_s1>1?0.5:0.85;
       bx(bx_+4,intelY2,bw-8,14,'rgba(80,60,10,.35)');
-      txShadow('\u{1F50D}'+pl[2].n[0]+': '+(sd2.nameStr||'empty')+staleLabel2,bx_+8,intelY2+11,5,ARK.gold,'rgba(0,0,0,.3)'); // v261: pre-joined
+      txShadow(_sIntelCache1,bx_+8,intelY2+11,5,ARK.gold,'rgba(0,0,0,.3)'); // v337: lazy-cached
       g.globalAlpha=1;
     }
   }
