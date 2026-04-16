@@ -182,7 +182,7 @@ function drawBattleBG(){
 
 // Draw FRLG-style card count bar (like HP bar) with rounded container and segmented fill
 function drawCardBar(x,y,w,cards,maxCards){
-  const filledCount=cards.filter(c=>c>0).length;
+  const filledCount=cdCount(cards);
   // "CARDS" label to the left
   // (label is drawn by callers)
   // Rounded rectangle container
@@ -1419,7 +1419,7 @@ function pickAreaCardForMap(mapIdx){
   if(!ac||ac.length===0)return 1+(Math.floor(Math.random()*60)); // fallback: any card
   return ac[Math.floor(Math.random()*ac.length)];
 }
-function cardCount(p){ return p.cd.filter(c=>c>0).length; }
+function cardCount(p){ return cdCount(p.cd); }
 function syncCardCount(pIdx){
   const p=pl[pIdx];
   if(pIdx===0&&p.vault){p.cc=p.vault.size;}

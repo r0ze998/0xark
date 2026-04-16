@@ -313,8 +313,8 @@ function update(){
           const rivalName=r.n;
           const isRivalInitiated=ai.state==='hunting';
           // v81: choose context-sensitive pre-battle line
-          const rCards=r.cd.filter(c=>c>0).length;
-          const pCards=pl[0].cd.filter(c=>c>0).length;
+          const rCards=cdCount(r.cd);
+          const pCards=cdCount(pl[0].cd);
           const vegaLines_hunt=['Hand over the cards. Now.','I\'ve been tracking you since B1.','The ARK\'s legacy is mine.','No walls stop a hunter.','Cornered. Just like the crew.'];
           const vegaLines_surp=['You... found me first?','Reckless. I respect it.','Bold. The ARK liked bold.','Didn\'t expect prey to hunt.','So you\'ve learned something.'];
           const miraLines_hunt=['I mapped every route. You had no chance.','The ARK crew fell to calculation. So will you.','Your card count fell below threshold. Engaging.','Probability of your escape: zero.','Precisely where my model predicted.'];

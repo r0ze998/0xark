@@ -1,6 +1,8 @@
 // MAP SCREEN
 // ═══════════════════════════════════════
 const HUD_HEIGHT=72;
+// v220: Card-count helper — avoids .filter().length array allocation on every frame
+function cdCount(cd){let n=0;for(let i=0,l=cd.length;i<l;i++)if(cd[i]>0)n++;return n;}
 
 // Pre-built edge gradients for map boundary vignette (avoids creating gradient objects every frame)
 const _edgeFade=20;
@@ -1088,7 +1090,7 @@ function dMap(){
       drawRivalAlertAnim(p,spx,spy);
       // Rival name label above sprite (always visible when in view)
       const rNameCol=(i===1)?'#f080c0':'#f0c830';
-      const rCards=p.cd.filter(c=>c>0).length;
+      const rCards=cdCount(p.cd);
       const rLabel=p.n+(rCards>0?' '+rCards+'c':'');
       const lW=rLabel.length*5+6;
       bx(spx+8-lW/2,spy-44,lW,11,'rgba(0,0,0,.65)');
@@ -1347,8 +1349,8 @@ function dMap(){
     const miraAlpha=miraSame?(0.7+Math.sin(fr*0.18+1)*0.3):0.55;
     const vegaCol=vegaSame?'#f080c0':'#806070';
     const miraCol=miraSame?'#f0c830':'#807060';
-    const vegaCards=pl[1].cd.filter(c=>c>0).length;
-    const miraCards=pl[2].cd.filter(c=>c>0).length;
+    const vegaCards=cdCount(pl[1].cd);
+    const miraCards=cdCount(pl[2].cd);
     const vegaFull=vegaLbl+' '+vegaCards+'c';
     const miraFull=miraLbl+' '+miraCards+'c';
     g.globalAlpha=vegaAlpha;
@@ -1444,7 +1446,7 @@ function dMap(){
     }
   }
   // Show overflow count if hand has more than 8 cards
-  const handTotal=pl[0].cd.filter(c=>c>0).length;
+  const handTotal=cdCount(pl[0].cd);
   if(handTotal>HUD_CARD_SLOTS){
     txShadow('+'+(handTotal-HUD_CARD_SLOTS),310+HUD_CARD_SLOTS*HUD_CARD_SPACING+2,hudY+26,7,'#c8c0a0','rgba(0,0,0,.4)');
   }
@@ -1517,7 +1519,7 @@ function dMap(){
     if(rivalMaps[ri]===currentMap)continue;
     const rp=pl[ri+1];
     const rFloor=rivalMaps[ri];
-    const rcc2=rp.cd.filter(c=>c>0).length;
+    const rcc2=cdCount(rp.cd);
     const rCol=ri===0?'#d060a0':'#d0a030';
     const labelY=hudY+4+ri*14;
     const labelX=W-200;
@@ -1545,14 +1547,14 @@ function dMap(){
     g.closePath();g.fill();
     g.restore();
     // Label + card count
-    const rcc=pl[ri+1].cd.filter(c=>c>0).length;
+    const rcc=cdCount(pl[ri+1].cd);
     txShadow(pl[ri+1].n[0],arrowCX-3,arrowCY+14,5,arrowCol,'rgba(0,0,0,.5)');
     txShadow(rcc+'♠',arrowCX-5,arrowCY+24,5,rcc>=4?'#d04040':arrowCol,'rgba(0,0,0,.5)');
   }
 
   // Vault/hand status (progress toward 60-card goal)
   const vaultCount=pl[0].vault?pl[0].vault.size:0;
-  const handCount=pl[0].cd.filter(c=>c>0).length;
+  const handCount=cdCount(pl[0].cd);
   const vaultPct=vaultCount/60;
   const vaultCol=vaultCount>=50?'#f0c830':vaultCount>=30?'#e08040':vaultCount>=10?'#40c060':'#686068';
   txShadow('CARDS:'+vaultCount+'/60',310,hudY+56,7,vaultCol,'rgba(0,0,0,.4)');
@@ -1567,9 +1569,10 @@ function dMap(){
     const rivalNames=[pl[1].n[0],pl[2].n[0]];
     let trailX=430;
     for(let ri=0;ri<2;ri++){
-      const freshTracks=footprints.filter(fp=>fp.ri===ri&&fp.map===currentMap&&fp.age<900);
-      if(freshTracks.length>0){
-        const freshest=Math.min(...freshTracks.map(fp=>fp.age));
+      // v220: Avoid .filter().map() array allocations — single loop finds min age
+      let freshest=Infinity,_fp;
+      for(let _fi=0;_fi<footprints.length;_fi++){_fp=footprints[_fi];if(_fp.ri===ri&&_fp.map===currentMap&&_fp.age<900&&_fp.age<freshest)freshest=_fp.age;}
+      if(freshest<Infinity){
         const freshAlpha=freshest<180?1:freshest<600?0.7:0.45;
         g.globalAlpha=freshAlpha;
         // Small boot icon (two dots)
@@ -1637,14 +1640,14 @@ function dMap(){
   // v94: Town rivalry scoreboard (shown only in town, top-left panel)
   if(currentMap===0&&!inDungeon&&sc==='map'){
     const myUniq=pl[0].vault?pl[0].vault.size:0;
-    const vegaCards=pl[1].cd.filter(c=>c>0).length;
-    const miraCards=pl[2].cd.filter(c=>c>0).length;
+    const vegaCards=cdCount(pl[1].cd);
+    const miraCards=cdCount(pl[2].cd);
     // Use vault-proxy for rivals (their hand as unique cards approximation)
     const vegaUniq=new Set(pl[1].cd.filter(c=>c>0)).size;
     const miraUniq=new Set(pl[2].cd.filter(c=>c>0)).size;
     // Sort by unique count descending
     const rankings=[
-      {name:'YOU',uniq:myUniq,hand:pl[0].cd.filter(c=>c>0).length,col:'#78c0f0',floor:0},
+      {name:'YOU',uniq:myUniq,hand:cdCount(pl[0].cd),col:'#78c0f0',floor:0},
       {name:pl[1].n,uniq:vegaUniq,hand:vegaCards,col:'#e060a0',floor:rivalMaps[0]},
       {name:pl[2].n,uniq:miraUniq,hand:miraCards,col:'#d0a030',floor:rivalMaps[1]}
     ].sort((a,b)=>b.uniq-a.uniq);
