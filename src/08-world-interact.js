@@ -531,10 +531,8 @@ function drawBuildingInterior(){
       else if(sf<55){
         const prog=(sf-30)/25;
         const glowR=50+prog*20;
-        const glowGrd=g.createRadialGradient(cx_,cy_,0,cx_,cy_,glowR);
-        glowGrd.addColorStop(0,rarCol.replace('#','rgba(').split('').join('')); // approximate
-        g.globalAlpha=prog*0.6;
-        // Simplified: just draw color rings
+        // v264: removed dead createRadialGradient (was computed but never set as fillStyle)
+        // Draw color rings showing rarity
         g.strokeStyle=rarCol;g.lineWidth=2+prog*4;
         g.globalAlpha=prog*0.5;
         g.beginPath();g.arc(cx_,cy_,glowR*0.6,0,Math.PI*2);g.stroke();

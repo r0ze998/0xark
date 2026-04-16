@@ -382,6 +382,29 @@ const FLOOR_THEMES=[
   {danger:5,sub:'ARK CORE',note:'The ARK Core. One heir. No mercy.',accent:'#e0a020',bg:'#120800',stripe:'#301000'},
 ];
 
+// v264: Pre-bake floor title gradients — 2 createLinearGradient calls × 200 frames → 0 per frame
+const _FLOOR_TITLE_BAR_GRADS=(()=>{
+  const grads=[null];
+  for(let fl=1;fl<=5;fl++){
+    const acc=FLOOR_THEMES[fl].accent;
+    const gr=g.createLinearGradient(0,0,W,0);
+    gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(0.3,acc);
+    gr.addColorStop(0.7,acc);gr.addColorStop(1,'rgba(0,0,0,0)');
+    grads.push(gr);
+  }
+  return grads;
+})();
+const _FLOOR_TITLE_FILL_GRADS=(()=>{
+  const bx_=W/2-40; // barX = W/2-40 (barW=80)
+  const grads=[null];
+  for(let fl=1;fl<=5;fl++){
+    const acc=FLOOR_THEMES[fl].accent;
+    const gr=g.createLinearGradient(bx_,0,bx_+80,0);
+    gr.addColorStop(0,'#50c0ff');gr.addColorStop(0.4,acc);gr.addColorStop(1,'#ff3030');
+    grads.push(gr);
+  }
+  return grads;
+})();
 function showFloorTitle(floorNum){
   floorTitleActive=true;
   floorTitleFrame=0;
@@ -425,14 +448,10 @@ function drawFloorTitle(){
     g.fillRect(slideX,sy,W,STRIPE_H);
   }
 
-  // ── Accent top bar ──
+  // ── Accent top bar (v264: pre-baked gradient, no alloc per frame) ──
   g.globalAlpha=globalAlpha*(t<15?t/15:1);
-  const barGrad=g.createLinearGradient(0,0,W,0);
-  barGrad.addColorStop(0,'rgba(0,0,0,0)');
-  barGrad.addColorStop(0.3,theme.accent);
-  barGrad.addColorStop(0.7,theme.accent);
-  barGrad.addColorStop(1,'rgba(0,0,0,0)');
-  g.fillStyle=barGrad;g.fillRect(0,H/2-56,W,3);
+  g.fillStyle=_FLOOR_TITLE_BAR_GRADS[f]||_FLOOR_TITLE_BAR_GRADS[1];
+  g.fillRect(0,H/2-56,W,3);
 
   // ── Accent bottom bar ──
   g.fillRect(0,H/2+52,W,3);
@@ -475,11 +494,7 @@ function drawFloorTitle(){
     g.fillStyle='#ffffff';g.fillRect(barX,barY,barW,barH);
     // Filled portion
     g.globalAlpha=globalAlpha*dangerAlpha;
-    const fillGrad=g.createLinearGradient(barX,0,barX+barW,0);
-    fillGrad.addColorStop(0,'#50c0ff');
-    fillGrad.addColorStop(0.4,theme.accent);
-    fillGrad.addColorStop(1,'#ff3030');
-    g.fillStyle=fillGrad;
+    g.fillStyle=_FLOOR_TITLE_FILL_GRADS[f]||_FLOOR_TITLE_FILL_GRADS[1]; // v264: pre-baked
     const fillW=Math.min(barW,barW*(d/5)*(t<95?(t-80)/15:1));
     g.fillRect(barX,barY,fillW,barH);
     // Label
@@ -1847,7 +1862,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v264',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v265',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
