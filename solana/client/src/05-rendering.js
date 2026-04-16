@@ -1458,9 +1458,10 @@ function drawNPCSprite(npc){
 // ── BIRD SPRITES ──
 function drawBirds(){
   if(currentMap!==1)return;
-  birds.forEach(b=>{
+  for(let _bi=0,_bl=birds.length;_bi<_bl;_bi++){
+    const b=birds[_bi];
     const px=b.x*TW-camX+10,py=b.y*TH-camY+6;
-    if(px<-20||px>W+20||py<-20||py>H+20)return;
+    if(px<-20||px>W+20||py<-20||py>H+20)continue;
     bx(px,py+4,8,6,'#604830');
     bx(px+2,py+2,4,2,'#806040');
     bx(px+8,py+4,2,2,'#d8a030');
@@ -1469,7 +1470,7 @@ function drawBirds(){
     }else{
       bx(px-2,py+2,2,2,'#705838');bx(px+8,py+2,2,2,'#705838');
     }
-  });
+  }
 }
 
 // ═══════════════════════════════════════

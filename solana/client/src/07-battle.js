@@ -2,6 +2,10 @@
 // BATTLE / ACTION SCREEN (FRLG STYLE)
 // ═══════════════════════════════════════
 
+// v250: Static battle HUD arrays — eliminates per-frame object/array allocation in spell orb + type strip rendering
+const _BORB_LBL=['STL','BAR','SCT'],_BORB_FILL=['#c04848','#3868c0','#38a038'],_BORB_EMPTY=['#2a1010','#101028','#0e1e0e'],_BORB_LCOL=['#d05050','#4878d0','#48b048'];
+const _BTYPES=['attack','defense','flee','magic','recovery'],_BTYPE_ABB=['ATK','DEF','FLY','MAG','REC'],_BTYPE_COL=['#c83838','#3888c8','#30b870','#a840c0','#c8a830'];
+const _btCounts=new Int32Array(5); // reused each frame, zero-filled
 // v245: Pre-baked VS gold circle — eliminates arc per battle-intro frame
 const _vsGoldCircle=(()=>{const c=document.createElement('canvas');c.width=58;c.height=58;const ctx=c.getContext('2d');ctx.fillStyle='#f0c830';ctx.beginPath();ctx.arc(29,29,28,0,Math.PI*2);ctx.fill();return c;})();
 // v221: Pre-baked battle BG static layers — eliminates per-frame gradient creation during battle
@@ -422,53 +426,46 @@ function drawPlayerInfoBox(){
     txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,ARK.goldBright,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
-  // Spell charge orb pips
-  {const sOrbs=[
-    {lbl:'STL',val:sp.s,max:3,fill:'#c04848',empty:'#2a1010',warn:sp.s===0,lCol:'#d05050'},
-    {lbl:'BAR',val:sp.b,max:3,fill:'#3868c0',empty:'#101028',warn:false,lCol:'#4878d0'},
-    {lbl:'SCT',val:sp.c,max:3,fill:'#38a038',empty:'#0e1e0e',warn:sp.c===0,lCol:'#48b048'},
-  ];const oW=6,oH=6,oG=2;
-  sOrbs.forEach((s,si)=>{
-    const ox=bx_+10+si*97,oy=by_+44;
-    const lc=s.warn&&Math.floor(fr/12)%2===0?ARK.dangerBright:s.lCol;
-    txShadow(s.lbl,ox,oy+10,6,lc,'rgba(0,0,0,.3)');
-    for(let o=0;o<s.max;o++){
-      const filled=o<s.val;
-      bx(ox+26+o*(oW+oG),oy+2,oW,oH,filled?s.fill:s.empty);
+  // Spell charge orb pips (v250: static arrays, no per-frame object allocation)
+  {const _spVals=[sp.s,sp.b,sp.c],_spWarn=[sp.s===0,false,sp.c===0];
+  const oW=6,oH=6,oG=2,blink=Math.floor(fr/12)%2===0;
+  for(let si=0;si<3;si++){
+    const ox=bx_+10+si*97,oy=by_+44,val=_spVals[si];
+    const lc=_spWarn[si]&&blink?ARK.dangerBright:_BORB_LCOL[si];
+    txShadow(_BORB_LBL[si],ox,oy+10,6,lc,'rgba(0,0,0,.3)');
+    for(let o=0;o<3;o++){
+      const filled=o<val;
+      bx(ox+26+o*(oW+oG),oy+2,oW,oH,filled?_BORB_FILL[si]:_BORB_EMPTY[si]);
       if(filled)bx(ox+26+o*(oW+oG)+1,oy+3,2,1,'rgba(255,255,255,.3)');
     }
-    if(s.val>s.max)txShadow('+'+(s.val-s.max),ox+26+s.max*(oW+oG)+2,oy+9,5,ARK.goldBright,'rgba(0,0,0,.3)');
-  });}
+    if(val>3)txShadow('+'+(val-3),ox+26+3*(oW+oG)+2,oy+9,5,ARK.goldBright,'rgba(0,0,0,.3)');
+  }}
   // Area label
   txShadow(mapNames[currentMap],bx_+10,by_+64,8,ARK.textDim,'rgba(0,0,0,.3)');
-  // Hand type composition strip
+  // Hand type composition strip (v250: reused Int32Array, no new arrays)
   {
-    const TYPES=['attack','defense','flee','magic','recovery'];
-    const TYPE_ABB=['ATK','DEF','FLY','MAG','REC'];
-    const TYPE_C={attack:'#c83838',defense:'#3888c8',flee:'#30b870',magic:'#a840c0',recovery:'#c8a830'};
-    const counts={};
-    TYPES.forEach(t=>counts[t]=0);
-    pl[0].cd.forEach(id=>{if(id>0&&CD[id-1])counts[CD[id-1].t]=(counts[CD[id-1].t]||0)+1;});
+    _btCounts[0]=_btCounts[1]=_btCounts[2]=_btCounts[3]=_btCounts[4]=0;
+    const _typeMap={attack:0,defense:1,flee:2,magic:3,recovery:4};
+    for(let _ci=0,_cl=pl[0].cd.length;_ci<_cl;_ci++){const id=pl[0].cd[_ci];if(id>0&&CD[id-1]){const ti=_typeMap[CD[id-1].t];if(ti!==undefined)_btCounts[ti]++;}}
     bx(bx_+4,by_+68,bw-8,1,ARK.border);
     let dotX=bx_+8;
-    TYPES.forEach((t,ti)=>{
-      const cnt=counts[t];
-      if(cnt===0)return;
-      const col=TYPE_C[t];
+    for(let ti=0;ti<5;ti++){
+      const cnt=_btCounts[ti];
+      if(cnt===0)continue;
+      const col=_BTYPE_COL[ti];
       for(let d=0;d<cnt;d++){bx(dotX+d*6,by_+74,5,5,col);}
       dotX+=cnt*6+3;
-    });
+    }
     let labelX=bx_+bw-8;
-    TYPES.slice().reverse().forEach((t,ti)=>{
-      const cnt=counts[t];
-      if(cnt===0)return;
-      const col=TYPE_C[t];
-      const lbl=TYPE_ABB[4-ti]+':'+cnt;
+    for(let ti=4;ti>=0;ti--){
+      const cnt=_btCounts[ti];
+      if(cnt===0)continue;
+      const lbl=_BTYPE_ABB[ti]+':'+cnt;
       labelX-=lbl.length*5+4;
       g.globalAlpha=0.75;
-      txShadow(lbl,labelX,by_+80,5,col,'rgba(0,0,0,.3)');
+      txShadow(lbl,labelX,by_+80,5,_BTYPE_COL[ti],'rgba(0,0,0,.3)');
       g.globalAlpha=1;
-    });
+    }
   }
 }
 
