@@ -890,7 +890,7 @@ function dCrd(){
     }
     // Card number badge
     bx(sidX+4,sidY+4,24,14,'rgba(0,0,0,.6)');
-    txShadow('#'+String(cardId).padStart(2,'0'),sidX+5,sidY+15,6,owned?'#b0b8d0':'#2a2a60','rgba(0,0,0,.4)');
+    txShadow(_CARD_NUM_LBL[cardId]||('#'+String(cardId).padStart(2,'0')),sidX+5,sidY+15,6,owned?'#b0b8d0':'#2a2a60','rgba(0,0,0,.4)'); // v346: pre-baked
     // Info block
     const infoY=sidY+artH+14;
     // Card name
@@ -909,7 +909,7 @@ function dCrd(){
     }
     // Source hint
     const srcStr=getCardSourceHint(cardId);
-    txShadow('Find: '+srcStr,sidX+12,infoY+74,6,owned?'#686878':'#141848','rgba(0,0,0,.35)');
+    txShadow(_CARD_FIND_LBL[cardId]||('Find: '+srcStr),sidX+12,infoY+74,6,owned?'#686878':'#141848','rgba(0,0,0,.35)'); // v346: pre-baked
     // Status badge at bottom
     const badgeY=sidY+sidH-22;
     bx(sidX+2,badgeY-2,sidW-4,1,'rgba(255,255,255,.06)');
@@ -950,6 +950,12 @@ const CARD_SOURCE_HINTS=(()=>{
   return h;
 })();
 function getCardSourceHint(cardId){return CARD_SOURCE_HINTS[cardId]||'Gacha / Trade';}
+// v346: pre-baked per-card label arrays (avoids per-frame string alloc in card browser + detail panel)
+const _CARD_NUM_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('#'+String(i).padStart(2,'0'));return a;})();
+const _CARD_FIND_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('Find: '+(CARD_SOURCE_HINTS[i]||'Gacha / Trade'));return a;})();
+const _CARD_FOUND_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('Found: '+(CARD_SOURCE_HINTS[i]||'Gacha / Trade'));return a;})();
+// v346: lazy caches for card detail panel per-cr fields
+let _detAbilityLbl='',_detAbilityRef=null;
 function drawCardDetailPanel(){
   if(!crdDetailActive)return;
   const typeStart=crdPage*12;
@@ -985,16 +991,17 @@ function drawCardDetailPanel(){
   const nameFs=Math.max(10,Math.min(16,Math.floor(pw/(cr.n.length*0.72))));
   txShadow(cr.n,px_+pw/2-(cr.n.length*nameFs/2.4),py_+artH+32,nameFs,owned?'#f0e8d0':'#403858','rgba(0,0,0,.5)');
 
-  // Type
-  const tLabel={attack:'ATTACK',defense:'DEFENSE',flee:'FLEE',magic:'MAGIC',heal:'HEAL'}[cr.t]||cr.t.toUpperCase();
+  // Type — v346: use existing _CRD_TYPE_FULL lookup (eliminates inline object alloc)
+  const tLabel=_CRD_TYPE_FULL[cr.t]||cr.t.toUpperCase();
   txShadow(tLabel,px_+pw/2-tLabel.length*3.5,py_+artH+50,7,owned?(cr.h||'#aaa'):'#40385a','rgba(0,0,0,.35)');
 
   // Separator
   bx(px_+20,py_+artH+58,pw-40,1,owned?cr.h+'80':'#20183040');
 
-  // Effect / ability
+  // Effect / ability — v346: lazy cache keyed on cr reference
   if(cr.f){
-    txShadow('ABILITY: '+cr.f,px_+20,py_+artH+76,7,owned?'#f0e0c0':'#403858','rgba(0,0,0,.35)');
+    if(_detAbilityRef!==cr){_detAbilityRef=cr;_detAbilityLbl='ABILITY: '+cr.f;}
+    txShadow(_detAbilityLbl,px_+20,py_+artH+76,7,owned?'#f0e0c0':'#403858','rgba(0,0,0,.35)');
   }
 
   // Flavor text
@@ -1016,9 +1023,8 @@ function drawCardDetailPanel(){
     txShadow('??? — Card not yet collected',px_+20,py_+artH+96,6,'#302848','rgba(0,0,0,.3)');
   }
 
-  // Source hint
-  const src=getCardSourceHint(cardId);
-  txShadow('Found: '+src,px_+20,py_+ph-44,6,owned?'#908880':'#302848','rgba(0,0,0,.35)');
+  // Source hint — v346: pre-baked array lookup
+  txShadow(_CARD_FOUND_LBL[cardId]||('Found: '+getCardSourceHint(cardId)),px_+20,py_+ph-44,6,owned?'#908880':'#302848','rgba(0,0,0,.35)');
 
   // In-hand indicator
   const inHand=pl[0].cd.includes(cardId);
