@@ -1200,6 +1200,13 @@ function drawSelectPhase(){
     win(hpX,hpY,hpW,hpH);
     bx(hpX,hpY,hpW,3,'#806030'); // amber top border
     txShadow('ROUND LOG',hpX+8,hpY+18,8,'#c0a060','rgba(0,0,0,.3)');
+    // v313: W/L tally — lazy cache, rebuild once per round
+    if(_histWLRd!==rd){
+      _histWLRd=rd;let _w=0,_l=0;
+      for(let _bhi=0;_bhi<battleRoundHistory.length;_bhi++){const _bh=battleRoundHistory[_bhi];if(_bh.got)_w++;if(_bh.lost)_l++;}
+      _histWLStr='W:'+_w+' L:'+_l;
+    }
+    txShadow(_histWLStr,hpX+hpW-64,hpY+18,6,_battleRoundNet>0?'#50d080':_battleRoundNet<0?'#d05050':'#888070','rgba(0,0,0,.3)');
     bx(hpX+6,hpY+22,hpW-12,1,'rgba(200,180,100,.2)');
     for(let i=0;i<histCount;i++){
       const h=battleRoundHistory[i];
@@ -1657,6 +1664,7 @@ let bpScoutedCards=[null,null]; // [{round,cards:[{n,r,t}]}, null] — persists 
 let battleRoundHistory=[]; // v90: [{rd,pa,r1a,r2a,outcome}] per round (pa=playerAction 0-4)
 let _battleRoundNet=0; // v284: running got-lost net, updated at unshift — avoids per-frame reduce
 
+let _histWLStr='W:0 L:0',_histWLRd=-1; // v313: W/L tally cache for round log panel
 // v300: Personality-specific bluff rates — VEGA 45% (unpredictable hunter), MIRA 20% (calculated)
 const _BLUFF_RATES=[0.45,0.20];
 // v293: Pre-computed "other action" indices — eliminates [0,1,2,3].filter per round

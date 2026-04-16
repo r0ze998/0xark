@@ -924,10 +924,22 @@ function getNPCDialog(npc){
     return['East is the dungeon —','the sunken ARK vessel.','Cards DECAY in 3.5 min.','Escape west before','they crumble to nothing.','I\'ll keep the light on.'];
   }
   if(npc.name==='Alchemist'){
-    const rarityCounts={};
-    for(let _ai=0,_al=pl[0].cd.length;_ai<_al;_ai++){const _c=pl[0].cd[_ai];if(_c>0){const r=CD[_c-1]?.r||1;rarityCounts[r]=(rarityCounts[r]||0)+1;}}
-    let canSynth=false;for(const _r in rarityCounts){if(rarityCounts[_r]>=3){canSynth=true;break;}} // v301: loop replaces Object.values().some()
-    if(canSynth)return['I sense synthesis','potential in your hand!','Bring me 3 cards','of matching rarity.','I will forge them','into something rarer.'];
+    // v313: specific rarity-aware dialog
+    const rc=[0,0,0,0,0]; // rc[1]=common, rc[2]=uncommon, rc[3]=rare, rc[4]=epic
+    for(let _ai=0,_al=pl[0].cd.length;_ai<_al;_ai++){const _c=pl[0].cd[_ai];if(_c>0){const _r=CD[_c-1]?.r||1;if(_r<=4)rc[_r]++;}}
+    let bestRar=0;for(let _r=4;_r>=1;_r--){if(rc[_r]>=3){bestRar=_r;break;}}
+    if(bestRar>0){
+      const cnt=rc[bestRar];const fromLbl=_SYNTH_RAR_LABELS[bestRar];
+      const toLbl=bestRar<4?_SYNTH_RAR_LABELS[bestRar+1]:'Legendary';
+      return['You have '+cnt+' '+fromLbl+'s!','Bring me three of them.','I\'ll forge them into','a '+toLbl+' card.','The power is yours','to claim — come!'];
+    }
+    // Close (2 of a rarity): encourage
+    let closeRar=0;for(let _r=4;_r>=1;_r--){if(rc[_r]===2){closeRar=_r;break;}}
+    if(closeRar>0){
+      const fromLbl=_SYNTH_RAR_LABELS[closeRar];
+      const toLbl=closeRar<4?_SYNTH_RAR_LABELS[closeRar+1]:'Legendary';
+      return['Almost there!','Two '+fromLbl+'s in hand.','One more '+fromLbl,'and I can forge','a '+toLbl+' card','for you. Seek it!'];
+    }
     return['I can fuse cards into','higher rarities!','Bring me 3 cards','of the same rarity.','I will forge them','into something greater.'];
   }
   return npc.dialog;
@@ -949,7 +961,13 @@ function getNPCAmbientLines(npc){
   }
   if(npc.name==='ARK Guide')return['The ARK waits below.','60 cards. One heir.','Ask me anything.'];
   if(npc.name==='Dungeon Porter')return['Sunken halls await.','Cards decay fast below!','Come back in one piece.'];
-  if(npc.name==='Alchemist')return['Bring me three cards.','I forge rarities.','Synthesis awaits!'];
+  if(npc.name==='Alchemist'){
+    // v313: contextual ambient — announce when synthesis is ready
+    const rc=[0,0,0,0,0];
+    for(let _ai=0,_al=pl[0].cd.length;_ai<_al;_ai++){const _c=pl[0].cd[_ai];if(_c>0){const _r=CD[_c-1]?.r||1;if(_r<=4)rc[_r]++;}}
+    for(let _r=4;_r>=1;_r--){if(rc[_r]>=3){return['3 '+_SYNTH_RAR_LABELS[_r]+'s!','I can forge now!','Come talk to me!'];}}
+    return['Bring me three cards.','I forge rarities.','Synthesis awaits!'];
+  }
   return[];
 }
 
