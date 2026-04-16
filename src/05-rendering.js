@@ -80,6 +80,13 @@ function drawGrass(px,py,tx_,ty){
     }
     // Small highlight pebble (1-in-32 tiles)
     if((h&31)===5){bx(px+((h>>12)&12)+4,py+((h>>16)&12)+4,3,2,pal.l);bx(px+((h>>12)&12)+5,py+((h>>16)&12)+4,1,1,'rgba(255,255,255,0.25)');}
+    // v213: North-wall shadow — darker strip at top of floor tiles directly south of a wall
+    {const m_=getMap();const northT=m_[ty-1]?.[tx_];
+    if(northT===18){// tile 18 = dungeon wall
+      bx(px,py,TW,4,'rgba(0,0,0,0.38)');
+      bx(px,py+4,TW,2,'rgba(0,0,0,0.18)');
+      bx(px,py+6,TW,1,'rgba(0,0,0,0.07)');
+    }}
     return;
   }
   // Overworld: zelda grass tile — unified art style

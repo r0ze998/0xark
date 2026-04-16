@@ -5075,15 +5075,33 @@ function drawDayNightOverlay(){
         }
       }
     }
-    // Phase flat overlays
+    // v213: Phase sky gradients — richer horizon glow for dawn/dusk, tinted night
     if(dn.phase==='dawn'){
-      atmosCtx.fillStyle=`rgba(255,180,80,${0.10+dn.t*0.04})`;atmosCtx.fillRect(0,0,W,townH);
+      // Warm amber horizon glow rising from bottom-center
+      const da=0.08+dn.t*0.06;
+      atmosCtx.fillStyle=`rgba(255,160,60,${da*0.6})`;atmosCtx.fillRect(0,0,W,townH);
+      const dhg=atmosCtx.createLinearGradient(0,townH,0,0);
+      dhg.addColorStop(0,`rgba(255,220,80,${da*0.55})`);
+      dhg.addColorStop(0.25,`rgba(255,140,60,${da*0.25})`);
+      dhg.addColorStop(0.55,'rgba(0,0,0,0)');
+      atmosCtx.fillStyle=dhg;atmosCtx.fillRect(0,0,W,townH);
+      // Subtle top-sky blue-violet tint
+      const dth=atmosCtx.createLinearGradient(0,0,0,townH*0.5);
+      dth.addColorStop(0,`rgba(40,30,80,${da*0.3})`);dth.addColorStop(1,'rgba(0,0,0,0)');
+      atmosCtx.fillStyle=dth;atmosCtx.fillRect(0,0,W,townH*0.5);
     }else if(dn.phase==='dusk'){
-      atmosCtx.fillStyle=`rgba(220,70,40,${0.10+dn.t*0.08})`;atmosCtx.fillRect(0,0,W,townH);
-      const hg=atmosCtx.createLinearGradient(0,0,0,townH);
-      hg.addColorStop(0,`rgba(240,140,30,${0.06+dn.t*0.06})`);
-      hg.addColorStop(0.4,'rgba(0,0,0,0)');
+      // Deep crimson-orange horizon + purple-blue sky above
+      const dk=0.10+dn.t*0.10;
+      const hg=atmosCtx.createLinearGradient(0,townH,0,0);
+      hg.addColorStop(0,`rgba(240,80,20,${dk*0.85})`);
+      hg.addColorStop(0.2,`rgba(220,60,30,${dk*0.5})`);
+      hg.addColorStop(0.45,`rgba(160,40,60,${dk*0.25})`);
+      hg.addColorStop(0.65,'rgba(0,0,0,0)');
       atmosCtx.fillStyle=hg;atmosCtx.fillRect(0,0,W,townH);
+      // Top-sky darkening to violet-blue
+      const tk=atmosCtx.createLinearGradient(0,0,0,townH*0.6);
+      tk.addColorStop(0,`rgba(20,10,60,${dk*0.55})`);tk.addColorStop(1,'rgba(0,0,0,0)');
+      atmosCtx.fillStyle=tk;atmosCtx.fillRect(0,0,W,townH*0.6);
     }else if(dn.phase==='night'){
       atmosCtx.fillStyle=`rgba(10,12,60,${0.22+dn.t*0.06})`;atmosCtx.fillRect(0,0,W,townH);
       if(currentMap===0){
@@ -5782,6 +5800,13 @@ function drawGrass(px,py,tx_,ty){
     }
     // Small highlight pebble (1-in-32 tiles)
     if((h&31)===5){bx(px+((h>>12)&12)+4,py+((h>>16)&12)+4,3,2,pal.l);bx(px+((h>>12)&12)+5,py+((h>>16)&12)+4,1,1,'rgba(255,255,255,0.25)');}
+    // v213: North-wall shadow — darker strip at top of floor tiles directly south of a wall
+    {const m_=getMap();const northT=m_[ty-1]?.[tx_];
+    if(northT===18){// tile 18 = dungeon wall
+      bx(px,py,TW,4,'rgba(0,0,0,0.38)');
+      bx(px,py+4,TW,2,'rgba(0,0,0,0.18)');
+      bx(px,py+6,TW,1,'rgba(0,0,0,0.07)');
+    }}
     return;
   }
   // Overworld: zelda grass tile — unified art style
