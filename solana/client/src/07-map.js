@@ -62,10 +62,11 @@ let _mapLblCache='MAP:0%',_mapLblKey=-1; // map exploration % lazy cache
 let _timeLblMapCache='',_timeLblMapMin=-1; // season timer lazy cache for canvas HUD (per minute)
 // v324: pre-baked small positive-int labels (+0…+20) for overflow counts
 const _PLUS_INT=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('+'+i);return a;})();
-// v325: lazy caches for rival off-floor HUD strip, trail exclamation, pot display
+// v325-v326: lazy caches for rival off-floor HUD strip, trail exclamation, pot display, rival alert
 let _rInfoLbl=['',''],_rInfoKey=[-1,-1]; // rival HUD info strip (key=rFloor*10+rcc2)
 let _trailLbl=['',''],_trailNm=['','']; // rival trail '!' label (key=player name[0])
 let _potLblCache='POT:0.00',_potLblRef=-1; // POT: display (key=stakePotAmount*100|0)
+let _alertLblCache='',_alertLblRef=''; // rival alert label (key=rivalAlertName)
 // v319: pre-baked distance-tile strings + near-win lazy cache
 const _DIST_T=(()=>{const a=[];for(let i=0;i<=50;i++)a.push(i+'t');return a;})();
 let _nearWinStr='RIVAL NEAR WIN!',_nearWinKey=-1;
@@ -1801,7 +1802,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v325',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v326',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1975,7 +1976,8 @@ function dMap(){
     const a=Math.min(1,rivalAlert/30);
     g.globalAlpha=a;
     win(W/2-120,6,240,24);
-    txShadow(rivalAlertName+' entered your map!',W/2-110,22,6,'#c04040','rgba(0,0,0,.4)');
+    if(_alertLblRef!==rivalAlertName){_alertLblRef=rivalAlertName;_alertLblCache=rivalAlertName+' entered your map!';} // v326: lazy
+    txShadow(_alertLblCache,W/2-110,22,6,'#c04040','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
 
