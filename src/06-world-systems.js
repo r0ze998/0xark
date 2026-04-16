@@ -867,7 +867,7 @@ function drawWildEncounter(){
     const wRar=(wCr&&wCr.r)||1;
     const wRcol=_WLD_RAR_COLS[wRar]||'#f0c830'; // v262: hoisted
     const prog=Math.min(1,t/24);
-    const pulse=0.5+Math.sin(t*0.35)*0.5;
+    const pulse=0.5+Math.sin(t*0.35)*0.5; // 1 call (varies with animation-local t)
     // Dim overlay
     g.globalAlpha=Math.min(0.85,prog*0.85);
     bx(0,0,W,H,'rgba(0,0,0,1)');
@@ -884,13 +884,22 @@ function drawWildEncounter(){
     g.globalAlpha=prog;
     // "?" on silhouette
     txShadow('?',W/2-9,riseY+silH/2+8,20,'#1c1c48','rgba(0,0,0,.5)');
-    // Orbiting rarity sparks
-    for(let oi=0;oi<wRar+3;oi++){
-      const ang=t*0.2+oi*(Math.PI*2/(wRar+3));
-      const dist=38+Math.sin(t*0.18+oi)*8;
+    // Orbiting rarity sparks — v394: sin-addition + Euler recurrence (3*N → 6 sin/cos calls total)
+    {const N_=wRar+3;
+    const _t18S=Math.sin(t*0.18),_t18C=Math.cos(t*0.18); // for dist: sin(t*0.18+oi)
+    const _t20S=Math.sin(t*0.2),_t20C=Math.cos(t*0.2);   // for ang temporal part
+    const _oStep=Math.PI*2/N_,_oSS=Math.sin(_oStep),_oSC=Math.cos(_oStep);
+    let _si=0,_ci=1; // spatial state for i*(2π/N_)
+    for(let oi=0;oi<N_;oi++){
+      // ang = t*0.2 + oi*(2π/N_); sin-addition via spatial Euler state (_si,_ci)
+      const _ac=_t20C*_ci-_t20S*_si; // cos(ang)
+      const _as=_t20S*_ci+_t20C*_si; // sin(ang)
+      // dist = 38 + sin(t*0.18+oi)*8; sin-addition: oi is integer so sin(oi)=_IDX_SI[oi]
+      const dist=38+(_t18S*_IDX_CI[oi]+_t18C*_IDX_SI[oi])*8;
       g.globalAlpha=prog*pulse*0.8;
-      bx(W/2+Math.cos(ang)*dist-2,riseY+silH/2+Math.sin(ang)*dist-2,5,5,wRcol);
-    }
+      bx(W/2+_ac*dist-2,riseY+silH/2+_as*dist-2,5,5,wRcol);
+      const _ns=_si*_oSC+_ci*_oSS;_ci=_ci*_oSC-_si*_oSS;_si=_ns; // Euler advance
+    }}
     g.globalAlpha=prog;
     // Text panel just below silhouette
     win(W/2-148,riseY+silH+10,296,36);
@@ -1770,6 +1779,8 @@ const _moonDiskCanvas=(()=>{
   return c;
 })();
 let _orbitCacheSz=-1,_orbitCacheCards=[]; // v273: title orbit vault cache
+// v394: Euler recurrence cache for title orbit — recomputed only when orbitCount changes
+let _titleOrbitN=0,_titleOrbitSS=0,_titleOrbitSC=1;
 function dTitle(){
   bx(0,0,W,H,'#060612');
   // v225: pre-baked void gradient (was createLinearGradient every frame)
@@ -1807,7 +1818,7 @@ function dTitle(){
     const sp2=sShotPhase/20;
     const shotX=W*0.08+sp2*W*0.45;
     const shotY=30+sp2*100;
-    const shotA=Math.sin(sp2*Math.PI)*0.9;
+    const shotA=4*sp2*(1-sp2)*0.9; // v394: parabola ≈ sin(π*sp2) for sp2∈[0,1]
     for(let t=0;t<7;t++){
       g.globalAlpha=shotA*(1-t/7)*0.8;
       bx((shotX-t*9)|0,(shotY-t*6)|0,2,1,'#d8d0ff');
@@ -1920,18 +1931,24 @@ function dTitle(){
     const orbitCX=W/2-96+64; // centered on "0xARK" title
     const orbitCY=196;
     const orbitRX=140,orbitRY=52;
-    const orbitSpeed=0.006;
+    // v394: sin-addition + Euler recurrence — 2 sin/cos calls/frame instead of 3*N
+    if(_titleOrbitN!==orbitCount){_titleOrbitN=orbitCount;const _s=Math.PI*2/orbitCount;_titleOrbitSS=Math.sin(_s);_titleOrbitSC=Math.cos(_s);}
+    let _tOsi=0,_tOci=1; // spatial state: (si,ci)=(sin(i*2π/N),cos(i*2π/N)), start at i=0
     for(let i=0;i<orbitCount;i++){
-      const angle=fr*orbitSpeed+i*(Math.PI*2/orbitCount);
-      const ox=orbitCX+Math.cos(angle)*orbitRX;
-      const oy=orbitCY+Math.sin(angle)*orbitRY;
+      // angle(i) = fr*0.006 + i*(2π/N); use sin-addition with cached _sFr006/_cFr006
+      const _ac=_cFr006*_tOci-_sFr006*_tOsi; // cos(angle)
+      const _as=_sFr006*_tOci+_cFr006*_tOsi; // sin(angle) = depth
+      const ox=orbitCX+_ac*orbitRX;
+      const oy=orbitCY+_as*orbitRY;
       // Depth cue: cards behind title (sin<0) are dimmer
-      const depth=Math.sin(angle);
+      const depth=_as;
       const alpha=0.28+Math.max(0,depth)*0.35;
       const scale_=0.75+Math.max(0,depth)*0.25;
       const cid=orbitCards[i];
       const cr=CD[cid-1];
       // Skip cards behind the title text (depth<-0.2) so text stays readable
+      // Euler advance before continue so state stays correct for next iteration
+      const _ns=_tOsi*_titleOrbitSC+_tOci*_titleOrbitSS;_tOci=_tOci*_titleOrbitSC-_tOsi*_titleOrbitSS;_tOsi=_ns;
       if(depth<-0.2)continue;
       g.globalAlpha=alpha;
       g.save();
