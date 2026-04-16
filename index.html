@@ -10431,7 +10431,7 @@ function drawPirateDecorations(){
           bx(spx+13,spy+10,6,2,'#b0a890');
           bx(spx+14,spy+11,1,1,'#383840');bx(spx+16,spy+11,1,1,'#383840');bx(spx+18,spy+11,1,1,'#383840');
           // Ghostly glow around skull
-          const glowA=Math.sin(fr*0.04+sx*2+sy*3)*0.1+0.12;
+          const glowA=(_sFr04*_NCOS[(sx*2+sy*3)&511]+_cFr04*_NSIN[(sx*2+sy*3)&511])*0.1+0.12; // v375
           g.globalAlpha=glowA;
           g.drawImage(_spiderGlowCanvas,(spx+5)|0,(spy-3)|0);
           g.globalAlpha=1;
@@ -10473,7 +10473,7 @@ function drawPirateDecorations(){
         if((gt===25||gt===26)&&fogRevealed[2][gy]?.[gx]){
           const gpx=gx*TW-camX+16,gpy=gy*TH-camY+16;
           if(gpx>-20&&gpx<W+20&&gpy>-20&&gpy<H+20){
-            const glowPulse=Math.sin(fr*0.03+gx*3+gy*5)*0.06+0.08;
+            const glowPulse=(_sFr03*_NCOS[(gx*3+gy*5)&511]+_cFr03*_NSIN[(gx*3+gy*5)&511])*0.06+0.08; // v375
             g.globalAlpha=glowPulse;
             g.drawImage(gt===25?_glowItemOrangeCanvas:_glowItemBlueCanvas,(gpx-21)|0,(gpy-21)|0);
             g.globalAlpha=1;
