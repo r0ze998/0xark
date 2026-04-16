@@ -5,6 +5,9 @@ const HUD_HEIGHT=72;
 const _VIG_SS=new Float32Array(6),_VIG_SC=new Float32Array(6); // sin/cos state
 const _VIG_FS=new Float32Array(6),_VIG_FC=new Float32Array(6); // step per frame
 for(let d=1;d<=5;d++){const f=0.02+d*0.008;_VIG_SS[d]=0;_VIG_SC[d]=1;_VIG_FS[d]=Math.sin(f);_VIG_FC[d]=Math.cos(f);}
+// v395: pre-baked cloud y-offset spatial phases (ci*1.7 for ci=0..3)
+const _CLOUD_SI17=new Float32Array(4),_CLOUD_CI17=new Float32Array(4);
+for(let i=0;i<4;i++){_CLOUD_SI17[i]=Math.sin(i*1.7);_CLOUD_CI17[i]=Math.cos(i*1.7);}
 // v387: pre-baked jungle wind phase tables (MW×MH = 40×30 = 1200 entries)
 // Replaces per-tile Math.sin(fr*0.022+windPhase) with table lookup + sin-addition
 const _WP_S=new Float32Array(40*30);const _WP_C=new Float32Array(40*30);
@@ -1246,7 +1249,8 @@ function dMap(){
       const period=820+ci*160;
       const cphase=(fr+ci*260+ci*ci*50)%period;
       const cx_=((cphase/period)*W*1.5)-W*0.25+camX%TW*0.08;
-      const cy_=visH*(0.22+ci*0.17)+Math.sin(ci*1.7+fr*0.004)*12;
+      // v395: sin-addition with pre-baked cloud spatial phases and cached _sFr004/_cFr004
+      const cy_=visH*(0.22+ci*0.17)+(_sFr004*_CLOUD_CI17[ci]+_cFr004*_CLOUD_SI17[ci])*12;
       const cc=_cloudCanvases[ci];
       if(cx_-cc.hw>W||cx_+cc.hw<0)continue; // viewport cull
       g.drawImage(cc.canvas,(cx_-cc.hw)|0,(cy_-cc.hh)|0);
