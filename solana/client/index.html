@@ -11126,7 +11126,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v317',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v318',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11376,6 +11376,11 @@ const _REC_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#e0c030
 const _UNK_TYPE_INFO={col:'#888',label:'UNKNOWN',lines:['Unknown effect.','','']};
 // v316: pre-baked vs_splash labels, ZK spinner strings, round/action labels
 const _PWR_LBL=(()=>{const a=[];for(let i=0;i<=25;i++)a.push('PWR:'+i);return a;})();
+// v318: pre-baked battle info-box strings — eliminates per-frame alloc in select hot path
+const _CARDS_OVER5=['0/5','1/5','2/5','3/5','4/5','5/5'];
+const _EXCESS_CHG=['+1','+2','+3','+4','+5','+6','+7','+8','+9'];
+const _STALE_RD_LBL=(()=>{const a=[];for(let i=0;i<=10;i++)a.push('(R'+i+')');return a;})();
+const _BTYPE_CNT_LBL=(()=>{const a=[];for(let ti=0;ti<5;ti++){const b=[];for(let n=0;n<=5;n++)b.push(_BTYPE_ABB[ti]+':'+n);a.push(b);}return a;})();
 const _SPLASH_CARD_LBL=['0 cards','1 card','2 cards','3 cards','4 cards','5 cards'];
 const _POSEIDON_SPIN=['Computing Poseidon hash... |','Computing Poseidon hash... /','Computing Poseidon hash... -','Computing Poseidon hash... \\'];
 const _ZK_PROOF_SPIN=['ZK proof: generating |','ZK proof: generating /','ZK proof: generating -','ZK proof: generating \\'];
@@ -11703,7 +11708,7 @@ function drawOpponentInfoBox(){
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
   const r1Cards=cardCount(rival);
   const r1DangerColor=r1Cards>=4?ARK.dangerBright:r1Cards>=3?'#d08030':ARK.textDim;
-  txShadow(rival.cc+'/5',bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.3)');
+  txShadow(_CARDS_OVER5[rival.cc]||(rival.cc+'/5'),bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.3)'); // v318
   // Near-win warning
   if(r1Cards>=4){
     const wA=0.5+Math.sin(fr*0.18)*0.5;
@@ -11752,7 +11757,7 @@ function drawOpponentInfoBox(){
     drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
     const r2Cards=cardCount(hunter);
     const r2DangerColor=r2Cards>=4?ARK.dangerBright:r2Cards>=3?'#d08030':ARK.textDim;
-    txShadow(hunter.cc+'/5',bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.3)');
+    txShadow(_CARDS_OVER5[hunter.cc]||(hunter.cc+'/5'),bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.3)'); // v318
     // Near-win warning for MIRA
     if(r2Cards>=4){
       const wA2=0.5+Math.sin(fr*0.18+1)*0.5;
@@ -11785,7 +11790,7 @@ function drawOpponentInfoBox(){
     if(showScout0){
       intelY=by_+bh-(showScout1?32:16);
       const sd=bpScoutedCards[0];
-      const staleLabel=rd-sd.round>0?'(R'+(sd.round)+')':'';
+      const staleLabel=rd-sd.round>0?(_STALE_RD_LBL[sd.round]||'(R'+sd.round+')'):''; // v318
       g.globalAlpha=rd-sd.round>1?0.5:0.85;
       bx(bx_+4,intelY,bw-8,14,'rgba(30,80,120,.4)');
       txShadow('\u{1F50D}'+pl[1].n[0]+': '+(sd.nameStr||'empty')+staleLabel,bx_+8,intelY+11,5,ARK.tealBright,'rgba(0,0,0,.3)'); // v261: pre-joined
@@ -11794,7 +11799,7 @@ function drawOpponentInfoBox(){
     if(showScout1){
       const sd2=bpScoutedCards[1];
       const intelY2=by_+bh-16;
-      const staleLabel2=rd-sd2.round>0?'(R'+(sd2.round)+')':'';
+      const staleLabel2=rd-sd2.round>0?(_STALE_RD_LBL[sd2.round]||'(R'+sd2.round+')'):''; // v318
       g.globalAlpha=rd-sd2.round>1?0.5:0.85;
       bx(bx_+4,intelY2,bw-8,14,'rgba(80,60,10,.35)');
       txShadow('\u{1F50D}'+pl[2].n[0]+': '+(sd2.nameStr||'empty')+staleLabel2,bx_+8,intelY2+11,5,ARK.gold,'rgba(0,0,0,.3)'); // v261: pre-joined
@@ -11850,7 +11855,7 @@ function drawPlayerInfoBox(){
       bx(ox+26+o*(oW+oG),oy+2,oW,oH,filled?_BORB_FILL[si]:_BORB_EMPTY[si]);
       if(filled)bx(ox+26+o*(oW+oG)+1,oy+3,2,1,'rgba(255,255,255,.3)');
     }
-    if(val>3)txShadow('+'+(val-3),ox+26+3*(oW+oG)+2,oy+9,5,ARK.goldBright,'rgba(0,0,0,.3)');
+    if(val>3)txShadow(_EXCESS_CHG[val-4]||('+'+( val-3)),ox+26+3*(oW+oG)+2,oy+9,5,ARK.goldBright,'rgba(0,0,0,.3)'); // v318
   }}
   // Area label
   txShadow(mapNames[currentMap],bx_+10,by_+64,8,ARK.textDim,'rgba(0,0,0,.3)');
@@ -11871,7 +11876,7 @@ function drawPlayerInfoBox(){
     for(let ti=4;ti>=0;ti--){
       const cnt=_btCounts[ti];
       if(cnt===0)continue;
-      const lbl=_BTYPE_ABB[ti]+':'+cnt;
+      const lbl=_BTYPE_CNT_LBL[ti][cnt]||(_BTYPE_ABB[ti]+':'+cnt); // v318
       labelX-=lbl.length*5+4;
       g.globalAlpha=0.75;
       txShadow(lbl,labelX,by_+80,5,_BTYPE_COL[ti],'rgba(0,0,0,.3)');
