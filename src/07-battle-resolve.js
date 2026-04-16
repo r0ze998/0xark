@@ -1,3 +1,6 @@
+// v259: Cache evTexts per resolve sequence — eliminates map+join alloc every resolve frame
+let _bpEvTextsCache='',_bpEvTextsCacheRef=null;
+function _getBpEvTexts(q){if(q===_bpEvTextsCacheRef)return _bpEvTextsCache;_bpEvTextsCacheRef=q;let s='';for(let i=0;i<q.length;i++){if(q[i].text)s+=q[i].text+' ';}return(_bpEvTextsCache=s);}
 // v253: Static arrays for battle-resolve rOrbs — eliminates 3-object array per resolve frame
 const _RORB_LBL=['STL','BAR','SCT'],_RORB_FILL=['#c04848','#3868c0','#38a038'],_RORB_EMPTY=['#2a1010','#101028','#0e1e0e'],_RORB_LCOL=['#b04040','#3060b0','#308030'];
 // v234: Pre-baked defeat vignette + card-hit glow — more gradient eliminations
@@ -962,7 +965,7 @@ function drawResultPhase(){
     const reactAlpha=Math.min(1,(t-30)/10);
     g.globalAlpha=reactAlpha;
     // Determine who benefited from this round
-    const evTexts=(bpResolveQueue||[]).map(e=>e.text||'').join(' ');
+    const evTexts=bpResolveQueue?_getBpEvTexts(bpResolveQueue):'';
     const playerStole=evTexts.includes('You stole')||evTexts.includes('Power steal!')||evTexts.includes('Magic strike!');
     const rivalStole=evTexts.includes('stole your')||evTexts.includes('STOLE');
     // Choose reacting rival: prefer the targeted rival, fall back to encounter initiator

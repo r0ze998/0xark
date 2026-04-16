@@ -74,12 +74,13 @@ function win(x,y,w,h,accent){
 }
 
 // ── Legendary card rune glow — draw pulsing arcane aura outside a rect ──
+// v259: Hoisted glow step arrays — eliminates 4 tuple-array literals per drawRuneGlow call
+const _GLOW_D=[2,4,6,9],_GLOW_C=['rgba(153,69,255,.5)','rgba(153,69,255,.25)','rgba(192,96,255,.12)','rgba(153,69,255,.05)'];
 function drawRuneGlow(x,y,w,h,col,fr_){
   const pulse=0.4+Math.sin((fr_||0)*0.06)*0.4;
   g.globalAlpha=pulse*0.6;
   // Outer blur layers (4 concentric outlines)
-  const glowSteps=[[2,'rgba(153,69,255,.5)'],[4,'rgba(153,69,255,.25)'],[6,'rgba(192,96,255,.12)'],[9,'rgba(153,69,255,.05)']];
-  glowSteps.forEach(([d,c])=>{g.fillStyle=c;g.fillRect(x-d,y-d,w+d*2,h+d*2);g.fillRect(x-d+1,y-d+1,w+d*2-2,h+d*2-2,);});
+  for(let _gi=0;_gi<4;_gi++){const d=_GLOW_D[_gi];g.fillStyle=_GLOW_C[_gi];g.fillRect(x-d,y-d,w+d*2,h+d*2);g.fillRect(x-d+1,y-d+1,w+d*2-2,h+d*2-2);}
   // Bright inner rim
   g.globalAlpha=pulse*0.9;g.fillStyle=col||ARK.rune;
   g.fillRect(x-1,y,w+2,1);g.fillRect(x-1,y+h,w+2,1);
