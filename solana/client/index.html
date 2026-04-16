@@ -15946,6 +15946,26 @@ function doFountainExchange(){
 // MODULE: src/08-screens.js
 // Floor-clear fanfare · object interact messages · exit tooltip · map card use overlay · stats screen · credits · game over screen
 // ───────────────────────────────────────────────────────────────────────
+// v235: Pre-baked game-over screen assets — 32 arc/frame + 1 gradient/frame eliminated
+// Vignette: rgba(0,0,0,0.55) outer stop, drawn once per frame at alpha=1
+const _goVignette=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createRadialGradient(W/2,H/2,H*0.18,W/2,H/2,H*0.72);
+  grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(0,0,0,0.55)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;
+})();
+// Ember arc canvases: r=4 in each of the 4 ember colors, drawn at globalAlpha=pa*0.15
+const _goEmbers=(()=>{
+  const cols=['#d03030','#e04020','#c02828','#f03030'];
+  return cols.map(col=>{
+    const c=document.createElement('canvas');c.width=10;c.height=10;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(5,5,4,0,Math.PI*2);ctx.fill();
+    return c;
+  });
+})();
+
 // v85: Floor-clear fanfare — dramatic cinematic overlay on floor descent
 function drawFloorClearFanfare(){
   if(!floorFanfareActive||!floorFanfareData)return;
@@ -16542,14 +16562,10 @@ function dGameOver(){
     const pa=0.25+Math.sin(t*0.04+i*0.7)*0.15;
     const pc=['#d03030','#e04020','#c02828','#f03030'][i%4];
     bx(px_,py_,2,2,pc);
-    g.globalAlpha=pa*0.15;g.fillStyle=pc;
-    g.beginPath();g.arc(px_+1,py_+1,4,0,Math.PI*2);g.fill();
-    g.globalAlpha=1;
+    g.globalAlpha=pa*0.15;g.drawImage(_goEmbers[i%4],(px_-4)|0,(py_-4)|0);g.globalAlpha=1;
   }
-  // Radial vignette for cinematic depth
-  {const vg=g.createRadialGradient(W/2,H/2,H*0.18,W/2,H/2,H*0.72);
-  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,0.55)');
-  g.fillStyle=vg;g.fillRect(0,0,W,H);}
+  // Radial vignette for cinematic depth (pre-baked)
+  g.drawImage(_goVignette,0,0);
 
   // SEASON OVER — pulsing glow halo behind title
   if(t>35){
