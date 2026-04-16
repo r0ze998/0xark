@@ -11153,7 +11153,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v341',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v342',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -16563,6 +16563,9 @@ const _PCT_LBL=(()=>{const a=[];for(let i=0;i<=100;i++)a.push(i+'%');return a;})
 const _FLOOR_CLEARED_LBL=(()=>{const a=[];for(let i=0;i<6;i++)a.push('FLOOR '+(_FLOOR_NUMS[i]||('B'+i))+' CLEARED');return a;})();
 // v339: pre-baked floor-clear descent footer labels (index = cleared floor)
 const _DESCEND_LBL=['','Descending to B2...','Descending to B3...','Descending to B4...','Descending to B5...','Final floor — claim the ARK!'];
+// v342: pre-baked exit tooltip rarity card labels and floor dest labels
+const _SCR_RAR_CARD_LBL=['','Common cards','Uncommon cards','Rare cards','Epic cards','Legendary cards'];
+const _SCR_FLOOR_DEST=['\u2190 TOWN','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','FLOOR V'];
 // v331: pre-baked rarity pip count labels (5 rarities × 0..60 cards)
 const _RAR_PIP_FULL=(()=>{const a=[];for(let ri=0;ri<5;ri++){const r=[];for(let n=0;n<=60;n++)r.push(_RAR_PIP_LBLS[ri]+':'+n);a.push(r);}return a;})();
 // v235: Pre-baked game-over screen assets — 32 arc/frame + 1 gradient/frame eliminated
@@ -16762,12 +16765,12 @@ function drawExitProximityTooltip(){
   bx(ttX,ttY+ttH-1,ttW,1,isEsc?'#40c060':'#6080c0');
 
   const arrow=isEsc?'\u2196 ESCAPE':'\u2198 DESCEND';
-  const dest=isEsc?'\u2190 TOWN':'FLOOR '+(_FLOOR_NUMS[targetFloor]||targetFloor); // v262: hoisted
+  const dest=isEsc?_SCR_FLOOR_DEST[0]:(_SCR_FLOOR_DEST[targetFloor]||('FLOOR '+targetFloor)); // v342: pre-baked
   txShadow(arrow,ttX+10,ttY+14,6,isEsc?'#50e080':'#a0b0d8','rgba(0,0,0,.4)');
   txShadow(dest,ttX+ttW/2-dest.length*4.5,ttY+30,9,isEsc?'#40e070':'#c8d8f0','rgba(0,0,0,.5)');
 
   if(!isEsc&&mainRar>0){
-    const rarTxt=_SCR_RAR_NAMES[mainRar]+' cards'; // v262: hoisted
+    const rarTxt=_SCR_RAR_CARD_LBL[mainRar]||(_SCR_RAR_NAMES[mainRar]+' cards'); // v342: pre-baked
     txShadow(rarTxt,ttX+ttW/2-rarTxt.length*3,ttY+46,6,_SCR_EXIT_RAR_COLS[mainRar]||'#888','rgba(0,0,0,.3)');
   }
 }
