@@ -103,20 +103,22 @@ const _glowTileArc=(()=>{
 // Lava bubble arcs: r=3 and r=2, color #f8a060
 const _lavaBubble3=(()=>{const c=document.createElement('canvas');c.width=8;c.height=8;const ctx=c.getContext('2d');ctx.fillStyle='#f8a060';ctx.beginPath();ctx.arc(4,4,3,0,Math.PI*2);ctx.fill();return c;})();
 const _lavaBubble2=(()=>{const c=document.createElement('canvas');c.width=6;c.height=6;const ctx=c.getContext('2d');ctx.fillStyle='#f8a060';ctx.beginPath();ctx.arc(3,3,2,0,Math.PI*2);ctx.fill();return c;})();
-function isNearTileType(tx_,ty,types){
+// v279: use module-scope Sets (LAND_TILES/WATER_TILES from 01-pixi.js) for O(1) lookup; add _GRASS_TILES
+const _GRASS_TILES=new Set([1,7,11,3]);
+function isNearTileType(tx_,ty,tileSet){
   const m=getMap();
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
     const nx=tx_+dx,ny=ty+dy;
     if(nx>=0&&nx<MW&&ny>=0&&ny<MH){
       const t=m[ny]?.[nx];
-      if(types.includes(t))return true;
+      if(tileSet.has(t))return true;
     }
   }
   return false;
 }
-function isNearLand(tx_,ty){return isNearTileType(tx_,ty,[1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,22,23,24,25,26,27,28,29,30]);}
-function isNearWater(tx_,ty){return isNearTileType(tx_,ty,[0,17]);}
-function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,[1,7,11,3]);}
+function isNearLand(tx_,ty){return isNearTileType(tx_,ty,LAND_TILES);}
+function isNearWater(tx_,ty){return isNearTileType(tx_,ty,WATER_TILES);}
+function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,_GRASS_TILES);}
 
 function drawWater(px,py,tx_,ty){
   // Zelda water tile — unified art style
