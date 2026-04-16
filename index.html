@@ -9445,6 +9445,8 @@ const _rBuf=[
   {name:'', cnt:0,col:'#e060a0'},
   {name:'', cnt:0,col:'#d0a030'}
 ];
+// v349: lazy cache for dungeon mission HUD strip (changes only when progress or completion status changes)
+let _missionHudLbl='',_missionHudKey=-1;
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -11014,7 +11016,10 @@ function dMap(){
         mProg=' '+runMission.progress+'/'+runMission.goal;
       }
     }
-    const mText=mIcon+' '+runMission.desc+mProg;
+    // v349: lazy cache — mission text changes only on progress/completion, not every frame
+    const _mk=(runMission.completed?1000:0)+runMission.progress;
+    if(_missionHudKey!==_mk){_missionHudKey=_mk;_missionHudLbl=mIcon+' '+runMission.desc+mProg;}
+    const mText=_missionHudLbl;
     const mRewText=runMission.reward;
     g.globalAlpha=mDone?1:0.72;
     bx(6,hudY+34,188,14,'rgba(0,0,16,.6)');
@@ -11177,7 +11182,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v348',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v349',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
