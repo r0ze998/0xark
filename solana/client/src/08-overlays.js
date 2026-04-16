@@ -15,6 +15,18 @@ function _classifyLog(l){
   return{col:'#888898',icon:'\u00B7'};
 }
 
+// v378: pre-baked per-card phase tables (60 entries, fractional steps for gacha overlay)
+const _CARD_SI55=new Float32Array(60);const _CARD_CI55=new Float32Array(60);
+const _CARD_SI07=new Float32Array(60);const _CARD_CI07=new Float32Array(60);
+const _CARD_SI05=new Float32Array(60);const _CARD_CI05=new Float32Array(60);
+const _CARD_SI04=new Float32Array(60);const _CARD_CI04=new Float32Array(60);
+for(let i=0;i<60;i++){
+  _CARD_SI55[i]=Math.sin(i*0.55);_CARD_CI55[i]=Math.cos(i*0.55);
+  _CARD_SI07[i]=Math.sin(i*0.7);_CARD_CI07[i]=Math.cos(i*0.7);
+  _CARD_SI05[i]=Math.sin(i*0.5);_CARD_CI05[i]=Math.cos(i*0.5);
+  _CARD_SI04[i]=Math.sin(i*0.4);_CARD_CI04[i]=Math.cos(i*0.4);
+}
+
 // CARD ACQUISITION ANIMATION
 // ═══════════════════════════════════════
 function startCardAcquisition(cardIdx){
@@ -508,7 +520,7 @@ function updatePixiIntro(){
     pxIntroLines[i].alpha=Math.min(1,fadeT/10);
   }
   // Bouncing arrow
-  pxIntroArrow.y = 320 + Math.sin(fr*0.1)*3;
+  pxIntroArrow.y = 320 + _sFr10*3; // v377: cached
   pxIntroArrow.visible = t > 30 && Math.floor(fr/20)%2===0;
   // Card teaser on last page
   pxIntroCardMsg.visible = introPage===INTRO_PAGES.length-1 && t>20 && cdCount(pl[0].cd)===0;
@@ -533,7 +545,7 @@ function drawIntroTutorial(){
     txShadow(lines[i],wx+20,wy+30+i*28,9,'#484050','rgba(255,255,255,.15)');
     g.globalAlpha=1;
   }
-  if(t>30&&Math.floor(fr/20)%2===0)txShadow('\u25BC Z',wx+ww-60,wy+wh-20+Math.sin(fr*0.1)*3,8,FRLG.selHighlight,'rgba(0,0,0,.3)');
+  if(t>30&&Math.floor(fr/20)%2===0)txShadow('\u25BC Z',wx+ww-60,wy+wh-20+_sFr10*3,8,FRLG.selHighlight,'rgba(0,0,0,.3)'); // v377: cached
   if(introPage===INTRO_PAGES.length-1&&t>20&&cdCount(pl[0].cd)===0){
     g.globalAlpha=Math.min(1,(t-20)/15);
     txShadow('You receive a spirit card...',W/2-100,wy+wh+20,8,'#f0c830','rgba(0,0,0,.4)');
@@ -731,7 +743,7 @@ function dCrd(){
     const reached=collected>=m;
     bx(tx_-1,barY_-3,2,barH_+6,reached?'#f0c830':'#303048');
     if(reached){
-      g.globalAlpha=0.5+Math.sin(fr*0.08+m)*0.3;
+      g.globalAlpha=0.5+(_sFr08*_IDX_CI[m]+_cFr08*_IDX_SI[m])*0.3;
       bx(tx_-2,barY_-4,4,2,'#f0c830');
       g.globalAlpha=1;
     }
@@ -798,7 +810,7 @@ function dCrd(){
       bx(cx+4,cy+4,CARD_W-8,CARD_H-8,'#080818');
       // Checkerboard micro-pattern with slow pulse per slot
       const cellSz_=6;
-      g.globalAlpha=0.10+0.04*Math.sin(fr*0.025+cardIdx*0.55);
+      g.globalAlpha=0.10+0.04*(_sFr025*_CARD_CI55[cardIdx]+_cFr025*_CARD_SI55[cardIdx]);
       for(let row_=0;row_<Math.ceil((CARD_H-8)/cellSz_);row_++){
         for(let col_=0;col_<Math.ceil((CARD_W-8)/cellSz_);col_++){
           if((row_+col_)%2===0) bx(cx+4+col_*cellSz_,cy+4+row_*cellSz_,cellSz_-1,cellSz_-1,'#162090');
@@ -811,7 +823,7 @@ function dCrd(){
       bx(cx+7,cy+CARD_H-8,7,1,'#2030b8');bx(cx+7,cy+CARD_H-14,1,7,'#2030b8');
       bx(cx+CARD_W-14,cy+CARD_H-8,7,1,'#2030b8');bx(cx+CARD_W-8,cy+CARD_H-14,1,7,'#2030b8');
       // Central pulsing "?" emblem
-      const pu_=0.5+Math.sin(fr*0.05+cardIdx*0.7)*0.5;
+      const pu_=0.5+(_sFr05*_CARD_CI07[cardIdx]+_cFr05*_CARD_SI07[cardIdx])*0.5;
       g.globalAlpha=pu_*0.35;
       bx(cx+CARD_W/2-7,cy+CARD_H/2-9,14,14,'#2030b0');
       g.globalAlpha=0.55+pu_*0.45;
@@ -868,7 +880,7 @@ function dCrd(){
       drawCardCharacter(sidX+sidW/2-20,sidY+10,cardId,2.8,fr);
       // Rarity glow for epic/legendary
       if(rar>=4){
-        const gp=0.3+Math.sin(fr*0.06+cardIdx*0.5)*0.3;
+        const gp=0.3+(_sFr06*_CARD_CI05[cardIdx]+_cFr06*_CARD_SI05[cardIdx])*0.3;
         g.globalAlpha=gp;
         bx(sidX+2,sidY+2,sidW-4,artH,rar===5?'rgba(255,220,80,.1)':'rgba(200,160,30,.07)');
         g.globalAlpha=1;
@@ -876,14 +888,14 @@ function dCrd(){
     }else{
       // Mystery pattern in art area
       const cellSz=10;
-      g.globalAlpha=0.08+0.04*Math.sin(fr*0.02+cardIdx*0.4);
+      g.globalAlpha=0.08+0.04*(_sFr02*_CARD_CI04[cardIdx]+_cFr02*_CARD_SI04[cardIdx]);
       for(let r2=0;r2<Math.ceil(artH/cellSz);r2++){
         for(let c2=0;c2<Math.ceil((sidW-4)/cellSz);c2++){
           if((r2+c2)%2===0) bx(sidX+2+c2*cellSz,sidY+2+r2*cellSz,cellSz-1,cellSz-1,'#162090');
         }
       }
       g.globalAlpha=1;
-      const pu=0.5+Math.sin(fr*0.05+cardIdx*0.7)*0.5;
+      const pu=0.5+(_sFr05*_CARD_CI07[cardIdx]+_cFr05*_CARD_SI07[cardIdx])*0.5;
       g.globalAlpha=pu*0.5;
       bx(sidX+sidW/2-20,sidY+artH/2-24,40,40,'#1830b0');
       g.globalAlpha=pu*0.9;
