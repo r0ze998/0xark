@@ -743,14 +743,24 @@ function drawActionGrid(){
         bx(ix+12,iy+10,2,2,ic);bx(ix+13,iy+12,2,2,ic); // handle
         bx(ix+14,iy+14,2,2,ic);bx(ix+15,iy+16,2,1,ic);
       }
-      // Text (increased sizes for readability)
+      // v212: Selected cell — inner shimmer band + larger action name
       const textCol=avail?(sel?ARK.goldBright:actions[idx].col):ARK.textDim;
-      txShadow(actions[idx].name,cx_+26,cy_+18,14,textCol,'rgba(0,0,0,.4)');
+      if(sel&&avail){
+        // Horizontal shimmer scan line inside selected cell
+        const shimY=cy_+Math.floor(((fr*0.7)%(cellH-4)))+2;
+        g.globalAlpha=0.12;bx(cx_+1,shimY,cellW-2,2,'#f0e080');g.globalAlpha=1;
+        // Brighter inner glow behind action name area
+        const glowA=0.08+0.05*Math.sin(fr*0.18);
+        g.globalAlpha=glowA;bx(cx_+24,cy_+6,cellW-28,cellH-10,'#f0c830');g.globalAlpha=1;
+        txShadow(actions[idx].name,cx_+26,cy_+20,16,textCol,'rgba(0,0,0,.5)');
+      }else{
+        txShadow(actions[idx].name,cx_+26,cy_+18,14,textCol,'rgba(0,0,0,.4)');
+      }
       txShadow(actions[idx].desc,cx_+26,cy_+32,10,avail?ARK.textDim:'#404858','rgba(0,0,0,.3)');
       // Cursor arrow
       if(sel&&avail){
         const bob_=Math.sin(fr*0.15)*2;
-        txShadow('\u25B6',cx_-12+bob_,cy_+20,10,ARK.gold,'rgba(0,0,0,.4)');
+        txShadow('\u25B6',cx_-12+bob_,cy_+22,10,ARK.gold,'rgba(0,0,0,.4)');
       }
       // v92: Smart context badges (top-right corner of each cell)
       if(avail&&battlePhase==='select'){

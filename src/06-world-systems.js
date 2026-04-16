@@ -1534,13 +1534,39 @@ function dTitle(){
     g.beginPath();g.moveTo(bx_,0);g.lineTo(bx_+18,0);g.lineTo(bx_+60,H);g.lineTo(bx_+42,H);g.closePath();g.fill();
     g.globalAlpha=1;
   }
-  // Stars / arcane motes
-  for(let i=0;i<80;i++){
-    const sx=(i*47+13)%W,sy=(i*31+7)%340;
-    const a=Math.sin(fr*.03+i*1.7)*.35+.5;
-    const purp=i%9===0;
-    bx(sx,sy,i%7===0?2:1,i%7===0?2:1,purp?`rgba(180,80,255,${a*.45})`:`rgba(220,200,255,${a*.28})`);
+  // v212: Star field — 120 stars across full screen with varied twinkle frequencies
+  for(let i=0;i<120;i++){
+    const sx=(i*47+13)%W,sy=(i*31+7)%(H-60);
+    // Each star has unique frequency and phase for organic twinkle
+    const freq=0.018+((i*1337)%100)*0.0003;
+    const phase=((i*2741)%628)/100;
+    const a=Math.sin(fr*freq+phase)*0.4+0.6;
+    const purp=i%9===0,big=i%17===0;
+    const sz=big?2:1;
+    if(big){
+      // Large star: cross sparkle
+      const sa=a*(0.5+Math.sin(fr*0.08+i)*0.2);
+      bx(sx-1,sy,3,1,`rgba(220,210,255,${sa*0.35})`);
+      bx(sx,sy-1,1,3,`rgba(220,210,255,${sa*0.35})`);
+    }
+    bx(sx,sy,sz,sz,purp?`rgba(180,80,255,${a*.42})`:`rgba(220,200,255,${a*.30})`);
   }
+  // v212: Occasional shooting star — fires every ~260 frames, lasts 20 frames
+  {const sShotPhase=(fr+80)%280;
+  if(sShotPhase<20){
+    const sp2=sShotPhase/20;
+    const shotX=W*0.08+sp2*W*0.45;
+    const shotY=30+sp2*100;
+    const shotA=Math.sin(sp2*Math.PI)*0.9;
+    for(let t=0;t<7;t++){
+      const ta=(shotA*(1-t/7)*0.8).toFixed(3);
+      g.globalAlpha=parseFloat(ta);
+      bx((shotX-t*9)|0,(shotY-t*6)|0,2,1,'#d8d0ff');
+    }
+    g.globalAlpha=shotA;
+    bx(shotX|0,shotY|0,3,2,'#fff');
+    g.globalAlpha=1;
+  }}
   // Rising rune wisps — small cross shapes drifting upward
   for(let b=0;b<5;b++){
     const bsy=H-((fr*0.5+b*140)%560);

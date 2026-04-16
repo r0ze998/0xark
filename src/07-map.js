@@ -298,8 +298,11 @@ function drawDungeonVignette(){
 // ═══════════════════════════════════════
 // FOG OF WAR RENDERING
 // ═══════════════════════════════════════
+// v212: Pre-parsed fog RGB per map index for floor-colored fog edges
+const _FOG_RGB=FOG_COLORS.map(h=>{const r=parseInt(h.slice(1,3),16),g_=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return[r,g_,b];});
 function drawFogOverlay(startTX,startTY,endTX,endTY){
   const fogC=FOG_COLORS[currentMap];
+  const [fr_,fg_,fb_]=_FOG_RGB[currentMap]||[10,10,20];
   for(let y=startTY;y<=endTY;y++){
     for(let x=startTX;x<=endTX;x++){
       const px=x*TW-camX,py=y*TH-camY;
@@ -311,23 +314,15 @@ function drawFogOverlay(startTX,startTY,endTX,endTY){
           const nx=x+dx,ny=y+dy;
           const neighborHidden=(nx<0||nx>=MW||ny<0||ny>=MH||!fogRevealed[currentMap][ny]?.[nx]);
           if(neighborHidden){
-            // Draw gradient strip on this edge
-            const gradSteps=4;
+            // v212: 8-step gradient with floor-specific fog color (was 4 steps, hardcoded dark)
+            const gradSteps=8;
             for(let s=0;s<gradSteps;s++){
-              const alpha=0.15+s*0.12; // increasing opacity toward hidden side
-              if(dy===-1){
-                // top edge foggy
-                bx(px,py+s,TW,1,`rgba(10,10,20,${alpha})`);
-              }else if(dy===1){
-                // bottom edge foggy
-                bx(px,py+TH-1-s,TW,1,`rgba(10,10,20,${alpha})`);
-              }else if(dx===-1){
-                // left edge foggy
-                bx(px+s,py,1,TH,`rgba(10,10,20,${alpha})`);
-              }else if(dx===1){
-                // right edge foggy
-                bx(px+TW-1-s,py,1,TH,`rgba(10,10,20,${alpha})`);
-              }
+              const alpha=0.06+s*0.1; // 0.06→0.76 across 8px
+              const col=`rgba(${fr_},${fg_},${fb_},${alpha})`;
+              if(dy===-1){bx(px,py+s,TW,1,col);}
+              else if(dy===1){bx(px,py+TH-1-s,TW,1,col);}
+              else if(dx===-1){bx(px+s,py,1,TH,col);}
+              else if(dx===1){bx(px+TW-1-s,py,1,TH,col);}
             }
           }
         }
