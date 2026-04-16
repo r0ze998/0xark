@@ -180,10 +180,7 @@ const _PROX_MIRA=[
   // Tier 2: F4-F5
   ['Deepest floor. No retreat.','The ARK archive is almost complete.','You reached F'+currentFloor+'. Rare. Temporary.','Your card count drops to zero in my projections.','At this depth, evasion probability: 0.'],
 ];
-const PROXIMITY_TAUNTS=[
-  _PROX_VEGA[0], // fallback (floor 0)
-  _PROX_MIRA[0],
-];
+// (PROXIMITY_TAUNTS removed v293 — selector now uses _PROX_VEGA/_PROX_MIRA[tier] directly)
 
 // Danger drone SFX
 let dangerDroneNode=null,dangerDroneGain=null;
