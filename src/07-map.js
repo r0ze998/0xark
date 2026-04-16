@@ -368,23 +368,16 @@ const DUNGEON_VIGNETTE_COL=[
 ];
 function drawDungeonVignette(){
   const depth=currentFloor;
-  const col=DUNGEON_VIGNETTE_COL[depth];if(!col)return;
-  const visH=H-HUD_HEIGHT;
+  const vg=_dungVigGrads[depth];if(!vg)return;
+  // v228: reuse pre-cached CanvasGradient objects; globalAlpha=pulse replaces per-frame gradient rebuild
   const pulse=0.30+0.08*Math.sin(fr*(0.02+depth*0.008));
-  const edgeW=44;
-  // No save/restore needed — only fillStyle changes (no transforms or clip)
-  const gT=g.createLinearGradient(0,0,0,edgeW);
-  gT.addColorStop(0,col+pulse+')');gT.addColorStop(1,col+'0)');
-  g.fillStyle=gT;g.fillRect(0,0,W,edgeW);
-  const gB=g.createLinearGradient(0,visH,0,visH-edgeW);
-  gB.addColorStop(0,col+pulse+')');gB.addColorStop(1,col+'0)');
-  g.fillStyle=gB;g.fillRect(0,visH-edgeW,W,edgeW);
-  const gL=g.createLinearGradient(0,0,edgeW,0);
-  gL.addColorStop(0,col+pulse+')');gL.addColorStop(1,col+'0)');
-  g.fillStyle=gL;g.fillRect(0,0,edgeW,visH);
-  const gR=g.createLinearGradient(W,0,W-edgeW,0);
-  gR.addColorStop(0,col+pulse+')');gR.addColorStop(1,col+'0)');
-  g.fillStyle=gR;g.fillRect(W-edgeW,0,edgeW,visH);
+  const e=_VIGNETTE_EDGE,vh=_VIGNETTE_VIS_H;
+  g.globalAlpha=pulse;
+  g.fillStyle=vg.gT;g.fillRect(0,0,W,e);
+  g.fillStyle=vg.gB;g.fillRect(0,vh-e,W,e);
+  g.fillStyle=vg.gL;g.fillRect(0,0,e,vh);
+  g.fillStyle=vg.gR;g.fillRect(W-e,0,e,vh);
+  g.globalAlpha=1;
 }
 
 // ═══════════════════════════════════════
@@ -392,6 +385,37 @@ function drawDungeonVignette(){
 // ═══════════════════════════════════════
 // v212: Pre-parsed fog RGB per map index for floor-colored fog edges
 const _FOG_RGB=FOG_COLORS.map(h=>{const r=parseInt(h.slice(1,3),16),g_=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return[r,g_,b];});
+// v228: Pre-cached dungeon vignette CanvasGradient objects (one set per floor) — no new gradient each frame
+const _VIGNETTE_EDGE=44,_VIGNETTE_VIS_H=H-HUD_HEIGHT;
+const _dungVigGrads=(()=>{
+  const grads=[null];
+  const cols=[[],[],[80,140,200],[60,140,80],[140,60,200],[200,80,20],[100,20,160]]; // fl 1-5
+  for(let fl=1;fl<=5;fl++){
+    const [r,gv,b]=cols[fl];
+    const full=`rgba(${r},${gv},${b},1)`,none='rgba(0,0,0,0)',e=_VIGNETTE_EDGE,vh=_VIGNETTE_VIS_H;
+    const gT=g.createLinearGradient(0,0,0,e);gT.addColorStop(0,full);gT.addColorStop(1,none);
+    const gB=g.createLinearGradient(0,vh,0,vh-e);gB.addColorStop(0,full);gB.addColorStop(1,none);
+    const gL=g.createLinearGradient(0,0,e,0);gL.addColorStop(0,full);gL.addColorStop(1,none);
+    const gR=g.createLinearGradient(W,0,W-e,0);gR.addColorStop(0,full);gR.addColorStop(1,none);
+    grads.push({gT,gB,gL,gR});
+  }
+  return grads;
+})();
+// v228: Pre-baked floor item glow canvases (one per rarity 0-4, 28×28, alpha=1 at center)
+const _ITEM_GLOW_COLS=['#808080','#60b0ff','#a060e0','#d09020','#f0d040'];
+const _itemGlowCanvas=(()=>{
+  const cvs=[];
+  for(let r=0;r<5;r++){
+    const c=document.createElement('canvas');c.width=28;c.height=28;
+    const ctx=c.getContext('2d');
+    const grd=ctx.createRadialGradient(14,14,2,14,14,14);
+    grd.addColorStop(0,_ITEM_GLOW_COLS[r]);grd.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,28,28);
+    cvs.push(c);
+  }
+  return cvs;
+})();
+
 // v219: Pre-computed fog gradient color strings per map — avoids template literal creation every frame
 const _FOG_GRAD_COLS=_FOG_RGB.map(([r,g_,b])=>{
   const steps=8;
@@ -1223,22 +1247,21 @@ function dMap(){
         if(ipx<-TW||ipx>W||ipy<-TH||ipy>H)continue;
         const cr=CD[it.cardId-1];if(!cr)continue;
         // Rarity glow colors
-        const rarCols=['#808080','#60b0ff','#a060e0','#d09020','#f0d040'];
-        const rarCol=rarCols[Math.min(cr.r-1,4)]||'#f0c030';
+        const ri=Math.min(cr.r-1,4);
+        const rarCol=_ITEM_GLOW_COLS[ri]||'#f0c030';
         const glowPulse=0.55+0.35*Math.sin(fr*0.1+it.glow);
-        // Glow halo
+        // v228: pre-baked glow halo (was createRadialGradient per item per frame)
         g.globalAlpha=glowPulse*0.5;
-        const grd=g.createRadialGradient(ipx+TW/2,ipy+TH/2,2,ipx+TW/2,ipy+TH/2,12);
-        grd.addColorStop(0,rarCol);grd.addColorStop(1,'rgba(0,0,0,0)');
-        g.fillStyle=grd;g.fillRect(ipx,ipy,TW,TH);
+        g.drawImage(_itemGlowCanvas[ri],(ipx+TW/2-14)|0,(ipy+TH/2-14)|0);
         g.globalAlpha=1;
         // Card mini sprite (6×8 rectangle at center)
-        const cx2=ipx+TW/2-3,cy2=ipy+TH/2-4;
+        const cx2=(ipx+TW/2-3)|0,cy2=(ipy+TH/2-4)|0;
         bx(cx2,cy2,6,8,'#1a1a2e');
         bx(cx2+1,cy2+1,4,6,rarCol);
-        // Pulsing border
+        // v228: pulsing border via 4 bx calls (was strokeRect — expensive path flush)
         g.globalAlpha=glowPulse;
-        g.strokeStyle=rarCol;g.lineWidth=1;g.strokeRect(cx2-1,cy2-1,8,10);
+        bx(cx2-1,cy2-1,8,1,rarCol);bx(cx2-1,cy2+9,8,1,rarCol); // top/bottom
+        bx(cx2-1,cy2,1,10,rarCol);bx(cx2+7,cy2,1,10,rarCol);   // left/right
         g.globalAlpha=1;
         // Label above on hover (always show rarity initial)
         const abb=['C','U','R','E','L'][Math.min(cr.r-1,4)]||'?';
