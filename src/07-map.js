@@ -3,6 +3,8 @@
 const HUD_HEIGHT=72;
 // v220: Card-count helper — avoids .filter().length array allocation on every frame
 function cdCount(cd){let n=0;for(let i=0,l=cd.length;i<l;i++)if(cd[i]>0)n++;return n;}
+// v248: Unique card count — avoids new Set(cd.filter()) double-allocation on every frame
+function cdUniq(cd){const s=new Set();for(let i=0,l=cd.length;i<l;i++)if(cd[i]>0)s.add(cd[i]);return s.size;}
 
 // Pre-built edge gradients for map boundary vignette (avoids creating gradient objects every frame)
 const _edgeFade=20;
@@ -1166,29 +1168,30 @@ function dMap(){
   }
 
   // Draw footprints on revealed grass tiles — v99: color-coded by rival (VEGA=pink, MIRA=amber)
-  footprints.forEach(fp=>{
-    if(fp.map!==currentMap)return;
-    if(!fogRevealed[currentMap][fp.y]?.[fp.x])return;
+  for(let _fi=0,_fl=footprints.length;_fi<_fl;_fi++){
+    const fp=footprints[_fi];
+    if(fp.map!==currentMap)continue;
+    if(!fogRevealed[currentMap][fp.y]?.[fp.x])continue;
     const m_=maps[currentMap];
     const tile=m_[fp.y]?.[fp.x];
-    if(tile!==1&&tile!==11&&tile!==7)return;
+    if(tile!==1&&tile!==11&&tile!==7)continue;
     const fpx=fp.x*TW-camX;const fpy=fp.y*TH-camY;
-    if(fpx<-TW||fpx>W||fpy<-TH||fpy>H)return;
+    if(fpx<-TW||fpx>W||fpy<-TH||fpy>H)continue;
     const ageFrac=Math.max(0,1-fp.age/FOOTPRINT_MAX_AGE);
     const alpha=ageFrac*0.42;
-    // v99: color and size by rival identity
-    const fpCol=fp.ri===1?'#e060a0':fp.ri===2?'#c09020':'#3a3828'; // VEGA pink, MIRA amber, neutral dark
-    const sz=fp.ri?Math.max(3,Math.floor(4*ageFrac)+2):4; // rival footprints slightly larger when fresh
+    const fpCol=fp.ri===1?'#e060a0':fp.ri===2?'#c09020':'#3a3828';
+    const sz=fp.ri?Math.max(3,Math.floor(4*ageFrac)+2):4;
     g.globalAlpha=alpha;
     bx(fpx+8,fpy+20,sz,sz,fpCol);
     bx(fpx+18,fpy+24,sz,sz,fpCol);
     g.globalAlpha=1;
-  });
+  }
 
   // Draw NPCs on this map (only if on revealed tile)
-  npcs.forEach(npc=>{
+  for(let _ni=0,_nl=npcs.length;_ni<_nl;_ni++){
+    const npc=npcs[_ni];
     if(npc.map===currentMap&&fogRevealed[currentMap][npc.y]?.[npc.x])drawNPCSprite(npc);
-  });
+  }
 
   // Sprites sorted by Y (only draw rivals on same map AND visible through fog)
   const visiblePl=[pl[0]];
@@ -1209,7 +1212,8 @@ function dMap(){
   // v227: DUNGEON_AURA_RGB moved to module scope as _DUNGEON_AURA_RGB (pre-baked into _dungeonAuraCanvas)
   const sorted=visiblePl.map((p,i)=>({p,i:pl.indexOf(p)}));
   sorted.sort((a,b)=>a.p.visualY-b.p.visualY);
-  sorted.forEach(({p,i})=>{
+  for(let _si=0,_sl=sorted.length;_si<_sl;_si++){
+    const p=sorted[_si].p,i=sorted[_si].i;
     // v227: dungeon aura — pre-baked per-floor canvas, modulated by globalAlpha=pulse
     if(inDungeon&&currentFloor>=1&&currentFloor<=5){
       const spx=p.visualX-camX+TW/2,spy=p.visualY-camY+TH*0.7;
@@ -1222,7 +1226,6 @@ function dMap(){
     if(i!==0){
       const spx=p.visualX-camX,spy=p.visualY-camY-16;
       drawRivalAlertAnim(p,spx,spy);
-      // Rival name label above sprite (always visible when in view)
       const rNameCol=(i===1)?'#f080c0':'#f0c830';
       const rCards=cdCount(p.cd);
       const rLabel=p.n+(rCards>0?' '+rCards+'c':'');
@@ -1230,28 +1233,29 @@ function dMap(){
       bx(spx+8-lW/2,spy-44,lW,11,'rgba(0,0,0,.65)');
       txShadow(rLabel,spx+8-lW/2+3,spy-35,6,rNameCol,'rgba(0,0,0,.5)');
     }
-  });
+  }
 
   // Y-sorted trees FG pass: trees with base BELOW (south of) player drawn over sprites
   if(!inDungeon)drawCpxTreesInRange(pl[0].y+1,MH);
 
   // v98: Rival proximity echo — pulsing "?" ring at fog boundary when rival is nearby but hidden
   if(inDungeon){
-    pl.slice(1).forEach((rp,idx)=>{
-      if(rivalMaps[idx]!==currentMap)return;
-      if(isVisibleThroughFog(rp.x,rp.y,3))return;
+    for(let _ri=1;_ri<pl.length;_ri++){
+      const rp=pl[_ri],idx=_ri-1;
+      if(rivalMaps[idx]!==currentMap)continue;
+      if(isVisibleThroughFog(rp.x,rp.y,3))continue;
       const dx=rp.x-pl[0].x,dy=rp.y-pl[0].y;
       const dist=Math.sqrt(dx*dx+dy*dy);
-      if(dist>10||dist<1)return;
+      if(dist>10||dist<1)continue;
       const nx=dx/dist,ny=dy/dist;
       const edgeX=(pl[0].x+nx*3.8)*TW-camX+TW/2;
       const edgeY=(pl[0].y+ny*3.8)*TH-camY+TH/2;
-      if(edgeX<-20||edgeX>W+20||edgeY<-20||edgeY>H+20)return;
+      if(edgeX<-20||edgeX>W+20||edgeY<-20||edgeY>H+20)continue;
       const rivalCol=idx===0?'#e060a0':'#d0a030';
       const pPeriod=80+idx*16;
       const pPhase=(fr%pPeriod)/pPeriod;
       const ringA=Math.max(0,1-pPhase*2)*(1-dist/10)*0.65;
-      if(ringA<0.03)return;
+      if(ringA<0.03)continue;
       const ringR=4+pPhase*14;
       g.globalAlpha=ringA;
       g.strokeStyle=rivalCol;g.lineWidth=1.5;
@@ -1264,7 +1268,7 @@ function dMap(){
         g.textAlign='left';g.shadowBlur=0;
       }
       g.globalAlpha=1;g.lineWidth=1;
-    });
+    }
   }
 
   // v155: Draw floor items (cards lying on dungeon ground)
@@ -1743,7 +1747,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v247',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v248',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1766,8 +1770,8 @@ function dMap(){
     const vegaCards=cdCount(pl[1].cd);
     const miraCards=cdCount(pl[2].cd);
     // Use vault-proxy for rivals (their hand as unique cards approximation)
-    const vegaUniq=new Set(pl[1].cd.filter(c=>c>0)).size;
-    const miraUniq=new Set(pl[2].cd.filter(c=>c>0)).size;
+    const vegaUniq=cdUniq(pl[1].cd);
+    const miraUniq=cdUniq(pl[2].cd);
     // Sort by unique count descending
     const rankings=[
       {name:'YOU',uniq:myUniq,hand:cdCount(pl[0].cd),col:'#78c0f0',floor:0},
@@ -1783,23 +1787,19 @@ function dMap(){
     g.globalAlpha=pnlAlpha;
     txShadow('\u2694 STANDINGS',sbX+8,sbY+18,8,'#f0c830','rgba(0,0,0,.4)');
     bx(sbX+4,sbY+22,sbW-8,1,'rgba(200,180,100,.3)');
-    rankings.forEach((r,ri)=>{
+    for(let ri=0;ri<rankings.length;ri++){
+      const r=rankings[ri];
       const ry=sbY+28+ri*18;
       const isLeader=ri===0;
       g.globalAlpha=pnlAlpha*(isLeader?1:0.8);
-      // Rank number
       txShadow((ri+1)+'.',sbX+8,ry+12,isLeader?9:7,isLeader?'#f0c830':'#808080','rgba(0,0,0,.4)');
-      // Name (truncated)
       const nm=r.name.length>5?r.name.slice(0,5):r.name;
       txShadow(nm,sbX+22,ry+12,isLeader?8:7,r.col,'rgba(0,0,0,.3)');
-      // Unique card count (most important)
       const uniqStr=r.uniq+'/60';
       txShadow(uniqStr,sbX+sbW-8-uniqStr.length*6,ry+12,isLeader?8:7,'#e8e0c0','rgba(0,0,0,.3)');
-      // Floor indicator (for rivals)
       if(r.floor>0){const fStr='B'+r.floor;txShadow(fStr,sbX+76,ry+12,6,r.col,'rgba(0,0,0,.35)');}
-      // Leader crown
       if(isLeader){txShadow('\u2605',sbX+sbW-22,ry+6,5,'#f0c830','rgba(0,0,0,.4)');}
-    });
+    }
     g.globalAlpha=1;
   }
 
@@ -1807,8 +1807,8 @@ function dMap(){
   if(sc==='map'){
     const rcW=148,rcH=76,rcX=W-rcW-10,rcY=8;
     const myUniq=pl[0].vault?pl[0].vault.size:0;
-    const vegaUniq=new Set(pl[1].cd.filter(c=>c>0)).size;
-    const miraUniq=new Set(pl[2].cd.filter(c=>c>0)).size;
+    const vegaUniq=cdUniq(pl[1].cd);
+    const miraUniq=cdUniq(pl[2].cd);
     const racers=[
       {name:'YOU',cnt:myUniq,col:'#78c0f0'},
       {name:pl[1].n,cnt:vegaUniq,col:'#e060a0'},
@@ -1829,7 +1829,8 @@ function dMap(){
     bx(rcX+4,rcY+20,rcW-8,1,'rgba(200,180,100,.25)');
     // Racer rows (sorted by count)
     const barMax=76;
-    racers.forEach((r,i)=>{
+    for(let i=0;i<racers.length;i++){
+      const r=racers[i];
       const ry=rcY+24+i*16;
       const isLeader=i===0;
       g.globalAlpha=0.9*(isLeader?1:0.72);
@@ -1840,7 +1841,7 @@ function dMap(){
       bx(rcX+44,ry+2,barMax,7,'#1a1a30');
       bx(rcX+44,ry+2,barW,7,r.col);
       txShadow(r.cnt+'/60',rcX+44+barMax+3,ry+10,5,isLeader?'#e8e0c0':'#787890','rgba(0,0,0,.35)');
-    });
+    }
     g.globalAlpha=1;
   }
 
