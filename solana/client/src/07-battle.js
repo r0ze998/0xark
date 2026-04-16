@@ -1612,6 +1612,8 @@ let bpScoutedCards=[null,null]; // [{round,cards:[{n,r,t}]}, null] — persists 
 let battleRoundHistory=[]; // v90: [{rd,pa,r1a,r2a,outcome}] per round (pa=playerAction 0-4)
 let _battleRoundNet=0; // v284: running got-lost net, updated at unshift — avoids per-frame reduce
 
+// v293: Pre-computed "other action" indices — eliminates [0,1,2,3].filter per round
+const _TELL_OTHERS=[[1,2,3],[0,2,3],[0,1,3],[0,1,2]];
 // Rival tells: atmospheric body-language hints (65% accurate, 35% misleading)
 const RIVAL_BATTLE_TELLS=[
   // VEGA (index 0) — physical, predatory
@@ -1641,7 +1643,7 @@ function generateRivalTells(){
     const isMisdirect=Math.random()<0.35;
     // 35% misdirection: pick a different action's tells
     if(isMisdirect){
-      const others=[0,1,2,3].filter(a=>a!==actualAct);
+      const others=_TELL_OTHERS[actualAct%4]; // v293: pre-computed, no alloc
       actForTell=others[Math.floor(Math.random()*others.length)];
     }
     bpTellWasAccurate[ri]=!isMisdirect;
