@@ -414,7 +414,7 @@ function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
     bx(px+24,py+4,5,2,'#705040');
     // v215: Chimney smoke — rising puff particles with wind drift
     {const csx=px+26,csy=py-2;
-    const windX=Math.sin(fr*0.007+tx_)*1.2;
+    const windX=(_sFr007*_NCOS[tx_]+_cFr007*_NSIN[tx_])*1.2;
     for(let p=0;p<5;p++){
       const phase=(fr+p*11+tx_*7)%55;
       if(phase>53)continue;
