@@ -16,21 +16,20 @@ function processDungeonTurn(){
 // (mirrors the encounter check in the game loop but called explicitly after each turn)
 function checkDungeonRivalEncounter(){
   if(!inDungeon||encounterCooldown>0||encounterExclActive||wildEncounterActive||mapTransitioning||mo||shadowStepsLeft>0)return;
-  pl.slice(1).forEach((r,idx)=>{
-    if(rivalMaps[idx]!==currentMap)return;
-    if(encounterCooldown>0||encounterExclActive)return;
+  for(let _ri=1;_ri<pl.length;_ri++){
+    const r=pl[_ri],idx=_ri-1;
+    if(rivalMaps[idx]!==currentMap)continue;
+    if(encounterCooldown>0||encounterExclActive)continue;
     const adjDist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
     if(adjDist===1){
-      // Trigger encounter — set cooldown so game-loop check doesn't double-fire
       encounterCooldown=120;
       const ai=rivalAI[idx];
-      // Dungeon encounters always battle — no collector flee
       encounterExclActive=true;encounterExclFrame=fr;
       encounterExclTarget=idx+1;
       encounterExclPlayerX=pl[0].visualX;encounterExclPlayerY=pl[0].visualY;
       encounterExclRivalX=r.visualX;encounterExclRivalY=r.visualY;
       sfxEncounterDramatic();hitPause(4);
-      const rCards=r.cd.filter(c=>c>0).length;
+      const rCards=cdCount(r.cd);
       const isHunting=ai.state==='hunting';
       const vegaLines=['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Cornered. Just like the crew.','Nowhere left to run.'];
       const miraLines=['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','The ARK crew fell to logic. So will you.'];
@@ -47,7 +46,7 @@ function checkDungeonRivalEncounter(){
         });
       },500);
     }
-  });
+  }
 }
 
 // Place floor items in dungeon rooms (called on fresh dungeon generation)
@@ -663,7 +662,8 @@ function drawMinimap(){
     const tMap=parseInt(parts[0]),tx_=parseInt(parts[1]),ty_=parseInt(parts[2]);
     if(tMap===currentMap)bx(mx+tx_*sx,my+ty_*sy,Math.max(1,sx),Math.max(1,sy),'#ff3030');
   });
-  pl.slice(1).forEach((rp,idx)=>{
+  for(let _ri=1;_ri<pl.length;_ri++){
+    const rp=pl[_ri],idx=_ri-1;
     if(rivalMaps[idx]===currentMap&&(isVisibleThroughFog(rp.x,rp.y,3)||crystalRevealTimer>0)){
       const rpx=mx+rp.x*sx,rpy=my+rp.y*sy;
       bx(rpx,rpy,2,2,rp.c);
@@ -677,7 +677,7 @@ function drawMinimap(){
         }
       }
     }
-  });
+  }
   if(inDungeon){
     exits.forEach(ex=>{
       if(ex.fromMap!==currentMap)return;
@@ -872,7 +872,7 @@ function getNPCDialog(npc){
   }
   if(npc.name==='Alchemist'){
     const rarityCounts={};
-    pl[0].cd.filter(c=>c>0).forEach(c=>{const r=CD[c-1]?.r||1;rarityCounts[r]=(rarityCounts[r]||0)+1;});
+    for(let _ai=0,_al=pl[0].cd.length;_ai<_al;_ai++){const _c=pl[0].cd[_ai];if(_c>0){const r=CD[_c-1]?.r||1;rarityCounts[r]=(rarityCounts[r]||0)+1;}}
     const canSynth=Object.values(rarityCounts).some(cnt=>cnt>=3);
     if(canSynth)return['I sense synthesis','potential in your hand!','Bring me 3 cards','of matching rarity.','I will forge them','into something rarer.'];
     return['I can fuse cards into','higher rarities!','Bring me 3 cards','of the same rarity.','I will forge them','into something greater.'];
@@ -1840,7 +1840,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v248',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v249',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

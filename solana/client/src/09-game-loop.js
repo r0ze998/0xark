@@ -31,24 +31,22 @@ function processHeldMovement(){
 
 function updateVisualPositions(){
   const lerpT=1-Math.pow(1-0.45,dt); // Fast lerp for snappy tile-step feel
-  pl.forEach(p=>{
+  for(let _pi=0,_pl=pl.length;_pi<_pl;_pi++){
+    const p=pl[_pi];
     const targetX=p.x*TW, targetY=p.y*TH;
     p.visualX=lerp(p.visualX,targetX,lerpT);
     p.visualY=lerp(p.visualY,targetY,lerpT);
-    // Snap to target when very close (prevents sub-pixel jitter)
     const dx=Math.abs(p.visualX-targetX),dy=Math.abs(p.visualY-targetY);
     if(dx<0.3&&dy<0.3){p.visualX=targetX;p.visualY=targetY;}
-    // Round to integer for crisp pixel rendering
     p.visualX=Math.round(p.visualX);
     p.visualY=Math.round(p.visualY);
-    // Update walk frame based on movement
     if(dx>0.5||dy>0.5){
       p._walkAccum=(p._walkAccum||0)+dt;
       if(p._walkAccum>=4){p._walkAccum=0;p.walkFrame=(p.walkFrame+1)%4;}
     }else{
       p.walkFrame=0;p._walkAccum=0;
     }
-  });
+  }
 }
 
 function update(){
@@ -97,7 +95,8 @@ function update(){
 
   // Bird movement
   if(fr%10===0){
-    birds.forEach(b=>{
+    for(let _bi=0,_bl=birds.length;_bi<_bl;_bi++){
+      const b=birds[_bi];
       b.timer--;
       if(b.timer<=0){
         b.vx=(Math.random()-.5)*2;b.vy=(Math.random()-.5)*2;
@@ -113,7 +112,7 @@ function update(){
         const t=m[ny]?.[b.x];
         if(t===1||t===2||t===7||t===11)b.y=ny;
       }
-    });
+    }
   }
 
   // x402 server check every 30s; state push every 2min to keep broker in sync
@@ -295,8 +294,9 @@ function update(){
   // Encounter check (player walks to rival OR rival walks to player)
   // GDD v1.0: Town (map 0) is a safe zone — no PvP encounters allowed
   if(sc==='map'&&inDungeon&&!introActive&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning&&!encounterExclActive&&!shopActive&&!signpostActive&&!inBuilding&&shadowStepsLeft<=0){
-    pl.slice(1).forEach((r,idx)=>{
-      if(rivalMaps[idx]!==currentMap)return;
+    for(let _ri=1;_ri<pl.length;_ri++){
+      const r=pl[_ri],idx=_ri-1;
+      if(rivalMaps[idx]!==currentMap)continue;
       const adjDist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
       // At HIGH danger, encounter triggers at distance 2 as well
       const encounterDist=areaDanger[currentMap]>=DANGER_HIGH_THRESH?2:1;
@@ -348,7 +348,7 @@ function update(){
           },500);
         }
       }
-    });
+    }
     if(encounterCooldown>0)encounterCooldown--;
   }
 }
