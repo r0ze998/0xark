@@ -2,6 +2,7 @@
 // BATTLE / ACTION SCREEN (FRLG STYLE)
 // ═══════════════════════════════════════
 
+// v261: rivalUniqSize — allocation-free rival hand unique count (replaces new Set() × 2 per frame in game-loop)
 // v250: Static battle HUD arrays — eliminates per-frame object/array allocation in spell orb + type strip rendering
 const _BORB_LBL=['STL','BAR','SCT'],_BORB_FILL=['#c04848','#3868c0','#38a038'],_BORB_EMPTY=['#2a1010','#101028','#0e1e0e'],_BORB_LCOL=['#d05050','#4878d0','#48b048'];
 // v254: Static scout panel arrays — eliminates rivalInfo object array per scout panel render
@@ -1522,6 +1523,12 @@ function hasUniqueCards(pIdx){
   // For player: return vault (all ever collected); for rivals: derive from hand
   if(pIdx===0&&pl[0].vault)return pl[0].vault;
   const s=new Set();for(let _ci=0,_cl=pl[pIdx].cd.length;_ci<_cl;_ci++){if(pl[pIdx].cd[_ci]>0)s.add(pl[pIdx].cd[_ci]);}return s;
+}
+// v261: allocation-free rival unique card count — O(n²) dedup on 5-slot hand, no Set created
+function rivalUniqSize(pIdx){
+  const cd=pl[pIdx].cd,l=cd.length;let n=0;
+  for(let i=0;i<l;i++){const c=cd[i];if(c<=0)continue;let dup=false;for(let j=0;j<i;j++){if(cd[j]===c){dup=true;break;}}if(!dup)n++;}
+  return n;
 }
 function playerHasAllSixty(){return pl[0].vault&&pl[0].vault.size>=60;}
 let _winTransitionPending=false; // guard against double-win transition

@@ -138,7 +138,7 @@ function update(){
   updateFloorTitle(); // v155: PMD floor title card
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
-  const r1u=hasUniqueCards(1).size,r2u=hasUniqueCards(2).size;
+  const r1u=rivalUniqSize(1),r2u=rivalUniqSize(2); // v261: no Set alloc
   const maxRU=Math.max(r1u,r2u);
   rivalWinWarning=maxRU>=4?1:0;
   if(maxRU>=4&&!rivalWinWarningShown){

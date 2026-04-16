@@ -8047,7 +8047,7 @@ function tryWildEncounter(){
   const dangerBonus=areaDanger[currentMap]<DANGER_LOW_THRESH?0.05:0;
   // Rubber-banding: +10% encounter rate when behind on unique cards (fewer than rivals)
   const playerUnique=hasUniqueCards(0).size;
-  const maxRivalUnique=Math.max(hasUniqueCards(1).size,hasUniqueCards(2).size);
+  const maxRivalUnique=Math.max(rivalUniqSize(1),rivalUniqSize(2)); // v261: no Set alloc
   const rubberBand=playerUnique<maxRivalUnique?0.10:0;
   if(tile===11){
     if(Math.random()>(0.30+streakBonus+dangerBonus+rubberBand))return; // tall grass: 30% base
@@ -9173,7 +9173,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v254',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v261',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -10950,7 +10950,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v254',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v261',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11171,6 +11171,7 @@ function dMenu(){
 // BATTLE / ACTION SCREEN (FRLG STYLE)
 // ═══════════════════════════════════════
 
+// v261: rivalUniqSize — allocation-free rival hand unique count (replaces new Set() × 2 per frame in game-loop)
 // v250: Static battle HUD arrays — eliminates per-frame object/array allocation in spell orb + type strip rendering
 const _BORB_LBL=['STL','BAR','SCT'],_BORB_FILL=['#c04848','#3868c0','#38a038'],_BORB_EMPTY=['#2a1010','#101028','#0e1e0e'],_BORB_LCOL=['#d05050','#4878d0','#48b048'];
 // v254: Static scout panel arrays — eliminates rivalInfo object array per scout panel render
@@ -12691,6 +12692,12 @@ function hasUniqueCards(pIdx){
   // For player: return vault (all ever collected); for rivals: derive from hand
   if(pIdx===0&&pl[0].vault)return pl[0].vault;
   const s=new Set();for(let _ci=0,_cl=pl[pIdx].cd.length;_ci<_cl;_ci++){if(pl[pIdx].cd[_ci]>0)s.add(pl[pIdx].cd[_ci]);}return s;
+}
+// v261: allocation-free rival unique card count — O(n²) dedup on 5-slot hand, no Set created
+function rivalUniqSize(pIdx){
+  const cd=pl[pIdx].cd,l=cd.length;let n=0;
+  for(let i=0;i<l;i++){const c=cd[i];if(c<=0)continue;let dup=false;for(let j=0;j<i;j++){if(cd[j]===c){dup=true;break;}}if(!dup)n++;}
+  return n;
 }
 function playerHasAllSixty(){return pl[0].vault&&pl[0].vault.size>=60;}
 let _winTransitionPending=false; // guard against double-win transition
@@ -16746,7 +16753,7 @@ function dGameOver(){
   if(t>60){
     const rankings=[];
     for(let i=0;i<3;i++){
-      const unique=hasUniqueCards(i).size;
+      const unique=i===0?(pl[0].vault?pl[0].vault.size:0):rivalUniqSize(i); // v261: no Set alloc for rivals
       rankings.push({idx:i,name:pl[i].n,unique:unique,cards:[...pl[i].cd]});
     }
     rankings.sort((a,b)=>b.unique-a.unique);
@@ -16960,7 +16967,7 @@ function update(){
   updateFloorTitle(); // v155: PMD floor title card
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
-  const r1u=hasUniqueCards(1).size,r2u=hasUniqueCards(2).size;
+  const r1u=rivalUniqSize(1),r2u=rivalUniqSize(2); // v261: no Set alloc
   const maxRU=Math.max(r1u,r2u);
   rivalWinWarning=maxRU>=4?1:0;
   if(maxRU>=4&&!rivalWinWarningShown){
