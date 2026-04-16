@@ -1,3 +1,19 @@
+// v390: pre-baked orbital angle tables for battle particle effects (N=5,6,8,10,12)
+// sin-addition: cos(evT*K + i*2π/N) = cos(evT*K)*CI[i] - sin(evT*K)*SI[i]
+const _ORB_SI5=new Float32Array(5);const _ORB_CI5=new Float32Array(5);
+const _ORB_SI6=new Float32Array(6);const _ORB_CI6=new Float32Array(6);
+const _ORB_SI8=new Float32Array(8);const _ORB_CI8=new Float32Array(8);
+const _ORB_SI10=new Float32Array(10);const _ORB_CI10=new Float32Array(10);
+const _ORB_SI12=new Float32Array(12);const _ORB_CI12=new Float32Array(12);
+const _FLAME_DIST13=new Float32Array(12); // Math.sin(i*1.3)*8 for i=0..11 (static dist modifier)
+(()=>{const _PI2=Math.PI*2;
+  for(let i=0;i<5;i++){_ORB_SI5[i]=Math.sin(i*_PI2/5);_ORB_CI5[i]=Math.cos(i*_PI2/5);}
+  for(let i=0;i<6;i++){_ORB_SI6[i]=Math.sin(i*_PI2/6);_ORB_CI6[i]=Math.cos(i*_PI2/6);}
+  for(let i=0;i<8;i++){_ORB_SI8[i]=Math.sin(i*_PI2/8);_ORB_CI8[i]=Math.cos(i*_PI2/8);}
+  for(let i=0;i<10;i++){_ORB_SI10[i]=Math.sin(i*_PI2/10);_ORB_CI10[i]=Math.cos(i*_PI2/10);}
+  for(let i=0;i<12;i++){_ORB_SI12[i]=Math.sin(i*_PI2/12);_ORB_CI12[i]=Math.cos(i*_PI2/12);}
+  for(let i=0;i<12;i++)_FLAME_DIST13[i]=Math.sin(i*1.3)*8;
+})();
 // v262: Hoist resolve per-frame inline literals
 const _RES_ACT_NAMES=['DRAW','STEAL','BARRIER','SCOUT','CARD'];
 // v327: pre-baked resolve/result screen strings
@@ -75,13 +91,13 @@ function drawCrystalEffect(cx_,cy_,evT){
   if(evT===1)sfxCrystal();
   const a=Math.max(0,1-evT/35);
   g.save();g.globalAlpha=a;
+  // v390: sin-addition with _ORB_SI8/CI8 — 2 trig calls instead of 16
+  {const _eS=Math.sin(evT*0.2),_eC=Math.cos(evT*0.2),_dist=20+evT*1.5;
   for(let i=0;i<8;i++){
-    const ang=evT*0.2+i*(Math.PI*2/8);
-    const dist=20+evT*1.5;
-    const px_=cx_+Math.cos(ang)*dist;
-    const py_=cy_+Math.sin(ang)*dist*0.6;
+    const px_=cx_+(_eC*_ORB_CI8[i]-_eS*_ORB_SI8[i])*_dist;
+    const py_=cy_+(_eS*_ORB_CI8[i]+_eC*_ORB_SI8[i])*_dist*0.6;
     bx(px_-2,py_-2,4,4,'#48b8e8');bx(px_-1,py_-1,2,2,'#a0e0ff');
-  }
+  }}
   // Lightning bolt at mid-animation
   if(evT>15&&evT<30){
     g.globalAlpha=(30-evT)/15;g.strokeStyle='#64c8ff';g.lineWidth=2;
@@ -105,10 +121,11 @@ function drawShadowEffect(cx_,cy_,evT){
     bx(cx_-25,cy_-30,50,60,'rgba(80,40,120,.4)');
     g.globalAlpha=1;
   }
-  // Dark particles rising
+  // Dark particles rising — v390: sin-addition with _IDX_SI/CI
   {const pa=Math.max(0,1-evT/30);g.globalAlpha=pa;
+  const _sS=Math.sin(evT*0.2),_sC=Math.cos(evT*0.2);
   for(let i=0;i<6;i++){
-    const px_=cx_-15+i*6+Math.sin(evT*0.2+i)*4,py_=cy_+20-evT*1.5-i*3;
+    const px_=cx_-15+i*6+(_sS*_IDX_CI[i]+_sC*_IDX_SI[i])*4,py_=cy_+20-evT*1.5-i*3;
     g.fillStyle='#501e78';g.fillRect(px_,py_,3,3);
     g.fillStyle='#8c50b4';g.fillRect(px_+1,py_+1,1,1);
   }g.globalAlpha=1;}
@@ -117,10 +134,13 @@ function drawShadowEffect(cx_,cy_,evT){
 function drawFlameEffect(cx_,cy_,evT){
   if(evT===1)sfxFlame();
   // Fire particles erupting from center
+  // v390: sin-addition with _ORB_SI12/CI12; pre-baked dist via _FLAME_DIST13 — 2 trig calls vs 24
   {const pa=Math.max(0,1-evT/35);g.globalAlpha=pa;
+  const _eS=Math.sin(evT*0.05),_eC=Math.cos(evT*0.05),_evT05=evT*0.5;
   for(let i=0;i<12;i++){
-    const ang=i*(Math.PI*2/12)+evT*0.05,dist=evT*2+Math.sin(i*1.3)*8;
-    const px_=cx_+Math.cos(ang)*dist,py_=cy_+Math.sin(ang)*dist*0.5-evT*0.5;
+    const dist=evT*2+_FLAME_DIST13[i];
+    const px_=cx_+(_eC*_ORB_CI12[i]-_eS*_ORB_SI12[i])*dist;
+    const py_=cy_+(_eS*_ORB_CI12[i]+_eC*_ORB_SI12[i])*dist*0.5-_evT05;
     const sz=4-evT*0.08;
     if(sz>0){g.fillStyle='#dc5028';g.fillRect(px_-sz/2,py_-sz/2,sz,sz);g.fillStyle='#ffc83c';g.fillRect(px_-sz/4,py_-sz/4,sz/2,sz/2);}
   }g.globalAlpha=1;}
@@ -142,9 +162,11 @@ function drawStormEffect(evT){
   // Lightning bolts across top
   if(evT<25){
     const a=Math.max(0,1-evT/25);
+    // v390: sin-addition with _IDX_SI/CI — sin(evT+i) = sin(evT)*CI[i]+cos(evT)*SI[i]
+    const _stS=Math.sin(evT),_stC=Math.cos(evT);
     g.globalAlpha=a;g.strokeStyle='#ffffc8';g.lineWidth=3;
     for(let i=0;i<3;i++){
-      const sx_=80+i*200+Math.sin(evT+i)*20;
+      const sx_=80+i*200+(_stS*_IDX_CI[i]+_stC*_IDX_SI[i])*20;
       g.beginPath();g.moveTo(sx_,0);
       g.lineTo(sx_+15,40);g.lineTo(sx_-10,80);g.lineTo(sx_+20,120);
       g.stroke();
@@ -161,19 +183,22 @@ function drawVoidEffect(cx_,cy_,evT){
   // Purple vortex in center
   const a=Math.max(0,1-evT/35);
   g.save();g.globalAlpha=a;
+  // v390: sin-addition for orbital and per-particle dist — 4 trig calls vs 30
+  {const _eS3=Math.sin(evT*0.3),_eC3=Math.cos(evT*0.3);
+  const _eS5=Math.sin(evT*0.5),_eC5=Math.cos(evT*0.5);
+  const _base=30-evT*0.3;
   for(let i=0;i<10;i++){
-    const ang=evT*0.3+i*(Math.PI*2/10);
-    const dist=30-evT*0.3+Math.sin(evT*0.5+i)*5;
-    const px_=cx_+Math.cos(ang)*dist;
-    const py_=cy_+Math.sin(ang)*dist*0.6;
+    const dist=_base+(_eS5*_IDX_CI[i]+_eC5*_IDX_SI[i])*5;
+    const px_=cx_+(_eC3*_ORB_CI10[i]-_eS3*_ORB_SI10[i])*dist;
+    const py_=cy_+(_eS3*_ORB_CI10[i]+_eC3*_ORB_SI10[i])*dist*0.6;
     g.fillStyle='#6432a0';g.fillRect(px_-2,py_-2,4,4);
     g.fillStyle='#b464dc';g.fillRect(px_-1,py_-1,2,2);
-  }
-  // Card shape flying
+  }}
+  // Card shape flying — v390: parabola approx for arc (4x(1-x) ≈ sin(πx))
   if(evT>10&&evT<30){
     const t_=(evT-10)/20;
     const cardX=lerp(cx_+60,cx_-60,t_);
-    const cardY=cy_-10+Math.sin(t_*Math.PI)*-20;
+    const cardY=cy_-10+4*t_*(1-t_)*-20;
     bx(cardX-6,cardY-8,12,16,'#7858a0');bx(cardX-5,cardY-7,10,14,'#9878c0');
     txShadow('?',cardX-3,cardY+4,6,'#fff','rgba(0,0,0,.35)');
   }
@@ -250,12 +275,15 @@ function drawResolvingPhase(){
       if(evT>=13&&evT<24){
         const bt=evT-13;
         const ba=Math.max(0,1-bt/11)*fadeA;
+        // v390: sin-addition for orbital and compound alpha — 4 trig calls vs 30
+        {const _bS=Math.sin(bt*0.12),_bC=Math.cos(bt*0.12),_dist=bt*7;
+        const _b4S=Math.sin(bt*0.4),_b4C=Math.cos(bt*0.4);
         for(let i=0;i<10;i++){
-          const ang=i*(Math.PI*2/10)+bt*0.12;
-          const dist=bt*7;
-          g.globalAlpha=ba*(0.5+0.5*Math.sin(ang+bt*0.4));
-          bx(clashCX+Math.cos(ang)*dist-1,clashCY+pH/2+Math.sin(ang)*dist*0.45-1,3,3,'#ffe060');
-        }
+          const _ac=_bC*_ORB_CI10[i]-_bS*_ORB_SI10[i],_as=_bS*_ORB_CI10[i]+_bC*_ORB_SI10[i];
+          // sin(ang+bt*0.4) = _as*_b4C + _ac*_b4S (sin-addition, no extra trig)
+          g.globalAlpha=ba*(0.5+0.5*(_as*_b4C+_ac*_b4S));
+          bx(clashCX+_ac*_dist-1,clashCY+pH/2+_as*_dist*0.45-1,3,3,'#ffe060');
+        }}
         if(evT===13){sfxSlash();}
       }
       g.globalAlpha=1;
@@ -325,7 +353,8 @@ function drawResolvingPhase(){
       const prog=Math.min(1,evT/32);
       const eased=prog<0.5?2*prog*prog:1-Math.pow(-2*prog+2,2)/2; // ease-in-out
       const cx_=playerCX+(rivalCX-playerCX)*eased;
-      const cy_=playerCY+(rivalCY-playerCY)*eased-28*Math.sin(eased*Math.PI);
+      // v390: parabola 4x(1-x) ≈ sin(πx) for arc trajectory
+      const cy_=playerCY+(rivalCY-playerCY)*eased-112*eased*(1-eased);
       const scl_=Math.max(0.3,1-eased*0.6);
       const cw_=36*scl_,ch_=50*scl_;
       // Red glow that follows card
@@ -344,7 +373,7 @@ function drawResolvingPhase(){
       for(let i=0;i<6;i++){
         const tp=Math.max(0,eased-(i+1)*0.04);
         const tx_=playerCX+(rivalCX-playerCX)*tp;
-        const ty_=playerCY+(rivalCY-playerCY)*tp-28*Math.sin(tp*Math.PI);
+        const ty_=playerCY+(rivalCY-playerCY)*tp-112*tp*(1-tp); // v390: parabola
         const ta=(1-i/6)*0.5*(1-eased);
         g.globalAlpha=ta;
         bx(tx_-3,ty_-3,6,6,i<3?'#c03020':'#804020');
@@ -421,8 +450,10 @@ function drawResolvingPhase(){
         bx(playerCX-cw_/2+2,cardY-ch_/2+2,cw_-4,ch_-4,'#e87060');
         if(scale_>.5)txShadow('\u25B2',playerCX-6,cardY+4,Math.floor(12*scale_),'#fff','rgba(0,0,0,.35)');
       }
+      // v390: sin-addition with _ORB_SI8/CI8 — 2 trig calls vs 16
       {const pa=Math.max(0,1-evT/35);g.globalAlpha=pa;g.fillStyle='#ffffc8';
-      for(let i=0;i<8;i++){const ang=i*(Math.PI*2/8)+evT*.15,dist=12+evT*.8;g.fillRect(playerCX+Math.cos(ang)*dist,cardY+Math.sin(ang)*dist,3,3);}
+      const _eS=Math.sin(evT*.15),_eC=Math.cos(evT*.15),_dist=12+evT*.8;
+      for(let i=0;i<8;i++){g.fillRect(playerCX+(_eC*_ORB_CI8[i]-_eS*_ORB_SI8[i])*_dist,cardY+(_eS*_ORB_CI8[i]+_eC*_ORB_SI8[i])*_dist,3,3);}
       g.globalAlpha=1;}
       if(evT===1)sfxCardGet();
     }
@@ -467,9 +498,10 @@ function drawResolvingPhase(){
         bx(rcx-cw_/2+2,cardY-ch_/2+2,cw_-4,ch_-4,'#e87060');
         if(scale_>.5)txShadow('\u25B2',rcx-6,cardY+4,Math.floor(12*scale_),'#fff','rgba(0,0,0,.35)');
       }
-      // Hostile red-orange orbiting sparks
+      // Hostile red-orange orbiting sparks — v390: sin-addition with _ORB_SI6/CI6
       {const pa=Math.max(0,1-evT/35);g.globalAlpha=pa;g.fillStyle='#dc6432';
-      for(let i=0;i<6;i++){const ang=i*(Math.PI*2/6)+evT*.18,dist=10+evT*.7;g.fillRect(rcx+Math.cos(ang)*dist,cardY+Math.sin(ang)*dist,3,3);}
+      const _eS=Math.sin(evT*.18),_eC=Math.cos(evT*.18),_dist=10+evT*.7;
+      for(let i=0;i<6;i++){g.fillRect(rcx+(_eC*_ORB_CI6[i]-_eS*_ORB_SI6[i])*_dist,cardY+(_eS*_ORB_CI6[i]+_eC*_ORB_SI6[i])*_dist,3,3);}
       g.globalAlpha=1;}
       if(evT===1)sfxCardGet();
     }
@@ -481,7 +513,7 @@ function drawResolvingPhase(){
       // Card moves from rival (oppCX) to player (playerCX) over 30 frames
       const prog=Math.min(1,evT/30);
       const cx_=oppCX+(playerCX-oppCX)*prog;
-      const cy_=oppCY-30*Math.sin(prog*Math.PI); // arc trajectory
+      const cy_=oppCY-120*prog*(1-prog); // v390: parabola ≈ sin(πx) arc
       const scl_=Math.min(1,evT/8);
       const cw_=36*scl_,ch_=50*scl_;
       // Glow burst at card position
@@ -503,15 +535,21 @@ function drawResolvingPhase(){
       if(scl_>.5&&ev.stolenId){drawCardCharacter(-cw_/2+2,-ch_/2+2,ev.stolenId,scl_*0.6,fr);}
       g.restore();}
       // Rarity sparks orbit
+      // v390: sin-addition for orbiting sparks — 2 trig calls regardless of sparkCount
       const sparkCount=2+rar*2;
+      {const _spS=Math.sin(evT*0.25),_spC=Math.cos(evT*0.25);
+      const _spDist=16+evT*0.6,_sa=Math.max(0,1-evT/50);
+      const _spStep=Math.PI*2/sparkCount;
+      const _spSStep=Math.sin(_spStep),_spCStep=Math.cos(_spStep);
+      let _ss=0,_sc=1; // sin(0), cos(0) — advances by _spStep each iteration (Euler)
       for(let i=0;i<sparkCount;i++){
-        const ang=evT*0.25+i*(Math.PI*2/sparkCount);
-        const dist=16+evT*0.6;
-        const sa=Math.max(0,1-evT/50);
-        g.globalAlpha=sa;
-        bx(cx_+Math.cos(ang)*dist-2,cy_+Math.sin(ang)*dist-2,4,4,rcol);
+        const ang_c=_spC*_sc-_spS*_ss,ang_s=_spS*_sc+_spC*_ss;
+        g.globalAlpha=_sa;
+        bx(cx_+ang_c*_spDist-2,cy_+ang_s*_spDist-2,4,4,rcol);
         g.globalAlpha=1;
-      }
+        // advance Euler: (sc,ss) rotated by _spStep
+        const _ns=_ss*_spCStep+_sc*_spSStep;_sc=_sc*_spCStep-_ss*_spSStep;_ss=_ns;
+      }}
       // Arrival: screen flash + burst + hitpause proportional to rarity (only once at frame 30)
       if(evT===30){
         if(rar>=4){flash();}
@@ -525,6 +563,7 @@ function drawResolvingPhase(){
         const stA=Math.min(1,(evT-8)/5)*Math.max(0,(45-evT)/8);
         const stLabel=rar>=5?'LEGENDARY!':rar>=4?'EPIC CARD!':rar>=3?'RARE CARD!':rar>=2?'GOT IT!':'CARD TAKEN!';
         const stSz=rar>=5?17:rar>=4?15:rar>=3?13:10;
+        // v390: parabola-style clamp — sin((evT-8)*0.25) cycles, use as-is (1 minor call stays)
         const bounce=rar>=3?Math.max(0,Math.sin((evT-8)*0.25)*4):0;
         g.globalAlpha=stA;
         txShadow(stLabel,W/2-stLabel.length*stSz*0.3,playerCY-85-bounce,stSz,rcol,'rgba(0,0,0,.6)');
@@ -592,14 +631,16 @@ function drawResolvingPhase(){
       g.globalAlpha=beamAlpha*0.35;
       bx(tgtCX-beamW/2,beamY-6,beamW,10,'rgba(0,200,80,.18)'); // soft glow above
       g.globalAlpha=1;
-      // Orbiting scan particles
+      // Orbiting scan particles — v390: sin-addition, hoist dist out of loop
+      {const _eS22=Math.sin(evT*0.22),_eC22=Math.cos(evT*0.22);
+      const _dist=20+Math.sin(evT*0.15)*5; // 1 call, was 5 (hoisted out of loop)
+      const _eS18=Math.sin(evT*0.18),_eC18=Math.cos(evT*0.18);
       for(let i=0;i<5;i++){
-        const ang=evT*0.22+i*(Math.PI*2/5);
-        const dist=20+Math.sin(evT*0.15)*5;
-        const pa=beamAlpha*(0.4+Math.sin(evT*0.18+i)*0.4);
+        const _ac=_eC22*_ORB_CI5[i]-_eS22*_ORB_SI5[i],_as=_eS22*_ORB_CI5[i]+_eC22*_ORB_SI5[i];
+        const pa=beamAlpha*(0.4+(_eS18*_IDX_CI[i]+_eC18*_IDX_SI[i])*0.4);
         g.globalAlpha=pa;
-        bx(tgtCX+Math.cos(ang)*dist-1,tgtCY+Math.sin(ang)*dist*0.6-1,2,2,'#40e090');
-      }
+        bx(tgtCX+_ac*_dist-1,tgtCY+_as*_dist*0.6-1,2,2,'#40e090');
+      }}
       g.globalAlpha=1;
       // "SCOUTING" text flash
       if(evT>6&&evT<36){
@@ -642,14 +683,17 @@ function drawResolvingPhase(){
         g.setLineDash([]);
         g.globalAlpha=1;
       }
-      // Hostile orbiting particles (red/orange)
+      // Hostile orbiting particles — v390: sin-addition, hoist dist, +π via negation of CI/SI
+      {const _eS25=Math.sin(evT*0.25),_eC25=Math.cos(evT*0.25);
+      const _dist=18+Math.sin(evT*0.18)*4; // 1 call, hoisted out of loop
+      const _eS20=Math.sin(evT*0.2),_eC20=Math.cos(evT*0.2);
       for(let i=0;i<5;i++){
-        const ang=evT*0.25+i*(Math.PI*2/5)+Math.PI;
-        const dist=18+Math.sin(evT*0.18)*4;
-        const pa=beamAlpha*(0.35+Math.sin(evT*0.2+i)*0.35);
+        // ang+π: cos(ang+π)=-cos(ang), sin(ang+π)=-sin(ang)
+        const _ac=-(_eC25*_ORB_CI5[i]-_eS25*_ORB_SI5[i]),_as=-(_eS25*_ORB_CI5[i]+_eC25*_ORB_SI5[i]);
+        const pa=beamAlpha*(0.35+(_eS20*_IDX_CI[i]+_eC20*_IDX_SI[i])*0.35);
         g.globalAlpha=pa;
-        bx(dstCX+Math.cos(ang)*dist-1,dstCY+Math.sin(ang)*dist*0.55-1,2,2,'#ff5020');
-      }
+        bx(dstCX+_ac*_dist-1,dstCY+_as*_dist*0.55-1,2,2,'#ff5020');
+      }}
       g.globalAlpha=1;
       // "SCANNING..." flash text near player (hostile amber)
       if(evT>5&&evT<38){
