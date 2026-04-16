@@ -800,35 +800,55 @@ const _weatherCanvas=document.createElement('canvas');
 _weatherCanvas.width=W;_weatherCanvas.height=H;
 const _weatherCtx=_weatherCanvas.getContext('2d');
 let _weatherLastFr=-99,_weatherLastType='';
+// v223: Lightning system
+let _lightningFlash=0;// frames remaining for flash
+let _lightningNextFr=600+Math.floor(Math.random()*900);// when next strike happens
+function _sfxThunder(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain(),o2=AC.createOscillator(),gn2=AC.createGain();o.type='sawtooth';o.frequency.setValueAtTime(80,AC.currentTime);o.frequency.exponentialRampToValueAtTime(20,AC.currentTime+0.8);gn.gain.setValueAtTime(.18,AC.currentTime);gn.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.9);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+0.9);o2.type='triangle';o2.frequency.setValueAtTime(40,AC.currentTime+0.1);o2.frequency.exponentialRampToValueAtTime(15,AC.currentTime+0.6);gn2.gain.setValueAtTime(.1,AC.currentTime+0.1);gn2.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.7);o2.connect(gn2);gn2.connect(AC.destination);o2.start(AC.currentTime+0.1);o2.stop(AC.currentTime+0.7);}catch(e){}}
 
 function drawTownWeather(){
   if(inDungeon||currentMap!==0)return;
   const wa=townWeatherAlpha;
   if(wa<=0.02)return;
   if(townWeather==='rain'){
+    // v223: Lightning — strike at random intervals during rain
+    if(fr>=_lightningNextFr){
+      _lightningFlash=6;
+      _lightningNextFr=fr+360+Math.floor(Math.random()*720);
+      screenShake(2,5);
+      _sfxThunder();
+    }
+    if(_lightningFlash>0){
+      const flashA=(_lightningFlash/6)*0.55*wa;
+      g.globalAlpha=flashA;g.fillStyle='#e0eaff';g.fillRect(0,0,W,H);g.globalAlpha=1;
+      _lightningFlash--;
+    }
     // Only redraw rain every 2nd frame
     if(fr%2!==0)return;
+    // v223: fillRect rain — faster than stroke paths
     g.save();
+    g.fillStyle='rgba(160,190,240,0.8)';
     for(let i=0;i<55;i++){
       const seed=i*137;
       const rx=((fr*0.7+seed*19+camX*0.2)%(W+120))-60;
       const ry=(fr*4+seed*11)%(H+80)-40;
       g.globalAlpha=wa*(0.3+seed%3*0.1);
-      g.strokeStyle='rgba(160,190,240,0.9)';g.lineWidth=1;
-      g.beginPath();g.moveTo(rx,ry);g.lineTo(rx-3,ry+10);g.stroke();
+      g.fillRect(rx-1,ry,1,9);g.fillRect(rx-2,ry+9,1,3); // streak + tip
     }
     g.globalAlpha=1;
-    // Ground ripples at bottom portion of screen
+    // Ground ripples — fillRect rings (cheaper than ellipse+stroke)
     for(let i=0;i<10;i++){
       const seed=i*193;
       const ripX=((fr*0.6+seed*27)%(W+80))-40;
       const ripPhase=(fr*0.5+seed*7)%80/80;
-      const ripR=ripPhase*14;
-      const ripA=wa*(1-ripPhase)*0.35;
-      if(ripA>0.02){
+      const ripR=Math.floor(ripPhase*12);
+      const ripA=wa*(1-ripPhase)*0.28;
+      if(ripA>0.02&&ripR>1){
         g.globalAlpha=ripA;
-        g.strokeStyle='rgba(160,200,240,0.7)';g.lineWidth=1;
-        g.beginPath();g.ellipse(ripX,H-15-seed%40,ripR,ripR*0.3,0,0,Math.PI*2);g.stroke();
+        g.fillStyle='rgba(160,200,240,0.6)';
+        // Two-pixel horizontal oval ring using 4 thin rects
+        const ry_=H-18-seed%36;
+        g.fillRect(ripX-ripR,ry_-1,ripR*2,1);g.fillRect(ripX-ripR,ry_+2,ripR*2,1);
+        g.fillRect(ripX-ripR-1,ry_,1,3);g.fillRect(ripX+ripR,ry_,1,3);
       }
     }
     // Subtle blue tint overlay
