@@ -2805,6 +2805,7 @@ function updateHandInspect(){
   handInspectFrame++;
   if(handInspectFrame>=handInspectAutoDismiss)handInspectActive=false;
 }
+const _hiFilledBuf=new Int8Array(8); // v272: module scope, eliminates filled[] per frame
 function drawHandInspect(){
   if(!handInspectActive||sc!=='map')return;
   const t=Math.min(1,handInspectFrame/10);
@@ -2816,9 +2817,8 @@ function drawHandInspect(){
   bx(0,0,W,H,'rgba(0,0,0,.75)');
   g.globalAlpha=alpha;
 
-  const filled=[];
-  for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
-  const total=filled.length;
+  let _hiN=0;for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)_hiFilledBuf[_hiN++]=i;}
+  const total=_hiN;
   if(total===0){
     txShadow('Hand is empty.',W/2-60,H/2,9,'#888898','rgba(0,0,0,.5)');
     g.globalAlpha=1;return;
@@ -2833,8 +2833,8 @@ function drawHandInspect(){
   const cols=Math.min(4,total),rows=Math.ceil(total/4);
   const cw=160,ch=180,padX=(W-(cols*cw))/2,padY=80;
 
-  filled.forEach((slot,i)=>{
-    const cid=pl[0].cd[slot];if(!cid)return;
+  for(let i=0;i<_hiN;i++){const slot=_hiFilledBuf[i];
+    const cid=pl[0].cd[slot];if(!cid)continue;
     const cr=CD[cid-1];
     const col_=i%cols,row_=Math.floor(i/cols);
     const cx_=padX+col_*cw+8,cy_=padY+row_*ch;
@@ -2883,7 +2883,7 @@ function drawHandInspect(){
     }else{
       txShadow('SAFE',cx_+4,cy_+ch-10,5,'#60c060','rgba(0,0,0,.3)');
     }
-  });
+  }
 
   // Dismiss hint (blink)
   const blinkA=0.5+Math.sin(handInspectFrame*0.12)*0.4;
@@ -9194,7 +9194,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v271',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v272',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -10971,7 +10971,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v271',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v272',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -12064,7 +12064,7 @@ function drawActionGrid(){
         if(idx===0){// DRAW — show if floor pool has new cards for player
           const pool_=DUNGEON_FLOOR_CARDS[currentMap]||[];
           const vault_=pl[0].vault||new Set();
-          const newInPool=pool_.filter(id=>!vault_.has(id)).length;
+          let newInPool=0;for(let _pi=0;_pi<pool_.length;_pi++){if(!vault_.has(pool_[_pi]))newInPool++;} // v272: no filter alloc
           if(newInPool>0){badge='+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';}
           else if(pool_.length>0){badge='ALL OWNED';badgeCol='#888870';badgeBg='rgba(0,0,0,.3)';}
         }else if(idx===1){// STEAL — show barrier state of primary target
@@ -14666,7 +14666,7 @@ function dVictory(){
   }
   for(let i=0;i<20;i++){
     const px_=(i*73+t*(.5+i*.03))%W,py_=(i*41+t*(1+i*.02))%H;
-    bx(px_,py_,3,2,['#d8b028','#f0c830','#e8a020','#f8e060'][i%4]);
+    bx(px_,py_,3,2,_CONFETTI_COLS[i%4]); // v272: hoisted
   }
 
   if(t>35){
@@ -15145,14 +15145,15 @@ function dLog(){
   const statBannerY=52;
   win(16,statBannerY,W-32,26);
   bx(16,statBannerY,W-32,2,'#3048a0');
-  // Stat banner — direct render avoids 4-object array + forEach closure per log-screen frame
-  {const _sVals=[rd+'',stats.cardsCollected+'',stats.cardsLost+'',vaultSz+'/60']; // v262: icons/labels hoisted
-  const _sCols=['#c04848','#50e090','#d04040',vaultSz>=60?'#f0c830':'#7888c8'];
+  // v272: Stat banner — 4 slots inlined, zero array alloc per frame
+  {const _vc=vaultSz>=60?'#f0c830':'#7888c8';
+  const _sd=['#c04848','#50e090','#d04040',_vc];
+  const _sv=[rd+'',stats.cardsCollected+'',stats.cardsLost+'',vaultSz+'/60'];
   for(let si=0;si<4;si++){
     const sx=36+si*230;
-    txShadow(_LOG_STAT_ICONS[si],sx,statBannerY+18,8,_sCols[si],'rgba(0,0,0,.35)');
-    txShadow(_sVals[si],sx+12,statBannerY+18,8,'#f0e8d0','rgba(0,0,0,.35)');
-    if(_LOG_STAT_LABELS[si]) txShadow(_LOG_STAT_LABELS[si],sx+12+_sVals[si].length*7,statBannerY+18,6,'#505070','rgba(0,0,0,.3)');
+    txShadow(_LOG_STAT_ICONS[si],sx,statBannerY+18,8,_sd[si],'rgba(0,0,0,.35)');
+    txShadow(_sv[si],sx+12,statBannerY+18,8,'#f0e8d0','rgba(0,0,0,.35)');
+    if(_LOG_STAT_LABELS[si])txShadow(_LOG_STAT_LABELS[si],sx+12+_sv[si].length*7,statBannerY+18,6,'#505070','rgba(0,0,0,.3)');
   }}
 
   // Scrollable log entries
@@ -16762,6 +16763,7 @@ function dCredits(){
 // ═══════════════════════════════════════
 // GAME OVER - TIME'S UP SCREEN
 // ═══════════════════════════════════════
+let _goRankCache=null,_goRankVF=-1; // v272: cache game-over rankings — reset when screen restarts
 function dGameOver(){
   const t=fr-victoryFrame;
   if(t<30){g.globalAlpha=t/30;g.fillStyle='#000000';g.fillRect(0,0,W,H);g.globalAlpha=1;return;}
@@ -16798,14 +16800,18 @@ function dGameOver(){
     g.globalAlpha=1;
   }
 
-  // Rank all 3 players by unique card count
+  // Rank all 3 players by unique card count — build once, cache for rest of screen
   if(t>60){
-    const rankings=[];
-    for(let i=0;i<3;i++){
-      const unique=i===0?(pl[0].vault?pl[0].vault.size:0):rivalUniqSize(i); // v261: no Set alloc for rivals
-      rankings.push({idx:i,name:pl[i].n,unique:unique,cards:[...pl[i].cd]});
+    if(!_goRankCache||_goRankVF!==victoryFrame){_goRankVF=victoryFrame;
+      _goRankCache=[];
+      for(let i=0;i<3;i++){
+        const unique=i===0?(pl[0].vault?pl[0].vault.size:0):rivalUniqSize(i);
+        const cards_=[];for(let _ci=0;_ci<pl[i].cd.length;_ci++)cards_.push(pl[i].cd[_ci]);
+        _goRankCache.push({idx:i,name:pl[i].n,unique:unique,cards:cards_});
+      }
+      _goRankCache.sort((a,b)=>b.unique-a.unique);
     }
-    rankings.sort((a,b)=>b.unique-a.unique);
+    const rankings=_goRankCache; // v272: no alloc after first frame
     const rowH=116;
     for(let rank=0;rank<rankings.length;rank++){
       const r=rankings[rank];const fadeT=t-60-rank*22;

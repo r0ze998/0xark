@@ -524,7 +524,7 @@ function dVictory(){
   }
   for(let i=0;i<20;i++){
     const px_=(i*73+t*(.5+i*.03))%W,py_=(i*41+t*(1+i*.02))%H;
-    bx(px_,py_,3,2,['#d8b028','#f0c830','#e8a020','#f8e060'][i%4]);
+    bx(px_,py_,3,2,_CONFETTI_COLS[i%4]); // v272: hoisted
   }
 
   if(t>35){
@@ -1003,14 +1003,15 @@ function dLog(){
   const statBannerY=52;
   win(16,statBannerY,W-32,26);
   bx(16,statBannerY,W-32,2,'#3048a0');
-  // Stat banner — direct render avoids 4-object array + forEach closure per log-screen frame
-  {const _sVals=[rd+'',stats.cardsCollected+'',stats.cardsLost+'',vaultSz+'/60']; // v262: icons/labels hoisted
-  const _sCols=['#c04848','#50e090','#d04040',vaultSz>=60?'#f0c830':'#7888c8'];
+  // v272: Stat banner — 4 slots inlined, zero array alloc per frame
+  {const _vc=vaultSz>=60?'#f0c830':'#7888c8';
+  const _sd=['#c04848','#50e090','#d04040',_vc];
+  const _sv=[rd+'',stats.cardsCollected+'',stats.cardsLost+'',vaultSz+'/60'];
   for(let si=0;si<4;si++){
     const sx=36+si*230;
-    txShadow(_LOG_STAT_ICONS[si],sx,statBannerY+18,8,_sCols[si],'rgba(0,0,0,.35)');
-    txShadow(_sVals[si],sx+12,statBannerY+18,8,'#f0e8d0','rgba(0,0,0,.35)');
-    if(_LOG_STAT_LABELS[si]) txShadow(_LOG_STAT_LABELS[si],sx+12+_sVals[si].length*7,statBannerY+18,6,'#505070','rgba(0,0,0,.3)');
+    txShadow(_LOG_STAT_ICONS[si],sx,statBannerY+18,8,_sd[si],'rgba(0,0,0,.35)');
+    txShadow(_sv[si],sx+12,statBannerY+18,8,'#f0e8d0','rgba(0,0,0,.35)');
+    if(_LOG_STAT_LABELS[si])txShadow(_LOG_STAT_LABELS[si],sx+12+_sv[si].length*7,statBannerY+18,6,'#505070','rgba(0,0,0,.3)');
   }}
 
   // Scrollable log entries
