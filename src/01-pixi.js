@@ -270,7 +270,8 @@ function updatePixiTitleEffects(){
   if(!pxTitleEffects.visible)return;
 
   // Spawn shooting stars occasionally
-  pxShootingStars.forEach(star=>{
+  for(let _si=0;_si<pxShootingStars.length;_si++){
+    const star=pxShootingStars[_si];
     if(!star.visible && Math.random()<0.003){
       star.x = Math.random()*W;
       star.y = Math.random()*150;
@@ -287,7 +288,7 @@ function updatePixiTitleEffects(){
       star.alpha = star.life/40;
       if(star.life<=0 || star.x>W+20){star.visible=false;}
     }
-  });
+  }
 
   // Spawn title sparkles around the 0xARK text area
   if(Math.random()<0.15){
@@ -384,7 +385,7 @@ function pxUpdateMenu() {
   if (walletIdx>=0&&pxMenuTexts[walletIdx]) pxMenuTexts[walletIdx].text = walletConnected ? 'WALLET (' + walletAddressTruncated() + ')' : 'WALLET (OFF)';
   if (textSpdIdx>=0&&pxMenuTexts[textSpdIdx]) pxMenuTexts[textSpdIdx].text = 'TEXT SPD: ' + TEXT_SPEED_LABELS[textSpeedIdx];
   // Highlight selected
-  pxMenuTexts.forEach((t, i) => { t.alpha = i === mi ? 1 : 0.65; });
+  for(let i=0;i<pxMenuTexts.length;i++){pxMenuTexts[i].alpha=i===mi?1:0.65;}
 }
 
 // Dim overlay behind menu
@@ -1166,11 +1167,12 @@ function createNoiseSource(loop){
 }
 
 function stopAmbientNodes(){
-  ambientState.nodes.forEach(n=>{
+  for(let _ni=0;_ni<ambientState.nodes.length;_ni++){
+    const n=ambientState.nodes[_ni];
     try{n.gain.gain.linearRampToValueAtTime(0,AC.currentTime+0.5);
     setTimeout(()=>{try{n.source.stop();n.source.disconnect();}catch(e){}},600);
     }catch(e){}
-  });
+  }
   ambientState.nodes=[];
 }
 
@@ -1228,9 +1230,10 @@ function updateAmbient(){
   }
   // Only run ambient on map screen
   if(sc!=='map'){
-    ambientState.nodes.forEach(n=>{
+    for(let _ni=0;_ni<ambientState.nodes.length;_ni++){
+      const n=ambientState.nodes[_ni];
       try{if(n.gain.gain.value>0.001)n.gain.gain.value=Math.max(0,n.gain.gain.value-ambientState.fadeSpeed);}catch(e){}
-    });
+    }
     return;
   }
   // Switch ambient when map changes
@@ -1243,7 +1246,8 @@ function updateAmbient(){
   }
   // Fade in active nodes
   const tgt=ambientState.targetGain;
-  ambientState.nodes.forEach(n=>{
+  for(let _ni=0;_ni<ambientState.nodes.length;_ni++){
+    const n=ambientState.nodes[_ni];
     try{
       const cur=n.gain.gain.value;
       if(cur<tgt)n.gain.gain.value=Math.min(tgt,cur+ambientState.fadeSpeed);
@@ -1253,7 +1257,7 @@ function updateAmbient(){
         n.gain.gain.value=tgt*0.5+tgt*0.5*cycle;
       }
     }catch(e){}
-  });
+  }
   // Bird chirps in forest (random intervals)
   if(currentMap===1){
     ambientState.birdTimer--;
