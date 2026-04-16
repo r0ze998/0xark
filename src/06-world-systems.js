@@ -1523,8 +1523,8 @@ function drawNPCDialog(){
 // ═══════════════════════════════════════
 function dTitle(){
   bx(0,0,W,H,'#060612');
-  // Gothic void gradient — deep purple-black from top
-  for(let i=0;i<280;i++){const a=.28-i*.001;bx(0,i,W,1,`rgba(40,16,80,${Math.max(0,a)})`);}
+  // Gothic void gradient — deep purple-black from top (v210: single gradient fill, was 280 fillRects)
+  {const gd=g.createLinearGradient(0,0,0,280);gd.addColorStop(0,'rgba(40,16,80,0.28)');gd.addColorStop(1,'rgba(40,16,80,0)');g.fillStyle=gd;g.fillRect(0,0,W,280);}
   // Ethereal void pillars — slow vertical light columns
   for(let b=0;b<5;b++){
     const bx_=(b*136+fr*0.08)%W;
@@ -1556,6 +1556,34 @@ function dTitle(){
   g.globalAlpha=0.04;
   for(let gy_=60;gy_<H;gy_+=80)bx(0,gy_,W,1,'#9945FF');
   g.globalAlpha=1;
+  // v210: Moon — full circle with soft halo, top-right quadrant
+  {
+    const mx_=W*0.78,my_=72,mr=22;
+    const moonPulse=0.55+Math.sin(fr*0.012)*0.04;
+    // Outer halo
+    const halo=g.createRadialGradient(mx_,my_,mr,mx_,my_,mr*3.2);
+    halo.addColorStop(0,`rgba(220,210,255,${moonPulse*0.18})`);
+    halo.addColorStop(1,'rgba(220,210,255,0)');
+    g.fillStyle=halo;g.fillRect(mx_-mr*3.2,my_-mr*3.2,mr*6.4,mr*6.4);
+    // Moon disk
+    g.globalAlpha=moonPulse;
+    g.fillStyle='#c8c0e8';
+    g.beginPath();g.arc(mx_,my_,mr,0,Math.PI*2);g.fill();
+    // Subtle shadow crescent (makes it look like a moon, not a circle)
+    g.fillStyle='rgba(6,6,18,0.28)';
+    g.beginPath();g.arc(mx_+6,my_-3,mr*0.92,0,Math.PI*2);g.fill();
+    g.globalAlpha=1;
+    // Moon reflection shimmer on water below
+    const refX=mx_,refY=H-30;
+    for(let i=0;i<5;i++){
+      const rw=14-i*2,rh=1;
+      const ry_=refY+i*4+Math.sin(fr*0.04+i)*3;
+      const ra=(0.18-i*0.03)*moonPulse;
+      g.globalAlpha=ra;
+      bx(refX-rw/2+Math.sin(fr*0.03+i*1.4)*6,ry_,rw,rh,'#c8c0e8');
+    }
+    g.globalAlpha=1;
+  }
   if(fr%200<15){
     const sx=150+fr%200*10,sy=40+fr%200*2;
     for(let t=0;t<6;t++)bx(sx-t*4,sy-t,2,1,`rgba(255,255,255,${.4-t*.06})`);
