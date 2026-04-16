@@ -14277,6 +14277,16 @@ function drawDungeonConfirm(){
   if(blink_)txShadow('[Z] ENTER   [X] STAY',cx_+cw/2-90,cy_+ch-14,10,'#f0c830','rgba(0,0,0,.5)');
 }
 
+// v256: Hoisted market overlay statics — eliminates per-frame inline literal allocs
+const _MKT_TYPE_FILTER=['attack','defense','flee','magic','recovery'];
+const _MKT_TYPE_LABEL=['ATK','DEF','FLY','MAG','REC'];
+const _MKT_TYPE_COLOR=['#e05840','#48b8e8','#38c080','#d8b028','#e0c040'];
+const _MKT_LISTINGS=[
+  {seller:'VEGA',card:6,price:'0.05'},
+  {seller:'MIRA',card:20,price:'0.08'},
+  {seller:'???',card:45,price:'0.15'},
+  {seller:'???',card:1,price:'0.99'},
+];
 // ── MARKETPLACE OVERLAY (v188: slide-in + polish) ──
 let marketOpenFrame_=0;
 function drawMarketplace(){
@@ -14305,52 +14315,44 @@ function drawMarketplace(){
   txShadow(vaultArr.length+'/60 collected',mx+mw-100,myA+25,6,'#60c880','rgba(0,0,0,.3)');
 
   // Tabs
-  MARKET_TABS.forEach((tab,i)=>{
-    const isActive=marketTab===i;
+  for(let i=0;i<MARKET_TABS.length;i++){
+    const tab=MARKET_TABS[i];const isActive=marketTab===i;
     const tw=100,tx2=mx+12+i*104;
     bx(tx2,myA+37,tw,22,isActive?'#122812':'#080e08');
     bx(tx2,myA+37,tw,isActive?2:1,isActive?'#40d080':'#1a3a1a');
     if(isActive)bx(tx2,myA+37,2,22,'#40d080');
     txShadow(tab,tx2+8,myA+53,7,isActive?'#40d080':'#4a6a4a',isActive?'rgba(0,0,0,.3)':'rgba(0,0,0,.15)');
-  });
+  }
 
   const contentY=myA+63;
 
   if(marketTab===0){
-    // MY CARDS — vault collection grouped by type
+    // MY CARDS — vault collection grouped by type (_MKT_TYPE_* hoisted to module scope)
     txShadow('Your collection:',mx+12,contentY+14,8,'#a8c8a8','rgba(0,0,0,.3)');
-    const typeFilter=['attack','defense','flee','magic','recovery'];
-    const typeLabel=['ATK','DEF','FLY','MAG','REC'];
-    const typeColor=['#e05840','#48b8e8','#38c080','#d8b028','#e0c040'];
     let yi=contentY+22;
-    typeFilter.forEach((typ,ti)=>{
-      const cards=vaultArr.filter(id=>CD[id-1]&&CD[id-1].t===typ);
-      if(cards.length===0)return;
-      txShadow(typeLabel[ti]+' ('+cards.length+')',mx+14,yi+10,7,typeColor[ti],'rgba(0,0,0,.3)');yi+=16;
-      cards.slice(0,12).forEach((id,ci)=>{
-        const cr=CD[id-1];
+    for(let ti=0;ti<5;ti++){
+      const cards=vaultArr.filter(id=>CD[id-1]&&CD[id-1].t===_MKT_TYPE_FILTER[ti]);
+      if(cards.length===0)continue;
+      txShadow(_MKT_TYPE_LABEL[ti]+' ('+cards.length+')',mx+14,yi+10,7,_MKT_TYPE_COLOR[ti],'rgba(0,0,0,.3)');yi+=16;
+      const _cLen=Math.min(12,cards.length);
+      for(let ci=0;ci<_cLen;ci++){
+        const id=cards[ci];const cr=CD[id-1];
         const cx2=mx+14+ci*72;
-        if(cx2+68>mx+mw-12)return;
+        if(cx2+68>mx+mw-12)break;
         bx(cx2,yi,66,16,cr.d+'33');
         bx(cx2,yi,3,16,RARITY_COLOR[cr.r]||cr.c);
         txShadow(cr.n,cx2+6,yi+12,5,cr.h||'#f8f0e0','rgba(0,0,0,.3)');
         for(let s=0;s<(cr.r||1);s++)txShadow('\u2605',cx2+6+s*8,yi+24,4,RARITY_COLOR[cr.r],'rgba(0,0,0,.3)');
-      });
+      }
       if(cards.length>12)txShadow('+'+(cards.length-12)+' more',mx+14+12*72,yi+12,5,'#888898','rgba(0,0,0,.3)');
       yi+=30;
-    });
+    }
   }else if(marketTab===1){
-    // BROWSE
+    // BROWSE (_MKT_LISTINGS hoisted to module scope)
     txShadow('On-chain marketplace listings:',mx+12,contentY+14,8,'#a8c8a8','rgba(0,0,0,.3)');
     bx(mx+12,contentY+24,mw-24,1,'#1a3a1a');
-    const mockListings=[
-      {seller:'VEGA',card:6,price:'0.05'},
-      {seller:'MIRA',card:20,price:'0.08'},
-      {seller:'???',card:45,price:'0.15'},
-      {seller:'???',card:1,price:'0.99'},
-    ];
-    mockListings.forEach((listing,li)=>{
-      const cr=CD[listing.card-1];if(!cr)return;
+    for(let li=0;li<_MKT_LISTINGS.length;li++){
+      const listing=_MKT_LISTINGS[li];const cr=CD[listing.card-1];if(!cr)continue;
       const ly=contentY+32+li*40;
       bx(mx+12,ly,mw-24,36,'#0b1a0b');
       bx(mx+12,ly,3,36,RARITY_COLOR[cr.r]||'#888898');
@@ -14360,7 +14362,7 @@ function drawMarketplace(){
       txShadow(listing.seller,mx+mw-178,ly+14,7,'#9898a8','rgba(0,0,0,.3)');
       txShadow(listing.price+' SOL',mx+mw-108,ly+14,9,'#14F195','rgba(0,0,0,.4)');
       txShadow('[BUY]',mx+mw-58,ly+22,7,'#40d040','rgba(0,0,0,.4)');
-    });
+    }
     txShadow('(On-chain trading: coming soon)',mx+12,myA+mh-52,6,'#304830','rgba(0,0,0,.3)');
   }else if(marketTab===2){
     // SELL
@@ -14519,11 +14521,11 @@ function updatePixiIntro(){
   // Update text lines
   const pageText = INTRO_PAGES[introPage];
   const lines = pageText.split('\n');
-  pxIntroLines.forEach((lt, i) => {
-    lt.text = lines[i] || '';
-    const fadeT = Math.max(0, t - 5 - i*8);
-    lt.alpha = Math.min(1, fadeT/10);
-  });
+  for(let i=0;i<pxIntroLines.length;i++){
+    pxIntroLines[i].text=lines[i]||'';
+    const fadeT=Math.max(0,t-5-i*8);
+    pxIntroLines[i].alpha=Math.min(1,fadeT/10);
+  }
   // Bouncing arrow
   pxIntroArrow.y = 320 + Math.sin(fr*0.1)*3;
   pxIntroArrow.visible = t > 30 && Math.floor(fr/20)%2===0;
@@ -14545,11 +14547,11 @@ function drawIntroTutorial(){
   const wx=W/2-240,wy=160,ww=480,wh=180;
   win(wx,wy,ww,wh);
   const lines=INTRO_PAGES[introPage].split('\n');
-  lines.forEach((line,i)=>{
+  for(let i=0;i<lines.length;i++){
     g.globalAlpha=Math.min(1,Math.max(0,t-5-i*8)/10);
-    txShadow(line,wx+20,wy+30+i*28,9,'#484050','rgba(255,255,255,.15)');
+    txShadow(lines[i],wx+20,wy+30+i*28,9,'#484050','rgba(255,255,255,.15)');
     g.globalAlpha=1;
-  });
+  }
   if(t>30&&Math.floor(fr/20)%2===0)txShadow('\u25BC Z',wx+ww-60,wy+wh-20+Math.sin(fr*0.1)*3,8,FRLG.selHighlight,'rgba(0,0,0,.3)');
   if(introPage===INTRO_PAGES.length-1&&t>20&&cdCount(pl[0].cd)===0){
     g.globalAlpha=Math.min(1,(t-20)/15);
@@ -14743,17 +14745,16 @@ function dCrd(){
   bx(barX_,barY_,Math.round(barW_*pct),barH_,collected>=60?'#f0c830':'#5080d0');
   txShadow(collected+'/60',W-52,28,8,collected>=60?'#f0c830':'#c0d0f0','rgba(0,0,0,.4)');
   // v115: Milestone tick marks on progress bar
-  CARD_MILESTONES.forEach(m=>{
-    const tx_=barX_+Math.round(barW_*m/60);
+  for(let _cmi=0;_cmi<CARD_MILESTONES.length;_cmi++){
+    const m=CARD_MILESTONES[_cmi];const tx_=barX_+Math.round(barW_*m/60);
     const reached=collected>=m;
-    const tickCol=reached?'#f0c830':'#303048';
-    bx(tx_-1,barY_-3,2,barH_+6,tickCol);
+    bx(tx_-1,barY_-3,2,barH_+6,reached?'#f0c830':'#303048');
     if(reached){
       g.globalAlpha=0.5+Math.sin(fr*0.08+m)*0.3;
       bx(tx_-2,barY_-4,4,2,'#f0c830');
       g.globalAlpha=1;
     }
-  });
+  }
   // Type tabs (5 types) with completion count
   const typeNames=['ATK','DEF','FLY','MAG','REC'];
   const typeColors=['#e05840','#48b8e8','#38c080','#d8b028','#e0c040'];
@@ -15026,19 +15027,19 @@ function drawCardDetailPanel(){
 
   // Flavor text
   if(cr.fl&&owned){
-    const words=cr.fl.split(' ');
-    let line='';const lines=[];
-    const maxW=42;
-    words.forEach(w=>{
-      if((line+w).length>maxW){lines.push(line.trim());line=w+' ';}
-      else line+=w+' ';
-    });
-    if(line.trim())lines.push(line.trim());
-    lines.forEach((ln,li)=>{
+    const _flWords=cr.fl.split(' ');
+    let _flLine='';const _flLines=[];const _flMaxW=42;
+    for(let _wi=0;_wi<_flWords.length;_wi++){
+      const w=_flWords[_wi];
+      if((_flLine+w).length>_flMaxW){_flLines.push(_flLine.trim());_flLine=w+' ';}
+      else _flLine+=w+' ';
+    }
+    if(_flLine.trim())_flLines.push(_flLine.trim());
+    for(let li=0;li<_flLines.length;li++){
       g.globalAlpha=0.7;
-      txShadow('\u201C'+ln+(li===lines.length-1?'\u201D':''),px_+20,py_+artH+96+li*16,6,'#c0b888','rgba(0,0,0,.3)');
+      txShadow('\u201C'+_flLines[li]+(li===_flLines.length-1?'\u201D':''),px_+20,py_+artH+96+li*16,6,'#c0b888','rgba(0,0,0,.3)');
       g.globalAlpha=1;
-    });
+    }
   }else if(!owned){
     txShadow('??? — Card not yet collected',px_+20,py_+artH+96,6,'#302848','rgba(0,0,0,.3)');
   }
