@@ -28,6 +28,17 @@ const _ROPE_SPOTS=[[12,22],[18,22]];
 const _srtP=[null,null,null],_srtI=[0,0,0];
 // v254: Hoisted pause menu items — eliminates inline literal array alloc per frame when menu is open
 const _MENU_ITEMS=['CARDS','MAP','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
+// v261: Hoisted floor roman numerals — eliminates inline array alloc every HUD frame
+const _FLOOR_NUMS=['','I','II','III','IV','V'];
+// v262: Hoist HUD inline literals — floor watermark, orb labels/colors, dirs, trail colors, rarity abbrev
+const _FLOOR_NAMES=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','FLOOR V'];
+const _FLOOR_WM_COLS=['','#8090b0','#506048','#8848c0','#c04020','#6010a0'];
+const _ORB_SL=['STL','BAR','SCT'],_ORB_SCX=[100,175,250];
+const _ORB_SF=['#c04848','#3868c0','#38a038'],_ORB_SE=['#2a1010','#101028','#0e1e0e'];
+const _ORB_SLC=['#b04040','#3060b0','#308030'];
+const _DIRS=['\u2192','\u2198','\u2193','\u2199','\u2190','\u2196','\u2191','\u2197'];
+const _RIVAL_TRAIL_COLS=['#d860a0','#d8b028'];
+const _RAR_ABB=['C','U','R','E','L'];
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -1088,16 +1099,13 @@ function dMap(){
 
   // Floor watermark label (dungeon only, large semi-transparent, floor-themed color)
   if(inDungeon&&currentFloor>0){
-    const FLOOR_NAMES=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','FLOOR V'];
-    // v229: floor-specific watermark color (matches each floor's atmosphere)
-    const FLOOR_WM_COLS=['','#8090b0','#506048','#8848c0','#c04020','#6010a0'];
-    const floorLabel=FLOOR_NAMES[currentFloor]||('FLOOR '+currentFloor);
+    const floorLabel=_FLOOR_NAMES[currentFloor]||('FLOOR '+currentFloor);
     const wmAlpha=0.07+Math.sin(fr*0.008)*0.025;
     g.save();
     g.globalAlpha=wmAlpha;
     g.font='bold 96px VT323, monospace';
     g.textAlign='center';
-    g.fillStyle=FLOOR_WM_COLS[currentFloor]||'#8090b0';
+    g.fillStyle=_FLOOR_WM_COLS[currentFloor]||'#8090b0';
     g.fillText(floorLabel,W/2,(H-HUD_HEIGHT)/2+36);
     g.globalAlpha=1;
     g.textAlign='left';
@@ -1302,7 +1310,7 @@ function dMap(){
         bx(cx2-1,cy2,1,10,rarCol);bx(cx2+7,cy2,1,10,rarCol);   // left/right
         g.globalAlpha=1;
         // Label above on hover (always show rarity initial)
-        const abb=['C','U','R','E','L'][Math.min(cr.r-1,4)]||'?';
+        const abb=_RAR_ABB[Math.min(cr.r-1,4)]||'?'; // v262: hoisted
         g.globalAlpha=0.7;
         txShadow(abb,cx2-1,cy2-2,5,rarCol,'rgba(0,0,0,.5)');
         g.globalAlpha=1;
@@ -1400,18 +1408,16 @@ function dMap(){
   // v118: Spell charge orb indicators (visual pips replace plain numbers)
   // v247: static arrays instead of per-frame object literals + forEach
   {
-    const _SL=['STL','BAR','SCT'],_SV=[sp.s,sp.b,sp.c],_SCX=[100,175,250];
-    const _SF=['#c04848','#3868c0','#38a038'],_SE=['#2a1010','#101028','#0e1e0e'];
-    const _SLC=['#b04040','#3060b0','#308030'];
+    const _spVals=[sp.s,sp.b,sp.c]; // v262: only dynamic part; statics hoisted
     for(let si=0;si<3;si++){
-      const sVal=_SV[si],sCX=_SCX[si],warn=sVal===0;
-      const lCol=warn?'#804040':_SLC[si];
-      txShadow(_SL[si],sCX,hudY+20,7,lCol,'rgba(0,0,0,.35)');
+      const sVal=_spVals[si],sCX=_ORB_SCX[si],warn=sVal===0;
+      const lCol=warn?'#804040':_ORB_SLC[si];
+      txShadow(_ORB_SL[si],sCX,hudY+20,7,lCol,'rgba(0,0,0,.35)');
       const orbX=sCX+26,orbY=hudY+12,orbW=7,orbH=7,orbGap=4;
       for(let o=0;o<3;o++){
         const ox=orbX+o*(orbW+orbGap);
-        if(o<sVal){bx(ox,orbY,orbW,orbH,_SF[si]);bx(ox+1,orbY+1,2,1,'rgba(255,255,255,.35)');}
-        else{bx(ox,orbY,orbW,orbH,_SE[si]);}
+        if(o<sVal){bx(ox,orbY,orbW,orbH,_ORB_SF[si]);bx(ox+1,orbY+1,2,1,'rgba(255,255,255,.35)');}
+        else{bx(ox,orbY,orbW,orbH,_ORB_SE[si]);}
       }
       if(sVal>3){txShadow('+'+(sVal-3),orbX+3*(orbW+orbGap)+2,hudY+20,6,'#f0c830','rgba(0,0,0,.4)');}
       if(warn){
@@ -1447,10 +1453,9 @@ function dMap(){
         }else{
           const angle=Math.atan2(dy,dx);
           // Map angle to 8-directional arrow
-          const dirs=['\u2192','\u2198','\u2193','\u2199','\u2190','\u2196','\u2191','\u2197'];
           const didx=((Math.round(angle/(Math.PI/4))+8)%8);
           g.globalAlpha=0.55;
-          txShadow(dirs[didx]+'ESC',73,hudY+52,6,'#60b868','rgba(0,0,0,.4)');
+          txShadow(_DIRS[didx]+'ESC',73,hudY+52,6,'#60b868','rgba(0,0,0,.4)');
           g.globalAlpha=1;
         }
       }
@@ -1645,7 +1650,6 @@ function dMap(){
   }
 
   // v76: Off-floor rival summary (shown when rival is on a different floor)
-  const flNums_=['','I','II','III','IV','V'];
   for(let ri=0;ri<2;ri++){
     if(rivalMaps[ri]===currentMap)continue;
     const rp=pl[ri+1];
@@ -1654,7 +1658,7 @@ function dMap(){
     const rCol=ri===0?'#d060a0':'#d0a030';
     const labelY=hudY+4+ri*14;
     const labelX=W-200;
-    txShadow(rp.n[0]+' F'+(flNums_[rFloor]||rFloor)+' '+rcc2+'♠',labelX,labelY,5,rcc2>=4?'#d04040':rCol,'rgba(0,0,0,.4)');
+    txShadow(rp.n[0]+' F'+(_FLOOR_NUMS[rFloor]||rFloor)+' '+rcc2+'♠',labelX,labelY,5,rcc2>=4?'#d04040':rCol,'rgba(0,0,0,.4)');
   }
 
   // Rival Threat Indicator (compass arrow at top of screen)
@@ -1696,9 +1700,7 @@ function dMap(){
 
   // Footprint trail indicator: show fresh rival tracks on this floor
   if(inDungeon){
-    const rivalCols=['#d860a0','#d8b028'];
-    const rivalNames=[pl[1].n[0],pl[2].n[0]];
-    let trailX=430;
+    let trailX=430; // v262: rivalCols/rivalNames hoisted to _RIVAL_TRAIL_COLS, pl[ri+1].n[0] inline
     for(let ri=0;ri<2;ri++){
       // v220: Avoid .filter().map() array allocations — single loop finds min age
       let freshest=Infinity,_fp;
@@ -1707,10 +1709,10 @@ function dMap(){
         const freshAlpha=freshest<180?1:freshest<600?0.7:0.45;
         g.globalAlpha=freshAlpha;
         // Small boot icon (two dots)
-        g.fillStyle=rivalCols[ri];
+        g.fillStyle=_RIVAL_TRAIL_COLS[ri];
         g.fillRect(trailX,hudY+52,2,3);g.fillRect(trailX+3,hudY+53,2,2);
         g.globalAlpha=1;
-        txShadow(rivalNames[ri]+'!',trailX+6,hudY+57,6,rivalCols[ri],'rgba(0,0,0,.4)');
+        txShadow(pl[ri+1].n[0]+'!',trailX+6,hudY+57,6,_RIVAL_TRAIL_COLS[ri],'rgba(0,0,0,.4)');
         trailX+=26;
       }
     }
@@ -1751,7 +1753,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v261',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v262',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
