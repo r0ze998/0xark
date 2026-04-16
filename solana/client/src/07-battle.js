@@ -17,6 +17,20 @@ const _RIVAL_COL=['#d060a0','#d0a030'],_RIVAL_LBL=['VEGA','MIRA'];
 const _BAR_THREAT_COLS=['#50b050','#c0b030','#d07030','#d04040'];
 const _BAR_THREAT_LBLS=['LOW','MED','HIGH','MAX'];
 const _SCT_TYPE_COL={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
+// v265: Pre-bake USE CARD effect panel info — was TYPE_INFO object created every frame during card select
+const _CARD_TYPE_INFO_S={
+  attack:{col:'#e05040',label:'ATTACK',lines:['Force steal (ignores barrier).','Success rate scales with rarity.','Higher rarity = more reliable.']},
+  flee:  {col:'#40c080',label:'FLEE',  lines:['Ends battle immediately.','No cards lost this round.','Use when overwhelmed.']},
+  magic: {col:'#c070e0',label:'MAGIC', lines:['Nullifies ALL barriers.','Guaranteed steal attempt.','Cannot be blocked this round.']},
+};
+const _DEF_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#4080d0',label:'DEFENSE',lines:['Raises Barrier this round.','Restores +'+(Math.ceil(r/2))+' Barrier charges.','Protects against incoming Steal.']});return a;})();
+const _REC_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#e0c030',label:'RECOVERY',lines:['Restores spell energy:','+'+Math.ceil(r/2)+' Steal, +1 Barrier, +1 Scout.','Use when spells are depleted.']});return a;})();
+const _UNK_TYPE_INFO={col:'#888',label:'UNKNOWN',lines:['Unknown effect.','','']};
+function _getTypeInfo(t,r){
+  if(t==='defense')return _DEF_TYPE_INFOS[Math.min(4,(r||1)-1)];
+  if(t==='recovery')return _REC_TYPE_INFOS[Math.min(4,(r||1)-1)];
+  return _CARD_TYPE_INFO_S[t]||_UNK_TYPE_INFO;
+}
 const _BTYPES=['attack','defense','flee','magic','recovery'],_BTYPE_ABB=['ATK','DEF','FLY','MAG','REC'],_BTYPE_COL=['#c83838','#3888c8','#30b870','#a840c0','#c8a830'];
 const _btCounts=new Int32Array(5); // reused each frame, zero-filled
 // v245: Pre-baked VS gold circle — eliminates arc per battle-intro frame
@@ -1210,15 +1224,8 @@ function drawSelectPhase(){
       const selCard=pl[0].cd[selSlot];
       if(selCard>0){
         const scr=CD[selCard-1];
-        // Type → effect description + color
-        const TYPE_INFO={
-          attack:  {col:'#e05040',label:'ATTACK',lines:['Force steal (ignores barrier).','Success rate scales with rarity.','Higher rarity = more reliable.']},
-          defense: {col:'#4080d0',label:'DEFENSE',lines:['Raises Barrier this round.','Restores +'+(Math.ceil(scr.r/2))+' Barrier charges.','Protects against incoming Steal.']},
-          flee:    {col:'#40c080',label:'FLEE',lines:['Ends battle immediately.','No cards lost this round.','Use when overwhelmed.']},
-          magic:   {col:'#c070e0',label:'MAGIC',lines:['Nullifies ALL barriers.','Guaranteed steal attempt.','Cannot be blocked this round.']},
-          recovery:{col:'#e0c030',label:'RECOVERY',lines:['Restores spell energy:','+'+Math.ceil(scr.r/2)+' Steal, +1 Barrier, +1 Scout.','Use when spells are depleted.']}
-        };
-        const ti=TYPE_INFO[scr.t]||{col:'#888',label:'UNKNOWN',lines:['Unknown effect.','','']};
+        // v265: pre-baked type info — _getTypeInfo() replaces per-frame TYPE_INFO object
+        const ti=_getTypeInfo(scr.t,scr.r);
         const epW=200,epH=120;
         const epX=W/2+cardW/2+12;
         const epY=H/2-epH/2;
