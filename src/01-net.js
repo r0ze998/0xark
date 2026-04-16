@@ -191,7 +191,7 @@ function drawMPLobby(){
   }else if(mp.mpScreen==='lobby'){
     // Lobby: show connected players, START button
     win(W/2-200,80,400,440);
-    txShadow('ROOM: '+(mp.roomId||'???'),W/2-80,116,12,FRLG.selHighlight,'rgba(0,0,0,.5)');
+    txShadow('ROOM: '+(mp.roomId||'???'),W/2-80,116,12,FRLG.selHighlight,'rgba(0,0,0,.5)'); // roomId only changes on connect
     // Connected players list
     txShadow('PLAYERS:',W/2-48,150,8,FRLG.textColor,'rgba(0,0,0,.35)');
     const players=mp.lobbyPlayers;

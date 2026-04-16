@@ -83,6 +83,9 @@ const _rBuf=[
   {name:'', cnt:0,col:'#e060a0'},
   {name:'', cnt:0,col:'#d0a030'}
 ];
+// v352: hoisted sort comparators — avoids closure alloc per frame
+const _sBufCmp=(a,b)=>b.uniq-a.uniq;
+const _rBufCmp=(a,b)=>b.cnt-a.cnt;
 // v349: lazy cache for dungeon mission HUD strip (changes only when progress or completion status changes)
 let _missionHudLbl='',_missionHudKey=-1;
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
@@ -1820,7 +1823,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v352',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v353',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1849,7 +1852,7 @@ function dMap(){
     _sBuf[0].uniq=myUniq;_sBuf[0].hand=cdCount(pl[0].cd);
     _sBuf[1].name=pl[1].n;_sBuf[1].uniq=vegaUniq;_sBuf[1].hand=vegaCards;_sBuf[1].floor=rivalMaps[0];
     _sBuf[2].name=pl[2].n;_sBuf[2].uniq=miraUniq;_sBuf[2].hand=miraCards;_sBuf[2].floor=rivalMaps[1];
-    _sBuf.sort((a,b)=>b.uniq-a.uniq);
+    _sBuf.sort(_sBufCmp);
     const rankings=_sBuf;
     const mmH_=90; // match minimap height
     const sbW=156,sbH=88,sbX=12,sbY=H-HUD_HEIGHT-sbH-mmH_-24;
@@ -1886,7 +1889,7 @@ function dMap(){
     _rBuf[0].cnt=myUniq;
     _rBuf[1].name=pl[1].n;_rBuf[1].cnt=vegaUniq;
     _rBuf[2].name=pl[2].n;_rBuf[2].cnt=miraUniq;
-    _rBuf.sort((a,b)=>b.cnt-a.cnt);
+    _rBuf.sort(_rBufCmp);
     const racers=_rBuf;
     g.globalAlpha=0.90;
     bx(rcX,rcY,rcW,rcH,'#080816');
