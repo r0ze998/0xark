@@ -9175,7 +9175,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v262',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v263',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -10952,7 +10952,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v262',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v263',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -14313,6 +14313,9 @@ const _MKT_LISTINGS=[
   {seller:'???',card:45,price:'0.15'},
   {seller:'???',card:1,price:'0.99'},
 ];
+// v263: vault cache — rebuilt only when vault.size changes, not every frame
+let _mktVaultCache=null,_mktVaultSz=-1;
+const _mktTypeCache=[[],[],[],[],[]];
 // ── MARKETPLACE OVERLAY (v188: slide-in + polish) ──
 let marketOpenFrame_=0;
 function drawMarketplace(){
@@ -14333,7 +14336,17 @@ function drawMarketplace(){
 
   // Collection progress bar directly below header
   const vault=pl[0].vault||new Set();
-  const vaultArr=[...vault];
+  // v263: rebuild per-type cache only when vault changes, not every frame
+  if(vault.size!==_mktVaultSz){
+    _mktVaultSz=vault.size;
+    _mktVaultCache=[];for(const _vid of vault)_mktVaultCache.push(_vid);
+    for(let _ti=0;_ti<5;_ti++){
+      const tc=_mktTypeCache[_ti];tc.length=0;
+      const tp=_MKT_TYPE_FILTER[_ti];
+      for(let _vi=0;_vi<_mktVaultCache.length;_vi++){const _id=_mktVaultCache[_vi];if(CD[_id-1]&&CD[_id-1].t===tp)tc.push(_id);}
+    }
+  }
+  const vaultArr=_mktVaultCache||[];
   const collFrac=Math.min(1,vaultArr.length/60);
   const barW=mw-24;
   bx(mx+12,myA+30,barW,5,'#0a180a');
@@ -14357,7 +14370,7 @@ function drawMarketplace(){
     txShadow('Your collection:',mx+12,contentY+14,8,'#a8c8a8','rgba(0,0,0,.3)');
     let yi=contentY+22;
     for(let ti=0;ti<5;ti++){
-      const cards=vaultArr.filter(id=>CD[id-1]&&CD[id-1].t===_MKT_TYPE_FILTER[ti]);
+      const cards=_mktTypeCache[ti]; // v263: pre-computed, no filter alloc
       if(cards.length===0)continue;
       txShadow(_MKT_TYPE_LABEL[ti]+' ('+cards.length+')',mx+14,yi+10,7,_MKT_TYPE_COLOR[ti],'rgba(0,0,0,.3)');yi+=16;
       const _cLen=Math.min(12,cards.length);
@@ -16296,15 +16309,16 @@ function drawFountainDialog(){
 // ═══════════════════════════════════════
 // MAP CARD USE SYSTEM
 // ═══════════════════════════════════════
+// v263: hoisted — was new Set([...]) every frame inside drawMapCardUseOverlay
+const _MAP_CARD_IDS=new Set([2,3,28,29,30,35,36]);
 function getMapUsableCards(){
   // Returns [{slot, cardId, name}] for cards that can be used on map
   // Card 2=UMBRA: stealth, Card 3=IGNIS: burn, Card 28=PHASE: walk through walls,
   // Card 29=BLINK: teleport, Card 30=SHADOW: longer stealth
-  const MAP_CARD_IDS=new Set([2,3,28,29,30,35,36]);
   const result=[];
   for(let i=0;i<HAND_SIZE;i++){
     const cd=pl[0].cd[i];
-    if(!MAP_CARD_IDS.has(cd))continue;
+    if(!_MAP_CARD_IDS.has(cd))continue;
     const cr=CD[cd-1];
     let desc='';
     if(cd===2)desc='Invisible 30 steps';
