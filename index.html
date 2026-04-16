@@ -11166,7 +11166,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v344',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v345',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11455,6 +11455,9 @@ const _CHOSE_LBL=_ACTION_NAMES.map(n=>'You chose '+n+'!');
 // v337: lazy cache for scout intel labels — eliminates 3 concats/frame per visible scout row
 let _sIntelCache0='',_sIntelRef0=null,_sIntelStale0=-1;
 let _sIntelCache1='',_sIntelRef1=null,_sIntelStale1=-1;
+// v345: lazy caches for battle HUD string concats
+let _hunterFledLbl='',_hunterFledRef=null,_hunterFledAlive=-1; // hunter.n + fled status
+let _tauntLbl='',_tauntRef=''; // battle splash taunt (changes every 7 frames)
 function _getTypeInfo(t,r){
   if(t==='defense')return _DEF_TYPE_INFOS[Math.min(4,(r||1)-1)];
   if(t==='recovery')return _REC_TYPE_INFOS[Math.min(4,(r||1)-1)];
@@ -11805,7 +11808,8 @@ function drawOpponentInfoBox(){
   const hunter=pl[2];
   const r2alive=cardCount(hunter)>0;
   const hunterCol=r2alive?ARK.gold:ARK.dangerBright;
-  txShadow(hunter.n+(r2alive?'':' FLED'),bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.4)');
+  {const _alive=r2alive?1:0;if(_hunterFledRef!==hunter||_hunterFledAlive!==_alive){_hunterFledRef=hunter;_hunterFledAlive=_alive;_hunterFledLbl=hunter.n+(_alive?'':' FLED');}
+  txShadow(_hunterFledLbl,bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.4)');} // v345: lazy cache
   // HP hearts rival 2
   if(r2alive){const r2hp=bpHP[2],hx=bx_+80,hy=sepY+7;
   const dmgFlash2=bpHPDmgAnim[2]>0&&Math.floor(fr/3)%2===0;
@@ -12122,7 +12126,8 @@ function drawVsSplash(){
     // Dark pill behind taunt text
     const tntW=taunt.length*8+20;
     bx(W/2-tntW/2,H/2+24,tntW,22,'rgba(0,0,0,.6)');
-    txShadow('\u201C'+taunt+'\u201D',W/2-tntW/2+10,H/2+40,9,'#f0e8c8','rgba(0,0,0,.5)');
+    if(_tauntRef!==taunt){_tauntRef=taunt;_tauntLbl='\u201C'+taunt+'\u201D';}
+    txShadow(_tauntLbl,W/2-tntW/2+10,H/2+40,9,'#f0e8c8','rgba(0,0,0,.5)'); // v345: lazy cache
     g.globalAlpha=1;
   }
 
@@ -14731,7 +14736,8 @@ function drawDungeonConfirm(){
     intelY+=16;
   }
   if(runMission&&!runMission.completed){
-    txShadow('\u25CE Mission: '+runMission.desc,cx_+20,intelY,6,'#8898c8','rgba(0,0,0,.3)'); // v339: fix label (was "Mission failed")
+    if(_missionDescRef!==runMission){_missionDescRef=runMission;_missionDescLbl='\u25CE Mission: '+runMission.desc;}
+    txShadow(_missionDescLbl,cx_+20,intelY,6,'#8898c8','rgba(0,0,0,.3)'); // v345: lazy cache
     intelY+=14;
   }
   const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
@@ -14776,6 +14782,8 @@ const _LOG_STAT_LABELS=['btl','got','lost',''];
 const _DECAY_TIME_LBL=(()=>{const a=[];for(let s=0;s<=300;s++){const mm=Math.floor(s/60),ss2=s%60;a.push(mm>0?mm+'m'+(ss2<10?'0':'')+ss2+'s':s+'s');}return a;})();
 // v339: lazy cache for B1 chest intel label in dungeon confirm
 let _f1ChestLbl='',_f1ChestKey=-1;
+// v345: lazy cache for mission desc label in dungeon confirm
+let _missionDescLbl='',_missionDescRef=null;
 // v338: lazy cache for card acquisition "You obtained X!" label and NEW badge label
 let _acqObtainedLbl='',_acqObtainedRef=null;
 let _acqNewLbl='',_acqNewVault=-1;

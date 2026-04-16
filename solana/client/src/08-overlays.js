@@ -192,7 +192,8 @@ function drawDungeonConfirm(){
     intelY+=16;
   }
   if(runMission&&!runMission.completed){
-    txShadow('\u25CE Mission: '+runMission.desc,cx_+20,intelY,6,'#8898c8','rgba(0,0,0,.3)'); // v339: fix label (was "Mission failed")
+    if(_missionDescRef!==runMission){_missionDescRef=runMission;_missionDescLbl='\u25CE Mission: '+runMission.desc;}
+    txShadow(_missionDescLbl,cx_+20,intelY,6,'#8898c8','rgba(0,0,0,.3)'); // v345: lazy cache
     intelY+=14;
   }
   const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
@@ -237,6 +238,8 @@ const _LOG_STAT_LABELS=['btl','got','lost',''];
 const _DECAY_TIME_LBL=(()=>{const a=[];for(let s=0;s<=300;s++){const mm=Math.floor(s/60),ss2=s%60;a.push(mm>0?mm+'m'+(ss2<10?'0':'')+ss2+'s':s+'s');}return a;})();
 // v339: lazy cache for B1 chest intel label in dungeon confirm
 let _f1ChestLbl='',_f1ChestKey=-1;
+// v345: lazy cache for mission desc label in dungeon confirm
+let _missionDescLbl='',_missionDescRef=null;
 // v338: lazy cache for card acquisition "You obtained X!" label and NEW badge label
 let _acqObtainedLbl='',_acqObtainedRef=null;
 let _acqNewLbl='',_acqNewVault=-1;
