@@ -305,13 +305,13 @@ function drawAtmosphere(){
     for(let _pi=0,_pl=pollenParticles.length;_pi<_pl;_pi++){
       const p=pollenParticles[_pi];
       p.x+=p.vx;
-      p.y+=Math.sin(fr*0.02+p.phase)*0.15+p.vy;
+      p.y+=(_sFr02*p.cosPh+_cFr02*p.sinPh)*0.15+p.vy; // v355: sin-addition, no trig per particle
       if(p.x>MW*TW)p.x=0;
       if(p.y<0)p.y=MH*TH;
       if(p.y>MH*TH)p.y=0;
       const sx=p.x-camX,sy=p.y-camY;
       if(sx>0&&sx<W&&sy>0&&sy<H-HUD_HEIGHT){
-        const a=0.25+Math.sin(fr*0.03+_pi)*0.15;
+        const a=0.25+(_sFr03*_COS_INT[_pi&15]+_cFr03*_SIN_INT[_pi&15])*0.15; // v355: pre-baked int phase
         g.globalAlpha=a;
         bx(sx,sy,1,1,'#e8e8d0');
         g.globalAlpha=1;
@@ -607,7 +607,7 @@ function drawFogParticles(){
   const [fogCol,ambCol,ambCount,ambVY,ambSz]=atmos;
   // v229: sin-addition formula avoids 40 sin() calls per frame — use precomputed sinPh/cosPh per particle
   // sin(fr*0.015 + phase) = sin(fr*0.015)*cos(phase) + cos(fr*0.015)*sin(phase)
-  const sinFr=Math.sin(fr*0.015),cosFr=Math.cos(fr*0.015);
+  const sinFr=_sFr015,cosFr=_cFr015; // v355: use cached per-frame sin/cos
   // Batch fillStyle outside loop (same for all particles)
   g.fillStyle=fogCol;
   const visH=H-HUD_HEIGHT;
@@ -622,7 +622,7 @@ function drawFogParticles(){
     if(sx>0&&sx<W&&sy>0&&sy<visH){
       const tileX=p.x/TW|0,tileY=p.y/TH|0;
       if(tileX>=0&&tileX<MW&&tileY>=0&&tileY<MH&&!fogRevealed[currentMap][tileY]?.[tileX]){
-        g.globalAlpha=Math.max(0,0.15+Math.sin(fr*0.02+i*0.7)*0.1);
+        g.globalAlpha=Math.max(0,0.15+(_sFr02*p.cosIPh+_cFr02*p.sinIPh)*0.1); // v355: sin-addition
         g.fillRect(sx|0,sy|0,1,1);
       }
     }
@@ -668,11 +668,11 @@ function isVisibleThroughFog(tileX,tileY,playerDist){
 // Seagull state (Corsair Bay flying seagulls)
 const seagulls=[];
 for(let i=0;i<6;i++){
+  const _sph=Math.random()*Math.PI*2;
   seagulls.push({
-    x:Math.random()*40*TW,
-    y:Math.random()*8*TW+2*TW,
-    vx:0.3+Math.random()*0.4,
-    phase:Math.random()*Math.PI*2,
+    x:Math.random()*40*TW,y:Math.random()*8*TW+2*TW,
+    vx:0.3+Math.random()*0.4,phase:_sph,
+    sinPh:Math.sin(_sph),cosPh:Math.cos(_sph), // v355: sin-addition precompute
     arc:10+Math.random()*15
   });
 }
@@ -680,13 +680,12 @@ for(let i=0;i<6;i++){
 // Monkey state (Smuggler's Jungle)
 const monkeys=[];
 for(let i=0;i<4;i++){
+  const _mtx=5+Math.floor(Math.random()*25);
   monkeys.push({
-    treeX:5+Math.floor(Math.random()*25),
-    treeY:4+Math.floor(Math.random()*20),
-    offsetX:Math.random()*16,
-    offsetY:Math.random()*8,
-    hopTimer:Math.floor(Math.random()*120),
-    hopDir:1
+    treeX:_mtx,treeY:4+Math.floor(Math.random()*20),
+    offsetX:Math.random()*16,offsetY:Math.random()*8,
+    hopTimer:Math.floor(Math.random()*120),hopDir:1,
+    sinTX:Math.sin(_mtx),cosTX:Math.cos(_mtx) // v355: sin(fr*0.05+treeX) precompute
   });
 }
 
@@ -723,7 +722,7 @@ function drawPirateDecorations(){
         // Mast
         bx(sx+14,sy-40,4,48,'#906838');
         // Sail (slightly billowing)
-        const billowSail=Math.sin(fr*0.03)*2;
+        const billowSail=_sFr03*2;
         bx(sx-4+billowSail,sy-34,24,28,'#e8e0c8');bx(sx-2+billowSail,sy-30,20,20,'#f0e8d0');
         // Sail ropes
         bx(sx+16,sy-40,1,6,'#504030');bx(sx+14,sy-40,1,6,'#504030');
@@ -777,10 +776,10 @@ function drawPirateDecorations(){
       sg.x+=sg.vx;
       if(sg.x>42*TW)sg.x=-20;
       const sgPx=sg.x-camX;
-      const sgPy=sg.y-camY+Math.sin(fr*0.04+sg.phase)*sg.arc;
+      const sgPy=sg.y-camY+(_sFr04*sg.cosPh+_cFr04*sg.sinPh)*sg.arc; // v355: sin-addition
       if(sgPx>-10&&sgPx<W+10&&sgPy>-10&&sgPy<H){
         bx(sgPx,sgPy,3,2,'#e8e8e8');
-        if(Math.sin(fr*0.12+sg.phase)>0){
+        if(_sFr12*sg.cosPh+_cFr12*sg.sinPh>0){ // v355: sin-addition for wing flap
           bx(sgPx-3,sgPy-1,3,1,'#d8d8d8');bx(sgPx+3,sgPy-1,3,1,'#d8d8d8');
         }else{
           bx(sgPx-3,sgPy+1,3,1,'#d8d8d8');bx(sgPx+3,sgPy+1,3,1,'#d8d8d8');
@@ -859,7 +858,7 @@ function drawPirateDecorations(){
       bx(mpx+2,mpy+6-hopBob,6,5,'#8B5E3C');
       bx(mpx+3,mpy+2-hopBob,4,4,'#A06B3F');
       bx(mpx+4,mpy+3-hopBob,1,1,'#2a1a0a');bx(mpx+6,mpy+3-hopBob,1,1,'#2a1a0a');
-      const tailCurl=Math.sin(fr*0.05+mtx)*2;
+      const tailCurl=(_sFr05*mk.cosTX+_cFr05*mk.sinTX)*2; // v355: sin-addition, no trig per frame
       bx(mpx+8,mpy+8-hopBob+tailCurl,1,3,'#8B5E3C');
       bx(mpx+9,mpy+10-hopBob+tailCurl,1,2,'#8B5E3C');
     }
@@ -943,7 +942,7 @@ function drawPirateDecorations(){
             // Flag pole
             bx(apx+22,apy-16,2,20,'#808088');
             // Pirate flag
-            const fw=Math.sin(fr*0.05)*1;
+            const fw=_sFr05;
             bx(apx+24,apy-14+fw,12,8,'#181820');
             // Skull and crossbones on flag
             bx(apx+28,apy-13+fw,2,2,'#c0c0b0');bx(apx+31,apy-13+fw,2,2,'#c0c0b0');
@@ -1823,7 +1822,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v355',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v356',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1899,7 +1898,7 @@ function dMap(){
     bx(rcX,rcY+rcH-1,rcW,1,'#282848');
     txShadow('\u2694 CARD RACE',rcX+8,rcY+16,7,'#f0c830','rgba(0,0,0,.4)');
     // Pulsing LIVE dot
-    const livePulse=0.55+0.45*Math.sin(fr*0.12);
+    const livePulse=0.55+0.45*_sFr12;
     g.globalAlpha=0.9*livePulse;
     bx(rcX+rcW-12,rcY+8,6,6,'#40e080');
     g.globalAlpha=0.9;
