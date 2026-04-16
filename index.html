@@ -7404,6 +7404,13 @@ const _SYNTH_UPGRADE=['','Select 3 cards → get 1 Uncommon card','Select 3 card
 const _SYNTH_NEED=['3 selected — press Z to synthesize!','Need 1 more','Need 2 more','Need 3 more'];
 // v262: Additional per-frame inline literals hoisted
 const _WLD_FLOOR_NUMS=['','B1','B2','B3','B4','B5'];
+// v341: pre-baked synth upgrade legend labels (index = synthRarityFilter 1-4)
+const _SYNTH_LEG_LBL=['','3\u00D7 Common \u2192 1\u00D7 Uncommon','3\u00D7 Uncommon \u2192 1\u00D7 Rare','3\u00D7 Rare \u2192 1\u00D7 Epic','3\u00D7 Epic \u2192 1\u00D7 Legendary'];
+// v341: pre-baked constant SOL stake strings (STAKE_AMOUNT=0.01, stakePotAmount=0.03 are module constants)
+const _STAKE_OFFERING_LBL='OFFERING: '+STAKE_AMOUNT.toFixed(2)+' SOL';
+const _SEAL_POT_LBL='SEAL POT: '+stakePotAmount.toFixed(2)+' SOL';
+const _STAKE_CONFIRM_LBL='OFFER '+STAKE_AMOUNT.toFixed(2)+' SOL TO BREAK THE SEAL?';
+const _SEAL_CLAIM_LBL='Victor claims the Grand Seal: '+stakePotAmount.toFixed(2)+' SOL';
 
 // v296: Floor-specific atmosphere log messages (ARK lore flavor, one per floor per ~10s tick)
 const _FLOOR_ATMOS=[
@@ -8752,7 +8759,7 @@ function drawSynthesisShop(){
 
   // Legend
   const tgt=_SYNTH_RAR_LABELS[synthRarityFilter+1];
-  if(tgt)txShadow('3× '+_SYNTH_RAR_LABELS[synthRarityFilter]+' → 1× '+tgt,80,H-88,6,'#806030','rgba(0,0,0,.3)');
+  if(tgt)txShadow(_SYNTH_LEG_LBL[synthRarityFilter]||('3\u00D7 '+_SYNTH_RAR_LABELS[synthRarityFilter]+' \u2192 1\u00D7 '+tgt),80,H-88,6,'#806030','rgba(0,0,0,.3)'); // v341: pre-baked
   txShadow('← → change rarity  Z=select/confirm  X=close',80,H-68,5,'#686068','rgba(0,0,0,.3)');
 }
 
@@ -9280,9 +9287,9 @@ function dTitle(){
 
   // Stake display when wallet connected (placed below menu items)
   if(walletConnected){
-    txShadow('OFFERING: '+STAKE_AMOUNT.toFixed(2)+' SOL',W/2-82,496,8,'#14F195','rgba(0,0,0,.4)');
+    txShadow(_STAKE_OFFERING_LBL,W/2-82,496,8,'#14F195','rgba(0,0,0,.4)'); // v341: pre-baked
     if(stakeDeposited){
-      txShadow('SEAL POT: '+stakePotAmount.toFixed(2)+' SOL',W/2-76,512,7,'#f0c830','rgba(0,0,0,.4)');
+      txShadow(_SEAL_POT_LBL,W/2-76,512,7,'#f0c830','rgba(0,0,0,.4)'); // v341: pre-baked
     }
   }
 
@@ -9328,8 +9335,8 @@ function dTitle(){
     bx(0,0,W,H,'rgba(0,0,0,.6)');
     win(W/2-200,H/2-80,400,160);
     drawSolanaLogo(W/2,H/2-54,14);
-    txShadow('OFFER '+STAKE_AMOUNT.toFixed(2)+' SOL TO BREAK THE SEAL?',W/2-200,H/2-24,9,'#f0f0f0','rgba(0,0,0,.5)');
-    txShadow('Victor claims the Grand Seal: '+stakePotAmount.toFixed(2)+' SOL',W/2-190,H/2+2,7,'#14F195','rgba(0,0,0,.4)');
+    txShadow(_STAKE_CONFIRM_LBL,W/2-200,H/2-24,9,'#f0f0f0','rgba(0,0,0,.5)'); // v341: pre-baked
+    txShadow(_SEAL_CLAIM_LBL,W/2-190,H/2+2,7,'#14F195','rgba(0,0,0,.4)'); // v341: pre-baked
     txShadow('(UI preview - devnet not deployed)',W/2-150,H/2+22,6,'#555570','rgba(0,0,0,.35)');
     const blink_=Math.floor(fr/25)%2===0;
     if(blink_)txShadow('Z = Yes    X = No',W/2-100,H/2+52,9,'#f0c830','rgba(0,0,0,.4)');
@@ -11146,7 +11153,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v340',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v341',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
