@@ -617,7 +617,7 @@ function drawVsSplash(){
     g.globalAlpha=1;
   }
   // Flash
-  if(t>=28&&t<=35){bx(0,0,W,H,`rgba(255,255,255,${(35-t)/7*.9})`);}
+  if(t>=28&&t<=35){g.globalAlpha=(35-t)/7*.9;g.fillStyle='#ffffff';g.fillRect(0,0,W,H);g.globalAlpha=1;}
 
   // Rival taunt (appears after flash, fades out before transition)
   if(t>36&&t<58){
