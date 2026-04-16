@@ -57,6 +57,9 @@ const _barEndCaps=(()=>{
     return c;
   });
 })();
+// v308: rarity-aware fanfare labels + extra visual intensity for Epic/Legendary finds
+const _FANFARE_LBL=['','NEW CARD!','NEW CARD!','RARE FIND!','EPIC FIND!','LEGENDARY FIND!'];
+const _FANFARE_LBL_COL=['','#e8e8e8','#e8e8e8',null,null,null]; // null = use rcol for R4/R5
 // v85: Floor-clear fanfare — dramatic cinematic overlay on floor descent
 function drawFloorClearFanfare(){
   if(!floorFanfareActive||!floorFanfareData)return;
@@ -98,6 +101,21 @@ function drawFloorClearFanfare(){
     }
     g.globalAlpha=alpha;
     bx(px_+16,py_+52,pw-32,1,'rgba(255,224,128,.3)');
+  }else if(rar>=4){
+    // v308: Epic/Legendary non-goal — pulsing title with rarity color
+    const hPulse=0.80+Math.sin(t*0.16)*0.20;
+    g.globalAlpha=alpha*hPulse;
+    txShadow('FLOOR '+flRoman+' CLEARED',px_+pw/2-130,py_+22,16,rcol,'rgba(0,0,0,.7)');
+    g.globalAlpha=alpha;
+    // Extra accent sparkles for epic/legendary
+    for(let si=0;si<(rar===5?6:4);si++){
+      const sa=t*0.15+si*(Math.PI*2/(rar===5?6:4));
+      const sd=36+Math.sin(t*0.09)*4;
+      g.globalAlpha=alpha*(0.5+Math.sin(t*0.13+si)*0.25);
+      bx(px_+pw/2+Math.cos(sa)*sd-2,py_+26+Math.sin(sa)*8-2,3,3,rcol);
+    }
+    g.globalAlpha=alpha;
+    bx(px_+16,py_+34,pw-32,1,rcol+'60');
   }else{
     txShadow('FLOOR '+flRoman+' CLEARED',px_+pw/2-130,py_+28,16,'#f0e0a0','rgba(0,0,0,.6)');
     bx(px_+16,py_+34,pw-32,1,'rgba(200,180,100,.2)');
@@ -126,9 +144,13 @@ function drawFloorClearFanfare(){
   g.globalAlpha=alpha;
   // Card info (right side)
   const infoX=cX+cw_+24;
-  const infoTopLbl=d.isGoal?'LEGENDARY REWARD!':(d.isNew?'NEW CARD!':'GOT:');
+  // v308: rarity-aware top label — Legendary/Epic/Rare get distinct shouts
+  const infoTopLbl=d.isGoal?'LEGENDARY REWARD!':(d.isNew?(_FANFARE_LBL[rar]||'NEW CARD!'):'GOT:');
   const infoTopCol=d.isGoal?'#ffe080':(d.isNew?rcol:'#a09878');
-  txShadow(infoTopLbl,infoX,py_+68,9,infoTopCol,'rgba(0,0,0,.3)');
+  const _lblPulse=rar>=4?(0.85+Math.sin(t*0.18)*0.15):1; // pulse label for Epic/Legendary
+  g.globalAlpha=alpha*_lblPulse;
+  txShadow(infoTopLbl,infoX,py_+68,rar>=4?10:9,infoTopCol,'rgba(0,0,0,.3)');
+  g.globalAlpha=alpha;
   txShadow(cr2.n,infoX,py_+90,12,d.isNew?rcol:'#e8e0c8','rgba(0,0,0,.4)');
   txShadow(_SCR_RAR_NAMES[rar]||'',infoX,py_+110,9,rcol,'rgba(0,0,0,.3)'); // v262: hoisted
   txShadow(cr2.f||'',infoX,py_+128,7,'#888878','rgba(0,0,0,.2)');
