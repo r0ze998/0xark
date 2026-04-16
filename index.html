@@ -15078,18 +15078,17 @@ function dLog(){
   const statBannerY=52;
   win(16,statBannerY,W-32,26);
   bx(16,statBannerY,W-32,2,'#3048a0');
-  const statParts=[
-    {icon:'\u2694',val:rd,col:'#c04848',label:'btl'},
-    {icon:'\u2605',val:stats.cardsCollected,col:'#50e090',label:'got'},
-    {icon:'\u2717',val:stats.cardsLost,col:'#d04040',label:'lost'},
-    {icon:'\u2660',val:vaultSz+'/60',col:vaultSz>=60?'#f0c830':'#7888c8',label:''},
-  ];
-  statParts.forEach((s,si)=>{
+  // Stat banner — direct render avoids 4-object array + forEach closure per log-screen frame
+  {const _sIcons=['\u2694','\u2605','\u2717','\u2660'];
+  const _sVals=[rd+'',stats.cardsCollected+'',stats.cardsLost+'',vaultSz+'/60'];
+  const _sCols=['#c04848','#50e090','#d04040',vaultSz>=60?'#f0c830':'#7888c8'];
+  const _sLabels=['btl','got','lost',''];
+  for(let si=0;si<4;si++){
     const sx=36+si*230;
-    txShadow(s.icon,sx,statBannerY+18,8,s.col,'rgba(0,0,0,.35)');
-    txShadow(s.val+'',sx+12,statBannerY+18,8,'#f0e8d0','rgba(0,0,0,.35)');
-    if(s.label) txShadow(s.label,sx+12+String(s.val).length*7,statBannerY+18,6,'#505070','rgba(0,0,0,.3)');
-  });
+    txShadow(_sIcons[si],sx,statBannerY+18,8,_sCols[si],'rgba(0,0,0,.35)');
+    txShadow(_sVals[si],sx+12,statBannerY+18,8,'#f0e8d0','rgba(0,0,0,.35)');
+    if(_sLabels[si]) txShadow(_sLabels[si],sx+12+_sVals[si].length*7,statBannerY+18,6,'#505070','rgba(0,0,0,.3)');
+  }}
 
   // Scrollable log entries
   const entryH=30;
@@ -15100,13 +15099,14 @@ function dLog(){
   logScrollOff=Math.max(0,Math.min(logScrollOff,maxScroll));
   const startIdx=Math.max(0,totalEntries-maxVisible-logScrollOff);
   const endIdx=Math.min(totalEntries,startIdx+maxVisible);
-  const visibleLogs=lg.slice(startIdx,endIdx);
+  // Direct index access — eliminates lg.slice() array alloc + forEach closure per log frame
+  const visibleCount=endIdx-startIdx;
 
   // Single window for all entries
   win(16,padTop-6,W-32,maxVisible*entryH+12);
 
-  visibleLogs.forEach((l,i)=>{
-    const y=padTop+i*entryH;
+  for(let i=0;i<visibleCount;i++){
+    const l=lg[startIdx+i];const y=padTop+i*entryH;
     // v120: event-type icon instead of plain dot
     let col='#888898',icon='\u00B7'; // · default
     if(l.includes('stole')||l.includes('Steal')||l.includes('STEAL')||l.includes('ambush')){
@@ -15146,8 +15146,8 @@ function dLog(){
     const displayText=l.length>maxChars?l.substring(0,maxChars)+'..':l;
     txShadow(displayText,46,y+18,10,col,'rgba(0,0,0,.7)');
     // Thin separator
-    if(i<visibleLogs.length-1) bx(40,y+entryH-2,W-80,1,'#161628');
-  });
+    if(i<visibleCount-1) bx(40,y+entryH-2,W-80,1,'#161628');
+  }
 
   // Scroll indicators
   if(logScrollOff<maxScroll){
@@ -16069,6 +16069,11 @@ function doFountainExchange(){
 // MODULE: src/08-screens.js
 // Floor-clear fanfare · object interact messages · exit tooltip · map card use overlay · stats screen · credits · game over screen
 // ───────────────────────────────────────────────────────────────────────
+// v255: Hoisted stats screen statics — eliminates inline array allocs per stats/log frame
+const _VAULT_MILESTONES=[15,30,45]; // tick marks at 25%/50%/75% of 60-card bar
+const _RAR_PIP_COLS=['#808898','#50d060','#b060e0','#e0a020','#ffe080'];
+const _RAR_PIP_LBLS=['C','U','R','E','L'];
+const _MEDALS=['1ST','2ND','3RD'],_MEDAL_COLS=['#f0c830','#c0c0c0','#c08040'];
 // v235: Pre-baked game-over screen assets — 32 arc/frame + 1 gradient/frame eliminated
 // Vignette: rgba(0,0,0,0.55) outer stop, drawn once per frame at alpha=1
 const _goVignette=(()=>{
@@ -16499,8 +16504,8 @@ function drawMapCardUseOverlay(){
   bx(W/2-140,H/2-mh/2,280,28,'#181008');
   bx(W/2-140,H/2-mh/2,4,28,'#c0a040');
   txShadow('USE CARD ON MAP',W/2-76,H/2-mh/2+20,7,'#d0b860','rgba(0,0,0,.4)');
-  usable.forEach((item,j)=>{
-    const cr=CD[item.cardId-1];
+  for(let j=0;j<usable.length;j++){
+    const item=usable[j];const cr=CD[item.cardId-1];
     const y=H/2-mh/2+38+j*32;
     const sel=j===mapCardUseIdx;
     if(sel){
@@ -16512,7 +16517,7 @@ function drawMapCardUseOverlay(){
     drawCardCharacter(W/2-115,y+3,item.cardId,0.6,fr);
     txShadow(item.name,W/2-92,y+14,7,sel?'#e06050':'#d0c8a8','rgba(0,0,0,.3)');
     txShadow(item.desc,W/2+10,y+14,5,'#a09880','rgba(0,0,0,.2)');
-  });
+  }
   txShadow('[Z] Use   [X] Cancel',W/2-68,H/2+mh/2-10,6,'#8888a0','rgba(0,0,0,.3)');
 }
 
@@ -16557,8 +16562,8 @@ function dStats(){
     g.fillRect(vpbX,vpbY,fW,vpbH);g.globalAlpha=1;
     bx(vpbX,vpbY,fW,2,'rgba(255,255,255,.22)');
   }
-  // Milestone ticks at 25%, 50%, 75%
-  [15,30,45].forEach(m_=>{const mx_=vpbX+Math.floor(vpbW*(m_/60));bx(mx_,vpbY,1,vpbH,'rgba(255,255,255,.15)');});
+  // Milestone ticks at 25%, 50%, 75% (_VAULT_MILESTONES hoisted to module scope)
+  for(let _mi=0;_mi<3;_mi++){const mx_=vpbX+Math.floor(vpbW*(_VAULT_MILESTONES[_mi]/60));bx(mx_,vpbY,1,vpbH,'rgba(255,255,255,.15)');}
   bx(vpbX,vpbY,vpbW,1,'#282848');bx(vpbX,vpbY+vpbH,vpbW,1,'#282848');
   if(vaultSize>=60){
     const cA_=0.5+Math.sin(fr*0.14)*0.45;
@@ -16568,16 +16573,15 @@ function dStats(){
   }
   // Rarity pip breakdown below bar
   const rarCount_=[0,0,0,0,0];
-  if(pl[0].vault){pl[0].vault.forEach(cid_=>{const cr_=CD[cid_-1];if(cr_)rarCount_[(cr_.r||1)-1]++;});}
-  const rarPipCols=['#808898','#50d060','#b060e0','#e0a020','#ffe080'];
-  const rarPipLabels=['C','U','R','E','L'];
+  if(pl[0].vault){for(const cid_ of pl[0].vault){const cr_=CD[cid_-1];if(cr_)rarCount_[(cr_.r||1)-1]++;}}
+  // _RAR_PIP_COLS/_RAR_PIP_LBLS hoisted to module scope
   let rPX=vpbX;
-  rarPipLabels.forEach((lab_,ri_)=>{
-    if(rarCount_[ri_]===0)return;
-    bx(rPX,vpbY+vpbH+3,9,9,rarPipCols[ri_]);
-    txShadow(lab_+':'+rarCount_[ri_],rPX+11,vpbY+vpbH+11,7,'#c0b8a0','rgba(0,0,0,.35)');
+  for(let ri_=0;ri_<5;ri_++){
+    if(rarCount_[ri_]===0)continue;
+    bx(rPX,vpbY+vpbH+3,9,9,_RAR_PIP_COLS[ri_]);
+    txShadow(_RAR_PIP_LBLS[ri_]+':'+rarCount_[ri_],rPX+11,vpbY+vpbH+11,7,'#c0b8a0','rgba(0,0,0,.35)');
     rPX+=36;
-  });
+  }
   bx(36,vpbY+vpbH+18,W-104,1,'#282840');
 
   const stealSuccessPct=stats.stealsAttempted>0?Math.round((1-stats.stealsBlocked/(stats.stealsAttempted||1))*100):0;
@@ -16604,8 +16608,9 @@ function dStats(){
   ];
 
   let rowY=vpbY+vpbH+24;
-  allRows.forEach(r=>{
-    if(!r.label&&!r.value){rowY+=6;return;} // spacer
+  for(let _ri=0;_ri<allRows.length;_ri++){
+    const r=allRows[_ri];
+    if(!r.label&&!r.value){rowY+=6;continue;} // spacer
     if(r.header){
       txShadow(r.label,36,rowY+14,12,r.col,'rgba(0,0,0,.5)');
       bx(36,rowY+20,W-104,1,'#282840');
@@ -16626,31 +16631,26 @@ function dStats(){
       bx(36,rowY+20,W-104,1,'#1a1a30');
       rowY+=22;
     }
-  });
+  }
 
   // Area time distribution bar at bottom of the single window
   const barX=36,barY_=rowY+8,barW=W-104,barH=16;
   bx(barX,barY_,barW,barH,'#181838');
   const areaColors=['#3060b0','#302848','#403058','#503060','#403850','#503848'];
+  const _aN=['TOWN','B1','B2','B3','B4','B5'];
   let accX=barX;
-  stats.areaTime.forEach((t,ai_)=>{
-    const ratio=t/totalAreaTime;
-    const segW=Math.max(0,Math.floor(barW*ratio));
-    if(segW>0){
-      bx(accX,barY_,segW,barH,areaColors[ai_%areaColors.length]);
-      accX+=segW;
-    }
-  });
+  for(let ai_=0;ai_<stats.areaTime.length;ai_++){
+    const segW=Math.max(0,Math.floor(barW*(stats.areaTime[ai_]/totalAreaTime)));
+    if(segW>0){bx(accX,barY_,segW,barH,areaColors[ai_%areaColors.length]);accX+=segW;}
+  }
 
   // Legend below bar (show town + floors compactly)
-  const legendNames=['TOWN','B1','B2','B3','B4','B5'];
-  legendNames.forEach((name,ai_)=>{
-    const legendX=36+ai_*120;
-    const legendY=barY_+28;
+  for(let ai_=0;ai_<_aN.length;ai_++){
+    const legendX=36+ai_*120,legendY=barY_+28;
     bx(legendX,legendY-8,10,10,areaColors[ai_%areaColors.length]);
     const pct=Math.round(((stats.areaTime[ai_]||0)/totalAreaTime)*100);
-    txShadow(name+' '+pct+'%',legendX+14,legendY,8,'#c8c0a0','rgba(0,0,0,.3)');
-  });
+    txShadow(_aN[ai_]+' '+pct+'%',legendX+14,legendY,8,'#c8c0a0','rgba(0,0,0,.3)');
+  }
 
   // Back prompt
   win(W/2-100,H-42,200,30);
@@ -16671,15 +16671,16 @@ function dCredits(){
   const scrollSpeed=0.6;
   const startY=H;
   const lineHeight=36;
-  CREDITS_LINES.forEach((line,i)=>{
+  for(let i=0;i<CREDITS_LINES.length;i++){
+    const line=CREDITS_LINES[i];
     const y=startY-creditsFrame*scrollSpeed+i*lineHeight;
-    if(y<-30||y>H+30)return;
+    if(y<-30||y>H+30)continue;
     const isTitle=(line==='0 x A R K');
     const sz=isTitle?24:(line.length>30?6:10);
     const col=isTitle?'#f8f0e0':(line.startsWith('Powered')?'#9945FF':(line.startsWith('Solana')?'#14F195':'#c8c0a0'));
     const tw_=line.length*(isTitle?14:sz*0.7);
     txShadow(line,W/2-tw_/2,y,sz,col,'rgba(0,0,0,.5)');
-  });
+  }
   // End: loop or go back
   const totalScroll=(CREDITS_LINES.length*lineHeight+H)/scrollSpeed;
   if(creditsFrame>totalScroll){creditsActive=false;creditsFrame=0;}
@@ -16736,12 +16737,10 @@ function dGameOver(){
       rankings.push({idx:i,name:pl[i].n,unique:unique,cards:[...pl[i].cd]});
     }
     rankings.sort((a,b)=>b.unique-a.unique);
-    const medals=['1ST','2ND','3RD'];
-    const medalColors=['#f0c830','#c0c0c0','#c08040'];
     const rowH=116;
-    rankings.forEach((r,rank)=>{
-      const fadeT=t-60-rank*22;
-      if(fadeT<0)return;
+    for(let rank=0;rank<rankings.length;rank++){
+      const r=rankings[rank];const fadeT=t-60-rank*22;
+      if(fadeT<0)continue;
       const alpha=Math.min(1,fadeT/12);
       g.globalAlpha=alpha;
       const y=136+rank*rowH;
@@ -16765,11 +16764,11 @@ function dGameOver(){
         g.globalAlpha=alpha*0.3;g.drawImage(_medalBlackOverlay,-21,-21);
       }
       g.globalAlpha=alpha;
-      txShadow(medals[rank],-22,8,7,medalColors[rank],'rgba(0,0,0,.5)');
+      txShadow(_MEDALS[rank],-22,8,7,_MEDAL_COLS[rank],'rgba(0,0,0,.5)');
       g.restore();g.globalAlpha=alpha;
       // Name + card count
       txShadow(r.name,W/2-196,y+26,11,isPlayer?'#48b8e8':'#c8c0a0','rgba(0,0,0,.4)');
-      txShadow(r.unique+'/60',W/2+120,y+24,13,r.unique>=60?'#40d040':medalColors[rank],'rgba(0,0,0,.4)');
+      txShadow(r.unique+'/60',W/2+120,y+24,13,r.unique>=60?'#40d040':_MEDAL_COLS[rank],'rgba(0,0,0,.4)');
       // Progress bar (animates fill)
       const barX=W/2-196,barY=y+44,barW=330,barH_=7;
       bx(barX,barY,barW,barH_,'#161626');
@@ -16777,7 +16776,7 @@ function dGameOver(){
       const animPct=pct*Math.min(1,(fadeT-4)/22);
       const barFill=Math.round(barW*animPct);
       if(barFill>0){
-        bx(barX,barY,barFill,barH_,medalColors[rank]);
+        bx(barX,barY,barFill,barH_,_MEDAL_COLS[rank]);
         g.globalAlpha=alpha*0.45;
         if(_barEndCaps[rank])g.drawImage(_barEndCaps[rank],(barX+barFill-6)|0,(barY-3)|0);
         g.globalAlpha=alpha;
@@ -16790,7 +16789,7 @@ function dGameOver(){
         else{bx(cx_,cy_,36,50,'#222232');txShadow('?',cx_+11,cy_+30,9,'#343444','rgba(0,0,0,.3)');}
       }
       g.globalAlpha=1;
-    });
+    }
   }
 
   if(t>148){
