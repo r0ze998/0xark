@@ -658,6 +658,8 @@ function updateHandInspect(){
 const _hiFilledBuf=new Int8Array(8); // v272: module scope, eliminates filled[] per frame
 const _PROG_BAR_MILE=['10','20','30','40','50']; // v274: hoisted; v334: strings to avoid +'' per frame
 const _FLOOR_ABBR=['','SG','DA','EC','DV','AC']; // v274: hoisted from drawCardProgressBar
+// v343: lazy cache for hand inspect total label (HAND_SIZE=20 known constant)
+let _hiTotalLbl='',_hiTotalKey=-1;
 function drawHandInspect(){
   if(!handInspectActive||sc!=='map')return;
   const t=Math.min(1,handInspectFrame/10);
@@ -678,7 +680,8 @@ function drawHandInspect(){
 
   // Header
   txShadow('YOUR HAND',W/2-52,40,10,'#c8d0f0','rgba(0,0,0,.5)');
-  txShadow(total+'/'+HAND_SIZE+' cards',W/2-30,56,6,'#8890b0','rgba(0,0,0,.4)');
+  if(_hiTotalKey!==total){_hiTotalKey=total;_hiTotalLbl=total+'/'+HAND_SIZE+' cards';} // v343: lazy cache
+  txShadow(_hiTotalLbl,W/2-30,56,6,'#8890b0','rgba(0,0,0,.4)');
   bx(40,62,W-80,1,'#30305060');
 
   // Card grid: up to 8 cards in 2 rows
@@ -729,8 +732,7 @@ function drawHandInspect(){
       const barCol=remFrac>0.5?'#40d040':remFrac>0.25?'#d0c040':'#d04040';
       bx(cx_+4,cy_+ch-24,Math.floor(barW*remFrac),5,barCol);
       const secs=Math.ceil(remMs/1000);
-      const mm=Math.floor(secs/60),ss=secs%60;
-      const timeStr=mm>0?mm+'m'+('0'+ss).slice(-2)+'s':ss+'s';
+      const timeStr=_DECAY_TIME_LBL[secs]||(secs+'s'); // v343: reuse pre-baked table from 08-overlays.js
       txShadow(timeStr,cx_+4,cy_+ch-10,5,barCol,'rgba(0,0,0,.3)');
     }else{
       txShadow('SAFE',cx_+4,cy_+ch-10,5,'#60c060','rgba(0,0,0,.3)');
