@@ -1831,7 +1831,7 @@ function dTitle(){
   g.drawImage(_titleRuneGridCanvas,0,0);
   // v210/v225: Moon — pre-baked halo + disk, modulated by moonPulse globalAlpha
   {
-    const moonPulse=0.55+Math.sin(fr*0.012)*0.04;
+    const moonPulse=0.55+_sFr012*0.04;
     // Outer halo (pre-baked at alpha=1; globalAlpha scales it to moonPulse*0.18)
     g.globalAlpha=moonPulse*0.18;
     g.drawImage(_moonHaloCanvas,_moonMx-_moonHaloR-2,_moonMy-_moonHaloR-2);
