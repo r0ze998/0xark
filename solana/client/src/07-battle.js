@@ -1623,6 +1623,8 @@ let bpScoutedCards=[null,null]; // [{round,cards:[{n,r,t}]}, null] — persists 
 let battleRoundHistory=[]; // v90: [{rd,pa,r1a,r2a,outcome}] per round (pa=playerAction 0-4)
 let _battleRoundNet=0; // v284: running got-lost net, updated at unshift — avoids per-frame reduce
 
+// v300: Personality-specific bluff rates — VEGA 45% (unpredictable hunter), MIRA 20% (calculated)
+const _BLUFF_RATES=[0.45,0.20];
 // v293: Pre-computed "other action" indices — eliminates [0,1,2,3].filter per round
 const _TELL_OTHERS=[[1,2,3],[0,2,3],[0,1,3],[0,1,2]];
 // Rival tells: atmospheric body-language hints (65% accurate, 35% misleading)
@@ -1651,8 +1653,7 @@ function generateRivalTells(){
     const actualAct=bpRivalActions[ri];
     const tells=RIVAL_BATTLE_TELLS[ri];
     let actForTell=actualAct;
-    const isMisdirect=Math.random()<0.35;
-    // 35% misdirection: pick a different action's tells
+    const isMisdirect=Math.random()<_BLUFF_RATES[ri]; // v300: per-personality rate
     if(isMisdirect){
       const others=_TELL_OTHERS[actualAct%4]; // v293: pre-computed, no alloc
       actForTell=others[Math.floor(Math.random()*others.length)];
