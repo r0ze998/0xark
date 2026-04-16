@@ -440,6 +440,8 @@ function draw(){
   drawRivalNews();
   // v77: Quick hand inspect
   drawHandInspect();
+  // v205: GBA-style scanlines — only on game screens (not title/splash)
+  if(sc==='map'||sc==='act'||sc==='crd'||sc==='log'||sc==='stats'||sc==='victory')g.drawImage(scanCanvas,0,0,W,H);
   // FRLG-style decorative border around viewport
   g.strokeStyle=FRLG.borderOuter;g.lineWidth=2;g.strokeRect(1,1,W-2,H-2);
   g.strokeStyle=FRLG.borderInner;g.lineWidth=1;g.strokeRect(3,3,W-6,H-6);
