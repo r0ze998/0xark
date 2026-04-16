@@ -1486,12 +1486,13 @@ function drawEncounterExclamation(){
     bx(rpx-nameW/2+8,rpy-38+bounce,nameW,13,'rgba(0,0,0,.7)');
     txShadow(rName,rpx-nameW/2+10,rpy-27+bounce,7,rNameCol,'rgba(0,0,0,.5)');
   }
-  // v81: Pre-battle dialogue speech bubble (appears t>12, fades at t>24)
+  // v81/v291: Pre-battle dialogue speech bubble (appears t>12, fades at t>24)
   if(t>12&&encounterRivalLine){
     const lineAlpha=Math.min(1,(t-12)/6)*Math.max(0,(30-t)/8);
     g.globalAlpha=lineAlpha*alpha;
-    const lineW=Math.min(200,encounterRivalLine.length*6+16);
-    const lineX=rpx+14, lineY=rpy-56+bounce;
+    // v291: increased cap (280px) and right-clamp to screen edge
+    const lineW=Math.min(280,encounterRivalLine.length*6+16);
+    const lineX=Math.min(rpx+14,W-lineW-8), lineY=rpy-56+bounce;
     bx(lineX,lineY,lineW,16,'rgba(8,8,16,.85)');
     bx(lineX,lineY,lineW,1,'rgba(200,180,120,.4)');
     bx(lineX,lineY+15,lineW,1,'rgba(200,180,120,.25)');
