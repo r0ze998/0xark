@@ -6597,6 +6597,53 @@ function drawDungeonStairGlows(startTX,startTY,endTX,endTY){
   }
 }
 
+// v233: Pre-baked dungeon animated overlay canvases — eliminates createRadialGradient per frame
+// Campfire floor glow: radial at r=58, 3 stops baked at flick=1; globalAlpha=flick at draw time
+// Canvas 120×120, center(60,60); draw at (px+TW/2-60, py+TH*0.7-60) = (px-44, py-38)
+const _dungCampfireGlow=(()=>{
+  const c=document.createElement('canvas');c.width=120;c.height=120;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createRadialGradient(60,60,4,60,60,58);
+  grd.addColorStop(0,'rgba(255,180,60,0.32)');grd.addColorStop(0.4,'rgba(220,120,30,0.18)');grd.addColorStop(1,'rgba(180,60,0,0)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,120,120);return c;
+})();
+// Lava glow: radial r=40, baked at lavaPulse=1; globalAlpha=lavaPulse at draw time
+// Canvas 84×84, center(42,42); draw at (px+TW/2-42, py+TH/2-42) = (px-26, py-26)
+const _dungLavaGlow=(()=>{
+  const c=document.createElement('canvas');c.width=84;c.height=84;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createRadialGradient(42,42,0,42,42,40);
+  grd.addColorStop(0,'rgba(255,100,20,0.30)');grd.addColorStop(1,'rgba(200,40,0,0)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,84,84);return c;
+})();
+// Glow tile: arc r=15, draw with globalAlpha=pulse*.22; canvas 32×32, center(16,16)
+const _dungGlowTile=(()=>{
+  const c=document.createElement('canvas');c.width=32;c.height=32;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(40,200,160,1)';ctx.beginPath();ctx.arc(16,16,15,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+// Crystal arc: r=11, draw with globalAlpha=alpha; canvas 24×24, center(12,12)
+const _dungCrystalArc=(()=>{
+  const c=document.createElement('canvas');c.width=24;c.height=24;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(30,140,200,1)';ctx.beginPath();ctx.arc(12,12,11,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+// Altar orb glows: r=5 and r=10 (orbY varies; globalAlpha=pulse*factor at draw time)
+const _dungAltarOrb5=(()=>{
+  const c=document.createElement('canvas');c.width=12;c.height=12;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(200,164,72,1)';ctx.beginPath();ctx.arc(6,6,5,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+const _dungAltarOrb10=(()=>{
+  const c=document.createElement('canvas');c.width=22;c.height=22;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(240,200,80,1)';ctx.beginPath();ctx.arc(11,11,10,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+
 // Animated dungeon decor overlays — glow tile, crystal sparkles, altar orb, campfire light
 // Drawn every frame on main canvas (bypass static tile cache)
 function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
@@ -6610,45 +6657,34 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
       const px=x*TW-camX,py=y*TH-camY;
       if(px<-TW*2||px>W+TW*2||py<-TH*2||py>H+TH*2)continue;
       if(t===29){
-        // v211: Campfire — warm light pool on floor (large radial glow, flickering)
+        // v211: Campfire — warm light pool (pre-baked glow, globalAlpha=flick)
         const flick=0.55+Math.sin(fr*0.12+x*2.3+y*1.7)*0.28+Math.sin(fr*0.21+x+y*3)*0.1;
-        const cx_=px+TW/2,cy_=py+TH*0.7,r=52+Math.sin(fr*0.08+x+y)*6;
-        const grd=g.createRadialGradient(cx_,cy_,4,cx_,cy_,r);
-        grd.addColorStop(0,`rgba(255,180,60,${(0.32*flick).toFixed(3)})`);
-        grd.addColorStop(0.4,`rgba(220,120,30,${(0.18*flick).toFixed(3)})`);
-        grd.addColorStop(1,'rgba(180,60,0,0)');
-        g.fillStyle=grd;g.fillRect(cx_-r,cy_-r,r*2,r*2);
+        g.globalAlpha=flick;g.drawImage(_dungCampfireGlow,(px-44)|0,(py-38)|0);g.globalAlpha=1;
         continue;
       }
       if(t===25){
-        // v211: Lava — eerie red-orange upward glow
+        // v211: Lava — eerie red-orange upward glow (pre-baked)
         const lavaPulse=0.4+Math.sin(fr*0.06+x*1.8+y*2.1)*0.18;
-        const lx_=px+TW/2,ly_=py+TH/2,lr=40;
-        const lgrd=g.createRadialGradient(lx_,ly_,0,lx_,ly_,lr);
-        lgrd.addColorStop(0,`rgba(255,100,20,${(lavaPulse*0.3).toFixed(3)})`);
-        lgrd.addColorStop(1,'rgba(200,40,0,0)');
-        g.fillStyle=lgrd;g.fillRect(lx_-lr,ly_-lr,lr*2,lr*2);
+        g.globalAlpha=lavaPulse;g.drawImage(_dungLavaGlow,(px-26)|0,(py-26)|0);g.globalAlpha=1;
         continue;
       }
       if(t===24){
-        // Glow tile: pulsing teal halo
+        // Glow tile: pulsing teal halo (pre-baked arc)
         const pulse=Math.sin(fr*.06+x*2+y*3)*.35+.55;
-        g.fillStyle=`rgba(40,200,160,${pulse*.22})`;
-        g.beginPath();g.arc(px+TW/2,py+TH/2,15,0,Math.PI*2);g.fill();
+        g.globalAlpha=pulse*.22;g.drawImage(_dungGlowTile,(px)|0,(py)|0);g.globalAlpha=1;
       }else if(t===26){
-        // Crystal: sparkle glint + glow halo
+        // Crystal: sparkle glint + glow halo (pre-baked arc)
         const sparkle=Math.sin(fr*.1+x*5+y*7)>.45;
         if(sparkle){bx(px+15,py+8,3,2,'#fff');bx(px+10,py+15,2,2,'rgba(255,255,255,.8)');}
-        g.fillStyle=`rgba(30,140,200,${.16+Math.sin(fr*.05+x+y)*.09})`;
-        g.beginPath();g.arc(px+16,py+16,11,0,Math.PI*2);g.fill();
+        const cAlpha=.16+Math.sin(fr*.05+x+y)*.09;
+        g.globalAlpha=cAlpha;g.drawImage(_dungCrystalArc,(px+4)|0,(py+4)|0);g.globalAlpha=1;
       }else if(t===27){
-        // Altar: floating brass orb + pulse glow
+        // Altar: floating brass orb + pulse glow (pre-baked orb arcs)
         const pulse=Math.sin(fr*.04)*.3+.5;
         const orbY=py+4+Math.sin(fr*.05)*3;
-        g.fillStyle=`rgba(200,164,72,${pulse*.65})`;
-        g.beginPath();g.arc(px+16,orbY,5,0,Math.PI*2);g.fill();
-        g.fillStyle=`rgba(240,200,80,${pulse*.22})`;
-        g.beginPath();g.arc(px+16,orbY,10,0,Math.PI*2);g.fill();
+        g.globalAlpha=pulse*.65;g.drawImage(_dungAltarOrb5,(px+10)|0,(orbY-6)|0);
+        g.globalAlpha=pulse*.22;g.drawImage(_dungAltarOrb10,(px+5)|0,(orbY-11)|0);
+        g.globalAlpha=1;
         bx(px+10,py+12,12,3,`rgba(200,164,72,${pulse*.42})`);
         bx(px+8,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);
         bx(px+20,py+22,4,2,`rgba(200,164,72,${pulse*.35})`);
