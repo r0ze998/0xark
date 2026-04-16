@@ -1458,9 +1458,9 @@ function dMap(){
 
   // Proximity heartbeat pulse on screen edges
   if(proximityDangerLevel>=1&&sc==='map'){
-    const pulseSpeed=proximityDangerLevel>=4?0.25:proximityDangerLevel>=3?0.15:proximityDangerLevel>=2?0.08:0.04;
     const pulseAlpha=proximityDangerLevel>=4?0.18:proximityDangerLevel>=3?0.10:proximityDangerLevel>=2?0.05:0.02;
-    const pulse=Math.sin(fr*pulseSpeed)*0.5+0.5;
+    // v377: use cached sin values for known fixed pulse speeds
+    const pulse=(proximityDangerLevel>=4?_sFr25:proximityDangerLevel>=3?_sFr15:proximityDangerLevel>=2?_sFr08:_sFr04)*0.5+0.5;
     const a=pulse*pulseAlpha;
     if(a>0.005){
       g.globalAlpha=a;

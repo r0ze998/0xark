@@ -559,7 +559,7 @@ function dStats(){
   for(let _mi=0;_mi<3;_mi++){const mx_=vpbX+Math.floor(vpbW*(_VAULT_MILESTONES[_mi]/60));bx(mx_,vpbY,1,vpbH,'rgba(255,255,255,.15)');}
   bx(vpbX,vpbY,vpbW,1,'#282848');bx(vpbX,vpbY+vpbH,vpbW,1,'#282848');
   if(vaultSize>=60){
-    const cA_=0.5+Math.sin(fr*0.14)*0.45;
+    const cA_=0.5+(2*_sFr07*_cFr07)*0.45; // sin(fr*0.14)=2·sin(fr*0.07)·cos(fr*0.07)
     g.globalAlpha=cA_;
     txShadow('\u2605 COMPLETE! \u2605',vpbX+vpbW/2-56,vpbY+13,8,'#ffe080','rgba(0,0,0,.5)');
     g.globalAlpha=1;

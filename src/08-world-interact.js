@@ -223,7 +223,7 @@ function drawPuzzlePillars(){
       const label=puzzleNames[puzzleStoneOrder[i]][0];
       txShadow(label,px+5,py+13,5,'#fff','rgba(0,0,0,.4)');
       // v244: pre-baked canvas replaces arc per frame
-      const pulse=Math.sin(fr*.06+i*2)*.2+.4;
+      const pulse=(_sFr06*_IDX_CI[i*2]+_cFr06*_IDX_SI[i*2])*.2+.4;
       const ci=puzzleStoneOrder[i];
       g.globalAlpha=pulse;
       g.drawImage(_puzzleGlowCanvases[ci],(px+.5)|0,(py+.5)|0);
