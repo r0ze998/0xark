@@ -68,7 +68,6 @@ function checkDungeonRivalEncounter(){
       encounterExclPlayerX=pl[0].visualX;encounterExclPlayerY=pl[0].visualY;
       encounterExclRivalX=r.visualX;encounterExclRivalY=r.visualY;
       sfxEncounterDramatic();hitPause(4);
-      const rCards=cdCount(r.cd);
       const isHunting=ai.state==='hunting';
       encounterRivalLine=_pickRivalLine(idx,isHunting); // v287/v290: floor+hunt tiered dialog
       setTimeout(()=>{

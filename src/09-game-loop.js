@@ -316,21 +316,11 @@ function update(){
           hitPause(3); // freeze-frame dramatic tension at encounter trigger
           const rivalName=r.n;
           const isRivalInitiated=ai.state==='hunting';
-          // v81: choose context-sensitive pre-battle line
+          // v294: use floor+hunt-tiered dialog (mirrors checkDungeonRivalEncounter path)
           const rCards=cdCount(r.cd);
-          const pCards=cdCount(pl[0].cd);
-          const vegaLines_hunt=['Hand over the cards. Now.','I\'ve been tracking you since B1.','The ARK\'s legacy is mine.','No walls stop a hunter.','Cornered. Just like the crew.'];
-          const vegaLines_surp=['You... found me first?','Reckless. I respect it.','Bold. The ARK liked bold.','Didn\'t expect prey to hunt.','So you\'ve learned something.'];
-          const miraLines_hunt=['I mapped every route. You had no chance.','The ARK crew fell to calculation. So will you.','Your card count fell below threshold. Engaging.','Probability of your escape: zero.','Precisely where my model predicted.'];
-          const miraLines_surp=['A variable I didn\'t account for.','Interesting. You deviated from the pattern.','You read the dungeon well. Respect.','My model was wrong. Recalculating.','Even the ARK surprised its own crew once.'];
-          const rich=rCards>=3;
-          if(idx===0){// VEGA
-            const pool=isRivalInitiated?vegaLines_hunt:vegaLines_surp;
-            encounterRivalLine=(rich?'I have '+rCards+' cards. ':'')+pool[Math.floor(Math.random()*pool.length)];
-          }else{// MIRA
-            const pool=isRivalInitiated?miraLines_hunt:miraLines_surp;
-            encounterRivalLine=(rCards===0?'I have nothing to lose. ':'')+pool[Math.floor(Math.random()*pool.length)];
-          }
+          const base=_pickRivalLine(idx,isRivalInitiated);
+          const prefix=idx===0?(rCards>=3?'I have '+rCards+' cards. ':''):(rCards===0?'I have nothing to lose. ':'');
+          encounterRivalLine=prefix+base;
           setTimeout(()=>{
             encounterExclActive=false;
             flash();
