@@ -8385,8 +8385,9 @@ function openCardShop(){
   sfxShopOpen();
 }
 
-// v267: reusable slot buffer — eliminates slots=[] per frame in drawCardShop hot path
+// v267: reusable slot buffers — eliminates slots=[] per frame in drawCardShop/drawSynthesisShop
 const _shopSlotsBuf=new Int8Array(7);
+const _synthSlotsBuf=new Int8Array(7); // rarity-filtered slots for synthesis shop
 function getPlayerFilledSlots(){
   const slots=[];
   for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)slots.push(i);}
@@ -8608,11 +8609,11 @@ function drawSynthesisShop(){
     txShadow(rl,tabX+4,tabY+13,6,sel?'#f8e8c0':'#a09070','rgba(0,0,0,.35)');
   }
 
-  const filled=getPlayerFilledSlots().filter(s=>{
-    const cid=pl[0].cd[s];return cid>0&&CD[cid-1]?.r===synthRarityFilter;
-  });
+  // v268: allocation-free — replaces getPlayerFilledSlots().filter() per frame
+  let _sfN2=0;
+  for(let _si=0;_si<HAND_SIZE;_si++){const _cid=pl[0].cd[_si];if(_cid>0&&CD[_cid-1]?.r===synthRarityFilter)_synthSlotsBuf[_sfN2++]=_si;}
 
-  if(filled.length===0){
+  if(_sfN2===0){
     txShadow('No '+_SYNTH_RAR_LABELS[synthRarityFilter]+' cards in hand.',80,120,7,'#989080','rgba(0,0,0,.3)');
   }else{
     const needed=3-synthSelected.length;
@@ -8620,8 +8621,8 @@ function drawSynthesisShop(){
     txShadow(needed>0?'Need '+needed+' more':'3 selected — press Z to synthesize!',80,122,6,needed===0?'#40d080':'#808880','rgba(0,0,0,.3)');
 
     const cols=4,cellW=120,cellH=48;
-    for(let i=0;i<filled.length;i++){
-      const slot=filled[i];const cid=pl[0].cd[slot],cr=CD[cid-1];
+    for(let i=0;i<_sfN2;i++){
+      const slot=_synthSlotsBuf[i];const cid=pl[0].cd[slot],cr=CD[cid-1];
       const col=i%cols,row=Math.floor(i/cols);
       const cx=80+col*cellW,cy=138+row*cellH;
       const isSel=synthSelected.includes(slot);
@@ -9196,7 +9197,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v268',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v269',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -10973,7 +10974,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v268',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v269',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
