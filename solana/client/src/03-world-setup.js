@@ -915,7 +915,7 @@ function drawTownWeather(){
       const my=(H-((fr*0.4+seed*23)%(H+60))-10)|0;
       if(my<-2||my>H+2)continue;
       const sz=(seed%4)<2?1:2; // 1px or 2px square matches original 0.5-1.3px radius
-      g.globalAlpha=wa*0.28*(0.5+Math.sin(fr*0.04+i)*0.5);
+      g.globalAlpha=wa*0.28*(0.5+(_sFr04*_IDX_CI[i]+_cFr04*_IDX_SI[i])*0.5);
       bx(mx,my,sz,sz,'rgba(255,240,190,1)');
     }
     g.globalAlpha=1;
