@@ -1519,7 +1519,7 @@ function removeCardFromPlayer(pIdx,slotOrRandom){
 function hasUniqueCards(pIdx){
   // For player: return vault (all ever collected); for rivals: derive from hand
   if(pIdx===0&&pl[0].vault)return pl[0].vault;
-  const s=new Set();pl[pIdx].cd.forEach(c=>{if(c>0)s.add(c);});return s;
+  const s=new Set();for(let _ci=0,_cl=pl[pIdx].cd.length;_ci<_cl;_ci++){if(pl[pIdx].cd[_ci]>0)s.add(pl[pIdx].cd[_ci]);}return s;
 }
 function playerHasAllSixty(){return pl[0].vault&&pl[0].vault.size>=60;}
 let _winTransitionPending=false; // guard against double-win transition
