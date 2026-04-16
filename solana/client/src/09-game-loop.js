@@ -368,7 +368,8 @@ function dSplash(){
 }
 
 function draw(){
-  g.clearRect(0,0,W,H);
+  // Fill with deep-ocean background (prevents transparent bleed-through beyond map edges)
+  g.fillStyle='#070d1a';g.fillRect(0,0,W,H);
   // Global screen shake
   let _shaking=false;
   if(shakeT>0){

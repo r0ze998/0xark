@@ -5162,7 +5162,8 @@ function drawDayNightOverlay(){
       tk.addColorStop(0,`rgba(20,10,60,${dk*0.55})`);tk.addColorStop(1,'rgba(0,0,0,0)');
       atmosCtx.fillStyle=tk;atmosCtx.fillRect(0,0,W,townH*0.6);
     }else if(dn.phase==='night'){
-      atmosCtx.fillStyle=`rgba(10,12,60,${0.22+dn.t*0.06})`;atmosCtx.fillRect(0,0,W,townH);
+      // v245: reduced night max alpha 0.28→0.18 for better mobile visibility
+      atmosCtx.fillStyle=`rgba(10,12,60,${0.12+dn.t*0.06})`;atmosCtx.fillRect(0,0,W,townH);
       if(currentMap===0){
         const townCX=15*TW-camX,townCY=12*TH-camY;
         const gc=atmosCtx.createRadialGradient(townCX,townCY,30,townCX,townCY,350);
@@ -5896,8 +5897,9 @@ function drawWater(px,py,tx_,ty){
     if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
     return;
   }
-  // Fallback: solid blue
-  bx(px,py,TW,TH,'#3060a0');
+  // Fallback: ocean blue with subtle wave bands
+  bx(px,py,TW,TH,'#1c3a6e');
+  if((ty+wt)%4<2)bx(px,py+8,TW,2,'#1e3e78');
   if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
 }
 
@@ -11145,6 +11147,8 @@ function dMenu(){
 // BATTLE / ACTION SCREEN (FRLG STYLE)
 // ═══════════════════════════════════════
 
+// v245: Pre-baked VS gold circle — eliminates arc per battle-intro frame
+const _vsGoldCircle=(()=>{const c=document.createElement('canvas');c.width=58;c.height=58;const ctx=c.getContext('2d');ctx.fillStyle='#f0c830';ctx.beginPath();ctx.arc(29,29,28,0,Math.PI*2);ctx.fill();return c;})();
 // v221: Pre-baked battle BG static layers — eliminates per-frame gradient creation during battle
 // Dungeon floor atmosphere data (shared between baking and runtime animated draws)
 const _floorAtm=[
@@ -11752,7 +11756,8 @@ function drawVsSplash(){
     const vsScale=t<20?1+(20-t)*0.08:1;   // slight overshoot pop-in
     const glowA=vsA*0.5*(0.7+Math.sin(t*0.3)*0.3);
     g.globalAlpha=glowA;
-    g.fillStyle='rgba(240,200,48,0.35)';g.beginPath();g.arc(W/2-8,H/2+30,28*vsScale,0,Math.PI*2);g.fill();
+    // v245: pre-baked drawImage replaces arc per frame
+    {const r_=28*vsScale;g.globalAlpha=glowA*0.35;g.drawImage(_vsGoldCircle,(W/2-8-r_+.5)|0,(H/2+30-r_+.5)|0,(r_*2)|0,(r_*2)|0);g.globalAlpha=glowA;}
     g.globalAlpha=vsA;
     g.save();g.translate(W/2-8,H/2+30);g.scale(vsScale,vsScale);g.translate(-(W/2-8),-(H/2+30));
     txShadow('VS',W/2-28,H/2+14,36,'#f0c830','#000');
@@ -17158,7 +17163,8 @@ function dSplash(){
 }
 
 function draw(){
-  g.clearRect(0,0,W,H);
+  // Fill with deep-ocean background (prevents transparent bleed-through beyond map edges)
+  g.fillStyle='#070d1a';g.fillRect(0,0,W,H);
   // Global screen shake
   let _shaking=false;
   if(shakeT>0){
