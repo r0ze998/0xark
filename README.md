@@ -105,7 +105,7 @@ Cards minted post-victory are 1-of-1 on-chain NFTs (supply=1, mint authority bur
 | On-chain program (Devnet) | `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3` |
 | ZK circuit compiled | ✅ 277 constraints, trusted setup complete |
 | Groth16 on-chain verifier | ✅ Solana BN254 syscalls (<200K CUs) |
-| Anchor instructions | 12 (create/join/start/commit/reveal/resolve/zk/nft/stake/prize/season/agent) |
+| Anchor instructions | 15 total (7 deployed on devnet, 8 mainnet-ready in codebase) |
 | Litesvm E2E tests | ✅ 9 tests, all passing |
 | Card pixel art | ✅ All 60 unique sprites complete (hand-crafted, per-frame animated) |
 | Building NPCs | ✅ Detailed pixel art characters (Merchant Elara, Spy Master Sable) |
@@ -204,7 +204,8 @@ The server **cannot alter any battle outcome**. Even if the WebSocket server is 
 │  Solana Devnet  │    │  WebSocket Server   │  │  x402 AI Broker  │
 │  (Anchor/Rust)  │    │  (Node.js :3500)    │  │  (Express :3402) │
 │                 │    │                     │  │                  │
-│  12 instructions│    │  Pure Relayer ✅    │  │  4 intel APIs    │
+│  15 instructions│    │  Pure Relayer ✅    │  │  4 intel APIs    │
+│  (7 on devnet)  │    │                     │  │                  │
 │  ─────────────  │    │  ─────────────────  │  │  ─────────────   │
 │  create_game    │    │  WS presence only   │  │  /intel/location │
 │  join_game      │    │  submit_tx relay    │  │  /intel/hand     │
