@@ -21,10 +21,11 @@ function groundType(t){
   return'grass';
 }
 
-// Forest pollen particles
+// Forest pollen particles (v355: sinPh/cosPh pre-computed at creation for sin-addition formula)
 const pollenParticles=[];
 for(let i=0;i<12;i++){
-  pollenParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.15+Math.random()*0.2,vy:-0.1+Math.random()*0.2,phase:Math.random()*Math.PI*2});
+  const ph=Math.random()*Math.PI*2;
+  pollenParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.15+Math.random()*0.2,vy:-0.1+Math.random()*0.2,phase:ph,sinPh:Math.sin(ph),cosPh:Math.cos(ph)});
 }
 
 // Player: cd=hand array (HAND_SIZE slots), vault=Set of unique card IDs ever collected

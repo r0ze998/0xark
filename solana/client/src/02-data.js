@@ -851,7 +851,9 @@ const FOG_COLORS=['#0a0a1e','#0a0818','#0c0818','#0e0820','#0c0a1c','#100818'];
 const fogParticles=[];
 for(let i=0;i<40;i++){
   const phase=Math.random()*Math.PI*2;
-  fogParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.1+Math.random()*0.15,vy:-0.05+Math.random()*0.1,phase,sinPh:Math.sin(phase),cosPh:Math.cos(phase),life:Math.random()});
+  fogParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.1+Math.random()*0.15,vy:-0.05+Math.random()*0.1,phase,sinPh:Math.sin(phase),cosPh:Math.cos(phase),
+    sinIPh:Math.sin(i*0.7),cosIPh:Math.cos(i*0.7), // v355: pre-baked for sin(fr*0.02+i*0.7) pattern
+    life:Math.random()});
 }
 
 function fogRevealAll(mapIdx){
