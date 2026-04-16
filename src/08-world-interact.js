@@ -1,3 +1,19 @@
+// v244: Pre-baked arc canvases for world interactions
+const _puzzleGlowCanvases=(()=>{
+  const cols=['#c04040','#4060c0','#d0c040'];
+  return cols.map(col=>{
+    const c=document.createElement('canvas');c.width=18;c.height=18;
+    const ctx=c.getContext('2d');
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(9,9,8,0,Math.PI*2);ctx.fill();
+    return c;
+  });
+})();
+const _fishBobberCanvas=(()=>{
+  const c=document.createElement('canvas');c.width=8;c.height=8;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#c04040';ctx.beginPath();ctx.arc(4,4,3,0,Math.PI*2);ctx.fill();
+  return c;
+})();
 // ═══════════════════════════════════════
 // FISHING MINIGAME (Corsair Bay docks)
 // ═══════════════════════════════════════
@@ -97,7 +113,7 @@ function drawFishingOverlay(){
     if(pl[0].dir===0){by_+=20;}else if(pl[0].dir===2){by_-=20;}
     else if(pl[0].dir===1){bx_-=20;}else{bx_+=20;}
     const bob=Math.sin(fr*0.1)*2;
-    g.fillStyle='#c04040';g.beginPath();g.arc(bx_+8,by_+bob,3,0,Math.PI*2);g.fill();
+    g.drawImage(_fishBobberCanvas,(bx_+4+.5)|0,(by_+bob-3+.5)|0);
     // Line from player to bobber
     g.strokeStyle='#a0a0a0';g.lineWidth=1;
     g.beginPath();g.moveTo(px+8,py);g.lineTo(bx_+8,by_+bob);g.stroke();
@@ -200,10 +216,11 @@ function drawPuzzlePillars(){
       // Label
       const label=puzzleNames[puzzleStoneOrder[i]][0];
       txShadow(label,px+5,py+13,5,'#fff','rgba(0,0,0,.4)');
-      // Glow — globalAlpha+solid avoids per-frame hex parsing + template literal + arc alloc
+      // v244: pre-baked canvas replaces arc per frame
       const pulse=Math.sin(fr*.06+i*2)*.2+.4;
-      g.globalAlpha=pulse;g.fillStyle=col;
-      g.beginPath();g.arc(px+8,py+8,8,0,Math.PI*2);g.fill();
+      const ci=puzzleStoneOrder[i];
+      g.globalAlpha=pulse;
+      g.drawImage(_puzzleGlowCanvases[ci],(px+.5)|0,(py+.5)|0);
       g.globalAlpha=1;
     }
   }

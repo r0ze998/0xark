@@ -14,6 +14,11 @@ const _mapEdgeGradB=(()=>{const gr=g.createLinearGradient(0,H-HUD_HEIGHT-_edgeFa
 // v219: Pre-baked proximity danger vignette — avoid createRadialGradient every frame
 const _proxVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H-HUD_HEIGHT;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,(H-HUD_HEIGHT)/2,W*0.3,W/2,(H-HUD_HEIGHT)/2,W*0.7);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(180,30,30,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H-HUD_HEIGHT);return c;})();
 
+// v244: Pre-baked map decoration arc canvases — spider glow, glow-items, rope coil
+const _spiderGlowCanvas=(()=>{const c=document.createElement('canvas');c.width=22;c.height=22;const ctx=c.getContext('2d');ctx.fillStyle='#806090';ctx.beginPath();ctx.arc(11,11,10,0,Math.PI*2);ctx.fill();return c;})();
+const _glowItemOrangeCanvas=(()=>{const c=document.createElement('canvas');c.width=42;c.height=42;const ctx=c.getContext('2d');ctx.fillStyle='#f08040';ctx.beginPath();ctx.arc(21,21,20,0,Math.PI*2);ctx.fill();return c;})();
+const _glowItemBlueCanvas=(()=>{const c=document.createElement('canvas');c.width=42;c.height=42;const ctx=c.getContext('2d');ctx.fillStyle='#80c0f0';ctx.beginPath();ctx.arc(21,21,20,0,Math.PI*2);ctx.fill();return c;})();
+const _ropeCoilCanvas=(()=>{const c=document.createElement('canvas');c.width=14;c.height=10;const ctx=c.getContext('2d');ctx.fillStyle='#a09060';ctx.beginPath();ctx.ellipse(7,6,6,4,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b0a070';ctx.beginPath();ctx.ellipse(7,6,4,2,0,0,Math.PI*2);ctx.fill();return c;})();
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -685,8 +690,7 @@ function drawPirateDecorations(){
     ropeSpots.forEach(([rtx,rty])=>{
       const rpx=rtx*TW-camX,rpy=rty*TH-camY;
       if(rpx>-TW&&rpx<W+TW&&rpy>-TW&&rpy<H+TW&&fogRevealed[0][rty]?.[rtx]){
-        g.fillStyle='#a09060';g.beginPath();g.ellipse(rpx+16,rpy+22,6,4,0,0,Math.PI*2);g.fill();
-        g.fillStyle='#b0a070';g.beginPath();g.ellipse(rpx+16,rpy+22,4,2,0,0,Math.PI*2);g.fill();
+        g.drawImage(_ropeCoilCanvas,(rpx+9)|0,(rpy+16)|0);
         bx(rpx+14,rpy+18,4,4,'#a09060');
       }
     });
@@ -813,7 +817,7 @@ function drawPirateDecorations(){
           // Ghostly glow around skull
           const glowA=Math.sin(fr*0.04+sx*2+sy*3)*0.1+0.12;
           g.globalAlpha=glowA;
-          g.fillStyle='#806090';g.beginPath();g.arc(spx+16,spy+8,10,0,Math.PI*2);g.fill();
+          g.drawImage(_spiderGlowCanvas,(spx+5)|0,(spy-3)|0);
           g.globalAlpha=1;
         }
       }
@@ -854,8 +858,7 @@ function drawPirateDecorations(){
           if(gpx>-20&&gpx<W+20&&gpy>-20&&gpy<H+20){
             const glowPulse=Math.sin(fr*0.03+gx*3+gy*5)*0.06+0.08;
             g.globalAlpha=glowPulse;
-            g.fillStyle=gt===25?'#f08040':'#80c0f0';
-            g.beginPath();g.arc(gpx,gpy,20,0,Math.PI*2);g.fill();
+            g.drawImage(gt===25?_glowItemOrangeCanvas:_glowItemBlueCanvas,(gpx-21)|0,(gpy-21)|0);
             g.globalAlpha=1;
           }
         }
