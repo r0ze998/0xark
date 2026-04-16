@@ -1520,11 +1520,56 @@ function drawNPCDialog(){
 
 // ═══════════════════════════════════════
 // TITLE SCREEN
+// v225: Pre-baked static title-screen canvases (eliminates per-frame gradient creation)
 // ═══════════════════════════════════════
+// Top purple-void gradient (static, 280px tall)
+const _titleVoidGradCanvas=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=280;
+  const ctx=c.getContext('2d');
+  const gd=ctx.createLinearGradient(0,0,0,280);
+  gd.addColorStop(0,'rgba(40,16,80,0.28)');gd.addColorStop(1,'rgba(40,16,80,0)');
+  ctx.fillStyle=gd;ctx.fillRect(0,0,W,280);
+  return c;
+})();
+// Rune grid lines (5 horizontal 1px lines, alpha=0.04)
+const _titleRuneGridCanvas=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  ctx.globalAlpha=0.04;ctx.fillStyle='#9945FF';
+  for(let gy_=60;gy_<H;gy_+=80)ctx.fillRect(0,gy_,W,1);
+  return c;
+})();
+// Moon constants shared between halo + disk bakes
+const _moonMx=Math.floor(W*0.78),_moonMy=72,_moonMr=22;
+// Moon halo: radial gradient baked at alpha=1 so globalAlpha scales it at draw time
+const _moonHaloR=Math.ceil(_moonMr*3.2);
+const _moonHaloCanvas=(()=>{
+  const sz=_moonHaloR*2+4;
+  const c=document.createElement('canvas');c.width=sz;c.height=sz;
+  const ctx=c.getContext('2d');
+  const cx_=sz/2,cy_=sz/2;
+  const grd=ctx.createRadialGradient(cx_,cy_,_moonMr,cx_,cy_,_moonHaloR);
+  grd.addColorStop(0,'rgba(220,210,255,1)');
+  grd.addColorStop(1,'rgba(220,210,255,0)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,sz,sz);
+  return c;
+})();
+// Moon disk + crescent shadow (baked at alpha=1, globalAlpha=moonPulse at draw time)
+const _moonDiskCanvas=(()=>{
+  const sz=_moonMr*2+8;
+  const c=document.createElement('canvas');c.width=sz;c.height=sz;
+  const ctx=c.getContext('2d');
+  const cx_=sz/2,cy_=sz/2;
+  ctx.fillStyle='#c8c0e8';
+  ctx.beginPath();ctx.arc(cx_,cy_,_moonMr,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(6,6,18,0.28)';
+  ctx.beginPath();ctx.arc(cx_+6,cy_-3,_moonMr*0.92,0,Math.PI*2);ctx.fill();
+  return c;
+})();
 function dTitle(){
   bx(0,0,W,H,'#060612');
-  // Gothic void gradient — deep purple-black from top (v210: single gradient fill, was 280 fillRects)
-  {const gd=g.createLinearGradient(0,0,0,280);gd.addColorStop(0,'rgba(40,16,80,0.28)');gd.addColorStop(1,'rgba(40,16,80,0)');g.fillStyle=gd;g.fillRect(0,0,W,280);}
+  // v225: pre-baked void gradient (was createLinearGradient every frame)
+  g.drawImage(_titleVoidGradCanvas,0,0);
   // Ethereal void pillars — slow vertical light columns
   for(let b=0;b<5;b++){
     const bx_=(b*136+fr*0.08)%W;
@@ -1559,8 +1604,7 @@ function dTitle(){
     const shotY=30+sp2*100;
     const shotA=Math.sin(sp2*Math.PI)*0.9;
     for(let t=0;t<7;t++){
-      const ta=(shotA*(1-t/7)*0.8).toFixed(3);
-      g.globalAlpha=parseFloat(ta);
+      g.globalAlpha=shotA*(1-t/7)*0.8;
       bx((shotX-t*9)|0,(shotY-t*6)|0,2,1,'#d8d0ff');
     }
     g.globalAlpha=shotA;
@@ -1578,26 +1622,17 @@ function dTitle(){
     bx(bsx-3,bsy,6,1,rc);bx(bsx,bsy-3,1,6,rc);
     g.globalAlpha=1;
   }
-  // Horizontal rune-grid lines (very subtle, gothic cathedral feel)
-  g.globalAlpha=0.04;
-  for(let gy_=60;gy_<H;gy_+=80)bx(0,gy_,W,1,'#9945FF');
-  g.globalAlpha=1;
-  // v210: Moon — full circle with soft halo, top-right quadrant
+  // v225: pre-baked rune grid (was 5 bx calls with globalAlpha state change each frame)
+  g.drawImage(_titleRuneGridCanvas,0,0);
+  // v210/v225: Moon — pre-baked halo + disk, modulated by moonPulse globalAlpha
   {
-    const mx_=W*0.78,my_=72,mr=22;
     const moonPulse=0.55+Math.sin(fr*0.012)*0.04;
-    // Outer halo
-    const halo=g.createRadialGradient(mx_,my_,mr,mx_,my_,mr*3.2);
-    halo.addColorStop(0,`rgba(220,210,255,${moonPulse*0.18})`);
-    halo.addColorStop(1,'rgba(220,210,255,0)');
-    g.fillStyle=halo;g.fillRect(mx_-mr*3.2,my_-mr*3.2,mr*6.4,mr*6.4);
-    // Moon disk
+    // Outer halo (pre-baked at alpha=1; globalAlpha scales it to moonPulse*0.18)
+    g.globalAlpha=moonPulse*0.18;
+    g.drawImage(_moonHaloCanvas,_moonMx-_moonHaloR-2,_moonMy-_moonHaloR-2);
+    // Moon disk + crescent (pre-baked, modulated by moonPulse)
     g.globalAlpha=moonPulse;
-    g.fillStyle='#c8c0e8';
-    g.beginPath();g.arc(mx_,my_,mr,0,Math.PI*2);g.fill();
-    // Subtle shadow crescent (makes it look like a moon, not a circle)
-    g.fillStyle='rgba(6,6,18,0.28)';
-    g.beginPath();g.arc(mx_+6,my_-3,mr*0.92,0,Math.PI*2);g.fill();
+    g.drawImage(_moonDiskCanvas,_moonMx-_moonMr-4,_moonMy-_moonMr-4);
     g.globalAlpha=1;
     // Moon reflection shimmer on water below
     const refX=mx_,refY=H-30;
