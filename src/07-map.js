@@ -367,9 +367,30 @@ const FLOOR_ATMOS=[
   ['#601008','rgba(255,120,20,.15)',40,-0.8,3],  // F5: lava sparks
 ];
 
+// v204: World-space fog ambient motes — cached to fogAmbCanvas, rebuilt every 3 frames
+function _drawFogAmbientMotes(ambCol,ambCount,ambVY,ambSz){
+  const seed=fr*0.02;
+  for(let i=0;i<ambCount;i++){
+    const px=((i*1237+fr*3)%1000/1000)*MW*TW;
+    const py=((i*4321+fr*2)%1000/1000)*MH*TH;
+    const dpy=py+Math.sin(seed+i*1.3)*20+fr*ambVY*(1+i%3)*0.3;
+    const dpyWrapped=((dpy%MH*TH)+MH*TH)%(MH*TH);
+    const sx=px-camX,sy=dpyWrapped-camY;
+    if(sx<-4||sx>W+4||sy<-4||sy>H+4)continue;
+    const tileX=Math.floor(px/TW),tileY=Math.floor(dpyWrapped/TH);
+    if(tileX<0||tileX>=MW||tileY<0||tileY>=MH)continue;
+    if(!fogRevealed[currentMap][tileY]?.[tileX])continue;
+    g.globalAlpha=(0.5+0.5*Math.sin(seed*1.5+i*2.1))*0.7;
+    g.fillStyle=ambCol;
+    g.fillRect(sx,sy,ambSz,ambSz);
+  }
+  g.globalAlpha=1;
+}
+
 function drawFogParticles(){
   const atmos=FLOOR_ATMOS[inDungeon?currentFloor:0]||FLOOR_ATMOS[0];
   const [fogCol,ambCol,ambCount,ambVY,ambSz]=atmos;
+  // Update particle positions and draw fog overlay dots — batch globalAlpha: set once per particle, reset once at end
   fogParticles.forEach((p,i)=>{
     p.x+=p.vx;
     p.y+=Math.sin(fr*0.015+p.phase)*0.1+p.vy;
@@ -378,38 +399,25 @@ function drawFogParticles(){
     if(p.y>MH*TH)p.y=0;
     const sx=p.x-camX,sy=p.y-camY;
     if(sx>0&&sx<W&&sy>0&&sy<H-HUD_HEIGHT){
-      // Fog particles over hidden tiles
       const tileX=Math.floor(p.x/TW),tileY=Math.floor(p.y/TH);
       if(tileX>=0&&tileX<MW&&tileY>=0&&tileY<MH&&!fogRevealed[currentMap][tileY]?.[tileX]){
-        const a=0.15+Math.sin(fr*0.02+i*0.7)*0.1;
-        g.globalAlpha=Math.max(0,a);
+        g.globalAlpha=Math.max(0,0.15+Math.sin(fr*0.02+i*0.7)*0.1);
         g.fillStyle=fogCol;
         g.fillRect(sx,sy,1,1);
-        g.globalAlpha=1;
       }
     }
   });
-  // Floor-specific ambient particles over revealed tiles (dungeon only)
+  g.globalAlpha=1;
+  // Floor-specific ambient motes — cached to fogAmbCanvas, rebuilt every 3 frames
   if(!inDungeon||ambCount===0)return;
-  const seed=fr*0.02;
-  for(let i=0;i<ambCount;i++){
-    // Deterministic pseudo-random position based on frame+index
-    const px=((i*1237+fr*3)%1000/1000)*MW*TW;
-    const py=((i*4321+fr*2)%1000/1000)*MH*TH;
-    // Drift upward/downward over time
-    const dpy=py+Math.sin(seed+i*1.3)*20+fr*ambVY*(1+i%3)*0.3;
-    const dpyWrapped=((dpy%MH*TH)+MH*TH)%(MH*TH);
-    const sx=px-camX,sy=dpyWrapped-camY;
-    if(sx<-4||sx>W+4||sy<-4||sy>H+4)continue;
-    const tileX=Math.floor(px/TW),tileY=Math.floor(dpyWrapped/TH);
-    if(tileX<0||tileX>=MW||tileY<0||tileY>=MH)continue;
-    if(!fogRevealed[currentMap][tileY]?.[tileX])continue;
-    const pulse=0.5+0.5*Math.sin(seed*1.5+i*2.1);
-    g.globalAlpha=pulse*0.7;
-    g.fillStyle=ambCol;
-    g.fillRect(sx,sy,ambSz,ambSz);
-    g.globalAlpha=1;
+  if(fr-_fogAmbFrame>=3||_fogAmbFloor!==currentFloor){
+    fogAmbCtx.clearRect(0,0,W,H);
+    const _mc=g;g=fogAmbCtx;
+    _drawFogAmbientMotes(ambCol,ambCount,ambVY,ambSz);
+    g=_mc;
+    _fogAmbFrame=fr;_fogAmbFloor=currentFloor;
   }
+  g.drawImage(fogAmbCanvas,0,0,W,H);
 }
 
 function drawRivalAlertAnim(p,px,py){
@@ -1037,9 +1045,21 @@ function dMap(){
       visiblePl.push(hv);
     }else{hv._wasVisible=false;}
   }else{pl[2]._wasVisible=false;}
+  // v206: Dungeon floor-aura colors — one per floor, glow pulsed behind each sprite
+  const DUNGEON_AURA_RGB=[null,'80,140,200','60,140,80','140,60,200','200,80,20','100,20,160'];
   const sorted=visiblePl.map((p,i)=>({p,i:pl.indexOf(p)}));
   sorted.sort((a,b)=>a.p.visualY-b.p.visualY);
   sorted.forEach(({p,i})=>{
+    // Dungeon aura glow — radial gradient at sprite feet, floor-themed, pulsing
+    if(inDungeon&&currentFloor>=1&&currentFloor<=5){
+      const spx=p.visualX-camX+TW/2,spy=p.visualY-camY+TH*0.7;
+      const auraRgb=DUNGEON_AURA_RGB[currentFloor];
+      const pulse=0.08+0.05*Math.sin(fr*0.045+i*1.1);
+      const aGrd=g.createRadialGradient(spx,spy,0,spx,spy,26);
+      aGrd.addColorStop(0,`rgba(${auraRgb},${pulse.toFixed(3)})`);
+      aGrd.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=aGrd;g.fillRect(spx-26,spy-26,52,52);
+    }
     drawSprite(p,i===0);
     if(i!==0){
       const spx=p.visualX-camX,spy=p.visualY-camY-16;
@@ -1580,7 +1600,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v203',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v209',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);

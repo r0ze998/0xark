@@ -555,152 +555,144 @@ function drawBanner(){
 function drawMinimap(){
   const mmW=130,mmH=88;
   const mx=W-mmW-10,my=H-HUD_HEIGHT-mmH-16;
+  const sx=mmW/MW,sy=mmH/MH;
 
-  // FRLG-style window border
+  // ── BASE LAYER: tile colors + fog — updated every 10 frames or on map change ──
+  if(currentMap!==_mmBaseMap||fr-_mmBaseFrame>=10){
+    const _mc=g;g=mmBaseCtx;
+    // Background
+    g.clearRect(0,0,mmW,mmH);
+    g.fillStyle='rgba(20,20,30,.88)';g.fillRect(0,0,mmW,mmH);
+    const m=getMap();
+    for(let ty=0;ty<MH;ty+=2){
+      for(let tx_=0;tx_<MW;tx_+=2){
+        const revealed=fogRevealed[currentMap][ty]?.[tx_]||
+                       fogRevealed[currentMap][ty]?.[tx_+1]||
+                       fogRevealed[currentMap][ty+1]?.[tx_]||
+                       fogRevealed[currentMap][ty+1]?.[tx_+1];
+        if(!revealed){bx(tx_*sx,ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),'#080810');continue;}
+        const t=m[ty]?.[tx_];
+        let col;
+        if(t===0||t===17)col='#3070b8';
+        else if(t===1||t===7||t===11)col='#48a850';
+        else if(t===3||t===13)col='#2a6828';
+        else if(t===2)col='#a08050';
+        else if(t===4||t===10||t===14)col='#d8c060';
+        else if(t===5||t===15||t===16)col='#c04848';
+        else if(t===18||t===8)col='#686878';
+        else if(t===22||t===23)col='#585860';
+        else if(t===25)col='#c04020';
+        else if(t===24||t===26)col='#60c0d0';
+        else col='#48a850';
+        bx(tx_*sx,ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),col);
+      }
+    }
+    g=_mc;
+    _mmBaseMap=currentMap;_mmBaseFrame=fr;
+  }
+
+  // ── ANIM LAYER: encounter shimmer — updated every 4 frames ──
+  if(fr-_mmAnimFrame>=4){
+    const _mc=g;g=mmAnimCtx;
+    g.clearRect(0,0,mmW,mmH);
+    if(inDungeon){
+      const m=getMap();
+      for(let ty=0;ty<MH;ty+=2){
+        for(let tx_=0;tx_<MW;tx_+=2){
+          const rev2=fogRevealed[currentMap][ty]?.[tx_]||
+                     fogRevealed[currentMap][ty]?.[tx_+1]||
+                     fogRevealed[currentMap][ty+1]?.[tx_]||
+                     fogRevealed[currentMap][ty+1]?.[tx_+1];
+          if(!rev2)continue;
+          const t2=m[ty]?.[tx_];
+          let encRate=0;
+          if(t2===11)encRate=0.30;
+          else if(t2===1)encRate=0.15;
+          if(encRate===0)continue;
+          const phase=(tx_*3+ty*7)&15;
+          const shimmer=Math.sin(fr*0.07+phase*0.39)*0.5+0.5;
+          const alpha=(encRate>0.25?0.22:0.12)*shimmer;
+          const eCol=encRate>0.25?`rgba(255,160,30,${alpha})`:`rgba(180,240,80,${alpha})`;
+          bx(tx_*sx,ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),eCol);
+        }
+      }
+    }
+    g=_mc;
+    _mmAnimFrame=fr;
+  }
+
+  // ── BLIT both cached layers ──
+  g.drawImage(mmBaseCanvas,mx,my);
+  g.drawImage(mmAnimCanvas,mx,my);
+
+  // ── FRLG-style window border (cheap, always per-frame) ──
   g.fillStyle='#484058';
   g.fillRect(mx,my-1,mmW,1);g.fillRect(mx-1,my,1,mmH);
   g.fillRect(mx+mmW,my,1,mmH);g.fillRect(mx,my+mmH,mmW,1);
   g.fillStyle='#686078';
   g.fillRect(mx+1,my,mmW-2,1);g.fillRect(mx,my+1,1,mmH-2);
   g.fillRect(mx+mmW-1,my+1,1,mmH-2);g.fillRect(mx+1,my+mmH-1,mmW-2,1);
-  // Fill background
-  bx(mx+1,my+1,mmW-2,mmH-2,'rgba(20,20,30,.88)');
 
-  // Draw simplified map with fog - actual tile colors
-  const m=getMap();
-  const sx=mmW/MW,sy=mmH/MH;
-  for(let ty=0;ty<MH;ty+=2){
-    for(let tx_=0;tx_<MW;tx_+=2){
-      const revealed=fogRevealed[currentMap][ty]?.[tx_]||
-                     fogRevealed[currentMap][ty]?.[tx_+1]||
-                     fogRevealed[currentMap][ty+1]?.[tx_]||
-                     fogRevealed[currentMap][ty+1]?.[tx_+1];
-      if(!revealed){
-        bx(mx+tx_*sx,my+ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),'#080810');
-        continue;
-      }
-      const t=m[ty]?.[tx_];
-      let col=null;
-      // Actual tile colors: water=blue, grass=green, sand=yellow, path=brown, buildings=red
-      if(t===0||t===17)col='#3070b8';       // water = blue
-      else if(t===1||t===7||t===11)col='#48a850'; // grass = green
-      else if(t===3||t===13)col='#2a6828';   // trees = dark green
-      else if(t===2)col='#a08050';           // path = brown
-      else if(t===4||t===10||t===14)col='#d8c060'; // sand = yellow
-      else if(t===5||t===15||t===16)col='#c04848'; // buildings = red
-      else if(t===18||t===8)col='#686878';   // mountain/rock
-      else if(t===22||t===23)col='#585860';  // ruins
-      else if(t===25)col='#c04020';          // lava
-      else if(t===24||t===26)col='#60c0d0';  // glow/crystal
-      else col='#48a850';                     // default grass
-      bx(mx+tx_*sx,my+ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),col);
-    }
-  }
-
-  // v128: Encounter zone shimmer overlay — amber for tall grass (30%), yellow-green for regular (15%)
+  // ── Dungeon legend (static text, cheap) ──
   if(inDungeon){
-    for(let ty=0;ty<MH;ty+=2){
-      for(let tx_=0;tx_<MW;tx_+=2){
-        const rev2=fogRevealed[currentMap][ty]?.[tx_]||
-                   fogRevealed[currentMap][ty]?.[tx_+1]||
-                   fogRevealed[currentMap][ty+1]?.[tx_]||
-                   fogRevealed[currentMap][ty+1]?.[tx_+1];
-        if(!rev2)continue;
-        const t2=m[ty]?.[tx_];
-        let encRate=0;
-        if(t2===11)encRate=0.30;
-        else if(t2===1)encRate=0.15;
-        if(encRate===0)continue;
-        // Per-tile phase offset creates rolling shimmer across the map
-        const phase=(tx_*3+ty*7)&15;
-        const shimmer=Math.sin(fr*0.07+phase*0.39)*0.5+0.5;
-        const alpha=(encRate>0.25?0.22:0.12)*shimmer;
-        const eCol=encRate>0.25?`rgba(255,160,30,${alpha})`:`rgba(180,240,80,${alpha})`;
-        bx(mx+tx_*sx,my+ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),eCol);
-      }
-    }
-    // Tiny legend: amber dot = tall grass (30%), yellow-green = regular grass (15%)
     bx(mx+2,my+mmH-9,4,4,'rgba(255,160,30,0.65)');
     txShadow('30%',mx+7,my+mmH-5,4,'rgba(220,160,60,0.7)','rgba(0,0,0,.3)');
     bx(mx+26,my+mmH-9,4,4,'rgba(180,240,80,0.55)');
     txShadow('15%',mx+31,my+mmH-5,4,'rgba(160,200,80,0.7)','rgba(0,0,0,.3)');
   }
 
-  // Exit locations as blinking white dots (pulse)
+  // ── Dynamic dots: exits, NPCs, traps, rivals, player (all cheap, per-frame) ──
   const exitPulse=Math.sin(fr*0.15)*0.4+0.6;
   exits.forEach(e=>{
     if(e.fromMap===currentMap){
       e.tiles.forEach(([ex,ey])=>{
         if(fogRevealed[currentMap][ey]?.[ex]){
           g.globalAlpha=exitPulse;
-          const epx=mx+ex*sx,epy=my+ey*sy;
-          bx(epx,epy,Math.max(1,sx),Math.max(1,sy),'#fff');
+          bx(mx+ex*sx,my+ey*sy,Math.max(1,sx),Math.max(1,sy),'#fff');
           g.globalAlpha=1;
         }
       });
     }
   });
-
-  // NPC dots (small yellow)
   npcs.forEach(npc=>{
-    if(npc.map===currentMap&&fogRevealed[currentMap][npc.y]?.[npc.x]){
-      const npx=mx+npc.x*sx,npy=my+npc.y*sy;
-      bx(npx,npy,Math.max(1,sx),Math.max(1,sy),'#f0d040');
-    }
+    if(npc.map===currentMap&&fogRevealed[currentMap][npc.y]?.[npc.x])
+      bx(mx+npc.x*sx,my+npc.y*sy,Math.max(1,sx),Math.max(1,sy),'#f0d040');
   });
-
-  // Triggered traps as red dots on minimap
   triggeredTraps.forEach(key=>{
     const parts=key.split('-');
     const tMap=parseInt(parts[0]),tx_=parseInt(parts[1]),ty_=parseInt(parts[2]);
-    if(tMap===currentMap){
-      bx(mx+tx_*sx,my+ty_*sy,Math.max(1,sx),Math.max(1,sy),'#ff3030');
-    }
+    if(tMap===currentMap)bx(mx+tx_*sx,my+ty_*sy,Math.max(1,sx),Math.max(1,sy),'#ff3030');
   });
-
-  // Rival dots: visible through fog OR crystal reveal active
   pl.slice(1).forEach((rp,idx)=>{
-    if(rivalMaps[idx]===currentMap){
-      if(isVisibleThroughFog(rp.x,rp.y,3)||crystalRevealTimer>0){
-        const rpx=mx+rp.x*sx,rpy=my+rp.y*sy;
-        bx(rpx,rpy,2,2,rp.c);
-        // Direction arrow when crystal reveal or recent scout active
-        if(crystalRevealTimer>0){
-          const ai=rivalAI[idx];
-          const gdx=ai.goalX-rp.x;const gdy=ai.goalY-rp.y;
-          if(gdx!==0||gdy!==0){
-            const len=Math.sqrt(gdx*gdx+gdy*gdy);
-            const nx_=gdx/len*4,ny_=gdy/len*4;
-            g.strokeStyle=rp.c;g.lineWidth=1;
-            g.beginPath();g.moveTo(rpx+1,rpy+1);g.lineTo(rpx+1+nx_,rpy+1+ny_);g.stroke();
-          }
+    if(rivalMaps[idx]===currentMap&&(isVisibleThroughFog(rp.x,rp.y,3)||crystalRevealTimer>0)){
+      const rpx=mx+rp.x*sx,rpy=my+rp.y*sy;
+      bx(rpx,rpy,2,2,rp.c);
+      if(crystalRevealTimer>0){
+        const ai=rivalAI[idx];
+        const gdx=ai.goalX-rp.x,gdy=ai.goalY-rp.y;
+        if(gdx!==0||gdy!==0){
+          const len=Math.sqrt(gdx*gdx+gdy*gdy);
+          g.strokeStyle=rp.c;g.lineWidth=1;
+          g.beginPath();g.moveTo(rpx+1,rpy+1);g.lineTo(rpx+1+gdx/len*4,rpy+1+gdy/len*4);g.stroke();
         }
       }
     }
   });
-
-  // Exit/entrance markers on minimap (always shown in dungeon)
   if(inDungeon){
     exits.forEach(ex=>{
       if(ex.fromMap!==currentMap)return;
       ex.tiles.forEach(([etx,ety])=>{
-        const col=ex.isGoal?'#ffe060':ex.isEscape?'#40e060':'#e0c040'; // gold=goal, green=escape, yellow=deeper
-        const edx=mx+etx*sx,edy=my+ety*sy;
+        const col=ex.isGoal?'#ffe060':ex.isEscape?'#40e060':'#e0c040';
         g.globalAlpha=0.8+Math.sin(fr*0.1)*0.2;
-        bx(edx,edy,Math.max(2,sx),Math.max(2,sy),col);
+        bx(mx+etx*sx,my+ety*sy,Math.max(2,sx),Math.max(2,sy),col);
         g.globalAlpha=1;
       });
     });
   }
-
-  // Player dot - bright blinking
   const playerPulse=Math.sin(fr*0.2)*0.3+0.7;
   g.globalAlpha=playerPulse;
-  const pdx=mx+pl[0].x*sx,pdy=my+pl[0].y*sy;
-  bx(pdx-1,pdy-1,3,3,'#fff');bx(pdx,pdy,1,1,'#40f040');
+  bx(mx+pl[0].x*sx-1,my+pl[0].y*sy-1,3,3,'#fff');bx(mx+pl[0].x*sx,my+pl[0].y*sy,1,1,'#40f040');
   g.globalAlpha=1;
-
-  // Map name above minimap
   txShadow(mapNames[currentMap],mx,my-5,4,mapColors[currentMap],'rgba(0,0,0,.4)');
 }
 
@@ -1757,7 +1749,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v203',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v208',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

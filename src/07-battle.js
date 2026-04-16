@@ -18,24 +18,16 @@ function drawBattleBG(){
   const enemyPlatY=horizonY+30; // enemy platform top
 
   if(currentMap===0&&!inDungeon){
-    // PORT: Sky layer (blue gradient)
-    for(let y=0;y<horizonY;y++){
-      const t=y/horizonY;
-      const r=Math.floor(lerp(130,180,t));
-      const gv=Math.floor(lerp(190,220,t));
-      const b=Math.floor(lerp(240,250,t));
-      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
-    }
+    // PORT: Sky layer — linear gradient (replaces per-row loop)
+    {const gd=g.createLinearGradient(0,0,0,horizonY);
+    gd.addColorStop(0,'rgb(130,190,240)');gd.addColorStop(1,'rgb(180,220,250)');
+    g.fillStyle=gd;g.fillRect(0,0,W,horizonY);}
     // Horizon line (bright band)
     bx(0,horizonY-2,W,4,'rgba(255,255,255,.15)');
-    // Ocean/ground layer below horizon
-    for(let y=horizonY;y<H;y++){
-      const t=(y-horizonY)/(H-horizonY);
-      const r=Math.floor(lerp(80,100,t));
-      const gv=Math.floor(lerp(140,160,t));
-      const b=Math.floor(lerp(200,180,t));
-      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
-    }
+    // Ocean/ground — linear gradient
+    {const gd=g.createLinearGradient(0,horizonY,0,H);
+    gd.addColorStop(0,'rgb(80,140,200)');gd.addColorStop(1,'rgb(100,160,180)');
+    g.fillStyle=gd;g.fillRect(0,horizonY,W,H-horizonY);}
     // Waves
     for(let i=0;i<6;i++){
       const wy=horizonY+20+i*18+Math.sin(fr*0.04+i)*4;
@@ -61,14 +53,11 @@ function drawBattleBG(){
     ];
     const fl=Math.max(1,Math.min(5,currentFloor||1));
     const a=floorAtm[fl]||floorAtm[1];
-    // Ceiling layer (gradient from darker to floor base)
-    for(let y=0;y<horizonY;y++){
-      const t=y/horizonY;
-      const r=Math.floor(lerp(a[0]*0.6,a[0],t));
-      const gv=Math.floor(lerp(a[1]*0.6,a[1],t));
-      const b=Math.floor(lerp(a[2]*0.6,a[2],t));
-      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
-    }
+    // Ceiling — linear gradient (replaces per-row loop)
+    {const gd=g.createLinearGradient(0,0,0,horizonY);
+    gd.addColorStop(0,`rgb(${Math.floor(a[0]*.6)},${Math.floor(a[1]*.6)},${Math.floor(a[2]*.6)})`);
+    gd.addColorStop(1,`rgb(${a[0]},${a[1]},${a[2]})`);
+    g.fillStyle=gd;g.fillRect(0,0,W,horizonY);}
     // Background pillars (style varies by floor)
     for(let i=0;i<4;i++){
       const px_=60+i*160;
@@ -115,14 +104,11 @@ function drawBattleBG(){
     }
     // Horizon line
     bx(0,horizonY-2,W,6,a[6]);bx(0,horizonY-2,W,2,a[7]);
-    // Floor gradient
-    for(let y=horizonY;y<H;y++){
-      const t=(y-horizonY)/(H-horizonY);
-      const r=Math.floor(lerp(a[3],a[3]+20,t));
-      const gv=Math.floor(lerp(a[4],a[4]+18,t));
-      const b=Math.floor(lerp(a[5],a[5]+20,t));
-      bx(0,y,W,1,`rgb(${r},${gv},${b})`);
-    }
+    // Floor — linear gradient
+    {const gd=g.createLinearGradient(0,horizonY,0,H);
+    gd.addColorStop(0,`rgb(${a[3]},${a[4]},${a[5]})`);
+    gd.addColorStop(1,`rgb(${a[3]+20},${a[4]+18},${a[5]+20})`);
+    g.fillStyle=gd;g.fillRect(0,horizonY,W,H-horizonY);}
     // Floor cracks (more pronounced on deeper floors)
     const crackCount=2+fl*1;
     for(let i=0;i<crackCount;i++){

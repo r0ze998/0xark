@@ -1053,6 +1053,31 @@ const dvigCtx=dvigCanvas.getContext('2d');
 let _dvigFrame=-9999;
 let _dvigFloor=-1;
 
+// Fog ambient particle cache — world-space dungeon floor motes (update every 3 frames)
+const fogAmbCanvas=document.createElement('canvas');
+fogAmbCanvas.width=W;fogAmbCanvas.height=H;
+const fogAmbCtx=fogAmbCanvas.getContext('2d');
+let _fogAmbFrame=-9999;
+let _fogAmbFloor=-1;
+
+// Minimap layer caches — base tiles (updated on fog/map change) + shimmer (updated every 4 frames)
+const mmW_=130,mmH_=88;
+const mmBaseCanvas=document.createElement('canvas');mmBaseCanvas.width=mmW_;mmBaseCanvas.height=mmH_;
+const mmBaseCtx=mmBaseCanvas.getContext('2d');
+let _mmBaseMap=-1,_mmBaseFrame=-9999;
+const mmAnimCanvas=document.createElement('canvas');mmAnimCanvas.width=mmW_;mmAnimCanvas.height=mmH_;
+const mmAnimCtx=mmAnimCanvas.getContext('2d');
+let _mmAnimFrame=-9999;
+
+// GBA-style scanlines — pre-baked once; single drawImage per frame (zero per-frame cost)
+const scanCanvas=document.createElement('canvas');
+scanCanvas.width=W;scanCanvas.height=H;
+{
+  const sc2=scanCanvas.getContext('2d');
+  sc2.fillStyle='rgba(0,0,0,0.032)';
+  for(let y=0;y<H;y+=2)sc2.fillRect(0,y,W,1);
+}
+
 // Set imageSmoothingEnabled=false globally on main context once canvases exist
 g.imageSmoothingEnabled=false;
 
