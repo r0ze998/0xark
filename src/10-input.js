@@ -930,6 +930,8 @@ document.addEventListener('keydown',e=>{
             const lostCard=evTexts.includes('stole your')||evTexts.includes('STOLE');
             battleRoundHistory.unshift({rd:rd,pa:bpAction,r1a:bpRivalActions[0],r2a:bpRivalActions[1],got:gotCard,lost:lostCard});
             if(battleRoundHistory.length>4)battleRoundHistory.pop();
+            // v284: maintain running net for per-frame momentum strip (avoids reduce per frame)
+            _battleRoundNet=0;for(let _bni=0;_bni<battleRoundHistory.length;_bni++){const _bnh=battleRoundHistory[_bni];_battleRoundNet+=(_bnh.got?1:0)-(_bnh.lost?1:0);}
           }
           bpRdIncremented=true;
           rd++;roundsThisRun++;
