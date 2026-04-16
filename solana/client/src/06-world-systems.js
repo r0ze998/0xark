@@ -1057,10 +1057,16 @@ function openCardShop(){
   sfxShopOpen();
 }
 
+// v267: reusable slot buffer — eliminates slots=[] per frame in drawCardShop hot path
+const _shopSlotsBuf=new Int8Array(7);
 function getPlayerFilledSlots(){
   const slots=[];
   for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)slots.push(i);}
   return slots;
+}
+// Allocation-free version used by render path only
+function _getFilledSlotsN(){
+  let n=0;for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)_shopSlotsBuf[n++]=i;}return n;
 }
 
 function doShopTrade(){
@@ -1124,14 +1130,14 @@ function drawCardShop(){
   bx(wX+16,wY+36,wW-32,1,'rgba(200,180,100,.3)');
 
   if(shopPhase==='list'){
-    const filled=getPlayerFilledSlots();
-    if(filled.length===0){
+    const _sfN=_getFilledSlotsN(); // v267: no alloc — uses _shopSlotsBuf
+    if(_sfN===0){
       txShadow('You have no cards to trade.',wX+24,wY+80,8,'#989080','rgba(0,0,0,.2)');
       txShadow('Press X to leave.',wX+24,wY+102,7,'#686068','rgba(0,0,0,.15)');
     }else{
       txShadow('Select a card to offer:',wX+24,wY+56,7,'#988868','rgba(0,0,0,.2)');
-      for(let i=0;i<filled.length;i++){
-        const slot=filled[i];const cd=pl[0].cd[slot];
+      for(let i=0;i<_sfN;i++){
+        const slot=_shopSlotsBuf[i];const cd=pl[0].cd[slot];
         const cr=CD[cd-1];
         const rowH=38,ry=wY+68+i*rowH;
         const isSel=i===shopSelectedIdx;
@@ -1862,7 +1868,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v267',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v268',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
