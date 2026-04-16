@@ -1452,14 +1452,16 @@ function tx(s,x,y,sz,c){
   g.fillText(s,x,y);
 }
 // v246: Font cache — g.font= is one of the most expensive Canvas2D ops (triggers font metric recalc)
-// _lastFontSz is reset each draw() frame via 09-game-loop.js; direct g.font= calls invalidate it too
-let _lastFontSz=-1;
+// v246: Font + shadow state cache — skips redundant Canvas2D property assignments
+// _lastFontSz reset each draw() frame + after non-VT323 g.font= calls
+let _lastFontSz=-1,_shadowReady=false;
 function setFont(sz){if(sz!==_lastFontSz){g.font=sz+"px 'VT323',monospace";_lastFontSz=sz;}}
 function txShadow(s,x,y,sz,color,shadowColor){
   // v210: native shadow API — 3 fillText → 1 (save ~100 draw calls/frame)
+  // v246: cache font + shadow offset state — static offset/blur set once per frame (saves 3×N assigns)
   setFont(Math.max(12,Math.round((sz||12)*1.4)));
+  if(!_shadowReady){g.shadowOffsetX=1;g.shadowOffsetY=1;g.shadowBlur=0;_shadowReady=true;}
   g.shadowColor=shadowColor||'rgba(0,0,0,0.9)';
-  g.shadowOffsetX=1;g.shadowOffsetY=1;g.shadowBlur=0;
   g.fillStyle=color||ARK.text;g.fillText(s,x,y);
   g.shadowColor='transparent';
 }
@@ -17168,8 +17170,8 @@ function dSplash(){
 function draw(){
   // Fill with deep-ocean background (prevents transparent bleed-through beyond map edges)
   g.fillStyle='#070d1a';g.fillRect(0,0,W,H);
-  // v246: reset txShadow font cache each frame (direct g.font= assignments can invalidate it)
-  _lastFontSz=-1;
+  // v246: reset txShadow state cache each frame
+  _lastFontSz=-1;_shadowReady=false;
   // Global screen shake
   let _shaking=false;
   if(shakeT>0){
