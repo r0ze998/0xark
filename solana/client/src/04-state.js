@@ -215,7 +215,7 @@ function drawPlayerStatusEffects(){
   }
 
   // Sparkle particles when player has 4+ cards
-  const cardCount=pl[0].cd.filter(c=>c>0).length;
+  const cardCount=cdCount(pl[0].cd); // v273: cdCount() vs filter
   if(cardCount>=4){
     if(fr%6===0){
       statusSparkles.push({
@@ -258,7 +258,7 @@ function drawPlayerStatusEffects(){
 
   // v87: World-space player status bubble in dungeon
   if(inDungeon){
-    const hc=pl[0].cd.filter(c=>c>0).length;
+    const hc=cdCount(pl[0].cd); // v273: cdCount() vs filter
     // Find most critical decay
     let minRemaining=Infinity;
     for(let i=0;i<HAND_SIZE;i++){

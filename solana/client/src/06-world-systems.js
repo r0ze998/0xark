@@ -1499,6 +1499,7 @@ const NPC_ACCENT={
   'Dungeon Porter':'#e06848',
   'Alchemist':'#40c0c0',
 };
+let _npcDlgCacheIdx=-1,_npcDlgCacheLines=[]; // v273: NPC dialog wrap cache
 function drawNPCDialog(){
   if(!npcDialogActive)return;
   const dlgSlide=Math.min(1,(fr-npcDialogOpenFrame)/6);
@@ -1518,16 +1519,17 @@ function drawNPCDialog(){
   bx(10,H-112+slideOff,nbW,2,accent);
   txShadow(npcDialogName,20,H-97+slideOff,7,accent,'rgba(0,0,0,.35)');
 
-  // Combine current dialog lines and wrap properly
-  const rawLine=npcDialogLines[npcDialogIdx]||'';
-  const rawLine2=npcDialogLines[npcDialogIdx+1]||'';
-  const maxChars=52;
-  const wrapped1=wrapText(rawLine,maxChars);
-  const wrapped2=rawLine2?wrapText(rawLine2,maxChars):[];
-  const allLines=[...wrapped1,...wrapped2];
-  const _alLen=Math.min(3,allLines.length);
+  // v273: cache wrapped lines per dialog index — only recompute when idx changes
+  if(_npcDlgCacheIdx!==npcDialogIdx){
+    _npcDlgCacheIdx=npcDialogIdx;
+    const rawLine=npcDialogLines[npcDialogIdx]||'';
+    const rawLine2=npcDialogLines[npcDialogIdx+1]||'';
+    const w1=wrapText(rawLine,52),w2=rawLine2?wrapText(rawLine2,52):[];
+    _npcDlgCacheLines=w1.concat(w2);
+  }
+  const _alLen=Math.min(3,_npcDlgCacheLines.length);
   for(let i=0;i<_alLen;i++){
-    txShadow(allLines[i],20,H-70+slideOff+i*16,7,FRLG.textColor,'rgba(0,0,0,.25)');
+    txShadow(_npcDlgCacheLines[i],20,H-70+slideOff+i*16,7,FRLG.textColor,'rgba(0,0,0,.25)');
   }
 
   // Progress indicator: show line X/total as small dots bottom-left
@@ -1595,6 +1597,7 @@ const _moonDiskCanvas=(()=>{
   ctx.beginPath();ctx.arc(cx_+6,cy_-3,_moonMr*0.92,0,Math.PI*2);ctx.fill();
   return c;
 })();
+let _orbitCacheSz=-1,_orbitCacheCards=[]; // v273: title orbit vault cache
 function dTitle(){
   bx(0,0,W,H,'#060612');
   // v225: pre-baked void gradient (was createLinearGradient every frame)
@@ -1735,8 +1738,13 @@ function dTitle(){
   }
   // v110: Collected cards orbiting the title (personalised showcase, best rarity first)
   if(pl[0].vault&&pl[0].vault.size>0){
-    const vault_=[...pl[0].vault].sort((a,b)=>(CD[b-1].r||1)-(CD[a-1].r||1));
-    const orbitCards=vault_.slice(0,Math.min(8,vault_.length));
+    // v273: cache orbit cards — vault doesn't change on title screen
+    if(_orbitCacheSz!==pl[0].vault.size){
+      _orbitCacheSz=pl[0].vault.size;
+      const va_=[...pl[0].vault].sort((a,b)=>(CD[b-1].r||1)-(CD[a-1].r||1));
+      _orbitCacheCards=va_.slice(0,Math.min(8,va_.length));
+    }
+    const orbitCards=_orbitCacheCards;
     const orbitCount=orbitCards.length;
     const orbitCX=W/2-96+64; // centered on "0xARK" title
     const orbitCY=196;
@@ -1869,7 +1877,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v272',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v273',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
