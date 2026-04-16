@@ -2,6 +2,8 @@
 // BATTLE / ACTION SCREEN (FRLG STYLE)
 // ═══════════════════════════════════════
 
+// v245: Pre-baked VS gold circle — eliminates arc per battle-intro frame
+const _vsGoldCircle=(()=>{const c=document.createElement('canvas');c.width=58;c.height=58;const ctx=c.getContext('2d');ctx.fillStyle='#f0c830';ctx.beginPath();ctx.arc(29,29,28,0,Math.PI*2);ctx.fill();return c;})();
 // v221: Pre-baked battle BG static layers — eliminates per-frame gradient creation during battle
 // Dungeon floor atmosphere data (shared between baking and runtime animated draws)
 const _floorAtm=[
@@ -609,7 +611,8 @@ function drawVsSplash(){
     const vsScale=t<20?1+(20-t)*0.08:1;   // slight overshoot pop-in
     const glowA=vsA*0.5*(0.7+Math.sin(t*0.3)*0.3);
     g.globalAlpha=glowA;
-    g.fillStyle='rgba(240,200,48,0.35)';g.beginPath();g.arc(W/2-8,H/2+30,28*vsScale,0,Math.PI*2);g.fill();
+    // v245: pre-baked drawImage replaces arc per frame
+    {const r_=28*vsScale;g.globalAlpha=glowA*0.35;g.drawImage(_vsGoldCircle,(W/2-8-r_+.5)|0,(H/2+30-r_+.5)|0,(r_*2)|0,(r_*2)|0);g.globalAlpha=glowA;}
     g.globalAlpha=vsA;
     g.save();g.translate(W/2-8,H/2+30);g.scale(vsScale,vsScale);g.translate(-(W/2-8),-(H/2+30));
     txShadow('VS',W/2-28,H/2+14,36,'#f0c830','#000');

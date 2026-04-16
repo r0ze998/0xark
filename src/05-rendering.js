@@ -117,8 +117,9 @@ function drawWater(px,py,tx_,ty){
     if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
     return;
   }
-  // Fallback: solid blue
-  bx(px,py,TW,TH,'#3060a0');
+  // Fallback: ocean blue with subtle wave bands
+  bx(px,py,TW,TH,'#1c3a6e');
+  if((ty+wt)%4<2)bx(px,py+8,TW,2,'#1e3e78');
   if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
 }
 

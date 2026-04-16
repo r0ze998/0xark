@@ -159,7 +159,8 @@ function drawDayNightOverlay(){
       tk.addColorStop(0,`rgba(20,10,60,${dk*0.55})`);tk.addColorStop(1,'rgba(0,0,0,0)');
       atmosCtx.fillStyle=tk;atmosCtx.fillRect(0,0,W,townH*0.6);
     }else if(dn.phase==='night'){
-      atmosCtx.fillStyle=`rgba(10,12,60,${0.22+dn.t*0.06})`;atmosCtx.fillRect(0,0,W,townH);
+      // v245: reduced night max alpha 0.28→0.18 for better mobile visibility
+      atmosCtx.fillStyle=`rgba(10,12,60,${0.12+dn.t*0.06})`;atmosCtx.fillRect(0,0,W,townH);
       if(currentMap===0){
         const townCX=15*TW-camX,townCY=12*TH-camY;
         const gc=atmosCtx.createRadialGradient(townCX,townCY,30,townCX,townCY,350);
