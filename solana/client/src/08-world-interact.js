@@ -448,7 +448,7 @@ function drawBuildingInterior(){
     txShadow('RUNE SUMMON',gx+gw/2-68,gy+20,12,'#f8c840','rgba(0,0,0,.5)');
     // Vault progress
     const vSize=pl[0].vault?pl[0].vault.size:0;
-    txShadow('Reliquary: '+vSize+'/60',gx+8,gy+40,7,'#c8c0a0','rgba(0,0,0,.3)');
+    txShadow('Reliquary: '+(_UNIQ60[vSize]||(vSize+'/60')),gx+8,gy+40,7,'#c8c0a0','rgba(0,0,0,.3)'); // v323
 
     if(gachaPhase==='menu'){
       txShadow('Choose a ritual:',gx+16,gy+58,8,'#d0c8a0','rgba(0,0,0,.3)');
