@@ -90,7 +90,7 @@ function drawBattleBG(){
     // Waves (animated — fr-dependent)
     for(let i=0;i<6;i++){
       const wy=horizonY+20+i*18+Math.sin(fr*0.04+i)*4;
-      bx(0,wy,W,2,`rgba(255,255,255,${0.1-i*0.012})`);
+      bx(0,wy,W,2,_btlWaveAlphas[i]);
     }
   }else{
     // Dungeon battle BG — blit pre-baked static layers, then draw animated elements on top
@@ -152,17 +152,15 @@ function drawBattleBG(){
   if(vsRiv===1){
     // VEGA: dark magenta screen-edge vignette + drifting orbs
     g.drawImage(_btlVigVega,0,0);
-    // Three drifting dark-energy orbs near VEGA's side
+    // Three drifting dark-energy orbs near VEGA's side (pre-baked canvases)
     for(let i=0;i<3;i++){
       const phase=fr*0.018+i*2.1;
       const ox=W-220+Math.cos(phase)*28+i*22;
       const oy=100+Math.sin(phase*0.7)*22+i*16;
       const ora=0.12+Math.sin(phase*1.3)*0.06;
-      g.globalAlpha=ora;
-      g.fillStyle='#c040a0';
-      g.beginPath();g.arc(ox,oy,5+i*2,0,Math.PI*2);g.fill();
-      g.globalAlpha=ora*0.4;
-      g.beginPath();g.arc(ox,oy,10+i*3,0,Math.PI*2);g.fill();
+      const vo=_vegaOrbs[i];
+      g.globalAlpha=ora;g.drawImage(vo[0].canvas,(ox-vo[0].hw)|0,(oy-vo[0].hw)|0);
+      g.globalAlpha=ora*0.4;g.drawImage(vo[1].canvas,(ox-vo[1].hw)|0,(oy-vo[1].hw)|0);
     }
     g.globalAlpha=1;
   }else{
@@ -225,6 +223,18 @@ function drawCardBar(x,y,w,cards,maxCards){
     g.globalAlpha=1;
   }
 }
+
+// v236: Pre-baked VEGA orb canvases (6 small: 3 inner + 3 outer) — replaces 6 arc/frame in VEGA battle
+function _mkVegaOrb(r){
+  const c=document.createElement('canvas');c.width=r*2+2;c.height=r*2+2;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#c040a0';ctx.beginPath();ctx.arc(r+1,r+1,r,0,Math.PI*2);ctx.fill();
+  return {canvas:c,hw:r+1};
+}
+// [i][0]=inner orb, [i][1]=outer orb; i=0..2
+const _vegaOrbs=[[_mkVegaOrb(5),_mkVegaOrb(10)],[_mkVegaOrb(7),_mkVegaOrb(13)],[_mkVegaOrb(9),_mkVegaOrb(16)]];
+// Pre-computed wave alpha strings — avoids 6 template literals per frame during town battle
+const _btlWaveAlphas=['rgba(255,255,255,0.1)','rgba(255,255,255,0.088)','rgba(255,255,255,0.076)','rgba(255,255,255,0.064)','rgba(255,255,255,0.052)','rgba(255,255,255,0.04)'];
 
 // v230: Pre-baked battle sprite shadow/glow ellipses — replaces per-frame ellipse() calls
 // Shadow ellipse (dark oval under sprite feet): one per scale variant
