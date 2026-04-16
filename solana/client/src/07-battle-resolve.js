@@ -715,11 +715,14 @@ function drawResolvingPhase(){
       const fillW=Math.max(0,Math.floor(barW*(1-qteProgress)));
       const barCol=isCritical?'#ff3030':isUrgent?'#f08030':'#40d080';
       if(fillW>0){
-        const barGrad=g.createLinearGradient(barX,barY,barX+fillW,barY);
-        barGrad.addColorStop(0,barCol);
-        barGrad.addColorStop(1,isCritical?'#ff8060':isUrgent?'#f0d030':'#80f0a0');
-        g.fillStyle=barGrad;
+        // v243: solid fill replaces createLinearGradient per frame
+        g.fillStyle=barCol;
         g.fillRect(barX,barY,fillW,barH);
+        // Subtle highlight on top half
+        g.globalAlpha=0.25;
+        g.fillStyle='#ffffff';
+        g.fillRect(barX,barY,fillW,(barH/2)|0);
+        g.globalAlpha=1;
       }
       // Bar border
       bx(barX,barY,barW,1,accentCol);
@@ -927,16 +930,13 @@ function drawResultPhase(){
       const rarCols=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
       const rcol=rarCols[rar]||'#d85840';
       // Glow halo behind card
-      if(rar>=3){
+      if(rar>=3&&_cardRarGlow[rar]){
+        // v243: pre-baked drawImage replaces createRadialGradient+arc per frame
         const glowR=22+rar*6+Math.sin(fr*0.12)*4;
-        g.save();
-        g.globalAlpha=showcaseAlpha*(0.15+Math.sin(fr*0.1)*0.08);
-        const grd=g.createRadialGradient(sCX,sCY,0,sCX,sCY,glowR);
-        grd.addColorStop(0,rcol.replace('#','rgba(').replace(')','').slice(0,-1)+',0.5)');
-        grd.addColorStop(1,'rgba(0,0,0,0)');
-        g.fillStyle=rcol;g.globalAlpha=showcaseAlpha*(0.2+Math.sin(fr*0.1)*0.1);
-        g.beginPath();g.arc(sCX,sCY,glowR,0,Math.PI*2);g.fill();
-        g.restore();
+        const cg=_cardRarGlow[rar];
+        g.globalAlpha=showcaseAlpha*(0.2+Math.sin(fr*0.1)*0.1);
+        g.drawImage(cg.canvas,(sCX-glowR+.5)|0,(sCY-glowR+.5)|0,(glowR*2)|0,(glowR*2)|0);
+        g.globalAlpha=1;
       }
       // Card art (scaled up)
       g.save();
