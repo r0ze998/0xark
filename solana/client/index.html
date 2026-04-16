@@ -11146,7 +11146,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v338',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v339',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -14695,12 +14695,17 @@ function drawDungeonConfirm(){
   // v265: allocation-free counting (was filter×2 per frame while confirm open)
   let f1Uncollected=0,f1Total=0;
   for(let _ti=0;_ti<treasures.length;_ti++){const _tr=treasures[_ti];if(_tr.map===1){f1Total++;if(!_tr.collected)f1Uncollected++;}}
+  // v339: B1 danger level indicator
+  {const _dv=areaDanger[1]||0;const _di=_dv>=DANGER_HIGH_THRESH?2:_dv>=DANGER_LOW_THRESH?1:0;
+  const _dlbl=['SAFE','LOW DANGER','HIGH DANGER'][_di];const _dcol=['#40b060','#d0a030','#d04040'][_di];
+  txShadow('\u26A0 B1: '+_dlbl,cx_+cw-110,cy_+50,7,_dcol,'rgba(0,0,0,.3)');}
   if(f1Uncollected>0){
-    txShadow('\u25cf B1 chests: '+f1Uncollected+'/'+f1Total+' uncollected',cx_+20,intelY,7,'#c0a840','rgba(0,0,0,.3)');
+    const _ck=f1Uncollected*100+f1Total;if(_f1ChestKey!==_ck){_f1ChestKey=_ck;_f1ChestLbl='\u25cf B1 chests: '+f1Uncollected+'/'+f1Total+' uncollected';} // v339: lazy cache
+    txShadow(_f1ChestLbl,cx_+20,intelY,7,'#c0a840','rgba(0,0,0,.3)');
     intelY+=16;
   }
   if(runMission&&!runMission.completed){
-    txShadow('Mission failed: '+runMission.desc,cx_+20,intelY,6,'#707868','rgba(0,0,0,.3)');
+    txShadow('\u25CE Mission: '+runMission.desc,cx_+20,intelY,6,'#8898c8','rgba(0,0,0,.3)'); // v339: fix label (was "Mission failed")
     intelY+=14;
   }
   const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
@@ -14743,6 +14748,8 @@ const _MKT_LISTING_PRICE_LBL=_MKT_LISTINGS.map(l=>l.price+' SOL');
 const _LOG_STAT_LABELS=['btl','got','lost',''];
 // v338: pre-baked card decay countdown strings 0..210s (CARD_DECAY_MS=210000)
 const _DECAY_TIME_LBL=(()=>{const a=[];for(let s=0;s<=300;s++){const mm=Math.floor(s/60),ss2=s%60;a.push(mm>0?mm+'m'+(ss2<10?'0':'')+ss2+'s':s+'s');}return a;})();
+// v339: lazy cache for B1 chest intel label in dungeon confirm
+let _f1ChestLbl='',_f1ChestKey=-1;
 // v338: lazy cache for card acquisition "You obtained X!" label and NEW badge label
 let _acqObtainedLbl='',_acqObtainedRef=null;
 let _acqNewLbl='',_acqNewVault=-1;
@@ -16542,6 +16549,8 @@ const _MEDALS=['1ST','2ND','3RD'],_MEDAL_COLS=['#f0c830','#c0c0c0','#c08040'];
 const _PCT_LBL=(()=>{const a=[];for(let i=0;i<=100;i++)a.push(i+'%');return a;})();
 // v330: pre-baked floor-clear fanfare labels (index = floor, 1-5)
 const _FLOOR_CLEARED_LBL=(()=>{const a=[];for(let i=0;i<6;i++)a.push('FLOOR '+(_FLOOR_NUMS[i]||('B'+i))+' CLEARED');return a;})();
+// v339: pre-baked floor-clear descent footer labels (index = cleared floor)
+const _DESCEND_LBL=['','Descending to B2...','Descending to B3...','Descending to B4...','Descending to B5...','Final floor — claim the ARK!'];
 // v331: pre-baked rarity pip count labels (5 rarities × 0..60 cards)
 const _RAR_PIP_FULL=(()=>{const a=[];for(let ri=0;ri<5;ri++){const r=[];for(let n=0;n<=60;n++)r.push(_RAR_PIP_LBLS[ri]+':'+n);a.push(r);}return a;})();
 // v235: Pre-baked game-over screen assets — 32 arc/frame + 1 gradient/frame eliminated
@@ -16691,7 +16700,7 @@ function drawFloorClearFanfare(){
   if(t>50){
     const ftA=Math.min(1,(t-50)/20);
     g.globalAlpha=alpha*ftA*(0.5+Math.abs(Math.sin(t*0.06))*0.5);
-    const ftTxt=d.isGoal?'All cards await — claim the Prize Pool!':'Descending deeper...';
+    const ftTxt=d.isGoal?'All cards await — claim the Prize Pool!':(_DESCEND_LBL[d.floor]||'Descending deeper...');
     const ftCol=d.isGoal?'#f0c840':'#686880';
     txShadow(ftTxt,px_+pw/2-(d.isGoal?148:90),py_+ph-22,8,ftCol,'rgba(0,0,0,.3)');
   }

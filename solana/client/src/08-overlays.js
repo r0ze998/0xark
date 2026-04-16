@@ -182,12 +182,17 @@ function drawDungeonConfirm(){
   // v265: allocation-free counting (was filter×2 per frame while confirm open)
   let f1Uncollected=0,f1Total=0;
   for(let _ti=0;_ti<treasures.length;_ti++){const _tr=treasures[_ti];if(_tr.map===1){f1Total++;if(!_tr.collected)f1Uncollected++;}}
+  // v339: B1 danger level indicator
+  {const _dv=areaDanger[1]||0;const _di=_dv>=DANGER_HIGH_THRESH?2:_dv>=DANGER_LOW_THRESH?1:0;
+  const _dlbl=['SAFE','LOW DANGER','HIGH DANGER'][_di];const _dcol=['#40b060','#d0a030','#d04040'][_di];
+  txShadow('\u26A0 B1: '+_dlbl,cx_+cw-110,cy_+50,7,_dcol,'rgba(0,0,0,.3)');}
   if(f1Uncollected>0){
-    txShadow('\u25cf B1 chests: '+f1Uncollected+'/'+f1Total+' uncollected',cx_+20,intelY,7,'#c0a840','rgba(0,0,0,.3)');
+    const _ck=f1Uncollected*100+f1Total;if(_f1ChestKey!==_ck){_f1ChestKey=_ck;_f1ChestLbl='\u25cf B1 chests: '+f1Uncollected+'/'+f1Total+' uncollected';} // v339: lazy cache
+    txShadow(_f1ChestLbl,cx_+20,intelY,7,'#c0a840','rgba(0,0,0,.3)');
     intelY+=16;
   }
   if(runMission&&!runMission.completed){
-    txShadow('Mission failed: '+runMission.desc,cx_+20,intelY,6,'#707868','rgba(0,0,0,.3)');
+    txShadow('\u25CE Mission: '+runMission.desc,cx_+20,intelY,6,'#8898c8','rgba(0,0,0,.3)'); // v339: fix label (was "Mission failed")
     intelY+=14;
   }
   const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
@@ -230,6 +235,8 @@ const _MKT_LISTING_PRICE_LBL=_MKT_LISTINGS.map(l=>l.price+' SOL');
 const _LOG_STAT_LABELS=['btl','got','lost',''];
 // v338: pre-baked card decay countdown strings 0..210s (CARD_DECAY_MS=210000)
 const _DECAY_TIME_LBL=(()=>{const a=[];for(let s=0;s<=300;s++){const mm=Math.floor(s/60),ss2=s%60;a.push(mm>0?mm+'m'+(ss2<10?'0':'')+ss2+'s':s+'s');}return a;})();
+// v339: lazy cache for B1 chest intel label in dungeon confirm
+let _f1ChestLbl='',_f1ChestKey=-1;
 // v338: lazy cache for card acquisition "You obtained X!" label and NEW badge label
 let _acqObtainedLbl='',_acqObtainedRef=null;
 let _acqNewLbl='',_acqNewVault=-1;

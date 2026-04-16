@@ -15,6 +15,8 @@ const _MEDALS=['1ST','2ND','3RD'],_MEDAL_COLS=['#f0c830','#c0c0c0','#c08040'];
 const _PCT_LBL=(()=>{const a=[];for(let i=0;i<=100;i++)a.push(i+'%');return a;})();
 // v330: pre-baked floor-clear fanfare labels (index = floor, 1-5)
 const _FLOOR_CLEARED_LBL=(()=>{const a=[];for(let i=0;i<6;i++)a.push('FLOOR '+(_FLOOR_NUMS[i]||('B'+i))+' CLEARED');return a;})();
+// v339: pre-baked floor-clear descent footer labels (index = cleared floor)
+const _DESCEND_LBL=['','Descending to B2...','Descending to B3...','Descending to B4...','Descending to B5...','Final floor — claim the ARK!'];
 // v331: pre-baked rarity pip count labels (5 rarities × 0..60 cards)
 const _RAR_PIP_FULL=(()=>{const a=[];for(let ri=0;ri<5;ri++){const r=[];for(let n=0;n<=60;n++)r.push(_RAR_PIP_LBLS[ri]+':'+n);a.push(r);}return a;})();
 // v235: Pre-baked game-over screen assets — 32 arc/frame + 1 gradient/frame eliminated
@@ -164,7 +166,7 @@ function drawFloorClearFanfare(){
   if(t>50){
     const ftA=Math.min(1,(t-50)/20);
     g.globalAlpha=alpha*ftA*(0.5+Math.abs(Math.sin(t*0.06))*0.5);
-    const ftTxt=d.isGoal?'All cards await — claim the Prize Pool!':'Descending deeper...';
+    const ftTxt=d.isGoal?'All cards await — claim the Prize Pool!':(_DESCEND_LBL[d.floor]||'Descending deeper...');
     const ftCol=d.isGoal?'#f0c840':'#686880';
     txShadow(ftTxt,px_+pw/2-(d.isGoal?148:90),py_+ph-22,8,ftCol,'rgba(0,0,0,.3)');
   }
