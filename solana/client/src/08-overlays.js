@@ -887,21 +887,17 @@ function dCrd(){
 // ═══════════════════════════════════════
 // v75: CARD DETAIL PANEL
 // ═══════════════════════════════════════
-const CARD_SOURCE_HINTS=[
-  // For each card index 0-59, which floor/source to find it
-  // Floor 1=F1, 2=F2, etc., 0=any
-  // Built from DUNGEON_FLOOR_CARDS in runtime below
-];
-function getCardSourceHint(cardId){
-  // Check which dungeon floor pools contain this card
-  const floors=[];
+// v278: Pre-bake source hints at startup — getCardSourceHint() becomes O(1) array lookup
+const CARD_SOURCE_HINTS=(()=>{
+  const h=new Array(61).fill('Gacha / Trade');
   for(let f=1;f<=5;f++){
-    const pool=DUNGEON_FLOOR_CARDS[f];
-    if(pool&&pool.includes(cardId))floors.push(f);
+    const pool=DUNGEON_FLOOR_CARDS[f];if(!pool)continue;
+    const name=_FLOOR_NAMES[f];
+    for(let i=0;i<pool.length;i++){const id=pool[i];h[id]=h[id]==='Gacha / Trade'?name:h[id]+' / '+name;}
   }
-  if(floors.length===0)return'Gacha / Trade';
-  return floors.map(f=>_FLOOR_NAMES[f]).join(' / '); // v262: use hoisted _FLOOR_NAMES
-}
+  return h;
+})();
+function getCardSourceHint(cardId){return CARD_SOURCE_HINTS[cardId]||'Gacha / Trade';}
 function drawCardDetailPanel(){
   if(!crdDetailActive)return;
   const typeStart=crdPage*12;

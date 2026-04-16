@@ -469,9 +469,12 @@ function dStats(){
 
   const elapsed=Math.floor((Date.now()-stats.sessionStart)/1000);
   const mins=Math.floor(elapsed/60),secs=elapsed%60;
-  const favIdx=stats.areaTime.indexOf(Math.max(...stats.areaTime));
+  // v278: replace spread+reduce with single loop — no per-frame allocation
+  let _atMax=0,_atTotal=0;
+  for(let _ai=0;_ai<stats.areaTime.length;_ai++){const v=stats.areaTime[_ai];if(v>_atMax)_atMax=v;_atTotal+=v;}
+  const favIdx=stats.areaTime.indexOf(_atMax);
   const favArea=stats.areaTime[favIdx]>0?mapNames[favIdx]:'None yet';
-  const totalAreaTime=stats.areaTime.reduce((a,b)=>a+b,0)||1;
+  const totalAreaTime=_atTotal||1;
 
   // Single window for all stats — clean list format
   const padTop=60;

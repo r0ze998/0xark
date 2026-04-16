@@ -10979,7 +10979,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v277',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v278',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -15044,21 +15044,17 @@ function dCrd(){
 // ═══════════════════════════════════════
 // v75: CARD DETAIL PANEL
 // ═══════════════════════════════════════
-const CARD_SOURCE_HINTS=[
-  // For each card index 0-59, which floor/source to find it
-  // Floor 1=F1, 2=F2, etc., 0=any
-  // Built from DUNGEON_FLOOR_CARDS in runtime below
-];
-function getCardSourceHint(cardId){
-  // Check which dungeon floor pools contain this card
-  const floors=[];
+// v278: Pre-bake source hints at startup — getCardSourceHint() becomes O(1) array lookup
+const CARD_SOURCE_HINTS=(()=>{
+  const h=new Array(61).fill('Gacha / Trade');
   for(let f=1;f<=5;f++){
-    const pool=DUNGEON_FLOOR_CARDS[f];
-    if(pool&&pool.includes(cardId))floors.push(f);
+    const pool=DUNGEON_FLOOR_CARDS[f];if(!pool)continue;
+    const name=_FLOOR_NAMES[f];
+    for(let i=0;i<pool.length;i++){const id=pool[i];h[id]=h[id]==='Gacha / Trade'?name:h[id]+' / '+name;}
   }
-  if(floors.length===0)return'Gacha / Trade';
-  return floors.map(f=>_FLOOR_NAMES[f]).join(' / '); // v262: use hoisted _FLOOR_NAMES
-}
+  return h;
+})();
+function getCardSourceHint(cardId){return CARD_SOURCE_HINTS[cardId]||'Gacha / Trade';}
 function drawCardDetailPanel(){
   if(!crdDetailActive)return;
   const typeStart=crdPage*12;
@@ -16623,9 +16619,12 @@ function dStats(){
 
   const elapsed=Math.floor((Date.now()-stats.sessionStart)/1000);
   const mins=Math.floor(elapsed/60),secs=elapsed%60;
-  const favIdx=stats.areaTime.indexOf(Math.max(...stats.areaTime));
+  // v278: replace spread+reduce with single loop — no per-frame allocation
+  let _atMax=0,_atTotal=0;
+  for(let _ai=0;_ai<stats.areaTime.length;_ai++){const v=stats.areaTime[_ai];if(v>_atMax)_atMax=v;_atTotal+=v;}
+  const favIdx=stats.areaTime.indexOf(_atMax);
   const favArea=stats.areaTime[favIdx]>0?mapNames[favIdx]:'None yet';
-  const totalAreaTime=stats.areaTime.reduce((a,b)=>a+b,0)||1;
+  const totalAreaTime=_atTotal||1;
 
   // Single window for all stats — clean list format
   const padTop=60;
