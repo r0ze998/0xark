@@ -2194,6 +2194,10 @@ const _MPSTAR_SI17=new Float32Array(60);const _MPSTAR_CI17=new Float32Array(60);
 const _MPCARD_SI14=new Float32Array(8);const _MPCARD_CI14=new Float32Array(8);
 for(let i=0;i<60;i++){_MPSTAR_SI17[i]=Math.sin(i*1.7);_MPSTAR_CI17[i]=Math.cos(i*1.7);}
 for(let i=0;i<8;i++){_MPCARD_SI14[i]=Math.sin(i*1.4);_MPCARD_CI14[i]=Math.cos(i*1.4);}
+// v397: pre-baked spatial phases for map load screen dungeon particles (30 entries, step 0.7)
+// sin(mapLoadScreenFrame*0.08 + i*0.7) uses sin-addition with these tables
+const _MLDS_SI07=new Float32Array(30);const _MLDS_CI07=new Float32Array(30);
+for(let i=0;i<30;i++){_MLDS_SI07[i]=Math.sin(i*0.7);_MLDS_CI07[i]=Math.cos(i*0.7);}
 let mp={
   connected:false,
   ws:null,
@@ -2659,14 +2663,16 @@ function drawMapLoadScreen(){
 
   if(isDungeon){
     // Dramatic: falling pixel particles (dungeon descent effect)
+    // v397: sin-addition with pre-baked spatial phases (30→2 trig calls/frame)
+    {const _mS8=Math.sin(mapLoadScreenFrame*0.08),_mC8=Math.cos(mapLoadScreenFrame*0.08);
     for(let i=0;i<30;i++){
       const px_=((i*1237+mapLoadScreenFrame*3)%1000/1000)*W;
       const py_=((i*3141+mapLoadScreenFrame*4)%1000/1000)*(H+40)-20;
-      const pa=0.3+Math.sin(mapLoadScreenFrame*0.08+i*0.7)*0.3;
+      const pa=0.3+(_mS8*_MLDS_CI07[i]+_mC8*_MLDS_SI07[i])*0.3;
       g.globalAlpha=alpha*pa;
       g.fillStyle=atmosAccent;
       g.fillRect(px_,py_,2,4);
-    }
+    }}
     g.globalAlpha=alpha;
 
     // Floor number — huge
