@@ -1528,11 +1528,12 @@ function addCardToPlayer(pIdx,cardId){
 function removeCardFromPlayer(pIdx,slotOrRandom){
   const p=pl[pIdx];
   const handLimit=(pIdx===0)?HAND_SIZE:5;
-  if(slotOrRandom===-1){// random
-    const filled=[];for(let i=0;i<handLimit;i++){if(p.cd[i]>0)filled.push(i);}
-    if(filled.length===0)return 0;
-    const slot=filled[Math.floor(Math.random()*filled.length)];
-    const card=p.cd[slot];p.cd[slot]=0;if(pIdx===0){cardTimers[slot]=0;decayWarn[slot]=0;stats.cardsLost++;}syncCardCount(pIdx);return card;
+  if(slotOrRandom===-1){// random — v298: count filled first, pick by index, no filled[] array
+    let _fn=0;for(let i=0;i<handLimit;i++){if(p.cd[i]>0)_fn++;}
+    if(_fn===0)return 0;
+    let _ft=Math.floor(Math.random()*_fn),_fc=0;
+    for(let i=0;i<handLimit;i++){if(p.cd[i]>0){if(_fc===_ft){const card=p.cd[i];p.cd[i]=0;if(pIdx===0){cardTimers[i]=0;decayWarn[i]=0;stats.cardsLost++;}syncCardCount(pIdx);return card;}_fc++;}}
+    return 0;
   }
   const card=p.cd[slotOrRandom];if(card>0){p.cd[slotOrRandom]=0;if(pIdx===0){cardTimers[slotOrRandom]=0;decayWarn[slotOrRandom]=0;stats.cardsLost++;}syncCardCount(pIdx);}return card;
 }
@@ -1569,11 +1570,12 @@ function rivalChooseAction(rIdx){
   const rCardCount=cardCount(r);
   if(rCardCount<2)return 0;// Draw if low
   const roll=Math.random();
-  const rUnique=hasUniqueCards(rIdx);
+  // v298: rivalUniqSize is allocation-free (was hasUniqueCards → new Set per round)
+  const rUniq=rivalUniqSize(rIdx);
 
   if(ai.personality==='hunter'){
     // Aggressive: mostly Steal + Scout
-    if(rUnique.size>=4){
+    if(rUniq>=4){
       if(roll<0.4)return 2;// barrier to protect lead
       if(roll<0.7)return 1;// steal
       return 3;// scout
@@ -1586,14 +1588,14 @@ function rivalChooseAction(rIdx){
     if(roll<0.4)return 1;if(roll<0.7)return 0;return 3;
   }else{
     // Collector: mostly Draw + Barrier, but will steal when behind
-    if(rUnique.size>=4){
+    if(rUniq>=4){
       if(roll<0.5)return 2;// barrier to protect lead
       if(roll<0.8)return 0;// draw to complete set
       return 3;// scout to plan
     }
-    // Steal if player has cards collector needs and collector has 3+ cards
-    const playerCards=hasUniqueCards(0);
-    const needsFromPlayer=rCardCount>=3&&playerCards.size>rUnique.size;
+    // Steal if player has more unique types than rival
+    const playerUniq=pl[0].vault?pl[0].vault.size:rivalUniqSize(0);
+    const needsFromPlayer=rCardCount>=3&&playerUniq>rUniq;
     if(needsFromPlayer&&roll<0.20)return 1;// opportunistic steal (20%)
     if(roll<0.45)return 0;// draw (45%)
     if(roll<0.75)return 2;// barrier (30%)
