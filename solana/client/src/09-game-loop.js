@@ -4,7 +4,7 @@
 // v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
 const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
 // v355: per-frame sin/cos cache — computed once at draw() start, reused across all draw functions
-let _sFr02=0,_cFr02=0,_sFr03=0,_cFr03=0,_sFr04=0,_cFr04=0,_sFr05=0,_cFr05=0,_sFr015=0,_cFr015=0,_sFr12=0,_cFr12=0;
+let _sFr02=0,_cFr02=0,_sFr03=0,_cFr03=0,_sFr04=0,_cFr04=0,_sFr05=0,_cFr05=0,_sFr06=0,_sFr055=0,_sFr07=0,_sFr015=0,_cFr015=0,_sFr12=0,_cFr12=0;
 // v355: pre-baked sin/cos for integer indices 0-15 (used in phase-offset particle loops)
 const _SIN_INT=(()=>{const a=new Float32Array(16);for(let i=0;i<16;i++)a[i]=Math.sin(i);return a;})();
 const _COS_INT=(()=>{const a=new Float32Array(16);for(let i=0;i<16;i++)a[i]=Math.cos(i);return a;})();
@@ -384,6 +384,7 @@ function draw(){
   _sFr04=Math.sin(_fr4);_cFr04=Math.cos(_fr4);
   _sFr05=Math.sin(_fr5);_cFr05=Math.cos(_fr5);
   _sFr015=Math.sin(_fr015);_cFr015=Math.cos(_fr015);
+  _sFr06=Math.sin(fr*0.06);_sFr055=Math.sin(fr*0.055);_sFr07=Math.sin(fr*0.07);
   const _fr12=fr*0.12;_sFr12=Math.sin(_fr12);_cFr12=Math.cos(_fr12);
   // Global screen shake
   let _shaking=false;
