@@ -629,6 +629,8 @@ function updateHandInspect(){
   if(handInspectFrame>=handInspectAutoDismiss)handInspectActive=false;
 }
 const _hiFilledBuf=new Int8Array(8); // v272: module scope, eliminates filled[] per frame
+const _PROG_BAR_MILE=[10,20,30,40,50]; // v274: hoisted from drawCardProgressBar
+const _FLOOR_ABBR=['','SG','DA','EC','DV','AC']; // v274: hoisted from drawCardProgressBar
 function drawHandInspect(){
   if(!handInspectActive||sc!=='map')return;
   const t=Math.min(1,handInspectFrame/10);
@@ -817,13 +819,12 @@ function drawCardProgressBar(){
     bx(barX,barY,Math.floor(barW*pct),Math.floor(barH/2),'rgba(255,255,255,.15)');
   }
   // Milestone markers at 10, 20, 30, 40, 50 with labels
-  const mileLabels=[10,20,30,40,50];
   for(let m=1;m<=5;m++){
     const mx=barX+Math.floor(barW*m*10/60);
     const reached=vaultSize>=m*10;
     bx(mx,barY,1,barH,reached?'rgba(255,255,255,.3)':'#1a1a30');
     // Tick label below bar
-    const mlbl=mileLabels[m-1]+'';
+    const mlbl=_PROG_BAR_MILE[m-1]+""; // v274: hoisted
     const mlblA=reached?0.8:0.35;
     g.globalAlpha=mlblA;
     txShadow(mlbl,mx-mlbl.length*2,barY+barH+6,4,reached?fillColor:'#888898','rgba(0,0,0,.3)');
@@ -834,8 +835,7 @@ function drawCardProgressBar(){
   txShadow(countLabel,barX+barW+8,barY+9,7,vaultSize>=60?'#40d040':'#c8c0a0','rgba(0,0,0,.4)');
   // Dungeon floor indicator — show floor name abbreviation
   if(inDungeon){
-    const floorAbbr=['','SG','DA','EC','DV','AC'];
-    const floorLabel=(floorAbbr[currentFloor]||'B'+currentFloor);
+    const floorLabel=(_FLOOR_ABBR[currentFloor]||'B'+currentFloor); // v274: hoisted
     txShadow(floorLabel,barX-30,barY+9,7,'#d8b028','rgba(0,0,0,.4)');
   }
   // Pulse glow when new card added
