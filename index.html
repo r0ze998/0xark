@@ -9434,6 +9434,17 @@ const _DIST_T=(()=>{const a=[];for(let i=0;i<=50;i++)a.push(i+'t');return a;})()
 let _nearWinStr='RIVAL NEAR WIN!',_nearWinKey=-1;
 // v344: milestone toast lazy cache (active ~210 frames)
 let _milestoneLbl='',_milestoneRef='';
+// v347: reusable object buffers for STANDINGS + CARD RACE — eliminates 6 obj + 2 array allocs/frame
+const _sBuf=[
+  {name:'YOU', uniq:0,hand:0,col:'#78c0f0',floor:0},
+  {name:'', uniq:0,hand:0,col:'#e060a0',floor:0},
+  {name:'', uniq:0,hand:0,col:'#d0a030',floor:0}
+];
+const _rBuf=[
+  {name:'YOU', cnt:0,col:'#78c0f0'},
+  {name:'', cnt:0,col:'#e060a0'},
+  {name:'', cnt:0,col:'#d0a030'}
+];
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -11166,7 +11177,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v346',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v347',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11191,12 +11202,12 @@ function dMap(){
     // Use vault-proxy for rivals (their hand as unique cards approximation)
     const vegaUniq=cdUniq(pl[1].cd);
     const miraUniq=cdUniq(pl[2].cd);
-    // Sort by unique count descending
-    const rankings=[
-      {name:'YOU',uniq:myUniq,hand:cdCount(pl[0].cd),col:'#78c0f0',floor:0},
-      {name:pl[1].n,uniq:vegaUniq,hand:vegaCards,col:'#e060a0',floor:rivalMaps[0]},
-      {name:pl[2].n,uniq:miraUniq,hand:miraCards,col:'#d0a030',floor:rivalMaps[1]}
-    ].sort((a,b)=>b.uniq-a.uniq);
+    // v347: Sort by unique count descending — reuse buffer, no new objects/array
+    _sBuf[0].uniq=myUniq;_sBuf[0].hand=cdCount(pl[0].cd);
+    _sBuf[1].name=pl[1].n;_sBuf[1].uniq=vegaUniq;_sBuf[1].hand=vegaCards;_sBuf[1].floor=rivalMaps[0];
+    _sBuf[2].name=pl[2].n;_sBuf[2].uniq=miraUniq;_sBuf[2].hand=miraCards;_sBuf[2].floor=rivalMaps[1];
+    _sBuf.sort((a,b)=>b.uniq-a.uniq);
+    const rankings=_sBuf;
     const mmH_=90; // match minimap height
     const sbW=156,sbH=88,sbX=12,sbY=H-HUD_HEIGHT-sbH-mmH_-24;
     const pnlAlpha=0.92;
@@ -11212,7 +11223,7 @@ function dMap(){
       const isLeader=ri===0;
       g.globalAlpha=pnlAlpha*(isLeader?1:0.8);
       txShadow(_LDR_RANK[ri],sbX+8,ry+12,isLeader?9:7,isLeader?'#f0c830':'#808080','rgba(0,0,0,.4)'); // v304
-      const nm=r.name.length>5?r.name.slice(0,5):r.name;
+      const nm=r.name.length>5?r.name.slice(0,5):r.name; // names are short strings, slice is cheap
       txShadow(nm,sbX+22,ry+12,isLeader?8:7,r.col,'rgba(0,0,0,.3)');
       const uniqStr=_UNIQ60[r.uniq]||r.uniq+'/60'; // v309: pre-baked
       txShadow(uniqStr,sbX+sbW-8-uniqStr.length*6,ry+12,isLeader?8:7,'#e8e0c0','rgba(0,0,0,.3)');
@@ -11228,11 +11239,12 @@ function dMap(){
     const myUniq=pl[0].vault?pl[0].vault.size:0;
     const vegaUniq=cdUniq(pl[1].cd);
     const miraUniq=cdUniq(pl[2].cd);
-    const racers=[
-      {name:'YOU',cnt:myUniq,col:'#78c0f0'},
-      {name:pl[1].n,cnt:vegaUniq,col:'#e060a0'},
-      {name:pl[2].n,cnt:miraUniq,col:'#d0a030'}
-    ].sort((a,b)=>b.cnt-a.cnt);
+    // v347: reuse buffer — no new objects/array
+    _rBuf[0].cnt=myUniq;
+    _rBuf[1].name=pl[1].n;_rBuf[1].cnt=vegaUniq;
+    _rBuf[2].name=pl[2].n;_rBuf[2].cnt=miraUniq;
+    _rBuf.sort((a,b)=>b.cnt-a.cnt);
+    const racers=_rBuf;
     g.globalAlpha=0.90;
     bx(rcX,rcY,rcW,rcH,'#080816');
     bx(rcX,rcY,rcW,2,'#f0c830');
