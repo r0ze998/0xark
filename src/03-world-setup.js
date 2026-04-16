@@ -884,20 +884,17 @@ function drawTownWeather(){
     }
     g.drawImage(_weatherCanvas,0,0,W,H);
   } else {
-    // Clear: drifting sunlight dust motes
-    g.save();
+    // v227: drifting sunlight dust motes — bx() replaces arc() (no path overhead)
     for(let i=0;i<22;i++){
       const seed=i*151;
-      const mx=((seed*37+fr*0.08)%W);
-      const my=H-((fr*0.4+seed*23)%(H+60))-10;
-      if(my<-8||my>H+8)continue;
-      const ms=0.5+(seed%4)*0.4;
+      const mx=((seed*37+fr*0.08)%W)|0;
+      const my=(H-((fr*0.4+seed*23)%(H+60))-10)|0;
+      if(my<-2||my>H+2)continue;
+      const sz=(seed%4)<2?1:2; // 1px or 2px square matches original 0.5-1.3px radius
       g.globalAlpha=wa*0.28*(0.5+Math.sin(fr*0.04+i)*0.5);
-      g.fillStyle='rgba(255,240,190,1)';
-      g.beginPath();g.arc(mx,my,ms,0,Math.PI*2);g.fill();
+      bx(mx,my,sz,sz,'rgba(255,240,190,1)');
     }
     g.globalAlpha=1;
-    g.restore();
   }
 }
 

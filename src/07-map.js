@@ -69,6 +69,38 @@ function drawDungeonAtmos(){
   g.globalAlpha=1;
 }
 
+// v227: Pre-baked danger vignette canvases (2: low/high) — avoid createRadialGradient every 3 frames
+const _dangerVigLow=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  const vig=ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.9);
+  vig.addColorStop(0,'rgba(0,0,0,0)');vig.addColorStop(1,'rgba(160,90,0,1)');
+  ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);return c;
+})();
+const _dangerVigHigh=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  const vig=ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.9);
+  vig.addColorStop(0,'rgba(0,0,0,0)');vig.addColorStop(1,'rgba(180,20,20,1)');
+  ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);return c;
+})();
+// v227: Pre-baked dungeon sprite aura canvases (one per floor 1-5, 52x52px)
+// Center stop = floor color at alpha=1; outer = transparent. globalAlpha=pulse at draw time.
+const _DUNGEON_AURA_RGB=[null,'80,140,200','60,140,80','140,60,200','200,80,20','100,20,160'];
+const _dungeonAuraCanvas=(()=>{
+  const canvases=[null];
+  for(let fl=1;fl<=5;fl++){
+    const c=document.createElement('canvas');c.width=52;c.height=52;
+    const ctx=c.getContext('2d');
+    const grd=ctx.createRadialGradient(26,26,0,26,26,26);
+    grd.addColorStop(0,`rgba(${_DUNGEON_AURA_RGB[fl]},1)`);
+    grd.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,52,52);
+    canvases.push(c);
+  }
+  return canvases;
+})();
+
 function drawEdgeBlending(startTX,startTY,endTX,endTY){
   const m=getMap();
   for(let y=startTY;y<=endTY;y++){
@@ -978,14 +1010,10 @@ function dMap(){
       const isHigh=dangerV>=DANGER_HIGH_THRESH;
       const pulse=Math.sin(fr*(isHigh?0.07:0.04))*0.5+0.5;
       const baseA=isHigh?0.08+pulse*0.08:0.04+pulse*0.04;
-      // Use radial gradient only every 3rd frame for pulse; blit flat color in between
-      if(fr%3===0){
-        const vigCol=isHigh?`rgba(180,20,20,${baseA})`:`rgba(160,90,0,${baseA})`;
-        const vig=g.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.9);
-        vig.addColorStop(0,'rgba(0,0,0,0)');
-        vig.addColorStop(1,vigCol);
-        g.fillStyle=vig;g.fillRect(0,0,W,H);
-      }
+      // v227: use pre-baked danger vignette canvas (was createRadialGradient every 3rd frame)
+      g.globalAlpha=baseA;
+      g.drawImage(isHigh?_dangerVigHigh:_dangerVigLow,0,0);
+      g.globalAlpha=1;
       if(isHigh&&fr%160<4){
         const fA=0.08*(1-fr%160/4);
         g.globalAlpha=fA;bx(0,0,W,H,'#c01010');g.globalAlpha=1;
@@ -1124,20 +1152,17 @@ function dMap(){
       visiblePl.push(hv);
     }else{hv._wasVisible=false;}
   }else{pl[2]._wasVisible=false;}
-  // v206: Dungeon floor-aura colors — one per floor, glow pulsed behind each sprite
-  const DUNGEON_AURA_RGB=[null,'80,140,200','60,140,80','140,60,200','200,80,20','100,20,160'];
+  // v227: DUNGEON_AURA_RGB moved to module scope as _DUNGEON_AURA_RGB (pre-baked into _dungeonAuraCanvas)
   const sorted=visiblePl.map((p,i)=>({p,i:pl.indexOf(p)}));
   sorted.sort((a,b)=>a.p.visualY-b.p.visualY);
   sorted.forEach(({p,i})=>{
-    // Dungeon aura glow — radial gradient at sprite feet, floor-themed, pulsing
+    // v227: dungeon aura — pre-baked per-floor canvas, modulated by globalAlpha=pulse
     if(inDungeon&&currentFloor>=1&&currentFloor<=5){
       const spx=p.visualX-camX+TW/2,spy=p.visualY-camY+TH*0.7;
-      const auraRgb=DUNGEON_AURA_RGB[currentFloor];
       const pulse=0.08+0.05*Math.sin(fr*0.045+i*1.1);
-      const aGrd=g.createRadialGradient(spx,spy,0,spx,spy,26);
-      aGrd.addColorStop(0,`rgba(${auraRgb},${pulse.toFixed(3)})`);
-      aGrd.addColorStop(1,'rgba(0,0,0,0)');
-      g.fillStyle=aGrd;g.fillRect(spx-26,spy-26,52,52);
+      g.globalAlpha=pulse;
+      g.drawImage(_dungeonAuraCanvas[currentFloor],(spx-26)|0,(spy-26)|0);
+      g.globalAlpha=1;
     }
     drawSprite(p,i===0);
     if(i!==0){
