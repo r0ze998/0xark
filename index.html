@@ -2842,7 +2842,7 @@ function updateHandInspect(){
   if(handInspectFrame>=handInspectAutoDismiss)handInspectActive=false;
 }
 const _hiFilledBuf=new Int8Array(8); // v272: module scope, eliminates filled[] per frame
-const _PROG_BAR_MILE=[10,20,30,40,50]; // v274: hoisted from drawCardProgressBar
+const _PROG_BAR_MILE=['10','20','30','40','50']; // v274: hoisted; v334: strings to avoid +'' per frame
 const _FLOOR_ABBR=['','SG','DA','EC','DV','AC']; // v274: hoisted from drawCardProgressBar
 function drawHandInspect(){
   if(!handInspectActive||sc!=='map')return;
@@ -3037,15 +3037,14 @@ function drawCardProgressBar(){
     const reached=vaultSize>=m*10;
     bx(mx,barY,1,barH,reached?'rgba(255,255,255,.3)':'#1a1a30');
     // Tick label below bar
-    const mlbl=_PROG_BAR_MILE[m-1]+""; // v274: hoisted
+    const mlbl=_PROG_BAR_MILE[m-1]; // v334: already a string
     const mlblA=reached?0.8:0.35;
     g.globalAlpha=mlblA;
     txShadow(mlbl,mx-mlbl.length*2,barY+barH+6,4,reached?fillColor:'#888898','rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
   // Text
-  const countLabel=vaultSize+'/60';
-  txShadow(countLabel,barX+barW+8,barY+9,7,vaultSize>=60?'#40d040':'#c8c0a0','rgba(0,0,0,.4)');
+  txShadow(_UNIQ60[vaultSize]||(vaultSize+'/60'),barX+barW+8,barY+9,7,vaultSize>=60?'#40d040':'#c8c0a0','rgba(0,0,0,.4)'); // v334: reuse _UNIQ60
   // Dungeon floor indicator — show floor name abbreviation
   if(inDungeon){
     const floorLabel=(_FLOOR_ABBR[currentFloor]||'B'+currentFloor); // v274: hoisted
@@ -11147,7 +11146,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v333',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v334',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -15613,6 +15612,10 @@ function dLog(){
 // ───────────────────────────────────────────────────────────────────────
 // v329: prayer pity lazy cache (key=gachaPityCount)
 let _prayerLblCache='',_prayerLblKey=-1;
+// v334: gacha result label lazy cache (key=gachaResultCard)
+let _gachaRevLblCache='',_gachaRevLblKey=-1;
+// v334: reliquary vault label lazy cache (key=vaultSize)
+let _reliqVaultLbl='',_reliqVaultKey=-1;
 // v257: Pre-computed gacha unique rarities — eliminates Set+spread+sort per gacha render frame
 // (GACHA_TIERS defined in 04-state.js, loaded before this file in build order)
 const _GACHA_UNIQUE_R=GACHA_TIERS.map(t=>[...new Set(t.rarities)].sort());
@@ -16063,7 +16066,8 @@ function drawBuildingInterior(){
     txShadow('RUNE SUMMON',gx+gw/2-68,gy+20,12,'#f8c840','rgba(0,0,0,.5)');
     // Vault progress
     const vSize=pl[0].vault?pl[0].vault.size:0;
-    txShadow('Reliquary: '+(_UNIQ60[vSize]||(vSize+'/60')),gx+8,gy+40,7,'#c8c0a0','rgba(0,0,0,.3)'); // v323
+    if(_reliqVaultKey!==vSize){_reliqVaultKey=vSize;_reliqVaultLbl='Reliquary: '+(_UNIQ60[vSize]||(vSize+'/60'));} // v334: lazy
+  txShadow(_reliqVaultLbl,gx+8,gy+40,7,'#c8c0a0','rgba(0,0,0,.3)');
 
     if(gachaPhase==='menu'){
       txShadow('Choose a ritual:',gx+16,gy+58,8,'#d0c8a0','rgba(0,0,0,.3)');
@@ -16193,7 +16197,8 @@ function drawBuildingInterior(){
       drawCardFrame(cardX,cardY,100,130,gachaResultCard-1,true);
       // Rarity label
       bx(gx+gw/2-60,gy+gh-90,120,20,RARITY_COLOR[cr.r]+'33');
-      txShadow(RARITY_LABEL[cr.r]+'  '+cr.n,gx+gw/2-56,gy+gh-76,9,RARITY_COLOR[cr.r],'rgba(0,0,0,.5)');
+      if(_gachaRevLblKey!==gachaResultCard){_gachaRevLblKey=gachaResultCard;_gachaRevLblCache=RARITY_LABEL[cr.r]+'  '+cr.n;} // v334: lazy
+      txShadow(_gachaRevLblCache,gx+gw/2-56,gy+gh-76,9,RARITY_COLOR[cr.r],'rgba(0,0,0,.5)');
       // Is new?
       const isNew=!pl[0].vault||!pl[0].vault.has(gachaResultCard);
       if(isNew&&t2>15){txShadow('NEW!',W/2+40,H/2-60,12,'#f0c830','rgba(0,0,0,.6)');}

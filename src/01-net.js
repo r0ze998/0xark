@@ -656,7 +656,7 @@ function updateHandInspect(){
   if(handInspectFrame>=handInspectAutoDismiss)handInspectActive=false;
 }
 const _hiFilledBuf=new Int8Array(8); // v272: module scope, eliminates filled[] per frame
-const _PROG_BAR_MILE=[10,20,30,40,50]; // v274: hoisted from drawCardProgressBar
+const _PROG_BAR_MILE=['10','20','30','40','50']; // v274: hoisted; v334: strings to avoid +'' per frame
 const _FLOOR_ABBR=['','SG','DA','EC','DV','AC']; // v274: hoisted from drawCardProgressBar
 function drawHandInspect(){
   if(!handInspectActive||sc!=='map')return;
@@ -851,15 +851,14 @@ function drawCardProgressBar(){
     const reached=vaultSize>=m*10;
     bx(mx,barY,1,barH,reached?'rgba(255,255,255,.3)':'#1a1a30');
     // Tick label below bar
-    const mlbl=_PROG_BAR_MILE[m-1]+""; // v274: hoisted
+    const mlbl=_PROG_BAR_MILE[m-1]; // v334: already a string
     const mlblA=reached?0.8:0.35;
     g.globalAlpha=mlblA;
     txShadow(mlbl,mx-mlbl.length*2,barY+barH+6,4,reached?fillColor:'#888898','rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
   // Text
-  const countLabel=vaultSize+'/60';
-  txShadow(countLabel,barX+barW+8,barY+9,7,vaultSize>=60?'#40d040':'#c8c0a0','rgba(0,0,0,.4)');
+  txShadow(_UNIQ60[vaultSize]||(vaultSize+'/60'),barX+barW+8,barY+9,7,vaultSize>=60?'#40d040':'#c8c0a0','rgba(0,0,0,.4)'); // v334: reuse _UNIQ60
   // Dungeon floor indicator — show floor name abbreviation
   if(inDungeon){
     const floorLabel=(_FLOOR_ABBR[currentFloor]||'B'+currentFloor); // v274: hoisted
