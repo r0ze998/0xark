@@ -1,5 +1,8 @@
 // v262: Hoist resolve per-frame inline literals
 const _RES_ACT_NAMES=['DRAW','STEAL','BARRIER','SCOUT','CARD'];
+// v305: pre-baked strings for per-frame allocations in resolve/result draw
+const _DOTS=['','.','..',  '...'];
+const _ROUND_SUM=['','ROUND 1 SUMMARY','ROUND 2 SUMMARY','ROUND 3 SUMMARY','ROUND 4 SUMMARY','ROUND 5 SUMMARY','ROUND 6 SUMMARY','ROUND 7 SUMMARY','ROUND 8 SUMMARY','ROUND 9 SUMMARY','ROUND 10 SUMMARY'];
 const _RES_ACT_COLS=['#2a6080','#a03030','#3060b0','#308030','#806030'];
 const _RES_RAR_COLS=['','#808898','#50d060','#b060e0','#e0a020','#ffe080'];
 const _RES_STEAL_COLS=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
@@ -193,7 +196,7 @@ function drawResolvingPhase(){
     // Brief pause indicator
     if(evT>38){
       const dotCount=Math.floor((evT-38)/4)%4;
-      txShadow('.'.repeat(dotCount),textX+ev.text.length*14+4,H-38,14,'#a09080','rgba(0,0,0,.2)');
+      txShadow(_DOTS[dotCount],textX+ev.text.length*14+4,H-38,14,'#a09080','rgba(0,0,0,.2)'); // v305
     }
     // === EFFECT ANIMATIONS ===
     const playerCX=160,playerCY=H-130;
@@ -807,7 +810,7 @@ function drawResultPhase(){
   const slideIn_=Math.min(1,t/15);
   g.globalAlpha=slideIn_;
   win(panX,panY,panW,panH);
-  txShadow('ROUND '+rd+' SUMMARY',panX+panW/2-100,panY+22,14,'#308030','rgba(0,0,0,.3)');
+  txShadow(_ROUND_SUM[rd]||'ROUND '+rd+' SUMMARY',panX+panW/2-100,panY+22,14,'#308030','rgba(0,0,0,.3)'); // v305
   // Divider
   bx(panX+16,panY+30,panW-32,1,'rgba(200,180,140,.3)');
 
@@ -893,9 +896,7 @@ function drawResultPhase(){
       else if(ev.text.includes('obtained')||ev.text.includes('got'))evCol='#308030';
       else if(ev.text.includes('BARRIER')||ev.text.includes('BLOCKED'))evCol='#3060b0';
       else if(ev.text.includes('Umbra'))evCol='#7858a0';
-      // Truncate long text
-      const dispText=ev.text.length>54?ev.text.substring(0,52)+'..':ev.text;
-      txShadow(dispText,panX+16,lineY+10,7,evCol,'rgba(0,0,0,.2)');
+      txShadow(ev.text,panX+16,lineY+10,7,evCol,'rgba(0,0,0,.2)'); // v305: text pre-truncated at queue gen
       lineY+=16;
     }
   }
