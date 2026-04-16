@@ -1,3 +1,5 @@
+// v254: Hoisted static arrays — eliminates per-frame inline literal allocation in synthesis + NPC dialog render
+const _SYNTH_RAR_LABELS=['','Common','Uncommon','Rare','Epic'];
 // ═══════════════════════════════════════
 // v155: DUNGEON TURN SYSTEM
 // ═══════════════════════════════════════
@@ -1111,8 +1113,8 @@ function drawCardShop(){
       txShadow('Press X to leave.',wX+24,wY+102,7,'#686068','rgba(0,0,0,.15)');
     }else{
       txShadow('Select a card to offer:',wX+24,wY+56,7,'#988868','rgba(0,0,0,.2)');
-      filled.forEach((slot,i)=>{
-        const cd=pl[0].cd[slot];
+      for(let i=0;i<filled.length;i++){
+        const slot=filled[i];const cd=pl[0].cd[slot];
         const cr=CD[cd-1];
         const rowH=38,ry=wY+68+i*rowH;
         const isSel=i===shopSelectedIdx;
@@ -1134,7 +1136,7 @@ function drawCardShop(){
         txShadow(cr.f,wX+56,ry+28,7,'#988878','rgba(0,0,0,.2)');
         // Rarity stars (right side)
         for(let s=0;s<cr.r;s++)bx(wW-20-s*10,ry+10,7,7,rarCol);
-      });
+      }
       txShadow('Z=Select   X=Leave',wX+24,wY+wH-24,7,'#686868','rgba(0,0,0,.2)');
     }
   }else if(shopPhase==='confirm'){
@@ -1245,34 +1247,30 @@ function drawSynthesisShop(){
     return;
   }
 
-  // Phase: pick — show rarity filter tabs and cards
-  // Rarity tabs
-  const rarLabels=['','Common','Uncommon','Rare','Epic'];
+  // Phase: pick — show rarity filter tabs and cards (_SYNTH_RAR_LABELS hoisted to module scope)
   const tabY=78;const tabW=88;
-  rarLabels.forEach((rl,ri)=>{
-    if(ri===0)return;
-    const tabX=60+(ri-1)*tabW;
+  for(let ri=1;ri<_SYNTH_RAR_LABELS.length;ri++){
+    const rl=_SYNTH_RAR_LABELS[ri];const tabX=60+(ri-1)*tabW;
     const sel=synthRarityFilter===ri;
     bx(tabX,tabY,tabW-4,20,sel?'#806030':'rgba(80,70,50,.5)');
     if(sel){bx(tabX,tabY,tabW-4,1,'#d0b060');bx(tabX,tabY+19,tabW-4,1,'#d0b060');}
     txShadow(rl,tabX+4,tabY+13,6,sel?'#f8e8c0':'#a09070','rgba(0,0,0,.35)');
-  });
+  }
 
   const filled=getPlayerFilledSlots().filter(s=>{
     const cid=pl[0].cd[s];return cid>0&&CD[cid-1]?.r===synthRarityFilter;
   });
 
   if(filled.length===0){
-    txShadow('No '+rarLabels[synthRarityFilter]+' cards in hand.',80,120,7,'#989080','rgba(0,0,0,.3)');
+    txShadow('No '+_SYNTH_RAR_LABELS[synthRarityFilter]+' cards in hand.',80,120,7,'#989080','rgba(0,0,0,.3)');
   }else{
     const needed=3-synthSelected.length;
-    const nextRar=RARITY_COLOR[synthRarityFilter+1]||'#c8c0a0';
-    txShadow('Select 3 cards → get 1 '+(rarLabels[synthRarityFilter+1]||'?')+' card',80,108,6,'#c0a060','rgba(0,0,0,.3)');
+    txShadow('Select 3 cards → get 1 '+(_SYNTH_RAR_LABELS[synthRarityFilter+1]||'?')+' card',80,108,6,'#c0a060','rgba(0,0,0,.3)');
     txShadow(needed>0?'Need '+needed+' more':'3 selected — press Z to synthesize!',80,122,6,needed===0?'#40d080':'#808880','rgba(0,0,0,.3)');
 
     const cols=4,cellW=120,cellH=48;
-    filled.forEach((slot,i)=>{
-      const cid=pl[0].cd[slot],cr=CD[cid-1];
+    for(let i=0;i<filled.length;i++){
+      const slot=filled[i];const cid=pl[0].cd[slot],cr=CD[cid-1];
       const col=i%cols,row=Math.floor(i/cols);
       const cx=80+col*cellW,cy=138+row*cellH;
       const isSel=synthSelected.includes(slot);
@@ -1282,12 +1280,12 @@ function drawSynthesisShop(){
       drawCardCharacter(cx+6,cy+6,cid,0.7,fr);
       txShadow(cr.n,cx+30,cy+14,6,isSel?'#f8e8c0':'#c0b898','rgba(0,0,0,.3)');
       txShadow(cr.f,cx+30,cy+26,5,'#908878','rgba(0,0,0,.2)');
-    });
+    }
   }
 
   // Legend
-  const tgt=rarLabels[synthRarityFilter+1];
-  if(tgt)txShadow('3× '+rarLabels[synthRarityFilter]+' → 1× '+tgt,80,H-88,6,'#806030','rgba(0,0,0,.3)');
+  const tgt=_SYNTH_RAR_LABELS[synthRarityFilter+1];
+  if(tgt)txShadow('3× '+_SYNTH_RAR_LABELS[synthRarityFilter]+' → 1× '+tgt,80,H-88,6,'#806030','rgba(0,0,0,.3)');
   txShadow('← → change rarity  Z=select/confirm  X=close',80,H-68,5,'#686068','rgba(0,0,0,.3)');
 }
 
@@ -1502,10 +1500,11 @@ function drawNPCDialog(){
   const maxChars=52;
   const wrapped1=wrapText(rawLine,maxChars);
   const wrapped2=rawLine2?wrapText(rawLine2,maxChars):[];
-  const allLines=[...wrapped1,...wrapped2].slice(0,3);
-  allLines.forEach((l,i)=>{
-    txShadow(l,20,H-70+slideOff+i*16,7,FRLG.textColor,'rgba(0,0,0,.25)');
-  });
+  const allLines=[...wrapped1,...wrapped2];
+  const _alLen=Math.min(3,allLines.length);
+  for(let i=0;i<_alLen;i++){
+    txShadow(allLines[i],20,H-70+slideOff+i*16,7,FRLG.textColor,'rgba(0,0,0,.25)');
+  }
 
   // Progress indicator: show line X/total as small dots bottom-left
   const totalLines=npcDialogLines.length;
@@ -1846,7 +1845,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v253',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v254',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

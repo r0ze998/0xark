@@ -26,6 +26,8 @@ const _BARREL_SPOTS=[[9,8],[10,8],[9,9],[21,8],[22,8]];
 const _ROPE_SPOTS=[[12,22],[18,22]];
 // v252: Pre-allocated sprite sort buffers — eliminates visiblePl.map()+{p,i} object allocs per frame
 const _srtP=[null,null,null],_srtI=[0,0,0];
+// v254: Hoisted pause menu items — eliminates inline literal array alloc per frame when menu is open
+const _MENU_ITEMS=['CARDS','MAP','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -1749,7 +1751,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v253',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v254',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1951,12 +1953,11 @@ function dMenu(){
     if(ease>=0.7){
       const itemAlpha=Math.min(1,(ease-0.7)/0.3);
       g.globalAlpha=itemAlpha;
-      const items=['CARDS','MAP','LOG','STATS','USE CARD','DISCARD','WALLET','TEXT SPD','SAVE','RULES','NEW GAME','CLOSE'];
-      items.forEach((s,i)=>{
-        const y=34+i*22;
+      for(let i=0;i<_MENU_ITEMS.length;i++){
+        const s=_MENU_ITEMS[i];const y=34+i*22;
         if(i===mi){txShadow('\u25B6',W-166,y,9,FRLG.selHighlight,'rgba(0,0,0,.4)');txShadow(s,W-148,y,9,FRLG.selHighlight,'rgba(0,0,0,.4)');}
         else txShadow(s,W-148,y,9,'#686068','rgba(0,0,0,.35)');
-      });
+      }
       g.globalAlpha=1;
     }
   }

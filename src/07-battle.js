@@ -4,6 +4,8 @@
 
 // v250: Static battle HUD arrays — eliminates per-frame object/array allocation in spell orb + type strip rendering
 const _BORB_LBL=['STL','BAR','SCT'],_BORB_FILL=['#c04848','#3868c0','#38a038'],_BORB_EMPTY=['#2a1010','#101028','#0e1e0e'],_BORB_LCOL=['#d05050','#4878d0','#48b048'];
+// v254: Static scout panel arrays — eliminates rivalInfo object array per scout panel render
+const _RIVAL_COL=['#d060a0','#d0a030'],_RIVAL_LBL=['VEGA','MIRA'];
 const _BTYPES=['attack','defense','flee','magic','recovery'],_BTYPE_ABB=['ATK','DEF','FLY','MAG','REC'],_BTYPE_COL=['#c83838','#3888c8','#30b870','#a840c0','#c8a830'];
 const _btCounts=new Int32Array(5); // reused each frame, zero-filled
 // v245: Pre-baked VS gold circle — eliminates arc per battle-intro frame
@@ -944,8 +946,8 @@ function drawSelectPhase(){
       txShadow('FLOOR POOL',ppX+8,ppY+20,9,'#48b8e8','rgba(0,0,0,.3)');
       txShadow(mapNames[currentMap],ppX+ppW-8-mapNames[currentMap].length*5,ppY+20,6,'#686878','rgba(0,0,0,.2)');
       bx(ppX+6,ppY+26,ppW-12,1,'rgba(200,180,100,.2)');
-      previewCards.forEach((cid,pi)=>{
-        const cr=CD[cid-1];const rar=cr.r||1;
+      for(let pi=0;pi<previewCards.length;pi++){
+        const cid=previewCards[pi];const cr=CD[cid-1];const rar=cr.r||1;
         const rarCol=RARITY_COLOR[rar]||'#888888';
         const owned=vault_.has(cid);
         const py2=ppY+32+pi*26;
@@ -955,7 +957,7 @@ function drawSelectPhase(){
         txShadow(cr.n,ppX+28,py2+2,7,nCol,'rgba(0,0,0,.3)');
         for(let s=0;s<rar;s++)txShadow('\u2605',ppX+ppW-8-(rar-s)*9,py2+2,5,rarCol,'rgba(0,0,0,.3)');
         if(!owned){txShadow('NEW',ppX+ppW-8-rar*9-26,py2+2,5,'#50e090','rgba(0,0,0,.3)');}
-      });
+      }
       if(pool.length>4){
         txShadow('+'+(pool.length-4)+' more...',ppX+10,ppY+ppH-12,6,'#686878','rgba(0,0,0,.2)');
       }
@@ -993,8 +995,8 @@ function drawSelectPhase(){
       const stLabel=staleRd>0?'scouted R'+sd.round:'fresh intel';
       txShadow('\u{1F50D} '+stLabel,ppX+10,ppY+33,5,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
       const show_=sd.cards.slice(0,Math.min(4,sd.cards.length));
-      show_.forEach((c,ci)=>{
-        const rar=c.r||1;const rarCol=RARITY_COLOR[rar]||'#888888';
+      for(let ci=0;ci<show_.length;ci++){
+        const c=show_[ci];const rar=c.r||1;const rarCol=RARITY_COLOR[rar]||'#888888';
         const tCol_=typeC[c.t]||'#808898';
         const py2=ppY+38+ci*26;
         const dimC=staleRd>1?0.45:0.85;
@@ -1004,7 +1006,7 @@ function drawSelectPhase(){
         txShadow(c.n,ppX+28,py2+2,7,staleRd>1?'#888870':'#e8e0c8','rgba(0,0,0,.3)');
         for(let s=0;s<rar;s++)txShadow('\u2605',ppX+ppW-8-(rar-s)*9,py2+2,5,rarCol,'rgba(0,0,0,.3)');
         g.globalAlpha=slideA*0.95;
-      });
+      }
       if(sd.cards.length>4){txShadow('+'+(sd.cards.length-4)+' more...',ppX+10,ppY+ppH-12,6,'#686878','rgba(0,0,0,.2)');}
     }else{
       // Unknown hand — show mystery card silhouettes
@@ -1058,8 +1060,8 @@ function drawSelectPhase(){
       if(recentRounds.length>0){
         bx(ppX+6,panY+52,ppW-12,1,'rgba(200,180,100,.15)');
         txShadow('RECENT ROUNDS:',ppX+8,panY+64,6,'#888870','rgba(0,0,0,.2)');
-        recentRounds.forEach((h,ri)=>{
-          const hy=panY+68+ri*18;
+        for(let ri=0;ri<recentRounds.length;ri++){
+          const h=recentRounds[ri];const hy=panY+68+ri*18;
           txShadow('R'+h.rd,ppX+8,hy+10,6,'#686860','rgba(0,0,0,.3)');
           // V action
           const vStole=h.r1a===1;
@@ -1074,7 +1076,7 @@ function drawSelectPhase(){
           // Outcome
           if(h.lost){bx(ppX+84,hy,30,14,'rgba(80,0,0,.4)');txShadow('STOLEN',ppX+86,hy+10,5,'#d04040','rgba(0,0,0,.3)');}
           else if(h.got){bx(ppX+84,hy,20,14,'rgba(0,40,0,.4)');txShadow('+CARD',ppX+86,hy+10,5,'#40a050','rgba(0,0,0,.3)');}
-        });
+        }
       }else{
         txShadow('No history yet',ppX+8,panY+56,6,'#686870','rgba(0,0,0,.2)');
       }
@@ -1089,26 +1091,26 @@ function drawSelectPhase(){
     const typeC={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
     const ppX=328,ppW=220;
     const slideA=Math.min(1,(fr-bpFrame)/10);
-    // Show both rivals' intel state
-    const rivalInfo=[
-      {ri:1,p:pl[1],sd:sd0,col:'#d060a0',label:'VEGA'},
-      {ri:2,p:pl[2],sd:sd1,col:'#d0a030',label:'MIRA'},
-    ];
+    // Show both rivals' intel state (_RIVAL_COL/_RIVAL_LBL hoisted to module scope)
+    const _sds=[sd0,sd1];
     let panY=H-164;
-    rivalInfo.forEach(rv=>{
-      const ccnt=cardCount(rv.p);
-      if(ccnt===0&&!rv.sd)return;
-      const panH=rv.sd&&rv.sd.cards.length>0?54+Math.min(4,rv.sd.cards.length)*22:46;
+    for(let _rvi=0;_rvi<2;_rvi++){
+      const _rv_p=pl[_rvi+1],_rv_sd=_sds[_rvi];
+      const ccnt=cardCount(_rv_p);
+      if(ccnt===0&&!_rv_sd)continue;
+      const panH=_rv_sd&&_rv_sd.cards.length>0?54+Math.min(4,_rv_sd.cards.length)*22:46;
       g.globalAlpha=slideA*0.95;
       win(ppX,panY,ppW,panH);
-      bx(ppX,panY,ppW,3,rv.col);
-      txShadow('SCOUT: '+rv.label,ppX+8,panY+18,8,'#38a038','rgba(0,0,0,.3)');
-      if(rv.sd&&rv.sd.cards.length>0){
-        const staleRd=rd-rv.sd.round;
-        const stLabel=staleRd>0?'R'+rv.sd.round+' data':'fresh';
+      bx(ppX,panY,ppW,3,_RIVAL_COL[_rvi]);
+      txShadow('SCOUT: '+_RIVAL_LBL[_rvi],ppX+8,panY+18,8,'#38a038','rgba(0,0,0,.3)');
+      if(_rv_sd&&_rv_sd.cards.length>0){
+        const staleRd=rd-_rv_sd.round;
+        const stLabel=staleRd>0?'R'+_rv_sd.round+' data':'fresh';
         txShadow(stLabel,ppX+ppW-8-stLabel.length*5,panY+18,6,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
         bx(ppX+6,panY+24,ppW-12,1,'rgba(200,180,100,.2)');
-        rv.sd.cards.slice(0,4).forEach((c,ci)=>{
+        const _scLen=Math.min(4,_rv_sd.cards.length);
+        for(let ci=0;ci<_scLen;ci++){
+          const c=_rv_sd.cards[ci];
           const tCol_=typeC[c.t]||'#808898';
           const rar=c.r||1;const rarCol=RARITY_COLOR[rar]||'#888898';
           const py2=panY+28+ci*22;
@@ -1119,14 +1121,14 @@ function drawSelectPhase(){
           txShadow(c.n,ppX+22,py2+2,6,staleRd>1?'#888870':'#e0d8c0','rgba(0,0,0,.3)');
           for(let s=0;s<rar;s++)txShadow('\u2605',ppX+ppW-8-(rar-s)*8,py2+2,5,rarCol,'rgba(0,0,0,.3)');
           g.globalAlpha=slideA*0.95;
-        });
+        }
       }else{
         txShadow('\u2753 '+ccnt+' card'+(ccnt!==1?'s':''),ppX+8,panY+36,8,'#506840','rgba(0,0,0,.2)');
         bx(ppX+8,panY+40,ppW-16,1,'rgba(200,180,100,.1)');
       }
       g.globalAlpha=1;
       panY-=panH+6;
-    });
+    }
   }
   // v90: Battle round history panel (right side, shown from round 2 onward)
   if(battleRoundHistory.length>0&&!bpCardSelectActive&&!bpTargetSelectActive){
@@ -1184,8 +1186,8 @@ function drawSelectPhase(){
     txShadow('Use which card?',W/2-90,H/2-mh/2+26,14,'#806030','rgba(0,0,0,.2)');
     // Spread cards out more if fewer in hand
     const spacing=filled.length<=3?Math.min(cardH+8,(mh-56)/Math.max(1,filled.length)):cardH;
-    filled.forEach((slot,j)=>{
-      const cd=pl[0].cd[slot],cr=CD[cd-1];
+    for(let j=0;j<filled.length;j++){
+      const slot=filled[j];const cd=pl[0].cd[slot],cr=CD[cd-1];
       const y=H/2-mh/2+46+j*spacing;
       if(j===bpCardSelectIdx){bx(W/2-cardW/2+8,y-4,cardW-16,cardH-4,'rgba(192,168,96,.25)');txShadow('\u25B6',W/2-cardW/2+4,y+20,12,'#c04040','rgba(0,0,0,.3)');}
       // Larger card frame with character sprite
@@ -1195,7 +1197,7 @@ function drawSelectPhase(){
       // Card name clearly below/beside
       txShadow(cr.n,frameX+44,y+20,14,j===bpCardSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
       txShadow(cr.f,frameX+44,y+36,11,'#908878','rgba(0,0,0,.15)');
-    });
+    }
     // v91: Effect preview panel for selected card (shown to the right of card list)
     if(filled.length>0&&bpCardSelectIdx>=0&&bpCardSelectIdx<filled.length){
       const selSlot=filled[bpCardSelectIdx];
@@ -1231,9 +1233,9 @@ function drawSelectPhase(){
         // Divider
         bx(finalEpX+8,epY+30,epW-16,1,'rgba(200,180,100,.25)');
         // Effect description lines
-        ti.lines.forEach((ln,li)=>{
-          if(ln)txShadow(ln,finalEpX+10,epY+44+li*18,6,li===0?'#e8e0c0':'#a09888','rgba(0,0,0,.3)');
-        });
+        for(let li=0;li<ti.lines.length;li++){
+          const ln=ti.lines[li];if(ln)txShadow(ln,finalEpX+10,epY+44+li*18,6,li===0?'#e8e0c0':'#a09888','rgba(0,0,0,.3)');
+        }
         // Large card character display
         const previewSz=1.8;
         const pcX=finalEpX+epW-42,pcY=epY+epH-48;
