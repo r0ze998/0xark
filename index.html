@@ -4240,11 +4240,26 @@ let proximityTauntRival=-1;  // which rival (1 or 2)
 let proximityTauntFrame=0;   // when taunt started
 
 // Close-range taunts indexed by [rivalIdx=0/1][sub]
-const PROXIMITY_TAUNTS=[
-  // VEGA — close-range aggression
+// v292: floor-tiered proximity taunts — called at dangerLevel 3 (within 5 tiles)
+const _PROX_VEGA=[
+  // Tier 0: F1-F2
   ['Found you.','Hand over the cards.','Nowhere to run.','I can smell your cards.','Dead end.'],
-  // MIRA — close-range strategy
+  // Tier 1: F3
+  ['You\'re in my range.','B3 is my floor.','Running won\'t help here.','I see you.','Clock\'s ticking.'],
+  // Tier 2: F4-F5
+  ['Nothing survives here.','Your cards or your run.','You made it this far. Impressive.','Final stretch. Mine.','The deepest floor is mine.'],
+];
+const _PROX_MIRA=[
+  // Tier 0: F1-F2
   ['I\'ve been tracking you.','Nice collection you have.','Let\'s make this quick.','Your cards belong in my set.','I calculated this route.'],
+  // Tier 1: F3
+  ['Within 5 tiles. As predicted.','Your path ends here.','Calculating final approach.','You should have taken a different fork.','My model confirms: this is your last move.'],
+  // Tier 2: F4-F5
+  ['Deepest floor. No retreat.','The ARK archive is almost complete.','You reached F'+currentFloor+'. Rare. Temporary.','Your card count drops to zero in my projections.','At this depth, evasion probability: 0.'],
+];
+const PROXIMITY_TAUNTS=[
+  _PROX_VEGA[0], // fallback (floor 0)
+  _PROX_MIRA[0],
 ];
 
 // Danger drone SFX
@@ -4779,7 +4794,10 @@ function updateProximityTension(){
       if(dist<closestDist){closestDist=dist;closestRivalIdx=i;}
     }
     if(closestRivalIdx>=0){
-      const taunts=PROXIMITY_TAUNTS[closestRivalIdx];
+      // v292: floor-tiered proximity taunts
+      const _ptfl=Math.max(1,Math.min(5,currentFloor));
+      const _pttier=_ptfl<=2?0:_ptfl===3?1:2;
+      const taunts=(closestRivalIdx===0?_PROX_VEGA:_PROX_MIRA)[_pttier];
       proximityTauntText=taunts[Math.floor(Math.random()*taunts.length)];
       proximityTauntRival=closestRivalIdx+1; // pl index 1 or 2
       proximityTauntFrame=fr;
@@ -11026,7 +11044,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v291',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v292',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
