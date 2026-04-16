@@ -862,18 +862,23 @@ function spawnGrassParticles(px,py){
   }
 }
 function updateParticles(){
-  for(let i=particles.length-1;i>=0;i--){
+  // v224: Swap-and-pop removal — O(1) vs O(n) splice, order unimportant for 2×2 pixels
+  let i=0;
+  while(i<particles.length){
     const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.life--;
-    if(p.life<=0)particles.splice(i,1);
+    if(p.life<=0){particles[i]=particles[particles.length-1];particles.length--;}
+    else i++;
   }
 }
 function drawParticles(cx,cy){
-  particles.forEach(p=>{
+  // v224: plain for-loop avoids forEach closure allocation each frame
+  for(let i=0,l=particles.length;i<l;i++){
+    const p=particles[i];
     const sx=p.x-cx,sy=p.y-cy;
-    if(sx>0&&sx<W&&sy>0&&sy<H){
+    if(sx>-2&&sx<W+2&&sy>-2&&sy<H+2){
       const a=Math.min(1,p.life/10);
       g.fillStyle=p.c;g.globalAlpha=a;g.fillRect(sx,sy,2,2);g.globalAlpha=1;
     }
-  });
+  }
 }
 
