@@ -14561,13 +14561,13 @@ const RARITY_COLOR=['','#888898','#60b060','#6090d8','#c060c0','#f0c830'];
 // ═══════════════════════════════════════
 function dVictory(){
   const t=fr-victoryFrame;
-  if(t<30){bx(0,0,W,H,`rgba(255,255,255,${t/30})`);return;}
+  if(t<30){g.globalAlpha=t/30;g.fillStyle='#ffffff';g.fillRect(0,0,W,H);g.globalAlpha=1;return;}
   bx(0,0,W,H,'#f8f4f0');
 
   for(let i=0;i<8;i++){
     const st=(t+i*60)%200;
     if(st<30){const sx=50+i*55+st*3,sy=20+i*15+st*1.5;
-      for(let j=0;j<4;j++)bx(sx-j*4,sy-j*2,2,1,`rgba(200,160,60,${Math.max(0,.6-j*.15)})`);
+      g.fillStyle='#c8a03c';for(let j=0;j<4;j++){g.globalAlpha=Math.max(0,.6-j*.15);g.fillRect(sx-j*4,sy-j*2,2,1);}g.globalAlpha=1;
     }
   }
   for(let i=0;i<20;i++){
@@ -14603,7 +14603,7 @@ function dVictory(){
       if(cardT>0&&cardT<20){
         for(let s=0;s<4;s++){
           const sa=s*(Math.PI*2/4)+cardT*.2,sd=8+cardT*.6;
-          bx(cx_+Math.cos(sa)*sd,cy_+Math.sin(sa)*sd,2,2,`rgba(255,255,200,${Math.max(0,1-cardT/20)})`);
+          g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle='#ffffc8';g.fillRect(cx_+Math.cos(sa)*sd,cy_+Math.sin(sa)*sd,2,2);g.globalAlpha=1;
         }
       }
     }
@@ -15039,11 +15039,12 @@ function drawCardDetailPanel(){
 function dLog(){
   // v120: Log screen overhaul — event icons + stats header
   bx(0,0,W,H,'#0c0c18');
+  g.fillStyle='#ffffff';
   for(let i=0;i<120;i++){
     const nx=(i*73+17)%W,ny=(i*41+23)%H;
-    const na=Math.random()*0.04;
-    bx(nx,ny,1,1,`rgba(255,255,255,${na})`);
+    g.globalAlpha=Math.random()*0.04;g.fillRect(nx,ny,1,1);
   }
+  g.globalAlpha=1;
 
   // Header
   win(16,10,W-32,38);
