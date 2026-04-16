@@ -5,6 +5,7 @@ const _BSTREAK_LBL=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('\u2605 STREAK 
 const _CC5_CARDS=['0/5 cards','1/5 cards','2/5 cards','3/5 cards','4/5 cards','5/5 cards'];
 const _SIGNED_DELTA=['-5','-4','-3','-2','-1','0','+1','+2','+3','+4','+5']; // indexed at delta+5
 let _reactNameCache='',_reactNameRef=''; // rName+':' lazy cache
+let _reactQuoteLbl='',_reactQuoteRef=''; // v348: lazy cache for reaction quote (changes every 13 frames)
 let _tellLblCache=['',''],_tellLblKey=-1; // v331: lazy tell-accuracy label pair
 // v305: pre-baked strings for per-frame allocations in resolve/result draw
 const _DOTS=['','.','..',  '...'];
@@ -1029,7 +1030,8 @@ function drawResultPhase(){
       bx(reactX,reactY-4,panW,30,'rgba(0,0,0,.5)');
       if(_reactNameRef!==rName){_reactNameRef=rName;_reactNameCache=rName+':';} // v327: lazy
       txShadow(_reactNameCache,reactX+8,reactY+16,9,rNameCol,'rgba(0,0,0,.4)');
-      txShadow('\u201C'+reaction+'\u201D',reactX+70,reactY+16,9,'#f0e8c8','rgba(0,0,0,.4)');
+      if(_reactQuoteRef!==reaction){_reactQuoteRef=reaction;_reactQuoteLbl='\u201C'+reaction+'\u201D';}
+      txShadow(_reactQuoteLbl,reactX+70,reactY+16,9,'#f0e8c8','rgba(0,0,0,.4)'); // v348: lazy cache
     }
     g.globalAlpha=1;
   }
