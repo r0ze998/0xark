@@ -423,7 +423,7 @@ function draw(){
   drawMPStatus();
   // Card collection progress bar (always visible on map)
   drawCardProgressBar();
-  if(flashT>0){bx(0,0,W,H,`rgba(255,255,255,${(flashT>10?1:flashT/10)*.8})`);}
+  if(flashT>0){g.globalAlpha=(flashT>10?1:flashT/10)*.8;g.fillStyle='#ffffff';g.fillRect(0,0,W,H);g.globalAlpha=1;}
   // Decay vignette: red edges when any card critically decaying (pre-baked canvas + globalAlpha)
   if(escapeUrgencyActive&&inDungeon&&(sc==='map'||sc==='act')){
     const vigA=(0.15+Math.sin(escapeUrgencyPulse*0.15)*0.1)*Math.min(1,escapeUrgencyPulse/30);

@@ -612,8 +612,8 @@ function drawMinimap(){
           const phase=(tx_*3+ty*7)&15;
           const shimmer=Math.sin(fr*0.07+phase*0.39)*0.5+0.5;
           const alpha=(encRate>0.25?0.22:0.12)*shimmer;
-          const eCol=encRate>0.25?`rgba(255,160,30,${alpha})`:`rgba(180,240,80,${alpha})`;
-          bx(tx_*sx,ty*sy,Math.max(1,sx*2),Math.max(1,sy*2),eCol);
+          g.globalAlpha=alpha;g.fillStyle=encRate>0.25?'#ffa01e':'#b4f050';
+          g.fillRect(tx_*sx,ty*sy,Math.max(1,sx*2),Math.max(1,sy*2));g.globalAlpha=1;
         }
       }
     }
@@ -1575,7 +1575,7 @@ function dTitle(){
     const bx_=(b*136+fr*0.08)%W;
     const ba=0.025+0.02*Math.sin(fr*0.015+b*1.2);
     g.globalAlpha=ba;
-    g.fillStyle=`rgba(${80+b*12},${20+b*8},${180+b*12},1)`;
+    g.fillStyle=['#5014b4','#5c1cc0','#6824cc','#742cd8','#8034e4'][b];
     g.beginPath();g.moveTo(bx_,0);g.lineTo(bx_+18,0);g.lineTo(bx_+60,H);g.lineTo(bx_+42,H);g.closePath();g.fill();
     g.globalAlpha=1;
   }
@@ -1589,13 +1589,15 @@ function dTitle(){
     const purp=i%9===0,big=i%17===0;
     const sz=big?2:1;
     if(big){
-      // Large star: cross sparkle
+      // Large star: cross sparkle — globalAlpha+solid avoids 2 template literals
       const sa=a*(0.5+Math.sin(fr*0.08+i)*0.2);
-      bx(sx-1,sy,3,1,`rgba(220,210,255,${sa*0.35})`);
-      bx(sx,sy-1,1,3,`rgba(220,210,255,${sa*0.35})`);
+      g.globalAlpha=sa*0.35;g.fillStyle='#dcd5ff';
+      g.fillRect(sx-1,sy,3,1);g.fillRect(sx,sy-1,1,3);
     }
-    bx(sx,sy,sz,sz,purp?`rgba(180,80,255,${a*.42})`:`rgba(220,200,255,${a*.30})`);
+    g.globalAlpha=purp?a*.42:a*.30;g.fillStyle=purp?'#b450ff':'#dcc8ff';
+    g.fillRect(sx,sy,sz,sz);
   }
+  g.globalAlpha=1;
   // v212: Occasional shooting star — fires every ~260 frames, lasts 20 frames
   {const sShotPhase=(fr+80)%280;
   if(sShotPhase<20){
@@ -1647,7 +1649,7 @@ function dTitle(){
   }
   if(fr%200<15){
     const sx=150+fr%200*10,sy=40+fr%200*2;
-    for(let t=0;t<6;t++)bx(sx-t*4,sy-t,2,1,`rgba(255,255,255,${.4-t*.06})`);
+    g.fillStyle='#ffffff';for(let t=0;t<6;t++){g.globalAlpha=.4-t*.06;g.fillRect(sx-t*4,sy-t,2,1);}g.globalAlpha=1;
   }
 
   // Title rune halo

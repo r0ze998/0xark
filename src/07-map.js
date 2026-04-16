@@ -1947,7 +1947,7 @@ function dMenu(){
   const ease=easeInOut(menuT);
   const menuW=Math.floor(190*ease),menuH=Math.floor(340*ease);
   const menuX=W-10-menuW,menuY=10;
-  bx(0,0,W,H,`rgba(0,0,0,${0.35*ease})`);
+  g.globalAlpha=0.35*ease;g.fillStyle='#000000';g.fillRect(0,0,W,H);g.globalAlpha=1;
   if(menuW>4&&menuH>4){
     win(menuX,menuY,menuW,menuH);
     if(ease>=0.7){

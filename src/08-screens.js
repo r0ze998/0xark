@@ -451,11 +451,9 @@ function drawMapCardUseOverlay(){
 function dStats(){
   // Dark background matching LOG screen
   bx(0,0,W,H,'#0c0c18');
-  for(let i=0;i<120;i++){
-    const nx=(i*73+17)%W,ny=(i*41+23)%H;
-    const na=Math.random()*0.04;
-    bx(nx,ny,1,1,`rgba(255,255,255,${na})`);
-  }
+  g.fillStyle='#ffffff';
+  for(let i=0;i<120;i++){const nx=(i*73+17)%W,ny=(i*41+23)%H;g.globalAlpha=Math.random()*0.04;g.fillRect(nx,ny,1,1);}
+  g.globalAlpha=1;
 
   // Header
   win(16,10,W-32,42);
@@ -484,8 +482,8 @@ function dStats(){
   if(vaultSize>0){
     const fW=Math.floor(vpbW*vaultRatio);
     const pulse_=0.8+Math.sin(fr*0.08)*0.2;
-    const fc_=vaultSize>=60?`rgba(255,220,60,${pulse_})`:vaultSize>=48?`rgba(160,200,50,${pulse_})`:`rgba(40,180,80,${pulse_})`;
-    bx(vpbX,vpbY,fW,vpbH,fc_);
+    g.globalAlpha=pulse_;g.fillStyle=vaultSize>=60?'#ffdc3c':vaultSize>=48?'#a0c832':'#28b450';
+    g.fillRect(vpbX,vpbY,fW,vpbH);g.globalAlpha=1;
     bx(vpbX,vpbY,fW,2,'rgba(255,255,255,.22)');
   }
   // Milestone ticks at 25%, 50%, 75%
@@ -597,7 +595,7 @@ function dCredits(){
   for(let i=0;i<80;i++){
     const sx=(i*47+13)%W,sy=(i*31+7)%H;
     const a=Math.sin(creditsFrame*.02+i*1.7)*.35+.5;
-    bx(sx,sy,1,1,`rgba(255,255,255,${a*.3})`);
+    g.globalAlpha=a*.3;g.fillStyle='#ffffff';g.fillRect(sx,sy,1,1);g.globalAlpha=1;
   }
   const scrollSpeed=0.6;
   const startY=H;
@@ -625,7 +623,7 @@ function dCredits(){
 // ═══════════════════════════════════════
 function dGameOver(){
   const t=fr-victoryFrame;
-  if(t<30){bx(0,0,W,H,`rgba(0,0,0,${t/30})`);return;}
+  if(t<30){g.globalAlpha=t/30;g.fillStyle='#000000';g.fillRect(0,0,W,H);g.globalAlpha=1;return;}
   bx(0,0,W,H,'#0a0a14');
   // Falling ember/ash particles
   for(let i=0;i<32;i++){

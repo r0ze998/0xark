@@ -200,13 +200,11 @@ function drawPuzzlePillars(){
       // Label
       const label=puzzleNames[puzzleStoneOrder[i]][0];
       txShadow(label,px+5,py+13,5,'#fff','rgba(0,0,0,.4)');
-      // Glow
+      // Glow — globalAlpha+solid avoids per-frame hex parsing + template literal + arc alloc
       const pulse=Math.sin(fr*.06+i*2)*.2+.4;
-      g.fillStyle=col.replace(')',`,${pulse})`).replace('rgb','rgba');
-      if(col[0]==='#'){
-        g.fillStyle=`rgba(${parseInt(col.slice(1,3),16)},${parseInt(col.slice(3,5),16)},${parseInt(col.slice(5,7),16)},${pulse})`;
-      }
+      g.globalAlpha=pulse;g.fillStyle=col;
       g.beginPath();g.arc(px+8,py+8,8,0,Math.PI*2);g.fill();
+      g.globalAlpha=1;
     }
   }
 }
@@ -500,12 +498,12 @@ function drawBuildingInterior(){
         grd.addColorStop(1,'rgba(0,0,0,0)');
         g.fillStyle=grd;g.fillRect(cx_-r1-5,cy_-r1-5,r1*2+10,r1*2+10);
         // Energy sparks converging to center
+        g.globalAlpha=pulse*.8;g.fillStyle='#7850dc';
         for(let i=0;i<8;i++){
-          const ang=sf*0.1+i*(Math.PI*2/8);
-          const dist=(1-grow)*80+8;
-          g.fillStyle=`rgba(120,80,220,${pulse*.8})`;
+          const ang=sf*0.1+i*(Math.PI*2/8),dist=(1-grow)*80+8;
           g.fillRect(cx_+Math.cos(ang)*dist-2,cy_+Math.sin(ang)*dist-2,4,4);
         }
+        g.globalAlpha=1;
         txShadow('DRAWING...',cx_-52,cy_+62,9,'#6060a0','rgba(0,0,0,.5)');
       }
       // Phase 2 (30-55): Sphere cracks — rarity color teaser
