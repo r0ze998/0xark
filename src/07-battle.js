@@ -22,6 +22,23 @@ const _BTL_CRYST_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_CI[i]=Mat
 const _BTL_EMBER_X=new Float32Array(8);for(let i=0;i<8;i++)_BTL_EMBER_X[i]=Math.sin(i*2.1)*20; // ember X offset (frame-independent)
 const _BTL_SEEP_SI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_SEEP_SI[i]=Math.sin(i);    // sin(i) lava seep
 const _BTL_SEEP_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_SEEP_CI[i]=Math.cos(i);
+// v392: pre-baked spatial phases for VEGA orbs (phase=fr*0.018+i*2.1, i=0..2)
+// and for MIRA sparks (phase=fr*0.022+i*1.6, i=0..3)
+// sin-addition: cos(fr*K+i*A) = cos(fr*K)*cos(i*A) - sin(fr*K)*sin(i*A)
+const _VEGA_CI21=new Float32Array(3);const _VEGA_SI21=new Float32Array(3);
+const _VEGA_CI147=new Float32Array(3);const _VEGA_SI147=new Float32Array(3); // i*2.1*0.7=i*1.47
+const _VEGA_CI273=new Float32Array(3);const _VEGA_SI273=new Float32Array(3); // i*2.1*1.3=i*2.73
+const _MIRA_CI16=new Float32Array(4);const _MIRA_SI16=new Float32Array(4);
+const _MIRA_CI096=new Float32Array(4);const _MIRA_SI096=new Float32Array(4); // i*1.6*0.6=i*0.96
+const _MIRA_CI176=new Float32Array(4);const _MIRA_SI176=new Float32Array(4); // i*1.6*1.1=i*1.76
+(()=>{
+  for(let i=0;i<3;i++){_VEGA_CI21[i]=Math.cos(i*2.1);_VEGA_SI21[i]=Math.sin(i*2.1);}
+  for(let i=0;i<3;i++){_VEGA_CI147[i]=Math.cos(i*1.47);_VEGA_SI147[i]=Math.sin(i*1.47);}
+  for(let i=0;i<3;i++){_VEGA_CI273[i]=Math.cos(i*2.73);_VEGA_SI273[i]=Math.sin(i*2.73);}
+  for(let i=0;i<4;i++){_MIRA_CI16[i]=Math.cos(i*1.6);_MIRA_SI16[i]=Math.sin(i*1.6);}
+  for(let i=0;i<4;i++){_MIRA_CI096[i]=Math.cos(i*0.96);_MIRA_SI096[i]=Math.sin(i*0.96);}
+  for(let i=0;i<4;i++){_MIRA_CI176[i]=Math.cos(i*1.76);_MIRA_SI176[i]=Math.sin(i*1.76);}
+})();
 const _ACTION_NAMES=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
 // v305: pre-baked BATTLE round header labels; cache TX sig truncation
 const _BATTLE_HDR=['','BATTLE 1','BATTLE 2','BATTLE 3','BATTLE 4','BATTLE 5','BATTLE 6','BATTLE 7','BATTLE 8','BATTLE 9','BATTLE 10'];
@@ -234,13 +251,13 @@ function drawBattleBG(){
         g.globalAlpha=1;
       }
     }
-    // F4: rising ember particles + crack lava seep — v360: pre-baked ember X offsets
+    // F4: rising ember particles + crack lava seep — v392: parabola replaces sin(phase*π)
     if(fl===4){
       for(let i=0;i<8;i++){
         const emberPhase=(fr*0.03+i*0.7)%1;
         const ex_=80+i*100+_BTL_EMBER_X[i];
         const ey_=H-(emberPhase*H*0.6)-20;
-        const ea=Math.sin(emberPhase*Math.PI)*0.7;
+        const ea=4*emberPhase*(1-emberPhase)*0.7; // sin(phase*π) ≈ 4x(1-x)
         g.globalAlpha=ea;bx(ex_,ey_,2,2,'#f06020');g.globalAlpha=1;
       }
       const cc=2+fl;for(let i=0;i<cc;i++){
@@ -262,32 +279,36 @@ function drawBattleBG(){
   if(vsRiv===1){
     // VEGA: dark magenta screen-edge vignette + drifting orbs
     g.drawImage(_btlVigVega,0,0);
-    // Three drifting dark-energy orbs near VEGA's side (pre-baked canvases)
+    // Three drifting dark-energy orbs — v392: 6 trig calls total (was 9)
+    {const _vS=Math.sin(fr*0.018),_vC=Math.cos(fr*0.018);
+    const _v7S=Math.sin(fr*0.0126),_v7C=Math.cos(fr*0.0126);
+    const _v13S=Math.sin(fr*0.0234),_v13C=Math.cos(fr*0.0234);
     for(let i=0;i<3;i++){
-      const phase=fr*0.018+i*2.1;
-      const ox=W-220+Math.cos(phase)*28+i*22;
-      const oy=100+Math.sin(phase*0.7)*22+i*16;
-      const ora=0.12+Math.sin(phase*1.3)*0.06;
+      const ox=W-220+(_vC*_VEGA_CI21[i]-_vS*_VEGA_SI21[i])*28+i*22;
+      const oy=100+(_v7S*_VEGA_CI147[i]+_v7C*_VEGA_SI147[i])*22+i*16;
+      const ora=0.12+(_v13S*_VEGA_CI273[i]+_v13C*_VEGA_SI273[i])*0.06;
       const vo=_vegaOrbs[i];
       g.globalAlpha=ora;g.drawImage(vo[0].canvas,(ox-vo[0].hw)|0,(oy-vo[0].hw)|0);
       g.globalAlpha=ora*0.4;g.drawImage(vo[1].canvas,(ox-vo[1].hw)|0,(oy-vo[1].hw)|0);
-    }
+    }}
     g.globalAlpha=1;
   }else{
     // MIRA: warm amber screen-edge vignette + drifting coin sparks
     g.drawImage(_btlVigMira,0,0);
-    // Drifting coin-glint sparks near MIRA's side
+    // Drifting coin-glint sparks — v392: 6 trig calls total (was 12)
+    {const _mS=Math.sin(fr*0.022),_mC=Math.cos(fr*0.022);
+    const _m6S=Math.sin(fr*0.0132),_m6C=Math.cos(fr*0.0132);
+    const _m11S=Math.sin(fr*0.0242),_m11C=Math.cos(fr*0.0242);
     for(let i=0;i<4;i++){
-      const phase=fr*0.022+i*1.6;
-      const ox=W-290+Math.cos(phase)*24+i*18;
-      const oy=120+Math.sin(phase*0.6)*18+i*14;
-      const ora=0.10+Math.sin(phase*1.1)*0.05;
+      const ox=W-290+(_mC*_MIRA_CI16[i]-_mS*_MIRA_SI16[i])*24+i*18;
+      const oy=120+(_m6S*_MIRA_CI096[i]+_m6C*_MIRA_SI096[i])*18+i*14;
+      const ora=0.10+(_m11S*_MIRA_CI176[i]+_m11C*_MIRA_SI176[i])*0.05;
       g.globalAlpha=ora;
       bx(ox-2,oy-2,4,4,'#e0c040');
       g.globalAlpha=ora*0.45;
       bx(ox-4,oy-4,8,1,'#f0e060');bx(ox-4,oy+3,8,1,'#f0e060');
       bx(ox-4,oy-4,1,8,'#f0e060');bx(ox+3,oy-4,1,8,'#f0e060');
-    }
+    }}
     g.globalAlpha=1;
   }
 }
