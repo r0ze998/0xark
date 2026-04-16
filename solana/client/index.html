@@ -11111,8 +11111,7 @@ function dMap(){
       if(escExit&&escExit.tiles.length>0){
         const [etx,ety]=escExit.tiles[0];
         const dx=etx-pl[0].x,dy=ety-pl[0].y;
-        const distTiles=Math.sqrt(dx*dx+dy*dy);
-        if(distTiles<=4){
+        if(dx*dx+dy*dy<=16){ // v384: squared-distance avoids sqrt
           const neA=0.65+_sFr28*0.35; // v369: cached
           g.globalAlpha=neA;
           txShadow('\u2190NEAR',73,hudY+52,6,'#40e090','rgba(0,0,0,.5)');
@@ -11343,11 +11342,11 @@ function dMap(){
     if(rivalMaps[ri]!==currentMap)continue;
     const r=pl[ri+1];
     const dx=r.x-pl[0].x, dy=r.y-pl[0].y;
-    const dist=Math.sqrt(dx*dx+dy*dy);
-    if(dist<1)continue;
+    const dist2=dx*dx+dy*dy; // v384: squared distance, avoids sqrt
+    if(dist2<1)continue;
     const angle=Math.atan2(dy,dx);
-    // Color based on distance
-    const arrowCol=dist<=5?'#d04040':dist<=12?'#d0a030':'#40a040';
+    // Color based on distance (compare squared)
+    const arrowCol=dist2<=25?'#d04040':dist2<=144?'#d0a030':'#40a040';
     // Draw arrow at top center
     const arrowCX=W/2+(ri===0?-30:30), arrowCY=20;
     g.save();
