@@ -9389,6 +9389,17 @@ const _UNIQ60=(()=>{const a=[];for(let i=0;i<=60;i++)a.push(i+'/60');return a;})
 let _rLblCache=['','']; let _rLblKey=[-1,-1]; // rival sprite label cache [VEGA,MIRA]
 let _vegaLblCache=''; let _vegaLblKey=-1; // vega HUD label cache (key=vegaMap*10+vegaCards)
 let _miraLblCache=''; let _miraLblKey=-1; // mira HUD label cache
+// v314: pre-baked HUD strings + lazy caches — eliminates per-frame concat in hot map HUD path
+const _B_FLOOR=['','B1','B2','B3','B4','B5']; // dungeon floor indicators
+const _SAFE_SECS=(()=>{const a=[];for(let i=0;i<=11;i++)a.push('SAFE '+i+'s');return a;})();
+const _DANGER_LBL=['DANGER:LOW','DANGER:MED','DANGER:HIGH']; // pre-combined danger labels
+const _STREAK_LBL=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('STREAK:'+i+'x');return a;})();
+const _HAND_LBL=(()=>{const a=[];for(let i=0;i<=15;i++)a.push('HAND:'+i);return a;})();
+const _CARDS_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('CARDS:'+i+'/60');return a;})();
+let _stepsCache='STEPS:0',_stepsKey=-1; // stepCounter lazy cache
+let _expLblCache='EXP:0%',_expLblKey=-1; // fog exploration % lazy cache
+let _mapLblCache='MAP:0%',_mapLblKey=-1; // map exploration % lazy cache
+let _timeLblMapCache='',_timeLblMapMin=-1; // season timer lazy cache for canvas HUD (per minute)
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -10753,10 +10764,12 @@ function dMap(){
   // ── HUD BAR ──
   const hudY=H-HUD_HEIGHT;
   win(0,hudY,W,HUD_HEIGHT);
-  // Season timer
-  const _sr=getSeasonRemaining();const _srt=formatTimeRemaining(_sr);
+  // Season timer — v314: cached per minute (output only changes once per minute)
+  const _sr=getSeasonRemaining();
+  const _nowMin=Math.floor(Date.now()/60000);
+  if(_timeLblMapMin!==_nowMin){_timeLblMapMin=_nowMin;_timeLblMapCache=formatTimeRemaining(_sr);}
   const _sCol=_sr<3600000?'#d04040':_sr<86400000?'#d0a030':'#40a040';
-  txShadow(_srt,10,hudY+28,9,_sCol,'rgba(0,0,0,.45)');
+  txShadow(_timeLblMapCache,10,hudY+28,9,_sCol,'rgba(0,0,0,.45)');
   // v118: Spell charge orb indicators (visual pips replace plain numbers)
   // v247: static arrays instead of per-frame object literals + forEach
   {
@@ -10780,12 +10793,13 @@ function dMap(){
   }
   // Location indicator: Town or Dungeon floor
   if(inDungeon){
-    txShadow('B'+currentFloor,10,hudY+52,9,'#d0b020','rgba(0,0,0,.4)');
+    txShadow(_B_FLOOR[currentFloor]||('B'+currentFloor),10,hudY+52,9,'#d0b020','rgba(0,0,0,.4)'); // v314
     // Show SAFE countdown while encounter cooldown is active
     if(encounterCooldown>0){
       const safeAlpha=0.6+Math.sin(fr*0.15)*0.4;
       g.globalAlpha=safeAlpha;
-      txShadow('SAFE '+(Math.ceil(encounterCooldown/60))+'s',30,hudY+52,8,'#40e080','rgba(0,0,0,.5)');
+      const _safeSecs=Math.min(11,Math.ceil(encounterCooldown/60));
+      txShadow(_SAFE_SECS[_safeSecs],30,hudY+52,8,'#40e080','rgba(0,0,0,.5)'); // v314
       g.globalAlpha=1;
     }else{
       txShadow('DUNGEON',30,hudY+52,7,'#a07820','rgba(0,0,0,.4)');
@@ -10816,13 +10830,15 @@ function dMap(){
   }else{
     txShadow('TOWN',10,hudY+52,7,'#40a040','rgba(0,0,0,.4)');
   }
-  // Footstep counter
-  txShadow('STEPS:'+stepCounter,100,hudY+52,7,'#989080','rgba(0,0,0,.35)');
+  // Footstep counter — v314: lazy cache (stepCounter rarely changes)
+  if(_stepsKey!==stepCounter){_stepsKey=stepCounter;_stepsCache='STEPS:'+stepCounter;}
+  txShadow(_stepsCache,100,hudY+52,7,'#989080','rgba(0,0,0,.35)');
   // v102/v280: Dungeon exploration % — cached via fogExploredPercent (only recomputed on fog change)
   if(inDungeon&&maps[currentMap]){
     const pct=fogExploredPercent(currentMap);
     const expCol=pct<30?'#888878':pct<70?'#a0c080':'#40d080';
-    txShadow('EXP:'+pct+'%',182,hudY+52,7,expCol,'rgba(0,0,0,.35)');
+    if(_expLblKey!==pct){_expLblKey=pct;_expLblCache='EXP:'+pct+'%';} // v314
+    txShadow(_expLblCache,182,hudY+52,7,expCol,'rgba(0,0,0,.35)');
     // v136: Rival floor trackers — V:B2 / M:B3 so player knows where rivals are
     {const vegaMap=rivalMaps[0],miraMap=rivalMaps[1];
     // v304: cache HUD label strings; key packs map(0-5)*10 + cards(0-5) into single int
@@ -10980,7 +10996,7 @@ function dMap(){
     const streakCol=streakCount>=5?'#f0c830':streakCount>=3?'#e08040':'#c0c0c0';
     const popScale=streakDisplayTimer>0?1+Math.sin(streakDisplayTimer*0.3)*0.15:1;
     const sz=Math.floor(7*popScale);
-    txShadow('STREAK:'+streakCount+'x',310,hudY+44,sz,streakCol,'rgba(0,0,0,.5)');
+    txShadow(_STREAK_LBL[streakCount]||('STREAK:'+streakCount+'x'),310,hudY+44,sz,streakCol,'rgba(0,0,0,.5)'); // v314
   }
   if(streakLostTimer>0){
     const la=streakLostTimer/60;
@@ -10989,11 +11005,11 @@ function dMap(){
     g.globalAlpha=1;
   }
 
-  // Area Danger Level display
+  // Area Danger Level display — v314: pre-baked combined label
   const dangerVal=areaDanger[currentMap];
-  const dangerLabel=dangerVal>=DANGER_HIGH_THRESH?'HIGH':dangerVal>=DANGER_LOW_THRESH?'MED':'LOW';
-  const dangerCol=dangerVal>=DANGER_HIGH_THRESH?'#d04040':dangerVal>=DANGER_LOW_THRESH?'#d0a030':'#40a040';
-  txShadow('DANGER:'+dangerLabel,420,hudY+44,6,dangerCol,'rgba(0,0,0,.4)');
+  const _dangerIdx=dangerVal>=DANGER_HIGH_THRESH?2:dangerVal>=DANGER_LOW_THRESH?1:0;
+  const dangerCol=_dangerIdx===2?'#d04040':_dangerIdx===1?'#d0a030':'#40a040';
+  txShadow(_DANGER_LBL[_dangerIdx],420,hudY+44,6,dangerCol,'rgba(0,0,0,.4)');
   // Danger meter bar
   bx(420,hudY+48,60,3,'#282838');
   bx(420,hudY+48,Math.floor(60*dangerVal),3,dangerCol);
@@ -11046,11 +11062,11 @@ function dMap(){
   const handCount=cdCount(pl[0].cd);
   const vaultPct=vaultCount/60;
   const vaultCol=vaultCount>=50?'#f0c830':vaultCount>=30?'#e08040':vaultCount>=10?'#40c060':'#686068';
-  txShadow('CARDS:'+vaultCount+'/60',310,hudY+56,7,vaultCol,'rgba(0,0,0,.4)');
+  txShadow(_CARDS_LBL[vaultCount]||('CARDS:'+vaultCount+'/60'),310,hudY+56,7,vaultCol,'rgba(0,0,0,.4)'); // v314
   // Tiny collection progress bar
   bx(310,hudY+60,60,3,'#282838');
   bx(310,hudY+60,Math.floor(60*vaultPct),3,vaultCol);
-  txShadow('HAND:'+handCount,382,hudY+56,6,'#686068','rgba(0,0,0,.35)');
+  txShadow(_HAND_LBL[handCount]||('HAND:'+handCount),382,hudY+56,6,'#686068','rgba(0,0,0,.35)'); // v314
 
   // Footprint trail indicator: show fresh rival tracks on this floor
   if(inDungeon){
@@ -11083,9 +11099,10 @@ function dMap(){
   const locCol=inDungeon?'#a09060':'#686068';
   txShadow(locName,560,hudY+52,inDungeon?7:6,locCol,'rgba(0,0,0,.35)');
 
-  // Exploration percentage
+  // Exploration percentage — v314: lazy cache
   const expPct=fogExploredPercent(currentMap);
-  txShadow('MAP:'+expPct+'%',560,hudY+22,8,'#686068','rgba(0,0,0,.35)');
+  if(_mapLblKey!==expPct){_mapLblKey=expPct;_mapLblCache='MAP:'+expPct+'%';}
+  txShadow(_mapLblCache,560,hudY+22,8,'#686068','rgba(0,0,0,.35)');
 
   // Sound indicator
   txShadow(soundEnabled?'SND:ON':'SND:OFF',750,hudY+22,6,soundEnabled?'#60a060':'#a06060','rgba(0,0,0,.35)');
@@ -11107,7 +11124,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v313',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v314',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
