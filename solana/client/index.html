@@ -11124,7 +11124,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v315',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v316',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11372,6 +11372,18 @@ const _CARD_TYPE_INFO_S={
 const _DEF_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#4080d0',label:'DEFENSE',lines:['Raises Barrier this round.','Restores +'+(Math.ceil(r/2))+' Barrier charges.','Protects against incoming Steal.']});return a;})();
 const _REC_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#e0c030',label:'RECOVERY',lines:['Restores spell energy:','+'+Math.ceil(r/2)+' Steal, +1 Barrier, +1 Scout.','Use when spells are depleted.']});return a;})();
 const _UNK_TYPE_INFO={col:'#888',label:'UNKNOWN',lines:['Unknown effect.','','']};
+// v316: pre-baked vs_splash labels, ZK spinner strings, round/action labels
+const _PWR_LBL=(()=>{const a=[];for(let i=0;i<=25;i++)a.push('PWR:'+i);return a;})();
+const _SPLASH_CARD_LBL=['0 cards','1 card','2 cards','3 cards','4 cards','5 cards'];
+const _POSEIDON_SPIN=['Computing Poseidon hash... |','Computing Poseidon hash... /','Computing Poseidon hash... -','Computing Poseidon hash... \\'];
+const _ZK_PROOF_SPIN=['ZK proof: generating |','ZK proof: generating /','ZK proof: generating -','ZK proof: generating \\'];
+const _ZK_VERIFIED_SPIN=['ZK proof: verified |','ZK proof: verified /','ZK proof: verified -','ZK proof: verified \\'];
+const _GROTH16_SNARK_SPIN=['Generating Groth16 proof (snarkjs)... |','Generating Groth16 proof (snarkjs)... /','Generating Groth16 proof (snarkjs)... -','Generating Groth16 proof (snarkjs)... \\'];
+const _GROTH16_VIS_SPIN=['Generating Groth16 proof... |','Generating Groth16 proof... /','Generating Groth16 proof... -','Generating Groth16 proof... \\'];
+const _ROUND_LBL=['R0','R1','R2','R3','R4','R5','R6','R7','R8','R9','R10'];
+const _SCOUTED_RD=['scouted R0','scouted R1','scouted R2','scouted R3','scouted R4','scouted R5','scouted R6','scouted R7','scouted R8','scouted R9','scouted R10'];
+const _V_ACT_LBL=['V:DRW','V:STL','V:BAR','V:SCT','V:CRD'];
+const _M_ACT_LBL=['M:DRW','M:STL','M:BAR','M:SCT','M:CRD'];
 function _getTypeInfo(t,r){
   if(t==='defense')return _DEF_TYPE_INFOS[Math.min(4,(r||1)-1)];
   if(t==='recovery')return _REC_TYPE_INFOS[Math.min(4,(r||1)-1)];
@@ -11961,9 +11973,9 @@ function drawVsSplash(){
     g.globalAlpha=nameAlpha;
     txShadow('YOU',60,H/2-60,14,'#78c0f0','rgba(0,0,0,.6)');
     const yourCards=cardCount(pl[0]);
-    txShadow(yourCards+' card'+(yourCards!==1?'s':''),60,H/2-42,8,'rgba(255,255,255,.6)','rgba(0,0,0,.4)');
+    txShadow(_SPLASH_CARD_LBL[yourCards]||(yourCards+' cards'),60,H/2-42,8,'rgba(255,255,255,.6)','rgba(0,0,0,.4)'); // v316
     // v106: hand power score = sum of card rarities (v284: pre-computed above)
-    txShadow('PWR:'+_ypwr,60,H/2-26,7,'#78c0f0','rgba(0,0,0,.35)');
+    txShadow(_PWR_LBL[_ypwr]||('PWR:'+_ypwr),60,H/2-26,7,'#78c0f0','rgba(0,0,0,.35)'); // v316
     g.globalAlpha=1;
   }
 
@@ -11977,9 +11989,9 @@ function drawVsSplash(){
     txShadow(vsSplashRival.n,rivalNameX,H/2-60,14,rivalNameCol,'rgba(0,0,0,.6)');
     txShadow(rivalPersonality,rivalNameX,H/2-42,8,'rgba(255,255,255,.5)','rgba(0,0,0,.4)');
     const rivalCards=cardCount(vsSplashRival);
-    txShadow(rivalCards+' card'+(rivalCards!==1?'s':''),rivalNameX,H/2-28,7,'rgba(255,255,255,.5)','rgba(0,0,0,.35)');
+    txShadow(_SPLASH_CARD_LBL[rivalCards]||(rivalCards+' cards'),rivalNameX,H/2-28,7,'rgba(255,255,255,.5)','rgba(0,0,0,.35)'); // v316
     // v106: rival power + advantage label (v284: pre-computed above)
-    txShadow('PWR:'+_rpwr,rivalNameX,H/2-12,7,rivalNameCol,'rgba(0,0,0,.35)');
+    txShadow(_PWR_LBL[_rpwr]||('PWR:'+_rpwr),rivalNameX,H/2-12,7,rivalNameCol,'rgba(0,0,0,.35)'); // v316
     g.globalAlpha=1;
   }
 
@@ -12404,7 +12416,7 @@ function drawSelectPhase(){
     }else if(sd&&sd.cards.length>0){
       // Scouted intel — show card details
       const staleRd=rd-sd.round;
-      const stLabel=staleRd>0?'scouted R'+sd.round:'fresh intel';
+      const stLabel=staleRd>0?(_SCOUTED_RD[sd.round]||'scouted R'+sd.round):'fresh intel'; // v316
       txShadow('\u{1F50D} '+stLabel,ppX+10,ppY+33,5,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
       if(_scoutedSliceRef!==sd){_scoutedSliceRef=sd;_scoutedSlice=sd.cards.slice(0,Math.min(4,sd.cards.length));} // v306: cache slice
       const show_=_scoutedSlice;
@@ -12474,17 +12486,17 @@ function drawSelectPhase(){
         txShadow('RECENT ROUNDS:',ppX+8,panY+64,6,'#888870','rgba(0,0,0,.2)');
         for(let ri=0;ri<_bhLen;ri++){
           const h=battleRoundHistory[ri];const hy=panY+68+ri*18;
-          txShadow('R'+h.rd,ppX+8,hy+10,6,'#686860','rgba(0,0,0,.3)');
+          txShadow(_ROUND_LBL[h.rd]||('R'+h.rd),ppX+8,hy+10,6,'#686860','rgba(0,0,0,.3)'); // v316
           // V action
           const vStole=h.r1a===1;
           bx(ppX+28,hy,24,14,'rgba(0,0,0,.4)');
           bx(ppX+28,hy,24,1,vStole?'#d04040':'#686060');
-          txShadow('V:'+(vStole?'STL':h.r1a===2?'BAR':h.r1a===0?'DRW':'SCT'),ppX+30,hy+10,5,vStole?'#d04040':'#687070','rgba(0,0,0,.3)');
+          txShadow(_V_ACT_LBL[h.r1a]||'V:???',ppX+30,hy+10,5,vStole?'#d04040':'#687070','rgba(0,0,0,.3)'); // v316
           // M action
           const mStole=h.r2a===1;
           bx(ppX+56,hy,24,14,'rgba(0,0,0,.4)');
           bx(ppX+56,hy,24,1,mStole?'#d04040':'#686060');
-          txShadow('M:'+(mStole?'STL':h.r2a===2?'BAR':h.r2a===0?'DRW':'SCT'),ppX+58,hy+10,5,mStole?'#d04040':'#687070','rgba(0,0,0,.3)');
+          txShadow(_M_ACT_LBL[h.r2a]||'M:???',ppX+58,hy+10,5,mStole?'#d04040':'#687070','rgba(0,0,0,.3)'); // v316
           // Outcome
           if(h.lost){bx(ppX+84,hy,30,14,'rgba(80,0,0,.4)');txShadow('STOLEN',ppX+86,hy+10,5,'#d04040','rgba(0,0,0,.3)');}
           else if(h.got){bx(ppX+84,hy,20,14,'rgba(0,40,0,.4)');txShadow('+CARD',ppX+86,hy+10,5,'#40a050','rgba(0,0,0,.3)');}
@@ -12564,7 +12576,7 @@ function drawSelectPhase(){
       const rowA=i===0?1:0.7-i*0.1;
       g.globalAlpha=histAlpha*rowA;
       // Round label
-      txShadow('R'+h.rd,hpX+6,hy+12,6,i===0?'#e8e0c0':'#888070','rgba(0,0,0,.3)');
+      txShadow(_ROUND_LBL[h.rd]||('R'+h.rd),hpX+6,hy+12,6,i===0?'#e8e0c0':'#888070','rgba(0,0,0,.3)'); // v316
       // Player action badge
       const pCol=_ACT_COL[h.pa]||'#888';
       bx(hpX+28,hy,34,16,'rgba(0,0,0,.5)');
@@ -12744,9 +12756,7 @@ function drawConfirmingPhase(){
       if(walletLastCommitHash)txShadow(walletLastCommitHash,16,H-22,7,'#80c0ff','rgba(0,0,0,.3)');
     }else if(t<85){
       // Generating ZK proof (real snarkjs or visual)
-      const sp_=_SPIN[Math.floor(t/3)%4]; // v262: hoisted
-      const zkMsg=zkProofGenerating?'Generating Groth16 proof (snarkjs)... '+sp_:'Generating Groth16 proof... '+sp_;
-      txShadow(zkMsg,16,H-38,12,'#14F195','rgba(0,0,0,.3)');
+      txShadow((zkProofGenerating?_GROTH16_SNARK_SPIN:_GROTH16_VIS_SPIN)[Math.floor(t/3)%4],16,H-38,12,'#14F195','rgba(0,0,0,.3)'); // v316
       const proofT=t-65;
       if(proofT>5)txShadow('\u03C0_A',16,H-22,7,'#9945FF','rgba(0,0,0,.3)');
       if(proofT>10)txShadow('\u03C0_B',80,H-22,7,'#14F195','rgba(0,0,0,.3)');
@@ -12814,10 +12824,9 @@ function drawConfirmingPhase(){
     }
   }else{
     if(t<40)txShadow('You chose '+_ACTION_NAMES[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
-    else if(t<60){const sp_=_SPIN[Math.floor(t/4)%4];txShadow('Computing Poseidon hash... '+sp_,16,H-38,12,'#9945FF','rgba(0,0,0,.3)');}
+    else if(t<60){txShadow(_POSEIDON_SPIN[Math.floor(t/4)%4],16,H-38,12,'#9945FF','rgba(0,0,0,.3)');} // v316
     else if(t<80){
-      const sp_=_SPIN[Math.floor(t/3)%4]; // v262: hoisted
-      txShadow('ZK proof: '+zkProofStatus+' '+sp_,16,H-38,12,zkProofStatus==='verified'?'#40d080':'#14F195','rgba(0,0,0,.3)');
+      txShadow((zkProofStatus==='verified'?_ZK_VERIFIED_SPIN:_ZK_PROOF_SPIN)[Math.floor(t/3)%4],16,H-38,12,zkProofStatus==='verified'?'#40d080':'#14F195','rgba(0,0,0,.3)'); // v316
       if(walletLastCommitHash)txShadow(walletLastCommitHash,16,H-18,7,'#80c0ff','rgba(0,0,0,.3)');
     }
     else{txShadow(_RESOLVING_DOTS[Math.floor(t/12)%3],16,H-38,14,'#686068','rgba(200,180,140,.3)');} // v315
