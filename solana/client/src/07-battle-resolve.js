@@ -1008,14 +1008,16 @@ function drawResultPhase(){
     g.globalAlpha=1;
   }
 
-  // Tell accuracy reveal (appears at t>35, subtle footer)
+  // Tell accuracy reveal (appears at t>35, per-rival color) — v285: colors now applied
   if(t>35&&bpRivalTells[0]!==''){
     const tellFadeA=Math.min(1,(t-35)/10);
-    g.globalAlpha=tellFadeA*0.75;
-    const r1correct=bpTellWasAccurate[0]; // v262: removed unused actNamesconst r2correct=bpTellWasAccurate[1];
-    const r1col=r1correct?'#40c040':'#c04040';
-    const r2col=r2correct?'#40c040':'#c04040';
-    txShadow(pl[1].n+':'+(r1correct?'\u2713 read':'x misread')+' | '+pl[2].n+':'+(r2correct?'\u2713 read':'x misread'),panX+16,panY+panH-8,7,'#888878','rgba(0,0,0,.2)');
+    const r1correct=bpTellWasAccurate[0];const r2correct=bpTellWasAccurate[1];
+    const r1col=r1correct?'#48c848':'#c04040';const r2col=r2correct?'#48c848':'#c04040';
+    const r1lbl=pl[1].n+':'+(r1correct?'\u2713':'\u2717');
+    const r2lbl=pl[2].n+':'+(r2correct?'\u2713':'\u2717');
+    g.globalAlpha=tellFadeA*0.85;
+    txShadow(r1lbl,panX+16,panY+panH-8,7,r1col,'rgba(0,0,0,.3)');
+    txShadow(r2lbl,panX+16+r1lbl.length*5+12,panY+panH-8,7,r2col,'rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
 
