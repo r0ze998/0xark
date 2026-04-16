@@ -17880,19 +17880,23 @@ let _sFr004=0,_cFr004=0,_sFr006=0,_cFr006=0,_sFr007=0,_cFr007=0,_sFr008=0,_sFr01
 // wx step=3 starting at 1: wx=1,4,7,10,13,16,19,22,25,28,31 (11 entries)
 const _WATER_WAVE1=new Float32Array(11); // sin(wt*0.25+wx*0.2)*1.5 for wx=0,3,...,30
 const _WATER_WAVE2=new Float32Array(11); // sin(wt*0.3+wx*0.3+1)*1 for wx=1,4,...,31
+// v398: pre-baked spatial phases for water wave sin-addition
+// WAVE1: wx0=i*3; angle=wx0*0.2=i*0.6 → sin/cos(i*0.6) for i=0..10
+// WAVE2: wx1=i*3+1; angle=wx1*0.3+1=(i*0.9+1.3) → sin/cos(i*0.9+1.3) for i=0..10
+const _WW1_SI=new Float32Array(11),_WW1_CI=new Float32Array(11);
+const _WW2_SI=new Float32Array(11),_WW2_CI=new Float32Array(11);
+for(let i=0;i<11;i++){_WW1_SI[i]=Math.sin(i*0.6);_WW1_CI[i]=Math.cos(i*0.6);}
+for(let i=0;i<11;i++){_WW2_SI[i]=Math.sin(i*0.9+1.3);_WW2_CI[i]=Math.cos(i*0.9+1.3);}
 let _waterWt=-1; // last wt value used to fill tables
 function _updateWaterWaves(){
   if(_waterWt===wt)return;
   _waterWt=wt;
-  const _sw025=Math.sin(wt*0.25),_cw025=Math.cos(wt*0.25);
-  const _sw03=Math.sin(wt*0.3),_cw03=Math.cos(wt*0.3);
-  // Pre-bake sin(wt*0.25+wx*0.2) for wx=0,3,...,30 (indices 0..10)
-  // and sin(wt*0.3+wx*0.3+1) for wx=1,4,...,31
+  const _sw025=Math.sin(wt*0.25),_cw025=Math.cos(wt*0.25); // 2 calls (temporal)
+  const _sw03=Math.sin(wt*0.3),_cw03=Math.cos(wt*0.3);     // 2 calls (temporal)
+  // v398: sin-addition with pre-baked spatial phases — was 22 Math.sin calls per wt-update, now 0 in loop
   for(let i=0;i<11;i++){
-    const wx0=i*3,wx1=i*3+1;
-    // sin(wt*0.25+wx0*0.2) via sin-addition (pre-baked sin/cos of wx0*0.2 inline is cheaper than lookup)
-    _WATER_WAVE1[i]=Math.sin(wt*0.25+wx0*0.2)*1.5;
-    _WATER_WAVE2[i]=Math.sin(wt*0.3+wx1*0.3+1)*1.0;
+    _WATER_WAVE1[i]=(_sw025*_WW1_CI[i]+_cw025*_WW1_SI[i])*1.5; // sin(wt*0.25+i*0.6)
+    _WATER_WAVE2[i]=(_sw03*_WW2_CI[i]+_cw03*_WW2_SI[i])*1.0;   // sin(wt*0.3+i*0.9+1.3)
   }
 }
 // v355: pre-baked sin/cos for integer indices 0-15 (used in phase-offset particle loops)
