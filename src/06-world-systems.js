@@ -4,6 +4,9 @@ for(let i=0;i<16;i++){_MM_SI39[i]=Math.sin(i*0.39);_MM_CI39[i]=Math.cos(i*0.39);
 // v371: pre-baked tables for sin-addition in gacha card shimmer (index i, sin(i)/cos(i))
 const _IDX_SI=new Float32Array(60);const _IDX_CI=new Float32Array(60);
 for(let i=0;i<60;i++){_IDX_SI[i]=Math.sin(i);_IDX_CI[i]=Math.cos(i);}
+// v379: 60-frame bounce table for NPC dialog arrow (sin(fr*π/30), period=60)
+const _BOUNCE60=new Float32Array(60);
+for(let i=0;i<60;i++)_BOUNCE60[i]=Math.sin(i*Math.PI/30);
 // v330: lazy cache for trade dialog vault display (key=vaultSz)
 let _tradeVaultLbl='',_tradeVaultKey=-1;
 // v344: lazy caches for title-screen progress and trade overlay labels
@@ -1682,7 +1685,7 @@ function drawNPCDialog(){
 
   // FRLG-style bouncing triangle at bottom-right (bounces 2px every 0.5s = 30 frames)
   const hasMore=(npcDialogIdx+2)<npcDialogLines.length;
-  const arrowBounce=hasMore?Math.floor(Math.sin(fr*Math.PI/30)*2):0;
+  const arrowBounce=hasMore?Math.floor(_BOUNCE60[fr%60]*2):0;
   txShadow('\u25BC',W-24,H-18+slideOff+arrowBounce,7,accent,'rgba(0,0,0,.4)');
   g.globalAlpha=1;
 }
