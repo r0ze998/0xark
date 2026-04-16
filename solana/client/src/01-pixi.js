@@ -215,7 +215,7 @@ function updatePixiPlayerAura(){
   if(unique<10)return; // show aura when 10+ unique cards collected
   const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
   const intensity=unique>=60?1:unique>=30?0.8:0.5;
-  const pulse=Math.sin(fr*0.1)*0.15+0.85;
+  const pulse=_sFr10*0.15+0.85; // v370: cached
   // Golden radial glow
   for(let r=60;r>20;r-=8){
     pxPlayerAura.beginFill(0xF0C830,0.04*intensity*pulse);

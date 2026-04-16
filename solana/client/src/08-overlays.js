@@ -584,7 +584,7 @@ function dVictory(){
   if(t>35){
     g.globalAlpha=Math.min(1,(t-35)/20);
     // Purple rune aura behind title
-    g.globalAlpha*=0.3+Math.sin(fr*0.08)*0.15;bx(W/2-160,84,320,28,ARK.rune);
+    g.globalAlpha*=0.3+_sFr08*0.15;bx(W/2-160,84,320,28,ARK.rune); // v370: cached
     g.globalAlpha=Math.min(1,(t-35)/20);
     txShadow('THE SEAL IS BROKEN',W/2-144,100,14,'#c89820','rgba(0,0,0,.5)');
     g.globalAlpha=1;
@@ -659,7 +659,7 @@ function dVictory(){
     if(victoryClaimed){
       txShadow('\u2713 Grand Seal Claimed! TX: '+victoryClaimedTx,W/2-162,554,7,'#14F195','rgba(0,0,0,.4)');
     }else if(walletConnected){
-      const claimBlink=Math.sin(fr*0.1)*0.15+0.85;
+      const claimBlink=_sFr10*0.15+0.85; // v370: cached
       g.globalAlpha*=claimBlink;
       txShadow('[C] BREAK THE SEAL: '+stakePotAmount.toFixed(2)+' SOL',W/2-165,554,8,'#14F195','rgba(0,0,0,.4)');
     }else{
@@ -678,7 +678,7 @@ function dVictory(){
       bx(W/2-140,573,bar*5,14,'rgba(153,69,255,.5)');
       txShadow(_INSCRIBING_LBL[victoryMintProgress]||('Inscribing '+victoryMintProgress+'/60...'),W/2-88,584,8,'#c090ff','rgba(0,0,0,.4)'); // v328
     }else{
-      const mintBlink=Math.sin(fr*0.08)*0.12+0.88;
+      const mintBlink=_sFr08*0.12+0.88; // v370: cached
       g.globalAlpha*=mintBlink;
       txShadow('[M] INSCRIBE SOULS ON SOLANA',W/2-148,584,8,'#9945FF','rgba(0,0,0,.4)');
     }

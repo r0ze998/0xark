@@ -550,7 +550,7 @@ function dStats(){
   bx(vpbX,vpbY,vpbW,vpbH,'#181838');
   if(vaultSize>0){
     const fW=Math.floor(vpbW*vaultRatio);
-    const pulse_=0.8+Math.sin(fr*0.08)*0.2;
+    const pulse_=0.8+_sFr08*0.2; // v370: cached
     g.globalAlpha=pulse_;g.fillStyle=vaultSize>=60?'#ffdc3c':vaultSize>=48?'#a0c832':'#28b450';
     g.fillRect(vpbX,vpbY,fW,vpbH);g.globalAlpha=1;
     bx(vpbX,vpbY,fW,2,'rgba(255,255,255,.22)');

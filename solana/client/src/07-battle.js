@@ -325,7 +325,7 @@ function drawCardBar(x,y,w,cards,maxCards){
   }
   // Gold glow when close to winning
   if(vaultSize>=30){
-    const glow=Math.sin(fr*0.12)*0.15+0.15;
+    const glow=_sFr12*0.15+0.15; // v370: cached
     g.globalAlpha=glow;
     bx(x-2,y-2,w+4,barH+4,'#F0C830');
     g.globalAlpha=1;
@@ -826,7 +826,7 @@ function drawPhaseBanner(phase){
     const norm=Math.max(-1,Math.min(1,_battleRoundNet/Math.max(1,battleRoundHistory.length))); // v284: cached net
     if(norm>0){bx(W/2,26,(W/2)*norm,3,'#40b0e8');}
     else if(norm<0){bx(W/2+(W/2)*norm,26,-(W/2)*norm,3,'#d04040');}
-    const ta=0.35+Math.sin(fr*0.12)*0.25;
+    const ta=0.35+_sFr12*0.25; // v370: cached
     g.globalAlpha=ta;bx(W/2-1,26,2,3,'#ffffff');g.globalAlpha=1;
   }else{
     bx(W/2-1,26,2,3,'rgba(255,255,255,.2)');
