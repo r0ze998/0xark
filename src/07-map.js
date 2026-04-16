@@ -1390,39 +1390,27 @@ function dMap(){
   const _sCol=_sr<3600000?'#d04040':_sr<86400000?'#d0a030':'#40a040';
   txShadow(_srt,10,hudY+28,9,_sCol,'rgba(0,0,0,.45)');
   // v118: Spell charge orb indicators (visual pips replace plain numbers)
+  // v247: static arrays instead of per-frame object literals + forEach
   {
-    const spells=[
-      {label:'STL',val:sp.s,max:3,cx:100,fill:'#c04848',empty:'#2a1010',warn:sp.s===0},
-      {label:'BAR',val:sp.b,max:3,cx:175,fill:'#3868c0',empty:'#101028',warn:sp.b===0},
-      {label:'SCT',val:sp.c,max:3,cx:250,fill:'#38a038',empty:'#0e1e0e',warn:sp.c===0},
-    ];
-    spells.forEach(s=>{
-      // Label
-      const lCol=s.warn?'#804040':s.label==='STL'?'#b04040':s.label==='BAR'?'#3060b0':'#308030';
-      txShadow(s.label,s.cx,hudY+20,7,lCol,'rgba(0,0,0,.35)');
-      // Pip row (3 orbs, 7×7px each, 4px gap)
-      const orbX=s.cx+26,orbY=hudY+12,orbW=7,orbH=7,orbGap=4;
-      for(let o=0;o<s.max;o++){
-        const filled=o<s.val;
+    const _SL=['STL','BAR','SCT'],_SV=[sp.s,sp.b,sp.c],_SCX=[100,175,250];
+    const _SF=['#c04848','#3868c0','#38a038'],_SE=['#2a1010','#101028','#0e1e0e'];
+    const _SLC=['#b04040','#3060b0','#308030'];
+    for(let si=0;si<3;si++){
+      const sVal=_SV[si],sCX=_SCX[si],warn=sVal===0;
+      const lCol=warn?'#804040':_SLC[si];
+      txShadow(_SL[si],sCX,hudY+20,7,lCol,'rgba(0,0,0,.35)');
+      const orbX=sCX+26,orbY=hudY+12,orbW=7,orbH=7,orbGap=4;
+      for(let o=0;o<3;o++){
         const ox=orbX+o*(orbW+orbGap);
-        bx(ox,orbY,orbW,orbH,filled?s.fill:s.empty);
-        if(filled){
-          // Glint on top-left corner
-          bx(ox+1,orbY+1,2,1,'rgba(255,255,255,.35)');
-        }
+        if(o<sVal){bx(ox,orbY,orbW,orbH,_SF[si]);bx(ox+1,orbY+1,2,1,'rgba(255,255,255,.35)');}
+        else{bx(ox,orbY,orbW,orbH,_SE[si]);}
       }
-      // Bonus charges beyond max (e.g. from chests) shown as "+N"
-      if(s.val>s.max){
-        txShadow('+'+(s.val-s.max),orbX+s.max*(orbW+orbGap)+2,hudY+20,6,'#f0c830','rgba(0,0,0,.4)');
-      }
-      // Depleted flash warning
-      if(s.warn){
+      if(sVal>3){txShadow('+'+(sVal-3),orbX+3*(orbW+orbGap)+2,hudY+20,6,'#f0c830','rgba(0,0,0,.4)');}
+      if(warn){
         const wA=0.4+Math.sin(fr*0.18)*0.4;
-        g.globalAlpha=wA;
-        bx(s.cx-2,hudY+10,orbX+s.max*(orbW+orbGap)-s.cx+2,orbH+2,'rgba(180,40,40,.15)');
-        g.globalAlpha=1;
+        g.globalAlpha=wA;bx(sCX-2,hudY+10,orbX+3*(orbW+orbGap)-sCX+2,orbH+2,'rgba(180,40,40,.15)');g.globalAlpha=1;
       }
-    });
+    }
   }
   // Location indicator: Town or Dungeon floor
   if(inDungeon){
