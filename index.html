@@ -17676,33 +17676,112 @@ function drawBuildingInterior(){
     }
   }
 
-  // Draw NPC in building
-  const npcX=4,npcY=4; // NPC behind counter
+  // Draw NPC in building — pixel art characters
+  const npcX=4,npcY=4;
   const npx=offsetX+npcX*tileSize,npy=offsetY+npcY*tileSize;
-  // Simple NPC sprite (larger)
-  bx(npx+8,npy+4,16,20,'#f0dcc0');
+  const bobY=_sFr08*1.5;
   if(buildingType==='shop'){
-    bx(npx+6,npy+10,20,14,'#8050a0');
-    bx(npx+8,npy,16,8,'#404048');
+    // ── Merchant (Elara) — purple robe, hat, ledger ──
+    // Shadow
+    g.globalAlpha=0.2;bx(npx+5,npy+27,22,4,'#000000');g.globalAlpha=1;
+    // Boots
+    bx(npx+9,npy+23+bobY,6,4,'#3a1f10');bx(npx+17,npy+23+bobY,6,4,'#3a1f10');
+    // Robe skirt
+    bx(npx+7,npy+17+bobY,18,7,'#6038a0');bx(npx+8,npy+18+bobY,16,5,'#7048b0');
+    // Belt
+    bx(npx+6,npy+17+bobY,20,2,'#806020');bx(npx+13,npy+17+bobY,6,2,'#c0a030');
+    // Robe body
+    bx(npx+8,npy+9+bobY,16,10,'#7048b0');bx(npx+9,npy+10+bobY,14,8,'#8058c0');
+    // Left arm + hand (holding ledger)
+    bx(npx+4,npy+10+bobY,5,8,'#6038a0');bx(npx+2,npy+16+bobY,7,5,'#f0c090');
+    // Ledger book
+    bx(npx+2,npy+17+bobY,8,5,'#804020');bx(npx+3,npy+18+bobY,6,3,'#f8f4e0');
+    bx(npx+4,npy+19+bobY,4,1,'#a06030');
+    // Right arm
+    bx(npx+23,npy+10+bobY,5,8,'#6038a0');bx(npx+23,npy+16+bobY,6,5,'#f0c090');
+    // Neck
+    bx(npx+12,npy+8+bobY,8,3,'#f0c090');
+    // Head
+    bx(npx+9,npy+1+bobY,14,9,'#f0c090');bx(npx+10,npy+2+bobY,12,7,'#f8d0a0');
+    // Hair (curly sides)
+    bx(npx+8,npy+1+bobY,3,6,'#2a1608');bx(npx+21,npy+1+bobY,3,6,'#2a1608');
+    // Hat brim
+    bx(npx+6,npy-1+bobY,20,3,'#402880');bx(npx+5,npy,22,2,'#5038a0');
+    // Hat top
+    bx(npx+9,npy-5+bobY,14,5,'#5038a0');bx(npx+10,npy-4+bobY,12,3,'#6048b0');
+    // Hat band + buckle
+    bx(npx+9,npy-1+bobY,14,2,'#c0a020');bx(npx+14,npy-2+bobY,4,3,'#e0c030');
+    // Eyes + shine
+    bx(npx+11,npy+4+bobY,3,2,'#282018');bx(npx+18,npy+4+bobY,3,2,'#282018');
+    bx(npx+12,npy+4+bobY,1,1,'#ffffff');bx(npx+19,npy+4+bobY,1,1,'#ffffff');
+    // Rosy cheeks + smile
+    g.globalAlpha=0.4;bx(npx+10,npy+6+bobY,3,2,'#e06050');bx(npx+19,npy+6+bobY,3,2,'#e06050');g.globalAlpha=1;
+    bx(npx+12,npy+7+bobY,8,1,'#c07060');
+    // Torch on wall (atmospheric flicker)
+    const torchFlick=Math.floor(fr/4)%2;
+    bx(npx+28,npy-12,4,8,'#805030');bx(npx+29,npy-12,2,8,'#a06838');
+    g.globalAlpha=0.7+torchFlick*0.2;bx(npx+27,npy-14-torchFlick,6,3,'#f0a020');g.globalAlpha=1;
+    g.globalAlpha=0.4;bx(npx+28,npy-16-torchFlick,4,3,'#f8e060');g.globalAlpha=1;
   }else{
-    bx(npx+6,npy+10,20,14,'#407048');
-    bx(npx+8,npy,16,8,'#604830');
+    // ── Info Broker (Sable) — hooded cloak, glowing eyes, dagger ──
+    g.globalAlpha=0.2;bx(npx+5,npy+27,22,4,'#000000');g.globalAlpha=1;
+    // Cloak bottom
+    bx(npx+5,npy+18+bobY,22,8,'#1a2430');bx(npx+7,npy+19+bobY,18,6,'#1e2c3c');
+    // Cloak body
+    bx(npx+6,npy+9+bobY,20,11,'#22303e');bx(npx+7,npy+10+bobY,18,9,'#263848');
+    // Collar
+    bx(npx+9,npy+8+bobY,14,3,'#1a2430');
+    // Left arm (hidden in cloak)
+    bx(npx+3,npy+10+bobY,5,12,'#1a2430');
+    // Right arm (dagger visible)
+    bx(npx+24,npy+10+bobY,5,12,'#1a2430');
+    // Dagger hilt
+    bx(npx+24,npy+15+bobY,5,2,'#b09020');bx(npx+25,npy+11+bobY,3,5,'#707880');
+    // Hood (deep shadow)
+    bx(npx+7,npy-1+bobY,18,12,'#151e2a');bx(npx+8,npy+0+bobY,16,11,'#0e1622');
+    // Face in shadow
+    bx(npx+10,npy+3+bobY,12,7,'#a07858');bx(npx+11,npy+4+bobY,10,5,'#b08868');
+    // Glowing eyes (blue-white, eerie)
+    bx(npx+11,npy+5+bobY,3,2,'#60b0e0');bx(npx+18,npy+5+bobY,3,2,'#60b0e0');
+    g.globalAlpha=0.6+_sFr04*0.3;bx(npx+10,npy+5+bobY,5,2,'rgba(80,160,220,.3)');bx(npx+17,npy+5+bobY,5,2,'rgba(80,160,220,.3)');g.globalAlpha=1;
+    // Hood cowl peak
+    bx(npx+9,npy-3+bobY,14,4,'#151e2a');bx(npx+11,npy-6+bobY,10,4,'#101820');
+    // Cloak hood shadow details
+    bx(npx+7,npy-2+bobY,3,8,'#0e1622');bx(npx+22,npy-2+bobY,3,8,'#0e1622');
+    // Atmospheric candle (small, dim)
+    bx(npx-4,npy-10,3,12,'#7a6040');
+    const cFlick=Math.floor(fr/5)%2;
+    g.globalAlpha=0.5+cFlick*0.2;bx(npx-5,npy-12-cFlick,5,3,'#e09020');g.globalAlpha=1;
+    g.globalAlpha=0.25;bx(npx-4,npy-14-cFlick,3,3,'#f8e060');g.globalAlpha=1;
   }
-  bx(npx+10,npy+6,4,3,'#181820');bx(npx+18,npy+6,4,3,'#181820');
-  // Diamond above NPC
-  const bobY=_sFr08*2; // v370: cached
-  bx(npx+14,npy-8+bobY,4,4,buildingType==='shop'?'#4080d0':'#40b060');
+  // Floating diamond indicator above NPC
+  bx(npx+14,npy-12+bobY,4,4,buildingType==='shop'?'#4080d0':'#40b060');
+  g.globalAlpha=0.4;bx(npx+13,npy-13+bobY,6,6,buildingType==='shop'?'#2060b0':'#208060');g.globalAlpha=1;
 
-  // Draw player in building
+  // Draw player in building — detail sprite
   const ppx=offsetX+buildingPlayerX*tileSize,ppy=offsetY+buildingPlayerY*tileSize;
-  // Simplified sprite at interior scale
-  bx(ppx+8,ppy+16,16,8,'#4050a0'); // pants
-  bx(ppx+6,ppy+8,20,10,'#4080d0'); // shirt
-  bx(ppx+8,ppy,16,10,'#f0dcc0'); // head
-  bx(ppx+8,ppy-2,16,6,'#282830'); // hair
-  if(buildingPlayerDir===2){
-    bx(ppx+10,ppy+4,4,3,'#181820');bx(ppx+18,ppy+4,4,3,'#181820');
-  }
+  const pDir=buildingPlayerDir||0;
+  // Shadow
+  g.globalAlpha=0.2;bx(ppx+6,ppy+27,20,4,'#000000');g.globalAlpha=1;
+  // Boots
+  bx(ppx+9,ppy+22,6,4,'#302040');bx(ppx+17,ppy+22,6,4,'#302040');
+  // Pants
+  bx(ppx+9,ppy+13,6,10,'#4050a0');bx(ppx+17,ppy+13,6,10,'#4050a0');
+  // Belt
+  bx(ppx+7,ppy+13,18,2,'#503020');bx(ppx+13,ppy+13,6,2,'#a07020');
+  // Shirt
+  bx(ppx+8,ppy+5,16,10,'#4080d0');bx(ppx+9,ppy+6,14,8,'#5090e0');
+  // Arms
+  bx(ppx+5,ppy+6,5,9,'#4080d0');bx(ppx+22,ppy+6,5,9,'#4080d0');
+  // Hands
+  bx(ppx+4,ppy+13,5,4,'#f0dcc0');bx(ppx+23,ppy+13,5,4,'#f0dcc0');
+  // Head
+  bx(ppx+9,ppy,14,8,'#f0dcc0');bx(ppx+10,ppy+1,12,6,'#f8e0c0');
+  // Hair
+  bx(ppx+8,ppy-2,16,4,'#282830');bx(ppx+9,ppy-1,14,3,'#383840');
+  // Eyes (front-facing always shown)
+  bx(ppx+11,ppy+3,3,2,'#181820');bx(ppx+18,ppy+3,3,2,'#181820');
+  bx(ppx+12,ppy+3,1,1,'#ffffff');bx(ppx+19,ppy+3,1,1,'#ffffff');
 
   // HUD for building
   const hudY=H-40;
