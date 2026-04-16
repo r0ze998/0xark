@@ -1254,7 +1254,7 @@ function dMap(){
       g.beginPath();g.arc(edgeX,edgeY,ringR,0,Math.PI*2);g.stroke();
       if(pPhase<0.28){
         g.globalAlpha=ringA*(1-pPhase/0.28);
-        g.font='bold 8px VT323, monospace';
+        g.font='bold 8px VT323, monospace';_lastFontSz=-1;
         g.fillStyle=rivalCol;g.shadowColor=rivalCol;g.shadowBlur=4;
         g.textAlign='center';g.fillText('?',edgeX,edgeY+3);
         g.textAlign='left';g.shadowBlur=0;

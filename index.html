@@ -1448,14 +1448,16 @@ function drawRuneGlow(x,y,w,h,col,fr_){
 function bx(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}
 function tx(s,x,y,sz,c){
   g.fillStyle=c||ARK.text;
-  const finalSz=Math.max(12,Math.round((sz||12)*1.4));
-  g.font=finalSz+"px 'VT323',monospace";
+  setFont(Math.max(12,Math.round((sz||12)*1.4)));
   g.fillText(s,x,y);
 }
+// v246: Font cache — g.font= is one of the most expensive Canvas2D ops (triggers font metric recalc)
+// _lastFontSz is reset each draw() frame via 09-game-loop.js; direct g.font= calls invalidate it too
+let _lastFontSz=-1;
+function setFont(sz){if(sz!==_lastFontSz){g.font=sz+"px 'VT323',monospace";_lastFontSz=sz;}}
 function txShadow(s,x,y,sz,color,shadowColor){
   // v210: native shadow API — 3 fillText → 1 (save ~100 draw calls/frame)
-  const finalSz=Math.max(12,Math.round((sz||12)*1.4));
-  g.font=finalSz+"px 'VT323',monospace";
+  setFont(Math.max(12,Math.round((sz||12)*1.4)));
   g.shadowColor=shadowColor||'rgba(0,0,0,0.9)';
   g.shadowOffsetX=1;g.shadowOffsetY=1;g.shadowBlur=0;
   g.fillStyle=color||ARK.text;g.fillText(s,x,y);
@@ -2941,6 +2943,7 @@ function drawRivalNews(){
   const display=item.text.length>maxChars?item.text.substring(0,maxChars-1)+'…':item.text;
   g.fillText(display,textX,my+20);
   g.globalAlpha=1;
+  _lastFontSz=-1; // invalidate txShadow font cache — direct g.font= calls above used non-VT323 format
 }
 
 // ═══════════════════════════════════════
@@ -10425,7 +10428,7 @@ function dMap(){
       g.beginPath();g.arc(edgeX,edgeY,ringR,0,Math.PI*2);g.stroke();
       if(pPhase<0.28){
         g.globalAlpha=ringA*(1-pPhase/0.28);
-        g.font='bold 8px VT323, monospace';
+        g.font='bold 8px VT323, monospace';_lastFontSz=-1;
         g.fillStyle=rivalCol;g.shadowColor=rivalCol;g.shadowBlur=4;
         g.textAlign='center';g.fillText('?',edgeX,edgeY+3);
         g.textAlign='left';g.shadowBlur=0;
@@ -17165,6 +17168,8 @@ function dSplash(){
 function draw(){
   // Fill with deep-ocean background (prevents transparent bleed-through beyond map edges)
   g.fillStyle='#070d1a';g.fillRect(0,0,W,H);
+  // v246: reset txShadow font cache each frame (direct g.font= assignments can invalidate it)
+  _lastFontSz=-1;
   // Global screen shake
   let _shaking=false;
   if(shakeT>0){

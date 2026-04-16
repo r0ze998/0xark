@@ -773,6 +773,7 @@ function drawRivalNews(){
   const display=item.text.length>maxChars?item.text.substring(0,maxChars-1)+'…':item.text;
   g.fillText(display,textX,my+20);
   g.globalAlpha=1;
+  _lastFontSz=-1; // invalidate txShadow font cache — direct g.font= calls above used non-VT323 format
 }
 
 // ═══════════════════════════════════════
