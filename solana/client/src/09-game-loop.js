@@ -1,6 +1,9 @@
 // GAME LOOP
 // ═══════════════════════════════════════
 
+// v224: Pre-baked escape urgency vignette — red edge decay warning (shape static, alpha varies)
+const _escVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(200,20,20,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;})();
+
 // Held-key continuous movement (overworld only — dungeon stays turn-based per press)
 // Time-based so movement rate is consistent regardless of fps
 const _MOVE_REPEAT_MS     = 115; // ms between steps while holding (~8.7Hz)
@@ -421,13 +424,10 @@ function draw(){
   // Card collection progress bar (always visible on map)
   drawCardProgressBar();
   if(flashT>0){bx(0,0,W,H,`rgba(255,255,255,${(flashT>10?1:flashT/10)*.8})`);}
-  // Decay vignette: red edges when any card critically decaying
+  // Decay vignette: red edges when any card critically decaying (pre-baked canvas + globalAlpha)
   if(escapeUrgencyActive&&inDungeon&&(sc==='map'||sc==='act')){
     const vigA=(0.15+Math.sin(escapeUrgencyPulse*0.15)*0.1)*Math.min(1,escapeUrgencyPulse/30);
-    const vg=g.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);
-    vg.addColorStop(0,'rgba(0,0,0,0)');
-    vg.addColorStop(1,`rgba(200,20,20,${vigA.toFixed(2)})`);
-    g.fillStyle=vg;g.fillRect(0,0,W,H);
+    g.globalAlpha=vigA;g.drawImage(_escVigCanvas,0,0);g.globalAlpha=1;
   }
   // Screen transition wipes (replaces old battleWipe)
   drawWipe();
