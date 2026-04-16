@@ -323,10 +323,10 @@ function drawEdgeBlending(startTX,startTY,endTX,endTY){
         }
         // Water-to-Grass (near-shore foam from water side)
         if(gt==='water'&&ngt==='grass'){
-          if(isTop){for(let i=0;i<TW;i++){if(thRand(x,y,i+380)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK; // v304bx(px+i,py,1,1,wc);}}}
-          if(isBot){for(let i=0;i<TW;i++){if(thRand(x,y,i+390)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK; // v304bx(px+i,py+TH-1,1,1,wc);}}}
-          if(isLft){for(let i=0;i<TH;i++){if(thRand(x,y,i+400)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK; // v304bx(px,py+i,1,1,wc);}}}
-          if(isRgt){for(let i=0;i<TH;i++){if(thRand(x,y,i+410)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK; // v304bx(px+TW-1,py+i,1,1,wc);}}}
+          if(isTop){for(let i=0;i<TW;i++){if(thRand(x,y,i+380)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK;bx(px+i,py,1,1,wc);}}} // v304
+          if(isBot){for(let i=0;i<TW;i++){if(thRand(x,y,i+390)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK;bx(px+i,py+TH-1,1,1,wc);}}} // v304
+          if(isLft){for(let i=0;i<TH;i++){if(thRand(x,y,i+400)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK;bx(px,py+i,1,1,wc);}}} // v304
+          if(isRgt){for(let i=0;i<TH;i++){if(thRand(x,y,i+410)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK;bx(px+TW-1,py+i,1,1,wc);}}} // v304
         }
         // Mountain/Grass transitions
         if(gt==='grass'&&ngt==='mountain'){
