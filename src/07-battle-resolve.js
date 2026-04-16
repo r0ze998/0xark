@@ -755,7 +755,7 @@ function drawResolvingPhase(){
     }
   }else{
     // Anti-softlock: if player has 0 cards and 0 spells after resolve, give a pity card
-    if(pl[0].cd.filter(c=>c>0).length===0&&sp.s<=0&&sp.b<=0&&sp.c<=0){
+    if(cdCount(pl[0].cd)===0&&sp.s<=0&&sp.b<=0&&sp.c<=0){
       const pityCard=pickAreaCard();
       addCardToPlayer(0,pityCard);
       lg.push('R'+rd+': A wandering spirit gave you '+CD[pityCard-1].n+'!');
@@ -827,7 +827,7 @@ function drawResultPhase(){
     }}
     txShadow(actName,cx_+4,cy_+28,8,actCol,'rgba(0,0,0,.2)');
     // Card count
-    const cc=pl[p_.idx].cd.filter(c=>c>0).length;
+    const cc=cdCount(pl[p_.idx].cd);
     txShadow(cc+'/5 cards',cx_+4,cy_+42,7,'#988870','rgba(0,0,0,.15)');
     // Mini card bar
     for(let i=0;i<5;i++){
