@@ -5867,6 +5867,10 @@ const milestonesReached=new Set();
 // ═══════════════════════════════════════
 // TILE RENDERING
 // ═══════════════════════════════════════
+// v375: 512-entry integer sin/cos lookup — eliminates Math.sin(fr*x + integer_phase) per-tile calls
+// Phases like tx_*2+ty*3 (max 195), tx_*5+ty*7 (max 468), x+y (max 78) are all within 0-511
+const _NSIN=new Float32Array(512);const _NCOS=new Float32Array(512);
+for(let i=0;i<512;i++){_NSIN[i]=Math.sin(i);_NCOS[i]=Math.cos(i);}
 // v251: Pre-baked lake tile color strings — eliminates template literal creation per lake tile per dirty frame
 // rv=(h&5)-2; h&5 ∈ {0,1,4,5} → rv ∈ {-2,-1,2,3}. Indexed by h&5 (sparse array, slots 2,3 unused).
 const _LAKE_TOP_F3 =['rgb(46,110,166)','rgb(47,111,167)',null,null,'rgb(50,114,170)','rgb(51,115,171)'];
@@ -6118,8 +6122,9 @@ function drawFlower(px,py,tx_,ty){
 
 function drawTallGrass(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
-  // Waving blades — v366: sin-addition with pre-baked i*0.7 tables (2 trig/tile, 0/blade)
-  const _sgB=Math.sin(fr*0.08+tx_*2+ty*3),_cgB=Math.cos(fr*0.08+tx_*2+ty*3);
+  // Waving blades — v375: sin-addition with _NSIN/_NCOS table (0 trig/tile)
+  const _ph1=(tx_*2+ty*3)&511;
+  const _sgB=_sFr08*_NCOS[_ph1]+_cFr08*_NSIN[_ph1],_cgB=_cFr08*_NCOS[_ph1]-_sFr08*_NSIN[_ph1];
   for(let i=0;i<8;i++){
     const sway=(_sgB*_GRASS_CI7[i]+_cgB*_GRASS_SI7[i])*2;
     const bx_=px+1+i*4+Math.floor(sway),by_=py+2;
@@ -6607,9 +6612,10 @@ function drawCrystal(px,py,tx_,ty){
   bx(px+12,py+2,8,4,lighten(hue,.2));
   bx(px+4,py+12,6,14,darken(hue,.1));bx(px+22,py+8,6,16,darken(hue,.1));
   bx(px+12,py+6,4,8,lighten(hue,.25));bx(px+14,py+4,2,4,'rgba(255,255,255,.3)');
-  const sparkle=Math.sin(fr*.1+tx_*5+ty*7)>.5;
+  const _ph2=(tx_*5+ty*7)&511,_ph3=(tx_+ty)&511; // v375: phase indices
+  const sparkle=(_sFr10*_NCOS[_ph2]+_cFr10*_NSIN[_ph2])>.5; // sin-addition
   if(sparkle){bx(px+16,py+8,2,2,'#fff');bx(px+10,py+14,2,2,'rgba(255,255,255,.7)');}
-  const _cgA=.12+Math.sin(fr*.05+tx_+ty)*.06;
+  const _cgA=.12+(_sFr05*_NCOS[_ph3]+_cFr05*_NSIN[_ph3])*.06; // sin-addition
   g.globalAlpha=_cgA;g.drawImage(_tileCrystalGlows[(tx_+ty)%2],(px+5)|0,(py+5)|0);g.globalAlpha=1;
 }
 
@@ -6784,7 +6790,7 @@ function drawDungeonStairGlows(startTX,startTY,endTX,endTY){
       if(px<-TW||px>W||py<-TH||py>H)continue;
       if(t===31){
         // Down staircase glow — pre-baked ellipses + globalAlpha arrows (no template literals)
-        const pulse=Math.sin(fr*.07+x*2+y*3)*.25+.75;
+        const pulse=(_sFr07*_NCOS[(x*2+y*3)&511]+_cFr07*_NSIN[(x*2+y*3)&511])*.25+.75; // v375
         const isGold=currentMap>=5;
         g.globalAlpha=pulse*(isGold?.5:.45);g.drawImage(isGold?_stairDownGoldA:_stairDownPurpleA,(px+8)|0,(py+19)|0);
         g.globalAlpha=pulse*(isGold?.3:.25);g.drawImage(isGold?_stairDownGoldB:_stairDownPurpleB,(px+4)|0,(py+17)|0);
@@ -6794,7 +6800,7 @@ function drawDungeonStairGlows(startTX,startTY,endTX,endTY){
         g.globalAlpha=1;
       }else{
         // Up staircase glow — pre-baked ellipses + globalAlpha arrows (no template literals)
-        const pulse=Math.sin(fr*.06+x*3+y*2)*.2+.8;
+        const pulse=(_sFr06*_NCOS[(x*3+y*2)&511]+_cFr06*_NSIN[(x*3+y*2)&511])*.2+.8; // v375
         g.globalAlpha=pulse*.4;g.drawImage(_stairUpBlueA,(px+8)|0,(py+3)|0);
         g.globalAlpha=pulse*.2;g.drawImage(_stairUpBlueB,(px+4)|0,(py+1)|0);
         g.globalAlpha=pulse*.8;
@@ -6879,13 +6885,13 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
       }
       if(t===24){
         // Glow tile: pulsing teal halo (pre-baked arc)
-        const pulse=Math.sin(fr*.06+x*2+y*3)*.35+.55;
+        const pulse=(_sFr06*_NCOS[(x*2+y*3)&511]+_cFr06*_NSIN[(x*2+y*3)&511])*.35+.55; // v375
         g.globalAlpha=pulse*.22;g.drawImage(_dungGlowTile,(px)|0,(py)|0);g.globalAlpha=1;
       }else if(t===26){
         // Crystal: sparkle glint + glow halo (pre-baked arc)
-        const sparkle=Math.sin(fr*.1+x*5+y*7)>.45;
+        const sparkle=(_sFr10*_NCOS[(x*5+y*7)&511]+_cFr10*_NSIN[(x*5+y*7)&511])>.45; // v375
         if(sparkle){bx(px+15,py+8,3,2,'#fff');bx(px+10,py+15,2,2,'rgba(255,255,255,.8)');}
-        const cAlpha=.16+Math.sin(fr*.05+x+y)*.09;
+        const cAlpha=.16+(_sFr05*_NCOS[(x+y)&511]+_cFr05*_NSIN[(x+y)&511])*.09; // v375
         g.globalAlpha=cAlpha;g.drawImage(_dungCrystalArc,(px+4)|0,(py+4)|0);g.globalAlpha=1;
       }else if(t===27){
         // Altar: floating brass orb + pulse glow (v367: use cached _sFr04/_sFr05)
@@ -6928,7 +6934,7 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
       if((sphase|0)%11===0){
         const sx=px+((x*37+y*61+fr)%24)+4;
         const sy=py+((x*19+y*43+fr)%20)+4;
-        const sa=0.35+0.25*Math.sin(fr*0.1+x+y);
+        const sa=0.35+0.25*(_sFr10*_NCOS[(x+y)&511]+_cFr10*_NSIN[(x+y)&511]); // v375
         g.globalAlpha=sa;
         bx(sx,sy,2,1,'#c8e8ff');bx(sx,sy,1,2,'#c8e8ff');
         g.globalAlpha=1;
