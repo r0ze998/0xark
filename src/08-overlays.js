@@ -981,18 +981,17 @@ function dLog(){
   const statBannerY=52;
   win(16,statBannerY,W-32,26);
   bx(16,statBannerY,W-32,2,'#3048a0');
-  const statParts=[
-    {icon:'\u2694',val:rd,col:'#c04848',label:'btl'},
-    {icon:'\u2605',val:stats.cardsCollected,col:'#50e090',label:'got'},
-    {icon:'\u2717',val:stats.cardsLost,col:'#d04040',label:'lost'},
-    {icon:'\u2660',val:vaultSz+'/60',col:vaultSz>=60?'#f0c830':'#7888c8',label:''},
-  ];
-  statParts.forEach((s,si)=>{
+  // Stat banner — direct render avoids 4-object array + forEach closure per log-screen frame
+  {const _sIcons=['\u2694','\u2605','\u2717','\u2660'];
+  const _sVals=[rd+'',stats.cardsCollected+'',stats.cardsLost+'',vaultSz+'/60'];
+  const _sCols=['#c04848','#50e090','#d04040',vaultSz>=60?'#f0c830':'#7888c8'];
+  const _sLabels=['btl','got','lost',''];
+  for(let si=0;si<4;si++){
     const sx=36+si*230;
-    txShadow(s.icon,sx,statBannerY+18,8,s.col,'rgba(0,0,0,.35)');
-    txShadow(s.val+'',sx+12,statBannerY+18,8,'#f0e8d0','rgba(0,0,0,.35)');
-    if(s.label) txShadow(s.label,sx+12+String(s.val).length*7,statBannerY+18,6,'#505070','rgba(0,0,0,.3)');
-  });
+    txShadow(_sIcons[si],sx,statBannerY+18,8,_sCols[si],'rgba(0,0,0,.35)');
+    txShadow(_sVals[si],sx+12,statBannerY+18,8,'#f0e8d0','rgba(0,0,0,.35)');
+    if(_sLabels[si]) txShadow(_sLabels[si],sx+12+_sVals[si].length*7,statBannerY+18,6,'#505070','rgba(0,0,0,.3)');
+  }}
 
   // Scrollable log entries
   const entryH=30;
@@ -1003,13 +1002,14 @@ function dLog(){
   logScrollOff=Math.max(0,Math.min(logScrollOff,maxScroll));
   const startIdx=Math.max(0,totalEntries-maxVisible-logScrollOff);
   const endIdx=Math.min(totalEntries,startIdx+maxVisible);
-  const visibleLogs=lg.slice(startIdx,endIdx);
+  // Direct index access — eliminates lg.slice() array alloc + forEach closure per log frame
+  const visibleCount=endIdx-startIdx;
 
   // Single window for all entries
   win(16,padTop-6,W-32,maxVisible*entryH+12);
 
-  visibleLogs.forEach((l,i)=>{
-    const y=padTop+i*entryH;
+  for(let i=0;i<visibleCount;i++){
+    const l=lg[startIdx+i];const y=padTop+i*entryH;
     // v120: event-type icon instead of plain dot
     let col='#888898',icon='\u00B7'; // · default
     if(l.includes('stole')||l.includes('Steal')||l.includes('STEAL')||l.includes('ambush')){
@@ -1049,8 +1049,8 @@ function dLog(){
     const displayText=l.length>maxChars?l.substring(0,maxChars)+'..':l;
     txShadow(displayText,46,y+18,10,col,'rgba(0,0,0,.7)');
     // Thin separator
-    if(i<visibleLogs.length-1) bx(40,y+entryH-2,W-80,1,'#161628');
-  });
+    if(i<visibleCount-1) bx(40,y+entryH-2,W-80,1,'#161628');
+  }
 
   // Scroll indicators
   if(logScrollOff<maxScroll){
