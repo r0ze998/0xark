@@ -3840,12 +3840,124 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(7,8,2,1,'#ffffff'); // core point of light
     // Gate base
     px(1,17,14,1,'#38708a');px(2,17,12,1,'#4888a0');
+  }else if(_cn==='PHOENIX'){
+    // PHOENIX — Fire Reborn (revive once, Epic recovery)
+    // Idle: wing flap, tail flame flicker, ember particles
+    const wingFl=Math.floor(t/8)%2; // wing up/down
+    const flamePh=Math.floor(t/6)%3; // flame phase
+    const phGlow=0.3+0.4*_sFr06;
+    // Warm glow aura
+    g.globalAlpha=phGlow*0.18;px(-1,-1,18,22,'#f8a040');g.globalAlpha=1;
+    // Head (fierce bird head)
+    px(6,1,4,3,'#e88030');px(7,1,2,2,'#f0a050');
+    // Eye (golden)
+    px(8,2,2,1,'#f8e040');
+    // Beak (orange-red)
+    px(10,2,3,1,'#d86020');px(11,2,2,1,'#f07030');
+    // Crest feathers (flame tips on head)
+    if(flamePh===0){px(5,0,3,2,'#f0c040');px(8,0,2,1,'#f8a030');}
+    else if(flamePh===1){px(6,0,2,2,'#f0c040');px(9,0,2,1,'#f8a030');}
+    else{px(5,0,4,1,'#f8c840');px(7,0,2,2,'#f0a030');}
+    // Body (broad, powerful)
+    px(5,4,6,4,'#d86020');px(6,4,4,3,'#e88030');px(6,5,4,2,'#f0a050');
+    // Wings — left (flapping)
+    if(wingFl===0){
+      px(0,3,6,5,'#c05018');px(1,3,5,4,'#d86020');px(2,4,3,3,'#e88030');
+      px(0,7,5,2,'#e88030');px(0,8,4,2,'#f0a050');
+    }else{
+      px(0,5,6,4,'#c05018');px(1,5,5,3,'#d86020');px(2,6,3,2,'#e88030');
+      px(0,8,5,2,'#e88030');
+    }
+    // Wings — right (mirrored flap)
+    if(wingFl===0){
+      px(10,3,6,5,'#c05018');px(11,3,5,4,'#d86020');px(12,4,3,3,'#e88030');
+      px(11,7,5,2,'#e88030');px(12,8,4,2,'#f0a050');
+    }else{
+      px(10,5,6,4,'#c05018');px(11,5,5,3,'#d86020');px(12,6,3,2,'#e88030');
+      px(11,8,5,2,'#e88030');
+    }
+    // Tail feathers (flame trail below)
+    px(5,8,6,4,'#d86020');px(6,8,4,3,'#e88030');
+    // Flame tail tips (animated)
+    if(flamePh===0){px(4,11,3,3,'#f0c040');px(8,12,3,2,'#f0a030');px(6,13,2,3,'#e88030');}
+    else if(flamePh===1){px(5,11,2,3,'#f8c840');px(9,11,2,3,'#f0a030');px(7,12,2,3,'#e88030');}
+    else{px(4,12,4,2,'#f0c040');px(8,11,3,3,'#f0a030');px(6,14,3,2,'#e88030');}
+    // Talons
+    px(5,16,2,2,'#c05018');px(9,16,2,2,'#c05018');
+    // Ember particles
+    const _pp=charParticles[cardId];
+    if(t%10===0&&_pp.length<CHAR_PARTICLE_MAX){_pp.push({rx:4+Math.random()*8,ry:12,life:15+Math.random()*8,c:Math.random()>.5?'#f0c040':'#f08030'});}
+    for(let _i=_pp.length-1;_i>=0;_i--){const _p=_pp[_i];_p.ry-=0.4;_p.life--;
+      if(_p.life<=0){_pp.splice(_i,1);continue;}
+      g.globalAlpha=Math.min(1,_p.life/8);g.fillStyle=_p.c;g.fillRect(x+_p.rx*s,y+_p.ry*s,s,s);g.globalAlpha=1;}
+  }else if(_cn==='PHANTOM'){
+    // PHANTOM — Ghost Walker (ghost mode, Epic flee)
+    // Idle: phase shift (fade in/out), wisps drift, translucent form
+    const phaseA=0.5+0.5*_sFr035; // phase in/out
+    const wispPh=Math.floor(t/7)%4;
+    // Main form (translucent teal ghost)
+    g.globalAlpha=phaseA*0.85;
+    // Head (round ghost head)
+    px(5,1,6,5,'#408870');px(6,2,4,3,'#60a890');px(7,2,2,2,'#88c8a8');
+    // Ghost eyes (glowing)
+    px(6,3,2,2,'#d0f0e8');px(9,3,2,2,'#d0f0e8');
+    px(7,4,1,1,'#60a890');px(10,4,1,1,'#60a890'); // pupils
+    // Open mouth
+    px(7,6,3,1,'#204838');
+    // Body (flowing ghost form)
+    px(4,6,8,6,'#408870');px(5,7,6,4,'#60a890');px(6,7,4,3,'#88c8a8');
+    // Ghost hands (reaching)
+    px(1,8,4,3,'#408870');px(2,8,3,2,'#60a890');
+    px(11,8,4,3,'#408870');px(12,8,3,2,'#60a890');
+    // Wispy bottom (ghost tail, tattered)
+    px(3,12,10,3,'#408870');px(4,13,8,2,'#60a890');
+    // Wispy tendrils at bottom (4-phase)
+    const _wt=[{x:3,y:14,w:2,h:3},{x:7,y:15,w:2,h:3},{x:11,y:14,w:2,h:3},{x:5,y:16,w:2,h:2}];
+    px(_wt[wispPh].x,_wt[wispPh].y,_wt[wispPh].w,_wt[wispPh].h,'#306858');
+    px(_wt[(wispPh+2)%4].x,_wt[(wispPh+2)%4].y,_wt[(wispPh+2)%4].w,_wt[(wispPh+2)%4].h,'#60a890');
+    g.globalAlpha=1;
+    // Echo (ghost trail — opposite phase)
+    g.globalAlpha=(1-phaseA)*0.3;px(6,2,4,14,'#88c8a8');g.globalAlpha=1;
+  }else if(_cn==='GRAVITY'){
+    // GRAVITY — Crush Force (even light bends, Epic magic)
+    // Idle: gravity lens distortion, orbiting debris, crushing force
+    const gravPh=Math.floor(t/6)%8; // 8-position debris orbit
+    const crushPulse=0.4+0.4*_sFr04;
+    const lensWarp=Math.round(_sFr03*1.5);
+    // Dark gravity aura
+    g.globalAlpha=crushPulse*0.15;px(-1,-1,18,22,'#503060');g.globalAlpha=1;
+    // Gravity lens core (dark compressed space)
+    px(5,3,6,10,'#281630');px(6,4,4,8,'#381e42');px(6,5,4,6,'#180c1a');
+    // Core singularity (dense)
+    px(7,7,2,2,'#0c0810');
+    // Gravity distortion rings (nested ellipses)
+    g.globalAlpha=crushPulse*0.6;
+    px(3,6,1,4,'#9060c0');px(12,6,1,4,'#9060c0'); // left/right lens edge
+    px(6,3,4,1,'#7040a0');px(6,12,4,1,'#7040a0'); // top/bottom
+    g.globalAlpha=crushPulse*0.35;
+    px(2,5,1,6,'#6040a0');px(13,5,1,6,'#6040a0');
+    px(5,2,6,1,'#6040a0');px(5,13,6,1,'#6040a0');
+    g.globalAlpha=1;
+    // Orbiting debris (8 positions around gravity well)
+    const _dbx=[7,10,12,10,7,4,2,4],_dby=[1,2,5,10,13,10,5,2];
+    g.globalAlpha=0.7;px(_dbx[gravPh],_dby[gravPh],2,2,'#806890');g.globalAlpha=1;
+    g.globalAlpha=0.4;px(_dbx[(gravPh+4)%8]+1,_dby[(gravPh+4)%8],1,1,'#a090c0');g.globalAlpha=1;
+    // Light bending arcs (3 curved lines on each side)
+    g.globalAlpha=crushPulse*0.5;
+    px(1,7,3,1,'#6040a0'+lensWarp+'0');
+    px(1,8,2,1,'#7050b0');
+    px(12,7,3,1,'#6040a0');
+    px(13,8,2,1,'#7050b0');
+    g.globalAlpha=1;
+    // Crushed matter at center
+    g.globalAlpha=crushPulse*0.8;px(7,7,2,2,'#c0a0e0');g.globalAlpha=1;
   }
 
   // Generic renderer for all other cards (type-based pixel art)
   if(_cn==='AEGIS'||_cn==='UMBRA'||_cn==='IGNIS'||_cn==='TEMPEST'||_cn==='NIHIL'||
      _cn==='VOIDBLADE'||_cn==='TITAN'||_cn==='GENESIS'||_cn==='SINGULARITY'||_cn==='ARK BLESS'||
-     _cn==='SANCTUARY'||_cn==='GEN PULSE'||_cn==='REAPER'||_cn==='ARK GATE'){
+     _cn==='SANCTUARY'||_cn==='GEN PULSE'||_cn==='REAPER'||_cn==='ARK GATE'||
+     _cn==='PHOENIX'||_cn==='PHANTOM'||_cn==='GRAVITY'){
     // named sprites already drawn above — fall through to sparkle/reveal below
   } else {
     const cr=CD[cardId-1];if(!cr)return;
