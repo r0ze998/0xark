@@ -99,7 +99,7 @@ function drawDungeonConfirm(){
   bx(cx_,cy_,cw,28,'#1a0a0a');
   bx(cx_,cy_,4,28,'#d04040'); // red left accent
   txShadow('ENTER DUNGEON?',cx_+cw/2-80,cy_+20,11,'#d04040','rgba(0,0,0,.5)');
-  const handCount=pl[0].cd.filter(c=>c>0).length;
+  const handCount=cdCount(pl[0].cd);
   const vaultSize=pl[0].vault?pl[0].vault.size:0;
   txShadow('Cards in hand: '+handCount+'     Vault: '+vaultSize+'/60',cx_+20,cy_+50,8,'#c8c0a0','rgba(0,0,0,.3)');
   bx(cx_+12,cy_+60,cw-24,1,'#282848');
@@ -115,7 +115,7 @@ function drawDungeonConfirm(){
   for(let ri=0;ri<2;ri++){
     const r=pl[ri+1];
     const rFloor=rivalMaps[ri];
-    const rcc=r.cd.filter(c=>c>0).length;
+    const rcc=cdCount(r.cd);
     const rCol=ri===0?'#d060a0':'#d0a030';
     const rLoc=flNums_[rFloor]||'B?';
     const rThreat=rcc>=4?' \u26A0 RICH TARGET':rcc===0?' (no cards)':'';
@@ -394,7 +394,7 @@ function updatePixiIntro(){
   pxIntroArrow.y = 320 + Math.sin(fr*0.1)*3;
   pxIntroArrow.visible = t > 30 && Math.floor(fr/20)%2===0;
   // Card teaser on last page
-  pxIntroCardMsg.visible = introPage===INTRO_PAGES.length-1 && t>20 && pl[0].cd.filter(c=>c>0).length===0;
+  pxIntroCardMsg.visible = introPage===INTRO_PAGES.length-1 && t>20 && cdCount(pl[0].cd)===0;
   if(pxIntroCardMsg.visible) pxIntroCardMsg.alpha = Math.min(1,(t-20)/15);
 }
 
@@ -417,7 +417,7 @@ function drawIntroTutorial(){
     g.globalAlpha=1;
   });
   if(t>30&&Math.floor(fr/20)%2===0)txShadow('\u25BC Z',wx+ww-60,wy+wh-20+Math.sin(fr*0.1)*3,8,FRLG.selHighlight,'rgba(0,0,0,.3)');
-  if(introPage===INTRO_PAGES.length-1&&t>20&&pl[0].cd.filter(c=>c>0).length===0){
+  if(introPage===INTRO_PAGES.length-1&&t>20&&cdCount(pl[0].cd)===0){
     g.globalAlpha=Math.min(1,(t-20)/15);
     txShadow('You receive a spirit card...',W/2-100,wy+wh+20,8,'#f0c830','rgba(0,0,0,.4)');
     g.globalAlpha=1;
@@ -724,8 +724,8 @@ function dCrd(){
   }
   // v93: Legend for dots
   {
-    const vegaTotal=pl[1].cd.filter(c=>c>0).length;
-    const miraTotal=pl[2].cd.filter(c=>c>0).length;
+    const vegaTotal=cdCount(pl[1].cd);
+    const miraTotal=cdCount(pl[2].cd);
     bx(W-190,12,8,8,'#e060a0');
     txShadow('V:'+vegaTotal,W-180,22,6,'#e060a0','rgba(0,0,0,.35)');
     bx(W-158,12,8,8,'#d0a030');
