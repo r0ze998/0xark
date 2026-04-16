@@ -852,6 +852,8 @@ function dMap(){
       drawDungeonStairGlows(startTX,startTY,endTX,endTY);
       drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY);
     }
+    // v215: Animated town tile overlays (water sparkles/waves — every other frame for perf)
+    if(!inDungeon&&fr%2===0){drawTownAnimatedOverlays(startTX,startTY,endTX,endTY);}
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
@@ -951,6 +953,25 @@ function dMap(){
   if(fr%2===0)drawBirds();
   if(fr%2===0)drawPirateDecorations(); // ship/barrels/vines/seagulls (no trees)
   drawTownWeather();
+  // v215: Cloud shadows — softly drifting shadow patches on overworld ground
+  if(!inDungeon){
+    const visH=H-HUD_HEIGHT;
+    for(let ci=0;ci<4;ci++){
+      const period=820+ci*160;
+      const cphase=(fr+ci*260+ci*ci*50)%period;
+      const cx_=((cphase/period)*W*1.5)-W*0.25+camX%TW*0.08; // slow cam-coupled drift
+      const cy_=visH*(0.22+ci*0.17)+Math.sin(ci*1.7+fr*0.004)*12;
+      if(cx_<-220||cx_>W+220)continue;
+      const csw=200+ci*35,csh=44+ci*10;
+      g.globalAlpha=0.03+ci*0.008;
+      g.fillStyle='#202034';
+      g.beginPath();g.ellipse(cx_,cy_,csw,csh,0,0,Math.PI*2);g.fill();
+      // Soft inner darker core
+      g.globalAlpha=0.02+ci*0.005;
+      g.beginPath();g.ellipse(cx_,cy_,csw*0.55,csh*0.55,0,0,Math.PI*2);g.fill();
+      g.globalAlpha=1;
+    }
+  }
   // Y-sorted trees BG pass: trees with base ABOVE (north of) player drawn before sprites
   if(!inDungeon)drawCpxTreesInRange(0,pl[0].y+1);
 
