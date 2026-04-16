@@ -874,7 +874,7 @@ function drawActionGrid(){
         if(idx===0){// DRAW — show if floor pool has new cards for player
           const pool_=DUNGEON_FLOOR_CARDS[currentMap]||[];
           const vault_=pl[0].vault||new Set();
-          const newInPool=pool_.filter(id=>!vault_.has(id)).length;
+          let newInPool=0;for(let _pi=0;_pi<pool_.length;_pi++){if(!vault_.has(pool_[_pi]))newInPool++;} // v272: no filter alloc
           if(newInPool>0){badge='+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';}
           else if(pool_.length>0){badge='ALL OWNED';badgeCol='#888870';badgeBg='rgba(0,0,0,.3)';}
         }else if(idx===1){// STEAL — show barrier state of primary target

@@ -628,6 +628,7 @@ function updateHandInspect(){
   handInspectFrame++;
   if(handInspectFrame>=handInspectAutoDismiss)handInspectActive=false;
 }
+const _hiFilledBuf=new Int8Array(8); // v272: module scope, eliminates filled[] per frame
 function drawHandInspect(){
   if(!handInspectActive||sc!=='map')return;
   const t=Math.min(1,handInspectFrame/10);
@@ -639,9 +640,8 @@ function drawHandInspect(){
   bx(0,0,W,H,'rgba(0,0,0,.75)');
   g.globalAlpha=alpha;
 
-  const filled=[];
-  for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
-  const total=filled.length;
+  let _hiN=0;for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)_hiFilledBuf[_hiN++]=i;}
+  const total=_hiN;
   if(total===0){
     txShadow('Hand is empty.',W/2-60,H/2,9,'#888898','rgba(0,0,0,.5)');
     g.globalAlpha=1;return;
@@ -656,8 +656,8 @@ function drawHandInspect(){
   const cols=Math.min(4,total),rows=Math.ceil(total/4);
   const cw=160,ch=180,padX=(W-(cols*cw))/2,padY=80;
 
-  filled.forEach((slot,i)=>{
-    const cid=pl[0].cd[slot];if(!cid)return;
+  for(let i=0;i<_hiN;i++){const slot=_hiFilledBuf[i];
+    const cid=pl[0].cd[slot];if(!cid)continue;
     const cr=CD[cid-1];
     const col_=i%cols,row_=Math.floor(i/cols);
     const cx_=padX+col_*cw+8,cy_=padY+row_*ch;
@@ -706,7 +706,7 @@ function drawHandInspect(){
     }else{
       txShadow('SAFE',cx_+4,cy_+ch-10,5,'#60c060','rgba(0,0,0,.3)');
     }
-  });
+  }
 
   // Dismiss hint (blink)
   const blinkA=0.5+Math.sin(handInspectFrame*0.12)*0.4;

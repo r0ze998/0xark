@@ -624,6 +624,7 @@ function dCredits(){
 // ═══════════════════════════════════════
 // GAME OVER - TIME'S UP SCREEN
 // ═══════════════════════════════════════
+let _goRankCache=null,_goRankVF=-1; // v272: cache game-over rankings — reset when screen restarts
 function dGameOver(){
   const t=fr-victoryFrame;
   if(t<30){g.globalAlpha=t/30;g.fillStyle='#000000';g.fillRect(0,0,W,H);g.globalAlpha=1;return;}
@@ -660,14 +661,18 @@ function dGameOver(){
     g.globalAlpha=1;
   }
 
-  // Rank all 3 players by unique card count
+  // Rank all 3 players by unique card count — build once, cache for rest of screen
   if(t>60){
-    const rankings=[];
-    for(let i=0;i<3;i++){
-      const unique=i===0?(pl[0].vault?pl[0].vault.size:0):rivalUniqSize(i); // v261: no Set alloc for rivals
-      rankings.push({idx:i,name:pl[i].n,unique:unique,cards:[...pl[i].cd]});
+    if(!_goRankCache||_goRankVF!==victoryFrame){_goRankVF=victoryFrame;
+      _goRankCache=[];
+      for(let i=0;i<3;i++){
+        const unique=i===0?(pl[0].vault?pl[0].vault.size:0):rivalUniqSize(i);
+        const cards_=[];for(let _ci=0;_ci<pl[i].cd.length;_ci++)cards_.push(pl[i].cd[_ci]);
+        _goRankCache.push({idx:i,name:pl[i].n,unique:unique,cards:cards_});
+      }
+      _goRankCache.sort((a,b)=>b.unique-a.unique);
     }
-    rankings.sort((a,b)=>b.unique-a.unique);
+    const rankings=_goRankCache; // v272: no alloc after first frame
     const rowH=116;
     for(let rank=0;rank<rankings.length;rank++){
       const r=rankings[rank];const fadeT=t-60-rank*22;
