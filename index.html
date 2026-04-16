@@ -11604,6 +11604,8 @@ const _BTL_VOID_SI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_VOID_SI[i]=Math.
 const _BTL_VOID_CI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_VOID_CI[i]=Math.cos(i*1.3);
 // v369: phase offset constants for sin-addition (sin(fr*x+offset) without per-frame trig)
 const _BTL_SIN1=Math.sin(1),_BTL_COS1=Math.cos(1),_BTL_SIN14=Math.sin(1.4),_BTL_COS14=Math.cos(1.4);
+// v374: breathPhase constants (0, 1.1, 2.3) for character idle breathing sin-addition
+const _BREATH_SI=[0,Math.sin(1.1),Math.sin(2.3)],_BREATH_CI=[1,Math.cos(1.1),Math.cos(2.3)];
 const _BTL_CRYST_ABS=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_ABS[i]=Math.abs(Math.sin(i*1.7)); // crystal Y offset (frame-independent)
 const _BTL_CRYST_SI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_SI[i]=Math.sin(i);  // sin(i) crystal shimmer
 const _BTL_CRYST_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_CI[i]=Math.cos(i);
@@ -12198,10 +12200,10 @@ function drawPlayerInfoBox(){
 // Draw battle sprite (front-facing for opponent, back-facing for player)
 function drawBattleSprite(p,cx,cy,scale,facingAway){
   const s=scale;
-  // Idle breathing bob — each character breathes out of phase
-  const breathPhase=p===pl[0]?0:p===pl[1]?1.1:2.3;
+  // Idle breathing bob — each character breathes out of phase (v374: sin-addition, 0 trig calls)
+  const _bpI=p===pl[0]?0:p===pl[1]?1:2;
   const breathAmp=scale*0.5;
-  cy=cy+Math.round(Math.sin(fr*0.055+breathPhase)*breathAmp);
+  cy=cy+Math.round((_sFr055*_BREATH_CI[_bpI]+_cFr055*_BREATH_SI[_bpI])*breathAmp);
   const w=14*s,h=20*s;
   const ox=cx-w/2,oy=cy-h/2;
   // Shadow (pre-baked canvas — no path/rasterize overhead)
@@ -17552,7 +17554,7 @@ function dGameOver(){
       const isPlayer=r.idx===0;
       // Player row gets a subtle blue glow bg + left accent stripe
       if(isPlayer){
-        g.globalAlpha=alpha*(0.10+Math.sin(fr*0.05)*0.03);
+        g.globalAlpha=alpha*(0.10+_sFr05*0.03); // v374: cached
         g.fillStyle='#1a3060';g.fillRect(W/2-262,y-2,524,rowH-2);
         g.globalAlpha=alpha;
         win(W/2-260,y,520,rowH-4);
@@ -17618,7 +17620,7 @@ function dGameOver(){
 // v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
 const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
 // v355: per-frame sin/cos cache — computed once at draw() start, reused across all draw functions
-let _sFr015=0,_cFr015=0,_sFr018=0,_cFr018=0,_sFr02=0,_cFr02=0,_sFr025=0,_cFr025=0,_sFr03=0,_cFr03=0,_sFr04=0,_cFr04=0,_sFr045=0,_cFr045=0,_sFr05=0,_cFr05=0,_sFr06=0,_cFr06=0,_sFr055=0,_sFr07=0,_cFr07=0,_sFr08=0,_cFr08=0,_sFr10=0,_cFr10=0,_sFr12=0,_cFr12=0,_sFr15=0,_cFr15=0,_sFr18=0,_cFr18=0,_sFr20=0,_cFr20=0,_sFr25=0,_cFr25=0,_sFr28=0,_sFr30=0,_cFr30=0;
+let _sFr015=0,_cFr015=0,_sFr018=0,_cFr018=0,_sFr02=0,_cFr02=0,_sFr025=0,_cFr025=0,_sFr03=0,_cFr03=0,_sFr04=0,_cFr04=0,_sFr045=0,_cFr045=0,_sFr05=0,_cFr05=0,_sFr055=0,_cFr055=0,_sFr06=0,_cFr06=0,_sFr07=0,_cFr07=0,_sFr08=0,_cFr08=0,_sFr10=0,_cFr10=0,_sFr12=0,_cFr12=0,_sFr15=0,_cFr15=0,_sFr18=0,_cFr18=0,_sFr20=0,_cFr20=0,_sFr25=0,_cFr25=0,_sFr28=0,_sFr30=0,_cFr30=0;
 // v364: water wave lookup tables (11 px columns each, depend on wt not fr — update when wt changes)
 // wx step=3 starting at 0: wx=0,3,6,9,12,15,18,21,24,27,30 (11 entries)
 // wx step=3 starting at 1: wx=1,4,7,10,13,16,19,22,25,28,31 (11 entries)
@@ -18019,7 +18021,7 @@ function draw(){
   _sFr04=Math.sin(_fr4);_cFr04=Math.cos(_fr4);_sFr045=Math.sin(fr*0.045);_cFr045=Math.cos(fr*0.045);
   _sFr05=Math.sin(_fr5);_cFr05=Math.cos(_fr5);
   _sFr015=Math.sin(_fr015);_cFr015=Math.cos(_fr015);_sFr018=Math.sin(fr*0.018);_cFr018=Math.cos(fr*0.018);
-  _sFr06=Math.sin(fr*0.06);_cFr06=Math.cos(fr*0.06);_sFr055=Math.sin(fr*0.055);_sFr07=Math.sin(fr*0.07);_cFr07=Math.cos(fr*0.07);_sFr08=Math.sin(fr*0.08);_cFr08=Math.cos(fr*0.08);_sFr10=Math.sin(fr*0.1);_cFr10=Math.cos(fr*0.1);
+  _sFr06=Math.sin(fr*0.06);_cFr06=Math.cos(fr*0.06);_sFr055=Math.sin(fr*0.055);_cFr055=Math.cos(fr*0.055);_sFr07=Math.sin(fr*0.07);_cFr07=Math.cos(fr*0.07);_sFr08=Math.sin(fr*0.08);_cFr08=Math.cos(fr*0.08);_sFr10=Math.sin(fr*0.1);_cFr10=Math.cos(fr*0.1);
   const _fr12=fr*0.12;_sFr12=Math.sin(_fr12);_cFr12=Math.cos(_fr12);
   _sFr15=Math.sin(fr*0.15);_cFr15=Math.cos(fr*0.15);_sFr18=Math.sin(fr*0.18);_cFr18=Math.cos(fr*0.18);_sFr20=Math.sin(fr*0.2);_cFr20=Math.cos(fr*0.2);_sFr25=Math.sin(fr*0.25);_cFr25=Math.cos(fr*0.25);_sFr28=Math.sin(fr*0.28);_sFr30=Math.sin(fr*0.3);_cFr30=Math.cos(fr*0.3);
   // Global screen shake

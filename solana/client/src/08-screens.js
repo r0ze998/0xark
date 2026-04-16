@@ -744,7 +744,7 @@ function dGameOver(){
       const isPlayer=r.idx===0;
       // Player row gets a subtle blue glow bg + left accent stripe
       if(isPlayer){
-        g.globalAlpha=alpha*(0.10+Math.sin(fr*0.05)*0.03);
+        g.globalAlpha=alpha*(0.10+_sFr05*0.03); // v374: cached
         g.fillStyle='#1a3060';g.fillRect(W/2-262,y-2,524,rowH-2);
         g.globalAlpha=alpha;
         win(W/2-260,y,520,rowH-4);

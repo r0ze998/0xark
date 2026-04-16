@@ -14,6 +14,8 @@ const _BTL_VOID_SI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_VOID_SI[i]=Math.
 const _BTL_VOID_CI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_VOID_CI[i]=Math.cos(i*1.3);
 // v369: phase offset constants for sin-addition (sin(fr*x+offset) without per-frame trig)
 const _BTL_SIN1=Math.sin(1),_BTL_COS1=Math.cos(1),_BTL_SIN14=Math.sin(1.4),_BTL_COS14=Math.cos(1.4);
+// v374: breathPhase constants (0, 1.1, 2.3) for character idle breathing sin-addition
+const _BREATH_SI=[0,Math.sin(1.1),Math.sin(2.3)],_BREATH_CI=[1,Math.cos(1.1),Math.cos(2.3)];
 const _BTL_CRYST_ABS=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_ABS[i]=Math.abs(Math.sin(i*1.7)); // crystal Y offset (frame-independent)
 const _BTL_CRYST_SI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_SI[i]=Math.sin(i);  // sin(i) crystal shimmer
 const _BTL_CRYST_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_CI[i]=Math.cos(i);
@@ -608,10 +610,10 @@ function drawPlayerInfoBox(){
 // Draw battle sprite (front-facing for opponent, back-facing for player)
 function drawBattleSprite(p,cx,cy,scale,facingAway){
   const s=scale;
-  // Idle breathing bob — each character breathes out of phase
-  const breathPhase=p===pl[0]?0:p===pl[1]?1.1:2.3;
+  // Idle breathing bob — each character breathes out of phase (v374: sin-addition, 0 trig calls)
+  const _bpI=p===pl[0]?0:p===pl[1]?1:2;
   const breathAmp=scale*0.5;
-  cy=cy+Math.round(Math.sin(fr*0.055+breathPhase)*breathAmp);
+  cy=cy+Math.round((_sFr055*_BREATH_CI[_bpI]+_cFr055*_BREATH_SI[_bpI])*breathAmp);
   const w=14*s,h=20*s;
   const ox=cx-w/2,oy=cy-h/2;
   // Shadow (pre-baked canvas — no path/rasterize overhead)
