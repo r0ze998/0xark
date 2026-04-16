@@ -958,9 +958,9 @@ function drawResultPhase(){
       // Glow halo behind card
       if(rar>=2&&_cardRarGlow[rar]){
         // v243: pre-baked drawImage replaces createRadialGradient+arc per frame
-        const glowR=22+rar*6+Math.sin(fr*0.12)*4;
+        const glowR=22+rar*6+_sFr12*4; // v370: cached
         const cg=_cardRarGlow[rar];
-        g.globalAlpha=showcaseAlpha*(0.2+Math.sin(fr*0.1)*0.1);
+        g.globalAlpha=showcaseAlpha*(0.2+_sFr10*0.1); // v370: cached
         g.drawImage(cg.canvas,(sCX-glowR+.5)|0,(sCY-glowR+.5)|0,(glowR*2)|0,(glowR*2)|0);
         g.globalAlpha=1;
       }

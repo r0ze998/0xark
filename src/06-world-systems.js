@@ -763,7 +763,7 @@ function drawMinimap(){
       const ex=exits[_ei];
       if(ex.fromMap!==currentMap)continue;
       const col=ex.isGoal?'#ffe060':ex.isEscape?'#40e060':'#e0c040';
-      const ePulse=0.8+Math.sin(fr*0.1)*0.2;
+      const ePulse=0.8+_sFr10*0.2; // v370: cached
       for(let _ti=0,_tl=ex.tiles.length;_ti<_tl;_ti++){
         const etx=ex.tiles[_ti][0],ety=ex.tiles[_ti][1];
         g.globalAlpha=ePulse;

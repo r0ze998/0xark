@@ -289,7 +289,7 @@ function updatePixiPlayerAura(){
   if(unique<10)return; // show aura when 10+ unique cards collected
   const px=pl[0].visualX-camX+TW/2, py=pl[0].visualY-camY+TH/2;
   const intensity=unique>=60?1:unique>=30?0.8:0.5;
-  const pulse=Math.sin(fr*0.1)*0.15+0.85;
+  const pulse=_sFr10*0.15+0.85; // v370: cached
   // Golden radial glow
   for(let r=60;r>20;r-=8){
     pxPlayerAura.beginFill(0xF0C830,0.04*intensity*pulse);
@@ -8207,7 +8207,7 @@ function drawMinimap(){
       const ex=exits[_ei];
       if(ex.fromMap!==currentMap)continue;
       const col=ex.isGoal?'#ffe060':ex.isEscape?'#40e060':'#e0c040';
-      const ePulse=0.8+Math.sin(fr*0.1)*0.2;
+      const ePulse=0.8+_sFr10*0.2; // v370: cached
       for(let _ti=0,_tl=ex.tiles.length;_ti<_tl;_ti++){
         const etx=ex.tiles[_ti][0],ety=ex.tiles[_ti][1];
         g.globalAlpha=ePulse;
@@ -11906,7 +11906,7 @@ function drawCardBar(x,y,w,cards,maxCards){
   }
   // Gold glow when close to winning
   if(vaultSize>=30){
-    const glow=Math.sin(fr*0.12)*0.15+0.15;
+    const glow=_sFr12*0.15+0.15; // v370: cached
     g.globalAlpha=glow;
     bx(x-2,y-2,w+4,barH+4,'#F0C830');
     g.globalAlpha=1;
@@ -12407,7 +12407,7 @@ function drawPhaseBanner(phase){
     const norm=Math.max(-1,Math.min(1,_battleRoundNet/Math.max(1,battleRoundHistory.length))); // v284: cached net
     if(norm>0){bx(W/2,26,(W/2)*norm,3,'#40b0e8');}
     else if(norm<0){bx(W/2+(W/2)*norm,26,-(W/2)*norm,3,'#d04040');}
-    const ta=0.35+Math.sin(fr*0.12)*0.25;
+    const ta=0.35+_sFr12*0.25; // v370: cached
     g.globalAlpha=ta;bx(W/2-1,26,2,3,'#ffffff');g.globalAlpha=1;
   }else{
     bx(W/2-1,26,2,3,'rgba(255,255,255,.2)');
@@ -14653,9 +14653,9 @@ function drawResultPhase(){
       // Glow halo behind card
       if(rar>=2&&_cardRarGlow[rar]){
         // v243: pre-baked drawImage replaces createRadialGradient+arc per frame
-        const glowR=22+rar*6+Math.sin(fr*0.12)*4;
+        const glowR=22+rar*6+_sFr12*4; // v370: cached
         const cg=_cardRarGlow[rar];
-        g.globalAlpha=showcaseAlpha*(0.2+Math.sin(fr*0.1)*0.1);
+        g.globalAlpha=showcaseAlpha*(0.2+_sFr10*0.1); // v370: cached
         g.drawImage(cg.canvas,(sCX-glowR+.5)|0,(sCY-glowR+.5)|0,(glowR*2)|0,(glowR*2)|0);
         g.globalAlpha=1;
       }
@@ -15351,7 +15351,7 @@ function dVictory(){
   if(t>35){
     g.globalAlpha=Math.min(1,(t-35)/20);
     // Purple rune aura behind title
-    g.globalAlpha*=0.3+Math.sin(fr*0.08)*0.15;bx(W/2-160,84,320,28,ARK.rune);
+    g.globalAlpha*=0.3+_sFr08*0.15;bx(W/2-160,84,320,28,ARK.rune); // v370: cached
     g.globalAlpha=Math.min(1,(t-35)/20);
     txShadow('THE SEAL IS BROKEN',W/2-144,100,14,'#c89820','rgba(0,0,0,.5)');
     g.globalAlpha=1;
@@ -15426,7 +15426,7 @@ function dVictory(){
     if(victoryClaimed){
       txShadow('\u2713 Grand Seal Claimed! TX: '+victoryClaimedTx,W/2-162,554,7,'#14F195','rgba(0,0,0,.4)');
     }else if(walletConnected){
-      const claimBlink=Math.sin(fr*0.1)*0.15+0.85;
+      const claimBlink=_sFr10*0.15+0.85; // v370: cached
       g.globalAlpha*=claimBlink;
       txShadow('[C] BREAK THE SEAL: '+stakePotAmount.toFixed(2)+' SOL',W/2-165,554,8,'#14F195','rgba(0,0,0,.4)');
     }else{
@@ -15445,7 +15445,7 @@ function dVictory(){
       bx(W/2-140,573,bar*5,14,'rgba(153,69,255,.5)');
       txShadow(_INSCRIBING_LBL[victoryMintProgress]||('Inscribing '+victoryMintProgress+'/60...'),W/2-88,584,8,'#c090ff','rgba(0,0,0,.4)'); // v328
     }else{
-      const mintBlink=Math.sin(fr*0.08)*0.12+0.88;
+      const mintBlink=_sFr08*0.12+0.88; // v370: cached
       g.globalAlpha*=mintBlink;
       txShadow('[M] INSCRIBE SOULS ON SOLANA',W/2-148,584,8,'#9945FF','rgba(0,0,0,.4)');
     }
@@ -16019,7 +16019,7 @@ function drawFishingOverlay(){
     let bx_=px,by_=py;
     if(pl[0].dir===0){by_+=20;}else if(pl[0].dir===2){by_-=20;}
     else if(pl[0].dir===1){bx_-=20;}else{bx_+=20;}
-    const bob=Math.sin(fr*0.1)*2;
+    const bob=_sFr10*2; // v370: cached
     g.drawImage(_fishBobberCanvas,(bx_+4+.5)|0,(by_+bob-3+.5)|0);
     // Line from player to bobber
     g.strokeStyle='#a0a0a0';g.lineWidth=1;
@@ -16254,7 +16254,7 @@ function drawBuildingInterior(){
         bx(px+4,py,tileSize-8,tileSize,'#483838');
         bx(px+6,py+2,tileSize-12,tileSize-4,'#382828');
         // Arrow indicator
-        const bob=Math.sin(fr*0.1)*2;
+        const bob=_sFr10*2; // v370: cached
         txShadow('EXIT',px+4,py+tileSize/2+4+bob,5,'#f0c830','rgba(0,0,0,.4)');
       }else if(t===5){
         // NPC position (floor underneath)
@@ -16278,7 +16278,7 @@ function drawBuildingInterior(){
   }
   bx(npx+10,npy+6,4,3,'#181820');bx(npx+18,npy+6,4,3,'#181820');
   // Diamond above NPC
-  const bobY=Math.sin(fr*0.08)*2;
+  const bobY=_sFr08*2; // v370: cached
   bx(npx+14,npy-8+bobY,4,4,buildingType==='shop'?'#4080d0':'#40b060');
 
   // Draw player in building
@@ -16349,7 +16349,7 @@ function drawBuildingInterior(){
     win(gx,gy,gw,gh);
     // Header — rune glow behind title
     bx(gx,gy,gw,28,'#100820');
-    g.globalAlpha=0.25+Math.sin(fr*0.06)*0.12;bx(gx,gy,gw,28,ARK.rune);g.globalAlpha=1;
+    g.globalAlpha=0.25+_sFr06*0.12;bx(gx,gy,gw,28,ARK.rune);g.globalAlpha=1; // v370: cached
     txShadow('RUNE SUMMON',gx+gw/2-68,gy+20,12,'#f8c840','rgba(0,0,0,.5)');
     // Vault progress
     const vSize=pl[0].vault?pl[0].vault.size:0;
@@ -17349,7 +17349,7 @@ function dStats(){
   bx(vpbX,vpbY,vpbW,vpbH,'#181838');
   if(vaultSize>0){
     const fW=Math.floor(vpbW*vaultRatio);
-    const pulse_=0.8+Math.sin(fr*0.08)*0.2;
+    const pulse_=0.8+_sFr08*0.2; // v370: cached
     g.globalAlpha=pulse_;g.fillStyle=vaultSize>=60?'#ffdc3c':vaultSize>=48?'#a0c832':'#28b450';
     g.fillRect(vpbX,vpbY,fW,vpbH);g.globalAlpha=1;
     bx(vpbX,vpbY,fW,2,'rgba(255,255,255,.22)');

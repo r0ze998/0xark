@@ -120,7 +120,7 @@ function drawFishingOverlay(){
     let bx_=px,by_=py;
     if(pl[0].dir===0){by_+=20;}else if(pl[0].dir===2){by_-=20;}
     else if(pl[0].dir===1){bx_-=20;}else{bx_+=20;}
-    const bob=Math.sin(fr*0.1)*2;
+    const bob=_sFr10*2; // v370: cached
     g.drawImage(_fishBobberCanvas,(bx_+4+.5)|0,(by_+bob-3+.5)|0);
     // Line from player to bobber
     g.strokeStyle='#a0a0a0';g.lineWidth=1;
@@ -355,7 +355,7 @@ function drawBuildingInterior(){
         bx(px+4,py,tileSize-8,tileSize,'#483838');
         bx(px+6,py+2,tileSize-12,tileSize-4,'#382828');
         // Arrow indicator
-        const bob=Math.sin(fr*0.1)*2;
+        const bob=_sFr10*2; // v370: cached
         txShadow('EXIT',px+4,py+tileSize/2+4+bob,5,'#f0c830','rgba(0,0,0,.4)');
       }else if(t===5){
         // NPC position (floor underneath)
@@ -379,7 +379,7 @@ function drawBuildingInterior(){
   }
   bx(npx+10,npy+6,4,3,'#181820');bx(npx+18,npy+6,4,3,'#181820');
   // Diamond above NPC
-  const bobY=Math.sin(fr*0.08)*2;
+  const bobY=_sFr08*2; // v370: cached
   bx(npx+14,npy-8+bobY,4,4,buildingType==='shop'?'#4080d0':'#40b060');
 
   // Draw player in building
@@ -450,7 +450,7 @@ function drawBuildingInterior(){
     win(gx,gy,gw,gh);
     // Header — rune glow behind title
     bx(gx,gy,gw,28,'#100820');
-    g.globalAlpha=0.25+Math.sin(fr*0.06)*0.12;bx(gx,gy,gw,28,ARK.rune);g.globalAlpha=1;
+    g.globalAlpha=0.25+_sFr06*0.12;bx(gx,gy,gw,28,ARK.rune);g.globalAlpha=1; // v370: cached
     txShadow('RUNE SUMMON',gx+gw/2-68,gy+20,12,'#f8c840','rgba(0,0,0,.5)');
     // Vault progress
     const vSize=pl[0].vault?pl[0].vault.size:0;
