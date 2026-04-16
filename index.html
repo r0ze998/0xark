@@ -6732,6 +6732,41 @@ function drawTile(tx_,ty){
 // ═══════════════════════════════════════
 // SPRITES
 // ═══════════════════════════════════════
+// v231: Pre-baked sprite shadow / glow ellipses — replaces per-frame path calls
+// Player shadow: ellipse(cx,cy+46,12,4) @.22 → 26×10, center(13,5), draw@(px+3,py+41)
+const _sprPlayerShadow=(()=>{
+  const c=document.createElement('canvas');c.width=26;c.height=10;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(13,5,12,4,0,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+// NPC shadow: ellipse(cx,cy+46,12,5) @.20 → 26×12, center(13,6), draw@(px+3,py+40)
+const _sprNpcShadow=(()=>{
+  const c=document.createElement('canvas');c.width=26;c.height=12;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(0,0,0,.20)';ctx.beginPath();ctx.ellipse(13,6,12,5,0,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+// Player glows: ellipse(cx,cy+24+bob,18,24) @.18 — baked at alpha=1, draw w/ globalAlpha=0.18
+function _mkSprGlow(col){
+  const c=document.createElement('canvas');c.width=38;c.height=50;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(19,25,18,24,0,0,Math.PI*2);ctx.fill();
+  return c;
+}
+const _sprGlowP0=_mkSprGlow('rgba(40,88,200,1)');   // Protagonist blue
+const _sprGlowP1=_mkSprGlow('rgba(200,32,40,1)');    // Vega red
+const _sprGlowP2=_mkSprGlow('rgba(40,180,160,1)');   // Mira teal
+// NPC glows: ellipse(cx,cy+24,16,22) @.14 — baked at alpha=1, draw w/ globalAlpha=0.14
+function _mkNpcGlow(col){
+  const c=document.createElement('canvas');c.width=34;c.height=46;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(17,23,16,22,0,0,Math.PI*2);ctx.fill();
+  return c;
+}
+const _npcGlow0=_mkNpcGlow('rgba(120,60,180,1)');
+const _npcGlow1=_mkNpcGlow('rgba(60,180,100,1)');
+const _npcGlow2=_mkNpcGlow('rgba(180,160,60,1)');
 // Character identity palette
 // pl[0] Protagonist: navy maritime coat + brass trim, dark hair
 // pl[1] Vega rival:  deep crimson coat, auburn hair
@@ -6744,8 +6779,8 @@ function drawSprite(p,isPlayer){
   const d=p.dir;
   const isP0=p===pl[0],isP1=p===pl[1],isP2=p===pl[2];
 
-  // Shadow
-  g.fillStyle='rgba(0,0,0,.22)';g.beginPath();g.ellipse(px+16,py+46,12,4,0,0,Math.PI*2);g.fill();
+  // Shadow (pre-baked)
+  g.drawImage(_sprPlayerShadow,(px+3)|0,(py+41)|0);
 
   // Walk animation: frame 0=neutral, 1=left-stride, 2=neutral, 3=right-stride
   const zFrame=[1,0,1,2][wf];
@@ -6755,8 +6790,8 @@ function drawSprite(p,isPlayer){
 
   // === ZELDA-LIKE CHARACTER SPRITES (best quality) ===
   if(zeldaCharLoaded){
-    const glowC=isP0?'rgba(40,88,200,.18)':isP1?'rgba(200,32,40,.18)':'rgba(40,180,160,.18)';
-    g.fillStyle=glowC;g.beginPath();g.ellipse(px+16,py+24+bob,18,24,0,0,Math.PI*2);g.fill();
+    const _gc=isP0?_sprGlowP0:isP1?_sprGlowP1:_sprGlowP2;
+    g.globalAlpha=0.18;g.drawImage(_gc,(px-3)|0,(py-1+bob)|0);g.globalAlpha=1;
     // Zelda sprites are 16x16 drawn at 2x = 32x32
     drawZeldaChar(charIdx,zDir,zFrame,px,py+bob,2);
     // CC badge
@@ -6771,9 +6806,9 @@ function drawSprite(p,isPlayer){
   // === KENNEY SPRITE PATH (fallback) ===
   if(pirateSheetLoaded){
     const kChar=isP0?K.captain:(isP1?K.pirate2:K.pirate3);
-    // Glow aura behind sprite
-    const glowC=isP0?'rgba(40,88,200,.18)':isP1?'rgba(200,32,40,.18)':'rgba(40,180,160,.18)';
-    g.fillStyle=glowC;g.beginPath();g.ellipse(px+16,py+24+bob,18,24,0,0,Math.PI*2);g.fill();
+    // Glow aura behind sprite (pre-baked)
+    const _gk=isP0?_sprGlowP0:isP1?_sprGlowP1:_sprGlowP2;
+    g.globalAlpha=0.18;g.drawImage(_gk,(px-3)|0,(py-1+bob)|0);g.globalAlpha=1;
     // Draw sprite: flip horizontally for d===1 (facing left)
     if(d===1){
       g.save();g.translate(px+32,py+bob);g.scale(-1,1);
@@ -6968,22 +7003,21 @@ function drawNPCSprite(npc){
   if(px<-48||px>W+48||py<-56||py>H+56)return;
   const d=npc.dir;
 
-  g.fillStyle='rgba(0,0,0,.2)';g.beginPath();g.ellipse(px+16,py+46,12,5,0,0,Math.PI*2);g.fill();
+  g.drawImage(_sprNpcShadow,(px+3)|0,(py+40)|0);
 
   // === ZELDA-LIKE NPC SPRITES (best quality) ===
   const npcZFrame=[1,0,1,2][walkFrame%4]||1;
   const npcZDir=[0,1,2,3][d]||0;
   const npcCharIdx=npc.type===0?3:npc.type===1?4:3; // NPC chars at indices 3,4
+  const _ng=npc.type===0?_npcGlow0:npc.type===1?_npcGlow1:_npcGlow2;
   if(zeldaCharLoaded){
-    const glowC=npc.type===0?'rgba(120,60,180,.14)':npc.type===1?'rgba(60,180,100,.14)':'rgba(180,160,60,.14)';
-    g.fillStyle=glowC;g.beginPath();g.ellipse(px+16,py+24,16,22,0,0,Math.PI*2);g.fill();
+    g.globalAlpha=0.14;g.drawImage(_ng,(px-1)|0,(py+1)|0);g.globalAlpha=1;
     drawZeldaChar(npcCharIdx,npcZDir,npcZFrame,px,py,2);
   } else if(pirateSheetLoaded){
   // === KENNEY NPC SPRITE PATH (fallback) ===
     // NPC type 0→pirate1, type 1→skeleton, type 2→pirate3
     const kNpc=npc.type===0?K.pirate1:(npc.type===1?K.skeleton:K.pirate3);
-    const glowC=npc.type===0?'rgba(120,60,180,.14)':npc.type===1?'rgba(60,180,100,.14)':'rgba(180,160,60,.14)';
-    g.fillStyle=glowC;g.beginPath();g.ellipse(px+16,py+24,16,22,0,0,Math.PI*2);g.fill();
+    g.globalAlpha=0.14;g.drawImage(_ng,(px-1)|0,(py+1)|0);g.globalAlpha=1;
     if(d===1){
       g.save();g.translate(px+32,py);g.scale(-1,1);
       drawKenneyTile(kNpc[0],kNpc[1],0,0,2);
@@ -12848,6 +12882,23 @@ function generateResolveEvents(){
 // MODULE: src/07-battle-resolve.js
 // Card effect animations (crystal/shadow/flame/storm/void) · drawResolvingPhase · drawResultPhase · dAct
 // ───────────────────────────────────────────────────────────────────────
+// v231: Pre-baked QTE vignette canvases — replaces createRadialGradient per frame
+// Baked at alpha=1; drawn with globalAlpha=vigIntensity for correct compositing
+const _qteVigDefend=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.75);
+  grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(220,40,40,1)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;
+})();
+const _qteVigAttack=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.75);
+  grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(40,160,240,1)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;
+})();
+
 // Card effect animation helpers
 function drawCrystalEffect(cx_,cy_,evT){
   // Blue energy spiral around player sprite, then lightning bolt
@@ -13466,16 +13517,12 @@ function drawResolvingPhase(){
       const isUrgent=qteProgress>0.6;
       const isCritical=qteProgress>0.8;
       const isDefend=qteType==='defend';
-      // Fullscreen edge vignette pulse
+      // Fullscreen edge vignette pulse (pre-baked canvas)
       const vigIntensity=isCritical?(0.35+Math.sin(fr*0.6)*0.15):isUrgent?0.18:0;
       if(vigIntensity>0){
-        const vigCol=isDefend?`rgba(220,40,40,${vigIntensity})`:`rgba(40,160,240,${vigIntensity})`;
-        const vig=g.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.75);
-        vig.addColorStop(0,'rgba(0,0,0,0)');
-        vig.addColorStop(1,vigCol);
+        g.globalAlpha=vigIntensity;
+        g.drawImage(isDefend?_qteVigDefend:_qteVigAttack,0,0);
         g.globalAlpha=1;
-        g.fillStyle=vig;
-        g.fillRect(0,0,W,H);
       }
       // Main QTE panel
       const qPW=360,qPH=110;

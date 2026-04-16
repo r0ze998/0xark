@@ -1,3 +1,20 @@
+// v231: Pre-baked QTE vignette canvases — replaces createRadialGradient per frame
+// Baked at alpha=1; drawn with globalAlpha=vigIntensity for correct compositing
+const _qteVigDefend=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.75);
+  grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(220,40,40,1)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;
+})();
+const _qteVigAttack=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.75);
+  grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(40,160,240,1)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;
+})();
+
 // Card effect animation helpers
 function drawCrystalEffect(cx_,cy_,evT){
   // Blue energy spiral around player sprite, then lightning bolt
@@ -616,16 +633,12 @@ function drawResolvingPhase(){
       const isUrgent=qteProgress>0.6;
       const isCritical=qteProgress>0.8;
       const isDefend=qteType==='defend';
-      // Fullscreen edge vignette pulse
+      // Fullscreen edge vignette pulse (pre-baked canvas)
       const vigIntensity=isCritical?(0.35+Math.sin(fr*0.6)*0.15):isUrgent?0.18:0;
       if(vigIntensity>0){
-        const vigCol=isDefend?`rgba(220,40,40,${vigIntensity})`:`rgba(40,160,240,${vigIntensity})`;
-        const vig=g.createRadialGradient(W/2,H/2,H*0.2,W/2,H/2,H*0.75);
-        vig.addColorStop(0,'rgba(0,0,0,0)');
-        vig.addColorStop(1,vigCol);
+        g.globalAlpha=vigIntensity;
+        g.drawImage(isDefend?_qteVigDefend:_qteVigAttack,0,0);
         g.globalAlpha=1;
-        g.fillStyle=vig;
-        g.fillRect(0,0,W,H);
       }
       // Main QTE panel
       const qPW=360,qPH=110;
