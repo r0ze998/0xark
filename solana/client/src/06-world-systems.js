@@ -135,7 +135,9 @@ function placeFloorItems(mapIdx,rooms){
       const iy=r.y+1+Math.floor(Math.random()*(r.h-2));
       // Pick card from pool, biased toward rarer on deeper floors
       const cardId=pool[Math.floor(Math.random()*pool.length)];
-      floorItems[mapIdx].push({x:ix,y:iy,cardId,glow:Math.random()*Math.PI*2});
+      // v368: pre-bake sin/cos of glow phase for sin-addition per frame (0 trig per item)
+      const glowPh=Math.random()*Math.PI*2;
+      floorItems[mapIdx].push({x:ix,y:iy,cardId,glow:glowPh,sinGlow:Math.sin(glowPh),cosGlow:Math.cos(glowPh)});
     }
   }
 }

@@ -88,6 +88,25 @@ const _sBufCmp=(a,b)=>b.uniq-a.uniq;
 const _rBufCmp=(a,b)=>b.cnt-a.cnt;
 // v349: lazy cache for dungeon mission HUD strip (changes only when progress or completion status changes)
 let _missionHudLbl='',_missionHudKey=-1;
+// v368: pre-baked town ambient particle phases — eliminates 36 Math.sin/frame for golden motes + sea wisps
+// i*1.7 (14 golden motes): sin(fr*0.018+i*1.7) = _sFr018*_TOWN_CI17[i]+_cFr018*_TOWN_SI17[i]
+const _TOWN_SI17=new Float32Array(14);const _TOWN_CI17=new Float32Array(14);
+for(let i=0;i<14;i++){_TOWN_SI17[i]=Math.sin(i*1.7);_TOWN_CI17[i]=Math.cos(i*1.7);}
+// i*0.9 (14 golden motes alpha): sin(fr*0.025+i*0.9) = _sFr025*_TOWN_CI09[i]+_cFr025*_TOWN_SI09[i]
+const _TOWN_SI09=new Float32Array(14);const _TOWN_CI09=new Float32Array(14);
+for(let i=0;i<14;i++){_TOWN_SI09[i]=Math.sin(i*0.9);_TOWN_CI09[i]=Math.cos(i*0.9);}
+// i*1.1 (8 sea wisps): reuse _BIRD_SI11/_BIRD_CI11 (from 05-rendering.js, 20 entries covers 0..7)
+// sin(fr*0.02+i*1.1) = _sFr02*_BIRD_CI11[i]+_cFr02*_BIRD_SI11[i]
+// i*0.8 (8 sea wisp vertical bob): sin(fr*0.015+i*0.8) = _sFr015*_WISP_CI08[i]+_cFr015*_WISP_SI08[i]
+const _WISP_SI08=new Float32Array(8);const _WISP_CI08=new Float32Array(8);
+for(let i=0;i<8;i++){_WISP_SI08[i]=Math.sin(i*0.8);_WISP_CI08[i]=Math.cos(i*0.8);}
+// v368: pre-baked fog ambient mote phases — eliminates sin(fr*0.02+i*1.3) and sin(fr*0.03+i*2.1) per mote
+// sin(fr*0.02+i*1.3) = _sFr02*_MOTE_CI13[i] + _cFr02*_MOTE_SI13[i]
+// sin(fr*0.03+i*2.1) = _sFr03*_MOTE_CI21[i] + _cFr03*_MOTE_SI21[i]
+const _MOTE_SI13=new Float32Array(40);const _MOTE_CI13=new Float32Array(40);
+for(let i=0;i<40;i++){_MOTE_SI13[i]=Math.sin(i*1.3);_MOTE_CI13[i]=Math.cos(i*1.3);}
+const _MOTE_SI21=new Float32Array(40);const _MOTE_CI21=new Float32Array(40);
+for(let i=0;i<40;i++){_MOTE_SI21[i]=Math.sin(i*2.1);_MOTE_CI21[i]=Math.cos(i*2.1);}
 // v365: pre-baked vine segment sin/cos — eliminates Math.sin per-segment in forest vine loops
 // vi*0.3 variant (main vine, up to 20 segments)
 const _VINE_SI3=new Float32Array(20);const _VINE_CI3=new Float32Array(20);
@@ -380,12 +399,12 @@ function drawTownAmbientParticles(){
     const period=140+((h1*1021)>>>0)%60; // 140..199 frames per cycle
     const phase=(tf+i*37)%period;
     const prog=phase/period;
-    const x=startX+Math.sin(tf*0.018+i*1.7)*16;
-    // Rise from bottom half, fade in/out
+    // v368: sin-addition with pre-baked tables — 0 Math.sin per mote
+    const x=startX+(_sFr018*_TOWN_CI17[i]+_cFr018*_TOWN_SI17[i])*16;
     const y=visH*0.85-prog*visH*0.7;
     if(y<0||y>visH)continue;
     const edgeFade=Math.min(1,Math.min(prog*4,((1-prog)*4)));
-    const alpha=(0.12+0.06*Math.sin(tf*0.025+i*0.9))*edgeFade;
+    const alpha=(0.12+0.06*(_sFr025*_TOWN_CI09[i]+_cFr025*_TOWN_SI09[i]))*edgeFade;
     const sz=1+((h1*1033)>>>0)%2;
     g.globalAlpha=alpha;
     g.fillStyle='#f8d840';
@@ -402,10 +421,11 @@ function drawTownAmbientParticles(){
     const prog2=phase2/period2;
     const x2=(prog2*W+((h2*877)>>>0)%120)%W;
     const edgeFade2=Math.min(1,Math.min(prog2*5,(1-prog2)*5));
-    const alpha2=(0.09+0.04*Math.sin(tf*0.02+i*1.1))*edgeFade2;
+    // v368: sin-addition with _sFr02+_BIRD_SI11/CI11 and _sFr015+pre-baked i*0.8 phases
+    const alpha2=(0.09+0.04*(_sFr02*_BIRD_CI11[i]+_cFr02*_BIRD_SI11[i]))*edgeFade2;
     g.globalAlpha=alpha2;
     g.fillStyle='#b8d8f0';
-    g.fillRect(x2,startY+Math.sin(tf*0.015+i*0.8)*8,2,1);
+    g.fillRect(x2,startY+(_sFr015*_WISP_CI08[i]+_cFr015*_WISP_SI08[i])*8,2,1);
     g.globalAlpha=1;
   }
 }
@@ -616,14 +636,15 @@ function _drawFogAmbientMotes(ambCol,ambCount,ambVY,ambSz){
   for(let i=0;i<ambCount;i++){
     const px=((i*1237+fr*3)%1000/1000)*MW*TW;
     const py=((i*4321+fr*2)%1000/1000)*MH*TH;
-    const dpy=py+Math.sin(seed+i*1.3)*20+fr*ambVY*(1+i%3)*0.3;
+    // v368: sin-addition with pre-baked tables — 0 Math.sin per mote
+    const dpy=py+(_sFr02*_MOTE_CI13[i]+_cFr02*_MOTE_SI13[i])*20+fr*ambVY*(1+i%3)*0.3;
     const dpyWrapped=((dpy%MH*TH)+MH*TH)%(MH*TH);
     const sx=px-camX,sy=dpyWrapped-camY;
     if(sx<-4||sx>W+4||sy<-4||sy>H+4)continue;
     const tileX=Math.floor(px/TW),tileY=Math.floor(dpyWrapped/TH);
     if(tileX<0||tileX>=MW||tileY<0||tileY>=MH)continue;
     if(!fogRevealed[currentMap][tileY]?.[tileX])continue;
-    g.globalAlpha=(0.5+0.5*Math.sin(seed*1.5+i*2.1))*0.7;
+    g.globalAlpha=(0.5+0.5*(_sFr03*_MOTE_CI21[i]+_cFr03*_MOTE_SI21[i]))*0.7;
     g.fillStyle=ambCol;
     g.fillRect(sx,sy,ambSz,ambSz);
   }
@@ -1376,7 +1397,8 @@ function dMap(){
         // Rarity glow colors
         const ri=Math.min(cr.r-1,4);
         const rarCol=_ITEM_GLOW_COLS[ri]||'#f0c030';
-        const glowPulse=0.55+0.35*Math.sin(fr*0.1+it.glow);
+        // v368: sin-addition with pre-baked it.sinGlow/cosGlow and cached _sFr10/_cFr10
+        const glowPulse=0.55+0.35*(_sFr10*it.cosGlow+_cFr10*it.sinGlow);
         // v228: pre-baked glow halo (was createRadialGradient per item per frame)
         g.globalAlpha=glowPulse*0.5;
         g.drawImage(_itemGlowCanvas[ri],(ipx+TW/2-14)|0,(ipy+TH/2-14)|0);
@@ -1409,7 +1431,9 @@ function dMap(){
         if(!fogRevealed[currentMap][ety]?.[etx])continue;
         const epx=etx*TW-camX,epy=ety*TH-camY;
         if(epx<-TW||epx>W||epy<-TH||epy>H)continue;
-        const pulse=Math.sin(fr*0.08+etx+ety)*0.35+0.65;
+        // v368: sin-addition with cached _sFr08/_cFr08 (no Math.sin per exit tile)
+        const _set=Math.sin(etx+ety),_cet=Math.cos(etx+ety);
+        const pulse=(_sFr08*_cet+_cFr08*_set)*0.35+0.65;
         // v359: sin(fr*0.1) = sin(2*fr*0.05) = 2*_sFr05*_cFr05 (double-angle)
         const bob=4*_sFr05*_cFr05; // == 2*sin(fr*0.1)
         if(ex.isEscape){
@@ -1587,8 +1611,8 @@ function dMap(){
       if(cr_.r>=4){
         const mx_=310+i*HUD_CARD_SPACING,my_=hudY+14;
         if(cr_.r===5){
-          // Legendary: pulsing white-gold double border
-          const pulse_=0.5+Math.sin(fr*0.08+i*0.7)*0.5;
+          // Legendary: pulsing white-gold double border (v368: sin-addition with _GRASS_SI7/_CI7)
+          const pulse_=0.5+(_sFr08*_GRASS_CI7[i]+_cFr08*_GRASS_SI7[i])*0.5;
           g.globalAlpha=0.45+pulse_*0.45;
           bx(mx_-1,my_-1,30,1,'#ffe080');bx(mx_-1,my_+20,30,1,'#ffe080');
           bx(mx_-1,my_-1,1,22,'#ffe080');bx(mx_+28,my_-1,1,22,'#ffe080');
