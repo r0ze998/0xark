@@ -82,12 +82,9 @@ function fishingCatchCard(){
   fishingPhase='catch';
   fishingTimer=90;
   sfxFishCatch();
-  // Random dock spirit card — prefer vault-new
+  // Random dock spirit card — prefer vault-new (v299: pickFromPool, no filter alloc)
   const pool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-  const vault_f=pl[0].vault||new Set();
-  const newPool_f=pool.filter(id=>!vault_f.has(id));
-  const usePool_f=newPool_f.length>0?newPool_f:pool;
-  const cardId=usePool_f[Math.floor(Math.random()*usePool_f.length)];
+  const cardId=pickFromPool(pool);
   const cardIdx=cardId-1;
   const fAdded=addCardToPlayer(0,cardId); // updates vault + hand
   if(fAdded){
@@ -186,11 +183,9 @@ function checkPuzzleInteraction(){
         puzzleMessageTimer=180;
         twSet('The passage opens! A void card appears!');
         lg.push('Ruins puzzle solved!');
-        // Give a rare card from the current floor pool — prefer vault-new
+        // Give a rare card from the current floor pool — prefer vault-new (v299: pickFromPool)
         const pzPool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-        const vault_pz=pl[0].vault||new Set();
-        const pzNewPool=pzPool.filter(id=>!vault_pz.has(id));
-        const pzCard=(pzNewPool.length>0?pzNewPool:pzPool)[Math.floor(Math.random()*(pzNewPool.length>0?pzNewPool:pzPool).length)];
+        const pzCard=pickFromPool(pzPool);
         const pzAdded=addCardToPlayer(0,pzCard); // updates vault + hand
         if(pzAdded){
           startCardAcquisition(pzCard-1);
@@ -708,11 +703,9 @@ function checkObjectInteraction(){
     }
     shakenTrees.add(key);
     if(Math.random()<0.1){
-      // 10% chance: card falls out — prefer vault-new
+      // 10% chance: card falls out — prefer vault-new (v299: pickFromPool)
       const treePool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-      const vault_t=pl[0].vault||new Set();
-      const treeNewPool=treePool.filter(id=>!vault_t.has(id));
-      const treeCardId=(treeNewPool.length>0?treeNewPool:treePool)[Math.floor(Math.random()*(treeNewPool.length>0?treeNewPool:treePool).length)];
+      const treeCardId=pickFromPool(treePool);
       const cardIdx=treeCardId-1;
       const treeAdded=addCardToPlayer(0,treeCardId); // updates vault + hand
       if(treeAdded){
@@ -743,9 +736,7 @@ function checkObjectInteraction(){
     sfxSelect();
     if(Math.random()<0.2){
       const areaCards=AREA_CARDS[currentMap]||AREA_CARDS[1];
-      const vault_r=pl[0].vault||new Set();
-      const rockNewPool=areaCards.filter(id=>!vault_r.has(id));
-      const cardId=(rockNewPool.length>0?rockNewPool:areaCards)[Math.floor(Math.random()*(rockNewPool.length>0?rockNewPool:areaCards).length)];
+      const cardId=pickFromPool(areaCards); // v299: pickFromPool, no filter alloc
       const rockAdded=addCardToPlayer(0,cardId); // updates vault + hand
       if(rockAdded){
         startCardAcquisition(cardId-1);
@@ -870,12 +861,13 @@ function doFountainExchange(){
   // Remove random card, give vault-new card if possible
   const slot=filled[Math.floor(Math.random()*filled.length)];
   const oldCard=pl[0].cd[slot];
-  const vault_fn=pl[0].vault||new Set();
-  const ownedInHand_fn=new Set(pl[0].cd.filter(c=>c>0));
+  const vault_fn=pl[0].vault;
+  // v299: build hand-owned Set directly, no filter alloc
+  const ownedInHand_fn=new Set();for(let _fi=0;_fi<pl[0].cd.length;_fi++){if(pl[0].cd[_fi]>0)ownedInHand_fn.add(pl[0].cd[_fi]);}
   const fnNew=[],fnOwned=[];
   for(let i=1;i<=60;i++){
     if(i===oldCard)continue;
-    if(!vault_fn.has(i))fnNew.push(i);
+    if(!vault_fn||!vault_fn.has(i))fnNew.push(i);
     else if(!ownedInHand_fn.has(i))fnOwned.push(i);
   }
   let newCard;

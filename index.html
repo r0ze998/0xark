@@ -7641,10 +7641,7 @@ function doMapTransition(exit){
       else if(rk==='refill'){sp.s=Math.max(sp.s,3);sp.b=Math.max(sp.b,4);sp.c=Math.max(sp.c,3);}
       else if(rk==='bonus_card'){
         const bPool=DUNGEON_FLOOR_CARDS[3]||DUNGEON_FLOOR_CARDS[2];
-        const bVault=pl[0].vault||new Set();
-        const bNew=bPool.filter(id=>!bVault.has(id));
-        const bUsePool=bNew.length>0?bNew:bPool;
-        const bCard=bUsePool[Math.floor(Math.random()*bUsePool.length)];
+        const bCard=pickFromPool(bPool); // v299: pickFromPool, no filter alloc
         addCardToPlayer(0,bCard);
         checkWinAndTransition(2000); // v149: card 60 could come from mission bonus_card
       }
@@ -7667,10 +7664,8 @@ function doMapTransition(exit){
       const clearedFloor=exit.fromMap; // the floor we just cleared
       const pool=DUNGEON_FLOOR_CARDS[clearedFloor];
       if(pool&&pool.length>0){
-        // Prefer vault-new cards from this floor's pool (helps progression)
-        const vault_=pl[0].vault||new Set();
-        const newPool=pool.filter(id=>!vault_.has(id));
-        const rewardCard=(newPool.length>0?newPool:pool)[Math.floor(Math.random()*(newPool.length>0?newPool:pool).length)];
+        // Prefer vault-new cards from this floor's pool (v299: pickFromPool, no filter alloc)
+        const rewardCard=pickFromPool(pool);
         setTimeout(()=>{
           const cr=CD[rewardCard-1];
           const isNewUnique=!(pl[0].vault&&pl[0].vault.has(rewardCard));
@@ -7703,12 +7698,9 @@ function doMapTransition(exit){
     // ── GOAL EXIT: Floor 5 cleared — legendary card fanfare ──
     if(exit.isGoal){
       const legendPool=DUNGEON_FLOOR_CARDS[5]||[]; // floor 5 = legendary pool
-      const vault_=pl[0].vault||new Set();
-      const newPool=legendPool.filter(id=>!vault_.has(id));
-      const usePool=newPool.length>0?newPool:legendPool;
-      // Give 2 legendary cards as goal reward
-      const reward1=usePool[Math.floor(Math.random()*usePool.length)];
-      const reward2=usePool[Math.floor(Math.random()*usePool.length)];
+      // Give 2 legendary cards as goal reward (v299: pickFromPool, no filter alloc)
+      const reward1=pickFromPool(legendPool);
+      const reward2=pickFromPool(legendPool);
       [reward1,reward2].forEach((rid,ri)=>{
         if(!rid)return;
         setTimeout(()=>{
@@ -8147,20 +8139,9 @@ function tryWildEncounter(){
 
   // Determine card based on current dungeon floor pool
   const floorPool=AREA_CARDS[currentMap]||AREA_CARDS[1];
+  // v299: pickFromPool replaces filter+alloc pattern in both branches
   let cardIdx;
-  // Streak 5+: pick an unowned card from the floor pool (guaranteed new unique if possible)
-  if(streakCount>=5){
-    const owned=hasUniqueCards(0);
-    const needed=floorPool.filter(cid=>!owned.has(cid));
-    if(needed.length>0){cardIdx=needed[Math.floor(Math.random()*needed.length)]-1;}
-    else{cardIdx=floorPool[Math.floor(Math.random()*floorPool.length)]-1;}
-  }else{
-    // Normal: prefer vault-new card from floor pool
-    const vault_w=pl[0].vault||new Set();
-    const wNewPool=floorPool.filter(id=>!vault_w.has(id));
-    const wPool=wNewPool.length>0?wNewPool:floorPool;
-    cardIdx=wPool[Math.floor(Math.random()*wPool.length)]-1;
-  }
+  cardIdx=pickFromPool(floorPool)-1; // vault-new preferred, fallback to random
 
   wildEncounterActive=true;
   wildEncounterCard=cardIdx;
@@ -8743,12 +8724,9 @@ function triggerRandomEvent(){
   sfxEventAlert();
 
   if(ev.action==='card'){
-    // Give a card from current floor pool — prefer vault-new cards
+    // Give a card from current floor pool — prefer vault-new (v299: pickFromPool)
     const pool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-    const vault_=pl[0].vault||new Set();
-    const newPool_=pool.filter(id=>!vault_.has(id));
-    const usePool_=newPool_.length>0?newPool_:pool;
-    const cardId=usePool_[Math.floor(Math.random()*usePool_.length)]; // 1-indexed
+    const cardId=pickFromPool(pool); // 1-indexed
     const cardIdx=cardId-1; // 0-indexed for CD[]
     const evAdded=addCardToPlayer(0,cardId); // updates vault + hand
     if(evAdded){
@@ -11051,7 +11029,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v298',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v299',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -12753,6 +12731,15 @@ function pickAreaCardForMap(mapIdx){
   const ac=DUNGEON_FLOOR_CARDS[mapIdx];
   if(!ac||ac.length===0)return 1+(Math.floor(Math.random()*60)); // fallback: any card
   return ac[Math.floor(Math.random()*ac.length)];
+}
+// v299: vault-new preference pick — no .filter() array, single-pass random scan
+// Replaces the pool.filter(id=>!vault.has(id)) pattern used across multiple systems
+function pickFromPool(pool){
+  if(!pool||!pool.length)return 0;
+  const vault=pl[0].vault;
+  const start=Math.floor(Math.random()*pool.length);
+  if(vault){for(let i=0;i<pool.length;i++){const id=pool[(start+i)%pool.length];if(!vault.has(id))return id;}}
+  return pool[start]; // all owned or no vault: random pick
 }
 function cardCount(p){ return cdCount(p.cd); }
 function syncCardCount(pIdx){
@@ -15412,12 +15399,9 @@ function fishingCatchCard(){
   fishingPhase='catch';
   fishingTimer=90;
   sfxFishCatch();
-  // Random dock spirit card — prefer vault-new
+  // Random dock spirit card — prefer vault-new (v299: pickFromPool, no filter alloc)
   const pool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-  const vault_f=pl[0].vault||new Set();
-  const newPool_f=pool.filter(id=>!vault_f.has(id));
-  const usePool_f=newPool_f.length>0?newPool_f:pool;
-  const cardId=usePool_f[Math.floor(Math.random()*usePool_f.length)];
+  const cardId=pickFromPool(pool);
   const cardIdx=cardId-1;
   const fAdded=addCardToPlayer(0,cardId); // updates vault + hand
   if(fAdded){
@@ -15516,11 +15500,9 @@ function checkPuzzleInteraction(){
         puzzleMessageTimer=180;
         twSet('The passage opens! A void card appears!');
         lg.push('Ruins puzzle solved!');
-        // Give a rare card from the current floor pool — prefer vault-new
+        // Give a rare card from the current floor pool — prefer vault-new (v299: pickFromPool)
         const pzPool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-        const vault_pz=pl[0].vault||new Set();
-        const pzNewPool=pzPool.filter(id=>!vault_pz.has(id));
-        const pzCard=(pzNewPool.length>0?pzNewPool:pzPool)[Math.floor(Math.random()*(pzNewPool.length>0?pzNewPool:pzPool).length)];
+        const pzCard=pickFromPool(pzPool);
         const pzAdded=addCardToPlayer(0,pzCard); // updates vault + hand
         if(pzAdded){
           startCardAcquisition(pzCard-1);
@@ -16038,11 +16020,9 @@ function checkObjectInteraction(){
     }
     shakenTrees.add(key);
     if(Math.random()<0.1){
-      // 10% chance: card falls out — prefer vault-new
+      // 10% chance: card falls out — prefer vault-new (v299: pickFromPool)
       const treePool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-      const vault_t=pl[0].vault||new Set();
-      const treeNewPool=treePool.filter(id=>!vault_t.has(id));
-      const treeCardId=(treeNewPool.length>0?treeNewPool:treePool)[Math.floor(Math.random()*(treeNewPool.length>0?treeNewPool:treePool).length)];
+      const treeCardId=pickFromPool(treePool);
       const cardIdx=treeCardId-1;
       const treeAdded=addCardToPlayer(0,treeCardId); // updates vault + hand
       if(treeAdded){
@@ -16073,9 +16053,7 @@ function checkObjectInteraction(){
     sfxSelect();
     if(Math.random()<0.2){
       const areaCards=AREA_CARDS[currentMap]||AREA_CARDS[1];
-      const vault_r=pl[0].vault||new Set();
-      const rockNewPool=areaCards.filter(id=>!vault_r.has(id));
-      const cardId=(rockNewPool.length>0?rockNewPool:areaCards)[Math.floor(Math.random()*(rockNewPool.length>0?rockNewPool:areaCards).length)];
+      const cardId=pickFromPool(areaCards); // v299: pickFromPool, no filter alloc
       const rockAdded=addCardToPlayer(0,cardId); // updates vault + hand
       if(rockAdded){
         startCardAcquisition(cardId-1);
@@ -16200,12 +16178,13 @@ function doFountainExchange(){
   // Remove random card, give vault-new card if possible
   const slot=filled[Math.floor(Math.random()*filled.length)];
   const oldCard=pl[0].cd[slot];
-  const vault_fn=pl[0].vault||new Set();
-  const ownedInHand_fn=new Set(pl[0].cd.filter(c=>c>0));
+  const vault_fn=pl[0].vault;
+  // v299: build hand-owned Set directly, no filter alloc
+  const ownedInHand_fn=new Set();for(let _fi=0;_fi<pl[0].cd.length;_fi++){if(pl[0].cd[_fi]>0)ownedInHand_fn.add(pl[0].cd[_fi]);}
   const fnNew=[],fnOwned=[];
   for(let i=1;i<=60;i++){
     if(i===oldCard)continue;
-    if(!vault_fn.has(i))fnNew.push(i);
+    if(!vault_fn||!vault_fn.has(i))fnNew.push(i);
     else if(!ownedInHand_fn.has(i))fnOwned.push(i);
   }
   let newCard;

@@ -283,10 +283,7 @@ function doMapTransition(exit){
       else if(rk==='refill'){sp.s=Math.max(sp.s,3);sp.b=Math.max(sp.b,4);sp.c=Math.max(sp.c,3);}
       else if(rk==='bonus_card'){
         const bPool=DUNGEON_FLOOR_CARDS[3]||DUNGEON_FLOOR_CARDS[2];
-        const bVault=pl[0].vault||new Set();
-        const bNew=bPool.filter(id=>!bVault.has(id));
-        const bUsePool=bNew.length>0?bNew:bPool;
-        const bCard=bUsePool[Math.floor(Math.random()*bUsePool.length)];
+        const bCard=pickFromPool(bPool); // v299: pickFromPool, no filter alloc
         addCardToPlayer(0,bCard);
         checkWinAndTransition(2000); // v149: card 60 could come from mission bonus_card
       }
@@ -309,10 +306,8 @@ function doMapTransition(exit){
       const clearedFloor=exit.fromMap; // the floor we just cleared
       const pool=DUNGEON_FLOOR_CARDS[clearedFloor];
       if(pool&&pool.length>0){
-        // Prefer vault-new cards from this floor's pool (helps progression)
-        const vault_=pl[0].vault||new Set();
-        const newPool=pool.filter(id=>!vault_.has(id));
-        const rewardCard=(newPool.length>0?newPool:pool)[Math.floor(Math.random()*(newPool.length>0?newPool:pool).length)];
+        // Prefer vault-new cards from this floor's pool (v299: pickFromPool, no filter alloc)
+        const rewardCard=pickFromPool(pool);
         setTimeout(()=>{
           const cr=CD[rewardCard-1];
           const isNewUnique=!(pl[0].vault&&pl[0].vault.has(rewardCard));
@@ -345,12 +340,9 @@ function doMapTransition(exit){
     // ── GOAL EXIT: Floor 5 cleared — legendary card fanfare ──
     if(exit.isGoal){
       const legendPool=DUNGEON_FLOOR_CARDS[5]||[]; // floor 5 = legendary pool
-      const vault_=pl[0].vault||new Set();
-      const newPool=legendPool.filter(id=>!vault_.has(id));
-      const usePool=newPool.length>0?newPool:legendPool;
-      // Give 2 legendary cards as goal reward
-      const reward1=usePool[Math.floor(Math.random()*usePool.length)];
-      const reward2=usePool[Math.floor(Math.random()*usePool.length)];
+      // Give 2 legendary cards as goal reward (v299: pickFromPool, no filter alloc)
+      const reward1=pickFromPool(legendPool);
+      const reward2=pickFromPool(legendPool);
       [reward1,reward2].forEach((rid,ri)=>{
         if(!rid)return;
         setTimeout(()=>{
@@ -789,20 +781,9 @@ function tryWildEncounter(){
 
   // Determine card based on current dungeon floor pool
   const floorPool=AREA_CARDS[currentMap]||AREA_CARDS[1];
+  // v299: pickFromPool replaces filter+alloc pattern in both branches
   let cardIdx;
-  // Streak 5+: pick an unowned card from the floor pool (guaranteed new unique if possible)
-  if(streakCount>=5){
-    const owned=hasUniqueCards(0);
-    const needed=floorPool.filter(cid=>!owned.has(cid));
-    if(needed.length>0){cardIdx=needed[Math.floor(Math.random()*needed.length)]-1;}
-    else{cardIdx=floorPool[Math.floor(Math.random()*floorPool.length)]-1;}
-  }else{
-    // Normal: prefer vault-new card from floor pool
-    const vault_w=pl[0].vault||new Set();
-    const wNewPool=floorPool.filter(id=>!vault_w.has(id));
-    const wPool=wNewPool.length>0?wNewPool:floorPool;
-    cardIdx=wPool[Math.floor(Math.random()*wPool.length)]-1;
-  }
+  cardIdx=pickFromPool(floorPool)-1; // vault-new preferred, fallback to random
 
   wildEncounterActive=true;
   wildEncounterCard=cardIdx;
@@ -1385,12 +1366,9 @@ function triggerRandomEvent(){
   sfxEventAlert();
 
   if(ev.action==='card'){
-    // Give a card from current floor pool — prefer vault-new cards
+    // Give a card from current floor pool — prefer vault-new (v299: pickFromPool)
     const pool=AREA_CARDS[currentMap]||AREA_CARDS[1];
-    const vault_=pl[0].vault||new Set();
-    const newPool_=pool.filter(id=>!vault_.has(id));
-    const usePool_=newPool_.length>0?newPool_:pool;
-    const cardId=usePool_[Math.floor(Math.random()*usePool_.length)]; // 1-indexed
+    const cardId=pickFromPool(pool); // 1-indexed
     const cardIdx=cardId-1; // 0-indexed for CD[]
     const evAdded=addCardToPlayer(0,cardId); // updates vault + hand
     if(evAdded){
