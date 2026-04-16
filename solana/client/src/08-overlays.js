@@ -155,7 +155,8 @@ function drawDungeonConfirm(){
   txShadow('ENTER DUNGEON?',cx_+cw/2-80,cy_+20,11,'#d04040','rgba(0,0,0,.5)');
   const handCount=cdCount(pl[0].cd);
   const vaultSize=pl[0].vault?pl[0].vault.size:0;
-  txShadow('Cards in hand: '+handCount+'     Vault: '+vaultSize+'/60',cx_+20,cy_+50,8,'#c8c0a0','rgba(0,0,0,.3)');
+  const _dsk=handCount*100+vaultSize;if(_dunStatsKey!==_dsk){_dunStatsKey=_dsk;_dunStatsLbl='Cards in hand: '+handCount+'     Vault: '+(_UNIQ60[vaultSize]||(vaultSize+'/60'));} // v328: lazy
+  txShadow(_dunStatsLbl,cx_+20,cy_+50,8,'#c8c0a0','rgba(0,0,0,.3)');
   bx(cx_+12,cy_+60,cw-24,1,'#282848');
   txShadow('\u26A0 Cards decay in 3.5 min \u2014 escape before they vanish!',cx_+12,cy_+74,6,'#d06030','rgba(0,0,0,.3)');
   txShadow('\u2694 Rivals can STEAL your cards each battle round.',cx_+12,cy_+89,6,'#d06030','rgba(0,0,0,.3)');
@@ -210,6 +211,13 @@ const _LOG_STAT_ICONS=['\u2694','\u2605','\u2717','\u2660'];
 // v321: pre-baked catalog/market strings — eliminates per-frame alloc in overlay hot paths
 const _CRD_PAGE_TITLE=(()=>{const a=[];for(let i=0;i<5;i++)a.push(_CRD_TYPE_NAMES[i]+' '+(i+1)+'/5');return a;})();
 const _OVER12_LBL=(()=>{const a=[];for(let i=0;i<=12;i++)a.push(i+'/12');return a;})();
+// v328: pre-baked overlay strings
+const _VEGA_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('V:'+i);return a;})();
+const _MIRA_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('M:'+i);return a;})();
+const _INSCRIBING_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('Inscribing '+i+'/60...');return a;})();
+const _INTRO_PG_LBL=(()=>{const a=[];for(let i=0;i<INTRO_PAGES.length;i++)a.push((i+1)+'/'+INTRO_PAGES.length);return a;})();
+let _dunStatsLbl='',_dunStatsKey=-1; // dungeon confirm stats lazy (key=handCount*100+vaultSize)
+const _mktTabLbl=['','','','',''],_mktTabKey=[-1,-1,-1,-1,-1]; // marketplace type tab labels
 const _LOG_STAT_LABELS=['btl','got','lost',''];
 // v256: Hoisted market overlay statics — eliminates per-frame inline literal allocs
 const _MKT_TYPE_FILTER=['attack','defense','flee','magic','recovery'];
@@ -280,7 +288,8 @@ function drawMarketplace(){
     for(let ti=0;ti<5;ti++){
       const cards=_mktTypeCache[ti]; // v263: pre-computed, no filter alloc
       if(cards.length===0)continue;
-      txShadow(_MKT_TYPE_LABEL[ti]+' ('+cards.length+')',mx+14,yi+10,7,_MKT_TYPE_COLOR[ti],'rgba(0,0,0,.3)');yi+=16;
+      const _tl=cards.length;if(_mktTabKey[ti]!==_tl){_mktTabKey[ti]=_tl;_mktTabLbl[ti]=_MKT_TYPE_LABEL[ti]+' ('+_tl+')';} // v328: lazy
+      txShadow(_mktTabLbl[ti],mx+14,yi+10,7,_MKT_TYPE_COLOR[ti],'rgba(0,0,0,.3)');yi+=16;
       const _cLen=Math.min(12,cards.length);
       for(let ci=0;ci<_cLen;ci++){
         const id=cards[ci];const cr=CD[id-1];
@@ -489,7 +498,7 @@ function drawIntroTutorial(){
   g.globalAlpha=Math.min(1,t/20);
   txShadow('0xARK',W/2-64,80,24,'#f8f0e0','rgba(0,0,0,.6)');
   txShadow('THE RULES',W/2-44,108,10,'#a07848','rgba(0,0,0,.4)');
-  txShadow((introPage+1)+'/'+INTRO_PAGES.length,W/2-16,140,7,'#686068','rgba(0,0,0,.3)');
+  txShadow(_INTRO_PG_LBL[introPage]||((introPage+1)+'/'+INTRO_PAGES.length),W/2-16,140,7,'#686068','rgba(0,0,0,.3)'); // v328
   g.globalAlpha=1;
   const wx=W/2-240,wy=160,ww=480,wh=180;
   win(wx,wy,ww,wh);
@@ -642,7 +651,7 @@ function dVictory(){
     }else if(victoryMinting){
       const bar=Math.floor((victoryMintProgress/60)*28);
       bx(W/2-140,573,bar*5,14,'rgba(153,69,255,.5)');
-      txShadow('Inscribing '+victoryMintProgress+'/60...',W/2-88,584,8,'#c090ff','rgba(0,0,0,.4)');
+      txShadow(_INSCRIBING_LBL[victoryMintProgress]||('Inscribing '+victoryMintProgress+'/60...'),W/2-88,584,8,'#c090ff','rgba(0,0,0,.4)'); // v328
     }else{
       const mintBlink=Math.sin(fr*0.08)*0.12+0.88;
       g.globalAlpha*=mintBlink;
@@ -808,9 +817,9 @@ function dCrd(){
     const vegaTotal=cdCount(pl[1].cd);
     const miraTotal=cdCount(pl[2].cd);
     bx(W-190,12,8,8,'#e060a0');
-    txShadow('V:'+vegaTotal,W-180,22,6,'#e060a0','rgba(0,0,0,.35)');
+    txShadow(_VEGA_LBL[vegaTotal]||('V:'+vegaTotal),W-180,22,6,'#e060a0','rgba(0,0,0,.35)'); // v328
     bx(W-158,12,8,8,'#d0a030');
-    txShadow('M:'+miraTotal,W-148,22,6,'#d0a030','rgba(0,0,0,.35)');
+    txShadow(_MIRA_LBL[miraTotal]||('M:'+miraTotal),W-148,22,6,'#d0a030','rgba(0,0,0,.35)'); // v328
   }
   // v117: Persistent card info sidebar (right of grid)
   {
