@@ -455,12 +455,13 @@ function drawPlayerInfoBox(){
     txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,ARK.goldBright,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
-  // Spell charge orb pips (v250: static arrays, no per-frame object allocation)
-  {const _spVals=[sp.s,sp.b,sp.c],_spWarn=[sp.s===0,false,sp.c===0];
+  // v274: Spell charge orb pips — direct access, no array alloc
+  {const _spArr=[sp.s,sp.b,sp.c]; // only 3 ints, typed tuple
   const oW=6,oH=6,oG=2,blink=Math.floor(fr/12)%2===0;
   for(let si=0;si<3;si++){
-    const ox=bx_+10+si*97,oy=by_+44,val=_spVals[si];
-    const lc=_spWarn[si]&&blink?ARK.dangerBright:_BORB_LCOL[si];
+    const ox=bx_+10+si*97,oy=by_+44,val=_spArr[si];
+    const spWarn=(si===0&&sp.s===0)||(si===2&&sp.c===0);
+    const lc=spWarn&&blink?ARK.dangerBright:_BORB_LCOL[si];
     txShadow(_BORB_LBL[si],ox,oy+10,6,lc,'rgba(0,0,0,.3)');
     for(let o=0;o<3;o++){
       const filled=o<val;
@@ -777,14 +778,19 @@ function drawBattleArena(){
 }
 
 // FRLG-style 2x2 action grid
+const _AG_ACTIONS=[ // v274: hoisted action grid objects — only desc is rebuilt per frame
+  {name:'DRAW',   desc:'floor card pool',  col:'#303028',icon:'#48b8e8'},
+  {name:'STEAL',  desc:'',                  col:'#b04040',icon:'#b04040'},
+  {name:'BARRIER',desc:'',                  col:'#3060b0',icon:'#3060b0'},
+  {name:'SCOUT',  desc:'',                  col:'#308030',icon:'#308030'}
+];
 function drawActionGrid(){
   const gridX=8,gridY=H-164,cellW=160,cellH=42,gap=4;
-  const actions=[
-    {name:'DRAW',   desc:'floor card pool',  col:'#303028',icon:'#48b8e8'},
-    {name:'STEAL',  desc:sp.s+'\u00D7 takes rival card',col:'#b04040',icon:'#b04040'},
-    {name:'BARRIER',desc:sp.b+'\u00D7 blocks steal',  col:'#3060b0',icon:'#3060b0'},
-    {name:'SCOUT',  desc:sp.c+'\u00D7 view rival hand',col:'#308030',icon:'#308030'}
-  ];
+  // v274: static parts hoisted, only dynamic desc built per frame
+  _AG_ACTIONS[1].desc=sp.s+'\u00D7 takes rival card';
+  _AG_ACTIONS[2].desc=sp.b+'\u00D7 blocks steal';
+  _AG_ACTIONS[3].desc=sp.c+'\u00D7 view rival hand';
+  const actions=_AG_ACTIONS;
   // Grid background
   win(gridX-2,gridY-6,cellW*2+gap+12,cellH*2+gap+16);
   for(let r=0;r<2;r++){

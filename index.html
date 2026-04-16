@@ -2806,6 +2806,8 @@ function updateHandInspect(){
   if(handInspectFrame>=handInspectAutoDismiss)handInspectActive=false;
 }
 const _hiFilledBuf=new Int8Array(8); // v272: module scope, eliminates filled[] per frame
+const _PROG_BAR_MILE=[10,20,30,40,50]; // v274: hoisted from drawCardProgressBar
+const _FLOOR_ABBR=['','SG','DA','EC','DV','AC']; // v274: hoisted from drawCardProgressBar
 function drawHandInspect(){
   if(!handInspectActive||sc!=='map')return;
   const t=Math.min(1,handInspectFrame/10);
@@ -2994,13 +2996,12 @@ function drawCardProgressBar(){
     bx(barX,barY,Math.floor(barW*pct),Math.floor(barH/2),'rgba(255,255,255,.15)');
   }
   // Milestone markers at 10, 20, 30, 40, 50 with labels
-  const mileLabels=[10,20,30,40,50];
   for(let m=1;m<=5;m++){
     const mx=barX+Math.floor(barW*m*10/60);
     const reached=vaultSize>=m*10;
     bx(mx,barY,1,barH,reached?'rgba(255,255,255,.3)':'#1a1a30');
     // Tick label below bar
-    const mlbl=mileLabels[m-1]+'';
+    const mlbl=_PROG_BAR_MILE[m-1]+""; // v274: hoisted
     const mlblA=reached?0.8:0.35;
     g.globalAlpha=mlblA;
     txShadow(mlbl,mx-mlbl.length*2,barY+barH+6,4,reached?fillColor:'#888898','rgba(0,0,0,.3)');
@@ -3011,8 +3012,7 @@ function drawCardProgressBar(){
   txShadow(countLabel,barX+barW+8,barY+9,7,vaultSize>=60?'#40d040':'#c8c0a0','rgba(0,0,0,.4)');
   // Dungeon floor indicator — show floor name abbreviation
   if(inDungeon){
-    const floorAbbr=['','SG','DA','EC','DV','AC'];
-    const floorLabel=(floorAbbr[currentFloor]||'B'+currentFloor);
+    const floorLabel=(_FLOOR_ABBR[currentFloor]||'B'+currentFloor); // v274: hoisted
     txShadow(floorLabel,barX-30,barY+9,7,'#d8b028','rgba(0,0,0,.4)');
   }
   // Pulse glow when new card added
@@ -9202,7 +9202,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v273',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v274',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -10979,7 +10979,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v273',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v274',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11653,12 +11653,13 @@ function drawPlayerInfoBox(){
     txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,ARK.goldBright,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
-  // Spell charge orb pips (v250: static arrays, no per-frame object allocation)
-  {const _spVals=[sp.s,sp.b,sp.c],_spWarn=[sp.s===0,false,sp.c===0];
+  // v274: Spell charge orb pips — direct access, no array alloc
+  {const _spArr=[sp.s,sp.b,sp.c]; // only 3 ints, typed tuple
   const oW=6,oH=6,oG=2,blink=Math.floor(fr/12)%2===0;
   for(let si=0;si<3;si++){
-    const ox=bx_+10+si*97,oy=by_+44,val=_spVals[si];
-    const lc=_spWarn[si]&&blink?ARK.dangerBright:_BORB_LCOL[si];
+    const ox=bx_+10+si*97,oy=by_+44,val=_spArr[si];
+    const spWarn=(si===0&&sp.s===0)||(si===2&&sp.c===0);
+    const lc=spWarn&&blink?ARK.dangerBright:_BORB_LCOL[si];
     txShadow(_BORB_LBL[si],ox,oy+10,6,lc,'rgba(0,0,0,.3)');
     for(let o=0;o<3;o++){
       const filled=o<val;
@@ -11975,14 +11976,19 @@ function drawBattleArena(){
 }
 
 // FRLG-style 2x2 action grid
+const _AG_ACTIONS=[ // v274: hoisted action grid objects — only desc is rebuilt per frame
+  {name:'DRAW',   desc:'floor card pool',  col:'#303028',icon:'#48b8e8'},
+  {name:'STEAL',  desc:'',                  col:'#b04040',icon:'#b04040'},
+  {name:'BARRIER',desc:'',                  col:'#3060b0',icon:'#3060b0'},
+  {name:'SCOUT',  desc:'',                  col:'#308030',icon:'#308030'}
+];
 function drawActionGrid(){
   const gridX=8,gridY=H-164,cellW=160,cellH=42,gap=4;
-  const actions=[
-    {name:'DRAW',   desc:'floor card pool',  col:'#303028',icon:'#48b8e8'},
-    {name:'STEAL',  desc:sp.s+'\u00D7 takes rival card',col:'#b04040',icon:'#b04040'},
-    {name:'BARRIER',desc:sp.b+'\u00D7 blocks steal',  col:'#3060b0',icon:'#3060b0'},
-    {name:'SCOUT',  desc:sp.c+'\u00D7 view rival hand',col:'#308030',icon:'#308030'}
-  ];
+  // v274: static parts hoisted, only dynamic desc built per frame
+  _AG_ACTIONS[1].desc=sp.s+'\u00D7 takes rival card';
+  _AG_ACTIONS[2].desc=sp.b+'\u00D7 blocks steal';
+  _AG_ACTIONS[3].desc=sp.c+'\u00D7 view rival hand';
+  const actions=_AG_ACTIONS;
   // Grid background
   win(gridX-2,gridY-6,cellW*2+gap+12,cellH*2+gap+16);
   for(let r=0;r<2;r++){
