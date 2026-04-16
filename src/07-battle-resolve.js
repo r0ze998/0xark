@@ -444,10 +444,14 @@ function drawResolvingPhase(){
         g.fillStyle=grd;g.fillRect(cx_-40,cy_-40,80,80);
         g.globalAlpha=1;
       }
-      // Card frame (colored by rarity)
-      bx(cx_-cw_/2,cy_-ch_/2,cw_,ch_,rcol);
-      bx(cx_-cw_/2+2,cy_-ch_/2+2,cw_-4,ch_-4,ev.stolenId?CD[ev.stolenId-1].c||'#303028':'#e87060');
-      if(scl_>.5&&ev.stolenId){drawCardCharacter(cx_-cw_/2+2,cy_-ch_/2+2,ev.stolenId,scl_*0.6,fr);}
+      // v214: Card frame with rotation — card spins as it arcs through the air
+      {const flyAngle=(prog-0.5)*0.9; // tilts left→right as it crosses
+      g.save();g.translate(cx_,cy_);g.rotate(flyAngle);
+      bx(-cw_/2,-ch_/2,cw_,ch_,rcol);
+      bx(-cw_/2+2,-ch_/2+2,cw_-4,ch_-4,ev.stolenId?CD[ev.stolenId-1].c||'#303028':'#e87060');
+      bx(-cw_/2,-ch_/2,cw_,2,rcol); // top rarity border line
+      if(scl_>.5&&ev.stolenId){drawCardCharacter(-cw_/2+2,-ch_/2+2,ev.stolenId,scl_*0.6,fr);}
+      g.restore();}
       // Rarity sparks orbit
       const sparkCount=2+rar*2;
       for(let i=0;i<sparkCount;i++){
@@ -476,6 +480,33 @@ function drawResolvingPhase(){
         txShadow(stLabel,W/2-stLabel.length*stSz*0.3,playerCY-85-bounce,stSz,rcol,'rgba(0,0,0,.6)');
         g.globalAlpha=1;
       }
+    }
+    // v214: Floating HP damage number — rises above target sprite, fades out
+    if(ev.dmg&&ev.dmg>0&&evT>=6&&evT<38){
+      const dTgt=ev.effect==='card_lost'?0:(ev.target!==undefined?ev.target:0);
+      const dCX=dTgt===0?playerCX:(dTgt===1?oppCX:W-310);
+      const dCY=dTgt===0?playerCY-20:(dTgt===1?oppCY-30:120);
+      const fProg=(evT-6)/32;
+      const fY=dCY-fProg*55;
+      const fA=Math.max(0,1-fProg*1.2);
+      const fSc=1+Math.max(0,0.3*(1-fProg*2));
+      g.globalAlpha=fA;
+      g.save();g.translate(dCX,fY);g.scale(fSc,fSc);
+      const dmgLabel='-'+ev.dmg+' HP';
+      const dmgCol=ev.dmg>=2?'#ff2020':'#ff5030';
+      txShadow(dmgLabel,-ev.dmg*9,0,ev.dmg>=2?16:14,dmgCol,'rgba(0,0,0,.7)');
+      g.restore();g.globalAlpha=1;
+    }
+    // v214: Floating heal number for defense/recovery cards
+    if(ev.heal&&ev.heal>0&&evT>=6&&evT<38){
+      const fProg=(evT-6)/32;
+      const fY=(playerCY-20)-fProg*55;
+      const fA=Math.max(0,1-fProg*1.2);
+      const fSc=1+Math.max(0,0.3*(1-fProg*2));
+      g.globalAlpha=fA;
+      g.save();g.translate(playerCX,fY);g.scale(fSc,fSc);
+      txShadow('+'+ev.heal+' HP',-18,0,14,'#40e880','rgba(0,0,0,.7)');
+      g.restore();g.globalAlpha=1;
     }
     // Card consumption effect animations based on card name in event text
     if(ev.text&&ev.text.includes('Aegis')&&ev.type==='result'&&evT<35){
