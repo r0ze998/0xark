@@ -1484,6 +1484,15 @@ function pickAreaCardForMap(mapIdx){
   if(!ac||ac.length===0)return 1+(Math.floor(Math.random()*60)); // fallback: any card
   return ac[Math.floor(Math.random()*ac.length)];
 }
+// v299: vault-new preference pick — no .filter() array, single-pass random scan
+// Replaces the pool.filter(id=>!vault.has(id)) pattern used across multiple systems
+function pickFromPool(pool){
+  if(!pool||!pool.length)return 0;
+  const vault=pl[0].vault;
+  const start=Math.floor(Math.random()*pool.length);
+  if(vault){for(let i=0;i<pool.length;i++){const id=pool[(start+i)%pool.length];if(!vault.has(id))return id;}}
+  return pool[start]; // all owned or no vault: random pick
+}
 function cardCount(p){ return cdCount(p.cd); }
 function syncCardCount(pIdx){
   const p=pl[pIdx];
