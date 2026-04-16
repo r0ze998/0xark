@@ -1063,6 +1063,173 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(2,3,2,2,'#f8f090');px(12,3,2,2,'#f8f090');
     px(2,13,2,2,'#f8f090');px(12,13,2,2,'#f8f090');
     g.globalAlpha=1;
+  }else if(_cn==='INFERNO'){
+    // INFERNO — Area Fire (The ocean does not stop it, Rare magic)
+    // Idle: fire column blazes, embers rise, heat shimmer
+    const flamePh=Math.floor(t/5)%4;
+    const heatPulse=0.4+0.4*_sFr06;
+    // Heat shimmer aura
+    g.globalAlpha=heatPulse*0.15;px(-1,-1,18,22,'#f08020');g.globalAlpha=1;
+    // Fire base (wide, ground-level)
+    px(2,14,12,4,'#a83020');px(3,13,10,4,'#c84028');px(4,12,8,5,'#e05030');
+    // Fire body column (rising)
+    px(3,8,10,6,'#d06020');px(4,7,8,7,'#e08030');px(5,5,6,7,'#f0a030');
+    // Fire tips (animated phases)
+    if(flamePh===0){px(5,1,6,4,'#f8c040');px(6,0,4,2,'#fff070');px(4,3,2,3,'#f0a030');px(10,3,2,3,'#f0a030');}
+    else if(flamePh===1){px(6,1,4,5,'#f8c040');px(7,0,2,2,'#fff070');px(5,2,2,4,'#f0a030');px(9,2,2,3,'#f0a030');}
+    else if(flamePh===2){px(5,2,6,4,'#f8c040');px(7,0,3,3,'#fff070');px(4,4,2,2,'#f0a030');px(10,2,2,4,'#f0a030');}
+    else{px(6,0,4,6,'#f8c040');px(7,0,2,3,'#fff070');px(5,3,2,3,'#f0a030');px(9,3,2,2,'#f0a030');}
+    // Core bright column
+    px(7,4,2,12,'#fff080');px(7,3,2,10,'#f8c840');
+    // Ember particles
+    const _pp=charParticles[cardId];
+    if(t%8===0&&_pp.length<CHAR_PARTICLE_MAX){_pp.push({rx:5+Math.random()*6,ry:10,life:18+Math.random()*8,c:Math.random()>.4?'#f0c040':'#f08030'});}
+    for(let _i=_pp.length-1;_i>=0;_i--){const _p=_pp[_i];_p.ry-=0.5;_p.rx+=(Math.random()-.5)*0.3;_p.life--;
+      if(_p.life<=0){_pp.splice(_i,1);continue;}
+      g.globalAlpha=Math.min(1,_p.life/8);g.fillStyle=_p.c;g.fillRect(x+_p.rx*s,y+_p.ry*s,s,s);g.globalAlpha=1;}
+  }else if(_cn==='BLIZZARD'){
+    // BLIZZARD — Freeze Area (Even memories freeze in it, Rare magic)
+    // Idle: snowflake crystals spin, ice shards shimmer, cold mist swirls
+    const snowSpin=Math.floor(t/6)%8; // snowflake rotation
+    const icePulse=0.4+0.3*_sFr04;
+    const mistPh=Math.floor(t/10)%3;
+    // Cold mist background
+    g.globalAlpha=icePulse*0.15;px(-1,-1,18,22,'#a0d0e8');g.globalAlpha=1;
+    // Mist layers (3 phases, horizontal bands)
+    g.globalAlpha=0.2+mistPh*0.08;
+    px(0,4,16,3,'#c0e8f8');px(0,9,16,3,'#b0d8f0');px(0,14,16,3,'#a8ccec');
+    g.globalAlpha=1;
+    // Snowflake crystals (6-arm, 4 sizes at different positions)
+    // Large center snowflake (spinning)
+    const _skx=[7,8,8,8,7,6,6,6],_sky=[4,5,6,7,8,7,6,5]; // 8-pos spiral
+    g.globalAlpha=icePulse*0.9;
+    // Main snowflake (cross + diagonal)
+    px(6,6,4,1,'#d8f0ff');px(7,5,2,4,'#d8f0ff'); // cross arms
+    px(6,6,1,1,'#c0e0f8');px(9,6,1,1,'#c0e0f8');px(7,5,1,1,'#c0e0f8');px(7,8,1,1,'#c0e0f8'); // arm tips
+    // Diagonal arms
+    px(6,5,1,1,'#e0f4ff');px(9,5,1,1,'#e0f4ff');px(6,8,1,1,'#e0f4ff');px(9,8,1,1,'#e0f4ff');
+    g.globalAlpha=1;
+    // Orbital snowflakes (spinning)
+    const _sfx=[3,5,7,9,11,9,7,5],_sfy=[3,1,2,3,6,10,11,8];
+    g.globalAlpha=0.6+icePulse*0.3;
+    px(_sfx[snowSpin],_sfy[snowSpin],2,1,'#ffffff');px(_sfx[snowSpin]+1,_sfy[snowSpin]-1,1,3,'#ffffff');
+    px(_sfx[(snowSpin+4)%8],_sfy[(snowSpin+4)%8],2,1,'#e0f0ff');px(_sfx[(snowSpin+4)%8]+1,_sfy[(snowSpin+4)%8]-1,1,3,'#e0f0ff');
+    g.globalAlpha=1;
+    // Ice shard ground (jagged ice at bottom)
+    px(1,14,2,4,'#90c8e0');px(3,13,3,5,'#a0d0e8');px(6,12,2,6,'#b0d8f0');px(8,11,2,7,'#a0d0e8');px(10,13,3,5,'#90c8e0');px(13,14,2,4,'#88c0d8');
+    // Shard highlights (white tips)
+    px(1,14,2,1,'#d8f0ff');px(3,13,3,1,'#e0f4ff');px(6,12,2,1,'#e8f8ff');px(8,11,2,1,'#ffffff');px(10,13,3,1,'#e0f4ff');px(13,14,2,1,'#d8f0ff');
+    // Falling snowflakes (small dots at random positions)
+    g.globalAlpha=0.5;
+    px(2,3,1,1,'#ffffff');px(5,7,1,1,'#e0f0ff');px(12,4,1,1,'#ffffff');px(14,9,1,1,'#e0f0ff');px(4,11,1,1,'#ffffff');
+    g.globalAlpha=1;
+  }else if(_cn==='BERSERK'){
+    // BERSERK — Rage Attack (No mind, only red, Rare attack)
+    // Idle: rage aura pulses, body shakes, red eyes glow
+    const ragePulse=0.4+0.5*_sFr08;
+    const shakeOff=Math.round(_sFr25*0.8); // micro-shake
+    const rageSway=Math.round(_sFr018);
+    // Rage aura (red)
+    g.globalAlpha=ragePulse*0.2;px(-1,-1,18,22,'#a02020');g.globalAlpha=1;
+    // Wild hair (spiky, all directions)
+    px(4,0,8,2,'#181018');px(3,0,2,3,'#241020');px(11,0,2,3,'#241020');
+    px(5,0,1,1,'#382030');px(7,0,1,1,'#382030');px(9,0,1,1,'#382030');px(11,0,1,1,'#382030');
+    // Head (large, jaw clenched)
+    px(3,2,10,6,'#c07050');px(4,3,8,4,'#d08060');
+    // Rage eyes (glowing red)
+    g.globalAlpha=ragePulse;
+    px(4+shakeOff,3,3,2,'#e03020');px(9+shakeOff,3,3,2,'#e03020');
+    px(5+shakeOff,3,2,1,'#ff5040');px(10+shakeOff,3,2,1,'#ff5040');
+    g.globalAlpha=1;
+    // Grimacing mouth (teeth)
+    px(5,6,6,2,'#602828');px(6,6,1,2,'#e8e0d0');px(8,6,1,2,'#e8e0d0');px(10,6,1,2,'#e8e0d0');
+    // Muscular neck
+    px(6,8,4,2,'#c07050');
+    // Massive torso (battle-worn)
+    px(2+rageSway,10,12,6,'#8a4828');px(3+rageSway,10,10,5,'#a05830');
+    // Torn shirt
+    px(4,10,2,3,'rgba(0,0,0,.3)');px(10,11,2,2,'rgba(0,0,0,.25)');
+    // War scars
+    px(5,12,4,1,'#903030');px(8,14,3,1,'#903030');
+    // Arms (thick, powerful)
+    px(0+rageSway,10,3,7,'#c07050');px(13+rageSway,10,3,7,'#c07050');
+    px(0+rageSway,14,4,2,'#d08060'); // forearm
+    px(13+rageSway,13,4,2,'#d08060');
+    // Clenched fists (raised)
+    px(-1+rageSway,8,3,3,'#b06040');px(14+rageSway,8,3,3,'#b06040');
+    // Red rage sparks
+    g.globalAlpha=ragePulse*0.7;
+    px(-1,5,2,2,'#e03020');px(15,6,2,2,'#e03020');
+    px(0,12,2,2,'#ff5040');
+    g.globalAlpha=1;
+  }else if(_cn==='FORTRESS'){
+    // FORTRESS — Immovable (Stone does not care, Rare defense)
+    // Idle: torch flickers, stone permanence, battlements cast shadow
+    const torchFlame=Math.floor(t/7)%2;
+    const stonePulse=0.3+0.1*_sFr007; // very slow, barely moves
+    // Stone tower body (wide, imposing)
+    // Battlements (crenellations at top)
+    px(1,0,3,4,'#585848');px(4,2,2,2,'#585848');px(6,0,3,4,'#585848');px(9,2,2,2,'#585848');px(11,0,4,4,'#585848');
+    px(3,2,2,2,'#484838');px(8,2,2,2,'#484838'); // battlements slightly lighter
+    // Tower walls (stone blocks)
+    px(1,4,14,13,'#606050');px(2,4,12,12,'#686858');
+    // Stone block seams (mortar lines)
+    for(let br=0;br<4;br++){px(2,4+br*3,12,1,'#504840');}
+    for(let bc=0;bc<4;bc++){px(2+bc*3,4,1,12,bc%2===0?'#504840':'#585848');}
+    // Arrow slit windows (2 columns)
+    px(4,7,2,4,'#181410');px(4+1,7+1,0,2,'#0c0a08');
+    px(10,8,2,4,'#181410');
+    // Castle gate/door at bottom center
+    px(6,12,4,5,'#383028');px(7,12,2,5,'#282018');px(6,14,4,3,'#201808'); // arch
+    // Gate ring
+    px(7,14,2,1,'#907848');
+    // Torches (on walls, beside arrow slits)
+    px(3,7,1,2,'#a07030');
+    if(torchFlame===0){px(3,6,1,1,'#f0a030');g.globalAlpha=0.4;px(2,5,2,2,'#f0a030');g.globalAlpha=1;}
+    else{px(2,6,2,1,'#f8c040');g.globalAlpha=0.4;px(2,5,3,2,'#f0a030');g.globalAlpha=1;}
+    px(12,8,1,2,'#a07030');
+    if(torchFlame===1){px(12,7,1,1,'#f0a030');g.globalAlpha=0.4;px(11,6,2,2,'#f0a030');g.globalAlpha=1;}
+    else{px(11,7,2,1,'#f8c040');g.globalAlpha=0.4;px(11,6,3,2,'#f0a030');g.globalAlpha=1;}
+    // Wall shadow base
+    px(1,17,14,1,'#383828');px(2,16,12,1,'#484838');
+    // Stone highlight (light catching top)
+    g.globalAlpha=stonePulse*0.5;px(2,4,12,1,'#888868');g.globalAlpha=1;
+  }else if(_cn==='SHADOW'){
+    // SHADOW — Invisible (Even hunters fear the dark, Rare flee)
+    // Idle: barely visible dark form, shadow ripples, eyes glow in darkness
+    const shadowAlpha=0.25+0.2*_sFr035; // barely visible
+    const eyeGlow=_sFr06>0.5?0.9:0.7; // eyes pulse
+    const ripplePh=Math.floor(t/8)%4;
+    // Pure darkness background
+    g.globalAlpha=0.35;px(-1,-1,18,22,'#080818');g.globalAlpha=1;
+    // Shadow form (nearly invisible — just the outline)
+    g.globalAlpha=shadowAlpha;
+    // Head outline
+    px(5,2,6,6,'#1a2030');px(6,3,4,4,'#222838');
+    // Body (mass of darkness)
+    px(4,8,8,8,'#141c28');px(3,9,10,6,'#1a2030');px(4,10,8,5,'#202838');
+    // Arms (shadow tendrils)
+    px(0,8,4,5,'#101828');px(12,8,5,5,'#101828');
+    // Lower form fading
+    px(4,16,8,3,'#0e1620');px(5,17,6,2,'#0c1018');
+    g.globalAlpha=1;
+    // Eyes (the ONLY visible thing — menacing glow)
+    g.globalAlpha=eyeGlow;
+    px(6,4,2,2,'#506880');px(9,4,2,2,'#506880');
+    g.globalAlpha=0.9;
+    px(6,4,2,1,'#c0d8e0');px(9,4,2,1,'#c0d8e0'); // bright sclera catch
+    g.globalAlpha=eyeGlow;
+    px(7,5,1,1,'#304858');px(10,5,1,1,'#304858');
+    g.globalAlpha=1;
+    // Shadow ripples (emanating from feet, 4-phase)
+    const _rw=[14,12,10,8],_rY=[16,15,14,13];
+    g.globalAlpha=0.2+(4-ripplePh)*0.06;
+    px((16-_rw[ripplePh])/2,_rY[ripplePh],_rw[ripplePh],1,'#2a3848');
+    g.globalAlpha=1;
+    // Barely visible weapon glint
+    g.globalAlpha=shadowAlpha*1.5;
+    px(11,7,2,5,'#2a3848');px(12,6,1,2,'#40607a'); // dagger
+    g.globalAlpha=1;
   }
 
   // Generic renderer for all other cards (type-based pixel art)
@@ -1071,7 +1238,8 @@ function drawCardCharacter(x,y,cardId,scale,time){
      _cn==='SANCTUARY'||_cn==='GEN PULSE'||_cn==='REAPER'||_cn==='ARK GATE'||
      _cn==='PHOENIX'||_cn==='PHANTOM'||_cn==='GRAVITY'||
      _cn==='CRYSTAL'||_cn==='MAELSTROM'||_cn==='ELIXIR'||
-     _cn==='NULLIFY'||_cn==='VOIDSTEP'||_cn==='HOLY LIGHT'){
+     _cn==='NULLIFY'||_cn==='VOIDSTEP'||_cn==='HOLY LIGHT'||
+     _cn==='INFERNO'||_cn==='BLIZZARD'||_cn==='BERSERK'||_cn==='FORTRESS'||_cn==='SHADOW'){
     // named sprites already drawn above — fall through to sparkle/reveal below
   } else {
     const cr=CD[cardId-1];if(!cr)return;
