@@ -3895,9 +3895,11 @@ for(let m=0;m<FOG_MAP_COUNT;m++){
 // Fog color tints: town=blue-black, dungeon floors=deep purple-black
 const FOG_COLORS=['#0a0a1e','#0a0818','#0c0818','#0e0820','#0c0a1c','#100818'];
 // Fog particle pool for atmospheric drifting specks over hidden areas
+// v229: pre-compute sinPh/cosPh at creation so sin-addition formula avoids per-frame sin() calls
 const fogParticles=[];
 for(let i=0;i<40;i++){
-  fogParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.1+Math.random()*0.15,vy:-0.05+Math.random()*0.1,phase:Math.random()*Math.PI*2,life:Math.random()});
+  const phase=Math.random()*Math.PI*2;
+  fogParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.1+Math.random()*0.15,vy:-0.05+Math.random()*0.1,phase,sinPh:Math.sin(phase),cosPh:Math.cos(phase),life:Math.random()});
 }
 
 function fogRevealAll(mapIdx){
@@ -9096,6 +9098,28 @@ const _dungeonAuraCanvas=(()=>{
   return canvases;
 })();
 
+// v229: Pre-baked cloud shadow canvases — replace per-frame ellipse() calls (4 clouds × 2 ellipses = 8 calls)
+// Each canvas holds outer + inner ellipse at fixed alpha for that cloud index
+const _cloudCanvases=(()=>{
+  const cvs=[];
+  for(let ci=0;ci<4;ci++){
+    const csw=200+ci*35,csh=44+ci*10;
+    const cw=csw*2+4,ch=csh*2+4;
+    const c=document.createElement('canvas');c.width=cw;c.height=ch;
+    const ctx=c.getContext('2d');
+    const cx_=cw/2,cy_=ch/2;
+    // Outer ellipse
+    ctx.globalAlpha=0.03+ci*0.008;
+    ctx.fillStyle='#202034';
+    ctx.beginPath();ctx.ellipse(cx_,cy_,csw,csh,0,0,Math.PI*2);ctx.fill();
+    // Inner darker core
+    ctx.globalAlpha=0.02+ci*0.005;
+    ctx.beginPath();ctx.ellipse(cx_,cy_,csw*0.55,csh*0.55,0,0,Math.PI*2);ctx.fill();
+    cvs.push({canvas:c,hw:cx_,hh:cy_}); // store half-dims for centering
+  }
+  return cvs;
+})();
+
 function drawEdgeBlending(startTX,startTY,endTX,endTY){
   const m=getMap();
   for(let y=startTY;y<=endTY;y++){
@@ -9499,23 +9523,28 @@ function _drawFogAmbientMotes(ambCol,ambCount,ambVY,ambSz){
 function drawFogParticles(){
   const atmos=FLOOR_ATMOS[inDungeon?currentFloor:0]||FLOOR_ATMOS[0];
   const [fogCol,ambCol,ambCount,ambVY,ambSz]=atmos;
-  // Update particle positions and draw fog overlay dots — batch globalAlpha: set once per particle, reset once at end
-  fogParticles.forEach((p,i)=>{
+  // v229: sin-addition formula avoids 40 sin() calls per frame — use precomputed sinPh/cosPh per particle
+  // sin(fr*0.015 + phase) = sin(fr*0.015)*cos(phase) + cos(fr*0.015)*sin(phase)
+  const sinFr=Math.sin(fr*0.015),cosFr=Math.cos(fr*0.015);
+  // Batch fillStyle outside loop (same for all particles)
+  g.fillStyle=fogCol;
+  const visH=H-HUD_HEIGHT;
+  for(let i=0,l=fogParticles.length;i<l;i++){
+    const p=fogParticles[i];
     p.x+=p.vx;
-    p.y+=Math.sin(fr*0.015+p.phase)*0.1+p.vy;
+    p.y+=(sinFr*p.cosPh+cosFr*p.sinPh)*0.1+p.vy;
     if(p.x>MW*TW)p.x=0;
     if(p.y<0)p.y=MH*TH;
     if(p.y>MH*TH)p.y=0;
     const sx=p.x-camX,sy=p.y-camY;
-    if(sx>0&&sx<W&&sy>0&&sy<H-HUD_HEIGHT){
-      const tileX=Math.floor(p.x/TW),tileY=Math.floor(p.y/TH);
+    if(sx>0&&sx<W&&sy>0&&sy<visH){
+      const tileX=p.x/TW|0,tileY=p.y/TH|0;
       if(tileX>=0&&tileX<MW&&tileY>=0&&tileY<MH&&!fogRevealed[currentMap][tileY]?.[tileX]){
         g.globalAlpha=Math.max(0,0.15+Math.sin(fr*0.02+i*0.7)*0.1);
-        g.fillStyle=fogCol;
-        g.fillRect(sx,sy,1,1);
+        g.fillRect(sx|0,sy|0,1,1);
       }
     }
-  });
+  }
   g.globalAlpha=1;
   // Floor-specific ambient motes — cached to fogAmbCanvas, rebuilt every 3 frames
   if(!inDungeon||ambCount===0)return;
@@ -10042,16 +10071,18 @@ function dMap(){
   // Fog particles only every other frame
   if(fr%2===0) drawFogParticles();
 
-  // Floor watermark label (dungeon only, large semi-transparent)
+  // Floor watermark label (dungeon only, large semi-transparent, floor-themed color)
   if(inDungeon&&currentFloor>0){
     const FLOOR_NAMES=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','FLOOR V'];
+    // v229: floor-specific watermark color (matches each floor's atmosphere)
+    const FLOOR_WM_COLS=['','#8090b0','#506048','#8848c0','#c04020','#6010a0'];
     const floorLabel=FLOOR_NAMES[currentFloor]||('FLOOR '+currentFloor);
-    const wmAlpha=0.05+Math.sin(fr*0.008)*0.02;
+    const wmAlpha=0.07+Math.sin(fr*0.008)*0.025;
     g.save();
     g.globalAlpha=wmAlpha;
     g.font='bold 96px VT323, monospace';
     g.textAlign='center';
-    g.fillStyle='#ffffff';
+    g.fillStyle=FLOOR_WM_COLS[currentFloor]||'#8090b0';
     g.fillText(floorLabel,W/2,(H-HUD_HEIGHT)/2+36);
     g.globalAlpha=1;
     g.textAlign='left';
@@ -10063,23 +10094,17 @@ function dMap(){
   if(fr%2===0)drawBirds();
   if(fr%2===0)drawPirateDecorations(); // ship/barrels/vines/seagulls (no trees)
   drawTownWeather();
-  // v215: Cloud shadows — softly drifting shadow patches on overworld ground
+  // v215/v229: Cloud shadows — pre-baked canvases (was 8 ellipse() calls per frame)
   if(!inDungeon){
     const visH=H-HUD_HEIGHT;
     for(let ci=0;ci<4;ci++){
       const period=820+ci*160;
       const cphase=(fr+ci*260+ci*ci*50)%period;
-      const cx_=((cphase/period)*W*1.5)-W*0.25+camX%TW*0.08; // slow cam-coupled drift
+      const cx_=((cphase/period)*W*1.5)-W*0.25+camX%TW*0.08;
       const cy_=visH*(0.22+ci*0.17)+Math.sin(ci*1.7+fr*0.004)*12;
-      if(cx_<-220||cx_>W+220)continue;
-      const csw=200+ci*35,csh=44+ci*10;
-      g.globalAlpha=0.03+ci*0.008;
-      g.fillStyle='#202034';
-      g.beginPath();g.ellipse(cx_,cy_,csw,csh,0,0,Math.PI*2);g.fill();
-      // Soft inner darker core
-      g.globalAlpha=0.02+ci*0.005;
-      g.beginPath();g.ellipse(cx_,cy_,csw*0.55,csh*0.55,0,0,Math.PI*2);g.fill();
-      g.globalAlpha=1;
+      const cc=_cloudCanvases[ci];
+      if(cx_-cc.hw>W||cx_+cc.hw<0)continue; // viewport cull
+      g.drawImage(cc.canvas,(cx_-cc.hw)|0,(cy_-cc.hh)|0);
     }
   }
   // Y-sorted trees BG pass: trees with base ABOVE (north of) player drawn before sprites
