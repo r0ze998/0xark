@@ -324,7 +324,7 @@ function update(){
           sfxEncounterDramatic();
           hitPause(3); // freeze-frame dramatic tension at encounter trigger
           const rivalName=r.n;
-          const isRivalInitiated=ai.state==='hunting';
+          const isRivalInitiated=rivalAI[idx].state==='hunting'; // v350: fix — ai is battle cursor int, not rival AI obj
           // v294: use floor+hunt-tiered dialog (mirrors checkDungeonRivalEncounter path)
           const rCards=cdCount(r.cd);
           const base=_pickRivalLine(idx,isRivalInitiated);
