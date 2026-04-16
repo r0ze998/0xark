@@ -5782,6 +5782,35 @@ const milestonesReached=new Set();
 // ═══════════════════════════════════════
 // TILE RENDERING
 // ═══════════════════════════════════════
+// v232: Pre-baked tile shadows — replaces per-frame g.ellipse() on every visible tree/rock
+// Tree shadow: ellipse(px+16,py+30,12,4) @.12 → 28×10, center(14,5), draw@(px+2,py+25)
+const _tileShadowTree=(()=>{
+  const c=document.createElement('canvas');c.width=28;c.height=10;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(0,0,0,.12)';ctx.beginPath();ctx.ellipse(14,5,12,4,0,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+// Pine shadow: ellipse(px+16,py+30,10,3) @.08 → 22×8, center(11,4), draw@(px+5,py+26)
+const _tileShadowPine=(()=>{
+  const c=document.createElement('canvas');c.width=22;c.height=8;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(0,0,0,.08)';ctx.beginPath();ctx.ellipse(11,4,10,3,0,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+// Rock shadow: same geometry as tree shadow, different alpha
+const _tileShadowRock=(()=>{
+  const c=document.createElement('canvas');c.width=28;c.height=10;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(0,0,0,.10)';ctx.beginPath();ctx.ellipse(14,5,12,4,0,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+// Fire glow: arc(px+16,py+16,14) @.12 → 30×30, center(15,15), draw@(px+1,py+1)
+const _tileFireGlow=(()=>{
+  const c=document.createElement('canvas');c.width=30;c.height=30;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(255,160,40,.12)';ctx.beginPath();ctx.arc(15,15,14,0,Math.PI*2);ctx.fill();
+  return c;
+})();
 function isNearTileType(tx_,ty,types){
   const m=getMap();
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
@@ -5947,20 +5976,20 @@ function drawSand(px,py,tx_,ty){
 function drawTree(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(drawZeldaOverTile(ZO.tree[0],ZO.tree[1],px,py,2)){
-    g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
+    g.drawImage(_tileShadowTree,(px+2)|0,(py+25)|0);
     return;
   }
   // Fallback: solid green canopy
-  bx(px+4,py+2,24,22,'#2d6e2d');g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
+  bx(px+4,py+2,24,22,'#2d6e2d');g.drawImage(_tileShadowTree,(px+2)|0,(py+25)|0);
 }
 
 function drawPine(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(drawZeldaOverTile(ZO.tree[0],ZO.tree[1],px,py,2)){
-    g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.ellipse(px+16,py+TH-2,10,3,0,0,Math.PI*2);g.fill();
+    g.drawImage(_tileShadowPine,(px+5)|0,(py+26)|0);
     return;
   }
-  bx(px+8,py+2,16,26,'#1e5a1e');g.fillStyle='rgba(0,0,0,.08)';g.beginPath();g.ellipse(px+16,py+TH-2,10,3,0,0,Math.PI*2);g.fill();
+  bx(px+8,py+2,16,26,'#1e5a1e');g.drawImage(_tileShadowPine,(px+5)|0,(py+26)|0);
 }
 
 function drawPalm(px,py,tx_,ty){
@@ -6137,11 +6166,11 @@ function drawMountain(px,py,tx_,ty){
 function drawRock(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(drawZeldaOverTile(ZO.bush[0],ZO.bush[1],px,py,2)){
-    g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
+    g.drawImage(_tileShadowRock,(px+2)|0,(py+25)|0);
     return;
   }
   // Fallback
-  bx(px+6,py+6,20,20,'#808088');g.fillStyle='rgba(0,0,0,.1)';g.beginPath();g.ellipse(px+16,py+TH-2,12,4,0,0,Math.PI*2);g.fill();
+  bx(px+6,py+6,20,20,'#808088');g.drawImage(_tileShadowRock,(px+2)|0,(py+25)|0);
 }
 
 function drawFence(px,py,tx_,ty){
@@ -6439,7 +6468,7 @@ function drawCampfire(px,py,tx_,ty){
     drawGrass(px,py,tx_,ty);
     if(drawKenneyTileTinted(K.campfire[0], K.campfire[1], px, py, 2, '#e87040')){
       // Animated fire glow
-      g.fillStyle='rgba(255,160,40,.12)';g.beginPath();g.arc(px+16,py+16,14,0,Math.PI*2);g.fill();
+      g.drawImage(_tileFireGlow,(px+1)|0,(py+1)|0);
       if(fr%6<2){
         bx(px+10+Math.floor(Math.random()*12),py+2+Math.floor(Math.random()*6),2,2,'#f8c060');
       }
