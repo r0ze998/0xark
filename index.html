@@ -5876,6 +5876,18 @@ const milestonesReached=new Set();
 // Phases like tx_*2+ty*3 (max 195), tx_*5+ty*7 (max 468), x+y (max 78) are all within 0-511
 const _NSIN=new Float32Array(512);const _NCOS=new Float32Array(512);
 for(let i=0;i<512;i++){_NSIN[i]=Math.sin(i);_NCOS[i]=Math.cos(i);}
+// v383: per-axis 40-entry tables for campfire (x*2.3, y*1.7) and lava (x*1.8, y*2.1) float spatial phases
+// sin(x*2.3+y*1.7) = sin(x*2.3)*cos(y*1.7)+cos(x*2.3)*sin(y*1.7) — angle-sum factorization
+const _CAMP_SX23=new Float32Array(40);const _CAMP_CX23=new Float32Array(40);
+const _CAMP_SY17=new Float32Array(40);const _CAMP_CY17=new Float32Array(40);
+const _LAVA_SX18=new Float32Array(40);const _LAVA_CX18=new Float32Array(40);
+const _LAVA_SY21=new Float32Array(40);const _LAVA_CY21=new Float32Array(40);
+for(let i=0;i<40;i++){
+  _CAMP_SX23[i]=Math.sin(i*2.3);_CAMP_CX23[i]=Math.cos(i*2.3);
+  _CAMP_SY17[i]=Math.sin(i*1.7);_CAMP_CY17[i]=Math.cos(i*1.7);
+  _LAVA_SX18[i]=Math.sin(i*1.8);_LAVA_CX18[i]=Math.cos(i*1.8);
+  _LAVA_SY21[i]=Math.sin(i*2.1);_LAVA_CY21[i]=Math.cos(i*2.1);
+}
 // v251: Pre-baked lake tile color strings — eliminates template literal creation per lake tile per dirty frame
 // rv=(h&5)-2; h&5 ∈ {0,1,4,5} → rv ∈ {-2,-1,2,3}. Indexed by h&5 (sparse array, slots 2,3 unused).
 const _LAKE_TOP_F3 =['rgb(46,110,166)','rgb(47,111,167)',null,null,'rgb(50,114,170)','rgb(51,115,171)'];
@@ -6878,13 +6890,21 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
       if(px<-TW*2||px>W+TW*2||py<-TH*2||py>H+TH*2)continue;
       if(t===29){
         // v211: Campfire — warm light pool (pre-baked glow, globalAlpha=flick)
-        const flick=0.55+Math.sin(fr*0.12+x*2.3+y*1.7)*0.28+Math.sin(fr*0.21+x+y*3)*0.1;
+        // v383: sin-addition via per-axis tables; sin(fr*0.21)=_sFr18*_cFr03+_cFr18*_sFr03
+        const _sp1=_CAMP_SX23[x]*_CAMP_CY17[y]+_CAMP_CX23[x]*_CAMP_SY17[y];
+        const _cp1=_CAMP_CX23[x]*_CAMP_CY17[y]-_CAMP_SX23[x]*_CAMP_SY17[y];
+        const _s021=_sFr18*_cFr03+_cFr18*_sFr03,_c021=_cFr18*_cFr03-_sFr18*_sFr03;
+        const _n2=(x+y*3)&511;
+        const flick=0.55+(_sFr12*_cp1+_cFr12*_sp1)*0.28+(_s021*_NCOS[_n2]+_c021*_NSIN[_n2])*0.1;
         g.globalAlpha=flick;g.drawImage(_dungCampfireGlow,(px-44)|0,(py-38)|0);g.globalAlpha=1;
         continue;
       }
       if(t===25){
         // v211: Lava — eerie red-orange upward glow (pre-baked)
-        const lavaPulse=0.4+Math.sin(fr*0.06+x*1.8+y*2.1)*0.18;
+        // v383: sin-addition via per-axis tables
+        const _sp2=_LAVA_SX18[x]*_LAVA_CY21[y]+_LAVA_CX18[x]*_LAVA_SY21[y];
+        const _cp2=_LAVA_CX18[x]*_LAVA_CY21[y]-_LAVA_SX18[x]*_LAVA_SY21[y];
+        const lavaPulse=0.4+(_sFr06*_cp2+_cFr06*_sp2)*0.18;
         g.globalAlpha=lavaPulse;g.drawImage(_dungLavaGlow,(px-26)|0,(py-26)|0);g.globalAlpha=1;
         continue;
       }
