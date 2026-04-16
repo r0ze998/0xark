@@ -5811,6 +5811,71 @@ const _tileFireGlow=(()=>{
   ctx.fillStyle='rgba(255,160,40,.12)';ctx.beginPath();ctx.arc(15,15,14,0,Math.PI*2);ctx.fill();
   return c;
 })();
+// v237: Pre-baked tile arc/ellipse canvases — cave glow, lily pad, lighthouse, crystal(×2), altar orbs(×2), treasure(×2), stair ellipses(×6)
+const _tileCaveGlow=(()=>{
+  const c=document.createElement('canvas');c.width=14;c.height=14;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(80,60,120,.25)';ctx.beginPath();ctx.arc(7,7,6,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+const _tileLilyPad=(()=>{
+  const c=document.createElement('canvas');c.width=12;c.height=8;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#48a050';ctx.beginPath();ctx.ellipse(6,4,5,3,0,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+const _tileLighthouseGlow=(()=>{
+  const c=document.createElement('canvas');c.width=26;c.height=26;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(240,224,128,.3)';ctx.beginPath();ctx.arc(13,13,12,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+const _tileCrystalGlows=(()=>{
+  function mk(col){const c=document.createElement('canvas');c.width=22;c.height=22;const ctx=c.getContext('2d');ctx.fillStyle=col;ctx.beginPath();ctx.arc(11,11,10,0,Math.PI*2);ctx.fill();return c;}
+  return [mk('rgba(160,200,255,1)'),mk('rgba(200,160,255,1)')];
+})();
+const _tileAltarOrb5=(()=>{
+  const c=document.createElement('canvas');c.width=12;c.height=12;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(200,160,255,1)';ctx.beginPath();ctx.arc(6,6,5,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+const _tileAltarOrb10=(()=>{
+  const c=document.createElement('canvas');c.width=22;c.height=22;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(255,220,255,1)';ctx.beginPath();ctx.arc(11,11,10,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+const _tileTreasureGlow10=(()=>{
+  const c=document.createElement('canvas');c.width=22;c.height=22;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(248,224,96,1)';ctx.beginPath();ctx.arc(11,11,10,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+const _tileTreasureGlow8=(()=>{
+  const c=document.createElement('canvas');c.width=18;c.height=18;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(248,224,96,1)';ctx.beginPath();ctx.arc(9,9,8,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+function _mkStairEllipse(rx,ry,col){
+  const w=rx*2+2,h=ry*2+2;const c=document.createElement('canvas');c.width=w;c.height=h;
+  const ctx=c.getContext('2d');ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(rx+1,ry+1,rx,ry,0,0,Math.PI*2);ctx.fill();return c;
+}
+const _stairDownPurpleA=_mkStairEllipse(7,4,'rgba(80,40,180,1)');
+const _stairDownPurpleB=_mkStairEllipse(11,6,'rgba(140,80,255,1)');
+const _stairDownGoldA=_mkStairEllipse(7,4,'rgba(220,160,0,1)');
+const _stairDownGoldB=_mkStairEllipse(11,6,'rgba(255,220,40,1)');
+const _stairUpBlueA=_mkStairEllipse(7,4,'rgba(40,120,200,1)');
+const _stairUpBlueB=_mkStairEllipse(11,6,'rgba(80,180,255,1)');
+// Glow tile center arc: r=4, two color variants (teal/purple), 10×10
+const _glowTileArc=(()=>{
+  function mk(col){const c=document.createElement('canvas');c.width=10;c.height=10;const ctx=c.getContext('2d');ctx.fillStyle=col;ctx.beginPath();ctx.arc(5,5,4,0,Math.PI*2);ctx.fill();return c;}
+  return [mk('rgba(120,240,255,1)'),mk('rgba(200,120,255,1)')];
+})();
+// Lava bubble arcs: r=3 and r=2, color #f8a060
+const _lavaBubble3=(()=>{const c=document.createElement('canvas');c.width=8;c.height=8;const ctx=c.getContext('2d');ctx.fillStyle='#f8a060';ctx.beginPath();ctx.arc(4,4,3,0,Math.PI*2);ctx.fill();return c;})();
+const _lavaBubble2=(()=>{const c=document.createElement('canvas');c.width=6;c.height=6;const ctx=c.getContext('2d');ctx.fillStyle='#f8a060';ctx.beginPath();ctx.arc(3,3,2,0,Math.PI*2);ctx.fill();return c;})();
 function isNearTileType(tx_,ty,types){
   const m=getMap();
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
@@ -6103,7 +6168,7 @@ function drawCave(px,py,tx_,ty){
       // Dark cave entrance overlay
       bx(px+8,py+12,16,18,'rgba(8,8,16,0.8)');
       bx(px+10,py+14,12,16,'rgba(8,8,16,0.9)');
-      if((wt+tx_)%4<2){g.fillStyle='rgba(80,60,120,.25)';g.beginPath();g.arc(px+16,py+20,6,0,Math.PI*2);g.fill();}
+      if((wt+tx_)%4<2){g.drawImage(_tileCaveGlow,(px+9)|0,(py+13)|0);}
       return;
     }
   }
@@ -6114,7 +6179,7 @@ function drawCave(px,py,tx_,ty){
   bx(px+6,py+4,20,6,'#585868');bx(px+8,py+2,16,4,'#686878');bx(px+10,py,12,4,'#787888');
   bx(px+10,py+10,2,4,'#484858');bx(px+18,py+8,2,6,'#484858');bx(px+22,py+11,2,3,'#484858');
   bx(px+4,py+TH-4,8,4,'#585868');bx(px+20,py+TH-4,8,4,'#585868');
-  if((wt+tx_)%4<2){g.fillStyle='rgba(80,60,120,.25)';g.beginPath();g.arc(px+16,py+20,6,0,Math.PI*2);g.fill();}
+  if((wt+tx_)%4<2){g.drawImage(_tileCaveGlow,(px+9)|0,(py+13)|0);}
 }
 
 function drawMountain(px,py,tx_,ty){
@@ -6223,7 +6288,7 @@ function drawLake(px,py,tx_,ty){
   // Lily pad
   if(r.c>.85){
     const lx=px+Math.floor(r.d*20)+6,ly=py+Math.floor(r.e*20)+6;
-    g.fillStyle='#48a050';g.beginPath();g.ellipse(lx,ly,5,3,0,0,Math.PI*2);g.fill();
+    g.drawImage(_tileLilyPad,(lx-6)|0,(ly-4)|0);
     bx(lx,ly,2,2,'#e04060'); // flower
   }
   if(isNearGrass(tx_,ty)){g.fillStyle='rgba(30,60,40,.12)';g.fillRect(px,py,TW,TH);}
@@ -6286,7 +6351,7 @@ function drawLighthouse(px,py,tx_,ty){
   bx(px+6,py-14,20,5,'#585868');bx(px+8,py-12,16,2,'#f0e080');
   // Beacon glow
   if((wt)%2===0){
-    g.fillStyle='rgba(240,224,128,.3)';g.beginPath();g.arc(px+16,py-12,12,0,Math.PI*2);g.fill();
+    g.drawImage(_tileLighthouseGlow,(px+3)|0,(py-25)|0);
   }
   // Cap
   bx(px+10,py-16,12,2,'#c04040');bx(px+12,py-18,8,2,'#a03030');
@@ -6358,7 +6423,7 @@ function drawGlowTile(px,py,tx_,ty){
   bx(px+6,py+6,2,TH-12,bright);bx(px+TW-8,py+6,2,TH-12,bright);
   bx(px+6,py+6,TW-12,2,bright);bx(px+6,py+TH-8,TW-12,2,bright);
   bx(px+14,py+8,4,TH-16,bright);bx(px+8,py+14,TW-16,4,bright);
-  g.fillStyle=bright;g.beginPath();g.arc(px+16,py+16,4,0,Math.PI*2);g.fill();
+  g.globalAlpha=pulse*.6;g.drawImage(_glowTileArc[(tx_+ty)%2],(px+11)|0,(py+11)|0);g.globalAlpha=1;
 }
 
 function drawLava(px,py,tx_,ty){
@@ -6373,8 +6438,8 @@ function drawLava(px,py,tx_,ty){
     if(flow>.8)bx(px+lx+1,py+ly+1,2,1,'#f89050');
   }
   // Bubbles
-  if(f===0){g.fillStyle='#f8a060';g.beginPath();g.arc(px+Math.floor(r.a*24)+4,py+8,3,0,Math.PI*2);g.fill();}
-  if(f===2){g.fillStyle='#f8a060';g.beginPath();g.arc(px+Math.floor(r.c*20)+6,py+20,2,0,Math.PI*2);g.fill();}
+  if(f===0){g.drawImage(_lavaBubble3,(px+Math.floor(r.a*24)+1)|0,(py+5)|0);}
+  if(f===2){g.drawImage(_lavaBubble2,(px+Math.floor(r.c*20)+4)|0,(py+18)|0);}
   // Glow
   bx(px,py,TW,TH,`rgba(255,160,40,${.1+Math.sin(fr*.04+tx_+ty)*.05})`);
   // Bright cracks
@@ -6407,8 +6472,8 @@ function drawCrystal(px,py,tx_,ty){
   bx(px+12,py+6,4,8,lighten(hue,.25));bx(px+14,py+4,2,4,'rgba(255,255,255,.3)');
   const sparkle=Math.sin(fr*.1+tx_*5+ty*7)>.5;
   if(sparkle){bx(px+16,py+8,2,2,'#fff');bx(px+10,py+14,2,2,'rgba(255,255,255,.7)');}
-  g.fillStyle=`rgba(160,200,255,${.12+Math.sin(fr*.05+tx_+ty)*.06})`;
-  g.beginPath();g.arc(px+16,py+16,10,0,Math.PI*2);g.fill();
+  const _cgA=.12+Math.sin(fr*.05+tx_+ty)*.06;
+  g.globalAlpha=_cgA;g.drawImage(_tileCrystalGlows[(tx_+ty)%2],(px+5)|0,(py+5)|0);g.globalAlpha=1;
 }
 
 function drawAltar(px,py,tx_,ty){
@@ -6431,10 +6496,9 @@ function drawAltar(px,py,tx_,ty){
   const pulse=Math.sin(fr*.04)*.3+.5;
   bx(px+10,py+12,12,3,`rgba(200,160,255,${pulse*.5})`);
   const orbY=py+4+Math.sin(fr*.05)*3;
-  g.fillStyle=`rgba(200,160,255,${pulse*.7})`;
-  g.beginPath();g.arc(px+16,orbY,5,0,Math.PI*2);g.fill();
-  g.fillStyle=`rgba(255,220,255,${pulse*.4})`;
-  g.beginPath();g.arc(px+16,orbY,10,0,Math.PI*2);g.fill();
+  g.globalAlpha=pulse*.7;g.drawImage(_tileAltarOrb5,(px+10)|0,(orbY-6)|0);
+  g.globalAlpha=pulse*.4;g.drawImage(_tileAltarOrb10,(px+5)|0,(orbY-11)|0);
+  g.globalAlpha=1;
   bx(px+8,py+22,4,2,`rgba(200,160,255,${pulse*.3})`);bx(px+20,py+22,4,2,`rgba(200,160,255,${pulse*.3})`);
 }
 
@@ -6489,7 +6553,7 @@ function drawCampfire(px,py,tx_,ty){
   }else{
     bx(px+12,py+6,8,16,'#e87040');bx(px+14,py+4,4,4,'#f8a040');bx(px+12,py+10,2,8,'#d85830');bx(px+20,py+8,2,6,'#d85830');
   }
-  g.fillStyle='rgba(255,160,40,.12)';g.beginPath();g.arc(px+16,py+16,14,0,Math.PI*2);g.fill();
+  g.drawImage(_tileFireGlow,(px+1)|0,(py+1)|0);
   if(fr%6<2){
     bx(px+10+Math.floor(Math.random()*12),py+2+Math.floor(Math.random()*6),2,2,'#f8c060');
     bx(px+8+Math.floor(Math.random()*16),py+Math.floor(Math.random()*4),1,1,'#f8e080');
@@ -6512,8 +6576,7 @@ function drawTreasure(px,py,tx_,ty){
       const dist=10+Math.sin(fr*.05+i)*3;
       bx(px+16+Math.cos(angle)*dist,py+14+Math.sin(angle)*dist,2,2,`rgba(248,224,96,${pulse*.5})`);
     }
-    g.fillStyle=`rgba(248,224,96,${pulse*.2})`;
-    g.beginPath();g.arc(px+16,py+16,10,0,Math.PI*2);g.fill();
+    g.globalAlpha=pulse*.2;g.drawImage(_tileTreasureGlow10,(px+5)|0,(py+5)|0);g.globalAlpha=1;
     return;
   }
   // Fallback sparkle effect
@@ -6524,8 +6587,7 @@ function drawTreasure(px,py,tx_,ty){
     const sy=py+14+Math.sin(angle)*dist;
     bx(sx,sy,3,3,`rgba(248,224,96,${pulse*.6})`);
   }
-  g.fillStyle=`rgba(248,224,96,${pulse*.3})`;
-  g.beginPath();g.arc(px+16,py+16,8,0,Math.PI*2);g.fill();
+  g.globalAlpha=pulse*.3;g.drawImage(_tileTreasureGlow8,(px+7)|0,(py+7)|0);g.globalAlpha=1;
   bx(px+14,py+14,5,4,colors[sparkPhase]);
 }
 
@@ -6574,22 +6636,21 @@ function drawDungeonStairGlows(startTX,startTY,endTX,endTY){
       const px=x*TW-camX,py=y*TH-camY;
       if(px<-TW||px>W||py<-TH||py>H)continue;
       if(t===31){
-        // Down staircase glow
+        // Down staircase glow — pre-baked ellipses, only arrowCol needs template literal
         const pulse=Math.sin(fr*.07+x*2+y*3)*.25+.75;
-        const glowA=currentMap>=5?`rgba(220,160,0,${pulse*.5})`:`rgba(80,40,180,${pulse*.45})`;
-        const glowB=currentMap>=5?`rgba(255,220,40,${pulse*.3})`:`rgba(140,80,255,${pulse*.25})`;
-        const arrowCol=currentMap>=5?`rgba(255,240,80,${pulse*.9})`:`rgba(200,160,255,${pulse*.8})`;
-        g.fillStyle=glowA;g.beginPath();g.ellipse(px+16,py+24,7,4,0,0,Math.PI*2);g.fill();
-        g.fillStyle=glowB;g.beginPath();g.ellipse(px+16,py+24,11,6,0,0,Math.PI*2);g.fill();
+        const isGold=currentMap>=5;
+        const arrowCol=isGold?`rgba(255,240,80,${pulse*.9})`:`rgba(200,160,255,${pulse*.8})`;
+        g.globalAlpha=pulse*(isGold?.5:.45);g.drawImage(isGold?_stairDownGoldA:_stairDownPurpleA,(px+8)|0,(py+19)|0);
+        g.globalAlpha=pulse*(isGold?.3:.25);g.drawImage(isGold?_stairDownGoldB:_stairDownPurpleB,(px+4)|0,(py+17)|0);
+        g.globalAlpha=1;
         g.fillStyle=arrowCol;
         g.beginPath();g.moveTo(px+16,py+26);g.lineTo(px+12,py+20);g.lineTo(px+20,py+20);g.closePath();g.fill();
       }else{
-        // Up staircase glow
+        // Up staircase glow — pre-baked ellipses, only arrowCol needs template literal
         const pulse=Math.sin(fr*.06+x*3+y*2)*.2+.8;
-        g.fillStyle=`rgba(40,120,200,${pulse*.4})`;
-        g.beginPath();g.ellipse(px+16,py+8,7,4,0,0,Math.PI*2);g.fill();
-        g.fillStyle=`rgba(80,180,255,${pulse*.2})`;
-        g.beginPath();g.ellipse(px+16,py+8,11,6,0,0,Math.PI*2);g.fill();
+        g.globalAlpha=pulse*.4;g.drawImage(_stairUpBlueA,(px+8)|0,(py+3)|0);
+        g.globalAlpha=pulse*.2;g.drawImage(_stairUpBlueB,(px+4)|0,(py+1)|0);
+        g.globalAlpha=1;
         g.fillStyle=`rgba(140,220,255,${pulse*.8})`;
         g.beginPath();g.moveTo(px+16,py+6);g.lineTo(px+12,py+12);g.lineTo(px+20,py+12);g.closePath();g.fill();
       }
