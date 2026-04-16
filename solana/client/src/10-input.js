@@ -827,7 +827,10 @@ document.addEventListener('keydown',e=>{
 
   if(sc==='act'){
     // QTE input during resolving phase
-    if(battlePhase==='resolving'&&qteActive&&!qteKeyPressed&&e.code==='KeyZ'){
+    if(battlePhase==='resolving'&&!qteActive&&e.code==='KeyZ'&&bpResolveQueue&&bpResolveQueue.length>0){
+      // v335: Z skips remaining resolve events when at least 1 event already shown
+      if(fr-bpFrame>=50){bpFrame=fr-bpResolveQueue.length*50;}
+    } else if(battlePhase==='resolving'&&qteActive&&!qteKeyPressed&&e.code==='KeyZ'){
       qteKeyPressed=true;qteActive=false;qteSuccess=true;
       sfxQteSuccess();
       if(qteType==='defend'){
