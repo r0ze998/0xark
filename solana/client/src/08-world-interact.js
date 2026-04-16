@@ -1,3 +1,5 @@
+// v329: prayer pity lazy cache (key=gachaPityCount)
+let _prayerLblCache='',_prayerLblKey=-1;
 // v257: Pre-computed gacha unique rarities — eliminates Set+spread+sort per gacha render frame
 // (GACHA_TIERS defined in 04-state.js, loaded before this file in build order)
 const _GACHA_UNIQUE_R=GACHA_TIERS.map(t=>[...new Set(t.rarities)].sort());
@@ -473,7 +475,8 @@ function drawBuildingInterior(){
       // Pity counter
       const pityLeft=GACHA_PITY_THRESHOLD-gachaPityCount;
       const pityCol=gachaPityCount>=7?'#f0c830':gachaPityCount>=4?'#e08040':'#686878';
-      txShadow('PRAYER: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' \u2014 RELIC NEARS!':''),gx+16,gy+gh-40,6,pityCol,'rgba(0,0,0,.3)');
+      if(_prayerLblKey!==gachaPityCount){_prayerLblKey=gachaPityCount;_prayerLblCache='PRAYER: '+gachaPityCount+'/'+GACHA_PITY_THRESHOLD+(pityLeft<=3?' \u2014 RELIC NEARS!':'');} // v329: lazy
+      txShadow(_prayerLblCache,gx+16,gy+gh-40,6,pityCol,'rgba(0,0,0,.3)');
       txShadow('[Z] Invoke   [X] Retreat',gx+16,gy+gh-26,7,'#8888a0','rgba(0,0,0,.3)');
       // Pull history panel (right of main panel)
       if(gachaHistory.length>0){
