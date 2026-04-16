@@ -13878,6 +13878,22 @@ const _cardRarGlow=(()=>{
     return {canvas:c,hw};
   });
 })();
+// v391: Pre-baked steal glow radials (5 rarities, radii 38-70, inner colors fixed)
+// Eliminates createRadialGradient per frame during steal animation (30 frames × rare events)
+// Also fixes color-string replace bug for rar>=3 (original replace('.3',...) found no match)
+const _stealGlowCanvases=(()=>{
+  const inner=['','rgba(80,200,80,0.66)','rgba(80,144,240,0.72)','rgba(176,80,224,0.78)','rgba(224,160,32,0.84)','rgba(255,248,200,0.90)'];
+  return inner.map((col,rar)=>{
+    if(!rar)return null;
+    const r=30+rar*8,sz=(r+2)*2;
+    const c=document.createElement('canvas');c.width=sz;c.height=sz;
+    const ctx=c.getContext('2d');
+    const grd=ctx.createRadialGradient(sz/2,sz/2,0,sz/2,sz/2,r);
+    grd.addColorStop(0,col);grd.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,sz,sz);
+    return {c,r,sz};
+  });
+})();
 // v231: Pre-baked QTE vignette canvases — replaces createRadialGradient per frame
 // Baked at alpha=1; drawn with globalAlpha=vigIntensity for correct compositing
 const _qteVigDefend=(()=>{
@@ -14326,14 +14342,12 @@ function drawResolvingPhase(){
       const cy_=oppCY-120*prog*(1-prog); // v390: parabola ≈ sin(πx) arc
       const scl_=Math.min(1,evT/8);
       const cw_=36*scl_,ch_=50*scl_;
-      // Glow burst at card position
-      if(evT<30){
+      // Glow burst at card position — v391: pre-baked canvas replaces per-frame gradient
+      if(evT<30&&_stealGlowCanvases[rar]){
         const glA=0.6*(1-prog);
+        const sg=_stealGlowCanvases[rar];
         g.globalAlpha=glA;
-        const grd=g.createRadialGradient(cx_,cy_,0,cx_,cy_,30+rar*8);
-        grd.addColorStop(0,rglow.replace('.3','.'+(0.6+rar*.06).toFixed(2)));
-        grd.addColorStop(1,'rgba(0,0,0,0)');
-        g.fillStyle=grd;g.fillRect(cx_-40,cy_-40,80,80);
+        g.drawImage(sg.c,(cx_-sg.sz/2)|0,(cy_-sg.sz/2)|0);
         g.globalAlpha=1;
       }
       // v214: Card frame with rotation — card spins as it arcs through the air
