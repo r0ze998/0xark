@@ -719,7 +719,7 @@ function tryWildEncounter(){
   const dangerBonus=areaDanger[currentMap]<DANGER_LOW_THRESH?0.05:0;
   // Rubber-banding: +10% encounter rate when behind on unique cards (fewer than rivals)
   const playerUnique=hasUniqueCards(0).size;
-  const maxRivalUnique=Math.max(hasUniqueCards(1).size,hasUniqueCards(2).size);
+  const maxRivalUnique=Math.max(rivalUniqSize(1),rivalUniqSize(2)); // v261: no Set alloc
   const rubberBand=playerUnique<maxRivalUnique?0.10:0;
   if(tile===11){
     if(Math.random()>(0.30+streakBonus+dangerBonus+rubberBand))return; // tall grass: 30% base
@@ -1845,7 +1845,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v254',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v261',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

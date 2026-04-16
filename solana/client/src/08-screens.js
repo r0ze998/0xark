@@ -662,7 +662,7 @@ function dGameOver(){
   if(t>60){
     const rankings=[];
     for(let i=0;i<3;i++){
-      const unique=hasUniqueCards(i).size;
+      const unique=i===0?(pl[0].vault?pl[0].vault.size:0):rivalUniqSize(i); // v261: no Set alloc for rivals
       rankings.push({idx:i,name:pl[i].n,unique:unique,cards:[...pl[i].cd]});
     }
     rankings.sort((a,b)=>b.unique-a.unique);
