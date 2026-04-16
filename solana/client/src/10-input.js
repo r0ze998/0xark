@@ -25,6 +25,15 @@ function tryMovePlayer(dx, dy) {
   fogSave();
   const newTile = m[ny]?.[nx];
   if(newTile===1||newTile===7||newTile===11){ spawnGrassParticles(nx*TW,ny*TH); sfxGrassRustle(); }
+  // v217: Dungeon footstep dust — stone floor puffs when walking through dungeon
+  if(inDungeon&&(newTile===1||newTile===4||newTile===10)){
+    const dustX=nx*TW,dustY=ny*TH+TH-4;
+    for(let i=0;i<3;i++){
+      const dustVX=(Math.random()-.5)*1.2;
+      const dustCol=currentFloor>=4?'rgba(90,40,20,1)':currentFloor===3?'rgba(80,60,120,1)':'rgba(60,60,70,1)';
+      particles.push({x:dustX+4+Math.random()*TW/2,y:dustY,vx:dustVX,vy:-Math.random()*0.8-0.2,life:12+Math.random()*6,c:dustCol});
+    }
+  }
   if(newTile===25&&inDungeon){
     for(let li=0;li<HAND_SIZE;li++){if(cardTimers[li]>0)cardTimers[li]-=30000;}
     if(objectInteractTimer<=0){objectInteractMsg='Lava! Cards decaying faster!';objectInteractTimer=60;}

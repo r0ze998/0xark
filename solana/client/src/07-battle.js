@@ -669,6 +669,34 @@ function drawBattleArena(){
   }else{
     txShadow(pl[2].n,W-330,175,6,'#986840','rgba(0,0,0,.3)');
   }
+  // v217: Tell speech bubbles — "!" floats above rival when their intent is known
+  if(battlePhase==='select'&&bpRivalTells[0]){
+    const tellPulse=0.7+0.3*Math.sin(fr*0.25);
+    // VEGA tell bubble (rival 1)
+    const vbX=W-168,vbY=60;
+    const vbW=18,vbH=18;
+    g.globalAlpha=tellPulse*0.92;
+    bx(vbX,vbY,vbW,vbH,'rgba(60,0,80,.8)');
+    bx(vbX,vbY,vbW,1,'#c040d0');bx(vbX,vbY,1,vbH,'#c040d0');
+    bx(vbX+vbW-1,vbY,1,vbH,'#802090');bx(vbX,vbY+vbH-1,vbW,1,'#802090');
+    // Bubble tail pointing down-left toward VEGA sprite
+    bx(vbX+2,vbY+vbH,4,3,'rgba(60,0,80,.8)');bx(vbX+3,vbY+vbH+3,2,2,'rgba(60,0,80,.6)');
+    txShadow('!',vbX+6,vbY+13,12,'#e060f0','rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  }
+  if(battlePhase==='select'&&bpRivalTells[1]&&r2alive){
+    const tellPulse2=0.7+0.3*Math.sin(fr*0.25+1.4);
+    // MIRA tell bubble (rival 2)
+    const mbX=W-318,mbY=88;
+    const mbW=18,mbH=18;
+    g.globalAlpha=tellPulse2*0.85;
+    bx(mbX,mbY,mbW,mbH,'rgba(60,40,0,.8)');
+    bx(mbX,mbY,mbW,1,'#d0a030');bx(mbX,mbY,1,mbH,'#d0a030');
+    bx(mbX+mbW-1,mbY,1,mbH,'#906020');bx(mbX,mbY+mbH-1,mbW,1,'#906020');
+    bx(mbX+12,mbY+mbH,4,3,'rgba(60,40,0,.8)');bx(mbX+13,mbY+mbH+3,2,2,'rgba(60,40,0,.6)');
+    txShadow('!',mbX+6,mbY+13,12,'#f0c040','rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  }
 }
 
 // FRLG-style 2x2 action grid
@@ -1182,6 +1210,19 @@ function drawSelectPhase(){
       txShadow(tFled?'FLED':pl[t].cc+' cards',W/2+40,y+14,10,tFled?'#a04040':'#908878','rgba(0,0,0,.15)');
       g.globalAlpha=1;
     }
+  }
+  // v217: Low HP danger pulse — screen-edge red vignette when player HP critical
+  if(bpHP[0]===1){
+    const dangerPulse=0.25+0.22*Math.sin(fr*0.28);
+    const dVig=g.createRadialGradient(W/2,H/2,H*0.28,W/2,H/2,H*0.72);
+    dVig.addColorStop(0,'rgba(0,0,0,0)');
+    dVig.addColorStop(1,`rgba(200,20,20,${dangerPulse})`);
+    g.fillStyle=dVig;g.fillRect(0,0,W,H);
+    // "DANGER" text, very faint, top-center
+    const dA=0.12+0.10*Math.sin(fr*0.28);
+    g.globalAlpha=dA;
+    txShadow('! CRITICAL !',W/2-56,H-8,8,'#ff4040','rgba(0,0,0,.5)');
+    g.globalAlpha=1;
   }
   g.restore();
 }
