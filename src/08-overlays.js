@@ -158,8 +158,9 @@ function drawDungeonConfirm(){
     txShadow(r.n+': '+rLoc+'  '+rcc+'\u2660'+rThreat,cx_+20,intelY,7,rcc>=4?'#e05050':rCol,'rgba(0,0,0,.3)');
     intelY+=16;
   }
-  const f1Uncollected=treasures.filter(t=>t.map===1&&!t.collected).length;
-  const f1Total=treasures.filter(t=>t.map===1).length;
+  // v265: allocation-free counting (was filter×2 per frame while confirm open)
+  let f1Uncollected=0,f1Total=0;
+  for(let _ti=0;_ti<treasures.length;_ti++){const _tr=treasures[_ti];if(_tr.map===1){f1Total++;if(!_tr.collected)f1Uncollected++;}}
   if(f1Uncollected>0){
     txShadow('\u25cf B1 chests: '+f1Uncollected+'/'+f1Total+' uncollected',cx_+20,intelY,7,'#c0a840','rgba(0,0,0,.3)');
     intelY+=16;
