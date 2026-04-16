@@ -4993,7 +4993,7 @@ function drawFootprints(){
     const sx=fp.x*TW-camX+TW/2-2;
     const sy=fp.y*TH-camY+TH/2-1;
     if(sx<-4||sx>W+4||sy<-4||sy>H+4)continue;
-    const col=_FP_RIVAL_COLS[fp.ri]||'#888888';
+    const col=_FP_RIVAL_COLS[fp.ri-1]||'#888888'; // v286: ri is 1-based (pl index), array is 0-based
     // Two small boot-print dots side by side
     const offset=(fp.age%4<2)?-1:1; // alternate left/right footstep
     g.globalAlpha=alpha;
@@ -7348,8 +7348,29 @@ const _TITLE_VOID_COLS=['#5014b4','#5c1cc0','#6824cc','#742cd8','#8034e4'];
 // ═══════════════════════════════════════
 
 // Advance one dungeon turn: each rival takes one step
-const _VEGA_LINES=['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Cornered. Just like the crew.','Nowhere left to run.']; // v276
-const _MIRA_LINES=['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','The ARK crew fell to logic. So will you.']; // v276
+// v287: Floor-tiered encounter dialog — VEGA escalates aggression, MIRA escalates cold calculation
+const _VEGA_LINES_FL=[
+  // F1-F2 (shallow — confident, territorial)
+  ['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Nowhere left to run.','I\'ve been watching you.'],
+  // F3 (mid — focused, dangerous)
+  ['You made it this far. Impressive. Pointless.','Hunting gets easier with depth.','Deep enough that no one will hear you.','The cards belong to me — always have.','Slow down and I\'ll end this quickly.'],
+  // F4-F5 (deep — savage, no mercy)
+  ['The ARK crew ran. You\'re not even running.','Nothing comes back from Floor 4.','Surrender the deck. This is your last chance.','You\'re standing in my trophy room.','The void takes everything. I\'ll take the cards.'],
+];
+const _MIRA_LINES_FL=[
+  // F1-F2 (shallow — clinical, analytical)
+  ['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','Pattern deviation detected. Correcting.'],
+  // F3 (mid — more ominous, probability speak)
+  ['Probability of your survival: 12%.','The data set is converging. So am I.','Your routing choices exposed you three moves ago.','Every fork you took led here. I mapped them all.'],
+  // F4-F5 (deep — ruthless logic, void-flavored)
+  ['At this depth, logic is the only survivor.','I modeled 4,096 outcomes. You lose every one.','The ARK crew had better odds than you do now.','Resistance is a statistical anomaly. Eliminating.','Your hand is already mine in three move sequences.'],
+];
+function _pickRivalLine(idx){
+  const fl=Math.max(1,Math.min(5,currentFloor));
+  const tier=fl<=2?0:fl===3?1:2;
+  const pool=idx===0?_VEGA_LINES_FL[tier]:_MIRA_LINES_FL[tier];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
 function processDungeonTurn(){
   if(!inDungeon)return;
   if(encounterCooldown>0)return; // let game loop decrement
@@ -7378,7 +7399,7 @@ function checkDungeonRivalEncounter(){
       sfxEncounterDramatic();hitPause(4);
       const rCards=cdCount(r.cd);
       const isHunting=ai.state==='hunting';
-      encounterRivalLine=idx===0?_VEGA_LINES[Math.floor(Math.random()*_VEGA_LINES.length)]:_MIRA_LINES[Math.floor(Math.random()*_MIRA_LINES.length)]; // v276: hoisted
+      encounterRivalLine=_pickRivalLine(idx); // v287: floor-tiered dialog
       setTimeout(()=>{
         encounterExclActive=false;flash();
         twSet(isHunting?r.n+' ambushed you! Battle!':r.n+' appeared! Battle!');
@@ -10991,7 +11012,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v282',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v287',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11776,6 +11797,12 @@ function drawBattleSprite(p,cx,cy,scale,facingAway){
 
 function drawVsSplash(){
   bx(0,0,W,H,'#181828');const t=fr-bpFrame;
+  // v284: hoist vsRivalIdx + pre-compute power sums once per call (avoids 4× reduce per frame)
+  const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
+  const vsSplashRival=pl[vsRivalIdx];
+  let _ypwr=0,_rpwr=0;
+  for(let _i=0;_i<HAND_SIZE;_i++){const _id=pl[0].cd[_i];if(_id>0)_ypwr+=(CD[_id-1]?.r||0);}
+  for(let _i=0;_i<HAND_SIZE;_i++){const _id=vsSplashRival.cd[_i];if(_id>0)_rpwr+=(CD[_id-1]?.r||0);}
   // Diagonal split
   const angle=W*1.2;
   g.save();
@@ -11788,9 +11815,7 @@ function drawVsSplash(){
   drawBattleSprite(pl[0],pX,H/2-10,3,true);
   const rSlide=Math.min(1,t/30);
   const rX=W+60-rSlide*(W/4+20);
-  // Show the rival that triggered this encounter (encounterExclTarget tracks which one)
-  const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
-  const vsSplashRival=pl[vsRivalIdx];
+  // Show the rival that triggered this encounter (v284: vsRivalIdx/vsSplashRival hoisted to top)
   drawBattleSprite(vsSplashRival,rX,H/2-10,3,false);
 
   // Player name (left side, slides in)
@@ -11800,9 +11825,8 @@ function drawVsSplash(){
     txShadow('YOU',60,H/2-60,14,'#78c0f0','rgba(0,0,0,.6)');
     const yourCards=cardCount(pl[0]);
     txShadow(yourCards+' card'+(yourCards!==1?'s':''),60,H/2-42,8,'rgba(255,255,255,.6)','rgba(0,0,0,.4)');
-    // v106: hand power score = sum of card rarities
-    const yourPwr=pl[0].cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
-    txShadow('PWR:'+yourPwr,60,H/2-26,7,'#78c0f0','rgba(0,0,0,.35)');
+    // v106: hand power score = sum of card rarities (v284: pre-computed above)
+    txShadow('PWR:'+_ypwr,60,H/2-26,7,'#78c0f0','rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
 
@@ -11817,9 +11841,8 @@ function drawVsSplash(){
     txShadow(rivalPersonality,rivalNameX,H/2-42,8,'rgba(255,255,255,.5)','rgba(0,0,0,.4)');
     const rivalCards=cardCount(vsSplashRival);
     txShadow(rivalCards+' card'+(rivalCards!==1?'s':''),rivalNameX,H/2-28,7,'rgba(255,255,255,.5)','rgba(0,0,0,.35)');
-    // v106: rival power + advantage label
-    const rivalPwr=vsSplashRival.cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
-    txShadow('PWR:'+rivalPwr,rivalNameX,H/2-12,7,rivalNameCol,'rgba(0,0,0,.35)');
+    // v106: rival power + advantage label (v284: pre-computed above)
+    txShadow('PWR:'+_rpwr,rivalNameX,H/2-12,7,rivalNameCol,'rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
 
@@ -11827,9 +11850,7 @@ function drawVsSplash(){
   if(t>20){
     const assAlpha=Math.min(1,(t-20)/10);
     g.globalAlpha=assAlpha;
-    const yourPwr2=pl[0].cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
-    const rivalPwr2=vsSplashRival.cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
-    const diff=yourPwr2-rivalPwr2;
+    const diff=_ypwr-_rpwr; // v284: use pre-computed values
     let assLabel,assCol;
     if(diff>=4){assLabel='ADVANTAGE';assCol='#40d080';}
     else if(diff<=-4){assLabel='OUTMATCHED';assCol='#d04040';}
@@ -11922,8 +11943,7 @@ function drawPhaseBanner(phase){
   // v101: Battle momentum strip — card gain/loss net balance shown as a tug-of-war bar
   bx(0,26,W,3,'rgba(0,0,0,.55)');
   if(battleRoundHistory.length>0){
-    const net=battleRoundHistory.reduce((s,h)=>s+(h.got?1:0)-(h.lost?1:0),0);
-    const norm=Math.max(-1,Math.min(1,net/Math.max(1,battleRoundHistory.length)));
+    const norm=Math.max(-1,Math.min(1,_battleRoundNet/Math.max(1,battleRoundHistory.length))); // v284: cached net
     if(norm>0){bx(W/2,26,(W/2)*norm,3,'#40b0e8');}
     else if(norm<0){bx(W/2+(W/2)*norm,26,-(W/2)*norm,3,'#d04040');}
     const ta=0.35+Math.sin(fr*0.12)*0.25;
@@ -12821,6 +12841,7 @@ let bpRdIncremented=false; // guard: prevent double-increment of rd when pending
 let bpActionsGenerated=false; // guard: only generate once per round
 let bpScoutedCards=[null,null]; // [{round,cards:[{n,r,t}]}, null] — persists until battle ends
 let battleRoundHistory=[]; // v90: [{rd,pa,r1a,r2a,outcome}] per round (pa=playerAction 0-4)
+let _battleRoundNet=0; // v284: running got-lost net, updated at unshift — avoids per-frame reduce
 
 // Rival tells: atmospheric body-language hints (65% accurate, 35% misleading)
 const RIVAL_BATTLE_TELLS=[
@@ -14046,8 +14067,9 @@ function drawResultPhase(){
 
   // v111: Stolen/gained card showcase — prominent display of card won this round
   if(t>18&&bpResolveQueue&&bpResolveQueue.length>0){
-    const stealEv=bpResolveQueue.find(e=>e.effect==='steal_get'&&e.stolenId>0);
-    const drawEv=!stealEv&&bpResolveQueue.find(e=>e.effect==='card_get');
+    // v283: counting loops replace .find() closures — runs every anim frame during resolve
+    let stealEv=null;for(let _si=0;_si<bpResolveQueue.length;_si++){const _e=bpResolveQueue[_si];if(_e.effect==='steal_get'&&_e.stolenId>0){stealEv=_e;break;}}
+    let drawEv=null;if(!stealEv){for(let _di=0;_di<bpResolveQueue.length;_di++){const _e=bpResolveQueue[_di];if(_e.effect==='card_get'){drawEv=_e;break;}}}
     const showcaseId=stealEv?stealEv.stolenId:(drawEv&&bpResolveQueue._pendingDrawCard>0?bpResolveQueue._pendingDrawCard:0);
     if(showcaseId>0&&CD[showcaseId-1]){
       const scr=CD[showcaseId-1];
@@ -14136,14 +14158,16 @@ function drawResultPhase(){
     g.globalAlpha=1;
   }
 
-  // Tell accuracy reveal (appears at t>35, subtle footer)
+  // Tell accuracy reveal (appears at t>35, per-rival color) — v285: colors now applied
   if(t>35&&bpRivalTells[0]!==''){
     const tellFadeA=Math.min(1,(t-35)/10);
-    g.globalAlpha=tellFadeA*0.75;
-    const r1correct=bpTellWasAccurate[0]; // v262: removed unused actNamesconst r2correct=bpTellWasAccurate[1];
-    const r1col=r1correct?'#40c040':'#c04040';
-    const r2col=r2correct?'#40c040':'#c04040';
-    txShadow(pl[1].n+':'+(r1correct?'\u2713 read':'x misread')+' | '+pl[2].n+':'+(r2correct?'\u2713 read':'x misread'),panX+16,panY+panH-8,7,'#888878','rgba(0,0,0,.2)');
+    const r1correct=bpTellWasAccurate[0];const r2correct=bpTellWasAccurate[1];
+    const r1col=r1correct?'#48c848':'#c04040';const r2col=r2correct?'#48c848':'#c04040';
+    const r1lbl=pl[1].n+':'+(r1correct?'\u2713':'\u2717');
+    const r2lbl=pl[2].n+':'+(r2correct?'\u2713':'\u2717');
+    g.globalAlpha=tellFadeA*0.85;
+    txShadow(r1lbl,panX+16,panY+panH-8,7,r1col,'rgba(0,0,0,.3)');
+    txShadow(r2lbl,panX+16+r1lbl.length*5+12,panY+panH-8,7,r2col,'rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
 
@@ -17248,7 +17272,7 @@ function update(){
             // FRLG-style mosaic pixelation wipe into battle
             startWipe('mosaic',30,()=>{
               sc='act';battlePhase='vs_splash';bpFrame=fr;
-              battleRoundHistory=[]; // v90: reset round history on new battle
+              battleRoundHistory=[];_battleRoundNet=0; // v90/v284: reset round history+net on new battle
               bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];
               startWipe('mosaic_out',20);
               // v79: track battle_rival mission
@@ -18280,8 +18304,13 @@ document.addEventListener('keydown',e=>{
             const winnerIdx=(bpRivalActions[0]===1)?1:2;
             addCardToPlayer(winnerIdx,lostId);
             pl[0].cd[worstSlot]=0;pl[0].cc=pl[0].cd.filter(c=>c>0).length;
-            lg.push('DEFEATED! Lost '+CD[lostId-1].n+' to '+pl[winnerIdx].n+'.');
-            twSet('Defeated! Lost '+CD[lostId-1].n+'...');
+            // v287: post-battle winner quip
+            const _vegaWin=['Mine now.','As expected.','Collect the spoils.','The ARK rewards the strong.','Don\'t beg. It\'s beneath you.'];
+            const _miraWin=['Outcome nominal.','Your card is now an asset.','Transfer complete. As computed.','Data confirms: you are suboptimal.','Deviation corrected.'];
+            const _winnerPool=winnerIdx===1?_vegaWin:_miraWin;
+            const _quip=pl[winnerIdx].n+': "'+_winnerPool[Math.floor(Math.random()*_winnerPool.length)]+'"';
+            lg.push('DEFEATED! Lost '+CD[lostId-1].n+' to '+pl[winnerIdx].n+'. '+_quip);
+            twSet('Defeated! Lost '+CD[lostId-1].n+'... '+_quip);
           }else{lg.push('DEFEATED! No cards to lose.');}
           saveGame();
           startWipe('vslide',16,()=>{
@@ -18293,6 +18322,9 @@ document.addEventListener('keydown',e=>{
         }
         // Rival KO: KO'd rivals immediately surrender all cards to player
         if(bpResolveQueue&&(bpResolveQueue._rival1KO||bpResolveQueue._rival2KO)){
+          // v287: pre-build KO quip arrays
+          const _vegaKO=['You cheated.','This isn\'t over.','The ARK will remember this.','I underestimated you. Once.','Take them. You\'ve earned nothing yet.'];
+          const _miraKO=['Recalculating...','Model error. Noted.','This outcome was <1% probability.','You disrupted the variable. Impressive.','Retreat. New strategy required.'];
           [1,2].forEach(ri=>{
             const key=ri===1?'_rival1KO':'_rival2KO';
             if(!bpResolveQueue[key])return;
@@ -18303,8 +18335,10 @@ document.addEventListener('keydown',e=>{
               if(cid>0){if(!addCardToPlayer(0,cid)){}; pl[ri].cd[i]=0;}
             }
             pl[ri].cc=0;
-            lg.push(pl[ri].n+' KO\'d! All cards claimed!');
-            twSet(pl[ri].n+' KO\'d!');
+            const _kp=ri===1?_vegaKO:_miraKO;
+            const _kq=_kp[Math.floor(Math.random()*_kp.length)];
+            lg.push(pl[ri].n+' KO\'d! All cards claimed! '+pl[ri].n+': "'+_kq+'"');
+            twSet(pl[ri].n+' KO\'d! "'+_kq+'"');
             bpHP[ri]=0;
           });
         }
@@ -18316,6 +18350,8 @@ document.addEventListener('keydown',e=>{
             const lostCard=evTexts.includes('stole your')||evTexts.includes('STOLE');
             battleRoundHistory.unshift({rd:rd,pa:bpAction,r1a:bpRivalActions[0],r2a:bpRivalActions[1],got:gotCard,lost:lostCard});
             if(battleRoundHistory.length>4)battleRoundHistory.pop();
+            // v284: maintain running net for per-frame momentum strip (avoids reduce per frame)
+            _battleRoundNet=0;for(let _bni=0;_bni<battleRoundHistory.length;_bni++){const _bnh=battleRoundHistory[_bni];_battleRoundNet+=(_bnh.got?1:0)-(_bnh.lost?1:0);}
           }
           bpRdIncremented=true;
           rd++;roundsThisRun++;

@@ -894,8 +894,13 @@ document.addEventListener('keydown',e=>{
             const winnerIdx=(bpRivalActions[0]===1)?1:2;
             addCardToPlayer(winnerIdx,lostId);
             pl[0].cd[worstSlot]=0;pl[0].cc=pl[0].cd.filter(c=>c>0).length;
-            lg.push('DEFEATED! Lost '+CD[lostId-1].n+' to '+pl[winnerIdx].n+'.');
-            twSet('Defeated! Lost '+CD[lostId-1].n+'...');
+            // v287: post-battle winner quip
+            const _vegaWin=['Mine now.','As expected.','Collect the spoils.','The ARK rewards the strong.','Don\'t beg. It\'s beneath you.'];
+            const _miraWin=['Outcome nominal.','Your card is now an asset.','Transfer complete. As computed.','Data confirms: you are suboptimal.','Deviation corrected.'];
+            const _winnerPool=winnerIdx===1?_vegaWin:_miraWin;
+            const _quip=pl[winnerIdx].n+': "'+_winnerPool[Math.floor(Math.random()*_winnerPool.length)]+'"';
+            lg.push('DEFEATED! Lost '+CD[lostId-1].n+' to '+pl[winnerIdx].n+'. '+_quip);
+            twSet('Defeated! Lost '+CD[lostId-1].n+'... '+_quip);
           }else{lg.push('DEFEATED! No cards to lose.');}
           saveGame();
           startWipe('vslide',16,()=>{
@@ -907,6 +912,9 @@ document.addEventListener('keydown',e=>{
         }
         // Rival KO: KO'd rivals immediately surrender all cards to player
         if(bpResolveQueue&&(bpResolveQueue._rival1KO||bpResolveQueue._rival2KO)){
+          // v287: pre-build KO quip arrays
+          const _vegaKO=['You cheated.','This isn\'t over.','The ARK will remember this.','I underestimated you. Once.','Take them. You\'ve earned nothing yet.'];
+          const _miraKO=['Recalculating...','Model error. Noted.','This outcome was <1% probability.','You disrupted the variable. Impressive.','Retreat. New strategy required.'];
           [1,2].forEach(ri=>{
             const key=ri===1?'_rival1KO':'_rival2KO';
             if(!bpResolveQueue[key])return;
@@ -917,8 +925,10 @@ document.addEventListener('keydown',e=>{
               if(cid>0){if(!addCardToPlayer(0,cid)){}; pl[ri].cd[i]=0;}
             }
             pl[ri].cc=0;
-            lg.push(pl[ri].n+' KO\'d! All cards claimed!');
-            twSet(pl[ri].n+' KO\'d!');
+            const _kp=ri===1?_vegaKO:_miraKO;
+            const _kq=_kp[Math.floor(Math.random()*_kp.length)];
+            lg.push(pl[ri].n+' KO\'d! All cards claimed! '+pl[ri].n+': "'+_kq+'"');
+            twSet(pl[ri].n+' KO\'d! "'+_kq+'"');
             bpHP[ri]=0;
           });
         }
