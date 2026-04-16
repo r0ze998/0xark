@@ -6471,7 +6471,7 @@ function drawDungeonStairGlows(startTX,startTY,endTX,endTY){
   }
 }
 
-// Animated dungeon decor overlays — glow tile, crystal sparkles, altar orb
+// Animated dungeon decor overlays — glow tile, crystal sparkles, altar orb, campfire light
 // Drawn every frame on main canvas (bypass static tile cache)
 function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
   if(!inDungeon)return;
@@ -6479,10 +6479,31 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
   for(let y=startTY;y<=endTY;y++){
     for(let x=startTX;x<=endTX;x++){
       const t=m[y]?.[x];
-      if(t!==24&&t!==26&&t!==27)continue;
+      if(t!==24&&t!==26&&t!==27&&t!==29&&t!==25)continue;
       if(!fogRevealed[currentMap]?.[y]?.[x])continue;
       const px=x*TW-camX,py=y*TH-camY;
-      if(px<-TW||px>W||py<-TH||py>H)continue;
+      if(px<-TW*2||px>W+TW*2||py<-TH*2||py>H+TH*2)continue;
+      if(t===29){
+        // v211: Campfire — warm light pool on floor (large radial glow, flickering)
+        const flick=0.55+Math.sin(fr*0.12+x*2.3+y*1.7)*0.28+Math.sin(fr*0.21+x+y*3)*0.1;
+        const cx_=px+TW/2,cy_=py+TH*0.7,r=52+Math.sin(fr*0.08+x+y)*6;
+        const grd=g.createRadialGradient(cx_,cy_,4,cx_,cy_,r);
+        grd.addColorStop(0,`rgba(255,180,60,${(0.32*flick).toFixed(3)})`);
+        grd.addColorStop(0.4,`rgba(220,120,30,${(0.18*flick).toFixed(3)})`);
+        grd.addColorStop(1,'rgba(180,60,0,0)');
+        g.fillStyle=grd;g.fillRect(cx_-r,cy_-r,r*2,r*2);
+        continue;
+      }
+      if(t===25){
+        // v211: Lava — eerie red-orange upward glow
+        const lavaPulse=0.4+Math.sin(fr*0.06+x*1.8+y*2.1)*0.18;
+        const lx_=px+TW/2,ly_=py+TH/2,lr=40;
+        const lgrd=g.createRadialGradient(lx_,ly_,0,lx_,ly_,lr);
+        lgrd.addColorStop(0,`rgba(255,100,20,${(lavaPulse*0.3).toFixed(3)})`);
+        lgrd.addColorStop(1,'rgba(200,40,0,0)');
+        g.fillStyle=lgrd;g.fillRect(lx_-lr,ly_-lr,lr*2,lr*2);
+        continue;
+      }
       if(t===24){
         // Glow tile: pulsing teal halo
         const pulse=Math.sin(fr*.06+x*2+y*3)*.35+.55;
