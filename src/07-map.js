@@ -60,6 +60,9 @@ let _stepsCache='STEPS:0',_stepsKey=-1; // stepCounter lazy cache
 let _expLblCache='EXP:0%',_expLblKey=-1; // fog exploration % lazy cache
 let _mapLblCache='MAP:0%',_mapLblKey=-1; // map exploration % lazy cache
 let _timeLblMapCache='',_timeLblMapMin=-1; // season timer lazy cache for canvas HUD (per minute)
+// v319: pre-baked distance-tile strings + near-win lazy cache
+const _DIST_T=(()=>{const a=[];for(let i=0;i<=50;i++)a.push(i+'t');return a;})();
+let _nearWinStr='RIVAL NEAR WIN!',_nearWinKey=-1;
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -1674,9 +1677,12 @@ function dMap(){
   bx(420,hudY+48,60,3,'#282838');
   bx(420,hudY+48,Math.floor(60*dangerVal),3,dangerCol);
 
-  // Rival near-win warning (flashing)
+  // Rival near-win warning (flashing) — v319: show who + count
   if(rivalWinWarning>0&&Math.floor(fr/15)%2===0){
-    txShadow('RIVAL NEAR WIN!',520,hudY+44,6,'#d04040','rgba(0,0,0,.5)');
+    const _r1u=rivalUniqSize(1),_r2u=rivalUniqSize(2);
+    const _nwKey=_r1u*10+_r2u;
+    if(_nearWinKey!==_nwKey){_nearWinKey=_nwKey;const _wu=Math.max(_r1u,_r2u);const _wn=_r1u>=_r2u?pl[1].n:pl[2].n;_nearWinStr=_wn+' '+_wu+'/5 cards!!';}
+    txShadow(_nearWinStr,490,hudY+44,6,'#d04040','rgba(0,0,0,.5)');
   }
 
   // v76: Off-floor rival summary (shown when rival is on a different floor)
@@ -1688,7 +1694,7 @@ function dMap(){
     const rCol=ri===0?'#d060a0':'#d0a030';
     const labelY=hudY+4+ri*14;
     const labelX=W-200;
-    txShadow(rp.n[0]+' F'+(_FLOOR_NUMS[rFloor]||rFloor)+' '+rcc2+'♠',labelX,labelY,5,rcc2>=4?'#d04040':rCol,'rgba(0,0,0,.4)');
+    txShadow(rp.n[0]+' F'+(_FLOOR_NUMS[rFloor]||rFloor)+' '+(_RCC_SPADE[rcc2]||rcc2+'♠'),labelX,labelY,5,rcc2>=4?'#d04040':rCol,'rgba(0,0,0,.4)'); // v319
   }
 
   // Rival Threat Indicator (compass arrow at top of screen)
@@ -1711,10 +1717,12 @@ function dMap(){
     g.moveTo(10,0);g.lineTo(-5,-5);g.lineTo(-5,5);
     g.closePath();g.fill();
     g.restore();
-    // Label + card count
+    // Label + card count + distance — v319: pre-baked _DIST_T avoids alloc
     const rcc=cdCount(pl[ri+1].cd);
     txShadow(pl[ri+1].n[0],arrowCX-3,arrowCY+14,5,arrowCol,'rgba(0,0,0,.5)');
     txShadow(_RCC_SPADE[rcc]||rcc+'♠',arrowCX-5,arrowCY+24,5,rcc>=4?'#d04040':arrowCol,'rgba(0,0,0,.5)'); // v304
+    const _dr=Math.min(50,Math.round(dist));
+    txShadow(_DIST_T[_dr],arrowCX-4,arrowCY+34,5,arrowCol,'rgba(0,0,0,.5)'); // v319: tile distance
   }
 
   // Vault/hand status (progress toward 60-card goal)
@@ -1784,7 +1792,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v318',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v319',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
