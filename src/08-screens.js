@@ -11,6 +11,8 @@ const _VAULT_MILESTONES=[15,30,45]; // tick marks at 25%/50%/75% of 60-card bar
 const _RAR_PIP_COLS=['#808898','#50d060','#b060e0','#e0a020','#ffe080'];
 const _RAR_PIP_LBLS=['C','U','R','E','L'];
 const _MEDALS=['1ST','2ND','3RD'],_MEDAL_COLS=['#f0c830','#c0c0c0','#c08040'];
+// v323: pre-baked percent labels 0%–100%
+const _PCT_LBL=(()=>{const a=[];for(let i=0;i<=100;i++)a.push(i+'%');return a;})();
 // v235: Pre-baked game-over screen assets — 32 arc/frame + 1 gradient/frame eliminated
 // Vignette: rgba(0,0,0,0.55) outer stop, drawn once per frame at alpha=1
 const _goVignette=(()=>{
@@ -532,7 +534,7 @@ function dStats(){
   const vaultRatio=Math.min(1,vaultSize/60);
   const vpY=padTop+6;
   txShadow('VAULT',36,vpY+14,9,'#f0c830','rgba(0,0,0,.4)');
-  const vNumStr=vaultSize+'/60';
+  const vNumStr=_UNIQ60[vaultSize]||(vaultSize+'/60'); // v323
   const vNumCol=vaultSize>=60?'#ffe080':vaultSize>=48?'#d0c040':'#f0e8d0';
   txShadow(vNumStr,100,vpY+14,11,vNumCol,'rgba(0,0,0,.4)');
   const vpbX=170,vpbY=vpY+1,vpbW=W-230,vpbH=16;
@@ -630,7 +632,7 @@ function dStats(){
     const legendX=36+ai_*120,legendY=barY_+28;
     bx(legendX,legendY-8,10,10,_SCR_AREA_COLS[ai_%_SCR_AREA_COLS.length]);
     const pct=Math.round(((stats.areaTime[ai_]||0)/totalAreaTime)*100);
-    txShadow(_SCR_AREA_NAMES[ai_]+' '+pct+'%',legendX+14,legendY,8,'#c8c0a0','rgba(0,0,0,.3)');
+    txShadow(_SCR_AREA_NAMES[ai_]+' '+(_PCT_LBL[pct]||pct+'%'),legendX+14,legendY,8,'#c8c0a0','rgba(0,0,0,.3)'); // v323
   }
 
   // Back prompt
@@ -754,7 +756,7 @@ function dGameOver(){
       g.restore();g.globalAlpha=alpha;
       // Name + card count
       txShadow(r.name,W/2-196,y+26,11,isPlayer?'#48b8e8':'#c8c0a0','rgba(0,0,0,.4)');
-      txShadow(r.unique+'/60',W/2+120,y+24,13,r.unique>=60?'#40d040':_MEDAL_COLS[rank],'rgba(0,0,0,.4)');
+      txShadow(_UNIQ60[r.unique]||(r.unique+'/60'),W/2+120,y+24,13,r.unique>=60?'#40d040':_MEDAL_COLS[rank],'rgba(0,0,0,.4)'); // v323
       // Progress bar (animates fill)
       const barX=W/2-196,barY=y+44,barW=330,barH_=7;
       bx(barX,barY,barW,barH_,'#161626');
@@ -767,7 +769,7 @@ function dGameOver(){
         if(_barEndCaps[rank])g.drawImage(_barEndCaps[rank],(barX+barFill-6)|0,(barY-3)|0);
         g.globalAlpha=alpha;
       }
-      txShadow(Math.round(pct*100)+'%',barX+barW+5,barY+7,6,'#706878','rgba(0,0,0,.35)');
+      txShadow(_PCT_LBL[Math.round(pct*100)]||Math.round(pct*100)+'%',barX+barW+5,barY+7,6,'#706878','rgba(0,0,0,.35)'); // v323
       // 4 sample cards (right side)
       for(let ci=0;ci<4;ci++){
         const cx_=W/2+160+ci*42,cy_=y+54;
