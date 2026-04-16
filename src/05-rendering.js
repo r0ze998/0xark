@@ -878,6 +878,32 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
       }
     }
   }
+  // v218: Ambient seabirds — 5 birds drift across the sky in screen space
+  // Simple V-shape silhouettes: two 2px diagonal strokes from center
+  {
+    const BIRD_COUNT=5;
+    const visH=H-72; // above HUD
+    for(let bi=0;bi<BIRD_COUNT;bi++){
+      const seed=bi*1637;
+      // Each bird drifts at slightly different speed and altitude
+      const speed=0.35+((seed*73)%100)/200;  // 0.35 – 0.85 px/frame
+      const bx_=((seed*457+fr*speed)%(W+120))-60; // wraps left to right
+      const by_=24+(seed%4)*22+Math.sin(fr*0.03+bi*1.1)*5;
+      if(bx_<-8||bx_>W+4||by_<0||by_>visH*0.55)continue;
+      // Wing flap: alternates between V-open and V-closed
+      const flapPhase=Math.floor(fr*0.12+bi*2.3)%2;
+      const wingY=flapPhase===0?-2:0; // wings up or neutral
+      g.globalAlpha=0.38;
+      g.fillStyle='#181828';
+      // Left wing: 3 pixels diagonal up-left
+      g.fillRect(bx_|0,(by_+wingY)|0,2,1);
+      g.fillRect((bx_-2)|0,(by_+wingY-1)|0,2,1);
+      // Right wing: 3 pixels diagonal up-right
+      g.fillRect((bx_+2)|0,(by_+wingY)|0,2,1);
+      g.fillRect((bx_+4)|0,(by_+wingY-1)|0,2,1);
+      g.globalAlpha=1;
+    }
+  }
 }
 
 function drawTile(tx_,ty){
