@@ -9197,7 +9197,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v269',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v270',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -10974,7 +10974,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v269',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v270',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -14325,6 +14325,8 @@ function drawDungeonConfirm(){
   if(blink_)txShadow('[Z] ENTER   [X] STAY',cx_+cw/2-90,cy_+ch-14,10,'#f0c830','rgba(0,0,0,.5)');
 }
 
+// v269: victory screen hand card buffer — eliminates map+filter+slice per frame
+const _vcHandBuf=new Uint8Array(7);
 // v262: Hoist card-screen per-frame inline literals
 const _CRD_TYPE_NAMES=['ATK','DEF','FLY','MAG','REC'];
 const _CRD_TYPE_COLS=['#e05840','#48b8e8','#38c080','#d8b028','#e0c040'];
@@ -14682,17 +14684,17 @@ function dVictory(){
   if(t>45){g.globalAlpha=Math.min(1,(t-45)/15);drawBattleSprite(pl[0],W/2,200,3,false);g.globalAlpha=1;}
 
   if(t>60){
-    // Show up to 7 hand cards in a fan, centered
+    // Show up to 7 hand cards in a fan — v269: typed buffer, no map/filter/slice
     const cardsT=t-60;
-    const handCards=pl[0].cd.map((c,i)=>({c,i})).filter(x=>x.c>0).slice(0,7);
-    const totalShow=Math.min(7,handCards.length);
+    let _vcN=0;for(let _vi=0;_vi<pl[0].cd.length&&_vcN<7;_vi++){if(pl[0].cd[_vi]>0)_vcHandBuf[_vcN++]=pl[0].cd[_vi];}
+    const totalShow=_vcN;
     for(let si=0;si<totalShow;si++){
       if(cardsT<si*12)break;
       const cardT=cardsT-si*12,slideIn=Math.min(1,cardT/12);
       const angle=(si-(totalShow-1)/2)*0.2;
       const cx_=W/2+(si-(totalShow-1)/2)*80,cy_=340+Math.abs(si-(totalShow-1)/2)*8;
       g.globalAlpha=slideIn;g.save();g.translate(cx_,cy_);g.rotate(angle*.25);
-      const cd=handCards[si].c;
+      const cd=_vcHandBuf[si];
       drawCardFrame(-22,-32,44,62,cd-1,true);
       g.restore();g.globalAlpha=1;
       if(cardT>0&&cardT<20){
