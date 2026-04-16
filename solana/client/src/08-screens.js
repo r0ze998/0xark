@@ -199,15 +199,16 @@ function drawFountainDialog(){
 // ═══════════════════════════════════════
 // MAP CARD USE SYSTEM
 // ═══════════════════════════════════════
+// v263: hoisted — was new Set([...]) every frame inside drawMapCardUseOverlay
+const _MAP_CARD_IDS=new Set([2,3,28,29,30,35,36]);
 function getMapUsableCards(){
   // Returns [{slot, cardId, name}] for cards that can be used on map
   // Card 2=UMBRA: stealth, Card 3=IGNIS: burn, Card 28=PHASE: walk through walls,
   // Card 29=BLINK: teleport, Card 30=SHADOW: longer stealth
-  const MAP_CARD_IDS=new Set([2,3,28,29,30,35,36]);
   const result=[];
   for(let i=0;i<HAND_SIZE;i++){
     const cd=pl[0].cd[i];
-    if(!MAP_CARD_IDS.has(cd))continue;
+    if(!_MAP_CARD_IDS.has(cd))continue;
     const cr=CD[cd-1];
     let desc='';
     if(cd===2)desc='Invisible 30 steps';

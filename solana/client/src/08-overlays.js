@@ -198,6 +198,9 @@ const _MKT_LISTINGS=[
   {seller:'???',card:45,price:'0.15'},
   {seller:'???',card:1,price:'0.99'},
 ];
+// v263: vault cache — rebuilt only when vault.size changes, not every frame
+let _mktVaultCache=null,_mktVaultSz=-1;
+const _mktTypeCache=[[],[],[],[],[]];
 // ── MARKETPLACE OVERLAY (v188: slide-in + polish) ──
 let marketOpenFrame_=0;
 function drawMarketplace(){
@@ -218,7 +221,17 @@ function drawMarketplace(){
 
   // Collection progress bar directly below header
   const vault=pl[0].vault||new Set();
-  const vaultArr=[...vault];
+  // v263: rebuild per-type cache only when vault changes, not every frame
+  if(vault.size!==_mktVaultSz){
+    _mktVaultSz=vault.size;
+    _mktVaultCache=[];for(const _vid of vault)_mktVaultCache.push(_vid);
+    for(let _ti=0;_ti<5;_ti++){
+      const tc=_mktTypeCache[_ti];tc.length=0;
+      const tp=_MKT_TYPE_FILTER[_ti];
+      for(let _vi=0;_vi<_mktVaultCache.length;_vi++){const _id=_mktVaultCache[_vi];if(CD[_id-1]&&CD[_id-1].t===tp)tc.push(_id);}
+    }
+  }
+  const vaultArr=_mktVaultCache||[];
   const collFrac=Math.min(1,vaultArr.length/60);
   const barW=mw-24;
   bx(mx+12,myA+30,barW,5,'#0a180a');
@@ -242,7 +255,7 @@ function drawMarketplace(){
     txShadow('Your collection:',mx+12,contentY+14,8,'#a8c8a8','rgba(0,0,0,.3)');
     let yi=contentY+22;
     for(let ti=0;ti<5;ti++){
-      const cards=vaultArr.filter(id=>CD[id-1]&&CD[id-1].t===_MKT_TYPE_FILTER[ti]);
+      const cards=_mktTypeCache[ti]; // v263: pre-computed, no filter alloc
       if(cards.length===0)continue;
       txShadow(_MKT_TYPE_LABEL[ti]+' ('+cards.length+')',mx+14,yi+10,7,_MKT_TYPE_COLOR[ti],'rgba(0,0,0,.3)');yi+=16;
       const _cLen=Math.min(12,cards.length);
