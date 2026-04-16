@@ -9,8 +9,29 @@ const _TITLE_VOID_COLS=['#5014b4','#5c1cc0','#6824cc','#742cd8','#8034e4'];
 // ═══════════════════════════════════════
 
 // Advance one dungeon turn: each rival takes one step
-const _VEGA_LINES=['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Cornered. Just like the crew.','Nowhere left to run.']; // v276
-const _MIRA_LINES=['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','The ARK crew fell to logic. So will you.']; // v276
+// v287: Floor-tiered encounter dialog — VEGA escalates aggression, MIRA escalates cold calculation
+const _VEGA_LINES_FL=[
+  // F1-F2 (shallow — confident, territorial)
+  ['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Nowhere left to run.','I\'ve been watching you.'],
+  // F3 (mid — focused, dangerous)
+  ['You made it this far. Impressive. Pointless.','Hunting gets easier with depth.','Deep enough that no one will hear you.','The cards belong to me — always have.','Slow down and I\'ll end this quickly.'],
+  // F4-F5 (deep — savage, no mercy)
+  ['The ARK crew ran. You\'re not even running.','Nothing comes back from Floor 4.','Surrender the deck. This is your last chance.','You\'re standing in my trophy room.','The void takes everything. I\'ll take the cards.'],
+];
+const _MIRA_LINES_FL=[
+  // F1-F2 (shallow — clinical, analytical)
+  ['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','Pattern deviation detected. Correcting.'],
+  // F3 (mid — more ominous, probability speak)
+  ['Probability of your survival: 12%.','The data set is converging. So am I.','Your routing choices exposed you three moves ago.','Every fork you took led here. I mapped them all.'],
+  // F4-F5 (deep — ruthless logic, void-flavored)
+  ['At this depth, logic is the only survivor.','I modeled 4,096 outcomes. You lose every one.','The ARK crew had better odds than you do now.','Resistance is a statistical anomaly. Eliminating.','Your hand is already mine in three move sequences.'],
+];
+function _pickRivalLine(idx){
+  const fl=Math.max(1,Math.min(5,currentFloor));
+  const tier=fl<=2?0:fl===3?1:2;
+  const pool=idx===0?_VEGA_LINES_FL[tier]:_MIRA_LINES_FL[tier];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
 function processDungeonTurn(){
   if(!inDungeon)return;
   if(encounterCooldown>0)return; // let game loop decrement
@@ -39,7 +60,7 @@ function checkDungeonRivalEncounter(){
       sfxEncounterDramatic();hitPause(4);
       const rCards=cdCount(r.cd);
       const isHunting=ai.state==='hunting';
-      encounterRivalLine=idx===0?_VEGA_LINES[Math.floor(Math.random()*_VEGA_LINES.length)]:_MIRA_LINES[Math.floor(Math.random()*_MIRA_LINES.length)]; // v276: hoisted
+      encounterRivalLine=_pickRivalLine(idx); // v287: floor-tiered dialog
       setTimeout(()=>{
         encounterExclActive=false;flash();
         twSet(isHunting?r.n+' ambushed you! Battle!':r.n+' appeared! Battle!');
