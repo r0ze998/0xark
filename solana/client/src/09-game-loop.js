@@ -338,7 +338,7 @@ function update(){
             // FRLG-style mosaic pixelation wipe into battle
             startWipe('mosaic',30,()=>{
               sc='act';battlePhase='vs_splash';bpFrame=fr;
-              battleRoundHistory=[]; // v90: reset round history on new battle
+              battleRoundHistory=[];_battleRoundNet=0; // v90/v284: reset round history+net on new battle
               bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];
               startWipe('mosaic_out',20);
               // v79: track battle_rival mission

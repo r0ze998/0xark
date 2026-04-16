@@ -566,6 +566,12 @@ function drawBattleSprite(p,cx,cy,scale,facingAway){
 
 function drawVsSplash(){
   bx(0,0,W,H,'#181828');const t=fr-bpFrame;
+  // v284: hoist vsRivalIdx + pre-compute power sums once per call (avoids 4× reduce per frame)
+  const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
+  const vsSplashRival=pl[vsRivalIdx];
+  let _ypwr=0,_rpwr=0;
+  for(let _i=0;_i<HAND_SIZE;_i++){const _id=pl[0].cd[_i];if(_id>0)_ypwr+=(CD[_id-1]?.r||0);}
+  for(let _i=0;_i<HAND_SIZE;_i++){const _id=vsSplashRival.cd[_i];if(_id>0)_rpwr+=(CD[_id-1]?.r||0);}
   // Diagonal split
   const angle=W*1.2;
   g.save();
@@ -578,9 +584,7 @@ function drawVsSplash(){
   drawBattleSprite(pl[0],pX,H/2-10,3,true);
   const rSlide=Math.min(1,t/30);
   const rX=W+60-rSlide*(W/4+20);
-  // Show the rival that triggered this encounter (encounterExclTarget tracks which one)
-  const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
-  const vsSplashRival=pl[vsRivalIdx];
+  // Show the rival that triggered this encounter (v284: vsRivalIdx/vsSplashRival hoisted to top)
   drawBattleSprite(vsSplashRival,rX,H/2-10,3,false);
 
   // Player name (left side, slides in)
@@ -590,9 +594,8 @@ function drawVsSplash(){
     txShadow('YOU',60,H/2-60,14,'#78c0f0','rgba(0,0,0,.6)');
     const yourCards=cardCount(pl[0]);
     txShadow(yourCards+' card'+(yourCards!==1?'s':''),60,H/2-42,8,'rgba(255,255,255,.6)','rgba(0,0,0,.4)');
-    // v106: hand power score = sum of card rarities
-    const yourPwr=pl[0].cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
-    txShadow('PWR:'+yourPwr,60,H/2-26,7,'#78c0f0','rgba(0,0,0,.35)');
+    // v106: hand power score = sum of card rarities (v284: pre-computed above)
+    txShadow('PWR:'+_ypwr,60,H/2-26,7,'#78c0f0','rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
 
@@ -607,9 +610,8 @@ function drawVsSplash(){
     txShadow(rivalPersonality,rivalNameX,H/2-42,8,'rgba(255,255,255,.5)','rgba(0,0,0,.4)');
     const rivalCards=cardCount(vsSplashRival);
     txShadow(rivalCards+' card'+(rivalCards!==1?'s':''),rivalNameX,H/2-28,7,'rgba(255,255,255,.5)','rgba(0,0,0,.35)');
-    // v106: rival power + advantage label
-    const rivalPwr=vsSplashRival.cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
-    txShadow('PWR:'+rivalPwr,rivalNameX,H/2-12,7,rivalNameCol,'rgba(0,0,0,.35)');
+    // v106: rival power + advantage label (v284: pre-computed above)
+    txShadow('PWR:'+_rpwr,rivalNameX,H/2-12,7,rivalNameCol,'rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
 
@@ -617,9 +619,7 @@ function drawVsSplash(){
   if(t>20){
     const assAlpha=Math.min(1,(t-20)/10);
     g.globalAlpha=assAlpha;
-    const yourPwr2=pl[0].cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
-    const rivalPwr2=vsSplashRival.cd.reduce((s,id)=>s+(id>0?CD[id-1]?.r||0:0),0);
-    const diff=yourPwr2-rivalPwr2;
+    const diff=_ypwr-_rpwr; // v284: use pre-computed values
     let assLabel,assCol;
     if(diff>=4){assLabel='ADVANTAGE';assCol='#40d080';}
     else if(diff<=-4){assLabel='OUTMATCHED';assCol='#d04040';}
@@ -712,8 +712,7 @@ function drawPhaseBanner(phase){
   // v101: Battle momentum strip — card gain/loss net balance shown as a tug-of-war bar
   bx(0,26,W,3,'rgba(0,0,0,.55)');
   if(battleRoundHistory.length>0){
-    const net=battleRoundHistory.reduce((s,h)=>s+(h.got?1:0)-(h.lost?1:0),0);
-    const norm=Math.max(-1,Math.min(1,net/Math.max(1,battleRoundHistory.length)));
+    const norm=Math.max(-1,Math.min(1,_battleRoundNet/Math.max(1,battleRoundHistory.length))); // v284: cached net
     if(norm>0){bx(W/2,26,(W/2)*norm,3,'#40b0e8');}
     else if(norm<0){bx(W/2+(W/2)*norm,26,-(W/2)*norm,3,'#d04040');}
     const ta=0.35+Math.sin(fr*0.12)*0.25;
@@ -1611,6 +1610,7 @@ let bpRdIncremented=false; // guard: prevent double-increment of rd when pending
 let bpActionsGenerated=false; // guard: only generate once per round
 let bpScoutedCards=[null,null]; // [{round,cards:[{n,r,t}]}, null] — persists until battle ends
 let battleRoundHistory=[]; // v90: [{rd,pa,r1a,r2a,outcome}] per round (pa=playerAction 0-4)
+let _battleRoundNet=0; // v284: running got-lost net, updated at unshift — avoids per-frame reduce
 
 // Rival tells: atmospheric body-language hints (65% accurate, 35% misleading)
 const RIVAL_BATTLE_TELLS=[
