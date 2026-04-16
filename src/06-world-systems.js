@@ -1,3 +1,9 @@
+// v371: pre-baked tables for sin-addition in minimap encounter shimmer (phase 0-15, step 0.39)
+const _MM_SI39=new Float32Array(16);const _MM_CI39=new Float32Array(16);
+for(let i=0;i<16;i++){_MM_SI39[i]=Math.sin(i*0.39);_MM_CI39[i]=Math.cos(i*0.39);}
+// v371: pre-baked tables for sin-addition in gacha card shimmer (index i, sin(i)/cos(i))
+const _IDX_SI=new Float32Array(60);const _IDX_CI=new Float32Array(60);
+for(let i=0;i<60;i++){_IDX_SI[i]=Math.sin(i);_IDX_CI[i]=Math.cos(i);}
 // v330: lazy cache for trade dialog vault display (key=vaultSz)
 let _tradeVaultLbl='',_tradeVaultKey=-1;
 // v344: lazy caches for title-screen progress and trade overlay labels
@@ -686,7 +692,7 @@ function drawMinimap(){
           else if(t2===1)encRate=0.15;
           if(encRate===0)continue;
           const phase=(tx_*3+ty*7)&15;
-          const shimmer=Math.sin(fr*0.07+phase*0.39)*0.5+0.5;
+          const shimmer=(_sFr07*_MM_CI39[phase]+_cFr07*_MM_SI39[phase])*0.5+0.5; // v371: sin-addition
           const alpha=(encRate>0.25?0.22:0.12)*shimmer;
           g.globalAlpha=alpha;g.fillStyle=encRate>0.25?'#ffa01e':'#b4f050';
           g.fillRect(tx_*sx,ty*sy,Math.max(1,sx*2),Math.max(1,sy*2));g.globalAlpha=1;
@@ -1902,7 +1908,7 @@ function dTitle(){
       bx(-7,-5,14,10,cr.d);bx(-6,-4,12,8,cr.c);
       // Rarity shimmer for epic/legendary
       if(cr.r>=4){
-        const shim=0.3+Math.sin(fr*0.12+i)*0.25;
+        const shim=0.3+(_sFr12*_IDX_CI[i]+_cFr12*_IDX_SI[i])*0.25; // v371: sin-addition
         g.globalAlpha=alpha*shim;
         bx(-7,-5,14,2,cr.r===5?'#ffe080':'#c8a820');
       }

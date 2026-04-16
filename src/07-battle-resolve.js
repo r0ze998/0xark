@@ -667,7 +667,7 @@ function drawResolvingPhase(){
       const isCritical=qteProgress>0.8;
       const isDefend=qteType==='defend';
       // Fullscreen edge vignette pulse (pre-baked canvas)
-      const vigIntensity=isCritical?(0.35+Math.sin(fr*0.6)*0.15):isUrgent?0.18:0;
+      const vigIntensity=isCritical?(0.35+(2*_sFr30*_cFr30)*0.15):isUrgent?0.18:0; // v371: double-angle sin(fr*0.6)=2sin(fr*0.3)cos(fr*0.3)
       if(vigIntensity>0){
         g.globalAlpha=vigIntensity;
         g.drawImage(isDefend?_qteVigDefend:_qteVigAttack,0,0);
@@ -704,14 +704,14 @@ function drawResolvingPhase(){
       bx(kx,ky,36,1,accentCol);bx(kx,ky,1,36,accentCol);
       bx(kx,ky+35,36,1,accentCol);bx(kx+35,ky,1,36,accentCol);
       // Pulsing glow on key
-      const kPulse=0.6+Math.sin(fr*0.4)*0.4;
+      const kPulse=0.6+(2*_sFr20*_cFr20)*0.4; // v371: double-angle sin(fr*0.4)=2sin(fr*0.2)cos(fr*0.2)
       g.globalAlpha=kPulse*slideIn;
       g.shadowBlur=12;g.shadowColor=accentCol;
       txShadow('Z',kx+8,ky+30,22,accentCol,'rgba(0,0,0,.4)');
       g.shadowBlur=0;
       g.globalAlpha=slideIn;
       // Main prompt text with scale pulse
-      const pScale=isCritical?(1+Math.sin(fr*0.5)*0.06):1;
+      const pScale=isCritical?(1+(2*_sFr25*_cFr25)*0.06):1; // v371: double-angle sin(fr*0.5)=2sin(fr*0.25)cos(fr*0.25)
       const promptText=isDefend?'PRESS Z TO BLOCK!':'PRESS Z FOR BONUS!';
       const pFontSz=Math.round(15*pScale);
       g.save();
@@ -788,7 +788,7 @@ function drawResolvingPhase(){
     }
     // v216: Player defeat flash — red vignette + "DEFEATED!" when player HP 0
     if(bpHP[0]===0){
-      const defPulse=0.5+0.5*Math.sin(fr*0.22);
+      const defPulse=0.5+0.5*(_sFr20*_cFr02+_cFr20*_sFr02); // v371: sin-addition sin(fr*0.22)=sin(fr*0.2+fr*0.02)
       g.globalAlpha=defPulse*0.25;g.drawImage(_btlDefeatVig,0,0);g.globalAlpha=1;
       const defScale=1+_sFr15*0.06; // v369: cached
       g.save();g.translate(W/2,H/2-30);g.scale(defScale,defScale);

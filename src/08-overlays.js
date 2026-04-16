@@ -750,7 +750,7 @@ function dCrd(){
     const countStr=_OVER12_LBL[typeOwned]||(typeOwned+'/12'); // v321
     txShadow(countStr,tx2+bw-countStr.length*5-2,54,5,typeComplete?'#f0c830':isActive?'rgba(255,255,255,.7)':'rgba(128,128,160,.6)','rgba(0,0,0,.35)');
     // Gold star if complete
-    if(typeComplete){const s=Math.sin(fr*0.08+ti)*0.2+0.8;g.globalAlpha=s;txShadow('\u2605',tx2+4,54,5,'#f0c830','rgba(0,0,0,.3)');g.globalAlpha=1;}
+    if(typeComplete){const s=(_sFr08*_IDX_CI[ti]+_cFr08*_IDX_SI[ti])*0.2+0.8;g.globalAlpha=s;txShadow('\u2605',tx2+4,54,5,'#f0c830','rgba(0,0,0,.3)');g.globalAlpha=1;} // v371: sin-addition
   }
   // Card grid: 4×3 = 12 cards per page
   const typeStart=crdPage*12;
