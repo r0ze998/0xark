@@ -11147,7 +11147,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v330',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v331',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -13433,6 +13433,7 @@ const _BSTREAK_LBL=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('\u2605 STREAK 
 const _CC5_CARDS=['0/5 cards','1/5 cards','2/5 cards','3/5 cards','4/5 cards','5/5 cards'];
 const _SIGNED_DELTA=['-5','-4','-3','-2','-1','0','+1','+2','+3','+4','+5']; // indexed at delta+5
 let _reactNameCache='',_reactNameRef=''; // rName+':' lazy cache
+let _tellLblCache=['',''],_tellLblKey=-1; // v331: lazy tell-accuracy label pair
 // v305: pre-baked strings for per-frame allocations in resolve/result draw
 const _DOTS=['','.','..',  '...'];
 const _ROUND_SUM=['','ROUND 1 SUMMARY','ROUND 2 SUMMARY','ROUND 3 SUMMARY','ROUND 4 SUMMARY','ROUND 5 SUMMARY','ROUND 6 SUMMARY','ROUND 7 SUMMARY','ROUND 8 SUMMARY','ROUND 9 SUMMARY','ROUND 10 SUMMARY'];
@@ -14380,7 +14381,7 @@ function drawResultPhase(){
       const rar=scr.r||1;
       const rcol=_RES_RAR_COLS[rar]||'#d85840'; // v262: hoisted
       // Glow halo behind card
-      if(rar>=3&&_cardRarGlow[rar]){
+      if(rar>=2&&_cardRarGlow[rar]){
         // v243: pre-baked drawImage replaces createRadialGradient+arc per frame
         const glowR=22+rar*6+Math.sin(fr*0.12)*4;
         const cg=_cardRarGlow[rar];
@@ -14464,11 +14465,12 @@ function drawResultPhase(){
     const tellFadeA=Math.min(1,(t-35)/10);
     const r1correct=bpTellWasAccurate[0];const r2correct=bpTellWasAccurate[1];
     const r1col=r1correct?'#48c848':'#c04040';const r2col=r2correct?'#48c848':'#c04040';
-    const r1lbl=pl[1].n+':'+(r1correct?'\u2713':'\u2717');
-    const r2lbl=pl[2].n+':'+(r2correct?'\u2713':'\u2717');
+    // v331: lazy cache — only rebuild when accuracy combo changes
+    const _tk=(r1correct?1:0)|(r2correct?2:0);
+    if(_tellLblKey!==_tk){_tellLblKey=_tk;_tellLblCache[0]=pl[1].n+':'+(r1correct?'\u2713':'\u2717');_tellLblCache[1]=pl[2].n+':'+(r2correct?'\u2713':'\u2717');}
     g.globalAlpha=tellFadeA*0.85;
-    txShadow(r1lbl,panX+16,panY+panH-8,7,r1col,'rgba(0,0,0,.3)');
-    txShadow(r2lbl,panX+16+r1lbl.length*5+12,panY+panH-8,7,r2col,'rgba(0,0,0,.3)');
+    txShadow(_tellLblCache[0],panX+16,panY+panH-8,7,r1col,'rgba(0,0,0,.3)');
+    txShadow(_tellLblCache[1],panX+16+_tellLblCache[0].length*5+12,panY+panH-8,7,r2col,'rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
 
@@ -16504,6 +16506,8 @@ const _MEDALS=['1ST','2ND','3RD'],_MEDAL_COLS=['#f0c830','#c0c0c0','#c08040'];
 const _PCT_LBL=(()=>{const a=[];for(let i=0;i<=100;i++)a.push(i+'%');return a;})();
 // v330: pre-baked floor-clear fanfare labels (index = floor, 1-5)
 const _FLOOR_CLEARED_LBL=(()=>{const a=[];for(let i=0;i<6;i++)a.push('FLOOR '+(_FLOOR_NUMS[i]||('B'+i))+' CLEARED');return a;})();
+// v331: pre-baked rarity pip count labels (5 rarities × 0..60 cards)
+const _RAR_PIP_FULL=(()=>{const a=[];for(let ri=0;ri<5;ri++){const r=[];for(let n=0;n<=60;n++)r.push(_RAR_PIP_LBLS[ri]+':'+n);a.push(r);}return a;})();
 // v235: Pre-baked game-over screen assets — 32 arc/frame + 1 gradient/frame eliminated
 // Vignette: rgba(0,0,0,0.55) outer stop, drawn once per frame at alpha=1
 const _goVignette=(()=>{
@@ -17054,7 +17058,7 @@ function dStats(){
   for(let ri_=0;ri_<5;ri_++){
     if(rarCount_[ri_]===0)continue;
     bx(rPX,vpbY+vpbH+3,9,9,_RAR_PIP_COLS[ri_]);
-    txShadow(_RAR_PIP_LBLS[ri_]+':'+rarCount_[ri_],rPX+11,vpbY+vpbH+11,7,'#c0b8a0','rgba(0,0,0,.35)');
+    txShadow(_RAR_PIP_FULL[ri_][rarCount_[ri_]]||(_RAR_PIP_LBLS[ri_]+':'+rarCount_[ri_]),rPX+11,vpbY+vpbH+11,7,'#c0b8a0','rgba(0,0,0,.35)'); // v331
     rPX+=36;
   }
   bx(36,vpbY+vpbH+18,W-104,1,'#282840');
@@ -17291,6 +17295,8 @@ function dGameOver(){
 
 // v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
 const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
+// v331: Pre-baked stealth step labels — eliminates 'STEALTH:'+n concat per frame during stealth
+const _STEALTH_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('STEALTH:'+i);return a;})();
 // v224: Pre-baked escape urgency vignette — red edge decay warning (shape static, alpha varies)
 const _escVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(200,20,20,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;})();
 
@@ -17706,7 +17712,7 @@ function draw(){
       g.globalAlpha=0.4;
       bx(px-4,py-4,40,56,'rgba(80,40,160,.3)');
       g.globalAlpha=1;
-      txShadow('STEALTH:'+shadowStepsLeft,px-20,py-24,5,'#9060c0','rgba(0,0,0,.4)');
+      txShadow(_STEALTH_LBL[shadowStepsLeft]||('STEALTH:'+shadowStepsLeft),px-20,py-24,5,'#9060c0','rgba(0,0,0,.4)');
     }
   }
   // Multiplayer connection status overlay

@@ -5,6 +5,7 @@ const _BSTREAK_LBL=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('\u2605 STREAK 
 const _CC5_CARDS=['0/5 cards','1/5 cards','2/5 cards','3/5 cards','4/5 cards','5/5 cards'];
 const _SIGNED_DELTA=['-5','-4','-3','-2','-1','0','+1','+2','+3','+4','+5']; // indexed at delta+5
 let _reactNameCache='',_reactNameRef=''; // rName+':' lazy cache
+let _tellLblCache=['',''],_tellLblKey=-1; // v331: lazy tell-accuracy label pair
 // v305: pre-baked strings for per-frame allocations in resolve/result draw
 const _DOTS=['','.','..',  '...'];
 const _ROUND_SUM=['','ROUND 1 SUMMARY','ROUND 2 SUMMARY','ROUND 3 SUMMARY','ROUND 4 SUMMARY','ROUND 5 SUMMARY','ROUND 6 SUMMARY','ROUND 7 SUMMARY','ROUND 8 SUMMARY','ROUND 9 SUMMARY','ROUND 10 SUMMARY'];
@@ -952,7 +953,7 @@ function drawResultPhase(){
       const rar=scr.r||1;
       const rcol=_RES_RAR_COLS[rar]||'#d85840'; // v262: hoisted
       // Glow halo behind card
-      if(rar>=3&&_cardRarGlow[rar]){
+      if(rar>=2&&_cardRarGlow[rar]){
         // v243: pre-baked drawImage replaces createRadialGradient+arc per frame
         const glowR=22+rar*6+Math.sin(fr*0.12)*4;
         const cg=_cardRarGlow[rar];
@@ -1036,11 +1037,12 @@ function drawResultPhase(){
     const tellFadeA=Math.min(1,(t-35)/10);
     const r1correct=bpTellWasAccurate[0];const r2correct=bpTellWasAccurate[1];
     const r1col=r1correct?'#48c848':'#c04040';const r2col=r2correct?'#48c848':'#c04040';
-    const r1lbl=pl[1].n+':'+(r1correct?'\u2713':'\u2717');
-    const r2lbl=pl[2].n+':'+(r2correct?'\u2713':'\u2717');
+    // v331: lazy cache — only rebuild when accuracy combo changes
+    const _tk=(r1correct?1:0)|(r2correct?2:0);
+    if(_tellLblKey!==_tk){_tellLblKey=_tk;_tellLblCache[0]=pl[1].n+':'+(r1correct?'\u2713':'\u2717');_tellLblCache[1]=pl[2].n+':'+(r2correct?'\u2713':'\u2717');}
     g.globalAlpha=tellFadeA*0.85;
-    txShadow(r1lbl,panX+16,panY+panH-8,7,r1col,'rgba(0,0,0,.3)');
-    txShadow(r2lbl,panX+16+r1lbl.length*5+12,panY+panH-8,7,r2col,'rgba(0,0,0,.3)');
+    txShadow(_tellLblCache[0],panX+16,panY+panH-8,7,r1col,'rgba(0,0,0,.3)');
+    txShadow(_tellLblCache[1],panX+16+_tellLblCache[0].length*5+12,panY+panH-8,7,r2col,'rgba(0,0,0,.3)');
     g.globalAlpha=1;
   }
 
