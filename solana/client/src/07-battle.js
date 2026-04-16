@@ -13,6 +13,10 @@ const _SPIN=['|','/','-','\\'];
 const _BORB_LBL=['STL','BAR','SCT'],_BORB_FILL=['#c04848','#3868c0','#38a038'],_BORB_EMPTY=['#2a1010','#101028','#0e1e0e'],_BORB_LCOL=['#d05050','#4878d0','#48b048'];
 // v254: Static scout panel arrays — eliminates rivalInfo object array per scout panel render
 const _RIVAL_COL=['#d060a0','#d0a030'],_RIVAL_LBL=['VEGA','MIRA'];
+// v264: Hoist BARRIER + SCOUT panel per-frame inline arrays/objects
+const _BAR_THREAT_COLS=['#50b050','#c0b030','#d07030','#d04040'];
+const _BAR_THREAT_LBLS=['LOW','MED','HIGH','MAX'];
+const _SCT_TYPE_COL={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
 const _BTYPES=['attack','defense','flee','magic','recovery'],_BTYPE_ABB=['ATK','DEF','FLY','MAG','REC'],_BTYPE_COL=['#c83838','#3888c8','#30b870','#a840c0','#c8a830'];
 const _btCounts=new Int32Array(5); // reused each frame, zero-filled
 // v245: Pre-baked VS gold circle — eliminates arc per battle-intro frame
@@ -1032,18 +1036,16 @@ function drawSelectPhase(){
   if(ai===2&&!bpCardSelectActive&&!bpTargetSelectActive&&sp.b>0){
     const ppX=328,ppW=220;
     const slideA=Math.min(1,(fr-bpFrame)/10);
-    // Analyze recent steal history
-    const recentRounds=battleRoundHistory.slice(0,Math.min(4,battleRoundHistory.length));
-    const totalSteals=recentRounds.filter(h=>h.r1a===1||h.r2a===1).length;
+    // Analyze recent steal history — v264: no slice/filter alloc
+    const _bhLen=Math.min(4,battleRoundHistory.length);
+    let totalSteals=0;for(let _bhi=0;_bhi<_bhLen;_bhi++){const _bh=battleRoundHistory[_bhi];if(_bh.r1a===1||_bh.r2a===1)totalSteals++;}
     const lastRound=battleRoundHistory[0];
     const theyStoleLast=lastRound&&(lastRound.r1a===1||lastRound.r2a===1);
     const barrierActive=bpPlayerBarrier;
     // Threat level: 0-3
     const threatLvl=Math.min(3,totalSteals+(theyStoleLast?1:0));
-    const threatCols=['#50b050','#c0b030','#d07030','#d04040'];
-    const threatLabels=['LOW','MED','HIGH','MAX'];
-    const threatCol=threatCols[threatLvl];
-    const ppH=barrierActive?70:70+Math.max(0,recentRounds.length)*18;
+    const threatCol=_BAR_THREAT_COLS[threatLvl]; // v264: hoisted
+    const ppH=barrierActive?70:70+_bhLen*18;
     const panY=H-164-Math.max(0,ppH-80);
     g.globalAlpha=slideA*0.95;
     win(ppX,panY,ppW,ppH);
@@ -1058,17 +1060,18 @@ function drawSelectPhase(){
     }else{
       // Threat meter bar
       txShadow('STEAL THREAT:',ppX+8,panY+34,7,'#908878','rgba(0,0,0,.2)');
-      txShadow(threatLabels[threatLvl],ppX+ppW-8-threatLabels[threatLvl].length*8,panY+34,8,threatCol,'rgba(0,0,0,.3)');
+      const _tLbl=_BAR_THREAT_LBLS[threatLvl]; // v264: hoisted
+      txShadow(_tLbl,ppX+ppW-8-_tLbl.length*8,panY+34,8,threatCol,'rgba(0,0,0,.3)');
       const tmX=ppX+8,tmY=panY+38,tmW=ppW-16,tmH=8;
       bx(tmX,tmY,tmW,tmH,'#181838');
       if(threatLvl>0)bx(tmX,tmY,Math.floor(tmW*(threatLvl/3)),tmH,threatCol);
       bx(tmX,tmY,tmW,1,'#282848');
-      // Recent round action breakdown
-      if(recentRounds.length>0){
+      // Recent round action breakdown — use battleRoundHistory directly (no slice alloc)
+      if(_bhLen>0){
         bx(ppX+6,panY+52,ppW-12,1,'rgba(200,180,100,.15)');
         txShadow('RECENT ROUNDS:',ppX+8,panY+64,6,'#888870','rgba(0,0,0,.2)');
-        for(let ri=0;ri<recentRounds.length;ri++){
-          const h=recentRounds[ri];const hy=panY+68+ri*18;
+        for(let ri=0;ri<_bhLen;ri++){
+          const h=battleRoundHistory[ri];const hy=panY+68+ri*18;
           txShadow('R'+h.rd,ppX+8,hy+10,6,'#686860','rgba(0,0,0,.3)');
           // V action
           const vStole=h.r1a===1;
@@ -1094,15 +1097,12 @@ function drawSelectPhase(){
   if(ai===3&&!bpCardSelectActive&&!bpTargetSelectActive&&sp.c>0){
     const vsRival=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
     const target=pl[vsRival];
-    const sd0=bpScoutedCards[0],sd1=bpScoutedCards[1];
-    const typeC={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
     const ppX=328,ppW=220;
     const slideA=Math.min(1,(fr-bpFrame)/10);
-    // Show both rivals' intel state (_RIVAL_COL/_RIVAL_LBL hoisted to module scope)
-    const _sds=[sd0,sd1];
+    // v264: typeC hoisted to _SCT_TYPE_COL; _sds=[sd0,sd1] removed — use bpScoutedCards[_rvi] directly
     let panY=H-164;
     for(let _rvi=0;_rvi<2;_rvi++){
-      const _rv_p=pl[_rvi+1],_rv_sd=_sds[_rvi];
+      const _rv_p=pl[_rvi+1],_rv_sd=bpScoutedCards[_rvi]; // v264: direct access, no _sds array
       const ccnt=cardCount(_rv_p);
       if(ccnt===0&&!_rv_sd)continue;
       const panH=_rv_sd&&_rv_sd.cards.length>0?54+Math.min(4,_rv_sd.cards.length)*22:46;
@@ -1118,7 +1118,7 @@ function drawSelectPhase(){
         const _scLen=Math.min(4,_rv_sd.cards.length);
         for(let ci=0;ci<_scLen;ci++){
           const c=_rv_sd.cards[ci];
-          const tCol_=typeC[c.t]||'#808898';
+          const tCol_=_SCT_TYPE_COL[c.t]||'#808898'; // v264: hoisted
           const rar=c.r||1;const rarCol=RARITY_COLOR[rar]||'#888898';
           const py2=panY+28+ci*22;
           const dimA=staleRd>1?0.5:0.9;
