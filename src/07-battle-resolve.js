@@ -204,6 +204,8 @@ function drawResolvingPhase(){
       const dotCount=Math.floor((evT-38)/4)%4;
       txShadow(_DOTS[dotCount],textX+ev.text.length*14+4,H-38,14,'#a09080','rgba(0,0,0,.2)'); // v305
     }
+    // v335: Skip hint (appears after first event, not during QTE)
+    if(currentIdx>0&&!qteActive){g.globalAlpha=0.5;txShadow('[Z] Skip',W-66,H-52,6,'#909090','rgba(0,0,0,.2)');g.globalAlpha=1;}
     // === EFFECT ANIMATIONS ===
     const playerCX=160,playerCY=H-130;
     const oppCX=W-200,oppCY=130;

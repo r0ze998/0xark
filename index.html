@@ -11146,7 +11146,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v334',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v335',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -13640,6 +13640,8 @@ function drawResolvingPhase(){
       const dotCount=Math.floor((evT-38)/4)%4;
       txShadow(_DOTS[dotCount],textX+ev.text.length*14+4,H-38,14,'#a09080','rgba(0,0,0,.2)'); // v305
     }
+    // v335: Skip hint (appears after first event, not during QTE)
+    if(currentIdx>0&&!qteActive){g.globalAlpha=0.5;txShadow('[Z] Skip',W-66,H-52,6,'#909090','rgba(0,0,0,.2)');g.globalAlpha=1;}
     // === EFFECT ANIMATIONS ===
     const playerCX=160,playerCY=H-130;
     const oppCX=W-200,oppCY=130;
@@ -18616,7 +18618,10 @@ document.addEventListener('keydown',e=>{
 
   if(sc==='act'){
     // QTE input during resolving phase
-    if(battlePhase==='resolving'&&qteActive&&!qteKeyPressed&&e.code==='KeyZ'){
+    if(battlePhase==='resolving'&&!qteActive&&e.code==='KeyZ'&&bpResolveQueue&&bpResolveQueue.length>0){
+      // v335: Z skips remaining resolve events when at least 1 event already shown
+      if(fr-bpFrame>=50){bpFrame=fr-bpResolveQueue.length*50;}
+    } else if(battlePhase==='resolving'&&qteActive&&!qteKeyPressed&&e.code==='KeyZ'){
       qteKeyPressed=true;qteActive=false;qteSuccess=true;
       sfxQteSuccess();
       if(qteType==='defend'){
