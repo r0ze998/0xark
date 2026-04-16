@@ -9,27 +9,37 @@ const _TITLE_VOID_COLS=['#5014b4','#5c1cc0','#6824cc','#742cd8','#8034e4'];
 // ═══════════════════════════════════════
 
 // Advance one dungeon turn: each rival takes one step
-// v287: Floor-tiered encounter dialog — VEGA escalates aggression, MIRA escalates cold calculation
-const _VEGA_LINES_FL=[
-  // F1-F2 (shallow — confident, territorial)
-  ['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Nowhere left to run.','I\'ve been watching you.'],
-  // F3 (mid — focused, dangerous)
-  ['You made it this far. Impressive. Pointless.','Hunting gets easier with depth.','Deep enough that no one will hear you.','The cards belong to me — always have.','Slow down and I\'ll end this quickly.'],
-  // F4-F5 (deep — savage, no mercy)
-  ['The ARK crew ran. You\'re not even running.','Nothing comes back from Floor 4.','Surrender the deck. This is your last chance.','You\'re standing in my trophy room.','The void takes everything. I\'ll take the cards.'],
+// v287/v290: Floor-tiered + hunt/surprise encounter dialog
+// VEGA: hunt = aggressive predator, surp = momentarily thrown
+// MIRA: hunt = cold calculator closing in, surp = model deviation registered
+const _VEGA_FL=[
+  // [hunt lines, surprise lines] per tier
+  // Tier 0: F1-F2
+  [['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Nowhere left to run.','You were easy to track.'],
+   ['You… found me first?','Reckless. I can respect that.','Bold move. The ARK liked bold.','Didn\'t expect prey to hunt.','Interesting choice.']],
+  // Tier 1: F3
+  [['You made it this far. Pointless.','Deep enough that no one hears you.','The cards belong to me — always have.','I don\'t chase. I just arrive.','Slow down. This ends quickly.'],
+   ['You read the dungeon well.','A surprise. Still doesn\'t change the outcome.','I underestimated your routing.','You deviated from the predicted path.','Didn\'t think you\'d make it here.']],
+  // Tier 2: F4-F5
+  [['The ARK crew ran. You\'re not running.','Nothing comes back from Floor 4.','Surrender the deck. Last chance.','You\'re in my trophy room now.','The void takes everything. Starting with your cards.'],
+   ['A variable I didn\'t expect.','You shouldn\'t have made it this deep.','Somehow you\'re still alive. Fixing that.','The ARK itself didn\'t survive this deep.','Impressive. Unfortunate.']],
 ];
-const _MIRA_LINES_FL=[
-  // F1-F2 (shallow — clinical, analytical)
-  ['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','Pattern deviation detected. Correcting.'],
-  // F3 (mid — more ominous, probability speak)
-  ['Probability of your survival: 12%.','The data set is converging. So am I.','Your routing choices exposed you three moves ago.','Every fork you took led here. I mapped them all.'],
-  // F4-F5 (deep — ruthless logic, void-flavored)
-  ['At this depth, logic is the only survivor.','I modeled 4,096 outcomes. You lose every one.','The ARK crew had better odds than you do now.','Resistance is a statistical anomaly. Eliminating.','Your hand is already mine in three move sequences.'],
+const _MIRA_FL=[
+  // Tier 0: F1-F2
+  [['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','Pattern deviation detected. Correcting.'],
+   ['A variable I didn\'t account for.','You deviated from the pattern. Interesting.','My model was off. Recalculating.','Unexpected approach. Noted.']],
+  // Tier 1: F3
+  [['Probability of your survival: 12%.','The data set converges. So do I.','Your routing exposed you three moves ago.','Every fork you took led here. I mapped them.'],
+   ['You surprised the model.','Unusual routing. I\'ll update the dataset.','I underestimated your decision tree.','Error margin was too high. Corrected now.']],
+  // Tier 2: F4-F5
+  [['At this depth, logic is the only survivor.','I modeled 4,096 outcomes. You lose every one.','The ARK crew had better odds than you.','Resistance is a statistical anomaly. Eliminating.'],
+   ['An outlier reaches this far.','<0.2% probability. Updating models.','The ARK itself was an outlier. You are not.','Rare deviation. Won\'t happen twice.']],
 ];
-function _pickRivalLine(idx){
+function _pickRivalLine(idx,isHunting){
   const fl=Math.max(1,Math.min(5,currentFloor));
   const tier=fl<=2?0:fl===3?1:2;
-  const pool=idx===0?_VEGA_LINES_FL[tier]:_MIRA_LINES_FL[tier];
+  const set=idx===0?_VEGA_FL[tier]:_MIRA_FL[tier];
+  const pool=isHunting?set[0]:set[1];
   return pool[Math.floor(Math.random()*pool.length)];
 }
 function processDungeonTurn(){
@@ -60,7 +70,7 @@ function checkDungeonRivalEncounter(){
       sfxEncounterDramatic();hitPause(4);
       const rCards=cdCount(r.cd);
       const isHunting=ai.state==='hunting';
-      encounterRivalLine=_pickRivalLine(idx); // v287: floor-tiered dialog
+      encounterRivalLine=_pickRivalLine(idx,isHunting); // v287/v290: floor+hunt tiered dialog
       setTimeout(()=>{
         encounterExclActive=false;flash();
         twSet(isHunting?r.n+' ambushed you! Battle!':r.n+' appeared! Battle!');
