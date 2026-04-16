@@ -50,6 +50,10 @@ const _EXCESS_CHG=['+1','+2','+3','+4','+5','+6','+7','+8','+9'];
 const _STALE_RD_LBL=(()=>{const a=[];for(let i=0;i<=10;i++)a.push('(R'+i+')');return a;})();
 const _BTYPE_CNT_LBL=(()=>{const a=[];for(let ti=0;ti<5;ti++){const b=[];for(let n=0;n<=5;n++)b.push(_BTYPE_ABB[ti]+':'+n);a.push(b);}return a;})();
 const _SPLASH_CARD_LBL=['0 cards','1 card','2 cards','3 cards','4 cards','5 cards'];
+// v332: pre-baked STEAL target rarity labels (hoisted from per-frame local array in drawActionGrid)
+const _STL_RAR_LBL=['','\u26A1C TARGET','\u26A1U TARGET','\u26A1R TARGET','\u26A1E TARGET','\u26A1L TARGET'];
+// v332: DRAW action badge lazy cache — pool scan is O(pool.length) per frame without this
+let _drawBadge='',_drawBadgeCol='#606060',_drawBadgeBg='rgba(0,0,0,.35)',_drawBadgeKey=-1;
 const _POSEIDON_SPIN=['Computing Poseidon hash... |','Computing Poseidon hash... /','Computing Poseidon hash... -','Computing Poseidon hash... \\'];
 const _ZK_PROOF_SPIN=['ZK proof: generating |','ZK proof: generating /','ZK proof: generating -','ZK proof: generating \\'];
 const _ZK_VERIFIED_SPIN=['ZK proof: verified |','ZK proof: verified /','ZK proof: verified -','ZK proof: verified \\'];
@@ -946,17 +950,23 @@ function drawActionGrid(){
       if(avail&&battlePhase==='select'){
         let badge='',badgeCol='#606060',badgeBg='rgba(0,0,0,.35)';
         const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
-        if(idx===0){// DRAW — show rarity tier of best unowned card in pool (v326)
-          const pool_=DUNGEON_FLOOR_CARDS[currentMap]||[];
-          const vault_=pl[0].vault||new Set();
-          let newInPool=0,maxNewRar=0;
-          for(let _pi=0;_pi<pool_.length;_pi++){const _cid=pool_[_pi];if(!vault_.has(_cid)){newInPool++;const _cr=CD[_cid-1];if(_cr&&_cr.r>maxNewRar)maxNewRar=_cr.r;}}
-          if(newInPool>0){
-            if(maxNewRar>=5){badge='\u2605 LEGEND';badgeCol='#ffe080';badgeBg='rgba(40,30,0,.7)';}
-            else if(maxNewRar>=4){badge='\u2605 EPIC';badgeCol='#f0c030';badgeBg='rgba(30,20,0,.7)';}
-            else if(maxNewRar>=3){badge='\u2605 RARE';badgeCol='#b060e0';badgeBg='rgba(20,5,30,.7)';}
-            else{badge=_NEW_IN_POOL[newInPool]||'+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';}
-          }else if(pool_.length>0){badge='ALL OWNED';badgeCol='#888870';badgeBg='rgba(0,0,0,.3)';}
+        if(idx===0){// DRAW — lazy cache pool scan (v332: was O(pool) per frame → O(1) until vault changes)
+          const _dbKey=currentMap*10000+(pl[0].vault?pl[0].vault.size:0);
+          if(_drawBadgeKey!==_dbKey){
+            _drawBadgeKey=_dbKey;
+            const pool_=DUNGEON_FLOOR_CARDS[currentMap]||[];
+            const vault_=pl[0].vault||new Set();
+            let newInPool=0,maxNewRar=0;
+            for(let _pi=0;_pi<pool_.length;_pi++){const _cid=pool_[_pi];if(!vault_.has(_cid)){newInPool++;const _cr=CD[_cid-1];if(_cr&&_cr.r>maxNewRar)maxNewRar=_cr.r;}}
+            if(newInPool>0){
+              if(maxNewRar>=5){_drawBadge='\u2605 LEGEND';_drawBadgeCol='#ffe080';_drawBadgeBg='rgba(40,30,0,.7)';}
+              else if(maxNewRar>=4){_drawBadge='\u2605 EPIC';_drawBadgeCol='#f0c030';_drawBadgeBg='rgba(30,20,0,.7)';}
+              else if(maxNewRar>=3){_drawBadge='\u2605 RARE';_drawBadgeCol='#b060e0';_drawBadgeBg='rgba(20,5,30,.7)';}
+              else{_drawBadge=_NEW_IN_POOL[newInPool]||'+'+newInPool+' NEW';_drawBadgeCol='#50e090';_drawBadgeBg='rgba(0,40,20,.6)';}
+            }else if(pool_.length>0){_drawBadge='ALL OWNED';_drawBadgeCol='#888870';_drawBadgeBg='rgba(0,0,0,.3)';}
+            else{_drawBadge='';_drawBadgeCol='#606060';_drawBadgeBg='rgba(0,0,0,.35)';}
+          }
+          badge=_drawBadge;badgeCol=_drawBadgeCol;badgeBg=_drawBadgeBg;
         }else if(idx===1){// STEAL — show barrier state + scouted rarity when known (v322)
           const tgtBarrier=bpRivalActions[vsRivalIdx-1]===2;
           if(tgtBarrier){badge='BLOCKED';badgeCol='#6080d0';badgeBg='rgba(10,20,60,.6)';}
@@ -966,8 +976,7 @@ function drawActionGrid(){
             const _stSd=bpScoutedCards[vsRivalIdx-1];
             if(_stSd&&rd-_stSd.round<=1&&_stSd.cards.length>0){
               let _maxR=0;for(let _si=0;_si<_stSd.cards.length;_si++){if(_stSd.cards[_si].r>_maxR)_maxR=_stSd.cards[_si].r;}
-              const _rNames=['','C','U','R','E','L'];
-              badge='\u26A1'+(_rNames[_maxR]||'?')+' TARGET';
+              badge=_STL_RAR_LBL[_maxR]||'\u26A1? TARGET'; // v332: pre-baked, _rNames local removed
               badgeCol=_maxR>=5?'#ffe080':_maxR>=4?'#f0c030':_maxR>=3?'#b060e0':'#e08030';
               badgeBg=_maxR>=4?'rgba(40,30,0,.6)':'rgba(40,20,0,.6)';
             }else{badge='\u2714 OPEN';badgeCol='#e08030';badgeBg='rgba(40,20,0,.6)';}
