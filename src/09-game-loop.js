@@ -281,6 +281,11 @@ function update(){
       else if(dist>8&&dist<=15){lg.push('You sense movement nearby...');}
     }
   }
+  // v296: Floor-specific dungeon atmosphere (every ~10s while in dungeon)
+  if(inDungeon&&fr%600===0&&currentFloor>=1&&currentFloor<=5){
+    const _fa=_FLOOR_ATMOS[currentFloor];
+    if(_fa)lg.push(_fa[Math.floor(Math.random()*_fa.length)]);
+  }
 
   // Footprint log messages when player walks on rival footprints
   if(sc==='map'&&!mo){

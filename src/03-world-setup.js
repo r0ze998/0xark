@@ -162,6 +162,9 @@ let proximityTauntText='';   // current taunt being displayed
 let proximityTauntRival=-1;  // which rival (1 or 2)
 let proximityTauntFrame=0;   // when taunt started
 
+// v296: Roman numeral floor labels (hoisted — replaces inline array in updateRivalActivity)
+const _RN_ROMAN=['','I','II','III','IV','V'];
+
 // Close-range taunts indexed by [rivalIdx=0/1][sub]
 // v292: floor-tiered proximity taunts — called at dangerLevel 3 (within 5 tiles)
 const _PROX_VEGA=[
@@ -634,7 +637,7 @@ function updateRivalActivity(){
     const cardId=pool[Math.floor(Math.random()*pool.length)];
     const cr=CD[cardId-1];
     const rName=pl[ri+1].n;
-    const rivalHandCount=pl[ri+1].cd.filter(c=>c>0).length;
+    const rivalHandCount=cdCount(pl[ri+1].cd); // v296: cdCount replaces .filter().length
     // Only collect if they have room or swap
     if(rivalHandCount<5){
       addCardToPlayer(ri+1,cardId);
@@ -643,12 +646,10 @@ function updateRivalActivity(){
       addCardToPlayer(ri+1,cardId);
     }
     // Log this as a world event (with color hint in text)
-    const floorName='Floor '+rMap;
-    lg.push('['+rName+'] found '+cr.n+' on '+floorName+'! ('+RARITY_LABEL[cr.r]+')');
-    // v73: Push to rival intel ticker for all finds
-    const floorNums=['','I','II','III','IV','V'];
+    lg.push('['+rName+'] found '+cr.n+' on Floor '+rMap+'! ('+RARITY_LABEL[cr.r]+')');
+    // v73: Push to rival intel ticker; v296: hoisted Roman numeral array reused
     rivalNewsQueue.push({
-      text:rName+' seized '+cr.n+' on FLOOR '+(floorNums[rMap]||rMap),
+      text:rName+' seized '+cr.n+' on FLOOR '+(_RN_ROMAN[rMap]||rMap),
       rivalIdx:ri,rarity:cr.r
     });
     // Show HUD hint for rare+ rival finds (keep existing fallback)
@@ -657,7 +658,7 @@ function updateRivalActivity(){
       tutorialMsg=rName+' found '+cr.n+'! ('+rarLabel+')';tutorialMsgTimer=140;
     }
     // Contextual commentary based on rival personality and situation
-    const newCount=pl[ri+1].cd.filter(c=>c>0).length;
+    const newCount=cdCount(pl[ri+1].cd); // v296: cdCount replaces .filter().length
     if(newCount>=4){
       lg.push('[WARNING] '+rName+' is stacking cards. Intercept them!');
       if(!rivalWinWarningShown){sfxDangerAlert();}

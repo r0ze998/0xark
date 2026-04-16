@@ -2,6 +2,16 @@
 const _SYNTH_RAR_LABELS=['','Common','Uncommon','Rare','Epic'];
 // v262: Additional per-frame inline literals hoisted
 const _WLD_FLOOR_NUMS=['','B1','B2','B3','B4','B5'];
+
+// v296: Floor-specific atmosphere log messages (ARK lore flavor, one per floor per ~10s tick)
+const _FLOOR_ATMOS=[
+  null, // index 0 unused
+  ['Water seeps through the cracked walls.','Salt and rust. The ARK still breathes.','The floor groans under centuries of weight.','Light barely reaches here. Something watches.','Drowned murals cover the walls — old crew markings.'],
+  ['Bookshelves warp in the damp. Pages unreachable.','A scholar\'s handwriting fades on the stone.','Ink-stained desks, long abandoned.','The ARK crew archived everything. Even their fear.','A soft hum — arcane lattices still active.'],
+  ['Clockwork somewhere below. Constant. Patient.','Echo chambers amplify every footstep. They hear you.','The ARK was a machine. This floor is its memory.','Gearwork never stops — even after the crew left.','A resonance pulse washes through. Something calibrates.'],
+  ['Silence this deep feels wrong.','No light reaches Floor 4 naturally. Something else does.','The vault was sealed from the inside.','Cards sealed here were meant to never be found.','This deep, the ARK stops pretending to be safe.'],
+  ['The core still beats. The ARK isn\'t dead.','Heat rises from the lowest chamber. Mechanical life.','Whoever built this wanted it to last forever.','The crew never made it this far. You did.','Power conduits throb in the walls. The ARK recognizes you.'],
+];
 const _WLD_RAR_COLS=['','#888898','#50d060','#6090f0','#c060e0','#fff8a0'];
 const _TITLE_VOID_COLS=['#5014b4','#5c1cc0','#6824cc','#742cd8','#8034e4'];
 // ═══════════════════════════════════════
