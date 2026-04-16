@@ -62,6 +62,10 @@ let _mapLblCache='MAP:0%',_mapLblKey=-1; // map exploration % lazy cache
 let _timeLblMapCache='',_timeLblMapMin=-1; // season timer lazy cache for canvas HUD (per minute)
 // v324: pre-baked small positive-int labels (+0…+20) for overflow counts
 const _PLUS_INT=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('+'+i);return a;})();
+// v325: lazy caches for rival off-floor HUD strip, trail exclamation, pot display
+let _rInfoLbl=['',''],_rInfoKey=[-1,-1]; // rival HUD info strip (key=rFloor*10+rcc2)
+let _trailLbl=['',''],_trailNm=['','']; // rival trail '!' label (key=player name[0])
+let _potLblCache='POT:0.00',_potLblRef=-1; // POT: display (key=stakePotAmount*100|0)
 // v319: pre-baked distance-tile strings + near-win lazy cache
 const _DIST_T=(()=>{const a=[];for(let i=0;i<=50;i++)a.push(i+'t');return a;})();
 let _nearWinStr='RIVAL NEAR WIN!',_nearWinKey=-1;
@@ -1449,7 +1453,7 @@ function dMap(){
         if(o<sVal){bx(ox,orbY,orbW,orbH,_ORB_SF[si]);bx(ox+1,orbY+1,2,1,'rgba(255,255,255,.35)');}
         else{bx(ox,orbY,orbW,orbH,_ORB_SE[si]);}
       }
-      if(sVal>3){txShadow('+'+(sVal-3),orbX+3*(orbW+orbGap)+2,hudY+20,6,'#f0c830','rgba(0,0,0,.4)');}
+      if(sVal>3){txShadow(_PLUS_INT[sVal-3]||('+'+( sVal-3)),orbX+3*(orbW+orbGap)+2,hudY+20,6,'#f0c830','rgba(0,0,0,.4)');} // v325
       if(warn){
         const wA=0.4+Math.sin(fr*0.18)*0.4;
         g.globalAlpha=wA;bx(sCX-2,hudY+10,orbX+3*(orbW+orbGap)-sCX+2,orbH+2,'rgba(180,40,40,.15)');g.globalAlpha=1;
@@ -1696,7 +1700,8 @@ function dMap(){
     const rCol=ri===0?'#d060a0':'#d0a030';
     const labelY=hudY+4+ri*14;
     const labelX=W-200;
-    txShadow(rp.n[0]+' F'+(_FLOOR_NUMS[rFloor]||rFloor)+' '+(_RCC_SPADE[rcc2]||rcc2+'♠'),labelX,labelY,5,rcc2>=4?'#d04040':rCol,'rgba(0,0,0,.4)'); // v319
+    const _rIK=rFloor*10+rcc2;if(_rInfoKey[ri]!==_rIK){_rInfoKey[ri]=_rIK;_rInfoLbl[ri]=rp.n[0]+' F'+(_FLOOR_NUMS[rFloor]||rFloor)+' '+(_RCC_SPADE[rcc2]||rcc2+'♠');} // v325: lazy
+    txShadow(_rInfoLbl[ri],labelX,labelY,5,rcc2>=4?'#d04040':rCol,'rgba(0,0,0,.4)');
   }
 
   // Rival Threat Indicator (compass arrow at top of screen)
@@ -1752,7 +1757,8 @@ function dMap(){
         g.fillStyle=_RIVAL_TRAIL_COLS[ri];
         g.fillRect(trailX,hudY+52,2,3);g.fillRect(trailX+3,hudY+53,2,2);
         g.globalAlpha=1;
-        txShadow(pl[ri+1].n[0]+'!',trailX+6,hudY+57,6,_RIVAL_TRAIL_COLS[ri],'rgba(0,0,0,.4)');
+        const _tnm=pl[ri+1].n[0];if(_trailNm[ri]!==_tnm){_trailNm[ri]=_tnm;_trailLbl[ri]=_tnm+'!';} // v325: lazy
+        txShadow(_trailLbl[ri],trailX+6,hudY+57,6,_RIVAL_TRAIL_COLS[ri],'rgba(0,0,0,.4)');
         trailX+=26;
       }
     }
@@ -1781,7 +1787,8 @@ function dMap(){
     drawSolanaIcon(808,hudY+15,7);
     txShadow('ON-CHAIN',820,hudY+22,6,'#40d080','rgba(0,0,0,.4)');
     // Pot display
-    txShadow('POT:'+stakePotAmount.toFixed(2),820,hudY+32,5,'#14F195','rgba(0,0,0,.4)');
+    const _potK=(stakePotAmount*100)|0;if(_potLblRef!==_potK){_potLblRef=_potK;_potLblCache='POT:'+stakePotAmount.toFixed(2);} // v325: lazy
+    txShadow(_potLblCache,820,hudY+32,5,'#14F195','rgba(0,0,0,.4)');
     // Season 1 indicator (competitive mode)
     bx(900,hudY+14,24,14,'rgba(200,152,32,.3)');
     txShadow('S1',904,hudY+24,7,'#f0c830','rgba(0,0,0,.4)');
@@ -1794,7 +1801,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v324',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v325',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
