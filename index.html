@@ -13294,6 +13294,27 @@ const _btlLowHpVig=(()=>{
   ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;
 })();
 
+// ── Battle HUD helpers ──
+// Draws BATTLE_HP_MAX pixel-art hearts at (hx,hy); fills with filledNorm or filledFlash when isFlashing
+function _drawHPHearts(hx,hy,hp,filledNorm,filledFlash,empty,isFlashing){
+  for(let h=0;h<BATTLE_HP_MAX;h++){
+    const filled=h<hp;
+    const hc=filled?(isFlashing?filledFlash:filledNorm):empty;
+    const hhi=hx+h*14,hhj=hy;
+    bx(hhi+1,hhj,3,1,hc);bx(hhi,hhj+1,6,1,hc);bx(hhi,hhj+2,6,2,hc);
+    bx(hhi+1,hhj+4,4,1,hc);bx(hhi+2,hhj+5,2,1,hc);bx(hhi+3,hhj+6,1,1,hc);
+    if(filled)bx(hhi+1,hhj+2,1,1,'rgba(255,255,255,.4)');
+  }
+}
+// Draws tell accuracy reveal banner; yBase is the top of the 14px banner strip
+function _drawAccuracyReveal(px_,yBase,bw_,revT_,acc_,bluffName_,alpha_){
+  const revA=revT_<35?Math.min(1,revT_/8):(45-revT_)/10;
+  g.globalAlpha=revA*alpha_;
+  bx(px_+4,yBase,bw_-8,14,acc_?'rgba(20,80,40,.5)':'rgba(80,20,20,.5)');
+  txShadow(acc_?'\u2713 TELL WAS TRUE':'\u2717 '+bluffName_+' BLUFFED',px_+8,yBase+10,6,acc_?'#50d080':'#d05050','rgba(0,0,0,.3)');
+  g.globalAlpha=1;
+}
+
 // Draw FRLG-style opponent info box (top-left)
 function drawOpponentInfoBox(){
   const rival=pl[1]; // Primary opponent (VEGA)
@@ -13318,16 +13339,8 @@ function drawOpponentInfoBox(){
   // Rival 1 (VEGA)
   txShadow(rival.n,bx_+10,by_+20,12,'#d06080','rgba(0,0,0,.5)');
   // HP hearts rival 1
-  {const r1hp=bpHP[1],hx=bx_+80,hy=by_+9;
-  const dmgFlash1=bpHPDmgAnim[1]>0&&Math.floor(fr/3)%2===0;
-  for(let h=0;h<BATTLE_HP_MAX;h++){
-    const filled=h<r1hp;
-    const hc=filled?(dmgFlash1?'#ff8888':'#e84040'):'#401818';
-    const hhi=hx+h*14,hhj=hy;
-    bx(hhi+1,hhj,3,1,hc);bx(hhi,hhj+1,6,1,hc);bx(hhi,hhj+2,6,2,hc);
-    bx(hhi+1,hhj+4,4,1,hc);bx(hhi+2,hhj+5,2,1,hc);bx(hhi+3,hhj+6,1,1,hc);
-    if(filled)bx(hhi+1,hhj+2,1,1,'rgba(255,255,255,.4)');
-  }}
+  {const dmgFlash1=bpHPDmgAnim[1]>0&&Math.floor(fr/3)%2===0;
+  _drawHPHearts(bx_+80,by_+9,bpHP[1],'#e84040','#ff8888','#401818',dmgFlash1);}
   txShadow('CARDS',bx_+120,by_+20,7,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
   const r1Cards=cardCount(rival);
@@ -13350,14 +13363,7 @@ function drawOpponentInfoBox(){
     g.globalAlpha=1;
   }
   // v311: tell accuracy reveal block for rival 1
-  if(showAccuracyReveal){
-    const _revA=_revT<35?Math.min(1,_revT/8):(45-_revT)/10;
-    const _acc0=bpTellWasAccurate[0];
-    g.globalAlpha=_revA*0.92;
-    bx(bx_+4,by_+34,bw-8,14,_acc0?'rgba(20,80,40,.5)':'rgba(80,20,20,.5)');
-    txShadow(_acc0?'\u2713 TELL WAS TRUE':'\u2717 VEGA BLUFFED',bx_+8,by_+44,6,_acc0?'#50d080':'#d05050','rgba(0,0,0,.3)');
-    g.globalAlpha=1;
-  }
+  if(showAccuracyReveal)_drawAccuracyReveal(bx_,by_+34,bw,_revT,bpTellWasAccurate[0],'VEGA',0.92);
   // Separator
   const sepY=(showTells||showAccuracyReveal)?by_+52:by_+44;
   bx(bx_+8,sepY,bw-16,1,ARK.border);
@@ -13368,16 +13374,8 @@ function drawOpponentInfoBox(){
   {const _alive=r2alive?1:0;if(_hunterFledRef!==hunter||_hunterFledAlive!==_alive){_hunterFledRef=hunter;_hunterFledAlive=_alive;_hunterFledLbl=hunter.n+(_alive?'':' FLED');}
   txShadow(_hunterFledLbl,bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.4)');} // v345: lazy cache
   // HP hearts rival 2
-  if(r2alive){const r2hp=bpHP[2],hx=bx_+80,hy=sepY+7;
-  const dmgFlash2=bpHPDmgAnim[2]>0&&Math.floor(fr/3)%2===0;
-  for(let h=0;h<BATTLE_HP_MAX;h++){
-    const filled=h<r2hp;
-    const hc=filled?(dmgFlash2?'#ffcc88':'#e8a040'):'#402018';
-    const hhi=hx+h*14,hhj=hy;
-    bx(hhi+1,hhj,3,1,hc);bx(hhi,hhj+1,6,1,hc);bx(hhi,hhj+2,6,2,hc);
-    bx(hhi+1,hhj+4,4,1,hc);bx(hhi+2,hhj+5,2,1,hc);bx(hhi+3,hhj+6,1,1,hc);
-    if(filled)bx(hhi+1,hhj+2,1,1,'rgba(255,255,255,.4)');
-  }}
+  if(r2alive){const dmgFlash2=bpHPDmgAnim[2]>0&&Math.floor(fr/3)%2===0;
+  _drawHPHearts(bx_+80,sepY+7,bpHP[2],'#e8a040','#ffcc88','#402018',dmgFlash2);}
   if(r2alive){
     drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
     const r2Cards=cardCount(hunter);
@@ -13400,14 +13398,7 @@ function drawOpponentInfoBox(){
       g.globalAlpha=1;
     }
     // v311: tell accuracy reveal block for rival 2 (MIRA)
-    if(showAccuracyReveal&&bpRivalTells[1]){
-      const _revA=_revT<35?Math.min(1,_revT/8):(45-_revT)/10;
-      const _acc1=bpTellWasAccurate[1];
-      g.globalAlpha=_revA*0.88;
-      bx(bx_+4,sepY+26,bw-8,14,_acc1?'rgba(20,80,40,.5)':'rgba(80,20,20,.5)');
-      txShadow(_acc1?'\u2713 TELL WAS TRUE':'\u2717 MIRA BLUFFED',bx_+8,sepY+36,6,_acc1?'#50d080':'#d05050','rgba(0,0,0,.3)');
-      g.globalAlpha=1;
-    }
+    if(showAccuracyReveal&&bpRivalTells[1])_drawAccuracyReveal(bx_,sepY+26,bw,_revT,bpTellWasAccurate[1],'MIRA',0.88);
   }
   // Scout intel
   if(hasScout){
