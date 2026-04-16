@@ -90,15 +90,16 @@ function drawRuneGlow(x,y,w,h,col,fr_){
 
 function bx(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}
 function tx(s,x,y,sz,c){
-  g.fillStyle=c||ARK.text;
   setFont(Math.max(12,Math.round((sz||12)*1.4)));
-  g.fillText(s,x,y);
+  g.fillStyle=c||ARK.text;g.fillText(s,x,y);
 }
 // v246: Font cache — g.font= is one of the most expensive Canvas2D ops (triggers font metric recalc)
-// v246: Font + shadow state cache — skips redundant Canvas2D property assignments
+// v246: Font + shadow state cache — skips redundant Canvas2D property assigns
+// v353: pre-baked font strings 12-60px — eliminates string concat on font-size changes
+const _FONT_STR=(()=>{const m={};for(let i=12;i<=60;i++)m[i]=i+"px 'VT323',monospace";return m;})();
 // _lastFontSz reset each draw() frame + after non-VT323 g.font= calls
 let _lastFontSz=-1,_shadowReady=false;
-function setFont(sz){if(sz!==_lastFontSz){g.font=sz+"px 'VT323',monospace";_lastFontSz=sz;}}
+function setFont(sz){if(sz!==_lastFontSz){g.font=_FONT_STR[sz]||(sz+"px 'VT323',monospace");_lastFontSz=sz;}}
 function txShadow(s,x,y,sz,color,shadowColor){
   // v210: native shadow API — 3 fillText → 1 (save ~100 draw calls/frame)
   // v246: cache font + shadow offset state — static offset/blur set once per frame (saves 3×N assigns)
