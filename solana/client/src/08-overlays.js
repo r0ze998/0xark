@@ -184,8 +184,8 @@ function drawDungeonConfirm(){
   for(let _ti=0;_ti<treasures.length;_ti++){const _tr=treasures[_ti];if(_tr.map===1){f1Total++;if(!_tr.collected)f1Uncollected++;}}
   // v339: B1 danger level indicator
   {const _dv=areaDanger[1]||0;const _di=_dv>=DANGER_HIGH_THRESH?2:_dv>=DANGER_LOW_THRESH?1:0;
-  const _dlbl=['SAFE','LOW DANGER','HIGH DANGER'][_di];const _dcol=['#40b060','#d0a030','#d04040'][_di];
-  txShadow('\u26A0 B1: '+_dlbl,cx_+cw-110,cy_+50,7,_dcol,'rgba(0,0,0,.3)');}
+  const _dcol=['#40b060','#d0a030','#d04040'][_di];
+  txShadow(_B1_DANGER_LBL[_di],cx_+cw-110,cy_+50,7,_dcol,'rgba(0,0,0,.3)');}
   if(f1Uncollected>0){
     const _ck=f1Uncollected*100+f1Total;if(_f1ChestKey!==_ck){_f1ChestKey=_ck;_f1ChestLbl='\u25cf B1 chests: '+f1Uncollected+'/'+f1Total+' uncollected';} // v339: lazy cache
     txShadow(_f1ChestLbl,cx_+20,intelY,7,'#c0a840','rgba(0,0,0,.3)');
@@ -236,6 +236,8 @@ const _MKT_LISTING_PRICE_LBL=_MKT_LISTINGS.map(l=>l.price+' SOL');
 const _LOG_STAT_LABELS=['btl','got','lost',''];
 // v338: pre-baked card decay countdown strings 0..210s (CARD_DECAY_MS=210000)
 const _DECAY_TIME_LBL=(()=>{const a=[];for(let s=0;s<=300;s++){const mm=Math.floor(s/60),ss2=s%60;a.push(mm>0?mm+'m'+(ss2<10?'0':'')+ss2+'s':s+'s');}return a;})();
+// v352: pre-baked B1 danger labels
+const _B1_DANGER_LBL=['\u26A0 B1: SAFE','\u26A0 B1: LOW DANGER','\u26A0 B1: HIGH DANGER'];
 // v339: lazy cache for B1 chest intel label in dungeon confirm
 let _f1ChestLbl='',_f1ChestKey=-1;
 // v345: lazy cache for mission desc label in dungeon confirm
