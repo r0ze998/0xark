@@ -1132,7 +1132,7 @@ function dMap(){
     const dangerV=areaDanger[currentMap]||0;
     if(dangerV>=DANGER_LOW_THRESH){
       const isHigh=dangerV>=DANGER_HIGH_THRESH;
-      const pulse=Math.sin(fr*(isHigh?0.07:0.04))*0.5+0.5;
+      const pulse=(isHigh?_sFr07:_sFr04)*0.5+0.5; // v357: cached sin
       const baseA=isHigh?0.08+pulse*0.08:0.04+pulse*0.04;
       // v227: use pre-baked danger vignette canvas (was createRadialGradient every 3rd frame)
       g.globalAlpha=baseA;
@@ -1187,7 +1187,7 @@ function dMap(){
   if(!inDungeon&&currentMap===0){
     const entX=27*TW-camX+TW/2, entY=11*TH-camY-18;
     if(entX>-60&&entX<W+60&&entY>-30&&entY<H){
-      const pulse=Math.abs(Math.sin(fr*0.06))*0.5+0.5;
+      const pulse=Math.abs(_sFr06)*0.5+0.5;
       g.globalAlpha=0.55+pulse*0.45;
       txShadow('DUNGEON',entX-28,entY,9,'#e040e0','rgba(0,0,0,.6)');
       // Down arrow pulsing
@@ -1201,7 +1201,7 @@ function dMap(){
   // Shows ◀ ESCAPE near the exit stairs and DEEPER ▶ near the descent stairs
   // Only rendered when the staircase tile has been fog-revealed
   if(inDungeon){
-    const stairPulse=Math.abs(Math.sin(fr*0.055))*0.45+0.55;
+    const stairPulse=Math.abs(_sFr055)*0.45+0.55; // v357: cached sin(fr*0.055)
     // ESCAPE stairs: fixed at x=3, y=14 in all dungeon floors
     const escScrX=3*TW-camX+TW/2, escScrY=13*TH-camY-8;
     if(fogRevealed[currentMap]?.[14]?.[3]&&escScrX>-100&&escScrX<W+100&&escScrY>-30&&escScrY<H){
@@ -1822,7 +1822,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v356',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v357',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
