@@ -370,6 +370,8 @@ function dSplash(){
 function draw(){
   // Fill with deep-ocean background (prevents transparent bleed-through beyond map edges)
   g.fillStyle='#070d1a';g.fillRect(0,0,W,H);
+  // v246: reset txShadow font cache each frame (direct g.font= assignments can invalidate it)
+  _lastFontSz=-1;
   // Global screen shake
   let _shaking=false;
   if(shakeT>0){

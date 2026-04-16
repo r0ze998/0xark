@@ -90,14 +90,16 @@ function drawRuneGlow(x,y,w,h,col,fr_){
 function bx(x,y,w,h,c){g.fillStyle=c;g.fillRect(x,y,w,h);}
 function tx(s,x,y,sz,c){
   g.fillStyle=c||ARK.text;
-  const finalSz=Math.max(12,Math.round((sz||12)*1.4));
-  g.font=finalSz+"px 'VT323',monospace";
+  setFont(Math.max(12,Math.round((sz||12)*1.4)));
   g.fillText(s,x,y);
 }
+// v246: Font cache — g.font= is one of the most expensive Canvas2D ops (triggers font metric recalc)
+// _lastFontSz is reset each draw() frame via 09-game-loop.js; direct g.font= calls invalidate it too
+let _lastFontSz=-1;
+function setFont(sz){if(sz!==_lastFontSz){g.font=sz+"px 'VT323',monospace";_lastFontSz=sz;}}
 function txShadow(s,x,y,sz,color,shadowColor){
   // v210: native shadow API — 3 fillText → 1 (save ~100 draw calls/frame)
-  const finalSz=Math.max(12,Math.round((sz||12)*1.4));
-  g.font=finalSz+"px 'VT323',monospace";
+  setFont(Math.max(12,Math.round((sz||12)*1.4)));
   g.shadowColor=shadowColor||'rgba(0,0,0,0.9)';
   g.shadowOffsetX=1;g.shadowOffsetY=1;g.shadowBlur=0;
   g.fillStyle=color||ARK.text;g.fillText(s,x,y);
