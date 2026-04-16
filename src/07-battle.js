@@ -1407,8 +1407,11 @@ function drawSelectPhase(){
   }
   if(bpTargetSelectActive){
     bx(0,0,W,H,'rgba(0,0,0,.4)');
-    win(W/2-140,H/2-50,280,100);
-    txShadow('Target:',W/2-48,H/2-26,14,'#806030','rgba(0,0,0,.2)');
+    win(W/2-140,H/2-60,280,118);
+    // v340: show action context in header (STEAL target vs USE CARD target)
+    const _tgtHdr=bpAction===1?'\u2694 STEAL Target:':'\u2665 USE CARD Target:';
+    txShadow(_tgtHdr,W/2-126,H/2-36,10,'#a06030','rgba(0,0,0,.3)');
+    bx(W/2-130,H/2-22,260,1,'rgba(180,150,80,.3)');
     for(let t=1;t<=2;t++){
       const y=H/2-4+(t-1)*32;
       const tFled=cardCount(pl[t])===0;
@@ -1418,6 +1421,8 @@ function drawSelectPhase(){
       txShadow(tFled?'FLED':(_SPLASH_CARD_LBL[pl[t].cc]||(pl[t].cc+' cards')),W/2+40,y+14,10,tFled?'#a04040':'#908878','rgba(0,0,0,.15)');
       g.globalAlpha=1;
     }
+    // v340: key hint
+    g.globalAlpha=0.55;txShadow('[W/S] Choose   [Z] Confirm',W/2-102,H/2+54,6,'#a09070','rgba(0,0,0,.2)');g.globalAlpha=1;
   }
   // v217: Low HP danger pulse — screen-edge red vignette when player HP critical
   if(bpHP[0]===1){
