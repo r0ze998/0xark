@@ -6712,8 +6712,8 @@ function drawTreasure(px,py,tx_,ty){
   const sparkPhase=Math.floor(fr*.15+tx_*2)%4;
   const colors=['#f8e060','#f0c830','#e8a020','#f8f0a0'];
   if(useKenney.treasure && drawKenneyTileTinted(K.chest[0], K.chest[1], px, py, 2, colors[sparkPhase])){
-    // Sparkle orbit around chest — v366: sin-addition eliminates Math.cos/sin per sparkle
-    const _sbt=Math.sin(fr*0.03+tx_),_cbt=Math.cos(fr*0.03+tx_);
+    // Sparkle orbit around chest — v371: sin-addition with _IDX_SI/CI table (tx_ 0-39)
+    const _sbt=_sFr03*_IDX_CI[tx_]+_cFr03*_IDX_SI[tx_],_cbt=_cFr03*_IDX_CI[tx_]-_sFr03*_IDX_SI[tx_];
     g.globalAlpha=pulse*.5;g.fillStyle='#f8e060';
     for(let i=0;i<3;i++){
       const dist=10+(_sFr05*_BTL_CRYST_CI[i]+_cFr05*_BTL_CRYST_SI[i])*3;
@@ -6725,8 +6725,8 @@ function drawTreasure(px,py,tx_,ty){
     g.globalAlpha=pulse*.2;g.drawImage(_tileTreasureGlow10,(px+5)|0,(py+5)|0);g.globalAlpha=1;
     return;
   }
-  // Fallback sparkle effect — v366: sin-addition eliminates Math.cos/sin per sparkle
-  const _sbt2=Math.sin(fr*0.03+tx_),_cbt2=Math.cos(fr*0.03+tx_);
+  // Fallback sparkle effect — v371: sin-addition with _IDX_SI/CI table
+  const _sbt2=_sFr03*_IDX_CI[tx_]+_cFr03*_IDX_SI[tx_],_cbt2=_cFr03*_IDX_CI[tx_]-_sFr03*_IDX_SI[tx_];
   g.globalAlpha=pulse*.6;g.fillStyle='#f8e060';
   for(let i=0;i<5;i++){
     const dist=8+(_sFr05*_BTL_CRYST_CI[i]+_cFr05*_BTL_CRYST_SI[i])*3;
