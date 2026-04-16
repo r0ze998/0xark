@@ -31,6 +31,8 @@ function _getTypeInfo(t,r){
   if(t==='recovery')return _REC_TYPE_INFOS[Math.min(4,(r||1)-1)];
   return _CARD_TYPE_INFO_S[t]||_UNK_TYPE_INFO;
 }
+// v266: reusable slot buffer for USE CARD select — eliminates filled=[] per frame while card select open
+const _csFilledBuf=new Int8Array(7);
 const _BTYPES=['attack','defense','flee','magic','recovery'],_BTYPE_ABB=['ATK','DEF','FLY','MAG','REC'],_BTYPE_COL=['#c83838','#3888c8','#30b870','#a840c0','#c8a830'];
 const _btCounts=new Int32Array(5); // reused each frame, zero-filled
 // v245: Pre-baked VS gold circle — eliminates arc per battle-intro frame
@@ -1197,17 +1199,16 @@ function drawSelectPhase(){
   // Card selection submenu for USE CARD
   if(bpCardSelectActive){
     bx(0,0,W,H,'rgba(0,0,0,.5)');
-    const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
-    // Larger card frames — 30% bigger
+    // v266: reuse _csFilledBuf — no array alloc per frame while card select open
+    let _csN=0;for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)_csFilledBuf[_csN++]=i;}
     const cardH=48;
-    const mh=filled.length*cardH+56;
+    const mh=_csN*cardH+56;
     const cardW=380;
     win(W/2-cardW/2,H/2-mh/2,cardW,mh);
     txShadow('Use which card?',W/2-90,H/2-mh/2+26,14,'#806030','rgba(0,0,0,.2)');
-    // Spread cards out more if fewer in hand
-    const spacing=filled.length<=3?Math.min(cardH+8,(mh-56)/Math.max(1,filled.length)):cardH;
-    for(let j=0;j<filled.length;j++){
-      const slot=filled[j];const cd=pl[0].cd[slot],cr=CD[cd-1];
+    const spacing=_csN<=3?Math.min(cardH+8,(mh-56)/Math.max(1,_csN)):cardH;
+    for(let j=0;j<_csN;j++){
+      const slot=_csFilledBuf[j];const cd=pl[0].cd[slot],cr=CD[cd-1];
       const y=H/2-mh/2+46+j*spacing;
       if(j===bpCardSelectIdx){bx(W/2-cardW/2+8,y-4,cardW-16,cardH-4,'rgba(192,168,96,.25)');txShadow('\u25B6',W/2-cardW/2+4,y+20,12,'#c04040','rgba(0,0,0,.3)');}
       // Larger card frame with character sprite
@@ -1219,8 +1220,8 @@ function drawSelectPhase(){
       txShadow(cr.f,frameX+44,y+36,11,'#908878','rgba(0,0,0,.15)');
     }
     // v91: Effect preview panel for selected card (shown to the right of card list)
-    if(filled.length>0&&bpCardSelectIdx>=0&&bpCardSelectIdx<filled.length){
-      const selSlot=filled[bpCardSelectIdx];
+    if(_csN>0&&bpCardSelectIdx>=0&&bpCardSelectIdx<_csN){
+      const selSlot=_csFilledBuf[bpCardSelectIdx];
       const selCard=pl[0].cd[selSlot];
       if(selCard>0){
         const scr=CD[selCard-1];
