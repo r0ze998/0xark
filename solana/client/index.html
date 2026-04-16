@@ -8315,10 +8315,22 @@ function getNPCDialog(npc){
     return['East is the dungeon —','the sunken ARK vessel.','Cards DECAY in 3.5 min.','Escape west before','they crumble to nothing.','I\'ll keep the light on.'];
   }
   if(npc.name==='Alchemist'){
-    const rarityCounts={};
-    for(let _ai=0,_al=pl[0].cd.length;_ai<_al;_ai++){const _c=pl[0].cd[_ai];if(_c>0){const r=CD[_c-1]?.r||1;rarityCounts[r]=(rarityCounts[r]||0)+1;}}
-    let canSynth=false;for(const _r in rarityCounts){if(rarityCounts[_r]>=3){canSynth=true;break;}} // v301: loop replaces Object.values().some()
-    if(canSynth)return['I sense synthesis','potential in your hand!','Bring me 3 cards','of matching rarity.','I will forge them','into something rarer.'];
+    // v313: specific rarity-aware dialog
+    const rc=[0,0,0,0,0]; // rc[1]=common, rc[2]=uncommon, rc[3]=rare, rc[4]=epic
+    for(let _ai=0,_al=pl[0].cd.length;_ai<_al;_ai++){const _c=pl[0].cd[_ai];if(_c>0){const _r=CD[_c-1]?.r||1;if(_r<=4)rc[_r]++;}}
+    let bestRar=0;for(let _r=4;_r>=1;_r--){if(rc[_r]>=3){bestRar=_r;break;}}
+    if(bestRar>0){
+      const cnt=rc[bestRar];const fromLbl=_SYNTH_RAR_LABELS[bestRar];
+      const toLbl=bestRar<4?_SYNTH_RAR_LABELS[bestRar+1]:'Legendary';
+      return['You have '+cnt+' '+fromLbl+'s!','Bring me three of them.','I\'ll forge them into','a '+toLbl+' card.','The power is yours','to claim — come!'];
+    }
+    // Close (2 of a rarity): encourage
+    let closeRar=0;for(let _r=4;_r>=1;_r--){if(rc[_r]===2){closeRar=_r;break;}}
+    if(closeRar>0){
+      const fromLbl=_SYNTH_RAR_LABELS[closeRar];
+      const toLbl=closeRar<4?_SYNTH_RAR_LABELS[closeRar+1]:'Legendary';
+      return['Almost there!','Two '+fromLbl+'s in hand.','One more '+fromLbl,'and I can forge','a '+toLbl+' card','for you. Seek it!'];
+    }
     return['I can fuse cards into','higher rarities!','Bring me 3 cards','of the same rarity.','I will forge them','into something greater.'];
   }
   return npc.dialog;
@@ -8340,7 +8352,13 @@ function getNPCAmbientLines(npc){
   }
   if(npc.name==='ARK Guide')return['The ARK waits below.','60 cards. One heir.','Ask me anything.'];
   if(npc.name==='Dungeon Porter')return['Sunken halls await.','Cards decay fast below!','Come back in one piece.'];
-  if(npc.name==='Alchemist')return['Bring me three cards.','I forge rarities.','Synthesis awaits!'];
+  if(npc.name==='Alchemist'){
+    // v313: contextual ambient — announce when synthesis is ready
+    const rc=[0,0,0,0,0];
+    for(let _ai=0,_al=pl[0].cd.length;_ai<_al;_ai++){const _c=pl[0].cd[_ai];if(_c>0){const _r=CD[_c-1]?.r||1;if(_r<=4)rc[_r]++;}}
+    for(let _r=4;_r>=1;_r--){if(rc[_r]>=3){return['3 '+_SYNTH_RAR_LABELS[_r]+'s!','I can forge now!','Come talk to me!'];}}
+    return['Bring me three cards.','I forge rarities.','Synthesis awaits!'];
+  }
   return[];
 }
 
@@ -11089,7 +11107,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v312',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v313',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -12508,6 +12526,13 @@ function drawSelectPhase(){
     win(hpX,hpY,hpW,hpH);
     bx(hpX,hpY,hpW,3,'#806030'); // amber top border
     txShadow('ROUND LOG',hpX+8,hpY+18,8,'#c0a060','rgba(0,0,0,.3)');
+    // v313: W/L tally — lazy cache, rebuild once per round
+    if(_histWLRd!==rd){
+      _histWLRd=rd;let _w=0,_l=0;
+      for(let _bhi=0;_bhi<battleRoundHistory.length;_bhi++){const _bh=battleRoundHistory[_bhi];if(_bh.got)_w++;if(_bh.lost)_l++;}
+      _histWLStr='W:'+_w+' L:'+_l;
+    }
+    txShadow(_histWLStr,hpX+hpW-64,hpY+18,6,_battleRoundNet>0?'#50d080':_battleRoundNet<0?'#d05050':'#888070','rgba(0,0,0,.3)');
     bx(hpX+6,hpY+22,hpW-12,1,'rgba(200,180,100,.2)');
     for(let i=0;i<histCount;i++){
       const h=battleRoundHistory[i];
@@ -12965,6 +12990,7 @@ let bpScoutedCards=[null,null]; // [{round,cards:[{n,r,t}]}, null] — persists 
 let battleRoundHistory=[]; // v90: [{rd,pa,r1a,r2a,outcome}] per round (pa=playerAction 0-4)
 let _battleRoundNet=0; // v284: running got-lost net, updated at unshift — avoids per-frame reduce
 
+let _histWLStr='W:0 L:0',_histWLRd=-1; // v313: W/L tally cache for round log panel
 // v300: Personality-specific bluff rates — VEGA 45% (unpredictable hunter), MIRA 20% (calculated)
 const _BLUFF_RATES=[0.45,0.20];
 // v293: Pre-computed "other action" indices — eliminates [0,1,2,3].filter per round
