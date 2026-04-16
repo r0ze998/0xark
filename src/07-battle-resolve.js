@@ -917,8 +917,9 @@ function drawResultPhase(){
 
   // v111: Stolen/gained card showcase — prominent display of card won this round
   if(t>18&&bpResolveQueue&&bpResolveQueue.length>0){
-    const stealEv=bpResolveQueue.find(e=>e.effect==='steal_get'&&e.stolenId>0);
-    const drawEv=!stealEv&&bpResolveQueue.find(e=>e.effect==='card_get');
+    // v283: counting loops replace .find() closures — runs every anim frame during resolve
+    let stealEv=null;for(let _si=0;_si<bpResolveQueue.length;_si++){const _e=bpResolveQueue[_si];if(_e.effect==='steal_get'&&_e.stolenId>0){stealEv=_e;break;}}
+    let drawEv=null;if(!stealEv){for(let _di=0;_di<bpResolveQueue.length;_di++){const _e=bpResolveQueue[_di];if(_e.effect==='card_get'){drawEv=_e;break;}}}
     const showcaseId=stealEv?stealEv.stolenId:(drawEv&&bpResolveQueue._pendingDrawCard>0?bpResolveQueue._pendingDrawCard:0);
     if(showcaseId>0&&CD[showcaseId-1]){
       const scr=CD[showcaseId-1];
