@@ -279,8 +279,8 @@ function drawBattleBG(){
   if(vsRiv===1){
     // VEGA: dark magenta screen-edge vignette + drifting orbs
     g.drawImage(_btlVigVega,0,0);
-    // Three drifting dark-energy orbs — v392: 6 trig calls total (was 9)
-    {const _vS=Math.sin(fr*0.018),_vC=Math.cos(fr*0.018);
+    // Three drifting dark-energy orbs — v396: use cached _sFr018/_cFr018 (6→4 calls)
+    {const _vS=_sFr018,_vC=_cFr018; // was Math.sin/cos(fr*0.018) — now free
     const _v7S=Math.sin(fr*0.0126),_v7C=Math.cos(fr*0.0126);
     const _v13S=Math.sin(fr*0.0234),_v13C=Math.cos(fr*0.0234);
     for(let i=0;i<3;i++){
@@ -295,8 +295,8 @@ function drawBattleBG(){
   }else{
     // MIRA: warm amber screen-edge vignette + drifting coin sparks
     g.drawImage(_btlVigMira,0,0);
-    // Drifting coin-glint sparks — v392: 6 trig calls total (was 12)
-    {const _mS=Math.sin(fr*0.022),_mC=Math.cos(fr*0.022);
+    // Drifting coin-glint sparks — v396: use cached _sFr022/_cFr022 (6→4 calls)
+    {const _mS=_sFr022,_mC=_cFr022; // was Math.sin/cos(fr*0.022) — now free
     const _m6S=Math.sin(fr*0.0132),_m6C=Math.cos(fr*0.0132);
     const _m11S=Math.sin(fr*0.0242),_m11C=Math.cos(fr*0.0242);
     for(let i=0;i<4;i++){

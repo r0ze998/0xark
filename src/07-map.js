@@ -1667,14 +1667,15 @@ function dMap(){
         bx(mx_,my_,28,2,'#c03030');bx(mx_,my_+18,28,2,'#c03030');
         bx(mx_+6,my_+2,2,16,'#c05050');bx(mx_+14,my_+4,2,12,'#c05050');
         bx(mx_+20,my_+2,2,8,'#c05050');
-        // Flying shard particles
+        // Flying shard particles — v396: sin-addition (5→2 calls)
+        {const _sh3S=Math.sin(shAge*0.3),_sh3C=Math.cos(shAge*0.3),_sha4=shAge*0.4;
         for(let s=0;s<5;s++){
-          const sx_=mx_+4+s*5+(Math.sin(shAge*0.3+s)*shAge*0.4);
+          const sx_=mx_+4+s*5+(_sh3S*_IDX_CI[s]+_sh3C*_IDX_SI[s])*_sha4;
           const sy_=my_+2+s*3-(shAge*0.5+s*1.2);
           const sa=Math.max(0,shA*(1-s*0.15));
           g.globalAlpha=sa;
           bx(sx_,sy_,3,3,'#d04040');
-        }
+        }}
         // "DECAYED" label
         g.globalAlpha=shA;
         txShadow('LOST',mx_,my_+10,5,'#ff4040','rgba(0,0,0,.6)');
