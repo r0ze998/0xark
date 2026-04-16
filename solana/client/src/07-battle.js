@@ -778,6 +778,7 @@ function drawBattleArena(){
 }
 
 // FRLG-style 2x2 action grid
+let _drawPoolPreviewCache=null,_drawPoolPreviewMap=-1; // v275: cache pool preview slice
 const _AG_ACTIONS=[ // v274: hoisted action grid objects — only desc is rebuilt per frame
   {name:'DRAW',   desc:'floor card pool',  col:'#303028',icon:'#48b8e8'},
   {name:'STEAL',  desc:'',                  col:'#b04040',icon:'#b04040'},
@@ -969,7 +970,8 @@ function drawSelectPhase(){
     if(pool&&pool.length>0){
       const vault_=pl[0].vault||new Set();
       // Show up to 4 cards from pool, marking unowned
-      const previewCards=pool.slice(0,Math.min(4,pool.length));
+      if(_drawPoolPreviewMap!==currentMap){_drawPoolPreviewMap=currentMap;_drawPoolPreviewCache=pool.slice(0,Math.min(4,pool.length));}
+      const previewCards=_drawPoolPreviewCache; // v275: cached
       const ppW=220,ppH=60+previewCards.length*26;
       const ppX=328,ppY=H-164;
       const slideA=Math.min(1,(fr-bpFrame)/10);
@@ -1005,7 +1007,7 @@ function drawSelectPhase(){
     const sd=bpScoutedCards[vsRival-1];
     const tBarrier=bpRivalActions[vsRival-1]===2;
     const rCol=vsRival===1?'#d060a0':'#d0a030';
-    const typeC={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
+    // v274: typeC hoisted to _SCT_TYPE_COL (no per-frame object alloc)
     const scoutLines=sd&&sd.cards.length>0?sd.cards.length:tCC;
     const ppW=220,ppH=60+Math.min(5,Math.max(1,scoutLines))*26;
     const ppX=328,ppY=H-164;
@@ -1030,7 +1032,7 @@ function drawSelectPhase(){
       const show_=sd.cards.slice(0,Math.min(4,sd.cards.length));
       for(let ci=0;ci<show_.length;ci++){
         const c=show_[ci];const rar=c.r||1;const rarCol=RARITY_COLOR[rar]||'#888888';
-        const tCol_=typeC[c.t]||'#808898';
+        const tCol_=_SCT_TYPE_COL[c.t]||'#808898'; // v274: hoisted
         const py2=ppY+38+ci*26;
         const dimC=staleRd>1?0.45:0.85;
         g.globalAlpha=slideA*dimC;
