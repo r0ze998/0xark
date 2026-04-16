@@ -1586,7 +1586,7 @@ function generateResolveEvents(){
         bpHP[tgt]=Math.max(0,bpHP[tgt]-1);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
-        events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'! (-1 HP)',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r});
+        events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'! (-1 HP)',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r,dmg:1});
         lg.push('R'+rd+': Stole '+stolenCard.n+' from '+pl[tgt].n+'! ('+RARITY_LABEL[stolenCard.r]+') -HP');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
         // v79: track steal_win mission
@@ -1597,7 +1597,7 @@ function generateResolveEvents(){
         bpHP[tgt]=Math.max(0,bpHP[tgt]-1);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
-        events.push({type:'result',text:'You stole '+stolenCard.n+' but hand full! Discard one after battle.',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r});
+        events.push({type:'result',text:'You stole '+stolenCard.n+' but hand full! Discard one after battle.',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r,dmg:1});
         events._pendingDrawCard=stolen;
         lg.push('R'+rd+': Stole '+stolenCard.n+' - hand full! -HP');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
@@ -1644,12 +1644,12 @@ function generateResolveEvents(){
           const stolen=removeCardFromPlayer(tgt,-1);
           if(stolen>0&&addCardToPlayer(0,stolen)){
             const sc_=CD[stolen-1];
-            events.push({type:'result',text:cr.n+': -'+dmg+' HP! Power steal! Got '+sc_.n+'!',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:sc_.r});
+            events.push({type:'result',text:cr.n+': -'+dmg+' HP! Power steal! Got '+sc_.n+'!',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:sc_.r,dmg});
             lg.push('R'+rd+': '+cr.n+' -'+dmg+'HP power steal → '+sc_.n+'! ('+RARITY_LABEL[sc_.r]+')');streakCount++;streakDisplayTimer=60;sfxStreakUp();
           }else if(stolen>0){
             events._pendingDrawCard=stolen;
             const sc_=CD[stolen-1];
-            events.push({type:'result',text:cr.n+': -'+dmg+' HP! Stole '+sc_.n+'! Hand full.',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:sc_.r});
+            events.push({type:'result',text:cr.n+': -'+dmg+' HP! Stole '+sc_.n+'! Hand full.',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:sc_.r,dmg});
           }else{events.push({type:'result',text:cr.n+': -'+dmg+' HP damage! '+pl[tgt].n+' has no cards.',effect:'none'});}
         }else{
           events.push({type:'result',text:cr.n+': Strike landed but foe dodged!',effect:'slash',target:tgt});
@@ -1662,7 +1662,7 @@ function generateResolveEvents(){
         sp.b=Math.min(5,sp.b+restore);
         const healed=bpHP[0]<BATTLE_HP_MAX;
         if(healed)bpHP[0]=Math.min(BATTLE_HP_MAX,bpHP[0]+1);
-        events.push({type:'result',text:cr.n+': Barrier! +'+restore+' charge.'+(healed?' Restored 1 HP!':''),effect:'shield'});
+        events.push({type:'result',text:cr.n+': Barrier! +'+restore+' charge.'+(healed?' Restored 1 HP!':''),effect:'shield',heal:healed?1:0});
         lg.push('R'+rd+': '+cr.n+' barrier +'+restore+(healed?' +HP':'')+'!');
       }else if(cr.t==='flee'){
         // Flee: escape battle immediately (no card loss)
@@ -1676,11 +1676,11 @@ function generateResolveEvents(){
         bpHPDmgAnim[1]=20;bpHPDmgAnim[2]=20;
         const stolen=removeCardFromPlayer(tgt,-1);
         if(stolen>0&&addCardToPlayer(0,stolen)){
-          events.push({type:'result',text:cr.n+': Magic! -2 HP all rivals. Stole '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true});
+          events.push({type:'result',text:cr.n+': Magic! -2 HP all rivals. Stole '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true,dmg:2});
           lg.push('R'+rd+': '+cr.n+' magic → '+CD[stolen-1].n+' stolen! -HP rivals');streakCount++;streakDisplayTimer=60;sfxStreakUp();
         }else if(stolen>0){
           events._pendingDrawCard=stolen;
-          events.push({type:'result',text:cr.n+': Magic! Barriers nulled. Stole '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true});
+          events.push({type:'result',text:cr.n+': Magic! Barriers nulled. Stole '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true,dmg:2});
         }else{
           events.push({type:'result',text:cr.n+': Magic! Barriers nulled. -HP rivals.',effect:'none'});
           lg.push('R'+rd+': '+cr.n+' magic — barriers cleared, HP drained!');
@@ -1694,7 +1694,7 @@ function generateResolveEvents(){
         sp.b=Math.min(5,sp.b+1);
         sp.c=Math.min(3,sp.c+1);
         bpHP[0]=Math.min(BATTLE_HP_MAX,bpHP[0]+1);
-        events.push({type:'result',text:cr.n+': Recovery! +'+Math.ceil(cr.r/2)+' Steal, +1 Barrier, +1 Scout. +1 HP!',effect:'card_get'});
+        events.push({type:'result',text:cr.n+': Recovery! +'+Math.ceil(cr.r/2)+' Steal, +1 Barrier, +1 Scout. +1 HP!',effect:'card_get',heal:1});
         lg.push('R'+rd+': '+cr.n+' restored energy + HP!');
       }
       } // end else(card valid)
@@ -1735,7 +1735,7 @@ function generateResolveEvents(){
         // Rival steal success → player loses 1 HP
         bpHP[0]=Math.max(0,bpHP[0]-1);bpHPDmgAnim[0]=20;
         if(bpHP[0]<=0)events._playerDefeated=true;
-        events.push({type:'result',text:pl[1].n+' stole your '+CD[stolen-1].n+'! (-1 HP)',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:0});
+        events.push({type:'result',text:pl[1].n+' stole your '+CD[stolen-1].n+'! (-1 HP)',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:0,dmg:1});
         lg.push('R'+rd+': '+pl[1].n+' stole your '+CD[stolen-1].n+'! -HP');
         screenShake(4,10);
         if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
@@ -1781,7 +1781,7 @@ function generateResolveEvents(){
         // Rival steal success → player loses 1 HP
         bpHP[0]=Math.max(0,bpHP[0]-1);bpHPDmgAnim[0]=20;
         if(bpHP[0]<=0)events._playerDefeated=true;
-        events.push({type:'result',text:pl[2].n+' stole your '+CD[stolen-1].n+'! (-1 HP)',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:1});
+        events.push({type:'result',text:pl[2].n+' stole your '+CD[stolen-1].n+'! (-1 HP)',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:1,dmg:1});
         lg.push('R'+rd+': '+pl[2].n+' stole your '+CD[stolen-1].n+'! -HP');
         screenShake(4,10);
         if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
