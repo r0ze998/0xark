@@ -14,6 +14,61 @@ const _mapEdgeGradB=(()=>{const gr=g.createLinearGradient(0,H-HUD_HEIGHT-_edgeFa
 // v219: Pre-baked proximity danger vignette — avoid createRadialGradient every frame
 const _proxVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H-HUD_HEIGHT;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,(H-HUD_HEIGHT)/2,W*0.3,W/2,(H-HUD_HEIGHT)/2,W*0.7);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(180,30,30,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H-HUD_HEIGHT);return c;})();
 
+// v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
+// Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
+const _dungAtmoSeeds=(()=>{
+  const s=[];
+  for(let i=0;i<24;i++){
+    s.push({
+      bx:((i*7919+113)&0x3FF)/1024.0,  // base X fraction (0..1)
+      by:((i*2654+37)&0x3FF)/1024.0,   // base Y fraction (0..1)
+      phase:((i*1337)&0xFF)/255.0*Math.PI*2, // random phase offset
+      spd:0.4+((i*431+17)&0xFF)/255.0*0.9,  // individual speed 0.4..1.3
+    });
+  }
+  return s;
+})();
+// Floor particle config: [count, color, maxAlpha, vx(px/fr), vy(px/fr), size, pulseFreq, type]
+const _dungAtmoCfg=[
+  null, // floor 0 placeholder
+  {n:18,col:'#a8aeb8',a:0.16,vx:0.06,vy:-0.28,sz:1,pf:0.014,type:'dust'},   // F1: stone dust
+  {n:16,col:'#7888b8',a:0.13,vx:-0.05,vy:-0.22,sz:1,pf:0.011,type:'dust'},  // F2: cool motes
+  {n:12,col:'#9848e0',a:0.22,vx:0.04,vy:-0.18,sz:2,pf:0.020,type:'spark'},  // F3: crystal sparks
+  {n:15,col:'#f03810',a:0.20,vx:0.10,vy:-0.55,sz:1,pf:0.026,type:'ember'},  // F4: embers
+  {n: 8,col:'#5010b8',a:0.11,vx:0.03,vy:-0.12,sz:1,pf:0.007,type:'wisp'},  // F5: void wisps
+];
+function drawDungeonAtmos(){
+  if(!inDungeon||sc!=='map')return;
+  const fl=currentFloor;
+  const cfg=_dungAtmoCfg[fl];
+  if(!cfg)return;
+  const visH=H-HUD_HEIGHT;
+  const n=cfg.n;
+  for(let i=0;i<n;i++){
+    const sd=_dungAtmoSeeds[i];
+    // Screen-space position: seeded base + slow drift, wrapped
+    const px=((sd.bx*W + fr*cfg.vx*sd.spd)%W+W)%W;
+    const py=((sd.by*visH + fr*cfg.vy*sd.spd)%visH+visH)%visH;
+    // Fade at viewport top/bottom edges (20px band)
+    const edgeFade=Math.min(1,py/20,(visH-py)/20);
+    let alpha=cfg.a*edgeFade;
+    if(cfg.type==='spark'){
+      // Crystal sparks: intermittent bright flickers
+      alpha*=Math.max(0,Math.sin(fr*cfg.pf*3+sd.phase)*0.6+0.4);
+    }else if(cfg.type==='ember'){
+      // Embers: twinkle with slight size variation
+      alpha*=0.6+Math.sin(fr*cfg.pf+sd.phase*2)*0.4;
+    }else{
+      // Dust/wisps: smooth slow pulse
+      alpha*=0.7+Math.sin(fr*cfg.pf+sd.phase)*0.3;
+    }
+    if(alpha<0.02)continue;
+    g.globalAlpha=alpha;
+    bx(px|0,py|0,cfg.sz,cfg.sz,cfg.col);
+  }
+  g.globalAlpha=1;
+}
+
 function drawEdgeBlending(startTX,startTY,endTX,endTY){
   const m=getMap();
   for(let y=startTY;y<=endTY;y++){
@@ -1244,6 +1299,8 @@ function dMap(){
     }
   }
 
+  // v226: Dungeon floor atmosphere particles (screen-space ambient effects)
+  drawDungeonAtmos();
   // Day/night overlay (after all rendering, before HUD)
   drawDayNightOverlay();
 
@@ -1620,7 +1677,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v210',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v226',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
