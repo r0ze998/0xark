@@ -42,4 +42,6 @@ pub enum ErrorCode {
     GameFinished,
     #[msg("Round limit reached")]
     RoundLimitReached,
+    #[msg("ZK proof is invalid")]
+    InvalidProof,
 }

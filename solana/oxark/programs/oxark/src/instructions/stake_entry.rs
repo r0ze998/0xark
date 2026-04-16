@@ -51,7 +51,7 @@ pub struct DepositStake<'info> {
 
 pub fn handle_deposit_stake(ctx: Context<DepositStake>, game_id: u64) -> Result<()> {
     let vault = &mut ctx.accounts.stake_vault;
-    let stake_amount: u64 = 10_000_000; // 0.01 SOL default entry fee
+    let stake_amount: u64 = 500_000_000; // 0.5 SOL entry fee (per GDD)
 
     // Transfer SOL from player to vault PDA
     let ix = anchor_lang::solana_program::system_instruction::transfer(

@@ -6,6 +6,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@solana/web3.js": "^1.98.0",
     "ws": "^8.0.0"
   }
 }

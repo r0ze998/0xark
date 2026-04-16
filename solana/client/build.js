@@ -124,6 +124,17 @@ function build() {
   }
   if (copiedPngs > 0) console.log(`  PNGs copied:  ${copiedPngs} tileset files → repo root`);
 
+  // Copy React UI bundle to repo root (served alongside root index.html on GitHub Pages)
+  const REACT_DIST_SRC = path.join(ROOT, 'react-dist');
+  const REACT_DIST_DST = path.join(REPO_ROOT, 'react-dist');
+  if (fs.existsSync(REACT_DIST_SRC)) {
+    if (!fs.existsSync(REACT_DIST_DST)) fs.mkdirSync(REACT_DIST_DST, { recursive: true });
+    for (const f of fs.readdirSync(REACT_DIST_SRC)) {
+      fs.copyFileSync(path.join(REACT_DIST_SRC, f), path.join(REACT_DIST_DST, f));
+    }
+    console.log(`  React UI:     react-dist/ → repo root/react-dist/`);
+  }
+
   const lineCount = output.split('\n').length;
   const moduleCount = MODULES.length;
   const totalSrcLines = MODULES.reduce((sum, { file }) => {

@@ -23,6 +23,7 @@ custom-panic = []
 [dependencies]
 anchor-lang = "1.0.0"
 anchor-spl = { version = "1.0.0", features = ["token", "associated_token"] }
+solana-bn254 = "3"
 sha2 = "0.10"
 
 [dev-dependencies]
