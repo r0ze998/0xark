@@ -7476,6 +7476,16 @@ for(let j=0;j<_WV_N;j++){const wx=j*4;
   _WAVE_SI_D[j]=Math.sin(wx*0.01);_WAVE_CI_D[j]=Math.cos(wx*0.01);
   _WAVE_SI_E[j]=Math.sin(wx*0.01+4);_WAVE_CI_E[j]=Math.cos(wx*0.01+4);
 }
+// v382: Euler recurrence state for 120 title-screen stars (replaces 120 Math.sin/frame)
+// State: (SC,SS) = (cos(freq*fr+phase), sin(freq*fr+phase)); advances by rotation each dTitle() call
+const _STAR_SS=new Float32Array(120);const _STAR_SC=new Float32Array(120);
+const _STAR_FS=new Float32Array(120);const _STAR_FC=new Float32Array(120);
+(()=>{for(let i=0;i<120;i++){
+  const freq=0.018+((i*1337)%100)*0.0003;
+  const phase=((i*2741)%628)/100;
+  _STAR_SS[i]=Math.sin(phase);_STAR_SC[i]=Math.cos(phase); // initial state at fr=0
+  _STAR_FS[i]=Math.sin(freq);_STAR_FC[i]=Math.cos(freq);   // rotation step per frame
+}})();
 // v380: 5-entry tables for title screen pillar (step 1.2) and moon reflection (step 1.4) phases
 const _PILLAR_SI12=new Float32Array(5);const _PILLAR_CI12=new Float32Array(5);
 const _REFLS_SI14=new Float32Array(5);const _REFLS_CI14=new Float32Array(5);
@@ -9228,13 +9238,12 @@ function dTitle(){
     g.beginPath();g.moveTo(bx_,0);g.lineTo(bx_+18,0);g.lineTo(bx_+60,H);g.lineTo(bx_+42,H);g.closePath();g.fill();
     g.globalAlpha=1;
   }
-  // v212: Star field — 120 stars across full screen with varied twinkle frequencies
+  // v212: Star field — 120 stars; v382: Euler recurrence eliminates 120 Math.sin/frame
+  for(let i=0;i<120;i++){const _sc=_STAR_SC[i],_ss=_STAR_SS[i],_fc=_STAR_FC[i],_fs=_STAR_FS[i];
+    _STAR_SC[i]=_sc*_fc-_ss*_fs;_STAR_SS[i]=_sc*_fs+_ss*_fc;} // advance all stars
   for(let i=0;i<120;i++){
     const sx=(i*47+13)%W,sy=(i*31+7)%(H-60);
-    // Each star has unique frequency and phase for organic twinkle
-    const freq=0.018+((i*1337)%100)*0.0003;
-    const phase=((i*2741)%628)/100;
-    const a=Math.sin(fr*freq+phase)*0.4+0.6;
+    const a=_STAR_SS[i]*0.4+0.6; // sin component of Euler state
     const purp=i%9===0,big=i%17===0;
     const sz=big?2:1;
     if(big){
