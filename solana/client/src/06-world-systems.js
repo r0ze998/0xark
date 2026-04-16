@@ -1382,24 +1382,58 @@ function drawSynthesisShop(){
 // RANDOM MAP EVENTS
 // ═══════════════════════════════════════
 function triggerRandomEvent(){
-  // Base events (all floors)
+  // v362: expanded event pool — richer ARK lore per floor, new heal/freeze/bonus_sp actions
+  // v363: events now carry cat (category): 'good'|'bad'|'neutral'
   const baseEvents=[
-    {text:'A strong wind blows! Your area is revealed to rivals.', action:'wind'},
-    {text:'You found a forgotten stash! +1 random card.', action:'card'},
-    {text:'A rival\'s scout passed by! You sense danger nearby.', action:'scout'},
-    {text:'You hear echoing footsteps... something is close.', action:'tension'},
-    {text:'The walls feel closer here. Decay quickens!', action:'decay_warn'},
+    {text:'A strong wind blows! Your area is revealed to rivals.', action:'wind',        cat:'bad'},
+    {text:'You found a forgotten stash! +1 random card.',          action:'card',        cat:'good'},
+    {text:'A rival\'s scout passed by! You sense danger nearby.',  action:'scout',       cat:'bad'},
+    {text:'You hear echoing footsteps... something is close.',     action:'tension',     cat:'neutral'},
+    {text:'The walls feel closer here. Decay quickens!',           action:'decay_warn',  cat:'bad'},
+    {text:'A soft chime echoes — one card\'s decay is slowed.',    action:'heal',        cat:'good'},
+    {text:'Footprints in the dust... someone was here recently.',  action:'tension',     cat:'neutral'},
+    {text:'A glimmer of light reveals a hidden passage. Press on.',action:'bonus_sp',   cat:'good'},
   ];
-  // Floor-specific bonus events
+  // Floor-specific bonus events (Sunken Galleries / Drowned Archives / Echo Chambers / Deep Vault / ARK Core)
   const floorEvents=[
     [], // Town
-    [{text:'A trail of footprints leads to a hidden card!', action:'card'}],   // Floor 1
-    [{text:'Mushroom spores fill the air... you feel sluggish.', action:'tension'}],  // Floor 2
-    [{text:'Ancient runes flare! Spell energy restored.', action:'spell_restore'}],   // Floor 3
-    [{text:'A dark force drains your cards faster! Beware.', action:'decay_warn'}],  // Floor 4
-    [{text:'The deepest floor trembles. A legendary card stirs!', action:'card'},     // Floor 5
-     {text:'VEGA\'s voice echoes: "This floor is mine."', action:'rival_taunt'},
-     {text:'MIRA\'s voice: "The legendary cards end here."', action:'rival_taunt'}],
+    // B1 — SUNKEN GALLERIES
+    [{text:'A trail of footprints leads to a hidden card!',                                                  action:'card',         cat:'good'},
+     {text:'Seawater drips from the hull seams. The ARK groans above you.',                                 action:'tension',      cat:'neutral'},
+     {text:'A rusted porthole reveals open ocean. The deck above has flooded.',                              action:'tension',      cat:'neutral'},
+     {text:'A sailor\'s logbook fragment is wedged in a crack. It mentions a vault deeper below.',          action:'tension',      cat:'neutral'},
+     {text:'Barnacle-encrusted crates block the path — you squeeze through. Cards shift in your hand.',     action:'decay_warn',   cat:'bad'}],
+    // B2 — DROWNED ARCHIVES
+    [{text:'Ancient scrolls crumble as you pass. One holds a faded card seal!',                             action:'card',         cat:'good'},
+     {text:'The water here is waist-deep. Decay spreads faster in the wet dark.',                           action:'decay_warn',   cat:'bad'},
+     {text:'You find a Scholar\'s inkpot, still dry. Spell energy seeps back in.',                          action:'spell_restore',cat:'good'},
+     {text:'Mushroom spores fill the air... you feel sluggish.',                                             action:'tension',      cat:'neutral'},
+     {text:'Waterlogged shelves hold brittle tomes — one falls open to a card diagram.',                    action:'card',         cat:'good'},
+     {text:'A glowing sigil on the floor briefly restores your resolve.',                                   action:'heal',         cat:'good'}],
+    // B3 — ECHO CHAMBERS
+    [{text:'Ancient runes flare! Spell energy restored.',                                                    action:'spell_restore',cat:'good'},
+     {text:'Crystal resonance scatters the fog — a card glints in the distance!',                           action:'card',         cat:'good'},
+     {text:'Your own voice returns as a whisper from the far wall. Then a rival\'s laugh.',                 action:'rival_taunt',  cat:'neutral'},
+     {text:'The crystals amplify sound. You hear VEGA sprinting two chambers over.',                        action:'scout',        cat:'bad'},
+     {text:'Shattered prisms refract your card\'s glow — it burns a little brighter.',                     action:'heal',         cat:'good'},
+     {text:'The echo reveals a pressure plate. A sealed alcove clicks open — a card inside!',               action:'card',         cat:'good'}],
+    // B4 — DEEP VAULT
+    [{text:'Magma seeps through floor cracks — the heat accelerates decay.',                                action:'decay_warn',   cat:'bad'},
+     {text:'A dark force drains your cards faster! Beware.',                                                action:'decay_warn',   cat:'bad'},
+     {text:'An ember lands on your sleeve. You brush it off — and find a sealed card case.',                action:'card',         cat:'good'},
+     {text:'VEGA\'s bootmarks lead toward the vault room. She\'s close.',                                   action:'scout',        cat:'bad'},
+     {text:'A pressure lock disengages with a deep clunk. Spell power crackles through the air.',           action:'spell_restore',cat:'good'},
+     {text:'The vault walls pulse with heat — your hands steady, cards holding firm.',                      action:'heal',         cat:'good'},
+     {text:'Something charges the air. Rival proximity sensors spike.',                                     action:'rival_taunt',  cat:'bad'}],
+    // B5 — ARK CORE
+    [{text:'The deepest floor trembles. A legendary card stirs!',                                           action:'card',         cat:'good'},
+     {text:'VEGA\'s voice echoes: "This floor is mine."',                                                   action:'rival_taunt',  cat:'bad'},
+     {text:'MIRA\'s voice: "The legendary cards end here."',                                                action:'rival_taunt',  cat:'bad'},
+     {text:'The ARK\'s core pulses — all spell types surge back to full.',                                  action:'full_restore', cat:'good'},
+     {text:'A legendary seal fractures — the card within drifts toward you.',                               action:'card',         cat:'good'},
+     {text:'The floor breathes. For a moment, decay stops entirely.',                                       action:'heal',         cat:'good'},
+     {text:'All 60 cards converge here. You feel the prize pool calling.',                                  action:'tension',      cat:'neutral'},
+     {text:'MIRA appears in a doorway — then vanishes. She knows where you are.',                           action:'scout',        cat:'bad'}],
   ];
   const floorExtra=floorEvents[currentFloor]||[];
   const allEvents=[...baseEvents,...floorExtra];
@@ -1407,7 +1441,11 @@ function triggerRandomEvent(){
   randomEventActive=true;
   randomEventText=ev.text;
   randomEventFrame=fr;
-  sfxEventAlert();
+  randomEventCat=ev.cat||'neutral'; // v363: store event category for display
+  // v363: differentiated audio per category
+  if(ev.cat==='bad')sfxDangerAlert();
+  else if(ev.cat==='good')sfxEvent();
+  else sfxEventAlert();
 
   if(ev.action==='card'){
     // Give a card from current floor pool — prefer vault-new (v299: pickFromPool)
@@ -1455,9 +1493,28 @@ function triggerRandomEvent(){
     // Just a flavor event — tension shake
     screenShake(2,3);flash();
     lg.push('Event: A rival\'s voice echoes from the deep...');
+  }else if(ev.action==='heal'){
+    // v362: slow decay on the most-decayed hand card (add 30s back)
+    let oldest=-1,oldestAge=0;
+    for(let i=0;i<HAND_SIZE;i++){
+      if(cardTimers[i]>0){const age=Date.now()-cardTimers[i];if(age>oldestAge){oldestAge=age;oldest=i;}}
+    }
+    if(oldest>=0){cardTimers[oldest]+=30000;sfxCrystal();lg.push('Event: A card\'s decay was eased by the ARK\'s energy!');}
+  }else if(ev.action==='bonus_sp'){
+    // v362: grant +1 steal resource (capped at 5)
+    if(sp.s<5){sp.s++;sfxCrystal();lg.push('Event: A hidden cache refilled your STEAL energy!');}
+  }else if(ev.action==='full_restore'){
+    // v362: B5 ARK Core — restore all spell types to max
+    sp.s=3;sp.b=3;sp.c=3;
+    sfxCrystal();screenShake(1,2);
+    lg.push('Event: The ARK Core pulsed — all spells fully restored!');
   }
 }
 
+// v363: event display with category-specific colors and icons
+const _EVT_CAT_COL={good:'#40d080',bad:'#d04040',neutral:'#d8b028'};
+const _EVT_CAT_ICON={good:'\u2665',bad:'\u26a0',neutral:'\u2139'}; // ♥ ⚠ ℹ
+const _EVT_CAT_BAR={good:'rgba(20,80,40,.5)',bad:'rgba(80,20,20,.5)',neutral:'rgba(80,70,20,.35)'};
 function drawRandomEvent(){
   if(!randomEventActive)return;
   const t=fr-randomEventFrame;
@@ -1467,10 +1524,17 @@ function drawRandomEvent(){
   const alpha=Math.min(slideIn,slideOut);
   const ease=easeInOut(alpha);
   const slideOff=50*(1-ease);
+  const cat=randomEventCat||'neutral';
+  const catCol=_EVT_CAT_COL[cat]||_EVT_CAT_COL.neutral;
+  const catIcon=_EVT_CAT_ICON[cat]||_EVT_CAT_ICON.neutral;
+  const catBar=_EVT_CAT_BAR[cat]||_EVT_CAT_BAR.neutral;
   g.globalAlpha=ease;
   win(24,H/2-50+slideOff,W-48,74);
+  // Category color bar at top of window
+  bx(26,H/2-48+slideOff,W-52,4,catBar);
+  // Icon badge
   win(32,H/2-62+slideOff,70,18);
-  txShadow('EVENT',42,H/2-48+slideOff,7,'#d8b028','rgba(0,0,0,.4)');
+  txShadow(catIcon+' EVENT',38,H/2-48+slideOff,7,catCol,'rgba(0,0,0,.5)');
   // Word-wrap
   const maxChars=50;
   let line1=randomEventText, line2='';
@@ -1482,6 +1546,8 @@ function drawRandomEvent(){
   }
   txShadow(line1,42,H/2-22+slideOff,7,'#303028','rgba(255,255,255,.15)');
   if(line2)txShadow(line2,42,H/2-6+slideOff,7,'#303028','rgba(255,255,255,.15)');
+  // Category label in top-right of window
+  txShadow(cat.toUpperCase(),W-80,H/2-48+slideOff,5,catCol,'rgba(0,0,0,.4)');
   g.globalAlpha=1;
 }
 

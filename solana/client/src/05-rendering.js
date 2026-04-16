@@ -107,6 +107,31 @@ const _lavaBubble2=(()=>{const c=document.createElement('canvas');c.width=6;c.he
 const _GRASS_TILES=new Set([1,7,11,3]);
 // v317: pre-baked CC badge strings — avoids `_CC_STR[p.cc]||(p.cc+'')` string allocation every frame per visible player
 const _CC_STR=(()=>{const a=[];for(let i=0;i<=99;i++)a.push(i+'');return a;})();
+// v366: pre-baked lava flow spatial phases (lx*0.3+ly*0.2 for lx=0,4..28, ly=0,4..28 — 8×8=64 entries)
+const _LAVA_FLOW_SI=new Float32Array(64);const _LAVA_FLOW_CI=new Float32Array(64);
+for(let li=0;li<8;li++)for(let lj=0;lj<8;lj++){const ph=li*1.2+lj*0.8;const k=li*8+lj;_LAVA_FLOW_SI[k]=Math.sin(ph);_LAVA_FLOW_CI[k]=Math.cos(ph);}
+const _LAVA_FLOW_V=new Float32Array(64); // sin(wt*0.2+lx*0.3+ly*0.2)*0.5+0.5 — updated when wt changes
+let _lavaFlowWt=-1;
+function _updateLavaFlow(){
+  if(_lavaFlowWt===wt)return;
+  _lavaFlowWt=wt;
+  const sw=Math.sin(wt*0.2),cw=Math.cos(wt*0.2);
+  for(let k=0;k<64;k++)_LAVA_FLOW_V[k]=(sw*_LAVA_FLOW_CI[k]+cw*_LAVA_FLOW_SI[k])*0.5+0.5;
+}
+// v366: grass blade sin/cos for i*0.7 (8 blades per tile)
+const _GRASS_SI7=new Float32Array(8);const _GRASS_CI7=new Float32Array(8);
+for(let i=0;i<8;i++){_GRASS_SI7[i]=Math.sin(i*0.7);_GRASS_CI7[i]=Math.cos(i*0.7);}
+// v366: sparkle orbit phases i*2.1 (3 sparkles) and i*1.3 (3 legendary sparkles)
+const _SPARK_SI21=new Float32Array(3);const _SPARK_CI21=new Float32Array(3);
+for(let i=0;i<3;i++){_SPARK_SI21[i]=Math.sin(i*2.1);_SPARK_CI21[i]=Math.cos(i*2.1);}
+const _SPARK_SI13=new Float32Array(5);const _SPARK_CI13=new Float32Array(5);
+for(let i=0;i<5;i++){_SPARK_SI13[i]=Math.sin(i*1.3);_SPARK_CI13[i]=Math.cos(i*1.3);}
+// v367: chimney smoke alpha — sin(fr*0.12+p) for p=0..4 uses _sFr12/_cFr12 via sin-addition with pre-baked sin/cos(p)
+const _CHIMNEY_SI=new Float32Array(5);const _CHIMNEY_CI=new Float32Array(5);
+for(let i=0;i<5;i++){_CHIMNEY_SI[i]=Math.sin(i);_CHIMNEY_CI[i]=Math.cos(i);}
+// v367: bird bob — sin(fr*0.03+bi*1.1) for bi=0..19, pre-bake sin/cos(bi*1.1) for sin-addition with _sFr03/_cFr03
+const _BIRD_SI11=new Float32Array(20);const _BIRD_CI11=new Float32Array(20);
+for(let i=0;i<20;i++){_BIRD_SI11[i]=Math.sin(i*1.1);_BIRD_CI11[i]=Math.cos(i*1.1);}
 function isNearTileType(tx_,ty,tileSet){
   const m=getMap();
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
@@ -227,9 +252,10 @@ function drawFlower(px,py,tx_,ty){
 
 function drawTallGrass(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
-  // Waving blades with position-offset sine
+  // Waving blades — v366: sin-addition with pre-baked i*0.7 tables (2 trig/tile, 0/blade)
+  const _sgB=Math.sin(fr*0.08+tx_*2+ty*3),_cgB=Math.cos(fr*0.08+tx_*2+ty*3);
   for(let i=0;i<8;i++){
-    const sway=Math.sin(fr*.08+tx_*2+ty*3+i*0.7)*2;
+    const sway=(_sgB*_GRASS_CI7[i]+_cgB*_GRASS_SI7[i])*2;
     const bx_=px+1+i*4+Math.floor(sway),by_=py+2;
     const bladeH=TH-4-Math.floor(thRand(tx_,ty,i+70)*6);
     g.fillStyle=i%3===0?'#306830':i%3===1?'#48a848':'#388838';
@@ -379,7 +405,7 @@ function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
       const sx_=csx+windX*prog*14;
       const sy_=csy-prog*38;
       const sz=1+prog*5;
-      const sa=0.38*(1-prog)*(0.7+0.3*Math.sin(fr*0.12+p));
+      const sa=0.38*(1-prog)*(0.7+0.3*(_sFr12*_CHIMNEY_CI[p]+_cFr12*_CHIMNEY_SI[p])); // v367
       if(sa<0.02)continue;
       g.globalAlpha=sa;
       bx(sx_-sz*.5|0,sy_-sz*.5|0,sz|0,sz|0,p%2===0?'rgba(210,205,220,1)':'rgba(195,190,208,1)');
@@ -516,10 +542,11 @@ function drawLake(px,py,tx_,ty){
     bx(px,py+TH/2,TW,TH/2,_LAKE_BOT_NF3[hk]);
   }
   const r=tr(tx_,ty);
-  // Gentle wave lines
-  const waveOff=Math.sin(wt*0.3+tx_*0.5)*2;
-  for(let wx=0;wx<TW;wx+=3){const wy=8+Math.round(Math.sin(wt*0.25+wx*0.2)*1.5+waveOff);bx(px+wx,py+wy,4,1,'rgba(72,136,192,.5)');}
-  for(let wx=1;wx<TW;wx+=3){const wy=20+Math.round(Math.sin(wt*0.3+wx*0.3+1)*1+waveOff*.5);bx(px+wx,py+wy,3,1,'rgba(88,152,208,.4)');}
+  // v364: Gentle wave lines — use pre-baked _WATER_WAVE1/2 tables (sin computed once per 20 frames)
+  _updateWaterWaves(); // no-op if wt unchanged
+  const waveOff=Math.sin(wt*0.3+tx_*0.5)*2; // per-tile offset still needs trig (tx_ varies)
+  for(let i=0;i<11;i++){const wy=8+Math.round(_WATER_WAVE1[i]+waveOff);bx(px+i*3,py+wy,4,1,'rgba(72,136,192,.5)');}
+  for(let i=0;i<11;i++){const wy=20+Math.round(_WATER_WAVE2[i]+waveOff*.5);bx(px+i*3+1,py+wy,3,1,'rgba(88,152,208,.4)');}
   // Sparkle
   if((wt+tx_*3+ty*5)%10===0){bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
   // Lily pad
@@ -651,7 +678,9 @@ function drawGlowTile(px,py,tx_,ty){
   }
   drawGrass(px,py,tx_,ty);
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
-  const pulse=Math.sin(fr*.06+tx_*2+ty*3)*.3+.5;
+  // v367: sin-addition with cached _sFr06/_cFr06 (no Math.sin per tile)
+  const _slg=Math.sin(tx_*2+ty*3),_clg=Math.cos(tx_*2+ty*3);
+  const pulse=(_sFr06*_clg+_cFr06*_slg)*.3+.5;
   const isTeal=(tx_+ty)%2===0;
   // v239: globalAlpha+solid hex replaces template literal rgba string allocations per tile per frame
   g.globalAlpha=pulse*.4;
@@ -671,17 +700,19 @@ function drawLava(px,py,tx_,ty){
   const base=f<2?'#c84020':'#d85830';
   bx(px,py,TW,TH,base);
   const r=tr(tx_,ty);
-  // Flowing texture
-  for(let ly=0;ly<TH;ly+=4)for(let lx=0;lx<TW;lx+=4){
-    const flow=Math.sin(wt*0.2+lx*0.3+ly*0.2)*0.5+0.5;
+  // Flowing texture — v366: pre-baked 8×8 table (2 trig per 20 frames, 0 per tile/pixel)
+  _updateLavaFlow();
+  for(let li=0;li<8;li++){const lx=li*4;for(let lj=0;lj<8;lj++){
+    const flow=_LAVA_FLOW_V[li*8+lj];const ly=lj*4;
     if(flow>.6)bx(px+lx,py+ly,4,3,'#e87040');
     if(flow>.8)bx(px+lx+1,py+ly+1,2,1,'#f89050');
-  }
+  }}
   // Bubbles
   if(f===0){g.drawImage(_lavaBubble3,(px+Math.floor(r.a*24)+1)|0,(py+5)|0);}
   if(f===2){g.drawImage(_lavaBubble2,(px+Math.floor(r.c*20)+4)|0,(py+18)|0);}
-  // Glow — globalAlpha+solid avoids template literal string allocation per tile
-  g.globalAlpha=.1+Math.sin(fr*.04+tx_+ty)*.05;g.fillStyle='#ffa028';g.fillRect(px,py,TW,TH);g.globalAlpha=1;
+  // Glow — v367: sin-addition with _sFr04/_cFr04 (no Math.sin per tile)
+  const _stxy=Math.sin(tx_+ty),_ctxy=Math.cos(tx_+ty);
+  g.globalAlpha=.1+(_sFr04*_ctxy+_cFr04*_stxy)*.05;g.fillStyle='#ffa028';g.fillRect(px,py,TW,TH);g.globalAlpha=1;
   // Bright cracks
   bx(px+Math.floor(r.e*24)+2,py+Math.floor(r.f*24)+2,4,1,'#f8c060');
   bx(px+Math.floor(r.g*20)+6,py+Math.floor(r.h*20)+6,1,4,'#f8c060');
@@ -733,11 +764,12 @@ function drawAltar(px,py,tx_,ty){
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
   bx(px+2,py+20,28,10,'#606068');bx(px+4,py+18,24,10,'#707078');
   bx(px+6,py+14,20,5,'#808088');bx(px+8,py+12,16,4,'#909098');
-  const pulse=Math.sin(fr*.04)*.3+.5;
+  // v361: use pre-computed _sFr04/_sFr05 (no Math.sin per tile)
+  const pulse=_sFr04*.3+.5;
   // v239: globalAlpha+solid hex — no template literal per tile per frame
   g.fillStyle='#c8a0ff';
   g.globalAlpha=pulse*.5;g.fillRect(px+10,py+12,12,3);
-  const orbY=py+4+Math.sin(fr*.05)*3;
+  const orbY=py+4+_sFr05*3;
   g.globalAlpha=pulse*.7;g.drawImage(_tileAltarOrb5,(px+10)|0,(orbY-6)|0);
   g.globalAlpha=pulse*.4;g.drawImage(_tileAltarOrb10,(px+5)|0,(orbY-11)|0);
   g.globalAlpha=pulse*.3;g.fillRect(px+8,py+22,4,2);g.fillRect(px+20,py+22,4,2);
@@ -808,29 +840,33 @@ function drawTreasure(px,py,tx_,ty){
   const t=treasureByPos.get(currentMap+'-'+tx_+'-'+ty); // v282: O(1) map lookup
   if(t&&t.collected)return;
   if(!fogRevealed[currentMap][ty]?.[tx_])return;
-  const pulse=Math.sin(fr*.08+tx_*3+ty*5)*.3+.6;
+  // v367: sin-addition with _sFr08/_cFr08 (no Math.sin per tile)
+  const _stc=Math.sin(tx_*3+ty*5),_ctc=Math.cos(tx_*3+ty*5);
+  const pulse=(_sFr08*_ctc+_cFr08*_stc)*.3+.6;
   const sparkPhase=Math.floor(fr*.15+tx_*2)%4;
   const colors=['#f8e060','#f0c830','#e8a020','#f8f0a0'];
   if(useKenney.treasure && drawKenneyTileTinted(K.chest[0], K.chest[1], px, py, 2, colors[sparkPhase])){
-    // Sparkle orbit around chest — globalAlpha+solid hex avoids 3 template literals per frame
+    // Sparkle orbit around chest — v366: sin-addition eliminates Math.cos/sin per sparkle
+    const _sbt=Math.sin(fr*0.03+tx_),_cbt=Math.cos(fr*0.03+tx_);
     g.globalAlpha=pulse*.5;g.fillStyle='#f8e060';
     for(let i=0;i<3;i++){
-      const angle=(fr*.03+i*2.1+tx_)%(Math.PI*2);
-      const dist=10+Math.sin(fr*.05+i)*3;
-      g.fillRect(px+16+Math.cos(angle)*dist,py+14+Math.sin(angle)*dist,2,2);
+      const dist=10+(_sFr05*_BTL_CRYST_CI[i]+_cFr05*_BTL_CRYST_SI[i])*3;
+      const sa=_sbt*_SPARK_CI21[i]+_cbt*_SPARK_SI21[i];
+      const ca=_cbt*_SPARK_CI21[i]-_sbt*_SPARK_SI21[i];
+      g.fillRect(px+16+ca*dist,py+14+sa*dist,2,2);
     }
     g.globalAlpha=1;
     g.globalAlpha=pulse*.2;g.drawImage(_tileTreasureGlow10,(px+5)|0,(py+5)|0);g.globalAlpha=1;
     return;
   }
-  // Fallback sparkle effect — globalAlpha+solid hex avoids 5 template literals per frame
+  // Fallback sparkle effect — v366: sin-addition eliminates Math.cos/sin per sparkle
+  const _sbt2=Math.sin(fr*0.03+tx_),_cbt2=Math.cos(fr*0.03+tx_);
   g.globalAlpha=pulse*.6;g.fillStyle='#f8e060';
   for(let i=0;i<5;i++){
-    const angle=(fr*.03+i*1.3+tx_)%(Math.PI*2);
-    const dist=8+Math.sin(fr*.05+i)*3;
-    const sx=px+16+Math.cos(angle)*dist;
-    const sy=py+14+Math.sin(angle)*dist;
-    g.fillRect(sx,sy,3,3);
+    const dist=8+(_sFr05*_BTL_CRYST_CI[i]+_cFr05*_BTL_CRYST_SI[i])*3;
+    const sa=_sbt2*_SPARK_CI13[i]+_cbt2*_SPARK_SI13[i];
+    const ca=_cbt2*_SPARK_CI13[i]-_sbt2*_SPARK_SI13[i];
+    g.fillRect(px+16+ca*dist,py+14+sa*dist,3,3);
   }
   g.globalAlpha=pulse*.3;g.drawImage(_tileTreasureGlow8,(px+7)|0,(py+7)|0);g.globalAlpha=1;
   bx(px+14,py+14,5,4,colors[sparkPhase]);
@@ -986,9 +1022,9 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
         const cAlpha=.16+Math.sin(fr*.05+x+y)*.09;
         g.globalAlpha=cAlpha;g.drawImage(_dungCrystalArc,(px+4)|0,(py+4)|0);g.globalAlpha=1;
       }else if(t===27){
-        // Altar: floating brass orb + pulse glow (pre-baked orb arcs)
-        const pulse=Math.sin(fr*.04)*.3+.5;
-        const orbY=py+4+Math.sin(fr*.05)*3;
+        // Altar: floating brass orb + pulse glow (v367: use cached _sFr04/_sFr05)
+        const pulse=_sFr04*.3+.5;
+        const orbY=py+4+_sFr05*3;
         g.globalAlpha=pulse*.65;g.drawImage(_dungAltarOrb5,(px+10)|0,(orbY-6)|0);
         g.globalAlpha=pulse*.22;g.drawImage(_dungAltarOrb10,(px+5)|0,(orbY-11)|0);
         g.globalAlpha=1;
@@ -1043,7 +1079,7 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
       // Each bird drifts at slightly different speed and altitude
       const speed=0.35+((seed*73)%100)/200;  // 0.35 – 0.85 px/frame
       const bx_=((seed*457+fr*speed)%(W+120))-60; // wraps left to right
-      const by_=24+(seed%4)*22+Math.sin(fr*0.03+bi*1.1)*5;
+      const by_=24+(seed%4)*22+(_sFr03*_BIRD_CI11[bi]+_cFr03*_BIRD_SI11[bi])*5; // v367
       if(bx_<-8||bx_>W+4||by_<0||by_>visH*0.55)continue;
       // Wing flap: alternates between V-open and V-closed
       const flapPhase=Math.floor(fr*0.12+bi*2.3)%2;
@@ -1429,7 +1465,7 @@ function drawNPCSprite(npc){
 
   // v193: Diamond indicator — enhanced proximity version shows [Z] prompt when adjacent
   if(npc.map===currentMap){
-    const bobY=Math.sin(fr*0.08)*3;
+    const bobY=_sFr08*3; // v367: use cached _sFr08
     let diaC,diaH;
     if(npc.type===0){diaC='#4080d0';diaH='#60a0e8';}
     else if(npc.type===1){diaC='#40b060';diaH='#60d080';}

@@ -4,7 +4,27 @@
 // v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
 const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
 // v355: per-frame sin/cos cache — computed once at draw() start, reused across all draw functions
-let _sFr02=0,_cFr02=0,_sFr03=0,_cFr03=0,_sFr04=0,_cFr04=0,_sFr05=0,_cFr05=0,_sFr06=0,_sFr055=0,_sFr07=0,_sFr015=0,_cFr015=0,_sFr12=0,_cFr12=0;
+let _sFr02=0,_cFr02=0,_sFr025=0,_cFr025=0,_sFr03=0,_cFr03=0,_sFr04=0,_cFr04=0,_sFr05=0,_cFr05=0,_sFr06=0,_cFr06=0,_sFr055=0,_sFr07=0,_cFr07=0,_sFr08=0,_cFr08=0,_sFr10=0,_cFr10=0,_sFr015=0,_cFr015=0,_sFr12=0,_cFr12=0;
+// v364: water wave lookup tables (11 px columns each, depend on wt not fr — update when wt changes)
+// wx step=3 starting at 0: wx=0,3,6,9,12,15,18,21,24,27,30 (11 entries)
+// wx step=3 starting at 1: wx=1,4,7,10,13,16,19,22,25,28,31 (11 entries)
+const _WATER_WAVE1=new Float32Array(11); // sin(wt*0.25+wx*0.2)*1.5 for wx=0,3,...,30
+const _WATER_WAVE2=new Float32Array(11); // sin(wt*0.3+wx*0.3+1)*1 for wx=1,4,...,31
+let _waterWt=-1; // last wt value used to fill tables
+function _updateWaterWaves(){
+  if(_waterWt===wt)return;
+  _waterWt=wt;
+  const _sw025=Math.sin(wt*0.25),_cw025=Math.cos(wt*0.25);
+  const _sw03=Math.sin(wt*0.3),_cw03=Math.cos(wt*0.3);
+  // Pre-bake sin(wt*0.25+wx*0.2) for wx=0,3,...,30 (indices 0..10)
+  // and sin(wt*0.3+wx*0.3+1) for wx=1,4,...,31
+  for(let i=0;i<11;i++){
+    const wx0=i*3,wx1=i*3+1;
+    // sin(wt*0.25+wx0*0.2) via sin-addition (pre-baked sin/cos of wx0*0.2 inline is cheaper than lookup)
+    _WATER_WAVE1[i]=Math.sin(wt*0.25+wx0*0.2)*1.5;
+    _WATER_WAVE2[i]=Math.sin(wt*0.3+wx1*0.3+1)*1.0;
+  }
+}
 // v355: pre-baked sin/cos for integer indices 0-15 (used in phase-offset particle loops)
 const _SIN_INT=(()=>{const a=new Float32Array(16);for(let i=0;i<16;i++)a[i]=Math.sin(i);return a;})();
 const _COS_INT=(()=>{const a=new Float32Array(16);for(let i=0;i<16;i++)a[i]=Math.cos(i);return a;})();
@@ -380,11 +400,12 @@ function draw(){
   // v355: compute shared per-frame sin/cos once (saves ~50+ Math.sin calls/frame)
   const _fr2=fr*0.02,_fr3=fr*0.03,_fr4=fr*0.04,_fr5=fr*0.05,_fr015=fr*0.015;
   _sFr02=Math.sin(_fr2);_cFr02=Math.cos(_fr2);
+  _sFr025=Math.sin(fr*0.025);_cFr025=Math.cos(fr*0.025);
   _sFr03=Math.sin(_fr3);_cFr03=Math.cos(_fr3);
   _sFr04=Math.sin(_fr4);_cFr04=Math.cos(_fr4);
   _sFr05=Math.sin(_fr5);_cFr05=Math.cos(_fr5);
   _sFr015=Math.sin(_fr015);_cFr015=Math.cos(_fr015);
-  _sFr06=Math.sin(fr*0.06);_sFr055=Math.sin(fr*0.055);_sFr07=Math.sin(fr*0.07);
+  _sFr06=Math.sin(fr*0.06);_cFr06=Math.cos(fr*0.06);_sFr055=Math.sin(fr*0.055);_sFr07=Math.sin(fr*0.07);_cFr07=Math.cos(fr*0.07);_sFr08=Math.sin(fr*0.08);_cFr08=Math.cos(fr*0.08);_sFr10=Math.sin(fr*0.1);_cFr10=Math.cos(fr*0.1);
   const _fr12=fr*0.12;_sFr12=Math.sin(_fr12);_cFr12=Math.cos(_fr12);
   // Global screen shake
   let _shaking=false;

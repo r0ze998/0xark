@@ -433,7 +433,7 @@ function updatePixiHud(){
   pxTextboxTw.tick(dt||1);
   // Bounce textbox arrow + auto-hide
   if(pxTextbox.visible){
-    pxTextboxArrow.y = H - 30 + Math.sin(fr * 0.12) * 3;
+    pxTextboxArrow.y = H - 30 + _sFr12 * 3; // v363: use pre-computed _sFr12
     pxTextboxArrow.visible = pxTextboxTw.done;
     // Auto-hide after 4 seconds of done
     if(pxTextboxTw.done){
