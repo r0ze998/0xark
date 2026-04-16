@@ -284,7 +284,8 @@ function update(){
 
   // Footprint log messages when player walks on rival footprints
   if(sc==='map'&&!mo){
-    const pFp=footprints.find(f=>f.map===currentMap&&f.x===pl[0].x&&f.y===pl[0].y&&f.age<1800);
+    // v282: replace closure .find with counting loop
+    let pFp=null;{const _px=pl[0].x,_py=pl[0].y;for(let _fi=0;_fi<footprints.length;_fi++){const f=footprints[_fi];if(f.map===currentMap&&f.x===_px&&f.y===_py&&f.age<1800){pFp=f;break;}}}
     if(pFp&&fr%60===0){
       lg.push('Footprints in the grass... someone passed here.');
       pFp.age=1800; // Don't log again

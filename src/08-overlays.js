@@ -769,9 +769,9 @@ function dCrd(){
     }
     // v93: Rival ownership dots + IN HAND badge
     {
-      const vegaHas=pl[1].cd.some(c=>c===cardId);
-      const miraHas=pl[2].cd.some(c=>c===cardId);
-      const inHand=pl[0].cd.some(c=>c===cardId);
+      const vegaHas=pl[1].cd.includes(cardId);
+      const miraHas=pl[2].cd.includes(cardId);
+      const inHand=pl[0].cd.includes(cardId);
       let dotX=cx+CARD_W-6;
       if(vegaHas){bx(dotX-10,cy+4,8,8,'#e060a0');dotX-=10;}
       if(miraHas){bx(dotX-10,cy+4,8,8,'#d0a030');dotX-=10;}
@@ -862,9 +862,9 @@ function dCrd(){
     const badgeY=sidY+sidH-22;
     bx(sidX+2,badgeY-2,sidW-4,1,'rgba(255,255,255,.06)');
     if(owned){
-      const inHand=pl[0].cd.some(c=>c===cardId);
-      const vegaHas=pl[1].cd.some(c=>c===cardId);
-      const miraHas=pl[2].cd.some(c=>c===cardId);
+      const inHand=pl[0].cd.includes(cardId);
+      const vegaHas=pl[1].cd.includes(cardId);
+      const miraHas=pl[2].cd.includes(cardId);
       bx(sidX+8,badgeY,80,16,inHand?'rgba(40,120,40,.8)':'rgba(30,60,120,.8)');
       txShadow(inHand?'IN YOUR HAND':'COLLECTED',sidX+10,badgeY+13,6,inHand?'#60e060':'#80b0f0','rgba(0,0,0,.35)');
       if(vegaHas){bx(sidX+96,badgeY,54,16,'rgba(180,40,100,.7)');txShadow('VEGA HOLDS',sidX+98,badgeY+13,5,'#e060a0','rgba(0,0,0,.3)');}
