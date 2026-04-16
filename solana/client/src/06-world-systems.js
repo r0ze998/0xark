@@ -642,26 +642,29 @@ function drawMinimap(){
 
   // ── Dynamic dots: exits, NPCs, traps, rivals, player (all cheap, per-frame) ──
   const exitPulse=Math.sin(fr*0.15)*0.4+0.6;
-  exits.forEach(e=>{
+  for(let _ei=0,_el=exits.length;_ei<_el;_ei++){
+    const e=exits[_ei];
     if(e.fromMap===currentMap){
-      e.tiles.forEach(([ex,ey])=>{
+      for(let _ti=0,_tl=e.tiles.length;_ti<_tl;_ti++){
+        const ex=e.tiles[_ti][0],ey=e.tiles[_ti][1];
         if(fogRevealed[currentMap][ey]?.[ex]){
           g.globalAlpha=exitPulse;
           bx(mx+ex*sx,my+ey*sy,Math.max(1,sx),Math.max(1,sy),'#fff');
           g.globalAlpha=1;
         }
-      });
+      }
     }
-  });
-  npcs.forEach(npc=>{
+  }
+  for(let _ni=0,_nl=npcs.length;_ni<_nl;_ni++){
+    const npc=npcs[_ni];
     if(npc.map===currentMap&&fogRevealed[currentMap][npc.y]?.[npc.x])
       bx(mx+npc.x*sx,my+npc.y*sy,Math.max(1,sx),Math.max(1,sy),'#f0d040');
-  });
-  triggeredTraps.forEach(key=>{
+  }
+  for(const key of triggeredTraps){
     const parts=key.split('-');
     const tMap=parseInt(parts[0]),tx_=parseInt(parts[1]),ty_=parseInt(parts[2]);
     if(tMap===currentMap)bx(mx+tx_*sx,my+ty_*sy,Math.max(1,sx),Math.max(1,sy),'#ff3030');
-  });
+  }
   for(let _ri=1;_ri<pl.length;_ri++){
     const rp=pl[_ri],idx=_ri-1;
     if(rivalMaps[idx]===currentMap&&(isVisibleThroughFog(rp.x,rp.y,3)||crystalRevealTimer>0)){
@@ -679,15 +682,18 @@ function drawMinimap(){
     }
   }
   if(inDungeon){
-    exits.forEach(ex=>{
-      if(ex.fromMap!==currentMap)return;
-      ex.tiles.forEach(([etx,ety])=>{
-        const col=ex.isGoal?'#ffe060':ex.isEscape?'#40e060':'#e0c040';
-        g.globalAlpha=0.8+Math.sin(fr*0.1)*0.2;
+    for(let _ei=0,_el=exits.length;_ei<_el;_ei++){
+      const ex=exits[_ei];
+      if(ex.fromMap!==currentMap)continue;
+      const col=ex.isGoal?'#ffe060':ex.isEscape?'#40e060':'#e0c040';
+      const ePulse=0.8+Math.sin(fr*0.1)*0.2;
+      for(let _ti=0,_tl=ex.tiles.length;_ti<_tl;_ti++){
+        const etx=ex.tiles[_ti][0],ety=ex.tiles[_ti][1];
+        g.globalAlpha=ePulse;
         bx(mx+etx*sx,my+ety*sy,Math.max(2,sx),Math.max(2,sy),col);
         g.globalAlpha=1;
-      });
-    });
+      }
+    }
   }
   const playerPulse=Math.sin(fr*0.2)*0.3+0.7;
   g.globalAlpha=playerPulse;
@@ -1840,7 +1846,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v251',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v252',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

@@ -21,6 +21,11 @@ const _spiderGlowCanvas=(()=>{const c=document.createElement('canvas');c.width=2
 const _glowItemOrangeCanvas=(()=>{const c=document.createElement('canvas');c.width=42;c.height=42;const ctx=c.getContext('2d');ctx.fillStyle='#f08040';ctx.beginPath();ctx.arc(21,21,20,0,Math.PI*2);ctx.fill();return c;})();
 const _glowItemBlueCanvas=(()=>{const c=document.createElement('canvas');c.width=42;c.height=42;const ctx=c.getContext('2d');ctx.fillStyle='#80c0f0';ctx.beginPath();ctx.arc(21,21,20,0,Math.PI*2);ctx.fill();return c;})();
 const _ropeCoilCanvas=(()=>{const c=document.createElement('canvas');c.width=14;c.height=10;const ctx=c.getContext('2d');ctx.fillStyle='#a09060';ctx.beginPath();ctx.ellipse(7,6,6,4,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b0a070';ctx.beginPath();ctx.ellipse(7,6,4,2,0,0,Math.PI*2);ctx.fill();return c;})();
+// v252: Hoist barrel/rope spot arrays — eliminates per-frame literal array allocation in town map render
+const _BARREL_SPOTS=[[9,8],[10,8],[9,9],[21,8],[22,8]];
+const _ROPE_SPOTS=[[12,22],[18,22]];
+// v252: Pre-allocated sprite sort buffers — eliminates visiblePl.map()+{p,i} object allocs per frame
+const _srtP=[null,null,null],_srtI=[0,0,0];
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -676,31 +681,29 @@ function drawPirateDecorations(){
       }
     }
 
-    // Barrel stacks near warehouses (around building area ~8-10, 8-9)
-    const barrelSpots=[[9,8],[10,8],[9,9],[21,8],[22,8]];
-    barrelSpots.forEach(([btx,bty])=>{
+    // Barrel stacks near warehouses (v252: hoisted array, for loop)
+    for(let _bi=0;_bi<5;_bi++){
+      const btx=_BARREL_SPOTS[_bi][0],bty=_BARREL_SPOTS[_bi][1];
       const bpx=btx*TW-camX,bpy=bty*TH-camY;
       if(bpx>-TW&&bpx<W+TW&&bpy>-TW&&bpy<H+TW&&fogRevealed[0][bty]?.[btx]){
-        // Barrel 1
         bx(bpx+2,bpy+12,12,14,'#906838');bx(bpx+4,bpy+14,8,10,'#a07848');
         bx(bpx+2,bpy+14,12,2,'#705028');bx(bpx+2,bpy+22,12,2,'#705028');
-        // Barrel 2 (stacked)
         if((btx+bty)%2===0){
           bx(bpx+16,bpy+14,12,12,'#906838');bx(bpx+18,bpy+16,8,8,'#a07848');
           bx(bpx+16,bpy+16,12,2,'#705028');bx(bpx+16,bpy+22,12,2,'#705028');
         }
       }
-    });
+    }
 
-    // Rope coils near dock
-    const ropeSpots=[[12,22],[18,22]];
-    ropeSpots.forEach(([rtx,rty])=>{
+    // Rope coils near dock (v252: hoisted array, for loop)
+    for(let _ri=0;_ri<2;_ri++){
+      const rtx=_ROPE_SPOTS[_ri][0],rty=_ROPE_SPOTS[_ri][1];
       const rpx=rtx*TW-camX,rpy=rty*TH-camY;
       if(rpx>-TW&&rpx<W+TW&&rpy>-TW&&rpy<H+TW&&fogRevealed[0][rty]?.[rtx]){
         g.drawImage(_ropeCoilCanvas,(rpx+9)|0,(rpy+16)|0);
         bx(rpx+14,rpy+18,4,4,'#a09060');
       }
-    });
+    }
 
     // ── CRAFTPIX OVERWORLD TREE DECORATIONS ──
     // Drawn in two Y-sorted passes via drawCpxTreesInRange() called from dMap().
@@ -1207,11 +1210,12 @@ function dMap(){
       visiblePl.push(hv);
     }else{hv._wasVisible=false;}
   }else{pl[2]._wasVisible=false;}
-  // v227: DUNGEON_AURA_RGB moved to module scope as _DUNGEON_AURA_RGB (pre-baked into _dungeonAuraCanvas)
-  const sorted=visiblePl.map((p,i)=>({p,i:pl.indexOf(p)}));
-  sorted.sort((a,b)=>a.p.visualY-b.p.visualY);
-  for(let _si=0,_sl=sorted.length;_si<_sl;_si++){
-    const p=sorted[_si].p,i=sorted[_si].i;
+  // v252: pre-alloc sort buffers + insertion sort (3 items max, no object allocs)
+  const _srtN=visiblePl.length;
+  for(let _vi=0;_vi<_srtN;_vi++){_srtP[_vi]=visiblePl[_vi];_srtI[_vi]=pl.indexOf(visiblePl[_vi]);}
+  for(let _vi=1;_vi<_srtN;_vi++){const _pv=_srtP[_vi],_pi=_srtI[_vi];let _vj=_vi-1;while(_vj>=0&&_srtP[_vj].visualY>_pv.visualY){_srtP[_vj+1]=_srtP[_vj];_srtI[_vj+1]=_srtI[_vj];_vj--;}_srtP[_vj+1]=_pv;_srtI[_vj+1]=_pi;}
+  for(let _si=0;_si<_srtN;_si++){
+    const p=_srtP[_si],i=_srtI[_si];
     // v227: dungeon aura — pre-baked per-floor canvas, modulated by globalAlpha=pulse
     if(inDungeon&&currentFloor>=1&&currentFloor<=5){
       const spx=p.visualX-camX+TW/2,spy=p.visualY-camY+TH*0.7;
@@ -1306,30 +1310,30 @@ function dMap(){
 
   // Draw exit tile markers in dungeon (visible when revealed by fog)
   if(inDungeon){
-    exits.forEach(ex=>{
-      if(ex.fromMap!==currentMap)return;
-      ex.tiles.forEach(([etx,ety])=>{
-        if(!fogRevealed[currentMap][ety]?.[etx])return;
+    for(let _ei=0,_el=exits.length;_ei<_el;_ei++){
+      const ex=exits[_ei];
+      if(ex.fromMap!==currentMap)continue;
+      for(let _ti=0,_tl=ex.tiles.length;_ti<_tl;_ti++){
+        const etx=ex.tiles[_ti][0],ety=ex.tiles[_ti][1];
+        if(!fogRevealed[currentMap][ety]?.[etx])continue;
         const epx=etx*TW-camX,epy=ety*TH-camY;
-        if(epx<-TW||epx>W||epy<-TH||epy>H)return;
+        if(epx<-TW||epx>W||epy<-TH||epy>H)continue;
         const pulse=Math.sin(fr*0.08+etx+ety)*0.35+0.65;
         if(ex.isEscape){
-          // Town escape: pulsing green arrow pointing left (←TOWN)
           g.globalAlpha=pulse*0.75;
           bx(epx+2,epy+2,TW-4,TH-4,'rgba(30,200,80,.25)');
           g.globalAlpha=1;
           const bob=Math.sin(fr*0.1)*2;
           txShadow('←',epx+4,epy+TH/2+bob+4,10,'#40e060','rgba(0,0,0,.5)');
         }else{
-          // Deeper floor stairs: pulsing yellow arrow pointing right (↓)
           g.globalAlpha=pulse*0.6;
           bx(epx+2,epy+2,TW-4,TH-4,'rgba(200,180,30,.2)');
           g.globalAlpha=1;
           const bob=Math.sin(fr*0.1)*2;
           txShadow('↓',epx+4,epy+TH/2+bob+4,10,'#e0c040','rgba(0,0,0,.4)');
         }
-      });
-    });
+      }
+    }
   }
 
   // Proximity heartbeat pulse on screen edges
@@ -1745,7 +1749,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v251',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v252',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
