@@ -996,8 +996,15 @@ function drawSelectPhase(){
     const pool=DUNGEON_FLOOR_CARDS[currentMap];
     if(pool&&pool.length>0){
       const vault_=pl[0].vault||new Set();
-      // Show up to 4 cards from pool, marking unowned
-      if(_drawPoolPreviewMap!==currentMap){_drawPoolPreviewMap=currentMap;_drawPoolPreviewCache=pool.slice(0,Math.min(4,pool.length));}
+      // v315: composite cache key — refresh when map changes OR vault grows (new card acquired)
+      const _pKey=currentMap*100+Math.min(99,(pl[0].vault?pl[0].vault.size:0));
+      if(_drawPoolPreviewMap!==_pKey){
+        _drawPoolPreviewMap=_pKey;
+        const _sub=pool.slice(0,Math.min(8,pool.length));
+        // Sort: unowned (NEW) cards first so player sees their best draws immediately
+        _sub.sort((a,b)=>(vault_.has(a)?1:0)-(vault_.has(b)?1:0));
+        _drawPoolPreviewCache=_sub.slice(0,Math.min(4,_sub.length));
+      }
       const previewCards=_drawPoolPreviewCache; // v275: cached
       const ppW=220,ppH=60+previewCards.length*26;
       const ppX=328,ppY=H-164;
@@ -1237,6 +1244,20 @@ function drawSelectPhase(){
       if(h.got){g.globalAlpha=histAlpha*rowA;bx(hpX+hpW-16,hy+4,8,8,'#40d080');}
       else if(h.lost){g.globalAlpha=histAlpha*rowA;bx(hpX+hpW-16,hy+4,8,8,'#d04040');}
     }
+    // v315: momentum badge when strongly positive or negative
+    if(_battleRoundNet>=3){
+      const mbA=0.7+Math.sin(fr*0.2)*0.3;
+      g.globalAlpha=histAlpha*mbA;
+      bx(hpX+4,hpY+hpH,hpW-8,14,'rgba(20,80,40,.6)');
+      txShadow('\u25B2 ON A ROLL!',hpX+10,hpY+hpH+11,6,'#50d080','rgba(0,0,0,.3)');
+      g.globalAlpha=1;
+    }else if(_battleRoundNet<=-3){
+      const mbA=0.7+Math.sin(fr*0.2)*0.3;
+      g.globalAlpha=histAlpha*mbA;
+      bx(hpX+4,hpY+hpH,hpW-8,14,'rgba(80,20,20,.6)');
+      txShadow('\u25BC UNDER PRESSURE',hpX+10,hpY+hpH+11,6,'#d05050','rgba(0,0,0,.3)');
+      g.globalAlpha=1;
+    }
     g.globalAlpha=1;
   }
   // Card selection submenu for USE CARD
@@ -1392,7 +1413,7 @@ function drawConfirmingPhase(){
       txShadow(vMsg,16,H-38,12,'#40d080','rgba(0,0,0,.3)');
       txShadow('\u03C0_A, \u03C0_B, \u03C0_C \u2014 valid',16,H-22,7,'#14F195','rgba(0,0,0,.3)');
     }else{
-      txShadow('Waiting for others'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-38,14,'#686068','rgba(200,180,140,.3)');
+      txShadow(_WAIT_DOTS[Math.floor(t/12)%3],16,H-38,14,'#686068','rgba(200,180,140,.3)'); // v315
     }
     // Transaction flow visualization (Requirement #5)
     if(t>=30&&t<120){
@@ -1456,7 +1477,7 @@ function drawConfirmingPhase(){
       txShadow('ZK proof: '+zkProofStatus+' '+sp_,16,H-38,12,zkProofStatus==='verified'?'#40d080':'#14F195','rgba(0,0,0,.3)');
       if(walletLastCommitHash)txShadow(walletLastCommitHash,16,H-18,7,'#80c0ff','rgba(0,0,0,.3)');
     }
-    else{txShadow('Resolving'+'.'.repeat((Math.floor(t/12)%3)+1),16,H-38,14,'#686068','rgba(200,180,140,.3)');}
+    else{txShadow(_RESOLVING_DOTS[Math.floor(t/12)%3],16,H-38,14,'#686068','rgba(200,180,140,.3)');} // v315
   }
   // Commit phase: on-chain TX + ZK proof (both paths)
   if(t===1&&walletConnected){
@@ -1665,6 +1686,9 @@ let battleRoundHistory=[]; // v90: [{rd,pa,r1a,r2a,outcome}] per round (pa=playe
 let _battleRoundNet=0; // v284: running got-lost net, updated at unshift — avoids per-frame reduce
 
 let _histWLStr='W:0 L:0',_histWLRd=-1; // v313: W/L tally cache for round log panel
+// v315: pre-baked ellipsis strings — eliminates '.'.repeat() per frame in confirming phase
+const _WAIT_DOTS=['Waiting for others.','Waiting for others..','Waiting for others...'];
+const _RESOLVING_DOTS=['Resolving.','Resolving..','Resolving...'];
 // v300: Personality-specific bluff rates — VEGA 45% (unpredictable hunter), MIRA 20% (calculated)
 const _BLUFF_RATES=[0.45,0.20];
 // v293: Pre-computed "other action" indices — eliminates [0,1,2,3].filter per round
