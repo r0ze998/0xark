@@ -553,13 +553,25 @@ function updateRunSummary(){
   if(!runSummaryActive)return;
   runSummaryFrame++;
 }
+// v310: Run grade + commentary helpers
+function _runGrade(d){
+  const net=d.cardsGained-d.lostCards.length;
+  if(d.deepest===5&&net>0&&d.lostCards.length===0)return{g:'S',c:'#ffe080',q:'Flawless descent. The ARK opened for you.'};
+  if(d.deepest===5&&net>=0)return{g:'A',c:'#50e090',q:'You reached the ARK Core. Well done.'};
+  if(d.deepest>=3&&net>1)return{g:'A',c:'#50e090',q:'Strong haul from the depths.'};
+  if(d.deepest>=3&&net>=0)return{g:'B',c:'#60c8f0',q:'Decent run. Push deeper next time.'};
+  if(d.deepest>=2&&net>0)return{g:'B',c:'#60c8f0',q:'Steady progress. The ARK waits below.'};
+  if(d.deepest>=2&&net===0)return{g:'C',c:'#c0c030',q:'Broke even. Stay longer next time.'};
+  if(d.lostCards.length>d.cardsGained)return{g:'D',c:'#d07030',q:'More lost than gained. Adapt your strategy.'};
+  return{g:'F',c:'#d04040',q:'The dungeon didn\'t yield its cards today.'};
+}
 function drawRunSummary(){
   if(!runSummaryActive||!runSummaryData)return;
   const d=runSummaryData;
   const t=Math.min(1,runSummaryFrame/30); // 0.5s slide-in
   const slideY=(1-t)*60;
   const missionExtra=d.missionDesc?44:0;
-  const panelW=320,panelH=Math.max(160,140+d.lostCards.length*18)+missionExtra;
+  const panelW=320,panelH=Math.max(160,140+d.lostCards.length*18)+missionExtra+16; // v310: +16 for commentary
   const px=W/2-panelW/2,py=H/2-panelH/2+slideY;
 
   // Dim background
@@ -573,9 +585,14 @@ function drawRunSummary(){
   bx(px,py,1,panelH,'#60a8d0');bx(px+panelW-1,py,1,panelH,'#60a8d0');
   bx(px+1,py+1,panelW-2,1,'#304860');bx(px+1,py+panelH-2,panelW-2,1,'#304860');
 
-  // Title
+  // Title + v310: performance grade (top-right corner)
   const titleX=px+panelW/2;
   txShadow('DUNGEON REPORT',titleX-64,py+20,9,'#60c8f0','rgba(0,0,0,.6)');
+  const grade=_runGrade(d);
+  const gPulse=0.85+Math.sin(runSummaryFrame*0.12)*0.15;
+  g.globalAlpha=t*gPulse;
+  txShadow(grade.g,px+panelW-30,py+24,14,grade.c,'rgba(0,0,0,.7)');
+  g.globalAlpha=t;
   bx(px+20,py+28,panelW-40,1,'#304860');
 
   // Floor depth + rounds fought (v289: use hoisted _FLOOR_NUMS; add rounds)
@@ -612,6 +629,13 @@ function drawRunSummary(){
     txShadow('\u2605 MISSION: '+d.missionDesc,px+20,mSecY+14,7,'#f0c830','rgba(0,0,0,.4)');
     txShadow('REWARD: '+d.missionReward,px+20,mSecY+30,7,'#50e090','rgba(0,0,0,.3)');
   }
+
+  // v310: contextual commentary line
+  {const commentY=py+panelH-28;
+  g.globalAlpha=t*0.75;
+  bx(px+16,commentY-4,panelW-32,1,'rgba(96,168,208,.2)');
+  txShadow(grade.q,px+20,commentY+8,5.5,grade.c,'rgba(0,0,0,.4)');
+  g.globalAlpha=t;}
 
   // Dismiss hint — blink after 2s
   if(runSummaryFrame>120){
