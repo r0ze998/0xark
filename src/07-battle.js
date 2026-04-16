@@ -41,6 +41,11 @@ const _HAND_READY_LBL=['','1 card ready','2 cards ready','3 cards ready','4 card
 const _MORE_LBL=(()=>{const a=[''];for(let i=1;i<=56;i++)a.push('+'+i+' more...');return a;})();
 const _MORE_HIDDEN_LBL=(()=>{const a=[''];for(let i=1;i<=20;i++)a.push('+'+i+' more hidden');return a;})();
 let _hashLblCache='',_hashLblRef=''; // v324: lazy cache for wallet hash label
+// v329: pre-baked scout/barrier panel strings
+const _UNK_CARD_LBL=['\u2753 0 cards','\u2753 1 card','\u2753 2 cards','\u2753 3 cards','\u2753 4 cards','\u2753 5 cards'];
+const _SCOUT_HDR=(()=>{const a=[];for(let i=0;i<2;i++)a.push('SCOUT: '+_RIVAL_LBL[i]);return a;})();
+const _RD_DATA_LBL=(()=>{const a=[];for(let i=0;i<=10;i++)a.push('R'+i+' data');return a;})();
+const _BTYPE_UC={'attack':'A','defense':'D','flee':'F','magic':'M','recovery':'R'}; // first letter uppercase
 const _EXCESS_CHG=['+1','+2','+3','+4','+5','+6','+7','+8','+9'];
 const _STALE_RD_LBL=(()=>{const a=[];for(let i=0;i<=10;i++)a.push('(R'+i+')');return a;})();
 const _BTYPE_CNT_LBL=(()=>{const a=[];for(let ti=0;ti<5;ti++){const b=[];for(let n=0;n<=5;n++)b.push(_BTYPE_ABB[ti]+':'+n);a.push(b);}return a;})();
@@ -1143,7 +1148,10 @@ function drawSelectPhase(){
     // Threat level: 0-3
     const threatLvl=Math.min(3,totalSteals+(theyStoleLast?1:0));
     const threatCol=_BAR_THREAT_COLS[threatLvl]; // v264: hoisted
-    const ppH=barrierActive?70:70+_bhLen*18;
+    // v329: current-round steal prediction from bpRivalActions
+    const vsRiv_=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
+    const rivalPlanSteal_=bpRivalActions[vsRiv_-1]===1;
+    const ppH=barrierActive?70:(70+(rivalPlanSteal_?18:0)+_bhLen*18);
     const panY=H-164-Math.max(0,ppH-80);
     g.globalAlpha=slideA*0.95;
     win(ppX,panY,ppW,ppH);
@@ -1164,12 +1172,19 @@ function drawSelectPhase(){
       bx(tmX,tmY,tmW,tmH,'#181838');
       if(threatLvl>0)bx(tmX,tmY,Math.floor(tmW*(threatLvl/3)),tmH,threatCol);
       bx(tmX,tmY,tmW,1,'#282848');
+      // v329: current-round steal prediction alert row
+      const _histOff=rivalPlanSteal_?18:0;
+      if(rivalPlanSteal_){
+        bx(ppX+8,panY+52,ppW-16,16,'rgba(50,0,0,.75)');
+        bx(ppX+8,panY+52,ppW-16,1,'#c04040');
+        txShadow('\u26A1 PLANS TO STEAL THIS ROUND!',ppX+12,panY+62,6,'#e05040','rgba(0,0,0,.4)');
+      }
       // Recent round action breakdown — use battleRoundHistory directly (no slice alloc)
       if(_bhLen>0){
-        bx(ppX+6,panY+52,ppW-12,1,'rgba(200,180,100,.15)');
-        txShadow('RECENT ROUNDS:',ppX+8,panY+64,6,'#888870','rgba(0,0,0,.2)');
+        bx(ppX+6,panY+52+_histOff,ppW-12,1,'rgba(200,180,100,.15)');
+        txShadow('RECENT ROUNDS:',ppX+8,panY+64+_histOff,6,'#888870','rgba(0,0,0,.2)');
         for(let ri=0;ri<_bhLen;ri++){
-          const h=battleRoundHistory[ri];const hy=panY+68+ri*18;
+          const h=battleRoundHistory[ri];const hy=panY+68+_histOff+ri*18;
           txShadow(_ROUND_LBL[h.rd]||('R'+h.rd),ppX+8,hy+10,6,'#686860','rgba(0,0,0,.3)'); // v316
           // V action
           const vStole=h.r1a===1;
@@ -1186,7 +1201,7 @@ function drawSelectPhase(){
           else if(h.got){bx(ppX+84,hy,20,14,'rgba(0,40,0,.4)');txShadow('+CARD',ppX+86,hy+10,5,'#40a050','rgba(0,0,0,.3)');}
         }
       }else{
-        txShadow('No history yet',ppX+8,panY+56,6,'#686870','rgba(0,0,0,.2)');
+        txShadow('No history yet',ppX+8,panY+56+_histOff,6,'#686870','rgba(0,0,0,.2)');
       }
     }
     g.globalAlpha=1;
@@ -1207,10 +1222,10 @@ function drawSelectPhase(){
       g.globalAlpha=slideA*0.95;
       win(ppX,panY,ppW,panH);
       bx(ppX,panY,ppW,3,_RIVAL_COL[_rvi]);
-      txShadow('SCOUT: '+_RIVAL_LBL[_rvi],ppX+8,panY+18,8,'#38a038','rgba(0,0,0,.3)');
+      txShadow(_SCOUT_HDR[_rvi]||('SCOUT: '+_RIVAL_LBL[_rvi]),ppX+8,panY+18,8,'#38a038','rgba(0,0,0,.3)'); // v329
       if(_rv_sd&&_rv_sd.cards.length>0){
         const staleRd=rd-_rv_sd.round;
-        const stLabel=staleRd>0?'R'+_rv_sd.round+' data':'fresh';
+        const stLabel=staleRd>0?(_RD_DATA_LBL[_rv_sd.round]||'R'+_rv_sd.round+' data'):'fresh'; // v329
         txShadow(stLabel,ppX+ppW-8-stLabel.length*5,panY+18,6,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
         bx(ppX+6,panY+24,ppW-12,1,'rgba(200,180,100,.2)');
         const _scLen=Math.min(4,_rv_sd.cards.length);
@@ -1222,13 +1237,13 @@ function drawSelectPhase(){
           const dimA=staleRd>1?0.5:0.9;
           g.globalAlpha=slideA*dimA;
           bx(ppX+8,py2-6,10,14,tCol_);bx(ppX+9,py2-5,8,12,'rgba(0,0,0,.4)');
-          txShadow(c.t?c.t[0].toUpperCase():'?',ppX+11,py2+5,5,'#fff','rgba(0,0,0,.4)');
+          txShadow(c.t?(_BTYPE_UC[c.t]||c.t[0].toUpperCase()):'?',ppX+11,py2+5,5,'#fff','rgba(0,0,0,.4)'); // v329
           txShadow(c.n,ppX+22,py2+2,6,staleRd>1?'#888870':'#e0d8c0','rgba(0,0,0,.3)');
           for(let s=0;s<rar;s++)txShadow('\u2605',ppX+ppW-8-(rar-s)*8,py2+2,5,rarCol,'rgba(0,0,0,.3)');
           g.globalAlpha=slideA*0.95;
         }
       }else{
-        txShadow('\u2753 '+ccnt+' card'+(ccnt!==1?'s':''),ppX+8,panY+36,8,'#506840','rgba(0,0,0,.2)');
+        txShadow(_UNK_CARD_LBL[ccnt]||('\u2753 '+ccnt+' card'+(ccnt!==1?'s':'')),ppX+8,panY+36,8,'#506840','rgba(0,0,0,.2)'); // v329
         bx(ppX+8,panY+40,ppW-16,1,'rgba(200,180,100,.1)');
       }
       g.globalAlpha=1;
