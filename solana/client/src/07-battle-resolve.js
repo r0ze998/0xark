@@ -1,5 +1,10 @@
 // v262: Hoist resolve per-frame inline literals
 const _RES_ACT_NAMES=['DRAW','STEAL','BARRIER','SCOUT','CARD'];
+// v327: pre-baked resolve/result screen strings
+const _BSTREAK_LBL=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('\u2605 STREAK '+i+'x');return a;})();
+const _CC5_CARDS=['0/5 cards','1/5 cards','2/5 cards','3/5 cards','4/5 cards','5/5 cards'];
+const _SIGNED_DELTA=['-5','-4','-3','-2','-1','0','+1','+2','+3','+4','+5']; // indexed at delta+5
+let _reactNameCache='',_reactNameRef=''; // rName+':' lazy cache
 // v305: pre-baked strings for per-frame allocations in resolve/result draw
 const _DOTS=['','.','..',  '...'];
 const _ROUND_SUM=['','ROUND 1 SUMMARY','ROUND 2 SUMMARY','ROUND 3 SUMMARY','ROUND 4 SUMMARY','ROUND 5 SUMMARY','ROUND 6 SUMMARY','ROUND 7 SUMMARY','ROUND 8 SUMMARY','ROUND 9 SUMMARY','ROUND 10 SUMMARY'];
@@ -546,7 +551,7 @@ function drawResolvingPhase(){
       const fSc=1+Math.max(0,0.3*(1-fProg*2));
       g.globalAlpha=fA;
       g.save();g.translate(playerCX,fY);g.scale(fSc,fSc);
-      txShadow('+'+ev.heal+' HP',-18,0,14,'#40e880','rgba(0,0,0,.7)');
+      txShadow('+1 HP',-18,0,14,'#40e880','rgba(0,0,0,.7)'); // v327: ev.heal always 1 when shown
       g.restore();g.globalAlpha=1;
     }
     // Card consumption effect animations based on card name in event text
@@ -794,7 +799,7 @@ function drawResolvingPhase(){
       g.globalAlpha=_spA*0.95;
       bx(_spX,_spY-14,128,20,'rgba(0,0,0,.7)');
       bx(_spX,_spY-14,128,2,_scol);
-      txShadow('\u2605 STREAK '+streakCount+'x',_spX+8,_spY+1,9,_scol,'rgba(0,0,0,.5)');
+      txShadow(_BSTREAK_LBL[streakCount]||('\u2605 STREAK '+streakCount+'x'),_spX+8,_spY+1,9,_scol,'rgba(0,0,0,.5)'); // v327
       g.globalAlpha=1;
     }
   }else{
@@ -874,11 +879,11 @@ function drawResultPhase(){
     txShadow(actName,cx_+4,cy_+28,8,actCol,'rgba(0,0,0,.2)');
     // Card count + v312: delta from round start
     const cc=cdCount(pl[col].cd);
-    txShadow(cc+'/5 cards',cx_+4,cy_+42,7,'#988870','rgba(0,0,0,.15)');
+    txShadow(_CC5_CARDS[cc]||(cc+'/5 cards'),cx_+4,cy_+42,7,'#988870','rgba(0,0,0,.15)'); // v327
     const _delta=cc-bpPreRoundCards[col];
     if(_delta!==0){
       const _dc=_delta>0?'#50d080':'#d05050';
-      txShadow((_delta>0?'+':'')+_delta,cx_+colW-8,cy_+42,8,_dc,'rgba(0,0,0,.3)');
+      const _di=_delta+5;txShadow((_di>=0&&_di<11?_SIGNED_DELTA[_di]:((_delta>0?'+':'')+_delta)),cx_+colW-8,cy_+42,8,_dc,'rgba(0,0,0,.3)'); // v327
     }
     // Mini card bar
     for(let i=0;i<5;i++){
@@ -928,7 +933,7 @@ function drawResultPhase(){
       bx(ox+26+o*(rOW+rOG),oy+2,rOW,rOH,filled?_RORB_FILL[si]:_RORB_EMPTY[si]);
       if(filled)bx(ox+26+o*(rOW+rOG)+1,oy+3,1,1,'rgba(255,255,255,.3)');
     }
-    if(val>3)txShadow('+'+(val-3),ox+26+3*(rOW+rOG)+2,oy+9,5,'#f0c830','rgba(0,0,0,.35)');
+    if(val>3)txShadow(_EXCESS_CHG[val-4]||('+'+( val-3)),ox+26+3*(rOW+rOG)+2,oy+9,5,'#f0c830','rgba(0,0,0,.35)'); // v327
   }}
   g.globalAlpha=1;
 
@@ -1019,7 +1024,8 @@ function drawResultPhase(){
       const rNameCol=reactRivalIdx===1?'#f080c0':'#f0c830';
       const reactX=panX;const reactY=panY-36;
       bx(reactX,reactY-4,panW,30,'rgba(0,0,0,.5)');
-      txShadow(rName+':',reactX+8,reactY+16,9,rNameCol,'rgba(0,0,0,.4)');
+      if(_reactNameRef!==rName){_reactNameRef=rName;_reactNameCache=rName+':';} // v327: lazy
+      txShadow(_reactNameCache,reactX+8,reactY+16,9,rNameCol,'rgba(0,0,0,.4)');
       txShadow('\u201C'+reaction+'\u201D',reactX+70,reactY+16,9,'#f0e8c8','rgba(0,0,0,.4)');
     }
     g.globalAlpha=1;
