@@ -11146,7 +11146,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v337',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v338',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -14617,12 +14617,14 @@ function drawCardAcquisition(){
 
   if(t>=50&&t<90){
     win(W/2-150,cy_+ch/2+12,300,40);
-    txShadow('You obtained '+cr.n+'!',W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');
+    if(_acqObtainedRef!==cr){_acqObtainedRef=cr;_acqObtainedLbl='You obtained '+cr.n+'!';} // v338: lazy cache
+    txShadow(_acqObtainedLbl,W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');
     // v96: NEW card badge — shown when first time in vault
     if(cardAcqIsNew){
       const newBadgeAlpha=t<60?(t-50)/10:t>82?(90-t)/8:1;
       const vaultTotal=pl[0].vault?pl[0].vault.size:0;
-      const newLabel='\u2605 NEW!  '+vaultTotal+'/60';
+      if(_acqNewVault!==vaultTotal){_acqNewVault=vaultTotal;_acqNewLbl='\u2605 NEW!  '+vaultTotal+'/60';} // v338: lazy cache
+      const newLabel=_acqNewLbl;
       const newLW=newLabel.length*6+14;
       g.globalAlpha=newBadgeAlpha;
       bx(W/2-newLW/2,cy_+ch/2-12,newLW,16,'rgba(0,0,0,.7)');
@@ -14739,6 +14741,11 @@ let _rIntelLbl=['',''],_rIntelKey=[-1,-1];
 // v333: marketplace listing price labels (baked from _MKT_LISTINGS static data)
 const _MKT_LISTING_PRICE_LBL=_MKT_LISTINGS.map(l=>l.price+' SOL');
 const _LOG_STAT_LABELS=['btl','got','lost',''];
+// v338: pre-baked card decay countdown strings 0..210s (CARD_DECAY_MS=210000)
+const _DECAY_TIME_LBL=(()=>{const a=[];for(let s=0;s<=300;s++){const mm=Math.floor(s/60),ss2=s%60;a.push(mm>0?mm+'m'+(ss2<10?'0':'')+ss2+'s':s+'s');}return a;})();
+// v338: lazy cache for card acquisition "You obtained X!" label and NEW badge label
+let _acqObtainedLbl='',_acqObtainedRef=null;
+let _acqNewLbl='',_acqNewVault=-1;
 // v256: Hoisted market overlay statics — eliminates per-frame inline literal allocs
 const _MKT_TYPE_FILTER=['attack','defense','flee','magic','recovery'];
 const _MKT_TYPE_LABEL=['ATK','DEF','FLY','MAG','REC'];
@@ -14910,8 +14917,7 @@ function drawDiscardOverlay(){
         const remMs=Math.max(0,CARD_DECAY_MS-(Date.now()-cardTimers[i]));
         const remFrac=remMs/CARD_DECAY_MS;
         const secs=Math.ceil(remMs/1000);
-        const mm=Math.floor(secs/60),ss=secs%60;
-        const timeStr=mm>0?mm+'m'+('0'+ss).slice(-2)+'s':ss+'s';
+        const timeStr=_DECAY_TIME_LBL[secs]||(secs+'s'); // v338: pre-baked, eliminates 3 allocs/card/frame
         const barCol=remFrac>0.5?'#40d040':remFrac>0.25?'#d0c040':'#d04040';
         bx(W/2-160,cy+28,80,3,'#181828');
         bx(W/2-160,cy+28,Math.floor(80*remFrac),3,barCol);
