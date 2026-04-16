@@ -839,13 +839,131 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=1;
     // Crushed matter at center
     g.globalAlpha=crushPulse*0.8;px(7,7,2,2,'#c0a0e0');g.globalAlpha=1;
+  }else if(_cn==='CRYSTAL'){
+    // CRYSTAL — Unbreakable (perfect defense, Epic defense)
+    // Idle: crystal facets shimmer, prismatic glow pulses, refraction ripples
+    const crysShim=Math.floor(t/7)%6; // shimmer position
+    const prismPulse=0.4+0.4*_sFr052;
+    const facetGlow=0.3+0.3*_sFr04;
+    // Crystal aura (prismatic)
+    g.globalAlpha=prismPulse*0.15;px(-1,-1,18,22,'#c0f0ff');g.globalAlpha=1;
+    // Crystal golem body — main structure (angular crystalline form)
+    // Core torso (large crystal shard)
+    px(4,4,8,10,'#50a8d0');px(5,4,6,9,'#70c0f0');px(6,5,4,7,'#a0ddf8');
+    // Crystal head (pointed, sharp)
+    px(5,0,6,4,'#70c0f0');px(6,0,4,3,'#98d8f8');px(7,0,2,2,'#c0eeff');
+    // Prismatic highlight (rotates around body)
+    const _prx=[6,9,11,9,6,3,1,3],_pry=[1,2,5,10,12,10,5,2];
+    g.globalAlpha=0.6+prismPulse*0.4;
+    px(_prx[crysShim],_pry[crysShim],2,1,'#ffffff');
+    px(_prx[(crysShim+3)%6],_pry[(crysShim+3)%6],1,2,'#e0f8ff');
+    g.globalAlpha=1;
+    // Crystal arms (angular shards)
+    px(0,5,5,4,'#4898c0');px(0,6,4,2,'#60b0e0'); // left arm
+    px(11,5,5,4,'#4898c0');px(12,6,4,2,'#60b0e0'); // right arm
+    // Arm crystal spikes
+    px(-1,4,2,2,'#90d0f0');px(-1,7,2,2,'#70b8e0');
+    px(15,4,2,2,'#90d0f0');px(15,7,2,2,'#70b8e0');
+    // Crystal legs (stable base)
+    px(4,14,3,5,'#4898c0');px(9,14,3,5,'#4898c0');
+    px(5,14,2,4,'#60b0e0');px(10,14,2,4,'#60b0e0');
+    // Foot crystals
+    px(3,18,4,1,'#3878a0');px(9,18,4,1,'#3878a0');
+    // Internal light (core glow)
+    g.globalAlpha=facetGlow*0.7;px(6,6,4,5,'#c0eeff');g.globalAlpha=1;
+    g.globalAlpha=facetGlow*0.4;px(7,7,2,3,'#ffffff');g.globalAlpha=1;
+    // Refraction lines (light splitting)
+    g.globalAlpha=prismPulse*0.45;
+    px(2,8,3,1,'#70c0f0');px(11,9,3,1,'#98d8f8');
+    px(3,5,2,1,'#a0ddf8');px(11,6,2,1,'#c0eeff');
+    g.globalAlpha=1;
+  }else if(_cn==='MAELSTROM'){
+    // MAELSTROM — Ocean Vortex (water vortex, Epic magic)
+    // Idle: vortex spiral spins, waves crash, foam sprays
+    const vortexSpin=Math.floor(t/4)%8; // spiral rotation
+    const waveCrash=0.3+0.4*_sFr04;
+    const foamBurst=Math.floor(t/6)%3;
+    // Dark ocean background
+    g.globalAlpha=0.2;px(-1,-1,18,22,'#1a3860');g.globalAlpha=1;
+    // Vortex spiral (8 positions of spiral arms)
+    const _vx=[7,10,12,11,7,3,2,4],_vy=[1,3,6,10,13,10,7,3];
+    // Outer spiral arms (dark blue water)
+    g.globalAlpha=0.6+waveCrash*0.2;
+    px(_vx[vortexSpin],_vy[vortexSpin],3,2,'#2060a8');
+    px(_vx[(vortexSpin+2)%8],_vy[(vortexSpin+2)%8],3,2,'#3070b8');
+    px(_vx[(vortexSpin+4)%8],_vy[(vortexSpin+4)%8],2,2,'#4080c8');
+    px(_vx[(vortexSpin+6)%8],_vy[(vortexSpin+6)%8],2,2,'#5090c8');
+    g.globalAlpha=1;
+    // Mid vortex (medium blue)
+    px(3,4,10,8,'#2860a0');px(4,5,8,6,'#3870b0');px(5,6,6,4,'#4880c0');
+    // Vortex center (dark abyss)
+    px(6,7,4,3,'#0a1828');px(7,8,2,1,'#060e16');
+    // Foam/white caps (wave crests)
+    g.globalAlpha=waveCrash*0.8;
+    const _fx=[2,9,12,4,11],_fy=[4,3,7,11,10];
+    px(_fx[foamBurst],_fy[foamBurst],3,1,'#c0e0f8');
+    px(_fx[(foamBurst+1)%5]+1,_fy[(foamBurst+1)%5],2,1,'#e0f4ff');
+    g.globalAlpha=1;
+    // Water walls (around vortex)
+    px(1,5,3,6,'#2060a0');px(12,5,3,6,'#2060a0');
+    px(1,6,2,4,'#3070b0');px(13,6,2,4,'#3070b0');
+    // Surface ripples
+    g.globalAlpha=waveCrash*0.5;
+    px(4,2,8,1,'#4890c8');px(3,3,10,1,'#3878b8');
+    px(4,13,8,1,'#4890c8');px(3,14,10,1,'#3878b8');
+    g.globalAlpha=1;
+    // Spray particles at top
+    px(5,0,2,2,'#a0d0f0');px(9,1,2,1,'#c0e4f8');px(3,1,1,1,'#b0d8f4');
+  }else if(_cn==='ELIXIR'){
+    // ELIXIR — Ultimate Cure (cure all, Epic recovery)
+    // Idle: golden liquid swirls, bubbles rise, magical glow pulses
+    const liquidSwirl=Math.floor(t/8)%4; // swirl phase
+    const glowPulse=0.4+0.4*_sFr06;
+    const bubblePh=Math.floor(t/10)%5; // bubble position
+    // Warm golden aura
+    g.globalAlpha=glowPulse*0.18;px(-1,-1,18,22,'#f0c040');g.globalAlpha=1;
+    // Flask body (large alchemical vessel)
+    // Flask neck
+    px(6,0,4,3,'#c89828');px(7,1,2,1,'#e8c040');
+    // Flask stopper (cork)
+    px(5,2,6,2,'#a07828');px(6,2,4,1,'#c09030');
+    // Flask shoulder (widens)
+    px(4,4,8,2,'#c89828');px(5,4,6,1,'#e0b030');
+    // Flask body (wide, full of elixir)
+    px(2,6,12,9,'#c89828');px(3,6,10,8,'#d8a828');px(3,7,10,6,'#e0b030');
+    // Liquid inside (swirling golden)
+    px(4,7,8,7,'#f0c040');px(5,8,6,5,'#f8d060');
+    // Liquid swirl pattern (4 phases)
+    if(liquidSwirl===0){px(5,9,3,2,'#ffe070');px(8,10,3,1,'#f0c040');}
+    else if(liquidSwirl===1){px(6,8,4,2,'#ffe070');px(5,10,3,1,'#f0c040');}
+    else if(liquidSwirl===2){px(7,9,3,2,'#ffe070');px(5,9,2,2,'#f0c040');}
+    else{px(5,8,4,3,'#ffe070');px(9,9,2,2,'#f0c040');}
+    // Inner light (magical golden glow)
+    g.globalAlpha=glowPulse*0.7;px(6,9,4,3,'#ffffff');g.globalAlpha=1;
+    g.globalAlpha=glowPulse*0.4;px(7,10,2,2,'#ffffff');g.globalAlpha=1;
+    // Flask base
+    px(3,15,10,2,'#c89828');px(4,15,8,1,'#e0b030');
+    px(2,16,12,1,'#a07828'); // foot ridge
+    // Rising bubbles (5 positions)
+    const _bx=[5,7,9,6,8],_by=[6,7,8,9,7];
+    g.globalAlpha=0.5+glowPulse*0.3;
+    px(_bx[bubblePh],_by[bubblePh],1,1,'#ffffff');
+    px(_bx[(bubblePh+2)%5],_by[(bubblePh+2)%5]-2,1,1,'#fff8c0');
+    g.globalAlpha=1;
+    // Flask highlights (glass glint)
+    px(4,6,2,6,'#f8d060');px(4,7,1,4,'rgba(255,255,255,0.35)');
+    // Magical sparkles outside flask
+    g.globalAlpha=glowPulse*0.6;
+    px(1,8,1,1,'#f0c040');px(14,9,1,1,'#f8d060');px(1,12,1,1,'#f0c040');
+    g.globalAlpha=1;
   }
 
   // Generic renderer for all other cards (type-based pixel art)
   if(_cn==='AEGIS'||_cn==='UMBRA'||_cn==='IGNIS'||_cn==='TEMPEST'||_cn==='NIHIL'||
      _cn==='VOIDBLADE'||_cn==='TITAN'||_cn==='GENESIS'||_cn==='SINGULARITY'||_cn==='ARK BLESS'||
      _cn==='SANCTUARY'||_cn==='GEN PULSE'||_cn==='REAPER'||_cn==='ARK GATE'||
-     _cn==='PHOENIX'||_cn==='PHANTOM'||_cn==='GRAVITY'){
+     _cn==='PHOENIX'||_cn==='PHANTOM'||_cn==='GRAVITY'||
+     _cn==='CRYSTAL'||_cn==='MAELSTROM'||_cn==='ELIXIR'){
     // named sprites already drawn above — fall through to sparkle/reveal below
   } else {
     const cr=CD[cardId-1];if(!cr)return;
