@@ -11012,7 +11012,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v287',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v288',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -16266,42 +16266,65 @@ function drawFloorClearFanfare(){
   // Rarity-colored header bar
   bx(px_,py_,pw,3,rcol);
   bx(px_,py_+ph-1,pw,1,'rgba(200,180,100,.3)');
-  // "FLOOR X CLEARED!" header
+  // v288: isGoal special header — dungeon cleared!
   const flRoman=_FLOOR_NUMS[d.floor]||d.floor; // v262: use _FLOOR_NUMS from 07-map.js
-  txShadow('FLOOR '+flRoman+' CLEARED',px_+pw/2-130,py_+28,16,'#f0e0a0','rgba(0,0,0,.6)');
-  bx(px_+16,py_+34,pw-32,1,'rgba(200,180,100,.2)');
+  if(d.isGoal){
+    // Pulsing gold title for dungeon complete
+    const hPulse=0.85+Math.sin(t*0.14)*0.15;
+    g.globalAlpha=alpha*hPulse;
+    txShadow('THE ARK IS OPEN',px_+pw/2-140,py_+22,18,'#ffe080','rgba(0,0,0,.8)');
+    g.globalAlpha=alpha;
+    txShadow('DUNGEON CLEARED!',px_+pw/2-126,py_+44,11,'#f0c040','rgba(0,0,0,.5)');
+    // Extra star burst decoration
+    for(let si=0;si<8;si++){
+      const sa=t*0.1+si*(Math.PI*2/8);
+      const sd=52+Math.sin(t*0.08)*6;
+      g.globalAlpha=alpha*(0.4+Math.sin(t*0.12+si)*0.3);
+      bx(px_+pw/2+Math.cos(sa)*sd-2,py_+34+Math.sin(sa)*10-2,4,4,'#ffe080');
+    }
+    g.globalAlpha=alpha;
+    bx(px_+16,py_+52,pw-32,1,'rgba(255,224,128,.3)');
+  }else{
+    txShadow('FLOOR '+flRoman+' CLEARED',px_+pw/2-130,py_+28,16,'#f0e0a0','rgba(0,0,0,.6)');
+    bx(px_+16,py_+34,pw-32,1,'rgba(200,180,100,.2)');
+  }
   // Card display (left side of panel)
   const cX=px_+60,cY=py_+80;
   const cw_=56,ch_=80;
-  // Rarity glow behind card
-  const glA=0.5+Math.sin(t*0.12)*0.2;
-  g.globalAlpha=alpha*glA*0.55;
+  // Rarity glow behind card — extra for goal
+  const glA=(0.5+Math.sin(t*0.12)*0.2)*(d.isGoal?1.4:1);
+  g.globalAlpha=alpha*Math.min(1,glA)*0.55;
   bx(cX-12,cY-12,cw_+24,ch_+24,rcol+'40'||'rgba(200,160,80,.3)');
   g.globalAlpha=alpha;
   // Card frame
   const cr2=CD[d.cardId-1];
   bx(cX,cY,cw_,ch_,cr2.d);bx(cX+2,cY+2,cw_-4,ch_-4,cr2.c);
   drawCardCharacter(cX+4,cY+4,d.cardId,1.8,fr+t);
-  // Rarity orbit sparks
-  const sparkCount=2+rar*2;
+  // Rarity orbit sparks (more for goal)
+  const sparkCount=d.isGoal?12:2+rar*2;
+  const sparkDist=d.isGoal?52:38;
   for(let i=0;i<sparkCount;i++){
-    const ang=t*0.12+i*(Math.PI*2/sparkCount);
-    const dist=38+Math.sin(t*0.1)*4;
-    g.globalAlpha=alpha*0.75;
-    bx(cX+cw_/2+Math.cos(ang)*dist-2,cY+ch_/2+Math.sin(ang)*dist-2,4,4,rcol);
+    const ang=t*(d.isGoal?0.08:0.12)+i*(Math.PI*2/sparkCount);
+    const dist=sparkDist+Math.sin(t*0.1)*4;
+    g.globalAlpha=alpha*(d.isGoal?0.9:0.75);
+    bx(cX+cw_/2+Math.cos(ang)*dist-2,cY+ch_/2+Math.sin(ang)*dist-2,d.isGoal?5:4,d.isGoal?5:4,rcol);
   }
   g.globalAlpha=alpha;
   // Card info (right side)
   const infoX=cX+cw_+24;
-  txShadow(d.isNew?'NEW CARD!':'GOT:',infoX,py_+68,9,'#a09878','rgba(0,0,0,.3)');
+  const infoTopLbl=d.isGoal?'LEGENDARY REWARD!':(d.isNew?'NEW CARD!':'GOT:');
+  const infoTopCol=d.isGoal?'#ffe080':(d.isNew?rcol:'#a09878');
+  txShadow(infoTopLbl,infoX,py_+68,9,infoTopCol,'rgba(0,0,0,.3)');
   txShadow(cr2.n,infoX,py_+90,12,d.isNew?rcol:'#e8e0c8','rgba(0,0,0,.4)');
   txShadow(_SCR_RAR_NAMES[rar]||'',infoX,py_+110,9,rcol,'rgba(0,0,0,.3)'); // v262: hoisted
   txShadow(cr2.f||'',infoX,py_+128,7,'#888878','rgba(0,0,0,.2)');
-  // "Continue deeper" footer
+  // Footer
   if(t>50){
     const ftA=Math.min(1,(t-50)/20);
     g.globalAlpha=alpha*ftA*(0.5+Math.abs(Math.sin(t*0.06))*0.5);
-    txShadow('Descending deeper...',px_+pw/2-90,py_+ph-22,8,'#686880','rgba(0,0,0,.3)');
+    const ftTxt=d.isGoal?'All cards await — claim the Prize Pool!':'Descending deeper...';
+    const ftCol=d.isGoal?'#f0c840':'#686880';
+    txShadow(ftTxt,px_+pw/2-(d.isGoal?148:90),py_+ph-22,8,ftCol,'rgba(0,0,0,.3)');
   }
   g.globalAlpha=1;
 }
