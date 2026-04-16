@@ -1,5 +1,7 @@
 # 0xARK
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 > **60 cards. One Prize Pool. Information asymmetry is the ultimate weapon.**
 
 A Solana on-chain card PvP game. Explore a dungeon with zero-knowledge hidden positions, steal cards from rivals you can't see, and be the first to collect all 60 unique cards to claim the entire Prize Pool.
@@ -105,6 +107,8 @@ Cards minted post-victory are 1-of-1 on-chain NFTs (supply=1, mint authority bur
 | Groth16 on-chain verifier | ✅ Solana BN254 syscalls (<200K CUs) |
 | Anchor instructions | 12 (create/join/start/commit/reveal/resolve/zk/nft/stake/prize/season/agent) |
 | Litesvm E2E tests | ✅ 9 tests, all passing |
+| Card pixel art | ✅ All 60 unique sprites complete (hand-crafted, per-frame animated) |
+| Building NPCs | ✅ Detailed pixel art characters (Merchant Elara, Spy Master Sable) |
 | React UI bundle | ✅ Wallet / Lobby / NFT Inventory (TypeScript + wallet-adapter) |
 | WebSocket server | ✅ Pure relayer — no game authority, Solana is source of truth |
 | Hackathon tracks | Gaming · AI · Stablecoins (only project spanning all three) |
@@ -338,7 +342,7 @@ Season-end distribution (if no winner after max rounds):
 ├── react-dist/                   React UI bundle (wallet/lobby/inventory)
 │
 ├── solana/client/
-│   ├── src/                      17 JS modules (19,147 lines)
+│   ├── src/                      17 JS modules (~21K lines)
 │   │   ├── 01-pixi.js            PixiJS canvas, FRLG framework
 │   │   ├── 01-draw.js            Canvas 2D, ZK proof system, web3 helpers
 │   │   ├── 01-net.js             WebSocket client, transitions
