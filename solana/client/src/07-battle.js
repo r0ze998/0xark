@@ -2,6 +2,12 @@
 // BATTLE / ACTION SCREEN (FRLG STYLE)
 // ═══════════════════════════════════════
 
+// v262: Hoist battle per-frame inline literals to module scope
+const _ACTION_NAMES=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
+const _ACTION_NAMES_EX=['DRAW!','STEAL!','BARRIER!','SCOUT!','USE CARD!'];
+const _ACTION_COLORS_EX=['#48b8e8','#d04040','#3060b0','#308030','#c08030'];
+const __ACT_ABBR=['DRW','STL','BAR','SCT','CRD'],__ACT_COL=['#48b8e8','#d04040','#3060b0','#38a038','#c08030'];
+const _SPIN=['|','/','-','\\'];
 // v261: rivalUniqSize — allocation-free rival hand unique count (replaces new Set() × 2 per frame in game-loop)
 // v250: Static battle HUD arrays — eliminates per-frame object/array allocation in spell orb + type strip rendering
 const _BORB_LBL=['STL','BAR','SCT'],_BORB_FILL=['#c04848','#3868c0','#38a038'],_BORB_EMPTY=['#2a1010','#101028','#0e1e0e'],_BORB_LCOL=['#d05050','#4878d0','#48b048'];
@@ -380,7 +386,7 @@ function drawOpponentInfoBox(){
       const staleLabel=rd-sd.round>0?'(R'+(sd.round)+')':'';
       g.globalAlpha=rd-sd.round>1?0.5:0.85;
       bx(bx_+4,intelY,bw-8,14,'rgba(30,80,120,.4)');
-      txShadow('\u{1F50D}'+pl[1].n[0]+': '+(sd.cards.length>0?sd.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel,bx_+8,intelY+11,5,ARK.tealBright,'rgba(0,0,0,.3)');
+      txShadow('\u{1F50D}'+pl[1].n[0]+': '+(sd.nameStr||'empty')+staleLabel,bx_+8,intelY+11,5,ARK.tealBright,'rgba(0,0,0,.3)'); // v261: pre-joined
       g.globalAlpha=1;
     }
     if(showScout1){
@@ -389,7 +395,7 @@ function drawOpponentInfoBox(){
       const staleLabel2=rd-sd2.round>0?'(R'+(sd2.round)+')':'';
       g.globalAlpha=rd-sd2.round>1?0.5:0.85;
       bx(bx_+4,intelY2,bw-8,14,'rgba(80,60,10,.35)');
-      txShadow('\u{1F50D}'+pl[2].n[0]+': '+(sd2.cards.length>0?sd2.cards.map(c=>c.n).join(' \u00B7 '):'empty')+staleLabel2,bx_+8,intelY2+11,5,ARK.gold,'rgba(0,0,0,.3)');
+      txShadow('\u{1F50D}'+pl[2].n[0]+': '+(sd2.nameStr||'empty')+staleLabel2,bx_+8,intelY2+11,5,ARK.gold,'rgba(0,0,0,.3)'); // v261: pre-joined
       g.globalAlpha=1;
     }
   }
@@ -1133,8 +1139,7 @@ function drawSelectPhase(){
   }
   // v90: Battle round history panel (right side, shown from round 2 onward)
   if(battleRoundHistory.length>0&&!bpCardSelectActive&&!bpTargetSelectActive){
-    const ACT_ABBR=['DRW','STL','BAR','SCT','CRD'];
-    const ACT_COL=['#48b8e8','#d04040','#3060b0','#38a038','#c08030'];
+    // v262: _ACT_ABBR, _ACT_COL hoisted to __ACT_ABBR, __ACT_COL
     const histCount=Math.min(3,battleRoundHistory.length);
     const hpW=178,hpH=28+histCount*22;
     const hpX=W-hpW-8,hpY=130;
@@ -1152,23 +1157,23 @@ function drawSelectPhase(){
       // Round label
       txShadow('R'+h.rd,hpX+6,hy+12,6,i===0?'#e8e0c0':'#888070','rgba(0,0,0,.3)');
       // Player action badge
-      const pCol=ACT_COL[h.pa]||'#888';
+      const pCol=_ACT_COL[h.pa]||'#888';
       bx(hpX+28,hy,34,16,'rgba(0,0,0,.5)');
       bx(hpX+28,hy,34,1,pCol);
       txShadow('YOU',hpX+30,hy+7,5,'rgba(200,200,200,.5)','rgba(0,0,0,.3)');
-      txShadow(ACT_ABBR[h.pa]||'???',hpX+30,hy+14,6,pCol,'rgba(0,0,0,.3)');
+      txShadow(_ACT_ABBR[h.pa]||'???',hpX+30,hy+14,6,pCol,'rgba(0,0,0,.3)');
       // Rival 1 action (VEGA)
-      const r1Col=ACT_COL[h.r1a]||'#888';
+      const r1Col=_ACT_COL[h.r1a]||'#888';
       bx(hpX+66,hy,34,16,'rgba(0,0,0,.5)');
       bx(hpX+66,hy,34,1,'#d060a0');
       txShadow('V',hpX+68,hy+7,5,'rgba(200,160,180,.5)','rgba(0,0,0,.3)');
-      txShadow(ACT_ABBR[h.r1a]||'???',hpX+68,hy+14,6,r1Col,'rgba(0,0,0,.3)');
+      txShadow(_ACT_ABBR[h.r1a]||'???',hpX+68,hy+14,6,r1Col,'rgba(0,0,0,.3)');
       // Rival 2 action (MIRA)
-      const r2Col=ACT_COL[h.r2a]||'#888';
+      const r2Col=_ACT_COL[h.r2a]||'#888';
       bx(hpX+104,hy,34,16,'rgba(0,0,0,.5)');
       bx(hpX+104,hy,34,1,'#d0a030');
       txShadow('M',hpX+106,hy+7,5,'rgba(200,180,100,.5)','rgba(0,0,0,.3)');
-      txShadow(ACT_ABBR[h.r2a]||'???',hpX+106,hy+14,6,r2Col,'rgba(0,0,0,.3)');
+      txShadow(_ACT_ABBR[h.r2a]||'???',hpX+106,hy+14,6,r2Col,'rgba(0,0,0,.3)');
       // Outcome dot
       if(h.got){g.globalAlpha=histAlpha*rowA;bx(hpX+hpW-16,hy+4,8,8,'#40d080');}
       else if(h.lost){g.globalAlpha=histAlpha*rowA;bx(hpX+hpW-16,hy+4,8,8,'#d04040');}
@@ -1284,10 +1289,8 @@ function drawConfirmingPhase(){
   // v135: Action commitment shout — brief screen-center flash of chosen action name
   {const t0=fr-bpFrame;
   if(t0<16){
-    const aNames=['DRAW!','STEAL!','BARRIER!','SCOUT!','USE CARD!'];
-    const aColors=['#48b8e8','#d04040','#3060b0','#308030','#c08030'];
-    const act=Math.min(bpAction,4);const aCol=aColors[act];
-    const aName=aNames[act];
+    const act=Math.min(bpAction,4);const aCol=_ACTION_COLORS_EX[act]; // v262: hoisted
+    const aName=_ACTION_NAMES_EX[act];
     const fadeIn=Math.min(1,t0/5);const fadeOut=t0>9?Math.max(0,(16-t0)/7):1;
     const shoutA=fadeIn*fadeOut;
     const sz=Math.floor(12+Math.min(1,t0/7)*28); // font size 12→40 as it snaps in
@@ -1306,7 +1309,7 @@ function drawConfirmingPhase(){
   }}
   // Text box at bottom
   win(4,H-70,W-8,64);
-  const t=fr-bpFrame;const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
+  const t=fr-bpFrame; // v262: actionNames hoisted to _ACTION_NAMES
   if(walletConnected){
     // On-chain flow with ZK visual enhancements
     if(t<30){
@@ -1326,7 +1329,7 @@ function drawConfirmingPhase(){
       if(walletLastCommitHash)txShadow(walletLastCommitHash,16,H-22,7,'#80c0ff','rgba(0,0,0,.3)');
     }else if(t<85){
       // Generating ZK proof (real snarkjs or visual)
-      const sp_=['|','/','-','\\'][Math.floor(t/3)%4];
+      const sp_=_SPIN[Math.floor(t/3)%4]; // v262: hoisted
       const zkMsg=zkProofGenerating?'Generating Groth16 proof (snarkjs)... '+sp_:'Generating Groth16 proof... '+sp_;
       txShadow(zkMsg,16,H-38,12,'#14F195','rgba(0,0,0,.3)');
       const proofT=t-65;
@@ -1395,10 +1398,10 @@ function drawConfirmingPhase(){
       }
     }
   }else{
-    if(t<40)txShadow('You chose '+actionNames[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
-    else if(t<60){const sp_=['|','/','-','\\'][Math.floor(t/4)%4];txShadow('Computing Poseidon hash... '+sp_,16,H-38,12,'#9945FF','rgba(0,0,0,.3)');}
+    if(t<40)txShadow('You chose '+_ACTION_NAMES[bpAction]+'!',16,H-38,14,'#303028','rgba(200,180,140,.3)');
+    else if(t<60){const sp_=_SPIN[Math.floor(t/4)%4];txShadow('Computing Poseidon hash... '+sp_,16,H-38,12,'#9945FF','rgba(0,0,0,.3)');}
     else if(t<80){
-      const sp_=['|','/','-','\\'][Math.floor(t/3)%4];
+      const sp_=_SPIN[Math.floor(t/3)%4]; // v262: hoisted
       txShadow('ZK proof: '+zkProofStatus+' '+sp_,16,H-38,12,zkProofStatus==='verified'?'#40d080':'#14F195','rgba(0,0,0,.3)');
       if(walletLastCommitHash)txShadow(walletLastCommitHash,16,H-18,7,'#80c0ff','rgba(0,0,0,.3)');
     }
@@ -1715,7 +1718,7 @@ function generateResolveEvents(){
     events.push({type:'result',text:scoutMsg,effect:'none'});
     lg.push('R'+rd+': Scout > '+scoutMsg);
     // Persist scout intel in opponent info box
-    bpScoutedCards[tgt-1]={round:rd,cards:rCards.map(c=>({n:c.n,r:c.r,t:c.t}))};
+    bpScoutedCards[tgt-1]={round:rd,cards:rCards.map(c=>({n:c.n,r:c.r,t:c.t})),nameStr:rCardNames.join(' \u00B7 ')||'empty'}; // v261: pre-join for render
   }else if(bpAction===4){// USE CARD
     // Consume selected card in hand for effect based on card TYPE (not ID)
     const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
