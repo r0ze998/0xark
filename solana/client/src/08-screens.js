@@ -224,6 +224,7 @@ function drawFountainDialog(){
 // ═══════════════════════════════════════
 // v263: hoisted — was new Set([...]) every frame inside drawMapCardUseOverlay
 const _MAP_CARD_IDS=new Set([2,3,28,29,30,35,36]);
+let _mapUsableCache=null; // v302: cache invalidated on open; avoids per-frame alloc while overlay shown
 function getMapUsableCards(){
   // Returns [{slot, cardId, name}] for cards that can be used on map
   // Card 2=UMBRA: stealth, Card 3=IGNIS: burn, Card 28=PHASE: walk through walls,
@@ -247,8 +248,9 @@ function getMapUsableCards(){
 }
 
 function openMapCardUse(){
-  const usable=getMapUsableCards();
-  if(usable.length===0){
+  _mapUsableCache=getMapUsableCards(); // v302: cache for overlay draw loop
+  if(_mapUsableCache.length===0){
+    _mapUsableCache=null;
     twSet('No usable cards! UMBRA/IGNIS/PHASE/BLINK/SHADOW/ARK GATE/GENESIS can be used on the map.');
     return;
   }
@@ -269,7 +271,7 @@ function executeMapCard(cardId,slot){
     pl[0].cd[slot]=0;cardTimers[slot]=0;
     syncCardCount(0);
     shadowStepsLeft=30;
-    mapCardUseActive=false;
+    mapCardUseActive=false;_mapUsableCache=null;
     sfxShadow();
     twSet('UMBRA: You became invisible for 30 steps!');
     lg.push('Used UMBRA on map: 30 invisible steps!');
@@ -278,7 +280,7 @@ function executeMapCard(cardId,slot){
     pl[0].cd[slot]=0;cardTimers[slot]=0;
     syncCardCount(0);
     shadowStepsLeft=60;
-    mapCardUseActive=false;
+    mapCardUseActive=false;_mapUsableCache=null;
     sfxShadow();
     twSet('SHADOW: You became invisible for 60 steps!');
     lg.push('Used SHADOW on map: 60 invisible steps!');
@@ -296,7 +298,7 @@ function executeMapCard(cardId,slot){
     return;
   }else if(cardId===35){
     // ARK GATE: instant escape from dungeon to town (dungeon-only)
-    mapCardUseActive=false;
+    mapCardUseActive=false;_mapUsableCache=null;
     if(!inDungeon){twSet('ARK GATE only works in the dungeon!');return;}
     pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
     sfxMapChange();sfxAreaEntry();
@@ -320,7 +322,7 @@ function executeMapCard(cardId,slot){
     });
   }else if(cardId===36){
     // GENESIS: escape dungeon to town (dungeon-only)
-    mapCardUseActive=false;
+    mapCardUseActive=false;_mapUsableCache=null;
     if(!inDungeon){twSet('GENESIS only works in the dungeon!');return;}
     pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
     sfxMapChange();sfxAreaEntry();
@@ -426,13 +428,13 @@ function executeDirCard(dir){
     }
   }
   mapCardDirSelect=false;
-  mapCardUseActive=false;
+  mapCardUseActive=false;_mapUsableCache=null;
 }
 
 function drawMapCardUseOverlay(){
   if(!mapCardUseActive)return;
-  const usable=getMapUsableCards();
-  if(usable.length===0){mapCardUseActive=false;return;}
+  const usable=_mapUsableCache||getMapUsableCards(); // v302: use cache; no per-frame alloc
+  if(usable.length===0){mapCardUseActive=false;_mapUsableCache=null;return;}
 
   if(mapCardDirSelect){
     // Direction selection
