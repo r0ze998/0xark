@@ -207,6 +207,9 @@ const _CRD_TYPE_FULL={attack:'ATTACK',defense:'DEFENSE',flee:'FLIGHT',magic:'MAG
 const _FLOOR_NAMES=['','Floor I','Floor II','Floor III','Floor IV','Floor V'];
 const _DNG_FLOOR_LABELS=['TOWN','B1','B2','B3','B4','B5'];
 const _LOG_STAT_ICONS=['\u2694','\u2605','\u2717','\u2660'];
+// v321: pre-baked catalog/market strings — eliminates per-frame alloc in overlay hot paths
+const _CRD_PAGE_TITLE=(()=>{const a=[];for(let i=0;i<5;i++)a.push(_CRD_TYPE_NAMES[i]+' '+(i+1)+'/5');return a;})();
+const _OVER12_LBL=(()=>{const a=[];for(let i=0;i<=12;i++)a.push(i+'/12');return a;})();
 const _LOG_STAT_LABELS=['btl','got','lost',''];
 // v256: Hoisted market overlay statics — eliminates per-frame inline literal allocs
 const _MKT_TYPE_FILTER=['attack','defense','flee','magic','recovery'];
@@ -256,7 +259,7 @@ function drawMarketplace(){
   const barW=mw-24;
   bx(mx+12,myA+30,barW,5,'#0a180a');
   bx(mx+12,myA+30,Math.floor(barW*collFrac),5,'#40d080');
-  txShadow(vaultArr.length+'/60 collected',mx+mw-100,myA+25,6,'#60c880','rgba(0,0,0,.3)');
+  txShadow((_UNIQ60[vaultArr.length]||vaultArr.length+'/60')+' collected',mx+mw-100,myA+25,6,'#60c880','rgba(0,0,0,.3)'); // v321
 
   // Tabs
   for(let i=0;i<MARKET_TABS.length;i++){
@@ -687,7 +690,7 @@ function dCrd(){
   const barX_=W-220,barY_=12,barW_=160,barH_=14;
   bx(barX_,barY_,barW_,barH_,'#1a1a30');
   bx(barX_,barY_,Math.round(barW_*pct),barH_,collected>=60?'#f0c830':'#5080d0');
-  txShadow(collected+'/60',W-52,28,8,collected>=60?'#f0c830':'#c0d0f0','rgba(0,0,0,.4)');
+  txShadow(_UNIQ60[collected]||(collected+'/60'),W-52,28,8,collected>=60?'#f0c830':'#c0d0f0','rgba(0,0,0,.4)'); // v321
   // v115: Milestone tick marks on progress bar
   for(let _cmi=0;_cmi<CARD_MILESTONES.length;_cmi++){
     const m=CARD_MILESTONES[_cmi];const tx_=barX_+Math.round(barW_*m/60);
@@ -710,7 +713,7 @@ function dCrd(){
     bx(tx2,46,bw,22,isActive?_CRD_TYPE_COLS[ti]:'#1a1a30');
     txShadow(_CRD_TYPE_NAMES[ti],tx2+12,62,8,isActive?'#fff':_CRD_TYPE_COLS[ti],'rgba(0,0,0,.4)');
     // v115: Completion count badge in top-right of each tab
-    const countStr=typeOwned+'/12';
+    const countStr=_OVER12_LBL[typeOwned]||(typeOwned+'/12'); // v321
     txShadow(countStr,tx2+bw-countStr.length*5-2,54,5,typeComplete?'#f0c830':isActive?'rgba(255,255,255,.7)':'rgba(128,128,160,.6)','rgba(0,0,0,.35)');
     // Gold star if complete
     if(typeComplete){const s=Math.sin(fr*0.08+ti)*0.2+0.8;g.globalAlpha=s;txShadow('\u2605',tx2+4,54,5,'#f0c830','rgba(0,0,0,.3)');g.globalAlpha=1;}
@@ -896,7 +899,7 @@ function dCrd(){
   // Navigation
   win(10,H-30,W-20,24);
   if(crdPage>0)txShadow('\u25C4 ←=PREV TYPE',20,H-12,7,'#8090c0','rgba(0,0,0,.35)');
-  txShadow(_CRD_TYPE_NAMES[crdPage]+' '+(crdPage+1)+'/5',W/2-52,H-12,8,_CRD_TYPE_COLS[crdPage],'rgba(0,0,0,.4)');
+  txShadow(_CRD_PAGE_TITLE[crdPage],W/2-52,H-12,8,_CRD_TYPE_COLS[crdPage],'rgba(0,0,0,.4)'); // v321
   if(crdPage<4)txShadow('NEXT TYPE= \u25BA',W-120,H-12,7,'#8090c0','rgba(0,0,0,.35)');
   txShadow('Z=DETAIL  X=BACK',W/2+16,H-12,7,'#686878','rgba(0,0,0,.35)');
 }
