@@ -11040,7 +11040,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v294',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v295',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -17454,6 +17454,12 @@ function loop(now){
 // INPUT
 // ═══════════════════════════════════════
 
+// v295: Battle quip arrays hoisted to module scope (were re-allocated per battle end)
+const _VEGA_WIN=['Mine now.','As expected.','Collect the spoils.','The ARK rewards the strong.','Don\'t beg. It\'s beneath you.'];
+const _MIRA_WIN=['Outcome nominal.','Your card is now an asset.','Transfer complete. As computed.','Data confirms: you are suboptimal.','Deviation corrected.'];
+const _VEGA_KO=['You cheated.','This isn\'t over.','The ARK will remember this.','I underestimated you. Once.','Take them. You\'ve earned nothing yet.'];
+const _MIRA_KO=['Recalculating...','Model error. Noted.','This outcome was <1% probability.','You disrupted the variable. Impressive.','Retreat. New strategy required.'];
+
 // Held-key tracking for smooth continuous movement
 const keysHeld = new Set();
 document.addEventListener('keydown', e => { keysHeld.add(e.code); });
@@ -18347,10 +18353,8 @@ document.addEventListener('keydown',e=>{
             const winnerIdx=(bpRivalActions[0]===1)?1:2;
             addCardToPlayer(winnerIdx,lostId);
             pl[0].cd[worstSlot]=0;pl[0].cc=pl[0].cd.filter(c=>c>0).length;
-            // v287: post-battle winner quip
-            const _vegaWin=['Mine now.','As expected.','Collect the spoils.','The ARK rewards the strong.','Don\'t beg. It\'s beneath you.'];
-            const _miraWin=['Outcome nominal.','Your card is now an asset.','Transfer complete. As computed.','Data confirms: you are suboptimal.','Deviation corrected.'];
-            const _winnerPool=winnerIdx===1?_vegaWin:_miraWin;
+            // v287/v295: post-battle winner quip (module-scope arrays)
+            const _winnerPool=winnerIdx===1?_VEGA_WIN:_MIRA_WIN;
             const _quip=pl[winnerIdx].n+': "'+_winnerPool[Math.floor(Math.random()*_winnerPool.length)]+'"';
             lg.push('DEFEATED! Lost '+CD[lostId-1].n+' to '+pl[winnerIdx].n+'. '+_quip);
             twSet('Defeated! Lost '+CD[lostId-1].n+'... '+_quip);
@@ -18365,32 +18369,29 @@ document.addEventListener('keydown',e=>{
         }
         // Rival KO: KO'd rivals immediately surrender all cards to player
         if(bpResolveQueue&&(bpResolveQueue._rival1KO||bpResolveQueue._rival2KO)){
-          // v287: pre-build KO quip arrays
-          const _vegaKO=['You cheated.','This isn\'t over.','The ARK will remember this.','I underestimated you. Once.','Take them. You\'ve earned nothing yet.'];
-          const _miraKO=['Recalculating...','Model error. Noted.','This outcome was <1% probability.','You disrupted the variable. Impressive.','Retreat. New strategy required.'];
-          [1,2].forEach(ri=>{
+          // v287/v295: KO quip (module-scope arrays, for loop replaces forEach)
+          for(let ri=1;ri<=2;ri++){
             const key=ri===1?'_rival1KO':'_rival2KO';
-            if(!bpResolveQueue[key])return;
+            if(!bpResolveQueue[key])continue;
             bpResolveQueue[key]=false;
-            // Transfer all KO'd rival cards to player
             for(let i=0;i<HAND_SIZE;i++){
               const cid=pl[ri].cd[i];
-              if(cid>0){if(!addCardToPlayer(0,cid)){}; pl[ri].cd[i]=0;}
+              if(cid>0){addCardToPlayer(0,cid);pl[ri].cd[i]=0;}
             }
             pl[ri].cc=0;
-            const _kp=ri===1?_vegaKO:_miraKO;
+            const _kp=ri===1?_VEGA_KO:_MIRA_KO;
             const _kq=_kp[Math.floor(Math.random()*_kp.length)];
             lg.push(pl[ri].n+' KO\'d! All cards claimed! '+pl[ri].n+': "'+_kq+'"');
             twSet(pl[ri].n+' KO\'d! "'+_kq+'"');
             bpHP[ri]=0;
-          });
+          }
         }
         if(!bpRdIncremented){
           // v90: record this round's actions before incrementing rd
           {
-            const evTexts=(bpResolveQueue||[]).map(e=>e.text||'').join(' ');
-            const gotCard=evTexts.includes('obtained')||evTexts.includes('You stole')||evTexts.includes('Power steal')||evTexts.includes('Magic strike');
-            const lostCard=evTexts.includes('stole your')||evTexts.includes('STOLE');
+            // v295: effect-field check replaces .map().join().includes() per round
+            let gotCard=false,lostCard=false;
+            if(bpResolveQueue){for(let _rei=0;_rei<bpResolveQueue.length;_rei++){const _eff=bpResolveQueue[_rei].effect||'';if(_eff==='steal_get'||_eff==='card_get')gotCard=true;else if(_eff==='card_lost'||_eff==='card_get_rival')lostCard=true;}}
             battleRoundHistory.unshift({rd:rd,pa:bpAction,r1a:bpRivalActions[0],r2a:bpRivalActions[1],got:gotCard,lost:lostCard});
             if(battleRoundHistory.length>4)battleRoundHistory.pop();
             // v284: maintain running net for per-frame momentum strip (avoids reduce per frame)
