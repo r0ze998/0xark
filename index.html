@@ -4261,6 +4261,10 @@ let rivalWinWarningShown=false;
 // v77: Quick hand inspect overlay
 let handInspectActive=false, handInspectFrame=0, handInspectAutoDismiss=300; // 5s
 
+// v351: pre-allocated buffers for stepToward — eliminates array allocs per rival move
+const _stepCands=[{nx:0,ny:0},{nx:0,ny:0},{nx:0,ny:0},{nx:0,ny:0},{nx:0,ny:0},{nx:0,ny:0},{nx:0,ny:0},{nx:0,ny:0}];let _stepCandN=0;
+const _stepPerp=[{nx:0,ny:0},{nx:0,ny:0},{nx:0,ny:0},{nx:0,ny:0}]; // reuse for perpendicular fallback
+
 // v73: Rival intel dispatch ticker
 const rivalNewsQueue=[];     // pending news items {text, rivalIdx, rarity}
 let rivalNewsCurrent=null;   // currently displayed item
@@ -4345,19 +4349,19 @@ function findGrassPatch(mapIdx){
 }
 
 // Find which dungeon floor map has cards a rival needs
+// v351: no Set/filter allocs — use includes() and manual counting
+let _fcmBestMap=1,_fcmBestScore=0;
 function findCardMap(rIdx){
   const r=pl[rIdx];
-  const has=new Set(r.cd.filter(c=>c>0));
-  // Score each floor map (1-5) by how many cards it offers that rival doesn't have
-  const scored=[];
+  const cd=r.cd;
+  _fcmBestMap=1;_fcmBestScore=0;
   for(let m=1;m<=MAX_DUNGEON_FLOORS;m++){
     const pool=AREA_CARDS[m]||[];
-    const score=pool.filter(c=>!has.has(c)).length;
-    scored.push({map:m,score});
+    let score=0;
+    for(let i=0;i<pool.length;i++){if(!cd.includes(pool[i]))score++;}
+    if(score>_fcmBestScore){_fcmBestScore=score;_fcmBestMap=m;}
   }
-  scored.sort((a,b)=>b.score-a.score);
-  // Go to the floor with most needed cards; fallback to random dungeon floor
-  if(scored[0]&&scored[0].score>0)return scored[0].map;
+  if(_fcmBestScore>0)return _fcmBestMap;
   return 1+Math.floor(Math.random()*MAX_DUNGEON_FLOORS);
 }
 
@@ -4380,33 +4384,30 @@ function stepToward(rIdx,goalX,goalY){
   const dy=goalY-p.y;
   if(dx===0&&dy===0)return false;
 
-  // Candidate steps in priority order
-  const candidates=[];
+  // v351: reuse module-scope buffer instead of allocating candidates[] per call
+  _stepCandN=0;
+  const _sx1=p.x+(dx>0?1:-1),_sy1=p.y+(dy>0?1:-1);
+  // mutate pre-allocated slots in-place (no object creation per call)
   if(Math.abs(dx)>=Math.abs(dy)){
-    if(dx!==0)candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
-    if(dy!==0)candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
-    // Diagonal alternatives
-    if(dx!==0&&dy!==0){
-      candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
-      candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
-    }
+    if(dx!==0){_stepCands[_stepCandN].nx=_sx1;_stepCands[_stepCandN].ny=p.y;_stepCandN++;}
+    if(dy!==0){_stepCands[_stepCandN].nx=p.x;_stepCands[_stepCandN].ny=_sy1;_stepCandN++;}
+    if(dx!==0&&dy!==0){_stepCands[_stepCandN].nx=p.x;_stepCands[_stepCandN].ny=_sy1;_stepCandN++;_stepCands[_stepCandN].nx=_sx1;_stepCands[_stepCandN].ny=p.y;_stepCandN++;}
   }else{
-    if(dy!==0)candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
-    if(dx!==0)candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
-    if(dx!==0&&dy!==0){
-      candidates.push({nx:p.x+(dx>0?1:-1),ny:p.y});
-      candidates.push({nx:p.x,ny:p.y+(dy>0?1:-1)});
-    }
+    if(dy!==0){_stepCands[_stepCandN].nx=p.x;_stepCands[_stepCandN].ny=_sy1;_stepCandN++;}
+    if(dx!==0){_stepCands[_stepCandN].nx=_sx1;_stepCands[_stepCandN].ny=p.y;_stepCandN++;}
+    if(dx!==0&&dy!==0){_stepCands[_stepCandN].nx=_sx1;_stepCands[_stepCandN].ny=p.y;_stepCandN++;_stepCands[_stepCandN].nx=p.x;_stepCands[_stepCandN].ny=_sy1;_stepCandN++;}
   }
-  // Random perpendicular as last resort
-  if(candidates.length<3){
-    const perp=[{nx:p.x+1,ny:p.y},{nx:p.x-1,ny:p.y},{nx:p.x,ny:p.y+1},{nx:p.x,ny:p.y-1}];
-    perp.sort(()=>Math.random()-0.5);
-    perp.forEach(c=>candidates.push(c));
+  // Random perpendicular fallback — reuse static buffer, shuffle in-place
+  if(_stepCandN<3){
+    _stepPerp[0].nx=p.x+1;_stepPerp[0].ny=p.y;_stepPerp[1].nx=p.x-1;_stepPerp[1].ny=p.y;
+    _stepPerp[2].nx=p.x;_stepPerp[2].ny=p.y+1;_stepPerp[3].nx=p.x;_stepPerp[3].ny=p.y-1;
+    // Fisher-Yates shuffle on _stepPerp (in-place, no new array)
+    for(let _si=3;_si>0;_si--){const _sj=Math.floor(Math.random()*(_si+1));const _st=_stepPerp[_si];_stepPerp[_si]=_stepPerp[_sj];_stepPerp[_sj]=_st;}
+    for(let _si=0;_si<4;_si++)_stepCands[_stepCandN++]=_stepPerp[_si];
   }
 
-  // Pick best walkable candidate, preferring path tiles
-  for(const c of candidates){
+  // Pick best walkable candidate
+  for(let _ci=0;_ci<_stepCandN;_ci++){const c=_stepCands[_ci];
     if(c.nx>=0&&c.nx<MW&&c.ny>=0&&c.ny<MH&&WALKABLE.has(m[c.ny]?.[c.nx])){
       // Set direction
       const sdx=c.nx-p.x,sdy=c.ny-p.y;
@@ -4461,7 +4462,7 @@ function pickRivalGoal(aiIdx){
   const rIdx=aiIdx+1; // pl index
   const r=pl[rIdx];
   const rMap=rivalMaps[aiIdx];
-  const rCards=r.cd.filter(c=>c>0).length;
+  const rCards=cdCount(r.cd); // v351: no filter alloc
 
   if(ai.personality==='hunter'){
     // The Hunter - Aggressive
@@ -4504,8 +4505,8 @@ function pickRivalGoal(aiIdx){
         // Try alternate dungeon floor (1-MAX_DUNGEON_FLOORS, avoiding current and hunter's floor)
         const altMaps=[];
         for(let m=1;m<=MAX_DUNGEON_FLOORS;m++){if(m!==rMap&&m!==hunterMap)altMaps.push(m);}
-        const has=new Set(r.cd.filter(c=>c>0));
-        const altNeed=altMaps.find(m=>{const pool=AREA_CARDS[m]||[];return pool.some(c=>!has.has(c));});
+        // v351: inline inclusion check instead of new Set+filter alloc
+        const altNeed=altMaps.find(m=>{const pool=AREA_CARDS[m]||[];return pool.some(c=>!r.cd.includes(c));});
         if(altNeed!==undefined){
           const ex=findExitToMap(rMap,altNeed);
           if(ex){ai.goalX=ex.x;ai.goalY=ex.y;ai.goalMap=rMap;ai.state='exploring';return;}
