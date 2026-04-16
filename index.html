@@ -11046,7 +11046,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v305',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v306',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -12047,6 +12047,8 @@ function drawBattleArena(){
 
 // FRLG-style 2x2 action grid
 let _drawPoolPreviewCache=null,_drawPoolPreviewMap=-1; // v275: cache pool preview slice
+let _agSpS=-1,_agSpB=-1,_agSpC=-1; // v306: cache spell counts for action grid desc rebuild
+let _scoutedSlice=null,_scoutedSliceRef=null; // v306: cache sd.cards.slice result
 const _AG_ACTIONS=[ // v274: hoisted action grid objects — only desc is rebuilt per frame
   {name:'DRAW',   desc:'floor card pool',  col:'#303028',icon:'#48b8e8'},
   {name:'STEAL',  desc:'',                  col:'#b04040',icon:'#b04040'},
@@ -12055,10 +12057,10 @@ const _AG_ACTIONS=[ // v274: hoisted action grid objects — only desc is rebuil
 ];
 function drawActionGrid(){
   const gridX=8,gridY=H-164,cellW=160,cellH=42,gap=4;
-  // v274: static parts hoisted, only dynamic desc built per frame
-  _AG_ACTIONS[1].desc=sp.s+'\u00D7 takes rival card';
-  _AG_ACTIONS[2].desc=sp.b+'\u00D7 blocks steal';
-  _AG_ACTIONS[3].desc=sp.c+'\u00D7 view rival hand';
+  // v306: rebuild action descs only when spell counts change
+  if(_agSpS!==sp.s){_agSpS=sp.s;_AG_ACTIONS[1].desc=sp.s+'\u00D7 takes rival card';}
+  if(_agSpB!==sp.b){_agSpB=sp.b;_AG_ACTIONS[2].desc=sp.b+'\u00D7 blocks steal';}
+  if(_agSpC!==sp.c){_agSpC=sp.c;_AG_ACTIONS[3].desc=sp.c+'\u00D7 view rival hand';}
   const actions=_AG_ACTIONS;
   // Grid background
   win(gridX-2,gridY-6,cellW*2+gap+12,cellH*2+gap+16);
@@ -12297,7 +12299,8 @@ function drawSelectPhase(){
       const staleRd=rd-sd.round;
       const stLabel=staleRd>0?'scouted R'+sd.round:'fresh intel';
       txShadow('\u{1F50D} '+stLabel,ppX+10,ppY+33,5,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
-      const show_=sd.cards.slice(0,Math.min(4,sd.cards.length));
+      if(_scoutedSliceRef!==sd){_scoutedSliceRef=sd;_scoutedSlice=sd.cards.slice(0,Math.min(4,sd.cards.length));} // v306: cache slice
+      const show_=_scoutedSlice;
       for(let ci=0;ci<show_.length;ci++){
         const c=show_[ci];const rar=c.r||1;const rarCol=RARITY_COLOR[rar]||'#888888';
         const tCol_=_SCT_TYPE_COL[c.t]||'#808898'; // v274: hoisted
@@ -17004,6 +17007,8 @@ function dGameOver(){
 // GAME LOOP
 // ═══════════════════════════════════════
 
+// v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
+const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
 // v224: Pre-baked escape urgency vignette — red edge decay warning (shape static, alpha varies)
 const _escVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(200,20,20,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;})();
 
@@ -17375,8 +17380,9 @@ function draw(){
   let _shaking=false;
   if(shakeT>0){
     _shaking=true;
-    const sx=Math.round((Math.random()-0.5)*shakeIntensity*(shakeT/8));
-    const sy=Math.round((Math.random()-0.5)*shakeIntensity*(shakeT/8));
+    const _si=fr&31; // v306: use pre-baked noise table; no RNG per frame
+    const sx=Math.round(_SHAKE_N[_si]*shakeIntensity*(shakeT/8));
+    const sy=Math.round(_SHAKE_N[(_si+16)&31]*shakeIntensity*(shakeT/8));
     g.save();g.translate(sx,sy);
     shakeT--;
   }
