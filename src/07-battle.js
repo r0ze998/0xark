@@ -383,7 +383,7 @@ const _btlLowHpVig=(()=>{
 function drawOpponentInfoBox(){
   const rival=pl[1]; // Primary opponent (VEGA)
   let sx=0,sy=0;
-  if(bpShakeTarget===1&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
+  if(bpShakeTarget===1&&bpShakeTimer>0){sx=_sBpST12*3;sy=_cBpST16*2;}
   // Expand box when tells are visible during select, or when scout intel is known
   const showTells=(battlePhase==='select'&&bpRivalTells[0]!==''&&bpRivalTells[1]!=='');
   // v311: tell accuracy reveal — first 45 frames of resolving phase
@@ -523,7 +523,7 @@ function drawOpponentInfoBox(){
 // Draw FRLG-style player info box (bottom-right)
 function drawPlayerInfoBox(){
   let sx=0,sy=0;
-  if(bpShakeTarget===0&&bpShakeTimer>0){sx=Math.sin(bpShakeTimer*1.2)*3;sy=Math.cos(bpShakeTimer*1.6)*2;}
+  if(bpShakeTarget===0&&bpShakeTimer>0){sx=_sBpST12*3;sy=_cBpST16*2;}
   const bx_=W-310+sx,by_=H-154+sy,bw=300,bh=86; // v104: +14px for hand type row
   win(bx_,by_,bw,bh);
   // Navy top bar for player identity
@@ -839,15 +839,15 @@ function drawPhaseBanner(phase){
 function drawBattleArena(){
   // Player sprite (bottom-center-left, from behind like Pokemon trainer)
   let psx=0,psy=0;
-  if(bpShakeTarget===0&&bpShakeTimer>0){psx=Math.sin(bpShakeTimer*1.2)*4;psy=Math.cos(bpShakeTimer*1.6)*2;}
+  if(bpShakeTarget===0&&bpShakeTimer>0){psx=_sBpST12*4;psy=_cBpST16*2;}
   drawBattleSprite(pl[0],180+psx,H-130+psy,3,true);
   // Rival 1 sprite (top-right, facing player) — primary opponent
   let osx=0,osy=0;
-  if(bpShakeTarget===1&&bpShakeTimer>0){osx=Math.sin(bpShakeTimer*1.2)*4;osy=Math.cos(bpShakeTimer*1.6)*2;}
+  if(bpShakeTarget===1&&bpShakeTimer>0){osx=_sBpST12*4;osy=_cBpST16*2;}
   drawBattleSprite(pl[1],W-160+osx,110+osy,3,false);
   // Rival 2 sprite (top-center-right, slightly smaller — 2nd enemy)
   let o2sx=0,o2sy=0;
-  if(bpShakeTarget===2&&bpShakeTimer>0){o2sx=Math.sin(bpShakeTimer*1.2)*4;o2sy=Math.cos(bpShakeTimer*1.6)*2;}
+  if(bpShakeTarget===2&&bpShakeTimer>0){o2sx=_sBpST12*4;o2sy=_cBpST16*2;}
   const r2alive=cardCount(pl[2])>0;
   g.globalAlpha=r2alive?0.85:0.3;
   drawBattleSprite(pl[2],W-310+o2sx,140+o2sy,2.2,false);
