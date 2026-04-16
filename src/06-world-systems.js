@@ -2,6 +2,12 @@
 const _SYNTH_RAR_LABELS=['','Common','Uncommon','Rare','Epic'];
 // v301: synthesis burst color by rarity — was inline local per doSynthesis call
 const _SYNTH_RAR_BURST=['','#888898','#50d060','#b060e0','#e0a020','#ffe080'];
+// v303: pre-baked danger bar strings (index = danger level 0-5); eliminates repeat()+concat per frame
+const _DANGER_BARS=['□□□□□','■□□□□','■■□□□','■■■□□','■■■■□','■■■■■'];
+// v303: pre-baked synthesis status strings — avoids string concat every frame in synthesis UI
+const _SYNTH_NO_CARDS=['','No Common cards in hand.','No Uncommon cards in hand.','No Rare cards in hand.','No Epic cards in hand.'];
+const _SYNTH_UPGRADE=['','Select 3 cards → get 1 Uncommon card','Select 3 cards → get 1 Rare card','Select 3 cards → get 1 Epic card','Select 3 cards → get 1 ? card'];
+const _SYNTH_NEED=['3 selected — press Z to synthesize!','Need 1 more','Need 2 more','Need 3 more'];
 // v262: Additional per-frame inline literals hoisted
 const _WLD_FLOOR_NUMS=['','B1','B2','B3','B4','B5'];
 
@@ -535,7 +541,7 @@ function drawFloorTitle(){
     g.globalAlpha=globalAlpha*dangerAlpha*0.7;
     g.font='5px monospace';g.textAlign='center';
     g.fillStyle='#c8c8d8';
-    g.fillText('DANGER  '+('■'.repeat(d))+'□'.repeat(5-d),W/2,barY+barH+8);
+    g.fillText('DANGER  '+_DANGER_BARS[d],W/2,barY+barH+8); // v303: pre-baked string
     g.textAlign='left';
   }
 
@@ -1310,11 +1316,11 @@ function drawSynthesisShop(){
   for(let _si=0;_si<HAND_SIZE;_si++){const _cid=pl[0].cd[_si];if(_cid>0&&CD[_cid-1]?.r===synthRarityFilter)_synthSlotsBuf[_sfN2++]=_si;}
 
   if(_sfN2===0){
-    txShadow('No '+_SYNTH_RAR_LABELS[synthRarityFilter]+' cards in hand.',80,120,7,'#989080','rgba(0,0,0,.3)');
+    txShadow(_SYNTH_NO_CARDS[synthRarityFilter],80,120,7,'#989080','rgba(0,0,0,.3)'); // v303
   }else{
     const needed=3-synthSelected.length;
-    txShadow('Select 3 cards → get 1 '+(_SYNTH_RAR_LABELS[synthRarityFilter+1]||'?')+' card',80,108,6,'#c0a060','rgba(0,0,0,.3)');
-    txShadow(needed>0?'Need '+needed+' more':'3 selected — press Z to synthesize!',80,122,6,needed===0?'#40d080':'#808880','rgba(0,0,0,.3)');
+    txShadow(_SYNTH_UPGRADE[synthRarityFilter]||_SYNTH_UPGRADE[4],80,108,6,'#c0a060','rgba(0,0,0,.3)'); // v303
+    txShadow(_SYNTH_NEED[needed]||_SYNTH_NEED[0],80,122,6,needed===0?'#40d080':'#808880','rgba(0,0,0,.3)'); // v303
 
     const cols=4,cellW=120,cellH=48;
     for(let i=0;i<_sfN2;i++){
