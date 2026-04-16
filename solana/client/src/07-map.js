@@ -5,6 +5,10 @@ const HUD_HEIGHT=72;
 const _VIG_SS=new Float32Array(6),_VIG_SC=new Float32Array(6); // sin/cos state
 const _VIG_FS=new Float32Array(6),_VIG_FC=new Float32Array(6); // step per frame
 for(let d=1;d<=5;d++){const f=0.02+d*0.008;_VIG_SS[d]=0;_VIG_SC[d]=1;_VIG_FS[d]=Math.sin(f);_VIG_FC[d]=Math.cos(f);}
+// v387: pre-baked jungle wind phase tables (MW×MH = 40×30 = 1200 entries)
+// Replaces per-tile Math.sin(fr*0.022+windPhase) with table lookup + sin-addition
+const _WP_S=new Float32Array(40*30);const _WP_C=new Float32Array(40*30);
+(()=>{for(let ty=0;ty<30;ty++)for(let tx=0;tx<40;tx++){const wp=((tileHash(tx,ty)*0.137)%(Math.PI*2));_WP_S[ty*40+tx]=Math.sin(wp);_WP_C[ty*40+tx]=Math.cos(wp);}})();
 // v220: Card-count helper — avoids .filter().length array allocation on every frame
 function cdCount(cd){let n=0;for(let i=0,l=cd.length;i<l;i++)if(cd[i]>0)n++;return n;}
 // v260: Unique card count — allocation-free (5-slot hand, simple dedup check)
@@ -1037,9 +1041,9 @@ function drawCpxTreesInRange(tyMin,tyMax){
       const tt=mt[ty]?.[tx];
       const th=tileHash(tx,ty);
       const tpx=tx*TW-camX,tpy=ty*TH-camY;
-      // Deterministic per-tile wind phase for natural-looking sway
-      const windPhase=(th*0.137)%(Math.PI*2);
-      const windShear=Math.sin(fr*0.022+windPhase)*0.035; // subtle ±3.5% shear
+      // v387: wind shear via table lookup + sin-addition (eliminates per-tile Math.sin)
+      const _wpIdx=ty*40+tx;
+      const windShear=(_sFr022*_WP_C[_wpIdx]+_cFr022*_WP_S[_wpIdx])*0.035;
       if(isJungle){
         if(tt!==3&&tt!==7&&tt!==12)continue;
         if(th%4!==1)continue;
@@ -1213,7 +1217,7 @@ function dMap(){
   // Floor watermark label (dungeon only, large semi-transparent, floor-themed color)
   if(inDungeon&&currentFloor>0){
     const floorLabel=_FLOOR_NAMES[currentFloor]||('FLOOR '+currentFloor);
-    const wmAlpha=0.07+Math.sin(fr*0.008)*0.025; // fr*0.008 too slow to cache — per-frame call
+    const wmAlpha=0.07+_sFr008*0.025;
     g.save();
     g.globalAlpha=wmAlpha;
     g.font='bold 96px VT323, monospace';
