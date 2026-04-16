@@ -99,6 +99,9 @@ function getRevealProgress(cardId){
   if(elapsed>=30){cardRevealState.done=true;return 1;}
   return elapsed/30;
 }
+// v389: pre-baked sin/cos for phase offsets used in card character animations
+const _CSIN15=Math.sin(1.5),_CCOS15=Math.cos(1.5); // +1.5 offset (tentacle wave, cloak waver)
+const _CSIN30=Math.sin(3.0),_CCOS30=Math.cos(3.0); // +3.0 offset
 // Reveal sparkle particles
 const revealSparkles=[];
 
@@ -124,11 +127,11 @@ function drawCardCharacter(x,y,cardId,scale,time){
   if(cardId===1){
     // AEGIS — Crystal Knight
     // Idle: body sway
-    const sway=Math.sin(t*0.035)*1; // 1px left/right, ~3s cycle at 60fps
-    const shieldGlow=0.3+0.3*Math.sin(t*0.052); // pulse ~2s cycle
+    const sway=_sFr035; // v389: cached (was Math.sin(t*0.035))
+    const shieldGlow=0.3+0.3*_sFr052; // v389: cached (was Math.sin(t*0.052))
     const shieldBright=_rw(shieldGlow);
     // Crystal crest sparkle
-    const sparkleOn=(Math.sin(t*0.08)>0.85);
+    const sparkleOn=(_sFr08>0.85); // v389: cached
 
     // Helmet crest (blue crystal)
     px(6+sway,0,4,2,'#80d0f0');px(7+sway,0,2,1,'#b0e8ff');
@@ -161,13 +164,13 @@ function drawCardCharacter(x,y,cardId,scale,time){
   }else if(cardId===2){
     // UMBRA — Shadow Rogue
     // Idle: cloak edge waver, eye glow pulse, shadow particles
-    const eyeGlow=(Math.sin(t*0.035)>0.7)?1:0; // bright flash every ~3s
+    const eyeGlow=(_sFr035>0.7)?1:0; // v389: cached
     const eyeColor=eyeGlow?'#e0a0ff':'#c080ff';
     const eyeColor2=eyeGlow?'#c080e0':'#a060d0';
-    // Cloak bottom waver offsets
-    const w0=Math.round(Math.sin(t*0.06)*1);
-    const w1=Math.round(Math.sin(t*0.06+1.5)*1);
-    const w2=Math.round(Math.sin(t*0.06+3.0)*1);
+    // Cloak bottom waver offsets — sin-addition with pre-baked phase constants
+    const w0=Math.round(_sFr06);
+    const w1=Math.round(_sFr06*_CCOS15+_cFr06*_CSIN15);
+    const w2=Math.round(_sFr06*_CCOS30+_cFr06*_CSIN30);
 
     // Hood top
     px(5,0,6,2,'#503878');px(4,2,8,2,'#503878');
@@ -209,7 +212,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
   }else if(cardId===3){
     // IGNIS — Fire Beast (four-legged wolf/fox)
     // Idle: flame flicker on horns/tail, body crouch, ember particles
-    const crouch=Math.round(Math.sin(t*0.07)*1); // 1px up/down, ~1.5s cycle
+    const crouch=Math.round(_sFr07); // v389: cached (was Math.sin(t*0.07))
     const flamePhase=(Math.floor(t/8)%2===0); // alternate flame shapes every 8 frames
 
     // Horns (burning) — flickering between two shapes
@@ -252,7 +255,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
       pp.push({rx:4+Math.random()*8,ry:8+crouch,life:18+Math.random()*8,c:Math.random()>0.5?'#f0c040':'#f08060'});
     }
     for(let i=pp.length-1;i>=0;i--){
-      const p=pp[i];p.ry-=0.35;p.rx+=Math.sin(t*0.1+i)*0.15;p.life--;
+      const p=pp[i];p.ry-=0.35;p.rx+=(_sFr10*_IDX_CI[i%60]+_cFr10*_IDX_SI[i%60])*0.15;p.life--;
       if(p.life<=0){pp.splice(i,1);continue;}
       const a=Math.min(1,p.life/10);
       g.fillStyle=p.c;g.globalAlpha=a;
@@ -262,8 +265,8 @@ function drawCardCharacter(x,y,cardId,scale,time){
   }else if(cardId===4){
     // TEMPEST — Storm Prophet (floating cloud being)
     // Idle: float up/down, lightning sparks, cloud shape shift
-    const floatY=Math.sin(t*0.052)*2; // 2px range, ~2s cycle
-    const cloudShift=Math.round(Math.sin(t*0.04)*1); // 1px cloud variation
+    const floatY=_sFr052*2; // v389: cached
+    const cloudShift=Math.round(_sFr04); // v389: cached
 
     // Head/face area
     px(5,0+floatY,6,3,'#d8b028');px(6,0+floatY,4,2,'#f0d850');
@@ -302,18 +305,18 @@ function drawCardCharacter(x,y,cardId,scale,time){
   }else if(cardId===5){
     // NIHIL — Void Observer (ghost with single eye)
     // Idle: eye pulse, body sway, vortex rotation, tentacle wave
-    const sway=Math.sin(t*0.042)*1; // 1px sway, ~2.5s cycle
-    const eyePulse=Math.sin(t*0.07); // ~1.5s cycle
-    const eyeExtra=(eyePulse>0.3)?1:0; // eye grows 1px when pulse is high
+    const sway=_sFr042; // v389: cached
+    const eyePulse=_sFr07; // v389: cached
+    const eyeExtra=(eyePulse>0.3)?1:0;
     // Vortex spiral rotation — shift spiral line positions
     const spiralPhase=Math.floor(t/10)%4;
-    // Tentacle wave
-    const tw0=Math.round(Math.sin(t*0.05)*1);
-    const tw1=Math.round(Math.sin(t*0.05+1.5)*1);
-    const tw2=Math.round(Math.sin(t*0.05+3.0)*1);
+    // Tentacle wave — sin-addition with pre-baked phase offsets
+    const tw0=Math.round(_sFr05);
+    const tw1=Math.round(_sFr05*_CCOS15+_cFr05*_CSIN15);
+    const tw2=Math.round(_sFr05*_CCOS30+_cFr05*_CSIN30);
 
     // Aura glow — pulsing
-    const auraBright=0.15+0.1*Math.sin(t*0.04);
+    const auraBright=0.15+0.1*_sFr04; // v389: cached
     px(3+sway,0,10,1,_ra(auraBright));
     px(2+sway,1,12,1,_ra(auraBright*0.75));
     // Upper body (spiral start)
@@ -356,8 +359,9 @@ function drawCardCharacter(x,y,cardId,scale,time){
   if(cardId>=6){
     const cr=CD[cardId-1];if(!cr)return;
     const type=cr.t||'attack';const rar=cr.r||1;
-    const bob=Math.sin(t*0.05)*1.5;
-    const glow=0.15+0.2*Math.sin(t*0.04+cardId);
+    const bob=_sFr05*1.5; // v389: cached
+    const _cIdx=cardId%60;
+    const glow=0.15+0.2*(_sFr04*_IDX_CI[_cIdx]+_cFr04*_IDX_SI[_cIdx]); // v389: sin-addition
     // Outer glow for Epic/Legendary
     if(rar>=4){px(-1,-1,18,22,_CARD_GLOW_RGBA[cardId-1][Math.min(100,Math.max(0,glow*100+0.5|0))]);} // v354: zero-alloc glow
     if(type==='attack'){
@@ -380,7 +384,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     }else if(type==='magic'){
       // Orb / staff silhouette
       px(7,1+bob,2,10,cr.d);px(6,1+bob,4,1,cr.c);
-      const orb=0.3+0.3*Math.sin(t*0.06+cardId);
+      const orb=0.3+0.3*(_sFr06*_IDX_CI[_cIdx]+_cFr06*_IDX_SI[_cIdx]); // v389: sin-addition
       px(4,11+bob,8,6,cr.d);px(5,11+bob,6,5,cr.c);px(6,12+bob,4,3,cr.h);
       px(7,13+bob,2,1,_rw(orb));
       if(rar>=3){px(5,11+bob,6,2,'rgba(255,255,255,0.3)');}
@@ -388,7 +392,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
       // Recovery: cross / leaf
       px(7,2+bob,2,12,cr.c);px(3,6+bob,10,2,cr.c);
       px(7,2+bob,2,4,cr.h);px(3,6+bob,4,1,cr.h);
-      if(rar>=3){const hg=0.2+0.3*Math.sin(t*0.05+cardId);px(5,4+bob,6,6,_rw(hg));}
+      if(rar>=3){const hg=0.2+0.3*(_sFr05*_IDX_CI[_cIdx]+_cFr05*_IDX_SI[_cIdx]);px(5,4+bob,6,6,_rw(hg));} // v389
     }
     // Rarity stars at bottom
     for(let ri=0;ri<rar;ri++)px(2+ri*3,17,2,2,cr.h);
@@ -432,7 +436,7 @@ function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
   const rarCol=CARD_RARITY_COL[rar-1];
   const rarDim=CARD_RARITY_DIM[rar-1];
   const t=(typeof fr!=='undefined'?fr:0);
-  const pulse=0.5+0.5*Math.sin(t*0.07);
+  const pulse=0.5+0.5*_sFr07; // v389: cached
 
   // ── Outer rarity glow (rare+) ──
   if(rar>=3){
@@ -517,21 +521,22 @@ function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
   if(rar>=5){
     // Pulsing purple aura around entire card
     drawRuneGlow(cx_,cy_,cw,ch,ARK.rune,t);
-    const sp=t*0.12;
     const sc='#ffffff';
-    if(Math.sin(sp)>0.5){bx(cx_,cy_,2,2,sc);bx(cx_+cw-2,cy_,2,2,sc);}
-    if(Math.sin(sp+0.8)>0.5){bx(cx_,cy_+ch-2,2,2,sc);bx(cx_+cw-2,cy_+ch-2,2,2,sc);}
-    if(Math.sin(sp+1.6)>0.7){bx(cx_+Math.floor(cw/2),cy_,1,2,sc);bx(cx_,cy_+Math.floor(ch/2),2,1,sc);}
-    // Tiny rune cross sparkles at card corners
-    const rsp=t*0.08;
-    if(Math.sin(rsp)>0.3){
-      g.globalAlpha=Math.sin(rsp)*0.7;
+    // v389: use cached frame sin values and pre-baked phase constants
+    if(_sFr12>0.5){bx(cx_,cy_,2,2,sc);bx(cx_+cw-2,cy_,2,2,sc);}
+    const _sp08=_sFr12*0.6967+_cFr12*0.7174; // sin(fr*0.12+0.8): cos(0.8)≈0.6967, sin(0.8)≈0.7174
+    if(_sp08>0.5){bx(cx_,cy_+ch-2,2,2,sc);bx(cx_+cw-2,cy_+ch-2,2,2,sc);}
+    const _sp16=_sFr12*(-0.0292)+_cFr12*0.9996; // sin(fr*0.12+1.6): cos(1.6)≈-0.0292, sin(1.6)≈0.9996
+    if(_sp16>0.7){bx(cx_+Math.floor(cw/2),cy_,1,2,sc);bx(cx_,cy_+Math.floor(ch/2),2,1,sc);}
+    // Tiny rune cross sparkles
+    if(_sFr08>0.3){
+      g.globalAlpha=_sFr08*0.7;
       bx(cx_-3,cy_+Math.floor(ch/2),6,1,ARK.rune);bx(cx_+Math.floor(cw/2)-1,cy_-3,1,6,ARK.rune);
       g.globalAlpha=1;
     }
   }else if(rar>=4){
     // Epic: subtle gold glow
-    const pulse=0.2+Math.sin(t*0.06)*0.15;
+    const pulse=0.2+_sFr06*0.15; // v389: cached
     g.globalAlpha=pulse;
     bx(cx_-1,cy_,cw+2,1,'#e0a020');bx(cx_-1,cy_+ch,cw+2,1,'#e0a020');
     bx(cx_-1,cy_,1,ch+1,'#e0a020');bx(cx_+cw,cy_,1,ch+1,'#e0a020');
