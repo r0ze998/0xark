@@ -9328,6 +9328,13 @@ const _ORB_SLC=['#b04040','#3060b0','#308030'];
 const _DIRS=['\u2192','\u2198','\u2193','\u2199','\u2190','\u2196','\u2191','\u2197'];
 const _RIVAL_TRAIL_COLS=['#d860a0','#d8b028'];
 const _RAR_ABB=['C','U','R','E','L'];
+// v304: pre-baked strings — eliminates per-frame concat in hot render paths
+const _WATER_FOAM_LT='rgba(200,220,240,.35)',_WATER_FOAM_DK='rgba(160,200,230,.2)'; // water-grass edge
+const _LDR_RANK=['1.','2.','3.']; // leaderboard rank labels
+const _RCC_SPADE=['0\u2660','1\u2660','2\u2660','3\u2660','4\u2660','5\u2660']; // rival card count + spade icon
+let _rLblCache=['','']; let _rLblKey=[-1,-1]; // rival sprite label cache [VEGA,MIRA]
+let _vegaLblCache=''; let _vegaLblKey=-1; // vega HUD label cache (key=vegaMap*10+vegaCards)
+let _miraLblCache=''; let _miraLblKey=-1; // mira HUD label cache
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
@@ -9508,10 +9515,10 @@ function drawEdgeBlending(startTX,startTY,endTX,endTY){
         }
         // Water-to-Grass (near-shore foam from water side)
         if(gt==='water'&&ngt==='grass'){
-          if(isTop){for(let i=0;i<TW;i++){if(thRand(x,y,i+380)>.45){const wc=(wt+i)%3===0?'rgba(200,220,240,.35)':'rgba(160,200,230,.2)';bx(px+i,py,1,1,wc);}}}
-          if(isBot){for(let i=0;i<TW;i++){if(thRand(x,y,i+390)>.45){const wc=(wt+i)%3===0?'rgba(200,220,240,.35)':'rgba(160,200,230,.2)';bx(px+i,py+TH-1,1,1,wc);}}}
-          if(isLft){for(let i=0;i<TH;i++){if(thRand(x,y,i+400)>.45){const wc=(wt+i)%3===0?'rgba(200,220,240,.35)':'rgba(160,200,230,.2)';bx(px,py+i,1,1,wc);}}}
-          if(isRgt){for(let i=0;i<TH;i++){if(thRand(x,y,i+410)>.45){const wc=(wt+i)%3===0?'rgba(200,220,240,.35)':'rgba(160,200,230,.2)';bx(px+TW-1,py+i,1,1,wc);}}}
+          if(isTop){for(let i=0;i<TW;i++){if(thRand(x,y,i+380)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK; // v304bx(px+i,py,1,1,wc);}}}
+          if(isBot){for(let i=0;i<TW;i++){if(thRand(x,y,i+390)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK; // v304bx(px+i,py+TH-1,1,1,wc);}}}
+          if(isLft){for(let i=0;i<TH;i++){if(thRand(x,y,i+400)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK; // v304bx(px,py+i,1,1,wc);}}}
+          if(isRgt){for(let i=0;i<TH;i++){if(thRand(x,y,i+410)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK; // v304bx(px+TW-1,py+i,1,1,wc);}}}
         }
         // Mountain/Grass transitions
         if(gt==='grass'&&ngt==='mountain'){
@@ -10529,7 +10536,9 @@ function dMap(){
       drawRivalAlertAnim(p,spx,spy);
       const rNameCol=(i===1)?'#f080c0':'#f0c830';
       const rCards=cdCount(p.cd);
-      const rLabel=p.n+(rCards>0?' '+rCards+'c':'');
+      const _ri=i-1; // v304: cache rival sprite label; only rebuild when card count changes
+      if(_rLblKey[_ri]!==rCards){_rLblKey[_ri]=rCards;_rLblCache[_ri]=p.n+(rCards>0?' '+rCards+'c':'');}
+      const rLabel=_rLblCache[_ri];
       const lW=rLabel.length*5+6;
       bx(spx+8-lW/2,spy-44,lW,11,'rgba(0,0,0,.65)');
       txShadow(rLabel,spx+8-lW/2+3,spy-35,6,rNameCol,'rgba(0,0,0,.5)');
@@ -10762,22 +10771,21 @@ function dMap(){
     txShadow('EXP:'+pct+'%',182,hudY+52,7,expCol,'rgba(0,0,0,.35)');
     // v136: Rival floor trackers — V:B2 / M:B3 so player knows where rivals are
     {const vegaMap=rivalMaps[0],miraMap=rivalMaps[1];
-    const vegaLbl='V:'+(vegaMap===0?'TWN':'B'+vegaMap);
-    const miraLbl='M:'+(miraMap===0?'TWN':'B'+miraMap);
+    // v304: cache HUD label strings; key packs map(0-5)*10 + cards(0-5) into single int
+    const vegaCards=cdCount(pl[1].cd),miraCards=cdCount(pl[2].cd);
+    const _vk=vegaMap*10+vegaCards,_mk=miraMap*10+miraCards;
+    if(_vegaLblKey!==_vk){_vegaLblKey=_vk;_vegaLblCache='V:'+(vegaMap===0?'TWN':'B'+vegaMap)+' '+vegaCards+'c';}
+    if(_miraLblKey!==_mk){_miraLblKey=_mk;_miraLblCache='M:'+(miraMap===0?'TWN':'B'+miraMap)+' '+miraCards+'c';}
     // Highlight when rival is on SAME floor as player (danger)
     const vegaSame=vegaMap===currentMap;const miraSame=miraMap===currentMap;
     const vegaAlpha=vegaSame?(0.7+Math.sin(fr*0.18)*0.3):0.55;
     const miraAlpha=miraSame?(0.7+Math.sin(fr*0.18+1)*0.3):0.55;
     const vegaCol=vegaSame?'#f080c0':'#806070';
     const miraCol=miraSame?'#f0c830':'#807060';
-    const vegaCards=cdCount(pl[1].cd);
-    const miraCards=cdCount(pl[2].cd);
-    const vegaFull=vegaLbl+' '+vegaCards+'c';
-    const miraFull=miraLbl+' '+miraCards+'c';
     g.globalAlpha=vegaAlpha;
-    txShadow(vegaFull,240,hudY+52,6,vegaCol,'rgba(0,0,0,.35)');
+    txShadow(_vegaLblCache,240,hudY+52,6,vegaCol,'rgba(0,0,0,.35)'); // v304: cached
     g.globalAlpha=miraAlpha;
-    txShadow(miraFull,286,hudY+52,6,miraCol,'rgba(0,0,0,.35)');
+    txShadow(_miraLblCache,286,hudY+52,6,miraCol,'rgba(0,0,0,.35)'); // v304: cached
     g.globalAlpha=1;}
   }
   // Show first 8 hand cards in HUD (slots 0-7)
@@ -10969,7 +10977,7 @@ function dMap(){
     // Label + card count
     const rcc=cdCount(pl[ri+1].cd);
     txShadow(pl[ri+1].n[0],arrowCX-3,arrowCY+14,5,arrowCol,'rgba(0,0,0,.5)');
-    txShadow(rcc+'♠',arrowCX-5,arrowCY+24,5,rcc>=4?'#d04040':arrowCol,'rgba(0,0,0,.5)');
+    txShadow(_RCC_SPADE[rcc]||rcc+'♠',arrowCX-5,arrowCY+24,5,rcc>=4?'#d04040':arrowCol,'rgba(0,0,0,.5)'); // v304
   }
 
   // Vault/hand status (progress toward 60-card goal)
@@ -11038,7 +11046,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v303',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v304',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11083,12 +11091,12 @@ function dMap(){
       const ry=sbY+28+ri*18;
       const isLeader=ri===0;
       g.globalAlpha=pnlAlpha*(isLeader?1:0.8);
-      txShadow((ri+1)+'.',sbX+8,ry+12,isLeader?9:7,isLeader?'#f0c830':'#808080','rgba(0,0,0,.4)');
+      txShadow(_LDR_RANK[ri],sbX+8,ry+12,isLeader?9:7,isLeader?'#f0c830':'#808080','rgba(0,0,0,.4)'); // v304
       const nm=r.name.length>5?r.name.slice(0,5):r.name;
       txShadow(nm,sbX+22,ry+12,isLeader?8:7,r.col,'rgba(0,0,0,.3)');
       const uniqStr=r.uniq+'/60';
       txShadow(uniqStr,sbX+sbW-8-uniqStr.length*6,ry+12,isLeader?8:7,'#e8e0c0','rgba(0,0,0,.3)');
-      if(r.floor>0){const fStr='B'+r.floor;txShadow(fStr,sbX+76,ry+12,6,r.col,'rgba(0,0,0,.35)');}
+      if(r.floor>0){txShadow(_WLD_FLOOR_NUMS[r.floor]||'B'+r.floor,sbX+76,ry+12,6,r.col,'rgba(0,0,0,.35)');} // v304
       if(isLeader){txShadow('\u2605',sbX+sbW-22,ry+6,5,'#f0c830','rgba(0,0,0,.4)');}
     }
     g.globalAlpha=1;
