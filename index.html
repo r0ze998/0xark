@@ -3680,11 +3680,131 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(12,6,3,4,'#f0e8c0');px(14,6,2,3,'#e8d8b0');
     // Hands glow
     g.globalAlpha=radiance*0.8;px(0,5,2,2,'#f8f090');px(14,5,2,2,'#f8f090');g.globalAlpha=1;
+  }else if(_cn==='SANCTUARY'){
+    // SANCTUARY — Sacred Keeper (divine guardian, Legendary defense)
+    // Idle: aura pulse, sacred barrier shimmer, halo glow
+    const sanAura=0.3+0.4*_sFr035;
+    const sanBeam=0.4+0.4*_sFr052;
+    const sanBarPhase=Math.floor(t/12)%4;
+    // Background radiance
+    g.globalAlpha=sanAura*0.15;px(-1,-1,18,22,'#a0dcf8');g.globalAlpha=1;
+    // Halo (sacred crown ring)
+    px(3,0,10,1,'#a0dcf8');px(5,0,6,1,'#f0f8ff');
+    g.globalAlpha=sanAura*0.6;px(6,0,4,1,'#ffffff');g.globalAlpha=1;
+    // Hood / head
+    px(3,1,10,2,'#4888b8');px(4,1,8,1,'#60a8d8');
+    // Face (serene white)
+    px(5,3,6,4,'#f0f8ff');px(6,4,4,2,'#ffffff');
+    // Glowing calm eyes
+    px(6,4,2,1,'#80c8f0');px(9,4,2,1,'#80c8f0');
+    px(6,5,2,1,'#a0dcf8');px(9,5,2,1,'#a0dcf8');
+    // Hood frame
+    px(3,2,2,5,'#38689a');px(11,2,2,5,'#38689a');
+    // Body — flowing sacred robes
+    px(4,7,8,4,'#80c8f0');px(5,7,6,3,'#a0dcf8');
+    // Sacred cross emblem on chest
+    px(7,7,2,4,'#f0f8ff');px(5,8,6,2,'#f0f8ff');
+    px(7,8,2,1,'#c8f8ff'); // crystalline center
+    // Robe side trim
+    px(4,7,1,4,'#4888b8');px(11,7,1,4,'#4888b8');
+    // Arms extended (barrier projection)
+    px(1,7,4,3,'#80c8f0');px(0,7,2,3,'#a0dcf8');
+    px(11,7,4,3,'#80c8f0');px(14,7,2,3,'#a0dcf8');
+    // Glowing palms (divine barrier emitters)
+    g.globalAlpha=sanBeam;px(-1,6,3,5,'#60c0e8');px(14,6,3,5,'#60c0e8');g.globalAlpha=1;
+    // Sacred barrier arcs (animated)
+    const _bpXL=[-1,0,0,-1],_bpXR=[14,15,15,14],_bpYa=[5,6,8,10];
+    g.globalAlpha=sanBeam*0.55;
+    px(_bpXL[sanBarPhase],_bpYa[sanBarPhase],2,5,'#a0dcf8');
+    px(_bpXR[sanBarPhase],_bpYa[sanBarPhase],2,5,'#a0dcf8');
+    g.globalAlpha=sanBeam*0.2;
+    px(0,4,16,1,'#80c8f0');px(0,14,16,1,'#80c8f0'); // top/bottom barrier lines
+    g.globalAlpha=1;
+    // Lower robes
+    px(3,11,10,4,'#60a8d8');px(4,11,8,3,'#80c8f0');
+    px(5,13,6,1,'#a0dcf8'); // hem highlight
+    px(4,15,3,2,'#4888b8');px(9,15,3,2,'#4888b8');
+    px(4,16,4,1,'#38609a');px(8,16,4,1,'#38609a');
+  }else if(_cn==='GEN PULSE'){
+    // GEN PULSE — Genesis Core (primordial healing star, Legendary recovery)
+    // Idle: radiant core pulses, rotating rays, expanding energy rings
+    const genPulse=0.5+0.5*_sFr04;
+    const genRay=Math.floor(t/5)%8; // 8-position ray flare
+    const genRing=Math.floor(t/8)%3; // expanding ring phase
+    const genGlow=0.3+0.4*_sFr06;
+    // Outer golden radiance
+    g.globalAlpha=genPulse*0.2;px(-1,-1,18,22,'#f8e070');g.globalAlpha=1;
+    // Rotating ray flares (golden sparks at 8 positions)
+    const _grx=[7,10,12,10,7,4,2,4],_gry=[0,1,5,9,12,9,5,1];
+    g.globalAlpha=0.4+genPulse*0.4;
+    px(_grx[genRay],_gry[genRay],2,2,'#ffffff');
+    px(_grx[(genRay+4)%8],_gry[(genRay+4)%8],2,2,'#fff898');
+    g.globalAlpha=1;
+    // 4 main cardinal rays (golden)
+    px(7,0,2,5,'#d0b848');px(7,13,2,5,'#d0b848');
+    px(0,7,5,2,'#d0b848');px(11,7,5,2,'#d0b848');
+    // Ray highlights (bright core end)
+    px(7,1,2,2,'#f8e070');px(7,14,2,2,'#f8e070');
+    px(1,7,2,2,'#f8e070');px(12,7,2,2,'#f8e070');
+    // 4 diagonal shorter rays
+    px(3,3,3,2,'#d0b848');px(10,3,3,2,'#d0b848');
+    px(3,11,3,2,'#d0b848');px(10,11,3,2,'#d0b848');
+    // Expanding energy ring (3 sizes)
+    g.globalAlpha=genGlow*0.45;
+    if(genRing===0){px(3,2,10,1,'#f8e070');px(3,13,10,1,'#f8e070');px(2,3,1,10,'#f8e070');px(13,3,1,10,'#f8e070');}
+    else if(genRing===1){px(4,3,8,1,'#f8e070');px(4,12,8,1,'#f8e070');px(3,4,1,8,'#f8e070');px(12,4,1,8,'#f8e070');}
+    else{px(5,4,6,1,'#f8e070');px(5,11,6,1,'#f8e070');px(4,5,1,6,'#f8e070');px(11,5,1,6,'#f8e070');}
+    g.globalAlpha=1;
+    // Core orb (warm golden)
+    px(4,4,8,8,'#c8a030');px(5,4,6,8,'#e0b840');px(5,5,6,6,'#f8e070');
+    px(6,5,4,6,'#fff898'); // bright inner core
+    // Center (pure white, life source)
+    g.globalAlpha=genPulse*0.9;px(6,6,4,4,'#ffffff');g.globalAlpha=1;
+    px(7,7,2,2,'#ffffff');
+    // Radiant shimmer overlay
+    g.globalAlpha=genGlow*0.5;px(5,5,6,6,'#ffffff');g.globalAlpha=1;
+  }else if(_cn==='REAPER'){
+    // REAPER — Death Harvester (Lifedrain, Epic attack)
+    // Idle: cloak billow, scythe glow, soul orbs orbit
+    const reapSway=Math.round(_sFr035*0.7);
+    const scytheGlow=0.3+0.4*_sFr06;
+    const soulPhase=Math.floor(t/10)%4; // soul orb orbit
+    // Ethereal dark aura
+    g.globalAlpha=0.15;px(-1,-1,18,22,'#504070');g.globalAlpha=1;
+    // Tall dark hood (imposing silhouette)
+    px(5,0,6,2,'#302050');px(4,2,8,2,'#402868');px(3,4,10,2,'#504078');
+    px(6,0,4,1,'#402868'); // hood peak
+    // Empty eye sockets (purple glow, death sight)
+    px(5,4,3,2,'#9060d0');px(9,4,3,2,'#9060d0');
+    g.globalAlpha=scytheGlow;px(5,4,3,2,'#c090f0');px(9,4,3,2,'#c090f0');g.globalAlpha=1;
+    // Hooded skull face (dark, gaunt)
+    px(4,4,8,3,'#201030');px(6,5,5,2,'#1a0820');
+    // Cloak body — billowing
+    px(2,6+reapSway,12,5,'#302050');px(3,6+reapSway,10,4,'#402868');
+    px(4,7+reapSway,8,3,'#302050');
+    // Skeletal hands emerging
+    px(2,9,2,3,'#c8b8a0');px(13,9,2,3,'#c8b8a0');
+    px(1,11,2,1,'#b0a090');px(14,11,2,1,'#b0a090'); // finger tips
+    // Scythe (dark crescent blade)
+    px(11,0,3,1,'#9870c0');px(12,1,3,1,'#9870c0');px(13,2,3,1,'#786098'); // blade curve
+    px(11,0,2,1,'#d0c0f0');px(13,2,2,1,'#d0c0f0'); // blade edge highlights
+    // Scythe shaft
+    px(10,2,2,7,'#504070');px(11,3,1,6,'#786098');
+    g.globalAlpha=scytheGlow*0.7;px(11,0,5,4,'#9060d0');g.globalAlpha=1; // glow on blade
+    // Lower cloak (tattered)
+    px(2,11,12,5,'#302050');px(3,11,10,4,'#402868');
+    px(1,14,2,2,'#302050');px(13,14,2,2,'#302050'); // tattered edges
+    px(4,15,2,2,'#201030');px(10,15,2,2,'#201030');
+    // Soul orbs orbiting (4 positions)
+    const _sox=[-1,8,15,8],_soy=[9,0,9,16];
+    g.globalAlpha=0.7;px(_sox[soulPhase],_soy[soulPhase],2,2,'#9060d0');g.globalAlpha=1;
+    g.globalAlpha=0.35;px(_sox[(soulPhase+2)%4],_soy[(soulPhase+2)%4],2,2,'#c090f0');g.globalAlpha=1;
   }
 
   // Generic renderer for all other cards (type-based pixel art)
   if(_cn==='AEGIS'||_cn==='UMBRA'||_cn==='IGNIS'||_cn==='TEMPEST'||_cn==='NIHIL'||
-     _cn==='VOIDBLADE'||_cn==='TITAN'||_cn==='GENESIS'||_cn==='SINGULARITY'||_cn==='ARK BLESS'){
+     _cn==='VOIDBLADE'||_cn==='TITAN'||_cn==='GENESIS'||_cn==='SINGULARITY'||_cn==='ARK BLESS'||
+     _cn==='SANCTUARY'||_cn==='GEN PULSE'||_cn==='REAPER'){
     // named sprites already drawn above — fall through to sparkle/reveal below
   } else {
     const cr=CD[cardId-1];if(!cr)return;
