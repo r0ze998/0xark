@@ -1658,18 +1658,18 @@ let bpSelectedCardSlot=0; // which card slot to consume for USE CARD
 let bpSelectedTarget=1; // which player index to target for STEAL/SCOUT
 
 function generateResolveEvents(){
-  const actionNames=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];const events=[];
+  // v297: actionNames dead — _ACTION_NAMES already at module scope (v262); rivalBarriers → 2 vars
+  const events=[];
   bpPlayerBarrier=(bpAction===2);
-  // Rival AI actions: use pre-generated (from generateRivalTells at select start)
-  // If not pre-generated yet (edge case), generate now without tells
   if(!bpActionsGenerated){bpRivalActions[0]=rivalChooseAction(1);bpRivalActions[1]=rivalChooseAction(2);}
-  const rivalBarriers=[bpRivalActions[0]===2,bpRivalActions[1]===2];
+  const rb0=bpRivalActions[0]===2,rb1=bpRivalActions[1]===2; // rivalBarrier[0] and [1]
 
   // ── PLAYER ACTION ──
   if(bpAction===0){// DRAW
     const cardId=pickAreaCardForMap(currentMap);const cr=CD[cardId-1];
     events.push({type:'action',who:'You',action:'DRAW',text:'You used DRAW!',effect:'none'});
-    const wasInHandBefore=pl[0].cd.some(c=>c===cardId); // capture before addCardToPlayer modifies hand
+    // v297: replace .some() closure with loop
+    let wasInHandBefore=false;for(let _wci=0;_wci<pl[0].cd.length;_wci++){if(pl[0].cd[_wci]===cardId){wasInHandBefore=true;break;}}
     if(addCardToPlayer(0,cardId)){
       events.push({type:'result',text:'You obtained '+cr.n+'!',effect:'card_get',cardName:cr.n,cardId:cardId});
       lg.push('R'+rd+': You drew '+cr.n+'!');
@@ -1684,7 +1684,7 @@ function generateResolveEvents(){
   }else if(bpAction===1){// STEAL
     sp.s=Math.max(0,sp.s-1);stats.stealsAttempted++;
     const tgt=bpSelectedTarget; // 1=Rival, 2=Hunter
-    const tgtBarrier=rivalBarriers[tgt-1];
+    const tgtBarrier=tgt===1?rb0:rb1;
     events.push({type:'action',who:'You',action:'STEAL',text:'You used STEAL on '+pl[tgt].n+'!',effect:'slash',target:tgt});
     if(tgtBarrier){
       stats.stealsBlocked++;
@@ -1729,19 +1729,19 @@ function generateResolveEvents(){
     sp.c=Math.max(0,sp.c-1);stats.scoutUses++;
     const tgt=bpSelectedTarget;
     events.push({type:'action',who:'You',action:'SCOUT',text:'You used SCOUT on '+pl[tgt].n+'!',effect:'scout_reveal',scoutTarget:tgt});
-    const rCards=pl[tgt].cd.filter(c=>c>0).map(c=>CD[c-1]);
-    const rCardNames=rCards.map(c=>c.n);
-    const scoutMsg=rCardNames.length>0?pl[tgt].n+' has: '+rCardNames.join(', '):pl[tgt].n+' has no cards!';
+    // v297: single-pass scout build replaces filter+map+map+map (3 allocs → 1)
+    let _snComma='',_snDot='';const _scArr=[];
+    for(let _sci=0;_sci<HAND_SIZE;_sci++){const _sc=pl[tgt].cd[_sci];if(_sc>0){const _cr=CD[_sc-1];_scArr.push({n:_cr.n,r:_cr.r,t:_cr.t});if(_snComma){_snComma+=', ';_snDot+='\u00B7 ';}_snComma+=_cr.n;_snDot+=_cr.n;}}
+    const scoutMsg=_snComma?pl[tgt].n+' has: '+_snComma:pl[tgt].n+' has no cards!';
     events.push({type:'result',text:scoutMsg,effect:'none'});
     lg.push('R'+rd+': Scout > '+scoutMsg);
-    // Persist scout intel in opponent info box
-    bpScoutedCards[tgt-1]={round:rd,cards:rCards.map(c=>({n:c.n,r:c.r,t:c.t})),nameStr:rCardNames.join(' \u00B7 ')||'empty'}; // v261: pre-join for render
+    bpScoutedCards[tgt-1]={round:rd,cards:_scArr,nameStr:_snDot||'empty'}; // v261/v297: pre-join for render
   }else if(bpAction===4){// USE CARD
     // Consume selected card in hand for effect based on card TYPE (not ID)
-    const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
-    // Safety: if selected slot is now empty (decayed between select and resolve), fallback to any filled slot
-    const safeSlot=(pl[0].cd[bpSelectedCardSlot]>0)?bpSelectedCardSlot:(filled[0]??-1);
-    if(filled.length>0&&safeSlot>=0){
+    // v297: track first filled slot instead of filled[] array
+    let _firstFilled=-1;for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0){_firstFilled=i;break;}}
+    const safeSlot=(pl[0].cd[bpSelectedCardSlot]>0)?bpSelectedCardSlot:_firstFilled;
+    if(_firstFilled>=0&&safeSlot>=0){
       const slot=safeSlot;const card=removeCardFromPlayer(0,slot);
       if(!card||!CD[card-1]){events.push({type:'result',text:'Your card vanished before use!',effect:'none'});lg.push('R'+rd+': USE CARD — card gone');
       }else{
@@ -1786,7 +1786,7 @@ function generateResolveEvents(){
         events._escaped=true; // signal battle result handler to skip to map immediately
       }else if(cr.t==='magic'){
         // Magic: strip all barriers + 2 HP damage to both rivals + guaranteed steal
-        rivalBarriers[0]=false;rivalBarriers[1]=false;bpPlayerBarrier=false;
+        /* rb0/rb1 go out of scope after magic; bpPlayerBarrier covers player */bpPlayerBarrier=false;
         bpHP[1]=Math.max(0,bpHP[1]-2);bpHP[2]=Math.max(0,bpHP[2]-1);
         bpHPDmgAnim[1]=20;bpHPDmgAnim[2]=20;
         const stolen=removeCardFromPlayer(tgt,-1);
