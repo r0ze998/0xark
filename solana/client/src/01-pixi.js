@@ -73,6 +73,10 @@ pixiHud.battleCount.x=10;pixiHud.battleCount.y=24;
 pixiHud.cardProgress.x=W-140;pixiHud.cardProgress.y=2;
 pixiHud.rivalWarning.x=W/2-80;pixiHud.rivalWarning.y=42;pixiHud.rivalWarning.visible=false;
 Object.values(pixiHud).forEach(t=>pixiLayers.ui.addChild(t));
+// v307: HUD string caches — only rebuild when values change, not every frame
+let _timeLblLastMin=-1,_timeLblCache='';
+let _cardPrgKey=-1,_cardPrgCache='';
+let _btlCountKey=-1,_btlCountCache='';
 
 // ═══════════════════════════════════════
 // PIXI FRLG UI FRAMEWORK
@@ -438,17 +442,22 @@ function updatePixiHud(){
       if(pxTextbox._hideTimer>240){pxTextbox.visible=false;pxTextbox._hideTimer=0;}
     }else{pxTextbox._hideTimer=0;}
   }
-  // Season timer
+  // Season timer — v307: update only when minute changes (not every frame)
   const sr=getSeasonRemaining();
-  pixiHud.seasonTimer.text=formatTimeRemaining(sr);
+  const _nowMin=Math.floor(Date.now()/60000);
+  if(_timeLblLastMin!==_nowMin){_timeLblLastMin=_nowMin;_timeLblCache=formatTimeRemaining(sr);}
+  pixiHud.seasonTimer.text=_timeLblCache;
   pixiHud.seasonTimer.style.fill=sr<3600000?'#d04040':sr<86400000?'#d0a030':'#40a040';
-  // Card progress (GDD v1.0: X/60 cards)
+  // Card progress (GDD v1.0: X/60 cards) — v307: cache string, rebuild only on change
   const unique=hasUniqueCards(0).size;
-  const dungeonLabel=inDungeon?' [FLOOR '+currentFloor+']':'';
-  pixiHud.cardProgress.text=unique+'/60'+dungeonLabel;
+  const _cpKey=unique*12+(inDungeon?currentFloor+6:0); // pack: unique(0-60)*12 + floor(0-5)+6 if dungeon
+  if(_cardPrgKey!==_cpKey){_cardPrgKey=_cpKey;_cardPrgCache=unique+'/60'+(inDungeon?' [FLOOR '+currentFloor+']':'');}
+  pixiHud.cardProgress.text=_cardPrgCache;
   pixiHud.cardProgress.style.fill=unique>=60?'#40d040':unique>=30?'#f0c830':'#c0d0f0';
-  // Battle/status info (round + spell counts)
-  pixiHud.battleCount.text='Round '+rd+'  STL:'+sp.s+' BAR:'+sp.b+' SCT:'+sp.c;
+  // Battle/status info — v307: cache, rebuild only when rd/sp change
+  const _bcKey=rd*1000+sp.s*100+sp.b*10+sp.c;
+  if(_btlCountKey!==_bcKey){_btlCountKey=_bcKey;_btlCountCache='Round '+rd+'  STL:'+sp.s+' BAR:'+sp.b+' SCT:'+sp.c;}
+  pixiHud.battleCount.text=_btlCountCache;
   // Rival warning
   pixiHud.rivalWarning.visible=rivalWinWarning>0&&Math.floor(fr/15)%2===0;
   // Show HUD on map screen, menu always available
