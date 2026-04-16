@@ -19284,5 +19284,77 @@ requestAnimationFrame(loop);
 
 
 </script>
+
+<!-- React UI: wallet / lobby / NFT inventory (mounted into #react-root) -->
+<div id="react-root"></div>
+
+<style>
+/* ── 0xARK React UI overlay ─────────────────────────────────── */
+#react-root{position:fixed;top:12px;right:12px;z-index:200;display:flex;flex-direction:column;gap:0;pointer-events:auto}
+.oxark-ui{display:flex;flex-direction:column;gap:6px;font-family:'VT323',monospace}
+/* Wallet panel */
+.wallet-panel{display:flex;align-items:center;gap:8px;background:rgba(10,10,24,.92);border:1px solid #2a2a4a;border-radius:10px;padding:6px 10px;backdrop-filter:blur(8px)}
+.wallet-info{display:flex;align-items:center;gap:6px}
+.wallet-address{font-size:13px;color:#8888cc;letter-spacing:.5px}
+.btn-disconnect{background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:0 2px;line-height:1}
+.btn-disconnect:hover{color:#aa4444}
+/* Override wallet-adapter button */
+.wallet-adapter-button{font-family:'VT323',monospace!important;font-size:15px!important;height:34px!important;padding:0 14px!important;border-radius:8px!important;background:#232342!important}
+.wallet-adapter-button:hover{background:#2e2e58!important}
+/* Tabs */
+.ui-tabs{display:flex;gap:2px;background:rgba(10,10,24,.85);border:1px solid #2a2a4a;border-radius:8px;padding:3px}
+.tab{flex:1;padding:4px 10px;border:none;border-radius:6px;background:transparent;color:#666;font:15px 'VT323',monospace;cursor:pointer;letter-spacing:.5px;transition:all .1s}
+.tab.active{background:#1e1e42;color:#aaaaee}
+/* Panel */
+.ui-panel{background:rgba(10,10,24,.92);border:1px solid #2a2a4a;border-radius:10px;padding:10px 12px;backdrop-filter:blur(8px);max-height:70vh;overflow-y:auto;min-width:220px}
+/* Lobby */
+.lobby-title{font-size:18px;color:#8888cc;margin-bottom:8px}
+.game-info{background:#111126;border-radius:6px;padding:6px 8px;margin-bottom:8px;font-size:13px}
+.info-row{display:flex;justify-content:space-between;color:#666;margin-bottom:2px}
+.info-row span:last-child{color:#aaa}
+.status-badge{color:#55cc88;font-size:12px}
+.lobby-actions{display:flex;flex-direction:column;gap:6px}
+.btn{padding:6px 12px;border:1px solid;border-radius:7px;font:15px 'VT323',monospace;cursor:pointer;letter-spacing:.5px;transition:all .1s}
+.btn:disabled{opacity:.4;cursor:default}
+.btn-primary{background:#1e2e6e;color:#aac;border-color:#3040aa}
+.btn-primary:not(:disabled):hover{background:#2a3e8e}
+.btn-secondary{background:#1e3e2e;color:#8ca;border-color:#2a6a4a;padding:6px 10px}
+.btn-secondary:not(:disabled):hover{background:#2a5a3e}
+.btn-stake{background:#4e2e0e;color:#fca;border-color:#8a5a1a;animation:pulse-stake .8s ease-in-out infinite alternate}
+@keyframes pulse-stake{from{box-shadow:0 0 0 rgba(200,120,20,0)}to{box-shadow:0 0 8px rgba(200,120,20,.6)}}
+.join-row{display:flex;gap:4px}
+.game-id-input{flex:1;background:#0c0c20;border:1px solid #2a2a4a;border-radius:6px;color:#aaa;padding:5px 8px;font:14px 'VT323',monospace}
+.game-id-input::placeholder{color:#444}
+.error-msg{color:#cc4444;font-size:13px;margin-top:4px}
+/* Inventory */
+.inventory-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.inventory-title{font-size:17px;color:#8888cc}
+.btn-refresh{background:none;border:1px solid #333;border-radius:5px;color:#666;cursor:pointer;padding:2px 6px;font-size:14px}
+.btn-refresh:hover{color:#aaa}
+.collection-progress{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.progress-bar-track{flex:1;height:5px;background:#1a1a32;border-radius:3px}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,#3344cc,#66aaff);border-radius:3px;transition:width .4s}
+.progress-label{font-size:12px;color:#666;min-width:36px;text-align:right}
+.legendary-badge{font-size:12px;color:#fbbf24;margin-bottom:6px;letter-spacing:.5px}
+.empty-inventory{color:#444;font-size:13px;text-align:center;padding:12px 0}
+.card-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:8px}
+.card-slot{background:#0e0e22;border:1px solid;border-radius:5px;padding:4px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;transition:transform .1s,background .1s}
+.card-slot:hover{background:#1a1a34;transform:scale(1.05)}
+.card-slot.selected{background:#1e1e40;box-shadow:0 0 6px rgba(100,120,255,.4)}
+.card-id{font-size:11px;color:#aaa}
+.card-rarity{font-size:11px;font-weight:bold}
+.card-detail{background:#0e0e22;border-radius:6px;padding:8px;border:1px solid #2a2a4a}
+.card-detail-header{display:flex;justify-content:space-between;margin-bottom:4px}
+.card-detail-header strong{color:#ccc;font-size:14px}
+.card-detail-rarity{font-size:13px}
+.card-detail-desc{color:#555;font-size:12px;margin-bottom:6px}
+.card-detail-link{color:#6688cc;font-size:12px;text-decoration:none}
+.card-detail-link:hover{color:#88aaee}
+/* Scrollbar */
+.ui-panel::-webkit-scrollbar{width:4px}.ui-panel::-webkit-scrollbar-track{background:transparent}.ui-panel::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+</style>
+
+<link rel="stylesheet" href="react-dist/oxark-ui.css">
+<script src="react-dist/oxark-ui.iife.js" defer></script>
 </body>
 </html>
