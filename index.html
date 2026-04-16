@@ -1152,6 +1152,24 @@ scanCanvas.width=W;scanCanvas.height=H;
   for(let y=0;y<H;y+=2)sc2.fillRect(0,y,W,1);
 }
 
+// v210: Pre-baked battle rival vignettes — VEGA (magenta) + MIRA (gold), built once
+const _btlVigVega=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  const gr=x.createRadialGradient(W*0.7,H*0.25,H*0.1,W*0.7,H*0.25,H*0.65);
+  gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(160,20,100,0.14)');
+  x.fillStyle=gr;x.fillRect(0,0,W,H);
+  return c;
+})();
+const _btlVigMira=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  const gr=x.createRadialGradient(W*0.75,H*0.2,H*0.1,W*0.75,H*0.2,H*0.65);
+  gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(160,120,0,0.13)');
+  x.fillStyle=gr;x.fillRect(0,0,W,H);
+  return c;
+})();
+
 // Set imageSmoothingEnabled=false globally on main context once canvases exist
 g.imageSmoothingEnabled=false;
 
@@ -1435,11 +1453,13 @@ function tx(s,x,y,sz,c){
   g.fillText(s,x,y);
 }
 function txShadow(s,x,y,sz,color,shadowColor){
-  const sc_=shadowColor||'rgba(0,0,0,0.9)';
+  // v210: native shadow API — 3 fillText → 1 (save ~100 draw calls/frame)
   const finalSz=Math.max(12,Math.round((sz||12)*1.4));
   g.font=finalSz+"px 'VT323',monospace";
-  g.fillStyle=sc_;g.fillText(s,x+1,y+1);g.fillText(s,x-1,y+1);
+  g.shadowColor=shadowColor||'rgba(0,0,0,0.9)';
+  g.shadowOffsetX=1;g.shadowOffsetY=1;g.shadowBlur=0;
   g.fillStyle=color||ARK.text;g.fillText(s,x,y);
+  g.shadowColor='transparent';
 }
 
 // ═══════════════════════════════════════
@@ -8460,8 +8480,8 @@ function drawNPCDialog(){
 // ═══════════════════════════════════════
 function dTitle(){
   bx(0,0,W,H,'#060612');
-  // Gothic void gradient — deep purple-black from top
-  for(let i=0;i<280;i++){const a=.28-i*.001;bx(0,i,W,1,`rgba(40,16,80,${Math.max(0,a)})`);}
+  // Gothic void gradient — deep purple-black from top (v210: single gradient fill, was 280 fillRects)
+  {const gd=g.createLinearGradient(0,0,0,280);gd.addColorStop(0,'rgba(40,16,80,0.28)');gd.addColorStop(1,'rgba(40,16,80,0)');g.fillStyle=gd;g.fillRect(0,0,W,280);}
   // Ethereal void pillars — slow vertical light columns
   for(let b=0;b<5;b++){
     const bx_=(b*136+fr*0.08)%W;
@@ -8493,6 +8513,34 @@ function dTitle(){
   g.globalAlpha=0.04;
   for(let gy_=60;gy_<H;gy_+=80)bx(0,gy_,W,1,'#9945FF');
   g.globalAlpha=1;
+  // v210: Moon — full circle with soft halo, top-right quadrant
+  {
+    const mx_=W*0.78,my_=72,mr=22;
+    const moonPulse=0.55+Math.sin(fr*0.012)*0.04;
+    // Outer halo
+    const halo=g.createRadialGradient(mx_,my_,mr,mx_,my_,mr*3.2);
+    halo.addColorStop(0,`rgba(220,210,255,${moonPulse*0.18})`);
+    halo.addColorStop(1,'rgba(220,210,255,0)');
+    g.fillStyle=halo;g.fillRect(mx_-mr*3.2,my_-mr*3.2,mr*6.4,mr*6.4);
+    // Moon disk
+    g.globalAlpha=moonPulse;
+    g.fillStyle='#c8c0e8';
+    g.beginPath();g.arc(mx_,my_,mr,0,Math.PI*2);g.fill();
+    // Subtle shadow crescent (makes it look like a moon, not a circle)
+    g.fillStyle='rgba(6,6,18,0.28)';
+    g.beginPath();g.arc(mx_+6,my_-3,mr*0.92,0,Math.PI*2);g.fill();
+    g.globalAlpha=1;
+    // Moon reflection shimmer on water below
+    const refX=mx_,refY=H-30;
+    for(let i=0;i<5;i++){
+      const rw=14-i*2,rh=1;
+      const ry_=refY+i*4+Math.sin(fr*0.04+i)*3;
+      const ra=(0.18-i*0.03)*moonPulse;
+      g.globalAlpha=ra;
+      bx(refX-rw/2+Math.sin(fr*0.03+i*1.4)*6,ry_,rw,rh,'#c8c0e8');
+    }
+    g.globalAlpha=1;
+  }
   if(fr%200<15){
     const sx=150+fr%200*10,sy=40+fr%200*2;
     for(let t=0;t<6;t++)bx(sx-t*4,sy-t,2,1,`rgba(255,255,255,${.4-t*.06})`);
@@ -10312,7 +10360,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v209',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v210',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -10662,6 +10710,14 @@ function drawBattleBG(){
     // Enemy platform
     bx(W-380,enemyPlatY,300,8,a[9]);bx(W-380,enemyPlatY,300,2,a[9]);
     bx(W-380,enemyPlatY+8,300,25,a[6]);
+    // v210: Center downward light — adds depth/sense of light source above arena
+    {const lightPulse=0.08+0.025*Math.sin(fr*0.04);
+    const lg_=g.createLinearGradient(0,horizonY,0,playerPlatY);
+    lg_.addColorStop(0,'rgba(255,240,200,0)');
+    lg_.addColorStop(0.3,`rgba(255,240,200,${lightPulse})`);
+    lg_.addColorStop(1,'rgba(255,240,200,0)');
+    const lx=W*0.35,lw=W*0.3;
+    g.fillStyle=lg_;g.fillRect(lx,horizonY,lw,playerPlatY-horizonY);}
     // Floor depth label (subtle, top-center)
     const flNames=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','THE DEEP'];
     const flCol=fl===5?'#8060c0':fl===4?'#c05040':fl===3?'#9060c0':'#707888';
@@ -10670,12 +10726,11 @@ function drawBattleBG(){
     g.globalAlpha=1;
   }
   // v134: Rival-themed atmospheric overlay — VEGA (magenta) or MIRA (gold)
+  // v210: vignette pre-baked to offscreen canvas — drawImage replaces createRadialGradient per frame
   const vsRiv=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
   if(vsRiv===1){
     // VEGA: dark magenta screen-edge vignette + drifting orbs
-    const vigV=g.createRadialGradient(W*0.7,H*0.25,H*0.1,W*0.7,H*0.25,H*0.65);
-    vigV.addColorStop(0,'rgba(0,0,0,0)');vigV.addColorStop(1,'rgba(160,20,100,0.14)');
-    g.fillStyle=vigV;g.fillRect(0,0,W,H);
+    g.drawImage(_btlVigVega,0,0);
     // Three drifting dark-energy orbs near VEGA's side
     for(let i=0;i<3;i++){
       const phase=fr*0.018+i*2.1;
@@ -10691,9 +10746,7 @@ function drawBattleBG(){
     g.globalAlpha=1;
   }else{
     // MIRA: warm amber screen-edge vignette + drifting coin sparks
-    const vigM=g.createRadialGradient(W*0.75,H*0.2,H*0.1,W*0.75,H*0.2,H*0.65);
-    vigM.addColorStop(0,'rgba(0,0,0,0)');vigM.addColorStop(1,'rgba(160,120,0,0.13)');
-    g.fillStyle=vigM;g.fillRect(0,0,W,H);
+    g.drawImage(_btlVigMira,0,0);
     // Drifting coin-glint sparks near MIRA's side
     for(let i=0;i<4;i++){
       const phase=fr*0.022+i*1.6;

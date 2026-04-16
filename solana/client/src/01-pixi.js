@@ -1078,6 +1078,24 @@ scanCanvas.width=W;scanCanvas.height=H;
   for(let y=0;y<H;y+=2)sc2.fillRect(0,y,W,1);
 }
 
+// v210: Pre-baked battle rival vignettes — VEGA (magenta) + MIRA (gold), built once
+const _btlVigVega=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  const gr=x.createRadialGradient(W*0.7,H*0.25,H*0.1,W*0.7,H*0.25,H*0.65);
+  gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(160,20,100,0.14)');
+  x.fillStyle=gr;x.fillRect(0,0,W,H);
+  return c;
+})();
+const _btlVigMira=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  const gr=x.createRadialGradient(W*0.75,H*0.2,H*0.1,W*0.75,H*0.2,H*0.65);
+  gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(160,120,0,0.13)');
+  x.fillStyle=gr;x.fillRect(0,0,W,H);
+  return c;
+})();
+
 // Set imageSmoothingEnabled=false globally on main context once canvases exist
 g.imageSmoothingEnabled=false;
 

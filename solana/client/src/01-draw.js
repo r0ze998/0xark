@@ -95,11 +95,13 @@ function tx(s,x,y,sz,c){
   g.fillText(s,x,y);
 }
 function txShadow(s,x,y,sz,color,shadowColor){
-  const sc_=shadowColor||'rgba(0,0,0,0.9)';
+  // v210: native shadow API — 3 fillText → 1 (save ~100 draw calls/frame)
   const finalSz=Math.max(12,Math.round((sz||12)*1.4));
   g.font=finalSz+"px 'VT323',monospace";
-  g.fillStyle=sc_;g.fillText(s,x+1,y+1);g.fillText(s,x-1,y+1);
+  g.shadowColor=shadowColor||'rgba(0,0,0,0.9)';
+  g.shadowOffsetX=1;g.shadowOffsetY=1;g.shadowBlur=0;
   g.fillStyle=color||ARK.text;g.fillText(s,x,y);
+  g.shadowColor='transparent';
 }
 
 // ═══════════════════════════════════════

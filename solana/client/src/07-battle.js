@@ -127,6 +127,14 @@ function drawBattleBG(){
     // Enemy platform
     bx(W-380,enemyPlatY,300,8,a[9]);bx(W-380,enemyPlatY,300,2,a[9]);
     bx(W-380,enemyPlatY+8,300,25,a[6]);
+    // v210: Center downward light — adds depth/sense of light source above arena
+    {const lightPulse=0.08+0.025*Math.sin(fr*0.04);
+    const lg_=g.createLinearGradient(0,horizonY,0,playerPlatY);
+    lg_.addColorStop(0,'rgba(255,240,200,0)');
+    lg_.addColorStop(0.3,`rgba(255,240,200,${lightPulse})`);
+    lg_.addColorStop(1,'rgba(255,240,200,0)');
+    const lx=W*0.35,lw=W*0.3;
+    g.fillStyle=lg_;g.fillRect(lx,horizonY,lw,playerPlatY-horizonY);}
     // Floor depth label (subtle, top-center)
     const flNames=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','THE DEEP'];
     const flCol=fl===5?'#8060c0':fl===4?'#c05040':fl===3?'#9060c0':'#707888';
@@ -135,12 +143,11 @@ function drawBattleBG(){
     g.globalAlpha=1;
   }
   // v134: Rival-themed atmospheric overlay — VEGA (magenta) or MIRA (gold)
+  // v210: vignette pre-baked to offscreen canvas — drawImage replaces createRadialGradient per frame
   const vsRiv=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
   if(vsRiv===1){
     // VEGA: dark magenta screen-edge vignette + drifting orbs
-    const vigV=g.createRadialGradient(W*0.7,H*0.25,H*0.1,W*0.7,H*0.25,H*0.65);
-    vigV.addColorStop(0,'rgba(0,0,0,0)');vigV.addColorStop(1,'rgba(160,20,100,0.14)');
-    g.fillStyle=vigV;g.fillRect(0,0,W,H);
+    g.drawImage(_btlVigVega,0,0);
     // Three drifting dark-energy orbs near VEGA's side
     for(let i=0;i<3;i++){
       const phase=fr*0.018+i*2.1;
@@ -156,9 +163,7 @@ function drawBattleBG(){
     g.globalAlpha=1;
   }else{
     // MIRA: warm amber screen-edge vignette + drifting coin sparks
-    const vigM=g.createRadialGradient(W*0.75,H*0.2,H*0.1,W*0.75,H*0.2,H*0.65);
-    vigM.addColorStop(0,'rgba(0,0,0,0)');vigM.addColorStop(1,'rgba(160,120,0,0.13)');
-    g.fillStyle=vigM;g.fillRect(0,0,W,H);
+    g.drawImage(_btlVigMira,0,0);
     // Drifting coin-glint sparks near MIRA's side
     for(let i=0;i<4;i++){
       const phase=fr*0.022+i*1.6;
