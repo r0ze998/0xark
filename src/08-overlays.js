@@ -99,11 +99,13 @@ function drawCardAcquisition(){
     g.beginPath();g.arc(cx_,cy_,ringR+6,0,Math.PI*2);g.fill();
     g.globalAlpha=ringPulse*(isEpicPlus?0.35:0.18);
     g.beginPath();g.arc(cx_,cy_,ringR+14,0,Math.PI*2);g.fill();
-    // Spinning sparkle dots for epic/legendary
+    // Spinning sparkle dots — v393: sin-addition with _sFr07/_cFr07 + _ORB_SI6/CI6
+    // (fr*0.07 ≡ π/3 per step; _ORB_CI6[si]=cos(si*π/3), _ORB_SI6[si]=sin(si*π/3))
     if(isEpicPlus){
+      const _rr4=ringR+4;
       for(let si=0;si<6;si++){
-        const sang=fr*0.07+si*(Math.PI/3);
-        const sx=cx_+Math.cos(sang)*(ringR+4),sy=cy_+Math.sin(sang)*(ringR+4);
+        const sx=cx_+(_cFr07*_ORB_CI6[si]-_sFr07*_ORB_SI6[si])*_rr4;
+        const sy=cy_+(_sFr07*_ORB_CI6[si]+_cFr07*_ORB_SI6[si])*_rr4;
         g.globalAlpha=0.7*ringPulse;bx(sx-1,sy-1,3,3,rarCol);
       }
     }
@@ -618,11 +620,15 @@ function dVictory(){
       const cd=_vcHandBuf[si];
       drawCardFrame(-22,-32,44,62,cd-1,true);
       g.restore();g.globalAlpha=1;
+      // v393: N=4 orbit unrolled — sin(i*π/2) = {0,1,0,-1}, cos = {1,0,-1,0}
       if(cardT>0&&cardT<20){
-        for(let s=0;s<4;s++){
-          const sa=s*(Math.PI*2/4)+cardT*.2,sd=8+cardT*.6;
-          g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle='#ffffc8';g.fillRect(cx_+Math.cos(sa)*sd,cy_+Math.sin(sa)*sd,2,2);g.globalAlpha=1;
-        }
+        const _spS=Math.sin(cardT*.2),_spC=Math.cos(cardT*.2),_spd=8+cardT*.6;
+        g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle='#ffffc8';
+        g.fillRect(cx_+_spC*_spd,cy_+_spS*_spd,2,2);
+        g.fillRect(cx_-_spS*_spd,cy_+_spC*_spd,2,2);
+        g.fillRect(cx_-_spC*_spd,cy_-_spS*_spd,2,2);
+        g.fillRect(cx_+_spS*_spd,cy_-_spC*_spd,2,2);
+        g.globalAlpha=1;
       }
     }
     // Vault count display

@@ -15060,11 +15060,13 @@ function drawCardAcquisition(){
     g.beginPath();g.arc(cx_,cy_,ringR+6,0,Math.PI*2);g.fill();
     g.globalAlpha=ringPulse*(isEpicPlus?0.35:0.18);
     g.beginPath();g.arc(cx_,cy_,ringR+14,0,Math.PI*2);g.fill();
-    // Spinning sparkle dots for epic/legendary
+    // Spinning sparkle dots — v393: sin-addition with _sFr07/_cFr07 + _ORB_SI6/CI6
+    // (fr*0.07 ≡ π/3 per step; _ORB_CI6[si]=cos(si*π/3), _ORB_SI6[si]=sin(si*π/3))
     if(isEpicPlus){
+      const _rr4=ringR+4;
       for(let si=0;si<6;si++){
-        const sang=fr*0.07+si*(Math.PI/3);
-        const sx=cx_+Math.cos(sang)*(ringR+4),sy=cy_+Math.sin(sang)*(ringR+4);
+        const sx=cx_+(_cFr07*_ORB_CI6[si]-_sFr07*_ORB_SI6[si])*_rr4;
+        const sy=cy_+(_sFr07*_ORB_CI6[si]+_cFr07*_ORB_SI6[si])*_rr4;
         g.globalAlpha=0.7*ringPulse;bx(sx-1,sy-1,3,3,rarCol);
       }
     }
@@ -15579,11 +15581,15 @@ function dVictory(){
       const cd=_vcHandBuf[si];
       drawCardFrame(-22,-32,44,62,cd-1,true);
       g.restore();g.globalAlpha=1;
+      // v393: N=4 orbit unrolled — sin(i*π/2) = {0,1,0,-1}, cos = {1,0,-1,0}
       if(cardT>0&&cardT<20){
-        for(let s=0;s<4;s++){
-          const sa=s*(Math.PI*2/4)+cardT*.2,sd=8+cardT*.6;
-          g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle='#ffffc8';g.fillRect(cx_+Math.cos(sa)*sd,cy_+Math.sin(sa)*sd,2,2);g.globalAlpha=1;
-        }
+        const _spS=Math.sin(cardT*.2),_spC=Math.cos(cardT*.2),_spd=8+cardT*.6;
+        g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle='#ffffc8';
+        g.fillRect(cx_+_spC*_spd,cy_+_spS*_spd,2,2);
+        g.fillRect(cx_-_spS*_spd,cy_+_spC*_spd,2,2);
+        g.fillRect(cx_-_spC*_spd,cy_-_spS*_spd,2,2);
+        g.fillRect(cx_+_spS*_spd,cy_-_spC*_spd,2,2);
+        g.globalAlpha=1;
       }
     }
     // Vault count display
@@ -17108,13 +17114,15 @@ function drawFloorClearFanfare(){
     txShadow('THE ARK IS OPEN',px_+pw/2-140,py_+22,18,'#ffe080','rgba(0,0,0,.8)');
     g.globalAlpha=alpha;
     txShadow('DUNGEON CLEARED!',px_+pw/2-126,py_+44,11,'#f0c040','rgba(0,0,0,.5)');
-    // Extra star burst decoration
+    // Extra star burst — v393: sin-addition + hoist dist (was sin called 8+8=16 times/frame)
+    {const _s01=Math.sin(t*0.1),_c01=Math.cos(t*0.1);
+    const _sd=52+Math.sin(t*0.08)*6; // hoisted: was inside loop (same value every iteration)
+    const _s12=Math.sin(t*0.12),_c12=Math.cos(t*0.12);
     for(let si=0;si<8;si++){
-      const sa=t*0.1+si*(Math.PI*2/8);
-      const sd=52+Math.sin(t*0.08)*6;
-      g.globalAlpha=alpha*(0.4+Math.sin(t*0.12+si)*0.3);
-      bx(px_+pw/2+Math.cos(sa)*sd-2,py_+34+Math.sin(sa)*10-2,4,4,'#ffe080');
-    }
+      const _ac=_c01*_ORB_CI8[si]-_s01*_ORB_SI8[si],_as=_s01*_ORB_CI8[si]+_c01*_ORB_SI8[si];
+      g.globalAlpha=alpha*(0.4+(_s12*_IDX_CI[si]+_c12*_IDX_SI[si])*0.3);
+      bx(px_+pw/2+_ac*_sd-2,py_+34+_as*10-2,4,4,'#ffe080');
+    }}
     g.globalAlpha=alpha;
     bx(px_+16,py_+52,pw-32,1,'rgba(255,224,128,.3)');
   }else if(rar>=4){
@@ -17123,13 +17131,21 @@ function drawFloorClearFanfare(){
     g.globalAlpha=alpha*hPulse;
     txShadow(_FLOOR_CLEARED_LBL[d.floor]||('FLOOR '+flRoman+' CLEARED'),px_+pw/2-130,py_+22,16,rcol,'rgba(0,0,0,.7)'); // v330
     g.globalAlpha=alpha;
-    // Extra accent sparkles for epic/legendary
-    for(let si=0;si<(rar===5?6:4);si++){
-      const sa=t*0.15+si*(Math.PI*2/(rar===5?6:4));
-      const sd=36+Math.sin(t*0.09)*4;
-      g.globalAlpha=alpha*(0.5+Math.sin(t*0.13+si)*0.25);
-      bx(px_+pw/2+Math.cos(sa)*sd-2,py_+26+Math.sin(sa)*8-2,3,3,rcol);
-    }
+    // Epic/Legendary sparkles — v393: sin-addition, hoist dist, use ORB tables
+    {const _nc=rar===5?6:4;
+    const _s15=Math.sin(t*0.15),_c15=Math.cos(t*0.15);
+    const _sd=36+Math.sin(t*0.09)*4; // hoisted from loop
+    const _s13=Math.sin(t*0.13),_c13=Math.cos(t*0.13);
+    const _orbSI=rar===5?_ORB_SI6:_ORB_SI10,_orbCI=rar===5?_ORB_CI6:_ORB_CI10;
+    // N=4 uses ORB_SI10[0,2,5,7] (approx), but simplest: use Euler recurrence
+    const _step=Math.PI*2/_nc,_ss=Math.sin(_step),_sc=Math.cos(_step);
+    let _si=0,_ci=1; // starting at i=0: sin(0)=0, cos(0)=1
+    for(let si=0;si<_nc;si++){
+      const _as=_s15*_ci+_c15*_si,_ac=_c15*_ci-_s15*_si; // sin/cos(t*0.15+si*step)
+      g.globalAlpha=alpha*(0.5+(_s13*_IDX_CI[si]+_c13*_IDX_SI[si])*0.25);
+      bx(px_+pw/2+_ac*_sd-2,py_+26+_as*8-2,3,3,rcol);
+      const _ns=_si*_sc+_ci*_ss;_ci=_ci*_sc-_si*_ss;_si=_ns; // Euler advance
+    }}
     g.globalAlpha=alpha;
     bx(px_+16,py_+34,pw-32,1,rcol+'60');
   }else{
@@ -17148,15 +17164,21 @@ function drawFloorClearFanfare(){
   const cr2=CD[d.cardId-1];
   bx(cX,cY,cw_,ch_,cr2.d);bx(cX+2,cY+2,cw_-4,ch_-4,cr2.c);
   drawCardCharacter(cX+4,cY+4,d.cardId,1.8,fr+t);
-  // Rarity orbit sparks (more for goal)
+  // Rarity orbit sparks — v393: sin-addition + Euler recurrence + hoist dist
   const sparkCount=d.isGoal?12:2+rar*2;
   const sparkDist=d.isGoal?52:38;
+  {const _tK=t*(d.isGoal?0.08:0.12);
+  const _sK=Math.sin(_tK),_cK=Math.cos(_tK);
+  const _dist=sparkDist+Math.sin(t*0.1)*4; // hoisted from loop
+  const _sq=d.isGoal?0.9:0.75,_sz=d.isGoal?5:4;
+  const _step=Math.PI*2/sparkCount,_ss=Math.sin(_step),_sc=Math.cos(_step);
+  let _si=0,_ci=1;
   for(let i=0;i<sparkCount;i++){
-    const ang=t*(d.isGoal?0.08:0.12)+i*(Math.PI*2/sparkCount);
-    const dist=sparkDist+Math.sin(t*0.1)*4;
-    g.globalAlpha=alpha*(d.isGoal?0.9:0.75);
-    bx(cX+cw_/2+Math.cos(ang)*dist-2,cY+ch_/2+Math.sin(ang)*dist-2,d.isGoal?5:4,d.isGoal?5:4,rcol);
-  }
+    const _ac=_cK*_ci-_sK*_si,_as=_sK*_ci+_cK*_si;
+    g.globalAlpha=alpha*_sq;
+    bx(cX+cw_/2+_ac*_dist-2,cY+ch_/2+_as*_dist-2,_sz,_sz,rcol);
+    const _ns=_si*_sc+_ci*_ss;_ci=_ci*_sc-_si*_ss;_si=_ns;
+  }}
   g.globalAlpha=alpha;
   // Card info (right side)
   const infoX=cX+cw_+24;
