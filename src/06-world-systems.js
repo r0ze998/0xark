@@ -7,6 +7,27 @@ for(let i=0;i<60;i++){_IDX_SI[i]=Math.sin(i);_IDX_CI[i]=Math.cos(i);}
 // v379: 60-frame bounce table for NPC dialog arrow (sin(fr*π/30), period=60)
 const _BOUNCE60=new Float32Array(60);
 for(let i=0;i<60;i++)_BOUNCE60[i]=Math.sin(i*Math.PI/30);
+// v380: 160-entry wave phase tables (wx=0,4,8,...,636 → j=0..159; each encodes sin/cos of wx*step[±offset])
+const _WV_N=160; // ceil(W/4) = ceil(640/4)
+const _WAVE_SI_A=new Float32Array(_WV_N);const _WAVE_CI_A=new Float32Array(_WV_N); // wx*0.015
+const _WAVE_SI_B=new Float32Array(_WV_N);const _WAVE_CI_B=new Float32Array(_WV_N); // wx*0.008
+const _WAVE_SI_C=new Float32Array(_WV_N);const _WAVE_CI_C=new Float32Array(_WV_N); // wx*0.012+2
+const _WAVE_SI_D=new Float32Array(_WV_N);const _WAVE_CI_D=new Float32Array(_WV_N); // wx*0.01
+const _WAVE_SI_E=new Float32Array(_WV_N);const _WAVE_CI_E=new Float32Array(_WV_N); // wx*0.01+4
+for(let j=0;j<_WV_N;j++){const wx=j*4;
+  _WAVE_SI_A[j]=Math.sin(wx*0.015);_WAVE_CI_A[j]=Math.cos(wx*0.015);
+  _WAVE_SI_B[j]=Math.sin(wx*0.008);_WAVE_CI_B[j]=Math.cos(wx*0.008);
+  _WAVE_SI_C[j]=Math.sin(wx*0.012+2);_WAVE_CI_C[j]=Math.cos(wx*0.012+2);
+  _WAVE_SI_D[j]=Math.sin(wx*0.01);_WAVE_CI_D[j]=Math.cos(wx*0.01);
+  _WAVE_SI_E[j]=Math.sin(wx*0.01+4);_WAVE_CI_E[j]=Math.cos(wx*0.01+4);
+}
+// v380: 5-entry tables for title screen pillar (step 1.2) and moon reflection (step 1.4) phases
+const _PILLAR_SI12=new Float32Array(5);const _PILLAR_CI12=new Float32Array(5);
+const _REFLS_SI14=new Float32Array(5);const _REFLS_CI14=new Float32Array(5);
+for(let i=0;i<5;i++){
+  _PILLAR_SI12[i]=Math.sin(i*1.2);_PILLAR_CI12[i]=Math.cos(i*1.2);
+  _REFLS_SI14[i]=Math.sin(i*1.4);_REFLS_CI14[i]=Math.cos(i*1.4);
+}
 // v330: lazy cache for trade dialog vault display (key=vaultSz)
 let _tradeVaultLbl='',_tradeVaultKey=-1;
 // v344: lazy caches for title-screen progress and trade overlay labels
@@ -1746,7 +1767,7 @@ function dTitle(){
   // Ethereal void pillars — slow vertical light columns
   for(let b=0;b<5;b++){
     const bx_=(b*136+fr*0.08)%W;
-    const ba=0.025+0.02*Math.sin(fr*0.015+b*1.2);
+    const ba=0.025+0.02*(_sFr015*_PILLAR_CI12[b]+_cFr015*_PILLAR_SI12[b]);
     g.globalAlpha=ba;
     g.fillStyle=_TITLE_VOID_COLS[b]; // v262: hoisted
     g.beginPath();g.moveTo(bx_,0);g.lineTo(bx_+18,0);g.lineTo(bx_+60,H);g.lineTo(bx_+42,H);g.closePath();g.fill();
@@ -1763,7 +1784,7 @@ function dTitle(){
     const sz=big?2:1;
     if(big){
       // Large star: cross sparkle — globalAlpha+solid avoids 2 template literals
-      const sa=a*(0.5+Math.sin(fr*0.08+i)*0.2);
+      const sa=a*(0.5+(_sFr08*_NCOS[i]+_cFr08*_NSIN[i])*0.2);
       g.globalAlpha=sa*0.35;g.fillStyle='#dcd5ff';
       g.fillRect(sx-1,sy,3,1);g.fillRect(sx,sy-1,1,3);
     }
@@ -1789,7 +1810,7 @@ function dTitle(){
   // Rising rune wisps — small cross shapes drifting upward
   for(let b=0;b<5;b++){
     const bsy=H-((fr*0.5+b*140)%560);
-    const bsx=80+b*110+Math.sin(fr*0.025+b)*22;
+    const bsx=80+b*110+(_sFr025*_IDX_CI[b]+_cFr025*_IDX_SI[b])*22;
     const ba=Math.min(1,Math.min(bsy/100,(H-bsy)/50)*0.6);
     g.globalAlpha=ba*0.5;
     const rc=b%2===0?ARK.rune:'#c8a448';
@@ -1813,10 +1834,10 @@ function dTitle(){
     const refX=_moonMx,refY=H-30;
     for(let i=0;i<5;i++){
       const rw=14-i*2,rh=1;
-      const ry_=refY+i*4+Math.sin(fr*0.04+i)*3;
+      const ry_=refY+i*4+(_sFr04*_IDX_CI[i]+_cFr04*_IDX_SI[i])*3;
       const ra=(0.18-i*0.03)*moonPulse;
       g.globalAlpha=ra;
-      bx(refX-rw/2+Math.sin(fr*0.03+i*1.4)*6,ry_,rw,rh,'#c8c0e8');
+      bx(refX-rw/2+(_sFr03*_REFLS_CI14[i]+_cFr03*_REFLS_SI14[i])*6,ry_,rw,rh,'#c8c0e8');
     }
     g.globalAlpha=1;
   }
@@ -1826,19 +1847,19 @@ function dTitle(){
   }
 
   // Title rune halo
-  g.globalAlpha=0.12+Math.sin(fr*0.04)*0.06;
+  g.globalAlpha=0.12+_sFr04*0.06;
   bx(W/2-130,172,260,40,'#9945FF');
   g.globalAlpha=1;
   // Title layers — purple ghost → sharp main
   txShadow('0xARK',W/2-96+2,192,32,'rgba(153,69,255,.35)','rgba(0,0,0,0)');
   txShadow('0xARK',W/2-96+1,191,32,'rgba(0,0,0,.5)','rgba(0,0,0,.6)');
   txShadow('0xARK',W/2-96,190,32,'#f8f0e0','rgba(0,0,32,.8)');
-  if(Math.sin(fr*.02)>.3)tx('0xARK',W/2-96,190,32,'rgba(248,240,224,.12)');
+  if(_sFr02>.3)tx('0xARK',W/2-96,190,32,'rgba(248,240,224,.12)');
   txShadow('60 CARDS. ONE HEIR. FIRST TO WIN TAKES ALL.',W/2-184,226,7,'#8090b8','rgba(0,0,0,.5)');
   txShadow('The ARK sank here. Its power waits.',W/2-128,240,7,'#c08848','rgba(0,0,0,.5)');
 
   // SEASON 1 badge
-  const s1Blink=Math.sin(fr*0.06)*0.15+0.85;
+  const s1Blink=_sFr06*0.15+0.85;
   g.globalAlpha=s1Blink;
   bx(W/2-36,252,72,16,'rgba(200,152,32,.25)');
   bx(W/2-35,253,70,14,'rgba(200,152,32,.12)');
@@ -1848,12 +1869,12 @@ function dTitle(){
   // Grand Seal display — show actual pot if wallet connected
   const prizeStr=walletConnected&&stakePotAmount>0?'GRAND SEAL: '+stakePotAmount.toFixed(2)+' SOL':'GRAND SEAL: awaiting souls';
   // Rune glow behind prize text
-  g.globalAlpha=0.18+Math.sin(fr*0.05)*0.08;bx(W/2-100,268,200,16,ARK.rune);g.globalAlpha=1;
+  g.globalAlpha=0.18+_sFr05*0.08;bx(W/2-100,268,200,16,ARK.rune);g.globalAlpha=1;
   txShadow(prizeStr,W/2-96,280,7,'#14F195','rgba(0,0,0,.5)');
 
   // Ship silhouette in background
   {
-    const shipX=W/2-60,shipY=260+Math.sin(fr*0.015)*3;
+    const shipX=W/2-60,shipY=260+_sFr015*3;
     // Hull
     bx(shipX-40,shipY+20,120,14,'#181828');bx(shipX-30,shipY+34,100,6,'#181828');
     bx(shipX-20,shipY+40,80,4,'#181828');
@@ -1867,7 +1888,7 @@ function dTitle(){
     // Crow's nest
     bx(shipX+6,shipY-54,12,4,'#1c1c30');
     // Flag (pirate)
-    const flagWave=Math.sin(fr*0.08)*2;
+    const flagWave=_sFr08*2;
     bx(shipX+14,shipY-52+flagWave,16,10,'#1c1c30');
     bx(shipX+18,shipY-50+flagWave,2,2,'#2a2a48');bx(shipX+22,shipY-50+flagWave,2,2,'#2a2a48');
     bx(shipX+19,shipY-47+flagWave,4,2,'#2a2a48');
@@ -1919,11 +1940,11 @@ function dTitle(){
       g.globalAlpha=1;
     }
   }
-  // Animated waves at bottom of title screen
-  for(let wx=0;wx<W;wx+=4){
-    const wy1=H-40+Math.sin(fr*0.04+wx*0.015)*6+Math.sin(fr*0.025+wx*0.008)*4;
-    const wy2=H-28+Math.sin(fr*0.035+wx*0.012+2)*5+Math.sin(fr*0.02+wx*0.01)*3;
-    const wy3=H-16+Math.sin(fr*0.03+wx*0.01+4)*4;
+  // Animated waves at bottom of title screen — v380: sin-addition via pre-baked wave tables
+  for(let wx=0;wx<W;wx+=4){const _wj=wx>>2;
+    const wy1=H-40+(_sFr04*_WAVE_CI_A[_wj]+_cFr04*_WAVE_SI_A[_wj])*6+(_sFr025*_WAVE_CI_B[_wj]+_cFr025*_WAVE_SI_B[_wj])*4;
+    const wy2=H-28+(_sFr035*_WAVE_CI_C[_wj]+_cFr035*_WAVE_SI_C[_wj])*5+(_sFr02*_WAVE_CI_D[_wj]+_cFr02*_WAVE_SI_D[_wj])*3;
+    const wy3=H-16+(_sFr03*_WAVE_CI_E[_wj]+_cFr03*_WAVE_SI_E[_wj])*4;
     bx(wx,wy1,4,2,`rgba(32,64,128,0.4)`);
     bx(wx,wy2,4,2,`rgba(40,80,150,0.35)`);
     bx(wx,wy3,4,2,`rgba(48,96,176,0.3)`);
