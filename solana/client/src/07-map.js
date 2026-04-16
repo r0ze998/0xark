@@ -60,6 +60,8 @@ let _stepsCache='STEPS:0',_stepsKey=-1; // stepCounter lazy cache
 let _expLblCache='EXP:0%',_expLblKey=-1; // fog exploration % lazy cache
 let _mapLblCache='MAP:0%',_mapLblKey=-1; // map exploration % lazy cache
 let _timeLblMapCache='',_timeLblMapMin=-1; // season timer lazy cache for canvas HUD (per minute)
+// v324: pre-baked small positive-int labels (+0…+20) for overflow counts
+const _PLUS_INT=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('+'+i);return a;})();
 // v319: pre-baked distance-tile strings + near-win lazy cache
 const _DIST_T=(()=>{const a=[];for(let i=0;i<=50;i++)a.push(i+'t');return a;})();
 let _nearWinStr='RIVAL NEAR WIN!',_nearWinKey=-1;
@@ -1617,7 +1619,7 @@ function dMap(){
   // Show overflow count if hand has more than 8 cards
   const handTotal=cdCount(pl[0].cd);
   if(handTotal>HUD_CARD_SLOTS){
-    txShadow('+'+(handTotal-HUD_CARD_SLOTS),310+HUD_CARD_SLOTS*HUD_CARD_SPACING+2,hudY+26,7,'#c8c0a0','rgba(0,0,0,.4)');
+    txShadow(_PLUS_INT[handTotal-HUD_CARD_SLOTS]||('+'+( handTotal-HUD_CARD_SLOTS)),310+HUD_CARD_SLOTS*HUD_CARD_SPACING+2,hudY+26,7,'#c8c0a0','rgba(0,0,0,.4)'); // v324
   }
 
   // v79: Active run mission strip (dungeon only)
@@ -1792,7 +1794,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v323',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v324',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1885,7 +1887,7 @@ function dMap(){
       const barW=Math.round(barMax*(r.cnt/60));
       bx(rcX+44,ry+2,barMax,7,'#1a1a30');
       bx(rcX+44,ry+2,barW,7,r.col);
-      txShadow(r.cnt+'/60',rcX+44+barMax+3,ry+10,5,isLeader?'#e8e0c0':'#787890','rgba(0,0,0,.35)');
+      txShadow(_UNIQ60[r.cnt]||(r.cnt+'/60'),rcX+44+barMax+3,ry+10,5,isLeader?'#e8e0c0':'#787890','rgba(0,0,0,.35)'); // v324
     }
     g.globalAlpha=1;
   }
