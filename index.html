@@ -11134,7 +11134,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v319',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v320',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -11386,6 +11386,10 @@ const _UNK_TYPE_INFO={col:'#888',label:'UNKNOWN',lines:['Unknown effect.','','']
 const _PWR_LBL=(()=>{const a=[];for(let i=0;i<=25;i++)a.push('PWR:'+i);return a;})();
 // v318: pre-baked battle info-box strings — eliminates per-frame alloc in select hot path
 const _CARDS_OVER5=['0/5','1/5','2/5','3/5','4/5','5/5'];
+// v320: pre-baked action grid badge strings
+const _NEW_IN_POOL=(()=>{const a=[''];for(let i=1;i<=60;i++)a.push('+'+i+' NEW');return a;})();
+const _SCOUT_DATA_LBL=(()=>{const a=[];for(let i=0;i<=10;i++)a.push('R'+i+' DATA');return a;})();
+const _HAND_READY_LBL=['','1 card ready','2 cards ready','3 cards ready','4 cards ready','5 cards ready'];
 const _EXCESS_CHG=['+1','+2','+3','+4','+5','+6','+7','+8','+9'];
 const _STALE_RD_LBL=(()=>{const a=[];for(let i=0;i<=10;i++)a.push('(R'+i+')');return a;})();
 const _BTYPE_CNT_LBL=(()=>{const a=[];for(let ti=0;ti<5;ti++){const b=[];for(let n=0;n<=5;n++)b.push(_BTYPE_ABB[ti]+':'+n);a.push(b);}return a;})();
@@ -12279,7 +12283,7 @@ function drawActionGrid(){
           const pool_=DUNGEON_FLOOR_CARDS[currentMap]||[];
           const vault_=pl[0].vault||new Set();
           let newInPool=0;for(let _pi=0;_pi<pool_.length;_pi++){if(!vault_.has(pool_[_pi]))newInPool++;} // v272: no filter alloc
-          if(newInPool>0){badge='+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';}
+          if(newInPool>0){badge=_NEW_IN_POOL[newInPool]||'+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';} // v320
           else if(pool_.length>0){badge='ALL OWNED';badgeCol='#888870';badgeBg='rgba(0,0,0,.3)';}
         }else if(idx===1){// STEAL — show barrier state of primary target
           const tgtBarrier=bpRivalActions[vsRivalIdx-1]===2;
@@ -12296,7 +12300,7 @@ function drawActionGrid(){
         }else if(idx===3){// SCOUT — show staleness
           const sc0=bpScoutedCards[vsRivalIdx-1];
           if(sc0&&sc0.round===rd){badge='FRESH';badgeCol='#50e090';badgeBg='rgba(0,30,10,.6)';}
-          else if(sc0&&rd-sc0.round<=1){badge='R'+(sc0.round)+' DATA';badgeCol='#c0b030';badgeBg='rgba(30,20,0,.6)';}
+          else if(sc0&&rd-sc0.round<=1){badge=_SCOUT_DATA_LBL[sc0.round]||'R'+sc0.round+' DATA';badgeCol='#c0b030';badgeBg='rgba(30,20,0,.6)';} // v320
           else if(sc0){badge='STALE';badgeCol='#888870';badgeBg='rgba(0,0,0,.35)';}
           else{badge='UNSCOUTED';badgeCol='#b0b0a0';badgeBg='rgba(0,0,0,.3)';}
         }
@@ -12337,7 +12341,7 @@ function drawActionGrid(){
   }
   txShadow('USE CARD',ucX+26,ucY+18,14,ucAvail?(ucSel?ARK.goldBright:ARK.gold):ARK.textDim,'rgba(0,0,0,.4)');
   const _handCount=cardCount(pl[0]);
-  txShadow(_handCount>0?_handCount+' card'+(+_handCount!==1?'s':'')+' ready':'hand empty',ucX+140,ucY+18,10,ucAvail?ARK.textDim:'#404858','rgba(0,0,0,.3)');
+  txShadow(_handCount>0?(_HAND_READY_LBL[_handCount]||_handCount+' cards ready'):'hand empty',ucX+140,ucY+18,10,ucAvail?ARK.textDim:'#404858','rgba(0,0,0,.3)'); // v320
   if(ucSel&&ucAvail){
     const bob_=Math.sin(fr*0.15)*2;
     txShadow('\u25B6',ucX-12+bob_,ucY+20,10,ARK.gold,'rgba(0,0,0,.4)');
