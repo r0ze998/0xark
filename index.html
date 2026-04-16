@@ -13665,6 +13665,10 @@ function drawCardAcquisition(){
   const t=fr-cardAcqFrame,totalFrames=120;
   if(t>=totalFrames){cardAcqActive=false;cardAcqDone=true;return;}
   const cr=CD[cardAcqCard];if(!cr)return;
+  // v222: Rarity-specific visual effects
+  const rar=cr.r-1; // 0=common,1=uncommon,2=rare,3=epic,4=legendary
+  const rarCol=CARD_RARITY_COL[rar]||'#f0c830';
+  const isEpicPlus=rar>=3;
 
   let cx_,cy_,scale,alpha=1;
   if(t<50){
@@ -13674,16 +13678,49 @@ function drawCardAcquisition(){
     cx_=W/2;cy_=H/2-20;scale=1;
     if(t%3===0){
       const angle=Math.random()*Math.PI*2,speed=1+Math.random()*2;
-      cardAcqParticles.push({x:cx_,y:cy_,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:20+Math.random()*10,c:Math.random()>.5?'#fff':'#f0c830'});
+      // v222: Particle colors based on rarity
+      const pc=isEpicPlus?(Math.random()>.5?rarCol:'#fff'):(Math.random()>.5?'#fff':'#f0c830');
+      cardAcqParticles.push({x:cx_,y:cy_,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:20+Math.random()*10,c:pc});
+      // Epic/Legendary: extra burst particles at card edges
+      if(isEpicPlus&&t%6===0){
+        const bAng=Math.random()*Math.PI*2,bSpd=2+Math.random()*3;
+        cardAcqParticles.push({x:cx_+(Math.random()-.5)*40,y:cy_+(Math.random()-.5)*56,vx:Math.cos(bAng)*bSpd,vy:Math.sin(bAng)*bSpd,life:14+Math.random()*8,c:rarCol});
+      }
     }
   }else{
     const p=(t-90)/30,ease=p*p;
     cx_=W/2+(280-W/2)*ease;cy_=(H/2-20)+(H-40-(H/2-20))*ease;scale=1-ease*.85;
   }
 
+  // v222: Background dim overlay during card display (frames 20-110)
+  if(t>=20&&t<110){
+    const dimA=Math.min(0.55,(t<30?(t-20)/10*0.55:(t>100?(110-t)/10*0.55:0.55)));
+    g.globalAlpha=dimA;bx(0,0,W,H,'#000');g.globalAlpha=1;
+  }
+
   const cw=60*scale,ch=84*scale;
+
+  // v222: Rarity glow ring behind card during hold phase
+  if(t>=50&&t<90){
+    const ringPulse=0.6+0.4*Math.sin(fr*0.2);
+    const ringR=48+Math.sin(fr*0.15)*4;
+    g.globalAlpha=ringPulse*(isEpicPlus?0.55:0.3);
+    g.fillStyle=rarCol;
+    g.beginPath();g.arc(cx_,cy_,ringR+6,0,Math.PI*2);g.fill();
+    g.globalAlpha=ringPulse*(isEpicPlus?0.35:0.18);
+    g.beginPath();g.arc(cx_,cy_,ringR+14,0,Math.PI*2);g.fill();
+    // Spinning sparkle dots for epic/legendary
+    if(isEpicPlus){
+      for(let si=0;si<6;si++){
+        const sang=fr*0.07+si*(Math.PI/3);
+        const sx=cx_+Math.cos(sang)*(ringR+4),sy=cy_+Math.sin(sang)*(ringR+4);
+        g.globalAlpha=0.7*ringPulse;bx(sx-1,sy-1,3,3,rarCol);
+      }
+    }
+    g.globalAlpha=1;
+  }
+
   g.globalAlpha=alpha;
-  // Draw card frame with character
   drawCardFrame(cx_-cw/2,cy_-ch/2,cw,ch,cardAcqCard,scale>.6);
   g.globalAlpha=1;
 
@@ -13698,12 +13735,12 @@ function drawCardAcquisition(){
       const newLW=newLabel.length*6+14;
       g.globalAlpha=newBadgeAlpha;
       bx(W/2-newLW/2,cy_+ch/2-12,newLW,16,'rgba(0,0,0,.7)');
-      bx(W/2-newLW/2,cy_+ch/2-12,newLW,1,'#f0c830');
-      bx(W/2-newLW/2,cy_+ch/2+4,newLW,1,'#f0c830');
+      bx(W/2-newLW/2,cy_+ch/2-12,newLW,1,rarCol);
+      bx(W/2-newLW/2,cy_+ch/2+4,newLW,1,rarCol);
       g.font='bold 9px VT323, monospace';
       g.textAlign='center';
-      g.fillStyle='#f0e040';
-      g.shadowColor='#f0c830';g.shadowBlur=10;
+      g.fillStyle=isEpicPlus?rarCol:'#f0e040';
+      g.shadowColor=rarCol;g.shadowBlur=10;
       g.fillText(newLabel,W/2,cy_+ch/2);
       g.shadowBlur=0;g.textAlign='left';
       g.globalAlpha=1;
