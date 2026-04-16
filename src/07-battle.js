@@ -194,10 +194,10 @@ function drawBattleBG(){
     const fl=Math.max(1,Math.min(5,currentFloor||1));
     const a=_floorAtm[fl]||_floorAtm[1];
     g.drawImage(_btlBgDungeon[fl],0,0);
-    // v360: compute per-frequency sin/cos once per BG draw call
+    // v368: use global per-frame cache for 0.08 and 0.07; compute 0.15 once locally
     const _s15=Math.sin(fr*0.15),_c15=Math.cos(fr*0.15);
-    const _s08=Math.sin(fr*0.08),_c08=Math.cos(fr*0.08);
-    const _s07=Math.sin(fr*0.07),_c07=Math.cos(fr*0.07);
+    const _s08=_sFr08,_c08=_cFr08; // global cache
+    const _s07=_sFr07,_c07=_cFr07; // global cache
     // sin/cos(fr*0.1) = double-angle of fr*0.05
     const _s10=2*_sFr05*_cFr05,_c10=_cFr05*_cFr05-_sFr05*_sFr05;
     // Pillar-top animations (torches / lava glow / void cracks)
