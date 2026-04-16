@@ -1823,7 +1823,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v354',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v355',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -1911,7 +1911,7 @@ function dMap(){
       const ry=rcY+24+i*16;
       const isLeader=i===0;
       g.globalAlpha=0.9*(isLeader?1:0.72);
-      txShadow(isLeader?'\u2605':String(i+1),rcX+6,ry+10,isLeader?7:5,isLeader?'#f0c830':'#666680','rgba(0,0,0,.4)');
+      txShadow(isLeader?'\u2605':_LDR_RANK[i],rcX+6,ry+10,isLeader?7:5,isLeader?'#f0c830':'#666680','rgba(0,0,0,.4)'); // v354: _LDR_RANK pre-baked
       const nm=r.name.length>4?r.name.slice(0,4):r.name;
       txShadow(nm,rcX+18,ry+10,6,r.col,'rgba(0,0,0,.3)');
       const barW=Math.round(barMax*(r.cnt/60));
