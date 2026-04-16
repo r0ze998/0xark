@@ -11134,7 +11134,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v321',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v322',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -12285,13 +12285,21 @@ function drawActionGrid(){
           let newInPool=0;for(let _pi=0;_pi<pool_.length;_pi++){if(!vault_.has(pool_[_pi]))newInPool++;} // v272: no filter alloc
           if(newInPool>0){badge=_NEW_IN_POOL[newInPool]||'+'+newInPool+' NEW';badgeCol='#50e090';badgeBg='rgba(0,40,20,.6)';} // v320
           else if(pool_.length>0){badge='ALL OWNED';badgeCol='#888870';badgeBg='rgba(0,0,0,.3)';}
-        }else if(idx===1){// STEAL — show barrier state of primary target
+        }else if(idx===1){// STEAL — show barrier state + scouted rarity when known (v322)
           const tgtBarrier=bpRivalActions[vsRivalIdx-1]===2;
-          const lastRound=battleRoundHistory[0];
-          const theyStole=lastRound&&(lastRound.r1a===1||lastRound.r2a===1);
           if(tgtBarrier){badge='BLOCKED';badgeCol='#6080d0';badgeBg='rgba(10,20,60,.6)';}
           else if(pl[vsRivalIdx].cc===0){badge='NO CARDS';badgeCol='#808880';badgeBg='rgba(0,0,0,.35)';}
-          else{badge='\u2714 OPEN';badgeCol='#e08030';badgeBg='rgba(40,20,0,.6)';}
+          else{
+            // Check if we have fresh scout data to show target rarity
+            const _stSd=bpScoutedCards[vsRivalIdx-1];
+            if(_stSd&&rd-_stSd.round<=1&&_stSd.cards.length>0){
+              let _maxR=0;for(let _si=0;_si<_stSd.cards.length;_si++){if(_stSd.cards[_si].r>_maxR)_maxR=_stSd.cards[_si].r;}
+              const _rNames=['','C','U','R','E','L'];
+              badge='\u26A1'+(_rNames[_maxR]||'?')+' TARGET';
+              badgeCol=_maxR>=5?'#ffe080':_maxR>=4?'#f0c030':_maxR>=3?'#b060e0':'#e08030';
+              badgeBg=_maxR>=4?'rgba(40,30,0,.6)':'rgba(40,20,0,.6)';
+            }else{badge='\u2714 OPEN';badgeCol='#e08030';badgeBg='rgba(40,20,0,.6)';}
+          }
         }else if(idx===2){// BARRIER — advise based on last round rival action
           const lastRound=battleRoundHistory[0];
           if(lastRound&&(lastRound.r1a===1||lastRound.r2a===1)){badge='NEEDED';badgeCol='#e05040';badgeBg='rgba(40,0,0,.6)';}
