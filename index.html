@@ -10405,25 +10405,23 @@ function dMap(){
     if(npc.map===currentMap&&fogRevealed[currentMap][npc.y]?.[npc.x])drawNPCSprite(npc);
   }
 
-  // Sprites sorted by Y (only draw rivals on same map AND visible through fog)
-  const visiblePl=[pl[0]];
+  // v262: Fill _srtP/_srtI directly — eliminates visiblePl array creation + indexOf per frame
+  let _srtN=1;_srtP[0]=pl[0];_srtI[0]=0;
   if(rivalMaps[0]===currentMap){
     const rv=pl[1];
     if(isVisibleThroughFog(rv.x,rv.y,3)){
       if(!rv._wasVisible){rv._wasVisible=true;rv._alertTimer=30;sfxEncounter();}
-      visiblePl.push(rv);
+      _srtP[_srtN]=rv;_srtI[_srtN]=1;_srtN++;
     }else{rv._wasVisible=false;}
   }else{pl[1]._wasVisible=false;}
   if(rivalMaps[1]===currentMap){
     const hv=pl[2];
     if(isVisibleThroughFog(hv.x,hv.y,3)){
       if(!hv._wasVisible){hv._wasVisible=true;hv._alertTimer=30;sfxEncounter();}
-      visiblePl.push(hv);
+      _srtP[_srtN]=hv;_srtI[_srtN]=2;_srtN++;
     }else{hv._wasVisible=false;}
   }else{pl[2]._wasVisible=false;}
-  // v252: pre-alloc sort buffers + insertion sort (3 items max, no object allocs)
-  const _srtN=visiblePl.length;
-  for(let _vi=0;_vi<_srtN;_vi++){_srtP[_vi]=visiblePl[_vi];_srtI[_vi]=pl.indexOf(visiblePl[_vi]);}
+  // v252: insertion sort on pre-alloc buffers (3 items max, no object allocs)
   for(let _vi=1;_vi<_srtN;_vi++){const _pv=_srtP[_vi],_pi=_srtI[_vi];let _vj=_vi-1;while(_vj>=0&&_srtP[_vj].visualY>_pv.visualY){_srtP[_vj+1]=_srtP[_vj];_srtI[_vj+1]=_srtI[_vj];_vj--;}_srtP[_vj+1]=_pv;_srtI[_vj+1]=_pi;}
   for(let _si=0;_si<_srtN;_si++){
     const p=_srtP[_si],i=_srtI[_si];
