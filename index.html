@@ -9554,6 +9554,10 @@ function dTitle(){
 // MAP SCREEN
 // ═══════════════════════════════════════
 const HUD_HEIGHT=72;
+// v386: Euler recurrence for dungeon vignette pulse per floor (5 depths, freq=0.02+d*0.008)
+const _VIG_SS=new Float32Array(6),_VIG_SC=new Float32Array(6); // sin/cos state
+const _VIG_FS=new Float32Array(6),_VIG_FC=new Float32Array(6); // step per frame
+for(let d=1;d<=5;d++){const f=0.02+d*0.008;_VIG_SS[d]=0;_VIG_SC[d]=1;_VIG_FS[d]=Math.sin(f);_VIG_FC[d]=Math.cos(f);}
 // v220: Card-count helper — avoids .filter().length array allocation on every frame
 function cdCount(cd){let n=0;for(let i=0,l=cd.length;i<l;i++)if(cd[i]>0)n++;return n;}
 // v260: Unique card count — allocation-free (5-slot hand, simple dedup check)
@@ -10072,8 +10076,10 @@ const DUNGEON_VIGNETTE_COL=[
 function drawDungeonVignette(){
   const depth=currentFloor;
   const vg=_dungVigGrads[depth];if(!vg)return;
-  // v228: reuse pre-cached CanvasGradient objects; globalAlpha=pulse replaces per-frame gradient rebuild
-  const pulse=0.30+0.08*Math.sin(fr*(0.02+depth*0.008));
+  // v228: reuse pre-cached CanvasGradient objects; v386: Euler recurrence replaces per-frame Math.sin
+  const _d=depth;const _sc=_VIG_SC[_d],_ss=_VIG_SS[_d],_fc=_VIG_FC[_d],_fs=_VIG_FS[_d];
+  _VIG_SC[_d]=_sc*_fc-_ss*_fs;_VIG_SS[_d]=_sc*_fs+_ss*_fc;
+  const pulse=0.30+0.08*_VIG_SS[_d];
   const e=_VIGNETTE_EDGE,vh=_VIGNETTE_VIS_H;
   g.globalAlpha=pulse;
   g.fillStyle=vg.gT;g.fillRect(0,0,W,e);
