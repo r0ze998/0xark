@@ -108,7 +108,7 @@ function drawFishingOverlay(){
   if(!fishingActive)return;
   if(fishingPhase==='bite'){
     // Show "!" indicator
-    const bobY=Math.sin(fr*0.3)*3;
+    const bobY=_sFr30*3; // v369: cached
     const px=pl[0].visualX-camX+8,py=pl[0].visualY-camY-30+bobY;
     bx(px-6,py-4,12,16,'#fff');
     bx(px-5,py-3,10,14,'#f0c830');
@@ -413,7 +413,7 @@ function drawBuildingInterior(){
     txShadow(buildingNpcName,20,H-115,7,'#c04040','rgba(0,0,0,.4)');
     txShadow(line,20,H-90,7,'#303028','rgba(255,255,255,.15)');
     if(line2)txShadow(line2,20,H-72,7,'#303028','rgba(255,255,255,.15)');
-    const arrowBounce=Math.sin(fr*0.15)*2;
+    const arrowBounce=_sFr15*2; // v369: cached
     txShadow('\u25BC',W-24,H-58+arrowBounce,7,'#c04040','rgba(0,0,0,.4)');
   }
 

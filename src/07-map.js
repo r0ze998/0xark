@@ -107,6 +107,8 @@ const _MOTE_SI13=new Float32Array(40);const _MOTE_CI13=new Float32Array(40);
 for(let i=0;i<40;i++){_MOTE_SI13[i]=Math.sin(i*1.3);_MOTE_CI13[i]=Math.cos(i*1.3);}
 const _MOTE_SI21=new Float32Array(40);const _MOTE_CI21=new Float32Array(40);
 for(let i=0;i<40;i++){_MOTE_SI21[i]=Math.sin(i*2.1);_MOTE_CI21[i]=Math.cos(i*2.1);}
+// v369: phase offset constants for sin-addition (eliminates Math.sin(fr*x+offset))
+const _MAP_SIN1=Math.sin(1),_MAP_COS1=Math.cos(1);
 // v365: pre-baked vine segment sin/cos — eliminates Math.sin per-segment in forest vine loops
 // vi*0.3 variant (main vine, up to 20 segments)
 const _VINE_SI3=new Float32Array(20);const _VINE_CI3=new Float32Array(20);
@@ -883,7 +885,7 @@ function drawPirateDecorations(){
         bx(cpx+14,cpy+17,4,3,'#d0a030');bx(cpx+15,cpy+18,2,2,'#e0b040');
         // Sparkle (subtle hint)
         if(fr%60<20){
-          const sparkA=(Math.sin(fr*0.15)*0.3+0.5);
+          const sparkA=(_sFr15*0.3+0.5); // v369: cached
           g.globalAlpha=sparkA;
           bx(cpx+16,cpy+12,2,2,'#f0d050');
           g.globalAlpha=1;
@@ -1202,7 +1204,7 @@ function dMap(){
   // Floor watermark label (dungeon only, large semi-transparent, floor-themed color)
   if(inDungeon&&currentFloor>0){
     const floorLabel=_FLOOR_NAMES[currentFloor]||('FLOOR '+currentFloor);
-    const wmAlpha=0.07+Math.sin(fr*0.008)*0.025;
+    const wmAlpha=0.07+Math.sin(fr*0.008)*0.025; // fr*0.008 too slow to cache — per-frame call
     g.save();
     g.globalAlpha=wmAlpha;
     g.font='bold 96px VT323, monospace';
@@ -1528,7 +1530,7 @@ function dMap(){
       }
       if(sVal>3){txShadow(_PLUS_INT[sVal-3]||('+'+( sVal-3)),orbX+3*(orbW+orbGap)+2,hudY+20,6,'#f0c830','rgba(0,0,0,.4)');} // v325
       if(warn){
-        const wA=0.4+Math.sin(fr*0.18)*0.4;
+        const wA=0.4+_sFr18*0.4; // v369: cached
         g.globalAlpha=wA;bx(sCX-2,hudY+10,orbX+3*(orbW+orbGap)-sCX+2,orbH+2,'rgba(180,40,40,.15)');g.globalAlpha=1;
       }
     }
@@ -1538,7 +1540,7 @@ function dMap(){
     txShadow(_B_FLOOR[currentFloor]||('B'+currentFloor),10,hudY+52,9,'#d0b020','rgba(0,0,0,.4)'); // v314
     // Show SAFE countdown while encounter cooldown is active
     if(encounterCooldown>0){
-      const safeAlpha=0.6+Math.sin(fr*0.15)*0.4;
+      const safeAlpha=0.6+_sFr15*0.4; // v369: cached
       g.globalAlpha=safeAlpha;
       const _safeSecs=Math.min(11,Math.ceil(encounterCooldown/60));
       txShadow(_SAFE_SECS[_safeSecs],30,hudY+52,8,'#40e080','rgba(0,0,0,.5)'); // v314
@@ -1555,7 +1557,7 @@ function dMap(){
         const dx=etx-pl[0].x,dy=ety-pl[0].y;
         const distTiles=Math.sqrt(dx*dx+dy*dy);
         if(distTiles<=4){
-          const neA=0.65+Math.sin(fr*0.28)*0.35;
+          const neA=0.65+_sFr28*0.35; // v369: cached
           g.globalAlpha=neA;
           txShadow('\u2190NEAR',73,hudY+52,6,'#40e090','rgba(0,0,0,.5)');
           g.globalAlpha=1;
@@ -1590,8 +1592,8 @@ function dMap(){
     if(_miraLblKey!==_mk){_miraLblKey=_mk;_miraLblCache='M:'+(miraMap===0?'TWN':'B'+miraMap)+' '+miraCards+'c';}
     // Highlight when rival is on SAME floor as player (danger)
     const vegaSame=vegaMap===currentMap;const miraSame=miraMap===currentMap;
-    const vegaAlpha=vegaSame?(0.7+Math.sin(fr*0.18)*0.3):0.55;
-    const miraAlpha=miraSame?(0.7+Math.sin(fr*0.18+1)*0.3):0.55;
+    const vegaAlpha=vegaSame?(0.7+_sFr18*0.3):0.55; // v369: cached
+    const miraAlpha=miraSame?(0.7+(_sFr18*_MAP_COS1+_cFr18*_MAP_SIN1)*0.3):0.55; // v369: sin-addition
     const vegaCol=vegaSame?'#f080c0':'#806070';
     const miraCol=miraSame?'#f0c830':'#807060';
     g.globalAlpha=vegaAlpha;
@@ -1673,14 +1675,14 @@ function dMap(){
       bx(barX_,barY_,Math.floor(barW_*remainFrac),barH_,col_);
       // v309: amber border glow when 75% decayed (last ~37s) — early panic warning
       if(remainFrac<0.25){
-        const amberA=(0.3+Math.sin(fr*0.2)*0.2);
+        const amberA=(0.3+_sFr20*0.2); // v369: cached
         g.globalAlpha=amberA;
         bx(310+i*HUD_CARD_SPACING-2,hudY+12,28,28,'#d0a020');
         g.globalAlpha=1;
       }
       // Flash red overlay in last 15 seconds
       if(remainMs<15000){
-        const flashA=Math.sin(fr*0.3)*0.4+0.4;
+        const flashA=_sFr30*0.4+0.4; // v369: cached
         g.globalAlpha=flashA;
         bx(310+i*HUD_CARD_SPACING-1,hudY+13,26,26,'#d04040');
         g.globalAlpha=1;

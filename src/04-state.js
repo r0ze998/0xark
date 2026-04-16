@@ -209,7 +209,7 @@ function drawPlayerStatusEffects(){
 
   // EXHAUSTED indicator
   if(sp.s<=0&&sp.b<=0&&sp.c<=0){
-    const flicker=Math.sin(fr*0.2)*0.2+0.8;
+    const flicker=_sFr20*0.2+0.8; // v369: cached
     g.globalAlpha=flicker;
     txShadow('EXHAUSTED',px-32,py-16,5,'#d04040','rgba(0,0,0,.4)');
     g.globalAlpha=1;
@@ -270,7 +270,7 @@ function drawPlayerStatusEffects(){
     }
     const hasCritical=minRemaining<60000&&minRemaining>0;
     const isUrgent=minRemaining<20000&&minRemaining>0;
-    const bubbleAlpha=isUrgent?(0.7+Math.sin(fr*0.3)*0.3):hasCritical?0.65:0.45;
+    const bubbleAlpha=isUrgent?(0.7+_sFr30*0.3):hasCritical?0.65:0.45; // v369: cached
     const bubbleCol=isUrgent?'#ff4040':hasCritical?'#e08030':'#506880';
     const cardStr='\u2660'+hc;
     const decStr=hasCritical?(' '+Math.ceil(minRemaining/1000)+'s'):'';
