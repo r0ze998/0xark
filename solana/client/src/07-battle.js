@@ -782,6 +782,8 @@ function drawBattleArena(){
 
 // FRLG-style 2x2 action grid
 let _drawPoolPreviewCache=null,_drawPoolPreviewMap=-1; // v275: cache pool preview slice
+let _agSpS=-1,_agSpB=-1,_agSpC=-1; // v306: cache spell counts for action grid desc rebuild
+let _scoutedSlice=null,_scoutedSliceRef=null; // v306: cache sd.cards.slice result
 const _AG_ACTIONS=[ // v274: hoisted action grid objects — only desc is rebuilt per frame
   {name:'DRAW',   desc:'floor card pool',  col:'#303028',icon:'#48b8e8'},
   {name:'STEAL',  desc:'',                  col:'#b04040',icon:'#b04040'},
@@ -790,10 +792,10 @@ const _AG_ACTIONS=[ // v274: hoisted action grid objects — only desc is rebuil
 ];
 function drawActionGrid(){
   const gridX=8,gridY=H-164,cellW=160,cellH=42,gap=4;
-  // v274: static parts hoisted, only dynamic desc built per frame
-  _AG_ACTIONS[1].desc=sp.s+'\u00D7 takes rival card';
-  _AG_ACTIONS[2].desc=sp.b+'\u00D7 blocks steal';
-  _AG_ACTIONS[3].desc=sp.c+'\u00D7 view rival hand';
+  // v306: rebuild action descs only when spell counts change
+  if(_agSpS!==sp.s){_agSpS=sp.s;_AG_ACTIONS[1].desc=sp.s+'\u00D7 takes rival card';}
+  if(_agSpB!==sp.b){_agSpB=sp.b;_AG_ACTIONS[2].desc=sp.b+'\u00D7 blocks steal';}
+  if(_agSpC!==sp.c){_agSpC=sp.c;_AG_ACTIONS[3].desc=sp.c+'\u00D7 view rival hand';}
   const actions=_AG_ACTIONS;
   // Grid background
   win(gridX-2,gridY-6,cellW*2+gap+12,cellH*2+gap+16);
@@ -1032,7 +1034,8 @@ function drawSelectPhase(){
       const staleRd=rd-sd.round;
       const stLabel=staleRd>0?'scouted R'+sd.round:'fresh intel';
       txShadow('\u{1F50D} '+stLabel,ppX+10,ppY+33,5,staleRd>0?'#888860':'#50e090','rgba(0,0,0,.2)');
-      const show_=sd.cards.slice(0,Math.min(4,sd.cards.length));
+      if(_scoutedSliceRef!==sd){_scoutedSliceRef=sd;_scoutedSlice=sd.cards.slice(0,Math.min(4,sd.cards.length));} // v306: cache slice
+      const show_=_scoutedSlice;
       for(let ci=0;ci<show_.length;ci++){
         const c=show_[ci];const rar=c.r||1;const rarCol=RARITY_COLOR[rar]||'#888888';
         const tCol_=_SCT_TYPE_COL[c.t]||'#808898'; // v274: hoisted

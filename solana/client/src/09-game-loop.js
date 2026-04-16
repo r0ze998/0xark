@@ -1,6 +1,8 @@
 // GAME LOOP
 // ═══════════════════════════════════════
 
+// v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
+const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
 // v224: Pre-baked escape urgency vignette — red edge decay warning (shape static, alpha varies)
 const _escVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(200,20,20,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;})();
 
@@ -372,8 +374,9 @@ function draw(){
   let _shaking=false;
   if(shakeT>0){
     _shaking=true;
-    const sx=Math.round((Math.random()-0.5)*shakeIntensity*(shakeT/8));
-    const sy=Math.round((Math.random()-0.5)*shakeIntensity*(shakeT/8));
+    const _si=fr&31; // v306: use pre-baked noise table; no RNG per frame
+    const sx=Math.round(_SHAKE_N[_si]*shakeIntensity*(shakeT/8));
+    const sy=Math.round(_SHAKE_N[(_si+16)&31]*shakeIntensity*(shakeT/8));
     g.save();g.translate(sx,sy);
     shakeT--;
   }
