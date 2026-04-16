@@ -3030,19 +3030,24 @@ function spawnGrassParticles(px,py){
   }
 }
 function updateParticles(){
-  for(let i=particles.length-1;i>=0;i--){
+  // v224: Swap-and-pop removal — O(1) vs O(n) splice, order unimportant for 2×2 pixels
+  let i=0;
+  while(i<particles.length){
     const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.life--;
-    if(p.life<=0)particles.splice(i,1);
+    if(p.life<=0){particles[i]=particles[particles.length-1];particles.length--;}
+    else i++;
   }
 }
 function drawParticles(cx,cy){
-  particles.forEach(p=>{
+  // v224: plain for-loop avoids forEach closure allocation each frame
+  for(let i=0,l=particles.length;i<l;i++){
+    const p=particles[i];
     const sx=p.x-cx,sy=p.y-cy;
-    if(sx>0&&sx<W&&sy>0&&sy<H){
+    if(sx>-2&&sx<W+2&&sy>-2&&sy<H+2){
       const a=Math.min(1,p.life/10);
       g.fillStyle=p.c;g.globalAlpha=a;g.fillRect(sx,sy,2,2);g.globalAlpha=1;
     }
-  });
+  }
 }
 
 
@@ -10858,6 +10863,19 @@ const _btlHorizonY=Math.floor(H*0.42),_btlPlayerPlatY=H-70,_btlEnemyPlatY=Math.f
     }));
   }
 })();
+// v224: Pre-bake center light gradient — used every frame in dungeon battle
+const _btlCenterLightH=_btlPlayerPlatY-_btlHorizonY;
+const _btlCenterLightW=Math.floor(W*0.3);
+const _btlCenterLight=(()=>{
+  const c=document.createElement('canvas');c.width=_btlCenterLightW;c.height=_btlCenterLightH;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createLinearGradient(0,0,0,_btlCenterLightH);
+  grd.addColorStop(0,'rgba(255,240,200,0)');
+  grd.addColorStop(0.3,'rgba(255,240,200,1)');
+  grd.addColorStop(1,'rgba(255,240,200,0)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,_btlCenterLightW,_btlCenterLightH);
+  return c;
+})();
 
 // New SFX for battle effects
 function sfxCrystal(){if(!soundEnabled)return;beep(880,.06,.07);setTimeout(()=>beep(1100,.04,.06),50);setTimeout(()=>beep(1320,.06,.07),100);setTimeout(()=>beep(1760,.08,.08),150);}
@@ -10928,14 +10946,11 @@ function drawBattleBG(){
         g.globalAlpha=seepA;bx(cx_+1,horizonY+30+i*8,12,1,'#f06020');g.globalAlpha=1;
       }
     }
-    // Center downward light pulse (fr-dependent alpha)
+    // Center downward light pulse (pre-baked shape, fr-dependent globalAlpha)
     {const lightPulse=0.08+0.025*Math.sin(fr*0.04);
-    const lg_=g.createLinearGradient(0,horizonY,0,playerPlatY);
-    lg_.addColorStop(0,'rgba(255,240,200,0)');
-    lg_.addColorStop(0.3,`rgba(255,240,200,${lightPulse})`);
-    lg_.addColorStop(1,'rgba(255,240,200,0)');
-    const lx=W*0.35,lw=W*0.3;
-    g.fillStyle=lg_;g.fillRect(lx,horizonY,lw,playerPlatY-horizonY);}
+    g.globalAlpha=lightPulse;
+    g.drawImage(_btlCenterLight,Math.floor(W*0.35),horizonY);
+    g.globalAlpha=1;}
   }
   // v134: Rival-themed atmospheric overlay — VEGA (magenta) or MIRA (gold)
   // v210: vignette pre-baked to offscreen canvas — drawImage replaces createRadialGradient per frame

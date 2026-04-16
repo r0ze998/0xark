@@ -57,6 +57,19 @@ const _btlHorizonY=Math.floor(H*0.42),_btlPlayerPlatY=H-70,_btlEnemyPlatY=Math.f
     }));
   }
 })();
+// v224: Pre-bake center light gradient — used every frame in dungeon battle
+const _btlCenterLightH=_btlPlayerPlatY-_btlHorizonY;
+const _btlCenterLightW=Math.floor(W*0.3);
+const _btlCenterLight=(()=>{
+  const c=document.createElement('canvas');c.width=_btlCenterLightW;c.height=_btlCenterLightH;
+  const ctx=c.getContext('2d');
+  const grd=ctx.createLinearGradient(0,0,0,_btlCenterLightH);
+  grd.addColorStop(0,'rgba(255,240,200,0)');
+  grd.addColorStop(0.3,'rgba(255,240,200,1)');
+  grd.addColorStop(1,'rgba(255,240,200,0)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,_btlCenterLightW,_btlCenterLightH);
+  return c;
+})();
 
 // New SFX for battle effects
 function sfxCrystal(){if(!soundEnabled)return;beep(880,.06,.07);setTimeout(()=>beep(1100,.04,.06),50);setTimeout(()=>beep(1320,.06,.07),100);setTimeout(()=>beep(1760,.08,.08),150);}
@@ -127,14 +140,11 @@ function drawBattleBG(){
         g.globalAlpha=seepA;bx(cx_+1,horizonY+30+i*8,12,1,'#f06020');g.globalAlpha=1;
       }
     }
-    // Center downward light pulse (fr-dependent alpha)
+    // Center downward light pulse (pre-baked shape, fr-dependent globalAlpha)
     {const lightPulse=0.08+0.025*Math.sin(fr*0.04);
-    const lg_=g.createLinearGradient(0,horizonY,0,playerPlatY);
-    lg_.addColorStop(0,'rgba(255,240,200,0)');
-    lg_.addColorStop(0.3,`rgba(255,240,200,${lightPulse})`);
-    lg_.addColorStop(1,'rgba(255,240,200,0)');
-    const lx=W*0.35,lw=W*0.3;
-    g.fillStyle=lg_;g.fillRect(lx,horizonY,lw,playerPlatY-horizonY);}
+    g.globalAlpha=lightPulse;
+    g.drawImage(_btlCenterLight,Math.floor(W*0.35),horizonY);
+    g.globalAlpha=1;}
   }
   // v134: Rival-themed atmospheric overlay — VEGA (magenta) or MIRA (gold)
   // v210: vignette pre-baked to offscreen canvas — drawImage replaces createRadialGradient per frame
