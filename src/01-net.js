@@ -578,10 +578,13 @@ function drawRunSummary(){
   txShadow('DUNGEON REPORT',titleX-64,py+20,9,'#60c8f0','rgba(0,0,0,.6)');
   bx(px+20,py+28,panelW-40,1,'#304860');
 
-  // Floor depth
-  const floorNums=['','I','II','III','IV','V'];
-  const floorTxt='Deepest floor: FLOOR '+(floorNums[d.deepest]||d.deepest);
+  // Floor depth + rounds fought (v289: use hoisted _FLOOR_NUMS; add rounds)
+  const floorTxt='Deepest: FLOOR '+(_FLOOR_NUMS[d.deepest]||d.deepest);
   txShadow(floorTxt,px+20,py+46,7,'#c8c0a0','rgba(0,0,0,.3)');
+  if(d.rounds>0){
+    const rdCol=d.rounds>=5?'#d07030':d.rounds>=2?'#c8c0a0':'#888898';
+    txShadow('Battles fought: '+d.rounds,px+panelW-130,py+46,7,rdCol,'rgba(0,0,0,.3)');
+  }
 
   // Cards collected
   const gainColor=d.cardsGained>0?'#50e090':'#888898';

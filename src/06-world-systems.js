@@ -246,7 +246,7 @@ function doMapTransition(exit){
       });
       const deepest=snap.deepestFloor;
       if(deepest>0){// Only show if player actually entered a floor
-        runSummaryData={cardsGained,lostCards,deepest};
+        runSummaryData={cardsGained,lostCards,deepest,rounds:roundsThisRun}; // v289: include rounds fought
         runSummaryActive=true;runSummaryFrame=0;
       }
       dungeonRunSnapshot=null;
