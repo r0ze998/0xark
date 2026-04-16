@@ -134,6 +134,20 @@ function _updateLavaFlow(){
   const sw=Math.sin(wt*0.2),cw=Math.cos(wt*0.2);
   for(let k=0;k<64;k++)_LAVA_FLOW_V[k]=(sw*_LAVA_FLOW_CI[k]+cw*_LAVA_FLOW_SI[k])*0.5+0.5;
 }
+// v390: pre-baked spatial phases for water waveOff: sin/cos(tx*0.5) for tx=0..39
+const _WAVE_TX_SI=new Float32Array(40);const _WAVE_TX_CI=new Float32Array(40);
+for(let i=0;i<40;i++){_WAVE_TX_SI[i]=Math.sin(i*0.5);_WAVE_TX_CI[i]=Math.cos(i*0.5);}
+// v390: pre-baked spatial phases for boat waves: sin/cos(wx*0.3) for wx=6,10,14,18,22
+const _BOAT_WX_SI5=new Float32Array([Math.sin(1.8),Math.sin(3.0),Math.sin(4.2),Math.sin(5.4),Math.sin(6.6)]);
+const _BOAT_WX_CI5=new Float32Array([Math.cos(1.8),Math.cos(3.0),Math.cos(4.2),Math.cos(5.4),Math.cos(6.6)]);
+// v390: dirty-flag cache for wt-based sin/cos (wt changes every 20 frames — 3fps)
+let _wtWavePrev=-1,_wt_sw3=0,_wt_cw3=0,_wt_sw4=0,_wt_cw4=0;
+function _updateWtWaveCache(){
+  if(_wtWavePrev===wt)return;
+  _wtWavePrev=wt;
+  _wt_sw3=Math.sin(wt*0.3);_wt_cw3=Math.cos(wt*0.3);
+  _wt_sw4=Math.sin(wt*0.4);_wt_cw4=Math.cos(wt*0.4);
+}
 // v366: grass blade sin/cos for i*0.7 (8 blades per tile)
 const _GRASS_SI7=new Float32Array(8);const _GRASS_CI7=new Float32Array(8);
 for(let i=0;i<8;i++){_GRASS_SI7[i]=Math.sin(i*0.7);_GRASS_CI7[i]=Math.cos(i*0.7);}
@@ -561,7 +575,9 @@ function drawLake(px,py,tx_,ty){
   const r=tr(tx_,ty);
   // v364: Gentle wave lines — use pre-baked _WATER_WAVE1/2 tables (sin computed once per 20 frames)
   _updateWaterWaves(); // no-op if wt unchanged
-  const waveOff=Math.sin(wt*0.3+tx_*0.5)*2; // per-tile offset still needs trig (tx_ varies)
+  // v390: sin-addition eliminates per-tile Math.sin — wt cache+pre-baked tx spatial phases
+  _updateWtWaveCache();
+  const waveOff=(_wt_sw3*_WAVE_TX_CI[tx_%40]+_wt_cw3*_WAVE_TX_SI[tx_%40])*2;
   for(let i=0;i<11;i++){const wy=8+Math.round(_WATER_WAVE1[i]+waveOff);bx(px+i*3,py+wy,4,1,'rgba(72,136,192,.5)');}
   for(let i=0;i<11;i++){const wy=20+Math.round(_WATER_WAVE2[i]+waveOff*.5);bx(px+i*3+1,py+wy,3,1,'rgba(88,152,208,.4)');}
   // Sparkle
@@ -610,7 +626,9 @@ function drawFountain(px,py,tx_,ty){
   bx(px+4,py+16,24,12,'#808898');bx(px+6,py+18,20,8,'#6878a0');
   const f=(wt+tx_)%3;
   bx(px+6,py+18,20,8,f===0?'#4888c0':'#5898d0');
-  for(let wx=6;wx<26;wx+=4){const wy=20+Math.round(Math.sin(wt*0.4+wx*0.3)*0.5);bx(px+wx,py+wy,3,1,'rgba(255,255,255,.25)');}
+  // v390: sin-addition with pre-baked _BOAT_WX_SI5/CI5 (wx=6,10,14,18,22 → indices 0-4)
+  _updateWtWaveCache();
+  let _bwi=0;for(let wx=6;wx<26;wx+=4){const wy=20+Math.round((_wt_sw4*_BOAT_WX_CI5[_bwi]+_wt_cw4*_BOAT_WX_SI5[_bwi])*0.5);bx(px+wx,py+wy,3,1,'rgba(255,255,255,.25)');_bwi++;}
   bx(px+12,py+8,8,12,'#909898');bx(px+14,py+6,4,10,'#a0a8a8');
   if((wt)%2===0){
     bx(px+14,py+2,4,2,'#a0d0f0');bx(px+10,py+4,2,2,'#80b8e0');bx(px+20,py+4,2,2,'#80b8e0');
@@ -1080,8 +1098,8 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
       if(wavePhase<0.18){
         const wp=wavePhase/0.18;
         const wy=py+4+Math.floor(TH*0.3*wp);
-        // v239: globalAlpha+solid white replaces template literal per wave glint
-        g.globalAlpha=Math.sin(wp*Math.PI)*0.22;g.fillStyle='#ffffff';g.fillRect(px+2,wy,TW-4,1);g.globalAlpha=1;
+        // v390: parabola 4x(1-x) ≈ sin(πx) for x∈[0,1] — eliminates per-glint Math.sin
+        g.globalAlpha=(4*wp*(1-wp))*0.22;g.fillStyle='#ffffff';g.fillRect(px+2,wy,TW-4,1);g.globalAlpha=1;
       }
       // Sparkle glints: pseudo-random positions per tile+time
       const sphase=(fr*0.04+x*13+y*7);
