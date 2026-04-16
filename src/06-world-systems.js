@@ -9,6 +9,8 @@ const _TITLE_VOID_COLS=['#5014b4','#5c1cc0','#6824cc','#742cd8','#8034e4'];
 // ═══════════════════════════════════════
 
 // Advance one dungeon turn: each rival takes one step
+const _VEGA_LINES=['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Cornered. Just like the crew.','Nowhere left to run.']; // v276
+const _MIRA_LINES=['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','The ARK crew fell to logic. So will you.']; // v276
 function processDungeonTurn(){
   if(!inDungeon)return;
   if(encounterCooldown>0)return; // let game loop decrement
@@ -37,9 +39,7 @@ function checkDungeonRivalEncounter(){
       sfxEncounterDramatic();hitPause(4);
       const rCards=cdCount(r.cd);
       const isHunting=ai.state==='hunting';
-      const vegaLines=['Hand over the cards. Now.','The ARK\'s legacy is mine.','No walls stop a hunter.','Cornered. Just like the crew.','Nowhere left to run.'];
-      const miraLines=['Precisely where my model predicted.','Your card count fell below threshold. Engaging.','The calculation is complete.','The ARK crew fell to logic. So will you.'];
-      encounterRivalLine=idx===0?vegaLines[Math.floor(Math.random()*vegaLines.length)]:miraLines[Math.floor(Math.random()*miraLines.length)];
+      encounterRivalLine=idx===0?_VEGA_LINES[Math.floor(Math.random()*_VEGA_LINES.length)]:_MIRA_LINES[Math.floor(Math.random()*_MIRA_LINES.length)]; // v276: hoisted
       setTimeout(()=>{
         encounterExclActive=false;flash();
         twSet(isHunting?r.n+' ambushed you! Battle!':r.n+' appeared! Battle!');
@@ -1877,7 +1877,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v275',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v276',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
