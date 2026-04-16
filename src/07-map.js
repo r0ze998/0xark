@@ -88,16 +88,26 @@ const _sBufCmp=(a,b)=>b.uniq-a.uniq;
 const _rBufCmp=(a,b)=>b.cnt-a.cnt;
 // v349: lazy cache for dungeon mission HUD strip (changes only when progress or completion status changes)
 let _missionHudLbl='',_missionHudKey=-1;
+// v365: pre-baked vine segment sin/cos — eliminates Math.sin per-segment in forest vine loops
+// vi*0.3 variant (main vine, up to 20 segments)
+const _VINE_SI3=new Float32Array(20);const _VINE_CI3=new Float32Array(20);
+for(let i=0;i<20;i++){_VINE_SI3[i]=Math.sin(i*0.3);_VINE_CI3[i]=Math.cos(i*0.3);}
+// vi*0.25 variant (secondary vine)
+const _VINE_SI25=new Float32Array(20);const _VINE_CI25=new Float32Array(20);
+for(let i=0;i<20;i++){_VINE_SI25[i]=Math.sin(i*0.25);_VINE_CI25[i]=Math.cos(i*0.25);}
 // v226: Dungeon map floor atmosphere particles — subtle screen-space ambient effects per floor
 // Seeded pseudo-random particle offsets so positions are deterministic (no state array needed)
 const _dungAtmoSeeds=(()=>{
   const s=[];
   for(let i=0;i<24;i++){
+    const ph=((i*1337)&0xFF)/255.0*Math.PI*2;
     s.push({
       bx:((i*7919+113)&0x3FF)/1024.0,  // base X fraction (0..1)
       by:((i*2654+37)&0x3FF)/1024.0,   // base Y fraction (0..1)
-      phase:((i*1337)&0xFF)/255.0*Math.PI*2, // random phase offset
+      phase:ph,
       spd:0.4+((i*431+17)&0xFF)/255.0*0.9,  // individual speed 0.4..1.3
+      sinPh:Math.sin(ph),cosPh:Math.cos(ph), // v358: pre-baked for sin-addition
+      sinPh2:Math.sin(ph*2),cosPh2:Math.cos(ph*2), // for ember sd.phase*2
     });
   }
   return s;
@@ -118,6 +128,10 @@ function drawDungeonAtmos(){
   if(!cfg)return;
   const visH=H-HUD_HEIGHT;
   const n=cfg.n;
+  // v358: pre-compute fr*pf variants once; use sin-addition to avoid per-particle Math.sin
+  const _fpf=fr*cfg.pf,_fpf3=_fpf*3;
+  const _sfpf=Math.sin(_fpf),_cfpf=Math.cos(_fpf);
+  const _sfpf3=Math.sin(_fpf3),_cfpf3=Math.cos(_fpf3);
   for(let i=0;i<n;i++){
     const sd=_dungAtmoSeeds[i];
     // Screen-space position: seeded base + slow drift, wrapped
@@ -127,14 +141,14 @@ function drawDungeonAtmos(){
     const edgeFade=Math.min(1,py/20,(visH-py)/20);
     let alpha=cfg.a*edgeFade;
     if(cfg.type==='spark'){
-      // Crystal sparks: intermittent bright flickers
-      alpha*=Math.max(0,Math.sin(fr*cfg.pf*3+sd.phase)*0.6+0.4);
+      // Crystal sparks: sin(fr*pf*3+ph) via sin-addition
+      alpha*=Math.max(0,(_sfpf3*sd.cosPh+_cfpf3*sd.sinPh)*0.6+0.4);
     }else if(cfg.type==='ember'){
-      // Embers: twinkle with slight size variation
-      alpha*=0.6+Math.sin(fr*cfg.pf+sd.phase*2)*0.4;
+      // Embers: sin(fr*pf+ph*2) via sin-addition using pre-baked sinPh2/cosPh2
+      alpha*=0.6+(_sfpf*sd.cosPh2+_cfpf*sd.sinPh2)*0.4;
     }else{
-      // Dust/wisps: smooth slow pulse
-      alpha*=0.7+Math.sin(fr*cfg.pf+sd.phase)*0.3;
+      // Dust/wisps: sin(fr*pf+ph) via sin-addition
+      alpha*=0.7+(_sfpf*sd.cosPh+_cfpf*sd.sinPh)*0.3;
     }
     if(alpha<0.02)continue;
     g.globalAlpha=alpha;
@@ -397,55 +411,69 @@ function drawTownAmbientParticles(){
 }
 
 // v183: Dungeon ambient particles — screen-space, deterministic, per-floor visual identity
-function drawDungeonAmbientParticles(){
-  const depth=currentFloor;
-  const visH=H-HUD_HEIGHT;
-  // [count, color, vx/frame, vy/frame, sway amplitude, particle width, particle height, base alpha]
-  const CFG=[
-    null,
-    // B1 SUNKEN GALLERIES: seawater dripping from hull seams — thin vertical streaks, fall fast
-    {n:16,col:'#6090b8',vx:0.05,vy:1.1,sway:3,sw:1,sh:4,a:0.20},
-    // B2 DROWNED ARCHIVES: ancient paper motes — drift sideways, slow tumble
-    {n:20,col:'#c8b888',vx:0.35,vy:0.08,sway:5,sw:2,sh:1,a:0.18},
-    // B3 ECHO CHAMBERS: crystal resonance sparks — rise upward, pulse size
-    {n:18,col:'#c080ff',vx:-0.08,vy:-0.85,sway:4,sw:2,sh:2,a:0.28},
-    // B4 DEEP VAULT: ember ash — diagonal fall, flicker
-    {n:22,col:'#d05020',vx:0.22,vy:0.65,sway:6,sw:2,sh:2,a:0.24},
-    // B5 ARK CORE: void wisps — nearly static, appear/disappear, larger
-    {n:14,col:'#8030c0',vx:0.04,vy:-0.15,sway:9,sw:3,sh:3,a:0.22},
-  ];
-  const c=CFG[depth];if(!c)return;
-
-  for(let i=0;i<c.n;i++){
-    // Deterministic seed per particle (large primes for good distribution)
+// v359: pre-baked hash/phase/sin/cos per particle (eliminates per-frame hash math and trig)
+const _DUNG_AMB_SEEDS=(()=>{
+  const s=[];
+  for(let i=0;i<22;i++){
     const h0=((i*2239+3571)>>>0)%10007;
     const h1=((i*1889+7127)>>>0)%10007;
     const h2=((i*1277+5381)>>>0)%10007;
-    // Base position — spread across full screen
-    const baseX=(h0/10007)*W;
-    const baseY=(h1/10007)*visH;
-    const phase=h2/10007*Math.PI*2;
-
-    // Animated position — wrap modulo screen size
+    const bxF=(h0/10007); // fraction 0..1 — multiply by W at draw time
+    const byF=(h1/10007); // fraction 0..1 — multiply by visH at draw time
+    const ph=h2/10007*Math.PI*2;
+    s.push({bxF,byF,sinPh:Math.sin(ph),cosPh:Math.cos(ph),sin2Ph:Math.sin(ph*2),cos2Ph:Math.cos(ph*2)});
+  }
+  return s;
+})();
+// v359: CFG hoisted to module scope — avoid re-creating the array every call
+const _DUNG_AMB_CFG=[
+  null,
+  // B1 SUNKEN GALLERIES: seawater dripping from hull seams — thin vertical streaks, fall fast
+  {n:16,col:'#6090b8',vx:0.05,vy:1.1,sway:3,sw:1,sh:4,a:0.20},
+  // B2 DROWNED ARCHIVES: ancient paper motes — drift sideways, slow tumble
+  {n:20,col:'#c8b888',vx:0.35,vy:0.08,sway:5,sw:2,sh:1,a:0.18},
+  // B3 ECHO CHAMBERS: crystal resonance sparks — rise upward, pulse size
+  {n:18,col:'#c080ff',vx:-0.08,vy:-0.85,sway:4,sw:2,sh:2,a:0.28},
+  // B4 DEEP VAULT: ember ash — diagonal fall, flicker
+  {n:22,col:'#d05020',vx:0.22,vy:0.65,sway:6,sw:2,sh:2,a:0.24},
+  // B5 ARK CORE: void wisps — nearly static, appear/disappear, larger
+  {n:14,col:'#8030c0',vx:0.04,vy:-0.15,sway:9,sw:3,sh:3,a:0.22},
+];
+function drawDungeonAmbientParticles(){
+  const depth=currentFloor;
+  const visH=H-HUD_HEIGHT;
+  const c=_DUNG_AMB_CFG[depth];if(!c)return;
+  // v359: pre-compute per-frame trig values once; use sin-addition in loop
+  const _fr028=fr*0.028,_s028=Math.sin(_fr028),_c028=Math.cos(_fr028);
+  const _fr09=fr*0.09,_s09=Math.sin(_fr09),_c09=Math.cos(_fr09);
+  // _sFr05/_cFr05 already computed in draw() for fr*0.05 (depth-5 wisps)
+  const n=c.n;
+  for(let i=0;i<n;i++){
+    const sd=_DUNG_AMB_SEEDS[i];
+    const baseX=sd.bxF*W, baseY=sd.byF*visH;
+    // Sway via sin-addition: sin(fr*0.028+phase) = _s028*cosPh + _c028*sinPh
+    const sway=sd.sinPh*_c028+sd.cosPh*_s028;
     const px=((baseX+c.vx*fr)%W+W)%W;
-    const py=((baseY+c.vy*fr+c.sway*Math.sin(fr*0.028+phase))%visH+visH)%visH;
+    const py=((baseY+c.vy*fr+c.sway*sway)%visH+visH)%visH;
 
-    // Void wisps (B5): pulse in/out instead of steady glow
     let alpha=c.a;
-    if(depth===5){alpha=c.a*(0.4+0.6*Math.abs(Math.sin(fr*0.05+phase*2)));}
-    else if(depth===3){alpha=c.a*(0.5+0.5*Math.sin(fr*0.09+phase));}// crystal pulse
-    else if(depth===4&&fr%6===0){alpha=c.a*(0.3+Math.random()*0.7);}// ember flicker
+    if(depth===5){
+      // sin(fr*0.05+phase*2) via sin-addition using _sFr05/_cFr05
+      const sv=sd.sin2Ph*_cFr05+sd.cos2Ph*_sFr05;
+      alpha=c.a*(0.4+0.6*Math.abs(sv));
+    }else if(depth===3){
+      // sin(fr*0.09+phase) via sin-addition
+      alpha=c.a*(0.5+0.5*(sd.sinPh*_c09+sd.cosPh*_s09));
+    }else if(depth===4&&fr%6===0){alpha=c.a*(0.3+Math.random()*0.7);}
 
     g.globalAlpha=alpha;
-    // B3 crystal sparks: draw cross shape for sparkle feel
     if(depth===3){
       bx(px|0,py|0,c.sw,c.sh,c.col);
       if(alpha>0.2){bx((px-1)|0,(py+c.sh/2)|0,c.sw+2,1,'rgba(220,180,255,.4)');}
     }else if(depth===1){
-      // Water drip: thin streak
       bx(px|0,py|0,1,c.sh,c.col);
       g.globalAlpha=alpha*0.4;
-      bx(px|0,(py+c.sh)|0,1,1,c.col);// drip tail fade
+      bx(px|0,(py+c.sh)|0,1,1,c.col);
     }else{
       bx(px|0,py|0,c.sw,c.sh,c.col);
     }
@@ -728,8 +756,8 @@ function drawPirateDecorations(){
         bx(sx+16,sy-40,1,6,'#504030');bx(sx+14,sy-40,1,6,'#504030');
         // Crow's nest
         bx(sx+10,sy-44,12,4,'#806030');
-        // Pirate flag
-        const flagW=Math.sin(fr*0.06)*1.5;
+        // Pirate flag — v359: use pre-computed _sFr06
+        const flagW=_sFr06*1.5;
         bx(sx+18,sy-42+flagW,14,8,'#181820');
         // Skull on flag (tiny)
         bx(sx+22,sy-41+flagW,2,2,'#c0c0c0');bx(sx+26,sy-41+flagW,2,2,'#c0c0c0');
@@ -800,16 +828,19 @@ function drawPirateDecorations(){
       for(let vx=Math.max(0,Math.floor(camX/TW));vx<=Math.min(MW-1,Math.ceil((camX+W)/TW));vx++){
         if(m[vy]?.[vx]===3&&fogRevealed[1][vy]?.[vx]&&((vx*7+vy*13)%5===0)){
           const vpx=vx*TW-camX,vpy=vy*TH-camY;
-          // Hanging vine
+          // Hanging vine — v365: sin-addition with pre-baked vi*0.3 tables (2 trig/tile, 0/segment)
           const vineLen=12+((vx*3+vy*5)%8);
+          const _svx=Math.sin(fr*0.02+vx),_cvx=Math.cos(fr*0.02+vx);
           for(let vi=0;vi<vineLen;vi++){
-            const vox=Math.sin(fr*0.02+vi*0.3+vx)*1.5;
+            const vox=(_svx*_VINE_CI3[vi]+_cvx*_VINE_SI3[vi])*1.5;
             bx(vpx+8+vox,vpy+14+vi*2,2,2,'#387830');
           }
           // Second vine on some trees
           if((vx+vy)%3===0){
+            const _svy=_sFr025*Math.cos(vy)+_cFr025*Math.sin(vy);
+            const _cvy=_cFr025*Math.cos(vy)-_sFr025*Math.sin(vy);
             for(let vi=0;vi<vineLen-4;vi++){
-              const vox2=Math.sin(fr*0.025+vi*0.25+vy)*1.2;
+              const vox2=(_svy*_VINE_CI25[vi]+_cvy*_VINE_SI25[vi])*1.2;
               bx(vpx+22+vox2,vpy+16+vi*2,1,2,'#306828');
             }
           }
@@ -1379,17 +1410,17 @@ function dMap(){
         const epx=etx*TW-camX,epy=ety*TH-camY;
         if(epx<-TW||epx>W||epy<-TH||epy>H)continue;
         const pulse=Math.sin(fr*0.08+etx+ety)*0.35+0.65;
+        // v359: sin(fr*0.1) = sin(2*fr*0.05) = 2*_sFr05*_cFr05 (double-angle)
+        const bob=4*_sFr05*_cFr05; // == 2*sin(fr*0.1)
         if(ex.isEscape){
           g.globalAlpha=pulse*0.75;
           bx(epx+2,epy+2,TW-4,TH-4,'rgba(30,200,80,.25)');
           g.globalAlpha=1;
-          const bob=Math.sin(fr*0.1)*2;
           txShadow('←',epx+4,epy+TH/2+bob+4,10,'#40e060','rgba(0,0,0,.5)');
         }else{
           g.globalAlpha=pulse*0.6;
           bx(epx+2,epy+2,TW-4,TH-4,'rgba(200,180,30,.2)');
           g.globalAlpha=1;
-          const bob=Math.sin(fr*0.1)*2;
           txShadow('↓',epx+4,epy+TH/2+bob+4,10,'#e0c040','rgba(0,0,0,.4)');
         }
       }

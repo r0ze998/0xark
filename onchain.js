@@ -9,6 +9,7 @@
  *   await oxarkOnchain.joinGame(gameId)
  *   await oxarkOnchain.commitAction(gameId, actionType, targetPubkeyStr, salt)
  *   await oxarkOnchain.revealAction(gameId, actionType, targetPubkeyStr, salt)
+ *   await oxarkOnchain.verifyZkProof(gameId, proofA, proofB, proofC, publicInputs)
  *   await oxarkOnchain.resolveRound(gameId, playerPubkeyStrs)
  *   await oxarkOnchain.depositStake(gameId)
  *   await oxarkOnchain.claimPrize(gameId)
@@ -260,6 +261,98 @@ async function revealAction(gameId, actionType, targetPubkeyStr, salt) {
   ], data);
 }
 
+// ─── Instruction: verify_zk_proof ────────────────────────────────────────
+/**
+ * Submit a Groth16 ZK proof on-chain to prove knowledge of a committed action.
+ * Must be called after revealAction completes.
+ *
+ * @param {number}     gameId
+ * @param {Uint8Array} proofA       — 64 bytes (G1 point, x||y big-endian)
+ * @param {Uint8Array} proofB       — 128 bytes (G2 point, x1||x0||y1||y0 big-endian)
+ * @param {Uint8Array} proofC       — 64 bytes (G1 point, x||y big-endian)
+ * @param {Uint8Array} publicInputs — 32 bytes (Poseidon commitHash, big-endian)
+ */
+async function verifyZkProof(gameId, proofA, proofB, proofC, publicInputs) {
+  const payer    = window.solana.publicKey;
+  const [gamePDA]      = findGamePDA(gameId);
+  const [playerPDA]    = findPlayerPDA(gameId, payer);
+  const [commitPDA]    = findCommitPDA(gameId, payer);
+
+  // disc(8) + game_id(8) + proof_a(64) + proof_b(128) + proof_c(64) + public_inputs(32) = 304
+  const d    = await disc('handle_verify_zk');
+  const data = new Uint8Array(304);
+  let off = writeBytes(data, 0, d);
+  off = writeU64LE(data, off, gameId);
+  off = writeBytes(data, off, proofA);
+  off = writeBytes(data, off, proofB);
+  off = writeBytes(data, off, proofC);
+  writeBytes(data, off, publicInputs);
+
+  return buildAndSend([
+    { pubkey: payer,     isSigner: true,  isWritable: false },
+    { pubkey: gamePDA,   isSigner: false, isWritable: false },
+    { pubkey: playerPDA, isSigner: false, isWritable: false },
+    { pubkey: commitPDA, isSigner: false, isWritable: false },
+  ], data);
+}
+
+/**
+ * Generate a Groth16 proof in the browser using snarkjs + the wasm witness calculator.
+ * Requires snarkjs and the circuit wasm/zkey to be loaded.
+ *
+ * @param {number}     actionType   — 1-10
+ * @param {number}     targetArea   — 0-2
+ * @param {BigInt}     salt         — random 253-bit field element
+ * @param {BigInt}     commitHash   — on-chain commit hash (Poseidon output)
+ * @returns {{ proofA, proofB, proofC, publicInputs }} — Uint8Array buffers for verifyZkProof
+ */
+async function generateZkProof(actionType, targetArea, salt, commitHash) {
+  if (typeof snarkjs === 'undefined') {
+    throw new Error('snarkjs not loaded — include snarkjs.min.js');
+  }
+  const input = {
+    actionType: actionType.toString(),
+    targetArea:  targetArea.toString(),
+    salt:        salt.toString(),
+    commitHash:  commitHash.toString(),
+  };
+
+  const wasmPath = '/zk/build/commit_reveal_js/commit_reveal.wasm';
+  const zkeyPath = '/zk/build/commit_reveal_final.zkey';
+
+  const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasmPath, zkeyPath);
+
+  // Convert snarkjs proof (decimal strings) to Solana byte format (big-endian)
+  function fieldToBytes32(s) {
+    const bi = BigInt(s);
+    const buf = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) buf[31 - i] = Number((bi >> BigInt(i * 8)) & 0xffn);
+    return buf;
+  }
+  function g1ToBytes64(pt) {
+    const b = new Uint8Array(64);
+    b.set(fieldToBytes32(pt[0]), 0);
+    b.set(fieldToBytes32(pt[1]), 32);
+    return b;
+  }
+  // G2: snarkjs format [[c0,c1],[c0,c1]] → Solana format x1||x0||y1||y0
+  function g2ToBytes128(pt) {
+    const b = new Uint8Array(128);
+    b.set(fieldToBytes32(pt[0][1]), 0);   // x1
+    b.set(fieldToBytes32(pt[0][0]), 32);  // x0
+    b.set(fieldToBytes32(pt[1][1]), 64);  // y1
+    b.set(fieldToBytes32(pt[1][0]), 96);  // y0
+    return b;
+  }
+
+  return {
+    proofA:       g1ToBytes64(proof.pi_a),
+    proofB:       g2ToBytes128(proof.pi_b),
+    proofC:       g1ToBytes64(proof.pi_c),
+    publicInputs: fieldToBytes32(publicSignals[0]),
+  };
+}
+
 // ─── Instruction: resolve_round ───────────────────────────────────────────
 /**
  * @param {number}   gameId
@@ -418,9 +511,12 @@ window.oxarkOnchain = {
   startGame,
   commitAction,
   revealAction,
+  verifyZkProof,
   resolveRound,
   depositStake,
   claimPrize,
+  // ZK proof generation (browser-side, requires snarkjs)
+  generateZkProof,
   // Helpers
   computeCommitHash,
   generateSalt,

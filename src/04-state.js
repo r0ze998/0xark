@@ -308,7 +308,7 @@ let stepCounter=0;
 
 // ── Random map events ──
 let randomEventTimer=0;
-let randomEventActive=false, randomEventText='', randomEventFrame=0;
+let randomEventActive=false, randomEventText='', randomEventFrame=0, randomEventCat=''; // v363: category: 'good'|'bad'|'neutral'
 
 // ── Trading Post state ──
 let shopActive=false, shopSelectedIdx=0, shopConfirm=false, shopResultText='', shopResultFrame=0, shopPhase='list', shopOpenFrame=0;

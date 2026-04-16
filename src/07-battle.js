@@ -3,6 +3,21 @@
 // ═══════════════════════════════════════
 
 // v262: Hoist battle per-frame inline literals to module scope
+// v360: pre-bake battle-BG frame-independent sin values
+const _BTL_WAVE_SI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_WAVE_SI[i]=Math.sin(i); // sin(i) for wave sway
+const _BTL_WAVE_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_WAVE_CI[i]=Math.cos(i);
+const _BTL_TORCH_SI2=new Float32Array(4);for(let i=0;i<4;i++)_BTL_TORCH_SI2[i]=Math.sin(i*2); // sin(i*2) torch flicker
+const _BTL_TORCH_CI2=new Float32Array(4);for(let i=0;i<4;i++)_BTL_TORCH_CI2[i]=Math.cos(i*2);
+const _BTL_LAVA_SI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_LAVA_SI[i]=Math.sin(i);   // sin(i) lava glow
+const _BTL_LAVA_CI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_LAVA_CI[i]=Math.cos(i);
+const _BTL_VOID_SI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_VOID_SI[i]=Math.sin(i*1.3); // sin(i*1.3) void pulse
+const _BTL_VOID_CI=new Float32Array(4);for(let i=0;i<4;i++)_BTL_VOID_CI[i]=Math.cos(i*1.3);
+const _BTL_CRYST_ABS=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_ABS[i]=Math.abs(Math.sin(i*1.7)); // crystal Y offset (frame-independent)
+const _BTL_CRYST_SI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_SI[i]=Math.sin(i);  // sin(i) crystal shimmer
+const _BTL_CRYST_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_CRYST_CI[i]=Math.cos(i);
+const _BTL_EMBER_X=new Float32Array(8);for(let i=0;i<8;i++)_BTL_EMBER_X[i]=Math.sin(i*2.1)*20; // ember X offset (frame-independent)
+const _BTL_SEEP_SI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_SEEP_SI[i]=Math.sin(i);    // sin(i) lava seep
+const _BTL_SEEP_CI=new Float32Array(6);for(let i=0;i<6;i++)_BTL_SEEP_CI[i]=Math.cos(i);
 const _ACTION_NAMES=['DRAW','STEAL','BARRIER','SCOUT','USE CARD'];
 // v305: pre-baked BATTLE round header labels; cache TX sig truncation
 const _BATTLE_HDR=['','BATTLE 1','BATTLE 2','BATTLE 3','BATTLE 4','BATTLE 5','BATTLE 6','BATTLE 7','BATTLE 8','BATTLE 9','BATTLE 10'];
@@ -169,9 +184,9 @@ function drawBattleBG(){
   if(currentMap===0&&!inDungeon){
     // Blit pre-baked static layers (sky + ocean + platforms)
     g.drawImage(_btlBgTown,0,0);
-    // Waves (animated — fr-dependent)
+    // Waves (animated — fr-dependent) — v360: sin-addition with _sFr04/_cFr04 + pre-baked sin(i)
     for(let i=0;i<6;i++){
-      const wy=horizonY+20+i*18+Math.sin(fr*0.04+i)*4;
+      const wy=horizonY+20+i*18+(_sFr04*_BTL_WAVE_CI[i]+_cFr04*_BTL_WAVE_SI[i])*4;
       bx(0,wy,W,2,_btlWaveAlphas[i]);
     }
   }else{
@@ -179,51 +194,60 @@ function drawBattleBG(){
     const fl=Math.max(1,Math.min(5,currentFloor||1));
     const a=_floorAtm[fl]||_floorAtm[1];
     g.drawImage(_btlBgDungeon[fl],0,0);
-    // Animated elements drawn on top of baked canvas:
+    // v360: compute per-frequency sin/cos once per BG draw call
+    const _s15=Math.sin(fr*0.15),_c15=Math.cos(fr*0.15);
+    const _s08=Math.sin(fr*0.08),_c08=Math.cos(fr*0.08);
+    const _s07=Math.sin(fr*0.07),_c07=Math.cos(fr*0.07);
+    // sin/cos(fr*0.1) = double-angle of fr*0.05
+    const _s10=2*_sFr05*_cFr05,_c10=_cFr05*_cFr05-_sFr05*_sFr05;
     // Pillar-top animations (torches / lava glow / void cracks)
     for(let i=0;i<4;i++){
       const px_=60+i*160;
       if(fl<=3){
         const flamCol=fl===3?'#a040d0':fl===2?'#d06020':'#e08020';
         const glowCol=fl===3?'#c070f0':fl===2?'#f08040':'#f0c040';
-        const flicker=Math.sin(fr*0.15+i*2)*2;
+        // sin(fr*0.15+i*2) via sin-addition using pre-baked _BTL_TORCH_SI2/CI2
+        const flicker=(_s15*_BTL_TORCH_CI2[i]+_c15*_BTL_TORCH_SI2[i])*2;
         bx(px_+8,4+flicker,8,6,flamCol);bx(px_+9,2+flicker,6,4,glowCol);
         bx(px_+10,0+flicker,4,3,'rgba(255,255,200,.8)');
       }else if(fl===4){
-        const lavaA=0.4+Math.sin(fr*0.08+i)*0.2;
+        // sin(fr*0.08+i) via sin-addition with _BTL_LAVA_SI/CI
+        const lavaA=0.4+(_s08*_BTL_LAVA_CI[i]+_c08*_BTL_LAVA_SI[i])*0.2;
         g.globalAlpha=lavaA;bx(px_-2,horizonY-16,28,16,'#d03010');g.globalAlpha=1;
       }else{
-        const voidA=0.3+Math.sin(fr*0.06+i*1.3)*0.2;
+        // sin(fr*0.06+i*1.3) via sin-addition with _BTL_VOID_SI/CI + _sFr06/_cFr06
+        const voidA=0.3+(_sFr06*_BTL_VOID_CI[i]+_cFr06*_BTL_VOID_SI[i])*0.2;
         g.globalAlpha=voidA;bx(px_+4,horizonY-24,16,24,'#6030a0');g.globalAlpha=1;
       }
     }
-    // F3: crystal shard shimmer
+    // F3: crystal shard shimmer — v360: use pre-baked abs(sin(i*1.7)) for Y; sin-addition for alpha
     if(fl===3){
       for(let i=0;i<6;i++){
-        const csx=80+i*120,csy=horizonY-20-Math.abs(Math.sin(i*1.7))*30;
-        const crystA=0.5+Math.sin(fr*0.07+i)*0.25;
+        const csx=80+i*120,csy=horizonY-20-_BTL_CRYST_ABS[i]*30;
+        const crystA=0.5+(_s07*_BTL_CRYST_CI[i]+_c07*_BTL_CRYST_SI[i])*0.25;
         g.globalAlpha=crystA;
         bx(csx,csy,4,18,'#7050c0');bx(csx+1,csy,2,12,'#a080e0');
         g.globalAlpha=1;
       }
     }
-    // F4: rising ember particles + crack lava seep
+    // F4: rising ember particles + crack lava seep — v360: pre-baked ember X offsets
     if(fl===4){
       for(let i=0;i<8;i++){
         const emberPhase=(fr*0.03+i*0.7)%1;
-        const ex_=80+i*100+Math.sin(i*2.1)*20;
+        const ex_=80+i*100+_BTL_EMBER_X[i];
         const ey_=H-(emberPhase*H*0.6)-20;
         const ea=Math.sin(emberPhase*Math.PI)*0.7;
         g.globalAlpha=ea;bx(ex_,ey_,2,2,'#f06020');g.globalAlpha=1;
       }
       const cc=2+fl;for(let i=0;i<cc;i++){
         const cx_=30+i*Math.floor(W/cc);
-        const seepA=0.3+Math.sin(fr*0.1+i)*0.2;
+        // sin(fr*0.1+i) via double-angle + sin-addition with _BTL_SEEP_SI/CI
+        const seepA=0.3+(_s10*_BTL_SEEP_CI[i]+_c10*_BTL_SEEP_SI[i])*0.2;
         g.globalAlpha=seepA;bx(cx_+1,horizonY+30+i*8,12,1,'#f06020');g.globalAlpha=1;
       }
     }
-    // Center downward light pulse (pre-baked shape, fr-dependent globalAlpha)
-    {const lightPulse=0.08+0.025*Math.sin(fr*0.04);
+    // Center downward light pulse — v360: use _sFr04 (already computed per frame)
+    {const lightPulse=0.08+0.025*_sFr04;
     g.globalAlpha=lightPulse;
     g.drawImage(_btlCenterLight,Math.floor(W*0.35),horizonY);
     g.globalAlpha=1;}
