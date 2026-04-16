@@ -138,11 +138,9 @@ function mpGenerateRoomId(){
 function drawMPLobby(){
   bx(0,0,W,H,'#0c0c18');
   // Stars
-  for(let i=0;i<60;i++){
-    const sx=(i*47+13)%W,sy=(i*31+7)%320;
-    const a=Math.sin(fr*.03+i*1.7)*.35+.5;
-    bx(sx,sy,1,1,`rgba(255,255,255,${a*.3})`);
-  }
+  g.fillStyle='#ffffff';
+  for(let i=0;i<60;i++){const sx=(i*47+13)%W,sy=(i*31+7)%320;const a=Math.sin(fr*.03+i*1.7)*.35+.5;g.globalAlpha=a*.3;g.fillRect(sx,sy,1,1);}
+  g.globalAlpha=1;
 
   if(mp.mpScreen==='select'){
     // Room entry UI
@@ -324,7 +322,7 @@ function fadeUpdate(){
     if(fadeAlpha>=1){fadeAlpha=1;if(fadeCallback){fadeCallback();fadeCallback=null;}}
   }
 }
-function fadeDraw(){if(fadeAlpha>0){bx(0,0,W,H,`rgba(0,0,0,${fadeAlpha})`);}}
+function fadeDraw(){if(fadeAlpha>0){g.globalAlpha=fadeAlpha;g.fillStyle='#000000';g.fillRect(0,0,W,H);g.globalAlpha=1;}}
 let flashT=0;
 function flash(){flashT=20;}
 let shakeT=0,shakeIntensity=0;
@@ -394,12 +392,12 @@ function drawWipe(){
       g.drawImage(c,0,0,sw,sh,0,0,W,H);
     }else{
       // Fade to black
-      bx(0,0,W,H,`rgba(24,24,40,${(ease-0.7)/0.3})`);
+      g.globalAlpha=(ease-0.7)/0.3;g.fillStyle='#181828';g.fillRect(0,0,W,H);g.globalAlpha=1;
     }
   }else if(wipeType==='mosaic_out'){
     // Reverse mosaic — de-pixelate from black
     if(ease<0.3){
-      bx(0,0,W,H,`rgba(24,24,40,${1-ease/0.3})`);
+      g.globalAlpha=1-ease/0.3;g.fillStyle='#181828';g.fillRect(0,0,W,H);g.globalAlpha=1;
     }else{
       const pixelSize=Math.max(2,Math.floor((1-ease)*32));
       g.imageSmoothingEnabled=false;
