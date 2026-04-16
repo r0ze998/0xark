@@ -15,6 +15,8 @@ const _MEDALS=['1ST','2ND','3RD'],_MEDAL_COLS=['#f0c830','#c0c0c0','#c08040'];
 const _PCT_LBL=(()=>{const a=[];for(let i=0;i<=100;i++)a.push(i+'%');return a;})();
 // v330: pre-baked floor-clear fanfare labels (index = floor, 1-5)
 const _FLOOR_CLEARED_LBL=(()=>{const a=[];for(let i=0;i<6;i++)a.push('FLOOR '+(_FLOOR_NUMS[i]||('B'+i))+' CLEARED');return a;})();
+// v331: pre-baked rarity pip count labels (5 rarities × 0..60 cards)
+const _RAR_PIP_FULL=(()=>{const a=[];for(let ri=0;ri<5;ri++){const r=[];for(let n=0;n<=60;n++)r.push(_RAR_PIP_LBLS[ri]+':'+n);a.push(r);}return a;})();
 // v235: Pre-baked game-over screen assets — 32 arc/frame + 1 gradient/frame eliminated
 // Vignette: rgba(0,0,0,0.55) outer stop, drawn once per frame at alpha=1
 const _goVignette=(()=>{
@@ -565,7 +567,7 @@ function dStats(){
   for(let ri_=0;ri_<5;ri_++){
     if(rarCount_[ri_]===0)continue;
     bx(rPX,vpbY+vpbH+3,9,9,_RAR_PIP_COLS[ri_]);
-    txShadow(_RAR_PIP_LBLS[ri_]+':'+rarCount_[ri_],rPX+11,vpbY+vpbH+11,7,'#c0b8a0','rgba(0,0,0,.35)');
+    txShadow(_RAR_PIP_FULL[ri_][rarCount_[ri_]]||(_RAR_PIP_LBLS[ri_]+':'+rarCount_[ri_]),rPX+11,vpbY+vpbH+11,7,'#c0b8a0','rgba(0,0,0,.35)'); // v331
     rPX+=36;
   }
   bx(36,vpbY+vpbH+18,W-104,1,'#282840');

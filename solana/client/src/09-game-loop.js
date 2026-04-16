@@ -3,6 +3,8 @@
 
 // v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
 const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
+// v331: Pre-baked stealth step labels — eliminates 'STEALTH:'+n concat per frame during stealth
+const _STEALTH_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('STEALTH:'+i);return a;})();
 // v224: Pre-baked escape urgency vignette — red edge decay warning (shape static, alpha varies)
 const _escVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(200,20,20,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;})();
 
@@ -418,7 +420,7 @@ function draw(){
       g.globalAlpha=0.4;
       bx(px-4,py-4,40,56,'rgba(80,40,160,.3)');
       g.globalAlpha=1;
-      txShadow('STEALTH:'+shadowStepsLeft,px-20,py-24,5,'#9060c0','rgba(0,0,0,.4)');
+      txShadow(_STEALTH_LBL[shadowStepsLeft]||('STEALTH:'+shadowStepsLeft),px-20,py-24,5,'#9060c0','rgba(0,0,0,.4)');
     }
   }
   // Multiplayer connection status overlay
