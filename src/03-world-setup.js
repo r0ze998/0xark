@@ -96,6 +96,9 @@ function showBanner(text,sub){
 let npcDialogActive=false, npcDialogLines=[], npcDialogIdx=0, npcDialogName='', npcDialogOpenFrame=0;
 
 // ── v84: TOWN WEATHER ──
+// v384: pre-baked fog bank Y-sway table (12 entries, step 1.3) for sin-addition with _sFr015
+const _FOG_SI13=new Float32Array(12);const _FOG_CI13=new Float32Array(12);
+for(let i=0;i<12;i++){_FOG_SI13[i]=Math.sin(i*1.3);_FOG_CI13[i]=Math.cos(i*1.3);}
 let townWeather='clear'; // 'clear'|'rain'|'fog'
 let townWeatherAlpha=1.0; // 0→1 fade-in for current weather
 let townWeatherTimer=0; // counts frames; cycles at WEATHER_CYCLE_FRAMES
@@ -887,7 +890,7 @@ function drawTownWeather(){
       for(let i=0;i<12;i++){
         const seed=i*97;
         const fogX=((fr*0.25+seed*53)%(W+320))-160;
-        const fogY=60+seed%4*70+Math.sin(fr*0.015+i*1.3)*12;
+        const fogY=60+seed%4*70+(_sFr015*_FOG_CI13[i]+_cFr015*_FOG_SI13[i])*12;
         const fogW=160+seed%5*50;
         const fogAlpha=wa*(0.12+seed%3*0.04);
         _weatherCtx.globalAlpha=fogAlpha;
