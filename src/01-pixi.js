@@ -1078,6 +1078,8 @@ let _mmBaseMap=-1,_mmBaseFrame=-9999;
 const mmAnimCanvas=document.createElement('canvas');mmAnimCanvas.width=mmW_;mmAnimCanvas.height=mmH_;
 const mmAnimCtx=mmAnimCanvas.getContext('2d');
 let _mmAnimFrame=-9999;
+let _mmFlashFrame=-9999; // v461: new room discovery flash timestamp
+let _trapHitFrame=-9999; // v463: trap trigger timestamp for TRAP! danger banner
 
 // GBA-style scanlines — pre-baked once; single drawImage per frame (zero per-frame cost)
 const scanCanvas=document.createElement('canvas');
@@ -1102,6 +1104,15 @@ const _btlVigMira=(()=>{
   const x=c.getContext('2d');
   const gr=x.createRadialGradient(W*0.75,H*0.2,H*0.1,W*0.75,H*0.2,H*0.65);
   gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(160,120,0,0.13)');
+  x.fillStyle=gr;x.fillRect(0,0,W,H);
+  return c;
+})();
+// v456: Critical HP vignette — deep red radial from screen edges, drawn at variable alpha when player HP=1
+const _btlVigCrit=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  const gr=x.createRadialGradient(W/2,H/2,H*0.15,W/2,H/2,H*0.76);
+  gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(200,8,8,0.72)');
   x.fillStyle=gr;x.fillRect(0,0,W,H);
   return c;
 })();

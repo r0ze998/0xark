@@ -67,6 +67,7 @@ const _DANGER_LBL=['DANGER:LOW','DANGER:MED','DANGER:HIGH']; // pre-combined dan
 const _STREAK_LBL=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('STREAK:'+i+'x');return a;})();
 const _HAND_LBL=(()=>{const a=[];for(let i=0;i<=15;i++)a.push('HAND:'+i);return a;})();
 const _CARDS_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('CARDS:'+i+'/60');return a;})();
+let _vaultHudKey=-1,_vaultHudLbl=''; // v449: vault progress HUD label cache
 let _stepsCache='STEPS:0',_stepsKey=-1; // stepCounter lazy cache
 let _expLblCache='EXP:0%',_expLblKey=-1; // fog exploration % lazy cache
 let _mapLblCache='MAP:0%',_mapLblKey=-1; // map exploration % lazy cache
@@ -1776,6 +1777,21 @@ function dMap(){
     g.globalAlpha=1;
   }
 
+  // ── v463: Trap hit danger banner — center-screen red pill, slide-in + fade-out ──
+  {const _ta=fr-_trapHitFrame;
+  if(_ta>=0&&_ta<80){
+    const _tf=_ta<8?_ta/8:_ta>50?Math.max(0,1-(_ta-50)/30):1;
+    if(_tf>0.01){
+      const _tSlide=_ta<8?Math.round((1-_ta/8)*14):0;
+      const _tW=80;const _tX=Math.round(W/2-_tW/2);const _tY=Math.round(H/2-44+_tSlide);
+      g.globalAlpha=_tf;
+      bx(_tX,_tY,_tW,20,'rgba(140,16,16,.9)');
+      bx(_tX,_tY,_tW,2,'#ff5040');bx(_tX,_tY+18,_tW,2,'#ff5040');
+      txShadow('\u26a0 TRAP!',_tX+10,_tY+14,9,'#fff8e0','rgba(0,0,0,.65)');
+      g.globalAlpha=1;
+    }
+  }}
+
   // Area Danger Level display — v314: pre-baked combined label
   const dangerVal=areaDanger[currentMap];
   const _dangerIdx=dangerVal>=DANGER_HIGH_THRESH?2:dangerVal>=DANGER_LOW_THRESH?1:0;
@@ -1906,8 +1922,15 @@ function dMap(){
     const wCol=townWeather==='rain'?'#80a0d0':townWeather==='fog'?'#a0a8b0':'#f0c830';
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
+  // v449: Vault progress counter — unique cards collected toward 60-card win condition
+  {
+    const _vsz=pl[0].vault?pl[0].vault.size:0;
+    if(_vaultHudKey!==_vsz){_vaultHudKey=_vsz;_vaultHudLbl='\u2605'+(_UNIQ60[_vsz]||_vsz+'/60');}
+    const _vcol=_vsz>=50?'#f0c830':_vsz>=30?'#c0a040':'#8890c0';
+    txShadow(_vaultHudLbl,848,hudY+56,7,_vcol,'rgba(0,0,0,.5)');
+  }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v445',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v463',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);

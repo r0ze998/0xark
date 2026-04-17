@@ -123,7 +123,7 @@ function update(){
   }
   if(flashT>0)flashT-=dt;
   if(bpShakeTimer>0)bpShakeTimer-=dt;
-  for(let hi=0;hi<3;hi++){if(bpHPDmgAnim[hi]>0)bpHPDmgAnim[hi]-=dt;}
+  for(let hi=0;hi<3;hi++){if(bpHPDmgAnim[hi]>0)bpHPDmgAnim[hi]-=dt;if(bpHPHealAnim[hi]>0)bpHPHealAnim[hi]-=dt;}
   if(rivalAlert>0)rivalAlert-=dt;
   if(fishingCooldownTimer>0)fishingCooldownTimer--;
   if(crystalRevealTimer>0)crystalRevealTimer--;
@@ -370,7 +370,7 @@ function update(){
             startWipe('mosaic',30,()=>{
               sc='act';battlePhase='vs_splash';bpFrame=fr;
               battleRoundHistory=[];_battleRoundNet=0; // v90/v284: reset round history+net on new battle
-              bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];
+              bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];bpHPHealAnim=[0,0,0];bpDmgFloats=[];
               startWipe('mosaic_out',20);
               // v79: track battle_rival mission
               if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){

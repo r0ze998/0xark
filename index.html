@@ -1173,6 +1173,8 @@ let _mmBaseMap=-1,_mmBaseFrame=-9999;
 const mmAnimCanvas=document.createElement('canvas');mmAnimCanvas.width=mmW_;mmAnimCanvas.height=mmH_;
 const mmAnimCtx=mmAnimCanvas.getContext('2d');
 let _mmAnimFrame=-9999;
+let _mmFlashFrame=-9999; // v461: new room discovery flash timestamp
+let _trapHitFrame=-9999; // v463: trap trigger timestamp for TRAP! danger banner
 
 // GBA-style scanlines — pre-baked once; single drawImage per frame (zero per-frame cost)
 const scanCanvas=document.createElement('canvas');
@@ -1197,6 +1199,15 @@ const _btlVigMira=(()=>{
   const x=c.getContext('2d');
   const gr=x.createRadialGradient(W*0.75,H*0.2,H*0.1,W*0.75,H*0.2,H*0.65);
   gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(160,120,0,0.13)');
+  x.fillStyle=gr;x.fillRect(0,0,W,H);
+  return c;
+})();
+// v456: Critical HP vignette — deep red radial from screen edges, drawn at variable alpha when player HP=1
+const _btlVigCrit=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d');
+  const gr=x.createRadialGradient(W/2,H/2,H*0.15,W/2,H/2,H*0.76);
+  gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(200,8,8,0.72)');
   x.fillStyle=gr;x.fillRect(0,0,W,H);
   return c;
 })();
@@ -5265,6 +5276,8 @@ function fogRevealRoom(mapIdx,room){
   }
   if(changed){
     fogCacheDirty=true;_fogPctDirty[mapIdx]=true;
+    // v461: Minimap flash — set timestamp so drawMinimap() renders gold pulse border
+    if(newRoomTiles>=4)_mmFlashFrame=typeof fr!=='undefined'?fr:0;
     // v218: Room discovery burst — sprinkle sparkle particles across newly revealed room
     if(particles&&newRoomTiles>=4){
       const roomCX=(room.x+room.w/2)*TW,roomCY=(room.y+room.h/2)*TH;
@@ -6653,6 +6666,8 @@ let bpShakeTarget=-1,bpShakeTimer=0;
 const BATTLE_HP_MAX=3;
 let bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];
 let bpHPDmgAnim=[0,0,0]; // frames remaining for HP damage flash per combatant
+let bpHPHealAnim=[0,0,0]; // v452: frames remaining for HP heal flash (green) per combatant
+let bpDmgFloats=[]; // v454: floating HP delta numbers [{x,y,val,born,col}] rendered above sprites
 
 // ── Card acquisition animation ──
 let cardAcqActive=false,cardAcqFrame=0,cardAcqCard=-1,cardAcqDone=false;
@@ -9511,6 +9526,34 @@ function drawMinimap(){
   g.drawImage(mmBaseCanvas,mx,my);
   g.drawImage(mmAnimCanvas,mx,my);
 
+  // ── v461: New room discovery flash — gold border pulse + "NEW AREA" tooltip ──
+  {const _mfAge=fr-_mmFlashFrame;
+  if(_mfAge>=0&&_mfAge<70){
+    // Fade-in over 8 frames, hold, fade-out after frame 20 → gone at 70
+    const _mfA=_mfAge<8?_mfAge/8:Math.max(0,1-(_mfAge-20)/50);
+    if(_mfA>0.01){
+      // Gold tint overlay on minimap interior
+      g.globalAlpha=_mfA*0.22;
+      bx(mx,my,mmW,mmH,'#f0e060');
+      g.globalAlpha=1;
+      // Gold border flash (replaces FRLG gray border below)
+      const _mfBorderCol=`rgba(240,200,60,${(_mfA*0.9).toFixed(2)})`;
+      g.fillStyle=_mfBorderCol;
+      g.fillRect(mx-1,my-1,mmW+2,1);g.fillRect(mx-1,my+mmH,mmW+2,1);
+      g.fillRect(mx-1,my-1,1,mmH+2);g.fillRect(mx+mmW,my-1,1,mmH+2);
+      // "NEW AREA" tooltip above minimap — slides in from top, fades out
+      if(_mfAge<50){
+        const _mfLbl='NEW AREA';const _mfLW=_mfLbl.length*5+10;
+        const _mfSlide=_mfAge<8?(_mfAge/8)*6-6:0; // slides down 6px into place
+        g.globalAlpha=_mfA;
+        bx(mx+mmW/2-_mfLW/2,my-16+_mfSlide,_mfLW,10,'rgba(15,12,28,.85)');
+        bx(mx+mmW/2-_mfLW/2,my-16+_mfSlide,_mfLW,1,'#f0e060');
+        txShadow(_mfLbl,mx+mmW/2-_mfLW/2+3,my-7+_mfSlide,5,'#f0e060','rgba(0,0,0,.5)');
+        g.globalAlpha=1;
+      }
+    }
+  }}
+
   // ── FRLG-style window border (cheap, always per-frame) ──
   g.fillStyle='#484058';
   g.fillRect(mx,my-1,mmW,1);g.fillRect(mx-1,my,1,mmH);
@@ -10204,9 +10247,12 @@ function drawSynthesisShop(){
       const col=i%cols,row=Math.floor(i/cols);
       const cx=80+col*cellW,cy=138+row*cellH;
       const isSel=synthSelected.includes(slot);
+      const _stTi=_BTYPE_MAP&&_BTYPE_MAP[cr.t];const _stCol=_stTi!==undefined&&_BTYPE_COL?_BTYPE_COL[_stTi]:'#888'; // v447
       bx(cx,cy,cellW-8,cellH-4,isSel?'rgba(192,168,96,.3)':'rgba(40,36,28,.6)');
-      if(isSel){bx(cx,cy,2,cellH-4,'#c0a040');txShadow('\u2713',cx+cellW-20,cy+14,9,'#c0a040','rgba(0,0,0,.4)');}
+      bx(cx,cy,2,cellH-4,isSel?'#c0a040':_stCol); // v447: type color left stripe (gold when selected)
+      if(isSel){txShadow('\u2713',cx+cellW-20,cy+14,9,'#c0a040','rgba(0,0,0,.4)');}
       bx(cx+4,cy+4,20,20,cr.d);bx(cx+5,cy+5,18,18,cr.c);
+      bx(cx+4,cy+4,20,1,_stCol); // v447: type color top border on mini card
       drawCardCharacter(cx+6,cy+6,cid,0.7,fr);
       txShadow(cr.n,cx+30,cy+14,6,isSel?'#f8e8c0':'#c0b898','rgba(0,0,0,.3)');
       txShadow(cr.f,cx+30,cy+26,5,'#908878','rgba(0,0,0,.2)');
@@ -10471,6 +10517,83 @@ const NPC_ACCENT={
   'Alchemist':'#40c0c0',
 };
 let _npcDlgCacheIdx=-1,_npcDlgCacheLines=[]; // v273: NPC dialog wrap cache
+
+// v462: NPC pixel-art portrait — drawn inside dialog box left panel
+function _drawNpcPortrait(px,py,nm,ac){
+  const sk='#f0dcc0'; // skin tone
+  // Shared body: head, torso, arms, legs
+  bx(px+3,py+1,10,8,sk);          // head
+  bx(px+1,py+9,14,11,ac);         // torso
+  bx(px-2,py+10,4,8,ac);          // left arm
+  bx(px+14,py+10,4,8,ac);         // right arm
+  bx(px+2,py+20,5,8,'#383040');   // left leg
+  bx(px+9,py+20,5,8,'#383040');   // right leg
+  bx(px+5,py+3,2,2,'#181828');    // left eye
+  bx(px+9,py+3,2,2,'#181828');    // right eye
+  bx(px+6,py+7,4,1,'#c0a090');    // mouth
+  if(nm==='Card Merchant'){
+    // Top hat + waistcoat lapels
+    bx(px+2,py-1,12,2,'rgba(0,0,0,.6)');  // hat brim
+    bx(px+4,py-7,8,7,ac);                  // hat crown
+    bx(px+4,py-9,6,3,'rgba(0,0,0,.5)');   // hat band
+    bx(px+5,py+9,3,6,'#f0c830');           // lapel stripe
+    bx(px+9,py+9,2,6,'#f0c830');
+  }else if(nm==='Trade Master'){
+    // Hooded cloak, shadow under hood
+    bx(px+1,py-2,14,6,ac);                 // hood outer
+    bx(px+3,py,10,6,'rgba(0,0,0,.35)');    // hood shadow
+    bx(px+1,py+9,14,11,'rgba(0,0,0,.18)'); // cloak shadow over torso
+    // Gold chain across chest
+    bx(px+3,py+11,10,1,'#f0c830');
+  }else if(nm==='Gacha Keeper'){
+    // Pointed witch hat
+    bx(px+7,py-9,2,8,ac);                  // spike
+    bx(px+3,py-3,10,4,ac);                 // hat brim-band
+    bx(px+2,py-1,12,2,ac);                 // hat brim wide
+    // Star on hat
+    bx(px+7,py-7,2,2,'#fff8a0');
+    // Crystal ball in hand
+    bx(px+14,py+13,5,5,'rgba(100,200,255,.8)');
+    bx(px+15,py+14,3,3,'rgba(200,240,255,.9)');
+    bx(px+15,py+14,1,1,'#fff');
+  }else if(nm==='ARK Guide'){
+    // Wide explorer hat
+    bx(px+1,py-2,14,2,'#806020');          // brim
+    bx(px+3,py-6,10,5,ac);                 // crown
+    bx(px+4,py-7,8,2,ac);
+    // Compass/book on torso
+    bx(px+4,py+11,8,6,'#f0c830');
+    bx(px+5,py+12,6,4,'#181828');
+    bx(px+7,py+12,2,4,'rgba(200,180,60,.9)'); // needle
+    bx(px+7,py+13,1,1,'#f0f0f0');
+  }else if(nm==='Dungeon Porter'){
+    // Hard hat
+    bx(px+1,py-2,14,2,ac);                 // hard hat brim
+    bx(px+3,py-6,10,5,ac);                 // dome
+    bx(px+6,py-6,4,1,'#f0c030');           // lamp stripe
+    // Backpack on right
+    bx(px+14,py+8,7,13,ac);
+    bx(px+15,py+9,5,11,'#604020');
+    bx(px+16,py+11,3,5,'#805030');
+  }else if(nm==='Alchemist'){
+    // Spiky hair
+    bx(px+3,py-4,10,5,ac);
+    bx(px+2,py-5,3,3,ac);
+    bx(px+11,py-5,3,3,ac);
+    bx(px+7,py-7,2,3,ac);
+    // Round goggles (override eyes)
+    bx(px+4,py+2,4,4,'rgba(0,0,0,.5)');
+    bx(px+9,py+2,4,4,'rgba(0,0,0,.5)');
+    bx(px+5,py+3,2,2,ac);
+    bx(px+10,py+3,2,2,ac);
+    bx(px+8,py+3,1,1,'#888');              // bridge
+    // Flask in right hand
+    bx(px+15,py+11,5,8,ac);
+    bx(px+16,py+13,3,5,'rgba(40,230,180,.85)');
+    bx(px+16,py+10,3,2,'rgba(0,0,0,.4)'); // flask neck
+  }
+}
+
 function drawNPCDialog(){
   if(!npcDialogActive)return;
   const dlgSlide=Math.min(1,(fr-npcDialogOpenFrame)/6);
@@ -10482,34 +10605,39 @@ function drawNPCDialog(){
   // Main dialog box
   const dlgY=H-100+slideOff;
   win(6,dlgY,W-12,90);
-  // Accent bar on left edge — NPC identity color
-  bx(6,dlgY,3,90,accent);
-  // Name badge (colored accent top-bar)
+  // v462: Portrait panel — soft tinted left strip (38px wide)
+  bx(6,dlgY,38,90,'rgba(0,0,0,.22)');
+  bx(6,dlgY,2,90,accent); // accent edge
+  bx(44,dlgY,1,90,'rgba(200,180,140,.12)'); // divider
+  // v462: Draw NPC pixel-art portrait inside panel
+  _drawNpcPortrait(10,dlgY+8,npcDialogName,accent);
+
+  // Name badge (colored accent top-bar) — shifted right of portrait
   const nbW=npcDialogName.length*7+24;
-  win(10,H-112+slideOff,nbW,18);
-  bx(10,H-112+slideOff,nbW,2,accent);
-  txShadow(npcDialogName,20,H-97+slideOff,7,accent,'rgba(0,0,0,.35)');
+  win(48,H-112+slideOff,nbW,18);
+  bx(48,H-112+slideOff,nbW,2,accent);
+  txShadow(npcDialogName,58,H-97+slideOff,7,accent,'rgba(0,0,0,.35)');
 
   // v273: cache wrapped lines per dialog index — only recompute when idx changes
   if(_npcDlgCacheIdx!==npcDialogIdx){
     _npcDlgCacheIdx=npcDialogIdx;
     const rawLine=npcDialogLines[npcDialogIdx]||'';
     const rawLine2=npcDialogLines[npcDialogIdx+1]||'';
-    const w1=wrapText(rawLine,52),w2=rawLine2?wrapText(rawLine2,52):[];
+    const w1=wrapText(rawLine,46),w2=rawLine2?wrapText(rawLine2,46):[];
     _npcDlgCacheLines=w1.concat(w2);
   }
   const _alLen=Math.min(3,_npcDlgCacheLines.length);
   for(let i=0;i<_alLen;i++){
-    txShadow(_npcDlgCacheLines[i],20,H-70+slideOff+i*16,7,FRLG.textColor,'rgba(0,0,0,.25)');
+    txShadow(_npcDlgCacheLines[i],54,H-70+slideOff+i*16,7,FRLG.textColor,'rgba(0,0,0,.25)');
   }
 
-  // Progress indicator: show line X/total as small dots bottom-left
+  // Progress indicator: show line X/total as small dots bottom-left (shifted right of portrait)
   const totalLines=npcDialogLines.length;
   if(totalLines>2){
     const maxDots=Math.min(totalLines,8);
     for(let d=0;d<maxDots;d++){
       const active=d===Math.floor(npcDialogIdx/2);
-      bx(20+d*8,dlgY+80,6,3,active?accent:'rgba(200,180,100,.25)');
+      bx(54+d*8,dlgY+80,6,3,active?accent:'rgba(200,180,100,.25)');
     }
   }
 
@@ -10856,7 +10984,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v445',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v463',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -10949,6 +11077,7 @@ const _DANGER_LBL=['DANGER:LOW','DANGER:MED','DANGER:HIGH']; // pre-combined dan
 const _STREAK_LBL=(()=>{const a=[];for(let i=0;i<=20;i++)a.push('STREAK:'+i+'x');return a;})();
 const _HAND_LBL=(()=>{const a=[];for(let i=0;i<=15;i++)a.push('HAND:'+i);return a;})();
 const _CARDS_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('CARDS:'+i+'/60');return a;})();
+let _vaultHudKey=-1,_vaultHudLbl=''; // v449: vault progress HUD label cache
 let _stepsCache='STEPS:0',_stepsKey=-1; // stepCounter lazy cache
 let _expLblCache='EXP:0%',_expLblKey=-1; // fog exploration % lazy cache
 let _mapLblCache='MAP:0%',_mapLblKey=-1; // map exploration % lazy cache
@@ -12658,6 +12787,21 @@ function dMap(){
     g.globalAlpha=1;
   }
 
+  // ── v463: Trap hit danger banner — center-screen red pill, slide-in + fade-out ──
+  {const _ta=fr-_trapHitFrame;
+  if(_ta>=0&&_ta<80){
+    const _tf=_ta<8?_ta/8:_ta>50?Math.max(0,1-(_ta-50)/30):1;
+    if(_tf>0.01){
+      const _tSlide=_ta<8?Math.round((1-_ta/8)*14):0;
+      const _tW=80;const _tX=Math.round(W/2-_tW/2);const _tY=Math.round(H/2-44+_tSlide);
+      g.globalAlpha=_tf;
+      bx(_tX,_tY,_tW,20,'rgba(140,16,16,.9)');
+      bx(_tX,_tY,_tW,2,'#ff5040');bx(_tX,_tY+18,_tW,2,'#ff5040');
+      txShadow('\u26a0 TRAP!',_tX+10,_tY+14,9,'#fff8e0','rgba(0,0,0,.65)');
+      g.globalAlpha=1;
+    }
+  }}
+
   // Area Danger Level display — v314: pre-baked combined label
   const dangerVal=areaDanger[currentMap];
   const _dangerIdx=dangerVal>=DANGER_HIGH_THRESH?2:dangerVal>=DANGER_LOW_THRESH?1:0;
@@ -12788,8 +12932,15 @@ function dMap(){
     const wCol=townWeather==='rain'?'#80a0d0':townWeather==='fog'?'#a0a8b0':'#f0c830';
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
+  // v449: Vault progress counter — unique cards collected toward 60-card win condition
+  {
+    const _vsz=pl[0].vault?pl[0].vault.size:0;
+    if(_vaultHudKey!==_vsz){_vaultHudKey=_vsz;_vaultHudLbl='\u2605'+(_UNIQ60[_vsz]||_vsz+'/60');}
+    const _vcol=_vsz>=50?'#f0c830':_vsz>=30?'#c0a040':'#8890c0';
+    txShadow(_vaultHudLbl,848,hudY+56,7,_vcol,'rgba(0,0,0,.5)');
+  }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v445',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v463',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -13102,8 +13253,8 @@ const _CARD_TYPE_INFO_S={
   flee:  {col:'#40c080',label:'FLEE',  lines:['Ends battle immediately.','No cards lost this round.','Use when overwhelmed.']},
   magic: {col:'#c070e0',label:'MAGIC', lines:['−2 HP to both rivals.','Guaranteed steal (bypasses barrier).','Strips YOUR barrier too. High risk!']},
 };
-const _DEF_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#4080d0',label:'DEFENSE',lines:['Raises Barrier this round.','Restores +'+(Math.ceil(r/2))+' Barrier charges.','Protects against incoming Steal.']});return a;})();
-const _REC_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#e0c030',label:'RECOVERY',lines:['Restores spell energy:','+'+Math.ceil(r/2)+' Steal, +1 Barrier, +1 Scout.','Use when spells are depleted.']});return a;})();
+const _DEF_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++){const chg=Math.min(2,Math.ceil(r/2));a.push({col:'#4080d0',label:'DEFENSE',lines:['Barrier + +'+chg+' Barrier charge'+(chg>1?'s':'')+'.','Restores +1 HP if hurt.','Protects against incoming Steal.']});}return a;})(); // v451: accurate charge cap + HP heal
+const _REC_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#e0c030',label:'RECOVERY',lines:['Restores spell energy:','+'+Math.ceil(r/2)+' Steal, +1 Barrier, +1 Scout.','Also restores +1 HP!']});return a;})(); // v451: added HP heal to description
 const _UNK_TYPE_INFO={col:'#888',label:'UNKNOWN',lines:['Unknown effect.','','']};
 // v316: pre-baked vs_splash labels, ZK spinner strings, round/action labels
 const _PWR_LBL=(()=>{const a=[];for(let i=0;i<=25;i++)a.push('PWR:'+i);return a;})();
@@ -13352,6 +13503,12 @@ function drawBattleBG(){
     }}
     g.globalAlpha=1;
   }
+  // v456: Critical HP vignette — pulsing blood-red screen edges when player is at 1 HP
+  if(bpHP[0]===1){
+    g.globalAlpha=0.28+_sFr15*0.18; // pulses ~0.10→0.46 at ~1.4 Hz
+    g.drawImage(_btlVigCrit,0,0);
+    g.globalAlpha=1;
+  }
 }
 
 // Draw FRLG-style card count bar (like HP bar) with rounded container and segmented fill
@@ -13446,10 +13603,11 @@ const _btlLowHpVig=(()=>{
 
 // ── Battle HUD helpers ──
 // Draws BATTLE_HP_MAX pixel-art hearts at (hx,hy); fills with filledNorm or filledFlash when isFlashing
-function _drawHPHearts(hx,hy,hp,filledNorm,filledFlash,empty,isFlashing){
+function _drawHPHearts(hx,hy,hp,filledNorm,filledFlash,empty,isFlashing,isHealFlashing){
   for(let h=0;h<BATTLE_HP_MAX;h++){
     const filled=h<hp;
-    const hc=filled?(isFlashing?filledFlash:filledNorm):empty;
+    // v452: heal flash overrides damage flash — green glow when HP restored
+    const hc=filled?(isHealFlashing?'#60ff88':isFlashing?filledFlash:filledNorm):empty;
     const hhi=hx+h*14,hhj=hy;
     bx(hhi+1,hhj,3,1,hc);bx(hhi,hhj+1,6,1,hc);bx(hhi,hhj+2,6,2,hc);
     bx(hhi+1,hhj+4,4,1,hc);bx(hhi+2,hhj+5,2,1,hc);bx(hhi+3,hhj+6,1,1,hc);
@@ -13463,6 +13621,14 @@ function _drawAccuracyReveal(px_,yBase,bw_,revT_,acc_,bluffName_,alpha_){
   bx(px_+4,yBase,bw_-8,14,acc_?'rgba(20,80,40,.5)':'rgba(80,20,20,.5)');
   txShadow(acc_?'\u2713 TELL WAS TRUE':'\u2717 '+bluffName_+' BLUFFED',px_+8,yBase+10,6,acc_?'#50d080':'#d05050','rgba(0,0,0,.3)');
   g.globalAlpha=1;
+}
+
+// v454: spawn floating HP-delta number above combatant sprite
+// tgt: 0=player,1=VEGA,2=MIRA; val: positive=heal, negative=damage
+function _bpFloat(tgt,val){
+  const _fx=tgt===1?W-148:tgt===2?W-298:190;
+  const _fy=tgt===1?85:tgt===2?118:(H-148);
+  bpDmgFloats.push({x:_fx,y:_fy,val,born:fr,col:val>0?'#60ff88':'#ff6060'});
 }
 
 // Draw FRLG-style opponent info box (top-left)
@@ -13490,7 +13656,14 @@ function drawOpponentInfoBox(){
   txShadow(rival.n,bx_+10,by_+20,12,'#d06080','rgba(0,0,0,.5)');
   // HP hearts rival 1
   {const dmgFlash1=bpHPDmgAnim[1]>0&&Math.floor(fr/3)%2===0;
-  _drawHPHearts(bx_+80,by_+9,bpHP[1],'#e84040','#ff8888','#401818',dmgFlash1);}
+  const healFlash1=bpHPHealAnim[1]>0&&Math.floor(fr/3)%2===0; // v452
+  _drawHPHearts(bx_+80,by_+9,bpHP[1],'#e84040','#ff8888','#401818',dmgFlash1,healFlash1);}
+  // v450: KO badge — rival at 1 HP means one hit KO → they surrender ALL cards
+  if(bpHP[1]===1&&battlePhase==='select'){
+    const _koA=0.6+_sFr18*0.4;g.globalAlpha=_koA;
+    bx(bx_+124,by_+9,28,8,'rgba(200,0,0,.88)');bx(bx_+124,by_+9,28,1,'#ff8080');
+    txShadow('!! KO',bx_+126,by_+16,5,'#ffe0e0','rgba(0,0,0,.5)');g.globalAlpha=1;
+  }
   txShadow('CARDS',bx_+120,by_+20,7,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
   const r1Cards=cardCount(rival);
@@ -13525,7 +13698,14 @@ function drawOpponentInfoBox(){
   txShadow(_hunterFledLbl,bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.4)');} // v345: lazy cache
   // HP hearts rival 2
   if(r2alive){const dmgFlash2=bpHPDmgAnim[2]>0&&Math.floor(fr/3)%2===0;
-  _drawHPHearts(bx_+80,sepY+7,bpHP[2],'#e8a040','#ffcc88','#402018',dmgFlash2);}
+  const healFlash2=bpHPHealAnim[2]>0&&Math.floor(fr/3)%2===0; // v452
+  _drawHPHearts(bx_+80,sepY+7,bpHP[2],'#e8a040','#ffcc88','#402018',dmgFlash2,healFlash2);}
+  // v450: KO badge for rival 2 at 1 HP
+  if(bpHP[2]===1&&r2alive&&battlePhase==='select'){
+    const _koA2=0.6+_sFr18*0.4;g.globalAlpha=_koA2;
+    bx(bx_+124,sepY+7,28,8,'rgba(190,60,0,.88)');bx(bx_+124,sepY+7,28,1,'#ffb080');
+    txShadow('!! KO',bx_+126,sepY+14,5,'#ffe8d0','rgba(0,0,0,.5)');g.globalAlpha=1;
+  }
   if(r2alive){
     drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
     const r2Cards=cardCount(hunter);
@@ -13589,9 +13769,10 @@ function drawPlayerInfoBox(){
   // HP hearts (player)
   {const php=bpHP[0],hx=bx_+90,hy=by_+9;
   const dmgFlash=bpHPDmgAnim[0]>0&&Math.floor(fr/3)%2===0;
+  const healFlash0=bpHPHealAnim[0]>0&&Math.floor(fr/3)%2===0; // v452
   for(let h=0;h<BATTLE_HP_MAX;h++){
     const filled=h<php;
-    const hc=filled?(dmgFlash?'#ff8888':'#e84040'):'#401818';
+    const hc=filled?(healFlash0?'#60ff88':dmgFlash?'#ff8888':'#e84040'):'#401818';
     const hhi=hx+h*18,hhj=hy;
     bx(hhi+2,hhj,4,1,hc);bx(hhi,hhj+1,8,1,hc);
     bx(hhi,hhj+2,8,3,hc);bx(hhi+1,hhj+5,6,1,hc);
@@ -13599,6 +13780,12 @@ function drawPlayerInfoBox(){
     bx(hhi+4,hhj+8,1,1,hc);
     if(filled){bx(hhi+1,hhj+2,2,1,'rgba(255,255,255,.35)');}
   }}
+  // v450: Player DANGER badge at 1 HP — next defeat = card lost
+  if(bpHP[0]===1&&battlePhase==='select'){
+    const _pdA=0.65+_sFr15*0.35;g.globalAlpha=_pdA;
+    bx(bx_+152,by_+9,40,8,'rgba(200,0,0,.85)');bx(bx_+152,by_+9,40,1,'#ff6060');
+    txShadow('DANGER',bx_+154,by_+16,4,'#ffe0e0','rgba(0,0,0,.5)');g.globalAlpha=1;
+  }
   // Card bar
   txShadow('CARDS',bx_+10,by_+36,8,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+60,by_+28,148,pl[0].cd,Math.min(HAND_SIZE,10),true); // v445: showTypes
@@ -13737,11 +13924,12 @@ function drawVsSplash(){
   let _ypwr=0,_rpwr=0;
   for(let _i=0;_i<HAND_SIZE;_i++){const _id=pl[0].cd[_i];if(_id>0)_ypwr+=(CD[_id-1]?.r||0);}
   for(let _i=0;_i<HAND_SIZE;_i++){const _id=vsSplashRival.cd[_i];if(_id>0)_rpwr+=(CD[_id-1]?.r||0);}
-  // Diagonal split
+  // v453: Rival-themed diagonal split — VEGA=blue, MIRA=amber
   const angle=W*1.2;
+  const rivalBgCol=vsRivalIdx===2?'#704010':'#3060b0'; // MIRA amber vs VEGA blue
   g.save();
   g.fillStyle='#c04040';g.beginPath();g.moveTo(W/2-2,0);g.lineTo(W/2+angle/2,H);g.lineTo(W/2-2-angle/2,H);g.closePath();g.fill();
-  g.fillStyle='#3060b0';g.beginPath();g.moveTo(W/2+2,0);g.lineTo(W/2+2+angle/2,0);g.lineTo(W/2+2+angle/2,H);g.lineTo(W/2+2-angle/2,H);g.closePath();g.fill();
+  g.fillStyle=rivalBgCol;g.beginPath();g.moveTo(W/2+2,0);g.lineTo(W/2+2+angle/2,0);g.lineTo(W/2+2+angle/2,H);g.lineTo(W/2+2-angle/2,H);g.closePath();g.fill();
   g.restore();
   // Sprites slide in (player from left back-facing, opponent from right front-facing)
   const pSlide=Math.min(1,t/30);
@@ -13761,6 +13949,11 @@ function drawVsSplash(){
     txShadow(_SPLASH_CARD_LBL[yourCards]||(yourCards+' cards'),60,H/2-42,8,'rgba(255,255,255,.6)','rgba(0,0,0,.4)'); // v316
     // v106: hand power score = sum of card rarities (v284: pre-computed above)
     txShadow(_PWR_LBL[_ypwr]||('PWR:'+_ypwr),60,H/2-26,7,'#78c0f0','rgba(0,0,0,.35)'); // v316
+    // v453: Compact card-type summary pips — color-coded dots showing hand composition
+    {const _tcnt=[0,0,0,0,0]; // attack,defense,flee,magic,recovery
+    for(let _ti=0;_ti<HAND_SIZE;_ti++){const _cid=pl[0].cd[_ti];if(_cid>0&&CD[_cid-1]){const _idx=_BTYPE_MAP[CD[_cid-1].t];if(_idx!==undefined)_tcnt[_idx]++;}}
+    let _px=60;
+    for(let _ti=0;_ti<5;_ti++){for(let _pi=0;_pi<_tcnt[_ti];_pi++){bx(_px,H/2-12,5,5,_BTYPE_COL[_ti]);_px+=7;}if(_tcnt[_ti]>0)_px+=3;}}
     g.globalAlpha=1;
   }
 
@@ -13793,6 +13986,25 @@ function drawVsSplash(){
     bx(W/2-assW/2,H/2-80,assW,20,'rgba(0,0,0,.5)');
     txShadow(assLabel,W/2-assW/2+8,H/2-64,10,assCol,'rgba(0,0,0,.5)');
     g.globalAlpha=1;
+    // v460: Power comparison fill bar — left=player (blue), right=rival, fills inward from edges
+    if(t>25&&(_ypwr+_rpwr)>0){
+      const _barA=Math.min(1,(t-25)/10);
+      const _barW=200,_barH=8,_barX=W/2-100,_barY=H/2-52;
+      const _totP=_ypwr+_rpwr;
+      const _fillT=Math.min(1,(t-25)/20);
+      const _yW=Math.floor((_ypwr/_totP)*_barW*_fillT);
+      const _rW=Math.floor((_rpwr/_totP)*_barW*_fillT);
+      const _rivCol=vsRivalIdx===1?'#f080c0':'#f0c830';
+      g.globalAlpha=_barA;
+      bx(_barX,_barY,_barW,_barH,'rgba(0,0,0,.45)'); // track
+      if(_yW>0)bx(_barX,_barY,_yW,_barH,'#78c0f0');              // player fills left→right
+      if(_rW>0)bx(_barX+_barW-_rW,_barY,_rW,_barH,_rivCol);     // rival fills right→left
+      bx(_barX+_yW-1,_barY-1,2,_barH+2,'rgba(255,255,255,.65)'); // front line marker
+      g.globalAlpha=_barA*0.6;
+      txShadow(''+_ypwr,_barX-22,_barY+7,7,'#78c0f0','rgba(0,0,0,.3)');
+      txShadow(''+_rpwr,_barX+_barW+4,_barY+7,7,_rivCol,'rgba(0,0,0,.3)');
+      g.globalAlpha=1;
+    }
   }
 
   // VS text with pop-in scale + glow pulse
@@ -14142,12 +14354,13 @@ function drawActionGrid(){
       const _ucTi=_BTYPE_MAP[_ucCr.t];
       const _ucAbb=_ucTi!==undefined?_BTYPE_ABB[_ucTi]:'???';
       const _ucCol=_ucTi!==undefined?_BTYPE_COL[_ucTi]:'#888';
-      const _bW=_ucAbb.length*5+8,_bH=11;
+      const _ucLbl=(_ucCr.i?_ucCr.i+' ':'')+_ucAbb; // v446: icon + abbreviation
+      const _bW=_ucLbl.length*5+8,_bH=11;
       const _bx2=ucX+ucW-_bW-4,_by2=ucY+4;
       g.globalAlpha=ucSel?0.95:0.65;
       bx(_bx2,_by2,_bW,_bH,'rgba(0,0,0,.6)');
       bx(_bx2,_by2,_bW,1,_ucCol);
-      txShadow(_ucAbb,_bx2+3,_by2+9,5,_ucCol,'rgba(0,0,0,.3)');
+      txShadow(_ucLbl,_bx2+3,_by2+9,5,_ucCol,'rgba(0,0,0,.3)');
       g.globalAlpha=1;
     }
   }
@@ -14199,7 +14412,9 @@ function drawSelectPhase(){
         const rarCol=RARITY_COLOR[rar]||'#888888';
         const owned=vault_.has(cid);
         const py2=ppY+32+pi*26;
+        const _fpTi=_BTYPE_MAP[cr.t];const _fpCol=_fpTi!==undefined?_BTYPE_COL[_fpTi]:'#888'; // v446
         bx(ppX+10,py2-8,12,16,cr.d);bx(ppX+11,py2-7,10,14,cr.c);
+        bx(ppX+10,py2-8,12,1,_fpCol); // v446: type color top border on mini card
         drawCardCharacter(ppX+11,py2-7,cid,0.45,fr);
         const nCol=owned?'#888878':'#e8e0c8';
         txShadow(cr.n,ppX+28,py2+2,7,nCol,'rgba(0,0,0,.3)');
@@ -14402,10 +14617,10 @@ function drawSelectPhase(){
       txShadow(_ucCr.n,ppX+8,ppY+22,9,ti.col,'rgba(0,0,0,.4)');
       const _rar=_ucCr.r||1;const _rarCol=RARITY_COLOR[_rar]||'#888';
       for(let s=0;s<_rar;s++)txShadow('\u2605',ppX+ppW-8-(_rar-s)*9,ppY+22,5,_rarCol,'rgba(0,0,0,.3)');
-      // Type badge
+      // Type badge — v446: icon + label
       bx(ppX+8,ppY+28,ppW-16,14,'rgba(0,0,0,.45)');
       bx(ppX+8,ppY+28,ppW-16,1,ti.col);
-      txShadow(ti.label,ppX+12,ppY+39,7,ti.col,'rgba(0,0,0,.35)');
+      txShadow((_ucCr.i?_ucCr.i+' ':'')+ti.label,ppX+12,ppY+39,7,ti.col,'rgba(0,0,0,.35)');
       bx(ppX+6,ppY+46,ppW-12,1,'rgba(200,180,100,.2)');
       // Effect lines
       for(let li=0;li<ti.lines.length;li++){
@@ -14495,7 +14710,10 @@ function drawSelectPhase(){
     for(let j=0;j<_csN;j++){
       const slot=_csFilledBuf[j];const cd=pl[0].cd[slot],cr=CD[cd-1];
       const y=H/2-mh/2+46+j*spacing;
+      const _csTi=_BTYPE_MAP[cr.t];const _csTCol=_csTi!==undefined?_BTYPE_COL[_csTi]:'#888'; // v446
       if(j===bpCardSelectIdx){bx(W/2-cardW/2+8,y-4,cardW-16,cardH-4,'rgba(192,168,96,.25)');txShadow('\u25B6',W/2-cardW/2+4,y+20,12,'#c04040','rgba(0,0,0,.3)');}
+      // v446: type color left stripe per row
+      bx(W/2-cardW/2+8,y-3,3,cardH-6,_csTCol);
       // Larger card frame with character sprite
       const frameX=W/2-cardW/2+28;
       bx(frameX,y+2,36,36,cr.d);bx(frameX+2,y+4,32,32,cr.c);
@@ -14503,6 +14721,12 @@ function drawSelectPhase(){
       // Card name clearly below/beside
       txShadow(cr.n,frameX+44,y+20,14,j===bpCardSelectIdx?'#c04040':'#303028','rgba(0,0,0,.2)');
       txShadow(cr.f,frameX+44,y+36,11,'#908878','rgba(0,0,0,.15)');
+      // v446: type badge right-aligned — icon + abbreviation pill
+      {const _csAbb=_csTi!==undefined?_BTYPE_ABB[_csTi]:'???';const _csLbl=(cr.i?cr.i+' ':'')+_csAbb;
+      const _csBX=W/2+cardW/2-_csLbl.length*5-14;
+      bx(_csBX,y+6,_csLbl.length*5+10,14,'rgba(0,0,0,.5)');
+      bx(_csBX,y+6,_csLbl.length*5+10,1,_csTCol);
+      txShadow(_csLbl,_csBX+4,y+16,5,_csTCol,'rgba(0,0,0,.3)');}
     }
     // v91: Effect preview panel for selected card (shown to the right of card list)
     if(_csN>0&&bpCardSelectIdx>=0&&bpCardSelectIdx<_csN){
@@ -14523,9 +14747,9 @@ function drawSelectPhase(){
         // Colored top bar matching card type
         bx(finalEpX,epY,epW,4,ti.col);
         g.globalAlpha=prevAlpha;
-        // Card type badge
+        // Card type badge — v446: icon + label
         bx(finalEpX+8,epY+10,epW-16,16,'rgba(0,0,0,.5)');
-        txShadow(ti.label,finalEpX+12,epY+22,8,ti.col,'rgba(0,0,0,.4)');
+        txShadow((scr.i?scr.i+' ':'')+ti.label,finalEpX+12,epY+22,8,ti.col,'rgba(0,0,0,.4)');
         // Rarity stars
         const rarCol=RARITY_COLOR[scr.r]||'#888';
         for(let s=0;s<scr.r;s++)txShadow('\u2605',finalEpX+epW-8-(scr.r-s)*10,epY+22,7,rarCol,'rgba(0,0,0,.3)');
@@ -14576,6 +14800,23 @@ function drawSelectPhase(){
     g.globalAlpha=1;
   }
   g.restore();
+  // v455: Round-start flash — "BATTLE N" center pop for rounds 2+ (round 1 has VS splash)
+  if(rd>1){
+    const t_=fr-bpFrame;
+    if(t_<30){
+      const fA=t_<8?t_/8:Math.max(0,(30-t_)/10);
+      const fSc=t_<8?(0.55+t_/8*0.45):1; // scale pop
+      const _rlbl=_BATTLE_HDR[rd]||('BATTLE '+rd);
+      const _rw=_rlbl.length*14+24;
+      g.save();
+      g.translate(W/2,H/2);g.scale(fSc,fSc);
+      g.globalAlpha=fA*0.94;
+      bx(-_rw/2,-20,_rw,36,'rgba(8,12,30,.9)');
+      bx(-_rw/2,-20,_rw,3,'#c0a030');bx(-_rw/2,14,_rw,3,'#604010');
+      txShadow(_rlbl,-_rlbl.length*7+2,13,20,'#f0c830','rgba(0,0,0,.8)');
+      g.restore();g.globalAlpha=1;
+    }
+  }
 }
 
 function drawConfirmingPhase(){
@@ -14872,7 +15113,9 @@ function checkWinAndTransition(delayMs){
   else{gameOverTimesUp=false;stats.gamesPlayed++;saveStats();fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});}
 }
 
-// Rival AI: choose an action index (0=Draw,1=Steal,2=Barrier,3=Scout)
+// v447: helper — return first slot where rival has a card of the given type, or -1
+function rivalHasCardOfType(rIdx,t){for(let i=0;i<HAND_SIZE;i++){const cid=pl[rIdx].cd[i];if(cid>0&&CD[cid-1]&&CD[cid-1].t===t)return i;}return -1;}
+// Rival AI: choose an action index (0=Draw,1=Steal,2=Barrier,3=Scout,4=UseCard)
 function rivalChooseAction(rIdx){
   const r=pl[rIdx];
   const aiIdx=rIdx-1;
@@ -14883,21 +15126,31 @@ function rivalChooseAction(rIdx){
   // v298: rivalUniqSize is allocation-free (was hasUniqueCards → new Set per round)
   const rUniq=rivalUniqSize(rIdx);
 
+  // v448: floor-depth scaling — deeper floors = more aggressive AI
+  const _flScl=Math.max(0,currentMap-2); // 0 for F1-F2, 1 for F3, 2 for F4, 3 for F5
+  const _ucRate=0.12+_flScl*0.04; // USE CARD attack rate: 12%→24% by F5
+  const _stRate=0.50+_flScl*0.05; // STEAL rate: 50%→65% by F5
+  const _oppStl=0.20+_flScl*0.05; // opportunistic steal: 20%→35% by F5
   if(ai.personality==='hunter'){
-    // Aggressive: mostly Steal + Scout
+    // Aggressive: mostly Steal + Scout; v447: occasionally uses attack card
+    const _atkSlot=rivalHasCardOfType(rIdx,'attack');
+    if(_atkSlot>=0&&rCardCount>=2&&cardCount(pl[0])>=1&&roll<_ucRate)return 4;// USE CARD (attack)
     if(rUniq>=4){
       if(roll<0.4)return 2;// barrier to protect lead
       if(roll<0.7)return 1;// steal
       return 3;// scout
     }
     if(cardCount(pl[0])>=2){
-      if(roll<0.5)return 1;// steal from player
-      if(roll<0.75)return 3;// scout player
+      if(roll<_stRate)return 1;// steal from player
+      if(roll<_stRate+0.20)return 3;// scout player
       return 0;// draw
     }
     if(roll<0.4)return 1;if(roll<0.7)return 0;return 3;
   }else{
-    // Collector: mostly Draw + Barrier, but will steal when behind
+    // Collector: mostly Draw + Barrier; v447: uses recovery card to restore when hurt
+    const _recRate=0.10+_flScl*0.03; // USE CARD recovery rate: 10%→19% by F5
+    const _recSlot=rivalHasCardOfType(rIdx,'recovery');
+    if(_recSlot>=0&&rCardCount>=2&&bpHP[rIdx]<BATTLE_HP_MAX&&roll<_recRate)return 4;// USE CARD (recovery)
     if(rUniq>=4){
       if(roll<0.5)return 2;// barrier to protect lead
       if(roll<0.8)return 0;// draw to complete set
@@ -14906,7 +15159,7 @@ function rivalChooseAction(rIdx){
     // Steal if player has more unique types than rival
     const playerUniq=pl[0].vault?pl[0].vault.size:rivalUniqSize(0);
     const needsFromPlayer=rCardCount>=3&&playerUniq>rUniq;
-    if(needsFromPlayer&&roll<0.20)return 1;// opportunistic steal (20%)
+    if(needsFromPlayer&&roll<_oppStl)return 1;// opportunistic steal
     if(roll<0.45)return 0;// draw (45%)
     if(roll<0.75)return 2;// barrier (30%)
     if(roll<0.90)return 3;// scout (15%)
@@ -14941,6 +15194,7 @@ const RIVAL_BATTLE_TELLS=[
     1:['VEGA\'s eyes lock onto your hand.','VEGA steps forward hungrily.','VEGA narrows their eyes.','VEGA grins, low and quiet.','VEGA\'s fingers flex.'],
     2:['VEGA plants both feet firmly.','VEGA braces, arms crossed.','VEGA shields their cards.','VEGA stands unmoved.','VEGA exhales — ready.'],
     3:['VEGA tilts their head, watching.','VEGA studies the battlefield.','VEGA assesses the odds.','VEGA\'s gaze sweeps the room.','VEGA stores information silently.'],
+    4:['VEGA\'s hand flickers — a card dissolves.','VEGA consumes something with a sneer.','VEGA burns a card for power.','VEGA\'s grip tightens... then releases.'], // v447
   },
   // MIRA (index 1) — calculated, collector
   {
@@ -14948,6 +15202,7 @@ const RIVAL_BATTLE_TELLS=[
     1:['MIRA steps forward, purposeful.','MIRA watches your cards closely.','MIRA calculates the exchange.','MIRA identifies her target.','MIRA adjusts her stance slightly.'],
     2:['MIRA folds her arms.','MIRA builds a quiet wall.','MIRA shields her collection.','MIRA won\'t show her hand.','MIRA is unreadable.'],
     3:['MIRA glances between both hands.','MIRA notes something quietly.','MIRA evaluates everything.','MIRA catalogs in silence.','MIRA sees the whole board.'],
+    4:['MIRA recalibrates — a card vanishes.','MIRA burns a card from her set. Calculated.','MIRA enters recovery protocol.','MIRA sacrifices one for the long game.'], // v447
   },
 ];
 
@@ -15095,7 +15350,7 @@ function generateResolveEvents(){
         const restore=Math.min(2,Math.ceil(cr.r/2));
         sp.b=Math.min(5,sp.b+restore);
         const healed=bpHP[0]<BATTLE_HP_MAX;
-        if(healed)bpHP[0]=Math.min(BATTLE_HP_MAX,bpHP[0]+1);
+        if(healed){bpHP[0]=Math.min(BATTLE_HP_MAX,bpHP[0]+1);bpHPHealAnim[0]=24;} // v452
         events.push({type:'result',text:cr.n+': Barrier! +'+restore+' charge.'+(healed?' Restored 1 HP!':''),effect:'shield',heal:healed?1:0});
         lg.push('R'+rd+': '+cr.n+' barrier +'+restore+(healed?' +HP':'')+'!');
       }else if(cr.t==='flee'){
@@ -15108,7 +15363,7 @@ function generateResolveEvents(){
         // v440: fixed asymmetric bug (was 2+1 dmg); v442: restored bpPlayerBarrier=false (high-risk: your barrier stripped too)
         bpPlayerBarrier=false;
         bpHP[1]=Math.max(0,bpHP[1]-2);bpHP[2]=Math.max(0,bpHP[2]-2);
-        bpHPDmgAnim[1]=20;bpHPDmgAnim[2]=20;
+        bpHPDmgAnim[1]=20;bpHPDmgAnim[2]=20;_bpFloat(tgt===1?2:1,-2); // v454: non-target rival (v214 handles target)
         const stolen=removeCardFromPlayer(tgt,-1);
         if(stolen>0&&addCardToPlayer(0,stolen)){
           events.push({type:'result',text:cr.n+': Magic! -2 HP all rivals. Stole '+CD[stolen-1].n+'!',effect:'damage',target:tgt,isCritical:true,dmg:2});
@@ -15130,7 +15385,7 @@ function generateResolveEvents(){
         sp.s=Math.min(5,sp.s+Math.ceil(cr.r/2));
         sp.b=Math.min(5,sp.b+1);
         sp.c=Math.min(3,sp.c+1);
-        bpHP[0]=Math.min(BATTLE_HP_MAX,bpHP[0]+1);
+        bpHP[0]=Math.min(BATTLE_HP_MAX,bpHP[0]+1);bpHPHealAnim[0]=24; // v452
         events.push({type:'result',text:cr.n+': Recovery! +'+Math.ceil(cr.r/2)+' Steal, +1 Barrier, +1 Scout. +1 HP!',effect:'card_get',heal:1});
         lg.push('R'+rd+': '+cr.n+' restored energy + HP!');
       }
@@ -15184,9 +15439,42 @@ function generateResolveEvents(){
   }else if(r1Act===2){// Rival barrier (already tracked)
     events.push({type:'action',who:pl[1].n,action:'BARRIER',text:pl[1].n+' raised a BARRIER!',effect:'shield'});
     lg.push('R'+rd+': '+pl[1].n+' raised Barrier!');
-  }else{// Scout
+  }else if(r1Act===3){// Scout
     events.push({type:'action',who:pl[1].n,action:'SCOUT',text:pl[1].n+' used SCOUT on you!',effect:'rival_scout',scoutSource:1});
     lg.push('R'+rd+': '+pl[1].n+' scouted you!');
+  }else{// v447: USE CARD — VEGA burns a card for attack effect
+    let _r1s=rivalHasCardOfType(1,'attack');
+    if(_r1s<0){for(let i=0;i<HAND_SIZE;i++){if(pl[1].cd[i]>0){_r1s=i;break;}}}
+    if(_r1s>=0&&pl[1].cd[_r1s]>0){
+      const rc1=removeCardFromPlayer(1,_r1s);const rcr1=rc1>0?CD[rc1-1]:null;
+      if(rcr1&&rcr1.t==='attack'){
+        bpHP[0]=Math.max(0,bpHP[0]-1);bpHPDmgAnim[0]=20;
+        if(bpHP[0]<=0)events._playerDefeated=true;
+        events.push({type:'action',who:pl[1].n,action:'USE CARD',text:pl[1].n+' consumed '+rcr1.n+'!',effect:'slash',target:0});
+        if(Math.random()<0.25+rcr1.r*0.1&&pl[0].cc>0){
+          const stolen=removeCardFromPlayer(0,-1);
+          if(stolen>0){
+            if(!addCardToPlayer(1,stolen)){removeCardFromPlayer(1,-1);addCardToPlayer(1,stolen);}
+            events.push({type:'result',text:pl[1].n+': Power strike! Stole your '+CD[stolen-1].n+'! (-1 HP)',effect:'card_lost',target:0,isCritical:true,stolenId:stolen,rarity:CD[stolen-1].r,rivalIdx:0,dmg:1});
+            lg.push('R'+rd+': VEGA used '+rcr1.n+' → stole '+CD[stolen-1].n+'! -HP');
+            screenShake(5,12);if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
+          }else{events.push({type:'result',text:pl[1].n+': Strike! -1 HP!',effect:'none',dmg:1});lg.push('R'+rd+': VEGA '+rcr1.n+' → -HP!');}
+        }else{
+          events.push({type:'result',text:pl[1].n+': '+rcr1.n+' burns! -1 HP!',effect:'none',dmg:1});
+          lg.push('R'+rd+': VEGA '+rcr1.n+' → -HP!');screenShake(3,8);
+        }
+      }else if(rcr1){
+        bpHP[1]=Math.min(BATTLE_HP_MAX,bpHP[1]+1);bpHPHealAnim[1]=24;_bpFloat(1,1); // v452/v454
+        events.push({type:'action',who:pl[1].n,action:'USE CARD',text:pl[1].n+' used '+rcr1.n+'!',effect:'none'});
+        events.push({type:'result',text:pl[1].n+': '+rcr1.n+' restores power! (+1 HP)',effect:'none'});
+        lg.push('R'+rd+': VEGA used '+rcr1.n+' → +HP self!');
+      }
+    }else{// No card to use — fallback DRAW
+      const cardId=pickAreaCardForMap(rivalMaps[0]);const cr=CD[cardId-1];
+      if(addCardToPlayer(1,cardId)){events.push({type:'action',who:pl[1].n,action:'DRAW',text:pl[1].n+' drew '+cr.n+'.',effect:'card_get_rival',cardId,rivalIdx:0});}
+      else{removeCardFromPlayer(1,-1);addCardToPlayer(1,cardId);events.push({type:'action',who:pl[1].n,action:'DRAW',text:pl[1].n+' swapped for '+cr.n+'.',effect:'card_get_rival',cardId,rivalIdx:0});}
+      lg.push('R'+rd+': VEGA no card to use, drew '+cr.n+'!');
+    }
   }
 
   // ── RIVAL 2 (HUNTER) ACTION ──
@@ -15229,8 +15517,32 @@ function generateResolveEvents(){
     }
   }else if(r2Act===2){
     events.push({type:'action',who:pl[2].n,action:'BARRIER',text:pl[2].n+' raised a BARRIER!',effect:'shield'});
-  }else{
+  }else if(r2Act===3){
     events.push({type:'action',who:pl[2].n,action:'SCOUT',text:pl[2].n+' used SCOUT!',effect:'rival_scout',scoutSource:2});
+  }else{// v447: USE CARD — MIRA burns a recovery/defense card to heal
+    let _r2s=rivalHasCardOfType(2,'recovery');
+    if(_r2s<0)_r2s=rivalHasCardOfType(2,'defense');
+    if(_r2s<0){for(let i=0;i<HAND_SIZE;i++){if(pl[2].cd[i]>0){_r2s=i;break;}}}
+    if(_r2s>=0&&pl[2].cd[_r2s]>0){
+      const rc2=removeCardFromPlayer(2,_r2s);const rcr2=rc2>0?CD[rc2-1]:null;
+      if(rcr2&&(rcr2.t==='recovery'||rcr2.t==='defense')){
+        bpHP[2]=Math.min(BATTLE_HP_MAX,bpHP[2]+1);bpHPHealAnim[2]=24;_bpFloat(2,1); // v452/v454
+        events.push({type:'action',who:pl[2].n,action:'USE CARD',text:pl[2].n+' consumed '+rcr2.n+'!',effect:'none'});
+        events.push({type:'result',text:pl[2].n+': '+rcr2.n+' restores vitality. (+1 HP)',effect:'none'});
+        lg.push('R'+rd+': MIRA used '+rcr2.n+' → +HP self!');
+      }else if(rcr2){
+        bpHP[0]=Math.max(0,bpHP[0]-1);bpHPDmgAnim[0]=20;
+        if(bpHP[0]<=0)events._playerDefeated=true;
+        events.push({type:'action',who:pl[2].n,action:'USE CARD',text:pl[2].n+' consumed '+rcr2.n+'!',effect:'slash',target:0});
+        events.push({type:'result',text:pl[2].n+': Calculated strike! -1 HP!',effect:'none',dmg:1});
+        lg.push('R'+rd+': MIRA used '+rcr2.n+' → -HP player!');screenShake(3,8);
+      }
+    }else{// No card to use — fallback DRAW
+      const cardId=pickAreaCardForMap(rivalMaps[1]);const cr=CD[cardId-1];
+      if(addCardToPlayer(2,cardId)){events.push({type:'action',who:pl[2].n,action:'DRAW',text:pl[2].n+' drew '+cr.n+'.',effect:'card_get_rival',cardId,rivalIdx:1});}
+      else{removeCardFromPlayer(2,-1);addCardToPlayer(2,cardId);events.push({type:'action',who:pl[2].n,action:'DRAW',text:pl[2].n+' swapped for '+cr.n+'.',effect:'card_get_rival',cardId,rivalIdx:1});}
+      lg.push('R'+rd+': MIRA no card to use, drew '+cr.n+'!');
+    }
   }
 
   return events;
@@ -16096,6 +16408,8 @@ function drawResolvingPhase(){
       txShadow('DEFEATED!',-42,0,18,'#ff4040','rgba(0,0,0,.9)');
       g.restore();
     }
+    drawParticles(0,0); // v459: burst particles from card steals/gets now visible during battle
+    _drawBpFloats(); // v454: floating damage/heal numbers
     // v312: Streak pop flash during resolve events
     if(streakDisplayTimer>0&&streakCount>0){
       const _spA=Math.min(1,streakDisplayTimer/14);
@@ -16119,6 +16433,23 @@ function drawResolvingPhase(){
   }
 }
 
+// v454: render floating HP delta numbers above combatant sprites
+function _drawBpFloats(){
+  if(!bpDmgFloats||!bpDmgFloats.length)return;
+  const LIFE=36;
+  for(let i=bpDmgFloats.length-1;i>=0;i--){
+    const f=bpDmgFloats[i];
+    const age=fr-f.born;
+    if(age>=LIFE){bpDmgFloats.splice(i,1);continue;}
+    const alpha=age<LIFE-10?0.95:(LIFE-age)/10*0.95;
+    const yOff=(age*(-1.1))|0;
+    g.globalAlpha=alpha;
+    const lbl=f.val>0?('+'+f.val+' HP'):(f.val+' HP');
+    txShadow(lbl,f.x,f.y+yOff,9,f.col,'rgba(0,0,0,.7)');
+    g.globalAlpha=1;
+  }
+}
+
 function drawResultPhase(){
   drawBattleBG();
   drawPhaseBanner('result');
@@ -16131,7 +16462,52 @@ function drawResultPhase(){
   const slideIn_=Math.min(1,t/15);
   g.globalAlpha=slideIn_;
   win(panX,panY,panW,panH);
-  txShadow(_ROUND_SUM[rd]||'ROUND '+rd+' SUMMARY',panX+panW/2-100,panY+22,14,'#308030','rgba(0,0,0,.3)'); // v305
+  // v458: KO celebration header — golden animated banner + orbiting sparks when rival reaches 0 HP
+  {const _isKO=bpResolveQueue&&(bpResolveQueue._rival1KO||bpResolveQueue._rival2KO);
+  if(_isKO){
+    // Gold header strip behind KO text
+    bx(panX+4,panY+4,panW-8,22,'rgba(70,42,0,.78)');
+    bx(panX+4,panY+4,panW-8,2,'#f0c030');bx(panX+4,panY+24,panW-8,1,'#805010');
+    // KO label centered, scale pop-in
+    const _koName=bpResolveQueue._rival1KO?pl[1].n:pl[2].n;
+    const _koLbl='!! '+_koName+' KO !!';
+    const _koPop=Math.min(1,t<6?0.5+t/12*0.5:1);
+    const _koCol=Math.floor(t/5)%2===0?'#fff080':'#f0c830'; // shimmer flicker
+    g.save();g.translate(panX+panW/2,panY+17);g.scale(_koPop,_koPop);
+    txShadow(_koLbl,-(_koLbl.length*7)|0,4,14,_koCol,'rgba(60,30,0,.9)');
+    g.restore();
+    // Orbiting gold sparks — sin-addition with _ORB_SI8/CI8 (2 trig calls for 8 sparks)
+    const _koSpA=t<10?t/10:Math.max(0,(70-t)/16);
+    if(_koSpA>0.02){
+      const _spS=Math.sin(t*0.13),_spC=Math.cos(t*0.13),_spD=16+Math.min(t,30)*0.4;
+      g.globalAlpha=_koSpA*slideIn_;
+      for(let _ki=0;_ki<8;_ki++){
+        const _kc=_spC*_ORB_CI8[_ki]-_spS*_ORB_SI8[_ki],_ks=_spS*_ORB_CI8[_ki]+_spC*_ORB_SI8[_ki];
+        bx(panX+panW/2+_kc*_spD-2,panY+17+_ks*_spD*0.45-2,4,4,_ki%2===0?'#f0c030':'#ffe888');
+      }
+      g.globalAlpha=slideIn_;
+    }
+    // Gold screen-edge flash on first reveal
+    if(t<10){g.globalAlpha=slideIn_*(1-t/10)*0.28;bx(0,0,W,H,'#f0a830');g.globalAlpha=slideIn_;}
+  }else{
+    txShadow(_ROUND_SUM[rd]||'ROUND '+rd+' SUMMARY',panX+panW/2-100,panY+22,14,'#308030','rgba(0,0,0,.3)'); // v305
+  }}
+  // v457: Round outcome badge — WIN/LOSS/DRAW pop-in at top-right of panel
+  if(t>6&&bpResolveQueue){
+    let _gotCard=false,_lostCard=false;
+    for(let _oi=0;_oi<bpResolveQueue.length;_oi++){const _oe=bpResolveQueue[_oi].effect||'';if(_oe==='steal_get'||_oe==='card_get')_gotCard=true;else if(_oe==='card_lost')_lostCard=true;}
+    const _outLabel=_gotCard&&!_lostCard?'WIN!':_lostCard&&!_gotCard?'LOSS':_gotCard&&_lostCard?'TRADE':'DRAW';
+    const _outCol=_gotCard&&!_lostCard?'#40e880':_lostCard&&!_gotCard?'#ff4040':_gotCard?'#f0c030':'#888870';
+    const _outBg=_gotCard&&!_lostCard?'rgba(0,60,20,.75)':_lostCard&&!_gotCard?'rgba(60,0,0,.75)':_gotCard?'rgba(60,40,0,.75)':'rgba(0,0,0,.4)';
+    const _oBW=_outLabel.length*7+12;
+    const _popT=Math.min(1,(t-6)/8);
+    const _popSc=0.5+_popT*0.5;
+    g.save();g.translate(panX+panW-_oBW/2-16,panY+16);g.scale(_popSc,_popSc);
+    g.globalAlpha=slideIn_*Math.min(1,(t-6)/6);
+    bx(-_oBW/2,-8,_oBW,18,_outBg);bx(-_oBW/2,-8,_oBW,2,_outCol);bx(-_oBW/2,8,_oBW,1,_outCol);
+    txShadow(_outLabel,-_oBW/2+4,5,9,_outCol,'rgba(0,0,0,.6)');
+    g.restore();g.globalAlpha=slideIn_;
+  }
   // Divider
   bx(panX+16,panY+30,panW-32,1,'rgba(200,180,140,.3)');
 
@@ -16190,13 +16566,14 @@ function drawResultPhase(){
       const _dc=_delta>0?'#50d080':'#d05050';
       const _di=_delta+5;txShadow((_di>=0&&_di<11?_SIGNED_DELTA[_di]:((_delta>0?'+':'')+_delta)),cx_+colW-8,cy_+42,8,_dc,'rgba(0,0,0,.3)'); // v327
     }
-    // Mini card bar
+    // Mini card bar — v448: type color top border for player's cards
     for(let i=0;i<5;i++){
       const cd=pl[col].cd[i];
       const sx_=cx_+4+i*22;
       if(cd>0){
         const cr=CD[cd-1];
         bx(sx_,cy_+48,20,10,cr.d);bx(sx_+1,cy_+49,18,8,cr.c);
+        if(col===0){const _ti=_BTYPE_MAP[cr.t];if(_ti!==undefined)bx(sx_,cy_+48,20,1,_BTYPE_COL[_ti]);}
       }else{
         bx(sx_,cy_+48,20,10,'#383838');
       }
@@ -16355,6 +16732,8 @@ function drawResultPhase(){
   if(t>25&&Math.floor(t/20)%2===0){
     txShadow('PRESS Z TO CONTINUE',W/2-120,panY+panH+12,10,'#989080','rgba(0,0,0,.3)');
   }
+  drawParticles(0,0); // v459: linger particles visible in result phase
+  _drawBpFloats(); // v454: floating damage/heal numbers persist into result phase
 }
 
 function dAct(){
@@ -17692,6 +18071,9 @@ function checkForestTrap(){
     triggeredTraps.add(key);
     sfxTrap();
     flash();
+    screenShake(5,10); // v463: impact shake on trap trigger
+    _trapHitFrame=fr;  // v463: timestamp drives TRAP! banner in drawMap HUD
+    triggerCardLostAnim(pl[0].visualX-camX,pl[0].visualY-camY-16); // v463: red burst + floaty minus
     twSet('You triggered a trap!');
     // Reset streak on trap
     if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}
@@ -19483,7 +19865,7 @@ function update(){
   }
   if(flashT>0)flashT-=dt;
   if(bpShakeTimer>0)bpShakeTimer-=dt;
-  for(let hi=0;hi<3;hi++){if(bpHPDmgAnim[hi]>0)bpHPDmgAnim[hi]-=dt;}
+  for(let hi=0;hi<3;hi++){if(bpHPDmgAnim[hi]>0)bpHPDmgAnim[hi]-=dt;if(bpHPHealAnim[hi]>0)bpHPHealAnim[hi]-=dt;}
   if(rivalAlert>0)rivalAlert-=dt;
   if(fishingCooldownTimer>0)fishingCooldownTimer--;
   if(crystalRevealTimer>0)crystalRevealTimer--;
@@ -19730,7 +20112,7 @@ function update(){
             startWipe('mosaic',30,()=>{
               sc='act';battlePhase='vs_splash';bpFrame=fr;
               battleRoundHistory=[];_battleRoundNet=0; // v90/v284: reset round history+net on new battle
-              bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];
+              bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];bpHPHealAnim=[0,0,0];bpDmgFloats=[];
               startWipe('mosaic_out',20);
               // v79: track battle_rival mission
               if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){

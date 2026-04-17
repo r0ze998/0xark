@@ -744,6 +744,34 @@ function drawMinimap(){
   g.drawImage(mmBaseCanvas,mx,my);
   g.drawImage(mmAnimCanvas,mx,my);
 
+  // ── v461: New room discovery flash — gold border pulse + "NEW AREA" tooltip ──
+  {const _mfAge=fr-_mmFlashFrame;
+  if(_mfAge>=0&&_mfAge<70){
+    // Fade-in over 8 frames, hold, fade-out after frame 20 → gone at 70
+    const _mfA=_mfAge<8?_mfAge/8:Math.max(0,1-(_mfAge-20)/50);
+    if(_mfA>0.01){
+      // Gold tint overlay on minimap interior
+      g.globalAlpha=_mfA*0.22;
+      bx(mx,my,mmW,mmH,'#f0e060');
+      g.globalAlpha=1;
+      // Gold border flash (replaces FRLG gray border below)
+      const _mfBorderCol=`rgba(240,200,60,${(_mfA*0.9).toFixed(2)})`;
+      g.fillStyle=_mfBorderCol;
+      g.fillRect(mx-1,my-1,mmW+2,1);g.fillRect(mx-1,my+mmH,mmW+2,1);
+      g.fillRect(mx-1,my-1,1,mmH+2);g.fillRect(mx+mmW,my-1,1,mmH+2);
+      // "NEW AREA" tooltip above minimap — slides in from top, fades out
+      if(_mfAge<50){
+        const _mfLbl='NEW AREA';const _mfLW=_mfLbl.length*5+10;
+        const _mfSlide=_mfAge<8?(_mfAge/8)*6-6:0; // slides down 6px into place
+        g.globalAlpha=_mfA;
+        bx(mx+mmW/2-_mfLW/2,my-16+_mfSlide,_mfLW,10,'rgba(15,12,28,.85)');
+        bx(mx+mmW/2-_mfLW/2,my-16+_mfSlide,_mfLW,1,'#f0e060');
+        txShadow(_mfLbl,mx+mmW/2-_mfLW/2+3,my-7+_mfSlide,5,'#f0e060','rgba(0,0,0,.5)');
+        g.globalAlpha=1;
+      }
+    }
+  }}
+
   // ── FRLG-style window border (cheap, always per-frame) ──
   g.fillStyle='#484058';
   g.fillRect(mx,my-1,mmW,1);g.fillRect(mx-1,my,1,mmH);
@@ -1437,9 +1465,12 @@ function drawSynthesisShop(){
       const col=i%cols,row=Math.floor(i/cols);
       const cx=80+col*cellW,cy=138+row*cellH;
       const isSel=synthSelected.includes(slot);
+      const _stTi=_BTYPE_MAP&&_BTYPE_MAP[cr.t];const _stCol=_stTi!==undefined&&_BTYPE_COL?_BTYPE_COL[_stTi]:'#888'; // v447
       bx(cx,cy,cellW-8,cellH-4,isSel?'rgba(192,168,96,.3)':'rgba(40,36,28,.6)');
-      if(isSel){bx(cx,cy,2,cellH-4,'#c0a040');txShadow('\u2713',cx+cellW-20,cy+14,9,'#c0a040','rgba(0,0,0,.4)');}
+      bx(cx,cy,2,cellH-4,isSel?'#c0a040':_stCol); // v447: type color left stripe (gold when selected)
+      if(isSel){txShadow('\u2713',cx+cellW-20,cy+14,9,'#c0a040','rgba(0,0,0,.4)');}
       bx(cx+4,cy+4,20,20,cr.d);bx(cx+5,cy+5,18,18,cr.c);
+      bx(cx+4,cy+4,20,1,_stCol); // v447: type color top border on mini card
       drawCardCharacter(cx+6,cy+6,cid,0.7,fr);
       txShadow(cr.n,cx+30,cy+14,6,isSel?'#f8e8c0':'#c0b898','rgba(0,0,0,.3)');
       txShadow(cr.f,cx+30,cy+26,5,'#908878','rgba(0,0,0,.2)');
@@ -1704,6 +1735,83 @@ const NPC_ACCENT={
   'Alchemist':'#40c0c0',
 };
 let _npcDlgCacheIdx=-1,_npcDlgCacheLines=[]; // v273: NPC dialog wrap cache
+
+// v462: NPC pixel-art portrait — drawn inside dialog box left panel
+function _drawNpcPortrait(px,py,nm,ac){
+  const sk='#f0dcc0'; // skin tone
+  // Shared body: head, torso, arms, legs
+  bx(px+3,py+1,10,8,sk);          // head
+  bx(px+1,py+9,14,11,ac);         // torso
+  bx(px-2,py+10,4,8,ac);          // left arm
+  bx(px+14,py+10,4,8,ac);         // right arm
+  bx(px+2,py+20,5,8,'#383040');   // left leg
+  bx(px+9,py+20,5,8,'#383040');   // right leg
+  bx(px+5,py+3,2,2,'#181828');    // left eye
+  bx(px+9,py+3,2,2,'#181828');    // right eye
+  bx(px+6,py+7,4,1,'#c0a090');    // mouth
+  if(nm==='Card Merchant'){
+    // Top hat + waistcoat lapels
+    bx(px+2,py-1,12,2,'rgba(0,0,0,.6)');  // hat brim
+    bx(px+4,py-7,8,7,ac);                  // hat crown
+    bx(px+4,py-9,6,3,'rgba(0,0,0,.5)');   // hat band
+    bx(px+5,py+9,3,6,'#f0c830');           // lapel stripe
+    bx(px+9,py+9,2,6,'#f0c830');
+  }else if(nm==='Trade Master'){
+    // Hooded cloak, shadow under hood
+    bx(px+1,py-2,14,6,ac);                 // hood outer
+    bx(px+3,py,10,6,'rgba(0,0,0,.35)');    // hood shadow
+    bx(px+1,py+9,14,11,'rgba(0,0,0,.18)'); // cloak shadow over torso
+    // Gold chain across chest
+    bx(px+3,py+11,10,1,'#f0c830');
+  }else if(nm==='Gacha Keeper'){
+    // Pointed witch hat
+    bx(px+7,py-9,2,8,ac);                  // spike
+    bx(px+3,py-3,10,4,ac);                 // hat brim-band
+    bx(px+2,py-1,12,2,ac);                 // hat brim wide
+    // Star on hat
+    bx(px+7,py-7,2,2,'#fff8a0');
+    // Crystal ball in hand
+    bx(px+14,py+13,5,5,'rgba(100,200,255,.8)');
+    bx(px+15,py+14,3,3,'rgba(200,240,255,.9)');
+    bx(px+15,py+14,1,1,'#fff');
+  }else if(nm==='ARK Guide'){
+    // Wide explorer hat
+    bx(px+1,py-2,14,2,'#806020');          // brim
+    bx(px+3,py-6,10,5,ac);                 // crown
+    bx(px+4,py-7,8,2,ac);
+    // Compass/book on torso
+    bx(px+4,py+11,8,6,'#f0c830');
+    bx(px+5,py+12,6,4,'#181828');
+    bx(px+7,py+12,2,4,'rgba(200,180,60,.9)'); // needle
+    bx(px+7,py+13,1,1,'#f0f0f0');
+  }else if(nm==='Dungeon Porter'){
+    // Hard hat
+    bx(px+1,py-2,14,2,ac);                 // hard hat brim
+    bx(px+3,py-6,10,5,ac);                 // dome
+    bx(px+6,py-6,4,1,'#f0c030');           // lamp stripe
+    // Backpack on right
+    bx(px+14,py+8,7,13,ac);
+    bx(px+15,py+9,5,11,'#604020');
+    bx(px+16,py+11,3,5,'#805030');
+  }else if(nm==='Alchemist'){
+    // Spiky hair
+    bx(px+3,py-4,10,5,ac);
+    bx(px+2,py-5,3,3,ac);
+    bx(px+11,py-5,3,3,ac);
+    bx(px+7,py-7,2,3,ac);
+    // Round goggles (override eyes)
+    bx(px+4,py+2,4,4,'rgba(0,0,0,.5)');
+    bx(px+9,py+2,4,4,'rgba(0,0,0,.5)');
+    bx(px+5,py+3,2,2,ac);
+    bx(px+10,py+3,2,2,ac);
+    bx(px+8,py+3,1,1,'#888');              // bridge
+    // Flask in right hand
+    bx(px+15,py+11,5,8,ac);
+    bx(px+16,py+13,3,5,'rgba(40,230,180,.85)');
+    bx(px+16,py+10,3,2,'rgba(0,0,0,.4)'); // flask neck
+  }
+}
+
 function drawNPCDialog(){
   if(!npcDialogActive)return;
   const dlgSlide=Math.min(1,(fr-npcDialogOpenFrame)/6);
@@ -1715,34 +1823,39 @@ function drawNPCDialog(){
   // Main dialog box
   const dlgY=H-100+slideOff;
   win(6,dlgY,W-12,90);
-  // Accent bar on left edge — NPC identity color
-  bx(6,dlgY,3,90,accent);
-  // Name badge (colored accent top-bar)
+  // v462: Portrait panel — soft tinted left strip (38px wide)
+  bx(6,dlgY,38,90,'rgba(0,0,0,.22)');
+  bx(6,dlgY,2,90,accent); // accent edge
+  bx(44,dlgY,1,90,'rgba(200,180,140,.12)'); // divider
+  // v462: Draw NPC pixel-art portrait inside panel
+  _drawNpcPortrait(10,dlgY+8,npcDialogName,accent);
+
+  // Name badge (colored accent top-bar) — shifted right of portrait
   const nbW=npcDialogName.length*7+24;
-  win(10,H-112+slideOff,nbW,18);
-  bx(10,H-112+slideOff,nbW,2,accent);
-  txShadow(npcDialogName,20,H-97+slideOff,7,accent,'rgba(0,0,0,.35)');
+  win(48,H-112+slideOff,nbW,18);
+  bx(48,H-112+slideOff,nbW,2,accent);
+  txShadow(npcDialogName,58,H-97+slideOff,7,accent,'rgba(0,0,0,.35)');
 
   // v273: cache wrapped lines per dialog index — only recompute when idx changes
   if(_npcDlgCacheIdx!==npcDialogIdx){
     _npcDlgCacheIdx=npcDialogIdx;
     const rawLine=npcDialogLines[npcDialogIdx]||'';
     const rawLine2=npcDialogLines[npcDialogIdx+1]||'';
-    const w1=wrapText(rawLine,52),w2=rawLine2?wrapText(rawLine2,52):[];
+    const w1=wrapText(rawLine,46),w2=rawLine2?wrapText(rawLine2,46):[];
     _npcDlgCacheLines=w1.concat(w2);
   }
   const _alLen=Math.min(3,_npcDlgCacheLines.length);
   for(let i=0;i<_alLen;i++){
-    txShadow(_npcDlgCacheLines[i],20,H-70+slideOff+i*16,7,FRLG.textColor,'rgba(0,0,0,.25)');
+    txShadow(_npcDlgCacheLines[i],54,H-70+slideOff+i*16,7,FRLG.textColor,'rgba(0,0,0,.25)');
   }
 
-  // Progress indicator: show line X/total as small dots bottom-left
+  // Progress indicator: show line X/total as small dots bottom-left (shifted right of portrait)
   const totalLines=npcDialogLines.length;
   if(totalLines>2){
     const maxDots=Math.min(totalLines,8);
     for(let d=0;d<maxDots;d++){
       const active=d===Math.floor(npcDialogIdx/2);
-      bx(20+d*8,dlgY+80,6,3,active?accent:'rgba(200,180,100,.25)');
+      bx(54+d*8,dlgY+80,6,3,active?accent:'rgba(200,180,100,.25)');
     }
   }
 
@@ -2089,7 +2202,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v445',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v463',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

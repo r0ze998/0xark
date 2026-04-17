@@ -138,6 +138,9 @@ function checkForestTrap(){
     triggeredTraps.add(key);
     sfxTrap();
     flash();
+    screenShake(5,10); // v463: impact shake on trap trigger
+    _trapHitFrame=fr;  // v463: timestamp drives TRAP! banner in drawMap HUD
+    triggerCardLostAnim(pl[0].visualX-camX,pl[0].visualY-camY-16); // v463: red burst + floaty minus
     twSet('You triggered a trap!');
     // Reset streak on trap
     if(streakCount>0){streakCount=0;streakLostTimer=60;sfxStreakLost();}

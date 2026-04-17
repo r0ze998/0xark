@@ -2086,6 +2086,8 @@ function fogRevealRoom(mapIdx,room){
   }
   if(changed){
     fogCacheDirty=true;_fogPctDirty[mapIdx]=true;
+    // v461: Minimap flash — set timestamp so drawMinimap() renders gold pulse border
+    if(newRoomTiles>=4)_mmFlashFrame=typeof fr!=='undefined'?fr:0;
     // v218: Room discovery burst — sprinkle sparkle particles across newly revealed room
     if(particles&&newRoomTiles>=4){
       const roomCX=(room.x+room.w/2)*TW,roomCY=(room.y+room.h/2)*TH;

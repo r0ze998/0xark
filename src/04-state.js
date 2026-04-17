@@ -293,6 +293,8 @@ let bpShakeTarget=-1,bpShakeTimer=0;
 const BATTLE_HP_MAX=3;
 let bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];
 let bpHPDmgAnim=[0,0,0]; // frames remaining for HP damage flash per combatant
+let bpHPHealAnim=[0,0,0]; // v452: frames remaining for HP heal flash (green) per combatant
+let bpDmgFloats=[]; // v454: floating HP delta numbers [{x,y,val,born,col}] rendered above sprites
 
 // ── Card acquisition animation ──
 let cardAcqActive=false,cardAcqFrame=0,cardAcqCard=-1,cardAcqDone=false;

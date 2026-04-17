@@ -853,6 +853,8 @@ function drawResolvingPhase(){
       txShadow('DEFEATED!',-42,0,18,'#ff4040','rgba(0,0,0,.9)');
       g.restore();
     }
+    drawParticles(0,0); // v459: burst particles from card steals/gets now visible during battle
+    _drawBpFloats(); // v454: floating damage/heal numbers
     // v312: Streak pop flash during resolve events
     if(streakDisplayTimer>0&&streakCount>0){
       const _spA=Math.min(1,streakDisplayTimer/14);
@@ -876,6 +878,23 @@ function drawResolvingPhase(){
   }
 }
 
+// v454: render floating HP delta numbers above combatant sprites
+function _drawBpFloats(){
+  if(!bpDmgFloats||!bpDmgFloats.length)return;
+  const LIFE=36;
+  for(let i=bpDmgFloats.length-1;i>=0;i--){
+    const f=bpDmgFloats[i];
+    const age=fr-f.born;
+    if(age>=LIFE){bpDmgFloats.splice(i,1);continue;}
+    const alpha=age<LIFE-10?0.95:(LIFE-age)/10*0.95;
+    const yOff=(age*(-1.1))|0;
+    g.globalAlpha=alpha;
+    const lbl=f.val>0?('+'+f.val+' HP'):(f.val+' HP');
+    txShadow(lbl,f.x,f.y+yOff,9,f.col,'rgba(0,0,0,.7)');
+    g.globalAlpha=1;
+  }
+}
+
 function drawResultPhase(){
   drawBattleBG();
   drawPhaseBanner('result');
@@ -888,7 +907,52 @@ function drawResultPhase(){
   const slideIn_=Math.min(1,t/15);
   g.globalAlpha=slideIn_;
   win(panX,panY,panW,panH);
-  txShadow(_ROUND_SUM[rd]||'ROUND '+rd+' SUMMARY',panX+panW/2-100,panY+22,14,'#308030','rgba(0,0,0,.3)'); // v305
+  // v458: KO celebration header — golden animated banner + orbiting sparks when rival reaches 0 HP
+  {const _isKO=bpResolveQueue&&(bpResolveQueue._rival1KO||bpResolveQueue._rival2KO);
+  if(_isKO){
+    // Gold header strip behind KO text
+    bx(panX+4,panY+4,panW-8,22,'rgba(70,42,0,.78)');
+    bx(panX+4,panY+4,panW-8,2,'#f0c030');bx(panX+4,panY+24,panW-8,1,'#805010');
+    // KO label centered, scale pop-in
+    const _koName=bpResolveQueue._rival1KO?pl[1].n:pl[2].n;
+    const _koLbl='!! '+_koName+' KO !!';
+    const _koPop=Math.min(1,t<6?0.5+t/12*0.5:1);
+    const _koCol=Math.floor(t/5)%2===0?'#fff080':'#f0c830'; // shimmer flicker
+    g.save();g.translate(panX+panW/2,panY+17);g.scale(_koPop,_koPop);
+    txShadow(_koLbl,-(_koLbl.length*7)|0,4,14,_koCol,'rgba(60,30,0,.9)');
+    g.restore();
+    // Orbiting gold sparks — sin-addition with _ORB_SI8/CI8 (2 trig calls for 8 sparks)
+    const _koSpA=t<10?t/10:Math.max(0,(70-t)/16);
+    if(_koSpA>0.02){
+      const _spS=Math.sin(t*0.13),_spC=Math.cos(t*0.13),_spD=16+Math.min(t,30)*0.4;
+      g.globalAlpha=_koSpA*slideIn_;
+      for(let _ki=0;_ki<8;_ki++){
+        const _kc=_spC*_ORB_CI8[_ki]-_spS*_ORB_SI8[_ki],_ks=_spS*_ORB_CI8[_ki]+_spC*_ORB_SI8[_ki];
+        bx(panX+panW/2+_kc*_spD-2,panY+17+_ks*_spD*0.45-2,4,4,_ki%2===0?'#f0c030':'#ffe888');
+      }
+      g.globalAlpha=slideIn_;
+    }
+    // Gold screen-edge flash on first reveal
+    if(t<10){g.globalAlpha=slideIn_*(1-t/10)*0.28;bx(0,0,W,H,'#f0a830');g.globalAlpha=slideIn_;}
+  }else{
+    txShadow(_ROUND_SUM[rd]||'ROUND '+rd+' SUMMARY',panX+panW/2-100,panY+22,14,'#308030','rgba(0,0,0,.3)'); // v305
+  }}
+  // v457: Round outcome badge — WIN/LOSS/DRAW pop-in at top-right of panel
+  if(t>6&&bpResolveQueue){
+    let _gotCard=false,_lostCard=false;
+    for(let _oi=0;_oi<bpResolveQueue.length;_oi++){const _oe=bpResolveQueue[_oi].effect||'';if(_oe==='steal_get'||_oe==='card_get')_gotCard=true;else if(_oe==='card_lost')_lostCard=true;}
+    const _outLabel=_gotCard&&!_lostCard?'WIN!':_lostCard&&!_gotCard?'LOSS':_gotCard&&_lostCard?'TRADE':'DRAW';
+    const _outCol=_gotCard&&!_lostCard?'#40e880':_lostCard&&!_gotCard?'#ff4040':_gotCard?'#f0c030':'#888870';
+    const _outBg=_gotCard&&!_lostCard?'rgba(0,60,20,.75)':_lostCard&&!_gotCard?'rgba(60,0,0,.75)':_gotCard?'rgba(60,40,0,.75)':'rgba(0,0,0,.4)';
+    const _oBW=_outLabel.length*7+12;
+    const _popT=Math.min(1,(t-6)/8);
+    const _popSc=0.5+_popT*0.5;
+    g.save();g.translate(panX+panW-_oBW/2-16,panY+16);g.scale(_popSc,_popSc);
+    g.globalAlpha=slideIn_*Math.min(1,(t-6)/6);
+    bx(-_oBW/2,-8,_oBW,18,_outBg);bx(-_oBW/2,-8,_oBW,2,_outCol);bx(-_oBW/2,8,_oBW,1,_outCol);
+    txShadow(_outLabel,-_oBW/2+4,5,9,_outCol,'rgba(0,0,0,.6)');
+    g.restore();g.globalAlpha=slideIn_;
+  }
   // Divider
   bx(panX+16,panY+30,panW-32,1,'rgba(200,180,140,.3)');
 
@@ -947,13 +1011,14 @@ function drawResultPhase(){
       const _dc=_delta>0?'#50d080':'#d05050';
       const _di=_delta+5;txShadow((_di>=0&&_di<11?_SIGNED_DELTA[_di]:((_delta>0?'+':'')+_delta)),cx_+colW-8,cy_+42,8,_dc,'rgba(0,0,0,.3)'); // v327
     }
-    // Mini card bar
+    // Mini card bar — v448: type color top border for player's cards
     for(let i=0;i<5;i++){
       const cd=pl[col].cd[i];
       const sx_=cx_+4+i*22;
       if(cd>0){
         const cr=CD[cd-1];
         bx(sx_,cy_+48,20,10,cr.d);bx(sx_+1,cy_+49,18,8,cr.c);
+        if(col===0){const _ti=_BTYPE_MAP[cr.t];if(_ti!==undefined)bx(sx_,cy_+48,20,1,_BTYPE_COL[_ti]);}
       }else{
         bx(sx_,cy_+48,20,10,'#383838');
       }
@@ -1112,6 +1177,8 @@ function drawResultPhase(){
   if(t>25&&Math.floor(t/20)%2===0){
     txShadow('PRESS Z TO CONTINUE',W/2-120,panY+panH+12,10,'#989080','rgba(0,0,0,.3)');
   }
+  drawParticles(0,0); // v459: linger particles visible in result phase
+  _drawBpFloats(); // v454: floating damage/heal numbers persist into result phase
 }
 
 function dAct(){
