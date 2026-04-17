@@ -175,11 +175,14 @@ function base58Decode(str){
 async function computeCommitHash(actionType,targetPubkey,salt){
   const data=new Uint8Array(1+32+32);
   data[0]=actionType;
-  const targetBytes=new Uint8Array(32);
-  if(targetPubkey){
-    try{const decoded=base58Decode(targetPubkey);targetBytes.set(decoded.slice(0,32));}catch(e){}
+  const target32=new Uint8Array(32);
+  if(targetPubkey instanceof Uint8Array||ArrayBuffer.isView(targetPubkey)){
+    // Already bytes — copy directly
+    target32.set(targetPubkey.slice(0,32));
+  }else if(targetPubkey){
+    try{const decoded=base58Decode(targetPubkey);target32.set(decoded.slice(0,32));}catch(e){}
   }
-  data.set(targetBytes,1);
+  data.set(target32,1);
   data.set(salt,33);
   const hashBuffer=await crypto.subtle.digest('SHA-256',data);
   return new Uint8Array(hashBuffer);
