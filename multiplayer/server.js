@@ -121,7 +121,11 @@ async function handleMessage(ws, msg) {
       if (!room) return;
       const p = room.players.get(ws.playerId);
       if (!p) return;
-      p.x = msg.x; p.y = msg.y; p.area = msg.area;
+      // Sanitize: enforce numeric coordinates within map bounds (0–79)
+      const nx = typeof msg.x === 'number' ? Math.max(0, Math.min(79, msg.x | 0)) : p.x;
+      const ny = typeof msg.y === 'number' ? Math.max(0, Math.min(79, msg.y | 0)) : p.y;
+      const na = typeof msg.area === 'number' ? Math.max(0, Math.min(5, msg.area | 0)) : p.area;
+      p.x = nx; p.y = ny; p.area = na;
       // ZK fog-of-war: only send position to nearby players in the same area.
       // Town (area 0) is always fully visible.
       broadcastProximity(room, ws.playerId, { type: 'player_moved', playerId: ws.playerId, x: p.x, y: p.y, area: p.area });
@@ -177,7 +181,9 @@ async function handleMessage(ws, msg) {
     case 'chat': {
       const room = ws.roomId ? rooms.get(ws.roomId) : null;
       if (!room) return;
-      broadcast(room, { type: 'chat', playerId: ws.playerId, name: ws.playerName, message: msg.message });
+      if (typeof msg.message !== 'string') return;
+      const message = msg.message.slice(0, 200); // cap at 200 chars
+      broadcast(room, { type: 'chat', playerId: ws.playerId, name: ws.playerName, message });
       break;
     }
   }

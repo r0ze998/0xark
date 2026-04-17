@@ -23,7 +23,10 @@ const app = express();
 const PORT = 3402;
 
 const RECIPIENT_WALLET = process.env.BROKER_WALLET || 'DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R';
-const DEVNET_RPC = 'https://api.devnet.solana.com';
+const DEVNET_RPC = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+
+// Single cached connection — avoids creating a new Connection object per payment request
+const connection = new Connection(DEVNET_RPC, 'confirmed');
 
 // Replay protection — cap at 10k entries to prevent unbounded growth (demo/devnet only)
 const usedSignatures = new Set();
@@ -95,7 +98,6 @@ async function verifyPayment(signature, expectedAmountUSDC) {
     return { ok: false, reason: 'Signature already used (replay attempt)' };
   }
   try {
-    const connection = new Connection(DEVNET_RPC, 'confirmed');
     const tx = await connection.getParsedTransaction(signature, {
       commitment: 'confirmed',
       maxSupportedTransactionVersion: 0,
@@ -103,12 +105,15 @@ async function verifyPayment(signature, expectedAmountUSDC) {
     if (!tx) return { ok: false, reason: 'Transaction not found on devnet' };
     if (tx.meta?.err) return { ok: false, reason: 'Transaction failed on-chain' };
 
-    // Scan for SPL token transfer >= expectedAmount to RECIPIENT_WALLET
+    // Scan for SPL token transfer >= expectedAmount TO RECIPIENT_WALLET
     const ixs = tx.transaction.message.instructions;
     for (const ix of ixs) {
       const t = ix.parsed?.type;
       if (t === 'transfer' || t === 'transferChecked') {
         const info = ix.parsed.info;
+        // Verify funds actually went to our wallet (prevent spoofed transfers)
+        const dest = info.destination ?? info.newAuthority ?? '';
+        if (!dest.includes(RECIPIENT_WALLET)) continue;
         const decimals = info.tokenAmount?.decimals ?? 6;
         const raw = Number(info.amount ?? info.tokenAmount?.amount ?? 0);
         const amountUSDC = raw / Math.pow(10, decimals);
@@ -118,7 +123,7 @@ async function verifyPayment(signature, expectedAmountUSDC) {
         }
       }
     }
-    return { ok: false, reason: `No USDC transfer >= $${expectedAmountUSDC} found` };
+    return { ok: false, reason: `No USDC transfer >= $${expectedAmountUSDC} to broker wallet found` };
   } catch (e) {
     return { ok: false, reason: 'RPC error: ' + e.message };
   }
@@ -261,7 +266,8 @@ function analyzeStrategy(requesterId = 0) {
 app.get('/intel/location/:playerId',
   requirePayment(0.002, 'Rival floor position'),
   (req, res) => {
-    const pid = parseInt(req.params.playerId);
+    const pid = parseInt(req.params.playerId, 10);
+    if (isNaN(pid) || pid < 0 || pid > 2) return res.status(400).json({ error: 'playerId must be 0, 1, or 2' });
     const p = gameState.players[pid];
     if (!p) return res.status(404).json({ error: 'Player not found' });
     const floor = pid === 0
@@ -281,7 +287,8 @@ app.get('/intel/location/:playerId',
 app.get('/intel/hand/:playerId',
   requirePayment(0.003, 'Rival card holdings'),
   (req, res) => {
-    const pid = parseInt(req.params.playerId);
+    const pid = parseInt(req.params.playerId, 10);
+    if (isNaN(pid) || pid < 0 || pid > 2) return res.status(400).json({ error: 'playerId must be 0, 1, or 2' });
     const p = gameState.players[pid];
     if (!p) return res.status(404).json({ error: 'Player not found' });
     const held = p.cards
@@ -301,8 +308,15 @@ app.get('/intel/hand/:playerId',
 app.get('/intel/strategy',
   requirePayment(0.005, 'Strategic analysis'),
   (req, res) => {
-    const pid = parseInt(req.query.player ?? '0');
-    res.json(analyzeStrategy(pid));
+    const pid = parseInt(req.query.player ?? '0', 10);
+    if (isNaN(pid) || pid < 0 || pid > 2) return res.status(400).json({ error: 'player must be 0, 1, or 2' });
+    const result = analyzeStrategy(pid);
+    // Warn caller if state is stale (>2 minutes since last /update-state)
+    const staleMs = gameState._lastUpdate ? Date.now() - gameState._lastUpdate : Infinity;
+    if (staleMs > 120_000) {
+      result.warning = `State is ${Math.round(staleMs / 1000)}s old — client may not have synced recently`;
+    }
+    res.json(result);
   }
 );
 
