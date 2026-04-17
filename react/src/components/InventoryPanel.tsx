@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { fetchOwnedCards } from '../lib/onchain';
+import { fetchOwnedCards, cardMintPda } from '../lib/onchain';
 
 const RARITY: Record<number, { label: string; color: string }> = {
   1: { label: 'Common',    color: '#9ca3af' },
@@ -116,14 +116,16 @@ export function InventoryPanel({ gameId }: InventoryPanelProps) {
           <p className="card-detail-desc">
             On-chain NFT · 1-of-1 · Mint authority burned
           </p>
-          <a
-            className="card-detail-link"
-            href={`https://explorer.solana.com/address/${selected}?cluster=devnet`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View on Explorer ↗
-          </a>
+          {gameId != null && (
+            <a
+              className="card-detail-link"
+              href={`https://explorer.solana.com/address/${cardMintPda(gameId, selected)[0].toString()}?cluster=devnet`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View mint on Explorer ↗
+            </a>
+          )}
         </div>
       )}
     </div>
