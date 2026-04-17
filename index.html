@@ -14562,9 +14562,11 @@ function drawConfirmingPhase(){
     else{txShadow(_RESOLVING_DOTS[Math.floor(t/12)%3],16,H-38,14,'#686068','rgba(200,180,140,.3)');} // v315
   }
   // Commit phase: on-chain TX + ZK proof (both paths)
+  // actionType on-chain: Rust enum is 1-indexed (Draw=1,Steal=2,Barrier=3,Scout=4,UseCrystal=5)
+  // bpAction is 0-indexed (DRAW=0,STEAL=1,BARRIER=2,SCOUT=3,USE CARD=4) — add 1 for on-chain
   if(t===1&&walletConnected){
     onchainCommitPhase=true;
-    onchainCommit(_sessionGameId,bpAction,encounterExclTarget||0).then(result=>{
+    onchainCommit(_sessionGameId,bpAction+1,encounterExclTarget||0).then(result=>{
       if(result){
         walletLastCommitHash=result.hash;
         logOnchain('Commit: '+result.hash.slice(0,10)+'..'+'  TX:'+result.txSig.slice(0,8)+'..');
@@ -14579,7 +14581,7 @@ function drawConfirmingPhase(){
   }
   if(t===1&&!walletConnected){
     const salt=generateSalt();
-    computeCommitHash(bpAction,new Uint8Array(32),salt).then(hash=>{
+    computeCommitHash(bpAction+1,new Uint8Array(32),salt).then(hash=>{
       walletLastCommitHash=hexFromBytes(hash);
       lg.push('Commit hash: '+walletLastCommitHash.slice(0,10)+'..');
     }).catch(()=>{});
@@ -14589,7 +14591,7 @@ function drawConfirmingPhase(){
   // On-chain reveal phase
   if(t===70&&walletConnected&&onchainPendingSalt){
     onchainRevealPhase=true;
-    onchainReveal(_sessionGameId,bpAction,encounterExclTarget||0,onchainPendingSalt).then(result=>{
+    onchainReveal(_sessionGameId,bpAction+1,encounterExclTarget||0,onchainPendingSalt).then(result=>{
       if(result){
         logOnchain('Reveal TX:'+result.txSig.slice(0,8)+'..');
         // Wire ZK proof on-chain verify once reveal is confirmed and proof is ready
