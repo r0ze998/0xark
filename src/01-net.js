@@ -10,10 +10,22 @@ for(let i=0;i<8;i++){_MPCARD_SI14[i]=Math.sin(i*1.4);_MPCARD_CI14[i]=Math.cos(i*
 // sin(mapLoadScreenFrame*0.08 + i*0.7) uses sin-addition with these tables
 const _MLDS_SI07=new Float32Array(30);const _MLDS_CI07=new Float32Array(30);
 for(let i=0;i<30;i++){_MLDS_SI07[i]=Math.sin(i*0.7);_MLDS_CI07[i]=Math.cos(i*0.7);}
+// Server URLs — override via URL params for deployed environments:
+//   ?ws=wss://your-server.railway.app&x402=https://your-broker.railway.app
+// Falls back to localStorage, then to localhost defaults (dev only).
+(function _resolveServerUrls(){
+  const params=new URLSearchParams(window.location.search);
+  const wsParam=params.get('ws');
+  const x402Param=params.get('x402');
+  if(wsParam)localStorage.setItem('oxark_ws_url',wsParam);
+  if(x402Param)localStorage.setItem('oxark_x402_url',x402Param);
+})();
+const _MP_DEFAULT_URL=localStorage.getItem('oxark_ws_url')||'ws://localhost:3500';
+
 let mp={
   connected:false,
   ws:null,
-  serverUrl:'ws://localhost:3500',
+  serverUrl:_MP_DEFAULT_URL,
   roomId:null,
   playerId:null,
   playerCount:0,

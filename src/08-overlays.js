@@ -361,9 +361,24 @@ function drawMarketplace(){
     }
     txShadow('(On-chain trading: coming soon)',mx+12,myA+mh-52,6,'#304830','rgba(0,0,0,.3)');
   }else if(marketTab===2){
-    // SELL
-    txShadow('Select a card to list for sale:',mx+12,contentY+14,8,'#a8c8a8','rgba(0,0,0,.3)');
-    txShadow('(Listing feature: coming soon)',mx+12,contentY+36,7,'#304030','rgba(0,0,0,.3)');
+    // v420: SELL — card picker grid from vault (on-chain listing stub)
+    txShadow('Select a card to list:',mx+12,contentY+14,8,'#a8c8a8','rgba(0,0,0,.3)');
+    const sellCards=vaultArr.slice(0,20); // up to 20 cards shown
+    if(sellCards.length===0){
+      txShadow('No cards in vault yet.',mx+12,contentY+36,7,'#304030','rgba(0,0,0,.3)');
+    }else{
+      const _cw=56,_ch=36,_cols=8,_gap=6;
+      for(let si=0;si<sellCards.length;si++){
+        const id=sellCards[si];const cr=CD[id-1];if(!cr)continue;
+        const col=si%_cols,row=Math.floor(si/_cols);
+        const sx=mx+12+col*(_cw+_gap),sy=contentY+24+row*(_ch+_gap);
+        bx(sx,sy,_cw,_ch,cr.d+'44');
+        bx(sx,sy,2,_ch,RARITY_COLOR[cr.r]||cr.c);
+        txShadow('#'+id,sx+4,sy+13,5,cr.h||'#d0c8a8','rgba(0,0,0,.3)');
+        txShadow(cr.n.slice(0,7),sx+4,sy+25,4,'#a0988c','rgba(0,0,0,.2)');
+      }
+      txShadow('(On-chain listing: coming soon)',mx+12,contentY+24+Math.ceil(sellCards.length/_cols)*(_ch+_gap)+8,6,'#304830','rgba(0,0,0,.3)');
+    }
   }
   bx(mx+12,myA+mh-46,mw-24,1,'#1a3a1a');
   txShadow('[←/→] Tabs   \u2502   [X] Close',mx+14,myA+mh-26,7,'#4a7a4a','rgba(0,0,0,.3)');
@@ -713,7 +728,8 @@ function dVictory(){
   }
   if(t>170){
     win(W/2-200,H-24,400,20);
-    const hints=playerHasAllSixty()?'C=Claim  M=Mint  Z=Play Again  X=Title':'Z=Play Again   X=Title Screen';
+    // v420: include T=Share shortcut in hints bar
+    const hints=playerHasAllSixty()?'C=Claim  M=Mint  T=Share  Z=Play Again  X=Title':'T=Share  Z=Play Again   X=Title';
     txShadow(hints,W/2-190,H-6,7,'#c89820','rgba(0,0,0,.4)');
   }
   if(t===31)sfxVictory();
@@ -1061,10 +1077,11 @@ function drawCardDetailPanel(){
 function dLog(){
   // v120: Log screen overhaul — event icons + stats header
   bx(0,0,W,H,'#0c0c18');
+  // v420: deterministic twinkle (same fix as dStats) — no Math.random() per frame
   g.fillStyle='#ffffff';
   for(let i=0;i<120;i++){
     const nx=(i*73+17)%W,ny=(i*41+23)%H;
-    g.globalAlpha=Math.random()*0.04;g.fillRect(nx,ny,1,1);
+    g.globalAlpha=0.01+Math.abs(Math.sin(fr*0.07+i*1.3))*0.03;g.fillRect(nx,ny,1,1);
   }
   g.globalAlpha=1;
 

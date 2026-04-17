@@ -1138,6 +1138,8 @@ function sfxCursor(){if(!soundEnabled)return;try{const o=AC.createOscillator(),g
 function sfxConfirm(){if(!soundEnabled)return;beep(660,.05);setTimeout(()=>beep(990,.08),60);}
 function sfxBack(){if(!soundEnabled)return;beep(330,.05,.06);}
 function sfxVictory(){if(!soundEnabled)return;beep(262,.1);setTimeout(()=>beep(330,.1),100);setTimeout(()=>beep(392,.1),200);setTimeout(()=>beep(523,.2),300);}
+// v420: descending minor-key arpeggio for defeat screen
+function sfxDefeat(){if(!soundEnabled)return;beep(196,.12,.08);setTimeout(()=>beep(165,.10,.08),130);setTimeout(()=>beep(147,.10,.08),260);setTimeout(()=>beep(110,.18,.12),400);}
 function sfxCardGet(){if(!soundEnabled)return;beep(440,.06);setTimeout(()=>beep(550,.06),60);setTimeout(()=>beep(660,.08),120);}
 function sfxSlash(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='sawtooth';o.frequency.setValueAtTime(200,AC.currentTime);o.frequency.linearRampToValueAtTime(50,AC.currentTime+.1);gn.gain.value=.1;o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.1);}catch(e){}}
 function sfxShield(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.setValueAtTime(300,AC.currentTime);o.frequency.linearRampToValueAtTime(800,AC.currentTime+.08);gn.gain.value=.07;o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.08);}catch(e){}}

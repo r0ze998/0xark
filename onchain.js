@@ -57,6 +57,15 @@ function writeU8(buf, offset, value) {
   return offset + 1;
 }
 
+function writeU32LE(buf, offset, value) {
+  const v = value >>> 0;
+  buf[offset]     = v & 0xff;
+  buf[offset + 1] = (v >> 8) & 0xff;
+  buf[offset + 2] = (v >> 16) & 0xff;
+  buf[offset + 3] = (v >> 24) & 0xff;
+  return offset + 4;
+}
+
 // Write u64 as little-endian 8 bytes
 function writeU64LE(buf, offset, value) {
   const lo = Number(BigInt(value) & 0xffffffffn);
@@ -72,9 +81,59 @@ function writeU64LE(buf, offset, value) {
   return offset + 8;
 }
 
+// Write i64 as little-endian 8 bytes (same bit pattern as u64 for two's complement)
+function writeI64LE(buf, offset, value) {
+  return writeU64LE(buf, offset, BigInt(value) & 0xffffffffffffffffn);
+}
+
 function writeBytes(buf, offset, bytes) {
   buf.set(bytes, offset);
   return offset + bytes.length;
+}
+
+// ─── Anchor error code mapping ────────────────────────────────────────────
+// Custom errors start at 6000 (Anchor default base).
+// Map code → human-readable message for UI display.
+const ANCHOR_ERRORS = {
+  6000: 'Game is not in lobby',
+  6001: 'Game is full',
+  6002: 'Not enough players to start',
+  6003: 'Only the host can perform this action',
+  6004: 'Not in commit phase',
+  6005: 'Not in reveal phase',
+  6006: 'Already committed this round',
+  6007: 'Already revealed this round',
+  6008: 'Must commit before revealing',
+  6009: 'Hash mismatch — action does not match commit',
+  6010: 'Invalid action type',
+  6011: 'No spells left',
+  6012: 'Cannot target yourself',
+  6013: 'Card not found in hand',
+  6014: 'Card pool is empty',
+  6015: 'No cards left in this area',
+  6016: 'Players must be in the same area',
+  6017: 'Invalid area ID',
+  6018: 'Game is already finished',
+  6019: 'Round limit reached',
+  6020: 'ZK proof is invalid',
+};
+
+function parseAnchorError(e) {
+  if (!e) return 'Unknown error';
+  const msg = e.message ?? String(e);
+  // Anchor error format: "custom program error: 0x1770" (0x1770 = 6000 decimal)
+  const hexMatch = msg.match(/custom program error: 0x([0-9a-fA-F]+)/);
+  if (hexMatch) {
+    const code = parseInt(hexMatch[1], 16);
+    return ANCHOR_ERRORS[code] ?? `Program error ${code}`;
+  }
+  // Simulation logs include "Error Code: X. Error Number: Y."
+  const codeMatch = msg.match(/Error Number: (\d+)/);
+  if (codeMatch) {
+    const code = parseInt(codeMatch[1], 10);
+    return ANCHOR_ERRORS[code] ?? `Program error ${code}`;
+  }
+  return msg;
 }
 
 // ─── PDA finders ─────────────────────────────────────────────────────────
@@ -119,14 +178,86 @@ function findStakeVaultPDA(gameId) {
   );
 }
 
+function agentIdBytes(agentId) {
+  const b = new Uint8Array(4);
+  writeU32LE(b, 0, agentId);
+  return b;
+}
+
+function findAgentPDA(agentId) {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('agent'), agentIdBytes(agentId)],
+    getProgramId()
+  );
+}
+
+function seasonIdBytes(seasonId) {
+  const b = new Uint8Array(4);
+  writeU32LE(b, 0, seasonId);
+  return b;
+}
+
+function findSeasonPDA(seasonId) {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('season'), seasonIdBytes(seasonId)],
+    getProgramId()
+  );
+}
+
+// ─── Compute budget constants ─────────────────────────────────────────────
+// Measured on devnet. verify_zk_proof requires the highest budget (BN254 pairing).
+// All other instructions use the standard budget.
+const COMPUTE_BUDGET = {
+  default:        200_000,  // standard instructions (create, join, commit, reveal, resolve)
+  verify_zk_proof: 300_000, // Groth16 BN254 on-chain verify
+  mint_card_nft:   100_000, // SPL Token + Metaplex CPI
+};
+// Priority fee in micro-lamports per compute unit.
+// 1000 µL/CU ≈ top-of-block on a quiet devnet slot. Adjust upward for mainnet congestion.
+const PRIORITY_FEE_MICRO_LAMPORTS = 1_000;
+
+/**
+ * Build compute budget instructions for a transaction.
+ * Returns [setComputeLimit, setUnitPrice] instructions.
+ */
+function computeBudgetIxs(computeUnits) {
+  // ComputeBudgetProgram.setComputeUnitLimit  — instruction ID 0x02
+  const limitData = new Uint8Array(5);
+  limitData[0] = 0x02;
+  new DataView(limitData.buffer).setUint32(1, computeUnits, true); // little-endian u32
+  const limitIx = new solanaWeb3.TransactionInstruction({
+    keys: [],
+    programId: new solanaWeb3.PublicKey('ComputeBudget111111111111111111111111111111'),
+    data: limitData,
+  });
+
+  // ComputeBudgetProgram.setComputeUnitPrice — instruction ID 0x03
+  const priceData = new Uint8Array(9);
+  priceData[0] = 0x03;
+  // priority fee as u64 little-endian
+  const feeBig = BigInt(PRIORITY_FEE_MICRO_LAMPORTS);
+  new DataView(priceData.buffer).setUint32(1, Number(feeBig & 0xffffffffn), true);
+  new DataView(priceData.buffer).setUint32(5, Number(feeBig >> 32n), true);
+  const priceIx = new solanaWeb3.TransactionInstruction({
+    keys: [],
+    programId: new solanaWeb3.PublicKey('ComputeBudget111111111111111111111111111111'),
+    data: priceData,
+  });
+
+  return [limitIx, priceIx];
+}
+
 // ─── Transaction builder ──────────────────────────────────────────────────
 /**
  * Build a TransactionInstruction and send it via Phantom.
+ * Automatically prepends compute-budget instructions for reliable inclusion.
+ *
  * @param {Array<{pubkey, isSigner, isWritable}>} keys
  * @param {Uint8Array} data  — 8-byte disc + serialized args
+ * @param {number} [computeUnits] — override compute unit limit (default: 200k)
  * @returns {Promise<string>}  transaction signature
  */
-async function buildAndSend(keys, data) {
+async function buildAndSend(keys, data, computeUnits = COMPUTE_BUDGET.default) {
   if (!window.solana || !window.solana.isConnected) {
     throw new Error('Phantom wallet not connected');
   }
@@ -134,15 +265,37 @@ async function buildAndSend(keys, data) {
   const programId = getProgramId();
 
   const ix = new solanaWeb3.TransactionInstruction({ keys, programId, data });
+  const [limitIx, priceIx] = computeBudgetIxs(computeUnits);
+
   const tx = new solanaWeb3.Transaction();
-  tx.add(ix);
+  tx.add(limitIx, priceIx, ix); // compute budget must come first
   tx.feePayer = window.solana.publicKey;
-  const { blockhash } = await conn.getLatestBlockhash();
+
+  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
   tx.recentBlockhash = blockhash;
 
+  // ── Preflight simulation: catch program errors before Phantom popup ──────
+  // This saves the user from approving a TX that will fail on-chain.
+  const sim = await conn.simulateTransaction(tx);
+  if (sim.value.err) {
+    const logs = sim.value.logs ?? [];
+    // Extract Anchor error from logs e.g. "Program log: AnchorError ... Error Number: 6009"
+    const logErr = logs.find(l => l.includes('Error Number:') || l.includes('Error Code:'));
+    if (logErr) {
+      const m = logErr.match(/Error Number: (\d+)/);
+      const code = m ? parseInt(m[1], 10) : null;
+      const msg = code ? (ANCHOR_ERRORS[code] ?? `Program error ${code}`) : logErr;
+      throw new Error(msg);
+    }
+    throw new Error(JSON.stringify(sim.value.err));
+  }
+
   const signed = await window.solana.signTransaction(tx);
-  const sig = await conn.sendRawTransaction(signed.serialize());
-  await conn.confirmTransaction(sig, 'confirmed');
+  const sig = await conn.sendRawTransaction(signed.serialize(), {
+    skipPreflight: true, // already simulated above
+    maxRetries: 5,
+  });
+  await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
   return sig;
 }
 
@@ -288,12 +441,13 @@ async function verifyZkProof(gameId, proofA, proofB, proofC, publicInputs) {
   off = writeBytes(data, off, proofC);
   writeBytes(data, off, publicInputs);
 
+  // ZK proof verification requires elevated compute budget (BN254 pairing ~200k CU)
   return buildAndSend([
     { pubkey: payer,     isSigner: true,  isWritable: false },
     { pubkey: gamePDA,   isSigner: false, isWritable: false },
     { pubkey: playerPDA, isSigner: false, isWritable: false },
     { pubkey: commitPDA, isSigner: false, isWritable: false },
-  ], data);
+  ], data, COMPUTE_BUDGET.verify_zk_proof);
 }
 
 /**
@@ -317,8 +471,11 @@ async function generateZkProof(actionType, targetArea, salt, commitHash) {
     commitHash:  commitHash.toString(),
   };
 
-  const wasmPath = '/zk/build/commit_reveal_js/commit_reveal.wasm';
-  const zkeyPath = '/zk/build/commit_reveal_final.zkey';
+  // Resolve paths relative to the page's base (handles GitHub Pages /0xark/ prefix)
+  const base = (document.querySelector('base')?.href ?? window.location.origin + '/');
+  const basePath = new URL('.', base).pathname;
+  const wasmPath = basePath + 'zk/build/commit_reveal_js/commit_reveal.wasm';
+  const zkeyPath = basePath + 'zk/build/commit_reveal_final.zkey';
 
   const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasmPath, zkeyPath);
 
@@ -443,6 +600,193 @@ function generateSalt() {
   return crypto.getRandomValues(new Uint8Array(32));
 }
 
+// ─── Instruction: register_agent ─────────────────────────────────────────────
+/**
+ * Register an AI agent in the on-chain agent marketplace.
+ * @param {number}   agentId          — u32 unique agent identifier
+ * @param {Uint8Array} nameHash       — SHA256 of agent name (32 bytes)
+ * @param {Uint8Array} strategyHash   — SHA256 of strategy description (32 bytes)
+ * @param {Uint8Array} endpointHash   — SHA256 of x402 endpoint URL (32 bytes)
+ * @param {number}   pricePerQuery    — lamports per intel query
+ */
+async function registerAgent(agentId, nameHash, strategyHash, endpointHash, pricePerQuery) {
+  const owner = window.solana.publicKey;
+  const [agentPDA] = findAgentPDA(agentId);
+
+  // disc(8) + agent_id(4) + name_hash(32) + strategy_hash(32) + endpoint_hash(32) + price_per_query(8)
+  const d = await disc('register_agent');
+  const data = new Uint8Array(116);
+  let off = writeBytes(data, 0, d);
+  off = writeU32LE(data, off, agentId);
+  off = writeBytes(data, off, nameHash);
+  off = writeBytes(data, off, strategyHash);
+  off = writeBytes(data, off, endpointHash);
+  writeU64LE(data, off, pricePerQuery);
+
+  return buildAndSend([
+    { pubkey: agentPDA, isSigner: false, isWritable: true  },
+    { pubkey: owner,    isSigner: true,  isWritable: true  },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+}
+
+// ─── Instruction: deactivate_agent ────────────────────────────────────────────
+async function deactivateAgent(agentId) {
+  const owner = window.solana.publicKey;
+  const [agentPDA] = findAgentPDA(agentId);
+
+  // disc(8) + agent_id(4)
+  const d = await disc('deactivate_agent');
+  const data = new Uint8Array(12);
+  let off = writeBytes(data, 0, d);
+  writeU32LE(data, off, agentId);
+
+  return buildAndSend([
+    { pubkey: agentPDA, isSigner: false, isWritable: true },
+    { pubkey: owner,    isSigner: true,  isWritable: false },
+  ], data);
+}
+
+// ─── Instruction: create_season ───────────────────────────────────────────────
+/**
+ * @param {number} seasonId
+ * @param {number} entryFee          — lamports
+ * @param {number} maxPlayers
+ * @param {number} durationSeconds   — season length in seconds
+ */
+async function createSeason(seasonId, entryFee, maxPlayers, durationSeconds) {
+  const authority = window.solana.publicKey;
+  const [seasonPDA] = findSeasonPDA(seasonId);
+
+  // disc(8) + season_id(4) + entry_fee(8) + max_players(4) + duration_seconds(8)
+  const d = await disc('create_season');
+  const data = new Uint8Array(32);
+  let off = writeBytes(data, 0, d);
+  off = writeU32LE(data, off, seasonId);
+  off = writeU64LE(data, off, entryFee);
+  off = writeU32LE(data, off, maxPlayers);
+  writeI64LE(data, off, durationSeconds);
+
+  return buildAndSend([
+    { pubkey: seasonPDA,  isSigner: false, isWritable: true  },
+    { pubkey: authority,  isSigner: true,  isWritable: true  },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+}
+
+// ─── Instruction: end_season ──────────────────────────────────────────────────
+async function endSeason(seasonId) {
+  const authority = window.solana.publicKey;
+  const [seasonPDA] = findSeasonPDA(seasonId);
+
+  // disc(8) + season_id(4)
+  const d = await disc('end_season');
+  const data = new Uint8Array(12);
+  let off = writeBytes(data, 0, d);
+  writeU32LE(data, off, seasonId);
+
+  return buildAndSend([
+    { pubkey: seasonPDA, isSigner: false, isWritable: true },
+    { pubkey: authority, isSigner: true,  isWritable: false },
+  ], data);
+}
+
+// ─── Account reader: agent listing ────────────────────────────────────────────
+async function readAgentListing(agentId) {
+  try {
+    const conn = getConnection();
+    const [agentPDA] = findAgentPDA(agentId);
+    const info = await conn.getAccountInfo(agentPDA);
+    if (!info) return null;
+
+    // Layout after 8-byte disc:
+    // agent_id(4) + owner(32) + name_hash(32) + strategy_hash(32) + endpoint_hash(32)
+    // + price_per_query(8) + total_queries(8) + total_revenue(8) + rating(2) + active(1) + bump(1)
+    const dv = new DataView(info.data.buffer, info.data.byteOffset);
+    let off = 8; // skip discriminator
+    const agentIdRead = dv.getUint32(off, true); off += 4;
+    const owner = new solanaWeb3.PublicKey(info.data.slice(off, off + 32)); off += 32;
+    const nameHash     = Array.from(info.data.slice(off, off + 32)); off += 32;
+    const strategyHash = Array.from(info.data.slice(off, off + 32)); off += 32;
+    const endpointHash = Array.from(info.data.slice(off, off + 32)); off += 32;
+    const pricePerQuery  = Number(dv.getBigUint64(off, true)); off += 8;
+    const totalQueries   = Number(dv.getBigUint64(off, true)); off += 8;
+    const totalRevenue   = Number(dv.getBigUint64(off, true)); off += 8;
+    const rating         = dv.getUint16(off, true); off += 2;
+    const active         = !!info.data[off]; off += 1;
+
+    return {
+      agentId: agentIdRead, owner: owner.toBase58(),
+      nameHash, strategyHash, endpointHash,
+      pricePerQuery, totalQueries, totalRevenue,
+      rating: rating / 100, // e.g. 500 → 5.00
+      active,
+    };
+  } catch (e) {
+    console.error('[onchain] readAgentListing failed:', e);
+    return null;
+  }
+}
+
+// ─── Account reader: season ────────────────────────────────────────────────────
+async function readSeason(seasonId) {
+  try {
+    const conn = getConnection();
+    const [seasonPDA] = findSeasonPDA(seasonId);
+    const info = await conn.getAccountInfo(seasonPDA);
+    if (!info) return null;
+
+    // Layout after 8-byte disc:
+    // season_id(4) + authority(32) + entry_fee(8) + prize_pool(8) + player_count(4)
+    // + max_players(4) + status(1) + winner(32) + winner_time(8) + fastest_clear_rounds(1)
+    // + season_start(8) + season_end(8) + bump(1)
+    const dv = new DataView(info.data.buffer, info.data.byteOffset);
+    let off = 8;
+    const seasonIdRead   = dv.getUint32(off, true); off += 4;
+    const authority      = new solanaWeb3.PublicKey(info.data.slice(off, off + 32)); off += 32;
+    const entryFee       = Number(dv.getBigUint64(off, true)); off += 8;
+    const prizePool      = Number(dv.getBigUint64(off, true)); off += 8;
+    const playerCount    = dv.getUint32(off, true); off += 4;
+    const maxPlayers     = dv.getUint32(off, true); off += 4;
+    const status         = info.data[off]; off += 1;
+    const winner         = new solanaWeb3.PublicKey(info.data.slice(off, off + 32)); off += 32;
+    const winnerTime     = Number(dv.getBigInt64(off, true)); off += 8;
+    const fastestClear   = info.data[off]; off += 1;
+    const seasonStart    = Number(dv.getBigInt64(off, true)); off += 8;
+    const seasonEnd      = Number(dv.getBigInt64(off, true));
+
+    return {
+      seasonId: seasonIdRead,
+      authority: authority.toBase58(),
+      entryFee, prizePool, playerCount, maxPlayers,
+      status: ['Open', 'Active', 'Ended'][status] ?? status,
+      winner: winner.toBase58(),
+      winnerTime, fastestClear, seasonStart, seasonEnd,
+    };
+  } catch (e) {
+    console.error('[onchain] readSeason failed:', e);
+    return null;
+  }
+}
+
+// ─── Session Keys (stub — Q2 2026) ───────────────────────────────────────────
+// Currently every battle action requires a Phantom popup.
+// Session Keys eliminate per-action popups: the player signs once to authorize
+// an ephemeral keypair, which then signs all in-session TXs automatically.
+//
+// Pattern (not yet implemented — see docs/magicblock-migration.md):
+//
+//   const sessionKey = await initSessionKey();
+//   // sessionKey.keypair signs subsequent battle TXs without Phantom popup
+//   // Revoked on tab close or explicit session.revoke()
+//
+// Dependencies needed:
+//   @magicblock-labs/ephemeral-rollups-sdk  (or Privy embedded wallet)
+//
+// Until implemented, all actions route through buildAndSend() → Phantom popup.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── Account readers ──────────────────────────────────────────────────────
 async function readGameAccount(gameId) {
   try {
@@ -505,7 +849,7 @@ async function readPlayerState(gameId, playerPubkeyStr) {
 // ─── Exports ──────────────────────────────────────────────────────────────
 window.oxarkOnchain = {
   PROGRAM_ID: PROGRAM_ID_STR,
-  // Instructions
+  // Core game instructions
   createGame,
   joinGame,
   startGame,
@@ -515,17 +859,28 @@ window.oxarkOnchain = {
   resolveRound,
   depositStake,
   claimPrize,
+  // Agent registry instructions
+  registerAgent,
+  deactivateAgent,
+  // Season instructions
+  createSeason,
+  endSeason,
   // ZK proof generation (browser-side, requires snarkjs)
   generateZkProof,
   // Helpers
   computeCommitHash,
   generateSalt,
-  // Readers
+  parseAnchorError,
+  // Account readers
   readGameAccount,
   readPlayerState,
-  // PDA finders (exported for UI use)
+  readAgentListing,
+  readSeason,
+  // PDA finders (exported for React UI)
   findGamePDA,
   findPlayerPDA,
+  findAgentPDA,
+  findSeasonPDA,
   findStakeVaultPDA,
 };
 
