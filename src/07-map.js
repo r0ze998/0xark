@@ -2002,7 +2002,7 @@ function dMap(){
     txShadow(_vaultHudLbl,848,hudY+56,7,_vcol,'rgba(0,0,0,.5)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v495',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v496',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
