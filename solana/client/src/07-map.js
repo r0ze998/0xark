@@ -1907,7 +1907,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v438',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v439',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -2078,14 +2078,39 @@ function dMap(){
     }
   }
 
-  // Rival alert
+  // v439: Dramatic rival-entered-floor banner (replaces small win() panel)
   if(rivalAlert>0){
-    const a=Math.min(1,rivalAlert/30);
-    g.globalAlpha=a;
-    win(W/2-120,6,240,24);
-    if(_alertLblRef!==rivalAlertName){_alertLblRef=rivalAlertName;_alertLblCache=rivalAlertName+' entered your map!';} // v326: lazy
-    txShadow(_alertLblCache,W/2-110,22,6,'#c04040','rgba(0,0,0,.4)');
-    g.globalAlpha=1;
+    const _elapsed=RIVAL_ALERT_DUR-rivalAlert;
+    const _slideT=Math.min(1,_elapsed/10); // slide in over 10 frames
+    const _fadeT=rivalAlert<30?rivalAlert/30:1;
+    const _a=_slideT*_fadeT;
+    if(_a>0.02){
+      const _rac=rivalAlertRival===0?'#d860a0':rivalAlertRival===1?'#d8b028':'#c04040';
+      const _racDark=rivalAlertRival===0?'rgba(72,14,40,.92)':rivalAlertRival===1?'rgba(72,52,10,.92)':'rgba(72,10,10,.92)';
+      const _panW=400,_panH=44;
+      const _panX=(W-_panW)/2;
+      const _panY=Math.round(6-(1-_slideT)*(_panH+8));
+      const _ri=rivalAlertRival>=0?(rivalAlertRival+1):0; // pl index (aiIdx+1: 0→pl[1]=VEGA, 1→pl[2]=MIRA)
+      const _rcc=_ri>0&&_ri<pl.length?cdCount(pl[_ri].cd):0;
+      const _threatCol=_rcc>=4?'#f04040':_rcc>=2?'#e09020':'#60c060';
+      const _pulseBdr=0.55+_sFr15*0.45;
+      g.globalAlpha=_a;
+      bx(_panX,_panY,_panW,_panH,_racDark);
+      bx(_panX,_panY,_panW,2,_rac);
+      bx(_panX,_panY+_panH-1,_panW,1,'rgba(0,0,0,.5)');
+      bx(_panX,_panY,4,_panH,_rac); // left accent bar
+      g.globalAlpha=_a*_pulseBdr;
+      bx(_panX+_panW-4,_panY,4,_panH,_rac); // right pulsing accent
+      g.globalAlpha=_a;
+      // Rival name + "ON THIS FLOOR!" title
+      if(_alertLblRef!==rivalAlertName){_alertLblRef=rivalAlertName;_alertLblCache='! '+rivalAlertName+' ENTERED THIS FLOOR';}
+      txShadow(_alertLblCache,_panX+14,_panY+18,10,_rac,'rgba(0,0,0,.7)');
+      // Card count + threat level
+      txShadow(_rcc+'♠',_panX+_panW-30,_panY+18,9,_rcc>=4?'#f04040':_rac,'rgba(0,0,0,.6)');
+      txShadow(_rcc>=4?'\u26a0 THREAT: HIGH':_rcc>=2?'THREAT: MED':'THREAT: LOW',_panX+14,_panY+36,7,_threatCol,'rgba(0,0,0,.5)');
+      txShadow('INTERCEPT!',_panX+_panW-100,_panY+36,7,_rcc>=4?'#f06060':'rgba(200,180,160,.6)','rgba(0,0,0,.5)');
+      g.globalAlpha=1;
+    }
   }
 
   // Location banner

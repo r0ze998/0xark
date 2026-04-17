@@ -29,6 +29,7 @@ function saveGame(){
       tutorialFlags:{...tutorialFlags},
       randomEventTimer:randomEventTimer,
       triggeredTraps:[...triggeredTraps],
+      exploredBonusGiven:[..._exploredBonusGiven],
       puzzleStoneOrder:[...puzzleStoneOrder],
       puzzleSolved:puzzleSolved,
       shakenTrees:[...shakenTrees],
@@ -89,6 +90,7 @@ function loadGame(){
     if(d.tutorialFlags)tutorialFlags={...tutorialFlags,...d.tutorialFlags};
     if(d.randomEventTimer!==undefined)randomEventTimer=d.randomEventTimer;
     if(d.triggeredTraps)d.triggeredTraps.forEach(t=>triggeredTraps.add(t));
+    if(d.exploredBonusGiven)d.exploredBonusGiven.forEach(m=>_exploredBonusGiven.add(m)); // v439
     if(d.puzzleStoneOrder)puzzleStoneOrder=[...d.puzzleStoneOrder];
     if(d.puzzleSolved!==undefined)puzzleSolved=d.puzzleSolved;
     if(d.shakenTrees)d.shakenTrees.forEach(t=>shakenTrees.add(t));

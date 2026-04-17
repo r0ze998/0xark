@@ -109,7 +109,8 @@ let wildEncounterActive=false, wildEncounterCard=-1, wildEncounterFrame=0;
 
 // ── RIVAL AI SYSTEM ──
 let rivalMaps=[1,1]; // GDD v1.0: rivals start in dungeon floor 1
-let rivalAlert=0, rivalAlertName='';
+let rivalAlert=0, rivalAlertName='', rivalAlertRival=-1;
+const RIVAL_ALERT_DUR=150; // v439: extended to 2.5s for dramatic banner
 
 // Rival AI state objects
 const rivalAI=[
@@ -466,7 +467,7 @@ function dungeonTurnStep(aiIdx){
             const oldMap=rMap;rivalMaps[aiIdx]=ex.targetMap;
             r.x=ex.targetX;r.y=ex.targetY;r.visualX=ex.targetX*TW;r.visualY=ex.targetY*TH;
             if(ex.targetMap===currentMap&&oldMap!==currentMap){
-              rivalAlert=90;rivalAlertName=r.n;flash();beep(660,.04,.06);
+              rivalAlert=RIVAL_ALERT_DUR;rivalAlertName=r.n;rivalAlertRival=aiIdx;flash();beep(660,.04,.06); // v439
               lg.push('You sense movement... '+r.n+' entered the area!');
             }
             if(inDungeon&&ex.targetMap>0){
@@ -584,7 +585,7 @@ function updateRivalAI(aiIdx){
             r.visualX=ex.targetX*TW;r.visualY=ex.targetY*TH;
             // Alert if entered player's map
             if(ex.targetMap===currentMap&&oldMap!==currentMap){
-              rivalAlert=90;rivalAlertName=r.n;
+              rivalAlert=RIVAL_ALERT_DUR;rivalAlertName=r.n;rivalAlertRival=aiIdx; // v439
               flash();beep(660,.04,.06);
               lg.push('You sense movement... '+r.n+' entered the area!');
             }

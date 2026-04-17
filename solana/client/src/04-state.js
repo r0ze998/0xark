@@ -403,6 +403,8 @@ const FISHING_COOLDOWN=900;
 // ── TRAPS STATE (Forest) ──
 const forestTraps=new Set(['1-6-6','1-20-12','1-12-18','1-32-14']); // mapIdx-x-y
 const triggeredTraps=new Set();
+// v439: track which dungeon floors have given the full-exploration bonus
+const _exploredBonusGiven=new Set();
 
 // ── PUZZLES STATE (Ruins) ──
 // 3 colored stones: positions cycle 0,1,2 — correct order is red=0,blue=1,yellow=2
@@ -618,7 +620,7 @@ let qteResultText='', qteResultTimer=0;
 
 // SFX for new features
 function resetNewFeatureState(){
-  triggeredTraps.clear();shakenTrees.clear();pushedRocks.clear();usedCrystals.clear();
+  triggeredTraps.clear();shakenTrees.clear();pushedRocks.clear();usedCrystals.clear();_exploredBonusGiven.clear();
   puzzleStoneOrder=[2,0,1];puzzleSolved=false;campfireUsed=false;
   burnedTiles.length=0;shadowStepsLeft=0;fishingCooldownTimer=0;
   fishingActive=false;inBuilding=false;crystalRevealTimer=0;

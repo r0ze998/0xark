@@ -53,6 +53,17 @@ function tryMovePlayer(dx, dy) {
   footprints.push({map:currentMap, x:nx, y:ny, age:0});
   if(inDungeon){ fogRevealCurrentRoom(currentMap,nx,ny); fogRevealRadius(currentMap,nx,ny,2); }
   fogSave();
+  // v439: floor fully-explored bonus — restore spells when first 100%-explored a dungeon floor
+  if(inDungeon&&!_exploredBonusGiven.has(currentMap)&&fogExploredPercent(currentMap)>=100){
+    _exploredBonusGiven.add(currentMap);
+    const _restN=(sp.s<3?1:0)+(sp.b<3?1:0)+(sp.c<3?1:0);
+    if(sp.s<3)sp.s++;if(sp.b<3)sp.b++;if(sp.c<3)sp.c++;
+    sfxCrystal();
+    const _flrLbl=['','I','II','III','IV','V'];
+    if(_restN>0){tutorialMsg='\u2605 FLOOR '+(_flrLbl[currentFloor]||currentFloor)+' FULLY MAPPED! Spells restored!';tutorialMsgTimer=220;}
+    else{tutorialMsg='\u2605 FLOOR '+(_flrLbl[currentFloor]||currentFloor)+' FULLY MAPPED! Master explorer!';tutorialMsgTimer=220;}
+    lg.push('Explored Floor '+(_flrLbl[currentFloor]||currentFloor)+' fully! Spells restored!');
+  }
   const newTile = m[ny]?.[nx];
   if(newTile===1||newTile===7||newTile===11){ spawnGrassParticles(nx*TW,ny*TH); sfxGrassRustle(); }
   // v217: Dungeon footstep dust — stone floor puffs when walking through dungeon
