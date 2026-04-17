@@ -59,8 +59,8 @@ function tryMovePlayer(dx, dy) {
     const _restN=(sp.s<3?1:0)+(sp.b<3?1:0)+(sp.c<3?1:0);
     if(sp.s<3)sp.s++;if(sp.b<3)sp.b++;if(sp.c<3)sp.c++;
     sfxCrystal();
-    // v475: full-map sparkle burst — radial burst + screenShake to celebrate 100% exploration
-    {const _fx=pl[0].visualX-camX+8,_fy=pl[0].visualY-camY+8;
+    // v475: full-map sparkle burst — radial burst + screenShake to celebrate 100% exploration (v506 fix: world coords)
+    {const _fx=pl[0].visualX+8,_fy=pl[0].visualY+8;
     screenShake(2,6);
     for(let _fi=0;_fi<18;_fi++){const _fa=(_fi/18)*Math.PI*2;const _fs=1.2+Math.random()*2.5;
       particles.push({x:_fx,y:_fy,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-1.5,life:22+Math.random()*16,c:Math.random()>.5?'rgba(80,180,255,1)':'rgba(255,220,80,1)'});
@@ -85,8 +85,8 @@ function tryMovePlayer(dx, dy) {
     for(let li=0;li<HAND_SIZE;li++){if(cardTimers[li]>0)cardTimers[li]-=30000;}
     if(objectInteractTimer<=0){objectInteractMsg='Lava! Cards decaying faster!';objectInteractTimer=60;}
     screenShake(2,4);
-    // v502: lava step — fire splash at player feet
-    {const _lx=nx*TW-camX+8,_ly=ny*TH-camY+8;
+    // v502: lava step — fire splash at player feet (v506 fix: world coords)
+    {const _lx=nx*TW+8,_ly=ny*TH+8;
     for(let _lvi=0;_lvi<8;_lvi++){const _lva=Math.random()*Math.PI-Math.PI/2-0.5;const _lvs=0.8+Math.random()*2;
       particles.push({x:_lx+(Math.random()*12-6),y:_ly+(Math.random()*6),vx:Math.cos(_lva)*_lvs,vy:Math.sin(_lva)*_lvs-1.5,life:10+Math.random()*8,c:Math.random()>.4?'rgba(255,80,20,1)':'rgba(255,200,40,1)'});
     }}
@@ -100,7 +100,7 @@ function tryMovePlayer(dx, dy) {
     // v473: stealth expiry — particle burst + shake when stealth runs out
     if(shadowStepsLeft===0){
       screenShake(2,5);
-      const _rpx=pl[0].visualX-camX+8,_rpy=pl[0].visualY-camY+8;
+      const _rpx=pl[0].visualX+8,_rpy=pl[0].visualY+8; // v506 fix: world coords
       for(let _ri=0;_ri<10;_ri++){const _ra=(_ri/10)*Math.PI*2;const _rs=1+Math.random()*2;
         particles.push({x:_rpx,y:_rpy,vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-1,life:16+Math.random()*10,c:Math.random()>.5?'rgba(150,80,220,1)':'rgba(255,200,255,1)'});
       }
@@ -113,8 +113,8 @@ function tryMovePlayer(dx, dy) {
   if(exit){
     if(!inDungeon&&exit.targetMap>0){dungeonConfirmActive=true;dungeonConfirmExit=exit;}
     else{
-      // v499: brief directional particle burst when stepping into exit (escape or descend)
-      {const _ex=pl[0].visualX-camX+8,_ey=pl[0].visualY-camY+8;
+      // v499: brief directional particle burst when stepping into exit (escape or descend) (v506 fix: world coords)
+      {const _ex=pl[0].visualX+8,_ey=pl[0].visualY+8;
       const _isEsc=exit.isEscape||exit.targetMap===0;
       const _c1=_isEsc?'rgba(80,240,160,1)':'rgba(255,200,60,1)';
       const _c2=_isEsc?'rgba(200,255,230,1)':'rgba(255,255,200,1)';
@@ -416,9 +416,9 @@ document.addEventListener('keydown',e=>{
   // Dungeon entry confirmation
   if(dungeonConfirmActive){
     if(e.code==='KeyZ'){dungeonConfirmActive=false;sfxConfirm();
-      // v501: ominous dark-red burst on dungeon entry confirmation
+      // v501: ominous dark-red burst on dungeon entry confirmation (v506 fix: world coords)
       screenShake(2,4);
-      {const _dx=pl[0].visualX-camX+8,_dy=pl[0].visualY-camY+8;
+      {const _dx=pl[0].visualX+8,_dy=pl[0].visualY+8;
       for(let _di=0;_di<12;_di++){const _da=(_di/12)*Math.PI*2;const _ds=1+Math.random()*2.2;
         particles.push({x:_dx,y:_dy,vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:16+Math.random()*12,c:Math.random()>.5?'rgba(180,30,30,1)':'rgba(100,20,20,1)'});
       }}

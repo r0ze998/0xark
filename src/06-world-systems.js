@@ -386,7 +386,7 @@ function doMapTransition(exit){
             objectInteractTimer=150;
             if(!isNewUnique)sfxCardGet(); // only play extra sound for duplicates (unique sting already fired)
             screenShake(cr.r>=3?cr.r:2,cr.r>=3?cr.r*3:4);
-            triggerCardGetBurst(pl[0].visualX-camX,pl[0].visualY-camY-8,_fcRarCols[cr.r]||'#f0c030');
+            triggerCardGetBurst(pl[0].visualX,pl[0].visualY-8,_fcRarCols[cr.r]||'#f0c030'); // v506 fix: world coords
             lg.push('[FLOOR CLEAR] B'+clearedFloor+' cleared! Earned: '+cr.n+' ('+RARITY_LABEL[cr.r]+')');
           }else{
             // Hand full — still got it in vault; prompt discard
@@ -418,7 +418,7 @@ function doMapTransition(exit){
           if(!cr)return;
           const isNew=!(pl[0].vault&&pl[0].vault.has(rid));
           addCardToPlayer(0,rid);
-          triggerCardGetBurst(W/2,H/2,'#ffe080');
+          triggerCardGetBurst(W/2+camX,H/2+camY,'#ffe080'); // v506 fix: world coords
           screenShake(5,12);
           sfxStreakUp();
           lg.push('[DUNGEON CLEARED] Legendary reward: '+cr.n+'!');
@@ -926,8 +926,8 @@ function tryWildEncounter(){
   wildEncounterFrame=fr;
   sfxEncounter();
   flash();
-  // v477: grass swirl burst at player position on encounter trigger
-  {const _ex=pl[0].visualX-camX+8,_ey=pl[0].visualY-camY+8;
+  // v477: grass swirl burst at player position on encounter trigger (v506 fix: world coords)
+  {const _ex=pl[0].visualX+8,_ey=pl[0].visualY+8;
   screenShake(2,5);
   for(let _ei=0;_ei<14;_ei++){const _ea=(_ei/14)*Math.PI*2;const _es=1.5+Math.random()*2.5;
     const _gc=Math.random()>.45?'rgba(60,160,60,1)':'rgba(200,240,120,1)';
@@ -1027,7 +1027,7 @@ function checkTreasure(){
       if(tAdded){
         startCardAcquisition(t.card);
         // v475: treasure pickup visual burst (matching floor item pickup quality)
-        const _tx=t.x*TW-camX+TW/2,_ty=t.y*TH-camY+TH/2;
+        const _tx=t.x*TW+TW/2,_ty=t.y*TH+TH/2; // v506 fix: world coords
         const _tRarCol=['','#60d060','#6090f0','#c060e0','#e0a020','#fff8e0'][cr.r]||'#f0c030';
         triggerCardGetBurst(_tx,_ty,_tRarCol);
         screenShake(2,5);
@@ -1453,7 +1453,7 @@ function doSynthesis(){
   const cr=CD[newId-1];
   lg.push('[SYNTHESIS] Fused 3x '+RARITY_LABEL[r]+' → '+cr.n+' ('+RARITY_LABEL[cr.r]+')!');
   sfxCardGet();screenShake(cr.r>=3?cr.r:3,cr.r>=3?cr.r*3:6);
-  triggerCardGetBurst(pl[0].visualX-camX,pl[0].visualY-camY-8,_SYNTH_RAR_BURST[cr.r]||'#f0c030'); // v301
+  triggerCardGetBurst(pl[0].visualX,pl[0].visualY-8,_SYNTH_RAR_BURST[cr.r]||'#f0c030'); // v301, v506 fix: world coords
   if(cr.r>=3)hitPause(cr.r>=4?4:3);
   checkWinAndTransition(2000); // v149: card 60 could come from synthesis
 }
@@ -1600,8 +1600,8 @@ function triggerRandomEvent(){
   if(ev.cat==='bad')sfxDangerAlert();
   else if(ev.cat==='good')sfxEvent();
   else sfxEventAlert();
-  // v474: category-colored particle burst around player on event trigger
-  {const _epx=pl[0].visualX-camX+8,_epy=pl[0].visualY-camY+8;
+  // v474: category-colored particle burst around player on event trigger (v506 fix: world coords)
+  {const _epx=pl[0].visualX+8,_epy=pl[0].visualY+8;
   const _ecat=ev.cat||'neutral';
   const _ec1=_ecat==='good'?'rgba(60,200,100,1)':_ecat==='bad'?'rgba(220,60,60,1)':'rgba(220,170,30,1)';
   const _ec2=_ecat==='good'?'rgba(180,255,200,1)':_ecat==='bad'?'rgba(255,160,160,1)':'rgba(255,230,120,1)';
@@ -1652,8 +1652,8 @@ function triggerRandomEvent(){
     if(sp.b<3){sp.b++;restored=true;}
     if(sp.c<3){sp.c++;restored=true;}
     if(restored){sfxCrystal();lg.push('Event: Ancient runes restored spell energy!');
-      // v490: cyan sparkle from player on spell restore event
-      {const _spx=pl[0].visualX-camX+8,_spy=pl[0].visualY-camY+8;
+      // v490: cyan sparkle from player on spell restore event (v506 fix: world coords)
+      {const _spx=pl[0].visualX+8,_spy=pl[0].visualY+8;
       for(let _si=0;_si<14;_si++){const _sa=(_si/14)*Math.PI*2;const _ss=1+Math.random()*2.5;
         particles.push({x:_spx,y:_spy,vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-1.8,life:18+Math.random()*14,c:Math.random()>.5?'rgba(72,184,232,1)':'rgba(180,240,255,1)'});
       }}
@@ -1661,9 +1661,9 @@ function triggerRandomEvent(){
   }else if(ev.action==='rival_taunt'){
     // Just a flavor event — tension shake
     screenShake(2,3);flash();
-    // v496: ominous red pulse at screen center for taunt
+    // v496: ominous red pulse at screen center for taunt (v506 fix: world coords)
     for(let _ti=0;_ti<8;_ti++){const _ta=(_ti/8)*Math.PI*2;const _ts=1+Math.random()*2;
-      particles.push({x:W/2+(Math.random()*30-15),y:H/2+(Math.random()*20-10),vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-0.5,life:12+Math.random()*8,c:Math.random()>.5?'rgba(200,30,30,.8)':'rgba(255,80,80,.6)'});
+      particles.push({x:W/2+camX+(Math.random()*30-15),y:H/2+camY+(Math.random()*20-10),vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-0.5,life:12+Math.random()*8,c:Math.random()>.5?'rgba(200,30,30,.8)':'rgba(255,80,80,.6)'});
     }
     lg.push('Event: A rival\'s voice echoes from the deep...');
   }else if(ev.action==='heal'){
@@ -1673,8 +1673,8 @@ function triggerRandomEvent(){
       if(cardTimers[i]>0){const age=Date.now()-cardTimers[i];if(age>oldestAge){oldestAge=age;oldest=i;}}
     }
     if(oldest>=0){cardTimers[oldest]+=30000;sfxCrystal();lg.push('Event: A card\'s decay was eased by the ARK\'s energy!');
-      // v496: warm green heal sparkle from player
-      {const _hpx=pl[0].visualX-camX+8,_hpy=pl[0].visualY-camY+8;
+      // v496: warm green heal sparkle from player (v506 fix: world coords)
+      {const _hpx=pl[0].visualX+8,_hpy=pl[0].visualY+8;
       for(let _hi=0;_hi<10;_hi++){const _ha=(_hi/10)*Math.PI*2;const _hs=0.8+Math.random()*1.8;
         particles.push({x:_hpx,y:_hpy,vx:Math.cos(_ha)*_hs,vy:Math.sin(_ha)*_hs-1.5,life:14+Math.random()*10,c:Math.random()>.5?'rgba(80,220,120,1)':'rgba(180,255,200,1)'});
       }}
@@ -1682,8 +1682,8 @@ function triggerRandomEvent(){
   }else if(ev.action==='bonus_sp'){
     // v362: grant +1 steal resource (capped at 5)
     if(sp.s<5){sp.s++;sfxCrystal();lg.push('Event: A hidden cache refilled your STEAL energy!');
-      // v496: teal steal-energy sparkle
-      {const _bpx=pl[0].visualX-camX+8,_bpy=pl[0].visualY-camY+8;
+      // v496: teal steal-energy sparkle (v506 fix: world coords)
+      {const _bpx=pl[0].visualX+8,_bpy=pl[0].visualY+8;
       for(let _bi=0;_bi<10;_bi++){const _ba=(_bi/10)*Math.PI*2;const _bs=0.8+Math.random()*2;
         particles.push({x:_bpx,y:_bpy,vx:Math.cos(_ba)*_bs,vy:Math.sin(_ba)*_bs-1.5,life:14+Math.random()*10,c:Math.random()>.5?'rgba(40,220,180,1)':'rgba(160,255,240,1)'});
       }}
@@ -1692,8 +1692,8 @@ function triggerRandomEvent(){
     // v362: B5 ARK Core — restore all spell types to max
     sp.s=3;sp.b=3;sp.c=3;
     sfxCrystal();screenShake(2,5);
-    // v490: full_restore — bigger burst, all 3 spell colors
-    {const _spx=pl[0].visualX-camX+8,_spy=pl[0].visualY-camY+8;
+    // v490: full_restore — bigger burst, all 3 spell colors (v506 fix: world coords)
+    {const _spx=pl[0].visualX+8,_spy=pl[0].visualY+8;
     const _fullCols=['rgba(72,184,232,1)','rgba(80,220,120,1)','rgba(200,120,255,1)','rgba(255,240,180,1)'];
     for(let _si=0;_si<20;_si++){const _sa=(_si/20)*Math.PI*2;const _ss=1.5+Math.random()*3;
       particles.push({x:_spx+(Math.random()*16-8),y:_spy+(Math.random()*10-5),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2,life:22+Math.random()*18,c:_fullCols[_si%4]});

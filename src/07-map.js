@@ -1338,8 +1338,8 @@ function dMap(){
     const rv=pl[1];
     if(isVisibleThroughFog(rv.x,rv.y,3)){
       if(!rv._wasVisible){rv._wasVisible=true;rv._alertTimer=30;sfxEncounter();
-        // v504: red threat burst at rival's position when first spotted
-        screenShake(2,3);const _rvx=rv.visualX-camX+8,_rvy=rv.visualY-camY+8;
+        // v504: red threat burst at rival's position when first spotted (v506 fix: world coords)
+        screenShake(2,3);const _rvx=rv.visualX+8,_rvy=rv.visualY+8;
         for(let _rvi=0;_rvi<10;_rvi++){const _rva=(_rvi/10)*Math.PI*2;const _rvs=1+Math.random()*2;
           particles.push({x:_rvx,y:_rvy,vx:Math.cos(_rva)*_rvs,vy:Math.sin(_rva)*_rvs-1.5,life:14+Math.random()*10,c:Math.random()>.4?'rgba(220,60,60,1)':'rgba(255,200,60,1)'});
         }}
@@ -1350,8 +1350,8 @@ function dMap(){
     const hv=pl[2];
     if(isVisibleThroughFog(hv.x,hv.y,3)){
       if(!hv._wasVisible){hv._wasVisible=true;hv._alertTimer=30;sfxEncounter();
-        // v504: red threat burst at rival's position when first spotted
-        screenShake(2,3);const _hvx=hv.visualX-camX+8,_hvy=hv.visualY-camY+8;
+        // v504: red threat burst at rival's position when first spotted (v506 fix: world coords)
+        screenShake(2,3);const _hvx=hv.visualX+8,_hvy=hv.visualY+8;
         for(let _hvi=0;_hvi<10;_hvi++){const _hva=(_hvi/10)*Math.PI*2;const _hvs=1+Math.random()*2;
           particles.push({x:_hvx,y:_hvy,vx:Math.cos(_hva)*_hvs,vy:Math.sin(_hva)*_hvs-1.5,life:14+Math.random()*10,c:Math.random()>.4?'rgba(220,60,60,1)':'rgba(255,200,60,1)'});
         }}
