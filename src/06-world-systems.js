@@ -1279,9 +1279,9 @@ function drawCardShop(){
       txShadow('Z=Select   X=Leave',wX+24,wY+wH-24,7,'#686868','rgba(0,0,0,.2)');
     }
   }else if(shopPhase==='confirm'){
-    const filled=getPlayerFilledSlots();
-    if(filled.length===0){shopPhase='list';return;}
-    const slot=filled[Math.min(shopSelectedIdx,filled.length-1)];
+    const _sfN=_getFilledSlotsN(); // allocation-free confirm render
+    if(_sfN===0){shopPhase='list';return;}
+    const slot=_shopSlotsBuf[Math.min(shopSelectedIdx,_sfN-1)];
     const cd=pl[0].cd[slot];
     if(!cd||cd<1||cd>CD.length){shopPhase='list';return;}
     const cr=CD[cd-1];
