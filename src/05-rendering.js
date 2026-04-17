@@ -1085,6 +1085,26 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
       }
     }
   }
+  // v507: per-floor ambient atmosphere particles — themed motes/embers/spores drifting through dungeon air
+  // World coords; rate varies by floor depth (floor 5 = most dramatic)
+  {const _aflr=currentFloor||1;const _aRate=10+(_aflr===5?-4:_aflr===4?-2:0);
+  if(fr%_aRate===0){
+    // Spawn position: random point in visible world area
+    const _awx=camX+Math.random()*W,_awy=camY+Math.random()*(H-72);
+    let _ac1,_ac2,_avx,_avy,_ali;
+    if(_aflr===5){// ARK Core: gold & teal motes (magical energy)
+      _ac1='rgba(255,200,60,.6)';_ac2='rgba(80,240,220,.5)';_avx=(Math.random()-.5)*0.5;_avy=-0.3-Math.random()*0.5;_ali=35+Math.random()*25;
+    }else if(_aflr===4){// Deep Vault: red embers drifting up
+      _ac1='rgba(220,60,30,.7)';_ac2='rgba(255,160,40,.5)';_avx=(Math.random()-.5)*0.6;_avy=-0.5-Math.random()*0.8;_ali=18+Math.random()*14;
+    }else if(_aflr===3){// Echo Chambers: magenta spores
+      _ac1='rgba(200,60,180,.5)';_ac2='rgba(255,160,240,.4)';_avx=(Math.random()-.5)*0.4;_avy=-0.2-Math.random()*0.4;_ali=30+Math.random()*20;
+    }else if(_aflr===2){// Drowned Archives: purple wisps
+      _ac1='rgba(120,60,200,.45)';_ac2='rgba(180,140,255,.4)';_avx=(Math.random()-.5)*0.35;_avy=-0.15-Math.random()*0.35;_ali=32+Math.random()*22;
+    }else{// Sunken Galleries: blue-grey dust motes
+      _ac1='rgba(80,100,160,.4)';_ac2='rgba(140,160,200,.35)';_avx=(Math.random()-.5)*0.3;_avy=-0.1-Math.random()*0.3;_ali=28+Math.random()*20;
+    }
+    particles.push({x:_awx,y:_awy,vx:_avx,vy:_avy,life:_ali,c:Math.random()>.5?_ac1:_ac2});
+  }}
 }
 
 // v215: Town animated overlays — water sparkles + wave glints drawn each frame on main canvas
