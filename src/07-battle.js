@@ -821,7 +821,12 @@ function drawVsSplash(){
   }
 
   // VS text with pop-in scale + glow pulse
-  if(t===16){hitPause(3);}
+  // v493: spark burst from VS pop-in center
+  if(t===16){hitPause(3);screenShake(2,4);
+    for(let _vi=0;_vi<18;_vi++){const _va=(_vi/18)*Math.PI*2;const _vs2=1.5+Math.random()*3.5;
+      particles.push({x:W/2-8+(Math.random()*20-10),y:H/2+30+(Math.random()*12-6),vx:Math.cos(_va)*_vs2,vy:Math.sin(_va)*_vs2-1.5,life:18+Math.random()*14,c:Math.random()>.4?'rgba(255,200,40,1)':'rgba(255,255,200,1)'});
+    }
+  }
   if(t>15){
     const vsA=Math.min(1,(t-15)/8);
     const vsScale=t<20?1+(20-t)*0.08:1;   // slight overshoot pop-in

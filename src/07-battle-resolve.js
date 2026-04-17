@@ -960,6 +960,12 @@ function drawResultPhase(){
     let _gotCard=false,_lostCard=false;
     for(let _oi=0;_oi<bpResolveQueue.length;_oi++){const _oe=bpResolveQueue[_oi].effect||'';if(_oe==='steal_get'||_oe==='card_get')_gotCard=true;else if(_oe==='card_lost')_lostCard=true;}
     const _outLabel=_gotCard&&!_lostCard?'WIN!':_lostCard&&!_gotCard?'LOSS':_gotCard&&_lostCard?'TRADE':'DRAW';
+    // v494: one-shot badge pop spark
+    if(t===8){
+      const _bpx=panX+panW-16,_bpy=panY+16;
+      if(_gotCard&&!_lostCard){screenShake(1,3);for(let _bi=0;_bi<10;_bi++){const _ba=(_bi/10)*Math.PI*2;const _bs=1+Math.random()*2;particles.push({x:_bpx,y:_bpy,vx:Math.cos(_ba)*_bs,vy:Math.sin(_ba)*_bs-1.5,life:12+Math.random()*8,c:Math.random()>.4?'rgba(64,232,128,1)':'rgba(200,255,220,1)'}); }}
+      else if(_lostCard&&!_gotCard){for(let _bi=0;_bi<8;_bi++){const _ba=(_bi/8)*Math.PI*2;const _bs=0.8+Math.random()*1.5;particles.push({x:_bpx,y:_bpy,vx:Math.cos(_ba)*_bs,vy:Math.sin(_ba)*_bs-1,life:10+Math.random()*6,c:'rgba(220,60,60,1)'}); }}
+    }
     const _outCol=_gotCard&&!_lostCard?'#40e880':_lostCard&&!_gotCard?'#ff4040':_gotCard?'#f0c030':'#888870';
     const _outBg=_gotCard&&!_lostCard?'rgba(0,60,20,.75)':_lostCard&&!_gotCard?'rgba(60,0,0,.75)':_gotCard?'rgba(60,40,0,.75)':'rgba(0,0,0,.4)';
     const _oBW=_outLabel.length*7+12;
