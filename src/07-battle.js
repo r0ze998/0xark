@@ -1610,7 +1610,7 @@ function drawConfirmingPhase(){
   // Commit phase: on-chain TX + ZK proof (both paths)
   if(t===1&&walletConnected){
     onchainCommitPhase=true;
-    onchainCommit(rd,bpAction,encounterExclTarget||0).then(result=>{
+    onchainCommit(_sessionGameId,bpAction,encounterExclTarget||0).then(result=>{
       if(result){
         walletLastCommitHash=result.hash;
         logOnchain('Commit: '+result.hash.slice(0,10)+'..'+'  TX:'+result.txSig.slice(0,8)+'..');
@@ -1635,7 +1635,7 @@ function drawConfirmingPhase(){
   // On-chain reveal phase
   if(t===70&&walletConnected&&onchainPendingSalt){
     onchainRevealPhase=true;
-    onchainReveal(rd,bpAction,encounterExclTarget||0,onchainPendingSalt).then(result=>{
+    onchainReveal(_sessionGameId,bpAction,encounterExclTarget||0,onchainPendingSalt).then(result=>{
       if(result){
         logOnchain('Reveal TX:'+result.txSig.slice(0,8)+'..');
       }

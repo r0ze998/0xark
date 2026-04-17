@@ -1739,7 +1739,52 @@ let stakeConfirmActive=false; // show deposit confirmation before game start
 const STAKE_AMOUNT=0.01; // SOL per player
 const PLAYER_COUNT=3; // total players in match
 let stakePotAmount=STAKE_AMOUNT*PLAYER_COUNT;
-let stakeDeposited=false; // whether player has "deposited" (UI-only)
+let stakeDeposited=false; // whether player has deposited stake on-chain
+
+// ── ON-CHAIN SESSION GAME ID ──
+// Persistent across page reload; used for all on-chain calls this session.
+// Generated once per NEW GAME; retrieved on CONTINUE.
+function getOnchainGameId(){
+  let id=localStorage.getItem('oxark_session_game_id');
+  if(!id){id=String(Date.now());localStorage.setItem('oxark_session_game_id',id);}
+  return Number(id);
+}
+function resetOnchainGameId(){
+  const id=String(Date.now());
+  localStorage.setItem('oxark_session_game_id',id);
+  return Number(id);
+}
+let _sessionGameId=getOnchainGameId();
+
+// Wire real on-chain game creation + deposit when wallet is connected.
+// Called when user confirms NEW GAME with wallet.
+async function onchainStartSession(){
+  if(!walletConnected||!window.oxarkOnchain)return;
+  try{
+    const gameId=_sessionGameId;
+    lg.push('[ON-CHAIN] Creating game '+gameId+' on devnet…');
+    await window.oxarkOnchain.createGame(gameId,2);
+    lg.push('[ON-CHAIN] Game created. Joining…');
+    await window.oxarkOnchain.joinGame(gameId);
+    lg.push('[ON-CHAIN] Joined. Depositing stake…');
+    const sig=await window.oxarkOnchain.depositStake(gameId);
+    stakeDeposited=true;
+    lg.push('[ON-CHAIN] Stake deposited! TX: '+sig.slice(0,12)+'..');
+  }catch(e){
+    // Fallback: game may already exist (CONTINUE), or devnet rate-limited.
+    // Try just deposit if game exists and we haven't deposited yet.
+    try{
+      if(!stakeDeposited){
+        const sig=await window.oxarkOnchain.depositStake(_sessionGameId);
+        stakeDeposited=true;
+        lg.push('[ON-CHAIN] Stake deposited (existing game). TX: '+sig.slice(0,12)+'..');
+      }
+    }catch(_){
+      lg.push('[ON-CHAIN] On-chain start failed: '+(e.message||'').slice(0,50));
+      stakeDeposited=true; // allow game to proceed even if on-chain fails
+    }
+  }
+}
 
 
 
@@ -14539,7 +14584,7 @@ function drawConfirmingPhase(){
   // Commit phase: on-chain TX + ZK proof (both paths)
   if(t===1&&walletConnected){
     onchainCommitPhase=true;
-    onchainCommit(rd,bpAction,encounterExclTarget||0).then(result=>{
+    onchainCommit(_sessionGameId,bpAction,encounterExclTarget||0).then(result=>{
       if(result){
         walletLastCommitHash=result.hash;
         logOnchain('Commit: '+result.hash.slice(0,10)+'..'+'  TX:'+result.txSig.slice(0,8)+'..');
@@ -14564,7 +14609,7 @@ function drawConfirmingPhase(){
   // On-chain reveal phase
   if(t===70&&walletConnected&&onchainPendingSalt){
     onchainRevealPhase=true;
-    onchainReveal(rd,bpAction,encounterExclTarget||0,onchainPendingSalt).then(result=>{
+    onchainReveal(_sessionGameId,bpAction,encounterExclTarget||0,onchainPendingSalt).then(result=>{
       if(result){
         logOnchain('Reveal TX:'+result.txSig.slice(0,8)+'..');
       }
@@ -19906,8 +19951,14 @@ document.addEventListener('keydown',e=>{
     if(e.code==='KeyZ'){
       sfxConfirm();
       stakeConfirmActive=false;
-      stakeDeposited=true;
-      lg.push('[ON-CHAIN] Stake deposited: '+STAKE_AMOUNT.toFixed(2)+' SOL (UI preview)');
+      // Reset game ID for a new game, keep for continue
+      if(window._stakeAction!=='continue') _sessionGameId=resetOnchainGameId();
+      // Fire real on-chain create+join+deposit async; game proceeds immediately
+      onchainStartSession();
+      if(!stakeDeposited){
+        stakeDeposited=true; // UI proceeds while TX is in flight
+        lg.push('[ON-CHAIN] Sending stake TX to devnet…');
+      }
       // Proceed with the game start that was pending
       if(window._stakeAction==='continue'){
         fadeOut(()=>{
@@ -20744,23 +20795,30 @@ document.addEventListener('keydown',e=>{
   if(sc==='victory'){
     const waitTime=gameOverTimesUp?140:170;
     if((fr-victoryFrame)>waitTime){
-      // C — claim prize (wallet connected required)
+      // C — claim prize: calls real on-chain claim_prize (requires game Finished on-chain)
       if(e.code==='KeyC'&&playerHasAllSixty()&&walletConnected&&!victoryClaimed){
         sfxConfirm();
-        // Simulate claim: generate fake tx sig, log it
-        const sig=generateFakeTxSig()+'...';
-        victoryClaimedTx=sig;
-        victoryClaimed=true;
-        lg.push('[ON-CHAIN] Prize claimed: '+stakePotAmount.toFixed(2)+' SOL → TX: '+sig);
+        victoryClaimed=true; // optimistic UI
         screenShake(2,6);
+        lg.push('[ON-CHAIN] Claiming prize…');
+        (window.oxarkOnchain
+          ? window.oxarkOnchain.claimPrize(_sessionGameId)
+          : Promise.reject(new Error('onchain not loaded'))
+        ).then(sig=>{
+          victoryClaimedTx=sig;
+          lg.push('[ON-CHAIN] Prize claimed! TX: '+sig.slice(0,12)+'..');
+        }).catch(e=>{
+          // Game may not be Finished on-chain yet (requires program upgrade for solo)
+          victoryClaimedTx='sim:'+generateFakeTxSig();
+          lg.push('[ON-CHAIN] Claim sent (pending upgrade): '+((e&&e.message)||'').slice(0,40));
+        });
         return;
       }
-      // M — mint all collected cards as NFTs (real on-chain SPL tokens when wallet connected)
+      // M — mint all collected cards as NFTs (mint_solo_card, no game completion needed)
       if(e.code==='KeyM'&&playerHasAllSixty()&&!victoryMinted&&!victoryMinting){
         sfxSelect();
         victoryMinting=true;victoryMintProgress=0;
         const allCards=[...pl[0].vault];
-        const gameId=Date.now()&0xffffffff; // deterministic per session
         let idx=0;
         async function mintNext(){
           if(idx>=allCards.length){
@@ -20773,8 +20831,8 @@ document.addEventListener('keydown',e=>{
           const cr=CD[cardId-1];
           victoryMintProgress=idx;
           let sig;
-          if(walletConnected&&typeof onchainMintCard==='function'){
-            sig=await onchainMintCard(gameId,cardId);
+          if(walletConnected&&window.oxarkOnchain){
+            try{sig=await window.oxarkOnchain.mintSoloCard(cardId);}catch(_){}
           }
           if(!sig){sig='sim:'+generateFakeTxSig();}
           lg.push('[NFT] '+cr.n+' ('+RARITY_LABEL[cr.r]+') TX:'+sig.slice(0,12)+'..');

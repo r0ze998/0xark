@@ -769,6 +769,56 @@ async function readSeason(seasonId) {
   }
 }
 
+// ─── Instruction: mint_solo_card ─────────────────────────────────────────────
+// Seeds: ["solo_card", player_pubkey, &[card_id]]
+// Mints a 1-of-1 SPL Token (supply=1, decimals=0) as proof of collection.
+// No game completion required — any wallet can mint any card (1-60) exactly once.
+// Requires the upgraded program (v425+). Falls back gracefully if unavailable.
+const SOLO_CARD_SEED = ENC.encode('solo_card');
+const SPL_TOKEN_PROGRAM_ID    = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+const ASSOCIATED_TOKEN_PROGRAM_ID = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bx';
+const SYSVAR_RENT_PUBKEY      = 'SysvarRent111111111111111111111111111111111';
+
+function findSoloCardMintPDA(playerPubkey, cardId) {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [SOLO_CARD_SEED, playerPubkey.toBytes(), new Uint8Array([cardId])],
+    getProgramId()
+  );
+}
+
+function findAssociatedTokenAddress(ownerPubkey, mintPubkey) {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [
+      ownerPubkey.toBytes(),
+      new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID).toBytes(),
+      mintPubkey.toBytes(),
+    ],
+    new solanaWeb3.PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID)
+  );
+}
+
+async function mintSoloCard(cardId) {
+  const player = window.solana.publicKey;
+  const [mintPDA] = findSoloCardMintPDA(player, cardId);
+  const [playerATA] = findAssociatedTokenAddress(player, mintPDA);
+
+  // disc(8) + card_id(1) = 9 bytes
+  const d = await disc('mint_solo_card');
+  const data = new Uint8Array(9);
+  writeBytes(data, 0, d);
+  data[8] = cardId & 0xff;
+
+  return buildAndSend([
+    { pubkey: mintPDA,                                                    isSigner: false, isWritable: true  },
+    { pubkey: playerATA,                                                  isSigner: false, isWritable: true  },
+    { pubkey: player,                                                     isSigner: true,  isWritable: true  },
+    { pubkey: new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),             isSigner: false, isWritable: false },
+    { pubkey: new solanaWeb3.PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID),      isSigner: false, isWritable: false },
+    { pubkey: solanaWeb3.SystemProgram.programId,                         isSigner: false, isWritable: false },
+    { pubkey: new solanaWeb3.PublicKey(SYSVAR_RENT_PUBKEY),               isSigner: false, isWritable: false },
+  ], data, COMPUTE_BUDGET.mint_card_nft);
+}
+
 // ─── Session Keys (stub — Q2 2026) ───────────────────────────────────────────
 // Currently every battle action requires a Phantom popup.
 // Session Keys eliminate per-action popups: the player signs once to authorize
@@ -865,6 +915,8 @@ window.oxarkOnchain = {
   // Season instructions
   createSeason,
   endSeason,
+  // NFT minting
+  mintSoloCard,
   // ZK proof generation (browser-side, requires snarkjs)
   generateZkProof,
   // Helpers
