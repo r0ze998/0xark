@@ -724,6 +724,11 @@ function updateProximityTension(){
   if(proximityDangerLevel>=4&&!rivalDangerAlertShown){
     rivalDangerAlertShown=true;
     sfxDangerAlert();screenShake(2,4);
+    // v492: red danger pulse from player when rival closes in
+    {const _dpx=pl[0].visualX-camX+8,_dpy=pl[0].visualY-camY+8;
+    for(let _ddi=0;_ddi<12;_ddi++){const _dda=(_ddi/12)*Math.PI*2;const _dds=1+Math.random()*2.5;
+      particles.push({x:_dpx,y:_dpy,vx:Math.cos(_dda)*_dds,vy:Math.sin(_dda)*_dds-1,life:14+Math.random()*10,c:Math.random()>.5?'rgba(220,40,40,1)':'rgba(255,120,80,1)'});
+    }}
     lg.push('! Something is very close!');
   }
   if(proximityDangerLevel<4)rivalDangerAlertShown=false;

@@ -193,7 +193,16 @@ function update(){
         milestonesReached.add(m);
         milestoneToastText=CARD_MILESTONE_MSG[m]||'';
         milestoneToastFrame=fr;
-        if(vs<60){sfxStreakUp();}
+        if(vs<60){sfxStreakUp();
+          // v491: golden confetti burst on collection milestone
+          screenShake(1,3);
+          const _mx=W/2,_my=H*0.4;
+          const _isHigh=vs>=40;
+          const _mn=_isHigh?22:14;
+          for(let _mi=0;_mi<_mn;_mi++){const _ma=(_mi/_mn)*Math.PI*2+Math.random()*0.5;const _ms=1.5+Math.random()*(_isHigh?4:2.5);
+            particles.push({x:_mx+(Math.random()*60-30),y:_my+(Math.random()*30-15),vx:Math.cos(_ma)*_ms,vy:Math.sin(_ma)*_ms-2.5,life:22+Math.random()*18,c:Math.random()>.4?'rgba(255,200,40,1)':'rgba(255,240,140,1)'});
+          }
+        }
       }
     }
   }
