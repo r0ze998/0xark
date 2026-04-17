@@ -285,52 +285,7 @@ function zkSerializeProof(proof,publicSignals){
 
 // ─── Instruction: verify_zk_proof ────────────────────────────────────────────
 // disc: sha256("global:verify_zk_proof")[0..8]
-const DISC_VERIFY_ZK=[251,39,91,14,62,74,223,108];
-
-async function onchainVerifyZk(gameId,proof,publicSignals){
-  if(!walletConnected||!proof||!publicSignals)return null;
-  try{
-    const{proof_a,proof_b,proof_c,public_inputs}=zkSerializeProof(proof,publicSignals);
-    const payer=window.solana.publicKey;
-    const gid=gameIdBuf(gameId);
-    const gamePDA=_gamePDA(gameId);
-    const playerPDA=_playerPDA(gameId,payer);
-
-    // Read round for commit PDA seed (same as in onchainCommit)
-    let round=0;
-    try{
-      const gameAcct=await solConnection.getAccountInfo(gamePDA);
-      if(gameAcct){round=gameAcct.data[49];}
-    }catch(_){}
-    const roundBuf=new ArrayBuffer(1);new DataView(roundBuf).setUint8(0,round&0xff);
-    const roundBytes=new Uint8Array(roundBuf);
-
-    const[commitPDA]=solanaWeb3.PublicKey.findProgramAddressSync(
-      [Buffer.from('commit'),gid,roundBytes,payer.toBytes()],PROGRAM_PUBKEY
-    );
-
-    // Instruction data: disc(8) + game_id(8) + proof_a(64) + proof_b(128) + proof_c(64) + public_inputs(32) = 304 bytes
-    const data=new Uint8Array(304);
-    data.set(DISC_VERIFY_ZK,0);
-    data.set(gid,8);
-    data.set(proof_a,16);
-    data.set(proof_b,80);
-    data.set(proof_c,208);
-    data.set(public_inputs,272);
-
-    const sig=await _sendIx([
-      {pubkey:gamePDA,   isSigner:false,isWritable:false},
-      {pubkey:playerPDA, isSigner:false,isWritable:false},
-      {pubkey:commitPDA, isSigner:false,isWritable:false},
-      {pubkey:payer,     isSigner:true, isWritable:false},
-    ],data);
-    lg.push('[ZK] On-chain verify TX: '+sig.slice(0,12)+'..');
-    return sig;
-  }catch(e){
-    lg.push('[ZK] On-chain verify failed: '+(e.message||'').slice(0,40));
-    return null;
-  }
-}
+// onchainVerifyZk removed — replaced by _onchainVerifyZk (uses window.oxarkOnchain.verifyZkProof with correct account order)
 
 // ═══════════════════════════════════════
 // ON-CHAIN TRANSACTION INTEGRATION
@@ -339,6 +294,24 @@ let onchainLastTxSig='';
 let onchainCommitPhase=false;
 let onchainRevealPhase=false;
 let onchainPendingSalt=null;
+let _zkVerifyFiredThisRound=false; // guard: fire verify_zk_proof once per round
+
+// Convert snarkjs proof object to on-chain byte buffers and call verifyZkProof.
+// Fire-and-forget; failures are logged to the on-chain overlay only.
+async function _onchainVerifyZk(gameId,snarkProof){
+  try{
+    function _f32(s){const bi=BigInt(s);const b=new Uint8Array(32);for(let i=0;i<32;i++)b[31-i]=Number((bi>>BigInt(i*8))&0xffn);return b;}
+    const pA=new Uint8Array(64);pA.set(_f32(snarkProof.proof.pi_a[0]),0);pA.set(_f32(snarkProof.proof.pi_a[1]),32);
+    const pB=new Uint8Array(128);pB.set(_f32(snarkProof.proof.pi_b[0][1]),0);pB.set(_f32(snarkProof.proof.pi_b[0][0]),32);pB.set(_f32(snarkProof.proof.pi_b[1][1]),64);pB.set(_f32(snarkProof.proof.pi_b[1][0]),96);
+    const pC=new Uint8Array(64);pC.set(_f32(snarkProof.proof.pi_c[0]),0);pC.set(_f32(snarkProof.proof.pi_c[1]),32);
+    const pI=_f32(snarkProof.publicSignals[0]);
+    const sig=await window.oxarkOnchain.verifyZkProof(gameId,pA,pB,pC,pI);
+    logOnchain('[ZK] On-chain verify \u2713 TX:'+sig.slice(0,8)+'..');
+    zkProofStatus='verified';
+  }catch(e){
+    logOnchain('[ZK] verify: '+(e.message||'failed').slice(0,30));
+  }
+}
 
 // ── STAKE SYSTEM UI STATE ──
 let stakeConfirmActive=false; // show deposit confirmation before game start
@@ -606,8 +579,9 @@ async function onchainReveal(gameId,actionType,rivalIdx,salt){
         localStorage.removeItem('oxark_onchain_round');
         localStorage.removeItem('oxark_onchain_gameid');
         // Submit ZK proof on-chain after successful reveal (background)
-        if(zkLastProof){
-          onchainVerifyZk(gameId,zkLastProof.proof,zkLastProof.publicSignals).catch(()=>{});
+        if(zkLastProof&&window.oxarkOnchain&&!_zkVerifyFiredThisRound){
+          _zkVerifyFiredThisRound=true;
+          _onchainVerifyZk(gameId,zkLastProof);
         }
         return{txSig};
       }catch(txErr){

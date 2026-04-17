@@ -978,6 +978,12 @@ document.addEventListener('keydown',e=>{
           }
           bpRdIncremented=true;
           rd++;roundsThisRun++;
+          // Fire resolve_round on-chain (fire-and-forget; doesn't block UI)
+          if(walletConnected&&window.oxarkOnchain){
+            window.oxarkOnchain.resolveRound(_sessionGameId,[window.solana.publicKey.toBase58()])
+              .then(sig=>logOnchain('resolve_round TX:'+sig.slice(0,8)+'..'))
+              .catch(()=>{});
+          }
           // v79: track survive mission
           if(runMission&&runMission.type==='survive'&&!runMission.completed){
             runMission.progress=roundsThisRun;
