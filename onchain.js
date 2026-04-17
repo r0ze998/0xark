@@ -359,7 +359,12 @@ async function joinGame(gameId) {
 }
 
 // ─── Instruction: start_game ──────────────────────────────────────────────
-async function startGame(gameId) {
+/**
+ * @param {number}   gameId
+ * @param {string[]} playerPubkeyStrs  — base58 pubkeys of players to distribute starter cards
+ *                                       passed as remaining_accounts so Rust can init their hands
+ */
+async function startGame(gameId, playerPubkeyStrs = []) {
   const payer = window.solana.publicKey;
   const [gamePDA]     = findGamePDA(gameId);
   const [cardPoolPDA] = findCardPoolPDA(gameId);
@@ -370,12 +375,18 @@ async function startGame(gameId) {
   writeU64LE(data, off, gameId);
 
   // Account order matches StartGame: game (0), card_pool (1), host/signer (2)
-  // Player PDAs go in remaining_accounts (not named accounts)
-  return buildAndSend([
+  // Player PDAs are remaining_accounts — appended after named accounts
+  const keys = [
     { pubkey: gamePDA,     isSigner: false, isWritable: true  }, // game
     { pubkey: cardPoolPDA, isSigner: false, isWritable: true  }, // card_pool
     { pubkey: payer,       isSigner: true,  isWritable: false }, // host (signer)
-  ], data);
+  ];
+  for (const pkStr of playerPubkeyStrs) {
+    const pk = new solanaWeb3.PublicKey(pkStr);
+    const [playerPDA] = findPlayerPDA(gameId, pk);
+    keys.push({ pubkey: playerPDA, isSigner: false, isWritable: true });
+  }
+  return buildAndSend(keys, data);
 }
 
 // ─── Instruction: commit_action ───────────────────────────────────────────
