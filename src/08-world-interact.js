@@ -68,6 +68,13 @@ function updateFishing(){
       fishingTimer=60;
       sfxFishMiss();
       twSet('The catch got away!');
+      // v465: escape splash — small ripple burst at bobber position
+      {const p=pl[0];let bx_=p.visualX-camX,by_=p.visualY-camY;
+      if(p.dir===0){by_+=20;}else if(p.dir===2){by_-=20;}else if(p.dir===1){bx_-=20;}else{bx_+=20;}
+      for(let _si=0;_si<5;_si++){
+        const _sa=(_si/5)*Math.PI*2;
+        particles.push({x:bx_+8,y:by_+4,vx:Math.cos(_sa)*1.2,vy:Math.sin(_sa)*0.8-0.4,life:18+Math.random()*8,c:Math.random()>.5?'rgba(120,180,220,1)':'rgba(200,230,255,1)'});
+      }}
     }
   }else if(fishingPhase==='catch'){
     fishingTimer--;
@@ -88,6 +95,14 @@ function fishingCatchCard(){
   fishingPhase='catch';
   fishingTimer=90;
   sfxFishCatch();
+  // v465: catch splash — bigger burst in water + upward spray
+  {const p=pl[0];let bx_=p.visualX-camX,by_=p.visualY-camY;
+  if(p.dir===0){by_+=20;}else if(p.dir===2){by_-=20;}else if(p.dir===1){bx_-=20;}else{bx_+=20;}
+  for(let _si=0;_si<10;_si++){
+    const _sa=(_si/10)*Math.PI*2;
+    const _spd=1.2+Math.random()*1.8;
+    particles.push({x:bx_+8,y:by_+4,vx:Math.cos(_sa)*_spd,vy:Math.sin(_sa)*_spd-2,life:20+Math.random()*12,c:Math.random()>.4?'rgba(100,180,240,1)':'rgba(220,240,255,1)'});
+  }}
   // Random dock spirit card — prefer vault-new (v299: pickFromPool, no filter alloc)
   const pool=AREA_CARDS[currentMap]||AREA_CARDS[1];
   const cardId=pickFromPool(pool);
@@ -125,6 +140,32 @@ function drawFishingOverlay(){
     // Line from player to bobber
     g.strokeStyle='#a0a0a0';g.lineWidth=1;
     g.beginPath();g.moveTo(px+8,py);g.lineTo(bx_+8,by_+bob);g.stroke();
+  }else if(fishingPhase==='catch'){
+    // v465: HOOKED! exclamation above player — fades as card acquisition takes over
+    const _ca=Math.min(1,fishingTimer/12)*(fishingTimer>60?Math.max(0,(fishingTimer-60)/30)*0:1);
+    const _cf=Math.min(1,fishingTimer/20);
+    if(_cf>0.01){
+      const px=pl[0].visualX-camX,py=pl[0].visualY-camY;
+      g.globalAlpha=_cf;
+      bx(px-8,py-34,36,14,'rgba(20,80,40,.85)');
+      bx(px-8,py-34,36,2,'#60e080');
+      txShadow('HOOKED!',px-5,py-22,7,'#80ff90','rgba(0,0,0,.6)');
+      g.globalAlpha=1;
+    }
+  }else if(fishingPhase==='miss'){
+    // v465: "MISSED..." label sinking with bobber
+    const _ma=fishingTimer/60;
+    const _msink=(1-_ma)*8;
+    const px=pl[0].visualX-camX,py=pl[0].visualY-camY;
+    let bx_=px,by_=py;
+    if(pl[0].dir===0){by_+=20;}else if(pl[0].dir===2){by_-=20;}
+    else if(pl[0].dir===1){bx_-=20;}else{bx_+=20;}
+    g.globalAlpha=_ma*0.8;
+    g.drawImage(_fishBobberCanvas,(bx_+4+.5)|0,(by_+_msink-3+.5)|0); // bobber sinking
+    g.globalAlpha=_ma;
+    bx(px-14,py-30,44,12,'rgba(60,20,20,.85)');
+    txShadow('MISSED!',px-11,py-20,7,'#ff6040','rgba(0,0,0,.6)');
+    g.globalAlpha=1;
   }
 }
 
