@@ -25,11 +25,11 @@ export function LobbyPanel({ onGameJoined }: LobbyPanelProps) {
       // Use timestamp-derived game ID for uniqueness
       const gameId = BigInt(Date.now());
       const tx = buildCreateGameTx(publicKey, gameId, 3);
-      const { blockhash } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       tx.recentBlockhash = blockhash;
       tx.feePayer = publicKey;
       const sig = await sendTransaction(tx, connection);
-      await connection.confirmTransaction(sig, 'confirmed');
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
 
       // Notify game canvas
       window.dispatchEvent(new CustomEvent('game:created', {
@@ -53,11 +53,11 @@ export function LobbyPanel({ onGameJoined }: LobbyPanelProps) {
     try {
       const gameId = BigInt(gameIdInput.trim());
       const tx = buildJoinGameTx(publicKey, gameId);
-      const { blockhash } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       tx.recentBlockhash = blockhash;
       tx.feePayer = publicKey;
       const sig = await sendTransaction(tx, connection);
-      await connection.confirmTransaction(sig, 'confirmed');
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
 
       window.dispatchEvent(new CustomEvent('game:joined', {
         detail: { gameId: gameId.toString(), sig },
@@ -78,11 +78,11 @@ export function LobbyPanel({ onGameJoined }: LobbyPanelProps) {
     try {
       const gameId = BigInt(gameIdInput.trim());
       const tx = buildDepositStakeTx(publicKey, gameId);
-      const { blockhash } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       tx.recentBlockhash = blockhash;
       tx.feePayer = publicKey;
       const sig = await sendTransaction(tx, connection);
-      await connection.confirmTransaction(sig, 'confirmed');
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
 
       window.dispatchEvent(new CustomEvent('game:staked', {
         detail: { gameId: gameId.toString(), sig, amount: '0.5 SOL' },
