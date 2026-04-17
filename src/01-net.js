@@ -681,6 +681,8 @@ function updateHandInspect(){
 const _hiFilledBuf=new Int8Array(8); // v272: module scope, eliminates filled[] per frame
 const _PROG_BAR_MILE=['10','20','30','40','50']; // v274: hoisted; v334: strings to avoid +'' per frame
 const _FLOOR_ABBR=['','SG','DA','EC','DV','AC']; // v274: hoisted from drawCardProgressBar
+const _HI_TYPE_COL={attack:'#c83838',defense:'#3888c8',flee:'#30b870',magic:'#a840c0',recovery:'#c8a830'}; // v444
+const _HI_TYPE_ABB={attack:'ATK',defense:'DEF',flee:'FLY',magic:'MAG',recovery:'REC'}; // v444
 // v343: lazy cache for hand inspect total label (HAND_SIZE=20 known constant)
 let _hiTotalLbl='',_hiTotalKey=-1;
 function drawHandInspect(){
@@ -744,6 +746,12 @@ function drawHandInspect(){
 
     // Effect / flavor text
     txShadow(cr.f||'',cx_+4,cy_+112,5,'#c0b888','rgba(0,0,0,.2)');
+
+    // Type badge — v444: icon + abbreviation pill in gap between flavor and decay bar
+    {const _hiBc=_HI_TYPE_COL[cr.t]||'#888888';
+    bx(cx_+4,cy_+122,52,13,'rgba(0,0,0,.55)');
+    bx(cx_+4,cy_+122,2,13,_hiBc);
+    txShadow((cr.i||'?')+' '+(_HI_TYPE_ABB[cr.t]||'???'),cx_+8,cy_+132,5,_hiBc,'rgba(0,0,0,.35)');}
 
     // Decay bar + time
     if(cardTimers[slot]>0){
