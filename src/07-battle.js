@@ -60,7 +60,7 @@ const _SCT_TYPE_COL={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c
 const _CARD_TYPE_INFO_S={
   attack:{col:'#e05040',label:'ATTACK',lines:['Force steal (ignores barrier).','Success rate scales with rarity.','Higher rarity = more reliable.']},
   flee:  {col:'#40c080',label:'FLEE',  lines:['Ends battle immediately.','No cards lost this round.','Use when overwhelmed.']},
-  magic: {col:'#c070e0',label:'MAGIC', lines:['Nullifies ALL barriers.','Guaranteed steal attempt.','Cannot be blocked this round.']},
+  magic: {col:'#c070e0',label:'MAGIC', lines:['Nullifies ALL barriers.','−2 HP to both rivals.','Guaranteed steal. Unstoppable.']},
 };
 const _DEF_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#4080d0',label:'DEFENSE',lines:['Raises Barrier this round.','Restores +'+(Math.ceil(r/2))+' Barrier charges.','Protects against incoming Steal.']});return a;})();
 const _REC_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#e0c030',label:'RECOVERY',lines:['Restores spell energy:','+'+Math.ceil(r/2)+' Steal, +1 Barrier, +1 Scout.','Use when spells are depleted.']});return a;})();
@@ -1089,6 +1089,24 @@ function drawActionGrid(){
     const bob_=_sFr15*2; // v369: cached
     txShadow('\u25B6',ucX-12+bob_,ucY+20,10,ARK.gold,'rgba(0,0,0,.4)');
   }
+  // v440: type badge on USE CARD button — shows which card type would fire
+  if(battlePhase==='select'&&ucAvail){
+    let _ucff=-1;for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0){_ucff=i;break;}}
+    const _ucid=(pl[0].cd[bpSelectedCardSlot]>0)?pl[0].cd[bpSelectedCardSlot]:(_ucff>=0?pl[0].cd[_ucff]:0);
+    if(_ucid>0&&CD[_ucid-1]){
+      const _ucCr=CD[_ucid-1];
+      const _ucTi=_BTYPE_MAP[_ucCr.t];
+      const _ucAbb=_ucTi!==undefined?_BTYPE_ABB[_ucTi]:'???';
+      const _ucCol=_ucTi!==undefined?_BTYPE_COL[_ucTi]:'#888';
+      const _bW=_ucAbb.length*5+8,_bH=11;
+      const _bx2=ucX+ucW-_bW-4,_by2=ucY+4;
+      g.globalAlpha=ucSel?0.95:0.65;
+      bx(_bx2,_by2,_bW,_bH,'rgba(0,0,0,.6)');
+      bx(_bx2,_by2,_bW,1,_ucCol);
+      txShadow(_ucAbb,_bx2+3,_by2+9,5,_ucCol,'rgba(0,0,0,.3)');
+      g.globalAlpha=1;
+    }
+  }
   // Hint when all spells exhausted
   if(sp.s<=0&&sp.b<=0&&sp.c<=0){
     txShadow('No spells left! DRAW or USE CARD.',gridX+4,gridY+cellH*2+gap+ucH+14,8,'#c08040','rgba(0,0,0,.3)');
@@ -1321,6 +1339,38 @@ function drawSelectPhase(){
       }
       g.globalAlpha=1;
       panY-=panH+6;
+    }
+  }
+  // v440: USE CARD effect preview panel (shown when USE CARD is highlighted)
+  if(ai===4&&!bpCardSelectActive&&!bpTargetSelectActive&&isActionAvailable(4)){
+    let _ucff=-1;for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0){_ucff=i;break;}}
+    const _ucid=(pl[0].cd[bpSelectedCardSlot]>0)?pl[0].cd[bpSelectedCardSlot]:(_ucff>=0?pl[0].cd[_ucff]:0);
+    if(_ucid>0&&CD[_ucid-1]){
+      const _ucCr=CD[_ucid-1];
+      const ti=_getTypeInfo(_ucCr.t,_ucCr.r);
+      const ppW=220,ppH=108;
+      const ppX=328,ppY=H-164;
+      const slideA=Math.min(1,(fr-bpFrame)/10);
+      g.globalAlpha=slideA*0.95;
+      win(ppX,ppY,ppW,ppH);
+      bx(ppX,ppY,ppW,4,ti.col);
+      // Card name + rarity
+      txShadow(_ucCr.n,ppX+8,ppY+22,9,ti.col,'rgba(0,0,0,.4)');
+      const _rar=_ucCr.r||1;const _rarCol=RARITY_COLOR[_rar]||'#888';
+      for(let s=0;s<_rar;s++)txShadow('\u2605',ppX+ppW-8-(_rar-s)*9,ppY+22,5,_rarCol,'rgba(0,0,0,.3)');
+      // Type badge
+      bx(ppX+8,ppY+28,ppW-16,14,'rgba(0,0,0,.45)');
+      bx(ppX+8,ppY+28,ppW-16,1,ti.col);
+      txShadow(ti.label,ppX+12,ppY+39,7,ti.col,'rgba(0,0,0,.35)');
+      bx(ppX+6,ppY+46,ppW-12,1,'rgba(200,180,100,.2)');
+      // Effect lines
+      for(let li=0;li<ti.lines.length;li++){
+        if(ti.lines[li])txShadow(ti.lines[li],ppX+8,ppY+60+li*16,6,li===0?'#e8e0c0':'#a09888','rgba(0,0,0,.3)');
+      }
+      // Multi-card hint
+      const _hc=cardCount(pl[0]);
+      if(_hc>1){txShadow('Z: select which card',ppX+8,ppY+ppH-8,5,'#686870','rgba(0,0,0,.2)');}
+      g.globalAlpha=1;
     }
   }
   // v90: Battle round history panel (right side, shown from round 2 onward)
@@ -2005,9 +2055,8 @@ function generateResolveEvents(){
         lg.push('R'+rd+': '+cr.n+' — escaped battle!');
         events._escaped=true; // signal battle result handler to skip to map immediately
       }else if(cr.t==='magic'){
-        // Magic: strip all barriers + 2 HP damage to both rivals + guaranteed steal
-        /* rb0/rb1 go out of scope after magic; bpPlayerBarrier covers player */bpPlayerBarrier=false;
-        bpHP[1]=Math.max(0,bpHP[1]-2);bpHP[2]=Math.max(0,bpHP[2]-1);
+        // Magic: strip all barriers + 2 HP damage to BOTH rivals + guaranteed steal (v440: fixed asymmetric bug)
+        bpHP[1]=Math.max(0,bpHP[1]-2);bpHP[2]=Math.max(0,bpHP[2]-2);
         bpHPDmgAnim[1]=20;bpHPDmgAnim[2]=20;
         const stolen=removeCardFromPlayer(tgt,-1);
         if(stolen>0&&addCardToPlayer(0,stolen)){
