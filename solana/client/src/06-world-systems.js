@@ -182,13 +182,14 @@ function placeFloorItems(mapIdx,rooms){
   }
 }
 
-// Check if player stepped on a floor item, auto-pick it up
+// Check if player stepped on a floor item, auto-pick it up — v436: swap-and-pop
 function checkFloorItemPickup(nx,ny){
   const items=floorItems[currentMap];
   if(!items||items.length===0)return;
-  const idx=items.findIndex(it=>it.x===nx&&it.y===ny);
+  let idx=-1;for(let _i=0;_i<items.length;_i++){if(items[_i].x===nx&&items[_i].y===ny){idx=_i;break;}}
   if(idx===-1)return;
-  const it=items.splice(idx,1)[0];
+  const it=items[idx];
+  const _last=items.length-1;if(idx<_last)items[idx]=items[_last];items.length--;
   const cr=CD[it.cardId-1];if(!cr)return;
   // Add to player hand/vault
   const placed=addCardToPlayer(0,it.cardId);
@@ -808,6 +809,21 @@ function drawMinimap(){
         const etx=ex.tiles[_ti][0],ety=ex.tiles[_ti][1];
         g.globalAlpha=ePulse;
         bx(mx+etx*sx,my+ety*sy,Math.max(2,sx),Math.max(2,sy),col);
+        g.globalAlpha=1;
+      }
+    }
+  }
+  // v438: floor items on minimap (revealed only, pulsing dot colored by rarity)
+  if(inDungeon){
+    const _fItems=floorItems[currentMap];
+    if(_fItems&&_fItems.length>0){
+      const iPulse=0.6+_sFr12*0.4; // v369: cached
+      for(let _ii=0;_ii<_fItems.length;_ii++){
+        const it=_fItems[_ii];
+        if(!fogRevealed[currentMap][it.y]?.[it.x])continue;
+        const cr_=CD[it.cardId-1];if(!cr_)continue;
+        g.globalAlpha=iPulse;
+        bx(mx+it.x*sx,my+it.y*sy,Math.max(2,sx+1),Math.max(2,sy+1),RARITY_COLOR[cr_.r]||'#f0c030');
         g.globalAlpha=1;
       }
     }
@@ -2071,7 +2087,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v432',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v438',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

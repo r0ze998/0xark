@@ -5507,6 +5507,11 @@ const RIVAL_TAUNTS=[
 // Footprints system: {map, x, y, age}
 const footprints=[];
 const FOOTPRINT_MAX_AGE=3600; // 60 seconds at 60fps
+// v435: per-rival/map freshest-age cache — eliminates O(n) HUD scan each frame
+// Layout: [ri * FOG_MAP_COUNT + mapIdx] where ri=0 for VEGA, ri=1 for MIRA
+const _fpFreshAge=new Float32Array(2*(1+5)).fill(Infinity); // 2 rivals × 6 maps
+const _fpCnt=new Int32Array(2*(1+5)); // count of live footprints per (rival, map)
+function _fpKey(ri,mapIdx){return(ri-1)*(1+5)+mapIdx;} // ri=1 or 2; key=[0..11]
 
 // Proximity tension state
 let proximityPulseTimer=0;
@@ -5843,6 +5848,7 @@ function dungeonTurnStep(aiIdx){
   const moved=stepToward(rIdx,ai.goalX,ai.goalY);
   if(moved){
     footprints.push({map:rMap,x:r.x,y:r.y,age:0,ri:rIdx});
+    {const _k=_fpKey(rIdx,rMap);_fpFreshAge[_k]=0;_fpCnt[_k]++;}
     const m=maps[rMap];const tile=m[r.y]?.[r.x];
     let encounterChance=0;
     if(tile===11)encounterChance=0.25;else if(tile===1)encounterChance=0.12;
@@ -5968,6 +5974,7 @@ function updateRivalAI(aiIdx){
   if(moved){
     // Add footprint
     footprints.push({map:rMap,x:r.x,y:r.y,age:0,ri:rIdx});
+    {const _k=_fpKey(rIdx,rMap);_fpFreshAge[_k]=0;_fpCnt[_k]++;}
 
     // Card encounter from grass (same chances as player)
     const m=maps[rMap];
@@ -6098,16 +6105,24 @@ function updateProximityTension(){
   if(proximityDangerLevel<3){proximityTauntText='';proximityTauntTimer=0;}
 }
 
-// Update footprints aging
+// Update footprints aging — v435: swap-and-pop expiry + per-rival/map freshest-age cache
 function updateFootprints(){
   for(let i=footprints.length-1;i>=0;i--){
-    footprints[i].age++;
-    if(footprints[i].age>=FOOTPRINT_MAX_AGE){
-      footprints.splice(i,1);
+    const fp=footprints[i];
+    fp.age++;
+    if(fp.age>=FOOTPRINT_MAX_AGE){
+      if(fp.ri>0){const _k=_fpKey(fp.ri,fp.map);_fpCnt[_k]--;if(_fpCnt[_k]<=0){_fpCnt[_k]=0;_fpFreshAge[_k]=Infinity;}}
+      const _last=footprints.length-1;if(i<_last)footprints[i]=footprints[_last];footprints.length--;
     }
   }
-  // Cap footprint count
-  while(footprints.length>200)footprints.shift();
+  // Cap footprint count — shift() removes oldest (front = oldest push order maintained)
+  while(footprints.length>200){
+    const fp=footprints[0];
+    if(fp.ri>0){const _k=_fpKey(fp.ri,fp.map);_fpCnt[_k]--;if(_fpCnt[_k]<=0){_fpCnt[_k]=0;_fpFreshAge[_k]=Infinity;}}
+    footprints.shift();
+  }
+  // Tick freshest-age counters: all footprints aged by 1 this frame
+  for(let _k=0;_k<12;_k++){if(_fpFreshAge[_k]<Infinity)_fpFreshAge[_k]++;}
 }
 
 // NPC wander system — town NPCs slowly pace within 2 tiles of home
@@ -8919,13 +8934,14 @@ function placeFloorItems(mapIdx,rooms){
   }
 }
 
-// Check if player stepped on a floor item, auto-pick it up
+// Check if player stepped on a floor item, auto-pick it up — v436: swap-and-pop
 function checkFloorItemPickup(nx,ny){
   const items=floorItems[currentMap];
   if(!items||items.length===0)return;
-  const idx=items.findIndex(it=>it.x===nx&&it.y===ny);
+  let idx=-1;for(let _i=0;_i<items.length;_i++){if(items[_i].x===nx&&items[_i].y===ny){idx=_i;break;}}
   if(idx===-1)return;
-  const it=items.splice(idx,1)[0];
+  const it=items[idx];
+  const _last=items.length-1;if(idx<_last)items[idx]=items[_last];items.length--;
   const cr=CD[it.cardId-1];if(!cr)return;
   // Add to player hand/vault
   const placed=addCardToPlayer(0,it.cardId);
@@ -9545,6 +9561,21 @@ function drawMinimap(){
         const etx=ex.tiles[_ti][0],ety=ex.tiles[_ti][1];
         g.globalAlpha=ePulse;
         bx(mx+etx*sx,my+ety*sy,Math.max(2,sx),Math.max(2,sy),col);
+        g.globalAlpha=1;
+      }
+    }
+  }
+  // v438: floor items on minimap (revealed only, pulsing dot colored by rarity)
+  if(inDungeon){
+    const _fItems=floorItems[currentMap];
+    if(_fItems&&_fItems.length>0){
+      const iPulse=0.6+_sFr12*0.4; // v369: cached
+      for(let _ii=0;_ii<_fItems.length;_ii++){
+        const it=_fItems[_ii];
+        if(!fogRevealed[currentMap][it.y]?.[it.x])continue;
+        const cr_=CD[it.cardId-1];if(!cr_)continue;
+        g.globalAlpha=iPulse;
+        bx(mx+it.x*sx,my+it.y*sy,Math.max(2,sx+1),Math.max(2,sy+1),RARITY_COLOR[cr_.r]||'#f0c030');
         g.globalAlpha=1;
       }
     }
@@ -10808,7 +10839,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v432',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v438',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -12270,10 +12301,11 @@ function dMap(){
         bx(cx2-1,cy2-1,8,1,rarCol);bx(cx2-1,cy2+9,8,1,rarCol); // top/bottom
         bx(cx2-1,cy2,1,10,rarCol);bx(cx2+7,cy2,1,10,rarCol);   // left/right
         g.globalAlpha=1;
-        // Label above on hover (always show rarity initial)
-        const abb=_RAR_ABB[Math.min(cr.r-1,4)]||'?'; // v262: hoisted
-        g.globalAlpha=0.7;
-        txShadow(abb,cx2-1,cy2-2,5,rarCol,'rgba(0,0,0,.5)');
+        // v436: show card name when player is within 2 tiles, else rarity initial
+        const _dist=Math.abs(it.x-pl[0].x)+Math.abs(it.y-pl[0].y);
+        const _lbl=_dist<=2?cr.n:(_RAR_ABB[Math.min(cr.r-1,4)]||'?');
+        g.globalAlpha=_dist<=2?1:0.7;
+        txShadow(_lbl,cx2+(6-_lbl.length*3)|0,cy2-2,_dist<=2?6:5,rarCol,'rgba(0,0,0,.5)');
         g.globalAlpha=1;
       }
     }
@@ -12663,7 +12695,7 @@ function dMap(){
     const rcc=cdCount(pl[ri+1].cd);
     txShadow(pl[ri+1].n[0],arrowCX-3,arrowCY+14,5,arrowCol,'rgba(0,0,0,.5)');
     txShadow(_RCC_SPADE[rcc]||rcc+'♠',arrowCX-5,arrowCY+24,5,rcc>=4?'#d04040':arrowCol,'rgba(0,0,0,.5)'); // v304
-    const _dr=Math.min(50,Math.round(dist));
+    const _dr=Math.min(50,Math.round(Math.sqrt(dist2)));
     txShadow(_DIST_T[_dr],arrowCX-4,arrowCY+34,5,arrowCol,'rgba(0,0,0,.5)'); // v319: tile distance
   }
 
@@ -12676,15 +12708,19 @@ function dMap(){
   // Tiny collection progress bar
   bx(310,hudY+60,60,3,'#282838');
   bx(310,hudY+60,Math.floor(60*vaultPct),3,vaultCol);
+  // v437: end-game urgency — flash "X NEEDED!" when ≥55 cards
+  if(vaultCount>=55&&vaultCount<60){
+    const _need=60-vaultCount;const _nA=0.75+_sFr20*0.25;
+    g.globalAlpha=_nA;txShadow(_need+'  NEEDED!',312,hudY+44,6,'#f0c830','rgba(0,0,0,.5)');g.globalAlpha=1;
+  }
   txShadow(_HAND_LBL[handCount]||('HAND:'+handCount),382,hudY+56,6,'#686068','rgba(0,0,0,.35)'); // v314
 
   // Footprint trail indicator: show fresh rival tracks on this floor
   if(inDungeon){
     let trailX=430; // v262: rivalCols/rivalNames hoisted to _RIVAL_TRAIL_COLS, pl[ri+1].n[0] inline
     for(let ri=0;ri<2;ri++){
-      // v220: Avoid .filter().map() array allocations — single loop finds min age
-      let freshest=Infinity,_fp;
-      for(let _fi=0;_fi<footprints.length;_fi++){_fp=footprints[_fi];if(_fp.ri===ri&&_fp.map===currentMap&&_fp.age<900&&_fp.age<freshest)freshest=_fp.age;}
+      // v435: O(1) freshest-age lookup (was O(n) scan over all footprints)
+      const freshest=_fpFreshAge[_fpKey(ri+1,currentMap)];
       if(freshest<Infinity){
         const freshAlpha=freshest<180?1:freshest<600?0.7:0.45;
         g.globalAlpha=freshAlpha;
@@ -12736,7 +12772,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v432',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v438',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -16372,7 +16408,7 @@ function drawCardAcquisition(){
 
   for(let i=cardAcqParticles.length-1;i>=0;i--){
     const p=cardAcqParticles[i];p.x+=p.vx;p.y+=p.vy;p.life--;
-    if(p.life<=0){cardAcqParticles.splice(i,1);continue;}
+    if(p.life<=0){const _last=cardAcqParticles.length-1;if(i<_last)cardAcqParticles[i]=cardAcqParticles[_last];cardAcqParticles.length--;continue;}
     g.globalAlpha=Math.min(1,p.life/10);bx(p.x,p.y,2,2,p.c);g.globalAlpha=1;
   }
 
@@ -17073,13 +17109,23 @@ function dCrd(){
       bx(cx+CARD_W-14,cy+7,7,1,'#2030b8');bx(cx+CARD_W-8,cy+7,1,7,'#2030b8');
       bx(cx+7,cy+CARD_H-8,7,1,'#2030b8');bx(cx+7,cy+CARD_H-14,1,7,'#2030b8');
       bx(cx+CARD_W-14,cy+CARD_H-8,7,1,'#2030b8');bx(cx+CARD_W-8,cy+CARD_H-14,1,7,'#2030b8');
-      // Central pulsing "?" emblem
-      const pu_=0.5+(_sFr05*_CARD_CI07[cardIdx]+_cFr05*_CARD_SI07[cardIdx])*0.5;
-      g.globalAlpha=pu_*0.35;
-      bx(cx+CARD_W/2-7,cy+CARD_H/2-9,14,14,'#2030b0');
-      g.globalAlpha=0.55+pu_*0.45;
-      txShadow('?',cx+CARD_W/2-5,cy+CARD_H/2+5,10,'#2840d0','rgba(0,0,0,.3)');
-      g.globalAlpha=1;
+      // v436: end-game reveal — if 50+ cards collected, show name+type hint on unowned cards
+      const _collected_=vault.size;
+      if(_collected_>=50){
+        const _rar_=cr.r||1;const _rarC_=RARITY_COLOR[_rar_]||'#888898';
+        g.globalAlpha=0.55;bx(cx+4,cy+CARD_H*0.35,CARD_W-8,CARD_H*0.55,'#0a0820');g.globalAlpha=1;
+        const _nfs_=Math.max(5,Math.min(7,Math.floor(CARD_W/(cr.n.length*0.75))));
+        g.globalAlpha=0.75;txShadow(cr.n,cx+CARD_W/2-cr.n.length*_nfs_/2.4,cy+CARD_H*0.55+16,_nfs_,_rarC_,'rgba(0,0,0,.5)');
+        txShadow(CARD_TYPE_LABEL[cr.t]||'',cx+4,cy+CARD_H-16,5,cr.h||'#888','rgba(0,0,0,.3)');g.globalAlpha=1;
+      }else{
+        // Central pulsing "?" emblem
+        const pu_=0.5+(_sFr05*_CARD_CI07[cardIdx]+_cFr05*_CARD_SI07[cardIdx])*0.5;
+        g.globalAlpha=pu_*0.35;
+        bx(cx+CARD_W/2-7,cy+CARD_H/2-9,14,14,'#2030b0');
+        g.globalAlpha=0.55+pu_*0.45;
+        txShadow('?',cx+CARD_W/2-5,cy+CARD_H/2+5,10,'#2840d0','rgba(0,0,0,.3)');
+        g.globalAlpha=1;
+      }
       // Rarity hint stars (dim blue-tone)
       const rar_=cr.r||1;
       for(let s_=0;s_<rar_;s_++) txShadow('\u2605',cx+4+s_*10,cy+CARD_H-16,6,'#1e2858','rgba(0,0,0,.3)');

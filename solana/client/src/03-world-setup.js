@@ -143,6 +143,11 @@ const RIVAL_TAUNTS=[
 // Footprints system: {map, x, y, age}
 const footprints=[];
 const FOOTPRINT_MAX_AGE=3600; // 60 seconds at 60fps
+// v435: per-rival/map freshest-age cache — eliminates O(n) HUD scan each frame
+// Layout: [ri * FOG_MAP_COUNT + mapIdx] where ri=0 for VEGA, ri=1 for MIRA
+const _fpFreshAge=new Float32Array(2*(1+5)).fill(Infinity); // 2 rivals × 6 maps
+const _fpCnt=new Int32Array(2*(1+5)); // count of live footprints per (rival, map)
+function _fpKey(ri,mapIdx){return(ri-1)*(1+5)+mapIdx;} // ri=1 or 2; key=[0..11]
 
 // Proximity tension state
 let proximityPulseTimer=0;
@@ -479,6 +484,7 @@ function dungeonTurnStep(aiIdx){
   const moved=stepToward(rIdx,ai.goalX,ai.goalY);
   if(moved){
     footprints.push({map:rMap,x:r.x,y:r.y,age:0,ri:rIdx});
+    {const _k=_fpKey(rIdx,rMap);_fpFreshAge[_k]=0;_fpCnt[_k]++;}
     const m=maps[rMap];const tile=m[r.y]?.[r.x];
     let encounterChance=0;
     if(tile===11)encounterChance=0.25;else if(tile===1)encounterChance=0.12;
@@ -604,6 +610,7 @@ function updateRivalAI(aiIdx){
   if(moved){
     // Add footprint
     footprints.push({map:rMap,x:r.x,y:r.y,age:0,ri:rIdx});
+    {const _k=_fpKey(rIdx,rMap);_fpFreshAge[_k]=0;_fpCnt[_k]++;}
 
     // Card encounter from grass (same chances as player)
     const m=maps[rMap];
@@ -734,16 +741,24 @@ function updateProximityTension(){
   if(proximityDangerLevel<3){proximityTauntText='';proximityTauntTimer=0;}
 }
 
-// Update footprints aging
+// Update footprints aging — v435: swap-and-pop expiry + per-rival/map freshest-age cache
 function updateFootprints(){
   for(let i=footprints.length-1;i>=0;i--){
-    footprints[i].age++;
-    if(footprints[i].age>=FOOTPRINT_MAX_AGE){
-      footprints.splice(i,1);
+    const fp=footprints[i];
+    fp.age++;
+    if(fp.age>=FOOTPRINT_MAX_AGE){
+      if(fp.ri>0){const _k=_fpKey(fp.ri,fp.map);_fpCnt[_k]--;if(_fpCnt[_k]<=0){_fpCnt[_k]=0;_fpFreshAge[_k]=Infinity;}}
+      const _last=footprints.length-1;if(i<_last)footprints[i]=footprints[_last];footprints.length--;
     }
   }
-  // Cap footprint count
-  while(footprints.length>200)footprints.shift();
+  // Cap footprint count — shift() removes oldest (front = oldest push order maintained)
+  while(footprints.length>200){
+    const fp=footprints[0];
+    if(fp.ri>0){const _k=_fpKey(fp.ri,fp.map);_fpCnt[_k]--;if(_fpCnt[_k]<=0){_fpCnt[_k]=0;_fpFreshAge[_k]=Infinity;}}
+    footprints.shift();
+  }
+  // Tick freshest-age counters: all footprints aged by 1 this frame
+  for(let _k=0;_k<12;_k++){if(_fpFreshAge[_k]<Infinity)_fpFreshAge[_k]++;}
 }
 
 // NPC wander system — town NPCs slowly pace within 2 tiles of home

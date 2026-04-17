@@ -143,7 +143,7 @@ function drawCardAcquisition(){
 
   for(let i=cardAcqParticles.length-1;i>=0;i--){
     const p=cardAcqParticles[i];p.x+=p.vx;p.y+=p.vy;p.life--;
-    if(p.life<=0){cardAcqParticles.splice(i,1);continue;}
+    if(p.life<=0){const _last=cardAcqParticles.length-1;if(i<_last)cardAcqParticles[i]=cardAcqParticles[_last];cardAcqParticles.length--;continue;}
     g.globalAlpha=Math.min(1,p.life/10);bx(p.x,p.y,2,2,p.c);g.globalAlpha=1;
   }
 
@@ -844,13 +844,23 @@ function dCrd(){
       bx(cx+CARD_W-14,cy+7,7,1,'#2030b8');bx(cx+CARD_W-8,cy+7,1,7,'#2030b8');
       bx(cx+7,cy+CARD_H-8,7,1,'#2030b8');bx(cx+7,cy+CARD_H-14,1,7,'#2030b8');
       bx(cx+CARD_W-14,cy+CARD_H-8,7,1,'#2030b8');bx(cx+CARD_W-8,cy+CARD_H-14,1,7,'#2030b8');
-      // Central pulsing "?" emblem
-      const pu_=0.5+(_sFr05*_CARD_CI07[cardIdx]+_cFr05*_CARD_SI07[cardIdx])*0.5;
-      g.globalAlpha=pu_*0.35;
-      bx(cx+CARD_W/2-7,cy+CARD_H/2-9,14,14,'#2030b0');
-      g.globalAlpha=0.55+pu_*0.45;
-      txShadow('?',cx+CARD_W/2-5,cy+CARD_H/2+5,10,'#2840d0','rgba(0,0,0,.3)');
-      g.globalAlpha=1;
+      // v436: end-game reveal — if 50+ cards collected, show name+type hint on unowned cards
+      const _collected_=vault.size;
+      if(_collected_>=50){
+        const _rar_=cr.r||1;const _rarC_=RARITY_COLOR[_rar_]||'#888898';
+        g.globalAlpha=0.55;bx(cx+4,cy+CARD_H*0.35,CARD_W-8,CARD_H*0.55,'#0a0820');g.globalAlpha=1;
+        const _nfs_=Math.max(5,Math.min(7,Math.floor(CARD_W/(cr.n.length*0.75))));
+        g.globalAlpha=0.75;txShadow(cr.n,cx+CARD_W/2-cr.n.length*_nfs_/2.4,cy+CARD_H*0.55+16,_nfs_,_rarC_,'rgba(0,0,0,.5)');
+        txShadow(CARD_TYPE_LABEL[cr.t]||'',cx+4,cy+CARD_H-16,5,cr.h||'#888','rgba(0,0,0,.3)');g.globalAlpha=1;
+      }else{
+        // Central pulsing "?" emblem
+        const pu_=0.5+(_sFr05*_CARD_CI07[cardIdx]+_cFr05*_CARD_SI07[cardIdx])*0.5;
+        g.globalAlpha=pu_*0.35;
+        bx(cx+CARD_W/2-7,cy+CARD_H/2-9,14,14,'#2030b0');
+        g.globalAlpha=0.55+pu_*0.45;
+        txShadow('?',cx+CARD_W/2-5,cy+CARD_H/2+5,10,'#2840d0','rgba(0,0,0,.3)');
+        g.globalAlpha=1;
+      }
       // Rarity hint stars (dim blue-tone)
       const rar_=cr.r||1;
       for(let s_=0;s_<rar_;s_++) txShadow('\u2605',cx+4+s_*10,cy+CARD_H-16,6,'#1e2858','rgba(0,0,0,.3)');
