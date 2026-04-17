@@ -20,7 +20,7 @@ import express from 'express';
 import { Connection } from '@solana/web3.js';
 
 const app = express();
-const PORT = 3402;
+const PORT = process.env.PORT || 3402;
 
 const RECIPIENT_WALLET = process.env.BROKER_WALLET || 'DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R';
 const DEVNET_RPC = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';

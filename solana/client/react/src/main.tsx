@@ -10,9 +10,15 @@ import { App } from './App';
 // Wallet adapter CSS
 import '@solana/wallet-adapter-react-ui/styles.css';
 
+// v420: allow custom RPC via env var to avoid devnet rate-limiting during demo
+const CUSTOM_RPC = import.meta.env.VITE_SOLANA_RPC_URL as string | undefined;
+
 function Root() {
   const network = WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const endpoint = useMemo(
+    () => CUSTOM_RPC || clusterApiUrl(network),
+    [network],
+  );
   const wallets  = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (

@@ -1,342 +1,178 @@
-# 0xARK Phase 1 Implementation Plan
+# 0xARK Architecture & Design Reference
 
-> **Goal**: Validate "does the steal/defend/scout loop create interesting decisions?"
+> **Current stack**: Solana + Anchor (Rust) — migrated from the original Cairo/Dojo prototype.
+> This document reflects the **current production architecture**. For the pre-migration Starknet design,
+> see git history (commits before v16).
 
 ---
 
-## Design Decisions
+## Core Design Decisions
 
 ### Turn Structure (Simultaneous Commit-Reveal)
 
 ```
 Round Start
-  -> Each player commits (hash of action + salt)
+  -> Each player commits SHA256(action | target_pubkey | salt) on-chain
   -> All commits received -> Reveal phase
-  -> Each player reveals action + salt
+  -> Each player reveals: action + target + salt
+  -> On-chain: SHA256(action | target | salt) must match stored commit
   -> System resolves all actions simultaneously
   -> Round End -> next round or game over
 ```
 
-### Actions (1 per turn)
+### Actions (1 per round)
 
-| Action | Effect | Countered by |
-|--------|--------|-------------|
-| Draw | Take random card from shared pool | — |
-| Steal (窃盗) | Take random card from target's hand | Barrier |
-| Barrier (防壁) | Block Steal attempts this turn | — |
-| Scout (偵察) | See target's hand contents | — |
-
-### Phase 1 ZK: Commit-Reveal (not full ZK proofs)
-
-Full ZK proofs require client-side proof generation, custom circuits, and complex verification contracts. Commit-reveal gives 90% of the experience for 10% of the effort.
-
-**Trade-off**: Determined players could read raw contract storage. Acceptable for Phase 1 playtest. Phase 2 upgrades to proper ZK.
+| Action | ID | Effect | Countered by |
+|--------|----|--------|-------------|
+| DRAW | 0 | Take floor-appropriate card from shared pool | — |
+| STEAL | 1 | Take random card from target's hand | BARRIER |
+| BARRIER | 2 | Block all Steal attempts this round | — |
+| SCOUT | 3 | Reveal target's hand contents | — |
+| USE_CARD | 4 | Activate a card's special effect | — |
 
 ### Resolution Priority
 
-Barrier → Steal → Scout → Draw
+```
+BARRIER resolves → STEAL resolves → SCOUT resolves → DRAW resolves → USE_CARD resolves
+```
+
+A barrier raised before steal resolution means steals that round are blocked.
+
+### ZK: Groth16 BN254 On-Chain
+
+Full Groth16 proofs are implemented (not commit-reveal only). The Circom circuit proves:
+- `poseidon(action_type, target_pubkey, salt) == commitment_hash`
+
+Proof generation runs in the browser via snarkjs. Verification runs on-chain in the Anchor program.
+
+**CU cost**: ~80,000 CU estimated (budget set to 300,000 for headroom).
 
 ---
 
-## Initial Balance
-
-| Parameter | Value | Reasoning |
-|-----------|-------|-----------|
-| Card types | 5 | Minimal collection goal |
-| Copies per card | 3 | Enough for 3 players to compete |
-| Total pool | 15 cards | 5 types × 3 copies |
-| Initial hand | 2 random cards | Start with some, not enough |
-| Initial Steal spells | 3 | Enough for aggression |
-| Initial Barrier spells | 2 | Scarcer than Steal — forces risk |
-| Initial Scout spells | 1 | Information is precious |
-| Max rounds | 20 | ~10 min (30s per round) |
-| Reveal timeout | 10 blocks | ~20 seconds on Katana |
-
-**Why this works**:
-- 3 Steals vs 2 Barriers = can't Barrier every Steal. Must predict when to defend.
-- 1 Scout = must choose carefully when to gather intel.
-- 3 copies per card = multiple players can hold same type, Steal stays valuable.
-
----
-
-## Project Structure
+## Current Project Structure
 
 ```
 0xark/
-├── contracts/                    # Dojo project root
-│   ├── Scarb.toml
-│   ├── dojo_dev.toml
-│   ├── src/
-│   │   ├── lib.cairo
-│   │   ├── models/
-│   │   │   ├── game.cairo        # Game, GamePlayer
-│   │   │   ├── player.cairo      # PlayerState, PlayerCard
-│   │   │   ├── card.cairo        # CardPool
-│   │   │   └── action.cairo      # CommittedAction
-│   │   ├── systems/
-│   │   │   ├── game_system.cairo # Create, join, start, end
-│   │   │   ├── action_system.cairo # Commit, reveal, resolve
-│   │   │   └── card_system.cairo # Distribution, transfer
-│   │   ├── utils/
-│   │   │   ├── hash.cairo        # Pedersen hash for commit-reveal
-│   │   │   └── random.cairo      # Pseudo-random (Phase 1)
-│   │   └── tests/
-│   │       ├── test_game.cairo
-│   │       ├── test_actions.cairo
-│   │       └── test_cards.cairo
-│   └── manifests/
-├── client/                       # React frontend
-│   ├── src/
-│   │   ├── dojo/
-│   │   │   ├── setup.ts          # Dojo SDK init
-│   │   │   ├── contractCalls.ts  # System call wrappers
-│   │   │   └── models.ts         # TS types mirroring Cairo
-│   │   ├── hooks/
-│   │   │   ├── useGame.ts
-│   │   │   ├── usePlayer.ts
-│   │   │   └── useActions.ts
-│   │   └── components/
-│   │       ├── GameLobby.tsx
-│   │       ├── GameBoard.tsx
-│   │       ├── HandView.tsx
-│   │       ├── ActionPanel.tsx
-│   │       ├── RevealPhase.tsx
-│   │       ├── PlayerList.tsx
-│   │       └── GameOver.tsx
-└── docs/
-    └── PLAN.md
+├── solana/
+│   ├── oxark/
+│   │   ├── programs/oxark/src/lib.rs    # Anchor program (13 instructions)
+│   │   ├── tests/test_game.rs            # 12 litesvm tests
+│   │   └── Anchor.toml
+│   └── client/
+│       ├── src/
+│       │   ├── 01-pixi.js               # PixiJS WebGL setup
+│       │   ├── 01-draw.js               # Canvas drawing primitives
+│       │   ├── 01-net.js                # WebSocket client
+│       │   ├── 02-data.js               # Card definitions (60 cards)
+│       │   ├── 03-world-setup.js        # Map generation
+│       │   ├── 04-state.js              # Global game state
+│       │   ├── 05-rendering.js          # Render loop
+│       │   ├── 06-world-systems.js      # NPC, fog, events
+│       │   ├── 07-map.js                # Map screen logic
+│       │   ├── 07-battle.js             # Battle UI + commit-reveal
+│       │   ├── 07-battle-resolve.js     # Battle resolution events
+│       │   ├── 08-overlays.js           # Screen overlays
+│       │   ├── 08-world-interact.js     # World interaction
+│       │   ├── 08-screens.js            # UI screens
+│       │   ├── 09-game-loop.js          # Main loop
+│       │   ├── 10-input.js              # Keyboard/touch input
+│       │   └── 11-save-init.js          # Save/load + init
+│       ├── onchain.js                   # Solana TX builder (Phantom integration)
+│       ├── build.js                     # Module concatenator → index.html
+│       └── template.html               # HTML shell with OGP/PWA meta
+├── zk/
+│   ├── circuits/commit_reveal.circom    # Poseidon circuit (264 constraints)
+│   ├── build/                           # Compiled .wasm + .zkey
+│   └── verification_key.json
+├── multiplayer/
+│   └── server.js                        # Pure WebSocket relay (no game authority)
+├── x402/
+│   └── agent-broker.js                  # x402 micropayment AI intel broker
+├── react-dist/                          # React wallet+lobby UI (TypeScript)
+├── tests/
+│   ├── card-engine.test.js              # 53 card engine tests
+│   └── battle-mechanics.test.js         # 49 battle mechanics + ZK tests
+├── docs/
+│   ├── PLAN.md                          # This file
+│   └── magicblock-migration.md          # ER migration guide (Q2 2026)
+├── SECURITY.md                          # Threat model + audit status
+├── manifest.json                        # PWA manifest
+└── og-image.svg                         # OGP image (1200×630)
 ```
 
 ---
 
-## Cairo Models
+## Anchor Program: 13 Instructions
 
-### Game (`models/game.cairo`)
+| Instruction | Phase | Description |
+|-------------|-------|-------------|
+| `create_game` | Lobby | Initialize game + card_pool PDAs |
+| `join_game` | Lobby | Initialize player_state PDA |
+| `start_game` | Lobby→Game | Shuffle card pool (PRNG), deal hands |
+| `deposit_stake` | Lobby | Lock 0.5 SOL into stake_vault PDA |
+| `commit_action` | Commit | Store SHA256 commit hash in commit PDA |
+| `reveal_action` | Reveal | Verify hash, store revealed action |
+| `verify_zk_proof` | Reveal | Groth16 BN254 on-chain proof verify |
+| `resolve_round` | Resolution | Execute all revealed actions (steal/barrier/draw) |
+| `mint_card_nft` | Any | Mint SPL Token + Metaplex metadata |
+| `handle_verify_zk` | Resolution | ZK result handler |
+| `register_agent` | Setup | Register AI agent on-chain |
+| `agent_action` | Battle | Submit AI agent battle action |
+| `claim_prize` | End | Winner claims entire prize pool |
 
-```cairo
-#[derive(Copy, Drop, Serde, PartialEq)]
-#[dojo::model]
-pub struct Game {
-    #[key]
-    pub game_id: u32,
-    pub host: ContractAddress,
-    pub status: u8,            // 0=Lobby, 1=Commit, 2=Reveal, 3=Resolving, 4=Finished
-    pub round: u8,
-    pub max_rounds: u8,
-    pub player_count: u8,
-    pub max_players: u8,
-    pub cards_in_pool: u8,
-    pub winner: ContractAddress,
-}
+## PDA Scheme
 
-#[derive(Copy, Drop, Serde)]
-#[dojo::model]
-pub struct GamePlayer {
-    #[key]
-    pub game_id: u32,
-    #[key]
-    pub index: u8,
-    pub address: ContractAddress,
-}
+```
+game:        ["game",       game_id_le8]
+player:      ["player",     game_id_le8, player_pubkey]
+card_pool:   ["card_pool",  game_id_le8]
+commit:      ["commit",     game_id_le8, round_le8, player_pubkey]
+stake_vault: ["stake_vault", game_id_le8]
 ```
 
-### Player (`models/player.cairo`)
-
-```cairo
-#[derive(Copy, Drop, Serde)]
-#[dojo::model]
-pub struct PlayerState {
-    #[key]
-    pub game_id: u32,
-    #[key]
-    pub player: ContractAddress,
-    pub card_count: u8,
-    pub steal_count: u8,
-    pub barrier_count: u8,
-    pub scout_count: u8,
-    pub has_committed: bool,
-    pub has_revealed: bool,
-}
-
-#[derive(Copy, Drop, Serde)]
-#[dojo::model]
-pub struct PlayerCard {
-    #[key]
-    pub game_id: u32,
-    #[key]
-    pub player: ContractAddress,
-    #[key]
-    pub slot: u8,              // 0-4
-    pub card_id: u8,           // 1-5, 0=empty
-}
-```
-
-### Card (`models/card.cairo`)
-
-```cairo
-#[derive(Copy, Drop, Serde)]
-#[dojo::model]
-pub struct CardPool {
-    #[key]
-    pub game_id: u32,
-    #[key]
-    pub card_id: u8,
-    pub remaining: u8,
-}
-```
-
-### Action (`models/action.cairo`)
-
-```cairo
-#[derive(Copy, Drop, Serde)]
-#[dojo::model]
-pub struct CommittedAction {
-    #[key]
-    pub game_id: u32,
-    #[key]
-    pub round: u8,
-    #[key]
-    pub player: ContractAddress,
-    pub hash: felt252,
-}
-```
+`round` is part of the commit PDA seed — this prevents replay attacks across rounds.
 
 ---
 
-## Commit-Reveal Flow
+## Balance Parameters (GDD v1.0)
 
-### Commit (Client)
-1. Player selects action + target
-2. Generate random `salt` (felt252)
-3. Compute `hash = pedersen(pedersen(action_type, target), salt)`
-4. Call `commit(game_id, hash)`
-5. Store `{action_type, target, salt}` in localStorage
+| Parameter | Value | Reasoning |
+|-----------|-------|-----------|
+| Card types | 60 | Full collection goal (5 rarities × 12 types) |
+| Starting hand | 3 cards | Enough to play, not enough to win |
+| Entry stake | 0.5 SOL | Real stakes; Prize Pool = entry × N players |
+| Max floor depth | B5 | Deeper = rarer drops |
+| Barrier priority | Highest | Ensures defense is valid response |
+| Steal limit | No cap (balance via barrier) | Creates bluffing meta |
 
-### Reveal (Client)
-1. Retrieve stored `{action_type, target, salt}`
-2. Call `reveal(game_id, action_type, target, salt)`
-
-### Verify (Contract)
-1. Recompute hash from revealed data
-2. Compare with stored CommittedAction.hash
-3. Match → process; mismatch → revert
-
-### Timeout
-- No reveal within 10 blocks → action treated as Skip
-- 3 consecutive skips → auto-forfeit
+**Why information asymmetry works**:
+- ZK-hidden positions mean you can't safely scout without a barrier
+- Scout intel purchased from AI broker (x402) gives a real edge
+- Commit-reveal prevents action switching after seeing rival's move
+- The optimal play is never obvious — creates genuine decision tension
 
 ---
 
-## Implementation Steps
+## x402 AI Intel Economy
 
-### Phase 1A: Contract Foundation (Steps 1-7)
+Three intel endpoints, each gated by x402 micropayment (USDC on devnet):
 
-| Step | Task | Risk |
-|------|------|------|
-| 1 | `sozo init` — scaffold Dojo project | Low |
-| 2 | Game model | Low |
-| 3 | Player models (PlayerState, PlayerCard) | Medium |
-| 4 | Action model (CommittedAction) | Low |
-| 5 | CardPool model | Low |
-| 6 | Pedersen hash utility | Low |
-| 7 | Pseudo-random utility | Medium |
+| Endpoint | Price | Data Returned |
+|----------|-------|---------------|
+| `/intel/location` | $0.002 | Target's current area + approximate floor |
+| `/intel/hand` | $0.004 | Target's estimated hand contents |
+| `/intel/strategy` | $0.003 | Recommended action based on game state |
 
-### Phase 1B: Contract Systems (Steps 8-10)
-
-| Step | Task | Risk |
-|------|------|------|
-| 8 | GameSystem — create, join, start | Low |
-| 9 | ActionSystem — commit, reveal, resolve | **High** |
-| 10 | CardSystem — distribute, transfer, draw, win check | Medium |
-
-Step 9 edge cases:
-- Two players Steal each other simultaneously
-- Steal from player with 0 cards
-- Draw from empty pool
-- Player fails to reveal (timeout)
-
-### Phase 1C: Tests (Steps 11-13)
-
-| Step | Task |
-|------|------|
-| 11 | Game lifecycle tests |
-| 12 | Action resolution tests (every combination) |
-| 13 | Card system tests |
-
-### Phase 1D: Deploy (Steps 14-15)
-
-| Step | Task |
-|------|------|
-| 14 | Configure dojo_dev.toml for Slot |
-| 15 | `sozo build && sozo migrate` |
-
-### Phase 1E: React Frontend (Steps 16-25)
-
-| Step | Task |
-|------|------|
-| 16 | `npm create vite` + install Dojo SDK deps |
-| 17 | Dojo SDK setup (provider, Torii, burner wallets) |
-| 18 | Contract call wrappers + client-side hash |
-| 19 | GameLobby — create/join/start |
-| 20 | GameBoard — main view composition |
-| 21 | HandView — your 5 card slots |
-| 22 | ActionPanel — commit phase UI (core interaction) |
-| 23 | RevealPhase — reveal + resolution display |
-| 24 | PlayerList — other players (public info only) |
-| 25 | GameOver — winner + final reveal |
-
-### Phase 1F: Integration (Steps 26-28)
-
-| Step | Task |
-|------|------|
-| 26 | Torii subscription hooks |
-| 27 | Action history log |
-| 28 | E2E playtest (3 browser windows) |
+**Unit economics**: At 10 intel queries per season × 5,000 MAU × $0.003 avg = **$150/day** in intel revenue at scale. The x402 broker takes a 10% platform cut; 90% goes to the AI rival's operational budget.
 
 ---
 
-## Dependency Graph
+## Roadmap
 
-```
-Step 1 (init)
-├── Steps 2-7 (models + utils) — parallel
-│   ├── Step 8 (GameSystem) → Step 11 (tests)
-│   ├── Step 10 (CardSystem) → Step 13 (tests)
-│   └── Step 9 (ActionSystem) → Step 12 (tests)
-│       └── Steps 14-15 (Slot deploy)
-│
-Step 16 (init React) — parallel with contracts
-├── Step 17 (SDK setup) — needs Step 15
-├── Step 18 (contract calls)
-├── Steps 19-25 (components) — mostly parallel
-├── Step 26 (Torii hooks)
-└── Step 27 (history log)
-    └── Step 28 (E2E playtest)
-```
+See [README.md](../README.md#roadmap) for the full Q2/Q3/Q4 2026 roadmap.
 
----
-
-## Risks & Mitigations
-
-| Risk | Severity | Mitigation |
-|------|----------|------------|
-| Hand readable from chain | High | Accept for Phase 1. Phase 2 = real ZK |
-| On-chain randomness exploitable | Medium | Pseudo-random OK for playtest. Phase 2 = Pragma VRF |
-| Dojo version vs Slot | Medium | Pin version. Deploy early (Step 15) |
-| Salt lost on browser refresh | Medium | localStorage persistence |
-| Action resolution edge cases | High | Extensive unit tests (Step 12) |
-
----
-
-## Success Criteria
-
-- [ ] 3 players can create, join, start a game
-- [ ] Commit-reveal flow hides actions until all commit
-- [ ] Steal takes card when no Barrier
-- [ ] Barrier blocks Steal
-- [ ] Scout reveals target's hand
-- [ ] Draw adds card from pool
-- [ ] Win triggers at 5/5 collection
-- [ ] Game ends at max rounds
-- [ ] Full game < 10 minutes
-- [ ] "Do I want to play again?" = yes
+Key architectural upgrades:
+1. **MagicBlock ER** (Q2) — see [docs/magicblock-migration.md](./magicblock-migration.md)
+2. **Session Keys** (Q2) — documented as stub in `onchain.js`
+3. **VRF** (Q3) — replace on-chain PRNG with Switchboard / MagicBlock VRF
+4. **cNFT** (Q3) — Metaplex Bubblegum compressed NFTs for cost-efficient card minting

@@ -31,6 +31,7 @@
  *     {type:'error', message}
  */
 
+import http from 'http';
 import { WebSocketServer } from 'ws';
 import { Connection, VersionedTransaction, Transaction } from '@solana/web3.js';
 
@@ -38,30 +39,98 @@ const PORT       = process.env.PORT || 3500;
 const RPC_URL    = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
 const COMMITMENT = 'confirmed';
 
+// ─── HTTP health-check server ─────────────────────────────────────────────────
+// Railway / Render require an HTTP endpoint to verify the service is alive.
+// WebSocket connections are upgraded from this same server.
+const httpServer = http.createServer((req, res) => {
+  if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'ok',
+      rooms: rooms.size,
+      connections: wss?.clients?.size ?? 0,
+      rpc: RPC_URL,
+    }));
+  } else {
+    res.writeHead(404);
+    res.end('Not found');
+  }
+});
+
 const connection = new Connection(RPC_URL, COMMITMENT);
 const rooms      = new Map();
 let nextRoomId   = 1000;
+let wss;
+
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+// Prevents message floods and tx-relay abuse.
+// Buckets reset every RATE_WINDOW_MS; max RATE_MAX messages per window.
+const RATE_WINDOW_MS = 1_000; // 1 second
+const RATE_MAX_MSG   = 20;    // max messages per second per connection
+const RATE_MAX_TX    = 3;     // max submit_tx per second per connection
+const MSG_SIZE_LIMIT = 32_768; // 32 KB max raw message size
+
+function initRateState(ws) {
+  ws._rateWindow  = Date.now();
+  ws._rateMsg     = 0;
+  ws._rateTx      = 0;
+}
+
+/** Returns true if the message should be dropped (rate exceeded). */
+function rateLimited(ws, isTx = false) {
+  const now = Date.now();
+  if (now - ws._rateWindow > RATE_WINDOW_MS) {
+    ws._rateWindow = now;
+    ws._rateMsg    = 0;
+    ws._rateTx     = 0;
+  }
+  ws._rateMsg++;
+  if (isTx) ws._rateTx++;
+  if (ws._rateMsg > RATE_MAX_MSG) return true;
+  if (isTx && ws._rateTx > RATE_MAX_TX) return true;
+  return false;
+}
 
 function generateRoomId() {
   return (nextRoomId++).toString(36).toUpperCase();
 }
 
-const wss = new WebSocketServer({ port: PORT });
+// Attach WebSocket to the HTTP server so both share the same port
+// (required for Railway/Render which only expose a single port)
+httpServer.listen(PORT, () => {
+  console.log(`0xARK Multiplayer Server — HTTP+WS on port ${PORT}`);
+  console.log(`Solana RPC: ${RPC_URL}`);
+  console.log('All game state is on-chain. Server holds no game authority.');
+});
+
+wss = new WebSocketServer({ server: httpServer });
 
 wss.on('connection', (ws) => {
   ws.playerId    = Math.random().toString(36).slice(2, 8);
   ws.roomId      = null;
   ws.playerName  = 'Player';
   ws.isAlive     = true;
+  initRateState(ws);
 
   ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', (data) => {
+    // Size guard — drop oversized frames before parsing
+    if (data.length > MSG_SIZE_LIMIT) {
+      send(ws, { type: 'error', message: 'Message too large' });
+      return;
+    }
+    let msg;
     try {
-      handleMessage(ws, JSON.parse(data));
+      msg = JSON.parse(data);
     } catch {
       send(ws, { type: 'error', message: 'Invalid JSON' });
+      return;
     }
+    // Rate limit — drop excess messages silently (no error response to avoid amplification)
+    const isTx = msg.type === 'submit_tx';
+    if (rateLimited(ws, isTx)) return;
+    handleMessage(ws, msg);
   });
 
   ws.on('close', () => {
@@ -89,7 +158,7 @@ async function handleMessage(ws, msg) {
 
     case 'create_room': {
       const roomId = generateRoomId();
-      ws.playerName = msg.name || 'Host';
+      ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : 'Host';
       ws.roomId     = roomId;
       const room = {
         id:      roomId,
@@ -106,7 +175,7 @@ async function handleMessage(ws, msg) {
     case 'join_room': {
       const room = rooms.get(msg.roomId);
       if (!room) { send(ws, { type: 'error', message: 'Room not found' }); return; }
-      ws.playerName = msg.name || `Player ${room.players.size + 1}`;
+      ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : `Player ${room.players.size + 1}`;
       ws.roomId     = msg.roomId;
       room.players.set(ws.playerId, player(ws, 20, 15));
 
@@ -235,6 +304,4 @@ function extractError(e) {
   return e.message ?? String(e);
 }
 
-console.log(`0xARK Multiplayer Server (Pure Relayer) — ws://localhost:${PORT}`);
-console.log(`Solana RPC: ${RPC_URL}`);
-console.log('All game state is on-chain. Server holds no game authority.');
+// (startup logs moved to httpServer.listen callback above)

@@ -72,6 +72,16 @@
 - test: 53 unit tests for card engine (node tests/card-engine.test.js — all pass)
 - infra: ecosystem.config.cjs (pm2) + start.sh for x402 broker + multiplayer server startup
 - v151: victory screen C=Claim Prize (simulated tx) + M=Mint NFTs (60-card sequential mint with progress bar)
+- v414: battle HUD refactor — _drawHPHearts + _drawAccuracyReveal helpers extracted (eliminates 80+ duplicate bx calls across 4 draw sites)
+- v415: 07-map.js silent syntax bug fix — 4 water-tile bx() calls were inside // comment, suppressing all water-edge rendering (v304 regression)
+- v416: onchain.js discriminator fix — disc('handle_verify_zk') → disc('verify_zk_proof') to match Rust fn name
+- v417: x402 broker + multiplayer server hardening — recipient check, singleton Connection, playerId validation, chat 200-char cap, coordinate bounds
+- v418: InventoryPanel.tsx — fixed broken Explorer link (was using raw card ID integer, now uses cardMintPda PDA address)
+- v419: LobbyPanel.tsx — fixed deprecated confirmTransaction API in all 3 tx flows (blockhash + lastValidBlockHeight form)
+- v420: sfxDefeat added (descending minor arpeggio); dGameOver triggers it at t===31; dStats+dLog star field changed from Math.random() to deterministic sin twinkle; marketplace SELL tab shows card picker grid; victory screen T=Share opens X tweet
+- v421: test suite expanded to 114 total (53 card-engine + 49 battle-mechanics + 12 Anchor/litesvm); GitHub Actions CI added (4 jobs: Node tests, Rust tests, React build, game build); README + CU benchmark table + security section
+- v422: Anchor lib.rs fully commented (module-level arch doc + all 13 instructions); CI + test + devnet badges in README; PWA manifest.json; OGP/Twitter Card meta in template.html + rebuilt index.html; multiplayer + x402 verified clean
+- v423: .gitignore updated (CLAUDE.md, TASKS.md, client/ Dojo proto, GDD-v0.2/v0.3 hidden); .gitattributes added (Cairo language attribution fixed, build outputs excluded from linguist); WebSocket rate limiting (20 msg/s, 3 tx/s, 32KB frame cap, 24-char name limit); compute budget + priority fee in onchain.js (all instructions get setComputeUnitLimit + setComputeUnitPrice; verify_zk_proof gets 300k CU); README: Why Now / Why Us / GTM / Ecosystem sponsor table / Q2-Q4 Roadmap added
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)

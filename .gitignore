@@ -2,8 +2,7 @@ node_modules/
 dist/
 target/
 *.log
-logs/*.log
-logs/*.pid
+logs/
 .env
 .DS_Store
 contracts/manifests/
@@ -11,3 +10,14 @@ contracts/manifests/
 *.bak
 solana/client/index.html.bak
 solana/client/pirates-tilemap-b64.txt
+
+# Internal dev notes — not for public reviewers
+CLAUDE.md
+TASKS.md
+
+# Old Starknet/Dojo prototype — superseded by Solana implementation
+client/
+
+# GDD archive — keep only current GDD.md
+GDD-v0.2.md
+GDD-v0.3.md

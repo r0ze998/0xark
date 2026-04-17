@@ -1102,6 +1102,17 @@ document.addEventListener('keydown',e=>{
         mintNext();
         return;
       }
+      // v420: T — share result on X (Twitter)
+      if(e.code==='KeyT'){
+        sfxSelect();
+        const vaultSz=pl[0].vault?pl[0].vault.size:0;
+        const tweetText=vaultSz>=60
+          ?'🎴 I broke the seal in 0xARK — all 60 cards collected on #Solana! ⚓ #SolanaHackathon'
+          :'🎴 Playing 0xARK — '+vaultSz+'/60 cards collected on Solana! ⚓ #SolanaHackathon';
+        const url='https://r0ze998.github.io/0xark';
+        window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(tweetText)+'&url='+encodeURIComponent(url),'_blank','noopener,noreferrer');
+        return;
+      }
       if(e.code==='KeyZ'){
         // Play again - reset all state
         sfxConfirm();

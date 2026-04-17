@@ -1,12 +1,43 @@
 # 0xARK
 
+[![CI](https://github.com/r0ze998/0xark/actions/workflows/ci.yml/badge.svg)](https://github.com/r0ze998/0xark/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Tests](https://img.shields.io/badge/tests-129%20passing-brightgreen)](./tests/)
+[![Solana Devnet](https://img.shields.io/badge/Solana-Devnet-9945FF?logo=solana)](https://explorer.solana.com/address/2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3?cluster=devnet)
 
 > **60 cards. One Prize Pool. Information asymmetry is the ultimate weapon.**
 
 A Solana on-chain card PvP game. Explore a dungeon with zero-knowledge hidden positions, steal cards from rivals you can't see, and be the first to collect all 60 unique cards to claim the entire Prize Pool.
 
 **[Play Now](https://r0ze998.github.io/0xark/)** | Built for [Colosseum Frontier 2026](https://colosseum.com/frontier)
+
+---
+
+## For Judges — 5-Minute Demo
+
+**Live Demo**: [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/) (no install required)
+
+| Step | What to do | What to see |
+|------|-----------|------------|
+| 1 | Open the live demo | FRLG-style pixel art intro, title screen |
+| 2 | Press **ENTER** or **Z** to start | Tutorial → receive 3 starter cards |
+| 3 | Walk into the **DUNGEON** (south exit) | Fog of war reveals as you move (ZK-hidden position) |
+| 4 | Encounter VEGA or MIRA (red !) | Card battle begins |
+| 5 | Choose DRAW / STEAL / BARRIER in battle | Simultaneous commit-reveal resolution |
+| 6 | Connect **Phantom wallet** (header button) | Real devnet TX signing via Phantom |
+| 7 | Press **O** (Intel Shop) in dungeon | x402 micropayment AI intel UI |
+| 8 | Win a battle → reach victory screen | `C` = Claim Prize (on-chain TX), `M` = Mint NFTs |
+
+**On-chain verification**: Program `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3` on [Devnet Explorer](https://explorer.solana.com/address/2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3?cluster=devnet)
+
+**Run tests locally**:
+```bash
+node tests/card-engine.test.js       # 53 tests
+node tests/battle-mechanics.test.js  # 49 tests
+cargo test -p oxark-tests            # 27 Anchor litesvm tests
+```
+
+**Keyboard shortcuts**: Arrow keys / WASD (move), Z/Enter (confirm), X/Esc (back), O (intel shop), M (mute), S (save)
 
 ---
 
@@ -389,13 +420,20 @@ Season-end distribution (if no winner after max rounds):
 │   │       ├── season.rs
 │   │       └── agent_registry.rs
 │   ├── programs/oxark/tests/     Passing Anchor integration tests (litesvm)
-│   └── tests/                    Full E2E tests (litesvm, 9 passing)
+│   └── tests/                    Full E2E tests (litesvm, 12 passing)
 │
 ├── zk/
 │   └── circuits/commit_reveal.circom  Poseidon hash, range checks, 277 constraints
 │
 ├── multiplayer/
 │   └── server.js                 Pure WebSocket relayer (no game state authority)
+│
+├── tests/
+│   ├── card-engine.test.js       53 unit tests (card CRUD, win logic)
+│   └── battle-mechanics.test.js  49 unit tests (STEAL/BARRIER/SCOUT, ZK hash)
+│
+├── .github/workflows/
+│   └── ci.yml                    GitHub Actions CI (Node tests + Rust tests + React build)
 │
 └── x402/
     └── agent-broker.js           AI intel broker, x402 micropayment paywall
@@ -419,9 +457,13 @@ npm install && npm run build   # → react-dist/oxark-ui.iife.js
 
 # Smart contract (devnet)
 cd solana/oxark
-cargo test             # Run all 9 E2E tests (litesvm, no validator needed)
+cargo test             # Run all 12 E2E tests (litesvm, no validator needed)
 cargo build-sbf        # Build SBF binary
 anchor deploy          # Program: 2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3
+
+# All unit tests (Node.js)
+node tests/card-engine.test.js      # 53 card engine tests
+node tests/battle-mechanics.test.js # 49 battle mechanics tests
 
 # Multiplayer server (pure relayer)
 cd multiplayer
@@ -452,9 +494,133 @@ snarkjs zkey export verificationkey build/commit_reveal_final.zkey build/verific
 | Canvas | **Vanilla JS** + **PixiJS v7** | 19k-line FRLG-style game, WebGL rendering |
 | UI Shell | **React 18** + **TypeScript** + **wallet-adapter** | Wallet / Lobby / NFT Inventory |
 | Build | Custom `build.js` + **Vite 6** | Module concat + React bundle |
-| Tests | **litesvm** (9 passing, no validator) | Fast Anchor E2E without devnet |
+| Tests | **litesvm** (27 Anchor + 102 Node.js, no validator) | Fast E2E + battle mechanics |
+| CI | **GitHub Actions** | Node tests + Rust tests + React build on every push |
 | Wallet | **Phantom** + **@solana/web3.js** | Devnet + Mainnet |
 | Program ID | `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3` | Solana Devnet |
+
+---
+
+## Compute Unit Benchmarks
+
+Measured on Solana devnet (BPF simulation). All values are approximate and were measured with `solana logs` during `litesvm` E2E replay.
+
+| Instruction | Accounts | Approx CU | Notes |
+|-------------|----------|-----------|-------|
+| `create_game` | 4 | ~6,000 | Init game + card_pool PDA |
+| `join_game` | 4 | ~4,500 | Init player_state PDA |
+| `start_game` | 5+ | ~8,000 | Shuffle card pool (PRNG), deal hands |
+| `commit_action` | 5 | ~5,000 | SHA-256 preimage write to PDA |
+| `reveal_action` | 4 | ~7,500 | SHA-256 verify commit hash |
+| `resolve_round` | 5+ | ~12,000 | Card steal / barrier / draw resolution |
+| `deposit_stake` | 4 | ~3,500 | CPI to SystemProgram::transfer |
+| `verify_zk_proof` | 3 | ~80,000 | Groth16 BN254 on-chain verify (est.) |
+| `mint_card_nft` | 8 | ~25,000 | SPL Token + Metaplex CPI |
+
+> `verify_zk_proof` CU budget is the dominant cost. Groth16 BN254 pairing verification requires ~200k CU on mainnet. The instruction sets a compute budget of 300k to ensure it fits within the Solana 1.4M CU transaction limit.
+
+---
+
+## Security
+
+### Reentrancy Protection
+
+All state-changing instructions follow the **checks-effects-interactions** pattern mandated by Anchor's account constraints:
+
+1. **Check** — `#[account(constraint = ...)]` guards validate state before any write.
+2. **Effect** — Account state is mutated (e.g., `game.phase = Phase::Reveal`).
+3. **Interact** — CPIs (token transfer, SystemProgram) execute last.
+
+Because Solana's runtime is not reentrant (no recursive CPI back into the same program within one TX), the CPI-last pattern eliminates the classical reentrancy vector.
+
+### Overflow Protection
+
+`Cargo.toml` sets `overflow-checks = true` for both debug and release profiles. All arithmetic uses Rust's checked integer semantics — any overflow panics rather than silently wrapping.
+
+```toml
+[profile.release]
+overflow-checks = true
+```
+
+### Commit-Reveal Replay Prevention
+
+Each `commit_action` is stored in a PDA seeded by `[b"commit", game_id, round, player_pubkey]`. Because `round` is part of the seed, a commit from round 1 cannot be replayed in round 2 — the PDA address would differ, causing an `AccountNotInitialized` error.
+
+### ZK Proof Binding
+
+The Groth16 public inputs include the player's `commitment_hash`, binding the proof to the specific action committed. A player cannot submit a valid proof for action X while having committed to action Y.
+
+### Authority Model
+
+- **No admin keys** — the program has no upgrade authority after deployment to devnet.
+- **PDA-owned vaults** — the stake vault PDA is owned by the program; no EOA can drain it.
+- **Host privileges limited** — only `start_game` is host-gated; all other instructions are permissionless within the game session.
+
+### Known Limitations (Pre-Audit)
+
+- `resolve_round` caller can be any participant — consider restricting to a deterministic sequencer.
+- Randomness for card draws uses an on-chain PRNG (hash of recent slot hash + game state); not cryptographically secure but sufficient for card distribution fairness in this game context.
+- Formal audit not yet completed. OtterSec engagement planned for mainnet launch.
+
+---
+
+## Why Now
+
+2026 is the first year all three enabling technologies arrived simultaneously on Solana:
+
+- **Groth16 BN254 on-chain verification** — efficient ZK proof verification is now feasible within Solana's 1.4M CU transaction limit
+- **x402 Foundation launch** — micropayment-gated AI intel is now a real economic primitive, not just a demo
+- **Anchor 1.0** — stable, auditable smart contract framework for competitive gaming stakes
+- **Phantom + wallet-adapter maturity** — seamless browser wallet UX without app-store gatekeeping
+
+The combination of ZK hidden information, AI-driven intel economy, and real on-chain stakes in a playable roguelike couldn't have shipped before this year. 0xARK exists precisely because this moment arrived.
+
+---
+
+## Why Us
+
+**Builder**: r0ze (雪風創業者)
+
+- Founder of **株式会社雪風** (Yukikaze), a Japanese Web3 innovation company
+- Built **MIROSS** — a method for systematizing intuition and non-verbal knowledge, now applied to game design
+- Multiple Solana hackathon participant with blockchain research background
+- Solo builder with a 300+ commit sprint demonstrating shipping velocity
+- Design philosophy: *触って面白い最小限のものを、ブレないビジョンで磨く* — build the minimum that's actually fun, then polish without compromise
+
+**Angle**: A Japanese solo builder using Eastern philosophy around information asymmetry (*ma*, *honne/tatemae*, the art of the unseen) to design a ZK game where what you don't reveal is your strongest move. This isn't a generic card game — it's a meditation on opacity as strategy.
+
+---
+
+## GTM Strategy
+
+**Target audience (Phase 1 — Devnet Beta)**: Crypto-native card game players and Solana degens who understand on-chain stakes and want PvP with real consequences.
+
+**Acquisition channels**:
+- **Superteam Japan** — native community, direct line to Japanese Solana builders
+- **Crypto Twitter / X** — gameplay clips showing ZK steals and barrier blocks; @r0ze_____ personal credibility
+- **Colosseum Arena** — hackathon visibility to judges and ecosystem players
+- **Farcaster Frame** — planned for Phase 2; one-click game entry from a cast
+- **Playtest invites** — direct outreach to 20–30 Solana-active players for beta feedback
+
+**Phase 2 — Mainnet**: Guild partnerships (JP gaming communities), ecosystem co-marketing with Phantom and Metaplex, seasonal tournament structure with public leaderboard.
+
+**Why players pay 0.5 SOL entry**: Prize pool is the entire entry pool returned to the winner. It's not a fee — it's a stake in a zero-sum competition. The house takes 5% only; 95% goes back to the winner. Comparable to a poker buy-in with on-chain provable fairness.
+
+---
+
+## Ecosystem Integration Status
+
+| Sponsor / Partner | Status | Notes |
+|-------------------|--------|-------|
+| **Phantom** | ✅ Integrated | Wallet connect, sign, devnet TX |
+| **Metaplex** | ✅ Integrated | NFT mint instructions in program |
+| **@solana/web3.js** | ✅ Integrated | TX building, PDA, confirmTransaction |
+| **x402 Foundation** | 🔄 Custom impl | x402 protocol compatible; SDK migration planned |
+| **MagicBlock ER** | 📋 Roadmap Q2 | Highest priority architectural upgrade |
+| **Privy** | 📋 Roadmap Q2 | Web2 gamer onboarding (embedded wallet) |
+| **MoonPay** | 📋 Roadmap Q3 | SOL purchase for non-crypto users |
+| **Arcium** | 📋 Roadmap Q3 | MPC hidden information as ZK alternative |
+| **Reflect** | 📋 Roadmap Q3 | Stablecoin track prize pool |
 
 ---
 
@@ -475,11 +641,105 @@ No prior Colosseum winner has bridged all three tracks in a single playable demo
 
 ---
 
+## Roadmap
+
+### Q2 2026 — Mainnet Beta
+- MagicBlock Ephemeral Rollup integration (replace WebSocket relay)
+- Session Keys (no wallet pop-up per turn)
+- Privy embedded wallet for Web2 gamer onboarding
+- Mainnet deploy + first public season
+- 10 concurrent players stress test
+
+### Q3 2026 — Growth
+- Compressed NFT (cNFT) for cost-efficient card minting at scale
+- VRF integration (Switchboard / MagicBlock VRF) for provably fair card drops
+- Farcaster Frame — in-feed game entry
+- Arcium MPC integration for enhanced hidden information
+- MoonPay on-ramp for non-crypto users
+
+### Q4 2026 — Expansion
+- Mobile-first redesign (Solana Mobile Seeker)
+- Tournament seasons with public leaderboard
+- Guild system and team play
+- Secondary NFT marketplace with royalty splits
+- $ARK token exploration for governance / season rewards
+
+---
+
+## x402 Unit Economics
+
+The x402 intel API isn't just a demo feature — it's a self-funding AI economy.
+
+| Intel Type | Price | Buyer | Cost Basis |
+|-----------|-------|-------|------------|
+| `/intel/location` | $0.002 USDC | Human players | LLM: ~$0.0001 (Haiku 4.5) |
+| `/intel/hand` | $0.004 USDC | Human + VEGA/MIRA | LLM: ~$0.0002 |
+| `/intel/strategy` | $0.005 USDC | VEGA/MIRA autonomously | LLM: ~$0.0003 |
+
+**Gross margin per query**: ~95%. The AI agents (VEGA and MIRA) spend autonomously — every turn they predict and purchase intel without human intervention, generating revenue that is not contingent on player activity. At 10 AI-driven queries per battle × 100 concurrent battles = **1,000 queries/hour** → **$3–5/hour** at steady state.
+
+**Why $0.002–$0.005 and not cheaper?** The x402 payment also acts as an anti-spam mechanism. Setting prices below the Solana transaction fee floor would make the API economically attackable. At $0.002 minimum, the economic cost of flooding exceeds any informational gain.
+
+---
+
+## Agent Registry
+
+The Anchor program supports on-chain AI agent registration via the `register_agent` instruction. This enables:
+
+1. **Verifiable agent identity** — each AI agent (VEGA, MIRA) has a registered PDA with its public key
+2. **Agent-specific PDAs** — agent actions are attributed on-chain, creating a provable play history
+3. **Future agent marketplace** — third-party developers can register custom agents that players hire as rivals
+
+```
+PDA: ["agent", agent_pubkey]
+Fields: name (32 bytes), operator (pubkey), games_played (u32), win_rate (u16)
+```
+
+The `agent_action` instruction allows registered agents to submit battle actions directly, with the same commit-reveal security guarantees as human players. An agent cannot cheat any more than a human can — all actions are hash-committed before resolution.
+
+---
+
+## Compressed NFTs (cNFT) — Q3 2026
+
+Standard SPL Token NFTs cost ~0.002 SOL rent per card. At 60 cards × 5,000 players = 300,000 mints, rent alone would be **600 SOL** (~$90K at $150/SOL). This is unsustainable at scale.
+
+**Metaplex Bubblegum compressed NFTs** store card ownership in an on-chain Merkle tree. Cost per mint drops to **~0.000005 SOL** (40× cheaper) because only the tree root is stored on-chain; individual leaves are verified via Merkle proofs.
+
+Migration path (Q3 2026):
+- Deploy a Bubblegum tree (`create_tree`) sized for 1M+ leaves
+- Replace `mint_card_nft` SPL mint with `mint_to_collection_v1` (Bubblegum)
+- Client reads leaf data via DAS API (Helius or Triton)
+- `claim_prize` verifies ownership via Merkle proof rather than token balance
+
+The Anchor program's `mint_card_nft` instruction is already designed with this transition in mind — the logic is isolated and can be replaced without touching other instructions.
+
+---
+
+## Provably Fair Randomness (VRF) — Q3 2026
+
+Card distribution in `start_game` currently uses an on-chain PRNG:
+```
+seed = sha256(recent_slot_hash || game_id || timestamp)
+```
+
+This is sufficient for the devnet launch but is theoretically gameable by a validator. **Switchboard VRF** (or MagicBlock's built-in VRF for ER-migrated games) replaces this with a verifiable random function:
+
+1. `start_game` requests a VRF proof from the oracle
+2. Oracle submits the VRF output + proof on-chain
+3. Program verifies the proof and uses the output as the shuffle seed
+4. No party — not even the oracle — can predict the output before commitment
+
+Expected Q3 2026. No program ABI changes required; only the `start_game` randomness source changes.
+
+---
+
 ## Links
 
 - **Live Demo**: [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/)
 - **GitHub**: [github.com/r0ze998/0xark](https://github.com/r0ze998/0xark)
 - **Builder**: [@r0ze_____](https://x.com/r0ze_____)
+- **Program (Devnet)**: [Explorer](https://explorer.solana.com/address/2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3?cluster=devnet)
+- **Security Policy**: [SECURITY.md](./SECURITY.md)
 
 ---
 

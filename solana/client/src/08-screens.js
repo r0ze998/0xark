@@ -533,8 +533,9 @@ function drawMapCardUseOverlay(){
 function dStats(){
   // Dark background matching LOG screen
   bx(0,0,W,H,'#0c0c18');
+  // v420: deterministic per-star twinkle (sin-based) — eliminates Math.random() churn each frame
   g.fillStyle='#ffffff';
-  for(let i=0;i<120;i++){const nx=(i*73+17)%W,ny=(i*41+23)%H;g.globalAlpha=Math.random()*0.04;g.fillRect(nx,ny,1,1);}
+  for(let i=0;i<120;i++){const nx=(i*73+17)%W,ny=(i*41+23)%H;g.globalAlpha=0.01+Math.abs(Math.sin(fr*0.07+i*1.3))*0.03;g.fillRect(nx,ny,1,1);}
   g.globalAlpha=1;
 
   // Header
@@ -812,6 +813,7 @@ function dGameOver(){
     if(blink_)txShadow('Z = Play Again    X = Title',W/2-130,H-24,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
+  if(t===31)sfxDefeat(); // v420: defeat audio cue
 }
 
 // ═══════════════════════════════════════

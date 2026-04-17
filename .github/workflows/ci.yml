@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── Node.js card engine + battle mechanics tests ────────────────────────────
+  node-tests:
+    name: Node.js Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run card engine tests
+        run: node tests/card-engine.test.js
+
+      - name: Run battle mechanics tests
+        run: node tests/battle-mechanics.test.js
+
+  # ─── Rust Anchor tests (litesvm, no validator needed) ────────────────────────
+  anchor-tests:
+    name: Anchor Rust Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            solana/oxark/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('solana/oxark/**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Run Anchor tests (litesvm — no validator)
+        working-directory: solana/oxark/tests
+        run: cargo test -- --nocapture 2>&1
+
+  # ─── TypeScript build (React wallet UI) ──────────────────────────────────────
+  react-build:
+    name: React Wallet UI Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: solana/client/react/package-lock.json
+
+      - name: Install dependencies
+        working-directory: solana/client/react
+        run: npm ci
+
+      - name: TypeScript type check
+        working-directory: solana/client/react
+        run: npx tsc --noEmit
+
+      - name: Build React UI
+        working-directory: solana/client/react
+        run: npm run build
+
+  # ─── Game client build ────────────────────────────────────────────────────────
+  game-build:
+    name: Game Client Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build game client (concatenate modules → index.html)
+        working-directory: solana/client
+        run: node build.js
+
+      - name: Verify output size
+        run: |
+          SIZE=$(wc -l < solana/client/index.html)
+          echo "index.html: $SIZE lines"
+          if [ "$SIZE" -lt 10000 ]; then
+            echo "ERROR: build output suspiciously small ($SIZE lines)"
+            exit 1
+          fi

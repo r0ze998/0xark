@@ -1,0 +1,11 @@
+{
+  "name": "0xark",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "gen-og": "node scripts/gen-og-image.js"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  }
+}

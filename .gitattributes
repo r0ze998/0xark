@@ -1,0 +1,15 @@
+# GitHub Linguist overrides
+# Prevent old Starknet/Dojo prototype from appearing as Cairo in language stats
+client/** linguist-vendored
+
+# Mark generated build output — exclude from language stats
+index.html linguist-generated
+react-dist/** linguist-generated
+solana/client/index.html linguist-generated
+solana/oxark/target/** linguist-vendored
+zk/node_modules/** linguist-vendored
+zk/build/** linguist-generated
+
+# Docs — not source code
+docs/** linguist-documentation
+*.md linguist-documentation
