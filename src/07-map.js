@@ -1436,10 +1436,11 @@ function dMap(){
         bx(cx2-1,cy2-1,8,1,rarCol);bx(cx2-1,cy2+9,8,1,rarCol); // top/bottom
         bx(cx2-1,cy2,1,10,rarCol);bx(cx2+7,cy2,1,10,rarCol);   // left/right
         g.globalAlpha=1;
-        // Label above on hover (always show rarity initial)
-        const abb=_RAR_ABB[Math.min(cr.r-1,4)]||'?'; // v262: hoisted
-        g.globalAlpha=0.7;
-        txShadow(abb,cx2-1,cy2-2,5,rarCol,'rgba(0,0,0,.5)');
+        // v436: show card name when player is within 2 tiles, else rarity initial
+        const _dist=Math.abs(it.x-pl[0].x)+Math.abs(it.y-pl[0].y);
+        const _lbl=_dist<=2?cr.n:(_RAR_ABB[Math.min(cr.r-1,4)]||'?');
+        g.globalAlpha=_dist<=2?1:0.7;
+        txShadow(_lbl,cx2+(6-_lbl.length*3)|0,cy2-2,_dist<=2?6:5,rarCol,'rgba(0,0,0,.5)');
         g.globalAlpha=1;
       }
     }
@@ -1829,7 +1830,7 @@ function dMap(){
     const rcc=cdCount(pl[ri+1].cd);
     txShadow(pl[ri+1].n[0],arrowCX-3,arrowCY+14,5,arrowCol,'rgba(0,0,0,.5)');
     txShadow(_RCC_SPADE[rcc]||rcc+'♠',arrowCX-5,arrowCY+24,5,rcc>=4?'#d04040':arrowCol,'rgba(0,0,0,.5)'); // v304
-    const _dr=Math.min(50,Math.round(dist));
+    const _dr=Math.min(50,Math.round(Math.sqrt(dist2)));
     txShadow(_DIST_T[_dr],arrowCX-4,arrowCY+34,5,arrowCol,'rgba(0,0,0,.5)'); // v319: tile distance
   }
 
@@ -1842,15 +1843,19 @@ function dMap(){
   // Tiny collection progress bar
   bx(310,hudY+60,60,3,'#282838');
   bx(310,hudY+60,Math.floor(60*vaultPct),3,vaultCol);
+  // v437: end-game urgency — flash "X NEEDED!" when ≥55 cards
+  if(vaultCount>=55&&vaultCount<60){
+    const _need=60-vaultCount;const _nA=0.75+_sFr20*0.25;
+    g.globalAlpha=_nA;txShadow(_need+'  NEEDED!',312,hudY+44,6,'#f0c830','rgba(0,0,0,.5)');g.globalAlpha=1;
+  }
   txShadow(_HAND_LBL[handCount]||('HAND:'+handCount),382,hudY+56,6,'#686068','rgba(0,0,0,.35)'); // v314
 
   // Footprint trail indicator: show fresh rival tracks on this floor
   if(inDungeon){
     let trailX=430; // v262: rivalCols/rivalNames hoisted to _RIVAL_TRAIL_COLS, pl[ri+1].n[0] inline
     for(let ri=0;ri<2;ri++){
-      // v220: Avoid .filter().map() array allocations — single loop finds min age
-      let freshest=Infinity,_fp;
-      for(let _fi=0;_fi<footprints.length;_fi++){_fp=footprints[_fi];if(_fp.ri===ri&&_fp.map===currentMap&&_fp.age<900&&_fp.age<freshest)freshest=_fp.age;}
+      // v435: O(1) freshest-age lookup (was O(n) scan over all footprints)
+      const freshest=_fpFreshAge[_fpKey(ri+1,currentMap)];
       if(freshest<Infinity){
         const freshAlpha=freshest<180?1:freshest<600?0.7:0.45;
         g.globalAlpha=freshAlpha;
@@ -1902,7 +1907,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v432',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v438',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
