@@ -279,7 +279,7 @@ async function verifyZkProof(gameId, proofA, proofB, proofC, publicInputs) {
   const [commitPDA]    = findCommitPDA(gameId, payer);
 
   // disc(8) + game_id(8) + proof_a(64) + proof_b(128) + proof_c(64) + public_inputs(32) = 304
-  const d    = await disc('handle_verify_zk');
+  const d    = await disc('verify_zk_proof');
   const data = new Uint8Array(304);
   let off = writeBytes(data, 0, d);
   off = writeU64LE(data, off, gameId);
