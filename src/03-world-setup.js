@@ -472,6 +472,14 @@ function dungeonTurnStep(aiIdx){
             r.x=ex.targetX;r.y=ex.targetY;r.visualX=ex.targetX*TW;r.visualY=ex.targetY*TH;
             if(ex.targetMap===currentMap&&oldMap!==currentMap){
               rivalAlert=RIVAL_ALERT_DUR;rivalAlertName=r.n;rivalAlertRival=aiIdx;flash();beep(660,.04,.06); // v439
+              // v476: red threat burst around player when rival enters floor
+              {const _rpx=pl[0].visualX-camX+8,_rpy=pl[0].visualY-camY+8;
+              const _rc=aiIdx===0?'rgba(220,60,160,1)':'rgba(220,180,30,1)';
+              const _rc2=aiIdx===0?'rgba(255,160,200,1)':'rgba(255,240,120,1)';
+              screenShake(2,4);
+              for(let _ri=0;_ri<12;_ri++){const _ra=(_ri/12)*Math.PI*2;const _rs=1.2+Math.random()*2.2;
+                particles.push({x:_rpx,y:_rpy,vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-1,life:22+Math.random()*14,c:Math.random()>.5?_rc:_rc2});
+              }}
               lg.push('You sense movement... '+r.n+' entered the area!');
             }
             if(inDungeon&&ex.targetMap>0){

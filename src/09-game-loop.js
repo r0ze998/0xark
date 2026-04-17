@@ -235,11 +235,18 @@ function update(){
           if(remaining<30000&&decayWarn[i]<2){
             decayWarn[i]=2;sfxCardDecayWarn();screenShake(1,3);
             objectInteractMsg=cardName+' FADING! 30s!';objectInteractTimer=90;
+            // v482: red smoke burst from decaying card HUD slot
+            {const _cx=310+(i%8)*30+14,_cy=hudY+24;
+            for(let _di=0;_di<6;_di++){particles.push({x:_cx+(Math.random()*16-8),y:_cy,vx:(Math.random()-.5)*1.4,vy:-0.8-Math.random()*1.4,life:20+Math.random()*12,c:'rgba(200,60,40,.7)'});}}
           }
           // 10-second critical warning
           if(remaining<10000&&decayWarn[i]<3){
             decayWarn[i]=3;sfxDangerAlert();screenShake(2,4);
             objectInteractMsg=cardName+' CRITICAL! RUN!';objectInteractTimer=90;
+            // v482: intense red burst from critical decaying card HUD slot
+            {const _cx=310+(i%8)*30+14,_cy=hudY+24;
+            for(let _di=0;_di<10;_di++){const _da=(_di/10)*Math.PI*2;const _ds=1+Math.random()*1.8;
+              particles.push({x:_cx,y:_cy,vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-2,life:16+Math.random()*10,c:Math.random()>.5?'rgba(220,40,20,1)':'rgba(255,140,80,1)'});}}
           }
           // Flashing at <15s
           if(remaining<15000){
@@ -464,10 +471,16 @@ function draw(){
     // Shadow effect on player sprite
     if(shadowStepsLeft>0){
       const px=pl[0].visualX-camX,py=pl[0].visualY-camY-16;
-      g.globalAlpha=0.4;
-      bx(px-4,py-4,40,56,'rgba(80,40,160,.3)');
+      // v473: pulsing purple stealth shimmer — stronger than old static overlay
+      const _stA=0.3+_sFr12*0.2;
+      g.globalAlpha=_stA;
+      bx(px-4,py-4,40,56,'rgba(80,40,160,.4)');
       g.globalAlpha=1;
       txShadow(_STEALTH_LBL[shadowStepsLeft]||('STEALTH:'+shadowStepsLeft),px-20,py-24,5,'#9060c0','rgba(0,0,0,.4)');
+      // Emit 1 purple particle every 6 frames during stealth
+      if(fr%6===0){
+        particles.push({x:px+4+Math.random()*24,y:py+48+Math.random()*12,vx:(Math.random()-.5)*.6,vy:-0.7-Math.random()*0.8,life:22+Math.random()*12,c:'rgba(160,90,240,.7)'});
+      }
     }
   }
   // Multiplayer connection status overlay
@@ -479,6 +492,15 @@ function draw(){
   if(escapeUrgencyActive&&inDungeon&&(sc==='map'||sc==='act')){
     const vigA=(0.15+Math.sin(escapeUrgencyPulse*0.15)*0.1)*Math.min(1,escapeUrgencyPulse/30);
     g.globalAlpha=vigA;g.drawImage(_escVigCanvas,0,0);g.globalAlpha=1;
+  }
+  // v469: cardDecayWarningFlash — brief bright red edge pulse when any card hits <15s threshold
+  if(cardDecayWarningFlash>0&&inDungeon&&(sc==='map'||sc==='act')){
+    const _dfA=cardDecayWarningFlash/10;
+    g.globalAlpha=_dfA*0.55;
+    g.fillStyle='#c82020';
+    g.fillRect(0,0,W,5);g.fillRect(0,H-5,W,5);
+    g.fillRect(0,0,5,H);g.fillRect(W-5,0,5,H);
+    g.globalAlpha=1;
   }
   // Screen transition wipes (replaces old battleWipe)
   drawWipe();

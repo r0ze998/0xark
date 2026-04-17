@@ -725,6 +725,13 @@ function drawBuildingInterior(){
         gachaPhase='result';gachaResultFrame=fr;
         if(rar>=4)screenShake(rar-2,rar*3);
         if(rar>=5)flash();
+        // v485: rarity-scaled confetti burst on gacha reveal
+        {const _gn=rar>=5?24:rar>=4?18:rar>=3?12:8;
+        const _gc1=rar>=5?'rgba(255,200,40,1)':rar>=4?'rgba(180,80,220,1)':rar>=3?'rgba(80,160,255,1)':'rgba(80,200,120,1)';
+        const _gc2=rar>=5?'rgba(255,255,180,1)':rar>=4?'rgba(240,180,255,1)':'rgba(200,255,230,1)';
+        for(let _gi=0;_gi<_gn;_gi++){const _ga=(_gi/_gn)*Math.PI*2+Math.random()*.5;const _gs=1.5+Math.random()*3;
+          particles.push({x:W/2+(Math.random()*60-30),y:H/2+(Math.random()*40-20),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2.5,life:24+Math.random()*20,c:Math.random()>.45?_gc1:_gc2});
+        }}
       }
     }else if(gachaPhase==='result'&&gachaResultCard>0){
       const t2=fr-gachaResultFrame;
@@ -870,6 +877,12 @@ function checkObjectInteraction(){
       const treeAdded=addCardToPlayer(0,treeCardId); // updates vault + hand
       if(treeAdded){
         startCardAcquisition(cardIdx);
+        // v479: leaf burst when card falls from tree
+        {const _tx=ft.x*TW-camX+TW/2,_ty=ft.y*TH-camY+TH/2;
+        for(let _li=0;_li<12;_li++){const _la=Math.random()*Math.PI*2;const _ls=1+Math.random()*2;
+          particles.push({x:_tx,y:_ty,vx:Math.cos(_la)*_ls,vy:Math.sin(_la)*_ls-2.5,life:20+Math.random()*14,c:Math.random()>.4?'rgba(60,160,50,1)':'rgba(180,220,80,1)'});
+        }}
+        screenShake(2,4);
         objectInteractMsg='A card fell from the tree!';
         lg.push('Shook tree: Found '+CD[cardIdx].n+'!');
         checkWinAndTransition(2000);
@@ -879,6 +892,11 @@ function checkObjectInteraction(){
       }
     }else{
       objectInteractMsg='Nothing fell from the tree.';
+      // v481: small leaf flutter even on miss — physicality
+      {const _tx=ft.x*TW-camX+TW/2,_ty=ft.y*TH-camY+TH/2;
+      for(let _li=0;_li<5;_li++){
+        particles.push({x:_tx+(Math.random()*16-8),y:_ty,vx:(Math.random()-.5)*1.2,vy:-0.5-Math.random()*1.2,life:14+Math.random()*10,c:'rgba(80,150,50,.8)'});
+      }}
     }
     objectInteractTimer=90;
     sfxSelect();
@@ -900,6 +918,12 @@ function checkObjectInteraction(){
       const rockAdded=addCardToPlayer(0,cardId); // updates vault + hand
       if(rockAdded){
         startCardAcquisition(cardId-1);
+        // v479: dust burst when card found under rock
+        {const _rx=ft.x*TW-camX+TW/2,_ry=ft.y*TH-camY+TH/2;
+        screenShake(2,4);
+        for(let _ri=0;_ri<10;_ri++){const _ra=Math.random()*Math.PI*2;const _rs=1+Math.random()*1.8;
+          particles.push({x:_rx,y:_ry,vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-1.5,life:16+Math.random()*12,c:Math.random()>.4?'rgba(140,110,80,1)':'rgba(200,180,140,1)'});
+        }}
         objectInteractMsg='Found a hidden card under the rock!';
         lg.push('Rock: Found '+CD[cardId-1].n+'!');
         checkWinAndTransition(2000);
@@ -909,6 +933,11 @@ function checkObjectInteraction(){
       }
     }else{
       objectInteractMsg='Nothing under the rock.';
+      // v481: small dust puff even on miss — physicality
+      {const _rx=ft.x*TW-camX+TW/2,_ry=ft.y*TH-camY+TH/2;
+      for(let _ri=0;_ri<4;_ri++){
+        particles.push({x:_rx+(Math.random()*10-5),y:_ry,vx:(Math.random()-.5)*1,vy:-0.4-Math.random()*0.8,life:10+Math.random()*8,c:'rgba(120,100,70,.6)'});
+      }}
     }
     objectInteractTimer=90;
     return true;
@@ -923,6 +952,13 @@ function checkObjectInteraction(){
     }
     campfireUsed=true;
     sfxConfirm();
+    // v468: warm orange ember particles + timestamp for RESTED banner
+    _campfireRestFrame=fr;
+    {const _fx=pl[0].visualX-camX+8,_fy=pl[0].visualY-camY+4;
+    for(let _fi=0;_fi<12;_fi++){
+      const _fa=Math.random()*Math.PI*2;const _fs=0.6+Math.random()*1.8;
+      particles.push({x:_fx+Math.random()*6-3,y:_fy,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-2.2,life:20+Math.random()*20,c:Math.random()>.5?'rgba(255,140,30,1)':'rgba(255,220,80,1)'});
+    }}
     // Restore 1 spell charge: rotate Steal->Barrier->Scout
     if(sp.s<3){sp.s++;objectInteractMsg='Rested by campfire. +1 Steal charge!';lg.push('Campfire: +1 Steal!');}
     else if(sp.b<3){sp.b++;objectInteractMsg='Rested by campfire. +1 Barrier charge!';lg.push('Campfire: +1 Barrier!');}
@@ -967,6 +1003,14 @@ function checkObjectInteraction(){
       crystalRevealTimer=3600;
       objectInteractMsg='The crystal glows! Rivals revealed!';
       lg.push('Crystal: Rivals revealed for 60s!');
+      // v467: blue/cyan particle burst from player position
+      _crystalUseFrame=fr;
+      screenShake(3,8);
+      {const _cx=pl[0].visualX-camX+8,_cy=pl[0].visualY-camY+8;
+      for(let _ci=0;_ci<16;_ci++){
+        const _ca=(_ci/16)*Math.PI*2;const _cs=1.5+Math.random()*2.5;
+        particles.push({x:_cx,y:_cy,vx:Math.cos(_ca)*_cs,vy:Math.sin(_ca)*_cs-1,life:25+Math.random()*15,c:Math.random()>.5?'rgba(60,180,255,1)':'rgba(160,230,255,1)'});
+      }}
     }else{
       objectInteractMsg='The crystal shattered! Nothing happened.';
       lg.push('Crystal shattered.');
@@ -991,6 +1035,13 @@ function checkObjectInteraction(){
       if(sp.s<3){sp.s++;objectInteractMsg='The altar hums. +1 Steal charge!';lg.push('Altar: +1 Steal!');}
       else if(sp.b<3){sp.b++;objectInteractMsg='The altar hums. +1 Barrier charge!';lg.push('Altar: +1 Barrier!');}
       else{sp.c=Math.min(3,sp.c+1);objectInteractMsg='The altar hums. +1 Scout charge!';lg.push('Altar: +1 Scout!');}
+      // v467: golden prayer-answered burst
+      _altarUseFrame=fr;
+      {const _ax=pl[0].visualX-camX+8,_ay=pl[0].visualY-camY+8;
+      for(let _ai=0;_ai<14;_ai++){
+        const _aa=(_ai/14)*Math.PI*2;const _as=1.2+Math.random()*2.2;
+        particles.push({x:_ax,y:_ay,vx:Math.cos(_aa)*_as,vy:Math.sin(_aa)*_as-2,life:28+Math.random()*18,c:Math.random()>.5?'rgba(255,200,60,1)':'rgba(255,240,160,1)'});
+      }}
     }else if(roll<0.7){
       // Extend decay on the most-decayed card
       let nearestSlot=-1,nearestAge=0;
@@ -999,6 +1050,13 @@ function checkObjectInteraction(){
         cardTimers[nearestSlot]+=90000; // +1.5 min extra
         objectInteractMsg='The altar preserved '+CD[pl[0].cd[nearestSlot]-1].n+'! +1.5min';
         lg.push('Altar: Extended '+CD[pl[0].cd[nearestSlot]-1].n+' by 1.5min!');
+        // v467: softer golden shimmer for card preservation
+        _altarUseFrame=fr;
+        {const _ax=pl[0].visualX-camX+8,_ay=pl[0].visualY-camY+8;
+        for(let _ai=0;_ai<8;_ai++){
+          const _aa=(_ai/8)*Math.PI*2;const _as=0.8+Math.random()*1.4;
+          particles.push({x:_ax,y:_ay,vx:Math.cos(_aa)*_as,vy:Math.sin(_aa)*_as-1.5,life:22+Math.random()*14,c:Math.random()>.5?'rgba(220,170,40,1)':'rgba(255,230,120,1)'});
+        }}
       }else{
         objectInteractMsg='The altar glows... but no cards to protect.';
       }
@@ -1041,6 +1099,15 @@ function doFountainExchange(){
   fountainResultTimer=120;
   lg.push('Fountain: Traded '+CD[oldCard-1].n+' for '+CD[newCard-1].n+'!');
   sfxShopTrade();
+  // v478: magical water burst at player when fountain grants a card
+  {const _fpx=pl[0].visualX-camX+8,_fpy=pl[0].visualY-camY+8;
+  screenShake(2,6);
+  const _nr=CD[newCard-1]?CD[newCard-1].r:1;
+  const _fc1=_nr>=4?'rgba(255,200,60,1)':_nr===3?'rgba(180,80,220,1)':'rgba(80,180,255,1)';
+  const _fc2='rgba(200,240,255,1)';
+  for(let _fi=0;_fi<16;_fi++){const _fa=(_fi/16)*Math.PI*2;const _fs=1.2+Math.random()*2.5;
+    particles.push({x:_fpx,y:_fpy,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-2.2,life:22+Math.random()*16,c:Math.random()>.4?_fc1:_fc2});
+  }}
   checkWinAndTransition(2000);
 }
 

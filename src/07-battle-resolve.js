@@ -345,11 +345,23 @@ function drawResolvingPhase(){
         txShadow('BLOCKED!',playerCX-50,playerCY-40,16,'#4080ff','rgba(0,0,30,.6)');
         g.globalAlpha=1;
       }
-      g.restore();if(evT===1)sfxShield();
+      g.restore();if(evT===1){sfxShield();
+        // v484: blue/silver burst on successful block
+        screenShake(2,5);
+        for(let _bi=0;_bi<18;_bi++){const _ba=(_bi/18)*Math.PI*2;const _bs=1.5+Math.random()*2.8;
+          particles.push({x:playerCX,y:playerCY,vx:Math.cos(_ba)*_bs,vy:Math.sin(_ba)*_bs-1.5,life:20+Math.random()*14,c:Math.random()>.5?'rgba(80,140,255,1)':'rgba(200,230,255,1)'});
+        }
+      }
     }
     if(ev.effect==='damage'&&evT<20){
       bpShakeTarget=ev.target!==undefined?ev.target:0;bpShakeTimer=20-evT;
-      if(evT===1)sfxDamage();
+      if(evT===1){sfxDamage();
+        // v484: red impact sparks on damage hit
+        const _tgX=ev.target===0?playerCX:oppCX;const _tgY=ev.target===0?playerCY:oppCY;
+        for(let _hi=0;_hi<10;_hi++){const _ha=(_hi/10)*Math.PI*2;const _hs=1.2+Math.random()*2;
+          particles.push({x:_tgX,y:_tgY,vx:Math.cos(_ha)*_hs,vy:Math.sin(_ha)*_hs-1,life:14+Math.random()*10,c:Math.random()>.5?'rgba(220,60,40,1)':'rgba(255,180,80,1)'});
+        }
+      }
       // Flash on target
       if(evT<6&&evT%2===0){
         const tgtCX=ev.target===0?playerCX:oppCX;
@@ -846,6 +858,12 @@ function drawResolvingPhase(){
     }
     // v216: Player defeat flash — red vignette + "DEFEATED!" when player HP 0
     if(bpHP[0]===0){
+      // v483: one-shot death particle burst on first defeat frame
+      if(fr-_defeatBurstFrame>120){_defeatBurstFrame=fr;screenShake(4,8);
+        for(let _di=0;_di<22;_di++){const _da=(_di/22)*Math.PI*2;const _ds=1.5+Math.random()*3;
+          particles.push({x:playerCX,y:playerCY,vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-2.5,life:28+Math.random()*18,c:Math.random()>.5?'rgba(220,40,40,1)':'rgba(255,160,100,1)'});
+        }
+      }
       const defPulse=0.5+0.5*(_sFr20*_cFr02+_cFr20*_sFr02); // v371: sin-addition sin(fr*0.22)=sin(fr*0.2+fr*0.02)
       g.globalAlpha=defPulse*0.25;g.drawImage(_btlDefeatVig,0,0);g.globalAlpha=1;
       const defScale=1+_sFr15*0.06; // v369: cached

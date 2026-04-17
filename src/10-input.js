@@ -59,6 +59,12 @@ function tryMovePlayer(dx, dy) {
     const _restN=(sp.s<3?1:0)+(sp.b<3?1:0)+(sp.c<3?1:0);
     if(sp.s<3)sp.s++;if(sp.b<3)sp.b++;if(sp.c<3)sp.c++;
     sfxCrystal();
+    // v475: full-map sparkle burst — radial burst + screenShake to celebrate 100% exploration
+    {const _fx=pl[0].visualX-camX+8,_fy=pl[0].visualY-camY+8;
+    screenShake(2,6);
+    for(let _fi=0;_fi<18;_fi++){const _fa=(_fi/18)*Math.PI*2;const _fs=1.2+Math.random()*2.5;
+      particles.push({x:_fx,y:_fy,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-1.5,life:22+Math.random()*16,c:Math.random()>.5?'rgba(80,180,255,1)':'rgba(255,220,80,1)'});
+    }}
     const _flrLbl=['','I','II','III','IV','V'];
     if(_restN>0){tutorialMsg='\u2605 FLOOR '+(_flrLbl[currentFloor]||currentFloor)+' FULLY MAPPED! Spells restored!';tutorialMsgTimer=220;}
     else{tutorialMsg='\u2605 FLOOR '+(_flrLbl[currentFloor]||currentFloor)+' FULLY MAPPED! Master explorer!';tutorialMsgTimer=220;}
@@ -84,7 +90,17 @@ function tryMovePlayer(dx, dy) {
   if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
   if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}
   if(newTile!==0){const adj=[[nx-1,ny],[nx+1,ny],[nx,ny-1],[nx,ny+1]];if(adj.some(([ax,ay])=>ax>=0&&ax<MW&&ay>=0&&ay<MH&&m[ay]?.[ax]===0))sfxWaterNear();}
-  if(shadowStepsLeft>0)shadowStepsLeft--;
+  if(shadowStepsLeft>0){
+    shadowStepsLeft--;
+    // v473: stealth expiry — particle burst + shake when stealth runs out
+    if(shadowStepsLeft===0){
+      screenShake(2,5);
+      const _rpx=pl[0].visualX-camX+8,_rpy=pl[0].visualY-camY+8;
+      for(let _ri=0;_ri<10;_ri++){const _ra=(_ri/10)*Math.PI*2;const _rs=1+Math.random()*2;
+        particles.push({x:_rpx,y:_rpy,vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-1,life:16+Math.random()*10,c:Math.random()>.5?'rgba(150,80,220,1)':'rgba(255,200,255,1)'});
+      }
+    }
+  }
   if(shadowStepsLeft<=0)checkForestTrap();
   randomEventTimer++;
   if(randomEventTimer>=150&&!randomEventActive&&!wildEncounterActive&&!cardAcqActive){randomEventTimer=0;triggerRandomEvent();}
@@ -856,11 +872,21 @@ document.addEventListener('keydown',e=>{
         // (The steal already happened, so we give a pity boost instead)
         sp.b=Math.min(sp.b+1,3);
         lg.push('QTE success! Barrier charge restored!');
+        // v483: BLOCKED! — blue/silver shield-burst from player position
+        {const _qx=160,_qy=H-130;screenShake(2,4);
+        for(let _qi=0;_qi<16;_qi++){const _qa=(_qi/16)*Math.PI*2;const _qs=1.5+Math.random()*2.5;
+          particles.push({x:_qx,y:_qy,vx:Math.cos(_qa)*_qs,vy:Math.sin(_qa)*_qs-2,life:22+Math.random()*14,c:Math.random()>.5?'rgba(60,160,255,1)':'rgba(200,230,255,1)'});
+        }}
       }else{
         qteResultText='BONUS!';qteResultTimer=40;
         // Attack bonus: extra steal charge
         sp.s=Math.min(sp.s+1,3);
         lg.push('QTE success! Steal charge bonus!');
+        // v483: BONUS! — gold/green offensive burst from player position
+        {const _qx=160,_qy=H-130;screenShake(2,4);
+        for(let _qi=0;_qi<16;_qi++){const _qa=(_qi/16)*Math.PI*2;const _qs=1.8+Math.random()*2.8;
+          particles.push({x:_qx,y:_qy,vx:Math.cos(_qa)*_qs,vy:Math.sin(_qa)*_qs-2.5,life:24+Math.random()*14,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(80,240,120,1)'});
+        }}
       }
     }
     if(battlePhase==='select'&&bpCardSelectActive){

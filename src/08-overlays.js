@@ -732,7 +732,15 @@ function dVictory(){
     const hints=playerHasAllSixty()?'C=Claim  M=Mint  T=Share  Z=Play Again  X=Title':'T=Share  Z=Play Again   X=Title';
     txShadow(hints,W/2-190,H-6,7,'#c89820','rgba(0,0,0,.4)');
   }
-  if(t===31)sfxVictory();
+  if(t===31){sfxVictory();
+    // v487: victory particle mega-burst — 36 golden/rainbow confetti from screen center
+    triggerProgressPulse();
+    for(let _vi=0;_vi<36;_vi++){const _va=(_vi/36)*Math.PI*2;const _vs=2+Math.random()*4;
+      const _vc=['rgba(255,200,40,1)','rgba(80,220,140,1)','rgba(100,160,255,1)','rgba(240,80,180,1)','rgba(255,240,100,1)'][_vi%5];
+      particles.push({x:W/2+(Math.random()*80-40),y:H/2+(Math.random()*40-20),vx:Math.cos(_va)*_vs,vy:Math.sin(_va)*_vs-3,life:40+Math.random()*30,c:_vc});
+    }
+    screenShake(3,10);
+  }
 }
 
 // ═══════════════════════════════════════

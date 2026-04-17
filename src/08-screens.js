@@ -322,6 +322,12 @@ function executeMapCard(cardId,slot){
     shadowStepsLeft=30;
     mapCardUseActive=false;_mapUsableCache=null;
     sfxShadow();
+    // v472: purple shadow burst + shake
+    screenShake(2,5);
+    {const _sx=pl[0].visualX-camX+8,_sy=pl[0].visualY-camY+8;
+    for(let _ui=0;_ui<12;_ui++){const _ua=(_ui/12)*Math.PI*2;const _us=0.8+Math.random()*2;
+      particles.push({x:_sx,y:_sy,vx:Math.cos(_ua)*_us,vy:Math.sin(_ua)*_us-1,life:20+Math.random()*14,c:Math.random()>.5?'rgba(100,40,180,1)':'rgba(190,130,255,1)'});
+    }}
     twSet('UMBRA: You became invisible for 30 steps!');
     lg.push('Used UMBRA on map: 30 invisible steps!');
   }else if(cardId===30){
@@ -331,6 +337,12 @@ function executeMapCard(cardId,slot){
     shadowStepsLeft=60;
     mapCardUseActive=false;_mapUsableCache=null;
     sfxShadow();
+    // v472: deep purple shadow burst + shake
+    screenShake(2,5);
+    {const _sx=pl[0].visualX-camX+8,_sy=pl[0].visualY-camY+8;
+    for(let _ui=0;_ui<16;_ui++){const _ua=(_ui/16)*Math.PI*2;const _us=0.8+Math.random()*2.5;
+      particles.push({x:_sx,y:_sy,vx:Math.cos(_ua)*_us,vy:Math.sin(_ua)*_us-1,life:24+Math.random()*16,c:Math.random()>.5?'rgba(60,10,130,1)':'rgba(160,90,240,1)'});
+    }}
     twSet('SHADOW: You became invisible for 60 steps!');
     lg.push('Used SHADOW on map: 60 invisible steps!');
   }else if(cardId===28){
@@ -420,6 +432,12 @@ function executeDirCard(dir){
           tileCacheDirty=true;edgeCacheDirty=true;
           sfxBurn();
           flash();
+          // v472: fire particle burst at burn tile
+          screenShake(3,7);
+          {const _fx_=tx_*TW-camX+8,_fy_=ty_*TH-camY+8;
+          for(let _fi=0;_fi<14;_fi++){const _fa=(_fi/14)*Math.PI*2;const _fs=1+Math.random()*2.5;
+            particles.push({x:_fx_,y:_fy_,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-2,life:18+Math.random()*16,c:Math.random()>.4?'rgba(255,120,20,1)':'rgba(255,220,60,1)'});
+          }}
           twSet('The obstacle burns away!');
           lg.push('Used Ignis: burned tile at ('+tx_+','+ty_+')');
         }
@@ -441,6 +459,16 @@ function executeDirCard(dir){
         tileCacheDirty=true;edgeCacheDirty=true;
         sfxPhase();
         flash();
+        screenShake(2,5);
+        // v474: ghostly wall-phase particle burst at midpoint + landing
+        {const _mx=(p.x-1+(fx-p.x)/2)*TW-camX+8,_my=(p.y-1+(fy-p.y)/2)*TH-camY+8;
+        for(let _pi=0;_pi<8;_pi++){const _pa=(_pi/8)*Math.PI*2;const _ps=1+Math.random()*1.8;
+          particles.push({x:_mx,y:_my,vx:Math.cos(_pa)*_ps,vy:Math.sin(_pa)*_ps,life:14+Math.random()*10,c:Math.random()>.5?'rgba(140,255,180,.7)':'rgba(220,255,240,.6)'});
+        }
+        const _lx=fx*TW-camX+8,_ly=fy*TH-camY+8;
+        for(let _pi=0;_pi<12;_pi++){const _pa=(_pi/12)*Math.PI*2;const _ps=1.2+Math.random()*2;
+          particles.push({x:_lx,y:_ly,vx:Math.cos(_pa)*_ps,vy:Math.sin(_pa)*_ps-0.5,life:18+Math.random()*12,c:Math.random()>.5?'rgba(80,220,140,1)':'rgba(200,255,220,1)'});
+        }}
         twSet('PHASE: You walked through the wall!');
         lg.push('Used PHASE: phased to ('+fx+','+fy+')');
       }
@@ -469,6 +497,16 @@ function executeDirCard(dir){
         tileCacheDirty=true;edgeCacheDirty=true;
         sfxPhase();
         flash();
+        // v472: cyan teleport burst at origin and landing
+        screenShake(3,6);
+        {const _ox=origX*TW-camX+8,_oy=origY*TH-camY+8;
+        for(let _ti=0;_ti<10;_ti++){const _ta=(_ti/10)*Math.PI*2;const _ts=1.2+Math.random()*2;
+          particles.push({x:_ox,y:_oy,vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-0.5,life:18+Math.random()*10,c:Math.random()>.5?'rgba(60,200,240,1)':'rgba(180,240,255,1)'});
+        }
+        const _dx_=bestX*TW-camX+8,_dy_=bestY*TH-camY+8;
+        for(let _ti=0;_ti<14;_ti++){const _ta=(_ti/14)*Math.PI*2;const _ts=1+Math.random()*2.5;
+          particles.push({x:_dx_,y:_dy_,vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-1,life:22+Math.random()*14,c:Math.random()>.5?'rgba(80,210,255,1)':'rgba(220,250,255,1)'});
+        }}
         twSet('BLINK: Teleported '+dist+' tiles!');
         lg.push('Used BLINK: teleported to ('+bestX+','+bestY+')');
       }
@@ -813,7 +851,12 @@ function dGameOver(){
     if(blink_)txShadow('Z = Play Again    X = Title',W/2-130,H-24,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
-  if(t===31)sfxDefeat(); // v420: defeat audio cue
+  // v489: doom particle burst synced with sfxDefeat
+  if(t===31){sfxDefeat();screenShake(3,8);
+    for(let _di=0;_di<24;_di++){const _da=(_di/24)*Math.PI*2+Math.random()*0.3;const _ds=1.5+Math.random()*3.5;
+      particles.push({x:W/2+(Math.random()*40-20),y:H/2+(Math.random()*30-15),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:28+Math.random()*20,c:Math.random()>.5?'rgba(200,30,30,1)':'rgba(100,20,20,1)'});
+    }
+  }
 }
 
 // ═══════════════════════════════════════

@@ -575,6 +575,13 @@ function drawMapLoadScreen(){
 function updateRunSummary(){
   if(!runSummaryActive)return;
   runSummaryFrame++;
+  // v488: one-shot sparkle on reveal when all cards preserved
+  if(runSummaryFrame===32&&runSummaryData&&runSummaryData.lostCards.length===0){
+    const _rx=W/2,_ry=H/2+20;
+    for(let _rsi=0;_rsi<20;_rsi++){const _rsa=(_rsi/20)*Math.PI*2+Math.random()*0.4;const _rss=1.5+Math.random()*3;
+      particles.push({x:_rx+(Math.random()*60-30),y:_ry+(Math.random()*30-15),vx:Math.cos(_rsa)*_rss,vy:Math.sin(_rsa)*_rss-2,life:22+Math.random()*18,c:Math.random()>.5?'rgba(80,224,144,1)':'rgba(180,255,200,1)'});
+    }
+  }
 }
 // v310: Run grade + commentary helpers
 function _runGrade(d){

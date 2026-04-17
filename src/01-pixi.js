@@ -1081,6 +1081,10 @@ let _mmAnimFrame=-9999;
 let _mmFlashFrame=-9999; // v461: new room discovery flash timestamp
 let _trapHitFrame=-9999; // v463: trap trigger timestamp for TRAP! danger banner
 let _puzzleSolveFrame=-9999; // v466: ruins puzzle solve timestamp for pillar burst animation
+let _crystalUseFrame=-9999; // v467: crystal reveal timestamp for cyan banner
+let _altarUseFrame=-9999;   // v467: altar activation timestamp for golden banner
+let _campfireRestFrame=-9999; // v468: campfire rest timestamp for warm orange banner
+let _defeatBurstFrame=-9999; // v483: one-shot particle burst on player defeat
 
 // GBA-style scanlines — pre-baked once; single drawImage per frame (zero per-frame cost)
 const scanCanvas=document.createElement('canvas');

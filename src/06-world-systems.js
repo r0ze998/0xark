@@ -819,6 +819,12 @@ function drawMinimap(){
       const rpx=mx+rp.x*sx,rpy=my+rp.y*sy;
       bx(rpx,rpy,2,2,rp.c);
       if(crystalRevealTimer>0){
+        // v470: pulsing ring around crystal-revealed rival dots
+        const _rPulse=0.4+_sFr15*0.4;
+        g.globalAlpha=_rPulse;
+        g.strokeStyle='#40d8ff';g.lineWidth=1;
+        g.beginPath();g.arc(rpx+1,rpy+1,3,0,Math.PI*2);g.stroke();
+        g.globalAlpha=1;
         const ai=rivalAI[idx];
         const gdx=ai.goalX-rp.x,gdy=ai.goalY-rp.y;
         if(gdx!==0||gdy!==0){
@@ -863,6 +869,18 @@ function drawMinimap(){
   bx(mx+pl[0].x*sx-1,my+pl[0].y*sy-1,3,3,'#fff');bx(mx+pl[0].x*sx,my+pl[0].y*sy,1,1,'#40f040');
   g.globalAlpha=1;
   txShadow(mapNames[currentMap],mx,my-5,4,mapColors[currentMap],'rgba(0,0,0,.4)');
+  // v470: Crystal reveal countdown bar + label below minimap
+  if(crystalRevealTimer>0&&inDungeon){
+    const _crFrac=crystalRevealTimer/3600;
+    const _crSecs=Math.ceil(crystalRevealTimer/60);
+    const _crPulse=0.7+_sFr20*0.3;
+    const _barY=my+mmH+3;
+    bx(mx,_barY,mmW,3,'#101828');
+    g.globalAlpha=_crPulse;
+    bx(mx,_barY,Math.floor(mmW*_crFrac),3,_crFrac>0.3?'#30c0f0':'#f06060');
+    g.globalAlpha=1;
+    txShadow('\ud83d\udd2e RIVALS '+_crSecs+'s',mx,_barY+8,5,'#60d8ff','rgba(0,0,0,.5)');
+  }
 }
 
 // ═══════════════════════════════════════
@@ -901,6 +919,13 @@ function tryWildEncounter(){
   wildEncounterFrame=fr;
   sfxEncounter();
   flash();
+  // v477: grass swirl burst at player position on encounter trigger
+  {const _ex=pl[0].visualX-camX+8,_ey=pl[0].visualY-camY+8;
+  screenShake(2,5);
+  for(let _ei=0;_ei<14;_ei++){const _ea=(_ei/14)*Math.PI*2;const _es=1.5+Math.random()*2.5;
+    const _gc=Math.random()>.45?'rgba(60,160,60,1)':'rgba(200,240,120,1)';
+    particles.push({x:_ex+Math.random()*8-4,y:_ey+Math.random()*8-4,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-2,life:18+Math.random()*14,c:_gc});
+  }}
 }
 
 function drawWildEncounter(){
@@ -994,6 +1019,11 @@ function checkTreasure(){
       const tAdded=addCardToPlayer(0,treasureCardId); // updates vault + hand
       if(tAdded){
         startCardAcquisition(t.card);
+        // v475: treasure pickup visual burst (matching floor item pickup quality)
+        const _tx=t.x*TW-camX+TW/2,_ty=t.y*TH-camY+TH/2;
+        const _tRarCol=['','#60d060','#6090f0','#c060e0','#e0a020','#fff8e0'][cr.r]||'#f0c030';
+        triggerCardGetBurst(_tx,_ty,_tRarCol);
+        screenShake(2,5);
         twSet('You found a hidden '+cr.n+' card!');
         lg.push('Found hidden '+cr.n+'!');
         checkWinAndTransition(2000);
@@ -1551,6 +1581,15 @@ function triggerRandomEvent(){
   if(ev.cat==='bad')sfxDangerAlert();
   else if(ev.cat==='good')sfxEvent();
   else sfxEventAlert();
+  // v474: category-colored particle burst around player on event trigger
+  {const _epx=pl[0].visualX-camX+8,_epy=pl[0].visualY-camY+8;
+  const _ecat=ev.cat||'neutral';
+  const _ec1=_ecat==='good'?'rgba(60,200,100,1)':_ecat==='bad'?'rgba(220,60,60,1)':'rgba(220,170,30,1)';
+  const _ec2=_ecat==='good'?'rgba(180,255,200,1)':_ecat==='bad'?'rgba(255,160,160,1)':'rgba(255,230,120,1)';
+  const _en=_ecat==='bad'?14:10;
+  for(let _ei=0;_ei<_en;_ei++){const _ea=(_ei/_en)*Math.PI*2;const _es=1+Math.random()*2.2;
+    particles.push({x:_epx,y:_epy,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-1.2,life:20+Math.random()*16,c:Math.random()>.5?_ec1:_ec2});
+  }}
 
   if(ev.action==='card'){
     // Give a card from current floor pool — prefer vault-new (v299: pickFromPool)
@@ -1593,7 +1632,13 @@ function triggerRandomEvent(){
     if(sp.s<3){sp.s++;restored=true;}
     if(sp.b<3){sp.b++;restored=true;}
     if(sp.c<3){sp.c++;restored=true;}
-    if(restored){sfxCrystal();lg.push('Event: Ancient runes restored spell energy!');}
+    if(restored){sfxCrystal();lg.push('Event: Ancient runes restored spell energy!');
+      // v490: cyan sparkle from player on spell restore event
+      {const _spx=pl[0].visualX-camX+8,_spy=pl[0].visualY-camY+8;
+      for(let _si=0;_si<14;_si++){const _sa=(_si/14)*Math.PI*2;const _ss=1+Math.random()*2.5;
+        particles.push({x:_spx,y:_spy,vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-1.8,life:18+Math.random()*14,c:Math.random()>.5?'rgba(72,184,232,1)':'rgba(180,240,255,1)'});
+      }}
+    }
   }else if(ev.action==='rival_taunt'){
     // Just a flavor event — tension shake
     screenShake(2,3);flash();
@@ -1611,7 +1656,13 @@ function triggerRandomEvent(){
   }else if(ev.action==='full_restore'){
     // v362: B5 ARK Core — restore all spell types to max
     sp.s=3;sp.b=3;sp.c=3;
-    sfxCrystal();screenShake(1,2);
+    sfxCrystal();screenShake(2,5);
+    // v490: full_restore — bigger burst, all 3 spell colors
+    {const _spx=pl[0].visualX-camX+8,_spy=pl[0].visualY-camY+8;
+    const _fullCols=['rgba(72,184,232,1)','rgba(80,220,120,1)','rgba(200,120,255,1)','rgba(255,240,180,1)'];
+    for(let _si=0;_si<20;_si++){const _sa=(_si/20)*Math.PI*2;const _ss=1.5+Math.random()*3;
+      particles.push({x:_spx+(Math.random()*16-8),y:_spy+(Math.random()*10-5),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2,life:22+Math.random()*18,c:_fullCols[_si%4]});
+    }}
     lg.push('Event: The ARK Core pulsed — all spells fully restored!');
   }
 }
@@ -2202,7 +2253,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v466',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v490',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

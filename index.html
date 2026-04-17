@@ -1176,6 +1176,10 @@ let _mmAnimFrame=-9999;
 let _mmFlashFrame=-9999; // v461: new room discovery flash timestamp
 let _trapHitFrame=-9999; // v463: trap trigger timestamp for TRAP! danger banner
 let _puzzleSolveFrame=-9999; // v466: ruins puzzle solve timestamp for pillar burst animation
+let _crystalUseFrame=-9999; // v467: crystal reveal timestamp for cyan banner
+let _altarUseFrame=-9999;   // v467: altar activation timestamp for golden banner
+let _campfireRestFrame=-9999; // v468: campfire rest timestamp for warm orange banner
+let _defeatBurstFrame=-9999; // v483: one-shot particle burst on player defeat
 
 // GBA-style scanlines — pre-baked once; single drawImage per frame (zero per-frame cost)
 const scanCanvas=document.createElement('canvas');
@@ -2822,6 +2826,13 @@ function drawMapLoadScreen(){
 function updateRunSummary(){
   if(!runSummaryActive)return;
   runSummaryFrame++;
+  // v488: one-shot sparkle on reveal when all cards preserved
+  if(runSummaryFrame===32&&runSummaryData&&runSummaryData.lostCards.length===0){
+    const _rx=W/2,_ry=H/2+20;
+    for(let _rsi=0;_rsi<20;_rsi++){const _rsa=(_rsi/20)*Math.PI*2+Math.random()*0.4;const _rss=1.5+Math.random()*3;
+      particles.push({x:_rx+(Math.random()*60-30),y:_ry+(Math.random()*30-15),vx:Math.cos(_rsa)*_rss,vy:Math.sin(_rsa)*_rss-2,life:22+Math.random()*18,c:Math.random()>.5?'rgba(80,224,144,1)':'rgba(180,255,200,1)'});
+    }
+  }
 }
 // v310: Run grade + commentary helpers
 function _runGrade(d){
@@ -5864,6 +5875,14 @@ function dungeonTurnStep(aiIdx){
             r.x=ex.targetX;r.y=ex.targetY;r.visualX=ex.targetX*TW;r.visualY=ex.targetY*TH;
             if(ex.targetMap===currentMap&&oldMap!==currentMap){
               rivalAlert=RIVAL_ALERT_DUR;rivalAlertName=r.n;rivalAlertRival=aiIdx;flash();beep(660,.04,.06); // v439
+              // v476: red threat burst around player when rival enters floor
+              {const _rpx=pl[0].visualX-camX+8,_rpy=pl[0].visualY-camY+8;
+              const _rc=aiIdx===0?'rgba(220,60,160,1)':'rgba(220,180,30,1)';
+              const _rc2=aiIdx===0?'rgba(255,160,200,1)':'rgba(255,240,120,1)';
+              screenShake(2,4);
+              for(let _ri=0;_ri<12;_ri++){const _ra=(_ri/12)*Math.PI*2;const _rs=1.2+Math.random()*2.2;
+                particles.push({x:_rpx,y:_rpy,vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-1,life:22+Math.random()*14,c:Math.random()>.5?_rc:_rc2});
+              }}
               lg.push('You sense movement... '+r.n+' entered the area!');
             }
             if(inDungeon&&ex.targetMap>0){
@@ -9608,6 +9627,12 @@ function drawMinimap(){
       const rpx=mx+rp.x*sx,rpy=my+rp.y*sy;
       bx(rpx,rpy,2,2,rp.c);
       if(crystalRevealTimer>0){
+        // v470: pulsing ring around crystal-revealed rival dots
+        const _rPulse=0.4+_sFr15*0.4;
+        g.globalAlpha=_rPulse;
+        g.strokeStyle='#40d8ff';g.lineWidth=1;
+        g.beginPath();g.arc(rpx+1,rpy+1,3,0,Math.PI*2);g.stroke();
+        g.globalAlpha=1;
         const ai=rivalAI[idx];
         const gdx=ai.goalX-rp.x,gdy=ai.goalY-rp.y;
         if(gdx!==0||gdy!==0){
@@ -9652,6 +9677,18 @@ function drawMinimap(){
   bx(mx+pl[0].x*sx-1,my+pl[0].y*sy-1,3,3,'#fff');bx(mx+pl[0].x*sx,my+pl[0].y*sy,1,1,'#40f040');
   g.globalAlpha=1;
   txShadow(mapNames[currentMap],mx,my-5,4,mapColors[currentMap],'rgba(0,0,0,.4)');
+  // v470: Crystal reveal countdown bar + label below minimap
+  if(crystalRevealTimer>0&&inDungeon){
+    const _crFrac=crystalRevealTimer/3600;
+    const _crSecs=Math.ceil(crystalRevealTimer/60);
+    const _crPulse=0.7+_sFr20*0.3;
+    const _barY=my+mmH+3;
+    bx(mx,_barY,mmW,3,'#101828');
+    g.globalAlpha=_crPulse;
+    bx(mx,_barY,Math.floor(mmW*_crFrac),3,_crFrac>0.3?'#30c0f0':'#f06060');
+    g.globalAlpha=1;
+    txShadow('\ud83d\udd2e RIVALS '+_crSecs+'s',mx,_barY+8,5,'#60d8ff','rgba(0,0,0,.5)');
+  }
 }
 
 // ═══════════════════════════════════════
@@ -9690,6 +9727,13 @@ function tryWildEncounter(){
   wildEncounterFrame=fr;
   sfxEncounter();
   flash();
+  // v477: grass swirl burst at player position on encounter trigger
+  {const _ex=pl[0].visualX-camX+8,_ey=pl[0].visualY-camY+8;
+  screenShake(2,5);
+  for(let _ei=0;_ei<14;_ei++){const _ea=(_ei/14)*Math.PI*2;const _es=1.5+Math.random()*2.5;
+    const _gc=Math.random()>.45?'rgba(60,160,60,1)':'rgba(200,240,120,1)';
+    particles.push({x:_ex+Math.random()*8-4,y:_ey+Math.random()*8-4,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-2,life:18+Math.random()*14,c:_gc});
+  }}
 }
 
 function drawWildEncounter(){
@@ -9783,6 +9827,11 @@ function checkTreasure(){
       const tAdded=addCardToPlayer(0,treasureCardId); // updates vault + hand
       if(tAdded){
         startCardAcquisition(t.card);
+        // v475: treasure pickup visual burst (matching floor item pickup quality)
+        const _tx=t.x*TW-camX+TW/2,_ty=t.y*TH-camY+TH/2;
+        const _tRarCol=['','#60d060','#6090f0','#c060e0','#e0a020','#fff8e0'][cr.r]||'#f0c030';
+        triggerCardGetBurst(_tx,_ty,_tRarCol);
+        screenShake(2,5);
         twSet('You found a hidden '+cr.n+' card!');
         lg.push('Found hidden '+cr.n+'!');
         checkWinAndTransition(2000);
@@ -10340,6 +10389,15 @@ function triggerRandomEvent(){
   if(ev.cat==='bad')sfxDangerAlert();
   else if(ev.cat==='good')sfxEvent();
   else sfxEventAlert();
+  // v474: category-colored particle burst around player on event trigger
+  {const _epx=pl[0].visualX-camX+8,_epy=pl[0].visualY-camY+8;
+  const _ecat=ev.cat||'neutral';
+  const _ec1=_ecat==='good'?'rgba(60,200,100,1)':_ecat==='bad'?'rgba(220,60,60,1)':'rgba(220,170,30,1)';
+  const _ec2=_ecat==='good'?'rgba(180,255,200,1)':_ecat==='bad'?'rgba(255,160,160,1)':'rgba(255,230,120,1)';
+  const _en=_ecat==='bad'?14:10;
+  for(let _ei=0;_ei<_en;_ei++){const _ea=(_ei/_en)*Math.PI*2;const _es=1+Math.random()*2.2;
+    particles.push({x:_epx,y:_epy,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-1.2,life:20+Math.random()*16,c:Math.random()>.5?_ec1:_ec2});
+  }}
 
   if(ev.action==='card'){
     // Give a card from current floor pool — prefer vault-new (v299: pickFromPool)
@@ -10382,7 +10440,13 @@ function triggerRandomEvent(){
     if(sp.s<3){sp.s++;restored=true;}
     if(sp.b<3){sp.b++;restored=true;}
     if(sp.c<3){sp.c++;restored=true;}
-    if(restored){sfxCrystal();lg.push('Event: Ancient runes restored spell energy!');}
+    if(restored){sfxCrystal();lg.push('Event: Ancient runes restored spell energy!');
+      // v490: cyan sparkle from player on spell restore event
+      {const _spx=pl[0].visualX-camX+8,_spy=pl[0].visualY-camY+8;
+      for(let _si=0;_si<14;_si++){const _sa=(_si/14)*Math.PI*2;const _ss=1+Math.random()*2.5;
+        particles.push({x:_spx,y:_spy,vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-1.8,life:18+Math.random()*14,c:Math.random()>.5?'rgba(72,184,232,1)':'rgba(180,240,255,1)'});
+      }}
+    }
   }else if(ev.action==='rival_taunt'){
     // Just a flavor event — tension shake
     screenShake(2,3);flash();
@@ -10400,7 +10464,13 @@ function triggerRandomEvent(){
   }else if(ev.action==='full_restore'){
     // v362: B5 ARK Core — restore all spell types to max
     sp.s=3;sp.b=3;sp.c=3;
-    sfxCrystal();screenShake(1,2);
+    sfxCrystal();screenShake(2,5);
+    // v490: full_restore — bigger burst, all 3 spell colors
+    {const _spx=pl[0].visualX-camX+8,_spy=pl[0].visualY-camY+8;
+    const _fullCols=['rgba(72,184,232,1)','rgba(80,220,120,1)','rgba(200,120,255,1)','rgba(255,240,180,1)'];
+    for(let _si=0;_si<20;_si++){const _sa=(_si/20)*Math.PI*2;const _ss=1.5+Math.random()*3;
+      particles.push({x:_spx+(Math.random()*16-8),y:_spy+(Math.random()*10-5),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2,life:22+Math.random()*18,c:_fullCols[_si%4]});
+    }}
     lg.push('Event: The ARK Core pulsed — all spells fully restored!');
   }
 }
@@ -10991,7 +11061,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v466',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v490',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -11117,6 +11187,7 @@ const _sBufCmp=(a,b)=>b.uniq-a.uniq;
 const _rBufCmp=(a,b)=>b.cnt-a.cnt;
 // v349: lazy cache for dungeon mission HUD strip (changes only when progress or completion status changes)
 let _missionHudLbl='',_missionHudKey=-1;
+let _lastMissionDone=false,_missionCompleteFrame=-9999; // v471: mission complete banner state
 // v368: pre-baked town ambient particle phases — eliminates 36 Math.sin/frame for golden motes + sea wisps
 // i*1.7 (14 golden motes): sin(fr*0.018+i*1.7) = _sFr018*_TOWN_CI17[i]+_cFr018*_TOWN_SI17[i]
 const _TOWN_SI17=new Float32Array(14);const _TOWN_CI17=new Float32Array(14);
@@ -12743,6 +12814,17 @@ function dMap(){
     txShadow(_PLUS_INT[handTotal-HUD_CARD_SLOTS]||('+'+( handTotal-HUD_CARD_SLOTS)),310+HUD_CARD_SLOTS*HUD_CARD_SPACING+2,hudY+26,7,'#c8c0a0','rgba(0,0,0,.4)'); // v324
   }
 
+  // v471: detect mission completion transition and timestamp it
+  {const _mNowDone=!!(runMission&&runMission.completed);
+  if(_mNowDone&&!_lastMissionDone){
+    _missionCompleteFrame=fr;
+    // golden particle burst from HUD mission strip area
+    for(let _mi=0;_mi<14;_mi++){const _ma=(_mi/14)*Math.PI*2;const _ms=1.2+Math.random()*2.5;
+      particles.push({x:100+Math.random()*80,y:hudY+40,vx:Math.cos(_ma)*_ms,vy:Math.sin(_ma)*_ms-2.5,life:24+Math.random()*18,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,255,160,1)'});
+    }
+  }
+  _lastMissionDone=_mNowDone;}
+
   // v79: Active run mission strip (dungeon only)
   if(runMission&&inDungeon&&sc==='map'){
     const mDone=runMission.completed;
@@ -12805,6 +12887,66 @@ function dMap(){
       bx(_tX,_tY,_tW,20,'rgba(140,16,16,.9)');
       bx(_tX,_tY,_tW,2,'#ff5040');bx(_tX,_tY+18,_tW,2,'#ff5040');
       txShadow('\u26a0 TRAP!',_tX+10,_tY+14,9,'#fff8e0','rgba(0,0,0,.65)');
+      g.globalAlpha=1;
+    }
+  }}
+
+  // v467: Crystal reveal banner — cyan pill, slide-in + fade
+  {const _ca=fr-_crystalUseFrame;
+  if(_ca>=0&&_ca<90){
+    const _cf=_ca<8?_ca/8:_ca>60?Math.max(0,1-(_ca-60)/30):1;
+    if(_cf>0.01){
+      const _cSl=_ca<8?Math.round((1-_ca/8)*14):0;
+      const _cW=112;const _cX=Math.round(W/2-_cW/2);const _cY=Math.round(H/2-66+_cSl);
+      g.globalAlpha=_cf;
+      bx(_cX,_cY,_cW,20,'rgba(10,50,100,.88)');
+      bx(_cX,_cY,_cW,2,'#40d0ff');bx(_cX,_cY+18,_cW,2,'#40d0ff');
+      txShadow('\ud83d\udd2e RIVALS REVEALED',_cX+8,_cY+14,8,'#a0e8ff','rgba(0,0,0,.65)');
+      g.globalAlpha=1;
+    }
+  }}
+
+  // v467: Altar activation banner — golden pill, slide-in + fade
+  {const _aa2=fr-_altarUseFrame;
+  if(_aa2>=0&&_aa2<90){
+    const _af=_aa2<8?_aa2/8:_aa2>60?Math.max(0,1-(_aa2-60)/30):1;
+    if(_af>0.01){
+      const _aSl=_aa2<8?Math.round((1-_aa2/8)*14):0;
+      const _aW=108;const _aX=Math.round(W/2-_aW/2);const _aY=Math.round(H/2-44+_aSl);
+      g.globalAlpha=_af;
+      bx(_aX,_aY,_aW,20,'rgba(70,40,0,.88)');
+      bx(_aX,_aY,_aW,2,'#ffc040');bx(_aX,_aY+18,_aW,2,'#ffc040');
+      txShadow('\u2728 ALTAR ANSWERED',_aX+8,_aY+14,8,'#ffe080','rgba(0,0,0,.65)');
+      g.globalAlpha=1;
+    }
+  }}
+
+  // v468: Campfire rest banner — warm orange pill, slide-in + fade
+  {const _ra=fr-_campfireRestFrame;
+  if(_ra>=0&&_ra<80){
+    const _rf=_ra<8?_ra/8:_ra>50?Math.max(0,1-(_ra-50)/30):1;
+    if(_rf>0.01){
+      const _rSl=_ra<8?Math.round((1-_ra/8)*14):0;
+      const _rW=88;const _rX=Math.round(W/2-_rW/2);const _rY=Math.round(H/2-22+_rSl);
+      g.globalAlpha=_rf;
+      bx(_rX,_rY,_rW,20,'rgba(80,35,0,.88)');
+      bx(_rX,_rY,_rW,2,'#ff9030');bx(_rX,_rY+18,_rW,2,'#ff9030');
+      txShadow('\ud83d\udd25 RESTED',_rX+12,_rY+14,9,'#ffe0a0','rgba(0,0,0,.65)');
+      g.globalAlpha=1;
+    }
+  }}
+
+  // v471: Mission complete banner — gold/green pill, slide-in + fade
+  {const _mca=fr-_missionCompleteFrame;
+  if(_mca>=0&&_mca<100){
+    const _mcf=_mca<8?_mca/8:_mca>70?Math.max(0,1-(_mca-70)/30):1;
+    if(_mcf>0.01){
+      const _mcSl=_mca<8?Math.round((1-_mca/8)*14):0;
+      const _mcW=134;const _mcX=Math.round(W/2-_mcW/2);const _mcY=Math.round(H/2+0+_mcSl);
+      g.globalAlpha=_mcf;
+      bx(_mcX,_mcY,_mcW,20,'rgba(20,50,10,.90)');
+      bx(_mcX,_mcY,_mcW,2,'#80e840');bx(_mcX,_mcY+18,_mcW,2,'#80e840');
+      txShadow('\u2713 MISSION COMPLETE!',_mcX+8,_mcY+14,8,'#c0ff80','rgba(0,0,0,.65)');
       g.globalAlpha=1;
     }
   }}
@@ -12947,7 +13089,7 @@ function dMap(){
     txShadow(_vaultHudLbl,848,hudY+56,7,_vcol,'rgba(0,0,0,.5)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v466',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v490',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
@@ -14852,6 +14994,11 @@ function drawConfirmingPhase(){
     g.globalAlpha=shoutA;
     txShadow(aName,shoutX,shoutY+sz*0.8,sz,aCol,'rgba(0,0,0,0.85)');
     g.globalAlpha=1;
+    // v486: action-colored spark burst from player on commitment
+    if(t0===1){const _acRgba=['rgba(72,184,232,.9)','rgba(208,64,64,.9)','rgba(48,96,176,.9)','rgba(48,128,48,.9)','rgba(192,128,48,.9)'][act];
+    for(let _ai=0;_ai<10;_ai++){const _aa=(_ai/10)*Math.PI*2;const _as=1+Math.random()*2.5;
+      particles.push({x:160,y:H-130,vx:Math.cos(_aa)*_as,vy:Math.sin(_aa)*_as-2,life:14+Math.random()*10,c:_acRgba});
+    }}
   }}
   // Text box at bottom
   win(4,H-70,W-8,64);
@@ -15069,6 +15216,14 @@ function addCardToPlayer(pIdx,cardId){
       setTimeout(()=>{
         tutorialMsg='\u2605 '+milestones[ms]+' '+ms+'/60 collected!';tutorialMsgTimer=260;
         if(ms>=50)screenShake(2,4);
+        // v480: confetti burst scaled by milestone importance
+        {const _mn=ms>=50?20:ms>=30?14:10;const _shk=ms>=50?3:2;
+        screenShake(_shk,_shk*3);
+        const _mc1=ms>=59?'rgba(255,200,40,1)':ms>=50?'rgba(255,140,20,1)':ms>=30?'rgba(80,180,255,1)':'rgba(80,200,120,1)';
+        const _mc2=ms>=59?'rgba(255,255,180,1)':'rgba(255,255,255,.9)';
+        for(let _mi=0;_mi<_mn;_mi++){const _ma=(_mi/_mn)*Math.PI*2+Math.random()*.4;const _ms2=1.5+Math.random()*3;
+          particles.push({x:W/2+(Math.random()*60-30),y:H/2+(Math.random()*40-20),vx:Math.cos(_ma)*_ms2,vy:Math.sin(_ma)*_ms2-2,life:24+Math.random()*20,c:Math.random()>.4?_mc1:_mc2});
+        }}
       },400);
     }
   }
@@ -15907,11 +16062,23 @@ function drawResolvingPhase(){
         txShadow('BLOCKED!',playerCX-50,playerCY-40,16,'#4080ff','rgba(0,0,30,.6)');
         g.globalAlpha=1;
       }
-      g.restore();if(evT===1)sfxShield();
+      g.restore();if(evT===1){sfxShield();
+        // v484: blue/silver burst on successful block
+        screenShake(2,5);
+        for(let _bi=0;_bi<18;_bi++){const _ba=(_bi/18)*Math.PI*2;const _bs=1.5+Math.random()*2.8;
+          particles.push({x:playerCX,y:playerCY,vx:Math.cos(_ba)*_bs,vy:Math.sin(_ba)*_bs-1.5,life:20+Math.random()*14,c:Math.random()>.5?'rgba(80,140,255,1)':'rgba(200,230,255,1)'});
+        }
+      }
     }
     if(ev.effect==='damage'&&evT<20){
       bpShakeTarget=ev.target!==undefined?ev.target:0;bpShakeTimer=20-evT;
-      if(evT===1)sfxDamage();
+      if(evT===1){sfxDamage();
+        // v484: red impact sparks on damage hit
+        const _tgX=ev.target===0?playerCX:oppCX;const _tgY=ev.target===0?playerCY:oppCY;
+        for(let _hi=0;_hi<10;_hi++){const _ha=(_hi/10)*Math.PI*2;const _hs=1.2+Math.random()*2;
+          particles.push({x:_tgX,y:_tgY,vx:Math.cos(_ha)*_hs,vy:Math.sin(_ha)*_hs-1,life:14+Math.random()*10,c:Math.random()>.5?'rgba(220,60,40,1)':'rgba(255,180,80,1)'});
+        }
+      }
       // Flash on target
       if(evT<6&&evT%2===0){
         const tgtCX=ev.target===0?playerCX:oppCX;
@@ -16408,6 +16575,12 @@ function drawResolvingPhase(){
     }
     // v216: Player defeat flash — red vignette + "DEFEATED!" when player HP 0
     if(bpHP[0]===0){
+      // v483: one-shot death particle burst on first defeat frame
+      if(fr-_defeatBurstFrame>120){_defeatBurstFrame=fr;screenShake(4,8);
+        for(let _di=0;_di<22;_di++){const _da=(_di/22)*Math.PI*2;const _ds=1.5+Math.random()*3;
+          particles.push({x:playerCX,y:playerCY,vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-2.5,life:28+Math.random()*18,c:Math.random()>.5?'rgba(220,40,40,1)':'rgba(255,160,100,1)'});
+        }
+      }
       const defPulse=0.5+0.5*(_sFr20*_cFr02+_cFr20*_sFr02); // v371: sin-addition sin(fr*0.22)=sin(fr*0.2+fr*0.02)
       g.globalAlpha=defPulse*0.25;g.drawImage(_btlDefeatVig,0,0);g.globalAlpha=1;
       const defScale=1+_sFr15*0.06; // v369: cached
@@ -17491,7 +17664,15 @@ function dVictory(){
     const hints=playerHasAllSixty()?'C=Claim  M=Mint  T=Share  Z=Play Again  X=Title':'T=Share  Z=Play Again   X=Title';
     txShadow(hints,W/2-190,H-6,7,'#c89820','rgba(0,0,0,.4)');
   }
-  if(t===31)sfxVictory();
+  if(t===31){sfxVictory();
+    // v487: victory particle mega-burst — 36 golden/rainbow confetti from screen center
+    triggerProgressPulse();
+    for(let _vi=0;_vi<36;_vi++){const _va=(_vi/36)*Math.PI*2;const _vs=2+Math.random()*4;
+      const _vc=['rgba(255,200,40,1)','rgba(80,220,140,1)','rgba(100,160,255,1)','rgba(240,80,180,1)','rgba(255,240,100,1)'][_vi%5];
+      particles.push({x:W/2+(Math.random()*80-40),y:H/2+(Math.random()*40-20),vx:Math.cos(_va)*_vs,vy:Math.sin(_va)*_vs-3,life:40+Math.random()*30,c:_vc});
+    }
+    screenShake(3,10);
+  }
 }
 
 // ═══════════════════════════════════════
@@ -18665,6 +18846,13 @@ function drawBuildingInterior(){
         gachaPhase='result';gachaResultFrame=fr;
         if(rar>=4)screenShake(rar-2,rar*3);
         if(rar>=5)flash();
+        // v485: rarity-scaled confetti burst on gacha reveal
+        {const _gn=rar>=5?24:rar>=4?18:rar>=3?12:8;
+        const _gc1=rar>=5?'rgba(255,200,40,1)':rar>=4?'rgba(180,80,220,1)':rar>=3?'rgba(80,160,255,1)':'rgba(80,200,120,1)';
+        const _gc2=rar>=5?'rgba(255,255,180,1)':rar>=4?'rgba(240,180,255,1)':'rgba(200,255,230,1)';
+        for(let _gi=0;_gi<_gn;_gi++){const _ga=(_gi/_gn)*Math.PI*2+Math.random()*.5;const _gs=1.5+Math.random()*3;
+          particles.push({x:W/2+(Math.random()*60-30),y:H/2+(Math.random()*40-20),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2.5,life:24+Math.random()*20,c:Math.random()>.45?_gc1:_gc2});
+        }}
       }
     }else if(gachaPhase==='result'&&gachaResultCard>0){
       const t2=fr-gachaResultFrame;
@@ -18810,6 +18998,12 @@ function checkObjectInteraction(){
       const treeAdded=addCardToPlayer(0,treeCardId); // updates vault + hand
       if(treeAdded){
         startCardAcquisition(cardIdx);
+        // v479: leaf burst when card falls from tree
+        {const _tx=ft.x*TW-camX+TW/2,_ty=ft.y*TH-camY+TH/2;
+        for(let _li=0;_li<12;_li++){const _la=Math.random()*Math.PI*2;const _ls=1+Math.random()*2;
+          particles.push({x:_tx,y:_ty,vx:Math.cos(_la)*_ls,vy:Math.sin(_la)*_ls-2.5,life:20+Math.random()*14,c:Math.random()>.4?'rgba(60,160,50,1)':'rgba(180,220,80,1)'});
+        }}
+        screenShake(2,4);
         objectInteractMsg='A card fell from the tree!';
         lg.push('Shook tree: Found '+CD[cardIdx].n+'!');
         checkWinAndTransition(2000);
@@ -18819,6 +19013,11 @@ function checkObjectInteraction(){
       }
     }else{
       objectInteractMsg='Nothing fell from the tree.';
+      // v481: small leaf flutter even on miss — physicality
+      {const _tx=ft.x*TW-camX+TW/2,_ty=ft.y*TH-camY+TH/2;
+      for(let _li=0;_li<5;_li++){
+        particles.push({x:_tx+(Math.random()*16-8),y:_ty,vx:(Math.random()-.5)*1.2,vy:-0.5-Math.random()*1.2,life:14+Math.random()*10,c:'rgba(80,150,50,.8)'});
+      }}
     }
     objectInteractTimer=90;
     sfxSelect();
@@ -18840,6 +19039,12 @@ function checkObjectInteraction(){
       const rockAdded=addCardToPlayer(0,cardId); // updates vault + hand
       if(rockAdded){
         startCardAcquisition(cardId-1);
+        // v479: dust burst when card found under rock
+        {const _rx=ft.x*TW-camX+TW/2,_ry=ft.y*TH-camY+TH/2;
+        screenShake(2,4);
+        for(let _ri=0;_ri<10;_ri++){const _ra=Math.random()*Math.PI*2;const _rs=1+Math.random()*1.8;
+          particles.push({x:_rx,y:_ry,vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-1.5,life:16+Math.random()*12,c:Math.random()>.4?'rgba(140,110,80,1)':'rgba(200,180,140,1)'});
+        }}
         objectInteractMsg='Found a hidden card under the rock!';
         lg.push('Rock: Found '+CD[cardId-1].n+'!');
         checkWinAndTransition(2000);
@@ -18849,6 +19054,11 @@ function checkObjectInteraction(){
       }
     }else{
       objectInteractMsg='Nothing under the rock.';
+      // v481: small dust puff even on miss — physicality
+      {const _rx=ft.x*TW-camX+TW/2,_ry=ft.y*TH-camY+TH/2;
+      for(let _ri=0;_ri<4;_ri++){
+        particles.push({x:_rx+(Math.random()*10-5),y:_ry,vx:(Math.random()-.5)*1,vy:-0.4-Math.random()*0.8,life:10+Math.random()*8,c:'rgba(120,100,70,.6)'});
+      }}
     }
     objectInteractTimer=90;
     return true;
@@ -18863,6 +19073,13 @@ function checkObjectInteraction(){
     }
     campfireUsed=true;
     sfxConfirm();
+    // v468: warm orange ember particles + timestamp for RESTED banner
+    _campfireRestFrame=fr;
+    {const _fx=pl[0].visualX-camX+8,_fy=pl[0].visualY-camY+4;
+    for(let _fi=0;_fi<12;_fi++){
+      const _fa=Math.random()*Math.PI*2;const _fs=0.6+Math.random()*1.8;
+      particles.push({x:_fx+Math.random()*6-3,y:_fy,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-2.2,life:20+Math.random()*20,c:Math.random()>.5?'rgba(255,140,30,1)':'rgba(255,220,80,1)'});
+    }}
     // Restore 1 spell charge: rotate Steal->Barrier->Scout
     if(sp.s<3){sp.s++;objectInteractMsg='Rested by campfire. +1 Steal charge!';lg.push('Campfire: +1 Steal!');}
     else if(sp.b<3){sp.b++;objectInteractMsg='Rested by campfire. +1 Barrier charge!';lg.push('Campfire: +1 Barrier!');}
@@ -18907,6 +19124,14 @@ function checkObjectInteraction(){
       crystalRevealTimer=3600;
       objectInteractMsg='The crystal glows! Rivals revealed!';
       lg.push('Crystal: Rivals revealed for 60s!');
+      // v467: blue/cyan particle burst from player position
+      _crystalUseFrame=fr;
+      screenShake(3,8);
+      {const _cx=pl[0].visualX-camX+8,_cy=pl[0].visualY-camY+8;
+      for(let _ci=0;_ci<16;_ci++){
+        const _ca=(_ci/16)*Math.PI*2;const _cs=1.5+Math.random()*2.5;
+        particles.push({x:_cx,y:_cy,vx:Math.cos(_ca)*_cs,vy:Math.sin(_ca)*_cs-1,life:25+Math.random()*15,c:Math.random()>.5?'rgba(60,180,255,1)':'rgba(160,230,255,1)'});
+      }}
     }else{
       objectInteractMsg='The crystal shattered! Nothing happened.';
       lg.push('Crystal shattered.');
@@ -18931,6 +19156,13 @@ function checkObjectInteraction(){
       if(sp.s<3){sp.s++;objectInteractMsg='The altar hums. +1 Steal charge!';lg.push('Altar: +1 Steal!');}
       else if(sp.b<3){sp.b++;objectInteractMsg='The altar hums. +1 Barrier charge!';lg.push('Altar: +1 Barrier!');}
       else{sp.c=Math.min(3,sp.c+1);objectInteractMsg='The altar hums. +1 Scout charge!';lg.push('Altar: +1 Scout!');}
+      // v467: golden prayer-answered burst
+      _altarUseFrame=fr;
+      {const _ax=pl[0].visualX-camX+8,_ay=pl[0].visualY-camY+8;
+      for(let _ai=0;_ai<14;_ai++){
+        const _aa=(_ai/14)*Math.PI*2;const _as=1.2+Math.random()*2.2;
+        particles.push({x:_ax,y:_ay,vx:Math.cos(_aa)*_as,vy:Math.sin(_aa)*_as-2,life:28+Math.random()*18,c:Math.random()>.5?'rgba(255,200,60,1)':'rgba(255,240,160,1)'});
+      }}
     }else if(roll<0.7){
       // Extend decay on the most-decayed card
       let nearestSlot=-1,nearestAge=0;
@@ -18939,6 +19171,13 @@ function checkObjectInteraction(){
         cardTimers[nearestSlot]+=90000; // +1.5 min extra
         objectInteractMsg='The altar preserved '+CD[pl[0].cd[nearestSlot]-1].n+'! +1.5min';
         lg.push('Altar: Extended '+CD[pl[0].cd[nearestSlot]-1].n+' by 1.5min!');
+        // v467: softer golden shimmer for card preservation
+        _altarUseFrame=fr;
+        {const _ax=pl[0].visualX-camX+8,_ay=pl[0].visualY-camY+8;
+        for(let _ai=0;_ai<8;_ai++){
+          const _aa=(_ai/8)*Math.PI*2;const _as=0.8+Math.random()*1.4;
+          particles.push({x:_ax,y:_ay,vx:Math.cos(_aa)*_as,vy:Math.sin(_aa)*_as-1.5,life:22+Math.random()*14,c:Math.random()>.5?'rgba(220,170,40,1)':'rgba(255,230,120,1)'});
+        }}
       }else{
         objectInteractMsg='The altar glows... but no cards to protect.';
       }
@@ -18981,6 +19220,15 @@ function doFountainExchange(){
   fountainResultTimer=120;
   lg.push('Fountain: Traded '+CD[oldCard-1].n+' for '+CD[newCard-1].n+'!');
   sfxShopTrade();
+  // v478: magical water burst at player when fountain grants a card
+  {const _fpx=pl[0].visualX-camX+8,_fpy=pl[0].visualY-camY+8;
+  screenShake(2,6);
+  const _nr=CD[newCard-1]?CD[newCard-1].r:1;
+  const _fc1=_nr>=4?'rgba(255,200,60,1)':_nr===3?'rgba(180,80,220,1)':'rgba(80,180,255,1)';
+  const _fc2='rgba(200,240,255,1)';
+  for(let _fi=0;_fi<16;_fi++){const _fa=(_fi/16)*Math.PI*2;const _fs=1.2+Math.random()*2.5;
+    particles.push({x:_fpx,y:_fpy,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-2.2,life:22+Math.random()*16,c:Math.random()>.4?_fc1:_fc2});
+  }}
   checkWinAndTransition(2000);
 }
 
@@ -19313,6 +19561,12 @@ function executeMapCard(cardId,slot){
     shadowStepsLeft=30;
     mapCardUseActive=false;_mapUsableCache=null;
     sfxShadow();
+    // v472: purple shadow burst + shake
+    screenShake(2,5);
+    {const _sx=pl[0].visualX-camX+8,_sy=pl[0].visualY-camY+8;
+    for(let _ui=0;_ui<12;_ui++){const _ua=(_ui/12)*Math.PI*2;const _us=0.8+Math.random()*2;
+      particles.push({x:_sx,y:_sy,vx:Math.cos(_ua)*_us,vy:Math.sin(_ua)*_us-1,life:20+Math.random()*14,c:Math.random()>.5?'rgba(100,40,180,1)':'rgba(190,130,255,1)'});
+    }}
     twSet('UMBRA: You became invisible for 30 steps!');
     lg.push('Used UMBRA on map: 30 invisible steps!');
   }else if(cardId===30){
@@ -19322,6 +19576,12 @@ function executeMapCard(cardId,slot){
     shadowStepsLeft=60;
     mapCardUseActive=false;_mapUsableCache=null;
     sfxShadow();
+    // v472: deep purple shadow burst + shake
+    screenShake(2,5);
+    {const _sx=pl[0].visualX-camX+8,_sy=pl[0].visualY-camY+8;
+    for(let _ui=0;_ui<16;_ui++){const _ua=(_ui/16)*Math.PI*2;const _us=0.8+Math.random()*2.5;
+      particles.push({x:_sx,y:_sy,vx:Math.cos(_ua)*_us,vy:Math.sin(_ua)*_us-1,life:24+Math.random()*16,c:Math.random()>.5?'rgba(60,10,130,1)':'rgba(160,90,240,1)'});
+    }}
     twSet('SHADOW: You became invisible for 60 steps!');
     lg.push('Used SHADOW on map: 60 invisible steps!');
   }else if(cardId===28){
@@ -19411,6 +19671,12 @@ function executeDirCard(dir){
           tileCacheDirty=true;edgeCacheDirty=true;
           sfxBurn();
           flash();
+          // v472: fire particle burst at burn tile
+          screenShake(3,7);
+          {const _fx_=tx_*TW-camX+8,_fy_=ty_*TH-camY+8;
+          for(let _fi=0;_fi<14;_fi++){const _fa=(_fi/14)*Math.PI*2;const _fs=1+Math.random()*2.5;
+            particles.push({x:_fx_,y:_fy_,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-2,life:18+Math.random()*16,c:Math.random()>.4?'rgba(255,120,20,1)':'rgba(255,220,60,1)'});
+          }}
           twSet('The obstacle burns away!');
           lg.push('Used Ignis: burned tile at ('+tx_+','+ty_+')');
         }
@@ -19432,6 +19698,16 @@ function executeDirCard(dir){
         tileCacheDirty=true;edgeCacheDirty=true;
         sfxPhase();
         flash();
+        screenShake(2,5);
+        // v474: ghostly wall-phase particle burst at midpoint + landing
+        {const _mx=(p.x-1+(fx-p.x)/2)*TW-camX+8,_my=(p.y-1+(fy-p.y)/2)*TH-camY+8;
+        for(let _pi=0;_pi<8;_pi++){const _pa=(_pi/8)*Math.PI*2;const _ps=1+Math.random()*1.8;
+          particles.push({x:_mx,y:_my,vx:Math.cos(_pa)*_ps,vy:Math.sin(_pa)*_ps,life:14+Math.random()*10,c:Math.random()>.5?'rgba(140,255,180,.7)':'rgba(220,255,240,.6)'});
+        }
+        const _lx=fx*TW-camX+8,_ly=fy*TH-camY+8;
+        for(let _pi=0;_pi<12;_pi++){const _pa=(_pi/12)*Math.PI*2;const _ps=1.2+Math.random()*2;
+          particles.push({x:_lx,y:_ly,vx:Math.cos(_pa)*_ps,vy:Math.sin(_pa)*_ps-0.5,life:18+Math.random()*12,c:Math.random()>.5?'rgba(80,220,140,1)':'rgba(200,255,220,1)'});
+        }}
         twSet('PHASE: You walked through the wall!');
         lg.push('Used PHASE: phased to ('+fx+','+fy+')');
       }
@@ -19460,6 +19736,16 @@ function executeDirCard(dir){
         tileCacheDirty=true;edgeCacheDirty=true;
         sfxPhase();
         flash();
+        // v472: cyan teleport burst at origin and landing
+        screenShake(3,6);
+        {const _ox=origX*TW-camX+8,_oy=origY*TH-camY+8;
+        for(let _ti=0;_ti<10;_ti++){const _ta=(_ti/10)*Math.PI*2;const _ts=1.2+Math.random()*2;
+          particles.push({x:_ox,y:_oy,vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-0.5,life:18+Math.random()*10,c:Math.random()>.5?'rgba(60,200,240,1)':'rgba(180,240,255,1)'});
+        }
+        const _dx_=bestX*TW-camX+8,_dy_=bestY*TH-camY+8;
+        for(let _ti=0;_ti<14;_ti++){const _ta=(_ti/14)*Math.PI*2;const _ts=1+Math.random()*2.5;
+          particles.push({x:_dx_,y:_dy_,vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-1,life:22+Math.random()*14,c:Math.random()>.5?'rgba(80,210,255,1)':'rgba(220,250,255,1)'});
+        }}
         twSet('BLINK: Teleported '+dist+' tiles!');
         lg.push('Used BLINK: teleported to ('+bestX+','+bestY+')');
       }
@@ -19804,7 +20090,12 @@ function dGameOver(){
     if(blink_)txShadow('Z = Play Again    X = Title',W/2-130,H-24,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
-  if(t===31)sfxDefeat(); // v420: defeat audio cue
+  // v489: doom particle burst synced with sfxDefeat
+  if(t===31){sfxDefeat();screenShake(3,8);
+    for(let _di=0;_di<24;_di++){const _da=(_di/24)*Math.PI*2+Math.random()*0.3;const _ds=1.5+Math.random()*3.5;
+      particles.push({x:W/2+(Math.random()*40-20),y:H/2+(Math.random()*30-15),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:28+Math.random()*20,c:Math.random()>.5?'rgba(200,30,30,1)':'rgba(100,20,20,1)'});
+    }
+  }
 }
 
 // ═══════════════════════════════════════
@@ -20050,11 +20341,18 @@ function update(){
           if(remaining<30000&&decayWarn[i]<2){
             decayWarn[i]=2;sfxCardDecayWarn();screenShake(1,3);
             objectInteractMsg=cardName+' FADING! 30s!';objectInteractTimer=90;
+            // v482: red smoke burst from decaying card HUD slot
+            {const _cx=310+(i%8)*30+14,_cy=hudY+24;
+            for(let _di=0;_di<6;_di++){particles.push({x:_cx+(Math.random()*16-8),y:_cy,vx:(Math.random()-.5)*1.4,vy:-0.8-Math.random()*1.4,life:20+Math.random()*12,c:'rgba(200,60,40,.7)'});}}
           }
           // 10-second critical warning
           if(remaining<10000&&decayWarn[i]<3){
             decayWarn[i]=3;sfxDangerAlert();screenShake(2,4);
             objectInteractMsg=cardName+' CRITICAL! RUN!';objectInteractTimer=90;
+            // v482: intense red burst from critical decaying card HUD slot
+            {const _cx=310+(i%8)*30+14,_cy=hudY+24;
+            for(let _di=0;_di<10;_di++){const _da=(_di/10)*Math.PI*2;const _ds=1+Math.random()*1.8;
+              particles.push({x:_cx,y:_cy,vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-2,life:16+Math.random()*10,c:Math.random()>.5?'rgba(220,40,20,1)':'rgba(255,140,80,1)'});}}
           }
           // Flashing at <15s
           if(remaining<15000){
@@ -20279,10 +20577,16 @@ function draw(){
     // Shadow effect on player sprite
     if(shadowStepsLeft>0){
       const px=pl[0].visualX-camX,py=pl[0].visualY-camY-16;
-      g.globalAlpha=0.4;
-      bx(px-4,py-4,40,56,'rgba(80,40,160,.3)');
+      // v473: pulsing purple stealth shimmer — stronger than old static overlay
+      const _stA=0.3+_sFr12*0.2;
+      g.globalAlpha=_stA;
+      bx(px-4,py-4,40,56,'rgba(80,40,160,.4)');
       g.globalAlpha=1;
       txShadow(_STEALTH_LBL[shadowStepsLeft]||('STEALTH:'+shadowStepsLeft),px-20,py-24,5,'#9060c0','rgba(0,0,0,.4)');
+      // Emit 1 purple particle every 6 frames during stealth
+      if(fr%6===0){
+        particles.push({x:px+4+Math.random()*24,y:py+48+Math.random()*12,vx:(Math.random()-.5)*.6,vy:-0.7-Math.random()*0.8,life:22+Math.random()*12,c:'rgba(160,90,240,.7)'});
+      }
     }
   }
   // Multiplayer connection status overlay
@@ -20294,6 +20598,15 @@ function draw(){
   if(escapeUrgencyActive&&inDungeon&&(sc==='map'||sc==='act')){
     const vigA=(0.15+Math.sin(escapeUrgencyPulse*0.15)*0.1)*Math.min(1,escapeUrgencyPulse/30);
     g.globalAlpha=vigA;g.drawImage(_escVigCanvas,0,0);g.globalAlpha=1;
+  }
+  // v469: cardDecayWarningFlash — brief bright red edge pulse when any card hits <15s threshold
+  if(cardDecayWarningFlash>0&&inDungeon&&(sc==='map'||sc==='act')){
+    const _dfA=cardDecayWarningFlash/10;
+    g.globalAlpha=_dfA*0.55;
+    g.fillStyle='#c82020';
+    g.fillRect(0,0,W,5);g.fillRect(0,H-5,W,5);
+    g.fillRect(0,0,5,H);g.fillRect(W-5,0,5,H);
+    g.globalAlpha=1;
   }
   // Screen transition wipes (replaces old battleWipe)
   drawWipe();
@@ -20397,6 +20710,12 @@ function tryMovePlayer(dx, dy) {
     const _restN=(sp.s<3?1:0)+(sp.b<3?1:0)+(sp.c<3?1:0);
     if(sp.s<3)sp.s++;if(sp.b<3)sp.b++;if(sp.c<3)sp.c++;
     sfxCrystal();
+    // v475: full-map sparkle burst — radial burst + screenShake to celebrate 100% exploration
+    {const _fx=pl[0].visualX-camX+8,_fy=pl[0].visualY-camY+8;
+    screenShake(2,6);
+    for(let _fi=0;_fi<18;_fi++){const _fa=(_fi/18)*Math.PI*2;const _fs=1.2+Math.random()*2.5;
+      particles.push({x:_fx,y:_fy,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-1.5,life:22+Math.random()*16,c:Math.random()>.5?'rgba(80,180,255,1)':'rgba(255,220,80,1)'});
+    }}
     const _flrLbl=['','I','II','III','IV','V'];
     if(_restN>0){tutorialMsg='\u2605 FLOOR '+(_flrLbl[currentFloor]||currentFloor)+' FULLY MAPPED! Spells restored!';tutorialMsgTimer=220;}
     else{tutorialMsg='\u2605 FLOOR '+(_flrLbl[currentFloor]||currentFloor)+' FULLY MAPPED! Master explorer!';tutorialMsgTimer=220;}
@@ -20422,7 +20741,17 @@ function tryMovePlayer(dx, dy) {
   if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
   if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}
   if(newTile!==0){const adj=[[nx-1,ny],[nx+1,ny],[nx,ny-1],[nx,ny+1]];if(adj.some(([ax,ay])=>ax>=0&&ax<MW&&ay>=0&&ay<MH&&m[ay]?.[ax]===0))sfxWaterNear();}
-  if(shadowStepsLeft>0)shadowStepsLeft--;
+  if(shadowStepsLeft>0){
+    shadowStepsLeft--;
+    // v473: stealth expiry — particle burst + shake when stealth runs out
+    if(shadowStepsLeft===0){
+      screenShake(2,5);
+      const _rpx=pl[0].visualX-camX+8,_rpy=pl[0].visualY-camY+8;
+      for(let _ri=0;_ri<10;_ri++){const _ra=(_ri/10)*Math.PI*2;const _rs=1+Math.random()*2;
+        particles.push({x:_rpx,y:_rpy,vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-1,life:16+Math.random()*10,c:Math.random()>.5?'rgba(150,80,220,1)':'rgba(255,200,255,1)'});
+      }
+    }
+  }
   if(shadowStepsLeft<=0)checkForestTrap();
   randomEventTimer++;
   if(randomEventTimer>=150&&!randomEventActive&&!wildEncounterActive&&!cardAcqActive){randomEventTimer=0;triggerRandomEvent();}
@@ -21194,11 +21523,21 @@ document.addEventListener('keydown',e=>{
         // (The steal already happened, so we give a pity boost instead)
         sp.b=Math.min(sp.b+1,3);
         lg.push('QTE success! Barrier charge restored!');
+        // v483: BLOCKED! — blue/silver shield-burst from player position
+        {const _qx=160,_qy=H-130;screenShake(2,4);
+        for(let _qi=0;_qi<16;_qi++){const _qa=(_qi/16)*Math.PI*2;const _qs=1.5+Math.random()*2.5;
+          particles.push({x:_qx,y:_qy,vx:Math.cos(_qa)*_qs,vy:Math.sin(_qa)*_qs-2,life:22+Math.random()*14,c:Math.random()>.5?'rgba(60,160,255,1)':'rgba(200,230,255,1)'});
+        }}
       }else{
         qteResultText='BONUS!';qteResultTimer=40;
         // Attack bonus: extra steal charge
         sp.s=Math.min(sp.s+1,3);
         lg.push('QTE success! Steal charge bonus!');
+        // v483: BONUS! — gold/green offensive burst from player position
+        {const _qx=160,_qy=H-130;screenShake(2,4);
+        for(let _qi=0;_qi<16;_qi++){const _qa=(_qi/16)*Math.PI*2;const _qs=1.8+Math.random()*2.8;
+          particles.push({x:_qx,y:_qy,vx:Math.cos(_qa)*_qs,vy:Math.sin(_qa)*_qs-2.5,life:24+Math.random()*14,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(80,240,120,1)'});
+        }}
       }
     }
     if(battlePhase==='select'&&bpCardSelectActive){

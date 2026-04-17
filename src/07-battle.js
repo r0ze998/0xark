@@ -1658,6 +1658,11 @@ function drawConfirmingPhase(){
     g.globalAlpha=shoutA;
     txShadow(aName,shoutX,shoutY+sz*0.8,sz,aCol,'rgba(0,0,0,0.85)');
     g.globalAlpha=1;
+    // v486: action-colored spark burst from player on commitment
+    if(t0===1){const _acRgba=['rgba(72,184,232,.9)','rgba(208,64,64,.9)','rgba(48,96,176,.9)','rgba(48,128,48,.9)','rgba(192,128,48,.9)'][act];
+    for(let _ai=0;_ai<10;_ai++){const _aa=(_ai/10)*Math.PI*2;const _as=1+Math.random()*2.5;
+      particles.push({x:160,y:H-130,vx:Math.cos(_aa)*_as,vy:Math.sin(_aa)*_as-2,life:14+Math.random()*10,c:_acRgba});
+    }}
   }}
   // Text box at bottom
   win(4,H-70,W-8,64);
@@ -1875,6 +1880,14 @@ function addCardToPlayer(pIdx,cardId){
       setTimeout(()=>{
         tutorialMsg='\u2605 '+milestones[ms]+' '+ms+'/60 collected!';tutorialMsgTimer=260;
         if(ms>=50)screenShake(2,4);
+        // v480: confetti burst scaled by milestone importance
+        {const _mn=ms>=50?20:ms>=30?14:10;const _shk=ms>=50?3:2;
+        screenShake(_shk,_shk*3);
+        const _mc1=ms>=59?'rgba(255,200,40,1)':ms>=50?'rgba(255,140,20,1)':ms>=30?'rgba(80,180,255,1)':'rgba(80,200,120,1)';
+        const _mc2=ms>=59?'rgba(255,255,180,1)':'rgba(255,255,255,.9)';
+        for(let _mi=0;_mi<_mn;_mi++){const _ma=(_mi/_mn)*Math.PI*2+Math.random()*.4;const _ms2=1.5+Math.random()*3;
+          particles.push({x:W/2+(Math.random()*60-30),y:H/2+(Math.random()*40-20),vx:Math.cos(_ma)*_ms2,vy:Math.sin(_ma)*_ms2-2,life:24+Math.random()*20,c:Math.random()>.4?_mc1:_mc2});
+        }}
       },400);
     }
   }

@@ -100,6 +100,7 @@ const _sBufCmp=(a,b)=>b.uniq-a.uniq;
 const _rBufCmp=(a,b)=>b.cnt-a.cnt;
 // v349: lazy cache for dungeon mission HUD strip (changes only when progress or completion status changes)
 let _missionHudLbl='',_missionHudKey=-1;
+let _lastMissionDone=false,_missionCompleteFrame=-9999; // v471: mission complete banner state
 // v368: pre-baked town ambient particle phases — eliminates 36 Math.sin/frame for golden motes + sea wisps
 // i*1.7 (14 golden motes): sin(fr*0.018+i*1.7) = _sFr018*_TOWN_CI17[i]+_cFr018*_TOWN_SI17[i]
 const _TOWN_SI17=new Float32Array(14);const _TOWN_CI17=new Float32Array(14);
@@ -1726,6 +1727,17 @@ function dMap(){
     txShadow(_PLUS_INT[handTotal-HUD_CARD_SLOTS]||('+'+( handTotal-HUD_CARD_SLOTS)),310+HUD_CARD_SLOTS*HUD_CARD_SPACING+2,hudY+26,7,'#c8c0a0','rgba(0,0,0,.4)'); // v324
   }
 
+  // v471: detect mission completion transition and timestamp it
+  {const _mNowDone=!!(runMission&&runMission.completed);
+  if(_mNowDone&&!_lastMissionDone){
+    _missionCompleteFrame=fr;
+    // golden particle burst from HUD mission strip area
+    for(let _mi=0;_mi<14;_mi++){const _ma=(_mi/14)*Math.PI*2;const _ms=1.2+Math.random()*2.5;
+      particles.push({x:100+Math.random()*80,y:hudY+40,vx:Math.cos(_ma)*_ms,vy:Math.sin(_ma)*_ms-2.5,life:24+Math.random()*18,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,255,160,1)'});
+    }
+  }
+  _lastMissionDone=_mNowDone;}
+
   // v79: Active run mission strip (dungeon only)
   if(runMission&&inDungeon&&sc==='map'){
     const mDone=runMission.completed;
@@ -1788,6 +1800,66 @@ function dMap(){
       bx(_tX,_tY,_tW,20,'rgba(140,16,16,.9)');
       bx(_tX,_tY,_tW,2,'#ff5040');bx(_tX,_tY+18,_tW,2,'#ff5040');
       txShadow('\u26a0 TRAP!',_tX+10,_tY+14,9,'#fff8e0','rgba(0,0,0,.65)');
+      g.globalAlpha=1;
+    }
+  }}
+
+  // v467: Crystal reveal banner — cyan pill, slide-in + fade
+  {const _ca=fr-_crystalUseFrame;
+  if(_ca>=0&&_ca<90){
+    const _cf=_ca<8?_ca/8:_ca>60?Math.max(0,1-(_ca-60)/30):1;
+    if(_cf>0.01){
+      const _cSl=_ca<8?Math.round((1-_ca/8)*14):0;
+      const _cW=112;const _cX=Math.round(W/2-_cW/2);const _cY=Math.round(H/2-66+_cSl);
+      g.globalAlpha=_cf;
+      bx(_cX,_cY,_cW,20,'rgba(10,50,100,.88)');
+      bx(_cX,_cY,_cW,2,'#40d0ff');bx(_cX,_cY+18,_cW,2,'#40d0ff');
+      txShadow('\ud83d\udd2e RIVALS REVEALED',_cX+8,_cY+14,8,'#a0e8ff','rgba(0,0,0,.65)');
+      g.globalAlpha=1;
+    }
+  }}
+
+  // v467: Altar activation banner — golden pill, slide-in + fade
+  {const _aa2=fr-_altarUseFrame;
+  if(_aa2>=0&&_aa2<90){
+    const _af=_aa2<8?_aa2/8:_aa2>60?Math.max(0,1-(_aa2-60)/30):1;
+    if(_af>0.01){
+      const _aSl=_aa2<8?Math.round((1-_aa2/8)*14):0;
+      const _aW=108;const _aX=Math.round(W/2-_aW/2);const _aY=Math.round(H/2-44+_aSl);
+      g.globalAlpha=_af;
+      bx(_aX,_aY,_aW,20,'rgba(70,40,0,.88)');
+      bx(_aX,_aY,_aW,2,'#ffc040');bx(_aX,_aY+18,_aW,2,'#ffc040');
+      txShadow('\u2728 ALTAR ANSWERED',_aX+8,_aY+14,8,'#ffe080','rgba(0,0,0,.65)');
+      g.globalAlpha=1;
+    }
+  }}
+
+  // v468: Campfire rest banner — warm orange pill, slide-in + fade
+  {const _ra=fr-_campfireRestFrame;
+  if(_ra>=0&&_ra<80){
+    const _rf=_ra<8?_ra/8:_ra>50?Math.max(0,1-(_ra-50)/30):1;
+    if(_rf>0.01){
+      const _rSl=_ra<8?Math.round((1-_ra/8)*14):0;
+      const _rW=88;const _rX=Math.round(W/2-_rW/2);const _rY=Math.round(H/2-22+_rSl);
+      g.globalAlpha=_rf;
+      bx(_rX,_rY,_rW,20,'rgba(80,35,0,.88)');
+      bx(_rX,_rY,_rW,2,'#ff9030');bx(_rX,_rY+18,_rW,2,'#ff9030');
+      txShadow('\ud83d\udd25 RESTED',_rX+12,_rY+14,9,'#ffe0a0','rgba(0,0,0,.65)');
+      g.globalAlpha=1;
+    }
+  }}
+
+  // v471: Mission complete banner — gold/green pill, slide-in + fade
+  {const _mca=fr-_missionCompleteFrame;
+  if(_mca>=0&&_mca<100){
+    const _mcf=_mca<8?_mca/8:_mca>70?Math.max(0,1-(_mca-70)/30):1;
+    if(_mcf>0.01){
+      const _mcSl=_mca<8?Math.round((1-_mca/8)*14):0;
+      const _mcW=134;const _mcX=Math.round(W/2-_mcW/2);const _mcY=Math.round(H/2+0+_mcSl);
+      g.globalAlpha=_mcf;
+      bx(_mcX,_mcY,_mcW,20,'rgba(20,50,10,.90)');
+      bx(_mcX,_mcY,_mcW,2,'#80e840');bx(_mcX,_mcY+18,_mcW,2,'#80e840');
+      txShadow('\u2713 MISSION COMPLETE!',_mcX+8,_mcY+14,8,'#c0ff80','rgba(0,0,0,.65)');
       g.globalAlpha=1;
     }
   }}
@@ -1930,7 +2002,7 @@ function dMap(){
     txShadow(_vaultHudLbl,848,hudY+56,7,_vcol,'rgba(0,0,0,.5)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v466',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v490',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
