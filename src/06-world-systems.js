@@ -1715,6 +1715,15 @@ function drawEncounterExclamation(){
   const t=fr-encounterExclFrame;
   if(t>30){encounterExclActive=false;return;}
   // Overshoot pop-in scale: 0→1.4→1.0 over first 8 frames
+  // v495: encounter spark burst — one shot at t===1
+  if(t===1){
+    const _epx=encounterExclPlayerX-camX+8,_epy=encounterExclPlayerY-camY;
+    const _erx=encounterExclRivalX-camX+8,_ery=encounterExclRivalY-camY;
+    for(let _ei=0;_ei<8;_ei++){const _ea=(_ei/8)*Math.PI*2;const _es=1+Math.random()*2;
+      particles.push({x:_epx,y:_epy,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-2,life:12+Math.random()*8,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,80,80,1)'});
+      particles.push({x:_erx,y:_ery,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-2,life:12+Math.random()*8,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,80,80,1)'});
+    }
+  }
   const rawScl=t<4?(t/4)*1.4:t<8?1.4-(t-4)*0.1:1.0;
   const bounce=t>=8?Math.sin(t*0.5)*2:0;
   const alpha=Math.min(1,t/4)*(t<25?1:Math.max(0,(30-t)/5));
@@ -2253,7 +2262,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v494',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v495',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
