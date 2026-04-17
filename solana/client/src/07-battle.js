@@ -1640,7 +1640,8 @@ function drawConfirmingPhase(){
       if(result){
         logOnchain('Reveal TX:'+result.txSig.slice(0,8)+'..');
         // Wire ZK proof on-chain verify once reveal is confirmed and proof is ready
-        if(zkLastProof&&window.oxarkOnchain){
+        if(zkLastProof&&window.oxarkOnchain&&!_zkVerifyFiredThisRound){
+          _zkVerifyFiredThisRound=true;
           _onchainVerifyZk(_sessionGameId,zkLastProof);
         }
       }
