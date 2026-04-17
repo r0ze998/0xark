@@ -559,6 +559,13 @@ function drawFloorTitle(){
   // ── FLOOR NUMBER (giant, centered, glowing) ──
   const flNum=_WLD_FLOOR_NUMS[f]||('B'+f); // v262: hoisted
   const numAlpha=t<20?Math.max(0,(t-10)/10):1;
+  // v500: particle burst when floor number fully pops in — intensity scales with floor depth
+  if(t===20){const _fn=f||1;screenShake(Math.min(_fn,4),Math.min(_fn*2,8));
+    const _fc=theme.accent;const _fc2='rgba(255,255,255,1)';const _fn2=8+_fn*4;
+    for(let _fti=0;_fti<_fn2;_fti++){const _fta=(_fti/_fn2)*Math.PI*2;const _fts=1.5+Math.random()*(1+_fn*0.5);
+      particles.push({x:W/2+(Math.random()*60-30),y:H/2+(Math.random()*20-10),vx:Math.cos(_fta)*_fts,vy:Math.sin(_fta)*_fts-2,life:20+Math.random()*14+_fn*3,c:Math.random()>.4?_fc:_fc2});
+    }
+  }
   const numPulse=1+Math.sin(t*0.08)*0.04;
   // Glow shadow
   g.globalAlpha=globalAlpha*numAlpha*0.4;
@@ -1388,6 +1395,12 @@ function drawCardShop(){
     g.globalAlpha=dlgEase*rA;
     const isSuccess=shopResultText.includes('Traded');
     const rCol=isSuccess?'#40d080':'#d04040';
+    // v497: particle burst when trade result reveals
+    if(rAge===8&&isSuccess){screenShake(1,3);
+      for(let _ti=0;_ti<14;_ti++){const _ta=(_ti/14)*Math.PI*2;const _ts=1.2+Math.random()*2.5;
+        particles.push({x:W/2+(Math.random()*40-20),y:wY+wH/2-20+(Math.random()*20-10),vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-2,life:20+Math.random()*16,c:Math.random()>.4?'rgba(64,208,128,1)':'rgba(255,210,80,1)'});
+      }
+    }
     txShadow(isSuccess?'TRADE COMPLETE!':'TRADE FAILED',W/2-100,wY+wH/2-30,14,rCol,'rgba(0,0,0,.4)');
     // Show result detail below
     if(shopResultText&&rAge>8){
@@ -1457,6 +1470,12 @@ function drawSynthesisShop(){
     if(synthResultCard>0){
       const cr=CD[synthResultCard-1];
       const rCol=RARITY_COLOR[cr.r]||'#c8c0a0';
+      // v497: rarity-scaled burst on synthesis success reveal
+      if(t===8){const _sn=8+cr.r*3;
+        for(let _si=0;_si<_sn;_si++){const _sa=(_si/_sn)*Math.PI*2;const _ss=1.5+Math.random()*(cr.r*0.7+1.5);
+          particles.push({x:W/2+(Math.random()*30-15),y:140+(Math.random()*20-10),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2.5,life:20+Math.random()*18+cr.r*4,c:Math.random()>.4?rCol:'rgba(255,255,200,1)'});
+        }
+      }
       txShadow('SYNTHESIS SUCCESS!',W/2-88,90,10,'#40d080','rgba(0,0,0,.3)');
       drawCardFrame(W/2-50,110,100,140,synthResultCard-1,true);
       txShadow(cr.n,W/2-cr.n.length*5,262,11,rCol,'rgba(0,0,0,.3)');
@@ -2278,7 +2297,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v496',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v506',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

@@ -328,7 +328,12 @@ function drawResolvingPhase(){
         bx(playerCX-8,playerCY-12,16,20,'rgba(60,120,200,.5)');
         bx(playerCX-6,playerCY-10,12,16,'rgba(100,180,255,.4)');
       }
-      g.globalAlpha=1;g.restore();if(evT===1)sfxShield();
+      g.globalAlpha=1;g.restore();if(evT===1){sfxShield();
+        // v502: blue spark ring when barrier raised
+        for(let _bri=0;_bri<10;_bri++){const _bra=(_bri/10)*Math.PI*2;const _brs=1+Math.random()*1.8;
+          particles.push({x:playerCX,y:playerCY,vx:Math.cos(_bra)*_brs,vy:Math.sin(_bra)*_brs-1,life:12+Math.random()*8,c:Math.random()>.5?'rgba(80,130,220,1)':'rgba(160,210,255,1)'});
+        }
+      }
     }
     if(ev.effect==='shield_block'&&evT<30){
       const r_=evT*3,a_=1-evT/30;g.save();g.globalAlpha=a_;

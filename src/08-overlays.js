@@ -120,6 +120,12 @@ function drawCardAcquisition(){
     win(W/2-150,cy_+ch/2+12,300,40);
     if(_acqObtainedRef!==cr){_acqObtainedRef=cr;_acqObtainedLbl='You obtained '+cr.n+'!';} // v338: lazy cache
     txShadow(_acqObtainedLbl,W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');
+    // v500: extra burst when new unique card badge first appears
+    if(cardAcqIsNew&&t===50){screenShake(2,4);const _ncRar=cr.r||1;
+      for(let _ni=0;_ni<10+_ncRar*2;_ni++){const _na=(_ni/(10+_ncRar*2))*Math.PI*2;const _ns=1.2+Math.random()*(_ncRar*0.5+1.5);
+        particles.push({x:cx_+(Math.random()*30-15),y:cy_+(Math.random()*20-10),vx:Math.cos(_na)*_ns,vy:Math.sin(_na)*_ns-2,life:18+Math.random()*14+_ncRar*2,c:Math.random()>.4?rarCol:'rgba(255,255,200,1)'});
+      }
+    }
     // v96: NEW card badge — shown when first time in vault
     if(cardAcqIsNew){
       const newBadgeAlpha=t<60?(t-50)/10:t>82?(90-t)/8:1;
@@ -598,7 +604,13 @@ function dVictory(){
   const t=fr-victoryFrame;
   if(t<30){g.globalAlpha=t/30;g.fillStyle='#ffffff';g.fillRect(0,0,W,H);g.globalAlpha=1;return;}
   bx(0,0,W,H,'#f8f4f0');
-
+  // v500: golden confetti explosion + shake on first reveal
+  if(t===30){sfxVictory();screenShake(4,10);
+    for(let _vi=0;_vi<40;_vi++){const _va=(_vi/40)*Math.PI*2+Math.random()*0.4;const _vs=2+Math.random()*5;
+      const _vc=_vi%4===0?'rgba(255,200,40,1)':_vi%4===1?'rgba(255,80,80,1)':_vi%4===2?'rgba(80,180,255,1)':'rgba(255,255,200,1)';
+      particles.push({x:W/2+(Math.random()*80-40),y:H/3+(Math.random()*40-20),vx:Math.cos(_va)*_vs,vy:Math.sin(_va)*_vs-3,life:35+Math.random()*25,c:_vc});
+    }
+  }
   for(let i=0;i<8;i++){
     const st=(t+i*60)%200;
     if(st<30){const sx=50+i*55+st*3,sy=20+i*15+st*1.5;

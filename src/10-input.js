@@ -85,6 +85,11 @@ function tryMovePlayer(dx, dy) {
     for(let li=0;li<HAND_SIZE;li++){if(cardTimers[li]>0)cardTimers[li]-=30000;}
     if(objectInteractTimer<=0){objectInteractMsg='Lava! Cards decaying faster!';objectInteractTimer=60;}
     screenShake(2,4);
+    // v502: lava step — fire splash at player feet
+    {const _lx=nx*TW-camX+8,_ly=ny*TH-camY+8;
+    for(let _lvi=0;_lvi<8;_lvi++){const _lva=Math.random()*Math.PI-Math.PI/2-0.5;const _lvs=0.8+Math.random()*2;
+      particles.push({x:_lx+(Math.random()*12-6),y:_ly+(Math.random()*6),vx:Math.cos(_lva)*_lvs,vy:Math.sin(_lva)*_lvs-1.5,life:10+Math.random()*8,c:Math.random()>.4?'rgba(255,80,20,1)':'rgba(255,200,40,1)'});
+    }}
   }
   if(inDungeon){ processDungeonTurn(); checkFloorItemPickup(nx,ny); }
   if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
@@ -107,7 +112,17 @@ function tryMovePlayer(dx, dy) {
   const exit = checkExitTile(nx,ny);
   if(exit){
     if(!inDungeon&&exit.targetMap>0){dungeonConfirmActive=true;dungeonConfirmExit=exit;}
-    else{doMapTransition(exit);}
+    else{
+      // v499: brief directional particle burst when stepping into exit (escape or descend)
+      {const _ex=pl[0].visualX-camX+8,_ey=pl[0].visualY-camY+8;
+      const _isEsc=exit.isEscape||exit.targetMap===0;
+      const _c1=_isEsc?'rgba(80,240,160,1)':'rgba(255,200,60,1)';
+      const _c2=_isEsc?'rgba(200,255,230,1)':'rgba(255,255,200,1)';
+      for(let _xi=0;_xi<10;_xi++){const _xa=(_xi/10)*Math.PI*2;const _xs=1+Math.random()*2.5;
+        particles.push({x:_ex,y:_ey,vx:Math.cos(_xa)*_xs,vy:Math.sin(_xa)*_xs-1.5,life:14+Math.random()*10,c:Math.random()>.5?_c1:_c2});
+      }}
+      doMapTransition(exit);
+    }
   }
   return true;
 }
@@ -400,7 +415,15 @@ document.addEventListener('keydown',e=>{
 
   // Dungeon entry confirmation
   if(dungeonConfirmActive){
-    if(e.code==='KeyZ'){dungeonConfirmActive=false;sfxConfirm();doMapTransition(dungeonConfirmExit);}
+    if(e.code==='KeyZ'){dungeonConfirmActive=false;sfxConfirm();
+      // v501: ominous dark-red burst on dungeon entry confirmation
+      screenShake(2,4);
+      {const _dx=pl[0].visualX-camX+8,_dy=pl[0].visualY-camY+8;
+      for(let _di=0;_di<12;_di++){const _da=(_di/12)*Math.PI*2;const _ds=1+Math.random()*2.2;
+        particles.push({x:_dx,y:_dy,vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:16+Math.random()*12,c:Math.random()>.5?'rgba(180,30,30,1)':'rgba(100,20,20,1)'});
+      }}
+      doMapTransition(dungeonConfirmExit);
+    }
     if(e.code==='KeyX'){dungeonConfirmActive=false;sfxBack();}
     return;
   }
@@ -521,6 +544,13 @@ document.addEventListener('keydown',e=>{
           }
           pl[0].cd[slot]=discardPendingCard;cardTimers[slot]=inDungeon?Date.now():0;decayWarn[slot]=0;syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+', got '+CD[discardPendingCard-1].n+'!');
+          // v500: red smoke burst for discarded card + green spark for incoming
+          {for(let _di=0;_di<8;_di++){const _da=(_di/8)*Math.PI*2;const _ds=0.8+Math.random()*1.5;
+            particles.push({x:W/2+(Math.random()*30-15),y:H/2+(Math.random()*20-10),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:14+Math.random()*8,c:Math.random()>.5?'rgba(220,60,60,1)':'rgba(180,100,60,1)'});
+          }
+          for(let _gi=0;_gi<8;_gi++){const _ga=(_gi/8)*Math.PI*2;const _gs=1+Math.random()*2;
+            particles.push({x:W/2+(Math.random()*20-10),y:H/2-10+(Math.random()*20-10),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2,life:14+Math.random()*10,c:Math.random()>.5?'rgba(64,220,120,1)':'rgba(200,255,220,1)'});
+          }}
           discardActive=false;
           if(discardSource==='wild'||discardSource==='menu'){startCardAcquisition(discardPendingCard-1);}
           discardPendingCard=-1;discardSource='';
@@ -529,6 +559,10 @@ document.addEventListener('keydown',e=>{
           // Menu discard: just remove the card
           pl[0].cd[slot]=0;cardTimers[slot]=0;decayWarn[slot]=0;syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+'!');
+          // v500: brief red smoke on manual discard
+          {for(let _di=0;_di<6;_di++){const _da=(_di/6)*Math.PI*2;const _ds=0.8+Math.random()*1.2;
+            particles.push({x:W/2+(Math.random()*20-10),y:H/2+(Math.random()*16-8),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:12+Math.random()*6,c:Math.random()>.5?'rgba(200,60,60,1)':'rgba(160,80,50,1)'});
+          }}
           discardActive=false;discardPendingCard=-1;discardSource='';
         }
       }else{sfxBack();}

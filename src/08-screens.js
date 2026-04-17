@@ -83,6 +83,28 @@ function drawFloorClearFanfare(){
   const alpha=t<15?t/15:t>110?(maxT-t)/20:1;
   const rar=d.rarity;
   const rcol=_SCR_RAR_COLS[rar]||'#c0c0c0'; // v262: hoisted
+  // v506: rarity entry burst when fanfare first appears, + ongoing drizzle from panel top
+  // World-space coords: screen center + camX/camY so drawParticles(camX,camY) projects correctly
+  if(t===1){
+    const _fcx=W/2+camX,_fcy=H/2-20+camY;
+    const _bc=d.isGoal?32:(rar>=5?24:rar>=4?16:rar>=3?10:6);
+    screenShake(d.isGoal?4:rar>=5?3:rar>=4?2:1,d.isGoal?8:rar>=5?6:rar>=4?4:2);
+    for(let _fi=0;_fi<_bc;_fi++){const _fa=(_fi/_bc)*Math.PI*2+Math.random()*0.4;const _fs=2+Math.random()*(d.isGoal?5:rar>=4?4:2.5);
+      const _fc=d.isGoal?(_fi%4===0?'rgba(255,220,60,1)':_fi%4===1?'rgba(255,80,140,1)':_fi%4===2?'rgba(80,200,255,1)':'rgba(160,255,100,1)'):
+        rar>=5?(_fi%3===0?'rgba(255,220,60,1)':_fi%3===1?'rgba(255,160,60,1)':'rgba(255,80,120,1)'):
+        rar>=4?(_fi%2===0?'rgba(180,100,255,1)':'rgba(220,160,255,1)'):
+        rar>=3?(_fi%2===0?'rgba(80,200,120,1)':'rgba(180,255,200,1)'):
+        (_fi%2===0?'rgba(200,180,140,1)':'rgba(160,160,180,1)');
+      particles.push({x:_fcx+(Math.random()*40-20),y:_fcy+(Math.random()*20-10),vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-2,life:26+Math.random()*22,c:_fc});
+    }
+  }
+  // Upward drizzle from panel top edge every 10 frames
+  if(t>5&&t<105&&t%10===0){
+    const _fdx=W/2-200+Math.random()*400+camX,_fdy=H/2-130+camY;
+    const _fdc=d.isGoal?'rgba(255,220,60,1)':rcol;
+    particles.push({x:_fdx,y:_fdy,vx:(Math.random()-.5)*0.8,vy:-1-Math.random()*1.4,life:22+Math.random()*14,c:_fdc});
+    if(rar>=4||d.isGoal){particles.push({x:W/2-200+Math.random()*400+camX,y:H/2-130+camY,vx:(Math.random()-.5)*0.8,vy:-0.8-Math.random()*1.2,life:20+Math.random()*12,c:_fdc});}
+  }
   // Dim background overlay
   g.globalAlpha=alpha*0.78;
   g.fillStyle='rgba(4,4,14,1)';g.fillRect(0,0,W,H);
@@ -363,6 +385,12 @@ function executeMapCard(cardId,slot){
     if(!inDungeon){twSet('ARK GATE only works in the dungeon!');return;}
     pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
     sfxMapChange();sfxAreaEntry();
+    // v498: gate escape burst — blue/white warp flash before wipe
+    screenShake(3,6);
+    {const _ax=pl[0].visualX-camX+8,_ay=pl[0].visualY-camY+8;
+    for(let _ei=0;_ei<20;_ei++){const _ea=(_ei/20)*Math.PI*2;const _es=2+Math.random()*4;
+      particles.push({x:_ax,y:_ay,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-3,life:18+Math.random()*12,c:Math.random()>.4?'rgba(200,240,255,1)':'rgba(255,255,200,1)'});
+    }}
     lg.push('Used ARK GATE — escaped dungeon instantly!');
     startWipe('vslide',16,()=>{
       currentMap=0;inDungeon=false;currentFloor=0;
@@ -387,6 +415,12 @@ function executeMapCard(cardId,slot){
     if(!inDungeon){twSet('GENESIS only works in the dungeon!');return;}
     pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
     sfxMapChange();sfxAreaEntry();
+    // v498: genesis escape burst — green/gold rebirth flash before wipe
+    screenShake(3,6);
+    {const _gx=pl[0].visualX-camX+8,_gy=pl[0].visualY-camY+8;
+    for(let _gi=0;_gi<20;_gi++){const _ga=(_gi/20)*Math.PI*2;const _gs=2+Math.random()*4;
+      particles.push({x:_gx,y:_gy,vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-3,life:18+Math.random()*12,c:Math.random()>.4?'rgba(80,230,140,1)':'rgba(255,210,80,1)'});
+    }}
     lg.push('Used GENESIS — escaped dungeon instantly!');
     startWipe('vslide',16,()=>{
       currentMap=0;inDungeon=false;currentFloor=0;

@@ -1143,6 +1143,17 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
       g.globalAlpha=1;
     }
   }
+  // v504: ominous dark mist rising from town dungeon entrance tiles (x=27, y=11-13)
+  // v506 fix: world coordinates (no -camX/camY; drawParticles(camX,camY) handles projection)
+  if(fr%6===0){const _demTiles=[[27,11],[27,12],[27,13]];
+    for(let _dmi=0;_dmi<_demTiles.length;_dmi++){const [_dmx,_dmy]=_demTiles[_dmi];
+      const _spx=_dmx*TW+TW/2+Math.random()*12-6;const _spy=_dmy*TH+TH;
+      const _ssx=_spx-camX,_ssy=_spy-camY; // screen check
+      if(_ssx>-4&&_ssx<W+4&&_ssy>-4&&_ssy<H+4){
+        particles.push({x:_spx,y:_spy,vx:(Math.random()-.5)*0.4,vy:-0.4-Math.random()*0.6,life:30+Math.random()*20,c:Math.random()>.4?'rgba(60,30,80,.5)':'rgba(40,20,60,.4)'});
+      }
+    }
+  }
 }
 
 function drawTile(tx_,ty){

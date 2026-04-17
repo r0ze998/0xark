@@ -1337,14 +1337,24 @@ function dMap(){
   if(rivalMaps[0]===currentMap){
     const rv=pl[1];
     if(isVisibleThroughFog(rv.x,rv.y,3)){
-      if(!rv._wasVisible){rv._wasVisible=true;rv._alertTimer=30;sfxEncounter();}
+      if(!rv._wasVisible){rv._wasVisible=true;rv._alertTimer=30;sfxEncounter();
+        // v504: red threat burst at rival's position when first spotted
+        screenShake(2,3);const _rvx=rv.visualX-camX+8,_rvy=rv.visualY-camY+8;
+        for(let _rvi=0;_rvi<10;_rvi++){const _rva=(_rvi/10)*Math.PI*2;const _rvs=1+Math.random()*2;
+          particles.push({x:_rvx,y:_rvy,vx:Math.cos(_rva)*_rvs,vy:Math.sin(_rva)*_rvs-1.5,life:14+Math.random()*10,c:Math.random()>.4?'rgba(220,60,60,1)':'rgba(255,200,60,1)'});
+        }}
       _srtP[_srtN]=rv;_srtI[_srtN]=1;_srtN++;
     }else{rv._wasVisible=false;}
   }else{pl[1]._wasVisible=false;}
   if(rivalMaps[1]===currentMap){
     const hv=pl[2];
     if(isVisibleThroughFog(hv.x,hv.y,3)){
-      if(!hv._wasVisible){hv._wasVisible=true;hv._alertTimer=30;sfxEncounter();}
+      if(!hv._wasVisible){hv._wasVisible=true;hv._alertTimer=30;sfxEncounter();
+        // v504: red threat burst at rival's position when first spotted
+        screenShake(2,3);const _hvx=hv.visualX-camX+8,_hvy=hv.visualY-camY+8;
+        for(let _hvi=0;_hvi<10;_hvi++){const _hva=(_hvi/10)*Math.PI*2;const _hvs=1+Math.random()*2;
+          particles.push({x:_hvx,y:_hvy,vx:Math.cos(_hva)*_hvs,vy:Math.sin(_hva)*_hvs-1.5,life:14+Math.random()*10,c:Math.random()>.4?'rgba(220,60,60,1)':'rgba(255,200,60,1)'});
+        }}
       _srtP[_srtN]=hv;_srtI[_srtN]=2;_srtN++;
     }else{hv._wasVisible=false;}
   }else{pl[2]._wasVisible=false;}
@@ -1773,6 +1783,10 @@ function dMap(){
     bx(epX,epY+14,epW,2,'#ff6040');
     txShadow('ESCAPE TO TOWN!',epX+epW/2-54,epY+11,8,'#fff8e0','rgba(0,0,0,.6)');
     g.globalAlpha=1;
+    // v503: panic embers from the danger banner every 20 frames (world coords: +camX/camY)
+    if(fr%20===0){for(let _ei=0;_ei<3;_ei++){
+      particles.push({x:epX+Math.random()*epW+camX,y:epY+camY,vx:(Math.random()-.5)*1.5,vy:-0.5-Math.random()*1.2,life:18+Math.random()*10,c:Math.random()>.5?'rgba(255,80,40,1)':'rgba(255,200,60,1)'});
+    }}
   }
 
   // Streak display
@@ -1781,12 +1795,31 @@ function dMap(){
     const popScale=streakDisplayTimer>0?1+Math.sin(streakDisplayTimer*0.3)*0.15:1;
     const sz=Math.floor(7*popScale);
     txShadow(_STREAK_LBL[streakCount]||('STREAK:'+streakCount+'x'),310,hudY+44,sz,streakCol,'rgba(0,0,0,.5)'); // v314
+    // v502: milestone particle burst when streak hits 3x (orange) / 5x (gold) / 10x (rainbow)
+    if(streakDisplayTimer===59&&(streakCount===3||streakCount===5||streakCount===10)){
+      const _sx=310,_sy=hudY+44;
+      const _isGold=streakCount>=10,_isOrange=streakCount>=5&&streakCount<10;
+      const _mc=streakCount>=10?30:streakCount>=5?20:14;
+      screenShake(streakCount>=5?3:2,streakCount>=5?6:4);
+      for(let _mi=0;_mi<_mc;_mi++){const _ma=(_mi/_mc)*Math.PI*2+Math.random()*0.3;const _ms=1.5+Math.random()*(streakCount>=5?4:2.5);
+        const _mcol=_isGold?(_mi%3===0?'rgba(255,220,60,1)':_mi%3===1?'rgba(255,80,120,1)':'rgba(80,200,255,1)'):
+          _isOrange?(_mi%2===0?'rgba(255,180,40,1)':'rgba(240,120,40,1)'):
+          (_mi%2===0?'rgba(220,140,60,1)':'rgba(200,200,200,1)');
+        particles.push({x:_sx+(Math.random()*40-20),y:_sy+(Math.random()*16-8),vx:Math.cos(_ma)*_ms,vy:Math.sin(_ma)*_ms-2.5,life:20+Math.random()*18,c:_mcol});
+      }
+    }
   }
   if(streakLostTimer>0){
     const la=streakLostTimer/60;
     g.globalAlpha=la;
     txShadow('STREAK LOST!',310,hudY+44,7,'#d04040','rgba(0,0,0,.5)');
     g.globalAlpha=1;
+    // v502: red scatter burst when streak is broken
+    if(streakLostTimer===59){screenShake(2,4);
+      for(let _sli=0;_sli<12;_sli++){const _sla=(_sli/12)*Math.PI*2+Math.random()*0.4;const _sls=1+Math.random()*2;
+        particles.push({x:310+(Math.random()*30-15),y:hudY+44+(Math.random()*12-6),vx:Math.cos(_sla)*_sls,vy:Math.sin(_sla)*_sls-1.5,life:14+Math.random()*10,c:Math.random()>.5?'rgba(210,50,50,1)':'rgba(160,40,40,1)'});
+      }
+    }
   }
 
   // ── v463: Trap hit danger banner — center-screen red pill, slide-in + fade-out ──
@@ -2002,7 +2035,7 @@ function dMap(){
     txShadow(_vaultHudLbl,848,hudY+56,7,_vcol,'rgba(0,0,0,.5)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v496',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow('v506',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
