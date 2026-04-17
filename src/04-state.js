@@ -200,7 +200,8 @@ let cardGetAnimTimer=0,cardGetAnimX=0,cardGetAnimY=0;
 let cardLostAnimTimer=0,cardLostAnimX=0,cardLostAnimY=0;
 const statusSparkles=[];
 function triggerCardGetAnim(px,py){cardGetAnimTimer=40;cardGetAnimX=px;cardGetAnimY=py;}
-function triggerCardLostAnim(px,py){cardLostAnimTimer=40;cardLostAnimX=px;cardLostAnimY=py;for(let i=0;i<8;i++){particles.push({x:px+16,y:py+12,vx:(Math.random()-.5)*3,vy:-Math.random()*2-0.5,life:15+Math.random()*10,c:Math.random()>.3?'#d04040':'#ff6060'});}}
+function triggerCardLostAnim(px,py){cardLostAnimTimer=40;cardLostAnimX=px;cardLostAnimY=py;// v506 fix: particles need world coords; px/py are screen coords, add camX/camY
+for(let i=0;i<8;i++){particles.push({x:px+16+camX,y:py+12+camY,vx:(Math.random()-.5)*3,vy:-Math.random()*2-0.5,life:15+Math.random()*10,c:Math.random()>.3?'#d04040':'#ff6060'});}}
 function triggerCardGetBurst(px,py,col){const cnt=12;for(let i=0;i<cnt;i++){const ang=(i/cnt)*Math.PI*2+Math.random()*0.4;const spd=1.8+Math.random()*2.8;particles.push({x:px,y:py,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-2,life:18+Math.random()*14,c:Math.random()>.35?col||'#f0c030':'#ffffff'});}}
 function drawPlayerStatusEffects(){
   const p=pl[0];

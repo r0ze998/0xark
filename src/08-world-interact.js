@@ -68,8 +68,8 @@ function updateFishing(){
       fishingTimer=60;
       sfxFishMiss();
       twSet('The catch got away!');
-      // v465: escape splash — small ripple burst at bobber position
-      {const p=pl[0];let bx_=p.visualX-camX,by_=p.visualY-camY;
+      // v465: escape splash — small ripple burst at bobber position (v506 fix: world coords)
+      {const p=pl[0];let bx_=p.visualX,by_=p.visualY;
       if(p.dir===0){by_+=20;}else if(p.dir===2){by_-=20;}else if(p.dir===1){bx_-=20;}else{bx_+=20;}
       for(let _si=0;_si<5;_si++){
         const _sa=(_si/5)*Math.PI*2;
@@ -95,8 +95,8 @@ function fishingCatchCard(){
   fishingPhase='catch';
   fishingTimer=90;
   sfxFishCatch();
-  // v465: catch splash — bigger burst in water + upward spray
-  {const p=pl[0];let bx_=p.visualX-camX,by_=p.visualY-camY;
+  // v465: catch splash — bigger burst in water + upward spray (v506 fix: world coords)
+  {const p=pl[0];let bx_=p.visualX,by_=p.visualY;
   if(p.dir===0){by_+=20;}else if(p.dir===2){by_-=20;}else if(p.dir===1){bx_-=20;}else{bx_+=20;}
   for(let _si=0;_si<10;_si++){
     const _sa=(_si/10)*Math.PI*2;
@@ -952,9 +952,9 @@ function checkObjectInteraction(){
     }
     campfireUsed=true;
     sfxConfirm();
-    // v468: warm orange ember particles + timestamp for RESTED banner
+    // v468: warm orange ember particles + timestamp for RESTED banner (v506 fix: world coords)
     _campfireRestFrame=fr;
-    {const _fx=pl[0].visualX-camX+8,_fy=pl[0].visualY-camY+4;
+    {const _fx=pl[0].visualX+8,_fy=pl[0].visualY+4;
     for(let _fi=0;_fi<12;_fi++){
       const _fa=Math.random()*Math.PI*2;const _fs=0.6+Math.random()*1.8;
       particles.push({x:_fx+Math.random()*6-3,y:_fy,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-2.2,life:20+Math.random()*20,c:Math.random()>.5?'rgba(255,140,30,1)':'rgba(255,220,80,1)'});
@@ -1003,10 +1003,10 @@ function checkObjectInteraction(){
       crystalRevealTimer=3600;
       objectInteractMsg='The crystal glows! Rivals revealed!';
       lg.push('Crystal: Rivals revealed for 60s!');
-      // v467: blue/cyan particle burst from player position
+      // v467: blue/cyan particle burst from player position (v506 fix: world coords)
       _crystalUseFrame=fr;
       screenShake(3,8);
-      {const _cx=pl[0].visualX-camX+8,_cy=pl[0].visualY-camY+8;
+      {const _cx=pl[0].visualX+8,_cy=pl[0].visualY+8;
       for(let _ci=0;_ci<16;_ci++){
         const _ca=(_ci/16)*Math.PI*2;const _cs=1.5+Math.random()*2.5;
         particles.push({x:_cx,y:_cy,vx:Math.cos(_ca)*_cs,vy:Math.sin(_ca)*_cs-1,life:25+Math.random()*15,c:Math.random()>.5?'rgba(60,180,255,1)':'rgba(160,230,255,1)'});
@@ -1035,9 +1035,9 @@ function checkObjectInteraction(){
       if(sp.s<3){sp.s++;objectInteractMsg='The altar hums. +1 Steal charge!';lg.push('Altar: +1 Steal!');}
       else if(sp.b<3){sp.b++;objectInteractMsg='The altar hums. +1 Barrier charge!';lg.push('Altar: +1 Barrier!');}
       else{sp.c=Math.min(3,sp.c+1);objectInteractMsg='The altar hums. +1 Scout charge!';lg.push('Altar: +1 Scout!');}
-      // v467: golden prayer-answered burst
+      // v467: golden prayer-answered burst (v506 fix: world coords)
       _altarUseFrame=fr;
-      {const _ax=pl[0].visualX-camX+8,_ay=pl[0].visualY-camY+8;
+      {const _ax=pl[0].visualX+8,_ay=pl[0].visualY+8;
       for(let _ai=0;_ai<14;_ai++){
         const _aa=(_ai/14)*Math.PI*2;const _as=1.2+Math.random()*2.2;
         particles.push({x:_ax,y:_ay,vx:Math.cos(_aa)*_as,vy:Math.sin(_aa)*_as-2,life:28+Math.random()*18,c:Math.random()>.5?'rgba(255,200,60,1)':'rgba(255,240,160,1)'});
@@ -1050,9 +1050,9 @@ function checkObjectInteraction(){
         cardTimers[nearestSlot]+=90000; // +1.5 min extra
         objectInteractMsg='The altar preserved '+CD[pl[0].cd[nearestSlot]-1].n+'! +1.5min';
         lg.push('Altar: Extended '+CD[pl[0].cd[nearestSlot]-1].n+' by 1.5min!');
-        // v467: softer golden shimmer for card preservation
+        // v467: softer golden shimmer for card preservation (v506 fix: world coords)
         _altarUseFrame=fr;
-        {const _ax=pl[0].visualX-camX+8,_ay=pl[0].visualY-camY+8;
+        {const _ax=pl[0].visualX+8,_ay=pl[0].visualY+8;
         for(let _ai=0;_ai<8;_ai++){
           const _aa=(_ai/8)*Math.PI*2;const _as=0.8+Math.random()*1.4;
           particles.push({x:_ax,y:_ay,vx:Math.cos(_aa)*_as,vy:Math.sin(_aa)*_as-1.5,life:22+Math.random()*14,c:Math.random()>.5?'rgba(220,170,40,1)':'rgba(255,230,120,1)'});
@@ -1099,8 +1099,8 @@ function doFountainExchange(){
   fountainResultTimer=120;
   lg.push('Fountain: Traded '+CD[oldCard-1].n+' for '+CD[newCard-1].n+'!');
   sfxShopTrade();
-  // v478: magical water burst at player when fountain grants a card
-  {const _fpx=pl[0].visualX-camX+8,_fpy=pl[0].visualY-camY+8;
+  // v478: magical water burst at player when fountain grants a card (v506 fix: world coords)
+  {const _fpx=pl[0].visualX+8,_fpy=pl[0].visualY+8;
   screenShake(2,6);
   const _nr=CD[newCard-1]?CD[newCard-1].r:1;
   const _fc1=_nr>=4?'rgba(255,200,60,1)':_nr===3?'rgba(180,80,220,1)':'rgba(80,180,255,1)';
