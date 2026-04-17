@@ -1,0 +1,56 @@
+{
+  "name": "0xARK #051 — POTION",
+  "symbol": "0xARK",
+  "description": "Old recipe, still works · Restore HP · Uncommon Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "image": "https://r0ze998.github.io/0xark/nft/img/51.svg",
+  "external_url": "https://r0ze998.github.io/0xark",
+  "attributes": [
+    {
+      "trait_type": "Card ID",
+      "value": 51
+    },
+    {
+      "trait_type": "Name",
+      "value": "POTION"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Recovery"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Uncommon"
+    },
+    {
+      "trait_type": "Rarity Level",
+      "value": 2
+    },
+    {
+      "trait_type": "Effect",
+      "value": "Restore HP"
+    },
+    {
+      "trait_type": "Lore",
+      "value": "Old recipe, still works"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://r0ze998.github.io/0xark/nft/img/51.svg",
+        "type": "image/svg+xml"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R",
+        "share": 100
+      }
+    ]
+  },
+  "collection": {
+    "name": "0xARK Cards",
+    "family": "0xARK"
+  }
+}

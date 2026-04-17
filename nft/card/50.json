@@ -1,0 +1,56 @@
+{
+  "name": "0xARK #050 — REST",
+  "symbol": "0xARK",
+  "description": "The body knows what it needs · Restore SP · Common Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "image": "https://r0ze998.github.io/0xark/nft/img/50.svg",
+  "external_url": "https://r0ze998.github.io/0xark",
+  "attributes": [
+    {
+      "trait_type": "Card ID",
+      "value": 50
+    },
+    {
+      "trait_type": "Name",
+      "value": "REST"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Recovery"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Rarity Level",
+      "value": 1
+    },
+    {
+      "trait_type": "Effect",
+      "value": "Restore SP"
+    },
+    {
+      "trait_type": "Lore",
+      "value": "The body knows what it needs"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://r0ze998.github.io/0xark/nft/img/50.svg",
+        "type": "image/svg+xml"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R",
+        "share": 100
+      }
+    ]
+  },
+  "collection": {
+    "name": "0xARK Cards",
+    "family": "0xARK"
+  }
+}

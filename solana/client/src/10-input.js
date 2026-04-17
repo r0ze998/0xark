@@ -1106,7 +1106,7 @@ document.addEventListener('keydown',e=>{
           victoryMintProgress=idx;
           let sig;
           if(walletConnected&&window.oxarkOnchain){
-            try{sig=await window.oxarkOnchain.mintSoloCard(cardId);}catch(_){}
+            try{sig=await window.oxarkOnchain.mintCardWithMetadata(cardId);}catch(_){}
           }
           if(!sig){sig='sim:'+generateFakeTxSig();}
           lg.push('[NFT] '+cr.n+' ('+RARITY_LABEL[cr.r]+') TX:'+sig.slice(0,12)+'..');

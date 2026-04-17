@@ -769,15 +769,30 @@ async function readSeason(seasonId) {
   }
 }
 
-// ─── Instruction: mint_solo_card ─────────────────────────────────────────────
-// Seeds: ["solo_card", player_pubkey, &[card_id]]
-// Mints a 1-of-1 SPL Token (supply=1, decimals=0) as proof of collection.
-// No game completion required — any wallet can mint any card (1-60) exactly once.
-// Requires the upgraded program (v425+). Falls back gracefully if unavailable.
-const SOLO_CARD_SEED = ENC.encode('solo_card');
-const SPL_TOKEN_PROGRAM_ID    = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+// ─── NFT Minting (mint_solo_card + Metaplex Token Metadata) ─────────────────
+// Each card (1-60) is a real Solana NFT:
+//   • SPL Token mint with decimals=0, supply=1
+//   • Metaplex Token Metadata with name / symbol / off-chain JSON uri
+//   • Mint authority burned atomically → provably 1-of-1
+// Three instructions are bundled into one atomic transaction:
+//   1. mint_solo_card (Anchor) — creates PDA mint + ATA, mints 1 token
+//   2. create_metadata_accounts_v3 (Metaplex) — attaches name/symbol/uri on-chain
+//   3. set_authority (SPL Token) — burns mint authority → permanently 1-of-1
+
+const SOLO_CARD_SEED              = ENC.encode('solo_card');
+const SPL_TOKEN_PROGRAM_ID        = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 const ASSOCIATED_TOKEN_PROGRAM_ID = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bx';
-const SYSVAR_RENT_PUBKEY      = 'SysvarRent111111111111111111111111111111111';
+const SYSVAR_RENT_PUBKEY          = 'SysvarRent111111111111111111111111111111111';
+const TOKEN_METADATA_PROGRAM_ID   = 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s';
+
+// Display names for cards 1-60 (index 0 = card_id 1)
+const NFT_CARD_NAMES = [
+  'AEGIS','UMBRA','IGNIS','STRIKE','SLASH','IMPALE','CRUSH','FLURRY','BERSERK','VENOM','REAPER','VOIDBLADE',
+  'GUARD','PARRY','IRON WALL','COUNTER','AEGIS WARD','MIRROR','FORTRESS','CRYSTAL','NULLIFY','ABS GUARD','SANCTUARY','TITAN',
+  'DASH','RETREAT','SMOKE','PHASE','BLINK','SHADOW','WINDASH','PHANTOM','VOIDSTEP','TIMESKIP','ARK GATE','GENESIS',
+  'TEMPEST','NIHIL','SPARK','FROST','BLAZE','STATIC','INFERNO','BLIZZARD','THUNDER','MAELSTROM','GRAVITY','SINGULARITY',
+  'MEND','REST','POTION','BANDAGE','REJUVEN','WARD','LIFEDRAIN','PHOENIX','ELIXIR','HOLY LIGHT','GEN PULSE','ARK BLESS',
+];
 
 function findSoloCardMintPDA(playerPubkey, cardId) {
   return solanaWeb3.PublicKey.findProgramAddressSync(
@@ -797,26 +812,137 @@ function findAssociatedTokenAddress(ownerPubkey, mintPubkey) {
   );
 }
 
-async function mintSoloCard(cardId) {
-  const player = window.solana.publicKey;
-  const [mintPDA] = findSoloCardMintPDA(player, cardId);
-  const [playerATA] = findAssociatedTokenAddress(player, mintPDA);
+// PDA: ["metadata", TOKEN_METADATA_PROGRAM_ID, mint]
+function findMetadataPDA(mintPubkey) {
+  const metaProgram = new solanaWeb3.PublicKey(TOKEN_METADATA_PROGRAM_ID);
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('metadata'), metaProgram.toBytes(), mintPubkey.toBytes()],
+    metaProgram
+  );
+}
 
-  // disc(8) + card_id(1) = 9 bytes
-  const d = await disc('mint_solo_card');
-  const data = new Uint8Array(9);
-  writeBytes(data, 0, d);
-  data[8] = cardId & 0xff;
+// Borsh-encode CreateMetadataAccountsV3 instruction data (discriminant = 33)
+function encodeCreateMetadataV3(name, symbol, uri, sellerFeeBasisPoints) {
+  const nameB   = ENC.encode(name);
+  const symbolB = ENC.encode(symbol);
+  const uriB    = ENC.encode(uri);
+  // 1(disc) + 4+N + 4+M + 4+L + 2(fee) + 1(creators:None) + 1(coll:None) + 1(uses:None) + 1(is_mutable) + 1(coll_details:None)
+  const buf = new Uint8Array(1 + 4 + nameB.length + 4 + symbolB.length + 4 + uriB.length + 2 + 5);
+  let o = 0;
+  buf[o++] = 33;                        // CreateMetadataAccountsV3 discriminant
+  o = writeU32LE(buf, o, nameB.length); buf.set(nameB, o); o += nameB.length;
+  o = writeU32LE(buf, o, symbolB.length); buf.set(symbolB, o); o += symbolB.length;
+  o = writeU32LE(buf, o, uriB.length); buf.set(uriB, o); o += uriB.length;
+  buf[o++] = sellerFeeBasisPoints & 0xff;
+  buf[o++] = (sellerFeeBasisPoints >> 8) & 0xff;
+  buf[o++] = 0; // creators: None
+  buf[o++] = 0; // collection: None
+  buf[o++] = 0; // uses: None
+  buf[o++] = 1; // is_mutable: true
+  buf[o++] = 0; // collection_details: None
+  return buf;
+}
 
-  return buildAndSend([
-    { pubkey: mintPDA,                                                    isSigner: false, isWritable: true  },
-    { pubkey: playerATA,                                                  isSigner: false, isWritable: true  },
-    { pubkey: player,                                                     isSigner: true,  isWritable: true  },
-    { pubkey: new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),             isSigner: false, isWritable: false },
-    { pubkey: new solanaWeb3.PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID),      isSigner: false, isWritable: false },
-    { pubkey: solanaWeb3.SystemProgram.programId,                         isSigner: false, isWritable: false },
-    { pubkey: new solanaWeb3.PublicKey(SYSVAR_RENT_PUBKEY),               isSigner: false, isWritable: false },
-  ], data, COMPUTE_BUDGET.mint_card_nft);
+/**
+ * Mint a card as a proper Solana NFT with on-chain Metaplex metadata.
+ * Sends ONE atomic transaction with three instructions:
+ *   1. mint_solo_card (Anchor) — init PDA mint (authority=player), create ATA, mint 1 token
+ *   2. create_metadata_accounts_v3 (Metaplex) — attach name/symbol/uri to mint
+ *   3. set_authority (SPL Token) — burn mint authority → provably 1-of-1
+ */
+async function mintCardWithMetadata(cardId) {
+  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
+  const player        = window.solana.publicKey;
+  const splToken      = new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID);
+  const assocToken    = new solanaWeb3.PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID);
+  const metaProgram   = new solanaWeb3.PublicKey(TOKEN_METADATA_PROGRAM_ID);
+  const sysProgram    = solanaWeb3.SystemProgram.programId;
+  const rent          = new solanaWeb3.PublicKey(SYSVAR_RENT_PUBKEY);
+
+  const [mintPDA]     = findSoloCardMintPDA(player, cardId);
+  const [playerATA]   = findAssociatedTokenAddress(player, mintPDA);
+  const [metadataPDA] = findMetadataPDA(mintPDA);
+
+  const cardName = `0xARK #${String(cardId).padStart(3, '0')} \u2014 ${NFT_CARD_NAMES[cardId - 1] || ''}`;
+  const metaUri  = `https://r0ze998.github.io/0xark/nft/card/${cardId}.json`;
+
+  // ── Ix 1: mint_solo_card (Anchor) ────────────────────────────────────────
+  const anchorDisc = await disc('mint_solo_card');
+  const anchorData = new Uint8Array(9);
+  writeBytes(anchorData, 0, anchorDisc);
+  anchorData[8] = cardId & 0xff;
+
+  const mintIx = new solanaWeb3.TransactionInstruction({
+    programId: getProgramId(),
+    keys: [
+      { pubkey: mintPDA,    isSigner: false, isWritable: true  },
+      { pubkey: playerATA,  isSigner: false, isWritable: true  },
+      { pubkey: player,     isSigner: true,  isWritable: true  },
+      { pubkey: splToken,   isSigner: false, isWritable: false },
+      { pubkey: assocToken, isSigner: false, isWritable: false },
+      { pubkey: sysProgram, isSigner: false, isWritable: false },
+      { pubkey: rent,       isSigner: false, isWritable: false },
+    ],
+    data: anchorData,
+  });
+
+  // ── Ix 2: create_metadata_accounts_v3 (Metaplex) ────────────────────────
+  const metaIx = new solanaWeb3.TransactionInstruction({
+    programId: metaProgram,
+    keys: [
+      { pubkey: metadataPDA, isSigner: false, isWritable: true  }, // metadata PDA (created)
+      { pubkey: mintPDA,     isSigner: false, isWritable: false }, // mint
+      { pubkey: player,      isSigner: true,  isWritable: false }, // mint authority
+      { pubkey: player,      isSigner: true,  isWritable: true  }, // payer
+      { pubkey: player,      isSigner: false, isWritable: false }, // update authority
+      { pubkey: sysProgram,  isSigner: false, isWritable: false },
+      { pubkey: rent,        isSigner: false, isWritable: false }, // optional but safe to include
+    ],
+    data: encodeCreateMetadataV3(cardName, '0xARK', metaUri, 500 /* 5% royalty */),
+  });
+
+  // ── Ix 3: set_authority → None (burn mint authority) ─────────────────────
+  // SPL Token SetAuthority layout: [6, authority_type(1byte), COption(1+32bytes)]
+  const burnData = new Uint8Array(35);
+  burnData[0] = 6; // SetAuthority instruction
+  burnData[1] = 0; // MintTokens authority type
+  burnData[2] = 0; // COption::None (no new authority → burned permanently)
+
+  const burnIx = new solanaWeb3.TransactionInstruction({
+    programId: splToken,
+    keys: [
+      { pubkey: mintPDA, isSigner: false, isWritable: true  }, // mint
+      { pubkey: player,  isSigner: true,  isWritable: false }, // current authority
+    ],
+    data: burnData,
+  });
+
+  // ── Build single atomic transaction ──────────────────────────────────────
+  const conn = getConnection();
+  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
+  const [limitIx, priceIx] = computeBudgetIxs(200_000); // mint + metaplex + burn
+
+  const tx = new solanaWeb3.Transaction();
+  tx.add(limitIx, priceIx, mintIx, metaIx, burnIx);
+  tx.feePayer       = player;
+  tx.recentBlockhash = blockhash;
+
+  const sim = await conn.simulateTransaction(tx);
+  if (sim.value.err) {
+    const logs = sim.value.logs ?? [];
+    const logErr = logs.find(l => l.includes('Error Number:') || l.includes('Error Code:'));
+    if (logErr) {
+      const m = logErr.match(/Error Number: (\d+)/);
+      const code = m ? parseInt(m[1], 10) : null;
+      throw new Error(code ? (ANCHOR_ERRORS[code] ?? `Program error ${code}`) : logErr);
+    }
+    throw new Error(JSON.stringify(sim.value.err));
+  }
+
+  const signed = await window.solana.signTransaction(tx);
+  const sig = await conn.sendRawTransaction(signed.serialize(), { skipPreflight: true, maxRetries: 5 });
+  await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
+  return sig;
 }
 
 // ─── Session Keys (stub — Q2 2026) ───────────────────────────────────────────
@@ -915,8 +1041,8 @@ window.oxarkOnchain = {
   // Season instructions
   createSeason,
   endSeason,
-  // NFT minting
-  mintSoloCard,
+  // NFT minting (mint + Metaplex metadata + burn authority — one atomic tx)
+  mintCardWithMetadata,
   // ZK proof generation (browser-side, requires snarkjs)
   generateZkProof,
   // Helpers

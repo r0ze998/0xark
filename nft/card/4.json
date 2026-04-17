@@ -1,0 +1,56 @@
+{
+  "name": "0xARK #004 — STRIKE",
+  "symbol": "0xARK",
+  "description": "The simplest blow still cuts · Deal 1 dmg · Common Attack card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "image": "https://r0ze998.github.io/0xark/nft/img/4.svg",
+  "external_url": "https://r0ze998.github.io/0xark",
+  "attributes": [
+    {
+      "trait_type": "Card ID",
+      "value": 4
+    },
+    {
+      "trait_type": "Name",
+      "value": "STRIKE"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Attack"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Common"
+    },
+    {
+      "trait_type": "Rarity Level",
+      "value": 1
+    },
+    {
+      "trait_type": "Effect",
+      "value": "Deal 1 dmg"
+    },
+    {
+      "trait_type": "Lore",
+      "value": "The simplest blow still cuts"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://r0ze998.github.io/0xark/nft/img/4.svg",
+        "type": "image/svg+xml"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R",
+        "share": 100
+      }
+    ]
+  },
+  "collection": {
+    "name": "0xARK Cards",
+    "family": "0xARK"
+  }
+}

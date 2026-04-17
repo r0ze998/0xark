@@ -1,0 +1,56 @@
+{
+  "name": "0xARK #003 — IGNIS",
+  "symbol": "0xARK",
+  "description": "Fire that never drowns · Burn card · Rare Attack card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "image": "https://r0ze998.github.io/0xark/nft/img/3.svg",
+  "external_url": "https://r0ze998.github.io/0xark",
+  "attributes": [
+    {
+      "trait_type": "Card ID",
+      "value": 3
+    },
+    {
+      "trait_type": "Name",
+      "value": "IGNIS"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Attack"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Rare"
+    },
+    {
+      "trait_type": "Rarity Level",
+      "value": 3
+    },
+    {
+      "trait_type": "Effect",
+      "value": "Burn card"
+    },
+    {
+      "trait_type": "Lore",
+      "value": "Fire that never drowns"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://r0ze998.github.io/0xark/nft/img/3.svg",
+        "type": "image/svg+xml"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R",
+        "share": 100
+      }
+    ]
+  },
+  "collection": {
+    "name": "0xARK Cards",
+    "family": "0xARK"
+  }
+}

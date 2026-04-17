@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{self, Mint, MintTo, SetAuthority, Token, TokenAccount},
+    token::{self, Mint, MintTo, Token, TokenAccount},
 };
 
 pub const SOLO_CARD_SEED: &[u8] = b"solo_card";
@@ -9,6 +9,12 @@ pub const SOLO_CARD_SEED: &[u8] = b"solo_card";
 /// Mint a card NFT as solo proof-of-collection (no game completion required).
 /// Any wallet can mint any card_id (1-60) exactly once.
 /// Seeds: ["solo_card", player_pubkey, &[card_id]]
+///
+/// Mint authority is set to the player so that the client can atomically:
+///   1. Call this instruction (create mint + ATA + mint 1 token)
+///   2. Create Metaplex Token Metadata via CPI in the same transaction
+///   3. Burn the mint authority (SPL Token set_authority → None)
+/// All three steps are sent as a single atomic transaction from onchain.js.
 #[derive(Accounts)]
 #[instruction(card_id: u8)]
 pub struct MintSoloCard<'info> {
@@ -16,7 +22,7 @@ pub struct MintSoloCard<'info> {
         init,
         payer = player,
         mint::decimals = 0,
-        mint::authority = card_mint,
+        mint::authority = player,   // player holds authority so client can add Metaplex CPI
         seeds = [SOLO_CARD_SEED, player.key().as_ref(), &[card_id]],
         bump,
     )]
@@ -42,44 +48,21 @@ pub struct MintSoloCard<'info> {
 pub fn handle_mint_solo_card(ctx: Context<MintSoloCard>, card_id: u8) -> Result<()> {
     require!(card_id >= 1 && card_id <= 60, crate::error::ErrorCode::InvalidAction);
 
-    let card_id_bytes = [card_id];
-    let player_key = ctx.accounts.player.key();
-    let player_bytes = player_key.as_ref();
-    let bump = ctx.bumps.card_mint;
-    let signer_seeds: &[&[&[u8]]] = &[&[
-        SOLO_CARD_SEED,
-        player_bytes,
-        &card_id_bytes,
-        &[bump],
-    ]];
-
-    // Mint exactly 1 token
+    // player is the mint authority — no PDA signer seeds needed
     token::mint_to(
-        CpiContext::new_with_signer(
+        CpiContext::new(
             ctx.accounts.token_program.key(),
             MintTo {
                 mint: ctx.accounts.card_mint.to_account_info(),
                 to: ctx.accounts.player_token_account.to_account_info(),
-                authority: ctx.accounts.card_mint.to_account_info(),
+                authority: ctx.accounts.player.to_account_info(),
             },
-            signer_seeds,
         ),
         1,
     )?;
 
-    // Burn mint authority — makes this provably a 1-of-1 NFT
-    token::set_authority(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.key(),
-            SetAuthority {
-                current_authority: ctx.accounts.card_mint.to_account_info(),
-                account_or_mint: ctx.accounts.card_mint.to_account_info(),
-            },
-            signer_seeds,
-        ),
-        anchor_spl::token::spl_token::instruction::AuthorityType::MintTokens,
-        None,
-    )?;
+    // Authority burn + Metaplex metadata creation are handled client-side
+    // in the same atomic transaction (see mintCardWithMetadata in onchain.js).
 
     emit!(SoloCardMinted {
         player: ctx.accounts.player.key(),
@@ -87,7 +70,7 @@ pub fn handle_mint_solo_card(ctx: Context<MintSoloCard>, card_id: u8) -> Result<
         mint: ctx.accounts.card_mint.key(),
     });
 
-    msg!("0xARK solo card minted: card={} mint={} owner={}", card_id, ctx.accounts.card_mint.key(), ctx.accounts.player.key());
+    msg!("0xARK card minted: id={} mint={} owner={}", card_id, ctx.accounts.card_mint.key(), ctx.accounts.player.key());
     Ok(())
 }
 

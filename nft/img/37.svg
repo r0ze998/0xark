@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="560" viewBox="0 0 400 560">
+  <defs>
+    <linearGradient id="bgGrad37" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgb(26,21,5)"/>
+      <stop offset="100%" stop-color="#080810"/>
+    </linearGradient>
+    <linearGradient id="artBgGrad37" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#100818"/>
+      <stop offset="100%" stop-color="#180e28"/>
+    </linearGradient>
+    <linearGradient id="bottomGrad37" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgb(26,21,5)"/>
+      <stop offset="100%" stop-color="#08080f"/>
+    </linearGradient>
+    <linearGradient id="nameBarGrad37" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d8b028" stop-opacity="0.15"/>
+      <stop offset="50%" stop-color="#d8b028" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#d8b028" stop-opacity="0.15"/>
+    </linearGradient>
+    <clipPath id="cardClip37">
+      <rect x="16" y="16" width="368" height="528" rx="14"/>
+    </clipPath>
+    
+    <linearGradient id="rainbowGrad37" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ff0080"/>
+      <stop offset="20%"  stop-color="#ff8800"/>
+      <stop offset="40%"  stop-color="#ffee00"/>
+      <stop offset="60%"  stop-color="#00ff88"/>
+      <stop offset="80%"  stop-color="#0088ff"/>
+      <stop offset="100%" stop-color="#ff00ff"/>
+      <animateTransform attributeName="gradientTransform" type="rotate"
+        values="0 200 280; 360 200 280" dur="3s" repeatCount="indefinite"/>
+    </linearGradient>
+    
+    
+  <filter id="legendShine37">
+    <feGaussianBlur stdDeviation="6" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <linearGradient id="legendaryBodyGrad37" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="rgb(26,21,5)"/>
+    <stop offset="100%" stop-color="#0a0a18"/>
+    <animateTransform attributeName="gradientTransform" type="rotate" values="0 200 280;360 200 280" dur="6s" repeatCount="indefinite"/>
+  </linearGradient>
+  </defs>
+
+  <!-- Card body -->
+  <rect x="16" y="16" width="368" height="528" rx="14" fill="url(#legendaryBodyGrad37)"/>
+
+  <!-- Art area background -->
+  <rect x="20" y="60" width="360" height="280" fill="url(#artBgGrad37)" clip-path="url(#cardClip37)"/>
+
+  <!-- Subtle grid lines in art area -->
+  <g opacity="0.07" clip-path="url(#cardClip37)">
+    <line x1="20" y1="100" x2="380" y2="100" stroke="#d8b028" stroke-width="0.5"/>
+    <line x1="20" y1="160" x2="380" y2="160" stroke="#d8b028" stroke-width="0.5"/>
+    <line x1="20" y1="220" x2="380" y2="220" stroke="#d8b028" stroke-width="0.5"/>
+    <line x1="20" y1="280" x2="380" y2="280" stroke="#d8b028" stroke-width="0.5"/>
+    <line x1="100" y1="60" x2="100" y2="340" stroke="#d8b028" stroke-width="0.5"/>
+    <line x1="200" y1="60" x2="200" y2="340" stroke="#d8b028" stroke-width="0.5"/>
+    <line x1="300" y1="60" x2="300" y2="340" stroke="#d8b028" stroke-width="0.5"/>
+  </g>
+
+  <!-- Ambient glow blob behind art -->
+  <ellipse cx="200" cy="200" rx="100" ry="90" fill="#d8b028" opacity="0.06" clip-path="url(#cardClip37)"/>
+
+  <!-- Card art -->
+  <g clip-path="url(#cardClip37)">
+    <g opacity="0.95">
+      <ellipse cx="200" cy="165" rx="20" ry="22" fill="rgb(65,53,12)" stroke="#d8b028" stroke-width="2"/>
+      <rect x="190" y="187" width="18" height="52" rx="3" fill="rgb(65,53,12)" stroke="#d8b028" stroke-width="1.5"/>
+      <line x1="198" y1="200" x2="155" y2="158" stroke="rgb(65,53,12)" stroke-width="7" stroke-linecap="round"/>
+      <line x1="202" y1="200" x2="245" y2="158" stroke="rgb(65,53,12)" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="148" cy="152" r="16" fill="#d8b028" opacity="0.8"/>
+      <circle cx="252" cy="152" r="16" fill="#d8b028" opacity="0.8"/>
+      <path d="M148,152 Q170,175 160,200 Q145,210 135,195 Q140,175 148,152Z" fill="rgb(255,255,72)" opacity="0.5"/>
+      <path d="M252,152 Q230,175 240,200 Q255,210 265,195 Q260,175 252,152Z" fill="rgb(255,255,72)" opacity="0.5"/>
+      <path d="M145,120 Q160,130 158,140" stroke="rgb(255,255,72)" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <path d="M255,120 Q240,130 242,140" stroke="rgb(255,255,72)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- Art area top fade -->
+  <rect x="20" y="60" width="360" height="30" fill="url(#legendaryBodyGrad37)" opacity="0.5" clip-path="url(#cardClip37)"/>
+
+  <!-- Art-to-info divider -->
+  <rect x="20" y="337" width="360" height="2" fill="#d8b028" opacity="0.4"/>
+
+  <!-- Bottom info section -->
+  <rect x="20" y="339" width="360" height="205" fill="url(#bottomGrad37)" clip-path="url(#cardClip37)"/>
+
+  <!-- Top bar -->
+  <rect x="20" y="20" width="360" height="42" fill="url(#legendaryBodyGrad37)" opacity="0.9" clip-path="url(#cardClip37)"/>
+  <line x1="20" y1="62" x2="380" y2="62" stroke="#d8b028" stroke-width="1" opacity="0.5"/>
+
+  <!-- Card number top-left -->
+  <text x="34" y="46" font-family="monospace" font-size="13" font-weight="bold"
+        fill="rgb(255,255,64)" opacity="0.75" letter-spacing="1">#037</text>
+
+  <!-- Type icon top-right -->
+  <text x="355" y="47" font-family="serif" font-size="18" text-anchor="middle"
+        fill="#d8b028">★</text>
+
+  <!-- Type label -->
+  <text x="290" y="46" font-family="monospace" font-size="10" text-anchor="end"
+        fill="#d8b028" opacity="0.6" letter-spacing="2">MAGIC</text>
+
+  <!-- Rarity dots -->
+  <circle cx="176" cy="46" r="4" fill="#ff8800" opacity="0.6"/><circle cx="188" cy="46" r="4" fill="#ff8800" opacity="0.6799999999999999"/><circle cx="200" cy="46" r="4" fill="#ff8800" opacity="0.76"/><circle cx="212" cy="46" r="4" fill="#ff8800" opacity="0.84"/><circle cx="224" cy="46" r="4" fill="#ff8800" opacity="0.9199999999999999"/>
+
+  <!-- Name bar -->
+  <rect x="24" y="345" width="352" height="40" rx="4" fill="url(#nameBarGrad37)"/>
+  <line x1="24" y1="345" x2="376" y2="345" stroke="#d8b028" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- Card name -->
+  <text x="200" y="372" font-family="'Arial Black', sans-serif" font-size="22"
+        font-weight="900" text-anchor="middle" fill="rgb(255,255,64)" letter-spacing="3"
+        style="text-transform:uppercase">TEMPEST</text>
+
+  <!-- Divider -->
+  <line x1="36" y1="392" x2="364" y2="392" stroke="#d8b028" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- Effect label -->
+  <text x="36" y="410" font-family="monospace" font-size="9" fill="#d8b028" opacity="0.6"
+        letter-spacing="2">EFFECT</text>
+  <text x="364" y="410" font-family="monospace" font-size="9" fill="#d8b028" opacity="0.6"
+        text-anchor="end" letter-spacing="1">RARITY: LEGENDARY</text>
+
+  <!-- Effect text -->
+  <text x="200" y="430" font-family="'Arial', sans-serif" font-size="15" font-weight="bold"
+        text-anchor="middle" fill="rgb(255,255,64)" letter-spacing="1">No barrier</text>
+
+  <!-- Lore divider -->
+  <line x1="36" y1="445" x2="364" y2="445" stroke="#d8b028" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- Lore text (italic, small) -->
+  <text x="200" y="463" font-family="Georgia, serif" font-size="11"
+          font-style="italic" text-anchor="middle" fill="rgb(255,255,64)" opacity="0.65"
+          letter-spacing="0.5">The storm answers to no flag</text>
+
+  <!-- Bottom logo -->
+  <text x="200" y="536" font-family="monospace" font-size="9" text-anchor="middle"
+        fill="#d8b028" opacity="0.4" letter-spacing="3">0xARK · SOLANA ZK PvP</text>
+
+  <!-- Card border -->
+  <rect x="18" y="18" width="364" height="524" rx="14"
+        fill="none" stroke="url(#rainbowGrad37)" stroke-width="2.5"/>
+
+  <!-- Inner border -->
+  <rect x="22" y="22" width="356" height="516" rx="12"
+        fill="none" stroke="rgb(255,255,64)" stroke-width="0.5" opacity="0.15"/>
+
+  
+  <rect x="18" y="18" width="364" height="524" rx="14"
+    fill="none" stroke="url(#rainbowGrad37)" stroke-width="3"
+    filter="url(#legendShine37)"/>
+  <rect x="22" y="22" width="356" height="516" rx="12"
+    fill="none" stroke="url(#rainbowGrad37)" stroke-width="1.5" opacity="0.5"/>
+  
+</svg>

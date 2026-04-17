@@ -1,0 +1,56 @@
+{
+  "name": "0xARK #024 — TITAN",
+  "symbol": "0xARK",
+  "description": "Born from the deep earth · Shield all · Legendary Defense card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "image": "https://r0ze998.github.io/0xark/nft/img/24.svg",
+  "external_url": "https://r0ze998.github.io/0xark",
+  "attributes": [
+    {
+      "trait_type": "Card ID",
+      "value": 24
+    },
+    {
+      "trait_type": "Name",
+      "value": "TITAN"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Defense"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Legendary"
+    },
+    {
+      "trait_type": "Rarity Level",
+      "value": 5
+    },
+    {
+      "trait_type": "Effect",
+      "value": "Shield all"
+    },
+    {
+      "trait_type": "Lore",
+      "value": "Born from the deep earth"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://r0ze998.github.io/0xark/nft/img/24.svg",
+        "type": "image/svg+xml"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R",
+        "share": 100
+      }
+    ]
+  },
+  "collection": {
+    "name": "0xARK Cards",
+    "family": "0xARK"
+  }
+}

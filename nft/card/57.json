@@ -1,0 +1,56 @@
+{
+  "name": "0xARK #057 — ELIXIR",
+  "symbol": "0xARK",
+  "description": "What alchemists dreamed of · Cure all · Epic Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "image": "https://r0ze998.github.io/0xark/nft/img/57.svg",
+  "external_url": "https://r0ze998.github.io/0xark",
+  "attributes": [
+    {
+      "trait_type": "Card ID",
+      "value": 57
+    },
+    {
+      "trait_type": "Name",
+      "value": "ELIXIR"
+    },
+    {
+      "trait_type": "Type",
+      "value": "Recovery"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Epic"
+    },
+    {
+      "trait_type": "Rarity Level",
+      "value": 4
+    },
+    {
+      "trait_type": "Effect",
+      "value": "Cure all"
+    },
+    {
+      "trait_type": "Lore",
+      "value": "What alchemists dreamed of"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://r0ze998.github.io/0xark/nft/img/57.svg",
+        "type": "image/svg+xml"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R",
+        "share": 100
+      }
+    ]
+  },
+  "collection": {
+    "name": "0xARK Cards",
+    "family": "0xARK"
+  }
+}

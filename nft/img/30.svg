@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="560" viewBox="0 0 400 560">
+  <defs>
+    <linearGradient id="bgGrad30" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="rgb(10,12,15)"/>
+      <stop offset="100%" stop-color="#080810"/>
+    </linearGradient>
+    <linearGradient id="artBgGrad30" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#081408"/>
+      <stop offset="100%" stop-color="#0e1e0e"/>
+    </linearGradient>
+    <linearGradient id="bottomGrad30" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgb(10,12,15)"/>
+      <stop offset="100%" stop-color="#08080f"/>
+    </linearGradient>
+    <linearGradient id="nameBarGrad30" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#506880" stop-opacity="0.15"/>
+      <stop offset="50%" stop-color="#506880" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#506880" stop-opacity="0.15"/>
+    </linearGradient>
+    <clipPath id="cardClip30">
+      <rect x="16" y="16" width="368" height="528" rx="14"/>
+    </clipPath>
+    
+    
+    
+  </defs>
+
+  <!-- Card body -->
+  <rect x="16" y="16" width="368" height="528" rx="14" fill="url(#bgGrad30)"/>
+
+  <!-- Art area background -->
+  <rect x="20" y="60" width="360" height="280" fill="url(#artBgGrad30)" clip-path="url(#cardClip30)"/>
+
+  <!-- Subtle grid lines in art area -->
+  <g opacity="0.07" clip-path="url(#cardClip30)">
+    <line x1="20" y1="100" x2="380" y2="100" stroke="#506880" stroke-width="0.5"/>
+    <line x1="20" y1="160" x2="380" y2="160" stroke="#506880" stroke-width="0.5"/>
+    <line x1="20" y1="220" x2="380" y2="220" stroke="#506880" stroke-width="0.5"/>
+    <line x1="20" y1="280" x2="380" y2="280" stroke="#506880" stroke-width="0.5"/>
+    <line x1="100" y1="60" x2="100" y2="340" stroke="#506880" stroke-width="0.5"/>
+    <line x1="200" y1="60" x2="200" y2="340" stroke="#506880" stroke-width="0.5"/>
+    <line x1="300" y1="60" x2="300" y2="340" stroke="#506880" stroke-width="0.5"/>
+  </g>
+
+  <!-- Ambient glow blob behind art -->
+  <ellipse cx="200" cy="200" rx="100" ry="90" fill="#506880" opacity="0.06" clip-path="url(#cardClip30)"/>
+
+  <!-- Card art -->
+  <g clip-path="url(#cardClip30)">
+    <g opacity="0.9">
+      <ellipse cx="200" cy="215" rx="65" ry="25" fill="#506880" opacity="0.3"/>
+      <ellipse cx="200" cy="168" rx="18" ry="20" fill="rgb(24,31,38)" stroke="#506880" stroke-width="1.5"/>
+      <rect x="190" y="188" width="16" height="50" rx="3" fill="rgb(24,31,38)" stroke="#506880" stroke-width="1.5"/>
+      <line x1="197" y1="238" x2="182" y2="295" stroke="rgb(24,31,38)" stroke-width="6" stroke-linecap="round"/>
+      <line x1="205" y1="238" x2="220" y2="295" stroke="rgb(24,31,38)" stroke-width="6" stroke-linecap="round"/>
+      <line x1="190" y1="208" x2="162" y2="232" stroke="rgb(24,31,38)" stroke-width="5" stroke-linecap="round"/>
+      <line x1="206" y1="208" x2="232" y2="225" stroke="rgb(24,31,38)" stroke-width="5" stroke-linecap="round"/>
+      <ellipse cx="200" cy="300" rx="58" ry="10" fill="#506880" opacity="0.2"/>
+    </g>
+  </g>
+
+  <!-- Art area top fade -->
+  <rect x="20" y="60" width="360" height="30" fill="url(#bgGrad30)" opacity="0.5" clip-path="url(#cardClip30)"/>
+
+  <!-- Art-to-info divider -->
+  <rect x="20" y="337" width="360" height="2" fill="#506880" opacity="0.4"/>
+
+  <!-- Bottom info section -->
+  <rect x="20" y="339" width="360" height="205" fill="url(#bottomGrad30)" clip-path="url(#cardClip30)"/>
+
+  <!-- Top bar -->
+  <rect x="20" y="20" width="360" height="42" fill="url(#bgGrad30)" opacity="0.9" clip-path="url(#cardClip30)"/>
+  <line x1="20" y1="62" x2="380" y2="62" stroke="#506880" stroke-width="1" opacity="0.5"/>
+
+  <!-- Card number top-left -->
+  <text x="34" y="46" font-family="monospace" font-size="13" font-weight="bold"
+        fill="rgb(128,166,205)" opacity="0.75" letter-spacing="1">#030</text>
+
+  <!-- Type icon top-right -->
+  <text x="355" y="47" font-family="serif" font-size="18" text-anchor="middle"
+        fill="#506880">●</text>
+
+  <!-- Type label -->
+  <text x="290" y="46" font-family="monospace" font-size="10" text-anchor="end"
+        fill="#506880" opacity="0.6" letter-spacing="2">FLEE</text>
+
+  <!-- Rarity dots -->
+  <circle cx="176" cy="46" r="4" fill="#aa44ff" opacity="0.6"/><circle cx="188" cy="46" r="4" fill="#aa44ff" opacity="0.6799999999999999"/><circle cx="200" cy="46" r="4" fill="#aa44ff" opacity="0.76"/>
+
+  <!-- Name bar -->
+  <rect x="24" y="345" width="352" height="40" rx="4" fill="url(#nameBarGrad30)"/>
+  <line x1="24" y1="345" x2="376" y2="345" stroke="#506880" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- Card name -->
+  <text x="200" y="372" font-family="'Arial Black', sans-serif" font-size="22"
+        font-weight="900" text-anchor="middle" fill="rgb(128,166,205)" letter-spacing="3"
+        style="text-transform:uppercase">SHADOW</text>
+
+  <!-- Divider -->
+  <line x1="36" y1="392" x2="364" y2="392" stroke="#506880" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- Effect label -->
+  <text x="36" y="410" font-family="monospace" font-size="9" fill="#506880" opacity="0.6"
+        letter-spacing="2">EFFECT</text>
+  <text x="364" y="410" font-family="monospace" font-size="9" fill="#506880" opacity="0.6"
+        text-anchor="end" letter-spacing="1">RARITY: RARE</text>
+
+  <!-- Effect text -->
+  <text x="200" y="430" font-family="'Arial', sans-serif" font-size="15" font-weight="bold"
+        text-anchor="middle" fill="rgb(128,166,205)" letter-spacing="1">Invisible</text>
+
+  <!-- Lore divider -->
+  <line x1="36" y1="445" x2="364" y2="445" stroke="#506880" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- Lore text (italic, small) -->
+  <text x="200" y="463" font-family="Georgia, serif" font-size="11"
+          font-style="italic" text-anchor="middle" fill="rgb(128,166,205)" opacity="0.65"
+          letter-spacing="0.5">Even hunters fear the dark</text>
+
+  <!-- Bottom logo -->
+  <text x="200" y="536" font-family="monospace" font-size="9" text-anchor="middle"
+        fill="#506880" opacity="0.4" letter-spacing="3">0xARK · SOLANA ZK PvP</text>
+
+  <!-- Card border -->
+  <rect x="18" y="18" width="364" height="524" rx="14"
+        fill="none" stroke="#aa44ff" stroke-width="2.5"/>
+
+  <!-- Inner border -->
+  <rect x="22" y="22" width="356" height="516" rx="12"
+        fill="none" stroke="rgb(128,166,205)" stroke-width="0.5" opacity="0.15"/>
+
+  
+  
+</svg>

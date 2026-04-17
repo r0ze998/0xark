@@ -1,0 +1,16 @@
+{
+  "name": "0xARK Cards",
+  "symbol": "0xARK",
+  "description": "60 unique cards from 0xARK — the on-chain ZK card PvP game on Solana. Collect all 60 to claim the Prize Pool.",
+  "image": "https://r0ze998.github.io/0xark/nft/collection.svg",
+  "external_url": "https://r0ze998.github.io/0xark",
+  "seller_fee_basis_points": 500,
+  "properties": {
+    "creators": [
+      {
+        "address": "DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R",
+        "share": 100
+      }
+    ]
+  }
+}

@@ -1,0 +1,227 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <defs>
+    <linearGradient id="collBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#04020c"/>
+      <stop offset="50%" stop-color="#08060f"/>
+      <stop offset="100%" stop-color="#030208"/>
+    </linearGradient>
+    <linearGradient id="collRainbow0" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ff0080"/>
+      <stop offset="25%"  stop-color="#ff8800"/>
+      <stop offset="50%"  stop-color="#00ff88"/>
+      <stop offset="75%"  stop-color="#0088ff"/>
+      <stop offset="100%" stop-color="#ff00ff"/>
+      <animateTransform attributeName="gradientTransform" type="rotate"
+        values="0 100 140;360 100 140" dur="4s" repeatCount="indefinite"/>
+    </linearGradient><linearGradient id="collRainbow1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ff0080"/>
+      <stop offset="25%"  stop-color="#ff8800"/>
+      <stop offset="50%"  stop-color="#00ff88"/>
+      <stop offset="75%"  stop-color="#0088ff"/>
+      <stop offset="100%" stop-color="#ff00ff"/>
+      <animateTransform attributeName="gradientTransform" type="rotate"
+        values="72 100 140;432 100 140" dur="4s" repeatCount="indefinite"/>
+    </linearGradient><linearGradient id="collRainbow2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ff0080"/>
+      <stop offset="25%"  stop-color="#ff8800"/>
+      <stop offset="50%"  stop-color="#00ff88"/>
+      <stop offset="75%"  stop-color="#0088ff"/>
+      <stop offset="100%" stop-color="#ff00ff"/>
+      <animateTransform attributeName="gradientTransform" type="rotate"
+        values="144 100 140;504 100 140" dur="4s" repeatCount="indefinite"/>
+    </linearGradient><linearGradient id="collRainbow3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ff0080"/>
+      <stop offset="25%"  stop-color="#ff8800"/>
+      <stop offset="50%"  stop-color="#00ff88"/>
+      <stop offset="75%"  stop-color="#0088ff"/>
+      <stop offset="100%" stop-color="#ff00ff"/>
+      <animateTransform attributeName="gradientTransform" type="rotate"
+        values="216 100 140;576 100 140" dur="4s" repeatCount="indefinite"/>
+    </linearGradient><linearGradient id="collRainbow4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ff0080"/>
+      <stop offset="25%"  stop-color="#ff8800"/>
+      <stop offset="50%"  stop-color="#00ff88"/>
+      <stop offset="75%"  stop-color="#0088ff"/>
+      <stop offset="100%" stop-color="#ff00ff"/>
+      <animateTransform attributeName="gradientTransform" type="rotate"
+        values="288 100 140;648 100 140" dur="4s" repeatCount="indefinite"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="400" fill="url(#collBg)"/>
+
+  <!-- Subtle grid -->
+  <g opacity="0.04">
+    <line x1="0" y1="0" x2="0" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="100" y1="0" x2="100" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="200" y1="0" x2="200" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="300" y1="0" x2="300" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="400" y1="0" x2="400" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="500" y1="0" x2="500" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="600" y1="0" x2="600" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="700" y1="0" x2="700" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="800" y1="0" x2="800" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="900" y1="0" x2="900" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="1000" y1="0" x2="1000" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="1100" y1="0" x2="1100" y2="400" stroke="#ffffff" stroke-width="0.5"/><line x1="1200" y1="0" x2="1200" y2="400" stroke="#ffffff" stroke-width="0.5"/>
+    <line x1="0" y1="0" x2="1200" y2="0" stroke="#ffffff" stroke-width="0.5"/><line x1="0" y1="100" x2="1200" y2="100" stroke="#ffffff" stroke-width="0.5"/><line x1="0" y1="200" x2="1200" y2="200" stroke="#ffffff" stroke-width="0.5"/><line x1="0" y1="300" x2="1200" y2="300" stroke="#ffffff" stroke-width="0.5"/><line x1="0" y1="400" x2="1200" y2="400" stroke="#ffffff" stroke-width="0.5"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="55" font-family="'Arial Black',sans-serif" font-size="36" font-weight="900"
+        text-anchor="middle" fill="#ffffff" letter-spacing="8" opacity="0.9">0xARK CARDS</text>
+  <text x="600" y="78" font-family="monospace" font-size="12" text-anchor="middle"
+        fill="#8888aa" letter-spacing="4">60 UNIQUE CARDS · SOLANA ZK PvP</text>
+
+  <!-- Cards -->
+  
+    <!-- ATTACK card -->
+    <g transform="translate(60,60)">
+      <rect x="0" y="0" width="200" height="280" rx="10"
+            fill="rgb(35,14,10)" stroke="#e86040" stroke-width="2"/>
+      <rect x="2" y="2" width="196" height="276" rx="9"
+            fill="none" stroke="rgb(255,154,102)" stroke-width="0.5" opacity="0.2"/>
+      <!-- Art area bg -->
+      <rect x="4" y="35" width="192" height="165" fill="rgb(58,24,16)" opacity="0.5" rx="4"/>
+      <!-- Type icon large -->
+      <text x="100" y="130" font-family="serif" font-size="52" text-anchor="middle"
+            fill="#e86040" opacity="0.85">⚔</text>
+      <!-- Rainbow border -->
+      <rect x="0" y="0" width="200" height="280" rx="10"
+            fill="none" stroke="url(#collRainbow0)" stroke-width="2.5"/>
+      <!-- Top label -->
+      <text x="100" y="24" font-family="monospace" font-size="9" text-anchor="middle"
+            fill="rgb(255,154,102)" opacity="0.7" letter-spacing="2">ATTACK</text>
+      <!-- Bottom label -->
+      <text x="100" y="272" font-family="monospace" font-size="8" text-anchor="middle"
+            fill="#e86040" opacity="0.5" letter-spacing="1">0xARK</text>
+      <!-- Glow effect -->
+      <ellipse cx="100" cy="120" rx="50" ry="45" fill="#e86040" opacity="0.08"/>
+      <!-- Name -->
+      <rect x="4" y="210" width="192" height="60" rx="4" fill="#e86040" opacity="0.12"/>
+      <text x="100" y="236" font-family="'Arial Black',sans-serif" font-size="13"
+            font-weight="900" text-anchor="middle" fill="rgb(255,154,102)" letter-spacing="2">ATTACK</text>
+      <text x="100" y="254" font-family="monospace" font-size="9" text-anchor="middle"
+            fill="#e86040" opacity="0.7" letter-spacing="1">12 CARDS</text>
+      <text x="100" y="268" font-family="monospace" font-size="8" text-anchor="middle"
+            fill="rgb(255,154,102)" opacity="0.5">LEGENDARY</text>
+    </g>
+    <!-- DEFENSE card -->
+    <g transform="translate(280,60)">
+      <rect x="0" y="0" width="200" height="280" rx="10"
+            fill="rgb(11,23,32)" stroke="#4898d8" stroke-width="2"/>
+      <rect x="2" y="2" width="196" height="276" rx="9"
+            fill="none" stroke="rgb(115,243,255)" stroke-width="0.5" opacity="0.2"/>
+      <!-- Art area bg -->
+      <rect x="4" y="35" width="192" height="165" fill="rgb(18,38,54)" opacity="0.5" rx="4"/>
+      <!-- Type icon large -->
+      <text x="100" y="130" font-family="serif" font-size="52" text-anchor="middle"
+            fill="#4898d8" opacity="0.85">◆</text>
+      <!-- Rainbow border -->
+      <rect x="0" y="0" width="200" height="280" rx="10"
+            fill="none" stroke="url(#collRainbow1)" stroke-width="2.5"/>
+      <!-- Top label -->
+      <text x="100" y="24" font-family="monospace" font-size="9" text-anchor="middle"
+            fill="rgb(115,243,255)" opacity="0.7" letter-spacing="2">DEFENSE</text>
+      <!-- Bottom label -->
+      <text x="100" y="272" font-family="monospace" font-size="8" text-anchor="middle"
+            fill="#4898d8" opacity="0.5" letter-spacing="1">0xARK</text>
+      <!-- Glow effect -->
+      <ellipse cx="100" cy="120" rx="50" ry="45" fill="#4898d8" opacity="0.08"/>
+      <!-- Name -->
+      <rect x="4" y="210" width="192" height="60" rx="4" fill="#4898d8" opacity="0.12"/>
+      <text x="100" y="236" font-family="'Arial Black',sans-serif" font-size="13"
+            font-weight="900" text-anchor="middle" fill="rgb(115,243,255)" letter-spacing="2">DEFENSE</text>
+      <text x="100" y="254" font-family="monospace" font-size="9" text-anchor="middle"
+            fill="#4898d8" opacity="0.7" letter-spacing="1">12 CARDS</text>
+      <text x="100" y="268" font-family="monospace" font-size="8" text-anchor="middle"
+            fill="rgb(115,243,255)" opacity="0.5">LEGENDARY</text>
+    </g>
+    <!-- FLEE card -->
+    <g transform="translate(500,60)">
+      <rect x="0" y="0" width="200" height="280" rx="10"
+            fill="rgb(8,28,18)" stroke="#38b878" stroke-width="2"/>
+      <rect x="2" y="2" width="196" height="276" rx="9"
+            fill="none" stroke="rgb(90,255,192)" stroke-width="0.5" opacity="0.2"/>
+      <!-- Art area bg -->
+      <rect x="4" y="35" width="192" height="165" fill="rgb(14,46,30)" opacity="0.5" rx="4"/>
+      <!-- Type icon large -->
+      <text x="100" y="130" font-family="serif" font-size="52" text-anchor="middle"
+            fill="#38b878" opacity="0.85">●</text>
+      <!-- Rainbow border -->
+      <rect x="0" y="0" width="200" height="280" rx="10"
+            fill="none" stroke="url(#collRainbow2)" stroke-width="2.5"/>
+      <!-- Top label -->
+      <text x="100" y="24" font-family="monospace" font-size="9" text-anchor="middle"
+            fill="rgb(90,255,192)" opacity="0.7" letter-spacing="2">FLEE</text>
+      <!-- Bottom label -->
+      <text x="100" y="272" font-family="monospace" font-size="8" text-anchor="middle"
+            fill="#38b878" opacity="0.5" letter-spacing="1">0xARK</text>
+      <!-- Glow effect -->
+      <ellipse cx="100" cy="120" rx="50" ry="45" fill="#38b878" opacity="0.08"/>
+      <!-- Name -->
+      <rect x="4" y="210" width="192" height="60" rx="4" fill="#38b878" opacity="0.12"/>
+      <text x="100" y="236" font-family="'Arial Black',sans-serif" font-size="13"
+            font-weight="900" text-anchor="middle" fill="rgb(90,255,192)" letter-spacing="2">FLEE</text>
+      <text x="100" y="254" font-family="monospace" font-size="9" text-anchor="middle"
+            fill="#38b878" opacity="0.7" letter-spacing="1">12 CARDS</text>
+      <text x="100" y="268" font-family="monospace" font-size="8" text-anchor="middle"
+            fill="rgb(90,255,192)" opacity="0.5">LEGENDARY</text>
+    </g>
+    <!-- MAGIC card -->
+    <g transform="translate(720,60)">
+      <rect x="0" y="0" width="200" height="280" rx="10"
+            fill="rgb(32,26,6)" stroke="#d8b028" stroke-width="2"/>
+      <rect x="2" y="2" width="196" height="276" rx="9"
+            fill="none" stroke="rgb(255,255,64)" stroke-width="0.5" opacity="0.2"/>
+      <!-- Art area bg -->
+      <rect x="4" y="35" width="192" height="165" fill="rgb(54,44,10)" opacity="0.5" rx="4"/>
+      <!-- Type icon large -->
+      <text x="100" y="130" font-family="serif" font-size="52" text-anchor="middle"
+            fill="#d8b028" opacity="0.85">★</text>
+      <!-- Rainbow border -->
+      <rect x="0" y="0" width="200" height="280" rx="10"
+            fill="none" stroke="url(#collRainbow3)" stroke-width="2.5"/>
+      <!-- Top label -->
+      <text x="100" y="24" font-family="monospace" font-size="9" text-anchor="middle"
+            fill="rgb(255,255,64)" opacity="0.7" letter-spacing="2">MAGIC</text>
+      <!-- Bottom label -->
+      <text x="100" y="272" font-family="monospace" font-size="8" text-anchor="middle"
+            fill="#d8b028" opacity="0.5" letter-spacing="1">0xARK</text>
+      <!-- Glow effect -->
+      <ellipse cx="100" cy="120" rx="50" ry="45" fill="#d8b028" opacity="0.08"/>
+      <!-- Name -->
+      <rect x="4" y="210" width="192" height="60" rx="4" fill="#d8b028" opacity="0.12"/>
+      <text x="100" y="236" font-family="'Arial Black',sans-serif" font-size="13"
+            font-weight="900" text-anchor="middle" fill="rgb(255,255,64)" letter-spacing="2">MAGIC</text>
+      <text x="100" y="254" font-family="monospace" font-size="9" text-anchor="middle"
+            fill="#d8b028" opacity="0.7" letter-spacing="1">12 CARDS</text>
+      <text x="100" y="268" font-family="monospace" font-size="8" text-anchor="middle"
+            fill="rgb(255,255,64)" opacity="0.5">LEGENDARY</text>
+    </g>
+    <!-- RECOVERY card -->
+    <g transform="translate(940,60)">
+      <rect x="0" y="0" width="200" height="280" rx="10"
+            fill="rgb(37,34,17)" stroke="#f8e070" stroke-width="2"/>
+      <rect x="2" y="2" width="196" height="276" rx="9"
+            fill="none" stroke="rgb(255,255,179)" stroke-width="0.5" opacity="0.2"/>
+      <!-- Art area bg -->
+      <rect x="4" y="35" width="192" height="165" fill="rgb(62,56,28)" opacity="0.5" rx="4"/>
+      <!-- Type icon large -->
+      <text x="100" y="130" font-family="serif" font-size="52" text-anchor="middle"
+            fill="#f8e070" opacity="0.85">◎</text>
+      <!-- Rainbow border -->
+      <rect x="0" y="0" width="200" height="280" rx="10"
+            fill="none" stroke="url(#collRainbow4)" stroke-width="2.5"/>
+      <!-- Top label -->
+      <text x="100" y="24" font-family="monospace" font-size="9" text-anchor="middle"
+            fill="rgb(255,255,179)" opacity="0.7" letter-spacing="2">RECOVERY</text>
+      <!-- Bottom label -->
+      <text x="100" y="272" font-family="monospace" font-size="8" text-anchor="middle"
+            fill="#f8e070" opacity="0.5" letter-spacing="1">0xARK</text>
+      <!-- Glow effect -->
+      <ellipse cx="100" cy="120" rx="50" ry="45" fill="#f8e070" opacity="0.08"/>
+      <!-- Name -->
+      <rect x="4" y="210" width="192" height="60" rx="4" fill="#f8e070" opacity="0.12"/>
+      <text x="100" y="236" font-family="'Arial Black',sans-serif" font-size="13"
+            font-weight="900" text-anchor="middle" fill="rgb(255,255,179)" letter-spacing="2">RECOVERY</text>
+      <text x="100" y="254" font-family="monospace" font-size="9" text-anchor="middle"
+            fill="#f8e070" opacity="0.7" letter-spacing="1">12 CARDS</text>
+      <text x="100" y="268" font-family="monospace" font-size="8" text-anchor="middle"
+            fill="rgb(255,255,179)" opacity="0.5">LEGENDARY</text>
+    </g>
+
+  <!-- Bottom tagline -->
+  <text x="600" y="382" font-family="monospace" font-size="11" text-anchor="middle"
+        fill="#444466" letter-spacing="3">COLLECT ALL 60 TO CLAIM THE PRIZE POOL</text>
+</svg>
