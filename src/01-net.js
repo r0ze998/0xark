@@ -817,18 +817,24 @@ function drawRivalNews(){
   g.globalAlpha=alpha;
   // Background
   bx(mx+slideX,my,msgW,msgH,bgTint);
-  bx(mx+slideX,my,3,msgH,nameCol); // color accent bar
+  bx(mx+slideX,my,3,msgH,nameCol); // left accent bar — rival identity color
   bx(mx+slideX,my,msgW,1,'rgba(255,255,255,0.12)');
   bx(mx+slideX,my+msgH-1,msgW,1,'rgba(0,0,0,0.5)');
+  // v464: right rarity bar + dot indicators (rarity>=2 = uncommon+)
+  const _dotN=item.rarity>=2?Math.min(item.rarity,5):0;
+  if(_dotN>0){
+    bx(mx+slideX+msgW-3,my,3,msgH,rarCol); // right accent bar in rarity color
+    for(let _di=0;_di<_dotN;_di++){bx(mx+slideX+msgW-7-_di*5,my+4,3,3,rarCol);}
+  }
 
   // INTEL label
   g.font='bold 7px monospace';g.fillStyle=nameCol;
   g.fillText('INTEL',mx+slideX+8,my+9);
 
-  // Main message
-  g.font='7px monospace';g.fillStyle='#e8e0d0';
+  // Main message — v464: rarity-tinted text for card events
+  g.font='7px monospace';g.fillStyle=_dotN>0?rarCol:'#e8e0d0';
   const textX=mx+slideX+8;
-  const maxChars=Math.floor((msgW-20)/6);
+  const maxChars=Math.floor((msgW-(_dotN>0?_dotN*5+14:20))/6);
   const display=item.text.length>maxChars?item.text.substring(0,maxChars-1)+'…':item.text;
   g.fillText(display,textX,my+20);
   g.globalAlpha=1;
