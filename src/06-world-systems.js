@@ -346,6 +346,8 @@ function doMapTransition(exit){
       else if(rk==='bar1'){sp.b=Math.min(6,sp.b+1);}
       else if(rk==='sct1'){sp.c=Math.min(6,sp.c+1);}
       else if(rk==='stl2'){sp.s=Math.min(6,sp.s+2);}
+      else if(rk==='bar2'){sp.b=Math.min(6,sp.b+2);} // v443
+      else if(rk==='all1'){sp.s=Math.min(6,sp.s+1);sp.b=Math.min(6,sp.b+1);sp.c=Math.min(6,sp.c+1);} // v443
       else if(rk==='refill'){sp.s=Math.max(sp.s,3);sp.b=Math.max(sp.b,4);sp.c=Math.max(sp.c,3);}
       else if(rk==='bonus_card'){
         const bPool=DUNGEON_FLOOR_CARDS[3]||DUNGEON_FLOOR_CARDS[2];
@@ -2087,7 +2089,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v442',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v443',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

@@ -126,11 +126,15 @@ const rivalAI=[
 
 // v79: Run mission definitions
 const RUN_MISSION_DEFS=[
-  {type:'reach_floor',desc:'Reach Floor III',goal:3,reward:'+1 STL',rewardKey:'stl1'},
-  {type:'battle_rival',desc:'Battle any rival',goal:1,reward:'+1 BAR',rewardKey:'bar1'},
-  {type:'new_cards',  desc:'Collect 3 new cards',goal:3,reward:'+1 SCT',rewardKey:'sct1'},
-  {type:'steal_win',  desc:'Steal from a rival',goal:1,reward:'+2 STL',rewardKey:'stl2'},
-  {type:'survive',    desc:'Fight 3 battle rounds',goal:3,reward:'Spell refill',rewardKey:'refill'},
+  {type:'reach_floor', desc:'Reach Floor III',      goal:3,reward:'+1 STL',       rewardKey:'stl1'},
+  {type:'battle_rival',desc:'Battle any rival',     goal:1,reward:'+1 BAR',       rewardKey:'bar1'},
+  {type:'new_cards',   desc:'Collect 3 new cards',  goal:3,reward:'+1 SCT',       rewardKey:'sct1'},
+  {type:'steal_win',   desc:'Steal from a rival',   goal:1,reward:'+2 STL',       rewardKey:'stl2'},
+  {type:'survive',     desc:'Fight 3 battle rounds',goal:3,reward:'Spell refill', rewardKey:'refill'},
+  // v443: new missions — deeper dungeon, magic mastery, rare hunter
+  {type:'reach_floor', desc:'Reach Floor V',        goal:5,reward:'Bonus card',   rewardKey:'bonus_card'},
+  {type:'use_magic',   desc:'Use a Magic card',     goal:1,reward:'+1 each spell',rewardKey:'all1'},
+  {type:'collect_rare',desc:'Collect a Rare+ card', goal:1,reward:'+2 BAR',       rewardKey:'bar2'},
 ];
 
 // Rival pre-battle taunts indexed by [rivalIdx][random]

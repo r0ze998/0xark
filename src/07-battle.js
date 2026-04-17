@@ -1770,6 +1770,11 @@ function addCardToPlayer(pIdx,cardId){
     if(runMission&&runMission.type==='new_cards'&&!runMission.completed){
       runMission.progress++;if(runMission.progress>=runMission.goal){runMission.completed=true;sfxStreakUp();}
     }
+    // v443: track collect_rare mission (Rare+ = r>=3)
+    const _newCr=CD[cardId-1];
+    if(_newCr&&_newCr.r>=3&&runMission&&runMission.type==='collect_rare'&&!runMission.completed){
+      runMission.progress=1;runMission.completed=true;sfxStreakUp();
+    }
     // Vault milestone celebrations
     const ms=p.vault.size;
     const milestones={10:'10 CARDS!',20:'20 CARDS!',30:'HALFWAY THERE!',40:'40 CARDS!',50:'50 CARDS! SO CLOSE!',55:'55 CARDS!',59:'ONE MORE!'};
@@ -2076,6 +2081,8 @@ function generateResolveEvents(){
           events.push({type:'result',text:cr.n+': Magic! Barriers nulled. -HP rivals.',effect:'none'});
           lg.push('R'+rd+': '+cr.n+' magic — barriers cleared, HP drained!');
         }
+        // v443: track use_magic mission
+        if(runMission&&runMission.type==='use_magic'&&!runMission.completed){runMission.progress=1;runMission.completed=true;sfxStreakUp();}
         // Check rival KO by HP
         if(bpHP[1]<=0){events._rival1KO=true;}
         if(bpHP[2]<=0){events._rival2KO=true;}
