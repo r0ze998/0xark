@@ -544,12 +544,12 @@ document.addEventListener('keydown',e=>{
           }
           pl[0].cd[slot]=discardPendingCard;cardTimers[slot]=inDungeon?Date.now():0;decayWarn[slot]=0;syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+', got '+CD[discardPendingCard-1].n+'!');
-          // v500: red smoke burst for discarded card + green spark for incoming
+          // v500: red smoke burst for discarded card + green spark for incoming (v506 fix: world coords)
           {for(let _di=0;_di<8;_di++){const _da=(_di/8)*Math.PI*2;const _ds=0.8+Math.random()*1.5;
-            particles.push({x:W/2+(Math.random()*30-15),y:H/2+(Math.random()*20-10),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:14+Math.random()*8,c:Math.random()>.5?'rgba(220,60,60,1)':'rgba(180,100,60,1)'});
+            particles.push({x:W/2+camX+(Math.random()*30-15),y:H/2+camY+(Math.random()*20-10),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:14+Math.random()*8,c:Math.random()>.5?'rgba(220,60,60,1)':'rgba(180,100,60,1)'});
           }
           for(let _gi=0;_gi<8;_gi++){const _ga=(_gi/8)*Math.PI*2;const _gs=1+Math.random()*2;
-            particles.push({x:W/2+(Math.random()*20-10),y:H/2-10+(Math.random()*20-10),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2,life:14+Math.random()*10,c:Math.random()>.5?'rgba(64,220,120,1)':'rgba(200,255,220,1)'});
+            particles.push({x:W/2+camX+(Math.random()*20-10),y:H/2+camY-10+(Math.random()*20-10),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2,life:14+Math.random()*10,c:Math.random()>.5?'rgba(64,220,120,1)':'rgba(200,255,220,1)'});
           }}
           discardActive=false;
           if(discardSource==='wild'||discardSource==='menu'){startCardAcquisition(discardPendingCard-1);}
@@ -559,9 +559,9 @@ document.addEventListener('keydown',e=>{
           // Menu discard: just remove the card
           pl[0].cd[slot]=0;cardTimers[slot]=0;decayWarn[slot]=0;syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+'!');
-          // v500: brief red smoke on manual discard
+          // v500: brief red smoke on manual discard (v506 fix: world coords)
           {for(let _di=0;_di<6;_di++){const _da=(_di/6)*Math.PI*2;const _ds=0.8+Math.random()*1.2;
-            particles.push({x:W/2+(Math.random()*20-10),y:H/2+(Math.random()*16-8),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:12+Math.random()*6,c:Math.random()>.5?'rgba(200,60,60,1)':'rgba(160,80,50,1)'});
+            particles.push({x:W/2+camX+(Math.random()*20-10),y:H/2+camY+(Math.random()*16-8),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:12+Math.random()*6,c:Math.random()>.5?'rgba(200,60,60,1)':'rgba(160,80,50,1)'});
           }}
           discardActive=false;discardPendingCard=-1;discardSource='';
         }

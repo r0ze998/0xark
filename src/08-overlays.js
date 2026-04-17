@@ -121,9 +121,9 @@ function drawCardAcquisition(){
     if(_acqObtainedRef!==cr){_acqObtainedRef=cr;_acqObtainedLbl='You obtained '+cr.n+'!';} // v338: lazy cache
     txShadow(_acqObtainedLbl,W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');
     // v500: extra burst when new unique card badge first appears
-    if(cardAcqIsNew&&t===50){screenShake(2,4);const _ncRar=cr.r||1;
+    if(cardAcqIsNew&&t===50){screenShake(2,4);const _ncRar=cr.r||1; // v506 fix: world coords
       for(let _ni=0;_ni<10+_ncRar*2;_ni++){const _na=(_ni/(10+_ncRar*2))*Math.PI*2;const _ns=1.2+Math.random()*(_ncRar*0.5+1.5);
-        particles.push({x:cx_+(Math.random()*30-15),y:cy_+(Math.random()*20-10),vx:Math.cos(_na)*_ns,vy:Math.sin(_na)*_ns-2,life:18+Math.random()*14+_ncRar*2,c:Math.random()>.4?rarCol:'rgba(255,255,200,1)'});
+        particles.push({x:cx_+camX+(Math.random()*30-15),y:cy_+camY+(Math.random()*20-10),vx:Math.cos(_na)*_ns,vy:Math.sin(_na)*_ns-2,life:18+Math.random()*14+_ncRar*2,c:Math.random()>.4?rarCol:'rgba(255,255,200,1)'});
       }
     }
     // v96: NEW card badge — shown when first time in vault
@@ -753,6 +753,7 @@ function dVictory(){
     }
     screenShake(3,10);
   }
+  drawParticles(0,0); // v506: victory screen particles (screen coords, cx=cy=0)
 }
 
 // ═══════════════════════════════════════

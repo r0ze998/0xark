@@ -559,11 +559,11 @@ function drawFloorTitle(){
   // ── FLOOR NUMBER (giant, centered, glowing) ──
   const flNum=_WLD_FLOOR_NUMS[f]||('B'+f); // v262: hoisted
   const numAlpha=t<20?Math.max(0,(t-10)/10):1;
-  // v500: particle burst when floor number fully pops in — intensity scales with floor depth
+  // v500: particle burst when floor number fully pops in — intensity scales with floor depth (v506 fix: world coords)
   if(t===20){const _fn=f||1;screenShake(Math.min(_fn,4),Math.min(_fn*2,8));
     const _fc=theme.accent;const _fc2='rgba(255,255,255,1)';const _fn2=8+_fn*4;
     for(let _fti=0;_fti<_fn2;_fti++){const _fta=(_fti/_fn2)*Math.PI*2;const _fts=1.5+Math.random()*(1+_fn*0.5);
-      particles.push({x:W/2+(Math.random()*60-30),y:H/2+(Math.random()*20-10),vx:Math.cos(_fta)*_fts,vy:Math.sin(_fta)*_fts-2,life:20+Math.random()*14+_fn*3,c:Math.random()>.4?_fc:_fc2});
+      particles.push({x:W/2+camX+(Math.random()*60-30),y:H/2+camY+(Math.random()*20-10),vx:Math.cos(_fta)*_fts,vy:Math.sin(_fta)*_fts-2,life:20+Math.random()*14+_fn*3,c:Math.random()>.4?_fc:_fc2});
     }
   }
   const numPulse=1+Math.sin(t*0.08)*0.04;
@@ -1396,9 +1396,9 @@ function drawCardShop(){
     const isSuccess=shopResultText.includes('Traded');
     const rCol=isSuccess?'#40d080':'#d04040';
     // v497: particle burst when trade result reveals
-    if(rAge===8&&isSuccess){screenShake(1,3);
+    if(rAge===8&&isSuccess){screenShake(1,3); // v506 fix: world coords
       for(let _ti=0;_ti<14;_ti++){const _ta=(_ti/14)*Math.PI*2;const _ts=1.2+Math.random()*2.5;
-        particles.push({x:W/2+(Math.random()*40-20),y:wY+wH/2-20+(Math.random()*20-10),vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-2,life:20+Math.random()*16,c:Math.random()>.4?'rgba(64,208,128,1)':'rgba(255,210,80,1)'});
+        particles.push({x:W/2+camX+(Math.random()*40-20),y:wY+wH/2-20+(Math.random()*20-10)+camY,vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-2,life:20+Math.random()*16,c:Math.random()>.4?'rgba(64,208,128,1)':'rgba(255,210,80,1)'});
       }
     }
     txShadow(isSuccess?'TRADE COMPLETE!':'TRADE FAILED',W/2-100,wY+wH/2-30,14,rCol,'rgba(0,0,0,.4)');
@@ -1471,9 +1471,9 @@ function drawSynthesisShop(){
       const cr=CD[synthResultCard-1];
       const rCol=RARITY_COLOR[cr.r]||'#c8c0a0';
       // v497: rarity-scaled burst on synthesis success reveal
-      if(t===8){const _sn=8+cr.r*3;
+      if(t===8){const _sn=8+cr.r*3; // v506 fix: world coords
         for(let _si=0;_si<_sn;_si++){const _sa=(_si/_sn)*Math.PI*2;const _ss=1.5+Math.random()*(cr.r*0.7+1.5);
-          particles.push({x:W/2+(Math.random()*30-15),y:140+(Math.random()*20-10),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2.5,life:20+Math.random()*18+cr.r*4,c:Math.random()>.4?rCol:'rgba(255,255,200,1)'});
+          particles.push({x:W/2+camX+(Math.random()*30-15),y:140+camY+(Math.random()*20-10),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2.5,life:20+Math.random()*18+cr.r*4,c:Math.random()>.4?rCol:'rgba(255,255,200,1)'});
         }
       }
       txShadow('SYNTHESIS SUCCESS!',W/2-88,90,10,'#40d080','rgba(0,0,0,.3)');

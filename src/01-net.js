@@ -592,6 +592,7 @@ function updateRunSummary(){
       }
     }
   }
+  drawParticles(0,0); // v506: run summary particles drawn in screen coords
 }
 // v310: Run grade + commentary helpers
 function _runGrade(d){

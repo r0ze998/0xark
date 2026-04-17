@@ -891,6 +891,7 @@ function dGameOver(){
       particles.push({x:W/2+(Math.random()*40-20),y:H/2+(Math.random()*30-15),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:28+Math.random()*20,c:Math.random()>.5?'rgba(200,30,30,1)':'rgba(100,20,20,1)'});
     }
   }
+  drawParticles(0,0); // v506: game over particles (screen coords, cx=cy=0)
 }
 
 // ═══════════════════════════════════════

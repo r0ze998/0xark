@@ -725,12 +725,12 @@ function drawBuildingInterior(){
         gachaPhase='result';gachaResultFrame=fr;
         if(rar>=4)screenShake(rar-2,rar*3);
         if(rar>=5)flash();
-        // v485: rarity-scaled confetti burst on gacha reveal
+        // v485: rarity-scaled confetti burst on gacha reveal (v506 fix: world coords)
         {const _gn=rar>=5?24:rar>=4?18:rar>=3?12:8;
         const _gc1=rar>=5?'rgba(255,200,40,1)':rar>=4?'rgba(180,80,220,1)':rar>=3?'rgba(80,160,255,1)':'rgba(80,200,120,1)';
         const _gc2=rar>=5?'rgba(255,255,180,1)':rar>=4?'rgba(240,180,255,1)':'rgba(200,255,230,1)';
         for(let _gi=0;_gi<_gn;_gi++){const _ga=(_gi/_gn)*Math.PI*2+Math.random()*.5;const _gs=1.5+Math.random()*3;
-          particles.push({x:W/2+(Math.random()*60-30),y:H/2+(Math.random()*40-20),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2.5,life:24+Math.random()*20,c:Math.random()>.45?_gc1:_gc2});
+          particles.push({x:W/2+camX+(Math.random()*60-30),y:H/2+camY+(Math.random()*40-20),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2.5,life:24+Math.random()*20,c:Math.random()>.45?_gc1:_gc2});
         }}
       }
     }else if(gachaPhase==='result'&&gachaResultCard>0){

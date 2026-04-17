@@ -2843,6 +2843,7 @@ function updateRunSummary(){
       }
     }
   }
+  drawParticles(0,0); // v506: run summary particles drawn in screen coords
 }
 // v310: Run grade + commentary helpers
 function _runGrade(d){
@@ -9394,11 +9395,11 @@ function drawFloorTitle(){
   // ── FLOOR NUMBER (giant, centered, glowing) ──
   const flNum=_WLD_FLOOR_NUMS[f]||('B'+f); // v262: hoisted
   const numAlpha=t<20?Math.max(0,(t-10)/10):1;
-  // v500: particle burst when floor number fully pops in — intensity scales with floor depth
+  // v500: particle burst when floor number fully pops in — intensity scales with floor depth (v506 fix: world coords)
   if(t===20){const _fn=f||1;screenShake(Math.min(_fn,4),Math.min(_fn*2,8));
     const _fc=theme.accent;const _fc2='rgba(255,255,255,1)';const _fn2=8+_fn*4;
     for(let _fti=0;_fti<_fn2;_fti++){const _fta=(_fti/_fn2)*Math.PI*2;const _fts=1.5+Math.random()*(1+_fn*0.5);
-      particles.push({x:W/2+(Math.random()*60-30),y:H/2+(Math.random()*20-10),vx:Math.cos(_fta)*_fts,vy:Math.sin(_fta)*_fts-2,life:20+Math.random()*14+_fn*3,c:Math.random()>.4?_fc:_fc2});
+      particles.push({x:W/2+camX+(Math.random()*60-30),y:H/2+camY+(Math.random()*20-10),vx:Math.cos(_fta)*_fts,vy:Math.sin(_fta)*_fts-2,life:20+Math.random()*14+_fn*3,c:Math.random()>.4?_fc:_fc2});
     }
   }
   const numPulse=1+Math.sin(t*0.08)*0.04;
@@ -10231,9 +10232,9 @@ function drawCardShop(){
     const isSuccess=shopResultText.includes('Traded');
     const rCol=isSuccess?'#40d080':'#d04040';
     // v497: particle burst when trade result reveals
-    if(rAge===8&&isSuccess){screenShake(1,3);
+    if(rAge===8&&isSuccess){screenShake(1,3); // v506 fix: world coords
       for(let _ti=0;_ti<14;_ti++){const _ta=(_ti/14)*Math.PI*2;const _ts=1.2+Math.random()*2.5;
-        particles.push({x:W/2+(Math.random()*40-20),y:wY+wH/2-20+(Math.random()*20-10),vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-2,life:20+Math.random()*16,c:Math.random()>.4?'rgba(64,208,128,1)':'rgba(255,210,80,1)'});
+        particles.push({x:W/2+camX+(Math.random()*40-20),y:wY+wH/2-20+(Math.random()*20-10)+camY,vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-2,life:20+Math.random()*16,c:Math.random()>.4?'rgba(64,208,128,1)':'rgba(255,210,80,1)'});
       }
     }
     txShadow(isSuccess?'TRADE COMPLETE!':'TRADE FAILED',W/2-100,wY+wH/2-30,14,rCol,'rgba(0,0,0,.4)');
@@ -10306,9 +10307,9 @@ function drawSynthesisShop(){
       const cr=CD[synthResultCard-1];
       const rCol=RARITY_COLOR[cr.r]||'#c8c0a0';
       // v497: rarity-scaled burst on synthesis success reveal
-      if(t===8){const _sn=8+cr.r*3;
+      if(t===8){const _sn=8+cr.r*3; // v506 fix: world coords
         for(let _si=0;_si<_sn;_si++){const _sa=(_si/_sn)*Math.PI*2;const _ss=1.5+Math.random()*(cr.r*0.7+1.5);
-          particles.push({x:W/2+(Math.random()*30-15),y:140+(Math.random()*20-10),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2.5,life:20+Math.random()*18+cr.r*4,c:Math.random()>.4?rCol:'rgba(255,255,200,1)'});
+          particles.push({x:W/2+camX+(Math.random()*30-15),y:140+camY+(Math.random()*20-10),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2.5,life:20+Math.random()*18+cr.r*4,c:Math.random()>.4?rCol:'rgba(255,255,200,1)'});
         }
       }
       txShadow('SYNTHESIS SUCCESS!',W/2-88,90,10,'#40d080','rgba(0,0,0,.3)');
@@ -17173,9 +17174,9 @@ function drawCardAcquisition(){
     if(_acqObtainedRef!==cr){_acqObtainedRef=cr;_acqObtainedLbl='You obtained '+cr.n+'!';} // v338: lazy cache
     txShadow(_acqObtainedLbl,W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');
     // v500: extra burst when new unique card badge first appears
-    if(cardAcqIsNew&&t===50){screenShake(2,4);const _ncRar=cr.r||1;
+    if(cardAcqIsNew&&t===50){screenShake(2,4);const _ncRar=cr.r||1; // v506 fix: world coords
       for(let _ni=0;_ni<10+_ncRar*2;_ni++){const _na=(_ni/(10+_ncRar*2))*Math.PI*2;const _ns=1.2+Math.random()*(_ncRar*0.5+1.5);
-        particles.push({x:cx_+(Math.random()*30-15),y:cy_+(Math.random()*20-10),vx:Math.cos(_na)*_ns,vy:Math.sin(_na)*_ns-2,life:18+Math.random()*14+_ncRar*2,c:Math.random()>.4?rarCol:'rgba(255,255,200,1)'});
+        particles.push({x:cx_+camX+(Math.random()*30-15),y:cy_+camY+(Math.random()*20-10),vx:Math.cos(_na)*_ns,vy:Math.sin(_na)*_ns-2,life:18+Math.random()*14+_ncRar*2,c:Math.random()>.4?rarCol:'rgba(255,255,200,1)'});
       }
     }
     // v96: NEW card badge — shown when first time in vault
@@ -17805,6 +17806,7 @@ function dVictory(){
     }
     screenShake(3,10);
   }
+  drawParticles(0,0); // v506: victory screen particles (screen coords, cx=cy=0)
 }
 
 // ═══════════════════════════════════════
@@ -18978,12 +18980,12 @@ function drawBuildingInterior(){
         gachaPhase='result';gachaResultFrame=fr;
         if(rar>=4)screenShake(rar-2,rar*3);
         if(rar>=5)flash();
-        // v485: rarity-scaled confetti burst on gacha reveal
+        // v485: rarity-scaled confetti burst on gacha reveal (v506 fix: world coords)
         {const _gn=rar>=5?24:rar>=4?18:rar>=3?12:8;
         const _gc1=rar>=5?'rgba(255,200,40,1)':rar>=4?'rgba(180,80,220,1)':rar>=3?'rgba(80,160,255,1)':'rgba(80,200,120,1)';
         const _gc2=rar>=5?'rgba(255,255,180,1)':rar>=4?'rgba(240,180,255,1)':'rgba(200,255,230,1)';
         for(let _gi=0;_gi<_gn;_gi++){const _ga=(_gi/_gn)*Math.PI*2+Math.random()*.5;const _gs=1.5+Math.random()*3;
-          particles.push({x:W/2+(Math.random()*60-30),y:H/2+(Math.random()*40-20),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2.5,life:24+Math.random()*20,c:Math.random()>.45?_gc1:_gc2});
+          particles.push({x:W/2+camX+(Math.random()*60-30),y:H/2+camY+(Math.random()*40-20),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2.5,life:24+Math.random()*20,c:Math.random()>.45?_gc1:_gc2});
         }}
       }
     }else if(gachaPhase==='result'&&gachaResultCard>0){
@@ -20262,6 +20264,7 @@ function dGameOver(){
       particles.push({x:W/2+(Math.random()*40-20),y:H/2+(Math.random()*30-15),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:28+Math.random()*20,c:Math.random()>.5?'rgba(200,30,30,1)':'rgba(100,20,20,1)'});
     }
   }
+  drawParticles(0,0); // v506: game over particles (screen coords, cx=cy=0)
 }
 
 // ═══════════════════════════════════════
@@ -21370,12 +21373,12 @@ document.addEventListener('keydown',e=>{
           }
           pl[0].cd[slot]=discardPendingCard;cardTimers[slot]=inDungeon?Date.now():0;decayWarn[slot]=0;syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+', got '+CD[discardPendingCard-1].n+'!');
-          // v500: red smoke burst for discarded card + green spark for incoming
+          // v500: red smoke burst for discarded card + green spark for incoming (v506 fix: world coords)
           {for(let _di=0;_di<8;_di++){const _da=(_di/8)*Math.PI*2;const _ds=0.8+Math.random()*1.5;
-            particles.push({x:W/2+(Math.random()*30-15),y:H/2+(Math.random()*20-10),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:14+Math.random()*8,c:Math.random()>.5?'rgba(220,60,60,1)':'rgba(180,100,60,1)'});
+            particles.push({x:W/2+camX+(Math.random()*30-15),y:H/2+camY+(Math.random()*20-10),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:14+Math.random()*8,c:Math.random()>.5?'rgba(220,60,60,1)':'rgba(180,100,60,1)'});
           }
           for(let _gi=0;_gi<8;_gi++){const _ga=(_gi/8)*Math.PI*2;const _gs=1+Math.random()*2;
-            particles.push({x:W/2+(Math.random()*20-10),y:H/2-10+(Math.random()*20-10),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2,life:14+Math.random()*10,c:Math.random()>.5?'rgba(64,220,120,1)':'rgba(200,255,220,1)'});
+            particles.push({x:W/2+camX+(Math.random()*20-10),y:H/2+camY-10+(Math.random()*20-10),vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-2,life:14+Math.random()*10,c:Math.random()>.5?'rgba(64,220,120,1)':'rgba(200,255,220,1)'});
           }}
           discardActive=false;
           if(discardSource==='wild'||discardSource==='menu'){startCardAcquisition(discardPendingCard-1);}
@@ -21385,9 +21388,9 @@ document.addEventListener('keydown',e=>{
           // Menu discard: just remove the card
           pl[0].cd[slot]=0;cardTimers[slot]=0;decayWarn[slot]=0;syncCardCount(0);
           lg.push('Discarded '+CD[discarded-1].n+'!');
-          // v500: brief red smoke on manual discard
+          // v500: brief red smoke on manual discard (v506 fix: world coords)
           {for(let _di=0;_di<6;_di++){const _da=(_di/6)*Math.PI*2;const _ds=0.8+Math.random()*1.2;
-            particles.push({x:W/2+(Math.random()*20-10),y:H/2+(Math.random()*16-8),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:12+Math.random()*6,c:Math.random()>.5?'rgba(200,60,60,1)':'rgba(160,80,50,1)'});
+            particles.push({x:W/2+camX+(Math.random()*20-10),y:H/2+camY+(Math.random()*16-8),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.5,life:12+Math.random()*6,c:Math.random()>.5?'rgba(200,60,60,1)':'rgba(160,80,50,1)'});
           }}
           discardActive=false;discardPendingCard=-1;discardSource='';
         }
