@@ -164,11 +164,31 @@ function findCardPoolPDA(gameId) {
   );
 }
 
-function findCommitPDA(gameId, playerPubkey) {
+// round is a u32; Rust seeds: [COMMIT_SEED, game_id(u64-LE), round(u32-LE), player]
+function findCommitPDA(gameId, round, playerPubkey) {
+  const roundBytes = new Uint8Array(4);
+  roundBytes[0] =  round        & 0xff;
+  roundBytes[1] = (round >>  8) & 0xff;
+  roundBytes[2] = (round >> 16) & 0xff;
+  roundBytes[3] = (round >> 24) & 0xff;
   return solanaWeb3.PublicKey.findProgramAddressSync(
-    [SEED_COMMIT, gameIdBytes(gameId), playerPubkey.toBytes()],
+    [SEED_COMMIT, gameIdBytes(gameId), roundBytes, playerPubkey.toBytes()],
     getProgramId()
   );
+}
+
+// Read the current round from the on-chain game account (byte 49 in Game struct).
+async function readGameRound(gamePDA) {
+  try {
+    const info = await getConnection().getAccountInfo(gamePDA);
+    if (info && info.data.length > 52) {
+      // Game struct layout (Anchor): 8-byte discriminator + fields
+      // round: u32 at offset 49 (little-endian)
+      const dv = new DataView(info.data.buffer, info.data.byteOffset);
+      return dv.getUint32(49, true);
+    }
+  } catch (_) {}
+  return 0;
 }
 
 function findStakeVaultPDA(gameId) {
@@ -312,10 +332,11 @@ async function createGame(gameId, maxPlayers) {
   off = writeU64LE(data, off, gameId);
   writeU8(data, off, maxPlayers);
 
+  // Account order matches CreateGame: game (0), card_pool (1), host/signer (2), system_program (3)
   return buildAndSend([
-    { pubkey: payer,       isSigner: true,  isWritable: true  },
-    { pubkey: gamePDA,     isSigner: false, isWritable: true  },
-    { pubkey: cardPoolPDA, isSigner: false, isWritable: true  },
+    { pubkey: gamePDA,     isSigner: false, isWritable: true  }, // game
+    { pubkey: cardPoolPDA, isSigner: false, isWritable: true  }, // card_pool
+    { pubkey: payer,       isSigner: true,  isWritable: true  }, // host (signer)
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
   ], data);
 }
@@ -332,10 +353,11 @@ async function joinGame(gameId) {
   let off = writeBytes(data, 0, d);
   writeU64LE(data, off, gameId);
 
+  // Account order matches JoinGame: game (0), player_state (1), player/signer (2), system_program (3)
   return buildAndSend([
-    { pubkey: payer,     isSigner: true,  isWritable: true  },
-    { pubkey: gamePDA,   isSigner: false, isWritable: true  },
-    { pubkey: playerPDA, isSigner: false, isWritable: true  },
+    { pubkey: gamePDA,   isSigner: false, isWritable: true  }, // game
+    { pubkey: playerPDA, isSigner: false, isWritable: true  }, // player_state
+    { pubkey: payer,     isSigner: true,  isWritable: true  }, // player (signer)
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
   ], data);
 }
@@ -343,16 +365,20 @@ async function joinGame(gameId) {
 // ─── Instruction: start_game ──────────────────────────────────────────────
 async function startGame(gameId) {
   const payer = window.solana.publicKey;
-  const [gamePDA] = findGamePDA(gameId);
+  const [gamePDA]     = findGamePDA(gameId);
+  const [cardPoolPDA] = findCardPoolPDA(gameId);
 
   const d = await disc('start_game');
   const data = new Uint8Array(16);
   let off = writeBytes(data, 0, d);
   writeU64LE(data, off, gameId);
 
+  // Account order matches StartGame: game (0), card_pool (1), host/signer (2)
+  // Player PDAs go in remaining_accounts (not named accounts)
   return buildAndSend([
-    { pubkey: payer,   isSigner: true,  isWritable: true  },
-    { pubkey: gamePDA, isSigner: false, isWritable: true  },
+    { pubkey: gamePDA,     isSigner: false, isWritable: true  }, // game
+    { pubkey: cardPoolPDA, isSigner: false, isWritable: true  }, // card_pool
+    { pubkey: payer,       isSigner: true,  isWritable: false }, // host (signer)
   ], data);
 }
 
@@ -365,7 +391,10 @@ async function commitAction(gameId, hash) {
   const payer = window.solana.publicKey;
   const [gamePDA]   = findGamePDA(gameId);
   const [playerPDA] = findPlayerPDA(gameId, payer);
-  const [commitPDA] = findCommitPDA(gameId, payer);
+
+  // Must read current round to derive commit PDA — Rust seeds include round
+  const round = await readGameRound(gamePDA);
+  const [commitPDA] = findCommitPDA(gameId, round, payer);
 
   // disc(8) + game_id(8) + hash(32) = 48 bytes
   const d = await disc('commit_action');
@@ -374,11 +403,13 @@ async function commitAction(gameId, hash) {
   off = writeU64LE(data, off, gameId);
   writeBytes(data, off, hash);
 
+  // Account order MUST match CommitActionCtx field order:
+  //   game (0), player_state (1), commit (2), player/signer (3), system_program (4)
   return buildAndSend([
-    { pubkey: payer,     isSigner: true,  isWritable: true  },
-    { pubkey: gamePDA,   isSigner: false, isWritable: true  },
-    { pubkey: playerPDA, isSigner: false, isWritable: true  },
-    { pubkey: commitPDA, isSigner: false, isWritable: true  },
+    { pubkey: gamePDA,   isSigner: false, isWritable: true  }, // game
+    { pubkey: playerPDA, isSigner: false, isWritable: true  }, // player_state
+    { pubkey: commitPDA, isSigner: false, isWritable: true  }, // commit (init)
+    { pubkey: payer,     isSigner: true,  isWritable: true  }, // player (signer + payer)
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
   ], data);
 }
@@ -395,7 +426,10 @@ async function revealAction(gameId, actionType, targetPubkeyStr, salt) {
   const target = new solanaWeb3.PublicKey(targetPubkeyStr);
   const [gamePDA]   = findGamePDA(gameId);
   const [playerPDA] = findPlayerPDA(gameId, payer);
-  const [commitPDA] = findCommitPDA(gameId, payer);
+
+  // Must use same round as the commit — read from game account
+  const round = await readGameRound(gamePDA);
+  const [commitPDA] = findCommitPDA(gameId, round, payer);
 
   // disc(8) + game_id(8) + action_type(1) + target(32) + salt(32) = 81 bytes
   const d = await disc('reveal_action');
@@ -406,11 +440,13 @@ async function revealAction(gameId, actionType, targetPubkeyStr, salt) {
   off = writeBytes(data, off, target.toBytes());
   writeBytes(data, off, salt);
 
+  // Account order MUST match RevealActionCtx field order:
+  //   game (0), player_state (1), commit (2, readonly), player/signer (3, readonly)
   return buildAndSend([
-    { pubkey: payer,     isSigner: true,  isWritable: true  },
-    { pubkey: gamePDA,   isSigner: false, isWritable: true  },
-    { pubkey: playerPDA, isSigner: false, isWritable: true  },
-    { pubkey: commitPDA, isSigner: false, isWritable: true  },
+    { pubkey: gamePDA,   isSigner: false, isWritable: true  }, // game
+    { pubkey: playerPDA, isSigner: false, isWritable: true  }, // player_state
+    { pubkey: commitPDA, isSigner: false, isWritable: false }, // commit (readonly)
+    { pubkey: payer,     isSigner: true,  isWritable: false }, // player (signer)
   ], data);
 }
 
@@ -552,10 +588,11 @@ async function depositStake(gameId) {
   let off = writeBytes(data, 0, d);
   writeU64LE(data, off, gameId);
 
+  // Account order matches DepositStake: game (0, readonly), stake_vault (1), player/signer (2), system_program (3)
   return buildAndSend([
-    { pubkey: payer,         isSigner: true,  isWritable: true  },
-    { pubkey: gamePDA,       isSigner: false, isWritable: true  },
-    { pubkey: stakeVaultPDA, isSigner: false, isWritable: true  },
+    { pubkey: gamePDA,       isSigner: false, isWritable: false }, // game (readonly — no mut in Rust struct)
+    { pubkey: stakeVaultPDA, isSigner: false, isWritable: true  }, // stake_vault (init)
+    { pubkey: payer,         isSigner: true,  isWritable: true  }, // player (signer + payer)
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
   ], data);
 }
@@ -564,7 +601,6 @@ async function depositStake(gameId) {
 async function claimPrize(gameId) {
   const payer = window.solana.publicKey;
   const [gamePDA]       = findGamePDA(gameId);
-  const [playerPDA]     = findPlayerPDA(gameId, payer);
   const [stakeVaultPDA] = findStakeVaultPDA(gameId);
 
   const d = await disc('claim_prize');
@@ -572,11 +608,11 @@ async function claimPrize(gameId) {
   let off = writeBytes(data, 0, d);
   writeU64LE(data, off, gameId);
 
+  // Account order matches ClaimPrize: game (0, readonly), stake_vault (1), player/signer (2), system_program (3)
   return buildAndSend([
-    { pubkey: payer,         isSigner: true,  isWritable: true  },
-    { pubkey: gamePDA,       isSigner: false, isWritable: true  },
-    { pubkey: playerPDA,     isSigner: false, isWritable: false },
-    { pubkey: stakeVaultPDA, isSigner: false, isWritable: true  },
+    { pubkey: gamePDA,       isSigner: false, isWritable: false }, // game (readonly — no mut in Rust struct)
+    { pubkey: stakeVaultPDA, isSigner: false, isWritable: true  }, // stake_vault
+    { pubkey: payer,         isSigner: true,  isWritable: true  }, // player (signer + winner)
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
   ], data);
 }
