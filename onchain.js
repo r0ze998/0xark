@@ -164,28 +164,24 @@ function findCardPoolPDA(gameId) {
   );
 }
 
-// round is a u32; Rust seeds: [COMMIT_SEED, game_id(u64-LE), round(u32-LE), player]
+// round is a u8; Rust seeds: [COMMIT_SEED, game_id(u64-LE), round(u8, 1 byte), player]
 function findCommitPDA(gameId, round, playerPubkey) {
-  const roundBytes = new Uint8Array(4);
-  roundBytes[0] =  round        & 0xff;
-  roundBytes[1] = (round >>  8) & 0xff;
-  roundBytes[2] = (round >> 16) & 0xff;
-  roundBytes[3] = (round >> 24) & 0xff;
+  const roundBytes = new Uint8Array(1);
+  roundBytes[0] = round & 0xff;
   return solanaWeb3.PublicKey.findProgramAddressSync(
     [SEED_COMMIT, gameIdBytes(gameId), roundBytes, playerPubkey.toBytes()],
     getProgramId()
   );
 }
 
-// Read the current round from the on-chain game account (byte 49 in Game struct).
+// Read the current round from the on-chain game account.
+// Game struct layout (Anchor 8-byte discriminator + fields):
+//   disc(8) + game_id(u64=8) + host(Pubkey=32) + status(u8=1) + round(u8=1) → offset 49
 async function readGameRound(gamePDA) {
   try {
     const info = await getConnection().getAccountInfo(gamePDA);
-    if (info && info.data.length > 52) {
-      // Game struct layout (Anchor): 8-byte discriminator + fields
-      // round: u32 at offset 49 (little-endian)
-      const dv = new DataView(info.data.buffer, info.data.byteOffset);
-      return dv.getUint32(49, true);
+    if (info && info.data.length > 49) {
+      return info.data[49]; // round: u8
     }
   } catch (_) {}
   return 0;

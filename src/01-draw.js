@@ -456,10 +456,9 @@ async function onchainCommit(gameId,actionType,rivalIdx){
         let round=0;
         try{
           const gameAcct=await solConnection.getAccountInfo(gamePda);
-          if(gameAcct){round=gameAcct.data[49];}// round is at byte 49 in Game struct
+          if(gameAcct){round=gameAcct.data[49];}// round: u8 at offset 49 in Game struct
         }catch(_){}
-        const roundBuf=new ArrayBuffer(4);new DataView(roundBuf).setUint32(0,round,true);
-        const roundBytes=new Uint8Array(roundBuf);
+        const roundBytes=new Uint8Array([round&0xff]);// u8 — 1 byte, matches Rust to_le_bytes()
 
         // Store round+target for reveal
         localStorage.setItem('oxark_onchain_salt',saltHex);
@@ -526,10 +525,9 @@ async function onchainReveal(gameId,actionType,rivalIdx,salt){
         const gameIdBytes=new Uint8Array(gameIdBuf);
         const playerKey=new solanaWeb3.PublicKey(walletPublicKey);
 
-        // Load round stored at commit time
+        // Load round stored at commit time (round is u8, so 1 byte in PDA seed)
         const round=parseInt(localStorage.getItem('oxark_onchain_round')||'0',10);
-        const roundBuf=new ArrayBuffer(4);new DataView(roundBuf).setUint32(0,round,true);
-        const roundBytes=new Uint8Array(roundBuf);
+        const roundBytes=new Uint8Array([round&0xff]);// u8 — 1 byte, matches Rust to_le_bytes()
 
         // Restore target bytes from hex stored at commit time
         const targetHex=localStorage.getItem('oxark_onchain_target_hex')||'';
