@@ -57,8 +57,12 @@ const _BAR_THREAT_COLS=['#50b050','#c0b030','#d07030','#d04040'];
 const _BAR_THREAT_LBLS=['LOW','MED','HIGH','MAX'];
 const _SCT_TYPE_COL={attack:'#d04040',defense:'#4090d0',flee:'#40c080',magic:'#c060c0',recovery:'#d0c040'};
 // v265: Pre-bake USE CARD effect panel info — was TYPE_INFO object created every frame during card select
+// v441: attack now rarity-baked (shows exact steal %, dmg) like defense/recovery
+const _ATK_TYPE_INFOS=(()=>{
+  const steal=[35,50,65,80,95];const dmg=[1,1,2,2,2];
+  return steal.map((s,i)=>({col:'#e05040',label:'ATTACK',lines:['-'+dmg[i]+' HP + '+s+'% steal chance.','Bypasses rival Barrier.','Higher rarity = more reliable.']}));
+})();
 const _CARD_TYPE_INFO_S={
-  attack:{col:'#e05040',label:'ATTACK',lines:['Force steal (ignores barrier).','Success rate scales with rarity.','Higher rarity = more reliable.']},
   flee:  {col:'#40c080',label:'FLEE',  lines:['Ends battle immediately.','No cards lost this round.','Use when overwhelmed.']},
   magic: {col:'#c070e0',label:'MAGIC', lines:['Nullifies ALL barriers.','−2 HP to both rivals.','Guaranteed steal. Unstoppable.']},
 };
@@ -109,6 +113,7 @@ let _sIntelCache1='',_sIntelRef1=null,_sIntelStale1=-1;
 let _hunterFledLbl='',_hunterFledRef=null,_hunterFledAlive=-1; // hunter.n + fled status
 let _tauntLbl='',_tauntRef=''; // battle splash taunt (changes every 7 frames)
 function _getTypeInfo(t,r){
+  if(t==='attack')return _ATK_TYPE_INFOS[Math.min(4,(r||1)-1)]; // v441: rarity-baked
   if(t==='defense')return _DEF_TYPE_INFOS[Math.min(4,(r||1)-1)];
   if(t==='recovery')return _REC_TYPE_INFOS[Math.min(4,(r||1)-1)];
   return _CARD_TYPE_INFO_S[t]||_UNK_TYPE_INFO;
