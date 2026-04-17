@@ -229,6 +229,19 @@ function checkPuzzleInteraction(){
       if(puzzleStoneOrder[0]===0&&puzzleStoneOrder[1]===1&&puzzleStoneOrder[2]===2){
         puzzleSolved=true;
         sfxPuzzle();
+        _puzzleSolveFrame=fr; // v466: drive pillar burst animation
+        // v466: tricolor particle burst from each pillar position
+        for(let _pi=0;_pi<3;_pi++){
+          const _pp=puzzlePillarPositions[_pi];
+          const _bx=_pp.x*TW-camX+TW/2,_by=_pp.y*TH-camY+TH/2;
+          const _bc=puzzleColors[_pi];
+          for(let _pj=0;_pj<12;_pj++){
+            const _ang=(_pj/12)*Math.PI*2;
+            const _spd=1.5+Math.random()*2.5;
+            particles.push({x:_bx,y:_by,vx:Math.cos(_ang)*_spd,vy:Math.sin(_ang)*_spd-1.5,life:30+Math.random()*20,c:_bc});
+          }
+        }
+        screenShake(4,10);
         puzzleMessage='The passage opens!';
         puzzleMessageTimer=180;
         twSet('The passage opens! A void card appears!');
@@ -272,6 +285,18 @@ function drawPuzzlePillars(){
       g.globalAlpha=pulse;
       g.drawImage(_puzzleGlowCanvases[ci],(px+.5)|0,(py+.5)|0);
       g.globalAlpha=1;
+    }else{
+      // v466: Solve burst — ascending light columns at each pillar site for 90 frames
+      const _pAge=fr-_puzzleSolveFrame;
+      if(_pAge>=0&&_pAge<90){
+        const _pa=Math.max(0,1-_pAge/90);
+        const _colH=Math.min(H,_pAge*3);
+        g.globalAlpha=_pa*0.55;
+        bx(px+6,py-_colH+TH,4,_colH,puzzleColors[i]);
+        g.globalAlpha=_pa*0.25;
+        bx(px+4,py-_colH+TH,8,_colH,'#ffffff');
+        g.globalAlpha=1;
+      }
     }
   }
 }

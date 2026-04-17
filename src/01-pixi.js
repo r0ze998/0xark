@@ -1080,6 +1080,7 @@ const mmAnimCtx=mmAnimCanvas.getContext('2d');
 let _mmAnimFrame=-9999;
 let _mmFlashFrame=-9999; // v461: new room discovery flash timestamp
 let _trapHitFrame=-9999; // v463: trap trigger timestamp for TRAP! danger banner
+let _puzzleSolveFrame=-9999; // v466: ruins puzzle solve timestamp for pillar burst animation
 
 // GBA-style scanlines — pre-baked once; single drawImage per frame (zero per-frame cost)
 const scanCanvas=document.createElement('canvas');
