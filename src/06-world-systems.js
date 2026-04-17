@@ -1185,11 +1185,14 @@ function _getFilledSlotsN(){
 function doShopTrade(){
   const filled=getPlayerFilledSlots();
   if(filled.length===0)return;
+  // Guard: clamp index in case hand changed since UI was opened (decay, etc.)
+  if(shopSelectedIdx>=filled.length)shopSelectedIdx=0;
   const slot=filled[shopSelectedIdx];
   const oldCard=pl[0].cd[slot];
+  if(oldCard<1||oldCard>CD.length)return; // guard: empty/invalid slot
   const oldName=CD[oldCard-1].n;
   // Prioritize cards not yet in vault (new uniques) for progression
-  const ownedInHand=new Set(pl[0].cd.filter(c=>c>0));
+  const ownedInHand=new Set();for(let _i=0;_i<pl[0].cd.length;_i++){if(pl[0].cd[_i]>0)ownedInHand.add(pl[0].cd[_i]);}
   const vault=pl[0].vault||new Set();
   const vaultNew=[]; // never collected
   const vaultOwned=[]; // in vault but not in hand
@@ -1277,8 +1280,10 @@ function drawCardShop(){
     }
   }else if(shopPhase==='confirm'){
     const filled=getPlayerFilledSlots();
-    const slot=filled[shopSelectedIdx];
+    if(filled.length===0){shopPhase='list';return;}
+    const slot=filled[Math.min(shopSelectedIdx,filled.length-1)];
     const cd=pl[0].cd[slot];
+    if(!cd||cd<1||cd>CD.length){shopPhase='list';return;}
     const cr=CD[cd-1];
     const rarCol=RARITY_COLOR[cr.r]||'#888898';
     const vaultSz=pl[0].vault?pl[0].vault.size:0;
@@ -1329,10 +1334,10 @@ function drawCardShop(){
 function doSynthesis(){
   // Validate: 3 cards of same rarity selected
   if(synthSelected.length!==3)return;
-  const cards=synthSelected.map(slot=>pl[0].cd[slot]);
-  const rarities=cards.map(cid=>CD[cid-1]?.r||1);
-  const r=rarities[0];
-  if(!rarities.every(rv=>rv===r))return;
+  const c0=pl[0].cd[synthSelected[0]],c1=pl[0].cd[synthSelected[1]],c2=pl[0].cd[synthSelected[2]];
+  if(c0<1||c0>CD.length||c1<1||c1>CD.length||c2<1||c2>CD.length)return; // guard invalid slots
+  const r=(CD[c0-1]?.r||1);
+  if((CD[c1-1]?.r||1)!==r||(CD[c2-1]?.r||1)!==r)return;
   if(r>=5)return; // can't upgrade legendary
   const targetRarity=r+1;
   // Pool of target rarity cards not yet in vault
@@ -2066,7 +2071,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v277',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v432',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -2078,7 +2083,7 @@ function dTitle(){
     drawSolanaLogo(W/2,H/2-54,14);
     txShadow(_STAKE_CONFIRM_LBL,W/2-200,H/2-24,9,'#f0f0f0','rgba(0,0,0,.5)'); // v341: pre-baked
     txShadow(_SEAL_CLAIM_LBL,W/2-190,H/2+2,7,'#14F195','rgba(0,0,0,.4)'); // v341: pre-baked
-    txShadow('(UI preview - devnet not deployed)',W/2-150,H/2+22,6,'#555570','rgba(0,0,0,.35)');
+    txShadow('(devnet — program upgrade pending)',W/2-140,H/2+22,6,'#555570','rgba(0,0,0,.35)');
     const blink_=Math.floor(fr/25)%2===0;
     if(blink_)txShadow('Z = Yes    X = No',W/2-100,H/2+52,9,'#f0c830','rgba(0,0,0,.4)');
   }

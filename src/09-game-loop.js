@@ -101,10 +101,12 @@ function update(){
   // Tension drum for nearby rivals
   if(sc==='map'&&proximityDangerLevel>=3&&!tensionDrumNode){startTensionDrum();if(tensionDrumGain)try{tensionDrumGain.gain.linearRampToValueAtTime(proximityDangerLevel===4?0.05:0.025,AC.currentTime+0.2);}catch(e){}}
   else if((sc!=='map'||proximityDangerLevel<3)&&tensionDrumNode){stopTensionDrum();}
-  // Safety caps: prevent unbounded array growth
-  if(particles.length>500)particles.splice(0,particles.length-500);
-  if(lg.length>200)lg.splice(0,lg.length-200);
-  if(burnedTiles.length>500)burnedTiles.splice(0,burnedTiles.length-500);
+  // Safety caps: prevent unbounded array growth (check every 60 frames; splice is O(n))
+  if(fr%60===0){
+    if(particles.length>500)particles.splice(0,particles.length-500);
+    if(lg.length>200)lg.splice(0,lg.length-200);
+    if(burnedTiles.length>500)burnedTiles.splice(0,burnedTiles.length-500);
+  }
   processHeldMovement();
   // Invalidate tile cache when wt changes (every 20 frames) — lava/campfire use wt for animation
   if(wt!==_tileCacheLastWt){tileCacheDirty=true;_tileCacheLastWt=wt;}
