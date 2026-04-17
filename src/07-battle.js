@@ -64,7 +64,7 @@ const _ATK_TYPE_INFOS=(()=>{
 })();
 const _CARD_TYPE_INFO_S={
   flee:  {col:'#40c080',label:'FLEE',  lines:['Ends battle immediately.','No cards lost this round.','Use when overwhelmed.']},
-  magic: {col:'#c070e0',label:'MAGIC', lines:['Nullifies ALL barriers.','−2 HP to both rivals.','Guaranteed steal. Unstoppable.']},
+  magic: {col:'#c070e0',label:'MAGIC', lines:['−2 HP to both rivals.','Guaranteed steal (bypasses barrier).','Strips YOUR barrier too. High risk!']},
 };
 const _DEF_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#4080d0',label:'DEFENSE',lines:['Raises Barrier this round.','Restores +'+(Math.ceil(r/2))+' Barrier charges.','Protects against incoming Steal.']});return a;})();
 const _REC_TYPE_INFOS=(()=>{const a=[];for(let r=1;r<=5;r++)a.push({col:'#e0c030',label:'RECOVERY',lines:['Restores spell energy:','+'+Math.ceil(r/2)+' Steal, +1 Barrier, +1 Scout.','Use when spells are depleted.']});return a;})();
@@ -2060,7 +2060,9 @@ function generateResolveEvents(){
         lg.push('R'+rd+': '+cr.n+' — escaped battle!');
         events._escaped=true; // signal battle result handler to skip to map immediately
       }else if(cr.t==='magic'){
-        // Magic: strip all barriers + 2 HP damage to BOTH rivals + guaranteed steal (v440: fixed asymmetric bug)
+        // Magic: strip ALL barriers (incl. player's) + 2 HP damage to BOTH rivals + guaranteed steal
+        // v440: fixed asymmetric bug (was 2+1 dmg); v442: restored bpPlayerBarrier=false (high-risk: your barrier stripped too)
+        bpPlayerBarrier=false;
         bpHP[1]=Math.max(0,bpHP[1]-2);bpHP[2]=Math.max(0,bpHP[2]-2);
         bpHPDmgAnim[1]=20;bpHPDmgAnim[2]=20;
         const stolen=removeCardFromPlayer(tgt,-1);
