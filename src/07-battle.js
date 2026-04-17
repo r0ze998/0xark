@@ -319,7 +319,7 @@ function drawBattleBG(){
 }
 
 // Draw FRLG-style card count bar (like HP bar) with rounded container and segmented fill
-function drawCardBar(x,y,w,cards,maxCards){
+function drawCardBar(x,y,w,cards,maxCards,showTypes){ // v445: +showTypes for type-colored player bar
   const filledCount=cdCount(cards);
   // "CARDS" label to the left
   // (label is drawn by callers)
@@ -336,13 +336,16 @@ function drawCardBar(x,y,w,cards,maxCards){
   bx(x+2,y+2,w-4,barH-4,'#282820');
   // Segmented fill
   const segW=Math.floor((w-6)/maxCards);
-  // Color based on vault progress
+  // Color based on vault progress (fallback when showTypes is false)
   const vaultSize=hasUniqueCards(0).size;
   const barColor=vaultSize<20?FRLG.hpGreen:vaultSize<40?FRLG.hpYellow:'#F0C830';
   for(let i=0;i<maxCards;i++){
     const sx=x+3+i*segW;
     if(i<cards.length&&cards[i]>0){
-      bx(sx,y+2,segW-1,barH-4,barColor);
+      // v445: use card's type color when showTypes (player bar only)
+      const _cd=cards[i];const _cr=showTypes&&_cd>0?CD[_cd-1]:null;
+      const segCol=_cr?(_BTYPE_COL[_BTYPE_MAP[_cr.t]]||barColor):barColor;
+      bx(sx,y+2,segW-1,barH-4,segCol);
       bx(sx,y+2,segW-1,Math.floor((barH-4)/2),'rgba(255,255,255,.25)');
       // Segment divider
       if(i<maxCards-1)bx(sx+segW-1,y+2,1,barH-4,'rgba(0,0,0,.3)');
@@ -562,7 +565,7 @@ function drawPlayerInfoBox(){
   }}
   // Card bar
   txShadow('CARDS',bx_+10,by_+36,8,ARK.textDim,'rgba(0,0,0,.3)');
-  drawCardBar(bx_+60,by_+28,148,pl[0].cd,Math.min(HAND_SIZE,10));
+  drawCardBar(bx_+60,by_+28,148,pl[0].cd,Math.min(HAND_SIZE,10),true); // v445: showTypes
   const _vSz=hasUniqueCards(0).size; // v311: cache to avoid double-call + use pre-baked _UNIQ60
   txShadow(_UNIQ60[_vSz]||(_vSz+'/60'),bx_+214,by_+36,9,ARK.gold,'rgba(0,0,0,.3)');
   // Win indicator (60/60)
