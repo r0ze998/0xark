@@ -27,7 +27,7 @@ pub struct CreateGame<'info> {
 }
 
 pub fn handle_create_game(ctx: Context<CreateGame>, game_id: u64, max_players: u8) -> Result<()> {
-    require!((2..=MAX_PLAYERS).contains(&max_players), crate::error::ErrorCode::InvalidAction);
+    require!((1..=MAX_PLAYERS).contains(&max_players), crate::error::ErrorCode::InvalidAction);
 
     let game = &mut ctx.accounts.game;
     game.game_id = game_id;

@@ -33,7 +33,7 @@ pub struct DepositStake<'info> {
     #[account(
         seeds = [GAME_SEED, game_id.to_le_bytes().as_ref()],
         bump = game.bump,
-        constraint = game.status == GameStatus::Lobby @ ErrorCode::NotInLobby,
+        constraint = game.status != GameStatus::Finished @ ErrorCode::GameFinished,
     )]
     pub game: Account<'info, Game>,
     #[account(

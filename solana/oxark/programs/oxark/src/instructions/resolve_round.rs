@@ -26,7 +26,7 @@ pub struct ResolveRound<'info> {
 pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     let game = &mut ctx.accounts.game;
     require!(game.status == GameStatus::RevealPhase, ErrorCode::NotRevealPhase);
-    require!(game.reveal_count == game.player_count, ErrorCode::NotRevealPhase);
+    require!(game.reveal_count >= 1, ErrorCode::NotRevealPhase);
 
     // Get clock once at the top — used for all randomness in this instruction
     let clock = Clock::get()?;

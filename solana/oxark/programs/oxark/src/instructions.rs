@@ -10,6 +10,7 @@ pub mod mint_card_nft;
 pub mod stake_entry;
 pub mod season;
 pub mod agent_registry;
+pub mod mint_solo_card;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -23,3 +24,4 @@ pub use mint_card_nft::*;
 pub use stake_entry::*;
 pub use season::*;
 pub use agent_registry::*;
+pub use mint_solo_card::*;

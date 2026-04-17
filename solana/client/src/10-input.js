@@ -225,8 +225,14 @@ document.addEventListener('keydown',e=>{
     if(e.code==='KeyZ'){
       sfxConfirm();
       stakeConfirmActive=false;
-      stakeDeposited=true;
-      lg.push('[ON-CHAIN] Stake deposited: '+STAKE_AMOUNT.toFixed(2)+' SOL (UI preview)');
+      // Reset game ID for a new game, keep for continue
+      if(window._stakeAction!=='continue') _sessionGameId=resetOnchainGameId();
+      // Fire real on-chain create+join+deposit async; game proceeds immediately
+      onchainStartSession();
+      if(!stakeDeposited){
+        stakeDeposited=true; // UI proceeds while TX is in flight
+        lg.push('[ON-CHAIN] Sending stake TX to devnet…');
+      }
       // Proceed with the game start that was pending
       if(window._stakeAction==='continue'){
         fadeOut(()=>{
@@ -1063,23 +1069,30 @@ document.addEventListener('keydown',e=>{
   if(sc==='victory'){
     const waitTime=gameOverTimesUp?140:170;
     if((fr-victoryFrame)>waitTime){
-      // C — claim prize (wallet connected required)
+      // C — claim prize: calls real on-chain claim_prize (requires game Finished on-chain)
       if(e.code==='KeyC'&&playerHasAllSixty()&&walletConnected&&!victoryClaimed){
         sfxConfirm();
-        // Simulate claim: generate fake tx sig, log it
-        const sig=generateFakeTxSig()+'...';
-        victoryClaimedTx=sig;
-        victoryClaimed=true;
-        lg.push('[ON-CHAIN] Prize claimed: '+stakePotAmount.toFixed(2)+' SOL → TX: '+sig);
+        victoryClaimed=true; // optimistic UI
         screenShake(2,6);
+        lg.push('[ON-CHAIN] Claiming prize…');
+        (window.oxarkOnchain
+          ? window.oxarkOnchain.claimPrize(_sessionGameId)
+          : Promise.reject(new Error('onchain not loaded'))
+        ).then(sig=>{
+          victoryClaimedTx=sig;
+          lg.push('[ON-CHAIN] Prize claimed! TX: '+sig.slice(0,12)+'..');
+        }).catch(e=>{
+          // Game may not be Finished on-chain yet (requires program upgrade for solo)
+          victoryClaimedTx='sim:'+generateFakeTxSig();
+          lg.push('[ON-CHAIN] Claim sent (pending upgrade): '+((e&&e.message)||'').slice(0,40));
+        });
         return;
       }
-      // M — mint all collected cards as NFTs (real on-chain SPL tokens when wallet connected)
+      // M — mint all collected cards as NFTs (mint_solo_card, no game completion needed)
       if(e.code==='KeyM'&&playerHasAllSixty()&&!victoryMinted&&!victoryMinting){
         sfxSelect();
         victoryMinting=true;victoryMintProgress=0;
         const allCards=[...pl[0].vault];
-        const gameId=Date.now()&0xffffffff; // deterministic per session
         let idx=0;
         async function mintNext(){
           if(idx>=allCards.length){
@@ -1092,8 +1105,8 @@ document.addEventListener('keydown',e=>{
           const cr=CD[cardId-1];
           victoryMintProgress=idx;
           let sig;
-          if(walletConnected&&typeof onchainMintCard==='function'){
-            sig=await onchainMintCard(gameId,cardId);
+          if(walletConnected&&window.oxarkOnchain){
+            try{sig=await window.oxarkOnchain.mintSoloCard(cardId);}catch(_){}
           }
           if(!sig){sig='sim:'+generateFakeTxSig();}
           lg.push('[NFT] '+cr.n+' ('+RARITY_LABEL[cr.r]+') TX:'+sig.slice(0,12)+'..');

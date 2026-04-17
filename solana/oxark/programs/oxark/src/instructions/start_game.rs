@@ -26,7 +26,7 @@ pub fn handle_start_game(ctx: Context<StartGame>, game_id: u64) -> Result<()> {
     let game = &mut ctx.accounts.game;
     require!(game.status == GameStatus::Lobby, ErrorCode::NotInLobby);
     require!(game.host == ctx.accounts.host.key(), ErrorCode::NotHost);
-    require!(game.player_count >= 2, ErrorCode::NotEnoughPlayers);
+    require!(game.player_count >= 1, ErrorCode::NotEnoughPlayers);
 
     let pool = &mut ctx.accounts.card_pool;
 

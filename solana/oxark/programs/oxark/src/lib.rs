@@ -237,4 +237,11 @@ pub mod oxark {
     pub fn deactivate_agent(ctx: Context<DeactivateAgent>, agent_id: u32) -> Result<()> {
         instructions::agent_registry::handle_deactivate_agent(ctx, agent_id)
     }
+
+    /// Mint a card as proof-of-collection without requiring game completion.
+    /// Any player wallet can mint any card_id (1-60) exactly once per wallet.
+    /// Seeds: ["solo_card", player_pubkey, &[card_id]]
+    pub fn mint_solo_card(ctx: Context<MintSoloCard>, card_id: u8) -> Result<()> {
+        instructions::mint_solo_card::handle_mint_solo_card(ctx, card_id)
+    }
 }
