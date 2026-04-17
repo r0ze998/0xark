@@ -787,6 +787,7 @@ function drawVsSplash(){
 
   if(t>=60){
     battlePhase='select';bpFrame=fr;bpRdIncremented=false;bpActionsGenerated=false;bpScoutedCards=[null,null];
+    _zkVerifyFiredThisRound=false;zkLastProof=null;zkProofReady=false;zkProofStatus='idle';
     generateRivalTells(); // pre-generate rival actions + tells for this round
     if(!tutorialFlags.firstBattle){
       const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'the rival';
@@ -1638,9 +1639,18 @@ function drawConfirmingPhase(){
     onchainReveal(_sessionGameId,bpAction,encounterExclTarget||0,onchainPendingSalt).then(result=>{
       if(result){
         logOnchain('Reveal TX:'+result.txSig.slice(0,8)+'..');
+        // Wire ZK proof on-chain verify once reveal is confirmed and proof is ready
+        if(zkLastProof&&window.oxarkOnchain){
+          _onchainVerifyZk(_sessionGameId,zkLastProof);
+        }
       }
       onchainRevealPhase=false;onchainPendingSalt=null;
     }).catch(()=>{onchainRevealPhase=false;});
+  }
+  // If proof arrived after reveal already completed, fire verify now
+  if(t>80&&t<100&&walletConnected&&zkLastProof&&!onchainRevealPhase&&!_zkVerifyFiredThisRound&&window.oxarkOnchain){
+    _zkVerifyFiredThisRound=true;
+    _onchainVerifyZk(_sessionGameId,zkLastProof);
   }
   if(t>=120){battlePhase='resolving';bpFrame=fr;bpResolveIdx=0;bpResolveQueue=generateResolveEvents();
     // v305: pre-truncate long event texts once; eliminates per-frame substring in drawResultPhase

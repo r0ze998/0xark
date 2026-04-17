@@ -427,9 +427,8 @@ async function revealAction(gameId, actionType, targetPubkeyStr, salt) {
  */
 async function verifyZkProof(gameId, proofA, proofB, proofC, publicInputs) {
   const payer    = window.solana.publicKey;
-  const [gamePDA]      = findGamePDA(gameId);
-  const [playerPDA]    = findPlayerPDA(gameId, payer);
-  const [commitPDA]    = findCommitPDA(gameId, payer);
+  const [gamePDA]   = findGamePDA(gameId);
+  const [playerPDA] = findPlayerPDA(gameId, payer);
 
   // disc(8) + game_id(8) + proof_a(64) + proof_b(128) + proof_c(64) + public_inputs(32) = 304
   const d    = await disc('verify_zk_proof');
@@ -441,12 +440,11 @@ async function verifyZkProof(gameId, proofA, proofB, proofC, publicInputs) {
   off = writeBytes(data, off, proofC);
   writeBytes(data, off, publicInputs);
 
-  // ZK proof verification requires elevated compute budget (BN254 pairing ~200k CU)
+  // Account order matches VerifyZkProof Anchor struct: game (0), player_state (1), player/signer (2)
   return buildAndSend([
-    { pubkey: payer,     isSigner: true,  isWritable: false },
-    { pubkey: gamePDA,   isSigner: false, isWritable: false },
-    { pubkey: playerPDA, isSigner: false, isWritable: false },
-    { pubkey: commitPDA, isSigner: false, isWritable: false },
+    { pubkey: gamePDA,   isSigner: false, isWritable: false }, // game
+    { pubkey: playerPDA, isSigner: false, isWritable: false }, // player_state
+    { pubkey: payer,     isSigner: true,  isWritable: false }, // player (signer)
   ], data, COMPUTE_BUDGET.verify_zk_proof);
 }
 
@@ -525,13 +523,15 @@ async function resolveRound(gameId, playerPubkeyStrs) {
   let off = writeBytes(data, 0, d);
   writeU64LE(data, off, gameId);
 
+  // Account order MUST match Anchor struct ResolveRound field order:
+  //   game (0), card_pool (1), caller/signer (2), remaining_accounts (player PDAs)
   const keys = [
-    { pubkey: payer,       isSigner: true,  isWritable: true  },
-    { pubkey: gamePDA,     isSigner: false, isWritable: true  },
-    { pubkey: cardPoolPDA, isSigner: false, isWritable: true  },
+    { pubkey: gamePDA,     isSigner: false, isWritable: true  }, // game
+    { pubkey: cardPoolPDA, isSigner: false, isWritable: true  }, // card_pool
+    { pubkey: payer,       isSigner: true,  isWritable: false }, // caller (signer)
   ];
 
-  // Append each player PDA as a writable non-signer
+  // Append each player PDA as remaining_accounts (writable for state updates)
   for (const pkStr of playerPubkeyStrs) {
     const pk = new solanaWeb3.PublicKey(pkStr);
     const [playerPDA] = findPlayerPDA(gameId, pk);
