@@ -1733,13 +1733,17 @@ let _sessionGameId=getOnchainGameId();
 // Called when user confirms NEW GAME with wallet.
 async function onchainStartSession(){
   if(!walletConnected||!window.oxarkOnchain)return;
+  const playerPk=window.solana.publicKey.toBase58();
   try{
     const gameId=_sessionGameId;
     lg.push('[ON-CHAIN] Creating game '+gameId+' on devnet…');
     await window.oxarkOnchain.createGame(gameId,2);
     lg.push('[ON-CHAIN] Game created. Joining…');
     await window.oxarkOnchain.joinGame(gameId);
-    lg.push('[ON-CHAIN] Joined. Depositing stake…');
+    // Start game immediately (solo: host = player; distributes starter cards via remaining_accounts)
+    lg.push('[ON-CHAIN] Starting game (CommitPhase)…');
+    await window.oxarkOnchain.startGame(gameId,[playerPk]);
+    lg.push('[ON-CHAIN] Game started. Depositing stake…');
     const sig=await window.oxarkOnchain.depositStake(gameId);
     stakeDeposited=true;
     lg.push('[ON-CHAIN] Stake deposited! TX: '+sig.slice(0,12)+'..');
