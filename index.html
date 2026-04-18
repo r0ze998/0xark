@@ -10751,6 +10751,9 @@ function drawSynthesisShop(){
       drawCardFrame(W/2-50,110,100,140,synthResultCard-1,true);
       txShadow(cr.n,W/2-cr.n.length*5,262,11,rCol,'rgba(0,0,0,.3)');
       txShadow(RARITY_LABEL[cr.r],W/2-32,280,7,rCol,'rgba(0,0,0,.2)');
+      // v706: synthesis result card aura — rarity-colored motes rising around card every 12 frames (screen-space)
+      if(t>8&&fr%12===0){const _aur=1+cr.r;for(let _ai=0;_ai<_aur;_ai++){const _ax=W/2-50+Math.random()*100;const _ay=110+Math.random()*140;particles.push({x:_ax,y:_ay,vx:(Math.random()-.5)*0.8,vy:-0.6-Math.random()*1.2,life:20+Math.random()*14,c:rCol.replace(')',',0.65)').replace('rgb(','rgba(')});}}
+
     }else{
       txShadow('No cards of that rarity to forge.',W/2-140,H/2,8,'#d04040','rgba(0,0,0,.2)');
     }
@@ -11629,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v705',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v706',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
