@@ -11561,7 +11561,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v646',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v647',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14475,6 +14475,8 @@ function drawOpponentInfoBox(){
     bx(bx_+6,by_+27,76,13,ARK.danger);
     g.globalAlpha=1;
     txShadow(r1Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,by_+37,6,'#fff','rgba(0,0,0,.6)');
+    // v647: VEGA danger sparks — urgent red motes from warning strip, faster at full hand (screen-space)
+    if(fr%(r1Cards>=5?3:6)===0){particles.push({x:bx_+6+Math.random()*76,y:by_+27+Math.random()*13,vx:(Math.random()-.5)*.44,vy:-.22-Math.random()*.22,life:8+Math.random()*6,c:Math.random()>.5?'rgba(220,40,40,0.78)':'rgba(255,120,60,0.60)'});}
   }
   // Tell for Rival 1 (during select only)
   if(showTells&&bpRivalTells[0]){
@@ -14521,6 +14523,8 @@ function drawOpponentInfoBox(){
       bx(bx_+6,sepY+19,70,12,ARK.danger);
       g.globalAlpha=1;
       txShadow(r2Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,sepY+28,6,'#fff','rgba(0,0,0,.6)');
+      // v647: MIRA danger sparks — urgent amber/red motes from warning strip (screen-space)
+      if(fr%(r2Cards>=5?3:6)===4){particles.push({x:bx_+6+Math.random()*70,y:sepY+19+Math.random()*12,vx:(Math.random()-.5)*.44,vy:-.22-Math.random()*.22,life:8+Math.random()*6,c:Math.random()>.5?'rgba(200,80,20,0.78)':'rgba(255,160,40,0.58)'});}
     }
     // Tell for Rival 2
     if(showTells&&bpRivalTells[1]){
