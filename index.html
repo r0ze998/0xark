@@ -10342,6 +10342,8 @@ function drawCardShop(){
           bx(wX+8,ry-4,3,rowH-2,rarCol);
           const bob=_sFr15*2; // v369: cached
           txShadow('\u25B6',wX+14+bob,ry+16,9,'#c04040','rgba(0,0,0,.4)');
+          // v558: rarity sparkles from selected trade card row (map overlay — world-space offset)
+          if(fr%8===0){particles.push({x:wX+24+Math.random()*50+camX,y:ry+Math.random()*26+camY,vx:(Math.random()-.5)*0.38,vy:-0.28-Math.random()*0.30,life:12+Math.random()*7,c:rarCol});}
         }else{
           bx(wX+8,ry-4,3,rowH-2,'rgba(200,180,100,.15)');
         }
@@ -11308,7 +11310,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v557',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v558',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
