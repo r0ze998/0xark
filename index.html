@@ -11632,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v714',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v715',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -18307,6 +18307,8 @@ function drawDiscardOverlay(){
 
   bx(0,0,W,H,'rgba(0,0,0,.65)');
   win(W/2-220,panY,440,panH);
+  // v715: discard overlay slide-in burst — caution-colored sparks on panel first appear (screen-space)
+  if(fr-discardOpenFrame_===1){for(let _doi=0;_doi<10;_doi++){particles.push({x:W/2-110+Math.random()*220,y:panYBase,vx:(Math.random()-.5)*2.0,vy:-0.6-Math.random()*1.6,life:14+Math.random()*10,c:Math.random()>.5?'rgba(210,60,30,0.80)':'rgba(240,150,40,0.68)'});}}
 
   // Header: dark background + incoming card rarity accent stripe
   const pendCr=discardPendingCard>0?CD[discardPendingCard-1]:null;
