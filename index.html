@@ -11601,7 +11601,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v668',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v669',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -12603,6 +12603,8 @@ function drawPirateDecorations(){
           g.globalAlpha=glowA;
           g.drawImage(_spiderGlowCanvas,(spx+5)|0,(spy-3)|0);
           g.globalAlpha=1;
+          // v669: skull wall seep — pale spectral motes drift from eye sockets (world-space)
+          if(fr%24===(sx*3+sy*5)%24){particles.push({x:sx*TW+13+Math.random()*2,y:sy*TH+6+Math.random()*3,vx:(Math.random()-.5)*0.22,vy:-0.20-Math.random()*0.22,life:22+Math.random()*16,c:Math.random()>.5?'rgba(160,220,180,0.55)':'rgba(200,240,210,0.38)'});particles.push({x:sx*TW+17+Math.random()*2,y:sy*TH+6+Math.random()*3,vx:(Math.random()-.5)*0.22,vy:-0.18-Math.random()*0.22,life:20+Math.random()*14,c:Math.random()>.5?'rgba(140,200,165,0.48)':'rgba(180,230,195,0.35)'});}
         }
       }
     }
