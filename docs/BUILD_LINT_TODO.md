@@ -91,3 +91,77 @@ to B only if A turns out to flag too many false positives.
 
 These are nice-to-haves; the collision check alone handles the concrete
 failure mode that motivated this TODO.
+
+---
+
+## Check #2: malformed `rgba()` strings in the built bundle
+
+**Trigger**: v442 — `_dungVigGrads` in `src/07-map.js` shipped a
+`const cols=[[],[],[80,140,200],...]` table with two leading `[]`. The loop
+indexed `fl=1..5`, so `cols[1]=[]` destructured to `[undefined,undefined,undefined]`,
+producing `ctx.addColorStop(0, 'rgba(undefined,undefined,undefined,1)')` —
+which Canvas 2D throws on at runtime (not parse time). Latent since
+b331777 (v228, 2026-04-16); masked by the v262 `_FLOOR_NAMES` SyntaxError
+until v441 removed the parse-time mask.
+
+### What
+
+Add a bundle-output grep for the literal tokens below:
+
+```
+rgba(undefined
+rgba(null
+rgba(NaN
+rgb(undefined
+rgb(null
+rgb(NaN
+```
+
+If any appear in the generated `index.html`, fail the build and print the
+line + surrounding 3 lines.
+
+### Why a post-build check (not static)
+
+Most `rgba(...)` strings in this codebase are built via template literals
+from numeric variables. A static source scan would need to trace data flow
+to catch "the variable is `undefined` at runtime." The bundle grep catches
+only the cases where the template-literal inputs are **constant-foldable**
+to `undefined`/`null`/`NaN` — which covers the v442 regression (the empty
+`[]` destructures at module top-level and the build does not execute it,
+but the output string is in the bundle the moment the IIFE runs on load).
+
+In practice this check would have fired if we ran the bundle through any
+node-side smoke test (`node -e "require('./index.html')"`-style eval of
+the script block). Deferring the "actually evaluate" approach; the grep
+is the 80% win for 10% of the work.
+
+### Implementation sketch
+
+At the end of `build()` in `build.js`, after writing `index.html`:
+
+```js
+const html = fs.readFileSync(OUTPUT_PATH, 'utf8');
+const badRgba = /rgba?\((?:undefined|null|NaN)/g;
+const hits = [...html.matchAll(badRgba)];
+if (hits.length) {
+  for (const m of hits) {
+    const lineNo = html.slice(0, m.index).split('\n').length;
+    console.error(`BUILD_LINT: malformed rgba at line ${lineNo}: ${m[0]}`);
+  }
+  process.exit(1);
+}
+```
+
+Caveat: this runs on the *output*, so it catches both generated artifacts
+(`00-tokens.js`) and hand-written modules uniformly. Good — a bad
+`component.*.highlight_rgba` token would fail the same way.
+
+### What it would NOT have caught
+
+- Dynamic `rgba(${fn(x)},...)` where `fn` returns `undefined` only at
+  runtime for certain inputs. Needs runtime tracing (Puppeteer / eval).
+- String concatenation like `'rgba(' + r + ',' + ...`. The grep assumes
+  the template literal leaves `undefined` as a literal substring, which is
+  what happens when `r` is `undefined` in a template literal but not in a
+  `+` concatenation (`+` stringifies `undefined` → `"undefined"` too, so
+  actually it still catches it — just double-check when implementing).
