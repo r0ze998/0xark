@@ -9693,6 +9693,15 @@ function drawBanner(){
   // Text with shadow
   txShadow(bannerText,slideX+W/2-bannerText.length*5,26,10,'#f8f0e0','rgba(0,0,0,.6)');
   if(bannerSubText)txShadow(bannerSubText,slideX+W/2-bannerSubText.length*3,40,6,'#c8b880','rgba(0,0,0,.4)');
+  // v573: gold sparkle trail from leading edge during slide-in; rising motes during hold (screen-space)
+  if(bannerPhase===0&&fr%3===0&&bannerTimer>2){
+    const _bpx=slideX+W-4,_bpy=8+Math.random()*barH;
+    particles.push({x:_bpx,y:_bpy,vx:0.5+Math.random()*0.7,vy:(Math.random()-.5)*0.55,life:8+Math.random()*6,c:Math.random()>.5?'rgba(240,200,100,0.82)':'rgba(255,230,80,0.70)'});
+  }else if(bannerPhase===1&&fr%8===0){
+    const _bpx2=slideX+W/2+(Math.random()*160-80),_bpy2=8+barH-2;
+    particles.push({x:_bpx2,y:_bpy2,vx:(Math.random()-.5)*0.30,vy:-0.30-Math.random()*0.28,life:13+Math.random()*8,c:Math.random()>.5?'rgba(240,200,80,0.62)':'rgba(255,250,160,0.48)'});
+  }
+  drawParticles(0,0); // v573: render banner sparkles (screen-space)
 }
 
 // ═══════════════════════════════════════
@@ -11355,7 +11364,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v572',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v573',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

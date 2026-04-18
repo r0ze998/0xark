@@ -679,6 +679,15 @@ function drawBanner(){
   // Text with shadow
   txShadow(bannerText,slideX+W/2-bannerText.length*5,26,10,'#f8f0e0','rgba(0,0,0,.6)');
   if(bannerSubText)txShadow(bannerSubText,slideX+W/2-bannerSubText.length*3,40,6,'#c8b880','rgba(0,0,0,.4)');
+  // v573: gold sparkle trail from leading edge during slide-in; rising motes during hold (screen-space)
+  if(bannerPhase===0&&fr%3===0&&bannerTimer>2){
+    const _bpx=slideX+W-4,_bpy=8+Math.random()*barH;
+    particles.push({x:_bpx,y:_bpy,vx:0.5+Math.random()*0.7,vy:(Math.random()-.5)*0.55,life:8+Math.random()*6,c:Math.random()>.5?'rgba(240,200,100,0.82)':'rgba(255,230,80,0.70)'});
+  }else if(bannerPhase===1&&fr%8===0){
+    const _bpx2=slideX+W/2+(Math.random()*160-80),_bpy2=8+barH-2;
+    particles.push({x:_bpx2,y:_bpy2,vx:(Math.random()-.5)*0.30,vy:-0.30-Math.random()*0.28,life:13+Math.random()*8,c:Math.random()>.5?'rgba(240,200,80,0.62)':'rgba(255,250,160,0.48)'});
+  }
+  drawParticles(0,0); // v573: render banner sparkles (screen-space)
 }
 
 // ═══════════════════════════════════════
@@ -1353,6 +1362,8 @@ function drawCardShop(){
           bx(wX+8,ry-4,3,rowH-2,rarCol);
           const bob=_sFr15*2; // v369: cached
           txShadow('\u25B6',wX+14+bob,ry+16,9,'#c04040','rgba(0,0,0,.4)');
+          // v558: rarity sparkles from selected trade card row (map overlay — world-space offset)
+          if(fr%8===0){particles.push({x:wX+24+Math.random()*50+camX,y:ry+Math.random()*26+camY,vx:(Math.random()-.5)*0.38,vy:-0.28-Math.random()*0.30,life:12+Math.random()*7,c:rarCol});}
         }else{
           bx(wX+8,ry-4,3,rowH-2,'rgba(200,180,100,.15)');
         }
@@ -1477,9 +1488,9 @@ function drawSynthesisShop(){
       const cr=CD[synthResultCard-1];
       const rCol=RARITY_COLOR[cr.r]||'#c8c0a0';
       // v497: rarity-scaled burst on synthesis success reveal
-      if(t===8){const _sn=8+cr.r*3; // v506 fix: world coords
+      if(t===8){const _sn=8+cr.r*3; // v553: screen-space coords (was world-space, particles appeared behind overlay)
         for(let _si=0;_si<_sn;_si++){const _sa=(_si/_sn)*Math.PI*2;const _ss=1.5+Math.random()*(cr.r*0.7+1.5);
-          particles.push({x:W/2+camX+(Math.random()*30-15),y:140+camY+(Math.random()*20-10),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2.5,life:20+Math.random()*18+cr.r*4,c:Math.random()>.4?rCol:'rgba(255,255,200,1)'});
+          particles.push({x:W/2+(Math.random()*30-15),y:140+(Math.random()*20-10),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2.5,life:20+Math.random()*18+cr.r*4,c:Math.random()>.4?rCol:'rgba(255,255,200,1)'});
         }
       }
       txShadow('SYNTHESIS SUCCESS!',W/2-88,90,10,'#40d080','rgba(0,0,0,.3)');
@@ -1490,6 +1501,7 @@ function drawSynthesisShop(){
       txShadow('No cards of that rarity to forge.',W/2-140,H/2,8,'#d04040','rgba(0,0,0,.2)');
     }
     if(fr-synthResultFrame>40)txShadow('Press X to close',W/2-64,H-80,7,'#686068','rgba(0,0,0,.35)');
+    drawParticles(0,0); // v553: render synthesis result burst on top of overlay (screen-space)
     return;
   }
 
@@ -1523,7 +1535,9 @@ function drawSynthesisShop(){
       const _stTi=_BTYPE_MAP&&_BTYPE_MAP[cr.t];const _stCol=_stTi!==undefined&&_BTYPE_COL?_BTYPE_COL[_stTi]:'#888'; // v447
       bx(cx,cy,cellW-8,cellH-4,isSel?'rgba(192,168,96,.3)':'rgba(40,36,28,.6)');
       bx(cx,cy,2,cellH-4,isSel?'#c0a040':_stCol); // v447: type color left stripe (gold when selected)
-      if(isSel){txShadow('\u2713',cx+cellW-20,cy+14,9,'#c0a040','rgba(0,0,0,.4)');}
+      if(isSel){txShadow('\u2713',cx+cellW-20,cy+14,9,'#c0a040','rgba(0,0,0,.4)');
+        // v547: golden alchemy sparkles rise from selected synthesis cards (screen-space)
+        if(fr%9===((i*3)%9)){particles.push({x:cx+4+Math.random()*(cellW-16),y:cy+2+Math.random()*(cellH-8),vx:(Math.random()-.5)*0.48,vy:-0.34-Math.random()*0.36,life:13+Math.random()*8,c:Math.random()>.4?'rgba(240,192,60,0.78)':'rgba(255,230,130,0.65)'});}}
       bx(cx+4,cy+4,20,20,cr.d);bx(cx+5,cy+5,18,18,cr.c);
       bx(cx+4,cy+4,20,1,_stCol); // v447: type color top border on mini card
       drawCardCharacter(cx+6,cy+6,cid,0.7,fr);
@@ -1536,6 +1550,7 @@ function drawSynthesisShop(){
   const tgt=_SYNTH_RAR_LABELS[synthRarityFilter+1];
   if(tgt)txShadow(_SYNTH_LEG_LBL[synthRarityFilter]||('3\u00D7 '+_SYNTH_RAR_LABELS[synthRarityFilter]+' \u2192 1\u00D7 '+tgt),80,H-88,6,'#806030','rgba(0,0,0,.3)'); // v341: pre-baked
   txShadow('← → change rarity  Z=select/confirm  X=close',80,H-68,5,'#686068','rgba(0,0,0,.3)');
+  drawParticles(0,0); // v547: render synthesis selection sparkles on top of overlay
 }
 
 // ═══════════════════════════════════════
@@ -1726,6 +1741,15 @@ function drawRandomEvent(){
   const catIcon=_EVT_CAT_ICON[cat]||_EVT_CAT_ICON.neutral;
   const catBar=_EVT_CAT_BAR[cat]||_EVT_CAT_BAR.neutral;
   g.globalAlpha=ease;
+  // v559: category-flavored event particles (map overlay — world-space)
+  if(t<120&&t%14===0){
+    const _ex=W/4+Math.random()*(W/2)+camX, _ey=H/2-50+slideOff+Math.random()*74+camY;
+    const _ec=cat==='good'?(Math.random()>.5?'rgba(64,210,100,0.70)':'rgba(240,200,60,0.65)'):
+                cat==='bad'?(Math.random()>.5?'rgba(220,60,40,0.70)':'rgba(240,140,30,0.60)'):
+                            (Math.random()>.5?'rgba(80,160,240,0.55)':'rgba(200,200,255,0.48)');
+    const _evy=cat==='bad'?0.18+Math.random()*0.22:-(0.26+Math.random()*0.28);
+    particles.push({x:_ex,y:_ey,vx:(Math.random()-.5)*0.32,vy:_evy,life:18+Math.random()*10,c:_ec});
+  }
   win(24,H/2-50+slideOff,W-48,74);
   // Category color bar at top of window
   bx(26,H/2-48+slideOff,W-52,4,catBar);
@@ -1968,6 +1992,17 @@ function drawNPCDialog(){
   const hasMore=(npcDialogIdx+2)<npcDialogLines.length;
   const arrowBounce=hasMore?Math.floor(_BOUNCE60[fr%60]*2):0;
   txShadow('\u25BC',W-24,H-18+slideOff+arrowBounce,7,accent,'rgba(0,0,0,.4)');
+  // v561: per-NPC portrait flavor particles (map overlay — world-space offset)
+  if(fr%20===0&&dlgEase>0.5){
+    const _npx=10+Math.random()*28+camX, _npy=dlgY+8+Math.random()*44+camY;
+    const _nAlch=npcDialogName==='Alchemist';
+    const _nMrch=npcDialogName==='Card Merchant';
+    const _nVY=_nAlch?-(0.30+Math.random()*0.28):-(0.20+Math.random()*0.22);
+    const _nC=_nAlch?(Math.random()>.5?'rgba(160,60,240,0.58)':'rgba(40,220,160,0.50)'):
+                _nMrch?(Math.random()>.5?'rgba(240,200,60,0.62)':'rgba(255,220,100,0.50)'):
+                accent;
+    particles.push({x:_npx,y:_npy,vx:(Math.random()-.5)*0.24,vy:_nVY,life:16+Math.random()*10,c:_nC});
+  }
   g.globalAlpha=1;
 }
 
@@ -2219,6 +2254,13 @@ function dTitle(){
   // Solid wave base fill
   bx(0,H-20,W,20,'rgba(16,32,64,0.5)');
   bx(0,H-10,W,10,'rgba(12,24,48,0.6)');
+  // v549: ethereal ocean wisps rising from wave surface on title screen (screen-space)
+  if(fr%22===0){const _twx=20+Math.random()*(W-40),_twy=H-24+Math.random()*10;
+    particles.push({x:_twx,y:_twy,vx:(Math.random()-.5)*0.22,vy:-0.28-Math.random()*0.30,life:40+Math.random()*30,c:Math.random()>.55?'rgba(120,80,220,0.30)':'rgba(100,160,240,0.24)'});
+  }
+  if(fr%37===0){const _twx2=20+Math.random()*(W-40);
+    particles.push({x:_twx2,y:H-18+Math.random()*8,vx:(Math.random()-.5)*0.18,vy:-0.22-Math.random()*0.22,life:50+Math.random()*30,c:'rgba(200,180,80,0.20)'});
+  }
 
   if(hasSave()){
     const sel=titleMenuIdx||0;
@@ -2304,10 +2346,11 @@ function dTitle(){
     if(_titleStepsKey!==stepCounter){_titleStepsKey=stepCounter;_titleStepsLbl='Steps: '+stepCounter;}
     txShadow(_titleStepsLbl,W/2-50,previewY+36,6,'#686880','rgba(0,0,0,.3)');
   }
+  drawParticles(0,0); // v549: render title screen ocean wisps before footer text
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v540',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v573',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
