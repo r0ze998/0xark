@@ -11347,7 +11347,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v569',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v570',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -21197,7 +21197,13 @@ function dSplash(){
     txShadow('ZK-powered information asymmetry',W/2-200,H/2-20,10,'#9945FF','rgba(0,0,0,.5)');
     txShadow('Built on Solana',W/2-80,H/2+10,10,'#14F195','rgba(0,0,0,.5)');
     g.globalAlpha=1;
+    // v570: Solana/ZK themed ambient motes rising during splash (screen-space)
+    if(t>15&&t%8===0){
+      const _spx=40+Math.random()*(W-80),_spy=H/2+30+Math.random()*40;
+      particles.push({x:_spx,y:_spy,vx:(Math.random()-.5)*0.28,vy:-0.32-Math.random()*0.36,life:28+Math.random()*20,c:Math.random()>.5?'rgba(153,69,255,0.50)':'rgba(20,241,149,0.40)'});
+    }
   }
+  drawParticles(0,0); // v570: render splash motes (screen-space, no dMap here)
   if(t>=120){fadeOut(()=>{sc='title';fadeIn();});}
 }
 
