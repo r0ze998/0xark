@@ -11629,7 +11629,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v696',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v697',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -19913,6 +19913,8 @@ function drawBuildingInterior(){
         const _grc=['','rgba(200,195,180,0.55)','rgba(80,200,120,0.60)','rgba(60,140,240,0.65)','rgba(160,60,240,0.70)','rgba(255,190,30,0.78)'][cr.r]||'rgba(200,180,100,0.55)';
         particles.push({x:_grx,y:_gry,vx:(Math.random()-.5)*0.38,vy:-0.28-Math.random()*0.30,life:14+Math.random()*8,c:_grc});
       }
+      // v697: gacha reveal burst — rarity pop when card fully slides in (screen-space)
+      if(t2===20){const _gbN=8+cr.r*4;const _gbcArr=['','rgba(200,195,180,0.95)','rgba(80,200,120,0.95)','rgba(60,140,240,0.95)','rgba(160,60,240,0.95)','rgba(255,190,30,0.95)'];const _gbc=_gbcArr[cr.r]||'rgba(200,180,100,0.90)';for(let _gbi=0;_gbi<_gbN;_gbi++){const _gba=(_gbi/_gbN)*Math.PI*2;const _gbs=1.8+Math.random()*3.5;particles.push({x:W/2,y:H/2-5,vx:Math.cos(_gba)*_gbs,vy:Math.sin(_gba)*_gbs-1.5,life:20+Math.random()*18+cr.r*3,c:Math.random()>.4?_gbc:'rgba(255,255,200,0.90)'});}}
       // Rarity label
       bx(gx+gw/2-60,gy+gh-90,120,20,RARITY_COLOR[cr.r]+'33');
       if(_gachaRevLblKey!==gachaResultCard){_gachaRevLblKey=gachaResultCard;_gachaRevLblCache=RARITY_LABEL[cr.r]+'  '+cr.n;} // v334: lazy
