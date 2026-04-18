@@ -11634,7 +11634,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v732',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v733',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -13000,6 +13000,8 @@ function dMap(){
       g.globalAlpha=stairPulse*0.9;
       txShadow('◀ ESCAPE',escScrX-44,escScrY,8,'#40e090','rgba(0,0,0,.75)');
       g.globalAlpha=1;
+      // v733: ESCAPE label pulse mote — green wisp drifts left from label on pulse peak
+      if(fr%15===0){particles.push({x:escScrX-44+(Math.random()*72),y:escScrY+(Math.random()*8),vx:-0.6-Math.random()*0.6,vy:-0.4-Math.random()*0.5,life:14+Math.random()*10,c:'rgba(60,220,140,0.70)'});}
     }
     // DEEPER stairs: fixed at x=36, y=14; not shown on final floor
     if(currentFloor<MAX_DUNGEON_FLOORS){
@@ -13008,6 +13010,8 @@ function dMap(){
         g.globalAlpha=stairPulse*0.9;
         txShadow('DEEPER ▶',depScrX-40,depScrY,8,'#e06848','rgba(0,0,0,.75)');
         g.globalAlpha=1;
+        // v733: DEEPER label pulse mote — orange ember drifts right from label on pulse peak
+        if(fr%15===5){particles.push({x:depScrX-40+(Math.random()*72),y:depScrY+(Math.random()*8),vx:0.5+Math.random()*0.7,vy:-0.4-Math.random()*0.5,life:14+Math.random()*10,c:'rgba(224,110,72,0.70)'});}
       }
     }else{
       // Floor 5: no deeper exit — label it as the deepest
@@ -13016,6 +13020,8 @@ function dMap(){
         g.globalAlpha=0.6;
         txShadow('★ DEEPEST',deepScrX-46,deepScrY,8,'#f0c840','rgba(0,0,0,.75)');
         g.globalAlpha=1;
+        // v733: DEEPEST label gold star mote — drifts upward on floor 5
+        if(fr%15===10){particles.push({x:deepScrX-46+(Math.random()*80),y:deepScrY+(Math.random()*8),vx:(Math.random()-.5)*0.5,vy:-0.6-Math.random()*0.6,life:16+Math.random()*10,c:'rgba(240,200,60,0.72)'});}
       }
     }
     // v554: staircase portal energy — world-space drift particles from revealed stairs
