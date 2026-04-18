@@ -10027,6 +10027,8 @@ function drawMinimap(){
     if(rivalMaps[idx]===currentMap&&(isVisibleThroughFog(rp.x,rp.y,3)||crystalRevealTimer>0)){
       const rpx=mx+rp.x*sx,rpy=my+rp.y*sy;
       bx(rpx,rpy,2,2,rp.c);
+      // v637: minimap rival threat aura — faint motes from VEGA/MIRA position dots
+      if(fr%30===(_ri===1?1:16)){particles.push({x:rpx+1,y:rpy+1,vx:(Math.random()-.5)*.18,vy:-.13-Math.random()*.13,life:18+Math.random()*10,c:_ri===1?'rgba(220,80,200,0.60)':'rgba(240,180,30,0.60)'});}
       if(crystalRevealTimer>0){
         // v470: pulsing ring around crystal-revealed rival dots
         const _rPulse=0.4+_sFr15*0.4;
@@ -11548,7 +11550,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v636',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v637',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
