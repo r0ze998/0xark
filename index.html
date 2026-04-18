@@ -7988,6 +7988,10 @@ function drawRuinsPillar(px,py,tx_,ty){
   for(let fy=6;fy<TH-8;fy+=4){bx(px+13,py+fy,1,3,'#787880');bx(px+18,py+fy,1,3,'#787880');}
   // Cracks
   bx(px+14,py+10,1,8,'#686870');bx(px+12,py+18,4,1,'#686870');
+  // v591: crumbling stone dust from pillar (world-space, very sparse)
+  if((fr+tx_*13+ty*17)%40===0){
+    particles.push({x:tx_*TW+8+Math.random()*16,y:ty*TH+4+Math.random()*20,vx:(Math.random()-.5)*.25,vy:-.08-Math.random()*.12,life:20+Math.random()*16,c:Math.random()>.5?'rgba(148,148,152,0.30)':'rgba(180,180,185,0.22)'});
+  }
 }
 
 function drawGlowTile(px,py,tx_,ty){
@@ -11435,7 +11439,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v590',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v591',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
