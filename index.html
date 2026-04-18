@@ -11308,7 +11308,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v553',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v554',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -12659,6 +12659,21 @@ function dMap(){
         g.globalAlpha=0.6;
         txShadow('★ DEEPEST',deepScrX-46,deepScrY,8,'#f0c840','rgba(0,0,0,.75)');
         g.globalAlpha=1;
+      }
+    }
+    // v554: staircase portal energy — world-space drift particles from revealed stairs
+    if(fr%8===0){
+      // ESCAPE stairs — cyan/emerald upward wisps
+      if(fogRevealed[currentMap]?.[14]?.[3]){
+        const _exw=3*TW+TW/2+(Math.random()*20-10), _eyw=14*TH+(Math.random()*8-4);
+        particles.push({x:_exw,y:_eyw,vx:(Math.random()-.5)*0.28,vy:-0.36-Math.random()*0.34,life:28+Math.random()*18,c:Math.random()>.5?'rgba(64,224,144,0.55)':'rgba(80,200,240,0.45)'});
+      }
+    }
+    if(fr%10===0&&currentFloor<MAX_DUNGEON_FLOORS){
+      // DEEPER stairs — amber/crimson ominous upward wisps
+      if(fogRevealed[currentMap]?.[14]?.[36]){
+        const _dxw=36*TW+TW/2+(Math.random()*20-10), _dyw=14*TH+(Math.random()*8-4);
+        particles.push({x:_dxw,y:_dyw,vx:(Math.random()-.5)*0.28,vy:-0.38-Math.random()*0.32,life:26+Math.random()*16,c:Math.random()>.5?'rgba(224,104,60,0.55)':'rgba(220,160,40,0.42)'});
       }
     }
   }
