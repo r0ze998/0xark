@@ -11572,7 +11572,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v656',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v657',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -15743,10 +15743,14 @@ function drawConfirmingPhase(){
       if(proofT>5)txShadow('\u03C0_A',16,H-22,7,'#9945FF','rgba(0,0,0,.3)');
       if(proofT>10)txShadow('\u03C0_B',80,H-22,7,'#14F195','rgba(0,0,0,.3)');
       if(proofT>15)txShadow('\u03C0_C',144,H-22,7,'#80c0ff','rgba(0,0,0,.3)');
+      // v657: ZK proof computation motes — Solana purple/green sparks drift upward as proof is generated (screen-space)
+      if(fr%8===0){const _zkC=Math.random()>.5?'rgba(153,69,255,0.72)':'rgba(20,241,149,0.60)';particles.push({x:20+Math.random()*220,y:H-42+Math.random()*12,vx:(Math.random()-.5)*.30,vy:-0.24-Math.random()*.28,life:12+Math.random()*10,c:_zkC});}
     }else if(t<100){
       const vMsg=zkProofStatus==='verified'?'ZK Proof VERIFIED (264 constraints) \u2713':'Proof verified (264 constraints) \u2713';
       txShadow(vMsg,16,H-38,12,'#40d080','rgba(0,0,0,.3)');
       txShadow('\u03C0_A, \u03C0_B, \u03C0_C \u2014 valid',16,H-22,7,'#14F195','rgba(0,0,0,.3)');
+      // v657: ZK verified glow — brighter green motes celebrate proof verified state (screen-space)
+      if(fr%6===0){const _zkVC=Math.random()>.4?'rgba(20,241,149,0.75)':'rgba(64,208,128,0.55)';particles.push({x:20+Math.random()*280,y:H-42+Math.random()*14,vx:(Math.random()-.5)*.36,vy:-0.30-Math.random()*.32,life:14+Math.random()*12,c:_zkVC});}
     }else{
       txShadow(_WAIT_DOTS[Math.floor(t/12)%3],16,H-38,14,'#686068','rgba(200,180,140,.3)'); // v315
     }
