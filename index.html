@@ -10972,6 +10972,17 @@ function drawNPCDialog(){
   const hasMore=(npcDialogIdx+2)<npcDialogLines.length;
   const arrowBounce=hasMore?Math.floor(_BOUNCE60[fr%60]*2):0;
   txShadow('\u25BC',W-24,H-18+slideOff+arrowBounce,7,accent,'rgba(0,0,0,.4)');
+  // v561: per-NPC portrait flavor particles (map overlay — world-space offset)
+  if(fr%20===0&&dlgEase>0.5){
+    const _npx=10+Math.random()*28+camX, _npy=dlgY+8+Math.random()*44+camY;
+    const _nAlch=npcDialogName==='Alchemist';
+    const _nMrch=npcDialogName==='Card Merchant';
+    const _nVY=_nAlch?-(0.30+Math.random()*0.28):-(0.20+Math.random()*0.22);
+    const _nC=_nAlch?(Math.random()>.5?'rgba(160,60,240,0.58)':'rgba(40,220,160,0.50)'):
+                _nMrch?(Math.random()>.5?'rgba(240,200,60,0.62)':'rgba(255,220,100,0.50)'):
+                accent;
+    particles.push({x:_npx,y:_npy,vx:(Math.random()-.5)*0.24,vy:_nVY,life:16+Math.random()*10,c:_nC});
+  }
   g.globalAlpha=1;
 }
 
@@ -11319,7 +11330,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v560',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v561',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
