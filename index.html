@@ -2996,6 +2996,8 @@ function drawHandInspect(){
       g.globalAlpha=alpha*glPulse;
       bx(cx_-4,cy_-4,cw-8,ch,rarC+'80'||'rgba(0,0,0,.1)');
       g.globalAlpha=alpha;
+      // v545: rarity shimmer particles — rise from rare+ cards in hand inspect (screen-space)
+      if(fr%7===((i*3)%7)){const _hiRC=['','rgba(180,180,200,0.62)','rgba(60,200,100,0.65)','rgba(60,140,240,0.70)','rgba(160,60,240,0.74)','rgba(255,180,30,0.80)'];particles.push({x:cx_+4+Math.random()*(cw-24),y:cy_+4+Math.random()*(ch-12),vx:(Math.random()-.5)*0.48,vy:-0.35-Math.random()*0.40,life:14+Math.random()*9,c:_hiRC[cr.r]||'rgba(200,180,100,0.62)'});}
     }
 
     // Card background
@@ -3044,6 +3046,7 @@ function drawHandInspect(){
   const blinkA=0.5+Math.sin(handInspectFrame*0.12)*0.4;
   g.globalAlpha=alpha*blinkA;
   txShadow('TAB or any key to close',W/2-64,H-20,6,'#9098b0','rgba(0,0,0,.4)');
+  drawParticles(0,0); // v545: render rarity shimmer on top of hand inspect overlay
   g.globalAlpha=1;
 }
 
@@ -11293,7 +11296,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v544',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v545',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
