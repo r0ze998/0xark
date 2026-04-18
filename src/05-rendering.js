@@ -966,6 +966,12 @@ function drawDungeonStairGlows(startTX,startTY,endTX,endTY){
         g.fillStyle=isGold?'#fff050':'#c8a0ff';
         g.beginPath();g.moveTo(px+16,py+26);g.lineTo(px+12,py+20);g.lineTo(px+20,py+20);g.closePath();g.fill();
         g.globalAlpha=1;
+        // v512: rising mist particles from dungeon stair opening (world coords)
+        if((fr+(x*7+y*13))%4===0){
+          const _swx=x*TW+8+Math.random()*16;
+          const _swy=y*TH+20+Math.random()*6;
+          particles.push({x:_swx,y:_swy,vx:(Math.random()-.5)*.5,vy:-0.5-Math.random()*0.7,life:38+Math.random()*20,c:isGold?'rgba(255,210,60,0.45)':'rgba(160,100,255,0.45)'});
+        }
       }else{
         // Up staircase glow — pre-baked ellipses + globalAlpha arrows (no template literals)
         const pulse=(_sFr06*_NCOS[(x*3+y*2)&511]+_cFr06*_NSIN[(x*3+y*2)&511])*.2+.8; // v375
