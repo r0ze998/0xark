@@ -11634,7 +11634,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v734',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v735',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17898,6 +17898,13 @@ function drawResultPhase(){
     // v331: lazy cache — only rebuild when accuracy combo changes
     const _tk=(r1correct?1:0)|(r2correct?2:0);
     if(_tellLblKey!==_tk){_tellLblKey=_tk;_tellLblCache[0]=pl[1].n+':'+(r1correct?'\u2713':'\u2717');_tellLblCache[1]=pl[2].n+':'+(r2correct?'\u2713':'\u2717');}
+    // v735: tell reveal pop — green sparkle on correct read, red flare on miss
+    if(t===36){
+      const _tc1=r1correct?'rgba(60,220,80,0.88)':'rgba(220,50,50,0.80)';
+      const _tc2=r2correct?'rgba(60,220,80,0.88)':'rgba(220,50,50,0.80)';
+      for(let _ti=0;_ti<6;_ti++){particles.push({x:panX+16+(Math.random()*_tellLblCache[0].length*5),y:panY+panH-8,vx:(Math.random()-.5)*1.2,vy:-0.8-Math.random()*1.2,life:12+Math.random()*10,c:_tc1});}
+      for(let _ti=0;_ti<6;_ti++){particles.push({x:panX+16+_tellLblCache[0].length*5+12+(Math.random()*60),y:panY+panH-8,vx:(Math.random()-.5)*1.2,vy:-0.8-Math.random()*1.2,life:12+Math.random()*10,c:_tc2});}
+    }
     g.globalAlpha=tellFadeA*0.85;
     txShadow(_tellLblCache[0],panX+16,panY+panH-8,7,r1col,'rgba(0,0,0,.3)');
     txShadow(_tellLblCache[1],panX+16+_tellLblCache[0].length*5+12,panY+panH-8,7,r2col,'rgba(0,0,0,.3)');
