@@ -8074,6 +8074,10 @@ function drawAltar(px,py,tx_,ty){
   g.globalAlpha=pulse*.4;g.drawImage(_tileAltarOrb10,(px+5)|0,(orbY-11)|0);
   g.globalAlpha=pulse*.3;g.fillRect(px+8,py+22,4,2);g.fillRect(px+20,py+22,4,2);
   g.globalAlpha=1;
+  // v580: town altar orb — rising violet motes (world-space)
+  if((fr+tx_*9+ty*13)%10===0){
+    particles.push({x:px+camX+10+Math.random()*12,y:orbY-4+camY,vx:(Math.random()-.5)*.30,vy:-.22-Math.random()*.24,life:22+Math.random()*16,c:Math.random()>.5?'rgba(190,110,255,0.55)':'rgba(230,180,255,0.40)'});
+  }
 }
 
 function drawMushroom(px,py,tx_,ty){
@@ -11387,7 +11391,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v579',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v580',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
