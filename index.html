@@ -11581,7 +11581,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v664',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v665',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -15688,6 +15688,8 @@ function drawSelectPhase(){
       bx(-_rw/2,-20,_rw,3,'#c0a030');bx(-_rw/2,14,_rw,3,'#604010');
       txShadow(_rlbl,-_rlbl.length*7+2,13,20,'#f0c830','rgba(0,0,0,.8)');
       g.restore();g.globalAlpha=1;
+      // v665: round-start burst — golden sparks fan from center when new round banner pops (screen-space)
+      if(t_===1){for(let _ri=0;_ri<20;_ri++){const _ra=(_ri/20)*Math.PI*2+Math.random()*0.3;const _rs=1.8+Math.random()*2.6;particles.push({x:W/2+(Math.random()*16-8),y:H/2+(Math.random()*10-5),vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-1.2,life:20+Math.random()*14,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,255,160,0.85)'});}}
     }
   }
   drawParticles(0,0); // v526: battle ambient particles visible during select phase
