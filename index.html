@@ -11442,7 +11442,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v596',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v597',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -18066,6 +18066,9 @@ function drawTutorialMsg(){
   txShadow('HINT',tmX+8,tmY+16,8,'#3060b0','rgba(0,0,0,.3)');
   txShadow(tutorialMsg,tmX+46,tmY+16,7,'#e8e0c8','rgba(0,0,0,.4)');
   g.globalAlpha=1;
+  // v597: HINT window float-up sparkles — blue motes drift up from stripe (screen-space)
+  if(fr%8===0){particles.push({x:tmX+2+Math.random()*(tmW-4),y:tmY+3,vx:(Math.random()-.5)*.28,vy:-.20-Math.random()*.20,life:12+Math.random()*8,c:Math.random()>.5?'rgba(60,140,240,0.60)':'rgba(180,220,255,0.45)'});}
+  drawParticles(0,0); // v597: render hint sparkles (screen-space)
 }
 
 // Intro tutorial: now PixiJS-native
