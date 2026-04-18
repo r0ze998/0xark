@@ -11620,7 +11620,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v690',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v691',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14916,6 +14916,8 @@ function drawVsSplash(){
       g.globalAlpha=_barA*0.6;
       txShadow(''+_ypwr,_barX-22,_barY+7,7,'#78c0f0','rgba(0,0,0,.3)');
       txShadow(''+_rpwr,_barX+_barW+4,_barY+7,7,_rivCol,'rgba(0,0,0,.3)');
+      // v691: power bar clash spark — burst at collision point when fill completes (screen-space)
+      if(t===45&&_totP>0){const _cX=_barX+Math.floor((_ypwr/_totP)*_barW),_cY=_barY+4;for(let _pi=0;_pi<12;_pi++){const _pa=Math.PI*(0.5+Math.random()*2.0);particles.push({x:_cX+(Math.random()*6-3),y:_cY+(Math.random()*4-2),vx:Math.cos(_pa)*(0.6+Math.random()*1.6),vy:Math.sin(_pa)*(0.6+Math.random()*1.6)-0.5,life:14+Math.random()*12,c:Math.random()>.5?'rgba(120,192,240,0.95)':(vsRivalIdx===1?'rgba(240,128,192,0.95)':'rgba(240,200,48,0.95)')});}}
       g.globalAlpha=1;
     }
   }
