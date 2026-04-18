@@ -8785,6 +8785,11 @@ function drawSprite(p,isPlayer){
   const bob=(wf===1||wf===3)?2:0;
   // v592: walk dust puffs from feet during stride frames (world-space)
   if((wf===1||wf===3)&&fr%8===0){particles.push({x:p.visualX+12+Math.random()*8,y:p.visualY+28,vx:(Math.random()-.5)*.35,vy:-.10-Math.random()*.14,life:12+Math.random()*8,c:Math.random()>.5?'rgba(180,160,130,0.32)':'rgba(210,190,155,0.22)'});}
+  // v653: rival overworld aura — colored motes rising from VEGA/MIRA sprites when visible (world-space)
+  if(!isPlayer&&(p===pl[1]||p===pl[2])&&fr%(18+(p.x*3+p.y*7)%7)===0&&isVisibleThroughFog(p.x,p.y,2)){
+    const _rac=p===pl[1]?Math.random()>.5?'rgba(220,80,160,0.50)':'rgba(160,60,240,0.40)':Math.random()>.5?'rgba(40,200,180,0.48)':'rgba(80,220,160,0.38)';
+    particles.push({x:p.visualX+8+Math.random()*16,y:p.visualY+6+Math.random()*8,vx:(Math.random()-.5)*.22,vy:-0.16-Math.random()*.18,life:20+Math.random()*14,c:_rac});
+  }
 
   const d=p.dir;
   const isP0=p===pl[0],isP1=p===pl[1],isP2=p===pl[2];
@@ -11561,7 +11566,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v652',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v653',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
