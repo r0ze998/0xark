@@ -1240,6 +1240,11 @@ function dMap(){
   }
 
   drawFootprints();
+  // v528: dungeon entrance portal — rising purple/teal wisps from opening (world coords)
+  if(!inDungeon&&currentMap===0&&fr%4===0&&fogRevealed[0]?.[11]?.[27]){
+    const _dpx=27*TW+6+Math.random()*20,_dpy=11*TH+Math.random()*10;
+    particles.push({x:_dpx,y:_dpy,vx:(Math.random()-.5)*0.55,vy:-0.5-Math.random()*0.9,life:26+Math.random()*18,c:Math.random()>.5?'rgba(120,40,200,0.52)':'rgba(40,180,160,0.42)'});
+  }
   drawParticles(camX,camY);
   if(fr%2===0)drawBirds();
   if(fr%2===0)drawPirateDecorations(); // ship/barrels/vines/seagulls (no trees)
