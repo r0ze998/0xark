@@ -11561,7 +11561,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v647',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v648',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14589,6 +14589,8 @@ function drawPlayerInfoBox(){
   }
   // v646: player HP hit sparks — brief crimson burst on damage taken (screen-space)
   if(bpHPDmgAnim[0]>18){for(let _hi=0;_hi<3;_hi++){particles.push({x:hx+Math.random()*54,y:hy+Math.random()*9,vx:(Math.random()-.5)*.55,vy:-.30-Math.random()*.28,life:10+Math.random()*6,c:'rgba(255,60,50,0.88)'}); }}
+  // v648: player HP heal sparkles — green motes when health restored (screen-space, mirrors v622 for rivals)
+  if(healFlash0&&php>0&&fr%5===0){particles.push({x:hx+Math.random()*54,y:hy+Math.random()*9,vx:(Math.random()-.5)*.40,vy:-.22-Math.random()*.20,life:10+Math.random()*7,c:'rgba(80,240,130,0.68)'});}
   }
   // v450: Player DANGER badge at 1 HP — next defeat = card lost
   if(bpHP[0]===1&&battlePhase==='select'){
