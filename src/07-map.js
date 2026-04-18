@@ -813,6 +813,9 @@ function drawPirateDecorations(){
         // Anchor shape
         bx(sx-28,sy+26,6,2,'#606060');bx(sx-26,sy+28,2,4,'#606060');
         bx(sx-30,sy+30,2,2,'#606060');bx(sx-22,sy+30,2,2,'#606060');
+        // v530: ship ambient particles — sea spray at hull + mast smoke (world coords)
+        if(fr%5===0){const _swx=16*TW-28+Math.random()*86,_swy=23*TH+22+Math.random()*4;particles.push({x:_swx,y:_swy,vx:(Math.random()-.5)*0.9,vy:-0.2-Math.random()*0.5,life:16+Math.random()*10,c:'rgba(180,215,235,0.50)'});}
+        if(fr%18===0){const _smwx=16*TW+18+Math.random()*4,_smwy=23*TH-42;particles.push({x:_smwx,y:_smwy,vx:(Math.random()-.5)*0.25,vy:-0.35-Math.random()*0.35,life:34+Math.random()*22,c:'rgba(170,170,170,0.38)'});}
       }
     }
 
