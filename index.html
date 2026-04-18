@@ -6284,6 +6284,20 @@ function drawTownWeather(){
   if(inDungeon||currentMap!==0)return;
   const wa=townWeatherAlpha;
   if(wa<=0.02)return;
+  // v527: weather particle effects (world coords — drawParticles(camX,camY) projects them)
+  if(wa>0.25){
+    if(townWeather==='rain'&&fr%3===0){
+      // Rain splash: short-lived water motes burst upward from ground
+      for(let _ri=0;_ri<2;_ri++){
+        const _rsx=Math.random()*W,_rsy=H-6-Math.random()*46;
+        particles.push({x:_rsx+camX,y:_rsy+camY,vx:(Math.random()-.5)*2.4,vy:-0.9-Math.random()*1.5,life:7+Math.random()*5,c:Math.random()>.4?'rgba(160,200,240,0.78)':'rgba(200,225,255,0.62)'});
+      }
+    } else if(townWeather==='fog'&&fr%6===0){
+      // Fog wisp: slow ethereal tendrils drifting at varying heights
+      const _fsx=Math.random()*W,_fsy=18+Math.random()*(H-90);
+      particles.push({x:_fsx+camX,y:_fsy+camY,vx:0.06+Math.random()*0.22,vy:(Math.random()-.5)*0.1,life:100+Math.random()*80,c:'rgba(200,215,230,0.30)'});
+    }
+  }
   if(townWeather==='rain'){
     // v223: Lightning — strike at random intervals during rain
     if(fr>=_lightningNextFr){
@@ -11237,7 +11251,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v526',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v527',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
