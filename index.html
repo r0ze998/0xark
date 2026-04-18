@@ -8681,6 +8681,9 @@ function drawSprite(p,isPlayer){
   if(px<-48||px>W+48||py<-56||py>H+56)return;
   const wf=p.walkFrame%4;
   const bob=(wf===1||wf===3)?2:0;
+  // v592: walk dust puffs from feet during stride frames (world-space)
+  if((wf===1||wf===3)&&fr%8===0){particles.push({x:p.visualX+12+Math.random()*8,y:p.visualY+28,vx:(Math.random()-.5)*.35,vy:-.10-Math.random()*.14,life:12+Math.random()*8,c:Math.random()>.5?'rgba(180,160,130,0.32)':'rgba(210,190,155,0.22)'});}
+
   const d=p.dir;
   const isP0=p===pl[0],isP1=p===pl[1],isP2=p===pl[2];
 
@@ -11439,7 +11442,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v591',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v592',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
