@@ -8081,6 +8081,8 @@ function drawCrystal(px,py,tx_,ty){
   if(sparkle){bx(px+16,py+8,2,2,'#fff');bx(px+10,py+14,2,2,'rgba(255,255,255,.7)');}
   const _cgA=.12+(_sFr05*_NCOS[_ph3]+_cFr05*_NSIN[_ph3])*.06; // sin-addition
   g.globalAlpha=_cgA;g.drawImage(_tileCrystalGlows[(tx_+ty)%2],(px+5)|0,(py+5)|0);g.globalAlpha=1;
+  // v598: overworld crystal shard glints — gem-toned motes rise from facets (world-space)
+  if((fr+tx_*3+ty*11)%15===0){const _cCol=((tx_+ty)%3===0)?'rgba(120,200,230,0.62)':((tx_+ty)%3===1)?'rgba(180,140,240,0.58)':'rgba(80,230,170,0.60)';particles.push({x:tx_*TW+10+Math.random()*12,y:ty*TH+6+Math.random()*10,vx:(Math.random()-.5)*.42,vy:-.22-Math.random()*.28,life:14+Math.random()*10,c:_cCol});}
 }
 
 function drawAltar(px,py,tx_,ty){
@@ -11442,7 +11444,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v597',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v598',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
