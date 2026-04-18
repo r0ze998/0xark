@@ -1489,7 +1489,11 @@ function dMap(){
         g.globalAlpha=_dist<=2?1:0.7;
         txShadow(_lbl,cx2+(6-_lbl.length*3)|0,cy2-2,_dist<=2?6:5,rarCol,'rgba(0,0,0,.5)');
         g.globalAlpha=1;
-      }
+        // v538: floor card attraction sparkles — rarity-colored motes rise from nearby cards (world coords)
+        if(_dist<=3&&(fr+(it.x*11+it.y*7))%6===0){
+          const _irarC=[,'rgba(180,180,200,0.75)','rgba(60,200,100,0.78)','rgba(60,140,240,0.82)','rgba(160,60,240,0.85)','rgba(255,180,30,0.90)'][cr.r]||'rgba(255,180,30,0.90)';
+          particles.push({x:it.x*TW+8+Math.random()*16,y:it.y*TH+4+Math.random()*8,vx:(Math.random()-.5)*0.7,vy:-0.5-Math.random()*0.9,life:14+Math.random()*(_dist<=1?10:6),c:_irarC});
+        }
     }
   }
 
