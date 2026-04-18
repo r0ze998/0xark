@@ -11442,7 +11442,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v593',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v594',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14316,6 +14316,8 @@ function drawOpponentInfoBox(){
     const _koA=0.6+_sFr18*0.4;g.globalAlpha=_koA;
     bx(bx_+124,by_+9,28,8,'rgba(200,0,0,.88)');bx(bx_+124,by_+9,28,1,'#ff8080');
     txShadow('!! KO',bx_+126,by_+16,5,'#ffe0e0','rgba(0,0,0,.5)');g.globalAlpha=1;
+    // v594: near-KO sparks rising from badge — victory-close golden/crimson (screen-space)
+    if(fr%5===0){particles.push({x:bx_+126+Math.random()*26,y:by_+9+Math.random()*8,vx:(Math.random()-.5)*.38,vy:-.28-Math.random()*.28,life:10+Math.random()*7,c:Math.random()>.5?'rgba(255,200,60,0.72)':'rgba(230,60,60,0.58)'});}
   }
   txShadow('CARDS',bx_+120,by_+20,7,ARK.textDim,'rgba(0,0,0,.3)');
   drawCardBar(bx_+168,by_+12,80,rival.cd,5);
