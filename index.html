@@ -9788,6 +9788,8 @@ function drawFloorTitle(){
     g.fillRect(slideX,sy,W,STRIPE_H);
   }
 
+  // v726: floor title stripe wipe-in sparks — floor-colored motes at leading bar edge (screen-space)
+  if(t>=2&&t<20&&t%3===0){const _swX=W*(1-t/20);const _swc=[,'rgba(80,140,224,0.72)','rgba(128,80,192,0.72)','rgba(180,60,160,0.72)','rgba(208,60,80,0.72)','rgba(224,160,30,0.72)'][f]||'rgba(160,160,255,0.65)';for(let _swi=0;_swi<2;_swi++){particles.push({x:_swX+Math.random()*4,y:Math.random()*H,vx:-0.4-Math.random()*0.8,vy:(Math.random()-.5)*0.6,life:10+Math.random()*8,c:_swc});}}
   // ── Accent top bar (v264: pre-baked gradient, no alloc per frame) ──
   g.globalAlpha=globalAlpha*(t<15?t/15:1);
   g.fillStyle=_FLOOR_TITLE_BAR_GRADS[f]||_FLOOR_TITLE_BAR_GRADS[1];
@@ -11632,7 +11634,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v725',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v726',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
