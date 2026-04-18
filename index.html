@@ -9141,6 +9141,8 @@ function drawNPCSprite(npc){
     bx(bX+bW/2-2,bY+16,4,3,'rgba(8,8,18,.92)');
     txShadow(npc.bubbleText,bX+5,bY+13,5,'#e8e0c0','rgba(0,0,0,.3)');
     g.globalAlpha=1;
+    // v677: speech bubble ember — warm mote drifts from text area while bubble shown (world-space)
+    if(npc.bubbleTimer>25&&fr%12===(npc.x*7+npc.y*11)%12){particles.push({x:vx+16-bW/2+4+Math.random()*(bW-8),y:vy-62+Math.random()*12,vx:(Math.random()-.5)*0.22,vy:-0.12-Math.random()*0.14,life:18+Math.random()*14,c:Math.random()>.5?'rgba(240,210,140,0.38)':'rgba(255,240,190,0.28)'});}
   }
 }
 
@@ -11358,6 +11360,8 @@ function dTitle(){
     g.globalAlpha=shotA;
     bx(shotX|0,shotY|0,3,2,'#fff');
     g.globalAlpha=1;
+    // v680: shooting star sparkle trail — silver/purple motes drift from the star head (screen-space)
+    if(sShotPhase%2===0&&shotA>0.08){particles.push({x:shotX|0,y:shotY|0,vx:-0.55-Math.random()*0.45,vy:-0.18-Math.random()*0.22,life:10+Math.random()*8,c:Math.random()>.5?'rgba(210,200,255,0.82)':'rgba(255,255,255,0.70)'});particles.push({x:(shotX-2)|0,y:shotY|0,vx:-0.30-Math.random()*0.40,vy:(Math.random()-.5)*0.28,life:8+Math.random()*6,c:'rgba(180,160,240,0.55)'});}
   }}
   // Rising rune wisps — small cross shapes drifting upward
   for(let b=0;b<5;b++){
@@ -11606,7 +11610,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v676',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v680',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -19178,6 +19182,8 @@ function drawFishingOverlay(){
     bx(px-5,py-3,10,14,'#f0c830');
     txShadow('!',px-4,py+8,12,'#c04040','rgba(0,0,0,.4)');
     txShadow('Z NOW!',px-18,py+16,5,'#c04040','rgba(0,0,0,.4)');
+    // v678: fishing bite splash — water burst at hook when fish bites (world-space)
+    if(fr%5===0){const _fd=pl[0].dir;const _fwx=pl[0].visualX+(_fd===1?-12:_fd===3?20:8),_fwy=pl[0].visualY+(_fd===0?20:_fd===2?-20:0);for(let _fi=0;_fi<2;_fi++){particles.push({x:_fwx+(Math.random()*8-4),y:_fwy,vx:(Math.random()-.5)*1.4,vy:-0.6-Math.random()*0.8,life:8+Math.random()*6,c:Math.random()>.5?'rgba(80,180,240,0.82)':'rgba(200,235,255,0.65)'}); }}
   }else if(fishingPhase==='waiting'){
     // Show bobber animation
     const px=pl[0].visualX-camX,py=pl[0].visualY-camY;
@@ -19356,6 +19362,8 @@ function drawPuzzlePillars(){
         g.globalAlpha=_pa*0.25;
         bx(px+4,py-_colH+TH,8,_colH,'#ffffff');
         g.globalAlpha=1;
+        // v679: pillar solve column sparks — bright motes spray off column top as it rises (world-space)
+        if(fr%4===i&&_colH>4){const _pcol=puzzleColors[puzzleStoneOrder[i]];particles.push({x:pp.x*TW+6+Math.random()*4,y:pp.y*TH-_colH+TH,vx:(Math.random()-.5)*0.55,vy:-0.55-Math.random()*0.80,life:14+Math.random()*10,c:_pa>0.4?_pcol:'rgba(255,255,255,0.80)'});}
       }
     }
   }
