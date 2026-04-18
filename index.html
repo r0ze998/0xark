@@ -11632,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v720',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v721',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -20652,6 +20652,8 @@ function drawFountainDialog(){
     bx(W/2-180,H/2-20,4,36,'#3060b0');
     txShadow(fountainResult,W/2-170,H/2+4,7,'#80c0e0','rgba(0,0,0,.4)');
     g.globalAlpha=1;
+    // v721: fountain result water droplet burst on reveal (screen-space)
+    if(fountainResultTimer===38){for(let _fri=0;_fri<12;_fri++){particles.push({x:W/2-120+Math.random()*240,y:H/2+8,vx:(Math.random()-.5)*2.4,vy:-0.8-Math.random()*2.0,life:16+Math.random()*12,c:Math.random()>.5?'rgba(60,160,240,0.85)':'rgba(160,220,255,0.72)'});}}
     if(fountainResultTimer<=0)fountainActive=false;
   }
   drawParticles(0,0); // v571: render fountain shimmer particles
