@@ -11550,7 +11550,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v637',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v638',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17449,6 +17449,14 @@ function drawResultPhase(){
     bx(-_oBW/2,-8,_oBW,18,_outBg);bx(-_oBW/2,-8,_oBW,2,_outCol);bx(-_oBW/2,8,_oBW,1,_outCol);
     txShadow(_outLabel,-_oBW/2+4,5,9,_outCol,'rgba(0,0,0,.6)');
     g.restore();g.globalAlpha=slideIn_;
+  }
+  // v638: battle result ambient motes — outcome-tinted particles based on WIN/LOSS/DRAW
+  if(t>10&&t%14===0&&bpResolveQueue){
+    let _rGot=false,_rLost=false;
+    for(let _oi=0;_oi<bpResolveQueue.length;_oi++){const _oe=bpResolveQueue[_oi].effect||'';if(_oe==='steal_get'||_oe==='card_get')_rGot=true;else if(_oe==='card_lost')_rLost=true;}
+    const _rc=_rGot&&!_rLost?'rgba(64,220,120,0.62)':_rLost&&!_rGot?'rgba(220,60,60,0.58)':_rGot?'rgba(240,190,40,0.60)':'rgba(180,180,160,0.50)';
+    const _rvy=_rGot&&!_rLost?-0.36:_rLost&&!_rGot?0.28:-0.24;
+    particles.push({x:panX+20+Math.random()*(panW-40),y:panY+panH*0.5+Math.random()*(panH*0.4),vx:(Math.random()-.5)*0.30,vy:_rvy,life:24+Math.random()*16,c:_rc});
   }
   // Divider
   bx(panX+16,panY+30,panW-32,1,'rgba(200,180,140,.3)');
