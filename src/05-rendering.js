@@ -1165,6 +1165,17 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
     }
     particles.push({x:_awx,y:_awy,vx:_avx,vy:_avy,life:_ali,c:Math.random()>.5?_ac1:_ac2});
   }}
+  // v540: dungeon ceiling drips (floors 1-3) and falling embers (floors 4-5) — directional weather
+  if(fr%50===0){
+    const _cdx=camX+30+Math.random()*(W-60),_cdy=camY+10+Math.random()*18;
+    if(currentFloor<=3){
+      const _ddc=currentFloor===3?'rgba(140,80,160,0.60)':currentFloor===2?'rgba(90,110,190,0.55)':'rgba(80,110,160,0.50)';
+      particles.push({x:_cdx,y:_cdy,vx:(Math.random()-.5)*0.12,vy:0.15+Math.random()*0.1,life:28+Math.random()*14,c:_ddc});
+    }else{
+      const _edc=currentFloor===5?'rgba(255,185,40,0.68)':'rgba(220,80,25,0.65)';
+      particles.push({x:_cdx,y:_cdy,vx:(Math.random()-.5)*0.35,vy:0.20+Math.random()*0.15,life:22+Math.random()*12,c:_edc});
+    }
+  }
 }
 
 // v215: Town animated overlays — water sparkles + wave glints drawn each frame on main canvas
