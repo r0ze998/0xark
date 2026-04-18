@@ -11379,7 +11379,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v577',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v578',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -20122,6 +20122,12 @@ function drawObjectInteractMsg(){
   bx(W/2-200,H/2-20,4,36,'#c0a040');
   txShadow(objectInteractMsg,W/2-190,H/2+4,7,'#e8e0c0','rgba(0,0,0,.4)');
   g.globalAlpha=1;
+  // v578: gold sparks from object interact message box on appearance (screen-space)
+  if(objectInteractTimer>25&&fr%5===0){
+    const _ox=W/2-200+Math.random()*400,_oy=H/2-20+Math.random()*36;
+    particles.push({x:_ox,y:_oy,vx:(Math.random()-.5)*.50,vy:-.30-Math.random()*.30,life:10+Math.random()*8,c:Math.random()>.5?'rgba(240,200,80,0.70)':'rgba(255,240,120,0.55)'});
+  }
+  drawParticles(0,0); // v578: render object interact sparks (screen-space)
 }
 
 // v76: Exit proximity tooltip — show destination info when near an exit
