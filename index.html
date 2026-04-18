@@ -11629,7 +11629,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v703',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v704',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -19937,6 +19937,8 @@ function drawBuildingInterior(){
         const ppA=Math.min(1,(t2-20)/8);g.globalAlpha=ppA;
         txShadow('PITY PULL!',gx+gw/2-50,gy+gh-54,10,'#f0c830','rgba(0,0,0,.5)');
         g.globalAlpha=1;
+        // v704: pity pull golden celebration burst — star-like sparkles from the label (screen-space)
+        if(t2===21){for(let _ppi=0;_ppi<16;_ppi++){const _ppa=(_ppi/16)*Math.PI*2;const _pps=1.2+Math.random()*3.0;particles.push({x:gx+gw/2,y:gy+gh-54,vx:Math.cos(_ppa)*_pps,vy:Math.sin(_ppa)*_pps-2.0,life:22+Math.random()*16,c:Math.random()>.4?'rgba(255,200,30,0.92)':'rgba(255,240,120,0.80)'});}}
       }
       g.globalAlpha=1;
       if(t2>30){txShadow('[Z] Take   [X] Close',gx+16,gy+gh-36,7,'#8888a0','rgba(0,0,0,.3)');}
