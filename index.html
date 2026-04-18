@@ -11293,7 +11293,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v541',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v542',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -15189,7 +15189,10 @@ function drawSelectPhase(){
       const slot=_csFilledBuf[j];const cd=pl[0].cd[slot],cr=CD[cd-1];
       const y=H/2-mh/2+46+j*spacing;
       const _csTi=_BTYPE_MAP[cr.t];const _csTCol=_csTi!==undefined?_BTYPE_COL[_csTi]:'#888'; // v446
-      if(j===bpCardSelectIdx){bx(W/2-cardW/2+8,y-4,cardW-16,cardH-4,'rgba(192,168,96,.25)');txShadow('\u25B6',W/2-cardW/2+4,y+20,12,'#c04040','rgba(0,0,0,.3)');}
+      if(j===bpCardSelectIdx){bx(W/2-cardW/2+8,y-4,cardW-16,cardH-4,'rgba(192,168,96,.25)');txShadow('\u25B6',W/2-cardW/2+4,y+20,12,'#c04040','rgba(0,0,0,.3)');
+        // v542: type-colored sparkles rise from selected card row (screen-space; drawParticles(0,0))
+        if(fr%9===0){const _bsRC=['rgba(200,56,56,0.72)','rgba(56,136,200,0.72)','rgba(48,184,112,0.72)','rgba(168,64,192,0.72)','rgba(200,168,48,0.72)'];const _bsC=_csTi!==undefined?_bsRC[_csTi]:'rgba(200,180,100,0.62)';particles.push({x:W/2-cardW/2+14+Math.random()*(cardW-20),y:y+Math.random()*cardH,vx:(Math.random()-.5)*0.55,vy:-0.42-Math.random()*0.48,life:13+Math.random()*8,c:_bsC});}
+      }
       // v446: type color left stripe per row
       bx(W/2-cardW/2+8,y-3,3,cardH-6,_csTCol);
       // Larger card frame with character sprite
