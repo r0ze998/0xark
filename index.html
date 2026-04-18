@@ -7574,6 +7574,8 @@ function drawTallGrass(px,py,tx_,ty){
     // Deeper green base
     g.fillStyle='#286828';g.fillRect(bx_,by_+bladeH-3,3,3);
   }
+  // v603: tall grass seed drift — light feather seeds detach from tips (world-space)
+  if((fr+tx_*13+ty*9)%30===0){particles.push({x:tx_*TW+2+Math.random()*(TW-4),y:ty*TH+4+Math.random()*8,vx:(Math.random()-.5)*.55,vy:-.14-Math.random()*.16,life:22+Math.random()*18,c:Math.random()>.5?'rgba(210,200,160,0.36)':'rgba(240,230,190,0.26)'});}
 }
 
 function drawPath(px,py,tx_,ty){
@@ -11456,7 +11458,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v602',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v603',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
