@@ -8692,6 +8692,12 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
     const _ffa=(_dnp.phase==='night'?0.52+Math.random()*0.28:0.28+Math.random()*0.18).toFixed(2);
     particles.push({x:_ffx,y:_ffy,vx:(Math.random()-.5)*0.22,vy:-0.06-Math.random()*0.12,life:70+Math.random()*50,c:'rgba(180,240,80,'+_ffa+')'});
   }}
+  // v655: dawn pollen drift — warm golden motes float in morning sunlight during dawn phase (world coords)
+  if(fr%12===0){const _dnp=getDayNightPhase();if(_dnp.phase==='dawn'){
+    const _dpx=camX+Math.random()*W,_dpy=camY+Math.random()*(H-72);
+    const _dpa=(0.22+Math.random()*0.18+_dnp.t*0.10).toFixed(2);
+    particles.push({x:_dpx,y:_dpy,vx:0.12+Math.random()*0.18,vy:-0.04-Math.random()*0.08,life:65+Math.random()*45,c:'rgba(255,200,80,'+_dpa+')'});
+  }}
 }
 
 function drawTile(tx_,ty){
@@ -11566,7 +11572,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v654',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v655',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
