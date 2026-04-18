@@ -11561,7 +11561,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v648',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v649',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14297,6 +14297,8 @@ function drawBattleBG(){
     g.globalAlpha=0.28+_sFr15*0.18; // pulses ~0.10→0.46 at ~1.4 Hz
     g.drawImage(_btlVigCrit,0,0);
     g.globalAlpha=1;
+    // v649: critical HP edge motes — blood-red particles rise from screen edges (screen-space)
+    if(fr%4===0){const _lSide=Math.random()>.5;particles.push({x:_lSide?Math.random()*48:W-48+Math.random()*48,y:60+Math.random()*(H-120),vx:_lSide?0.18+Math.random()*.18:-(0.18+Math.random()*.18),vy:-0.14-Math.random()*.16,life:18+Math.random()*12,c:'rgba(180,20,20,0.52)'});}
   }
 }
 
