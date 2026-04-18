@@ -11237,7 +11237,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v524',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v525',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -21152,13 +21152,21 @@ function tryMovePlayer(dx, dy) {
   }
   const newTile = m[ny]?.[nx];
   if(newTile===1||newTile===7||newTile===11){ spawnGrassParticles(nx*TW,ny*TH); sfxGrassRustle(); }
-  // v217: Dungeon footstep dust — stone floor puffs when walking through dungeon
+  // v525: flower tile petal burst — pink/yellow petals mix with grass particles
+  if(newTile===7&&!inDungeon){
+    const _fwx=nx*TW,_fwy=ny*TH+TH-4;
+    for(let _fi=0;_fi<2;_fi++){
+      particles.push({x:_fwx+6+Math.random()*20,y:_fwy,vx:(Math.random()-.5)*1.4,vy:-0.6-Math.random()*1.0,life:24+Math.random()*12,c:Math.random()>.5?'rgba(255,180,200,0.85)':'rgba(255,240,120,0.8)'});
+    }
+  }
+  // v217→v525: dungeon footstep dust — all 5 floors have distinct atmospheric colors
   if(inDungeon&&(newTile===1||newTile===4||newTile===10)){
     const dustX=nx*TW,dustY=ny*TH+TH-4;
-    for(let i=0;i<3;i++){
-      const dustVX=(Math.random()-.5)*1.2;
-      const dustCol=currentFloor>=4?'rgba(90,40,20,1)':currentFloor===3?'rgba(80,60,120,1)':'rgba(60,60,70,1)';
-      particles.push({x:dustX+4+Math.random()*TW/2,y:dustY,vx:dustVX,vy:-Math.random()*0.8-0.2,life:12+Math.random()*6,c:dustCol});
+    const dustN=currentFloor>=5?5:currentFloor===4?4:3;
+    const _dc1=currentFloor>=5?'rgba(255,200,60,1)':currentFloor===4?'rgba(200,70,30,1)':currentFloor===3?'rgba(180,50,160,1)':currentFloor===2?'rgba(100,50,180,1)':'rgba(70,90,150,1)';
+    const _dc2=currentFloor>=5?'rgba(80,240,220,1)':currentFloor===4?'rgba(255,140,40,1)':currentFloor===3?'rgba(255,100,220,1)':currentFloor===2?'rgba(160,100,255,1)':'rgba(120,140,200,1)';
+    for(let i=0;i<dustN;i++){
+      particles.push({x:dustX+4+Math.random()*TW/2,y:dustY,vx:(Math.random()-.5)*1.2,vy:-0.8-Math.random()*0.6,life:14+Math.random()*8,c:Math.random()>.5?_dc1:_dc2});
     }
   }
   if(newTile===25&&inDungeon){
