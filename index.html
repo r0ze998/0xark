@@ -11632,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v715',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v716',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17375,6 +17375,8 @@ function drawResolvingPhase(){
         g.globalAlpha=1;
       }
       if(evT===1)sfxSlash(); // reuse slash sfx for hostile scan
+      // v716: rival scout hostile sparks — red/amber motes spray from scan beam contact point (screen-space)
+      if(evT===10||evT===20){for(let _rsi=0;_rsi<8;_rsi++){const _rsa=Math.random()*Math.PI*2;const _rss=0.8+Math.random()*1.8;particles.push({x:dstCX+(Math.random()-.5)*beamW,y:beamY,vx:Math.cos(_rsa)*_rss,vy:Math.sin(_rsa)*_rss-0.6,life:12+Math.random()*8,c:Math.random()>.5?'rgba(255,80,30,0.85)':'rgba(255,160,60,0.70)'});}}
     }
     // v89: Enhanced QTE overlay
     if(qteActive){
