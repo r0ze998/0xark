@@ -11561,7 +11561,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v642',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v643',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14598,7 +14598,7 @@ function drawPlayerInfoBox(){
     g.globalAlpha=1;
   }
   // v277: Spell charge orb pips — si-indexed direct access, zero arrays
-  {const oW=6,oH=6,oG=2,blink=Math.floor(fr/12)%2===0;
+  {const oW=6,oH=6,oG=2,blink=Math.floor(fr/12)%2===0,_BORB_PPFX=['rgba(192,72,72,0.52)','rgba(56,104,192,0.52)','rgba(56,160,56,0.52)'];
   for(let si=0;si<3;si++){
     const ox=bx_+10+si*97,oy=by_+44,val=si===0?sp.s:si===1?sp.b:sp.c;
     const spWarn=(si===0&&sp.s===0)||(si===2&&sp.c===0);
@@ -14608,6 +14608,8 @@ function drawPlayerInfoBox(){
       const filled=o<val;
       bx(ox+26+o*(oW+oG),oy+2,oW,oH,filled?_BORB_FILL[si]:_BORB_EMPTY[si]);
       if(filled)bx(ox+26+o*(oW+oG)+1,oy+3,2,1,'rgba(255,255,255,.3)');
+      // v643: charged pip glow — colored mote rising from filled spell pip (screen-space)
+      if(filled&&fr%(20+si*7+o*3)===0){particles.push({x:ox+26+o*(oW+oG)+3,y:oy+2,vx:(Math.random()-.5)*.20,vy:-.18-Math.random()*.16,life:9+Math.random()*7,c:_BORB_PPFX[si]});}
     }
     if(val>3)txShadow(_EXCESS_CHG[val-4]||('+'+( val-3)),ox+26+3*(oW+oG)+2,oy+9,5,ARK.goldBright,'rgba(0,0,0,.3)'); // v318
   }}
