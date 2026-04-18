@@ -11442,7 +11442,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v592',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v593',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14438,6 +14438,8 @@ function drawPlayerInfoBox(){
     const _pdA=0.65+_sFr15*0.35;g.globalAlpha=_pdA;
     bx(bx_+152,by_+9,40,8,'rgba(200,0,0,.85)');bx(bx_+152,by_+9,40,1,'#ff6060');
     txShadow('DANGER',bx_+154,by_+16,4,'#ffe0e0','rgba(0,0,0,.5)');g.globalAlpha=1;
+    // v593: low-HP bleeding distress particles (screen-space, rendered by drawParticles(0,0) in dAct)
+    if(fr%6===0){particles.push({x:bx_+152+Math.random()*40,y:by_+9+Math.random()*8,vx:(Math.random()-.5)*.30,vy:-.22-Math.random()*.20,life:10+Math.random()*7,c:Math.random()>.5?'rgba(220,30,30,0.70)':'rgba(255,100,80,0.55)'});}
   }
   // Card bar
   txShadow('CARDS',bx_+10,by_+36,8,ARK.textDim,'rgba(0,0,0,.3)');
