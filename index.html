@@ -11634,7 +11634,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v738',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v739',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -22898,9 +22898,13 @@ document.addEventListener('keydown',e=>{
         if(ai===4){
           // USE CARD: open card selection
           bpCardSelectActive=true;bpCardSelectIdx=0;sfxSelect();
+          // v739: card select modal pop — brief arc of golden motes from center
+          for(let _cm=0;_cm<8;_cm++){const _ca=(_cm/8)*Math.PI*2;particles.push({x:W/2+(Math.random()*10-5),y:H/2+(Math.random()*10-5),vx:Math.cos(_ca)*1.4+Math.random()*.6,vy:Math.sin(_ca)*1.4-.8,life:12+Math.random()*8,c:Math.random()>.4?'rgba(200,168,60,0.80)':'rgba(240,220,120,0.65)'});}
         }else if(ai===1||ai===3){
           // STEAL or SCOUT: open target selection
           bpTargetSelectActive=true;bpTargetSelectIdx=1;bpPendingAction=ai;sfxSelect();
+          // v739: target select modal pop — hostile pink/purple burst
+          for(let _tm=0;_tm<8;_tm++){const _ta=(_tm/8)*Math.PI*2;particles.push({x:W/2+(Math.random()*10-5),y:H/2+(Math.random()*10-5),vx:Math.cos(_ta)*1.4,vy:Math.sin(_ta)*1.4-.8,life:12+Math.random()*8,c:Math.random()>.4?'rgba(200,60,160,0.78)':'rgba(140,60,220,0.65)'});}
         }else{
           sfxConfirm();bpAction=ai;
           mpBroadcastBattleAction(ai,bpSelectedTarget);
