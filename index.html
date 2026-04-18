@@ -8681,6 +8681,12 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
       particles.push({x:_px*TW+6+Math.random()*20,y:_py*TH-4+Math.random()*8,vx:(Math.random()-.5)*0.8,vy:-0.2-Math.random()*0.4,life:22+Math.random()*16,c:Math.random()>.5?'rgba(200,230,100,0.45)':'rgba(255,240,150,0.38)'});
     }}
   }
+  // v641: night fireflies — soft yellow-green motes hover through town during dusk/night (world coords)
+  if(fr%12===0){const _dnp=getDayNightPhase();if(_dnp.phase==='night'||_dnp.phase==='dusk'){
+    const _ffx=camX+Math.random()*W,_ffy=camY+16+Math.random()*(H-96);
+    const _ffa=(_dnp.phase==='night'?0.52+Math.random()*0.28:0.28+Math.random()*0.18).toFixed(2);
+    particles.push({x:_ffx,y:_ffy,vx:(Math.random()-.5)*0.22,vy:-0.06-Math.random()*0.12,life:70+Math.random()*50,c:'rgba(180,240,80,'+_ffa+')'});
+  }}
 }
 
 function drawTile(tx_,ty){
@@ -11550,7 +11556,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v640',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v641',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
