@@ -8000,6 +8000,11 @@ function drawGlowTile(px,py,tx_,ty){
   g.fillRect(px+14,py+8,4,TH-16);g.fillRect(px+8,py+14,TW-16,4);
   g.drawImage(_glowTileArc[isTeal?0:1],(px+11)|0,(py+11)|0);
   g.globalAlpha=1;
+  // v584: town glow tile — rising teal/violet motes (world-space)
+  if((fr+tx_*11+ty*17)%14===0){
+    const _gc=isTeal?'rgba(80,200,220,0.50)':'rgba(180,80,255,0.50)';
+    particles.push({x:px+camX+8+Math.random()*16,y:py+camY+6,vx:(Math.random()-.5)*.26,vy:-.20-Math.random()*.22,life:22+Math.random()*16,c:_gc});
+  }
 }
 
 function drawLava(px,py,tx_,ty){
@@ -11403,7 +11408,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v583',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v584',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
