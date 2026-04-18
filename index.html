@@ -11518,7 +11518,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v620',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v621',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -19207,6 +19207,9 @@ function drawPuzzleMessage(){
   win(W/2-160,H/2-20,320,36);
   txShadow(puzzleMessage,W/2-140,H/2+4,7,'#d0c040','rgba(0,0,0,.4)');
   g.globalAlpha=1;
+  // v621: puzzle solve celebration — golden sparks spray from message box (screen-space)
+  if(puzzleMessageTimer>20&&fr%6===0){particles.push({x:W/2-120+Math.random()*240,y:H/2-20+Math.random()*36,vx:(Math.random()-.5)*.60,vy:-.30-Math.random()*.40,life:14+Math.random()*10,c:Math.random()>.5?'rgba(240,200,50,0.72)':'rgba(255,240,120,0.55)'});}
+  drawParticles(0,0);
 }
 
 // ═══════════════════════════════════════
