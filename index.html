@@ -9815,6 +9815,9 @@ function drawFloorTitle(){
   // bottom-right
   g.beginPath();g.moveTo(W-32,H/2+56);g.lineTo(W-32,H/2+56-cd);g.moveTo(W-32,H/2+56);g.lineTo(W-32-cd,H/2+56);g.stroke();
 
+  // v633: floor title dissolve — themed accent motes radiate outward as overlay fades (world-space)
+  if(t>158&&fr%5===0){const _ftdA=(Math.random()-.5)*Math.PI*2;const _ftdS=0.6+Math.random()*1.1;particles.push({x:W/2+camX+(Math.random()*90-45),y:H/2+camY+(Math.random()*45-22),vx:Math.cos(_ftdA)*_ftdS,vy:Math.sin(_ftdA)*_ftdS-0.8,life:22+Math.random()*18,c:theme.accent});}
+
   g.globalAlpha=1;
 }
 
@@ -11537,7 +11540,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v632',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v633',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
