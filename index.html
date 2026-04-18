@@ -11500,6 +11500,8 @@ function dTitle(){
       }
       g.restore();
       g.globalAlpha=1;
+      // v681: orbit sparkle — rare+ cards leave rarity-colored motes along their orbital path (screen-space)
+      if(cr.r>=3&&fr%(20-cr.r*2)===(i*5)%(Math.max(2,20-cr.r*2))){const _orBC=['','','rgba(60,200,100,0.55)','rgba(60,140,240,0.65)','rgba(180,60,240,0.72)','rgba(255,185,30,0.82)'][cr.r]||'rgba(255,185,30,0.82)';particles.push({x:ox+(Math.random()*14-7),y:oy+(Math.random()*10-5),vx:(Math.random()-.5)*0.22,vy:-0.14-Math.random()*0.14,life:10+Math.random()*8,c:_orBC});}
     }
   }
   // Animated waves at bottom of title screen — v380: sin-addition via pre-baked wave tables
@@ -11610,7 +11612,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v680',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v681',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
