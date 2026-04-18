@@ -11629,7 +11629,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v698',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v699',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17450,6 +17450,8 @@ function drawResolvingPhase(){
       g.shadowBlur=0;
       g.restore();
       g.globalAlpha=1;
+      // v699: QTE result burst — green/red motes pop from result text center (screen-space)
+      if(qteResultTimer===40){const _qrc=isSuccess?'rgba(64,255,96,0.95)':'rgba(255,64,64,0.95)';for(let _qi=0;_qi<14;_qi++){const _qa=(_qi/14)*Math.PI*2;const _qs=1.5+Math.random()*3.2;particles.push({x:W/2,y:H/2-20,vx:Math.cos(_qa)*_qs,vy:Math.sin(_qa)*_qs-1.5,life:16+Math.random()*12,c:Math.random()>.4?_qrc:'rgba(255,255,255,0.90)'});}}
     }
     // v216: Rival KO overlay — pulsing red "KO!" above sprite when HP hits 0
     for(let ri=1;ri<=2;ri++){
