@@ -11347,7 +11347,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v568',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v569',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -19481,6 +19481,12 @@ function drawBuildingInterior(){
           }
         }
         g.globalAlpha=slideIn;
+      }
+      // v569: ongoing rarity shimmer rising from card during result hold (screen-space; rendered by drawParticles(0,0) below)
+      if(slideIn>0.5&&fr%10===0){
+        const _grx=W/2-44+Math.random()*88,_gry=H/2-60+Math.random()*120;
+        const _grc=['','rgba(200,195,180,0.55)','rgba(80,200,120,0.60)','rgba(60,140,240,0.65)','rgba(160,60,240,0.70)','rgba(255,190,30,0.78)'][cr.r]||'rgba(200,180,100,0.55)';
+        particles.push({x:_grx,y:_gry,vx:(Math.random()-.5)*0.38,vy:-0.28-Math.random()*0.30,life:14+Math.random()*8,c:_grc});
       }
       // Rarity label
       bx(gx+gw/2-60,gy+gh-90,120,20,RARITY_COLOR[cr.r]+'33');
