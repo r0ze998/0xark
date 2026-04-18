@@ -7459,6 +7459,8 @@ function drawWater(px,py,tx_,ty){
   if(drawZeldaOverTile(ZO.water[0], ZO.water[1], px, py, 2)){
     // Sparkle overlay
     if((wt+tx_*3+ty*7)%8===0){const r=tr(tx_,ty);bx(px+Math.floor(r.g*28)+2,py+Math.floor(r.h*28)+2,2,2,'rgba(255,255,255,.5)');}
+    // v626: zelda water spray — fine sea-spray motes from surface (world-space)
+    if((fr+tx_*17+ty*23)%55===0){particles.push({x:tx_*TW+2+Math.random()*(TW-4),y:ty*TH+TH*Math.random(),vx:(Math.random()-.5)*.28,vy:-.10-Math.random()*.14,life:16+Math.random()*12,c:Math.random()>.5?'rgba(140,200,240,0.42)':'rgba(220,240,255,0.30)'});}
     return;
   }
   // Fallback: ocean blue with subtle wave bands
@@ -11527,7 +11529,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v625',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v626',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
