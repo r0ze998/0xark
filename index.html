@@ -7602,9 +7602,15 @@ function drawPath(px,py,tx_,ty){
 }
 
 function drawSand(px,py,tx_,ty){
-  if(drawZeldaOverTile(ZO.sand[0],ZO.sand[1],px,py,2)) return;
+  if(drawZeldaOverTile(ZO.sand[0],ZO.sand[1],px,py,2)){
+    // v615: sand grain drift — wind-blown motes skimming beach surface (world-space)
+    if((fr+tx_*7+ty*31)%50===0){particles.push({x:tx_*TW+Math.random()*TW,y:ty*TH+TH-4+Math.random()*6,vx:.30+Math.random()*.40,vy:-.02-Math.random()*.04,life:14+Math.random()*10,c:Math.random()>.5?'rgba(215,185,110,0.38)':'rgba(240,210,140,0.28)'});}
+    return;
+  }
   // Fallback: solid sand
   bx(px,py,TW,TH,'#d4b878');
+  // v615: sand grain drift fallback (world-space)
+  if((fr+tx_*7+ty*31)%50===0){particles.push({x:tx_*TW+Math.random()*TW,y:ty*TH+TH-4+Math.random()*6,vx:.30+Math.random()*.40,vy:-.02-Math.random()*.04,life:14+Math.random()*10,c:Math.random()>.5?'rgba(215,185,110,0.38)':'rgba(240,210,140,0.28)'});}
 }
 
 function drawTree(px,py,tx_,ty){
@@ -11492,7 +11498,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v614',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v615',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
