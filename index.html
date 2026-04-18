@@ -2851,8 +2851,10 @@ function drawMapLoadScreen(){
       txShadow(mapLoadScreenCards,W/2-mapLoadScreenCards.length*3,H/2+20,6,'#c8c0a0','rgba(0,0,0,.4)');
     }
     bx(W/2-80,H/2+4,160,1,'rgba(200,180,140,.5)');
+    // v667: town map load ambient glow — warm golden motes drift up around the town name during load (screen-space)
+    if(mapLoadScreenFrame%10===0&&t>0.10&&t<0.88){const _tx=W/2-60+Math.random()*120,_ty=H/2+10+Math.random()*40;particles.push({x:_tx,y:_ty,vx:(Math.random()-.5)*.20,vy:-.24-Math.random()*.22,life:22+Math.random()*14,c:Math.random()>.5?'rgba(240,200,100,0.60)':'rgba(255,240,160,0.45)'});}
   }
-  drawParticles(0,0); // v572: render floor atmosphere motes on top of load screen
+  drawParticles(0,0); // v572+v667: render floor atmosphere motes / town glow on top of load screen
   g.globalAlpha=1;
 }
 
@@ -11584,7 +11586,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v666',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v667',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
