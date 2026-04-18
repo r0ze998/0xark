@@ -10721,6 +10721,15 @@ function drawRandomEvent(){
   const catIcon=_EVT_CAT_ICON[cat]||_EVT_CAT_ICON.neutral;
   const catBar=_EVT_CAT_BAR[cat]||_EVT_CAT_BAR.neutral;
   g.globalAlpha=ease;
+  // v559: category-flavored event particles (map overlay — world-space)
+  if(t<120&&t%14===0){
+    const _ex=W/4+Math.random()*(W/2)+camX, _ey=H/2-50+slideOff+Math.random()*74+camY;
+    const _ec=cat==='good'?(Math.random()>.5?'rgba(64,210,100,0.70)':'rgba(240,200,60,0.65)'):
+                cat==='bad'?(Math.random()>.5?'rgba(220,60,40,0.70)':'rgba(240,140,30,0.60)'):
+                            (Math.random()>.5?'rgba(80,160,240,0.55)':'rgba(200,200,255,0.48)');
+    const _evy=cat==='bad'?0.18+Math.random()*0.22:-(0.26+Math.random()*0.28);
+    particles.push({x:_ex,y:_ey,vx:(Math.random()-.5)*0.32,vy:_evy,life:18+Math.random()*10,c:_ec});
+  }
   win(24,H/2-50+slideOff,W-48,74);
   // Category color bar at top of window
   bx(26,H/2-48+slideOff,W-52,4,catBar);
@@ -11310,7 +11319,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v558',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v559',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
