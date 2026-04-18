@@ -11561,7 +11561,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v651',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v652',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14207,10 +14207,14 @@ function drawBattleBG(){
         // sin(fr*0.08+i) via sin-addition with _BTL_LAVA_SI/CI
         const lavaA=0.4+(_s08*_BTL_LAVA_CI[i]+_c08*_BTL_LAVA_SI[i])*0.2;
         g.globalAlpha=lavaA;bx(px_-2,horizonY-16,28,16,'#d03010');g.globalAlpha=1;
+        // v652: F4 lava drip — molten drops falling from lava seams (screen-space)
+        if(fr%(12+i*5)===(i*3)%7){particles.push({x:px_-2+Math.random()*28,y:horizonY-16+Math.random()*12,vx:(Math.random()-.5)*.28,vy:0.20+Math.random()*.18,life:10+Math.random()*6,c:Math.random()>.5?'rgba(220,60,20,0.74)':'rgba(255,130,30,0.58)'});}
       }else{
         // sin(fr*0.06+i*1.3) via sin-addition with _BTL_VOID_SI/CI + _sFr06/_cFr06
         const voidA=0.3+(_sFr06*_BTL_VOID_CI[i]+_cFr06*_BTL_VOID_SI[i])*0.2;
         g.globalAlpha=voidA;bx(px_+4,horizonY-24,16,24,'#6030a0');g.globalAlpha=1;
+        // v652: F5 void drip — purple void energy seeping from cracks downward (screen-space)
+        if(fr%(16+i*7)===(i*5)%9){particles.push({x:px_+4+Math.random()*16,y:horizonY-24+Math.random()*20,vx:(Math.random()-.5)*.18,vy:0.14+Math.random()*.18,life:14+Math.random()*8,c:Math.random()>.5?'rgba(100,30,160,0.62)':'rgba(160,80,240,0.48)'});}
       }
     }
     // F3: crystal shard shimmer — v360: use pre-baked abs(sin(i*1.7)) for Y; sin-addition for alpha
