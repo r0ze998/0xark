@@ -655,6 +655,11 @@ function drawLighthouse(px,py,tx_,ty){
   if((wt)%2===0){
     g.drawImage(_tileLighthouseGlow,(px+3)|0,(py-25)|0);
   }
+  // v524: lighthouse beacon sparkle — golden motes drift from beacon light (world coords)
+  if((fr+(tx_*11+ty*7))%5===0){
+    const _lhwx=tx_*TW+12+Math.random()*8,_lhwy=ty*TH-16+Math.random()*4;
+    particles.push({x:_lhwx,y:_lhwy,vx:(Math.random()-.5)*1.2,vy:-0.2-Math.random()*0.5,life:22+Math.random()*18,c:Math.random()>.5?'rgba(255,240,140,0.65)':'rgba(255,255,200,0.5)'});
+  }
   // Cap
   bx(px+10,py-16,12,2,'#c04040');bx(px+12,py-18,8,2,'#a03030');
 }
@@ -1632,6 +1637,12 @@ function drawNPCSprite(npc){
       g.globalAlpha=pulse;
       txShadow('[Z]',dx_-1,dy_+22,7,diaH,'rgba(0,0,0,.5)');
       g.globalAlpha=1;
+      // v524: NPC interact sparkle — motes rise from diamond indicator (world coords)
+      if((fr+(npc.x*13+npc.y*9))%5===0){
+        const _nsx=vx+10+Math.random()*12,_nsy=vy-50+walkBob+Math.random()*10;
+        const _nc=npc.type===0?'rgba(64,128,208,0.75)':npc.type===1?'rgba(64,176,96,0.75)':'rgba(208,176,64,0.75)';
+        particles.push({x:_nsx,y:_nsy,vx:(Math.random()-.5)*0.6,vy:-0.5-Math.random()*0.7,life:18+Math.random()*14,c:_nc});
+      }
     }else{
       const dx_=px+14,dy_=py-28+bobY;
       bx(dx_+2,dy_,2,2,diaC);
