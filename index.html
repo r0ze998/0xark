@@ -2567,6 +2567,9 @@ function drawMPStatus(){
     txShadow('ONLINE:'+mp.playerCount+'/3',statusX+4,statusY+12,6,'#40d080','rgba(0,0,0,.4)');
     // Ping dot
     bx(statusX+104,statusY+5,6,6,mp.pingColor);
+    // v623: network pulse — Solana-green data motes from online status bar (screen-space)
+    if(fr%18===0){particles.push({x:statusX+4+Math.random()*112,y:statusY+Math.random()*16,vx:(Math.random()-.5)*.22,vy:-.12-Math.random()*.14,life:12+Math.random()*9,c:Math.random()>.5?'rgba(64,208,128,0.55)':'rgba(130,80,220,0.42)'});}
+    drawParticles(0,0);
   }
 }
 
@@ -11518,7 +11521,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v622',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v623',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
