@@ -11632,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v724',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v725',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14025,6 +14025,8 @@ function dMap(){
       txShadow(_rcc>=4?'\u26a0 THREAT: HIGH':_rcc>=2?'THREAT: MED':'THREAT: LOW',_panX+14,_panY+36,7,_threatCol,'rgba(0,0,0,.5)');
       txShadow('INTERCEPT!',_panX+_panW-100,_panY+36,7,_rcc>=4?'#f06060':'rgba(200,180,160,.6)','rgba(0,0,0,.5)');
       g.globalAlpha=1;
+      // v725: rival alert threat motes — drifting from right accent bar, color by threat (screen-space)
+      if(_elapsed>10&&fr%15===0){const _tm=_rcc>=4?'rgba(240,60,60,0.80)':_rcc>=2?'rgba(220,150,30,0.78)':'rgba(80,200,80,0.72)';particles.push({x:_panX+_panW-2,y:_panY+4+Math.random()*(_panH-8),vx:0.4+Math.random()*1.0,vy:(Math.random()-.5)*0.8,life:16+Math.random()*12,c:_tm});}
     }
   }
 
