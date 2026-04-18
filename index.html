@@ -11632,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v718',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v719',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17109,6 +17109,8 @@ function drawResolvingPhase(){
       for(let i=0;i<8;i++){g.fillRect(playerCX+(_eC*_ORB_CI8[i]-_eS*_ORB_SI8[i])*_dist,cardY+(_eS*_ORB_CI8[i]+_eC*_ORB_SI8[i])*_dist,3,3);}
       g.globalAlpha=1;}
       if(evT===1)sfxCardGet();
+      // v719: card_get rarity burst — shimmer motes at card peak (screen-space)
+      if(evT===15&&ev.cardId>0&&CD[ev.cardId-1]){const _cgr=CD[ev.cardId-1].r||1;const _cgcA=['','rgba(200,195,180,0.88)','rgba(60,210,100,0.88)','rgba(60,140,240,0.88)','rgba(180,60,240,0.88)','rgba(255,195,30,0.92)'];const _cgc=_cgcA[_cgr]||'rgba(255,200,80,0.85)';const _cgN=6+_cgr*2;const _cgy=playerCY+30-30;for(let _cgi=0;_cgi<_cgN;_cgi++){const _cga=(_cgi/_cgN)*Math.PI*2;const _cgs=1.0+Math.random()*2.2;particles.push({x:playerCX,y:_cgy,vx:Math.cos(_cga)*_cgs,vy:Math.sin(_cga)*_cgs-1.8,life:18+Math.random()*14+_cgr*2,c:_cgc});}}
     }
     if(ev.effect==='card_get_rival'&&evT<35){
       // v121: Rival card acquisition with full art — mirrors v114 card_get, hostile tint
