@@ -11550,7 +11550,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v638',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v639',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14256,6 +14256,8 @@ function drawBattleBG(){
       const vo=_vegaOrbs[i];
       g.globalAlpha=ora;g.drawImage(vo[0].canvas,(ox-vo[0].hw)|0,(oy-vo[0].hw)|0);
       g.globalAlpha=ora*0.4;g.drawImage(vo[1].canvas,(ox-vo[1].hw)|0,(oy-vo[1].hw)|0);
+      // v639: VEGA orb wake — faint magenta motes trail the drifting orbs
+      if(fr%(22+i*7)===0){particles.push({x:ox+(Math.random()*8-4),y:oy+(Math.random()*8-4),vx:(Math.random()-.5)*0.20,vy:-0.14-Math.random()*0.14,life:20+Math.random()*14,c:Math.random()>.5?'rgba(220,80,180,0.42)':'rgba(160,60,240,0.38)'});}
     }}
     g.globalAlpha=1;
   }else{
@@ -14274,6 +14276,8 @@ function drawBattleBG(){
       g.globalAlpha=ora*0.45;
       bx(ox-4,oy-4,8,1,'#f0e060');bx(ox-4,oy+3,8,1,'#f0e060');
       bx(ox-4,oy-4,1,8,'#f0e060');bx(ox+3,oy-4,1,8,'#f0e060');
+      // v639: MIRA coin wake — faint gold motes trail the drifting coin sparks
+      if(fr%(18+i*9)===0){particles.push({x:ox+(Math.random()*6-3),y:oy+(Math.random()*6-3),vx:(Math.random()-.5)*0.18,vy:-0.10-Math.random()*0.12,life:18+Math.random()*12,c:Math.random()>.5?'rgba(240,190,40,0.45)':'rgba(255,230,100,0.38)'});}
     }}
     g.globalAlpha=1;
   }
