@@ -7904,6 +7904,11 @@ function drawFountain(px,py,tx_,ty){
     bx(px+15,py-1,2,1,'#c0e0f8');
   }
   if((wt+tx_)%5===0)bx(px+8+Math.floor(tr(tx_,ty).a*14),py+18,2,1,'rgba(255,255,255,.6)');
+  // v586: fountain water droplet particles — world coords
+  if((fr+tx_*3+ty*7)%5===0){
+    const _fwx=tx_*TW+14+Math.random()*4,_fwy=ty*TH+2;
+    particles.push({x:_fwx,y:_fwy,vx:(Math.random()-.5)*.50,vy:-.55-Math.random()*.45,life:14+Math.random()*10,c:Math.random()>.5?'rgba(120,200,255,0.68)':'rgba(180,230,255,0.50)'});
+  }
 }
 
 function drawLighthouse(px,py,tx_,ty){
@@ -11412,7 +11417,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v585',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v586',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
