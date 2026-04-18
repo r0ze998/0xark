@@ -8180,6 +8180,11 @@ function drawDungeonStairGlows(startTX,startTY,endTX,endTY){
         g.fillStyle='#8cdcff';
         g.beginPath();g.moveTo(px+16,py+6);g.lineTo(px+12,py+12);g.lineTo(px+20,py+12);g.closePath();g.fill();
         g.globalAlpha=1;
+        // v519: rising blue mist from stair-up opening (world coords)
+        if((fr+(x*5+y*11))%5===0){
+          const _sux=x*TW+6+Math.random()*20,_suy=y*TH+Math.random()*8;
+          particles.push({x:_sux,y:_suy,vx:(Math.random()-.5)*.5,vy:-0.6-Math.random()*0.9,life:30+Math.random()*18,c:Math.random()>.5?'rgba(100,200,255,0.4)':'rgba(160,220,255,0.3)'});
+        }
       }
     }
   }
@@ -8280,6 +8285,11 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
         // Glow tile: pulsing teal halo (pre-baked arc)
         const pulse=(_sFr06*_NCOS[(x*2+y*3)&511]+_cFr06*_NSIN[(x*2+y*3)&511])*.35+.55; // v375
         g.globalAlpha=pulse*.22;g.drawImage(_dungGlowTile,(px)|0,(py)|0);g.globalAlpha=1;
+        // v518: drifting teal motes from glow tile (world coords)
+        if((fr+(x*19+y*9))%9===0){
+          const _gwx=x*TW+4+Math.random()*24,_gwy=y*TH+4+Math.random()*24;
+          particles.push({x:_gwx,y:_gwy,vx:(Math.random()-.5)*0.5,vy:-0.2-Math.random()*0.4,life:28+Math.random()*20,c:Math.random()>.5?'rgba(40,200,160,0.55)':'rgba(100,240,200,0.4)'});
+        }
       }else if(t===26){
         // Crystal: sparkle glint + glow halo (pre-baked arc)
         const sparkle=(_sFr10*_NCOS[(x*5+y*7)&511]+_cFr10*_NSIN[(x*5+y*7)&511])>.45; // v375
@@ -11197,7 +11207,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v517',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v519',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
