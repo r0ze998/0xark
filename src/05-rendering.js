@@ -1069,6 +1069,12 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
         const _cp2=_LAVA_CX18[x]*_LAVA_CY21[y]-_LAVA_SX18[x]*_LAVA_SY21[y];
         const lavaPulse=0.4+(_sFr06*_cp2+_cFr06*_sp2)*0.18;
         g.globalAlpha=lavaPulse;g.drawImage(_dungLavaGlow,(px-26)|0,(py-26)|0);g.globalAlpha=1;
+        // v515: lava heat spray particles (world coords)
+        if((fr+(x*11+y*7))%5===0){
+          const _lwx=x*TW+4+Math.random()*24,_lwy=y*TH+Math.random()*16;
+          const _lc=Math.random()>.5?'rgba(255,60,10,0.8)':'rgba(255,140,20,0.7)';
+          particles.push({x:_lwx,y:_lwy,vx:(Math.random()-.5)*0.6,vy:-0.6-Math.random()*1.2,life:10+Math.random()*10,c:_lc});
+        }
         continue;
       }
       if(t===24){
