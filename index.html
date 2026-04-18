@@ -11634,7 +11634,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v737',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v738',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -15396,7 +15396,9 @@ function drawSelectPhase(){
         const nCol=owned?'#888878':'#e8e0c8';
         txShadow(cr.n,ppX+28,py2+2,7,nCol,'rgba(0,0,0,.3)');
         for(let s=0;s<rar;s++)txShadow('\u2605',ppX+ppW-8-(rar-s)*9,py2+2,5,rarCol,'rgba(0,0,0,.3)');
-        if(!owned){txShadow('NEW',ppX+ppW-8-rar*9-26,py2+2,5,'#50e090','rgba(0,0,0,.3)');}
+        if(!owned){txShadow('NEW',ppX+ppW-8-rar*9-26,py2+2,5,'#50e090','rgba(0,0,0,.3)');
+          // v738: NEW card row shimmer — cyan mote rises from unowned cards in draw pool
+          if(fr%(20+pi*7)===pi%5){particles.push({x:ppX+28+Math.random()*(ppW-36),y:py2+Math.random()*14,vx:(Math.random()-.5)*0.5,vy:-0.5-Math.random()*0.6,life:12+Math.random()*9,c:'rgba(60,220,140,0.72)'});}}
       }
       if(pool.length>4){
         txShadow(_MORE_LBL[pool.length-4]||('+'+( pool.length-4)+' more...'),ppX+10,ppY+ppH-12,6,'#686878','rgba(0,0,0,.2)'); // v324
