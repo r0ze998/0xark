@@ -7593,12 +7593,20 @@ function drawPath(px,py,tx_,ty){
     bx(px,py,1,TH,'rgba(0,0,0,0.20)');
     bx(px+TW-1,py,1,TH,'rgba(0,0,0,0.20)');
     bx(px,py,TW,1,'rgba(255,255,255,0.04)');
+    // v617: dungeon corridor mote — drifting ancient dust from stone floor (world-space)
+    if((fr+tx_*31+ty*17)%75===0){particles.push({x:tx_*TW+4+Math.random()*(TW-8),y:ty*TH+TH-4,vx:(Math.random()-.5)*.16,vy:-.06-Math.random()*.08,life:18+Math.random()*14,c:Math.random()>.5?'rgba(120,118,135,0.22)':'rgba(90,88,108,0.16)'});}
     return;
   }
   // Overworld: zelda path tile
-  if(drawZeldaOverTile(ZO.path[0],ZO.path[1],px,py,2)) return;
+  if(drawZeldaOverTile(ZO.path[0],ZO.path[1],px,py,2)){
+    // v617: dirt path dust — boot-kicked motes on overworld path (world-space)
+    if((fr+tx_*19+ty*41)%65===0){particles.push({x:tx_*TW+2+Math.random()*(TW-4),y:ty*TH+TH-6+Math.random()*4,vx:(Math.random()-.5)*.28,vy:-.06-Math.random()*.08,life:12+Math.random()*8,c:Math.random()>.5?'rgba(180,148,90,0.26)':'rgba(210,175,115,0.18)'});}
+    return;
+  }
   // Fallback: solid dirt
   bx(px,py,TW,TH,'#c8a868');
+  // v617: dirt path dust fallback (world-space)
+  if((fr+tx_*19+ty*41)%65===0){particles.push({x:tx_*TW+2+Math.random()*(TW-4),y:ty*TH+TH-6+Math.random()*4,vx:(Math.random()-.5)*.28,vy:-.06-Math.random()*.08,life:12+Math.random()*8,c:Math.random()>.5?'rgba(180,148,90,0.26)':'rgba(210,175,115,0.18)'});}
 }
 
 function drawSand(px,py,tx_,ty){
@@ -11502,7 +11510,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v616',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v617',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
