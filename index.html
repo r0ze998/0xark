@@ -11347,7 +11347,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v564',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v565',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -18970,6 +18970,11 @@ function drawPuzzlePillars(){
       g.globalAlpha=pulse;
       g.drawImage(_puzzleGlowCanvases[ci],(px+.5)|0,(py+.5)|0);
       g.globalAlpha=1;
+      // v565: puzzle pillar ambient aura mist — world-space rising particles (staggered by pillar index)
+      if((fr+(i*7))%18===0){
+        const _ppwx=pp.x*TW+TW/2+(Math.random()*10-5), _ppwy=pp.y*TH+(Math.random()*6-3);
+        particles.push({x:_ppwx,y:_ppwy,vx:(Math.random()-.5)*0.18,vy:-0.22-Math.random()*0.20,life:20+Math.random()*12,c:col});
+      }
     }else{
       // v466: Solve burst — ascending light columns at each pillar site for 90 frames
       const _pAge=fr-_puzzleSolveFrame;
