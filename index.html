@@ -11632,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v719',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v720',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17159,6 +17159,8 @@ function drawResolvingPhase(){
       for(let i=0;i<6;i++){g.fillRect(rcx+(_eC*_ORB_CI6[i]-_eS*_ORB_SI6[i])*_dist,cardY+(_eS*_ORB_CI6[i]+_eC*_ORB_SI6[i])*_dist,3,3);}
       g.globalAlpha=1;}
       if(evT===1)sfxCardGet();
+      // v720: card_get_rival hostile rarity burst — red-orange motes at rival card peak (screen-space)
+      if(evT===15&&ev.cardId>0&&CD[ev.cardId-1]){const _rr=CD[ev.cardId-1].r||1;const _rry=rcy+30-15*1.8;const _rrN=5+_rr*2;for(let _rri=0;_rri<_rrN;_rri++){const _rra=(_rri/_rrN)*Math.PI*2;const _rrs=1.0+Math.random()*2.0;particles.push({x:rcx,y:_rry,vx:Math.cos(_rra)*_rrs,vy:Math.sin(_rra)*_rrs-1.6,life:16+Math.random()*12+_rr*2,c:Math.random()>.5?'rgba(220,80,30,0.88)':'rgba(255,160,50,0.72)'});}}
     }
     if(ev.effect==='steal_get'&&evT<50){
       // Dramatic steal animation: card trajectory from rival to player + rarity burst
