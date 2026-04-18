@@ -8422,6 +8422,13 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
     const _fvy=-1.0-Math.random()*1.4;
     particles.push({x:_fwx,y:_fwy,vx:_fvx,vy:_fvy,life:16+Math.random()*12,c:Math.random()>.5?'rgba(140,200,255,0.7)':'rgba(200,230,255,0.55)'});
   }}}
+  // v520: town ambient drift — flower petals and dandelion seeds float on the breeze (world coords)
+  if(fr%8===0){
+    const _tawx=camX+Math.random()*W,_tawy=camY+Math.random()*(H-80);
+    const _tar=Math.random();
+    const _tac=_tar>.6?'rgba(255,180,200,0.5)':_tar>.3?'rgba(255,240,180,0.45)':'rgba(220,230,255,0.4)';
+    particles.push({x:_tawx,y:_tawy,vx:0.4+Math.random()*0.6,vy:-0.05-Math.random()*0.2,life:55+Math.random()*35,c:_tac});
+  }
 }
 
 function drawTile(tx_,ty){
@@ -11207,7 +11214,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v519',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v520',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
