@@ -11158,7 +11158,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v510',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v511',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -19117,6 +19117,38 @@ function drawBuildingInterior(){
       // Card display
       const cardX=W/2-50,cardY=H/2-70;
       drawCardFrame(cardX,cardY,100,130,gachaResultCard-1,true);
+      // v511: rare+ orbit sparkles — orbiting colored sparks around the revealed card
+      if(cr.r>=3&&slideIn>0.3){
+        const _ccx=W/2,_ccy=H/2-5; // card center
+        const _rc=RARITY_COLOR[cr.r]||'#f0c030';
+        const _n=cr.r>=5?10:cr.r>=4?8:6;
+        const _orb_si=cr.r>=5?_ORB_SI10:cr.r>=4?_ORB_SI8:_ORB_SI6;
+        const _orb_ci=cr.r>=5?_ORB_CI10:cr.r>=4?_ORB_CI8:_ORB_CI6;
+        const _spd=cr.r>=5?0.030:cr.r>=4?0.024:0.018;
+        const _gs1=Math.sin(fr*_spd),_gc1=Math.cos(fr*_spd);
+        const _rd1=58+_sFr08*6; // pulsing outer ring
+        const _sz1=cr.r>=5?5:cr.r>=4?4:3;
+        g.fillStyle=_rc;
+        g.globalAlpha=slideIn*(0.72+_sFr15*0.28);
+        for(let _oi=0;_oi<_n;_oi++){
+          const _oc=_gc1*_orb_ci[_oi]-_gs1*_orb_si[_oi];
+          const _os=_gs1*_orb_ci[_oi]+_gc1*_orb_si[_oi];
+          g.fillRect((_ccx+_oc*_rd1-_sz1/2)|0,(_ccy+_os*_rd1-_sz1/2)|0,_sz1,_sz1);
+        }
+        // Counter-rotating inner ring for epic/legendary
+        if(cr.r>=4){
+          const _gs2=Math.sin(-fr*_spd*0.65),_gc2=Math.cos(-fr*_spd*0.65);
+          const _rd2=40+_sFr12*4;
+          g.globalAlpha=slideIn*0.38;
+          g.fillStyle=cr.r>=5?'#ffffa0':'#d8a0ff';
+          for(let _oi=0;_oi<_n;_oi++){
+            const _oc2=_gc2*_orb_ci[_oi]-_gs2*_orb_si[_oi];
+            const _os2=_gs2*_orb_ci[_oi]+_gc2*_orb_si[_oi];
+            g.fillRect((_ccx+_oc2*_rd2-1)|0,(_ccy+_os2*_rd2-1)|0,2,2);
+          }
+        }
+        g.globalAlpha=slideIn;
+      }
       // Rarity label
       bx(gx+gw/2-60,gy+gh-90,120,20,RARITY_COLOR[cr.r]+'33');
       if(_gachaRevLblKey!==gachaResultCard){_gachaRevLblKey=gachaResultCard;_gachaRevLblCache=RARITY_LABEL[cr.r]+'  '+cr.n;} // v334: lazy
