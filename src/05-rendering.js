@@ -1046,7 +1046,7 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
   for(let y=startTY;y<=endTY;y++){
     for(let x=startTX;x<=endTX;x++){
       const t=m[y]?.[x];
-      if(t!==24&&t!==26&&t!==27&&t!==29&&t!==25)continue;
+      if(t!==24&&t!==26&&t!==27&&t!==29&&t!==25&&t!==28&&t!==30)continue;
       if(!fogRevealed[currentMap]?.[y]?.[x])continue;
       const px=x*TW-camX,py=y*TH-camY;
       if(px<-TW*2||px>W+TW*2||py<-TH*2||py>H+TH*2)continue;
@@ -1119,6 +1119,18 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
         if((fr+(x*13+y*11))%8===0){
           const _awx=x*TW+10+Math.random()*12,_awy=y*TH+Math.random()*10;
           particles.push({x:_awx,y:_awy,vx:(Math.random()-.5)*0.4,vy:-0.3-Math.random()*0.5,life:35+Math.random()*20,c:Math.random()>.5?'rgba(200,160,60,0.6)':'rgba(255,220,100,0.5)'});
+        }
+      }else if(t===28){
+        // v521: mushroom — drifting purple/green spore particles (world coords)
+        if((fr+(x*23+y*17))%14===0){
+          const _mwx=x*TW+8+Math.random()*16,_mwy=y*TH+8+Math.random()*8;
+          particles.push({x:_mwx,y:_mwy,vx:(Math.random()-.5)*0.6,vy:-0.15-Math.random()*0.3,life:40+Math.random()*30,c:Math.random()>.5?'rgba(180,80,220,0.5)':'rgba(80,200,120,0.45)'});
+        }
+      }else if(t===30){
+        // v522: treasure chest — occasional gold glitter sparks (world coords)
+        if((fr+(x*11+y*19))%10===0){
+          const _twx=x*TW+8+Math.random()*16,_twy=y*TH+6+Math.random()*8;
+          particles.push({x:_twx,y:_twy,vx:(Math.random()-.5)*0.8,vy:-0.6-Math.random()*1.0,life:12+Math.random()*10,c:Math.random()>.4?'rgba(255,200,40,0.9)':'rgba(255,240,160,0.7)'});
         }
       }
     }
