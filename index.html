@@ -11612,7 +11612,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v681',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v682',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -18780,6 +18780,8 @@ function dCrd(){
         g.globalAlpha=gp;
         bx(sidX+2,sidY+2,sidW-4,artH,rar===5?'rgba(255,220,80,.1)':'rgba(200,160,30,.07)');
         g.globalAlpha=1;
+        // v682: epic/legendary sidebar shimmer — rarity-colored motes rise from the art area (screen-space)
+        if(fr%9===(cardIdx*3)%9){const _sRC=rar===5?'rgba(255,185,30,0.80)':'rgba(180,60,240,0.72)';particles.push({x:sidX+4+Math.random()*(sidW-8),y:sidY+4+Math.random()*(artH-8),vx:(Math.random()-.5)*0.36,vy:-0.28-Math.random()*0.34,life:14+Math.random()*9,c:_sRC});}
       }
     }else{
       // Mystery pattern in art area
