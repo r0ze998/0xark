@@ -11237,7 +11237,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v525',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v526',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -13829,6 +13829,15 @@ function drawBattleBG(){
     g.globalAlpha=lightPulse;
     g.drawImage(_btlCenterLight,Math.floor(W*0.35),horizonY);
     g.globalAlpha=1;}
+    // v526: floor-specific battle ambient particles (screen-space; drawn via drawParticles(0,0))
+    {const _aRate=fl>=4?5:fl===3?6:7;
+    if(fr%_aRate===0){
+      const _bpx=20+Math.random()*(W-40),_bpy=30+Math.random()*(H-130);
+      const _bc1=fl>=5?'rgba(255,200,60,0.6)':fl===4?'rgba(220,80,20,0.7)':fl===3?'rgba(200,80,200,0.55)':fl===2?'rgba(100,60,180,0.5)':'rgba(110,120,140,0.5)';
+      const _bc2=fl>=5?'rgba(80,240,220,0.55)':fl===4?'rgba(255,160,40,0.6)':fl===3?'rgba(140,80,255,0.5)':fl===2?'rgba(150,100,220,0.4)':'rgba(80,90,110,0.45)';
+      const _bvy=fl>=4?-0.6-Math.random()*0.8:-0.15-Math.random()*0.3;
+      particles.push({x:_bpx,y:_bpy,vx:(Math.random()-.5)*0.4,vy:_bvy,life:fl>=4?12+Math.random()*10:28+Math.random()*20,c:Math.random()>.5?_bc1:_bc2});
+    }}
   }
   // v134: Rival-themed atmospheric overlay — VEGA (magenta) or MIRA (gold)
   // v210: vignette pre-baked to offscreen canvas — drawImage replaces createRadialGradient per frame
@@ -15187,6 +15196,7 @@ function drawSelectPhase(){
       g.restore();g.globalAlpha=1;
     }
   }
+  drawParticles(0,0); // v526: battle ambient particles visible during select phase
 }
 
 function drawConfirmingPhase(){
@@ -15369,6 +15379,7 @@ function drawConfirmingPhase(){
     // v305: pre-truncate long event texts once; eliminates per-frame substring in drawResultPhase
     for(let _ei=0;_ei<bpResolveQueue.length;_ei++){const _e=bpResolveQueue[_ei];if(_e.text&&_e.text.length>54)_e.text=_e.text.substring(0,52)+'..';}
   }
+  drawParticles(0,0); // v526: battle ambient particles visible during confirming phase
 }
 
 // Dungeon floor card drop tables (GDD v1.0)
