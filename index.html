@@ -2663,6 +2663,9 @@ function drawWipe(){
       const sx=fromLeft?0:W-barW;
       bx(sx,i*stripeH,barW,stripeH,'#181828');
     }
+    // v694: hswipe_out trailing-edge sparks — motes at retracting stripe tips (screen-space)
+    if(barW>6&&barW<W-6&&fr%2===0){const _hoi=Math.floor(Math.random()*8);const _hfl=(_hoi%2===0);const _hoex=_hfl?barW:W-barW;const _hoey=_hoi*stripeH+Math.random()*stripeH;particles.push({x:_hoex,y:_hoey,vx:_hfl?-0.8-Math.random()*0.9:0.8+Math.random()*0.9,vy:(Math.random()-.5)*.35,life:5+Math.random()*4,c:Math.random()>.45?'rgba(255,255,240,0.80)':'rgba(200,180,255,0.68)'});}
+    drawParticles(0,0); // v694: hswipe_out trailing-edge sparks (screen-space)
   }else if(wipeType==='vslide'){
     // Vertical slide-down wipe
     const barH=Math.floor(H*ease);
@@ -11620,7 +11623,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v693',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v694',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
