@@ -11256,7 +11256,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v532',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v533',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -12200,6 +12200,8 @@ function drawPirateDecorations(){
           bx(cpx+16,cpy+12,2,2,'#f0d050');
           g.globalAlpha=1;
         }
+        // v533: treasure chest golden particle fountain (world coords, next-frame display)
+        if(fr%6===0){const _cgx=chestTX*TW+12+Math.random()*8,_cgy=chestTY*TH+8+Math.random()*4;particles.push({x:_cgx,y:_cgy,vx:(Math.random()-.5)*0.8,vy:-0.6-Math.random()*1.0,life:14+Math.random()*10,c:Math.random()>.6?'rgba(255,220,50,0.85)':'rgba(255,255,180,0.65)'});}
       }
     }
 
@@ -12296,6 +12298,8 @@ function drawPirateDecorations(){
             g.globalAlpha=glowPulse;
             g.drawImage(gt===25?_glowItemOrangeCanvas:_glowItemBlueCanvas,(gpx-21)|0,(gpy-21)|0);
             g.globalAlpha=1;
+            // v533: lava/crystal tile rising sparks — tile-offset frame distribution (world coords, next-frame)
+            if(fr%30===(gx*3+gy*7)%30){if(gt===25){particles.push({x:gx*TW+8+Math.random()*16,y:gy*TH+8+Math.random()*8,vx:(Math.random()-.5)*0.7,vy:-0.5-Math.random()*0.8,life:12+Math.random()*9,c:Math.random()>.5?'rgba(240,100,30,0.72)':'rgba(255,200,60,0.55)'});}else{particles.push({x:gx*TW+8+Math.random()*16,y:gy*TH+6+Math.random()*8,vx:(Math.random()-.5)*0.5,vy:-0.4-Math.random()*0.7,life:14+Math.random()*10,c:Math.random()>.5?'rgba(60,160,240,0.68)':'rgba(180,230,255,0.50)'});}}
           }
         }
       }
