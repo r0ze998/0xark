@@ -11632,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v712',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v713',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -16884,6 +16884,11 @@ function drawResolvingPhase(){
       bx(rX,clashCY,2,pH,rCol);bx(rX+pW-2,clashCY,2,pH,rCol);
       txShadow(pl[1].n,rX+6,clashCY+13,7,'rgba(200,200,200,.65)','rgba(0,0,0,.3)');
       txShadow(_RES_ACT_NAMES[rAct],rX+6,clashCY+30,12,rCol,'rgba(0,0,0,.6)');
+      // v713: clash slide-in trailing sparks — panel-color motes from leading edges during approach (screen-space)
+      if(evT>=1&&evT<13){
+        particles.push({x:pX+pW,y:clashCY+pH/2+(Math.random()-.5)*20,vx:0.8+Math.random()*1.2,vy:(Math.random()-.5)*0.8,life:8+Math.random()*6,c:pCol.replace(')',',0.80)').replace('rgb(','rgba(')});
+        particles.push({x:rX,y:clashCY+pH/2+(Math.random()-.5)*20,vx:-0.8-Math.random()*1.2,vy:(Math.random()-.5)*0.8,life:8+Math.random()*6,c:rCol.replace(')',',0.80)').replace('rgb(','rgba(')});
+      }
       // "VS" label, appears as panels close in (slide>0.7)
       if(slide>0.7){
         const vsA=Math.min(1,(slide-0.7)/0.3)*fadeA;
