@@ -11612,7 +11612,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v683',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v684',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -13391,6 +13391,8 @@ function dMap(){
           bx(mx_-2,my_-2,32,1,'#ffffff');bx(mx_-2,my_+21,32,1,'#ffffff');
           bx(mx_-2,my_-2,1,24,'#ffffff');bx(mx_+30,my_-2,1,24,'#ffffff');
           g.globalAlpha=1;
+          // v684: legendary HUD card glimmer — gold mote lifts from legendary mini-card (world-space offset)
+          if(fr%60===(i*7)%60){particles.push({x:mx_+Math.random()*28+camX,y:my_+Math.random()*20+camY,vx:(Math.random()-.5)*0.30,vy:-0.25-Math.random()*0.28,life:18+Math.random()*12,c:Math.random()>.5?'rgba(255,220,80,0.75)':'rgba(255,255,200,0.60)'});}
         }else{
           // Epic: static gold border
           g.globalAlpha=0.65;
