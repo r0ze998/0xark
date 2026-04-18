@@ -866,6 +866,8 @@ function drawPirateDecorations(){
 
   }else if(currentMap===1){
     // ── SMUGGLER'S JUNGLE DECORATIONS ──
+    // v531: jungle leaf fall — green/yellow leaves drift down through canopy (world coords)
+    if(fr%7===0){const _ljx=camX+Math.random()*W,_ljy=camY+Math.random()*(H-80);particles.push({x:_ljx,y:_ljy,vx:(Math.random()-.5)*0.45,vy:0.28+Math.random()*0.45,life:42+Math.random()*28,c:Math.random()>.4?'rgba(60,160,55,0.50)':'rgba(110,200,75,0.40)'});}
 
     // ── CRAFTPIX JUNGLE TREE DECORATIONS ──
     // Drawn in two Y-sorted passes via drawCpxTreesInRange() called from dMap().
@@ -982,6 +984,10 @@ function drawPirateDecorations(){
       if(wd.delay>0)continue;
       wd.dropY+=wd.speed;
       if(wd.dropY>24){
+        // v531: water drip impact — splash particles fly sideways (world coords)
+        const _dwx=wd.x*TW+12+((wd.x*5)%12),_dwy=wd.y*TH+TH+22;
+        particles.push({x:_dwx+(Math.random()*8-4),y:_dwy,vx:(Math.random()-.5)*1.6,vy:-0.6-Math.random()*0.8,life:8+Math.random()*5,c:Math.random()>.5?'rgba(80,160,220,0.78)':'rgba(160,210,240,0.62)'});
+        particles.push({x:_dwx+(Math.random()*6-3),y:_dwy,vx:(Math.random()-.5)*1.2,vy:-0.3-Math.random()*0.6,life:6+Math.random()*4,c:'rgba(120,190,240,0.55)'});
         wd.dropY=0;
         wd.delay=40+Math.floor(Math.random()*60);
       }
