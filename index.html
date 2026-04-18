@@ -7801,16 +7801,22 @@ function drawMountain(px,py,tx_,ty){
     bx(px,py,1,TH,'rgba(0,0,0,0.35)');
     bx(px+TW-1,py,1,TH,'rgba(0,0,0,0.25)');
     bx(px+TW-2,py,1,TH,'rgba(0,0,0,0.12)');
+    // v614: dungeon wall crumble — ancient stone dust from cracks (world-space)
+    if((fr+tx_*29+ty*13)%65===0){particles.push({x:tx_*TW+4+Math.random()*(TW-8),y:ty*TH+4+Math.random()*(TH-8),vx:(Math.random()-.5)*.16,vy:.04+Math.random()*.08,life:14+Math.random()*10,c:Math.random()>.5?'rgba(100,95,115,0.30)':'rgba(80,78,95,0.22)'});}
     return;
   }
   // Zelda cliff tile
   if(drawZeldaOverTile(ZO.cliff[0],ZO.cliff[1],px,py,2)){
     if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');}
+    // v614: cliff pebble fall — stone chip drift from face (world-space)
+    if((fr+tx_*11+ty*29)%55===0){particles.push({x:tx_*TW+6+Math.random()*(TW-12),y:ty*TH+8+Math.random()*16,vx:(Math.random()-.5)*.20,vy:.06+Math.random()*.10,life:12+Math.random()*8,c:Math.random()>.5?'rgba(140,138,148,0.28)':'rgba(120,118,128,0.20)'});}
     return;
   }
   // Fallback: solid gray cliff
   bx(px,py,TW,TH,'#7a7888');
   if(ty<=3){bx(px+6,py,20,5,'#c8c8d0');bx(px+10,py,12,2,'#e0e0e8');}
+  // v614: cliff pebble fall fallback (world-space)
+  if((fr+tx_*11+ty*29)%55===0){particles.push({x:tx_*TW+6+Math.random()*(TW-12),y:ty*TH+8+Math.random()*16,vx:(Math.random()-.5)*.20,vy:.06+Math.random()*.10,life:12+Math.random()*8,c:Math.random()>.5?'rgba(140,138,148,0.28)':'rgba(120,118,128,0.20)'});}
 }
 
 function drawRock(px,py,tx_,ty){
@@ -11486,7 +11492,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v613',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v614',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
