@@ -11293,7 +11293,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v542',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v543',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14733,6 +14733,8 @@ function drawActionGrid(){
       if(sel&&avail){
         const bob_=_sFr15*2; // v369: cached
         txShadow('\u25B6',cx_-12+bob_,cy_+22,10,ARK.gold,'rgba(0,0,0,.4)');
+        // v543: action-themed sparkles rising from selected action cell (screen-space; drawParticles(0,0))
+        if(fr%10===0){const _agRC=['rgba(72,184,232,0.74)','rgba(208,64,64,0.74)','rgba(48,96,176,0.74)','rgba(48,128,48,0.74)'];const _agC=_agRC[idx]||'rgba(200,168,48,0.64)';particles.push({x:cx_+10+Math.random()*(cellW-20),y:cy_+Math.random()*cellH,vx:(Math.random()-.5)*0.5,vy:-0.38-Math.random()*0.42,life:11+Math.random()*8,c:_agC});}
       }
       // v92: Smart context badges (top-right corner of each cell)
       if(avail&&battlePhase==='select'){
