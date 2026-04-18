@@ -11561,7 +11561,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v649',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v650',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14178,6 +14178,8 @@ function drawBattleBG(){
       const wy=horizonY+20+i*18+(_sFr04*_BTL_WAVE_CI[i]+_cFr04*_BTL_WAVE_SI[i])*4;
       bx(0,wy,W,2,_btlWaveAlphas[i]);
     }
+    // v650: town battle ocean spray — water droplets kicked up from wave crests (screen-space)
+    if(fr%9===0){const _wi=fr%6;const _wwy=horizonY+20+_wi*18+(_sFr04*_BTL_WAVE_CI[_wi]+_cFr04*_BTL_WAVE_SI[_wi])*4;particles.push({x:20+Math.random()*(W-40),y:_wwy,vx:(Math.random()-.5)*.44,vy:-0.32-Math.random()*.32,life:10+Math.random()*7,c:Math.random()>.5?'rgba(160,220,255,0.68)':'rgba(200,240,255,0.52)'});}
   }else{
     // Dungeon battle BG — blit pre-baked static layers, then draw animated elements on top
     const fl=Math.max(1,Math.min(5,currentFloor||1));
