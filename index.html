@@ -11581,7 +11581,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v663',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v664',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -18347,6 +18347,8 @@ function drawIntroTutorial(){
   if(!introActive)return;
   const t=fr-introFrame;
   bx(0,0,W,H,'rgba(8,8,20,0.88)');
+  // v664: intro tutorial ambient motes — cool blue/purple wisps drift upward, giving the dark mobile intro screen atmosphere (screen-space)
+  if(fr%3===0&&particles.length<480){const _ic=['rgba(80,120,200,0.45)','rgba(120,80,180,0.40)','rgba(160,200,255,0.35)','rgba(200,160,240,0.38)'];particles.push({x:W*0.15+Math.random()*W*0.7,y:H-5+Math.random()*15,vx:(Math.random()-.5)*.25,vy:-0.4-Math.random()*.35,life:18+Math.random()*14,c:_ic[Math.floor(Math.random()*4)]});}
   g.globalAlpha=Math.min(1,t/20);
   txShadow('0xARK',W/2-64,80,24,'#f8f0e0','rgba(0,0,0,.6)');
   txShadow('THE RULES',W/2-44,108,10,'#a07848','rgba(0,0,0,.4)');
@@ -18366,6 +18368,7 @@ function drawIntroTutorial(){
     txShadow('You receive a spirit card...',W/2-100,wy+wh+20,8,'#f0c830','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
+  drawParticles(0,0);
 }
 
 // ═══════════════════════════════════════
