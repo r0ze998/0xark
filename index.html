@@ -7634,6 +7634,8 @@ function drawPalm(px,py,tx_,ty){
   if(useKenney.palm){
     drawSand(px,py,tx_,ty);
     if(drawKenneyTileTinted(K.palm1[0], K.palm1[1], px, py, 2, '#306830')){
+      // v610: palm frond sway — tropical leaf drift in sea breeze (world-space)
+      if((fr+tx_*3+ty*13)%32===0){particles.push({x:tx_*TW+6+Math.random()*(TW-12),y:ty*TH+2+Math.random()*6,vx:.22+Math.random()*.28,vy:-.04-Math.random()*.08,life:18+Math.random()*14,c:Math.random()>.5?'rgba(50,130,40,0.38)':'rgba(80,160,55,0.28)'});}
       return;
     }
   }
@@ -7645,6 +7647,8 @@ function drawPalm(px,py,tx_,ty){
   bx(px+5,py+2,22,5,'#58b060');bx(px+3,py+4,10,4,'#48a050');bx(px+20,py+4,10,4,'#48a050');
   bx(px+8,py+6,16,3,'#58b060');bx(px+10,py+8,12,2,'#48a050');
   bx(px+14,py+8,2,2,'#805020');bx(px+17,py+9,2,2,'#805020');
+  // v610: palm frond sway fallback — tropical leaf drift (world-space)
+  if((fr+tx_*3+ty*13)%32===0){particles.push({x:tx_*TW+6+Math.random()*(TW-12),y:ty*TH+2+Math.random()*6,vx:.22+Math.random()*.28,vy:-.04-Math.random()*.08,life:18+Math.random()*14,c:Math.random()>.5?'rgba(50,130,40,0.38)':'rgba(80,160,55,0.28)'});}
 }
 
 function drawBush(px,py,tx_,ty){
@@ -11470,7 +11474,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v609',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v610',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
