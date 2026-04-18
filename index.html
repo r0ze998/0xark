@@ -8997,6 +8997,10 @@ function drawBirds(){
     }else{
       bx(px-2,py+2,2,2,'#705838');bx(px+8,py+2,2,2,'#705838');
     }
+    // v585: bird flight — tiny feather dust trail (world-space)
+    if((fr+_bi*7)%18===0){
+      particles.push({x:b.x*TW+10,y:b.y*TH+6,vx:(Math.random()-.5)*.22,vy:.10+Math.random()*.14,life:18+Math.random()*12,c:Math.random()>.5?'rgba(160,130,80,0.38)':'rgba(200,170,110,0.28)'});
+    }
   }
 }
 
@@ -11408,7 +11412,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v584',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v585',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
