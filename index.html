@@ -8207,6 +8207,8 @@ function drawMushroom(px,py,tx_,ty){
   if(useKenney.mushroom){
     drawGrass(px,py,tx_,ty);
     if(drawKenneyTileTinted(K.mushroom1[0], K.mushroom1[1], px, py, 2, '#d84848')){
+      // v635: Kenney mushroom spore drift — pinkish motes from cap (world-space)
+      if((fr+tx_*11+ty*19)%22===0){particles.push({x:tx_*TW+4+Math.random()*24,y:ty*TH+10,vx:(Math.random()-.5)*.40,vy:-.14-Math.random()*.18,life:24+Math.random()*18,c:Math.random()>.5?'rgba(220,100,100,0.38)':'rgba(255,180,180,0.28)'});}
       return;
     }
   }
@@ -8241,6 +8243,8 @@ function drawCampfire(px,py,tx_,ty){
       if(fr%6<2){
         bx(px+10+Math.floor(Math.random()*12),py+2+Math.floor(Math.random()*6),2,2,'#f8c060');
       }
+      // v635: Kenney campfire ember sparks — rising orange/yellow motes (world-space)
+      if((fr+tx_*5+ty*11)%12===0){particles.push({x:px+10+Math.random()*12,y:py+6,vx:(Math.random()-.5)*.35,vy:-.50-Math.random()*.50,life:14+Math.random()*10,c:Math.random()>.5?'rgba(255,120,20,0.75)':'rgba(255,200,60,0.65)'});}
       return;
     }
   }
@@ -11542,7 +11546,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v634',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v635',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
