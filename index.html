@@ -11634,7 +11634,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v728',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v729',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -15104,6 +15104,8 @@ function drawBattleArena(){
     g.globalAlpha=1;
     // v582: VEGA tell bubble — violet pulse motes (screen-space)
     if(fr%8===0){particles.push({x:vbX+9+Math.random()*6-3,y:vbY+4,vx:(Math.random()-.5)*.38,vy:-.28-Math.random()*.26,life:12+Math.random()*8,c:Math.random()>.5?'rgba(210,80,240,0.65)':'rgba(255,160,255,0.48)'});}
+    // v729: VEGA tell body aura — violet shimmer around sprite to reinforce "intent being read" (screen-space)
+    if(fr%14===0){particles.push({x:W-160+(Math.random()-.5)*40,y:80+Math.random()*80,vx:(Math.random()-.5)*0.5,vy:-0.3-Math.random()*0.6,life:18+Math.random()*12,c:'rgba(180,60,230,0.45)'});}
   }
   if(battlePhase==='select'&&bpRivalTells[1]&&r2alive){
     const tellPulse2=0.7+0.3*(_sFr25*_BTL_COS14+_cFr25*_BTL_SIN14); // v369: sin-addition
@@ -15119,6 +15121,8 @@ function drawBattleArena(){
     g.globalAlpha=1;
     // v582: MIRA tell bubble — amber pulse motes (screen-space)
     if(fr%8===4){particles.push({x:mbX+9+Math.random()*6-3,y:mbY+4,vx:(Math.random()-.5)*.38,vy:-.28-Math.random()*.26,life:12+Math.random()*8,c:Math.random()>.5?'rgba(240,180,30,0.68)':'rgba(255,230,120,0.50)'});}
+    // v729: MIRA tell body aura — amber shimmer around sprite to reinforce "intent being read" (screen-space)
+    if(fr%14===7){particles.push({x:W-310+(Math.random()-.5)*40,y:108+Math.random()*70,vx:(Math.random()-.5)*0.5,vy:-0.3-Math.random()*0.6,life:18+Math.random()*12,c:'rgba(220,160,30,0.45)'});}
   }
 }
 
