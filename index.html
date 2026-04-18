@@ -11308,7 +11308,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v554',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v555',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -18584,6 +18584,8 @@ function dLog(){
     const isRecent=totalEntries-logScrollOff-endIdx+i>=totalEntries-3;
     if(isRecent&&logScrollOff===0){
       g.globalAlpha=0.12;bx(22,y,W-44,entryH-2,col);g.globalAlpha=1;
+      // v555: entry-type sparkle drizzle on recent log rows (screen-space)
+      if((fr+_lgIdx*7)%12===0){particles.push({x:28+Math.random()*8,y:y+8+Math.random()*10,vx:(Math.random()-.5)*0.30,vy:-0.28-Math.random()*0.26,life:12+Math.random()*7,c:col});}
     }
     // Icon box
     bx(24,y+6,16,16,'rgba(0,0,0,.5)');
@@ -18613,6 +18615,7 @@ function dLog(){
   // Back prompt
   win(W/2-100,H-36,200,26);
   txShadow('X = Back',W/2-32,H-16,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
+  drawParticles(0,0); // v555: render log entry type sparkles
 }
 
 
