@@ -11606,7 +11606,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v673',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v674',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -12454,6 +12454,8 @@ function drawPirateDecorations(){
         // v530: ship ambient particles — sea spray at hull + mast smoke (world coords)
         if(fr%5===0){const _swx=16*TW-28+Math.random()*86,_swy=23*TH+22+Math.random()*4;particles.push({x:_swx,y:_swy,vx:(Math.random()-.5)*0.9,vy:-0.2-Math.random()*0.5,life:16+Math.random()*10,c:'rgba(180,215,235,0.50)'});}
         if(fr%18===0){const _smwx=16*TW+18+Math.random()*4,_smwy=23*TH-42;particles.push({x:_smwx,y:_smwy,vx:(Math.random()-.5)*0.25,vy:-0.35-Math.random()*0.35,life:34+Math.random()*22,c:'rgba(170,170,170,0.38)'});}
+        // v674: sail-billow canvas dust — cream motes puff off leading edge when sail fills out (world-space)
+        if(billowSail>0.5&&fr%9===0){particles.push({x:16*TW-4+Math.random()*6,y:23*TH-30+Math.random()*18,vx:-0.28-Math.random()*0.22,vy:-0.10-Math.random()*0.14,life:14+Math.random()*10,c:Math.random()>.5?'rgba(240,235,215,0.38)':'rgba(220,215,195,0.28)'});}
       }
     }
 
