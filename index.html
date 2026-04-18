@@ -11319,7 +11319,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v559',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v560',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -21335,6 +21335,11 @@ function tryMovePlayer(dx, dy) {
     const _wpx=p.visualX+8,_wpy=p.visualY+TH-2;
     const _wc=currentFloor>=5?'rgba(120,30,200,0.5)':currentFloor===4?'rgba(200,70,20,0.5)':currentFloor===3?'rgba(140,60,200,0.4)':'rgba(140,140,160,0.35)';
     for(let _wi=0;_wi<3;_wi++){particles.push({x:_wpx+(Math.random()*10-5),y:_wpy,vx:(Math.random()-0.5)*0.5,vy:-0.4-Math.random()*0.4,life:8+Math.random()*6,c:_wc});}
+  }
+  // v560: town walk dust — subtle beige/tan puffs when walking on the surface map
+  if(!inDungeon&&stepCounter%3===0){
+    const _twpx=p.visualX+8,_twpy=p.visualY+TH-2;
+    particles.push({x:_twpx+(Math.random()*10-5),y:_twpy,vx:(Math.random()-0.5)*0.38,vy:-0.22-Math.random()*0.24,life:7+Math.random()*5,c:Math.random()>.5?'rgba(180,160,120,0.28)':'rgba(200,185,145,0.22)'});
   }
   if(inDungeon){ fogRevealCurrentRoom(currentMap,nx,ny); fogRevealRadius(currentMap,nx,ny,2); }
   fogSave();
