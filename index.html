@@ -11561,7 +11561,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v650',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v651',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14201,6 +14201,8 @@ function drawBattleBG(){
         const flicker=(_s15*_BTL_TORCH_CI2[i]+_c15*_BTL_TORCH_SI2[i])*2;
         bx(px_+8,4+flicker,8,6,flamCol);bx(px_+9,2+flicker,6,4,glowCol);
         bx(px_+10,0+flicker,4,3,'rgba(255,255,200,.8)');
+        // v651: torch sparks — fire/magic embers rising from pillar-top torches (screen-space)
+        if(fr%(14+i*4)===i%3){const _tc=fl===3?Math.random()>.5?'rgba(180,60,240,0.82)':'rgba(220,120,255,0.65)':fl===2?Math.random()>.5?'rgba(240,100,30,0.85)':'rgba(255,170,60,0.65)':Math.random()>.5?'rgba(255,150,30,0.88)':'rgba(255,210,60,0.68)';particles.push({x:px_+10+Math.random()*8-4,y:4+flicker,vx:(Math.random()-.5)*.42,vy:-0.42-Math.random()*.52,life:8+Math.random()*7,c:_tc});}
       }else if(fl===4){
         // sin(fr*0.08+i) via sin-addition with _BTL_LAVA_SI/CI
         const lavaA=0.4+(_s08*_BTL_LAVA_CI[i]+_c08*_BTL_LAVA_SI[i])*0.2;
