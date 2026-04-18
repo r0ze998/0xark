@@ -11296,7 +11296,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v545',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v546',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -18426,7 +18426,9 @@ function drawCardDetailPanel(){
   // Large card art area
   const artH=160;
   bx(px_+2,py_+2,pw-4,artH,owned?cr.d:'#0e0c18');
-  if(owned){drawCardCharacter(px_+pw/2-16,py_+8,cardId,2.2,fr);}
+  if(owned){drawCardCharacter(px_+pw/2-16,py_+8,cardId,2.2,fr);
+    // v546: rarity shimmer rising from art area for owned rare+ cards (screen-space)
+    if(rar>=3&&fr%7===0){const _dpRC=['','rgba(180,180,200,0.60)','rgba(60,200,100,0.65)','rgba(60,140,240,0.70)','rgba(160,60,240,0.74)','rgba(255,180,30,0.82)'];particles.push({x:px_+4+Math.random()*(pw-12),y:py_+4+Math.random()*(artH-8),vx:(Math.random()-.5)*0.46,vy:-0.32-Math.random()*0.38,life:16+Math.random()*10,c:_dpRC[rar]||'rgba(200,180,100,0.62)'});}}
   else{txShadow('?',px_+pw/2-18,py_+artH/2+16,40,'#201e38','rgba(0,0,0,.3)');}
 
   // Rarity stars
@@ -18484,6 +18486,7 @@ function drawCardDetailPanel(){
   else txShadow('\u2715 NOT COLLECTED',px_+20,py_+ph-28,6,'#604060','rgba(0,0,0,.3)');
 
   txShadow('X = BACK',px_+pw-70,py_+ph-28,6,'#686878','rgba(0,0,0,.35)');
+  drawParticles(0,0); // v546: render rarity shimmer on top of detail panel
 }
 
 // ═══════════════════════════════════════
