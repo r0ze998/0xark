@@ -2937,7 +2937,18 @@ function drawRunSummary(){
     txShadow('[ PRESS ANY KEY ]',px+panelW/2-56,py+panelH-10,6,'#9098b0','rgba(0,0,0,.4)');
     g.globalAlpha=t;
   }
+  // v563: run summary celebration particles — screen-space burst + ambient drizzle
+  if(runSummaryFrame===30&&d.cardsGained>0){
+    // Entry burst: cards gained → green/teal confetti
+    for(let _ri=0;_ri<16;_ri++){const _ra=(_ri/16)*Math.PI*2+Math.random()*0.4;const _rs=1.8+Math.random()*3;
+      particles.push({x:px+panelW/2+(Math.random()*60-30),y:py+panelH/2+(Math.random()*20-10),vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-2.5,life:22+Math.random()*18,c:Math.random()>.5?'rgba(80,224,144,1)':'rgba(80,192,240,1)'});
+    }
+  }
+  if(runSummaryFrame<180&&runSummaryFrame%18===0&&d.cardsGained>0){
+    particles.push({x:px+16+Math.random()*(panelW-32),y:py+8+Math.random()*(panelH-16),vx:(Math.random()-.5)*0.30,vy:-0.22-Math.random()*0.24,life:18+Math.random()*12,c:Math.random()>.5?'rgba(80,220,140,0.70)':'rgba(96,200,240,0.60)'});
+  }
   g.globalAlpha=1;
+  drawParticles(0,0); // v563: render run summary celebration above overlay
 }
 
 // ═══════════════════════════════════════
@@ -11336,7 +11347,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v562',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v563',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
