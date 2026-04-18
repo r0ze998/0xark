@@ -11632,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v721',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v722',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -21030,6 +21030,8 @@ function dStats(){
     g.globalAlpha=cA_;
     txShadow('\u2605 COMPLETE! \u2605',vpbX+vpbW/2-56,vpbY+13,8,'#ffe080','rgba(0,0,0,.5)');
     g.globalAlpha=1;
+    // v722: vault complete golden confetti — gold/white motes drift from progress bar every 8 frames
+    if(fr%8===0){particles.push({x:vpbX+Math.random()*vpbW,y:vpbY+Math.random()*vpbH,vx:(Math.random()-.5)*0.6,vy:-0.4-Math.random()*0.8,life:24+Math.random()*16,c:Math.random()>.5?'rgba(255,210,40,0.80)':'rgba(255,255,200,0.65)'});}
   }
   // Rarity pip breakdown below bar
   const rarCount_=[0,0,0,0,0];
