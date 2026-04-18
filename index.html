@@ -2688,12 +2688,24 @@ function drawWipe(){
     const cw=Math.floor(maxW*ease), ch=Math.floor(maxH*ease);
     const cx=wipeDoorX-cw/2, cy=wipeDoorY-ch/2;
     bx(cx,cy,cw,ch,'#080810');
+    // v581: gold burst sparks from door center at wipe start (screen-space)
+    if(ease<0.35&&fr%3===0){
+      const _da=Math.random()*Math.PI*2,_ds=1.5+Math.random()*2.5;
+      particles.push({x:wipeDoorX,y:wipeDoorY,vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1,life:14+Math.random()*10,c:Math.random()>.5?'rgba(255,210,80,0.85)':'rgba(255,255,180,0.70)'});
+    }
+    drawParticles(0,0); // v581: door wipe sparks
   }else if(wipeType==='door_close'){
     // Dark rectangle shrinking to door position
     const maxW=W, maxH=H;
     const cw=Math.floor(maxW*(1-ease)), ch=Math.floor(maxH*(1-ease));
     const cx=wipeDoorX-cw/2, cy=wipeDoorY-ch/2;
     bx(cx,cy,cw,ch,'#080810');
+    // v581: imploding sparks during door close (screen-space)
+    if(ease>0.65&&fr%3===0){
+      const _da=Math.random()*Math.PI*2,_dist=40+Math.random()*60;
+      particles.push({x:wipeDoorX+Math.cos(_da)*_dist,y:wipeDoorY+Math.sin(_da)*_dist,vx:-Math.cos(_da)*1.2,vy:-Math.sin(_da)*1.2,life:10+Math.random()*7,c:Math.random()>.5?'rgba(200,160,255,0.80)':'rgba(255,200,80,0.70)'});
+    }
+    drawParticles(0,0); // v581: door close implode sparks
   }
 }
 
@@ -11391,7 +11403,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v580',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v581',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
