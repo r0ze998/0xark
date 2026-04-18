@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>0xARK — Collection</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin:0; background:#222; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .grid {
+    position:absolute; inset:32px 8px 8px 8px;
+    background:#1c3868; border:2px solid #181028; box-shadow: inset 0 0 0 2px #ffd860;
+    padding: 8px;
+    display:grid; grid-template-columns: repeat(8, 1fr); gap: 4px;
+    overflow: hidden;
+  }
+  .slot {
+    aspect-ratio:1; background:#181028; border:1px solid #58587a;
+    display:flex; align-items:center; justify-content:center;
+    font:14px var(--font-pixel); color:#58587a;
+  }
+  .slot.have { background:#3858a0; color:#ffd860; box-shadow: inset 0 0 0 1px #ffd860; }
+  .slot.have.r { background:#a040c8; color:#fff8e0; }
+  .slot.have.l { background:#c82828; color:#ffd860; }
+  .slot.sel { outline: 2px solid #ffd860; outline-offset: -1px; z-index:2; }
+</style></head>
+<body>
+<div class="gba-viewport" style="background:#1c3868" data-screen-label="Collection">
+  <div class="hud">
+    <span>BINDER · 24/60</span>
+    <span style="margin-left:auto">► CLOSE</span>
+  </div>
+
+  <div class="grid">
+    <!-- 5 rows x 8 = 40 visible -->
+    <div class="slot have l">001</div>
+    <div class="slot have">002</div>
+    <div class="slot have r">003</div>
+    <div class="slot">004</div>
+    <div class="slot have">005</div>
+    <div class="slot">006</div>
+    <div class="slot have r">007</div>
+    <div class="slot">008</div>
+
+    <div class="slot have">009</div>
+    <div class="slot">010</div>
+    <div class="slot have">011</div>
+    <div class="slot have l">012</div>
+    <div class="slot sel have">013</div>
+    <div class="slot">014</div>
+    <div class="slot have">015</div>
+    <div class="slot">016</div>
+
+    <div class="slot have">017</div>
+    <div class="slot have">018</div>
+    <div class="slot">019</div>
+    <div class="slot have r">020</div>
+    <div class="slot">021</div>
+    <div class="slot">022</div>
+    <div class="slot have">023</div>
+    <div class="slot">024</div>
+
+    <div class="slot have">025</div>
+    <div class="slot">026</div>
+    <div class="slot">027</div>
+    <div class="slot have">028</div>
+    <div class="slot">029</div>
+    <div class="slot have">030</div>
+    <div class="slot">031</div>
+    <div class="slot have">032</div>
+
+    <div class="slot">033</div>
+    <div class="slot have">034</div>
+    <div class="slot">035</div>
+    <div class="slot">036</div>
+    <div class="slot have l">037</div>
+    <div class="slot">038</div>
+    <div class="slot">039</div>
+    <div class="slot">040</div>
+  </div>
+</div>
+</body></html>

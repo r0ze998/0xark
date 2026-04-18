@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Battle · confirming</title>
+<link rel="stylesheet" href="../kit.css">
+<link rel="stylesheet" href="../battle.css">
+<style>
+  body{margin:0;background:#222;min-height:100vh;display:flex;align-items:center;justify-content:center}
+
+  /* Quiet "sealed / waiting" backdrop — dark flat with subtle pixel noise.
+     No diagonal hatching: calm → tense stillness → sudden clash. */
+  .quiet-bg {
+    position:absolute; inset:0;
+    background:#0c0818;
+  }
+  .quiet-bg::before {
+    content:''; position:absolute; inset:0;
+    background-image:
+      radial-gradient(circle at 2px 2px, #181028 1px, transparent 1.5px),
+      radial-gradient(circle at 6px 6px, #1c1438 1px, transparent 1.5px);
+    background-size: 8px 8px, 12px 12px;
+    opacity: 0.9;
+  }
+  /* Slow, barely-there vignette pulse to suggest waiting */
+  .quiet-bg::after {
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(12,8,24,0.6) 90%);
+    animation: breathe 3.6s ease-in-out infinite;
+  }
+  @keyframes breathe { 0%,100%{opacity:0.7} 50%{opacity:1} }
+
+  /* Gentle golden shimmer that walks across the sealed chests */
+  @keyframes shimmer {
+    0%,100% { box-shadow: inset 0 0 0 2px #ffd860, 0 0 0 rgba(240,184,40,0); }
+    50%     { box-shadow: inset 0 0 0 2px #ffd860, 0 0 10px rgba(240,184,40,0.45); }
+  }
+  .shimmer { animation: shimmer 2.8s ease-in-out infinite; }
+
+  /* Slow rocking like a lantern */
+  @keyframes sway { 0%,100% { transform: rotate(-1deg) } 50% { transform: rotate(1deg) } }
+  .sway { animation: sway 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
+
+  /* Identity-tinted labels */
+  .lbl-vega { font:8px var(--font-pixel); color:#ff70b0; letter-spacing:0.08em; }
+  .lbl-you  { font:8px var(--font-pixel); color:#4880c8; letter-spacing:0.08em; }
+</style>
+</head><body>
+<div class="gba-viewport" data-screen-label="Battle confirming">
+  <div class="quiet-bg"></div>
+
+  <div class="bhud">
+    <span class="round">ROUND 04</span>
+    <span style="color:#ffd860">► SIGN TX</span>
+    <span class="rival-id vega" style="margin-left:auto">VEGA · committed ✓</span>
+  </div>
+
+  <!-- Sealed chests, floating in dark, pulsing gold -->
+  <div class="sway" style="position:absolute; right:80px; top:70px; display:flex; flex-direction:column; align-items:center; gap:6px;">
+    <div class="seal scroll shimmer"><div class="wax">✦</div></div>
+    <div class="lbl-vega">VEGA SEALED</div>
+  </div>
+  <div class="sway" style="position:absolute; left:80px; top:160px; display:flex; flex-direction:column; align-items:center; gap:6px; animation-delay:-1.6s;">
+    <div class="seal scroll shimmer" style="animation-delay:-1.4s"><div class="wax">✦</div></div>
+    <div class="lbl-you">YOU · SEALING...</div>
+  </div>
+
+  <div class="commit-card">
+    <div class="nm">► STEAL (COMMITTED)</div>
+    <div style="font-size:8px; color:#58587a">SHA-256 hash broadcast to chain</div>
+    <div class="hash">0x4ae9…3c1f</div>
+  </div>
+
+  <div class="dialog-bottom">
+    <span class="cur">►</span>Your action is sealed on-chain.<br>
+    <span style="font-size:8px; color:#ffd860">Waiting for reveal phase...</span>
+  </div>
+</div>
+</body></html>

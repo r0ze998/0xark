@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Battle · resolving</title>
+<link rel="stylesheet" href="../kit.css">
+<link rel="stylesheet" href="../battle.css">
+<style>
+  body{margin:0;background:#222;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  @keyframes flash { 0%,100% {opacity:1} 50% {opacity:0.3} }
+  .flash { animation: flash 0.3s step-end infinite; }
+  @keyframes rise { 0% { transform: translateY(0) } 100% { transform: translateY(-6px) } }
+</style>
+</head><body>
+<div class="gba-viewport" data-screen-label="Battle resolving">
+  <div class="arena-bg"></div>
+  <div class="revealing"></div>
+  <div class="bhud">
+    <span class="round">ROUND 04</span>
+    <span style="color:#ffd860">► REVEALING</span>
+    <span class="vega flash">RESOLVE ON-CHAIN…</span>
+  </div>
+
+  <div class="combatant rival"></div>
+  <div class="combatant you"></div>
+
+  <!-- both reveal cards flipping open -->
+  <div style="position:absolute; right:80px; top:60px; display:flex; flex-direction:column; align-items:center; gap:4px;">
+    <div class="seal chest open"></div>
+    <div style="font:14px var(--font-pixel); color:#ff70b0; letter-spacing:0.06em">VEGA: STEAL!</div>
+  </div>
+  <div style="position:absolute; left:80px; top:160px; display:flex; flex-direction:column; align-items:center; gap:4px;">
+    <div class="seal chest open"></div>
+    <div style="font:14px var(--font-pixel); color:#ffd860; letter-spacing:0.06em">YOU: BARRIER!</div>
+  </div>
+
+  <!-- center clash -->
+  <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    font:48px var(--font-pixel); color:#ffd860;
+    text-shadow: 3px 3px 0 #c82828, -2px -2px 0 #181028;
+    letter-spacing:0.08em;" class="flash">CLASH!</div>
+
+  <div class="dialog-bottom">
+    <span class="cur" style="color:#ffd860">►</span>Groth16 proof verified.<br>
+    <span style="font-size:8px; color:#ffd860">Settling round on Solana…</span>
+  </div>
+</div>
+</body></html>

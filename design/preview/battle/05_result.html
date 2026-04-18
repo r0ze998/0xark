@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Battle · result</title>
+<link rel="stylesheet" href="../kit.css">
+<link rel="stylesheet" href="../battle.css">
+<style>body{margin:0;background:#222;min-height:100vh;display:flex;align-items:center;justify-content:center}</style>
+</head><body>
+<div class="gba-viewport" data-screen-label="Battle result">
+  <div class="arena-bg" style="filter: brightness(0.75)"></div>
+  <div class="bhud">
+    <span class="round">ROUND 04 · RESULT</span>
+    <span style="color:#ffd860; margin-left:auto">► NEXT ROUND</span>
+  </div>
+
+  <div class="hpbox vega" style="left:8px; top:40px; min-width:140px">
+    <div class="nm">VEGA  L.12</div>
+    <div class="bar"><i style="width:62%"></i></div>
+    <div class="meta" style="font-size:8px; margin-top:3px">STEAL BLOCKED</div>
+  </div>
+  <div class="hpbox you" style="right:8px; top:40px; min-width:140px">
+    <div class="nm">YOU  L.10</div>
+    <div class="bar"><i style="width:78%"></i></div>
+    <div class="meta" style="font-size:8px; margin-top:3px">BARRIER HELD ✓</div>
+  </div>
+
+  <div class="result-banner">BLOCKED!</div>
+
+  <!-- Loot card that survived -->
+  <div style="position:absolute; left:40px; bottom:100px; display:flex; flex-direction:column; align-items:center; gap:4px;">
+    <div class="card-mini" style="width:70px">
+      <div class="art" style="background:#c82828; color:#ffd860; font-size:24px">★</div>
+      <div class="nm">CUTLASS</div>
+      <div class="no">No.037</div>
+    </div>
+    <div style="font:8px var(--font-pixel); color:#ffd860; letter-spacing:0.08em">SAFE</div>
+  </div>
+
+  <div class="result-log">
+    <span class="cur">►</span>
+    <span class="rival">VEGA</span> used <span class="gold">STEAL</span>.<br>
+    <span class="gold">YOU</span> used <span class="gold">BARRIER</span> — <span class="gold">BLOCKED</span>!<br>
+    <span style="font-size:8px; color:#a8a8c0">tx: 5sK2…9bQe · CU 94k</span>
+  </div>
+</div>
+</body></html>

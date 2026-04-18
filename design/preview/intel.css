@@ -1,0 +1,350 @@
+/* x402 Intel Shop — cloaked merchant interior + purchase flow
+   Built on kit.css tokens. */
+
+/* PMD-style wooden shop interior */
+.shop-interior {
+  position:absolute; inset:0;
+  background:#2c1810;
+  overflow:hidden;
+}
+/* Wood plank floor — bottom half */
+.shop-interior .floor {
+  position:absolute; left:0; right:0; bottom:0; height:45%;
+  background:
+    repeating-linear-gradient(0deg,
+      #5c3818 0 8px, #4c2c10 8px 9px,
+      #5c3818 9px 24px, #3c2008 24px 25px),
+    #5c3818;
+  box-shadow: inset 0 2px 0 #181028;
+}
+/* Stone wall — top half with pixel-brick pattern */
+.shop-interior .wall {
+  position:absolute; left:0; right:0; top:0; height:55%;
+  background:
+    /* mortar lines */
+    linear-gradient(0deg, transparent 15px, #1c1208 15px 16px, transparent 16px 32px) 0 0/32px 32px,
+    linear-gradient(0deg, transparent 15px, #1c1208 15px 16px, transparent 16px 32px) 16px 16px/32px 32px,
+    linear-gradient(90deg, transparent 15px, #1c1208 15px 16px, transparent 16px 32px) 0 0/32px 16px,
+    linear-gradient(90deg, transparent 15px, #1c1208 15px 16px, transparent 16px 32px) 16px 16px/32px 16px,
+    /* base stone */
+    #3c2c18;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+}
+/* Candle-light warm vignette */
+.shop-interior::after {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background: radial-gradient(ellipse at 50% 45%, rgba(240,184,40,0.15) 0%, transparent 55%);
+}
+
+/* Hanging lantern */
+.lantern {
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:2px; height:24px; background:#181028;
+}
+.lantern::after {
+  content:''; position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+  width:14px; height:16px;
+  background:#805028;
+  border:2px solid #181028;
+  box-shadow: inset 0 4px 0 #f0b828, 0 0 12px rgba(240,184,40,0.6);
+}
+
+/* Cloaked merchant NPC — centered behind counter */
+.merchant {
+  position:absolute; left:50%; top:90px; transform:translateX(-50%);
+  width:80px; height:120px;
+  image-rendering:pixelated;
+  z-index:5;
+}
+/* Hood silhouette */
+.merchant .hood {
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:60px; height:50px;
+  background:#1c1024;
+  border:3px solid #0c0818;
+  border-bottom-left-radius: 30px 20px;
+  border-bottom-right-radius: 30px 20px;
+  box-shadow: inset -5px -5px 0 #0c0818, inset 5px 5px 0 #2c1838;
+}
+/* Shadow face — two glowing eyes */
+.merchant .face {
+  position:absolute; top:22px; left:50%; transform:translateX(-50%);
+  width:40px; height:20px;
+  background:#050208;
+  border-radius: 50% 50% 45% 45%;
+}
+.merchant .eye {
+  position:absolute; top:6px; width:4px; height:4px;
+  background:#ffd860;
+  box-shadow: 0 0 6px #ffd860;
+}
+.merchant .eye.l { left:10px; }
+.merchant .eye.r { right:10px; }
+/* Robe body */
+.merchant .robe {
+  position:absolute; top:40px; left:50%; transform:translateX(-50%);
+  width:78px; height:80px;
+  background:#1c1024;
+  border:3px solid #0c0818;
+  border-top-left-radius: 16px 12px;
+  border-top-right-radius: 16px 12px;
+  box-shadow: inset -6px -6px 0 #0c0818, inset 6px 6px 0 #2c1838;
+  clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%);
+}
+/* Gold clasp */
+.merchant .clasp {
+  position:absolute; top:48px; left:50%; transform:translateX(-50%);
+  width:8px; height:8px; background:#f0b828; border:2px solid #181028;
+  z-index:2;
+}
+
+/* Wooden counter bar across bottom */
+.counter {
+  position:absolute; left:0; right:0; bottom:60px; height:16px;
+  background:
+    repeating-linear-gradient(90deg, #805028 0 6px, #5c3818 6px 7px, #805028 7px 16px),
+    #805028;
+  border-top: 2px solid #181028;
+  border-bottom: 2px solid #181028;
+  box-shadow: inset 0 2px 0 #a07040, inset 0 -2px 0 #3c1e08;
+  z-index:3;
+}
+
+/* Intel product menu (GBA dialog style) */
+.intel-menu {
+  position:absolute; left:16px; right:16px; bottom:8px;
+  background:#3858a0; color:#f8f8e8;
+  border:2px solid #181028;
+  box-shadow: inset 0 0 0 2px #ffd860;
+  padding:6px 8px;
+  font:16px var(--font-pixel);
+  z-index:10;
+}
+.intel-menu .title {
+  font-size:16px; color:#ffd860; letter-spacing:0.08em;
+  border-bottom:1px solid #ffd860; padding-bottom:2px; margin-bottom:4px;
+  display:flex; justify-content:space-between;
+}
+.intel-menu .title .x402 {
+  font-size:8px; color:#a8a8c0; letter-spacing:0.1em;
+}
+.intel-menu ul { list-style:none; margin:0; padding:0; }
+.intel-menu li {
+  display:flex; align-items:center; padding:2px 6px;
+  position:relative;
+}
+.intel-menu li::before {
+  content:''; display:inline-block; width:16px;
+}
+.intel-menu li.sel { background:#1c3868; color:#ffd860; }
+.intel-menu li.sel::before {
+  content:'►'; color:#ffd860; width:16px; text-align:left;
+}
+.intel-menu li .path { flex:1; font-size:16px; }
+.intel-menu li .price {
+  font-size:14px; color:#f8e8c0;
+  background:#1c3868; padding:1px 8px 1px 6px;
+  border:1px solid #ffd860;
+  letter-spacing:0.02em;
+  white-space: nowrap;
+}
+.intel-menu li .price.free { color:#58c068; border-color:#58c068; background:#181028; }
+.intel-menu li.sel .price { background:#0c1c38; }
+.intel-menu .hint {
+  font-size:8px; color:#a8a8c0; letter-spacing:0.1em;
+  margin-top:4px; padding-top:2px;
+  border-top:1px solid #3858a0;
+  display:flex; justify-content:space-between;
+}
+
+/* Confirm prompt modal */
+.confirm-modal {
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  background:#f8e8c0; color:#181028;
+  border:3px solid #181028;
+  box-shadow: inset 0 0 0 2px #ffd860, 0 0 0 4px #181028, 8px 8px 0 rgba(0,0,0,0.4);
+  padding:14px 20px;
+  font:16px var(--font-pixel);
+  min-width:280px; text-align:center;
+  z-index:20;
+}
+.confirm-modal .nm {
+  font-size:16px; color:#805028; letter-spacing:0.08em; margin-bottom:6px;
+}
+.confirm-modal .price-big {
+  font-size:32px; color:#c82828; line-height:1;
+  text-shadow: 2px 2px 0 #f0b828;
+  margin:4px 0;
+}
+.confirm-modal .chain-hint {
+  font-size:8px; color:#58587a; letter-spacing:0.1em; margin-bottom:8px;
+}
+.confirm-modal .choices {
+  display:flex; justify-content:center; gap:16px;
+  font-size:16px;
+}
+.confirm-modal .choices .sel { color:#ffd860; background:#c82828; padding:2px 12px; }
+.confirm-modal .choices .sel::before { content:'►'; margin-right:4px; }
+.confirm-modal .choices .dim { color:#a8a8c0; padding:2px 12px; }
+
+/* Paywall — a stone/gold seal in the center that shatters on pay */
+.paywall {
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:200px; height:160px; z-index:15;
+}
+.paywall .slab {
+  position:absolute; inset:0;
+  background:
+    /* brick pattern */
+    linear-gradient(0deg, transparent 31px, #181028 31px 32px, transparent 32px 64px) 0 0/40px 64px,
+    linear-gradient(0deg, transparent 31px, #181028 31px 32px, transparent 32px 64px) 20px 32px/40px 64px,
+    /* stone base */
+    #5c4030;
+  border:3px solid #181028;
+  box-shadow:
+    inset 6px 6px 0 #7c5848,
+    inset -6px -6px 0 #3c281c;
+}
+/* Gold padlock centered on slab */
+.paywall .lock {
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:60px; height:72px;
+}
+.paywall .lock .shackle {
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:36px; height:28px;
+  border:6px solid #f0b828;
+  border-bottom:none;
+  border-radius: 18px 18px 0 0;
+  box-shadow: inset 0 0 0 1px #181028, 0 0 0 2px #181028;
+}
+.paywall .lock .body {
+  position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+  width:50px; height:44px;
+  background:#f0b828;
+  border:2px solid #181028;
+  box-shadow:
+    inset 4px 4px 0 #ffd860,
+    inset -4px -4px 0 #a07018;
+}
+.paywall .lock .body::after {
+  content:'$'; position:absolute; left:50%; top:50%;
+  transform:translate(-50%,-50%);
+  font:24px var(--font-pixel); color:#181028;
+}
+
+/* Paywall BREAKING state — cracks + shards flying */
+.paywall.breaking .slab {
+  animation: slab-crack 0.6s steps(6) forwards;
+}
+@keyframes slab-crack {
+  0%   { filter: brightness(1); }
+  25%  { filter: brightness(1.4) hue-rotate(0deg); transform: translate(2px, -1px); }
+  50%  { filter: brightness(0.8); transform: translate(-2px, 1px); }
+  100% { filter: brightness(0.3); opacity: 0.2; transform: scale(1.1); }
+}
+.paywall.breaking .lock {
+  animation: lock-pop 0.6s steps(4) forwards;
+}
+@keyframes lock-pop {
+  0%   { transform: translate(-50%, -50%) scale(1); }
+  40%  { transform: translate(-50%, -90%) scale(1.2) rotate(-12deg); }
+  100% { transform: translate(-50%, -120%) scale(0.4) rotate(30deg); opacity:0; }
+}
+/* Pixel shards flying outward */
+.paywall .shard {
+  position:absolute; width:8px; height:8px;
+  background:#f0b828; border:1px solid #181028;
+  left:50%; top:50%;
+  opacity:0;
+}
+.paywall.breaking .shard {
+  animation: shard-fly 0.6s steps(6) forwards;
+}
+.paywall.breaking .shard.s1 { --x:  80px; --y: -60px; background:#f0b828; }
+.paywall.breaking .shard.s2 { --x: -80px; --y: -40px; background:#ffd860; }
+.paywall.breaking .shard.s3 { --x:  60px; --y:  80px; background:#5c4030; }
+.paywall.breaking .shard.s4 { --x: -90px; --y:  50px; background:#f0b828; }
+.paywall.breaking .shard.s5 { --x: 100px; --y:  20px; background:#805028; }
+.paywall.breaking .shard.s6 { --x: -70px; --y: -80px; background:#ffd860; }
+.paywall.breaking .shard.s7 { --x:   0px; --y:-100px; background:#f0b828; }
+.paywall.breaking .shard.s8 { --x:   0px; --y: 100px; background:#5c4030; }
+@keyframes shard-fly {
+  0%   { opacity:1; transform: translate(-50%,-50%); }
+  100% { opacity:1; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))); }
+}
+/* Gold glow behind breaking slab */
+.paywall.breaking::after {
+  content:''; position:absolute; inset:-40px;
+  background: radial-gradient(circle, rgba(240,184,40,0.8) 0%, rgba(240,184,40,0.2) 40%, transparent 70%);
+  animation: glow-pulse 0.6s steps(4) forwards;
+  z-index:-1;
+}
+@keyframes glow-pulse {
+  0%,100%{ opacity:0; }
+  50% { opacity:1; }
+}
+
+/* Intel scroll — the revealed product */
+.intel-scroll {
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:280px;
+  background:#f8e8c0;
+  border:3px solid #805028;
+  box-shadow:
+    inset 0 0 0 2px #ffd860,
+    inset 0 6px 0 #e8c878,
+    inset 0 -6px 0 #e8c878,
+    6px 6px 0 rgba(0,0,0,0.4);
+  padding:18px 16px 12px;
+  color:#181028;
+  font:16px var(--font-pixel);
+  z-index:20;
+}
+.intel-scroll::before,
+.intel-scroll::after {
+  content:''; position:absolute; left:-8px; right:-8px; height:10px;
+  background:#805028;
+  border:2px solid #181028;
+  box-shadow: inset 0 2px 0 #a07040, inset 0 -2px 0 #5c3818;
+}
+.intel-scroll::before { top:-8px; }
+.intel-scroll::after  { bottom:-8px; }
+
+.intel-scroll .stamp {
+  position:absolute; top:-10px; right:10px; z-index:2;
+  background:#c82828;
+  color:#ffd860;
+  font:8px var(--font-pixel);
+  letter-spacing:0.12em;
+  padding:3px 8px;
+  border:2px solid #181028;
+  transform: rotate(-4deg);
+}
+.intel-scroll .hdr {
+  font-size:16px; color:#805028; letter-spacing:0.1em;
+  border-bottom:2px dashed #805028; padding-bottom:4px; margin-bottom:6px;
+  display:flex; justify-content:space-between;
+}
+.intel-scroll .hdr .path { color:#181028; }
+.intel-scroll .data {
+  background:#181028; color:#58c068;
+  font:14px var(--font-pixel);
+  padding:8px 10px;
+  border:2px solid #805028;
+  line-height:1.3;
+  letter-spacing:0.04em;
+}
+.intel-scroll .data .label { color:#f0b828; }
+.intel-scroll .data .val { color:#58c068; }
+.intel-scroll .data .dim { color:#58587a; font-size:8px; }
+.intel-scroll .footer {
+  font-size:8px; color:#58587a; letter-spacing:0.08em;
+  margin-top:6px; display:flex; justify-content:space-between;
+}
+.intel-scroll .footer .tx { color:#805028; }
+
+/* Purchase index grid */
+.flow-index {
+  margin:0; background:#100818; padding:20px; font:14px var(--font-pixel); color:#f8f8e8; min-height:100vh;
+}

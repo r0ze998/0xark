@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>x402 Intel Shop — flow</title>
+<link rel="stylesheet" href="../kit.css">
+<style>
+  body { margin:0; background:#100818; padding:20px; font:14px var(--font-pixel); color:#f8f8e8; }
+  h1 { font:32px var(--font-pixel); color:#ffd860; text-shadow: 2px 2px 0 #181028; margin:0 0 4px; letter-spacing:0.05em; }
+  .lede { color:#a8a8c0; margin:0 0 8px; max-width:900px; }
+  .lede b { color:#ffd860; }
+  .spec { color:#58587a; font-size:10px; margin:0 0 18px; letter-spacing:0.05em; max-width:900px; }
+  .spec code { color:#58c068; background:#181028; padding:1px 4px; }
+  .grid { display:grid; grid-template-columns: 480px 480px; gap: 24px; }
+  .frame { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .lbl { font:16px var(--font-pixel); color:#ffd860; letter-spacing:0.08em; }
+  .sub { font:8px var(--font-pixel); color:#a8a8c0; letter-spacing:0.12em; }
+  iframe { border:0; width:480px; height:320px; }
+  .pricing {
+    background:#181028; border:2px solid #ffd860; padding:10px 14px;
+    display:inline-block; margin-bottom: 16px;
+    font:14px var(--font-pixel); color:#f8f8e8;
+  }
+  .pricing h3 { font-size:12px; color:#ffd860; margin:0 0 6px; letter-spacing:0.1em; }
+  .pricing .row { display:flex; justify-content:space-between; gap:24px; padding:1px 0; }
+  .pricing .row .p { color:#58c068; }
+  .pricing .row .free { color:#f0b828; }
+</style></head>
+<body class="flow-index">
+  <h1>x402 INTEL DEALER</h1>
+  <p class="lede">A cloaked merchant stocks four paid intel endpoints, settled on-chain via <b>x402</b>. Calm interior → selection → confirm → paywall shatters → scroll reveals.</p>
+  <p class="spec">
+    <code>/intel/location</code> $0.002 &nbsp;·&nbsp;
+    <code>/intel/hand</code> $0.003 &nbsp;·&nbsp;
+    <code>/intel/strategy</code> $0.005 &nbsp;·&nbsp;
+    <code>/intel/market</code> FREE
+  </p>
+
+  <div class="grid">
+    <div class="frame"><div class="lbl">1 · menu</div><div class="sub">browse 4 endpoints, cursor on /intel/hand</div><iframe src="01_menu.html"></iframe></div>
+    <div class="frame"><div class="lbl">2 · confirm</div><div class="sub">"Pay 0.003 USDC?" prompt, merchant dims</div><iframe src="02_confirm.html"></iframe></div>
+    <div class="frame"><div class="lbl">3 · paywall breaking</div><div class="sub">gold lock shatters into pixel shards</div><iframe src="03_breaking.html"></iframe></div>
+    <div class="frame"><div class="lbl">4 · reveal</div><div class="sub">unsealed scroll with rival's hand</div><iframe src="04_reveal.html"></iframe></div>
+  </div>
+</body></html>

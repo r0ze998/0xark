@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>0xARK — Town</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin:0; background:#222; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+
+  /* Stage: render the whole town at native 240×160 then 2× scale so pixels stay crisp
+     and coordinates stay clean. */
+  .map {
+    position:absolute; left:0; top:0; width:240px; height:160px;
+    transform: scale(2); transform-origin: top left;
+    image-rendering: pixelated;
+  }
+
+  /* ───────── Simple, easy-to-read background ───────── */
+  /* Flat grass with a very subtle 16×16 tile hint — no tufts, no checker overlay */
+  .grass-base {
+    position:absolute; inset:0;
+    background:#58c068;
+    background-image:
+      linear-gradient(0deg,  rgba(40,120,64,0.15) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(40,120,64,0.15) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+
+  /* --- Tree tile (16x16) --- */
+  .tree {
+    position:absolute; width:16px; height:16px;
+    background:#287840;
+    box-shadow:
+      inset -2px -2px 0 #1c5028,
+      inset 2px 2px 0 #58c068,
+      0 0 0 1px #181028;
+  }
+
+  /* --- Path tile: solid tan with dark outline --- */
+  .path {
+    position:absolute;
+    background:#d8a868;
+    box-shadow: inset 0 0 0 1px #805028;
+  }
+
+  /* --- Water --- */
+  .water {
+    position:absolute;
+    background:#4880c8;
+    box-shadow:
+      inset 0 4px 0 rgba(28,56,104,0.5),
+      inset 0 -2px 0 #1c3868,
+      inset 0 0 0 1px #1c3868;
+  }
+
+  /* --- Sand --- */
+  .sand { position:absolute; background:#e8c878; }
+  .dock {
+    position:absolute;
+    background: repeating-linear-gradient(90deg, #805028 0 3px, #5c3818 3px 4px, #805028 4px 8px);
+    box-shadow: inset 0 0 0 1px #181028;
+  }
+
+  /* --- House (FRLG-style) --- */
+  .house { position:absolute; image-rendering: pixelated; }
+  .house .roof {
+    position:absolute; top:0; left:-4px; right:-4px; height:18px;
+    background:#d04030;
+    border: 2px solid #181028;
+    box-shadow:
+      inset 0 3px 0 #e86050,
+      inset 0 -3px 0 #902818;
+  }
+  .house .roof::before {
+    content:''; position:absolute; left:0; right:0; top:5px; height:2px;
+    background:#902818;
+  }
+  .house .roof::after {
+    content:''; position:absolute; top:-6px; right:8px;
+    width:4px; height:8px; background:#805028;
+    border:2px solid #181028; border-bottom:none;
+  }
+  .house .body {
+    position:absolute; top:18px; left:0; right:0; bottom:0;
+    background:#d8d0c0;
+    border:2px solid #181028;
+    box-shadow: inset 0 -3px 0 #a0a090;
+  }
+  .house .body::before,
+  .house .body::after {
+    content:''; position:absolute; top:4px;
+    width:8px; height:7px;
+    background: linear-gradient(180deg, #4880c8 0 50%, #1c3868 50% 100%);
+    border:1px solid #181028;
+  }
+  .house .body::before { left:3px; }
+  .house .body::after  { right:3px; }
+  .door {
+    position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+    width:8px; height:10px;
+    background:#805028;
+    border:2px solid #181028;
+    border-bottom:none;
+  }
+  .door::after {
+    content:''; position:absolute; top:4px; right:1px;
+    width:1px; height:1px; background:#ffd860;
+  }
+  .house.gacha  .roof { background:#7040a0; box-shadow: inset 0 3px 0 #a060c0, inset 0 -3px 0 #401868; }
+  .house.gacha  .roof::before { background:#401868; }
+  .house.harbor .roof { background:#3858a0; box-shadow: inset 0 3px 0 #4880c8, inset 0 -3px 0 #1c3868; }
+  .house.harbor .roof::before { background:#1c3868; }
+  .house.barn   .roof { background:#c8a868; box-shadow: inset 0 3px 0 #e8c878, inset 0 -3px 0 #805028; }
+  .house.barn   .roof::before { background:#805028; }
+
+  /* Sign posts */
+  .sign {
+    position:absolute;
+    background:#f8e8c0;
+    border:1px solid #181028;
+    color:#181028;
+    font: 6px var(--font-pixel);
+    letter-spacing:0.05em;
+    text-align:center; line-height: 8px;
+    padding: 0 2px;
+    box-shadow: inset 0 -2px 0 #d8a868;
+    z-index: 3;
+  }
+
+  /* Flowers / bushes */
+  .flower { position:absolute; width:3px; height:3px; background:#ff70b0; }
+  .flower.y { background:#ffd860; }
+  .flower.w { background:#f8e8c0; }
+  .bush { position:absolute; width:8px; height:6px; background:#287840; border:1px solid #181028; box-shadow: inset 1px 1px 0 #58c068; }
+
+  /* Fence */
+  .fence { position:absolute; height:5px;
+    background: repeating-linear-gradient(90deg, #805028 0 3px, transparent 3px 6px), #a07040;
+    border-top: 1px solid #181028; border-bottom: 1px solid #181028;
+  }
+
+  /* Sprites — render in the native map coordinate space */
+  .npc {
+    position:absolute; width:12px; height:14px; z-index:6;
+    image-rendering:pixelated;
+  }
+  .npc.sailor {
+    background:
+      linear-gradient(180deg,
+        #181028   0 3px,   /* hat */
+        #f8e8c0   3px 6px, /* face */
+        #c82828   6px 10px,/* shirt */
+        #1c3868  10px 13px,/* pants */
+        #181028  13px 14px); /* feet */
+    box-shadow: 0 0 0 1px #181028;
+  }
+  .npc.player {
+    width:12px; height:14px;
+    background:
+      linear-gradient(180deg,
+        #c82828   0 3px,
+        #f8e8c0   3px 6px,
+        #ffd860   6px 10px,
+        #1c3868  10px 13px,
+        #181028  13px 14px);
+    box-shadow: 0 0 0 1px #181028;
+  }
+
+  /* HUD / banner / dialog — these live OUTSIDE the scaled map so text stays sharp */
+</style></head>
+<body>
+<div class="gba-viewport" data-screen-label="02 Town">
+  <!-- Scaled-up pixel map (240×160 → 480×320) -->
+  <div class="map">
+    <div class="grass-base"></div>
+
+    <!-- TOP border tree wall (15 tiles wide) -->
+    <div class="tree" style="left:0;   top:0"></div>
+    <div class="tree" style="left:16px;top:0"></div>
+    <div class="tree" style="left:32px;top:0"></div>
+    <div class="tree" style="left:48px;top:0"></div>
+    <div class="tree" style="left:64px;top:0"></div>
+    <div class="tree" style="left:80px;top:0"></div>
+    <div class="tree" style="left:96px;top:0"></div>
+    <div class="tree" style="left:112px;top:0"></div>
+    <div class="tree" style="left:128px;top:0"></div>
+    <div class="tree" style="left:144px;top:0"></div>
+    <div class="tree" style="left:160px;top:0"></div>
+    <div class="tree" style="left:176px;top:0"></div>
+    <div class="tree" style="left:192px;top:0"></div>
+    <div class="tree" style="left:208px;top:0"></div>
+    <div class="tree" style="left:224px;top:0"></div>
+
+    <!-- LEFT border column -->
+    <div class="tree" style="left:0;top:16px"></div>
+    <div class="tree" style="left:0;top:32px"></div>
+    <div class="tree" style="left:0;top:48px"></div>
+    <div class="tree" style="left:0;top:64px"></div>
+    <div class="tree" style="left:0;top:80px"></div>
+    <div class="tree" style="left:0;top:96px"></div>
+    <div class="tree" style="left:0;top:112px"></div>
+    <div class="tree" style="left:0;top:128px"></div>
+
+    <!-- RIGHT border column — broken for harbor opening (rows 4-6) -->
+    <div class="tree" style="left:224px;top:16px"></div>
+    <div class="tree" style="left:224px;top:32px"></div>
+    <div class="tree" style="left:224px;top:112px"></div>
+    <div class="tree" style="left:224px;top:128px"></div>
+
+    <!-- BOTTOM border tree wall -->
+    <div class="tree" style="left:0;   top:144px"></div>
+    <div class="tree" style="left:16px;top:144px"></div>
+    <div class="tree" style="left:32px;top:144px"></div>
+    <div class="tree" style="left:48px;top:144px"></div>
+    <div class="tree" style="left:64px;top:144px"></div>
+    <div class="tree" style="left:80px;top:144px"></div>
+    <div class="tree" style="left:96px;top:144px"></div>
+    <div class="tree" style="left:112px;top:144px"></div>
+    <div class="tree" style="left:128px;top:144px"></div>
+    <div class="tree" style="left:144px;top:144px"></div>
+    <div class="tree" style="left:160px;top:144px"></div>
+    <div class="tree" style="left:176px;top:144px"></div>
+    <div class="tree" style="left:192px;top:144px"></div>
+    <div class="tree" style="left:208px;top:144px"></div>
+    <div class="tree" style="left:224px;top:144px"></div>
+
+    <!-- HARBOR: sand strip + water + dock (right side, rows 4-6) -->
+    <div class="sand"  style="left:208px; top:48px;  width:16px; height:64px"></div>
+    <div class="water" style="left:224px; top:48px;  width:16px; height:16px"></div>
+    <div class="water" style="left:224px; top:64px;  width:16px; height:16px"></div>
+    <div class="water" style="left:224px; top:80px;  width:16px; height:16px"></div>
+    <div class="water" style="left:224px; top:96px;  width:16px; height:16px"></div>
+    <div class="dock"  style="left:208px; top:84px; width:28px; height:6px"></div>
+    <!-- Anchored ship at dock -->
+    <div style="position:absolute; left:228px; top:74px; width:10px; height:9px; z-index:5;
+                background: linear-gradient(180deg, #f8e8c0 0 4px, #805028 4px 9px);
+                border:1px solid #181028;"></div>
+    <div style="position:absolute; left:232px; top:69px; width:1px; height:5px; background:#181028; z-index:5"></div>
+    <div style="position:absolute; left:233px; top:69px; width:4px; height:3px; background:#c82828; border:1px solid #181028; z-index:5"></div>
+
+    <!-- PATH NETWORK -->
+    <!-- Horizontal main road, y=96-112, cols 1..13 -->
+    <div class="path" style="left:16px; top:96px;  width:192px; height:16px"></div>
+    <!-- Vertical drops to buildings -->
+    <div class="path" style="left:48px;  top:64px; width:16px; height:32px"></div>
+    <div class="path" style="left:120px; top:64px; width:16px; height:32px"></div>
+    <div class="path" style="left:176px; top:64px; width:16px; height:32px"></div>
+    <!-- Vertical drops from main road to bottom-row buildings -->
+    <div class="path" style="left:48px;  top:112px; width:16px; height:32px"></div>
+    <div class="path" style="left:120px; top:112px; width:16px; height:32px"></div>
+    <div class="path" style="left:176px; top:112px; width:16px; height:32px"></div>
+    <!-- Spur to harbor/dock -->
+    <div class="path" style="left:192px; top:96px; width:16px; height:16px"></div>
+
+    <!-- TOP-ROW BUILDINGS (shop / gacha / stats) -->
+    <div class="house" style="left:30px; top:30px; width:36px; height:32px">
+      <div class="roof"></div><div class="body"></div><div class="door"></div>
+    </div>
+    <div class="sign" style="left:36px; top:64px">SHOP</div>
+
+    <div class="house gacha" style="left:102px; top:30px; width:36px; height:32px">
+      <div class="roof"></div><div class="body"></div><div class="door"></div>
+    </div>
+    <div class="sign" style="left:107px; top:64px">GACHA</div>
+
+    <div class="house harbor" style="left:158px; top:30px; width:36px; height:32px">
+      <div class="roof"></div><div class="body"></div><div class="door"></div>
+    </div>
+    <div class="sign" style="left:164px; top:64px">STATS</div>
+
+    <!-- BOTTOM-ROW BUILDINGS (log / dungeon / tavern) -->
+    <div class="house barn" style="left:30px; top:110px; width:36px; height:30px">
+      <div class="roof"></div><div class="body"></div><div class="door"></div>
+    </div>
+    <div class="sign" style="left:38px; top:136px; z-index:10">LOG</div>
+
+    <div class="house" style="left:102px; top:110px; width:36px; height:30px">
+      <div class="roof"></div><div class="body"></div><div class="door"></div>
+    </div>
+    <div class="sign" style="left:106px; top:136px; z-index:10">DUNGEON</div>
+
+    <div class="house harbor" style="left:158px; top:110px; width:36px; height:30px">
+      <div class="roof"></div><div class="body"></div><div class="door"></div>
+    </div>
+    <div class="sign" style="left:162px; top:136px; z-index:10">TAVERN</div>
+
+    <!-- Fences along dock path -->
+    <div class="fence" style="left:208px; top:92px; width:16px"></div>
+    <div class="fence" style="left:208px; top:112px; width:16px"></div>
+
+    <!-- Detail vegetation -->
+    <div class="bush" style="left:20px;  top:72px"></div>
+    <div class="bush" style="left:82px;  top:72px"></div>
+    <div class="bush" style="left:142px; top:72px"></div>
+    <div class="bush" style="left:204px; top:32px"></div>
+    <div class="bush" style="left:20px;  top:128px"></div>
+    <div class="bush" style="left:144px; top:128px"></div>
+    <div class="bush" style="left:72px;  top:128px"></div>
+    <div class="bush" style="left:200px; top:128px"></div>
+
+    <div class="flower"   style="left:22px;  top:104px"></div>
+    <div class="flower y" style="left:30px;  top:108px"></div>
+    <div class="flower"   style="left:88px;  top:100px"></div>
+    <div class="flower w" style="left:96px;  top:105px"></div>
+    <div class="flower y" style="left:148px; top:104px"></div>
+    <div class="flower"   style="left:200px; top:104px"></div>
+    <div class="flower w" style="left:70px;  top:92px"></div>
+    <div class="flower y" style="left:158px; top:92px"></div>
+
+    <!-- NPCs + player (inside the scaled map) -->
+    <div class="npc sailor" style="left:72px; top:82px"></div>
+    <div class="npc player" style="left:104px; top:100px"></div>
+  </div>
+
+  <!-- HUD / banner / dialog stay at native 480×320 resolution so text is crisp -->
+  <div class="hud">
+    <span>♥ HP 78/100</span>
+    <span>◆ 0.5◎</span>
+    <span class="vega">V: TWN</span>
+    <span class="mira">M: B2</span>
+    <span style="margin-left:auto">CARDS 12/60</span>
+  </div>
+
+  <div class="banner-floor" style="top:38px">FIRST PORT</div>
+
+  <div class="dialog-bottom">
+    <span class="cur">►</span>OLD SAILOR: The seas are restless.<br>
+    VEGA was seen near the docks.
+  </div>
+</div>
+</body></html>

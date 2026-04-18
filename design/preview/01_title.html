@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>0xARK — Title</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  body { margin:0; background:#222; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+
+  /* --- Environment: sky, sea, horizon. No stripe noise. --- */
+  .title-screen { background: #0c1a38; overflow:hidden; }
+  .sky  { position:absolute; left:0; right:0; top:0; height:62%;
+          background: linear-gradient(180deg, #0c1a38 0%, #1c3868 100%); }
+  .sea  { position:absolute; left:0; right:0; bottom:0; height:38%;
+          background: linear-gradient(180deg, #1c3868 0%, #0c1a38 100%); }
+  /* Two horizontal wave lines — minimal, GBA-style */
+  .sea::before, .sea::after {
+    content:''; position:absolute; left:0; right:0; height:2px; background:#4880c8; opacity:0.8;
+  }
+  .sea::before { top: 32%; }
+  .sea::after  { top: 62%; background:#1c3868; opacity:0.9; height:1px; }
+  .horizon { position:absolute; left:0; right:0; top:62%; height:2px; background:#0c1a38; }
+
+  /* Moon as a single clean circle — anchors upper-right negative space */
+  .moon {
+    position:absolute; right:44px; top:44px;
+    width:28px; height:28px;
+    background:#f8e8c0;
+    border-radius:50%;
+    box-shadow:
+      0 0 0 3px #1c3868,
+      0 0 0 5px rgba(248,232,192,0.2),
+      0 0 0 9px rgba(248,232,192,0.08);
+  }
+
+  /* --- Hero ship — centered, bigger, bolder silhouette --- */
+  .ship {
+    position:absolute; left:50%; top:57%;
+    transform: translate(-50%, -50%);
+    width: 128px; height: 80px;
+    image-rendering: pixelated;
+  }
+  /* Hull: trapezoidal galleon */
+  .hull {
+    position:absolute; bottom:0; left:0; right:0; height:22px;
+    background: #805028;
+    border: 2px solid #181028;
+    box-shadow: inset 0 3px 0 #a07040, inset 0 -4px 0 #5c3818;
+    clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%);
+  }
+  /* Gold trim stripe on hull */
+  .hull::after {
+    content:''; position:absolute; left:4px; right:4px; top:8px; height:2px; background:#f0b828;
+  }
+  /* Mast */
+  .mast {
+    position:absolute; bottom:22px; left:50%; transform:translateX(-50%);
+    width:3px; height:50px; background:#181028;
+  }
+  /* Main sail — cream with gold border, the visual anchor */
+  .sail {
+    position:absolute; bottom:30px; left:50%; transform:translateX(-50%);
+    width:72px; height:38px;
+    background:#f8e8c0;
+    border:2px solid #181028;
+    box-shadow: inset 0 0 0 2px #ffd860, inset 0 6px 0 #f8e8c0, inset 0 -4px 0 #e8c878;
+  }
+  /* Jolly-roger patch on sail — pure CSS 'X' */
+  .sail::before, .sail::after {
+    content:''; position:absolute; left:50%; top:50%; width:18px; height:3px;
+    background:#181028; transform-origin:center;
+  }
+  .sail::before { transform: translate(-50%, -50%) rotate(45deg); }
+  .sail::after  { transform: translate(-50%, -50%) rotate(-45deg); }
+  /* Flag */
+  .flag {
+    position:absolute; top:-4px; left:calc(50% + 2px);
+    width:14px; height:9px; background:#c82828; border:2px solid #181028;
+    border-left: none;
+  }
+  /* Ship reflection — subtle shimmer in sea */
+  .reflection {
+    position:absolute; left:50%; top:72%;
+    transform: translateX(-50%);
+    width:80px; height:3px;
+    background: repeating-linear-gradient(90deg, #4880c8 0 4px, transparent 4px 8px);
+    opacity:0.7;
+  }
+
+  /* --- Logo: big, dominant, one-line --- */
+  .logo {
+    position:absolute; top:20%; left:50%; transform:translate(-50%, -50%);
+    font: 64px var(--font-pixel);
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-shadow: 4px 4px 0 #0c1a38, 2px 2px 0 #181028;
+    white-space: nowrap;
+  }
+  .logo .x   { color:#f0b828; }
+  .logo .ark { color:#f8e8c0; }
+
+  /* One-line tagline that tells you the game in 4 words */
+  .tagline {
+    position:absolute; top:calc(20% + 30px); left:50%; transform:translateX(-50%);
+    color:#ffd860; font: 16px var(--font-pixel);
+    letter-spacing: 0.28em;
+    opacity: 0.9;
+    white-space:nowrap;
+  }
+
+  /* --- Menu: tight, two options, centered at bottom --- */
+  .menu {
+    position:absolute; bottom:44px; left:50%; transform:translateX(-50%);
+    background:#3858a0; color:#f8f8e8;
+    border:2px solid #181028;
+    box-shadow: inset 0 0 0 2px #ffd860;
+    padding: 6px 18px 6px 8px;
+    font: 18px var(--font-pixel);
+    min-width: 148px;
+    letter-spacing: 0.06em;
+    list-style: none; margin:0;
+  }
+  .menu li { padding: 2px 0; }
+  .menu li.sel::before { content:'►'; color:#ffd860; margin-right:8px; }
+  .menu li:not(.sel)   { padding-left: 22px; color:#a8a8c0; }
+
+  /* Footer — small, low-key, high-information */
+  .footer {
+    position:absolute; bottom:10px; left:0; right:0; text-align:center;
+    color:#58587a; font: 8px var(--font-pixel); letter-spacing: 0.3em;
+  }
+  .footer b { color:#ffd860; font-weight: normal; }
+
+  /* Press-start hint pulsing above the menu — subtle */
+  @keyframes blink { 50% { opacity:0.2; } }
+</style></head>
+<body>
+<div class="gba-viewport title-screen" data-screen-label="01 Title">
+  <div class="sky"></div>
+  <div class="horizon"></div>
+  <div class="sea"></div>
+  <div class="moon"></div>
+
+  <div class="logo"><span class="x">0x</span><span class="ark">ARK</span></div>
+  <div class="tagline">A ZK PIRATE CARD GAME</div>
+
+  <div class="ship">
+    <div class="flag"></div>
+    <div class="sail"></div>
+    <div class="mast"></div>
+    <div class="hull"></div>
+  </div>
+  <div class="reflection"></div>
+
+  <ul class="menu">
+    <li class="sel">NEW SEASON</li>
+    <li>CONTINUE</li>
+  </ul>
+
+  <div class="footer">SOLANA &nbsp;·&nbsp; GROTH16 &nbsp;·&nbsp; <b>BY YUKIKAZE</b></div>
+</div>
+</body></html>
