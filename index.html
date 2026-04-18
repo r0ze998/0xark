@@ -11612,7 +11612,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v684',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v685',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -13369,7 +13369,11 @@ function dMap(){
     txShadow(_vegaLblCache,240,hudY+52,6,vegaCol,'rgba(0,0,0,.35)'); // v304: cached
     g.globalAlpha=miraAlpha;
     txShadow(_miraLblCache,286,hudY+52,6,miraCol,'rgba(0,0,0,.35)'); // v304: cached
-    g.globalAlpha=1;}
+    g.globalAlpha=1;
+    // v685: rival-on-same-floor danger sparks — warning motes when a rival shares the player's floor (world-space offset)
+    if(vegaSame&&fr%40===2){particles.push({x:240+Math.random()*40+camX,y:hudY+52+camY,vx:(Math.random()-.5)*0.28,vy:-0.22-Math.random()*0.24,life:16+Math.random()*10,c:'rgba(220,80,200,0.55)'});}
+    if(miraSame&&fr%40===22){particles.push({x:286+Math.random()*38+camX,y:hudY+52+camY,vx:(Math.random()-.5)*0.28,vy:-0.22-Math.random()*0.24,life:16+Math.random()*10,c:'rgba(240,180,30,0.55)'});}
+    }
   }
   // Show first 8 hand cards in HUD (slots 0-7)
   const HUD_CARD_SLOTS=Math.min(8,HAND_SIZE);
