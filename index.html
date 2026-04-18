@@ -11531,7 +11531,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v627',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v628',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -11886,6 +11886,8 @@ function drawEdgeBlending(startTX,startTY,endTX,endTY){
           if(isBot){for(let i=0;i<TW;i++){if(thRand(x,y,i+390)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK;bx(px+i,py+TH-1,1,1,wc);}}} // v304
           if(isLft){for(let i=0;i<TH;i++){if(thRand(x,y,i+400)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK;bx(px,py+i,1,1,wc);}}} // v304
           if(isRgt){for(let i=0;i<TH;i++){if(thRand(x,y,i+410)>.45){const wc=(wt+i)%3===0?_WATER_FOAM_LT:_WATER_FOAM_DK;bx(px+TW-1,py+i,1,1,wc);}}} // v304
+          // v628: shoreline micro-splash — tiny surf motes at water-grass edge (world-space)
+          if((fr+x*7+y*11)%90===0){particles.push({x:x*TW+Math.random()*TW,y:y*TH+Math.random()*TH,vx:(Math.random()-.5)*.30,vy:-.14-Math.random()*.16,life:14+Math.random()*10,c:Math.random()>.5?'rgba(160,220,240,0.44)':'rgba(230,245,255,0.32)'});}
         }
         // Mountain/Grass transitions
         if(gt==='grass'&&ngt==='mountain'){
