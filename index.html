@@ -11561,7 +11561,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v644',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v645',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14502,6 +14502,8 @@ function drawOpponentInfoBox(){
     const _koA2=0.6+_sFr18*0.4;g.globalAlpha=_koA2;
     bx(bx_+124,sepY+7,28,8,'rgba(190,60,0,.88)');bx(bx_+124,sepY+7,28,1,'#ffb080');
     txShadow('!! KO',bx_+126,sepY+14,5,'#ffe8d0','rgba(0,0,0,.5)');g.globalAlpha=1;
+    // v645: MIRA near-KO sparks — amber/orange, matching VEGA v594 (screen-space)
+    if(fr%5===0){particles.push({x:bx_+126+Math.random()*26,y:sepY+7+Math.random()*8,vx:(Math.random()-.5)*.38,vy:-.28-Math.random()*.28,life:10+Math.random()*7,c:Math.random()>.5?'rgba(255,180,40,0.72)':'rgba(230,100,30,0.58)'});}
   }
   if(r2alive){
     drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
