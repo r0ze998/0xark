@@ -8899,7 +8899,7 @@ function drawNPCSprite(npc){
   g.drawImage(_sprNpcShadow,(px+3)|0,(py+40)|0);
 
   // === ZELDA-LIKE NPC SPRITES (best quality) ===
-  const npcZFrame=[1,0,1,2][walkFrame%4]||1;
+  const npcZFrame=[1,0,1,2][(npc.walkFrame|0)%4]||1;
   const npcZDir=[0,1,2,3][d]||0;
   const npcCharIdx=npc.type===0?3:npc.type===1?4:3; // NPC chars at indices 3,4
   const _ng=npc.type===0?_npcGlow0:npc.type===1?_npcGlow1:_npcGlow2;
