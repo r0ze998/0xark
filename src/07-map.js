@@ -1401,6 +1401,10 @@ function dMap(){
       const _fc=[,'rgba(80,100,180,0.45)','rgba(120,60,200,0.48)','rgba(200,60,180,0.50)','rgba(220,60,30,0.50)','rgba(255,200,60,0.55)'][currentFloor]||'rgba(80,100,180,0.45)';
       particles.push({x:p.visualX+8+Math.random()*8,y:p.visualY+28+Math.random()*4,vx:(Math.random()-.5)*0.3,vy:-0.1-Math.random()*0.25,life:12+Math.random()*10,c:_fc});
     }
+    // v539: escape urgency smoke trail — red/orange smoke rises from player when cards are critically decaying
+    if(i===0&&inDungeon&&escapeUrgencyActive&&fr%3===0){
+      particles.push({x:p.visualX+8+Math.random()*8,y:p.visualY+20+Math.random()*8,vx:(Math.random()-.5)*0.6,vy:-0.4-Math.random()*0.7,life:14+Math.random()*10,c:Math.random()>.4?'rgba(220,50,30,0.65)':'rgba(255,120,60,0.50)'});
+    }
     if(i!==0){
       const spx=p.visualX-camX,spy=p.visualY-camY-16;
       drawRivalAlertAnim(p,spx,spy);

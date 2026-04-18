@@ -991,6 +991,11 @@ function drawDungeonStairGlows(startTX,startTY,endTX,endTY){
           const _sux=x*TW+6+Math.random()*20,_suy=y*TH+Math.random()*8;
           particles.push({x:_sux,y:_suy,vx:(Math.random()-.5)*.5,vy:-0.6-Math.random()*0.9,life:30+Math.random()*18,c:Math.random()>.5?'rgba(100,200,255,0.4)':'rgba(160,220,255,0.3)'});
         }
+        // v539: escape beacon — urgent red/orange sparks from escape stair when cards are critically decaying
+        if(escapeUrgencyActive&&(fr+(x*7+y*13))%3===0){
+          const _ebx=x*TW+4+Math.random()*24,_eby=y*TH+Math.random()*12;
+          particles.push({x:_ebx,y:_eby,vx:(Math.random()-.5)*1.0,vy:-0.8-Math.random()*1.2,life:12+Math.random()*10,c:Math.random()>.5?'rgba(255,80,30,0.85)':'rgba(255,200,60,0.70)'});
+        }
       }
     }
   }
