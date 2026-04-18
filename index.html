@@ -7949,6 +7949,8 @@ function drawRuinsWall(px,py,tx_,ty){
       const r=tr(tx_,ty);
       if(r.e>.5){bx(px+Math.floor(r.f*20)+2,py+TH-6,8,5,'#486848');}
       bx(px,py,TW,TH,'rgba(0,0,20,.15)');
+      // v599: ruins wall mortar dust — crumbling stone motes, very sparse (world-space)
+      if((fr+tx_*11+ty*23)%55===0){particles.push({x:tx_*TW+2+Math.random()*(TW-4),y:ty*TH+2+Math.random()*(TH-4),vx:(Math.random()-.5)*.22,vy:-.06-Math.random()*.10,life:18+Math.random()*14,c:Math.random()>.5?'rgba(130,130,138,0.28)':'rgba(100,100,108,0.20)'});}
       return;
     }
   }
@@ -7970,6 +7972,8 @@ function drawRuinsWall(px,py,tx_,ty){
   bx(px+Math.floor(r.a*12)+10,py+Math.floor(r.b*12)+8,1,6,'#484850');
   if(r.e>.5){bx(px+Math.floor(r.f*20)+2,py+TH-6,8,5,'#486848');bx(px+Math.floor(r.g*16)+6,py+TH-4,6,2,'#588858');}
   bx(px,py,TW,TH,'rgba(0,0,20,.15)');
+  // v599: ruins wall mortar dust fallback (world-space)
+  if((fr+tx_*11+ty*23)%55===0){particles.push({x:tx_*TW+2+Math.random()*(TW-4),y:ty*TH+2+Math.random()*(TH-4),vx:(Math.random()-.5)*.22,vy:-.06-Math.random()*.10,life:18+Math.random()*14,c:Math.random()>.5?'rgba(130,130,138,0.28)':'rgba(100,100,108,0.20)'});}
 }
 
 function drawRuinsPillar(px,py,tx_,ty){
@@ -11444,7 +11448,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v598',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v599',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
