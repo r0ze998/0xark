@@ -11606,7 +11606,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v675',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v676',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -12537,6 +12537,8 @@ function drawPirateDecorations(){
               bx(vpx+22+vox2,vpy+16+vi*2,1,2,'#306828');
             }
           }
+          // v676: vine-tip pollen — lime-pale mote drifts from swaying vine end (world-space)
+          if(fr%30===(vx*3+vy*7)%30){const _vty=vy*TH+14+(vineLen-1)*2;particles.push({x:vx*TW+8+Math.random()*4,y:_vty,vx:(Math.random()-.5)*0.35,vy:0.06+Math.random()*0.10,life:22+Math.random()*18,c:Math.random()>.5?'rgba(160,230,80,0.36)':'rgba(200,255,110,0.28)'});}
         }
       }
     }
