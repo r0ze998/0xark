@@ -7734,6 +7734,8 @@ function drawCave(px,py,tx_,ty){
       bx(px+8,py+12,16,18,'rgba(8,8,16,0.8)');
       bx(px+10,py+14,12,16,'rgba(8,8,16,0.9)');
       if((wt+tx_)%4<2){g.drawImage(_tileCaveGlow,(px+9)|0,(py+13)|0);}
+      // v600: cave entrance drip — mystery water drops from arch (world-space)
+      if((fr+tx_*5+ty*17)%25===0){particles.push({x:tx_*TW+10+Math.random()*12,y:ty*TH+14,vx:(Math.random()-.5)*.12,vy:.15+Math.random()*.18,life:9+Math.random()*7,c:Math.random()>.5?'rgba(60,80,120,0.55)':'rgba(80,120,160,0.42)'});}
       return;
     }
   }
@@ -7745,6 +7747,8 @@ function drawCave(px,py,tx_,ty){
   bx(px+10,py+10,2,4,'#484858');bx(px+18,py+8,2,6,'#484858');bx(px+22,py+11,2,3,'#484858');
   bx(px+4,py+TH-4,8,4,'#585868');bx(px+20,py+TH-4,8,4,'#585868');
   if((wt+tx_)%4<2){g.drawImage(_tileCaveGlow,(px+9)|0,(py+13)|0);}
+  // v600: cave entrance drip fallback (world-space)
+  if((fr+tx_*5+ty*17)%25===0){particles.push({x:tx_*TW+10+Math.random()*12,y:ty*TH+14,vx:(Math.random()-.5)*.12,vy:.15+Math.random()*.18,life:9+Math.random()*7,c:Math.random()>.5?'rgba(60,80,120,0.55)':'rgba(80,120,160,0.42)'});}
 }
 
 function drawMountain(px,py,tx_,ty){
@@ -11448,7 +11452,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v599',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v600',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
