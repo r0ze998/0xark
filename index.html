@@ -11537,7 +11537,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v631',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v632',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -19406,6 +19406,8 @@ function drawBuildingInterior(){
     bx(npx+28,npy-12,4,8,'#805030');bx(npx+29,npy-12,2,8,'#a06838');
     g.globalAlpha=0.7+torchFlick*0.2;bx(npx+27,npy-14-torchFlick,6,3,'#f0a020');g.globalAlpha=1;
     g.globalAlpha=0.4;bx(npx+28,npy-16-torchFlick,4,3,'#f8e060');g.globalAlpha=1;
+    // v632: shop torch fire — orange flame motes rising from wall torch tip (screen-space)
+    if(fr%6===0){particles.push({x:npx+29+Math.random()*4-2,y:npy-16-torchFlick,vx:(Math.random()-.5)*.30,vy:-.22-Math.random()*.22,life:9+Math.random()*7,c:Math.random()>.4?'rgba(255,140,30,0.72)':'rgba(255,210,80,0.55)'});}
   }else{
     // ── Info Broker (Sable) — hooded cloak, glowing eyes, dagger ──
     g.globalAlpha=0.2;bx(npx+5,npy+27,22,4,'#000000');g.globalAlpha=1;
@@ -19437,6 +19439,8 @@ function drawBuildingInterior(){
     const cFlick=Math.floor(fr/5)%2;
     g.globalAlpha=0.5+cFlick*0.2;bx(npx-5,npy-12-cFlick,5,3,'#e09020');g.globalAlpha=1;
     g.globalAlpha=0.25;bx(npx-4,npy-14-cFlick,3,3,'#f8e060');g.globalAlpha=1;
+    // v632: spy candle fire — dim amber motes from candle tip (screen-space)
+    if(fr%8===0){particles.push({x:npx-3+Math.random()*2-1,y:npy-14-cFlick,vx:(Math.random()-.5)*.22,vy:-.18-Math.random()*.18,life:8+Math.random()*6,c:Math.random()>.5?'rgba(220,130,30,0.55)':'rgba(200,100,20,0.42)'});}
   }
   // Floating diamond indicator above NPC
   bx(npx+14,npy-12+bobY,4,4,buildingType==='shop'?'#4080d0':'#40b060');
