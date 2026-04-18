@@ -7831,6 +7831,8 @@ function drawFence(px,py,tx_,ty){
   if(useKenney.fence){
     drawGrass(px,py,tx_,ty);
     if(drawKenneyTileTinted(K.fenceH[0], K.fenceH[1], px, py, 2, '#a08050')){
+      // v612: fence weathered wood dust — sparse motes from grain (world-space)
+      if((fr+tx_*23+ty*7)%60===0){particles.push({x:tx_*TW+2+Math.random()*(TW-4),y:ty*TH+6+Math.random()*16,vx:(Math.random()-.5)*.18,vy:-.05-Math.random()*.08,life:14+Math.random()*10,c:Math.random()>.5?'rgba(160,130,80,0.26)':'rgba(190,155,100,0.20)'});}
       return;
     }
   }
@@ -7841,6 +7843,8 @@ function drawFence(px,py,tx_,ty){
   bx(px,py+10,TW,3,'#b89060');bx(px,py+20,TW,3,'#b89060');
   bx(px,py+10,TW,1,'#c8a070');bx(px,py+20,TW,1,'#c8a070');
   bx(px+2,py+2,4,2,'#c8a070');bx(px+26,py+2,4,2,'#c8a070');
+  // v612: fence weathered wood dust fallback (world-space)
+  if((fr+tx_*23+ty*7)%60===0){particles.push({x:tx_*TW+2+Math.random()*(TW-4),y:ty*TH+6+Math.random()*16,vx:(Math.random()-.5)*.18,vy:-.05-Math.random()*.08,life:14+Math.random()*10,c:Math.random()>.5?'rgba(160,130,80,0.26)':'rgba(190,155,100,0.20)'});}
 }
 
 function drawDock(px,py,tx_,ty){
@@ -11478,7 +11482,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v611',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v612',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
