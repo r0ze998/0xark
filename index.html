@@ -11581,7 +11581,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v662',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v663',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -19762,6 +19762,8 @@ function drawBuildingInterior(){
           g.fillRect(cx_+_ac*_gd3-3,cy_+_as*_gd3-3,6,6);
         }
         g.globalAlpha=1;}
+        // v663: card materialization shimmer — rarity-colored motes bloom from card face as silhouette solidifies (screen-space)
+        if(sf%5===0&&prog>0.08){const _p3px=['rgba(136,136,152,0.65)','rgba(96,176,96,0.70)','rgba(96,144,216,0.72)','rgba(192,96,192,0.75)','rgba(240,200,48,0.80)'];const _p3c=_p3px[(rar-1)%5];particles.push({x:cardX_+Math.random()*cardW_,y:cardY_+Math.random()*cardH_,vx:(Math.random()-.5)*.35,vy:-0.18-Math.random()*.22,life:9+Math.random()*8,c:_p3c});if(prog>0.45){particles.push({x:cx_+(Math.random()-.5)*28,y:cy_+(Math.random()-.5)*18,vx:(Math.random()-.5)*.28,vy:-0.12-Math.random()*.18,life:8+Math.random()*6,c:'rgba(255,255,200,0.55)'});}}
       }
       // Transition to result
       if(sf>=75){
