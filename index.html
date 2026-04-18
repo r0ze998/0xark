@@ -11442,7 +11442,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v595',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v596',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -12553,6 +12553,8 @@ function drawCpxTreesInRange(tyMin,tyMax){
         g.drawImage(jImg,-jdW/2,-jdW,jdW,jdW);
         g.globalAlpha=1;
         g.restore();
+        // v596: jungle canopy leaf drift — sparse falling leaves from crowns (world-space)
+        if((fr+tx*5+ty*11)%28===0){particles.push({x:tx*TW+4+Math.random()*(TW-4),y:ty*TH-10,vx:(Math.random()-.5)*.50,vy:.06+Math.random()*.08,life:22+Math.random()*16,c:Math.random()>.5?'rgba(60,140,40,0.42)':'rgba(110,180,60,0.32)'});}
       }else{
         if((tt===3||tt===7||tt===12)&&th%3===0){
           const tIdx=(th>>>2)%CPX_FOREST.length;
@@ -12566,6 +12568,8 @@ function drawCpxTreesInRange(tyMin,tyMax){
           g.drawImage(tImg,-tdW/2,-tdW,tdW,tdW);
           g.globalAlpha=1;
           g.restore();
+          // v596: overworld tree leaf fall — very sparse (world-space)
+          if((fr+tx*7+ty*13)%35===0){particles.push({x:tx*TW+4+Math.random()*(TW-4),y:ty*TH-8,vx:(Math.random()-.5)*.40,vy:.05+Math.random()*.07,life:20+Math.random()*14,c:Math.random()>.5?'rgba(50,120,30,0.38)':'rgba(90,160,50,0.28)'});}
         }else if(tt===11&&th%9===0){
           const mIdx=(th>>>3)%CPX_MUSHROOMS.length;
           const mImg=CPX_MUSHROOMS[mIdx];
