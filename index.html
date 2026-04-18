@@ -8698,6 +8698,13 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
     const _dpa=(0.22+Math.random()*0.18+_dnp.t*0.10).toFixed(2);
     particles.push({x:_dpx,y:_dpy,vx:0.12+Math.random()*0.18,vy:-0.04-Math.random()*0.08,life:65+Math.random()*45,c:'rgba(255,200,80,'+_dpa+')'});
   }}
+  // v658: midday dust motes — pale silver specks drift slowly in bright afternoon light (world coords)
+  if(fr%18===0){const _mdp=getDayNightPhase();if(_mdp.phase==='day'){
+    const _mdx=camX+Math.random()*W,_mdy=camY+32+Math.random()*(H-100);
+    const _mda=(0.14+Math.random()*0.12).toFixed(2);
+    const _mdc=Math.random()>.55?'rgba(255,255,240,'+_mda+')':'rgba(220,230,255,'+_mda+')';
+    particles.push({x:_mdx,y:_mdy,vx:(Math.random()-.5)*0.10,vy:-0.03-Math.random()*0.06,life:90+Math.random()*60,c:_mdc});
+  }}
 }
 
 function drawTile(tx_,ty){
@@ -11572,7 +11579,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v657',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v658',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
