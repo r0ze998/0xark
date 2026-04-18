@@ -11612,7 +11612,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v682',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v683',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -21095,6 +21095,8 @@ function dGameOver(){
     g.shadowBlur=0;g.globalAlpha=titleA;
     txShadow('SEASON OVER',W/2-152,96,24,'#ff4444','rgba(0,0,0,.75)');
     g.globalAlpha=1;
+    // v683: SEASON OVER title ember drift — red-orange motes smolder up from the title (screen-space)
+    if(t>55&&fr%12===0){particles.push({x:W/2-140+Math.random()*280,y:80+Math.random()*30,vx:(Math.random()-.5)*0.28,vy:-0.24-Math.random()*0.28,life:30+Math.random()*20,c:Math.random()>.5?'rgba(200,40,20,0.55)':'rgba(240,100,30,0.48)'});}
   }
   if(t>45){
     g.globalAlpha=Math.min(1,(t-45)/15);
