@@ -1180,6 +1180,17 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
       }
     }
   }
+  // v513: fountain water droplet particles — scan visible tiles for tile 20, spawn rising spray
+  {const _fm=getMap();
+  for(let _fy=startTY;_fy<=endTY;_fy++){for(let _fx=startTX;_fx<=endTX;_fx++){
+    if(_fm[_fy]?.[_fx]!==20)continue;
+    if((fr+_fx*11+_fy*7)%3!==0)continue;
+    const _fwx=_fx*TW+8+Math.random()*16;
+    const _fwy=_fy*TH+6+Math.random()*4;
+    const _fvx=(Math.random()-.5)*1.2;
+    const _fvy=-1.0-Math.random()*1.4;
+    particles.push({x:_fwx,y:_fwy,vx:_fvx,vy:_fvy,life:16+Math.random()*12,c:Math.random()>.5?'rgba(140,200,255,0.7)':'rgba(200,230,255,0.55)'});
+  }}}
 }
 
 function drawTile(tx_,ty){
