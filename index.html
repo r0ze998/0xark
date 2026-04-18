@@ -11634,7 +11634,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v736',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v737',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -15505,6 +15505,8 @@ function drawSelectPhase(){
         bx(ppX+8,panY+52,ppW-16,16,'rgba(50,0,0,.75)');
         bx(ppX+8,panY+52,ppW-16,1,'#c04040');
         txShadow('\u26A1 PLANS TO STEAL THIS ROUND!',ppX+12,panY+62,6,'#e05040','rgba(0,0,0,.4)');
+        // v737: steal threat alert sparks — urgent red/orange motes from warning row
+        if(fr%10===0){particles.push({x:ppX+10+Math.random()*(ppW-18),y:panY+52+Math.random()*16,vx:(Math.random()-.5)*1.2,vy:-0.6-Math.random()*1.0,life:10+Math.random()*8,c:Math.random()>.4?'rgba(224,60,40,0.82)':'rgba(255,130,40,0.70)'});}
       }
       // Recent round action breakdown — use battleRoundHistory directly (no slice alloc)
       if(_bhLen>0){
