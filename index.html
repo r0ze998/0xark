@@ -11347,7 +11347,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v567',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v568',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17684,6 +17684,13 @@ function drawDungeonConfirm(){
   bx(cx_+12,cy_+ch-34,cw-24,1,'#282848');
   const blink_=Math.floor(fr/22)%2===0;
   if(blink_)txShadow('[Z] ENTER   [X] STAY',cx_+cw/2-90,cy_+ch-14,10,'#f0c830','rgba(0,0,0,.5)');
+  // v568: ominous danger sparks rising inside dungeon confirm dialog (screen-space)
+  if(eSlide>0.5&&fr%16===0){
+    const _dpx=cx_+20+Math.random()*(cw-40),_dpy=cy_+ch-8-Math.random()*16;
+    const _dpc=Math.random()>.5?'rgba(220,60,30,0.58)':'rgba(200,100,20,0.48)';
+    particles.push({x:_dpx,y:_dpy,vx:(Math.random()-.5)*0.30,vy:-0.32-Math.random()*0.30,life:18+Math.random()*12,c:_dpc});
+  }
+  drawParticles(0,0); // v568: render dungeon confirm danger sparks on top of dialog
 }
 
 // v269: victory screen hand card buffer — eliminates map+filter+slice per frame
