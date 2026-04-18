@@ -11632,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v707',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v708',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -13227,11 +13227,15 @@ function dMap(){
           bx(epx+2,epy+2,TW-4,TH-4,'rgba(30,200,80,.25)');
           g.globalAlpha=1;
           txShadow('←',epx+4,epy+TH/2+bob+4,10,'#40e060','rgba(0,0,0,.5)');
+          // v708: escape exit rising green motes (world-space)
+          if((fr+etx*7+ety*11)%20===0){particles.push({x:epx+TW/2+camX,y:epy+TH/2+camY,vx:(Math.random()-.5)*0.9,vy:-0.8-Math.random()*1.4,life:20+Math.random()*12,c:'rgba(40,220,90,0.80)'});}
         }else{
           g.globalAlpha=pulse*0.6;
           bx(epx+2,epy+2,TW-4,TH-4,'rgba(200,180,30,.2)');
           g.globalAlpha=1;
           txShadow('↓',epx+4,epy+TH/2+bob+4,10,'#e0c040','rgba(0,0,0,.4)');
+          // v708: goal exit rising gold motes (world-space)
+          if((fr+etx*7+ety*11)%20===0){particles.push({x:epx+TW/2+camX,y:epy+TH/2+camY,vx:(Math.random()-.5)*0.9,vy:-0.8-Math.random()*1.4,life:20+Math.random()*12,c:'rgba(220,190,40,0.80)'});}
         }
       }
     }
