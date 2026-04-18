@@ -1396,6 +1396,11 @@ function dMap(){
       g.globalAlpha=1;
     }
     drawSprite(p,i===0);
+    // v537: protagonist dungeon walk trail — floor-themed motes when player is moving (world coords)
+    if(i===0&&inDungeon&&fr%4===0&&(Math.abs(p.visualX-p.x*TW)>1||Math.abs(p.visualY-p.y*TH)>1)){
+      const _fc=[,'rgba(80,100,180,0.45)','rgba(120,60,200,0.48)','rgba(200,60,180,0.50)','rgba(220,60,30,0.50)','rgba(255,200,60,0.55)'][currentFloor]||'rgba(80,100,180,0.45)';
+      particles.push({x:p.visualX+8+Math.random()*8,y:p.visualY+28+Math.random()*4,vx:(Math.random()-.5)*0.3,vy:-0.1-Math.random()*0.25,life:12+Math.random()*10,c:_fc});
+    }
     if(i!==0){
       const spx=p.visualX-camX,spy=p.visualY-camY-16;
       drawRivalAlertAnim(p,spx,spy);
