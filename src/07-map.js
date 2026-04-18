@@ -1254,6 +1254,11 @@ function dMap(){
     const _dpx=27*TW+6+Math.random()*20,_dpy=11*TH+Math.random()*10;
     particles.push({x:_dpx,y:_dpy,vx:(Math.random()-.5)*0.55,vy:-0.5-Math.random()*0.9,life:26+Math.random()*18,c:Math.random()>.5?'rgba(120,40,200,0.52)':'rgba(40,180,160,0.42)'});
   }
+  // v532: dungeon stair glow — escape emits rising teal; descent emits rising ember heat (world coords)
+  if(inDungeon&&fr%3===0){
+    if(fogRevealed[currentMap]?.[14]?.[3]){const _esx=3*TW+4+Math.random()*24,_esy=14*TH-Math.random()*6;particles.push({x:_esx,y:_esy,vx:(Math.random()-.5)*0.35,vy:-0.5-Math.random()*0.8,life:22+Math.random()*14,c:Math.random()>.5?'rgba(40,220,160,0.58)':'rgba(180,255,230,0.40)'});}
+    if(fogRevealed[currentMap]?.[14]?.[36]&&currentFloor<MAX_DUNGEON_FLOORS){const _dsx=36*TW+4+Math.random()*24,_dsy=14*TH-Math.random()*4;particles.push({x:_dsx,y:_dsy,vx:(Math.random()-.5)*0.45,vy:-0.4-Math.random()*0.65,life:18+Math.random()*12,c:Math.random()>.4?'rgba(230,80,30,0.62)':'rgba(255,165,55,0.48)'});}
+  }
   drawParticles(camX,camY);
   if(fr%2===0)drawBirds();
   if(fr%2===0)drawPirateDecorations(); // ship/barrels/vines/seagulls (no trees)
@@ -1345,6 +1350,8 @@ function dMap(){
     const npc=npcs[_ni];
     if(npc.map===currentMap&&fogRevealed[currentMap][npc.y]?.[npc.x])drawNPCSprite(npc);
   }
+  // v532: NPC ambient twinkle — gold sparkle above NPC heads, one per 5 frames cycling round-robin (world coords)
+  if(currentMap===0&&fr%5===0){const _ntwi=Math.floor(fr/5)%npcs.length;const _npc=npcs[_ntwi];if(_npc&&_npc.map===0&&fogRevealed[0]?.[_npc.y]?.[_npc.x]){particles.push({x:_npc.x*TW+8+Math.random()*16,y:_npc.y*TH-8+Math.random()*6,vx:(Math.random()-.5)*0.6,vy:-0.3-Math.random()*0.5,life:16+Math.random()*12,c:Math.random()>.5?'rgba(255,210,60,0.70)':'rgba(255,255,180,0.52)'}); }}
 
   // v262: Fill _srtP/_srtI directly — eliminates visiblePl array creation + indexOf per frame
   let _srtN=1;_srtP[0]=pl[0];_srtI[0]=0;
