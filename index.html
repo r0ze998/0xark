@@ -10512,7 +10512,9 @@ function drawSynthesisShop(){
       const _stTi=_BTYPE_MAP&&_BTYPE_MAP[cr.t];const _stCol=_stTi!==undefined&&_BTYPE_COL?_BTYPE_COL[_stTi]:'#888'; // v447
       bx(cx,cy,cellW-8,cellH-4,isSel?'rgba(192,168,96,.3)':'rgba(40,36,28,.6)');
       bx(cx,cy,2,cellH-4,isSel?'#c0a040':_stCol); // v447: type color left stripe (gold when selected)
-      if(isSel){txShadow('\u2713',cx+cellW-20,cy+14,9,'#c0a040','rgba(0,0,0,.4)');}
+      if(isSel){txShadow('\u2713',cx+cellW-20,cy+14,9,'#c0a040','rgba(0,0,0,.4)');
+        // v547: golden alchemy sparkles rise from selected synthesis cards (screen-space)
+        if(fr%9===((i*3)%9)){particles.push({x:cx+4+Math.random()*(cellW-16),y:cy+2+Math.random()*(cellH-8),vx:(Math.random()-.5)*0.48,vy:-0.34-Math.random()*0.36,life:13+Math.random()*8,c:Math.random()>.4?'rgba(240,192,60,0.78)':'rgba(255,230,130,0.65)'});}}
       bx(cx+4,cy+4,20,20,cr.d);bx(cx+5,cy+5,18,18,cr.c);
       bx(cx+4,cy+4,20,1,_stCol); // v447: type color top border on mini card
       drawCardCharacter(cx+6,cy+6,cid,0.7,fr);
@@ -10525,6 +10527,7 @@ function drawSynthesisShop(){
   const tgt=_SYNTH_RAR_LABELS[synthRarityFilter+1];
   if(tgt)txShadow(_SYNTH_LEG_LBL[synthRarityFilter]||('3\u00D7 '+_SYNTH_RAR_LABELS[synthRarityFilter]+' \u2192 1\u00D7 '+tgt),80,H-88,6,'#806030','rgba(0,0,0,.3)'); // v341: pre-baked
   txShadow('← → change rarity  Z=select/confirm  X=close',80,H-68,5,'#686068','rgba(0,0,0,.3)');
+  drawParticles(0,0); // v547: render synthesis selection sparkles on top of overlay
 }
 
 // ═══════════════════════════════════════
@@ -11296,7 +11299,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v546',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v547',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
