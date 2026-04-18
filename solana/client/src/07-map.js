@@ -555,7 +555,7 @@ const _FOG_RGB=FOG_COLORS.map(h=>{const r=parseInt(h.slice(1,3),16),g_=parseInt(
 const _VIGNETTE_EDGE=44,_VIGNETTE_VIS_H=H-HUD_HEIGHT;
 const _dungVigGrads=(()=>{
   const grads=[null];
-  const cols=[[],[],[80,140,200],[60,140,80],[140,60,200],[200,80,20],[100,20,160]]; // fl 1-5
+  const cols=[[],[80,140,200],[60,140,80],[140,60,200],[200,80,20],[100,20,160]]; // fl 1-5 (cols[0] unused)
   for(let fl=1;fl<=5;fl++){
     const [r,gv,b]=cols[fl];
     const full=`rgba(${r},${gv},${b},1)`,none='rgba(0,0,0,0)',e=_VIGNETTE_EDGE,vh=_VIGNETTE_VIS_H;
