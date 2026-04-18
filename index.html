@@ -11620,7 +11620,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v691',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v692',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14958,6 +14958,8 @@ function drawVsSplash(){
     bx(W/2-tntW/2,H/2+24,tntW,22,'rgba(0,0,0,.6)');
     if(_tauntRef!==taunt){_tauntRef=taunt;_tauntLbl='\u201C'+taunt+'\u201D';}
     txShadow(_tauntLbl,W/2-tntW/2+10,H/2+40,9,'#f0e8c8','rgba(0,0,0,.5)'); // v345: lazy cache
+    // v692: rival taunt speech-spark — letter motes pop from taunt text as it appears (screen-space)
+    if(t===37){const _tCol=vsRivalIdx===1?'rgba(240,128,192,0.85)':'rgba(240,200,48,0.85)';for(let _ti=0;_ti<8;_ti++){particles.push({x:W/2-tntW/2+16+Math.random()*(tntW-32),y:H/2+32+Math.random()*12,vx:(Math.random()-.5)*0.9,vy:-0.4-Math.random()*0.7,life:20+Math.random()*14,c:Math.random()>.4?_tCol:'rgba(240,232,200,0.65)'});}}
     g.globalAlpha=1;
   }
 
