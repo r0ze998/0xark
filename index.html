@@ -11561,7 +11561,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v645',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v646',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14452,7 +14452,9 @@ function drawOpponentInfoBox(){
   // HP hearts rival 1
   {const dmgFlash1=bpHPDmgAnim[1]>0&&Math.floor(fr/3)%2===0;
   const healFlash1=bpHPHealAnim[1]>0&&Math.floor(fr/3)%2===0; // v452
-  _drawHPHearts(bx_+80,by_+9,bpHP[1],'#e84040','#ff8888','#401818',dmgFlash1,healFlash1);}
+  _drawHPHearts(bx_+80,by_+9,bpHP[1],'#e84040','#ff8888','#401818',dmgFlash1,healFlash1);
+  // v646: VEGA HP hit sparks — brief crimson burst on damage taken (screen-space)
+  if(bpHPDmgAnim[1]>18){for(let _hi=0;_hi<3;_hi++){particles.push({x:bx_+80+Math.random()*54,y:by_+9+Math.random()*9,vx:(Math.random()-.5)*.55,vy:-.30-Math.random()*.28,life:10+Math.random()*6,c:'rgba(255,60,50,0.85)'}); }}}
   // v450: KO badge — rival at 1 HP means one hit KO → they surrender ALL cards
   if(bpHP[1]===1&&battlePhase==='select'){
     const _koA=0.6+_sFr18*0.4;g.globalAlpha=_koA;
@@ -14496,7 +14498,9 @@ function drawOpponentInfoBox(){
   // HP hearts rival 2
   if(r2alive){const dmgFlash2=bpHPDmgAnim[2]>0&&Math.floor(fr/3)%2===0;
   const healFlash2=bpHPHealAnim[2]>0&&Math.floor(fr/3)%2===0; // v452
-  _drawHPHearts(bx_+80,sepY+7,bpHP[2],'#e8a040','#ffcc88','#402018',dmgFlash2,healFlash2);}
+  _drawHPHearts(bx_+80,sepY+7,bpHP[2],'#e8a040','#ffcc88','#402018',dmgFlash2,healFlash2);
+  // v646: MIRA HP hit sparks — brief orange burst on damage taken (screen-space)
+  if(bpHPDmgAnim[2]>18){for(let _hi=0;_hi<3;_hi++){particles.push({x:bx_+80+Math.random()*54,y:sepY+7+Math.random()*9,vx:(Math.random()-.5)*.55,vy:-.30-Math.random()*.28,life:10+Math.random()*6,c:'rgba(255,120,40,0.85)'}); }}}
   // v450: KO badge for rival 2 at 1 HP
   if(bpHP[2]===1&&r2alive&&battlePhase==='select'){
     const _koA2=0.6+_sFr18*0.4;g.globalAlpha=_koA2;
@@ -14578,7 +14582,10 @@ function drawPlayerInfoBox(){
     bx(hhi+2,hhj+6,4,1,hc);bx(hhi+3,hhj+7,2,1,hc);
     bx(hhi+4,hhj+8,1,1,hc);
     if(filled){bx(hhi+1,hhj+2,2,1,'rgba(255,255,255,.35)');}
-  }}
+  }
+  // v646: player HP hit sparks — brief crimson burst on damage taken (screen-space)
+  if(bpHPDmgAnim[0]>18){for(let _hi=0;_hi<3;_hi++){particles.push({x:hx+Math.random()*54,y:hy+Math.random()*9,vx:(Math.random()-.5)*.55,vy:-.30-Math.random()*.28,life:10+Math.random()*6,c:'rgba(255,60,50,0.88)'}); }}
+  }
   // v450: Player DANGER badge at 1 HP — next defeat = card lost
   if(bpHP[0]===1&&battlePhase==='select'){
     const _pdA=0.65+_sFr15*0.35;g.globalAlpha=_pdA;
