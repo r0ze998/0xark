@@ -1100,6 +1100,11 @@ function drawDungeonAnimatedOverlays(startTX,startTY,endTX,endTY){
         g.globalAlpha=pulse*.35;g.fillRect(px+8,py+22,4,2);g.fillRect(px+20,py+22,4,2);
         g.globalAlpha=pulse*.25;g.fillRect(px+14,py+24,4,1);
         g.globalAlpha=1;
+        // v516: altar magical motes rising from orb (world coords)
+        if((fr+(x*13+y*11))%8===0){
+          const _awx=x*TW+10+Math.random()*12,_awy=y*TH+Math.random()*10;
+          particles.push({x:_awx,y:_awy,vx:(Math.random()-.5)*0.4,vy:-0.3-Math.random()*0.5,life:35+Math.random()*20,c:Math.random()>.5?'rgba(200,160,60,0.6)':'rgba(255,220,100,0.5)'});
+        }
       }
     }
   }
