@@ -252,8 +252,8 @@ function update(){
           if(remaining<10000&&decayWarn[i]<3){
             decayWarn[i]=3;sfxDangerAlert();screenShake(2,4);
             objectInteractMsg=cardName+' CRITICAL! RUN!';objectInteractTimer=90;
-            // v482: intense red burst from critical decaying card HUD slot
-            {const _cx=310+(i%8)*30+14,_cy=hudY+24;
+            // v482: intense red burst from critical decaying card HUD slot (v509 fix: world coords)
+            {const _cx=310+(i%8)*30+14+camX,_cy=hudY+24+camY;
             for(let _di=0;_di<10;_di++){const _da=(_di/10)*Math.PI*2;const _ds=1+Math.random()*1.8;
               particles.push({x:_cx,y:_cy,vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-2,life:16+Math.random()*10,c:Math.random()>.5?'rgba(220,40,20,1)':'rgba(255,140,80,1)'});}}
           }
@@ -319,6 +319,12 @@ function update(){
       qteActive=false;qteSuccess=false;
       sfxQteMiss();
       qteResultText='MISSED!';qteResultTimer=40;
+      // v508: MISSED! — red/dark shatter burst from player position
+      {const _mx=160,_my=H-130;screenShake(3,14);
+      for(let _mi=0;_mi<14;_mi++){const _ma=(_mi/14)*Math.PI*2;const _ms=1+Math.random()*2.5;
+        particles.push({x:_mx,y:_my,vx:Math.cos(_ma)*_ms,vy:Math.sin(_ma)*_ms-1,
+          life:16+Math.random()*12,c:Math.random()>.4?'rgba(220,40,40,1)':'rgba(100,20,20,1)'});
+      }}
     }
   }
   if(qteResultTimer>0)qteResultTimer--;
@@ -387,6 +393,7 @@ function update(){
               sc='act';battlePhase='vs_splash';bpFrame=fr;
               battleRoundHistory=[];_battleRoundNet=0; // v90/v284: reset round history+net on new battle
               bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];bpHPHealAnim=[0,0,0];bpDmgFloats=[];
+              _koBurstFrame=[-9999,-9999,-9999]; // v508: reset KO burst timestamps for new battle
               startWipe('mosaic_out',20);
               // v79: track battle_rival mission
               if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){
@@ -486,9 +493,9 @@ function draw(){
       bx(px-4,py-4,40,56,'rgba(80,40,160,.4)');
       g.globalAlpha=1;
       txShadow(_STEALTH_LBL[shadowStepsLeft]||('STEALTH:'+shadowStepsLeft),px-20,py-24,5,'#9060c0','rgba(0,0,0,.4)');
-      // Emit 1 purple particle every 6 frames during stealth
+      // Emit 1 purple particle every 6 frames during stealth (v509 fix: world coords)
       if(fr%6===0){
-        particles.push({x:px+4+Math.random()*24,y:py+48+Math.random()*12,vx:(Math.random()-.5)*.6,vy:-0.7-Math.random()*0.8,life:22+Math.random()*12,c:'rgba(160,90,240,.7)'});
+        particles.push({x:pl[0].visualX+4+Math.random()*24,y:pl[0].visualY+48+Math.random()*12,vx:(Math.random()-.5)*.6,vy:-0.7-Math.random()*0.8,life:22+Math.random()*12,c:'rgba(160,90,240,.7)'});
       }
     }
   }

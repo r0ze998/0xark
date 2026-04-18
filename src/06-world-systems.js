@@ -1750,13 +1750,17 @@ function drawEncounterExclamation(){
   const t=fr-encounterExclFrame;
   if(t>30){encounterExclActive=false;return;}
   // Overshoot pop-in scale: 0→1.4→1.0 over first 8 frames
-  // v495: encounter spark burst — one shot at t===1
+  // v495: encounter spark burst — one shot at t===1 (v508 fix: world coords — no -camX/-camY)
   if(t===1){
-    const _epx=encounterExclPlayerX-camX+8,_epy=encounterExclPlayerY-camY;
-    const _erx=encounterExclRivalX-camX+8,_ery=encounterExclRivalY-camY;
-    for(let _ei=0;_ei<8;_ei++){const _ea=(_ei/8)*Math.PI*2;const _es=1+Math.random()*2;
-      particles.push({x:_epx,y:_epy,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-2,life:12+Math.random()*8,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,80,80,1)'});
-      particles.push({x:_erx,y:_ery,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-2,life:12+Math.random()*8,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,80,80,1)'});
+    const _epx=encounterExclPlayerX+8,_epy=encounterExclPlayerY;
+    const _erx=encounterExclRivalX+8,_ery=encounterExclRivalY;
+    // midpoint clash burst for extra drama
+    const _emx=(_epx+_erx)/2,_emy=(_epy+_ery)/2;
+    for(let _ei=0;_ei<12;_ei++){const _ea=(_ei/12)*Math.PI*2;const _es=1.5+Math.random()*3;
+      particles.push({x:_epx,y:_epy,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-2,life:14+Math.random()*10,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,80,80,1)'});
+      particles.push({x:_erx,y:_ery,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-2,life:14+Math.random()*10,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,80,80,1)'});
+      if(_ei<8)particles.push({x:_emx+(Math.random()-0.5)*16,y:_emy+(Math.random()-0.5)*16,
+        vx:(Math.random()-0.5)*3,vy:-1.5-Math.random()*2.5,life:16+Math.random()*12,c:'rgba(255,255,180,1)'});
     }
   }
   const rawScl=t<4?(t/4)*1.4:t<8?1.4-(t-4)*0.1:1.0;
@@ -2297,7 +2301,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v507',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v510',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)

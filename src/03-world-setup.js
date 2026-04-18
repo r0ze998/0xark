@@ -472,8 +472,8 @@ function dungeonTurnStep(aiIdx){
             r.x=ex.targetX;r.y=ex.targetY;r.visualX=ex.targetX*TW;r.visualY=ex.targetY*TH;
             if(ex.targetMap===currentMap&&oldMap!==currentMap){
               rivalAlert=RIVAL_ALERT_DUR;rivalAlertName=r.n;rivalAlertRival=aiIdx;flash();beep(660,.04,.06); // v439
-              // v476: red threat burst around player when rival enters floor
-              {const _rpx=pl[0].visualX-camX+8,_rpy=pl[0].visualY-camY+8;
+              // v476: red threat burst around player when rival enters floor (v509 fix: world coords)
+              {const _rpx=pl[0].visualX+8,_rpy=pl[0].visualY+8;
               const _rc=aiIdx===0?'rgba(220,60,160,1)':'rgba(220,180,30,1)';
               const _rc2=aiIdx===0?'rgba(255,160,200,1)':'rgba(255,240,120,1)';
               screenShake(2,4);
@@ -724,8 +724,8 @@ function updateProximityTension(){
   if(proximityDangerLevel>=4&&!rivalDangerAlertShown){
     rivalDangerAlertShown=true;
     sfxDangerAlert();screenShake(2,4);
-    // v492: red danger pulse from player when rival closes in
-    {const _dpx=pl[0].visualX-camX+8,_dpy=pl[0].visualY-camY+8;
+    // v492: red danger pulse from player when rival closes in (v509 fix: world coords)
+    {const _dpx=pl[0].visualX+8,_dpy=pl[0].visualY+8;
     for(let _ddi=0;_ddi<12;_ddi++){const _dda=(_ddi/12)*Math.PI*2;const _dds=1+Math.random()*2.5;
       particles.push({x:_dpx,y:_dpy,vx:Math.cos(_dda)*_dds,vy:Math.sin(_dda)*_dds-1,life:14+Math.random()*10,c:Math.random()>.5?'rgba(220,40,40,1)':'rgba(255,120,80,1)'});
     }}

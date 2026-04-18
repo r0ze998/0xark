@@ -344,9 +344,9 @@ function executeMapCard(cardId,slot){
     shadowStepsLeft=30;
     mapCardUseActive=false;_mapUsableCache=null;
     sfxShadow();
-    // v472: purple shadow burst + shake
+    // v472: purple shadow burst + shake (v508 fix: world coords)
     screenShake(2,5);
-    {const _sx=pl[0].visualX-camX+8,_sy=pl[0].visualY-camY+8;
+    {const _sx=pl[0].visualX+8,_sy=pl[0].visualY+8;
     for(let _ui=0;_ui<12;_ui++){const _ua=(_ui/12)*Math.PI*2;const _us=0.8+Math.random()*2;
       particles.push({x:_sx,y:_sy,vx:Math.cos(_ua)*_us,vy:Math.sin(_ua)*_us-1,life:20+Math.random()*14,c:Math.random()>.5?'rgba(100,40,180,1)':'rgba(190,130,255,1)'});
     }}
@@ -359,9 +359,9 @@ function executeMapCard(cardId,slot){
     shadowStepsLeft=60;
     mapCardUseActive=false;_mapUsableCache=null;
     sfxShadow();
-    // v472: deep purple shadow burst + shake
+    // v472: deep purple shadow burst + shake (v508 fix: world coords)
     screenShake(2,5);
-    {const _sx=pl[0].visualX-camX+8,_sy=pl[0].visualY-camY+8;
+    {const _sx=pl[0].visualX+8,_sy=pl[0].visualY+8;
     for(let _ui=0;_ui<16;_ui++){const _ua=(_ui/16)*Math.PI*2;const _us=0.8+Math.random()*2.5;
       particles.push({x:_sx,y:_sy,vx:Math.cos(_ua)*_us,vy:Math.sin(_ua)*_us-1,life:24+Math.random()*16,c:Math.random()>.5?'rgba(60,10,130,1)':'rgba(160,90,240,1)'});
     }}
@@ -385,9 +385,9 @@ function executeMapCard(cardId,slot){
     if(!inDungeon){twSet('ARK GATE only works in the dungeon!');return;}
     pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
     sfxMapChange();sfxAreaEntry();
-    // v498: gate escape burst — blue/white warp flash before wipe
+    // v498: gate escape burst — blue/white warp flash before wipe (v508 fix: world coords)
     screenShake(3,6);
-    {const _ax=pl[0].visualX-camX+8,_ay=pl[0].visualY-camY+8;
+    {const _ax=pl[0].visualX+8,_ay=pl[0].visualY+8;
     for(let _ei=0;_ei<20;_ei++){const _ea=(_ei/20)*Math.PI*2;const _es=2+Math.random()*4;
       particles.push({x:_ax,y:_ay,vx:Math.cos(_ea)*_es,vy:Math.sin(_ea)*_es-3,life:18+Math.random()*12,c:Math.random()>.4?'rgba(200,240,255,1)':'rgba(255,255,200,1)'});
     }}
@@ -415,9 +415,9 @@ function executeMapCard(cardId,slot){
     if(!inDungeon){twSet('GENESIS only works in the dungeon!');return;}
     pl[0].cd[slot]=0;cardTimers[slot]=0;syncCardCount(0);
     sfxMapChange();sfxAreaEntry();
-    // v498: genesis escape burst — green/gold rebirth flash before wipe
+    // v498: genesis escape burst — green/gold rebirth flash before wipe (v508 fix: world coords)
     screenShake(3,6);
-    {const _gx=pl[0].visualX-camX+8,_gy=pl[0].visualY-camY+8;
+    {const _gx=pl[0].visualX+8,_gy=pl[0].visualY+8;
     for(let _gi=0;_gi<20;_gi++){const _ga=(_gi/20)*Math.PI*2;const _gs=2+Math.random()*4;
       particles.push({x:_gx,y:_gy,vx:Math.cos(_ga)*_gs,vy:Math.sin(_ga)*_gs-3,life:18+Math.random()*12,c:Math.random()>.4?'rgba(80,230,140,1)':'rgba(255,210,80,1)'});
     }}
@@ -466,9 +466,9 @@ function executeDirCard(dir){
           tileCacheDirty=true;edgeCacheDirty=true;
           sfxBurn();
           flash();
-          // v472: fire particle burst at burn tile
+          // v472: fire particle burst at burn tile (v508 fix: world coords)
           screenShake(3,7);
-          {const _fx_=tx_*TW-camX+8,_fy_=ty_*TH-camY+8;
+          {const _fx_=tx_*TW+8,_fy_=ty_*TH+8;
           for(let _fi=0;_fi<14;_fi++){const _fa=(_fi/14)*Math.PI*2;const _fs=1+Math.random()*2.5;
             particles.push({x:_fx_,y:_fy_,vx:Math.cos(_fa)*_fs,vy:Math.sin(_fa)*_fs-2,life:18+Math.random()*16,c:Math.random()>.4?'rgba(255,120,20,1)':'rgba(255,220,60,1)'});
           }}
@@ -494,12 +494,12 @@ function executeDirCard(dir){
         sfxPhase();
         flash();
         screenShake(2,5);
-        // v474: ghostly wall-phase particle burst at midpoint + landing
-        {const _mx=(p.x-1+(fx-p.x)/2)*TW-camX+8,_my=(p.y-1+(fy-p.y)/2)*TH-camY+8;
+        // v474: ghostly wall-phase particle burst at midpoint + landing (v508 fix: world coords)
+        {const _mx=(p.x+(fx-p.x)/2)*TW+8,_my=(p.y+(fy-p.y)/2)*TH+8;
         for(let _pi=0;_pi<8;_pi++){const _pa=(_pi/8)*Math.PI*2;const _ps=1+Math.random()*1.8;
           particles.push({x:_mx,y:_my,vx:Math.cos(_pa)*_ps,vy:Math.sin(_pa)*_ps,life:14+Math.random()*10,c:Math.random()>.5?'rgba(140,255,180,.7)':'rgba(220,255,240,.6)'});
         }
-        const _lx=fx*TW-camX+8,_ly=fy*TH-camY+8;
+        const _lx=fx*TW+8,_ly=fy*TH+8;
         for(let _pi=0;_pi<12;_pi++){const _pa=(_pi/12)*Math.PI*2;const _ps=1.2+Math.random()*2;
           particles.push({x:_lx,y:_ly,vx:Math.cos(_pa)*_ps,vy:Math.sin(_pa)*_ps-0.5,life:18+Math.random()*12,c:Math.random()>.5?'rgba(80,220,140,1)':'rgba(200,255,220,1)'});
         }}
@@ -531,13 +531,13 @@ function executeDirCard(dir){
         tileCacheDirty=true;edgeCacheDirty=true;
         sfxPhase();
         flash();
-        // v472: cyan teleport burst at origin and landing
+        // v472: cyan teleport burst at origin and landing (v508 fix: world coords)
         screenShake(3,6);
-        {const _ox=origX*TW-camX+8,_oy=origY*TH-camY+8;
+        {const _ox=origX*TW+8,_oy=origY*TH+8;
         for(let _ti=0;_ti<10;_ti++){const _ta=(_ti/10)*Math.PI*2;const _ts=1.2+Math.random()*2;
           particles.push({x:_ox,y:_oy,vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-0.5,life:18+Math.random()*10,c:Math.random()>.5?'rgba(60,200,240,1)':'rgba(180,240,255,1)'});
         }
-        const _dx_=bestX*TW-camX+8,_dy_=bestY*TH-camY+8;
+        const _dx_=bestX*TW+8,_dy_=bestY*TH+8;
         for(let _ti=0;_ti<14;_ti++){const _ta=(_ti/14)*Math.PI*2;const _ts=1+Math.random()*2.5;
           particles.push({x:_dx_,y:_dy_,vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-1,life:22+Math.random()*14,c:Math.random()>.5?'rgba(80,210,255,1)':'rgba(220,250,255,1)'});
         }}

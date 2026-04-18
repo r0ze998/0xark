@@ -1085,6 +1085,7 @@ let _crystalUseFrame=-9999; // v467: crystal reveal timestamp for cyan banner
 let _altarUseFrame=-9999;   // v467: altar activation timestamp for golden banner
 let _campfireRestFrame=-9999; // v468: campfire rest timestamp for warm orange banner
 let _defeatBurstFrame=-9999; // v483: one-shot particle burst on player defeat
+let _koBurstFrame=[-9999,-9999,-9999]; // v508: one-shot KO burst per rival (idx 1,2)
 
 // GBA-style scanlines — pre-baked once; single drawImage per frame (zero per-frame cost)
 const scanCanvas=document.createElement('canvas');

@@ -104,7 +104,18 @@ const _qteVigAttack=(()=>{
 // Card effect animation helpers
 function drawCrystalEffect(cx_,cy_,evT){
   // Blue energy spiral around player sprite, then lightning bolt
-  if(evT===1)sfxCrystal();
+  if(evT===1){sfxCrystal();screenShake(2,18);
+    // v508: global particle burst — ice shard ring
+    for(let i=0;i<18;i++){const ang=i/18*Math.PI*2;const spd=2+Math.random()*3;
+      particles.push({x:cx_,y:cy_,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-1.5,
+        life:28+Math.random()*16,c:Math.random()<0.6?'#48b8e8':'#c8f0ff'});
+    }
+    // extra inner ring closer, slower
+    for(let i=0;i<8;i++){const ang=i/8*Math.PI*2;
+      particles.push({x:cx_,y:cy_,vx:Math.cos(ang)*1.2,vy:Math.sin(ang)*1.2-0.8,
+        life:18+Math.random()*10,c:'#a0e0ff'});
+    }
+  }
   const a=Math.max(0,1-evT/35);
   g.save();g.globalAlpha=a;
   // v390: sin-addition with _ORB_SI8/CI8 — 2 trig calls instead of 16
@@ -129,7 +140,15 @@ function drawCrystalEffect(cx_,cy_,evT){
 }
 
 function drawShadowEffect(cx_,cy_,evT){
-  if(evT===1)sfxShadow();
+  if(evT===1){sfxShadow();screenShake(1,10);
+    // v508: shadow cast — dark wisps spiral outward
+    for(let i=0;i<16;i++){const ang=i/16*Math.PI*2;const spd=1+Math.random()*2.5;
+      const c=Math.random()<0.5?'#501e78':Math.random()<0.6?'#280a40':'rgba(120,60,180,0.8)';
+      particles.push({x:cx_+(Math.random()-0.5)*10,y:cy_+(Math.random()-0.5)*10,
+        vx:Math.cos(ang)*spd*0.6,vy:Math.sin(ang)*spd-1.8,
+        life:20+Math.random()*16,c});
+    }
+  }
   // Player fades to semi-transparent with dark particles
   if(evT<25){
     const a=0.3+Math.sin(evT*0.3)*0.2;
@@ -148,7 +167,20 @@ function drawShadowEffect(cx_,cy_,evT){
 }
 
 function drawFlameEffect(cx_,cy_,evT){
-  if(evT===1)sfxFlame();
+  if(evT===1){sfxFlame();screenShake(3,20);
+    // v508: global particle burst — fire explosion
+    for(let i=0;i<24;i++){const ang=i/24*Math.PI*2;const spd=3+Math.random()*4;
+      const c=Math.random()<0.5?'#dc5028':Math.random()<0.7?'#ffa820':'#ffc83c';
+      particles.push({x:cx_,y:cy_,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-2.5,
+        life:22+Math.random()*18,c});
+    }
+    // rising embers
+    for(let i=0;i<12;i++){
+      particles.push({x:cx_+(Math.random()-0.5)*30,y:cy_+(Math.random()-0.5)*20,
+        vx:(Math.random()-0.5)*1.5,vy:-2-Math.random()*3,
+        life:30+Math.random()*20,c:Math.random()<0.5?'#ffc83c':'#ff9020'});
+    }
+  }
   // Fire particles erupting from center
   // v390: sin-addition with _ORB_SI12/CI12; pre-baked dist via _FLAME_DIST13 — 2 trig calls vs 24
   {const pa=Math.max(0,1-evT/35);g.globalAlpha=pa;
@@ -169,7 +201,19 @@ function drawFlameEffect(cx_,cy_,evT){
 }
 
 function drawStormEffect(evT){
-  if(evT===1)sfxStorm();
+  if(evT===1){sfxStorm();screenShake(4,22);
+    // v508: global particle burst — lightning scatter across screen
+    for(let i=0;i<30;i++){const px_=Math.random()*W;const py_=Math.random()*(H*0.6);
+      const c=Math.random()<0.6?'#ffffc8':Math.random()<0.7?'#c8e8ff':'#ffffff';
+      particles.push({x:px_,y:py_,vx:(Math.random()-0.5)*2,vy:1+Math.random()*2,
+        life:12+Math.random()*14,c});
+    }
+    // converging bolts toward center from top
+    for(let i=0;i<10;i++){const ang=Math.PI/2+((Math.random()-0.5)*0.6);
+      particles.push({x:Math.random()*W,y:0,vx:(Math.random()-0.5)*3,
+        vy:4+Math.random()*3,life:10+Math.random()*8,c:'#e8f8ff'});
+    }
+  }
   // Screen shake
   if(evT<20){
     const shk=Math.sin(evT*2)*(20-evT)*0.3;
@@ -195,7 +239,20 @@ function drawStormEffect(evT){
 }
 
 function drawVoidEffect(cx_,cy_,evT){
-  if(evT===1)sfxVoid();
+  if(evT===1){sfxVoid();screenShake(2,16);
+    // v508: global particle burst — void implosion then spray
+    for(let i=0;i<20;i++){const ang=i/20*Math.PI*2;const spd=1.5+Math.random()*3;
+      const c=Math.random()<0.5?'#6432a0':Math.random()<0.6?'#b464dc':'#280a40';
+      particles.push({x:cx_,y:cy_,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-1,
+        life:24+Math.random()*18,c});
+    }
+    // dark wisps drifting in
+    for(let i=0;i<8;i++){const ang=Math.random()*Math.PI*2;const r=60+Math.random()*40;
+      particles.push({x:cx_+Math.cos(ang)*r,y:cy_+Math.sin(ang)*r,
+        vx:-Math.cos(ang)*2,vy:-Math.sin(ang)*2,
+        life:20+Math.random()*12,c:'#501e78'});
+    }
+  }
   // Purple vortex in center
   const a=Math.max(0,1-evT/35);
   g.save();g.globalAlpha=a;
@@ -314,7 +371,13 @@ function drawResolvingPhase(){
         g.lineTo(tgtCX+20+i*10,tgtCY+20+i*5);
         g.stroke();
       }
-      g.restore();if(evT===1)sfxSlash();
+      g.restore();if(evT===1){sfxSlash();
+        // v510: slash impact sparks at target position
+        screenShake(2,6);
+        for(let _si=0;_si<12;_si++){const _sa=(_si/12)*Math.PI*2;const _ss2=1.5+Math.random()*3;
+          particles.push({x:tgtCX+(Math.random()*16-8),y:tgtCY+(Math.random()*16-8),vx:Math.cos(_sa)*_ss2,vy:Math.sin(_sa)*_ss2-1.5,life:14+Math.random()*10,c:Math.random()>.5?'rgba(220,50,30,1)':'rgba(255,160,60,1)'});
+        }
+      }
     }
     if(ev.effect==='shield'&&evT<30){
       const r_=evT*2.5,a_=1-evT/30;g.save();g.globalAlpha=a_;
@@ -588,6 +651,20 @@ function drawResolvingPhase(){
         screenShake(rar>=3?rar:2, rar>=3?rar*3:4);
         hitPause(rar>=5?5:rar>=4?4:rar>=3?3:2);
         triggerCardGetBurst(playerCX,playerCY-20,rcol);
+        // v508: extra particles for high-rarity steals — legendary/epic feel the difference
+        if(rar>=3){const _xtra=rar>=5?28:rar>=4?18:10;
+          for(let _xi=0;_xi<_xtra;_xi++){const _xa=(_xi/_xtra)*Math.PI*2;const _xs=2.5+Math.random()*4.5;
+            particles.push({x:playerCX,y:playerCY-20,
+              vx:Math.cos(_xa)*_xs,vy:Math.sin(_xa)*_xs-2.5,
+              life:22+Math.random()*22,c:Math.random()>.4?rcol:'#ffffff'});
+          }
+          // secondary wave for legendary
+          if(rar>=5){for(let _xi=0;_xi<14;_xi++){const _xa=(_xi/14)*Math.PI*2;
+            particles.push({x:playerCX,y:playerCY-20,
+              vx:Math.cos(_xa)*1.5,vy:Math.sin(_xa)*1.5-1,
+              life:30+Math.random()*20,c:'#ffd700'});
+          }}
+        }
       }
       // Rarity label: size and boldness scale with rarity
       if(evT>8&&evT<45){
@@ -618,6 +695,13 @@ function drawResolvingPhase(){
       g.restore();g.globalAlpha=1;
     }
     // v214: Floating heal number for defense/recovery cards
+    if(ev.heal&&ev.heal>0&&evT===6){
+      // v510: green healing sparkle burst at player position
+      sfxShield();screenShake(1,3);
+      for(let _hi=0;_hi<14;_hi++){const _ha=(_hi/14)*Math.PI*2;const _hs=1+Math.random()*2;
+        particles.push({x:playerCX+(Math.random()*12-6),y:playerCY+(Math.random()*12-6),vx:Math.cos(_ha)*_hs,vy:Math.sin(_ha)*_hs-1.8,life:18+Math.random()*12,c:Math.random()>.4?'rgba(64,232,120,1)':'rgba(200,255,220,1)'});
+      }
+    }
     if(ev.heal&&ev.heal>0&&evT>=6&&evT<38){
       const fProg=(evT-6)/32;
       const fY=(playerCY-20)-fProg*55;
@@ -847,6 +931,17 @@ function drawResolvingPhase(){
       if(bpHP[ri]!==0)continue;
       const koCX=ri===1?oppCX:W-310;
       const koCY=ri===1?oppCY:140;
+      // v508: one-shot KO burst when rival first hits 0 HP
+      if(fr-_koBurstFrame[ri]>120){_koBurstFrame[ri]=fr;screenShake(3,12);
+        for(let _ki=0;_ki<20;_ki++){const _ka=(_ki/20)*Math.PI*2;const _ks=2+Math.random()*4;
+          particles.push({x:koCX,y:koCY,vx:Math.cos(_ka)*_ks,vy:Math.sin(_ka)*_ks-3,
+            life:24+Math.random()*20,c:Math.random()>.4?'rgba(255,60,20,1)':'rgba(255,200,80,1)'});
+        }
+        for(let _ki=0;_ki<10;_ki++){particles.push({x:koCX+(Math.random()-0.5)*40,
+          y:koCY-20+Math.random()*40,vx:(Math.random()-0.5)*2,vy:-2-Math.random()*3,
+          life:18+Math.random()*14,c:'rgba(255,160,40,1)'});
+        }
+      }
       const koPulse=0.65+0.35*_sFr30; // v369: cached
       g.globalAlpha=koPulse*0.3;bx(koCX-32,koCY-48,64,80,'#c02020');g.globalAlpha=1;
       const koScale=1+Math.max(0,_sFr18*0.12); // v369: cached

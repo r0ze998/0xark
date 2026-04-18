@@ -51,6 +51,12 @@ function tryMovePlayer(dx, dy) {
   edgeCacheDirty = true;
   mpBroadcastMove();
   footprints.push({map:currentMap, x:nx, y:ny, age:0});
+  // v510: floor-specific walk dust particles (world coords for drawParticles(camX,camY))
+  if(inDungeon&&stepCounter%2===0){
+    const _wpx=p.visualX+8,_wpy=p.visualY+TH-2;
+    const _wc=currentFloor>=5?'rgba(120,30,200,0.5)':currentFloor===4?'rgba(200,70,20,0.5)':currentFloor===3?'rgba(140,60,200,0.4)':'rgba(140,140,160,0.35)';
+    for(let _wi=0;_wi<3;_wi++){particles.push({x:_wpx+(Math.random()*10-5),y:_wpy,vx:(Math.random()-0.5)*0.5,vy:-0.4-Math.random()*0.4,life:8+Math.random()*6,c:_wc});}
+  }
   if(inDungeon){ fogRevealCurrentRoom(currentMap,nx,ny); fogRevealRadius(currentMap,nx,ny,2); }
   fogSave();
   // v439: floor fully-explored bonus — restore spells when first 100%-explored a dungeon floor

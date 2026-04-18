@@ -1741,9 +1741,9 @@ function dMap(){
   {const _mNowDone=!!(runMission&&runMission.completed);
   if(_mNowDone&&!_lastMissionDone){
     _missionCompleteFrame=fr;
-    // golden particle burst from HUD mission strip area
+    // golden particle burst from HUD mission strip area (v508 fix: world coords)
     for(let _mi=0;_mi<14;_mi++){const _ma=(_mi/14)*Math.PI*2;const _ms=1.2+Math.random()*2.5;
-      particles.push({x:100+Math.random()*80,y:hudY+40,vx:Math.cos(_ma)*_ms,vy:Math.sin(_ma)*_ms-2.5,life:24+Math.random()*18,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,255,160,1)'});
+      particles.push({x:100+camX+Math.random()*80,y:hudY+40+camY,vx:Math.cos(_ma)*_ms,vy:Math.sin(_ma)*_ms-2.5,life:24+Math.random()*18,c:Math.random()>.5?'rgba(255,200,40,1)':'rgba(255,255,160,1)'});
     }
   }
   _lastMissionDone=_mNowDone;}
@@ -1797,7 +1797,8 @@ function dMap(){
     txShadow(_STREAK_LBL[streakCount]||('STREAK:'+streakCount+'x'),310,hudY+44,sz,streakCol,'rgba(0,0,0,.5)'); // v314
     // v502: milestone particle burst when streak hits 3x (orange) / 5x (gold) / 10x (rainbow)
     if(streakDisplayTimer===59&&(streakCount===3||streakCount===5||streakCount===10)){
-      const _sx=310,_sy=hudY+44;
+      // v508 fix: world coords (+camX/+camY) — drawParticles(camX,camY) subtracts camera offset
+      const _sx=310+camX,_sy=hudY+44+camY;
       const _isGold=streakCount>=10,_isOrange=streakCount>=5&&streakCount<10;
       const _mc=streakCount>=10?30:streakCount>=5?20:14;
       screenShake(streakCount>=5?3:2,streakCount>=5?6:4);
@@ -1814,10 +1815,10 @@ function dMap(){
     g.globalAlpha=la;
     txShadow('STREAK LOST!',310,hudY+44,7,'#d04040','rgba(0,0,0,.5)');
     g.globalAlpha=1;
-    // v502: red scatter burst when streak is broken
+    // v502: red scatter burst when streak is broken (v508 fix: world coords)
     if(streakLostTimer===59){screenShake(2,4);
       for(let _sli=0;_sli<12;_sli++){const _sla=(_sli/12)*Math.PI*2+Math.random()*0.4;const _sls=1+Math.random()*2;
-        particles.push({x:310+(Math.random()*30-15),y:hudY+44+(Math.random()*12-6),vx:Math.cos(_sla)*_sls,vy:Math.sin(_sla)*_sls-1.5,life:14+Math.random()*10,c:Math.random()>.5?'rgba(210,50,50,1)':'rgba(160,40,40,1)'});
+        particles.push({x:310+camX+(Math.random()*30-15),y:hudY+44+camY+(Math.random()*12-6),vx:Math.cos(_sla)*_sls,vy:Math.sin(_sla)*_sls-1.5,life:14+Math.random()*10,c:Math.random()>.5?'rgba(210,50,50,1)':'rgba(160,40,40,1)'});
       }
     }
   }
