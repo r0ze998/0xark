@@ -3087,6 +3087,12 @@ function drawRivalNews(){
   const my=H-HUD_HEIGHT-msgH-8;
   const slideX=(1-slideIn)*-(msgW+mx);
 
+  // v562: rival intel arrival sparkle burst (world-space for dungeon dMap particles)
+  if(rivalNewsFrame===8){
+    for(let _ri=0;_ri<5;_ri++){const _ra=(_ri/5)*Math.PI+Math.PI;const _rs=0.8+Math.random()*1.4;
+      particles.push({x:mx+slideX+msgW/2+camX,y:my+msgH/2+camY,vx:Math.cos(_ra)*_rs,vy:Math.sin(_ra)*_rs-1,life:12+Math.random()*8,c:nameCol});
+    }
+  }
   g.globalAlpha=alpha;
   // Background
   bx(mx+slideX,my,msgW,msgH,bgTint);
@@ -11330,7 +11336,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v561',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v562',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
