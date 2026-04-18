@@ -6781,6 +6781,9 @@ function drawPlayerStatusEffects(){
     bx(bX,bY,bW,1,bubbleCol);
     txShadow(fullStr,bX+4,bY+11,5,isUrgent?'#ff8080':hasCritical?'#e8b060':'#90b0c0','rgba(0,0,0,.4)');
     g.globalAlpha=1;
+    // v666: card decay danger sparks — urgent red embers drift up from status bubble when cards are about to vanish (world-space)
+    if(isUrgent&&fr%6===0){particles.push({x:p.visualX+4+Math.random()*22,y:p.visualY-46,vx:(Math.random()-.5)*.40,vy:-.28-Math.random()*.30,life:12+Math.random()*8,c:Math.random()>.5?'rgba(255,60,40,0.80)':'rgba(255,130,80,0.62)'});}
+    else if(hasCritical&&fr%12===0){particles.push({x:p.visualX+6+Math.random()*18,y:p.visualY-44,vx:(Math.random()-.5)*.28,vy:-.18-Math.random()*.20,life:14+Math.random()*8,c:Math.random()>.5?'rgba(220,120,30,0.60)':'rgba(255,180,60,0.45)'});}
   }
 }
 
@@ -11581,7 +11584,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v665',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v666',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
