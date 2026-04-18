@@ -7554,6 +7554,8 @@ function drawFlower(px,py,tx_,ty){
   if(r.c>.35){const c3=colors[Math.floor(r.d*5)];bx(px+24,py+4,4,4,c3);bx(px+23,py+5,6,2,c3);bx(px+25,py+3,2,6,c3);bx(px+25,py+5,2,2,'#f0e080');bx(px+25,py+8,1,3,'#388838');}
   // Flower 4 (small)
   if(r.e>.5){bx(px+10,py+22,3,3,colors[Math.floor(r.f*5)]);bx(px+11,py+23,1,1,'#f0e080');bx(px+11,py+25,1,2,'#388838');}
+  // v602: flower pollen drift — tiny pastel motes rising from blooms (world-space)
+  if((fr+tx_*7+ty*5)%20===0){particles.push({x:tx_*TW+6+Math.random()*20,y:ty*TH+10+Math.random()*8,vx:(Math.random()-.5)*.38,vy:-.16-Math.random()*.18,life:18+Math.random()*14,c:Math.random()>.5?'rgba(240,200,80,0.42)':'rgba(255,160,200,0.36)'});}
 }
 
 function drawTallGrass(px,py,tx_,ty){
@@ -7869,6 +7871,8 @@ function drawLake(px,py,tx_,ty){
     bx(lx,ly,2,2,'#e04060'); // flower
   }
   if(isNearGrass(tx_,ty)){g.fillStyle='rgba(30,60,40,.12)';g.fillRect(px,py,TW,TH);}
+  // v601: forest lake shimmer motes — still-water surface bubbles (world-space)
+  if((fr+tx_*19+ty*31)%70===0){particles.push({x:tx_*TW+4+Math.random()*(TW-8),y:ty*TH+TH*Math.random(),vx:(Math.random()-.5)*.22,vy:-.10-Math.random()*.12,life:20+Math.random()*16,c:Math.random()>.5?'rgba(80,160,200,0.38)':'rgba(200,230,240,0.26)'});}
 }
 
 // ── NEW TILE TYPES ──
@@ -11452,7 +11456,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v600',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v602',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
