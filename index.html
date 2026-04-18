@@ -7835,6 +7835,8 @@ function drawDock(px,py,tx_,ty){
   if(useKenney.dock){
     drawWater(px,py,tx_,ty);
     if(drawKenneyTileTinted(K.dock1[0], K.dock1[1], px, py, 2, '#a08050')){
+      // v608: dock water splice — gentle spray at wood-water edge (world-space)
+      if((fr+tx_*7+ty*23)%45===0){particles.push({x:tx_*TW+2+Math.random()*(TW-4),y:ty*TH+TH-4,vx:(Math.random()-.5)*.45,vy:-.18-Math.random()*.20,life:12+Math.random()*8,c:Math.random()>.5?'rgba(170,220,240,0.52)':'rgba(240,250,255,0.36)'});}
       return;
     }
   }
@@ -7846,6 +7848,8 @@ function drawDock(px,py,tx_,ty){
   bx(px,py+4,TW,2,'#b89060');
   bx(px,py,3,TH,'#806830');bx(px+TW-3,py,3,TH,'#806830');
   if(ty>=22){bx(px+2,py+8,2,2,'#c8c088');bx(px+TW-4,py+8,2,2,'#c8c088');}
+  // v608: dock water splice fallback (world-space)
+  if((fr+tx_*7+ty*23)%45===0){particles.push({x:tx_*TW+2+Math.random()*(TW-4),y:ty*TH+TH-4,vx:(Math.random()-.5)*.45,vy:-.18-Math.random()*.20,life:12+Math.random()*8,c:Math.random()>.5?'rgba(170,220,240,0.52)':'rgba(240,250,255,0.36)'});}
 }
 
 function drawLake(px,py,tx_,ty){
@@ -11462,7 +11466,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v607',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v608',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
