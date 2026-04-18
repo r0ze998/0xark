@@ -11518,7 +11518,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v621',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v622',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14354,6 +14354,10 @@ function _drawHPHearts(hx,hy,hp,filledNorm,filledFlash,empty,isFlashing,isHealFl
     bx(hhi+1,hhj,3,1,hc);bx(hhi,hhj+1,6,1,hc);bx(hhi,hhj+2,6,2,hc);
     bx(hhi+1,hhj+4,4,1,hc);bx(hhi+2,hhj+5,2,1,hc);bx(hhi+3,hhj+6,1,1,hc);
     if(filled)bx(hhi+1,hhj+2,1,1,'rgba(255,255,255,.4)');
+    // v622: heal flash heart sparkle — green motes when HP restored (screen-space)
+    if(filled&&isHealFlashing&&fr%5===0&&h<hp){particles.push({x:hhi+3,y:hhj,vx:(Math.random()-.5)*.40,vy:-.22-Math.random()*.20,life:10+Math.random()*7,c:'rgba(80,240,130,0.68)'});}
+    // v622: damage flash heart ash — dark motes when damaged (screen-space)
+    if(!filled&&isFlashing&&fr%6===0&&h===hp){particles.push({x:hhi+3,y:hhj+3,vx:(Math.random()-.5)*.36,vy:-.18-Math.random()*.18,life:9+Math.random()*6,c:'rgba(220,60,40,0.60)'});}
   }
 }
 // Draws tell accuracy reveal banner; yBase is the top of the 14px banner strip
