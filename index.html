@@ -11550,7 +11550,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v639',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v640',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14671,6 +14671,8 @@ function drawBattleSprite(p,cx,cy,scale,facingAway){
     }else{
       drawKenneyTile(kChar[0],kChar[1],sx,sy,tileScale*2);
     }
+    // v640: sprite idle aura — colored mote rising from each character (Kenney sprite path)
+    if(fr%8===_bpI*3){const _baC=p===pl[0]?'rgba(80,160,240,0.45)':p===pl[1]?'rgba(220,80,180,0.42)':'rgba(240,180,40,0.40)';particles.push({x:cx+Math.random()*12-6,y:cy-sprH*0.3+Math.random()*8,vx:(Math.random()-.5)*.30,vy:-.20-Math.random()*.20,life:14+Math.random()*12,c:_baC});}
     return;
   }
 
