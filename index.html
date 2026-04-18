@@ -11459,6 +11459,8 @@ function dTitle(){
     bx(shipX+36,shipY-14,20,18,'#222240');
     // Bowsprit
     bx(shipX+88,shipY+18,20,2,'#1c1c30');
+    // v690: ship sea spray — fine mist motes from bow & hull waterline (screen-space)
+    if(fr%16===0){particles.push({x:shipX+84+Math.random()*18,y:shipY+24+Math.random()*10,vx:0.24+Math.random()*0.34,vy:-0.18-Math.random()*0.26,life:18+Math.random()*14,c:Math.random()>.5?'rgba(160,185,220,0.36)':'rgba(210,225,245,0.24)'});}
   }
   // v110: Collected cards orbiting the title (personalised showcase, best rarity first)
   if(pl[0].vault&&pl[0].vault.size>0){
@@ -11618,7 +11620,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v689',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v690',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
