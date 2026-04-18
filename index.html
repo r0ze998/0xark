@@ -7784,6 +7784,8 @@ function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
       bx(sx_-sz*.5|0,sy_-sz*.5|0,sz|0,sz|0,p%2===0?'rgba(210,205,220,1)':'rgba(195,190,208,1)');
     }
     g.globalAlpha=1;}
+    // v687: chimney soot spark — dark ash motes from chimney tip rise with wind drift (world-space)
+    if((fr+tx_*17+ty*23)%25===0){const _csX=tx_*TW+22+Math.random()*8,_csY=ty*TH-4+Math.random()*4;particles.push({x:_csX,y:_csY,vx:(_sFr007*_NCOS[tx_]+_cFr007*_NSIN[tx_])*0.8+(Math.random()-.5)*0.18,vy:-0.18-Math.random()*0.22,life:24+Math.random()*18,c:Math.random()>.5?'rgba(80,72,90,0.45)':'rgba(160,155,175,0.35)'});}
   }
 }
 
@@ -11612,7 +11614,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v686',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v687',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
