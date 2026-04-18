@@ -7617,10 +7617,14 @@ function drawTree(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(drawZeldaOverTile(ZO.tree[0],ZO.tree[1],px,py,2)){
     g.drawImage(_tileShadowTree,(px+2)|0,(py+25)|0);
+    // v616: tree canopy shimmer — bright leaf glints catching light (world-space)
+    if((fr+tx_*9+ty*23)%32===0){particles.push({x:tx_*TW+4+Math.random()*24,y:ty*TH+2+Math.random()*14,vx:(Math.random()-.5)*.44,vy:-.10-Math.random()*.12,life:18+Math.random()*14,c:Math.random()>.5?'rgba(60,160,50,0.40)':'rgba(100,200,70,0.30)'});}
     return;
   }
   // Fallback: solid green canopy
   bx(px+4,py+2,24,22,'#2d6e2d');g.drawImage(_tileShadowTree,(px+2)|0,(py+25)|0);
+  // v616: tree canopy shimmer fallback (world-space)
+  if((fr+tx_*9+ty*23)%32===0){particles.push({x:tx_*TW+4+Math.random()*24,y:ty*TH+2+Math.random()*14,vx:(Math.random()-.5)*.44,vy:-.10-Math.random()*.12,life:18+Math.random()*14,c:Math.random()>.5?'rgba(60,160,50,0.40)':'rgba(100,200,70,0.30)'});}
 }
 
 function drawPine(px,py,tx_,ty){
@@ -11498,7 +11502,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v615',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v616',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
