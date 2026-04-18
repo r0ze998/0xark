@@ -1798,6 +1798,8 @@ function drawSolanaLogo(cx,cy,size){
   bx(-half,-half+size/3,size,size/3,'#14F195');
   bx(-half,-half+size*2/3,size,size/3,'#9945FF');
   g.restore();
+  // v625: Solana logo aura — purple/green motes orbiting the logo (screen-space)
+  if(fr%6===0){const _sa=Math.random()*Math.PI*2;const _sr=size*.55+Math.random()*size*.3;particles.push({x:cx+Math.cos(_sa)*_sr,y:cy+Math.sin(_sa)*_sr,vx:(Math.random()-.5)*.36,vy:-.20-Math.random()*.24,life:14+Math.random()*10,c:Math.random()>.5?'rgba(153,69,255,0.68)':'rgba(20,241,149,0.60)'});}
 }
 
 // Helper: draw small Solana icon (tiny for HUD)
@@ -11525,7 +11527,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v624',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v625',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
