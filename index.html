@@ -8465,6 +8465,21 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
     const _tac=_tar>.6?'rgba(255,180,200,0.5)':_tar>.3?'rgba(255,240,180,0.45)':'rgba(220,230,255,0.4)';
     particles.push({x:_tawx,y:_tawy,vx:0.4+Math.random()*0.6,vy:-0.05-Math.random()*0.2,life:55+Math.random()*35,c:_tac});
   }
+  // v534: shooting star — rare celestial streak across the sky (world coords, fires ~every 12s)
+  if(Math.floor(fr/2)%360===0){
+    const _ssx=camX+20+Math.random()*(W-60),_ssy=camY+8+Math.random()*36;
+    const _svx=3.5+Math.random()*2.5,_svy=1.0+Math.random()*0.8;
+    for(let _si=0;_si<7;_si++){particles.push({x:_ssx-_si*_svx*1.6,y:_ssy-_si*_svy*1.6,vx:_svx,vy:_svy,life:8+_si,c:`rgba(255,255,240,${(0.9-_si*0.11).toFixed(2)})`});}
+  }
+  // v534: palm tree shimmer — golden motes drift from palm canopies (tile 14, world coords)
+  if(fr%4===0){const _pm=getMap();
+    for(let _py=startTY;_py<=endTY;_py++){for(let _px=startTX;_px<=endTX;_px++){
+      if(_pm[_py]?.[_px]!==14)continue;
+      if(!fogRevealed[currentMap]?.[_py]?.[_px])continue;
+      if((fr/4+_px*3+_py*7)%5!==0)continue;
+      particles.push({x:_px*TW+6+Math.random()*20,y:_py*TH-4+Math.random()*8,vx:(Math.random()-.5)*0.8,vy:-0.2-Math.random()*0.4,life:22+Math.random()*16,c:Math.random()>.5?'rgba(200,230,100,0.45)':'rgba(255,240,150,0.38)'});
+    }}
+  }
 }
 
 function drawTile(tx_,ty){
@@ -11256,7 +11271,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v533',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v534',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
