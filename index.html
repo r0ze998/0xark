@@ -11293,7 +11293,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v543',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v544',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17797,6 +17797,8 @@ function drawDiscardOverlay(){
     txShadow(pendCr.n,previewX,previewY+78,7,headerRarCol,'rgba(0,0,0,.3)');
     for(let s=0;s<(pendCr.r||1);s++)txShadow('\u2605',previewX+s*10,previewY+89,8,headerRarCol,'rgba(0,0,0,.3)');
     txShadow(pendCr.f||'',previewX,previewY+100,5,'#c0b888','rgba(0,0,0,.3)');
+    // v544: incoming card rarity shimmer — screen-space sparkles float up from preview card
+    if(fr%8===0){const _drc=['','rgba(180,180,200,0.65)','rgba(60,200,100,0.68)','rgba(60,140,240,0.72)','rgba(160,60,240,0.75)','rgba(255,180,30,0.80)'];particles.push({x:previewX+4+Math.random()*108,y:previewY+4+Math.random()*80,vx:(Math.random()-.5)*0.5,vy:-0.38-Math.random()*0.42,life:12+Math.random()*8,c:_drc[pendCr.r]||'rgba(200,180,100,0.65)'});}
   }else{
     txShadow('DISCARD a card',W/2-70,panY+20,10,'#b06030','rgba(0,0,0,.4)');
   }
@@ -17839,6 +17841,7 @@ function drawDiscardOverlay(){
     if(sel)txShadow('\u25B6',W/2-214,cy+24,7,'#c04040','rgba(0,0,0,.4)');
   }
   txShadow('[Z] Discard  \u2502  [X] Skip',W/2-80,panY+panH-12,7,'#a898c8','rgba(0,0,0,.4)');
+  drawParticles(0,0); // v544: render rarity shimmer particles on top of discard overlay
 }
 
 // ═══════════════════════════════════════
