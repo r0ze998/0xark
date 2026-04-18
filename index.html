@@ -11634,7 +11634,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v730',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v731',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17258,6 +17258,8 @@ function drawResolvingPhase(){
       const dTgt=ev.effect==='card_lost'?0:(ev.target!==undefined?ev.target:0);
       const dCX=dTgt===0?playerCX:(dTgt===1?oppCX:W-310);
       const dCY=dTgt===0?playerCY-20:(dTgt===1?oppCY-30:120);
+      // v731: damage hit burst — red/orange shards radiate from target on first frame
+      if(evT===6){const _dc=ev.dmg>=2?'rgba(255,40,30,0.92)':'rgba(255,100,50,0.80)';for(let _di=0;_di<10;_di++){const _da=(_di/10)*Math.PI*2+(Math.random()-.5)*0.5;const _ds=1.2+Math.random()*2.4;particles.push({x:dCX+(Math.random()*10-5),y:dCY+(Math.random()*10-5),vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.0,life:12+Math.random()*10,c:_dc});}}
       const fProg=(evT-6)/32;
       const fY=dCY-fProg*55;
       const fA=Math.max(0,1-fProg*1.2);
