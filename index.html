@@ -11634,7 +11634,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v726',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v727',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17547,6 +17547,8 @@ function drawResolvingPhase(){
       g.save();g.translate(W/2,H/2-30);g.scale(defScale,defScale);
       txShadow('DEFEATED!',-42,0,18,'#ff4040','rgba(0,0,0,.9)');
       g.restore();
+      // v727: defeat vignette ember drift — dark red motes from screen edges every 25 frames (screen-space)
+      if(fr%25===0){for(let _dvi=0;_dvi<3;_dvi++){const _dva=Math.random()*Math.PI*2;particles.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*0.6,vy:-0.3-Math.random()*0.7,life:28+Math.random()*18,c:Math.random()>.5?'rgba(180,30,20,0.55)':'rgba(100,10,10,0.45)'});}}
     }
     drawParticles(0,0); // v459: burst particles from card steals/gets now visible during battle
     _drawBpFloats(); // v454: floating damage/heal numbers
