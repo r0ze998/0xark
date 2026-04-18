@@ -1169,6 +1169,11 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
   for(let y=startTY;y<=endTY;y++){
     for(let x=startTX;x<=endTX;x++){
       const t=m[y]?.[x];
+      // v529: fountain water spray particles (world coords, emitted before water-only check)
+      if(t===20&&fr%3===0&&fogRevealed[currentMap]?.[y]?.[x]){
+        const _fwx=x*TW+12+Math.random()*8,_fwy=y*TH+2+Math.random()*4;
+        particles.push({x:_fwx,y:_fwy,vx:(Math.random()-.5)*1.0,vy:-1.2-Math.random()*1.2,life:12+Math.random()*9,c:Math.random()>.5?'rgba(160,220,240,0.78)':'rgba(200,235,255,0.62)'});
+      }
       if(t!==0)continue; // only water (tile 0)
       const px=x*TW-camX,py=y*TH-camY;
       if(px<-TW||px>W+TW||py<-TH||py>H+TH)continue;
