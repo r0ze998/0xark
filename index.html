@@ -11347,7 +11347,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v570',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v571',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -20144,6 +20144,9 @@ function drawFountainDialog(){
     txShadow('FOUNTAIN',W/2-40,H/2-34,10,'#80c0e0','rgba(0,0,0,.5)');
     txShadow('Toss a card in? You\u2019ll get a random card back.',W/2-160,H/2-4,7,'#c0d0e0','rgba(0,0,0,.3)');
     txShadow('[Z] Yes   [X] No',W/2-64,H/2+30,7,'#c06040','rgba(0,0,0,.3)');
+    // v571: fountain ambient water shimmer particles (screen-space)
+    if(fr%12===0){const _fx=W/2-120+Math.random()*240,_fy=H/2+10+Math.random()*30;
+      particles.push({x:_fx,y:_fy,vx:(Math.random()-.5)*0.30,vy:-0.22-Math.random()*0.24,life:16+Math.random()*10,c:Math.random()>.5?'rgba(80,180,240,0.55)':'rgba(180,230,255,0.42)'});}
   }
   if(fountainResultTimer>0){
     fountainResultTimer--;
@@ -20155,6 +20158,7 @@ function drawFountainDialog(){
     g.globalAlpha=1;
     if(fountainResultTimer<=0)fountainActive=false;
   }
+  drawParticles(0,0); // v571: render fountain shimmer particles
 }
 
 // ═══════════════════════════════════════
@@ -20639,6 +20643,12 @@ function dCredits(){
     const tw_=line.length*(isTitle?14:sz*0.7);
     txShadow(line,W/2-tw_/2,y,sz,col,'rgba(0,0,0,.5)');
   }
+  // v571: drifting cosmic motes during credits (screen-space)
+  if(fr%18===0){
+    const _cx=20+Math.random()*(W-40),_cy=H/2+Math.random()*(H/2);
+    particles.push({x:_cx,y:_cy,vx:(Math.random()-.5)*0.22,vy:-0.26-Math.random()*0.28,life:55+Math.random()*40,c:Math.random()>.5?'rgba(200,180,255,0.30)':'rgba(255,200,80,0.24)'});
+  }
+  drawParticles(0,0); // v571: render credits cosmic motes
   // End: loop or go back
   const totalScroll=(CREDITS_LINES.length*lineHeight+H)/scrollSpeed;
   if(creditsFrame>totalScroll){creditsActive=false;creditsFrame=0;}
