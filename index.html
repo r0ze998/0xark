@@ -6710,6 +6710,8 @@ function drawPlayerStatusEffects(){
     g.globalAlpha=flicker;
     txShadow('EXHAUSTED',px-32,py-16,5,'#d04040','rgba(0,0,0,.4)');
     g.globalAlpha=1;
+    // v662: exhausted droop motes — dim crimson sparks droop downward from player when all spells spent (world-space)
+    if(fr%14===0){const _ec=Math.random()>.55?'rgba(160,40,40,0.48)':'rgba(120,90,80,0.38)';particles.push({x:p.visualX+6+Math.random()*20,y:p.visualY+4+Math.random()*14,vx:(Math.random()-.5)*.18,vy:0.10+Math.random()*.14,life:18+Math.random()*12,c:_ec});}
   }
 
   // Sparkle particles when player has 4+ cards
@@ -11579,7 +11581,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v661',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v662',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
