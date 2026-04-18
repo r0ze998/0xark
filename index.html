@@ -11347,7 +11347,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v563',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v564',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -17846,6 +17846,9 @@ function drawMarketplace(){
   }
   bx(mx+12,myA+mh-46,mw-24,1,'#1a3a1a');
   txShadow('[←/→] Tabs   \u2502   [X] Close',mx+14,myA+mh-26,7,'#4a7a4a','rgba(0,0,0,.3)');
+  // v564: marketplace ambient green glint particles from header area (screen-space)
+  if(fr%20===0&&eSlide>0.8){particles.push({x:mx+8+Math.random()*(mw-16),y:myA+4+Math.random()*22,vx:(Math.random()-.5)*0.24,vy:0.18+Math.random()*0.20,life:16+Math.random()*10,c:Math.random()>.5?'rgba(64,208,128,0.62)':'rgba(80,180,100,0.48)'});}
+  drawParticles(0,0); // v564: render marketplace particles on top of overlay
 }
 
 // v187: discard overlay — slide-in + polish (local frame tracker avoids multi-file edit)
