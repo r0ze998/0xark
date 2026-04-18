@@ -245,6 +245,14 @@ const _mktTabLbl=['','','','',''],_mktTabKey=[-1,-1,-1,-1,-1]; // marketplace ty
 const _GACHA_PITY_LBL=(()=>{const a=[];for(let i=0;i<=GACHA_PITY_THRESHOLD;i++)a.push('Gacha pity: '+i+'/'+GACHA_PITY_THRESHOLD+(GACHA_PITY_THRESHOLD-i<=3?' \u2014 RARE SOON!':''));return a;})();
 // v333: lazy rival intel strip labels for dungeon confirm (key = rFloor*10+rcc per rival)
 let _rIntelLbl=['',''],_rIntelKey=[-1,-1];
+// v444: hoisted above _MKT_LISTING_PRICE_LBL — the .map() below reads
+// _MKT_LISTINGS at load time, so the declaration must precede it.
+const _MKT_LISTINGS=[
+  {seller:'VEGA',card:6,price:'0.05'},
+  {seller:'MIRA',card:20,price:'0.08'},
+  {seller:'???',card:45,price:'0.15'},
+  {seller:'???',card:1,price:'0.99'},
+];
 // v333: marketplace listing price labels (baked from _MKT_LISTINGS static data)
 const _MKT_LISTING_PRICE_LBL=_MKT_LISTINGS.map(l=>l.price+' SOL');
 const _LOG_STAT_LABELS=['btl','got','lost',''];
@@ -263,12 +271,6 @@ let _acqNewLbl='',_acqNewVault=-1;
 const _MKT_TYPE_FILTER=['attack','defense','flee','magic','recovery'];
 const _MKT_TYPE_LABEL=['ATK','DEF','FLY','MAG','REC'];
 const _MKT_TYPE_COLOR=['#e05840','#48b8e8','#38c080','#d8b028','#e0c040'];
-const _MKT_LISTINGS=[
-  {seller:'VEGA',card:6,price:'0.05'},
-  {seller:'MIRA',card:20,price:'0.08'},
-  {seller:'???',card:45,price:'0.15'},
-  {seller:'???',card:1,price:'0.99'},
-];
 // v263: vault cache — rebuilt only when vault.size changes, not every frame
 let _mktVaultCache=null,_mktVaultSz=-1;
 const _mktTypeCache=[[],[],[],[],[]];
