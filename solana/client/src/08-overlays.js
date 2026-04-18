@@ -228,7 +228,7 @@ const _CRD_TYPE_NAMES=['ATK','DEF','FLY','MAG','REC'];
 const _CRD_TYPE_COLS=['#e05840','#48b8e8','#38c080','#d8b028','#e0c040'];
 const _CRD_RAR_NAMES=['','Common','Uncommon','Rare','Epic','Legendary'];
 const _CRD_TYPE_FULL={attack:'ATTACK',defense:'DEFENSE',flee:'FLIGHT',magic:'MAGIC',recovery:'RECOVERY'};
-const _FLOOR_NAMES=['','Floor I','Floor II','Floor III','Floor IV','Floor V'];
+const _FLOOR_NAMES_TC=['','Floor I','Floor II','Floor III','Floor IV','Floor V'];
 const _DNG_FLOOR_LABELS=['TOWN','B1','B2','B3','B4','B5'];
 const _LOG_STAT_ICONS=['\u2694','\u2605','\u2717','\u2660'];
 // v321: pre-baked catalog/market strings — eliminates per-frame alloc in overlay hot paths
@@ -990,7 +990,7 @@ const CARD_SOURCE_HINTS=(()=>{
   const h=new Array(61).fill('Gacha / Trade');
   for(let f=1;f<=5;f++){
     const pool=DUNGEON_FLOOR_CARDS[f];if(!pool)continue;
-    const name=_FLOOR_NAMES[f];
+    const name=_FLOOR_NAMES_TC[f];
     for(let i=0;i<pool.length;i++){const id=pool[i];h[id]=h[id]==='Gacha / Trade'?name:h[id]+' / '+name;}
   }
   return h;

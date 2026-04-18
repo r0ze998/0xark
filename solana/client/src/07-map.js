@@ -42,7 +42,7 @@ const _MENU_ITEMS=['CARDS','MAP','LOG','STATS','USE CARD','DISCARD','WALLET','TE
 // v261: Hoisted floor roman numerals — eliminates inline array alloc every HUD frame
 const _FLOOR_NUMS=['','I','II','III','IV','V'];
 // v262: Hoist HUD inline literals — floor watermark, orb labels/colors, dirs, trail colors, rarity abbrev
-const _FLOOR_NAMES=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','FLOOR V'];
+const _FLOOR_NAMES_UC=['','FLOOR I','FLOOR II','FLOOR III','FLOOR IV','FLOOR V'];
 const _FLOOR_WM_COLS=['','#8090b0','#506048','#8848c0','#c04020','#6010a0'];
 const _ORB_SL=['STL','BAR','SCT'],_ORB_SCX=[100,175,250];
 const _ORB_SF=['#c04848','#3868c0','#38a038'],_ORB_SE=['#2a1010','#101028','#0e1e0e'];
@@ -1224,7 +1224,7 @@ function dMap(){
 
   // Floor watermark label (dungeon only, large semi-transparent, floor-themed color)
   if(inDungeon&&currentFloor>0){
-    const floorLabel=_FLOOR_NAMES[currentFloor]||('FLOOR '+currentFloor);
+    const floorLabel=_FLOOR_NAMES_UC[currentFloor]||('FLOOR '+currentFloor);
     const wmAlpha=0.07+_sFr008*0.025;
     g.save();
     g.globalAlpha=wmAlpha;
