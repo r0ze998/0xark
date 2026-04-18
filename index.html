@@ -11634,7 +11634,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v727',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v728',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -15888,6 +15888,8 @@ function drawConfirmingPhase(){
         if(arrowProg>=1){
           bx(flowX+70,flowY+4,14,14,'#9945FF');bx(flowX+72,flowY+6,10,10,'#14F195');
           txShadow('committed',flowX+90,flowY+14,5,'#40d080','rgba(0,0,0,.3)');
+          // v728: TX commit spark — green mote at chain icon on arrow complete (screen-space)
+          if(t===50){for(let _txi=0;_txi<6;_txi++){particles.push({x:flowX+77,y:flowY+11,vx:(Math.random()-.5)*2.0,vy:-0.6-Math.random()*1.4,life:14+Math.random()*8,c:'rgba(60,210,120,0.82)'});}}
         }
       }else if(t<100){
         // Reveal phase
@@ -15907,6 +15909,8 @@ function drawConfirmingPhase(){
         if(arrowProg2>=1){
           bx(flowX+114,flowY+4,14,14,'#9945FF');bx(flowX+116,flowY+6,10,10,'#14F195');
           txShadow('verified',flowX+134,flowY+14,5,'#40d080','rgba(0,0,0,.3)');
+          // v728: ZK verify spark — purple/green mote at chain icon on proof complete (screen-space)
+          if(t===80){for(let _zki=0;_zki<6;_zki++){particles.push({x:flowX+121,y:flowY+11,vx:(Math.random()-.5)*2.0,vy:-0.6-Math.random()*1.4,life:14+Math.random()*8,c:Math.random()>.5?'rgba(153,69,255,0.85)':'rgba(20,241,149,0.78)'});}}
         }
       }else{
         // Resolve phase
