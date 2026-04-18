@@ -11403,7 +11403,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v582',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v583',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -12951,6 +12951,7 @@ function dMap(){
           const _irarC=[,'rgba(180,180,200,0.75)','rgba(60,200,100,0.78)','rgba(60,140,240,0.82)','rgba(160,60,240,0.85)','rgba(255,180,30,0.90)'][cr.r]||'rgba(255,180,30,0.90)';
           particles.push({x:it.x*TW+8+Math.random()*16,y:it.y*TH+4+Math.random()*8,vx:(Math.random()-.5)*0.7,vy:-0.5-Math.random()*0.9,life:14+Math.random()*(_dist<=1?10:6),c:_irarC});
         }
+      }
     }
   }
 
@@ -13000,7 +13001,7 @@ function dMap(){
 
   // v551: Critical HP heartbeat vignette — red pulse when player HP=1 in dungeon
   if(inDungeon&&pl[0].hp<=1&&sc==='map'){
-    const _hbPhase=fr%30;const _hbPulse=_hbPhase<8?(_hbPhase/8):(_hbPhase<14?(14-_hbPhase)/6):0;
+    const _hbPhase=fr%30;const _hbPulse=_hbPhase<8?(_hbPhase/8):(_hbPhase<14?(14-_hbPhase)/6:0);
     if(_hbPulse>0.01){g.globalAlpha=_hbPulse*0.22;g.drawImage(_dangerVigHigh,0,0);g.globalAlpha=1;}
   }
 
@@ -17760,7 +17761,7 @@ const _CRD_TYPE_NAMES=['ATK','DEF','FLY','MAG','REC'];
 const _CRD_TYPE_COLS=['#e05840','#48b8e8','#38c080','#d8b028','#e0c040'];
 const _CRD_RAR_NAMES=['','Common','Uncommon','Rare','Epic','Legendary'];
 const _CRD_TYPE_FULL={attack:'ATTACK',defense:'DEFENSE',flee:'FLIGHT',magic:'MAGIC',recovery:'RECOVERY'};
-const _FLOOR_NAMES=['','Floor I','Floor II','Floor III','Floor IV','Floor V'];
+const _FLOOR_NAMES_OVL=['','Floor I','Floor II','Floor III','Floor IV','Floor V'];
 const _DNG_FLOOR_LABELS=['TOWN','B1','B2','B3','B4','B5'];
 const _LOG_STAT_ICONS=['\u2694','\u2605','\u2717','\u2660'];
 // v321: pre-baked catalog/market strings — eliminates per-frame alloc in overlay hot paths
@@ -18547,7 +18548,7 @@ const CARD_SOURCE_HINTS=(()=>{
   const h=new Array(61).fill('Gacha / Trade');
   for(let f=1;f<=5;f++){
     const pool=DUNGEON_FLOOR_CARDS[f];if(!pool)continue;
-    const name=_FLOOR_NAMES[f];
+    const name=_FLOOR_NAMES_OVL[f];
     for(let i=0;i<pool.length;i++){const id=pool[i];h[id]=h[id]==='Gacha / Trade'?name:h[id]+' / '+name;}
   }
   return h;
