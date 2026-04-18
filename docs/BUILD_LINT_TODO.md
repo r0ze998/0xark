@@ -1,8 +1,27 @@
-# BUILD_LINT_TODO — bundle-time identifier collision check
+# BUILD_LINT_TODO — bundle-time static checks
 
 **Status**: TODO, not implemented.
-**Priority**: after Phase B (B1/B2/B3) lands. Low-urgency infra polish.
-**Trigger**: v441 — silent top-level `const _FLOOR_NAMES` collision between `src/07-map.js` and `src/08-overlays.js` produced a black-screen SyntaxError that was not caught until the game failed to boot in the browser.
+**Priority**: **Phase B2 blocker** (escalated 2026-04-19). Checks #1 + #3 must
+land before Phase B2 kickoff. Check #2 is optional (fix already applied
+for the one known case — v442). Check #4 deferred (needs AST).
+
+**Trigger chain**: five consecutive latent bugs (v441-v445) surfaced in
+rapid succession once v441 removed the v262 `_FLOOR_NAMES` SyntaxError that
+had been masking everything downstream. All five were statically detectable
+had the lint existed:
+
+| bug | class | static detection |
+|---|---|---|
+| v441 `_FLOOR_NAMES` | cross-file `const` collision at bundle scope | Check #1 |
+| v442 `_dungVigGrads` | off-by-one → `rgba(undefined,...,1)` in output | Check #2 |
+| v443 `_BTYPE_ABB` | same-file TDZ: IIFE reads later-declared const | Check #3 |
+| v444 `_MKT_LISTINGS` | same-file TDZ: `.map()` reads later-declared const | Check #3 (broadened RHS) |
+| v445 bare `walkFrame` | free identifier at runtime — copy-paste typo | Check #4 (deferred, needs AST) |
+
+The escalation rationale: three Phase-B2-blocking bugs in two days, all of
+the same static class, with working proof-of-concept checks (`/tmp/tdz-check3.js`)
+that would have caught four of five. The ROI flipped — the lint is
+paying for itself *now*, not "after Phase B."
 
 ---
 
@@ -29,7 +48,7 @@ at least throw — but only at runtime.
 
 ---
 
-## What
+## Check #1: cross-file top-level identifier collision
 
 Add a build-time lint step in `build.js` (or a sibling script called before
 `build()` runs) that:
@@ -73,13 +92,17 @@ Add a build-time lint step in `build.js` (or a sibling script called before
 Start with A — it's enough to catch the class of bugs v441 represented. Move
 to B only if A turns out to flag too many false positives.
 
-## Placement
+## Placement (applies to Checks #1 + #3)
 
 - Put the lint in `solana/client/lint-bundle.js` (new file) exposing
-  `checkCollisions(modules)`.
+  `checkCollisions(modules)` and `checkTDZOrder(modules)`.
 - Call from `build.js` at the top of `build()`, before `generateTokensModule()`
   so a broken manifest fails fast without regenerating tokens.
-- Optionally expose `node build.js --lint-only` for CI.
+- Check #2 (rgba output scan) runs at the *end* of `build()`, after writing
+  `index.html` — it inspects the final artifact.
+- Expose `node build.js --lint-only` for CI.
+- Acceptance: Checks #1 + #3 must each add ≤1s to `build()`. If slower,
+  cache file-level decl maps by mtime.
 
 ## Related safeguards (out of scope for first pass)
 
@@ -165,3 +188,148 @@ Caveat: this runs on the *output*, so it catches both generated artifacts
   what happens when `r` is `undefined` in a template literal but not in a
   `+` concatenation (`+` stringifies `undefined` → `"undefined"` too, so
   actually it still catches it — just double-check when implementing).
+
+---
+
+## Check #3: same-file TDZ-order violation
+
+**Trigger**: v443 `_BTYPE_ABB` and v444 `_MKT_LISTINGS`. Both were same-file
+ordering bugs: a top-level `const X = <expr>;` executed its initializer at
+module load, and `<expr>` referenced a later-declared top-level `const Y`
+from the same file:
+
+```js
+// v443 pattern — IIFE initializer:
+const _BTYPE_CNT_LBL = (() => { ... _BTYPE_ABB[ti] ... })();   // line 87
+// ...
+const _BTYPE_ABB = ['ATK','DEF','FLY','MAG','REC'];             // line 119 → TDZ
+
+// v444 pattern — direct method-call initializer:
+const _MKT_LISTING_PRICE_LBL = _MKT_LISTINGS.map(l => l.price); // line 249
+// ...
+const _MKT_LISTINGS = [ ... ];                                  // line 266 → TDZ
+```
+
+Both throw `ReferenceError: Cannot access 'X' before initialization` at
+script load. Like Check #1, parse succeeds; only runtime reveals it.
+
+### What
+
+For every top-level `const X = <expr>;` or `let X = <expr>;`, walk the
+initializer and report any identifier reference where the referenced
+name is declared at a *later* source line in the same file.
+
+Function declarations are hoisted, so they must be excluded from the
+"declared later" lookup (ordering doesn't matter for `function foo()`).
+
+Variables declared inside nested scopes (function bodies, arrow callbacks,
+`.map(() => { const b = ... })`) must NOT be registered in the file-level
+declarations map. The check is for top-level-to-top-level ordering only.
+
+### Working prototype
+
+`/tmp/tdz-check3.js` (~80 lines, built during v444 investigation) caught
+both v443 and v444 correctly. Promote it as the starting point for
+`solana/client/lint-bundle.js`. Required fixes before production use:
+
+1. **Strip comments from the identifier-extraction pass** — current version
+   misreports `townWeatherTimer → WEATHER_CYCLE_FRAMES` because the
+   identifier appears in a `// cycles at WEATHER_CYCLE_FRAMES` trailing
+   comment, not the initializer.
+2. **Strip string contents from identifier-extraction pass** — current
+   version misreports `const c=document.getElementById('g')` as
+   referencing later-declared `g`, because `'g'` is a string literal.
+3. **Skip function declarations in "declared later" lookup** — hoisting
+   means function-order TDZ is impossible.
+4. **Brace/paren depth tracking must survive arrow-function bodies** —
+   current version leaked a nested `const b` from inside `.map(h => {...})`
+   into the top-level decl map, causing `_sBufCmp=(a,b)=>b.uniq-a.uniq` to
+   false-positive on the parameter `b`.
+
+With those fixes, the prototype produced **1 true positive, 0 false
+positives** in the v444 investigation (before the fix landed).
+
+### Implementation sketch (regex-based)
+
+For each `src/*.js` file:
+
+```
+1. Strip // and /* */ comments.
+2. Strip string/template literal contents (keep quote delimiters).
+3. Track paren/brace depth to identify lines at indent 0 (top-level).
+4. Build top-level decl map: identifier → line (const/let/var/class only;
+   function is hoisted, skip for ordering purposes).
+5. For each top-level `const|let X = ...`, capture the initializer
+   expression (multi-line until depth == 0 AND trailing `;`).
+6. Extract all identifier references from the initializer.
+7. For each reference, if it resolves to a decl at a LATER line than
+   the declaration being checked, report it.
+```
+
+Acceptance: regex-based is enough to catch v443 + v444. AST upgrade only
+if false positives grow beyond what eyeballing can triage.
+
+### Related to Check #4 (deferred)
+
+Check #3 only catches order violations for identifiers declared *somewhere*
+in the same file. Bare references to identifiers that don't exist anywhere
+(like v445's `walkFrame`) slip through. Those need Check #4 (scope-chain
+analysis, AST-required).
+
+---
+
+## Check #4 (DEFERRED): free-identifier / unresolved reference
+
+**Trigger**: v445 `walkFrame` — `drawNPCSprite` body referenced bare
+`walkFrame` where `npc.walkFrame` was intended. ReferenceError at runtime;
+not TDZ, not collision — just a name that doesn't exist in any reachable
+scope.
+
+### Why deferred
+
+Correct implementation needs real scope-chain analysis:
+- Function parameters (including destructured, rest, defaults)
+- Function locals (nested declarations, for-loop headers, catch params,
+  arrow-function parameters including single-param shorthand)
+- Outer lexical scopes walking outward
+- Module top-level
+- Bundle-concat top-level (since `build.js` flattens modules)
+- Browser + project globals (document, window, PIXI, solanaWeb3, anchor,
+  splToken, snarkjs, oxarkUi, Buffer, ...)
+
+A regex-based attempt during v445 investigation produced **563 suspects
+across 753 hits** — signal-to-noise ratio too poor to be actionable. The
+false positives came from:
+
+- Multi-binding `const A=1,B=2;` secondary bindings missed as decls
+- Object-literal keys (`{homeX: 10, walking: false}`) flagged as refs
+- Object destructuring (`const {a,b} = obj`) bindings missed as locals
+- Arrow-function parameters missed in some shapes (`(a,b)=>{}`)
+- PixiJS TextStyle config object keys flagged as refs
+
+A *targeted* variant that only scans for known entity-property names
+(`walkFrame`, `visualX`, `moveTimer`, etc.) as bare references **does**
+work as a spot-check — see `/tmp/bare-prop-check2.js`, 0 hits after v445
+fix. That's the 80/20 path if we want *some* protection without AST.
+
+### Implementation path (when we take it up)
+
+1. Use `acorn` or `@babel/parser` with `ecmaVersion: 'latest'`.
+2. Walk each `FunctionDeclaration` / `FunctionExpression` / `ArrowFunction`.
+3. Build scope-chain from `acorn-walk` with scope tracking plugin
+   (or `eslint-scope` for battle-tested version).
+4. For each `Identifier` node in a `Reference` position (not a property
+   key, not a property access RHS), check if it resolves to any binding
+   in the chain up through bundle top-level + globals whitelist.
+5. Report unresolved refs with function name + line.
+
+Estimated cost: 1-2 days of work. Not Phase B2 blocker. Re-evaluate after
+Checks #1 + #3 land and we see how many real bugs remain.
+
+### 80/20 stopgap (optional, low cost)
+
+Build out `/tmp/bare-prop-check2.js` into a curated list of entity-property
+names (sourced from `04-state.js` player/NPC object construction + known
+idiomatic `obj.X` patterns). Run as part of lint. Catches the walkFrame
+class specifically without full scope analysis. Cheap to maintain but
+won't catch unknown-shape bugs.
