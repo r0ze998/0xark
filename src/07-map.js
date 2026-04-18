@@ -1722,6 +1722,12 @@ function dMap(){
         g.globalAlpha=flashA;
         bx(310+i*HUD_CARD_SPACING-1,hudY+13,26,26,'#d04040');
         g.globalAlpha=1;
+        // v523: critical decay sparks — screen-space (world = screen + cam)
+        if(fr%5===i%5){
+          const _dsx=310+i*HUD_CARD_SPACING+8+Math.random()*12+camX;
+          const _dsy=hudY+14+Math.random()*20+camY;
+          particles.push({x:_dsx,y:_dsy,vx:(Math.random()-.5)*0.8,vy:-0.6-Math.random()*0.8,life:10+Math.random()*8,c:Math.random()>.4?'rgba(255,60,40,0.9)':'rgba(255,200,60,0.8)'});
+        }
       }
       // Countdown seconds when <30s — v309: pre-baked string
       if(remainMs<30000){
