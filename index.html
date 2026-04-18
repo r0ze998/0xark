@@ -10886,21 +10886,36 @@ function triggerRandomEvent(){
     // Reveal player area to rivals (cosmetic - flash the minimap)
     flash();
     lg.push('Event: A strong wind revealed your position!');
+    // v668: wind gust scatter — pale dust/air motes blown sideways from player (world-space)
+    {const _wx=pl[0].visualX+8,_wy=pl[0].visualY+8;const _wdir=Math.random()>.5?1:-1;
+    for(let _wi=0;_wi<12;_wi++){particles.push({x:_wx+(Math.random()*20-10),y:_wy+(Math.random()*12-6),vx:_wdir*(1.2+Math.random()*2.0),vy:-0.3-Math.random()*0.6,life:14+Math.random()*10,c:Math.random()>.5?'rgba(220,215,200,0.60)':'rgba(180,200,220,0.45)'});}}
   }else if(ev.action==='scout'){
     // Alert effect
     rivalAlert=60;rivalAlertName='Scout';
     lg.push('Event: A rival scout was spotted nearby!');
+    // v668: scout alert burst — red radar-ping motes radiate from player center (world-space)
+    {const _sax=pl[0].visualX+8,_say=pl[0].visualY+8;
+    for(let _si=0;_si<10;_si++){const _sa=(_si/10)*Math.PI*2;const _ss=0.8+Math.random()*1.6;
+      particles.push({x:_sax,y:_say,vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-0.5,life:16+Math.random()*10,c:Math.random()>.5?'rgba(240,60,60,0.90)':'rgba(255,160,80,0.70)'});}}
   }else if(ev.action==='tension'){
     // Atmospheric — tension music spike
     screenShake(1,3);
     lg.push('Event: You sense a presence nearby...');
+    // v668: tension pulse — dim dark motes drift outward ominously from player (world-space)
+    {const _tpx=pl[0].visualX+8,_tpy=pl[0].visualY+8;
+    for(let _ti=0;_ti<8;_ti++){const _ta=(_ti/8)*Math.PI*2;const _ts=0.6+Math.random()*1.2;
+      particles.push({x:_tpx,y:_tpy,vx:Math.cos(_ta)*_ts,vy:Math.sin(_ta)*_ts-0.4,life:20+Math.random()*14,c:Math.random()>.5?'rgba(80,40,120,0.65)':'rgba(140,80,180,0.50)'});}}
   }else if(ev.action==='decay_warn'){
     // Speed up decay on the oldest hand card by 20s as penalty
     let oldest=-1,oldestAge=0;
     for(let i=0;i<HAND_SIZE;i++){
       if(cardTimers[i]>0){const age=Date.now()-cardTimers[i];if(age>oldestAge){oldestAge=age;oldest=i;}}
     }
-    if(oldest>=0){cardTimers[oldest]-=20000;sfxDangerAlert();}
+    if(oldest>=0){cardTimers[oldest]-=20000;sfxDangerAlert();
+      // v668: dark energy curse — black/crimson motes erupt from player on decay penalty (world-space)
+      const _dpx=pl[0].visualX+8,_dpy=pl[0].visualY+8;
+      for(let _di=0;_di<10;_di++){const _da=(_di/10)*Math.PI*2;const _ds=0.7+Math.random()*1.5;
+        particles.push({x:_dpx,y:_dpy,vx:Math.cos(_da)*_ds,vy:Math.sin(_da)*_ds-1.0,life:18+Math.random()*12,c:Math.random()>.5?'rgba(180,20,20,0.85)':'rgba(80,0,80,0.70)'});}}
     lg.push('Event: Dark energy accelerated card decay!');
   }else if(ev.action==='spell_restore'){
     // Restore 1 of each depleted spell type
@@ -11586,7 +11601,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v667',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v668',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
