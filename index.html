@@ -10064,6 +10064,8 @@ function drawMinimap(){
   g.globalAlpha=playerPulse;
   bx(mx+pl[0].x*sx-1,my+pl[0].y*sy-1,3,3,'#fff');bx(mx+pl[0].x*sx,my+pl[0].y*sy,1,1,'#40f040');
   g.globalAlpha=1;
+  // v629: minimap player ping — tiny radar mote pulses from player dot (screen-space)
+  if(fr%24===0){const _pmx=mx+pl[0].x*sx,_pmy=my+pl[0].y*sy;particles.push({x:_pmx,y:_pmy,vx:(Math.random()-.5)*.18,vy:-.12-Math.random()*.12,life:16+Math.random()*10,c:'rgba(64,240,64,0.65)'});}
   txShadow(mapNames[currentMap],mx,my-5,4,mapColors[currentMap],'rgba(0,0,0,.4)');
   // v470: Crystal reveal countdown bar + label below minimap
   if(crystalRevealTimer>0&&inDungeon){
@@ -11531,7 +11533,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v628',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v629',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
