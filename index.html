@@ -10276,6 +10276,11 @@ function drawSignpostDialog(){
   const arrowBounce=_sFr15*2; // v369: cached
   txShadow('\u25BC',W-24,H-18+slideOff+arrowBounce,7,'#806030','rgba(0,0,0,.4)');
   g.globalAlpha=1;
+  // v577: amber parchment dust rising from signpost text (screen-space)
+  if(dlgSlide>0.5&&fr%10===0){
+    particles.push({x:20+Math.random()*(W-40),y:H-65+slideOff,vx:(Math.random()-.5)*.25,vy:-.20-Math.random()*.22,life:22+Math.random()*14,c:Math.random()>.5?'rgba(180,130,50,0.38)':'rgba(220,180,80,0.28)'});
+  }
+  drawParticles(0,0); // v577: render signpost parchment dust (screen-space)
 }
 
 // ═══════════════════════════════════════
@@ -11374,7 +11379,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v575',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v577',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -20159,6 +20164,15 @@ function drawExitProximityTooltip(){
     const rarTxt=_SCR_RAR_CARD_LBL[mainRar]||(_SCR_RAR_NAMES[mainRar]+' cards'); // v342: pre-baked
     txShadow(rarTxt,ttX+ttW/2-rarTxt.length*3,ttY+46,6,_SCR_EXIT_RAR_COLS[mainRar]||'#888','rgba(0,0,0,.3)');
   }
+  // v576: exit proximity particles — green rising motes for escape, blue sparks for descend (screen-space)
+  if(fr%6===0){
+    if(isEsc){
+      particles.push({x:ttX+Math.random()*ttW,y:ttY,vx:(Math.random()-.5)*.30,vy:-.35-Math.random()*.35,life:18+Math.random()*12,c:Math.random()>.5?'rgba(40,220,100,0.50)':'rgba(80,250,140,0.38)'});
+    }else{
+      particles.push({x:ttX+Math.random()*ttW,y:ttY+ttH*Math.random(),vx:(Math.random()-.5)*.28,vy:-.28-Math.random()*.28,life:16+Math.random()*10,c:Math.random()>.5?'rgba(80,130,240,0.52)':'rgba(160,180,255,0.38)'});
+    }
+  }
+  drawParticles(0,0); // v576: render exit proximity particles (screen-space)
 }
 
 function drawFountainDialog(){
