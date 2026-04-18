@@ -13412,6 +13412,10 @@ const _RD_DATA_LBL=(()=>{const a=[];for(let i=0;i<=10;i++)a.push('R'+i+' data');
 const _BTYPE_UC={'attack':'A','defense':'D','flee':'F','magic':'M','recovery':'R'}; // first letter uppercase
 const _EXCESS_CHG=['+1','+2','+3','+4','+5','+6','+7','+8','+9'];
 const _STALE_RD_LBL=(()=>{const a=[];for(let i=0;i<=10;i++)a.push('(R'+i+')');return a;})();
+// v443: hoisted above _BTYPE_CNT_LBL — IIFE below reads _BTYPE_ABB, so the
+// declaration must precede it in source order (TDZ otherwise).
+const _BTYPE_MAP={attack:0,defense:1,flee:2,magic:3,recovery:4}; // v277: hoisted from hand type strip
+const _BTYPES=['attack','defense','flee','magic','recovery'],_BTYPE_ABB=['ATK','DEF','FLY','MAG','REC'],_BTYPE_COL=['#c83838','#3888c8','#30b870','#a840c0','#c8a830'];
 const _BTYPE_CNT_LBL=(()=>{const a=[];for(let ti=0;ti<5;ti++){const b=[];for(let n=0;n<=5;n++)b.push(_BTYPE_ABB[ti]+':'+n);a.push(b);}return a;})();
 const _SPLASH_CARD_LBL=['0 cards','1 card','2 cards','3 cards','4 cards','5 cards'];
 // v332: pre-baked STEAL target rarity labels (hoisted from per-frame local array in drawActionGrid)
@@ -13443,8 +13447,6 @@ function _getTypeInfo(t,r){
 }
 // v266: reusable slot buffer for USE CARD select — eliminates filled=[] per frame while card select open
 const _csFilledBuf=new Int8Array(7);
-const _BTYPE_MAP={attack:0,defense:1,flee:2,magic:3,recovery:4}; // v277: hoisted from hand type strip
-const _BTYPES=['attack','defense','flee','magic','recovery'],_BTYPE_ABB=['ATK','DEF','FLY','MAG','REC'],_BTYPE_COL=['#c83838','#3888c8','#30b870','#a840c0','#c8a830'];
 const _btCounts=new Int32Array(5); // reused each frame, zero-filled
 // v245: Pre-baked VS gold circle — eliminates arc per battle-intro frame
 const _vsGoldCircle=(()=>{const c=document.createElement('canvas');c.width=58;c.height=58;const ctx=c.getContext('2d');ctx.fillStyle='#f0c830';ctx.beginPath();ctx.arc(29,29,28,0,Math.PI*2);ctx.fill();return c;})();
