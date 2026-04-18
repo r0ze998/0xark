@@ -11629,7 +11629,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v697',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v698',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -19266,6 +19266,8 @@ function drawFishingOverlay(){
     bx(px-14,py-30,44,12,'rgba(60,20,20,.85)');
     txShadow('MISSED!',px-11,py-20,7,'#ff6040','rgba(0,0,0,.6)');
     g.globalAlpha=1;
+    // v698: fishing miss splash — water motes from sinking bobber (world-space)
+    if(fr%5===0){const _fd=pl[0].dir;const _mwx=pl[0].visualX+(_fd===1?-12:_fd===3?20:8),_mwy=pl[0].visualY+(_fd===0?20:_fd===2?-20:0);for(let _mi=0;_mi<2;_mi++){particles.push({x:_mwx+(Math.random()*8-4),y:_mwy,vx:(Math.random()-.5)*1.2,vy:0.18+Math.random()*0.45,life:9+Math.random()*5,c:Math.random()>.5?'rgba(80,160,220,0.65)':'rgba(160,210,240,0.50)'});}}
   }
 }
 
