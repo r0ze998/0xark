@@ -16,7 +16,8 @@ CLAUDE.md
 TASKS.md
 
 # Old Starknet/Dojo prototype — superseded by Solana implementation
-client/
+# (anchored to repo root; must not match nested solana/client/)
+/client/
 
 # GDD archive — keep only current GDD.md
 GDD-v0.2.md

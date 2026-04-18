@@ -16,10 +16,111 @@ const SRC_DIR = path.join(ROOT, 'src');
 const TEMPLATE = path.join(ROOT, 'template.html');
 const OUT_GAME = path.join(ROOT, 'index.html');
 const OUT_ROOT = path.join(ROOT, '../../index.html');
+const DESIGN_TOKENS_JSON = path.join(ROOT, '../../design/DESIGN_TOKENS.json');
+const TOKENS_OUT = path.join(SRC_DIR, '00-tokens.js');
+
+// ── Design-token generation ──────────────────────────────────────────────────
+// Reads design/DESIGN_TOKENS.json and emits src/00-tokens.js as a flat
+// window.TOKENS object. Semantic refs ({ "ref": "menu_blue" }) are resolved to
+// hex at build time so the runtime never walks ref indirection.
+// The file is committed to git but MUST NOT be hand-edited — regenerate via
+// `node build.js`. Hand edits will be clobbered on next build.
+function resolveSemanticPalette(palette) {
+  const lookupGroups = [
+    palette.locked,
+    palette.npc_identity,
+    palette.derived_overworld,
+    palette.derived_dungeon,
+  ];
+  const resolveRef = (key) => {
+    for (const group of lookupGroups) {
+      if (group && Object.prototype.hasOwnProperty.call(group, key)) return group[key];
+    }
+    throw new Error(`DESIGN_TOKENS.json: semantic ref "${key}" not found in any palette group`);
+  };
+  const out = {};
+  for (const [k, v] of Object.entries(palette.semantic)) {
+    if (typeof v === 'string') {
+      out[k] = v;
+    } else if (v && typeof v === 'object' && typeof v.ref === 'string') {
+      out[k] = resolveRef(v.ref);
+    } else {
+      throw new Error(`DESIGN_TOKENS.json: unexpected semantic value at "${k}": ${JSON.stringify(v)}`);
+    }
+  }
+  return out;
+}
+
+function generateTokensModule() {
+  if (!fs.existsSync(DESIGN_TOKENS_JSON)) {
+    console.error(`ERROR: ${DESIGN_TOKENS_JSON} not found.`);
+    process.exit(1);
+  }
+  const raw = JSON.parse(fs.readFileSync(DESIGN_TOKENS_JSON, 'utf8'));
+
+  const tokens = {
+    color: {
+      palette: {
+        locked:            raw.palette.locked,
+        npc_identity:      raw.palette.npc_identity,
+        derived_overworld: raw.palette.derived_overworld,
+        derived_dungeon:   raw.palette.derived_dungeon,
+        semantic:          resolveSemanticPalette(raw.palette),
+      },
+    },
+    type:      raw.typography,
+    space:     raw.spacing_px,
+    border:    raw.borders_px,
+    radii:     raw.radii_px,
+    viewport:  raw.viewport,
+    z:         raw.z_layers,
+    anim:      raw.animations_ms,
+    component: raw.component_tokens,
+  };
+
+  const banner = [
+    '// ═════════════════════════════════════════════════════════════════════════',
+    '// GENERATED FILE — DO NOT EDIT BY HAND',
+    '// Source:  design/DESIGN_TOKENS.json',
+    '// Regen:   `node build.js` (runs generateTokensModule() at top of build())',
+    `// Spec v:  ${raw.version}`,
+    '// ═════════════════════════════════════════════════════════════════════════',
+  ].join('\n');
+
+  const runtime = [
+    '',
+    '// Runtime helpers (appended by build.js — not in JSON source).',
+    '// document.fonts.ready resolves once web fonts (VT323) are usable.',
+    '// B1 exposes the promise but does not gate rendering on it; callers opt in.',
+    "window.TOKENS.fontReady = (typeof document !== 'undefined' && document.fonts && document.fonts.ready)",
+    '  ? document.fonts.ready',
+    '  : Promise.resolve();',
+    '',
+    '// resolveColor(key): walk semantic → locked → npc → derived groups, return hex.',
+    '// Literal hex strings ("#rrggbb") pass through. Returns null if not found.',
+    'window.TOKENS.resolveColor = function(key) {',
+    "  if (typeof key !== 'string') return null;",
+    "  if (key.charCodeAt(0) === 35 /* '#' */) return key;",
+    '  var p = window.TOKENS.color.palette;',
+    '  var groups = [p.semantic, p.locked, p.npc_identity, p.derived_overworld, p.derived_dungeon];',
+    '  for (var i = 0; i < groups.length; i++) {',
+    '    var g = groups[i];',
+    '    if (g && Object.prototype.hasOwnProperty.call(g, key)) return g[key];',
+    '  }',
+    '  return null;',
+    '};',
+    '',
+  ].join('\n');
+
+  const body = `${banner}\nwindow.TOKENS = ${JSON.stringify(tokens, null, 2)};\n${runtime}`;
+  fs.writeFileSync(TOKENS_OUT, body);
+  console.log(`  Tokens:       src/00-tokens.js regenerated from design/DESIGN_TOKENS.json (v${raw.version})`);
+}
 
 // ── Module manifest (ordered) ────────────────────────────────────────────────
 // Each entry describes what the file contains for quick navigation.
 const MODULES = [
+  { file: '00-tokens.js',        desc: 'Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)' },
   { file: '01-pixi.js',          desc: 'PixiJS canvas setup · FRLG UI framework (PixiJS) · title effects · particles · menu · textbox · HUD · tile drawing · lerp/easeInOut · audio system' },
   { file: '01-draw.js',          desc: 'FRLG window system (canvas 2D) · bx/tx/win primitives · drawCardFrame · crypto utils · ZK proof system · Solana/wallet/blockchain helpers' },
   { file: '01-net.js',           desc: 'WebSocket multiplayer client · typewriter text · fade/wipe transitions · screen shake · hand inspect · rival news display · run summary' },
@@ -40,6 +141,9 @@ const MODULES = [
 ];
 
 function build() {
+  // Regenerate design tokens module from JSON source before bundling.
+  generateTokensModule();
+
   // Read template
   if (!fs.existsSync(TEMPLATE)) {
     console.error('ERROR: template.html not found. Run from solana/client/ directory.');
