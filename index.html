@@ -2670,10 +2670,16 @@ function drawWipe(){
     // Vertical slide-down wipe
     const barH=Math.floor(H*ease);
     bx(0,0,W,barH,'#181828');
+    // v695: vslide leading-edge sparks — dust motes kicked up by descending curtain (screen-space)
+    if(barH>4&&barH<H-4&&fr%3===0){const _vsex=Math.random()*W,_vsey=barH;particles.push({x:_vsex,y:_vsey,vx:(Math.random()-.5)*1.0,vy:0.3+Math.random()*0.6,life:7+Math.random()*5,c:Math.random()>.5?'rgba(255,255,240,0.72)':'rgba(200,180,240,0.58)'});}
+    drawParticles(0,0); // v695: vslide edge sparks (screen-space)
   }else if(wipeType==='vslide_out'){
     // Reverse slide-down
     const barH=Math.floor(H*(1-ease));
     bx(0,0,W,barH,'#181828');
+    // v695: vslide_out trailing sparks — motes rise as curtain lifts (screen-space)
+    if(barH>4&&barH<H-4&&fr%3===0){const _voex=Math.random()*W,_voey=barH;particles.push({x:_voex,y:_voey,vx:(Math.random()-.5)*0.9,vy:-0.4-Math.random()*0.6,life:7+Math.random()*5,c:Math.random()>.5?'rgba(255,240,200,0.70)':'rgba(180,220,255,0.55)'});}
+    drawParticles(0,0); // v695: vslide_out rising sparks (screen-space)
   }else if(wipeType==='mosaic'){
     // FRLG-style mosaic pixelation wipe — screen pixelates then goes black
     const pixelSize=Math.max(2,Math.floor(ease*32));
@@ -11623,7 +11629,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v694',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v695',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
