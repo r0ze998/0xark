@@ -10466,9 +10466,9 @@ function drawSynthesisShop(){
       const cr=CD[synthResultCard-1];
       const rCol=RARITY_COLOR[cr.r]||'#c8c0a0';
       // v497: rarity-scaled burst on synthesis success reveal
-      if(t===8){const _sn=8+cr.r*3; // v506 fix: world coords
+      if(t===8){const _sn=8+cr.r*3; // v553: screen-space coords (was world-space, particles appeared behind overlay)
         for(let _si=0;_si<_sn;_si++){const _sa=(_si/_sn)*Math.PI*2;const _ss=1.5+Math.random()*(cr.r*0.7+1.5);
-          particles.push({x:W/2+camX+(Math.random()*30-15),y:140+camY+(Math.random()*20-10),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2.5,life:20+Math.random()*18+cr.r*4,c:Math.random()>.4?rCol:'rgba(255,255,200,1)'});
+          particles.push({x:W/2+(Math.random()*30-15),y:140+(Math.random()*20-10),vx:Math.cos(_sa)*_ss,vy:Math.sin(_sa)*_ss-2.5,life:20+Math.random()*18+cr.r*4,c:Math.random()>.4?rCol:'rgba(255,255,200,1)'});
         }
       }
       txShadow('SYNTHESIS SUCCESS!',W/2-88,90,10,'#40d080','rgba(0,0,0,.3)');
@@ -10479,6 +10479,7 @@ function drawSynthesisShop(){
       txShadow('No cards of that rarity to forge.',W/2-140,H/2,8,'#d04040','rgba(0,0,0,.2)');
     }
     if(fr-synthResultFrame>40)txShadow('Press X to close',W/2-64,H-80,7,'#686068','rgba(0,0,0,.35)');
+    drawParticles(0,0); // v553: render synthesis result burst on top of overlay (screen-space)
     return;
   }
 
@@ -11307,7 +11308,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v552',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v553',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
