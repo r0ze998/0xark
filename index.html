@@ -11572,7 +11572,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v655',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v656',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -14236,6 +14236,8 @@ function drawBattleBG(){
         g.globalAlpha=crystA;
         bx(csx,csy,4,18,'#7050c0');bx(csx+1,csy,2,12,'#a080e0');
         g.globalAlpha=1;
+        // v656: crystal tip glint — faint purple/cyan motes released from shard tips when bright (screen-space)
+        if(crystA>0.62&&fr%(20+i*6)===i%4){const _cc=Math.random()>.45?'rgba(200,140,255,0.72)':Math.random()>.5?'rgba(120,200,255,0.60)':'rgba(255,220,255,0.50)';particles.push({x:csx+1+Math.random()*3,y:csy+Math.random()*4,vx:(Math.random()-.5)*.28,vy:-0.22-Math.random()*.30,life:9+Math.random()*7,c:_cc});}
       }
     }
     // F4: rising ember particles + crack lava seep — v392: parabola replaces sin(phase*π)
