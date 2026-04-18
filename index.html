@@ -11601,7 +11601,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v669',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v670',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -12578,6 +12578,8 @@ function drawPirateDecorations(){
       const tailCurl=(_sFr05*mk.cosTX+_cFr05*mk.sinTX)*2; // v355: sin-addition, no trig per frame
       bx(mpx+8,mpy+8-hopBob+tailCurl,1,3,'#8B5E3C');
       bx(mpx+9,mpy+10-hopBob+tailCurl,1,2,'#8B5E3C');
+      // v670: monkey hop dust — leaf-green motes puff from branch on landing (world-space)
+      if(mk.hopTimer===1){const _mkwx=mtx*TW+mk.offsetX+4,_mkwy=mty*TH+4+mk.offsetY+11;for(let _mki=0;_mki<4;_mki++){particles.push({x:_mkwx+(Math.random()*8-4),y:_mkwy,vx:(Math.random()-.5)*0.60,vy:-0.18-Math.random()*0.22,life:10+Math.random()*8,c:Math.random()>.5?'rgba(60,140,50,0.48)':'rgba(110,180,70,0.36)'}); }}
     }
 
   }else if(currentMap===2){
