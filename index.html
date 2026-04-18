@@ -11629,7 +11629,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v704',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v705',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -15631,12 +15631,16 @@ function drawSelectPhase(){
       bx(hpX+4,hpY+hpH,hpW-8,14,'rgba(20,80,40,.6)');
       txShadow('\u25B2 ON A ROLL!',hpX+10,hpY+hpH+11,6,'#50d080','rgba(0,0,0,.3)');
       g.globalAlpha=1;
+      // v705: ON A ROLL momentum — green/gold upward sparkles every 30 frames (screen-space)
+      if(fr%30===0){for(let _mri=0;_mri<5;_mri++){particles.push({x:hpX+6+Math.random()*(hpW-12),y:hpY+hpH+7,vx:(Math.random()-.5)*1.2,vy:-0.8-Math.random()*1.6,life:18+Math.random()*12,c:Math.random()>.5?'rgba(60,210,100,0.85)':'rgba(220,200,40,0.75)'});}}
     }else if(_battleRoundNet<=-3){
       const mbA=0.7+_sFr20*0.3; // v369: cached
       g.globalAlpha=histAlpha*mbA;
       bx(hpX+4,hpY+hpH,hpW-8,14,'rgba(80,20,20,.6)');
       txShadow('\u25BC UNDER PRESSURE',hpX+10,hpY+hpH+11,6,'#d05050','rgba(0,0,0,.3)');
       g.globalAlpha=1;
+      // v705: UNDER PRESSURE — red/amber downward embers every 30 frames (screen-space)
+      if(fr%30===0){for(let _mpi=0;_mpi<5;_mpi++){particles.push({x:hpX+6+Math.random()*(hpW-12),y:hpY+hpH+7,vx:(Math.random()-.5)*1.2,vy:0.6+Math.random()*1.4,life:16+Math.random()*10,c:Math.random()>.5?'rgba(210,50,30,0.85)':'rgba(255,140,30,0.72)'});}}
     }
     g.globalAlpha=1;
   }
