@@ -105,6 +105,11 @@ function tryMovePlayer(dx, dy) {
       particles.push({x:_lx+(Math.random()*12-6),y:_ly+(Math.random()*6),vx:Math.cos(_lva)*_lvs,vy:Math.sin(_lva)*_lvs-1.5,life:10+Math.random()*8,c:Math.random()>.4?'rgba(255,80,20,1)':'rgba(255,200,40,1)'});
     }}
   }
+  // v536: town path/sand footstep dust; dock water splash (world coords)
+  if(!inDungeon){
+    if(newTile===2||newTile===4){const _ptx=nx*TW+4+Math.random()*TW/2,_pty=ny*TH+TH-4;particles.push({x:_ptx,y:_pty,vx:(Math.random()-.5)*0.9,vy:-0.3-Math.random()*0.5,life:8+Math.random()*6,c:Math.random()>.5?'rgba(190,168,128,0.58)':'rgba(220,200,158,0.42)'});}
+    if(newTile===10){for(let _di=0;_di<3;_di++){particles.push({x:nx*TW+6+Math.random()*20,y:ny*TH+TH-4,vx:(Math.random()-.5)*1.4,vy:-0.5-Math.random()*0.9,life:10+Math.random()*7,c:Math.random()>.5?'rgba(120,180,220,0.72)':'rgba(200,230,255,0.55)'});}}
+  }
   if(inDungeon){ processDungeonTurn(); checkFloorItemPickup(nx,ny); }
   if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
   if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}

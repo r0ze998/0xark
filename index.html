@@ -11271,7 +11271,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v535',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v536',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -21253,6 +21253,11 @@ function tryMovePlayer(dx, dy) {
     for(let _lvi=0;_lvi<8;_lvi++){const _lva=Math.random()*Math.PI-Math.PI/2-0.5;const _lvs=0.8+Math.random()*2;
       particles.push({x:_lx+(Math.random()*12-6),y:_ly+(Math.random()*6),vx:Math.cos(_lva)*_lvs,vy:Math.sin(_lva)*_lvs-1.5,life:10+Math.random()*8,c:Math.random()>.4?'rgba(255,80,20,1)':'rgba(255,200,40,1)'});
     }}
+  }
+  // v536: town path/sand footstep dust; dock water splash (world coords)
+  if(!inDungeon){
+    if(newTile===2||newTile===4){const _ptx=nx*TW+4+Math.random()*TW/2,_pty=ny*TH+TH-4;particles.push({x:_ptx,y:_pty,vx:(Math.random()-.5)*0.9,vy:-0.3-Math.random()*0.5,life:8+Math.random()*6,c:Math.random()>.5?'rgba(190,168,128,0.58)':'rgba(220,200,158,0.42)'});}
+    if(newTile===10){for(let _di=0;_di<3;_di++){particles.push({x:nx*TW+6+Math.random()*20,y:ny*TH+TH-4,vx:(Math.random()-.5)*1.4,vy:-0.5-Math.random()*0.9,life:10+Math.random()*7,c:Math.random()>.5?'rgba(120,180,220,0.72)':'rgba(200,230,255,0.55)'});}}
   }
   if(inDungeon){ processDungeonTurn(); checkFloorItemPickup(nx,ny); }
   if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
