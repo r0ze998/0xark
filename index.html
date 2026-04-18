@@ -11347,7 +11347,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v566',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v567',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -19232,6 +19232,17 @@ function drawBuildingInterior(){
   bx(ppx+11,ppy+3,3,2,'#181820');bx(ppx+18,ppy+3,3,2,'#181820');
   bx(ppx+12,ppy+3,1,1,'#ffffff');bx(ppx+19,ppy+3,1,1,'#ffffff');
 
+  // v567: building ambient atmosphere particles (screen-space, rendered by drawParticles(0,0) below)
+  if(fr%25===0){
+    const _baX=offsetX+8+Math.random()*(BUILDING_W*tileSize-16), _baY=offsetY+8+Math.random()*(BUILDING_H*tileSize-24);
+    if(buildingType==='shop'){
+      // Trading post: warm gold coin glints
+      particles.push({x:_baX,y:_baY,vx:(Math.random()-.5)*0.20,vy:-0.18-Math.random()*0.18,life:22+Math.random()*14,c:Math.random()>.5?'rgba(220,180,60,0.40)':'rgba(255,210,100,0.32)'});
+    }else{
+      // Spy Master's Den: eerie blue wisp
+      particles.push({x:_baX,y:_baY,vx:(Math.random()-.5)*0.14,vy:-0.14-Math.random()*0.14,life:28+Math.random()*16,c:Math.random()>.5?'rgba(80,140,220,0.38)':'rgba(140,80,200,0.32)'});
+    }
+  }
   // HUD for building
   const hudY=H-40;
   win(0,hudY,W,40);
