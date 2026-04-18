@@ -1400,6 +1400,11 @@ function dMap(){
       const spx=p.visualX-camX,spy=p.visualY-camY-16;
       drawRivalAlertAnim(p,spx,spy);
       const rNameCol=(i===1)?'#f080c0':'#f0c830';
+      // v535: rival movement trail — colored motes when rival is walking (world coords, next-frame display)
+      if(fr%4===0&&(Math.abs(p.visualX-p.x*TW)>1||Math.abs(p.visualY-p.y*TH)>1)){
+        const _rc=i===1?'rgba(240,128,192,0.55)':'rgba(240,200,48,0.55)';
+        particles.push({x:p.visualX+8+Math.random()*8,y:p.visualY+24+Math.random()*4,vx:(Math.random()-.5)*0.35,vy:-0.15-Math.random()*0.3,life:10+Math.random()*8,c:_rc});
+      }
       const rCards=cdCount(p.cd);
       const _ri=i-1; // v304: cache rival sprite label; only rebuild when card count changes
       if(_rLblKey[_ri]!==rCards){_rLblKey[_ri]=rCards;_rLblCache[_ri]=p.n+(rCards>0?' '+rCards+'c':'');}
