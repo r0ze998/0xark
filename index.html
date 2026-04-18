@@ -11632,7 +11632,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v708',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v709',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
@@ -13670,6 +13670,8 @@ function dMap(){
       txShadow('\u2713 MISSION COMPLETE!',_mcX+8,_mcY+14,8,'#c0ff80','rgba(0,0,0,.65)');
       g.globalAlpha=1;
     }
+    // v709: mission complete celebration — green/gold motes burst on banner appear, screen-space
+    if(_mca===1){for(let _mci=0;_mci<18;_mci++){const _mca2=(_mci/18)*Math.PI*2;const _mcs=1.0+Math.random()*2.8;particles.push({x:W/2,y:H/2+10,vx:Math.cos(_mca2)*_mcs,vy:Math.sin(_mca2)*_mcs-1.8,life:22+Math.random()*16,c:Math.random()>.5?'rgba(130,240,60,0.88)':'rgba(220,255,100,0.78)'});}}
   }}
 
   // Area Danger Level display — v314: pre-baked combined label
