@@ -2809,6 +2809,13 @@ function drawMapLoadScreen(){
     if(mapLoadScreenCards&&t>0.25){
       txShadow(mapLoadScreenCards,W/2-mapLoadScreenCards.length*4,H/2+46,7,atmosAccent,'rgba(0,0,0,.5)');
     }
+    // v572: floor-specific atmosphere motes rising during map load (screen-space)
+    if(mapLoadScreenFrame%14===0&&t>0.1&&t<0.88){
+      const _mlx=20+Math.random()*(W-40),_mly=H/2+60+Math.random()*80;
+      const _mlc1=['','rgba(180,180,200,0.50)','rgba(60,200,80,0.48)','rgba(200,150,40,0.52)','rgba(220,80,30,0.55)','rgba(240,50,20,0.60)'][fl]||'rgba(200,180,140,0.45)';
+      const _mlc2=['','rgba(100,100,180,0.42)','rgba(100,60,200,0.40)','rgba(255,180,60,0.44)','rgba(255,100,40,0.48)','rgba(255,80,30,0.52)'][fl]||'rgba(180,160,120,0.38)';
+      particles.push({x:_mlx,y:_mly,vx:(Math.random()-.5)*0.34,vy:-0.36-Math.random()*0.40,life:30+Math.random()*20,c:Math.random()>.5?_mlc1:_mlc2});
+    }
   }else{
     // Town/generic: simple name display
     const nameW=mapLoadScreenName.length*8;
@@ -2818,6 +2825,7 @@ function drawMapLoadScreen(){
     }
     bx(W/2-80,H/2+4,160,1,'rgba(200,180,140,.5)');
   }
+  drawParticles(0,0); // v572: render floor atmosphere motes on top of load screen
   g.globalAlpha=1;
 }
 
@@ -11347,7 +11355,7 @@ function dTitle(){
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v571',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v572',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
