@@ -11211,6 +11211,13 @@ function dTitle(){
   // Solid wave base fill
   bx(0,H-20,W,20,'rgba(16,32,64,0.5)');
   bx(0,H-10,W,10,'rgba(12,24,48,0.6)');
+  // v549: ethereal ocean wisps rising from wave surface on title screen (screen-space)
+  if(fr%22===0){const _twx=20+Math.random()*(W-40),_twy=H-24+Math.random()*10;
+    particles.push({x:_twx,y:_twy,vx:(Math.random()-.5)*0.22,vy:-0.28-Math.random()*0.30,life:40+Math.random()*30,c:Math.random()>.55?'rgba(120,80,220,0.30)':'rgba(100,160,240,0.24)'});
+  }
+  if(fr%37===0){const _twx2=20+Math.random()*(W-40);
+    particles.push({x:_twx2,y:H-18+Math.random()*8,vx:(Math.random()-.5)*0.18,vy:-0.22-Math.random()*0.22,life:50+Math.random()*30,c:'rgba(200,180,80,0.20)'});
+  }
 
   if(hasSave()){
     const sel=titleMenuIdx||0;
@@ -11296,10 +11303,11 @@ function dTitle(){
     if(_titleStepsKey!==stepCounter){_titleStepsKey=stepCounter;_titleStepsLbl='Steps: '+stepCounter;}
     txShadow(_titleStepsLbl,W/2-50,previewY+36,6,'#686880','rgba(0,0,0,.3)');
   }
+  drawParticles(0,0); // v549: render title screen ocean wisps before footer text
   // Footer credits
   txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
   // Version label — shown in top-right for easy reference
-  txShadow('v548',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+  txShadow('v549',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
