@@ -183,50 +183,11 @@ function build() {
     const dst = path.join(REPO_ROOT, f);
     if (fs.existsSync(src)) fs.copyFileSync(src, dst);
   }
-  // Copy PNG tilesets (game references them as root-relative paths when served from GitHub Pages)
-  const PNG_FILES = [
-    { src: 'pirates-tilemap.png',    dst: 'pirates-tilemap.png'    },
-    { src: 'world-tileset.png',      dst: 'world-tileset.png'      },
-    { src: 'dungeon-tileset.png',    dst: 'dungeon-tileset.png'    },
-    { src: 'overworld-rpg-tileset.png', dst: 'overworld-rpg-tileset.png' },
-    { src: 'zelda-like-gfx/gfx/character.png', dst: 'zelda-character.png' },
-    { src: 'zelda-like-gfx/gfx/Overworld.png', dst: 'zelda-overworld.png' },
-    { src: 'zelda-like-gfx/gfx/cave.png',      dst: 'zelda-cave.png'      },
-    { src: 'zelda-like-gfx/gfx/objects.png',   dst: 'zelda-objects.png'   },
-    // Craftpix asset sheets
-    { src: 'craftpix-exterior.png', dst: 'craftpix-exterior.png' },
-    { src: 'craftpix-walls.png',    dst: 'craftpix-walls.png'    },
-    { src: 'craftpix-ground.png',   dst: 'craftpix-ground.png'   },
-    { src: 'craftpix-trees.png',    dst: 'craftpix-trees.png'    },
-    { src: 'craftpix-ruins1.png',   dst: 'craftpix-ruins1.png'   },
-    { src: 'craftpix-ruins2.png',   dst: 'craftpix-ruins2.png'   },
-    { src: 'craftpix-ruins3.png',   dst: 'craftpix-ruins3.png'   },
-    { src: 'craftpix-ruins4.png',   dst: 'craftpix-ruins4.png'   },
-    { src: 'craftpix-ruins5.png',   dst: 'craftpix-ruins5.png'   },
-    // Midjourney map backgrounds (optional — only copied if they exist)
-    { src: 'bg-town.jpg',      dst: 'bg-town.jpg'      },
-    { src: 'bg-dungeon1.jpg',  dst: 'bg-dungeon1.jpg'  },
-    { src: 'bg-dungeon2.jpg',  dst: 'bg-dungeon2.jpg'  },
-    { src: 'bg-dungeon3.jpg',  dst: 'bg-dungeon3.jpg'  },
-    // Craftpix forest object sprites (top-down pixel art trees/mushrooms)
-    { src: 'cpx-forest-Curved_tree1.png',           dst: 'cpx-forest-Curved_tree1.png'           },
-    { src: 'cpx-forest-Curved_tree2.png',           dst: 'cpx-forest-Curved_tree2.png'           },
-    { src: 'cpx-forest-Willow1.png',                dst: 'cpx-forest-Willow1.png'                },
-    { src: 'cpx-forest-Willow2.png',                dst: 'cpx-forest-Willow2.png'                },
-    { src: 'cpx-forest-Blue-green_balls_tree1.png', dst: 'cpx-forest-Blue-green_balls_tree1.png' },
-    { src: 'cpx-forest-Luminous_tree1.png',         dst: 'cpx-forest-Luminous_tree1.png'         },
-    { src: 'cpx-forest-Mega_tree1.png',             dst: 'cpx-forest-Mega_tree1.png'             },
-    { src: 'cpx-forest-Mega_tree2.png',             dst: 'cpx-forest-Mega_tree2.png'             },
-    { src: 'cpx-forest-Beige_green_mushroom1.png',  dst: 'cpx-forest-Beige_green_mushroom1.png'  },
-    { src: 'cpx-forest-Beige_green_mushroom2.png',  dst: 'cpx-forest-Beige_green_mushroom2.png'  },
-  ];
-  let copiedPngs = 0;
-  for (const { src, dst } of PNG_FILES) {
-    const srcPath = path.join(ROOT, src);
-    const dstPath = path.join(REPO_ROOT, dst);
-    if (fs.existsSync(srcPath)) { fs.copyFileSync(srcPath, dstPath); copiedPngs++; }
-  }
-  if (copiedPngs > 0) console.log(`  PNGs copied:  ${copiedPngs} tileset files → repo root`);
+  // Legacy tileset/bg PNG copy step removed in v451 (Phase B2-0).
+  // All prior entries (pirates-tilemap, world/dungeon/overworld tilesets, zelda-*,
+  // craftpix-*, bg-town/dungeon*, cpx-forest-*) now live in assets/retired/.
+  // Sprite Seas (道A) sources its art from assets/pirates/ (Kenney Monochrome Pirates)
+  // and PixiJS Graphics procedurals — no root-relative PNG copies required.
 
   // Copy React UI bundle to repo root (served alongside root index.html on GitHub Pages)
   const REACT_DIST_SRC = path.join(ROOT, 'react-dist');
