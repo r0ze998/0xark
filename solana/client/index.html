@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v461a+";
+window.BUILD_VERSION = "dev+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -109,7 +109,10 @@ window.TOKENS = {
         "night_sky": "#0c1a38",
         "sand_beach": "#e8c878",
         "hull_wood": "#805028",
+        "hull_highlight": "#a07040",
+        "hull_shadow": "#5c3818",
         "sail_cream": "#f8e8c0",
+        "sparkle_cream": "#ffffc8",
         "flag_red": "#c82828",
         "gold_accent": "#f0b828",
         "menu_blue": "#3858a0",
@@ -148,7 +151,20 @@ window.TOKENS = {
         "dungeon_wall": "#482818",
         "dungeon_fog": "#100818",
         "dungeon_quiet": "#0c0818",
-        "rival_pulse": "#ff70b0"
+        "rival_pulse": "#ff70b0",
+        "vfx_crystal_orb": "#48b8e8",
+        "vfx_crystal_pale": "#a0e0ff",
+        "vfx_crystal_bolt": "#64c8ff",
+        "vfx_crystal_bolt2": "#c8f0ff",
+        "vfx_shadow_dark": "#501e78",
+        "vfx_shadow_mid": "#8c50b4",
+        "vfx_flame_core": "#dc5028",
+        "vfx_flame_tip": "#ffc83c",
+        "vfx_danger_flash": "#ff2020",
+        "vfx_void_dark": "#6432a0",
+        "vfx_void_mid": "#b464dc",
+        "vfx_void_card_dark": "#7858a0",
+        "vfx_void_card_mid": "#9878c0"
       },
       "semantic": {
         "bg_default": "#1c3868",
@@ -371,8 +387,12 @@ window.TOKENS = {
     },
     "chest": {
       "body_ref": "hull_wood",
-      "body_top": "#a07040",
-      "body_bot": "#5c3818",
+      "body_top": {
+        "ref": "hull_highlight"
+      },
+      "body_bot": {
+        "ref": "hull_shadow"
+      },
       "lock_ref": "menu_border",
       "border_ref": "text_dark",
       "size": {
@@ -11805,10 +11825,8 @@ function dTitle(){
     const shipX=shipCX-shipW/2, shipY=shipCY-shipH/2;
     const outline=window.TOKENS.resolveColor('text_dark');
     const hullCol=window.TOKENS.resolveColor('hull_wood');
-    // Derived shades of hull_wood — preview `box-shadow: inset` values. Not
-    // tokenized yet (@phase-b2-token-candidate: hull_highlight / hull_shadow).
-    const hullTop='#a07040';
-    const hullBot='#5c3818';
+    const hullTop=_RC('hull_highlight');
+    const hullBot=_RC('hull_shadow');
     const goldT=window.TOKENS.resolveColor('gold_accent');
     const sailCol=window.TOKENS.resolveColor('sail_cream');
     const sailShadow=window.TOKENS.resolveColor('sand_beach'); // #e8c878
@@ -15842,15 +15860,15 @@ function drawCrystalEffect(cx_,cy_,evT){
   for(let i=0;i<8;i++){
     const px_=cx_+(_eC*_ORB_CI8[i]-_eS*_ORB_SI8[i])*_dist;
     const py_=cy_+(_eS*_ORB_CI8[i]+_eC*_ORB_SI8[i])*_dist*0.6;
-    bx(px_-2,py_-2,4,4,'#48b8e8');bx(px_-1,py_-1,2,2,'#a0e0ff');
+    bx(px_-2,py_-2,4,4,_RC('vfx_crystal_orb'));bx(px_-1,py_-1,2,2,_RC('vfx_crystal_pale'));
   }}
   // Lightning bolt at mid-animation
   if(evT>15&&evT<30){
-    g.globalAlpha=(30-evT)/15;g.strokeStyle='#64c8ff';g.lineWidth=2;
+    g.globalAlpha=(30-evT)/15;g.strokeStyle=_RC('vfx_crystal_bolt');g.lineWidth=2;
     g.beginPath();g.moveTo(cx_,cy_-20);
     g.lineTo(cx_+10,cy_-5);g.lineTo(cx_-5,cy_+5);g.lineTo(cx_+15,cy_+25);
     g.stroke();
-    g.globalAlpha=(30-evT)/20;g.strokeStyle='#c8f0ff';g.lineWidth=1;
+    g.globalAlpha=(30-evT)/20;g.strokeStyle=_RC('vfx_crystal_bolt2');g.lineWidth=1;
     g.beginPath();g.moveTo(cx_+2,cy_-18);
     g.lineTo(cx_+12,cy_-3);g.lineTo(cx_-3,cy_+7);g.lineTo(cx_+17,cy_+27);
     g.stroke();g.globalAlpha=1;
@@ -15872,8 +15890,8 @@ function drawShadowEffect(cx_,cy_,evT){
   const _sS=Math.sin(evT*0.2),_sC=Math.cos(evT*0.2);
   for(let i=0;i<6;i++){
     const px_=cx_-15+i*6+(_sS*_IDX_CI[i]+_sC*_IDX_SI[i])*4,py_=cy_+20-evT*1.5-i*3;
-    g.fillStyle='#501e78';g.fillRect(px_,py_,3,3);
-    g.fillStyle='#8c50b4';g.fillRect(px_+1,py_+1,1,1);
+    g.fillStyle=_RC('vfx_shadow_dark');g.fillRect(px_,py_,3,3);
+    g.fillStyle=_RC('vfx_shadow_mid');g.fillRect(px_+1,py_+1,1,1);
   }g.globalAlpha=1;}
 }
 
@@ -15888,12 +15906,12 @@ function drawFlameEffect(cx_,cy_,evT){
     const px_=cx_+(_eC*_ORB_CI12[i]-_eS*_ORB_SI12[i])*dist;
     const py_=cy_+(_eS*_ORB_CI12[i]+_eC*_ORB_SI12[i])*dist*0.5-_evT05;
     const sz=4-evT*0.08;
-    if(sz>0){g.fillStyle='#dc5028';g.fillRect(px_-sz/2,py_-sz/2,sz,sz);g.fillStyle='#ffc83c';g.fillRect(px_-sz/4,py_-sz/4,sz/2,sz/2);}
+    if(sz>0){g.fillStyle=_RC('vfx_flame_core');g.fillRect(px_-sz/2,py_-sz/2,sz,sz);g.fillStyle=_RC('vfx_flame_tip');g.fillRect(px_-sz/4,py_-sz/4,sz/2,sz/2);}
   }g.globalAlpha=1;}
   // Target flash red
   if(evT<10){
     g.globalAlpha=(10-evT)/10*0.4;
-    bx(0,0,W,H,'#ff2020');
+    bx(0,0,W,H,_RC('vfx_danger_flash'));
     g.globalAlpha=1;
   }
 }
@@ -15910,7 +15928,7 @@ function drawStormEffect(evT){
     const a=Math.max(0,1-evT/25);
     // v390: sin-addition with _IDX_SI/CI — sin(evT+i) = sin(evT)*CI[i]+cos(evT)*SI[i]
     const _stS=Math.sin(evT),_stC=Math.cos(evT);
-    g.globalAlpha=a;g.strokeStyle='#ffffc8';g.lineWidth=3;
+    g.globalAlpha=a;g.strokeStyle=_RC('sparkle_cream');g.lineWidth=3;
     for(let i=0;i<3;i++){
       const sx_=80+i*200+(_stS*_IDX_CI[i]+_stC*_IDX_SI[i])*20;
       g.beginPath();g.moveTo(sx_,0);
@@ -15937,15 +15955,15 @@ function drawVoidEffect(cx_,cy_,evT){
     const dist=_base+(_eS5*_IDX_CI[i]+_eC5*_IDX_SI[i])*5;
     const px_=cx_+(_eC3*_ORB_CI10[i]-_eS3*_ORB_SI10[i])*dist;
     const py_=cy_+(_eS3*_ORB_CI10[i]+_eC3*_ORB_SI10[i])*dist*0.6;
-    g.fillStyle='#6432a0';g.fillRect(px_-2,py_-2,4,4);
-    g.fillStyle='#b464dc';g.fillRect(px_-1,py_-1,2,2);
+    g.fillStyle=_RC('vfx_void_dark');g.fillRect(px_-2,py_-2,4,4);
+    g.fillStyle=_RC('vfx_void_mid');g.fillRect(px_-1,py_-1,2,2);
   }}
   // Card shape flying — v390: parabola approx for arc (4x(1-x) ≈ sin(πx))
   if(evT>10&&evT<30){
     const t_=(evT-10)/20;
     const cardX=lerp(cx_+60,cx_-60,t_);
     const cardY=cy_-10+4*t_*(1-t_)*-20;
-    bx(cardX-6,cardY-8,12,16,'#7858a0');bx(cardX-5,cardY-7,10,14,'#9878c0');
+    bx(cardX-6,cardY-8,12,16,_RC('vfx_void_card_dark'));bx(cardX-5,cardY-7,10,14,_RC('vfx_void_card_mid'));
     txShadow('?',cardX-3,cardY+4,6,'#fff','rgba(0,0,0,.35)');
   }
   g.globalAlpha=1;g.restore();
@@ -17511,7 +17529,7 @@ function dVictory(){
       // v393: N=4 orbit unrolled — sin(i*π/2) = {0,1,0,-1}, cos = {1,0,-1,0}
       if(cardT>0&&cardT<20){
         const _spS=Math.sin(cardT*.2),_spC=Math.cos(cardT*.2),_spd=8+cardT*.6;
-        g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle='#ffffc8';
+        g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle=_RC('sparkle_cream');
         g.fillRect(cx_+_spC*_spd,cy_+_spS*_spd,2,2);
         g.fillRect(cx_-_spS*_spd,cy_+_spC*_spd,2,2);
         g.fillRect(cx_-_spC*_spd,cy_-_spS*_spd,2,2);
