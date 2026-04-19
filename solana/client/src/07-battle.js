@@ -198,6 +198,7 @@ function sfxFlame(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),
 function sfxStorm(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='highpass';f.frequency.value=3000;gn.gain.setValueAtTime(.1,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.2);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.2);}catch(e){}}
 function sfxVoid(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(600,AC.currentTime);o.frequency.linearRampToValueAtTime(200,AC.currentTime+.15);gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.15);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.15);}catch(e){}}
 
+// @deprecated (phase-b2-battle): replaced by drawGBABattleBG() in v455. Remove in B2-8.
 function drawBattleBG(){
   // FRLG-style layered battle backgrounds — static layers from pre-baked canvases, animated on top
   const horizonY=_btlHorizonY;
@@ -315,6 +316,7 @@ function drawBattleBG(){
   }
 }
 
+// @deprecated (phase-b2-battle): replaced by drawGBAHpBox() bar section in v455. Remove in B2-8.
 // Draw FRLG-style card count bar (like HP bar) with rounded container and segmented fill
 function drawCardBar(x,y,w,cards,maxCards){
   const filledCount=cdCount(cards);
@@ -423,7 +425,7 @@ function _drawAccuracyReveal(px_,yBase,bw_,revT_,acc_,bluffName_,alpha_){
   g.globalAlpha=1;
 }
 
-// Draw FRLG-style opponent info box (top-left)
+// @deprecated (phase-b2-battle): replaced by drawGBAHpBox() in v455. Remove in B2-8.
 function drawOpponentInfoBox(){
   const rival=pl[1]; // Primary opponent (VEGA)
   let sx=0,sy=0;
@@ -534,7 +536,7 @@ function drawOpponentInfoBox(){
   }
 }
 
-// Draw FRLG-style player info box (bottom-right)
+// @deprecated (phase-b2-battle): replaced by drawGBAHpBox() in v455. Remove in B2-8.
 function drawPlayerInfoBox(){
   let sx=0,sy=0;
   if(bpShakeTarget===0&&bpShakeTimer>0){sx=_sBpST12*3;sy=_cBpST16*2;}
@@ -622,6 +624,7 @@ function drawPlayerInfoBox(){
 }
 
 // Draw battle sprite (front-facing for opponent, back-facing for player)
+// @deprecated (phase-b2-battle): replaced by drawGBABattleSprite() in v455. Remove in B2-8.
 function drawBattleSprite(p,cx,cy,scale,facingAway){
   const s=scale;
   // Idle breathing bob — each character breathes out of phase (v374: sin-addition, 0 trig calls)
@@ -687,110 +690,30 @@ function drawBattleSprite(p,cx,cy,scale,facingAway){
   }
 }
 
+// @deprecated (phase-b2-battle): replaced by drawGBAVsSplash() in v454. Remove in B2-8.
 function drawVsSplash(){
-  bx(0,0,W,H,'#181828');const t=fr-bpFrame;
-  // v284: hoist vsRivalIdx + pre-compute power sums once per call (avoids 4× reduce per frame)
+  // v454: GBA migration — all rendering delegated to drawGBAVsSplash().
+  // FSM logic (hitPause, taunt cache, battlePhase transition) stays here. DO NOT TOUCH.
   const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
-  const vsSplashRival=pl[vsRivalIdx];
-  let _ypwr=0,_rpwr=0;
-  for(let _i=0;_i<HAND_SIZE;_i++){const _id=pl[0].cd[_i];if(_id>0)_ypwr+=(CD[_id-1]?.r||0);}
-  for(let _i=0;_i<HAND_SIZE;_i++){const _id=vsSplashRival.cd[_i];if(_id>0)_rpwr+=(CD[_id-1]?.r||0);}
-  // Diagonal split
-  const angle=W*1.2;
-  g.save();
-  g.fillStyle='#c04040';g.beginPath();g.moveTo(W/2-2,0);g.lineTo(W/2+angle/2,H);g.lineTo(W/2-2-angle/2,H);g.closePath();g.fill();
-  g.fillStyle='#3060b0';g.beginPath();g.moveTo(W/2+2,0);g.lineTo(W/2+2+angle/2,0);g.lineTo(W/2+2+angle/2,H);g.lineTo(W/2+2-angle/2,H);g.closePath();g.fill();
-  g.restore();
-  // Sprites slide in (player from left back-facing, opponent from right front-facing)
-  const pSlide=Math.min(1,t/30);
-  const pX=-60+pSlide*(W/4+20);
-  drawBattleSprite(pl[0],pX,H/2-10,3,true);
-  const rSlide=Math.min(1,t/30);
-  const rX=W+60-rSlide*(W/4+20);
-  // Show the rival that triggered this encounter (v284: vsRivalIdx/vsSplashRival hoisted to top)
-  drawBattleSprite(vsSplashRival,rX,H/2-10,3,false);
-
-  // Player name (left side, slides in)
-  if(t>10){
-    const nameAlpha=Math.min(1,(t-10)/10);
-    g.globalAlpha=nameAlpha;
-    txShadow('YOU',60,H/2-60,14,'#78c0f0','rgba(0,0,0,.6)');
-    const yourCards=cardCount(pl[0]);
-    txShadow(_SPLASH_CARD_LBL[yourCards]||(yourCards+' cards'),60,H/2-42,8,'rgba(255,255,255,.6)','rgba(0,0,0,.4)'); // v316
-    // v106: hand power score = sum of card rarities (v284: pre-computed above)
-    txShadow(_PWR_LBL[_ypwr]||('PWR:'+_ypwr),60,H/2-26,7,'#78c0f0','rgba(0,0,0,.35)'); // v316
-    g.globalAlpha=1;
-  }
-
-  // Rival name (right side, slides in)
-  if(t>10){
-    const nameAlpha=Math.min(1,(t-10)/10);
-    g.globalAlpha=nameAlpha;
-    const rivalNameCol=vsRivalIdx===1?'#f080c0':'#f0c830';
-    const rivalPersonality=vsRivalIdx===1?'THE HUNTER':'THE COLLECTOR';
-    const rivalNameX=W-220;
-    txShadow(vsSplashRival.n,rivalNameX,H/2-60,14,rivalNameCol,'rgba(0,0,0,.6)');
-    txShadow(rivalPersonality,rivalNameX,H/2-42,8,'rgba(255,255,255,.5)','rgba(0,0,0,.4)');
-    const rivalCards=cardCount(vsSplashRival);
-    txShadow(_SPLASH_CARD_LBL[rivalCards]||(rivalCards+' cards'),rivalNameX,H/2-28,7,'rgba(255,255,255,.5)','rgba(0,0,0,.35)'); // v316
-    // v106: rival power + advantage label (v284: pre-computed above)
-    txShadow(_PWR_LBL[_rpwr]||('PWR:'+_rpwr),rivalNameX,H/2-12,7,rivalNameCol,'rgba(0,0,0,.35)'); // v316
-    g.globalAlpha=1;
-  }
-
-  // v106: power assessment label — appears between power scores
-  if(t>20){
-    const assAlpha=Math.min(1,(t-20)/10);
-    g.globalAlpha=assAlpha;
-    const diff=_ypwr-_rpwr; // v284: use pre-computed values
-    let assLabel,assCol;
-    if(diff>=4){assLabel='ADVANTAGE';assCol='#40d080';}
-    else if(diff<=-4){assLabel='OUTMATCHED';assCol='#d04040';}
-    else{assLabel='BALANCED';assCol='#d0c040';}
-    const assW=assLabel.length*9+16;
-    bx(W/2-assW/2,H/2-80,assW,20,'rgba(0,0,0,.5)');
-    txShadow(assLabel,W/2-assW/2+8,H/2-64,10,assCol,'rgba(0,0,0,.5)');
-    g.globalAlpha=1;
-  }
-
-  // VS text with pop-in scale + glow pulse
+  const t=fr-bpFrame;
   if(t===16){hitPause(3);}
-  if(t>15){
-    const vsA=Math.min(1,(t-15)/8);
-    const vsScale=t<20?1+(20-t)*0.08:1;   // slight overshoot pop-in
-    const glowA=vsA*0.5*(0.7+Math.sin(t*0.3)*0.3);
-    g.globalAlpha=glowA;
-    // v245: pre-baked drawImage replaces arc per frame
-    {const r_=28*vsScale;g.globalAlpha=glowA*0.35;g.drawImage(_vsGoldCircle,(W/2-8-r_+.5)|0,(H/2+30-r_+.5)|0,(r_*2)|0,(r_*2)|0);g.globalAlpha=glowA;}
-    g.globalAlpha=vsA;
-    g.save();g.translate(W/2-8,H/2+30);g.scale(vsScale,vsScale);g.translate(-(W/2-8),-(H/2+30));
-    txShadow('VS',W/2-28,H/2+14,36,'#f0c830','#000');
-    g.restore();
-    g.globalAlpha=1;
-  }
-  // Flash
-  if(t>=28&&t<=35){g.globalAlpha=(35-t)/7*.9;g.fillStyle='#ffffff';g.fillRect(0,0,W,H);g.globalAlpha=1;}
-
-  // Rival taunt (appears after flash, fades out before transition)
+  // Taunt cache (lazy — only rebuild when taunt string changes)
+  let _tLbl='',_tAlpha=0;
   if(t>36&&t<58){
-    const tntAlpha=Math.min(1,(t-36)/8,Math.max(0,(58-t)/6));
-    g.globalAlpha=tntAlpha;
-    const aiIdx=vsRivalIdx-1; // 0 for VEGA, 1 for MIRA
+    _tAlpha=Math.min(1,(t-36)/8,Math.max(0,(58-t)/6));
+    const aiIdx=vsRivalIdx-1;
     const taunts=RIVAL_TAUNTS[aiIdx]||RIVAL_TAUNTS[0];
-    // Use bpFrame as seed for consistent taunt per battle
     const taunt=taunts[Math.floor(bpFrame/7)%taunts.length];
-    // Dark pill behind taunt text
-    const tntW=taunt.length*8+20;
-    bx(W/2-tntW/2,H/2+24,tntW,22,'rgba(0,0,0,.6)');
     if(_tauntRef!==taunt){_tauntRef=taunt;_tauntLbl='\u201C'+taunt+'\u201D';}
-    txShadow(_tauntLbl,W/2-tntW/2+10,H/2+40,9,'#f0e8c8','rgba(0,0,0,.5)'); // v345: lazy cache
-    g.globalAlpha=1;
+    _tLbl=_tauntLbl;
   }
-
+  // GBA rendering
+  drawGBAVsSplash(t,vsRivalIdx,_tLbl,_tAlpha);
+  // ── FSM transition (UNCHANGED) ──
   if(t>=60){
     battlePhase='select';bpFrame=fr;bpRdIncremented=false;bpActionsGenerated=false;bpScoutedCards=[null,null];
     _zkVerifyFiredThisRound=false;zkLastProof=null;zkProofReady=false;zkProofStatus='idle';
-    generateRivalTells(); // pre-generate rival actions + tells for this round
+    generateRivalTells();
     if(!tutorialFlags.firstBattle){
       const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'the rival';
       tutorialFlags.firstBattle=true;
@@ -813,6 +736,7 @@ function bothRivalsEliminated(){return cardCount(pl[1])===0&&cardCount(pl[2])===
 const PHASE_COLORS={select:'#3060b0',confirming:'#d8b028',resolving:'#c04040',result:'#308030'};
 const PHASE_LABELS={select:'COMMIT PHASE',confirming:'REVEALING...',resolving:'RESOLVING!',result:'COMPLETE'};
 
+// @deprecated (phase-b2-battle): replaced by drawGBABattleHUD() in v455. Remove in B2-8.
 function drawPhaseBanner(phase){
   const col=PHASE_COLORS[phase]||'#383830';
   const label=PHASE_LABELS[phase]||'';
@@ -851,6 +775,7 @@ function drawPhaseBanner(phase){
 }
 
 // Draw the battle arena with sprites
+// @deprecated (phase-b2-battle): replaced by drawGBABattleSprite() calls in v455. Remove in B2-8.
 function drawBattleArena(){
   // Player sprite (bottom-center-left, from behind like Pokemon trainer)
   let psx=0,psy=0;
@@ -913,6 +838,7 @@ const _AG_ACTIONS=[ // v274: hoisted action grid objects — only desc is rebuil
   {name:'BARRIER',desc:'',                  col:'#3060b0',icon:'#3060b0'},
   {name:'SCOUT',  desc:'',                  col:'#308030',icon:'#308030'}
 ];
+// @deprecated (phase-b2-battle): replaced by drawGBAActionMenu() in v455. Remove in B2-8.
 function drawActionGrid(){
   const gridX=8,gridY=H-164,cellW=160,cellH=42,gap=4;
   // v306: rebuild action descs only when spell counts change

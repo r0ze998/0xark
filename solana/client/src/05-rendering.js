@@ -1342,6 +1342,142 @@ function drawGBALocationBanner(text){
   txShadow(text,bX+5,bY+10,7,_RC('text_light'),'rgba(0,0,0,.6)');
 }
 
+// ═══════════════════════════════════════
+// SPRITE SEAS GBA BATTLE PRIMITIVES (Phase B2-4 — v454+)
+// All colors via _RC(key). No hex literals.
+// ═══════════════════════════════════════
+
+// Internal: fill a rectangular band with 8px diagonal pixel-art stripes.
+// bgCol fills first; stripeCol draws rotated 8px strips inside a clip region.
+// angleDeg: 45 or -45.
+function _drawGBABandStripes(x,y,w,h,bgCol,stripeCol,angleDeg){
+  bx(x,y,w,h,bgCol);
+  g.save();
+  g.beginPath();g.rect(x,y,w,h);g.clip();
+  g.fillStyle=stripeCol;
+  const rad=angleDeg*Math.PI/180;
+  const diag=Math.ceil(Math.sqrt(w*w+h*h))+32;
+  const cx=x+w/2,cy=y+h/2;
+  for(let i=-diag;i<diag;i+=16){
+    g.save();g.translate(cx+i,cy);g.rotate(rad);
+    g.fillRect(-4,-diag,8,diag*2);
+    g.restore();
+  }
+  g.restore();
+}
+
+// Internal: draw a pixel-art portrait block (sz×sz) from colour bands.
+// bands: [{h: pixels, col: resolvedColor}] — rows from top to bottom.
+function _drawGBAPortraitBlock(px,py,sz,bands){
+  let cy=py;
+  for(const band of bands){bx(px,cy,sz,band.h,band.col);cy+=band.h;}
+  // 2px outer border
+  bx(px,py,sz,2,_RC('text_dark'));bx(px,py+sz-2,sz,2,_RC('text_dark'));
+  bx(px,py,2,sz,_RC('text_dark'));bx(px+sz-2,py,2,sz,_RC('text_dark'));
+  // highlight glint (top-left edge)
+  bx(px+2,py+2,sz-4,3,'rgba(255,255,255,0.25)');
+  // inner shadow (right + bottom)
+  bx(px+sz-5,py+2,3,sz-4,'rgba(0,0,0,0.18)');
+  bx(px+2,py+sz-5,sz-4,3,'rgba(0,0,0,0.22)');
+}
+
+// GBA vs_splash screen — 3-portrait TRI-CLASH layout.
+// t: frames since bpFrame. vsRivalIdx: 1=VEGA,2=MIRA (primary).
+// tauntLbl: cached taunt string with quotes ('' = hidden). tauntAlpha: 0–1.
+function drawGBAVsSplash(t,vsRivalIdx,tauntLbl,tauntAlpha){
+  const midY=H>>1;
+  const pSz=80;
+  const slideAmt=Math.min(1,t/30);
+
+  // ── Diagonal stripe bands ──
+  _drawGBABandStripes(0,0,W,midY,_RC('flag_red'),_RC('text_dark'),45);      // top: YOU
+  _drawGBABandStripes(0,midY,W>>1,midY,_RC('vega_deep'),_RC('text_dark'),-45); // bot-L: VEGA
+  _drawGBABandStripes(W>>1,midY,W>>1,midY,_RC('mira_deep'),_RC('text_dark'),45); // bot-R: MIRA
+  // Band dividers
+  bx(0,midY,W,2,_RC('text_dark'));
+  bx(W>>1,midY,2,midY,_RC('text_dark'));
+
+  // ── YOU portrait — top-left, slides from left ──
+  const youPx=Math.round(-pSz+(slideAmt*(36+pSz)));
+  const youBandH=[Math.round(pSz*0.20),Math.round(pSz*0.25),Math.round(pSz*0.40)];
+  youBandH[3]=pSz-youBandH[0]-youBandH[1]-youBandH[2];
+  _drawGBAPortraitBlock(youPx,18,pSz,[
+    {h:youBandH[0],col:_RC('flag_red')},
+    {h:youBandH[1],col:_RC('sail_cream')},
+    {h:youBandH[2],col:_RC('ocean_shallow')},
+    {h:youBandH[3],col:_RC('text_dark')},
+  ]);
+
+  // ── VEGA portrait — bottom-left, slides from left ──
+  const vegaPy=midY+8;
+  const vegaPx=Math.round(-pSz+(slideAmt*(16+pSz)));
+  const vegaBandH=[Math.round(pSz*0.30),Math.round(pSz*0.45)];
+  vegaBandH[2]=pSz-vegaBandH[0]-vegaBandH[1];
+  _drawGBAPortraitBlock(vegaPx,vegaPy,pSz,[
+    {h:vegaBandH[0],col:_RC('vega_deep')},
+    {h:vegaBandH[1],col:_RC('vega_magenta')},
+    {h:vegaBandH[2],col:_RC('text_dark')},
+  ]);
+
+  // ── MIRA portrait — bottom-right, slides from right ──
+  const miraPy=midY+8;
+  const miraPxFinal=W-16-pSz;
+  const miraPxNow=Math.round(miraPxFinal+(1-slideAmt)*(W+pSz-miraPxFinal));
+  const miraBandH=[Math.round(pSz*0.25),Math.round(pSz*0.50)];
+  miraBandH[2]=pSz-miraBandH[0]-miraBandH[1];
+  _drawGBAPortraitBlock(miraPxNow,miraPy,pSz,[
+    {h:miraBandH[0],col:_RC('mira_deep')},
+    {h:miraBandH[1],col:_RC('mira_amber')},
+    {h:miraBandH[2],col:_RC('text_dark')},
+  ]);
+
+  // ── Tags (fade in at t>10) ──
+  if(t>10){
+    const tagA=Math.min(1,(t-10)/10);
+    g.globalAlpha=tagA;
+    txShadow('YOU',16,14,14,_RC('menu_border'),'rgba(0,0,0,.6)');
+    txShadow(pl[1].n,16,midY+5,14,_RC('vega_pulse'),'rgba(0,0,0,.6)');
+    const miraTagX=Math.max((W>>1)+8,W-16-pl[2].n.length*9);
+    txShadow(pl[2].n,miraTagX,midY+5,14,_RC('mira_amber'),'rgba(0,0,0,.6)');
+    g.globalAlpha=1;
+  }
+
+  // ── VS box — center, pop-in ──
+  if(t>15){
+    const vsA=Math.min(1,(t-15)/8);
+    const vsText='VS';
+    const vsW=vsText.length*18+24;
+    const vsX=Math.floor((W-vsW)/2);
+    const vsY=Math.floor(H/2)-18;
+    g.globalAlpha=vsA;
+    // Outer: text_dark bg
+    bx(vsX-4,vsY-4,vsW+8,40,_RC('text_dark'));
+    // Inner: thin gold border
+    bx(vsX-4,vsY-4,vsW+8,3,_RC('menu_border'));
+    bx(vsX-4,vsY+33,vsW+8,3,_RC('menu_border'));
+    bx(vsX-4,vsY-4,3,40,_RC('menu_border'));
+    bx(vsX+vsW+1,vsY-4,3,40,_RC('menu_border'));
+    txShadow(vsText,vsX+4,vsY+26,24,_RC('menu_border'),'rgba(200,40,40,.8)');
+    g.globalAlpha=1;
+  }
+
+  // ── White flash (t 28–35) ──
+  if(t>=28&&t<=35){
+    g.globalAlpha=(35-t)/7*0.9;
+    bx(0,0,W,H,'rgba(255,255,255,1)');
+    g.globalAlpha=1;
+  }
+
+  // ── Rival taunt (t 36–58) ──
+  if(tauntLbl&&tauntAlpha>0){
+    g.globalAlpha=tauntAlpha;
+    const tntW=tauntLbl.length*8+20;
+    bx(W/2-tntW/2,H/2+24,tntW,22,'rgba(0,0,0,.6)');
+    txShadow(tauntLbl,W/2-tntW/2+10,H/2+40,9,_RC('sail_cream'),'rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  }
+}
+
 function drawTile(tx_,ty){
   const px=tx_*TW-camX,py=ty*TH-camY;
   if(px<-TW||px>W||py<-TH||py>H)return;
