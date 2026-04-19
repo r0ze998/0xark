@@ -881,18 +881,20 @@ function drawResolvingPhase(){
 }
 
 function drawResultPhase(){
-  drawBattleBG();
-  drawPhaseBanner('result');
-  drawBattleArena();
-  drawOpponentInfoBox();
-  drawPlayerInfoBox();
+  // v458: GBA migration
+  drawGBABattleBG();
+  drawGBABattleHUD('result');
+  drawGBABattleArena();
+  drawGBAHpBox(1,8,36,200,56,'result');
+  drawGBAHpBox(2,214,36,180,56,'result');
+  drawGBAHpBox(0,W-310,H-130,300,100,'result');
   const t=fr-bpFrame;
   // Summary panel in center
   const panW=500,panH=280,panX=W/2-panW/2,panY=H/2-panH/2-10;
   const slideIn_=Math.min(1,t/15);
   g.globalAlpha=slideIn_;
   win(panX,panY,panW,panH);
-  txShadow(_ROUND_SUM[rd]||'ROUND '+rd+' SUMMARY',panX+panW/2-100,panY+22,14,'#308030','rgba(0,0,0,.3)'); // v305
+  drawGBAResultBanner(t,panX,panY,panW); // v458: GBA-styled summary header
   // Divider
   bx(panX+16,panY+30,panW-32,1,'rgba(200,180,140,.3)');
 
@@ -1019,31 +1021,20 @@ function drawResultPhase(){
       const rcol=_RES_RAR_COLS[rar]||'#d85840'; // v262: hoisted
       // Glow halo behind card
       if(rar>=2&&_cardRarGlow[rar]){
-        // v243: pre-baked drawImage replaces createRadialGradient+arc per frame
         const glowR=22+rar*6+_sFr12*4; // v370: cached
         const cg=_cardRarGlow[rar];
-        g.globalAlpha=showcaseAlpha*(0.2+_sFr10*0.1); // v370: cached
+        g.globalAlpha=showcaseAlpha*(0.2+_sFr10*0.1);
         g.drawImage(cg.canvas,(sCX-glowR+.5)|0,(sCY-glowR+.5)|0,(glowR*2)|0,(glowR*2)|0);
         g.globalAlpha=1;
       }
-      // Card art (scaled up)
-      g.save();
-      g.globalAlpha=showcaseAlpha;
-      g.translate(sCX,sCY);g.scale(popScale,popScale);
-      bx(-22,-32,44,60,scr.d);bx(-20,-30,40,56,scr.c);
-      bx(-20,-30,40,38,scr.d);bx(-19,-29,38,36,'rgba(255,255,255,.12)');
-      drawCardCharacter(-18,-28,showcaseId,1.5,fr);
-      bx(-20,10,40,18,scr.d);
-      txShadow(scr.n,-20+2,24,9,'#fff','rgba(0,0,0,.5)');
-      // Rarity border color
-      bx(-22,-32,44,2,rcol);
-      g.restore();
-      // Card name and effect label below showcase
+      // v458: GBA 70×88 card mini showcase (replaces scaled bx/draw block)
+      drawGBACardMini(showcaseId,sCX,sCY,showcaseAlpha*popScale,fr);
+      // Card result label below
       g.globalAlpha=showcaseAlpha*0.9;
       const gotLabel=stealEv?'STOLEN!':'ACQUIRED!';
       const gotCol=stealEv?rcol:'#50e090';
-      txShadow(gotLabel,sCX-25,sCY+34,9,gotCol,'rgba(0,0,0,.5)');
-      txShadow(scr.f,sCX-25,sCY+48,7,'#988870','rgba(0,0,0,.3)');
+      txShadow(gotLabel,sCX-25,sCY+50,9,gotCol,'rgba(0,0,0,.5)');
+      txShadow(scr.f,sCX-25,sCY+64,7,'#988870','rgba(0,0,0,.3)');
       g.globalAlpha=1;
     }
   }

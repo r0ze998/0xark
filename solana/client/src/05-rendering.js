@@ -1748,6 +1748,49 @@ function drawGBARevealVFX(evT,pActCol,rActCol){
   g.globalAlpha=1;
 }
 
+// ── GBA result banner — "ROUND N SUMMARY" header (v458) ──
+// panX,panY,panW: summary panel coords. t: frames since bpFrame.
+function drawGBAResultBanner(t,panX,panY,panW){
+  const slideA=Math.min(1,t/15);
+  g.globalAlpha=slideA;
+  // GBA diagonal stripe top-band inside panel
+  _drawGBABandStripes(panX+4,panY+4,panW-8,28,_RC('grass_dark'),_RC('text_dark'),45);
+  bx(panX+4,panY+4,panW-8,2,_RC('menu_border'));
+  bx(panX+4,panY+30,panW-8,2,_RC('text_dark'));
+  txShadow((_ROUND_SUM&&_ROUND_SUM[rd])||('ROUND '+rd+' SUMMARY'),panX+panW/2-96,panY+23,14,_RC('menu_border'),'rgba(0,0,0,.5)');
+  g.globalAlpha=1;
+}
+
+// ── GBA card mini showcase — 70×88 centered at (cx,cy) (v458) ──
+// id: 1-based card ID. alpha: draw opacity. fr_: current frame for character anim.
+function drawGBACardMini(id,cx,cy,alpha,fr_){
+  if(id<=0||!CD[id-1])return;
+  const scr=CD[id-1];
+  const cW=70,cH=88;
+  const ox=cx-cW/2,oy=cy-cH/2;
+  g.globalAlpha=alpha;
+  // Card body
+  bx(ox,oy,cW,cH,scr.d);
+  bx(ox+2,oy+2,cW-4,cH-4,scr.c);
+  // Art area (top 60% of card)
+  const artH=Math.round(cH*0.6);
+  bx(ox+2,oy+2,cW-4,artH,scr.d);
+  bx(ox+3,oy+3,cW-6,artH-2,'rgba(255,255,255,.1)');
+  // Character sprite in art area
+  drawCardCharacter(ox+4,oy+4,id,1.9,fr_);
+  // Name band (bottom 40%)
+  bx(ox+2,oy+artH+2,cW-4,cH-artH-4,scr.c);
+  // Rarity border top
+  const rar=scr.r||1;
+  const rarCol=RARITY_COLOR[rar]||_RC('fg_muted');
+  bx(ox,oy,cW,3,rarCol);
+  // Card name
+  txShadow(scr.n,ox+4,oy+artH+18,7,_RC('text_light'),'rgba(0,0,0,.5)');
+  // Rarity stars
+  for(let s2=0;s2<rar;s2++)txShadow('\u2605',ox+4+s2*9,oy+cH-10,6,rarCol,'rgba(0,0,0,.3)');
+  g.globalAlpha=1;
+}
+
 function drawTile(tx_,ty){
   const px=tx_*TW-camX,py=ty*TH-camY;
   if(px<-TW||px>W||py<-TH||py>H)return;
