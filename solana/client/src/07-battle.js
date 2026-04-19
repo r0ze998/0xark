@@ -1564,32 +1564,16 @@ function drawSelectPhase(){
 }
 
 function drawConfirmingPhase(){
-  drawBattleBG();
-  drawPhaseBanner('confirming');
-  drawBattleArena();
-  drawOpponentInfoBox();
-  drawPlayerInfoBox();
-  // v135: Action commitment shout — brief screen-center flash of chosen action name
+  // v456: GBA migration
+  drawGBABattleBG();
+  drawGBABattleHUD('confirming');
+  drawGBABattleArena();
+  drawGBAHpBox(1,8,36,200,56,'confirming');
+  drawGBAHpBox(2,214,36,180,56,'confirming');
+  drawGBAHpBox(0,W-310,H-130,300,100,'confirming');
+  // Action commitment flash — GBA diagonal stripe (v456)
   {const t0=fr-bpFrame;
-  if(t0<16){
-    const act=Math.min(bpAction,4);const aCol=_ACTION_COLORS_EX[act]; // v262: hoisted
-    const aName=_ACTION_NAMES_EX[act];
-    const fadeIn=Math.min(1,t0/5);const fadeOut=t0>9?Math.max(0,(16-t0)/7):1;
-    const shoutA=fadeIn*fadeOut;
-    const sz=Math.floor(12+Math.min(1,t0/7)*28); // font size 12→40 as it snaps in
-    const textW=aName.length*sz*0.62;
-    const shoutX=W/2-textW/2,shoutY=H/2-20;
-    // Background color burst
-    g.globalAlpha=shoutA*0.18;
-    bx(0,shoutY-sz-16,W,sz+40,aCol);
-    // Horizontal scanline accent
-    g.globalAlpha=shoutA*0.55;
-    bx(0,shoutY-sz/2,W,2,'rgba(255,255,255,.3)');
-    // Action name text
-    g.globalAlpha=shoutA;
-    txShadow(aName,shoutX,shoutY+sz*0.8,sz,aCol,'rgba(0,0,0,0.85)');
-    g.globalAlpha=1;
-  }}
+  if(t0<16){drawGBASealScroll(t0,bpAction);}}
   // Text box at bottom
   win(4,H-70,W-8,64);
   const t=fr-bpFrame; // v262: actionNames hoisted to _ACTION_NAMES

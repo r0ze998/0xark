@@ -1709,6 +1709,27 @@ function drawGBABattleArena(){
   }
 }
 
+// ── GBA action-commit flash — diagonal stripe band + action name (v456) ──
+// t0: frames since bpFrame. bpAction_: 0=DRAW,1=STEAL,2=BARRIER,3=SCOUT,4=USE CARD.
+function drawGBASealScroll(t0,bpAction_){
+  const act=Math.min(bpAction_,4);
+  const GBA_ACT_COL=['ocean_deep','flag_red','menu_blue','grass_dark','mira_deep'];
+  const GBA_ACT_NAME=['DRAW CARD','STEAL','BARRIER','SCOUT','USE CARD'];
+  const col=_RC(GBA_ACT_COL[act]||'text_dark');
+  const aName=GBA_ACT_NAME[act]||'ACTION';
+  const fadeIn=Math.min(1,t0/5),fadeOut=t0>9?Math.max(0,(16-t0)/7):1;
+  const alpha=fadeIn*fadeOut;
+  g.globalAlpha=alpha*0.85;
+  _drawGBABandStripes(0,H/2-30,W,60,col,_RC('text_dark'),45);
+  bx(0,H/2-32,W,2,_RC('menu_border'));
+  bx(0,H/2+28,W,2,_RC('menu_border'));
+  const sz=Math.floor(12+Math.min(1,t0/7)*24);
+  const tW=aName.length*sz*0.6;
+  g.globalAlpha=alpha;
+  txShadow(aName,W/2-tW/2,H/2+sz*0.4,sz,_RC('menu_border'),'rgba(0,0,0,.9)');
+  g.globalAlpha=1;
+}
+
 function drawTile(tx_,ty){
   const px=tx_*TW-camX,py=ty*TH-camY;
   if(px<-TW||px>W||py<-TH||py>H)return;
