@@ -145,9 +145,31 @@ test('decls: line numbers are 1-indexed and match the file', () => {
   const src = '\n\nconst AT_LINE_3 = 1;\nconst AT_LINE_4 = 2;\n';
   const decls = _findTopLevelDecls(_stripStringsAndComments(src));
   assert.deepEqual(decls, [
-    { name: 'AT_LINE_3', line: 3 },
-    { name: 'AT_LINE_4', line: 4 },
+    { name: 'AT_LINE_3', line: 3, kind: 'const' },
+    { name: 'AT_LINE_4', line: 4, kind: 'const' },
   ]);
+});
+
+test('decls: kind is captured per declaration', () => {
+  const src = [
+    'const A = 1;',
+    'let B = 2;',
+    'var C = 3;',
+    'function D() {}',
+    'class E {}',
+  ].join('\n');
+  const decls = _findTopLevelDecls(_stripStringsAndComments(src));
+  const byName = Object.fromEntries(decls.map((d) => [d.name, d.kind]));
+  assert.deepEqual(byName, {
+    A: 'const', B: 'let', C: 'var', D: 'function', E: 'class',
+  });
+});
+
+test('decls: multi-binding bindings all share the head kind', () => {
+  const src = 'const X = 1, Y = 2, Z = 3;';
+  const decls = _findTopLevelDecls(_stripStringsAndComments(src));
+  const kinds = decls.map((d) => d.kind);
+  assert.deepEqual(kinds, ['const', 'const', 'const']);
 });
 
 // ── checkCollisions ──────────────────────────────────────────────────────
@@ -254,11 +276,153 @@ test('checkRgbaOutput: multiple hits on same line are counted', () => {
   assert.equal(res.hits.length, 2);
 });
 
-// ── checkTDZOrder stub ──────────────────────────────────────────────────
+// ── checkTDZOrder ────────────────────────────────────────────────────────
 
-test('checkTDZOrder: stubbed — returns ok:true with _notImplemented flag', () => {
-  const res = checkTDZOrder([]);
-  assert.equal(res.ok, true);
+test('checkTDZOrder: IIFE fixture produces the expected hit', () => {
+  const res = checkTDZOrder([
+    { name: 'fixture-tdz-iife.js', source: readFixture('fixture-tdz-iife.js') },
+  ]);
+  assert.equal(res.ok, false);
+  assert.equal(res.hits.length, 1);
+  const [h] = res.hits;
+  assert.equal(h.file, 'fixture-tdz-iife.js');
+  assert.equal(h.name, '_FIXTURE_TDZ_IIFE_RESULT');
+  assert.equal(h.referencedName, '_FIXTURE_TDZ_IIFE_TABLE');
+  assert.ok(h.line < h.referencedLine, 'decl line must precede referenced line');
+});
+
+test('checkTDZOrder: mapcall fixture produces exactly one hit', () => {
+  // The fixture references both _FIXTURE_TDZ_MAP_LISTINGS (later const,
+  // MUST flag) and _fixtureTdzMapHoisted (later function, MUST NOT flag).
+  const res = checkTDZOrder([
+    { name: 'fixture-tdz-mapcall.js', source: readFixture('fixture-tdz-mapcall.js') },
+  ]);
+  assert.equal(res.ok, false);
+  assert.equal(res.hits.length, 1);
+  const [h] = res.hits;
+  assert.equal(h.name, '_FIXTURE_TDZ_MAP_PRICES');
+  assert.equal(h.referencedName, '_FIXTURE_TDZ_MAP_LISTINGS');
+  assert.ok(!res.hits.some((hh) => hh.referencedName === '_fixtureTdzMapHoisted'),
+    'function-declared targets must be hoisted and not flagged');
+});
+
+test('checkTDZOrder: clean fixture has no hits', () => {
+  const res = checkTDZOrder([
+    { name: 'fixture-clean.js', source: readFixture('fixture-clean.js') },
+  ]);
+  assert.deepEqual(res, { hits: [], ok: true });
+});
+
+test('checkTDZOrder: function declared later is hoisted, no flag', () => {
+  const src = [
+    'const A = helper();',
+    'function helper() { return 42; }',
+  ].join('\n');
+  const res = checkTDZOrder([{ name: 'synthetic.js', source: src }]);
   assert.deepEqual(res.hits, []);
-  assert.equal(res._notImplemented, true);
+});
+
+test('checkTDZOrder: const declared later IS flagged', () => {
+  const src = [
+    'const A = B + 1;',
+    'const B = 2;',
+  ].join('\n');
+  const res = checkTDZOrder([{ name: 'synthetic.js', source: src }]);
+  assert.equal(res.hits.length, 1);
+  assert.equal(res.hits[0].referencedName, 'B');
+});
+
+test('checkTDZOrder: const declared EARLIER is fine', () => {
+  const src = [
+    'const B = 2;',
+    'const A = B + 1;',
+  ].join('\n');
+  const res = checkTDZOrder([{ name: 'synthetic.js', source: src }]);
+  assert.deepEqual(res.hits, []);
+});
+
+test('checkTDZOrder: local shadowing prevents false positive', () => {
+  // Inner IIFE declares its own B; reference is to the local B, not
+  // the later top-level B. Must not flag.
+  const src = [
+    'const A = (() => { const B = 1; return B; })();',
+    'const B = 2;',
+  ].join('\n');
+  const res = checkTDZOrder([{ name: 'synthetic.js', source: src }]);
+  assert.deepEqual(res.hits, []);
+});
+
+test('checkTDZOrder: arrow param shadowing prevents false positive', () => {
+  // `b` is an arrow param, not a TDZ reference to the later top-level b.
+  const src = [
+    'const cmp = (a, b) => b - a;',
+    'const b = 100;',
+  ].join('\n');
+  const res = checkTDZOrder([{ name: 'synthetic.js', source: src }]);
+  assert.deepEqual(res.hits, []);
+});
+
+test('checkTDZOrder: property access skipped (`.prop` is not a ref)', () => {
+  // `foo.bar` — bar must not be scanned as a reference. Here we declare
+  // a top-level `bar` later; if the scanner flagged it, it'd be wrong.
+  const src = [
+    'const A = someObj.bar;',
+    'const bar = 5;',
+  ].join('\n');
+  // someObj is unknown but not in declMap, so it's skipped. `bar` after
+  // the `.` must be skipped as property access.
+  const res = checkTDZOrder([{ name: 'synthetic.js', source: src }]);
+  assert.deepEqual(res.hits, []);
+});
+
+test('checkTDZOrder: property key skipped (`{ KEY: val }`)', () => {
+  const src = [
+    'const A = { KEY: 1 };',
+    'const KEY = 2;',
+  ].join('\n');
+  const res = checkTDZOrder([{ name: 'synthetic.js', source: src }]);
+  assert.deepEqual(res.hits, []);
+});
+
+test('checkTDZOrder: method shorthand skipped (`{ method() {} }`)', () => {
+  const src = [
+    'const A = { method() { return 1; } };',
+    'const method = 2;',
+  ].join('\n');
+  const res = checkTDZOrder([{ name: 'synthetic.js', source: src }]);
+  assert.deepEqual(res.hits, []);
+});
+
+test('checkTDZOrder: string/comment content does not count as refs', () => {
+  const src = [
+    'const A = "LATER is a nice name"; // LATER is also commented here',
+    'const LATER = 1;',
+  ].join('\n');
+  const res = checkTDZOrder([{ name: 'synthetic.js', source: src }]);
+  assert.deepEqual(res.hits, []);
+});
+
+test('checkTDZOrder: multi-binding const is skipped (out-of-scope limitation)', () => {
+  // Detector aborts the decl at first `,` at depth 0. Documented limit.
+  const src = [
+    'const A = 1, B = LATER;',
+    'const LATER = 2;',
+  ].join('\n');
+  const res = checkTDZOrder([{ name: 'synthetic.js', source: src }]);
+  assert.deepEqual(res.hits, []);
+});
+
+test('checkTDZOrder: the real src/ bundle passes (regression guard)', () => {
+  const SRC = path.join(__dirname, 'src');
+  const files = fs.readdirSync(SRC)
+    .filter((f) => f.endsWith('.js'))
+    .sort()
+    .map((f) => ({ name: f, source: fs.readFileSync(path.join(SRC, f), 'utf8') }));
+  const res = checkTDZOrder(files);
+  if (!res.ok) {
+    const msg = res.hits.map((h) =>
+      `${h.file}:${h.line}  ${h.name} references ${h.referencedName} declared later at line ${h.referencedLine}`
+    ).join('\n');
+    assert.fail(`checkTDZOrder regressed on src/:\n${msg}`);
+  }
 });

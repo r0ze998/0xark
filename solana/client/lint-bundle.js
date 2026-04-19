@@ -27,6 +27,41 @@
 const fs = require('fs');
 const path = require('path');
 
+// ── Identifier filter sets (Check #3) ────────────────────────────────────
+// Reserved words + common builtins/runtime globals the 0xark bundle touches
+// at top level. Adding a global here is a declaration that the ident is
+// NOT a file-local top-level binding the linter should track. If a real
+// TDZ bug gets masked because its target name appears here, remove it.
+const _KEYWORDS = new Set([
+  'const', 'let', 'var', 'class', 'function', 'if', 'else', 'for', 'while',
+  'do', 'return', 'new', 'typeof', 'instanceof', 'in', 'of', 'true', 'false',
+  'null', 'undefined', 'this', 'void', 'delete', 'throw', 'try', 'catch',
+  'finally', 'break', 'continue', 'switch', 'case', 'default', 'yield',
+  'await', 'async', 'import', 'export', 'from', 'as', 'NaN', 'Infinity',
+  'get', 'set', 'static', 'extends', 'super', 'debugger',
+]);
+
+const _GLOBALS = new Set([
+  'Math', 'Object', 'Array', 'String', 'Number', 'Boolean', 'Date', 'JSON',
+  'RegExp', 'Error', 'TypeError', 'ReferenceError', 'SyntaxError', 'Set',
+  'Map', 'WeakMap', 'WeakSet', 'Promise', 'Symbol', 'Int8Array', 'Uint8Array',
+  'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array', 'Float32Array',
+  'Float64Array', 'Uint8ClampedArray', 'ArrayBuffer', 'DataView', 'Proxy',
+  'Reflect', 'console', 'document', 'window', 'globalThis', 'navigator',
+  'location', 'performance', 'requestAnimationFrame', 'cancelAnimationFrame',
+  'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'atob',
+  'btoa', 'fetch', 'URL', 'URLSearchParams', 'FormData', 'Blob', 'File',
+  'FileReader', 'HTMLCanvasElement', 'CanvasRenderingContext2D', 'Image',
+  'WebSocket', 'HTMLElement', 'HTMLImageElement', 'Event', 'MouseEvent',
+  'KeyboardEvent', 'CustomEvent', 'localStorage', 'sessionStorage', 'crypto',
+  'TextEncoder', 'TextDecoder', 'BigInt', 'parseInt', 'parseFloat', 'isNaN',
+  'isFinite', 'encodeURIComponent', 'decodeURIComponent', 'encodeURI',
+  'decodeURI', 'PIXI', 'solanaWeb3', 'anchor', 'splToken', 'snarkjs',
+  'oxarkUi', 'Buffer', 'process', 'alert', 'prompt', 'confirm',
+  'AudioContext', 'webkitAudioContext', 'MediaSource', 'AbortController',
+  'IntersectionObserver', 'ResizeObserver', 'MutationObserver',
+]);
+
 // ── String/comment stripping ─────────────────────────────────────────────
 // Walks source char-by-char, producing a version where comments are removed
 // and string bodies are replaced with spaces (delimiters preserved so
@@ -143,11 +178,11 @@ function _stripStringsAndComments(src) {
 }
 
 // ── Top-level declaration scanner ────────────────────────────────────────
-// Operates on already-stripped source. Emits { name, line } records for
-// every top-level `const|let|var|class|function NAME` at brace/paren/
-// bracket depth 0. Supports multi-binding `const A=1, B=2;` by scanning
-// the rest of the declaration line for `, NAME =` pairs while the
-// depth-after-prefix stays at 0.
+// Operates on already-stripped source. Emits { name, line, kind } records
+// for every top-level `const|let|var|class|function NAME` at brace/paren/
+// bracket depth 0. `kind` is the literal keyword ('const'|'let'|'var'|
+// 'class'|'function'). For multi-binding `const A=1, B=2;` all bindings
+// share the kind of the head (all 'const', etc.).
 //
 // Caveats (acceptable for this codebase):
 //   · Multi-line `const A = 1,\n    B = 2;` — records A only. The project
@@ -178,7 +213,7 @@ function _findTopLevelDecls(stripped) {
     const line = lines[i];
     const m = line.match(declRe);
     if (!m) continue;
-    decls.push({ name: m[2], line: i + 1 });
+    decls.push({ name: m[2], line: i + 1, kind: m[1] });
 
     // multi-binding: `const|let|var A = ..., B = ..., C = ...;`
     if (m[1] === 'const' || m[1] === 'let' || m[1] === 'var') {
@@ -200,7 +235,7 @@ function _findTopLevelDecls(stripped) {
       let match;
       while ((match = re.exec(rest)) !== null) {
         if (depthAt[match.index] === 0) {
-          decls.push({ name: match[1], line: i + 1 });
+          decls.push({ name: match[1], line: i + 1, kind: m[1] });
         }
       }
     }
@@ -263,16 +298,197 @@ function checkRgbaOutput(htmlOrJs) {
   return { hits, ok: hits.length === 0 };
 }
 
-// ── Check #3: same-file TDZ order (stub) ─────────────────────────────────
-// Planned for v447b. Detects top-level `const|let NAME = <init>` where
-// <init> references another top-level ident declared later in the same
-// file. Catches v443 (IIFE form) and v444 (.map() form) without needing
-// to enumerate RHS shapes.
+// ── Check #3: same-file TDZ order ────────────────────────────────────────
+// Returns { hits: [{ file, line, name, referencedName, referencedLine }], ok }.
+// Flags top-level `const|let NAME = <init>` where <init> references another
+// top-level ident declared LATER in the same file, when evaluating <init>
+// would cross the TDZ. Catches v443 (IIFE form) and v444 (.map() form).
 //
-// Returning `_notImplemented: true` so callers (build.js in v448) can
-// treat it as non-fatal until v447b lands.
-function checkTDZOrder(_files) {
-  return { hits: [], ok: true, _notImplemented: true };
+// 4 production fixes over the /tmp/tdz-check3.js prototype:
+//   (a) comment/string strip — use _stripStringsAndComments (length-
+//       preserving); eliminates false positives from `// …VAR…` and
+//       `'VAR'` style content the prototype scanned as refs.
+//   (b) function-hoist skip — top-level `function NAME(){}` is hoisted,
+//       so reading it before its declaration line is legal. Targets of
+//       kind 'function' are excluded from flagging.
+//   (c) nested-scope leak guard — `_findTopLevelDecls` already tracks
+//       brace depth, so multi-binding `const … , X = …` inside a nested
+//       arrow/IIFE does not pollute the top-level decl map. Additionally,
+//       we scan the initializer body for local const/let/var/function/
+//       class decls and exclude those names from the reference check.
+//   (d) arrow/function param tracking — arrow params like `(a, b) =>` and
+//       `x =>`, plus traditional `function(a, b)` params, are collected
+//       into the local-name set so they are not flagged when they shadow
+//       a later top-level const. Destructured/defaulted params fall back
+//       to first-word extraction per comma segment; this handles the
+//       common `(a, b) =>` / `x => …` / `function(x, y) {…}` shapes that
+//       show up across src/.
+//
+// Context-aware ref filtering (applied during ident extraction):
+//   · property access  `obj.prop`      → skip `prop`
+//   · property key     `{ KEY: val }`  → skip `KEY`
+//   · method shorthand `{ method(){} }`→ skip `method`
+//   These remove a class of false positives the prototype didn't filter.
+//
+// Known limitations (accepted for v447b; revisit if real FPs appear):
+//   · Multi-binding top-level const `const A = 1, B = <init>;` — the
+//     second binding's initializer is NOT checked. Detector skips the
+//     whole decl when a `,` appears at depth 0 in the walk.
+//   · Object-literal method/getter bodies reference-inside are treated as
+//     top-level refs. Safe-side: flags may be technically wrong if the
+//     method is never called before the later decl, but in practice
+//     top-level consts holding objects that call later-declared globals
+//     from their methods DO run into real TDZ when invoked; worth a hit.
+//   · Class field initializers (`class { X = otherRef; }`) not specifically
+//     handled; they run at class evaluation (decl time) so flagging IS
+//     correct when `otherRef` is later. Covered as a by-product.
+function checkTDZOrder(files) {
+  const hits = [];
+  for (const { name: fileName, source } of files) {
+    const stripped = _stripStringsAndComments(source);
+    const decls = _findTopLevelDecls(stripped);
+
+    // Build name -> { line, kind } map. First occurrence wins.
+    const declMap = new Map();
+    for (const d of decls) {
+      if (!declMap.has(d.name)) declMap.set(d.name, { line: d.line, kind: d.kind });
+    }
+
+    const lines = stripped.split('\n');
+    // depth-at-line-start, same approach as _findTopLevelDecls.
+    const depthAtLineStart = new Array(lines.length);
+    {
+      let depth = 0;
+      for (let i = 0; i < lines.length; i++) {
+        depthAtLineStart[i] = depth;
+        for (const ch of lines[i]) {
+          if (ch === '{' || ch === '(' || ch === '[') depth++;
+          else if (ch === '}' || ch === ')' || ch === ']') depth--;
+        }
+      }
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      if (depthAtLineStart[i] !== 0) continue;
+      const line = lines[i];
+      const m = line.match(/^(const|let)\s+([A-Za-z_$][\w$]*)\s*=/);
+      if (!m) continue;
+      const selfName = m[2];
+      // Find `=` sign that binds this decl (first `=` after the name).
+      const nameStart = line.indexOf(selfName, m[0].indexOf(selfName));
+      const eqIdx = line.indexOf('=', nameStart + selfName.length);
+      if (eqIdx === -1) continue;
+
+      // Walk body char-by-char from eqIdx+1 across subsequent lines.
+      // Terminate at first `;` at depth 0. Abort (skip this decl) if a
+      // `,` appears at depth 0 — that means multi-binding, out of scope.
+      let d = 0;
+      let body = '';
+      let terminated = false;
+      let skipMulti = false;
+      outer: for (let j = i; j < lines.length; j++) {
+        const ln = lines[j];
+        const start = j === i ? eqIdx + 1 : 0;
+        for (let k = start; k < ln.length; k++) {
+          const ch = ln[k];
+          if (d === 0 && ch === ';') { terminated = true; break outer; }
+          if (d === 0 && ch === ',') { skipMulti = true; break outer; }
+          if (ch === '{' || ch === '(' || ch === '[') d++;
+          else if (ch === '}' || ch === ')' || ch === ']') d--;
+          body += ch;
+        }
+        body += '\n';
+      }
+      if (!terminated || skipMulti) continue;
+
+      // Collect local decls + params from the body into a shadow set so
+      // references to those names are not treated as top-level refs.
+      const localNames = new Set();
+      const localDeclRe = /\b(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/g;
+      let lm;
+      while ((lm = localDeclRe.exec(body)) !== null) localNames.add(lm[1]);
+
+      // Arrow function params — paren form `(a, b, …) =>`
+      const arrowParensRe = /\(([^()]*)\)\s*=>/g;
+      let ap;
+      while ((ap = arrowParensRe.exec(body)) !== null) {
+        for (const seg of ap[1].split(',')) {
+          const mm = seg.trim().match(/^([A-Za-z_$][\w$]*)/);
+          if (mm) localNames.add(mm[1]);
+        }
+      }
+      // Arrow function single-param form `x =>`
+      const arrowSingleRe = /\b([A-Za-z_$][\w$]*)\s*=>/g;
+      let as;
+      while ((as = arrowSingleRe.exec(body)) !== null) localNames.add(as[1]);
+
+      // Traditional function params: `function [NAME](a, b, …)`
+      const fnParamsRe = /\bfunction\b(?:\s+[A-Za-z_$][\w$]*)?\s*\(([^()]*)\)/g;
+      let fp;
+      while ((fp = fnParamsRe.exec(body)) !== null) {
+        for (const seg of fp[1].split(',')) {
+          const mm = seg.trim().match(/^([A-Za-z_$][\w$]*)/);
+          if (mm) localNames.add(mm[1]);
+        }
+      }
+
+      // Context-aware identifier walk: emit each ident with info about
+      // its preceding / following non-whitespace neighbors so we can
+      // skip property access / property key / method shorthand patterns.
+      const seen = new Set();
+      const N = body.length;
+      let p = 0;
+      while (p < N) {
+        const c = body[p];
+        const isIdStart = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c === '_' || c === '$';
+        if (!isIdStart) { p++; continue; }
+        const idStart = p;
+        while (p < N) {
+          const cc = body[p];
+          const isIdCont = (cc >= 'A' && cc <= 'Z') || (cc >= 'a' && cc <= 'z') || (cc >= '0' && cc <= '9') || cc === '_' || cc === '$';
+          if (!isIdCont) break;
+          p++;
+        }
+        const ident = body.slice(idStart, p);
+
+        // Prev non-whitespace char.
+        let pp = idStart - 1;
+        while (pp >= 0 && (body[pp] === ' ' || body[pp] === '\t' || body[pp] === '\n')) pp--;
+        const prev = pp >= 0 ? body[pp] : '';
+        // Next non-whitespace char.
+        let np = p;
+        while (np < N && (body[np] === ' ' || body[np] === '\t' || body[np] === '\n')) np++;
+        const next = np < N ? body[np] : '';
+
+        // Property access: `obj.prop` — skip `prop`. Guard against `...`.
+        if (prev === '.' && (pp < 1 || body[pp - 1] !== '.')) continue;
+        // Object property key: `{ KEY:` or `, KEY:` → skip.
+        if (next === ':' && (prev === '{' || prev === ',')) continue;
+        // Method shorthand: `{ method(` or `, method(` → skip.
+        if (next === '(' && (prev === '{' || prev === ',')) continue;
+
+        if (ident === selfName) continue;
+        if (seen.has(ident)) continue;
+        if (_KEYWORDS.has(ident) || _GLOBALS.has(ident)) continue;
+        if (localNames.has(ident)) continue;
+        seen.add(ident);
+
+        const target = declMap.get(ident);
+        if (!target) continue;
+        if (target.kind === 'function') continue; // hoisted
+        if (target.line > i + 1) {
+          hits.push({
+            file: fileName,
+            line: i + 1,
+            name: selfName,
+            referencedName: ident,
+            referencedLine: target.line,
+          });
+        }
+      }
+    }
+  }
+  return { hits, ok: hits.length === 0 };
 }
 
 module.exports = {
