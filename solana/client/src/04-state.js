@@ -41,6 +41,10 @@ const sp={s:2,b:3,c:2};
 let sc='title',mo=false,mi=0,ai=0,fr=0,wt=0,rd=1;
 let splashFrame=0;
 let titleMenuIdx=0;
+// v452 (B2-1): Title options overlay — X key from Title opens 3-item sub-menu
+// (BIND VAULT / MULTIPLAYER / CREDITS). Decouples preview-strict 2-item main
+// menu from full-game connective tissue.
+let optionsOverlayOpen=false, optionsMenuIdx=0;
 let saveIndicatorTimer=0;
 let autoSaveTimer=0;
 const AUTO_SAVE_INTERVAL=1800; // 30 seconds at 60fps

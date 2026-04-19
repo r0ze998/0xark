@@ -265,101 +265,72 @@ document.addEventListener('keydown',e=>{
     if(e.code==='KeyX'){sfxBack();stakeConfirmActive=false;}
     return;
   }
-  if(sc==='title'){
-    if(hasSave()){
-      if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
-      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(5,titleMenuIdx+1);sfxCursor();}
-      if(e.code==='KeyZ'){
-        if(titleMenuIdx===0){
-          // CONTINUE
-          sfxConfirm();
-          if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='continue';return;}
-          fadeOut(()=>{
-            if(loadGame()){
-              sc='map';showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-              fadeIn();twSet('Welcome back! You\'re in town — safe zone.');
-            }else{
-              sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-              fogRevealAll(0);fogSave();
-              fadeIn();twSet('Welcome to はじまりのまち! Enter the dungeon to collect cards.');
-            }
-          });
-        }else if(titleMenuIdx===1){
-          // NEW GAME
-          sfxConfirm();
-          if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
-          resetGameState(true);
-          // Show intro tutorial ON title screen, then land in town when done
-          fadeOut(()=>{
-            // Stay on title screen during tutorial — map only shown after intro completes
-            introActive=true;introPage=0;introFrame=fr;
-            fadeIn();
-          });
-        }else if(titleMenuIdx===2){
-          // CONNECT WALLET
-          sfxSelect();
-          if(walletConnected){
-            disconnectPhantom().then(()=>{lg.push('Wallet disconnected.');});
+  // v452 (phase-b2-title): Title options sub-overlay — [X] from Title opens it
+  if(sc==='title'&&optionsOverlayOpen){
+    if(e.code==='ArrowUp'){optionsMenuIdx=Math.max(0,optionsMenuIdx-1);sfxCursor();}
+    if(e.code==='ArrowDown'){optionsMenuIdx=Math.min(2,optionsMenuIdx+1);sfxCursor();}
+    if(e.code==='KeyZ'){
+      if(optionsMenuIdx===0){
+        // BIND / UNBIND VAULT (wallet)
+        sfxSelect();
+        if(walletConnected){
+          disconnectPhantom().then(()=>{lg.push('Wallet disconnected.');});
+        }else{
+          if(!window.solana||!window.solana.isPhantom){
+            twSet('Install Phantom wallet from phantom.app');
           }else{
-            if(!window.solana||!window.solana.isPhantom){
-              twSet('Install Phantom wallet from phantom.app');
-            }else{
-              connectPhantom().then(addr=>{
-                if(addr){twSet('Connected: '+walletAddressTruncated());lg.push('Wallet connected: '+walletAddressTruncated());}
-                else{twSet('Connection cancelled.');}
-              }).catch(()=>{twSet('Connection failed.');});
-            }
+            connectPhantom().then(addr=>{
+              if(addr){twSet('Connected: '+walletAddressTruncated());lg.push('Wallet connected: '+walletAddressTruncated());}
+              else{twSet('Connection cancelled.');}
+            }).catch(()=>{twSet('Connection failed.');});
           }
-        }else if(titleMenuIdx===3){
-          // MULTIPLAYER
-          sfxSelect();mp.mpScreen='select';mp.mpMenuIdx=0;
-        }else if(titleMenuIdx===4){
-          // CLEAR SAVE DATA
-          sfxBack();
-          clearSave();
-          try{localStorage.removeItem('oxark_save_ver');}catch(e){}
-          twSet('Save data cleared! Press NEW GAME to start fresh.');
-          titleMenuIdx=1;
-        }else if(titleMenuIdx===5){
-          // CREDITS
-          sfxSelect();creditsActive=true;creditsFrame=0;
         }
+      }else if(optionsMenuIdx===1){
+        // MULTIPLAYER
+        sfxSelect();optionsOverlayOpen=false;mp.mpScreen='select';mp.mpMenuIdx=0;
+      }else if(optionsMenuIdx===2){
+        // CREDITS
+        sfxSelect();optionsOverlayOpen=false;creditsActive=true;creditsFrame=0;
       }
-    }else{
-      if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
-      if(e.code==='ArrowDown'){titleMenuIdx=Math.min(3,titleMenuIdx+1);sfxCursor();}
-      if(e.code==='KeyZ'){
-        if(titleMenuIdx===0){
-          sfxConfirm();
-          if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
-          // Show intro tutorial ON title screen, then land in town when done
-          resetGameState(true);
-          fadeOut(()=>{
-            introActive=true;introPage=0;introFrame=fr;
-            fadeIn();
-          });
-        }else if(titleMenuIdx===1){
-          // CONNECT WALLET (no save)
-          sfxSelect();
-          if(walletConnected){
-            disconnectPhantom().then(()=>{lg.push('Wallet disconnected.');});
+    }
+    if(e.code==='KeyX'){sfxBack();optionsOverlayOpen=false;}
+    return;
+  }
+  if(sc==='title'){
+    // [X] opens options overlay (preview-strict)
+    if(e.code==='KeyX'){sfxSelect();optionsOverlayOpen=true;optionsMenuIdx=0;return;}
+    const saved=hasSave();
+    const maxIdx=saved?1:0; // 2-item (CONTINUE/NEW SEASON) or 1-item (NEW SEASON)
+    if(titleMenuIdx>maxIdx)titleMenuIdx=maxIdx; // clamp if save cleared mid-session
+    if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
+    if(e.code==='ArrowDown'){titleMenuIdx=Math.min(maxIdx,titleMenuIdx+1);sfxCursor();}
+    if(e.code==='KeyZ'){
+      const doContinue=()=>{
+        fadeOut(()=>{
+          if(loadGame()){
+            sc='map';showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
+            fadeIn();twSet('Welcome back! You\'re in town — safe zone.');
           }else{
-            if(!window.solana||!window.solana.isPhantom){
-              twSet('Install Phantom wallet from phantom.app');
-            }else{
-              connectPhantom().then(addr=>{
-                if(addr){twSet('Connected: '+walletAddressTruncated());lg.push('Wallet connected: '+walletAddressTruncated());}
-                else{twSet('Connection cancelled.');}
-              }).catch(()=>{twSet('Connection failed.');});
-            }
+            sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
+            fogRevealAll(0);fogSave();
+            fadeIn();twSet('Welcome to はじまりのまち! Enter the dungeon to collect cards.');
           }
-        }else if(titleMenuIdx===2){
-          // MULTIPLAYER (no save)
-          sfxSelect();mp.mpScreen='select';mp.mpMenuIdx=0;
-        }else if(titleMenuIdx===3){
-          // CREDITS (no save)
-          sfxSelect();creditsActive=true;creditsFrame=0;
-        }
+        });
+      };
+      const doNewSeason=()=>{
+        resetGameState(true);
+        fadeOut(()=>{introActive=true;introPage=0;introFrame=fr;fadeIn();});
+      };
+      if(saved&&titleMenuIdx===0){
+        // CONTINUE
+        sfxConfirm();
+        if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='continue';return;}
+        doContinue();
+      }else{
+        // NEW SEASON (idx 1 when saved, idx 0 when not)
+        sfxConfirm();
+        if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
+        doNewSeason();
       }
     }
     return;

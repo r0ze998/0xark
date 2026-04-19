@@ -10,6 +10,7 @@ window.TOKENS = {
       "locked": {
         "ocean_shallow": "#4880c8",
         "ocean_deep": "#1c3868",
+        "night_sky": "#0c1a38",
         "sand_beach": "#e8c878",
         "hull_wood": "#805028",
         "sail_cream": "#f8e8c0",
@@ -67,7 +68,8 @@ window.TOKENS = {
         "hp_vega": "#ff70b0",
         "hp_mira": "#f0b828",
         "paid_usdc": "#58c068",
-        "paid_free": "#f0b828"
+        "paid_free": "#f0b828",
+        "overlay_scrim": "rgba(0,0,0,0.6)"
       }
     }
   },

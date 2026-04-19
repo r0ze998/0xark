@@ -1620,3 +1620,60 @@ function drawMiniCard(x,y,cd){
   }
 }
 
+// ═══════════════════════════════════════
+// SPRITE SEAS GBA PRIMITIVES (Phase B2 — v452+)
+// Token-resolved dialog + menu helpers. No hex literals — all colors
+// flow through window.TOKENS.resolveColor(). Integer coords only.
+// Authored from design/preview/01_title.html + design/UI_SPEC.md.
+// ═══════════════════════════════════════
+
+// Draw a GBA-style dialog frame: 2px outer border + 2px inner inset rim,
+// filled interior. Matches preview .menu / .dialog-bottom / .action-menu.
+//   fillToken   — semantic/locked palette key for interior (default menu_blue)
+//   borderToken — outer border key (default text_dark)
+//   insetToken  — inner accent rim key; pass null for no inset (default menu_border)
+function drawGBADialog(x, y, w, h, fillToken, borderToken, insetToken) {
+  const fill   = window.TOKENS.resolveColor(fillToken   || 'menu_blue');
+  const border = window.TOKENS.resolveColor(borderToken || 'text_dark');
+  const inset  = insetToken === null ? null
+               : window.TOKENS.resolveColor(insetToken || 'menu_border');
+  // Outer fill (interior). Draw first; border overpaints edge.
+  bx(x, y, w, h, fill);
+  // 2px outer border (top, bottom, left, right)
+  bx(x,       y,       w, 2, border);
+  bx(x,       y+h-2,   w, 2, border);
+  bx(x,       y,       2, h, border);
+  bx(x+w-2,   y,       2, h, border);
+  // 2px inner inset accent rim (1px inside the outer border)
+  if (inset) {
+    bx(x+2,     y+2,     w-4, 2, inset);
+    bx(x+2,     y+h-4,   w-4, 2, inset);
+    bx(x+2,     y+2,     2,   h-4, inset);
+    bx(x+w-4,   y+2,     2,   h-4, inset);
+  }
+}
+
+// Draw a single menu row inside an existing dialog frame.
+//   (x,y)  — top-left of the row (not the dialog)
+//   w      — row width (typically dialog width - horizontal padding*2)
+//   label  — text to render
+//   selected — true → ► cursor + active color; false → indented muted
+//   sizeToken — type.sizes_px key ('sm'/'md') or literal px (default 16)
+// Uses gold cursor (menu_border), active text_light, muted fg_muted —
+// matches preview .menu li.sel::before + .menu li:not(.sel).
+function drawMenuButton(x, y, w, label, selected, sizeToken) {
+  const sz = (typeof sizeToken === 'number') ? sizeToken
+           : (window.TOKENS.type.sizes_px[sizeToken || 'sm'] || 16);
+  const cursor = window.TOKENS.resolveColor('menu_border');
+  const active = window.TOKENS.resolveColor('text_light');
+  const muted  = window.TOKENS.resolveColor('fg_muted');
+  // setFont expects a 12+ input; txShadow clamps internally.
+  // Preview shows ~8px left pad for cursor row, 22px indent for non-selected.
+  if (selected) {
+    txShadow('\u25B6', x + 4, y + sz, sz, cursor, 'rgba(0,0,0,0.4)');
+    txShadow(label,    x + 20, y + sz, sz, active, 'rgba(0,0,0,0.5)');
+  } else {
+    txShadow(label,    x + 22, y + sz, sz, muted,  'rgba(0,0,0,0.5)');
+  }
+}
+

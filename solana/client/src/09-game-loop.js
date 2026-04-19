@@ -452,6 +452,7 @@ function draw(){
   drawSynthesisShop();
   drawTutorialMsg();
   drawIntroTutorial();
+  drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){
     drawFishingOverlay();
     drawPuzzlePillars();

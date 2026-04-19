@@ -8,6 +8,7 @@
     "locked": {
       "ocean_shallow":  "#4880c8",
       "ocean_deep":     "#1c3868",
+      "night_sky":      "#0c1a38",
       "sand_beach":     "#e8c878",
       "hull_wood":      "#805028",
       "sail_cream":     "#f8e8c0",
@@ -65,7 +66,8 @@
       "hp_vega":         { "ref": "vega_pulse" },
       "hp_mira":         { "ref": "mira_amber" },
       "paid_usdc":       "#58c068",
-      "paid_free":       { "ref": "gold_accent" }
+      "paid_free":       { "ref": "gold_accent" },
+      "overlay_scrim":   "rgba(0,0,0,0.6)"
     }
   },
 

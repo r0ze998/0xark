@@ -1176,3 +1176,48 @@ function dLog(){
   txShadow('X = Back',W/2-32,H-16,8,FRLG.selHighlight,'rgba(0,0,0,.4)');
 }
 
+// ═══════════════════════════════════════
+// TITLE OPTIONS OVERLAY (Phase B2-1, v452)
+// Opened from Title screen via X key. Holds BIND VAULT / MULTIPLAYER /
+// CREDITS — the connective-tissue menu items not present in the
+// preview-strict 2-item main menu. Reuses drawGBADialog primitive.
+// ═══════════════════════════════════════
+function drawTitleOptionsOverlay(){
+  if(!optionsOverlayOpen) return;
+  // Scrim
+  bx(0,0,W,H, window.TOKENS.resolveColor('overlay_scrim'));
+  // Dialog — 360×220 centered
+  const dw=360, dh=220;
+  const dx=((W-dw)/2)|0, dy=((H-dh)/2)|0;
+  drawGBADialog(dx, dy, dw, dh, 'menu_blue', 'text_dark', 'menu_border');
+  // Title
+  const accent=window.TOKENS.resolveColor('gold_accent');
+  txShadow('OPTIONS', dx+24, dy+34, 18, accent, 'rgba(0,0,0,0.5)');
+  // Underline under header (gold hairline across dialog interior)
+  bx(dx+20, dy+46, dw-40, 1, window.TOKENS.resolveColor('menu_border'));
+
+  // Menu rows — 3 items, 28px step
+  const rowX=dx+32, rowY0=dy+64, rowStep=36, rowW=dw-64;
+  const sel=optionsMenuIdx|0;
+  drawMenuButton(rowX, rowY0,           rowW,
+    walletConnected ? 'UNBIND VAULT' : 'BIND VAULT', sel===0, 16);
+  drawMenuButton(rowX, rowY0+rowStep,   rowW, 'MULTIPLAYER',    sel===1, 16);
+  drawMenuButton(rowX, rowY0+rowStep*2, rowW, 'CREDITS',        sel===2, 16);
+
+  // Right-side status annotations
+  const statusX=dx+dw-120;
+  if(walletConnected){
+    txShadow(walletAddressTruncated(), statusX, rowY0+16, 9,
+      window.TOKENS.resolveColor('hp_full'), 'rgba(0,0,0,0.4)');
+  }
+  if(mp.connected){
+    txShadow('ONLINE', statusX+24, rowY0+rowStep+16, 9,
+      window.TOKENS.resolveColor('hp_full'), 'rgba(0,0,0,0.4)');
+  }
+
+  // Footer hint
+  const hintY=dy+dh-20;
+  txShadow('[Z] SELECT   [X] CLOSE', dx+24, hintY, 10,
+    window.TOKENS.resolveColor('fg_muted'), 'rgba(0,0,0,0.4)');
+}
+

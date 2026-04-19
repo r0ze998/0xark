@@ -251,8 +251,12 @@ function updatePixiVision(){
 
 // ═══════════════════════════════════════
 // PIXI TITLE SCREEN EFFECTS
+// @deprecated (phase-b2-title) — legacy shooting-star / sparkle overlay. Replaced by
+// Canvas-2D Sprite Seas dTitle() in 06-world-systems.js (v452). Kept disabled until
+// B2-8 cleanup removes the container, updater, and call site wholesale.
 // ═══════════════════════════════════════
 const pxTitleEffects = new PIXI.Container();
+pxTitleEffects.visible = false; // disabled for Sprite Seas Title (v452)
 pixiLayers.fx.addChild(pxTitleEffects);
 
 // Shooting stars
@@ -269,9 +273,9 @@ for(let i=0;i<3;i++){
 // Title sparkle emitter (around "0xARK" text)
 const pxTitleSparkles = [];
 
+// @deprecated (phase-b2-title) — kept as no-op until B2-8 cleanup.
 function updatePixiTitleEffects(){
-  pxTitleEffects.visible = (sc==='title' && !creditsActive && mp.mpScreen==='off');
-  if(!pxTitleEffects.visible)return;
+  if(!pxTitleEffects.visible)return; // permanently hidden for Sprite Seas Title (v452)
 
   // Spawn shooting stars occasionally
   for(let _si=0;_si<pxShootingStars.length;_si++){

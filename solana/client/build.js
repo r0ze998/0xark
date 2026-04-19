@@ -10,6 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const ROOT = __dirname;
 const SRC_DIR = path.join(ROOT, 'src');
@@ -162,8 +163,30 @@ function build() {
     return `// ${'─'.repeat(71)}\n// MODULE: src/${file}\n// ${desc}\n// ${'─'.repeat(71)}\n${content}`;
   });
 
+  // Prepend BUILD_VERSION (v452, phase-b2-title) — read by dTitle() for the Title
+  // version label. Parses the vNN prefix from HEAD's commit subject (matches the
+  // project's "vNN: <change>" convention). Appends "+" when the working tree is
+  // dirty so local builds are distinguishable from clean ones. Falls back to 'dev'
+  // if git is unavailable or no vNN prefix is found.
+  let buildVersion = 'dev';
+  try {
+    const subject = execSync('git log -1 --format=%s', {
+      cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    const m = subject.match(/\bv\d+[a-z]?\b/i);
+    if (m) buildVersion = m[0];
+    // Mark dirty working tree so pre-commit builds don't masquerade as clean.
+    try {
+      const dirty = execSync('git status --porcelain', {
+        cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+      if (dirty) buildVersion += '+';
+    } catch (_) { /* ignore */ }
+  } catch (_) { /* not a git tree — keep 'dev' */ }
+  const versionHeader = `window.BUILD_VERSION = ${JSON.stringify(buildVersion)};`;
+
   const js = parts.join('\n');
-  const scriptBlock = `<script>\n${js}\n</script>`;
+  const scriptBlock = `<script>\n${versionHeader}\n${js}\n</script>`;
   const output = template.replace('<!-- GAME_SCRIPT -->', scriptBlock);
 
   if (!output.includes('<script>') || !output.includes('</script>')) {
@@ -209,6 +232,7 @@ function build() {
   console.log(`\n✓ 0xARK built successfully`);
   console.log(`  Modules:      ${moduleCount} files (${totalSrcLines} source lines)`);
   console.log(`  Output:       ${lineCount} lines`);
+  console.log(`  Version:      ${buildVersion}`);
   console.log(`  → ${OUT_GAME}`);
   console.log(`  → ${OUT_ROOT}\n`);
 }

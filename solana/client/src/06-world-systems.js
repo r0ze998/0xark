@@ -1752,10 +1752,39 @@ function drawNPCDialog(){
 }
 
 // ═══════════════════════════════════════
-// TITLE SCREEN
-// v225: Pre-baked static title-screen canvases (eliminates per-frame gradient creation)
+// TITLE SCREEN (Sprite Seas — Phase B2-1, v452)
+// Match: design/preview/01_title.html. Near-pixel reproduction at 2× preview
+// viewport (production canvas 960×640 vs preview 480×320).
 // ═══════════════════════════════════════
-// Top purple-void gradient (static, 280px tall)
+// Sky→sea gradient cached as a single canvas (regenerated only if W/H change).
+// v452: replaces v225 void+rune+moon cached canvases for the title screen.
+const _titleSkySeaCanvas=(()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const ctx=c.getContext('2d');
+  const horizonY=(H*0.62)|0;
+  const skyGrad=ctx.createLinearGradient(0,0,0,horizonY);
+  skyGrad.addColorStop(0,'#0c1a38');
+  skyGrad.addColorStop(1,'#1c3868');
+  ctx.fillStyle=skyGrad;ctx.fillRect(0,0,W,horizonY);
+  const seaGrad=ctx.createLinearGradient(0,horizonY,0,H);
+  seaGrad.addColorStop(0,'#1c3868');
+  seaGrad.addColorStop(1,'#0c1a38');
+  ctx.fillStyle=seaGrad;ctx.fillRect(0,horizonY,W,H-horizonY);
+  // 2px horizon band (night_sky)
+  ctx.fillStyle='#0c1a38';ctx.fillRect(0,horizonY-1,W,3);
+  // Two GBA-minimal wave lines inside the sea band
+  const seaH=H-horizonY;
+  ctx.fillStyle='#4880c8';ctx.globalAlpha=0.8;
+  ctx.fillRect(0,horizonY+(seaH*0.32)|0,W,3);
+  ctx.globalAlpha=0.9;ctx.fillStyle='#1c3868';
+  ctx.fillRect(0,horizonY+(seaH*0.62)|0,W,2);
+  ctx.globalAlpha=1;
+  return c;
+})();
+
+// @deprecated (phase-b2-title): legacy title-screen pre-baked canvases from v225
+// (void gradient, rune grid, moon halo/disk). Superseded by _titleSkySeaCanvas.
+// Retained per PHASE_B2_PLAN.md B2-0 policy; delete in B2-8 cleanup.
 const _titleVoidGradCanvas=(()=>{
   const c=document.createElement('canvas');c.width=W;c.height=280;
   const ctx=c.getContext('2d');
@@ -1764,7 +1793,6 @@ const _titleVoidGradCanvas=(()=>{
   ctx.fillStyle=gd;ctx.fillRect(0,0,W,280);
   return c;
 })();
-// Rune grid lines (5 horizontal 1px lines, alpha=0.04)
 const _titleRuneGridCanvas=(()=>{
   const c=document.createElement('canvas');c.width=W;c.height=H;
   const ctx=c.getContext('2d');
@@ -1772,9 +1800,7 @@ const _titleRuneGridCanvas=(()=>{
   for(let gy_=60;gy_<H;gy_+=80)ctx.fillRect(0,gy_,W,1);
   return c;
 })();
-// Moon constants shared between halo + disk bakes
 const _moonMx=Math.floor(W*0.78),_moonMy=72,_moonMr=22;
-// Moon halo: radial gradient baked at alpha=1 so globalAlpha scales it at draw time
 const _moonHaloR=Math.ceil(_moonMr*3.2);
 const _moonHaloCanvas=(()=>{
   const sz=_moonHaloR*2+4;
@@ -1787,7 +1813,6 @@ const _moonHaloCanvas=(()=>{
   ctx.fillStyle=grd;ctx.fillRect(0,0,sz,sz);
   return c;
 })();
-// Moon disk + crescent shadow (baked at alpha=1, globalAlpha=moonPulse at draw time)
 const _moonDiskCanvas=(()=>{
   const sz=_moonMr*2+8;
   const c=document.createElement('canvas');c.width=sz;c.height=sz;
@@ -1799,295 +1824,208 @@ const _moonDiskCanvas=(()=>{
   ctx.beginPath();ctx.arc(cx_+6,cy_-3,_moonMr*0.92,0,Math.PI*2);ctx.fill();
   return c;
 })();
-let _orbitCacheSz=-1,_orbitCacheCards=[]; // v273: title orbit vault cache
-// v394: Euler recurrence cache for title orbit — recomputed only when orbitCount changes
+let _orbitCacheSz=-1,_orbitCacheCards=[];
 let _titleOrbitN=0,_titleOrbitSS=0,_titleOrbitSC=1;
 function dTitle(){
-  bx(0,0,W,H,'#060612');
-  // v225: pre-baked void gradient (was createLinearGradient every frame)
-  g.drawImage(_titleVoidGradCanvas,0,0);
-  // Ethereal void pillars — slow vertical light columns
-  for(let b=0;b<5;b++){
-    const bx_=(b*136+fr*0.08)%W;
-    const ba=0.025+0.02*(_sFr015*_PILLAR_CI12[b]+_cFr015*_PILLAR_SI12[b]);
-    g.globalAlpha=ba;
-    g.fillStyle=_TITLE_VOID_COLS[b]; // v262: hoisted
-    g.beginPath();g.moveTo(bx_,0);g.lineTo(bx_+18,0);g.lineTo(bx_+60,H);g.lineTo(bx_+42,H);g.closePath();g.fill();
-    g.globalAlpha=1;
-  }
-  // v212: Star field — 120 stars; v382: Euler recurrence eliminates 120 Math.sin/frame
-  for(let i=0;i<120;i++){const _sc=_STAR_SC[i],_ss=_STAR_SS[i],_fc=_STAR_FC[i],_fs=_STAR_FS[i];
-    _STAR_SC[i]=_sc*_fc-_ss*_fs;_STAR_SS[i]=_sc*_fs+_ss*_fc;} // advance all stars
-  for(let i=0;i<120;i++){
-    const sx=(i*47+13)%W,sy=(i*31+7)%(H-60);
-    const a=_STAR_SS[i]*0.4+0.6; // sin component of Euler state
-    const purp=i%9===0,big=i%17===0;
-    const sz=big?2:1;
-    if(big){
-      // Large star: cross sparkle — globalAlpha+solid avoids 2 template literals
-      const sa=a*(0.5+(_sFr08*_NCOS[i]+_cFr08*_NSIN[i])*0.2);
-      g.globalAlpha=sa*0.35;g.fillStyle='#dcd5ff';
-      g.fillRect(sx-1,sy,3,1);g.fillRect(sx,sy-1,1,3);
-    }
-    g.globalAlpha=purp?a*.42:a*.30;g.fillStyle=purp?'#b450ff':'#dcc8ff';
-    g.fillRect(sx,sy,sz,sz);
-  }
-  g.globalAlpha=1;
-  // v212: Occasional shooting star — fires every ~260 frames, lasts 20 frames
-  {const sShotPhase=(fr+80)%280;
-  if(sShotPhase<20){
-    const sp2=sShotPhase/20;
-    const shotX=W*0.08+sp2*W*0.45;
-    const shotY=30+sp2*100;
-    const shotA=4*sp2*(1-sp2)*0.9; // v394: parabola ≈ sin(π*sp2) for sp2∈[0,1]
-    for(let t=0;t<7;t++){
-      g.globalAlpha=shotA*(1-t/7)*0.8;
-      bx((shotX-t*9)|0,(shotY-t*6)|0,2,1,'#d8d0ff');
-    }
-    g.globalAlpha=shotA;
-    bx(shotX|0,shotY|0,3,2,'#fff');
-    g.globalAlpha=1;
-  }}
-  // Rising rune wisps — small cross shapes drifting upward
-  for(let b=0;b<5;b++){
-    const bsy=H-((fr*0.5+b*140)%560);
-    const bsx=80+b*110+(_sFr025*_IDX_CI[b]+_cFr025*_IDX_SI[b])*22;
-    const ba=Math.min(1,Math.min(bsy/100,(H-bsy)/50)*0.6);
-    g.globalAlpha=ba*0.5;
-    const rc=b%2===0?ARK.rune:'#c8a448';
-    // Pixel cross rune
-    bx(bsx-3,bsy,6,1,rc);bx(bsx,bsy-3,1,6,rc);
-    g.globalAlpha=1;
-  }
-  // v225: pre-baked rune grid (was 5 bx calls with globalAlpha state change each frame)
-  g.drawImage(_titleRuneGridCanvas,0,0);
-  // v210/v225: Moon — pre-baked halo + disk, modulated by moonPulse globalAlpha
+  // Sky/sea/horizon/waves — pre-baked
+  g.drawImage(_titleSkySeaCanvas,0,0);
+
+  // Moon — clean circle upper-right, preview anchor. Scaled 2× from preview
+  // (28px @ 480 viewport → 56px @ 960 canvas). Soft outer shadow ring.
   {
-    const moonPulse=0.55+_sFr012*0.04;
-    // Outer halo (pre-baked at alpha=1; globalAlpha scales it to moonPulse*0.18)
-    g.globalAlpha=moonPulse*0.18;
-    g.drawImage(_moonHaloCanvas,_moonMx-_moonHaloR-2,_moonMy-_moonHaloR-2);
-    // Moon disk + crescent (pre-baked, modulated by moonPulse)
-    g.globalAlpha=moonPulse;
-    g.drawImage(_moonDiskCanvas,_moonMx-_moonMr-4,_moonMy-_moonMr-4);
+    const mR=28;
+    const mx=W-88;           // preview right:44 → 2× from right edge
+    const my=88;             // preview top:44 → 2×
+    const moonCol=window.TOKENS.resolveColor('sail_cream');
+    const nightCol=window.TOKENS.resolveColor('night_sky');
+    // Outer soft halo rings (3 layers, increasing alpha transparency)
+    g.globalAlpha=0.08;bx(mx-mR-18,my-mR-18,(mR+18)*2,(mR+18)*2,moonCol);
+    g.globalAlpha=0.20;bx(mx-mR-10,my-mR-10,(mR+10)*2,(mR+10)*2,moonCol);
     g.globalAlpha=1;
-    // Moon reflection shimmer on water below
-    const refX=_moonMx,refY=H-30;
-    for(let i=0;i<5;i++){
-      const rw=14-i*2,rh=1;
-      const ry_=refY+i*4+(_sFr04*_IDX_CI[i]+_cFr04*_IDX_SI[i])*3;
-      const ra=(0.18-i*0.03)*moonPulse;
-      g.globalAlpha=ra;
-      bx(refX-rw/2+(_sFr03*_REFLS_CI14[i]+_cFr03*_REFLS_SI14[i])*6,ry_,rw,rh,'#c8c0e8');
-    }
-    g.globalAlpha=1;
+    // Night-sky ring (keeps the moon from bleeding into halo)
+    bx(mx-mR-6,my-mR-6,(mR+6)*2,(mR+6)*2,nightCol);
+    // Moon disk — pixel-stepped circle (square approximation for chunky pixel feel)
+    bx(mx-mR,my-mR+4,mR*2,mR*2-8,moonCol);
+    bx(mx-mR+4,my-mR,mR*2-8,mR*2,moonCol);
   }
-  if(fr%200<15){
-    const sx=150+fr%200*10,sy=40+fr%200*2;
-    g.fillStyle='#ffffff';for(let t=0;t<6;t++){g.globalAlpha=.4-t*.06;g.fillRect(sx-t*4,sy-t,2,1);}g.globalAlpha=1;
-  }
-
-  // Title rune halo
-  g.globalAlpha=0.12+_sFr04*0.06;
-  bx(W/2-130,172,260,40,'#9945FF');
-  g.globalAlpha=1;
-  // Title layers — purple ghost → sharp main
-  txShadow('0xARK',W/2-96+2,192,32,'rgba(153,69,255,.35)','rgba(0,0,0,0)');
-  txShadow('0xARK',W/2-96+1,191,32,'rgba(0,0,0,.5)','rgba(0,0,0,.6)');
-  txShadow('0xARK',W/2-96,190,32,'#f8f0e0','rgba(0,0,32,.8)');
-  if(_sFr02>.3)tx('0xARK',W/2-96,190,32,'rgba(248,240,224,.12)');
-  txShadow('60 CARDS. ONE HEIR. FIRST TO WIN TAKES ALL.',W/2-184,226,7,'#8090b8','rgba(0,0,0,.5)');
-  txShadow('The ARK sank here. Its power waits.',W/2-128,240,7,'#c08848','rgba(0,0,0,.5)');
-
-  // SEASON 1 badge
-  const s1Blink=_sFr06*0.15+0.85;
-  g.globalAlpha=s1Blink;
-  bx(W/2-36,252,72,16,'rgba(200,152,32,.25)');
-  bx(W/2-35,253,70,14,'rgba(200,152,32,.12)');
-  txShadow('SEASON 1',W/2-30,264,7,'#f0c830','rgba(0,0,0,.4)');
-  g.globalAlpha=1;
-
-  // Grand Seal display — show actual pot if wallet connected
-  const prizeStr=walletConnected&&stakePotAmount>0?'GRAND SEAL: '+stakePotAmount.toFixed(2)+' SOL':'GRAND SEAL: awaiting souls';
-  // Rune glow behind prize text
-  g.globalAlpha=0.18+_sFr05*0.08;bx(W/2-100,268,200,16,ARK.rune);g.globalAlpha=1;
-  txShadow(prizeStr,W/2-96,280,7,'#14F195','rgba(0,0,0,.5)');
-
-  // Ship silhouette in background
+  // Logo "0xARK" — top-center. Preview y=20% → 128px @ 960 canvas.
+  // 0x in gold_accent, ARK in sail_cream. Dual drop-shadow (night_sky + text_dark).
   {
-    const shipX=W/2-60,shipY=260+_sFr015*3;
-    // Hull
-    bx(shipX-40,shipY+20,120,14,'#181828');bx(shipX-30,shipY+34,100,6,'#181828');
-    bx(shipX-20,shipY+40,80,4,'#181828');
-    // Hull bow curve
-    bx(shipX+80,shipY+22,10,8,'#181828');bx(shipX+90,shipY+26,6,4,'#181828');
-    bx(shipX-50,shipY+22,10,8,'#181828');
-    // Mast
-    bx(shipX+10,shipY-50,4,70,'#1c1c30');
-    // Sail
-    bx(shipX-16,shipY-42,30,36,'#222240');bx(shipX-12,shipY-38,22,28,'#282848');
-    // Crow's nest
-    bx(shipX+6,shipY-54,12,4,'#1c1c30');
-    // Flag (pirate)
-    const flagWave=_sFr08*2;
-    bx(shipX+14,shipY-52+flagWave,16,10,'#1c1c30');
-    bx(shipX+18,shipY-50+flagWave,2,2,'#2a2a48');bx(shipX+22,shipY-50+flagWave,2,2,'#2a2a48');
-    bx(shipX+19,shipY-47+flagWave,4,2,'#2a2a48');
-    // Second mast (shorter)
-    bx(shipX+50,shipY-20,3,40,'#1c1c30');
-    bx(shipX+36,shipY-14,20,18,'#222240');
-    // Bowsprit
-    bx(shipX+88,shipY+18,20,2,'#1c1c30');
+    const logoY=128; // preview 20% of 640
+    const baseSz=64; // tx internally multiplies ×1.4 → 90px render; matches preview 64px CSS at 2× scale
+    // Measure so the two-tone logo centers correctly. We draw in two halves,
+    // so compute widths explicitly using canvas measureText.
+    setFont(Math.max(12,Math.round(baseSz*1.4)));
+    const wLeft=g.measureText('0x').width;
+    const wRight=g.measureText('ARK').width;
+    const totalW=wLeft+wRight;
+    const lx=((W-totalW)/2)|0;
+    // Drop-shadow layer 1 — night_sky at +8,+8
+    txShadow('0x',  lx+8,      logoY+8, baseSz, '#0c1a38', 'rgba(0,0,0,0)');
+    txShadow('ARK', lx+wLeft+8,logoY+8, baseSz, '#0c1a38', 'rgba(0,0,0,0)');
+    // Drop-shadow layer 2 — text_dark at +4,+4
+    txShadow('0x',  lx+4,      logoY+4, baseSz, '#181028', 'rgba(0,0,0,0)');
+    txShadow('ARK', lx+wLeft+4,logoY+4, baseSz, '#181028', 'rgba(0,0,0,0)');
+    // Main fill
+    txShadow('0x',  lx,         logoY,  baseSz, window.TOKENS.resolveColor('gold_accent'), 'rgba(0,0,0,0)');
+    txShadow('ARK', lx+wLeft,   logoY,  baseSz, window.TOKENS.resolveColor('sail_cream'), 'rgba(0,0,0,0)');
   }
-  // v110: Collected cards orbiting the title (personalised showcase, best rarity first)
-  if(pl[0].vault&&pl[0].vault.size>0){
-    // v273: cache orbit cards — vault doesn't change on title screen
-    if(_orbitCacheSz!==pl[0].vault.size){
-      _orbitCacheSz=pl[0].vault.size;
-      const va_=[...pl[0].vault].sort((a,b)=>(CD[b-1].r||1)-(CD[a-1].r||1));
-      _orbitCacheCards=va_.slice(0,Math.min(8,va_.length));
+
+  // Tagline "A ZK PIRATE CARD GAME" — 16px preview → ~32px render.
+  // Letter-spaced 0.28em; we approximate by padding single spaces (canvas 2D
+  // has no native letter-spacing until 2D ctx letterSpacing, not available in
+  // all targets). Use spaced string.
+  {
+    const tagTxt='A  Z K   P I R A T E   C A R D   G A M E';
+    const tagSz=16;
+    setFont(Math.max(12,Math.round(tagSz*1.4)));
+    const tw=g.measureText(tagTxt).width;
+    const tx_=((W-tw)/2)|0;
+    const ty=196; // preview 20% + 30px → ~200
+    txShadow(tagTxt, tx_, ty, tagSz, window.TOKENS.resolveColor('menu_border'), 'rgba(0,0,0,0.5)');
+  }
+
+  // Galleon hero — centered, top:57% → y=364, 256×160 (2× preview 128×80).
+  // Preview anatomy: hull trapezoidal, mast, sail with gold-trimmed cream body
+  // + black jolly-roger X, red flag atop. See design/preview/01_title.html.
+  {
+    const shipCX=(W/2)|0, shipCY=((H*0.57)|0);
+    const shipW=256, shipH=160;
+    const shipX=shipCX-shipW/2, shipY=shipCY-shipH/2;
+    const outline=window.TOKENS.resolveColor('text_dark');
+    const hullCol=window.TOKENS.resolveColor('hull_wood');
+    const hullTop='#a07040';   // inset highlight
+    const hullBot='#5c3818';   // inset shadow
+    const goldT=window.TOKENS.resolveColor('gold_accent');
+    const sailCol=window.TOKENS.resolveColor('sail_cream');
+    const sailShadow='#e8c878';
+    const goldInset=window.TOKENS.resolveColor('menu_border');
+    const flagCol=window.TOKENS.resolveColor('flag_red');
+    // Hull — trapezoid: 44px tall at bottom. Preview clip-path 8%→92% top.
+    const hullH=44;
+    const hullY=shipY+shipH-hullH;
+    // Fill the main hull body in wood color (approximate trapezoid via layered
+    // bx strips, bottom wider than top)
+    for(let i=0;i<hullH;i++){
+      const t=i/hullH;
+      const inset=((1-t)*0.08+t*0)*shipW|0;
+      bx(shipX+inset, hullY+i, shipW-inset*2, 1, hullCol);
     }
-    const orbitCards=_orbitCacheCards;
-    const orbitCount=orbitCards.length;
-    const orbitCX=W/2-96+64; // centered on "0xARK" title
-    const orbitCY=196;
-    const orbitRX=140,orbitRY=52;
-    // v394: sin-addition + Euler recurrence — 2 sin/cos calls/frame instead of 3*N
-    if(_titleOrbitN!==orbitCount){_titleOrbitN=orbitCount;const _s=Math.PI*2/orbitCount;_titleOrbitSS=Math.sin(_s);_titleOrbitSC=Math.cos(_s);}
-    let _tOsi=0,_tOci=1; // spatial state: (si,ci)=(sin(i*2π/N),cos(i*2π/N)), start at i=0
-    for(let i=0;i<orbitCount;i++){
-      // angle(i) = fr*0.006 + i*(2π/N); use sin-addition with cached _sFr006/_cFr006
-      const _ac=_cFr006*_tOci-_sFr006*_tOsi; // cos(angle)
-      const _as=_sFr006*_tOci+_cFr006*_tOsi; // sin(angle) = depth
-      const ox=orbitCX+_ac*orbitRX;
-      const oy=orbitCY+_as*orbitRY;
-      // Depth cue: cards behind title (sin<0) are dimmer
-      const depth=_as;
-      const alpha=0.28+Math.max(0,depth)*0.35;
-      const scale_=0.75+Math.max(0,depth)*0.25;
-      const cid=orbitCards[i];
-      const cr=CD[cid-1];
-      // Skip cards behind the title text (depth<-0.2) so text stays readable
-      // Euler advance before continue so state stays correct for next iteration
-      const _ns=_tOsi*_titleOrbitSC+_tOci*_titleOrbitSS;_tOci=_tOci*_titleOrbitSC-_tOsi*_titleOrbitSS;_tOsi=_ns;
-      if(depth<-0.2)continue;
-      g.globalAlpha=alpha;
-      g.save();
-      g.translate(ox,oy);
-      g.scale(scale_,scale_);
-      // Mini card frame (14×10 at scale 1)
-      bx(-7,-5,14,10,cr.d);bx(-6,-4,12,8,cr.c);
-      // Rarity shimmer for epic/legendary
-      if(cr.r>=4){
-        const shim=0.3+(_sFr12*_IDX_CI[i]+_cFr12*_IDX_SI[i])*0.25; // v371: sin-addition
-        g.globalAlpha=alpha*shim;
-        bx(-7,-5,14,2,cr.r===5?'#ffe080':'#c8a820');
+    // Hull outline (2px top/bot/sides)
+    bx(shipX,         hullY-2,      shipW,     2, outline);
+    bx(shipX,         shipY+shipH-2,shipW,     2, outline);
+    // Gold trim stripe (preview: hull::after)
+    bx(shipX+12,      hullY+16,     shipW-24,  4, goldT);
+    // Top/bottom inset bands
+    bx(shipX+6,       hullY,        shipW-12,  6, hullTop);
+    bx(shipX+6,       hullY+hullH-8,shipW-12,  8, hullBot);
+
+    // Mast — 6×100 vertical line, centered
+    bx(shipCX-3, hullY-100, 6, 100, outline);
+
+    // Sail — 144×76 (2× preview 72×38), centered on mast
+    const sailW=144, sailH=76;
+    const sailX=shipCX-sailW/2;
+    const sailY=hullY-sailH-4;
+    bx(sailX, sailY, sailW, sailH, sailCol);
+    // Sail outline
+    bx(sailX,         sailY,        sailW, 4, outline);
+    bx(sailX,         sailY+sailH-4,sailW, 4, outline);
+    bx(sailX,         sailY,        4,     sailH, outline);
+    bx(sailX+sailW-4, sailY,        4,     sailH, outline);
+    // Gold inset rim (2px inside outline)
+    bx(sailX+4,        sailY+4,         sailW-8, 4, goldInset);
+    bx(sailX+4,        sailY+sailH-8,   sailW-8, 4, goldInset);
+    bx(sailX+4,        sailY+4,         4,       sailH-8, goldInset);
+    bx(sailX+sailW-8,  sailY+4,         4,       sailH-8, goldInset);
+    // Bottom shadow band
+    bx(sailX+8, sailY+sailH-12, sailW-16, 4, sailShadow);
+    // Jolly-roger X on sail center — 36×6 bars at 45°/-45°. Approximate with
+    // two diagonal strokes via thin diagonal rects (pixel stairstep).
+    {
+      const cx=sailX+sailW/2, cy=sailY+sailH/2;
+      const barLen=36, thick=6;
+      // Stair-step diagonals — walk 1px per step for pixel art feel
+      for(let k=-barLen/2;k<=barLen/2;k++){
+        bx((cx+k)|0, (cy+k)|0, 1, thick, outline);   // ↘
+        bx((cx+k)|0, (cy-k)|0, 1, thick, outline);   // ↗
       }
-      g.restore();
-      g.globalAlpha=1;
     }
-  }
-  // Animated waves at bottom of title screen — v380: sin-addition via pre-baked wave tables
-  for(let wx=0;wx<W;wx+=4){const _wj=wx>>2;
-    const wy1=H-40+(_sFr04*_WAVE_CI_A[_wj]+_cFr04*_WAVE_SI_A[_wj])*6+(_sFr025*_WAVE_CI_B[_wj]+_cFr025*_WAVE_SI_B[_wj])*4;
-    const wy2=H-28+(_sFr035*_WAVE_CI_C[_wj]+_cFr035*_WAVE_SI_C[_wj])*5+(_sFr02*_WAVE_CI_D[_wj]+_cFr02*_WAVE_SI_D[_wj])*3;
-    const wy3=H-16+(_sFr03*_WAVE_CI_E[_wj]+_cFr03*_WAVE_SI_E[_wj])*4;
-    bx(wx,wy1,4,2,`rgba(32,64,128,0.4)`);
-    bx(wx,wy2,4,2,`rgba(40,80,150,0.35)`);
-    bx(wx,wy3,4,2,`rgba(48,96,176,0.3)`);
-  }
-  // Solid wave base fill
-  bx(0,H-20,W,20,'rgba(16,32,64,0.5)');
-  bx(0,H-10,W,10,'rgba(12,24,48,0.6)');
 
-  if(hasSave()){
-    const sel=titleMenuIdx||0;
-    const blink=Math.floor(fr/25)%2===0;
-    if(sel===0&&blink||sel!==0)txShadow('CONTINUE',W/2-52,320,10,sel===0?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
-    if(sel===0)txShadow('\u25B6',W/2-76,320,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
-    if(sel===1&&blink||sel!==1)txShadow('NEW GAME',W/2-52,350,10,sel===1?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
-    if(sel===1)txShadow('\u25B6',W/2-76,350,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
-    // CONNECT WALLET option
-    if(walletConnected){
-      txShadow(walletAddressTruncated(),W/2-52,380,8,'#40d080','rgba(0,0,0,.4)');
-      if(sel===2)txShadow('\u25B6',W/2-76,380,10,'#40d080','rgba(0,0,0,.4)');
-    }else{
-      if(sel===2&&blink||sel!==2)txShadow('BIND VAULT',W/2-60,380,10,sel===2?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
-      if(sel===2)txShadow('\u25B6',W/2-84,380,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
-    }
-    // MULTIPLAYER option
-    if(sel===3&&blink||sel!==3)txShadow('MULTIPLAYER',W/2-68,410,10,sel===3?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
-    if(sel===3)txShadow('\u25B6',W/2-92,410,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
-    if(mp.connected)txShadow('ONLINE',W/2+60,410,6,'#40d080','rgba(0,0,0,.4)');
-    // CLEAR SAVE (sel===4)
-    if(sel===4&&blink||sel!==4)txShadow('CLEAR SAVE DATA',W/2-88,440,10,sel===4?'#d04040':'#555570','rgba(0,0,0,.5)');
-    if(sel===4)txShadow('\u25B6',W/2-112,440,10,'#d04040','rgba(0,0,0,.4)');
-  }else{
-    if(Math.floor(fr/25)%2===0)txShadow('PRESS Z TO START',W/2-110,330,10,FRLG.selHighlight,'rgba(0,0,0,.5)');
-    // CONNECT WALLET option below start
-    const sel2=titleMenuIdx||0;
-    const blink2=Math.floor(fr/25)%2===0;
-    if(walletConnected){
-      txShadow(walletAddressTruncated(),W/2-52,370,8,'#40d080','rgba(0,0,0,.4)');
-    }else{
-      if(sel2===1&&blink2||sel2!==1)txShadow('BIND VAULT',W/2-60,370,10,sel2===1?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
-      if(sel2===1)txShadow('\u25B6',W/2-84,370,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
-    }
-    // MULTIPLAYER option (no save)
-    if(sel2===2&&blink2||sel2!==2)txShadow('MULTIPLAYER',W/2-68,400,10,sel2===2?FRLG.selHighlight:'#888898','rgba(0,0,0,.5)');
-    if(sel2===2)txShadow('\u25B6',W/2-92,400,10,FRLG.selHighlight,'rgba(0,0,0,.4)');
-    if(mp.connected)txShadow('ONLINE',W/2+60,400,6,'#40d080','rgba(0,0,0,.4)');
-  }
-  // On-chain / offline indicator
-  if(walletConnected){
-    drawSolanaIcon(W/2+82,550,8);
-    txShadow(programVerified?'VERIFIED':'ON-CHAIN',W/2+100,560,7,programVerified?'#14F195':'#40d080','rgba(0,0,0,.4)');
-  }else{
-    txShadow('OFFLINE',W/2+100,560,7,'#555570','rgba(0,0,0,.35)');
+    // Flag — 28×18 (2× preview 14×9) atop mast, right-side
+    const flagW=28, flagH=18;
+    const flagX=shipCX+4;
+    const flagY=sailY-flagH-4;
+    bx(flagX, flagY, flagW, flagH, flagCol);
+    bx(flagX,          flagY,          flagW, 4, outline);
+    bx(flagX,          flagY+flagH-4,  flagW, 4, outline);
+    bx(flagX+flagW-4,  flagY,          4,     flagH, outline);
   }
 
-  // Stake display when wallet connected (placed below menu items)
-  if(walletConnected){
-    txShadow(_STAKE_OFFERING_LBL,W/2-82,496,8,'#14F195','rgba(0,0,0,.4)'); // v341: pre-baked
-    if(stakeDeposited){
-      txShadow(_SEAL_POT_LBL,W/2-76,512,7,'#f0c830','rgba(0,0,0,.4)'); // v341: pre-baked
-    }
-  }
-
-  // "Built on Solana" branding at bottom
-  drawSolanaLogo(W/2-120,548,10);
-  txShadow('Built on Solana',W/2-104,552,7,'#9945FF','rgba(0,0,0,.5)');
-
-  // CREDITS button (hasSave: idx5 y=470; no save: idx3 y=430)
+  // Ship reflection — dashed shimmer on water. Preview: top:72%, 80×3.
   {
-    const credSel=hasSave()?(titleMenuIdx===5):(titleMenuIdx===3);
-    const credY=hasSave()?470:430;
-    if(credSel){txShadow('\u25B6',W/2-66,credY,10,FRLG.selHighlight,'rgba(0,0,0,.4)');}
-    const credBlink=Math.floor(fr/25)%2===0;
-    if(credSel&&credBlink||!credSel)txShadow('CREDITS',W/2-42,credY,10,credSel?FRLG.selHighlight:'#555570','rgba(0,0,0,.5)');
+    const refY=(H*0.72)|0;
+    const refW=160;
+    const refX=((W-refW)/2)|0;
+    g.globalAlpha=0.7;
+    const refCol=window.TOKENS.resolveColor('ocean_shallow');
+    // dashed 4px stripes every 8px
+    for(let x=0;x<refW;x+=16)bx(refX+x, refY, 8, 3, refCol);
+    g.globalAlpha=1;
   }
 
-  // v107: Save progress preview on title screen
-  if(hasSave()&&pl[0].vault){
-    const svSize=pl[0].vault.size;
-    const svPct=Math.floor(svSize/60*100);
-    const previewY=488;
-    const barW=160;const barX=W/2-barW/2;
-    // Progress bar
-    bx(barX,previewY,barW,8,'#181828');
-    bx(barX,previewY,Math.round(barW*svSize/60),8,svSize>=60?'#f0c830':'#4070d0');
-    bx(barX,previewY,barW,1,'#282848');bx(barX,previewY+7,barW,1,'#282848');
-    // Collection text — v344: lazy cache (svSize drives svPct too)
-    if(_titleProgKey!==svSize){_titleProgKey=svSize;_titleProgLbl=svSize+'/60 cards collected ('+svPct+'%)';}
-    txShadow(_titleProgLbl,W/2-_titleProgLbl.length*4,previewY+22,7,'#a0a8c0','rgba(0,0,0,.4)');
-    // Steps — v344: lazy cache
-    if(_titleStepsKey!==stepCounter){_titleStepsKey=stepCounter;_titleStepsLbl='Steps: '+stepCounter;}
-    txShadow(_titleStepsLbl,W/2-50,previewY+36,6,'#686880','rgba(0,0,0,.3)');
+  // Main menu — bottom-centered dialog. Preview: bottom:44, 148px wide,
+  // 2 items. Production 2×: bottom:88, 296px, text 18px preview → 36 render.
+  {
+    const hasSv=hasSave();
+    const items=hasSv ? ['CONTINUE','NEW SEASON'] : ['NEW SEASON'];
+    const itemSz=18;
+    const rowStep=36;
+    const padX=16, padTop=12, padBot=12;
+    const dw=296;
+    const dh=padTop+padBot+items.length*rowStep;
+    const dx=((W-dw)/2)|0;
+    const dy=H-88-dh;
+    drawGBADialog(dx, dy, dw, dh, 'menu_blue', 'text_dark', 'menu_border');
+    const sel=(titleMenuIdx|0);
+    for(let i=0;i<items.length;i++){
+      drawMenuButton(dx+padX, dy+padTop+i*rowStep, dw-padX*2, items[i], sel===i, itemSz);
+    }
   }
-  // Footer credits
-  txShadow('Built for Colosseum Frontier 2026 | Solana | Anchor | Circom | x402',W/2-310,582,6,'#444460','rgba(0,0,0,.4)');
-  // Version label — shown in top-right for easy reference
-  txShadow('v439',W-48,14,10,'#c0c8ff','rgba(0,0,0,0.7)');
+
+  // [X] OPTIONS hint — bottom-left, small muted label to advertise overlay
+  {
+    const hintCol=window.TOKENS.resolveColor('fg_hint');
+    txShadow('[X] OPTIONS', 16, H-20, 10, hintCol, 'rgba(0,0,0,0.4)');
+  }
+
+  // Footer — bottom-centered, 8px gray. "SOLANA · GROTH16 · BY YUKIKAZE"
+  // BY YUKIKAZE highlighted gold per preview.
+  {
+    const footSz=8;
+    const footY=H-8;
+    setFont(Math.max(12,Math.round(footSz*1.4)));
+    const muted=window.TOKENS.resolveColor('fg_hint');
+    const gold=window.TOKENS.resolveColor('menu_border');
+    const leftTxt='SOLANA  \u00B7  GROTH16  \u00B7  ';
+    const rightTxt='BY YUKIKAZE';
+    const lw=g.measureText(leftTxt).width;
+    const rw=g.measureText(rightTxt).width;
+    const totalFw=lw+rw;
+    const fx=((W-totalFw)/2)|0;
+    txShadow(leftTxt,  fx,     footY, footSz, muted, 'rgba(0,0,0,0.4)');
+    txShadow(rightTxt, fx+lw,  footY, footSz, gold,  'rgba(0,0,0,0.4)');
+  }
+
+  // Version label — top-right, auto-populated from git describe at build time.
+  // See build.js → BUILD_VERSION prepend. Fallback 'dev' if unset.
+  {
+    const ver=(typeof BUILD_VERSION==='string' && BUILD_VERSION) ? BUILD_VERSION : 'dev';
+    const vSz=10;
+    setFont(Math.max(12,Math.round(vSz*1.4)));
+    const vw=g.measureText(ver).width;
+    txShadow(ver, W-vw-16, 24, vSz, window.TOKENS.resolveColor('fg_muted'), 'rgba(0,0,0,0.7)');
+  }
 
   // Dungeon entry confirmation overlay (shown on map, not title)
   // (rendered in drawMap via dungeonConfirmActive flag)
