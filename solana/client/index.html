@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v460a+";
+window.BUILD_VERSION = "v461a+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -659,80 +659,6 @@ function updatePixiVision(){
   pxVisionOverlay.endHole();
 }
 
-// ═══════════════════════════════════════
-// PIXI TITLE SCREEN EFFECTS
-// @deprecated (phase-b2-title) — legacy shooting-star / sparkle overlay. Replaced by
-// Canvas-2D Sprite Seas dTitle() in 06-world-systems.js (v452). Kept disabled until
-// B2-8 cleanup removes the container, updater, and call site wholesale.
-// ═══════════════════════════════════════
-const pxTitleEffects = new PIXI.Container();
-pxTitleEffects.visible = false; // disabled for Sprite Seas Title (v452)
-pixiLayers.fx.addChild(pxTitleEffects);
-
-// Shooting stars
-const pxShootingStars = [];
-for(let i=0;i<3;i++){
-  const star=new PIXI.Graphics();
-  star.beginFill(0xFFFFFF);star.drawRect(0,0,2,2);star.endFill();
-  star.visible=false;
-  star.life=0;star.trail=[];
-  pxTitleEffects.addChild(star);
-  pxShootingStars.push(star);
-}
-
-// Title sparkle emitter (around "0xARK" text)
-const pxTitleSparkles = [];
-
-// @deprecated (phase-b2-title) — kept as no-op until B2-8 cleanup.
-function updatePixiTitleEffects(){
-  if(!pxTitleEffects.visible)return; // permanently hidden for Sprite Seas Title (v452)
-
-  // Spawn shooting stars occasionally
-  for(let _si=0;_si<pxShootingStars.length;_si++){
-    const star=pxShootingStars[_si];
-    if(!star.visible && Math.random()<0.003){
-      star.x = Math.random()*W;
-      star.y = Math.random()*150;
-      star.vx = 3+Math.random()*2;
-      star.vy = 1+Math.random()*1;
-      star.life = 40;
-      star.visible = true;
-      star.trail = [];
-    }
-    if(star.visible){
-      star.x += star.vx;
-      star.y += star.vy;
-      star.life--;
-      star.alpha = star.life/40;
-      if(star.life<=0 || star.x>W+20){star.visible=false;}
-    }
-  }
-
-  // Spawn title sparkles around the 0xARK text area
-  if(Math.random()<0.15){
-    const sparkle=new PIXI.Graphics();
-    const c=Math.random()>0.5?0xF0C830:0xFFFFFF;
-    sparkle.beginFill(c);sparkle.drawRect(0,0,2,2);sparkle.endFill();
-    sparkle.x = W/2-80+Math.random()*160;
-    sparkle.y = 180+Math.random()*40;
-    sparkle.vx = (Math.random()-0.5)*0.5;
-    sparkle.vy = -Math.random()*0.8;
-    sparkle.life = 30+Math.random()*20;
-    sparkle.maxLife = sparkle.life;
-    pxTitleEffects.addChild(sparkle);
-    pxTitleSparkles.push(sparkle);
-  }
-  for(let i=pxTitleSparkles.length-1;i>=0;i--){
-    const s=pxTitleSparkles[i];
-    s.x+=s.vx;s.y+=s.vy;s.life--;
-    s.alpha = s.life/s.maxLife;
-    if(s.life<=0){
-      pxTitleEffects.removeChild(s);s.destroy();
-      pxTitleSparkles.splice(i,1);
-    }
-  }
-}
-
 // PixiJS particle pool for sparkle effects
 const pxParticles = [];
 function pxSpawnParticle(x, y, color, count, speed, life) {
@@ -885,7 +811,6 @@ function updatePixiHud(){
   updatePixiIntro();
   pxUpdateParticles();
   updatePixiVision();
-  updatePixiTitleEffects();
   updatePixiPlayerAura();
   // Sync menu close when mo changes
   if(!mo&&pxMenuOpen){pxCloseMenu();}
@@ -1717,7 +1642,6 @@ function updateAmbient(){
     }
   }
 }
-
 
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/01-draw.js
@@ -7643,7 +7567,6 @@ function isNearLand(tx_,ty){return isNearTileType(tx_,ty,LAND_TILES);}
 function isNearWater(tx_,ty){return isNearTileType(tx_,ty,WATER_TILES);}
 function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,_GRASS_TILES);}
 
-// @deprecated (phase-b2-town): replaced by drawGBAWater for currentMap===0
 function drawWater(px,py,tx_,ty){
   // Zelda water tile — unified art style
   if(drawZeldaOverTile(ZO.water[0], ZO.water[1], px, py, 2)){
@@ -7683,7 +7606,6 @@ const DCORR=[null,
   {b:'#4a3a52',d:'#3a2a42'}, // F5
 ];
 
-// @deprecated (phase-b2-town): replaced by drawGBAGrass for currentMap===0
 function drawGrass(px,py,tx_,ty){
   // Dungeon floor — FRLG-style clean pixel art
   if(currentMap>0){
@@ -7766,7 +7688,6 @@ function drawTallGrass(px,py,tx_,ty){
   }
 }
 
-// @deprecated (phase-b2-town): replaced by drawGBAPath for currentMap===0
 function drawPath(px,py,tx_,ty){
   if(currentMap>0){
     const h=tileHash(tx_,ty);
@@ -7796,7 +7717,6 @@ function drawSand(px,py,tx_,ty){
   bx(px,py,TW,TH,'#d4b878');
 }
 
-// @deprecated (phase-b2-town): replaced by drawGBATree for currentMap===0
 function drawTree(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(drawZeldaOverTile(ZO.tree[0],ZO.tree[1],px,py,2)){
@@ -7833,7 +7753,6 @@ function drawPalm(px,py,tx_,ty){
   bx(px+14,py+8,2,2,'#805020');bx(px+17,py+9,2,2,'#805020');
 }
 
-// @deprecated (phase-b2-town): replaced by drawGBABush for currentMap===0
 function drawBush(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(drawZeldaOverTile(ZO.bush[0],ZO.bush[1],px,py,2)){
@@ -7916,11 +7835,8 @@ function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
   }
 }
 
-// @deprecated (phase-b2-town): replaced by drawGBAHouse for currentMap===0
 function drawBuilding5(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#c86050','#983030','#b84040');}
-// @deprecated (phase-b2-town): replaced by drawGBAHouse for currentMap===0
 function drawBuilding15(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#5878b8','#384898','#4868a8');}
-// @deprecated (phase-b2-town): replaced by drawGBAHouse for currentMap===0
 function drawBuilding16(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#50a060','#306840','#408850');}
 
 function drawCave(px,py,tx_,ty){
@@ -14453,167 +14369,6 @@ function sfxFlame(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),
 function sfxStorm(){if(!soundEnabled)return;try{const s=AC.createBufferSource(),gn=AC.createGain(),f=AC.createBiquadFilter();s.buffer=noiseBuf;f.type='highpass';f.frequency.value=3000;gn.gain.setValueAtTime(.1,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.2);s.connect(f);f.connect(gn);gn.connect(AC.destination);s.start();s.stop(AC.currentTime+.2);}catch(e){}}
 function sfxVoid(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(600,AC.currentTime);o.frequency.linearRampToValueAtTime(200,AC.currentTime+.15);gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.15);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.15);}catch(e){}}
 
-// @deprecated (phase-b2-battle): replaced by drawGBABattleBG() in v455. Remove in B2-8.
-function drawBattleBG(){
-  // FRLG-style layered battle backgrounds — static layers from pre-baked canvases, animated on top
-  const horizonY=_btlHorizonY;
-  const playerPlatY=_btlPlayerPlatY;
-  const enemyPlatY=_btlEnemyPlatY;
-
-  if(currentMap===0&&!inDungeon){
-    // Blit pre-baked static layers (sky + ocean + platforms)
-    g.drawImage(_btlBgTown,0,0);
-    // Waves (animated — fr-dependent) — v360: sin-addition with _sFr04/_cFr04 + pre-baked sin(i)
-    for(let i=0;i<6;i++){
-      const wy=horizonY+20+i*18+(_sFr04*_BTL_WAVE_CI[i]+_cFr04*_BTL_WAVE_SI[i])*4;
-      bx(0,wy,W,2,_btlWaveAlphas[i]);
-    }
-  }else{
-    // Dungeon battle BG — blit pre-baked static layers, then draw animated elements on top
-    const fl=Math.max(1,Math.min(5,currentFloor||1));
-    const a=_floorAtm[fl]||_floorAtm[1];
-    g.drawImage(_btlBgDungeon[fl],0,0);
-    // v369: use global per-frame cache for 0.15 as well
-    const _s15=_sFr15,_c15=_cFr15;
-    const _s08=_sFr08,_c08=_cFr08; // global cache
-    const _s07=_sFr07,_c07=_cFr07; // global cache
-    // sin/cos(fr*0.1) = double-angle of fr*0.05
-    const _s10=2*_sFr05*_cFr05,_c10=_cFr05*_cFr05-_sFr05*_sFr05;
-    // Pillar-top animations (torches / lava glow / void cracks)
-    for(let i=0;i<4;i++){
-      const px_=60+i*160;
-      if(fl<=3){
-        const flamCol=fl===3?'#a040d0':fl===2?'#d06020':'#e08020';
-        const glowCol=fl===3?'#c070f0':fl===2?'#f08040':'#f0c040';
-        // sin(fr*0.15+i*2) via sin-addition using pre-baked _BTL_TORCH_SI2/CI2
-        const flicker=(_s15*_BTL_TORCH_CI2[i]+_c15*_BTL_TORCH_SI2[i])*2;
-        bx(px_+8,4+flicker,8,6,flamCol);bx(px_+9,2+flicker,6,4,glowCol);
-        bx(px_+10,0+flicker,4,3,'rgba(255,255,200,.8)');
-      }else if(fl===4){
-        // sin(fr*0.08+i) via sin-addition with _BTL_LAVA_SI/CI
-        const lavaA=0.4+(_s08*_BTL_LAVA_CI[i]+_c08*_BTL_LAVA_SI[i])*0.2;
-        g.globalAlpha=lavaA;bx(px_-2,horizonY-16,28,16,'#d03010');g.globalAlpha=1;
-      }else{
-        // sin(fr*0.06+i*1.3) via sin-addition with _BTL_VOID_SI/CI + _sFr06/_cFr06
-        const voidA=0.3+(_sFr06*_BTL_VOID_CI[i]+_cFr06*_BTL_VOID_SI[i])*0.2;
-        g.globalAlpha=voidA;bx(px_+4,horizonY-24,16,24,'#6030a0');g.globalAlpha=1;
-      }
-    }
-    // F3: crystal shard shimmer — v360: use pre-baked abs(sin(i*1.7)) for Y; sin-addition for alpha
-    if(fl===3){
-      for(let i=0;i<6;i++){
-        const csx=80+i*120,csy=horizonY-20-_BTL_CRYST_ABS[i]*30;
-        const crystA=0.5+(_s07*_BTL_CRYST_CI[i]+_c07*_BTL_CRYST_SI[i])*0.25;
-        g.globalAlpha=crystA;
-        bx(csx,csy,4,18,'#7050c0');bx(csx+1,csy,2,12,'#a080e0');
-        g.globalAlpha=1;
-      }
-    }
-    // F4: rising ember particles + crack lava seep — v392: parabola replaces sin(phase*π)
-    if(fl===4){
-      for(let i=0;i<8;i++){
-        const emberPhase=(fr*0.03+i*0.7)%1;
-        const ex_=80+i*100+_BTL_EMBER_X[i];
-        const ey_=H-(emberPhase*H*0.6)-20;
-        const ea=4*emberPhase*(1-emberPhase)*0.7; // sin(phase*π) ≈ 4x(1-x)
-        g.globalAlpha=ea;bx(ex_,ey_,2,2,'#f06020');g.globalAlpha=1;
-      }
-      const cc=2+fl;for(let i=0;i<cc;i++){
-        const cx_=30+i*Math.floor(W/cc);
-        // sin(fr*0.1+i) via double-angle + sin-addition with _BTL_SEEP_SI/CI
-        const seepA=0.3+(_s10*_BTL_SEEP_CI[i]+_c10*_BTL_SEEP_SI[i])*0.2;
-        g.globalAlpha=seepA;bx(cx_+1,horizonY+30+i*8,12,1,'#f06020');g.globalAlpha=1;
-      }
-    }
-    // Center downward light pulse — v360: use _sFr04 (already computed per frame)
-    {const lightPulse=0.08+0.025*_sFr04;
-    g.globalAlpha=lightPulse;
-    g.drawImage(_btlCenterLight,Math.floor(W*0.35),horizonY);
-    g.globalAlpha=1;}
-  }
-  // v134: Rival-themed atmospheric overlay — VEGA (magenta) or MIRA (gold)
-  // v210: vignette pre-baked to offscreen canvas — drawImage replaces createRadialGradient per frame
-  const vsRiv=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
-  if(vsRiv===1){
-    // VEGA: dark magenta screen-edge vignette + drifting orbs
-    g.drawImage(_btlVigVega,0,0);
-    // Three drifting dark-energy orbs — v396: use cached _sFr018/_cFr018 (6→4 calls)
-    {const _vS=_sFr018,_vC=_cFr018; // was Math.sin/cos(fr*0.018) — now free
-    const _v7S=Math.sin(fr*0.0126),_v7C=Math.cos(fr*0.0126);
-    const _v13S=Math.sin(fr*0.0234),_v13C=Math.cos(fr*0.0234);
-    for(let i=0;i<3;i++){
-      const ox=W-220+(_vC*_VEGA_CI21[i]-_vS*_VEGA_SI21[i])*28+i*22;
-      const oy=100+(_v7S*_VEGA_CI147[i]+_v7C*_VEGA_SI147[i])*22+i*16;
-      const ora=0.12+(_v13S*_VEGA_CI273[i]+_v13C*_VEGA_SI273[i])*0.06;
-      const vo=_vegaOrbs[i];
-      g.globalAlpha=ora;g.drawImage(vo[0].canvas,(ox-vo[0].hw)|0,(oy-vo[0].hw)|0);
-      g.globalAlpha=ora*0.4;g.drawImage(vo[1].canvas,(ox-vo[1].hw)|0,(oy-vo[1].hw)|0);
-    }}
-    g.globalAlpha=1;
-  }else{
-    // MIRA: warm amber screen-edge vignette + drifting coin sparks
-    g.drawImage(_btlVigMira,0,0);
-    // Drifting coin-glint sparks — v396: use cached _sFr022/_cFr022 (6→4 calls)
-    {const _mS=_sFr022,_mC=_cFr022; // was Math.sin/cos(fr*0.022) — now free
-    const _m6S=Math.sin(fr*0.0132),_m6C=Math.cos(fr*0.0132);
-    const _m11S=Math.sin(fr*0.0242),_m11C=Math.cos(fr*0.0242);
-    for(let i=0;i<4;i++){
-      const ox=W-290+(_mC*_MIRA_CI16[i]-_mS*_MIRA_SI16[i])*24+i*18;
-      const oy=120+(_m6S*_MIRA_CI096[i]+_m6C*_MIRA_SI096[i])*18+i*14;
-      const ora=0.10+(_m11S*_MIRA_CI176[i]+_m11C*_MIRA_SI176[i])*0.05;
-      g.globalAlpha=ora;
-      bx(ox-2,oy-2,4,4,'#e0c040');
-      g.globalAlpha=ora*0.45;
-      bx(ox-4,oy-4,8,1,'#f0e060');bx(ox-4,oy+3,8,1,'#f0e060');
-      bx(ox-4,oy-4,1,8,'#f0e060');bx(ox+3,oy-4,1,8,'#f0e060');
-    }}
-    g.globalAlpha=1;
-  }
-}
-
-// @deprecated (phase-b2-battle): replaced by drawGBAHpBox() bar section in v455. Remove in B2-8.
-// Draw FRLG-style card count bar (like HP bar) with rounded container and segmented fill
-function drawCardBar(x,y,w,cards,maxCards){
-  const filledCount=cdCount(cards);
-  // "CARDS" label to the left
-  // (label is drawn by callers)
-  // Rounded rectangle container
-  const barH=10,r=3;
-  // Outer border (rounded)
-  g.fillStyle=FRLG.borderOuter;
-  g.fillRect(x+r,y,w-r*2,barH);
-  g.fillRect(x,y+r,r,barH-r*2);
-  g.fillRect(x+w-r,y+r,r,barH-r*2);
-  g.fillRect(x+1,y+1,r-1,r-1);g.fillRect(x+w-r,y+1,r-1,r-1);
-  g.fillRect(x+1,y+barH-r,r-1,r-1);g.fillRect(x+w-r,y+barH-r,r-1,r-1);
-  // Inner bg
-  bx(x+2,y+2,w-4,barH-4,'#282820');
-  // Segmented fill
-  const segW=Math.floor((w-6)/maxCards);
-  // Color based on vault progress
-  const vaultSize=hasUniqueCards(0).size;
-  const barColor=vaultSize<20?FRLG.hpGreen:vaultSize<40?FRLG.hpYellow:'#F0C830';
-  for(let i=0;i<maxCards;i++){
-    const sx=x+3+i*segW;
-    if(i<cards.length&&cards[i]>0){
-      bx(sx,y+2,segW-1,barH-4,barColor);
-      bx(sx,y+2,segW-1,Math.floor((barH-4)/2),'rgba(255,255,255,.25)');
-      // Segment divider
-      if(i<maxCards-1)bx(sx+segW-1,y+2,1,barH-4,'rgba(0,0,0,.3)');
-    }else{
-      bx(sx,y+2,segW-1,barH-4,'#1a1a18');
-      if(i<maxCards-1)bx(sx+segW-1,y+2,1,barH-4,'rgba(0,0,0,.2)');
-    }
-  }
-  // Gold glow when close to winning
-  if(vaultSize>=30){
-    const glow=_sFr12*0.15+0.15; // v370: cached
-    g.globalAlpha=glow;
-    bx(x-2,y-2,w+4,barH+4,'#F0C830');
-    g.globalAlpha=1;
-  }
-}
-
 // v236: Pre-baked VEGA orb canvases (6 small: 3 inner + 3 outer) — replaces 6 arc/frame in VEGA battle
 function _mkVegaOrb(r){
   const c=document.createElement('canvas');c.width=r*2+2;c.height=r*2+2;
@@ -14679,207 +14434,7 @@ function _drawAccuracyReveal(px_,yBase,bw_,revT_,acc_,bluffName_,alpha_){
   txShadow(acc_?'\u2713 TELL WAS TRUE':'\u2717 '+bluffName_+' BLUFFED',px_+8,yBase+10,6,acc_?'#50d080':'#d05050','rgba(0,0,0,.3)');
   g.globalAlpha=1;
 }
-
-// @deprecated (phase-b2-battle): replaced by drawGBAHpBox() in v455. Remove in B2-8.
-function drawOpponentInfoBox(){
-  const rival=pl[1]; // Primary opponent (VEGA)
-  let sx=0,sy=0;
-  if(bpShakeTarget===1&&bpShakeTimer>0){sx=_sBpST12*3;sy=_cBpST16*2;}
-  // Expand box when tells are visible during select, or when scout intel is known
-  const showTells=(battlePhase==='select'&&bpRivalTells[0]!==''&&bpRivalTells[1]!=='');
-  // v311: tell accuracy reveal — first 45 frames of resolving phase
-  const _revT=fr-bpFrame;
-  const showAccuracyReveal=(battlePhase==='resolving'&&_revT<45&&bpRivalTells[0]!=='');
-  const showScout0=!!bpScoutedCards[0],showScout1=!!bpScoutedCards[1];
-  const hasScout=showScout0||showScout1;
-  const bx_=8+sx,by_=16+sy,bw=300;
-  // Height: base 64, +36 for tells/reveal, +16 per scouted rival
-  let bh=64;
-  if(showTells||showAccuracyReveal)bh=100;
-  if(showScout0)bh+=16;
-  if(showScout1)bh+=16;
-  win(bx_,by_,bw,bh);
-  // Crimson top bar for rival danger indicator
-  bx(bx_+4,by_+4,bw-8,22,'rgba(80,10,10,.5)');
-  // Rival 1 (VEGA)
-  txShadow(rival.n,bx_+10,by_+20,12,'#d06080','rgba(0,0,0,.5)');
-  // HP hearts rival 1
-  {const dmgFlash1=bpHPDmgAnim[1]>0&&Math.floor(fr/3)%2===0;
-  _drawHPHearts(bx_+80,by_+9,bpHP[1],'#e84040','#ff8888','#401818',dmgFlash1);}
-  txShadow('CARDS',bx_+120,by_+20,7,ARK.textDim,'rgba(0,0,0,.3)');
-  drawCardBar(bx_+168,by_+12,80,rival.cd,5);
-  const r1Cards=cardCount(rival);
-  const r1DangerColor=r1Cards>=4?ARK.dangerBright:r1Cards>=3?'#d08030':ARK.textDim;
-  txShadow(_CARDS_OVER5[rival.cc]||(rival.cc+'/5'),bx_+202,by_+34,8,r1DangerColor,'rgba(0,0,0,.3)'); // v318
-  // Near-win warning
-  if(r1Cards>=4){
-    const wA=0.5+_sFr18*0.5; // v369: cached
-    g.globalAlpha=wA*0.9;
-    bx(bx_+6,by_+27,76,13,ARK.danger);
-    g.globalAlpha=1;
-    txShadow(r1Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,by_+37,6,'#fff','rgba(0,0,0,.6)');
-  }
-  // Tell for Rival 1 (during select only)
-  if(showTells&&bpRivalTells[0]){
-    const tellFade=Math.min(1,(fr-bpFrame)/12);
-    g.globalAlpha=tellFade*0.85;
-    bx(bx_+4,by_+34,bw-8,14,'rgba(40,100,130,.4)');
-    txShadow(bpRivalTells[0],bx_+8,by_+44,6,ARK.tealBright,'rgba(0,0,0,.3)');
-    g.globalAlpha=1;
-  }
-  // v311: tell accuracy reveal block for rival 1
-  if(showAccuracyReveal)_drawAccuracyReveal(bx_,by_+34,bw,_revT,bpTellWasAccurate[0],'VEGA',0.92);
-  // Separator
-  const sepY=(showTells||showAccuracyReveal)?by_+52:by_+44;
-  bx(bx_+8,sepY,bw-16,1,ARK.border);
-  // Rival 2 (MIRA)
-  const hunter=pl[2];
-  const r2alive=cardCount(hunter)>0;
-  const hunterCol=r2alive?ARK.gold:ARK.dangerBright;
-  {const _alive=r2alive?1:0;if(_hunterFledRef!==hunter||_hunterFledAlive!==_alive){_hunterFledRef=hunter;_hunterFledAlive=_alive;_hunterFledLbl=hunter.n+(_alive?'':' FLED');}
-  txShadow(_hunterFledLbl,bx_+10,sepY+16,9,hunterCol,'rgba(0,0,0,.4)');} // v345: lazy cache
-  // HP hearts rival 2
-  if(r2alive){const dmgFlash2=bpHPDmgAnim[2]>0&&Math.floor(fr/3)%2===0;
-  _drawHPHearts(bx_+80,sepY+7,bpHP[2],'#e8a040','#ffcc88','#402018',dmgFlash2);}
-  if(r2alive){
-    drawCardBar(bx_+168,sepY+8,80,hunter.cd,5);
-    const r2Cards=cardCount(hunter);
-    const r2DangerColor=r2Cards>=4?ARK.dangerBright:r2Cards>=3?'#d08030':ARK.textDim;
-    txShadow(_CARDS_OVER5[hunter.cc]||(hunter.cc+'/5'),bx_+202,sepY+16,7,r2DangerColor,'rgba(0,0,0,.3)'); // v318
-    // Near-win warning for MIRA
-    if(r2Cards>=4){
-      const wA2=0.5+(_sFr18*_BTL_COS1+_cFr18*_BTL_SIN1)*0.5; // v369: sin-addition
-      g.globalAlpha=wA2*0.8;
-      bx(bx_+6,sepY+19,70,12,ARK.danger);
-      g.globalAlpha=1;
-      txShadow(r2Cards>=5?'!! FULL HAND !':'! DANGEROUS',bx_+10,sepY+28,6,'#fff','rgba(0,0,0,.6)');
-    }
-    // Tell for Rival 2
-    if(showTells&&bpRivalTells[1]){
-      const tellFade2=Math.min(1,(fr-bpFrame)/12);
-      g.globalAlpha=tellFade2*0.85;
-      bx(bx_+4,sepY+26,bw-8,14,'rgba(80,60,10,.4)');
-      txShadow(bpRivalTells[1],bx_+8,sepY+36,6,ARK.gold,'rgba(0,0,0,.3)');
-      g.globalAlpha=1;
-    }
-    // v311: tell accuracy reveal block for rival 2 (MIRA)
-    if(showAccuracyReveal&&bpRivalTells[1])_drawAccuracyReveal(bx_,sepY+26,bw,_revT,bpTellWasAccurate[1],'MIRA',0.88);
-  }
-  // Scout intel
-  if(hasScout){
-    let intelY=by_+bh-4;
-    if(showScout0){
-      intelY=by_+bh-(showScout1?32:16);
-      const sd=bpScoutedCards[0];
-      const _s0=rd-sd.round; // v337: stale diff for cache key
-      if(_sIntelRef0!==sd||_sIntelStale0!==_s0){_sIntelRef0=sd;_sIntelStale0=_s0;_sIntelCache0='\u{1F50D}'+pl[1].n[0]+': '+(sd.nameStr||'empty')+(_s0>0?(_STALE_RD_LBL[sd.round]||'(R'+sd.round+')'):'');}
-      g.globalAlpha=_s0>1?0.5:0.85;
-      bx(bx_+4,intelY,bw-8,14,'rgba(30,80,120,.4)');
-      txShadow(_sIntelCache0,bx_+8,intelY+11,5,ARK.tealBright,'rgba(0,0,0,.3)'); // v337: lazy-cached
-      g.globalAlpha=1;
-    }
-    if(showScout1){
-      const sd2=bpScoutedCards[1];
-      const intelY2=by_+bh-16;
-      const _s1=rd-sd2.round; // v337: stale diff for cache key
-      if(_sIntelRef1!==sd2||_sIntelStale1!==_s1){_sIntelRef1=sd2;_sIntelStale1=_s1;_sIntelCache1='\u{1F50D}'+pl[2].n[0]+': '+(sd2.nameStr||'empty')+(_s1>0?(_STALE_RD_LBL[sd2.round]||'(R'+sd2.round+')'):'');}
-      g.globalAlpha=_s1>1?0.5:0.85;
-      bx(bx_+4,intelY2,bw-8,14,'rgba(80,60,10,.35)');
-      txShadow(_sIntelCache1,bx_+8,intelY2+11,5,ARK.gold,'rgba(0,0,0,.3)'); // v337: lazy-cached
-      g.globalAlpha=1;
-    }
-  }
-}
-
-// @deprecated (phase-b2-battle): replaced by drawGBAHpBox() in v455. Remove in B2-8.
-function drawPlayerInfoBox(){
-  let sx=0,sy=0;
-  if(bpShakeTarget===0&&bpShakeTimer>0){sx=_sBpST12*3;sy=_cBpST16*2;}
-  const bx_=W-310+sx,by_=H-154+sy,bw=300,bh=86; // v104: +14px for hand type row
-  win(bx_,by_,bw,bh);
-  // Navy top bar for player identity
-  bx(bx_+4,by_+4,bw-8,22,'rgba(10,24,60,.55)');
-  // Name
-  txShadow(pl[0].n,bx_+10,by_+20,14,ARK.textBright,'rgba(0,0,0,.5)');
-  // HP hearts (player)
-  {const php=bpHP[0],hx=bx_+90,hy=by_+9;
-  const dmgFlash=bpHPDmgAnim[0]>0&&Math.floor(fr/3)%2===0;
-  for(let h=0;h<BATTLE_HP_MAX;h++){
-    const filled=h<php;
-    const hc=filled?(dmgFlash?'#ff8888':'#e84040'):'#401818';
-    const hhi=hx+h*18,hhj=hy;
-    bx(hhi+2,hhj,4,1,hc);bx(hhi,hhj+1,8,1,hc);
-    bx(hhi,hhj+2,8,3,hc);bx(hhi+1,hhj+5,6,1,hc);
-    bx(hhi+2,hhj+6,4,1,hc);bx(hhi+3,hhj+7,2,1,hc);
-    bx(hhi+4,hhj+8,1,1,hc);
-    if(filled){bx(hhi+1,hhj+2,2,1,'rgba(255,255,255,.35)');}
-  }}
-  // Card bar
-  txShadow('CARDS',bx_+10,by_+36,8,ARK.textDim,'rgba(0,0,0,.3)');
-  drawCardBar(bx_+60,by_+28,148,pl[0].cd,Math.min(HAND_SIZE,10));
-  const _vSz=hasUniqueCards(0).size; // v311: cache to avoid double-call + use pre-baked _UNIQ60
-  txShadow(_UNIQ60[_vSz]||(_vSz+'/60'),bx_+214,by_+36,9,ARK.gold,'rgba(0,0,0,.3)');
-  // Win indicator (60/60)
-  if(_vSz>=60){
-    const flash_=_sFr15*0.3+0.7; // v369: cached
-    g.globalAlpha=flash_;
-    txShadow('60/60\u2192WIN!',bx_+160,by_+52,10,ARK.goldBright,'rgba(0,0,0,.4)');
-    g.globalAlpha=1;
-  }
-  // v277: Spell charge orb pips — si-indexed direct access, zero arrays
-  {const oW=6,oH=6,oG=2,blink=Math.floor(fr/12)%2===0;
-  for(let si=0;si<3;si++){
-    const ox=bx_+10+si*97,oy=by_+44,val=si===0?sp.s:si===1?sp.b:sp.c;
-    const spWarn=(si===0&&sp.s===0)||(si===2&&sp.c===0);
-    const lc=spWarn&&blink?ARK.dangerBright:_BORB_LCOL[si];
-    txShadow(_BORB_LBL[si],ox,oy+10,6,lc,'rgba(0,0,0,.3)');
-    for(let o=0;o<3;o++){
-      const filled=o<val;
-      bx(ox+26+o*(oW+oG),oy+2,oW,oH,filled?_BORB_FILL[si]:_BORB_EMPTY[si]);
-      if(filled)bx(ox+26+o*(oW+oG)+1,oy+3,2,1,'rgba(255,255,255,.3)');
-    }
-    if(val>3)txShadow(_EXCESS_CHG[val-4]||('+'+( val-3)),ox+26+3*(oW+oG)+2,oy+9,5,ARK.goldBright,'rgba(0,0,0,.3)'); // v318
-  }}
-  // Area label
-  txShadow(mapNames[currentMap],bx_+10,by_+64,8,ARK.textDim,'rgba(0,0,0,.3)');
-  // v330: most critical card decay countdown (shown when < 60s remaining during dungeon battle)
-  if(inDungeon){
-    let _minRem=Infinity;
-    for(let _di=0;_di<HAND_SIZE;_di++){if(pl[0].cd[_di]>0&&cardTimers[_di]>0){const _r=Math.max(0,CARD_DECAY_MS-(Date.now()-cardTimers[_di]));if(_r<_minRem)_minRem=_r;}}
-    if(_minRem<60000){
-      const _dsec=Math.ceil(_minRem/1000);
-      const _dcol=_minRem<15000?'#ff4040':_minRem<30000?'#ff9020':'#ffe040';
-      txShadow(_SECS_STR[_dsec]||(_dsec+'s'),bx_+bw-38,by_+64,8,_dcol,'rgba(0,0,0,.3)');
-    }
-  }
-  // Hand type composition strip (v250: reused Int32Array, no new arrays)
-  {
-    _btCounts[0]=_btCounts[1]=_btCounts[2]=_btCounts[3]=_btCounts[4]=0;
-    for(let _ci=0,_cl=pl[0].cd.length;_ci<_cl;_ci++){const id=pl[0].cd[_ci];if(id>0&&CD[id-1]){const ti=_BTYPE_MAP[CD[id-1].t];if(ti!==undefined)_btCounts[ti]++;}} // v277: _typeMap hoisted
-    bx(bx_+4,by_+68,bw-8,1,ARK.border);
-    let dotX=bx_+8;
-    for(let ti=0;ti<5;ti++){
-      const cnt=_btCounts[ti];
-      if(cnt===0)continue;
-      const col=_BTYPE_COL[ti];
-      for(let d=0;d<cnt;d++){bx(dotX+d*6,by_+74,5,5,col);}
-      dotX+=cnt*6+3;
-    }
-    let labelX=bx_+bw-8;
-    for(let ti=4;ti>=0;ti--){
-      const cnt=_btCounts[ti];
-      if(cnt===0)continue;
-      const lbl=_BTYPE_CNT_LBL[ti][cnt]||(_BTYPE_ABB[ti]+':'+cnt); // v318
-      labelX-=lbl.length*5+4;
-      g.globalAlpha=0.75;
-      txShadow(lbl,labelX,by_+80,5,_BTYPE_COL[ti],'rgba(0,0,0,.3)');
-      g.globalAlpha=1;
-    }
-  }
-}
-
 // Draw battle sprite (front-facing for opponent, back-facing for player)
-// @deprecated (phase-b2-battle): replaced by drawGBABattleSprite() in v455. Remove in B2-8.
 function drawBattleSprite(p,cx,cy,scale,facingAway){
   const s=scale;
   // Idle breathing bob — each character breathes out of phase (v374: sin-addition, 0 trig calls)
@@ -14945,7 +14500,6 @@ function drawBattleSprite(p,cx,cy,scale,facingAway){
   }
 }
 
-// @deprecated (phase-b2-battle): replaced by drawGBAVsSplash() in v454. Remove in B2-8.
 function drawVsSplash(){
   // v454: GBA migration — all rendering delegated to drawGBAVsSplash().
   // FSM logic (hitPause, taunt cache, battlePhase transition) stays here. DO NOT TOUCH.
@@ -14990,99 +14544,6 @@ function bothRivalsEliminated(){return cardCount(pl[1])===0&&cardCount(pl[2])===
 // Phase banner colors and text
 const PHASE_COLORS={select:'#3060b0',confirming:'#d8b028',resolving:'#c04040',result:'#308030'};
 const PHASE_LABELS={select:'COMMIT PHASE',confirming:'REVEALING...',resolving:'RESOLVING!',result:'COMPLETE'};
-
-// @deprecated (phase-b2-battle): replaced by drawGBABattleHUD() in v455. Remove in B2-8.
-function drawPhaseBanner(phase){
-  const col=PHASE_COLORS[phase]||'#383830';
-  const label=PHASE_LABELS[phase]||'';
-  bx(0,0,W,28,col);
-  bx(0,0,W,1,'rgba(255,255,255,.2)');
-  // Round info on left
-  txShadow(_BATTLE_HDR[rd]||'BATTLE '+rd,6,20,10,'#fff','rgba(0,0,0,.5)'); // v305
-  // Phase label centered (bigger, bold-like with shadow)
-  const labelW=label.length*10;
-  txShadow(label,W/2-labelW/2,20,16,'#fff','rgba(0,0,0,.5)');
-  // Area on right
-  txShadow(mapNames[currentMap],W-160,20,8,'rgba(255,255,255,.8)','rgba(0,0,0,.4)');
-  // TX indicator when on-chain mode active
-  if(walletConnected){
-    // v305: cache TX label — only rebuild when sig changes, not every frame
-    const _curSig=onchainLastTxSig||'';
-    if(_txLblSig!==_curSig){_txLblSig=_curSig;_txLblCache=_curSig?'TX:'+_curSig.slice(0,8)+'..':'TX:--';}
-    txShadow(_txLblCache,W-160,38,5,'#40d080','rgba(0,0,0,.5)');
-  }
-  // Commit hash display during commit phase (wallet integration)
-  if(walletConnected&&walletLastCommitHash&&(phase==='confirming'||phase==='resolving')){
-    if(_hashLblRef!==walletLastCommitHash){_hashLblRef=walletLastCommitHash;_hashLblCache='Hash: '+walletLastCommitHash;} // v324: lazy
-    txShadow(_hashLblCache,W/2-100,38,5,'#80c0ff','rgba(0,0,0,.5)');
-  }
-  // v101: Battle momentum strip — card gain/loss net balance shown as a tug-of-war bar
-  bx(0,26,W,3,'rgba(0,0,0,.55)');
-  if(battleRoundHistory.length>0){
-    const norm=Math.max(-1,Math.min(1,_battleRoundNet/Math.max(1,battleRoundHistory.length))); // v284: cached net
-    if(norm>0){bx(W/2,26,(W/2)*norm,3,'#40b0e8');}
-    else if(norm<0){bx(W/2+(W/2)*norm,26,-(W/2)*norm,3,'#d04040');}
-    const ta=0.35+_sFr12*0.25; // v370: cached
-    g.globalAlpha=ta;bx(W/2-1,26,2,3,'#ffffff');g.globalAlpha=1;
-  }else{
-    bx(W/2-1,26,2,3,'rgba(255,255,255,.2)');
-  }
-}
-
-// Draw the battle arena with sprites
-// @deprecated (phase-b2-battle): replaced by drawGBABattleSprite() calls in v455. Remove in B2-8.
-function drawBattleArena(){
-  // Player sprite (bottom-center-left, from behind like Pokemon trainer)
-  let psx=0,psy=0;
-  if(bpShakeTarget===0&&bpShakeTimer>0){psx=_sBpST12*4;psy=_cBpST16*2;}
-  drawBattleSprite(pl[0],180+psx,H-130+psy,3,true);
-  // Rival 1 sprite (top-right, facing player) — primary opponent
-  let osx=0,osy=0;
-  if(bpShakeTarget===1&&bpShakeTimer>0){osx=_sBpST12*4;osy=_cBpST16*2;}
-  drawBattleSprite(pl[1],W-160+osx,110+osy,3,false);
-  // Rival 2 sprite (top-center-right, slightly smaller — 2nd enemy)
-  let o2sx=0,o2sy=0;
-  if(bpShakeTarget===2&&bpShakeTimer>0){o2sx=_sBpST12*4;o2sy=_cBpST16*2;}
-  const r2alive=cardCount(pl[2])>0;
-  g.globalAlpha=r2alive?0.85:0.3;
-  drawBattleSprite(pl[2],W-310+o2sx,140+o2sy,2.2,false);
-  g.globalAlpha=1;
-  // Rival 2 name tag
-  if(!r2alive){
-    txShadow('FLED',W-310,175,7,'#c04040','rgba(0,0,0,.4)');
-  }else{
-    txShadow(pl[2].n,W-330,175,6,'#986840','rgba(0,0,0,.3)');
-  }
-  // v217: Tell speech bubbles — "!" floats above rival when their intent is known
-  if(battlePhase==='select'&&bpRivalTells[0]){
-    const tellPulse=0.7+0.3*_sFr25; // v369: cached
-    // VEGA tell bubble (rival 1)
-    const vbX=W-168,vbY=60;
-    const vbW=18,vbH=18;
-    g.globalAlpha=tellPulse*0.92;
-    bx(vbX,vbY,vbW,vbH,'rgba(60,0,80,.8)');
-    bx(vbX,vbY,vbW,1,'#c040d0');bx(vbX,vbY,1,vbH,'#c040d0');
-    bx(vbX+vbW-1,vbY,1,vbH,'#802090');bx(vbX,vbY+vbH-1,vbW,1,'#802090');
-    // Bubble tail pointing down-left toward VEGA sprite
-    bx(vbX+2,vbY+vbH,4,3,'rgba(60,0,80,.8)');bx(vbX+3,vbY+vbH+3,2,2,'rgba(60,0,80,.6)');
-    txShadow('!',vbX+6,vbY+13,12,'#e060f0','rgba(0,0,0,.5)');
-    g.globalAlpha=1;
-  }
-  if(battlePhase==='select'&&bpRivalTells[1]&&r2alive){
-    const tellPulse2=0.7+0.3*(_sFr25*_BTL_COS14+_cFr25*_BTL_SIN14); // v369: sin-addition
-    // MIRA tell bubble (rival 2)
-    const mbX=W-318,mbY=88;
-    const mbW=18,mbH=18;
-    g.globalAlpha=tellPulse2*0.85;
-    bx(mbX,mbY,mbW,mbH,'rgba(60,40,0,.8)');
-    bx(mbX,mbY,mbW,1,'#d0a030');bx(mbX,mbY,1,mbH,'#d0a030');
-    bx(mbX+mbW-1,mbY,1,mbH,'#906020');bx(mbX,mbY+mbH-1,mbW,1,'#906020');
-    bx(mbX+12,mbY+mbH,4,3,'rgba(60,40,0,.8)');bx(mbX+13,mbY+mbH+3,2,2,'rgba(60,40,0,.6)');
-    txShadow('!',mbX+6,mbY+13,12,'#f0c040','rgba(0,0,0,.5)');
-    g.globalAlpha=1;
-  }
-}
-
 // FRLG-style 2x2 action grid
 let _drawPoolPreviewCache=null,_drawPoolPreviewMap=-1; // v275: cache pool preview slice
 let _agSpS=-1,_agSpB=-1,_agSpC=-1; // v306: cache spell counts for action grid desc rebuild
@@ -15093,195 +14554,6 @@ const _AG_ACTIONS=[ // v274: hoisted action grid objects — only desc is rebuil
   {name:'BARRIER',desc:'',                  col:'#3060b0',icon:'#3060b0'},
   {name:'SCOUT',  desc:'',                  col:'#308030',icon:'#308030'}
 ];
-// @deprecated (phase-b2-battle): replaced by drawGBAActionMenu() in v455. Remove in B2-8.
-function drawActionGrid(){
-  const gridX=8,gridY=H-164,cellW=160,cellH=42,gap=4;
-  // v306: rebuild action descs only when spell counts change
-  if(_agSpS!==sp.s){_agSpS=sp.s;_AG_ACTIONS[1].desc=sp.s+'\u00D7 takes rival card';}
-  if(_agSpB!==sp.b){_agSpB=sp.b;_AG_ACTIONS[2].desc=sp.b+'\u00D7 blocks steal';}
-  if(_agSpC!==sp.c){_agSpC=sp.c;_AG_ACTIONS[3].desc=sp.c+'\u00D7 view rival hand';}
-  const actions=_AG_ACTIONS;
-  // Grid background
-  win(gridX-2,gridY-6,cellW*2+gap+12,cellH*2+gap+16);
-  for(let r=0;r<2;r++){
-    for(let c=0;c<2;c++){
-      const idx=r*2+c;
-      const cx_=gridX+4+c*(cellW+gap);
-      const cy_=gridY+2+r*(cellH+gap);
-      const avail=isActionAvailable(idx);
-      const sel=(idx===ai&&!bpCardSelectActive&&!bpTargetSelectActive);
-      // Cell background
-      if(sel&&avail){
-        bx(cx_,cy_,cellW,cellH,'#1c2c50');bx(cx_,cy_,cellW,1,ARK.gold);
-        bx(cx_,cy_+cellH-1,cellW,1,ARK.goldDim);
-        bx(cx_,cy_,1,cellH,ARK.gold);bx(cx_+cellW-1,cy_,1,cellH,ARK.goldDim);
-      }else{
-        bx(cx_,cy_,cellW,cellH,avail?'#0e1828':'#0a1018');
-        bx(cx_,cy_,cellW,1,avail?ARK.border:'#111820');
-      }
-      // v129: Themed pixel-art icons
-      const iconCol=avail?actions[idx].icon:'#989088';
-      const ic=iconCol,ix=cx_+4,iy=cy_+6;
-      if(!avail){
-        bx(ix,iy,18,18,'#989088');bx(ix+1,iy+1,16,16,'rgba(0,0,0,.1)');
-      }else if(idx===0){ // DRAW: card outline + down-arrow
-        bx(ix+3,iy+1,12,15,'rgba(0,0,0,.28)');    // drop shadow
-        bx(ix+2,iy,12,15,'#1c3846');               // card body
-        bx(ix+2,iy,12,1,ic);bx(ix+2,iy+14,12,1,ic); // top/bottom borders
-        bx(ix+2,iy,1,15,ic);bx(ix+13,iy,1,15,ic);   // side borders
-        bx(ix+7,iy+3,2,5,ic);                        // arrow shaft
-        bx(ix+5,iy+7,6,2,ic);                        // arrowhead wide
-        bx(ix+6,iy+9,4,1,ic);                        // arrowhead mid
-        bx(ix+7,iy+10,2,1,ic);                       // arrowhead tip
-      }else if(idx===1){ // STEAL: claw/hand
-        bx(ix+1,iy+10,12,6,ic);                      // palm
-        for(let fi=0;fi<4;fi++){                      // four fingers
-          const fx=ix+1+fi*3;
-          const fh=4+(fi===1||fi===2?2:0);            // middle fingers taller
-          bx(fx,iy+10-fh,2,fh,ic);
-        }
-        bx(ix+14,iy+5,3,1,'rgba(255,255,255,.5)');   // motion lines
-        bx(ix+14,iy+8,3,1,'rgba(255,255,255,.38)');
-        bx(ix+14,iy+11,3,1,'rgba(255,255,255,.25)');
-      }else if(idx===2){ // BARRIER: pentagon shield
-        bx(ix+4,iy,10,1,ic);                         // top arc
-        bx(ix+2,iy+1,14,6,ic);                       // upper body
-        bx(ix+2,iy+7,14,2,ic);
-        bx(ix+3,iy+9,12,2,ic);                       // taper
-        bx(ix+5,iy+11,8,2,ic);
-        bx(ix+7,iy+13,4,2,ic);                       // point
-        bx(ix+8,iy+15,2,1,ic);
-        bx(ix+4,iy+1,10,6,'rgba(0,0,100,.45)');      // inner fill
-        bx(ix+8,iy+2,2,8,'rgba(255,255,255,.5)');    // emblem cross
-        bx(ix+5,iy+5,8,2,'rgba(255,255,255,.5)');
-      }else if(idx===3){ // SCOUT: magnifying glass
-        bx(ix+2,iy+3,2,5,ic);bx(ix+12,iy+3,2,5,ic);  // lens sides
-        bx(ix+4,iy+1,6,2,ic);bx(ix+4,iy+10,6,2,ic);  // lens top/bottom
-        bx(ix+3,iy+2,2,1,ic);bx(ix+11,iy+2,2,1,ic);  // corners
-        bx(ix+3,iy+11,2,1,ic);bx(ix+11,iy+11,2,1,ic);
-        bx(ix+6,iy+4,4,5,ic);                         // pupil fill
-        bx(ix+7,iy+5,2,2,'rgba(255,255,255,.55)');    // pupil glint
-        bx(ix+12,iy+10,2,2,ic);bx(ix+13,iy+12,2,2,ic); // handle
-        bx(ix+14,iy+14,2,2,ic);bx(ix+15,iy+16,2,1,ic);
-      }
-      // v212: Selected cell — inner shimmer band + larger action name
-      const textCol=avail?(sel?ARK.goldBright:actions[idx].col):ARK.textDim;
-      if(sel&&avail){
-        // Horizontal shimmer scan line inside selected cell
-        const shimY=cy_+Math.floor(((fr*0.7)%(cellH-4)))+2;
-        g.globalAlpha=0.12;bx(cx_+1,shimY,cellW-2,2,'#f0e080');g.globalAlpha=1;
-        // Brighter inner glow behind action name area
-        const glowA=0.08+0.05*_sFr18; // v369: cached
-        g.globalAlpha=glowA;bx(cx_+24,cy_+6,cellW-28,cellH-10,'#f0c830');g.globalAlpha=1;
-        txShadow(actions[idx].name,cx_+26,cy_+20,16,textCol,'rgba(0,0,0,.5)');
-      }else{
-        txShadow(actions[idx].name,cx_+26,cy_+18,14,textCol,'rgba(0,0,0,.4)');
-      }
-      txShadow(actions[idx].desc,cx_+26,cy_+32,10,avail?ARK.textDim:'#404858','rgba(0,0,0,.3)');
-      // Cursor arrow
-      if(sel&&avail){
-        const bob_=_sFr15*2; // v369: cached
-        txShadow('\u25B6',cx_-12+bob_,cy_+22,10,ARK.gold,'rgba(0,0,0,.4)');
-      }
-      // v92: Smart context badges (top-right corner of each cell)
-      if(avail&&battlePhase==='select'){
-        let badge='',badgeCol='#606060',badgeBg='rgba(0,0,0,.35)';
-        const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
-        if(idx===0){// DRAW — lazy cache pool scan (v332: was O(pool) per frame → O(1) until vault changes)
-          const _dbKey=currentMap*10000+(pl[0].vault?pl[0].vault.size:0);
-          if(_drawBadgeKey!==_dbKey){
-            _drawBadgeKey=_dbKey;
-            const pool_=DUNGEON_FLOOR_CARDS[currentMap]||[];
-            const vault_=pl[0].vault||new Set();
-            let newInPool=0,maxNewRar=0;
-            for(let _pi=0;_pi<pool_.length;_pi++){const _cid=pool_[_pi];if(!vault_.has(_cid)){newInPool++;const _cr=CD[_cid-1];if(_cr&&_cr.r>maxNewRar)maxNewRar=_cr.r;}}
-            if(newInPool>0){
-              if(maxNewRar>=5){_drawBadge='\u2605 LEGEND';_drawBadgeCol='#ffe080';_drawBadgeBg='rgba(40,30,0,.7)';}
-              else if(maxNewRar>=4){_drawBadge='\u2605 EPIC';_drawBadgeCol='#f0c030';_drawBadgeBg='rgba(30,20,0,.7)';}
-              else if(maxNewRar>=3){_drawBadge='\u2605 RARE';_drawBadgeCol='#b060e0';_drawBadgeBg='rgba(20,5,30,.7)';}
-              else{_drawBadge=_NEW_IN_POOL[newInPool]||'+'+newInPool+' NEW';_drawBadgeCol='#50e090';_drawBadgeBg='rgba(0,40,20,.6)';}
-            }else if(pool_.length>0){_drawBadge='ALL OWNED';_drawBadgeCol='#888870';_drawBadgeBg='rgba(0,0,0,.3)';}
-            else{_drawBadge='';_drawBadgeCol='#606060';_drawBadgeBg='rgba(0,0,0,.35)';}
-          }
-          badge=_drawBadge;badgeCol=_drawBadgeCol;badgeBg=_drawBadgeBg;
-        }else if(idx===1){// STEAL — show barrier state + scouted rarity when known (v322)
-          const tgtBarrier=bpRivalActions[vsRivalIdx-1]===2;
-          if(tgtBarrier){badge='BLOCKED';badgeCol='#6080d0';badgeBg='rgba(10,20,60,.6)';}
-          else if(pl[vsRivalIdx].cc===0){badge='NO CARDS';badgeCol='#808880';badgeBg='rgba(0,0,0,.35)';}
-          else{
-            // Check if we have fresh scout data to show target rarity
-            const _stSd=bpScoutedCards[vsRivalIdx-1];
-            if(_stSd&&rd-_stSd.round<=1&&_stSd.cards.length>0){
-              let _maxR=0;for(let _si=0;_si<_stSd.cards.length;_si++){if(_stSd.cards[_si].r>_maxR)_maxR=_stSd.cards[_si].r;}
-              badge=_STL_RAR_LBL[_maxR]||'\u26A1? TARGET'; // v332: pre-baked, _rNames local removed
-              badgeCol=_maxR>=5?'#ffe080':_maxR>=4?'#f0c030':_maxR>=3?'#b060e0':'#e08030';
-              badgeBg=_maxR>=4?'rgba(40,30,0,.6)':'rgba(40,20,0,.6)';
-            }else{badge='\u2714 OPEN';badgeCol='#e08030';badgeBg='rgba(40,20,0,.6)';}
-          }
-        }else if(idx===2){// BARRIER — use this round's rival action prediction (v326)
-          const rivalPlanSteal=bpRivalActions[vsRivalIdx-1]===1;
-          if(rivalPlanSteal&&!bpPlayerBarrier){badge='DEFEND!';badgeCol='#e05040';badgeBg='rgba(40,0,0,.6)';}
-          else if(bpPlayerBarrier){badge='ACTIVE';badgeCol='#4080d0';badgeBg='rgba(0,20,50,.6)';}
-          else{badge='OPTIONAL';badgeCol='#608880';badgeBg='rgba(0,0,0,.35)';}
-        }else if(idx===3){// SCOUT — show staleness
-          const sc0=bpScoutedCards[vsRivalIdx-1];
-          if(sc0&&sc0.round===rd){badge='FRESH';badgeCol='#50e090';badgeBg='rgba(0,30,10,.6)';}
-          else if(sc0&&rd-sc0.round<=1){badge=_SCOUT_DATA_LBL[sc0.round]||'R'+sc0.round+' DATA';badgeCol='#c0b030';badgeBg='rgba(30,20,0,.6)';} // v320
-          else if(sc0){badge='STALE';badgeCol='#888870';badgeBg='rgba(0,0,0,.35)';}
-          else{badge='UNSCOUTED';badgeCol='#b0b0a0';badgeBg='rgba(0,0,0,.3)';}
-        }
-        if(badge){
-          const bW=badge.length*5+8,bH=11;
-          const bx_=cx_+cellW-bW-4,by_=cy_+4;
-          g.globalAlpha=sel?0.95:0.7;
-          bx(bx_,by_,bW,bH,badgeBg);
-          bx(bx_,by_,bW,1,badgeCol);
-          txShadow(badge,bx_+3,by_+9,5,badgeCol,'rgba(0,0,0,.3)');
-          g.globalAlpha=1;
-        }
-      }
-    }
-  }
-  // USE CARD button below the grid
-  const ucX=gridX+4,ucY=gridY+cellH*2+gap+6,ucW=cellW*2+gap,ucH=28;
-  const ucAvail=isActionAvailable(4);
-  const ucSel=(ai===4&&!bpCardSelectActive&&!bpTargetSelectActive);
-  if(ucSel&&ucAvail){
-    bx(ucX,ucY,ucW,ucH,'#1c2c50');bx(ucX,ucY,ucW,1,ARK.gold);
-    bx(ucX,ucY+ucH-1,ucW,1,ARK.goldDim);
-    bx(ucX,ucY,1,ucH,ARK.gold);bx(ucX+ucW-1,ucY,1,ucH,ARK.goldDim);
-  }else{
-    bx(ucX,ucY,ucW,ucH,ucAvail?'#0e1828':'#0a1018');
-    bx(ucX,ucY,ucW,1,ucAvail?ARK.border:'#111820');
-  }
-  // USE CARD icon — card with lightning bolt
-  {const uix=ucX+4,uiy=ucY+4;
-  bx(uix+3,uiy+1,12,15,'rgba(0,0,0,.25)');
-  bx(uix+2,uiy,12,15,'#1c2c40');
-  bx(uix+2,uiy,12,1,ARK.goldDim);bx(uix+2,uiy+14,12,1,ARK.goldDim);
-  bx(uix+2,uiy,1,15,ARK.goldDim);bx(uix+13,uiy,1,15,ARK.goldDim);
-  bx(uix+8,uiy+2,3,4,ARK.gold);
-  bx(uix+6,uiy+6,5,2,ARK.gold);
-  bx(uix+7,uiy+8,3,4,ARK.gold);
-  bx(uix+9,uiy+3,1,2,'rgba(255,255,255,.5)');
-  }
-  txShadow('USE CARD',ucX+26,ucY+18,14,ucAvail?(ucSel?ARK.goldBright:ARK.gold):ARK.textDim,'rgba(0,0,0,.4)');
-  const _handCount=cardCount(pl[0]);
-  txShadow(_handCount>0?(_HAND_READY_LBL[_handCount]||_handCount+' cards ready'):'hand empty',ucX+140,ucY+18,10,ucAvail?ARK.textDim:'#404858','rgba(0,0,0,.3)'); // v320
-  if(ucSel&&ucAvail){
-    const bob_=_sFr15*2; // v369: cached
-    txShadow('\u25B6',ucX-12+bob_,ucY+20,10,ARK.gold,'rgba(0,0,0,.4)');
-  }
-  // Hint when all spells exhausted
-  if(sp.s<=0&&sp.b<=0&&sp.c<=0){
-    txShadow('No spells left! DRAW or USE CARD.',gridX+4,gridY+cellH*2+gap+ucH+14,8,'#c08040','rgba(0,0,0,.3)');
-  }
-  // Hint when both rivals have 0 cards
-  if(bothRivalsEliminated()){
-    txShadow('Both rivals have no cards! Keep drawing.',gridX+4,gridY+cellH*2+gap+ucH+24,8,'#308030','rgba(0,0,0,.3)');
-  }
-}
-
 // GBA-styled action menu — replaces drawActionGrid() in select phase (v455).
 // Badge logic kept here (accesses local caches: _drawPoolPreviewCache, _agSpS, etc.).
 function drawGBAActionMenu(){
@@ -16451,7 +15723,6 @@ function generateResolveEvents(){
 
   return events;
 }
-
 
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/07-battle-resolve.js
