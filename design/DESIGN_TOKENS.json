@@ -37,7 +37,13 @@
       "wall_light":     "#d8d0c0",
       "wall_shadow":    "#a0a090",
       "path_tan":       "#d8a868",
-      "path_shadow":    "#805028"
+      "path_shadow":    "#805028",
+      "roof_purple":    "#7040a0",
+      "roof_barn":      "#c8a868",
+      "roof_forest":    "#4ba048",
+      "flower_pink":    "#ff70b0",
+      "flower_yellow":  "#f8e060",
+      "flower_white":   "#f8f8e8"
     },
     "derived_dungeon": {
       "dungeon_floor":  "#c89060",

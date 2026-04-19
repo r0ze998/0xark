@@ -1148,6 +1148,7 @@ function dMap(){
     }
     // v215: Animated town tile overlays (water sparkles/waves — every other frame for perf)
     if(!inDungeon&&fr%2===0){drawTownAnimatedOverlays(startTX,startTY,endTX,endTY);}
+    if(!inDungeon&&currentMap===0){drawGBATownSigns();drawGBALocationBanner('FIRST PORT');}
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
@@ -1532,15 +1533,17 @@ function dMap(){
   // ── HUD BAR ──
   const hudY=H-HUD_HEIGHT;
   win(0,hudY,W,HUD_HEIGHT);
-  // Season timer — v314: cached per minute (output only changes once per minute)
+  // Season timer — v314: cached per minute (dungeon only)
+  if(inDungeon){
   const _sr=getSeasonRemaining();
   const _nowMin=Math.floor(Date.now()/60000);
   if(_timeLblMapMin!==_nowMin){_timeLblMapMin=_nowMin;_timeLblMapCache=formatTimeRemaining(_sr);}
   const _sCol=_sr<3600000?'#d04040':_sr<86400000?'#d0a030':'#40a040';
   txShadow(_timeLblMapCache,10,hudY+28,9,_sCol,'rgba(0,0,0,.45)');
+  } // end season timer
   // v118: Spell charge orb indicators (visual pips replace plain numbers)
   // v247: static arrays instead of per-frame object literals + forEach
-  {
+  if(inDungeon){
     for(let si=0;si<3;si++){
       const sVal=si===0?sp.s:si===1?sp.b:sp.c; // v280: no array alloc
       const sCX=_ORB_SCX[si],warn=sVal===0;
@@ -1595,11 +1598,22 @@ function dMap(){
       }
     }
   }else{
-    txShadow('TOWN',10,hudY+52,7,'#40a040','rgba(0,0,0,.4)');
+    // Town HUD (B2-3 preview spec): ♥ HP N/N | ◆ N.NN | V:XXX | M:XXX | CARDS N/60
+    const _vMap=rivalMaps[0],_mMap=rivalMaps[1];
+    const _vLbl='V:'+(_vMap===0?'TWN':'B'+_vMap);
+    const _mLbl='M:'+(_mMap===0?'TWN':'B'+_mMap);
+    const _hpCol=bpHP[0]<=1?_RC('hp_low'):_RC('hp_you');
+    txShadow('\u2665 HP '+bpHP[0]+'/'+BATTLE_HP_MAX,10,hudY+20,7,_hpCol,'rgba(0,0,0,.45)');
+    txShadow('\u25C6 '+stakePotAmount.toFixed(2),120,hudY+20,7,_RC('gold_accent'),'rgba(0,0,0,.45)');
+    txShadow(_vLbl,210,hudY+20,7,_RC('vega_pulse'),'rgba(0,0,0,.45)');
+    txShadow(_mLbl,270,hudY+20,7,_RC('mira_amber'),'rgba(0,0,0,.45)');
+    txShadow('CARDS '+cdCount(pl[0].cd)+'/60',340,hudY+20,7,_RC('text_light'),'rgba(0,0,0,.45)');
   }
-  // Footstep counter — v314: lazy cache (stepCounter rarely changes)
+  // Footstep counter — v314: lazy cache (dungeon only)
+  if(inDungeon){
   if(_stepsKey!==stepCounter){_stepsKey=stepCounter;_stepsCache='STEPS:'+stepCounter;}
   txShadow(_stepsCache,100,hudY+52,7,'#989080','rgba(0,0,0,.35)');
+  } // end footstep counter
   // v102/v280: Dungeon exploration % — cached via fogExploredPercent (only recomputed on fog change)
   if(inDungeon&&maps[currentMap]){
     const pct=fogExploredPercent(currentMap);
@@ -1625,7 +1639,8 @@ function dMap(){
     txShadow(_miraLblCache,286,hudY+52,6,miraCol,'rgba(0,0,0,.35)'); // v304: cached
     g.globalAlpha=1;}
   }
-  // Show first 8 hand cards in HUD (slots 0-7)
+  // Show first 8 hand cards in HUD (slots 0-7) — dungeon only
+  if(inDungeon){
   const HUD_CARD_SLOTS=Math.min(8,HAND_SIZE);
   const HUD_CARD_SPACING=30;
   for(let i=0;i<HUD_CARD_SLOTS;i++){
@@ -1724,6 +1739,7 @@ function dMap(){
   if(handTotal>HUD_CARD_SLOTS){
     txShadow(_PLUS_INT[handTotal-HUD_CARD_SLOTS]||('+'+( handTotal-HUD_CARD_SLOTS)),310+HUD_CARD_SLOTS*HUD_CARD_SPACING+2,hudY+26,7,'#c8c0a0','rgba(0,0,0,.4)'); // v324
   }
+  } // end if(inDungeon) card slots
 
   // v79: Active run mission strip (dungeon only)
   if(runMission&&inDungeon&&sc==='map'){

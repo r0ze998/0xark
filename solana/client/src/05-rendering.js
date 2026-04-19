@@ -180,6 +180,7 @@ function isNearLand(tx_,ty){return isNearTileType(tx_,ty,LAND_TILES);}
 function isNearWater(tx_,ty){return isNearTileType(tx_,ty,WATER_TILES);}
 function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,_GRASS_TILES);}
 
+// @deprecated (phase-b2-town): replaced by drawGBAWater for currentMap===0
 function drawWater(px,py,tx_,ty){
   // Zelda water tile — unified art style
   if(drawZeldaOverTile(ZO.water[0], ZO.water[1], px, py, 2)){
@@ -219,6 +220,7 @@ const DCORR=[null,
   {b:'#4a3a52',d:'#3a2a42'}, // F5
 ];
 
+// @deprecated (phase-b2-town): replaced by drawGBAGrass for currentMap===0
 function drawGrass(px,py,tx_,ty){
   // Dungeon floor — FRLG-style clean pixel art
   if(currentMap>0){
@@ -301,6 +303,7 @@ function drawTallGrass(px,py,tx_,ty){
   }
 }
 
+// @deprecated (phase-b2-town): replaced by drawGBAPath for currentMap===0
 function drawPath(px,py,tx_,ty){
   if(currentMap>0){
     const h=tileHash(tx_,ty);
@@ -330,6 +333,7 @@ function drawSand(px,py,tx_,ty){
   bx(px,py,TW,TH,'#d4b878');
 }
 
+// @deprecated (phase-b2-town): replaced by drawGBATree for currentMap===0
 function drawTree(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(drawZeldaOverTile(ZO.tree[0],ZO.tree[1],px,py,2)){
@@ -366,6 +370,7 @@ function drawPalm(px,py,tx_,ty){
   bx(px+14,py+8,2,2,'#805020');bx(px+17,py+9,2,2,'#805020');
 }
 
+// @deprecated (phase-b2-town): replaced by drawGBABush for currentMap===0
 function drawBush(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(drawZeldaOverTile(ZO.bush[0],ZO.bush[1],px,py,2)){
@@ -448,8 +453,11 @@ function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
   }
 }
 
+// @deprecated (phase-b2-town): replaced by drawGBAHouse for currentMap===0
 function drawBuilding5(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#c86050','#983030','#b84040');}
+// @deprecated (phase-b2-town): replaced by drawGBAHouse for currentMap===0
 function drawBuilding15(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#5878b8','#384898','#4868a8');}
+// @deprecated (phase-b2-town): replaced by drawGBAHouse for currentMap===0
 function drawBuilding16(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#50a060','#306840','#408850');}
 
 function drawCave(px,py,tx_,ty){
@@ -1145,11 +1153,218 @@ function drawTownAnimatedOverlays(startTX,startTY,endTX,endTY){
   }
 }
 
+// ═══════════════════════════════════════
+// GBA OVERWORLD PRIMITIVES (phase-b2-town)
+// All colors via window.TOKENS.resolveColor() — no hex literals.
+// drawTile routes to these when currentMap===0 (town).
+// ═══════════════════════════════════════
+const _RC=k=>window.TOKENS.resolveColor(k);
+
+// 1. Grass — flat base with subtle 16px sub-grid hint
+function drawGBAGrass(px,py){
+  bx(px,py,TW,TH,_RC('grass_mid'));
+  g.globalAlpha=0.15;
+  bx(px,py+16,TW,1,_RC('grass_dark'));
+  bx(px+16,py,1,TH,_RC('grass_dark'));
+  g.globalAlpha=1;
+}
+
+// 2. Tree — dark canopy block with shadow/highlight insets and border
+function drawGBATree(px,py){
+  bx(px,py,TW,TH,_RC('grass_dark'));
+  bx(px,py+TH-8,TW,8,'rgba(28,80,40,0.7)');
+  bx(px+TW-8,py,8,TH-8,'rgba(28,80,40,0.7)');
+  g.globalAlpha=0.45;
+  bx(px,py,TW,4,_RC('grass_mid'));
+  bx(px,py,4,TH,_RC('grass_mid'));
+  g.globalAlpha=1;
+  bx(px,py,TW,1,_RC('text_dark'));
+  bx(px,py+TH-1,TW,1,_RC('text_dark'));
+  bx(px,py,1,TH,_RC('text_dark'));
+  bx(px+TW-1,py,1,TH,_RC('text_dark'));
+}
+
+// 3. Path — tan dirt with inset shadow border
+function drawGBAPath(px,py){
+  bx(px,py,TW,TH,_RC('path_tan'));
+  bx(px,py,TW,1,_RC('path_shadow'));
+  bx(px,py+TH-1,TW,1,_RC('path_shadow'));
+  bx(px,py,1,TH,_RC('path_shadow'));
+  bx(px+TW-1,py,1,TH,_RC('path_shadow'));
+}
+
+// 4. Water — ocean shallow with depth insets
+function drawGBAWater(px,py){
+  bx(px,py,TW,TH,_RC('ocean_shallow'));
+  bx(px,py,TW,8,'rgba(28,56,104,0.5)');
+  bx(px,py+TH-4,TW,4,_RC('ocean_deep'));
+  bx(px,py,TW,1,_RC('ocean_deep'));
+  bx(px,py+TH-1,TW,1,_RC('ocean_deep'));
+  bx(px,py,1,TH,_RC('ocean_deep'));
+  bx(px+TW-1,py,1,TH,_RC('ocean_deep'));
+}
+
+// 5. Sand — flat beach tile
+function drawGBASand(px,py){
+  bx(px,py,TW,TH,_RC('sand_beach'));
+}
+
+// 6. Fence — low compound perimeter wall on grass
+function drawGBAFence(px,py){
+  drawGBAGrass(px,py);
+  bx(px,py+13,TW,6,_RC('path_tan'));
+  bx(px,py+13,TW,1,_RC('text_dark'));
+  bx(px,py+18,TW,1,_RC('text_dark'));
+  for(let fx=0;fx<TW;fx+=6){bx(px+fx,py+13,3,6,_RC('path_shadow'));}
+}
+
+// 7. Bush — shrub decoration on grass base
+function drawGBABush(px,py){
+  drawGBAGrass(px,py);
+  const bx_=px+8,by_=py+14;
+  bx(bx_,by_,16,10,_RC('grass_dark'));
+  bx(bx_,by_,16,1,_RC('text_dark'));
+  bx(bx_,by_+9,16,1,_RC('text_dark'));
+  bx(bx_,by_,1,10,_RC('text_dark'));
+  bx(bx_+15,by_,1,10,_RC('text_dark'));
+  g.globalAlpha=0.6;bx(bx_+1,by_+1,5,2,_RC('grass_mid'));g.globalAlpha=1;
+}
+
+// 8. Flower — small blossom on grass (variant: ''=pink, 'y'=yellow, 'w'=white)
+function drawGBAFlower(px,py,variant){
+  drawGBAGrass(px,py);
+  const col=variant==='y'?_RC('flower_yellow'):variant==='w'?_RC('flower_white'):_RC('flower_pink');
+  bx(px+13,py+20,6,6,col);
+  bx(px+13,py+20,6,1,_RC('text_dark'));
+  bx(px+13,py+25,6,1,_RC('text_dark'));
+}
+
+// 9. House — FRLG-style building for all 7 town types
+// type: 'shop'|'gacha'|'stats'|'log'|'dungeon'|'tavern'|'synth'
+const _GBA_HOUSE={
+  shop:   {roof:'roof_red',    label:'SHOP'},
+  gacha:  {roof:'roof_purple', label:'GACHA'},
+  stats:  {roof:'menu_blue',   label:'STATS'},
+  log:    {roof:'roof_barn',   label:'LOG'},
+  dungeon:{roof:'roof_red',    label:'DUNGEON'},
+  tavern: {roof:'menu_blue',   label:'TAVERN'},
+  synth:  {roof:'roof_forest', label:'SYNTH'},
+};
+function drawGBAHouse(px,py,type){
+  const spec=_GBA_HOUSE[type]||_GBA_HOUSE.shop;
+  const roofC=_RC(spec.roof);
+  // Roof (py … py+14)
+  bx(px,py,TW,14,roofC);
+  g.globalAlpha=0.35;bx(px,py,TW,2,_RC('text_light'));g.globalAlpha=1;
+  g.globalAlpha=0.4; bx(px,py+11,TW,3,'rgba(0,0,0,1)');g.globalAlpha=1;
+  bx(px,py,TW,1,_RC('text_dark'));
+  bx(px,py+13,TW,1,_RC('text_dark'));
+  bx(px,py,1,14,_RC('text_dark'));
+  bx(px+TW-1,py,1,14,_RC('text_dark'));
+  // Chimney (top-right, extends above tile)
+  bx(px+TW-8,py-4,5,8,_RC('hull_wood'));
+  bx(px+TW-8,py-4,5,1,_RC('text_dark'));
+  bx(px+TW-4,py-4,1,8,_RC('text_dark'));
+  bx(px+TW-8,py-4,1,8,_RC('text_dark'));
+  // Body (py+14 … py+32)
+  bx(px,py+14,TW,18,_RC('wall_light'));
+  bx(px,py+14,1,18,_RC('text_dark'));
+  bx(px+TW-1,py+14,1,18,_RC('text_dark'));
+  bx(px,py+31,TW,1,_RC('text_dark'));
+  bx(px,py+29,TW,3,_RC('wall_shadow'));
+  // Windows
+  bx(px+3,py+15,7,6,_RC('ocean_shallow'));
+  bx(px+3,py+15,2,2,'rgba(255,255,255,0.6)');
+  bx(px+3,py+15,7,1,_RC('text_dark'));bx(px+3,py+20,7,1,_RC('text_dark'));
+  bx(px+3,py+15,1,6,_RC('text_dark'));bx(px+9,py+15,1,6,_RC('text_dark'));
+  bx(px+TW-10,py+15,7,6,_RC('ocean_shallow'));
+  bx(px+TW-10,py+15,2,2,'rgba(255,255,255,0.6)');
+  bx(px+TW-10,py+15,7,1,_RC('text_dark'));bx(px+TW-10,py+20,7,1,_RC('text_dark'));
+  bx(px+TW-10,py+15,1,6,_RC('text_dark'));bx(px+TW-4,py+15,1,6,_RC('text_dark'));
+  // Door
+  bx(px+13,py+21,6,10,_RC('hull_wood'));
+  bx(px+13,py+21,6,1,_RC('text_dark'));
+  bx(px+13,py+21,1,10,_RC('text_dark'));bx(px+18,py+21,1,10,_RC('text_dark'));
+  bx(px+17,py+25,1,1,_RC('gold_accent'));
+}
+
+// 10. Town building type lookup by tile position
+function _townHouseType(tx_,ty){
+  if(tx_===8 &&ty===5)  return 'shop';
+  if(tx_===22&&ty===5)  return 'stats';
+  if(tx_===9 &&ty===11) return 'gacha';
+  if(tx_===20&&ty===11) return 'log';
+  if(tx_===19&&ty===15) return 'tavern';
+  if(tx_===22&&ty===15) return 'dungeon';
+  if(tx_===9 &&ty===16) return 'synth';
+  return 'shop';
+}
+
+// 11. Town sign overlay — drawn on main canvas AFTER tile cache pass
+// Called from 07-map.js after drawTownAnimatedOverlays
+function drawGBATownSigns(){
+  if(inDungeon||currentMap!==0)return;
+  const signs=[
+    {tx:8, ty:5,  type:'shop'},
+    {tx:22,ty:5,  type:'stats'},
+    {tx:9, ty:11, type:'gacha'},
+    {tx:20,ty:11, type:'log'},
+    {tx:19,ty:15, type:'tavern'},
+    {tx:22,ty:15, type:'dungeon'},
+    {tx:9, ty:16, type:'synth'},
+  ];
+  for(const s of signs){
+    const px=s.tx*TW-camX;
+    const py=(s.ty+1)*TH-camY; // directly below building tile
+    if(px<-TW||px>W||py<-TH||py>H)continue;
+    const spec=_GBA_HOUSE[s.type];
+    if(!spec)continue;
+    const lbl=spec.label;
+    const lW=lbl.length*7+6;
+    const lX=px+TW/2-lW/2;
+    bx(lX-1,py,lW+2,11,_RC('text_dark'));
+    bx(lX,py+1,lW,9,_RC('sail_cream'));
+    bx(lX,py+1,lW,1,_RC('path_shadow'));
+    bx(lX,py+9,lW,1,_RC('path_shadow'));
+    txShadow(lbl,lX+3,py+9,6,_RC('fg_on_cream'),'rgba(0,0,0,.4)');
+  }
+}
+
+// 12. Location banner — persistent GBA-style location label for town
+function drawGBALocationBanner(text){
+  const bW=text.length*7+10;
+  const bX=Math.floor((W-bW)/2);
+  const bY=36;
+  bx(bX-1,bY-1,bW+2,15,_RC('text_dark'));
+  bx(bX,bY,bW,13,_RC('menu_blue'));
+  bx(bX,bY,bW,1,_RC('border_primary'));
+  bx(bX,bY+12,bW,1,_RC('border_primary'));
+  txShadow(text,bX+5,bY+10,7,_RC('text_light'),'rgba(0,0,0,.6)');
+}
+
 function drawTile(tx_,ty){
   const px=tx_*TW-camX,py=ty*TH-camY;
   if(px<-TW||px>W||py<-TH||py>H)return;
   const m=getMap();
   const t=m[ty]?.[tx_];
+  // B2-3: GBA overworld primitives for town (currentMap===0)
+  if(currentMap===0){
+    const flv=['','y','w'][(tx_+ty)%3]; // flower variant by position
+    switch(t){
+      case 0: drawGBAWater(px,py);return;
+      case 1: drawGBAGrass(px,py);return;
+      case 2: drawGBAPath(px,py);return;
+      case 3: drawGBATree(px,py);return;
+      case 4: drawGBASand(px,py);return;
+      case 5: drawGBAHouse(px,py,_townHouseType(tx_,ty));return;
+      case 7: drawGBAFlower(px,py,flv);return;
+      case 9: drawGBAFence(px,py);return;
+      case 11:drawGBABush(px,py);return;  // tall grass → bush in town aesthetic
+      case 12:drawGBABush(px,py);return;
+      case 15:drawGBAHouse(px,py,'stats');return;
+      case 16:drawGBAHouse(px,py,_townHouseType(tx_,ty));return;
+    }
+  }
   switch(t){
     case 0:drawWater(px,py,tx_,ty);break;
     case 1:drawGrass(px,py,tx_,ty);break;
