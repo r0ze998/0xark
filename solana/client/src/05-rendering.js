@@ -180,7 +180,6 @@ function isNearLand(tx_,ty){return isNearTileType(tx_,ty,LAND_TILES);}
 function isNearWater(tx_,ty){return isNearTileType(tx_,ty,WATER_TILES);}
 function isNearGrass(tx_,ty){return isNearTileType(tx_,ty,_GRASS_TILES);}
 
-// @deprecated (phase-b2-town): replaced by drawGBAWater for currentMap===0
 function drawWater(px,py,tx_,ty){
   // Zelda water tile — unified art style
   if(drawZeldaOverTile(ZO.water[0], ZO.water[1], px, py, 2)){
@@ -220,7 +219,6 @@ const DCORR=[null,
   {b:'#4a3a52',d:'#3a2a42'}, // F5
 ];
 
-// @deprecated (phase-b2-town): replaced by drawGBAGrass for currentMap===0
 function drawGrass(px,py,tx_,ty){
   // Dungeon floor — FRLG-style clean pixel art
   if(currentMap>0){
@@ -303,7 +301,6 @@ function drawTallGrass(px,py,tx_,ty){
   }
 }
 
-// @deprecated (phase-b2-town): replaced by drawGBAPath for currentMap===0
 function drawPath(px,py,tx_,ty){
   if(currentMap>0){
     const h=tileHash(tx_,ty);
@@ -333,7 +330,6 @@ function drawSand(px,py,tx_,ty){
   bx(px,py,TW,TH,'#d4b878');
 }
 
-// @deprecated (phase-b2-town): replaced by drawGBATree for currentMap===0
 function drawTree(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(drawZeldaOverTile(ZO.tree[0],ZO.tree[1],px,py,2)){
@@ -370,7 +366,6 @@ function drawPalm(px,py,tx_,ty){
   bx(px+14,py+8,2,2,'#805020');bx(px+17,py+9,2,2,'#805020');
 }
 
-// @deprecated (phase-b2-town): replaced by drawGBABush for currentMap===0
 function drawBush(px,py,tx_,ty){
   drawGrass(px,py,tx_,ty);
   if(drawZeldaOverTile(ZO.bush[0],ZO.bush[1],px,py,2)){
@@ -453,11 +448,8 @@ function drawBuilding(px,py,tx_,ty,wallColor,roofColor,roofHighlight){
   }
 }
 
-// @deprecated (phase-b2-town): replaced by drawGBAHouse for currentMap===0
 function drawBuilding5(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#c86050','#983030','#b84040');}
-// @deprecated (phase-b2-town): replaced by drawGBAHouse for currentMap===0
 function drawBuilding15(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#5878b8','#384898','#4868a8');}
-// @deprecated (phase-b2-town): replaced by drawGBAHouse for currentMap===0
 function drawBuilding16(px,py,tx_,ty){drawBuilding(px,py,tx_,ty,'#50a060','#306840','#408850');}
 
 function drawCave(px,py,tx_,ty){
@@ -1892,6 +1884,53 @@ const _GBA_DUNG_NAMES=['','SUNKEN GALLERIES','DROWNED ARCHIVES','ECHO CHAMBERS',
 function drawGBADungeonBanner(floor){
   const sub=_GBA_DUNG_NAMES[floor]||('FLOOR '+floor);
   drawGBALocationBanner(sub+' \u2014 B'+floor);
+}
+
+// ═══════════════════════════════════════
+// SPRITE SEAS GBA COLLECTION BINDER PRIMITIVES (Phase B2-6 — v460+)
+// ═══════════════════════════════════════
+
+// B2-6: Single binder slot — renders one card slot in the 8-column binder grid.
+// cx, cy: top-left. sw, sh: slot dimensions. cardId: 1-60.
+// owned: player has this card. selected: cursor is on this slot. rar: 1-5.
+function drawGBABinderSlot(cx,cy,sw,sh,cardId,owned,selected,rar){
+  // Slot background — color-coded by rarity tier when owned
+  let bgCol,textCol;
+  if(!owned){
+    bgCol=_RC('text_dark'); textCol='rgba(88,88,122,1)';
+  }else if(rar>=5){
+    bgCol=_RC('flag_red'); textCol=_RC('menu_border');
+  }else if(rar>=4){
+    bgCol='rgba(200,120,20,.95)'; textCol=_RC('menu_border');
+  }else if(rar>=3){
+    bgCol='rgba(160,64,200,.95)'; textCol='rgba(248,240,255,1)';
+  }else{
+    bgCol=_RC('menu_blue'); textCol=_RC('menu_border');
+  }
+  bx(cx,cy,sw,sh,bgCol);
+  // 1px border (dim for empty, gold-tinted for owned)
+  if(owned){
+    g.globalAlpha=0.55;
+    bx(cx,cy,sw,1,_RC('menu_border'));bx(cx,cy+sh-1,sw,1,_RC('menu_border'));
+    bx(cx,cy,1,sh,_RC('menu_border'));bx(cx+sw-1,cy,1,sh,_RC('menu_border'));
+    g.globalAlpha=1;
+  }else{
+    g.globalAlpha=0.35;
+    bx(cx,cy,sw,1,'rgba(88,88,122,1)');bx(cx,cy+sh-1,sw,1,'rgba(88,88,122,1)');
+    bx(cx,cy,1,sh,'rgba(88,88,122,1)');bx(cx+sw-1,cy,1,sh,'rgba(88,88,122,1)');
+    g.globalAlpha=1;
+  }
+  // Card number label (centered) — 3 chars wide: #01 .. #60
+  const numStr='#'+String(cardId).padStart(2,'0');
+  txShadow(numStr,(cx+(sw-numStr.length*5)/2)|0,(cy+sh/2+4)|0,7,textCol,'rgba(0,0,0,.45)');
+  // Selected cursor — 2px menu_border outline with pulse
+  if(selected){
+    const pulse=0.75+_sFr15*0.25;
+    g.globalAlpha=pulse;
+    bx(cx-2,cy-2,sw+4,2,_RC('menu_border'));bx(cx-2,cy+sh,sw+4,2,_RC('menu_border'));
+    bx(cx-2,cy-2,2,sh+4,_RC('menu_border'));bx(cx+sw,cy-2,2,sh+4,_RC('menu_border'));
+    g.globalAlpha=1;
+  }
 }
 
 function drawTile(tx_,ty){

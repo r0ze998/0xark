@@ -249,80 +249,6 @@ function updatePixiVision(){
   pxVisionOverlay.endHole();
 }
 
-// ═══════════════════════════════════════
-// PIXI TITLE SCREEN EFFECTS
-// @deprecated (phase-b2-title) — legacy shooting-star / sparkle overlay. Replaced by
-// Canvas-2D Sprite Seas dTitle() in 06-world-systems.js (v452). Kept disabled until
-// B2-8 cleanup removes the container, updater, and call site wholesale.
-// ═══════════════════════════════════════
-const pxTitleEffects = new PIXI.Container();
-pxTitleEffects.visible = false; // disabled for Sprite Seas Title (v452)
-pixiLayers.fx.addChild(pxTitleEffects);
-
-// Shooting stars
-const pxShootingStars = [];
-for(let i=0;i<3;i++){
-  const star=new PIXI.Graphics();
-  star.beginFill(0xFFFFFF);star.drawRect(0,0,2,2);star.endFill();
-  star.visible=false;
-  star.life=0;star.trail=[];
-  pxTitleEffects.addChild(star);
-  pxShootingStars.push(star);
-}
-
-// Title sparkle emitter (around "0xARK" text)
-const pxTitleSparkles = [];
-
-// @deprecated (phase-b2-title) — kept as no-op until B2-8 cleanup.
-function updatePixiTitleEffects(){
-  if(!pxTitleEffects.visible)return; // permanently hidden for Sprite Seas Title (v452)
-
-  // Spawn shooting stars occasionally
-  for(let _si=0;_si<pxShootingStars.length;_si++){
-    const star=pxShootingStars[_si];
-    if(!star.visible && Math.random()<0.003){
-      star.x = Math.random()*W;
-      star.y = Math.random()*150;
-      star.vx = 3+Math.random()*2;
-      star.vy = 1+Math.random()*1;
-      star.life = 40;
-      star.visible = true;
-      star.trail = [];
-    }
-    if(star.visible){
-      star.x += star.vx;
-      star.y += star.vy;
-      star.life--;
-      star.alpha = star.life/40;
-      if(star.life<=0 || star.x>W+20){star.visible=false;}
-    }
-  }
-
-  // Spawn title sparkles around the 0xARK text area
-  if(Math.random()<0.15){
-    const sparkle=new PIXI.Graphics();
-    const c=Math.random()>0.5?0xF0C830:0xFFFFFF;
-    sparkle.beginFill(c);sparkle.drawRect(0,0,2,2);sparkle.endFill();
-    sparkle.x = W/2-80+Math.random()*160;
-    sparkle.y = 180+Math.random()*40;
-    sparkle.vx = (Math.random()-0.5)*0.5;
-    sparkle.vy = -Math.random()*0.8;
-    sparkle.life = 30+Math.random()*20;
-    sparkle.maxLife = sparkle.life;
-    pxTitleEffects.addChild(sparkle);
-    pxTitleSparkles.push(sparkle);
-  }
-  for(let i=pxTitleSparkles.length-1;i>=0;i--){
-    const s=pxTitleSparkles[i];
-    s.x+=s.vx;s.y+=s.vy;s.life--;
-    s.alpha = s.life/s.maxLife;
-    if(s.life<=0){
-      pxTitleEffects.removeChild(s);s.destroy();
-      pxTitleSparkles.splice(i,1);
-    }
-  }
-}
-
 // PixiJS particle pool for sparkle effects
 const pxParticles = [];
 function pxSpawnParticle(x, y, color, count, speed, life) {
@@ -475,7 +401,6 @@ function updatePixiHud(){
   updatePixiIntro();
   pxUpdateParticles();
   updatePixiVision();
-  updatePixiTitleEffects();
   updatePixiPlayerAura();
   // Sync menu close when mo changes
   if(!mo&&pxMenuOpen){pxCloseMenu();}
@@ -1307,4 +1232,3 @@ function updateAmbient(){
     }
   }
 }
-
