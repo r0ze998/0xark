@@ -1106,6 +1106,8 @@ function dMap(){
 
   // ── MIDJOURNEY BACKGROUND LAYER ── drawn first, tiles + fog overlay on top
   drawMapBg(currentMap);
+  // B2-5: GBA dungeon backdrop (replaces empty drawMapBg for dungeon floors)
+  if(inDungeon) drawGBADungeonBG();
 
   // ── TILE LAYER CACHE ── only redraw tiles when camera moves or map changes
   {
@@ -1149,6 +1151,8 @@ function dMap(){
     // v215: Animated town tile overlays (water sparkles/waves — every other frame for perf)
     if(!inDungeon&&fr%2===0){drawTownAnimatedOverlays(startTX,startTY,endTX,endTY);}
     if(!inDungeon&&currentMap===0){drawGBATownSigns();drawGBALocationBanner('FIRST PORT');}
+    // B2-5: GBA dungeon floor banner (drawn over tile layer, below fog)
+    if(inDungeon&&currentFloor>0) drawGBADungeonBanner(currentFloor);
   }
 
   // Edge blending post-pass (cached to offscreen canvas)
@@ -1181,6 +1185,8 @@ function dMap(){
     }
     g.drawImage(fogCanvas,0,0,W,H);
   }
+  // B2-5: GBA fog "?" marks on unrevealed edge tiles
+  if(inDungeon) drawGBAFogMarks(startTX,startTY,endTX,endTY);
   // ── CIRCULAR VISIBILITY (dungeon only) — cached to offscreen canvas ──
   if(inDungeon){
     const _vpx=pl[0].visualX-camX+TW/2, _vpy=pl[0].visualY-camY+TH/2;
@@ -1371,6 +1377,8 @@ function dMap(){
       const lW=rLabel.length*5+6;
       bx(spx+8-lW/2,spy-44,lW,11,'rgba(0,0,0,.65)');
       txShadow(rLabel,spx+8-lW/2+3,spy-35,6,rNameCol,'rgba(0,0,0,.5)');
+      // B2-5: GBA rival pulse diamond above name label
+      if(inDungeon){const _rdC=(i===1)?_RC('vega_pulse'):_RC('mira_amber');drawGBARivalDiamond(spx+8,spy-48,_rdC,0.4+0.6*_sFr25);}
     }
   }
 
@@ -1637,7 +1645,11 @@ function dMap(){
     txShadow(_vegaLblCache,240,hudY+52,6,vegaCol,'rgba(0,0,0,.35)'); // v304: cached
     g.globalAlpha=miraAlpha;
     txShadow(_miraLblCache,286,hudY+52,6,miraCol,'rgba(0,0,0,.35)'); // v304: cached
-    g.globalAlpha=1;}
+    g.globalAlpha=1;
+    // B2-5: GBA rival pulse diamonds on same-floor HUD trackers
+    if(vegaSame) drawGBARivalDiamond(278,hudY+47,_RC('vega_pulse'),0.7+_sFr18*0.3);
+    if(miraSame) drawGBARivalDiamond(324,hudY+47,_RC('mira_amber'),0.7+(_sFr18*_MAP_COS1+_cFr18*_MAP_SIN1)*0.3);
+    }
   }
   // Show first 8 hand cards in HUD (slots 0-7) — dungeon only
   if(inDungeon){

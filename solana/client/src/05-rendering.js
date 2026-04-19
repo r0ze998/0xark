@@ -1791,6 +1791,109 @@ function drawGBACardMini(id,cx,cy,alpha,fr_){
   g.globalAlpha=1;
 }
 
+// ═══════════════════════════════════════
+// SPRITE SEAS GBA DUNGEON PRIMITIVES (Phase B2-5 — v459+)
+// All colors via _RC(key). No hex literals.
+// ═══════════════════════════════════════
+
+// B2-5: Dungeon backdrop fill — drawn before tile cache, dungeon-only.
+function drawGBADungeonBG(){
+  bx(0,0,W,H-72,_RC('dungeon_fog'));
+}
+
+// B2-5: GBA dungeon floor tile — walkable room/corridor area.
+function drawGBADungeonFloor(px,py){
+  bx(px,py,TW,TH,_RC('dungeon_floor'));
+  g.globalAlpha=0.20;
+  bx(px+TW-1,py,1,TH,_RC('dungeon_wall')); // right grid line
+  bx(px,py+TH-1,TW,1,_RC('dungeon_wall')); // bottom grid line
+  g.globalAlpha=1;
+  bx(px,py,TW,1,'rgba(255,255,255,.08)'); // subtle top highlight
+}
+
+// B2-5: GBA dungeon wall tile — solid block with bevel.
+function drawGBADungeonWall(px,py){
+  bx(px,py,TW,TH,_RC('dungeon_wall'));
+  bx(px,py,TW,3,'rgba(108,72,40,.35)');      // top highlight
+  bx(px,py+TH-4,TW,4,'rgba(0,0,0,.28)');    // bottom shadow
+  bx(px,py,2,TH,'rgba(108,72,40,.12)');      // left edge light
+  bx(px+TW-2,py,2,TH,'rgba(0,0,0,.18)');    // right edge shadow
+}
+
+// B2-5: GBA dungeon staircase tile.
+// dir: 'down' = descent deeper | 'up' = ascent / escape.
+function drawGBADungeonStairs(px,py,dir){
+  bx(px,py,TW,TH,_RC('dungeon_floor'));
+  const stripCol=dir==='down'?_RC('dungeon_wall'):'rgba(64,200,120,.7)';
+  for(let i=0;i<5;i++){
+    const sy=py+3+i*5,sw=TW-4-i*2,sx=px+2+i;
+    bx(sx,sy,sw,3,stripCol);
+    bx(sx,sy,sw,1,'rgba(255,255,255,.18)');
+  }
+  // Direction indicator
+  const lbl=dir==='down'?'\u25BC':'\u25B2';
+  txShadow(lbl,(px+TW/2-4)|0,(py+TH-7)|0,7,dir==='down'?_RC('dungeon_wall'):'rgba(64,200,120,.9)','rgba(0,0,0,.5)');
+}
+
+// B2-5: drawFogTile — GBA "?" hint on a single fog edge tile.
+// px, py: screen-space tile origin (top-left).
+// Caller must set: g.font, g.textAlign='center', g.textBaseline='middle' before batch loop.
+function drawFogTile(px,py){
+  g.globalAlpha=0.28;
+  g.fillStyle=_RC('dungeon_wall');
+  g.fillText('?',(px+TW/2)|0,(py+TH/2)|0);
+  g.globalAlpha=1;
+}
+
+// B2-5: Batch GBA fog "?" marks on all unrevealed edge tiles in viewport.
+// Only tiles with at least one revealed neighbor get the mark (edge of fog).
+function drawGBAFogMarks(startTX,startTY,endTX,endTY){
+  const _fogMap=fogRevealed[currentMap];
+  g.font='bold 8px monospace';
+  g.textAlign='center';
+  g.textBaseline='middle';
+  for(let ty=startTY;ty<=endTY;ty++){
+    const _fogRow=_fogMap[ty];
+    for(let tx=startTX;tx<=endTX;tx++){
+      if(_fogRow&&_fogRow[tx])continue; // revealed — skip
+      let _anyNbr=false;
+      for(let _dy=-1;_dy<=1&&!_anyNbr;_dy++){
+        for(let _dx=-1;_dx<=1&&!_anyNbr;_dx++){
+          const _ny=ty+_dy,_nx=tx+_dx;
+          if(_ny>=0&&_ny<MH&&_nx>=0&&_nx<MW&&_fogMap[_ny]?.[_nx])_anyNbr=true;
+        }
+      }
+      if(!_anyNbr)continue;
+      drawFogTile(tx*TW-camX,ty*TH-camY);
+    }
+  }
+  g.textAlign='left';
+  g.textBaseline='alphabetic';
+}
+
+// B2-5: GBA rival pulse diamond indicator at screen pos (cx, cy).
+// col: resolved color string. a: alpha 0..1.
+function drawGBARivalDiamond(cx,cy,col,a){
+  g.globalAlpha=a;
+  g.fillStyle=col;
+  g.beginPath();
+  g.moveTo(cx|0,(cy-5)|0);
+  g.lineTo((cx+5)|0,cy|0);
+  g.lineTo(cx|0,(cy+5)|0);
+  g.lineTo((cx-5)|0,cy|0);
+  g.closePath();
+  g.fill();
+  g.globalAlpha=1;
+}
+
+// B2-5: GBA dungeon floor banner — "SUNKEN GALLERIES — B1" style.
+// Uses drawGBALocationBanner (menu_blue + menu_border spec).
+const _GBA_DUNG_NAMES=['','SUNKEN GALLERIES','DROWNED ARCHIVES','ECHO CHAMBERS','THE DEEP VAULT','ARK CORE'];
+function drawGBADungeonBanner(floor){
+  const sub=_GBA_DUNG_NAMES[floor]||('FLOOR '+floor);
+  drawGBALocationBanner(sub+' \u2014 B'+floor);
+}
+
 function drawTile(tx_,ty){
   const px=tx_*TW-camX,py=ty*TH-camY;
   if(px<-TW||px>W||py<-TH||py>H)return;
@@ -1812,6 +1915,16 @@ function drawTile(tx_,ty){
       case 12:drawGBABush(px,py);return;
       case 15:drawGBAHouse(px,py,'stats');return;
       case 16:drawGBAHouse(px,py,_townHouseType(tx_,ty));return;
+    }
+  }
+  // B2-5: GBA dungeon tile primitives (all non-town dungeon floors)
+  if(inDungeon){
+    switch(t){
+      case 18: drawGBADungeonWall(px,py); return;
+      case  1: drawGBADungeonFloor(px,py); return;
+      case  2: drawGBADungeonFloor(px,py); return;
+      case 31: drawGBADungeonStairs(px,py,'down'); return;
+      case 32: drawGBADungeonStairs(px,py,'up'); return;
     }
   }
   switch(t){
