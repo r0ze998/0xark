@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v452";
+window.BUILD_VERSION = "v452a";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -10921,8 +10921,33 @@ const _titleSkySeaCanvas=(()=>{
   return c;
 })();
 
+// v452a: Sprite Seas moon — cream circle with 3-stop radial halo that bleeds
+// into the night_sky sky without a dark frame. Pre-baked once; dTitle() blits.
+// Spec: design/preview/01_title.html `.moon` (28px disk, cream halo at rgba
+// 0.20 / 0.08 stops). Radius is 2× preview (14 → 28) for the 960×640 canvas.
+const _titleMoonCanvas=(()=>{
+  const cream=window.TOKENS.resolveColor('sail_cream'); // '#f8e8c0'
+  const rgbaCream=(a)=>{
+    const n=parseInt(cream.slice(1),16);
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+  };
+  const R=28, haloR=R*3, sz=haloR*2+4;
+  const c=document.createElement('canvas');c.width=sz;c.height=sz;
+  const ctx=c.getContext('2d');
+  const cx=sz/2, cy=sz/2;
+  const grd=ctx.createRadialGradient(cx,cy,R*0.8, cx,cy,haloR);
+  grd.addColorStop(0,   rgbaCream(0.35));
+  grd.addColorStop(0.4, rgbaCream(0.12));
+  grd.addColorStop(1,   rgbaCream(0));
+  ctx.fillStyle=grd;ctx.fillRect(0,0,sz,sz);
+  ctx.fillStyle=cream;
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fill();
+  return c;
+})();
+
 // @deprecated (phase-b2-title): legacy title-screen pre-baked canvases from v225
-// (void gradient, rune grid, moon halo/disk). Superseded by _titleSkySeaCanvas.
+// (void gradient, rune grid, moon halo/disk). Superseded by _titleSkySeaCanvas
+// + _titleMoonCanvas (v452a).
 // Retained per PHASE_B2_PLAN.md B2-0 policy; delete in B2-8 cleanup.
 const _titleVoidGradCanvas=(()=>{
   const c=document.createElement('canvas');c.width=W;c.height=280;
@@ -10969,23 +10994,12 @@ function dTitle(){
   // Sky/sea/horizon/waves — pre-baked
   g.drawImage(_titleSkySeaCanvas,0,0);
 
-  // Moon — clean circle upper-right, preview anchor. Scaled 2× from preview
-  // (28px @ 480 viewport → 56px @ 960 canvas). Soft outer shadow ring.
+  // Moon — pre-baked cream disk + soft radial halo, blitted at preview-exact
+  // center. Preview `.moon`: right:44, top:44, 28px → 2× center at (W-116, 116).
   {
-    const mR=28;
-    const mx=W-88;           // preview right:44 → 2× from right edge
-    const my=88;             // preview top:44 → 2×
-    const moonCol=window.TOKENS.resolveColor('sail_cream');
-    const nightCol=window.TOKENS.resolveColor('night_sky');
-    // Outer soft halo rings (3 layers, increasing alpha transparency)
-    g.globalAlpha=0.08;bx(mx-mR-18,my-mR-18,(mR+18)*2,(mR+18)*2,moonCol);
-    g.globalAlpha=0.20;bx(mx-mR-10,my-mR-10,(mR+10)*2,(mR+10)*2,moonCol);
-    g.globalAlpha=1;
-    // Night-sky ring (keeps the moon from bleeding into halo)
-    bx(mx-mR-6,my-mR-6,(mR+6)*2,(mR+6)*2,nightCol);
-    // Moon disk — pixel-stepped circle (square approximation for chunky pixel feel)
-    bx(mx-mR,my-mR+4,mR*2,mR*2-8,moonCol);
-    bx(mx-mR+4,my-mR,mR*2-8,mR*2,moonCol);
+    const mx=W-116, my=116;
+    const ms=_titleMoonCanvas;
+    g.drawImage(ms, (mx-ms.width/2)|0, (my-ms.height/2)|0);
   }
   // Logo "0xARK" — top-center. Preview y=20% → 128px @ 960 canvas.
   // 0x in gold_accent, ARK in sail_cream. Dual drop-shadow (night_sky + text_dark).
@@ -11024,81 +11038,118 @@ function dTitle(){
     txShadow(tagTxt, tx_, ty, tagSz, window.TOKENS.resolveColor('menu_border'), 'rgba(0,0,0,0.5)');
   }
 
-  // Galleon hero — centered, top:57% → y=364, 256×160 (2× preview 128×80).
-  // Preview anatomy: hull trapezoidal, mast, sail with gold-trimmed cream body
-  // + black jolly-roger X, red flag atop. See design/preview/01_title.html.
+  // Galleon hero — centered, top:57% → y=365, 256×160 (2× preview 128×80).
+  // Preview anatomy re-measured against 2× GBA viewport (design/preview/01_title.html):
+  //   container  : shipCX=W/2=480, shipCY≈365, 256×160
+  //   hull       : bottom 44px of container (y 401→445), clip-path 8%/92%/100%/0
+  //   mast       : y 301→401, 6×100
+  //   sail       : y 309→385, 144×76 (preview bottom:30 → prod bottom 60 from
+  //                container bottom 445 → sail bottom 385)
+  //   jolly-X    : 36×6 bars, rotated ±45° on sail center
+  //   flag       : 28×18 at shipX+132 (50%+2 preview), y=shipY-8 (preview top:-4)
+  // Draw order matches preview CSS stacking (earlier sibling = back):
+  //   flag → sail body → sail inset rim → jolly-X → mast → hull. Hull is topmost
+  //   so it covers the mast root; mast drawn after sail so the dark stripe cuts
+  //   through the sail+X per preview.
   {
     const shipCX=(W/2)|0, shipCY=((H*0.57)|0);
     const shipW=256, shipH=160;
     const shipX=shipCX-shipW/2, shipY=shipCY-shipH/2;
     const outline=window.TOKENS.resolveColor('text_dark');
     const hullCol=window.TOKENS.resolveColor('hull_wood');
-    const hullTop='#a07040';   // inset highlight
-    const hullBot='#5c3818';   // inset shadow
+    // Derived shades of hull_wood — preview `box-shadow: inset` values. Not
+    // tokenized yet (@phase-b2-token-candidate: hull_highlight / hull_shadow).
+    const hullTop='#a07040';
+    const hullBot='#5c3818';
     const goldT=window.TOKENS.resolveColor('gold_accent');
     const sailCol=window.TOKENS.resolveColor('sail_cream');
-    const sailShadow='#e8c878';
+    const sailShadow=window.TOKENS.resolveColor('sand_beach'); // #e8c878
     const goldInset=window.TOKENS.resolveColor('menu_border');
     const flagCol=window.TOKENS.resolveColor('flag_red');
-    // Hull — trapezoid: 44px tall at bottom. Preview clip-path 8%→92% top.
-    const hullH=44;
-    const hullY=shipY+shipH-hullH;
-    // Fill the main hull body in wood color (approximate trapezoid via layered
-    // bx strips, bottom wider than top)
-    for(let i=0;i<hullH;i++){
-      const t=i/hullH;
-      const inset=((1-t)*0.08+t*0)*shipW|0;
-      bx(shipX+inset, hullY+i, shipW-inset*2, 1, hullCol);
-    }
-    // Hull outline (2px top/bot/sides)
-    bx(shipX,         hullY-2,      shipW,     2, outline);
-    bx(shipX,         shipY+shipH-2,shipW,     2, outline);
-    // Gold trim stripe (preview: hull::after)
-    bx(shipX+12,      hullY+16,     shipW-24,  4, goldT);
-    // Top/bottom inset bands
-    bx(shipX+6,       hullY,        shipW-12,  6, hullTop);
-    bx(shipX+6,       hullY+hullH-8,shipW-12,  8, hullBot);
 
-    // Mast — 6×100 vertical line, centered
-    bx(shipCX-3, hullY-100, 6, 100, outline);
-
-    // Sail — 144×76 (2× preview 72×38), centered on mast
-    const sailW=144, sailH=76;
-    const sailX=shipCX-sailW/2;
-    const sailY=hullY-sailH-4;
-    bx(sailX, sailY, sailW, sailH, sailCol);
-    // Sail outline
-    bx(sailX,         sailY,        sailW, 4, outline);
-    bx(sailX,         sailY+sailH-4,sailW, 4, outline);
-    bx(sailX,         sailY,        4,     sailH, outline);
-    bx(sailX+sailW-4, sailY,        4,     sailH, outline);
-    // Gold inset rim (2px inside outline)
-    bx(sailX+4,        sailY+4,         sailW-8, 4, goldInset);
-    bx(sailX+4,        sailY+sailH-8,   sailW-8, 4, goldInset);
-    bx(sailX+4,        sailY+4,         4,       sailH-8, goldInset);
-    bx(sailX+sailW-8,  sailY+4,         4,       sailH-8, goldInset);
-    // Bottom shadow band
-    bx(sailX+8, sailY+sailH-12, sailW-16, 4, sailShadow);
-    // Jolly-roger X on sail center — 36×6 bars at 45°/-45°. Approximate with
-    // two diagonal strokes via thin diagonal rects (pixel stairstep).
-    {
-      const cx=sailX+sailW/2, cy=sailY+sailH/2;
-      const barLen=36, thick=6;
-      // Stair-step diagonals — walk 1px per step for pixel art feel
-      for(let k=-barLen/2;k<=barLen/2;k++){
-        bx((cx+k)|0, (cy+k)|0, 1, thick, outline);   // ↘
-        bx((cx+k)|0, (cy-k)|0, 1, thick, outline);   // ↗
-      }
-    }
-
-    // Flag — 28×18 (2× preview 14×9) atop mast, right-side
+    // ── Flag — drawn first (back layer per preview stacking).
+    // Preview `top:-4; left:calc(50%+2); 14×9`; border 2px; border-left:none.
     const flagW=28, flagH=18;
     const flagX=shipCX+4;
-    const flagY=sailY-flagH-4;
-    bx(flagX, flagY, flagW, flagH, flagCol);
-    bx(flagX,          flagY,          flagW, 4, outline);
-    bx(flagX,          flagY+flagH-4,  flagW, 4, outline);
-    bx(flagX+flagW-4,  flagY,          4,     flagH, outline);
+    const flagY=shipY-8;
+    g.fillStyle=flagCol;g.fillRect(flagX, flagY, flagW, flagH);
+    g.fillStyle=outline;
+    g.fillRect(flagX,          flagY,          flagW, 4);
+    g.fillRect(flagX,          flagY+flagH-4,  flagW, 4);
+    g.fillRect(flagX+flagW-4,  flagY,          4,     flagH);
+
+    // ── Sail body + outline + gold inset rim + bottom shadow band.
+    const sailW=144, sailH=76;
+    const sailX=shipCX-sailW/2;
+    const sailY=shipY+24; // preview top:12 → 2× from container top
+    // Body
+    g.fillStyle=sailCol;g.fillRect(sailX, sailY, sailW, sailH);
+    // Outer outline (4px, preview 2px border)
+    g.fillStyle=outline;
+    g.fillRect(sailX,         sailY,        sailW, 4);
+    g.fillRect(sailX,         sailY+sailH-4,sailW, 4);
+    g.fillRect(sailX,         sailY,        4,     sailH);
+    g.fillRect(sailX+sailW-4, sailY,        4,     sailH);
+    // Gold inset rim (preview: inset 0 0 0 2px #ffd860 → 4px on all sides,
+    // starting 4px inside the outer outline)
+    g.fillStyle=goldInset;
+    g.fillRect(sailX+4,        sailY+4,         sailW-8, 4);
+    g.fillRect(sailX+4,        sailY+sailH-8,   sailW-8, 4);
+    g.fillRect(sailX+4,        sailY+4,         4,       sailH-8);
+    g.fillRect(sailX+sailW-8,  sailY+4,         4,       sailH-8);
+    // Bottom shadow band (preview: inset 0 -4px 0 #e8c878 → 8px prod)
+    g.fillStyle=sailShadow;
+    g.fillRect(sailX+8, sailY+sailH-12, sailW-16, 4);
+
+    // ── Jolly-roger X on sail center — two thick bars at ±45°.
+    {
+      const cx=sailX+sailW/2, cy=sailY+sailH/2;
+      const barLen=36, barThick=6; // preview 18×3 → 2×
+      g.save();
+      g.translate(cx, cy);
+      g.fillStyle=outline;
+      g.rotate(Math.PI/4);
+      g.fillRect(-barLen/2, -barThick/2, barLen, barThick);
+      g.rotate(-Math.PI/2); // net -45° from identity
+      g.fillRect(-barLen/2, -barThick/2, barLen, barThick);
+      g.restore();
+    }
+
+    // ── Mast — drawn AFTER sail so the dark stripe cuts through sail+X per preview.
+    g.fillStyle=outline;
+    g.fillRect(shipCX-3, shipY+16, 6, 100); // preview bottom:22 height:50 → top y=16 prod
+
+    // ── Hull — true trapezoid via polygon path. Inset highlight + shadow bands
+    // + gold trim stripe drawn inside a clip so they don't overflow the trap edges.
+    const hullH=44;
+    const hullY=shipY+shipH-hullH;
+    const hullInsetX=((shipW*0.08)|0); // preview clip-path 8% top inset
+    const hullTLx=shipX+hullInsetX, hullTLy=hullY;
+    const hullTRx=shipX+shipW-hullInsetX, hullTRy=hullY;
+    const hullBRx=shipX+shipW, hullBRy=hullY+hullH;
+    const hullBLx=shipX, hullBLy=hullY+hullH;
+    g.save();
+    g.beginPath();
+    g.moveTo(hullTLx, hullTLy);
+    g.lineTo(hullTRx, hullTRy);
+    g.lineTo(hullBRx, hullBRy);
+    g.lineTo(hullBLx, hullBLy);
+    g.closePath();
+    g.clip();
+    // Fill bounding box; clip constrains to trapezoid.
+    g.fillStyle=hullCol;   g.fillRect(shipX, hullY, shipW, hullH);
+    g.fillStyle=hullTop;   g.fillRect(shipX, hullY, shipW, 6);           // top inset highlight
+    g.fillStyle=hullBot;   g.fillRect(shipX, hullY+hullH-8, shipW, 8);   // bottom inset shadow
+    g.fillStyle=goldT;     g.fillRect(shipX, hullY+16, shipW, 4);        // gold trim stripe
+    g.restore();
+    // Outline — 4px stroke along the trapezoid edge (2px inside + 2px outside).
+    g.beginPath();
+    g.moveTo(hullTLx, hullTLy);
+    g.lineTo(hullTRx, hullTRy);
+    g.lineTo(hullBRx, hullBRy);
+    g.lineTo(hullBLx, hullBLy);
+    g.closePath();
+    g.lineWidth=4;g.strokeStyle=outline;g.stroke();
   }
 
   // Ship reflection — dashed shimmer on water. Preview: top:72%, 80×3.
