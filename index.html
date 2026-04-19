@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v459a+";
+window.BUILD_VERSION = "v460a+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -18182,13 +18182,27 @@ const RARITY_COLOR=['','#888898','#60b060','#6090d8','#c060c0','#f0c830'];
 // ═══════════════════════════════════════
 function dVictory(){
   const t=fr-victoryFrame;
-  if(t<30){g.globalAlpha=t/30;g.fillStyle='#ffffff';g.fillRect(0,0,W,H);g.globalAlpha=1;return;}
-  bx(0,0,W,H,'#f8f4f0');
+  if(t<30){g.globalAlpha=t/30;g.fillStyle=_RC('menu_blue');g.fillRect(0,0,W,H);g.globalAlpha=1;return;}
+  // B2-7: GBA Victory backdrop — radial amber→red→navy
+  bx(0,0,W,H,_RC('menu_blue'));
+  const _vgr=g.createRadialGradient(W/2,H*0.65,0,W/2,H*0.65,H*0.75);
+  _vgr.addColorStop(0,_RC('mira_amber'));
+  _vgr.addColorStop(0.38,_RC('flag_red'));
+  _vgr.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=_vgr;g.globalAlpha=0.8;g.fillRect(0,0,W,H);g.globalAlpha=1;
+  // Sparkle star decorators (✦ pulse)
+  const _vstPos=[[30,40],[W-50,60],[80,H-70],[W-32,H-52]];
+  for(let _vi=0;_vi<4;_vi++){
+    const _vp=0.7+(_sFr08*_IDX_CI[_vi]+_cFr08*_IDX_SI[_vi])*0.3;
+    g.globalAlpha=_vp;
+    txShadow('\u2726',_vstPos[_vi][0],_vstPos[_vi][1]+8,_vi%2===0?8:5,_RC('menu_border'),'rgba(0,0,0,.4)');
+    g.globalAlpha=1;
+  }
 
   for(let i=0;i<8;i++){
     const st=(t+i*60)%200;
     if(st<30){const sx=50+i*55+st*3,sy=20+i*15+st*1.5;
-      g.fillStyle='#c8a03c';for(let j=0;j<4;j++){g.globalAlpha=Math.max(0,.6-j*.15);g.fillRect(sx-j*4,sy-j*2,2,1);}g.globalAlpha=1;
+      g.fillStyle=_RC('mira_amber');for(let j=0;j<4;j++){g.globalAlpha=Math.max(0,.6-j*.15);g.fillRect(sx-j*4,sy-j*2,2,1);}g.globalAlpha=1;
     }
   }
   for(let i=0;i<20;i++){
@@ -18198,13 +18212,15 @@ function dVictory(){
 
   if(t>35){
     g.globalAlpha=Math.min(1,(t-35)/20);
+    // B2-7: GBA title panel
+    win(W/2-160,78,320,34);
     // Purple rune aura behind title
-    g.globalAlpha*=0.3+_sFr08*0.15;bx(W/2-160,84,320,28,ARK.rune); // v370: cached
+    g.globalAlpha*=0.3+_sFr08*0.15;bx(W/2-156,80,312,28,ARK.rune); // v370: cached
     g.globalAlpha=Math.min(1,(t-35)/20);
-    txShadow('THE SEAL IS BROKEN',W/2-144,100,14,'#c89820','rgba(0,0,0,.5)');
+    txShadow('THE SEAL IS BROKEN',W/2-144,100,14,_RC('menu_border'),'rgba(0,0,0,.5)');
     g.globalAlpha=1;
   }
-  if(t>40){g.globalAlpha=Math.min(1,(t-40)/15);txShadow('Information asymmetry is the ultimate weapon',W/2-180,124,7,'#c08848','rgba(0,0,0,.5)');g.globalAlpha=1;}
+  if(t>40){g.globalAlpha=Math.min(1,(t-40)/15);txShadow('Information asymmetry is the ultimate weapon',W/2-180,124,7,_RC('mira_amber'),'rgba(0,0,0,.5)');g.globalAlpha=1;}
   if(t>45){g.globalAlpha=Math.min(1,(t-45)/15);drawBattleSprite(pl[0],W/2,200,3,false);g.globalAlpha=1;}
 
   if(t>60){
@@ -18236,7 +18252,7 @@ function dVictory(){
     if(cardsT>30){
       const vaultSize=pl[0].vault?pl[0].vault.size:0;
       g.globalAlpha=Math.min(1,(cardsT-30)/20);
-      txShadow(vaultSize+'/60 UNIQUE',W/2-60,390,9,'#f0c830','rgba(0,0,0,.5)');
+      txShadow(vaultSize+'/60 UNIQUE',W/2-60,390,9,_RC('menu_border'),'rgba(0,0,0,.5)');
       g.globalAlpha=1;
     }
   }
@@ -18247,20 +18263,20 @@ function dVictory(){
     win(W/2-200,420,400,28);
     const _elapsed=getPlayElapsed();const _em=Math.floor(_elapsed/60000);const _es=Math.floor((_elapsed%60000)/1000);
     const vaultSize=pl[0].vault?pl[0].vault.size:0;
-    txShadow(`Time: ${_em}m${('0'+_es).slice(-2)}s   Battles: ${rd}   Cards: ${vaultSize}/60`,W/2-188,440,7,'#686068','rgba(0,0,0,.35)');
+    txShadow(`Time: ${_em}m${('0'+_es).slice(-2)}s   Battles: ${rd}   Cards: ${vaultSize}/60`,W/2-188,440,7,_RC('text_light'),'rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
   // "You collected all 60" message
   if(t>140){
     win(6,456,W-12,28);
-    if(playerHasAllSixty()){txShadow('You collected all 60 cards and claimed the Prize Pool!',14,476,7,'#303028','rgba(255,255,255,.15)');}
-    else{txShadow('Time ran out! You collected '+hasUniqueCards(0).size+'/60 unique cards.',14,476,7,'#c04040','rgba(0,0,0,.35)');}
+    if(playerHasAllSixty()){txShadow('You collected all 60 cards and claimed the Prize Pool!',14,476,7,_RC('text_dark'),'rgba(255,255,255,.15)');}
+    else{txShadow('Time ran out! You collected '+hasUniqueCards(0).size+'/60 unique cards.',14,476,7,_RC('flag_red'),'rgba(0,0,0,.35)');}
   }
   // Prize distribution display
   if(t>148){
     g.globalAlpha=Math.min(1,(t-148)/15);
     win(W/2-200,490,400,22);
-    txShadow('1ST: 60%  |  2ND: 25%  |  3RD: 15%',W/2-150,506,7,'#f0c830','rgba(0,0,0,.4)');
+    txShadow('1ST: 60%  |  2ND: 25%  |  3RD: 15%',W/2-150,506,7,_RC('menu_border'),'rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
   // "Verified on Solana" branding
@@ -18282,7 +18298,7 @@ function dVictory(){
       g.globalAlpha*=claimBlink;
       txShadow('[C] BREAK THE SEAL: '+stakePotAmount.toFixed(2)+' SOL',W/2-165,554,8,'#14F195','rgba(0,0,0,.4)');
     }else{
-      txShadow('Connect wallet to claim '+stakePotAmount.toFixed(2)+' SOL prize',W/2-165,554,7,'#686868','rgba(0,0,0,.35)');
+      txShadow('Connect wallet to claim '+stakePotAmount.toFixed(2)+' SOL prize',W/2-165,554,7,_RC('text_light'),'rgba(0,0,0,.35)');
     }
     g.globalAlpha=1;
   }
@@ -18309,14 +18325,14 @@ function dVictory(){
     win(W/2-160,596,320,22);
     const bcr=stats.bestClearRounds;const bct=stats.bestClearTime;
     const bcText=bcr>0?'BEST: Round '+bcr+' ('+Math.floor(bct/60)+'m'+('0'+(bct%60)).slice(-2)+'s)':'BEST CLEAR: not yet recorded';
-    txShadow(bcText,W/2-140,612,6,bcr>0?'#f0c830':'#686068','rgba(0,0,0,.35)');
+    txShadow(bcText,W/2-140,612,6,bcr>0?_RC('menu_border'):_RC('text_light'),'rgba(0,0,0,.35)');
     g.globalAlpha=1;
   }
   if(t>170){
     win(W/2-200,H-24,400,20);
     // v420: include T=Share shortcut in hints bar
     const hints=playerHasAllSixty()?'C=Claim  M=Mint  T=Share  Z=Play Again  X=Title':'T=Share  Z=Play Again   X=Title';
-    txShadow(hints,W/2-190,H-6,7,'#c89820','rgba(0,0,0,.4)');
+    txShadow(hints,W/2-190,H-6,7,_RC('menu_border'),'rgba(0,0,0,.4)');
   }
   if(t===31)sfxVictory();
 }
