@@ -83,7 +83,7 @@ All of the above move to `assets/retired/` in a single commit during Phase B2 ki
 
 Phase B2 (full visual migration to Sprite Seas) begins only when all four conditions are met:
 
-1. **Lint lands.** `solana/client/lint-bundle.js` (Checks #1 + #3) integrated into `build.js` and passing on `main`. No more silent TDZ / collision bugs reaching the browser. (Blocked on v447 + v448.)
+1. **Lint lands (parallel).** v447b landed 2026-04-19 with Check #1 + #3. Build-time integration (v448) and enforcement move to parallel with Phase B2 — expected to land within the first 2-3 screen migrations.
 
 2. **Retirement commit lands.** The assets listed above moved to `assets/retired/`. Any code that references them (by path string) either updated to a placeholder or explicitly TODO-tagged for Phase B2 replacement.
 
@@ -92,6 +92,8 @@ Phase B2 (full visual migration to Sprite Seas) begins only when all four condit
 4. **Phase B1 verified on `main`.** `window.TOKENS` resolving correctly in the browser, tokens available to all render paths. (Landed in v440, confirmed 2026-04-19.)
 
 Until these four conditions are satisfied, no PR touching rendering code in a visual-substantive way is merged.
+
+**2026-04-19 revision:** Condition 1 relaxed from "must land before kickoff" to "must land in parallel". The parallel approach lets Phase B2 visual work begin immediately while lint integration and enforcement catch up. Rationale: hackathon schedule + the visual migration benefits from lint running on new code as it's written, not just on pre-migration code.
 
 ---
 
