@@ -664,6 +664,8 @@ function drawCpxRuin(idx,destX,destY,scale){
 // TODO(phase-b2-town): drop jpg bg for map 0; Sprite Seas town uses tile-based procedural background. Legacy in assets/retired/.
 // TODO(phase-b2-dungeon): drop jpg bg for maps 1-5; Sprite Seas dungeon uses tile+vignette procedural. Legacy in assets/retired/.
 // ═══════════════════════════════════════
+// @deprecated (phase-b2-cleanup): BG_SHEETS/BG_LOADED/BG_FILES disabled in v453a.
+// GBA tile canvas is always the background source. Remove in B2-8 final cleanup.
 const BG_SHEETS = [null,null,null,null]; // indices: 0=town, 1=dung1-2, 2=dung3-4, 3=dung5
 const BG_LOADED = [false,false,false,false];
 const BG_FILES  = ['bg-town.jpg','bg-dungeon1.jpg','bg-dungeon2.jpg','bg-dungeon3.jpg'];
@@ -674,7 +676,7 @@ BG_FILES.forEach((f,i)=>{
   // no error handler — graceful fallback to tile-only rendering
 });
 
-// Returns the bg image for a given map index (0=town, 1-5=dungeon)
+// @deprecated (phase-b2-cleanup): getBgSheet always returns null-equivalent since v453a. Remove in B2-8.
 function getBgSheet(mapIdx){
   if(mapIdx===0)return BG_LOADED[0]?BG_SHEETS[0]:null;
   if(mapIdx<=2)return BG_LOADED[1]?BG_SHEETS[1]:null;
@@ -682,8 +684,8 @@ function getBgSheet(mapIdx){
   return BG_LOADED[3]?BG_SHEETS[3]:null;
 }
 
+// @deprecated (phase-b2-cleanup): drawMapBg is no-op since v453a (all BG files retired/404). Remove in B2-8.
 // Draw Midjourney background behind tiles — scrolls with camera
-// World is MW×MH tiles = 1280×960px; bg image matches exactly
 function drawMapBg(mapIdx){
   const bg=getBgSheet(mapIdx);
   if(!bg)return;

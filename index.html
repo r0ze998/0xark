@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v452a+";
+window.BUILD_VERSION = "v453a+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -1074,6 +1074,8 @@ function drawCpxRuin(idx,destX,destY,scale){
 // TODO(phase-b2-town): drop jpg bg for map 0; Sprite Seas town uses tile-based procedural background. Legacy in assets/retired/.
 // TODO(phase-b2-dungeon): drop jpg bg for maps 1-5; Sprite Seas dungeon uses tile+vignette procedural. Legacy in assets/retired/.
 // ═══════════════════════════════════════
+// @deprecated (phase-b2-cleanup): BG_SHEETS/BG_LOADED/BG_FILES disabled in v453a.
+// GBA tile canvas is always the background source. Remove in B2-8 final cleanup.
 const BG_SHEETS = [null,null,null,null]; // indices: 0=town, 1=dung1-2, 2=dung3-4, 3=dung5
 const BG_LOADED = [false,false,false,false];
 const BG_FILES  = ['bg-town.jpg','bg-dungeon1.jpg','bg-dungeon2.jpg','bg-dungeon3.jpg'];
@@ -1084,7 +1086,7 @@ BG_FILES.forEach((f,i)=>{
   // no error handler — graceful fallback to tile-only rendering
 });
 
-// Returns the bg image for a given map index (0=town, 1-5=dungeon)
+// @deprecated (phase-b2-cleanup): getBgSheet always returns null-equivalent since v453a. Remove in B2-8.
 function getBgSheet(mapIdx){
   if(mapIdx===0)return BG_LOADED[0]?BG_SHEETS[0]:null;
   if(mapIdx<=2)return BG_LOADED[1]?BG_SHEETS[1]:null;
@@ -1092,8 +1094,8 @@ function getBgSheet(mapIdx){
   return BG_LOADED[3]?BG_SHEETS[3]:null;
 }
 
+// @deprecated (phase-b2-cleanup): drawMapBg is no-op since v453a (all BG files retired/404). Remove in B2-8.
 // Draw Midjourney background behind tiles — scrolls with camera
-// World is MW×MH tiles = 1280×960px; bg image matches exactly
 function drawMapBg(mapIdx){
   const bg=getBgSheet(mapIdx);
   if(!bg)return;
@@ -12598,11 +12600,11 @@ function dMap(){
       tileCacheDirty=false;
     }
     g.imageSmoothingEnabled=false;
-    // When Midjourney bg is loaded: skip tile layer (bg IS the ground)
-    // Only draw tiles when there's no bg (fallback procedural rendering)
-    if(!getBgSheet(currentMap)){
-      g.drawImage(tileCanvas,0,0,W,H);
-    }
+    // v453a (@phase-b2-cleanup): legacy BG_SHEETS path fully disabled.
+    // Always draw GBA tile canvas regardless of currentMap.
+    // getBgSheet/BG_SHEETS/drawMapBg are retained with @deprecated tags;
+    // remove in B2-8 final cleanup.
+    g.drawImage(tileCanvas,0,0,W,H);
     // Animated dungeon tile overlays — drawn on main canvas every frame (bypass static tile cache)
     if(inDungeon){
       drawDungeonStairGlows(startTX,startTY,endTX,endTY);
@@ -13385,7 +13387,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v439',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow((typeof BUILD_VERSION==='string'&&BUILD_VERSION)||'v???',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);

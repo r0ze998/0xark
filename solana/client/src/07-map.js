@@ -1136,11 +1136,11 @@ function dMap(){
       tileCacheDirty=false;
     }
     g.imageSmoothingEnabled=false;
-    // When Midjourney bg is loaded: skip tile layer (bg IS the ground)
-    // Only draw tiles when there's no bg (fallback procedural rendering)
-    if(!getBgSheet(currentMap)){
-      g.drawImage(tileCanvas,0,0,W,H);
-    }
+    // v453a (@phase-b2-cleanup): legacy BG_SHEETS path fully disabled.
+    // Always draw GBA tile canvas regardless of currentMap.
+    // getBgSheet/BG_SHEETS/drawMapBg are retained with @deprecated tags;
+    // remove in B2-8 final cleanup.
+    g.drawImage(tileCanvas,0,0,W,H);
     // Animated dungeon tile overlays — drawn on main canvas every frame (bypass static tile cache)
     if(inDungeon){
       drawDungeonStairGlows(startTX,startTY,endTX,endTY);
@@ -1923,7 +1923,7 @@ function dMap(){
     txShadow(wIcon,820,hudY+52,9,wCol,'rgba(0,0,0,.4)');
   }
   // Version label in HUD (bottom-right corner) — matches current build
-  txShadow('v439',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
+  txShadow((typeof BUILD_VERSION==='string'&&BUILD_VERSION)||'v???',900,hudY+56,8,'#8890c0','rgba(0,0,0,.5)');
 
   // Day/night icon
   drawDayNightIcon(740,hudY+42);
