@@ -1020,9 +1020,9 @@ document.addEventListener('keydown',e=>{
     }
     // Cursor navigation (4 cols × 3 rows)
     if(e.code==='ArrowRight'){
-      const maxOnPage=Math.min(CRD_PER_PAGE,CD.length-crdPage*12)-1;
+      const maxOnPage=Math.min(CRD_PER_PAGE,CD.length-crdPage*CRD_PER_PAGE)-1;
       if(crdCursor%CRD_COLS<CRD_COLS-1&&crdCursor<maxOnPage){crdCursor++;sfxCursor();}
-      else{crdPage=Math.min(4,crdPage+1);crdCursor=0;sfxCursor();}
+      else{crdPage=Math.min(CRD_MAX_PAGE,crdPage+1);crdCursor=0;sfxCursor();}
     }
     if(e.code==='ArrowLeft'){
       if(crdCursor%CRD_COLS>0){crdCursor--;sfxCursor();}
@@ -1032,7 +1032,7 @@ document.addEventListener('keydown',e=>{
       if(crdCursor>=CRD_COLS){crdCursor-=CRD_COLS;sfxCursor();}
     }
     if(e.code==='ArrowDown'){
-      const maxOnPage=Math.min(CRD_PER_PAGE,CD.length-crdPage*12)-1;
+      const maxOnPage=Math.min(CRD_PER_PAGE,CD.length-crdPage*CRD_PER_PAGE)-1;
       if(crdCursor+CRD_COLS<=maxOnPage){crdCursor+=CRD_COLS;sfxCursor();}
     }
     if(e.code==='KeyZ'){crdDetailActive=true;sfxSelect();}

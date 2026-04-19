@@ -740,248 +740,54 @@ function dVictory(){
 // ═══════════════════════════════════════
 // CARDS COLLECTION SCREEN (GDD v1.0 — 60 cards, paginated)
 // ═══════════════════════════════════════
-let crdPage=0; // 0-4, 12 cards per page (5 pages × 12 = 60)
-const CRD_PER_PAGE=12;
-const CRD_COLS=4;
-const CRD_ROWS=3;
+let crdPage=0; // 0-1 (page 0 = cards 1-40, page 1 = cards 41-60)
+const CRD_PER_PAGE=40; // B2-6: 8-col × 5-row binder grid
+const CRD_COLS=8;
+const CRD_ROWS=5;
+const CRD_MAX_PAGE=1; // 2 pages total (0 and 1)
 // v75: Card detail panel
-let crdCursor=0; // currently highlighted card (0-11 within page)
+let crdCursor=0; // currently highlighted card (0-39 within page)
 let crdDetailActive=false; // showing full detail view
 function dCrd(){
-  bx(0,0,W,H,'#0c0c20');
-  for(let i=0;i<80;i++)bx((i*47+13)%W,(i*31+7)%H,2,2,'rgba(255,255,255,.04)');
-  // Header
+  // B2-6: GBA binder layout — 8×5 grid, 2 pages (1-40 / 41-60)
   const vault=pl[0].vault||new Set();
   const collected=vault.size;
-  win(10,6,W-20,38);
-  txShadow('CARD COLLECTION',W/2-100,32,10,'#f0e8d0','rgba(0,0,0,.5)');
-  // Progress bar
-  const pct=collected/60;
-  const barX_=W-220,barY_=12,barW_=160,barH_=14;
-  bx(barX_,barY_,barW_,barH_,'#1a1a30');
-  bx(barX_,barY_,Math.round(barW_*pct),barH_,collected>=60?'#f0c830':'#5080d0');
-  txShadow(_UNIQ60[collected]||(collected+'/60'),W-52,28,8,collected>=60?'#f0c830':'#c0d0f0','rgba(0,0,0,.4)'); // v321
-  // v115: Milestone tick marks on progress bar
-  for(let _cmi=0;_cmi<CARD_MILESTONES.length;_cmi++){
-    const m=CARD_MILESTONES[_cmi];const tx_=barX_+Math.round(barW_*m/60);
-    const reached=collected>=m;
-    bx(tx_-1,barY_-3,2,barH_+6,reached?'#f0c830':'#303048');
-    if(reached){
-      g.globalAlpha=0.5+(_sFr08*_IDX_CI[m]+_cFr08*_IDX_SI[m])*0.3;
-      bx(tx_-2,barY_-4,4,2,'#f0c830');
-      g.globalAlpha=1;
-    }
-  }
-  // Type tabs (5 types) with completion count
-  // v262: typeNames, typeColors hoisted to _CRD_TYPE_NAMES, _CRD_TYPE_COLS
-  for(let ti=0;ti<5;ti++){
-    const tx2=10+ti*58,bw=54;
-    const isActive=crdPage===ti;
-    // Count owned cards in this type (12 per type)
-    let typeOwned=0;const _tOfs=ti*12+1;for(let _tj=0;_tj<12;_tj++)if(vault.has(_tOfs+_tj))typeOwned++; // v262: no alloc
-    const typeComplete=typeOwned>=12;
-    bx(tx2,46,bw,22,isActive?_CRD_TYPE_COLS[ti]:'#1a1a30');
-    txShadow(_CRD_TYPE_NAMES[ti],tx2+12,62,8,isActive?'#fff':_CRD_TYPE_COLS[ti],'rgba(0,0,0,.4)');
-    // v115: Completion count badge in top-right of each tab
-    const countStr=_OVER12_LBL[typeOwned]||(typeOwned+'/12'); // v321
-    txShadow(countStr,tx2+bw-countStr.length*5-2,54,5,typeComplete?'#f0c830':isActive?'rgba(255,255,255,.7)':'rgba(128,128,160,.6)','rgba(0,0,0,.35)');
-    // Gold star if complete
-    if(typeComplete){const s=(_sFr08*_IDX_CI[ti]+_cFr08*_IDX_SI[ti])*0.2+0.8;g.globalAlpha=s;txShadow('\u2605',tx2+4,54,5,'#f0c830','rgba(0,0,0,.3)');g.globalAlpha=1;} // v371: sin-addition
-  }
-  // Card grid: 4×3 = 12 cards per page
-  const typeStart=crdPage*12;
-  const CARD_W=86,CARD_H=120,PAD=8;
-  const gridX=10,gridY=74;
+
+  // Full background fill
+  bx(0,0,W,H,_RC('menu_blue'));
+
+  // HUD strip
+  win(0,0,W,26);
+  txShadow('BINDER \u00B7 '+collected+'/60',8,18,8,_RC('menu_border'),'rgba(0,0,0,.5)');
+  txShadow('\u25BA CLOSE',W-60,18,7,_RC('text_light'),'rgba(0,0,0,.4)');
+  // Thin progress bar under HUD
+  bx(8,22,W-16,3,_RC('text_dark'));
+  bx(8,22,Math.round((W-16)*Math.min(1,collected/60)),3,collected>=60?_RC('menu_border'):_RC('vega_pulse'));
+
+  // Binder grid — 8 cols × 5 rows = 40 per page
+  const pageStart=crdPage*CRD_PER_PAGE;
+  const SLOT_W=53,SLOT_H=51,SLOT_GAP=4;
+  const gridX=Math.floor((W-SLOT_W*CRD_COLS-SLOT_GAP*(CRD_COLS-1))/2);
+  const gridY=30;
   for(let i=0;i<CRD_PER_PAGE;i++){
-    const cardIdx=typeStart+i; // 0-based CD index
-    if(cardIdx>=CD.length)break;
-    const cr=CD[cardIdx];
-    const col=i%CRD_COLS,row=Math.floor(i/CRD_COLS);
-    const cx=gridX+col*(CARD_W+PAD),cy=gridY+row*(CARD_H+PAD);
-    // v75: cursor highlight
-    if(i===crdCursor){
-      const pulse=_sFr15*0.15+0.85; // v369: cached
-      g.globalAlpha=pulse;
-      bx(cx-2,cy-2,CARD_W+4,CARD_H+4,'rgba(200,180,100,.35)');
-      bx(cx-2,cy-2,CARD_W+4,1,'#d0b050');
-      bx(cx-2,cy+CARD_H+2,CARD_W+4,1,'#d0b050');
-      bx(cx-2,cy-2,1,CARD_H+4,'#d0b050');
-      bx(cx+CARD_W+2,cy-2,1,CARD_H+4,'#d0b050');
-      g.globalAlpha=1;
-    }
-    const cardId=cardIdx+1; // 1-based
-    const owned=vault.has(cardId);
-    // Card frame background
-    bx(cx,cy,CARD_W,CARD_H,owned?cr.d:'#1a1830');
-    bx(cx+1,cy+1,CARD_W-2,CARD_H-2,owned?cr.c:'#141428');
-    if(owned){
-      // Card art area
-      bx(cx+2,cy+2,CARD_W-4,CARD_H*0.55,cr.d);
-      drawCardCharacter(cx+CARD_W/2-8,cy+8,cardId,0.8,fr);
-      // Rarity stars
-      const rar=cr.r||1;
-      const rarColor=RARITY_COLOR[rar]||'#888898';
-      for(let s=0;s<rar;s++)txShadow('\u2605',cx+4+s*10,cy+CARD_H*0.55+12,7,rarColor,'rgba(0,0,0,.3)');
-      // Card name
-      const nameFs=Math.max(5,Math.min(8,Math.floor(CARD_W/(cr.n.length*0.7))));
-      txShadow(cr.n,cx+CARD_W/2-cr.n.length*nameFs/2.4,cy+CARD_H*0.55+26,nameFs,'#f0e8d0','rgba(0,0,0,.35)');
-      // Type label
-      txShadow(CARD_TYPE_LABEL[cr.t]||'',cx+4,cy+CARD_H-16,5,cr.h||'#888','rgba(0,0,0,.3)');
-      // Special effect
-      if(cr.f)txShadow(cr.f,cx+4,cy+CARD_H-6,5,'#c0b888','rgba(0,0,0,.3)');
-    }else{
-      // v116: Decorative card back — geometric mystery pattern
-      bx(cx+4,cy+4,CARD_W-8,CARD_H-8,'#080818');
-      // Checkerboard micro-pattern with slow pulse per slot
-      const cellSz_=6;
-      g.globalAlpha=0.10+0.04*(_sFr025*_CARD_CI55[cardIdx]+_cFr025*_CARD_SI55[cardIdx]);
-      for(let row_=0;row_<Math.ceil((CARD_H-8)/cellSz_);row_++){
-        for(let col_=0;col_<Math.ceil((CARD_W-8)/cellSz_);col_++){
-          if((row_+col_)%2===0) bx(cx+4+col_*cellSz_,cy+4+row_*cellSz_,cellSz_-1,cellSz_-1,'#162090');
-        }
-      }
-      g.globalAlpha=1;
-      // Corner bracket ornaments
-      bx(cx+7,cy+7,7,1,'#2030b8');bx(cx+7,cy+7,1,7,'#2030b8');
-      bx(cx+CARD_W-14,cy+7,7,1,'#2030b8');bx(cx+CARD_W-8,cy+7,1,7,'#2030b8');
-      bx(cx+7,cy+CARD_H-8,7,1,'#2030b8');bx(cx+7,cy+CARD_H-14,1,7,'#2030b8');
-      bx(cx+CARD_W-14,cy+CARD_H-8,7,1,'#2030b8');bx(cx+CARD_W-8,cy+CARD_H-14,1,7,'#2030b8');
-      // v436: end-game reveal — if 50+ cards collected, show name+type hint on unowned cards
-      const _collected_=vault.size;
-      if(_collected_>=50){
-        const _rar_=cr.r||1;const _rarC_=RARITY_COLOR[_rar_]||'#888898';
-        g.globalAlpha=0.55;bx(cx+4,cy+CARD_H*0.35,CARD_W-8,CARD_H*0.55,'#0a0820');g.globalAlpha=1;
-        const _nfs_=Math.max(5,Math.min(7,Math.floor(CARD_W/(cr.n.length*0.75))));
-        g.globalAlpha=0.75;txShadow(cr.n,cx+CARD_W/2-cr.n.length*_nfs_/2.4,cy+CARD_H*0.55+16,_nfs_,_rarC_,'rgba(0,0,0,.5)');
-        txShadow(CARD_TYPE_LABEL[cr.t]||'',cx+4,cy+CARD_H-16,5,cr.h||'#888','rgba(0,0,0,.3)');g.globalAlpha=1;
-      }else{
-        // Central pulsing "?" emblem
-        const pu_=0.5+(_sFr05*_CARD_CI07[cardIdx]+_cFr05*_CARD_SI07[cardIdx])*0.5;
-        g.globalAlpha=pu_*0.35;
-        bx(cx+CARD_W/2-7,cy+CARD_H/2-9,14,14,'#2030b0');
-        g.globalAlpha=0.55+pu_*0.45;
-        txShadow('?',cx+CARD_W/2-5,cy+CARD_H/2+5,10,'#2840d0','rgba(0,0,0,.3)');
-        g.globalAlpha=1;
-      }
-      // Rarity hint stars (dim blue-tone)
-      const rar_=cr.r||1;
-      for(let s_=0;s_<rar_;s_++) txShadow('\u2605',cx+4+s_*10,cy+CARD_H-16,6,'#1e2858','rgba(0,0,0,.3)');
-    }
-    // v93: Rival ownership dots + IN HAND badge
-    {
-      const vegaHas=pl[1].cd.includes(cardId);
-      const miraHas=pl[2].cd.includes(cardId);
-      const inHand=pl[0].cd.includes(cardId);
-      let dotX=cx+CARD_W-6;
-      if(vegaHas){bx(dotX-10,cy+4,8,8,'#e060a0');dotX-=10;}
-      if(miraHas){bx(dotX-10,cy+4,8,8,'#d0a030');dotX-=10;}
-      if(inHand&&owned){
-        // "HAND" badge at bottom
-        bx(cx+CARD_W-30,cy+CARD_H-14,28,12,'rgba(40,120,40,.85)');
-        bx(cx+CARD_W-30,cy+CARD_H-14,28,1,'#60e060');
-        txShadow('HAND',cx+CARD_W-27,cy+CARD_H-5,5,'#60e060','rgba(0,0,0,.35)');
-      }
-    }
-  }
-  // v93: Legend for dots
-  {
-    const vegaTotal=cdCount(pl[1].cd);
-    const miraTotal=cdCount(pl[2].cd);
-    bx(W-190,12,8,8,'#e060a0');
-    txShadow(_VEGA_LBL[vegaTotal]||('V:'+vegaTotal),W-180,22,6,'#e060a0','rgba(0,0,0,.35)'); // v328
-    bx(W-158,12,8,8,'#d0a030');
-    txShadow(_MIRA_LBL[miraTotal]||('M:'+miraTotal),W-148,22,6,'#d0a030','rgba(0,0,0,.35)'); // v328
-  }
-  // v117: Persistent card info sidebar (right of grid)
-  {
-    const sidX=394,sidY=68,sidW=W-sidX-10,sidH=H-sidY-36;
-    const typeStart=crdPage*12;
-    const cardIdx=typeStart+crdCursor;
-    const cr=CD[cardIdx]||CD[0];
+    const cardIdx=pageStart+i;
+    if(cardIdx>=60)break;
     const cardId=cardIdx+1;
-    const vault=pl[0].vault||new Set();
-    const owned=vault.has(cardId);
-    const rar=cr.r||1;
-    const rarColor=RARITY_COLOR[rar]||'#888898';
-    // v262: rarNames, typeFullNames hoisted to _CRD_RAR_NAMES, _CRD_TYPE_FULL
-    // Panel background
-    win(sidX,sidY,sidW,sidH);
-    bx(sidX+2,sidY+2,sidW-4,sidH-4,owned?cr.c:'#0e0c1a');
-    // Art area
-    const artH=170;
-    bx(sidX+2,sidY+2,sidW-4,artH,owned?cr.d:'#08071a');
-    if(owned){
-      drawCardCharacter(sidX+sidW/2-20,sidY+10,cardId,2.8,fr);
-      // Rarity glow for epic/legendary
-      if(rar>=4){
-        const gp=0.3+(_sFr06*_CARD_CI05[cardIdx]+_cFr06*_CARD_SI05[cardIdx])*0.3;
-        g.globalAlpha=gp;
-        bx(sidX+2,sidY+2,sidW-4,artH,rar===5?'rgba(255,220,80,.1)':'rgba(200,160,30,.07)');
-        g.globalAlpha=1;
-      }
-    }else{
-      // Mystery pattern in art area
-      const cellSz=10;
-      g.globalAlpha=0.08+0.04*(_sFr02*_CARD_CI04[cardIdx]+_cFr02*_CARD_SI04[cardIdx]);
-      for(let r2=0;r2<Math.ceil(artH/cellSz);r2++){
-        for(let c2=0;c2<Math.ceil((sidW-4)/cellSz);c2++){
-          if((r2+c2)%2===0) bx(sidX+2+c2*cellSz,sidY+2+r2*cellSz,cellSz-1,cellSz-1,'#162090');
-        }
-      }
-      g.globalAlpha=1;
-      const pu=0.5+(_sFr05*_CARD_CI07[cardIdx]+_cFr05*_CARD_SI07[cardIdx])*0.5;
-      g.globalAlpha=pu*0.5;
-      bx(sidX+sidW/2-20,sidY+artH/2-24,40,40,'#1830b0');
-      g.globalAlpha=pu*0.9;
-      txShadow('?',sidX+sidW/2-22,sidY+artH/2+22,36,'#2840d0','rgba(0,0,0,.3)');
-      g.globalAlpha=1;
-    }
-    // Card number badge
-    bx(sidX+4,sidY+4,24,14,'rgba(0,0,0,.6)');
-    txShadow(_CARD_NUM_LBL[cardId]||('#'+String(cardId).padStart(2,'0')),sidX+5,sidY+15,6,owned?'#b0b8d0':'#2a2a60','rgba(0,0,0,.4)'); // v346: pre-baked
-    // Info block
-    const infoY=sidY+artH+14;
-    // Card name
-    const nameStr=owned?cr.n:'?????';
-    const nameFs=Math.min(14,Math.max(8,Math.floor(sidW*0.85/(Math.max(1,nameStr.length)*0.72))));
-    txShadow(nameStr,sidX+12,infoY,nameFs,owned?'#f0e8d0':'#202060','rgba(0,0,0,.4)');
-    // Rarity row
-    for(let s=0;s<rar;s++) txShadow('\u2605',sidX+12+s*14,infoY+20,10,owned?rarColor:'#1e2858','rgba(0,0,0,.3)');
-    txShadow(_CRD_RAR_NAMES[rar]||'',sidX+12+rar*14+6,infoY+20,7,owned?rarColor:'#1e2858','rgba(0,0,0,.3)');
-    // Type label
-    txShadow(_CRD_TYPE_FULL[cr.t]||'',sidX+12,infoY+38,8,owned?cr.h||'#888898':'#1e2a6a','rgba(0,0,0,.35)');
-    // Effect text
-    if(cr.f){
-      const effStr=owned?cr.f:'[locked]';
-      txShadow(effStr,sidX+12,infoY+56,owned?7:6,owned?'#c0b888':'#1a2060','rgba(0,0,0,.3)');
-    }
-    // Source hint
-    const srcStr=getCardSourceHint(cardId);
-    txShadow(_CARD_FIND_LBL[cardId]||('Find: '+srcStr),sidX+12,infoY+74,6,owned?'#686878':'#141848','rgba(0,0,0,.35)'); // v346: pre-baked
-    // Status badge at bottom
-    const badgeY=sidY+sidH-22;
-    bx(sidX+2,badgeY-2,sidW-4,1,'rgba(255,255,255,.06)');
-    if(owned){
-      const inHand=pl[0].cd.includes(cardId);
-      const vegaHas=pl[1].cd.includes(cardId);
-      const miraHas=pl[2].cd.includes(cardId);
-      bx(sidX+8,badgeY,80,16,inHand?'rgba(40,120,40,.8)':'rgba(30,60,120,.8)');
-      txShadow(inHand?'IN YOUR HAND':'COLLECTED',sidX+10,badgeY+13,6,inHand?'#60e060':'#80b0f0','rgba(0,0,0,.35)');
-      if(vegaHas){bx(sidX+96,badgeY,54,16,'rgba(180,40,100,.7)');txShadow('VEGA HOLDS',sidX+98,badgeY+13,5,'#e060a0','rgba(0,0,0,.3)');}
-      if(miraHas){bx(sidX+158,badgeY,54,16,'rgba(160,120,20,.7)');txShadow('MIRA HOLDS',sidX+160,badgeY+13,5,'#d0a030','rgba(0,0,0,.3)');}
-    }else{
-      bx(sidX+8,badgeY,90,16,'rgba(30,20,50,.8)');
-      txShadow('NOT YET OBTAINED',sidX+10,badgeY+13,6,'#3a3060','rgba(0,0,0,.3)');
-    }
-    // Z=detail hint
-    txShadow('Z \u25BA full detail',sidX+sidW-80,badgeY+13,5,'#2a2a50','rgba(0,0,0,.3)');
+    const cr=CD[cardIdx];
+    const col_=i%CRD_COLS,row_=Math.floor(i/CRD_COLS);
+    const cx_=gridX+col_*(SLOT_W+SLOT_GAP);
+    const cy_=gridY+row_*(SLOT_H+SLOT_GAP);
+    const owned_=vault.has(cardId);
+    drawGBABinderSlot(cx_,cy_,SLOT_W,SLOT_H,cardId,owned_,(i===crdCursor),cr?cr.r||1:1);
   }
-  // Navigation
-  win(10,H-30,W-20,24);
-  if(crdPage>0)txShadow('\u25C4 ←=PREV TYPE',20,H-12,7,'#8090c0','rgba(0,0,0,.35)');
-  txShadow(_CRD_PAGE_TITLE[crdPage],W/2-52,H-12,8,_CRD_TYPE_COLS[crdPage],'rgba(0,0,0,.4)'); // v321
-  if(crdPage<4)txShadow('NEXT TYPE= \u25BA',W-120,H-12,7,'#8090c0','rgba(0,0,0,.35)');
-  txShadow('Z=DETAIL  X=BACK',W/2+16,H-12,7,'#686878','rgba(0,0,0,.35)');
+
+  // Bottom navigation bar
+  bx(0,H-22,W,22,_RC('text_dark'));
+  bx(0,H-22,W,1,_RC('menu_border'));
+  if(crdPage>0) txShadow('\u25C4 PREV',10,H-6,7,_RC('text_light'),'rgba(0,0,0,.4)');
+  txShadow('PAGE '+(crdPage+1)+'/2',W/2-26,H-6,7,_RC('menu_border'),'rgba(0,0,0,.4)');
+  if(crdPage<CRD_MAX_PAGE) txShadow('NEXT \u25BA',W-54,H-6,7,_RC('text_light'),'rgba(0,0,0,.4)');
+  txShadow('Z=DETAIL  X=CLOSE',W/2-44,H-6,5,'rgba(200,200,180,.5)','rgba(0,0,0,.3)');
 }
 
 // ═══════════════════════════════════════
@@ -1008,7 +814,7 @@ let _detAbilityLbl='',_detAbilityRef=null;
 let _detFlavorRef=null,_detFlavorLines=[];
 function drawCardDetailPanel(){
   if(!crdDetailActive)return;
-  const typeStart=crdPage*12;
+  const typeStart=crdPage*CRD_PER_PAGE;
   const cardIdx=typeStart+crdCursor;
   if(cardIdx>=CD.length){crdDetailActive=false;return;}
   const cr=CD[cardIdx];
