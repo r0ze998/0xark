@@ -1918,10 +1918,8 @@ function dTitle(){
     const shipX=shipCX-shipW/2, shipY=shipCY-shipH/2;
     const outline=window.TOKENS.resolveColor('text_dark');
     const hullCol=window.TOKENS.resolveColor('hull_wood');
-    // Derived shades of hull_wood — preview `box-shadow: inset` values. Not
-    // tokenized yet (@phase-b2-token-candidate: hull_highlight / hull_shadow).
-    const hullTop='#a07040';
-    const hullBot='#5c3818';
+    const hullTop=_RC('hull_highlight');
+    const hullBot=_RC('hull_shadow');
     const goldT=window.TOKENS.resolveColor('gold_accent');
     const sailCol=window.TOKENS.resolveColor('sail_cream');
     const sailShadow=window.TOKENS.resolveColor('sand_beach'); // #e8c878

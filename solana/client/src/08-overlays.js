@@ -656,7 +656,7 @@ function dVictory(){
       // v393: N=4 orbit unrolled — sin(i*π/2) = {0,1,0,-1}, cos = {1,0,-1,0}
       if(cardT>0&&cardT<20){
         const _spS=Math.sin(cardT*.2),_spC=Math.cos(cardT*.2),_spd=8+cardT*.6;
-        g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle='#ffffc8';
+        g.globalAlpha=Math.max(0,1-cardT/20);g.fillStyle=_RC('sparkle_cream');
         g.fillRect(cx_+_spC*_spd,cy_+_spS*_spd,2,2);
         g.fillRect(cx_-_spS*_spd,cy_+_spC*_spd,2,2);
         g.fillRect(cx_-_spC*_spd,cy_-_spS*_spd,2,2);

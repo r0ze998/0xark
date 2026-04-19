@@ -112,15 +112,15 @@ function drawCrystalEffect(cx_,cy_,evT){
   for(let i=0;i<8;i++){
     const px_=cx_+(_eC*_ORB_CI8[i]-_eS*_ORB_SI8[i])*_dist;
     const py_=cy_+(_eS*_ORB_CI8[i]+_eC*_ORB_SI8[i])*_dist*0.6;
-    bx(px_-2,py_-2,4,4,'#48b8e8');bx(px_-1,py_-1,2,2,'#a0e0ff');
+    bx(px_-2,py_-2,4,4,_RC('vfx_crystal_orb'));bx(px_-1,py_-1,2,2,_RC('vfx_crystal_pale'));
   }}
   // Lightning bolt at mid-animation
   if(evT>15&&evT<30){
-    g.globalAlpha=(30-evT)/15;g.strokeStyle='#64c8ff';g.lineWidth=2;
+    g.globalAlpha=(30-evT)/15;g.strokeStyle=_RC('vfx_crystal_bolt');g.lineWidth=2;
     g.beginPath();g.moveTo(cx_,cy_-20);
     g.lineTo(cx_+10,cy_-5);g.lineTo(cx_-5,cy_+5);g.lineTo(cx_+15,cy_+25);
     g.stroke();
-    g.globalAlpha=(30-evT)/20;g.strokeStyle='#c8f0ff';g.lineWidth=1;
+    g.globalAlpha=(30-evT)/20;g.strokeStyle=_RC('vfx_crystal_bolt2');g.lineWidth=1;
     g.beginPath();g.moveTo(cx_+2,cy_-18);
     g.lineTo(cx_+12,cy_-3);g.lineTo(cx_-3,cy_+7);g.lineTo(cx_+17,cy_+27);
     g.stroke();g.globalAlpha=1;
@@ -142,8 +142,8 @@ function drawShadowEffect(cx_,cy_,evT){
   const _sS=Math.sin(evT*0.2),_sC=Math.cos(evT*0.2);
   for(let i=0;i<6;i++){
     const px_=cx_-15+i*6+(_sS*_IDX_CI[i]+_sC*_IDX_SI[i])*4,py_=cy_+20-evT*1.5-i*3;
-    g.fillStyle='#501e78';g.fillRect(px_,py_,3,3);
-    g.fillStyle='#8c50b4';g.fillRect(px_+1,py_+1,1,1);
+    g.fillStyle=_RC('vfx_shadow_dark');g.fillRect(px_,py_,3,3);
+    g.fillStyle=_RC('vfx_shadow_mid');g.fillRect(px_+1,py_+1,1,1);
   }g.globalAlpha=1;}
 }
 
@@ -158,12 +158,12 @@ function drawFlameEffect(cx_,cy_,evT){
     const px_=cx_+(_eC*_ORB_CI12[i]-_eS*_ORB_SI12[i])*dist;
     const py_=cy_+(_eS*_ORB_CI12[i]+_eC*_ORB_SI12[i])*dist*0.5-_evT05;
     const sz=4-evT*0.08;
-    if(sz>0){g.fillStyle='#dc5028';g.fillRect(px_-sz/2,py_-sz/2,sz,sz);g.fillStyle='#ffc83c';g.fillRect(px_-sz/4,py_-sz/4,sz/2,sz/2);}
+    if(sz>0){g.fillStyle=_RC('vfx_flame_core');g.fillRect(px_-sz/2,py_-sz/2,sz,sz);g.fillStyle=_RC('vfx_flame_tip');g.fillRect(px_-sz/4,py_-sz/4,sz/2,sz/2);}
   }g.globalAlpha=1;}
   // Target flash red
   if(evT<10){
     g.globalAlpha=(10-evT)/10*0.4;
-    bx(0,0,W,H,'#ff2020');
+    bx(0,0,W,H,_RC('vfx_danger_flash'));
     g.globalAlpha=1;
   }
 }
@@ -180,7 +180,7 @@ function drawStormEffect(evT){
     const a=Math.max(0,1-evT/25);
     // v390: sin-addition with _IDX_SI/CI — sin(evT+i) = sin(evT)*CI[i]+cos(evT)*SI[i]
     const _stS=Math.sin(evT),_stC=Math.cos(evT);
-    g.globalAlpha=a;g.strokeStyle='#ffffc8';g.lineWidth=3;
+    g.globalAlpha=a;g.strokeStyle=_RC('sparkle_cream');g.lineWidth=3;
     for(let i=0;i<3;i++){
       const sx_=80+i*200+(_stS*_IDX_CI[i]+_stC*_IDX_SI[i])*20;
       g.beginPath();g.moveTo(sx_,0);
@@ -207,15 +207,15 @@ function drawVoidEffect(cx_,cy_,evT){
     const dist=_base+(_eS5*_IDX_CI[i]+_eC5*_IDX_SI[i])*5;
     const px_=cx_+(_eC3*_ORB_CI10[i]-_eS3*_ORB_SI10[i])*dist;
     const py_=cy_+(_eS3*_ORB_CI10[i]+_eC3*_ORB_SI10[i])*dist*0.6;
-    g.fillStyle='#6432a0';g.fillRect(px_-2,py_-2,4,4);
-    g.fillStyle='#b464dc';g.fillRect(px_-1,py_-1,2,2);
+    g.fillStyle=_RC('vfx_void_dark');g.fillRect(px_-2,py_-2,4,4);
+    g.fillStyle=_RC('vfx_void_mid');g.fillRect(px_-1,py_-1,2,2);
   }}
   // Card shape flying — v390: parabola approx for arc (4x(1-x) ≈ sin(πx))
   if(evT>10&&evT<30){
     const t_=(evT-10)/20;
     const cardX=lerp(cx_+60,cx_-60,t_);
     const cardY=cy_-10+4*t_*(1-t_)*-20;
-    bx(cardX-6,cardY-8,12,16,'#7858a0');bx(cardX-5,cardY-7,10,14,'#9878c0');
+    bx(cardX-6,cardY-8,12,16,_RC('vfx_void_card_dark'));bx(cardX-5,cardY-7,10,14,_RC('vfx_void_card_mid'));
     txShadow('?',cardX-3,cardY+4,6,'#fff','rgba(0,0,0,.35)');
   }
   g.globalAlpha=1;g.restore();
