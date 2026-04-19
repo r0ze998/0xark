@@ -222,11 +222,13 @@ function drawVoidEffect(cx_,cy_,evT){
 }
 
 function drawResolvingPhase(){
-  drawBattleBG();
-  drawPhaseBanner('resolving');
-  drawBattleArena();
-  drawOpponentInfoBox();
-  drawPlayerInfoBox();
+  // v457: GBA migration
+  drawGBABattleBG();
+  drawGBABattleHUD('resolving');
+  drawGBABattleArena();
+  drawGBAHpBox(1,8,36,200,56,'resolving');
+  drawGBAHpBox(2,214,36,180,56,'resolving');
+  drawGBAHpBox(0,W-310,H-130,300,100,'resolving');
   const t=fr-bpFrame,eventDuration=50,currentIdx=Math.floor(t/eventDuration);
   if(currentIdx<bpResolveQueue.length){
     bpResolveIdx=currentIdx;const ev=bpResolveQueue[currentIdx];const evT=t%eventDuration;
@@ -255,6 +257,8 @@ function drawResolvingPhase(){
     if(currentIdx===0&&evT<40){
       const pAct=Math.min(bpAction,4),rAct=Math.min(bpRivalActions[0],3); // v262: hoisted
       const pCol=_RES_ACT_COLS[pAct],rCol=_RES_ACT_COLS[rAct];
+      // v457: GBA flash overlay at collision frame
+      drawGBARevealVFX(evT,pCol,rCol);
       const clashCX=W/2,clashCY=220;
       const pW=88,pH=44;
       // Ease-out slide: 0-13 in, 14-26 hold, 27-39 fade

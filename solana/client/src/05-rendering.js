@@ -1730,6 +1730,24 @@ function drawGBASealScroll(t0,bpAction_){
   g.globalAlpha=1;
 }
 
+// ── GBA resolve VFX — screen flash overlay at clash collision frame (v457) ──
+// Draws a brief GBA-style color pop when actions collide (evT 13-16 of event 0).
+// Delegates the main clash panel animation to the existing code in drawResolvingPhase.
+// t: frames since bpFrame; called only when currentIdx===0.
+function drawGBARevealVFX(evT,pActCol,rActCol){
+  if(evT<13||evT>18)return;
+  const bt=evT-13;
+  const alpha=Math.max(0,1-bt/5)*0.6;
+  // Left-side player flash (action color)
+  g.globalAlpha=alpha;
+  _drawGBABandStripes(0,H/2-24,W>>1,48,pActCol,_RC('text_dark'),-45);
+  // Right-side rival flash
+  _drawGBABandStripes(W>>1,H/2-24,W>>1,48,rActCol,_RC('text_dark'),45);
+  bx(0,H/2-26,W,2,_RC('menu_border'));
+  bx(0,H/2+22,W,2,_RC('menu_border'));
+  g.globalAlpha=1;
+}
+
 function drawTile(tx_,ty){
   const px=tx_*TW-camX,py=ty*TH-camY;
   if(px<-TW||px>W||py<-TH||py>H)return;
