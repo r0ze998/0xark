@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v456+";
+window.BUILD_VERSION = "v457+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -9193,6 +9193,24 @@ function drawGBASealScroll(t0,bpAction_){
   g.globalAlpha=1;
 }
 
+// ── GBA resolve VFX — screen flash overlay at clash collision frame (v457) ──
+// Draws a brief GBA-style color pop when actions collide (evT 13-16 of event 0).
+// Delegates the main clash panel animation to the existing code in drawResolvingPhase.
+// t: frames since bpFrame; called only when currentIdx===0.
+function drawGBARevealVFX(evT,pActCol,rActCol){
+  if(evT<13||evT>18)return;
+  const bt=evT-13;
+  const alpha=Math.max(0,1-bt/5)*0.6;
+  // Left-side player flash (action color)
+  g.globalAlpha=alpha;
+  _drawGBABandStripes(0,H/2-24,W>>1,48,pActCol,_RC('text_dark'),-45);
+  // Right-side rival flash
+  _drawGBABandStripes(W>>1,H/2-24,W>>1,48,rActCol,_RC('text_dark'),45);
+  bx(0,H/2-26,W,2,_RC('menu_border'));
+  bx(0,H/2+22,W,2,_RC('menu_border'));
+  g.globalAlpha=1;
+}
+
 function drawTile(tx_,ty){
   const px=tx_*TW-camX,py=ty*TH-camY;
   if(px<-TW||px>W||py<-TH||py>H)return;
@@ -16448,11 +16466,13 @@ function drawVoidEffect(cx_,cy_,evT){
 }
 
 function drawResolvingPhase(){
-  drawBattleBG();
-  drawPhaseBanner('resolving');
-  drawBattleArena();
-  drawOpponentInfoBox();
-  drawPlayerInfoBox();
+  // v457: GBA migration
+  drawGBABattleBG();
+  drawGBABattleHUD('resolving');
+  drawGBABattleArena();
+  drawGBAHpBox(1,8,36,200,56,'resolving');
+  drawGBAHpBox(2,214,36,180,56,'resolving');
+  drawGBAHpBox(0,W-310,H-130,300,100,'resolving');
   const t=fr-bpFrame,eventDuration=50,currentIdx=Math.floor(t/eventDuration);
   if(currentIdx<bpResolveQueue.length){
     bpResolveIdx=currentIdx;const ev=bpResolveQueue[currentIdx];const evT=t%eventDuration;
@@ -16481,6 +16501,8 @@ function drawResolvingPhase(){
     if(currentIdx===0&&evT<40){
       const pAct=Math.min(bpAction,4),rAct=Math.min(bpRivalActions[0],3); // v262: hoisted
       const pCol=_RES_ACT_COLS[pAct],rCol=_RES_ACT_COLS[rAct];
+      // v457: GBA flash overlay at collision frame
+      drawGBARevealVFX(evT,pCol,rCol);
       const clashCX=W/2,clashCY=220;
       const pW=88,pH=44;
       // Ease-out slide: 0-13 in, 14-26 hold, 27-39 fade
