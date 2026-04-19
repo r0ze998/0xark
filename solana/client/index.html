@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v455+";
+window.BUILD_VERSION = "v456+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -9172,6 +9172,27 @@ function drawGBABattleArena(){
   }
 }
 
+// ── GBA action-commit flash — diagonal stripe band + action name (v456) ──
+// t0: frames since bpFrame. bpAction_: 0=DRAW,1=STEAL,2=BARRIER,3=SCOUT,4=USE CARD.
+function drawGBASealScroll(t0,bpAction_){
+  const act=Math.min(bpAction_,4);
+  const GBA_ACT_COL=['ocean_deep','flag_red','menu_blue','grass_dark','mira_deep'];
+  const GBA_ACT_NAME=['DRAW CARD','STEAL','BARRIER','SCOUT','USE CARD'];
+  const col=_RC(GBA_ACT_COL[act]||'text_dark');
+  const aName=GBA_ACT_NAME[act]||'ACTION';
+  const fadeIn=Math.min(1,t0/5),fadeOut=t0>9?Math.max(0,(16-t0)/7):1;
+  const alpha=fadeIn*fadeOut;
+  g.globalAlpha=alpha*0.85;
+  _drawGBABandStripes(0,H/2-30,W,60,col,_RC('text_dark'),45);
+  bx(0,H/2-32,W,2,_RC('menu_border'));
+  bx(0,H/2+28,W,2,_RC('menu_border'));
+  const sz=Math.floor(12+Math.min(1,t0/7)*24);
+  const tW=aName.length*sz*0.6;
+  g.globalAlpha=alpha;
+  txShadow(aName,W/2-tW/2,H/2+sz*0.4,sz,_RC('menu_border'),'rgba(0,0,0,.9)');
+  g.globalAlpha=1;
+}
+
 function drawTile(tx_,ty){
   const px=tx_*TW-camX,py=ty*TH-camY;
   if(px<-TW||px>W||py<-TH||py>H)return;
@@ -15565,32 +15586,16 @@ function drawSelectPhase(){
 }
 
 function drawConfirmingPhase(){
-  drawBattleBG();
-  drawPhaseBanner('confirming');
-  drawBattleArena();
-  drawOpponentInfoBox();
-  drawPlayerInfoBox();
-  // v135: Action commitment shout — brief screen-center flash of chosen action name
+  // v456: GBA migration
+  drawGBABattleBG();
+  drawGBABattleHUD('confirming');
+  drawGBABattleArena();
+  drawGBAHpBox(1,8,36,200,56,'confirming');
+  drawGBAHpBox(2,214,36,180,56,'confirming');
+  drawGBAHpBox(0,W-310,H-130,300,100,'confirming');
+  // Action commitment flash — GBA diagonal stripe (v456)
   {const t0=fr-bpFrame;
-  if(t0<16){
-    const act=Math.min(bpAction,4);const aCol=_ACTION_COLORS_EX[act]; // v262: hoisted
-    const aName=_ACTION_NAMES_EX[act];
-    const fadeIn=Math.min(1,t0/5);const fadeOut=t0>9?Math.max(0,(16-t0)/7):1;
-    const shoutA=fadeIn*fadeOut;
-    const sz=Math.floor(12+Math.min(1,t0/7)*28); // font size 12→40 as it snaps in
-    const textW=aName.length*sz*0.62;
-    const shoutX=W/2-textW/2,shoutY=H/2-20;
-    // Background color burst
-    g.globalAlpha=shoutA*0.18;
-    bx(0,shoutY-sz-16,W,sz+40,aCol);
-    // Horizontal scanline accent
-    g.globalAlpha=shoutA*0.55;
-    bx(0,shoutY-sz/2,W,2,'rgba(255,255,255,.3)');
-    // Action name text
-    g.globalAlpha=shoutA;
-    txShadow(aName,shoutX,shoutY+sz*0.8,sz,aCol,'rgba(0,0,0,0.85)');
-    g.globalAlpha=1;
-  }}
+  if(t0<16){drawGBASealScroll(t0,bpAction);}}
   // Text box at bottom
   win(4,H-70,W-8,64);
   const t=fr-bpFrame; // v262: actionNames hoisted to _ACTION_NAMES
