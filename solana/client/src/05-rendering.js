@@ -1478,6 +1478,237 @@ function drawGBAVsSplash(t,vsRivalIdx,tauntLbl,tauntAlpha){
   }
 }
 
+// ── GBA battle background — Sprite Seas ocean-arena (v455) ──
+function drawGBABattleBG(){
+  const hY=_btlHorizonY;
+  // Sky zone
+  bx(0,0,W,hY,_RC('ocean_deep'));
+  // Horizon divider
+  bx(0,hY,W,3,_RC('text_dark'));
+  // Sea zone
+  bx(0,hY+3,W,H-hY-3,_RC('ocean_shallow'));
+  // Wave shimmer strips (use pre-cached _sFr04)
+  {const wY1=hY+10+Math.round(_sFr04*3);
+  g.globalAlpha=0.12;bx(0,wY1,W,2,'rgba(255,255,255,1)');
+  g.globalAlpha=0.07;bx(0,wY1+20,W,2,'rgba(255,255,255,1)');g.globalAlpha=1;}
+  // Enemy platform (top-right)
+  bx(W-280,_btlEnemyPlatY,240,6,_RC('path_tan'));
+  bx(W-280,_btlEnemyPlatY+6,240,3,_RC('path_shadow'));
+  // Player platform (bottom-left)
+  bx(40,_btlPlayerPlatY,200,8,_RC('path_tan'));
+  bx(40,_btlPlayerPlatY+8,200,4,_RC('path_shadow'));
+  // Atmospheric rival rim tint
+  const vsRiv=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
+  g.globalAlpha=0.08+0.03*_sFr04;
+  bx(0,0,W,H,vsRiv===1?_RC('vega_deep'):_RC('mira_deep'));
+  g.globalAlpha=1;
+}
+
+// ── GBA battle HUD — top banner + momentum strip (v455) ──
+function drawGBABattleHUD(phase){
+  const phaseCol={select:'menu_blue',confirming:'mira_deep',resolving:'flag_red',result:'grass_dark'};
+  const col=_RC(phaseCol[phase]||'text_dark');
+  const PHASE_LBL={select:'COMMIT PHASE',confirming:'REVEALING...',resolving:'RESOLVING!',result:'COMPLETE'};
+  // Banner strip (32px)
+  bx(0,0,W,32,col);
+  bx(0,0,W,2,_RC('menu_border'));
+  bx(0,31,W,1,_RC('text_dark'));
+  // Labels
+  txShadow(_BATTLE_HDR[rd]||('BATTLE '+rd),6,22,10,_RC('sail_cream'),'rgba(0,0,0,.55)');
+  const label=PHASE_LBL[phase]||'';
+  txShadow(label,W/2-label.length*5,22,16,_RC('menu_border'),'rgba(0,0,0,.55)');
+  txShadow(mapNames[currentMap],W-8-mapNames[currentMap].length*5,22,8,'rgba(255,255,255,.8)','rgba(0,0,0,.4)');
+  // Wallet TX / hash lines
+  if(walletConnected){
+    const _curSig=onchainLastTxSig||'';
+    if(_txLblSig!==_curSig){_txLblSig=_curSig;_txLblCache=_curSig?'TX:'+_curSig.slice(0,8)+'..':'TX:--';}
+    txShadow(_txLblCache,W-120,42,5,_RC('grass_light'),'rgba(0,0,0,.5)');
+  }
+  if(walletConnected&&walletLastCommitHash&&(phase==='confirming'||phase==='resolving')){
+    if(_hashLblRef!==walletLastCommitHash){_hashLblRef=walletLastCommitHash;_hashLblCache='Hash: '+walletLastCommitHash;}
+    txShadow(_hashLblCache,W/2-100,42,5,_RC('ocean_shallow'),'rgba(0,0,0,.5)');
+  }
+  // Momentum strip (4px at y=32)
+  bx(0,32,W,4,_RC('text_dark'));
+  if(battleRoundHistory.length>0){
+    const norm=Math.max(-1,Math.min(1,_battleRoundNet/Math.max(1,battleRoundHistory.length)));
+    if(norm>0){bx(W/2,32,(W/2)*norm,4,_RC('ocean_shallow'));}
+    else if(norm<0){bx(W/2+(W/2)*norm,32,-(W/2)*norm,4,_RC('flag_red'));}
+    g.globalAlpha=0.35+_sFr12*0.25;bx(W/2-1,32,2,4,_RC('text_light'));g.globalAlpha=1;
+  }else{
+    g.globalAlpha=0.2;bx(W/2-1,32,2,4,_RC('text_light'));g.globalAlpha=1;
+  }
+}
+
+// ── GBA HP/info box — idx: 0=player, 1=VEGA, 2=MIRA (v455) ──
+// x,y,w,h: bounding box. phase: current battlePhase string.
+function drawGBAHpBox(idx,x,y,w,h,phase){
+  win(x,y,w,h);
+  const p=pl[idx];
+  const shk=(bpShakeTarget===idx&&bpShakeTimer>0);
+  const bX=x+(shk?Math.round(_sBpST12*3):0);
+  const bY=y+(shk?Math.round(_cBpST16*2):0);
+  // Top accent bar
+  const accentCol=idx===0?_RC('ocean_deep'):idx===1?_RC('vega_deep'):_RC('mira_deep');
+  bx(bX+4,bY+4,w-8,20,accentCol);
+  // Name
+  const nameCol=idx===0?_RC('sail_cream'):idx===1?_RC('vega_pulse'):_RC('mira_pulse');
+  txShadow(p.n,bX+10,bY+19,11,nameCol,'rgba(0,0,0,.55)');
+  // HP hearts
+  const heartStep=idx===0?18:14;
+  const hpX=bX+(idx===0?100:90),hpY=bY+7;
+  const dmgFlash=bpHPDmgAnim[idx]>0&&Math.floor(fr/3)%2===0;
+  const hpFull=_RC('hp_full'),hpFlash=_RC('vega_pulse'),hpEmpty='rgba(64,24,24,1)';
+  for(let h2=0;h2<BATTLE_HP_MAX;h2++){
+    const filled=h2<bpHP[idx];
+    const hc=filled?(dmgFlash?hpFlash:hpFull):hpEmpty;
+    const hx2=hpX+h2*heartStep,hy2=hpY;
+    if(idx===0){
+      bx(hx2+2,hy2,4,1,hc);bx(hx2,hy2+1,8,1,hc);
+      bx(hx2,hy2+2,8,3,hc);bx(hx2+1,hy2+5,6,1,hc);
+      bx(hx2+2,hy2+6,4,1,hc);bx(hx2+3,hy2+7,2,1,hc);bx(hx2+4,hy2+8,1,1,hc);
+      if(filled)bx(hx2+1,hy2+2,2,1,'rgba(255,255,255,.35)');
+    }else{
+      bx(hx2+1,hy2,3,1,hc);bx(hx2,hy2+1,6,1,hc);
+      bx(hx2,hy2+2,6,2,hc);bx(hx2+1,hy2+4,4,1,hc);
+      bx(hx2+2,hy2+5,2,1,hc);bx(hx2+3,hy2+6,1,1,hc);
+      if(filled)bx(hx2+1,hy2+2,1,1,'rgba(255,255,255,.4)');
+    }
+  }
+  // Card count
+  const cc=cardCount(p);
+  const ccCol=cc>=4?_RC('flag_red'):cc>=3?_RC('mira_amber'):_RC('text_light');
+  txShadow('CDS '+cc,bX+w-50,bY+19,8,ccCol,'rgba(0,0,0,.4)');
+  // Near-win warning (rivals)
+  if(idx>0&&cc>=4){
+    const wA=0.5+(idx===1?_sFr18:(_sFr18*_BTL_COS1+_cFr18*_BTL_SIN1))*0.5;
+    g.globalAlpha=wA*0.9;bx(bX+6,bY+24,w-12,10,_RC('flag_red'));g.globalAlpha=1;
+    txShadow(cc>=5?'!! FULL !!':'! DANGER',bX+10,bY+31,6,_RC('text_light'),'rgba(0,0,0,.6)');
+  }
+  // Tell during select phase (rivals)
+  if(idx>0&&phase==='select'){
+    const tell=bpRivalTells[idx-1];
+    if(tell){
+      const tA=Math.min(1,(fr-bpFrame)/12)*0.85;
+      g.globalAlpha=tA;
+      bx(bX+4,bY+28,w-8,13,'rgba(40,100,130,.4)');
+      txShadow(tell,bX+8,bY+38,6,_RC('ocean_shallow'),'rgba(0,0,0,.3)');
+      g.globalAlpha=1;
+    }
+  }
+  // Spell orbs + progress (player)
+  if(idx===0){
+    const _GBA_ORBLBL=['STL','BLK','SCT'];
+    const _GBA_ORBFILL=[_RC('flag_red'),_RC('ocean_shallow'),_RC('grass_mid')];
+    const _GBA_ORBEMP=['rgba(56,12,12,1)','rgba(12,28,64,1)','rgba(12,48,12,1)'];
+    const oW=6,oH=6,oG=2;
+    for(let si=0;si<3;si++){
+      const ox2=bX+10+si*90,oy2=bY+h-25;
+      const val=si===0?sp.s:si===1?sp.b:sp.c;
+      const warn=(si===0&&sp.s===0)||(si===2&&sp.c===0);
+      const lc=warn&&Math.floor(fr/12)%2===0?_RC('flag_red'):_RC('fg_muted');
+      txShadow(_GBA_ORBLBL[si],ox2,oy2+10,6,lc,'rgba(0,0,0,.3)');
+      for(let o=0;o<3;o++){
+        const filled=o<val;
+        bx(ox2+26+o*(oW+oG),oy2+2,oW,oH,filled?_GBA_ORBFILL[si]:_GBA_ORBEMP[si]);
+        if(filled)bx(ox2+26+o*(oW+oG)+1,oy2+3,2,1,'rgba(255,255,255,.3)');
+      }
+    }
+    // Unique card count (bottom-right of player box)
+    const vSz=hasUniqueCards(0).size;
+    txShadow(_UNIQ60[vSz]||(vSz+'/60'),bX+w-52,bY+h-10,9,_RC('gold_accent'),'rgba(0,0,0,.3)');
+    if(vSz>=60){
+      const fl=_sFr15*0.3+0.7;g.globalAlpha=fl;
+      txShadow('60/60\u2192WIN!',bX+w-90,bY+h-24,10,_RC('menu_border'),'rgba(0,0,0,.4)');
+      g.globalAlpha=1;
+    }
+    // Area name (bottom-left of player box)
+    txShadow(mapNames[currentMap],bX+10,bY+h-10,7,_RC('fg_muted'),'rgba(0,0,0,.3)');
+  }
+}
+
+// ── GBA pixel-art battle sprite — GBA primitive, no Kenney dependency (v455) ──
+function drawGBABattleSprite(p,cx,cy,scale,facingAway){
+  const s=scale;
+  const _bpI=p===pl[0]?0:p===pl[1]?1:2;
+  cy=cy+Math.round((_sFr055*_BREATH_CI[_bpI]+_cFr055*_BREATH_SI[_bpI])*s*0.5);
+  const w=14*s,h=20*s,ox=cx-w/2,oy=cy-h/2;
+  // Shadow (pre-baked offscreen canvas)
+  const _shC=s>=2.5?_btlShadow3:_btlShadow22,_shHW=s>=2.5?24:18,_shHH=s>=2.5?10:8;
+  g.drawImage(_shC,(cx-_shHW)|0,(oy+h+2*s-_shHH)|0);
+  // Character color scheme
+  let shirtC,shirtH,hairC;
+  if(p===pl[0]){shirtC=_RC('ocean_deep');shirtH=_RC('menu_blue');hairC=_RC('text_dark');}
+  else if(p===pl[1]){shirtC=_RC('vega_deep');shirtH=_RC('vega_magenta');hairC=_RC('mira_deep');}
+  else{shirtC=_RC('mira_deep');shirtH=_RC('mira_amber');hairC=_RC('hull_wood');}
+  const skinC=_RC('sail_cream'),skinS=_RC('path_tan');
+  // Legs
+  bx(ox+2*s,oy+17*s,4*s,3*s,_RC('text_dark'));bx(ox+8*s,oy+17*s,4*s,3*s,_RC('text_dark'));
+  // Torso + arms
+  bx(ox+2*s,oy+8*s,10*s,7*s,shirtC);bx(ox+3*s,oy+9*s,8*s,5*s,shirtH);
+  bx(ox-s,oy+9*s,4*s,6*s,shirtC);bx(ox+11*s,oy+9*s,4*s,6*s,shirtC);
+  bx(ox-s,oy+14*s,3*s,2*s,skinC);bx(ox+12*s,oy+14*s,3*s,2*s,skinC);
+  // Head
+  bx(ox+3*s,oy+s,8*s,8*s,skinC);bx(ox+4*s,oy+2*s,6*s,6*s,skinS);
+  if(facingAway){
+    bx(ox+3*s,oy,8*s,5*s,hairC);bx(ox+2*s,oy+s,2*s,3*s,hairC);bx(ox+10*s,oy+s,2*s,3*s,hairC);
+    bx(ox+4*s,oy+10*s,6*s,3*s,shirtH);
+  }else{
+    bx(ox+4*s,oy+4*s,2*s,2*s,_RC('text_dark'));bx(ox+8*s,oy+4*s,2*s,2*s,_RC('text_dark'));
+    bx(ox+4*s,oy+4*s,s,s,'rgba(255,255,255,.7)');bx(ox+8*s,oy+4*s,s,s,'rgba(255,255,255,.7)');
+    bx(ox+6*s,oy+7*s,2*s,s,skinS);
+    if(p===pl[1]){
+      bx(ox+3*s,oy,8*s,3*s,hairC);bx(ox+2*s,oy+s,2*s,7*s,hairC);bx(ox+10*s,oy+s,2*s,7*s,hairC);
+      bx(ox+4*s,oy-s,6*s,2*s,hairC);
+    }else if(p===pl[2]){
+      bx(ox+2*s,oy,10*s,3*s,_RC('gold_accent'));bx(ox+s,oy+2*s,12*s,s,_RC('mira_deep'));
+    }else{
+      bx(ox+3*s,oy,8*s,3*s,hairC);bx(ox+2*s,oy,2*s,2*s,hairC);bx(ox+10*s,oy,2*s,2*s,hairC);
+    }
+  }
+}
+
+// ── GBA battle arena — sprite layout + tell bubbles (v455) ──
+function drawGBABattleArena(){
+  let psx=0,psy=0;
+  if(bpShakeTarget===0&&bpShakeTimer>0){psx=Math.round(_sBpST12*4);psy=Math.round(_cBpST16*2);}
+  drawGBABattleSprite(pl[0],180+psx,H-130+psy,3,true);
+  let osx=0,osy=0;
+  if(bpShakeTarget===1&&bpShakeTimer>0){osx=Math.round(_sBpST12*4);osy=Math.round(_cBpST16*2);}
+  drawGBABattleSprite(pl[1],W-160+osx,110+osy,3,false);
+  let o2sx=0,o2sy=0;
+  if(bpShakeTarget===2&&bpShakeTimer>0){o2sx=Math.round(_sBpST12*4);o2sy=Math.round(_cBpST16*2);}
+  const r2alive=cardCount(pl[2])>0;
+  g.globalAlpha=r2alive?0.85:0.3;
+  drawGBABattleSprite(pl[2],W-310+o2sx,140+o2sy,2.2,false);
+  g.globalAlpha=1;
+  if(!r2alive){txShadow('FLED',W-310,175,7,_RC('flag_red'),'rgba(0,0,0,.4)');}
+  else{txShadow(pl[2].n,W-330,175,6,_RC('mira_amber'),'rgba(0,0,0,.3)');}
+  // Tell speech bubbles
+  if(battlePhase==='select'&&bpRivalTells[0]){
+    const tp=0.7+0.3*_sFr25;
+    const vbX=W-168,vbY=60,vbW=18,vbH=18;
+    g.globalAlpha=tp*0.92;
+    bx(vbX,vbY,vbW,vbH,_RC('vega_deep'));
+    bx(vbX,vbY,vbW,1,_RC('vega_pulse'));bx(vbX,vbY,1,vbH,_RC('vega_pulse'));
+    bx(vbX+vbW-1,vbY,1,vbH,_RC('vega_deep'));bx(vbX,vbY+vbH-1,vbW,1,_RC('vega_deep'));
+    bx(vbX+2,vbY+vbH,4,3,_RC('vega_deep'));
+    txShadow('!',vbX+6,vbY+13,12,_RC('vega_pulse'),'rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  }
+  if(battlePhase==='select'&&bpRivalTells[1]&&r2alive){
+    const tp2=0.7+0.3*(_sFr25*_BTL_COS14+_cFr25*_BTL_SIN14);
+    const mbX=W-318,mbY=88,mbW=18,mbH=18;
+    g.globalAlpha=tp2*0.85;
+    bx(mbX,mbY,mbW,mbH,_RC('mira_deep'));
+    bx(mbX,mbY,mbW,1,_RC('mira_amber'));bx(mbX,mbY,1,mbH,_RC('mira_amber'));
+    bx(mbX+mbW-1,mbY,1,mbH,_RC('mira_deep'));bx(mbX,mbY+mbH-1,mbW,1,_RC('mira_deep'));
+    bx(mbX+12,mbY+mbH,4,3,_RC('mira_deep'));
+    txShadow('!',mbX+6,mbY+13,12,_RC('mira_amber'),'rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  }
+}
+
 function drawTile(tx_,ty){
   const px=tx_*TW-camX,py=ty*TH-camY;
   if(px<-TW||px>W||py<-TH||py>H)return;

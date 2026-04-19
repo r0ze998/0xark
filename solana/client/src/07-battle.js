@@ -1027,15 +1027,166 @@ function drawActionGrid(){
   }
 }
 
+// GBA-styled action menu — replaces drawActionGrid() in select phase (v455).
+// Badge logic kept here (accesses local caches: _drawPoolPreviewCache, _agSpS, etc.).
+function drawGBAActionMenu(){
+  const gridX=8,gridY=H-164,cellW=160,cellH=42,gap=4;
+  if(_agSpS!==sp.s){_agSpS=sp.s;_AG_ACTIONS[1].desc=sp.s+'\u00D7 takes rival card';}
+  if(_agSpB!==sp.b){_agSpB=sp.b;_AG_ACTIONS[2].desc=sp.b+'\u00D7 blocks steal';}
+  if(_agSpC!==sp.c){_agSpC=sp.c;_AG_ACTIONS[3].desc=sp.c+'\u00D7 view rival hand';}
+  const actions=_AG_ACTIONS;
+  // Grid background (GBA navy)
+  win(gridX-2,gridY-6,cellW*2+gap+12,cellH*2+gap+16);
+  for(let r=0;r<2;r++){
+    for(let c=0;c<2;c++){
+      const idx=r*2+c;
+      const cx_=gridX+4+c*(cellW+gap),cy_=gridY+2+r*(cellH+gap);
+      const avail=isActionAvailable(idx);
+      const sel=(idx===ai&&!bpCardSelectActive&&!bpTargetSelectActive);
+      // Cell BG — GBA palette
+      if(sel&&avail){
+        bx(cx_,cy_,cellW,cellH,_RC('ocean_deep'));
+        bx(cx_,cy_,cellW,1,_RC('menu_border'));bx(cx_,cy_+cellH-1,cellW,1,_RC('gold_accent'));
+        bx(cx_,cy_,1,cellH,_RC('menu_border'));bx(cx_+cellW-1,cy_,1,cellH,_RC('gold_accent'));
+      }else{
+        bx(cx_,cy_,cellW,cellH,avail?_RC('text_dark'):'rgba(10,8,24,1)');
+        bx(cx_,cy_,cellW,1,avail?_RC('menu_blue'):'rgba(20,16,40,1)');
+      }
+      // Pixel-art icons (same shape logic, GBA colors)
+      const ic=avail?_RC('menu_border'):_RC('fg_hint');
+      const ix=cx_+4,iy=cy_+6;
+      if(!avail){
+        bx(ix,iy,18,18,_RC('fg_hint'));
+      }else if(idx===0){
+        bx(ix+3,iy+1,12,15,'rgba(0,0,0,.28)');bx(ix+2,iy,12,15,_RC('ocean_deep'));
+        bx(ix+2,iy,12,1,ic);bx(ix+2,iy+14,12,1,ic);
+        bx(ix+2,iy,1,15,ic);bx(ix+13,iy,1,15,ic);
+        bx(ix+7,iy+3,2,5,ic);bx(ix+5,iy+7,6,2,ic);bx(ix+6,iy+9,4,1,ic);bx(ix+7,iy+10,2,1,ic);
+      }else if(idx===1){
+        bx(ix+1,iy+10,12,6,ic);
+        for(let fi=0;fi<4;fi++){const fx=ix+1+fi*3,fh=4+(fi===1||fi===2?2:0);bx(fx,iy+10-fh,2,fh,ic);}
+        bx(ix+14,iy+5,3,1,'rgba(255,255,255,.5)');bx(ix+14,iy+8,3,1,'rgba(255,255,255,.38)');bx(ix+14,iy+11,3,1,'rgba(255,255,255,.25)');
+      }else if(idx===2){
+        bx(ix+4,iy,10,1,ic);bx(ix+2,iy+1,14,6,ic);bx(ix+2,iy+7,14,2,ic);
+        bx(ix+3,iy+9,12,2,ic);bx(ix+5,iy+11,8,2,ic);bx(ix+7,iy+13,4,2,ic);bx(ix+8,iy+15,2,1,ic);
+        bx(ix+4,iy+1,10,6,'rgba(0,0,100,.45)');bx(ix+8,iy+2,2,8,'rgba(255,255,255,.5)');bx(ix+5,iy+5,8,2,'rgba(255,255,255,.5)');
+      }else if(idx===3){
+        bx(ix+2,iy+3,2,5,ic);bx(ix+12,iy+3,2,5,ic);bx(ix+4,iy+1,6,2,ic);bx(ix+4,iy+10,6,2,ic);
+        bx(ix+3,iy+2,2,1,ic);bx(ix+11,iy+2,2,1,ic);bx(ix+3,iy+11,2,1,ic);bx(ix+11,iy+11,2,1,ic);
+        bx(ix+6,iy+4,4,5,ic);bx(ix+7,iy+5,2,2,'rgba(255,255,255,.55)');
+        bx(ix+12,iy+10,2,2,ic);bx(ix+13,iy+12,2,2,ic);bx(ix+14,iy+14,2,2,ic);bx(ix+15,iy+16,2,1,ic);
+      }
+      // Action name + desc
+      const textCol=avail?(sel?_RC('menu_border'):_RC('fg_muted')):_RC('fg_hint');
+      if(sel&&avail){
+        const shimY=cy_+Math.floor(((fr*0.7)%(cellH-4)))+2;
+        g.globalAlpha=0.10;bx(cx_+1,shimY,cellW-2,2,_RC('menu_border'));g.globalAlpha=1;
+        const glowA=0.06+0.04*_sFr18;
+        g.globalAlpha=glowA;bx(cx_+24,cy_+6,cellW-28,cellH-10,_RC('gold_accent'));g.globalAlpha=1;
+        txShadow(actions[idx].name,cx_+26,cy_+20,16,textCol,'rgba(0,0,0,.5)');
+      }else{
+        txShadow(actions[idx].name,cx_+26,cy_+18,14,textCol,'rgba(0,0,0,.4)');
+      }
+      txShadow(actions[idx].desc,cx_+26,cy_+32,10,avail?_RC('fg_muted'):_RC('fg_hint'),'rgba(0,0,0,.3)');
+      if(sel&&avail){txShadow('\u25B6',cx_-12+_sFr15*2,cy_+22,10,_RC('menu_border'),'rgba(0,0,0,.4)');}
+      // Smart context badges (same logic as drawActionGrid)
+      if(avail&&battlePhase==='select'){
+        let badge='',badgeCol=_RC('fg_hint'),badgeBg='rgba(0,0,0,.35)';
+        const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
+        if(idx===0){
+          const _dbKey=currentMap*10000+(pl[0].vault?pl[0].vault.size:0);
+          if(_drawBadgeKey!==_dbKey){
+            _drawBadgeKey=_dbKey;
+            const pool_=DUNGEON_FLOOR_CARDS[currentMap]||[];
+            const vault_=pl[0].vault||new Set();
+            let newInPool=0,maxNewRar=0;
+            for(let _pi=0;_pi<pool_.length;_pi++){const _cid=pool_[_pi];if(!vault_.has(_cid)){newInPool++;const _cr=CD[_cid-1];if(_cr&&_cr.r>maxNewRar)maxNewRar=_cr.r;}}
+            if(newInPool>0){
+              if(maxNewRar>=5){_drawBadge='\u2605 LEGEND';_drawBadgeCol=_RC('menu_border');_drawBadgeBg='rgba(40,30,0,.7)';}
+              else if(maxNewRar>=4){_drawBadge='\u2605 EPIC';_drawBadgeCol=_RC('gold_accent');_drawBadgeBg='rgba(30,20,0,.7)';}
+              else if(maxNewRar>=3){_drawBadge='\u2605 RARE';_drawBadgeCol=_RC('roof_purple');_drawBadgeBg='rgba(20,5,30,.7)';}
+              else{_drawBadge=_NEW_IN_POOL[newInPool]||'+'+newInPool+' NEW';_drawBadgeCol=_RC('grass_light');_drawBadgeBg='rgba(0,40,20,.6)';}
+            }else if(pool_.length>0){_drawBadge='ALL OWNED';_drawBadgeCol=_RC('fg_muted');_drawBadgeBg='rgba(0,0,0,.3)';}
+            else{_drawBadge='';_drawBadgeCol=_RC('fg_hint');_drawBadgeBg='rgba(0,0,0,.35)';}
+          }
+          badge=_drawBadge;badgeCol=_drawBadgeCol;badgeBg=_drawBadgeBg;
+        }else if(idx===1){
+          const tgtBarrier=bpRivalActions[vsRivalIdx-1]===2;
+          if(tgtBarrier){badge='BLOCKED';badgeCol=_RC('ocean_shallow');badgeBg='rgba(10,20,60,.6)';}
+          else if(pl[vsRivalIdx].cc===0){badge='NO CARDS';badgeCol=_RC('fg_muted');badgeBg='rgba(0,0,0,.35)';}
+          else{
+            const _stSd=bpScoutedCards[vsRivalIdx-1];
+            if(_stSd&&rd-_stSd.round<=1&&_stSd.cards.length>0){
+              let _maxR=0;for(let _si=0;_si<_stSd.cards.length;_si++){if(_stSd.cards[_si].r>_maxR)_maxR=_stSd.cards[_si].r;}
+              badge=_STL_RAR_LBL[_maxR]||'\u26A1? TARGET';
+              badgeCol=_maxR>=5?_RC('menu_border'):_maxR>=4?_RC('gold_accent'):_maxR>=3?_RC('roof_purple'):_RC('mira_amber');
+              badgeBg=_maxR>=4?'rgba(40,30,0,.6)':'rgba(40,20,0,.6)';
+            }else{badge='\u2714 OPEN';badgeCol=_RC('mira_amber');badgeBg='rgba(40,20,0,.6)';}
+          }
+        }else if(idx===2){
+          const rivalPlanSteal=bpRivalActions[vsRivalIdx-1]===1;
+          if(rivalPlanSteal&&!bpPlayerBarrier){badge='DEFEND!';badgeCol=_RC('flag_red');badgeBg='rgba(40,0,0,.6)';}
+          else if(bpPlayerBarrier){badge='ACTIVE';badgeCol=_RC('ocean_shallow');badgeBg='rgba(0,20,50,.6)';}
+          else{badge='OPTIONAL';badgeCol=_RC('fg_muted');badgeBg='rgba(0,0,0,.35)';}
+        }else if(idx===3){
+          const sc0=bpScoutedCards[vsRivalIdx-1];
+          if(sc0&&sc0.round===rd){badge='FRESH';badgeCol=_RC('grass_light');badgeBg='rgba(0,30,10,.6)';}
+          else if(sc0&&rd-sc0.round<=1){badge=_SCOUT_DATA_LBL[sc0.round]||('R'+sc0.round+' DATA');badgeCol=_RC('mira_amber');badgeBg='rgba(30,20,0,.6)';}
+          else if(sc0){badge='STALE';badgeCol=_RC('fg_muted');badgeBg='rgba(0,0,0,.35)';}
+          else{badge='UNSCOUTED';badgeCol=_RC('fg_muted');badgeBg='rgba(0,0,0,.3)';}
+        }
+        if(badge){
+          const bW2=badge.length*5+8,bH2=11,bx2_=cx_+cellW-bW2-4,by2_=cy_+4;
+          g.globalAlpha=sel?0.95:0.7;
+          bx(bx2_,by2_,bW2,bH2,badgeBg);bx(bx2_,by2_,bW2,1,badgeCol);
+          txShadow(badge,bx2_+3,by2_+9,5,badgeCol,'rgba(0,0,0,.3)');
+          g.globalAlpha=1;
+        }
+      }
+    }
+  }
+  // USE CARD button
+  const ucX=gridX+4,ucY=gridY+cellH*2+gap+6,ucW=cellW*2+gap,ucH=28;
+  const ucAvail=isActionAvailable(4),ucSel=(ai===4&&!bpCardSelectActive&&!bpTargetSelectActive);
+  if(ucSel&&ucAvail){
+    bx(ucX,ucY,ucW,ucH,_RC('ocean_deep'));bx(ucX,ucY,ucW,1,_RC('menu_border'));
+    bx(ucX,ucY+ucH-1,ucW,1,_RC('gold_accent'));
+    bx(ucX,ucY,1,ucH,_RC('menu_border'));bx(ucX+ucW-1,ucY,1,ucH,_RC('gold_accent'));
+  }else{
+    bx(ucX,ucY,ucW,ucH,ucAvail?_RC('text_dark'):'rgba(10,8,24,1)');
+    bx(ucX,ucY,ucW,1,ucAvail?_RC('menu_blue'):'rgba(20,16,40,1)');
+  }
+  {const uix=ucX+4,uiy=ucY+4;
+  bx(uix+3,uiy+1,12,15,'rgba(0,0,0,.25)');bx(uix+2,uiy,12,15,_RC('ocean_deep'));
+  bx(uix+2,uiy,12,1,_RC('gold_accent'));bx(uix+2,uiy+14,12,1,_RC('gold_accent'));
+  bx(uix+2,uiy,1,15,_RC('gold_accent'));bx(uix+13,uiy,1,15,_RC('gold_accent'));
+  bx(uix+8,uiy+2,3,4,_RC('menu_border'));bx(uix+6,uiy+6,5,2,_RC('menu_border'));
+  bx(uix+7,uiy+8,3,4,_RC('menu_border'));bx(uix+9,uiy+3,1,2,'rgba(255,255,255,.5)');}
+  txShadow('USE CARD',ucX+26,ucY+18,14,ucAvail?(ucSel?_RC('menu_border'):_RC('gold_accent')):_RC('fg_hint'),'rgba(0,0,0,.4)');
+  const _handCount=cardCount(pl[0]);
+  txShadow(_handCount>0?(_HAND_READY_LBL[_handCount]||(_handCount+' cards ready')):'hand empty',ucX+140,ucY+18,10,ucAvail?_RC('fg_muted'):_RC('fg_hint'),'rgba(0,0,0,.3)');
+  if(ucSel&&ucAvail){txShadow('\u25B6',ucX-12+_sFr15*2,ucY+20,10,_RC('menu_border'),'rgba(0,0,0,.4)');}
+  if(sp.s<=0&&sp.b<=0&&sp.c<=0){
+    txShadow('No spells! DRAW or USE CARD.',gridX+4,gridY+cellH*2+gap+ucH+14,8,_RC('mira_amber'),'rgba(0,0,0,.3)');
+  }
+  if(bothRivalsEliminated()){
+    txShadow('Both rivals out! Keep drawing.',gridX+4,gridY+cellH*2+gap+ucH+24,8,_RC('grass_mid'),'rgba(0,0,0,.3)');
+  }
+}
+
 function drawSelectPhase(){
   const slideProgress=Math.min(1,(fr-bpFrame)/20);
   g.save();g.translate(-(1-slideProgress)*W,0);
-  drawBattleBG();
-  drawPhaseBanner('select');
-  drawBattleArena();
-  drawOpponentInfoBox();
-  drawPlayerInfoBox();
-  drawActionGrid();
+  // v455: GBA migration — all rendering via GBA primitives
+  drawGBABattleBG();
+  drawGBABattleHUD('select');
+  drawGBABattleArena();
+  // Rival info boxes (top area, below HUD)
+  drawGBAHpBox(1,8,36,200,56,'select');    // VEGA
+  drawGBAHpBox(2,214,36,180,56,'select');  // MIRA
+  // Player info box (bottom-right)
+  drawGBAHpBox(0,W-310,H-130,300,100,'select');
+  drawGBAActionMenu();
   // v88: DRAW pool preview panel (shown when DRAW is highlighted)
   if(ai===0&&!bpCardSelectActive&&!bpTargetSelectActive){
     const pool=DUNGEON_FLOOR_CARDS[currentMap];
