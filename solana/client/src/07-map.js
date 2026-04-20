@@ -1104,9 +1104,7 @@ function dMap(){
   const endTX=Math.min(MW-1,Math.ceil((camX+W)/TW));
   const endTY=Math.min(MH-1,Math.ceil((camY+H)/TH));
 
-  // ── MIDJOURNEY BACKGROUND LAYER ── drawn first, tiles + fog overlay on top
-  drawMapBg(currentMap);
-  // B2-5: GBA dungeon backdrop (replaces empty drawMapBg for dungeon floors)
+  // B2-5: GBA dungeon backdrop (replaces legacy jpg background for dungeon floors)
   if(inDungeon) drawGBADungeonBG();
 
   // ── TILE LAYER CACHE ── only redraw tiles when camera moves or map changes
@@ -1138,10 +1136,6 @@ function dMap(){
       tileCacheDirty=false;
     }
     g.imageSmoothingEnabled=false;
-    // v453a (@phase-b2-cleanup): legacy BG_SHEETS path fully disabled.
-    // Always draw GBA tile canvas regardless of currentMap.
-    // getBgSheet/BG_SHEETS/drawMapBg are retained with @deprecated tags;
-    // remove in B2-8 final cleanup.
     g.drawImage(tileCanvas,0,0,W,H);
     // Animated dungeon tile overlays — drawn on main canvas every frame (bypass static tile cache)
     if(inDungeon){

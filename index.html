@@ -29,7 +29,7 @@
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7.1.4/dist/pixi.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
 <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 <style>
@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v467+";
+window.BUILD_VERSION = "v455+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -1009,46 +1009,6 @@ function drawCpxRuin(idx,destX,destY,scale){
   return true;
 }
 
-// ═══════════════════════════════════════
-// MIDJOURNEY MAP BACKGROUNDS
-// bg-town.jpg   : port town night scene   (map 0)
-// bg-dungeon1.jpg : shallow dungeon       (maps 1-2)
-// bg-dungeon2.jpg : mid dungeon           (maps 3-4)
-// bg-dungeon3.jpg : deepest floor         (map 5)
-// All 1280x960 (4:3) — drawn as scrolling base layer behind tiles
-// TODO(phase-b2-town): drop jpg bg for map 0; Sprite Seas town uses tile-based procedural background. Legacy in assets/retired/.
-// TODO(phase-b2-dungeon): drop jpg bg for maps 1-5; Sprite Seas dungeon uses tile+vignette procedural. Legacy in assets/retired/.
-// ═══════════════════════════════════════
-// @deprecated (phase-b2-cleanup): BG_SHEETS/BG_LOADED/BG_FILES disabled in v453a.
-// GBA tile canvas is always the background source. Remove in B2-8 final cleanup.
-const BG_SHEETS = [null,null,null,null]; // indices: 0=town, 1=dung1-2, 2=dung3-4, 3=dung5
-const BG_LOADED = [false,false,false,false];
-const BG_FILES  = ['bg-town.jpg','bg-dungeon1.jpg','bg-dungeon2.jpg','bg-dungeon3.jpg'];
-BG_FILES.forEach((f,i)=>{
-  const img=new Image();
-  img.src=f;
-  img.onload=()=>{BG_SHEETS[i]=img;BG_LOADED[i]=true;};
-  // no error handler — graceful fallback to tile-only rendering
-});
-
-// @deprecated (phase-b2-cleanup): getBgSheet always returns null-equivalent since v453a. Remove in B2-8.
-function getBgSheet(mapIdx){
-  if(mapIdx===0)return BG_LOADED[0]?BG_SHEETS[0]:null;
-  if(mapIdx<=2)return BG_LOADED[1]?BG_SHEETS[1]:null;
-  if(mapIdx<=4)return BG_LOADED[2]?BG_SHEETS[2]:null;
-  return BG_LOADED[3]?BG_SHEETS[3]:null;
-}
-
-// @deprecated (phase-b2-cleanup): drawMapBg is no-op since v453a (all BG files retired/404). Remove in B2-8.
-// Draw Midjourney background behind tiles — scrolls with camera
-function drawMapBg(mapIdx){
-  const bg=getBgSheet(mapIdx);
-  if(!bg)return;
-  g.imageSmoothingEnabled=true;
-  g.globalAlpha=1;
-  g.drawImage(bg,-camX,-camY,MW*TW,MH*TH);
-  g.imageSmoothingEnabled=false;
-}
 
 // ═══════════════════════════════════════
 // ZELDA-LIKE CHARACTER SPRITES (CC0 / public domain)
@@ -13367,9 +13327,7 @@ function dMap(){
   const endTX=Math.min(MW-1,Math.ceil((camX+W)/TW));
   const endTY=Math.min(MH-1,Math.ceil((camY+H)/TH));
 
-  // ── MIDJOURNEY BACKGROUND LAYER ── drawn first, tiles + fog overlay on top
-  drawMapBg(currentMap);
-  // B2-5: GBA dungeon backdrop (replaces empty drawMapBg for dungeon floors)
+  // B2-5: GBA dungeon backdrop (replaces legacy jpg background for dungeon floors)
   if(inDungeon) drawGBADungeonBG();
 
   // ── TILE LAYER CACHE ── only redraw tiles when camera moves or map changes
@@ -13401,10 +13359,6 @@ function dMap(){
       tileCacheDirty=false;
     }
     g.imageSmoothingEnabled=false;
-    // v453a (@phase-b2-cleanup): legacy BG_SHEETS path fully disabled.
-    // Always draw GBA tile canvas regardless of currentMap.
-    // getBgSheet/BG_SHEETS/drawMapBg are retained with @deprecated tags;
-    // remove in B2-8 final cleanup.
     g.drawImage(tileCanvas,0,0,W,H);
     // Animated dungeon tile overlays — drawn on main canvas every frame (bypass static tile cache)
     if(inDungeon){
