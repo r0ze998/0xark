@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v507+";
+window.BUILD_VERSION = "v508+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -7708,6 +7708,24 @@ let dungeonConfirmActive=false, dungeonConfirmExit=null;
 let nearInteractable=null; // TOWN_INTERACTABLES entry currently adjacent to player (or null)
 let townShopActive=false, townShopType='', townShopTab=0, townShopOpenFrame=0;
 
+// T73: General Item Shop state
+const ITEM_CATALOG=[
+  {id:'booster', name:'Booster Pack',    desc:'Random card from current pool',     icon:'\u25A0', col:'#d0a030', price:0.05, endpoint:'/shop/booster'},
+  {id:'hint',    name:'Hint Scroll',     desc:'Reveals a rival\'s current floor',  icon:'\u25B2', col:'#60c0e0', price:0.01, endpoint:'/intel/location/1'},
+  {id:'revive',  name:'Revive Crystal',  desc:'Restore a lost card slot',          icon:'\u25C6', col:'#c060e0', price:0.02, endpoint:'/shop/revive'},
+  {id:'scout',   name:'Scout Orb',       desc:'Reveal uncollected chests on floor',icon:'\u25CF', col:'#50d090', price:0.03, endpoint:'/shop/scout'},
+];
+let itemShopSelIdx=0;
+let itemShopTxPhase=''; // ''|'loading'|'reveal'|'done'|'error'
+let itemShopResult='', itemShopError='';
+let itemShopRevealCard=-1, itemShopRevealFrame=0;
+// localStorage inventory: {booster:N, hint:N, revive:N, scout:N}
+const _ITEM_INV_KEY='oxark_item_inventory';
+let itemInventory=(()=>{try{return JSON.parse(localStorage.getItem(_ITEM_INV_KEY)||'{}');}catch(e){return {};}})();
+function itemInvSave(){try{localStorage.setItem(_ITEM_INV_KEY,JSON.stringify(itemInventory));}catch(e){}}
+function itemInvAdd(id,n=1){itemInventory[id]=(itemInventory[id]||0)+n;itemInvSave();}
+function itemInvUse(id){if((itemInventory[id]||0)<=0)return false;itemInventory[id]--;itemInvSave();return true;}
+
 // T72: NFT Trading House state
 const NFT_SHOP_TABS=['MY CARDS','MARKET','MY LISTINGS'];
 let nftSelIdx=0; // cursor index in current tab
@@ -12118,6 +12136,74 @@ function drawCardShop(){
 }
 
 // ═══════════════════════════════════════
+// T73: GENERAL ITEM SHOP — purchase items via x402 or SOL simulation
+// ═══════════════════════════════════════
+function doBuyItem(item){
+  itemShopTxPhase='loading';itemShopError='';itemShopResult='';
+  // Try x402 if available, else simulate locally
+  const doSimulate=()=>{
+    // Simulate purchase: add to inventory + apply effect
+    itemInvAdd(item.id,1);
+    if(item.id==='booster'){
+      // Pick a random card not yet in vault
+      const vault_=pl[0].vault||new Set();
+      const pool=[];for(let i=1;i<=60;i++){if(!vault_.has(i))pool.push(i);}
+      if(pool.length===0){itemShopResult='All cards collected!';itemShopTxPhase='done';return;}
+      const picked=pool[Math.floor(Math.random()*pool.length)];
+      itemShopRevealCard=picked;itemShopRevealFrame=fr;itemShopTxPhase='reveal';
+      lg.push('[SHOP] Booster: got '+CD[picked-1].n);
+      return;
+    }
+    if(item.id==='hint'){
+      const rivalFloor=rivalMaps[0]!==undefined?rivalMaps[0]:0;
+      const floorName=mapNames[rivalFloor]||'Unknown';
+      itemShopResult='Rival spotted: '+floorName;
+      twSet('HINT: Rival is at '+floorName+'!');
+      lg.push('[SHOP] Hint: Rival at '+floorName);
+    }else if(item.id==='revive'){
+      // Find first empty slot and restore with a random card
+      let restored=false;
+      for(let s=0;s<HAND_SIZE;s++){
+        if(pl[0].cd[s]<=0){
+          const pool=[];for(let i=1;i<=60;i++)if(CD[i-1]&&CD[i-1].r<=2)pool.push(i);
+          const picked=pool[Math.floor(Math.random()*pool.length)]||1;
+          pl[0].cd[s]=picked;cardTimers[s]=inDungeon?Date.now():0;decayWarn[s]=0;syncCardCount(0);
+          itemShopResult='Revived '+CD[picked-1].n+'!';
+          lg.push('[SHOP] Revive: '+CD[picked-1].n+' in slot '+s);
+          restored=true;break;
+        }
+      }
+      if(!restored){itemShopResult='Hand full — discard a card first!';}
+    }else if(item.id==='scout'){
+      // Reveal all uncollected treasures on current floor
+      let found=0;
+      for(const t of treasures){if(t.map===currentMap&&!t.collected){t.scouted=true;found++;}}
+      itemShopResult='Scouted '+found+' chest'+(found!==1?'s':'')+'!';
+      lg.push('[SHOP] Scout: '+found+' chest(s) on map '+currentMap);
+    }
+    if(itemShopTxPhase!=='reveal')itemShopTxPhase='done';
+  };
+
+  if(x402Available&&item.endpoint){
+    x402FetchIntel(item.endpoint).then(data=>{
+      itemInvAdd(item.id,1);
+      if(item.id==='booster'&&data&&data.cardId){
+        itemShopRevealCard=data.cardId;itemShopRevealFrame=fr;itemShopTxPhase='reveal';
+        lg.push('[SHOP/x402] Booster: got card #'+data.cardId);
+      }else if(item.id==='hint'&&data){
+        const loc=data.floorName||data.floor||'?';
+        itemShopResult='Rival spotted: '+loc;
+        twSet('HINT: '+loc);itemShopTxPhase='done';
+      }else{
+        doSimulate(); // fallback for unsupported endpoints
+      }
+    }).catch(()=>doSimulate());
+  }else{
+    // Simulate with slight delay for UX
+    setTimeout(doSimulate,600);
+  }
+}
+
 // T71: DUNGEON GATE — create/join season on-chain
 // ═══════════════════════════════════════
 function dgQuickEnter(){
@@ -19417,10 +19503,75 @@ function drawNFTTradingShop(cx,cy,cw,ch){
     txShadow('\u2191\u2193 Select  [Z] Cancel',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
   }
 }
+// T73: General Item Shop — 4 items, x402 payment, booster reveal animation
 function drawItemShop(cx,cy,cw,ch){
-  txShadow('GENERAL SHOP',cx+cw/2,cy+ch/2-20,14,'#80ffb0','rgba(0,0,0,.5)');
-  txShadow('Buy items & boosters',cx+cw/2,cy+ch/2+6,8,'#a0c0b0','rgba(0,0,0,.4)');
-  txShadow('Full implementation in T73',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+  const bodyY=cy+42;
+
+  // Booster reveal animation (fr-based card flip)
+  if(itemShopTxPhase==='reveal'&&itemShopRevealCard>0){
+    const age=fr-itemShopRevealFrame;
+    const cr=CD[itemShopRevealCard-1];
+    const rw=200,rh=280,rx=cx+cw/2-rw/2,ry=bodyY+20;
+    const flip=age<15?age/15:1; // 0→1 in 15 frames
+    const scaleX=flip<0.5?1-flip*2:flip*2-1;
+    g.save();
+    g.translate(rx+rw/2,ry+rh/2);
+    g.scale(scaleX,1);
+    g.translate(-rw/2,-rh/2);
+    if(flip>=0.5&&cr){
+      g.fillStyle=cr.c;g.beginPath();g.roundRect(0,0,rw,rh,14);g.fill();
+      g.strokeStyle=cr.a||'#fff';g.lineWidth=2;g.stroke();
+      txShadow(cr.i||'?',rw/2,rh/2-20,32,cr.a||'#fff','rgba(0,0,0,.4)');
+      txShadow(cr.n,rw/2,rh/2+20,11,cr.a||'#fff','rgba(0,0,0,.4)');
+      txShadow(RARITY_LABEL[cr.r]||'',rw/2,rh/2+40,8,'rgba(255,255,255,.7)','rgba(0,0,0,.3)');
+    }else{
+      g.fillStyle='#1a0a2a';g.beginPath();g.roundRect(0,0,rw,rh,14);g.fill();
+      g.strokeStyle='#604080';g.lineWidth=2;g.stroke();
+      txShadow('\u25A0',rw/2,rh/2,32,'#604080','rgba(0,0,0,.4)');
+    }
+    g.restore();
+    if(age>40){txShadow('[Z] Keep card',cx+cw/2,ry+rh+20,8,'#80ffb0','rgba(0,0,0,.4)');}
+    return;
+  }
+
+  // TX loading / done / error
+  if(itemShopTxPhase==='loading'){
+    const dots='.'.repeat(1+(Math.floor(fr/15)%3));
+    txShadow('Processing'+dots,cx+cw/2,bodyY+90,12,'#80ffb0','rgba(0,0,0,.5)');
+    return;
+  }
+  if(itemShopTxPhase==='done'){
+    txShadow('\u2714 '+itemShopResult,cx+cw/2,bodyY+90,10,'#80ffb0','rgba(0,0,0,.5)');
+    txShadow('[Z] Continue',cx+cw/2,bodyY+116,7,'#607090','rgba(0,0,0,.4)');
+    return;
+  }
+  if(itemShopTxPhase==='error'){
+    txShadow('\u2716 '+itemShopError.substring(0,54),cx+cw/2,bodyY+90,8,'#ff8080','rgba(0,0,0,.5)');
+    txShadow('[Z] or [X] Back',cx+cw/2,bodyY+112,7,'#607090','rgba(0,0,0,.4)');
+    return;
+  }
+
+  // Item list
+  txShadow(x402Available?'x402 micropayments active':'SOL payment  (x402 offline)',cx+cw-200,bodyY+8,6,x402Available?'#60d090':'#a09060','rgba(0,0,0,.3)');
+  for(let i=0;i<ITEM_CATALOG.length;i++){
+    const item=ITEM_CATALOG[i];
+    const iy=bodyY+20+i*72;const sel=itemShopSelIdx===i;
+    g.fillStyle=sel?'rgba(80,208,144,0.16)':'rgba(255,255,255,0.04)';
+    g.beginPath();g.roundRect(cx+16,iy-4,cw-32,58,8);g.fill();
+    if(sel){g.strokeStyle='rgba(80,208,144,0.4)';g.lineWidth=1;g.stroke();}
+    // Icon
+    g.fillStyle=item.col;g.beginPath();g.arc(cx+38,iy+22,14,0,Math.PI*2);g.fill();
+    txShadow(item.icon,cx+38,iy+26,11,'#ffffff','rgba(0,0,0,.4)');
+    // Name + desc
+    txShadow(item.name,cx+60,iy+14,9,sel?'#b0ffd0':item.col,'rgba(0,0,0,.4)');
+    txShadow(item.desc,cx+60,iy+30,7,sel?'#80c0a0':'#7080a0','rgba(0,0,0,.3)');
+    // Price + inventory count
+    const inv=itemInventory[item.id]||0;
+    const priceStr=item.price+' SOL';
+    txShadow(priceStr,cx+cw-90,iy+14,8,sel?'#c0ffa0':'#80c060','rgba(0,0,0,.4)');
+    if(inv>0)txShadow('x'+inv+' owned',cx+cw-90,iy+30,7,sel?'#a0e090':'#607060','rgba(0,0,0,.3)');
+  }
+  txShadow('\u2191\u2193 Select  [Z] Buy  [X] Close',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
 }
 
 
@@ -22252,8 +22403,34 @@ document.addEventListener('keydown',e=>{
       }
       return;
     }
+    // T73: Item Shop input
+    if(townShopType==='item_shop'){
+      if(itemShopTxPhase==='loading')return; // busy
+      if(itemShopTxPhase==='reveal'){
+        if(e.code==='KeyZ'||e.code==='KeyX'){
+          // Give card to player
+          if(itemShopRevealCard>0){
+            const added=addCardToPlayer&&addCardToPlayer(0,itemShopRevealCard);
+            if(!added){discardActive=true;discardSelIdx=0;discardPendingCard=itemShopRevealCard;discardSource='wild';}
+            else{startCardAcquisition&&startCardAcquisition(itemShopRevealCard-1);}
+            checkWinAndTransition&&checkWinAndTransition(500);
+          }
+          itemShopTxPhase='';itemShopRevealCard=-1;sfxConfirm();
+        }
+        return;
+      }
+      if(itemShopTxPhase==='done'||itemShopTxPhase==='error'){
+        if(e.code==='KeyZ'||e.code==='KeyX'){itemShopTxPhase='';itemShopResult='';itemShopError='';sfxBack();}
+        return;
+      }
+      if(e.code==='ArrowUp'){itemShopSelIdx=Math.max(0,itemShopSelIdx-1);sfxCursor();}
+      if(e.code==='ArrowDown'){itemShopSelIdx=Math.min(ITEM_CATALOG.length-1,itemShopSelIdx+1);sfxCursor();}
+      if(e.code==='KeyZ'){doBuyItem(ITEM_CATALOG[itemShopSelIdx]);sfxSelect();}
+      if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      return;
+    }
     if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
-    // Tab navigation (used by T73 item shop)
+    // Tab navigation fallback
     if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);sfxCursor();}
     if(e.code==='ArrowRight'){townShopTab=Math.min(2,townShopTab+1);sfxCursor();}
     return;

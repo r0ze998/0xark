@@ -469,8 +469,34 @@ document.addEventListener('keydown',e=>{
       }
       return;
     }
+    // T73: Item Shop input
+    if(townShopType==='item_shop'){
+      if(itemShopTxPhase==='loading')return; // busy
+      if(itemShopTxPhase==='reveal'){
+        if(e.code==='KeyZ'||e.code==='KeyX'){
+          // Give card to player
+          if(itemShopRevealCard>0){
+            const added=addCardToPlayer&&addCardToPlayer(0,itemShopRevealCard);
+            if(!added){discardActive=true;discardSelIdx=0;discardPendingCard=itemShopRevealCard;discardSource='wild';}
+            else{startCardAcquisition&&startCardAcquisition(itemShopRevealCard-1);}
+            checkWinAndTransition&&checkWinAndTransition(500);
+          }
+          itemShopTxPhase='';itemShopRevealCard=-1;sfxConfirm();
+        }
+        return;
+      }
+      if(itemShopTxPhase==='done'||itemShopTxPhase==='error'){
+        if(e.code==='KeyZ'||e.code==='KeyX'){itemShopTxPhase='';itemShopResult='';itemShopError='';sfxBack();}
+        return;
+      }
+      if(e.code==='ArrowUp'){itemShopSelIdx=Math.max(0,itemShopSelIdx-1);sfxCursor();}
+      if(e.code==='ArrowDown'){itemShopSelIdx=Math.min(ITEM_CATALOG.length-1,itemShopSelIdx+1);sfxCursor();}
+      if(e.code==='KeyZ'){doBuyItem(ITEM_CATALOG[itemShopSelIdx]);sfxSelect();}
+      if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      return;
+    }
     if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
-    // Tab navigation (used by T73 item shop)
+    // Tab navigation fallback
     if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);sfxCursor();}
     if(e.code==='ArrowRight'){townShopTab=Math.min(2,townShopTab+1);sfxCursor();}
     return;

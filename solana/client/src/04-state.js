@@ -326,6 +326,24 @@ let dungeonConfirmActive=false, dungeonConfirmExit=null;
 let nearInteractable=null; // TOWN_INTERACTABLES entry currently adjacent to player (or null)
 let townShopActive=false, townShopType='', townShopTab=0, townShopOpenFrame=0;
 
+// T73: General Item Shop state
+const ITEM_CATALOG=[
+  {id:'booster', name:'Booster Pack',    desc:'Random card from current pool',     icon:'\u25A0', col:'#d0a030', price:0.05, endpoint:'/shop/booster'},
+  {id:'hint',    name:'Hint Scroll',     desc:'Reveals a rival\'s current floor',  icon:'\u25B2', col:'#60c0e0', price:0.01, endpoint:'/intel/location/1'},
+  {id:'revive',  name:'Revive Crystal',  desc:'Restore a lost card slot',          icon:'\u25C6', col:'#c060e0', price:0.02, endpoint:'/shop/revive'},
+  {id:'scout',   name:'Scout Orb',       desc:'Reveal uncollected chests on floor',icon:'\u25CF', col:'#50d090', price:0.03, endpoint:'/shop/scout'},
+];
+let itemShopSelIdx=0;
+let itemShopTxPhase=''; // ''|'loading'|'reveal'|'done'|'error'
+let itemShopResult='', itemShopError='';
+let itemShopRevealCard=-1, itemShopRevealFrame=0;
+// localStorage inventory: {booster:N, hint:N, revive:N, scout:N}
+const _ITEM_INV_KEY='oxark_item_inventory';
+let itemInventory=(()=>{try{return JSON.parse(localStorage.getItem(_ITEM_INV_KEY)||'{}');}catch(e){return {};}})();
+function itemInvSave(){try{localStorage.setItem(_ITEM_INV_KEY,JSON.stringify(itemInventory));}catch(e){}}
+function itemInvAdd(id,n=1){itemInventory[id]=(itemInventory[id]||0)+n;itemInvSave();}
+function itemInvUse(id){if((itemInventory[id]||0)<=0)return false;itemInventory[id]--;itemInvSave();return true;}
+
 // T72: NFT Trading House state
 const NFT_SHOP_TABS=['MY CARDS','MARKET','MY LISTINGS'];
 let nftSelIdx=0; // cursor index in current tab

@@ -1456,9 +1456,74 @@ function drawNFTTradingShop(cx,cy,cw,ch){
     txShadow('\u2191\u2193 Select  [Z] Cancel',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
   }
 }
+// T73: General Item Shop — 4 items, x402 payment, booster reveal animation
 function drawItemShop(cx,cy,cw,ch){
-  txShadow('GENERAL SHOP',cx+cw/2,cy+ch/2-20,14,'#80ffb0','rgba(0,0,0,.5)');
-  txShadow('Buy items & boosters',cx+cw/2,cy+ch/2+6,8,'#a0c0b0','rgba(0,0,0,.4)');
-  txShadow('Full implementation in T73',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+  const bodyY=cy+42;
+
+  // Booster reveal animation (fr-based card flip)
+  if(itemShopTxPhase==='reveal'&&itemShopRevealCard>0){
+    const age=fr-itemShopRevealFrame;
+    const cr=CD[itemShopRevealCard-1];
+    const rw=200,rh=280,rx=cx+cw/2-rw/2,ry=bodyY+20;
+    const flip=age<15?age/15:1; // 0→1 in 15 frames
+    const scaleX=flip<0.5?1-flip*2:flip*2-1;
+    g.save();
+    g.translate(rx+rw/2,ry+rh/2);
+    g.scale(scaleX,1);
+    g.translate(-rw/2,-rh/2);
+    if(flip>=0.5&&cr){
+      g.fillStyle=cr.c;g.beginPath();g.roundRect(0,0,rw,rh,14);g.fill();
+      g.strokeStyle=cr.a||'#fff';g.lineWidth=2;g.stroke();
+      txShadow(cr.i||'?',rw/2,rh/2-20,32,cr.a||'#fff','rgba(0,0,0,.4)');
+      txShadow(cr.n,rw/2,rh/2+20,11,cr.a||'#fff','rgba(0,0,0,.4)');
+      txShadow(RARITY_LABEL[cr.r]||'',rw/2,rh/2+40,8,'rgba(255,255,255,.7)','rgba(0,0,0,.3)');
+    }else{
+      g.fillStyle='#1a0a2a';g.beginPath();g.roundRect(0,0,rw,rh,14);g.fill();
+      g.strokeStyle='#604080';g.lineWidth=2;g.stroke();
+      txShadow('\u25A0',rw/2,rh/2,32,'#604080','rgba(0,0,0,.4)');
+    }
+    g.restore();
+    if(age>40){txShadow('[Z] Keep card',cx+cw/2,ry+rh+20,8,'#80ffb0','rgba(0,0,0,.4)');}
+    return;
+  }
+
+  // TX loading / done / error
+  if(itemShopTxPhase==='loading'){
+    const dots='.'.repeat(1+(Math.floor(fr/15)%3));
+    txShadow('Processing'+dots,cx+cw/2,bodyY+90,12,'#80ffb0','rgba(0,0,0,.5)');
+    return;
+  }
+  if(itemShopTxPhase==='done'){
+    txShadow('\u2714 '+itemShopResult,cx+cw/2,bodyY+90,10,'#80ffb0','rgba(0,0,0,.5)');
+    txShadow('[Z] Continue',cx+cw/2,bodyY+116,7,'#607090','rgba(0,0,0,.4)');
+    return;
+  }
+  if(itemShopTxPhase==='error'){
+    txShadow('\u2716 '+itemShopError.substring(0,54),cx+cw/2,bodyY+90,8,'#ff8080','rgba(0,0,0,.5)');
+    txShadow('[Z] or [X] Back',cx+cw/2,bodyY+112,7,'#607090','rgba(0,0,0,.4)');
+    return;
+  }
+
+  // Item list
+  txShadow(x402Available?'x402 micropayments active':'SOL payment  (x402 offline)',cx+cw-200,bodyY+8,6,x402Available?'#60d090':'#a09060','rgba(0,0,0,.3)');
+  for(let i=0;i<ITEM_CATALOG.length;i++){
+    const item=ITEM_CATALOG[i];
+    const iy=bodyY+20+i*72;const sel=itemShopSelIdx===i;
+    g.fillStyle=sel?'rgba(80,208,144,0.16)':'rgba(255,255,255,0.04)';
+    g.beginPath();g.roundRect(cx+16,iy-4,cw-32,58,8);g.fill();
+    if(sel){g.strokeStyle='rgba(80,208,144,0.4)';g.lineWidth=1;g.stroke();}
+    // Icon
+    g.fillStyle=item.col;g.beginPath();g.arc(cx+38,iy+22,14,0,Math.PI*2);g.fill();
+    txShadow(item.icon,cx+38,iy+26,11,'#ffffff','rgba(0,0,0,.4)');
+    // Name + desc
+    txShadow(item.name,cx+60,iy+14,9,sel?'#b0ffd0':item.col,'rgba(0,0,0,.4)');
+    txShadow(item.desc,cx+60,iy+30,7,sel?'#80c0a0':'#7080a0','rgba(0,0,0,.3)');
+    // Price + inventory count
+    const inv=itemInventory[item.id]||0;
+    const priceStr=item.price+' SOL';
+    txShadow(priceStr,cx+cw-90,iy+14,8,sel?'#c0ffa0':'#80c060','rgba(0,0,0,.4)');
+    if(inv>0)txShadow('x'+inv+' owned',cx+cw-90,iy+30,7,sel?'#a0e090':'#607060','rgba(0,0,0,.3)');
+  }
+  txShadow('\u2191\u2193 Select  [Z] Buy  [X] Close',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
 }
 

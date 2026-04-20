@@ -1387,6 +1387,74 @@ function drawCardShop(){
 }
 
 // ═══════════════════════════════════════
+// T73: GENERAL ITEM SHOP — purchase items via x402 or SOL simulation
+// ═══════════════════════════════════════
+function doBuyItem(item){
+  itemShopTxPhase='loading';itemShopError='';itemShopResult='';
+  // Try x402 if available, else simulate locally
+  const doSimulate=()=>{
+    // Simulate purchase: add to inventory + apply effect
+    itemInvAdd(item.id,1);
+    if(item.id==='booster'){
+      // Pick a random card not yet in vault
+      const vault_=pl[0].vault||new Set();
+      const pool=[];for(let i=1;i<=60;i++){if(!vault_.has(i))pool.push(i);}
+      if(pool.length===0){itemShopResult='All cards collected!';itemShopTxPhase='done';return;}
+      const picked=pool[Math.floor(Math.random()*pool.length)];
+      itemShopRevealCard=picked;itemShopRevealFrame=fr;itemShopTxPhase='reveal';
+      lg.push('[SHOP] Booster: got '+CD[picked-1].n);
+      return;
+    }
+    if(item.id==='hint'){
+      const rivalFloor=rivalMaps[0]!==undefined?rivalMaps[0]:0;
+      const floorName=mapNames[rivalFloor]||'Unknown';
+      itemShopResult='Rival spotted: '+floorName;
+      twSet('HINT: Rival is at '+floorName+'!');
+      lg.push('[SHOP] Hint: Rival at '+floorName);
+    }else if(item.id==='revive'){
+      // Find first empty slot and restore with a random card
+      let restored=false;
+      for(let s=0;s<HAND_SIZE;s++){
+        if(pl[0].cd[s]<=0){
+          const pool=[];for(let i=1;i<=60;i++)if(CD[i-1]&&CD[i-1].r<=2)pool.push(i);
+          const picked=pool[Math.floor(Math.random()*pool.length)]||1;
+          pl[0].cd[s]=picked;cardTimers[s]=inDungeon?Date.now():0;decayWarn[s]=0;syncCardCount(0);
+          itemShopResult='Revived '+CD[picked-1].n+'!';
+          lg.push('[SHOP] Revive: '+CD[picked-1].n+' in slot '+s);
+          restored=true;break;
+        }
+      }
+      if(!restored){itemShopResult='Hand full — discard a card first!';}
+    }else if(item.id==='scout'){
+      // Reveal all uncollected treasures on current floor
+      let found=0;
+      for(const t of treasures){if(t.map===currentMap&&!t.collected){t.scouted=true;found++;}}
+      itemShopResult='Scouted '+found+' chest'+(found!==1?'s':'')+'!';
+      lg.push('[SHOP] Scout: '+found+' chest(s) on map '+currentMap);
+    }
+    if(itemShopTxPhase!=='reveal')itemShopTxPhase='done';
+  };
+
+  if(x402Available&&item.endpoint){
+    x402FetchIntel(item.endpoint).then(data=>{
+      itemInvAdd(item.id,1);
+      if(item.id==='booster'&&data&&data.cardId){
+        itemShopRevealCard=data.cardId;itemShopRevealFrame=fr;itemShopTxPhase='reveal';
+        lg.push('[SHOP/x402] Booster: got card #'+data.cardId);
+      }else if(item.id==='hint'&&data){
+        const loc=data.floorName||data.floor||'?';
+        itemShopResult='Rival spotted: '+loc;
+        twSet('HINT: '+loc);itemShopTxPhase='done';
+      }else{
+        doSimulate(); // fallback for unsupported endpoints
+      }
+    }).catch(()=>doSimulate());
+  }else{
+    // Simulate with slight delay for UX
+    setTimeout(doSimulate,600);
+  }
+}
+
 // T71: DUNGEON GATE — create/join season on-chain
 // ═══════════════════════════════════════
 function dgQuickEnter(){
