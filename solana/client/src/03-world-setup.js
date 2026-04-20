@@ -106,6 +106,8 @@ const WEATHER_CYCLE_FRAMES=4800; // ~80 seconds per weather state at 60fps
 
 // ── WILD ENCOUNTER STATE ──
 let wildEncounterActive=false, wildEncounterCard=-1, wildEncounterFrame=0;
+// T52: Pre-encounter proximity alert (rival within 2 tiles)
+let preEncounterAlert=false, preEncounterAlertName='', preEncounterAlertFrame=0, preEncounterAlertRumbled=false;
 
 // ── RIVAL AI SYSTEM ──
 let rivalMaps=[1,1]; // GDD v1.0: rivals start in dungeon floor 1

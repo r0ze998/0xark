@@ -122,6 +122,28 @@ function processDungeonTurn(){
   dungeonTurnStep(1);
   // Immediately check if any rival landed adjacent — fire encounter without waiting for next frame
   checkDungeonRivalEncounter();
+  // T52: proximity warning (2-tile rumble)
+  checkRivalProximity();
+}
+
+// T52: Check if a rival is within 2 tiles (pre-encounter proximity warning)
+function checkRivalProximity(){
+  if(!inDungeon||encounterExclActive||wildEncounterActive)return;
+  let closest=99,closestName='';
+  for(let _ri=1;_ri<pl.length;_ri++){
+    if(rivalMaps[_ri-1]!==currentMap)continue;
+    const d=Math.abs(pl[_ri].x-pl[0].x)+Math.abs(pl[_ri].y-pl[0].y);
+    if(d<=2&&d<closest){closest=d;closestName=pl[_ri].n;}
+  }
+  if(closest<=2){
+    if(!preEncounterAlert){
+      preEncounterAlert=true;preEncounterAlertName=closestName;preEncounterAlertFrame=fr;
+      preEncounterAlertRumbled=false;
+    }
+    if(!preEncounterAlertRumbled){preEncounterAlertRumbled=true;sfxTensionRumble();}
+  }else{
+    preEncounterAlert=false;
+  }
 }
 
 // Check if a rival just stepped adjacent to the player; trigger encounter if so
@@ -1672,6 +1694,36 @@ function drawEncounterExclamation(){
     txShadow(_encLineLblCache,lineX+4,lineY+12,5,rNameCol2,'rgba(0,0,0,.4)'); // v344: lazy cache
     g.globalAlpha=1;
   }
+  // T52: "BATTLE START!" flash overlay in final frames (t>20)
+  if(t>20){
+    const bsAlpha=Math.min(1,(t-20)/4)*(t<28?1:Math.max(0,(30-t)/2));
+    if(t===21)sfxBattleStartStinger(); // fire stinger once
+    g.globalAlpha=bsAlpha*0.6;
+    bx(0,0,W,H,'#000');
+    g.globalAlpha=bsAlpha;
+    const bsLbl='BATTLE START!';
+    const bsScale=1+(t-20)*0.04; // slight grow
+    g.save();g.translate(W/2,H/2);g.scale(bsScale,bsScale);g.translate(-W/2,-H/2);
+    txShadow(bsLbl,W/2-bsLbl.length*7,H/2+10,14,'#f0c830','rgba(200,120,20,.6)');
+    g.restore();
+    if(t>22)screenShake(4,6); // intensify shake for last frames
+    g.globalAlpha=1;
+  }
+  g.globalAlpha=1;
+}
+
+// T52: Draw pre-encounter proximity alert banner ("A rival approaches...")
+function drawPreEncounterAlert(){
+  if(!preEncounterAlert||encounterExclActive||wildEncounterActive)return;
+  const t=fr-preEncounterAlertFrame;
+  const alpha=Math.min(1,t/8);
+  const bannerY=H-44;
+  g.globalAlpha=alpha*0.88;
+  bx(0,bannerY,W,20,'rgba(0,0,0,.85)');
+  bx(0,bannerY,W,1,'#c04040');
+  g.globalAlpha=alpha;
+  const msg='! '+preEncounterAlertName+' is nearby...';
+  txShadow(msg,W/2-msg.length*3.5,bannerY+14,7,'#f08080','rgba(0,0,0,.5)');
   g.globalAlpha=1;
 }
 

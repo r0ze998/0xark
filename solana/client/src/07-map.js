@@ -2076,6 +2076,9 @@ function dMap(){
   // Battle encounter exclamation
   drawEncounterExclamation();
 
+  // T52: Pre-encounter proximity alert banner
+  drawPreEncounterAlert();
+
   // Proximity taunt speech bubble
   if(proximityTauntText&&proximityTauntRival>=1&&rivalMaps[proximityTauntRival-1]===currentMap){
     const tRival=pl[proximityTauntRival];
