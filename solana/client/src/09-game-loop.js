@@ -460,6 +460,7 @@ function draw(){
   drawMarketplace();
   drawSynthesisShop();
   drawTutorialMsg();
+  drawSynergyBanner(); // T62
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){

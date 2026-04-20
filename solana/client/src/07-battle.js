@@ -351,6 +351,9 @@ function drawVsSplash(){
   if(t>=60){
     battlePhase='select';bpFrame=fr;bpRdIncremented=false;bpActionsGenerated=false;bpScoutedCards=[null,null];
     _zkVerifyFiredThisRound=false;zkLastProof=null;zkProofReady=false;zkProofStatus='idle';
+    // T62: detect synergy from current hand
+    activeSynergy=checkSynergy(pl[0].cd);
+    if(activeSynergy){synergyBannerFrame=fr;}
     generateRivalTells();
     if(!tutorialFlags.firstBattle){
       const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'the rival';
@@ -1242,6 +1245,9 @@ function rivalChooseAction(rIdx){
 
 let bpPlayerBarrier=false; // track if player used barrier this round
 let bpRivalActions=[0,0]; // track rival actions this round (pre-generated at select start)
+// T62: active synergy for this battle round
+let activeSynergy=null; // synergy entry | null
+let synergyBannerFrame=-9999; // fr when synergy banner should show
 let bpRivalTells=['','']; // body-language tells shown during select phase
 let bpPreRoundCards=[0,0,0]; // v312: card counts at round start, for delta display in result
 let bpTellWasAccurate=[false,false]; // whether each rival's tell matched actual action
@@ -1396,7 +1402,9 @@ function generateResolveEvents(){
       // Effect scales with rarity (r=1 common, r=5 legendary)
       if(cr.t==='attack'){
         // Attack: deal 1 HP damage + force steal (ignore barrier) — power scales with rarity
-        const dmg=Math.min(2,1+Math.floor((cr.r-1)/2));
+        // T62: synergy pw_add bonus
+        const _synergyAtk=activeSynergy&&activeSynergy.bonus.pw_add?activeSynergy.bonus.pw_add:0;
+        const dmg=Math.min(4,1+Math.floor((cr.r-1)/2)+Math.floor(_synergyAtk/3));
         bpHP[tgt]=Math.max(0,bpHP[tgt]-dmg);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;

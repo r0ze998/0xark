@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v499+";
+window.BUILD_VERSION = "v500+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -3764,6 +3764,58 @@ const CARD_TIER=(()=>{const m={};for(let i=0;i<CD.length;i++){const r=CD[i].r||1
 // Tier labels/colors for UI
 const CARD_TIER_LABEL=['COMMON','RARE','LEGENDARY'];
 const CARD_TIER_COL=['#a0a0b0','#4888d8','#f0c830'];
+
+// ═══════════════════════════════════════
+// T62: CARD SYNERGY TABLE
+// Each entry: { types?, ids?, name, label, col, bonus }
+// types — set of card types that must ALL appear in hand (any count)
+// ids   — specific card IDs that must ALL appear in hand
+// Synergies are checked in priority order; first match wins.
+// bonus: { pw_add, block, escape_bonus, echo } — applied during this battle round
+// ═══════════════════════════════════════
+const SYNERGY_TABLE=[
+  // ── Legendary specific combos (highest priority) ───────────────────────────
+  {ids:[12,48], name:'VOID_TEAR',      label:'VOID TEAR',      col:'#c0b8f8',bonus:{pw_add:6,echo:true}},
+  {ids:[1,21],  name:'DIVINE_SHIELD',  label:'DIVINE SHIELD',  col:'#f8f8e0',bonus:{block:true,pw_add:4}},
+  {ids:[35,60], name:'ARK_AWAKENING',  label:'ARK AWAKENING',  col:'#fff0a0',bonus:{escape_bonus:true,pw_add:5}},
+  // ── Type-pair synergies ────────────────────────────────────────────────────
+  {types:['attack','magic'],    name:'ARCANE_BLADE',   label:'ARCANE BLADE',  col:'#f0a858',bonus:{pw_add:3}},
+  {types:['attack','flee'],     name:'HIT_AND_RUN',    label:'HIT & RUN',     col:'#90e890',bonus:{pw_add:2,escape_bonus:true}},
+  {types:['defense','recovery'],name:'BASTION',        label:'BASTION',       col:'#90c8f8',bonus:{block:true,pw_add:1}},
+  {types:['magic','recovery'],  name:'MANA_FLOW',      label:'MANA FLOW',     col:'#d8a8f8',bonus:{pw_add:2,echo:true}},
+  {types:['flee','magic'],      name:'FADE',           label:'FADE',          col:'#88e8d0',bonus:{escape_bonus:true,pw_add:2}},
+  // ── Mono-type synergies (2+ cards of same type) ────────────────────────────
+  {types:['attack','attack'],   name:'BARRAGE',        label:'BARRAGE',       col:'#f87868',bonus:{pw_add:3}},
+  {types:['defense','defense'], name:'FORTRESS',       label:'FORTRESS',      col:'#78a8e8',bonus:{block:true,pw_add:2}},
+  {types:['magic','magic'],     name:'RESONANCE',      label:'RESONANCE',     col:'#d0a8f8',bonus:{pw_add:3,echo:true}},
+  {types:['flee','flee'],       name:'PHANTOM_STEP',   label:'PHANTOM STEP',  col:'#78d8b8',bonus:{escape_bonus:true,pw_add:2}},
+  {types:['recovery','recovery'],name:'BOON',          label:'BOON',          col:'#f8e070',bonus:{pw_add:1,block:true}},
+];
+
+/**
+ * checkSynergy(hand) → synergy entry | null
+ * hand: array of card IDs (0 = empty slot, skip)
+ * Returns the first matching SYNERGY_TABLE entry, or null.
+ */
+function checkSynergy(hand){
+  const ids=hand.filter(id=>id>0);
+  const types=ids.map(id=>CD[id-1]?CD[id-1].t:null).filter(Boolean);
+  for(let i=0;i<SYNERGY_TABLE.length;i++){
+    const s=SYNERGY_TABLE[i];
+    if(s.ids){
+      // All specified IDs must be in hand
+      if(s.ids.every(sid=>ids.includes(sid)))return s;
+    } else if(s.types){
+      // For mono-type: two entries of same type — count occurrences
+      const needed={};
+      for(const t of s.types)needed[t]=(needed[t]||0)+1;
+      const have={};
+      for(const t of types)have[t]=(have[t]||0)+1;
+      if(Object.keys(needed).every(t=>(have[t]||0)>=needed[t]))return s;
+    }
+  }
+  return null;
+}
 
 // ═══════════════════════════════════════
 // CARD CHARACTER SPRITES (pixel art) — with idle animations
@@ -15135,6 +15187,9 @@ function drawVsSplash(){
   if(t>=60){
     battlePhase='select';bpFrame=fr;bpRdIncremented=false;bpActionsGenerated=false;bpScoutedCards=[null,null];
     _zkVerifyFiredThisRound=false;zkLastProof=null;zkProofReady=false;zkProofStatus='idle';
+    // T62: detect synergy from current hand
+    activeSynergy=checkSynergy(pl[0].cd);
+    if(activeSynergy){synergyBannerFrame=fr;}
     generateRivalTells();
     if(!tutorialFlags.firstBattle){
       const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'the rival';
@@ -16026,6 +16081,9 @@ function rivalChooseAction(rIdx){
 
 let bpPlayerBarrier=false; // track if player used barrier this round
 let bpRivalActions=[0,0]; // track rival actions this round (pre-generated at select start)
+// T62: active synergy for this battle round
+let activeSynergy=null; // synergy entry | null
+let synergyBannerFrame=-9999; // fr when synergy banner should show
 let bpRivalTells=['','']; // body-language tells shown during select phase
 let bpPreRoundCards=[0,0,0]; // v312: card counts at round start, for delta display in result
 let bpTellWasAccurate=[false,false]; // whether each rival's tell matched actual action
@@ -16180,7 +16238,9 @@ function generateResolveEvents(){
       // Effect scales with rarity (r=1 common, r=5 legendary)
       if(cr.t==='attack'){
         // Attack: deal 1 HP damage + force steal (ignore barrier) — power scales with rarity
-        const dmg=Math.min(2,1+Math.floor((cr.r-1)/2));
+        // T62: synergy pw_add bonus
+        const _synergyAtk=activeSynergy&&activeSynergy.bonus.pw_add?activeSynergy.bonus.pw_add:0;
+        const dmg=Math.min(4,1+Math.floor((cr.r-1)/2)+Math.floor(_synergyAtk/3));
         bpHP[tgt]=Math.max(0,bpHP[tgt]-dmg);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
@@ -18535,6 +18595,50 @@ function drawTitleOptionsOverlay(){
     window.TOKENS.resolveColor('fg_muted'), 'rgba(0,0,0,0.4)');
 }
 
+// T62: Synergy banner — flashes at battle round start when hand synergy detected
+function drawSynergyBanner(){
+  if(!activeSynergy)return;
+  const age=fr-synergyBannerFrame;
+  if(age<0||age>60)return; // show for 60 frames (~1s)
+  const fadeIn=Math.min(1,age/8);
+  const fadeOut=age>44?Math.max(0,(60-age)/16):1;
+  const alpha=fadeIn*fadeOut;
+  if(alpha<=0)return;
+  const s=activeSynergy;
+  // Animated slide-down from top
+  const slideY=Math.max(0,(1-Math.min(1,age/10))*(-32));
+  const bw=220,bh=36;
+  const bx_=((W-bw)/2)|0, by_=(14+slideY)|0;
+  g.save();
+  g.globalAlpha=alpha;
+  // Background pill
+  g.fillStyle=s.col;
+  g.beginPath();
+  g.roundRect(bx_,by_,bw,bh,10);
+  g.fill();
+  // Dark border
+  g.strokeStyle='rgba(0,0,0,0.5)';g.lineWidth=2;
+  g.stroke();
+  g.restore();
+  // Synergy label
+  g.save();
+  g.globalAlpha=alpha;
+  txShadow('⚡ '+s.label+' ⚡',W/2,by_+13,13,'#1a1a2e','rgba(255,255,255,0.4)');
+  // Bonus hint below
+  const bonusStr=_synergyBonusStr(s.bonus);
+  if(bonusStr)txShadow(bonusStr,W/2,by_+26,9,'rgba(20,20,40,0.9)','rgba(255,255,255,0.3)');
+  g.restore();
+}
+
+function _synergyBonusStr(bonus){
+  const parts=[];
+  if(bonus.pw_add)parts.push('+'+bonus.pw_add+' PWR');
+  if(bonus.block)parts.push('BLOCK');
+  if(bonus.escape_bonus)parts.push('ESCAPE+');
+  if(bonus.echo)parts.push('ECHO');
+  return parts.join(' · ');
+}
+
 
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/08-world-interact.js
@@ -20808,6 +20912,7 @@ function draw(){
   drawMarketplace();
   drawSynthesisShop();
   drawTutorialMsg();
+  drawSynergyBanner(); // T62
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){

@@ -100,6 +100,58 @@ const CARD_TIER_LABEL=['COMMON','RARE','LEGENDARY'];
 const CARD_TIER_COL=['#a0a0b0','#4888d8','#f0c830'];
 
 // ═══════════════════════════════════════
+// T62: CARD SYNERGY TABLE
+// Each entry: { types?, ids?, name, label, col, bonus }
+// types — set of card types that must ALL appear in hand (any count)
+// ids   — specific card IDs that must ALL appear in hand
+// Synergies are checked in priority order; first match wins.
+// bonus: { pw_add, block, escape_bonus, echo } — applied during this battle round
+// ═══════════════════════════════════════
+const SYNERGY_TABLE=[
+  // ── Legendary specific combos (highest priority) ───────────────────────────
+  {ids:[12,48], name:'VOID_TEAR',      label:'VOID TEAR',      col:'#c0b8f8',bonus:{pw_add:6,echo:true}},
+  {ids:[1,21],  name:'DIVINE_SHIELD',  label:'DIVINE SHIELD',  col:'#f8f8e0',bonus:{block:true,pw_add:4}},
+  {ids:[35,60], name:'ARK_AWAKENING',  label:'ARK AWAKENING',  col:'#fff0a0',bonus:{escape_bonus:true,pw_add:5}},
+  // ── Type-pair synergies ────────────────────────────────────────────────────
+  {types:['attack','magic'],    name:'ARCANE_BLADE',   label:'ARCANE BLADE',  col:'#f0a858',bonus:{pw_add:3}},
+  {types:['attack','flee'],     name:'HIT_AND_RUN',    label:'HIT & RUN',     col:'#90e890',bonus:{pw_add:2,escape_bonus:true}},
+  {types:['defense','recovery'],name:'BASTION',        label:'BASTION',       col:'#90c8f8',bonus:{block:true,pw_add:1}},
+  {types:['magic','recovery'],  name:'MANA_FLOW',      label:'MANA FLOW',     col:'#d8a8f8',bonus:{pw_add:2,echo:true}},
+  {types:['flee','magic'],      name:'FADE',           label:'FADE',          col:'#88e8d0',bonus:{escape_bonus:true,pw_add:2}},
+  // ── Mono-type synergies (2+ cards of same type) ────────────────────────────
+  {types:['attack','attack'],   name:'BARRAGE',        label:'BARRAGE',       col:'#f87868',bonus:{pw_add:3}},
+  {types:['defense','defense'], name:'FORTRESS',       label:'FORTRESS',      col:'#78a8e8',bonus:{block:true,pw_add:2}},
+  {types:['magic','magic'],     name:'RESONANCE',      label:'RESONANCE',     col:'#d0a8f8',bonus:{pw_add:3,echo:true}},
+  {types:['flee','flee'],       name:'PHANTOM_STEP',   label:'PHANTOM STEP',  col:'#78d8b8',bonus:{escape_bonus:true,pw_add:2}},
+  {types:['recovery','recovery'],name:'BOON',          label:'BOON',          col:'#f8e070',bonus:{pw_add:1,block:true}},
+];
+
+/**
+ * checkSynergy(hand) → synergy entry | null
+ * hand: array of card IDs (0 = empty slot, skip)
+ * Returns the first matching SYNERGY_TABLE entry, or null.
+ */
+function checkSynergy(hand){
+  const ids=hand.filter(id=>id>0);
+  const types=ids.map(id=>CD[id-1]?CD[id-1].t:null).filter(Boolean);
+  for(let i=0;i<SYNERGY_TABLE.length;i++){
+    const s=SYNERGY_TABLE[i];
+    if(s.ids){
+      // All specified IDs must be in hand
+      if(s.ids.every(sid=>ids.includes(sid)))return s;
+    } else if(s.types){
+      // For mono-type: two entries of same type — count occurrences
+      const needed={};
+      for(const t of s.types)needed[t]=(needed[t]||0)+1;
+      const have={};
+      for(const t of types)have[t]=(have[t]||0)+1;
+      if(Object.keys(needed).every(t=>(have[t]||0)>=needed[t]))return s;
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════
 // CARD CHARACTER SPRITES (pixel art) — with idle animations
 // ═══════════════════════════════════════
 

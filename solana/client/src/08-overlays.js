@@ -1061,3 +1061,47 @@ function drawTitleOptionsOverlay(){
     window.TOKENS.resolveColor('fg_muted'), 'rgba(0,0,0,0.4)');
 }
 
+// T62: Synergy banner — flashes at battle round start when hand synergy detected
+function drawSynergyBanner(){
+  if(!activeSynergy)return;
+  const age=fr-synergyBannerFrame;
+  if(age<0||age>60)return; // show for 60 frames (~1s)
+  const fadeIn=Math.min(1,age/8);
+  const fadeOut=age>44?Math.max(0,(60-age)/16):1;
+  const alpha=fadeIn*fadeOut;
+  if(alpha<=0)return;
+  const s=activeSynergy;
+  // Animated slide-down from top
+  const slideY=Math.max(0,(1-Math.min(1,age/10))*(-32));
+  const bw=220,bh=36;
+  const bx_=((W-bw)/2)|0, by_=(14+slideY)|0;
+  g.save();
+  g.globalAlpha=alpha;
+  // Background pill
+  g.fillStyle=s.col;
+  g.beginPath();
+  g.roundRect(bx_,by_,bw,bh,10);
+  g.fill();
+  // Dark border
+  g.strokeStyle='rgba(0,0,0,0.5)';g.lineWidth=2;
+  g.stroke();
+  g.restore();
+  // Synergy label
+  g.save();
+  g.globalAlpha=alpha;
+  txShadow('⚡ '+s.label+' ⚡',W/2,by_+13,13,'#1a1a2e','rgba(255,255,255,0.4)');
+  // Bonus hint below
+  const bonusStr=_synergyBonusStr(s.bonus);
+  if(bonusStr)txShadow(bonusStr,W/2,by_+26,9,'rgba(20,20,40,0.9)','rgba(255,255,255,0.3)');
+  g.restore();
+}
+
+function _synergyBonusStr(bonus){
+  const parts=[];
+  if(bonus.pw_add)parts.push('+'+bonus.pw_add+' PWR');
+  if(bonus.block)parts.push('BLOCK');
+  if(bonus.escape_bonus)parts.push('ESCAPE+');
+  if(bonus.echo)parts.push('ECHO');
+  return parts.join(' · ');
+}
+
