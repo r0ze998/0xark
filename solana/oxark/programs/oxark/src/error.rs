@@ -62,4 +62,9 @@ pub enum ErrorCode {
     AlreadyInitialized,
     #[msg("Position commitment mismatch: old_commitment != stored commitment")]
     CommitmentMismatch,
+    // ── Agent hire ────────────────────────────────────────────────────────────
+    #[msg("Agent is not active")]
+    AgentNotActive,
+    #[msg("Duration must be > 0 seconds")]
+    InvalidDuration,
 }

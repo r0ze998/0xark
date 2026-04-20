@@ -28,6 +28,8 @@ const PROGRAM_ID = new PublicKey('5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN')
 
 // Scout peek price: 0.005 SOL = 5_000_000 lamports
 const SCOUT_PEEK_LAMPORTS = 5_000_000;
+// Agent hire price: 0.05 SOL = 50_000_000 lamports
+const AGENT_HIRE_LAMPORTS = 50_000_000;
 
 // PlayerState layout (Anchor default, no padding beyond field sizes)
 // [0..8]=discriminator [8..16]=game_id [16..48]=player [48]=player_index
@@ -364,6 +366,7 @@ app.get('/status', (req, res) => {
     recipient: RECIPIENT_WALLET,
     endpoints: [
       { path: 'POST /scout-peek',    price: '0.005 SOL',    desc: 'Peek one on-chain card from target player' },
+      { path: 'POST /agent-hire',    price: '0.05 SOL',     desc: 'Hire AI agent for auto-play session' },
       { path: '/intel/location/:id', price: '$0.002 USDC',  desc: 'Rival floor position' },
       { path: '/intel/hand/:id',     price: '$0.003 USDC',  desc: 'Rival card holdings' },
       { path: '/intel/strategy',     price: '$0.005 USDC',  desc: 'Strategic analysis' },
@@ -553,6 +556,78 @@ app.post('/scout-peek', async (req, res) => {
     area: state.area,
     pda: state.pda,
     timestamp: Date.now(),
+  });
+});
+
+// ═══════════════════════════════════════
+// /agent-hire  (POST, 0.05 SOL)
+// ═══════════════════════════════════════
+
+/**
+ * POST /agent-hire
+ * Body: { game_id: number|string, agent_id: number, duration_seconds: number, hirer_pubkey: string }
+ * Header: X-Payment: <solana_tx_sig>  (or "local-dev-bypass" for dev)
+ *
+ * Returns { hire_session_id, agent_id, expires_at, agent_endpoint, payment_sig }
+ * Caller should then submit `register_agent_hire` instruction on-chain with payment_sig.
+ */
+app.post('/agent-hire', async (req, res) => {
+  const payment = req.headers['x-payment'];
+  if (!payment) {
+    const payload = {
+      version: 1,
+      scheme: 'exact',
+      network: 'solana-devnet',
+      amount: AGENT_HIRE_LAMPORTS,
+      currency: 'SOL',
+      recipient: RECIPIENT_WALLET,
+      description: 'Agent hire — 0.05 SOL/session for AI auto-play',
+    };
+    res.setHeader('X-Payment-Required', JSON.stringify(payload));
+    return res.status(402).json({ error: 'Payment Required', x402: payload });
+  }
+
+  const result = await verifySolPayment(payment, AGENT_HIRE_LAMPORTS);
+  if (!result.ok) {
+    return res.status(402).json({ error: 'Payment verification failed', reason: result.reason });
+  }
+
+  const { game_id, agent_id, duration_seconds = 3600, hirer_pubkey } = req.body ?? {};
+  if (!hirer_pubkey || agent_id == null) {
+    return res.status(400).json({ error: 'agent_id and hirer_pubkey required' });
+  }
+
+  const agentIdNum = Number(agent_id);
+  const durationSec = Number(duration_seconds);
+  if (!Number.isInteger(agentIdNum) || agentIdNum < 0) {
+    return res.status(400).json({ error: 'agent_id must be a non-negative integer' });
+  }
+  if (!Number.isInteger(durationSec) || durationSec <= 0) {
+    return res.status(400).json({ error: 'duration_seconds must be a positive integer' });
+  }
+
+  const startedAt = Math.floor(Date.now() / 1000);
+  const expiresAt = startedAt + durationSec;
+
+  // hire_session_id: deterministic from hirer + agent_id (matching on-chain PDA)
+  const hireSessionId = `hire_${hirer_pubkey.slice(0, 8)}_agent${agentIdNum}`;
+
+  if (!result.simulated) {
+    console.log(`[agent-hire] hirer=${hirer_pubkey.slice(0, 8)} agent=${agentIdNum} duration=${durationSec}s expires=${expiresAt} tx=${payment.slice(0, 12)}..`);
+  }
+
+  res.json({
+    hire_session_id: hireSessionId,
+    agent_id: agentIdNum,
+    game_id: game_id ?? null,
+    hirer_pubkey,
+    started_at: startedAt,
+    expires_at: expiresAt,
+    // Caller submits register_agent_hire on-chain with this tx as payment_tx bytes
+    payment_sig: result.simulated ? 'local-dev-bypass' : payment,
+    // Agent endpoint is published by agent owner (hash stored on-chain, URL off-chain)
+    agent_endpoint: `http://localhost:${PORT}/agent/${agentIdNum}`,
+    message: 'Call register_agent_hire on-chain with payment_sig to finalize the session.',
   });
 });
 

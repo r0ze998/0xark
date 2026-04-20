@@ -257,6 +257,23 @@ pub mod oxark {
         instructions::init_position::handle_init_position(ctx, game_id, commitment)
     }
 
+    /// Register an on-chain AgentHireSession after x402 payment verification.
+    ///
+    /// The hirer calls this after the x402 facilitator confirms the 0.05 SOL
+    /// payment. `payment_tx` links the session to the Solana payment tx for
+    /// audit purposes. The AgentListing must be active.
+    ///
+    /// PDA seeds: `["agent_hire", hirer_pubkey, agent_id_le_bytes]`
+    pub fn register_agent_hire(
+        ctx: Context<RegisterAgentHire>,
+        agent_id: u32,
+        duration_seconds: i64,
+        payment_tx_lo: [u8; 32],
+        payment_tx_hi: [u8; 32],
+    ) -> Result<()> {
+        instructions::agent_hire::handle_register_agent_hire(ctx, agent_id, duration_seconds, payment_tx_lo, payment_tx_hi)
+    }
+
     /// Verify a Groth16 ZK proof that the player made a valid dungeon move.
     ///
     /// Circuit: dungeon_position.circom (625 constraints, BN254 / Groth16)

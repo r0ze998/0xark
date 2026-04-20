@@ -13,6 +13,7 @@ pub mod delegate_session;
 pub mod undelegate_session;
 pub mod verify_dungeon_move;
 pub mod init_position;
+pub mod agent_hire;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -29,3 +30,4 @@ pub use delegate_session::*;
 pub use undelegate_session::*;
 pub use verify_dungeon_move::*;
 pub use init_position::*;
+pub use agent_hire::*;
