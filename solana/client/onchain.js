@@ -15,7 +15,8 @@
  *   await oxarkOnchain.claimPrize(gameId)
  */
 
-const PROGRAM_ID_STR = '5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN';
+const PROGRAM_ID_STR       = '5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN';
+const CARDS_PROGRAM_ID_STR = '236FNPRbJr5W7qeV9fJCYsxDEkruSK6fnNAipf47Mq1S';
 const DEVNET_RPC = 'https://api.devnet.solana.com';
 
 // Seed prefixes — must match Anchor program constants
@@ -937,10 +938,14 @@ const NFT_CARD_NAMES = [
   'MEND','REST','POTION','BANDAGE','REJUVEN','WARD','LIFEDRAIN','PHOENIX','ELIXIR','HOLY LIGHT','GEN PULSE','ARK BLESS',
 ];
 
+function getCardsProgramId() {
+  return new solanaWeb3.PublicKey(CARDS_PROGRAM_ID_STR);
+}
+
 function findSoloCardMintPDA(playerPubkey, cardId) {
   return solanaWeb3.PublicKey.findProgramAddressSync(
     [SOLO_CARD_SEED, playerPubkey.toBytes(), new Uint8Array([cardId])],
-    getProgramId()
+    getCardsProgramId()  // mint_solo_card lives in oxark-cards, not the main program
   );
 }
 
@@ -1016,7 +1021,7 @@ async function mintCardWithMetadata(cardId) {
   anchorData[8] = cardId & 0xff;
 
   const mintIx = new solanaWeb3.TransactionInstruction({
-    programId: getProgramId(),
+    programId: getCardsProgramId(),  // mint_solo_card is in oxark-cards program
     keys: [
       { pubkey: mintPDA,    isSigner: false, isWritable: true  },
       { pubkey: playerATA,  isSigner: false, isWritable: true  },
@@ -1259,7 +1264,8 @@ async function undelegateSession(gameId) {
 
 // ─── Exports ──────────────────────────────────────────────────────────────
 window.oxarkOnchain = {
-  PROGRAM_ID: PROGRAM_ID_STR,
+  PROGRAM_ID:       PROGRAM_ID_STR,
+  CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
   // MagicBlock ER mode toggle (requires window.oxarkMB / 01-magicblock.js)
   setMagicBlockMode,
   // MagicBlock delegation instructions (Phase C Day 2 — real Rust CPI)

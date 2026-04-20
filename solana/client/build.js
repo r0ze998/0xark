@@ -186,7 +186,13 @@ function build() {
   } catch (_) { /* not a git tree — keep 'dev' */ }
   const versionHeader = `window.BUILD_VERSION = ${JSON.stringify(buildVersion)};`;
 
-  const js = parts.join('\n');
+  // Bundle onchain.js (Solana/Metaplex on-chain interaction layer) into the output
+  const ONCHAIN_PATH = path.join(ROOT, 'onchain.js');
+  const onchainJs = fs.existsSync(ONCHAIN_PATH)
+    ? `\n// ${'─'.repeat(71)}\n// ONCHAIN: onchain.js\n// Solana wallet + program instructions (Anchor CPI, NFT mint, ZK proof)\n// ${'─'.repeat(71)}\n${fs.readFileSync(ONCHAIN_PATH, 'utf8')}`
+    : '/* onchain.js not found — wallet features disabled */';
+
+  const js = parts.join('\n') + onchainJs;
   const scriptBlock = `<script>\n${versionHeader}\n${js}\n</script>`;
   const output = template.replace('<!-- GAME_SCRIPT -->', scriptBlock);
 
