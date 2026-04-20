@@ -1100,10 +1100,16 @@ const AREA_CARDS=[
   [11,20,21,22,32,33,34,46,47,56,57,58], // map 4 Floor 4: Epic
   [1,2,12,23,24,35,36,37,38,48,59,60],  // map 5 Floor 5: Legendary
 ];
+// T61: 3-tier weighted pick — Common 70% / Rare 25% / Legendary 5%
 function pickAreaCardForMap(mapIdx){
   const ac=DUNGEON_FLOOR_CARDS[mapIdx];
-  if(!ac||ac.length===0)return 1+(Math.floor(Math.random()*60)); // fallback: any card
-  return ac[Math.floor(Math.random()*ac.length)];
+  if(!ac||ac.length===0)return 1+(Math.floor(Math.random()*60));
+  const roll=Math.random();
+  const targetTier=roll<0.70?0:roll<0.95?1:2; // 0=Common,1=Rare,2=Legendary
+  // Filter floor pool by target tier; fall back to full pool if none found
+  const tierPool=ac.filter(id=>CARD_TIER[id-1]===targetTier);
+  const pool=tierPool.length>0?tierPool:ac;
+  return pool[Math.floor(Math.random()*pool.length)];
 }
 // v299: vault-new preference pick — no .filter() array, single-pass random scan
 // Replaces the pool.filter(id=>!vault.has(id)) pattern used across multiple systems

@@ -72,6 +72,33 @@ const CD=[
   {n:'ARK BLESS',t:'recovery',r:5,c:'#fff0a0',d:'#e8c870',h:'#fffff0',a:'#ffffff',i:'\u25CE',f:'Ultimate heal',fl:'The ARK\'s final gift'},
 ];
 
+// T61: Auto-compute 4-axis stats for every card from rarity + type.
+// pw=power(1-10), sp=speed(1-5), ct=cost(0-3), du=duration(1-3)
+// Formula (CARD_SYSTEM_DESIGN.md §3):
+//   pw = r*2-1        (r1→1, r2→3, r3→5, r4→7, r5→9)
+//   sp = type-based   (flee:5, attack:4, magic:3, defense:2, recovery:1)
+//   ct = max(0,r-2)   (r1,2→0, r3→1, r4→2, r5→3)
+//   du = magic/recovery→2, others→1
+const _CARD_TYPE_SPEED={attack:4,defense:2,flee:5,magic:3,recovery:1};
+const _CARD_TYPE_DU={magic:2,recovery:2};
+(function(){
+  for(let i=0;i<CD.length;i++){
+    const cr=CD[i];
+    const r=cr.r||1;
+    cr.pw=r*2-1;
+    cr.sp=_CARD_TYPE_SPEED[cr.t]||3;
+    cr.ct=Math.max(0,r-2);
+    cr.du=_CARD_TYPE_DU[cr.t]||1;
+  }
+})();
+
+// T61: 3-tier rarity lookup for drop system
+// Maps existing 5-tier r value → 3-tier tier (0=Common, 1=Rare, 2=Legendary)
+const CARD_TIER=(()=>{const m={};for(let i=0;i<CD.length;i++){const r=CD[i].r||1;m[i]=r<=2?0:r<=4?1:2;}return m;})();
+// Tier labels/colors for UI
+const CARD_TIER_LABEL=['COMMON','RARE','LEGENDARY'];
+const CARD_TIER_COL=['#a0a0b0','#4888d8','#f0c830'];
+
 // ═══════════════════════════════════════
 // CARD CHARACTER SPRITES (pixel art) — with idle animations
 // ═══════════════════════════════════════

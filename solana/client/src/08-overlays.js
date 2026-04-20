@@ -897,6 +897,24 @@ function drawCardDetailPanel(){
     txShadow('??? — Card not yet collected',px_+20,py_+artH+96,6,'#302848','rgba(0,0,0,.3)');
   }
 
+  // T61: 4-axis stat bars (Power / Speed / Cost / Duration)
+  if(owned&&cr.pw!==undefined){
+    const statY=py_+ph-90,statW=pw-40,barH=5;
+    const stats_=[['PWR',cr.pw,10,'#e05838'],['SPD',cr.sp,5,'#38b868'],['COST',cr.ct,3,'#b858e8'],['DUR',cr.du,3,'#e0b030']];
+    txShadow('STATS',px_+20,statY-2,5,'#707080','rgba(0,0,0,.3)');
+    bx(px_+20,statY,statW,1,'#30285060');
+    for(let si=0;si<stats_.length;si++){
+      const [lbl,val,max,col]=stats_[si];
+      const sY=statY+4+si*14;
+      txShadow(lbl,px_+20,sY+barH,5,'#888898','rgba(0,0,0,.3)');
+      const bx_=px_+58,bW=statW-42;
+      bx(bx_,sY,bW,barH,'#181830');
+      bx(bx_,sY,Math.round(bW*val/max),barH,col);
+      txShadow(String(val),bx_+bW+4,sY+barH,5,col,'rgba(0,0,0,.3)');
+    }
+    bx(px_+20,statY+4+4*14,statW,1,'#30285060');
+  }
+
   // Source hint — v346: pre-baked array lookup
   txShadow(_CARD_FOUND_LBL[cardId]||('Found: '+getCardSourceHint(cardId)),px_+20,py_+ph-44,6,owned?'#908880':'#302848','rgba(0,0,0,.35)');
 

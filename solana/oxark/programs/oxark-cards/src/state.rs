@@ -3,6 +3,53 @@
 /// These are read-only references — oxark-cards never writes to Game or PlayerState.
 use anchor_lang::prelude::*;
 
+// ─── T61: Card Metadata ──────────────────────────────────────────────────────
+//
+// 3-tier rarity (CARD_SYSTEM_DESIGN.md §2):
+//   0 = Common    (r1–r2, drop rate 70%)
+//   1 = Rare      (r3–r4, drop rate 25%)
+//   2 = Legendary (r5,    drop rate  5%)
+//
+// 4-axis stats (§3):
+//   power:    1–10  — effect magnitude
+//   speed:    1–5   — resolve_round priority
+//   cost:     0–3   — SOL lamport tier to play
+//   duration: 1–3   — rounds the effect persists
+//
+// CardMetadata is a PDA: seeds = ["card_meta", card_id_le_u8]
+// One account per card template (60 total), initialized by program authority.
+// Migration: existing games are not affected — these are lookup accounts only.
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum CardRarity {
+    #[default]
+    Common,
+    Rare,
+    Legendary,
+}
+
+#[account]
+#[derive(Default)]
+pub struct CardMetadata {
+    /// Card ID (1–60) — mirrors CD[] index in the frontend
+    pub card_id: u8,
+    /// 3-tier rarity
+    pub rarity: CardRarity,
+    /// Effect magnitude (1–10)
+    pub power: u8,
+    /// resolve_round priority (1–5, 5 = fastest)
+    pub speed: u8,
+    /// SOL cost tier (0 = free, 1 = 0.001 SOL, 2 = 0.005 SOL, 3 = 0.01 SOL)
+    pub cost: u8,
+    /// Effect duration in rounds (1–3)
+    pub duration: u8,
+    pub bump: u8,
+}
+
+impl CardMetadata {
+    pub const SIZE: usize = 8 + 1 + 1 + 1 + 1 + 1 + 1 + 1; // disc + fields + bump
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum GameStatus {
     #[default]
