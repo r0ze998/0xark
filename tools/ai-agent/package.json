@@ -1,0 +1,15 @@
+{
+  "name": "0xark-ai-agent",
+  "version": "1.0.0",
+  "description": "0xARK AI auto-play agent — LLM-driven dungeon navigator and card battler",
+  "type": "module",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js",
+    "test": "node tests/t44-agent-e2e.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "ws": "^8.18.0"
+  }
+}
