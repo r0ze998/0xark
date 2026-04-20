@@ -268,4 +268,22 @@ pub mod oxark {
     pub fn undelegate_session(ctx: Context<UndelegateSession>, game_id: u64) -> Result<()> {
         instructions::undelegate_session::handle_undelegate_session(ctx, game_id)
     }
+
+    /// Verify a Groth16 ZK proof that the player made a valid dungeon move.
+    ///
+    /// Circuit: dungeon_position.circom (625 constraints, BN254 / Groth16)
+    /// Public inputs (64 bytes): old_commitment[0..32] || new_commitment[32..64]
+    /// Proof generation: snarkjs in browser WASM (<1s for 625 constraints)
+    pub fn verify_dungeon_move(
+        ctx: Context<VerifyDungeonMove>,
+        game_id: u64,
+        proof_a: [u8; 64],
+        proof_b: [u8; 128],
+        proof_c: [u8; 64],
+        public_inputs: [u8; 64],
+    ) -> Result<()> {
+        instructions::verify_dungeon_move::handle_verify_dungeon_move(
+            ctx, game_id, proof_a, proof_b, proof_c, public_inputs,
+        )
+    }
 }

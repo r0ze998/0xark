@@ -16,6 +16,7 @@ pub mod mint_card_nft;
 pub mod mint_solo_card;
 pub mod delegate_session;
 pub mod undelegate_session;
+pub mod verify_dungeon_move;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -34,3 +35,4 @@ pub use agent_registry::*;
 pub use mint_solo_card::*;
 pub use delegate_session::*;
 pub use undelegate_session::*;
+pub use verify_dungeon_move::*;
