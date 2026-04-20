@@ -1,6 +1,4 @@
 {
-  "_comment": "Example input for dungeon_position circuit — player moves from (3, 5, area=1) to (4, 5, area=1)",
-
   "x": "3",
   "y": "5",
   "area": "1",
@@ -12,9 +10,6 @@
 
   "salt_new": "98765432109876543",
 
-  "_note_old_commitment": "= Poseidon(3, 5, 1, 12345678901234567) — compute via circomlibjs",
-  "old_commitment": "0",
-
-  "_note_new_commitment": "= Poseidon(4, 5, 1, 98765432109876543) — compute via circomlibjs",
-  "new_commitment": "0"
+  "old_commitment": "4493193737375249868515347432860810969140867202363742203298502554108550134423",
+  "new_commitment":  "18052127481429945192058376372470398440470043119119312788628425142576310732002"
 }
