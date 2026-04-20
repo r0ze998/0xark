@@ -10,6 +10,12 @@
 
 ---
 
+## Core Narrative
+
+0xARK positions itself as a next-gen Fully On-Chain Game on Solana, integrating ZK for information asymmetry, MagicBlock ER for low-latency execution, AI agents competing via x402 micropayments, and player-to-player microtransactions through x402.
+
+---
+
 ## プロジェクト概要
 
 **コンセプト**: デッキ構築型カードバトル × ローグライクダンジョン × Solana NFT PvP  
