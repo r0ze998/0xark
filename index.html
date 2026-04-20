@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v455+";
+window.BUILD_VERSION = "v483+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -10024,7 +10024,7 @@ function updateCamera(){
   const maxX=MW*TW-W,maxY=MH*TH-H;
   camTargetX=Math.max(0,Math.min(maxX,camTargetX));
   camTargetY=Math.max(0,Math.min(maxY,camTargetY));
-  const lerpT=1-Math.pow(1-0.12,dt);
+  const lerpT=1-Math.pow(1-0.20,dt); // v484: snappier camera (was 0.12 — lagged 5+ frames behind sprite)
   camX=Math.round(lerp(camX,camTargetX,lerpT));
   camY=Math.round(lerp(camY,camTargetY,lerpT));
 }
@@ -19977,24 +19977,33 @@ const _STEALTH_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('STEALTH:'+i);r
 // v224: Pre-baked escape urgency vignette — red edge decay warning (shape static, alpha varies)
 const _escVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(200,20,20,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;})();
 
-// Held-key continuous movement (overworld only — dungeon stays turn-based per press)
+// Held-key continuous movement (overworld + dungeon — both support hold-to-walk)
 // Time-based so movement rate is consistent regardless of fps
 const _MOVE_REPEAT_MS     = 115; // ms between steps while holding (~8.7Hz)
 let _moveRepeatAccumMs    = _MOVE_REPEAT_MS; // start ready so first step fires immediately
 
 function processHeldMovement(){
-  // Only in map mode, no overlays, no dungeon (dungeon stays turn-based)
-  if(sc!=='map'||inDungeon||mo||npcDialogActive||shopActive||gachaActive||marketActive||
+  // Block during overlays, encounters, and screen transitions; dungeon allowed (turn fires inside tryMovePlayer)
+  if(sc!=='map'||mo||npcDialogActive||shopActive||gachaActive||marketActive||
      battlePhase||introActive||handInspectActive||fishingActive||
-     mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive||mapTransitioning)return;
+     mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive||mapTransitioning||
+     wildEncounterActive||encounterExclActive)return;
   _moveRepeatAccumMs+=dt*16.67;
   if(_moveRepeatAccumMs < _MOVE_REPEAT_MS) return;
   _moveRepeatAccumMs=0;
+  // Fix C: last-direction priority prevents diagonal skips on tile maps
   let mdx=0,mdy=0;
-  if(keysHeld.has('ArrowUp'))     mdy=-1;
-  else if(keysHeld.has('ArrowDown')) mdy=1;
-  if(keysHeld.has('ArrowLeft'))   mdx=-1;
-  else if(keysHeld.has('ArrowRight'))mdx=1;
+  if(_lastDirCode==='ArrowUp'&&keysHeld.has('ArrowUp'))         mdy=-1;
+  else if(_lastDirCode==='ArrowDown'&&keysHeld.has('ArrowDown')) mdy=1;
+  else if(_lastDirCode==='ArrowLeft'&&keysHeld.has('ArrowLeft')) mdx=-1;
+  else if(_lastDirCode==='ArrowRight'&&keysHeld.has('ArrowRight'))mdx=1;
+  // Fallback when last-held key released but another is still down
+  if(mdx===0&&mdy===0){
+    if(keysHeld.has('ArrowUp'))          mdy=-1;
+    else if(keysHeld.has('ArrowDown'))   mdy=1;
+    else if(keysHeld.has('ArrowLeft'))   mdx=-1;
+    else if(keysHeld.has('ArrowRight'))  mdx=1;
+  }
   if(mdx===0&&mdy===0)return;
   if(tryMovePlayer(mdx,mdy)){
     checkTreasure();
@@ -20496,7 +20505,11 @@ function _pickDefeatContext(q,winnerIdx){
 
 // Held-key tracking for smooth continuous movement
 const keysHeld = new Set();
-document.addEventListener('keydown', e => { keysHeld.add(e.code); });
+let _lastDirCode = ''; // Fix C: last-pressed direction — used by processHeldMovement for priority
+document.addEventListener('keydown', e => {
+  keysHeld.add(e.code);
+  if(e.code==='ArrowUp'||e.code==='ArrowDown'||e.code==='ArrowLeft'||e.code==='ArrowRight') _lastDirCode=e.code;
+});
 document.addEventListener('keyup',   e => { keysHeld.delete(e.code); });
 
 // Extract move logic so both keydown and held-key loop can call it

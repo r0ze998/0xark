@@ -38,24 +38,33 @@ const _STEALTH_LBL=(()=>{const a=[];for(let i=0;i<=60;i++)a.push('STEALTH:'+i);r
 // v224: Pre-baked escape urgency vignette — red edge decay warning (shape static, alpha varies)
 const _escVigCanvas=(()=>{const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');const grd=ctx.createRadialGradient(W/2,H/2,H*0.25,W/2,H/2,H*0.8);grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(1,'rgba(200,20,20,1)');ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);return c;})();
 
-// Held-key continuous movement (overworld only — dungeon stays turn-based per press)
+// Held-key continuous movement (overworld + dungeon — both support hold-to-walk)
 // Time-based so movement rate is consistent regardless of fps
 const _MOVE_REPEAT_MS     = 115; // ms between steps while holding (~8.7Hz)
 let _moveRepeatAccumMs    = _MOVE_REPEAT_MS; // start ready so first step fires immediately
 
 function processHeldMovement(){
-  // Only in map mode, no overlays, no dungeon (dungeon stays turn-based)
-  if(sc!=='map'||inDungeon||mo||npcDialogActive||shopActive||gachaActive||marketActive||
+  // Block during overlays, encounters, and screen transitions; dungeon allowed (turn fires inside tryMovePlayer)
+  if(sc!=='map'||mo||npcDialogActive||shopActive||gachaActive||marketActive||
      battlePhase||introActive||handInspectActive||fishingActive||
-     mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive||mapTransitioning)return;
+     mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive||mapTransitioning||
+     wildEncounterActive||encounterExclActive)return;
   _moveRepeatAccumMs+=dt*16.67;
   if(_moveRepeatAccumMs < _MOVE_REPEAT_MS) return;
   _moveRepeatAccumMs=0;
+  // Fix C: last-direction priority prevents diagonal skips on tile maps
   let mdx=0,mdy=0;
-  if(keysHeld.has('ArrowUp'))     mdy=-1;
-  else if(keysHeld.has('ArrowDown')) mdy=1;
-  if(keysHeld.has('ArrowLeft'))   mdx=-1;
-  else if(keysHeld.has('ArrowRight'))mdx=1;
+  if(_lastDirCode==='ArrowUp'&&keysHeld.has('ArrowUp'))         mdy=-1;
+  else if(_lastDirCode==='ArrowDown'&&keysHeld.has('ArrowDown')) mdy=1;
+  else if(_lastDirCode==='ArrowLeft'&&keysHeld.has('ArrowLeft')) mdx=-1;
+  else if(_lastDirCode==='ArrowRight'&&keysHeld.has('ArrowRight'))mdx=1;
+  // Fallback when last-held key released but another is still down
+  if(mdx===0&&mdy===0){
+    if(keysHeld.has('ArrowUp'))          mdy=-1;
+    else if(keysHeld.has('ArrowDown'))   mdy=1;
+    else if(keysHeld.has('ArrowLeft'))   mdx=-1;
+    else if(keysHeld.has('ArrowRight'))  mdx=1;
+  }
   if(mdx===0&&mdy===0)return;
   if(tryMovePlayer(mdx,mdy)){
     checkTreasure();

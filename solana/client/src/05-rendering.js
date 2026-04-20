@@ -2401,7 +2401,7 @@ function updateCamera(){
   const maxX=MW*TW-W,maxY=MH*TH-H;
   camTargetX=Math.max(0,Math.min(maxX,camTargetX));
   camTargetY=Math.max(0,Math.min(maxY,camTargetY));
-  const lerpT=1-Math.pow(1-0.12,dt);
+  const lerpT=1-Math.pow(1-0.20,dt); // v484: snappier camera (was 0.12 — lagged 5+ frames behind sprite)
   camX=Math.round(lerp(camX,camTargetX,lerpT));
   camY=Math.round(lerp(camY,camTargetY,lerpT));
 }

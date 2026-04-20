@@ -33,7 +33,11 @@ function _pickDefeatContext(q,winnerIdx){
 
 // Held-key tracking for smooth continuous movement
 const keysHeld = new Set();
-document.addEventListener('keydown', e => { keysHeld.add(e.code); });
+let _lastDirCode = ''; // Fix C: last-pressed direction — used by processHeldMovement for priority
+document.addEventListener('keydown', e => {
+  keysHeld.add(e.code);
+  if(e.code==='ArrowUp'||e.code==='ArrowDown'||e.code==='ArrowLeft'||e.code==='ArrowRight') _lastDirCode=e.code;
+});
 document.addEventListener('keyup',   e => { keysHeld.delete(e.code); });
 
 // Extract move logic so both keydown and held-key loop can call it
