@@ -1237,3 +1237,80 @@ function drawOnboardPrompt(){
   g.restore();
 }
 
+// T70: "[Z] Enter" proximity hint — shown when player is adjacent to a town interactable
+function drawTownHint(){
+  if(!nearInteractable||inDungeon||battlePhase||mo||introActive||townShopActive)return;
+  const t=nearInteractable;
+  const bw=300,bh=44;
+  const bx_=(W-bw)/2|0, by_=H-HUD_HEIGHT-bh-12;
+  const pulse=0.8+0.2*Math.sin(fr*0.08);
+  g.save();
+  g.globalAlpha=0.92*pulse;
+  g.fillStyle='rgba(8,6,20,0.88)';
+  g.beginPath();g.roundRect(bx_,by_,bw,bh,10);g.fill();
+  g.strokeStyle=t.col;g.lineWidth=1.5;g.stroke();
+  // Left accent bar
+  g.fillStyle=t.col;
+  g.beginPath();g.roundRect(bx_,by_,3,bh,10);g.fill();
+  g.restore();
+  g.save();
+  g.globalAlpha=0.95;
+  // Icon + label on left, [Z] badge on right
+  txShadow(t.icon+' '+t.label,bx_+18,by_+14,9,t.accentCol,'rgba(0,0,0,0.5)');
+  txShadow(t.hint,bx_+18,by_+30,7,'#a0a0c0','rgba(0,0,0,0.4)');
+  // [Z] key badge
+  const kx=bx_+bw-46,ky=by_+(bh-22)/2;
+  g.fillStyle=t.col;
+  g.beginPath();g.roundRect(kx,ky,22,22,5);g.fill();
+  txShadow('Z',kx+11,ky+14,10,'#ffffff','rgba(0,0,0,0.5)');
+  g.restore();
+}
+
+// T70: Town shop modal — base shell dispatches to specific shop type (T71/T72/T73 fill content)
+function drawTownShopModal(){
+  if(!townShopActive)return;
+  const t=TOWN_INTERACTABLES.find(ti=>ti.id===townShopType);
+  if(!t)return;
+  const cw=520,ch=380;
+  const cx_=W/2-cw/2, cy_=H/2-ch/2;
+  // Slide-in animation
+  if(!townShopOpenFrame)townShopOpenFrame=fr;
+  const tSlide=Math.min(1,(fr-townShopOpenFrame)/8);
+  const eSlide=1-Math.pow(1-tSlide,3);
+  const cy_anim=cy_-(1-eSlide)*ch;
+
+  bx(0,0,W,H,'rgba(0,0,0,.7)');
+  win(cx_,cy_anim,cw,ch);
+  // Title bar
+  bx(cx_,cy_anim,cw,30,t.col.replace(')',',0.3)').replace('rgb','rgba'));
+  bx(cx_,cy_anim,4,30,t.col);
+  txShadow(t.icon+' '+t.label,cx_+cw/2,cy_anim+21,12,t.accentCol,'rgba(0,0,0,.5)');
+  // Divider
+  bx(cx_+12,cy_anim+32,cw-24,1,'rgba(255,255,255,0.1)');
+
+  // Dispatch to specific shop renderer (stubs replaced by T71/T72/T73)
+  if(townShopType==='dungeon_gate'){drawDungeonGateShop(cx_,cy_anim,cw,ch);}
+  else if(townShopType==='nft_trading'){drawNFTTradingShop(cx_,cy_anim,cw,ch);}
+  else if(townShopType==='item_shop'){drawItemShop(cx_,cy_anim,cw,ch);}
+
+  // [X] close hint
+  txShadow('[X] Close',cx_+cw-60,cy_anim+ch-14,7,'#807090','rgba(0,0,0,.4)');
+}
+
+// T70 stubs — overridden in T71/T72/T73
+function drawDungeonGateShop(cx,cy,cw,ch){
+  txShadow('DUNGEON GATE',cx+cw/2,cy+ch/2-20,14,'#ff8080','rgba(0,0,0,.5)');
+  txShadow('Challenge the dungeon depths',cx+cw/2,cy+ch/2+6,8,'#c0a0a0','rgba(0,0,0,.4)');
+  txShadow('Full implementation in T71',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+}
+function drawNFTTradingShop(cx,cy,cw,ch){
+  txShadow('NFT TRADING HOUSE',cx+cw/2,cy+ch/2-20,14,'#88ccff','rgba(0,0,0,.5)');
+  txShadow('Trade & list your card NFTs',cx+cw/2,cy+ch/2+6,8,'#a0b8c0','rgba(0,0,0,.4)');
+  txShadow('Full implementation in T72',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+}
+function drawItemShop(cx,cy,cw,ch){
+  txShadow('GENERAL SHOP',cx+cw/2,cy+ch/2-20,14,'#80ffb0','rgba(0,0,0,.5)');
+  txShadow('Buy items & boosters',cx+cw/2,cy+ch/2+6,8,'#a0c0b0','rgba(0,0,0,.4)');
+  txShadow('Full implementation in T73',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+}
+

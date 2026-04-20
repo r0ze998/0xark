@@ -371,6 +371,15 @@ document.addEventListener('keydown',e=>{
     return;
   }
 
+  // T70: Town shop modal input
+  if(townShopActive){
+    if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+    // Tab navigation (used by T72/T73 multi-tab shops)
+    if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);sfxCursor();}
+    if(e.code==='ArrowRight'){townShopTab=Math.min(2,townShopTab+1);sfxCursor();}
+    return;
+  }
+
   // Marketplace
   if(marketActive){
     if(e.code==='ArrowLeft'){marketTab=Math.max(0,marketTab-1);sfxCursor();}
@@ -794,6 +803,17 @@ document.addEventListener('keydown',e=>{
 
       // Z = interact / wait (dungeon)
       if(e.code==='KeyZ'){
+        // T70: open town shop modal when adjacent to an interactable building
+        if(nearInteractable&&!inDungeon&&currentMap===0){
+          if(nearInteractable.id==='dungeon_gate'){
+            // Dungeon gate — use existing confirm flow (T71 will enhance this)
+            const glowExit=exits.find(ex=>ex.map===currentMap&&maps[currentMap]&&
+              maps[currentMap][ex.ty]&&maps[currentMap][ex.ty][ex.tx]===24);
+            if(glowExit){dungeonConfirmActive=true;dungeonConfirmExit=glowExit;sfxSelect();return;}
+          }
+          townShopActive=true;townShopType=nearInteractable.id;townShopTab=0;townShopOpenFrame=fr;
+          sfxSelect();return;
+        }
         if(checkNPCInteraction())return;
         if(checkSignpostInteraction())return;
         if(checkBuildingEntry())return;

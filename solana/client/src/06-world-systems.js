@@ -146,6 +146,18 @@ function checkRivalProximity(){
   }
 }
 
+// T70: Check town building proximity — sets nearInteractable for [Z] hint + input routing
+function checkTownInteractable(){
+  if(currentMap!==0||inDungeon){nearInteractable=null;return;}
+  const px=pl[0].x,py=pl[0].y;
+  let found=null;
+  for(let i=0;i<TOWN_INTERACTABLES.length;i++){
+    const t=TOWN_INTERACTABLES[i];
+    if(Math.abs(px-t.tx)<=1&&Math.abs(py-t.ty)<=1){found=t;break;}
+  }
+  nearInteractable=found;
+}
+
 // Check if a rival just stepped adjacent to the player; trigger encounter if so
 // (mirrors the encounter check in the game loop but called explicitly after each turn)
 function checkDungeonRivalEncounter(){

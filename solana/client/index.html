@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v504+";
+window.BUILD_VERSION = "v505+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -5839,6 +5839,14 @@ const mapNames=['TOWN - はじまりのまち','SUNKEN GALLERIES — B1','DROWNE
 const mapColors=['#3060b0','#302848','#403058','#503060','#403850','#503848'];
 let currentMap=0;
 
+// T70: Town interactive buildings — each entry defines the building tile + interaction metadata
+// Proximity check: Manhattan distance ≤ 1 from (tx, ty) while on currentMap === 0
+const TOWN_INTERACTABLES=[
+  {id:'dungeon_gate', label:'DUNGEON GATE',     hint:'Challenge the dungeon',   tx:27, ty:12, icon:'\u26A0', col:'#d04040', accentCol:'#ff6060'},
+  {id:'nft_trading',  label:'NFT TRADING HOUSE',hint:'Trade & list NFT cards',  tx:9,  ty:11, icon:'\u25C6', col:'#60a0e0', accentCol:'#88ccff'},
+  {id:'item_shop',    label:'GENERAL SHOP',     hint:'Buy items & boosters',    tx:19, ty:15, icon:'\u25CF', col:'#50c080', accentCol:'#80ffb0'},
+];
+
 // T53: Dungeon landmark names per floor — pool assigned to rooms in order
 const LANDMARK_NAMES=[
   [], // floor 0 = town (no landmarks)
@@ -7695,6 +7703,10 @@ let synthActive=false, synthPhase='pick', synthSelected=[], synthRarityFilter=1,
 
 // ── Dungeon entry confirmation ──
 let dungeonConfirmActive=false, dungeonConfirmExit=null;
+
+// T70: Town interactive building state
+let nearInteractable=null; // TOWN_INTERACTABLES entry currently adjacent to player (or null)
+let townShopActive=false, townShopType='', townShopTab=0, townShopOpenFrame=0;
 
 // ── Marketplace state ──
 let marketActive=false, marketTab=0, marketPage=0, marketFilter='all';
@@ -10845,6 +10857,18 @@ function checkRivalProximity(){
   }else{
     preEncounterAlert=false;
   }
+}
+
+// T70: Check town building proximity — sets nearInteractable for [Z] hint + input routing
+function checkTownInteractable(){
+  if(currentMap!==0||inDungeon){nearInteractable=null;return;}
+  const px=pl[0].x,py=pl[0].y;
+  let found=null;
+  for(let i=0;i<TOWN_INTERACTABLES.length;i++){
+    const t=TOWN_INTERACTABLES[i];
+    if(Math.abs(px-t.tx)<=1&&Math.abs(py-t.ty)<=1){found=t;break;}
+  }
+  nearInteractable=found;
 }
 
 // Check if a rival just stepped adjacent to the player; trigger encounter if so
@@ -19110,6 +19134,83 @@ function drawOnboardPrompt(){
   g.restore();
 }
 
+// T70: "[Z] Enter" proximity hint — shown when player is adjacent to a town interactable
+function drawTownHint(){
+  if(!nearInteractable||inDungeon||battlePhase||mo||introActive||townShopActive)return;
+  const t=nearInteractable;
+  const bw=300,bh=44;
+  const bx_=(W-bw)/2|0, by_=H-HUD_HEIGHT-bh-12;
+  const pulse=0.8+0.2*Math.sin(fr*0.08);
+  g.save();
+  g.globalAlpha=0.92*pulse;
+  g.fillStyle='rgba(8,6,20,0.88)';
+  g.beginPath();g.roundRect(bx_,by_,bw,bh,10);g.fill();
+  g.strokeStyle=t.col;g.lineWidth=1.5;g.stroke();
+  // Left accent bar
+  g.fillStyle=t.col;
+  g.beginPath();g.roundRect(bx_,by_,3,bh,10);g.fill();
+  g.restore();
+  g.save();
+  g.globalAlpha=0.95;
+  // Icon + label on left, [Z] badge on right
+  txShadow(t.icon+' '+t.label,bx_+18,by_+14,9,t.accentCol,'rgba(0,0,0,0.5)');
+  txShadow(t.hint,bx_+18,by_+30,7,'#a0a0c0','rgba(0,0,0,0.4)');
+  // [Z] key badge
+  const kx=bx_+bw-46,ky=by_+(bh-22)/2;
+  g.fillStyle=t.col;
+  g.beginPath();g.roundRect(kx,ky,22,22,5);g.fill();
+  txShadow('Z',kx+11,ky+14,10,'#ffffff','rgba(0,0,0,0.5)');
+  g.restore();
+}
+
+// T70: Town shop modal — base shell dispatches to specific shop type (T71/T72/T73 fill content)
+function drawTownShopModal(){
+  if(!townShopActive)return;
+  const t=TOWN_INTERACTABLES.find(ti=>ti.id===townShopType);
+  if(!t)return;
+  const cw=520,ch=380;
+  const cx_=W/2-cw/2, cy_=H/2-ch/2;
+  // Slide-in animation
+  if(!townShopOpenFrame)townShopOpenFrame=fr;
+  const tSlide=Math.min(1,(fr-townShopOpenFrame)/8);
+  const eSlide=1-Math.pow(1-tSlide,3);
+  const cy_anim=cy_-(1-eSlide)*ch;
+
+  bx(0,0,W,H,'rgba(0,0,0,.7)');
+  win(cx_,cy_anim,cw,ch);
+  // Title bar
+  bx(cx_,cy_anim,cw,30,t.col.replace(')',',0.3)').replace('rgb','rgba'));
+  bx(cx_,cy_anim,4,30,t.col);
+  txShadow(t.icon+' '+t.label,cx_+cw/2,cy_anim+21,12,t.accentCol,'rgba(0,0,0,.5)');
+  // Divider
+  bx(cx_+12,cy_anim+32,cw-24,1,'rgba(255,255,255,0.1)');
+
+  // Dispatch to specific shop renderer (stubs replaced by T71/T72/T73)
+  if(townShopType==='dungeon_gate'){drawDungeonGateShop(cx_,cy_anim,cw,ch);}
+  else if(townShopType==='nft_trading'){drawNFTTradingShop(cx_,cy_anim,cw,ch);}
+  else if(townShopType==='item_shop'){drawItemShop(cx_,cy_anim,cw,ch);}
+
+  // [X] close hint
+  txShadow('[X] Close',cx_+cw-60,cy_anim+ch-14,7,'#807090','rgba(0,0,0,.4)');
+}
+
+// T70 stubs — overridden in T71/T72/T73
+function drawDungeonGateShop(cx,cy,cw,ch){
+  txShadow('DUNGEON GATE',cx+cw/2,cy+ch/2-20,14,'#ff8080','rgba(0,0,0,.5)');
+  txShadow('Challenge the dungeon depths',cx+cw/2,cy+ch/2+6,8,'#c0a0a0','rgba(0,0,0,.4)');
+  txShadow('Full implementation in T71',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+}
+function drawNFTTradingShop(cx,cy,cw,ch){
+  txShadow('NFT TRADING HOUSE',cx+cw/2,cy+ch/2-20,14,'#88ccff','rgba(0,0,0,.5)');
+  txShadow('Trade & list your card NFTs',cx+cw/2,cy+ch/2+6,8,'#a0b8c0','rgba(0,0,0,.4)');
+  txShadow('Full implementation in T72',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+}
+function drawItemShop(cx,cy,cw,ch){
+  txShadow('GENERAL SHOP',cx+cw/2,cy+ch/2-20,14,'#80ffb0','rgba(0,0,0,.5)');
+  txShadow('Buy items & boosters',cx+cw/2,cy+ch/2+6,8,'#a0c0b0','rgba(0,0,0,.4)');
+  txShadow('Full implementation in T73',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+}
+
 
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/08-world-interact.js
@@ -20968,7 +21069,7 @@ let _moveRepeatAccumMs    = _MOVE_REPEAT_MS; // start ready so first step fires 
 
 function processHeldMovement(){
   // Block during overlays, encounters, and screen transitions; dungeon allowed (turn fires inside tryMovePlayer)
-  if(sc!=='map'||mo||npcDialogActive||shopActive||gachaActive||marketActive||
+  if(sc!=='map'||mo||npcDialogActive||shopActive||gachaActive||marketActive||townShopActive||
      battlePhase||introActive||handInspectActive||fishingActive||
      mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive||mapTransitioning||
      wildEncounterActive||encounterExclActive)return;
@@ -21103,6 +21204,7 @@ function update(){
   updateProximityTension();
   updateNPCWander();
   updateTownWeather(); // v84
+  if(sc==='map'&&!inDungeon)checkTownInteractable(); // T70
   updateFloorTitle(); // v155: PMD floor title card
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
@@ -21391,6 +21493,8 @@ function draw(){
   drawToasts(); // T54 UX-9
   drawWalletHUD(); // T54 UX-8
   drawOnboardPrompt(); // T54 UX-10
+  drawTownHint(); // T70
+  drawTownShopModal(); // T70
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){
@@ -21835,6 +21939,15 @@ document.addEventListener('keydown',e=>{
     return;
   }
 
+  // T70: Town shop modal input
+  if(townShopActive){
+    if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+    // Tab navigation (used by T72/T73 multi-tab shops)
+    if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);sfxCursor();}
+    if(e.code==='ArrowRight'){townShopTab=Math.min(2,townShopTab+1);sfxCursor();}
+    return;
+  }
+
   // Marketplace
   if(marketActive){
     if(e.code==='ArrowLeft'){marketTab=Math.max(0,marketTab-1);sfxCursor();}
@@ -22258,6 +22371,17 @@ document.addEventListener('keydown',e=>{
 
       // Z = interact / wait (dungeon)
       if(e.code==='KeyZ'){
+        // T70: open town shop modal when adjacent to an interactable building
+        if(nearInteractable&&!inDungeon&&currentMap===0){
+          if(nearInteractable.id==='dungeon_gate'){
+            // Dungeon gate — use existing confirm flow (T71 will enhance this)
+            const glowExit=exits.find(ex=>ex.map===currentMap&&maps[currentMap]&&
+              maps[currentMap][ex.ty]&&maps[currentMap][ex.ty][ex.tx]===24);
+            if(glowExit){dungeonConfirmActive=true;dungeonConfirmExit=glowExit;sfxSelect();return;}
+          }
+          townShopActive=true;townShopType=nearInteractable.id;townShopTab=0;townShopOpenFrame=fr;
+          sfxSelect();return;
+        }
         if(checkNPCInteraction())return;
         if(checkSignpostInteraction())return;
         if(checkBuildingEntry())return;

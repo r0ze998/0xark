@@ -45,7 +45,7 @@ let _moveRepeatAccumMs    = _MOVE_REPEAT_MS; // start ready so first step fires 
 
 function processHeldMovement(){
   // Block during overlays, encounters, and screen transitions; dungeon allowed (turn fires inside tryMovePlayer)
-  if(sc!=='map'||mo||npcDialogActive||shopActive||gachaActive||marketActive||
+  if(sc!=='map'||mo||npcDialogActive||shopActive||gachaActive||marketActive||townShopActive||
      battlePhase||introActive||handInspectActive||fishingActive||
      mapCardUseActive||fountainActive||dungeonConfirmActive||cardAcqActive||mapTransitioning||
      wildEncounterActive||encounterExclActive)return;
@@ -180,6 +180,7 @@ function update(){
   updateProximityTension();
   updateNPCWander();
   updateTownWeather(); // v84
+  if(sc==='map'&&!inDungeon)checkTownInteractable(); // T70
   updateFloorTitle(); // v155: PMD floor title card
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
@@ -468,6 +469,8 @@ function draw(){
   drawToasts(); // T54 UX-9
   drawWalletHUD(); // T54 UX-8
   drawOnboardPrompt(); // T54 UX-10
+  drawTownHint(); // T70
+  drawTownShopModal(); // T70
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){

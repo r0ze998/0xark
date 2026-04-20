@@ -2075,6 +2075,14 @@ const mapNames=['TOWN - はじまりのまち','SUNKEN GALLERIES — B1','DROWNE
 const mapColors=['#3060b0','#302848','#403058','#503060','#403850','#503848'];
 let currentMap=0;
 
+// T70: Town interactive buildings — each entry defines the building tile + interaction metadata
+// Proximity check: Manhattan distance ≤ 1 from (tx, ty) while on currentMap === 0
+const TOWN_INTERACTABLES=[
+  {id:'dungeon_gate', label:'DUNGEON GATE',     hint:'Challenge the dungeon',   tx:27, ty:12, icon:'\u26A0', col:'#d04040', accentCol:'#ff6060'},
+  {id:'nft_trading',  label:'NFT TRADING HOUSE',hint:'Trade & list NFT cards',  tx:9,  ty:11, icon:'\u25C6', col:'#60a0e0', accentCol:'#88ccff'},
+  {id:'item_shop',    label:'GENERAL SHOP',     hint:'Buy items & boosters',    tx:19, ty:15, icon:'\u25CF', col:'#50c080', accentCol:'#80ffb0'},
+];
+
 // T53: Dungeon landmark names per floor — pool assigned to rooms in order
 const LANDMARK_NAMES=[
   [], // floor 0 = town (no landmarks)

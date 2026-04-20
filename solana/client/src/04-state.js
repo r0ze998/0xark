@@ -322,6 +322,10 @@ let synthActive=false, synthPhase='pick', synthSelected=[], synthRarityFilter=1,
 // ── Dungeon entry confirmation ──
 let dungeonConfirmActive=false, dungeonConfirmExit=null;
 
+// T70: Town interactive building state
+let nearInteractable=null; // TOWN_INTERACTABLES entry currently adjacent to player (or null)
+let townShopActive=false, townShopType='', townShopTab=0, townShopOpenFrame=0;
+
 // ── Marketplace state ──
 let marketActive=false, marketTab=0, marketPage=0, marketFilter='all';
 const MARKET_TABS=['MY CARDS','BROWSE','SELL'];
