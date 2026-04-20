@@ -17,13 +17,25 @@
  */
 
 import express from 'express';
-import { Connection } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 
 const app = express();
 const PORT = process.env.PORT || 3402;
 
 const RECIPIENT_WALLET = process.env.BROKER_WALLET || 'DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R';
 const DEVNET_RPC = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+const PROGRAM_ID = new PublicKey('5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN');
+
+// Scout peek price: 0.005 SOL = 5_000_000 lamports
+const SCOUT_PEEK_LAMPORTS = 5_000_000;
+
+// PlayerState layout (Anchor default, no padding beyond field sizes)
+// [0..8]=discriminator [8..16]=game_id [16..48]=player [48]=player_index
+// [49]=area [50..55]=cards[5] [55]=card_count ... [136..168]=position_commitment [168]=initialized
+const PS_CARDS_OFFSET = 50;
+const PS_AREA_OFFSET = 49;
+const PS_CARD_COUNT_OFFSET = 55;
+const CARD_TYPE_NAMES = ['', 'Crystal', 'Shadow', 'Inferno', 'Gale', 'Tidal'];
 
 // Single cached connection — avoids creating a new Connection object per payment request
 const connection = new Connection(DEVNET_RPC, 'confirmed');
@@ -351,10 +363,11 @@ app.get('/status', (req, res) => {
     network: 'solana-devnet',
     recipient: RECIPIENT_WALLET,
     endpoints: [
-      { path: '/intel/location/:id', price: '$0.002 USDC', desc: 'Rival floor position' },
-      { path: '/intel/hand/:id',     price: '$0.003 USDC', desc: 'Rival card holdings' },
-      { path: '/intel/strategy',     price: '$0.005 USDC', desc: 'Strategic analysis' },
-      { path: '/intel/market',       price: 'free',         desc: 'Card pool status (60 cards)' },
+      { path: 'POST /scout-peek',    price: '0.005 SOL',    desc: 'Peek one on-chain card from target player' },
+      { path: '/intel/location/:id', price: '$0.002 USDC',  desc: 'Rival floor position' },
+      { path: '/intel/hand/:id',     price: '$0.003 USDC',  desc: 'Rival card holdings' },
+      { path: '/intel/strategy',     price: '$0.005 USDC',  desc: 'Strategic analysis' },
+      { path: '/intel/market',       price: 'free',          desc: 'Card pool status (60 cards)' },
     ],
     stateAge: gameState._lastUpdate
       ? `${Math.round((Date.now() - gameState._lastUpdate) / 1000)}s ago`
@@ -396,10 +409,158 @@ app.post('/update-state', (req, res) => {
 });
 
 // ═══════════════════════════════════════
+// SOL PAYMENT VERIFICATION
+// ═══════════════════════════════════════
+
+/**
+ * Verify a native SOL transfer >= minLamports to RECIPIENT_WALLET.
+ * Dev bypass: X-Payment: local-dev-bypass
+ */
+async function verifySolPayment(signature, minLamports) {
+  if (signature === 'local-dev-bypass') return { ok: true, simulated: true };
+  if (usedSignatures.has(signature)) {
+    return { ok: false, reason: 'Signature already used (replay attempt)' };
+  }
+  try {
+    const tx = await connection.getParsedTransaction(signature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    });
+    if (!tx) return { ok: false, reason: 'Transaction not found on devnet' };
+    if (tx.meta?.err) return { ok: false, reason: 'Transaction failed on-chain' };
+
+    // Check native SOL balance change for RECIPIENT_WALLET
+    const recipientPk = new PublicKey(RECIPIENT_WALLET);
+    const keys = tx.transaction.message.accountKeys;
+    for (let i = 0; i < keys.length; i++) {
+      if (keys[i].pubkey.equals(recipientPk)) {
+        const pre = tx.meta.preBalances[i] ?? 0;
+        const post = tx.meta.postBalances[i] ?? 0;
+        const received = post - pre;
+        if (received >= minLamports) {
+          trackSignature(signature);
+          return { ok: true, lamports: received };
+        }
+      }
+    }
+    return {
+      ok: false,
+      reason: `No SOL transfer >= ${minLamports} lamports to broker wallet found`,
+    };
+  } catch (e) {
+    return { ok: false, reason: 'RPC error: ' + e.message };
+  }
+}
+
+// ═══════════════════════════════════════
+// ON-CHAIN PLAYER STATE READER
+// ═══════════════════════════════════════
+
+function playerStatePda(gameId, playerPubkey) {
+  const idBuf = Buffer.alloc(8);
+  idBuf.writeBigUInt64LE(BigInt(gameId));
+  const [pda] = PublicKey.findProgramAddressSync(
+    [Buffer.from('player'), idBuf, playerPubkey.toBuffer()],
+    PROGRAM_ID,
+  );
+  return pda;
+}
+
+async function fetchPlayerCards(gameId, targetPubkey) {
+  const pda = playerStatePda(gameId, targetPubkey);
+  const info = await connection.getAccountInfo(pda, 'confirmed');
+  if (!info) return null;
+  const data = info.data;
+  if (data.length < PS_CARD_COUNT_OFFSET + 1) return null;
+
+  const area = data[PS_AREA_OFFSET];
+  const cardCount = data[PS_CARD_COUNT_OFFSET];
+  const cards = Array.from(data.slice(PS_CARDS_OFFSET, PS_CARDS_OFFSET + 5))
+    .filter(c => c > 0)
+    .map(c => ({ id: c, name: CARD_TYPE_NAMES[c] ?? `Type${c}` }));
+
+  return { pda: pda.toBase58(), area, cardCount, cards };
+}
+
+// ═══════════════════════════════════════
+// /scout-peek  (POST, 0.005 SOL)
+// ═══════════════════════════════════════
+
+/**
+ * POST /scout-peek
+ * Body: { game_id: number|string, target_pubkey: string }
+ * Header: X-Payment: <solana_tx_sig>  (or "local-dev-bypass" for dev)
+ *
+ * Returns one card ID from the target player's on-chain PlayerState.
+ * 402 if no / invalid payment.
+ */
+app.post('/scout-peek', async (req, res) => {
+  const payment = req.headers['x-payment'];
+  if (!payment) {
+    const payload = {
+      version: 1,
+      scheme: 'exact',
+      network: 'solana-devnet',
+      amount: SCOUT_PEEK_LAMPORTS,
+      currency: 'SOL',
+      recipient: RECIPIENT_WALLET,
+      description: 'Scout peek - reveal one card from target player',
+    };
+    res.setHeader('X-Payment-Required', JSON.stringify(payload));
+    return res.status(402).json({ error: 'Payment Required', x402: payload });
+  }
+
+  const result = await verifySolPayment(payment, SCOUT_PEEK_LAMPORTS);
+  if (!result.ok) {
+    return res.status(402).json({ error: 'Payment verification failed', reason: result.reason });
+  }
+
+  const { game_id, target_pubkey } = req.body ?? {};
+  if (!game_id || !target_pubkey) {
+    return res.status(400).json({ error: 'game_id and target_pubkey required' });
+  }
+
+  let targetPk;
+  try {
+    targetPk = new PublicKey(target_pubkey);
+  } catch {
+    return res.status(400).json({ error: 'Invalid target_pubkey' });
+  }
+
+  const state = await fetchPlayerCards(Number(game_id), targetPk).catch(e => null);
+  if (!state) {
+    return res.status(404).json({ error: 'PlayerState not found for given game_id + target_pubkey' });
+  }
+
+  if (state.cards.length === 0) {
+    return res.json({
+      revealed: null,
+      message: 'Target player holds no cards',
+      area: state.area,
+      timestamp: Date.now(),
+    });
+  }
+
+  // Reveal the first card (index 0) — deterministic, payer gets one peek per payment
+  const revealed = state.cards[0];
+  if (!result.simulated) {
+    console.log(`[scout-peek] game=${game_id} target=${target_pubkey.slice(0, 8)}... → card ${revealed.id} (${revealed.name})`);
+  }
+
+  res.json({
+    revealed,
+    totalCards: state.cardCount,
+    area: state.area,
+    pda: state.pda,
+    timestamp: Date.now(),
+  });
+});
+
+// ═══════════════════════════════════════
 // EXPORTS & STARTUP
 // ═══════════════════════════════════════
 
-export { app, gameState, analyzeStrategy, FLOOR_NAMES, FLOOR_RARITY };
+export { app, gameState, analyzeStrategy, FLOOR_NAMES, FLOOR_RARITY, verifySolPayment, fetchPlayerCards };
 
 app.listen(PORT, () => {
   console.log(`\n0xARK x402 Information Broker v1.0`);
