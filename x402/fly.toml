@@ -1,0 +1,30 @@
+# fly.toml — 0xARK x402 Agent Broker
+# Deploy: fly deploy (from x402/ directory)
+# Secrets: fly secrets set BROKER_WALLET=<pubkey> SOLANA_RPC_URL=<rpc>
+
+app = "oxark-agent-broker"
+primary_region = "nrt"          # Tokyo — closest to devnet validators
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 3402
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 100
+    hard_limit = 150
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+[env]
+  PORT = "3402"
+  NODE_ENV = "production"
+  # SOLANA_RPC_URL and BROKER_WALLET must be set as fly secrets
