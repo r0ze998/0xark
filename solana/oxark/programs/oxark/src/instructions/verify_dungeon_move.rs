@@ -174,6 +174,7 @@ pub struct VerifyDungeonMove<'info> {
     pub game: Account<'info, Game>,
 
     #[account(
+        mut,
         seeds = [PLAYER_SEED, game_id.to_le_bytes().as_ref(), player.key().as_ref()],
         bump = player_state.bump,
     )]
@@ -184,12 +185,13 @@ pub struct VerifyDungeonMove<'info> {
 
 /// Verify a Groth16 proof that the player made a valid dungeon move.
 ///
-/// Public inputs layout (64 bytes total):
-///   [0..32]  old_commitment — Poseidon(x, y, area, salt_old) before move
-///   [32..64] new_commitment — Poseidon(new_x, new_y, new_area, salt_new) after move
+/// Checks that public_inputs[0..32] (old_commitment) matches the stored
+/// player_state.position_commitment, then verifies the Groth16 proof.
+/// On success, updates player_state.position_commitment to new_commitment.
 ///
-/// The instruction verifies only the ZK proof.  Position state updates
-/// are deferred to Phase C-2 when PlayerState gains a position_commitment field.
+/// Public inputs layout (64 bytes total):
+///   [0..32]  old_commitment — must equal player_state.position_commitment
+///   [32..64] new_commitment — written to player_state.position_commitment on success
 pub fn handle_verify_dungeon_move(
     ctx: Context<VerifyDungeonMove>,
     game_id: u64,
@@ -201,17 +203,28 @@ pub fn handle_verify_dungeon_move(
     let old_commitment: &[u8; 32] = public_inputs[0..32].try_into().unwrap();
     let new_commitment: &[u8; 32] = public_inputs[32..64].try_into().unwrap();
 
+    // Verify old_commitment matches on-chain stored commitment
+    require!(
+        ctx.accounts.player_state.position_commitment_initialized,
+        ErrorCode::NotCommitted,
+    );
+    require!(
+        ctx.accounts.player_state.position_commitment == *old_commitment,
+        ErrorCode::CommitmentMismatch,
+    );
+
     let vk_x = compute_vk_x(old_commitment, new_commitment)?;
 
     let valid = groth16_verify(&proof_a, &proof_b, &proof_c, &vk_x)?;
     require!(valid, ErrorCode::InvalidProof);
 
+    // Update stored commitment to new position
+    ctx.accounts.player_state.position_commitment = *new_commitment;
+
     msg!(
-        "DungeonMove ZK proof VERIFIED: player {} game {} old={} new={}",
+        "DungeonMove ZK proof VERIFIED: player {} game {}",
         ctx.accounts.player.key(),
         game_id,
-        old_commitment.iter().map(|b| format!("{:02x}", b)).collect::<String>(),
-        new_commitment.iter().map(|b| format!("{:02x}", b)).collect::<String>(),
     );
 
     Ok(())

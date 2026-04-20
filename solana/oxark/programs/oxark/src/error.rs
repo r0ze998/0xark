@@ -57,4 +57,9 @@ pub enum ErrorCode {
     WrongDelegationProgram,
     #[msg("Wrong owner program address")]
     WrongOwnerProgram,
+    // ── ZK position ───────────────────────────────────────────────────────────
+    #[msg("Position commitment already initialized")]
+    AlreadyInitialized,
+    #[msg("Position commitment mismatch: old_commitment != stored commitment")]
+    CommitmentMismatch,
 }

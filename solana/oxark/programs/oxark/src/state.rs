@@ -108,6 +108,10 @@ pub struct PlayerState {
     /// Solana clock timestamp when each card slot was acquired (0 = empty/unset)
     pub card_timestamps: [i64; 5],
     pub bump: u8,
+    // ── ZK position commitment (Phase C C-2) ─────────────────────────────────
+    /// Poseidon(x, y, area, salt) — set by init_position, updated by verify_dungeon_move
+    pub position_commitment: [u8; 32],
+    pub position_commitment_initialized: bool,
 }
 
 impl PlayerState {
@@ -115,7 +119,8 @@ impl PlayerState {
     //   + 5 (cards) + 1 (card_count) + 1 (steal) + 1 (barrier) + 1 (scout)
     //   + 1 (committed) + 1 (revealed) + 1 (revealed_action) + 32 (revealed_target)
     //   + 1 (move_target) + 40 (card_timestamps: 5 * i64) + 1 (bump)
-    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 40 + 1;
+    //   + 32 (position_commitment) + 1 (position_commitment_initialized)
+    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 40 + 1 + 32 + 1;
 }
 
 #[account]

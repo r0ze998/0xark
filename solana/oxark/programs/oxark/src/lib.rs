@@ -269,6 +269,16 @@ pub mod oxark {
         instructions::undelegate_session::handle_undelegate_session(ctx, game_id)
     }
 
+    /// Set a player's initial dungeon position commitment.
+    /// Called once after join_game.  commitment = Poseidon(x, y, area, salt).
+    pub fn init_position(
+        ctx: Context<InitPosition>,
+        game_id: u64,
+        commitment: [u8; 32],
+    ) -> Result<()> {
+        instructions::init_position::handle_init_position(ctx, game_id, commitment)
+    }
+
     /// Verify a Groth16 ZK proof that the player made a valid dungeon move.
     ///
     /// Circuit: dungeon_position.circom (625 constraints, BN254 / Groth16)

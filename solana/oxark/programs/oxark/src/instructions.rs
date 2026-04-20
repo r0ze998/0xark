@@ -17,6 +17,7 @@ pub mod mint_solo_card;
 pub mod delegate_session;
 pub mod undelegate_session;
 pub mod verify_dungeon_move;
+pub mod init_position;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -36,3 +37,4 @@ pub use mint_solo_card::*;
 pub use delegate_session::*;
 pub use undelegate_session::*;
 pub use verify_dungeon_move::*;
+pub use init_position::*;
