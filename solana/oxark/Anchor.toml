@@ -7,9 +7,11 @@ skip-lint = false
 
 [programs.devnet]
 oxark = "5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN"
+oxark_cards = "236FNPRbJr5W7qeV9fJCYsxDEkruSK6fnNAipf47Mq1S"
 
 [programs.localnet]
 oxark = "3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum"
+oxark_cards = "236FNPRbJr5W7qeV9fJCYsxDEkruSK6fnNAipf47Mq1S"
 
 [provider]
 cluster = "devnet"
