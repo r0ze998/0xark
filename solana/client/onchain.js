@@ -1165,11 +1165,106 @@ async function readPlayerState(gameId, playerPubkeyStr) {
   }
 }
 
+// ─── Delegation program PDA helpers ──────────────────────────────────────
+const DELEGATION_PROGRAM_ID_STR = 'DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh';
+let _delegationProgramId = null;
+function getDelegationProgramId() {
+  if (!_delegationProgramId) _delegationProgramId = new solanaWeb3.PublicKey(DELEGATION_PROGRAM_ID_STR);
+  return _delegationProgramId;
+}
+
+// Derive the three delegation PDAs for a delegated account (game or player_state).
+// Per the MagicBlock delegation spec:
+//   buffer:              seeds=["buffer", account]              owner=ownerProgram
+//   delegation_record:   seeds=["delegation", account]          owner=delegationProgram
+//   delegation_metadata: seeds=["delegation-metadata", account] owner=delegationProgram
+function findDelegationPDAs(accountPubkey) {
+  const accountBytes = accountPubkey.toBytes();
+  const dlgProgram   = getDelegationProgramId();
+  const ownerProgram = getProgramId();
+
+  const [buffer] = solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('buffer'), accountBytes], ownerProgram
+  );
+  const [delegationRecord] = solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('delegation'), accountBytes], dlgProgram
+  );
+  const [delegationMetadata] = solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('delegation-metadata'), accountBytes], dlgProgram
+  );
+  return { buffer, delegationRecord, delegationMetadata };
+}
+
+// ─── Instruction: delegate_session ───────────────────────────────────────
+// Sent to base layer. Delegates game + player_state PDAs to the MagicBlock ER.
+// Account order matches DelegateSession in delegate_session.rs.
+async function delegateSession(gameId) {
+  const payer = window.solana.publicKey;
+  const [gamePDA]    = findGamePDA(gameId);
+  const [playerPDA]  = findPlayerPDA(gameId, payer);
+
+  const gamePDAs    = findDelegationPDAs(gamePDA);
+  const playerPDAs  = findDelegationPDAs(playerPDA);
+  const dlgProgramId = getDelegationProgramId();
+  const ownerProgram = getProgramId();
+
+  // disc(8) + game_id(u64 LE=8) = 16 bytes
+  const d = await disc('delegate_session');
+  const data = new Uint8Array(16);
+  let off = writeBytes(data, 0, d);
+  writeU64LE(data, off, gameId);
+
+  return buildAndSend([
+    { pubkey: payer,                          isSigner: true,  isWritable: true  }, // payer
+    { pubkey: gamePDA,                        isSigner: false, isWritable: true  }, // game
+    { pubkey: playerPDA,                      isSigner: false, isWritable: true  }, // player_state
+    { pubkey: gamePDAs.buffer,                isSigner: false, isWritable: true  }, // game_buffer
+    { pubkey: gamePDAs.delegationRecord,      isSigner: false, isWritable: true  }, // game_delegation_record
+    { pubkey: gamePDAs.delegationMetadata,    isSigner: false, isWritable: true  }, // game_delegation_metadata
+    { pubkey: playerPDAs.buffer,              isSigner: false, isWritable: true  }, // player_buffer
+    { pubkey: playerPDAs.delegationRecord,    isSigner: false, isWritable: true  }, // player_delegation_record
+    { pubkey: playerPDAs.delegationMetadata,  isSigner: false, isWritable: true  }, // player_delegation_metadata
+    { pubkey: ownerProgram,                   isSigner: false, isWritable: false }, // owner_program
+    { pubkey: dlgProgramId,                   isSigner: false, isWritable: false }, // delegation_program
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data, COMPUTE_BUDGET.default);
+}
+
+// ─── Instruction: undelegate_session ─────────────────────────────────────
+// Sent to ER validator (via Magic Router). Schedules commit + undelegate.
+// The ER commits pending state diffs to base layer then restores account ownership.
+// Account order matches UndelegateSession in undelegate_session.rs.
+async function undelegateSession(gameId) {
+  const payer = window.solana.publicKey;
+  const [gamePDA]        = findGamePDA(gameId);
+  const [playerPDA]      = findPlayerPDA(gameId, payer);
+  const magicContextId   = new solanaWeb3.PublicKey('MagicContext1111111111111111111111111111111');
+  const magicProgramId   = new solanaWeb3.PublicKey('Magic11111111111111111111111111111111111111');
+
+  // disc(8) + game_id(u64 LE=8) = 16 bytes
+  const d = await disc('undelegate_session');
+  const data = new Uint8Array(16);
+  let off = writeBytes(data, 0, d);
+  writeU64LE(data, off, gameId);
+
+  // Must be sent via Magic Router to the ER validator (not base layer).
+  return buildAndSendViaMagicRouter([
+    { pubkey: payer,          isSigner: true,  isWritable: true  }, // payer
+    { pubkey: gamePDA,        isSigner: false, isWritable: true  }, // game
+    { pubkey: playerPDA,      isSigner: false, isWritable: true  }, // player_state
+    { pubkey: magicContextId, isSigner: false, isWritable: true  }, // magic_context
+    { pubkey: magicProgramId, isSigner: false, isWritable: false }, // magic_program
+  ], data, COMPUTE_BUDGET.default);
+}
+
 // ─── Exports ──────────────────────────────────────────────────────────────
 window.oxarkOnchain = {
   PROGRAM_ID: PROGRAM_ID_STR,
   // MagicBlock ER mode toggle (requires window.oxarkMB / 01-magicblock.js)
   setMagicBlockMode,
+  // MagicBlock delegation instructions (Phase C Day 2 — real Rust CPI)
+  delegateSession,
+  undelegateSession,
   // MagicBlock lifecycle wrappers (T4: delegate after start, undelegate before claim)
   startGameMB,
   claimPrizeMB,

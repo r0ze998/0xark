@@ -1,19 +1,18 @@
 // ═══════════════════════════════════════
 // MAGICBLOCK EPHEMERAL ROLLUPS — Client Utilities
-// v465: Magic Router connection + delegation status + sendViaMagicRouter
+// v466: delegate_session + undelegate_session wired to real Rust CPI (Phase C Day 2)
 // ═══════════════════════════════════════
-// Architecture note (2026-04-20):
-//   Full PDA delegation (Game/PlayerState/CardPool) requires Rust-side changes:
-//     1. Add #[ephemeral] to the Anchor program module
-//     2. Add delegate_session / undelegate_session instructions with #[delegate]/#[commit] macros
-//   These stubs document the intended API; Rust integration is Phase C Day 2+.
+// Architecture:
+//   Magic Router RPC auto-routes transactions to ER or base layer based on delegation.
+//   Delegation flow: delegate_session (base layer) → game actions via ER → undelegate_session (ER).
 //
-//   What IS functional today (TypeScript-only path, Option A):
+//   What IS functional (Phase C Day 2):
 //     • Magic Router connection to devnet-router.magicblock.app
 //     • sendViaMagicRouter() — auto-routes txs to ER if accounts are delegated,
 //       otherwise falls back to base layer (transparent to caller)
 //     • checkDelegationStatus() — query delegation state of any account
-//     • mbDelegateGameAccounts() / mbUndelegateGameAccounts() — stubs (Rust req'd)
+//     • mbDelegateGameAccounts() → calls oxarkOnchain.delegateSession() (real Rust CPI)
+//     • mbUndelegateGameAccounts() → calls oxarkOnchain.undelegateSession() via Magic Router
 //
 // Depends on: solanaWeb3 global (CDN IIFE), window.oxarkOnchain
 // Exposes:    window.oxarkMB
@@ -187,29 +186,40 @@ async function mbPingRouter() {
   return { routerMs, baseMs };
 }
 
-// ─── Delegation stubs (Rust program changes required) ────────────────────────
-// These functions document the intended delegation flow.
-// Full implementation requires Phase C Day 2+ Rust changes:
-//   • Add #[ephemeral] macro before #[program] in lib.rs
-//   • Add delegate_session instruction with #[delegate] + AccountInfo<del> constraint
-//   • Add undelegate_session instruction with #[commit] macro + commit_and_undelegate_accounts()
-//   • The delegatedAccount must isSigner=true → only possible via owning program CPI
-//
-// When Rust is ready, these stubs become real calls via oxarkOnchain.delegateSession(gameId).
+// ─── Delegation (Phase C Day 2 — real on-chain CPI) ──────────────────────────
+// Both functions call the Rust program's delegate_session / undelegate_session
+// instructions implemented via manual CPI (no ephemeral-rollups-sdk dependency).
+// oxarkOnchain.delegateSession:   sends to base layer, delegates game+player PDAs to ER
+// oxarkOnchain.undelegateSession: sends to ER via Magic Router, commits state + restores ownership
 
 async function mbDelegateGameAccounts(gameId) {
-  // TODO (Phase C Day 2): Call oxarkOnchain.delegateSession(gameId) once the
-  // Rust program has delegate_session instruction with #[delegate] macro.
-  // The instruction must pass the Game PDA as isSigner via program CPI.
-  console.warn('[MagicBlock] mbDelegateGameAccounts: Rust program update required — stub only.');
-  return { ok: false, reason: 'rust_program_update_required' };
+  if (!window.oxarkOnchain?.delegateSession) {
+    console.error('[MagicBlock] mbDelegateGameAccounts: oxarkOnchain.delegateSession not available');
+    return { ok: false, reason: 'onchain_module_not_loaded' };
+  }
+  try {
+    const sig = await window.oxarkOnchain.delegateSession(gameId);
+    console.log('[MagicBlock] delegate_session OK. sig:', sig);
+    return { ok: true, sig };
+  } catch (e) {
+    console.error('[MagicBlock] delegate_session failed:', e.message);
+    return { ok: false, reason: e.message };
+  }
 }
 
 async function mbUndelegateGameAccounts(gameId) {
-  // TODO (Phase C Day 2): Call oxarkOnchain.undelegateSession(gameId) once the
-  // Rust program has undelegate_session with commit_and_undelegate_accounts().
-  console.warn('[MagicBlock] mbUndelegateGameAccounts: Rust program update required — stub only.');
-  return { ok: false, reason: 'rust_program_update_required' };
+  if (!window.oxarkOnchain?.undelegateSession) {
+    console.error('[MagicBlock] mbUndelegateGameAccounts: oxarkOnchain.undelegateSession not available');
+    return { ok: false, reason: 'onchain_module_not_loaded' };
+  }
+  try {
+    const sig = await window.oxarkOnchain.undelegateSession(gameId);
+    console.log('[MagicBlock] undelegate_session OK. sig:', sig);
+    return { ok: true, sig };
+  } catch (e) {
+    console.error('[MagicBlock] undelegate_session failed:', e.message);
+    return { ok: false, reason: e.message };
+  }
 }
 
 // ─── Global export ────────────────────────────────────────────────────────────
