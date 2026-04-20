@@ -1151,3 +1151,89 @@ function handleTutorialSkip(){
   return true;
 }
 
+// ─── T54 UX-9: Toast / Error Notification System ──────────────────────────────
+// Up to 3 simultaneous toasts, stacked from bottom-right
+const _toasts=[]; // [{msg, col, frame, dur}]
+
+function showToast(msg,col,dur){
+  if(_toasts.length>=3)_toasts.shift();
+  _toasts.push({msg:msg||'',col:col||'#e0e0e0',frame:fr,dur:dur||150});
+}
+
+function showError(msg){
+  sfxError();
+  showToast(msg,'#e86060',200);
+}
+
+function drawToasts(){
+  let active=0;
+  for(let i=_toasts.length-1;i>=0;i--){
+    const t=_toasts[i];
+    const age=fr-t.frame;
+    if(age>t.dur){_toasts.splice(i,1);continue;}
+    const fadeIn=Math.min(1,age/10);
+    const fadeOut=age>t.dur-20?Math.max(0,(t.dur-age)/20):1;
+    const alpha=fadeIn*fadeOut;
+    if(alpha<=0){_toasts.splice(i,1);continue;}
+    const tw=Math.min(240,t.msg.length*6+24);
+    const th=20;
+    const tx_=W-tw-6, ty_=H-30-active*26;
+    g.save();
+    g.globalAlpha=alpha*0.9;
+    g.fillStyle='rgba(12,10,20,0.8)';
+    g.beginPath();g.roundRect(tx_,ty_,tw,th,6);g.fill();
+    g.strokeStyle=t.col;g.lineWidth=1;g.stroke();
+    g.restore();
+    g.save();
+    g.globalAlpha=alpha;
+    txShadow(t.msg,tx_+8,ty_+7,8,t.col,'rgba(0,0,0,0.4)');
+    g.restore();
+    active++;
+  }
+}
+
+// T54 UX-8: Wallet HUD indicator (tiny bottom-left dot when wallet is connected)
+function drawWalletHUD(){
+  if(sc==='battle'||sc==='title')return;
+  if(!walletConnected)return;
+  const dotX=8,dotY=H-8;
+  g.save();
+  g.globalAlpha=0.75;
+  g.fillStyle='#50e888';
+  g.beginPath();g.arc(dotX,dotY,4,0,Math.PI*2);g.fill();
+  g.strokeStyle='rgba(0,0,0,0.4)';g.lineWidth=1;g.stroke();
+  txShadow(walletAddressTruncated(),dotX+8,dotY+3,7,'#80e8a8','rgba(0,0,0,0.4)');
+  g.restore();
+}
+
+// T54 UX-10: First-visit onboarding prompt (show once, leads to intro tutorial)
+let _onboardShown=(()=>{try{return localStorage.getItem('oxark_onboard')!==null;}catch(e){return true;}})();
+let _onboardFrame=-9999;
+function initOnboard(){
+  if(_onboardShown)return;
+  _onboardShown=true;
+  _onboardFrame=fr;
+  try{localStorage.setItem('oxark_onboard','1');}catch(e){}
+}
+
+function drawOnboardPrompt(){
+  const age=fr-_onboardFrame;
+  if(age<0||age>300)return; // show for 5 seconds
+  if(introActive||battlePhase)return;
+  const alpha=Math.min(1,age/20)*(age>260?Math.max(0,(300-age)/40):1);
+  if(alpha<=0)return;
+  const bw=260,bh=42;
+  const bx_=(W-bw)/2|0, by_=H/2-bh-30;
+  g.save();
+  g.globalAlpha=alpha*0.92;
+  g.fillStyle='rgba(15,10,28,0.88)';
+  g.beginPath();g.roundRect(bx_,by_,bw,bh,10);g.fill();
+  g.strokeStyle='rgba(140,100,200,0.5)';g.lineWidth=1.5;g.stroke();
+  g.restore();
+  g.save();
+  g.globalAlpha=alpha;
+  txShadow('Welcome to 0xARK!',W/2,by_+14,12,'#e8d8f8','rgba(0,0,0,0.5)');
+  txShadow('Press Z to read the rules  |  Arrow keys to move',W/2,by_+30,8,'#a090c0','rgba(0,0,0,0.4)');
+  g.restore();
+}
+

@@ -465,6 +465,9 @@ function draw(){
   drawMinimap(); // T53
   drawExplorationProgress(); // T53
   drawTutorialStepOverlay(); // T63
+  drawToasts(); // T54 UX-9
+  drawWalletHUD(); // T54 UX-8
+  drawOnboardPrompt(); // T54 UX-10
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){

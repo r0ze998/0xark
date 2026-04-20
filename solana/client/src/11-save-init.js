@@ -242,5 +242,8 @@ if(isTouchDevice){
 // Initial x402 server check
 x402CheckServer();
 
+// T54 UX-10: Initialize onboarding prompt for first-time visitors
+initOnboard();
+
 requestAnimationFrame(loop);
 

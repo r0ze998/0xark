@@ -2190,7 +2190,7 @@ function checkLandmarkEnter(mapIdx,px,py){
   _visitedRooms[key]=true;
   const names=dungeonLandmarks[mapIdx]||{};
   const name=names[si];
-  if(name){landmarkBannerName=name;landmarkBannerFrame=fr;}
+  if(name){landmarkBannerName=name;landmarkBannerFrame=fr;sfxLandmarkDiscover();}
 }
 
 // Draw landmark discovery banner (slide-down, gold text)

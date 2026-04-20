@@ -397,6 +397,7 @@ function tutorialStepDone(stepId){
   if(idx<0||tutorialStep!==idx)return;
   tutorialStep=idx+1;
   tutorialStepFrame=fr;
+  sfxTutorialStep();
   if(tutorialStep>=TUTORIAL_STEPS.length){
     isTutorial=false;
     try{localStorage.setItem('oxark_tutorial_done','1');}catch(e){}

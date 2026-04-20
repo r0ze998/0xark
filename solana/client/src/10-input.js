@@ -291,9 +291,9 @@ document.addEventListener('keydown',e=>{
             twSet('Install Phantom wallet from phantom.app');
           }else{
             connectPhantom().then(addr=>{
-              if(addr){twSet('Connected: '+walletAddressTruncated());lg.push('Wallet connected: '+walletAddressTruncated());}
-              else{twSet('Connection cancelled.');}
-            }).catch(()=>{twSet('Connection failed.');});
+              if(addr){twSet('Connected: '+walletAddressTruncated());lg.push('Wallet connected: '+walletAddressTruncated());sfxWalletConnect();showToast('Wallet connected! '+walletAddressTruncated(),'#80d080');}
+              else{twSet('Connection cancelled.');showToast('Wallet connection cancelled.','#d08080');}
+            }).catch(()=>{twSet('Connection failed.');showError('Wallet connection failed.');});
           }
         }
       }else if(optionsMenuIdx===1){

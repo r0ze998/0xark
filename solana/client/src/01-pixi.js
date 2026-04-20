@@ -1065,6 +1065,20 @@ function sfxTensionRumble(){if(!soundEnabled)return;try{const s=AC.createBufferS
 // T52: "Battle Start!" stinger — higher than sfxEncounterDramatic, announces transition
 function sfxBattleStartStinger(){if(!soundEnabled)return;try{const notes=[440,554,659,880];const durs=[.05,.05,.05,.18];notes.forEach((f,i)=>{setTimeout(()=>{try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=f;gn.gain.setValueAtTime(.09,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+durs[i]);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+durs[i]);}catch(e){}},i*70);});}catch(e){}}
 
+// T54 UX-7: Additional sound variety
+// sfxCardRare — shimmer arpeggio for rare/legendary card acquisition
+function sfxCardRare(){if(!soundEnabled)return;try{const notes=[523,659,784,1047,1319];notes.forEach((f,i)=>{setTimeout(()=>{try{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.value=f;gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.14);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.14);}catch(e){}},i*55);});}catch(e){}}
+// sfxSynergyTrigger — double-chord burst for synergy activation
+function sfxSynergyTrigger(){if(!soundEnabled)return;try{const pairs=[[330,495],[440,660]];pairs.forEach(([f1,f2],i)=>{setTimeout(()=>{try{[f1,f2].forEach(f=>{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=f;gn.gain.setValueAtTime(.06,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.10);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.10);});}catch(e){}},i*90);});}catch(e){}}
+// sfxLandmarkDiscover — gentle bell tone for room discovery
+function sfxLandmarkDiscover(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='sine';o.frequency.value=880;gn.gain.setValueAtTime(.08,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.5);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.5);setTimeout(()=>{try{const o2=AC.createOscillator(),gn2=AC.createGain();o2.type='sine';o2.frequency.value=1100;gn2.gain.setValueAtTime(.05,AC.currentTime);gn2.gain.linearRampToValueAtTime(0,AC.currentTime+.35);o2.connect(gn2);gn2.connect(AC.destination);o2.start();o2.stop(AC.currentTime+.35);}catch(e){}},180);}catch(e){}}
+// sfxTutorialStep — soft ascending tick for tutorial step completion
+function sfxTutorialStep(){if(!soundEnabled)return;beep(660,.04,.06);setTimeout(()=>beep(880,.05,.07),80);}
+// sfxWalletConnect — brief connection chime
+function sfxWalletConnect(){if(!soundEnabled)return;beep(440,.05,.06);setTimeout(()=>beep(660,.06,.07),70);setTimeout(()=>beep(880,.08,.06),140);}
+// sfxError — descending tone pair for error feedback
+function sfxError(){if(!soundEnabled)return;beep(440,.07,.08);setTimeout(()=>beep(330,.1,.1),100);}
+
 // ── AREA-SPECIFIC AMBIENT LOOPS ──
 const ambientState={
   currentArea:-1,

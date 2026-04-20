@@ -353,7 +353,7 @@ function drawVsSplash(){
     _zkVerifyFiredThisRound=false;zkLastProof=null;zkProofReady=false;zkProofStatus='idle';
     // T62: detect synergy from current hand
     activeSynergy=checkSynergy(pl[0].cd);
-    if(activeSynergy){synergyBannerFrame=fr;}
+    if(activeSynergy){synergyBannerFrame=fr;sfxSynergyTrigger();}
     // T63: tutorial battle objective
     if(isTutorial&&tutorialStep===4)tutorialStepDone('battle');
     generateRivalTells();
