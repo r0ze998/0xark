@@ -127,6 +127,7 @@ const MODULES = [
   { file: '01-magicblock.js',    desc: 'MagicBlock Ephemeral Rollups · Magic Router connection · sendViaMagicRouter · checkDelegationStatus · delegation stubs (window.oxarkMB)' },
   { file: '01-net.js',           desc: 'WebSocket multiplayer client · typewriter text · fade/wipe transitions · screen shake · hand inspect · rival news display · run summary' },
   { file: '02-data.js',          desc: 'Card definitions (CD[]) · map tile arrays (MAP_PORT, MAP_FOREST, MAP_RUINS, dungeonFloors)' },
+  { file: '03-zk-prove.js',     desc: 'ZK dungeon position module · Poseidon commitment · Groth16 proof generation · initPosition/verifyDungeonMove browser helpers (window.zkDungeon)' },
   { file: '03-world-setup.js',   desc: 'exits[] · npcs[] · fog-of-war system · terrain rendering helpers' },
   { file: '04-state.js',         desc: 'Global game-state variables · card timers/decay · rival AI background · quest missions' },
   { file: '05-rendering.js',     desc: 'Tile rendering (TILE section) · card character sprites (drawCardCharacter) · sprite animation' },
