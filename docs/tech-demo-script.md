@@ -18,7 +18,7 @@
 
 *[Show: lib.rs with 7 instructions]*
 
-"Seven core Anchor instructions deployed on devnet: initialize, create, join, start, commit, reveal, resolve. Program ID: 2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3."
+"Seven core Anchor instructions deployed on devnet: initialize, create, join, start, commit, reveal, resolve. Program ID: 5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN."
 
 *[Show: state.rs]*
 

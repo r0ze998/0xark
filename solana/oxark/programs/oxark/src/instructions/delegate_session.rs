@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program::invoke_signed;
 use crate::constants::{GAME_SEED, PLAYER_SEED};
+use crate::error::ErrorCode;
 use crate::state::{Game, PlayerState};
 
 // Delegation program: DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh
@@ -80,14 +81,14 @@ pub fn handle_delegate_session(ctx: Context<DelegateSession>, game_id: u64) -> R
     require_keys_eq!(
         ctx.accounts.delegation_program.key(),
         DELEGATION_PROGRAM_ID,
-        DelegationError::WrongDelegationProgram,
+        ErrorCode::WrongDelegationProgram,
     );
 
     // Verify owner_program is this program
     require_keys_eq!(
         ctx.accounts.owner_program.key(),
         crate::id(),
-        DelegationError::WrongOwnerProgram,
+        ErrorCode::WrongOwnerProgram,
     );
 
     // ── Delegate Game PDA ──────────────────────────────────────────────────
@@ -228,12 +229,4 @@ fn build_delegate_data(seeds: &[&[u8]], commit_frequency_ms: u32) -> Vec<u8> {
     data
 }
 
-// ─── Errors ───────────────────────────────────────────────────────────────
-
-#[error_code]
-pub enum DelegationError {
-    #[msg("Wrong delegation program address")]
-    WrongDelegationProgram,
-    #[msg("Wrong owner program address")]
-    WrongOwnerProgram,
-}
+// Errors: WrongDelegationProgram / WrongOwnerProgram are in crate::error::ErrorCode.

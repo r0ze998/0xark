@@ -44,7 +44,7 @@ But the footprints in the grass say someone was here.
 
 Every mechanic has a blockchain reason for existing.
 
-devnet: 2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3
+devnet: 5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN
 github.com/r0ze998/0xark
 
 ---

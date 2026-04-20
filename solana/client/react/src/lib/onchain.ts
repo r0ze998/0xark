@@ -14,7 +14,7 @@ import {
 } from '@solana/web3.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 
-export const PROGRAM_ID = new PublicKey('2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3');
+export const PROGRAM_ID = new PublicKey('5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN');
 export const RPC_URL    = 'https://api.devnet.solana.com';
 
 // ─── Seeds ────────────────────────────────────────────────────────────────────

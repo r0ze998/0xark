@@ -26,7 +26,7 @@ AI rivals VEGA (hunter) and MIRA (archivist) compete against you autonomously. T
 ## Links
 - **Live Demo**: https://r0ze998.github.io/0xark/
 - **GitHub**: https://github.com/r0ze998/0xark
-- **Devnet Program**: `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3` ([Explorer](https://explorer.solana.com/address/2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3?cluster=devnet))
+- **Devnet Program**: `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` ([Explorer](https://explorer.solana.com/address/5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN?cluster=devnet))
 - **GDD**: https://github.com/r0ze998/0xark/blob/main/GDD-v0.3.md
 
 ## Tech Stack

@@ -33,7 +33,7 @@
 //! - **ZK binding**: Groth16 public inputs include the commitment hash.
 //! - **No admin key**: program has no upgrade authority on devnet deploy.
 //!
-//! Program ID: `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3`
+//! Program ID: `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` (devnet, Phase C fresh deploy)
 
 pub mod constants;
 pub mod error;
@@ -46,7 +46,7 @@ pub use error::ErrorCode;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3");
+declare_id!("5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN");
 
 #[program]
 pub mod oxark {
@@ -164,6 +164,8 @@ pub mod oxark {
     /// - Each `(game_id, card_id)` pair maps to a unique mint PDA.
     ///
     /// Approximate CU cost: ~25,000 (SPL Token + Metaplex CPI).
+    /// Disabled until Day 3 anchor-spl/IDL-builder compat fix (enable with --features mint).
+    #[cfg(feature = "mint")]
     pub fn mint_card_nft(ctx: Context<MintCardNft>, game_id: u64, card_id: u8) -> Result<()> {
         instructions::mint_card_nft::handle_mint_card_nft(ctx, game_id, card_id)
     }
@@ -241,6 +243,8 @@ pub mod oxark {
     /// Mint a card as proof-of-collection without requiring game completion.
     /// Any player wallet can mint any card_id (1-60) exactly once per wallet.
     /// Seeds: ["solo_card", player_pubkey, &[card_id]]
+    /// Disabled until Day 3 anchor-spl/IDL-builder compat fix (enable with --features mint).
+    #[cfg(feature = "mint")]
     pub fn mint_solo_card(ctx: Context<MintSoloCard>, card_id: u8) -> Result<()> {
         instructions::mint_solo_card::handle_mint_solo_card(ctx, card_id)
     }

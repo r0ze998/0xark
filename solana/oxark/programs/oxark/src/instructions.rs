@@ -10,6 +10,9 @@ pub mod mint_card_nft;
 pub mod stake_entry;
 pub mod season;
 pub mod agent_registry;
+#[cfg(feature = "mint")]
+pub mod mint_card_nft;
+#[cfg(feature = "mint")]
 pub mod mint_solo_card;
 pub mod delegate_session;
 pub mod undelegate_session;
@@ -22,10 +25,12 @@ pub use commit_action::*;
 pub use reveal_action::*;
 pub use resolve_round::*;
 pub use verify_zk_proof::*;
+#[cfg(feature = "mint")]
 pub use mint_card_nft::*;
 pub use stake_entry::*;
 pub use season::*;
 pub use agent_registry::*;
+#[cfg(feature = "mint")]
 pub use mint_solo_card::*;
 pub use delegate_session::*;
 pub use undelegate_session::*;

@@ -3,7 +3,7 @@
 [![CI](https://github.com/r0ze998/0xark/actions/workflows/ci.yml/badge.svg)](https://github.com/r0ze998/0xark/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Tests](https://img.shields.io/badge/tests-129%20passing-brightgreen)](./tests/)
-[![Solana Devnet](https://img.shields.io/badge/Solana-Devnet-9945FF?logo=solana)](https://explorer.solana.com/address/2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3?cluster=devnet)
+[![Solana Devnet](https://img.shields.io/badge/Solana-Devnet-9945FF?logo=solana)](https://explorer.solana.com/address/5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN?cluster=devnet)
 
 > **60 cards. One Prize Pool. Information asymmetry is the ultimate weapon.**
 
@@ -28,7 +28,7 @@ A Solana on-chain card PvP game. Explore a dungeon with zero-knowledge hidden po
 | 7 | Press **O** (Intel Shop) in dungeon | x402 micropayment AI intel UI |
 | 8 | Win a battle → reach victory screen | `C` = Claim Prize (on-chain TX), `M` = Mint NFTs |
 
-**On-chain verification**: Program `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3` on [Devnet Explorer](https://explorer.solana.com/address/2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3?cluster=devnet)
+**On-chain verification**: Program `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` on [Devnet Explorer](https://explorer.solana.com/address/5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN?cluster=devnet)
 
 **Run tests locally**:
 ```bash
@@ -133,7 +133,7 @@ Cards minted post-victory are 1-of-1 on-chain NFTs (supply=1, mint authority bur
 | Metric | Value |
 |--------|-------|
 | Live playable demo | ✅ [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/) |
-| On-chain program (Devnet) | `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3` |
+| On-chain program (Devnet) | `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` |
 | ZK circuit compiled | ✅ 277 constraints, trusted setup complete |
 | Groth16 on-chain verifier | ✅ Solana BN254 syscalls (<200K CUs) |
 | Anchor instructions | 15 total (7 deployed on devnet, 8 mainnet-ready in codebase) |
@@ -459,7 +459,7 @@ npm install && npm run build   # → react-dist/oxark-ui.iife.js
 cd solana/oxark
 cargo test             # Run all 12 E2E tests (litesvm, no validator needed)
 cargo build-sbf        # Build SBF binary
-anchor deploy          # Program: 2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3
+anchor deploy          # Program: 5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN
 
 # All unit tests (Node.js)
 node tests/card-engine.test.js      # 53 card engine tests
@@ -497,7 +497,7 @@ snarkjs zkey export verificationkey build/commit_reveal_final.zkey build/verific
 | Tests | **litesvm** (27 Anchor + 102 Node.js, no validator) | Fast E2E + battle mechanics |
 | CI | **GitHub Actions** | Node tests + Rust tests + React build on every push |
 | Wallet | **Phantom** + **@solana/web3.js** | Devnet + Mainnet |
-| Program ID | `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3` | Solana Devnet |
+| Program ID | `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` | Solana Devnet |
 
 ---
 
@@ -738,7 +738,7 @@ Expected Q3 2026. No program ABI changes required; only the `start_game` randomn
 - **Live Demo**: [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/)
 - **GitHub**: [github.com/r0ze998/0xark](https://github.com/r0ze998/0xark)
 - **Builder**: [@r0ze_____](https://x.com/r0ze_____)
-- **Program (Devnet)**: [Explorer](https://explorer.solana.com/address/2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3?cluster=devnet)
+- **Program (Devnet)**: [Explorer](https://explorer.solana.com/address/5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN?cluster=devnet)
 - **Security Policy**: [SECURITY.md](./SECURITY.md)
 
 ---

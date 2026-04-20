@@ -18,7 +18,7 @@ mod tests {
     use solana_sdk_ids::system_program;
 
     // Program ID matching Anchor.toml [programs.devnet]
-    const PROGRAM_ID: &str = "2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3";
+    const PROGRAM_ID: &str = "5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN";
     const GAME_SEED: &[u8]      = b"game";
     const PLAYER_SEED: &[u8]    = b"player";
     const CARD_POOL_SEED: &[u8] = b"card_pool";

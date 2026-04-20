@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-oxark = "2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3"
+oxark = "5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN"
 
 [programs.localnet]
 oxark = "3QEaocNMYiAMSqxXhnyBSzpcn3kjnzumrfGS67Gbbwum"

@@ -1,5 +1,5 @@
 {
-  "address": "2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3",
+  "address": "5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN",
   "metadata": {
     "name": "oxark",
     "version": "0.1.0",
@@ -8,7 +8,102 @@
   },
   "instructions": [
     {
+      "name": "claim_prize",
+      "docs": [
+        "Claim the full prize pool after winning a game.",
+        "",
+        "- Verifies `game.status == Finished` and `game.winner == signer`.",
+        "- Transfers entire `stake_vault` balance to the winner.",
+        "- Uses PDA signer (no admin key required)."
+      ],
+      "discriminator": [
+        157,
+        233,
+        139,
+        121,
+        246,
+        62,
+        234,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "game",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stake_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "commit_action",
+      "docs": [
+        "Commit a hidden action for the current round.",
+        "",
+        "`hash = SHA-256(action_type_u8 | target_pubkey_32 | salt_32)`",
+        "",
+        "The hash is stored in a per-round `commit` PDA. When all players commit,",
+        "the game transitions to `RevealPhase` automatically.",
+        "",
+        "A player cannot change their committed action — the hash binds them."
+      ],
       "discriminator": [
         75,
         26,
@@ -128,6 +223,15 @@
     },
     {
       "name": "create_game",
+      "docs": [
+        "Create a new game session.",
+        "",
+        "- Allocates `game` PDA and `card_pool` PDA.",
+        "- Sets `status = Lobby`, `round = 0`.",
+        "- `max_players` must be 2–4.",
+        "",
+        "Caller becomes the host; only the host may call `start_game`."
+      ],
       "discriminator": [
         124,
         69,
@@ -208,7 +312,392 @@
       ]
     },
     {
+      "name": "create_season",
+      "docs": [
+        "Create a competitive season with a shared entry fee and prize pool.",
+        "",
+        "Seasons run for `duration_seconds` wall-clock time. Players pay `entry_fee`",
+        "lamports to register; the accumulated pool is distributed at `end_season`."
+      ],
+      "discriminator": [
+        38,
+        108,
+        29,
+        127,
+        60,
+        126,
+        101,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "season",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  97,
+                  115,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "season_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u32"
+        },
+        {
+          "name": "entry_fee",
+          "type": "u64"
+        },
+        {
+          "name": "max_players",
+          "type": "u32"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "deactivate_agent",
+      "docs": [
+        "Deactivate an AI agent listing (soft-delete; agent data is preserved).",
+        "",
+        "Only the agent's original registrant may deactivate. Deactivated agents",
+        "are hidden from discovery but remain on-chain for audit purposes."
+      ],
+      "discriminator": [
+        205,
+        171,
+        239,
+        225,
+        82,
+        126,
+        96,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agent_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "delegate_session",
+      "docs": [
+        "Delegate game + player_state accounts to the MagicBlock Ephemeral Rollup.",
+        "",
+        "Must be called on base layer before routing transactions via the Magic Router.",
+        "After delegation, `commit_action` and `reveal_action` should be sent to the",
+        "ER validator (via Magic Router) for 10-50ms latency instead of ~400ms.",
+        "",
+        "Calls the MagicBlock Delegation Program CPI for both `game` and `player_state` PDAs."
+      ],
+      "discriminator": [
+        82,
+        83,
+        119,
+        119,
+        196,
+        219,
+        5,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              },
+              {
+                "kind": "account",
+                "path": "payer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "game_buffer",
+          "writable": true
+        },
+        {
+          "name": "game_delegation_record",
+          "writable": true
+        },
+        {
+          "name": "game_delegation_metadata",
+          "writable": true
+        },
+        {
+          "name": "player_buffer",
+          "writable": true
+        },
+        {
+          "name": "player_delegation_record",
+          "writable": true
+        },
+        {
+          "name": "player_delegation_metadata",
+          "writable": true
+        },
+        {
+          "name": "owner_program"
+        },
+        {
+          "name": "delegation_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deposit_stake",
+      "docs": [
+        "Deposit entry stake (0.5 SOL) into the game's prize vault PDA.",
+        "",
+        "- Callable by any participant before or during the game.",
+        "- Funds are held in `stake_vault` PDA owned by the program.",
+        "- No EOA can withdraw directly — only `claim_prize` can release funds.",
+        "",
+        "Approximate CU cost: ~3,500 (SystemProgram::transfer CPI)."
+      ],
+      "discriminator": [
+        160,
+        167,
+        9,
+        220,
+        74,
+        243,
+        228,
+        43
+      ],
+      "accounts": [
+        {
+          "name": "game",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "stake_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  107,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "end_season",
+      "docs": [
+        "End a season, compute leaderboard, and emit results.",
+        "",
+        "Emits final standings so clients can display the leaderboard.",
+        "Prize distribution logic is handled off-chain based on emitted events."
+      ],
+      "discriminator": [
+        167,
+        166,
+        166,
+        109,
+        166,
+        71,
+        15,
+        68
+      ],
+      "accounts": [
+        {
+          "name": "season",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  97,
+                  115,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "season_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
       "name": "initialize",
+      "docs": [
+        "One-time program initializer (idempotent; can be skipped in production)."
+      ],
       "discriminator": [
         175,
         175,
@@ -224,6 +713,13 @@
     },
     {
       "name": "join_game",
+      "docs": [
+        "Join an open game session.",
+        "",
+        "- Allocates a `player_state` PDA for the signer.",
+        "- Fails if `game.status != Lobby` or `game.player_count == game.max_players`.",
+        "- Initializes starting hand: 1 random card drawn from the pool."
+      ],
       "discriminator": [
         107,
         112,
@@ -301,7 +797,113 @@
       ]
     },
     {
+      "name": "register_agent",
+      "docs": [
+        "Register an AI agent in the on-chain agent marketplace.",
+        "",
+        "Agents are identified by a `name_hash` (SHA-256 of human-readable name).",
+        "`strategy_hash` and `endpoint_hash` let clients discover agent capabilities",
+        "without revealing the agent's internal logic or private endpoint URL.",
+        "",
+        "`price_per_query` is in lamports — paid via x402 micropayment protocol."
+      ],
+      "discriminator": [
+        135,
+        157,
+        66,
+        195,
+        2,
+        113,
+        175,
+        30
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agent_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "u32"
+        },
+        {
+          "name": "name_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "strategy_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "endpoint_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "price_per_query",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "resolve_round",
+      "docs": [
+        "Resolve the current round after all players have revealed.",
+        "",
+        "Resolution order (simultaneous semantics, caller-triggered):",
+        "1. BARRIER — players raising barriers are flagged.",
+        "2. STEAL — transfers a random card from victim to stealer; blocked if victim has BARRIER.",
+        "3. DRAW — gives caller the top card from the shared pool for their area.",
+        "4. SCOUT — records target's revealed action for client-side intel display.",
+        "5. MOVE — updates `player_state.area`.",
+        "6. USE_CARD — applies card effect; removes card from hand.",
+        "",
+        "Emits `RoundResolved` event. Transitions back to `CommitPhase` for next round,",
+        "or to `Finished` if win condition met (player holds all 5 unique card types)."
+      ],
       "discriminator": [
         165,
         114,
@@ -377,6 +979,15 @@
     },
     {
       "name": "reveal_action",
+      "docs": [
+        "Reveal the previously committed action.",
+        "",
+        "Re-derives `SHA-256(action_type | target | salt)` on-chain and asserts it",
+        "matches the stored `commit.hash`. Rejects any mismatch (`ErrorCode::HashMismatch`).",
+        "",
+        "After all players reveal, the program waits for `resolve_round` (or optionally",
+        "`verify_zk_proof` for ZK-attested reveals)."
+      ],
       "discriminator": [
         251,
         43,
@@ -498,6 +1109,14 @@
     },
     {
       "name": "start_game",
+      "docs": [
+        "Start the game and deal opening hands.",
+        "",
+        "- Restricted to the game host.",
+        "- Transitions `status: Lobby → CommitPhase`.",
+        "- Shuffles `card_pool` using recent slot hash as PRNG seed.",
+        "- Deals 3 cards to each player; remaining cards stay in pool."
+      ],
       "discriminator": [
         249,
         47,
@@ -570,9 +1189,193 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "undelegate_session",
+      "docs": [
+        "Schedule commit + undelegate for game + player_state via the Magic Program.",
+        "",
+        "Must be sent to the ER validator (not base layer). The ER processes this,",
+        "commits all pending state diffs to base layer, then calls the Delegation",
+        "Program's Undelegate instruction to restore account ownership to this program."
+      ],
+      "discriminator": [
+        110,
+        234,
+        80,
+        245,
+        77,
+        79,
+        58,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game",
+          "writable": true
+        },
+        {
+          "name": "player_state",
+          "writable": true
+        },
+        {
+          "name": "magic_context",
+          "writable": true
+        },
+        {
+          "name": "magic_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "verify_zk_proof",
+      "docs": [
+        "Verify a Groth16 ZK proof for a committed action.",
+        "",
+        "The proof attests that `Poseidon(action, target, salt) == commitment_hash`",
+        "without revealing `action`, `target`, or `salt` on-chain.",
+        "",
+        "- Circuit: `zk/circuits/commit_reveal.circom` (277 constraints, BN254 curve)",
+        "- Proving key: `zk/build/commit_reveal_final.zkey`",
+        "- Verification key: `zk/build/verification_key.json`",
+        "",
+        "This instruction is optional — standard `reveal_action` provides the same",
+        "correctness guarantee. ZK proof adds an additional privacy layer when the",
+        "client wishes to hide action metadata from on-chain observers.",
+        "",
+        "Approximate CU cost: 80,000–200,000 (BN254 pairing). Budget 300,000."
+      ],
+      "discriminator": [
+        251,
+        39,
+        91,
+        14,
+        62,
+        74,
+        223,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "game",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "game_id"
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u64"
+        },
+        {
+          "name": "proof_a",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "proof_b",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "proof_c",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "public_inputs",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
     }
   ],
   "accounts": [
+    {
+      "name": "AgentListing",
+      "discriminator": [
+        224,
+        156,
+        61,
+        213,
+        111,
+        100,
+        43,
+        56
+      ]
+    },
     {
       "name": "CardPool",
       "discriminator": [
@@ -624,9 +1427,48 @@
         244,
         195
       ]
+    },
+    {
+      "name": "Season",
+      "discriminator": [
+        76,
+        67,
+        93,
+        156,
+        180,
+        157,
+        248,
+        47
+      ]
+    },
+    {
+      "name": "StakeVault",
+      "discriminator": [
+        192,
+        112,
+        65,
+        125,
+        129,
+        151,
+        173,
+        226
+      ]
     }
   ],
   "events": [
+    {
+      "name": "AgentRegistered",
+      "discriminator": [
+        191,
+        78,
+        217,
+        54,
+        232,
+        100,
+        189,
+        85
+      ]
+    },
     {
       "name": "CardDrawn",
       "discriminator": [
@@ -680,6 +1522,19 @@
       ]
     },
     {
+      "name": "PrizeClaimed",
+      "discriminator": [
+        213,
+        150,
+        192,
+        76,
+        199,
+        33,
+        212,
+        38
+      ]
+    },
+    {
       "name": "RoundResolved",
       "discriminator": [
         204,
@@ -690,6 +1545,32 @@
         61,
         75,
         29
+      ]
+    },
+    {
+      "name": "SeasonCreated",
+      "discriminator": [
+        69,
+        129,
+        125,
+        162,
+        208,
+        173,
+        40,
+        68
+      ]
+    },
+    {
+      "name": "SeasonEnded",
+      "discriminator": [
+        231,
+        210,
+        35,
+        6,
+        231,
+        92,
+        111,
+        69
       ]
     }
   ],
@@ -793,9 +1674,138 @@
       "code": 6019,
       "name": "RoundLimitReached",
       "msg": "Round limit reached"
+    },
+    {
+      "code": 6020,
+      "name": "InvalidProof",
+      "msg": "ZK proof is invalid"
+    },
+    {
+      "code": 6021,
+      "name": "WrongMagicProgram",
+      "msg": "Wrong magic program address"
+    },
+    {
+      "code": 6022,
+      "name": "WrongMagicContext",
+      "msg": "Wrong magic context address"
+    },
+    {
+      "code": 6023,
+      "name": "WrongGameAccount",
+      "msg": "Wrong game account (PDA mismatch)"
+    },
+    {
+      "code": 6024,
+      "name": "WrongPlayerStateAccount",
+      "msg": "Wrong player_state account (PDA mismatch)"
+    },
+    {
+      "code": 6025,
+      "name": "WrongDelegationProgram",
+      "msg": "Wrong delegation program address"
+    },
+    {
+      "code": 6026,
+      "name": "WrongOwnerProgram",
+      "msg": "Wrong owner program address"
     }
   ],
   "types": [
+    {
+      "name": "AgentListing",
+      "docs": [
+        "Agent Registry — On-chain marketplace for AI agents.",
+        "Developers register their agents with strategy descriptions and pricing.",
+        "Players can browse and hire agents to play on their behalf.",
+        "",
+        "Revenue model: Agent earns 95% of intel revenue, platform takes 5%."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_id",
+            "type": "u32"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "name_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "strategy_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "endpoint_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "price_per_query",
+            "type": "u64"
+          },
+          {
+            "name": "total_queries",
+            "type": "u64"
+          },
+          {
+            "name": "total_revenue",
+            "type": "u64"
+          },
+          {
+            "name": "rating",
+            "type": "u16"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_id",
+            "type": "u32"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "price_per_query",
+            "type": "u64"
+          }
+        ]
+      }
+    },
     {
       "name": "CardDrawn",
       "type": {
@@ -1128,6 +2138,26 @@
       }
     },
     {
+      "name": "PrizeClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "RoundResolved",
       "type": {
         "kind": "struct",
@@ -1138,6 +2168,161 @@
           },
           {
             "name": "round",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Season",
+      "docs": [
+        "Season system for competitive play.",
+        "Each season has: entry fee, prize pool, leaderboard, NFT carry-over.",
+        "",
+        "Season lifecycle:",
+        "1. create_season — Set parameters (entry fee, max players, duration)",
+        "2. Players join via deposit_stake",
+        "3. Games play out",
+        "4. end_season — Distribute prizes, record legends"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "entry_fee",
+            "type": "u64"
+          },
+          {
+            "name": "prize_pool",
+            "type": "u64"
+          },
+          {
+            "name": "player_count",
+            "type": "u32"
+          },
+          {
+            "name": "max_players",
+            "type": "u32"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "winner_time",
+            "type": "i64"
+          },
+          {
+            "name": "fastest_clear_rounds",
+            "type": "u8"
+          },
+          {
+            "name": "season_start",
+            "type": "i64"
+          },
+          {
+            "name": "season_end",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeasonCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "entry_fee",
+            "type": "u64"
+          },
+          {
+            "name": "max_players",
+            "type": "u32"
+          },
+          {
+            "name": "duration_seconds",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeasonEnded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "prize_pool",
+            "type": "u64"
+          },
+          {
+            "name": "fastest_rounds",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StakeVault",
+      "docs": [
+        "Entry stake system for competitive play.",
+        "Players deposit SOL (or USDC in Phase 2) when joining a game.",
+        "Winner takes the entire pot when the game ends.",
+        "",
+        "Phase 1: SOL-based staking (simpler, no SPL token dependency)",
+        "Phase 2: USDC staking via SPL token transfers",
+        "Stake vault PDA that holds entry fees"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "total_staked",
+            "type": "u64"
+          },
+          {
+            "name": "stake_per_player",
+            "type": "u64"
+          },
+          {
+            "name": "claimed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
             "type": "u8"
           }
         ]

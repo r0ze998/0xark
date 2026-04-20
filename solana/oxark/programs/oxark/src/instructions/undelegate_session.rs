@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 use anchor_lang::solana_program::program::invoke;
 use crate::constants::{GAME_SEED, PLAYER_SEED};
+use crate::error::ErrorCode;
 
 // Magic program: Magic11111111111111111111111111111111111111
 const MAGIC_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
@@ -61,14 +62,14 @@ pub fn handle_undelegate_session(
     require_keys_eq!(
         ctx.accounts.magic_program.key(),
         MAGIC_PROGRAM_ID,
-        UndelegationError::WrongMagicProgram,
+        ErrorCode::WrongMagicProgram,
     );
 
     // Verify magic context address
     require_keys_eq!(
         ctx.accounts.magic_context.key(),
         MAGIC_CONTEXT_ID,
-        UndelegationError::WrongMagicContext,
+        ErrorCode::WrongMagicContext,
     );
 
     // Verify game PDA derivation
@@ -80,7 +81,7 @@ pub fn handle_undelegate_session(
     require_keys_eq!(
         ctx.accounts.game.key(),
         expected_game,
-        UndelegationError::WrongGameAccount,
+        ErrorCode::WrongGameAccount,
     );
 
     // Verify player_state PDA derivation
@@ -91,7 +92,7 @@ pub fn handle_undelegate_session(
     require_keys_eq!(
         ctx.accounts.player_state.key(),
         expected_player,
-        UndelegationError::WrongPlayerStateAccount,
+        ErrorCode::WrongPlayerStateAccount,
     );
 
     // ── Build ScheduleCommitAndUndelegate instruction ──────────────────────
@@ -132,16 +133,5 @@ pub fn handle_undelegate_session(
     Ok(())
 }
 
-// ─── Errors ───────────────────────────────────────────────────────────────
-
-#[error_code]
-pub enum UndelegationError {
-    #[msg("Wrong magic program address")]
-    WrongMagicProgram,
-    #[msg("Wrong magic context address")]
-    WrongMagicContext,
-    #[msg("Wrong game account (PDA mismatch)")]
-    WrongGameAccount,
-    #[msg("Wrong player_state account (PDA mismatch)")]
-    WrongPlayerStateAccount,
-}
+// Errors: WrongMagicProgram / WrongMagicContext / WrongGameAccount / WrongPlayerStateAccount
+// are defined in crate::error::ErrorCode.

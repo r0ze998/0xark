@@ -93,7 +93,7 @@ Expected response: within 48 hours. We will coordinate a fix and disclosure time
 
 **Threat**: EOA crafts a transaction that drains the stake vault.
 
-**Mitigation**: The stake vault is a PDA owned by the 0xARK program (`program_id` = `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3`). Only program instructions with the correct seeds can sign CPIs from this PDA. No EOA private key can produce the vault's PDA signature.
+**Mitigation**: The stake vault is a PDA owned by the 0xARK program (`program_id` = `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`). Only program instructions with the correct seeds can sign CPIs from this PDA. No EOA private key can produce the vault's PDA signature.
 
 **Status**: ✅ Implemented
 

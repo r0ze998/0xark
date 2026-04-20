@@ -11,7 +11,7 @@
 - [x] Edge case testing (steal-hand-full bug, campfire decay reset, first-battle tutorial, rival win warning)
 
 ### Priority 2: Blockchain
-- [x] devnet deploy (Program ID: 2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3)
+- [x] devnet deploy (Program ID: 5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN)
 - [x] Phantom wallet connection in game client
 - [x] On-chain commit-reveal flow in frontend (simulated mode, real TX when wallet connected)
 
@@ -85,7 +85,7 @@
 
 ## Infrastructure
 - [x] Anchor program (7 core instructions, devnet deployed)
-- [x] Program ID: 2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3
+- [x] Program ID: 5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN
 - [x] ZK circuit (Circom Poseidon, 264 constraints) + browser snarkjs proof generation
 - [x] x402 AI agent broker (4 endpoints + rival prediction engine)
 - [x] Phantom wallet (real devnet transactions via @solana/web3.js)

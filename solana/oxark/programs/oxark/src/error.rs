@@ -44,4 +44,17 @@ pub enum ErrorCode {
     RoundLimitReached,
     #[msg("ZK proof is invalid")]
     InvalidProof,
+    // ── MagicBlock delegation errors ──────────────────────────────────────
+    #[msg("Wrong magic program address")]
+    WrongMagicProgram,
+    #[msg("Wrong magic context address")]
+    WrongMagicContext,
+    #[msg("Wrong game account (PDA mismatch)")]
+    WrongGameAccount,
+    #[msg("Wrong player_state account (PDA mismatch)")]
+    WrongPlayerStateAccount,
+    #[msg("Wrong delegation program address")]
+    WrongDelegationProgram,
+    #[msg("Wrong owner program address")]
+    WrongOwnerProgram,
 }

@@ -38,7 +38,7 @@
 | レイヤー | 技術 | ゲーム内での役割 |
 |---------|------|----------------|
 | Smart Contract | Anchor (Solana) | カードNFT発行・Prize Pool管理 |
-| Program ID | `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3` | devnet |
+| Program ID | `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` | devnet |
 | Game Client | Vanilla HTML/JS + PixiJS v7 WebGL | フロントエンド |
 | ZK (Circom) | Poseidon circuit + browser snarkjs | ダンジョン内位置秘匿 |
 | AI Agent | x402 broker | ダンジョン内の強力な敵 |

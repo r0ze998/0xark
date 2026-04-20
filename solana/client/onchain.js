@@ -15,7 +15,7 @@
  *   await oxarkOnchain.claimPrize(gameId)
  */
 
-const PROGRAM_ID_STR = '2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3';
+const PROGRAM_ID_STR = '5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN';
 const DEVNET_RPC = 'https://api.devnet.solana.com';
 
 // Seed prefixes — must match Anchor program constants

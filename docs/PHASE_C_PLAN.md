@@ -26,7 +26,7 @@ MagicBlock 統合はデモ動画に間に合えば加点要素だが、**ビデ�
 
 ### 現状
 
-- Anchor プログラム `2gMYzenV6HQoTJA2899XxnLgzTbaWdVmegLqL7nMpVS3` が devnet にデプロイ済み (7 instructions)
+- Anchor プログラム `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` が devnet にデプロイ済み (7 instructions)
 - `verify_zk_proof`, `mint_card_nft`, `deposit_stake`, `claim_prize`, `create_season`, `end_season`, `register_agent`, `deactivate_agent` の 8 命令はコード済みだがバイナリサイズ制限で除外中
 - WebSocket relay server は純粋リレー（ゲームロジックなし）
 
