@@ -26,6 +26,7 @@ mint = ["anchor-spl"]
 [dependencies]
 anchor-lang = "1.0.0"
 anchor-spl = { version = "1.0.0", features = ["token", "associated_token"], optional = true }
+ephemeral-rollups-sdk = { version = "0.6.6", features = ["anchor", "disable-realloc"] }
 solana-bn254 = "3"
 sha2 = "0.10"
 

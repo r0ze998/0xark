@@ -5,6 +5,10 @@ members = [
 ]
 resolver = "2"
 
+[patch.crates-io]
+# Anchor 1.0 compat: fix sysvar::Sysvar/Rent import paths in solana_compat.rs
+ephemeral-rollups-sdk = { path = "er-sdk-patch" }
+
 [profile.release]
 overflow-checks = true
 lto = "fat"

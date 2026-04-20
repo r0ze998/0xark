@@ -1,24 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
-use anchor_lang::solana_program::program::invoke;
+use ephemeral_rollups_sdk::consts::{MAGIC_CONTEXT_ID, MAGIC_PROGRAM_ID};
+use ephemeral_rollups_sdk::ephem::commit_and_undelegate_accounts;
 use crate::constants::{GAME_SEED, PLAYER_SEED};
 use crate::error::ErrorCode;
-
-// Magic program: Magic11111111111111111111111111111111111111
-const MAGIC_PROGRAM_ID: Pubkey = Pubkey::new_from_array([
-    5, 69, 180, 36, 176, 218, 112, 149, 236, 185, 214, 222, 195, 119, 215, 40,
-    145, 182, 231, 142, 146, 234, 18, 214, 223, 187, 58, 64, 0, 0, 0, 0,
-]);
-
-// Magic context: MagicContext1111111111111111111111111111111
-const MAGIC_CONTEXT_ID: Pubkey = Pubkey::new_from_array([
-    5, 69, 180, 36, 196, 165, 40, 191, 95, 180, 3, 47, 68, 82, 130, 142,
-    187, 56, 171, 193, 210, 220, 151, 247, 63, 139, 148, 84, 128, 0, 0, 0,
-]);
-
-// MagicBlockInstruction::ScheduleCommitAndUndelegate = variant 2
-// Serialized as bincode u32 LE: [2, 0, 0, 0]
-const SCHEDULE_COMMIT_AND_UNDELEGATE_DATA: [u8; 4] = [2, 0, 0, 0];
 
 // ─── Accounts ─────────────────────────────────────────────────────────────
 //
@@ -33,14 +17,11 @@ pub struct UndelegateSession<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    // Game PDA — currently delegated (owner = DELEGATION_PROGRAM_ID on ER)
-    // After undelegation: owner returns to our program on base layer.
-    /// CHECK: Game PDA, delegated to ER. Address validated via seeds + bump in handler.
+    /// CHECK: Game PDA — currently delegated on ER. Address verified in handler.
     #[account(mut)]
     pub game: UncheckedAccount<'info>,
 
-    // PlayerState PDA — currently delegated
-    /// CHECK: PlayerState PDA, delegated to ER. Address validated via seeds + bump in handler.
+    /// CHECK: PlayerState PDA — currently delegated on ER. Address verified in handler.
     #[account(mut)]
     pub player_state: UncheckedAccount<'info>,
 
@@ -95,43 +76,18 @@ pub fn handle_undelegate_session(
         ErrorCode::WrongPlayerStateAccount,
     );
 
-    // ── Build ScheduleCommitAndUndelegate instruction ──────────────────────
-    //
-    // Magic program instruction layout:
-    //   data:     [2, 0, 0, 0]  (bincode u32 = ScheduleCommitAndUndelegate variant 2)
-    //   accounts: payer (signer/writable), magic_context (writable),
-    //             ...target accounts (with their delegation-era flags)
-    //
-    // The ER validator processes this instruction, commits state diffs to
-    // base layer, then calls the delegation program's Undelegate instruction
-    // to restore account ownership.
-    let accounts_meta = vec![
-        AccountMeta::new(ctx.accounts.payer.key(), true),         // payer
-        AccountMeta::new(ctx.accounts.magic_context.key(), false), // magic_context
-        AccountMeta::new(ctx.accounts.game.key(), false),         // game (commit target)
-        AccountMeta::new(ctx.accounts.player_state.key(), false), // player_state (commit target)
-    ];
-
-    let ix = Instruction {
-        program_id: MAGIC_PROGRAM_ID,
-        accounts: accounts_meta,
-        data: SCHEDULE_COMMIT_AND_UNDELEGATE_DATA.to_vec(),
-    };
-
-    invoke(
-        &ix,
-        &[
-            ctx.accounts.payer.to_account_info(),
-            ctx.accounts.magic_context.to_account_info(),
-            ctx.accounts.game.to_account_info(),
-            ctx.accounts.player_state.to_account_info(),
-            ctx.accounts.magic_program.to_account_info(),
+    // Schedule commit + undelegate via the Magic program
+    commit_and_undelegate_accounts(
+        &ctx.accounts.payer.to_account_info(),
+        vec![
+            &ctx.accounts.game.to_account_info(),
+            &ctx.accounts.player_state.to_account_info(),
         ],
-    )?;
+        &ctx.accounts.magic_context.to_account_info(),
+        &ctx.accounts.magic_program.to_account_info(),
+    )
+    .map_err(anchor_lang::error::Error::from)?;
 
-    msg!("UndelegateSession: game {} commit+undelegate scheduled via Magic program", game_id);
+    msg!("UndelegateSession: game {} commit+undelegate scheduled", game_id);
     Ok(())
 }
-
-// Errors: WrongMagicProgram / WrongMagicContext / WrongGameAccount / WrongPlayerStateAccount
-// are defined in crate::error::ErrorCode.
