@@ -853,9 +853,9 @@ function tryWildEncounter(){
   const maxRivalUnique=Math.max(rivalUniqSize(1),rivalUniqSize(2)); // v261: no Set alloc
   const rubberBand=playerUnique<maxRivalUnique?0.10:0;
   if(tile===11){
-    if(Math.random()>(0.30+streakBonus+dangerBonus+rubberBand))return; // tall grass: 30% base
+    if(Math.random()>(0.15+streakBonus+dangerBonus+rubberBand))return; // tall grass: 15% base (UX-4: was 30%)
   }else if(tile===1){
-    if(Math.random()>(0.15+streakBonus+dangerBonus+rubberBand))return; // regular grass: 15% base
+    if(Math.random()>(0.075+streakBonus+dangerBonus+rubberBand))return; // regular grass: 7.5% base (UX-4: was 15%)
   }else{
     return;
   }

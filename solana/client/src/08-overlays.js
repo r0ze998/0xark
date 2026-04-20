@@ -117,9 +117,9 @@ function drawCardAcquisition(){
   g.globalAlpha=1;
 
   if(t>=50&&t<90){
-    win(W/2-150,cy_+ch/2+12,300,40);
+    win(W/2-150,cy_+ch/2+12,300,52); // UX-3: taller window for bigger text
     if(_acqObtainedRef!==cr){_acqObtainedRef=cr;_acqObtainedLbl='You obtained '+cr.n+'!';} // v338: lazy cache
-    txShadow(_acqObtainedLbl,W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');
+    txShadow(_acqObtainedLbl,W/2-130,cy_+ch/2+42,20,'#303028','rgba(200,180,140,.3)'); // UX-3: 14→20
     // v96: NEW card badge — shown when first time in vault
     if(cardAcqIsNew){
       const newBadgeAlpha=t<60?(t-50)/10:t>82?(90-t)/8:1;

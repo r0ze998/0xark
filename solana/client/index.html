@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v495+";
+window.BUILD_VERSION = "v496+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -11273,9 +11273,9 @@ function tryWildEncounter(){
   const maxRivalUnique=Math.max(rivalUniqSize(1),rivalUniqSize(2)); // v261: no Set alloc
   const rubberBand=playerUnique<maxRivalUnique?0.10:0;
   if(tile===11){
-    if(Math.random()>(0.30+streakBonus+dangerBonus+rubberBand))return; // tall grass: 30% base
+    if(Math.random()>(0.15+streakBonus+dangerBonus+rubberBand))return; // tall grass: 15% base (UX-4: was 30%)
   }else if(tile===1){
-    if(Math.random()>(0.15+streakBonus+dangerBonus+rubberBand))return; // regular grass: 15% base
+    if(Math.random()>(0.075+streakBonus+dangerBonus+rubberBand))return; // regular grass: 7.5% base (UX-4: was 15%)
   }else{
     return;
   }
@@ -17497,9 +17497,9 @@ function drawCardAcquisition(){
   g.globalAlpha=1;
 
   if(t>=50&&t<90){
-    win(W/2-150,cy_+ch/2+12,300,40);
+    win(W/2-150,cy_+ch/2+12,300,52); // UX-3: taller window for bigger text
     if(_acqObtainedRef!==cr){_acqObtainedRef=cr;_acqObtainedLbl='You obtained '+cr.n+'!';} // v338: lazy cache
-    txShadow(_acqObtainedLbl,W/2-130,cy_+ch/2+38,14,'#303028','rgba(200,180,140,.3)');
+    txShadow(_acqObtainedLbl,W/2-130,cy_+ch/2+42,20,'#303028','rgba(200,180,140,.3)'); // UX-3: 14→20
     // v96: NEW card badge — shown when first time in vault
     if(cardAcqIsNew){
       const newBadgeAlpha=t<60?(t-50)/10:t>82?(90-t)/8:1;
