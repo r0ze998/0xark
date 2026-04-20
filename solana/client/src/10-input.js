@@ -87,6 +87,13 @@ function tryMovePlayer(dx, dy) {
   if(inDungeon){ processDungeonTurn(); checkFloorItemPickup(nx,ny); checkLandmarkEnter(currentMap,nx,ny); }
   if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
   if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}
+  // T63: tutorial objective tracking
+  if(isTutorial){
+    if(tutorialStep===0){tutorialProgress.move=(tutorialProgress.move||0)+1;if(tutorialProgress.move>=3)tutorialStepDone('move');}
+    if(tutorialStep===1&&newTile===11)tutorialStepDone('grass');
+    if(tutorialStep===3&&inDungeon)tutorialStepDone('dungeon');
+    if(tutorialStep===5&&currentMap===0&&!inDungeon)tutorialStepDone('escape');
+  }
   if(newTile!==0){const adj=[[nx-1,ny],[nx+1,ny],[nx,ny-1],[nx,ny+1]];if(adj.some(([ax,ay])=>ax>=0&&ax<MW&&ay>=0&&ay<MH&&m[ay]?.[ax]===0))sfxWaterNear();}
   if(shadowStepsLeft>0)shadowStepsLeft--;
   if(shadowStepsLeft<=0)checkForestTrap();

@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v501+";
+window.BUILD_VERSION = "v502+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -7650,6 +7650,48 @@ let tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapC
   firstFloor2:false,firstFloor3:false,firstFloor4:false,firstFloor5:false,firstGacha:false};
 let tutorialMsg='', tutorialMsgTimer=0;
 
+// T63: Guided step-by-step tutorial
+// isTutorial = true until player skips or completes step 6
+let isTutorial=(()=>{try{return localStorage.getItem('oxark_tutorial_done')!=='1';}catch(e){return true;}})();
+let tutorialStep=0; // 0-5 (6 steps total)
+let tutorialStepFrame=0; // when current step started
+let tutorialPanelOpen=false; // show full tutorial panel
+const TUTORIAL_STEPS=[
+  {id:'move',      goal:'Move with arrow keys',          hint:'Arrow keys to move. Explore the town!',          obj:'Walk 3 tiles in any direction'},
+  {id:'grass',     goal:'Find tall grass',               hint:'Walk into the tall grass — cards hide there!',   obj:'Step onto tall grass (darker green)'},
+  {id:'card',      goal:'Find your first card',          hint:'Keep walking through tall grass to find cards!',  obj:'Trigger a wild card encounter'},
+  {id:'dungeon',   goal:'Enter the dungeon',             hint:'Head EAST to the dungeon portal (glowing tiles)', obj:'Walk into the dungeon entrance'},
+  {id:'battle',    goal:'Battle a rival',                hint:'Rivals VEGA and MIRA are inside — find them!',   obj:'Start a battle encounter'},
+  {id:'escape',    goal:'Escape back to town',           hint:'Press X at escape tile or use escape card',      obj:'Return to town from the dungeon'},
+];
+// Completion tracker for each step objective
+let tutorialProgress={move:0}; // move: tile count
+
+function tutorialStepDone(stepId){
+  if(!isTutorial)return;
+  const idx=TUTORIAL_STEPS.findIndex(s=>s.id===stepId);
+  if(idx<0||tutorialStep!==idx)return;
+  tutorialStep=idx+1;
+  tutorialStepFrame=fr;
+  if(tutorialStep>=TUTORIAL_STEPS.length){
+    isTutorial=false;
+    try{localStorage.setItem('oxark_tutorial_done','1');}catch(e){}
+    tutorialMsg='Tutorial complete! Good luck collecting all 60 cards!';tutorialMsgTimer=300;
+  }
+}
+
+function skipTutorial(){
+  isTutorial=false;
+  try{localStorage.setItem('oxark_tutorial_done','1');}catch(e){}
+  tutorialPanelOpen=false;
+  tutorialMsg='Tutorial skipped. Press SPACE for menu anytime.';tutorialMsgTimer=180;
+}
+
+function resetTutorial(){
+  isTutorial=true;tutorialStep=0;tutorialStepFrame=fr;
+  try{localStorage.removeItem('oxark_tutorial_done');}catch(e){}
+}
+
 // ── Intro tutorial (rules) ──
 let introActive=false, introPage=0, introFrame=0;
 const INTRO_PAGES=[
@@ -11453,6 +11495,8 @@ function tryWildEncounter(){
   wildEncounterFrame=fr;
   sfxEncounter();
   flash();
+  // T63: tutorial step 2 — found first card in wild
+  if(isTutorial&&tutorialStep===2)tutorialStepDone('card');
 }
 
 function drawWildEncounter(){
@@ -15376,6 +15420,8 @@ function drawVsSplash(){
     // T62: detect synergy from current hand
     activeSynergy=checkSynergy(pl[0].cd);
     if(activeSynergy){synergyBannerFrame=fr;}
+    // T63: tutorial battle objective
+    if(isTutorial&&tutorialStep===4)tutorialStepDone('battle');
     generateRivalTells();
     if(!tutorialFlags.firstBattle){
       const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'the rival';
@@ -18825,6 +18871,52 @@ function _synergyBonusStr(bonus){
   return parts.join(' · ');
 }
 
+// T63: Step-by-step tutorial overlay
+// Shows a compact bottom-left guide panel during the 6 tutorial steps.
+// [X] = skip tutorial, [Z] = advance/confirm when a step can be skipped manually.
+function drawTutorialStepOverlay(){
+  if(!isTutorial)return;
+  if(tutorialStep>=TUTORIAL_STEPS.length)return;
+  // Hide during battle scenes (clutters the battle UI)
+  if(sc==='battle')return;
+  const step=TUTORIAL_STEPS[tutorialStep];
+  const pw=220, ph=64;
+  const px=6, py=H-ph-6;
+  const age=fr-tutorialStepFrame;
+  const alpha=Math.min(1,age/14)*0.95;
+  if(alpha<=0)return;
+  g.save();
+  g.globalAlpha=alpha;
+  // Panel background
+  g.fillStyle='rgba(12,8,20,0.82)';
+  g.beginPath();g.roundRect(px,py,pw,ph,8);g.fill();
+  g.strokeStyle='rgba(100,80,160,0.55)';g.lineWidth=1.5;g.stroke();
+  // Step indicator dots
+  for(let i=0;i<TUTORIAL_STEPS.length;i++){
+    const dotX=px+8+i*16, dotY=py+7;
+    bx(dotX-3,dotY-3,6,6,i<tutorialStep?'#80d080':i===tutorialStep?'#f0c830':'rgba(100,90,130,0.5)');
+  }
+  // Step goal (bold)
+  txShadow(step.goal,px+8,py+20,10,'#e8d8f8','rgba(0,0,0,0.5)');
+  // Objective detail
+  txShadow(step.obj,px+8,py+34,8,'#a098b8','rgba(0,0,0,0.4)');
+  // Hint line
+  txShadow(step.hint,px+8,py+48,7,'#807080','rgba(0,0,0,0.35)');
+  // Skip button
+  txShadow('[X] Skip',px+pw-48,py+ph-10,7,'rgba(140,120,160,0.7)','rgba(0,0,0,0.3)');
+  g.restore();
+}
+
+// Handle tutorial skip from input — called when X pressed globally
+function handleTutorialSkip(){
+  if(!isTutorial)return false;
+  // Check if not in a UI that uses X for other things
+  if(battlePhase&&battlePhase!=='select')return false;
+  if(optionsOverlayOpen||marketplaceActive||synthActive||discardActive)return false;
+  skipTutorial();
+  return true;
+}
+
 
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/08-world-interact.js
@@ -21102,6 +21194,7 @@ function draw(){
   drawLandmarkBanner(); // T53
   drawMinimap(); // T53
   drawExplorationProgress(); // T53
+  drawTutorialStepOverlay(); // T63
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){
@@ -21262,6 +21355,13 @@ function tryMovePlayer(dx, dy) {
   if(inDungeon){ processDungeonTurn(); checkFloorItemPickup(nx,ny); checkLandmarkEnter(currentMap,nx,ny); }
   if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
   if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}
+  // T63: tutorial objective tracking
+  if(isTutorial){
+    if(tutorialStep===0){tutorialProgress.move=(tutorialProgress.move||0)+1;if(tutorialProgress.move>=3)tutorialStepDone('move');}
+    if(tutorialStep===1&&newTile===11)tutorialStepDone('grass');
+    if(tutorialStep===3&&inDungeon)tutorialStepDone('dungeon');
+    if(tutorialStep===5&&currentMap===0&&!inDungeon)tutorialStepDone('escape');
+  }
   if(newTile!==0){const adj=[[nx-1,ny],[nx+1,ny],[nx,ny-1],[nx,ny+1]];if(adj.some(([ax,ay])=>ax>=0&&ax<MW&&ay>=0&&ay<MH&&m[ay]?.[ax]===0))sfxWaterNear();}
   if(shadowStepsLeft>0)shadowStepsLeft--;
   if(shadowStepsLeft<=0)checkForestTrap();

@@ -354,6 +354,8 @@ function drawVsSplash(){
     // T62: detect synergy from current hand
     activeSynergy=checkSynergy(pl[0].cd);
     if(activeSynergy){synergyBannerFrame=fr;}
+    // T63: tutorial battle objective
+    if(isTutorial&&tutorialStep===4)tutorialStepDone('battle');
     generateRivalTells();
     if(!tutorialFlags.firstBattle){
       const rName=(encounterExclTarget>=1&&encounterExclTarget<=2)?pl[encounterExclTarget].n:'the rival';

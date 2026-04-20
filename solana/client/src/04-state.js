@@ -374,6 +374,48 @@ let tutorialFlags={firstStep:false,firstGrass:false,gotFirstCard:false,firstMapC
   firstFloor2:false,firstFloor3:false,firstFloor4:false,firstFloor5:false,firstGacha:false};
 let tutorialMsg='', tutorialMsgTimer=0;
 
+// T63: Guided step-by-step tutorial
+// isTutorial = true until player skips or completes step 6
+let isTutorial=(()=>{try{return localStorage.getItem('oxark_tutorial_done')!=='1';}catch(e){return true;}})();
+let tutorialStep=0; // 0-5 (6 steps total)
+let tutorialStepFrame=0; // when current step started
+let tutorialPanelOpen=false; // show full tutorial panel
+const TUTORIAL_STEPS=[
+  {id:'move',      goal:'Move with arrow keys',          hint:'Arrow keys to move. Explore the town!',          obj:'Walk 3 tiles in any direction'},
+  {id:'grass',     goal:'Find tall grass',               hint:'Walk into the tall grass — cards hide there!',   obj:'Step onto tall grass (darker green)'},
+  {id:'card',      goal:'Find your first card',          hint:'Keep walking through tall grass to find cards!',  obj:'Trigger a wild card encounter'},
+  {id:'dungeon',   goal:'Enter the dungeon',             hint:'Head EAST to the dungeon portal (glowing tiles)', obj:'Walk into the dungeon entrance'},
+  {id:'battle',    goal:'Battle a rival',                hint:'Rivals VEGA and MIRA are inside — find them!',   obj:'Start a battle encounter'},
+  {id:'escape',    goal:'Escape back to town',           hint:'Press X at escape tile or use escape card',      obj:'Return to town from the dungeon'},
+];
+// Completion tracker for each step objective
+let tutorialProgress={move:0}; // move: tile count
+
+function tutorialStepDone(stepId){
+  if(!isTutorial)return;
+  const idx=TUTORIAL_STEPS.findIndex(s=>s.id===stepId);
+  if(idx<0||tutorialStep!==idx)return;
+  tutorialStep=idx+1;
+  tutorialStepFrame=fr;
+  if(tutorialStep>=TUTORIAL_STEPS.length){
+    isTutorial=false;
+    try{localStorage.setItem('oxark_tutorial_done','1');}catch(e){}
+    tutorialMsg='Tutorial complete! Good luck collecting all 60 cards!';tutorialMsgTimer=300;
+  }
+}
+
+function skipTutorial(){
+  isTutorial=false;
+  try{localStorage.setItem('oxark_tutorial_done','1');}catch(e){}
+  tutorialPanelOpen=false;
+  tutorialMsg='Tutorial skipped. Press SPACE for menu anytime.';tutorialMsgTimer=180;
+}
+
+function resetTutorial(){
+  isTutorial=true;tutorialStep=0;tutorialStepFrame=fr;
+  try{localStorage.removeItem('oxark_tutorial_done');}catch(e){}
+}
+
 // ── Intro tutorial (rules) ──
 let introActive=false, introPage=0, introFrame=0;
 const INTRO_PAGES=[

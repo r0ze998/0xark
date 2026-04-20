@@ -464,6 +464,7 @@ function draw(){
   drawLandmarkBanner(); // T53
   drawMinimap(); // T53
   drawExplorationProgress(); // T53
+  drawTutorialStepOverlay(); // T63
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){

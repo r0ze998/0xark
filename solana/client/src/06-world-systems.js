@@ -893,6 +893,8 @@ function tryWildEncounter(){
   wildEncounterFrame=fr;
   sfxEncounter();
   flash();
+  // T63: tutorial step 2 — found first card in wild
+  if(isTutorial&&tutorialStep===2)tutorialStepDone('card');
 }
 
 function drawWildEncounter(){

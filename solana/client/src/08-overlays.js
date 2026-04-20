@@ -1105,3 +1105,49 @@ function _synergyBonusStr(bonus){
   return parts.join(' · ');
 }
 
+// T63: Step-by-step tutorial overlay
+// Shows a compact bottom-left guide panel during the 6 tutorial steps.
+// [X] = skip tutorial, [Z] = advance/confirm when a step can be skipped manually.
+function drawTutorialStepOverlay(){
+  if(!isTutorial)return;
+  if(tutorialStep>=TUTORIAL_STEPS.length)return;
+  // Hide during battle scenes (clutters the battle UI)
+  if(sc==='battle')return;
+  const step=TUTORIAL_STEPS[tutorialStep];
+  const pw=220, ph=64;
+  const px=6, py=H-ph-6;
+  const age=fr-tutorialStepFrame;
+  const alpha=Math.min(1,age/14)*0.95;
+  if(alpha<=0)return;
+  g.save();
+  g.globalAlpha=alpha;
+  // Panel background
+  g.fillStyle='rgba(12,8,20,0.82)';
+  g.beginPath();g.roundRect(px,py,pw,ph,8);g.fill();
+  g.strokeStyle='rgba(100,80,160,0.55)';g.lineWidth=1.5;g.stroke();
+  // Step indicator dots
+  for(let i=0;i<TUTORIAL_STEPS.length;i++){
+    const dotX=px+8+i*16, dotY=py+7;
+    bx(dotX-3,dotY-3,6,6,i<tutorialStep?'#80d080':i===tutorialStep?'#f0c830':'rgba(100,90,130,0.5)');
+  }
+  // Step goal (bold)
+  txShadow(step.goal,px+8,py+20,10,'#e8d8f8','rgba(0,0,0,0.5)');
+  // Objective detail
+  txShadow(step.obj,px+8,py+34,8,'#a098b8','rgba(0,0,0,0.4)');
+  // Hint line
+  txShadow(step.hint,px+8,py+48,7,'#807080','rgba(0,0,0,0.35)');
+  // Skip button
+  txShadow('[X] Skip',px+pw-48,py+ph-10,7,'rgba(140,120,160,0.7)','rgba(0,0,0,0.3)');
+  g.restore();
+}
+
+// Handle tutorial skip from input — called when X pressed globally
+function handleTutorialSkip(){
+  if(!isTutorial)return false;
+  // Check if not in a UI that uses X for other things
+  if(battlePhase&&battlePhase!=='select')return false;
+  if(optionsOverlayOpen||marketplaceActive||synthActive||discardActive)return false;
+  skipTutorial();
+  return true;
+}
+
