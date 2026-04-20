@@ -673,6 +673,57 @@ async function claimPrize(gameId) {
   ], data);
 }
 
+// ─── MagicBlock lifecycle wrappers ───────────────────────────────────────
+// T4: delegate after start_game, undelegate before claim_prize.
+// Full PDA delegation requires Phase C Day 2 Rust changes; until then the
+// delegation step logs a warning and continues (graceful degradation).
+
+/**
+ * startGameMB — starts the game then attempts to delegate Game PDA to the ER.
+ * Falls back gracefully if delegation stubs are not yet implemented in Rust.
+ * Activates _mbMode so subsequent commitAction/revealAction use Magic Router.
+ */
+async function startGameMB(gameId, playerPubkeyStrs = []) {
+  // 1. Submit start_game to base layer (delegation always goes to base layer)
+  const sig = await startGame(gameId, playerPubkeyStrs);
+
+  // 2. Attempt delegation (stub returns { ok: false } until Rust is updated)
+  if (window.oxarkMB) {
+    const result = await window.oxarkMB.delegateGameAccounts(gameId);
+    if (result.ok) {
+      // Delegation succeeded — activate MB routing for game actions
+      setMagicBlockMode(true);
+      console.log('[MagicBlock] Game PDAs delegated — routing via ER. sig:', sig);
+    } else {
+      // Stub path — Magic Router still adds value as a routing layer
+      // even without delegation (base-layer fallback is transparent)
+      console.log('[MagicBlock] Delegation stub (Rust update required). MB routing OFF. sig:', sig);
+    }
+  }
+  return sig;
+}
+
+/**
+ * claimPrizeMB — undelegates Game PDA back to base layer then claims the prize.
+ * Deactivates _mbMode so future calls use the standard base-layer path.
+ */
+async function claimPrizeMB(gameId) {
+  // 1. Undelegate (returns state to base layer so claim_prize can mutate it)
+  if (window.oxarkMB) {
+    const result = await window.oxarkMB.undelegateGameAccounts(gameId);
+    if (result.ok) {
+      console.log('[MagicBlock] Game PDAs undelegated — ready for base-layer claim.');
+    } else {
+      console.log('[MagicBlock] Undelegation stub (Rust update required). Proceeding anyway.');
+    }
+  }
+  // 2. Deactivate MB routing — claim always goes to base layer
+  setMagicBlockMode(false);
+
+  // 3. Submit claim_prize to base layer
+  return claimPrize(gameId);
+}
+
 // ─── Commit hash helper ───────────────────────────────────────────────────
 /**
  * Compute SHA256(action_type || target_pubkey_bytes || salt)
@@ -1119,6 +1170,9 @@ window.oxarkOnchain = {
   PROGRAM_ID: PROGRAM_ID_STR,
   // MagicBlock ER mode toggle (requires window.oxarkMB / 01-magicblock.js)
   setMagicBlockMode,
+  // MagicBlock lifecycle wrappers (T4: delegate after start, undelegate before claim)
+  startGameMB,
+  claimPrizeMB,
   // Core game instructions
   createGame,
   joinGame,
