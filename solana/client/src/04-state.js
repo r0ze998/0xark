@@ -326,6 +326,16 @@ let dungeonConfirmActive=false, dungeonConfirmExit=null;
 let nearInteractable=null; // TOWN_INTERACTABLES entry currently adjacent to player (or null)
 let townShopActive=false, townShopType='', townShopTab=0, townShopOpenFrame=0;
 
+// T72: NFT Trading House state
+const NFT_SHOP_TABS=['MY CARDS','MARKET','MY LISTINGS'];
+let nftSelIdx=0; // cursor index in current tab
+let nftListings=[]; // cached listing array (refreshed on open)
+let nftListPrice=0.05; // selected list price (cycling presets)
+const NFT_LIST_PRICES=[0.01,0.05,0.10,0.25,0.50,1.00];
+let nftListPriceIdx=1; // default 0.05 SOL
+let nftTxPhase=''; // ''|'listing'|'buying'|'cancelling'|'done'|'error'
+let nftTxResult='', nftTxError='';
+
 // T71: Dungeon Gate shop state
 let dgPhase='menu'; // 'menu'|'create'|'join'|'loading'|'result'
 let dgMenuIdx=0;    // selected option index (0=quick enter, 1=create, 2=join)

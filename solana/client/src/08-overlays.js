@@ -1359,10 +1359,102 @@ function drawDungeonGateShop(cx,cy,cw,ch){
     }
   }
 }
+// T72: NFT Trading House — 3-tab UI
 function drawNFTTradingShop(cx,cy,cw,ch){
-  txShadow('NFT TRADING HOUSE',cx+cw/2,cy+ch/2-20,14,'#88ccff','rgba(0,0,0,.5)');
-  txShadow('Trade & list your card NFTs',cx+cw/2,cy+ch/2+6,8,'#a0b8c0','rgba(0,0,0,.4)');
-  txShadow('Full implementation in T72',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+  const bodyY=cy+42;
+  // Tab bar
+  for(let i=0;i<NFT_SHOP_TABS.length;i++){
+    const tw=(cw-32)/3, tx_=cx+16+i*tw;
+    const sel=townShopTab===i;
+    g.fillStyle=sel?'rgba(96,160,224,0.25)':'rgba(255,255,255,0.05)';
+    g.beginPath();g.roundRect(tx_,bodyY,tw-4,22,6);g.fill();
+    if(sel){g.strokeStyle='rgba(96,160,224,0.5)';g.lineWidth=1;g.stroke();}
+    txShadow(NFT_SHOP_TABS[i],tx_+tw/2-2,bodyY+14,7,sel?'#88ccff':'#7080a0','rgba(0,0,0,.3)');
+  }
+  const listY=bodyY+30;
+
+  // TX in progress
+  if(nftTxPhase==='listing'||nftTxPhase==='buying'||nftTxPhase==='cancelling'){
+    const verb={listing:'Listing',buying:'Buying',cancelling:'Cancelling'}[nftTxPhase];
+    const dots='.'.repeat(1+(Math.floor(fr/15)%3));
+    txShadow(verb+dots,cx+cw/2,listY+90,12,'#88ccff','rgba(0,0,0,.5)');
+    return;
+  }
+  if(nftTxPhase==='done'){
+    txShadow('\u2714 '+nftTxResult,cx+cw/2,listY+90,10,'#80ffb0','rgba(0,0,0,.5)');
+    txShadow('[Z] Continue',cx+cw/2,listY+116,7,'#807090','rgba(0,0,0,.4)');
+    return;
+  }
+  if(nftTxPhase==='error'){
+    txShadow('\u2716 '+nftTxError.substring(0,50),cx+cw/2,listY+90,8,'#ff8080','rgba(0,0,0,.5)');
+    txShadow('[Z] or [X] Back',cx+cw/2,listY+112,7,'#807090','rgba(0,0,0,.4)');
+    return;
+  }
+
+  if(townShopTab===0){ // MY CARDS
+    const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push({slot:i,id:pl[0].cd[i]});}
+    if(filled.length===0){
+      txShadow('No cards in hand.',cx+cw/2,listY+80,9,'#7080a0','rgba(0,0,0,.4)');
+      return;
+    }
+    txShadow('Select a card to list:',cx+24,listY+8,7,'#a0b8c8','rgba(0,0,0,.4)');
+    const visible=filled.slice(0,5);
+    for(let i=0;i<visible.length;i++){
+      const item=visible[i];const cr=CD[item.id-1];if(!cr)continue;
+      const ry=listY+24+i*44;const sel=nftSelIdx===i;
+      g.fillStyle=sel?'rgba(96,160,224,0.2)':'rgba(255,255,255,0.04)';
+      g.beginPath();g.roundRect(cx+16,ry-2,cw-32,36,6);g.fill();
+      if(sel){g.strokeStyle='rgba(96,160,224,0.4)';g.lineWidth=1;g.stroke();}
+      // Color swatch
+      g.fillStyle=cr.c;g.beginPath();g.roundRect(cx+22,ry+5,16,22,4);g.fill();
+      txShadow(cr.n,cx+46,ry+12,9,sel?'#c8e8ff':cr.c,'rgba(0,0,0,.4)');
+      txShadow(RARITY_LABEL[cr.r]||'',cx+46,ry+26,7,sel?'#a0c8e0':'#7080a0','rgba(0,0,0,.3)');
+      if(sel){
+        const priceStr=NFT_LIST_PRICES[nftListPriceIdx]+' SOL';
+        txShadow('[Z] List for '+priceStr,cx+cw-160,ry+12,7,'#88ccff','rgba(0,0,0,.4)');
+        txShadow('[A/D] Price',cx+cw-160,ry+26,7,'#6080a0','rgba(0,0,0,.3)');
+      }
+    }
+    txShadow('\u2191\u2193 Select  [Z] List  \u2190\u2192 Price',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+  }else if(townShopTab===1){ // MARKET
+    if(nftListings.length===0){
+      txShadow('No active listings.',cx+cw/2,listY+80,9,'#7080a0','rgba(0,0,0,.4)');
+      txShadow('(Listings refresh when you open this tab)',cx+cw/2,listY+102,7,'#506070','rgba(0,0,0,.3)');
+      return;
+    }
+    const visible=nftListings.slice(0,5);
+    for(let i=0;i<visible.length;i++){
+      const l=visible[i];const cr=CD[l.cardId-1];if(!cr)continue;
+      const ry=listY+24+i*44;const sel=nftSelIdx===i;
+      g.fillStyle=sel?'rgba(96,160,224,0.2)':'rgba(255,255,255,0.04)';
+      g.beginPath();g.roundRect(cx+16,ry-2,cw-32,36,6);g.fill();
+      if(sel){g.strokeStyle='rgba(96,160,224,0.4)';g.lineWidth=1;g.stroke();}
+      g.fillStyle=cr.c;g.beginPath();g.roundRect(cx+22,ry+5,16,22,4);g.fill();
+      txShadow(cr.n,cx+46,ry+12,9,sel?'#c8e8ff':cr.c,'rgba(0,0,0,.4)');
+      txShadow(l.priceSol+' SOL',cx+cw-90,ry+12,9,sel?'#c8ffb0':'#80c060','rgba(0,0,0,.4)');
+      txShadow(l.seller.slice(0,8)+'...',cx+46,ry+26,6,'#607080','rgba(0,0,0,.3)');
+    }
+    txShadow('\u2191\u2193 Select  [Z] Buy',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+  }else{ // MY LISTINGS
+    const myAddr=walletConnected?(walletAddressTruncated&&walletAddressTruncated()||''):null;
+    const myListings=nftListings.filter(l=>myAddr&&l.seller.startsWith(myAddr.slice(0,4)));
+    if(myListings.length===0){
+      txShadow('No active listings.',cx+cw/2,listY+80,9,'#7080a0','rgba(0,0,0,.4)');
+      return;
+    }
+    for(let i=0;i<Math.min(myListings.length,5);i++){
+      const l=myListings[i];const cr=CD[l.cardId-1];if(!cr)continue;
+      const ry=listY+24+i*44;const sel=nftSelIdx===i;
+      g.fillStyle=sel?'rgba(96,160,224,0.2)':'rgba(255,255,255,0.04)';
+      g.beginPath();g.roundRect(cx+16,ry-2,cw-32,36,6);g.fill();
+      if(sel){g.strokeStyle='rgba(96,160,224,0.4)';g.lineWidth=1;g.stroke();}
+      g.fillStyle=cr.c;g.beginPath();g.roundRect(cx+22,ry+5,16,22,4);g.fill();
+      txShadow(cr.n,cx+46,ry+12,9,sel?'#c8e8ff':cr.c,'rgba(0,0,0,.4)');
+      txShadow(l.priceSol+' SOL',cx+cw-90,ry+12,9,'#80c060','rgba(0,0,0,.4)');
+      if(sel)txShadow('[Z] Cancel listing',cx+cw-160,ry+26,7,'#ff9090','rgba(0,0,0,.4)');
+    }
+    txShadow('\u2191\u2193 Select  [Z] Cancel',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+  }
 }
 function drawItemShop(cx,cy,cw,ch){
   txShadow('GENERAL SHOP',cx+cw/2,cy+ch/2-20,14,'#80ffb0','rgba(0,0,0,.5)');

@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v506+";
+window.BUILD_VERSION = "v507+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -7707,6 +7707,16 @@ let dungeonConfirmActive=false, dungeonConfirmExit=null;
 // T70: Town interactive building state
 let nearInteractable=null; // TOWN_INTERACTABLES entry currently adjacent to player (or null)
 let townShopActive=false, townShopType='', townShopTab=0, townShopOpenFrame=0;
+
+// T72: NFT Trading House state
+const NFT_SHOP_TABS=['MY CARDS','MARKET','MY LISTINGS'];
+let nftSelIdx=0; // cursor index in current tab
+let nftListings=[]; // cached listing array (refreshed on open)
+let nftListPrice=0.05; // selected list price (cycling presets)
+const NFT_LIST_PRICES=[0.01,0.05,0.10,0.25,0.50,1.00];
+let nftListPriceIdx=1; // default 0.05 SOL
+let nftTxPhase=''; // ''|'listing'|'buying'|'cancelling'|'done'|'error'
+let nftTxResult='', nftTxError='';
 
 // T71: Dungeon Gate shop state
 let dgPhase='menu'; // 'menu'|'create'|'join'|'loading'|'result'
@@ -19310,10 +19320,102 @@ function drawDungeonGateShop(cx,cy,cw,ch){
     }
   }
 }
+// T72: NFT Trading House — 3-tab UI
 function drawNFTTradingShop(cx,cy,cw,ch){
-  txShadow('NFT TRADING HOUSE',cx+cw/2,cy+ch/2-20,14,'#88ccff','rgba(0,0,0,.5)');
-  txShadow('Trade & list your card NFTs',cx+cw/2,cy+ch/2+6,8,'#a0b8c0','rgba(0,0,0,.4)');
-  txShadow('Full implementation in T72',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+  const bodyY=cy+42;
+  // Tab bar
+  for(let i=0;i<NFT_SHOP_TABS.length;i++){
+    const tw=(cw-32)/3, tx_=cx+16+i*tw;
+    const sel=townShopTab===i;
+    g.fillStyle=sel?'rgba(96,160,224,0.25)':'rgba(255,255,255,0.05)';
+    g.beginPath();g.roundRect(tx_,bodyY,tw-4,22,6);g.fill();
+    if(sel){g.strokeStyle='rgba(96,160,224,0.5)';g.lineWidth=1;g.stroke();}
+    txShadow(NFT_SHOP_TABS[i],tx_+tw/2-2,bodyY+14,7,sel?'#88ccff':'#7080a0','rgba(0,0,0,.3)');
+  }
+  const listY=bodyY+30;
+
+  // TX in progress
+  if(nftTxPhase==='listing'||nftTxPhase==='buying'||nftTxPhase==='cancelling'){
+    const verb={listing:'Listing',buying:'Buying',cancelling:'Cancelling'}[nftTxPhase];
+    const dots='.'.repeat(1+(Math.floor(fr/15)%3));
+    txShadow(verb+dots,cx+cw/2,listY+90,12,'#88ccff','rgba(0,0,0,.5)');
+    return;
+  }
+  if(nftTxPhase==='done'){
+    txShadow('\u2714 '+nftTxResult,cx+cw/2,listY+90,10,'#80ffb0','rgba(0,0,0,.5)');
+    txShadow('[Z] Continue',cx+cw/2,listY+116,7,'#807090','rgba(0,0,0,.4)');
+    return;
+  }
+  if(nftTxPhase==='error'){
+    txShadow('\u2716 '+nftTxError.substring(0,50),cx+cw/2,listY+90,8,'#ff8080','rgba(0,0,0,.5)');
+    txShadow('[Z] or [X] Back',cx+cw/2,listY+112,7,'#807090','rgba(0,0,0,.4)');
+    return;
+  }
+
+  if(townShopTab===0){ // MY CARDS
+    const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push({slot:i,id:pl[0].cd[i]});}
+    if(filled.length===0){
+      txShadow('No cards in hand.',cx+cw/2,listY+80,9,'#7080a0','rgba(0,0,0,.4)');
+      return;
+    }
+    txShadow('Select a card to list:',cx+24,listY+8,7,'#a0b8c8','rgba(0,0,0,.4)');
+    const visible=filled.slice(0,5);
+    for(let i=0;i<visible.length;i++){
+      const item=visible[i];const cr=CD[item.id-1];if(!cr)continue;
+      const ry=listY+24+i*44;const sel=nftSelIdx===i;
+      g.fillStyle=sel?'rgba(96,160,224,0.2)':'rgba(255,255,255,0.04)';
+      g.beginPath();g.roundRect(cx+16,ry-2,cw-32,36,6);g.fill();
+      if(sel){g.strokeStyle='rgba(96,160,224,0.4)';g.lineWidth=1;g.stroke();}
+      // Color swatch
+      g.fillStyle=cr.c;g.beginPath();g.roundRect(cx+22,ry+5,16,22,4);g.fill();
+      txShadow(cr.n,cx+46,ry+12,9,sel?'#c8e8ff':cr.c,'rgba(0,0,0,.4)');
+      txShadow(RARITY_LABEL[cr.r]||'',cx+46,ry+26,7,sel?'#a0c8e0':'#7080a0','rgba(0,0,0,.3)');
+      if(sel){
+        const priceStr=NFT_LIST_PRICES[nftListPriceIdx]+' SOL';
+        txShadow('[Z] List for '+priceStr,cx+cw-160,ry+12,7,'#88ccff','rgba(0,0,0,.4)');
+        txShadow('[A/D] Price',cx+cw-160,ry+26,7,'#6080a0','rgba(0,0,0,.3)');
+      }
+    }
+    txShadow('\u2191\u2193 Select  [Z] List  \u2190\u2192 Price',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+  }else if(townShopTab===1){ // MARKET
+    if(nftListings.length===0){
+      txShadow('No active listings.',cx+cw/2,listY+80,9,'#7080a0','rgba(0,0,0,.4)');
+      txShadow('(Listings refresh when you open this tab)',cx+cw/2,listY+102,7,'#506070','rgba(0,0,0,.3)');
+      return;
+    }
+    const visible=nftListings.slice(0,5);
+    for(let i=0;i<visible.length;i++){
+      const l=visible[i];const cr=CD[l.cardId-1];if(!cr)continue;
+      const ry=listY+24+i*44;const sel=nftSelIdx===i;
+      g.fillStyle=sel?'rgba(96,160,224,0.2)':'rgba(255,255,255,0.04)';
+      g.beginPath();g.roundRect(cx+16,ry-2,cw-32,36,6);g.fill();
+      if(sel){g.strokeStyle='rgba(96,160,224,0.4)';g.lineWidth=1;g.stroke();}
+      g.fillStyle=cr.c;g.beginPath();g.roundRect(cx+22,ry+5,16,22,4);g.fill();
+      txShadow(cr.n,cx+46,ry+12,9,sel?'#c8e8ff':cr.c,'rgba(0,0,0,.4)');
+      txShadow(l.priceSol+' SOL',cx+cw-90,ry+12,9,sel?'#c8ffb0':'#80c060','rgba(0,0,0,.4)');
+      txShadow(l.seller.slice(0,8)+'...',cx+46,ry+26,6,'#607080','rgba(0,0,0,.3)');
+    }
+    txShadow('\u2191\u2193 Select  [Z] Buy',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+  }else{ // MY LISTINGS
+    const myAddr=walletConnected?(walletAddressTruncated&&walletAddressTruncated()||''):null;
+    const myListings=nftListings.filter(l=>myAddr&&l.seller.startsWith(myAddr.slice(0,4)));
+    if(myListings.length===0){
+      txShadow('No active listings.',cx+cw/2,listY+80,9,'#7080a0','rgba(0,0,0,.4)');
+      return;
+    }
+    for(let i=0;i<Math.min(myListings.length,5);i++){
+      const l=myListings[i];const cr=CD[l.cardId-1];if(!cr)continue;
+      const ry=listY+24+i*44;const sel=nftSelIdx===i;
+      g.fillStyle=sel?'rgba(96,160,224,0.2)':'rgba(255,255,255,0.04)';
+      g.beginPath();g.roundRect(cx+16,ry-2,cw-32,36,6);g.fill();
+      if(sel){g.strokeStyle='rgba(96,160,224,0.4)';g.lineWidth=1;g.stroke();}
+      g.fillStyle=cr.c;g.beginPath();g.roundRect(cx+22,ry+5,16,22,4);g.fill();
+      txShadow(cr.n,cx+46,ry+12,9,sel?'#c8e8ff':cr.c,'rgba(0,0,0,.4)');
+      txShadow(l.priceSol+' SOL',cx+cw-90,ry+12,9,'#80c060','rgba(0,0,0,.4)');
+      if(sel)txShadow('[Z] Cancel listing',cx+cw-160,ry+26,7,'#ff9090','rgba(0,0,0,.4)');
+    }
+    txShadow('\u2191\u2193 Select  [Z] Cancel',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+  }
 }
 function drawItemShop(cx,cy,cw,ch){
   txShadow('GENERAL SHOP',cx+cw/2,cy+ch/2-20,14,'#80ffb0','rgba(0,0,0,.5)');
@@ -22078,8 +22180,80 @@ document.addEventListener('keydown',e=>{
       }
       return;
     }
+    // T72: NFT Trading House input
+    if(townShopType==='nft_trading'){
+      if(nftTxPhase==='listing'||nftTxPhase==='buying'||nftTxPhase==='cancelling')return; // busy
+      if(nftTxPhase==='done'||nftTxPhase==='error'){
+        if(e.code==='KeyZ'||e.code==='KeyX'){nftTxPhase='';nftTxResult='';nftTxError='';sfxBack();}
+        return;
+      }
+      if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);nftSelIdx=0;nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(e.code==='ArrowRight'){townShopTab=Math.min(2,townShopTab+1);nftSelIdx=0;nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(townShopTab===0){ // MY CARDS
+        const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push({slot:i,id:pl[0].cd[i]});}
+        if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){nftSelIdx=Math.min(Math.max(0,filled.length-1),nftSelIdx+1);sfxCursor();}
+        if(e.code==='ArrowLeft'||e.code==='KeyA'){nftListPriceIdx=Math.max(0,nftListPriceIdx-1);nftListPrice=NFT_LIST_PRICES[nftListPriceIdx];sfxCursor();}
+        if(e.code==='ArrowRight'||e.code==='KeyD'){nftListPriceIdx=Math.min(NFT_LIST_PRICES.length-1,nftListPriceIdx+1);nftListPrice=NFT_LIST_PRICES[nftListPriceIdx];sfxCursor();}
+        if(e.code==='KeyZ'&&filled.length>0){
+          const item=filled[nftSelIdx];if(!item)return;
+          if(typeof oxarkOnchain==='undefined'||!oxarkOnchain.listCard){showError('Onchain not available');return;}
+          nftTxPhase='listing';
+          oxarkOnchain.listCard(item.id,nftListPrice).then(lid=>{
+            nftTxResult='Listed '+CD[item.id-1].n+' for '+nftListPrice+' SOL';
+            // Remove card from hand (consumed by listing)
+            pl[0].cd[item.slot]=0;syncCardCount&&syncCardCount(0);
+            nftTxPhase='done';
+            lg.push('[NFT] Listed '+CD[item.id-1].n+' for '+nftListPrice+' SOL (id='+lid+')');
+          }).catch(err=>{nftTxError=(err&&err.message)||String(err);nftTxPhase='error';sfxBack();});
+          sfxSelect();
+        }
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      }else if(townShopTab===1){ // MARKET
+        const vis=nftListings.slice(0,5);
+        if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){nftSelIdx=Math.min(Math.max(0,vis.length-1),nftSelIdx+1);sfxCursor();}
+        if(e.code==='KeyZ'&&vis.length>0){
+          const l=vis[nftSelIdx];if(!l)return;
+          if(typeof oxarkOnchain==='undefined'||!oxarkOnchain.buyCard){showError('Onchain not available');return;}
+          nftTxPhase='buying';
+          oxarkOnchain.buyCard(l.id).then(listing=>{
+            const cr=CD[listing.cardId-1];
+            const added=addCardToPlayer&&addCardToPlayer(0,listing.cardId);
+            nftTxResult='Bought '+(cr?cr.n:'card')+' for '+listing.priceSol+' SOL';
+            nftListings=oxarkOnchain.getListings();
+            nftTxPhase='done';
+            lg.push('[NFT] Bought '+(cr?cr.n:'card #'+listing.cardId));
+          }).catch(err=>{nftTxError=(err&&err.message)||String(err);nftTxPhase='error';sfxBack();});
+          sfxSelect();
+        }
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      }else{ // MY LISTINGS
+        const myAddr=walletConnected?(walletAddressTruncated&&walletAddressTruncated()||''):null;
+        const myListings=nftListings.filter(l=>myAddr&&l.seller.startsWith(myAddr.slice(0,4)));
+        if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){nftSelIdx=Math.min(Math.max(0,myListings.length-1),nftSelIdx+1);sfxCursor();}
+        if(e.code==='KeyZ'&&myListings.length>0){
+          const l=myListings[nftSelIdx];if(!l)return;
+          if(typeof oxarkOnchain==='undefined'||!oxarkOnchain.cancelListing){showError('Onchain not available');return;}
+          nftTxPhase='cancelling';
+          oxarkOnchain.cancelListing(l.id).then(listing=>{
+            const cr=CD[listing.cardId-1];
+            // Return card to hand
+            addCardToPlayer&&addCardToPlayer(0,listing.cardId);
+            nftTxResult='Cancelled listing for '+(cr?cr.n:'card');
+            nftListings=oxarkOnchain.getListings();
+            nftTxPhase='done';
+            lg.push('[NFT] Cancelled listing for '+(cr?cr.n:'card #'+listing.cardId));
+          }).catch(err=>{nftTxError=(err&&err.message)||String(err);nftTxPhase='error';sfxBack();});
+          sfxSelect();
+        }
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      }
+      return;
+    }
     if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
-    // Tab navigation (used by T72/T73 multi-tab shops)
+    // Tab navigation (used by T73 item shop)
     if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);sfxCursor();}
     if(e.code==='ArrowRight'){townShopTab=Math.min(2,townShopTab+1);sfxCursor();}
     return;
@@ -22517,6 +22691,8 @@ document.addEventListener('keydown',e=>{
             if(glowExit){dungeonConfirmActive=true;dungeonConfirmExit=glowExit;sfxSelect();return;}
           }
           townShopActive=true;townShopType=nearInteractable.id;townShopTab=0;townShopOpenFrame=fr;
+          nftSelIdx=0;nftTxPhase='';nftTxResult='';nftTxError='';
+          if(nearInteractable.id==='nft_trading')nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];
           sfxSelect();return;
         }
         if(checkNPCInteraction())return;
@@ -24502,6 +24678,48 @@ async function undelegateSession(gameId) {
 }
 
 // ─── Exports ──────────────────────────────────────────────────────────────
+// ─── T72: NFT Trading — localStorage-backed listings ──────────────────────────
+// Full on-chain escrow deferred; this layer stores listings locally and logs txs.
+// Replace with real PDAs when list_card/buy_card instructions are deployed.
+const _LISTINGS_KEY = 'oxark_nft_listings';
+function _loadListings() {
+  try { return JSON.parse(localStorage.getItem(_LISTINGS_KEY) || '[]'); } catch(e) { return []; }
+}
+function _saveListings(arr) {
+  try { localStorage.setItem(_LISTINGS_KEY, JSON.stringify(arr)); } catch(e) {}
+}
+async function listCard(cardId, priceSol) {
+  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
+  const seller = window.solana.publicKey.toBase58();
+  const listing = { id: Date.now(), cardId, seller, priceSol, ts: Date.now() };
+  const arr = _loadListings();
+  arr.push(listing);
+  _saveListings(arr);
+  return listing.id;
+}
+async function buyCard(listingId) {
+  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
+  const buyer = window.solana.publicKey.toBase58();
+  const arr = _loadListings();
+  const idx = arr.findIndex(l => l.id === listingId);
+  if (idx < 0) throw new Error('Listing not found');
+  if (arr[idx].seller === buyer) throw new Error('Cannot buy your own listing');
+  const listing = arr.splice(idx, 1)[0];
+  _saveListings(arr);
+  return listing;
+}
+async function cancelListing(listingId) {
+  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
+  const seller = window.solana.publicKey.toBase58();
+  const arr = _loadListings();
+  const idx = arr.findIndex(l => l.id === listingId && l.seller === seller);
+  if (idx < 0) throw new Error('Listing not found or not yours');
+  const listing = arr.splice(idx, 1)[0];
+  _saveListings(arr);
+  return listing;
+}
+function getListings() { return _loadListings(); }
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -24536,6 +24754,11 @@ window.oxarkOnchain = {
   // ZK dungeon position (T48) — init_position + verify_dungeon_move
   initPositionIx,
   verifyDungeonMoveIx,
+  // NFT Trading (T72) — localStorage-backed listings until on-chain escrow is deployed
+  listCard,
+  buyCard,
+  cancelListing,
+  getListings,
   // Helpers
   computeCommitHash,
   generateSalt,

@@ -1367,6 +1367,48 @@ async function undelegateSession(gameId) {
 }
 
 // ─── Exports ──────────────────────────────────────────────────────────────
+// ─── T72: NFT Trading — localStorage-backed listings ──────────────────────────
+// Full on-chain escrow deferred; this layer stores listings locally and logs txs.
+// Replace with real PDAs when list_card/buy_card instructions are deployed.
+const _LISTINGS_KEY = 'oxark_nft_listings';
+function _loadListings() {
+  try { return JSON.parse(localStorage.getItem(_LISTINGS_KEY) || '[]'); } catch(e) { return []; }
+}
+function _saveListings(arr) {
+  try { localStorage.setItem(_LISTINGS_KEY, JSON.stringify(arr)); } catch(e) {}
+}
+async function listCard(cardId, priceSol) {
+  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
+  const seller = window.solana.publicKey.toBase58();
+  const listing = { id: Date.now(), cardId, seller, priceSol, ts: Date.now() };
+  const arr = _loadListings();
+  arr.push(listing);
+  _saveListings(arr);
+  return listing.id;
+}
+async function buyCard(listingId) {
+  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
+  const buyer = window.solana.publicKey.toBase58();
+  const arr = _loadListings();
+  const idx = arr.findIndex(l => l.id === listingId);
+  if (idx < 0) throw new Error('Listing not found');
+  if (arr[idx].seller === buyer) throw new Error('Cannot buy your own listing');
+  const listing = arr.splice(idx, 1)[0];
+  _saveListings(arr);
+  return listing;
+}
+async function cancelListing(listingId) {
+  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
+  const seller = window.solana.publicKey.toBase58();
+  const arr = _loadListings();
+  const idx = arr.findIndex(l => l.id === listingId && l.seller === seller);
+  if (idx < 0) throw new Error('Listing not found or not yours');
+  const listing = arr.splice(idx, 1)[0];
+  _saveListings(arr);
+  return listing;
+}
+function getListings() { return _loadListings(); }
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -1401,6 +1443,11 @@ window.oxarkOnchain = {
   // ZK dungeon position (T48) — init_position + verify_dungeon_move
   initPositionIx,
   verifyDungeonMoveIx,
+  // NFT Trading (T72) — localStorage-backed listings until on-chain escrow is deployed
+  listCard,
+  buyCard,
+  cancelListing,
+  getListings,
   // Helpers
   computeCommitHash,
   generateSalt,

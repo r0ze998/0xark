@@ -397,8 +397,80 @@ document.addEventListener('keydown',e=>{
       }
       return;
     }
+    // T72: NFT Trading House input
+    if(townShopType==='nft_trading'){
+      if(nftTxPhase==='listing'||nftTxPhase==='buying'||nftTxPhase==='cancelling')return; // busy
+      if(nftTxPhase==='done'||nftTxPhase==='error'){
+        if(e.code==='KeyZ'||e.code==='KeyX'){nftTxPhase='';nftTxResult='';nftTxError='';sfxBack();}
+        return;
+      }
+      if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);nftSelIdx=0;nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(e.code==='ArrowRight'){townShopTab=Math.min(2,townShopTab+1);nftSelIdx=0;nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(townShopTab===0){ // MY CARDS
+        const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push({slot:i,id:pl[0].cd[i]});}
+        if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){nftSelIdx=Math.min(Math.max(0,filled.length-1),nftSelIdx+1);sfxCursor();}
+        if(e.code==='ArrowLeft'||e.code==='KeyA'){nftListPriceIdx=Math.max(0,nftListPriceIdx-1);nftListPrice=NFT_LIST_PRICES[nftListPriceIdx];sfxCursor();}
+        if(e.code==='ArrowRight'||e.code==='KeyD'){nftListPriceIdx=Math.min(NFT_LIST_PRICES.length-1,nftListPriceIdx+1);nftListPrice=NFT_LIST_PRICES[nftListPriceIdx];sfxCursor();}
+        if(e.code==='KeyZ'&&filled.length>0){
+          const item=filled[nftSelIdx];if(!item)return;
+          if(typeof oxarkOnchain==='undefined'||!oxarkOnchain.listCard){showError('Onchain not available');return;}
+          nftTxPhase='listing';
+          oxarkOnchain.listCard(item.id,nftListPrice).then(lid=>{
+            nftTxResult='Listed '+CD[item.id-1].n+' for '+nftListPrice+' SOL';
+            // Remove card from hand (consumed by listing)
+            pl[0].cd[item.slot]=0;syncCardCount&&syncCardCount(0);
+            nftTxPhase='done';
+            lg.push('[NFT] Listed '+CD[item.id-1].n+' for '+nftListPrice+' SOL (id='+lid+')');
+          }).catch(err=>{nftTxError=(err&&err.message)||String(err);nftTxPhase='error';sfxBack();});
+          sfxSelect();
+        }
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      }else if(townShopTab===1){ // MARKET
+        const vis=nftListings.slice(0,5);
+        if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){nftSelIdx=Math.min(Math.max(0,vis.length-1),nftSelIdx+1);sfxCursor();}
+        if(e.code==='KeyZ'&&vis.length>0){
+          const l=vis[nftSelIdx];if(!l)return;
+          if(typeof oxarkOnchain==='undefined'||!oxarkOnchain.buyCard){showError('Onchain not available');return;}
+          nftTxPhase='buying';
+          oxarkOnchain.buyCard(l.id).then(listing=>{
+            const cr=CD[listing.cardId-1];
+            const added=addCardToPlayer&&addCardToPlayer(0,listing.cardId);
+            nftTxResult='Bought '+(cr?cr.n:'card')+' for '+listing.priceSol+' SOL';
+            nftListings=oxarkOnchain.getListings();
+            nftTxPhase='done';
+            lg.push('[NFT] Bought '+(cr?cr.n:'card #'+listing.cardId));
+          }).catch(err=>{nftTxError=(err&&err.message)||String(err);nftTxPhase='error';sfxBack();});
+          sfxSelect();
+        }
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      }else{ // MY LISTINGS
+        const myAddr=walletConnected?(walletAddressTruncated&&walletAddressTruncated()||''):null;
+        const myListings=nftListings.filter(l=>myAddr&&l.seller.startsWith(myAddr.slice(0,4)));
+        if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){nftSelIdx=Math.min(Math.max(0,myListings.length-1),nftSelIdx+1);sfxCursor();}
+        if(e.code==='KeyZ'&&myListings.length>0){
+          const l=myListings[nftSelIdx];if(!l)return;
+          if(typeof oxarkOnchain==='undefined'||!oxarkOnchain.cancelListing){showError('Onchain not available');return;}
+          nftTxPhase='cancelling';
+          oxarkOnchain.cancelListing(l.id).then(listing=>{
+            const cr=CD[listing.cardId-1];
+            // Return card to hand
+            addCardToPlayer&&addCardToPlayer(0,listing.cardId);
+            nftTxResult='Cancelled listing for '+(cr?cr.n:'card');
+            nftListings=oxarkOnchain.getListings();
+            nftTxPhase='done';
+            lg.push('[NFT] Cancelled listing for '+(cr?cr.n:'card #'+listing.cardId));
+          }).catch(err=>{nftTxError=(err&&err.message)||String(err);nftTxPhase='error';sfxBack();});
+          sfxSelect();
+        }
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      }
+      return;
+    }
     if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
-    // Tab navigation (used by T72/T73 multi-tab shops)
+    // Tab navigation (used by T73 item shop)
     if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);sfxCursor();}
     if(e.code==='ArrowRight'){townShopTab=Math.min(2,townShopTab+1);sfxCursor();}
     return;
@@ -836,6 +908,8 @@ document.addEventListener('keydown',e=>{
             if(glowExit){dungeonConfirmActive=true;dungeonConfirmExit=glowExit;sfxSelect();return;}
           }
           townShopActive=true;townShopType=nearInteractable.id;townShopTab=0;townShopOpenFrame=fr;
+          nftSelIdx=0;nftTxPhase='';nftTxResult='';nftTxError='';
+          if(nearInteractable.id==='nft_trading')nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];
           sfxSelect();return;
         }
         if(checkNPCInteraction())return;
