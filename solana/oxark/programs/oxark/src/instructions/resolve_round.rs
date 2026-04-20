@@ -53,16 +53,36 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
             steal_count: ps.steal_count,
             barrier_count: ps.barrier_count,
             scout_count: ps.scout_count,
+            position_commitment_initialized: ps.position_commitment_initialized,
         });
     }
 
     // === Resolution Order ===
 
     // 0. Move (area transition — processed first so Steal etc. use new positions)
+    //
+    // ZK gating (T47): Moving into the dungeon (area > 0) requires that the
+    // player has an initialized position commitment (set via init_position and
+    // updated by verify_dungeon_move). This ensures dungeon traversal is
+    // cryptographically attested — the prover demonstrated knowledge of (x, y, salt)
+    // consistent with the committed Poseidon hash.
+    //
+    // Town moves (area 0 → area 0) are exempt — no ZK required for open areas.
+    // Uninitialized players may still move freely within town.
     for p in players.iter_mut() {
         if p.action == ActionType::Move {
             let dest = p.move_target;
             if dest < crate::constants::NUM_AREAS {
+                // Gate: dungeon moves require ZK position commitment
+                if dest > 0 && !p.position_commitment_initialized {
+                    msg!(
+                        "Player {} blocked: dungeon Move requires init_position (ZK gate)",
+                        p.key
+                    );
+                    // Don't error — silently skip the move so the round can still resolve.
+                    // The player stays in their current area until they call init_position.
+                    continue;
+                }
                 msg!("Player {} moved from area {} to area {}", p.key, p.area, dest);
                 p.area = dest;
             }
@@ -325,6 +345,7 @@ struct PlayerData {
     steal_count: u8,
     barrier_count: u8,
     scout_count: u8,
+    position_commitment_initialized: bool,
 }
 
 fn remove_card(cards: &mut [u8; 5], card_id: u8) {
