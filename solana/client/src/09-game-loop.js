@@ -181,6 +181,9 @@ function update(){
   updateNPCWander();
   updateTownWeather(); // v84
   if(sc==='map'&&!inDungeon)checkTownInteractable(); // T70
+  // T71: Dungeon door glow pulse — intensifies when gate modal is open
+  if(townShopActive&&townShopType==='dungeon_gate'){dgDoorGlow=0.5+0.5*Math.sin(fr*0.12);}
+  else{dgDoorGlow=Math.max(0,dgDoorGlow-0.05);}
   updateFloorTitle(); // v155: PMD floor title card
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──

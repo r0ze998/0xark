@@ -373,6 +373,30 @@ document.addEventListener('keydown',e=>{
 
   // T70: Town shop modal input
   if(townShopActive){
+    // T71: Dungeon Gate specific input
+    if(townShopType==='dungeon_gate'){
+      if(dgPhase==='menu'){
+        if(e.code==='ArrowUp'){dgMenuIdx=Math.max(0,dgMenuIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){dgMenuIdx=Math.min(2,dgMenuIdx+1);sfxCursor();}
+        if(e.code==='KeyZ'){
+          if(dgMenuIdx===0){dgQuickEnter();}
+          else if(dgMenuIdx===1){dgCreateSeason();}
+          else if(dgMenuIdx===2){dgJoinSeason();}
+          sfxSelect();
+        }
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';dgPhase='menu';sfxBack();}
+      }else if(dgPhase==='loading'){
+        // no input while loading
+      }else{ // result / create / join
+        if(e.code==='KeyZ'&&!dgTxError){
+          // Success — enter dungeon
+          const ex=exits.find(ex=>ex.map===0&&ex.targetMap>0);
+          if(ex){townShopActive=false;townShopType='';dgPhase='menu';sfxConfirm();doMapTransition(ex);}
+        }
+        if(e.code==='KeyX'){dgPhase='menu';dgTxError='';dgTxResult='';sfxBack();}
+      }
+      return;
+    }
     if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
     // Tab navigation (used by T72/T73 multi-tab shops)
     if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);sfxCursor();}

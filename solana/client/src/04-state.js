@@ -326,6 +326,14 @@ let dungeonConfirmActive=false, dungeonConfirmExit=null;
 let nearInteractable=null; // TOWN_INTERACTABLES entry currently adjacent to player (or null)
 let townShopActive=false, townShopType='', townShopTab=0, townShopOpenFrame=0;
 
+// T71: Dungeon Gate shop state
+let dgPhase='menu'; // 'menu'|'create'|'join'|'loading'|'result'
+let dgMenuIdx=0;    // selected option index (0=quick enter, 1=create, 2=join)
+let dgTxResult='',dgTxError='',dgLoading=false;
+let dgLastGameId=0; // last created/joined gameId (stored in localStorage)
+let dgDoorGlow=0;   // 0-1 pulse intensity for dungeon door when gate modal open
+try{dgLastGameId=parseInt(localStorage.getItem('oxark_last_game_id')||'0')||0;}catch(e){}
+
 // ── Marketplace state ──
 let marketActive=false, marketTab=0, marketPage=0, marketFilter='all';
 const MARKET_TABS=['MY CARDS','BROWSE','SELL'];

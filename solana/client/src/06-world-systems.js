@@ -1387,6 +1387,52 @@ function drawCardShop(){
 }
 
 // ═══════════════════════════════════════
+// T71: DUNGEON GATE — create/join season on-chain
+// ═══════════════════════════════════════
+function dgQuickEnter(){
+  // Legacy flow: fire doMapTransition to dungeon B1 (first exit with targetMap>0)
+  const ex=exits.find(e=>e.map===0&&e.targetMap>0);
+  if(ex){townShopActive=false;townShopType='';dgPhase='menu';sfxConfirm();doMapTransition(ex);}
+  else{showToast('No dungeon exit found!');sfxBack();}
+}
+function dgCreateSeason(){
+  if(!walletConnected){showError('Connect wallet first!');sfxBack();return;}
+  if(typeof oxarkOnchain==='undefined'||!oxarkOnchain.createGame){
+    showError('Onchain module not available');sfxBack();return;
+  }
+  dgPhase='loading';dgLoading=true;dgTxError='';dgTxResult='';
+  const newGameId=Math.floor(Math.random()*0xFFFFFF)+1;
+  oxarkOnchain.createGame(newGameId,3).then(sig=>{
+    dgLastGameId=newGameId;
+    dgTxResult=sig||'ok';
+    try{localStorage.setItem('oxark_last_game_id',String(newGameId));}catch(e){}
+    lg.push('[CHAIN] Season created — Game ID: '+newGameId+' ('+String(sig).slice(0,12)+'...)');
+    dgPhase='result';dgLoading=false;
+  }).catch(err=>{
+    dgTxError=(err&&err.message)||String(err);
+    lg.push('[CHAIN] createGame failed: '+dgTxError.slice(0,80));
+    dgPhase='result';dgLoading=false;
+  });
+}
+function dgJoinSeason(){
+  if(!walletConnected){showError('Connect wallet first!');sfxBack();return;}
+  if(typeof oxarkOnchain==='undefined'||!oxarkOnchain.joinGame){
+    showError('Onchain module not available');sfxBack();return;
+  }
+  const gid=dgLastGameId||0;
+  if(!gid){showError('No Game ID found. Create a season first.');sfxBack();return;}
+  dgPhase='loading';dgLoading=true;dgTxError='';dgTxResult='';
+  oxarkOnchain.joinGame(gid).then(sig=>{
+    dgTxResult=sig||'ok';
+    lg.push('[CHAIN] Joined season '+gid+' ('+String(sig).slice(0,12)+'...)');
+    dgPhase='join';dgLoading=false;
+  }).catch(err=>{
+    dgTxError=(err&&err.message)||String(err);
+    lg.push('[CHAIN] joinGame failed: '+dgTxError.slice(0,80));
+    dgPhase='join';dgLoading=false;
+  });
+}
+
 // v74: SYNTHESIS (ALCHEMIST) SYSTEM
 // ═══════════════════════════════════════
 function doSynthesis(){

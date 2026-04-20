@@ -1297,11 +1297,67 @@ function drawTownShopModal(){
   txShadow('[X] Close',cx_+cw-60,cy_anim+ch-14,7,'#807090','rgba(0,0,0,.4)');
 }
 
-// T70 stubs — overridden in T71/T72/T73
+// T71: Dungeon Gate shop — full implementation
+// Options: QUICK ENTER (legacy confirm), CREATE SEASON, JOIN SEASON
+const _DG_OPTIONS=[
+  {label:'\u26A0 QUICK ENTER',    sub:'Enter dungeon now, no on-chain season'},
+  {label:'\u2694 CREATE SEASON',  sub:'Deploy a new season on Solana devnet'},
+  {label:'\u25BA JOIN SEASON',    sub:'Join an existing season by Game ID'},
+];
 function drawDungeonGateShop(cx,cy,cw,ch){
-  txShadow('DUNGEON GATE',cx+cw/2,cy+ch/2-20,14,'#ff8080','rgba(0,0,0,.5)');
-  txShadow('Challenge the dungeon depths',cx+cw/2,cy+ch/2+6,8,'#c0a0a0','rgba(0,0,0,.4)');
-  txShadow('Full implementation in T71',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+  const bodyY=cy+42;
+  if(dgPhase==='menu'){
+    txShadow('Choose your entry:',cx+20,bodyY+16,8,'#c0a0a0','rgba(0,0,0,.4)');
+    for(let i=0;i<_DG_OPTIONS.length;i++){
+      const opt=_DG_OPTIONS[i];
+      const oy=bodyY+42+i*68;
+      const sel=dgMenuIdx===i;
+      // Row bg
+      g.fillStyle=sel?'rgba(208,64,64,0.18)':'rgba(255,255,255,0.04)';
+      g.beginPath();g.roundRect(cx+16,oy-8,cw-32,54,8);g.fill();
+      if(sel){g.strokeStyle='rgba(208,64,64,0.5)';g.lineWidth=1;g.stroke();}
+      txShadow(opt.label,cx+36,oy+10,10,sel?'#ff8080':'#c0c0c8','rgba(0,0,0,.4)');
+      txShadow(opt.sub,cx+36,oy+30,7,sel?'#a09090':'#808090','rgba(0,0,0,.3)');
+      if(sel){txShadow('\u25B6',cx+cw-40,oy+10,10,'#ff6060','rgba(0,0,0,.4)');}
+    }
+    // Footer controls
+    txShadow('\u2191\u2193 Select    [Z] Confirm',cx+20,cy+ch-30,7,'#807090','rgba(0,0,0,.4)');
+    // Door glow indicator
+    if(dgDoorGlow>0.1){
+      txShadow('DUNGEON DOOR PULSING \u2665',cx+cw-200,bodyY+16,7,'rgba(255,96,96,'+dgDoorGlow.toFixed(2)+')','rgba(0,0,0,.3)');
+    }
+  }else if(dgPhase==='loading'){
+    const dots='.'.repeat(1+(Math.floor(fr/15)%3));
+    txShadow('Processing'+dots,cx+cw/2,cy+ch/2-10,14,'#ff8080','rgba(0,0,0,.5)');
+    txShadow('Sending transaction to Solana devnet',cx+cw/2,cy+ch/2+14,8,'#a09090','rgba(0,0,0,.4)');
+  }else if(dgPhase==='create'||dgPhase==='result'){
+    if(dgTxError){
+      txShadow('\u2716 Transaction failed',cx+cw/2,cy+ch/2-24,12,'#ff6060','rgba(0,0,0,.5)');
+      // Wrap error text
+      const words=dgTxError.split(' ');let line='';let lineY=cy+ch/2+4;
+      for(const w of words){
+        if((line+w).length>52){txShadow(line.trim(),cx+cw/2,lineY,7,'#c09090','rgba(0,0,0,.4)');line='';lineY+=16;}
+        line+=w+' ';
+      }
+      if(line)txShadow(line.trim(),cx+cw/2,lineY,7,'#c09090','rgba(0,0,0,.4)');
+      txShadow('[X] Back',cx+cw/2,cy+ch-30,7,'#807090','rgba(0,0,0,.4)');
+    }else{
+      txShadow('\u2714 Season Created!',cx+cw/2,cy+ch/2-36,14,'#80ff90','rgba(0,0,0,.5)');
+      if(dgLastGameId>0)txShadow('Game ID: '+dgLastGameId,cx+cw/2,cy+ch/2-10,10,'#c0ffc8','rgba(0,0,0,.4)');
+      txShadow('Share this ID with rivals to join.',cx+cw/2,cy+ch/2+14,8,'#a0c0a8','rgba(0,0,0,.4)');
+      txShadow('[Z] Enter dungeon    [X] Back',cx+cw/2,cy+ch-30,7,'#807090','rgba(0,0,0,.4)');
+    }
+  }else if(dgPhase==='join'){
+    if(dgTxError){
+      txShadow('\u2716 Join failed',cx+cw/2,cy+ch/2-24,12,'#ff6060','rgba(0,0,0,.5)');
+      txShadow(dgTxError.substring(0,60),cx+cw/2,cy+ch/2+4,7,'#c09090','rgba(0,0,0,.4)');
+      txShadow('[X] Back',cx+cw/2,cy+ch-30,7,'#807090','rgba(0,0,0,.4)');
+    }else{
+      txShadow('\u2714 Joined Season!',cx+cw/2,cy+ch/2-36,14,'#80ffb0','rgba(0,0,0,.5)');
+      if(dgLastGameId>0)txShadow('Game ID: '+dgLastGameId,cx+cw/2,cy+ch/2-10,10,'#c0ffe0','rgba(0,0,0,.4)');
+      txShadow('[Z] Enter dungeon    [X] Back',cx+cw/2,cy+ch-30,7,'#807090','rgba(0,0,0,.4)');
+    }
+  }
 }
 function drawNFTTradingShop(cx,cy,cw,ch){
   txShadow('NFT TRADING HOUSE',cx+cw/2,cy+ch/2-20,14,'#88ccff','rgba(0,0,0,.5)');

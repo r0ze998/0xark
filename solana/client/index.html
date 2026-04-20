@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v505+";
+window.BUILD_VERSION = "v506+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -7708,6 +7708,14 @@ let dungeonConfirmActive=false, dungeonConfirmExit=null;
 let nearInteractable=null; // TOWN_INTERACTABLES entry currently adjacent to player (or null)
 let townShopActive=false, townShopType='', townShopTab=0, townShopOpenFrame=0;
 
+// T71: Dungeon Gate shop state
+let dgPhase='menu'; // 'menu'|'create'|'join'|'loading'|'result'
+let dgMenuIdx=0;    // selected option index (0=quick enter, 1=create, 2=join)
+let dgTxResult='',dgTxError='',dgLoading=false;
+let dgLastGameId=0; // last created/joined gameId (stored in localStorage)
+let dgDoorGlow=0;   // 0-1 pulse intensity for dungeon door when gate modal open
+try{dgLastGameId=parseInt(localStorage.getItem('oxark_last_game_id')||'0')||0;}catch(e){}
+
 // ── Marketplace state ──
 let marketActive=false, marketTab=0, marketPage=0, marketFilter='all';
 const MARKET_TABS=['MY CARDS','BROWSE','SELL'];
@@ -12100,6 +12108,52 @@ function drawCardShop(){
 }
 
 // ═══════════════════════════════════════
+// T71: DUNGEON GATE — create/join season on-chain
+// ═══════════════════════════════════════
+function dgQuickEnter(){
+  // Legacy flow: fire doMapTransition to dungeon B1 (first exit with targetMap>0)
+  const ex=exits.find(e=>e.map===0&&e.targetMap>0);
+  if(ex){townShopActive=false;townShopType='';dgPhase='menu';sfxConfirm();doMapTransition(ex);}
+  else{showToast('No dungeon exit found!');sfxBack();}
+}
+function dgCreateSeason(){
+  if(!walletConnected){showError('Connect wallet first!');sfxBack();return;}
+  if(typeof oxarkOnchain==='undefined'||!oxarkOnchain.createGame){
+    showError('Onchain module not available');sfxBack();return;
+  }
+  dgPhase='loading';dgLoading=true;dgTxError='';dgTxResult='';
+  const newGameId=Math.floor(Math.random()*0xFFFFFF)+1;
+  oxarkOnchain.createGame(newGameId,3).then(sig=>{
+    dgLastGameId=newGameId;
+    dgTxResult=sig||'ok';
+    try{localStorage.setItem('oxark_last_game_id',String(newGameId));}catch(e){}
+    lg.push('[CHAIN] Season created — Game ID: '+newGameId+' ('+String(sig).slice(0,12)+'...)');
+    dgPhase='result';dgLoading=false;
+  }).catch(err=>{
+    dgTxError=(err&&err.message)||String(err);
+    lg.push('[CHAIN] createGame failed: '+dgTxError.slice(0,80));
+    dgPhase='result';dgLoading=false;
+  });
+}
+function dgJoinSeason(){
+  if(!walletConnected){showError('Connect wallet first!');sfxBack();return;}
+  if(typeof oxarkOnchain==='undefined'||!oxarkOnchain.joinGame){
+    showError('Onchain module not available');sfxBack();return;
+  }
+  const gid=dgLastGameId||0;
+  if(!gid){showError('No Game ID found. Create a season first.');sfxBack();return;}
+  dgPhase='loading';dgLoading=true;dgTxError='';dgTxResult='';
+  oxarkOnchain.joinGame(gid).then(sig=>{
+    dgTxResult=sig||'ok';
+    lg.push('[CHAIN] Joined season '+gid+' ('+String(sig).slice(0,12)+'...)');
+    dgPhase='join';dgLoading=false;
+  }).catch(err=>{
+    dgTxError=(err&&err.message)||String(err);
+    lg.push('[CHAIN] joinGame failed: '+dgTxError.slice(0,80));
+    dgPhase='join';dgLoading=false;
+  });
+}
+
 // v74: SYNTHESIS (ALCHEMIST) SYSTEM
 // ═══════════════════════════════════════
 function doSynthesis(){
@@ -19194,11 +19248,67 @@ function drawTownShopModal(){
   txShadow('[X] Close',cx_+cw-60,cy_anim+ch-14,7,'#807090','rgba(0,0,0,.4)');
 }
 
-// T70 stubs — overridden in T71/T72/T73
+// T71: Dungeon Gate shop — full implementation
+// Options: QUICK ENTER (legacy confirm), CREATE SEASON, JOIN SEASON
+const _DG_OPTIONS=[
+  {label:'\u26A0 QUICK ENTER',    sub:'Enter dungeon now, no on-chain season'},
+  {label:'\u2694 CREATE SEASON',  sub:'Deploy a new season on Solana devnet'},
+  {label:'\u25BA JOIN SEASON',    sub:'Join an existing season by Game ID'},
+];
 function drawDungeonGateShop(cx,cy,cw,ch){
-  txShadow('DUNGEON GATE',cx+cw/2,cy+ch/2-20,14,'#ff8080','rgba(0,0,0,.5)');
-  txShadow('Challenge the dungeon depths',cx+cw/2,cy+ch/2+6,8,'#c0a0a0','rgba(0,0,0,.4)');
-  txShadow('Full implementation in T71',cx+cw/2,cy+ch/2+26,7,'#807090','rgba(0,0,0,.4)');
+  const bodyY=cy+42;
+  if(dgPhase==='menu'){
+    txShadow('Choose your entry:',cx+20,bodyY+16,8,'#c0a0a0','rgba(0,0,0,.4)');
+    for(let i=0;i<_DG_OPTIONS.length;i++){
+      const opt=_DG_OPTIONS[i];
+      const oy=bodyY+42+i*68;
+      const sel=dgMenuIdx===i;
+      // Row bg
+      g.fillStyle=sel?'rgba(208,64,64,0.18)':'rgba(255,255,255,0.04)';
+      g.beginPath();g.roundRect(cx+16,oy-8,cw-32,54,8);g.fill();
+      if(sel){g.strokeStyle='rgba(208,64,64,0.5)';g.lineWidth=1;g.stroke();}
+      txShadow(opt.label,cx+36,oy+10,10,sel?'#ff8080':'#c0c0c8','rgba(0,0,0,.4)');
+      txShadow(opt.sub,cx+36,oy+30,7,sel?'#a09090':'#808090','rgba(0,0,0,.3)');
+      if(sel){txShadow('\u25B6',cx+cw-40,oy+10,10,'#ff6060','rgba(0,0,0,.4)');}
+    }
+    // Footer controls
+    txShadow('\u2191\u2193 Select    [Z] Confirm',cx+20,cy+ch-30,7,'#807090','rgba(0,0,0,.4)');
+    // Door glow indicator
+    if(dgDoorGlow>0.1){
+      txShadow('DUNGEON DOOR PULSING \u2665',cx+cw-200,bodyY+16,7,'rgba(255,96,96,'+dgDoorGlow.toFixed(2)+')','rgba(0,0,0,.3)');
+    }
+  }else if(dgPhase==='loading'){
+    const dots='.'.repeat(1+(Math.floor(fr/15)%3));
+    txShadow('Processing'+dots,cx+cw/2,cy+ch/2-10,14,'#ff8080','rgba(0,0,0,.5)');
+    txShadow('Sending transaction to Solana devnet',cx+cw/2,cy+ch/2+14,8,'#a09090','rgba(0,0,0,.4)');
+  }else if(dgPhase==='create'||dgPhase==='result'){
+    if(dgTxError){
+      txShadow('\u2716 Transaction failed',cx+cw/2,cy+ch/2-24,12,'#ff6060','rgba(0,0,0,.5)');
+      // Wrap error text
+      const words=dgTxError.split(' ');let line='';let lineY=cy+ch/2+4;
+      for(const w of words){
+        if((line+w).length>52){txShadow(line.trim(),cx+cw/2,lineY,7,'#c09090','rgba(0,0,0,.4)');line='';lineY+=16;}
+        line+=w+' ';
+      }
+      if(line)txShadow(line.trim(),cx+cw/2,lineY,7,'#c09090','rgba(0,0,0,.4)');
+      txShadow('[X] Back',cx+cw/2,cy+ch-30,7,'#807090','rgba(0,0,0,.4)');
+    }else{
+      txShadow('\u2714 Season Created!',cx+cw/2,cy+ch/2-36,14,'#80ff90','rgba(0,0,0,.5)');
+      if(dgLastGameId>0)txShadow('Game ID: '+dgLastGameId,cx+cw/2,cy+ch/2-10,10,'#c0ffc8','rgba(0,0,0,.4)');
+      txShadow('Share this ID with rivals to join.',cx+cw/2,cy+ch/2+14,8,'#a0c0a8','rgba(0,0,0,.4)');
+      txShadow('[Z] Enter dungeon    [X] Back',cx+cw/2,cy+ch-30,7,'#807090','rgba(0,0,0,.4)');
+    }
+  }else if(dgPhase==='join'){
+    if(dgTxError){
+      txShadow('\u2716 Join failed',cx+cw/2,cy+ch/2-24,12,'#ff6060','rgba(0,0,0,.5)');
+      txShadow(dgTxError.substring(0,60),cx+cw/2,cy+ch/2+4,7,'#c09090','rgba(0,0,0,.4)');
+      txShadow('[X] Back',cx+cw/2,cy+ch-30,7,'#807090','rgba(0,0,0,.4)');
+    }else{
+      txShadow('\u2714 Joined Season!',cx+cw/2,cy+ch/2-36,14,'#80ffb0','rgba(0,0,0,.5)');
+      if(dgLastGameId>0)txShadow('Game ID: '+dgLastGameId,cx+cw/2,cy+ch/2-10,10,'#c0ffe0','rgba(0,0,0,.4)');
+      txShadow('[Z] Enter dungeon    [X] Back',cx+cw/2,cy+ch-30,7,'#807090','rgba(0,0,0,.4)');
+    }
+  }
 }
 function drawNFTTradingShop(cx,cy,cw,ch){
   txShadow('NFT TRADING HOUSE',cx+cw/2,cy+ch/2-20,14,'#88ccff','rgba(0,0,0,.5)');
@@ -21205,6 +21315,9 @@ function update(){
   updateNPCWander();
   updateTownWeather(); // v84
   if(sc==='map'&&!inDungeon)checkTownInteractable(); // T70
+  // T71: Dungeon door glow pulse — intensifies when gate modal is open
+  if(townShopActive&&townShopType==='dungeon_gate'){dgDoorGlow=0.5+0.5*Math.sin(fr*0.12);}
+  else{dgDoorGlow=Math.max(0,dgDoorGlow-0.05);}
   updateFloorTitle(); // v155: PMD floor title card
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
@@ -21941,6 +22054,30 @@ document.addEventListener('keydown',e=>{
 
   // T70: Town shop modal input
   if(townShopActive){
+    // T71: Dungeon Gate specific input
+    if(townShopType==='dungeon_gate'){
+      if(dgPhase==='menu'){
+        if(e.code==='ArrowUp'){dgMenuIdx=Math.max(0,dgMenuIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){dgMenuIdx=Math.min(2,dgMenuIdx+1);sfxCursor();}
+        if(e.code==='KeyZ'){
+          if(dgMenuIdx===0){dgQuickEnter();}
+          else if(dgMenuIdx===1){dgCreateSeason();}
+          else if(dgMenuIdx===2){dgJoinSeason();}
+          sfxSelect();
+        }
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';dgPhase='menu';sfxBack();}
+      }else if(dgPhase==='loading'){
+        // no input while loading
+      }else{ // result / create / join
+        if(e.code==='KeyZ'&&!dgTxError){
+          // Success — enter dungeon
+          const ex=exits.find(ex=>ex.map===0&&ex.targetMap>0);
+          if(ex){townShopActive=false;townShopType='';dgPhase='menu';sfxConfirm();doMapTransition(ex);}
+        }
+        if(e.code==='KeyX'){dgPhase='menu';dgTxError='';dgTxResult='';sfxBack();}
+      }
+      return;
+    }
     if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
     // Tab navigation (used by T72/T73 multi-tab shops)
     if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);sfxCursor();}
