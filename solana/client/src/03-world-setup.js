@@ -108,6 +108,10 @@ const WEATHER_CYCLE_FRAMES=4800; // ~80 seconds per weather state at 60fps
 let wildEncounterActive=false, wildEncounterCard=-1, wildEncounterFrame=0;
 // T52: Pre-encounter proximity alert (rival within 2 tiles)
 let preEncounterAlert=false, preEncounterAlertName='', preEncounterAlertFrame=0, preEncounterAlertRumbled=false;
+// T53: Dungeon experience — landmark + minimap + exploration state
+let landmarkBannerName='', landmarkBannerFrame=-9999;
+let _lastLandmarkRoom=-99; // room si key — avoid re-triggering same room
+const _visitedRooms={}; // key: 'floor_si' → true
 
 // ── RIVAL AI SYSTEM ──
 let rivalMaps=[1,1]; // GDD v1.0: rivals start in dungeon floor 1

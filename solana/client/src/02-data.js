@@ -2075,6 +2075,57 @@ const mapNames=['TOWN - はじまりのまち','SUNKEN GALLERIES — B1','DROWNE
 const mapColors=['#3060b0','#302848','#403058','#503060','#403850','#503848'];
 let currentMap=0;
 
+// T53: Dungeon landmark names per floor — pool assigned to rooms in order
+const LANDMARK_NAMES=[
+  [], // floor 0 = town (no landmarks)
+  ['Damp Hall','Ancient Archive','Sunken Gallery','Relic Chamber','THE DROWNED KEEP'], // B1 (last=boss)
+  ['Flooded Stacks','Forgotten Vault','Ink-Black Library','Salt Archive','THE DEEP ARCHIVE'], // B2
+  ['Echo Hall','Resonance Grotto','Silent Chamber','Hollow Gallery','THE ECHO THRONE'], // B3
+  ['Lava Alcove','Crystal Vein','Magma Archive','Deep Vault','THE IRON SANCTUM'], // B4
+  ['Ark Anteroom','Core Approach','The Threshold','Void Approach','THE ARK CORE'], // B5
+];
+
+// Assign landmark names to rooms — called once per floor after generation
+const dungeonLandmarks=[null]; // index 0 = town
+for(let f=1;f<=MAX_DUNGEON_FLOORS;f++){
+  const rooms=dungeonRooms[f]||[];
+  const pool=LANDMARK_NAMES[f]||[];
+  // Sort rooms by distance from entry corner — boss room (isBoss) always gets last name
+  const sorted=[...rooms].sort((a,b)=>a.si-b.si);
+  const names={};
+  let nameIdx=0;
+  for(const room of sorted){
+    const lname=room.isBoss?pool[pool.length-1]:(pool[nameIdx++]||('Chamber '+(nameIdx)));
+    names[room.si]=lname; // keyed by sector index
+  }
+  dungeonLandmarks.push(names);
+}
+
+// T53: helper — find which room index player is in (-1 = corridor)
+function getPlayerRoomIdx(floorIdx,px,py){
+  const rooms=dungeonRooms[floorIdx];
+  if(!rooms)return -1;
+  for(let i=0;i<rooms.length;i++){
+    const r=rooms[i];
+    if(px>=r.x&&px<r.x+r.w&&py>=r.y&&py<r.y+r.h)return i;
+  }
+  return -1;
+}
+
+// T53: helper — count revealed walkable tiles for exploration %
+function getExplorationPct(mapIdx){
+  const mData=maps[mapIdx];
+  if(!mData)return 0;
+  const fog=fogRevealed[mapIdx];
+  if(!fog)return 0;
+  let total=0,revealed=0;
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
+    const t=mData[y]?mData[y][x]:18;
+    if(WALKABLE.has(t)){total++;if(fog[y]&&fog[y][x])revealed++;}
+  }
+  return total>0?revealed/total:0;
+}
+
 // Map dimensions helper
 function getMap(){return maps[currentMap];}
 

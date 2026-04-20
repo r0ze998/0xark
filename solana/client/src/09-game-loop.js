@@ -461,6 +461,9 @@ function draw(){
   drawSynthesisShop();
   drawTutorialMsg();
   drawSynergyBanner(); // T62
+  drawLandmarkBanner(); // T53
+  drawMinimap(); // T53
+  drawExplorationProgress(); // T53
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){

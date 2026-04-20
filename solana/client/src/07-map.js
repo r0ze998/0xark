@@ -2172,3 +2172,134 @@ function dMenu(){
   }
 }
 
+// ─── T53: DUNGEON EXPERIENCE FEATURES ──────────────────────────────────────────
+
+// Check if player entered a new named room
+function checkLandmarkEnter(mapIdx,px,py){
+  if(!inDungeon||mapIdx<1)return;
+  const roomIdx=getPlayerRoomIdx(mapIdx,px,py);
+  if(roomIdx<0){_lastLandmarkRoom=-99;return;} // in corridor
+  const rooms=dungeonRooms[mapIdx]||[];
+  const room=rooms[roomIdx];
+  if(!room)return;
+  const si=room.si;
+  const key=mapIdx+'_'+si;
+  if(si===_lastLandmarkRoom)return; // same room, skip
+  _lastLandmarkRoom=si;
+  if(_visitedRooms[key])return; // already visited
+  _visitedRooms[key]=true;
+  const names=dungeonLandmarks[mapIdx]||{};
+  const name=names[si];
+  if(name){landmarkBannerName=name;landmarkBannerFrame=fr;}
+}
+
+// Draw landmark discovery banner (slide-down, gold text)
+function drawLandmarkBanner(){
+  if(!inDungeon)return;
+  const age=fr-landmarkBannerFrame;
+  if(age<0||age>90)return;
+  const fadeIn=Math.min(1,age/10);
+  const fadeOut=age>70?Math.max(0,(90-age)/20):1;
+  const alpha=fadeIn*fadeOut;
+  if(alpha<=0)return;
+  const slide=(1-Math.min(1,age/12))*(-28);
+  const bw=200,bh=28;
+  const bx_=((W-bw)/2)|0, by_=(H-58+slide)|0;
+  g.save();
+  g.globalAlpha=alpha*0.88;
+  g.fillStyle='rgba(20,14,30,0.85)';
+  g.beginPath();g.roundRect(bx_,by_,bw,bh,8);g.fill();
+  g.strokeStyle='rgba(200,170,60,0.7)';g.lineWidth=1;g.stroke();
+  g.restore();
+  g.save();
+  g.globalAlpha=alpha;
+  txShadow('\u2605 '+landmarkBannerName+' \u2605',W/2,by_+10,10,'#f0d050','rgba(0,0,0,0.5)');
+  txShadow('Area Discovered',W/2,by_+21,7,'#a09060','rgba(0,0,0,0.4)');
+  g.restore();
+}
+
+// Draw pixel minimap in top-right corner (dungeon only)
+const _MM_W=42, _MM_H=32, _MM_SCALE=1; // each tile = 1px
+let _mmCache=null, _mmCacheKey='';
+function drawMinimap(){
+  if(!inDungeon||!maps[currentMap])return;
+  const mData=maps[currentMap];
+  const fog=fogRevealed[currentMap];
+  // Cache key = frame/8 bucket (update ~7fps)
+  const ck=currentMap+'_'+(fr>>3);
+  if(_mmCacheKey!==ck||!_mmCache){
+    _mmCacheKey=ck;
+    // Draw minimap offscreen into a tiny ImageData
+    const mmCanvas=document.createElement('canvas');
+    mmCanvas.width=MW;mmCanvas.height=MH;
+    const mc=mmCanvas.getContext('2d');
+    const id=mc.createImageData(MW,MH);
+    const d=id.data;
+    for(let y=0;y<MH;y++){
+      for(let x=0;x<MW;x++){
+        const t=mData[y]?mData[y][x]:18;
+        const revealed=fog&&fog[y]&&fog[y][x];
+        const idx=(y*MW+x)*4;
+        if(!revealed){d[idx]=10;d[idx+1]=10;d[idx+2]=16;d[idx+3]=180;continue;}
+        // Player position
+        if(x===pl[0].x&&y===pl[0].y){d[idx]=255;d[idx+1]=220;d[idx+2]=60;d[idx+3]=255;continue;}
+        // Rivals on same floor
+        let isRival=false;
+        for(let ri=1;ri<pl.length;ri++){
+          if(rivalMaps[ri-1]===currentMap&&pl[ri].x===x&&pl[ri].y===y){
+            d[idx]=220;d[idx+1]=80;d[idx+2]=80;d[idx+3]=255;isRival=true;break;
+          }
+        }
+        if(isRival)continue;
+        if(t===18){d[idx]=30;d[idx+1]=24;d[idx+2]=40;d[idx+3]=220;} // wall
+        else if(t===2||t===1){d[idx]=100;d[idx+1]=90;d[idx+2]=130;d[idx+3]=220;} // floor
+        else if(t===31||t===32){d[idx]=80;d[idx+1]=180;d[idx+2]=120;d[idx+3]=255;} // stairs
+        else if(t===25){d[idx]=200;d[idx+1]=80;d[idx+2]=20;d[idx+3]=220;} // lava
+        else if(t===26){d[idx]=80;d[idx+1]=180;d[idx+2]=220;d[idx+3]=220;} // crystal
+        else if(t===30){d[idx]=220;d[idx+1]=180;d[idx+2]=60;d[idx+3]=255;} // treasure
+        else{d[idx]=70;d[idx+1]=65;d[idx+2]=90;d[idx+3]=200;}
+      }
+    }
+    mc.putImageData(id,0,0);
+    _mmCache=mmCanvas;
+  }
+  // Render minimap in top-right corner
+  const px=W-_MM_W-4, py=4;
+  g.save();
+  g.globalAlpha=0.82;
+  // Border
+  g.fillStyle='rgba(10,8,16,0.7)';
+  g.fillRect(px-2,py-2,_MM_W+4,_MM_H+4);
+  g.strokeStyle='rgba(140,120,80,0.6)';g.lineWidth=1;
+  g.strokeRect(px-1,py-1,_MM_W+2,_MM_H+2);
+  // Scale map to fit minimap box
+  g.imageSmoothingEnabled=false;
+  g.drawImage(_mmCache,px,py,_MM_W,_MM_H);
+  g.restore();
+}
+
+// Draw exploration progress bar under minimap
+function drawExplorationProgress(){
+  if(!inDungeon)return;
+  const pct=getExplorationPct(currentMap);
+  const bw=_MM_W, bh=4;
+  const bx_=W-bw-4, by_=4+_MM_H+4;
+  g.save();
+  g.globalAlpha=0.8;
+  g.fillStyle='rgba(10,8,16,0.6)';
+  g.fillRect(bx_,by_,bw,bh);
+  // Fill
+  const fillW=Math.round(pct*bw);
+  if(fillW>0){
+    const grad=g.createLinearGradient(bx_,by_,bx_+bw,by_);
+    grad.addColorStop(0,'#5080c0');grad.addColorStop(1,'#80d0f0');
+    g.fillStyle=grad;
+    g.fillRect(bx_,by_,fillW,bh);
+  }
+  g.strokeStyle='rgba(100,90,140,0.5)';g.lineWidth=1;
+  g.strokeRect(bx_,by_,bw,bh);
+  g.restore();
+  // Pct text
+  txShadow(Math.round(pct*100)+'% explored',bx_+bw/2,by_+bh+8,7,'#9090b8','rgba(0,0,0,0.4)');
+}
+
