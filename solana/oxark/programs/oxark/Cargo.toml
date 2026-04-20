@@ -18,14 +18,11 @@ idl-build = ["anchor-lang/idl-build"]
 anchor-debug = []
 custom-heap = []
 custom-panic = []
-# NFT minting instructions — disabled until Day 3 anchor-spl/IDL-builder compat fix.
-# Re-enable with: cargo build --features mint
-mint = ["anchor-spl"]
+# mint instructions moved to programs/oxark-cards
 
 
 [dependencies]
 anchor-lang = "1.0.0"
-anchor-spl = { version = "1.0.0", features = ["token", "associated_token"], optional = true }
 ephemeral-rollups-sdk = { version = "0.6.6", features = ["anchor", "disable-realloc"] }
 solana-bn254 = "3"
 sha2 = "0.10"

@@ -157,19 +157,6 @@ pub mod oxark {
         instructions::verify_zk_proof::handle_verify_zk(ctx, game_id, proof_a, proof_b, proof_c, public_inputs)
     }
 
-    /// Mint a card as a 1-of-1 NFT on Solana.
-    ///
-    /// - Restricted to players who have collected the card in their on-chain vault.
-    /// - Uses Metaplex token standard; mint authority is burned after minting.
-    /// - Each `(game_id, card_id)` pair maps to a unique mint PDA.
-    ///
-    /// Approximate CU cost: ~25,000 (SPL Token + Metaplex CPI).
-    /// Disabled until Day 3 anchor-spl/IDL-builder compat fix (enable with --features mint).
-    #[cfg(feature = "mint")]
-    pub fn mint_card_nft(ctx: Context<MintCardNft>, game_id: u64, card_id: u8) -> Result<()> {
-        instructions::mint_card_nft::handle_mint_card_nft(ctx, game_id, card_id)
-    }
-
     /// Deposit entry stake (0.5 SOL) into the game's prize vault PDA.
     ///
     /// - Callable by any participant before or during the game.
@@ -238,15 +225,6 @@ pub mod oxark {
     /// are hidden from discovery but remain on-chain for audit purposes.
     pub fn deactivate_agent(ctx: Context<DeactivateAgent>, agent_id: u32) -> Result<()> {
         instructions::agent_registry::handle_deactivate_agent(ctx, agent_id)
-    }
-
-    /// Mint a card as proof-of-collection without requiring game completion.
-    /// Any player wallet can mint any card_id (1-60) exactly once per wallet.
-    /// Seeds: ["solo_card", player_pubkey, &[card_id]]
-    /// Disabled until Day 3 anchor-spl/IDL-builder compat fix (enable with --features mint).
-    #[cfg(feature = "mint")]
-    pub fn mint_solo_card(ctx: Context<MintSoloCard>, card_id: u8) -> Result<()> {
-        instructions::mint_solo_card::handle_mint_solo_card(ctx, card_id)
     }
 
     /// Delegate game + player_state accounts to the MagicBlock Ephemeral Rollup.
