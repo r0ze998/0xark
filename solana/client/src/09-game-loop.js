@@ -184,6 +184,11 @@ function update(){
   // T71: Dungeon door glow pulse — intensifies when gate modal is open
   if(townShopActive&&townShopType==='dungeon_gate'){dgDoorGlow=0.5+0.5*Math.sin(fr*0.12);}
   else{dgDoorGlow=Math.max(0,dgDoorGlow-0.05);}
+  // T74: First-time town guide toast — shown once when player is on town map
+  if(sc==='map'&&currentMap===0&&!inDungeon&&fr===60&&!_townGuideDone){
+    _townGuideDone=true;
+    showToast('Walk near a building and press [Z] to enter');
+  }
   updateFloorTitle(); // v155: PMD floor title card
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
@@ -474,6 +479,7 @@ function draw(){
   drawOnboardPrompt(); // T54 UX-10
   drawTownHint(); // T70
   drawTownShopModal(); // T70
+  drawDungeonDoorGlow(); // T74
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){

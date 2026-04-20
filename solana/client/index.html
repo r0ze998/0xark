@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v508+";
+window.BUILD_VERSION = "v509+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -7707,6 +7707,9 @@ let dungeonConfirmActive=false, dungeonConfirmExit=null;
 // T70: Town interactive building state
 let nearInteractable=null; // TOWN_INTERACTABLES entry currently adjacent to player (or null)
 let townShopActive=false, townShopType='', townShopTab=0, townShopOpenFrame=0;
+
+// T74: Town guide toast — shown once when player first enters town
+let _townGuideDone=false;
 
 // T73: General Item Shop state
 const ITEM_CATALOG=[
@@ -15339,6 +15342,21 @@ function drawExplorationProgress(){
   txShadow(Math.round(pct*100)+'% explored',bx_+bw/2,by_+bh+8,7,'#9090b8','rgba(0,0,0,0.4)');
 }
 
+// T74: Dungeon door glow overlay — pulses red when gate modal is open (dgDoorGlow > 0)
+function drawDungeonDoorGlow(){
+  if(dgDoorGlow<=0||inDungeon||currentMap!==0)return;
+  // Draw a red glow halo around the dungeon entrance glow tiles (tx=27, ty=11-13)
+  const doorScreenX=(27*TW)-camX, doorScreenY=(11*TH)-camY;
+  const gw=TW, gh=TH*3;
+  g.save();
+  g.globalAlpha=dgDoorGlow*0.45;
+  const grad=g.createRadialGradient(doorScreenX+gw/2,doorScreenY+gh/2,4,doorScreenX+gw/2,doorScreenY+gh/2,gw*2);
+  grad.addColorStop(0,'rgba(255,80,80,0.9)');
+  grad.addColorStop(1,'rgba(255,80,80,0)');
+  g.fillStyle=grad;
+  g.fillRect(doorScreenX-gw,doorScreenY-TH,gw*3,gh+TH*2);
+  g.restore();
+}
 
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/07-battle.js
@@ -19328,6 +19346,13 @@ function drawTownShopModal(){
 
   bx(0,0,W,H,'rgba(0,0,0,.7)');
   win(cx_,cy_anim,cw,ch);
+  // T74: Animated border glow — pulses in shop accent color
+  const borderPulse=0.4+0.2*Math.sin(fr*0.07);
+  g.save();
+  g.globalAlpha=borderPulse;
+  g.strokeStyle=t.accentCol;g.lineWidth=1.5;
+  g.beginPath();g.roundRect(cx_,cy_anim,cw,ch,10);g.stroke();
+  g.restore();
   // Title bar
   bx(cx_,cy_anim,cw,30,t.col.replace(')',',0.3)').replace('rgb','rgba'));
   bx(cx_,cy_anim,4,30,t.col);
@@ -21571,6 +21596,11 @@ function update(){
   // T71: Dungeon door glow pulse — intensifies when gate modal is open
   if(townShopActive&&townShopType==='dungeon_gate'){dgDoorGlow=0.5+0.5*Math.sin(fr*0.12);}
   else{dgDoorGlow=Math.max(0,dgDoorGlow-0.05);}
+  // T74: First-time town guide toast — shown once when player is on town map
+  if(sc==='map'&&currentMap===0&&!inDungeon&&fr===60&&!_townGuideDone){
+    _townGuideDone=true;
+    showToast('Walk near a building and press [Z] to enter');
+  }
   updateFloorTitle(); // v155: PMD floor title card
 
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
@@ -21861,6 +21891,7 @@ function draw(){
   drawOnboardPrompt(); // T54 UX-10
   drawTownHint(); // T70
   drawTownShopModal(); // T70
+  drawDungeonDoorGlow(); // T74
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){

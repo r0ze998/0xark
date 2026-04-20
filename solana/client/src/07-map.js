@@ -2303,3 +2303,18 @@ function drawExplorationProgress(){
   txShadow(Math.round(pct*100)+'% explored',bx_+bw/2,by_+bh+8,7,'#9090b8','rgba(0,0,0,0.4)');
 }
 
+// T74: Dungeon door glow overlay — pulses red when gate modal is open (dgDoorGlow > 0)
+function drawDungeonDoorGlow(){
+  if(dgDoorGlow<=0||inDungeon||currentMap!==0)return;
+  // Draw a red glow halo around the dungeon entrance glow tiles (tx=27, ty=11-13)
+  const doorScreenX=(27*TW)-camX, doorScreenY=(11*TH)-camY;
+  const gw=TW, gh=TH*3;
+  g.save();
+  g.globalAlpha=dgDoorGlow*0.45;
+  const grad=g.createRadialGradient(doorScreenX+gw/2,doorScreenY+gh/2,4,doorScreenX+gw/2,doorScreenY+gh/2,gw*2);
+  grad.addColorStop(0,'rgba(255,80,80,0.9)');
+  grad.addColorStop(1,'rgba(255,80,80,0)');
+  g.fillStyle=grad;
+  g.fillRect(doorScreenX-gw,doorScreenY-TH,gw*3,gh+TH*2);
+  g.restore();
+}

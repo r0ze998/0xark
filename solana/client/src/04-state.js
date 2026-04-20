@@ -326,6 +326,9 @@ let dungeonConfirmActive=false, dungeonConfirmExit=null;
 let nearInteractable=null; // TOWN_INTERACTABLES entry currently adjacent to player (or null)
 let townShopActive=false, townShopType='', townShopTab=0, townShopOpenFrame=0;
 
+// T74: Town guide toast — shown once when player first enters town
+let _townGuideDone=false;
+
 // T73: General Item Shop state
 const ITEM_CATALOG=[
   {id:'booster', name:'Booster Pack',    desc:'Random card from current pool',     icon:'\u25A0', col:'#d0a030', price:0.05, endpoint:'/shop/booster'},

@@ -1281,6 +1281,13 @@ function drawTownShopModal(){
 
   bx(0,0,W,H,'rgba(0,0,0,.7)');
   win(cx_,cy_anim,cw,ch);
+  // T74: Animated border glow — pulses in shop accent color
+  const borderPulse=0.4+0.2*Math.sin(fr*0.07);
+  g.save();
+  g.globalAlpha=borderPulse;
+  g.strokeStyle=t.accentCol;g.lineWidth=1.5;
+  g.beginPath();g.roundRect(cx_,cy_anim,cw,ch,10);g.stroke();
+  g.restore();
   // Title bar
   bx(cx_,cy_anim,cw,30,t.col.replace(')',',0.3)').replace('rgb','rgba'));
   bx(cx_,cy_anim,4,30,t.col);
