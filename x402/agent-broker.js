@@ -367,6 +367,7 @@ app.get('/status', (req, res) => {
     endpoints: [
       { path: 'POST /scout-peek',    price: '0.005 SOL',    desc: 'Peek one on-chain card from target player' },
       { path: 'POST /agent-hire',    price: '0.05 SOL',     desc: 'Hire AI agent for auto-play session' },
+      { path: 'POST /card-buy',      price: '0.01 SOL fee', desc: 'x402 P2P card marketplace purchase' },
       { path: '/intel/location/:id', price: '$0.002 USDC',  desc: 'Rival floor position' },
       { path: '/intel/hand/:id',     price: '$0.003 USDC',  desc: 'Rival card holdings' },
       { path: '/intel/strategy',     price: '$0.005 USDC',  desc: 'Strategic analysis' },
@@ -629,6 +630,106 @@ app.post('/agent-hire', async (req, res) => {
     agent_endpoint: `http://localhost:${PORT}/agent/${agentIdNum}`,
     message: 'Call register_agent_hire on-chain with payment_sig to finalize the session.',
   });
+});
+
+// ═══════════════════════════════════════
+// /card-buy  (POST, price set by seller listing)
+// ═══════════════════════════════════════
+
+// Card buy price: 0.01 SOL minimum facilitator fee (seller sets card price separately)
+const CARD_BUY_MIN_LAMPORTS = 10_000_000; // 0.01 SOL facilitator fee
+
+/**
+ * POST /card-buy
+ *
+ * x402 flow for P2P card purchases:
+ *   1. Probe → 402 + X-Payment-Required (facilitator fee = 0.01 SOL)
+ *   2. Pay facilitator fee
+ *   3. Retry with X-Payment → sale session details
+ *
+ * Body: { card_id, seller_pubkey, buyer_pubkey, price_lamports }
+ * Returns: { sale_session_id, card_id, seller_pubkey, buyer_pubkey,
+ *            price_lamports, payment_sig, sold_at }
+ *
+ * Note: On-chain SOL transfer (seller payment) is handled client-side
+ * by calling buy_card on the oxark-cards program. The facilitator fee
+ * covers broker verification cost.
+ */
+app.post('/card-buy', async (req, res) => {
+  const payment = req.headers['x-payment'];
+  const isDev   = payment === 'local-dev-bypass';
+
+  const body = req.body ?? {};
+  const { card_id, seller_pubkey, buyer_pubkey, price_lamports } = body;
+
+  if (!card_id || !seller_pubkey || !buyer_pubkey) {
+    return res.status(400).json({ error: 'card_id, seller_pubkey, buyer_pubkey required' });
+  }
+
+  const cardIdNum = parseInt(card_id, 10);
+  if (isNaN(cardIdNum) || cardIdNum < 1 || cardIdNum > 60) {
+    return res.status(400).json({ error: 'card_id must be 1-60' });
+  }
+
+  // ── Step 1: No payment → return 402 ────────────────────────────────────
+  if (!payment) {
+    return res.status(402)
+      .set('X-Payment-Required', JSON.stringify({
+        protocol:  'x402',
+        network:   'solana-devnet',
+        recipient: RECIPIENT_WALLET,
+        amount:    CARD_BUY_MIN_LAMPORTS,
+        memo:      `card-buy:${cardIdNum}:${seller_pubkey.slice(0, 8)}`,
+      }))
+      .json({ reason: 'Payment required', amount_lamports: CARD_BUY_MIN_LAMPORTS });
+  }
+
+  // ── Dev bypass ──────────────────────────────────────────────────────────
+  if (isDev) {
+    const soldAt = Math.floor(Date.now() / 1000);
+    console.log(`[card-buy] DEV bypass: card=${cardIdNum} seller=${seller_pubkey.slice(0,8)} buyer=${buyer_pubkey.slice(0,8)}`);
+    return res.json({
+      sale_session_id: `sale_${buyer_pubkey.slice(0,8)}_card${cardIdNum}`,
+      card_id:         cardIdNum,
+      seller_pubkey,
+      buyer_pubkey,
+      price_lamports:  price_lamports ?? 0,
+      payment_sig:     'local-dev-bypass',
+      sold_at:         soldAt,
+      message:         'Call buy_card on-chain with payment_sig to finalize.',
+    });
+  }
+
+  // ── Live payment verification ───────────────────────────────────────────
+  if (usedSignatures.has(payment)) {
+    return res.status(402).json({ reason: 'Payment signature already used (replay)' });
+  }
+
+  try {
+    const result = await verifySolPayment(payment, RECIPIENT_WALLET, CARD_BUY_MIN_LAMPORTS);
+    if (!result.valid) {
+      return res.status(402).json({ reason: result.reason });
+    }
+
+    trackSignature(payment);
+    const soldAt = Math.floor(Date.now() / 1000);
+
+    console.log(`[card-buy] card=${cardIdNum} seller=${seller_pubkey.slice(0,8)} buyer=${buyer_pubkey.slice(0,8)} tx=${payment.slice(0,12)}..`);
+
+    return res.json({
+      sale_session_id: `sale_${buyer_pubkey.slice(0,8)}_card${cardIdNum}`,
+      card_id:         cardIdNum,
+      seller_pubkey,
+      buyer_pubkey,
+      price_lamports:  price_lamports ?? 0,
+      payment_sig:     payment,
+      sold_at:         soldAt,
+      message:         'Call buy_card on-chain with payment_sig to finalize.',
+    });
+  } catch (e) {
+    console.error('[card-buy] error:', e.message);
+    return res.status(500).json({ error: 'Internal error verifying payment' });
+  }
 });
 
 // ═══════════════════════════════════════

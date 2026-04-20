@@ -8,4 +8,10 @@ pub enum CardsError {
     GameNotFinished,
     #[msg("Caller is not the game winner")]
     NotWinner,
+    #[msg("Price must be greater than 0")]
+    InvalidPrice,
+    #[msg("CardListing is not active")]
+    ListingNotActive,
+    #[msg("Seller key does not match listing")]
+    SellerMismatch,
 }
