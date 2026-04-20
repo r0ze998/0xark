@@ -35,6 +35,14 @@ function getConnection() {
   return _connection;
 }
 
+// ─── MagicBlock ER mode flag ──────────────────────────────────────────────
+// When true, commitAction/revealAction route through the Magic Router
+// (window.oxarkMB.sendViaMagicRouter) instead of the base-layer connection.
+// Toggle via oxarkOnchain.setMagicBlockMode(true/false).
+// Requires window.oxarkMB to be loaded (01-magicblock.js).
+let _mbMode = false;
+function setMagicBlockMode(enabled) { _mbMode = !!enabled; }
+
 function getProgramId() {
   return new solanaWeb3.PublicKey(PROGRAM_ID_STR);
 }
@@ -315,6 +323,45 @@ async function buildAndSend(keys, data, computeUnits = COMPUTE_BUDGET.default) {
   return sig;
 }
 
+// ─── Magic Router transaction builder ────────────────────────────────────
+// Replaces buildAndSend for commitAction/revealAction when _mbMode is true.
+// Key differences vs buildAndSend:
+//   • Uses Magic Router's getBlockhashForAccounts (routes to ER if delegated)
+//   • Skips preflight simulation — ER handles validation; simulating against
+//     base-layer state gives incorrect results for delegated accounts
+//   • Sends via Magic Router connection (auto-selects ER or base layer)
+//   • No maxRetries — ER confirms faster; caller can retry on timeout
+async function buildAndSendViaMagicRouter(keys, data, computeUnits = COMPUTE_BUDGET.default) {
+  if (!window.solana || !window.solana.isConnected) {
+    throw new Error('Phantom wallet not connected');
+  }
+  if (!window.oxarkMB) {
+    throw new Error('[MagicBlock] window.oxarkMB not loaded — ensure 01-magicblock.js is bundled');
+  }
+  const programId = getProgramId();
+  const ix = new solanaWeb3.TransactionInstruction({ keys, programId, data });
+  const [limitIx, priceIx] = computeBudgetIxs(computeUnits);
+
+  const tx = new solanaWeb3.Transaction();
+  tx.add(limitIx, priceIx, ix);
+  tx.feePayer = window.solana.publicKey;
+
+  // Use Magic Router's account-aware blockhash (routes to ER if accounts are delegated)
+  const writableAccts = window.oxarkMB.getWritableAccounts(tx);
+  const bh = await window.oxarkMB.getBlockhashForAccounts(writableAccts);
+  tx.recentBlockhash = bh.blockhash;
+  tx.lastValidBlockHeight = bh.lastValidBlockHeight;
+
+  const signed = await window.solana.signTransaction(tx);
+  const mbConn = window.oxarkMB.getConnection();
+  const sig = await mbConn.sendRawTransaction(signed.serialize(), { skipPreflight: true });
+  await mbConn.confirmTransaction(
+    { signature: sig, blockhash: bh.blockhash, lastValidBlockHeight: bh.lastValidBlockHeight },
+    'confirmed'
+  );
+  return sig;
+}
+
 // ─── Instruction: create_game ─────────────────────────────────────────────
 async function createGame(gameId, maxPlayers) {
   const payer = window.solana.publicKey;
@@ -412,13 +459,14 @@ async function commitAction(gameId, hash) {
 
   // Account order MUST match CommitActionCtx field order:
   //   game (0), player_state (1), commit (2), player/signer (3), system_program (4)
-  return buildAndSend([
+  const accts = [
     { pubkey: gamePDA,   isSigner: false, isWritable: true  }, // game
     { pubkey: playerPDA, isSigner: false, isWritable: true  }, // player_state
     { pubkey: commitPDA, isSigner: false, isWritable: true  }, // commit (init)
     { pubkey: payer,     isSigner: true,  isWritable: true  }, // player (signer + payer)
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
-  ], data);
+  ];
+  return _mbMode ? buildAndSendViaMagicRouter(accts, data) : buildAndSend(accts, data);
 }
 
 // ─── Instruction: reveal_action ───────────────────────────────────────────
@@ -449,12 +497,13 @@ async function revealAction(gameId, actionType, targetPubkeyStr, salt) {
 
   // Account order MUST match RevealActionCtx field order:
   //   game (0), player_state (1), commit (2, readonly), player/signer (3, readonly)
-  return buildAndSend([
+  const accts = [
     { pubkey: gamePDA,   isSigner: false, isWritable: true  }, // game
     { pubkey: playerPDA, isSigner: false, isWritable: true  }, // player_state
     { pubkey: commitPDA, isSigner: false, isWritable: false }, // commit (readonly)
     { pubkey: payer,     isSigner: true,  isWritable: false }, // player (signer)
-  ], data);
+  ];
+  return _mbMode ? buildAndSendViaMagicRouter(accts, data) : buildAndSend(accts, data);
 }
 
 // ─── Instruction: verify_zk_proof ────────────────────────────────────────
@@ -1068,6 +1117,8 @@ async function readPlayerState(gameId, playerPubkeyStr) {
 // ─── Exports ──────────────────────────────────────────────────────────────
 window.oxarkOnchain = {
   PROGRAM_ID: PROGRAM_ID_STR,
+  // MagicBlock ER mode toggle (requires window.oxarkMB / 01-magicblock.js)
+  setMagicBlockMode,
   // Core game instructions
   createGame,
   joinGame,
