@@ -905,6 +905,7 @@ document.addEventListener('keydown',e=>{
         // Flee card: skip round increment, go directly to map
         if(bpResolveQueue&&bpResolveQueue._escaped){
           saveGame();
+          stopBattleBGM(); // T64
           startWipe('vslide',16,()=>{
             sc='map';mo=false;battlePhase='select';encounterCooldown=600;ub();
             twSet('Escaped safely!');

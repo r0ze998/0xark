@@ -335,6 +335,7 @@ function drawVsSplash(){
   const vsRivalIdx=(encounterExclTarget>=1&&encounterExclTarget<=2)?encounterExclTarget:1;
   const t=fr-bpFrame;
   if(t===16){hitPause(3);}
+  if(t===1){startBattleBGM();} // T64: battle BGM
   // Taunt cache (lazy — only rebuild when taunt string changes)
   let _tLbl='',_tAlpha=0;
   if(t>36&&t<58){

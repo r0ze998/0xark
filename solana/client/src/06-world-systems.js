@@ -217,6 +217,8 @@ function checkFloorItemPickup(nx,ny){
   const placed=addCardToPlayer(0,it.cardId);
   triggerCardGetBurst(nx*TW+TW/2,ny*TH+TH/2,cr.c||'#f0c030');
   hitPause(4);
+  // T64: rarity-specific card acquire SE
+  if(cr.r>=5)sfxRarityLegendary();else if(cr.r>=3)sfxRarityRare();else sfxRarityCommon();
   sfxCardGet();
   startCardAcquisition(it.cardId);
   checkWinAndTransition(1500);
@@ -240,6 +242,10 @@ function doMapTransition(exit){
   if(mapTransitioning)return;
   mapTransitioning=true;
   sfxDoorOpen();sfxMapChange();sfxAreaEntry();
+  // T64: stair/escape sounds
+  if(exit.isGoal||exit.isEscape){sfxEscape();}
+  else if(exit.targetMap>currentMap&&exit.targetMap>0){sfxStairsDescend();}
+  else if(exit.targetMap<currentMap&&exit.targetMap>0){sfxStairsAscend();}
   const targetMapName=mapNames[exit.targetMap];
   const targetCardDesc=AREA_CARD_DESC[exit.targetMap];
   fadeOut(()=>{
@@ -1403,6 +1409,7 @@ function doSynthesis(){
   synthPhase='result';synthResultFrame=fr;
   const cr=CD[newId-1];
   lg.push('[SYNTHESIS] Fused 3x '+RARITY_LABEL[r]+' → '+cr.n+' ('+RARITY_LABEL[cr.r]+')!');
+  sfxSynthesis(); // T64
   sfxCardGet();screenShake(cr.r>=3?cr.r:3,cr.r>=3?cr.r*3:6);
   triggerCardGetBurst(pl[0].visualX-camX,pl[0].visualY-camY-8,_SYNTH_RAR_BURST[cr.r]||'#f0c030'); // v301
   if(cr.r>=3)hitPause(cr.r>=4?4:3);

@@ -1173,6 +1173,7 @@ function updateAmbient(){
     if(currentMap===0)startAmbientPort();
     else if(currentMap===1)startAmbientForest();
     else if(currentMap===2)startAmbientRuins();
+    else if(currentMap>=3)startAmbientDeepDungeon(); // T64: deep dungeon BGM
   }
   // Fade in active nodes
   const tgt=ambientState.targetGain;
@@ -1210,3 +1211,86 @@ function updateAmbient(){
     }
   }
 }
+
+// T64: Deep dungeon BGM (floors 3-5) — heavy low-frequency oscillator stack with LFO tremolo
+function startAmbientDeepDungeon(){
+  try{
+    // Sub-bass oscillator
+    const o1=AC.createOscillator(),gn1=AC.createGain();
+    o1.type='sawtooth';o1.frequency.value=40;
+    gn1.gain.value=0;
+    o1.connect(gn1);gn1.connect(AC.destination);
+    o1.start();
+    ambientState.nodes.push({source:o1,gain:gn1,filter:null,type:'drone'});
+    // Mid tremolo drone
+    const o2=AC.createOscillator(),gn2=AC.createGain();
+    const lfo=AC.createOscillator(),lfoG=AC.createGain();
+    o2.type='square';o2.frequency.value=110;
+    lfo.type='sine';lfo.frequency.value=0.25;lfoG.gain.value=0.012;
+    lfo.connect(lfoG);lfoG.connect(gn2.gain);
+    gn2.gain.value=0;
+    o2.connect(gn2);gn2.connect(AC.destination);
+    o2.start();lfo.start();
+    ambientState.nodes.push({source:o2,gain:gn2,filter:null,type:'drone',lfo,lfoGain:lfoG});
+    // Distant ticking pulse
+    const o3=AC.createOscillator(),gn3=AC.createGain(),f3=AC.createBiquadFilter();
+    o3.type='triangle';o3.frequency.value=220;
+    f3.type='bandpass';f3.frequency.value=300;f3.Q.value=4;
+    gn3.gain.value=0;
+    o3.connect(f3);f3.connect(gn3);gn3.connect(AC.destination);
+    o3.start();
+    ambientState.nodes.push({source:o3,gain:gn3,filter:f3,type:'pulse'});
+  }catch(e){}
+}
+
+// T64: Battle BGM state
+const _battleBgm={node:null,gain:null,active:false};
+function startBattleBGM(){
+  if(!soundEnabled||!audioResumed||_battleBgm.active)return;
+  try{
+    const gn=AC.createGain();gn.gain.value=0;
+    const notes=[220,277,330,415,220,277]; // minor tension arpeggio
+    let ni=0;
+    function playNext(){
+      if(!_battleBgm.active)return;
+      try{
+        const o=AC.createOscillator();o.type='square';o.frequency.value=notes[ni%notes.length];
+        const og=AC.createGain();og.gain.setValueAtTime(.04,AC.currentTime);og.gain.linearRampToValueAtTime(0,AC.currentTime+.12);
+        o.connect(og);og.connect(AC.destination);o.start();o.stop(AC.currentTime+.12);
+        ni++;
+      }catch(e){}
+      _battleBgm.node=setTimeout(playNext,350+Math.random()*200);
+    }
+    _battleBgm.active=true;
+    gn.gain.linearRampToValueAtTime(.05,AC.currentTime+1);
+    _battleBgm.gain=gn;
+    playNext();
+  }catch(e){}
+}
+function stopBattleBGM(){
+  _battleBgm.active=false;
+  if(_battleBgm.node){clearTimeout(_battleBgm.node);_battleBgm.node=null;}
+  if(_battleBgm.gain){try{_battleBgm.gain.gain.linearRampToValueAtTime(0,AC.currentTime+0.5);}catch(e){};}
+}
+
+// T64: 10 new/enhanced SE
+// sfxCardEpic — 7-note shimmer for epic (r4) cards
+function sfxCardEpic(){if(!soundEnabled)return;try{const notes=[392,494,587,740,880,987,1175];notes.forEach((f,i)=>{setTimeout(()=>{try{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.value=f;gn.gain.setValueAtTime(.065,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.16);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.16);}catch(e){}},i*45);});}catch(e){}}
+// sfxChestOpen — ascending shimmer with low thud
+function sfxChestOpen(){if(!soundEnabled)return;beep(220,.06,.1);setTimeout(()=>{beep(440,.05,.08);setTimeout(()=>beep(880,.1,.09),60);setTimeout(()=>beep(1320,.12,.08),130);},80);}
+// sfxStairsDescend — descending pitch sweep
+function sfxStairsDescend(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(600,AC.currentTime);o.frequency.linearRampToValueAtTime(120,AC.currentTime+.45);gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.45);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.45);}catch(e){}}
+// sfxStairsAscend — ascending pitch sweep
+function sfxStairsAscend(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(120,AC.currentTime);o.frequency.linearRampToValueAtTime(600,AC.currentTime+.4);gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.4);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.4);}catch(e){}}
+// sfxBossEncounter — dramatic 4-chord fanfare
+function sfxBossEncounter(){if(!soundEnabled)return;try{const chords=[[110,165],[138,207],[165,247],[110,220]];chords.forEach(([f1,f2],i)=>{setTimeout(()=>{try{[f1,f2].forEach(f=>{const o=AC.createOscillator(),gn=AC.createGain();o.type='sawtooth';o.frequency.value=f;gn.gain.setValueAtTime(.09,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.2);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.2);});}catch(e){}},i*220);});}catch(e){}}
+// sfxSynthesis — crystalline fusion sound
+function sfxSynthesis(){if(!soundEnabled)return;try{const notes=[330,415,523,660,830];notes.forEach((f,i)=>{setTimeout(()=>{try{const o=AC.createOscillator(),gn=AC.createGain();o.type='sine';o.frequency.value=f;gn.gain.setValueAtTime(.06,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.18);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.18);}catch(e){}},i*70);});}catch(e){}}
+// sfxEscape — triumph rising chord
+function sfxEscape(){if(!soundEnabled)return;try{const notes=[330,415,523,660];notes.forEach((f,i)=>{setTimeout(()=>{try{const o=AC.createOscillator(),gn=AC.createGain();o.type='square';o.frequency.value=f;gn.gain.setValueAtTime(.07,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.12);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.12);}catch(e){}},i*80);});}catch(e){}}
+// sfxRarityCommon — soft blip
+function sfxRarityCommon(){if(!soundEnabled)return;beep(440,.05,.06);setTimeout(()=>beep(550,.04,.05),50);}
+// sfxRarityRare — dual-tone chime
+function sfxRarityRare(){if(!soundEnabled)return;beep(660,.06,.07);setTimeout(()=>beep(880,.08,.07),70);}
+// sfxRarityLegendary — alias to sfxCardRare (full shimmer)
+function sfxRarityLegendary(){sfxCardRare();}
