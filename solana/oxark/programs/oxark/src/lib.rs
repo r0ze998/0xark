@@ -244,4 +244,24 @@ pub mod oxark {
     pub fn mint_solo_card(ctx: Context<MintSoloCard>, card_id: u8) -> Result<()> {
         instructions::mint_solo_card::handle_mint_solo_card(ctx, card_id)
     }
+
+    /// Delegate game + player_state accounts to the MagicBlock Ephemeral Rollup.
+    ///
+    /// Must be called on base layer before routing transactions via the Magic Router.
+    /// After delegation, `commit_action` and `reveal_action` should be sent to the
+    /// ER validator (via Magic Router) for 10-50ms latency instead of ~400ms.
+    ///
+    /// Calls the MagicBlock Delegation Program CPI for both `game` and `player_state` PDAs.
+    pub fn delegate_session(ctx: Context<DelegateSession>, game_id: u64) -> Result<()> {
+        instructions::delegate_session::handle_delegate_session(ctx, game_id)
+    }
+
+    /// Schedule commit + undelegate for game + player_state via the Magic Program.
+    ///
+    /// Must be sent to the ER validator (not base layer). The ER processes this,
+    /// commits all pending state diffs to base layer, then calls the Delegation
+    /// Program's Undelegate instruction to restore account ownership to this program.
+    pub fn undelegate_session(ctx: Context<UndelegateSession>, game_id: u64) -> Result<()> {
+        instructions::undelegate_session::handle_undelegate_session(ctx, game_id)
+    }
 }
