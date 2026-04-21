@@ -1262,12 +1262,89 @@ function drawResultPhase(){
   }
 }
 
+// T113: In-battle card detail modal (opened via [A] in card select mode)
+let _bcdFlavorRef=null,_bcdFlavorLines=[],_bcdLoreRef=null,_bcdLoreLines=[];
+function drawBattleCardDetail(){
+  if(!bpCardInspectActive||bpCardInspectId<=0)return;
+  const cr=CD[bpCardInspectId-1];if(!cr)return;
+  bx(0,0,W,H,'rgba(0,0,0,.90)');
+  const pw=320,ph=430,px=W/2-pw/2,py=H/2-ph/2;
+  bx(px,py,pw,ph,cr.d);bx(px+1,py+1,pw-2,ph-2,cr.c);
+  bx(px,py,pw,2,cr.h);bx(px,py+ph-2,pw,2,cr.h);
+  // Art area
+  const artH=120;
+  bx(px+2,py+2,pw-4,artH,cr.d||'#0e0c18');
+  drawCardCharacter(px+pw/2-14,py+4,bpCardInspectId,1.8,fr);
+  // Rarity stars + element
+  const rar=cr.r||1;
+  const rarCol=RARITY_COLOR[rar]||'#888898';
+  for(let s=0;s<rar;s++)txShadow('\u2605',px+12+s*16,py+artH+17,9,rarCol,'rgba(0,0,0,.35)');
+  txShadow(RARITY_LABEL[rar]||'',px+12+rar*16+4,py+artH+17,6,rarCol,'rgba(0,0,0,.3)');
+  const _EL=['Fire','Water','Wind','Earth','Shadow','Light'];
+  const el=cr.el!==undefined?cr.el:Math.floor((bpCardInspectId-1)/10);
+  txShadow(_EL[el]||'',px+pw-52,py+artH+17,6,cr.h||'#aaa','rgba(0,0,0,.3)');
+  // Card name
+  const nfs=Math.max(9,Math.min(14,Math.floor(pw/(cr.n.length*0.72))));
+  txShadow(cr.n,px+pw/2-(cr.n.length*nfs/2.4),py+artH+31,nfs,'#f0e8d0','rgba(0,0,0,.5)');
+  // Type
+  const tl=(_CRD_TYPE_FULL[cr.t])||cr.t.toUpperCase();
+  txShadow(tl,px+pw/2-tl.length*3,py+artH+48,7,cr.h||'#aaa','rgba(0,0,0,.35)');
+  // Separator
+  bx(px+16,py+artH+56,pw-32,1,(cr.h||'#40385a')+'80');
+  // Stat bars
+  if(cr.pw!==undefined){
+    const sbY=py+artH+62;
+    const _stats=[['PWR',cr.pw,10,'#e05838'],['SPD',cr.sp||0,5,'#38b868']];
+    for(let si=0;si<_stats.length;si++){
+      const [l,v,mx,c]=_stats[si];
+      const sY=sbY+si*14;
+      txShadow(l,px+16,sY+5,5,'#888898','rgba(0,0,0,.3)');
+      bx(px+48,sY,pw-68,5,'#181830');
+      if(v>0)bx(px+48,sY,Math.round((pw-68)*Math.min(1,v/mx)),5,c);
+      txShadow(String(v),px+pw-16,sY+5,5,c,'rgba(0,0,0,.3)');
+    }
+  }
+  // Lore text (word-wrapped)
+  let _ly=py+artH+98;
+  if(cr.lo){
+    if(_bcdLoreRef!==cr){
+      _bcdLoreRef=cr;_bcdLoreLines=[];
+      const _ws=cr.lo.split(' ');let _l='';
+      for(const w of _ws){if((_l+w).length>40){_bcdLoreLines.push(_l.trim());_l=w+' ';}else _l+=w+' ';}
+      if(_l.trim())_bcdLoreLines.push(_l.trim());
+    }
+    for(let li=0;li<Math.min(4,_bcdLoreLines.length);li++){
+      g.globalAlpha=0.88;
+      txShadow(_bcdLoreLines[li],px+16,_ly+li*14,6,'#c8c0a0','rgba(0,0,0,.3)');
+    }
+    g.globalAlpha=1;
+    _ly+=Math.min(4,_bcdLoreLines.length)*14+4;
+  }
+  // Flavor quote
+  if(cr.fl){
+    if(_bcdFlavorRef!==cr){
+      _bcdFlavorRef=cr;_bcdFlavorLines=[];
+      const _ws=cr.fl.split(' ');let _l='';
+      for(const w of _ws){if((_l+w).length>42){_bcdFlavorLines.push(_l.trim());_l=w+' ';}else _l+=w+' ';}
+      if(_l.trim())_bcdFlavorLines.push(_l.trim());
+    }
+    for(let li=0;li<Math.min(2,_bcdFlavorLines.length);li++){
+      g.globalAlpha=0.6;
+      txShadow('\u201C'+_bcdFlavorLines[li]+(li===Math.min(2,_bcdFlavorLines.length)-1?'\u201D':''),px+16,_ly+li*13,5,'#a0988a','rgba(0,0,0,.2)');
+    }
+    g.globalAlpha=1;
+  }
+  // Close hint
+  txShadow('[X] Close',px+pw/2-26,py+ph-14,7,'#686878','rgba(0,0,0,.35)');
+}
+
 function dAct(){
   if(battlePhase==='vs_splash')drawVsSplash();
   else if(battlePhase==='select')drawSelectPhase();
   else if(battlePhase==='confirming'||battlePhase==='waiting')drawConfirmingPhase();
   else if(battlePhase==='resolving')drawResolvingPhase();
   else if(battlePhase==='result')drawResultPhase();
+  if(bpCardInspectActive)drawBattleCardDetail();
 }
 
 // ═══════════════════════════════════════

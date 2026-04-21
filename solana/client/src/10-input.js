@@ -1053,11 +1053,22 @@ document.addEventListener('keydown',e=>{
         lg.push('QTE success! Steal charge bonus!');
       }
     }
+    // T113: in-battle card detail modal (close with X or Z)
+    if(bpCardInspectActive){
+      if(e.code==='KeyX'||e.code==='KeyZ'){bpCardInspectActive=false;bpCardInspectId=0;sfxBack();}
+      return;
+    }
     if(battlePhase==='select'&&bpCardSelectActive){
       // Card selection for USE CARD
       const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
       if(e.code==='ArrowUp'){bpCardSelectIdx=Math.max(0,bpCardSelectIdx-1);sfxCursor();}
       if(e.code==='ArrowDown'){bpCardSelectIdx=Math.min(filled.length-1,bpCardSelectIdx+1);sfxCursor();}
+      // T113: [A] = inspect selected card
+      if(e.code==='KeyA'&&filled.length>0){
+        const _cid=pl[0].cd[filled[bpCardSelectIdx]]||0;
+        if(_cid>0){bpCardInspectActive=true;bpCardInspectId=_cid;sfxSelect();}
+        return;
+      }
       if(e.code==='KeyZ'){
         sfxConfirm();
         bpAction=4;bpCardSelectActive=false;

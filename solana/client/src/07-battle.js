@@ -1330,6 +1330,7 @@ let bpTargetSelectActive=false, bpTargetSelectIdx=1; // STEAL/SCOUT target selec
 let bpPendingAction=-1; // action waiting for target/card selection
 let bpSelectedCardSlot=0; // which card slot to consume for USE CARD
 let bpSelectedTarget=1; // which player index to target for STEAL/SCOUT
+let bpCardInspectActive=false,bpCardInspectId=0; // T113: in-battle card detail modal
 
 function generateResolveEvents(){
   // v297: actionNames dead — _ACTION_NAMES already at module scope (v262); rivalBarriers → 2 vars
