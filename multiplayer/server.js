@@ -11,24 +11,30 @@
  *   4. Broadcasts tx confirmations so clients know to refresh on-chain state
  *   5. Relays chat messages
  *
- * Protocol:
+ * Protocol v2 (Phase D Reborn — adds Clan + card_count to presence)
+ *   Backward-compatible: v1 clients that omit clan/card_count receive null/0 defaults.
+ *
  *   Client→Server:
- *     {type:'create_room', gameId, name}
- *     {type:'join_room', roomId, name}
+ *     {type:'create_room', gameId, name, wallet?, clan?, card_count?, season?}
+ *     {type:'join_room', roomId, name, wallet?, clan?, card_count?, season?}
  *     {type:'move', x, y, area}
- *     {type:'submit_tx', txBase64, txType}   — base64-encoded signed tx
+ *     {type:'presence_update', clan, card_count}   — update clan/count without moving (v2)
+ *     {type:'submit_tx', txBase64, txType}          — base64-encoded signed tx
  *     {type:'chat', message}
  *
  *   Server→Client:
  *     {type:'room_created', roomId, gameId, playerId}
  *     {type:'room_joined', roomId, gameId, playerId, players}
- *     {type:'player_joined', player}
+ *     {type:'player_joined', player}                — player includes clan, card_count, season
  *     {type:'player_left', playerId}
  *     {type:'player_moved', playerId, x, y, area}
+ *     {type:'presence_update', wallet, clan, card_count}  — clan/count changed (v2)
  *     {type:'tx_confirmed', sig, txType, playerId}
  *     {type:'tx_failed', error, txType, playerId}
  *     {type:'chat', playerId, name, message}
  *     {type:'error', message}
+ *
+ * Clans (v2): 'black_flag'|'sovereign_bourse'|'hollow_blade'|'iron_circle'|'nameless_silk'|null
  */
 
 import http from 'http';
@@ -109,6 +115,10 @@ wss.on('connection', (ws) => {
   ws.playerId    = Math.random().toString(36).slice(2, 8);
   ws.roomId      = null;
   ws.playerName  = 'Player';
+  ws.wallet      = null;   // v2: Solana pubkey string (optional)
+  ws.clan        = null;   // v2: clan string or null
+  ws.cardCount   = 0;      // v2: collected card species count
+  ws.season      = 1;      // v2: current season number
   ws.isAlive     = true;
   initRateState(ws);
 
@@ -159,6 +169,10 @@ async function handleMessage(ws, msg) {
     case 'create_room': {
       const roomId = generateRoomId();
       ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : 'Host';
+      ws.wallet     = typeof msg.wallet === 'string' ? msg.wallet.slice(0, 44) : null;
+      ws.clan       = sanitizeClan(msg.clan);
+      ws.cardCount  = typeof msg.card_count === 'number' ? Math.max(0, msg.card_count | 0) : 0;
+      ws.season     = typeof msg.season === 'number' ? msg.season | 0 : 1;
       ws.roomId     = roomId;
       const room = {
         id:      roomId,
@@ -176,12 +190,39 @@ async function handleMessage(ws, msg) {
       const room = rooms.get(msg.roomId);
       if (!room) { send(ws, { type: 'error', message: 'Room not found' }); return; }
       ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : `Player ${room.players.size + 1}`;
+      ws.wallet     = typeof msg.wallet === 'string' ? msg.wallet.slice(0, 44) : null;
+      ws.clan       = sanitizeClan(msg.clan);
+      ws.cardCount  = typeof msg.card_count === 'number' ? Math.max(0, msg.card_count | 0) : 0;
+      ws.season     = typeof msg.season === 'number' ? msg.season | 0 : 1;
       ws.roomId     = msg.roomId;
       room.players.set(ws.playerId, player(ws, 20, 15));
 
       const playerList = serializePlayers(room);
       send(ws, { type: 'room_joined', roomId: msg.roomId, gameId: room.gameId, playerId: ws.playerId, players: playerList });
-      broadcast(room, { type: 'player_joined', player: { id: ws.playerId, name: ws.playerName } }, ws.playerId);
+      broadcast(room, {
+        type: 'player_joined',
+        player: { id: ws.playerId, name: ws.playerName, wallet: ws.wallet,
+                  clan: ws.clan, card_count: ws.cardCount, season: ws.season,
+                  position: { x: 20, y: 15 } },
+      }, ws.playerId);
+      break;
+    }
+
+    case 'presence_update': {
+      // v2: clan or card_count changed without moving (e.g., after Shop purchase)
+      const room = ws.roomId ? rooms.get(ws.roomId) : null;
+      if (!room) return;
+      if (msg.clan !== undefined) ws.clan = sanitizeClan(msg.clan);
+      if (typeof msg.card_count === 'number') ws.cardCount = Math.max(0, msg.card_count | 0);
+      // Update stored player object
+      const p = room.players.get(ws.playerId);
+      if (p) { p.clan = ws.clan; p.card_count = ws.cardCount; }
+      broadcast(room, {
+        type: 'presence_update',
+        wallet: ws.wallet,
+        clan: ws.clan,
+        card_count: ws.cardCount,
+      });
       break;
     }
 
@@ -260,12 +301,21 @@ async function handleMessage(ws, msg) {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const VALID_CLANS = new Set(['black_flag','sovereign_bourse','hollow_blade','iron_circle','nameless_silk']);
+function sanitizeClan(clan) {
+  return (typeof clan === 'string' && VALID_CLANS.has(clan)) ? clan : null;
+}
+
 function player(ws, x, y) {
-  return { id: ws.playerId, name: ws.playerName, ws, x, y, area: 0 };
+  return { id: ws.playerId, name: ws.playerName, wallet: ws.wallet,
+           clan: ws.clan, card_count: ws.cardCount, season: ws.season, ws, x, y, area: 0 };
 }
 
 function serializePlayers(room) {
-  return Array.from(room.players.values()).map(({ id, name, x, y, area }) => ({ id, name, x, y, area }));
+  return Array.from(room.players.values()).map(
+    ({ id, name, wallet, clan, card_count, season, x, y, area }) =>
+      ({ id, name, wallet, clan, card_count, season, position: { x, y }, area })
+  );
 }
 
 function send(ws, msg) {
