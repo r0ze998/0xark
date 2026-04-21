@@ -9,19 +9,23 @@
 // Tile IDs are 1-indexed per Tiled convention; 0 = empty.
 // Sheet: 17 cols × 8 rows, 16×16px per tile, 1px spacing = 17px stride.
 
-const LOBBY_W = 25, LOBBY_H = 18, LOBBY_TS = 32; // rendered tile size
-const LOBBY_SHEET_COLS = 17, LOBBY_SHEET_STRIDE = 17; // 16px + 1px gap
+const LOBBY_W = 25, LOBBY_H = 18;
+const LOBBY_TS = 32;          // collision/movement unit (unchanged)
+const LOBBY_RENDER_TS = 15;   // visual tile size: 18×15 = 270 = H
+const LOBBY_RENDER_OX = Math.floor((480 - LOBBY_W * LOBBY_RENDER_TS) / 2); // (480-375)/2 = 52
 
+// tx/ty/tw/th = tile coords (for collision + proximity).
+// px/py/pw/ph = pixel coords in 480×270 canvas (for rendering, per UI_SPEC v2.0 §1.2 + r0ze M1 mockup).
 const LOBBY_OBJECTS = [
-  { name:'faction_hq',  x:9,  y:3,  w:7, h:3, label:'FACTION HQ',   interaction:'enter_faction_hq'  },
-  { name:'shop',        x:0,  y:14, w:4, h:3, label:'SHOP',          interaction:'enter_shop'         },
-  { name:'pc_box',      x:5,  y:14, w:4, h:3, label:'PC BOX',        interaction:'enter_pc_box'       },
-  { name:'bronze_hall', x:10, y:14, w:4, h:3, label:'BRONZE HALL',   interaction:'enter_bronze_hall'  },
-  { name:'silver_hall', x:15, y:14, w:4, h:3, label:'SILVER HALL',   interaction:'enter_silver_hall'  },
-  { name:'gold_hall',   x:20, y:14, w:4, h:3, label:'GOLD HALL',     interaction:'enter_gold_hall'    },
+  { name:'faction_hq',  tx:9,  ty:5,  tw:6, th:4, px:200, py:125, pw:80, ph:70, label:'FACTION HQ',  interaction:'enter_faction_hq'  },
+  { name:'shop',        tx:0,  ty:8,  tw:4, th:4, px:40,  py:140, pw:60, ph:50, label:'SHOP',         interaction:'enter_shop'         },
+  { name:'pc_box',      tx:21, ty:8,  tw:4, th:3, px:380, py:145, pw:55, ph:45, label:'PC BOX',       interaction:'enter_pc_box'       },
+  { name:'bronze_hall', tx:0,  ty:12, tw:5, th:4, px:50,  py:205, pw:70, ph:55, label:'BRONZE HALL',  interaction:'enter_bronze_hall'  },
+  { name:'silver_hall', tx:8,  ty:12, tw:6, th:4, px:185, py:200, pw:85, ph:60, label:'SILVER HALL',  interaction:'enter_silver_hall'  },
+  { name:'gold_hall',   tx:19, ty:12, tw:6, th:4, px:340, py:195, pw:95, ph:65, label:'GOLD HALL',    interaction:'enter_gold_hall'    },
 ];
 
-const LOBBY_SPAWN = { x:12, y:10 };
+const LOBBY_SPAWN = { x:12, y:10 }; // open plaza row 10, clear between HQ (rows 5-8) and halls (rows 12-15)
 
 // Ground layer (25×18, row-major). 0=black fallback, 1=ground, 3=path, 18=ocean, 36=cliff
 const LOBBY_GROUND = (()=>{
@@ -49,17 +53,24 @@ const LOBBY_GROUND = (()=>{
 })();
 
 // Walls layer — non-zero = impassable collision. 56=HQ stone, 39=building wall.
+// Tile ranges match LOBBY_OBJECTS tx/ty/tw/th fields.
 const LOBBY_WALLS = (()=>{
-  const HQ=56, BW=39, OC=18, __=0;
+  const HQ=56, BW=39, OC=18;
   const grid = Array.from({length:LOBBY_H}, ()=>Array(LOBBY_W).fill(0));
-  // Border
+  // Ocean border rows 0-1
   for(let x=0;x<LOBBY_W;x++){grid[0][x]=OC;grid[1][x]=OC;}
-  // Faction HQ x=9-15 y=3-5
-  for(let y=3;y<=5;y++) for(let x=9;x<=15;x++) grid[y][x]=HQ;
-  // Bottom buildings
-  [[0,3],[5,8],[10,13],[15,18],[20,23]].forEach(([x0,x1])=>{
-    for(let y=14;y<=16;y++) for(let x=x0;x<=x1;x++) grid[y][x]=BW;
-  });
+  // Faction HQ: tx=9 ty=5 tw=6 th=4 → cols 9-14, rows 5-8
+  for(let y=5;y<=8;y++) for(let x=9;x<=14;x++) grid[y][x]=HQ;
+  // Shop: tx=0 ty=8 tw=4 th=4 → cols 0-3, rows 8-11
+  for(let y=8;y<=11;y++) for(let x=0;x<=3;x++) grid[y][x]=BW;
+  // PC Box: tx=21 ty=8 tw=4 th=3 → cols 21-24, rows 8-10
+  for(let y=8;y<=10;y++) for(let x=21;x<=24;x++) grid[y][x]=BW;
+  // Bronze Hall: tx=0 ty=12 tw=5 th=4 → cols 0-4, rows 12-15
+  for(let y=12;y<=15;y++) for(let x=0;x<=4;x++) grid[y][x]=BW;
+  // Silver Hall: tx=8 ty=12 tw=6 th=4 → cols 8-13, rows 12-15
+  for(let y=12;y<=15;y++) for(let x=8;x<=13;x++) grid[y][x]=BW;
+  // Gold Hall: tx=19 ty=12 tw=6 th=4 → cols 19-24, rows 12-15
+  for(let y=12;y<=15;y++) for(let x=19;x<=24;x++) grid[y][x]=BW;
   return grid;
 })();
 
@@ -489,8 +500,8 @@ const CLAN_TINTS = {
 // Draws a single tile from PIRATE_SHEET at canvas coords (cx,cy).
 // tileId is 1-indexed; 0 = skip (transparent).
 // T-D8-2: new tile drawing with UI_SPEC v2.0 color recipes
-function drawLobbyTile(tileId, cx, cy) {
-  const TS = LOBBY_TS;
+function drawLobbyTile(tileId, cx, cy, ts) {
+  const TS = ts || LOBBY_RENDER_TS;
   if (tileId === 18) {
     // Ocean
     g.fillStyle = '#1a2840';
@@ -654,45 +665,48 @@ function drawLobbyBuildingArenaHall(bx, by, bw, bh, tier) {
 }
 
 // ── Player / remote player sprite (T-D8-11/12) ────────────────────────────
+// Character spec: 12×16 logical — head 6px / body 8px / legs 2px (r0ze M1 mockup)
+// cx/cy = top-left of tile cell in canvas coords; sprite centered in cell.
 function drawLobbyCharacter(cx, cy, clanColor, nameStr, isLocal) {
-  const TS = LOBBY_TS;
-  const sx = cx + TS / 2, sy = cy + TS / 2;
+  const RTS = LOBBY_RENDER_TS; // 15px tile
+  const sx = cx + RTS / 2;    // horizontal center
+  const sy = cy + RTS - 2;    // bottom of tile (feet anchor)
 
   // Drop shadow
-  g.fillStyle = 'rgba(0,0,0,0.35)';
-  g.fillRect(sx - 7, sy + 9, 14, 4);
+  g.fillStyle = 'rgba(0,0,0,0.3)';
+  g.fillRect(sx - 5, sy + 1, 10, 2);
 
-  // Legs
+  // Legs — 2px tall, 4px each (left/right)
   g.fillStyle = '#2a2028';
-  g.fillRect(sx - 5, sy + 3, 4, 6);
-  g.fillRect(sx + 1, sy + 3, 4, 6);
+  g.fillRect(sx - 5, sy - 2, 4, 2);
+  g.fillRect(sx + 1, sy - 2, 4, 2);
 
-  // Body — clan colored
+  // Body — 12×8px, clan colored
   g.fillStyle = clanColor || '#888888';
-  g.fillRect(sx - 6, sy - 5, 12, 10);
-  g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 1;
-  g.strokeRect(sx - 6, sy - 5, 12, 10);
+  g.fillRect(sx - 6, sy - 10, 12, 8);
+  g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 1;
+  g.strokeRect(sx - 6, sy - 10, 12, 8);
 
-  // Head
+  // Head — 12×6px, skin tone
   g.fillStyle = '#c8a060';
-  g.fillRect(sx - 5, sy - 14, 10, 10);
+  g.fillRect(sx - 6, sy - 16, 12, 6);
   g.strokeStyle = '#5a3818'; g.lineWidth = 1;
-  g.strokeRect(sx - 5, sy - 14, 10, 10);
+  g.strokeRect(sx - 6, sy - 16, 12, 6);
 
-  // Eyes
+  // Eyes — 2×2px
   g.fillStyle = '#2a1808';
-  g.fillRect(sx - 3, sy - 12, 2, 2);
-  g.fillRect(sx + 1, sy - 12, 2, 2);
+  g.fillRect(sx - 4, sy - 15, 2, 2);
+  g.fillRect(sx + 2, sy - 15, 2, 2);
 
-  // Local player: yellow hat strip
+  // Local player: 2px yellow hat band at top of head
   if (isLocal) {
     g.fillStyle = '#e0c040';
-    g.fillRect(sx - 5, sy - 15, 10, 3);
+    g.fillRect(sx - 6, sy - 16, 12, 2);
   }
 
-  // Name label above sprite
+  // Name above sprite
   g.fillStyle = isLocal ? '#f0e0a0' : '#8888aa';
-  g.font = '9px VT323, monospace';
+  g.font = '8px VT323, monospace';
   g.textAlign = 'center';
   g.fillText((nameStr || '?').slice(0, 8), sx, cy + 2);
 }
@@ -701,9 +715,9 @@ function drawLobbyCharacter(cx, cy, clanColor, nameStr, isLocal) {
 function lobbyCheckProximity() {
   lobbyNearBuilding = null;
   for (const obj of LOBBY_OBJECTS) {
-    // 1-tile proximity check (adjacent to footprint)
-    if (lobbyPx >= obj.x - 1 && lobbyPx <= obj.x + obj.w &&
-        lobbyPy >= obj.y - 1 && lobbyPy <= obj.y + obj.h) {
+    // 1-tile proximity check (adjacent to tile footprint)
+    if (lobbyPx >= obj.tx - 1 && lobbyPx <= obj.tx + obj.tw &&
+        lobbyPy >= obj.ty - 1 && lobbyPy <= obj.ty + obj.th) {
       lobbyNearBuilding = obj;
       break;
     }
@@ -764,27 +778,19 @@ function exitLobby() {
   sc = 'map';
 }
 
-// ── Camera: center on player ─────────────────────────────────────────────
-function lobbyCamOffset() {
-  const mapPxW = LOBBY_W * LOBBY_TS; // 800
-  const mapPxH = LOBBY_H * LOBBY_TS; // 576
-  const centerX = lobbyPx * LOBBY_TS + LOBBY_TS / 2 - W / 2;
-  const centerY = lobbyPy * LOBBY_TS + LOBBY_TS / 2 - H / 2;
-  return {
-    ox: Math.max(0, Math.min(mapPxW - W, centerX)),
-    oy: Math.max(0, Math.min(mapPxH - H, centerY)),
-  };
-}
+// ── Camera: fixed (no scrolling) — scene fits in 480×270 with LOBBY_RENDER_TS=15 ─
+function lobbyCamOffset() { return { ox: 0, oy: 0 }; }
 
 // ── Main draw function ────────────────────────────────────────────────────
 function dLobby() {
   if (lobbyMoveDebounce > 0) lobbyMoveDebounce--;
   if (lobbyInteractCooldown > 0) lobbyInteractCooldown--;
 
-  const { ox, oy } = lobbyCamOffset();
+  const RTS = LOBBY_RENDER_TS;   // 15
+  const ROX = LOBBY_RENDER_OX;   // 52 — left margin so 25×15=375 is centered in 480
 
-  // ── T-D8-1: Sky gradient + horizon silhouette (fixed, not camera-scrolled) ─
-  const skyH = H * 0.45;
+  // ── Layer 1: Sky gradient + horizon (T-D8-1, fixed) ──────────────────────
+  const skyH = Math.floor(H * 0.45); // ~121px
   const skyGrad = g.createLinearGradient(0, 0, 0, skyH);
   skyGrad.addColorStop(0.0, '#c04820');
   skyGrad.addColorStop(0.5, '#803060');
@@ -792,98 +798,177 @@ function dLobby() {
   g.fillStyle = skyGrad;
   g.fillRect(0, 0, W, skyH);
 
-  // Horizon silhouette
+  // Horizon silhouette strip
   g.fillStyle = '#141420';
-  g.fillRect(0, H * 0.42, W, 10);
-  const towers = [[40, 6, 0.08], [20, 10, 0.25], [30, 4, 0.6], [25, 8, 0.78], [18, 6, 0.9]];
-  towers.forEach(([tw, th, xr]) => { g.fillRect(xr * W, H * 0.42 - th, tw, th); });
+  g.fillRect(0, Math.floor(H * 0.42), W, 10);
+  [[40,6,0.08],[20,10,0.25],[30,4,0.6],[25,8,0.78],[18,6,0.9]].forEach(([tw,th,xr]) => {
+    g.fillRect(Math.floor(xr * W), Math.floor(H * 0.42) - th, tw, th);
+  });
 
-  // Floor background (below sky)
+  // Floor background (margin areas outside tile map)
   g.fillStyle = '#888898';
   g.fillRect(0, skyH, W, H - skyH);
 
-  g.save();
-  g.translate(-ox, -oy);
-
-  // ── T-D8-2: Ground layer — new tile recipes via drawLobbyTile ─────────────
-  for (let ty = 0; ty < LOBBY_H; ty++) {
-    for (let tx = 0; tx < LOBBY_W; tx++) {
-      const cx = tx * LOBBY_TS, cy = ty * LOBBY_TS;
-      drawLobbyTile(LOBBY_GROUND[ty][tx], cx, cy);
+  // ── Layer 2: Ground tiles — fixed scale, no scrolling (T-D8-2) ───────────
+  for (let trow = 0; trow < LOBBY_H; trow++) {
+    for (let tcol = 0; tcol < LOBBY_W; tcol++) {
+      drawLobbyTile(LOBBY_GROUND[trow][tcol], ROX + tcol * RTS, trow * RTS, RTS);
     }
   }
 
-  // Building footprints + labels (placeholder rects — sprites in T-D8-6..9)
+  // ── Layer 3: Building sprites at fixed pixel positions (T-D8-6..9) ────────
   for (const obj of LOBBY_OBJECTS) {
-    g.fillStyle = 'rgba(60,40,20,0.7)';
-    g.fillRect(obj.x * LOBBY_TS, obj.y * LOBBY_TS, obj.w * LOBBY_TS, obj.h * LOBBY_TS);
-    g.strokeStyle = '#c8a460'; g.lineWidth = 2;
-    g.strokeRect(obj.x * LOBBY_TS + 1, obj.y * LOBBY_TS + 1, obj.w * LOBBY_TS - 2, obj.h * LOBBY_TS - 2);
-    g.fillStyle = '#f0e0a0'; g.font = 'bold 10px VT323, monospace'; g.textAlign = 'center';
-    g.fillText(obj.label, (obj.x + obj.w / 2) * LOBBY_TS, (obj.y + obj.h / 2) * LOBBY_TS + 4);
+    const { px: bx, py: by, pw: bw, ph: bh, name } = obj;
+    if      (name === 'shop')         drawLobbyBuildingShop(bx, by, bw, bh);
+    else if (name === 'faction_hq')   drawLobbyBuildingFactionHQ(bx, by, bw, bh);
+    else if (name === 'pc_box')       drawLobbyBuildingPCBox(bx, by, bw, bh);
+    else if (name === 'bronze_hall')  drawLobbyBuildingArenaHall(bx, by, bw, bh, 0);
+    else if (name === 'silver_hall')  drawLobbyBuildingArenaHall(bx, by, bw, bh, 1);
+    else if (name === 'gold_hall')    drawLobbyBuildingArenaHall(bx, by, bw, bh, 2);
   }
 
-  // Remote players — lerp toward target position (smooth movement)
+  // ── T-D8-10: Building labels below buildings ──────────────────────────────
+  for (const obj of LOBBY_OBJECTS) {
+    const lx = obj.px + obj.pw / 2;
+    const ly = obj.py + obj.ph + 10;
+    if (ly >= H - 36) continue; // skip if under bottom bar
+    g.font = 'bold 9px VT323, monospace';
+    g.textAlign = 'center';
+    const lw = g.measureText(obj.label).width + 8;
+    g.fillStyle = 'rgba(0,0,0,0.65)';
+    g.fillRect(lx - lw / 2, ly - 9, lw, 11);
+    g.fillStyle = '#f0e0a0';
+    g.fillText(obj.label, lx, ly);
+  }
+
+  // ── Layer 4: Remote players (lerp + block character) ─────────────────────
   for (const [, rp] of lobbyRemotePlayers) {
     if (typeof rp.curX === 'undefined') { rp.curX = rp.targetX ?? rp.px; rp.curY = rp.targetY ?? rp.py; }
     rp.curX += ((rp.targetX ?? rp.px) - rp.curX) * 0.15;
     rp.curY += ((rp.targetY ?? rp.py) - rp.curY) * 0.15;
-    const rx = rp.curX * LOBBY_TS, ry = rp.curY * LOBBY_TS;
-    g.fillStyle = CLAN_TINTS[rp.clan] || CLAN_TINTS['null'];
-    g.fillRect(rx + 6, ry + 4, LOBBY_TS - 12, LOBBY_TS - 8);
-    g.fillStyle = '#fff'; g.font = '8px VT323, monospace'; g.textAlign = 'center';
-    g.fillText(rp.wallet ? rp.wallet.slice(0, 6) + '…' : '?', rx + LOBBY_TS / 2, ry - 2);
+    const color = CLAN_TINTS[rp.clan] || CLAN_TINTS['null'];
+    const rname = rp.wallet ? rp.wallet.slice(0, 6) + '…' : '?';
+    drawLobbyCharacter(ROX + rp.curX * RTS, rp.curY * RTS, color, rname, false);
   }
 
-  // Local player sprite
-  const px = lobbyPx * LOBBY_TS, py = lobbyPy * LOBBY_TS;
-  g.fillStyle = '#e8c870';
-  g.fillRect(px + 6, py + 4, LOBBY_TS - 12, LOBBY_TS - 8);
-  g.fillStyle = '#fff';
-  g.beginPath();
-  if (lobbyDir === 0) { g.moveTo(px+LOBBY_TS/2,py+LOBBY_TS-4);g.lineTo(px+LOBBY_TS/2-4,py+LOBBY_TS-10);g.lineTo(px+LOBBY_TS/2+4,py+LOBBY_TS-10); }
-  else if (lobbyDir === 1) { g.moveTo(px+LOBBY_TS/2,py+4);g.lineTo(px+LOBBY_TS/2-4,py+10);g.lineTo(px+LOBBY_TS/2+4,py+10); }
-  else if (lobbyDir === 2) { g.moveTo(px+4,py+LOBBY_TS/2);g.lineTo(px+10,py+LOBBY_TS/2-4);g.lineTo(px+10,py+LOBBY_TS/2+4); }
-  else                     { g.moveTo(px+LOBBY_TS-4,py+LOBBY_TS/2);g.lineTo(px+LOBBY_TS-10,py+LOBBY_TS/2-4);g.lineTo(px+LOBBY_TS-10,py+LOBBY_TS/2+4); }
-  g.fill();
-
-  g.restore(); // un-translate camera
-
-  // HUD overlay (fixed, not scrolled) — proximity prompt
-  if (lobbyNearBuilding) {
-    g.fillStyle = 'rgba(0,0,0,0.7)';
-    g.fillRect(W / 2 - 100, H - 52, 200, 28);
-    g.fillStyle = '#f0e0a0'; g.font = '14px VT323, monospace'; g.textAlign = 'center';
-    g.fillText(`[Z] Enter ${lobbyNearBuilding.label}`, W / 2, H - 34);
-  }
-
-  // T-D6-2: Permanent HUD — card count + season day (top-right)
+  // ── Layer 5: Local player block character ─────────────────────────────────
   {
-    const cardStr = lobbyHudCards !== null ? `${lobbyHudCards}/60 cards` : '—/60 cards';
-    const dayStr  = lobbyHudDay   !== null ? `Day ${lobbyHudDay}/${lobbyHudTotalDays} — Season 1` : 'Season 1';
-    g.font = '13px VT323, monospace'; g.textAlign = 'right';
-    const hx = W - 6;
-    g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(W - 110, 4, 106, 30);
-    g.fillStyle = '#e0d080'; g.fillText(cardStr, hx, 17);
-    g.fillStyle = '#8888aa'; g.fillText(dayStr, hx, 30);
+    const localColor = '#e8c870';
+    const localName = window.solana?.publicKey
+      ? window.solana.publicKey.toBase58().slice(0, 6) + '…'
+      : 'YOU';
+    drawLobbyCharacter(ROX + lobbyPx * RTS, lobbyPy * RTS, localColor, localName, true);
   }
 
-  // Match found celebration flash
+  // ── T-D8-4: Area title "THE CROWN PLAZA" (fixed HUD, center-top) ─────────
+  {
+    const title = 'THE CROWN PLAZA';
+    g.font = 'bold 13px VT323, monospace';
+    g.textAlign = 'center';
+    const tw = g.measureText(title).width + 22;
+    const tx = (W - tw) / 2, ty = 4, th = 17;
+    g.fillStyle = '#0e0e22';
+    g.fillRect(tx, ty, tw, th);
+    g.strokeStyle = '#c8a460'; g.lineWidth = 1;
+    g.strokeRect(tx + 0.5, ty + 0.5, tw - 1, th - 1);
+    g.fillStyle = '#f0e0a0';
+    g.fillText(title, W / 2, ty + 12);
+  }
+
+  // ── T-D8-3: Top-right HUD — 3 stacked panels (400,10 / 400,36 / 400,56) ──
+  {
+    // Panel 1 — cards: x=400 y=10 w=75 h=22
+    g.fillStyle = '#0e0e22';
+    g.fillRect(400, 10, 75, 22);
+    g.strokeStyle = '#c8a460'; g.lineWidth = 1;
+    g.strokeRect(400, 10, 75, 22);
+    g.textAlign = 'right'; g.font = 'bold 11px VT323, monospace';
+    g.fillStyle = '#c8a460'; g.fillText('◆', 412, 25);
+    g.fillStyle = '#f0d060';
+    g.fillText(`${lobbyHudCards !== null ? lobbyHudCards : '—'}/60 CARDS`, 472, 25);
+
+    // Panel 2 — day/season: x=400 y=36 w=75 h=16
+    g.fillStyle = '#0e0e22';
+    g.fillRect(400, 36, 75, 16);
+    g.strokeStyle = '#333350'; g.lineWidth = 1;
+    g.strokeRect(400, 36, 75, 16);
+    g.fillStyle = '#8888cc'; g.font = '10px VT323, monospace';
+    const dayStr = lobbyHudDay !== null
+      ? `DAY ${lobbyHudDay}/${lobbyHudTotalDays}`
+      : 'DAY —/—';
+    g.fillText(dayStr, 472, 49);
+
+    // Panel 3 — event name: x=400 y=56 w=75 h=14
+    g.fillStyle = '#0c0c1c';
+    g.fillRect(400, 56, 75, 14);
+    g.strokeStyle = '#222240'; g.lineWidth = 1;
+    g.strokeRect(400, 56, 75, 14);
+    g.fillStyle = '#555570'; g.font = '9px VT323, monospace';
+    const evName = lobbyHudEventName || 'SUCCESSION WAR';
+    g.fillText(evName.slice(0, 14), 472, 67);
+  }
+
+  // ── T-D8-5: Bottom info bar (y=H-36=234) ─────────────────────────────────
+  {
+    const by2 = H - 36;
+    g.fillStyle = '#1a2040';
+    g.fillRect(0, by2, W, 36);
+    g.strokeStyle = '#c8a460'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, by2); g.lineTo(W, by2); g.stroke();
+
+    // LEFT — player info (w=148px)
+    g.fillStyle = '#111830'; g.fillRect(0, by2, 148, 36);
+    g.strokeStyle = '#333358'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(148, by2); g.lineTo(148, H); g.stroke();
+    g.fillStyle = '#c8a460'; g.font = '11px VT323, monospace'; g.textAlign = 'left';
+    g.fillText('▶', 6, by2 + 14);
+    g.fillStyle = '#f0e0a0';
+    g.fillText((lobbyBottomName || 'YOU').slice(0, 13), 18, by2 + 14);
+    g.fillStyle = '#6080e0'; g.font = '10px VT323, monospace';
+    g.fillText((lobbyBottomClan || '—').slice(0, 13), 18, by2 + 27);
+
+    // CENTER — ticker (w~=248px from 148 to 396)
+    g.fillStyle = '#aaaacc'; g.font = '10px VT323, monospace'; g.textAlign = 'center';
+    const ticker = lobbyBottomTicker || 'THE KING IS DEAD.  THE CONTEST CONTINUES.';
+    g.fillText(ticker.slice(0, 40), 148 + 124, by2 + 20);
+
+    // RIGHT — SOL balance (w=84px from 396 to 480)
+    g.fillStyle = '#111830'; g.fillRect(396, by2, 84, 36);
+    g.strokeStyle = '#c8a460'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(396, by2); g.lineTo(396, H); g.stroke();
+    g.fillStyle = '#c8a460'; g.font = '11px VT323, monospace'; g.textAlign = 'right';
+    g.fillText('◆', 424, by2 + 14);
+    g.fillStyle = '#f0d060';
+    g.fillText(lobbyBottomSol !== null ? lobbyBottomSol : '—', 474, by2 + 14);
+    g.fillStyle = '#555570'; g.font = '9px VT323, monospace';
+    g.fillText('SOL', 474, by2 + 26);
+  }
+
+  // ── T-D8-13: Proximity prompt (above bottom bar) ──────────────────────────
+  if (lobbyNearBuilding) {
+    g.fillStyle = 'rgba(14,14,34,0.88)';
+    g.fillRect(W / 2 - 96, H - 56, 192, 20);
+    g.strokeStyle = '#c8a460'; g.lineWidth = 1;
+    g.strokeRect(W / 2 - 96, H - 56, 192, 20);
+    g.fillStyle = '#f0e0a0'; g.font = '12px VT323, monospace'; g.textAlign = 'center';
+    g.fillText('[Z] Enter ' + lobbyNearBuilding.label, W / 2, H - 42);
+  }
+
+  // Match found flash
   if (lobbyMatchFlash > 0) {
     lobbyMatchFlash--;
-    const fAlpha = (lobbyMatchFlash / 60) * 0.55;
-    g.fillStyle = `rgba(255,220,60,${fAlpha})`;
+    g.fillStyle = `rgba(255,220,60,${(lobbyMatchFlash / 60) * 0.55})`;
     g.fillRect(0, 0, W, H);
     if (lobbyMatchFlash > 20) {
-      g.fillStyle = '#fff'; g.font = 'bold 32px VT323, monospace'; g.textAlign = 'center';
-      g.fillText('⚔️ MATCH FOUND!', W / 2, H / 2);
+      g.fillStyle = '#fff'; g.font = 'bold 28px VT323, monospace'; g.textAlign = 'center';
+      g.fillText('MATCH FOUND!', W / 2, H / 2);
     }
   }
 
-  // Building dialog overlay (drawn last — on top of everything)
+  // Building dialog overlay
   drawLobbyDialog();
 
-  // Deck editor overlay (above dialog, if open)
+  // Deck editor overlay
   if (typeof deckEditorOpen !== 'undefined' && deckEditorOpen && typeof drawDeckEditor === 'function') {
     drawDeckEditor();
   }
