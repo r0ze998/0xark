@@ -192,6 +192,166 @@ function lobbyWSDisconnect() {
   lobbyRemotePlayers.clear();
 }
 
+// ── Building dialog system ────────────────────────────────────────────────
+// lobbyDialog: null = no dialog, else { title, lines[], buttons[{label,action,disabled,hint}], focusIdx }
+let lobbyDialog = null;
+
+const HALL_ANTES   = ['0.005 SOL', '0.01 SOL', '0.05 SOL'];
+const HALL_EMOJIS  = ['🥉', '🥈', '🥇'];
+const HALL_NAMES   = ['Bronze Hall', 'Silver Hall', 'Gold Hall'];
+
+// wins_at_tier placeholder — read from PlayerBattleStats PDA when available
+function _lobbyTierWins() {
+  return (typeof playerBattleStatsWins !== 'undefined') ? playerBattleStatsWins : [0, 0, 0];
+}
+
+function lobbyOpenDialog(buildingName) {
+  switch (buildingName) {
+    case 'bronze_hall':
+    case 'silver_hall':
+    case 'gold_hall': {
+      const tierIdx = ['bronze_hall','silver_hall','gold_hall'].indexOf(buildingName);
+      const wins = _lobbyTierWins();
+      let locked = false;
+      let lockReason = '';
+      if (tierIdx === 1 && wins[0] < 5) { locked = true; lockReason = `Requires 5 Bronze wins (current: ${wins[0]})`; }
+      if (tierIdx === 2 && wins[1] < 3) { locked = true; lockReason = `Requires 3 Silver wins (current: ${wins[1]})`; }
+      lobbyDialog = {
+        title: `${HALL_EMOJIS[tierIdx]} ${HALL_NAMES[tierIdx]}`,
+        lines: [
+          `Ante: ${HALL_ANTES[tierIdx]}`,
+          `Current queue: — players`,
+          locked ? `🔒 LOCKED — ${lockReason}` : 'Ready to duel',
+        ],
+        buttons: [
+          { label: 'Find Match', action: 'find_match', disabled: locked, hint: locked ? lockReason : null },
+          { label: 'Close',      action: 'close',      disabled: false },
+        ],
+        focusIdx: locked ? 1 : 0,
+        meta: { tier: tierIdx },
+      };
+      break;
+    }
+    case 'shop':
+      lobbyDialog = {
+        title: '🛒 Shop',
+        lines: ['Booster packs, singles, and Clan starters.', 'Coming Day 4-6'],
+        buttons: [{ label: 'Close', action: 'close', disabled: false }],
+        focusIdx: 0,
+      };
+      break;
+    case 'pc_box':
+      lobbyDialog = {
+        title: '💾 PC Box',
+        lines: ['Storage & Deck Editor', 'Coming Day 4-6'],
+        buttons: [{ label: 'Open Deck Editor', action: 'open_deck_editor', disabled: true }, { label: 'Close', action: 'close', disabled: false }],
+        focusIdx: 1,
+      };
+      break;
+    case 'faction_hq':
+      lobbyDialog = {
+        title: '🏴 Faction HQ',
+        lines: ['Join or manage your Clan.', 'Coming Day 4-6'],
+        buttons: [{ label: 'Close', action: 'close', disabled: false }],
+        focusIdx: 0,
+      };
+      break;
+    default:
+      lobbyDialog = {
+        title: buildingName.replace(/_/g,' ').toUpperCase(),
+        lines: ['Coming soon.'],
+        buttons: [{ label: 'Close', action: 'close', disabled: false }],
+        focusIdx: 0,
+      };
+  }
+}
+
+function lobbyDialogConfirm() {
+  if (!lobbyDialog) return;
+  const btn = lobbyDialog.buttons[lobbyDialog.focusIdx];
+  if (!btn || btn.disabled) return;
+  if (btn.action === 'close') { lobbyDialog = null; return; }
+  if (btn.action === 'find_match') {
+    // T-D4-3 will wire real matchmaking; for now placeholder alert
+    console.log('[Lobby] Find Match requested, tier:', lobbyDialog.meta?.tier);
+    lobbyDialog = null;
+    return;
+  }
+  // Other actions: close dialog
+  lobbyDialog = null;
+}
+
+function lobbyDialogCancel() {
+  lobbyDialog = null;
+}
+
+function lobbyDialogMoveFocus(dir) {
+  if (!lobbyDialog) return;
+  const n = lobbyDialog.buttons.length;
+  lobbyDialog.focusIdx = (lobbyDialog.focusIdx + dir + n) % n;
+}
+
+function drawLobbyDialog() {
+  if (!lobbyDialog) return;
+  const dw = 320, dh = 200;
+  const dx = (W - dw) / 2, dy = (H - dh) / 2;
+
+  // Backdrop
+  g.fillStyle = 'rgba(0,0,0,0.72)';
+  g.fillRect(0, 0, W, H);
+
+  // Panel
+  g.fillStyle = '#0e0e22';
+  g.fillRect(dx, dy, dw, dh);
+  g.strokeStyle = '#c8a460';
+  g.lineWidth = 2;
+  g.strokeRect(dx + 1, dy + 1, dw - 2, dh - 2);
+
+  // Title
+  g.fillStyle = '#f0e0a0';
+  g.font = 'bold 18px VT323, monospace';
+  g.textAlign = 'center';
+  g.fillText(lobbyDialog.title, dx + dw / 2, dy + 30);
+
+  // Divider
+  g.strokeStyle = '#333350';
+  g.lineWidth = 1;
+  g.beginPath(); g.moveTo(dx + 16, dy + 38); g.lineTo(dx + dw - 16, dy + 38); g.stroke();
+
+  // Body lines
+  g.font = '14px VT323, monospace';
+  g.textAlign = 'center';
+  lobbyDialog.lines.forEach((line, i) => {
+    g.fillStyle = line.startsWith('🔒') ? '#cc4444' : '#aaaacc';
+    g.fillText(line, dx + dw / 2, dy + 58 + i * 20);
+  });
+
+  // Buttons
+  const btnY = dy + dh - 50;
+  const btnW = 120, btnH = 28, gap = 12;
+  const totalW = lobbyDialog.buttons.length * btnW + (lobbyDialog.buttons.length - 1) * gap;
+  let bx = dx + (dw - totalW) / 2;
+  lobbyDialog.buttons.forEach((btn, i) => {
+    const isFocus = i === lobbyDialog.focusIdx;
+    g.fillStyle = btn.disabled ? '#1a1a2a' : isFocus ? '#3040a0' : '#222238';
+    g.fillRect(bx, btnY, btnW, btnH);
+    g.strokeStyle = btn.disabled ? '#333' : isFocus ? '#6080e0' : '#444466';
+    g.lineWidth = 1;
+    g.strokeRect(bx + 0.5, btnY + 0.5, btnW - 1, btnH - 1);
+    g.fillStyle = btn.disabled ? '#444' : isFocus ? '#e8e8ff' : '#8888aa';
+    g.font = '14px VT323, monospace';
+    g.textAlign = 'center';
+    g.fillText(btn.label, bx + btnW / 2, btnY + 19);
+    bx += btnW + gap;
+  });
+
+  // Controls hint
+  g.fillStyle = '#444466';
+  g.font = '10px VT323, monospace';
+  g.textAlign = 'center';
+  g.fillText('← → navigate  Z/Enter confirm  X/Esc close', dx + dw / 2, dy + dh - 10);
+}
+
 // Clan tints (hex → use in g.fillStyle when clan assigned)
 const CLAN_TINTS = {
   black_flag:       '#2244aa',
@@ -255,11 +415,11 @@ function lobbyMove(dx, dy) {
 
 // ── Lobby interact (called from 10-input.js on Enter/Space) ─────────────
 function lobbyInteract() {
+  if (lobbyDialog) { lobbyDialogConfirm(); return; }
   if (lobbyInteractCooldown > 0) return;
   if (!lobbyNearBuilding) return;
-  console.log('[Lobby] Interact:', lobbyNearBuilding.name, '—', lobbyNearBuilding.interaction);
   lobbyInteractCooldown = 30;
-  // TODO: T-D4 — open building UI panel for each building type
+  lobbyOpenDialog(lobbyNearBuilding.name);
 }
 
 // ── Enter / exit lobby ───────────────────────────────────────────────────
@@ -383,4 +543,7 @@ function dLobby() {
   g.font = '10px VT323, monospace';
   g.textAlign = 'left';
   g.fillText(`LOBBY  x:${lobbyPx} y:${lobbyPy}`, 8, 17);
+
+  // Building dialog overlay (drawn last — on top of everything)
+  drawLobbyDialog();
 }

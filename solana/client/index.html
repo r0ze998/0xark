@@ -23295,6 +23295,16 @@ document.addEventListener('keydown',e=>{
 
   // Phase D Reborn — Lobby scene input
   if(sc==='lobby'){
+    // Dialog open: intercept nav keys for dialog, block movement
+    if(typeof lobbyDialog !== 'undefined' && lobbyDialog) {
+      e.preventDefault();
+      if(e.code==='ArrowLeft'||e.code==='KeyA')  { lobbyDialogMoveFocus(-1); return; }
+      if(e.code==='ArrowRight'||e.code==='KeyD') { lobbyDialogMoveFocus( 1); return; }
+      if(e.code==='KeyZ'||e.code==='Enter'||e.code==='Space') { lobbyDialogConfirm(); return; }
+      if(e.code==='KeyX'||e.code==='Escape') { lobbyDialogCancel(); return; }
+      return;
+    }
+    // Normal lobby movement
     if(e.code==='ArrowUp'||e.code==='KeyW')    { e.preventDefault(); lobbyMove(0,-1); return; }
     if(e.code==='ArrowDown'||e.code==='KeyS')  { e.preventDefault(); lobbyMove(0, 1); return; }
     if(e.code==='ArrowLeft'||e.code==='KeyA')  { e.preventDefault(); lobbyMove(-1,0); return; }
