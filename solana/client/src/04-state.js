@@ -373,7 +373,7 @@ function itemInvAdd(id,n=1){itemInventory[id]=(itemInventory[id]||0)+n;itemInvSa
 function itemInvUse(id){if((itemInventory[id]||0)<=0)return false;itemInventory[id]--;itemInvSave();return true;}
 
 // T72: NFT Trading House state
-const NFT_SHOP_TABS=['MY CARDS','MARKET','MY LISTINGS','MY DECK'];
+const NFT_SHOP_TABS=['MY CARDS','MARKET','MY LISTINGS','MY DECK','REGISTRY'];
 let nftSelIdx=0; // cursor index in current tab
 let nftListings=[]; // cached listing array (refreshed on open)
 let nftListPrice=0.05; // selected list price (cycling presets)
@@ -381,6 +381,21 @@ const NFT_LIST_PRICES=[0.01,0.05,0.10,0.25,0.50,1.00];
 let nftListPriceIdx=1; // default 0.05 SOL
 let nftTxPhase=''; // ''|'listing'|'buying'|'cancelling'|'done'|'error'
 let nftTxResult='', nftTxError='';
+
+// T95: Player Registry state (GI Rule — permanent 60-species registry)
+let playerRegistry=JSON.parse(localStorage.getItem('0xark_registry')||'{"registered":[],"count":0,"season_complete":false}');
+function saveRegistryLocal(){localStorage.setItem('0xark_registry',JSON.stringify(playerRegistry));}
+function registryHasCard(id){return !!(playerRegistry.registered&&playerRegistry.registered[id-1]);}
+function registryRegisterCard(id){
+  if(id<1||id>60)return;
+  if(!playerRegistry.registered)playerRegistry.registered=new Array(60).fill(false);
+  if(!playerRegistry.registered[id-1]){
+    playerRegistry.registered[id-1]=true;
+    playerRegistry.count=(playerRegistry.count||0)+1;
+    if(playerRegistry.count>=60)playerRegistry.season_complete=true;
+    saveRegistryLocal();
+  }
+}
 
 // T81: MY DECK state (Axis A — Preparation Deck)
 // card_id 1-20=Common(cost 1), 21-40=Rare(cost 2), 41-60=Legendary(cost 5)

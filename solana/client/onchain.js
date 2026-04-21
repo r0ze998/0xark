@@ -1487,6 +1487,25 @@ async function revealCard(gameId, cardId, salt) {
   return tx;
 }
 
+async function findPlayerRegistryPDA(playerPubkey) {
+  const [pda] = await solanaWeb3.PublicKey.findProgramAddressSync(
+    [Buffer.from('player_registry'), playerPubkey.toBytes()],
+    new solanaWeb3.PublicKey(PROGRAM_ID_STR)
+  );
+  return pda;
+}
+
+async function registerCard(cardId) {
+  const provider = _getProvider();
+  const program = _getProgram(provider);
+  const player = provider.wallet.publicKey;
+  const tx = await program.methods
+    .registerCard(cardId & 0xff)
+    .accounts({ player })
+    .rpc();
+  return tx;
+}
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -1534,6 +1553,9 @@ window.oxarkOnchain = {
   commitCard,
   revealCard,
   findCardCommitPDA,
+  // Player Registry (T95 — GI Rule) — register_card on-chain PDA
+  registerCard,
+  findPlayerRegistryPDA,
   // Helpers
   computeCommitHash,
   generateSalt,

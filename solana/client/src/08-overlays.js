@@ -1473,6 +1473,8 @@ function drawNFTTradingShop(cx,cy,cw,ch){
   }
   // T81: MY DECK tab — Axis A Preparation Deck
   if(townShopTab===3){drawMyDeckTab(cx,cy,cw,ch,listY);}
+  // T95: REGISTRY tab
+  if(townShopTab===4){drawRegistryTab(cx,cy,cw,ch,listY);}
 }
 function drawMyDeckTab(cx,cy,cw,ch,listY){
   const locked=deckIsLocked();
@@ -1616,6 +1618,45 @@ function drawItemShop(cx,cy,cw,ch){
     if(inv>0)txShadow('x'+inv+' owned',cx+cw-90,iy+30,7,sel?'#a0e090':'#607060','rgba(0,0,0,.3)');
   }
   txShadow('\u2191\u2193 Select  [Z] Buy  [X] Close',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+}
+
+// T95: REGISTRY tab — 10×6 grid of all 60 card species
+function drawRegistryTab(cx,cy,cw,ch,listY){
+  const reg=typeof playerRegistry!=='undefined'?playerRegistry:{registered:[],count:0,season_complete:false};
+  const count=reg.count||0;
+  // Header
+  const pct=Math.round(count/60*100);
+  const hdrCol=reg.season_complete?'#ffd060':'#88ccff';
+  txShadow((reg.season_complete?'\u{1F3C6} COMPLETE! ':'Registry: ')+count+'/60 ('+pct+'%)',cx+cw/2,listY+10,9,hdrCol,'rgba(0,0,0,.5)');
+  // 10 columns × 6 rows grid
+  const COLS=10,ROWS=6;
+  const cellW=Math.floor((cw-24)/COLS);
+  const cellH=18;
+  const gridX=cx+12;
+  const gridY=listY+24;
+  for(let row=0;row<ROWS;row++){
+    for(let col=0;col<COLS;col++){
+      const id=row*COLS+col+1; // 1-60
+      const cr=typeof CD!=='undefined'?CD[id-1]:null;
+      const has=registryHasCard(id);
+      const rx=gridX+col*cellW;
+      const ry=gridY+row*(cellH+3);
+      // Cell background
+      g.fillStyle=has?(cr?cr.c+'44':'rgba(80,160,80,0.3)'):'rgba(255,255,255,0.04)';
+      g.beginPath();g.roundRect(rx,ry,cellW-2,cellH,3);g.fill();
+      if(has){
+        g.strokeStyle=cr?cr.c+'88':'rgba(80,160,80,0.5)';
+        g.lineWidth=1;g.stroke();
+      }
+      // Card ID label
+      const label=has?(cr?cr.n.slice(0,4):String(id)):String(id);
+      const col_=has?(cr?cr.c:'#80ff80'):'#304050';
+      txShadow(label,rx+cellW/2-1,ry+12,5,col_,'rgba(0,0,0,.4)');
+    }
+  }
+  // Footer hint
+  const hint=reg.season_complete?'All 60 species collected — Prize Pool available!':'Collect all 60 species to claim the Prize Pool';
+  txShadow(hint,cx+cw/2,cy+ch-30,6,reg.season_complete?'#ffd060':'#607090','rgba(0,0,0,.4)');
 }
 
 // T94: Season Info Board

@@ -356,6 +356,17 @@ pub mod oxark {
         Ok(())
     }
 
+    /// Register a card species in the player's permanent registry (GI rule).
+    ///
+    /// First time a player acquires card species X → registered[X] = true (permanent).
+    /// Subsequent copies → does not change registry (card is battle-consumable extra).
+    /// When count reaches 60 → season_complete = true.
+    ///
+    /// PDA seeds: `["player_registry", player_pubkey]` (init_if_needed)
+    pub fn register_card(ctx: Context<RegisterCardCtx>, card_id: u8) -> Result<()> {
+        instructions::register_card::handle_register_card(ctx, card_id)
+    }
+
     /// Reveal the previously committed card.
     ///
     /// On-chain verifies `SHA256(card_id | salt) == stored_commitment`.

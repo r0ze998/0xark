@@ -235,6 +235,43 @@ impl SeasonCardSupply {
     }
 }
 
+// === T95: Player Registry (GI Rule) ===
+
+/// Per-player permanent card species registry.
+/// First acquisition of species X sets registered[X-1] = true (permanent).
+/// PDA seeds: ["player_registry", player_pubkey]
+#[account]
+pub struct PlayerRegistry {
+    pub owner: Pubkey,
+    /// registered[i] = true means card_id i+1 has been seen at least once
+    pub registered: [bool; 60],
+    /// unix timestamp of first registration, 0 if not registered
+    pub registered_at: [i64; 60],
+    /// total distinct species registered
+    pub count: u8,
+    /// true when count == 60 (all species collected)
+    pub season_complete: bool,
+    pub bump: u8,
+}
+
+impl Default for PlayerRegistry {
+    fn default() -> Self {
+        Self {
+            owner: Pubkey::default(),
+            registered: [false; 60],
+            registered_at: [0i64; 60],
+            count: 0,
+            season_complete: false,
+            bump: 0,
+        }
+    }
+}
+
+impl PlayerRegistry {
+    // 8 disc + 32 owner + 60 registered + 60*8 registered_at + 1 count + 1 season_complete + 1 bump
+    pub const SIZE: usize = 8 + 32 + 60 + 480 + 1 + 1 + 1;
+}
+
 // === Anchor Events ===
 
 #[event]
