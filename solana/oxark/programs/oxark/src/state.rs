@@ -201,6 +201,40 @@ impl PlayerDeck {
     pub const SIZE: usize = 8 + 32 + 20 + 1 + 8 + 8 + 1;
 }
 
+// === T94: Dynamic Supply System ===
+
+/// Tracks per-season card supply limits derived from participant count.
+/// PDA seeds: ["season_supply", season_id_le]
+#[account]
+#[derive(Default)]
+pub struct SeasonCardSupply {
+    pub season_id:         u32,
+    pub participant_count: u32,
+    /// Max mintable cards per tier [C, B, A, S, SS]
+    pub supply:            [u32; 5],
+    /// Cards minted per tier so far
+    pub minted:            [u32; 5],
+    /// true when a tier's supply is exhausted
+    pub exhausted:         [bool; 5],
+    pub bump:              u8,
+}
+
+impl SeasonCardSupply {
+    // 8 disc + 4 season_id + 4 participant + 5*4 supply + 5*4 minted + 5 exhausted + 1 bump
+    pub const SIZE: usize = 8 + 4 + 4 + 20 + 20 + 5 + 1;
+
+    /// Compute initial supply for N participants.
+    pub fn compute_supply(n: u32) -> [u32; 5] {
+        [
+            (n * 16).max(8),                     // C: 16×N, min 8
+            ((n * 5) / 2).max(4),                // B: 2.5×N, min 4
+            ((n * 2) / 5).max(2),                // A: 0.4×N, min 2
+            (n / 20).max(1),                     // S: 0.05×N, min 1
+            1,                                   // SS: always 1 per season
+        ]
+    }
+}
+
 // === Anchor Events ===
 
 #[event]

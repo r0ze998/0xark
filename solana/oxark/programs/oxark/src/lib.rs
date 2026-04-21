@@ -335,6 +335,27 @@ pub mod oxark {
         instructions::commit_card::handle_commit_card(ctx, game_id, commitment)
     }
 
+    /// Initialize or reset season card supply for N participants.
+    /// PDA: ["season_supply", season_id_le]
+    pub fn init_season_supply(
+        ctx: Context<InitSeasonSupply>,
+        season_id: u32,
+        participant_count: u32,
+    ) -> Result<()> {
+        instructions::season_supply::handle_init_season_supply(ctx, season_id, participant_count)
+    }
+
+    /// Record a card mint against the season supply, with tier fallback.
+    /// Returns the tier actually used (may be lower than requested if exhausted).
+    pub fn record_mint(
+        ctx: Context<RecordMint>,
+        season_id: u32,
+        requested_tier: u8,
+    ) -> Result<()> {
+        instructions::season_supply::handle_record_mint(ctx, season_id, requested_tier)?;
+        Ok(())
+    }
+
     /// Reveal the previously committed card.
     ///
     /// On-chain verifies `SHA256(card_id | salt) == stored_commitment`.

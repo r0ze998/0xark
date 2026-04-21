@@ -2129,10 +2129,40 @@ let currentMap=0;
 // T70: Town interactive buildings — each entry defines the building tile + interaction metadata
 // Proximity check: Manhattan distance ≤ 1 from (tx, ty) while on currentMap === 0
 const TOWN_INTERACTABLES=[
-  {id:'dungeon_gate', label:'DUNGEON GATE',     hint:'Challenge the dungeon',   tx:27, ty:12, icon:'\u26A0', col:'#d04040', accentCol:'#ff6060'},
-  {id:'nft_trading',  label:'NFT TRADING HOUSE',hint:'Trade & list NFT cards',  tx:9,  ty:11, icon:'\u25C6', col:'#60a0e0', accentCol:'#88ccff'},
-  {id:'item_shop',    label:'GENERAL SHOP',     hint:'Buy items & boosters',    tx:19, ty:15, icon:'\u25CF', col:'#50c080', accentCol:'#80ffb0'},
+  {id:'dungeon_gate',  label:'DUNGEON GATE',      hint:'Challenge the dungeon',   tx:27, ty:12, icon:'\u26A0', col:'#d04040', accentCol:'#ff6060'},
+  {id:'nft_trading',   label:'NFT TRADING HOUSE', hint:'Trade & list NFT cards',  tx:9,  ty:11, icon:'\u25C6', col:'#60a0e0', accentCol:'#88ccff'},
+  {id:'item_shop',     label:'GENERAL SHOP',       hint:'Buy items & boosters',    tx:19, ty:15, icon:'\u25CF', col:'#50c080', accentCol:'#80ffb0'},
+  {id:'season_board',  label:'SEASON BOARD',       hint:'View season progress',    tx:14, ty:7,  icon:'\u{1F4CB}', col:'#c0a020', accentCol:'#f0e060'},
 ];
+
+// T94: Season supply state (localStorage-backed for MVP, on-chain for mainnet)
+const seasonSupplyState=(()=>{
+  try{
+    const raw=localStorage.getItem('oxark_season_supply');
+    if(raw)return JSON.parse(raw);
+  }catch(e){}
+  const N=Math.max(1,Math.floor(Math.random()*50)+10); // random participant count for demo
+  return {
+    season_id:1, season_name:'Tempest Arc', participant_count:N,
+    supply:[N*16,Math.floor(N*2.5),Math.floor(N*0.4),Math.max(1,Math.floor(N*0.05)),1],
+    minted:[0,0,0,0,0], exhausted:[false,false,false,false,false]
+  };
+})();
+/** Pick drop tier respecting season supply limits */
+function pickDropTier(){
+  const s=seasonSupplyState;
+  const weights=[400,300,200,90,10];
+  const r=Math.random()*1000; let acc=0;
+  for(let i=4;i>=0;i--){acc+=weights[i];if(r<acc&&!s.exhausted[i])return i;}
+  return 0;
+}
+/** Record a mint against season supply */
+function recordSeasonMint(tier){
+  const s=seasonSupplyState;
+  s.minted[tier]=(s.minted[tier]||0)+1;
+  if(s.minted[tier]>=s.supply[tier])s.exhausted[tier]=true;
+  try{localStorage.setItem('oxark_season_supply',JSON.stringify(s));}catch(e){}
+}
 
 // T53: Dungeon landmark names per floor — pool assigned to rooms in order
 const LANDMARK_NAMES=[

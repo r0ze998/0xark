@@ -18,6 +18,7 @@ pub mod save_deck;
 pub mod lock_deck;
 pub mod commit_card;
 pub mod reveal_card;
+pub mod season_supply;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -39,3 +40,4 @@ pub use save_deck::*;
 pub use lock_deck::*;
 pub use commit_card::*;
 pub use reveal_card::*;
+pub use season_supply::*;

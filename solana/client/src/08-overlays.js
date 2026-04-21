@@ -1295,10 +1295,11 @@ function drawTownShopModal(){
   // Divider
   bx(cx_+12,cy_anim+32,cw-24,1,'rgba(255,255,255,0.1)');
 
-  // Dispatch to specific shop renderer (stubs replaced by T71/T72/T73)
+  // Dispatch to specific shop renderer (stubs replaced by T71/T72/T73/T94)
   if(townShopType==='dungeon_gate'){drawDungeonGateShop(cx_,cy_anim,cw,ch);}
   else if(townShopType==='nft_trading'){drawNFTTradingShop(cx_,cy_anim,cw,ch);}
   else if(townShopType==='item_shop'){drawItemShop(cx_,cy_anim,cw,ch);}
+  else if(townShopType==='season_board'){drawSeasonBoard(cx_,cy_anim,cw,ch);}
 
   // [X] close hint
   txShadow('[X] Close',cx_+cw-60,cy_anim+ch-14,7,'#807090','rgba(0,0,0,.4)');
@@ -1615,5 +1616,49 @@ function drawItemShop(cx,cy,cw,ch){
     if(inv>0)txShadow('x'+inv+' owned',cx+cw-90,iy+30,7,sel?'#a0e090':'#607060','rgba(0,0,0,.3)');
   }
   txShadow('\u2191\u2193 Select  [Z] Buy  [X] Close',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+}
+
+// T94: Season Info Board
+function drawSeasonBoard(cx,cy,cw,ch){
+  const s=typeof seasonSupplyState!=='undefined'?seasonSupplyState:{season_id:1,season_name:'Tempest Arc',participant_count:0,supply:[8,4,2,1,1],minted:[0,0,0,0,0],exhausted:[false,false,false,false,false]};
+  const tierLabel=['C','B','A','S','SS'];
+  const tierCol=['#a0a0b0','#4888d8','#b060d8','#f0c830','#e03030'];
+  const headerH=48;
+  bx(cx,cy,cw,3,'#c0a020');
+  txShadow('\uD83D\uDCCB SEASON '+s.season_id+': '+(s.season_name||'Tempest Arc'),cx+16,cy+20,11,'#f0e060','rgba(0,0,0,.5)');
+  bx(cx+12,cy+headerH,cw-24,1,'rgba(200,180,80,.3)');
+  txShadow('Participants: '+s.participant_count,cx+16,cy+38,7,'#c8b840','rgba(0,0,0,.3)');
+
+  // Supply bars per tier
+  const barY=cy+headerH+12;
+  for(let t=4;t>=0;t--){
+    const row=barY+(4-t)*36;
+    const sup=s.supply[t]||1;
+    const minted=s.minted[t]||0;
+    const remain=Math.max(0,sup-minted);
+    const pct=Math.min(1,minted/sup);
+    const label=tierLabel[t];
+    const col=tierCol[t];
+    const exh=s.exhausted[t];
+    txShadow(label,cx+20,row+16,9,col,'rgba(0,0,0,.5)');
+    // bar bg
+    bx(cx+44,row+4,cw-100,12,'rgba(0,0,0,.4)');
+    // bar fill
+    if(pct>0)bx(cx+44,row+4,Math.floor((cw-100)*pct),12,exh?'#404040':col);
+    bx(cx+44,row+4,cw-100,1,'rgba(255,255,255,.1)');
+    txShadow(remain+' remain',cx+cw-72,row+16,7,exh?'#606060':col,'rgba(0,0,0,.3)');
+    if(exh)txShadow('SOLD OUT',cx+cw-100,row+2,5,'#e04040','rgba(0,0,0,.4)');
+  }
+
+  // Player's own progress
+  const regCount=typeof pl!=='undefined'&&pl[0]?cardCount(pl[0]):0;
+  const progY=cy+ch-80;
+  bx(cx+12,progY,cw-24,1,'rgba(200,180,80,.2)');
+  txShadow('YOUR PROGRESS',cx+16,progY+18,8,'#c0a020','rgba(0,0,0,.3)');
+  txShadow(regCount+' / 60 cards collected',cx+16,progY+34,9,'#e0d060','rgba(0,0,0,.4)');
+  // progress bar
+  bx(cx+16,progY+42,cw-32,10,'rgba(0,0,0,.4)');
+  if(regCount>0)bx(cx+16,progY+42,Math.floor((cw-32)*(regCount/60)),10,'#f0e040');
+  txShadow('[X] Close',cx+cw-60,cy+ch-14,7,'#807090','rgba(0,0,0,.4)');
 }
 
