@@ -29,6 +29,8 @@
 <meta http-equiv="pragma" content="no-cache">
 <meta http-equiv="expires" content="0">
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
+<script>if(typeof Buffer==='undefined'&&typeof buffer!=='undefined')window.Buffer=buffer.Buffer;</script>
 <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.1.4/dist/pixi.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
 <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
@@ -89,7 +91,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v540";
+window.BUILD_VERSION = "v540+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -2529,9 +2531,8 @@ async function onchainDepositStake(gameId){
 // disc: sha256("global:mint_card_nft")[0..8]
 const DISC_MINT_NFT=[234,240,66,205,104,91,164,223];
 const CARD_MINT_SEED_STR='card_mint';
-const SPL_TOKEN_PROGRAM_ID='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+// SPL_TOKEN_PROGRAM_ID / SYSVAR_RENT_PUBKEY declared in onchain.js (same bundle scope)
 const SPL_ATA_PROGRAM_ID='ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bq8';
-const SYSVAR_RENT_PUBKEY='SysvarRent111111111111111111111111111111111';
 
 function _cardMintPDA(gameId,cardId){
   return solanaWeb3.PublicKey.findProgramAddressSync(

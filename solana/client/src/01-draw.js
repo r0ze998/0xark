@@ -762,9 +762,8 @@ async function onchainDepositStake(gameId){
 // disc: sha256("global:mint_card_nft")[0..8]
 const DISC_MINT_NFT=[234,240,66,205,104,91,164,223];
 const CARD_MINT_SEED_STR='card_mint';
-const SPL_TOKEN_PROGRAM_ID='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+// SPL_TOKEN_PROGRAM_ID / SYSVAR_RENT_PUBKEY declared in onchain.js (same bundle scope)
 const SPL_ATA_PROGRAM_ID='ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bq8';
-const SYSVAR_RENT_PUBKEY='SysvarRent111111111111111111111111111111111';
 
 function _cardMintPDA(gameId,cardId){
   return solanaWeb3.PublicKey.findProgramAddressSync(
