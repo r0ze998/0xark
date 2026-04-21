@@ -78,6 +78,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <button class="b" onclick="ss('crd')">CARDS</button>
 <button class="b" onclick="ss('log')">LOG</button>
 <button class="b" onclick="ss('stats')">STATS</button>
+<button class="b" style="background:rgba(60,120,60,.6);border-color:rgba(100,200,100,.5)" onclick="enterLobby()">LOBBY</button>
 </div>
 <div id="h">ARROWS move / SPACE menu / Z select / X back / M sound / F fps</div>
 </div>
@@ -91,7 +92,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v540+";
+window.BUILD_VERSION = "dev+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -23091,6 +23092,7 @@ function draw(){
   else if(sc==='log')dLog();
   else if(sc==='stats')dStats();
   else if(sc==='victory'){if(gameOverTimesUp)dGameOver();else dVictory();}
+  else if(sc==='lobby')dLobby(); // Phase D Reborn LobbyScene
   drawCardAcquisition();
   drawDiscardOverlay();
   drawDungeonConfirm();
@@ -23290,6 +23292,17 @@ function tryMovePlayer(dx, dy) {
 
 document.addEventListener('keydown',e=>{
   if(e.repeat)return;
+
+  // Phase D Reborn — Lobby scene input
+  if(sc==='lobby'){
+    if(e.code==='ArrowUp'||e.code==='KeyW')    { e.preventDefault(); lobbyMove(0,-1); return; }
+    if(e.code==='ArrowDown'||e.code==='KeyS')  { e.preventDefault(); lobbyMove(0, 1); return; }
+    if(e.code==='ArrowLeft'||e.code==='KeyA')  { e.preventDefault(); lobbyMove(-1,0); return; }
+    if(e.code==='ArrowRight'||e.code==='KeyD') { e.preventDefault(); lobbyMove( 1,0); return; }
+    if(e.code==='KeyZ'||e.code==='Enter'||e.code==='Space') { e.preventDefault(); lobbyInteract(); return; }
+    if(e.code==='KeyX'||e.code==='Escape') { exitLobby(); return; }
+    return; // swallow other keys while in lobby
+  }
 
   // v72: Dismiss dungeon run summary on any key
   if(runSummaryActive){runSummaryActive=false;runSummaryData=null;return;}

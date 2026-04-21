@@ -110,6 +110,17 @@ function tryMovePlayer(dx, dy) {
 document.addEventListener('keydown',e=>{
   if(e.repeat)return;
 
+  // Phase D Reborn — Lobby scene input
+  if(sc==='lobby'){
+    if(e.code==='ArrowUp'||e.code==='KeyW')    { e.preventDefault(); lobbyMove(0,-1); return; }
+    if(e.code==='ArrowDown'||e.code==='KeyS')  { e.preventDefault(); lobbyMove(0, 1); return; }
+    if(e.code==='ArrowLeft'||e.code==='KeyA')  { e.preventDefault(); lobbyMove(-1,0); return; }
+    if(e.code==='ArrowRight'||e.code==='KeyD') { e.preventDefault(); lobbyMove( 1,0); return; }
+    if(e.code==='KeyZ'||e.code==='Enter'||e.code==='Space') { e.preventDefault(); lobbyInteract(); return; }
+    if(e.code==='KeyX'||e.code==='Escape') { exitLobby(); return; }
+    return; // swallow other keys while in lobby
+  }
+
   // v72: Dismiss dungeon run summary on any key
   if(runSummaryActive){runSummaryActive=false;runSummaryData=null;return;}
   // v77: Hand inspect overlay — Tab to open/close, any key to dismiss

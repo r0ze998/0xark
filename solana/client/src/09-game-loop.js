@@ -463,6 +463,7 @@ function draw(){
   else if(sc==='log')dLog();
   else if(sc==='stats')dStats();
   else if(sc==='victory'){if(gameOverTimesUp)dGameOver();else dVictory();}
+  else if(sc==='lobby')dLobby(); // Phase D Reborn LobbyScene
   drawCardAcquisition();
   drawDiscardOverlay();
   drawDungeonConfirm();
