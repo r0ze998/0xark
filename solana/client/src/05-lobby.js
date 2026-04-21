@@ -72,9 +72,125 @@ const LOBBY_MOVE_DELAY = 9;     // ~150ms at 60fps
 let lobbyNearBuilding = null;   // currently nearby building object or null
 let lobbyInteractCooldown = 0;  // prevent double-trigger
 
-// Remote players for multiplayer (populated by T-D3-3 WS wire-up)
-// Each entry: { wallet, px, py, clan, card_count, tint, targetX, targetY }
+// Remote players for multiplayer
+// Each entry: { wallet, px, py, targetX, targetY, curX, curY, clan, card_count }
 const lobbyRemotePlayers = new Map();
+
+// ── WebSocket multiplayer ─────────────────────────────────────────────────
+// WS_SERVER_URL can be set globally before build (defaults to Railway deploy).
+const LOBBY_WS_URL = (typeof WS_SERVER_URL !== 'undefined')
+  ? WS_SERVER_URL
+  : 'wss://0xark-multiplayer.up.railway.app';
+const LOBBY_ROOM_KEY = 'oxark_lobby_room'; // localStorage key for shared room
+
+let lobbyWS       = null;
+let lobbyPlayerId = null;
+let lobbyConnecting = false;
+
+function lobbyWSConnect() {
+  if (lobbyConnecting || lobbyWS) return;
+  lobbyConnecting = true;
+  const storedRoom = localStorage.getItem(LOBBY_ROOM_KEY);
+
+  let ws;
+  try { ws = new WebSocket(LOBBY_WS_URL); }
+  catch { lobbyConnecting = false; return; }
+
+  ws.onopen = () => {
+    lobbyConnecting = false;
+    const wallet = (typeof window !== 'undefined' && window._oxarkWallet) ? window._oxarkWallet : null;
+    const name   = wallet ? wallet.slice(0, 6) + '…' : 'Anon';
+    const payload = { name, wallet, clan: null, card_count: 0, season: 1 };
+
+    if (storedRoom) {
+      ws.send(JSON.stringify({ type: 'join_room', roomId: storedRoom, ...payload }));
+    } else {
+      ws.send(JSON.stringify({ type: 'create_room', gameId: 'lobby-global', ...payload }));
+    }
+  };
+
+  ws.onmessage = (evt) => {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch { return; }
+
+    switch (msg.type) {
+      case 'room_created':
+        lobbyPlayerId = msg.playerId;
+        localStorage.setItem(LOBBY_ROOM_KEY, msg.roomId);
+        break;
+
+      case 'room_joined':
+        lobbyPlayerId = msg.playerId;
+        (msg.players || []).forEach(p => {
+          if (p.id === lobbyPlayerId) return;
+          const x = p.position?.x ?? LOBBY_SPAWN.x;
+          const y = p.position?.y ?? LOBBY_SPAWN.y;
+          lobbyRemotePlayers.set(p.id, {
+            wallet: p.wallet, clan: p.clan, card_count: p.card_count,
+            px: x, py: y, targetX: x, targetY: y,
+          });
+        });
+        break;
+
+      case 'error':
+        // Stored room likely expired — clear it and create fresh
+        if (storedRoom) {
+          localStorage.removeItem(LOBBY_ROOM_KEY);
+          lobbyWS = null;
+          lobbyWSConnect();
+        }
+        break;
+
+      case 'player_joined': {
+        const pj = msg.player;
+        if (!pj || pj.id === lobbyPlayerId) break;
+        const x = pj.position?.x ?? LOBBY_SPAWN.x;
+        const y = pj.position?.y ?? LOBBY_SPAWN.y;
+        lobbyRemotePlayers.set(pj.id, {
+          wallet: pj.wallet, clan: pj.clan, card_count: pj.card_count,
+          px: x, py: y, targetX: x, targetY: y,
+        });
+        break;
+      }
+
+      case 'player_left':
+        lobbyRemotePlayers.delete(msg.playerId);
+        break;
+
+      case 'player_moved':
+        if (msg.playerId === lobbyPlayerId) break;
+        const rp = lobbyRemotePlayers.get(msg.playerId);
+        if (rp) { rp.targetX = msg.x; rp.targetY = msg.y; }
+        break;
+
+      case 'presence_update':
+        for (const [, p] of lobbyRemotePlayers) {
+          if (p.wallet === msg.wallet) {
+            p.clan = msg.clan; p.card_count = msg.card_count; break;
+          }
+        }
+        break;
+    }
+  };
+
+  ws.onclose = () => { lobbyWS = null; lobbyConnecting = false; };
+  ws.onerror = () => { console.warn('[Lobby] WS offline — solo mode'); lobbyWS = null; lobbyConnecting = false; };
+
+  lobbyWS = ws;
+}
+
+function lobbyWSSendMove(x, y) {
+  if (lobbyWS && lobbyWS.readyState === 1) {
+    lobbyWS.send(JSON.stringify({ type: 'move', x, y, area: 0 }));
+  }
+}
+
+function lobbyWSDisconnect() {
+  if (lobbyWS) { lobbyWS.close(); lobbyWS = null; }
+  lobbyPlayerId = null;
+  lobbyConnecting = false;
+  lobbyRemotePlayers.clear();
+}
 
 // Clan tints (hex → use in g.fillStyle when clan assigned)
 const CLAN_TINTS = {
@@ -134,7 +250,7 @@ function lobbyMove(dx, dy) {
   else if (dy > 0) lobbyDir = 0;
   else lobbyDir = 1;
   lobbyCheckProximity();
-  // TODO: T-D3-3 — send player_moved to WS server
+  lobbyWSSendMove(lobbyPx, lobbyPy);
 }
 
 // ── Lobby interact (called from 10-input.js on Enter/Space) ─────────────
@@ -155,11 +271,11 @@ function enterLobby() {
   lobbyInteractCooldown = 0;
   lobbyCheckProximity();
   sc = 'lobby';
-  // TODO: T-D3-3 — open WS connection, send join_room "lobby-global"
+  lobbyWSConnect();
 }
 
 function exitLobby() {
-  // TODO: T-D3-3 — send leave_room, close WS
+  lobbyWSDisconnect();
   sc = 'map';
 }
 
@@ -219,12 +335,11 @@ function dLobby() {
   // Wall collision debug overlay (disabled in prod — set LOBBY_DEBUG=true to enable)
   // if (window.LOBBY_DEBUG) { ... }
 
-  // Remote players
+  // Remote players — lerp toward target position (smooth movement)
   for (const [, rp] of lobbyRemotePlayers) {
-    // Lerp toward target position (T-D3-4 interpolation)
-    if (typeof rp.curX === 'undefined') { rp.curX = rp.px; rp.curY = rp.py; }
-    rp.curX += (rp.targetX - rp.curX) * 0.15;
-    rp.curY += (rp.targetY - rp.curY) * 0.15;
+    if (typeof rp.curX === 'undefined') { rp.curX = rp.targetX ?? rp.px; rp.curY = rp.targetY ?? rp.py; }
+    rp.curX += ((rp.targetX ?? rp.px) - rp.curX) * 0.15;
+    rp.curY += ((rp.targetY ?? rp.py) - rp.curY) * 0.15;
     const rx = rp.curX * LOBBY_TS, ry = rp.curY * LOBBY_TS;
     g.fillStyle = CLAN_TINTS[rp.clan] || CLAN_TINTS['null'];
     g.fillRect(rx + 6, ry + 4, LOBBY_TS - 12, LOBBY_TS - 8);
