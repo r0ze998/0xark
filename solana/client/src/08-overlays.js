@@ -1300,6 +1300,7 @@ function drawTownShopModal(){
   else if(townShopType==='nft_trading'){drawNFTTradingShop(cx_,cy_anim,cw,ch);}
   else if(townShopType==='item_shop'){drawItemShop(cx_,cy_anim,cw,ch);}
   else if(townShopType==='season_board'){drawSeasonBoard(cx_,cy_anim,cw,ch);}
+  else if(townShopType==='journal'){drawProgressionHub(cx_,cy_anim,cw,ch);}
 
   // [X] close hint
   txShadow('[X] Close',cx_+cw-60,cy_anim+ch-14,7,'#807090','rgba(0,0,0,.4)');
@@ -1621,41 +1622,54 @@ function drawItemShop(cx,cy,cw,ch){
 }
 
 // T95: REGISTRY tab — 10×6 grid of all 60 card species
+// Rarity bg/border colors for Registry grid (5-tier: r=1-5)
+const _REG_RARITY_BG =['','rgba(80,90,100,0.25)','rgba(40,80,160,0.2)','rgba(120,40,180,0.22)','rgba(160,130,10,0.28)','rgba(160,30,30,0.28)'];
+const _REG_RARITY_BD =['','rgba(80,90,100,0.5)', 'rgba(60,120,220,0.5)','rgba(180,80,240,0.55)','rgba(210,180,20,0.6)','rgba(220,50,50,0.6)'];
+const _REG_RARITY_TX =['','#809098',              '#5090d0',              '#b060d8',               '#d4a820',             '#e03030'];
+const _ELEM_ICON_SMALL=['\u{1F525}','\u{1F4A7}','\u{1F32A}','\u{1F30D}','\u{1F319}','\u2600']; // Fire Water Wind Earth Shadow Light
+
 function drawRegistryTab(cx,cy,cw,ch,listY){
   const reg=typeof playerRegistry!=='undefined'?playerRegistry:{registered:[],count:0,season_complete:false};
   const count=reg.count||0;
-  // Header
+  // Header + progress bar
   const pct=Math.round(count/60*100);
   const hdrCol=reg.season_complete?'#ffd060':'#88ccff';
-  txShadow((reg.season_complete?'\u{1F3C6} COMPLETE! ':'Registry: ')+count+'/60 ('+pct+'%)',cx+cw/2,listY+10,9,hdrCol,'rgba(0,0,0,.5)');
-  // 10 columns × 6 rows grid
+  txShadow((reg.season_complete?'\u{1F3C6} ALL 60 SPECIES! ':'Registry: ')+count+'/60 ('+pct+'%)',cx+cw/2,listY+8,9,hdrCol,'rgba(0,0,0,.5)');
+  const barX=cx+12,barW=cw-24,barY=listY+16;
+  bx(barX,barY,barW,5,'rgba(255,255,255,0.07)');
+  if(count>0)bx(barX,barY,Math.floor(barW*count/60),5,reg.season_complete?'#ffd060':'#4888d8');
+  // 10×6 grid
   const COLS=10,ROWS=6;
   const cellW=Math.floor((cw-24)/COLS);
-  const cellH=18;
+  const cellH=19;
   const gridX=cx+12;
-  const gridY=listY+24;
+  const gridY=listY+26;
   for(let row=0;row<ROWS;row++){
     for(let col=0;col<COLS;col++){
-      const id=row*COLS+col+1; // 1-60
+      const id=row*COLS+col+1;
       const cr=typeof CD!=='undefined'?CD[id-1]:null;
       const has=registryHasCard(id);
       const rx=gridX+col*cellW;
-      const ry=gridY+row*(cellH+3);
-      // Cell background
-      g.fillStyle=has?(cr?cr.c+'44':'rgba(80,160,80,0.3)'):'rgba(255,255,255,0.04)';
+      const ry=gridY+row*(cellH+2);
+      const r=cr?cr.r:1;
+      // Cell background — rarity-coded when registered, dark placeholder when missing
+      g.fillStyle=has?(_REG_RARITY_BG[r]||'rgba(80,160,80,0.2)'):'rgba(255,255,255,0.03)';
       g.beginPath();g.roundRect(rx,ry,cellW-2,cellH,3);g.fill();
-      if(has){
-        g.strokeStyle=cr?cr.c+'88':'rgba(80,160,80,0.5)';
-        g.lineWidth=1;g.stroke();
+      if(has){g.strokeStyle=_REG_RARITY_BD[r]||'rgba(80,160,80,0.4)';g.lineWidth=1;g.stroke();}
+      // Card element icon (tiny, top-left corner)
+      const elemIdx=cr?Math.floor((id-1)/10):0;
+      if(has&&_ELEM_ICON_SMALL[elemIdx]){
+        g.font='6px sans-serif';g.fillStyle=has?(_REG_RARITY_TX[r]||'#80ff80'):'#2a3a4a';
+        g.fillText(_ELEM_ICON_SMALL[elemIdx],rx+1,ry+7);
       }
-      // Card ID label
-      const label=has?(cr?cr.n.slice(0,4):String(id)):String(id);
-      const col_=has?(cr?cr.c:'#80ff80'):'#304050';
-      txShadow(label,rx+cellW/2-1,ry+12,5,col_,'rgba(0,0,0,.4)');
+      // Name (4 chars) or ID
+      const label=has?(cr?cr.n.slice(0,4):String(id)):('·'+String(id).padStart(2,'0')+'·').slice(0,4);
+      const tc=has?(_REG_RARITY_TX[r]||'#80ff80'):'#304050';
+      txShadow(label,rx+cellW/2,ry+15,4.5,tc,'rgba(0,0,0,.4)');
     }
   }
-  // Footer hint
-  const hint=reg.season_complete?'All 60 species collected — Prize Pool available!':'Collect all 60 species to claim the Prize Pool';
+  // Footer
+  const hint=reg.season_complete?'\u2728 Claim Prize Pool in Season Board!':'Collect all 60 species to claim the Prize Pool';
   txShadow(hint,cx+cw/2,cy+ch-30,6,reg.season_complete?'#ffd060':'#607090','rgba(0,0,0,.4)');
 }
 
@@ -1696,10 +1710,114 @@ function drawSeasonBoard(cx,cy,cw,ch){
   const progY=cy+ch-80;
   bx(cx+12,progY,cw-24,1,'rgba(200,180,80,.2)');
   txShadow('YOUR PROGRESS',cx+16,progY+18,8,'#c0a020','rgba(0,0,0,.3)');
-  txShadow(regCount+' / 60 cards collected',cx+16,progY+34,9,'#e0d060','rgba(0,0,0,.4)');
+  // Use registry count (permanent species) if available, otherwise battle hand count
+  const regCount2=typeof playerRegistry!=='undefined'?playerRegistry.count:regCount;
+  txShadow(regCount2+' / 60 species registered',cx+16,progY+34,9,'#e0d060','rgba(0,0,0,.4)');
   // progress bar
   bx(cx+16,progY+42,cw-32,10,'rgba(0,0,0,.4)');
-  if(regCount>0)bx(cx+16,progY+42,Math.floor((cw-32)*(regCount/60)),10,'#f0e040');
+  if(regCount2>0)bx(cx+16,progY+42,Math.floor((cw-32)*(regCount2/60)),10,'#f0e040');
   txShadow('[X] Close',cx+cw-60,cy+ch-14,7,'#807090','rgba(0,0,0,.4)');
+}
+
+// T101: Progression Hub (Journal) — Level + XP + Achievements + Titles
+// Tab 0: PROGRESS, Tab 1: ACHIEVEMENTS, Tab 2: TITLES
+const _PROG_TABS=['PROGRESS','ACHIEVEMENTS','TITLES'];
+const _RARITY_COL=['','#809098','#4080c0','#9050c0','#c0a020','#c04040']; // index 1-5
+const _RARITY_LORE=['','C','B','A','S','SS'];
+
+function drawProgressionHub(cx,cy,cw,ch){
+  const bodyY=cy+42;
+  // Tab bar
+  for(let i=0;i<_PROG_TABS.length;i++){
+    const tw=(cw-24)/3, tx_=cx+12+i*tw;
+    const sel=progressionTab===i;
+    g.fillStyle=sel?'rgba(128,96,192,0.3)':'rgba(255,255,255,0.05)';
+    g.beginPath();g.roundRect(tx_,bodyY,tw-4,22,5);g.fill();
+    if(sel){g.strokeStyle='rgba(192,160,255,0.5)';g.lineWidth=1;g.stroke();}
+    txShadow(_PROG_TABS[i],tx_+tw/2-2,bodyY+14,6,sel?'#c0a0ff':'#7080a0','rgba(0,0,0,.3)');
+  }
+  const tabY=bodyY+28;
+
+  if(progressionTab===0){
+    // ── PROGRESS tab ──────────────────────────────────────────────────────────
+    const lvl=typeof playerLevel!=='undefined'?playerLevel:1;
+    const xp=typeof playerXP!=='undefined'?playerXP:0;
+    const nextXP=typeof xpToNext==='function'?xpToNext(lvl):100;
+    const curXP=xp-(typeof xpForLevel==='function'?xpForLevel(lvl):0);
+    const xpPct=Math.min(1,curXP/nextXP);
+
+    // Title
+    const td=typeof TITLE_DEFS!=='undefined'?TITLE_DEFS[typeof playerCurrentTitle!=='undefined'?playerCurrentTitle:0]:null;
+    const titleStr=td?td.label:'Traveler';
+    const titleCol=td?td.col:'#a0a0b0';
+    txShadow(titleStr,cx+cw/2,tabY+14,10,titleCol,'rgba(0,0,0,.5)');
+
+    // Level + XP bar
+    txShadow('LEVEL '+lvl,cx+24,tabY+34,16,'#c0a0ff','rgba(0,0,0,.5)');
+    const barX=cx+16, barW=cw-32, barY=tabY+48;
+    bx(barX,barY,barW,12,'rgba(255,255,255,0.08)');
+    if(xpPct>0)bx(barX,barY,Math.floor(barW*xpPct),12,'#8060c0');
+    g.strokeStyle='rgba(192,160,255,0.25)';g.lineWidth=1;
+    g.beginPath();g.roundRect(barX,barY,barW,12,2);g.stroke();
+    txShadow(curXP+' / '+nextXP+' XP',cx+cw/2,barY+20,7,'#a090c0','rgba(0,0,0,.4)');
+
+    // Stats grid
+    const reg=typeof playerRegistry!=='undefined'?playerRegistry:{count:0,season_complete:false};
+    const achCount=typeof playerAchievements!=='undefined'?Object.keys(playerAchievements).length:0;
+    const stats=[
+      ['\u{1F4D6} Registry',   reg.count+'/60 species'],
+      ['\u{1F3C6} Achievements',achCount+'/10 unlocked'],
+      ['\u{1F4AB} Title',       titleStr],
+      ['\u{1F4CA} Season',      reg.season_complete?'COMPLETE!':'In progress'],
+    ];
+    for(let i=0;i<stats.length;i++){
+      const ry=tabY+72+i*26;
+      const col=i===3&&reg.season_complete?'#ffd060':'#8098b0';
+      txShadow(stats[i][0],cx+24,ry+10,7,'#607080','rgba(0,0,0,.3)');
+      txShadow(stats[i][1],cx+cw-24,ry+10,8,col,'rgba(0,0,0,.4)');
+      bx(cx+16,ry+18,cw-32,1,'rgba(255,255,255,0.06)');
+    }
+    txShadow('\u2190\u2192 Switch tab',cx+cw/2,cy+ch-30,6,'#607090','rgba(0,0,0,.3)');
+
+  }else if(progressionTab===1){
+    // ── ACHIEVEMENTS tab ──────────────────────────────────────────────────────
+    const defs=typeof ACHIEVEMENT_DEFS!=='undefined'?ACHIEVEMENT_DEFS:[];
+    const achs=typeof playerAchievements!=='undefined'?playerAchievements:{};
+    const COLS=2;
+    for(let i=0;i<Math.min(defs.length,10);i++){
+      const def=defs[i];
+      const unlocked=!!achs[def.id];
+      const col_=Math.floor(i/COLS),row_=i%COLS;
+      const cx_=cx+16+col_*Math.floor((cw-32)/2);
+      const cy_=tabY+row_*((ch-tabY-40)/5);
+      const cw_=Math.floor((cw-36)/2), cellH=Math.floor((ch-tabY-40)/5)-4;
+      g.fillStyle=unlocked?'rgba(200,160,40,0.12)':'rgba(255,255,255,0.04)';
+      g.beginPath();g.roundRect(cx_,cy_,cw_,cellH,5);g.fill();
+      if(unlocked){g.strokeStyle='rgba(200,160,40,0.35)';g.lineWidth=1;g.stroke();}
+      txShadow(def.icon+' '+def.label,cx_+cw_/2,cy_+cellH*0.36,7,unlocked?'#ffd060':'#506070','rgba(0,0,0,.4)');
+      txShadow(def.desc,cx_+cw_/2,cy_+cellH*0.65,5,unlocked?'#c0a040':'#405060','rgba(0,0,0,.3)');
+      if(unlocked)txShadow('+'+def.xp+' XP',cx_+cw_/2,cy_+cellH*0.88,5,'#a0c060','rgba(0,0,0,.3)');
+    }
+    const total=defs.length, done=Object.keys(achs).length;
+    txShadow(done+'/'+total+' unlocked',cx+cw/2,cy+ch-30,7,'#a08060','rgba(0,0,0,.4)');
+
+  }else{
+    // ── TITLES tab ────────────────────────────────────────────────────────────
+    const defs=typeof TITLE_DEFS!=='undefined'?TITLE_DEFS:[];
+    const cur=typeof playerCurrentTitle!=='undefined'?playerCurrentTitle:0;
+    for(let i=0;i<defs.length;i++){
+      const def=defs[i];
+      const unlocked=typeof isTitleUnlocked==='function'?isTitleUnlocked(i):i===0;
+      const sel=cur===i;
+      const ry=tabY+i*((ch-tabY-40)/8);
+      g.fillStyle=sel?'rgba(128,96,192,0.2)':unlocked?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.1)';
+      g.beginPath();g.roundRect(cx+16,ry,cw-32,Math.floor((ch-tabY-40)/8)-3,5);g.fill();
+      if(sel){g.strokeStyle='rgba(192,160,255,0.4)';g.lineWidth=1;g.stroke();}
+      const lCol=unlocked?def.col:'#304050';
+      txShadow((sel?'\u25BA ':'  ')+def.label,cx+28,ry+Math.floor((ch-tabY-40)/16)+3,8,lCol,'rgba(0,0,0,.4)');
+      txShadow(def.desc,cx+cw-16,ry+Math.floor((ch-tabY-40)/16)+3,6,unlocked?'#7090a0':'#304050','rgba(0,0,0,.3)');
+    }
+    txShadow('\u2191\u2193 Select  [Z] Equip',cx+cw/2,cy+ch-30,6,'#607090','rgba(0,0,0,.3)');
+  }
 }
 

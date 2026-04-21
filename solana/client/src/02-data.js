@@ -2129,10 +2129,11 @@ let currentMap=0;
 // T70: Town interactive buildings — each entry defines the building tile + interaction metadata
 // Proximity check: Manhattan distance ≤ 1 from (tx, ty) while on currentMap === 0
 const TOWN_INTERACTABLES=[
-  {id:'dungeon_gate',  label:'DUNGEON GATE',      hint:'Challenge the dungeon',   tx:27, ty:12, icon:'\u26A0', col:'#d04040', accentCol:'#ff6060'},
-  {id:'nft_trading',   label:'NFT TRADING HOUSE', hint:'Trade & list NFT cards',  tx:9,  ty:11, icon:'\u25C6', col:'#60a0e0', accentCol:'#88ccff'},
-  {id:'item_shop',     label:'GENERAL SHOP',       hint:'Buy items & boosters',    tx:19, ty:15, icon:'\u25CF', col:'#50c080', accentCol:'#80ffb0'},
+  {id:'dungeon_gate',  label:'DUNGEON GATE',      hint:'Challenge the dungeon',   tx:27, ty:12, icon:'\u26A0',    col:'#d04040', accentCol:'#ff6060'},
+  {id:'nft_trading',   label:'NFT TRADING HOUSE', hint:'Trade & list NFT cards',  tx:9,  ty:11, icon:'\u25C6',    col:'#60a0e0', accentCol:'#88ccff'},
+  {id:'item_shop',     label:'GENERAL SHOP',       hint:'Buy items & boosters',    tx:19, ty:15, icon:'\u25CF',    col:'#50c080', accentCol:'#80ffb0'},
   {id:'season_board',  label:'SEASON BOARD',       hint:'View season progress',    tx:14, ty:7,  icon:'\u{1F4CB}', col:'#c0a020', accentCol:'#f0e060'},
+  {id:'journal',       label:'JOURNAL',            hint:'Progression & titles',    tx:22, ty:7,  icon:'\u{1F4D6}', col:'#8060c0', accentCol:'#c0a0ff'},
 ];
 
 // T94: Season supply state (localStorage-backed for MVP, on-chain for mainnet)

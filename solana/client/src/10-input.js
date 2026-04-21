@@ -538,6 +538,18 @@ document.addEventListener('keydown',e=>{
       if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
       return;
     }
+    // T101: Journal (Progression Hub) input
+    if(townShopType==='journal'){
+      if(e.code==='ArrowLeft'){progressionTab=Math.max(0,progressionTab-1);sfxCursor();}
+      if(e.code==='ArrowRight'){progressionTab=Math.min(2,progressionTab+1);sfxCursor();}
+      if(progressionTab===2){  // TITLES tab — navigate + equip
+        if(e.code==='ArrowUp'){playerCurrentTitle=Math.max(0,playerCurrentTitle-1);sfxCursor();}
+        if(e.code==='ArrowDown'){playerCurrentTitle=Math.min((typeof TITLE_DEFS!=='undefined'?TITLE_DEFS.length:8)-1,playerCurrentTitle+1);sfxCursor();}
+        if(e.code==='KeyZ'){if(typeof setTitle==='function'&&setTitle(playerCurrentTitle)){sfxSelect();}else sfxBack();}
+      }
+      if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      return;
+    }
     if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
     // Tab navigation fallback
     if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);sfxCursor();}

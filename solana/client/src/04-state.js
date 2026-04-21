@@ -433,6 +433,86 @@ function deckToggleCard(cardId){
   deckSaveLocal();
 }
 
+// T98/T99/T100 (pre-deploy localStorage fallback)
+// XP & Level ─────────────────────────────────────────────
+function xpForLevel(lvl){return lvl<=1?0:Math.floor((lvl-1)*(lvl)*55);}  // triangular ×55
+function xpToNext(lvl){return Math.max(1,xpForLevel(lvl+1)-xpForLevel(lvl));}
+function xpLevelFromTotal(xp){let l=1;while(l<60&&xp>=xpForLevel(l+1))l++;return l;}
+const XP_REWARDS={battle_win:50,battle_loss:15,card_collect:10,super_effective:20,
+                  zk_cycle:30,deathrattle_triggered:15,chain_bonus:15};
+
+let playerXP=parseInt(localStorage.getItem('oxark_player_xp')||'0');
+let playerLevel=xpLevelFromTotal(playerXP);
+
+function addXP(amount){
+  playerXP+=amount;
+  const prev=playerLevel;
+  playerLevel=xpLevelFromTotal(playerXP);
+  localStorage.setItem('oxark_player_xp',playerXP);
+  if(playerLevel>prev)return{levelUp:true,newLevel:playerLevel};
+  return{levelUp:false};
+}
+
+// Achievements (10 types) ──────────────────────────────────
+const ACHIEVEMENT_DEFS=[
+  {id:'first_blood',   label:'First Blood',     desc:'Win your first battle',          icon:'\u{1F5E1}',xp:100},
+  {id:'collector_10',  label:'Card Collector',   desc:'Register 10 card species',       icon:'\u{1F004}',xp:150},
+  {id:'collector_30',  label:'Half Deck',        desc:'Register 30 card species',       icon:'\u{1F0CF}',xp:300},
+  {id:'full_set',      label:'Grand Collector',  desc:'Register all 60 species',        icon:'\u{1F3C6}',xp:1000},
+  {id:'chain_master',  label:'Chain Master',     desc:'Trigger chain ×3 in one steal',  icon:'\u26A1',   xp:200},
+  {id:'dr_survived',   label:'Deathrattle OK',   desc:'Survive a deathrattle penalty',  icon:'\u{1F480}',xp:150},
+  {id:'zk_committed',  label:'ZK Pioneer',       desc:'Complete a ZK commit+reveal',    icon:'\u{1F512}',xp:200},
+  {id:'super_x5',      label:'Element Master',   desc:'Land 5 SUPER EFFECTIVE hits',    icon:'\u{1F525}',xp:200},
+  {id:'dungeon_floor5',label:'Deep Diver',        desc:'Reach dungeon floor 5',          icon:'\u{1F30A}',xp:250},
+  {id:'season_top',    label:'Season Champion',  desc:'Complete a full season',         icon:'\u{1F451}',xp:500},
+];
+let playerAchievements=JSON.parse(localStorage.getItem('oxark_achievements')||'{}');
+let _superHitCount=parseInt(localStorage.getItem('oxark_super_hits')||'0');
+
+function unlockAchievement(id){
+  if(playerAchievements[id])return false;
+  playerAchievements[id]={ts:Date.now()};
+  localStorage.setItem('oxark_achievements',JSON.stringify(playerAchievements));
+  const def=ACHIEVEMENT_DEFS.find(a=>a.id===id);
+  if(def)addXP(def.xp);
+  return true;
+}
+function checkAchievements(){
+  const reg=typeof playerRegistry!=='undefined'?playerRegistry:{count:0,season_complete:false};
+  if(reg.count>=10)unlockAchievement('collector_10');
+  if(reg.count>=30)unlockAchievement('collector_30');
+  if(reg.season_complete)unlockAchievement('full_set');
+}
+
+// Titles (8 types) ─────────────────────────────────────────
+const TITLE_DEFS=[
+  {id:0,label:'Traveler',      col:'#a0a0b0',desc:'Default title',             unlock:null},
+  {id:1,label:'Card Hunter',   col:'#60c0e0',desc:'Register 10 species',       unlock:'collector_10'},
+  {id:2,label:'Chain Wizard',  col:'#80ffb0',desc:'Trigger chain combo',       unlock:'chain_master'},
+  {id:3,label:'Dread Pirate',  col:'#f08060',desc:'Win your first battle',     unlock:'first_blood'},
+  {id:4,label:'ZK Mystic',     col:'#c0a0ff',desc:'Complete ZK cycle',         unlock:'zk_committed'},
+  {id:5,label:'Half-Deck',     col:'#a0c8ff',desc:'Register 30 species',       unlock:'collector_30'},
+  {id:6,label:'The Collector', col:'#ffd060',desc:'Register all 60 species',   unlock:'full_set'},
+  {id:7,label:'Champion',      col:'#ff8040',desc:'Complete a season',         unlock:'season_top'},
+];
+let playerCurrentTitle=parseInt(localStorage.getItem('oxark_current_title')||'0');
+function setTitle(id){
+  if(id<0||id>=TITLE_DEFS.length)return false;
+  const def=TITLE_DEFS[id];
+  if(def.unlock&&!playerAchievements[def.unlock])return false;
+  playerCurrentTitle=id;
+  localStorage.setItem('oxark_current_title',id);
+  return true;
+}
+function isTitleUnlocked(id){
+  const def=TITLE_DEFS[id];
+  return !def||!def.unlock||!!playerAchievements[def.unlock];
+}
+
+// Progression Hub state ────────────────────────────────────
+let progressionHubActive=false;
+let progressionTab=0; // 0=PROGRESS, 1=ACHIEVEMENTS, 2=TITLES
+
 // T71: Dungeon Gate shop state
 let dgPhase='menu'; // 'menu'|'create'|'join'|'loading'|'result'
 let dgMenuIdx=0;    // selected option index (0=quick enter, 1=create, 2=join)
