@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v512+";
+window.BUILD_VERSION = "v513+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -6406,6 +6406,80 @@ window.zkDungeon = (function() {
 
 })();
 
+// ─── T83: ZK Card Commit Module (Axis C) ─────────────────────────────────────
+// Implements the 2-phase bluff battle:
+//   1. COMMIT: player picks a card, browser generates SHA-256 commitment
+//   2. REVEAL: browser proves knowledge of (card_id, salt) → on-chain verify
+//
+// The card_commit.circom Groth16 circuit is ready for Mainnet v1.
+// MVP uses SHA-256 (matches on-chain reveal_card instruction).
+
+window.zkCardCommit = (function() {
+
+  // Generate a cryptographically random 32-byte salt.
+  function generateSalt() {
+    const arr = new Uint8Array(32);
+    crypto.getRandomValues(arr);
+    // Clamp to 253 bits (Poseidon field size) — zero top 3 bits
+    arr[0] &= 0x1f;
+    return arr;
+  }
+
+  // Compute SHA-256(card_id | salt) as a 32-byte commitment.
+  // Matches the on-chain reveal_card verification.
+  async function computeCommitment(cardId, salt) {
+    const data = new Uint8Array(33);
+    data[0] = cardId & 0xff;
+    data.set(salt, 1);
+    const hashBuf = await crypto.subtle.digest('SHA-256', data);
+    return new Uint8Array(hashBuf);
+  }
+
+  // Commit phase: pick a card, generate salt, compute commitment.
+  // Returns { cardId, salt, commitment } — store salt privately.
+  async function commitCard(cardId) {
+    if (cardId < 1 || cardId > 60) throw new Error('Invalid card_id: ' + cardId);
+    const salt = generateSalt();
+    const commitment = await computeCommitment(cardId, salt);
+    return { cardId, salt, commitment };
+  }
+
+  // Reveal phase: verify locally that commitment matches, then return
+  // the data needed for the reveal_card on-chain instruction.
+  // Returns { cardId, salt, commitment, verified: true } or throws.
+  async function verifyAndReveal(cardId, salt, storedCommitment) {
+    const computed = await computeCommitment(cardId, salt);
+    // Constant-time comparison
+    if (computed.length !== storedCommitment.length) throw new Error('Commitment length mismatch');
+    let diff = 0;
+    for (let i = 0; i < computed.length; i++) diff |= computed[i] ^ storedCommitment[i];
+    if (diff !== 0) throw new Error('Commitment mismatch — wrong card_id or salt');
+    return { cardId, salt: Array.from(salt), commitment: Array.from(storedCommitment), verified: true };
+  }
+
+  // Full ZK proof via card_commit.circom (Mainnet v1 path).
+  // Requires snarkjs + wasm artifact. Falls back gracefully if unavailable.
+  async function proveCardCommit(cardId, salt) {
+    const WASM = 'card_commit.wasm';
+    const ZKEY = 'card_commit_final.zkey';
+    if (typeof snarkjs !== 'undefined') {
+      try {
+        const saltBig = BigInt('0x' + Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join(''));
+        const input = { card_id: cardId.toString(), salt: saltBig.toString() };
+        const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, WASM, ZKEY);
+        return { proof, publicSignals, ok: true };
+      } catch (e) {
+        console.warn('[zkCard] Groth16 prove failed (artifacts missing?) — SHA-256 mode active:', e.message);
+      }
+    }
+    // Fallback: no ZK proof, use SHA-256 commitment (hackathon MVP)
+    return { proof: null, publicSignals: null, ok: false, fallback: 'sha256' };
+  }
+
+  return { commitCard, verifyAndReveal, proveCardCommit, generateSalt, computeCommitment };
+
+})();
+
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/03-world-setup.js
 // exits[] · npcs[] · fog-of-war system · terrain rendering helpers
@@ -7701,6 +7775,19 @@ let bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];
 let bpHPDmgAnim=[0,0,0]; // frames remaining for HP damage flash per combatant
 // T82: Enemy element assigned at battle start (1=Tide,2=Abyss,3=Storm,4=Iron)
 let bpEnemyElement=0; // 0 = unset, randomized on battle start
+// T83: ZK Card Commit state (Axis C — 2-phase bluff battle)
+// zkCardPhase: 'off'|'commit'|'waiting'|'reveal'|'done'
+// 'off'     — ZK commit not active (normal battle flow)
+// 'commit'  — Player selecting card to commit
+// 'waiting' — Commitment sent, waiting for opponent to commit
+// 'reveal'  — Both committed, reveal phase
+// 'done'    — Reveal processed, merge with normal resolution
+let zkCardPhase='off';
+let zkCardCommitment=null;  // Uint8Array(32) or null
+let zkCardSalt=null;        // Uint8Array(32) — kept private
+let zkCardCommittedId=0;    // card ID committed (known to player, hidden from opponent)
+let zkCardRevealedOpponent=0; // 0 until opponent reveals
+let zkCardPhaseFrame=0;     // frame when phase started (for animations)
 
 // ── Card acquisition animation ──
 let cardAcqActive=false,cardAcqFrame=0,cardAcqCard=-1,cardAcqDone=false;
@@ -16350,6 +16437,26 @@ function drawSelectPhase(){
     const dA=0.12+0.10*_sFr28; // v369: cached
     g.globalAlpha=dA;
     txShadow('! CRITICAL !',W/2-56,H-8,8,'#ff4040','rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  }
+  // T83: ZK Card Commit phase indicator (top-center banner)
+  if(typeof zkCardPhase!=='undefined'&&zkCardPhase!=='off'){
+    const _zkA=0.85+0.10*_sFr20;
+    g.globalAlpha=_zkA;
+    if(zkCardPhase==='commit'){
+      bx(W/2-110,4,220,18,'rgba(20,20,60,.82)');
+      bx(W/2-110,4,220,1,'#6060c0');
+      txShadow('\u{1F512} ZK COMMIT PHASE — Choose card',W/2-104,18,7,'#8080e0','rgba(0,0,0,.5)');
+    }else if(zkCardPhase==='waiting'){
+      bx(W/2-110,4,220,18,'rgba(30,10,60,.82)');
+      bx(W/2-110,4,220,1,'#9060d0');
+      const _dots=['.','..',  '...'][Math.floor(fr/14)%3];
+      txShadow('\u{231B} Waiting for opponent'+_dots,W/2-100,18,7,'#b080f0','rgba(0,0,0,.5)');
+    }else if(zkCardPhase==='reveal'){
+      bx(W/2-110,4,220,18,'rgba(60,20,20,.82)');
+      bx(W/2-110,4,220,1,'#c06040');
+      txShadow('\u{1F513} REVEAL PHASE — cards exposed!',W/2-106,18,7,'#f09060','rgba(0,0,0,.5)');
+    }
     g.globalAlpha=1;
   }
   g.restore();
@@ -25182,6 +25289,44 @@ async function lockDeck() {
   return tx;
 }
 
+// ── T83: ZK Card Commit instructions ─────────────────────────────────────────
+
+async function findCardCommitPDA(playerPubkey, gameId, round) {
+  const { PublicKey, Buffer } = solanaWeb3;
+  const pid = new PublicKey(PROGRAM_ID_STR);
+  const gameIdBuf = Buffer.alloc(8);
+  gameIdBuf.writeBigUInt64LE(BigInt(gameId));
+  const [pda] = await PublicKey.findProgramAddress(
+    [Buffer.from('card_commit'), playerPubkey.toBuffer(), gameIdBuf, Buffer.from([round & 0xff])],
+    pid
+  );
+  return pda;
+}
+
+async function commitCard(gameId, commitment) {
+  // commitment: Uint8Array(32) from zkCardCommit.commitCard()
+  const provider = _getProvider();
+  const program = _getProgram(provider);
+  const player = provider.wallet.publicKey;
+  const tx = await program.methods
+    .commitCard(new solanaWeb3.BN(gameId), Array.from(commitment))
+    .accounts({ player })
+    .rpc();
+  return tx;
+}
+
+async function revealCard(gameId, cardId, salt) {
+  // salt: Uint8Array(32) from zkCardCommit.commitCard() result
+  const provider = _getProvider();
+  const program = _getProgram(provider);
+  const player = provider.wallet.publicKey;
+  const tx = await program.methods
+    .revealCard(new solanaWeb3.BN(gameId), cardId & 0xff, Array.from(salt))
+    .accounts({ player })
+    .rpc();
+  return tx;
+}
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -25225,6 +25370,10 @@ window.oxarkOnchain = {
   saveDeck,
   lockDeck,
   findPlayerDeckPDA,
+  // ZK Card Commit (T83 — Axis C) — commit_card + reveal_card on-chain PDAs
+  commitCard,
+  revealCard,
+  findCardCommitPDA,
   // Helpers
   computeCommitHash,
   generateSalt,

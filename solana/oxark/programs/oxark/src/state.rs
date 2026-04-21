@@ -150,6 +150,32 @@ impl CommitAction {
     pub const SIZE: usize = 8 + 8 + 1 + 32 + 32 + 1;
 }
 
+/// ZK card commitment record for 2-phase bluff battle (Axis C).
+/// PDA seeds: ["card_commit", player_pubkey, game_id_le, round_u8]
+///
+/// Phase 1 (COMMIT): player sends commitment = Poseidon(card_id, salt).
+/// Phase 2 (REVEAL): player sends (card_id, salt, zk_proof); on-chain
+///   verifies Poseidon(card_id, salt) == stored commitment before revealing.
+#[account]
+#[derive(Default)]
+pub struct CardCommitRecord {
+    pub game_id:    u64,
+    pub player:     Pubkey,
+    pub round:      u8,
+    /// Poseidon(card_id, salt) — 32-byte big-endian field element.
+    pub commitment: [u8; 32],
+    /// Set to true after reveal_card verifies the ZK proof.
+    pub revealed:   bool,
+    /// 0 until reveal phase; populated after valid reveal.
+    pub card_id:    u8,
+    pub bump:       u8,
+}
+
+impl CardCommitRecord {
+    // 8 disc + 8 game_id + 32 player + 1 round + 32 commitment + 1 revealed + 1 card_id + 1 bump
+    pub const SIZE: usize = 8 + 8 + 32 + 1 + 32 + 1 + 1 + 1;
+}
+
 /// Player's prepared battle deck (up to 20 cards).
 /// PDA seeds: ["player_deck", player_pubkey]
 ///

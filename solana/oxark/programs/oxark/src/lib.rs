@@ -317,4 +317,37 @@ pub mod oxark {
     pub fn lock_deck(ctx: Context<LockDeck>) -> Result<()> {
         instructions::lock_deck::handle_lock_deck(ctx)
     }
+
+    // ── ZK Card Commit (軸 C) ──────────────────────────────────────────────────
+
+    /// Submit a ZK card commitment for the 2-phase bluff battle.
+    ///
+    /// The player computes `commitment = SHA256(card_id | salt)` in the browser
+    /// and sends it before seeing the opponent's choice. Both players commit
+    /// before either reveals — preventing last-mover advantage.
+    ///
+    /// PDA seeds: `["card_commit", player_pubkey, game_id_le, round_u8]`
+    pub fn commit_card(
+        ctx: Context<CommitCard>,
+        game_id: u64,
+        commitment: [u8; 32],
+    ) -> Result<()> {
+        instructions::commit_card::handle_commit_card(ctx, game_id, commitment)
+    }
+
+    /// Reveal the previously committed card.
+    ///
+    /// On-chain verifies `SHA256(card_id | salt) == stored_commitment`.
+    /// After both players reveal, `resolve_round` fires with element multipliers.
+    ///
+    /// Full Groth16/Poseidon ZK verification targets Mainnet v1 —
+    /// the circuit `card_commit.circom` is ready; MVP uses SHA-256.
+    pub fn reveal_card(
+        ctx: Context<RevealCard>,
+        game_id: u64,
+        card_id: u8,
+        salt: [u8; 32],
+    ) -> Result<()> {
+        instructions::reveal_card::handle_reveal_card(ctx, game_id, card_id, salt)
+    }
 }

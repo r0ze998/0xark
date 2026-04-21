@@ -922,6 +922,26 @@ function drawSelectPhase(){
     txShadow('! CRITICAL !',W/2-56,H-8,8,'#ff4040','rgba(0,0,0,.5)');
     g.globalAlpha=1;
   }
+  // T83: ZK Card Commit phase indicator (top-center banner)
+  if(typeof zkCardPhase!=='undefined'&&zkCardPhase!=='off'){
+    const _zkA=0.85+0.10*_sFr20;
+    g.globalAlpha=_zkA;
+    if(zkCardPhase==='commit'){
+      bx(W/2-110,4,220,18,'rgba(20,20,60,.82)');
+      bx(W/2-110,4,220,1,'#6060c0');
+      txShadow('\u{1F512} ZK COMMIT PHASE — Choose card',W/2-104,18,7,'#8080e0','rgba(0,0,0,.5)');
+    }else if(zkCardPhase==='waiting'){
+      bx(W/2-110,4,220,18,'rgba(30,10,60,.82)');
+      bx(W/2-110,4,220,1,'#9060d0');
+      const _dots=['.','..',  '...'][Math.floor(fr/14)%3];
+      txShadow('\u{231B} Waiting for opponent'+_dots,W/2-100,18,7,'#b080f0','rgba(0,0,0,.5)');
+    }else if(zkCardPhase==='reveal'){
+      bx(W/2-110,4,220,18,'rgba(60,20,20,.82)');
+      bx(W/2-110,4,220,1,'#c06040');
+      txShadow('\u{1F513} REVEAL PHASE — cards exposed!',W/2-106,18,7,'#f09060','rgba(0,0,0,.5)');
+    }
+    g.globalAlpha=1;
+  }
   g.restore();
 }
 

@@ -1449,6 +1449,44 @@ async function lockDeck() {
   return tx;
 }
 
+// ── T83: ZK Card Commit instructions ─────────────────────────────────────────
+
+async function findCardCommitPDA(playerPubkey, gameId, round) {
+  const { PublicKey, Buffer } = solanaWeb3;
+  const pid = new PublicKey(PROGRAM_ID_STR);
+  const gameIdBuf = Buffer.alloc(8);
+  gameIdBuf.writeBigUInt64LE(BigInt(gameId));
+  const [pda] = await PublicKey.findProgramAddress(
+    [Buffer.from('card_commit'), playerPubkey.toBuffer(), gameIdBuf, Buffer.from([round & 0xff])],
+    pid
+  );
+  return pda;
+}
+
+async function commitCard(gameId, commitment) {
+  // commitment: Uint8Array(32) from zkCardCommit.commitCard()
+  const provider = _getProvider();
+  const program = _getProgram(provider);
+  const player = provider.wallet.publicKey;
+  const tx = await program.methods
+    .commitCard(new solanaWeb3.BN(gameId), Array.from(commitment))
+    .accounts({ player })
+    .rpc();
+  return tx;
+}
+
+async function revealCard(gameId, cardId, salt) {
+  // salt: Uint8Array(32) from zkCardCommit.commitCard() result
+  const provider = _getProvider();
+  const program = _getProgram(provider);
+  const player = provider.wallet.publicKey;
+  const tx = await program.methods
+    .revealCard(new solanaWeb3.BN(gameId), cardId & 0xff, Array.from(salt))
+    .accounts({ player })
+    .rpc();
+  return tx;
+}
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -1492,6 +1530,10 @@ window.oxarkOnchain = {
   saveDeck,
   lockDeck,
   findPlayerDeckPDA,
+  // ZK Card Commit (T83 — Axis C) — commit_card + reveal_card on-chain PDAs
+  commitCard,
+  revealCard,
+  findCardCommitPDA,
   // Helpers
   computeCommitHash,
   generateSalt,

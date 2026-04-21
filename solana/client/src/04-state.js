@@ -299,6 +299,19 @@ let bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];
 let bpHPDmgAnim=[0,0,0]; // frames remaining for HP damage flash per combatant
 // T82: Enemy element assigned at battle start (1=Tide,2=Abyss,3=Storm,4=Iron)
 let bpEnemyElement=0; // 0 = unset, randomized on battle start
+// T83: ZK Card Commit state (Axis C — 2-phase bluff battle)
+// zkCardPhase: 'off'|'commit'|'waiting'|'reveal'|'done'
+// 'off'     — ZK commit not active (normal battle flow)
+// 'commit'  — Player selecting card to commit
+// 'waiting' — Commitment sent, waiting for opponent to commit
+// 'reveal'  — Both committed, reveal phase
+// 'done'    — Reveal processed, merge with normal resolution
+let zkCardPhase='off';
+let zkCardCommitment=null;  // Uint8Array(32) or null
+let zkCardSalt=null;        // Uint8Array(32) — kept private
+let zkCardCommittedId=0;    // card ID committed (known to player, hidden from opponent)
+let zkCardRevealedOpponent=0; // 0 until opponent reveals
+let zkCardPhaseFrame=0;     // frame when phase started (for animations)
 
 // ── Card acquisition animation ──
 let cardAcqActive=false,cardAcqFrame=0,cardAcqCard=-1,cardAcqDone=false;
