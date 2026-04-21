@@ -14,6 +14,8 @@ pub mod undelegate_session;
 pub mod verify_dungeon_move;
 pub mod init_position;
 pub mod agent_hire;
+pub mod save_deck;
+pub mod lock_deck;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -31,3 +33,5 @@ pub use undelegate_session::*;
 pub use verify_dungeon_move::*;
 pub use init_position::*;
 pub use agent_hire::*;
+pub use save_deck::*;
+pub use lock_deck::*;

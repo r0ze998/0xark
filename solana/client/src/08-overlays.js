@@ -1369,14 +1369,22 @@ function drawDungeonGateShop(cx,cy,cw,ch){
 // T72: NFT Trading House — 3-tab UI
 function drawNFTTradingShop(cx,cy,cw,ch){
   const bodyY=cy+42;
-  // Tab bar
-  for(let i=0;i<NFT_SHOP_TABS.length;i++){
-    const tw=(cw-32)/3, tx_=cx+16+i*tw;
+  // Tab bar — 4 tabs now
+  const numTabs=NFT_SHOP_TABS.length;
+  for(let i=0;i<numTabs;i++){
+    const tw=(cw-32)/numTabs, tx_=cx+16+i*tw;
     const sel=townShopTab===i;
-    g.fillStyle=sel?'rgba(96,160,224,0.25)':'rgba(255,255,255,0.05)';
+    // MY DECK tab uses green accent when locked
+    const isMyDeck=(i===3);
+    const locked=isMyDeck&&deckIsLocked();
+    const selCol=locked?'rgba(80,192,128,0.25)':'rgba(96,160,224,0.25)';
+    const selStroke=locked?'rgba(80,192,128,0.5)':'rgba(96,160,224,0.5)';
+    const selTxt=locked?'#80ffb0':'#88ccff';
+    g.fillStyle=sel?selCol:'rgba(255,255,255,0.05)';
     g.beginPath();g.roundRect(tx_,bodyY,tw-4,22,6);g.fill();
-    if(sel){g.strokeStyle='rgba(96,160,224,0.5)';g.lineWidth=1;g.stroke();}
-    txShadow(NFT_SHOP_TABS[i],tx_+tw/2-2,bodyY+14,7,sel?'#88ccff':'#7080a0','rgba(0,0,0,.3)');
+    if(sel){g.strokeStyle=selStroke;g.lineWidth=1;g.stroke();}
+    const label=locked&&isMyDeck?'\uD83D\uDD12 DECK':NFT_SHOP_TABS[i];
+    txShadow(label,tx_+tw/2-2,bodyY+14,6,sel?selTxt:'#7080a0','rgba(0,0,0,.3)');
   }
   const listY=bodyY+30;
 
@@ -1461,6 +1469,81 @@ function drawNFTTradingShop(cx,cy,cw,ch){
       if(sel)txShadow('[Z] Cancel listing',cx+cw-160,ry+26,7,'#ff9090','rgba(0,0,0,.4)');
     }
     txShadow('\u2191\u2193 Select  [Z] Cancel',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+  }
+  // T81: MY DECK tab — Axis A Preparation Deck
+  if(townShopTab===3){drawMyDeckTab(cx,cy,cw,ch,listY);}
+}
+function drawMyDeckTab(cx,cy,cw,ch,listY){
+  const locked=deckIsLocked();
+  const cost=deckTotalCost();
+  const valid=deckIsValid();
+
+  // TX states
+  if(deckLockPhase==='saving'||deckLockPhase==='locking'){
+    const verb=deckLockPhase==='saving'?'Saving deck':'Locking deck';
+    const dots='.'.repeat(1+(Math.floor(fr/15)%3));
+    txShadow(verb+dots,cx+cw/2,listY+90,12,'#80ffb0','rgba(0,0,0,.5)');
+    return;
+  }
+  if(deckLockPhase==='done'){
+    txShadow('\u2714 '+deckLockResult,cx+cw/2,listY+90,10,'#80ffb0','rgba(0,0,0,.5)');
+    txShadow('[Z] Continue',cx+cw/2,listY+116,7,'#807090','rgba(0,0,0,.4)');
+    return;
+  }
+  if(deckLockPhase==='error'){
+    txShadow('\u2716 '+deckLockError.substring(0,50),cx+cw/2,listY+90,8,'#ff8080','rgba(0,0,0,.5)');
+    txShadow('[Z] or [X] Back',cx+cw/2,listY+112,7,'#807090','rgba(0,0,0,.4)');
+    return;
+  }
+
+  // Header: lock status + cost bar
+  if(locked){
+    const rem=deckLockedUntil-Math.floor(Date.now()/1000);
+    const mm=Math.floor(rem/60), ss=rem%60;
+    txShadow('\uD83D\uDD12 LOCKED — '+mm+'m '+ss+'s remaining',cx+cw/2,listY+10,8,'#80ffb0','rgba(0,0,0,.5)');
+  }else{
+    const costCol=cost>DECK_COST_CAP?'#ff8080':cost===DECK_COST_CAP?'#ffcc80':'#a0c8e0';
+    txShadow('Cost: '+cost+'/'+DECK_COST_CAP+' pts  Cards: '+deckCards.length+'/'+DECK_MAX,
+      cx+cw/2,listY+10,8,costCol,'rgba(0,0,0,.4)');
+    if(valid){txShadow('Deck Valid \u2714',cx+cw-20,listY+10,7,'#80ffb0','rgba(0,0,0,.3)');}
+  }
+
+  // Card list from hand, showing which are in deck
+  const handCards=[];
+  for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)handCards.push({slot:i,id:pl[0].cd[i]});}
+  if(handCards.length===0){
+    txShadow('No cards in hand to add.',cx+cw/2,listY+80,9,'#7080a0','rgba(0,0,0,.4)');
+  }else{
+    const visible=handCards.slice(0,5);
+    for(let i=0;i<visible.length;i++){
+      const item=visible[i];const cr=CD[item.id-1];if(!cr)continue;
+      const inDeck=deckCards.includes(item.id);
+      const ry=listY+26+i*40;const sel=nftSelIdx===i;
+      g.fillStyle=inDeck?(sel?'rgba(80,192,128,0.3)':'rgba(80,192,128,0.12)'):
+                          (sel?'rgba(96,160,224,0.2)':'rgba(255,255,255,0.04)');
+      g.beginPath();g.roundRect(cx+16,ry-2,cw-32,32,6);g.fill();
+      if(sel){g.strokeStyle=inDeck?'rgba(80,192,128,0.5)':'rgba(96,160,224,0.4)';g.lineWidth=1;g.stroke();}
+      g.fillStyle=cr.c;g.beginPath();g.roundRect(cx+22,ry+5,14,20,4);g.fill();
+      txShadow(cr.n,cx+44,ry+10,8,sel?'#c8e8ff':cr.c,'rgba(0,0,0,.4)');
+      txShadow(deckCardCost(item.id)+' pts',cx+cw-90,ry+10,7,'#a0a8b8','rgba(0,0,0,.3)');
+      if(inDeck)txShadow('\u25CF IN DECK',cx+44,ry+22,6,'#80ffb0','rgba(0,0,0,.3)');
+      if(sel&&!locked){
+        const action=inDeck?'[Z] Remove':'[Z] Add to deck';
+        txShadow(action,cx+cw-160,ry+22,6,inDeck?'#ff9090':'#88ccff','rgba(0,0,0,.3)');
+      }
+    }
+  }
+
+  // Lock / Save controls
+  if(!locked){
+    if(valid){
+      txShadow('[L] Lock Deck (req. for dungeon)',cx+cw/2,cy+ch-46,7,'#80ffb0','rgba(0,0,0,.4)');
+    }else{
+      txShadow('Need: 12+Common, \u22642 Leg, \u22646 Rare, cost\u226430',cx+cw/2,cy+ch-46,7,'#7080a0','rgba(0,0,0,.4)');
+    }
+    txShadow('\u2191\u2193 Select  [Z] Toggle  [L] Lock',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+  }else{
+    txShadow('Deck ready for dungeon! \u2714',cx+cw/2,cy+ch-30,8,'#80ffb0','rgba(0,0,0,.5)');
   }
 }
 // T73: General Item Shop — 4 items, x402 payment, booster reveal animation

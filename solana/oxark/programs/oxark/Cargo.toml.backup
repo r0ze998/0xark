@@ -18,12 +18,11 @@ idl-build = ["anchor-lang/idl-build"]
 anchor-debug = []
 custom-heap = []
 custom-panic = []
-# mint instructions moved to programs/oxark-cards
 
 
 [dependencies]
-anchor-lang = { version = "1.0.0", features = ["init-if-needed"] }
-ephemeral-rollups-sdk = { version = "0.6.6", features = ["anchor", "disable-realloc"] }
+anchor-lang = "1.0.0"
+anchor-spl = { version = "1.0.0", features = ["token", "associated_token"] }
 solana-bn254 = "3"
 sha2 = "0.10"
 

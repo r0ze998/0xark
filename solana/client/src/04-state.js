@@ -348,7 +348,7 @@ function itemInvAdd(id,n=1){itemInventory[id]=(itemInventory[id]||0)+n;itemInvSa
 function itemInvUse(id){if((itemInventory[id]||0)<=0)return false;itemInventory[id]--;itemInvSave();return true;}
 
 // T72: NFT Trading House state
-const NFT_SHOP_TABS=['MY CARDS','MARKET','MY LISTINGS'];
+const NFT_SHOP_TABS=['MY CARDS','MARKET','MY LISTINGS','MY DECK'];
 let nftSelIdx=0; // cursor index in current tab
 let nftListings=[]; // cached listing array (refreshed on open)
 let nftListPrice=0.05; // selected list price (cycling presets)
@@ -356,6 +356,42 @@ const NFT_LIST_PRICES=[0.01,0.05,0.10,0.25,0.50,1.00];
 let nftListPriceIdx=1; // default 0.05 SOL
 let nftTxPhase=''; // ''|'listing'|'buying'|'cancelling'|'done'|'error'
 let nftTxResult='', nftTxError='';
+
+// T81: MY DECK state (Axis A — Preparation Deck)
+// card_id 1-20=Common(cost 1), 21-40=Rare(cost 2), 41-60=Legendary(cost 5)
+const DECK_MAX=20;
+const DECK_COST_CAP=30;
+let deckCards=[]; // array of card IDs in player's prepared deck (max 20)
+let deckLockPhase=''; // ''|'saving'|'locking'|'done'|'error'
+let deckLockResult='', deckLockError='';
+let deckLockedUntil=0; // unix timestamp (ms) — deck locked if Date.now()/1000 < deckLockedUntil
+(function _loadDeckState(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('oxark_deck')||'null');
+    if(saved&&Array.isArray(saved.cards)){deckCards=saved.cards;deckLockedUntil=saved.lockedUntil||0;}
+  }catch(e){}
+})();
+function deckSaveLocal(){
+  try{localStorage.setItem('oxark_deck',JSON.stringify({cards:deckCards,lockedUntil:deckLockedUntil}));}catch(e){}
+}
+function deckCardCost(id){return id<=20?1:id<=40?2:5;}
+function deckTotalCost(){return deckCards.reduce((s,id)=>s+deckCardCost(id),0);}
+function deckIsLocked(){return deckLockedUntil>0&&Math.floor(Date.now()/1000)<deckLockedUntil;}
+function deckIsValid(){
+  if(deckCards.length<12||deckCards.length>DECK_MAX)return false;
+  if(deckTotalCost()>DECK_COST_CAP)return false;
+  const leg=deckCards.filter(id=>id>40).length;
+  const rare=deckCards.filter(id=>id>20&&id<=40).length;
+  const com=deckCards.filter(id=>id<=20).length;
+  return leg<=2&&rare<=6&&com>=12;
+}
+function deckToggleCard(cardId){
+  if(deckIsLocked())return;
+  const idx=deckCards.indexOf(cardId);
+  if(idx>=0){deckCards.splice(idx,1);}
+  else if(deckCards.length<DECK_MAX){deckCards.push(cardId);}
+  deckSaveLocal();
+}
 
 // T71: Dungeon Gate shop state
 let dgPhase='menu'; // 'menu'|'create'|'join'|'loading'|'result'

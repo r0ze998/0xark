@@ -150,6 +150,31 @@ impl CommitAction {
     pub const SIZE: usize = 8 + 8 + 1 + 32 + 32 + 1;
 }
 
+/// Player's prepared battle deck (up to 20 cards).
+/// PDA seeds: ["player_deck", player_pubkey]
+///
+/// Composition rules (validated in save_deck):
+///   - total cost cap ≤ 30 points (Legendary=5, Rare=2, Common=1)
+///   - Legendary cards ≤ 2
+///   - Rare cards ≤ 6
+///   - Common cards ≥ 12
+#[account]
+pub struct PlayerDeck {
+    pub owner:         Pubkey,
+    /// Card IDs in deck (0 = empty slot). Supports up to 20 cards.
+    pub deck_cards:    [u8; 20],
+    pub card_count:    u8,
+    /// Unix timestamp until which the deck is locked (0 = not locked).
+    pub locked_until:  i64,
+    pub last_modified: i64,
+    pub bump:          u8,
+}
+
+impl PlayerDeck {
+    // 8 disc + 32 owner + 20 cards + 1 count + 8 locked + 8 modified + 1 bump
+    pub const SIZE: usize = 8 + 32 + 20 + 1 + 8 + 8 + 1;
+}
+
 // === Anchor Events ===
 
 #[event]

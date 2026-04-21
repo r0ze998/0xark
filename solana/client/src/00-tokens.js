@@ -13,7 +13,10 @@ window.TOKENS = {
         "night_sky": "#0c1a38",
         "sand_beach": "#e8c878",
         "hull_wood": "#805028",
+        "hull_highlight": "#a07040",
+        "hull_shadow": "#5c3818",
         "sail_cream": "#f8e8c0",
+        "sparkle_cream": "#ffffc8",
         "flag_red": "#c82828",
         "gold_accent": "#f0b828",
         "menu_blue": "#3858a0",
@@ -52,7 +55,20 @@ window.TOKENS = {
         "dungeon_wall": "#482818",
         "dungeon_fog": "#100818",
         "dungeon_quiet": "#0c0818",
-        "rival_pulse": "#ff70b0"
+        "rival_pulse": "#ff70b0",
+        "vfx_crystal_orb": "#48b8e8",
+        "vfx_crystal_pale": "#a0e0ff",
+        "vfx_crystal_bolt": "#64c8ff",
+        "vfx_crystal_bolt2": "#c8f0ff",
+        "vfx_shadow_dark": "#501e78",
+        "vfx_shadow_mid": "#8c50b4",
+        "vfx_flame_core": "#dc5028",
+        "vfx_flame_tip": "#ffc83c",
+        "vfx_danger_flash": "#ff2020",
+        "vfx_void_dark": "#6432a0",
+        "vfx_void_mid": "#b464dc",
+        "vfx_void_card_dark": "#7858a0",
+        "vfx_void_card_mid": "#9878c0"
       },
       "semantic": {
         "bg_default": "#1c3868",
@@ -275,8 +291,12 @@ window.TOKENS = {
     },
     "chest": {
       "body_ref": "hull_wood",
-      "body_top": "#a07040",
-      "body_bot": "#5c3818",
+      "body_top": {
+        "ref": "hull_highlight"
+      },
+      "body_bot": {
+        "ref": "hull_shadow"
+      },
       "lock_ref": "menu_border",
       "border_ref": "text_dark",
       "size": {

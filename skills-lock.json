@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "magicblock": {
+      "source": "magicblock-labs/magicblock-dev-skill",
+      "sourceType": "github",
+      "computedHash": "f87d222589c45802eb72bf34885bf2047f929aac657ada0f9d19531e034bdcaf"
+    }
+  }
+}

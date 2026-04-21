@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v509+";
+window.BUILD_VERSION = "v516+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -7730,7 +7730,7 @@ function itemInvAdd(id,n=1){itemInventory[id]=(itemInventory[id]||0)+n;itemInvSa
 function itemInvUse(id){if((itemInventory[id]||0)<=0)return false;itemInventory[id]--;itemInvSave();return true;}
 
 // T72: NFT Trading House state
-const NFT_SHOP_TABS=['MY CARDS','MARKET','MY LISTINGS'];
+const NFT_SHOP_TABS=['MY CARDS','MARKET','MY LISTINGS','MY DECK'];
 let nftSelIdx=0; // cursor index in current tab
 let nftListings=[]; // cached listing array (refreshed on open)
 let nftListPrice=0.05; // selected list price (cycling presets)
@@ -7738,6 +7738,42 @@ const NFT_LIST_PRICES=[0.01,0.05,0.10,0.25,0.50,1.00];
 let nftListPriceIdx=1; // default 0.05 SOL
 let nftTxPhase=''; // ''|'listing'|'buying'|'cancelling'|'done'|'error'
 let nftTxResult='', nftTxError='';
+
+// T81: MY DECK state (Axis A — Preparation Deck)
+// card_id 1-20=Common(cost 1), 21-40=Rare(cost 2), 41-60=Legendary(cost 5)
+const DECK_MAX=20;
+const DECK_COST_CAP=30;
+let deckCards=[]; // array of card IDs in player's prepared deck (max 20)
+let deckLockPhase=''; // ''|'saving'|'locking'|'done'|'error'
+let deckLockResult='', deckLockError='';
+let deckLockedUntil=0; // unix timestamp (ms) — deck locked if Date.now()/1000 < deckLockedUntil
+(function _loadDeckState(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('oxark_deck')||'null');
+    if(saved&&Array.isArray(saved.cards)){deckCards=saved.cards;deckLockedUntil=saved.lockedUntil||0;}
+  }catch(e){}
+})();
+function deckSaveLocal(){
+  try{localStorage.setItem('oxark_deck',JSON.stringify({cards:deckCards,lockedUntil:deckLockedUntil}));}catch(e){}
+}
+function deckCardCost(id){return id<=20?1:id<=40?2:5;}
+function deckTotalCost(){return deckCards.reduce((s,id)=>s+deckCardCost(id),0);}
+function deckIsLocked(){return deckLockedUntil>0&&Math.floor(Date.now()/1000)<deckLockedUntil;}
+function deckIsValid(){
+  if(deckCards.length<12||deckCards.length>DECK_MAX)return false;
+  if(deckTotalCost()>DECK_COST_CAP)return false;
+  const leg=deckCards.filter(id=>id>40).length;
+  const rare=deckCards.filter(id=>id>20&&id<=40).length;
+  const com=deckCards.filter(id=>id<=20).length;
+  return leg<=2&&rare<=6&&com>=12;
+}
+function deckToggleCard(cardId){
+  if(deckIsLocked())return;
+  const idx=deckCards.indexOf(cardId);
+  if(idx>=0){deckCards.splice(idx,1);}
+  else if(deckCards.length<DECK_MAX){deckCards.push(cardId);}
+  deckSaveLocal();
+}
 
 // T71: Dungeon Gate shop state
 let dgPhase='menu'; // 'menu'|'create'|'join'|'loading'|'result'
@@ -19434,14 +19470,22 @@ function drawDungeonGateShop(cx,cy,cw,ch){
 // T72: NFT Trading House — 3-tab UI
 function drawNFTTradingShop(cx,cy,cw,ch){
   const bodyY=cy+42;
-  // Tab bar
-  for(let i=0;i<NFT_SHOP_TABS.length;i++){
-    const tw=(cw-32)/3, tx_=cx+16+i*tw;
+  // Tab bar — 4 tabs now
+  const numTabs=NFT_SHOP_TABS.length;
+  for(let i=0;i<numTabs;i++){
+    const tw=(cw-32)/numTabs, tx_=cx+16+i*tw;
     const sel=townShopTab===i;
-    g.fillStyle=sel?'rgba(96,160,224,0.25)':'rgba(255,255,255,0.05)';
+    // MY DECK tab uses green accent when locked
+    const isMyDeck=(i===3);
+    const locked=isMyDeck&&deckIsLocked();
+    const selCol=locked?'rgba(80,192,128,0.25)':'rgba(96,160,224,0.25)';
+    const selStroke=locked?'rgba(80,192,128,0.5)':'rgba(96,160,224,0.5)';
+    const selTxt=locked?'#80ffb0':'#88ccff';
+    g.fillStyle=sel?selCol:'rgba(255,255,255,0.05)';
     g.beginPath();g.roundRect(tx_,bodyY,tw-4,22,6);g.fill();
-    if(sel){g.strokeStyle='rgba(96,160,224,0.5)';g.lineWidth=1;g.stroke();}
-    txShadow(NFT_SHOP_TABS[i],tx_+tw/2-2,bodyY+14,7,sel?'#88ccff':'#7080a0','rgba(0,0,0,.3)');
+    if(sel){g.strokeStyle=selStroke;g.lineWidth=1;g.stroke();}
+    const label=locked&&isMyDeck?'\uD83D\uDD12 DECK':NFT_SHOP_TABS[i];
+    txShadow(label,tx_+tw/2-2,bodyY+14,6,sel?selTxt:'#7080a0','rgba(0,0,0,.3)');
   }
   const listY=bodyY+30;
 
@@ -19526,6 +19570,81 @@ function drawNFTTradingShop(cx,cy,cw,ch){
       if(sel)txShadow('[Z] Cancel listing',cx+cw-160,ry+26,7,'#ff9090','rgba(0,0,0,.4)');
     }
     txShadow('\u2191\u2193 Select  [Z] Cancel',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+  }
+  // T81: MY DECK tab — Axis A Preparation Deck
+  if(townShopTab===3){drawMyDeckTab(cx,cy,cw,ch,listY);}
+}
+function drawMyDeckTab(cx,cy,cw,ch,listY){
+  const locked=deckIsLocked();
+  const cost=deckTotalCost();
+  const valid=deckIsValid();
+
+  // TX states
+  if(deckLockPhase==='saving'||deckLockPhase==='locking'){
+    const verb=deckLockPhase==='saving'?'Saving deck':'Locking deck';
+    const dots='.'.repeat(1+(Math.floor(fr/15)%3));
+    txShadow(verb+dots,cx+cw/2,listY+90,12,'#80ffb0','rgba(0,0,0,.5)');
+    return;
+  }
+  if(deckLockPhase==='done'){
+    txShadow('\u2714 '+deckLockResult,cx+cw/2,listY+90,10,'#80ffb0','rgba(0,0,0,.5)');
+    txShadow('[Z] Continue',cx+cw/2,listY+116,7,'#807090','rgba(0,0,0,.4)');
+    return;
+  }
+  if(deckLockPhase==='error'){
+    txShadow('\u2716 '+deckLockError.substring(0,50),cx+cw/2,listY+90,8,'#ff8080','rgba(0,0,0,.5)');
+    txShadow('[Z] or [X] Back',cx+cw/2,listY+112,7,'#807090','rgba(0,0,0,.4)');
+    return;
+  }
+
+  // Header: lock status + cost bar
+  if(locked){
+    const rem=deckLockedUntil-Math.floor(Date.now()/1000);
+    const mm=Math.floor(rem/60), ss=rem%60;
+    txShadow('\uD83D\uDD12 LOCKED — '+mm+'m '+ss+'s remaining',cx+cw/2,listY+10,8,'#80ffb0','rgba(0,0,0,.5)');
+  }else{
+    const costCol=cost>DECK_COST_CAP?'#ff8080':cost===DECK_COST_CAP?'#ffcc80':'#a0c8e0';
+    txShadow('Cost: '+cost+'/'+DECK_COST_CAP+' pts  Cards: '+deckCards.length+'/'+DECK_MAX,
+      cx+cw/2,listY+10,8,costCol,'rgba(0,0,0,.4)');
+    if(valid){txShadow('Deck Valid \u2714',cx+cw-20,listY+10,7,'#80ffb0','rgba(0,0,0,.3)');}
+  }
+
+  // Card list from hand, showing which are in deck
+  const handCards=[];
+  for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)handCards.push({slot:i,id:pl[0].cd[i]});}
+  if(handCards.length===0){
+    txShadow('No cards in hand to add.',cx+cw/2,listY+80,9,'#7080a0','rgba(0,0,0,.4)');
+  }else{
+    const visible=handCards.slice(0,5);
+    for(let i=0;i<visible.length;i++){
+      const item=visible[i];const cr=CD[item.id-1];if(!cr)continue;
+      const inDeck=deckCards.includes(item.id);
+      const ry=listY+26+i*40;const sel=nftSelIdx===i;
+      g.fillStyle=inDeck?(sel?'rgba(80,192,128,0.3)':'rgba(80,192,128,0.12)'):
+                          (sel?'rgba(96,160,224,0.2)':'rgba(255,255,255,0.04)');
+      g.beginPath();g.roundRect(cx+16,ry-2,cw-32,32,6);g.fill();
+      if(sel){g.strokeStyle=inDeck?'rgba(80,192,128,0.5)':'rgba(96,160,224,0.4)';g.lineWidth=1;g.stroke();}
+      g.fillStyle=cr.c;g.beginPath();g.roundRect(cx+22,ry+5,14,20,4);g.fill();
+      txShadow(cr.n,cx+44,ry+10,8,sel?'#c8e8ff':cr.c,'rgba(0,0,0,.4)');
+      txShadow(deckCardCost(item.id)+' pts',cx+cw-90,ry+10,7,'#a0a8b8','rgba(0,0,0,.3)');
+      if(inDeck)txShadow('\u25CF IN DECK',cx+44,ry+22,6,'#80ffb0','rgba(0,0,0,.3)');
+      if(sel&&!locked){
+        const action=inDeck?'[Z] Remove':'[Z] Add to deck';
+        txShadow(action,cx+cw-160,ry+22,6,inDeck?'#ff9090':'#88ccff','rgba(0,0,0,.3)');
+      }
+    }
+  }
+
+  // Lock / Save controls
+  if(!locked){
+    if(valid){
+      txShadow('[L] Lock Deck (req. for dungeon)',cx+cw/2,cy+ch-46,7,'#80ffb0','rgba(0,0,0,.4)');
+    }else{
+      txShadow('Need: 12+Common, \u22642 Leg, \u22646 Rare, cost\u226430',cx+cw/2,cy+ch-46,7,'#7080a0','rgba(0,0,0,.4)');
+    }
+    txShadow('\u2191\u2193 Select  [Z] Toggle  [L] Lock',cx+20,cy+ch-30,7,'#607090','rgba(0,0,0,.4)');
+  }else{
+    txShadow('Deck ready for dungeon! \u2714',cx+cw/2,cy+ch-30,8,'#80ffb0','rgba(0,0,0,.5)');
   }
 }
 // T73: General Item Shop — 4 items, x402 payment, booster reveal animation
@@ -22344,10 +22463,16 @@ document.addEventListener('keydown',e=>{
         if(e.code==='ArrowUp'){dgMenuIdx=Math.max(0,dgMenuIdx-1);sfxCursor();}
         if(e.code==='ArrowDown'){dgMenuIdx=Math.min(2,dgMenuIdx+1);sfxCursor();}
         if(e.code==='KeyZ'){
-          if(dgMenuIdx===0){dgQuickEnter();}
-          else if(dgMenuIdx===1){dgCreateSeason();}
-          else if(dgMenuIdx===2){dgJoinSeason();}
-          sfxSelect();
+          // T81: Require locked deck before entering dungeon
+          if(dgMenuIdx===0&&!deckIsLocked()){
+            dgTxError='Lock your deck first! (NFT TRADING HOUSE → MY DECK → [L])';
+            dgPhase='result';sfxBack();
+          }else{
+            if(dgMenuIdx===0){dgQuickEnter();}
+            else if(dgMenuIdx===1){dgCreateSeason();}
+            else if(dgMenuIdx===2){dgJoinSeason();}
+            sfxSelect();
+          }
         }
         if(e.code==='KeyX'){townShopActive=false;townShopType='';dgPhase='menu';sfxBack();}
       }else if(dgPhase==='loading'){
@@ -22369,8 +22494,8 @@ document.addEventListener('keydown',e=>{
         if(e.code==='KeyZ'||e.code==='KeyX'){nftTxPhase='';nftTxResult='';nftTxError='';sfxBack();}
         return;
       }
-      if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);nftSelIdx=0;nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
-      if(e.code==='ArrowRight'){townShopTab=Math.min(2,townShopTab+1);nftSelIdx=0;nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);nftSelIdx=0;deckLockPhase='';nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(e.code==='ArrowRight'){townShopTab=Math.min(3,townShopTab+1);nftSelIdx=0;deckLockPhase='';nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
       if(townShopTab===0){ // MY CARDS
         const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push({slot:i,id:pl[0].cd[i]});}
         if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
@@ -22410,7 +22535,7 @@ document.addEventListener('keydown',e=>{
           sfxSelect();
         }
         if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
-      }else{ // MY LISTINGS
+      }else if(townShopTab===2){ // MY LISTINGS
         const myAddr=walletConnected?(walletAddressTruncated&&walletAddressTruncated()||''):null;
         const myListings=nftListings.filter(l=>myAddr&&l.seller.startsWith(myAddr.slice(0,4)));
         if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
@@ -22429,6 +22554,42 @@ document.addEventListener('keydown',e=>{
             lg.push('[NFT] Cancelled listing for '+(cr?cr.n:'card #'+listing.cardId));
           }).catch(err=>{nftTxError=(err&&err.message)||String(err);nftTxPhase='error';sfxBack();});
           sfxSelect();
+        }
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      }else{ // MY DECK (tab 3) — T81
+        if(deckLockPhase==='saving'||deckLockPhase==='locking')return; // busy
+        if(deckLockPhase==='done'||deckLockPhase==='error'){
+          if(e.code==='KeyZ'||e.code==='KeyX'){deckLockPhase='';deckLockResult='';deckLockError='';sfxBack();}
+          return;
+        }
+        const handCards=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)handCards.push({slot:i,id:pl[0].cd[i]});}
+        if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){nftSelIdx=Math.min(Math.max(0,handCards.length-1),nftSelIdx+1);sfxCursor();}
+        if(e.code==='KeyZ'&&handCards.length>0&&!deckIsLocked()){
+          const item=handCards[nftSelIdx];if(!item){sfxBack();return;}
+          deckToggleCard(item.id);
+          // Save deck to onchain (async, non-blocking)
+          if(typeof oxarkOnchain!=='undefined'&&oxarkOnchain.saveDeck){
+            oxarkOnchain.saveDeck([...deckCards]).catch(()=>{}); // best-effort
+          }
+          sfxCursor();
+        }
+        if(e.code==='KeyL'&&!deckIsLocked()&&deckIsValid()){
+          deckLockPhase='locking';
+          const doLock=()=>{
+            deckLockedUntil=Math.floor(Date.now()/1000)+3600;
+            deckSaveLocal();
+            deckLockResult='Deck locked for 1 hour!';
+            deckLockPhase='done';
+            sfxSelect();
+            lg.push('[DECK] Locked — '+deckCards.length+' cards, cost '+deckTotalCost());
+          };
+          if(typeof oxarkOnchain!=='undefined'&&oxarkOnchain.lockDeck){
+            oxarkOnchain.lockDeck().then(doLock).catch(err=>{
+              // Fallback to localStorage lock on onchain error
+              doLock();
+            });
+          }else{doLock();}
         }
         if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
       }
@@ -24928,6 +25089,46 @@ async function cancelListing(listingId) {
 }
 function getListings() { return _loadListings(); }
 
+// ── T81: Deck system (Axis A) ──────────────────────────────────────────────
+// PDA seeds: ["player_deck", player_pubkey]
+// save_deck validates: cost≤30, Legendary≤2, Rare≤6, Common≥12
+// lock_deck: sets locked_until = now + 3600 on-chain
+
+async function findPlayerDeckPDA(playerPubkey) {
+  const { PublicKey } = window.solanaWeb3 || {};
+  if (!PublicKey) throw new Error('solanaWeb3 not loaded');
+  const pid = new PublicKey(PROGRAM_ID_STR);
+  const [pda] = await PublicKey.findProgramAddress(
+    [Buffer.from('player_deck'), playerPubkey.toBuffer()],
+    pid
+  );
+  return pda;
+}
+
+async function saveDeck(cards) {
+  // cards: number[] of card IDs (1-60)
+  const provider = _getProvider();
+  const program = _getProgram(provider);
+  const player = provider.wallet.publicKey;
+  const tx = await program.methods
+    .saveDeck(cards.map(c => c & 0xff))
+    .accounts({ player })
+    .rpc();
+  return tx;
+}
+
+async function lockDeck() {
+  const provider = _getProvider();
+  const program = _getProgram(provider);
+  const player = provider.wallet.publicKey;
+  const playerDeck = await findPlayerDeckPDA(player);
+  const tx = await program.methods
+    .lockDeck()
+    .accounts({ playerDeck, player })
+    .rpc();
+  return tx;
+}
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -24967,6 +25168,10 @@ window.oxarkOnchain = {
   buyCard,
   cancelListing,
   getListings,
+  // Deck system (T81 — Axis A) — save_deck + lock_deck on-chain PDAs
+  saveDeck,
+  lockDeck,
+  findPlayerDeckPDA,
   // Helpers
   computeCommitHash,
   generateSalt,

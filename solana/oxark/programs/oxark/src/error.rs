@@ -67,4 +67,9 @@ pub enum ErrorCode {
     AgentNotActive,
     #[msg("Duration must be > 0 seconds")]
     InvalidDuration,
+    // ── Deck system ───────────────────────────────────────────────────────────
+    #[msg("Invalid deck composition (cost cap, Legendary ≤2, Rare ≤6, Common ≥12)")]
+    InvalidDeckComposition,
+    #[msg("Deck is locked — unlock timer has not expired")]
+    DeckLocked,
 }

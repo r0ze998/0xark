@@ -291,4 +291,30 @@ pub mod oxark {
             ctx, game_id, proof_a, proof_b, proof_c, public_inputs,
         )
     }
+
+    // ── Deck system (軸 A) ────────────────────────────────────────────────────
+
+    /// Save or update the player's prepared battle deck.
+    ///
+    /// PDA seeds: `["player_deck", player_pubkey]` (init_if_needed)
+    ///
+    /// Validates composition before storing:
+    ///   - card IDs 1-60 only; 0 = empty (rejected)
+    ///   - total cost ≤ 30  (Common=1, Rare=2, Legendary=5)
+    ///   - Legendary cards ≤ 2
+    ///   - Rare cards ≤ 6
+    ///   - Common cards ≥ 12
+    ///   - deck must be unlocked (locked_until == 0 OR now ≥ locked_until)
+    pub fn save_deck(ctx: Context<SaveDeck>, cards: Vec<u8>) -> Result<()> {
+        instructions::save_deck::handle_save_deck(ctx, cards)
+    }
+
+    /// Lock the player's deck for 1 hour (3600 seconds).
+    ///
+    /// A locked deck cannot be modified until the timer expires.
+    /// The client requires `locked_until > now` before allowing dungeon entry.
+    /// Re-locking refreshes the timer from *now* (not from the old expiry).
+    pub fn lock_deck(ctx: Context<LockDeck>) -> Result<()> {
+        instructions::lock_deck::handle_lock_deck(ctx)
+    }
 }

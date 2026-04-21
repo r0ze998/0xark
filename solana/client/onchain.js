@@ -1409,6 +1409,46 @@ async function cancelListing(listingId) {
 }
 function getListings() { return _loadListings(); }
 
+// ── T81: Deck system (Axis A) ──────────────────────────────────────────────
+// PDA seeds: ["player_deck", player_pubkey]
+// save_deck validates: cost≤30, Legendary≤2, Rare≤6, Common≥12
+// lock_deck: sets locked_until = now + 3600 on-chain
+
+async function findPlayerDeckPDA(playerPubkey) {
+  const { PublicKey } = window.solanaWeb3 || {};
+  if (!PublicKey) throw new Error('solanaWeb3 not loaded');
+  const pid = new PublicKey(PROGRAM_ID_STR);
+  const [pda] = await PublicKey.findProgramAddress(
+    [Buffer.from('player_deck'), playerPubkey.toBuffer()],
+    pid
+  );
+  return pda;
+}
+
+async function saveDeck(cards) {
+  // cards: number[] of card IDs (1-60)
+  const provider = _getProvider();
+  const program = _getProgram(provider);
+  const player = provider.wallet.publicKey;
+  const tx = await program.methods
+    .saveDeck(cards.map(c => c & 0xff))
+    .accounts({ player })
+    .rpc();
+  return tx;
+}
+
+async function lockDeck() {
+  const provider = _getProvider();
+  const program = _getProgram(provider);
+  const player = provider.wallet.publicKey;
+  const playerDeck = await findPlayerDeckPDA(player);
+  const tx = await program.methods
+    .lockDeck()
+    .accounts({ playerDeck, player })
+    .rpc();
+  return tx;
+}
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -1448,6 +1488,10 @@ window.oxarkOnchain = {
   buyCard,
   cancelListing,
   getListings,
+  // Deck system (T81 — Axis A) — save_deck + lock_deck on-chain PDAs
+  saveDeck,
+  lockDeck,
+  findPlayerDeckPDA,
   // Helpers
   computeCommitHash,
   generateSalt,

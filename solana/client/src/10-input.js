@@ -379,10 +379,16 @@ document.addEventListener('keydown',e=>{
         if(e.code==='ArrowUp'){dgMenuIdx=Math.max(0,dgMenuIdx-1);sfxCursor();}
         if(e.code==='ArrowDown'){dgMenuIdx=Math.min(2,dgMenuIdx+1);sfxCursor();}
         if(e.code==='KeyZ'){
-          if(dgMenuIdx===0){dgQuickEnter();}
-          else if(dgMenuIdx===1){dgCreateSeason();}
-          else if(dgMenuIdx===2){dgJoinSeason();}
-          sfxSelect();
+          // T81: Require locked deck before entering dungeon
+          if(dgMenuIdx===0&&!deckIsLocked()){
+            dgTxError='Lock your deck first! (NFT TRADING HOUSE → MY DECK → [L])';
+            dgPhase='result';sfxBack();
+          }else{
+            if(dgMenuIdx===0){dgQuickEnter();}
+            else if(dgMenuIdx===1){dgCreateSeason();}
+            else if(dgMenuIdx===2){dgJoinSeason();}
+            sfxSelect();
+          }
         }
         if(e.code==='KeyX'){townShopActive=false;townShopType='';dgPhase='menu';sfxBack();}
       }else if(dgPhase==='loading'){
@@ -404,8 +410,8 @@ document.addEventListener('keydown',e=>{
         if(e.code==='KeyZ'||e.code==='KeyX'){nftTxPhase='';nftTxResult='';nftTxError='';sfxBack();}
         return;
       }
-      if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);nftSelIdx=0;nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
-      if(e.code==='ArrowRight'){townShopTab=Math.min(2,townShopTab+1);nftSelIdx=0;nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);nftSelIdx=0;deckLockPhase='';nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(e.code==='ArrowRight'){townShopTab=Math.min(3,townShopTab+1);nftSelIdx=0;deckLockPhase='';nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
       if(townShopTab===0){ // MY CARDS
         const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push({slot:i,id:pl[0].cd[i]});}
         if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
@@ -445,7 +451,7 @@ document.addEventListener('keydown',e=>{
           sfxSelect();
         }
         if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
-      }else{ // MY LISTINGS
+      }else if(townShopTab===2){ // MY LISTINGS
         const myAddr=walletConnected?(walletAddressTruncated&&walletAddressTruncated()||''):null;
         const myListings=nftListings.filter(l=>myAddr&&l.seller.startsWith(myAddr.slice(0,4)));
         if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
@@ -464,6 +470,42 @@ document.addEventListener('keydown',e=>{
             lg.push('[NFT] Cancelled listing for '+(cr?cr.n:'card #'+listing.cardId));
           }).catch(err=>{nftTxError=(err&&err.message)||String(err);nftTxPhase='error';sfxBack();});
           sfxSelect();
+        }
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
+      }else{ // MY DECK (tab 3) — T81
+        if(deckLockPhase==='saving'||deckLockPhase==='locking')return; // busy
+        if(deckLockPhase==='done'||deckLockPhase==='error'){
+          if(e.code==='KeyZ'||e.code==='KeyX'){deckLockPhase='';deckLockResult='';deckLockError='';sfxBack();}
+          return;
+        }
+        const handCards=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)handCards.push({slot:i,id:pl[0].cd[i]});}
+        if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}
+        if(e.code==='ArrowDown'){nftSelIdx=Math.min(Math.max(0,handCards.length-1),nftSelIdx+1);sfxCursor();}
+        if(e.code==='KeyZ'&&handCards.length>0&&!deckIsLocked()){
+          const item=handCards[nftSelIdx];if(!item){sfxBack();return;}
+          deckToggleCard(item.id);
+          // Save deck to onchain (async, non-blocking)
+          if(typeof oxarkOnchain!=='undefined'&&oxarkOnchain.saveDeck){
+            oxarkOnchain.saveDeck([...deckCards]).catch(()=>{}); // best-effort
+          }
+          sfxCursor();
+        }
+        if(e.code==='KeyL'&&!deckIsLocked()&&deckIsValid()){
+          deckLockPhase='locking';
+          const doLock=()=>{
+            deckLockedUntil=Math.floor(Date.now()/1000)+3600;
+            deckSaveLocal();
+            deckLockResult='Deck locked for 1 hour!';
+            deckLockPhase='done';
+            sfxSelect();
+            lg.push('[DECK] Locked — '+deckCards.length+' cards, cost '+deckTotalCost());
+          };
+          if(typeof oxarkOnchain!=='undefined'&&oxarkOnchain.lockDeck){
+            oxarkOnchain.lockDeck().then(doLock).catch(err=>{
+              // Fallback to localStorage lock on onchain error
+              doLock();
+            });
+          }else{doLock();}
         }
         if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();}
       }
