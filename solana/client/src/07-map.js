@@ -1797,6 +1797,18 @@ function dMap(){
     txShadow('STREAK LOST!',310,hudY+44,7,'#d04040','rgba(0,0,0,.5)');
     g.globalAlpha=1;
   }
+  // T110: Combo counter (top-right, vertical, color-coded by tier)
+  if(typeof _comboCount!=='undefined'&&_comboCount>0){
+    const cN=_comboCount;
+    const cCol=cN>=7?'#ff4080':cN>=5?'#f0a020':cN>=3?'#f0e040':'#a0d0f0';
+    const cLbl=cN>=7?'UNSTOP.':cN>=5?'LEGEND.':cN>=3?'PERFECT':'COMBO';
+    const cX=W-52,cY=hudY+6;
+    bx(cX-4,cY-4,52,44,'rgba(0,0,0,0.5)');
+    g.strokeStyle=cCol+'88';g.lineWidth=1;
+    g.beginPath();g.roundRect(cX-4,cY-4,52,44,6);g.stroke();
+    txShadow('\u2605'+cN+'x',cX+22,cY+14,11,cCol,'rgba(0,0,0,.5)');
+    txShadow(cLbl,cX+22,cY+30,5.5,cCol+'cc','rgba(0,0,0,.3)');
+  }
 
   // Area Danger Level display — v314: pre-baked combined label
   const dangerVal=areaDanger[currentMap];

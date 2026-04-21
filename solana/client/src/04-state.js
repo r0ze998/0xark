@@ -514,6 +514,35 @@ let progressionHubActive=false;
 let progressionTab=0; // 0=PROGRESS, 1=ACHIEVEMENTS, 2=TITLES
 let regCursorId=1; // 1-60, cursor in registry grid (card detail)
 
+// T110: Combo System ────────────────────────────────────────
+let _comboCount=0;     // consecutive SUPER EFFECTIVE streak this battle
+let _comboMaxBattle=0; // max combo reached in current battle (for T112 summary)
+let _comboXp2xFlag=false; // when true, next XP gain is doubled
+// Combo tier thresholds: 3=PERFECT, 5=LEGENDARY, 7=UNSTOPPABLE
+const COMBO_TIERS=[
+  {n:3,label:'PERFECT!',   col:'#f0e040',glow:'rgba(240,220,40,.5)', dmgBonus:0.20},
+  {n:5,label:'LEGENDARY!', col:'#f0a020',glow:'rgba(240,160,20,.6)', hpRegen:0.10},
+  {n:7,label:'UNSTOPPABLE!',col:'#ff4080',glow:'rgba(255,60,100,.7)', xp2x:true},
+];
+function comboTier(n){return COMBO_TIERS.slice().reverse().find(t=>n>=t.n)||null;}
+/** Call after each battle with is_super_effective result. Returns newly triggered tier or null. */
+function recordBattleCombo(isSuperEffective){
+  if(isSuperEffective){
+    _comboCount++;
+    if(_comboCount>_comboMaxBattle)_comboMaxBattle=_comboCount;
+    const tier=comboTier(_comboCount);
+    if(tier&&tier.xp2x)_comboXp2xFlag=true;
+    if(_comboCount>0)addXP(XP_REWARDS.super_effective||20);
+    return tier&&_comboCount===tier.n?tier:null; // only return on exact threshold crossings
+  } else {
+    _comboCount=0;
+    _comboXp2xFlag=false;
+    return null;
+  }
+}
+/** Reset combo at battle start */
+function resetCombo(){_comboCount=0;_comboMaxBattle=0;_comboXp2xFlag=false;}
+
 // T71: Dungeon Gate shop state
 let dgPhase='menu'; // 'menu'|'create'|'join'|'loading'|'result'
 let dgMenuIdx=0;    // selected option index (0=quick enter, 1=create, 2=join)

@@ -278,6 +278,28 @@ function drawResolvingPhase(){
       txShadow('\u{26A1} CHAIN \xD7'+ev._chainCount+' ACTIVATED!',0,4,12,'#60d0ff','rgba(0,80,180,.5)');
       g.restore();g.restore();
     }
+    // T110: COMBO tier banner (PERFECT/LEGENDARY/UNSTOPPABLE) — shown at frames 2-40
+    if(ev._comboTier&&evT>=2&&evT<42){
+      const ct=ev._comboTier;
+      const alpha=Math.min(1,(evT-2)/6)*Math.min(1,(42-evT)/8);
+      const scl=Math.min(1.0,0.6+(evT-2)*0.02); // scale in
+      g.save();g.globalAlpha=alpha;
+      g.save();g.translate(W/2,H/2-72);g.scale(scl,scl);
+      g.fillStyle='rgba(20,10,40,0.88)';g.beginPath();g.roundRect(-170,-28,340,56,12);g.fill();
+      g.strokeStyle=ct.glow||'rgba(255,200,0,.7)';g.lineWidth=2;g.stroke();
+      txShadow(ct.label,0,8,18,ct.col||'#f0e040','rgba(0,0,0,.6)');
+      txShadow('\u2605 COMBO \xD7'+(typeof _comboCount!=='undefined'?_comboCount:ev._comboCount||''),0,28,8,'rgba(255,255,200,0.7)','rgba(0,0,0,.4)');
+      g.restore();g.restore();
+    }
+    // T110: SUPER EFFECTIVE micro-banner (lighter than full tier) shown frames 4-30 when no tier
+    if(ev._superEffective&&!ev._comboTier&&evT>=4&&evT<32){
+      const alpha2=Math.min(1,(evT-4)/5)*Math.min(1,(32-evT)/8);
+      g.save();g.globalAlpha=alpha2*0.8;
+      g.save();g.translate(W/2,H/2-55);
+      g.fillStyle='rgba(0,0,0,0.5)';g.beginPath();g.roundRect(-90,-12,180,24,6);g.fill();
+      txShadow('\u26A1 SUPER EFFECTIVE!',0,4,9,'#f8f040','rgba(0,0,0,.3)');
+      g.restore();g.restore();
+    }
     // Typewriter text box at bottom
     const slideIn=Math.min(1,evT/12);const textX=W*(1-slideIn)+16*slideIn;
     win(4,H-70,W-8,64);

@@ -383,6 +383,19 @@ pub mod oxark {
         instructions::reveal_card::handle_reveal_card(ctx, game_id, card_id, salt)
     }
 
+    // ── T110: Combo System ────────────────────────────────────────────────────
+
+    /// Record a card battle outcome for combo tracking.
+    ///
+    /// `is_super_effective = true` increments the combo streak.
+    /// Hitting 3/5/7 unlocks combo tiers (PERFECT/LEGENDARY/UNSTOPPABLE).
+    /// At 7+ the xp_2x_flag is set for the next add_xp call.
+    ///
+    /// PDA seeds: `["player_battle_stats", player_pubkey]` (init_if_needed)
+    pub fn record_battle_result(ctx: Context<RecordBattleResult>, is_super_effective: bool) -> Result<()> {
+        instructions::record_battle_result::handle_record_battle_result(ctx, is_super_effective)
+    }
+
     // ── T98: XP + Level System ────────────────────────────────────────────────
 
     /// Add XP to a player's progression account.

@@ -311,6 +311,31 @@ pub struct PlayerMoved {
     pub to_area: u8,
 }
 
+// === T110: Battle Stats (Combo System) ===
+
+/// Per-player battle combo and streak tracking.
+/// combo_count resets on non-SUPER-EFFECTIVE battle outcome.
+/// PDA seeds: ["player_battle_stats", player_pubkey]
+#[account]
+#[derive(Default)]
+pub struct PlayerBattleStats {
+    pub owner:       Pubkey,
+    pub combo_count: u8,    // current consecutive SUPER EFFECTIVE streak
+    pub max_combo:   u8,    // all-time max combo this player has reached
+    pub xp_2x_flag:  bool,  // true when combo hit 7+ (next battle XP doubled)
+    pub bump:        u8,
+}
+
+impl PlayerBattleStats {
+    // 8 disc + 32 owner + 1 combo + 1 max_combo + 1 xp_2x + 1 bump
+    pub const SIZE: usize = 8 + 32 + 1 + 1 + 1 + 1;
+
+    /// Combo tier for visual effects. Returns 0 (none), 3 (PERFECT), 5 (LEGENDARY), 7 (UNSTOPPABLE).
+    pub fn combo_tier(count: u8) -> u8 {
+        if count >= 7 { 7 } else if count >= 5 { 5 } else if count >= 3 { 3 } else { 0 }
+    }
+}
+
 // === T98: XP + Level System ===
 
 /// Per-player XP and level progression.

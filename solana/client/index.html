@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v526+";
+window.BUILD_VERSION = "v533+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -8120,6 +8120,35 @@ let progressionHubActive=false;
 let progressionTab=0; // 0=PROGRESS, 1=ACHIEVEMENTS, 2=TITLES
 let regCursorId=1; // 1-60, cursor in registry grid (card detail)
 
+// T110: Combo System ────────────────────────────────────────
+let _comboCount=0;     // consecutive SUPER EFFECTIVE streak this battle
+let _comboMaxBattle=0; // max combo reached in current battle (for T112 summary)
+let _comboXp2xFlag=false; // when true, next XP gain is doubled
+// Combo tier thresholds: 3=PERFECT, 5=LEGENDARY, 7=UNSTOPPABLE
+const COMBO_TIERS=[
+  {n:3,label:'PERFECT!',   col:'#f0e040',glow:'rgba(240,220,40,.5)', dmgBonus:0.20},
+  {n:5,label:'LEGENDARY!', col:'#f0a020',glow:'rgba(240,160,20,.6)', hpRegen:0.10},
+  {n:7,label:'UNSTOPPABLE!',col:'#ff4080',glow:'rgba(255,60,100,.7)', xp2x:true},
+];
+function comboTier(n){return COMBO_TIERS.slice().reverse().find(t=>n>=t.n)||null;}
+/** Call after each battle with is_super_effective result. Returns newly triggered tier or null. */
+function recordBattleCombo(isSuperEffective){
+  if(isSuperEffective){
+    _comboCount++;
+    if(_comboCount>_comboMaxBattle)_comboMaxBattle=_comboCount;
+    const tier=comboTier(_comboCount);
+    if(tier&&tier.xp2x)_comboXp2xFlag=true;
+    if(_comboCount>0)addXP(XP_REWARDS.super_effective||20);
+    return tier&&_comboCount===tier.n?tier:null; // only return on exact threshold crossings
+  } else {
+    _comboCount=0;
+    _comboXp2xFlag=false;
+    return null;
+  }
+}
+/** Reset combo at battle start */
+function resetCombo(){_comboCount=0;_comboMaxBattle=0;_comboXp2xFlag=false;}
+
 // T71: Dungeon Gate shop state
 let dgPhase='menu'; // 'menu'|'create'|'join'|'loading'|'result'
 let dgMenuIdx=0;    // selected option index (0=quick enter, 1=create, 2=join)
@@ -15229,6 +15258,18 @@ function dMap(){
     txShadow('STREAK LOST!',310,hudY+44,7,'#d04040','rgba(0,0,0,.5)');
     g.globalAlpha=1;
   }
+  // T110: Combo counter (top-right, vertical, color-coded by tier)
+  if(typeof _comboCount!=='undefined'&&_comboCount>0){
+    const cN=_comboCount;
+    const cCol=cN>=7?'#ff4080':cN>=5?'#f0a020':cN>=3?'#f0e040':'#a0d0f0';
+    const cLbl=cN>=7?'UNSTOP.':cN>=5?'LEGEND.':cN>=3?'PERFECT':'COMBO';
+    const cX=W-52,cY=hudY+6;
+    bx(cX-4,cY-4,52,44,'rgba(0,0,0,0.5)');
+    g.strokeStyle=cCol+'88';g.lineWidth=1;
+    g.beginPath();g.roundRect(cX-4,cY-4,52,44,6);g.stroke();
+    txShadow('\u2605'+cN+'x',cX+22,cY+14,11,cCol,'rgba(0,0,0,.5)');
+    txShadow(cLbl,cX+22,cY+30,5.5,cCol+'cc','rgba(0,0,0,.3)');
+  }
 
   // Area Danger Level display — v314: pre-baked combined label
   const dangerVal=areaDanger[currentMap];
@@ -17142,7 +17183,18 @@ function generateResolveEvents(){
         const _chainIds=new Set([11,12,15,21,22,27,33,35,51,52,53,57]);
         const _chainN=pl[0].cd.filter(c=>_chainIds.has(c)).length;
         if(_chainN>0)events._chainCount=_chainN;
-        events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'! (-1 HP)',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r,dmg:1});
+        // T110: Combo — compute element multiplier for stolen card vs target card
+        const _stolenEl=typeof cardElement==='function'?cardElement(stolen):Math.floor((stolen-1)/10);
+        // pick a random card from target to use as "defender" for element comparison
+        const _defCard=pl[tgt].cd.find(c=>c>0)||0;
+        const _defEl=_defCard>0&&typeof cardElement==='function'?cardElement(_defCard):0;
+        const _elemMult=typeof calcElementMultiplier==='function'?calcElementMultiplier(_stolenEl,_defEl):1000;
+        const _isSuperEff=_elemMult===1500;
+        if(_isSuperEff)events._superEffective=true;
+        const _comboTier=typeof recordBattleCombo==='function'?recordBattleCombo(_isSuperEff):null;
+        if(_comboTier)events._comboTier=_comboTier;
+        if(_isSuperEff)events._comboCount=_comboCount;
+        events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'!'+((_isSuperEff)?' SUPER EFFECTIVE!':'')+' (-1 HP)',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r,dmg:1});
         lg.push('R'+rd+': Stole '+stolenCard.n+' from '+pl[tgt].n+'! ('+RARITY_LABEL[stolenCard.r]+') -HP');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
         // v79: track steal_win mission
@@ -17647,6 +17699,28 @@ function drawResolvingPhase(){
       g.fillStyle='rgba(0,30,60,0.82)';g.beginPath();g.roundRect(-120,-18,240,36,8);g.fill();
       g.strokeStyle='rgba(60,160,255,0.5)';g.lineWidth=1;g.stroke();
       txShadow('\u{26A1} CHAIN \xD7'+ev._chainCount+' ACTIVATED!',0,4,12,'#60d0ff','rgba(0,80,180,.5)');
+      g.restore();g.restore();
+    }
+    // T110: COMBO tier banner (PERFECT/LEGENDARY/UNSTOPPABLE) — shown at frames 2-40
+    if(ev._comboTier&&evT>=2&&evT<42){
+      const ct=ev._comboTier;
+      const alpha=Math.min(1,(evT-2)/6)*Math.min(1,(42-evT)/8);
+      const scl=Math.min(1.0,0.6+(evT-2)*0.02); // scale in
+      g.save();g.globalAlpha=alpha;
+      g.save();g.translate(W/2,H/2-72);g.scale(scl,scl);
+      g.fillStyle='rgba(20,10,40,0.88)';g.beginPath();g.roundRect(-170,-28,340,56,12);g.fill();
+      g.strokeStyle=ct.glow||'rgba(255,200,0,.7)';g.lineWidth=2;g.stroke();
+      txShadow(ct.label,0,8,18,ct.col||'#f0e040','rgba(0,0,0,.6)');
+      txShadow('\u2605 COMBO \xD7'+(typeof _comboCount!=='undefined'?_comboCount:ev._comboCount||''),0,28,8,'rgba(255,255,200,0.7)','rgba(0,0,0,.4)');
+      g.restore();g.restore();
+    }
+    // T110: SUPER EFFECTIVE micro-banner (lighter than full tier) shown frames 4-30 when no tier
+    if(ev._superEffective&&!ev._comboTier&&evT>=4&&evT<32){
+      const alpha2=Math.min(1,(evT-4)/5)*Math.min(1,(32-evT)/8);
+      g.save();g.globalAlpha=alpha2*0.8;
+      g.save();g.translate(W/2,H/2-55);
+      g.fillStyle='rgba(0,0,0,0.5)';g.beginPath();g.roundRect(-90,-12,180,24,6);g.fill();
+      txShadow('\u26A1 SUPER EFFECTIVE!',0,4,9,'#f8f040','rgba(0,0,0,.3)');
       g.restore();g.restore();
     }
     // Typewriter text box at bottom

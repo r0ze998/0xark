@@ -1385,7 +1385,18 @@ function generateResolveEvents(){
         const _chainIds=new Set([11,12,15,21,22,27,33,35,51,52,53,57]);
         const _chainN=pl[0].cd.filter(c=>_chainIds.has(c)).length;
         if(_chainN>0)events._chainCount=_chainN;
-        events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'! (-1 HP)',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r,dmg:1});
+        // T110: Combo — compute element multiplier for stolen card vs target card
+        const _stolenEl=typeof cardElement==='function'?cardElement(stolen):Math.floor((stolen-1)/10);
+        // pick a random card from target to use as "defender" for element comparison
+        const _defCard=pl[tgt].cd.find(c=>c>0)||0;
+        const _defEl=_defCard>0&&typeof cardElement==='function'?cardElement(_defCard):0;
+        const _elemMult=typeof calcElementMultiplier==='function'?calcElementMultiplier(_stolenEl,_defEl):1000;
+        const _isSuperEff=_elemMult===1500;
+        if(_isSuperEff)events._superEffective=true;
+        const _comboTier=typeof recordBattleCombo==='function'?recordBattleCombo(_isSuperEff):null;
+        if(_comboTier)events._comboTier=_comboTier;
+        if(_isSuperEff)events._comboCount=_comboCount;
+        events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'!'+((_isSuperEff)?' SUPER EFFECTIVE!':'')+' (-1 HP)',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r,dmg:1});
         lg.push('R'+rd+': Stole '+stolenCard.n+' from '+pl[tgt].n+'! ('+RARITY_LABEL[stolenCard.r]+') -HP');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
         // v79: track steal_win mission
