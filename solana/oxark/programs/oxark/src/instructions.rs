@@ -24,6 +24,8 @@ pub mod record_battle_result;
 pub mod add_xp;
 pub mod unlock_achievement;
 pub mod set_title;
+pub mod enter_queue;
+pub mod leave_queue;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -51,3 +53,5 @@ pub use record_battle_result::*;
 pub use add_xp::*;
 pub use unlock_achievement::*;
 pub use set_title::*;
+pub use enter_queue::*;
+pub use leave_queue::*;

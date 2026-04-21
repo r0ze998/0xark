@@ -72,4 +72,13 @@ pub enum ErrorCode {
     InvalidDeckComposition,
     #[msg("Deck is locked — unlock timer has not expired")]
     DeckLocked,
+    // ── D4 Reborn: Matchmaking queue ─────────────────────────────────────────
+    #[msg("Tier locked — insufficient wins at prerequisite tier")]
+    TierLocked,
+    #[msg("Player is already in a matchmaking queue")]
+    AlreadyInQueue,
+    #[msg("Player is not in this queue")]
+    NotInQueue,
+    #[msg("Matchmaking queue is full (max 64 players)")]
+    QueueFull,
 }

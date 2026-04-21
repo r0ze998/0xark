@@ -447,4 +447,27 @@ pub mod oxark {
     pub fn set_title(ctx: Context<SetTitle>, title_idx: u8) -> Result<()> {
         instructions::set_title::handle_set_title(ctx, title_idx)
     }
+
+    // ── D4 Reborn: Matchmaking Queue ──────────────────────────────────────────
+
+    /// Enter the matchmaking queue for the given tier (0=Bronze, 1=Silver, 2=Gold).
+    ///
+    /// Tier gates:
+    ///   Bronze (0): open
+    ///   Silver (1): requires wins_at_tier[0] >= 5
+    ///   Gold   (2): requires wins_at_tier[1] >= 3
+    ///
+    /// Emits QueueMatchReady when queue length reaches 2.
+    /// PDA seeds: `["queue", tier_u8, season_le_u16]` (init_if_needed)
+    pub fn enter_queue(ctx: Context<EnterQueue>, tier: u8, season: u16) -> Result<()> {
+        instructions::enter_queue::handle_enter_queue(ctx, tier, season)
+    }
+
+    /// Leave the matchmaking queue for the given tier.
+    ///
+    /// Fails with NotInQueue if the player is not currently in the queue.
+    /// PDA seeds: `["queue", tier_u8, season_le_u16]`
+    pub fn leave_queue(ctx: Context<LeaveQueue>, tier: u8, season: u16) -> Result<()> {
+        instructions::leave_queue::handle_leave_queue(ctx, tier, season)
+    }
 }

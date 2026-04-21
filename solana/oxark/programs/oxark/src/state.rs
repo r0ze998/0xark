@@ -112,6 +112,9 @@ pub struct PlayerState {
     /// Poseidon(x, y, area, salt) — set by init_position, updated by verify_dungeon_move
     pub position_commitment: [u8; 32],
     pub position_commitment_initialized: bool,
+    // ── D4 Reborn: Matchmaking queue tracking (pre-approved layout extension) ──
+    /// Pubkey of the MatchmakingQueue PDA this player is currently in, or None.
+    pub current_queue: Option<Pubkey>,
 }
 
 impl PlayerState {
@@ -120,7 +123,9 @@ impl PlayerState {
     //   + 1 (committed) + 1 (revealed) + 1 (revealed_action) + 32 (revealed_target)
     //   + 1 (move_target) + 40 (card_timestamps: 5 * i64) + 1 (bump)
     //   + 32 (position_commitment) + 1 (position_commitment_initialized)
-    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 40 + 1 + 32 + 1;
+    //   + 1 (Option discriminant) + 32 (Pubkey in Option<Pubkey>)
+    //   NOTE: existing devnet PlayerState accounts need migration (pre-approved by r0ze, Day 4).
+    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 40 + 1 + 32 + 1 + 1 + 32;
 }
 
 #[account]
@@ -330,16 +335,20 @@ pub struct PlayerMoved {
 #[account]
 #[derive(Default)]
 pub struct PlayerBattleStats {
-    pub owner:       Pubkey,
-    pub combo_count: u8,    // current consecutive SUPER EFFECTIVE streak
-    pub max_combo:   u8,    // all-time max combo this player has reached
-    pub xp_2x_flag:  bool,  // true when combo hit 7+ (next battle XP doubled)
-    pub bump:        u8,
+    pub owner:        Pubkey,
+    pub combo_count:  u8,    // current consecutive SUPER EFFECTIVE streak
+    pub max_combo:    u8,    // all-time max combo this player has reached
+    pub xp_2x_flag:   bool,  // true when combo hit 7+ (next battle XP doubled)
+    pub bump:         u8,
+    // ── D4 Reborn: Tier win tracking (pre-approved layout extension) ──────────
+    /// Wins per matchmaking tier: [0]=Bronze, [1]=Silver, [2]=Gold.
+    /// Used to gate access: Silver requires wins_at_tier[0] >= 5, Gold requires wins_at_tier[1] >= 3.
+    pub wins_at_tier: [u8; 3],
 }
 
 impl PlayerBattleStats {
-    // 8 disc + 32 owner + 1 combo + 1 max_combo + 1 xp_2x + 1 bump
-    pub const SIZE: usize = 8 + 32 + 1 + 1 + 1 + 1;
+    // 8 disc + 32 owner + 1 combo + 1 max_combo + 1 xp_2x + 1 bump + 3 wins_at_tier
+    pub const SIZE: usize = 8 + 32 + 1 + 1 + 1 + 1 + 3;
 
     /// Combo tier for visual effects. Returns 0 (none), 3 (PERFECT), 5 (LEGENDARY), 7 (UNSTOPPABLE).
     pub fn combo_tier(count: u8) -> u8 {
@@ -455,4 +464,45 @@ impl PlayerTitle {
         self.unlocked |= 1u8 << idx;
         true
     }
+}
+
+// === D4 Reborn: Matchmaking Queue ===
+
+/// FIFO queue per tier per season. Max 64 players.
+/// When queue length reaches 2 after a push, emits QueueMatchReady.
+/// PDA seeds: ["queue", tier_u8, season_le_u16]
+#[account]
+pub struct MatchmakingQueue {
+    pub tier:       u8,         // 0=Bronze, 1=Silver, 2=Gold
+    pub season:     u16,        // current season number
+    pub players:    Vec<Pubkey>, // FIFO, max 64
+    pub created_at: i64,
+    pub bump:       u8,
+}
+
+impl MatchmakingQueue {
+    pub const MAX_PLAYERS: usize = 64;
+    // 8 disc + 1 tier + 2 season + 4 (vec len prefix) + 64*32 (players) + 8 created_at + 1 bump
+    pub const SIZE: usize = 8 + 1 + 2 + 4 + (Self::MAX_PLAYERS * 32) + 8 + 1;
+}
+
+impl Default for MatchmakingQueue {
+    fn default() -> Self {
+        Self {
+            tier:       0,
+            season:     1,
+            players:    Vec::new(),
+            created_at: 0,
+            bump:       0,
+        }
+    }
+}
+
+/// Emitted when a matchmaking queue slot reaches 2 players.
+#[event]
+pub struct QueueMatchReady {
+    pub tier:     u8,
+    pub season:   u16,
+    pub player_a: Pubkey,
+    pub player_b: Pubkey,
 }
