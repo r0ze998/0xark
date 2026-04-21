@@ -36,19 +36,11 @@
 <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111118;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;font-family:'VT323',monospace;overflow:hidden}
-#emu{background:linear-gradient(145deg,#2a2a3e,#1c1c2c);padding:20px 24px 16px;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.6);border:2px solid #333350}
-#lbl{text-align:center;color:#444460;font-size:10px;letter-spacing:6px;margin-bottom:8px}
-#sw{background:#080810;padding:4px;border-radius:4px;border:2px solid #1a1a30;box-shadow:inset 0 0 0 2px #2a2a48,inset 0 0 0 4px #0c0c18}
-canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-rendering:crisp-edges}
-/* #g.desktop-hidden no longer needed — game canvas shown directly */
-#pixi-wrap{position:relative;width:960px;height:640px;overflow:hidden}
-#pixi-wrap canvas{width:960px;height:640px;touch-action:none}
-#ctrls{display:flex;justify-content:center;gap:6px;margin-top:10px}
-.b{padding:4px 12px;background:#222238;color:#555570;border:1px solid #333350;border-radius:12px;font:14px 'VT323',monospace;cursor:pointer;transition:all .15s}
-.b:hover{background:#2a2a44;color:#8888aa}.b.a{background:#3848a0;color:#dde;border-color:#5060c0;box-shadow:0 0 6px rgba(56,72,160,.3)}
-#h{color:#2a2a40;font-size:10px;text-align:center;margin-top:6px;letter-spacing:1px}
-@media(max-width:1000px){canvas{width:100vw!important;height:calc(100vw*2/3)!important}#emu{padding:4px;border-radius:0}#pixi-wrap{width:100vw!important;height:calc(100vw*2/3)!important}}
+/* T-D9-1: Full-screen 16:9 letterbox — GBA shell removed */
+body{background:#0B1220;display:flex;justify-content:center;align-items:center;width:100vw;height:100vh;overflow:hidden;font-family:'VT323',monospace}
+#game-wrap{position:relative;width:min(100vw,calc(100vh * 16 / 9));height:min(100vh,calc(100vw * 9 / 16))}
+#pixi-wrap{position:relative;width:100%;height:100%;overflow:hidden}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none}
 /* Touch Controls Overlay */
 #touch-overlay{display:none;position:fixed;bottom:0;left:0;right:0;height:180px;z-index:100;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 #touch-overlay.active{display:block}
@@ -70,17 +62,8 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 </style>
 </head>
 <body>
-<div id="emu">
-<div id="lbl">0 x A R K</div>
-<div id="sw"><div id="pixi-wrap"><canvas id="g" width="960" height="640" style="display:none"></canvas></div></div>
-<div id="ctrls">
-<button class="b a" onclick="ss('map')">MAP</button>
-<button class="b" onclick="ss('crd')">CARDS</button>
-<button class="b" onclick="ss('log')">LOG</button>
-<button class="b" onclick="ss('stats')">STATS</button>
-<button class="b" style="background:rgba(60,120,60,.6);border-color:rgba(100,200,100,.5)" onclick="enterLobby()">LOBBY</button>
-</div>
-<div id="h">ARROWS move / SPACE menu / Z select / X back / M sound / F fps</div>
+<div id="game-wrap">
+<div id="pixi-wrap"><canvas id="g" width="480" height="270"></canvas></div>
 </div>
 <div id="touch-overlay">
 <div class="touch-btn" id="dpad-up">&uarr;</div>

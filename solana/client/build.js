@@ -131,6 +131,7 @@ const MODULES = [
   { file: '03-world-setup.js',   desc: 'exits[] · npcs[] · fog-of-war system · terrain rendering helpers' },
   { file: '04-state.js',         desc: 'Global game-state variables · card timers/decay · rival AI background · quest missions' },
   { file: '05-rendering.js',     desc: 'Tile rendering (TILE section) · card character sprites (drawCardCharacter) · sprite animation' },
+  { file: '05-lobby.js',         desc: 'Phase D LobbyScene — Crown Plaza 25×18 tilemap · 6 buildings · block character sprites · 5 clan tints · HUD panels · bottom bar · WebSocket presence' },
   { file: '06-matchmaking.js',   desc: 'Matchmaking queue client · enter_queue/leave_queue Anchor instructions · 2s PDA polling · lobbyFindMatch() wire-up' },
   { file: '06-world-systems.js', desc: 'Camera · card mini-art · map transitions · location banner · minimap · encounters · NPCs · trading' },
   { file: '07-map.js',           desc: 'Terrain edge blending · atmosphere · fog of war · rival alert anim · pirate decorations · dMap (main world render) · dMenu' },
@@ -140,7 +141,8 @@ const MODULES = [
   { file: '08-overlays.js',      desc: 'Card acquisition animation · dungeon confirm · marketplace · discard overlay · tutorial · intro · victory screen · cards collection screen · card detail panel · log screen' },
   { file: '08-world-interact.js', desc: 'Fishing minigame · forest trap · puzzle pillars · buildings interior · object interactions · fountain exchange' },
   { file: '08-screens.js',       desc: 'Floor-clear fanfare · object interact messages · exit tooltip · map card use overlay · stats screen · credits · game over screen' },
-  { file: '09-game-loop.js',     desc: 'Main update() + draw() game loop · screen routing (title/map/battle/crd/log/stats)' },
+  { file: '09-game-loop.js',     desc: 'Main update() + draw() game loop · screen routing (title/map/battle/crd/log/stats/lobby)' },
+  { file: '10-animations.js',    desc: 'Reusable animation primitives — playFinisherAnimation / playVictoryAnimation / playDefeatAnimation (stubs for Day 12-13)' },
   { file: '10-input.js',         desc: 'Keyboard event handlers · touch controls (d-pad, A/B buttons)' },
   { file: '11-save-init.js',     desc: 'Save/load system · game initialization · requestAnimationFrame bootstrap' },
 ];

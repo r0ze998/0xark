@@ -181,16 +181,11 @@ function update(){
   updateNPCWander();
   updateTownWeather(); // v84
   if(sc==='map'&&!inDungeon)checkTownInteractable(); // T70
-  // T71: Dungeon door glow pulse — intensifies when gate modal is open
-  if(townShopActive&&townShopType==='dungeon_gate'){dgDoorGlow=0.5+0.5*Math.sin(fr*0.12);}
-  else{dgDoorGlow=Math.max(0,dgDoorGlow-0.05);}
   // T74: First-time town guide toast — shown once when player is on town map
-  if(sc==='map'&&currentMap===0&&!inDungeon&&fr===60&&!_townGuideDone){
+  if(sc==='map'&&currentMap===0&&fr===60&&!_townGuideDone){
     _townGuideDone=true;
     showToast('Walk near a building and press [Z] to enter');
   }
-  updateFloorTitle(); // v155: PMD floor title card
-
   // ── RIVAL WIN WARNING (GDD v1.0: rivals use 5-card system internally) ──
   const r1u=rivalUniqSize(1),r2u=rivalUniqSize(2); // v261: no Set alloc
   const maxRU=Math.max(r1u,r2u);
@@ -222,61 +217,7 @@ function update(){
     fadeOut(()=>{sc='victory';victoryFrame=fr;fadeIn();ub();});
   }
 
-  // ── CARD DECAY TIMER (GDD v1.0: only active in dungeon, town is safe) ──
-  if((sc==='map'||sc==='act')&&inDungeon){
-    const now=Date.now();
-    let anyCardCritical=false;
-    for(let i=0;i<HAND_SIZE;i++){
-      if(pl[0].cd[i]>0&&cardTimers[i]>0){
-        const elapsed=now-cardTimers[i];
-        const remaining=CARD_DECAY_MS-elapsed;
-        if(elapsed>=CARD_DECAY_MS){
-          // Card expired in dungeon!
-          const expiredName=CD[pl[0].cd[i]-1].n;
-          cardShatterTimers[i]=fr; // v113: trigger HUD shatter animation before clearing
-          pl[0].cd[i]=0;cardTimers[i]=0;decayWarn[i]=0;syncCardCount(0);
-          sfxCardExpired();screenShake(3,6);
-          triggerCardLostAnim(pl[0].visualX-camX,pl[0].visualY-camY-16);
-          lg.push('[DUNGEON] '+expiredName+' decayed — escape to Town to preserve cards!');
-          tutorialMsg=expiredName+' DECAYED! Escape to Town!';tutorialMsgTimer=200;
-          if(streakCount>0){streakCount=0;streakLostTimer=60;}
-        }else{
-          const cardName=CD[pl[0].cd[i]-1].n;
-          // 50% decay warning (one-time per card)
-          if(elapsed>=CARD_DECAY_MS*0.5&&decayWarn[i]<1){
-            decayWarn[i]=1;
-            if(!tutorialMsg||tutorialMsgTimer<60){
-              tutorialMsg=cardName+': halfway. Head back to Town!';tutorialMsgTimer=180;
-            }
-          }
-          // 30-second warning
-          if(remaining<30000&&decayWarn[i]<2){
-            decayWarn[i]=2;sfxCardDecayWarn();screenShake(1,3);
-            objectInteractMsg=cardName+' FADING! 30s!';objectInteractTimer=90;
-          }
-          // 10-second critical warning
-          if(remaining<10000&&decayWarn[i]<3){
-            decayWarn[i]=3;sfxDangerAlert();screenShake(2,4);
-            objectInteractMsg=cardName+' CRITICAL! RUN!';objectInteractTimer=90;
-          }
-          // Flashing at <15s
-          if(remaining<15000){
-            anyCardCritical=true;
-            if(fr%30===0)cardDecayWarningFlash=10;
-            if(fr%60===0)sfxCardDecayWarn();
-          }
-          // Escape urgency (any card <30s)
-          if(remaining<30000)anyCardCritical=true;
-        }
-      }
-    }
-    escapeUrgencyActive=anyCardCritical;
-    if(escapeUrgencyActive)escapeUrgencyPulse++;
-    else escapeUrgencyPulse=0;
-    if(cardDecayWarningFlash>0)cardDecayWarningFlash--;
-  }else{
-    escapeUrgencyActive=false;escapeUrgencyPulse=0;
-  }
+  // Card decay removed (Phase C dungeon mechanic — not in GDD v1.2)
 
   // ── STREAK DISPLAY TIMERS ──
   if(streakDisplayTimer>0)streakDisplayTimer--;
@@ -335,12 +276,6 @@ function update(){
       else if(dist>8&&dist<=15){lg.push('You sense movement nearby...');}
     }
   }
-  // v296: Floor-specific dungeon atmosphere (every ~10s while in dungeon)
-  if(inDungeon&&fr%600===0&&currentFloor>=1&&currentFloor<=5){
-    const _fa=_FLOOR_ATMOS[currentFloor];
-    if(_fa)lg.push(_fa[Math.floor(Math.random()*_fa.length)]);
-  }
-
   // Footprint log messages when player walks on rival footprints
   if(sc==='map'&&!mo){
     // v282: replace closure .find with counting loop
@@ -351,56 +286,7 @@ function update(){
     }
   }
 
-  // Encounter check (player walks to rival OR rival walks to player)
-  // GDD v1.0: Town (map 0) is a safe zone — no PvP encounters allowed
-  if(sc==='map'&&inDungeon&&!introActive&&!mo&&!npcDialogActive&&!wildEncounterActive&&!mapTransitioning&&!encounterExclActive&&!shopActive&&!signpostActive&&!inBuilding&&shadowStepsLeft<=0){
-    for(let _ri=1;_ri<pl.length;_ri++){
-      const r=pl[_ri],idx=_ri-1;
-      if(rivalMaps[idx]!==currentMap)continue;
-      const adjDist=Math.abs(r.x-pl[0].x)+Math.abs(r.y-pl[0].y);
-      // At HIGH danger, encounter triggers at distance 2 as well
-      const encounterDist=areaDanger[currentMap]>=DANGER_HIGH_THRESH?2:1;
-      if(adjDist<=encounterDist&&adjDist>0){
-        if(!encounterCooldown){
-          // Dungeon encounters always start battle — no fleeing
-          encounterCooldown=120;
-          encounterExclActive=true;
-          encounterExclFrame=fr;
-          encounterExclTarget=idx+1;
-          encounterExclPlayerX=pl[0].visualX;
-          encounterExclPlayerY=pl[0].visualY;
-          encounterExclRivalX=r.visualX;
-          encounterExclRivalY=r.visualY;
-          sfxEncounterDramatic();
-          hitPause(3); // freeze-frame dramatic tension at encounter trigger
-          const rivalName=r.n;
-          const isRivalInitiated=rivalAI[idx].state==='hunting'; // v350: fix — ai is battle cursor int, not rival AI obj
-          // v294: use floor+hunt-tiered dialog (mirrors checkDungeonRivalEncounter path)
-          const rCards=cdCount(r.cd);
-          const base=_pickRivalLine(idx,isRivalInitiated);
-          const prefix=idx===0?(rCards>=3?'I have '+rCards+' cards. ':''):(rCards===0?'I have nothing to lose. ':'');
-          encounterRivalLine=prefix+base;
-          setTimeout(()=>{
-            encounterExclActive=false;
-            flash();
-            twSet(isRivalInitiated?rivalName+' ambushed you! Battle!':'Wild '+rivalName+' appeared! Entering battle...');
-            // FRLG-style mosaic pixelation wipe into battle
-            startWipe('mosaic',30,()=>{
-              sc='act';battlePhase='vs_splash';bpFrame=fr;
-              battleRoundHistory=[];_battleRoundNet=0; // v90/v284: reset round history+net on new battle
-              bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];
-              startWipe('mosaic_out',20);
-              // v79: track battle_rival mission
-              if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){
-                runMission.progress=1;runMission.completed=true;sfxStreakUp();
-              }
-            });
-          },500);
-        }
-      }
-    }
-    if(encounterCooldown>0)encounterCooldown--;
-  }
+  // Dungeon encounter removed (Phase C — duel system handles PvP in Phase D)
 }
 
 function dSplash(){
@@ -466,7 +352,6 @@ function draw(){
   else if(sc==='lobby')dLobby(); // Phase D Reborn LobbyScene
   drawCardAcquisition();
   drawDiscardOverlay();
-  drawDungeonConfirm();
   drawMarketplace();
   drawSynthesisShop();
   drawTutorialMsg();
@@ -480,7 +365,6 @@ function draw(){
   drawOnboardPrompt(); // T54 UX-10
   drawTownHint(); // T70
   drawTownShopModal(); // T70
-  drawDungeonDoorGlow(); // T74
   drawIntroTutorial();
   drawTitleOptionsOverlay(); // v452 (B2-1): options sub-menu layered over Title
   if(!inBuilding&&sc==='map'){
@@ -488,8 +372,6 @@ function draw(){
     drawPuzzlePillars();
     drawPuzzleMessage();
     drawObjectInteractMsg();
-    drawFloorClearFanfare(); // v85
-    drawExitProximityTooltip();
     drawFountainDialog();
     drawMapCardUseOverlay();
     // Shadow effect on player sprite
@@ -506,23 +388,17 @@ function draw(){
   // Card collection progress bar (always visible on map)
   drawCardProgressBar();
   if(flashT>0){g.globalAlpha=(flashT>10?1:flashT/10)*.8;g.fillStyle='#ffffff';g.fillRect(0,0,W,H);g.globalAlpha=1;}
-  // Decay vignette: red edges when any card critically decaying (pre-baked canvas + globalAlpha)
-  if(escapeUrgencyActive&&inDungeon&&(sc==='map'||sc==='act')){
-    const vigA=(0.15+Math.sin(escapeUrgencyPulse*0.15)*0.1)*Math.min(1,escapeUrgencyPulse/30);
-    g.globalAlpha=vigA;g.drawImage(_escVigCanvas,0,0);g.globalAlpha=1;
-  }
   // Screen transition wipes (replaces old battleWipe)
   drawWipe();
   fadeDraw();
   // Map loading screen (drawn AFTER fade so it's always visible)
   drawMapLoadScreen();
-  // v72: Dungeon run summary (after fade, on top of everything except border/fps)
   drawRunSummary();
   // v73: Rival intel dispatch ticker
   drawRivalNews();
   // v77: Quick hand inspect
   drawHandInspect();
-  // v205: GBA-style scanlines — only on game screens (not title/splash)
+  // Scanlines on Phase C screens (not lobby — Phase D renders its own atmosphere)
   if(sc==='map'||sc==='act'||sc==='crd'||sc==='log'||sc==='stats'||sc==='victory')g.drawImage(scanCanvas,0,0,W,H);
   // FRLG-style decorative border around viewport
   g.strokeStyle=FRLG.borderOuter;g.lineWidth=2;g.strokeRect(1,1,W-2,H-2);
