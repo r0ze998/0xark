@@ -1371,10 +1371,12 @@ function generateResolveEvents(){
       const stolen=removeCardFromPlayer(tgt,-1);
       if(stolen>0&&addCardToPlayer(0,stolen)){
         const stolenCard=CD[stolen-1];
-        // Successful steal → target loses 1 HP
+        // Successful steal → target loses 1 HP; T111: finisher if last HP
+        const _finisherSteal=bpHP[tgt]===1;
         bpHP[tgt]=Math.max(0,bpHP[tgt]-1);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
+        if(_finisherSteal&&bpHP[tgt]===0)events._isFinisher=true;
         // T96: Deathrattle — stolen card is a trap, stealer loses a card back
         const _drIds=new Set([1,3,4,9,13,34,41,42,44,46]);
         if(_drIds.has(stolen)){
@@ -1457,6 +1459,9 @@ function generateResolveEvents(){
           events._elemResult=_elemMult>1000?'super':'weak';
           if(_elemMult>1000)tutorialStepDone('element'); // T84: Axis B tutorial step
         }
+        // T111: finisher when target at last HP — +50% damage bonus
+        const _finisherAtk=bpHP[tgt]>0&&bpHP[tgt]<=dmg;
+        if(_finisherAtk){dmg=Math.ceil(dmg*1.5);events._isFinisher=true;}
         bpHP[tgt]=Math.max(0,bpHP[tgt]-dmg);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
@@ -1492,7 +1497,10 @@ function generateResolveEvents(){
       }else if(cr.t==='magic'){
         // Magic: strip all barriers + 2 HP damage to both rivals + guaranteed steal
         /* rb0/rb1 go out of scope after magic; bpPlayerBarrier covers player */bpPlayerBarrier=false;
+        // T111: finisher if magic KOs any rival
+        const _preMagHP1=bpHP[1],_preMagHP2=bpHP[2];
         bpHP[1]=Math.max(0,bpHP[1]-2);bpHP[2]=Math.max(0,bpHP[2]-1);
+        if((_preMagHP1>0&&bpHP[1]<=0)||(_preMagHP2>0&&bpHP[2]<=0))events._isFinisher=true;
         bpHPDmgAnim[1]=20;bpHPDmgAnim[2]=20;
         const stolen=removeCardFromPlayer(tgt,-1);
         if(stolen>0&&addCardToPlayer(0,stolen)){

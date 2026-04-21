@@ -300,6 +300,56 @@ function drawResolvingPhase(){
       txShadow('\u26A1 SUPER EFFECTIVE!',0,4,9,'#f8f040','rgba(0,0,0,.3)');
       g.restore();g.restore();
     }
+    // T111: Finisher cinematic — spans first 90 frames of resolve sequence (uses t, not evT)
+    if(bpResolveQueue._isFinisher&&t<90){
+      if(t===1)sfxFinisher();
+      // Screen darkens: fade in 0-25, hold 25-65, fade out 65-90
+      const _dkA=t<25?t/25*0.82:t<65?0.82:Math.max(0,0.82-(t-65)/25*0.82);
+      g.save();g.globalAlpha=_dkA;g.fillStyle='#000';g.fillRect(0,0,W,H);g.restore();
+      // Card flip 360° at center (t 10-70 = 60 frames)
+      if(t>=10&&t<70){
+        const _flipT=(t-10)/60;
+        const _flipA=Math.min(1,(t-10)/8)*Math.min(1,(70-t)/10);
+        const _flipX=Math.cos(_flipT*Math.PI*2);
+        const _cW=52,_cH=74;
+        g.save();g.globalAlpha=_flipA;
+        g.save();g.translate(W/2,H/2-30);g.scale(_flipX,1);
+        g.fillStyle=_flipX>=0?'#1a0830':'#08102a';
+        g.beginPath();g.roundRect(-_cW/2,-_cH/2,_cW,_cH,6);g.fill();
+        g.strokeStyle='rgba(255,80,120,.9)';g.lineWidth=2;g.stroke();
+        if(_flipX>=0){txShadow('\u2620',0,6,22,'#ff3060','rgba(0,0,0,.5)');}
+        g.restore();g.restore();
+      }
+      // "FINISHER!" text zoom-in (t 18-72)
+      if(t>=18&&t<72){
+        const _fA=Math.min(1,(t-18)/10)*Math.min(1,(72-t)/14);
+        const _fScl=0.7+Math.min(0.3,(t-18)/20*0.3)+0.06*Math.sin((t-18)*0.25);
+        g.save();g.globalAlpha=_fA;
+        g.save();g.translate(W/2,H/2+26);g.scale(_fScl,_fScl);
+        g.fillStyle='rgba(0,0,0,0.6)';g.beginPath();g.roundRect(-110,-22,220,44,10);g.fill();
+        g.strokeStyle='rgba(255,60,80,.8)';g.lineWidth=2;g.stroke();
+        txShadow('FINISHER!',0,8,24,'#ff3050','rgba(255,0,40,.6)');
+        g.restore();g.restore();
+      }
+      // Lightning burst (t 22-68)
+      if(t>=22&&t<68){
+        const _lA=Math.min(1,(t-22)/8)*Math.min(1,(68-t)/12)*0.9;
+        g.save();g.globalAlpha=_lA;
+        const _cx=W/2,_cy=H/2-30;
+        for(let _li=0;_li<10;_li++){
+          const _ang=(_li/10)*Math.PI*2+(t*0.12);
+          const _r1=45+((_li*19+t*7)%35);
+          const _r2=_r1+70+((_li*13+t*5)%55);
+          const _ma=_ang+((_li*7+t*3)%24-12)*0.05;
+          const _mx=_cx+_r1*Math.cos(_ma)*1.4,_my=_cy+_r1*Math.sin(_ma)*0.7;
+          const _ex=_cx+_r2*Math.cos(_ang)*1.4,_ey=_cy+_r2*Math.sin(_ang)*0.7;
+          g.strokeStyle=_li%3===0?'#ff4080':_li%3===1?'#ffe040':'#ffffff';
+          g.lineWidth=_li%3===0?2:1;
+          g.beginPath();g.moveTo(_cx,_cy);g.lineTo(_mx,_my);g.lineTo(_ex,_ey);g.stroke();
+        }
+        g.restore();
+      }
+    }
     // Typewriter text box at bottom
     const slideIn=Math.min(1,evT/12);const textX=W*(1-slideIn)+16*slideIn;
     win(4,H-70,W-8,64);

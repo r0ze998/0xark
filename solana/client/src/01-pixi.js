@@ -1082,6 +1082,8 @@ function sfxWeakEffect(){if(!soundEnabled)return;beep(300,.06,.07);setTimeout(()
 function sfxZkCommit(){if(!soundEnabled)return;beep(160,.06,.1);setTimeout(()=>beep(120,.08,.1),90);}
 // T83: sfxZkReveal — ascending reveal chord for ZK reveal phase
 function sfxZkReveal(){if(!soundEnabled)return;beep(440,.05,.07);setTimeout(()=>beep(660,.05,.07),70);setTimeout(()=>beep(880,.07,.08),140);}
+// T111: sfxFinisher — dramatic low boom rising to crescendo for KO finishing blow
+function sfxFinisher(){if(!soundEnabled)return;beep(80,.15,.08);setTimeout(()=>beep(220,.08,.08),80);setTimeout(()=>beep(440,.07,.07),160);setTimeout(()=>beep(660,.06,.07),240);setTimeout(()=>beep(880,.08,.08),320);setTimeout(()=>beep(1320,.1,.1),400);}
 // sfxWalletConnect — brief connection chime
 function sfxWalletConnect(){if(!soundEnabled)return;beep(440,.05,.06);setTimeout(()=>beep(660,.06,.07),70);setTimeout(()=>beep(880,.08,.06),140);}
 // sfxError — descending tone pair for error feedback
