@@ -718,11 +718,6 @@ function drawLobbyBuildingArenaHall(bx, by, bw, bh, tier) {
   g.beginPath(); g.arc(bx + bw / 2 + ellW - 3, ellCY, 2, 0, Math.PI * 2); g.fill();
 }
 
-// ── Character debug flag (T-D8-11 stanby — remove after r0ze approval) ────
-// When true, dLobby() renders a single Black Flag character at 3× scale,
-// centred on screen, overlaid after normal rendering.
-const LOBBY_CHAR_DEBUG = true;
-
 // ── Player / remote player sprite (T-D8-11/12) ────────────────────────────
 // Character spec (r0ze msg 1644, 12×16 logical px):
 //   head  — 7px tall × 8px wide (slightly large head)
@@ -773,37 +768,6 @@ function drawLobbyCharacter(cx, cy, clanColor, nameStr, isLocal, scale) {
   g.font = `${Math.max(7, Math.round(8 * sc))}px VT323, monospace`;
   g.textAlign = 'center';
   g.fillText((nameStr || '?').slice(0, 8), sx, cy + 2 * sc);
-}
-
-// ── Debug: single-character centred at 3× scale ──────────────────────────
-function _drawCharDebug() {
-  const sc = 3;
-  const RTS = LOBBY_RENDER_TS;
-  // Top-left anchor so the 3× sprite is centred at (W/2, H/2)
-  const cx = 480 / 2 - (RTS * sc) / 2;
-  const cy = 270 / 2 - (RTS * sc) / 2;
-
-  // Dark overlay so character stands out
-  g.fillStyle = 'rgba(0,0,0,0.55)';
-  g.fillRect(0, 0, 480, 270);
-
-  // Panel behind character
-  const pw = RTS * sc + 40, ph = RTS * sc + 40;
-  const px2 = 480 / 2 - pw / 2, py2 = 270 / 2 - ph / 2;
-  g.fillStyle = '#1a1a2e';
-  g.fillRect(px2, py2, pw, ph);
-  g.strokeStyle = '#3A5998'; g.lineWidth = 2;
-  g.strokeRect(px2, py2, pw, ph);
-
-  // Character at 3×
-  drawLobbyCharacter(cx, cy, CLAN_TINTS['black_flag'], 'DEBUG', true, sc);
-
-  // Label
-  g.fillStyle = '#c0c0e0';
-  g.font = '10px VT323, monospace';
-  g.textAlign = 'center';
-  g.fillText('BLACK FLAG  12×16 @ 3×', 240, py2 + ph + 14);
-  g.fillText('head 7×8 / body 7×10 / legs 2×4', 240, py2 + ph + 26);
 }
 
 // ── Building proximity check ─────────────────────────────────────────────
@@ -948,7 +912,9 @@ function dLobby() {
 
   // ── Layer 5: Local player block character ─────────────────────────────────
   {
-    const localColor = '#e8c870';
+    // T-D8-11: local player uses clan colour (default Black Flag navy until clan assigned)
+    const localClan = (typeof lobbyLocalClan !== 'undefined' && lobbyLocalClan) || 'black_flag';
+    const localColor = CLAN_TINTS[localClan] || CLAN_TINTS['null'];
     const localName = window.solana?.publicKey
       ? window.solana.publicKey.toBase58().slice(0, 6) + '…'
       : 'YOU';
@@ -1039,14 +1005,19 @@ function dLobby() {
     g.fillText('SOL', 474, by2 + 26);
   }
 
-  // ── T-D8-13: Proximity prompt (above bottom bar) ──────────────────────────
+  // ── T-D8-13: Proximity prompt — floats above the building being approached ─
   if (lobbyNearBuilding) {
-    g.fillStyle = 'rgba(14,14,34,0.88)';
-    g.fillRect(W / 2 - 96, H - 56, 192, 20);
+    const bld = lobbyNearBuilding;
+    const pW = 160, pH = 20;
+    // Centre horizontally over the building; keep within screen edges
+    const pcx = Math.max(pW / 2 + 2, Math.min(W - pW / 2 - 2, bld.px + bld.pw / 2));
+    const pcy = Math.max(pH + 4, bld.py - 6); // 6px gap above building top
+    g.fillStyle = 'rgba(14,14,34,0.90)';
+    g.fillRect(pcx - pW / 2, pcy - pH, pW, pH);
     g.strokeStyle = '#c8a460'; g.lineWidth = 1;
-    g.strokeRect(W / 2 - 96, H - 56, 192, 20);
-    g.fillStyle = '#f0e0a0'; g.font = '12px VT323, monospace'; g.textAlign = 'center';
-    g.fillText('[Z] Enter ' + lobbyNearBuilding.label, W / 2, H - 42);
+    g.strokeRect(pcx - pW / 2, pcy - pH, pW, pH);
+    g.fillStyle = '#f0e0a0'; g.font = '11px VT323, monospace'; g.textAlign = 'center';
+    g.fillText('[Z] Enter ' + bld.label, pcx, pcy - 5);
   }
 
   // Match found flash
@@ -1068,6 +1039,4 @@ function dLobby() {
     drawDeckEditor();
   }
 
-  // Character debug overlay — remove after r0ze Group D approval
-  if (LOBBY_CHAR_DEBUG) _drawCharDebug();
 }
