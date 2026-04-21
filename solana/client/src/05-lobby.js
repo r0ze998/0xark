@@ -272,8 +272,17 @@ function lobbyDialogConfirm() {
   if (!btn || btn.disabled) return;
   if (btn.action === 'close') { lobbyDialog = null; return; }
   if (btn.action === 'find_match') {
-    // T-D4-3 will wire real matchmaking; for now placeholder alert
-    console.log('[Lobby] Find Match requested, tier:', lobbyDialog.meta?.tier);
+    // Delegate to matchmaking module (06-matchmaking.js)
+    if (typeof lobbyFindMatch === 'function') {
+      lobbyFindMatch(lobbyDialog.meta?.tier ?? 0);
+    } else {
+      console.log('[Lobby] Find Match (offline stub) tier:', lobbyDialog.meta?.tier);
+      lobbyDialog = null;
+    }
+    return;
+  }
+  if (btn.action === 'cancel_match') {
+    if (typeof leaveQueue === 'function') leaveQueue().catch(console.warn);
     lobbyDialog = null;
     return;
   }

@@ -131,6 +131,7 @@ const MODULES = [
   { file: '03-world-setup.js',   desc: 'exits[] · npcs[] · fog-of-war system · terrain rendering helpers' },
   { file: '04-state.js',         desc: 'Global game-state variables · card timers/decay · rival AI background · quest missions' },
   { file: '05-rendering.js',     desc: 'Tile rendering (TILE section) · card character sprites (drawCardCharacter) · sprite animation' },
+  { file: '06-matchmaking.js',   desc: 'Matchmaking queue client · enter_queue/leave_queue Anchor instructions · 2s PDA polling · lobbyFindMatch() wire-up' },
   { file: '06-world-systems.js', desc: 'Camera · card mini-art · map transitions · location banner · minimap · encounters · NPCs · trading' },
   { file: '07-map.js',           desc: 'Terrain edge blending · atmosphere · fog of war · rival alert anim · pirate decorations · dMap (main world render) · dMenu' },
   { file: '07-battle.js',        desc: 'Battle screen FRLG rendering · card bar · opponent/player info boxes · VS splash · phase banner · action grid · select/confirming phases · card engine (addCardToPlayer/removeCardFromPlayer/checkWinAndTransition) · rival AI · generateResolveEvents' },
