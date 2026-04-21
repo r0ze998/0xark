@@ -238,10 +238,21 @@ function lobbyOpenDialog(buildingName) {
     }
     case 'shop':
       lobbyDialog = {
-        title: '🛒 Shop',
-        lines: ['Booster packs, singles, and Clan starters.', 'Coming Day 4-6'],
-        buttons: [{ label: 'Close', action: 'close', disabled: false }],
+        title: '🛒 SHOP',
+        lines: [
+          'Choose your purchase:',
+          '  Booster Pack — 3 random cards',
+          '  Targeted Single — pick a card type',
+          '  Clan Starter — 5-card clan bundle',
+        ],
+        buttons: [
+          { label: 'Booster Pack',    action: 'shop_booster',  disabled: false },
+          { label: 'Targeted Single', action: 'shop_single',   disabled: false },
+          { label: 'Clan Starter',    action: 'shop_clan',     disabled: false },
+          { label: 'Leave',           action: 'close',         disabled: false },
+        ],
         focusIdx: 0,
+        meta: { shop: true },
       };
       break;
     case 'pc_box':
@@ -295,6 +306,34 @@ function lobbyDialogConfirm() {
     if (typeof openDeckEditor === 'function') openDeckEditor();
     return;
   }
+  // Shop purchase actions — placeholder responses until x402 micropayment integration
+  if (btn.action === 'shop_booster' || btn.action === 'shop_single' || btn.action === 'shop_clan') {
+    const labels = {
+      shop_booster: 'Booster Pack (0.05 SOL)',
+      shop_single:  'Targeted Single (0.02 SOL)',
+      shop_clan:    'Clan Starter (0.1 SOL)',
+    };
+    lobbyDialog = {
+      title: '🛒 SHOP',
+      lines: [
+        `${labels[btn.action]}`,
+        '',
+        'Purchase flow not yet implemented.',
+        'x402 micropayment integration coming.',
+      ],
+      buttons: [
+        { label: 'Back',  action: 'shop_back', disabled: false },
+        { label: 'Close', action: 'close',     disabled: false },
+      ],
+      focusIdx: 0,
+    };
+    return;
+  }
+  if (btn.action === 'shop_back') {
+    // Re-open shop main menu
+    lobbyOpenDialog('shop');
+    return;
+  }
   // Other actions: close dialog
   lobbyDialog = null;
 }
@@ -311,7 +350,14 @@ function lobbyDialogMoveFocus(dir) {
 
 function drawLobbyDialog() {
   if (!lobbyDialog) return;
-  const dw = 320, dh = 200;
+
+  // Dialog width scales with button count so buttons always fit
+  const n = lobbyDialog.buttons.length;
+  const btnH = 28, gap = 10;
+  // Minimum button width to show label; max so they fit in dialog
+  const btnW = Math.min(120, Math.max(70, Math.floor((W - 48 - (n - 1) * gap) / n)));
+  const dw = Math.min(W - 16, Math.max(300, n * (btnW + gap) + 32));
+  const dh = 200 + Math.max(0, (lobbyDialog.lines.length - 4) * 20);
   const dx = (W - dw) / 2, dy = (H - dh) / 2;
 
   // Backdrop
@@ -344,10 +390,9 @@ function drawLobbyDialog() {
     g.fillText(line, dx + dw / 2, dy + 58 + i * 20);
   });
 
-  // Buttons
+  // Buttons — centered in dialog
   const btnY = dy + dh - 50;
-  const btnW = 120, btnH = 28, gap = 12;
-  const totalW = lobbyDialog.buttons.length * btnW + (lobbyDialog.buttons.length - 1) * gap;
+  const totalW = n * btnW + (n - 1) * gap;
   let bx = dx + (dw - totalW) / 2;
   lobbyDialog.buttons.forEach((btn, i) => {
     const isFocus = i === lobbyDialog.focusIdx;
@@ -357,9 +402,9 @@ function drawLobbyDialog() {
     g.lineWidth = 1;
     g.strokeRect(bx + 0.5, btnY + 0.5, btnW - 1, btnH - 1);
     g.fillStyle = btn.disabled ? '#444' : isFocus ? '#e8e8ff' : '#8888aa';
-    g.font = '14px VT323, monospace';
+    g.font = '13px VT323, monospace';
     g.textAlign = 'center';
-    g.fillText(btn.label, bx + btnW / 2, btnY + 19);
+    g.fillText(btn.label.length > 12 ? btn.label.slice(0, 12) : btn.label, bx + btnW / 2, btnY + 19);
     bx += btnW + gap;
   });
 
