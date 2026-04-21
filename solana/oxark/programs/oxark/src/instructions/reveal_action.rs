@@ -32,6 +32,10 @@ pub fn handle_reveal(
     action_type: u8,
     target: Pubkey,
     salt: [u8; 32],
+    // Reborn: card IDs played in this phase (empty Vec = legacy Phase C reveal path).
+    // When non-empty: commitment = SHA-256(played_cards_bytes + salt + round + phase).
+    // TODO: Reborn Day 8 — replace action_type/target with lane scoring inputs.
+    played_cards: Vec<u64>,
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
     require!(game.status == GameStatus::RevealPhase, ErrorCode::NotRevealPhase);
@@ -40,17 +44,31 @@ pub fn handle_reveal(
     require!(ps.has_committed, ErrorCode::NotCommitted);
     require!(!ps.has_revealed, ErrorCode::AlreadyRevealed);
 
-    // Verify hash: SHA256(action_type | target | salt)
     use sha2::{Sha256, Digest};
-    let mut hasher = Sha256::new();
-    hasher.update([action_type]);
-    hasher.update(target.as_ref());
-    hasher.update(salt);
-    let computed: [u8; 32] = hasher.finalize().into();
-    require!(
-        computed == ctx.accounts.commit.hash,
-        ErrorCode::HashMismatch
-    );
+
+    if played_cards.is_empty() {
+        // ── Phase C legacy path: SHA256(action_type | target | salt) ──────────
+        // #[deprecated(since = "reborn")] — remove when Duel client ships (Day 8)
+        let mut hasher = Sha256::new();
+        hasher.update([action_type]);
+        hasher.update(target.as_ref());
+        hasher.update(salt);
+        let computed: [u8; 32] = hasher.finalize().into();
+        require!(computed == ctx.accounts.commit.hash, ErrorCode::HashMismatch);
+    } else {
+        // ── Reborn path: SHA256(card_ids_le_bytes + salt + round + phase) ──────
+        // commitment binds: which cards, which nonce, which round, which phase.
+        let mut hasher = Sha256::new();
+        for &cid in &played_cards {
+            hasher.update(cid.to_le_bytes());
+        }
+        hasher.update(salt);
+        hasher.update([game.round]);
+        hasher.update([ctx.accounts.commit.phase]);
+        let computed: [u8; 32] = hasher.finalize().into();
+        require!(computed == ctx.accounts.commit.hash, ErrorCode::HashMismatch);
+        // TODO: Reborn Day 8 — store played_cards in PlayerState for lane resolution.
+    }
 
     // Validate action
     let at = ActionType::from(action_type);

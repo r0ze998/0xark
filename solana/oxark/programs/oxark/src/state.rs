@@ -144,10 +144,21 @@ pub struct CommitAction {
     pub player: Pubkey,
     pub hash: [u8; 32],
     pub bump: u8,
+    // ── Reborn: Duel phase tracking ───────────────────────────────────────
+    /// Round number from Game.round at commit time (Reborn: 0-based round index).
+    pub round_number: u8,
+    /// Duel phase at commit time: 0=Draw, 1=Energy, 2=Summon, 3=Battle.
+    pub phase: u8,
+    /// Cards played in this phase commit (up to 3 card IDs; 0 = empty slot).
+    /// Reborn: commitment = SHA-256(played_cards + nonce + round + phase).
+    pub played_cards: [u64; 3],
+    /// Number of valid card IDs stored in played_cards (0-3).
+    pub played_cards_len: u8,
 }
 
 impl CommitAction {
-    pub const SIZE: usize = 8 + 8 + 1 + 32 + 32 + 1;
+    // Legacy SIZE (Phase C) + Reborn fields: round_number(1) + phase(1) + played_cards(24) + played_cards_len(1)
+    pub const SIZE: usize = 8 + 8 + 1 + 32 + 32 + 1 + 1 + 1 + 24 + 1;
 }
 
 /// ZK card commitment record for 2-phase bluff battle (Axis C).

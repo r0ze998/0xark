@@ -112,8 +112,11 @@ pub mod oxark {
         action_type: u8,
         target: Pubkey,
         salt: [u8; 32],
+        // Reborn: card IDs played this phase. Empty = Phase C legacy path.
+        // TODO: Reborn Day 8 — make this the primary param; retire action_type/target.
+        played_cards: Vec<u64>,
     ) -> Result<()> {
-        instructions::reveal_action::handle_reveal(ctx, game_id, action_type, target, salt)
+        instructions::reveal_action::handle_reveal(ctx, game_id, action_type, target, salt, played_cards)
     }
 
     /// Resolve the current round after all players have revealed.

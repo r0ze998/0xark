@@ -44,6 +44,13 @@ pub fn handle_commit(ctx: Context<CommitActionCtx>, game_id: u64, hash: [u8; 32]
     commit.player = ctx.accounts.player.key();
     commit.hash = hash;
     commit.bump = ctx.bumps.commit;
+    // Reborn: populate phase tracking fields.
+    // phase defaults to 0 (Draw) until the client passes explicit phase context (Day 8).
+    // TODO: Reborn — accept phase as a param when client is updated (Day 8).
+    commit.round_number = game.round;
+    commit.phase = 0; // Draw phase default
+    commit.played_cards = [0u64; 3];
+    commit.played_cards_len = 0;
 
     ps.has_committed = true;
     game.commit_count += 1;

@@ -95,6 +95,20 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     }
 
     // === Resolution Order ===
+    //
+    // TODO: Reborn lane scoring + element affinity (implement Day 8-11, GDD §5.5)
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Phase C resolution order (BARRIER→STEAL→DRAW→SCOUT→MOVE→USE_CARD) is kept
+    // below as-is for now. In Reborn this entire block will be replaced by:
+    //
+    //   Phase 0 (Draw):   each player draws 2 cards from their lane's card pool
+    //   Phase 1 (Energy): players set energy budget for this round
+    //   Phase 2 (Summon): played_cards placed into lanes; element affinity applied
+    //   Phase 3 (Battle): lanes resolved simultaneously; winner steals a card
+    //
+    // Element affinity is already implemented via calc_element_multiplier() above.
+    // When played_cards in CommitAction are non-empty, call that function here.
+    // ─────────────────────────────────────────────────────────────────────────────
 
     // 0. Move (area transition — processed first so Steal etc. use new positions)
     //
