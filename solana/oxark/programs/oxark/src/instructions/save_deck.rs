@@ -1,38 +1,24 @@
 use anchor_lang::prelude::*;
+use std::collections::HashMap;
 use crate::state::PlayerDeck;
 use crate::error::ErrorCode;
 
-/// Card cost lookup by card_id (1-indexed; 0 = empty).
-/// card_id 1-20 = Common (cost 1)
-/// card_id 21-40 = Rare   (cost 2)
-/// card_id 41-60 = Legendary (cost 5)
-fn card_cost(card_id: u8) -> u8 {
-    if card_id == 0 { return 0; }
-    if card_id <= 20 { 1 }
-    else if card_id <= 40 { 2 }
-    else { 5 }
-}
-
-fn card_rarity(card_id: u8) -> u8 {
-    // 0=empty, 1=Common, 2=Rare, 3=Legendary
-    if card_id == 0 { 0 }
-    else if card_id <= 20 { 1 }
-    else if card_id <= 40 { 2 }
-    else { 3 }
-}
-
 /// Save (or update) the player's prepared battle deck.
 ///
-/// Validates composition before storing:
-///   - total cost ≤ 30
-///   - Legendary ≤ 2
-///   - Rare ≤ 6
-///   - Common ≥ 12
+/// GDD v1.2 validation rules (Phase C cost/rarity cap removed):
+///   - exactly 20 cards
+///   - max 2 copies of any single card_id
+///   - all card_ids in range 1-60
+///
+/// lane_assignments: optional per-slot lane hint.
+///   0=Front, 1=Middle, 2=Back, 255=Any (default).
+///   If empty vec is passed, all lanes default to 255 (Any).
 ///
 /// Cannot overwrite while `locked_until > Clock::get().unix_timestamp`.
 pub fn handle_save_deck(
     ctx: Context<SaveDeck>,
     cards: Vec<u8>,
+    lane_assignments: Vec<u8>,
 ) -> Result<()> {
     let deck = &mut ctx.accounts.player_deck;
     let clock = Clock::get()?;
@@ -43,43 +29,37 @@ pub fn handle_save_deck(
         ErrorCode::DeckLocked
     );
 
-    // Size: 1-20 cards
-    let count = cards.len();
-    require!(count >= 1 && count <= 20, ErrorCode::InvalidDeckComposition);
+    // Must be exactly 20 cards
+    require!(cards.len() == 20, ErrorCode::InvalidDeckComposition);
 
-    // Composition validation
-    let mut total_cost: u16 = 0;
-    let mut legendary: u8 = 0;
-    let mut rare: u8 = 0;
-    let mut common: u8 = 0;
-
+    // Validate card IDs and count copies (max 2 per card)
+    let mut copy_count: HashMap<u8, u8> = HashMap::new();
     for &card_id in &cards {
         require!(card_id >= 1 && card_id <= 60, ErrorCode::InvalidDeckComposition);
-        total_cost += card_cost(card_id) as u16;
-        match card_rarity(card_id) {
-            3 => legendary += 1,
-            2 => rare += 1,
-            1 => common += 1,
-            _ => {}
-        }
+        let count = copy_count.entry(card_id).or_insert(0);
+        *count += 1;
+        require!(*count <= 2, ErrorCode::InvalidDeckComposition);
     }
 
-    require!(total_cost <= 30, ErrorCode::InvalidDeckComposition);
-    require!(legendary <= 2, ErrorCode::InvalidDeckComposition);
-    require!(rare <= 6, ErrorCode::InvalidDeckComposition);
-    require!(common >= 12, ErrorCode::InvalidDeckComposition);
-
-    // Write deck
+    // Write deck cards
     deck.owner = ctx.accounts.player.key();
-    deck.card_count = count as u8;
+    deck.card_count = 20;
     deck.last_modified = clock.unix_timestamp;
-    // locked_until not changed by save; only lock_deck sets it
 
     let mut arr = [0u8; 20];
     for (i, &c) in cards.iter().enumerate() {
         arr[i] = c;
     }
     deck.deck_cards = arr;
+
+    // Write lane assignments (default 255 = Any if not provided)
+    let mut lanes = [255u8; 20];
+    if lane_assignments.len() == 20 {
+        for (i, &lane) in lane_assignments.iter().enumerate() {
+            lanes[i] = lane;
+        }
+    }
+    deck.lane_assignments = lanes;
 
     Ok(())
 }

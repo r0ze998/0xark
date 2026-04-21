@@ -195,26 +195,36 @@ impl CardCommitRecord {
 /// Player's prepared battle deck (up to 20 cards).
 /// PDA seeds: ["player_deck", player_pubkey]
 ///
-/// Composition rules (validated in save_deck):
-///   - total cost cap ≤ 30 points (Legendary=5, Rare=2, Common=1)
-///   - Legendary cards ≤ 2
-///   - Rare cards ≤ 6
-///   - Common cards ≥ 12
+/// Composition rules (GDD v1.2 — simplified from Phase C):
+///   - exactly 20 cards
+///   - max 2 copies of any single card
+///   (Phase C cost cap + rarity balance removed)
+///
+/// DECISION (2026-04-22): Added lane_assignments [u8; 20] field.
+///   Values: 0=Front, 1=Middle, 2=Back, 255=Any (default).
+///   Existing accounts that were init_if_needed before this change have
+///   zero-padding in the new bytes, which is treated as Front (0). Clients
+///   should write 255 (Any) for all lanes when saving a deck without lane data.
+///   SIZE updated from 78 → 98 bytes; new accounts created after this deploy
+///   will be allocated correctly via init_if_needed.
 #[account]
 pub struct PlayerDeck {
-    pub owner:         Pubkey,
-    /// Card IDs in deck (0 = empty slot). Supports up to 20 cards.
-    pub deck_cards:    [u8; 20],
-    pub card_count:    u8,
+    pub owner:            Pubkey,
+    /// Card IDs in deck (0 = empty slot). Always exactly 20 entries.
+    pub deck_cards:       [u8; 20],
+    pub card_count:       u8,
     /// Unix timestamp until which the deck is locked (0 = not locked).
-    pub locked_until:  i64,
-    pub last_modified: i64,
-    pub bump:          u8,
+    pub locked_until:     i64,
+    pub last_modified:    i64,
+    pub bump:             u8,
+    /// Lane assignment per deck slot. 0=Front, 1=Middle, 2=Back, 255=Any.
+    /// Defaults to 255 (Any) when not explicitly set.
+    pub lane_assignments: [u8; 20],
 }
 
 impl PlayerDeck {
-    // 8 disc + 32 owner + 20 cards + 1 count + 8 locked + 8 modified + 1 bump
-    pub const SIZE: usize = 8 + 32 + 20 + 1 + 8 + 8 + 1;
+    // 8 disc + 32 owner + 20 cards + 1 count + 8 locked + 8 modified + 1 bump + 20 lanes
+    pub const SIZE: usize = 8 + 32 + 20 + 1 + 8 + 8 + 1 + 20;
 }
 
 // === T94: Dynamic Supply System ===

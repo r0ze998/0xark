@@ -306,10 +306,11 @@ pub mod oxark {
     ///   - total cost ≤ 30  (Common=1, Rare=2, Legendary=5)
     ///   - Legendary cards ≤ 2
     ///   - Rare cards ≤ 6
-    ///   - Common cards ≥ 12
-    ///   - deck must be unlocked (locked_until == 0 OR now ≥ locked_until)
-    pub fn save_deck(ctx: Context<SaveDeck>, cards: Vec<u8>) -> Result<()> {
-        instructions::save_deck::handle_save_deck(ctx, cards)
+    ///   GDD v1.2: exactly 20 cards, max 2 copies of any card_id.
+    ///   lane_assignments: 0=Front 1=Middle 2=Back 255=Any; empty vec → all 255.
+    ///   deck must be unlocked (locked_until == 0 OR now ≥ locked_until)
+    pub fn save_deck(ctx: Context<SaveDeck>, cards: Vec<u8>, lane_assignments: Vec<u8>) -> Result<()> {
+        instructions::save_deck::handle_save_deck(ctx, cards, lane_assignments)
     }
 
     /// Lock the player's deck for 1 hour (3600 seconds).
