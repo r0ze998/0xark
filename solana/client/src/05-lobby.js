@@ -486,13 +486,13 @@ function drawLobbyDialog() {
   g.fillText('← → navigate  Z/Enter confirm  X/Esc close', dx + dw / 2, dy + dh - 10);
 }
 
-// Clan tints (hex → use in g.fillStyle when clan assigned)
+// Clan tints — confirmed by r0ze (msg 1644)
 const CLAN_TINTS = {
-  black_flag:       '#2244aa',
-  sovereign_bourse: '#ccaa00',
-  hollow_blade:     '#cc2222',
-  iron_circle:      '#226622',
-  nameless_silk:    '#882299',
+  black_flag:       '#3A5998', // navy
+  sovereign_bourse: '#E8C850', // gold
+  hollow_blade:     '#C64A3F', // crimson
+  iron_circle:      '#5A8A4A', // forest green
+  nameless_silk:    '#7A4A9A', // deep purple
   null:             '#888888',
 };
 
@@ -718,51 +718,92 @@ function drawLobbyBuildingArenaHall(bx, by, bw, bh, tier) {
   g.beginPath(); g.arc(bx + bw / 2 + ellW - 3, ellCY, 2, 0, Math.PI * 2); g.fill();
 }
 
+// ── Character debug flag (T-D8-11 stanby — remove after r0ze approval) ────
+// When true, dLobby() renders a single Black Flag character at 3× scale,
+// centred on screen, overlaid after normal rendering.
+const LOBBY_CHAR_DEBUG = true;
+
 // ── Player / remote player sprite (T-D8-11/12) ────────────────────────────
-// Character spec: 12×16 logical — head 6px / body 8px / legs 2px (r0ze M1 mockup)
-// cx/cy = top-left of tile cell in canvas coords; sprite centered in cell.
-function drawLobbyCharacter(cx, cy, clanColor, nameStr, isLocal) {
+// Character spec (r0ze msg 1644, 12×16 logical px):
+//   head  — 7px tall × 8px wide (slightly large head)
+//   body  — 7px tall × 10px wide (compact torso)
+//   legs  — 2px tall, two legs each 2px wide (4px total, gap between)
+// cx/cy = top-left of tile cell in canvas coords; scale defaults to 1.
+function drawLobbyCharacter(cx, cy, clanColor, nameStr, isLocal, scale) {
+  const sc = scale || 1;
   const RTS = LOBBY_RENDER_TS; // 15px tile
-  const sx = cx + RTS / 2;    // horizontal center
-  const sy = cy + RTS - 2;    // bottom of tile (feet anchor)
+  // When scale=1: sprite fits in tile; sx/sy = bottom-centre anchor
+  const sx = cx + (RTS * sc) / 2;
+  const sy = cy + RTS * sc - 2 * sc;
 
   // Drop shadow
-  g.fillStyle = 'rgba(0,0,0,0.3)';
-  g.fillRect(sx - 5, sy + 1, 10, 2);
+  g.fillStyle = 'rgba(0,0,0,0.35)';
+  g.fillRect(sx - 5 * sc, sy + sc, 10 * sc, 2 * sc);
 
-  // Legs — 2px tall, 4px each (left/right)
+  // Legs — 2px tall × 2px each, 4px total, 2px gap between
   g.fillStyle = '#2a2028';
-  g.fillRect(sx - 5, sy - 2, 4, 2);
-  g.fillRect(sx + 1, sy - 2, 4, 2);
+  g.fillRect(sx - 4 * sc,  sy - 2 * sc,  2 * sc, 2 * sc); // left leg
+  g.fillRect(sx + 2 * sc,  sy - 2 * sc,  2 * sc, 2 * sc); // right leg
 
-  // Body — 12×8px, clan colored
+  // Body + arms — 10×7px, clan coloured
   g.fillStyle = clanColor || '#888888';
-  g.fillRect(sx - 6, sy - 10, 12, 8);
-  g.strokeStyle = 'rgba(0,0,0,0.4)'; g.lineWidth = 1;
-  g.strokeRect(sx - 6, sy - 10, 12, 8);
+  g.fillRect(sx - 5 * sc,  sy - 9 * sc, 10 * sc, 7 * sc);
+  g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = sc;
+  g.strokeRect(sx - 5 * sc, sy - 9 * sc, 10 * sc, 7 * sc);
 
-  // Head — 12×6px, skin tone
+  // Head — 8×7px, skin tone
   g.fillStyle = '#c8a060';
-  g.fillRect(sx - 6, sy - 16, 12, 6);
-  g.strokeStyle = '#5a3818'; g.lineWidth = 1;
-  g.strokeRect(sx - 6, sy - 16, 12, 6);
+  g.fillRect(sx - 4 * sc, sy - 16 * sc, 8 * sc, 7 * sc);
+  g.strokeStyle = '#5a3818'; g.lineWidth = sc;
+  g.strokeRect(sx - 4 * sc, sy - 16 * sc, 8 * sc, 7 * sc);
 
-  // Eyes — 2×2px
+  // Eyes — 1×2px each
   g.fillStyle = '#2a1808';
-  g.fillRect(sx - 4, sy - 15, 2, 2);
-  g.fillRect(sx + 2, sy - 15, 2, 2);
+  g.fillRect(sx - 3 * sc, sy - 14 * sc, sc, 2 * sc);
+  g.fillRect(sx + 2 * sc, sy - 14 * sc, sc, 2 * sc);
 
-  // Local player: 2px yellow hat band at top of head
+  // Local player: 2px gold hat band at top of head
   if (isLocal) {
     g.fillStyle = '#e0c040';
-    g.fillRect(sx - 6, sy - 16, 12, 2);
+    g.fillRect(sx - 4 * sc, sy - 16 * sc, 8 * sc, 2 * sc);
   }
 
-  // Name above sprite
+  // Name tag above sprite
   g.fillStyle = isLocal ? '#f0e0a0' : '#8888aa';
-  g.font = '8px VT323, monospace';
+  g.font = `${Math.max(7, Math.round(8 * sc))}px VT323, monospace`;
   g.textAlign = 'center';
-  g.fillText((nameStr || '?').slice(0, 8), sx, cy + 2);
+  g.fillText((nameStr || '?').slice(0, 8), sx, cy + 2 * sc);
+}
+
+// ── Debug: single-character centred at 3× scale ──────────────────────────
+function _drawCharDebug() {
+  const sc = 3;
+  const RTS = LOBBY_RENDER_TS;
+  // Top-left anchor so the 3× sprite is centred at (W/2, H/2)
+  const cx = 480 / 2 - (RTS * sc) / 2;
+  const cy = 270 / 2 - (RTS * sc) / 2;
+
+  // Dark overlay so character stands out
+  g.fillStyle = 'rgba(0,0,0,0.55)';
+  g.fillRect(0, 0, 480, 270);
+
+  // Panel behind character
+  const pw = RTS * sc + 40, ph = RTS * sc + 40;
+  const px2 = 480 / 2 - pw / 2, py2 = 270 / 2 - ph / 2;
+  g.fillStyle = '#1a1a2e';
+  g.fillRect(px2, py2, pw, ph);
+  g.strokeStyle = '#3A5998'; g.lineWidth = 2;
+  g.strokeRect(px2, py2, pw, ph);
+
+  // Character at 3×
+  drawLobbyCharacter(cx, cy, CLAN_TINTS['black_flag'], 'DEBUG', true, sc);
+
+  // Label
+  g.fillStyle = '#c0c0e0';
+  g.font = '10px VT323, monospace';
+  g.textAlign = 'center';
+  g.fillText('BLACK FLAG  12×16 @ 3×', 240, py2 + ph + 14);
+  g.fillText('head 7×8 / body 7×10 / legs 2×4', 240, py2 + ph + 26);
 }
 
 // ── Building proximity check ─────────────────────────────────────────────
@@ -1026,4 +1067,7 @@ function dLobby() {
   if (typeof deckEditorOpen !== 'undefined' && deckEditorOpen && typeof drawDeckEditor === 'function') {
     drawDeckEditor();
   }
+
+  // Character debug overlay — remove after r0ze Group D approval
+  if (LOBBY_CHAR_DEBUG) _drawCharDebug();
 }
