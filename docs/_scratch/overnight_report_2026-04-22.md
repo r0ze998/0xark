@@ -53,13 +53,29 @@ d39293f T-D3-1: Extend server.js for Clan + card_count in presence messages
 
 ---
 
+## Day 4 Summary (T-D4-1 → T-D4-4) ✅
+
+| Task | Status | Output |
+|------|--------|--------|
+| T-D4-1 Duel Hall dialogs | ✅ | lobbyDialog system, all 6 buildings, tier gate UI |
+| T-D4-2 enter/leave_queue Anchor | ✅ | MatchmakingQueue PDA, wins_at_tier, cargo check 0 err |
+| T-D4-3 Matchmaking polling | ✅ | 06-matchmaking.js, 2s PDA poll, onMatch/onTick/onCancel |
+| T-D4-4 UX polish | ✅ | 60s timeout, timer, queue count, yellow flash celebration |
+
+**Commits**: e634153, 7312fee, de3628c (+ D4-5 wrap)
+
+---
+
 ## Sprint Progress
 
-Phase D Reborn Day 3 complete. Days 1-3 all tasks done.  
-**Next**: Day 4-5 tasks from DAY_2_3_INSTRUCTIONS_EXTENSION.md (if file exists).
+Phase D Reborn Days 1-4 complete.  
+**Next**: Day 5 tasks (T-D5-1 PC Box, T-D5-2 Deck editor UI)
 
 ---
 
 ## For r0ze
 
-Lobbyに今日からWebSocketが繋がります。複数タブ開いてLOBBYボタンを押すと同じ部屋に入れます（localStorage経由でroomId共有）。オフライン時はソロモードで継続。サーバーはlocalhost:3500で起動中。
+ブロンズホール / シルバーホール / ゴールドホールのビル入口ダイアログ完成。  
+「Find Match」ボタンがon-chainの`enter_queue`命令を呼び出し、2秒ごとにMatchmakingQueue PDAをポーリングして対戦相手を探します（60秒タイムアウト）。  
+マッチ成立時は黄色フラッシュ + "MATCH FOUND!" 表示。  
+対戦シーン（デュエル本体）はDay 5で実装予定。

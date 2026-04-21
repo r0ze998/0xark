@@ -38,6 +38,23 @@
 
 **Next:** Check docs/_scratch/DAY_2_3_INSTRUCTIONS_EXTENSION.md for Day 4-5 bonus tasks (per r0ze message 1629)
 
+## 2026-04-21 — Day 4 (bonus, Claude Code overnight)
+
+**Tasks completed:**
+- T-D4-1: Duel Hall + Shop + PC Box + Faction HQ placeholder dialogs ✅ — lobbyDialog system, Bronze/Silver/Gold tier gates, 6-building coverage
+- T-D4-2: enter_queue + leave_queue Anchor instructions ✅ — MatchmakingQueue PDA, PlayerBattleStats.wins_at_tier, PlayerState.current_queue, cargo check 0 errors
+- T-D4-3: Matchmaking polling + Find Match button wiring ✅ — 06-matchmaking.js, lobbyFindMatch(), 2s PDA polling, onMatch/onTick/onCancel callbacks
+- T-D4-4: Matchmaking UX polish ✅ — 60s timeout, timer display, queue count, match celebration flash, Try Again button on timeout
+
+**Decisions:**
+- DECISION: lobbyDialog in 05-lobby.js rather than 08-overlays.js — avoids Phase C animation complexity, self-contained canvas modal
+- DECISION: 06-matchmaking.js uses raw Borsh + discriminator (same pattern as onchain.js) — no Anchor IDL dependency, works with existing CDN stack
+- DECISION: MM_TIMEOUT_MS = 60s (T-D4-4 spec, not 90s default) — better UX, faster retry
+
+**Blockers:** None
+
+**Next:** T-D5-1 (PC Box building interaction) — check time before starting
+
 ## 2026-04-21: Phase C → Phase D Reborn pivot
 - Phase C ended at 694eb33 (v541)
 - GDD v1.0 written (4977 words), approved by r0ze ("いいやん全部実装しよう")
