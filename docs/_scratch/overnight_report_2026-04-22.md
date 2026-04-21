@@ -87,10 +87,22 @@ d39293f T-D3-1: Extend server.js for Clan + card_count in presence messages
 
 ---
 
+## Day 6 Summary — Deep Bonus (T-D6-1 → T-D6-2) ✅
+
+| Task | Status | Output |
+|------|--------|--------|
+| T-D6-1 Shop NPC dialog | ✅ | 3-option menu, placeholder purchase + back nav, dynamic dialog width |
+| T-D6-2 HUD card count + Season day | ✅ | PlayerRegistry count + Season PDA parsed, top-right HUD overlay |
+
+**Commits**: 64ce6fc (T-D6-1), 9a063b4 (T-D6-2)  
+**Session end**: 00:02 JST (all deep bonus tasks done, 6h before hard stop)
+
+---
+
 ## Sprint Progress
 
-Phase D Reborn Days 1-5 complete.  
-**Next**: Day 6 tasks (T-D6-1 Shop NPC dialog, T-D6-2 HUD card count) if time permits before 06:00 JST
+Phase D Reborn Days 1-6 complete (all planned + deep bonus tasks).  
+**Next session**: Day 7 (duel scene / battle implementation)
 
 ---
 

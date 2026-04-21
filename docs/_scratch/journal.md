@@ -70,7 +70,21 @@
 
 **Blockers:** None
 
-**Next:** Day 6 (T-D6-1 Shop NPC dialog, T-D6-2 HUD card count) if time permits
+**Next:** Day 6 — T-D6-1 Shop NPC dialog + T-D6-2 HUD (completed same session, below)
+
+## 2026-04-22 — Day 6 (Claude Code overnight, deep bonus)
+
+**Tasks completed:**
+- T-D6-1: Shop NPC dialog placeholder ✅ — 3-option menu (Booster Pack 0.05 SOL / Targeted Single 0.02 SOL / Clan Starter 0.1 SOL), placeholder purchase flow ("not yet implemented"), back navigation. drawLobbyDialog() now dynamic width/button-size so 4-button layouts fit without overflow.
+- T-D6-2: Permanent HUD card count + Season day ✅ — _loadLobbyHUD() reads PlayerRegistry PDA (count at offset 580) + Season PDA (season_start/end) on enterLobby(); draws top-right HUD box: "X/60 cards" (gold) + "Day N/14 — Season 1" (slate), with "—" placeholder before chain data.
+
+**Decisions:**
+- DECISION: Dynamic dialog width in drawLobbyDialog() — width/btnW computed from button count so N-button dialogs always fit within canvas
+- DECISION: Season PDA read inlined in 05-lobby.js (not via readSeason from onchain.js) — avoids adding onchain.js dependency to lobby module
+
+**Blockers:** None
+
+**Session end:** 00:02 JST (well before 06:00 hard stop — all deep bonus tasks complete)
 
 ## 2026-04-21: Phase C → Phase D Reborn pivot
 - Phase C ended at 694eb33 (v541)
