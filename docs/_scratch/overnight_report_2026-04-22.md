@@ -66,16 +66,51 @@ d39293f T-D3-1: Extend server.js for Clan + card_count in presence messages
 
 ---
 
+## Day 5 Summary (T-D5-1 → T-D5-4) ✅
+
+| Task | Status | Output |
+|------|--------|--------|
+| T-D5-1 PC Box placeholder dialog | ✅ | commit fe79f98 (prior session) |
+| T-D5-2 Deck editor UI skeleton | ✅ | 07-deck-editor.js — 2-panel canvas, filter bar, 30pt cap |
+| T-D5-3 Deck editor on-chain | ✅ | PlayerRegistry + PlayerDeck raw parse, saveDeck, canvas click |
+| T-D5-4 Day 5 wrap | ✅ | journal.md + this report |
+
+**Commits**: fe79f98 (T-D5-1), 7e2488e (T-D5-2), df5ad45 (T-D5-3)
+
+---
+
+## Key Technical Decisions (Day 5)
+
+1. **No Metaplex for card inventory**: PlayerRegistry PDA (registered[bool; 60]) used as ownership proxy. Avoids complex NFT fetch, same raw `getAccountInfo` pattern as matchmaking.
+2. **Async load on editor open**: Fallback placeholder is shown immediately, chain data replaces it when RPC responds. Editor is never blocked waiting for RPC.
+3. **Canvas click via document.addEventListener**: Consistent with existing keydown pattern, no new canvas-specific event infra.
+
+---
+
 ## Sprint Progress
 
-Phase D Reborn Days 1-4 complete.  
-**Next**: Day 5 tasks (T-D5-1 PC Box, T-D5-2 Deck editor UI)
+Phase D Reborn Days 1-5 complete.  
+**Next**: Day 6 tasks (T-D6-1 Shop NPC dialog, T-D6-2 HUD card count) if time permits before 06:00 JST
 
 ---
 
 ## For r0ze
 
-ブロンズホール / シルバーホール / ゴールドホールのビル入口ダイアログ完成。  
-「Find Match」ボタンがon-chainの`enter_queue`命令を呼び出し、2秒ごとにMatchmakingQueue PDAをポーリングして対戦相手を探します（60秒タイムアウト）。  
-マッチ成立時は黄色フラッシュ + "MATCH FOUND!" 表示。  
-対戦シーン（デュエル本体）はDay 5で実装予定。
+デッキエディター完成！  
+PCボックスビルに入ると「Open Deck Editor」ボタンが有効化。クリックするとカードストレージ（左）とデッキスロット（右）の2パネルキャンバスオーバーレイが開きます。  
+
+**操作方法:**
+- ストレージのカードをクリック → デッキに追加
+- デッキスロットをクリック → カードを削除
+- フィルターバー: all/attack/defense/flee/magic/recovery
+- Arrow keys: ストレージスクロール
+
+**バリデーション（リアルタイム）:**
+- コスト上限30点 (Legendary=5, Rare=2, Common=1)
+- Legendary ≤ 2、Rare ≤ 6、Common ≥ 12
+- 重複3枚以上は赤ボーダー表示
+
+**オンチェーン連携 (T-D5-3):**
+- Walletが接続されていれば、エディター開時にPlayerRegistry PDA（所有カード）+ PlayerDeck PDA（保存済みデッキ）を自動ロード
+- 「Save Deck」ボタン → on-chainの`save_deck`命令を呼び出し
+- ステータス表示: Saving… → ✓ Saved! → (3秒後クリア)

@@ -55,6 +55,23 @@
 
 **Next:** T-D5-1 (PC Box building interaction) — check time before starting
 
+## 2026-04-22 — Day 5 (Claude Code overnight, continued)
+
+**Tasks completed:**
+- T-D5-1: PC Box placeholder dialog ✅ — commit fe79f98 (from prior session)
+- T-D5-2: Deck editor UI skeleton ✅ — 07-deck-editor.js: 2-panel canvas overlay (storage L / deck R), filter bar, 30pt cap validation, Legendary/Rare/Common rules. build.js, 05-lobby.js, 10-input.js wired.
+- T-D5-3: Deck editor on-chain integration ✅ — loadStorageFromChain() reads PlayerRegistry PDA (registered[60] at offset 40, no Metaplex), loadDeckFromChain() reads PlayerDeck PDA (deck_cards[20] at offset 40). openDeckEditor() triggers async chain load on open (placeholder fallback if no wallet). deckSaveDeckTx() calls window.oxarkOnchain.saveDeck(), Save Deck button enabled when deck has cards + wallet connected. Canvas click handler added to 10-input.js.
+- T-D5-4: Day 5 journal + overnight report ✅
+
+**Decisions:**
+- DECISION: Raw getAccountInfo for PlayerDeck + PlayerRegistry — avoids Metaplex dependency, same pattern as 06-matchmaking.js, no RPC overhead from IDL fetch
+- DECISION: Async chain load on openDeckEditor() with immediate placeholder fallback — editor is usable instantly, chain data populates when RPC responds
+- DECISION: Canvas click via document.addEventListener('click') in 10-input.js — consistent with existing keydown pattern, no new canvas-specific event infra needed
+
+**Blockers:** None
+
+**Next:** Day 6 (T-D6-1 Shop NPC dialog, T-D6-2 HUD card count) if time permits
+
 ## 2026-04-21: Phase C → Phase D Reborn pivot
 - Phase C ended at 694eb33 (v541)
 - GDD v1.0 written (4977 words), approved by r0ze ("いいやん全部実装しよう")
