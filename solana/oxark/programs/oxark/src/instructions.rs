@@ -20,6 +20,9 @@ pub mod commit_card;
 pub mod reveal_card;
 pub mod season_supply;
 pub mod register_card;
+pub mod add_xp;
+pub mod unlock_achievement;
+pub mod set_title;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -43,3 +46,6 @@ pub use commit_card::*;
 pub use reveal_card::*;
 pub use season_supply::*;
 pub use register_card::*;
+pub use add_xp::*;
+pub use unlock_achievement::*;
+pub use set_title::*;

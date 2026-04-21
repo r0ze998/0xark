@@ -382,4 +382,53 @@ pub mod oxark {
     ) -> Result<()> {
         instructions::reveal_card::handle_reveal_card(ctx, game_id, card_id, salt)
     }
+
+    // ── T98: XP + Level System ────────────────────────────────────────────────
+
+    /// Add XP to a player's progression account.
+    ///
+    /// `reason` codes: 1=battle_win(50), 2=battle_loss(15), 3=card_collect(10),
+    ///   4=super_effective(20), 5=zk_cycle(30), 6=deathrattle(15), 7=chain(15)
+    ///
+    /// Level is recomputed from total XP using xpForLevel(n) = floor((n-1)*n*55).
+    /// PDA seeds: `["player_level", player_pubkey]` (init_if_needed)
+    pub fn add_xp(ctx: Context<AddXp>, reason: u8) -> Result<()> {
+        instructions::add_xp::handle_add_xp(ctx, reason)
+    }
+
+    // ── T99: Achievement System ───────────────────────────────────────────────
+
+    /// Unlock an achievement for the calling player.
+    ///
+    /// Achievement indices 0-9:
+    ///   0=first_blood, 1=collector_10, 2=collector_30, 3=full_set,
+    ///   4=chain_master, 5=dr_survived, 6=zk_committed, 7=super_x5,
+    ///   8=dungeon_floor5, 9=season_top
+    ///
+    /// Already-unlocked achievements are a no-op (idempotent).
+    /// PDA seeds: `["player_achievements", player_pubkey]` (init_if_needed)
+    pub fn unlock_achievement(ctx: Context<UnlockAchievement>, idx: u8) -> Result<()> {
+        instructions::unlock_achievement::handle_unlock_achievement(ctx, idx)
+    }
+
+    // ── T100: Title System ────────────────────────────────────────────────────
+
+    /// Unlock a title badge for the calling player.
+    ///
+    /// Title indices 0-7:
+    ///   0=Traveler (always on), 1=Card Hunter, 2=Chain Wizard,
+    ///   3=Dread Pirate, 4=ZK Mystic, 5=Half-Deck, 6=The Collector, 7=Champion
+    ///
+    /// PDA seeds: `["player_title", player_pubkey]` (init_if_needed)
+    pub fn unlock_title(ctx: Context<UnlockTitle>, title_idx: u8) -> Result<()> {
+        instructions::set_title::handle_unlock_title(ctx, title_idx)
+    }
+
+    /// Equip a previously unlocked title.
+    ///
+    /// Fails with InvalidAction if the title is not yet unlocked.
+    /// PDA seeds: `["player_title", player_pubkey]` (init_if_needed)
+    pub fn set_title(ctx: Context<SetTitle>, title_idx: u8) -> Result<()> {
+        instructions::set_title::handle_set_title(ctx, title_idx)
+    }
 }

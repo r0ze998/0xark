@@ -310,3 +310,113 @@ pub struct PlayerMoved {
     pub from_area: u8,
     pub to_area: u8,
 }
+
+// === T98: XP + Level System ===
+
+/// Per-player XP and level progression.
+/// xpForLevel(n) = floor((n-1)*n*55), 60 levels.
+/// PDA seeds: ["player_level", player_pubkey]
+#[account]
+#[derive(Default)]
+pub struct PlayerLevel {
+    pub owner:       Pubkey,
+    pub xp_total:    u64,
+    pub level:       u8,   // 1-60
+    pub bump:        u8,
+}
+
+impl PlayerLevel {
+    // 8 disc + 32 owner + 8 xp_total + 1 level + 1 bump
+    pub const SIZE: usize = 8 + 32 + 8 + 1 + 1;
+
+    /// XP threshold to reach level n (n >= 1).
+    /// xpForLevel(n) = floor((n-1)*n*55)
+    pub fn xp_for_level(n: u8) -> u64 {
+        let n = n as u64;
+        (n.saturating_sub(1)).wrapping_mul(n).wrapping_mul(55)
+    }
+
+    /// Recompute level from total XP. Returns level 1-60.
+    pub fn level_from_xp(xp: u64) -> u8 {
+        let mut lv = 1u8;
+        while lv < 60 {
+            if xp < Self::xp_for_level(lv + 1) { break; }
+            lv += 1;
+        }
+        lv
+    }
+}
+
+// XP reward constants (matches client XP_REWARDS)
+pub const XP_BATTLE_WIN:       u64 = 50;
+pub const XP_BATTLE_LOSS:      u64 = 15;
+pub const XP_CARD_COLLECT:     u64 = 10;
+pub const XP_SUPER_EFFECTIVE:  u64 = 20;
+pub const XP_ZK_CYCLE:         u64 = 30;
+pub const XP_DEATHRATTLE:      u64 = 15;
+pub const XP_CHAIN:            u64 = 15;
+
+// === T99: Achievement System ===
+
+/// Per-player achievement flags (10 achievements, bitmask in u16).
+/// Bit i = achievement index i unlocked.
+/// PDA seeds: ["player_achievements", player_pubkey]
+///
+/// Achievement indices:
+///   0=first_blood, 1=collector_10, 2=collector_30, 3=full_set,
+///   4=chain_master, 5=dr_survived, 6=zk_committed, 7=super_x5,
+///   8=dungeon_floor5, 9=season_top
+#[account]
+#[derive(Default)]
+pub struct PlayerAchievements {
+    pub owner:    Pubkey,
+    pub flags:    u16,   // bitmask, bit i = achievement i unlocked
+    pub bump:     u8,
+}
+
+impl PlayerAchievements {
+    // 8 disc + 32 owner + 2 flags + 1 bump
+    pub const SIZE: usize = 8 + 32 + 2 + 1;
+
+    pub fn is_unlocked(&self, idx: u8) -> bool {
+        idx < 16 && (self.flags & (1u16 << idx)) != 0
+    }
+
+    pub fn unlock(&mut self, idx: u8) -> bool {
+        if idx >= 16 || self.is_unlocked(idx) { return false; }
+        self.flags |= 1u16 << idx;
+        true
+    }
+}
+
+// === T100: Title System ===
+
+/// Per-player equipped title (0-7) and unlocked title bitmask.
+/// PDA seeds: ["player_title", player_pubkey]
+///
+/// Title indices:
+///   0=Traveler, 1=Card Hunter, 2=Chain Wizard, 3=Dread Pirate,
+///   4=ZK Mystic, 5=Half-Deck, 6=The Collector, 7=Champion
+#[account]
+#[derive(Default)]
+pub struct PlayerTitle {
+    pub owner:    Pubkey,
+    pub equipped: u8,    // 0-7, currently equipped title index
+    pub unlocked: u8,    // bitmask, bit i = title i available (always has bit 0)
+    pub bump:     u8,
+}
+
+impl PlayerTitle {
+    // 8 disc + 32 owner + 1 equipped + 1 unlocked + 1 bump
+    pub const SIZE: usize = 8 + 32 + 1 + 1 + 1;
+
+    pub fn is_title_unlocked(&self, idx: u8) -> bool {
+        idx < 8 && (self.unlocked & (1u8 << idx)) != 0
+    }
+
+    pub fn unlock_title(&mut self, idx: u8) -> bool {
+        if idx >= 8 || self.is_title_unlocked(idx) { return false; }
+        self.unlocked |= 1u8 << idx;
+        true
+    }
+}
