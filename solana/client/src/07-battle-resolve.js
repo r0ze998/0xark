@@ -239,6 +239,22 @@ function drawResolvingPhase(){
       qteType=(ev.target===0)?'defend':'attack';
       sfxQtePrompt();
     }
+    // T82: SUPER EFFECTIVE! / not very effective... banner
+    if(ev._elemResult&&evT>=5&&evT<45){
+      const isSuper=ev._elemResult==='super';
+      const bannerAlpha=Math.min(1,(evT-5)/8)*Math.min(1,(45-evT)/10);
+      g.save();g.globalAlpha=bannerAlpha;
+      if(isSuper){
+        const pulse=1+0.06*Math.sin(evT*0.4);
+        g.save();g.translate(W/2,H/2-20);g.scale(pulse,pulse);
+        g.fillStyle='rgba(0,0,0,0.65)';g.beginPath();g.roundRect(-130,-20,260,40,10);g.fill();
+        txShadow('SUPER EFFECTIVE!',0,8,18,'#f8d840','rgba(255,180,0,.5)');
+        g.restore();
+      }else{
+        txShadow('not very effective...',W/2,H/2-10,10,'#888890','rgba(0,0,0,.4)');
+      }
+      g.restore();
+    }
     // Typewriter text box at bottom
     const slideIn=Math.min(1,evT/12);const textX=W*(1-slideIn)+16*slideIn;
     win(4,H-70,W-8,64);

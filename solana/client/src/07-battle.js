@@ -1407,7 +1407,14 @@ function generateResolveEvents(){
         // Attack: deal 1 HP damage + force steal (ignore barrier) — power scales with rarity
         // T62: synergy pw_add bonus
         const _synergyAtk=activeSynergy&&activeSynergy.bonus.pw_add?activeSynergy.bonus.pw_add:0;
-        const dmg=Math.min(4,1+Math.floor((cr.r-1)/2)+Math.floor(_synergyAtk/3));
+        let dmg=Math.min(4,1+Math.floor((cr.r-1)/2)+Math.floor(_synergyAtk/3));
+        // T82: element multiplier (vs enemy element)
+        const _defElem=bpEnemyElement||1;
+        const _elemMult=calcElementMultiplier(cr.el||1,_defElem);
+        if(_elemMult!==1000){
+          dmg=Math.max(1,Math.round(dmg*_elemMult/1000));
+          events._elemResult=_elemMult>1000?'super':'weak';
+        }
         bpHP[tgt]=Math.max(0,bpHP[tgt]-dmg);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;

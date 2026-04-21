@@ -297,6 +297,8 @@ let bpShakeTarget=-1,bpShakeTimer=0;
 const BATTLE_HP_MAX=3;
 let bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];
 let bpHPDmgAnim=[0,0,0]; // frames remaining for HP damage flash per combatant
+// T82: Enemy element assigned at battle start (1=Tide,2=Abyss,3=Storm,4=Iron)
+let bpEnemyElement=0; // 0 = unset, randomized on battle start
 
 // ── Card acquisition animation ──
 let cardAcqActive=false,cardAcqFrame=0,cardAcqCard=-1,cardAcqDone=false;

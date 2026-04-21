@@ -4,6 +4,35 @@ use crate::state::*;
 use crate::error::ErrorCode;
 use sha2::{Sha256, Digest};
 
+// ── T82: Element System (Axis B) ──────────────────────────────────────────────
+// Elements: 1=Tide, 2=Abyss, 3=Storm, 4=Iron
+// Advantage cycle: Tide→Storm, Storm→Iron, Iron→Abyss, Abyss→Tide (+50%)
+// Disadvantage (reverse): -30%
+//
+// Multiplier (per 1000 units):
+//   advantage    → 1500  (base * 1500 / 1000)
+//   neutral/same → 1000
+//   disadvantage →  700  (base *  700 / 1000)
+pub fn calc_element_multiplier(attacker_elem: u8, defender_elem: u8) -> u32 {
+    match (attacker_elem, defender_elem) {
+        // advantage: Tide>Storm, Storm>Iron, Iron>Abyss, Abyss>Tide
+        (1, 3) | (3, 4) | (4, 2) | (2, 1) => 1500,
+        // disadvantage (reverse)
+        (3, 1) | (4, 3) | (2, 4) | (1, 2) => 700,
+        // same element or unknown → neutral
+        _ => 1000,
+    }
+}
+
+/// Assign element (1-4) to card_id (1-60) based on ID range.
+/// Matches frontend STRATEGY_DEPTH.md §2 assignment.
+pub fn card_element(card_id: u8) -> u8 {
+    if card_id <= 15 { 1 }       // Tide
+    else if card_id <= 30 { 2 }  // Abyss
+    else if card_id <= 45 { 3 }  // Storm
+    else { 4 }                   // Iron
+}
+
 #[derive(Accounts)]
 #[instruction(game_id: u64)]
 pub struct ResolveRound<'info> {

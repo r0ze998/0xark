@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v516+";
+window.BUILD_VERSION = "v512+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -3855,6 +3855,26 @@ const _CARD_TYPE_DU={magic:2,recovery:2};
     cr.du=_CARD_TYPE_DU[cr.t]||1;
   }
 })();
+
+// T82: Assign elements to all 60 cards (Axis B — Element System)
+// Advantage cycle: Tide→Storm→Iron→Abyss→Tide (+50%), reverse (-30%)
+// Groups: IDs 1-15=Tide, 16-30=Abyss, 31-45=Storm, 46-60=Iron
+const ELEM_NAME=['','Tide','Abyss','Storm','Iron'];
+const ELEM_COL =['','#60c0f0','#8060d0','#d0c040','#a09080'];
+const ELEM_ICON=['','\u2248','\u25C8','\u26A1','\u2736']; // ~, ◈, ⚡, ✶
+(function(){
+  for(let i=0;i<CD.length;i++){
+    const id=i+1;
+    CD[i].el=id<=15?1:id<=30?2:id<=45?3:4;
+  }
+})();
+/** Returns 1500 (adv), 700 (disadv), or 1000 (neutral) */
+function calcElementMultiplier(atkEl,defEl){
+  // advantage: Tide(1)>Storm(3), Storm(3)>Iron(4), Iron(4)>Abyss(2), Abyss(2)>Tide(1)
+  if((atkEl===1&&defEl===3)||(atkEl===3&&defEl===4)||(atkEl===4&&defEl===2)||(atkEl===2&&defEl===1))return 1500;
+  if((atkEl===3&&defEl===1)||(atkEl===4&&defEl===3)||(atkEl===2&&defEl===4)||(atkEl===1&&defEl===2))return 700;
+  return 1000;
+}
 
 // T61: 3-tier rarity lookup for drop system
 // Maps existing 5-tier r value → 3-tier tier (0=Common, 1=Rare, 2=Legendary)
@@ -7679,6 +7699,8 @@ let bpShakeTarget=-1,bpShakeTimer=0;
 const BATTLE_HP_MAX=3;
 let bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];
 let bpHPDmgAnim=[0,0,0]; // frames remaining for HP damage flash per combatant
+// T82: Enemy element assigned at battle start (1=Tide,2=Abyss,3=Storm,4=Iron)
+let bpEnemyElement=0; // 0 = unset, randomized on battle start
 
 // ── Card acquisition animation ──
 let cardAcqActive=false,cardAcqFrame=0,cardAcqCard=-1,cardAcqDone=false;
@@ -10068,6 +10090,13 @@ function drawGBACardMini(id,cx,cy,alpha,fr_){
   txShadow(scr.n,ox+4,oy+artH+18,7,_RC('text_light'),'rgba(0,0,0,.5)');
   // Rarity stars
   for(let s2=0;s2<rar;s2++)txShadow('\u2605',ox+4+s2*9,oy+cH-10,6,rarCol,'rgba(0,0,0,.3)');
+  // T82: Element icon (top-right corner)
+  if(scr.el){
+    const ec=ELEM_COL[scr.el]||'#ffffff';
+    const ei=ELEM_ICON[scr.el]||'?';
+    g.fillStyle='rgba(0,0,0,0.45)';g.beginPath();g.roundRect(ox+cW-17,oy+4,14,14,3);g.fill();
+    txShadow(ei,ox+cW-10,oy+15,8,ec,'rgba(0,0,0,0.6)');
+  }
   g.globalAlpha=1;
 }
 
@@ -10972,6 +11001,7 @@ function checkDungeonRivalEncounter(){
           sc='act';battlePhase='vs_splash';bpFrame=fr;
           battleRoundHistory=[];
           bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];
+          bpEnemyElement=1+Math.floor(Math.random()*4); // T82: random element 1-4
           startWipe('mosaic_out',20);
           if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){runMission.progress=1;runMission.completed=true;sfxStreakUp();}
         });
@@ -16807,7 +16837,14 @@ function generateResolveEvents(){
         // Attack: deal 1 HP damage + force steal (ignore barrier) — power scales with rarity
         // T62: synergy pw_add bonus
         const _synergyAtk=activeSynergy&&activeSynergy.bonus.pw_add?activeSynergy.bonus.pw_add:0;
-        const dmg=Math.min(4,1+Math.floor((cr.r-1)/2)+Math.floor(_synergyAtk/3));
+        let dmg=Math.min(4,1+Math.floor((cr.r-1)/2)+Math.floor(_synergyAtk/3));
+        // T82: element multiplier (vs enemy element)
+        const _defElem=bpEnemyElement||1;
+        const _elemMult=calcElementMultiplier(cr.el||1,_defElem);
+        if(_elemMult!==1000){
+          dmg=Math.max(1,Math.round(dmg*_elemMult/1000));
+          events._elemResult=_elemMult>1000?'super':'weak';
+        }
         bpHP[tgt]=Math.max(0,bpHP[tgt]-dmg);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
@@ -17214,6 +17251,22 @@ function drawResolvingPhase(){
       qteEventIdx=currentIdx;
       qteType=(ev.target===0)?'defend':'attack';
       sfxQtePrompt();
+    }
+    // T82: SUPER EFFECTIVE! / not very effective... banner
+    if(ev._elemResult&&evT>=5&&evT<45){
+      const isSuper=ev._elemResult==='super';
+      const bannerAlpha=Math.min(1,(evT-5)/8)*Math.min(1,(45-evT)/10);
+      g.save();g.globalAlpha=bannerAlpha;
+      if(isSuper){
+        const pulse=1+0.06*Math.sin(evT*0.4);
+        g.save();g.translate(W/2,H/2-20);g.scale(pulse,pulse);
+        g.fillStyle='rgba(0,0,0,0.65)';g.beginPath();g.roundRect(-130,-20,260,40,10);g.fill();
+        txShadow('SUPER EFFECTIVE!',0,8,18,'#f8d840','rgba(255,180,0,.5)');
+        g.restore();
+      }else{
+        txShadow('not very effective...',W/2,H/2-10,10,'#888890','rgba(0,0,0,.4)');
+      }
+      g.restore();
     }
     // Typewriter text box at bottom
     const slideIn=Math.min(1,evT/12);const textX=W*(1-slideIn)+16*slideIn;

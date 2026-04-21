@@ -92,6 +92,26 @@ const _CARD_TYPE_DU={magic:2,recovery:2};
   }
 })();
 
+// T82: Assign elements to all 60 cards (Axis B — Element System)
+// Advantage cycle: Tide→Storm→Iron→Abyss→Tide (+50%), reverse (-30%)
+// Groups: IDs 1-15=Tide, 16-30=Abyss, 31-45=Storm, 46-60=Iron
+const ELEM_NAME=['','Tide','Abyss','Storm','Iron'];
+const ELEM_COL =['','#60c0f0','#8060d0','#d0c040','#a09080'];
+const ELEM_ICON=['','\u2248','\u25C8','\u26A1','\u2736']; // ~, ◈, ⚡, ✶
+(function(){
+  for(let i=0;i<CD.length;i++){
+    const id=i+1;
+    CD[i].el=id<=15?1:id<=30?2:id<=45?3:4;
+  }
+})();
+/** Returns 1500 (adv), 700 (disadv), or 1000 (neutral) */
+function calcElementMultiplier(atkEl,defEl){
+  // advantage: Tide(1)>Storm(3), Storm(3)>Iron(4), Iron(4)>Abyss(2), Abyss(2)>Tide(1)
+  if((atkEl===1&&defEl===3)||(atkEl===3&&defEl===4)||(atkEl===4&&defEl===2)||(atkEl===2&&defEl===1))return 1500;
+  if((atkEl===3&&defEl===1)||(atkEl===4&&defEl===3)||(atkEl===2&&defEl===4)||(atkEl===1&&defEl===2))return 700;
+  return 1000;
+}
+
 // T61: 3-tier rarity lookup for drop system
 // Maps existing 5-tier r value → 3-tier tier (0=Common, 1=Rare, 2=Legendary)
 const CARD_TIER=(()=>{const m={};for(let i=0;i<CD.length;i++){const r=CD[i].r||1;m[i]=r<=2?0:r<=4?1:2;}return m;})();
