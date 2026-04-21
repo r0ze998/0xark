@@ -7,21 +7,47 @@ const W=960,H=640;
 let g=c.getContext('2d');
 const TW=32,TH=32;
 
+// ─── roundRect polyfill for iOS Safari < 15.4 ───────────────────────────────
+// Native roundRect added in iOS 15.4 (Mar 2022). Older devices get this shim.
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    const _r=typeof r==='number'?[r,r,r,r]:
+              Array.isArray(r)&&r.length===1?[r[0],r[0],r[0],r[0]]:
+              Array.isArray(r)&&r.length===2?[r[0],r[1],r[0],r[1]]:
+              Array.isArray(r)&&r.length===3?[r[0],r[1],r[2],r[1]]:
+              Array.isArray(r)?r:[0,0,0,0];
+    const _safe=_r.map(v=>Math.min(v,Math.min(w/2,h/2)));
+    this.moveTo(x+_safe[0],y);
+    this.lineTo(x+w-_safe[1],y);this.arcTo(x+w,y,x+w,y+_safe[1],_safe[1]);
+    this.lineTo(x+w,y+h-_safe[2]);this.arcTo(x+w,y+h,x+w-_safe[2],y+h,_safe[2]);
+    this.lineTo(x+_safe[3],y+h);this.arcTo(x,y+h,x,y+h-_safe[3],_safe[3]);
+    this.lineTo(x,y+_safe[0]);this.arcTo(x,y,x+_safe[0],y,_safe[0]);
+    this.closePath();return this;
+  };
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // ═══════════════════════════════════════
 // PIXI.JS APPLICATION (desktop only — mobile uses canvas direct)
 // ═══════════════════════════════════════
 const _isMobile=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
 PIXI.BaseTexture.defaultOptions.scaleMode = PIXI.SCALE_MODES.NEAREST;
 PIXI.settings.ROUND_PIXELS = true; // pixel-perfect snapping globally
-const pixiApp = new PIXI.Application({
+let pixiApp;
+try{pixiApp = new PIXI.Application({
   width: W, height: H,
   backgroundAlpha: 0, // Transparent background — game canvas shown directly below PixiJS UI overlay
   antialias: false,
   roundPixels: true,
   resolution: 1,       // force 1:1 pixel mapping — no DPR scaling
   autoStart: false,
-});
-if(!_isMobile){
+});}catch(_pixiErr){
+  // Fallback stub — keeps all pixiApp.stage/ticker/view refs non-null so game loop doesn't crash
+  console.warn('PixiJS init failed, using stub',_pixiErr);
+  const _stubStage={addChild:()=>{},children:[]};
+  pixiApp={stage:_stubStage,ticker:{add:()=>{},remove:()=>{},update:()=>{}},view:document.createElement('canvas'),stop:()=>{}};
+}
+if(!_isMobile&&pixiApp.view&&pixiApp.view.tagName==='CANVAS'&&document.getElementById('pixi-wrap')){
   // Desktop: game canvas shown directly; PixiJS canvas overlaid as transparent UI layer only
   // This eliminates the black flash caused by WebGL framebuffer clear when uploading canvas texture
   c.style.display='block';

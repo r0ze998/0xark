@@ -89,7 +89,7 @@ canvas{display:block;width:960px;height:640px;image-rendering:pixelated;image-re
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v533+";
+window.BUILD_VERSION = "v540";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -437,21 +437,47 @@ const W=960,H=640;
 let g=c.getContext('2d');
 const TW=32,TH=32;
 
+// ─── roundRect polyfill for iOS Safari < 15.4 ───────────────────────────────
+// Native roundRect added in iOS 15.4 (Mar 2022). Older devices get this shim.
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    const _r=typeof r==='number'?[r,r,r,r]:
+              Array.isArray(r)&&r.length===1?[r[0],r[0],r[0],r[0]]:
+              Array.isArray(r)&&r.length===2?[r[0],r[1],r[0],r[1]]:
+              Array.isArray(r)&&r.length===3?[r[0],r[1],r[2],r[1]]:
+              Array.isArray(r)?r:[0,0,0,0];
+    const _safe=_r.map(v=>Math.min(v,Math.min(w/2,h/2)));
+    this.moveTo(x+_safe[0],y);
+    this.lineTo(x+w-_safe[1],y);this.arcTo(x+w,y,x+w,y+_safe[1],_safe[1]);
+    this.lineTo(x+w,y+h-_safe[2]);this.arcTo(x+w,y+h,x+w-_safe[2],y+h,_safe[2]);
+    this.lineTo(x+_safe[3],y+h);this.arcTo(x,y+h,x,y+h-_safe[3],_safe[3]);
+    this.lineTo(x,y+_safe[0]);this.arcTo(x,y,x+_safe[0],y,_safe[0]);
+    this.closePath();return this;
+  };
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // ═══════════════════════════════════════
 // PIXI.JS APPLICATION (desktop only — mobile uses canvas direct)
 // ═══════════════════════════════════════
 const _isMobile=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
 PIXI.BaseTexture.defaultOptions.scaleMode = PIXI.SCALE_MODES.NEAREST;
 PIXI.settings.ROUND_PIXELS = true; // pixel-perfect snapping globally
-const pixiApp = new PIXI.Application({
+let pixiApp;
+try{pixiApp = new PIXI.Application({
   width: W, height: H,
   backgroundAlpha: 0, // Transparent background — game canvas shown directly below PixiJS UI overlay
   antialias: false,
   roundPixels: true,
   resolution: 1,       // force 1:1 pixel mapping — no DPR scaling
   autoStart: false,
-});
-if(!_isMobile){
+});}catch(_pixiErr){
+  // Fallback stub — keeps all pixiApp.stage/ticker/view refs non-null so game loop doesn't crash
+  console.warn('PixiJS init failed, using stub',_pixiErr);
+  const _stubStage={addChild:()=>{},children:[]};
+  pixiApp={stage:_stubStage,ticker:{add:()=>{},remove:()=>{},update:()=>{}},view:document.createElement('canvas'),stop:()=>{}};
+}
+if(!_isMobile&&pixiApp.view&&pixiApp.view.tagName==='CANVAS'&&document.getElementById('pixi-wrap')){
   // Desktop: game canvas shown directly; PixiJS canvas overlaid as transparent UI layer only
   // This eliminates the black flash caused by WebGL framebuffer clear when uploading canvas texture
   c.style.display='block';
@@ -1512,6 +1538,8 @@ function sfxWeakEffect(){if(!soundEnabled)return;beep(300,.06,.07);setTimeout(()
 function sfxZkCommit(){if(!soundEnabled)return;beep(160,.06,.1);setTimeout(()=>beep(120,.08,.1),90);}
 // T83: sfxZkReveal — ascending reveal chord for ZK reveal phase
 function sfxZkReveal(){if(!soundEnabled)return;beep(440,.05,.07);setTimeout(()=>beep(660,.05,.07),70);setTimeout(()=>beep(880,.07,.08),140);}
+// T111: sfxFinisher — dramatic low boom rising to crescendo for KO finishing blow
+function sfxFinisher(){if(!soundEnabled)return;beep(80,.15,.08);setTimeout(()=>beep(220,.08,.08),80);setTimeout(()=>beep(440,.07,.07),160);setTimeout(()=>beep(660,.06,.07),240);setTimeout(()=>beep(880,.08,.08),320);setTimeout(()=>beep(1320,.1,.1),400);}
 // sfxWalletConnect — brief connection chime
 function sfxWalletConnect(){if(!soundEnabled)return;beep(440,.05,.06);setTimeout(()=>beep(660,.06,.07),70);setTimeout(()=>beep(880,.08,.06),140);}
 // sfxError — descending tone pair for error feedback
@@ -11687,12 +11715,32 @@ const FLOOR_TITLE_DURATION=200; // ~3.3s at 60fps
 
 const FLOOR_THEMES=[
   null, // 0=town
-  {danger:1,sub:'SUNKEN GALLERIES',note:'Scattered cards. Watch your step.',accent:'#6090e0',bg:'#0a0c20',stripe:'#1a2048'},
-  {danger:2,sub:'DROWNED ARCHIVES',note:'The archives whisper. MIRA was here.',accent:'#8060c0',bg:'#0c0820',stripe:'#241840'},
-  {danger:3,sub:'ECHO CHAMBERS',note:'Echoes of the crew. Proceed carefully.',accent:'#b050a0',bg:'#100820',stripe:'#2c1040'},
-  {danger:4,sub:'THE DEEP VAULT',note:'The vault trembles. VEGA hunts below.',accent:'#d04060',bg:'#120608',stripe:'#301020'},
-  {danger:5,sub:'ARK CORE',note:'The ARK Core. One heir. No mercy.',accent:'#e0a020',bg:'#120800',stripe:'#301000'},
+  {danger:1,sub:'SUNKEN GALLERIES',note:'Scattered cards. Watch your step.',
+   story:['The sea consumed this hall long ago.','Cards drift in the currents like old memories.'],
+   accent:'#6090e0',bg:'#0a0c20',stripe:'#1a2048'},
+  {danger:2,sub:'DROWNED ARCHIVES',note:'The archives whisper. MIRA was here.',
+   story:['Someone catalogued every card before the flood.','The ink is still legible. MIRA\'s handwriting.'],
+   accent:'#8060c0',bg:'#0c0820',stripe:'#241840'},
+  {danger:3,sub:'ECHO CHAMBERS',note:'Echoes of the crew. Proceed carefully.',
+   story:['Voices echo here that have no living source.','The crew is gone but the ARK remembers them all.'],
+   accent:'#b050a0',bg:'#100820',stripe:'#2c1040'},
+  {danger:4,sub:'THE DEEP VAULT',note:'The vault trembles. VEGA hunts below.',
+   story:['The vault was sealed for a reason no one remembers.','Something paces below. It has been waiting.'],
+   accent:'#d04060',bg:'#120608',stripe:'#301020'},
+  {danger:5,sub:'ARK CORE',note:'The ARK Core. One heir. No mercy.',
+   story:['Sixty cards. One collection. One owner.','The ARK chooses. It has already decided.'],
+   accent:'#e0a020',bg:'#120800',stripe:'#301000'},
 ];
+// T114: Landmark flavor text — random lines shown while exploring each floor
+const FLOOR_LANDMARKS=[
+  [], // 0=town
+  ['Rust bleeds from the walls like old wounds.','A waterlogged door — the lock is still intact.','Card fragments crunching underfoot.','Light shifts. Something moved above.'],
+  ['A ledger lists names. None are yours.','Bookshelves — all volumes sealed with wax.','MIRA\'s initials scratched into the stone.','The smell of brine and old paper.'],
+  ['Your footstep echoes three times. Only two make sense.','The corridor bends — you mapped it straight.','A mirror shows an empty room. You are in it.','Silence pools here like standing water.'],
+  ['The floor groans but holds.','VEGA\'s mark carved into the bulkhead.','A card slot — already emptied.','The temperature drops. Someone was here recently.'],
+  ['The ARK hums with a frequency you feel in your teeth.','Sixty slots on the wall. Most are empty.','End-of-run protocols. The ARK is ready.','There is no way back from here. There never was.'],
+];
+let _landmarkCooldown=0; // frames between landmark text triggers
 
 // v264: Pre-bake floor title gradients — 2 createLinearGradient calls × 200 frames → 0 per frame
 const _FLOOR_TITLE_BAR_GRADS=(()=>{
@@ -11727,6 +11775,18 @@ function updateFloorTitle(){
   if(!floorTitleActive)return;
   floorTitleFrame++;
   if(floorTitleFrame>FLOOR_TITLE_DURATION)floorTitleActive=false;
+}
+// T114: Trigger a random landmark flavor text line for the current dungeon floor
+function triggerLandmarkText(){
+  if(!inDungeon||currentFloor<1||currentFloor>5)return;
+  if(_landmarkCooldown>0){_landmarkCooldown--;return;}
+  const pool=FLOOR_LANDMARKS[currentFloor];if(!pool||pool.length===0)return;
+  // 12% chance per step, with cooldown of 180 frames after each trigger
+  if(Math.random()<0.12){
+    const ln=pool[Math.floor(Math.random()*pool.length)];
+    twSet(ln);
+    _landmarkCooldown=180;
+  }
 }
 
 function drawFloorTitle(){
@@ -11824,6 +11884,21 @@ function drawFloorTitle(){
     g.font='6px monospace';g.textAlign='center';
     g.fillStyle='#a8a8b8';
     g.fillText(theme.note,W/2,H/2+68);
+    g.textAlign='left';
+  }
+  // T114: Story narrative lines (appear at t=120, typewriter on first line then second)
+  if(t>=120&&theme.story&&theme.story.length>0){
+    const stAlpha=Math.min(1,(t-120)/18)*globalAlpha;
+    g.globalAlpha=stAlpha*0.55;
+    g.font='5px monospace';g.textAlign='center';
+    g.fillStyle='#d0cce0';
+    const ch1=Math.max(0,Math.floor((t-120)/1.4));
+    g.fillText(theme.story[0].slice(0,ch1),W/2,H/2+84);
+    if(t>=140&&theme.story[1]){
+      const ch2=Math.max(0,Math.floor((t-140)/1.4));
+      g.fillStyle='#b0acc0';
+      g.fillText(theme.story[1].slice(0,ch2),W/2,H/2+96);
+    }
     g.textAlign='left';
   }
 
@@ -17128,6 +17203,7 @@ let bpTargetSelectActive=false, bpTargetSelectIdx=1; // STEAL/SCOUT target selec
 let bpPendingAction=-1; // action waiting for target/card selection
 let bpSelectedCardSlot=0; // which card slot to consume for USE CARD
 let bpSelectedTarget=1; // which player index to target for STEAL/SCOUT
+let bpCardInspectActive=false,bpCardInspectId=0; // T113: in-battle card detail modal
 
 function generateResolveEvents(){
   // v297: actionNames dead — _ACTION_NAMES already at module scope (v262); rivalBarriers → 2 vars
@@ -17169,10 +17245,12 @@ function generateResolveEvents(){
       const stolen=removeCardFromPlayer(tgt,-1);
       if(stolen>0&&addCardToPlayer(0,stolen)){
         const stolenCard=CD[stolen-1];
-        // Successful steal → target loses 1 HP
+        // Successful steal → target loses 1 HP; T111: finisher if last HP
+        const _finisherSteal=bpHP[tgt]===1;
         bpHP[tgt]=Math.max(0,bpHP[tgt]-1);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
+        if(_finisherSteal&&bpHP[tgt]===0)events._isFinisher=true;
         // T96: Deathrattle — stolen card is a trap, stealer loses a card back
         const _drIds=new Set([1,3,4,9,13,34,41,42,44,46]);
         if(_drIds.has(stolen)){
@@ -17255,6 +17333,9 @@ function generateResolveEvents(){
           events._elemResult=_elemMult>1000?'super':'weak';
           if(_elemMult>1000)tutorialStepDone('element'); // T84: Axis B tutorial step
         }
+        // T111: finisher when target at last HP — +50% damage bonus
+        const _finisherAtk=bpHP[tgt]>0&&bpHP[tgt]<=dmg;
+        if(_finisherAtk){dmg=Math.ceil(dmg*1.5);events._isFinisher=true;}
         bpHP[tgt]=Math.max(0,bpHP[tgt]-dmg);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
@@ -17290,7 +17371,10 @@ function generateResolveEvents(){
       }else if(cr.t==='magic'){
         // Magic: strip all barriers + 2 HP damage to both rivals + guaranteed steal
         /* rb0/rb1 go out of scope after magic; bpPlayerBarrier covers player */bpPlayerBarrier=false;
+        // T111: finisher if magic KOs any rival
+        const _preMagHP1=bpHP[1],_preMagHP2=bpHP[2];
         bpHP[1]=Math.max(0,bpHP[1]-2);bpHP[2]=Math.max(0,bpHP[2]-1);
+        if((_preMagHP1>0&&bpHP[1]<=0)||(_preMagHP2>0&&bpHP[2]<=0))events._isFinisher=true;
         bpHPDmgAnim[1]=20;bpHPDmgAnim[2]=20;
         const stolen=removeCardFromPlayer(tgt,-1);
         if(stolen>0&&addCardToPlayer(0,stolen)){
@@ -17722,6 +17806,56 @@ function drawResolvingPhase(){
       g.fillStyle='rgba(0,0,0,0.5)';g.beginPath();g.roundRect(-90,-12,180,24,6);g.fill();
       txShadow('\u26A1 SUPER EFFECTIVE!',0,4,9,'#f8f040','rgba(0,0,0,.3)');
       g.restore();g.restore();
+    }
+    // T111: Finisher cinematic — spans first 90 frames of resolve sequence (uses t, not evT)
+    if(bpResolveQueue._isFinisher&&t<90){
+      if(t===1)sfxFinisher();
+      // Screen darkens: fade in 0-25, hold 25-65, fade out 65-90
+      const _dkA=t<25?t/25*0.82:t<65?0.82:Math.max(0,0.82-(t-65)/25*0.82);
+      g.save();g.globalAlpha=_dkA;g.fillStyle='#000';g.fillRect(0,0,W,H);g.restore();
+      // Card flip 360° at center (t 10-70 = 60 frames)
+      if(t>=10&&t<70){
+        const _flipT=(t-10)/60;
+        const _flipA=Math.min(1,(t-10)/8)*Math.min(1,(70-t)/10);
+        const _flipX=Math.cos(_flipT*Math.PI*2);
+        const _cW=52,_cH=74;
+        g.save();g.globalAlpha=_flipA;
+        g.save();g.translate(W/2,H/2-30);g.scale(_flipX,1);
+        g.fillStyle=_flipX>=0?'#1a0830':'#08102a';
+        g.beginPath();g.roundRect(-_cW/2,-_cH/2,_cW,_cH,6);g.fill();
+        g.strokeStyle='rgba(255,80,120,.9)';g.lineWidth=2;g.stroke();
+        if(_flipX>=0){txShadow('\u2620',0,6,22,'#ff3060','rgba(0,0,0,.5)');}
+        g.restore();g.restore();
+      }
+      // "FINISHER!" text zoom-in (t 18-72)
+      if(t>=18&&t<72){
+        const _fA=Math.min(1,(t-18)/10)*Math.min(1,(72-t)/14);
+        const _fScl=0.7+Math.min(0.3,(t-18)/20*0.3)+0.06*Math.sin((t-18)*0.25);
+        g.save();g.globalAlpha=_fA;
+        g.save();g.translate(W/2,H/2+26);g.scale(_fScl,_fScl);
+        g.fillStyle='rgba(0,0,0,0.6)';g.beginPath();g.roundRect(-110,-22,220,44,10);g.fill();
+        g.strokeStyle='rgba(255,60,80,.8)';g.lineWidth=2;g.stroke();
+        txShadow('FINISHER!',0,8,24,'#ff3050','rgba(255,0,40,.6)');
+        g.restore();g.restore();
+      }
+      // Lightning burst (t 22-68)
+      if(t>=22&&t<68){
+        const _lA=Math.min(1,(t-22)/8)*Math.min(1,(68-t)/12)*0.9;
+        g.save();g.globalAlpha=_lA;
+        const _cx=W/2,_cy=H/2-30;
+        for(let _li=0;_li<10;_li++){
+          const _ang=(_li/10)*Math.PI*2+(t*0.12);
+          const _r1=45+((_li*19+t*7)%35);
+          const _r2=_r1+70+((_li*13+t*5)%55);
+          const _ma=_ang+((_li*7+t*3)%24-12)*0.05;
+          const _mx=_cx+_r1*Math.cos(_ma)*1.4,_my=_cy+_r1*Math.sin(_ma)*0.7;
+          const _ex=_cx+_r2*Math.cos(_ang)*1.4,_ey=_cy+_r2*Math.sin(_ang)*0.7;
+          g.strokeStyle=_li%3===0?'#ff4080':_li%3===1?'#ffe040':'#ffffff';
+          g.lineWidth=_li%3===0?2:1;
+          g.beginPath();g.moveTo(_cx,_cy);g.lineTo(_mx,_my);g.lineTo(_ex,_ey);g.stroke();
+        }
+        g.restore();
+      }
     }
     // Typewriter text box at bottom
     const slideIn=Math.min(1,evT/12);const textX=W*(1-slideIn)+16*slideIn;
@@ -18373,9 +18507,93 @@ function drawResultPhase(){
   drawGBAHpBox(2,214,36,180,56,'result');
   drawGBAHpBox(0,W-310,H-130,300,100,'result');
   const t=fr-bpFrame;
+  // T115: Victory Cinematic — shown first 80 frames when a rival is KO'd
+  const _isVictory=bpResolveQueue&&(bpResolveQueue._rival1KO||bpResolveQueue._rival2KO);
+  const _isDefeat=bpResolveQueue&&bpResolveQueue._playerDefeated;
+  if(_isVictory&&t<80){
+    // Darken → gold particles → VICTORY text → stolen card lore
+    const _vDark=t<20?t/20*0.92:0.92;
+    g.save();g.globalAlpha=_vDark;g.fillStyle='#0a0600';g.fillRect(0,0,W,H);g.restore();
+    // Gold particle burst
+    if(t>8){
+      const _pA=Math.min(1,(t-8)/12);g.save();g.globalAlpha=_pA*0.8;
+      for(let pi=0;pi<20;pi++){
+        const _pa=(pi/20)*Math.PI*2;const _pr=50+(t-8)*2.8+(pi*17)%40;
+        const _px=W/2+_pr*Math.cos(_pa)*1.6,_py=H/2+_pr*Math.sin(_pa)*0.7;
+        const _ps=2+((pi*7)%3);
+        g.fillStyle=pi%3===0?'#ffd040':pi%3===1?'#ffe880':'#f0a020';
+        g.fillRect(_px|0,_py|0,_ps,_ps);
+      }
+      g.restore();
+    }
+    // VICTORY text (t=15-80)
+    if(t>=15){
+      const _vA=Math.min(1,(t-15)/12);const _vScl=0.8+Math.min(0.2,(t-15)/25*0.2);
+      g.save();g.globalAlpha=_vA;
+      g.save();g.translate(W/2,H/2-18);g.scale(_vScl,_vScl);
+      g.fillStyle='rgba(0,0,0,.5)';g.beginPath();g.roundRect(-110,-24,220,48,12);g.fill();
+      g.strokeStyle='rgba(255,200,40,.7)';g.lineWidth=2;g.stroke();
+      txShadow('VICTORY!',0,10,28,'#ffd040','rgba(255,140,0,.7)');
+      g.restore();g.restore();
+    }
+    // Stolen card lore snippet (t=30-80)
+    if(t>=30){
+      let _stEv=null;for(let _i=0;_i<bpResolveQueue.length;_i++){const _e=bpResolveQueue[_i];if(_e.effect==='steal_get'&&_e.stolenId>0){_stEv=_e;break;}}
+      if(_stEv&&_stEv.stolenId>0){
+        const _scr=CD[_stEv.stolenId-1];const _lA=Math.min(1,(t-30)/15)*0.85;
+        g.save();g.globalAlpha=_lA;
+        if(_scr.lo){txShadow(_scr.lo.slice(0,Math.floor((t-30)*1.8)),W/2-180,H/2+22,6,'#c8b880','rgba(0,0,0,.4)');}
+        else if(_scr.fl){txShadow('\u201C'+_scr.fl+'\u201D',W/2-140,H/2+22,6,'#c8b880','rgba(0,0,0,.4)');}
+        g.restore();
+      }
+    }
+    if(t>60){
+      g.globalAlpha=Math.min(0.6,(t-60)/12);
+      txShadow('[Z] Continue',W/2-44,H/2+56,8,'#d0c090','rgba(0,0,0,.4)');
+      g.globalAlpha=1;
+    }
+    return; // hold cinematic for first 80 frames
+  }
+  // T115: Defeat Cinematic — shown first 60 frames when player is defeated
+  if(_isDefeat&&t<60){
+    const _dDark=t<15?t/15*0.9:0.9;
+    g.save();g.globalAlpha=_dDark;g.fillStyle='#1a0000';g.fillRect(0,0,W,H);g.restore();
+    // Red vignette pulse
+    g.save();g.globalAlpha=(0.3+Math.sin(t*0.15)*0.15)*Math.min(1,t/15);
+    g.drawImage(_btlDefeatVig,0,0);g.restore();
+    // DEFEATED text (t=12-60)
+    if(t>=12){
+      const _dA=Math.min(1,(t-12)/10);
+      g.save();g.globalAlpha=_dA;
+      txShadow('DEFEATED',W/2-72,H/2-14,26,'#ff3030','rgba(200,0,0,.7)');
+      g.restore();
+    }
+    // Random flavor quote (t=25-60)
+    if(t>=25){
+      const _qA=Math.min(1,(t-25)/12)*0.75;
+      const _quotes=[];
+      if(bpResolveQueue){for(let _qi=0;_qi<bpResolveQueue.length;_qi++){const _qe=bpResolveQueue[_qi];if(_qe.text&&(_qe.text.includes('stole your')||_qe.text.includes('STOLE'))){_quotes.push(_qe.text);break;}}}
+      const _qLine=_quotes.length>0?_quotes[0]:pl[1].n+': "Next time you will not escape."';
+      g.save();g.globalAlpha=_qA;
+      txShadow(_qLine.slice(0,Math.floor((t-25)*2.5)),W/2-180,H/2+22,7,'#f0a0a0','rgba(0,0,0,.4)');
+      g.restore();
+      // XP consolation
+      if(t>=40){
+        const _xA=Math.min(1,(t-40)/10)*0.7;
+        g.globalAlpha=_xA;txShadow('+'+((XP_REWARDS&&XP_REWARDS.battle_loss)||15)+' XP (participation)',W/2-80,H/2+46,7,'#c08080','rgba(0,0,0,.3)');g.globalAlpha=1;
+      }
+    }
+    if(t>45){
+      g.globalAlpha=Math.min(0.6,(t-45)/10);
+      txShadow('[Z] Continue',W/2-44,H/2+66,8,'#c08080','rgba(0,0,0,.4)');
+      g.globalAlpha=1;
+    }
+    return;
+  }
   // Summary panel in center
   const panW=500,panH=280,panX=W/2-panW/2,panY=H/2-panH/2-10;
-  const slideIn_=Math.min(1,t/15);
+  const _cinOffset=_isVictory?80:_isDefeat?60:0;
+  const slideIn_=Math.min(1,(t-_cinOffset)/15);
   g.globalAlpha=slideIn_;
   win(panX,panY,panW,panH);
   drawGBAResultBanner(t,panX,panY,panW); // v458: GBA-styled summary header
@@ -18515,8 +18733,8 @@ function drawResultPhase(){
       drawGBACardMini(showcaseId,sCX,sCY,showcaseAlpha*popScale,fr);
       // Card result label below
       g.globalAlpha=showcaseAlpha*0.9;
-      const gotLabel=stealEv?'STOLEN!':'ACQUIRED!';
-      const gotCol=stealEv?rcol:'#50e090';
+      const gotLabel=stealEv?(scr.r>=4?'\u2605 MVP STOLEN!':'STOLEN!'):(scr.r>=4?'\u2605 MVP ACQUIRED!':'ACQUIRED!');
+      const gotCol=stealEv?rcol:(scr.r>=4?'#ffe060':'#50e090');
       txShadow(gotLabel,sCX-25,sCY+50,9,gotCol,'rgba(0,0,0,.5)');
       txShadow(scr.f,sCX-25,sCY+64,7,'#988870','rgba(0,0,0,.3)');
       g.globalAlpha=1;
@@ -18587,10 +18805,128 @@ function drawResultPhase(){
     g.globalAlpha=1;
   }
 
-  // Press Z prompt
-  if(t>25&&Math.floor(t/20)%2===0){
-    txShadow('PRESS Z TO CONTINUE',W/2-120,panY+panH+12,10,'#989080','rgba(0,0,0,.3)');
+  // T112: XP breakdown + best combo + level progress bar
+  {
+    const _sumY=panY+panH+14;
+    let _sumGotCard=false;
+    if(bpResolveQueue){for(let _i=0;_i<bpResolveQueue.length;_i++){const _e=bpResolveQueue[_i];if(_e.effect==='steal_get'||_e.effect==='card_get'){_sumGotCard=true;break;}}}
+    const _xpWin=_sumGotCard?(XP_REWARDS.battle_win||50):(XP_REWARDS.battle_loss||15);
+    const _xpCombo=_comboMaxBattle>=7?30:_comboMaxBattle>=5?20:_comboMaxBattle>=3?10:0;
+    const _xpFin=bpResolveQueue&&bpResolveQueue._isFinisher?25:0;
+    const _xpTot=_xpWin+_xpCombo+_xpFin;
+    const _xpAlpha=Math.min(1,Math.max(0,(t-22)/10))*slideIn_;
+    g.globalAlpha=_xpAlpha;
+    // XP breakdown row
+    let _xStr='+'+_xpWin+(_sumGotCard?' win':' participation');
+    if(_xpCombo>0)_xStr+=' | +'+_xpCombo+' combo';
+    if(_xpFin>0)_xStr+=' | +'+_xpFin+' finisher';
+    _xStr+='  =  +'+_xpTot+' XP';
+    txShadow(_xStr,panX+16,_sumY+10,7,'#d0a840','rgba(0,0,0,.3)');
+    // Best combo badge (right side)
+    if(_comboMaxBattle>=3){
+      const _cLbl=_comboMaxBattle>=7?'UNSTOPPABLE':_comboMaxBattle>=5?'LEGENDARY':'PERFECT';
+      g.globalAlpha=_xpAlpha*0.9;
+      txShadow('Best Combo \xD7'+_comboMaxBattle+' \u2605 '+_cLbl,panX+panW-190,_sumY+10,7,'#f0e040','rgba(0,0,0,.4)');
+    }
+    // Level progress bar
+    const _lvlNext=Math.min(60,playerLevel+1);
+    const _lvlCurXP=xpForLevel(playerLevel),_lvlNextXP=xpForLevel(_lvlNext);
+    const _lvlRange=Math.max(1,_lvlNextXP-_lvlCurXP);
+    const _lvlProg=Math.min(1,(playerXP-_lvlCurXP)/_lvlRange);
+    const _barFill=_lvlProg*Math.min(1,Math.max(0,(t-26)/22));
+    const _barW=panW-32,_barH=10,_barX=panX+16,_barY=_sumY+18;
+    g.globalAlpha=_xpAlpha;
+    bx(_barX,_barY,_barW,_barH,'rgba(40,30,20,.8)');
+    if(_barFill>0){bx(_barX,_barY,Math.max(4,Math.round(_barW*_barFill)),_barH,'#c09830');bx(_barX,_barY,Math.max(2,Math.round(_barW*_barFill)-2),2,'rgba(255,255,255,.18)');}
+    g.globalAlpha=_xpAlpha*0.85;
+    txShadow('Lv.'+playerLevel,_barX,_barY+20,7,'#d0b870','rgba(0,0,0,.2)');
+    txShadow(playerXP+' / '+_lvlNextXP+' XP',panX+panW-16-80,_barY+20,6,'#988870','rgba(0,0,0,.2)');
   }
+  // T112: styled [Z] CONTINUE button (replaces plain PRESS Z text)
+  if(t>25&&Math.floor(t/20)%2===0){
+    const _btnY=panY+panH+58;
+    g.globalAlpha=0.9*slideIn_;
+    g.fillStyle='rgba(60,50,30,.9)';g.beginPath();g.roundRect(W/2-72,_btnY-14,144,26,8);g.fill();
+    g.strokeStyle='rgba(200,160,80,.7)';g.lineWidth=1;g.stroke();
+    txShadow('[Z]  CONTINUE',W/2-54,_btnY+4,10,'#f0d880','rgba(0,0,0,.5)');
+    g.globalAlpha=1;
+  }
+}
+
+// T113: In-battle card detail modal (opened via [A] in card select mode)
+let _bcdFlavorRef=null,_bcdFlavorLines=[],_bcdLoreRef=null,_bcdLoreLines=[];
+function drawBattleCardDetail(){
+  if(!bpCardInspectActive||bpCardInspectId<=0)return;
+  const cr=CD[bpCardInspectId-1];if(!cr)return;
+  bx(0,0,W,H,'rgba(0,0,0,.90)');
+  const pw=320,ph=430,px=W/2-pw/2,py=H/2-ph/2;
+  bx(px,py,pw,ph,cr.d);bx(px+1,py+1,pw-2,ph-2,cr.c);
+  bx(px,py,pw,2,cr.h);bx(px,py+ph-2,pw,2,cr.h);
+  // Art area
+  const artH=120;
+  bx(px+2,py+2,pw-4,artH,cr.d||'#0e0c18');
+  drawCardCharacter(px+pw/2-14,py+4,bpCardInspectId,1.8,fr);
+  // Rarity stars + element
+  const rar=cr.r||1;
+  const rarCol=RARITY_COLOR[rar]||'#888898';
+  for(let s=0;s<rar;s++)txShadow('\u2605',px+12+s*16,py+artH+17,9,rarCol,'rgba(0,0,0,.35)');
+  txShadow(RARITY_LABEL[rar]||'',px+12+rar*16+4,py+artH+17,6,rarCol,'rgba(0,0,0,.3)');
+  const _EL=['Fire','Water','Wind','Earth','Shadow','Light'];
+  const el=cr.el!==undefined?cr.el:Math.floor((bpCardInspectId-1)/10);
+  txShadow(_EL[el]||'',px+pw-52,py+artH+17,6,cr.h||'#aaa','rgba(0,0,0,.3)');
+  // Card name
+  const nfs=Math.max(9,Math.min(14,Math.floor(pw/(cr.n.length*0.72))));
+  txShadow(cr.n,px+pw/2-(cr.n.length*nfs/2.4),py+artH+31,nfs,'#f0e8d0','rgba(0,0,0,.5)');
+  // Type
+  const tl=(_CRD_TYPE_FULL[cr.t])||cr.t.toUpperCase();
+  txShadow(tl,px+pw/2-tl.length*3,py+artH+48,7,cr.h||'#aaa','rgba(0,0,0,.35)');
+  // Separator
+  bx(px+16,py+artH+56,pw-32,1,(cr.h||'#40385a')+'80');
+  // Stat bars
+  if(cr.pw!==undefined){
+    const sbY=py+artH+62;
+    const _stats=[['PWR',cr.pw,10,'#e05838'],['SPD',cr.sp||0,5,'#38b868']];
+    for(let si=0;si<_stats.length;si++){
+      const [l,v,mx,c]=_stats[si];
+      const sY=sbY+si*14;
+      txShadow(l,px+16,sY+5,5,'#888898','rgba(0,0,0,.3)');
+      bx(px+48,sY,pw-68,5,'#181830');
+      if(v>0)bx(px+48,sY,Math.round((pw-68)*Math.min(1,v/mx)),5,c);
+      txShadow(String(v),px+pw-16,sY+5,5,c,'rgba(0,0,0,.3)');
+    }
+  }
+  // Lore text (word-wrapped)
+  let _ly=py+artH+98;
+  if(cr.lo){
+    if(_bcdLoreRef!==cr){
+      _bcdLoreRef=cr;_bcdLoreLines=[];
+      const _ws=cr.lo.split(' ');let _l='';
+      for(const w of _ws){if((_l+w).length>40){_bcdLoreLines.push(_l.trim());_l=w+' ';}else _l+=w+' ';}
+      if(_l.trim())_bcdLoreLines.push(_l.trim());
+    }
+    for(let li=0;li<Math.min(4,_bcdLoreLines.length);li++){
+      g.globalAlpha=0.88;
+      txShadow(_bcdLoreLines[li],px+16,_ly+li*14,6,'#c8c0a0','rgba(0,0,0,.3)');
+    }
+    g.globalAlpha=1;
+    _ly+=Math.min(4,_bcdLoreLines.length)*14+4;
+  }
+  // Flavor quote
+  if(cr.fl){
+    if(_bcdFlavorRef!==cr){
+      _bcdFlavorRef=cr;_bcdFlavorLines=[];
+      const _ws=cr.fl.split(' ');let _l='';
+      for(const w of _ws){if((_l+w).length>42){_bcdFlavorLines.push(_l.trim());_l=w+' ';}else _l+=w+' ';}
+      if(_l.trim())_bcdFlavorLines.push(_l.trim());
+    }
+    for(let li=0;li<Math.min(2,_bcdFlavorLines.length);li++){
+      g.globalAlpha=0.6;
+      txShadow('\u201C'+_bcdFlavorLines[li]+(li===Math.min(2,_bcdFlavorLines.length)-1?'\u201D':''),px+16,_ly+li*13,5,'#a0988a','rgba(0,0,0,.2)');
+    }
+    g.globalAlpha=1;
+  }
+  // Close hint
+  txShadow('[X] Close',px+pw/2-26,py+ph-14,7,'#686878','rgba(0,0,0,.35)');
 }
 
 function dAct(){
@@ -18599,6 +18935,7 @@ function dAct(){
   else if(battlePhase==='confirming'||battlePhase==='waiting')drawConfirmingPhase();
   else if(battlePhase==='resolving')drawResolvingPhase();
   else if(battlePhase==='result')drawResultPhase();
+  if(bpCardInspectActive)drawBattleCardDetail();
 }
 
 // ═══════════════════════════════════════
@@ -22927,7 +23264,7 @@ function tryMovePlayer(dx, dy) {
     if(objectInteractTimer<=0){objectInteractMsg='Lava! Cards decaying faster!';objectInteractTimer=60;}
     screenShake(2,4);
   }
-  if(inDungeon){ processDungeonTurn(); checkFloorItemPickup(nx,ny); checkLandmarkEnter(currentMap,nx,ny); }
+  if(inDungeon){ processDungeonTurn(); checkFloorItemPickup(nx,ny); checkLandmarkEnter(currentMap,nx,ny); triggerLandmarkText(); }
   if(!tutorialFlags.firstStep){tutorialFlags.firstStep=true;tutorialMsg='Goal: collect all 60 cards to win the Prize Pool! Dungeon entrance is EAST.';tutorialMsgTimer=300;}
   if(newTile===11&&!tutorialFlags.firstGrass){tutorialFlags.firstGrass=true;tutorialMsg='Walk through tall grass to find cards!';tutorialMsgTimer=180;}
   // T63: tutorial objective tracking
@@ -23896,11 +24233,22 @@ document.addEventListener('keydown',e=>{
         lg.push('QTE success! Steal charge bonus!');
       }
     }
+    // T113: in-battle card detail modal (close with X or Z)
+    if(bpCardInspectActive){
+      if(e.code==='KeyX'||e.code==='KeyZ'){bpCardInspectActive=false;bpCardInspectId=0;sfxBack();}
+      return;
+    }
     if(battlePhase==='select'&&bpCardSelectActive){
       // Card selection for USE CARD
       const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push(i);}
       if(e.code==='ArrowUp'){bpCardSelectIdx=Math.max(0,bpCardSelectIdx-1);sfxCursor();}
       if(e.code==='ArrowDown'){bpCardSelectIdx=Math.min(filled.length-1,bpCardSelectIdx+1);sfxCursor();}
+      // T113: [A] = inspect selected card
+      if(e.code==='KeyA'&&filled.length>0){
+        const _cid=pl[0].cd[filled[bpCardSelectIdx]]||0;
+        if(_cid>0){bpCardInspectActive=true;bpCardInspectId=_cid;sfxSelect();}
+        return;
+      }
       if(e.code==='KeyZ'){
         sfxConfirm();
         bpAction=4;bpCardSelectActive=false;
@@ -23967,6 +24315,7 @@ document.addEventListener('keydown',e=>{
         // Player HP defeat: lose weakest card to the rival who last stole, retreat
         if(bpResolveQueue&&bpResolveQueue._playerDefeated&&!bpRdIncremented){
           bpRdIncremented=true;rd++;roundsThisRun++;
+          addXP(XP_REWARDS.battle_loss||15); // T115: consolation XP on defeat
           // Lose the weakest (lowest rarity) card in hand
           let worstSlot=-1,worstRar=99;
           for(let i=0;i<HAND_SIZE;i++){
