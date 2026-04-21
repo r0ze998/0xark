@@ -256,6 +256,28 @@ function drawResolvingPhase(){
       }
       g.restore();
     }
+    // T96: DEATHRATTLE ACTIVATED! banner
+    if(ev._drResult&&evT>=5&&evT<50){
+      const drAlpha=Math.min(1,(evT-5)/8)*Math.min(1,(50-evT)/10);
+      g.save();g.globalAlpha=drAlpha;
+      const pulse=1+0.05*Math.sin(evT*0.5);
+      g.save();g.translate(W/2,H/2-40);g.scale(pulse,pulse);
+      g.fillStyle='rgba(60,0,30,0.82)';g.beginPath();g.roundRect(-140,-22,280,44,10);g.fill();
+      g.strokeStyle='rgba(200,60,80,0.6)';g.lineWidth=1;g.stroke();
+      txShadow('\u{1F480} DEATHRATTLE ACTIVATED!',0,6,14,'#ff6080','rgba(180,0,40,.6)');
+      if(ev._drResult.penaltyId){const pc=CD[ev._drResult.penaltyId-1];txShadow('Lost '+(pc?pc.n:'a card')+' as penalty',0,22,7,'#c06070','rgba(0,0,0,.4)');}
+      g.restore();g.restore();
+    }
+    // T97: CHAIN xN ACTIVATED! banner
+    if(ev._chainCount&&evT>=8&&evT<48){
+      const chainAlpha=Math.min(1,(evT-8)/8)*Math.min(1,(48-evT)/10);
+      g.save();g.globalAlpha=chainAlpha;
+      g.save();g.translate(W/2,H/2+10);
+      g.fillStyle='rgba(0,30,60,0.82)';g.beginPath();g.roundRect(-120,-18,240,36,8);g.fill();
+      g.strokeStyle='rgba(60,160,255,0.5)';g.lineWidth=1;g.stroke();
+      txShadow('\u{26A1} CHAIN \xD7'+ev._chainCount+' ACTIVATED!',0,4,12,'#60d0ff','rgba(0,80,180,.5)');
+      g.restore();g.restore();
+    }
     // Typewriter text box at bottom
     const slideIn=Math.min(1,evT/12);const textX=W*(1-slideIn)+16*slideIn;
     win(4,H-70,W-8,64);

@@ -194,6 +194,36 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                         players[i].card_count += 1;
                         players[ti].card_count -= 1;
                         msg!("Player {} stole card {} from {}", players[i].key, stolen, target_key);
+
+                        // T96: Deathrattle — if stolen card is a DR card, stealer loses a random card back to victim
+                        if is_deathrattle(stolen) {
+                            let dr_seed = u64::from_le_bytes(steal_hash[..8].try_into().unwrap())
+                                ^ 0xdeadbeef_cafeba01;
+                            let penalty = steal_random_card(&mut players[i].cards, dr_seed);
+                            if penalty > 0 {
+                                place_card(&mut players[ti].cards, penalty);
+                                players[ti].card_count += 1;
+                                players[i].card_count -= 1;
+                                msg!("DEATHRATTLE ACTIVATED! card {} triggered, {} lost card {} to {}",
+                                     stolen, players[i].key, penalty, target_key);
+                            }
+                        }
+
+                        // T97: Chain — bonus pool card for each chain card stealer holds (max 3)
+                        let chain_n = count_chains(&players[i].cards);
+                        if chain_n > 0 {
+                            let mut chain_seed = u64::from_le_bytes(steal_hash[8..16].try_into().unwrap());
+                            for _c in 0..chain_n.min(3) {
+                                let extra = pick_card_from_pool(&mut pool.remaining, chain_seed);
+                                if extra > 0 {
+                                    place_card(&mut players[i].cards, extra);
+                                    players[i].card_count += 1;
+                                    game.cards_in_pool = game.cards_in_pool.saturating_sub(1);
+                                }
+                                chain_seed = chain_seed.wrapping_add(0x9e3779b97f4a7c15);
+                            }
+                            msg!("CHAIN x{} ACTIVATED for {}!", chain_n, players[i].key);
+                        }
                     }
                 }
 
@@ -465,6 +495,21 @@ fn pick_card_from_pool(remaining: &mut [u8; 5], seed: u64) -> u8 {
         }
     }
     0
+}
+
+// T96: Deathrattle card IDs (DR cards: 1,3,4,9,13,34,41,42,44,46)
+fn is_deathrattle(card_id: u8) -> bool {
+    matches!(card_id, 1 | 3 | 4 | 9 | 13 | 34 | 41 | 42 | 44 | 46)
+}
+
+// T97: Chain card IDs (Chain cards: 11,12,15,21,22,27,33,35,51,52,53,57)
+fn is_chain(card_id: u8) -> bool {
+    matches!(card_id, 11 | 12 | 15 | 21 | 22 | 27 | 33 | 35 | 51 | 52 | 53 | 57)
+}
+
+/// Count how many Chain cards are currently in the player's hand.
+pub fn count_chains(cards: &[u8; 5]) -> u8 {
+    cards.iter().filter(|&&c| is_chain(c)).count() as u8
 }
 
 fn count_unique_types(cards: &[u8; 5]) -> u8 {

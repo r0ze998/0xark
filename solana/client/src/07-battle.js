@@ -1375,6 +1375,16 @@ function generateResolveEvents(){
         bpHP[tgt]=Math.max(0,bpHP[tgt]-1);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;
         if(tgt===2&&bpHP[2]<=0)events._rival2KO=true;
+        // T96: Deathrattle — stolen card is a trap, stealer loses a card back
+        const _drIds=new Set([1,3,4,9,13,34,41,42,44,46]);
+        if(_drIds.has(stolen)){
+          const penalty=removeCardFromPlayer(0,-1);
+          if(penalty>0){addCardToPlayer(tgt,penalty);events._drResult={card:stolen,penaltyId:penalty};}
+        }
+        // T97: Chain — count chain cards stealer now holds, bonus logged for banner
+        const _chainIds=new Set([11,12,15,21,22,27,33,35,51,52,53,57]);
+        const _chainN=pl[0].cd.filter(c=>_chainIds.has(c)).length;
+        if(_chainN>0)events._chainCount=_chainN;
         events.push({type:'result',text:'You stole '+stolenCard.n+' from '+pl[tgt].n+'! (-1 HP)',effect:'steal_get',target:tgt,isCritical:true,stolenId:stolen,rarity:stolenCard.r,dmg:1});
         lg.push('R'+rd+': Stole '+stolenCard.n+' from '+pl[tgt].n+'! ('+RARITY_LABEL[stolenCard.r]+') -HP');
         streakCount++;streakDisplayTimer=60;sfxStreakUp();
