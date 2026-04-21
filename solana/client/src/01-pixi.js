@@ -1074,6 +1074,14 @@ function sfxSynergyTrigger(){if(!soundEnabled)return;try{const pairs=[[330,495],
 function sfxLandmarkDiscover(){if(!soundEnabled)return;try{const o=AC.createOscillator(),gn=AC.createGain();o.type='sine';o.frequency.value=880;gn.gain.setValueAtTime(.08,AC.currentTime);gn.gain.linearRampToValueAtTime(0,AC.currentTime+.5);o.connect(gn);gn.connect(AC.destination);o.start();o.stop(AC.currentTime+.5);setTimeout(()=>{try{const o2=AC.createOscillator(),gn2=AC.createGain();o2.type='sine';o2.frequency.value=1100;gn2.gain.setValueAtTime(.05,AC.currentTime);gn2.gain.linearRampToValueAtTime(0,AC.currentTime+.35);o2.connect(gn2);gn2.connect(AC.destination);o2.start();o2.stop(AC.currentTime+.35);}catch(e){}},180);}catch(e){}}
 // sfxTutorialStep — soft ascending tick for tutorial step completion
 function sfxTutorialStep(){if(!soundEnabled)return;beep(660,.04,.06);setTimeout(()=>beep(880,.05,.07),80);}
+// T82: sfxSuperEffective — bright triple-hit for element advantage
+function sfxSuperEffective(){if(!soundEnabled)return;beep(880,.04,.06);setTimeout(()=>beep(1100,.04,.06),55);setTimeout(()=>beep(1320,.06,.08),110);}
+// T82: sfxWeakEffect — muffled descending pair for element disadvantage
+function sfxWeakEffect(){if(!soundEnabled)return;beep(300,.06,.07);setTimeout(()=>beep(220,.08,.07),80);}
+// T83: sfxZkCommit — low encrypted pulse for ZK commit phase entry
+function sfxZkCommit(){if(!soundEnabled)return;beep(160,.06,.1);setTimeout(()=>beep(120,.08,.1),90);}
+// T83: sfxZkReveal — ascending reveal chord for ZK reveal phase
+function sfxZkReveal(){if(!soundEnabled)return;beep(440,.05,.07);setTimeout(()=>beep(660,.05,.07),70);setTimeout(()=>beep(880,.07,.08),140);}
 // sfxWalletConnect — brief connection chime
 function sfxWalletConnect(){if(!soundEnabled)return;beep(440,.05,.06);setTimeout(()=>beep(660,.06,.07),70);setTimeout(()=>beep(880,.08,.06),140);}
 // sfxError — descending tone pair for error feedback

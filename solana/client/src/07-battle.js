@@ -1434,6 +1434,7 @@ function generateResolveEvents(){
         if(_elemMult!==1000){
           dmg=Math.max(1,Math.round(dmg*_elemMult/1000));
           events._elemResult=_elemMult>1000?'super':'weak';
+          if(_elemMult>1000)tutorialStepDone('element'); // T84: Axis B tutorial step
         }
         bpHP[tgt]=Math.max(0,bpHP[tgt]-dmg);bpHPDmgAnim[tgt]=20;
         if(tgt===1&&bpHP[1]<=0)events._rival1KO=true;

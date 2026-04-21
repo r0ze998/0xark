@@ -313,6 +313,16 @@ let zkCardCommittedId=0;    // card ID committed (known to player, hidden from o
 let zkCardRevealedOpponent=0; // 0 until opponent reveals
 let zkCardPhaseFrame=0;     // frame when phase started (for animations)
 
+// T84: transition helper — plays phase-specific SFX and advances phase
+function setZkCardPhase(phase){
+  zkCardPhase=phase;
+  zkCardPhaseFrame=fr;
+  if(phase==='commit'&&typeof sfxZkCommit==='function')sfxZkCommit();
+  else if(phase==='reveal'&&typeof sfxZkReveal==='function')sfxZkReveal();
+  // Tutorial: completing a full commit+reveal cycle advances step 'zkcommit'
+  if(phase==='done')tutorialStepDone('zkcommit');
+}
+
 // ── Card acquisition animation ──
 let cardAcqActive=false,cardAcqFrame=0,cardAcqCard=-1,cardAcqDone=false;
 let cardAcqIsNew=false,cardAcqWasNew=false; // v96: track first-time unique card
@@ -475,12 +485,16 @@ let tutorialStep=0; // 0-5 (6 steps total)
 let tutorialStepFrame=0; // when current step started
 let tutorialPanelOpen=false; // show full tutorial panel
 const TUTORIAL_STEPS=[
-  {id:'move',      goal:'Move with arrow keys',          hint:'Arrow keys to move. Explore the town!',          obj:'Walk 3 tiles in any direction'},
-  {id:'grass',     goal:'Find tall grass',               hint:'Walk into the tall grass — cards hide there!',   obj:'Step onto tall grass (darker green)'},
-  {id:'card',      goal:'Find your first card',          hint:'Keep walking through tall grass to find cards!',  obj:'Trigger a wild card encounter'},
-  {id:'dungeon',   goal:'Enter the dungeon',             hint:'Head EAST to the dungeon portal (glowing tiles)', obj:'Walk into the dungeon entrance'},
-  {id:'battle',    goal:'Battle a rival',                hint:'Rivals VEGA and MIRA are inside — find them!',   obj:'Start a battle encounter'},
-  {id:'escape',    goal:'Escape back to town',           hint:'Press X at escape tile or use escape card',      obj:'Return to town from the dungeon'},
+  {id:'move',      goal:'Move with arrow keys',          hint:'Arrow keys to move. Explore the town!',                      obj:'Walk 3 tiles in any direction'},
+  {id:'grass',     goal:'Find tall grass',               hint:'Walk into the tall grass — cards hide there!',               obj:'Step onto tall grass (darker green)'},
+  {id:'card',      goal:'Find your first card',          hint:'Keep walking through tall grass to find cards!',              obj:'Trigger a wild card encounter'},
+  {id:'dungeon',   goal:'Enter the dungeon',             hint:'Head EAST to the dungeon portal (glowing tiles)',             obj:'Walk into the dungeon entrance'},
+  {id:'battle',    goal:'Battle a rival',                hint:'Rivals VEGA and MIRA are inside — find them!',               obj:'Start a battle encounter'},
+  {id:'escape',    goal:'Escape back to town',           hint:'Press X at escape tile or use escape card',                  obj:'Return to town from the dungeon'},
+  // T84: Axis A–C tutorial steps
+  {id:'deck',      goal:'Build your battle deck',        hint:'Open NFT Trading House → MY DECK tab → add cards → [L] Lock',obj:'Lock a deck of 12+ cards'},
+  {id:'element',   goal:'Exploit element advantages',    hint:'Tide\u2248 beats Storm\u26A1 — check the element icon on each card!', obj:'Win a battle with SUPER EFFECTIVE!'},
+  {id:'zkcommit',  goal:'Try the ZK commit phase',       hint:'In battle, commit a card secretly. Your choice is hidden until both reveal!', obj:'Complete a ZK commit+reveal cycle'},
 ];
 // Completion tracker for each step objective
 let tutorialProgress={move:0}; // move: tile count

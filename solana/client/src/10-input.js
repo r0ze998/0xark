@@ -499,6 +499,7 @@ document.addEventListener('keydown',e=>{
             deckLockPhase='done';
             sfxSelect();
             lg.push('[DECK] Locked — '+deckCards.length+' cards, cost '+deckTotalCost());
+            tutorialStepDone('deck'); // T84: Axis A tutorial step
           };
           if(typeof oxarkOnchain!=='undefined'&&oxarkOnchain.lockDeck){
             oxarkOnchain.lockDeck().then(doLock).catch(err=>{

@@ -239,7 +239,8 @@ function drawResolvingPhase(){
       qteType=(ev.target===0)?'defend':'attack';
       sfxQtePrompt();
     }
-    // T82: SUPER EFFECTIVE! / not very effective... banner
+    // T82: SUPER EFFECTIVE! / not very effective... banner + audio
+    if(ev._elemResult&&evT===5){if(ev._elemResult==='super')sfxSuperEffective();else sfxWeakEffect();}
     if(ev._elemResult&&evT>=5&&evT<45){
       const isSuper=ev._elemResult==='super';
       const bannerAlpha=Math.min(1,(evT-5)/8)*Math.min(1,(45-evT)/10);
