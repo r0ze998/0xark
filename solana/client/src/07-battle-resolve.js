@@ -1142,8 +1142,8 @@ function drawResultPhase(){
       drawGBACardMini(showcaseId,sCX,sCY,showcaseAlpha*popScale,fr);
       // Card result label below
       g.globalAlpha=showcaseAlpha*0.9;
-      const gotLabel=stealEv?'STOLEN!':'ACQUIRED!';
-      const gotCol=stealEv?rcol:'#50e090';
+      const gotLabel=stealEv?(scr.r>=4?'\u2605 MVP STOLEN!':'STOLEN!'):(scr.r>=4?'\u2605 MVP ACQUIRED!':'ACQUIRED!');
+      const gotCol=stealEv?rcol:(scr.r>=4?'#ffe060':'#50e090');
       txShadow(gotLabel,sCX-25,sCY+50,9,gotCol,'rgba(0,0,0,.5)');
       txShadow(scr.f,sCX-25,sCY+64,7,'#988870','rgba(0,0,0,.3)');
       g.globalAlpha=1;
@@ -1214,9 +1214,51 @@ function drawResultPhase(){
     g.globalAlpha=1;
   }
 
-  // Press Z prompt
+  // T112: XP breakdown + best combo + level progress bar
+  {
+    const _sumY=panY+panH+14;
+    let _sumGotCard=false;
+    if(bpResolveQueue){for(let _i=0;_i<bpResolveQueue.length;_i++){const _e=bpResolveQueue[_i];if(_e.effect==='steal_get'||_e.effect==='card_get'){_sumGotCard=true;break;}}}
+    const _xpWin=_sumGotCard?(XP_REWARDS.battle_win||50):(XP_REWARDS.battle_loss||15);
+    const _xpCombo=_comboMaxBattle>=7?30:_comboMaxBattle>=5?20:_comboMaxBattle>=3?10:0;
+    const _xpFin=bpResolveQueue&&bpResolveQueue._isFinisher?25:0;
+    const _xpTot=_xpWin+_xpCombo+_xpFin;
+    const _xpAlpha=Math.min(1,Math.max(0,(t-22)/10))*slideIn_;
+    g.globalAlpha=_xpAlpha;
+    // XP breakdown row
+    let _xStr='+'+_xpWin+(_sumGotCard?' win':' participation');
+    if(_xpCombo>0)_xStr+=' | +'+_xpCombo+' combo';
+    if(_xpFin>0)_xStr+=' | +'+_xpFin+' finisher';
+    _xStr+='  =  +'+_xpTot+' XP';
+    txShadow(_xStr,panX+16,_sumY+10,7,'#d0a840','rgba(0,0,0,.3)');
+    // Best combo badge (right side)
+    if(_comboMaxBattle>=3){
+      const _cLbl=_comboMaxBattle>=7?'UNSTOPPABLE':_comboMaxBattle>=5?'LEGENDARY':'PERFECT';
+      g.globalAlpha=_xpAlpha*0.9;
+      txShadow('Best Combo \xD7'+_comboMaxBattle+' \u2605 '+_cLbl,panX+panW-190,_sumY+10,7,'#f0e040','rgba(0,0,0,.4)');
+    }
+    // Level progress bar
+    const _lvlNext=Math.min(60,playerLevel+1);
+    const _lvlCurXP=xpForLevel(playerLevel),_lvlNextXP=xpForLevel(_lvlNext);
+    const _lvlRange=Math.max(1,_lvlNextXP-_lvlCurXP);
+    const _lvlProg=Math.min(1,(playerXP-_lvlCurXP)/_lvlRange);
+    const _barFill=_lvlProg*Math.min(1,Math.max(0,(t-26)/22));
+    const _barW=panW-32,_barH=10,_barX=panX+16,_barY=_sumY+18;
+    g.globalAlpha=_xpAlpha;
+    bx(_barX,_barY,_barW,_barH,'rgba(40,30,20,.8)');
+    if(_barFill>0){bx(_barX,_barY,Math.max(4,Math.round(_barW*_barFill)),_barH,'#c09830');bx(_barX,_barY,Math.max(2,Math.round(_barW*_barFill)-2),2,'rgba(255,255,255,.18)');}
+    g.globalAlpha=_xpAlpha*0.85;
+    txShadow('Lv.'+playerLevel,_barX,_barY+20,7,'#d0b870','rgba(0,0,0,.2)');
+    txShadow(playerXP+' / '+_lvlNextXP+' XP',panX+panW-16-80,_barY+20,6,'#988870','rgba(0,0,0,.2)');
+  }
+  // T112: styled [Z] CONTINUE button (replaces plain PRESS Z text)
   if(t>25&&Math.floor(t/20)%2===0){
-    txShadow('PRESS Z TO CONTINUE',W/2-120,panY+panH+12,10,'#989080','rgba(0,0,0,.3)');
+    const _btnY=panY+panH+58;
+    g.globalAlpha=0.9*slideIn_;
+    g.fillStyle='rgba(60,50,30,.9)';g.beginPath();g.roundRect(W/2-72,_btnY-14,144,26,8);g.fill();
+    g.strokeStyle='rgba(200,160,80,.7)';g.lineWidth=1;g.stroke();
+    txShadow('[Z]  CONTINUE',W/2-54,_btnY+4,10,'#f0d880','rgba(0,0,0,.5)');
+    g.globalAlpha=1;
   }
 }
 
