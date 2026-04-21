@@ -530,138 +530,192 @@ function drawLobbyTile(tileId, cx, cy, ts) {
 }
 
 // ── Building sprite helpers (T-D8-6..9) ─────────────────────────────────
+// All functions fully proportional to (bx,by,bw,bh) for sizes 55–95px wide.
 
-function _drawWindow(wx, wy, color) {
-  const c = color || '#c8d8e8';
-  g.fillStyle = c;
-  g.fillRect(wx, wy, 16, 16);
+// sz = window size in px (default 7)
+function _drawWindow(wx, wy, sz, color) {
+  const s = sz || 7;
+  g.fillStyle = color || '#c8d8e8';
+  g.fillRect(wx, wy, s, s);
   g.strokeStyle = '#2a1808'; g.lineWidth = 1;
-  g.strokeRect(wx, wy, 16, 16);
-  // cross dividers
+  g.strokeRect(wx, wy, s, s);
   g.strokeStyle = 'rgba(0,0,0,0.3)';
-  g.beginPath(); g.moveTo(wx + 8, wy); g.lineTo(wx + 8, wy + 16); g.stroke();
-  g.beginPath(); g.moveTo(wx, wy + 8); g.lineTo(wx + 16, wy + 8); g.stroke();
+  g.beginPath(); g.moveTo(wx + s / 2, wy); g.lineTo(wx + s / 2, wy + s); g.stroke();
+  g.beginPath(); g.moveTo(wx, wy + s / 2); g.lineTo(wx + s, wy + s / 2); g.stroke();
 }
 
+// T-D8-6: SHOP — cream stone, striped red/cream awning, door, 2 windows
 function drawLobbyBuildingShop(bx, by, bw, bh) {
-  // Body — cream stone
+  const mg  = Math.max(2, Math.floor(bw * 0.06));
+  const bX  = bx + mg, bW = bw - mg * 2;
+  const topY = by + Math.floor(bh * 0.18);       // body top
+  const bH  = bh - Math.floor(bh * 0.18) - mg;  // body height
+  const awH = Math.floor(bH * 0.35);             // awning portion
+
+  // Body
   g.fillStyle = '#d8c898';
-  g.fillRect(bx + 4, by + 12, bw - 8, bh - 16);
+  g.fillRect(bX, topY, bW, bH);
   g.strokeStyle = '#5a4020'; g.lineWidth = 1;
-  g.strokeRect(bx + 4, by + 12, bw - 8, bh - 16);
-  // Awning — alternating red/cream stripes
-  const aw = bw - 8, aStride = 8;
-  for (let i = 0; i < Math.ceil(aw / aStride); i++) {
+  g.strokeRect(bX, topY, bW, bH);
+
+  // Awning stripes
+  const sw = Math.max(4, Math.floor(bW / 6));
+  for (let i = 0; i < Math.ceil(bW / sw); i++) {
     g.fillStyle = i % 2 === 0 ? '#cc3333' : '#e8d0a0';
-    g.fillRect(bx + 4 + i * aStride, by + 12, Math.min(aStride, aw - i * aStride), 14);
+    g.fillRect(bX + i * sw, topY, Math.min(sw, bW - i * sw), awH);
   }
-  // Awning shadow
-  g.fillStyle = 'rgba(0,0,0,0.25)';
-  g.fillRect(bx + 4, by + 26, bw - 8, 3);
-  // Windows
-  _drawWindow(bx + 20, by + 32);
-  _drawWindow(bx + bw - 36, by + 32);
+  g.fillStyle = 'rgba(0,0,0,0.22)';
+  g.fillRect(bX, topY + awH, bW, 2);
+
+  // Windows — proportionally spaced, non-overlapping
+  const wz  = Math.max(5, Math.floor(bW * 0.17));
+  const wY  = topY + awH + 3;
+  const wL  = bX + Math.floor(bW * 0.12);
+  const wR  = bX + bW - Math.floor(bW * 0.12) - wz;
+  if (wR >= wL + wz + 2) {
+    _drawWindow(wL, wY, wz);
+    _drawWindow(wR, wY, wz);
+  }
+
   // Door
+  const dW = Math.max(6, Math.floor(bW * 0.22));
+  const dH = Math.max(8, Math.floor(bH * 0.48));
+  const dX = bX + Math.floor((bW - dW) / 2);
+  const dY = topY + bH - dH;
   g.fillStyle = '#7a4020';
-  g.fillRect(bx + bw / 2 - 7, by + bh - 22, 14, 22);
+  g.fillRect(dX, dY, dW, dH);
   g.strokeStyle = '#3a1a08'; g.lineWidth = 1;
-  g.strokeRect(bx + bw / 2 - 7, by + bh - 22, 14, 22);
-  // Door knob
+  g.strokeRect(dX, dY, dW, dH);
   g.fillStyle = '#c8a040';
-  g.fillRect(bx + bw / 2 + 2, by + bh - 12, 3, 3);
+  g.fillRect(dX + dW - 3, dY + Math.floor(dH * 0.45), 2, 2);
 }
 
+// T-D8-7: FACTION HQ — pediment, columns, clan banners, crown
 function drawLobbyBuildingFactionHQ(bx, by, bw, bh) {
-  // Base body — grey-cream stone
+  const pedH = Math.max(8, Math.floor(bh * 0.14));
+  const mg   = Math.max(6, Math.floor(bw * 0.08));
+
+  // Base body
   g.fillStyle = '#c0b898';
-  g.fillRect(bx, by + 8, bw, bh - 8);
-  // Columns
-  const colXs = [1, 2, 3, 4].map(i => bx + i * (bw / 5) - 4);
-  colXs.forEach(cx2 => {
+  g.fillRect(bx, by + pedH, bw, bh - pedH);
+
+  // Columns (3 evenly spaced)
+  const colW = Math.max(4, Math.floor(bw * 0.07));
+  [1, 2, 3].forEach(i => {
+    const cx2 = bx + Math.floor(i * bw / 4) - Math.floor(colW / 2);
     g.fillStyle = '#e8e0d0';
-    g.fillRect(cx2, by + 10, 8, bh - 10);
+    g.fillRect(cx2, by + pedH, colW, bh - pedH);
     g.strokeStyle = '#a09070'; g.lineWidth = 1;
-    g.strokeRect(cx2, by + 10, 8, bh - 10);
+    g.strokeRect(cx2, by + pedH, colW, bh - pedH);
   });
-  // Pediment top
+
+  // Pediment
   g.fillStyle = '#c0b898';
-  g.fillRect(bx + 8, by, bw - 16, 12);
+  g.fillRect(bx + mg, by, bw - mg * 2, pedH);
   g.strokeStyle = '#5a4820'; g.lineWidth = 1;
-  g.strokeRect(bx + 8, by, bw - 16, 12);
-  // Clan banners
-  const _drawBanner = (banx, bany, baw, bah, col) => {
+  g.strokeRect(bx + mg, by, bw - mg * 2, pedH);
+
+  // Clan banners — proportional size
+  const banW = Math.max(6, Math.floor(bw * 0.10));
+  const banH = Math.floor(bh * 0.52);
+  const _drawBanner = (banx, col) => {
     g.fillStyle = col;
-    g.fillRect(banx, bany, baw, bah);
-    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1;
-    g.strokeRect(banx, bany, baw, bah);
-    // Banner tip (triangle at bottom)
-    g.fillStyle = col;
+    g.fillRect(banx, by + pedH, banW, banH);
+    g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 1;
+    g.strokeRect(banx, by + pedH, banW, banH);
     g.beginPath();
-    g.moveTo(banx, bany + bah);
-    g.lineTo(banx + baw / 2, bany + bah + 6);
-    g.lineTo(banx + baw, bany + bah);
-    g.closePath(); g.fill();
+    g.moveTo(banx, by + pedH + banH);
+    g.lineTo(banx + banW / 2, by + pedH + banH + 4);
+    g.lineTo(banx + banW, by + pedH + banH);
+    g.fillStyle = col; g.closePath(); g.fill();
   };
-  _drawBanner(bx + bw * 0.35 - 7, by + 10, 14, 38, LOBBY_BANNER_A_COLOR);
-  _drawBanner(bx + bw * 0.65 - 7, by + 10, 14, 38, LOBBY_BANNER_B_COLOR);
-  // Crown icon top-center
+  _drawBanner(bx + Math.floor(bw * 0.28) - Math.floor(banW / 2), LOBBY_BANNER_A_COLOR);
+  _drawBanner(bx + Math.floor(bw * 0.72) - Math.floor(banW / 2), LOBBY_BANNER_B_COLOR);
+
+  // Crown
   g.fillStyle = '#c8a040';
-  g.font = '10px VT323, monospace';
-  g.textAlign = 'center';
-  g.fillText('♛', bx + bw / 2, by + 9);
+  g.font = '9px VT323, monospace'; g.textAlign = 'center';
+  g.fillText('♛', bx + bw / 2, by + pedH - 1);
 }
 
+// T-D8-8: PC BOX — dark blue body, accent strip, diamond icon, 2 small windows
 function drawLobbyBuildingPCBox(bx, by, bw, bh) {
-  // Body — dark blue-grey
+  const mg  = Math.max(2, Math.floor(bw * 0.06));
+  const bX  = bx + mg, bW = bw - mg * 2;
+  const topY = by + Math.floor(bh * 0.20);
+  const bH  = bh - Math.floor(bh * 0.20) - mg;
+  const accH = Math.floor(bH * 0.28);
+
+  // Body
   g.fillStyle = '#2a3050';
-  g.fillRect(bx + 4, by + 12, bw - 8, bh - 16);
+  g.fillRect(bX, topY, bW, bH);
   g.strokeStyle = '#404868'; g.lineWidth = 1;
-  g.strokeRect(bx + 4, by + 12, bw - 8, bh - 16);
-  // Blue accent strip
+  g.strokeRect(bX, topY, bW, bH);
+
+  // Accent strip
   g.fillStyle = '#4060c0';
-  g.fillRect(bx + 4, by + 12, bw - 8, 12);
+  g.fillRect(bX, topY, bW, accH);
+
   // Diamond icon
   g.fillStyle = '#80a0ff';
-  g.font = '22px VT323, monospace';
+  g.font = `${Math.max(12, Math.floor(bW * 0.35))}px VT323, monospace`;
   g.textAlign = 'center';
-  g.fillText('♦', bx + bw / 2, by + bh / 2 + 8);
-  // Two small windows
-  _drawWindow(bx + 14, by + bh - 30, '#4060c0');
-  _drawWindow(bx + bw - 30, by + bh - 30, '#4060c0');
+  g.fillText('♦', bx + bw / 2, topY + accH + Math.floor((bH - accH) * 0.55));
+
+  // Two windows (lower third, non-overlapping)
+  const wz = Math.max(4, Math.floor(bW * 0.15));
+  const wY = topY + bH - wz - 4;
+  const wL = bX + Math.floor(bW * 0.10);
+  const wR = bX + bW - Math.floor(bW * 0.10) - wz;
+  if (wR >= wL + wz + 2) {
+    _drawWindow(wL, wY, wz, '#4060c0');
+    _drawWindow(wR, wY, wz, '#4060c0');
+  }
 }
 
+// T-D8-9: ARENA HALLS — Bronze (tier=0) / Silver (tier=1) / Gold (tier=2)
 function drawLobbyBuildingArenaHall(bx, by, bw, bh, tier) {
   const cfg = [
-    { body: '#484858', star: '#888898', crown: '#c8a040', label: 'BRONZE HALL' },
-    { body: '#505868', star: '#c0c8d8', crown: '#b0b8c8', label: 'SILVER HALL' },
-    { body: '#604820', star: '#e0c040', crown: '#e0c040', label: 'GOLD HALL'   },
+    { body: '#484858', star: '#888898', crown: '#c8a040' },
+    { body: '#505868', star: '#c0c8d8', crown: '#b0b8c8' },
+    { body: '#604820', star: '#e0c040', crown: '#e0c040' },
   ][tier];
   const borderColor = tier === 2 ? '#e0c040' : '#888898';
+  const bdrW = tier === 2 ? 2 : 1;
+  const topY = by + Math.floor(bh * 0.12);
+
   // Body
   g.fillStyle = cfg.body;
-  g.fillRect(bx + 2, by + 8, bw - 4, bh - 10);
-  g.strokeStyle = borderColor; g.lineWidth = 2;
-  g.strokeRect(bx + 2, by + 8, bw - 4, bh - 10);
-  // Crown icon top-center
+  g.fillRect(bx + 2, topY, bw - 4, bh - Math.floor(bh * 0.12));
+  g.strokeStyle = borderColor; g.lineWidth = bdrW;
+  g.strokeRect(bx + 2, topY, bw - 4, bh - Math.floor(bh * 0.12));
+
+  // Crown + tier label top
   g.fillStyle = cfg.crown;
-  g.font = '10px VT323, monospace';
-  g.textAlign = 'center';
-  g.fillText('♛', bx + bw / 2, by + 18);
-  // Stars row
-  const stars = tier + 2;
+  g.font = '8px VT323, monospace'; g.textAlign = 'center';
+  g.fillText('♛', bx + bw / 2, topY + 8);
+
+  // Stars row (tier+2 stars, spacing scaled to bw)
+  const stars  = tier + 2;
+  const sSpacing = Math.min(10, Math.floor(bw / (stars + 1)));
   for (let s = 0; s < stars; s++) {
     g.fillStyle = cfg.star;
-    g.fillText('★', bx + bw / 2 + (s - (stars - 1) / 2) * 12, by + 28);
+    g.fillText('★', bx + bw / 2 + (s - (stars - 1) / 2) * sSpacing, topY + 18);
   }
-  // Oval entrance (dark)
+
+  // Oval entrance
+  const ellW = Math.floor(bw * 0.35);
+  const ellH = Math.floor(bh * 0.20);
+  const ellCY = by + bh - ellH - 4;
   g.fillStyle = '#0a0a14';
   g.beginPath();
-  g.ellipse(bx + bw / 2, by + bh - 24, 22, 14, 0, 0, Math.PI * 2);
+  g.ellipse(bx + bw / 2, ellCY, ellW, ellH, 0, 0, Math.PI * 2);
   g.fill();
+
   // Entrance glow lights
   g.fillStyle = '#40cc60';
-  g.beginPath(); g.arc(bx + bw / 2 - 18, by + bh - 24, 3, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.arc(bx + bw / 2 + 18, by + bh - 24, 3, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(bx + bw / 2 - ellW + 3, ellCY, 2, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(bx + bw / 2 + ellW - 3, ellCY, 2, 0, Math.PI * 2); g.fill();
 }
 
 // ── Player / remote player sprite (T-D8-11/12) ────────────────────────────
