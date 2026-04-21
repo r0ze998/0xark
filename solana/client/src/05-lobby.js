@@ -76,6 +76,55 @@ let lobbyInteractCooldown = 0;  // prevent double-trigger
 // Each entry: { wallet, px, py, targetX, targetY, curX, curY, clan, card_count }
 const lobbyRemotePlayers = new Map();
 
+// ── Lobby HUD state (T-D6-2) ─────────────────────────────────────────────
+let lobbyHudCards     = null;  // number 0-60 or null (not loaded)
+let lobbyHudDay       = null;  // current season day (1-N)
+let lobbyHudTotalDays = 14;    // default 14-day season
+const _DE_DEVNET_RPC_LOBBY = 'https://api.devnet.solana.com';
+const _DE_PROGRAM_ID_LOBBY = '5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN';
+
+async function _loadLobbyHUD() {
+  const playerKey = window.solana?.publicKey;
+  if (!playerKey) return;
+  const conn = new solanaWeb3.Connection(_DE_DEVNET_RPC_LOBBY, 'confirmed');
+  const pid = new solanaWeb3.PublicKey(_DE_PROGRAM_ID_LOBBY);
+
+  // PlayerRegistry PDA — count at offset 580
+  try {
+    const [regPDA] = solanaWeb3.PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode('player_registry'), playerKey.toBytes()], pid,
+    );
+    const info = await conn.getAccountInfo(regPDA);
+    if (info && info.data.length > 580) {
+      lobbyHudCards = new Uint8Array(info.data)[580];
+    }
+  } catch (_) {}
+
+  // Season PDA (season 1) — season_start + season_end
+  try {
+    const seasonIdBuf = new Uint8Array(4);
+    new DataView(seasonIdBuf.buffer).setUint32(0, 1, true); // season_id=1 LE
+    const [seasonPDA] = solanaWeb3.PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode('season'), seasonIdBuf], pid,
+    );
+    const sInfo = await conn.getAccountInfo(seasonPDA);
+    if (sInfo && sInfo.data.length >= 90) {
+      // Layout after 8 disc: season_id(4) + authority(32) + entry_fee(8) + prize_pool(8)
+      //   + player_count(4) + max_players(4) + status(1) + winner(32) + winner_time(8)
+      //   + fastest_clear_rounds(1) + season_start(8) + season_end(8)
+      const dv = new DataView(sInfo.data.buffer, sInfo.data.byteOffset);
+      const base = 8 + 4 + 32 + 8 + 8 + 4 + 4 + 1 + 32 + 8 + 1; // = 110
+      if (sInfo.data.length >= base + 16) {
+        const seasonStart = Number(dv.getBigInt64(base, true));
+        const seasonEnd   = Number(dv.getBigInt64(base + 8, true));
+        const now = Math.floor(Date.now() / 1000);
+        lobbyHudTotalDays = Math.max(1, Math.ceil((seasonEnd - seasonStart) / 86400));
+        lobbyHudDay = Math.min(lobbyHudTotalDays, Math.max(1, Math.floor((now - seasonStart) / 86400) + 1));
+      }
+    }
+  } catch (_) {}
+}
+
 // ── WebSocket multiplayer ─────────────────────────────────────────────────
 // WS_SERVER_URL can be set globally before build (defaults to Railway deploy).
 const LOBBY_WS_URL = (typeof WS_SERVER_URL !== 'undefined')
@@ -495,6 +544,8 @@ function enterLobby() {
   lobbyCheckProximity();
   sc = 'lobby';
   lobbyWSConnect();
+  // T-D6-2: async load HUD data (card count + season day)
+  _loadLobbyHUD().catch(e => console.warn('[Lobby HUD]', e.message));
 }
 
 function exitLobby() {
@@ -620,6 +671,23 @@ function dLobby() {
       g.textAlign = 'center';
       g.fillText('⚔️ MATCH FOUND!', W / 2, H / 2);
     }
+  }
+
+  // ── T-D6-2: Permanent HUD — card count + season day (top-right) ─────────
+  {
+    const cardStr = lobbyHudCards !== null ? `${lobbyHudCards}/60 cards` : '—/60 cards';
+    const dayStr  = lobbyHudDay   !== null
+      ? `Day ${lobbyHudDay}/${lobbyHudTotalDays} — Season 1`
+      : 'Season 1';
+    g.font = '13px VT323, monospace';
+    g.textAlign = 'right';
+    const hx = W - 6;
+    g.fillStyle = 'rgba(0,0,0,0.55)';
+    g.fillRect(W - 110, 4, 106, 30);
+    g.fillStyle = '#e0d080';
+    g.fillText(cardStr, hx, 17);
+    g.fillStyle = '#8888aa';
+    g.fillText(dayStr, hx, 30);
   }
 
   // Building dialog overlay (drawn last — on top of everything)
