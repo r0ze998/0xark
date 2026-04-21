@@ -1,381 +1,471 @@
-# UI_SPEC.md — 0xARK Screen Layouts
+# UI_SPEC v2.0 — Phase D Reborn Screen Layouts
 
-**Coordinate system**: logical 240×160 px (GBA native). Renderer scales to 480×320 at runtime via `stage.scale = 2`. All coords below are **logical**. PixiJS `roundPixels = true` required.
-
-**Token refs**: any `tok:path.to.key` → look up in `DESIGN_TOKENS.json`. Do not inline hex values.
-
-**Layers**: respect `tok:z_layers.*` draw order. HUD / dialog / banner are the top 3 layers, always above sprites.
-
----
-
-## 1. TITLE — `01_title`
-
-**Backdrop**
-- Sky gradient: fill `0..0..240..100`, `tok:palette.derived_dungeon.dungeon_quiet` → `tok:palette.locked.ocean_deep` vertical.
-- Sea gradient: `0..100..240..160`, `tok:palette.locked.ocean_deep` → `tok:palette.derived_dungeon.dungeon_quiet` vertical.
-- Horizon line: `0,100 → 240,100`, 1px, `tok:palette.derived_dungeon.dungeon_quiet`.
-- Wave accents: 1px horizontal lines at `y=118` (`ocean_shallow` 80% alpha) and `y=132` (`ocean_deep` 90% alpha, 0.5px thick via subpixel render).
-
-**Moon** — right-top anchor
-- Position: center `(212, 28)`, radius `7`, fill `tok:palette.locked.sail_cream`.
-- Halo: concentric 1px rings at `r=9` (`ocean_deep`), `r=11` (`sail_cream` 20%), `r=13` (`sail_cream` 8%).
-
-**Logo** "0xARK"
-- Center `(120, 42)`.
-- Text: `"0x"` → size `tok:typography.sizes_px.xxl` (64), color `tok:palette.locked.gold_accent`.
-- Text: `"ARK"` → same size, color `tok:palette.locked.sail_cream`.
-- Shadow: offset `(+4,+4)` color `dungeon_quiet`; offset `(+2,+2)` color `text_dark` (double drop).
-- Letter spacing: `tok:typography.letter_spacing.default`.
-
-**Tagline** "A ZK PIRATE CARD GAME"
-- Center `(120, 56)`, size `sm` (16), color `menu_border`, letter-spacing `loose` (0.12).
-
-**Ship sprite** — center
-- Bounds: `(56, 82) → (120, 122)` (64×40 box in logical px).
-- Hull: trapezoid `polygon(8%,0 92%,0 100%,100% 0,100%)` of bounds, height 11, fill `hull_wood`, border 1px `text_dark`.
-- Hull trim: 1px horizontal `gold_accent` stripe at 40% hull height.
-- Mast: 2px wide, 25 high, centered, fill `text_dark`.
-- Sail: 36×19, fill `sail_cream`, border 1px `text_dark`, inner 1px ring `menu_border`.
-- Jolly-roger X: two 9×1 lines at 45°/–45° on sail center, `text_dark`.
-- Flag: 7×5, fill `flag_red`, border 1px `text_dark`, attached right of mast top.
-- Reflection: `(80, 124) → (136, 125)`, repeating-stripe pattern `ocean_shallow` 2px on / 2px off, alpha 70%.
-
-**Menu box** — bottom-center
-- Anchor: `(72, 116)`, size `76×22`.
-- Recipe: `drawGBADialog(72, 116, 76, 22, menu_blue, menu_border)`.
-- Items: `"NEW SEASON"` (selected), `"CONTINUE"`.
-- Font: `sm` (16), line height 1.
-- Cursor: `►` at `x=72+4`, color `menu_border`.
-
-**Footer** "SOLANA · GROTH16 · BY YUKIKAZE"
-- Center `(120, 153)`, size `xs` (8), color `fg_hint`, letter-spacing `loosest`.
-- `"BY YUKIKAZE"` highlighted `menu_border`.
+**Source**: 5 design mockups (Desktop/0xark/preview*.webp, M1–M5)  
+**Canvas**: 480×320 logical (same as Phase C). All coords logical px unless noted.  
+**Renderer**: canvas 2D (05-lobby.js) — not PixiJS.  
+**Layers (draw order, bottom→top)**: background → floor → buildings → remote players → local player → HUD-fixed → dialogs → overlays
 
 ---
 
-## 2. TOWN — `02_town`
+## Section 1 — LOBBY: The Crown Plaza (`sc === 'lobby'`)
 
-**Tile grid**: 15×10 cells of 16px each. Coords below are **tile indices** `(col,row)` converted to px as `(col*16, row*16)`.
+Reference mockup: **M1 · Main Lobby — The Crown Plaza (1/5)**
 
-**Grass base** — full 240×160
-- Fill `tok:palette.derived_overworld.grass_mid`.
-- Grid hint: 1px lines every 16px both axes, alpha 15% of `grass_dark`.
+### 1.0 Gap vs. current implementation
 
-**Tree border** — each tile is 16×16, recipe `drawTreeTile(x,y)`
-- Fill `grass_dark`, inset `-2,-2` shadow `#1c5028`, inset `+2,+2` highlight `grass_mid`, 1px outer `text_dark`.
-- Occupy:
-  - Top row: cols 0–14 (all 15)
-  - Left col: rows 1–8
-  - Right col: rows 1,2,7,8 (break rows 3–6 for harbor)
-  - Bottom row: cols 0–14
-
-**Water / harbor** — right side
-- Water tiles: cols 14, rows 3–6 (4 tiles of 16×16 each at `(224,48)..(224,96)`). Fill `ocean_shallow` with inset-top 4px `ocean_deep` 50% overlay, inset-bottom 2px `ocean_deep`, 1px outer `ocean_deep`.
-- Sand strip: `(208,48)` 16×64, fill `sand_beach`.
-- Dock: `(208,84)` 28×6, repeating 3px `hull_wood` / 1px `#5c3818` pattern, 1px outer `text_dark`.
-- Anchored ship: `(228,74)` 10×9, top 4px `sail_cream`, bottom 5px `hull_wood`, 1px outer `text_dark`. Mast 1×5 at `(232,69)`, flag 4×3 at `(233,69)` fill `flag_red`.
-
-**Path network** — recipe `drawPathRect(x,y,w,h)` fill `path_tan`, 1px outer `path_shadow`
-- Main horizontal spine: `(16,96) 192×16`
-- Drops to top buildings: `(48,64) 16×32`, `(120,64) 16×32`, `(176,64) 16×32`
-- Drops to bottom buildings: `(48,112) 16×32`, `(120,112) 16×32`, `(176,112) 16×32`
-- Harbor spur: `(192,96) 16×16`
-
-**Buildings** — 6 houses, all 36×32 px, recipe `drawHouse(x, y, w, h, roofToken)`
-| id | pos | roof token |
-|---|---|---|
-| shop   | `(30,30)`  | `roof_red` |
-| gacha  | `(102,30)` | `#7040a0` (purple) |
-| stats  | `(158,30)` | `menu_blue` |
-| log    | `(30,110)` | `#c8a868` (barn tan) |
-| dungeon | `(102,110)` | `roof_red` |
-| tavern | `(158,110)` | `menu_blue` |
-
-**Signs** — recipe `drawSign(x, y, text)`
-- Size: 16–20×10, fill `sail_cream`, 1px border `text_dark`, inset bottom 2px `path_tan`. Text size `6` (exception: hand-tuned for dense labels), color `text_dark`. Post: 2×4 `hull_wood` under center.
-- Positions: under each building door.
-
-**Decorations**
-- Bushes (8×6): fill `grass_dark`, 1px border, inset `(+1,+1)` `grass_mid` highlight. Placed at path edges near buildings.
-- Flowers (3×3 px): colors rotate `vega_pulse` / `gold_accent` / `sail_cream`. Clumps of 1–2 along main road.
-
-**HUD bar** — recipe `drawHUD()`
-- Bounds: `(0,0) → (240,14)`, fill `menu_blue`, bottom border 1px `text_dark`, below that 1px `menu_border`, below that 1px `text_dark` (total 3px shadow stack).
-- Text: size `sm` (16), color `text_light`.
-- Slots left → right with `spacing.3` (12px) gap:
-  1. `♥ HP 78/100`
-  2. `◆ 0.5◎` (SOL balance)
-  3. `V: TWN` color `vega_pulse`
-  4. `M: B2` color `mira_pulse`
-  5. right-aligned: `CARDS 12/60`
-
-**Location banner** — recipe `drawLocationBanner(text, cx, y)`
-- Center `(120, 22)`, auto-width to fit text + 32 px padding.
-- Height 16, fill `menu_blue`, border 2px `text_dark` + 1px inner `menu_border`.
-- Text: `"FIRST PORT"` size `sm` (16), color `menu_border`.
-- Slide-in animation: translateY `-16 → 0` over `tok:animations_ms.banner_slide_in` (300ms), easeOutQuad.
-
-**Dialog box** — recipe `drawGBADialog(8, 128, 224, 30, menu_blue, menu_border)`
-- Text starts `(12, 132)`, size `sm` (16), color `text_light`, line height 1.1.
-- Cursor `►` in `menu_border` at start of line.
-
-**NPC sprites** (placeholder gradient columns until sprites arrive)
-- Old sailor: `(72, 82)` 12×14.
-- Player: `(104, 100)` 12×14.
+| Element | Current (Day 6) | Target (M1) |
+|---------|-----------------|-------------|
+| Background | `#0a1218` solid | Sunset gradient sky + silhouette horizon |
+| Floor | Pirate sheet tiles / fallback solid | Stone cobblestone grey grid |
+| Area title | None | "THE CROWN PLAZA" gold-framed center-top |
+| Top-right HUD | 1 box, 2 lines (T-D6-2) | 3 stacked panels |
+| Bottom bar | [Z] prompt only | Full-width: player info + ticker + SOL balance |
+| Buildings | Brown rect + gold border | Drawn sprites with awning/columns/icons |
+| Building labels | Centered inside rect | Below building, always visible |
+| Local player | Gold square + direction triangle | Block character (head + clan-colored body) |
+| Remote players | Clan-colored rectangle | Block character matching local style |
+| Debug overlay | "LOBBY x:N y:N" top-left | Remove |
 
 ---
 
-## 3. DUNGEON B1–B5 — `03_dungeon`
+### 1.1 Background layers
 
-**Backdrop**
-- Fill `tok:palette.derived_dungeon.dungeon_fog` (#100818).
+**Sky gradient** (not camera-scrolled — fixed)
+- Bounds: `(0, 0) → (W, H*0.45)` — top 45% of canvas
+- `createLinearGradient(0, 0, 0, H*0.45)`
+  - stop 0.0 → `#c04820` (warm orange-red)
+  - stop 0.5 → `#803060` (amber-purple mid)
+  - stop 1.0 → `#2a1838` (deep purple)
+- Draw BEFORE camera translate (fixed to canvas)
 
-**Floor grid** — 24px dungeon tiles, recipe `drawDungeonFloor(x,y,w,h)`
-- Fill `dungeon_floor` (#c89060), inset 1px darken 40% for edges.
-- Floor grid lines: 1px every 24px, alpha 20% of `dungeon_wall`.
+**Horizon silhouette**
+- Bounds: `(0, H*0.42) → (W, H*0.42 + 10)`
+- Fill `#141420` — dark city silhouette strip
+- 2–3 irregular rectangle "towers" shapes: widths 40/20/30px, heights 6/10/4px, spaced across width
+- Draw BEFORE camera translate
 
-**Walls** — recipe `drawDungeonWall(x,y,w,h)`
-- Fill `dungeon_wall` (#482818), 1px outer `text_dark`, inset-top 2px `#5c3818` highlight.
-
-**Fog-of-war overlay**
-- Full-screen `dungeon_fog` at alpha 82%, with circular `destination-out` cutout radius 48 around player tile. Radius animates 46↔50 at `tok:animations_ms.breathe` (3600ms).
-
-**Rival pulse indicator** — shown only when same floor
-- Position: appears at random fog coord each frame (or actual tile if SCOUT used).
-- Visual: 8×8 `vega_pulse` diamond, alpha pulses 40%↔100% at 800ms period.
-
-**HUD (same as town)** with floor position slot
-- `V: B3` if rival on deeper floor (pink)
-- Otherwise `V: TWN` (muted)
-- `M: B2` (amber)
-
-**Location banner** "B1 — TIDEPOOL" etc. Banner color stays `menu_blue` + `menu_border`; floor number prefix in `menu_border`.
-
-**Player sprite** — 12×16, centered in current tile.
-
-**Stairs** — 16×16, 4 stacked horizontal stripes alternating `dungeon_floor` / `#5c3818`. Up-stair: lighter top. Down-stair: darker top.
+**Floor tiles** (replaces pirate-sheet dependency)
+- Per tile `(tx, ty)`: fill `#888898`, then 1px grid lines at tile edges in `rgba(60,60,80,0.3)`
+- Ocean (tileId=18): fill `#1a2840`
+- Cliff/border (tileId=36): fill `#4a3828`
+- Path (tileId=3): fill `#a89878` with subtle hash crosshatch `rgba(0,0,0,0.08)` at 8px intervals
 
 ---
 
-## 4. BATTLE — 5 states
+### 1.2 Building sprites
 
-**Shared HUD** (all battle states)
-- Top bar: `(0,0) → (240,14)`, recipe `drawBattleHUD()`. Same styling as town HUD but text layout:
-  - Left: `ROUND 04` in `menu_border`
-  - Center: phase label (`COMMIT` / `SIGN TX` / `REVEALING` / `RESULT`)
-  - Right: rival status, colored by identity (`vega_pulse` / `mira_pulse`).
+Replace current `rgba(60,40,20,0.7)` rect + `strokeRect` with per-building drawn sprites.
+All drawn within `(bx, by, bw, bh)` = `(obj.x*TS, obj.y*TS, obj.w*TS, obj.h*TS)`.
 
-**Shared arena backdrop** (states 2, 4, 5)
-- `(0,0) → (240,88)` fill `tok:palette.locked.ocean_deep` (sky/upper).
-- `(0,88) → (240,160)` fill `tok:palette.derived_dungeon.dungeon_floor` (ground).
-- 1px horizon line at `y=88`, color `text_dark`.
+#### 1.2.1 SHOP `(x:0, y:14, w:4, h:3)` → 128×96px
 
-**HP boxes** (states 2 & 5) — recipe `drawHPBox(x, y, variant, pct, name, meta)`
-- Size: 70×24, `min_width` 70 logical px.
-- Variants: `you` (top-right), `vega` (top-left), `mira` (top-left).
-- `you` at `(162, 20)`, `vega`/`mira` at `(8, 20)`.
-- Title: name + level, size `sm` (16), color per variant.nm.
-- Bar: recipe `drawHPBar(x+2, y+12, 66, pct, variant)`.
-- Meta line: size `xs` (8), color matching variant.nm.
+```
+drawLobbyBuildingShop(bx, by, bw, bh):
+  // Body
+  fillRect(bx+4, by+12, bw-8, bh-16) = '#d8c898' // cream stone
+  strokeRect 1px '#5a4020'
+  // Awning: top 14px, alternating 8px stripes red/cream
+  for i in 0..ceil((bw-8)/8):
+    fill col i%2 ? '#cc3333' : '#e8d0a0'
+    rect(bx+4+i*8, by+12, min(8, bw-8-i*8), 14)
+  // Awning shadow
+  fillRect(bx+4, by+26, bw-8, 3) = 'rgba(0,0,0,0.25)'
+  // Windows: 2× at ~25% and 65% width, y=by+32, 16×16
+  drawWindow(bx+20, by+32)
+  drawWindow(bx+bw-36, by+32)
+  // Door: 14×22, bottom-center
+  fillRect(bx+bw/2-7, by+bh-22, 14, 22) = '#7a4020'
+  strokeRect 1px '#3a1a08'
+  // Door knob: 3×3 '#c8a040' at right-center
+  // Label below building
+  fillText('SHOP', bx+bw/2, by+bh+12) // see §1.6
+```
 
-**Combatant placeholders**
-- YOU: `(30, 85)` 36×36 — placeholder column gradient per current code.
-- Rival: `(174, 35)` 36×36.
+#### 1.2.2 FACTION HQ `(x:9, y:3, w:7, h:3)` → 224×96px
 
----
+```
+drawLobbyBuildingFactionHQ(bx, by, bw, bh):
+  // Base body: grey-cream stone
+  fillRect(bx, by+8, bw, bh-8) = '#c0b898'
+  // Columns: 4× 8px wide, full body height, evenly spaced
+  for i in [1,2,3,4]:
+    x = bx + i*(bw/5) - 4
+    fillRect(x, by+10, 8, bh-10) = '#e8e0d0'
+    strokeRect 1px '#a09070'
+  // Pediment (triangular roof suggestion): filled rect top
+  fillRect(bx+8, by, bw-16, 12) = '#c0b898'
+  strokeRect 1px '#5a4820'
+  // Clan banners: 2 hanging from pediment bottom
+  // Banner A (left-of-center): 14×40px, clan A color (default '#cc3333')
+  // Banner B (right-of-center): 14×40px, clan B color (default '#c8a020')
+  drawBanner(bx+bw*0.35-7, by+10, 14, 40, LOBBY_BANNER_A_COLOR)
+  drawBanner(bx+bw*0.65-7, by+10, 14, 40, LOBBY_BANNER_B_COLOR)
+  // Crown icon centered top
+  fillText('♛', bx+bw/2, by+9) // 10px gold
+  // Label
+  fillText('FACTION HQ', bx+bw/2, by+bh+12)
+```
 
-### 4.1 `battle_01_vs_splash` — hold `tok:animations_ms.vs_splash_hold` (800ms)
-- Full screen fill `text_dark`.
-- Band top `(0..0..240..80)`: repeating 45° `flag_red`/`text_dark` stripes, 8px per stripe.
-- Band bottom `(0..80..240..160)`: repeating -45°, `menu_blue`/`text_dark`.
-- Player portrait box `(20, 30)` 48×48, placeholder gradient (current columns).
-- Rival portrait box `(172, 82)` 48×48, placeholder.
-- `"YOU · L.10"` tag: `(8, 12)` size `md` (24), color `menu_border`, shadow `text_dark` (+2,+2).
-- `"VEGA · L.12"` tag: `(160, 130)` size `md`, color `vega_pulse`, shadow `text_dark`.
-- `"VS"` center: `(120, 80)`, size `xxl` (64), color `menu_border`, shadow offset `(+4,+4) text_dark` and `(-4,-4) flag_red`. Box: 56×36 centered, fill `text_dark`, border 4px `menu_border`, outer 4px `text_dark`.
-- Transition: on `vs_splash_hold` elapse → `battle_02_select`.
+`LOBBY_BANNER_A_COLOR` and `LOBBY_BANNER_B_COLOR`: top-2 clans by player count from WS, fallback `['#cc3333','#c8a020']`.
 
----
+#### 1.2.3 PC BOX `(x:5, y:14, w:4, h:3)` → 128×96px
 
-### 4.2 `battle_02_select` — user commits an action
-- Arena backdrop visible.
-- VEGA hpbox top-left `(8,20)`.
-- YOU hpbox top-right `(162,20)`.
-- Combatants visible (placeholders).
-- **Action menu** bottom-right — recipe `drawActionMenu(x, y, w, items, selectedIdx)`
-  - Bounds `(150, 100) → (232, 152)`, 82×52.
-  - Fill `sail_cream`, border 2px `text_dark`, inner 2px `menu_border`.
-  - Title row `"CHOOSE ACTION"`: size `xs` (8), color `hull_wood`, 1px bottom border `hull_wood`.
-  - Items (5): `DRAW (+)`, `STEAL (⚔)`, `BARRIER (◈)`, `SCOUT (✦)`, `USE CARD (★)`.
-  - Selected row: fill `flag_red`, text `menu_border`, cursor `►` in `menu_border`.
-  - Icon glyph size `md` (24) column, then label size `sm` (16).
-  - Pad 3×2.
-- Dialog-bottom left `(8, 130)` 134×22 with prompt `"What will you commit?"` + subline `"ZK-HIDDEN UNTIL REVEAL"` in `menu_border` size `xs`.
+```
+drawLobbyBuildingPCBox(bx, by, bw, bh):
+  // Body: dark blue-grey
+  fillRect(bx+4, by+12, bw-8, bh-16) = '#2a3050'
+  strokeRect 1px '#404868'
+  // Blue accent strip: top 12px of body
+  fillRect(bx+4, by+12, bw-8, 12) = '#4060c0'
+  // Diamond icon centered
+  fillText('♦', bx+bw/2, by+bh/2+4) = '#80a0ff', 22px VT323
+  // 2 small square windows
+  drawWindow(bx+14, by+bh-30, '#4060c0')
+  drawWindow(bx+bw-30, by+bh-30, '#4060c0')
+  // Label
+  fillText('PC BOX', bx+bw/2, by+bh+12)
+```
 
-State transitions:
-- ↓/↑ changes `selectedIdx`
-- Z/confirm → `battle_03_confirming`
+#### 1.2.4 BRONZE HALL `(x:10, y:14, w:4, h:3)` → 128×96px
 
----
+```
+drawLobbyBuildingArenaHall(bx, by, bw, bh, tier):
+  // tier: 0=Bronze, 1=Silver, 2=Gold
+  const colors = {
+    0: { body:'#484858', star:'#888898', crown:'#c8a040', label:'BRONZE HALL' },
+    1: { body:'#505868', star:'#c0c8d8', crown:'#b0b8c8', label:'SILVER HALL' },
+    2: { body:'#604820', star:'#e0c040', crown:'#e0c040', label:'GOLD HALL'   },
+  }[tier]
+  const borderColor = tier===2 ? '#e0c040' : '#888898'
+  // Body
+  fillRect(bx+2, by+8, bw-4, bh-10) = colors.body
+  strokeRect 2px borderColor
+  // Crown icon top-center
+  fillText('♛', bx+bw/2, by+14) = colors.crown, 10px
+  // Stars row (tier+2 stars) at y=by+22
+  const stars = tier+2 // Bronze=2, Silver=3, Gold=4
+  for s in 0..stars:
+    fillText('★', bx+bw/2 + (s-(stars-1)/2)*12, by+22) = colors.star, 10px
+  // Oval entrance: ellipse at center-bottom of building
+  g.beginPath()
+  g.ellipse(bx+bw/2, by+bh-24, 22, 14, 0, 0, Math.PI*2)
+  fillStyle '#0a0a14'
+  g.fill()
+  // Entrance glow: 2 green dots (lights) at ellipse edge
+  // left light: (bx+bw/2-18, by+bh-24), radius 3, '#40cc60'
+  // right light: (bx+bw/2+18, by+bh-24), radius 3, '#40cc60'
+  g.beginPath(); g.arc(bx+bw/2-18, by+bh-24, 3, 0, Math.PI*2); fill '#40cc60'
+  g.beginPath(); g.arc(bx+bw/2+18, by+bh-24, 3, 0, Math.PI*2); fill '#40cc60'
+  // Label
+  fillText(colors.label, bx+bw/2, by+bh+12)
+```
 
-### 4.3 `battle_03_confirming` — sealed / waiting
-**Override backdrop**
-- Fill `tok:palette.derived_dungeon.dungeon_quiet` (#0c0818).
-- Pixel noise: 2 radial-dot layers at 8×8 and 12×12 tile size, colors `text_dark` and `#1c1438`, alpha 90%.
-- Breath vignette: radial gradient from transparent center to `dungeon_quiet` 60% at 90%, alpha pulses 70%↔100% at `tok:animations_ms.breathe` (3600ms), ease-in-out.
+Silver and Gold Halls use same recipe: pass tier=1/tier=2.
 
-**Combatants**: faded to alpha 60%.
-
-**Sealed chests** — 2 instances, recipe `drawChestSprite('sealed')`
-- Rival chest: `(164, 36)` 32×32, label below `"VEGA SEALED"` size `xs` color `vega_pulse`, 0.08 letter-spacing.
-- Player chest: `(44, 86)` 32×32, label below `"YOU · SEALING..."` size `xs` color `ocean_shallow`.
-- Both chests sway ±1° at `tok:animations_ms.sway` (3200ms), player offset -1.6s for desync.
-- Both chests have gold shimmer: box-shadow `0..0 10px gold_accent 45%` pulses at `tok:animations_ms.shimmer` (2800ms).
-
-**Commit card** — `(72, 60)` 96×28
-- Fill `sail_cream`, border 2px `text_dark`, inner 2px `menu_border`.
-- Line 1: `"► STEAL (COMMITTED)"` size `sm` (16), color `hull_wood`.
-- Line 2: `"SHA-256 hash broadcast to chain"` size `xs` color `fg_hint`.
-- Line 3: `"0x4ae9…3c1f"` size `xs` color `fg_hint`, letter-spacing `tight`.
-
-**Dialog-bottom**: `"Your action is sealed on-chain. Waiting for reveal phase…"` subline in `menu_border`.
-
-State transitions:
-- On-chain commit confirm → `battle_04_resolving`.
-
----
-
-### 4.4 `battle_04_resolving` — Groth16 verify + clash
-- Arena backdrop restored.
-- Combatants full opacity, slight flash animation.
-- Reveal VFX overlay (full-screen, alpha):
-  - Radial gold burst at 50%/50%, inner transparent, mid `gold_accent` 30% at radius 45%, outer transparent at 60%.
-  - Thin 45° gold stripes `gold_accent` 20%, 6px on / 6px off.
-- Chests open — recipe `drawChestSprite('opening')` at same positions as state 3.
-- Big text `"CLASH!"` center `(120, 80)`, size `xl` (48), color `menu_border`, shadow offset `(+3,+3) flag_red`, `(-2,-2) text_dark`. Flash 300ms step-end.
-- Dialog-bottom: `"Groth16 proof verified. Settling round on Solana…"` subline in `menu_border` size `xs`.
-
-State transitions: on tx confirm → `battle_05_result`.
-
----
-
-### 4.5 `battle_05_result`
-- Arena backdrop dimmed (brightness 75%).
-- HP boxes restyled for outcomes:
-  - VEGA top-left variant `vega` with meta `"STEAL BLOCKED"`.
-  - YOU top-right variant `you` with meta `"BARRIER HELD ✓"`.
-- **Result banner** — recipe `drawResultBanner(text)` center `(120, 80)`
-  - Size `xl` (48), color `menu_border`, shadows `(+4,+4) flag_red` and `(-2,-2) text_dark`.
-  - Box: fill `text_dark`, border 3px `menu_border`, outer 3px `text_dark`, inner 3px `flag_red`.
-  - Text values: `VICTORY!` / `BLOCKED!` / `HIT!` / `STOLEN!` / `DEFEAT`.
-- **Loot card mini** — `(20, 96)` 50×44, recipe `drawCardMini(x, y, cardData)`.
-  - Art tile 32×32 filled by card rarity color (`flag_red` common, etc.).
-  - Footer name size `sm`, No. label size `xs` `hull_wood`.
-  - Label below: `"SAFE"` / `"STOLEN"` / `"LOST"` size `xs` `menu_border`/`vega_pulse`/`fg_muted`.
-- **Result log** — `(8, 130) → (232, 152)` bottom dialog
-  - Line 1: `"► VEGA used STEAL."`
-  - Line 2: `"YOU used BARRIER — BLOCKED!"`
-  - Line 3: size `xs` color `fg_muted`: `"tx: 5sK2…9bQe · CU 94k"`.
-
-State transitions: `Z` → next round (back to `battle_02_select`) or round-end → dungeon.
+#### 1.2.5 SILVER HALL `(x:15, y:14, w:4, h:3)` → same recipe, tier=1
+#### 1.2.6 GOLD HALL `(x:20, y:14, w:4, h:3)` → same recipe, tier=2
 
 ---
 
-## 5. CARD DETAIL / COLLECTION — `05_collection`
+### 1.3 Player & remote player sprites
 
-**Layout**
-- Grid: 10 cols × 6 rows at tile size 32px `card_small` tile. Effective usable area 240×144 below a 16px HUD.
-- Cell size 20×28, spacing 4px.
+Recipe: `drawLobbyCharacter(cx, cy, clanColor, nameStr, isLocal)`
 
-**Rarity tiers** (5) encoded by left-border stripe color:
-| tier | stripe token | count |
-|---|---|---|
-| Common    | `hull_wood`   | 24 |
-| Uncommon  | `grass_mid`   | 16 |
-| Rare      | `ocean_shallow` | 10 |
-| Epic      | `vega_magenta` | 7 |
-| Legendary | `gold_accent` | 3 |
+```
+drawLobbyCharacter(cx, cy, clanColor, nameStr, isLocal):
+  const TS = LOBBY_TS  // 32
+  const sx = cx + TS/2, sy = cy + TS/2  // sprite center
+  
+  // Drop shadow
+  g.fillStyle = 'rgba(0,0,0,0.35)'
+  g.fillRect(sx-7, sy+9, 14, 4)
+  
+  // Legs: 2 small rects
+  g.fillStyle = '#2a2028'
+  g.fillRect(sx-5, sy+3, 4, 6)
+  g.fillRect(sx+1, sy+3, 4, 6)
+  
+  // Body: clan-colored rect
+  g.fillStyle = clanColor
+  g.fillRect(sx-6, sy-5, 12, 10)
+  g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth=1
+  g.strokeRect(sx-6, sy-5, 12, 10)
+  
+  // Head: skin tone
+  g.fillStyle = '#c8a060'
+  g.fillRect(sx-5, sy-14, 10, 10)
+  g.strokeStyle = '#5a3818'; g.lineWidth=1
+  g.strokeRect(sx-5, sy-14, 10, 10)
+  
+  // Eyes (2px each, direction-based)
+  g.fillStyle = '#2a1808'
+  // (simplified: always show front-face for now)
+  g.fillRect(sx-3, sy-12, 2, 2)
+  g.fillRect(sx+1, sy-12, 2, 2)
+  
+  // Local player: yellow hat strip
+  if (isLocal):
+    g.fillStyle = '#e0c040'
+    g.fillRect(sx-5, sy-15, 10, 3)
+  
+  // Name label above sprite
+  g.fillStyle = isLocal ? '#f0e0a0' : '#8888aa'
+  g.font = '9px VT323, monospace'
+  g.textAlign = 'center'
+  g.fillText(nameStr.slice(0,8), sx, cy+2)
+```
 
-**Card mini** per cell — recipe `drawCardMini(x, y, {collected, rarity, art})`
-- Border 1px `text_dark`. Top 20×20 art. Bottom 8px footer with `No.0NN` in size `xs` color `hull_wood`.
-- If not collected: full cell filled `text_dark` alpha 70%, art replaced with `"?"` in `fg_muted`.
-- Rarity stripe: 4px left column in rarity color.
-
-**Category tabs** — left-edge column 20×20 buttons at `(2,18)` vertical stack. 5 icons:
-- ⚔ Attack, ◆ Defense, ✦ Escape, ★ Magic, ✿ Recovery. Selected tab: fill `flag_red`, border `menu_border`.
-
-**Stats panel** — right-edge sidebar 60×120 at `(178, 20)`
-- Fill `menu_blue`, border 2px `text_dark` + 2px inner `menu_border`.
-- Shows selected card: large art 40×40, name size `sm`, rarity stripe, description 4 lines size `xs`.
-- `"COLLECTED 12/60"` at bottom size `xs` color `menu_border`.
-
----
-
-## 6. VICTORY / GAME OVER — `06_victory`
-
-**Backdrop** — solid `menu_blue` with 45° gold stripe pattern at 12% alpha.
-
-**Title banner** — center `(120, 32)`
-- `"VICTORY!"` / `"GAME OVER"` — size `xxl` (64), color `menu_border`, shadow `(+4,+4) text_dark`, `(-2,-2) flag_red`.
-- Box: auto-width + 32px pad, fill `text_dark`, border 4px `menu_border`, outer 4px `text_dark`.
-
-**Stats block** — `(28, 72) → (148, 140)` 120×68
-- Recipe: `drawGBADialog(...)`.
-- Lines (size `sm` 16, left-aligned):
-  - `"FLOORS CLEARED  5"` — label in `fg_muted`, value in `menu_border`.
-  - `"CARDS WON       7"`
-  - `"TIME            08:42"`
-  - `"RIVAL BOUNTY    +0.3◎"`
-
-**Prize pool claim** — `(156, 72) → (232, 140)` 76×68
-- Recipe `drawPrizeCard(state)`.
-- States: `available` / `pending` / `claimed`.
-  - `available`: bg `menu_blue`, border `menu_border`, gold `◎` coin icon 24×24 at top, `"CLAIM 0.5◎"` size `sm` in `menu_border`, flashing cursor `►`.
-  - `pending`: same visual but with animated `"…"` cycling at `tok:animations_ms.cursor_blink`.
-  - `claimed`: fill `text_dark`, border `fg_muted`, strikethrough text `"CLAIMED"` in `fg_muted`.
-
-**Dialog-bottom** with share prompt: `"Tweet your run · Press X"`.
+**Local player name**: `window.solana?.publicKey?.toBase58().slice(0,6)+'…'` or `'YOU'`
+**Remote player name**: `rp.wallet.slice(0,6)+'…'` as before
 
 ---
 
-## 7. LANDING PAGE — `07_landing`
+### 1.4 Area title — "THE CROWN PLAZA"
 
-**Viewport**: 1280×720 (not GBA). Pixel art stays pixelated; HTML document not Pixi.
+Fixed, not camera-scrolled. Draw AFTER g.restore() (HUD layer).
 
-**Hero section** — 1280×480
-- Background: tiled GBA seas at 4× zoom. Full-bleed.
-- Centered `"0xARK"` logo at 256px base font, same double-shadow treatment.
-- Tagline: `"A ZK PIRATE CARD GAME ON SOLANA"` size 32px, `menu_border`, letter-spacing 0.1em.
-- CTA buttons: `[PLAY DEMO] [CONNECT WALLET] [GDD]` — 3 inline buttons, `drawMenuButton(...)` recipe at 2× scale.
-
-**Core loop strip** — 1280×160
-- 5 icon+label tiles in a row, no gaps between: `EXPLORE → BATTLE → COMMIT → REVEAL → CLAIM`.
-- Each tile: 256×160, alternating fill `menu_blue` / `ocean_deep`.
-- Icon: 64×64 pixel sprite (chest, sword, scroll, etc.) in `menu_border` color.
-- Label: size 24px `text_light` below icon.
-- Arrow between: 16px `►` in `menu_border`.
-
-**Footer**: `"Built by Yukikaze · Colosseum Frontier Hackathon submission"` size 16px `fg_hint`.
+```
+// Center-top gold panel
+const title = 'THE CROWN PLAZA'
+g.font = 'bold 14px VT323, monospace'
+g.textAlign = 'center'
+const tw = g.measureText(title).width + 28
+const tx = (W - tw) / 2, ty = 6, th = 20
+g.fillStyle = '#0e0e22'
+g.fillRect(tx, ty, tw, th)
+g.strokeStyle = '#c8a460'; g.lineWidth = 2
+g.strokeRect(tx+1, ty+1, tw-2, th-2)
+g.fillStyle = '#f0e0a0'
+g.fillText(title, W/2, ty+14)
+```
 
 ---
 
-## Shared animation timings (ms)
+### 1.5 Top-right HUD — 3 stacked panels (replaces T-D6-2 single box)
 
-See `tok:animations_ms.*`:
-- `cursor_blink`: 500 — menu cursors, waiting prompts
-- `breathe`: 3600 — fog-of-war, confirming vignette
-- `sway`: 3200 — sealed chests, hanging lanterns
-- `shimmer`: 2800 — gold trim on commit chests
-- `vs_splash_hold`: 800 — state 1 duration
-- `paywall_shatter`: 600 — x402 unlock burst
-- `chest_crack`: 500 — state 4 chest opening
-- `banner_slide_in`: 300 — location banners
-- `dialog_reveal`: 200 — dialog text reveal per line
-- `shake_hit`: 200 — damage shake
+All panels right-anchored at `W-4`, stacked from `y=4`.
 
-## Accessibility / portability notes
+```
+Panel 1 — cards (H=20px, W=122px):
+  bg '#0e0e22', border 1px '#c8a460'
+  text: '♦ {lobbyHudCards ?? '—'} / 60 CARDS'
+  ♦ in '#c8a460', rest in '#f0d060'
+  font: 'bold 13px VT323, monospace'
+  x=W-4 right-aligned, y=4..24
 
-- **Integer pixel snap**: PixiJS `roundPixels = true`, `resolution = 1`.
-- **Font rendering**: load `fonts/VT323-Regular.ttf` via `PIXI.Assets` before first text draw. Any fallback must be pixel bitmap; never system serif/sans.
-- **Scaling**: `app.stage.scale.set(2)` for rendering; capture resolution stays logical 240×160.
-- **Sprites**: placeholder columns remain usable; when real sprite sheets are loaded, drop in as `PIXI.Sprite` at the same anchor coords — no layout shift.
+Panel 2 — day/season (H=16px, W=122px):
+  bg '#0e0e22', border 1px '#333350'
+  text: 'DAY {lobbyHudDay ?? '—'} / {lobbyHudTotalDays} – SEASON 1'
+  color '#8888cc', font '12px VT323, monospace'
+  y=25..41
+
+Panel 3 — event name (H=14px, W=122px):
+  bg '#0c0c1c', border 1px '#222240'
+  text: lobbyHudEventName ?? 'SUCCESSION WAR OF ELYON'
+  color '#555570', font '11px VT323, monospace'
+  y=42..56
+```
+
+`lobbyHudEventName`: optional — read from Season PDA `name` field or hardcode `'SUCCESSION WAR OF ELYON'` for now.
+
+---
+
+### 1.6 Bottom info bar — full-width
+
+Height: 36px, anchored `y = H - 36 = 284`.
+Draw AFTER g.restore(), BEFORE dialogs.
+
+```
+// Bar background
+g.fillStyle = '#1a2040'
+g.fillRect(0, H-36, W, 36)
+g.strokeStyle = '#c8a460'; g.lineWidth=1
+g.strokeRect(0, H-36, W, 1)  // top border gold
+
+// LEFT section: player info (w=160px)
+g.fillStyle = '#111830'
+g.fillRect(0, H-36, 160, 36)
+g.strokeStyle = '#333358'; g.lineWidth=1
+g.strokeRect(160, H-36, 1, 36)  // divider
+g.fillStyle = '#c8a460'
+g.font = '12px VT323, monospace'; g.textAlign='left'
+g.fillText('▶', 8, H-20)
+g.fillStyle = '#f0e0a0'
+g.fillText(lobbyBottomName, 20, H-20)    // 'CAPT. VEGA' or wallet short
+g.fillStyle = '#6080e0'
+g.fillText(lobbyBottomClan, 20, H-8)     // 'BLACK FLAG' or '—'
+
+// CENTER section: ticker (w=W-160-84=236px at 480)
+g.fillStyle = '#aaaacc'
+g.font = '11px VT323, monospace'; g.textAlign='center'
+const tickerText = lobbyBottomTicker || 'THE KING IS DEAD. THE CONTEST CONTINUES.'
+g.fillText(tickerText.slice(0,38), 160 + 118, H-18)  // static for now, scroll later
+
+// RIGHT section: SOL balance (w=84px)
+g.fillStyle = '#111830'
+g.fillRect(W-84, H-36, 84, 36)
+g.strokeStyle = '#c8a460'; g.lineWidth=1
+g.strokeRect(W-84, H-36, 1, 36)  // divider
+g.fillStyle = '#c8a460'
+g.font = '12px VT323, monospace'; g.textAlign='right'
+g.fillText('♦', W-56, H-20)
+g.fillStyle = '#f0d060'
+g.fillText(lobbyBottomSol ?? '—', W-6, H-20)  // '2.41' or '—'
+```
+
+**New state vars**:
+```js
+let lobbyBottomName   = 'YOU';        // wallet short or display name
+let lobbyBottomClan   = '—';          // clan from WS presence or '—'
+let lobbyBottomTicker = '';           // event text from Season PDA or default
+let lobbyBottomSol    = null;         // SOL balance string (async loaded)
+```
+
+**Loading**: in `enterLobby()`, async:
+- `lobbyBottomName`: from localStorage `oxark_wallet_name` or wallet pubkey short
+- `lobbyBottomClan`: from WS `presence_update` self-message
+- `lobbyBottomSol`: `conn.getBalance(playerKey)` → `(lamports/1e9).toFixed(3)`
+
+---
+
+### 1.7 Building labels (always visible below buildings)
+
+Replace current label-inside-rect with below-building labels.
+Draw in world-space (inside `g.save/g.restore` camera block), AFTER building sprites.
+
+```
+for obj of LOBBY_OBJECTS:
+  const lx = (obj.x + obj.w/2) * TS
+  const ly = (obj.y + obj.h) * TS + 10
+  
+  // Measure + background pill
+  g.font = 'bold 10px VT323, monospace'
+  g.textAlign = 'center'
+  const lw = g.measureText(obj.label).width + 10
+  g.fillStyle = 'rgba(0,0,0,0.6)'
+  g.fillRect(lx - lw/2, ly-10, lw, 13)
+  
+  // Text
+  g.fillStyle = '#f0e0a0'
+  g.fillText(obj.label, lx, ly)
+```
+
+Note: update `LOBBY_OBJECTS` labels: remove emoji (`🥉 BRONZE` → `BRONZE HALL`), use clean text.
+
+---
+
+### 1.8 Proximity prompt — updated position
+
+With the bottom bar occupying y=284–320, move prompt to just above it:
+
+```
+if (lobbyNearBuilding):
+  g.fillStyle = 'rgba(14,14,34,0.85)'
+  g.fillRect(W/2-100, H-60, 200, 22)
+  g.strokeStyle = '#c8a460'; g.lineWidth=1
+  g.strokeRect(W/2-100, H-60, 200, 22)
+  g.fillStyle = '#f0e0a0'
+  g.font = '13px VT323, monospace'; g.textAlign='center'
+  g.fillText('[Z] Enter ' + lobbyNearBuilding.label, W/2, H-44)
+```
+
+---
+
+### 1.9 Remove debug overlay
+
+Remove (or guard with `window.LOBBY_DEBUG`):
+```js
+// DELETE this block:
+g.fillStyle = 'rgba(0,0,0,0.5)'
+g.fillRect(4, 4, 130, 18)
+g.fillStyle = '#aaa'
+g.fillText(`LOBBY  x:${lobbyPx} y:${lobbyPy}`, 8, 17)
+```
+
+---
+
+## Section 2 — DUEL: ZK Commitment Opening (`M3`)
+*(Separate Day spec — placeholder, details TBD)*
+
+## Section 3 — BATTLE: Card Arena (`M2`)
+*(Separate Day spec — placeholder, details TBD)*
+
+## Section 4 — VICTORY Screen (`M4`)
+*(Separate Day spec — placeholder, details TBD)*
+
+## Section 5 — CARD INSPECTION Modal (`M5`)
+*(Separate Day spec — placeholder, details TBD)*
+
+---
+
+## Day 8 Task List — Lobby Re-implementation
+
+Based on Section 1 above. Ordered by dependency (parallelizable within groups).
+
+### Group A — Background & floor (no dependencies)
+| Task | Est | Spec ref |
+|------|-----|----------|
+| **T-D8-1** Background: sky gradient + horizon silhouette | 45min | §1.1 |
+| **T-D8-2** Floor: cobblestone tile recipe + cliff/ocean/path colors | 30min | §1.1 |
+
+### Group B — HUD panels (depends on state vars from T-D6-2)
+| Task | Est | Spec ref |
+|------|-----|----------|
+| **T-D8-3** Top-right HUD: replace single box → 3 stacked panels | 45min | §1.5 |
+| **T-D8-4** Area title "THE CROWN PLAZA" | 20min | §1.4 |
+| **T-D8-5** Bottom info bar: draw + wire state vars (name/clan/SOL/ticker) | 1.5h | §1.6 |
+
+### Group C — Building sprites (depends on B — need bottom bar H to avoid collision)
+| Task | Est | Spec ref |
+|------|-----|----------|
+| **T-D8-6** SHOP sprite | 30min | §1.2.1 |
+| **T-D8-7** FACTION HQ sprite + clan banner wiring | 45min | §1.2.2 |
+| **T-D8-8** PC BOX sprite | 20min | §1.2.3 |
+| **T-D8-9** Arena Halls (Bronze/Silver/Gold) shared recipe | 45min | §1.2.4–6 |
+| **T-D8-10** Building labels below buildings | 20min | §1.7 |
+
+### Group D — Player sprites & polish
+| Task | Est | Spec ref |
+|------|-----|----------|
+| **T-D8-11** Player sprite: `drawLobbyCharacter()` recipe | 45min | §1.3 |
+| **T-D8-12** Remote player sprites: apply same recipe | 20min | §1.3 |
+| **T-D8-13** Proximity prompt: reposition above bottom bar | 15min | §1.8 |
+| **T-D8-14** Remove debug overlay | 5min | §1.9 |
+
+**Total estimate: ~7.5h**  
+Parallelizable: A+B can run concurrently, C after B, D after C.
+
+---
+
+## Color Reference (Section 1)
+
+| Role | Hex |
+|------|-----|
+| Sky top | `#c04820` |
+| Sky mid | `#803060` |
+| Sky bottom | `#2a1838` |
+| Horizon silhouette | `#141420` |
+| Floor stone | `#888898` |
+| Floor grid line | `rgba(60,60,80,0.3)` |
+| Path | `#a89878` |
+| Ocean | `#1a2840` |
+| Cliff | `#4a3828` |
+| Gold border | `#c8a460` |
+| Panel bg dark | `#0e0e22` |
+| Panel bg navy | `#111830` |
+| Bottom bar bg | `#1a2040` |
+| Title text | `#f0e0a0` |
+| Card count text | `#f0d060` |
+| Day/season text | `#8888cc` |
+| Event name text | `#555570` |
+| Player name (local) | `#f0e0a0` |
+| Clan text | `#6080e0` |
+| SOL balance | `#f0d060` |
+| Ticker text | `#aaaacc` |
+| Player skin | `#c8a060` |
+| Player hat | `#e0c040` |
+
+---
+
+*UI_SPEC v2.0 — 0xARK Phase D Reborn*  
+*Authored: 2026-04-22, based on design mockups M1–M5*

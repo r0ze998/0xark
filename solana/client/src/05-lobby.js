@@ -16,9 +16,9 @@ const LOBBY_OBJECTS = [
   { name:'faction_hq',  x:9,  y:3,  w:7, h:3, label:'FACTION HQ',   interaction:'enter_faction_hq'  },
   { name:'shop',        x:0,  y:14, w:4, h:3, label:'SHOP',          interaction:'enter_shop'         },
   { name:'pc_box',      x:5,  y:14, w:4, h:3, label:'PC BOX',        interaction:'enter_pc_box'       },
-  { name:'bronze_hall', x:10, y:14, w:4, h:3, label:'🥉 BRONZE',     interaction:'enter_bronze_hall'  },
-  { name:'silver_hall', x:15, y:14, w:4, h:3, label:'🥈 SILVER',     interaction:'enter_silver_hall'  },
-  { name:'gold_hall',   x:20, y:14, w:4, h:3, label:'🥇 GOLD',       interaction:'enter_gold_hall'    },
+  { name:'bronze_hall', x:10, y:14, w:4, h:3, label:'BRONZE HALL',   interaction:'enter_bronze_hall'  },
+  { name:'silver_hall', x:15, y:14, w:4, h:3, label:'SILVER HALL',   interaction:'enter_silver_hall'  },
+  { name:'gold_hall',   x:20, y:14, w:4, h:3, label:'GOLD HALL',     interaction:'enter_gold_hall'    },
 ];
 
 const LOBBY_SPAWN = { x:12, y:10 };
@@ -76,12 +76,23 @@ let lobbyInteractCooldown = 0;  // prevent double-trigger
 // Each entry: { wallet, px, py, targetX, targetY, curX, curY, clan, card_count }
 const lobbyRemotePlayers = new Map();
 
-// ── Lobby HUD state (T-D6-2) ─────────────────────────────────────────────
+// ── Lobby HUD state (T-D6-2 + T-D8) ─────────────────────────────────────
 let lobbyHudCards     = null;  // number 0-60 or null (not loaded)
 let lobbyHudDay       = null;  // current season day (1-N)
 let lobbyHudTotalDays = 14;    // default 14-day season
+let lobbyHudEventName = null;  // event name from Season PDA or null (uses hardcoded default)
 const _DE_DEVNET_RPC_LOBBY = 'https://api.devnet.solana.com';
 const _DE_PROGRAM_ID_LOBBY = '5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN';
+
+// ── Bottom info bar state (T-D8-5) ───────────────────────────────────────
+let lobbyBottomName   = 'YOU';
+let lobbyBottomClan   = '—';
+let lobbyBottomTicker = '';
+let lobbyBottomSol    = null;
+
+// ── Clan banner colors for Faction HQ (T-D8-7) ───────────────────────────
+let LOBBY_BANNER_A_COLOR = '#cc3333';
+let LOBBY_BANNER_B_COLOR = '#c8a020';
 
 async function _loadLobbyHUD() {
   const playerKey = window.solana?.publicKey;
@@ -477,23 +488,213 @@ const CLAN_TINTS = {
 // ── Tile drawing helper ──────────────────────────────────────────────────
 // Draws a single tile from PIRATE_SHEET at canvas coords (cx,cy).
 // tileId is 1-indexed; 0 = skip (transparent).
+// T-D8-2: new tile drawing with UI_SPEC v2.0 color recipes
 function drawLobbyTile(tileId, cx, cy) {
-  if (!tileId || !PIRATE_SHEET.complete || !PIRATE_SHEET.naturalWidth) {
-    // Fallback solid color based on tile category
-    if (tileId === 18) g.fillStyle='#0a1a3a'; // ocean → dark blue
-    else if (tileId === 36) g.fillStyle='#4a3a2a'; // cliff → brown
-    else if (tileId === 3)  g.fillStyle='#a89060'; // path → sandy
-    else if (tileId >= 39 && tileId <= 60) g.fillStyle='#5a4030'; // building → brown
-    else g.fillStyle='#6a8040'; // default ground → green
-    g.fillRect(cx, cy, LOBBY_TS, LOBBY_TS);
-    return;
+  const TS = LOBBY_TS;
+  if (tileId === 18) {
+    // Ocean
+    g.fillStyle = '#1a2840';
+    g.fillRect(cx, cy, TS, TS);
+  } else if (tileId === 36) {
+    // Cliff / border
+    g.fillStyle = '#4a3828';
+    g.fillRect(cx, cy, TS, TS);
+  } else if (tileId === 3) {
+    // Path — sandy with crosshatch
+    g.fillStyle = '#a89878';
+    g.fillRect(cx, cy, TS, TS);
+    g.strokeStyle = 'rgba(0,0,0,0.08)';
+    g.lineWidth = 0.5;
+    for (let d = 0; d < TS * 2; d += 8) {
+      g.beginPath(); g.moveTo(cx + d, cy); g.lineTo(cx, cy + d); g.stroke();
+    }
+  } else {
+    // Ground stone cobblestone
+    g.fillStyle = '#888898';
+    g.fillRect(cx, cy, TS, TS);
+    g.strokeStyle = 'rgba(60,60,80,0.3)';
+    g.lineWidth = 1;
+    g.strokeRect(cx, cy, TS, TS);
   }
-  const idx = tileId - 1;
-  const sc = idx % LOBBY_SHEET_COLS;
-  const sr = Math.floor(idx / LOBBY_SHEET_COLS);
-  const sx = sc * LOBBY_SHEET_STRIDE;
-  const sy = sr * LOBBY_SHEET_STRIDE;
-  g.drawImage(PIRATE_SHEET, sx, sy, 16, 16, cx, cy, LOBBY_TS, LOBBY_TS);
+}
+
+// ── Building sprite helpers (T-D8-6..9) ─────────────────────────────────
+
+function _drawWindow(wx, wy, color) {
+  const c = color || '#c8d8e8';
+  g.fillStyle = c;
+  g.fillRect(wx, wy, 16, 16);
+  g.strokeStyle = '#2a1808'; g.lineWidth = 1;
+  g.strokeRect(wx, wy, 16, 16);
+  // cross dividers
+  g.strokeStyle = 'rgba(0,0,0,0.3)';
+  g.beginPath(); g.moveTo(wx + 8, wy); g.lineTo(wx + 8, wy + 16); g.stroke();
+  g.beginPath(); g.moveTo(wx, wy + 8); g.lineTo(wx + 16, wy + 8); g.stroke();
+}
+
+function drawLobbyBuildingShop(bx, by, bw, bh) {
+  // Body — cream stone
+  g.fillStyle = '#d8c898';
+  g.fillRect(bx + 4, by + 12, bw - 8, bh - 16);
+  g.strokeStyle = '#5a4020'; g.lineWidth = 1;
+  g.strokeRect(bx + 4, by + 12, bw - 8, bh - 16);
+  // Awning — alternating red/cream stripes
+  const aw = bw - 8, aStride = 8;
+  for (let i = 0; i < Math.ceil(aw / aStride); i++) {
+    g.fillStyle = i % 2 === 0 ? '#cc3333' : '#e8d0a0';
+    g.fillRect(bx + 4 + i * aStride, by + 12, Math.min(aStride, aw - i * aStride), 14);
+  }
+  // Awning shadow
+  g.fillStyle = 'rgba(0,0,0,0.25)';
+  g.fillRect(bx + 4, by + 26, bw - 8, 3);
+  // Windows
+  _drawWindow(bx + 20, by + 32);
+  _drawWindow(bx + bw - 36, by + 32);
+  // Door
+  g.fillStyle = '#7a4020';
+  g.fillRect(bx + bw / 2 - 7, by + bh - 22, 14, 22);
+  g.strokeStyle = '#3a1a08'; g.lineWidth = 1;
+  g.strokeRect(bx + bw / 2 - 7, by + bh - 22, 14, 22);
+  // Door knob
+  g.fillStyle = '#c8a040';
+  g.fillRect(bx + bw / 2 + 2, by + bh - 12, 3, 3);
+}
+
+function drawLobbyBuildingFactionHQ(bx, by, bw, bh) {
+  // Base body — grey-cream stone
+  g.fillStyle = '#c0b898';
+  g.fillRect(bx, by + 8, bw, bh - 8);
+  // Columns
+  const colXs = [1, 2, 3, 4].map(i => bx + i * (bw / 5) - 4);
+  colXs.forEach(cx2 => {
+    g.fillStyle = '#e8e0d0';
+    g.fillRect(cx2, by + 10, 8, bh - 10);
+    g.strokeStyle = '#a09070'; g.lineWidth = 1;
+    g.strokeRect(cx2, by + 10, 8, bh - 10);
+  });
+  // Pediment top
+  g.fillStyle = '#c0b898';
+  g.fillRect(bx + 8, by, bw - 16, 12);
+  g.strokeStyle = '#5a4820'; g.lineWidth = 1;
+  g.strokeRect(bx + 8, by, bw - 16, 12);
+  // Clan banners
+  const _drawBanner = (banx, bany, baw, bah, col) => {
+    g.fillStyle = col;
+    g.fillRect(banx, bany, baw, bah);
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1;
+    g.strokeRect(banx, bany, baw, bah);
+    // Banner tip (triangle at bottom)
+    g.fillStyle = col;
+    g.beginPath();
+    g.moveTo(banx, bany + bah);
+    g.lineTo(banx + baw / 2, bany + bah + 6);
+    g.lineTo(banx + baw, bany + bah);
+    g.closePath(); g.fill();
+  };
+  _drawBanner(bx + bw * 0.35 - 7, by + 10, 14, 38, LOBBY_BANNER_A_COLOR);
+  _drawBanner(bx + bw * 0.65 - 7, by + 10, 14, 38, LOBBY_BANNER_B_COLOR);
+  // Crown icon top-center
+  g.fillStyle = '#c8a040';
+  g.font = '10px VT323, monospace';
+  g.textAlign = 'center';
+  g.fillText('♛', bx + bw / 2, by + 9);
+}
+
+function drawLobbyBuildingPCBox(bx, by, bw, bh) {
+  // Body — dark blue-grey
+  g.fillStyle = '#2a3050';
+  g.fillRect(bx + 4, by + 12, bw - 8, bh - 16);
+  g.strokeStyle = '#404868'; g.lineWidth = 1;
+  g.strokeRect(bx + 4, by + 12, bw - 8, bh - 16);
+  // Blue accent strip
+  g.fillStyle = '#4060c0';
+  g.fillRect(bx + 4, by + 12, bw - 8, 12);
+  // Diamond icon
+  g.fillStyle = '#80a0ff';
+  g.font = '22px VT323, monospace';
+  g.textAlign = 'center';
+  g.fillText('♦', bx + bw / 2, by + bh / 2 + 8);
+  // Two small windows
+  _drawWindow(bx + 14, by + bh - 30, '#4060c0');
+  _drawWindow(bx + bw - 30, by + bh - 30, '#4060c0');
+}
+
+function drawLobbyBuildingArenaHall(bx, by, bw, bh, tier) {
+  const cfg = [
+    { body: '#484858', star: '#888898', crown: '#c8a040', label: 'BRONZE HALL' },
+    { body: '#505868', star: '#c0c8d8', crown: '#b0b8c8', label: 'SILVER HALL' },
+    { body: '#604820', star: '#e0c040', crown: '#e0c040', label: 'GOLD HALL'   },
+  ][tier];
+  const borderColor = tier === 2 ? '#e0c040' : '#888898';
+  // Body
+  g.fillStyle = cfg.body;
+  g.fillRect(bx + 2, by + 8, bw - 4, bh - 10);
+  g.strokeStyle = borderColor; g.lineWidth = 2;
+  g.strokeRect(bx + 2, by + 8, bw - 4, bh - 10);
+  // Crown icon top-center
+  g.fillStyle = cfg.crown;
+  g.font = '10px VT323, monospace';
+  g.textAlign = 'center';
+  g.fillText('♛', bx + bw / 2, by + 18);
+  // Stars row
+  const stars = tier + 2;
+  for (let s = 0; s < stars; s++) {
+    g.fillStyle = cfg.star;
+    g.fillText('★', bx + bw / 2 + (s - (stars - 1) / 2) * 12, by + 28);
+  }
+  // Oval entrance (dark)
+  g.fillStyle = '#0a0a14';
+  g.beginPath();
+  g.ellipse(bx + bw / 2, by + bh - 24, 22, 14, 0, 0, Math.PI * 2);
+  g.fill();
+  // Entrance glow lights
+  g.fillStyle = '#40cc60';
+  g.beginPath(); g.arc(bx + bw / 2 - 18, by + bh - 24, 3, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(bx + bw / 2 + 18, by + bh - 24, 3, 0, Math.PI * 2); g.fill();
+}
+
+// ── Player / remote player sprite (T-D8-11/12) ────────────────────────────
+function drawLobbyCharacter(cx, cy, clanColor, nameStr, isLocal) {
+  const TS = LOBBY_TS;
+  const sx = cx + TS / 2, sy = cy + TS / 2;
+
+  // Drop shadow
+  g.fillStyle = 'rgba(0,0,0,0.35)';
+  g.fillRect(sx - 7, sy + 9, 14, 4);
+
+  // Legs
+  g.fillStyle = '#2a2028';
+  g.fillRect(sx - 5, sy + 3, 4, 6);
+  g.fillRect(sx + 1, sy + 3, 4, 6);
+
+  // Body — clan colored
+  g.fillStyle = clanColor || '#888888';
+  g.fillRect(sx - 6, sy - 5, 12, 10);
+  g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 1;
+  g.strokeRect(sx - 6, sy - 5, 12, 10);
+
+  // Head
+  g.fillStyle = '#c8a060';
+  g.fillRect(sx - 5, sy - 14, 10, 10);
+  g.strokeStyle = '#5a3818'; g.lineWidth = 1;
+  g.strokeRect(sx - 5, sy - 14, 10, 10);
+
+  // Eyes
+  g.fillStyle = '#2a1808';
+  g.fillRect(sx - 3, sy - 12, 2, 2);
+  g.fillRect(sx + 1, sy - 12, 2, 2);
+
+  // Local player: yellow hat strip
+  if (isLocal) {
+    g.fillStyle = '#e0c040';
+    g.fillRect(sx - 5, sy - 15, 10, 3);
+  }
+
+  // Name label above sprite
+  g.fillStyle = isLocal ? '#f0e0a0' : '#8888aa';
+  g.font = '9px VT323, monospace';
+  g.textAlign = 'center';
+  g.fillText((nameStr || '?').slice(0, 8), sx, cy + 2);
 }
 
 // ── Building proximity check ─────────────────────────────────────────────
@@ -544,8 +745,18 @@ function enterLobby() {
   lobbyCheckProximity();
   sc = 'lobby';
   lobbyWSConnect();
-  // T-D6-2: async load HUD data (card count + season day)
+  // Async load HUD data (card count + season day)
   _loadLobbyHUD().catch(e => console.warn('[Lobby HUD]', e.message));
+  // Async load bottom bar data (wallet name + SOL balance)
+  const pk = window.solana?.publicKey;
+  if (pk) {
+    const stored = localStorage.getItem('oxark_wallet_name');
+    lobbyBottomName = stored || (pk.toBase58().slice(0, 6) + '…');
+    try {
+      const _c = new solanaWeb3.Connection(_DE_DEVNET_RPC_LOBBY, 'confirmed');
+      _c.getBalance(pk).then(lam => { lobbyBottomSol = (lam / 1e9).toFixed(3); }).catch(() => {});
+    } catch (_) {}
+  }
 }
 
 function exitLobby() {
@@ -572,14 +783,29 @@ function dLobby() {
 
   const { ox, oy } = lobbyCamOffset();
 
-  // Background fill
-  g.fillStyle = '#0a1218';
-  g.fillRect(0, 0, W, H);
+  // ── T-D8-1: Sky gradient + horizon silhouette (fixed, not camera-scrolled) ─
+  const skyH = H * 0.45;
+  const skyGrad = g.createLinearGradient(0, 0, 0, skyH);
+  skyGrad.addColorStop(0.0, '#c04820');
+  skyGrad.addColorStop(0.5, '#803060');
+  skyGrad.addColorStop(1.0, '#2a1838');
+  g.fillStyle = skyGrad;
+  g.fillRect(0, 0, W, skyH);
+
+  // Horizon silhouette
+  g.fillStyle = '#141420';
+  g.fillRect(0, H * 0.42, W, 10);
+  const towers = [[40, 6, 0.08], [20, 10, 0.25], [30, 4, 0.6], [25, 8, 0.78], [18, 6, 0.9]];
+  towers.forEach(([tw, th, xr]) => { g.fillRect(xr * W, H * 0.42 - th, tw, th); });
+
+  // Floor background (below sky)
+  g.fillStyle = '#888898';
+  g.fillRect(0, skyH, W, H - skyH);
 
   g.save();
   g.translate(-ox, -oy);
 
-  // Ground layer
+  // ── T-D8-2: Ground layer — new tile recipes via drawLobbyTile ─────────────
   for (let ty = 0; ty < LOBBY_H; ty++) {
     for (let tx = 0; tx < LOBBY_W; tx++) {
       const cx = tx * LOBBY_TS, cy = ty * LOBBY_TS;
@@ -587,27 +813,15 @@ function dLobby() {
     }
   }
 
-  // Building footprints + labels
+  // Building footprints + labels (placeholder rects — sprites in T-D8-6..9)
   for (const obj of LOBBY_OBJECTS) {
-    // Roof/wall color overlay (on top of ground tile)
     g.fillStyle = 'rgba(60,40,20,0.7)';
     g.fillRect(obj.x * LOBBY_TS, obj.y * LOBBY_TS, obj.w * LOBBY_TS, obj.h * LOBBY_TS);
-    // Building border
-    g.strokeStyle = '#c8a460';
-    g.lineWidth = 2;
+    g.strokeStyle = '#c8a460'; g.lineWidth = 2;
     g.strokeRect(obj.x * LOBBY_TS + 1, obj.y * LOBBY_TS + 1, obj.w * LOBBY_TS - 2, obj.h * LOBBY_TS - 2);
-    // Building label
-    g.fillStyle = '#f0e0a0';
-    g.font = 'bold 10px VT323, monospace';
-    g.textAlign = 'center';
-    g.fillText(obj.label,
-      (obj.x + obj.w / 2) * LOBBY_TS,
-      (obj.y + obj.h / 2) * LOBBY_TS + 4
-    );
+    g.fillStyle = '#f0e0a0'; g.font = 'bold 10px VT323, monospace'; g.textAlign = 'center';
+    g.fillText(obj.label, (obj.x + obj.w / 2) * LOBBY_TS, (obj.y + obj.h / 2) * LOBBY_TS + 4);
   }
-
-  // Wall collision debug overlay (disabled in prod — set LOBBY_DEBUG=true to enable)
-  // if (window.LOBBY_DEBUG) { ... }
 
   // Remote players — lerp toward target position (smooth movement)
   for (const [, rp] of lobbyRemotePlayers) {
@@ -617,18 +831,14 @@ function dLobby() {
     const rx = rp.curX * LOBBY_TS, ry = rp.curY * LOBBY_TS;
     g.fillStyle = CLAN_TINTS[rp.clan] || CLAN_TINTS['null'];
     g.fillRect(rx + 6, ry + 4, LOBBY_TS - 12, LOBBY_TS - 8);
-    g.fillStyle = '#fff';
-    g.font = '8px VT323, monospace';
-    g.textAlign = 'center';
-    g.fillText(rp.wallet ? rp.wallet.slice(0,6)+'…' : '?', rx + LOBBY_TS / 2, ry - 2);
+    g.fillStyle = '#fff'; g.font = '8px VT323, monospace'; g.textAlign = 'center';
+    g.fillText(rp.wallet ? rp.wallet.slice(0, 6) + '…' : '?', rx + LOBBY_TS / 2, ry - 2);
   }
 
   // Local player sprite
   const px = lobbyPx * LOBBY_TS, py = lobbyPy * LOBBY_TS;
-  // Player body (colored square — sprite sheet integration in T-D4)
   g.fillStyle = '#e8c870';
   g.fillRect(px + 6, py + 4, LOBBY_TS - 12, LOBBY_TS - 8);
-  // Player direction indicator (small triangle)
   g.fillStyle = '#fff';
   g.beginPath();
   if (lobbyDir === 0) { g.moveTo(px+LOBBY_TS/2,py+LOBBY_TS-4);g.lineTo(px+LOBBY_TS/2-4,py+LOBBY_TS-10);g.lineTo(px+LOBBY_TS/2+4,py+LOBBY_TS-10); }
@@ -639,24 +849,24 @@ function dLobby() {
 
   g.restore(); // un-translate camera
 
-  // HUD overlay (on top, not scrolled)
-  // Nearby building prompt
+  // HUD overlay (fixed, not scrolled) — proximity prompt
   if (lobbyNearBuilding) {
     g.fillStyle = 'rgba(0,0,0,0.7)';
-    g.fillRect(W/2-100, H-52, 200, 28);
-    g.fillStyle = '#f0e0a0';
-    g.font = '14px VT323, monospace';
-    g.textAlign = 'center';
-    g.fillText(`[Z] Enter ${lobbyNearBuilding.label}`, W/2, H-34);
+    g.fillRect(W / 2 - 100, H - 52, 200, 28);
+    g.fillStyle = '#f0e0a0'; g.font = '14px VT323, monospace'; g.textAlign = 'center';
+    g.fillText(`[Z] Enter ${lobbyNearBuilding.label}`, W / 2, H - 34);
   }
 
-  // Position debug HUD (top-left)
-  g.fillStyle = 'rgba(0,0,0,0.5)';
-  g.fillRect(4, 4, 130, 18);
-  g.fillStyle = '#aaa';
-  g.font = '10px VT323, monospace';
-  g.textAlign = 'left';
-  g.fillText(`LOBBY  x:${lobbyPx} y:${lobbyPy}`, 8, 17);
+  // T-D6-2: Permanent HUD — card count + season day (top-right)
+  {
+    const cardStr = lobbyHudCards !== null ? `${lobbyHudCards}/60 cards` : '—/60 cards';
+    const dayStr  = lobbyHudDay   !== null ? `Day ${lobbyHudDay}/${lobbyHudTotalDays} — Season 1` : 'Season 1';
+    g.font = '13px VT323, monospace'; g.textAlign = 'right';
+    const hx = W - 6;
+    g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(W - 110, 4, 106, 30);
+    g.fillStyle = '#e0d080'; g.fillText(cardStr, hx, 17);
+    g.fillStyle = '#8888aa'; g.fillText(dayStr, hx, 30);
+  }
 
   // Match found celebration flash
   if (lobbyMatchFlash > 0) {
@@ -664,30 +874,10 @@ function dLobby() {
     const fAlpha = (lobbyMatchFlash / 60) * 0.55;
     g.fillStyle = `rgba(255,220,60,${fAlpha})`;
     g.fillRect(0, 0, W, H);
-    // "MATCH FOUND!" text
     if (lobbyMatchFlash > 20) {
-      g.fillStyle = '#fff';
-      g.font = 'bold 32px VT323, monospace';
-      g.textAlign = 'center';
+      g.fillStyle = '#fff'; g.font = 'bold 32px VT323, monospace'; g.textAlign = 'center';
       g.fillText('⚔️ MATCH FOUND!', W / 2, H / 2);
     }
-  }
-
-  // ── T-D6-2: Permanent HUD — card count + season day (top-right) ─────────
-  {
-    const cardStr = lobbyHudCards !== null ? `${lobbyHudCards}/60 cards` : '—/60 cards';
-    const dayStr  = lobbyHudDay   !== null
-      ? `Day ${lobbyHudDay}/${lobbyHudTotalDays} — Season 1`
-      : 'Season 1';
-    g.font = '13px VT323, monospace';
-    g.textAlign = 'right';
-    const hx = W - 6;
-    g.fillStyle = 'rgba(0,0,0,0.55)';
-    g.fillRect(W - 110, 4, 106, 30);
-    g.fillStyle = '#e0d080';
-    g.fillText(cardStr, hx, 17);
-    g.fillStyle = '#8888aa';
-    g.fillText(dayStr, hx, 30);
   }
 
   // Building dialog overlay (drawn last — on top of everything)

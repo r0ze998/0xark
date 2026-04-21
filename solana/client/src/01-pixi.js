@@ -2,8 +2,8 @@
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(regs=>{regs.forEach(r=>r.unregister());});}
 if('caches' in window){caches.keys().then(names=>{names.forEach(n=>caches.delete(n));});}
 const c=document.getElementById('g');
-c.width=960;c.height=640;
-const W=960,H=640;
+c.width=480;c.height=270;
+const W=480,H=270;
 let g=c.getContext('2d');
 const TW=32,TH=32;
 
