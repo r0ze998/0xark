@@ -1,5 +1,18 @@
 # 0xARK — ZK Card PvP on Solana
 
+---
+## 🔥 Phase D Reborn — Full Game Redesign in Progress (2026-04-21 → 2026-05-11)
+
+0xARK is undergoing a full redesign for the Solana Frontier Hackathon submission.
+The game is becoming a fully on-chain card collection race MMO — players compete to collect 60 unique NFT cards first, with ZK-hidden hands, x402 microeconomies, MagicBlock real-time lobby, and AI agents as first-class opponents.
+
+- [Game Design Document v1.0](./docs/GDD.md) — full design spec
+- [Phase D Sprint Plan](./docs/PHASE_D_SPRINT.md) — 21-day implementation roadmap
+
+Current state: phase-d-reborn branch, Day 1 (Phase C wind-down). See you at submission 2026-05-11.
+
+---
+
 [![CI](https://github.com/r0ze998/0xark/actions/workflows/ci.yml/badge.svg)](https://github.com/r0ze998/0xark/actions/workflows/ci.yml)
 [![Deploy](https://github.com/r0ze998/0xark/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/r0ze998/0xark/actions/workflows/deploy-pages.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
