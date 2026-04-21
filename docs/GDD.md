@@ -1,8 +1,9 @@
-# 0xARK — Game Design Document v1.0
+# 0xARK — Game Design Document v1.2
 
 > *Collect 60 cards. Be the first. ZK hides your hand, x402 moves your money, MagicBlock ER runs the world in real time, AI agents join the fight.*
 
-**Status:** Draft 1 — 2026-04-21  
+**Status:** Draft 3 — 2026-04-21 (duel design overhauled, inspired by Anode Heart: Layer Null)  
+**Changes vs v1.1:** Section 5 (Duel Design) fully rewritten — phase-based turn structure, 5-element energy system, lane-based summon, defender mechanic, Shards/Extra Action, server-rank gated Duel Halls. Section 4 (Lobby) adds Bronze/Silver/Gold Duel Hall. Section 6 (Faction) adds element affinity wheel. Section 14 (Roadmap) unchanged (still feasible). Other sections kept.  
 **Submission target:** Solana Frontier Hackathon, due 2026-05-11  
 **Post-hackathon goal:** Public product release
 
@@ -24,6 +25,10 @@
 12. [Tech Stack](#12-tech-stack)
 13. [Reborn Migration](#13-reborn-migration)
 14. [Roadmap](#14-roadmap)
+- [Appendix A: Glossary](#appendix-a-glossary)
+- [Appendix B: Open questions](#appendix-b-open-questions)
+- [Appendix C: File path reference matrix](#appendix-c-file-path-reference-matrix)
+- [Appendix D: Phase-based duel at a glance](#appendix-d-phase-based-duel-at-a-glance-quick-reference)
 
 ---
 
@@ -41,7 +46,7 @@ This makes every duel matter. Not for Elo points. For physical progress in a vis
 
 Combined with:
 
-- **MagicBlock ER** for real-time lobby presence (you see other players walking around the town)
+- **MagicBlock ER** for real-time lobby presence and low-latency duel execution
 - **ZK Groth16 proofs** to hide your hand and identity during duels
 - **x402 micropayments** woven through every small transaction (scout peek, card P2P, agent hire)
 - **AI agents** that join the same server as humans, indistinguishable opponents
@@ -67,7 +72,18 @@ The world borrows visual language from Pokémon FireRed / LeafGreen (GBA, 2004) 
 
 - It's globally legible — 30-year-olds recognize it instantly
 - It sets warm, accessible expectations that contrast with crypto's cold/corporate defaults
-- It maps cleanly onto our existing code (pxFRLG UI framework, Kenney/Zelda/LPC assets already integrated)
+- It maps cleanly onto our existing code (design tokens + UI spec + pirate asset pack already in repo)
+
+### Existing visual specification
+
+The repo already contains a complete GBA-era design system in `design/`:
+
+- **`design/DESIGN_TOKENS.json`** — locked palette (ocean_shallow, sail_cream, gold_accent, menu_blue, text_dark, etc.), NPC identity palette (Vega magenta, Mira amber, etc.), typography tokens, z-layer ordering
+- **`design/UI_SPEC.md`** — pixel-precise screen layouts keyed on logical 240×160 GBA resolution (`stage.scale = 2` → 480×320 render)
+- **`design/COMPONENT_RECIPES.md`** — reusable render recipes for HUD / dialog / banner components
+- **`design/preview/`** — reference screenshots
+
+All of Phase D's UI work references these tokens. No re-design is needed — just new screens following the existing spec.
 
 ### The world, narratively
 
@@ -75,15 +91,9 @@ A quiet archipelago. Five towns, each home to a different **Faction** — a prof
 
 The towns are connected by Routes. Wild encounters on Routes are rare NPC duelists. Towns contain shops, Faction HQs, and Duel Halls where players challenge each other. The world persists on Solana — when you log in, other players are already walking around.
 
-### Why not Edo Harbor
+### The "ZK pirate" DNA survives
 
-An earlier version of this document considered an Edo-period Japanese harbor setting (driven by the "pirate" theme of the existing 0xARK pre-Reborn code). That direction was retired because:
-
-- Cultural specificity creates global friction (hackathon judges are international)
-- Existing assets (Pokemon-style tiles, FRLG UI) aren't Edo; re-asset would burn time
-- FRLG nostalgia is more accessible and commercially proven
-
-The "pirate / ZK pirate" flavor survives in: **one of the five Factions is literally "Pirates,"** carrying the original narrative DNA into the new world.
+The pre-Reborn version of 0xARK was a "ZK pirate card game" (see meta description still in `index.html`). In Reborn, the **Pirate faction literally carries that narrative DNA** — one of the five factions is pirates, and the existing `assets/pirates/` tilemap pack is Pirate town's primary art source.
 
 ---
 
@@ -149,23 +159,23 @@ Unlike traditional card games where the "lobby" is a menu, 0xARK's lobby is a **
 ### Spatial layout (MVP Town)
 
 ```
-                  ┌─────────────┐
-                  │   FACTION   │
-                  │     HQ      │
-                  └──────┬──────┘
-                         │
-          ┌──────────────┴──────────────┐
-          │          MAIN SQUARE         │
-          │   (where players spawn)      │
-          │   (other players visible)    │
-          │                              │
-          └─┬──────────┬────────────┬────┘
-            │          │            │
-         ┌──▼──┐   ┌──▼───┐   ┌────▼─────┐
-         │SHOP │   │ PC   │   │DUEL HALL │
-         │(NPC)│   │BOX   │   │ (match-  │
-         │     │   │      │   │  making) │
-         └─────┘   └──────┘   └──────────┘
+                    ┌─────────────┐
+                    │   FACTION   │
+                    │     HQ      │
+                    └──────┬──────┘
+                           │
+       ┌───────────────────┴───────────────────┐
+       │            MAIN SQUARE                 │
+       │     (where players spawn)              │
+       │     (other players visible)            │
+       │                                        │
+       └─┬──────┬──────┬──────┬──────┬─────────┘
+         │      │      │      │      │
+      ┌──▼──┐ ┌▼───┐ ┌▼────┐┌▼────┐┌▼────┐
+      │SHOP │ │PC  │ │🥉   ││🥈   ││🥇   │
+      │(NPC)│ │BOX │ │BRONZE││SILVER││GOLD │
+      │     │ │    │ │HALL ││HALL ││HALL │
+      └─────┘ └────┘ └─────┘└─────┘└─────┘
 ```
 
 ### Lobby buildings
@@ -178,6 +188,7 @@ Unlike traditional card games where the "lobby" is a menu, 0xARK's lobby is a **
   - **Targeted Single** (0.01–2 SOL): pick a specific card from a rotating inventory; price scales with rarity
   - **Faction Starter** (0.1 SOL, one-time): a themed 20-card starter deck for your Faction
 - Shopkeeper dialog includes game tips, Season status, current leaderboard snippets ("Did you hear? Someone's at 58 already!")
+- **Backend**: existing `oxark-cards::card_market` + `mint_card_nft` instructions; new frontend screen only.
 
 #### 4.2 PC Box (deck editor + card storage)
 
@@ -187,6 +198,7 @@ Unlike traditional card games where the "lobby" is a menu, 0xARK's lobby is a **
 - Multiple saved deck slots (3-5)
 - Validation: deck must be exactly 20 cards, max 2 copies of any single card
 - Optional "Auto-build" button — PC suggests a deck from owned cards based on Faction
+- **Backend**: existing `save_deck` + `lock_deck` instructions; `PlayerDeck` PDA already in `state.rs`.
 
 #### 4.3 Faction HQ
 
@@ -194,19 +206,38 @@ Unlike traditional card games where the "lobby" is a menu, 0xARK's lobby is a **
 - Inside: leaderboard of same-Faction members, sorted by cards collected
 - "Same-Faction chat" — simple emote and pre-canned phrases (not free text)
 - Quest board (future): daily/weekly goals for Faction members
+- **Backend**: new PDA `Faction` needed (small, Season-scoped); leaderboard computed client-side from PlayerDeck accounts.
 
-#### 4.4 Duel Hall (matchmaking)
+#### 4.4 Duel Halls (matchmaking, server-rank gated)
 
-- Walk up to the receptionist, tap "Find Match"
+The town contains **three Duel Halls**, each representing a server rank tier. Inspired by Anode Heart: Layer Null's server-based progression, each rank gates access to different stakes and card pools.
+
+| Hall | Unlock condition | Duel ante | Stakes | Reachable cards |
+|------|------------------|-----------|--------|-----------------|
+| 🥉 **Bronze Hall** | Open from day 1 | 0.005 SOL | Low | Common + Uncommon only |
+| 🥈 **Silver Hall** | 5 wins in Bronze Hall | 0.01 SOL | Medium | + Rare cards possible |
+| 🥇 **Gold Hall** | 3 wins in Silver Hall during current Season | 0.05 SOL | High | + Legendary Sceptre / Nameless Blade reachable only here |
+
+**Matchmaking flow:**
+- Walk up to receptionist, tap "Find Match"
 - Matchmaking: ranked by current card count (±5 cards tolerance)
 - Queue time target: under 30 seconds at mid-season density
 - Optional: **challenge a specific player** seen in the Square (tap their sprite → "Challenge")
+
+**Why server rank matters:**
+- Narrative: the kingdom's succession race has a structure — you prove yourself in Bronze, earn respect in Silver, contest for Legendaries in Gold
+- Gameplay: newcomers aren't matched with Season leaders immediately (protects low-card-count players)
+- Legendary scarcity: Sceptre of Valerius and Nameless Blade can only change hands in Gold Hall duels, making them rare achievements
+
+**Backend**: extend existing `create_game` / `join_game` flow with a new `MatchmakingQueue` PDA (one per Hall) + FIFO logic in a new `enter_queue` instruction. Server rank gating is verified on-chain via `PlayerBattleStats.wins_at_tier[3]` field.
 
 ### Other player presence
 
 The Main Square shows **all players currently online in your server instance**, up to ~20 visible on screen, rendered as walking sprites. Their Faction color tints their clothing. Their card count is visible on hover (X/60).
 
 This is the feature that delivers "大湯 MMO" — the bathhouse feeling. You know others are there. You see them. It's not a matchmaking screen pretending to be social.
+
+**Backend**: the existing `multiplayer/server.js` WebSocket relay already broadcasts `player_moved` events and manages room presence. We extend this to include `faction` and `card_count` in the presence payload. Combined with MagicBlock ER for delegated position updates, sub-second latency is achievable for up to ~30 concurrent players.
 
 ### Emotes
 
@@ -219,94 +250,224 @@ Six preset emotes, no free-form chat (reduces moderation burden + multi-language
 - Tears 😭
 - Sparkle ✨
 
-Triggered via a radial menu, lasts 3 seconds above player head.
+Triggered via a radial menu, lasts 3 seconds above player head. **Backend**: relayed via the existing `chat` message type, encoded as `{kind: "emote", id: 1}` payloads — no program change needed.
 
 ---
 
 ## 5. Duel Design
 
-### Format: 20-card deck, simultaneous reveal, 5 rounds
+### Format: 20-card deck, phase-based, 5 rounds, ~5 minutes
 
-Inspired by **Marvel Snap**. The goal is short, tense, information-asymmetric matches that fit into a coffee break.
+Inspired by **Anode Heart: Layer Null**. The goal is tactical depth through clear phase structure, element affinity, and creature combat — while keeping sessions short enough to fit into a coffee break.
 
-### Turn structure
+### Deck composition
+
+A legal deck contains exactly **20 cards**:
+
+- **Character cards** (Tama-analog) — deploy on the battlefield, have HP / BP / element / ability
+- **Energy cards** — generate element energy each round (Anode's "farmer" cards)
+- **Event cards** — one-shot spells that resolve immediately (buff, debuff, destroy, draw, peek, etc.)
+
+Max 2 copies of any single card. Starter deck (Faction-themed, 0.1 SOL in Shop) is pre-balanced for new players.
+
+### Round structure: 4 phases per round
+
+Each of the 5 rounds unfolds in **4 phases**, executed in order:
 
 ```
-ROUND 1
-  ├─ Both players simultaneously play 1–3 cards face-down
-  │   (cards go to one of 3 "Lanes" on the board)
-  ├─ Both players commit their round via ZK proof
-  ├─ REVEAL: cards flip, effects resolve in lane order
-  └─ Lane winner determined by total power
-
-ROUND 2-4: same
-ROUND 5: FINAL — reveal all, score all 3 lanes, winner wins
+ROUND N
+├─ Phase 1 — DRAW
+│   Both players draw 1 card from deck.
+│   (ZK: deck commitment rotates; drawn card added to private hand commitment.)
+│
+├─ Phase 2 — ENERGY
+│   Both players may play 1 Energy card from hand to their energy pool.
+│   Energy accumulates across rounds (not reset).
+│   Each Energy card produces 1 of a specific element (Fire / Earth / Wind / Shadow / Gold).
+│
+├─ Phase 3 — SUMMON
+│   Both players play Character and Event cards, paying element energy costs.
+│   Characters occupy one of 3 LANES (Front / Middle / Back).
+│   Events resolve immediately.
+│   (ZK: hand commitment updates to reflect played cards.)
+│
+└─ Phase 4 — BATTLE
+    First player declares attacks from their Characters toward opposing Lanes.
+    Second player chooses Defender (optional — Characters can defend).
+    Damage resolves: BP vs. BP, HP subtracted, destroyed Characters removed.
+    Defenders deal half-BP counterdamage even if destroyed.
 ```
 
-### Win condition
+At end of Phase 4, if either player's **Heart HP** (starts at 20) is reduced to 0, that player loses immediately. Otherwise, round increments and loop repeats.
 
-The player who **wins 2 out of 3 lanes** after Round 5 wins the duel.
+### Turn order (who plays first each phase)
 
-### Card mechanics (at a glance)
+Following Anode Heart convention:
 
-Each card has:
+1. Player with **greater total TP** (Tactical Points, a card stat) plays first
+2. Tie → player with **lower total BP** (weaker army, given priority as underdog)
+3. Tie → player with **lower total HP on Characters**
 
-- **Power** (1–10): base attack value
-- **Cost** (0–6): energy required to play
-- **Ability**: on-play effect (e.g., "+2 power to adjacent cards", "draw 1", "destroy an opponent's card in this lane")
-- **Faction**: Pirate / Merchant / Samurai / Clan / Ninja (affects deck composition)
+This rewards glass-cannon decks with initiative, while armored/heavy decks have to play reactively.
 
-Each turn, both players have **Energy = round number** (1 → 5). You can play any combination of cards whose total cost ≤ current Energy.
+### Win conditions
+
+**A duel ends when any of these occur:**
+
+- An opponent's **Heart HP reaches 0** (direct KO via accumulated Battle Phase damage)
+- An opponent **deck runs out** of cards during a Draw Phase (they can't draw = they lose)
+- Round 5 ends and no winner yet → player with **higher Heart HP** wins
+- **Legendary Sceptre of Valerius** effect (see Section 7) triggers instant card theft (doesn't end duel but shifts advantage)
+
+### 5 Element energy system
+
+All Characters and Events require **element energy** to play. 5 elements, 1 per Faction:
+
+- **🔥 Fire** (Hollow Blade) — direct attack, high BP, aggressive
+- **🌿 Earth** (Iron Circle) — high HP, defense, denial
+- **💨 Wind** (Black Flag) — low cost, speed, mobility
+- **🌑 Shadow** (Nameless Silk) — information, deception, stealth
+- **💰 Gold** (Sovereign Bourse) — economy, scaling, energy generation
+
+**Element affinity wheel** (attacker to defender):
+
+```
+        🔥 Fire
+       ↗       ↘
+    💰 Gold   🌿 Earth
+     ↑             ↓
+    🌑 Shadow  💨 Wind
+       ↖        ↙
+          (cycle)
+```
+
+Affinity rules:
+- Fire attacks Earth: **+2 BP bonus**
+- Earth attacks Wind: +2 BP bonus
+- Wind attacks Shadow: +2 BP bonus
+- Shadow attacks Gold: +2 BP bonus
+- Gold attacks Fire: +2 BP bonus
+- **Reverse matchups** (e.g., Earth attacks Fire): -1 BP penalty
+- Same element, or non-affinity pairs: no modifier
+
+This creates **meta rock-paper-scissors** at the faction level, and encourages multi-element decks for flexibility.
+
+### Lanes (3-slot battlefield)
+
+Each player has 3 lane slots for Characters: **Front / Middle / Back**.
+
+- **Front lane**: attacks first, takes damage first (vanguard)
+- **Middle lane**: neutral — standard combat
+- **Back lane**: cannot be attacked unless Front and Middle are empty (protected support)
+
+Character cards have optional **lane restriction** (e.g., "Must be played in Front" or "Only Back lane").
+
+### Shards mechanic (Extra Action)
+
+When you destroy an opponent's Character, you gain **1 Shard** (up to 5 max in a duel).
+
+Spend **3 Shards** during any of your Phase 3 (Summon) to activate an **Extra Action**:
+- Draw 1 extra card
+- Play 1 Character at half energy cost
+- Re-target 1 of your Characters to a different lane
+- Cancel 1 Event card the opponent just played
+
+Alternatively, **pay 0.01 SOL via x402** to skip the Shard requirement (max 2 purchased Extra Actions per duel).
+
+### Card stat system
+
+Each Character card has:
+
+- **BP** (Battle Power, 1–15) — attack value, inflicts damage = BP to target
+- **HP** (Health, 1–10) — how much damage before destroyed
+- **Cost** (element symbols, e.g., 🔥1 + 🌿1 = 1 Fire + 1 Earth energy)
+- **TP** (Tactical Points, 0–5) — contributes to turn order; higher TP = plays first
+- **Element** (Fire/Earth/Wind/Shadow/Gold/Null) — determines affinity
+- **Passive**: always-on effect (e.g., "+1 BP when alone in lane")
+- **On-Summon**: one-time effect when played
+- **On-Destroy**: effect when this card is destroyed
+
+Event cards have Cost + 1 effect only (no HP/BP).
+Energy cards have Cost 0 + produce 1 element per round.
 
 ### Duel reward structure
 
-- **Winner takes**: 2 cards from loser's collection — chosen by game (a random card from loser's owned set that winner doesn't own yet, if any; else a generic "dust" token usable in the Shop)
-- **Loser loses**: those 2 cards (NFT transferred on-chain)
-- **Ante**: each player ante'd 0.01 SOL at match start; winner takes 0.018 SOL (10% dust to dev treasury for Season Prize Pool seed)
+- **Winner takes**: 2 cards from loser's NFT collection — game picks randomly from cards the winner doesn't own yet; if winner owns all of loser's cards, winner receives shop credit in equivalent value instead
+- **Loser loses**: those 2 cards (NFT transferred on-chain to winner)
+- **Ante**: both players ante at match start (per Hall: 0.005 / 0.01 / 0.05 SOL); winner takes ~90% (10% to Season Prize Pool)
 
-**This is where the collection race tension lives**: every duel is a real stake. No safe ranked games.
+**This is where the collection race tension lives**: every duel is a real stake. No safe ranked games. No practice matches.
+
+**Backend**: existing `commit_action` / `reveal_action` / `resolve_round` + `commit_card` / `reveal_card` instructions are retargeted to phase-based card plays. A new `commit_phase` instruction wraps the 4-phase flow per round.
 
 ### Anti-griefing rules
 
 - Can't be matched against a player who's already beaten you in the last 5 minutes (prevents target farming)
 - Can't lose your last 10 cards in a single session (if your count drops to 10, you're protected for 1 hour — gives newbies recovery time)
 - Disconnect = forfeit (you lose 2 cards; opponent gets them)
+- Server-rank gating (Bronze/Silver/Gold) prevents 60-card Season leaders from farming novices
 
 ---
 
 ## 6. Faction System
 
-### 5 Factions (職業)
+### 5 Clans (former "Factions")
 
-| Faction     | Japanese  | Archetype         | Play style                 |
-|-------------|-----------|-------------------|----------------------------|
-| Pirate      | 海賊       | Aggressive raider | High power, low cost, reckless. Wins fast or burns out. |
-| Merchant    | 商人       | Economy engine    | Synergy with Shop, cards that generate value, late-game scaling. |
-| Samurai     | 侍         | Balanced fighter  | Straight power, clear rules, consistent performance. |
-| Clan (藩士) | 藩士       | Control / lockdown| Denial and disruption — slow opponent down, punish mistakes. |
-| Ninja       | 忍者       | Info warfare      | Bonus cards/effects tied to ZK scouting and identity deception. |
+In Season 1 (The Succession War of Elyon), the 5 factions are reframed as **Clans** — political factions vying for the lost throne. Each Clan is tied to a single element for combat affinity purposes.
 
-### Choosing a Faction
+| Clan | Japanese | Element | Archetype | Play style |
+|------|----------|---------|-----------|------------|
+| **Black Flag** | 黒旗 (旧 海賊) | 💨 Wind | Aggressive raider | Low cost, speed, mobility. Hit first, hit often. |
+| **Sovereign Bourse** | 主権市場 (旧 商人) | 💰 Gold | Economy engine | Energy generation, late-game scaling, synergy with Shop |
+| **Hollow Blade** | 空の刃 (旧 侍) | 🔥 Fire | Direct fighter | High BP, straight damage, consistent and predictable |
+| **Iron Circle** | 鉄環 (旧 藩士) | 🌿 Earth | Control / wall | High HP, defense, denial, punishment-based play |
+| **Nameless Silk** | 無名の絹 (旧 忍者) | 🌑 Shadow | Info warfare | ZK deception, false identity, counter-intel |
 
-On first login, player is walked to the **Guildhall** by a tutorial NPC and asked to choose a Faction. **Choice is permanent for the current Season** — next Season they can switch.
+### Element affinity (attacker → defender)
 
-Each Faction has a **starter deck** (20 cards from their color pool) included in the 0.1 SOL Faction Starter purchase.
+```
+        🔥 Fire ──(+2 BP)──▶ 🌿 Earth
+           ▲                    │
+           │                    │ (+2 BP)
+        (+2 BP)                 ▼
+        💰 Gold              💨 Wind
+           ▲                    │
+           │                    │ (+2 BP)
+        (+2 BP)                 ▼
+           └─── 🌑 Shadow ◀────┘
+                   ▲
+                   │ (Shadow +2 BP vs Gold)
+                   └──── 💰 Gold
+```
 
-### Faction meta-game
+A cycle: **Fire → Earth → Wind → Shadow → Gold → Fire**. In a matchup, the attacker on the strong side of the arrow gains **+2 BP** for that attack; the reverse matchup suffers **-1 BP**. Same element or neutral matchups have no modifier.
 
-- Same-Faction members can see each other's progress in the Faction HQ
-- End of Season, Factions also compete as a group — **top aggregate cards collected across Faction members = Faction Seasonal Champion**, awarded a Faction-wide prestige bonus and faction-specific cosmetic
-- Prevents solo grinding — encourages Faction-internal coordination (without direct card trading inside faction being free; x402 still charged)
+This creates:
+- **Clan identity**: your faction isn't just flavor — it defines your combat strengths vs. other factions
+- **Deckbuilding depth**: pure mono-element decks risk hard counters; multi-element decks are more resilient but harder to play
+- **Metagame**: if Fire decks dominate, Water... err, Gold... rises as counter, shifting the ecosystem naturally
 
-### Ninja and ZK: the thematic keystone
+### Choosing a Clan
 
-The Ninja faction is the one where **ZK isn't just a tech feature but a gameplay mechanic**. Ninja cards can:
+On first login, player is walked to the **Guildhall** by a tutorial NPC and asked to choose a Clan. **Choice is permanent for the current Season** — next Season they can switch.
 
-- "Cloak" — their identity commitment stays hidden longer each round
-- "False flag" — broadcast a fake commitment alongside the real one (opponent's Scout peek has a 50% chance of seeing the decoy)
-- "Shadow strike" — bonus power on cards played while you have the smallest hand visible
+Each Clan has a **starter deck** (20 cards from their color pool) included in the 0.1 SOL Clan Starter purchase. Starter decks are pre-balanced to teach the Clan's core play style.
 
-This bakes ZK into the meta, not just the tech stack.
+### Clan meta-game
+
+- Same-Clan members can see each other's progress in the Clan HQ
+- End of Season, Clans also compete as a group — **top aggregate cards collected across Clan members = Clan Seasonal Champion**, awarded a Clan-wide prestige bonus and faction-specific cosmetic
+- Prevents solo grinding — encourages Clan-internal coordination (without direct card trading inside Clan being free; x402 still charged)
+
+### Nameless Silk and ZK: the thematic keystone
+
+The Nameless Silk clan is the one where **ZK isn't just a tech feature but a gameplay mechanic**. Nameless Silk cards can:
+
+- **"Cloak"** — their Identity commitment stays hidden even after other factions reveal theirs
+- **"False flag"** — broadcast a fake commitment alongside the real one (opponent's Scout peek has a 50% chance of seeing the decoy)
+- **"Shadow strike"** — bonus BP on Characters summoned while you have the smallest hand visible
+
+This bakes ZK into the clan metagame, not just the tech stack.
 
 ---
 
@@ -323,6 +484,8 @@ This bakes ZK into the meta, not just the tech stack.
 - **Total Season supply ≈ 200 NFTs** across ~500-1000 players → scarcity is real
 
 For the hackathon MVP we'll ship **one Season's worth** (60 cards). Post-launch, a new Core 60 drops every two weeks, with a small percentage rotating (most cards carry forward, some retire).
+
+Existing `SeasonCardSupply` PDA + `init_season_supply` + `record_mint` + `register_card` instructions handle this. No new structure needed.
 
 ### What players collect for the "race"
 
@@ -343,15 +506,13 @@ On-chain Metaplex metadata includes:
 
 ### Artwork
 
-- Hackathon MVP: stylized pixel portraits (we'll use Midjourney / Flux for generation, retouch in Clip Studio Paint, assemble in Figma)
+- Hackathon MVP: stylized pixel portraits (we'll use Midjourney / Flux for generation, retouch in Clip Studio Paint, assemble in Figma or Claude Design)
 - Each card has a 2-frame idle animation in-game (sprite sheet)
-- Art direction: FRLG portrait style (soft colors, clear outlines, readable at 64×64px)
+- Art direction: FRLG portrait style (soft colors, clear outlines, readable at 64×64px), following `design/DESIGN_TOKENS.json` palette
 
 ### Secondary market
 
-Cards are regular Metaplex NFTs. Players can list on Tensor or Magic Eden at any time. 0xARK takes no cut from secondary sales (we only earn from Shop primary sales and duel ante dust).
-
-This is how the economy cleans itself: post-Season, players who don't want their cards can sell to incoming Season 2 newcomers.
+Cards are regular Metaplex NFTs. Players can list on Tensor or Magic Eden at any time. 0xARK takes no cut from secondary sales (we only earn from Shop primary sales and duel ante dust). The existing `oxark-cards::card_market` instruction set already supports listing/buying.
 
 ---
 
@@ -368,7 +529,7 @@ End: Saturday 23:59 UTC (14 days later)
 - Someone completes 60/60 cards → Season ends immediately, they are Champion
 - Time runs out (14 days) → Player with highest card count is Champion
 
-In both cases, final snapshot is taken on-chain at end.
+In both cases, final snapshot is taken on-chain at end. The existing `create_season` / `end_season` instructions are the foundation; we add Champion-detection logic to `record_mint`.
 
 ### Prize Pool
 
@@ -394,7 +555,7 @@ Tiebreaker 2: Earlier Season entry timestamp
 
 - **Cards**: permanently yours (NFTs). Can be used in next Season's duels if the card ID is still in circulation
 - **Faction**: resets (you can switch)
-- **Stats**: persistent across Seasons via `LegendPDA` (current code already has this)
+- **Stats**: persistent across Seasons via `PlayerBattleStats` / `PlayerLevel` / `PlayerAchievements` PDAs (already in `state.rs`)
 - **Ranking**: resets to zero for new Season
 
 ### Season lore
@@ -419,11 +580,13 @@ Two distinct commitments, both using the existing Groth16 BN254 verifier:
   - Energy cost of played cards ≤ current round number
 - Output: new hand commitment (for next round), played cards revealed on-chain
 
-This is a **natural evolution of the existing `dungeon_position` circuit** — same Groth16 structure, same Poseidon hash, same Solana `alt_bn128_pairing` verifier. The math extends; the code paths are 80% identical.
+**Implementation**: the existing `commit_card` / `reveal_card` instructions (in `solana/oxark/programs/oxark/src/instructions/`) already implement this commit-reveal primitive at the card level. We extend their proof structure to match the new 20-card hand format. The existing `verify_zk_proof` + `verify_dungeon_move` instructions provide the Groth16 verifier scaffolding.
+
+The underlying circuit (`circuits/dungeon_position/dungeon_position.circom`) adapts to `hand_commitment.circom` with structural changes but no new cryptographic primitives — same Poseidon hash, same BN254 pairing, same `alt_bn128_pairing` syscall.
 
 #### 9.2 Identity Commitment (the "Dark Forest" move)
 
-- At Season start, player commits `Poseidon(faction_id, build_strategy_hash, salt)` to a `PlayerIdentity` PDA
+- At Season start, player commits `Poseidon(faction_id, build_strategy_hash, salt)` to a new `PlayerIdentity` PDA
 - During duels, the Faction color is visible (you can see the opponent is Ninja), but **the specific deck archetype is hidden**
 - Optional: opponent can spend x402 to reveal it (see Section 10)
 - At Season end, identity is revealed — reputation scores aggregate across Seasons under the same commitment
@@ -432,7 +595,7 @@ This is the novel contribution — **persistent pseudonymous identity with ZK-ba
 
 ### Why we keep ZK
 
-The existing circuit (`dungeon_position.circom`, 625 non-linear constraints, pot12 setup) is already working — proven on devnet with transaction `2pkmJpGv...`. Adapting it to hand commitment requires **circuit structure changes but no new cryptographic primitives**. We keep all the Rust verifier code, G2 Fp2 coefficient ordering fix, and Poseidon compatibility work.
+The existing circuit (`circuits/dungeon_position/dungeon_position.circom`, compiled to `commit_reveal.wasm` + `commit_reveal_final.zkey`) is already working — proven on devnet with transaction `2pkmJpGv...`. Build scripts (`circuits/scripts/compile.sh`, `setup.sh`, `prove.sh`, `verify.sh`) are in place. We keep all the Rust verifier code, G2 Fp2 coefficient ordering fix, and Poseidon compatibility work.
 
 The dungeon_position circuit dies; its engine lives on.
 
@@ -454,7 +617,7 @@ These are implemented, tested, or straightforward to finish by 5/11:
 | **Identity peek**  | 0.02        | Reveal an opponent's identity commitment (their build archetype). High-stakes intel. |
 | **Hint buy**       | 0.002       | Before a round, learn the total energy cost opponent will play (not the cards, just the magnitude). |
 | **Agent hire**     | 0.05/session| Rent an AI agent to play for you while you're AFK. Hackathon priority. |
-| **Card P2P**       | variable    | Player-listed card sales with facilitator verifying payment. Built on top of oxark-cards program. |
+| **Card P2P**       | variable    | Player-listed card sales with facilitator verifying payment. Built on top of `oxark-cards::card_market`. |
 
 ### Design-only (in Tokenomics paper, implement post-hackathon)
 
@@ -473,10 +636,10 @@ These are implemented, tested, or straightforward to finish by 5/11:
 
 ### Tech implementation
 
-- Single Bun-based facilitator server (`x402-facilitator/`)
-- HTTP-402 flow: request → 402 Payment Required → user signs transaction → resubmit with payment signature → verify on-chain → serve data
-- Native SOL balance-diff verification (simpler than devnet USDC faucet dependency)
-- Payment tx signatures are recorded on-chain as game events (audit trail)
+- **x402 client**: `solana/client/src/02-x402.js` — handles HTTP-402 payment flow on the frontend
+- **x402 facilitator**: embedded in `multiplayer/server.js` (Node.js WebSocket + HTTP hybrid, already running; Phase D extends endpoints)
+- **Payment verification**: native SOL balance-diff verification (simpler than devnet USDC faucet dependency)
+- **Audit trail**: payment tx signatures are recorded on-chain as game events (existing `CardStolen`, `RoundResolved` event patterns reused)
 
 Production deploy: Railway or Fly.io (target: by 5/5).
 
@@ -491,7 +654,7 @@ AI agents are **indistinguishable from human players in the lobby**. They walk a
 ### Three agent tiers
 
 #### Tier 1: Open-source auto-player (hackathon MVP)
-- Publicly published Node.js / Bun script (`tools/ai-agent/`)
+- Publicly published Node.js / Bun script (to be placed at `tools/ai-agent/`)
 - Uses Anthropic Claude or OpenAI GPT via API
 - Any user can run their own agent with their own LLM key
 - Demonstrated in pitch video: human vs. agent match recorded end-to-end
@@ -499,11 +662,12 @@ AI agents are **indistinguishable from human players in the lobby**. They walk a
 #### Tier 2: Rented agents (Agent hire)
 - User pays 0.05 SOL via x402 Agent hire to rent a pre-configured agent
 - Agent plays on user's behalf for a fixed duration (e.g., 1 hour)
-- Agent has a pre-registered strategy profile (via `AgentListing` PDA)
+- Agent has a pre-registered strategy profile
+- **Backend**: existing `register_agent_hire` instruction + `AgentListing` PDA
 
 #### Tier 3: Sovereign agents (post-launch)
 - Third parties run their own hosted agents
-- Register via `AgentListing` with self-declared strategy, endpoint, and price
+- Register via existing `register_agent` / `deactivate_agent` instructions
 - Agents auto-challenge other players, earn cards, resell them
 - Agents have their own reputation and Collection (can reach 60/60 as an agent)
 
@@ -513,9 +677,9 @@ The Solana ecosystem is currently obsessed with AI agents + payments (Cypherpunk
 
 In the pitch video, we show a moment where a player checks the leaderboard: the top 3 players are 2 humans and 1 agent. This is the headline shot.
 
-### `AgentListing` PDA (existing, extended)
+### `AgentListing` extensions for Reborn
 
-Current code already has `AgentListing` with `register_agent` / `deactivate_agent`. Extensions for Reborn:
+Current fields (in `state.rs`): `agent_id`, `owner`, `active`, etc. Extensions for Reborn:
 
 - Add `reputation_score` field (updated after each match)
 - Add `collection_count` field (their own 60/60 progress)
@@ -526,133 +690,203 @@ Current code already has `AgentListing` with `register_agent` / `deactivate_agen
 
 ## 12. Tech Stack
 
-### Solana programs
+### Repository layout
 
-| Program | Status | Purpose |
-|---------|--------|---------|
-| **oxark** (main) | Deployed devnet, 5i37j... | Game state, duels, matchmaking, seasons |
-| **oxark-cards** | Deployed devnet, 236FN... | NFT card mint, P2P listings, Metaplex metadata |
-| *(zk-verify, future split)* | Embedded in main | May split later for size |
+```
+0xark/
+├── solana/
+│   ├── oxark/                          ← Anchor workspace
+│   │   ├── programs/oxark/             ← Main program (lib.rs 19 KB, 26 instructions)
+│   │   │   ├── src/
+│   │   │   │   ├── lib.rs              ← Instruction handlers
+│   │   │   │   ├── state.rs            ← PDAs and events
+│   │   │   │   ├── instructions.rs     ← Module re-exports
+│   │   │   │   ├── instructions/       ← 26 instruction files (one per instruction)
+│   │   │   │   ├── error.rs
+│   │   │   │   └── constants.rs
+│   │   │   └── Cargo.toml
+│   │   ├── programs/oxark-cards/       ← NFT program (4 instructions)
+│   │   ├── tests/                      ← E2E tests (t42-card-p2p-e2e.js, etc.)
+│   │   └── er-sdk-patch/               ← MagicBlock ER SDK patches
+│   └── client/                         ← Production frontend (the one that matters)
+│       └── src/
+│           ├── 01-net.js               ← RPC / transaction submission
+│           ├── 02-x402.js              ← x402 payment flow
+│           ├── 03-world-setup.js       ← World state bootstrap
+│           ├── 04-state.js             ← Client-side state
+│           ├── 08-overlays.js          ← Modal overlays
+│           ├── 09-game-loop.js         ← Main game loop
+│           └── (05, 06, 07 numbered for future expansion)
+├── client/                             ← Legacy React TypeScript client (not used in production)
+├── multiplayer/
+│   └── server.js                       ← WebSocket relay (stateless), x402 facilitator
+├── circuits/
+│   ├── dungeon_position/               ← ZK circuit (to be adapted to hand_commitment)
+│   └── scripts/                        ← compile.sh, setup.sh, prove.sh, verify.sh
+├── design/                             ← DESIGN_TOKENS.json, UI_SPEC.md, COMPONENT_RECIPES.md
+├── assets/
+│   └── pirates/                        ← Pirate faction tilemap
+├── docs/                               ← GDD, Sprint plan, X402 design, etc.
+├── nft/                                ← NFT metadata and artwork
+├── index.html                          ← Entry point (1.25 MB monolith, includes all inline styles)
+└── commit_reveal.wasm + final.zkey     ← Compiled Phase C ZK artifacts (regenerated in Phase D)
+```
+
+### Solana programs (deployed devnet)
+
+| Program          | Program ID (devnet)                                | Purpose                                      |
+|------------------|----------------------------------------------------|----------------------------------------------|
+| **oxark**        | `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`     | Game state, duels, matchmaking, seasons, agents |
+| **oxark-cards**  | `236FNPRbJr5W7qeV9fJCYsxDEkruSK6fnNAipf47Mq1S`     | NFT card mint, P2P listings, Metaplex metadata |
+
+Delegation Program (MagicBlock ER): `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh`  
+Devnet deployer wallet: `DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R`
 
 ### Core tech
 
-- **Anchor 1.0** for programs (existing)
-- **MagicBlock Ephemeral Rollups** (SDK 0.6.5, integrated v465-v468) for real-time lobby sync and low-latency duels
-- **Groth16 BN254** via Solana's `alt_bn128_pairing` syscall (verified working, tx `2pkmJpGv...`)
-- **Circom 2.1.6** for ZK circuits (existing dungeon_position ported to hand_commitment)
-- **snarkjs 0.7.4** for browser-side proof generation
-- **Poseidon hash** (Rust: `poseidon-ark`, JS: `poseidon-lite@0.2.1`) — Fp2 coefficient ordering fix already applied
+- **Anchor 1.0** for programs
+- **MagicBlock Ephemeral Rollups** (SDK 0.6.5, integrated via `delegate_session` / `undelegate_session` instructions) for low-latency duels and optional lobby sync
+- **Groth16 BN254** via Solana's `alt_bn128_pairing` syscall (`verify_zk_proof`, `verify_dungeon_move`)
+- **Circom 2.1.6** for ZK circuits (existing dungeon_position circuit to be adapted)
+- **snarkjs 0.7.4** for browser-side proof generation (pinned via CDN in `index.html`)
+- **Poseidon hash** (Rust: `poseidon-ark`, JS: `poseidon-lite@0.2.1`) with G2 Fp2 coefficient ordering fix
 - **x402 v2 protocol** with native SOL balance-diff verification
-- **Bun** for facilitator server
 
-### Frontend
+### Frontend (`solana/client/src/` + `index.html`)
 
-- **Vanilla JS + PixiJS 7.1.4** (pinned) for game rendering
-- **Canvas 2D** as base layer, PixiJS as effects/UI overlay
-- Existing `pxFRLG` UI framework for all dialog / HUD / menus
+- **Vanilla JS** (numbered modules) + **PixiJS 7.1.4** (pinned CDN) for game rendering
+- **Canvas 2D** base layer via `<canvas id="g">`, PixiJS via `#pixi-wrap` for effects
+- **GBA emulator shell** (`#emu` with MAP / CARDS / LOG / STATS buttons) — retained in Reborn as the chrome frame
 - **Web3.js 1.95.3** (pinned), `@coral-xyz/anchor` for Solana interaction
-- Mobile-responsive (works on phone browsers, touch controls)
+- **Buffer polyfill** via CDN (critical for browser compat, v541 fix)
+- **VT323 font** (GBA-feel pixel font) via Google Fonts
+- Mobile-responsive + touch overlay (D-pad, A/B, START) for phone browsers
+- PWA manifest (`manifest.json`)
+
+### WebSocket relay (`multiplayer/server.js`)
+
+- Pure stateless relayer — Solana program is single source of truth
+- Handles: room presence, player movement (with ZK proximity filter), signed tx relay, chat
+- Message types: `create_room`, `join_room`, `move`, `submit_tx`, `chat` → `room_created`, `player_moved`, `tx_confirmed`, `chat`
+- Port 3500 default, `SOLANA_RPC_URL` env configurable
 
 ### Asset pipeline
 
-- Pixel tiles: Kenney pirate tilemap, LPC terrain, Zelda-style character sheet (existing)
-- Card portraits: Midjourney → Clip Studio Paint retouch → Figma composition → PNG export
-- BGM / SFX: chip-tune style (OpenGameArt + original composition)
+- **Pixel tiles**: `assets/pirates/` (existing Kenney pirate pack)
+- **Design tokens**: `design/DESIGN_TOKENS.json` is source of truth for colors, typography, z-layers
+- **Screen specs**: `design/UI_SPEC.md` has pixel-precise layout for TITLE and other screens (Reborn adds Lobby / Duel Hall / Shop / PC / Faction HQ screens following the same spec format)
+- **Card portraits**: Midjourney / Flux → Clip Studio Paint retouch → Claude Design composition → PNG export
+- **BGM / SFX**: chip-tune style (OpenGameArt + original composition)
 
 ### Deployment
 
-- Frontend: GitHub Pages (gh-pages branch, auto-deploy via workflow, fixed v476)
-- Facilitator: Railway or Fly.io
-- Mac mini (r0ze local) for development with Claude Code + tmux
+- Frontend: GitHub Pages (gh-pages branch, auto-deploy via workflow `.github/workflows/deploy-pages.yml` set up v476)
+- WebSocket relay + x402 facilitator: Railway or Fly.io (target: by 5/5)
+- Mac mini (r0ze local) for development with Claude Code + tmux + Telegram relay
 
 ---
 
 ## 13. Reborn Migration
 
-This is the honest accounting of what survives, what dies, what gets rebuilt.
+This is the honest accounting of what survives, what dies, what gets rebuilt. **Revised after repo audit 2026-04-21**.
 
-### Code that survives (≈60% of current codebase)
+### Code that survives (≈75% of current codebase)
+
+Higher than the v1.0 estimate, because the repo is richer than initially assumed.
 
 | Asset | What it does | Role in Reborn |
 |-------|-------------|----------------|
-| **16 oxark instructions** (create_game, join_game, commit_action, resolve_round, etc.) | Core game state machine | Renamed and re-scoped to duel-only; most logic directly reusable |
-| **MagicBlock ER integration** (delegate/undelegate) | Real-time lobby and duel sync | Essential for Reborn; becomes more important than before |
-| **`verify_dungeon_move`** instruction + VK embedding | ZK proof verification on Solana | Renamed to `verify_hand_commitment`; same VK structure, same G2 fix |
-| **`oxark-cards` program** (mint_card_nft, mint_solo_card) | Metaplex NFT issuance | Used as-is; extended with `list_card` and `buy_card` |
-| **`AgentListing` PDA + register/deactivate** | AI agent registry | Used as-is; extended with reputation and collection_count |
-| **`x402-facilitator/`** (Scout peek, HTTP-402 flow) | Micropayment infrastructure | Used as-is; extended with new endpoints |
-| **`LegendPDA`** | Cross-season stats | Used as-is |
-| **`pxFRLG` UI framework** | Dialog boxes, menus, HUD | Heavily used (the aesthetic keystone of Reborn) |
-| **Kenney / LPC / Zelda assets** | Pixel sprites and tilesets | Used as-is for town rendering |
-| **Existing movement system (after v484 UX fix)** | Tile-based walking with tween | Used for lobby navigation |
+| **26 oxark instructions** | Full game state machine (initialize, create_game, join_game, start_game, commit_action, reveal_action, resolve_round, verify_zk_proof, stake_entry, season, agent_registry, delegate_session, undelegate_session, verify_dungeon_move, init_position, agent_hire, save_deck, lock_deck, commit_card, reveal_card, season_supply, register_card, record_battle_result, add_xp, unlock_achievement, set_title) | Most instructions directly reusable; `commit_action`/`reveal_action`/`resolve_round` retargeted from position→card, `verify_dungeon_move` renamed/re-wired to `verify_hand_commitment` |
+| **`oxark-cards` program** (4 instructions: card_market, mint_card_nft, mint_solo_card, mod) | Metaplex NFT issuance + P2P market | Used as-is |
+| **MagicBlock ER integration** | Low-latency session delegation | Used as-is for duel execution; optional for lobby presence |
+| **Existing PDAs** (Game, PlayerState, CardPool, CommitAction, CardCommitRecord, PlayerDeck, SeasonCardSupply, PlayerRegistry, PlayerBattleStats, PlayerLevel, PlayerAchievements, AgentListing) | State storage | Nearly all reused; minor field extensions for Faction, collection_count |
+| **ZK circuit + scripts** (`circuits/dungeon_position/`) | Groth16 proof generation | Circuit adapted to hand_commitment; build scripts reused as-is |
+| **Compiled ZK artifacts** (`commit_reveal.wasm`, `commit_reveal_final.zkey`) | Browser proof generation | Regenerated for new circuit, same pipeline |
+| **`multiplayer/server.js`** | WebSocket relay + x402 facilitator | Used as-is; new message types for Faction presence and emote; new x402 endpoints |
+| **`solana/client/src/` modules** (01-net, 02-x402, 03-world-setup, 04-state, 08-overlays, 09-game-loop, etc.) | Frontend logic | Used as-is; new files added for Lobby, Duel board, PC Box, Shop, Faction HQ |
+| **`design/` system** (DESIGN_TOKENS.json, UI_SPEC.md, COMPONENT_RECIPES.md) | Design source of truth | Used as-is; new screens added following same format |
+| **`assets/pirates/`** (Kenney tileset) | Pirate town art | Used as-is for one Faction; more tilesets sourced for others |
+| **`index.html`** (GBA emulator shell) | Chrome frame, inline CSS, CDN pins | Retained; new screen routes added |
+| **Tests in `solana/oxark/tests/`** | E2E test suite | Adapted to Reborn flows; structure reused |
 
-### Code that dies (≈20%)
+### Code that dies (≈15%)
 
 | Asset | Why removed |
 |-------|------|
-| **Dungeon exploration system** | Gameplay pivot; lobby replaces dungeons |
-| **9-action commit-reveal resolution (Move / Shadow / Storm / Barrier / Steal / Flame / Scout / Draw / Void)** | Replaced by Marvel-Snap-style simultaneous lane reveal |
-| **Position-based commit-reveal** | Replaced by hand-commitment; position is now just lobby walking (no ZK) |
-| **Current "cards" data model** | Replaced by Metaplex NFTs (already partially done via oxark-cards) |
-| **Existing "battle" UI** | New duel UI needed (lane-based) |
+| **Dungeon exploration system** (floor narratives, dungeon tile rendering) | Gameplay pivot; lobby replaces dungeons |
+| **9-action commit-reveal resolution** (Move / Shadow / Storm / Barrier / Steal / Flame / Scout / Draw / Void as distinct action types) | Replaced by 1-3 card plays per round in Marvel Snap-style lane system |
+| **Position-based commitment** (specifically `init_position` + dungeon-specific use of `verify_dungeon_move`) | Position is now just free-form lobby walking (no ZK for movement) |
+| **Victory/defeat cinematics tied to dungeon KO** (T115 v539) | Replaced by duel-win reward animation |
+| **Dungeon floor story** (T114 v538) | Replaced by Season lore and Champion broadcast |
+| **Battle Summary UI tied to dungeon** (T112 v536) | Replaced by duel summary screen |
+| **Finisher animation tied to dungeon action** (T111 v535) | Replaced by lane-win effect |
+| **Legacy React client** (`client/`) | Abandoned pre-Reborn; never used in production |
 
-### Code that is new (≈20%)
+### Code that is new (≈10%)
 
 | Component | Est. effort |
 |-----------|------|
-| Lobby MMO view (real-time player sprites via ER) | 10-15h |
-| Matchmaking queue system | 5-8h |
-| New 20-card deck editor (PC Box UI) | 6-10h |
-| 3-lane duel board UI (Marvel Snap-style) | 10-15h |
-| Faction system (5 factions, starter decks, HQ UI) | 8-12h |
-| Hand commitment ZK circuit adaptation | 10-15h |
-| Season engine (2-week timer, prize pool, final settlement) | 6-10h |
-| NPC shopkeeper dialog and purchase flow | 6-8h |
-| Card artwork (60 cards × 1 portrait each) | 10-20h (depending on AI generation quality) |
-| AI agent Tier-1 implementation | 8-12h |
-| New card game logic (in oxark program) | 15-20h |
+| Lobby screen (town tile map + building interactions) | 6-10h |
+| Real-time player sprite presence via extended WebSocket relay | 4-6h |
+| Matchmaking queue system (new `MatchmakingQueue` PDA + `enter_queue` instruction + UI) | 5-8h |
+| PC Box deck editor UI (reuses existing `save_deck`/`lock_deck`) | 6-10h |
+| 3-lane duel board UI (Marvel Snap-style simultaneous reveal) | 10-15h |
+| Faction system (`Faction` PDA + selection UI + HQ screen) | 6-10h |
+| Hand commitment ZK circuit adaptation (new circom file, reusing build pipeline) | 8-12h |
+| Identity commitment ZK (new `PlayerIdentity` PDA + second small circuit) | 6-8h |
+| Lane scoring + card transfer logic (extend `resolve_round`) | 8-12h |
+| NPC shopkeeper dialog and purchase flow (reuses `oxark-cards::card_market`) | 4-6h |
+| Card artwork (60 cards × 1 portrait each) | 10-20h (AI gen + retouch) |
+| AI agent Tier-1 implementation (new `tools/ai-agent/`) | 8-12h |
+| x402 new endpoints (Identity peek, Hint buy, Agent hire, P2P) in `multiplayer/server.js` | 5-8h |
 | Polish, balance, bug fix | 10-15h |
 
-**Total new code ≈ 100-160h**. Combined with ≈30h refactoring/adaptation of existing code, the full Reborn build is **130-190h**.
+**Total new + modified code ≈ 100-150h** (revised downward from v1.0's 130-190h, reflecting higher reuse).
 
 ### Estimated effort vs. time available
 
 From 2026-04-21 to 2026-05-11 is 20 days.
 
-If r0ze works 8h/day (solo): 160h. If Claude Code runs 6-8h/night autonomously: additional 120-160h. Total capacity: **280-320h**. Required: **130-190h** new work + **40-60h** pitch/submission material = **170-250h**.
+- r0ze: 8h/day × 20 = 160h
+- Claude Code overnight: 6-8h × 20 = 120-160h
+- **Total capacity: 280-320h**
 
-**Feasible, with margin**. Not luxurious, but not tight either. Key risk is card art quality (20h budget could balloon to 40h if we don't get AI gen right early).
+Required: **100-150h** new/modified code + **40-60h** pitch/submission material = **140-210h**.
+
+**Feasible with comfortable margin**. The hackathon time budget is not the binding constraint; the binding constraints are card art quality (20h budget can balloon) and submission-day polish.
 
 ---
 
 ## 14. Roadmap
 
+Unchanged from v1.0 (Roadmap was already reasonable). See `docs/PHASE_D_SPRINT.md` for day-by-day task breakdown (to be revised in v1.1 of that document to match actual repo paths).
+
 ### Week 1 (2026-04-21 → 2026-04-27): Architecture + Lobby MVP
 
-Day 1 (Mon 4/21): GDD sign-off, create Phase D sprint plan, archive old Phase C tasks  
-Day 2 (Tue 4/22): Lobby spatial layout + movement, player sprite rendering via ER  
-Day 3 (Wed 4/23): Matchmaking queue system, Duel Hall NPC interaction  
-Day 4 (Thu 4/24): PC Box deck editor UI, deck validation logic  
-Day 5 (Fri 4/25): Shop NPC dialog + purchase flow (integrate existing oxark-cards)  
-Day 6-7 (Sat-Sun 4/26-27): Faction selection, Faction HQ, emote system
+Day 1 (Mon 4/21): ✅ GDD sign-off, Sprint plan, Phase C archive, phase-d-reborn branch  
+Day 2 (Tue 4/22): Retarget existing instructions (dungeon→card semantics), Lobby tilemap scaffolding  
+Day 3 (Wed 4/23): Extend WebSocket relay for Faction/card_count presence, other player sprites visible in lobby  
+Day 4 (Thu 4/24): PC Box deck editor UI (frontend only, reusing save_deck/lock_deck)  
+Day 5 (Fri 4/25): Shop NPC dialog + purchase flow (reuses oxark-cards::card_market)  
+Day 6-7 (Sat-Sun 4/26-27): Faction selection, Faction HQ, emote system, matchmaking queue
 
 ### Week 2 (2026-04-28 → 2026-05-04): Duel Core + ZK
 
-Day 8 (Mon 4/28): 3-lane duel board UI, card draw/play mechanics (no ZK yet)  
-Day 9 (Tue 4/29): Hand commitment ZK circuit design + Circom implementation  
-Day 10 (Wed 4/30): Hand commitment circuit test + on-chain verifier adaptation  
-Day 11 (Thu 5/1): Simultaneous reveal mechanic, lane scoring, win condition  
-Day 12 (Fri 5/2): Identity commitment ZK (persistent pseudonym per Season)  
-Day 13-14 (Sat-Sun 5/3-4): x402 Scout peek / Identity peek / Hint buy integration into duel flow
+Day 8 (Mon 4/28): Duel board UI with 3 lanes + 4-phase flow (Draw / Energy / Summon / Battle), no ZK yet  
+Day 9 (Tue 4/29): Hand commitment circuit design + Circom implementation (element-aware)  
+Day 10 (Wed 4/30): Hand commitment circuit test + adapt verify_dungeon_move → verify_hand_commitment  
+Day 11 (Thu 5/1): Phase-based card resolution, element affinity system, lane combat, Shards mechanic  
+Day 12 (Fri 5/2): Identity commitment ZK + `PlayerIdentity` PDA + Nameless Silk cloak mechanics  
+Day 13-14 (Sat-Sun 5/3-4): x402 Identity peek / Hint buy / Extra Action endpoints in server.js, Bronze/Silver/Gold Hall gating
 
-### Week 3 (2026-05-05 → 2026-05-11): Content + Polish + Submission
+### Week 3 (2026-05-05 → 2026-05-11): Season + AI Agent + Content + Submission
 
-Day 15 (Mon 5/5): Season engine (timer, prize pool accumulation, final snapshot)  
+Day 15 (Mon 5/5): Season engine activation (existing create_season / end_season + Champion detection)  
 Day 16 (Tue 5/6): AI agent Tier-1 implementation, record 1 agent vs. human match  
-Day 17 (Wed 5/7): Card artwork finalization (Midjourney batch + Clip Studio retouch)  
+Day 17 (Wed 5/7): Card artwork finalization (Midjourney / Flux batch + Clip Studio retouch)  
 Day 18 (Thu 5/8): Balance pass, bug fix, β tester recruitment  
 Day 19 (Fri 5/9): Pitch video script, storyboard, recording  
-Day 20 (Sat 5/10): Pitch video edit, Technical demo video, README rewrite  
+Day 20 (Sat 5/10): Pitch video edit, technical demo video, README rewrite  
 Day 21 (Sun 5/11): Final polish, submission to Colosseum, Twitter/Farcaster launch post
 
 ### Milestones
@@ -693,15 +927,88 @@ Day 21 (Sun 5/11): Final polish, submission to Colosseum, Twitter/Farcaster laun
 
 Items for r0ze and team to resolve before 5/4 freeze:
 
-1. **Exact card ability pool**: We need a list of ~20-30 card abilities with balanced power/cost. Who designs? When?
-2. **Art direction for card portraits**: Style guide needed for Midjourney prompts (portrait framing, color palette, level of abstraction)
-3. **Server / shard strategy**: Will all players be in 1 server instance? Or shard by Faction? By time zone?
-4. **Mainnet launch plan**: Hackathon ships devnet. Mainnet target for June — what's blocking?
-5. **Economic balancing**: Shop prices vs. Duel rewards — need numerical sim to avoid pay-to-win or pure-grind states
-6. **Mobile vs. desktop priority**: Current code works mobile-responsive. Do we push PWA install? Native app?
+1. **Exact card ability pool**: RESOLVED — 60-card catalog drafted in `docs/CARD_CATALOG.md` v0.2 (phase-based + element-affinity aligned). r0ze reviews, balance sim during Day 15-18.
+2. **Art direction for card portraits**: Style guide needed for Midjourney prompts. Use `design/DESIGN_TOKENS.json` palette as base. Plan: generate in Claude Design, retouch in Clip Studio.
+3. **Server / shard strategy**: RESOLVED — 1 server instance for MVP, no sharding.
+4. **Mainnet launch plan**: Hackathon ships devnet. Mainnet target June — what's blocking? (deferred)
+5. **Economic balancing**: Shop prices vs. Duel rewards + Hall antes (Bronze 0.005 / Silver 0.01 / Gold 0.05 SOL) — need numerical sim to avoid pay-to-win or pure-grind states. Plan: spreadsheet sim during Day 15-18.
+6. **Mobile vs. desktop priority**: RESOLVED — mobile-responsive + touch overlay in existing code. No native PWA push for hackathon; responsive web is sufficient.
+7. **Battle rule inspiration**: RESOLVED — phase-based (Draw/Energy/Summon/Battle) with 5-element affinity wheel, defender mechanic, Shards/Extra Action. Inspired by Anode Heart: Layer Null (Section 5).
+8. **Server rank system**: RESOLVED — Bronze/Silver/Gold Duel Halls, progression-gated (Section 4.4).
 
 ---
 
-*End of Game Design Document v1.0*
+## Appendix C: File path reference matrix
 
-*Sign-off required from r0ze before proceeding to Phase D Sprint planning.*
+Quick lookup for Claude Code and Sprint tasks:
+
+| Concern | Path |
+|---------|------|
+| Main program source | `solana/oxark/programs/oxark/src/lib.rs` |
+| Main program instructions | `solana/oxark/programs/oxark/src/instructions/*.rs` (26 files) |
+| Main program state (PDAs + events) | `solana/oxark/programs/oxark/src/state.rs` |
+| NFT program source | `solana/oxark/programs/oxark-cards/src/lib.rs` |
+| NFT program instructions | `solana/oxark/programs/oxark-cards/src/instructions/*.rs` (4 files) |
+| E2E tests | `solana/oxark/tests/*.js` |
+| WebSocket relay + x402 facilitator | `multiplayer/server.js` |
+| Frontend logic modules | `solana/client/src/0N-*.js` (numbered, ~7 files) |
+| Frontend entry | `index.html` (at repo root, includes GBA emulator shell) |
+| Design tokens | `design/DESIGN_TOKENS.json` |
+| Screen specs | `design/UI_SPEC.md` |
+| Component recipes | `design/COMPONENT_RECIPES.md` |
+| ZK circuit | `circuits/dungeon_position/dungeon_position.circom` |
+| ZK build scripts | `circuits/scripts/*.sh` |
+| ZK compiled artifacts | `commit_reveal.wasm`, `commit_reveal_final.zkey` (repo root) |
+| Phase D Sprint plan | `docs/PHASE_D_SPRINT.md` |
+| Card Catalog (Season 1) | `docs/CARD_CATALOG.md` |
+| Legacy React client (abandoned) | `client/src/` |
+| Game Design Document | `docs/GDD.md` (this file) |
+
+---
+
+## Appendix D: Phase-based duel at a glance (quick reference)
+
+For Claude Code implementation and new player onboarding:
+
+```
+┌────────── 1 Duel (~5 min) ──────────────────────┐
+│                                                  │
+│  Round 1 ── Round 2 ── Round 3 ── Round 4 ── R5  │
+│                                                  │
+│  Each Round:                                     │
+│  ┌─ Draw    (~15s, both players draw 1)          │
+│  ├─ Energy  (~20s, both play 0-1 energy card)    │
+│  ├─ Summon  (~40s, each plays chars+events)      │
+│  └─ Battle  (~25s, attacks+defends resolve)      │
+│                                                  │
+│  Heart HP 20 → 0 = lose                          │
+│  Or: deck empty, or: round 5 ends                │
+│                                                  │
+└──────────────────────────────────────────────────┘
+
+Element wheel:        Turn order:        Shards:
+  🔥 → 🌿            1st: higher TP       Gain 1 per
+  🌿 → 💨            2nd: lower BP        destroyed enemy
+  💨 → 🌑            3rd: lower HP        3 Shards = 1
+  🌑 → 💰                                  Extra Action
+  💰 → 🔥
+```
+
+Quick entry points for reference:
+- **Section 5.2 (Round structure)** for phase breakdown
+- **Section 5.5 (Element affinity)** for attack bonuses
+- **Section 5.7 (Shards)** for Extra Action mechanic
+- **Section 4.4 (Duel Halls)** for Bronze/Silver/Gold gating
+
+---
+
+*End of Game Design Document v1.2*
+
+*v1.2 changelog (from v1.1):*
+- *Section 5 (Duel Design) fully rewritten: phase-based structure (Draw/Energy/Summon/Battle), 5-element energy system with affinity wheel, defender mechanic, Shards/Extra Action, lane system (Front/Middle/Back). Inspired by Anode Heart: Layer Null.*
+- *Section 4.4 (Duel Halls): expanded from single Duel Hall to Bronze/Silver/Gold server-rank gated tiers.*
+- *Section 6 (Faction/Clan): added explicit element assignment per Clan + element affinity wheel diagram.*
+- *Section 14 (Roadmap): Week 2 updated to reflect phase-based implementation tasks.*
+- *Appendix B: added 2 new resolved items (battle rules, server ranks).*
+- *Appendix D (new): phase-based duel quick reference.*
+- *Other sections: no changes from v1.1.*
