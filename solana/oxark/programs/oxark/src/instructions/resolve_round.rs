@@ -4,10 +4,12 @@ use crate::state::*;
 use crate::error::ErrorCode;
 use sha2::{Sha256, Digest};
 
-// ── T82: Element System (Axis B) ──────────────────────────────────────────────
-// Elements: 1=Tide, 2=Abyss, 3=Storm, 4=Iron
-// Advantage cycle: Tide→Storm, Storm→Iron, Iron→Abyss, Abyss→Tide (+50%)
-// Disadvantage (reverse): -30%
+// ── T93: Element System v2 (6-element 2-triad) ────────────────────────────────
+// Elements: 0=Fire, 1=Water, 2=Wind, 3=Earth, 4=Shadow, 5=Light
+//
+// Triad 1 — Material: Fire(0)→Water(1)→Earth(3)→Fire(0)
+// Triad 2 — Abstract: Wind(2)→Shadow(4)→Light(5)→Wind(2)
+// Cross-triad: always neutral (×1.0)
 //
 // Multiplier (per 1000 units):
 //   advantage    → 1500  (base * 1500 / 1000)
@@ -15,22 +17,28 @@ use sha2::{Sha256, Digest};
 //   disadvantage →  700  (base *  700 / 1000)
 pub fn calc_element_multiplier(attacker_elem: u8, defender_elem: u8) -> u32 {
     match (attacker_elem, defender_elem) {
-        // advantage: Tide>Storm, Storm>Iron, Iron>Abyss, Abyss>Tide
-        (1, 3) | (3, 4) | (4, 2) | (2, 1) => 1500,
-        // disadvantage (reverse)
-        (3, 1) | (4, 3) | (2, 4) | (1, 2) => 700,
-        // same element or unknown → neutral
+        // Triad 1 advantages: Fire>Water, Water>Earth, Earth>Fire
+        (0, 1) | (1, 3) | (3, 0) => 1500,
+        // Triad 1 disadvantages (reverse)
+        (1, 0) | (3, 1) | (0, 3) => 700,
+        // Triad 2 advantages: Wind>Shadow, Shadow>Light, Light>Wind
+        (2, 4) | (4, 5) | (5, 2) => 1500,
+        // Triad 2 disadvantages (reverse)
+        (4, 2) | (5, 4) | (2, 5) => 700,
+        // same element, cross-triad, or unknown → neutral
         _ => 1000,
     }
 }
 
-/// Assign element (1-4) to card_id (1-60) based on ID range.
-/// Matches frontend STRATEGY_DEPTH.md §2 assignment.
+/// Assign element (0-5) to card_id (1-60) based on ID range.
+/// 0=Fire(1-10), 1=Water(11-20), 2=Wind(21-30), 3=Earth(31-40), 4=Shadow(41-50), 5=Light(51-60)
 pub fn card_element(card_id: u8) -> u8 {
-    if card_id <= 15 { 1 }       // Tide
-    else if card_id <= 30 { 2 }  // Abyss
-    else if card_id <= 45 { 3 }  // Storm
-    else { 4 }                   // Iron
+    if card_id <= 10 { 0 }       // Fire
+    else if card_id <= 20 { 1 }  // Water
+    else if card_id <= 30 { 2 }  // Wind
+    else if card_id <= 40 { 3 }  // Earth
+    else if card_id <= 50 { 4 }  // Shadow
+    else { 5 }                   // Light
 }
 
 #[derive(Accounts)]

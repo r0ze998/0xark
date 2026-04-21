@@ -1429,8 +1429,8 @@ function generateResolveEvents(){
         const _synergyAtk=activeSynergy&&activeSynergy.bonus.pw_add?activeSynergy.bonus.pw_add:0;
         let dmg=Math.min(4,1+Math.floor((cr.r-1)/2)+Math.floor(_synergyAtk/3));
         // T82: element multiplier (vs enemy element)
-        const _defElem=bpEnemyElement||1;
-        const _elemMult=calcElementMultiplier(cr.el||1,_defElem);
+        const _defElem=bpEnemyElement??0; // T93: 0-5 (6 elements)
+        const _elemMult=calcElementMultiplier(cr.el??0,_defElem);
         if(_elemMult!==1000){
           dmg=Math.max(1,Math.round(dmg*_elemMult/1000));
           events._elemResult=_elemMult>1000?'super':'weak';

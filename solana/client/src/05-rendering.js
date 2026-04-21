@@ -1780,8 +1780,8 @@ function drawGBACardMini(id,cx,cy,alpha,fr_){
   txShadow(scr.n,ox+4,oy+artH+18,7,_RC('text_light'),'rgba(0,0,0,.5)');
   // Rarity stars
   for(let s2=0;s2<rar;s2++)txShadow('\u2605',ox+4+s2*9,oy+cH-10,6,rarCol,'rgba(0,0,0,.3)');
-  // T82: Element icon (top-right corner)
-  if(scr.el){
+  // T93: Element icon (top-right corner) — 6-element, 0-indexed
+  if(typeof scr.el==='number'){
     const ec=ELEM_COL[scr.el]||'#ffffff';
     const ei=ELEM_ICON[scr.el]||'?';
     g.fillStyle='rgba(0,0,0,0.45)';g.beginPath();g.roundRect(ox+cW-17,oy+4,14,14,3);g.fill();

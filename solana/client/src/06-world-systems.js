@@ -184,7 +184,7 @@ function checkDungeonRivalEncounter(){
           sc='act';battlePhase='vs_splash';bpFrame=fr;
           battleRoundHistory=[];
           bpHP=[BATTLE_HP_MAX,BATTLE_HP_MAX,BATTLE_HP_MAX];bpHPDmgAnim=[0,0,0];
-          bpEnemyElement=1+Math.floor(Math.random()*4); // T82: random element 1-4
+          bpEnemyElement=Math.floor(Math.random()*6); // T93: random element 0-5 (6-element v2)
           startWipe('mosaic_out',20);
           if(runMission&&runMission.type==='battle_rival'&&!runMission.completed){runMission.progress=1;runMission.completed=true;sfxStreakUp();}
         });

@@ -92,32 +92,63 @@ const _CARD_TYPE_DU={magic:2,recovery:2};
   }
 })();
 
-// T82: Assign elements to all 60 cards (Axis B — Element System)
-// Advantage cycle: Tide→Storm→Iron→Abyss→Tide (+50%), reverse (-30%)
-// Groups: IDs 1-15=Tide, 16-30=Abyss, 31-45=Storm, 46-60=Iron
-const ELEM_NAME=['','Tide','Abyss','Storm','Iron'];
-const ELEM_COL =['','#60c0f0','#8060d0','#d0c040','#a09080'];
-const ELEM_ICON=['','\u2248','\u25C8','\u26A1','\u2736']; // ~, ◈, ⚡, ✶
+// T93: 6-element 2-triad system (replaces T82 4-element)
+// 0=Fire(1-10), 1=Water(11-20), 2=Wind(21-30), 3=Earth(31-40), 4=Shadow(41-50), 5=Light(51-60)
+// Triad 1 Material: Fire→Water→Earth→Fire
+// Triad 2 Abstract: Wind→Shadow→Light→Wind
+// Cross-triad: always neutral
+const ELEM_NAME=['Fire','Water','Wind','Earth','Shadow','Light'];
+const ELEM_COL =['#f05020','#40a8e0','#90c848','#c8a050','#8040c0','#f0e040'];
+const ELEM_ICON=['\uD83D\uDD25','\uD83D\uDCA7','\uD83C\uDF2C','\u26F0','\uD83C\uDF11','\u2728']; // 🔥💧🌬⛰🌑✨
+const ELEM_TRIAD=[0,0,1,0,1,1]; // 0=Material, 1=Abstract per element index
 (function(){
   for(let i=0;i<CD.length;i++){
     const id=i+1;
-    CD[i].el=id<=15?1:id<=30?2:id<=45?3:4;
+    CD[i].el=id<=10?0:id<=20?1:id<=30?2:id<=40?3:id<=50?4:5;
   }
 })();
-/** Returns 1500 (adv), 700 (disadv), or 1000 (neutral) */
+/** cardElement(id) → element index 0-5 */
+function cardElement(id){
+  if(id<=10)return 0;if(id<=20)return 1;if(id<=30)return 2;
+  if(id<=40)return 3;if(id<=50)return 4;return 5;
+}
+/** Returns 1500 (adv), 700 (disadv), or 1000 (neutral).
+ * Triad1: (0,1),(1,3),(3,0) adv; Triad2: (2,4),(4,5),(5,2) adv */
 function calcElementMultiplier(atkEl,defEl){
-  // advantage: Tide(1)>Storm(3), Storm(3)>Iron(4), Iron(4)>Abyss(2), Abyss(2)>Tide(1)
-  if((atkEl===1&&defEl===3)||(atkEl===3&&defEl===4)||(atkEl===4&&defEl===2)||(atkEl===2&&defEl===1))return 1500;
-  if((atkEl===3&&defEl===1)||(atkEl===4&&defEl===3)||(atkEl===2&&defEl===4)||(atkEl===1&&defEl===2))return 700;
+  const adv=[[0,1],[1,3],[3,0],[2,4],[4,5],[5,2]];
+  for(const [a,d] of adv){
+    if(atkEl===a&&defEl===d)return 1500;
+    if(atkEl===d&&defEl===a)return 700;
+  }
   return 1000;
 }
 
-// T61: 3-tier rarity lookup for drop system
-// Maps existing 5-tier r value → 3-tier tier (0=Common, 1=Rare, 2=Legendary)
-const CARD_TIER=(()=>{const m={};for(let i=0;i<CD.length;i++){const r=CD[i].r||1;m[i]=r<=2?0:r<=4?1:2;}return m;})();
-// Tier labels/colors for UI
-const CARD_TIER_LABEL=['COMMON','RARE','LEGENDARY'];
-const CARD_TIER_COL=['#a0a0b0','#4888d8','#f0c830'];
+// T93: 5-tier rarity system (replaces 3-tier)
+// Tier: 0=C, 1=B, 2=A, 3=S, 4=SS
+// card_id 1-60: element bands of 10; tier derived from CARD_CATALOG:
+//   SS(4 total), S(8), A(12), B(16), C(20) — see docs/CARD_CATALOG.md
+// For runtime, derive tier from existing star-rarity (r 1-5):
+//   r=1 → C(0), r=2 → B(1), r=3 → A(2), r=4 → S(3), r=5 → SS(4)
+const CARD_TIER=(()=>{const m={};for(let i=0;i<CD.length;i++){const r=CD[i].r||1;m[i]=r-1;}return m;})();
+// Tier labels/colors for UI (C=grey, B=blue, A=purple, S=gold, SS=red)
+const CARD_TIER_LABEL=['C','B','A','S','SS'];
+const CARD_TIER_COL=['#a0a0b0','#4888d8','#b060d8','#f0c830','#e03030'];
+// Drop rate by tier (out of 1000)
+// C=40%, B=30%, A=20%, S=9%, SS=1%
+const CARD_DROP_WEIGHT=[400,300,200,90,10];
+/** Pick a random card_id weighted by 5-tier drop rates */
+function pickDropCard(pool){
+  if(!pool||!pool.length)return 0;
+  const r=Math.random()*1000;
+  let t=4; // default SS (rare cap)
+  let acc=0;
+  const weights=[400,300,200,90,10];
+  for(let i=0;i<5;i++){acc+=weights[i];if(r<acc){t=i;break;}}
+  // filter pool by tier, fallback to any if tier empty
+  const byTier=pool.filter(id=>CARD_TIER[id-1]===t);
+  const src=byTier.length?byTier:pool;
+  return src[Math.floor(Math.random()*src.length)]||pool[Math.floor(Math.random()*pool.length)];
+}
 
 // ═══════════════════════════════════════
 // T62: CARD SYNERGY TABLE
