@@ -247,7 +247,7 @@ function lobbyOpenDialog(buildingName) {
     case 'pc_box':
       lobbyDialog = {
         title: '💾 PC Box',
-        lines: ['Storage & Deck Editor', 'Coming Day 4-6'],
+        lines: ['Storage: — cards  |  Deck: —/20', 'Open Deck Editor to build your deck.', 'Coming Day 5'],
         buttons: [{ label: 'Open Deck Editor', action: 'open_deck_editor', disabled: true }, { label: 'Close', action: 'close', disabled: false }],
         focusIdx: 1,
       };
