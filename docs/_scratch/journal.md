@@ -20,6 +20,24 @@
 
 **Next:** T-D3-1 (extend multiplayer/server.js message types)
 
+## 2026-04-21 — Day 3 (Claude Code overnight, continued)
+
+**Tasks completed:**
+- T-D3-1: server.js protocol v2 ✅ — sanitizeClan() allowlist, wallet/clan/card_count/season in create_room/join_room/presence_update, player()/serializePlayers() updated, backward-compatible
+- T-D3-2: WS stress test ✅ — N=10/20/30 clients, 0 errors, ~53k msg/s on loopback. multiplayer/test/stress-test.js + docs/_scratch/ws_relay_benchmark.md
+- T-D3-3+D3-4: Lobby WS wire-up + lerp interpolation ✅ — lobbyWSConnect() with localStorage room sharing, all 6 message types handled, 0.15 lerp on remote players, offline-safe fallback
+- T-D3-5: Multi-tab integration test ✅ — 3 simulated clients, 16 events captured, all event types verified (created/joined/player_joined/moved/presence_update/player_left), server clean to 0 rooms after exit
+
+**Decisions:**
+- DECISION: localStorage[oxark_lobby_room] for tab-shared roomId — allows multi-tab/multi-device lobby without signaling server
+- DECISION: WS offline-safe (onerror → solo mode, no throw) — lobby remains playable without multiplayer
+- DECISION: Stress test uses Node.js ws module (not browser WebSocket) — same protocol, server-side only, no browser dependency
+
+**Blockers encountered:**
+- None
+
+**Next:** Check docs/_scratch/DAY_2_3_INSTRUCTIONS_EXTENSION.md for Day 4-5 bonus tasks (per r0ze message 1629)
+
 ## 2026-04-21: Phase C → Phase D Reborn pivot
 - Phase C ended at 694eb33 (v541)
 - GDD v1.0 written (4977 words), approved by r0ze ("いいやん全部実装しよう")
