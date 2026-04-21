@@ -192,6 +192,10 @@ function lobbyWSDisconnect() {
   lobbyRemotePlayers.clear();
 }
 
+// ── Match celebration flash ───────────────────────────────────────────────
+let lobbyMatchFlash = 0; // frames remaining (60 = 1 second)
+function lobbyTriggerMatchFlash() { lobbyMatchFlash = 60; }
+
 // ── Building dialog system ────────────────────────────────────────────────
 // lobbyDialog: null = no dialog, else { title, lines[], buttons[{label,action,disabled,hint}], focusIdx }
 let lobbyDialog = null;
@@ -552,6 +556,21 @@ function dLobby() {
   g.font = '10px VT323, monospace';
   g.textAlign = 'left';
   g.fillText(`LOBBY  x:${lobbyPx} y:${lobbyPy}`, 8, 17);
+
+  // Match found celebration flash
+  if (lobbyMatchFlash > 0) {
+    lobbyMatchFlash--;
+    const fAlpha = (lobbyMatchFlash / 60) * 0.55;
+    g.fillStyle = `rgba(255,220,60,${fAlpha})`;
+    g.fillRect(0, 0, W, H);
+    // "MATCH FOUND!" text
+    if (lobbyMatchFlash > 20) {
+      g.fillStyle = '#fff';
+      g.font = 'bold 32px VT323, monospace';
+      g.textAlign = 'center';
+      g.fillText('⚔️ MATCH FOUND!', W / 2, H / 2);
+    }
+  }
 
   // Building dialog overlay (drawn last — on top of everything)
   drawLobbyDialog();

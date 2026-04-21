@@ -10,7 +10,7 @@ const MM_ENC          = new TextEncoder();
 const MM_SEED_QUEUE   = MM_ENC.encode('queue');
 const MM_DEVNET_RPC   = 'https://api.devnet.solana.com';
 const MM_POLL_INTERVAL = 2000; // ms
-const MM_TIMEOUT_MS   = 90_000; // 90s max in queue
+const MM_TIMEOUT_MS   = 60_000; // 60s max in queue (T-D4-4)
 
 // Error codes (Anchor error base = 6000; order matches error.rs declaration order)
 const MM_ERRORS = {
@@ -252,6 +252,8 @@ async function lobbyFindMatch(tierIdx) {
       1, // season 1
       // onMatch
       (playerA, playerB) => {
+        // Trigger canvas flash celebration
+        if (typeof lobbyTriggerMatchFlash === 'function') lobbyTriggerMatchFlash();
         if (typeof lobbyDialog !== 'undefined' && lobbyDialog) {
           lobbyDialog.title = '⚔️ Match Found!';
           lobbyDialog.lines = [
@@ -270,12 +272,15 @@ async function lobbyFindMatch(tierIdx) {
           lobbyDialog.lines[2] = `⏱ 00:${sec}  ${queueLen}/2 players`;
         }
       },
-      // onCancel (timeout / manual cancel)
+      // onCancel (60s timeout / manual cancel)
       () => {
         if (typeof lobbyDialog !== 'undefined' && lobbyDialog) {
-          lobbyDialog.lines = ['Queue cancelled or timed out.'];
-          lobbyDialog.buttons = [{ label: 'Close', action: 'close', disabled: false }];
-          lobbyDialog.focusIdx = 0;
+          lobbyDialog.lines = ['No opponents found.', 'Try Bronze Hall again?'];
+          lobbyDialog.buttons = [
+            { label: 'Try Again', action: 'find_match', disabled: false },
+            { label: 'Close',     action: 'close',      disabled: false },
+          ];
+          lobbyDialog.focusIdx = 1;
         }
       },
     );
