@@ -19251,23 +19251,105 @@ function dAct(){
 // ═══════════════════════════════════════════════════════════════════════════
 // MODULE: 07-deck-editor.js
 // Deck Editor UI — 2-panel canvas overlay (storage left, deck right).
-// Frontend only (T-D5-2). No save/load — real NFT integration in T-D5-3.
+// T-D5-2: frontend skeleton. T-D5-3: on-chain load/save via PlayerDeck +
+// PlayerRegistry PDAs (raw getAccountInfo, no Metaplex dependency).
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── State ────────────────────────────────────────────────────────────────
 let deckEditorOpen   = false;
-let deckEditorFilter = 'all'; // 'all' | 'attack' | 'defense' | 'flee' | 'magic' | 'recovery' | clan
+let deckEditorFilter = 'all'; // 'all' | 'attack' | 'defense' | 'flee' | 'magic' | 'recovery'
 let deckEditorScroll = 0;     // storage panel scroll offset (pixels)
 let deckSlots        = new Array(20).fill(null); // null | card_id (1-60)
 let deckSelectedCard = null;  // card_id hovered/selected in storage
+let deckSaveStatus   = '';    // '' | 'saving' | 'saved' | 'error'
 
-// Placeholder storage (30 cards from CD for demo — T-D5-3 replaces with real NFTs)
+// ── RPC connection (lazy, same devnet as matchmaking) ─────────────────────
+const DE_DEVNET_RPC = 'https://api.devnet.solana.com';
+const DE_PROGRAM_ID_STR = '5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN';
+let _deConn = null;
+function _deGetConn() {
+  if (!_deConn) _deConn = new solanaWeb3.Connection(DE_DEVNET_RPC, 'confirmed');
+  return _deConn;
+}
+
+// Placeholder fallback storage (30 cards — used when no wallet or RPC fails)
 let deckStorageCards = [];
-function _initDeckStorage() {
-  if (deckStorageCards.length) return;
-  // Use first 30 cards, give them varied quantities
+function _initDeckStorageFallback() {
+  deckStorageCards = [];
   for (let i = 1; i <= 30; i++) {
-    deckStorageCards.push({ card_id: i, qty: Math.ceil(Math.random() * 2 + 1) });
+    deckStorageCards.push({ card_id: i, qty: 2 });
+  }
+}
+
+// ── On-chain load: PlayerRegistry → storage panel ────────────────────────
+// PlayerRegistry layout (Anchor, seeds: ["player_registry", player_pubkey]):
+//   offset 0-7:   discriminator
+//   offset 8-39:  owner Pubkey
+//   offset 40-99: registered [bool; 60]  — each byte 1=owned, 0=not
+//   offset 100+:  registered_at, count, season_complete, bump
+async function loadStorageFromChain(playerKey) {
+  const [pda] = solanaWeb3.PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode('player_registry'), playerKey.toBytes()],
+    new solanaWeb3.PublicKey(DE_PROGRAM_ID_STR),
+  );
+  const info = await _deGetConn().getAccountInfo(pda);
+  if (!info || info.data.length < 100) return false;
+  const data = new Uint8Array(info.data);
+  const cards = [];
+  for (let i = 0; i < 60; i++) {
+    if (data[40 + i]) {
+      cards.push({ card_id: i + 1, qty: 1 });
+    }
+  }
+  deckStorageCards = cards.length ? cards : deckStorageCards;
+  return cards.length > 0;
+}
+
+// ── On-chain load: PlayerDeck → deckSlots ────────────────────────────────
+// PlayerDeck layout (Anchor, seeds: ["player_deck", player_pubkey]):
+//   offset 0-7:  discriminator
+//   offset 8-39: owner Pubkey
+//   offset 40-59: deck_cards [u8; 20]  — 0 = empty
+//   offset 60:   card_count u8
+//   offset 61-68: locked_until i64 LE
+//   offset 69-76: last_modified i64 LE
+//   offset 77:   bump u8
+async function loadDeckFromChain(playerKey) {
+  const [pda] = solanaWeb3.PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode('player_deck'), playerKey.toBytes()],
+    new solanaWeb3.PublicKey(DE_PROGRAM_ID_STR),
+  );
+  const info = await _deGetConn().getAccountInfo(pda);
+  if (!info || info.data.length < 61) return false;
+  const data = new Uint8Array(info.data);
+  const slots = new Array(20).fill(null);
+  for (let i = 0; i < 20; i++) {
+    const id = data[40 + i];
+    slots[i] = (id >= 1 && id <= 60) ? id : null;
+  }
+  deckSlots = slots;
+  return true;
+}
+
+// ── Save deck on-chain ────────────────────────────────────────────────────
+async function deckSaveDeckTx() {
+  if (deckSaveStatus === 'saving') return;
+  const cards = deckSlots.filter(Boolean);
+  if (!cards.length) return;
+
+  if (!window.oxarkOnchain?.saveDeck) {
+    deckSaveStatus = 'error: wallet not connected';
+    return;
+  }
+  deckSaveStatus = 'saving';
+  try {
+    await window.oxarkOnchain.saveDeck(cards);
+    deckSaveStatus = 'saved';
+    setTimeout(() => { if (deckSaveStatus === 'saved') deckSaveStatus = ''; }, 3000);
+  } catch (e) {
+    const msg = (e.message ?? 'tx failed').slice(0, 40);
+    deckSaveStatus = `error: ${msg}`;
+    console.error('[DeckEditor] saveDeck failed:', e);
   }
 }
 
@@ -19314,20 +19396,25 @@ function deckValidation() {
 
 // ── Open / close ─────────────────────────────────────────────────────────
 function openDeckEditor() {
-  _initDeckStorage();
+  _initDeckStorageFallback(); // start with fallback immediately (fast)
   deckEditorOpen   = true;
   deckEditorFilter = 'all';
   deckEditorScroll = 0;
   deckSelectedCard = null;
+  deckSaveStatus   = '';
+
+  // Async load from chain if wallet is connected (replaces fallback when ready)
+  const playerKey = window.solana?.publicKey;
+  if (playerKey) {
+    loadStorageFromChain(playerKey).catch(e => console.warn('[DeckEditor] loadStorage:', e.message));
+    loadDeckFromChain(playerKey).catch(e => console.warn('[DeckEditor] loadDeck:', e.message));
+  }
 }
 
 function closeDeckEditor() {
   deckEditorOpen = false;
+  deckSaveStatus = '';
 }
-
-// Wire close to PC Box dialog
-// lobbyDialogConfirm() calls this when action === 'open_deck_editor'
-// (button is disabled for now; future: enable when T-D5-3 is live)
 
 // ── Filtered storage list ─────────────────────────────────────────────────
 function filteredStorage() {
@@ -19549,22 +19636,46 @@ function drawDeckEditor() {
   g.fillStyle = '#1a1a2a';
   g.fillRect(DE_PAD, barY, ow - DE_PAD * 2, DE_BTN_H);
 
-  // Save Deck button (disabled)
-  g.fillStyle = '#1a2a1a';
-  g.fillRect(ow - DE_PAD - 130, barY + 3, 124, DE_BTN_H - 6);
-  g.strokeStyle = '#2a4a2a';
+  // Save Deck button — enabled when deck has cards and wallet connected
+  const canSave = valid.cardCount > 0 && !!(window.solana?.publicKey) && deckSaveStatus !== 'saving';
+  const saveBtnX = ow - DE_PAD - 130;
+  const saveBtnW = 124;
+  if (deckSaveStatus === 'saving') {
+    g.fillStyle = '#1a2a3a';
+  } else if (deckSaveStatus.startsWith('error')) {
+    g.fillStyle = '#2a1a1a';
+  } else if (deckSaveStatus === 'saved') {
+    g.fillStyle = '#1a3a1a';
+  } else {
+    g.fillStyle = canSave ? '#1a3a1a' : '#1a2a1a';
+  }
+  g.fillRect(saveBtnX, barY + 3, saveBtnW, DE_BTN_H - 6);
+  g.strokeStyle = canSave ? '#4a8a4a' : '#2a4a2a';
   g.lineWidth = 1;
-  g.strokeRect(ow - DE_PAD - 130, barY + 3, 124, DE_BTN_H - 6);
-  g.fillStyle = '#3a5a3a';
+  g.strokeRect(saveBtnX, barY + 3, saveBtnW, DE_BTN_H - 6);
+
+  let saveBtnLabel = 'Save Deck';
+  if (deckSaveStatus === 'saving') saveBtnLabel = 'Saving…';
+  else if (deckSaveStatus === 'saved') saveBtnLabel = '✓ Saved!';
+  else if (deckSaveStatus.startsWith('error')) saveBtnLabel = 'Error — retry?';
+
+  g.fillStyle = canSave ? '#80d080' : '#3a5a3a';
   g.font = '14px VT323, monospace';
   g.textAlign = 'center';
-  g.fillText('Save Deck (T-D5-3)', ow - DE_PAD - 68, barY + 19);
+  g.fillText(saveBtnLabel, saveBtnX + saveBtnW / 2, barY + 19);
 
-  // Hint
-  g.fillStyle = '#444466';
-  g.font = '10px VT323, monospace';
-  g.textAlign = 'left';
-  g.fillText('Click card in storage to add · Click deck slot to remove · Arrow keys scroll storage', DE_PAD + 4, barY + 19);
+  // Status message or hint
+  if (deckSaveStatus.startsWith('error')) {
+    g.fillStyle = '#cc4444';
+    g.font = '10px VT323, monospace';
+    g.textAlign = 'left';
+    g.fillText(deckSaveStatus.slice(0, 60), DE_PAD + 4, barY + 19);
+  } else {
+    g.fillStyle = '#444466';
+    g.font = '10px VT323, monospace';
+    g.textAlign = 'left';
+    g.fillText('Click storage to add · Click deck slot to remove · Arrow keys scroll', DE_PAD + 4, barY + 19);
+  }
 }
 
 // ── Input handlers (called from 10-input.js) ──────────────────────────────
@@ -19590,6 +19701,14 @@ function deckEditorClick(px, py) {
   // Close button
   if (px >= ow - DE_PAD - 50 && px <= ow - DE_PAD - 6 && py >= DE_PAD + 6 && py <= DE_PAD + 28) {
     closeDeckEditor(); return true;
+  }
+
+  // Save Deck button (bottom-right)
+  const barY = oh - DE_PAD - DE_BTN_H;
+  if (px >= ow - DE_PAD - 130 && px <= ow - DE_PAD - 6 && py >= barY + 3 && py <= barY + DE_BTN_H - 3) {
+    const canSave = deckSlots.filter(Boolean).length > 0 && !!(window.solana?.publicKey) && deckSaveStatus !== 'saving';
+    if (canSave) deckSaveDeckTx().catch(e => console.error('[DeckEditor] save:', e));
+    return true;
   }
 
   // Filter buttons
@@ -25268,6 +25387,22 @@ document.addEventListener('keydown',e=>{
 
 function ss(s){sfxSelect();fadeOut(()=>{sc=s;mo=false;if(s==='act'){battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
 function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle('a',['map','crd','log','stats'][i]===sc));}
+
+// ── Deck editor canvas click handler ─────────────────────────────────────
+// Wires deckEditorClick() for mouse clicks when the deck editor overlay is open.
+document.addEventListener('click', e => {
+  if (typeof deckEditorOpen === 'undefined' || !deckEditorOpen) return;
+  if (typeof deckEditorClick !== 'function') return;
+  // Convert client coords → canvas game coords
+  const canvas = document.querySelector('canvas');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = (typeof W !== 'undefined' ? W : 480) / rect.width;
+  const scaleY = (typeof H !== 'undefined' ? H : 320) / rect.height;
+  const px = (e.clientX - rect.left) * scaleX;
+  const py = (e.clientY - rect.top) * scaleY;
+  deckEditorClick(px, py);
+});
 
 
 // ───────────────────────────────────────────────────────────────────────

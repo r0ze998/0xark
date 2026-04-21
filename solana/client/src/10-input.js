@@ -1396,3 +1396,19 @@ document.addEventListener('keydown',e=>{
 function ss(s){sfxSelect();fadeOut(()=>{sc=s;mo=false;if(s==='act'){battlePhase='vs_splash';bpFrame=fr;}fadeIn();ub();});}
 function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle('a',['map','crd','log','stats'][i]===sc));}
 
+// ── Deck editor canvas click handler ─────────────────────────────────────
+// Wires deckEditorClick() for mouse clicks when the deck editor overlay is open.
+document.addEventListener('click', e => {
+  if (typeof deckEditorOpen === 'undefined' || !deckEditorOpen) return;
+  if (typeof deckEditorClick !== 'function') return;
+  // Convert client coords → canvas game coords
+  const canvas = document.querySelector('canvas');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = (typeof W !== 'undefined' ? W : 480) / rect.width;
+  const scaleY = (typeof H !== 'undefined' ? H : 320) / rect.height;
+  const px = (e.clientX - rect.left) * scaleX;
+  const py = (e.clientY - rect.top) * scaleY;
+  deckEditorClick(px, py);
+});
+
