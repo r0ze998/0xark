@@ -1135,6 +1135,7 @@ document.addEventListener('keydown',e=>{
         // Player HP defeat: lose weakest card to the rival who last stole, retreat
         if(bpResolveQueue&&bpResolveQueue._playerDefeated&&!bpRdIncremented){
           bpRdIncremented=true;rd++;roundsThisRun++;
+          addXP(XP_REWARDS.battle_loss||15); // T115: consolation XP on defeat
           // Lose the weakest (lowest rarity) card in hand
           let worstSlot=-1,worstRar=99;
           for(let i=0;i<HAND_SIZE;i++){

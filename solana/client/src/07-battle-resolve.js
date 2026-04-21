@@ -1000,9 +1000,93 @@ function drawResultPhase(){
   drawGBAHpBox(2,214,36,180,56,'result');
   drawGBAHpBox(0,W-310,H-130,300,100,'result');
   const t=fr-bpFrame;
+  // T115: Victory Cinematic — shown first 80 frames when a rival is KO'd
+  const _isVictory=bpResolveQueue&&(bpResolveQueue._rival1KO||bpResolveQueue._rival2KO);
+  const _isDefeat=bpResolveQueue&&bpResolveQueue._playerDefeated;
+  if(_isVictory&&t<80){
+    // Darken → gold particles → VICTORY text → stolen card lore
+    const _vDark=t<20?t/20*0.92:0.92;
+    g.save();g.globalAlpha=_vDark;g.fillStyle='#0a0600';g.fillRect(0,0,W,H);g.restore();
+    // Gold particle burst
+    if(t>8){
+      const _pA=Math.min(1,(t-8)/12);g.save();g.globalAlpha=_pA*0.8;
+      for(let pi=0;pi<20;pi++){
+        const _pa=(pi/20)*Math.PI*2;const _pr=50+(t-8)*2.8+(pi*17)%40;
+        const _px=W/2+_pr*Math.cos(_pa)*1.6,_py=H/2+_pr*Math.sin(_pa)*0.7;
+        const _ps=2+((pi*7)%3);
+        g.fillStyle=pi%3===0?'#ffd040':pi%3===1?'#ffe880':'#f0a020';
+        g.fillRect(_px|0,_py|0,_ps,_ps);
+      }
+      g.restore();
+    }
+    // VICTORY text (t=15-80)
+    if(t>=15){
+      const _vA=Math.min(1,(t-15)/12);const _vScl=0.8+Math.min(0.2,(t-15)/25*0.2);
+      g.save();g.globalAlpha=_vA;
+      g.save();g.translate(W/2,H/2-18);g.scale(_vScl,_vScl);
+      g.fillStyle='rgba(0,0,0,.5)';g.beginPath();g.roundRect(-110,-24,220,48,12);g.fill();
+      g.strokeStyle='rgba(255,200,40,.7)';g.lineWidth=2;g.stroke();
+      txShadow('VICTORY!',0,10,28,'#ffd040','rgba(255,140,0,.7)');
+      g.restore();g.restore();
+    }
+    // Stolen card lore snippet (t=30-80)
+    if(t>=30){
+      let _stEv=null;for(let _i=0;_i<bpResolveQueue.length;_i++){const _e=bpResolveQueue[_i];if(_e.effect==='steal_get'&&_e.stolenId>0){_stEv=_e;break;}}
+      if(_stEv&&_stEv.stolenId>0){
+        const _scr=CD[_stEv.stolenId-1];const _lA=Math.min(1,(t-30)/15)*0.85;
+        g.save();g.globalAlpha=_lA;
+        if(_scr.lo){txShadow(_scr.lo.slice(0,Math.floor((t-30)*1.8)),W/2-180,H/2+22,6,'#c8b880','rgba(0,0,0,.4)');}
+        else if(_scr.fl){txShadow('\u201C'+_scr.fl+'\u201D',W/2-140,H/2+22,6,'#c8b880','rgba(0,0,0,.4)');}
+        g.restore();
+      }
+    }
+    if(t>60){
+      g.globalAlpha=Math.min(0.6,(t-60)/12);
+      txShadow('[Z] Continue',W/2-44,H/2+56,8,'#d0c090','rgba(0,0,0,.4)');
+      g.globalAlpha=1;
+    }
+    return; // hold cinematic for first 80 frames
+  }
+  // T115: Defeat Cinematic — shown first 60 frames when player is defeated
+  if(_isDefeat&&t<60){
+    const _dDark=t<15?t/15*0.9:0.9;
+    g.save();g.globalAlpha=_dDark;g.fillStyle='#1a0000';g.fillRect(0,0,W,H);g.restore();
+    // Red vignette pulse
+    g.save();g.globalAlpha=(0.3+Math.sin(t*0.15)*0.15)*Math.min(1,t/15);
+    g.drawImage(_btlDefeatVig,0,0);g.restore();
+    // DEFEATED text (t=12-60)
+    if(t>=12){
+      const _dA=Math.min(1,(t-12)/10);
+      g.save();g.globalAlpha=_dA;
+      txShadow('DEFEATED',W/2-72,H/2-14,26,'#ff3030','rgba(200,0,0,.7)');
+      g.restore();
+    }
+    // Random flavor quote (t=25-60)
+    if(t>=25){
+      const _qA=Math.min(1,(t-25)/12)*0.75;
+      const _quotes=[];
+      if(bpResolveQueue){for(let _qi=0;_qi<bpResolveQueue.length;_qi++){const _qe=bpResolveQueue[_qi];if(_qe.text&&(_qe.text.includes('stole your')||_qe.text.includes('STOLE'))){_quotes.push(_qe.text);break;}}}
+      const _qLine=_quotes.length>0?_quotes[0]:pl[1].n+': "Next time you will not escape."';
+      g.save();g.globalAlpha=_qA;
+      txShadow(_qLine.slice(0,Math.floor((t-25)*2.5)),W/2-180,H/2+22,7,'#f0a0a0','rgba(0,0,0,.4)');
+      g.restore();
+      // XP consolation
+      if(t>=40){
+        const _xA=Math.min(1,(t-40)/10)*0.7;
+        g.globalAlpha=_xA;txShadow('+'+((XP_REWARDS&&XP_REWARDS.battle_loss)||15)+' XP (participation)',W/2-80,H/2+46,7,'#c08080','rgba(0,0,0,.3)');g.globalAlpha=1;
+      }
+    }
+    if(t>45){
+      g.globalAlpha=Math.min(0.6,(t-45)/10);
+      txShadow('[Z] Continue',W/2-44,H/2+66,8,'#c08080','rgba(0,0,0,.4)');
+      g.globalAlpha=1;
+    }
+    return;
+  }
   // Summary panel in center
   const panW=500,panH=280,panX=W/2-panW/2,panY=H/2-panH/2-10;
-  const slideIn_=Math.min(1,t/15);
+  const _cinOffset=_isVictory?80:_isDefeat?60:0;
+  const slideIn_=Math.min(1,(t-_cinOffset)/15);
   g.globalAlpha=slideIn_;
   win(panX,panY,panW,panH);
   drawGBAResultBanner(t,panX,panY,panW); // v458: GBA-styled summary header
