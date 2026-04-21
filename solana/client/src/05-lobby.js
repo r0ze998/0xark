@@ -248,7 +248,7 @@ function lobbyOpenDialog(buildingName) {
       lobbyDialog = {
         title: '💾 PC Box',
         lines: ['Storage: — cards  |  Deck: —/20', 'Open Deck Editor to build your deck.', 'Coming Day 5'],
-        buttons: [{ label: 'Open Deck Editor', action: 'open_deck_editor', disabled: true }, { label: 'Close', action: 'close', disabled: false }],
+        buttons: [{ label: 'Open Deck Editor', action: 'open_deck_editor', disabled: false }, { label: 'Close', action: 'close', disabled: false }],
         focusIdx: 1,
       };
       break;
@@ -288,6 +288,11 @@ function lobbyDialogConfirm() {
   if (btn.action === 'cancel_match') {
     if (typeof leaveQueue === 'function') leaveQueue().catch(console.warn);
     lobbyDialog = null;
+    return;
+  }
+  if (btn.action === 'open_deck_editor') {
+    lobbyDialog = null;
+    if (typeof openDeckEditor === 'function') openDeckEditor();
     return;
   }
   // Other actions: close dialog
@@ -574,4 +579,9 @@ function dLobby() {
 
   // Building dialog overlay (drawn last — on top of everything)
   drawLobbyDialog();
+
+  // Deck editor overlay (above dialog, if open)
+  if (typeof deckEditorOpen !== 'undefined' && deckEditorOpen && typeof drawDeckEditor === 'function') {
+    drawDeckEditor();
+  }
 }

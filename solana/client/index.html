@@ -19245,6 +19245,394 @@ function dAct(){
 // ═══════════════════════════════════════
 
 // ───────────────────────────────────────────────────────────────────────
+// MODULE: src/07-deck-editor.js
+// Deck editor UI skeleton · 2-panel canvas overlay (storage left, deck right) · filter bar · 30pt cost cap validation · deckEditorOpen/drawDeckEditor/deckEditorKeydown
+// ───────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// MODULE: 07-deck-editor.js
+// Deck Editor UI — 2-panel canvas overlay (storage left, deck right).
+// Frontend only (T-D5-2). No save/load — real NFT integration in T-D5-3.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── State ────────────────────────────────────────────────────────────────
+let deckEditorOpen   = false;
+let deckEditorFilter = 'all'; // 'all' | 'attack' | 'defense' | 'flee' | 'magic' | 'recovery' | clan
+let deckEditorScroll = 0;     // storage panel scroll offset (pixels)
+let deckSlots        = new Array(20).fill(null); // null | card_id (1-60)
+let deckSelectedCard = null;  // card_id hovered/selected in storage
+
+// Placeholder storage (30 cards from CD for demo — T-D5-3 replaces with real NFTs)
+let deckStorageCards = [];
+function _initDeckStorage() {
+  if (deckStorageCards.length) return;
+  // Use first 30 cards, give them varied quantities
+  for (let i = 1; i <= 30; i++) {
+    deckStorageCards.push({ card_id: i, qty: Math.ceil(Math.random() * 2 + 1) });
+  }
+}
+
+// ── Card cost (for 30-point cap validation) ───────────────────────────────
+function cardCost(card_id) {
+  const r = CD[card_id - 1]?.r ?? 1;
+  if (r === 5) return 5; // Legendary
+  if (r >= 3)  return 2; // Rare
+  return 1;              // Common/Uncommon
+}
+
+// ── Deck validation ────────────────────────────────────────────────────────
+function deckValidation() {
+  const counts = {};
+  let totalCost = 0;
+  let legendaryCount = 0;
+  let rareCount = 0;
+  let commonCount = 0;
+
+  for (const id of deckSlots) {
+    if (!id) continue;
+    counts[id] = (counts[id] || 0) + 1;
+    const cost = cardCost(id);
+    totalCost += cost;
+    const r = CD[id - 1]?.r ?? 1;
+    if (r === 5) legendaryCount++;
+    else if (r >= 3) rareCount++;
+    else commonCount++;
+  }
+
+  const cardCount = deckSlots.filter(Boolean).length;
+  const errors = [];
+  if (totalCost > 30) errors.push(`Cost ${totalCost}/30 ⚠️`);
+  if (legendaryCount > 2) errors.push(`Legendary ${legendaryCount}/2 ⚠️`);
+  if (rareCount > 6) errors.push(`Rare ${rareCount}/6 ⚠️`);
+  if (cardCount > 0 && commonCount < 12) errors.push(`Common ${commonCount}/12 ⚠️`);
+
+  const duplicates = new Set(
+    Object.entries(counts).filter(([, n]) => n > 2).map(([id]) => Number(id))
+  );
+
+  return { cardCount, totalCost, legendaryCount, rareCount, commonCount, errors, duplicates };
+}
+
+// ── Open / close ─────────────────────────────────────────────────────────
+function openDeckEditor() {
+  _initDeckStorage();
+  deckEditorOpen   = true;
+  deckEditorFilter = 'all';
+  deckEditorScroll = 0;
+  deckSelectedCard = null;
+}
+
+function closeDeckEditor() {
+  deckEditorOpen = false;
+}
+
+// Wire close to PC Box dialog
+// lobbyDialogConfirm() calls this when action === 'open_deck_editor'
+// (button is disabled for now; future: enable when T-D5-3 is live)
+
+// ── Filtered storage list ─────────────────────────────────────────────────
+function filteredStorage() {
+  return deckStorageCards.filter(({ card_id }) => {
+    if (deckEditorFilter === 'all') return true;
+    const card = CD[card_id - 1];
+    return card && card.t === deckEditorFilter;
+  });
+}
+
+// ── Click storage card (add to first empty deck slot) ─────────────────────
+function deckEditorClickStorage(card_id) {
+  const firstEmpty = deckSlots.findIndex(s => !s);
+  if (firstEmpty === -1) return; // deck full
+  deckSlots[firstEmpty] = card_id;
+}
+
+// ── Click deck slot (remove card) ────────────────────────────────────────
+function deckEditorClickDeck(slotIdx) {
+  deckSlots[slotIdx] = null;
+}
+
+// ── Rarity color helper ──────────────────────────────────────────────────
+function deckRarityColor(r) {
+  return ['','#888898','#50d060','#b060e0','#e0a020','#ffe080'][r] ?? '#888';
+}
+
+// ── Draw ──────────────────────────────────────────────────────────────────
+const DE_PAD    = 12;
+const DE_BTN_H  = 28;
+const DE_FILTER_H = 28;
+const DE_TITLE_H  = 40;
+
+function drawDeckEditor() {
+  if (!deckEditorOpen) return;
+
+  const ow = W, oh = H;
+  const oy = 0;
+
+  // Dark backdrop
+  g.fillStyle = 'rgba(0,0,0,0.88)';
+  g.fillRect(0, 0, ow, oh);
+
+  // Panel background
+  g.fillStyle = '#0b0b1c';
+  g.fillRect(DE_PAD, DE_PAD, ow - DE_PAD * 2, oh - DE_PAD * 2);
+  g.strokeStyle = '#c8a460';
+  g.lineWidth = 2;
+  g.strokeRect(DE_PAD + 1, DE_PAD + 1, ow - DE_PAD * 2 - 2, oh - DE_PAD * 2 - 2);
+
+  // ── Title bar ──────────────────────────────────────────────────────────
+  g.fillStyle = '#f0e0a0';
+  g.font = 'bold 22px VT323, monospace';
+  g.textAlign = 'center';
+  g.fillText('💾 DECK EDITOR', ow / 2, DE_PAD + 30);
+
+  // Close button (top-right)
+  g.fillStyle = '#2a2a3a';
+  g.fillRect(ow - DE_PAD - 50, DE_PAD + 6, 44, 22);
+  g.strokeStyle = '#555';
+  g.lineWidth = 1;
+  g.strokeRect(ow - DE_PAD - 50, DE_PAD + 6, 44, 22);
+  g.fillStyle = '#aaa';
+  g.font = '14px VT323, monospace';
+  g.textAlign = 'center';
+  g.fillText('Close', ow - DE_PAD - 28, DE_PAD + 22);
+
+  const contentY = DE_PAD + DE_TITLE_H;
+  const contentH = oh - DE_PAD * 2 - DE_TITLE_H - DE_BTN_H - 8;
+  const midX = ow / 2;
+
+  // ── Filter bar ─────────────────────────────────────────────────────────
+  const filters = ['all','attack','defense','flee','magic','recovery'];
+  const fw = (midX - DE_PAD - 4) / filters.length;
+  filters.forEach((f, i) => {
+    const fx = DE_PAD + i * fw;
+    const isActive = deckEditorFilter === f;
+    g.fillStyle = isActive ? '#3040a0' : '#1a1a2a';
+    g.fillRect(fx, contentY, fw - 2, DE_FILTER_H);
+    g.strokeStyle = isActive ? '#6080e0' : '#333';
+    g.lineWidth = 1;
+    g.strokeRect(fx + 0.5, contentY + 0.5, fw - 3, DE_FILTER_H - 1);
+    g.fillStyle = isActive ? '#e8e8ff' : '#666';
+    g.font = '12px VT323, monospace';
+    g.textAlign = 'center';
+    g.fillText(f.toUpperCase(), fx + fw / 2 - 1, contentY + 19);
+  });
+
+  // ── Storage panel (left) ───────────────────────────────────────────────
+  const storY = contentY + DE_FILTER_H + 4;
+  const storH = contentH - DE_FILTER_H - 4;
+  const storW = midX - DE_PAD - 8;
+  const COLS = 5, CELL = 38;
+
+  g.save();
+  g.beginPath();
+  g.rect(DE_PAD, storY, storW, storH);
+  g.clip();
+
+  g.fillStyle = '#444466';
+  g.font = '11px VT323, monospace';
+  g.textAlign = 'left';
+  g.fillText('STORAGE — click to add to deck', DE_PAD + 4, storY + 14);
+
+  const list = filteredStorage();
+  const rows = Math.ceil(list.length / COLS);
+  list.forEach(({ card_id, qty }, idx) => {
+    const col = idx % COLS;
+    const row = Math.floor(idx / COLS);
+    const cx = DE_PAD + 4 + col * (CELL + 3);
+    const cy = storY + 20 + row * (CELL + 3) - deckEditorScroll;
+    if (cy + CELL < storY || cy > storY + storH) return; // clipped
+
+    const card = CD[card_id - 1];
+    const isSelected = deckSelectedCard === card_id;
+    g.fillStyle = isSelected ? '#2a3060' : '#111128';
+    g.fillRect(cx, cy, CELL, CELL);
+    g.strokeStyle = isSelected ? '#6080ff' : (deckRarityColor(card?.r ?? 1));
+    g.lineWidth = 1;
+    g.strokeRect(cx + 0.5, cy + 0.5, CELL - 1, CELL - 1);
+
+    // Card type icon
+    g.fillStyle = card?.c ?? '#888';
+    g.font = '16px VT323, monospace';
+    g.textAlign = 'center';
+    g.fillText(card?.i ?? '?', cx + CELL / 2, cy + 18);
+
+    // Card name
+    g.fillStyle = '#ccc';
+    g.font = '9px VT323, monospace';
+    g.fillText((card?.n ?? '?').slice(0, 5), cx + CELL / 2, cy + 27);
+
+    // Rarity dot + qty
+    g.fillStyle = deckRarityColor(card?.r ?? 1);
+    g.font = '9px VT323, monospace';
+    g.fillText(`×${qty}`, cx + CELL / 2, cy + CELL - 3);
+  });
+
+  g.restore();
+
+  // Scroll indicators
+  if (deckEditorScroll > 0) {
+    g.fillStyle = '#888';
+    g.font = '12px VT323, monospace';
+    g.textAlign = 'center';
+    g.fillText('▲', DE_PAD + storW / 2, storY + 4);
+  }
+  if (rows * (CELL + 3) - deckEditorScroll > storH - 20) {
+    g.fillStyle = '#888';
+    g.font = '12px VT323, monospace';
+    g.textAlign = 'center';
+    g.fillText('▼', DE_PAD + storW / 2, storY + storH - 2);
+  }
+
+  // Divider
+  g.strokeStyle = '#333350';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(midX - 2, contentY);
+  g.lineTo(midX - 2, oh - DE_PAD - DE_BTN_H - 8);
+  g.stroke();
+
+  // ── Deck panel (right) ─────────────────────────────────────────────────
+  const deckX = midX + 4;
+  const deckW = ow - DE_PAD - deckX;
+  const DCOLS = 5, DCELL = 36;
+  const DROWS = 4; // 5×4 = 20 slots
+
+  const valid = deckValidation();
+
+  g.fillStyle = '#444466';
+  g.font = '11px VT323, monospace';
+  g.textAlign = 'left';
+  g.fillText(`DECK  ${valid.cardCount}/20  |  Cost: ${valid.totalCost}/30`, deckX, storY + 14);
+
+  // Validation errors
+  if (valid.errors.length) {
+    g.fillStyle = '#cc4444';
+    g.font = '10px VT323, monospace';
+    g.fillText(valid.errors.join('  '), deckX, storY + 26);
+  }
+
+  const dStartY = storY + 32;
+  deckSlots.forEach((card_id, idx) => {
+    const col = idx % DCOLS;
+    const row = Math.floor(idx / DCOLS);
+    const cx = deckX + col * (DCELL + 4);
+    const cy = dStartY + row * (DCELL + 4);
+
+    const card = card_id ? CD[card_id - 1] : null;
+    const isDuplicate = card_id && valid.duplicates.has(card_id);
+
+    g.fillStyle = card_id ? '#111128' : '#0c0c1a';
+    g.fillRect(cx, cy, DCELL, DCELL);
+    g.strokeStyle = isDuplicate ? '#cc4444' : (card ? deckRarityColor(card.r) : '#2a2a3a');
+    g.lineWidth = isDuplicate ? 2 : 1;
+    g.strokeRect(cx + 0.5, cy + 0.5, DCELL - 1, DCELL - 1);
+
+    if (card_id && card) {
+      g.fillStyle = card.c ?? '#888';
+      g.font = '14px VT323, monospace';
+      g.textAlign = 'center';
+      g.fillText(card.i ?? '?', cx + DCELL / 2, cy + 16);
+      g.fillStyle = '#ccc';
+      g.font = '8px VT323, monospace';
+      g.fillText(card.n.slice(0, 5), cx + DCELL / 2, cy + 25);
+      g.fillStyle = '#666';
+      g.fillText(`${cardCost(card_id)}pt`, cx + DCELL / 2, cy + DCELL - 3);
+    } else {
+      g.fillStyle = '#2a2a3a';
+      g.font = '14px VT323, monospace';
+      g.textAlign = 'center';
+      g.fillText('+', cx + DCELL / 2, cy + DCELL / 2 + 5);
+    }
+  });
+
+  // ── Bottom action bar ──────────────────────────────────────────────────
+  const barY = oh - DE_PAD - DE_BTN_H;
+  g.fillStyle = '#1a1a2a';
+  g.fillRect(DE_PAD, barY, ow - DE_PAD * 2, DE_BTN_H);
+
+  // Save Deck button (disabled)
+  g.fillStyle = '#1a2a1a';
+  g.fillRect(ow - DE_PAD - 130, barY + 3, 124, DE_BTN_H - 6);
+  g.strokeStyle = '#2a4a2a';
+  g.lineWidth = 1;
+  g.strokeRect(ow - DE_PAD - 130, barY + 3, 124, DE_BTN_H - 6);
+  g.fillStyle = '#3a5a3a';
+  g.font = '14px VT323, monospace';
+  g.textAlign = 'center';
+  g.fillText('Save Deck (T-D5-3)', ow - DE_PAD - 68, barY + 19);
+
+  // Hint
+  g.fillStyle = '#444466';
+  g.font = '10px VT323, monospace';
+  g.textAlign = 'left';
+  g.fillText('Click card in storage to add · Click deck slot to remove · Arrow keys scroll storage', DE_PAD + 4, barY + 19);
+}
+
+// ── Input handlers (called from 10-input.js) ──────────────────────────────
+// Returns true if the input was consumed.
+
+function deckEditorKeydown(code) {
+  if (!deckEditorOpen) return false;
+  if (code === 'Escape' || code === 'KeyX') { closeDeckEditor(); return true; }
+  if (code === 'ArrowDown' || code === 'KeyS') { deckEditorScroll = Math.min(deckEditorScroll + 40, 300); return true; }
+  if (code === 'ArrowUp'   || code === 'KeyW') { deckEditorScroll = Math.max(deckEditorScroll - 40, 0); return true; }
+  return true; // swallow all keys while editor is open
+}
+
+// ── Mouse/touch click handler ─────────────────────────────────────────────
+// px/py = canvas pixel coords (accounting for CSS scale)
+function deckEditorClick(px, py) {
+  if (!deckEditorOpen) return false;
+
+  const ow = W, oh = H;
+  const midX = ow / 2;
+  const contentY = DE_PAD + DE_TITLE_H;
+
+  // Close button
+  if (px >= ow - DE_PAD - 50 && px <= ow - DE_PAD - 6 && py >= DE_PAD + 6 && py <= DE_PAD + 28) {
+    closeDeckEditor(); return true;
+  }
+
+  // Filter buttons
+  const filters = ['all','attack','defense','flee','magic','recovery'];
+  const fw = (midX - DE_PAD - 4) / filters.length;
+  if (py >= contentY && py <= contentY + DE_FILTER_H) {
+    const fi = Math.floor((px - DE_PAD) / fw);
+    if (fi >= 0 && fi < filters.length) { deckEditorFilter = filters[fi]; deckEditorScroll = 0; }
+    return true;
+  }
+
+  const storY = contentY + DE_FILTER_H + 4;
+  const storH = oh - DE_PAD * 2 - DE_TITLE_H - DE_BTN_H - 8 - DE_FILTER_H - 4;
+  const CELL = 38;
+
+  // Storage panel click
+  if (px >= DE_PAD && px < midX - 8 && py >= storY && py < storY + storH) {
+    const list = filteredStorage();
+    const col = Math.floor((px - DE_PAD - 4) / (CELL + 3));
+    const row = Math.floor((py - storY - 20 + deckEditorScroll) / (CELL + 3));
+    const idx = row * 5 + col;
+    if (idx >= 0 && idx < list.length) {
+      deckEditorClickStorage(list[idx].card_id);
+    }
+    return true;
+  }
+
+  // Deck panel click
+  const deckX = midX + 4;
+  const DCELL = 36;
+  const dStartY = storY + 32;
+  if (px >= deckX && py >= dStartY) {
+    const col = Math.floor((px - deckX) / (DCELL + 4));
+    const row = Math.floor((py - dStartY) / (DCELL + 4));
+    const idx = row * 5 + col;
+    if (idx >= 0 && idx < 20) deckEditorClickDeck(idx);
+    return true;
+  }
+
+  return true; // swallow all clicks while open
+}
+
+// ───────────────────────────────────────────────────────────────────────
 // MODULE: src/08-overlays.js
 // Card acquisition animation · dungeon confirm · marketplace · discard overlay · tutorial · intro · victory screen · cards collection screen · card detail panel · log screen
 // ───────────────────────────────────────────────────────────────────────
@@ -23597,6 +23985,12 @@ document.addEventListener('keydown',e=>{
 
   // Phase D Reborn — Lobby scene input
   if(sc==='lobby'){
+    // Deck editor open: route all keys to deck editor
+    if(typeof deckEditorOpen !== 'undefined' && deckEditorOpen) {
+      e.preventDefault();
+      if(typeof deckEditorKeydown === 'function') deckEditorKeydown(e.code);
+      return;
+    }
     // Dialog open: intercept nav keys for dialog, block movement
     if(typeof lobbyDialog !== 'undefined' && lobbyDialog) {
       e.preventDefault();

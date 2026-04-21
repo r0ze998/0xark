@@ -112,6 +112,12 @@ document.addEventListener('keydown',e=>{
 
   // Phase D Reborn — Lobby scene input
   if(sc==='lobby'){
+    // Deck editor open: route all keys to deck editor
+    if(typeof deckEditorOpen !== 'undefined' && deckEditorOpen) {
+      e.preventDefault();
+      if(typeof deckEditorKeydown === 'function') deckEditorKeydown(e.code);
+      return;
+    }
     // Dialog open: intercept nav keys for dialog, block movement
     if(typeof lobbyDialog !== 'undefined' && lobbyDialog) {
       e.preventDefault();
