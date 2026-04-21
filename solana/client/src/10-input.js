@@ -410,8 +410,17 @@ document.addEventListener('keydown',e=>{
         if(e.code==='KeyZ'||e.code==='KeyX'){nftTxPhase='';nftTxResult='';nftTxError='';sfxBack();}
         return;
       }
-      if(e.code==='ArrowLeft'){townShopTab=Math.max(0,townShopTab-1);nftSelIdx=0;deckLockPhase='';nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
-      if(e.code==='ArrowRight'){townShopTab=Math.min(3,townShopTab+1);nftSelIdx=0;deckLockPhase='';nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(e.code==='ArrowLeft'&&(townShopTab!==4)){townShopTab=Math.max(0,townShopTab-1);nftSelIdx=0;deckLockPhase='';nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(e.code==='ArrowRight'&&(townShopTab!==4)){townShopTab=Math.min(4,townShopTab+1);nftSelIdx=0;deckLockPhase='';nftListings=typeof oxarkOnchain!=='undefined'?oxarkOnchain.getListings():[];sfxCursor();return;}
+      if(townShopTab===4){ // REGISTRY tab — grid cursor
+        const cols=10;
+        if(e.code==='ArrowLeft'){regCursorId=regCursorId>1?regCursorId-1:60;sfxCursor();return;}
+        if(e.code==='ArrowRight'){regCursorId=regCursorId<60?regCursorId+1:1;sfxCursor();return;}
+        if(e.code==='ArrowUp'){regCursorId=regCursorId>cols?regCursorId-cols:regCursorId+60-cols;sfxCursor();return;}
+        if(e.code==='ArrowDown'){regCursorId=regCursorId<=60-cols?regCursorId+cols:regCursorId-60+cols;sfxCursor();return;}
+        if(e.code==='KeyX'){townShopActive=false;townShopType='';townShopOpenFrame=0;sfxBack();return;}
+        return;
+      }
       if(townShopTab===0){ // MY CARDS
         const filled=[];for(let i=0;i<HAND_SIZE;i++){if(pl[0].cd[i]>0)filled.push({slot:i,id:pl[0].cd[i]});}
         if(e.code==='ArrowUp'){nftSelIdx=Math.max(0,nftSelIdx-1);sfxCursor();}

@@ -512,6 +512,7 @@ function isTitleUnlocked(id){
 // Progression Hub state ────────────────────────────────────
 let progressionHubActive=false;
 let progressionTab=0; // 0=PROGRESS, 1=ACHIEVEMENTS, 2=TITLES
+let regCursorId=1; // 1-60, cursor in registry grid (card detail)
 
 // T71: Dungeon Gate shop state
 let dgPhase='menu'; // 'menu'|'create'|'join'|'loading'|'result'

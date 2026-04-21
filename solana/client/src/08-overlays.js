@@ -1644,33 +1644,80 @@ function drawRegistryTab(cx,cy,cw,ch,listY){
   const cellH=19;
   const gridX=cx+12;
   const gridY=listY+26;
+  const curId=typeof regCursorId!=='undefined'?regCursorId:1;
   for(let row=0;row<ROWS;row++){
     for(let col=0;col<COLS;col++){
       const id=row*COLS+col+1;
       const cr=typeof CD!=='undefined'?CD[id-1]:null;
       const has=registryHasCard(id);
+      const isCur=id===curId;
       const rx=gridX+col*cellW;
       const ry=gridY+row*(cellH+2);
       const r=cr?cr.r:1;
-      // Cell background — rarity-coded when registered, dark placeholder when missing
-      g.fillStyle=has?(_REG_RARITY_BG[r]||'rgba(80,160,80,0.2)'):'rgba(255,255,255,0.03)';
-      g.beginPath();g.roundRect(rx,ry,cellW-2,cellH,3);g.fill();
-      if(has){g.strokeStyle=_REG_RARITY_BD[r]||'rgba(80,160,80,0.4)';g.lineWidth=1;g.stroke();}
+      // Cell background — rarity-coded when registered, dark placeholder when missing, cursor highlight
+      if(isCur){
+        g.fillStyle='rgba(192,160,255,0.22)';
+        g.beginPath();g.roundRect(rx,ry,cellW-2,cellH,3);g.fill();
+        g.strokeStyle='rgba(200,160,255,0.9)';g.lineWidth=1.5;g.stroke();
+      } else {
+        g.fillStyle=has?(_REG_RARITY_BG[r]||'rgba(80,160,80,0.2)'):'rgba(255,255,255,0.03)';
+        g.beginPath();g.roundRect(rx,ry,cellW-2,cellH,3);g.fill();
+        if(has){g.strokeStyle=_REG_RARITY_BD[r]||'rgba(80,160,80,0.4)';g.lineWidth=1;g.stroke();}
+      }
       // Card element icon (tiny, top-left corner)
       const elemIdx=cr?Math.floor((id-1)/10):0;
       if(has&&_ELEM_ICON_SMALL[elemIdx]){
-        g.font='6px sans-serif';g.fillStyle=has?(_REG_RARITY_TX[r]||'#80ff80'):'#2a3a4a';
+        g.font='6px sans-serif';g.fillStyle=isCur?'#e8d8ff':(has?(_REG_RARITY_TX[r]||'#80ff80'):'#2a3a4a');
         g.fillText(_ELEM_ICON_SMALL[elemIdx],rx+1,ry+7);
       }
       // Name (4 chars) or ID
       const label=has?(cr?cr.n.slice(0,4):String(id)):('·'+String(id).padStart(2,'0')+'·').slice(0,4);
-      const tc=has?(_REG_RARITY_TX[r]||'#80ff80'):'#304050';
+      const tc=isCur?'#e8d8ff':(has?(_REG_RARITY_TX[r]||'#80ff80'):'#304050');
       txShadow(label,rx+cellW/2,ry+15,4.5,tc,'rgba(0,0,0,.4)');
     }
   }
-  // Footer
-  const hint=reg.season_complete?'\u2728 Claim Prize Pool in Season Board!':'Collect all 60 species to claim the Prize Pool';
-  txShadow(hint,cx+cw/2,cy+ch-30,6,reg.season_complete?'#ffd060':'#607090','rgba(0,0,0,.4)');
+  // Lore detail panel for cursor card
+  const detY=gridY+ROWS*(cellH+2)+4;
+  const detH=cy+ch-detY-18;
+  if(detH>20){
+    const cr=typeof CD!=='undefined'?CD[curId-1]:null;
+    const has=registryHasCard(curId);
+    if(cr){
+      const r=cr.r;
+      bx(cx+12,detY,cw-24,detH,'rgba(0,0,0,0.3)');
+      g.strokeStyle=_REG_RARITY_BD[r]||'rgba(255,255,255,0.1)';g.lineWidth=1;
+      g.beginPath();g.roundRect(cx+12,detY,cw-24,detH,4);g.stroke();
+      const nameCol=_REG_RARITY_TX[r]||'#88aacc';
+      const tierLabel=['','C','B','A','S','SS'][r]||'?';
+      txShadow('#'+String(curId).padStart(2,'0')+' '+cr.n+' ['+tierLabel+']',cx+22,detY+11,6.5,nameCol,'rgba(0,0,0,.5)');
+      // Flavor (fl) in italic style
+      if(cr.fl){
+        g.font='italic 6px sans-serif';
+        g.fillStyle='rgba(200,190,210,0.7)';
+        g.fillText('\u201C'+cr.fl+'\u201D',cx+22,detY+22);
+        g.font='10px sans-serif'; // reset
+      }
+      // Lore (lo) — word-wrap manually at ~55 chars
+      if(cr.lo){
+        const words=cr.lo.split(' ');
+        let line='',linesArr=[];
+        for(const w of words){
+          const test=line?line+' '+w:w;
+          if(test.length>55&&line){linesArr.push(line);line=w;}
+          else line=test;
+        }
+        if(line)linesArr.push(line);
+        const loCol=has?'rgba(220,210,230,0.85)':'rgba(160,140,180,0.5)';
+        for(let li=0;li<Math.min(linesArr.length,3);li++){
+          txShadow(linesArr[li],cx+22,detY+32+li*10,5.5,loCol,'rgba(0,0,0,.4)');
+        }
+      } else if(!has){
+        txShadow('???  (collect to reveal lore)',cx+22,detY+30,5.5,'rgba(120,100,140,0.5)','rgba(0,0,0,.3)');
+      }
+    }
+  }
+  // Footer nav hint
+  txShadow('\u2190\u2192\u2191\u2193 browse  [X] close',cx+cw/2,cy+ch-6,5.5,'#504868','rgba(0,0,0,.3)');
 }
 
 // T94: Season Info Board
