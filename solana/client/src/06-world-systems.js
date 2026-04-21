@@ -514,12 +514,32 @@ const FLOOR_TITLE_DURATION=200; // ~3.3s at 60fps
 
 const FLOOR_THEMES=[
   null, // 0=town
-  {danger:1,sub:'SUNKEN GALLERIES',note:'Scattered cards. Watch your step.',accent:'#6090e0',bg:'#0a0c20',stripe:'#1a2048'},
-  {danger:2,sub:'DROWNED ARCHIVES',note:'The archives whisper. MIRA was here.',accent:'#8060c0',bg:'#0c0820',stripe:'#241840'},
-  {danger:3,sub:'ECHO CHAMBERS',note:'Echoes of the crew. Proceed carefully.',accent:'#b050a0',bg:'#100820',stripe:'#2c1040'},
-  {danger:4,sub:'THE DEEP VAULT',note:'The vault trembles. VEGA hunts below.',accent:'#d04060',bg:'#120608',stripe:'#301020'},
-  {danger:5,sub:'ARK CORE',note:'The ARK Core. One heir. No mercy.',accent:'#e0a020',bg:'#120800',stripe:'#301000'},
+  {danger:1,sub:'SUNKEN GALLERIES',note:'Scattered cards. Watch your step.',
+   story:['The sea consumed this hall long ago.','Cards drift in the currents like old memories.'],
+   accent:'#6090e0',bg:'#0a0c20',stripe:'#1a2048'},
+  {danger:2,sub:'DROWNED ARCHIVES',note:'The archives whisper. MIRA was here.',
+   story:['Someone catalogued every card before the flood.','The ink is still legible. MIRA\'s handwriting.'],
+   accent:'#8060c0',bg:'#0c0820',stripe:'#241840'},
+  {danger:3,sub:'ECHO CHAMBERS',note:'Echoes of the crew. Proceed carefully.',
+   story:['Voices echo here that have no living source.','The crew is gone but the ARK remembers them all.'],
+   accent:'#b050a0',bg:'#100820',stripe:'#2c1040'},
+  {danger:4,sub:'THE DEEP VAULT',note:'The vault trembles. VEGA hunts below.',
+   story:['The vault was sealed for a reason no one remembers.','Something paces below. It has been waiting.'],
+   accent:'#d04060',bg:'#120608',stripe:'#301020'},
+  {danger:5,sub:'ARK CORE',note:'The ARK Core. One heir. No mercy.',
+   story:['Sixty cards. One collection. One owner.','The ARK chooses. It has already decided.'],
+   accent:'#e0a020',bg:'#120800',stripe:'#301000'},
 ];
+// T114: Landmark flavor text — random lines shown while exploring each floor
+const FLOOR_LANDMARKS=[
+  [], // 0=town
+  ['Rust bleeds from the walls like old wounds.','A waterlogged door — the lock is still intact.','Card fragments crunching underfoot.','Light shifts. Something moved above.'],
+  ['A ledger lists names. None are yours.','Bookshelves — all volumes sealed with wax.','MIRA\'s initials scratched into the stone.','The smell of brine and old paper.'],
+  ['Your footstep echoes three times. Only two make sense.','The corridor bends — you mapped it straight.','A mirror shows an empty room. You are in it.','Silence pools here like standing water.'],
+  ['The floor groans but holds.','VEGA\'s mark carved into the bulkhead.','A card slot — already emptied.','The temperature drops. Someone was here recently.'],
+  ['The ARK hums with a frequency you feel in your teeth.','Sixty slots on the wall. Most are empty.','End-of-run protocols. The ARK is ready.','There is no way back from here. There never was.'],
+];
+let _landmarkCooldown=0; // frames between landmark text triggers
 
 // v264: Pre-bake floor title gradients — 2 createLinearGradient calls × 200 frames → 0 per frame
 const _FLOOR_TITLE_BAR_GRADS=(()=>{
@@ -554,6 +574,18 @@ function updateFloorTitle(){
   if(!floorTitleActive)return;
   floorTitleFrame++;
   if(floorTitleFrame>FLOOR_TITLE_DURATION)floorTitleActive=false;
+}
+// T114: Trigger a random landmark flavor text line for the current dungeon floor
+function triggerLandmarkText(){
+  if(!inDungeon||currentFloor<1||currentFloor>5)return;
+  if(_landmarkCooldown>0){_landmarkCooldown--;return;}
+  const pool=FLOOR_LANDMARKS[currentFloor];if(!pool||pool.length===0)return;
+  // 12% chance per step, with cooldown of 180 frames after each trigger
+  if(Math.random()<0.12){
+    const ln=pool[Math.floor(Math.random()*pool.length)];
+    twSet(ln);
+    _landmarkCooldown=180;
+  }
 }
 
 function drawFloorTitle(){
@@ -651,6 +683,21 @@ function drawFloorTitle(){
     g.font='6px monospace';g.textAlign='center';
     g.fillStyle='#a8a8b8';
     g.fillText(theme.note,W/2,H/2+68);
+    g.textAlign='left';
+  }
+  // T114: Story narrative lines (appear at t=120, typewriter on first line then second)
+  if(t>=120&&theme.story&&theme.story.length>0){
+    const stAlpha=Math.min(1,(t-120)/18)*globalAlpha;
+    g.globalAlpha=stAlpha*0.55;
+    g.font='5px monospace';g.textAlign='center';
+    g.fillStyle='#d0cce0';
+    const ch1=Math.max(0,Math.floor((t-120)/1.4));
+    g.fillText(theme.story[0].slice(0,ch1),W/2,H/2+84);
+    if(t>=140&&theme.story[1]){
+      const ch2=Math.max(0,Math.floor((t-140)/1.4));
+      g.fillStyle='#b0acc0';
+      g.fillText(theme.story[1].slice(0,ch2),W/2,H/2+96);
+    }
     g.textAlign='left';
   }
 
