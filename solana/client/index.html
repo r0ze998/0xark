@@ -75,7 +75,7 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v1+";
+window.BUILD_VERSION = "dev+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -11994,6 +11994,58 @@ function lobbyInteract() {
   lobbyOpenDialog(lobbyNearBuilding.name);
 }
 
+// ── Periodic polling intervals (T-D9-5) ──────────────────────────────────
+let _lobbyPollCardSol = null; // 15 s — card count + SOL balance
+let _lobbyPollSeason  = null; // 60 s — season day
+
+async function _pollCardCount() {
+  const playerKey = window.solana?.publicKey;
+  if (!playerKey) return;
+  try {
+    const conn = new solanaWeb3.Connection(_DE_DEVNET_RPC_LOBBY, 'confirmed');
+    const pid = new solanaWeb3.PublicKey(_DE_PROGRAM_ID_LOBBY);
+    const [regPDA] = solanaWeb3.PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode('player_registry'), playerKey.toBytes()], pid,
+    );
+    const info = await conn.getAccountInfo(regPDA);
+    if (info && info.data.length > 580) lobbyHudCards = new Uint8Array(info.data)[580];
+  } catch (_) {}
+}
+
+async function _pollSOLBalance() {
+  const pk = window.solana?.publicKey;
+  if (!pk) return;
+  try {
+    const conn = new solanaWeb3.Connection(_DE_DEVNET_RPC_LOBBY, 'confirmed');
+    const lam = await conn.getBalance(pk);
+    lobbyBottomSol = (lam / 1e9).toFixed(3);
+  } catch (_) {}
+}
+
+async function _pollSeasonDay() {
+  const playerKey = window.solana?.publicKey;
+  if (!playerKey) return;
+  try {
+    const conn = new solanaWeb3.Connection(_DE_DEVNET_RPC_LOBBY, 'confirmed');
+    const pid = new solanaWeb3.PublicKey(_DE_PROGRAM_ID_LOBBY);
+    const seasonIdBuf = new Uint8Array(4);
+    new DataView(seasonIdBuf.buffer).setUint32(0, 1, true);
+    const [seasonPDA] = solanaWeb3.PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode('season'), seasonIdBuf], pid,
+    );
+    const sInfo = await conn.getAccountInfo(seasonPDA);
+    if (sInfo && sInfo.data.length >= 126) {
+      const dv = new DataView(sInfo.data.buffer, sInfo.data.byteOffset);
+      const base = 110;
+      const seasonStart = Number(dv.getBigInt64(base, true));
+      const seasonEnd   = Number(dv.getBigInt64(base + 8, true));
+      const now = Math.floor(Date.now() / 1000);
+      lobbyHudTotalDays = Math.max(1, Math.ceil((seasonEnd - seasonStart) / 86400));
+      lobbyHudDay = Math.min(lobbyHudTotalDays, Math.max(1, Math.floor((now - seasonStart) / 86400) + 1));
+    }
+  } catch (_) {}
+}
+
 // ── Enter / exit lobby ───────────────────────────────────────────────────
 function enterLobby() {
   lobbyPx = LOBBY_SPAWN.x;
@@ -12004,22 +12056,31 @@ function enterLobby() {
   lobbyCheckProximity();
   sc = 'lobby';
   lobbyWSConnect();
-  // Async load HUD data (card count + season day)
+  // Initial HUD + bottom bar load
   _loadLobbyHUD().catch(e => console.warn('[Lobby HUD]', e.message));
-  // Async load bottom bar data (wallet name + SOL balance)
   const pk = window.solana?.publicKey;
   if (pk) {
     const stored = localStorage.getItem('oxark_wallet_name');
     lobbyBottomName = stored || (pk.toBase58().slice(0, 6) + '…');
-    try {
-      const _c = new solanaWeb3.Connection(_DE_DEVNET_RPC_LOBBY, 'confirmed');
-      _c.getBalance(pk).then(lam => { lobbyBottomSol = (lam / 1e9).toFixed(3); }).catch(() => {});
-    } catch (_) {}
+    _pollSOLBalance();
   }
+
+  // Periodic polling: card count + SOL every 15 s, season day every 60 s
+  if (_lobbyPollCardSol) clearInterval(_lobbyPollCardSol);
+  if (_lobbyPollSeason)  clearInterval(_lobbyPollSeason);
+  _lobbyPollCardSol = setInterval(() => {
+    _pollCardCount().catch(() => {});
+    _pollSOLBalance().catch(() => {});
+  }, 15000);
+  _lobbyPollSeason = setInterval(() => {
+    _pollSeasonDay().catch(() => {});
+  }, 60000);
 }
 
 function exitLobby() {
   lobbyWSDisconnect();
+  if (_lobbyPollCardSol) { clearInterval(_lobbyPollCardSol); _lobbyPollCardSol = null; }
+  if (_lobbyPollSeason)  { clearInterval(_lobbyPollSeason);  _lobbyPollSeason  = null; }
   sc = 'map';
 }
 
@@ -20373,7 +20434,7 @@ async function deckSaveDeckTx() {
   }
   deckSaveStatus = 'saving';
   try {
-    await window.oxarkOnchain.saveDeck(cards);
+    await window.oxarkOnchain.saveDeck(cards, []);
     deckSaveStatus = 'saved';
     setTimeout(() => { if (deckSaveStatus === 'saved') deckSaveStatus = ''; }, 3000);
   } catch (e) {
@@ -20383,45 +20444,23 @@ async function deckSaveDeckTx() {
   }
 }
 
-// ── Card cost (for 30-point cap validation) ───────────────────────────────
-function cardCost(card_id) {
-  const r = CD[card_id - 1]?.r ?? 1;
-  if (r === 5) return 5; // Legendary
-  if (r >= 3)  return 2; // Rare
-  return 1;              // Common/Uncommon
-}
-
-// ── Deck validation ────────────────────────────────────────────────────────
+// ── Deck validation (GDD v1.2) ────────────────────────────────────────────
+// Rules: exactly 20 cards, max 2 copies of any card_id, card_id range 1-60.
+// Phase C cost/rarity caps removed.
 function deckValidation() {
   const counts = {};
-  let totalCost = 0;
-  let legendaryCount = 0;
-  let rareCount = 0;
-  let commonCount = 0;
-
   for (const id of deckSlots) {
     if (!id) continue;
     counts[id] = (counts[id] || 0) + 1;
-    const cost = cardCost(id);
-    totalCost += cost;
-    const r = CD[id - 1]?.r ?? 1;
-    if (r === 5) legendaryCount++;
-    else if (r >= 3) rareCount++;
-    else commonCount++;
   }
 
   const cardCount = deckSlots.filter(Boolean).length;
-  const errors = [];
-  if (totalCost > 30) errors.push(`Cost ${totalCost}/30 ⚠️`);
-  if (legendaryCount > 2) errors.push(`Legendary ${legendaryCount}/2 ⚠️`);
-  if (rareCount > 6) errors.push(`Rare ${rareCount}/6 ⚠️`);
-  if (cardCount > 0 && commonCount < 12) errors.push(`Common ${commonCount}/12 ⚠️`);
-
   const duplicates = new Set(
     Object.entries(counts).filter(([, n]) => n > 2).map(([id]) => Number(id))
   );
+  const isValid = cardCount === 20 && duplicates.size === 0;
 
-  return { cardCount, totalCost, legendaryCount, rareCount, commonCount, errors, duplicates };
+  return { cardCount, duplicates, isValid, counts };
 }
 
 // ── Open / close ─────────────────────────────────────────────────────────
@@ -20618,13 +20657,17 @@ function drawDeckEditor() {
   g.fillStyle = '#444466';
   g.font = '11px VT323, monospace';
   g.textAlign = 'left';
-  g.fillText(`DECK  ${valid.cardCount}/20  |  Cost: ${valid.totalCost}/30`, deckX, storY + 14);
+  g.fillText(`DECK  ${valid.cardCount}/20`, deckX, storY + 14);
 
-  // Validation errors
-  if (valid.errors.length) {
+  // Status line: valid / invalid indicator
+  if (valid.isValid) {
+    g.fillStyle = '#50d060';
+    g.font = '10px VT323, monospace';
+    g.fillText('✓ All cards valid', deckX, storY + 26);
+  } else if (valid.duplicates.size > 0) {
     g.fillStyle = '#cc4444';
     g.font = '10px VT323, monospace';
-    g.fillText(valid.errors.join('  '), deckX, storY + 26);
+    g.fillText(`✗ ${valid.duplicates.size} card(s) invalid (duplicate > 2)`, deckX, storY + 26);
   }
 
   const dStartY = storY + 32;
@@ -20651,8 +20694,8 @@ function drawDeckEditor() {
       g.fillStyle = '#ccc';
       g.font = '8px VT323, monospace';
       g.fillText(card.n.slice(0, 5), cx + DCELL / 2, cy + 25);
-      g.fillStyle = '#666';
-      g.fillText(`${cardCost(card_id)}pt`, cx + DCELL / 2, cy + DCELL - 3);
+      g.fillStyle = isDuplicate ? '#cc4444' : '#555566';
+      g.fillText('×' + (valid.counts[card_id] || 1), cx + DCELL / 2, cy + DCELL - 3);
     } else {
       g.fillStyle = '#2a2a3a';
       g.font = '14px VT323, monospace';
@@ -20666,8 +20709,8 @@ function drawDeckEditor() {
   g.fillStyle = '#1a1a2a';
   g.fillRect(DE_PAD, barY, ow - DE_PAD * 2, DE_BTN_H);
 
-  // Save Deck button — enabled when deck has cards and wallet connected
-  const canSave = valid.cardCount > 0 && !!(window.solana?.publicKey) && deckSaveStatus !== 'saving';
+  // Save Deck button — enabled only when deck is exactly 20 cards, no dup > 2, wallet connected
+  const canSave = valid.isValid && !!(window.solana?.publicKey) && deckSaveStatus !== 'saving';
   const saveBtnX = ow - DE_PAD - 130;
   const saveBtnW = 124;
   if (deckSaveStatus === 'saving') {
@@ -20736,7 +20779,8 @@ function deckEditorClick(px, py) {
   // Save Deck button (bottom-right)
   const barY = oh - DE_PAD - DE_BTN_H;
   if (px >= ow - DE_PAD - 130 && px <= ow - DE_PAD - 6 && py >= barY + 3 && py <= barY + DE_BTN_H - 3) {
-    const canSave = deckSlots.filter(Boolean).length > 0 && !!(window.solana?.publicKey) && deckSaveStatus !== 'saving';
+    const { isValid } = deckValidation();
+    const canSave = isValid && !!(window.solana?.publicKey) && deckSaveStatus !== 'saving';
     if (canSave) deckSaveDeckTx().catch(e => console.error('[DeckEditor] save:', e));
     return true;
   }

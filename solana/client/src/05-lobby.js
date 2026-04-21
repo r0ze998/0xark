@@ -808,6 +808,58 @@ function lobbyInteract() {
   lobbyOpenDialog(lobbyNearBuilding.name);
 }
 
+// ── Periodic polling intervals (T-D9-5) ──────────────────────────────────
+let _lobbyPollCardSol = null; // 15 s — card count + SOL balance
+let _lobbyPollSeason  = null; // 60 s — season day
+
+async function _pollCardCount() {
+  const playerKey = window.solana?.publicKey;
+  if (!playerKey) return;
+  try {
+    const conn = new solanaWeb3.Connection(_DE_DEVNET_RPC_LOBBY, 'confirmed');
+    const pid = new solanaWeb3.PublicKey(_DE_PROGRAM_ID_LOBBY);
+    const [regPDA] = solanaWeb3.PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode('player_registry'), playerKey.toBytes()], pid,
+    );
+    const info = await conn.getAccountInfo(regPDA);
+    if (info && info.data.length > 580) lobbyHudCards = new Uint8Array(info.data)[580];
+  } catch (_) {}
+}
+
+async function _pollSOLBalance() {
+  const pk = window.solana?.publicKey;
+  if (!pk) return;
+  try {
+    const conn = new solanaWeb3.Connection(_DE_DEVNET_RPC_LOBBY, 'confirmed');
+    const lam = await conn.getBalance(pk);
+    lobbyBottomSol = (lam / 1e9).toFixed(3);
+  } catch (_) {}
+}
+
+async function _pollSeasonDay() {
+  const playerKey = window.solana?.publicKey;
+  if (!playerKey) return;
+  try {
+    const conn = new solanaWeb3.Connection(_DE_DEVNET_RPC_LOBBY, 'confirmed');
+    const pid = new solanaWeb3.PublicKey(_DE_PROGRAM_ID_LOBBY);
+    const seasonIdBuf = new Uint8Array(4);
+    new DataView(seasonIdBuf.buffer).setUint32(0, 1, true);
+    const [seasonPDA] = solanaWeb3.PublicKey.findProgramAddressSync(
+      [new TextEncoder().encode('season'), seasonIdBuf], pid,
+    );
+    const sInfo = await conn.getAccountInfo(seasonPDA);
+    if (sInfo && sInfo.data.length >= 126) {
+      const dv = new DataView(sInfo.data.buffer, sInfo.data.byteOffset);
+      const base = 110;
+      const seasonStart = Number(dv.getBigInt64(base, true));
+      const seasonEnd   = Number(dv.getBigInt64(base + 8, true));
+      const now = Math.floor(Date.now() / 1000);
+      lobbyHudTotalDays = Math.max(1, Math.ceil((seasonEnd - seasonStart) / 86400));
+      lobbyHudDay = Math.min(lobbyHudTotalDays, Math.max(1, Math.floor((now - seasonStart) / 86400) + 1));
+    }
+  } catch (_) {}
+}
+
 // ── Enter / exit lobby ───────────────────────────────────────────────────
 function enterLobby() {
   lobbyPx = LOBBY_SPAWN.x;
@@ -818,22 +870,31 @@ function enterLobby() {
   lobbyCheckProximity();
   sc = 'lobby';
   lobbyWSConnect();
-  // Async load HUD data (card count + season day)
+  // Initial HUD + bottom bar load
   _loadLobbyHUD().catch(e => console.warn('[Lobby HUD]', e.message));
-  // Async load bottom bar data (wallet name + SOL balance)
   const pk = window.solana?.publicKey;
   if (pk) {
     const stored = localStorage.getItem('oxark_wallet_name');
     lobbyBottomName = stored || (pk.toBase58().slice(0, 6) + '…');
-    try {
-      const _c = new solanaWeb3.Connection(_DE_DEVNET_RPC_LOBBY, 'confirmed');
-      _c.getBalance(pk).then(lam => { lobbyBottomSol = (lam / 1e9).toFixed(3); }).catch(() => {});
-    } catch (_) {}
+    _pollSOLBalance();
   }
+
+  // Periodic polling: card count + SOL every 15 s, season day every 60 s
+  if (_lobbyPollCardSol) clearInterval(_lobbyPollCardSol);
+  if (_lobbyPollSeason)  clearInterval(_lobbyPollSeason);
+  _lobbyPollCardSol = setInterval(() => {
+    _pollCardCount().catch(() => {});
+    _pollSOLBalance().catch(() => {});
+  }, 15000);
+  _lobbyPollSeason = setInterval(() => {
+    _pollSeasonDay().catch(() => {});
+  }, 60000);
 }
 
 function exitLobby() {
   lobbyWSDisconnect();
+  if (_lobbyPollCardSol) { clearInterval(_lobbyPollCardSol); _lobbyPollCardSol = null; }
+  if (_lobbyPollSeason)  { clearInterval(_lobbyPollSeason);  _lobbyPollSeason  = null; }
   sc = 'map';
 }
 

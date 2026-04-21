@@ -93,7 +93,7 @@ async function deckSaveDeckTx() {
   }
   deckSaveStatus = 'saving';
   try {
-    await window.oxarkOnchain.saveDeck(cards);
+    await window.oxarkOnchain.saveDeck(cards, []);
     deckSaveStatus = 'saved';
     setTimeout(() => { if (deckSaveStatus === 'saved') deckSaveStatus = ''; }, 3000);
   } catch (e) {
@@ -103,45 +103,23 @@ async function deckSaveDeckTx() {
   }
 }
 
-// ── Card cost (for 30-point cap validation) ───────────────────────────────
-function cardCost(card_id) {
-  const r = CD[card_id - 1]?.r ?? 1;
-  if (r === 5) return 5; // Legendary
-  if (r >= 3)  return 2; // Rare
-  return 1;              // Common/Uncommon
-}
-
-// ── Deck validation ────────────────────────────────────────────────────────
+// ── Deck validation (GDD v1.2) ────────────────────────────────────────────
+// Rules: exactly 20 cards, max 2 copies of any card_id, card_id range 1-60.
+// Phase C cost/rarity caps removed.
 function deckValidation() {
   const counts = {};
-  let totalCost = 0;
-  let legendaryCount = 0;
-  let rareCount = 0;
-  let commonCount = 0;
-
   for (const id of deckSlots) {
     if (!id) continue;
     counts[id] = (counts[id] || 0) + 1;
-    const cost = cardCost(id);
-    totalCost += cost;
-    const r = CD[id - 1]?.r ?? 1;
-    if (r === 5) legendaryCount++;
-    else if (r >= 3) rareCount++;
-    else commonCount++;
   }
 
   const cardCount = deckSlots.filter(Boolean).length;
-  const errors = [];
-  if (totalCost > 30) errors.push(`Cost ${totalCost}/30 ⚠️`);
-  if (legendaryCount > 2) errors.push(`Legendary ${legendaryCount}/2 ⚠️`);
-  if (rareCount > 6) errors.push(`Rare ${rareCount}/6 ⚠️`);
-  if (cardCount > 0 && commonCount < 12) errors.push(`Common ${commonCount}/12 ⚠️`);
-
   const duplicates = new Set(
     Object.entries(counts).filter(([, n]) => n > 2).map(([id]) => Number(id))
   );
+  const isValid = cardCount === 20 && duplicates.size === 0;
 
-  return { cardCount, totalCost, legendaryCount, rareCount, commonCount, errors, duplicates };
+  return { cardCount, duplicates, isValid, counts };
 }
 
 // ── Open / close ─────────────────────────────────────────────────────────
@@ -338,13 +316,17 @@ function drawDeckEditor() {
   g.fillStyle = '#444466';
   g.font = '11px VT323, monospace';
   g.textAlign = 'left';
-  g.fillText(`DECK  ${valid.cardCount}/20  |  Cost: ${valid.totalCost}/30`, deckX, storY + 14);
+  g.fillText(`DECK  ${valid.cardCount}/20`, deckX, storY + 14);
 
-  // Validation errors
-  if (valid.errors.length) {
+  // Status line: valid / invalid indicator
+  if (valid.isValid) {
+    g.fillStyle = '#50d060';
+    g.font = '10px VT323, monospace';
+    g.fillText('✓ All cards valid', deckX, storY + 26);
+  } else if (valid.duplicates.size > 0) {
     g.fillStyle = '#cc4444';
     g.font = '10px VT323, monospace';
-    g.fillText(valid.errors.join('  '), deckX, storY + 26);
+    g.fillText(`✗ ${valid.duplicates.size} card(s) invalid (duplicate > 2)`, deckX, storY + 26);
   }
 
   const dStartY = storY + 32;
@@ -371,8 +353,8 @@ function drawDeckEditor() {
       g.fillStyle = '#ccc';
       g.font = '8px VT323, monospace';
       g.fillText(card.n.slice(0, 5), cx + DCELL / 2, cy + 25);
-      g.fillStyle = '#666';
-      g.fillText(`${cardCost(card_id)}pt`, cx + DCELL / 2, cy + DCELL - 3);
+      g.fillStyle = isDuplicate ? '#cc4444' : '#555566';
+      g.fillText('×' + (valid.counts[card_id] || 1), cx + DCELL / 2, cy + DCELL - 3);
     } else {
       g.fillStyle = '#2a2a3a';
       g.font = '14px VT323, monospace';
@@ -386,8 +368,8 @@ function drawDeckEditor() {
   g.fillStyle = '#1a1a2a';
   g.fillRect(DE_PAD, barY, ow - DE_PAD * 2, DE_BTN_H);
 
-  // Save Deck button — enabled when deck has cards and wallet connected
-  const canSave = valid.cardCount > 0 && !!(window.solana?.publicKey) && deckSaveStatus !== 'saving';
+  // Save Deck button — enabled only when deck is exactly 20 cards, no dup > 2, wallet connected
+  const canSave = valid.isValid && !!(window.solana?.publicKey) && deckSaveStatus !== 'saving';
   const saveBtnX = ow - DE_PAD - 130;
   const saveBtnW = 124;
   if (deckSaveStatus === 'saving') {
@@ -456,7 +438,8 @@ function deckEditorClick(px, py) {
   // Save Deck button (bottom-right)
   const barY = oh - DE_PAD - DE_BTN_H;
   if (px >= ow - DE_PAD - 130 && px <= ow - DE_PAD - 6 && py >= barY + 3 && py <= barY + DE_BTN_H - 3) {
-    const canSave = deckSlots.filter(Boolean).length > 0 && !!(window.solana?.publicKey) && deckSaveStatus !== 'saving';
+    const { isValid } = deckValidation();
+    const canSave = isValid && !!(window.solana?.publicKey) && deckSaveStatus !== 'saving';
     if (canSave) deckSaveDeckTx().catch(e => console.error('[DeckEditor] save:', e));
     return true;
   }
