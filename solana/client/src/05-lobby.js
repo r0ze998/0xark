@@ -299,10 +299,11 @@ function lobbyOpenDialog(buildingName) {
           locked ? `🔒 LOCKED — ${lockReason}` : 'Ready to duel',
         ],
         buttons: [
-          { label: 'Find Match', action: 'find_match', disabled: locked, hint: locked ? lockReason : null },
-          { label: 'Close',      action: 'close',      disabled: false },
+          { label: 'Find Match (AI)',       action: 'find_match_ai',  disabled: locked, hint: locked ? lockReason : null },
+          { label: 'Local Hotseat (dev)',   action: 'hotseat_dev',    disabled: false },
+          { label: 'Close',                 action: 'close',          disabled: false },
         ],
-        focusIdx: locked ? 1 : 0,
+        focusIdx: locked ? 2 : 0,
         meta: { tier: tierIdx },
       };
       break;
@@ -358,12 +359,43 @@ function lobbyDialogConfirm() {
   if (!btn || btn.disabled) return;
   if (btn.action === 'close') { lobbyDialog = null; return; }
   if (btn.action === 'find_match') {
-    // Delegate to matchmaking module (06-matchmaking.js)
+    // Legacy: delegate to matchmaking module (06-matchmaking.js)
     if (typeof lobbyFindMatch === 'function') {
       lobbyFindMatch(lobbyDialog.meta?.tier ?? 0);
     } else {
-      console.log('[Lobby] Find Match (offline stub) tier:', lobbyDialog.meta?.tier);
       lobbyDialog = null;
+    }
+    return;
+  }
+  if (btn.action === 'find_match_ai') {
+    // M2 Duel Board — AI stub opponent
+    const tier = lobbyDialog.meta?.tier ?? 0;
+    lobbyDialog = null;
+    if (typeof fadeOut === 'function') {
+      fadeOut(function () {
+        if (typeof initDuelScene === 'function') initDuelScene('ai_stub', tier);
+        sc = 'duel';
+        if (typeof fadeIn === 'function') fadeIn();
+      });
+    } else {
+      if (typeof initDuelScene === 'function') initDuelScene('ai_stub', tier);
+      sc = 'duel';
+    }
+    return;
+  }
+  if (btn.action === 'hotseat_dev') {
+    // M2 Duel Board — Local Hotseat dev mode (no ante, ZK disabled)
+    const tier = lobbyDialog.meta?.tier ?? 0;
+    lobbyDialog = null;
+    if (typeof fadeOut === 'function') {
+      fadeOut(function () {
+        if (typeof initDuelScene === 'function') initDuelScene('hotseat', tier);
+        sc = 'duel';
+        if (typeof fadeIn === 'function') fadeIn();
+      });
+    } else {
+      if (typeof initDuelScene === 'function') initDuelScene('hotseat', tier);
+      sc = 'duel';
     }
     return;
   }

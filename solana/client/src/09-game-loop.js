@@ -350,6 +350,7 @@ function draw(){
   else if(sc==='stats')dStats();
   else if(sc==='victory'){if(gameOverTimesUp)dGameOver();else dVictory();}
   else if(sc==='lobby')dLobby(); // Phase D Reborn LobbyScene
+  else if(sc==='duel')drawDuelScene(); // M2 Duel Board
   drawCardAcquisition();
   drawDiscardOverlay();
   drawMarketplace();
