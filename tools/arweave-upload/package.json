@@ -1,0 +1,15 @@
+{
+  "name": "0xark-arweave-upload",
+  "version": "1.0.0",
+  "description": "0xARK card portrait batch uploader and NFT metadata generator",
+  "type": "module",
+  "scripts": {
+    "check":         "node batch-upload.js --dry-run",
+    "upload":        "node batch-upload.js",
+    "gen-metadata":  "node gen-metadata.js",
+    "upload-meta":   "node gen-metadata.js --upload"
+  },
+  "dependencies": {
+    "@irys/sdk": "^0.2.4"
+  }
+}

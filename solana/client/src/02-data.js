@@ -1785,6 +1785,64 @@ const CARD_RARITY_DIM=['#303438','#243858','#381858','#484010','#584810'];
 const CARD_RARITY_LABEL=['COMMON','UNCOMMON','RARE','EPIC','LEGENDARY'];
 const CARD_TYPE_ICON={attack:'\u2694',defense:'\u25C6',flee:'\u21af',magic:'\u2605',recovery:'\u2665'};
 
+// ─── T-D16-5: Portrait cache system ──────────────────────────────────────────
+// portrait-uris.json is published to GitHub Pages at /0xark/card-portraits.json
+// after Arweave upload (T-D16-3). The client fetches it once per session and
+// caches individual Image objects in memory. localStorage stores the URI map
+// across sessions so a full CDN round-trip is only needed once per deploy.
+//
+// URI map shape: { "1": "https://arweave.net/...", "2": "...", ... }
+
+const _portraitImgCache = {};   // card_id → HTMLImageElement (loaded)
+const _portraitPending  = {};   // card_id → true (loading in flight)
+let   _portraitUriMap   = null; // uri map after fetch
+
+(function _initPortraitCache() {
+  // Try localStorage first (survives page reloads)
+  try {
+    const stored = localStorage.getItem('oxark_portrait_uris');
+    if (stored) _portraitUriMap = JSON.parse(stored);
+  } catch (_) {}
+
+  // Fetch from GitHub Pages (async, non-blocking)
+  const CDN_URL = 'https://r0ze998.github.io/0xark/card-portraits.json';
+  fetch(CDN_URL)
+    .then(r => r.ok ? r.json() : null)
+    .then(map => {
+      if (!map) return;
+      _portraitUriMap = map;
+      try { localStorage.setItem('oxark_portrait_uris', JSON.stringify(map)); } catch (_) {}
+    })
+    .catch(() => {}); // silently ignore — falls back to pixel sprites
+})();
+
+/**
+ * Returns a loaded HTMLImageElement for the given card_id, or null if:
+ *   - URI map not yet loaded
+ *   - No URI for this card
+ *   - Image still loading (returns null; will be ready on next frame)
+ */
+function getPortraitImg(cardId) {
+  if (!_portraitUriMap) return null;
+  const uri = _portraitUriMap[String(cardId)];
+  if (!uri) return null;
+
+  // Return cached image if loaded
+  const cached = _portraitImgCache[cardId];
+  if (cached && cached.complete && cached.naturalWidth > 0) return cached;
+
+  // Kick off load if not already in flight
+  if (!_portraitPending[cardId]) {
+    _portraitPending[cardId] = true;
+    const img = new Image();
+    img.onload  = () => { _portraitImgCache[cardId] = img; delete _portraitPending[cardId]; };
+    img.onerror = () => { delete _portraitPending[cardId]; };
+    img.src = uri;
+    _portraitImgCache[cardId] = img; // store reference even before load
+  }
+  return null; // not ready yet
+}
+
 function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
   const cr=CD[cardIdx];if(!cr)return;
   const rar=Math.max(1,Math.min(5,cr.r||1));
@@ -1845,14 +1903,31 @@ function drawCardFrame(cx_,cy_,cw,ch,cardIdx,showName,showFlavor){
   const artH=ch-4-headerH-nameH-2;
   // Art bg (slightly lit hull)
   bx(cx_+2,artY,cw-4,artH,'#0a1424');
-  // Subtle diagonal pattern
-  g.save();g.rect(cx_+2,artY,cw-4,artH);g.clip();
-  g.globalAlpha=0.04;g.fillStyle=cr.c||'#406080';
-  for(let si=-artH;si<cw+artH;si+=4)g.fillRect(cx_+si,artY,2,artH*2);
-  g.restore();g.globalAlpha=1;
-  // Character sprite centered in art area
-  const charScale=Math.max(0.35,Math.min(2.5,cw/28));
-  drawCardCharacter(cx_+cw/2-8*charScale,artY+artH/2-10*charScale,cardIdx+1,charScale,t);
+
+  // T-D16-5: Portrait rendering — real art > pixel sprite fallback
+  const _portrait=getPortraitImg(cardIdx+1);
+  if(_portrait){
+    // Draw 64×64 portrait scaled to art area, centered, pixel-crisp
+    g.save();
+    g.rect(cx_+2,artY,cw-4,artH);g.clip();
+    g.imageSmoothingEnabled=false;
+    g.drawImage(_portrait,cx_+2,artY,cw-4,artH);
+    // Subtle rarity-tinted vignette overlay on portrait
+    const vgrd=g.createLinearGradient(cx_+2,artY,cx_+2,artY+artH);
+    vgrd.addColorStop(0,'rgba(0,0,0,0.18)');
+    vgrd.addColorStop(0.5,'rgba(0,0,0,0)');
+    vgrd.addColorStop(1,'rgba(0,0,0,0.35)');
+    g.fillStyle=vgrd;g.fillRect(cx_+2,artY,cw-4,artH);
+    g.restore();
+  } else {
+    // Pixel sprite fallback (subtle diagonal texture + animated character)
+    g.save();g.rect(cx_+2,artY,cw-4,artH);g.clip();
+    g.globalAlpha=0.04;g.fillStyle=cr.c||'#406080';
+    for(let si=-artH;si<cw+artH;si+=4)g.fillRect(cx_+si,artY,2,artH*2);
+    g.restore();g.globalAlpha=1;
+    const charScale=Math.max(0.35,Math.min(2.5,cw/28));
+    drawCardCharacter(cx_+cw/2-8*charScale,artY+artH/2-10*charScale,cardIdx+1,charScale,t);
+  }
 
   // ── Name plate (bottom) ──
   const npY=cy_+ch-nameH-2;

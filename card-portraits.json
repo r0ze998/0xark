@@ -1,0 +1,5 @@
+{
+  "_note": "Portrait URIs populated after Arweave upload (T-D16-3). Replace PLACEHOLDER values with real Arweave transaction IDs.",
+  "_format": "card_id (1-60) → Arweave URI (https://arweave.net/<txid>)",
+  "_updated": "2026-04-22"
+}
