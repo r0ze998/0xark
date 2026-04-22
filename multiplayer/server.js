@@ -39,17 +39,80 @@
 
 import http from 'http';
 import { WebSocketServer } from 'ws';
-import { Connection, VersionedTransaction, Transaction } from '@solana/web3.js';
+import { Connection, VersionedTransaction, Transaction, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-const PORT       = process.env.PORT || 3500;
-const RPC_URL    = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-const COMMITMENT = 'confirmed';
+const PORT          = process.env.PORT || 3500;
+const RPC_URL       = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+const COMMITMENT    = 'confirmed';
+// Game treasury address — receives x402 micropayments (devnet placeholder)
+const TREASURY_ADDR = process.env.TREASURY_PUBKEY || '11111111111111111111111111111111';
+// Verification: poll up to 10 times at 500ms each = 5 sec max
+const X402_POLL_ATTEMPTS = 10;
+const X402_POLL_MS       = 500;
+// Max tx age for payment verification (60 sec)
+const X402_MAX_AGE_MS    = 60_000;
+
+// ─── x402 payment verification (Day 11) ─────────────────────────────────────
+// Verifies a SOL transfer from playerPubkey to TREASURY_ADDR of >= amountSol
+// within the last X402_MAX_AGE_MS. Uses confirmed signature list + tx data.
+async function _verifyX402Payment(playerPubkeyStr, amountSol) {
+  // Skip verification when treasury is default (devnet demo mode)
+  if (!process.env.TREASURY_PUBKEY) {
+    console.log(`[x402] No TREASURY_PUBKEY set — skipping real verification (demo mode)`);
+    return { ok: true, demo: true };
+  }
+  try {
+    const playerKey  = new PublicKey(playerPubkeyStr);
+    const treasuryKey = new PublicKey(TREASURY_ADDR);
+    const expectedLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
+
+    // Poll for recent signatures from player
+    for (let attempt = 0; attempt < X402_POLL_ATTEMPTS; attempt++) {
+      const sigs = await connection.getSignaturesForAddress(playerKey, { limit: 10 }, COMMITMENT);
+      const now  = Date.now();
+
+      for (const sigInfo of sigs) {
+        if (!sigInfo.blockTime) continue;
+        const txAge = now - sigInfo.blockTime * 1000;
+        if (txAge > X402_MAX_AGE_MS) continue; // too old
+        if (sigInfo.err) continue; // failed tx
+
+        const tx = await connection.getTransaction(sigInfo.signature, {
+          commitment: COMMITMENT,
+          maxSupportedTransactionVersion: 0,
+        });
+        if (!tx || !tx.meta) continue;
+
+        // Check accounts: player is signer, treasury receives lamports
+        const accountKeys = tx.transaction.message.staticAccountKeys || tx.transaction.message.accountKeys;
+        const treasuryIdx = accountKeys.findIndex(k => k.toBase58() === TREASURY_ADDR);
+        if (treasuryIdx < 0) continue;
+
+        const preBalance  = tx.meta.preBalances[treasuryIdx] || 0;
+        const postBalance = tx.meta.postBalances[treasuryIdx] || 0;
+        const received    = postBalance - preBalance;
+
+        if (received >= expectedLamports) {
+          console.log(`[x402] Verified: ${amountSol} SOL from ${playerPubkeyStr} (sig=${sigInfo.signature.slice(0,8)}...)`);
+          return { ok: true, sig: sigInfo.signature, received };
+        }
+      }
+
+      if (attempt < X402_POLL_ATTEMPTS - 1) {
+        await new Promise(r => setTimeout(r, X402_POLL_MS));
+      }
+    }
+    return { ok: false, error: 'Payment not detected within 5 seconds' };
+  } catch (err) {
+    console.error('[x402] Verification error:', err.message);
+    return { ok: false, error: 'Verification failed: ' + err.message };
+  }
+}
 
 // ─── HTTP health-check server ─────────────────────────────────────────────────
 // Railway / Render require an HTTP endpoint to verify the service is alive.
 // WebSocket connections are upgraded from this same server.
-// ─── x402 mock endpoint helpers ──────────────────────────────────────────────
-// Day 10: mock-only. Real payment verification arrives Day 11-12.
+// ─── x402 body reader ────────────────────────────────────────────────────────
 function _readBody(req) {
   return new Promise((resolve) => {
     let data = '';
@@ -83,31 +146,48 @@ const httpServer = http.createServer(async (req, res) => {
     return;
   }
 
-  // x402 Extra Action (Day 10 mock — always succeeds)
+  // x402 Extra Action — 0.01 SOL (Day 11: real verification)
   if (req.method === 'POST' && req.url === '/x402/extra-action') {
     setCORS();
     const body = await _readBody(req);
-    // TODO Day 11: verify SOL payment from body.playerPubkey for 0.01 SOL
+    const result = await _verifyX402Payment(body.playerPubkey || '', 0.01);
+    if (!result.ok) {
+      res.writeHead(402, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: result.error || 'Payment required: 0.01 SOL' }));
+      return;
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, action: body.action || 'unknown', mock: true }));
+    res.end(JSON.stringify({ ok: true, action: body.action || 'unknown', sig: result.sig, demo: result.demo }));
     return;
   }
 
-  // x402 Scout Peek (Day 10 mock — always succeeds)
+  // x402 Scout Peek — 0.005 SOL (Day 11: real verification)
   if (req.method === 'POST' && req.url === '/x402/scout-peek') {
     setCORS();
     const body = await _readBody(req);
-    // TODO Day 11: verify SOL payment for 0.005 SOL
+    const result = await _verifyX402Payment(body.playerPubkey || '', 0.005);
+    if (!result.ok) {
+      res.writeHead(402, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: result.error || 'Payment required: 0.005 SOL' }));
+      return;
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, mock: true }));
+    res.end(JSON.stringify({ ok: true, sig: result.sig, demo: result.demo }));
     return;
   }
 
-  // x402 Counter-peek (Day 10 stub)
+  // x402 Counter-peek — 0.003 SOL (Day 11: real verification)
   if (req.method === 'POST' && req.url === '/x402/counter-peek') {
     setCORS();
+    const body = await _readBody(req);
+    const result = await _verifyX402Payment(body.playerPubkey || '', 0.003);
+    if (!result.ok) {
+      res.writeHead(402, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: result.error || 'Payment required: 0.003 SOL' }));
+      return;
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, mock: true }));
+    res.end(JSON.stringify({ ok: true, sig: result.sig, demo: result.demo }));
     return;
   }
 
