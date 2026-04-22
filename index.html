@@ -75,7 +75,7 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "dev+";
+window.BUILD_VERSION = "v0+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -11485,10 +11485,11 @@ function lobbyOpenDialog(buildingName) {
           locked ? `🔒 LOCKED — ${lockReason}` : 'Ready to duel',
         ],
         buttons: [
-          { label: 'Find Match', action: 'find_match', disabled: locked, hint: locked ? lockReason : null },
-          { label: 'Close',      action: 'close',      disabled: false },
+          { label: 'Find Match (AI)',       action: 'find_match_ai',  disabled: locked, hint: locked ? lockReason : null },
+          { label: 'Local Hotseat (dev)',   action: 'hotseat_dev',    disabled: false },
+          { label: 'Close',                 action: 'close',          disabled: false },
         ],
-        focusIdx: locked ? 1 : 0,
+        focusIdx: locked ? 2 : 0,
         meta: { tier: tierIdx },
       };
       break;
@@ -11544,12 +11545,43 @@ function lobbyDialogConfirm() {
   if (!btn || btn.disabled) return;
   if (btn.action === 'close') { lobbyDialog = null; return; }
   if (btn.action === 'find_match') {
-    // Delegate to matchmaking module (06-matchmaking.js)
+    // Legacy: delegate to matchmaking module (06-matchmaking.js)
     if (typeof lobbyFindMatch === 'function') {
       lobbyFindMatch(lobbyDialog.meta?.tier ?? 0);
     } else {
-      console.log('[Lobby] Find Match (offline stub) tier:', lobbyDialog.meta?.tier);
       lobbyDialog = null;
+    }
+    return;
+  }
+  if (btn.action === 'find_match_ai') {
+    // M2 Duel Board — AI stub opponent
+    const tier = lobbyDialog.meta?.tier ?? 0;
+    lobbyDialog = null;
+    if (typeof fadeOut === 'function') {
+      fadeOut(function () {
+        if (typeof initDuelScene === 'function') initDuelScene('ai_stub', tier);
+        sc = 'duel';
+        if (typeof fadeIn === 'function') fadeIn();
+      });
+    } else {
+      if (typeof initDuelScene === 'function') initDuelScene('ai_stub', tier);
+      sc = 'duel';
+    }
+    return;
+  }
+  if (btn.action === 'hotseat_dev') {
+    // M2 Duel Board — Local Hotseat dev mode (no ante, ZK disabled)
+    const tier = lobbyDialog.meta?.tier ?? 0;
+    lobbyDialog = null;
+    if (typeof fadeOut === 'function') {
+      fadeOut(function () {
+        if (typeof initDuelScene === 'function') initDuelScene('hotseat', tier);
+        sc = 'duel';
+        if (typeof fadeIn === 'function') fadeIn();
+      });
+    } else {
+      if (typeof initDuelScene === 'function') initDuelScene('hotseat', tier);
+      sc = 'duel';
     }
     return;
   }
@@ -20826,6 +20858,1662 @@ function deckEditorClick(px, py) {
 }
 
 // ───────────────────────────────────────────────────────────────────────
+// MODULE: src/08-duel-scene.js
+// Duel Board M2 — 4-phase state machine (Draw/Energy/Summon/Battle) · 5 rounds · element affinity · Defender mechanic · Shards · Extra Action · Scout Peek · Hotseat + AI stub modes
+// ───────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// 08-DUEL-SCENE.JS — M2 Duel Board (Day 10)
+// 4-phase state machine: Draw → Energy → Summon → Battle (×5 rounds)
+// Modes: Local Hotseat (dev) | Find Match (AI stub)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Layout constants (UI_SPEC v2.0 §2) ──────────────────────────────────────
+const DL = {
+  // Left game area
+  GW: 340, GH: 270,
+  // Opponent HP bar
+  OHP_Y: 0, OHP_H: 30,
+  // Opponent lanes
+  OL_Y: 30, OL_H: 80,
+  // Battle line
+  BL_Y: 110, BL_H: 5,
+  // Player lanes
+  PL_Y: 115, PL_H: 80,
+  // Round indicator
+  RI_Y: 195, RI_H: 30,
+  // Player hand strip
+  HAND_Y: 225, HAND_H: 43,
+  // Right panel
+  RP_X: 340, RP_W: 140,
+  // Right panel sections
+  TABS_Y: 0, TABS_H: 40,
+  ENERGY_Y: 40, ENERGY_H: 90,
+  SHARDS_Y: 130, SHARDS_H: 22,
+  LOG_Y: 152, LOG_H: 50,
+  LOCKIN_Y: 202, LOCKIN_H: 40,
+  LEAVE_Y: 242, LEAVE_H: 28,
+  // Lane geometry (3 lanes in GW=340, with margins)
+  LANE_X: [4, 117, 230],
+  LANE_W: 110,
+  // Hand card geometry
+  HCARD_W: 38, HCARD_H: 40, HCARD_GAP: 42,
+  HCARD_X0: 4,
+};
+
+// ── Element system ───────────────────────────────────────────────────────────
+const EL5     = ['fire', 'earth', 'wind', 'shadow', 'gold'];
+const EL_ICON = { fire:'🔥', earth:'🌿', wind:'💨', shadow:'🌑', gold:'💰' };
+const EL_HEX  = { fire:'#e05030', earth:'#60a040', wind:'#40b0d0', shadow:'#8050a0', gold:'#d0a820' };
+const EL_STRONG = { fire:'earth', earth:'wind', wind:'shadow', shadow:'gold', gold:'fire' };
+const EL_WEAK   = { fire:'gold',  earth:'fire', wind:'earth',  shadow:'wind', gold:'shadow' };
+
+const HALL_ANTES  = ['0.01 SOL', '0.05 SOL', '0.1 SOL'];
+const HALL_NAMES  = ['BRONZE', 'SILVER', 'GOLD'];
+const HALL_COLORS = ['#c07830', '#a0a0b0', '#d0b020'];
+
+const PHASE_ORDER = ['draw', 'energy', 'summon', 'battle'];
+const PHASE_LABEL = { draw:'DRAW', energy:'ENERGY', summon:'SUMMON', battle:'BATTLE' };
+const PHASE_AUTO_DELAY = 80; // frames before auto-advancing draw/energy/battle
+const MAX_ROUNDS = 5;
+const STARTING_HP = 20;
+const STARTING_HAND = 5;
+const EXTRA_ACTION_MAX = 2;
+const SCOUT_PEEK_MAX = 3;
+
+// ── Test decks ───────────────────────────────────────────────────────────────
+// 20 Common/Uncommon cards — used as fallback + AI stub deck
+const TEST_DECK_IDS = [4,5,6,7,16,17,18,19,28,29,30,31,40,41,42,43,52,53,54,55];
+const AI_DECK_IDS   = [4,5,6,7,8,16,17,18,19,20,28,29,30,31,40,41,42,52,53,54];
+
+// ── DUEL_STATS lookup: derived from CD[] at boot ─────────────────────────────
+// Assigns BP, HP, Initiative, element, and summon cost to each of the 60 cards.
+// CD[] must be defined (02-data.js loads before this module in build.js).
+const DUEL_STATS = (function () {
+  // Stat tables indexed by rarity (1-5), by type index 0=attack 1=defense 2=flee 3=magic 4=recovery
+  const BP_TBL  = [[3,2,1,3,1],[5,3,2,4,2],[7,4,3,5,3],[9,5,4,6,4],[11,6,5,7,5]];
+  const HP_TBL  = [[2,4,1,3,4],[3,6,2,4,5],[4,8,3,5,6],[5,10,4,6,7],[6,12,5,7,8]];
+  const INI_TBL = [[3,1,4,2,2],[4,2,5,3,3],[5,3,6,4,4],[6,4,7,5,5],[7,5,8,6,6]];
+  // Energy cost by rarity
+  const COST    = [1,2,2,3,4];
+  const TYPES   = ['attack','defense','flee','magic','recovery'];
+  const out = {};
+  (typeof CD !== 'undefined' ? CD : []).forEach(function (card, idx) {
+    const id      = idx + 1;
+    const typeIdx = TYPES.indexOf(card.t);
+    const ri      = (card.r || 1) - 1;            // 0-indexed rarity
+    const elIdx   = (idx + typeIdx) % 5;           // cycle within type block
+    const el      = EL5[elIdx];
+    const cost    = {};
+    cost[el]      = COST[ri];
+    out[id] = {
+      bp: BP_TBL[ri][typeIdx],
+      hp: HP_TBL[ri][typeIdx],
+      ini: INI_TBL[ri][typeIdx],
+      element: el,
+      cost,
+      clan: ['hollow_blade','iron_circle','black_flag','nameless_silk','sovereign_bourse'][typeIdx],
+    };
+  });
+  return out;
+})();
+
+// ── Build a full duel card object ────────────────────────────────────────────
+function _buildDuelCard(cardId, owner) {
+  const base  = (typeof CD !== 'undefined') ? CD[cardId - 1] : null;
+  const stats = DUEL_STATS[cardId] || { bp:2, hp:3, ini:3, element:'fire', cost:{fire:1} };
+  return {
+    id:       cardId,
+    name:     base ? base.n : `Card ${cardId}`,
+    type:     base ? base.t : 'attack',
+    rarity:   base ? base.r : 1,
+    color:    base ? base.c : '#888888',
+    icon:     base ? base.i : '?',
+    flavor:   base ? base.fl : '',
+    lore:     base ? base.lo : '',
+    element:  stats.element,
+    clan:     stats.clan,
+    bp:       stats.bp,
+    maxBp:    stats.bp,
+    hp:       stats.hp,
+    maxHp:    stats.hp,
+    ini:      stats.ini,
+    cost:     Object.assign({}, stats.cost),
+    owner,
+    isDefender:  base ? !!(base.f && base.f.toLowerCase().includes('def')) : false,
+    defTwoLane:  false, // King's Last Guard special case
+  };
+}
+
+// ── Shuffle helper (Fisher-Yates with seed) ──────────────────────────────────
+function _seededShuffle(arr, seed) {
+  const a = arr.slice();
+  let s = seed >>> 0;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    const j = s % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── Global duel state ────────────────────────────────────────────────────────
+let DS = null; // null when not in a duel
+
+function _makeSide(deckIds, who) {
+  return {
+    hp:         STARTING_HP,
+    shards:     0,
+    energy:     { fire:0, earth:0, wind:0, shadow:0, gold:0 },
+    deck:       deckIds.map(id => _buildDuelCard(id, who)),
+    hand:       [],
+    lanes:      { front:null, middle:null, back:null },
+    lockedIn:   false,
+    selected:   null,   // index into hand (null = none selected)
+    scoutReveal: null,  // { cardIdx, expireFrame } or null
+    dmgDealt:   0,      // cumulative damage dealt (for tiebreak)
+    cardsSummoned: 0,
+  };
+}
+
+// ── initDuelScene ────────────────────────────────────────────────────────────
+// mode: 'hotseat' | 'ai_stub'
+// hallTier: 0=Bronze 1=Silver 2=Gold
+function initDuelScene(mode, hallTier) {
+  // Determine decks
+  const playerDeckIds = _getPlayerDeckIds();
+  const oppDeckIds    = mode === 'ai_stub' ? AI_DECK_IDS.slice() : _getPlayerDeckIds();
+
+  // Shuffle with reproducible seed (timestamp low 16 bits XOR hallTier)
+  const seed  = ((Date.now() & 0xffff) ^ (hallTier << 8)) >>> 0;
+  const pDeck = _seededShuffle(playerDeckIds, seed);
+  const oDeck = _seededShuffle(oppDeckIds, seed ^ 0xabcd);
+
+  DS = {
+    mode,
+    hallTier,
+    round:         1,
+    phase:         'draw',
+    phaseTimer:    0,        // frame counter within current phase
+    activeSide:    0,        // 0=player, 1=opponent (summon phase hotseat only)
+    over:          false,
+    winner:        null,     // 0=player, 1=opponent
+    winReason:     '',
+
+    p:             [_makeSide(pDeck, 0), _makeSide(oDeck, 1)],
+
+    extraActUsed:  0,
+    scoutPeekUsed: 0,
+
+    log:           [],       // string[] (last 4 visible)
+    toast:         null,     // { text, expireFrame, color }
+    dmgPopups:     [],       // { x, y, text, frame, color, ttl }
+    flashEffect:   null,     // { color, expireFrame }
+
+    // Modal state
+    modal:         null,     // null | { type:'extra_action'|'scout_confirm'|'leave_confirm', choice }
+
+    // Scout peek UI
+    scoutActive:   false,
+    scoutExpire:   0,
+    scoutCardIdx:  -1,
+
+    // UI scroll for hand (if > 8 cards)
+    handScroll:    0,
+  };
+
+  _addLog(`Duel started — Round 1 of ${MAX_ROUNDS} — ${HALL_NAMES[hallTier]} Hall`);
+  _startDrawPhase();
+}
+
+// ── Resolve player deck ──────────────────────────────────────────────────────
+function _getPlayerDeckIds() {
+  // Use deck editor's deckSlots if a valid 20-card deck is saved
+  if (typeof deckSlots !== 'undefined') {
+    const valid = deckSlots.filter(Boolean);
+    if (valid.length === 20) return valid;
+  }
+  return TEST_DECK_IDS.slice();
+}
+
+// ── exitDuelScene ────────────────────────────────────────────────────────────
+function exitDuelScene() {
+  DS = null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN RENDER
+// ═══════════════════════════════════════════════════════════════════════════
+function drawDuelScene() {
+  if (!DS) return;
+  _updateAnimations();
+
+  // Background
+  g.fillStyle = '#111820';
+  g.fillRect(0, 0, W, H);
+
+  // Divider between game area and panel
+  g.strokeStyle = '#2a3040';
+  g.lineWidth = 1;
+  g.beginPath(); g.moveTo(DL.RP_X, 0); g.lineTo(DL.RP_X, H); g.stroke();
+
+  _drawGameArea();
+  _drawRightPanel();
+  _drawDmgPopups();
+  if (DS.flashEffect && fr < DS.flashEffect.expireFrame) _drawFlash();
+  if (DS.toast && fr < DS.toast.expireFrame) _drawToast();
+  if (DS.modal) _drawModal();
+  if (DS.over) _drawDuelOver();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GAME AREA (x=0..340)
+// ═══════════════════════════════════════════════════════════════════════════
+function _drawGameArea() {
+  // Opponent area (top)
+  _drawHPBar(1, DL.OHP_Y);
+  _drawLanes(1, DL.OL_Y);
+  // Battle line
+  _drawBattleLine();
+  // Player area (bottom)
+  _drawLanes(0, DL.PL_Y);
+  _drawRoundIndicator();
+  _drawHPBar(0, DL.RI_Y + DL.RI_H);
+  _drawPlayerHand();
+}
+
+function _drawHPBar(who, y) {
+  const side = DS.p[who];
+  const label = who === 0 ? (DS.mode === 'hotseat' && DS.activeSide === 1 ? '← P2' : 'YOU') : (DS.mode === 'ai_stub' ? 'AI' : 'OPP');
+  const hpFrac = side.hp / STARTING_HP;
+  const barX = 4, barW = DL.GW - 50, barH = 10;
+  const barY = y + 10;
+
+  // Label
+  g.fillStyle = '#c0c8d8';
+  g.font = '6px monospace';
+  g.textBaseline = 'top';
+  g.fillText(label, barX, y + 2);
+
+  // HP bar bg
+  g.fillStyle = '#2a3040';
+  g.fillRect(barX, barY, barW, barH);
+
+  // HP bar fill
+  const col = hpFrac > 0.5 ? '#40b060' : hpFrac > 0.25 ? '#d0a820' : '#d04030';
+  g.fillStyle = col;
+  g.fillRect(barX, barY, Math.floor(barW * hpFrac), barH);
+
+  // HP text
+  g.fillStyle = '#ffffff';
+  g.font = 'bold 7px monospace';
+  g.textBaseline = 'middle';
+  g.fillText(`${side.hp}/${STARTING_HP}`, DL.GW - 44, barY + barH / 2);
+
+  // Shards on the right
+  const sx = DL.GW - 16;
+  for (let i = 0; i < 5; i++) {
+    g.fillStyle = i < side.shards ? '#d0a820' : '#2a3040';
+    g.fillRect(sx, y + 2 + i * 5, 6, 4);
+  }
+}
+
+function _drawBattleLine() {
+  const y = DL.BL_Y;
+  g.fillStyle = '#2a3040';
+  g.fillRect(0, y, DL.GW, DL.BL_H);
+  g.fillStyle = '#4060a0';
+  g.fillRect(0, y + 2, DL.GW, 1);
+  g.fillStyle = '#607090';
+  g.font = '5px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('─── BATTLE LINE ───', DL.GW / 2, y + 2);
+  g.textAlign = 'left';
+}
+
+function _drawLanes(who, baseY) {
+  const side   = DS.p[who];
+  const lNames = ['FRONT', 'MID', 'BACK'];
+  for (let li = 0; li < 3; li++) {
+    const lx   = DL.LANE_X[li];
+    const lKey = ['front','middle','back'][li];
+    const card  = side.lanes[lKey];
+
+    // Lane background
+    const isSelected = (who === 0 && DS.phase === 'summon' &&
+                        DS.p[0].selected !== null && !card);
+    g.fillStyle = isSelected ? '#1a2840' : '#161e2c';
+    g.fillRect(lx, baseY, DL.LANE_W, DL.OL_H);
+
+    // Lane border
+    const selCard = DS.p[0].selected !== null ? DS.p[0].hand[DS.p[0].selected] : null;
+    if (isSelected && selCard) {
+      const canPlace = _canPlace(0, selCard, lKey);
+      g.strokeStyle = canPlace ? '#40a060' : '#a04030';
+    } else {
+      g.strokeStyle = '#2a3848';
+    }
+    g.lineWidth = 1;
+    g.strokeRect(lx + 0.5, baseY + 0.5, DL.LANE_W - 1, DL.OL_H - 1);
+
+    // Lane label
+    g.fillStyle = '#3a5068';
+    g.font = '5px monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(lNames[li], lx + DL.LANE_W / 2, baseY + DL.OL_H - 6);
+    g.textAlign = 'left';
+
+    // Card in lane
+    if (card) {
+      _drawLaneCard(card, lx + 5, baseY + 4, DL.LANE_W - 10, DL.OL_H - 14);
+    }
+  }
+}
+
+function _drawLaneCard(card, x, y, w, h) {
+  const clanColor = (typeof CLAN_TINTS !== 'undefined') ? (CLAN_TINTS[card.clan] || '#888888') : '#888888';
+  const elColor   = EL_HEX[card.element] || '#888888';
+
+  // Card body
+  g.fillStyle = '#1e2838';
+  g.fillRect(x, y, w, h);
+
+  // Clan color top bar
+  g.fillStyle = clanColor;
+  g.fillRect(x, y, w, 4);
+
+  // Element strip (left)
+  g.fillStyle = elColor;
+  g.fillRect(x, y + 4, 4, h - 4);
+
+  // Card name
+  g.fillStyle = '#dde4f0';
+  g.font = 'bold 6px monospace';
+  g.textBaseline = 'top';
+  const truncName = card.name.length > 9 ? card.name.slice(0, 8) + '…' : card.name;
+  g.fillText(truncName, x + 7, y + 5);
+
+  // Element icon + BP/HP line
+  g.fillStyle = elColor;
+  g.font = '5px monospace';
+  g.fillText(EL_ICON[card.element] || '?', x + 7, y + 13);
+
+  g.fillStyle = '#a0c8e0';
+  g.font = 'bold 6px monospace';
+  g.fillText(`${card.bp}/${card.hp}`, x + 7, y + 21);
+
+  // Initiative (top right)
+  g.fillStyle = '#f0c840';
+  g.font = '5px monospace';
+  g.textAlign = 'right';
+  g.fillText(`i${card.ini}`, x + w - 2, y + 5);
+  g.textAlign = 'left';
+
+  // HP bar at bottom
+  const hpFrac = card.hp / card.maxHp;
+  g.fillStyle = '#2a3040';
+  g.fillRect(x, y + h - 4, w, 4);
+  g.fillStyle = hpFrac > 0.5 ? '#40b060' : '#d04030';
+  g.fillRect(x, y + h - 4, Math.floor(w * hpFrac), 4);
+}
+
+function _drawRoundIndicator() {
+  const y = DL.RI_Y;
+  g.fillStyle = '#1a2030';
+  g.fillRect(0, y, DL.GW, DL.RI_H);
+  g.fillStyle = HALL_COLORS[DS.hallTier] || '#c07830';
+  g.font = 'bold 8px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(`ROUND ${DS.round}/${MAX_ROUNDS}  ·  ${HALL_NAMES[DS.hallTier]} HALL`, DL.GW / 2, y + DL.RI_H / 2);
+  g.textAlign = 'left';
+
+  // Hotseat active player indicator
+  if (DS.mode === 'hotseat' && DS.phase === 'summon') {
+    g.fillStyle = '#80c0ff';
+    g.font = '6px monospace';
+    g.textAlign = 'center';
+    g.fillText(DS.activeSide === 0 ? 'P1 — Summon' : 'P2 — Summon', DL.GW / 2, y + DL.RI_H - 4);
+    g.textAlign = 'left';
+  }
+}
+
+function _drawPlayerHand() {
+  const side = DS.p[0];
+  const y    = DL.HAND_Y;
+
+  // Background
+  g.fillStyle = '#141c28';
+  g.fillRect(0, y, DL.GW, DL.HAND_H);
+  g.strokeStyle = '#2a3848';
+  g.lineWidth = 1;
+  g.strokeRect(0.5, y + 0.5, DL.GW - 1, DL.HAND_H - 1);
+
+  const startIdx = DS.handScroll;
+  const visCount = Math.min(side.hand.length, Math.floor((DL.GW - 8) / DL.HCARD_GAP));
+
+  for (let i = 0; i < visCount; i++) {
+    const handIdx = startIdx + i;
+    if (handIdx >= side.hand.length) break;
+    const card = side.hand[handIdx];
+    const cx   = DL.HCARD_X0 + i * DL.HCARD_GAP;
+    const cy   = y + 2;
+    const sel  = side.selected === handIdx;
+
+    _drawHandCardThumb(card, cx, cy, sel);
+  }
+
+  // Card count hint
+  g.fillStyle = '#606878';
+  g.font = '5px monospace';
+  g.textBaseline = 'bottom';
+  g.textAlign = 'right';
+  g.fillText(`${side.hand.length} cards`, DL.GW - 4, y + DL.HAND_H - 2);
+  g.textAlign = 'left';
+
+  // Scroll arrows if needed
+  if (side.hand.length > visCount) {
+    if (startIdx > 0) {
+      g.fillStyle = '#8090b0';
+      g.font = '10px monospace';
+      g.textBaseline = 'middle';
+      g.fillText('◄', 0, y + DL.HAND_H / 2);
+    }
+    if (startIdx + visCount < side.hand.length) {
+      g.fillStyle = '#8090b0';
+      g.font = '10px monospace';
+      g.textAlign = 'right';
+      g.fillText('►', DL.GW - 2, y + DL.HAND_H / 2);
+      g.textAlign = 'left';
+    }
+  }
+}
+
+function _drawHandCardThumb(card, x, y, selected) {
+  const clanColor = (typeof CLAN_TINTS !== 'undefined') ? (CLAN_TINTS[card.clan] || '#888888') : '#888888';
+  const elColor   = EL_HEX[card.element] || '#888888';
+  const w = DL.HCARD_W, h = DL.HCARD_H;
+
+  // Selected glow
+  if (selected) {
+    g.strokeStyle = '#f0d040';
+    g.lineWidth = 2;
+    g.strokeRect(x - 1, y - 1, w + 2, h + 2);
+  }
+
+  g.fillStyle = '#1e2838';
+  g.fillRect(x, y, w, h);
+
+  // Clan top strip
+  g.fillStyle = clanColor;
+  g.fillRect(x, y, w, 3);
+
+  // Element left strip
+  g.fillStyle = elColor;
+  g.fillRect(x, y + 3, 3, h - 3);
+
+  // Name
+  g.fillStyle = '#c8d8e8';
+  g.font = '5px monospace';
+  g.textBaseline = 'top';
+  const n = card.name.length > 7 ? card.name.slice(0, 6) + '…' : card.name;
+  g.fillText(n, x + 5, y + 4);
+
+  // BP/HP
+  g.fillStyle = '#80b0d0';
+  g.font = '5px monospace';
+  g.fillText(`${card.bp}/${card.hp}`, x + 5, y + 12);
+
+  // Element icon
+  g.fillStyle = elColor;
+  g.fillText(EL_ICON[card.element] || '', x + 5, y + 20);
+
+  // Cost
+  g.fillStyle = '#a09060';
+  const costEntry = Object.entries(card.cost)[0] || ['?', '?'];
+  g.fillText(`${costEntry[0][0].toUpperCase()}${costEntry[1]}`, x + 18, y + 20);
+
+  // Border
+  g.strokeStyle = selected ? '#f0d040' : '#2a3848';
+  g.lineWidth = 1;
+  g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RIGHT PANEL (x=340..480)
+// ═══════════════════════════════════════════════════════════════════════════
+function _drawRightPanel() {
+  const rx = DL.RP_X;
+  g.fillStyle = '#0e1420';
+  g.fillRect(rx, 0, DL.RP_W, H);
+
+  _drawPhaseTabs(rx);
+  _drawEnergyPool(rx);
+  _drawShardsRow(rx);
+  _drawLogPanel(rx);
+  _drawLockInButton(rx);
+  _drawLeaveButton(rx);
+}
+
+function _drawPhaseTabs(rx) {
+  const tabW = DL.RP_W / 4;
+  PHASE_ORDER.forEach(function (ph, i) {
+    const tx   = rx + i * tabW;
+    const active = DS.phase === ph;
+    g.fillStyle = active ? '#2a4060' : '#141c28';
+    g.fillRect(tx, DL.TABS_Y, tabW, DL.TABS_H);
+    g.strokeStyle = active ? '#4080c0' : '#1e2838';
+    g.lineWidth = 1;
+    g.strokeRect(tx + 0.5, DL.TABS_Y + 0.5, tabW - 1, DL.TABS_H - 1);
+    g.fillStyle = active ? '#d0e8ff' : '#607080';
+    g.font = (active ? 'bold ' : '') + '5px monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(PHASE_LABEL[ph], tx + tabW / 2, DL.TABS_Y + DL.TABS_H / 2);
+  });
+  g.textAlign = 'left';
+}
+
+function _drawEnergyPool(rx) {
+  const ey  = DL.ENERGY_Y;
+  const eH  = DL.ENERGY_H;
+  const rowH = eH / 5;
+
+  g.fillStyle = '#0c1220';
+  g.fillRect(rx, ey, DL.RP_W, eH);
+
+  // Label
+  g.fillStyle = '#5a6878';
+  g.font = '5px monospace';
+  g.textBaseline = 'top';
+  g.fillText('ENERGY POOL', rx + 4, ey + 2);
+
+  // Per side: show active side's energy during summon, or player's otherwise
+  const side = DS.p[0];
+
+  EL5.forEach(function (el, i) {
+    const ry  = ey + 8 + i * ((eH - 8) / 5);
+    const cnt = side.energy[el] || 0;
+    // Icon
+    g.fillStyle = EL_HEX[el];
+    g.font = '7px monospace';
+    g.textBaseline = 'middle';
+    g.fillText(EL_ICON[el], rx + 4, ry + 6);
+    // Diamonds
+    for (let d = 0; d < Math.min(cnt, 10); d++) {
+      const dx = rx + 18 + d * 11;
+      g.fillStyle = EL_HEX[el];
+      g.fillRect(dx + 3, ry + 2, 7, 7);
+      g.fillStyle = 'rgba(255,255,255,0.15)';
+      g.fillRect(dx + 3, ry + 2, 3, 3);
+    }
+    // Count number
+    if (cnt > 0) {
+      g.fillStyle = '#b0c8e0';
+      g.font = '5px monospace';
+      g.textBaseline = 'middle';
+      g.textAlign = 'right';
+      g.fillText(`${cnt}`, rx + DL.RP_W - 4, ry + 6);
+      g.textAlign = 'left';
+    }
+  });
+}
+
+function _drawShardsRow(rx) {
+  const sy   = DL.SHARDS_Y;
+  const side = DS.p[0];
+
+  g.fillStyle = '#0c1220';
+  g.fillRect(rx, sy, DL.RP_W, DL.SHARDS_H);
+
+  g.fillStyle = '#6a7888';
+  g.font = '5px monospace';
+  g.textBaseline = 'middle';
+  g.fillText('SHARDS', rx + 4, sy + 7);
+
+  for (let i = 0; i < 5; i++) {
+    const dx = rx + 44 + i * 18;
+    const filled = i < side.shards;
+    g.fillStyle = filled ? '#d0a820' : '#1e2838';
+    g.strokeStyle = filled ? '#f0c840' : '#3a4858';
+    g.lineWidth = 1;
+    // Diamond shape
+    g.beginPath();
+    g.moveTo(dx + 7, sy + 3);
+    g.lineTo(dx + 14, sy + 9);
+    g.lineTo(dx + 7, sy + 18);
+    g.lineTo(dx, sy + 9);
+    g.closePath();
+    g.fill(); g.stroke();
+  }
+
+  // Extra action button (right of shards)
+  if (DS.phase === 'summon' && DS.extraActUsed < EXTRA_ACTION_MAX) {
+    const canUse = side.shards >= 3;
+    _drawSmallButton(rx + 4, sy, 36, DL.SHARDS_H, 'EXTRA', canUse ? '#d0a820' : '#506080', canUse);
+  }
+}
+
+function _drawLogPanel(rx) {
+  const ly  = DL.LOG_Y;
+  g.fillStyle = '#0c1018';
+  g.fillRect(rx, ly, DL.RP_W, DL.LOG_H);
+  g.strokeStyle = '#1e2838';
+  g.lineWidth = 1;
+  g.strokeRect(rx + 0.5, ly + 0.5, DL.RP_W - 1, DL.LOG_H - 1);
+
+  g.fillStyle = '#506070';
+  g.font = '5px monospace';
+  g.textBaseline = 'top';
+  g.fillText('LOG', rx + 4, ly + 2);
+
+  const visible = DS.log.slice(-4);
+  visible.forEach(function (entry, i) {
+    g.fillStyle = i === visible.length - 1 ? '#b0c8e0' : '#5a6878';
+    g.font = '5px monospace';
+    g.textBaseline = 'top';
+    // Word-wrap at ~22 chars
+    const maxW = DL.RP_W - 8;
+    const words = entry.split(' ');
+    let line = '', ly2 = ly + 8 + i * 10;
+    for (const word of words) {
+      const test = line ? line + ' ' + word : word;
+      if (test.length > 22) {
+        g.fillText(line, rx + 4, ly2);
+        line = word; ly2 += 7;
+      } else {
+        line = test;
+      }
+    }
+    if (line) g.fillText(line.slice(0, 22), rx + 4, ly2);
+  });
+}
+
+function _drawLockInButton(rx) {
+  const by      = DL.LOCKIN_Y;
+  const bh      = DL.LOCKIN_H;
+  const enabled = DS.phase === 'summon' && !DS.over;
+  const pulse   = enabled && (fr % 40 < 20);
+  const bgCol   = enabled ? (pulse ? '#1e5030' : '#183828') : '#141820';
+  const txCol   = enabled ? '#60e080' : '#3a4858';
+
+  g.fillStyle = bgCol;
+  g.fillRect(rx + 4, by + 4, DL.RP_W - 8, bh - 8);
+  g.strokeStyle = enabled ? (pulse ? '#40c060' : '#2a6040') : '#2a3040';
+  g.lineWidth = 1;
+  g.strokeRect(rx + 4 + 0.5, by + 4 + 0.5, DL.RP_W - 9, bh - 9);
+
+  g.fillStyle = txCol;
+  g.font = 'bold 8px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('LOCK IN', rx + DL.RP_W / 2, by + bh / 2);
+  g.textAlign = 'left';
+
+  // Scout peek button (above lock in, only in summon phase)
+  if (DS.phase === 'summon' && DS.scoutPeekUsed < SCOUT_PEEK_MAX) {
+    const sy = by - 18;
+    _drawSmallButton(rx + 4, sy, DL.RP_W - 8, 16, `PEEK (${3-DS.scoutPeekUsed} left)`, '#5080a0', true);
+  }
+}
+
+function _drawLeaveButton(rx) {
+  const by = DL.LEAVE_Y;
+  const canLeave = DS.phase === 'summon' && !DS.over;
+  const bgCol = canLeave ? '#300810' : '#0e1010';
+  const txCol = canLeave ? '#e06060' : '#2a3040';
+
+  g.fillStyle = bgCol;
+  g.fillRect(rx + 4, by + 2, DL.RP_W - 8, DL.LEAVE_H - 4);
+  g.strokeStyle = canLeave ? '#602020' : '#1a2020';
+  g.lineWidth = 1;
+  g.strokeRect(rx + 4 + 0.5, by + 2 + 0.5, DL.RP_W - 9, DL.LEAVE_H - 5);
+
+  g.fillStyle = txCol;
+  g.font = '6px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('LEAVE DUEL', rx + DL.RP_W / 2, by + DL.LEAVE_H / 2);
+  g.textAlign = 'left';
+}
+
+function _drawSmallButton(x, y, w, h, label, color, enabled) {
+  g.fillStyle = enabled ? '#1a2030' : '#0e1418';
+  g.fillRect(x, y, w, h);
+  g.strokeStyle = enabled ? color : '#1e2838';
+  g.lineWidth = 1;
+  g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  g.fillStyle = enabled ? color : '#3a4858';
+  g.font = '5px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(label, x + w / 2, y + h / 2);
+  g.textAlign = 'left';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ANIMATIONS & FX
+// ═══════════════════════════════════════════════════════════════════════════
+
+function _addDmgPopup(x, y, text, color) {
+  DS.dmgPopups.push({ x, y, text, color: color || '#ff4040', startFrame: fr, expire: fr + 60 });
+}
+
+function _drawDmgPopups() {
+  DS.dmgPopups.forEach(function (p) {
+    const age = fr - p.startFrame;
+    const alpha = Math.max(0, 1 - age / 60);
+    const dy = -age * 0.5;
+    g.globalAlpha = alpha;
+    g.fillStyle = p.color;
+    g.font = 'bold 9px monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(p.text, p.x, p.y + dy);
+    g.textAlign = 'left';
+    g.globalAlpha = 1;
+  });
+}
+
+function _drawFlash() {
+  const ef = DS.flashEffect;
+  const age = fr - (ef.expireFrame - 25);
+  const alpha = Math.max(0, 0.4 - age * 0.016);
+  g.globalAlpha = alpha;
+  g.fillStyle = ef.color;
+  g.fillRect(0, 0, W, H);
+  g.globalAlpha = 1;
+}
+
+function _addLog(msg) {
+  DS.log.push(msg);
+  if (DS.log.length > 20) DS.log.shift();
+}
+
+function _showToast(text, color, durationFrames) {
+  DS.toast = { text, color: color || '#f0c840', expireFrame: fr + (durationFrames || 120) };
+}
+
+function _drawToast() {
+  const t = DS.toast;
+  if (!t) return;
+  const alpha = Math.min(1, (t.expireFrame - fr) / 20);
+  g.globalAlpha = alpha;
+  g.fillStyle = 'rgba(0,0,0,0.75)';
+  g.fillRect(10, H / 2 - 12, DL.GW - 20, 24);
+  g.strokeStyle = t.color;
+  g.lineWidth = 1;
+  g.strokeRect(10.5, H / 2 - 11.5, DL.GW - 21, 23);
+  g.fillStyle = t.color;
+  g.font = 'bold 7px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(t.text, DL.GW / 2, H / 2);
+  g.textAlign = 'left';
+  g.globalAlpha = 1;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE LOGIC
+// ═══════════════════════════════════════════════════════════════════════════
+function _startDrawPhase() {
+  DS.phase      = 'draw';
+  DS.phaseTimer = fr;
+  const R       = DS.round;
+
+  // Draw cards for each side
+  [0, 1].forEach(function (who) {
+    const side  = DS.p[who];
+    const count = (R === 1) ? STARTING_HAND : 1;
+    for (let i = 0; i < count; i++) {
+      if (side.deck.length > 0) {
+        const card = side.deck.shift();
+        side.hand.push(card);
+        if (who === 0) _addLog(`R${R}: Drew ${card.name}`);
+      } else {
+        // Fatigue
+        side.hp -= 2;
+        if (who === 0) _addLog(`R${R}: Deck empty — 2 fatigue damage`);
+        else            _addLog(`R${R}: Opponent: deck empty — 2 fatigue`);
+        _addDmgPopup(who === 0 ? 80 : 80, who === 0 ? 210 : 60, '-2 FATIGUE', '#ff6040');
+        if (_checkWinConditions()) return;
+      }
+    }
+  });
+
+  // Auto-advance to energy after delay
+  _schedulePhaseAdvance('energy', PHASE_AUTO_DELAY);
+}
+
+function _schedulePhaseAdvance(nextPhase, delay) {
+  // Use a simple flag: when phaseTimer + delay <= fr, advance
+  DS._nextPhase  = nextPhase;
+  DS._advanceAt  = fr + delay;
+}
+
+function _startEnergyPhase() {
+  DS.phase      = 'energy';
+  DS.phaseTimer = fr;
+  const R = DS.round;
+
+  [0, 1].forEach(function (who) {
+    const side = DS.p[who];
+    EL5.forEach(function (el) {
+      side.energy[el] = (side.energy[el] || 0) + R;
+    });
+  });
+
+  _addLog(`R${R}: Energy +${R} each element`);
+  _schedulePhaseAdvance('summon', PHASE_AUTO_DELAY);
+}
+
+function _startSummonPhase() {
+  DS.phase      = 'summon';
+  DS.phaseTimer = fr;
+  DS._nextPhase = null;
+  DS._advanceAt = null;
+  DS.activeSide = 0;
+  DS.p[0].lockedIn = false;
+  DS.p[1].lockedIn = false;
+
+  // In AI stub mode, immediately schedule AI turn after player locks in
+  _addLog(`R${DS.round}: Summon phase — place cards then Lock In`);
+}
+
+function _lockIn() {
+  if (DS.phase !== 'summon' || DS.over) return;
+
+  const side = DS.p[DS.activeSide];
+  side.lockedIn = true;
+  side.selected = null;
+  _addLog(`R${DS.round}: ${DS.activeSide === 0 ? 'You' : 'P2'} locked in`);
+
+  if (DS.mode === 'hotseat') {
+    if (DS.activeSide === 0) {
+      // Switch to P2
+      DS.activeSide = 1;
+      _showToast('P2 — Summon your cards', '#80c0ff', 90);
+    } else {
+      // Both done, go to battle
+      _startBattlePhase();
+    }
+  } else {
+    // ai_stub: player locked in → AI takes turn immediately
+    _aiSummonTurn();
+    _startBattlePhase();
+  }
+}
+
+function _aiSummonTurn() {
+  const side = DS.p[1];
+  const opp  = DS.p[0];
+  const laneKeys = ['front', 'middle', 'back'];
+
+  // Simple AI: play cards in order of increasing initiative to fill lanes
+  const playable = side.hand.filter(c => _canPlace(1, c, null));
+  playable.sort((a, b) => a.ini - b.ini);
+
+  for (const card of playable) {
+    // Find first open lane
+    for (const lk of laneKeys) {
+      if (!side.lanes[lk] && _canPlaceLane(1, card, lk)) {
+        _placeCard(1, side.hand.indexOf(card), lk);
+        break;
+      }
+    }
+    // Stop if all lanes full
+    if (laneKeys.every(lk => side.lanes[lk])) break;
+  }
+  side.lockedIn = true;
+}
+
+function _startBattlePhase() {
+  DS.phase      = 'battle';
+  DS.phaseTimer = fr;
+  DS._nextPhase = null;
+  _addLog(`R${DS.round}: Battle!`);
+
+  // Resolve combat
+  _resolveBattlePhase();
+
+  if (!DS.over) {
+    _schedulePhaseAdvance('_next_round', PHASE_AUTO_DELAY);
+  }
+}
+
+// Update tick — called each frame from drawDuelScene
+function _updateAnimations() {
+  DS.dmgPopups = DS.dmgPopups.filter(p => fr < p.expire);
+  if (DS.scoutActive && fr >= DS.scoutExpire) {
+    DS.scoutActive = false;
+    DS.scoutCardIdx = -1;
+  }
+  // Auto-phase advance
+  if (DS._advanceAt && fr >= DS._advanceAt) {
+    const next = DS._nextPhase;
+    DS._advanceAt = null;
+    DS._nextPhase = null;
+    if (next === 'energy')       _startEnergyPhase();
+    else if (next === 'summon')  _startSummonPhase();
+    else if (next === '_next_round') _nextRound();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CARD PLACEMENT
+// ═══════════════════════════════════════════════════════════════════════════
+function _canPlace(who, card, laneKey) {
+  if (!card) return false;
+  const side = DS.p[who];
+  // Any open lane with enough energy
+  const laneKeys = laneKey ? [laneKey] : ['front', 'middle', 'back'];
+  return laneKeys.some(lk => _canPlaceLane(who, card, lk));
+}
+
+function _canPlaceLane(who, card, lk) {
+  const side = DS.p[who];
+  if (side.lanes[lk]) return false; // occupied
+  // Energy check
+  for (const [el, amt] of Object.entries(card.cost)) {
+    if ((side.energy[el] || 0) < amt) return false;
+  }
+  return true;
+}
+
+function _placeCard(who, handIdx, lk) {
+  const side = DS.p[who];
+  const card = side.hand[handIdx];
+  if (!card) return false;
+  if (!_canPlaceLane(who, card, lk)) return false;
+
+  // Deduct energy
+  for (const [el, amt] of Object.entries(card.cost)) {
+    side.energy[el] = (side.energy[el] || 0) - amt;
+  }
+  // Move to lane
+  card._lane = lk;
+  side.lanes[lk] = card;
+  side.hand.splice(handIdx, 1);
+  side.selected = null;
+  side.cardsSummoned++;
+
+  if (who === 0) _addLog(`R${DS.round}: Summoned ${card.name} → ${lk}`);
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BATTLE RESOLUTION
+// ═══════════════════════════════════════════════════════════════════════════
+function _resolveBattlePhase() {
+  const laneKeys = ['front', 'middle', 'back'];
+
+  laneKeys.forEach(function (lk) {
+    const pCard = DS.p[0].lanes[lk];
+    const oCard = DS.p[1].lanes[lk];
+
+    if (pCard && oCard) {
+      _resolveLane(pCard, oCard, lk);
+    } else if (pCard && !oCard) {
+      // Check for defender interception
+      const defender = _findDefender(1, lk);
+      if (defender) {
+        _resolveVsDefender(pCard, defender, 0, lk);
+      } else {
+        _dealHeartDamage(1, pCard, lk);
+      }
+    } else if (!pCard && oCard) {
+      const defender = _findDefender(0, lk);
+      if (defender) {
+        _resolveVsDefender(oCard, defender, 1, lk);
+      } else {
+        _dealHeartDamage(0, oCard, lk);
+      }
+    }
+    // Neither: nothing happens
+  });
+}
+
+function _resolveLane(pCard, oCard, lk) {
+  // Determine attack order by initiative
+  const pFirst = pCard.ini >= oCard.ini;
+  const first  = pFirst ? pCard : oCard;
+  const second = pFirst ? oCard : pCard;
+  const firstOwner  = pFirst ? 0 : 1;
+  const secondOwner = pFirst ? 1 : 0;
+
+  const firstBP = applyElementAffinity(first.element, second.element, first.bp);
+  _logAffinityFx(first, second, firstBP);
+  second.hp -= firstBP;
+
+  if (second.hp <= 0) {
+    _destroyCard(secondOwner, lk, first, firstOwner);
+  } else {
+    // Second retaliates
+    const secondBP = applyElementAffinity(second.element, first.element, second.bp);
+    _logAffinityFx(second, first, secondBP);
+    first.hp -= secondBP;
+    if (first.hp <= 0) {
+      _destroyCard(firstOwner, lk, second, secondOwner);
+    } else {
+      _addLog(`R${DS.round}: ${lk} — ${first.name} (${first.hp}hp) vs ${second.name} (${second.hp}hp)`);
+    }
+  }
+}
+
+function _logAffinityFx(atk, def, bp) {
+  const base = atk.bp;
+  if (bp > base) {
+    const lx = _laneCenterX(atk._lane);
+    const ly = atk.owner === 0 ? DL.PL_Y + 30 : DL.OL_Y + 30;
+    _addDmgPopup(lx, ly, `+2 EL!`, '#80ff80');
+  } else if (bp < base) {
+    const lx = _laneCenterX(atk._lane);
+    const ly = atk.owner === 0 ? DL.PL_Y + 30 : DL.OL_Y + 30;
+    _addDmgPopup(lx, ly, `-1 EL`, '#ff8080');
+  }
+}
+
+function _laneCenterX(lk) {
+  const i = ['front','middle','back'].indexOf(lk);
+  return DL.LANE_X[i < 0 ? 0 : i] + DL.LANE_W / 2;
+}
+
+function applyElementAffinity(atkEl, defEl, baseBP) {
+  if (!atkEl || !defEl) return baseBP;
+  if (EL_STRONG[atkEl] === defEl) return baseBP + 2;
+  if (EL_WEAK[atkEl]   === defEl) return baseBP - 1;
+  return baseBP;
+}
+
+function _findDefender(who, targetLane) {
+  // Look for a Defender card on `who`'s side that can intercept an attack on `targetLane`
+  const side = DS.p[who];
+  const laneKeys = ['front', 'middle', 'back'];
+  const tIdx = laneKeys.indexOf(targetLane);
+
+  for (const lk of laneKeys) {
+    const card = side.lanes[lk];
+    if (!card || !card.isDefender) continue;
+    const cIdx = laneKeys.indexOf(lk);
+    // Standard: adjacent lanes only
+    const adjacent = Math.abs(cIdx - tIdx) === 1;
+    // Two-lane: middle defender covers 2 away too
+    const twoLane = card.defTwoLane && Math.abs(cIdx - tIdx) <= 2;
+    // Can't defend own lane
+    if (cIdx === tIdx) continue;
+    if (adjacent || twoLane) return card;
+  }
+  return null;
+}
+
+function _resolveVsDefender(attacker, defender, defenderOwner, targetLane) {
+  const atkBP = applyElementAffinity(attacker.element, defender.element, attacker.bp);
+  defender.hp -= atkBP;
+  _addLog(`R${DS.round}: ${defender.name} intercepted attack on ${targetLane} — took ${atkBP}`);
+
+  const popX = _laneCenterX(defender._lane);
+  const popY = defenderOwner === 0 ? DL.PL_Y + 20 : DL.OL_Y + 20;
+  _addDmgPopup(popX, popY, `-${atkBP}`, '#ff6040');
+
+  if (defender.hp <= 0) {
+    _destroyCard(defenderOwner, defender._lane, attacker, 1 - defenderOwner);
+  } else {
+    // Counter-attack (half BP)
+    const counterBP = Math.floor(defender.bp / 2);
+    attacker.hp -= counterBP;
+    if (attacker.hp <= 0) {
+      _destroyCard(1 - defenderOwner, attacker._lane, defender, defenderOwner);
+    }
+  }
+}
+
+function _dealHeartDamage(who, attCard, lk) {
+  const side = DS.p[who];
+  const dmg  = attCard.bp;
+  side.hp -= dmg;
+  const ownerStr = who === 0 ? 'Your HP' : 'Opp HP';
+  _addLog(`R${DS.round}: ${attCard.name} dealt ${dmg} to ${ownerStr} (${lk})`);
+  const py = who === 0 ? DL.OHP_Y + 15 : H - 50;
+  _addDmgPopup(_laneCenterX(lk), who === 0 ? 45 : 215, `-${dmg} HP`, '#ff4040');
+
+  DS.p[who].dmgDealt = (DS.p[who].dmgDealt || 0); // note: dmgDealt tracks what this side took
+  DS.p[1 - who].dmgDealt = (DS.p[1 - who].dmgDealt || 0) + dmg;
+
+  _checkWinConditions();
+}
+
+function _destroyCard(who, lk, destroyer, destroyerOwner) {
+  const side    = DS.p[who];
+  const destroyed = side.lanes[lk];
+  if (!destroyed) return;
+
+  side.lanes[lk] = null;
+  _addLog(`R${DS.round}: ${destroyer.name} destroyed ${destroyed.name}!`);
+
+  const popX = _laneCenterX(lk);
+  const popY = who === 0 ? DL.PL_Y + 30 : DL.OL_Y + 30;
+  _addDmgPopup(popX, popY, 'DESTROYED', '#ff8020');
+
+  // Destroyer gains +1 Shard
+  const dstSide = DS.p[destroyerOwner];
+  dstSide.shards = Math.min(5, (dstSide.shards || 0) + 1);
+  _addDmgPopup(popX, DL.SHARDS_Y + 10, '+1 SHARD', '#d0a820');
+
+  // Flash effect
+  DS.flashEffect = { color: '#ff6020', expireFrame: fr + 25 };
+
+  _checkWinConditions();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WIN CONDITIONS
+// ═══════════════════════════════════════════════════════════════════════════
+function _checkWinConditions() {
+  const p0Dead = DS.p[0].hp <= 0;
+  const p1Dead = DS.p[1].hp <= 0;
+
+  if (p0Dead && p1Dead) {
+    _endDuel(_applyTieBreaker('both_dead'), 'Both HP hit 0 — tiebreak');
+    return true;
+  }
+  if (p0Dead) { _endDuel(1, 'Opponent HP reached 0'); return true; }
+  if (p1Dead) { _endDuel(0, 'Your HP reached 0'); return true; }
+  return false;
+}
+
+function _checkRound5End() {
+  if (DS.p[0].hp !== DS.p[1].hp) {
+    const winner = DS.p[0].hp > DS.p[1].hp ? 0 : 1;
+    _endDuel(winner, 'Round 5 — higher HP wins');
+    return true;
+  }
+  // Tiebreak 1: total BP on board
+  const bp0 = _totalBPOnBoard(0), bp1 = _totalBPOnBoard(1);
+  if (bp0 !== bp1) {
+    _endDuel(bp0 > bp1 ? 0 : 1, 'Tie: BP on board');
+    return true;
+  }
+  // Tiebreak 2: cumulative damage dealt
+  const d0 = DS.p[0].dmgDealt || 0, d1 = DS.p[1].dmgDealt || 0;
+  if (d0 !== d1) {
+    _endDuel(d0 > d1 ? 0 : 1, 'Tie: cumulative damage');
+    return true;
+  }
+  // Tiebreak 3: hotseat/AI → player 1 wins; tie4: duelId fallback
+  _endDuel(0, 'Tie: player 1 default win');
+  return true;
+}
+
+function _totalBPOnBoard(who) {
+  const lanes = DS.p[who].lanes;
+  return ['front','middle','back'].reduce((sum, lk) => sum + (lanes[lk] ? lanes[lk].bp : 0), 0);
+}
+
+function _applyTieBreaker(reason) {
+  return 0; // Player 1 wins on all-dead tie
+}
+
+function _endDuel(winner, reason) {
+  DS.over     = true;
+  DS.winner   = winner;
+  DS.winReason = reason;
+  DS.flashEffect = { color: winner === 0 ? '#40b060' : '#b03020', expireFrame: fr + 60 };
+  _addLog(`DUEL OVER: ${winner === 0 ? 'YOU WIN' : 'OPPONENT WINS'} — ${reason}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ROUND PROGRESSION
+// ═══════════════════════════════════════════════════════════════════════════
+function _nextRound() {
+  if (DS.over) return;
+
+  // Clear per-round state
+  DS.p[0].lockedIn = false;
+  DS.p[1].lockedIn = false;
+
+  if (DS.round >= MAX_ROUNDS) {
+    _checkRound5End();
+    return;
+  }
+
+  DS.round++;
+  _addLog(`--- Round ${DS.round} ---`);
+  _startDrawPhase();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXTRA ACTION
+// ═══════════════════════════════════════════════════════════════════════════
+function _openExtraActionModal() {
+  if (DS.phase !== 'summon' || DS.extraActUsed >= EXTRA_ACTION_MAX) return;
+  const side = DS.p[0];
+  const hasShards = side.shards >= 3;
+  DS.modal = {
+    type: 'extra_action',
+    canUseShards: hasShards,
+    choices: [
+      { id: 'draw',    label: 'Draw 1 card',          desc: 'Draw 1 from your deck' },
+      { id: 'half',    label: 'Half-cost Summon',      desc: 'Next summon costs half' },
+      { id: 'retarget',label: 'Retarget Lane',         desc: 'Move a card to new lane' },
+      { id: 'cancel',  label: 'Cancel Event',          desc: 'Undo opponent Event card' },
+    ],
+    selected: 0,
+    payMethod: hasShards ? 'shards' : 'x402',
+  };
+}
+
+function _applyExtraAction(choiceId) {
+  const side = DS.p[0];
+
+  // Deduct cost
+  if (DS.modal && DS.modal.payMethod === 'shards') {
+    side.shards -= 3;
+  }
+  DS.extraActUsed++;
+  DS.modal = null;
+
+  // Flash
+  DS.flashEffect = { color: '#d0a820', expireFrame: fr + 25 };
+  _addLog(`R${DS.round}: Extra Action — ${choiceId}`);
+
+  switch (choiceId) {
+    case 'draw':
+      if (side.deck.length > 0) {
+        side.hand.push(side.deck.shift());
+        _addLog(`Drew extra card`);
+      } else {
+        _showToast('Deck empty!', '#ff6040', 90);
+      }
+      break;
+    case 'half':
+      // Flag next card placement as half-cost
+      DS._halfCostNext = true;
+      _showToast('Next summon: half cost', '#d0a820', 90);
+      break;
+    case 'retarget':
+      _showToast('Tap a card in a lane to move it', '#80c0ff', 150);
+      DS._retargetMode = true;
+      break;
+    case 'cancel':
+      _showToast('Opponent Event cancelled', '#e080ff', 90);
+      break;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCOUT PEEK
+// ═══════════════════════════════════════════════════════════════════════════
+function _triggerScoutPeek() {
+  if (DS.scoutPeekUsed >= SCOUT_PEEK_MAX) return;
+  const oppHand = DS.p[1].hand;
+  if (oppHand.length === 0) {
+    _showToast('Opponent hand is empty', '#ff6040', 90);
+    return;
+  }
+  // x402 mock: immediately succeed
+  _x402Mock('/x402/scout-peek', { duelId: 'mock', playerPubkey: 'mock' }).then(function () {
+    const idx = Math.floor(Math.random() * oppHand.length);
+    DS.scoutPeekUsed++;
+    DS.scoutActive = true;
+    DS.scoutExpire = fr + 300; // 5 sec at 60fps
+    DS.scoutCardIdx = idx;
+    _addLog(`R${DS.round}: Scout Peek — saw ${oppHand[idx].name}`);
+    _showToast(`Peeked: ${oppHand[idx].name}!`, '#80c0ff', 180);
+  });
+}
+
+// x402 mock endpoint — always resolves success for Day 10
+function _x402Mock(endpoint, params) {
+  return Promise.resolve({ ok: true, endpoint, params });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// OVERLAYS
+// ═══════════════════════════════════════════════════════════════════════════
+function _drawModal() {
+  if (!DS.modal) return;
+  const m = DS.modal;
+
+  if (m.type === 'extra_action') _drawExtraActionModal(m);
+  else if (m.type === 'leave_confirm') _drawLeaveConfirmModal();
+}
+
+function _drawExtraActionModal(m) {
+  // Dim
+  g.fillStyle = 'rgba(0,0,0,0.7)';
+  g.fillRect(0, 0, W, H);
+
+  const mx = 20, my = 30, mw = 200, mh = 200;
+  g.fillStyle = '#141e2c';
+  g.fillRect(mx, my, mw, mh);
+  g.strokeStyle = '#d0a820';
+  g.lineWidth = 1;
+  g.strokeRect(mx + 0.5, my + 0.5, mw - 1, mh - 1);
+
+  g.fillStyle = '#d0a820';
+  g.font = 'bold 8px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'top';
+  g.fillText('EXTRA ACTION', mx + mw / 2, my + 6);
+
+  const costStr = m.payMethod === 'shards' ? '3 Shards' : '0.01 SOL (x402)';
+  g.fillStyle = '#8090a8';
+  g.font = '6px monospace';
+  g.fillText(`Cost: ${costStr}`, mx + mw / 2, my + 18);
+  g.textAlign = 'left';
+
+  m.choices.forEach(function (ch, i) {
+    const cy    = my + 32 + i * 38;
+    const sel   = i === m.selected;
+    g.fillStyle = sel ? '#1e3050' : '#0e1820';
+    g.fillRect(mx + 8, cy, mw - 16, 34);
+    g.strokeStyle = sel ? '#4080c0' : '#2a3848';
+    g.lineWidth = 1;
+    g.strokeRect(mx + 8 + 0.5, cy + 0.5, mw - 17, 33);
+
+    g.fillStyle = sel ? '#d0e8ff' : '#8090a8';
+    g.font = 'bold 7px monospace';
+    g.textBaseline = 'top';
+    g.fillText(ch.label, mx + 14, cy + 6);
+
+    g.fillStyle = '#5a6878';
+    g.font = '5px monospace';
+    g.fillText(ch.desc, mx + 14, cy + 18);
+  });
+
+  // Footer
+  g.fillStyle = '#506070';
+  g.font = '5px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'bottom';
+  g.fillText('Tap to select · LOCK IN to confirm · ESC to cancel', mx + mw / 2, my + mh - 4);
+  g.textAlign = 'left';
+}
+
+function _drawLeaveConfirmModal() {
+  g.fillStyle = 'rgba(0,0,0,0.7)';
+  g.fillRect(0, 0, W, H);
+
+  const mx = 60, my = 80, mw = 200, mh = 100;
+  g.fillStyle = '#1a0c0c';
+  g.fillRect(mx, my, mw, mh);
+  g.strokeStyle = '#d04030';
+  g.lineWidth = 1;
+  g.strokeRect(mx + 0.5, my + 0.5, mw - 1, mh - 1);
+
+  g.fillStyle = '#e06060';
+  g.font = 'bold 8px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('LEAVE DUEL?', mx + mw / 2, my + 20);
+
+  g.fillStyle = '#a08080';
+  g.font = '6px monospace';
+  g.fillText("You'll forfeit your ante.", mx + mw / 2, my + 36);
+  g.fillText('Opponent wins.', mx + mw / 2, my + 48);
+
+  // Buttons
+  _drawSmallButton(mx + 10, my + 64, 80, 24, 'CONFIRM LEAVE', '#d04030', true);
+  _drawSmallButton(mx + mw - 90, my + 64, 80, 24, 'STAY', '#40a060', true);
+  g.textAlign = 'left';
+}
+
+function _drawDuelOver() {
+  // Full-screen overlay
+  g.fillStyle = 'rgba(0,0,0,0.85)';
+  g.fillRect(0, 0, W, H);
+
+  const won = DS.winner === 0;
+  const banner = won ? '✦ VICTORY ✦' : '✦ DEFEAT ✦';
+  const bannerColor = won ? '#60e080' : '#e06060';
+
+  // Banner
+  g.fillStyle = bannerColor;
+  g.font = 'bold 16px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(banner, W / 2, 50);
+
+  // Subtitle
+  g.fillStyle = '#8090a8';
+  g.font = '7px monospace';
+  g.fillText('DUEL COMPLETE', W / 2, 70);
+
+  // Stats
+  const p0 = DS.p[0], p1 = DS.p[1];
+  const stats = [
+    `Rounds played:    ${DS.round} / ${MAX_ROUNDS}`,
+    `Your HP:          ${p0.hp}`,
+    `Opp HP:           ${p1.hp}`,
+    `Cards summoned:   ${p0.cardsSummoned}`,
+    `Damage dealt:     ${p0.dmgDealt || 0}`,
+    `Reason: ${DS.winReason}`,
+  ];
+  g.fillStyle = '#a0b8c8';
+  g.font = '6px monospace';
+  stats.forEach(function (s, i) {
+    g.fillText(s, W / 2 - 70, 88 + i * 11);
+  });
+
+  // Continue button
+  const bx = W / 2 - 50, by = 165;
+  const bw = 100, bh = 22;
+  const pulse = fr % 40 < 20;
+  g.fillStyle = pulse ? '#1e3828' : '#141e20';
+  g.fillRect(bx, by, bw, bh);
+  g.strokeStyle = '#40a060';
+  g.lineWidth = 1;
+  g.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+  g.fillStyle = '#60e080';
+  g.font = 'bold 8px monospace';
+  g.fillText('CONTINUE', W / 2, by + bh / 2);
+
+  g.textAlign = 'left';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INPUT HANDLING
+// ═══════════════════════════════════════════════════════════════════════════
+function handleDuelInput(px, py) {
+  if (!DS) return;
+
+  // Duel over — only Continue button works
+  if (DS.over) {
+    const bx = W / 2 - 50, by = 165, bw = 100, bh = 22;
+    if (px >= bx && px <= bx + bw && py >= by && py <= by + bh) {
+      exitDuelScene();
+      if (typeof fadeOut === 'function') {
+        fadeOut(function () { sc = 'lobby'; if (typeof fadeIn === 'function') fadeIn(); });
+      } else { sc = 'lobby'; }
+    }
+    return;
+  }
+
+  // Modal input
+  if (DS.modal) {
+    _handleModalInput(px, py);
+    return;
+  }
+
+  // Right panel hits
+  if (px >= DL.RP_X) {
+    _handlePanelInput(px, py);
+    return;
+  }
+
+  // Summon phase only for lane/hand interaction
+  if (DS.phase !== 'summon') return;
+
+  // Hotseat: only active side can interact
+  const activeSide = DS.mode === 'hotseat' ? DS.activeSide : 0;
+  if (activeSide !== 0) {
+    // P2's turn in hotseat — we still let P2 interact via same mouse
+    // (dev mode: both players share tab)
+    _handleGameAreaInput(px, py, DS.activeSide);
+    return;
+  }
+  _handleGameAreaInput(px, py, 0);
+}
+
+function _handleGameAreaInput(px, py, who) {
+  const side = DS.p[who];
+
+  // Tap player's own lanes
+  const ownLaneY = (who === 0) ? DL.PL_Y : DL.OL_Y;
+  if (py >= ownLaneY && py < ownLaneY + DL.OL_H) {
+    for (let li = 0; li < 3; li++) {
+      if (px >= DL.LANE_X[li] && px < DL.LANE_X[li] + DL.LANE_W) {
+        const lk = ['front','middle','back'][li];
+
+        // Retarget mode
+        if (DS._retargetMode && side.lanes[lk]) {
+          DS._retargetMode = false;
+          DS._retargetCard = { card: side.lanes[lk], fromLane: lk };
+          _showToast('Tap destination lane', '#80c0ff', 120);
+          return;
+        }
+        if (DS._retargetCard && !side.lanes[lk]) {
+          const rc = DS._retargetCard;
+          side.lanes[rc.fromLane] = null;
+          rc.card._lane = lk;
+          side.lanes[lk] = rc.card;
+          DS._retargetCard = null;
+          _addLog(`R${DS.round}: Moved ${rc.card.name} to ${lk}`);
+          return;
+        }
+
+        // Place selected card
+        if (side.selected !== null) {
+          const card = side.hand[side.selected];
+          if (!card) { side.selected = null; return; }
+          if (!_canPlaceLane(who, card, lk)) {
+            // Half-cost: check again after halving cost
+            if (DS._halfCostNext) {
+              const halfCost = {};
+              for (const [el, v] of Object.entries(card.cost)) halfCost[el] = Math.ceil(v / 2);
+              const origCost = card.cost;
+              card.cost = halfCost;
+              const placed = _placeCard(who, side.selected, lk);
+              if (!placed) card.cost = origCost;
+              else DS._halfCostNext = false;
+              return;
+            }
+            const reason = side.lanes[lk] ? 'Lane occupied' : 'Not enough energy';
+            _showToast(`Invalid: ${reason}`, '#ff6040', 90);
+            return;
+          }
+          _placeCard(who, side.selected, lk);
+        }
+        return;
+      }
+    }
+  }
+
+  // Tap hand cards (player 0 only)
+  if (who === 0 && py >= DL.HAND_Y && py < DL.HAND_Y + DL.HAND_H) {
+    const startIdx = DS.handScroll;
+    const visCount = Math.floor((DL.GW - 8) / DL.HCARD_GAP);
+    for (let i = 0; i < visCount; i++) {
+      const hIdx = startIdx + i;
+      if (hIdx >= side.hand.length) break;
+      const cx = DL.HCARD_X0 + i * DL.HCARD_GAP;
+      if (px >= cx && px < cx + DL.HCARD_W) {
+        if (side.selected === hIdx) {
+          side.selected = null; // deselect
+        } else {
+          side.selected = hIdx;
+        }
+        return;
+      }
+    }
+  }
+}
+
+function _handlePanelInput(px, py) {
+  const rx = DL.RP_X;
+
+  // Lock In button
+  if (py >= DL.LOCKIN_Y && py < DL.LOCKIN_Y + DL.LOCKIN_H && DS.phase === 'summon') {
+    _lockIn();
+    return;
+  }
+
+  // Scout Peek button (above Lock In)
+  if (DS.phase === 'summon' && DS.scoutPeekUsed < SCOUT_PEEK_MAX) {
+    const sy = DL.LOCKIN_Y - 18;
+    if (py >= sy && py < sy + 16) {
+      _triggerScoutPeek();
+      return;
+    }
+  }
+
+  // Extra Action button area (in Shards row region)
+  if (py >= DL.SHARDS_Y && py < DL.SHARDS_Y + DL.SHARDS_H &&
+      DS.phase === 'summon' && DS.extraActUsed < EXTRA_ACTION_MAX) {
+    if (px >= rx + 4 && px < rx + 40) {
+      _openExtraActionModal();
+      return;
+    }
+  }
+
+  // Leave Duel
+  if (py >= DL.LEAVE_Y && DS.phase === 'summon') {
+    DS.modal = { type: 'leave_confirm' };
+    return;
+  }
+}
+
+function _handleModalInput(px, py) {
+  const m = DS.modal;
+  if (!m) return;
+
+  if (m.type === 'extra_action') {
+    const mx = 20, my = 30, mw = 200;
+    m.choices.forEach(function (ch, i) {
+      const cy = my + 32 + i * 38;
+      if (px >= mx + 8 && px < mx + mw - 8 && py >= cy && py < cy + 34) {
+        m.selected = i;
+      }
+    });
+    // Clicking a selection twice (or Lock In button) confirms
+    if (py >= DL.LOCKIN_Y && py < DL.LOCKIN_Y + DL.LOCKIN_H) {
+      _applyExtraAction(m.choices[m.selected].id);
+    }
+  } else if (m.type === 'leave_confirm') {
+    const mx = 60, my = 80, mw = 200;
+    // Confirm leave
+    if (px >= mx + 10 && px < mx + 90 && py >= my + 64 && py < my + 88) {
+      DS.modal = null;
+      _endDuel(1, 'Player forfeited');
+    }
+    // Stay
+    if (px >= mx + mw - 90 && px < mx + mw - 10 && py >= my + 64 && py < my + 88) {
+      DS.modal = null;
+    }
+  }
+}
+
+function handleDuelKey(code) {
+  if (!DS) return;
+
+  if (DS.modal && DS.modal.type === 'extra_action') {
+    const m = DS.modal;
+    if (code === 'ArrowDown') m.selected = (m.selected + 1) % m.choices.length;
+    if (code === 'ArrowUp')   m.selected = (m.selected - 1 + m.choices.length) % m.choices.length;
+    if (code === 'KeyZ' || code === 'Enter') _applyExtraAction(m.choices[m.selected].id);
+    if (code === 'Escape' || code === 'KeyX') DS.modal = null;
+    return;
+  }
+
+  if (code === 'Escape' || code === 'KeyX') {
+    if (DS.p[0].selected !== null) {
+      DS.p[0].selected = null;
+    }
+  }
+}
+
+// ───────────────────────────────────────────────────────────────────────
 // MODULE: src/08-overlays.js
 // Card acquisition animation · dungeon confirm · marketplace · discard overlay · tutorial · intro · victory screen · cards collection screen · card detail panel · log screen
 // ───────────────────────────────────────────────────────────────────────
@@ -24862,6 +26550,7 @@ function draw(){
   else if(sc==='stats')dStats();
   else if(sc==='victory'){if(gameOverTimesUp)dGameOver();else dVictory();}
   else if(sc==='lobby')dLobby(); // Phase D Reborn LobbyScene
+  else if(sc==='duel')drawDuelScene(); // M2 Duel Board
   drawCardAcquisition();
   drawDiscardOverlay();
   drawMarketplace();
@@ -26387,18 +28076,32 @@ function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle(
 // ── Deck editor canvas click handler ─────────────────────────────────────
 // Wires deckEditorClick() for mouse clicks when the deck editor overlay is open.
 document.addEventListener('click', e => {
-  if (typeof deckEditorOpen === 'undefined' || !deckEditorOpen) return;
-  if (typeof deckEditorClick !== 'function') return;
-  // Convert client coords → canvas game coords
   const canvas = document.querySelector('canvas');
   if (!canvas) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = (typeof W !== 'undefined' ? W : 480) / rect.width;
-  const scaleY = (typeof H !== 'undefined' ? H : 320) / rect.height;
+  const scaleY = (typeof H !== 'undefined' ? H : 270) / rect.height;
   const px = (e.clientX - rect.left) * scaleX;
   const py = (e.clientY - rect.top) * scaleY;
+
+  // Duel scene input
+  if ((typeof sc !== 'undefined' && sc === 'duel') && typeof handleDuelInput === 'function') {
+    handleDuelInput(px, py);
+    return;
+  }
+
+  // Deck editor input
+  if (typeof deckEditorOpen === 'undefined' || !deckEditorOpen) return;
+  if (typeof deckEditorClick !== 'function') return;
   deckEditorClick(px, py);
 });
+
+// ── Duel scene keydown handler ───────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((typeof sc !== 'undefined' && sc === 'duel') && typeof handleDuelKey === 'function') {
+    handleDuelKey(e.code);
+  }
+}, { capture: false });
 
 
 // ───────────────────────────────────────────────────────────────────────
