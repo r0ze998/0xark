@@ -94,4 +94,7 @@ pub enum ErrorCode {
     HandAlreadyRevealed,
     #[msg("Duel is already over")]
     DuelOver,
+    // ── T-D13-A0: DEF-16 ────────────────────────────────────────────────────────
+    #[msg("Poseidon hash computation failed (invalid inputs)")]
+    PoseidonHashFailed,
 }

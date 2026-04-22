@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use crate::state::{DuelState, HandRevealed};
 use crate::error::ErrorCode;
 use crate::instructions::init_duel::DUEL_SEED;
+use crate::poseidon_helper::compute_hand_commitment;
 
 // ─── Instruction ─────────────────────────────────────────────────────────────
 
@@ -20,24 +21,18 @@ pub struct RevealHand<'info> {
 
 /// Reveal a player's hand after battle resolution for a given round.
 ///
-/// The player submits:
-///   - card_ids: the 10 card slots (0 = empty) matching what was committed
-///   - commitment_hash: the Poseidon(15) hash recomputed client-side
-///     (must match the stored commitment from commit_hand)
+/// T-D13-A0 (DEF-16): Full on-chain Poseidon(15) verification.
+/// The player submits card_ids and the original salt used during commit_hand.
+/// On-chain: recompute Poseidon(round, pubkey_lo, pubkey_hi, card_ids[10], salt_lo, salt_hi)
+/// and compare against the stored commitment. Mismatched reveals are rejected.
 ///
-/// Security note (Day 12 MVP):
-///   On-chain verification checks that client-supplied commitment_hash
-///   matches the stored commitment. Full on-chain Poseidon(15) recomputation
-///   via light-poseidon is tracked as DEF-16 (Day 13).
-///   The ZK proof at commit time already ensures card_ids are valid.
+/// This closes the cheat window from Day 12 MVP.
 pub fn handle_reveal_hand(
     ctx: Context<RevealHand>,
     duel_id: Pubkey,
     round: u8,
     card_ids: [u64; 10],
-    // Client recomputes Poseidon(15) off-chain and passes the result.
-    // On-chain: compare against stored commitment from commit_hand.
-    commitment_hash: [u8; 32],
+    salt: [u8; 32],
 ) -> Result<()> {
     let duel = &mut ctx.accounts.duel;
 
@@ -52,34 +47,40 @@ pub fn handle_reveal_hand(
 
     let round_idx = (round - 1) as usize;
 
-    // Check commitment was set (non-zero)
+    // Fetch stored commitment from commit_hand
     let stored_commitment = if is_p1 {
         duel.player_1_commitment[round_idx]
     } else {
         duel.player_2_commitment[round_idx]
     };
 
-    // Guard: commitment must have been stored (non-zero)
-    require!(
-        stored_commitment != [0u8; 32],
-        ErrorCode::CommitmentNotSet,
-    );
+    // Guard: commitment must have been set (non-zero)
+    require!(stored_commitment != [0u8; 32], ErrorCode::CommitmentNotSet);
 
-    // Guard: already revealed check (revealed slot has non-zero card_id or explicit flag)
+    // Guard: already revealed
     let already_revealed = if is_p1 {
         duel.player_1_revealed[round_idx] != [0u64; 10]
     } else {
         duel.player_2_revealed[round_idx] != [0u64; 10]
     };
-    // Allow re-reveal only if all zeros (not previously set)
     require!(!already_revealed, ErrorCode::HandAlreadyRevealed);
 
-    // Verify commitment match (client recomputed Poseidon off-chain)
-    // DEF-16: replace with on-chain Poseidon(15) via light-poseidon in Day 13
-    require!(
-        commitment_hash == stored_commitment,
-        ErrorCode::CommitmentMismatch,
-    );
+    // T-D13-A0: Recompute Poseidon(15) on-chain from revealed data.
+    // If commitment doesn't match, the player is cheating → reject.
+    let pubkey_bytes = player_key.to_bytes();
+    let recomputed = compute_hand_commitment(round, &pubkey_bytes, &card_ids, &salt)
+        .map_err(|_| error!(ErrorCode::PoseidonHashFailed))?;
+
+    // commit_hand stores the commitment as big-endian field element bytes.
+    // compute_hand_commitment returns little-endian — convert for comparison.
+    // The commitment stored during commit_hand was publicSignals[0] from snarkjs,
+    // which is a field element. We stored it as big-endian 32 bytes in the
+    // Groth16 verifier (fieldToBytes is big-endian).
+    // Our Poseidon helper returns little-endian. Convert to match.
+    let mut recomputed_be = recomputed;
+    recomputed_be.reverse();
+
+    require!(recomputed_be == stored_commitment, ErrorCode::CommitmentMismatch);
 
     // Store revealed cards
     if is_p1 {
@@ -96,7 +97,7 @@ pub fn handle_reveal_hand(
     });
 
     msg!(
-        "Hand revealed: player={} duel={} round={}",
+        "Hand revealed (Poseidon verified): player={} duel={} round={}",
         player_key,
         duel_id,
         round,

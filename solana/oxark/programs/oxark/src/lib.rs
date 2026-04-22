@@ -39,6 +39,8 @@ pub mod constants;
 pub mod error;
 pub mod instructions;
 pub mod state;
+pub mod poseidon_t16_constants;  // T-D13-A0: auto-generated circomlib t=16 constants
+pub mod poseidon_helper;         // T-D13-A0: on-chain Poseidon(15) for reveal_hand
 
 use anchor_lang::prelude::*;
 

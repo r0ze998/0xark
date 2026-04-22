@@ -1319,7 +1319,7 @@ dependencies = [
  "magicblock-delegation-program",
  "magicblock-magic-program-api",
  "solana-program 2.3.0",
- "solana-system-interface 1.0.0",
+ "solana-system-interface 2.0.0",
 ]
 
 [[package]]
@@ -2023,8 +2023,11 @@ name = "oxark"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "ark-bn254 0.5.0",
+ "ark-ff 0.5.0",
  "ephemeral-rollups-sdk",
  "litesvm",
+ "pso-poseidon",
  "sha2 0.10.9",
  "solana-bn254",
  "solana-instruction 3.4.0",
@@ -2174,6 +2177,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "pso-poseidon"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcb44ea70d1d456257f1294e351171285d0e38ad80122221c2cb4200614f0f74"
+dependencies = [
+ "ark-bn254 0.5.0",
+ "ark-ff 0.5.0",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
