@@ -271,9 +271,9 @@ function lobbyTriggerMatchFlash() { lobbyMatchFlash = 60; }
 // lobbyDialog: null = no dialog, else { title, lines[], buttons[{label,action,disabled,hint}], focusIdx }
 let lobbyDialog = null;
 
-const HALL_ANTES   = ['0.005 SOL', '0.01 SOL', '0.05 SOL'];
-const HALL_EMOJIS  = ['🥉', '🥈', '🥇'];
-const HALL_NAMES   = ['Bronze Hall', 'Silver Hall', 'Gold Hall'];
+const LOBBY_HALL_ANTES  = ['0.1 SOL', '0.2 SOL', '0.5 SOL'];
+const HALL_EMOJIS       = ['🥉', '🥈', '🥇'];
+const LOBBY_HALL_NAMES  = ['Bronze Hall', 'Silver Hall', 'Gold Hall'];
 
 // wins_at_tier placeholder — read from PlayerBattleStats PDA when available
 function _lobbyTierWins() {
@@ -292,9 +292,9 @@ function lobbyOpenDialog(buildingName) {
       if (tierIdx === 1 && wins[0] < 5) { locked = true; lockReason = `Requires 5 Bronze wins (current: ${wins[0]})`; }
       if (tierIdx === 2 && wins[1] < 3) { locked = true; lockReason = `Requires 3 Silver wins (current: ${wins[1]})`; }
       lobbyDialog = {
-        title: `${HALL_EMOJIS[tierIdx]} ${HALL_NAMES[tierIdx]}`,
+        title: `${HALL_EMOJIS[tierIdx]} ${LOBBY_HALL_NAMES[tierIdx]}`,
         lines: [
-          `Ante: ${HALL_ANTES[tierIdx]}`,
+          `Ante: ${LOBBY_HALL_ANTES[tierIdx]}`,
           `Current queue: — players`,
           locked ? `🔒 LOCKED — ${lockReason}` : 'Ready to duel',
         ],

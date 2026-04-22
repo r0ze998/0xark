@@ -1219,7 +1219,7 @@ async function _emitCommitHandTx(duelId, proofBytes, commitmentBytes) {
   const duelIdBytes = new Uint8Array(duelIdBuf);
 
   const [duelPda] = solanaWeb3.PublicKey.findProgramAddressSync(
-    [Buffer.from('duel'), duelIdBytes],
+    [new TextEncoder().encode('duel'), duelIdBytes],
     PROGRAM_PUBKEY
   );
 
@@ -1245,7 +1245,7 @@ async function _emitCommitHandTx(duelId, proofBytes, commitmentBytes) {
       { pubkey: duelPda,  isSigner: false, isWritable: true },
       { pubkey: playerKey, isSigner: true,  isWritable: false },
     ],
-    data: Buffer.from(data),
+    data: data,
   });
 
   const tx = new solanaWeb3.Transaction().add(ix);
