@@ -1,95 +1,108 @@
 # 0xARK — Pitch Video Script (3 minutes)
-
-## [0:00-0:15] Hook
-
-*[Screen: dark island with fog rolling in]*
-
-"What if you could hide your hand in an on-chain card game?"
-
-*[Title card: 0xARK]*
-
-"Five ancient spirits. Three players. One island. Everything hidden."
-
-## [0:15-0:45] Problem
-
-*[Split screen: transparent blockchain vs hidden gameplay]*
-
-"On-chain games have a fundamental problem: blockchains are transparent. Every move, every asset, every strategy — visible to everyone."
-
-"This kills the most interesting part of games: the unknown."
-
-*[Show: Dark Forest screenshot as reference]*
-
-"Dark Forest proved that ZK changes everything. We're bringing that to card games."
-
-## [0:45-1:30] Solution / Demo
-
-*[Live gameplay footage]*
-
-"0xARK drops you on a fog-covered island. You explore to find five spirit cards: Aegis, Umbra, Ignis, Tempest, Nihil."
-
-*[Show: walking through fog, finding a card]*
-
-"Each area holds different spirits. But you're not alone."
-
-*[Show: heartbeat pulse, footprints in grass]*
-
-"AI rivals are hunting too. They collect the same cards from the same pool. They can steal yours."
-
-*[Show: battle encounter, action selection]*
-
-"Every action is hidden until everyone commits. Steal, defend, scout — all simultaneous."
-
-*[Show: card consumption effect]*
-
-"Each card can be held for completion... or consumed for power. The dilemma is constant."
-
-## [1:30-2:00] Tech
-
-*[Show: code/architecture diagram]*
-
-"Built on Solana with Anchor. Seven core instructions deployed to devnet. Program verified on-chain."
-
-"ZK commit-reveal with Poseidon hash and Groth16 proofs. Your move is hidden until verification."
-
-"x402 micropayments let AI agents trade information autonomously. 'Where is my rival?' costs $0.001."
-
-*[Show: terminal with test results]*
-
-"Seven passing tests. Full round verified: create, join, start, commit, reveal, resolve."
-
-## [2:00-2:30] Traction / Market
-
-*[Show: live demo URL, gameplay screenshots]*
-
-"Playable right now at r0ze998.github.io/0xark"
-
-"57 versions. 9,500 lines of game client. Three maps. Five characters with unique abilities. Deployed on devnet."
-
-"No existing Solana game combines ZK hidden information, area-based strategy, and AI agent economics."
-
-## [2:30-2:50] Vision
-
-"Phase 1 is the prototype. Phase 2: full multiplayer with real stakes. Seasons where winners keep their cards as NFTs."
-
-"The long-term vision: an autonomous world where AI agents form economies, trade information, and play alongside humans."
-
-## [2:50-3:00] Close
-
-*[Show: character lineup: AEGIS, UMBRA, IGNIS, TEMPEST, NIHIL]*
-
-"0xARK. Five spirits. Everything hidden. Information has a price."
-
-*[URL + GitHub + Twitter]*
-
-"Play now. r0ze998.github.io/0xark"
+# Reborn Edition — Phase D
 
 ---
 
-## Production Notes
-- Record gameplay footage using screen capture
-- Use the actual game client for all demos
-- Loom or OBS for recording
-- Keep energy high but not hype-y
-- Show real code, real tests, real gameplay
-- Total: 3 minutes max
+## [0:00-0:12] Hook
+
+*[Screen: Crown Plaza lobby at night, three duel halls glowing]*
+
+"Your hand is sealed."
+
+*[ZK commit animation — hexagonal lock closing over card hand]*
+
+"Your opponent can't see it."
+
+*[Chain icon + Solana logo flash]*
+
+"But the chain can verify it."
+
+*[Title card: 0xARK — ZK CARD DUELING ON SOLANA]*
+
+---
+
+## [0:12-0:40] Problem
+
+*[Split screen: transparent chain vs hidden gameplay]*
+
+"Every on-chain card game has one flaw: the blockchain is public. Your hand, your strategy, your deck — visible to anyone watching."
+
+"That kills the most important part of card games: information asymmetry."
+
+"What if we could have a card game where hands are provably hidden — not by a server you trust, but by math you can verify?"
+
+---
+
+## [0:40-1:20] Demo
+
+*[Show: Crown Plaza lobby walk-up to Gold Hall]*
+
+"0xARK drops you into the Crown Plaza. Three duel halls: Bronze, Silver, Gold."
+
+*[Show: queue join → 30 seconds → "AI OPPONENT JOINED"]*
+
+"Queue up. If no human joins in 30 seconds, our AI — claude-haiku-4-5 — joins instead. It reads the full game state. It reasons."
+
+*[Show: ZK commit animation]*
+
+"Every round: both players commit a Poseidon hash of their hand. Sealed on-chain. Neither can fake their cards."
+
+*[Show: Summon phase — placing cards in lanes]*
+
+"Five rounds. Three lanes. Element affinity: fire beats ice, ice beats lightning, lightning beats fire."
+
+*[Show: Battle resolution + Victory screen]*
+
+"Win: two of their cards become yours."
+
+---
+
+## [1:20-1:45] Gold Hall + Legendary
+
+*[Show: "LEGENDARY CLAIMED: Sceptre of Valerius #3" banner]*
+
+"At Gold Hall: lose, and you lose a Legendary too. On-chain. Verifiable."
+
+"Four Legendary species. Ten of each per Season. Supply capped on a PDA."
+
+"Earn one every four Gold Hall wins. Take one from a player who loses to you."
+
+---
+
+## [1:45-2:15] Technology
+
+"Anchor on Solana — 30+ instructions: matchmaking, ZK duel, Legendary supply, Season prize distribution."
+
+"Circom ZK — Poseidon hash of hand contents, Groth16 proof in-browser under 3 seconds."
+
+"claude-haiku-4-5 — AI opponent that fills empty queues, makes reasoned Summon decisions."
+
+"x402 — Scout Peek (0.005 SOL) and Extra Action (0.01 SOL) paid live in-duel."
+
+---
+
+## [2:15-2:40] Season System
+
+*[Show: Season countdown + Prize Pool ticker]*
+
+"Seasons run 14 days. Entry fees flow into an on-chain Prize Pool. First to 60/60 wins 40%."
+
+---
+
+## [2:40-3:00] Vision + CTA
+
+"0xARK is provably fair, financially meaningful, AI-augmented PvP — fully on-chain on Solana."
+
+"r0ze998.github.io/0xark"
+
+*[Title card: 0xARK — Built for Colosseum Frontier 2026]*
+
+---
+
+## Recording notes
+- Total runtime: 3:00 hard cap
+- Voice: calm, technical, confident — not hype
+- OBS at 1280×720, 60fps
+- ZK commit animation: use in-game M3 cutscene (triggered on duel start)
+- Legendary banner: Victory scene Gold Hall demo duel
+- Solscan LegendarySupply PDA: requires devnet init_legendary_supply(1) call first
