@@ -26,6 +26,7 @@ pub mod unlock_achievement;
 pub mod set_title;
 pub mod enter_queue;
 pub mod leave_queue;
+pub mod unlock_lore_shard;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -55,3 +56,4 @@ pub use unlock_achievement::*;
 pub use set_title::*;
 pub use enter_queue::*;
 pub use leave_queue::*;
+pub use unlock_lore_shard::*;

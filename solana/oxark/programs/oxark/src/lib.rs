@@ -471,4 +471,28 @@ pub mod oxark {
     pub fn leave_queue(ctx: Context<LeaveQueue>, tier: u8, season: u16) -> Result<()> {
         instructions::leave_queue::handle_leave_queue(ctx, tier, season)
     }
+
+    // ── D11: Lore Shard System ────────────────────────────────────────────────
+
+    /// Unlock a lore shard for a card the player owns.
+    ///
+    /// Shard indices:
+    ///   0 = Shard 1 — auto-unlocked on card acquisition
+    ///   1 = Shard 2 — unlocked by duel participation with card in deck
+    ///   2 = Shard 3 — unlocked via Gold Hall win or x402 payment
+    ///
+    /// Method codes: 0=auto, 1=condition_met, 2=x402_payment
+    ///
+    /// Idempotent: calling for an already-unlocked shard is a no-op.
+    /// Emits `LoreShardUnlocked` event.
+    ///
+    /// PDA seeds: `["card_lore_shards", card_mint, owner_pubkey]` (init_if_needed)
+    pub fn unlock_lore_shard(
+        ctx: Context<UnlockLoreShard>,
+        card_mint: Pubkey,
+        shard_index: u8,
+        method: u8,
+    ) -> Result<()> {
+        instructions::unlock_lore_shard::handle_unlock_lore_shard(ctx, card_mint, shard_index, method)
+    }
 }

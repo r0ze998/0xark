@@ -516,3 +516,56 @@ pub struct QueueMatchReady {
     pub player_a: Pubkey,
     pub player_b: Pubkey,
 }
+
+// === D11: Lore Shard System ===
+
+/// Per-card lore discovery tracker (3 shards per card).
+///
+/// Shard 0: Auto-unlocked on first acquisition.
+/// Shard 1: Unlocked by playing a duel with this card in the active deck.
+/// Shard 2: Unlocked via Gold Hall win or direct x402 payment.
+///
+/// PDA seeds: ["card_lore_shards", card_mint, owner_pubkey]
+#[account]
+pub struct CardLoreShards {
+    pub card_mint:          Pubkey,
+    pub owner:              Pubkey,
+    pub shards_found:       [bool; 3],
+    pub unlock_timestamps:  [i64; 3],
+    pub bump:               u8,
+}
+
+impl CardLoreShards {
+    // 8 disc + 32 card_mint + 32 owner + 3 shards_found + 3*8 unlock_timestamps + 1 bump
+    pub const SIZE: usize = 8 + 32 + 32 + 3 + (3 * 8) + 1;
+
+    pub fn shards_unlocked_count(&self) -> u8 {
+        self.shards_found.iter().filter(|&&f| f).count() as u8
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.shards_found.iter().all(|&f| f)
+    }
+}
+
+impl Default for CardLoreShards {
+    fn default() -> Self {
+        Self {
+            card_mint:         Pubkey::default(),
+            owner:             Pubkey::default(),
+            shards_found:      [false; 3],
+            unlock_timestamps: [0i64; 3],
+            bump:              0,
+        }
+    }
+}
+
+/// Emitted when a lore shard is unlocked for a card.
+#[event]
+pub struct LoreShardUnlocked {
+    pub card_mint:   Pubkey,
+    pub owner:       Pubkey,
+    pub shard_index: u8,
+    pub method:      u8,   // 0=auto, 1=condition_met, 2=x402_payment
+    pub timestamp:   i64,
+}
