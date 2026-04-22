@@ -660,3 +660,50 @@ pub struct HandRevealed {
     pub round:    u8,
     pub card_ids: [u64; 10],
 }
+
+// ─── T-D13-A: CardBattleHistory PDA ──────────────────────────────────────────
+
+/// Per-NFT battle statistics PDA.
+/// Seed: ["card_battle_history", card_mint]
+/// Total ≈ 400 bytes; init-if-needed on first update.
+#[account]
+pub struct CardBattleHistory {
+    pub card_mint:             Pubkey,       // 32 — NFT mint address
+    pub wins:                  u32,          // 4
+    pub losses:                u32,          // 4
+    pub kos:                   u32,          // 4  — enemies destroyed
+    pub dmg_dealt:             u64,          // 8  — cumulative BP damage
+    pub times_summoned:        u32,          // 4
+    pub owners_history:        [Pubkey; 10], // 320 — ring buffer (index 0 = most recent ex-owner)
+    pub owners_history_len:    u8,           // 1   — slots filled (0–10)
+    pub owners_dropped_count:  u32,          // 4   — owners that rolled off the buffer
+    pub acquisition_source:    u8,           // 1   — 0=mint,1=shop,2=duel_won,3=p2p_trade
+    pub current_owner_since:   i64,          // 8
+    pub created_at:            i64,          // 8
+    pub bump:                  u8,           // 1
+}
+
+impl CardBattleHistory {
+    pub const CARD_BATTLE_HISTORY_SEED: &'static [u8] = b"card_battle_history";
+    /// Discriminator(8) + fields
+    pub const LEN: usize = 8 + 32 + 4 + 4 + 4 + 8 + 4 + (32 * 10) + 1 + 4 + 1 + 8 + 8 + 1;
+}
+
+// T-D13-A4: events
+#[event]
+pub struct CardBattleHistoryUpdated {
+    pub card_mint: Pubkey,
+    pub wins:      u32,
+    pub losses:    u32,
+    pub kos:       u32,
+    pub dmg_dealt: u64,
+}
+
+#[event]
+pub struct CardOwnerChanged {
+    pub card_mint:  Pubkey,
+    pub old_owner:  Pubkey,
+    pub new_owner:  Pubkey,
+    pub source:     u8,
+    pub timestamp:  i64,
+}

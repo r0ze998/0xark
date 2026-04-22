@@ -30,6 +30,8 @@ pub mod unlock_lore_shard;
 pub mod init_duel;
 pub mod commit_hand;
 pub mod reveal_hand;
+pub mod update_card_battle_history;
+pub mod record_card_owner_change;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -63,3 +65,5 @@ pub use unlock_lore_shard::*;
 pub use init_duel::*;
 pub use commit_hand::*;
 pub use reveal_hand::*;
+pub use update_card_battle_history::*;
+pub use record_card_owner_change::*;

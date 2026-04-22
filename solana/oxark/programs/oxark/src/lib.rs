@@ -528,10 +528,37 @@ pub mod oxark {
         duel_id: Pubkey,
         round: u8,
         card_ids: [u64; 10],
-        commitment_hash: [u8; 32],
+        salt: [u8; 32],
     ) -> Result<()> {
         instructions::reveal_hand::handle_reveal_hand(
-            ctx, duel_id, round, card_ids, commitment_hash,
+            ctx, duel_id, round, card_ids, salt,
+        )
+    }
+
+    // ─── T-D13-A: CardBattleHistory ───────────────────────────────────────────
+
+    pub fn update_card_battle_history(
+        ctx: Context<UpdateCardBattleHistory>,
+        card_mint: Pubkey,
+        wins_delta: u32,
+        losses_delta: u32,
+        kos_delta: u32,
+        dmg_delta: u64,
+        summon_delta: u32,
+    ) -> Result<()> {
+        instructions::update_card_battle_history::handle_update_card_battle_history(
+            ctx, card_mint, wins_delta, losses_delta, kos_delta, dmg_delta, summon_delta,
+        )
+    }
+
+    pub fn record_card_owner_change(
+        ctx: Context<RecordCardOwnerChange>,
+        card_mint: Pubkey,
+        new_owner: Pubkey,
+        source: u8,
+    ) -> Result<()> {
+        instructions::record_card_owner_change::handle_record_card_owner_change(
+            ctx, card_mint, new_owner, source,
         )
     }
 }
