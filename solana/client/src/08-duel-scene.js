@@ -252,13 +252,29 @@ function drawDuelScene() {
   g.lineWidth = 1;
   g.beginPath(); g.moveTo(DL.RP_X, 0); g.lineTo(DL.RP_X, H); g.stroke();
 
+  // Screen shake (B1)
+  if (DS.screenShake && fr < DS.screenShake.endFrame) {
+    const amp = DS.screenShake.amplitude;
+    g.save();
+    g.translate(
+      (Math.random() * 2 - 1) * amp,
+      (Math.random() * 2 - 1) * amp
+    );
+  }
+
   _drawGameArea();
   _drawRightPanel();
+  _drawAttackArrows();   // B2: attack arrows
+  _drawParticles();      // B1: destruction particles
   _drawDmgPopups();
   if (DS.flashEffect && fr < DS.flashEffect.expireFrame) _drawFlash();
   if (DS.toast && fr < DS.toast.expireFrame) _drawToast();
   if (DS.modal) _drawModal();
   if (DS.over) _drawDuelOver();
+
+  if (DS.screenShake && fr < DS.screenShake.endFrame) {
+    g.restore();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -624,13 +640,26 @@ function _drawRightPanel() {
 function _drawPhaseTabs(rx) {
   const tabW = DL.RP_W / 4;
   PHASE_ORDER.forEach(function (ph, i) {
-    const tx   = rx + i * tabW;
+    const tx     = rx + i * tabW;
     const active = DS.phase === ph;
-    g.fillStyle = active ? '#2a4060' : '#141c28';
+    // B3: Active tab pulses with subtle brightness wave (1 sec cycle)
+    const pulse = active ? 0.5 + 0.5 * Math.sin((fr / 60) * Math.PI * 2) : 0;
+    const bgAlpha = active ? (0.18 + pulse * 0.07) : 0.08;
+
+    g.fillStyle = active ? `rgba(64,128,192,${bgAlpha + 0.12})` : '#141c28';
     g.fillRect(tx, DL.TABS_Y, tabW, DL.TABS_H);
-    g.strokeStyle = active ? '#4080c0' : '#1e2838';
-    g.lineWidth = 1;
+
+    // Active glow border
+    g.strokeStyle = active ? `rgba(80,160,220,${0.6 + pulse * 0.4})` : '#1e2838';
+    g.lineWidth = active ? 1.5 : 1;
     g.strokeRect(tx + 0.5, DL.TABS_Y + 0.5, tabW - 1, DL.TABS_H - 1);
+
+    // Bottom accent line on active tab
+    if (active) {
+      g.fillStyle = `rgba(80,180,255,${0.6 + pulse * 0.4})`;
+      g.fillRect(tx + 1, DL.TABS_Y + DL.TABS_H - 2, tabW - 2, 2);
+    }
+
     g.fillStyle = active ? '#d0e8ff' : '#607080';
     g.font = (active ? 'bold ' : '') + '5px monospace';
     g.textAlign = 'center';
@@ -759,21 +788,37 @@ function _drawLockInButton(rx) {
   const by      = DL.LOCKIN_Y;
   const bh      = DL.LOCKIN_H;
   const enabled = DS.phase === 'summon' && !DS.over;
-  const pulse   = enabled && (fr % 40 < 20);
-  const bgCol   = enabled ? (pulse ? '#1e5030' : '#183828') : '#141820';
-  const txCol   = enabled ? '#60e080' : '#3a4858';
+  const isBattle = DS.phase === 'battle';
+  // B4: pulse brightness cycle
+  const pulseFr = fr % 60;
+  const pulse   = enabled && pulseFr < 30;
+  const justPressed = DS._lockInFlash && fr < DS._lockInFlash;
+
+  let bgCol, borderCol, txCol, label;
+  if (justPressed) {
+    bgCol = '#ffffffcc'; borderCol = '#ffffff'; txCol = '#000000'; label = '✓';
+  } else if (isBattle) {
+    bgCol = '#0e1418'; borderCol = '#2a3040'; txCol = '#3a5058'; label = 'BATTLE...';
+  } else if (enabled) {
+    bgCol = pulse ? '#1e5030' : '#183828';
+    borderCol = pulse ? '#40c060' : '#2a6040';
+    txCol = '#60e080';
+    label = 'LOCK IN';
+  } else {
+    bgCol = '#141820'; borderCol = '#2a3040'; txCol = '#3a4858'; label = 'LOCK IN';
+  }
 
   g.fillStyle = bgCol;
   g.fillRect(rx + 4, by + 4, DL.RP_W - 8, bh - 8);
-  g.strokeStyle = enabled ? (pulse ? '#40c060' : '#2a6040') : '#2a3040';
-  g.lineWidth = 1;
+  g.strokeStyle = borderCol;
+  g.lineWidth = enabled && !justPressed ? 1.5 : 1;
   g.strokeRect(rx + 4 + 0.5, by + 4 + 0.5, DL.RP_W - 9, bh - 9);
 
   g.fillStyle = txCol;
   g.font = 'bold 8px monospace';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText('LOCK IN', rx + DL.RP_W / 2, by + bh / 2);
+  g.fillText(label, rx + DL.RP_W / 2, by + bh / 2);
   g.textAlign = 'left';
 
   // Scout peek + Counter-peek buttons (above lock in, only in summon phase)
@@ -955,6 +1000,9 @@ function _startSummonPhase() {
 function _lockIn() {
   if (DS.phase !== 'summon' || DS.over) return;
 
+  // B4: flash pressed state for 6 frames
+  DS._lockInFlash = fr + 6;
+
   const side = DS.p[DS.activeSide];
   side.lockedIn = true;
   side.selected = null;
@@ -1016,19 +1064,107 @@ function _startBattlePhase() {
 // Update tick — called each frame from drawDuelScene
 function _updateAnimations() {
   DS.dmgPopups = DS.dmgPopups.filter(p => fr < p.expire);
+  // Scout/counter peek expiry
   if (DS.scoutActive && fr >= DS.scoutExpire) {
-    DS.scoutActive = false;
-    DS.scoutCardIdx = -1;
+    DS.scoutActive = false; DS.scoutCardIdx = -1;
+  }
+  if (DS.counterPeekActive && fr >= DS.counterPeekExpire) {
+    DS.counterPeekActive = false; DS.counterPeekCardIdx = -1;
+  }
+  // Particle update
+  if (DS.particles) {
+    DS.particles = DS.particles.filter(function (p) {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.08; // gravity
+      p.life--;
+      return p.life > 0;
+    });
+  }
+  // Attack arrow update
+  if (DS.attackArrows) {
+    DS.attackArrows = DS.attackArrows.filter(p => fr < p.expire);
   }
   // Auto-phase advance
   if (DS._advanceAt && fr >= DS._advanceAt) {
     const next = DS._nextPhase;
     DS._advanceAt = null;
     DS._nextPhase = null;
-    if (next === 'energy')       _startEnergyPhase();
-    else if (next === 'summon')  _startSummonPhase();
+    if (next === 'energy')           _startEnergyPhase();
+    else if (next === 'summon')      _startSummonPhase();
     else if (next === '_next_round') _nextRound();
   }
+}
+
+// ── Particle burst on card destruction (B1) ──────────────────────────────────
+function _spawnDestroyParticles(x, y, elColor) {
+  if (!DS.particles) DS.particles = [];
+  const count = 10;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+    const speed = 1 + Math.random() * 2;
+    DS.particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1,
+      color: elColor,
+      life: 25 + Math.floor(Math.random() * 15),
+    });
+  }
+  // Brief screen shake (2px amplitude, 12 frames)
+  DS.screenShake = { endFrame: fr + 12, amplitude: 2 };
+}
+
+function _drawParticles() {
+  if (!DS.particles || DS.particles.length === 0) return;
+  DS.particles.forEach(function (p) {
+    const alpha = p.life / 30;
+    g.globalAlpha = Math.min(1, alpha);
+    g.fillStyle = p.color;
+    g.fillRect(Math.round(p.x) - 2, Math.round(p.y) - 2, 4, 4);
+  });
+  g.globalAlpha = 1;
+}
+
+// ── Attack arrow visualization (B2) ─────────────────────────────────────────
+function _spawnAttackArrow(fromX, fromY, toX, toY, elColor) {
+  if (!DS.attackArrows) DS.attackArrows = [];
+  DS.attackArrows.push({
+    fromX, fromY, toX, toY, color: elColor,
+    startFrame: fr, expire: fr + 30,
+  });
+}
+
+function _drawAttackArrows() {
+  if (!DS.attackArrows || DS.attackArrows.length === 0) return;
+  DS.attackArrows.forEach(function (a) {
+    const age = fr - a.startFrame;
+    const progress = Math.min(1, age / 20); // grow over 20 frames
+    const alpha = age > 20 ? Math.max(0, 1 - (age - 20) / 10) : 1;
+    const cx = a.fromX + (a.toX - a.fromX) * progress;
+    const cy = a.fromY + (a.toY - a.fromY) * progress;
+
+    g.globalAlpha = alpha;
+    g.strokeStyle = a.color;
+    g.lineWidth = 2;
+    g.setLineDash([4, 2]);
+    g.beginPath();
+    g.moveTo(a.fromX, a.fromY);
+    g.lineTo(cx, cy);
+    g.stroke();
+    g.setLineDash([]);
+
+    // Arrowhead at current progress point
+    if (progress > 0.2) {
+      const angle = Math.atan2(a.toY - a.fromY, a.toX - a.fromX);
+      g.fillStyle = a.color;
+      g.beginPath();
+      g.moveTo(cx, cy);
+      g.lineTo(cx - 6 * Math.cos(angle - 0.4), cy - 6 * Math.sin(angle - 0.4));
+      g.lineTo(cx - 6 * Math.cos(angle + 0.4), cy - 6 * Math.sin(angle + 0.4));
+      g.closePath();
+      g.fill();
+    }
+    g.globalAlpha = 1;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1200,6 +1336,12 @@ function _resolveLane(pCard, oCard, lk) {
   const firstOwner  = pFirst ? 0 : 1;
   const secondOwner = pFirst ? 1 : 0;
 
+  // B2: Spawn attack arrow from first to second
+  const lx = _laneCenterX(lk);
+  const fy = firstOwner === 0 ? DL.PL_Y + 40 : DL.OL_Y + 40;
+  const ty = firstOwner === 0 ? DL.OL_Y + 40 : DL.PL_Y + 40;
+  _spawnAttackArrow(lx, fy, lx, ty, EL_HEX[first.element] || '#ffffff');
+
   const firstBP = applyElementAffinity(first.element, second.element, first.bp);
   _logAffinityFx(first, second, firstBP);
   second.hp -= firstBP;
@@ -1318,6 +1460,9 @@ function _destroyCard(who, lk, destroyer, destroyerOwner) {
   dstSide.shards = Math.min(5, (dstSide.shards || 0) + 1);
   _addDmgPopup(popX, DL.SHARDS_Y + 10, '+1 SHARD', '#d0a820');
 
+  // B1: Destruction particle burst + screen shake
+  _spawnDestroyParticles(popX, popY, EL_HEX[destroyed.element] || '#ff8020');
+
   // Flash effect
   DS.flashEffect = { color: '#ff6020', expireFrame: fr + 25 };
 
@@ -1426,13 +1571,27 @@ function _openExtraActionModal() {
 
 function _applyExtraAction(choiceId) {
   const side = DS.p[0];
+  const payMethod = DS.modal ? DS.modal.payMethod : 'shards';
 
-  // Deduct cost
-  if (DS.modal && DS.modal.payMethod === 'shards') {
+  // Deduct cost — then close modal and apply
+  if (payMethod === 'shards') {
     side.shards -= 3;
+    DS.modal = null;
+    _doApplyExtraAction(choiceId);
+  } else {
+    // x402 path — close modal immediately, verify payment async, then apply
+    DS.modal = null;
+    _showToast('Verifying payment...', '#8090a8', 240);
+    _x402Mock('/x402/extra-action', { action: choiceId }).then(function (result) {
+      if (!result.ok) return; // toast shown by _x402Mock
+      _doApplyExtraAction(choiceId); // increments DS.extraActUsed internally
+    });
   }
+}
+
+function _doApplyExtraAction(choiceId) {
+  const side = DS.p[0];
   DS.extraActUsed++;
-  DS.modal = null;
 
   // Flash
   DS.flashEffect = { color: '#d0a820', expireFrame: fr + 25 };
@@ -1472,8 +1631,9 @@ function _triggerScoutPeek() {
     _showToast('Opponent hand is empty', '#ff6040', 90);
     return;
   }
-  // x402 mock: immediately succeed
-  _x402Mock('/x402/scout-peek', { duelId: 'mock', playerPubkey: 'mock' }).then(function () {
+  _showToast('Verifying payment...', '#8090a8', 240);
+  _x402Mock('/x402/scout-peek', { duelId: 'mock' }).then(function (result) {
+    if (!result.ok) return; // toast already shown by _x402Mock
     const idx = Math.floor(Math.random() * oppHand.length);
     DS.scoutPeekUsed++;
     DS.scoutActive = true;
@@ -1500,7 +1660,9 @@ function _triggerCounterPeek() {
     _showToast('Opponent hand is empty', '#ff6040', 90);
     return;
   }
-  _x402Mock('/x402/counter-peek', { duelId: 'mock', playerPubkey: 'mock' }).then(function () {
+  _showToast('Verifying payment...', '#8090a8', 240);
+  _x402Mock('/x402/counter-peek', { duelId: 'mock' }).then(function (result) {
+    if (!result.ok) return;
     // Reveal the highest-BP card (strategic: see the biggest threat)
     let best = 0;
     for (let i = 1; i < oppHand.length; i++) {
@@ -1515,9 +1677,39 @@ function _triggerCounterPeek() {
   });
 }
 
-// x402 mock endpoint — always resolves success for Day 10
+// x402 endpoint — Day 11: real verification via multiplayer server
+// Falls back to mock if server unreachable (offline/demo mode).
 function _x402Mock(endpoint, params) {
-  return Promise.resolve({ ok: true, endpoint, params });
+  // Resolve server base (same host as WS, or localhost in dev)
+  const base = (typeof WS_URL !== 'undefined' && WS_URL)
+    ? WS_URL.replace('ws://', 'http://').replace('wss://', 'https://')
+    : 'http://localhost:3500';
+  const url = base.replace(/\/$/, '') + endpoint;
+
+  // Get player pubkey from wallet connection (if available)
+  const playerPubkey = (typeof walletPubkey !== 'undefined' && walletPubkey) ? walletPubkey : 'demo';
+
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ playerPubkey }, params)),
+    signal: AbortSignal.timeout(6000), // 6 sec timeout
+  })
+    .then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) {
+          // 402 = payment required
+          _showToast(data.error || 'Payment required', '#ff6040', 150);
+          return { ok: false, error: data.error };
+        }
+        return data;
+      });
+    })
+    .catch(function (err) {
+      // Network error / server offline — fall back to demo mode
+      console.warn('[x402] Server unreachable, using demo mode:', err.message);
+      return { ok: true, demo: true };
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1662,6 +1854,87 @@ function _drawDuelOver() {
   g.fillText('CONTINUE', W / 2, by + bh / 2);
 
   g.textAlign = 'left';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ZK HAND SERIALIZATION (DEF-E, Day 11 prep for Day 12 circuit)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Generate cryptographically random 32-byte salt (as Uint8Array)
+function generateHandSalt() {
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const salt = new Uint8Array(32);
+    crypto.getRandomValues(salt);
+    return salt;
+  }
+  // Fallback: seeded from timestamp (not cryptographically secure, dev only)
+  const salt = new Uint8Array(32);
+  let s = Date.now();
+  for (let i = 0; i < 32; i++) {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    salt[i] = s & 0xff;
+  }
+  return salt;
+}
+
+// Serialize a player's hand for ZK circuit input (Day 12).
+// Input: hand array from DS.p[who].hand, round number, Uint8Array salt
+// Output: { card_ids: [u64; 10], salt: [u8; 32], phase: u8, player_pubkey: [u8; 32] }
+//
+// Card IDs are padded to MAX_HAND_SIZE=10 with 0 (empty slot sentinel).
+// phase = round number (1-5).
+// player_pubkey = 32 bytes from wallet (or zero-array in demo mode).
+function serializeHandForZK(hand, round, salt) {
+  const MAX_HAND_SIZE = 10;
+  const card_ids = new Array(MAX_HAND_SIZE).fill(0);
+  for (let i = 0; i < Math.min(hand.length, MAX_HAND_SIZE); i++) {
+    card_ids[i] = hand[i].id || 0;
+  }
+
+  // Player pubkey: 32-byte array from wallet, or zeros
+  const player_pubkey = new Uint8Array(32);
+  if (typeof walletPubkey !== 'undefined' && walletPubkey) {
+    // Decode base58 pubkey to bytes (simplified — Day 12 wires real decode)
+    try {
+      const bytes = _base58ToBytes(walletPubkey);
+      player_pubkey.set(bytes.slice(0, 32));
+    } catch (_) { /* leave zeros in demo mode */ }
+  }
+
+  return {
+    card_ids,            // u64[] padded to 10 (circuit input)
+    salt: Array.from(salt), // u8[32]
+    phase: round & 0xff, // u8 (round 1-5)
+    player_pubkey: Array.from(player_pubkey), // u8[32]
+    // Metadata for debugging (not circuit input)
+    _meta: {
+      hand_count: hand.length,
+      round,
+      generated_at: Date.now(),
+    },
+  };
+}
+
+// Simplified base58 decoder for pubkey bytes
+function _base58ToBytes(b58) {
+  const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  let bytes = [0];
+  for (const ch of b58) {
+    let carry = ALPHABET.indexOf(ch);
+    if (carry < 0) throw new Error('Invalid base58 char: ' + ch);
+    for (let j = 0; j < bytes.length; j++) {
+      carry += bytes[j] * 58;
+      bytes[j] = carry & 0xff;
+      carry >>= 8;
+    }
+    while (carry > 0) { bytes.push(carry & 0xff); carry >>= 8; }
+  }
+  // Add leading zeros
+  for (const ch of b58) {
+    if (ch !== '1') break;
+    bytes.push(0);
+  }
+  return new Uint8Array(bytes.reverse());
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
