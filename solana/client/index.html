@@ -20919,6 +20919,20 @@ const STARTING_HP = 20;
 const STARTING_HAND = 5;
 const EXTRA_ACTION_MAX = 2;
 const SCOUT_PEEK_MAX = 3;
+const COUNTER_PEEK_MAX = 2;
+
+// ── Named ability card IDs (CARD_CATALOG v0.3 cross-ref) ─────────────────────
+// Ability IDs derived from card name lookup at runtime in _getAbilityId()
+const ABILITY_CARDS = {
+  'Ghost Fleet Captain': 'on_summon_draw1',
+  'Storm Bosun':         'on_summon_energy1',
+  'Prince in Exile':     'on_summon_shards2',
+  'Powder Monkey':       'on_destroy_damage2',
+  'Faceless Weaver':     'on_summon_halfcost',
+  "King's Last Guard":   'defender_twolane',
+  'Iron Sentinel':       'defender_basic',
+  'Tide Warden':         'defender_basic',
+};
 
 // ── Test decks ───────────────────────────────────────────────────────────────
 // 20 Common/Uncommon cards — used as fallback + AI stub deck
@@ -21041,8 +21055,9 @@ function initDuelScene(mode, hallTier) {
 
     p:             [_makeSide(pDeck, 0), _makeSide(oDeck, 1)],
 
-    extraActUsed:  0,
-    scoutPeekUsed: 0,
+    extraActUsed:   0,
+    scoutPeekUsed:  0,
+    counterPeekUsed: 0,
 
     log:           [],       // string[] (last 4 visible)
     toast:         null,     // { text, expireFrame, color }
@@ -21056,6 +21071,10 @@ function initDuelScene(mode, hallTier) {
     scoutActive:   false,
     scoutExpire:   0,
     scoutCardIdx:  -1,
+    // Counter-peek UI
+    counterPeekActive: false,
+    counterPeekExpire: 0,
+    counterPeekCardIdx: -1,
 
     // UI scroll for hand (if > 8 cards)
     handScroll:    0,
@@ -21111,6 +21130,7 @@ function drawDuelScene() {
 function _drawGameArea() {
   // Opponent area (top)
   _drawHPBar(1, DL.OHP_Y);
+  _drawOppHand();           // DEF-3: face-down hand strip
   _drawLanes(1, DL.OL_Y);
   // Battle line
   _drawBattleLine();
@@ -21277,6 +21297,74 @@ function _drawRoundIndicator() {
     g.fillText(DS.activeSide === 0 ? 'P1 — Summon' : 'P2 — Summon', DL.GW / 2, y + DL.RI_H - 4);
     g.textAlign = 'left';
   }
+}
+
+// DEF-3: Opponent hand face-down strip
+// Rendered between opponent HP bar and opponent lanes (DL.OHP_H = 30, OL_Y = 30)
+// Shows N face-down card backs; Scout Peek / Counter-Peek reveals specific card
+function _drawOppHand() {
+  const opp  = DS.p[1];
+  const cnt  = opp.hand.length;
+  if (cnt === 0) return;
+
+  const stripH = 14;
+  const stripY = DL.OHP_H; // y=30, sits between HP bar and lanes
+  const cardW  = 12, cardH = 12, cardGap = 14;
+  const startX = 4;
+
+  // Strip background
+  g.fillStyle = '#0b1018';
+  g.fillRect(0, stripY, DL.GW, stripH);
+
+  // Determine if scout/counter-peek is revealing a card
+  const revealIdx = (DS.scoutActive && fr < DS.scoutExpire) ? DS.scoutCardIdx :
+                    (DS.counterPeekActive && fr < DS.counterPeekExpire) ? DS.counterPeekCardIdx : -1;
+
+  for (let i = 0; i < Math.min(cnt, 20); i++) {
+    const cx = startX + i * cardGap;
+    const cy = stripY + 1;
+
+    if (i === revealIdx) {
+      // Revealed card — show name/element briefly
+      const rc = opp.hand[i];
+      const elCol = EL_HEX[rc.element] || '#888888';
+      g.fillStyle = '#1e3040';
+      g.fillRect(cx, cy, cardW, cardH);
+      g.fillStyle = elCol;
+      g.fillRect(cx, cy, cardW, 2);
+      g.fillStyle = '#d0e8ff';
+      g.font = '4px monospace';
+      g.textBaseline = 'top';
+      const label = rc.name.length > 4 ? rc.name.slice(0, 3) + '…' : rc.name;
+      g.fillText(label, cx + 1, cy + 3);
+      // Pulsing glow border
+      const pulse = (fr % 30 < 15) ? '#f0d040' : '#a08020';
+      g.strokeStyle = pulse;
+      g.lineWidth = 1;
+      g.strokeRect(cx + 0.5, cy + 0.5, cardW - 1, cardH - 1);
+    } else {
+      // Face-down card back
+      g.fillStyle = '#1a2434';
+      g.fillRect(cx, cy, cardW, cardH);
+      // Card back pattern — simple cross hatch
+      g.strokeStyle = '#2a3c54';
+      g.lineWidth = 0.5;
+      g.strokeRect(cx + 1.5, cy + 1.5, cardW - 3, cardH - 3);
+      g.fillStyle = '#2a3c54';
+      g.fillRect(cx + 4, cy + 4, 4, 4);
+      g.strokeStyle = '#1a2434';
+      g.lineWidth = 0.5;
+      g.strokeRect(cx + 0.5, cy + 0.5, cardW - 1, cardH - 1);
+    }
+  }
+
+  // Card count label
+  g.fillStyle = '#506070';
+  g.font = '5px monospace';
+  g.textBaseline = 'middle';
+  g.textAlign = 'right';
+  g.fillText(`OPP: ${cnt}`, DL.GW - 4, stripY + stripH / 2);
+  g.textAlign = 'left';
 }
 
 function _drawPlayerHand() {
@@ -21551,10 +21639,16 @@ function _drawLockInButton(rx) {
   g.fillText('LOCK IN', rx + DL.RP_W / 2, by + bh / 2);
   g.textAlign = 'left';
 
-  // Scout peek button (above lock in, only in summon phase)
-  if (DS.phase === 'summon' && DS.scoutPeekUsed < SCOUT_PEEK_MAX) {
-    const sy = by - 18;
-    _drawSmallButton(rx + 4, sy, DL.RP_W - 8, 16, `PEEK (${3-DS.scoutPeekUsed} left)`, '#5080a0', true);
+  // Scout peek + Counter-peek buttons (above lock in, only in summon phase)
+  if (DS.phase === 'summon') {
+    const peekW = (DL.RP_W - 12) / 2;
+    const peekY = by - 20;
+    if (DS.scoutPeekUsed < SCOUT_PEEK_MAX) {
+      _drawSmallButton(rx + 4, peekY, peekW, 18, `SCOUT(${SCOUT_PEEK_MAX - DS.scoutPeekUsed})`, '#5080a0', true);
+    }
+    if (DS.counterPeekUsed < COUNTER_PEEK_MAX) {
+      _drawSmallButton(rx + 4 + peekW + 4, peekY, peekW, 18, `CNTR(${COUNTER_PEEK_MAX - DS.counterPeekUsed})`, '#a050c0', true);
+    }
   }
 }
 
@@ -21839,7 +21933,94 @@ function _placeCard(who, handIdx, lk) {
   side.cardsSummoned++;
 
   if (who === 0) _addLog(`R${DS.round}: Summoned ${card.name} → ${lk}`);
+
+  // DEF-2: trigger on-summon abilities
+  _triggerAbility(card, 'on_summon', who);
   return true;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ABILITY FRAMEWORK (DEF-2) — Day 11
+// Triggers named card abilities on summon or on destroy.
+// ═══════════════════════════════════════════════════════════════════════════
+function _getAbilityId(card) {
+  return ABILITY_CARDS[card.name] || null;
+}
+
+function _triggerAbility(card, trigger, who) {
+  const abilityId = _getAbilityId(card);
+  if (!abilityId) return;
+  if (!abilityId.startsWith(trigger)) return;
+
+  const side = DS.p[who];
+  const opp  = DS.p[1 - who];
+
+  switch (abilityId) {
+    case 'on_summon_draw1':
+      // Ghost Fleet Captain: draw 1 additional card on summon
+      if (side.deck.length > 0) {
+        side.hand.push(side.deck.pop());
+        _addLog(`R${DS.round}: ${card.name} — Draw 1 (ability)`);
+        _showToast(`${card.name}: Draw 1!`, '#60e0ff', 120);
+      }
+      break;
+
+    case 'on_summon_energy1':
+      // Storm Bosun: gain +1 of each energy on summon
+      EL5.forEach(el => { side.energy[el] = (side.energy[el] || 0) + 1; });
+      _addLog(`R${DS.round}: ${card.name} — +1 all energy (ability)`);
+      _showToast(`${card.name}: +1 All Energy!`, '#40d0a0', 120);
+      break;
+
+    case 'on_summon_shards2':
+      // Prince in Exile: gain +2 Shards on summon
+      side.shards = Math.min(5, (side.shards || 0) + 2);
+      _addLog(`R${DS.round}: ${card.name} — +2 Shards (ability)`);
+      _showToast(`${card.name}: +2 Shards!`, '#d0a820', 120);
+      break;
+
+    case 'on_summon_halfcost':
+      // Faceless Weaver: next card placed this summon phase costs half energy
+      DS._halfCostNext = true;
+      _addLog(`R${DS.round}: ${card.name} — Half-Cost next summon (ability)`);
+      _showToast(`${card.name}: Half-Cost activated!`, '#e080ff', 120);
+      break;
+
+    case 'defender_twolane':
+      // King's Last Guard: intercepts attacks from two adjacent lanes
+      card.defTwoLane = true;
+      _addLog(`R${DS.round}: ${card.name} — Two-Lane Defender (ability)`);
+      _showToast(`${card.name}: Two-Lane Defense!`, '#60a0e0', 120);
+      break;
+
+    case 'defender_basic':
+      // Iron Sentinel / Tide Warden: standard defender (isDefender already true from card data)
+      _addLog(`R${DS.round}: ${card.name} — Defender ready`);
+      break;
+
+    default:
+      break;
+  }
+}
+
+function _triggerDestroyAbility(card, who) {
+  const abilityId = _getAbilityId(card);
+  if (!abilityId || !abilityId.startsWith('on_destroy')) return;
+
+  const opp = DS.p[1 - who];
+
+  switch (abilityId) {
+    case 'on_destroy_damage2':
+      // Powder Monkey: deal 2 damage to opponent Heart HP on destroy
+      opp.hp = Math.max(0, opp.hp - 2);
+      _addLog(`R${DS.round}: ${card.name} — Explosion! 2 dmg to opponent (on-destroy)`);
+      _showToast(`${card.name}: BOOM! 2 damage!`, '#ff6040', 120);
+      DS.flashEffect = { color: '#ff2000', expireFrame: fr + 30 };
+      _checkWinConditions();
+      break;
+    default:
+      break;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -22003,6 +22184,9 @@ function _destroyCard(who, lk, destroyer, destroyerOwner) {
   // Flash effect
   DS.flashEffect = { color: '#ff6020', expireFrame: fr + 25 };
 
+  // DEF-2: trigger on-destroy abilities
+  _triggerDestroyAbility(destroyed, who);
+
   _checkWinConditions();
 }
 
@@ -22160,6 +22344,37 @@ function _triggerScoutPeek() {
     DS.scoutCardIdx = idx;
     _addLog(`R${DS.round}: Scout Peek — saw ${oppHand[idx].name}`);
     _showToast(`Peeked: ${oppHand[idx].name}!`, '#80c0ff', 180);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COUNTER-PEEK (DEF-1) — Day 11
+// During opponent's summon phase (battle phase in ai_stub), reveals one
+// specific card from the opponent's hand based on a name hint.
+// Cost: x402 0.01 SOL mock. Uses counterPeekUsed counter (max 2/duel).
+// ═══════════════════════════════════════════════════════════════════════════
+function _triggerCounterPeek() {
+  if (DS.counterPeekUsed >= COUNTER_PEEK_MAX) {
+    _showToast('Counter-Peek limit reached (2/duel)', '#ff6040', 90);
+    return;
+  }
+  const oppHand = DS.p[1].hand;
+  if (oppHand.length === 0) {
+    _showToast('Opponent hand is empty', '#ff6040', 90);
+    return;
+  }
+  _x402Mock('/x402/counter-peek', { duelId: 'mock', playerPubkey: 'mock' }).then(function () {
+    // Reveal the highest-BP card (strategic: see the biggest threat)
+    let best = 0;
+    for (let i = 1; i < oppHand.length; i++) {
+      if (oppHand[i].bp > oppHand[best].bp) best = i;
+    }
+    DS.counterPeekUsed++;
+    DS.counterPeekActive = true;
+    DS.counterPeekExpire = fr + 300; // 5 sec
+    DS.counterPeekCardIdx = best;
+    _addLog(`R${DS.round}: Counter-Peek — identified ${oppHand[best].name} (${oppHand[best].bp}BP)`);
+    _showToast(`Counter: ${oppHand[best].name}!`, '#e080ff', 180);
   });
 }
 
@@ -22414,6 +22629,18 @@ function _handleGameAreaInput(px, py, who) {
   if (who === 0 && py >= DL.HAND_Y && py < DL.HAND_Y + DL.HAND_H) {
     const startIdx = DS.handScroll;
     const visCount = Math.floor((DL.GW - 8) / DL.HCARD_GAP);
+
+    // DEF-8: Scroll left arrow (leftmost 10px)
+    if (px < 10 && startIdx > 0) {
+      DS.handScroll = Math.max(0, startIdx - 1);
+      return;
+    }
+    // DEF-8: Scroll right arrow (rightmost 10px)
+    if (px >= DL.GW - 10 && startIdx + visCount < side.hand.length) {
+      DS.handScroll = Math.min(side.hand.length - visCount, startIdx + 1);
+      return;
+    }
+
     for (let i = 0; i < visCount; i++) {
       const hIdx = startIdx + i;
       if (hIdx >= side.hand.length) break;
@@ -22439,12 +22666,21 @@ function _handlePanelInput(px, py) {
     return;
   }
 
-  // Scout Peek button (above Lock In)
-  if (DS.phase === 'summon' && DS.scoutPeekUsed < SCOUT_PEEK_MAX) {
-    const sy = DL.LOCKIN_Y - 18;
-    if (py >= sy && py < sy + 16) {
-      _triggerScoutPeek();
-      return;
+  // Scout Peek + Counter-Peek buttons (above Lock In)
+  if (DS.phase === 'summon') {
+    const peekW = (DL.RP_W - 12) / 2;
+    const peekY = DL.LOCKIN_Y - 20;
+    if (py >= peekY && py < peekY + 18) {
+      // Scout peek (left half)
+      if (px < rx + 4 + peekW && DS.scoutPeekUsed < SCOUT_PEEK_MAX) {
+        _triggerScoutPeek();
+        return;
+      }
+      // Counter-peek (right half)
+      if (px >= rx + 4 + peekW + 4 && DS.counterPeekUsed < COUNTER_PEEK_MAX) {
+        _triggerCounterPeek();
+        return;
+      }
     }
   }
 
