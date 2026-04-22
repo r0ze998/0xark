@@ -215,6 +215,14 @@ function initDuelScene(mode, hallTier) {
 
     // UI scroll for hand (if > 8 cards)
     handScroll:    0,
+
+    // M3: Duel start intro cutscene (T-D12-E)
+    _introDuration: 105,   // frames (~1.75s)
+    _introFrame:    0,     // current frame within intro
+    _introActive:   true,
+
+    // ZK commitment state (per-round)
+    _duelId:       null,   // on-chain duel PDA id, set when known
   };
 
   _addLog(`Duel started — Round 1 of ${MAX_ROUNDS} — ${HALL_NAMES[hallTier]} Hall`);
@@ -275,11 +283,131 @@ function drawDuelScene() {
   if (DS.screenShake && fr < DS.screenShake.endFrame) {
     g.restore();
   }
+
+  // M3: Intro cutscene overlay (T-D12-E)
+  if (DS._introActive) {
+    _drawDuelIntroCutscene();
+    DS._introFrame++;
+    if (DS._introFrame >= DS._introDuration) DS._introActive = false;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// GAME AREA (x=0..340)
+// M3: DUEL INTRO CUTSCENE (T-D12-E)
 // ═══════════════════════════════════════════════════════════════════════════
+
+function _drawDuelIntroCutscene() {
+  const t  = DS._introFrame;
+  const dur = DS._introDuration;
+
+  // Fade in (0–20) → hold (20–80) → fade out (80–105)
+  let alpha;
+  if (t < 20)       alpha = t / 20;
+  else if (t < 80)  alpha = 1;
+  else               alpha = 1 - (t - 80) / (dur - 80);
+  alpha = Math.max(0, Math.min(1, alpha));
+
+  const cx = W / 2, cy = H / 2;
+
+  // Dim background
+  g.save();
+  g.globalAlpha = alpha * 0.82;
+  g.fillStyle = '#080e18';
+  g.fillRect(0, 0, W, H);
+  g.globalAlpha = alpha;
+
+  // Hexagonal ZK seal — scale in during first 25 frames
+  const hexScale = t < 25 ? t / 25 : 1;
+  const hexR     = 42 * hexScale;
+  _drawHexSeal(cx, cy, hexR, t);
+
+  // 6 orbiting tokens
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2 + t * 0.04;
+    const orbitR = hexR + 14;
+    const tx2 = cx + Math.cos(angle) * orbitR;
+    const ty2 = cy + Math.sin(angle) * orbitR;
+    const ORBIT_COLORS = ['#ff6040','#40c0ff','#80ff80','#ffd040','#c080ff','#ff80c0'];
+    g.beginPath();
+    g.arc(tx2, ty2, 3.5, 0, Math.PI * 2);
+    g.fillStyle = ORBIT_COLORS[i];
+    g.fill();
+  }
+
+  // Hall name
+  const HALL_COLORS = ['#cd7f32', '#c0c0c0', '#ffd700'];
+  g.fillStyle = HALL_COLORS[DS.hallTier] || '#ffffff';
+  g.font = 'bold 11px monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(`${HALL_NAMES[DS.hallTier].toUpperCase()} HALL`, cx, cy - hexR - 18);
+
+  // "DUEL" title
+  g.fillStyle = '#ffffff';
+  g.font = 'bold 14px monospace';
+  g.fillText('DUEL', cx, cy);
+
+  // Round count
+  g.fillStyle = '#8899aa';
+  g.font = '8px monospace';
+  g.fillText(`${MAX_ROUNDS} ROUNDS`, cx, cy + hexR + 16);
+
+  // ZK status line — changes after commitment
+  const zkLabel = DS.p[0]._handCommitment ? 'ZK COMMITTED ✓' : 'ZK SEALING…';
+  const zkColor = DS.p[0]._handCommitment ? '#40e080' : '#80c0ff';
+  g.fillStyle = zkColor;
+  g.font = '7px monospace';
+  g.fillText(zkLabel, cx, cy + hexR + 26);
+
+  g.restore();
+}
+
+function _drawHexSeal(cx, cy, r, t) {
+  const SIDES = 6;
+  // Outer hex
+  g.beginPath();
+  for (let i = 0; i < SIDES; i++) {
+    const a = (i / SIDES) * Math.PI * 2 - Math.PI / 6;
+    if (i === 0) g.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    else         g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  }
+  g.closePath();
+  g.strokeStyle = '#40c0ff';
+  g.lineWidth = 1.5;
+  g.stroke();
+
+  // Inner rotating hex
+  const innerR = r * 0.6;
+  const rot = t * 0.02;
+  g.beginPath();
+  for (let i = 0; i < SIDES; i++) {
+    const a = (i / SIDES) * Math.PI * 2 - Math.PI / 6 + rot;
+    if (i === 0) g.moveTo(cx + Math.cos(a) * innerR, cy + Math.sin(a) * innerR);
+    else         g.lineTo(cx + Math.cos(a) * innerR, cy + Math.sin(a) * innerR);
+  }
+  g.closePath();
+  g.strokeStyle = '#1a6080';
+  g.lineWidth = 1;
+  g.stroke();
+
+  // Center dot
+  g.beginPath();
+  g.arc(cx, cy, 3, 0, Math.PI * 2);
+  g.fillStyle = '#40c0ff';
+  g.fill();
+
+  // Spoke lines from center to vertices
+  g.strokeStyle = '#1a4060';
+  g.lineWidth = 0.5;
+  for (let i = 0; i < SIDES; i++) {
+    const a = (i / SIDES) * Math.PI * 2 - Math.PI / 6;
+    g.beginPath();
+    g.moveTo(cx, cy);
+    g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    g.stroke();
+  }
+}
+
 function _drawGameArea() {
   // Opponent area (top)
   _drawHPBar(1, DL.OHP_Y);
@@ -1018,10 +1146,104 @@ function _lockIn() {
       _startBattlePhase();
     }
   } else {
-    // ai_stub: player locked in → AI takes turn immediately
+    // ai_stub / online: player 0 locks in → generate ZK hand commitment (T-D12-C3)
+    if (DS.activeSide === 0 && typeof snarkjs !== 'undefined') {
+      _commitHandZK();
+    }
+    // ai_stub: AI takes turn immediately
     _aiSummonTurn();
     _startBattlePhase();
   }
+}
+
+// T-D12-C3: async ZK hand commitment — fire-and-forget, non-blocking
+async function _commitHandZK() {
+  try {
+    _showToast('(COMMITTING…)', '#80d0ff', 120);
+
+    // Resolve player pubkey
+    let pubkeyArg;
+    if (typeof walletPublicKey !== 'undefined' && walletPublicKey && typeof solanaWeb3 !== 'undefined') {
+      try { pubkeyArg = new solanaWeb3.PublicKey(walletPublicKey); } catch (_) {}
+    }
+    if (!pubkeyArg) {
+      // Demo mode — use zero pubkey
+      pubkeyArg = { toBytes: () => new Uint8Array(32) };
+    }
+
+    const { proofBytes, salt, commitmentBytes } = await generateHandCommitmentProof(
+      DS.p[0].hand,
+      DS.round,
+      pubkeyArg
+    );
+
+    // Store salt for later reveal
+    DS.p[0]._handSalt = salt;
+    DS.p[0]._handCommitment = commitmentBytes;
+    DS.p[0]._handProof = proofBytes;
+
+    _showToast('COMMITTED ✓', '#40e080', 90);
+    _addLog(`R${DS.round}: Hand committed (ZK)`);
+
+    // Emit on-chain commit_hand instruction if wallet connected
+    if (typeof walletConnected !== 'undefined' && walletConnected && DS._duelId) {
+      _emitCommitHandTx(DS._duelId, proofBytes, commitmentBytes).catch(function (e) {
+        console.warn('[ZK] commit_hand TX failed:', e.message);
+      });
+    }
+  } catch (err) {
+    console.warn('[ZK] Hand commitment failed:', err.message);
+    _showToast('ZK commit failed (demo)', '#ff8040', 90);
+  }
+}
+
+// Build and send commit_hand on-chain instruction
+async function _emitCommitHandTx(duelId, proofBytes, commitmentBytes) {
+  if (!solanaWeb3 || !window.solana) return;
+
+  const playerKey = new solanaWeb3.PublicKey(walletPublicKey);
+  const duelIdBuf = new ArrayBuffer(8);
+  new DataView(duelIdBuf).setBigUint64(0, BigInt(duelId), true);
+  const duelIdBytes = new Uint8Array(duelIdBuf);
+
+  const [duelPda] = solanaWeb3.PublicKey.findProgramAddressSync(
+    [Buffer.from('duel'), duelIdBytes],
+    PROGRAM_PUBKEY
+  );
+
+  // Discriminator for commit_hand (sha256("global:commit_hand")[0..8])
+  const disc = [12, 181, 32, 198, 47, 22, 71, 109];
+
+  // Pack args: proof_a[64] + proof_b[128] + proof_c[64] + public_signals[4*32] = 384 bytes total
+  const args = new Uint8Array(64 + 128 + 64 + 128);
+  args.set(proofBytes.a, 0);
+  args.set(proofBytes.b, 64);
+  args.set(proofBytes.c, 192);
+  // Pack 4 public signals as [u8; 32] each
+  for (let i = 0; i < 4; i++) {
+    const fieldBytes = fieldToBytes(BigInt(proofBytes.publicSignals[i] || '0'));
+    args.set(fieldBytes, 256 + i * 32);
+  }
+
+  const data = anchorInstructionData(disc, args);
+
+  const ix = new solanaWeb3.TransactionInstruction({
+    programId: PROGRAM_PUBKEY,
+    keys: [
+      { pubkey: duelPda,  isSigner: false, isWritable: true },
+      { pubkey: playerKey, isSigner: true,  isWritable: false },
+    ],
+    data: Buffer.from(data),
+  });
+
+  const tx = new solanaWeb3.Transaction().add(ix);
+  const { blockhash } = await solConnection.getLatestBlockhash();
+  tx.recentBlockhash = blockhash;
+  tx.feePayer = playerKey;
+
+  const signed = await window.solana.signTransaction(tx);
+  const sig = await solConnection.sendRawTransaction(signed.serialize());
+  _addLog(`[TX] commit_hand: ${sig.slice(0, 8)}…`);
 }
 
 function _aiSummonTurn() {
@@ -1935,6 +2157,90 @@ function _base58ToBytes(b58) {
     bytes.push(0);
   }
   return new Uint8Array(bytes.reverse());
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ZK PROOF GENERATION (T-D12-C2)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function bytesToBigInt(bytes) {
+  let result = 0n;
+  for (const b of bytes) {
+    result = (result << 8n) | BigInt(b);
+  }
+  return result;
+}
+
+function fieldToBytes(bigintVal) {
+  const hex = bigintVal.toString(16).padStart(64, '0');
+  const arr = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) {
+    arr[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return arr;
+}
+
+function proofG1ToBytes(g1) {
+  // g1 = [x_str, y_str] — affine coordinates as decimal strings
+  const out = new Uint8Array(64);
+  const xBytes = fieldToBytes(BigInt(g1[0]));
+  const yBytes = fieldToBytes(BigInt(g1[1]));
+  out.set(xBytes, 0);
+  out.set(yBytes, 32);
+  return out;
+}
+
+function proofG2ToBytes(g2) {
+  // g2 = [[x0, x1], [y0, y1]] — EIP-197 expects (x1, x0, y1, y0) ordering
+  const out = new Uint8Array(128);
+  out.set(fieldToBytes(BigInt(g2[0][1])), 0);
+  out.set(fieldToBytes(BigInt(g2[0][0])), 32);
+  out.set(fieldToBytes(BigInt(g2[1][1])), 64);
+  out.set(fieldToBytes(BigInt(g2[1][0])), 96);
+  return out;
+}
+
+async function generateHandCommitmentProof(playerHand, round, playerPubkey) {
+  const cardIds = playerHand.map(c => c.card_id).concat(
+    Array(Math.max(0, 10 - playerHand.length)).fill(0)
+  ).slice(0, 10);
+
+  const salt = crypto.getRandomValues(new Uint8Array(32));
+  const pubkeyBytes = playerPubkey.toBytes ? playerPubkey.toBytes()
+    : _base58ToBytes(playerPubkey.toString());
+
+  const pubkey_lo = bytesToBigInt(pubkeyBytes.slice(16, 32));
+  const pubkey_hi = bytesToBigInt(pubkeyBytes.slice(0, 16));
+  const salt_lo   = bytesToBigInt(salt.slice(16, 32));
+  const salt_hi   = bytesToBigInt(salt.slice(0, 16));
+
+  const input = {
+    round:      String(round),
+    pubkey_lo:  pubkey_lo.toString(),
+    pubkey_hi:  pubkey_hi.toString(),
+    card_ids:   cardIds.map(String),
+    salt_lo:    salt_lo.toString(),
+    salt_hi:    salt_hi.toString(),
+  };
+
+  const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+    input,
+    '/hand_commitment.wasm',
+    '/hand_commitment_final.zkey'
+  );
+
+  // commitment is publicSignals[0]
+  const commitmentBytes = fieldToBytes(BigInt(publicSignals[0]));
+
+  const proofBytes = {
+    a:     proofG1ToBytes(proof.pi_a),
+    b:     proofG2ToBytes(proof.pi_b),
+    c:     proofG1ToBytes(proof.pi_c),
+    commitment: commitmentBytes,
+    publicSignals,
+  };
+
+  return { proofBytes, salt, commitmentBytes };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

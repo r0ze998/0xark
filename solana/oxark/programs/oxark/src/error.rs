@@ -81,4 +81,17 @@ pub enum ErrorCode {
     NotInQueue,
     #[msg("Matchmaking queue is full (max 64 players)")]
     QueueFull,
+    // ── D12: ZK Duel ──────────────────────────────────────────────────────────
+    #[msg("Duel ID mismatch")]
+    WrongDuel,
+    #[msg("Round mismatch")]
+    WrongRound,
+    #[msg("Caller is not a participant in this duel")]
+    NotADuelParticipant,
+    #[msg("Hand commitment not set for this round")]
+    CommitmentNotSet,
+    #[msg("Hand already revealed for this round")]
+    HandAlreadyRevealed,
+    #[msg("Duel is already over")]
+    DuelOver,
 }

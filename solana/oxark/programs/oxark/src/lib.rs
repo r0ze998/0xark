@@ -495,4 +495,41 @@ pub mod oxark {
     ) -> Result<()> {
         instructions::unlock_lore_shard::handle_unlock_lore_shard(ctx, card_mint, shard_index, method)
     }
+
+    // ── D12: ZK Duel (hand commitment / reveal) ──────────────────────────────
+
+    pub fn init_duel(
+        ctx: Context<InitDuel>,
+        duel_id: Pubkey,
+        hall_tier: u8,
+        ante: u64,
+    ) -> Result<()> {
+        instructions::init_duel::handle_init_duel(ctx, duel_id, hall_tier, ante)
+    }
+
+    pub fn commit_hand(
+        ctx: Context<CommitHand>,
+        duel_id: Pubkey,
+        round: u8,
+        proof_a: [u8; 64],
+        proof_b: [u8; 128],
+        proof_c: [u8; 64],
+        public_signals: [[u8; 32]; 4],
+    ) -> Result<()> {
+        instructions::commit_hand::handle_commit_hand(
+            ctx, duel_id, round, proof_a, proof_b, proof_c, public_signals,
+        )
+    }
+
+    pub fn reveal_hand(
+        ctx: Context<RevealHand>,
+        duel_id: Pubkey,
+        round: u8,
+        card_ids: [u64; 10],
+        commitment_hash: [u8; 32],
+    ) -> Result<()> {
+        instructions::reveal_hand::handle_reveal_hand(
+            ctx, duel_id, round, card_ids, commitment_hash,
+        )
+    }
 }

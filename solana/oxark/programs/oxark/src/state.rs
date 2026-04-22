@@ -569,3 +569,94 @@ pub struct LoreShardUnlocked {
     pub method:      u8,   // 0=auto, 1=condition_met, 2=x402_payment
     pub timestamp:   i64,
 }
+
+// === D12: ZK Duel State (Hand Commitment / Reveal) ===
+
+/// Per-duel on-chain state for commit-reveal ZK hand system.
+///
+/// Both players commit their hands via Groth16 ZK proof at Lock In,
+/// then reveal after battle resolves.
+///
+/// PDA seeds: ["duel", duel_id.as_ref()]
+#[account]
+pub struct DuelState {
+    /// Unique duel identifier (random Pubkey generated at matchmaking)
+    pub id:         Pubkey,
+    pub player_1:   Pubkey,
+    pub player_2:   Pubkey,
+    pub hall_tier:  u8,   // 0=Bronze, 1=Silver, 2=Gold
+    pub round:      u8,   // current round (1-5)
+    pub phase:      u8,   // 0=Draw, 1=Energy, 2=Summon, 3=Battle
+    pub ante:       u64,  // lamports per player
+    pub started_at: i64,
+    pub ended_at:   i64,  // 0 until duel ends
+    pub winner:     Pubkey,
+    /// Poseidon commitment per round per player (index: [round-1], 0-indexed)
+    /// Stored as 32-byte big-endian BN254 field element
+    pub player_1_commitment: [[u8; 32]; 5],
+    pub player_2_commitment: [[u8; 32]; 5],
+    /// Revealed card IDs after battle (10 cards × 5 rounds)
+    pub player_1_revealed:   [[u64; 10]; 5],
+    pub player_2_revealed:   [[u64; 10]; 5],
+    pub bump: u8,
+}
+
+impl DuelState {
+    // 8 disc + 32 id + 32 p1 + 32 p2 + 1 tier + 1 round + 1 phase + 8 ante
+    // + 8 started_at + 8 ended_at + 32 winner
+    // + 5*32 p1_commit + 5*32 p2_commit
+    // + 5*10*8 p1_reveal + 5*10*8 p2_reveal
+    // + 1 bump
+    pub const SIZE: usize = 8 + 32 + 32 + 32 + 1 + 1 + 1 + 8
+        + 8 + 8 + 32
+        + (5 * 32) + (5 * 32)
+        + (5 * 10 * 8) + (5 * 10 * 8)
+        + 1;
+}
+
+impl Default for DuelState {
+    fn default() -> Self {
+        Self {
+            id:                  Pubkey::default(),
+            player_1:            Pubkey::default(),
+            player_2:            Pubkey::default(),
+            hall_tier:           0,
+            round:               1,
+            phase:               0,
+            ante:                0,
+            started_at:          0,
+            ended_at:            0,
+            winner:              Pubkey::default(),
+            player_1_commitment: [[0u8; 32]; 5],
+            player_2_commitment: [[0u8; 32]; 5],
+            player_1_revealed:   [[0u64; 10]; 5],
+            player_2_revealed:   [[0u64; 10]; 5],
+            bump:                0,
+        }
+    }
+}
+
+// D12 events
+
+#[event]
+pub struct DuelInitialized {
+    pub duel_id:  Pubkey,
+    pub player_1: Pubkey,
+    pub player_2: Pubkey,
+}
+
+#[event]
+pub struct HandCommitted {
+    pub duel_id:    Pubkey,
+    pub player:     Pubkey,
+    pub round:      u8,
+    pub commitment: [u8; 32],
+}
+
+#[event]
+pub struct HandRevealed {
+    pub duel_id:  Pubkey,
+    pub player:   Pubkey,
+    pub round:    u8,
+    pub card_ids: [u64; 10],
+}

@@ -27,6 +27,9 @@ pub mod set_title;
 pub mod enter_queue;
 pub mod leave_queue;
 pub mod unlock_lore_shard;
+pub mod init_duel;
+pub mod commit_hand;
+pub mod reveal_hand;
 
 pub use initialize::*;
 pub use create_game::*;
@@ -57,3 +60,6 @@ pub use set_title::*;
 pub use enter_queue::*;
 pub use leave_queue::*;
 pub use unlock_lore_shard::*;
+pub use init_duel::*;
+pub use commit_hand::*;
+pub use reveal_hand::*;
