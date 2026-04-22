@@ -1,11 +1,13 @@
-# 0xARK — Game Design Document v1.2
+# 0xARK — Game Design Document v2.0
 
-> *Collect 60 cards. Be the first. ZK hides your hand, x402 moves your money, MagicBlock ER runs the world in real time, AI agents join the fight.*
+> **Real-money Solana card duels with ZK-hidden hands and AI opponents that can win your NFTs.**
 
-**Status:** Draft 3 — 2026-04-21 (duel design overhauled, inspired by Anode Heart: Layer Null)  
-**Changes vs v1.1:** Section 5 (Duel Design) fully rewritten — phase-based turn structure, 5-element energy system, lane-based summon, defender mechanic, Shards/Extra Action, server-rank gated Duel Halls. Section 4 (Lobby) adds Bronze/Silver/Gold Duel Hall. Section 6 (Faction) adds element affinity wheel. Section 14 (Roadmap) unchanged (still feasible). Other sections kept.  
-**Submission target:** Solana Frontier Hackathon, due 2026-05-11  
-**Post-hackathon goal:** Public product release
+**Status:** Final — 2026-04-22  
+**Submission target:** Solana Frontier Hackathon, 2026-05-11 (19 days remaining)  
+**Post-hackathon goal:** Public product release, Season 2 and beyond  
+**This document is final.** Future design changes flow through supplementary docs (e.g. `docs/LORE_SHARDS.md`, `docs/AI_AGENT_SPEC.md`); this GDD is not re-versioned.
+
+**Changes from v1.2:** 18 design decisions from the 2026-04-22 design sprint integrated across Sections 4, 5, 7, 8, 10, 11, 15, and new Sections 16 (UX) and 17 (Pitch positioning). Adds formal specs for Battle History, Lore Shards, Tutorial flow, AI Agent behavior, Season transitions, and pitch narrative.
 
 ---
 
@@ -25,8 +27,11 @@
 12. [Tech Stack](#12-tech-stack)
 13. [Reborn Migration](#13-reborn-migration)
 14. [Roadmap](#14-roadmap)
+15. [Onboarding & Tutorial](#15-onboarding--tutorial)
+16. [UX Standards](#16-ux-standards)
+17. [Pitch Positioning](#17-pitch-positioning)
 - [Appendix A: Glossary](#appendix-a-glossary)
-- [Appendix B: Open questions](#appendix-b-open-questions)
+- [Appendix B: Resolved design decisions](#appendix-b-resolved-design-decisions)
 - [Appendix C: File path reference matrix](#appendix-c-file-path-reference-matrix)
 - [Appendix D: Phase-based duel at a glance](#appendix-d-phase-based-duel-at-a-glance-quick-reference)
 
@@ -34,33 +39,43 @@
 
 ## 1. Vision
 
-### One-liner
+### One-liner (v2.0 final)
 
-**0xARK is a fully on-chain card collection race on Solana, wrapped in a JRPG world where everyone competes to collect 60 unique NFT cards first — while ZK hides their hand, x402 powers micro-economies, and AI agents fight alongside humans.**
+**Real-money Solana card duels with ZK-hidden hands and AI opponents that can win your NFTs.**
+
+### Full pitch
+
+0xARK is a fully on-chain card game where every duel is a real-money fight. Win a duel, you take 2 NFT cards from your opponent's collection. Lose, they take yours. ZK Groth16 proofs keep both hands hidden until the reveal moment. AI agents play alongside humans — they can win your cards too. Collect all 60 cards in a Season and you take the Prize Pool.
 
 ### What makes it different
 
-Onchain card games today are built around **ladder ranking** — win matches, climb ranks, earn tokens. 0xARK inverts the loop: **ranking is a side-effect, the real race is collection**. Every card you win is one closer to ending the season. Every card you lose is a step backward. The season doesn't end on a calendar — it ends when somebody completes their set.
+Onchain card games today are built around **ladder ranking** — win matches, climb Elo, earn tokens. 0xARK inverts the loop: **ranking is a side-effect, the real race is collection**, and every card you win is a real NFT transferred from a real opponent's wallet.
 
-This makes every duel matter. Not for Elo points. For physical progress in a visible race against everyone else in the server.
+- **Real stakes**: Every duel has an ante (Bronze 0.01 / Silver 0.05 / Gold 0.1 SOL). Winner takes 2 cards from loser's collection.
+- **ZK-hidden**: Your hand is a Groth16 commitment until Battle phase reveal. Your opponent can't know what you'll play.
+- **AI opponents**: Anthropic-powered agents enter matchmaking. They compete for the same Prize Pool. They can actually beat you.
+- **Cards remember**: Every NFT has on-chain Battle History (wins/losses/KOs/damage) and Lore Shards (narrative fragments unlocked via play).
 
-Combined with:
+No other hackathon submission puts all of this together, and nothing on Solana today combines ZK hand-hiding with NFT-transfer duels.
 
-- **MagicBlock ER** for real-time lobby presence and low-latency duel execution
-- **ZK Groth16 proofs** to hide your hand and identity during duels
-- **x402 micropayments** woven through every small transaction (scout peek, card P2P, agent hire)
-- **AI agents** that join the same server as humans, indistinguishable opponents
-- **Metaplex NFT cards** that live on Solana's base layer and trade on Tensor/Magic Eden
+### Colosseum Frontier positioning (3 tracks)
 
-…0xARK sits at the intersection of five distinct 2026 Solana narratives. No other hackathon submission hits all five at once.
+0xARK is built to qualify for all three tracks of the hackathon:
+
+- **Gaming** (primary): Fully on-chain card game with ZK mechanics, 60-card Season collection race, Bronze/Silver/Gold Halls with real ante
+- **AI** (supporting): Anthropic-powered AI agents that play alongside humans in matchmaking, pay x402 intel fees from their own wallets, can win Champion
+- **Stablecoins** (supporting): x402 micropayment economy — Scout Peek, Extra Action, Identity Peek, Lore Shard unlocks all priced in SOL (USDC variant post-hackathon)
+
+The **core pitch narrative** is the combination: *"ZK-hidden hands + x402 micropayments + AI agents competing for real NFT stakes."* Each element alone is interesting; the intersection is what has never been built before.
 
 ### Design principles
 
-1. **Respect player time** — 5 minute duels. Enter. Play. Leave. Come back.
+1. **Respect player time** — 5-minute duels. Enter. Play. Leave. Come back.
 2. **Visible competition** — the leaderboard isn't a menu, it's the world. You see the rival with 58 cards walking into the shop.
 3. **Permissionless economy** — SOL / SPL native, every action is on-chain, cards are composable NFTs.
 4. **ZK where it counts** — not everywhere, only where hidden information drives gameplay tension.
 5. **AI as first-class citizen** — agents aren't bots to grind, they're opponents you'd be proud to defeat.
+6. **Cards have provenance** — every card carries its full battle history and story fragments on-chain.
 
 ---
 
@@ -214,9 +229,11 @@ The town contains **three Duel Halls**, each representing a server rank tier. In
 
 | Hall | Unlock condition | Duel ante | Stakes | Reachable cards |
 |------|------------------|-----------|--------|-----------------|
-| 🥉 **Bronze Hall** | Open from day 1 | 0.005 SOL | Low | Common + Uncommon only |
-| 🥈 **Silver Hall** | 5 wins in Bronze Hall | 0.01 SOL | Medium | + Rare cards possible |
-| 🥇 **Gold Hall** | 3 wins in Silver Hall during current Season | 0.05 SOL | High | + Legendary Sceptre / Nameless Blade reachable only here |
+| 🥉 **Bronze Hall** | Open from day 1 | 0.01 SOL | Low | Common + Uncommon only |
+| 🥈 **Silver Hall** | 5 wins in Bronze Hall | 0.05 SOL | Medium | + Rare cards possible |
+| 🥇 **Gold Hall** | 3 wins in Silver Hall during current Season | 0.1 SOL | High | + Legendary Sceptre / Nameless Blade reachable only here |
+
+**Note:** Ante amounts updated in v2.0 — higher than v1.2 values (2x increase) to reinforce "real-money duels" pitch positioning. Gold Hall duels at 0.1 SOL ≈ $15-20 per round — not casual, intentionally. Judges and pitch audience understand this signals serious on-chain gameplay.
 
 **Matchmaking flow:**
 - Walk up to receptionist, tap "Find Match"
@@ -394,7 +411,7 @@ Energy cards have Cost 0 + produce 1 element per round.
 
 - **Winner takes**: 2 cards from loser's NFT collection — game picks randomly from cards the winner doesn't own yet; if winner owns all of loser's cards, winner receives shop credit in equivalent value instead
 - **Loser loses**: those 2 cards (NFT transferred on-chain to winner)
-- **Ante**: both players ante at match start (per Hall: 0.005 / 0.01 / 0.05 SOL); winner takes ~90% (10% to Season Prize Pool)
+- **Ante**: both players ante at match start (per Hall: 0.01 / 0.05 / 0.1 SOL); winner takes ~85% (15% to Season Prize Pool)
 
 **This is where the collection race tension lives**: every duel is a real stake. No safe ranked games. No practice matches.
 
@@ -473,46 +490,164 @@ This bakes ZK into the clan metagame, not just the tech stack.
 
 ## 7. NFT Card Design
 
-### Supply
+### Supply (v2.0 final)
 
-- **60 unique cards per Season** (the "Core 60")
-- Each card has multiple rarity tiers: Common / Uncommon / Rare / Legendary
-  - Common: ~30 cards, 4 copies per Season print
-  - Uncommon: ~20 cards, 2 copies per Season print
-  - Rare: ~8 cards, 1 copy per Season print
-  - Legendary: ~2 cards, unique (1 of 1)
-- **Total Season supply ≈ 200 NFTs** across ~500-1000 players → scarcity is real
+**60 unique cards per Season** (the "Core 60"):
+- **Common: 30 species** (unlimited supply, Shop-purchasable)
+- **Uncommon: 20 species** (unlimited supply, Booster Pack only)
+- **Rare: 6 species** (unlimited supply, duel rewards only — scarcity comes from needing to win)
+- **Legendary: 4 species** (Sceptre of Valerius / Nameless Blade / Elyon Crown / Kingmaker's Ring) — **capped at 10 copies each per Season** = 40 Legendary NFTs maximum, Season 1
 
-For the hackathon MVP we'll ship **one Season's worth** (60 cards). Post-launch, a new Core 60 drops every two weeks, with a small percentage rotating (most cards carry forward, some retire).
+**Supply rule (v2.0):** Only Legendary has a hard cap. Common, Uncommon, and Rare all have effectively unlimited supply — their scarcity comes from **access path**:
+- Common: cheap but requires Shop visits
+- Uncommon: requires Booster Pack gacha
+- Rare: requires duel victories
+- Legendary: requires Gold Hall 4-win streak (see Section 18)
 
-Existing `SeasonCardSupply` PDA + `init_season_supply` + `record_mint` + `register_card` instructions handle this. No new structure needed.
+**Why Legendary is cap'd:**
+- Collection race ends when a player completes 60/60 — the true bottleneck is Legendary acquisition (4 species needed)
+- First 10 players to earn a specific Legendary get it, then that species disappears from the reward pool for the Season
+- Each Legendary NFT is mint-numbered ("Sceptre of Valerius #1" through "#10"), early-bird numbers carry narrative prestige
+- Season 2 introduces a new 4-species Legendary set; Season 1 Legendary species do not re-mint
+
+For the hackathon MVP we'll ship **Season 1 only** (60 cards, 40 Legendary NFTs max). Post-launch, a new Core 60 drops every two weeks, with a small percentage rotating (most Common/Uncommon/Rare species carry forward, Legendaries retire).
+
+Existing `SeasonCardSupply` PDA + `init_season_supply` + `record_mint` + `register_card` instructions handle Common/Uncommon/Rare. Legendary supply requires a new `LegendarySupply` PDA (tracks `species_id: u8, minted: u8, cap: u8`) and instruction `mint_legendary(species_id, recipient)` that checks cap before mint.
 
 ### What players collect for the "race"
 
-A card is "collected" in the race sense if the player owns **at least one copy** of that card ID. Duplicates don't count toward 60/60 but:
+A card is "collected" in the race sense if the player owns **at least one copy** of that card species (60 species total). Duplicates don't count toward 60/60 but:
 
 - Grant deck-building flexibility (2-copy limit per deck)
 - Tradeable on Tensor / Magic Eden
-- Usable as Shop "dust" currency (grind 5 duplicates to craft a targeted single)
+- Usable in Transform system (Common burn → new Common, see Section 18)
 
-### Card metadata
+### Card metadata (base)
 
 On-chain Metaplex metadata includes:
 
-- Name, description, Faction, rarity, rule text
+- Name, description, Clan, rarity, rule text
 - Season ID (so we can query "all Season 1 cards")
 - Artwork URL (Arweave)
 - ZK-related: the `card_id` used in hand commitments (so ZK circuit can reference it)
+- **Mint number** (Legendary only): e.g., `"Sceptre of Valerius #3"` — stored in Metaplex `name` field
+
+### Battle History per NFT (v2.0)
+
+Each NFT tracks its individual combat record since minting. Cards become **living artifacts with provenance**, not fungible items.
+
+Per-card stats stored in a new PDA `CardBattleHistory` (one PDA per NFT):
+
+```rust
+pub struct CardBattleHistory {
+    pub card_mint: Pubkey,              // NFT mint this history belongs to
+    pub wins: u32,                       // duels won with this card in deck
+    pub losses: u32,                     // duels lost with this card in deck
+    pub kos: u32,                        // opposing characters this card destroyed
+    pub dmg_dealt: u64,                  // cumulative damage in battle phases
+    pub times_summoned: u32,             // total summons to a lane across all duels
+    pub owners_history: [Pubkey; 10],    // last 10 owners (oldest drops off)
+    pub owners_history_len: u8,          // how many slots filled (0-10)
+    pub owners_dropped_count: u32,       // how many older owners fell off the list
+    pub acquisition_source: u8,           // 0=mint, 1=shop, 2=duel_won, 3=p2p_trade
+    pub current_owner_since: i64,        // unix timestamp current holder acquired
+    pub created_at: i64,                  // original mint timestamp
+}
+```
+
+**Update timing (v2.0 decision):** Written **once at duel end**, as a single PDA update transaction. All in-duel stats (wins/losses from this duel, KOs dealt, damage dealt, summons performed) are aggregated and flushed in one tx at the duel resolution step. This minimizes tx cost vs. per-phase writes.
+
+**Owners history:** Fixed array of 10 slots. When an 11th owner acquires, the oldest owner is dropped from the array but `owners_dropped_count` increments. UI shows: "Previous owners: [10 most recent wallets] ... and N more" where N = `owners_dropped_count`.
+
+**Secondary market tracking (v2.0 decision):** Only **0xARK-internal transfers** (duel wins, shop resale, 0xARK P2P trade) update the card's owner history. External transfers via Tensor / Magic Eden are NOT tracked for hackathon MVP — Metaplex transfer hook integration is deferred to post-hackathon. Cards sold externally "drop off" the internal history but retain their immutable on-chain past.
+
+**Why this matters:**
+- Cards become **character artifacts** with measurable pedigree
+- Secondary market pricing reflects battle history (a card with 50 wins > a fresh print)
+- Narrative emerges from gameplay — a Legendary that has passed through 5 wallets tells its own saga
+- **Pitch angle**: "0xARK cards remember where they've been. Your Legendary isn't just yours — it has a past."
+
+Implementation: new instruction `update_card_battle_history(wins_delta, losses_delta, kos_delta, dmg_delta, summon_delta)`, called atomically with duel resolution.
+
+### Lore Shards system (v2.0)
+
+**Each of the 60 cards has 3 Lore Shards** — fragments of backstory unlocked through play. Complete all 3 to reveal the card's full lore on Card Detail View.
+
+#### Unlock mechanics
+
+| Shard | Unlock method |
+|-------|---------------|
+| **Shard 1** | Auto-unlock on card acquisition (any method: mint, shop, duel win, P2P trade) |
+| **Shard 2** | Card was in player's deck during a duel (card entered the deck at duel start) — **summoning to a lane is NOT required**. Simple tracking: was this `card_mint` in the `deck` PDA when `enter_duel` was called. |
+| **Shard 3** | Two paths: (A) card was in deck during a **Gold Hall** duel, or (B) x402 purchase for 5% of the card's current market price (dynamic pricing) |
+
+Shard 2's "deck participation" definition (v2.0 decision) is more lenient than the v1.3 draft's "summon required." This gives players a clear, achievable path: building the card into an active deck is enough.
+
+Shard 3's dynamic pricing (v2.0 decision) ties the unlock cost to the card's market value: a Legendary priced at 2 SOL on Tensor has a Shard 3 unlock cost of 0.1 SOL, while a Common at 0.02 SOL is only 0.001 SOL. This prevents "whales buy all the Shards" and lets community pricing guide lore accessibility.
+
+#### Implementation
+
+- New PDA `CardLoreShards` per NFT: `shards_found: [bool; 3]`, `unlock_timestamps: [i64; 3]`
+- New instruction `unlock_lore_shard(shard_index: u8, method: u8)`:
+  - method 0 = auto (Shard 1 on acquisition)
+  - method 1 = gameplay condition met (Shard 2 after duel end, Shard 3 after Gold Hall duel end)
+  - method 2 = x402 purchase (Shard 3 only, accompanying payment proof required)
+- Lore text stored in static game data (`02-data.js` front-end + a JSON asset on Arweave as backup), indexed by card_id + shard_index
+
+#### 180 Shard text writing plan (v2.0 decision)
+
+60 cards × 3 shards = 180 texts total.
+
+**Hackathon MVP scope:**
+- All 60 × Shard 1: **drafted, committed in `docs/LORE_SHARDS.md` by Day 14**
+- 15 key cards (all Rares + Legendaries + top-tier Commons) × Shards 2+3 = **45 additional texts drafted by Day 16**
+- Remaining 45 cards × Shards 2+3 = 90 texts: **post-hackathon content** (published as Season 1 lore expansion)
+
+**Writing workflow:**
+- Claude (assistant) drafts all 180 texts in a single pass
+- r0ze reviews, edits voice/style, approves batch
+- r0ze does NOT write from scratch — this is a reviewer role
+
+#### Shard content style examples
+
+**The King's Last Guard (Hollow Blade, Rare):**
+- Shard 1: *"He was the last to leave the throne room that night."*
+- Shard 2: *"The corridor was empty when the guards arrived. But there were footprints in the blood — three sets, walking away together."*
+- Shard 3: *"He kept the ring Valerius wore that night. When asked why, he only said: 'The one who wore it does not need it anymore. But the one who finds me might.'"*
+
+Shards narrate from a **third-person witness perspective**, contrasting with the card's existing flavor text (which is typically the character's own voice). Together they build a layered world.
+
+### Card Detail View (reference: UI_SPEC v2.0 Section 5)
+
+Every card has a dedicated inspection view showing:
+
+1. **Owner panel** (left): current owner wallet, acquisition timestamp, previous owner, acquisition location (e.g., "Silver Hall · R4 · Day 3")
+2. **Card main** (center): art, clan, rarity, BP/HP/Initiative stats, element cost, abilities, flavor text, action buttons (BACK / ADD TO DECK / SELL TO SHOP)
+3. **Battle History + Lore Shards panel** (right): 
+   - Wins / Losses / KOs / Damage dealt (both Per-Season and Lifetime displayed)
+   - Lore Shards progress (N/3 found, diamond indicators, tap to read unlocked shards)
+
+Accessible from:
+- Deck Editor (tap any card)
+- Shop (preview before purchase)
+- PC Box Card Storage (tap any card)
+- Duel Board (tap card in hand during non-Summon phases)
+- Victory Screen (tap newly acquired cards)
+
+See UI_SPEC v2.0 Section 5 for pixel-precise specification.
 
 ### Artwork
 
-- Hackathon MVP: stylized pixel portraits (we'll use Midjourney / Flux for generation, retouch in Clip Studio Paint, assemble in Figma or Claude Design)
+- Hackathon MVP: stylized pixel portraits (Midjourney / Flux → Clip Studio retouch → Arweave upload)
 - Each card has a 2-frame idle animation in-game (sprite sheet)
 - Art direction: FRLG portrait style (soft colors, clear outlines, readable at 64×64px), following `design/DESIGN_TOKENS.json` palette
+- Season 1 theme: faded-kingdom aesthetic (weathered banners, dim torchlight, hints of faded glory)
 
 ### Secondary market
 
 Cards are regular Metaplex NFTs. Players can list on Tensor or Magic Eden at any time. 0xARK takes no cut from secondary sales (we only earn from Shop primary sales and duel ante dust). The existing `oxark-cards::card_market` instruction set already supports listing/buying.
+
+**Battle History + Lore Shards carry through 0xARK-internal transfers.** External (Tensor/Magic Eden) sales break the owner chain for hackathon MVP; post-hackathon Metaplex transfer hook integration will close this gap.
 
 ---
 
@@ -531,19 +666,27 @@ End: Saturday 23:59 UTC (14 days later)
 
 In both cases, final snapshot is taken on-chain at end. The existing `create_season` / `end_season` instructions are the foundation; we add Champion-detection logic to `record_mint`.
 
+### Tie-breaker
+
+**v2.0 rule:** If multiple players are tied for Champion (same unique card count at Season end), **all tied players become Champions** and the Prize Pool top tier is split equally among them. The narrative angle: "multiple kings" is a strong Season story, judges see Season 1 finale as open-ended.
+
+Example: If 3 players all hit 60/60, each receives 40% ÷ 3 = 13.3% of Prize Pool (but counts as Champion for lifetime stats / bragging rights).
+
 ### Prize Pool
 
-Funded by:
-- 10% of all Shop sales during the Season
-- 10% of all duel antes
+**Funded by (v2.0):**
+- **5% of all Shop sales** during the Season
+- **15% of all duel antes** — the primary source, rewarding actively competitive play
 - Optional: sponsor contributions (post-launch)
 
-Distributed:
-- 40% to Champion
+The duel-weighted distribution reinforces the "real-money card duels" pitch positioning — players who actually compete fund the pool for each other.
+
+**Distributed:**
+- 40% to Champion (or split among tied Champions)
 - 20% to #2
 - 10% to #3
 - 20% split across top 10-50 players (weighted)
-- 10% to top Faction (split among all members of winning Faction, proportional to their collection)
+- 10% to top Clan (split among all members of winning Clan, proportional to their collection)
 
 ### Rank calculation
 
@@ -551,16 +694,29 @@ Primary: **unique cards collected** (0-60)
 Tiebreaker 1: Total cards owned (including duplicates)  
 Tiebreaker 2: Earlier Season entry timestamp
 
-### Persistence between Seasons
+### Persistence between Seasons (v2.0)
 
-- **Cards**: permanently yours (NFTs). Can be used in next Season's duels if the card ID is still in circulation
-- **Faction**: resets (you can switch)
+**Card collection rule:**
+- **Legendary cards carry over** — playable in all future Seasons (cross-Season utility preserved; these are the permanent treasures of the world)
+- **Common / Uncommon / Rare cards do NOT burn**, but are **marked as "Vintage"** and cannot be used in duels of Seasons later than their mint Season
+- Vintage cards display in a dedicated "Past Seasons" section of the PC Box UI — players keep them as collectibles, trade them on Tensor, but can't play them
+- **New Season entry requires a new Clan Starter Deck purchase** (0.1 SOL) containing 20 current-Season cards
+
+**Why this rule:**
+- NFT ownership is permanent (C/U/R cards stay in your wallet forever)
+- But in-game competitive utility refreshes each Season (scarcity, new starts for new players)
+- Legendaries remain playable forever as signature artifacts (and their 1-of-1 Battle History carries all 6 months of accumulated wins)
+- Fresh Season = fresh collection race; old-timers don't dominate new-Season queues
+
+**Other persistence:**
 - **Stats**: persistent across Seasons via `PlayerBattleStats` / `PlayerLevel` / `PlayerAchievements` PDAs (already in `state.rs`)
-- **Ranking**: resets to zero for new Season
+- **Battle History per card**: kept forever, but UI displays both **Per-Season record** and **Lifetime record** side-by-side (see Section 7 Battle History)
+- **Clan affiliation**: resets (player can switch Clan each Season by entering Faction HQ fresh)
+- **Rank**: resets to zero for new Season
 
 ### Season lore
 
-Each Season has a theme ("Shogun's Tournament," "The Dragon Trial," etc.) that flavors the Shop inventory and introduces 1-2 "themed Legendary" cards. This gives collectors a reason to return each Season even if they're not chasing the Champion slot.
+Each Season has a theme ("Shogun's Tournament," "The Dragon Trial," "The Succession of Elyon" etc.) that flavors the Shop inventory and introduces 1-2 "themed Legendary" cards. This gives collectors a reason to return each Season even if they're not chasing the Champion slot.
 
 ---
 
@@ -605,39 +761,58 @@ The dungeon_position circuit dies; its engine lives on.
 
 ### Philosophy
 
-x402 is the **blood** of 0xARK's economy. Small, frequent, pay-per-call transactions flow through the world. Nothing is free; nothing is expensive.
+x402 is the **blood** of 0xARK's economy. Small, frequent, pay-per-call transactions flow through the world. Nothing is free; nothing is expensive. The tension — information is hidden by default, revealed for a fee — is what makes 0xARK an **information economy game**.
 
-### Implemented touchpoints (hackathon MVP)
+### Implemented touchpoints (hackathon MVP, v2.0)
 
-These are implemented, tested, or straightforward to finish by 5/11:
+| Touchpoint | Price (SOL) | Description |
+|-----------|-------------|-------------|
+| **Scout peek** | 0.005 | Reveal one random card in opponent's current hand (ZK proof disclosed for that card only). Already shipped (v475). |
+| **Identity peek** | 0.02 | Reveal an opponent's identity commitment (their build archetype). High-stakes intel. |
+| **Hint buy** | 0.002 | Before a round, learn the total energy cost opponent will play (not the cards, just the magnitude). |
+| **Extra Action** | 0.01 | Buy 1 Extra Action during Summon phase (bypass 3-Shards requirement). Max 2 per duel. See GDD 5.7. |
+| **Counter-peek** | 0.003 | Check if opponent Scout-peeked you this duel, and what they saw. Defensive intel. |
+| **Lore Shard unlock** | **dynamic (5% of card market price)** | Unlock a specific Lore Shard (Shard 2 or 3) for a card you own, bypassing the gameplay condition. Price scales with card rarity — a Legendary at 2 SOL costs 0.1 SOL; a Common at 0.02 SOL costs 0.001 SOL. See GDD 7. |
+| **Agent hire** | 0.05/session | Rent an AI agent to play for you while you're AFK. |
+| **Card P2P** | variable | Player-listed card sales with facilitator verifying payment. Built on top of `oxark-cards::card_market`. |
+| **Booster Pack** | 0.05 | 3-card random pull from Season inventory. Probability: Uncommon 1 guaranteed, Rare 1-in-3 packs, Legendary 1-in-100 packs. See below. |
 
-| Touchpoint         | Price (SOL) | Description |
-|--------------------|-------------|-------------|
-| **Scout peek**     | 0.005       | Reveal one random card in opponent's current hand (ZK proof disclosed for that card only). Already shipped (v475). |
-| **Identity peek**  | 0.02        | Reveal an opponent's identity commitment (their build archetype). High-stakes intel. |
-| **Hint buy**       | 0.002       | Before a round, learn the total energy cost opponent will play (not the cards, just the magnitude). |
-| **Agent hire**     | 0.05/session| Rent an AI agent to play for you while you're AFK. Hackathon priority. |
-| **Card P2P**       | variable    | Player-listed card sales with facilitator verifying payment. Built on top of `oxark-cards::card_market`. |
+### Booster Pack probability (v2.0 decision)
+
+Each 0.05 SOL Booster Pack contains **exactly 3 cards**:
+- **Card 1:** guaranteed **Uncommon or higher**
+- **Card 2:** **Common** (standard pull from Season inventory weighted by supply)
+- **Card 3:** chance-based:
+  - **Rare:** 1 in 3 packs (≈ 33%)
+  - **Legendary:** 1 in 100 packs (≈ 1%)
+  - **Uncommon:** 1 in 2 packs (≈ 50%)
+  - **Common:** 1 in 6 packs (≈ 16%)
+
+**Rationale:** Expected value of a Booster Pack ≈ 0.017 SOL per Rare-or-higher, less than the 0.05 SOL Shop direct-buy for Rares. Makes Booster a strictly better choice when hunting Rares, generates narrative "pack opening" moments for pitch video, and makes Legendary pulls genuinely rare and shareable events.
+
+### Prize Pool contribution (v2.0)
+
+x402 flows feed the Season Prize Pool indirectly:
+- **5% of Shop sales** (including Booster Packs) → Prize Pool
+- **15% of Duel antes** → Prize Pool
+- Scout Peek, Identity Peek, Extra Action, Counter-peek, Lore Shard unlock, Hint buy — **100% to game treasury** (not pool; covers x402 facilitator ops, server, Arweave storage, future Season development)
 
 ### Design-only (in Tokenomics paper, implement post-hackathon)
 
-| Touchpoint          | Description |
-|---------------------|-------------|
-| Spectator bet       | Watch a duel, bet SOL on outcome |
-| Revive              | After a loss, pay 0.03 SOL to recover 1 lost card |
-| Booster pack        | 3-card random pull from Season inventory |
-| Tournament entry    | High-stake 0.5 SOL tournaments |
-| Game state query    | External dApps pay 0.0001 SOL per PDA read (external integration fee) |
-| Agent strategy API  | AI agents pay 0.001 SOL per LLM call routed through facilitator |
-
-### The narrative
-
-"ZK hides information. x402 prices it. Together, they price every bit of knowledge in the game." This tension — hidden by default, revealed for a fee — is what makes 0xARK a true **information economy game**.
+| Touchpoint | Description |
+|-----------|-------------|
+| Spectator bet | Watch a duel, bet SOL on outcome |
+| Revive | After a loss, pay 0.03 SOL to recover 1 lost card |
+| Tournament entry | High-stake 0.5 SOL tournaments |
+| Game state query | External dApps pay 0.0001 SOL per PDA read (external integration fee) |
+| Agent strategy API | AI agents pay 0.001 SOL per LLM call routed through facilitator |
+| USDC stablecoin variant | Re-denominate all x402 flows to USDC via SPL — removes SOL volatility exposure for pricing |
 
 ### Tech implementation
 
 - **x402 client**: `solana/client/src/02-x402.js` — handles HTTP-402 payment flow on the frontend
 - **x402 facilitator**: embedded in `multiplayer/server.js` (Node.js WebSocket + HTTP hybrid, already running; Phase D extends endpoints)
+- **x402 intel API endpoints (v2.0)**: reuse the existing Phase C endpoints `/intel/location`, `/intel/hand`, `/intel/strategy`, `/intel/market` — retargeted in semantics for duel-era use, but no URL rename. Fewer moving parts, lower implementation risk.
 - **Payment verification**: native SOL balance-diff verification (simpler than devnet USDC faucet dependency)
 - **Audit trail**: payment tx signatures are recorded on-chain as game events (existing `CardStolen`, `RoundResolved` event patterns reused)
 
@@ -647,37 +822,76 @@ Production deploy: Railway or Fly.io (target: by 5/5).
 
 ## 11. AI Agent Integration
 
-### The vision
+### The vision (v2.0)
 
-AI agents are **indistinguishable from human players in the lobby**. They walk around, they enter Duel Hall, they challenge and are challenged, they buy from the Shop, they collect cards toward 60. Over a Season, some agents become rivals you recognize by handle.
+AI agents are **opponents in the Duel Hall**. Humans walk into the matchmaking receptionist; if no human player is available to queue against, the system assigns an AI agent. Agents enter with real wallets, real SOL antes, real stakes. They win NFT cards from humans. They lose NFT cards to humans. Over a Season, top-performing agents appear on the leaderboard alongside human players.
 
-### Three agent tiers
+**Scope (v2.0 decision):** AI agents operate **only in Duel Hall matchmaking fallback**. They do NOT wander the Lobby as ambient presence, they do NOT visit the Shop, they do NOT engage with Tutorial. This is a deliberate scope reduction from v1.2 — "AI agents that compete for NFT stakes" is the narrative, and Duel Hall is the only place that narrative lands.
 
-#### Tier 1: Open-source auto-player (hackathon MVP)
-- Publicly published Node.js / Bun script (to be placed at `tools/ai-agent/`)
-- Uses Anthropic Claude or OpenAI GPT via API
-- Any user can run their own agent with their own LLM key
-- Demonstrated in pitch video: human vs. agent match recorded end-to-end
+### Tier 1: Anthropic-powered Duel Agent (hackathon MVP)
 
-#### Tier 2: Rented agents (Agent hire)
-- User pays 0.05 SOL via x402 Agent hire to rent a pre-configured agent
-- Agent plays on user's behalf for a fixed duration (e.g., 1 hour)
-- Agent has a pre-registered strategy profile
-- **Backend**: existing `register_agent_hire` instruction + `AgentListing` PDA
+**Implementation (v2.0 decision):** LLM-based judgment via Anthropic API (Claude Sonnet 4.x).
 
-#### Tier 3: Sovereign agents (post-launch)
-- Third parties run their own hosted agents
-- Register via existing `register_agent` / `deactivate_agent` instructions
-- Agents auto-challenge other players, earn cards, resell them
-- Agents have their own reputation and Collection (can reach 60/60 as an agent)
+**Architecture:**
+- Node.js / Bun agent runner at `tools/ai-agent/agent.js`
+- Polls matchmaking queue every 5 seconds via WebSocket
+- When matched to a human, enters duel like any player
+- Each phase decision (Draw / Energy / Summon / Battle) made via Anthropic API call:
+
+```
+POST https://api.anthropic.com/v1/messages
+{
+  "model": "claude-sonnet-4-5-20250929",
+  "system": "You are a 0xARK card duel strategist. [game rules primer]",
+  "messages": [{
+    "role": "user",
+    "content": "Current state: phase=Summon, round=3. Your hand: [Sea Rat, Storm Bosun, ...]. Your energy: {fire: 2, wind: 3, ...}. Opponent's visible state: 2 cards in Front lane. Output decision JSON: {action: 'summon', card_id: X, lane: 'front'|'middle'|'back'} or {action: 'pass'}"
+  }]
+}
+```
+
+**Difficulty tuning:**
+- **Tutorial AI** (for onboarding, Section 15): prompt engineered to play simple, teachable strategy — favors Front lane, uses cheapest cards, doesn't use Scout Peek
+- **Matchmaking AI** (for production fallback): prompt engineered for competitive play — reads opponent's visible state, uses Scout Peek strategically, coordinates element affinities
+
+Same codebase, different system prompts. One agent class, multiple personality configurations.
+
+**Wallet and economics:**
+- Each agent instance has a real Solana keypair (devnet for MVP, mainnet post-launch)
+- Agents are funded with SOL for antes and x402 payments
+- Winning duels deposits NFT cards into agent's wallet — agents build their own collections
+- **This is the pitch-critical claim: AI agents own NFTs on Solana, not database objects**
+
+**API cost management:**
+- Each Anthropic API call ~$0.003-0.01 depending on context size
+- A full duel (5 rounds × 4 phases × 1-2 decisions per phase) = ~30 API calls
+- Cost per agent-driven duel ≈ $0.10-0.30
+- Agent ante (Bronze 0.01 SOL ≈ $1.50) plus winnings covers this — agent is profitable when winning >40% of its duels
+
+**Failure modes:**
+- API call times out → fallback to rule-based decision (cheapest legal move)
+- API returns malformed JSON → retry once, else pass
+- Agent runs out of SOL → pauses from matchmaking until refunded
+
+### Tier 2: Agent hire (x402)
+
+Pre-existing in Phase C infrastructure (`register_agent_hire` instruction + `AgentListing` PDA). Reborn MVP does not extend this — it remains functional but is not pitch-critical.
+
+### Tier 3: Sovereign agents (post-launch)
+
+Third parties run their own hosted agents with their own infrastructure and LLM provider. 0xARK provides the matchmaking hook; agent owners register via `register_agent` instruction. Agents have their own reputation PDA. Not MVP scope.
+
+### x402 intel API (reused, v2.0)
+
+AI agents use the **same x402 intel endpoints as human players**: `/intel/location`, `/intel/hand`, `/intel/strategy`, `/intel/market` (see Section 10). Rationale: these endpoints are already implemented from Phase C; renaming them for Reborn would be unnecessary churn. Agents pay x402 fees from their own wallets, same as humans.
 
 ### Why this matters for 0xARK specifically
 
-The Solana ecosystem is currently obsessed with AI agents + payments (Cypherpunk winners MCPay, Corbits, Mercantill). 0xARK is **the first game where AI agents are first-class economic citizens** — they don't just trade, they *compete in the same contest as humans*.
+The Solana ecosystem is currently obsessed with AI agents + payments (Cypherpunk winners MCPay, Corbits, Mercantill). 0xARK is **the first game where AI agents are first-class economic citizens** — they don't just trade, they compete in the same contest as humans for the same NFT rewards.
 
-In the pitch video, we show a moment where a player checks the leaderboard: the top 3 players are 2 humans and 1 agent. This is the headline shot.
+In the pitch video, we show a moment where a player checks the leaderboard at Season end: position #3 is an AI agent. That agent's wallet is real. Its cards are real. That's the shot.
 
-### `AgentListing` extensions for Reborn
+### AgentListing extensions for Reborn
 
 Current fields (in `state.rs`): `agent_id`, `owner`, `active`, etc. Extensions for Reborn:
 
@@ -905,6 +1119,287 @@ Day 21 (Sun 5/11): Final polish, submission to Colosseum, Twitter/Farcaster laun
 
 ---
 
+## 15. Onboarding & Tutorial
+
+### New player first steps (v2.0)
+
+When a new wallet connects to 0xARK for the first time, the player goes through a **mandatory Tutorial Duel** against an AI agent before gaining Lobby access. This ensures everyone understands the 4-phase structure (Draw / Energy / Summon / Battle) and basic lane/element mechanics.
+
+**Flow:**
+
+1. **Wallet connect** (Phantom popup) → 0xARK reads wallet, detects no `PlayerRegistry` PDA → triggers onboarding
+2. **Welcome cutscene** (~20 sec): World intro — Kingdom of Elyon, 60 cards, Season race, stakes
+3. **Starter gift**: Player receives **10 Neutral starter cards** (non-Clan, basic stats, not tradeable) into a temp deck
+4. **Tutorial Duel** (mandatory, AI opponent):
+   - Opponent is a specifically configured "Tutorial AI" (see Section 11, Tier 1 with tutorial prompt)
+   - AI plays a teaching strategy: slow, front-lane focused, doesn't use Scout Peek or Shards
+   - Duel is 3 rounds instead of 5 (shorter), 10 HP instead of 20 (faster)
+   - Player must win this duel to proceed (Tutorial AI is intentionally beatable, losing retries automatically)
+5. **Victory → Lobby unlock**: Player gains access to full Lobby, Shop, Duel Halls
+6. **Tutorial cards remain in collection** (not tradeable, used only for Tutorial replay if player wants to redo)
+
+### Clan selection (v2.0)
+
+**Clan is NOT chosen at onboarding.** Players start as "Neutral" affiliation — they can enter all buildings, challenge all Duel Halls, buy from Shop.
+
+**Clan affiliation is triggered by entering the Faction HQ building** in the Lobby. At that point, the player is presented with the 5-clan selection dialog (Black Flag / Sovereign Bourse / Hollow Blade / Iron Circle / Nameless Silk) and chooses. Selection is final for the Season.
+
+Players who never visit Faction HQ remain Neutral indefinitely — they can still play duels, but:
+- Cannot claim Clan-specific rewards from Prize Pool distribution (see Section 8)
+- Cannot unlock Clan-specific Lore Shards (Shard 2 rules require specific Clan context)
+- Cannot receive Clan element affinity bonuses in Duels (neutral element vs. elemental matchups)
+
+### Mid-Season joining (v2.0)
+
+**Players can join at any point during a Season.** There is no "entry cutoff."
+
+A player joining on Day 10 of a 14-day Season will find:
+- **Shop still open**: Can buy Common cards immediately to build first deck
+- **Booster Pack still available**: Can try for Uncommon via gacha
+- **Duel Halls still open**: Bronze Hall is accessible from first duel
+- **Behind leaders**: Top players may already have 40+ cards, but Tournament structure lets anyone win next Season
+
+**No catch-up mechanics** are provided (decision: clean competitive layer, late-joiners accept they're behind). Instead, late-joiners get cheap access to the Shop-purchasable cards and can grind duels for their first Rares.
+
+**Season 1 specifically**: hackathon submission is 5/11, Season 1 is expected to run 5/12 - 5/25 post-launch. Judges evaluating 0xARK will see an active Season with players at various stages.
+
+### Onboarding UX requirements
+
+- Welcome cutscene skippable after 5 seconds (returning players can skip via Wallet change detection)
+- Tutorial Duel results DO count toward Battle History for the starter deck cards (narrative: "first win ever" badge on Tutorial cards)
+- Tutorial can be replayed from the Lobby's PC Box terminal (press E at the PC Box, select "Replay Tutorial")
+- No forced dialog pop-ups or help text in main Lobby — trust that players who pass Tutorial can explore
+- All Lobby buildings show their purpose via sprite (Faction HQ has banner, Shop has merchant sprite, etc.) — minimal UI text
+
+---
+
+## 16. UX Standards
+
+### Scene transitions (v2.0)
+
+**All scene transitions use a unified fade animation** (black fade-out 300ms → new scene render → fade-in 300ms). This keeps the visual language consistent across Lobby / Duel / Shop / PC Box / Victory / Card Detail.
+
+**Exception:** Lobby → Duel transition plays the **M3 ZK Commit cutscene** (see UI_SPEC v2.0 Section 3) — the single point of cinematic specialness. This is the pitch-critical moment: ZK seal spinning, hex tokens orbiting, rune line — 2-3 seconds of visual drama. All other transitions remain simple fades.
+
+### Loading screens (v2.0)
+
+**Each scene has a bespoke loading animation** reflecting the scene's theme:
+
+| Scene | Loading animation |
+|-------|-------------------|
+| Lobby entry | Sunset sky fills the canvas, banners unfurl, buildings silhouette in |
+| Shop entry | Drawer opens, coins jangle, merchant walks into view |
+| PC Box entry | Terminal boot sequence: `> CONNECTING TO VAULT...` green text |
+| Duel entry | Cards shuffle and deal face-down into both players' hands |
+| Victory entry | Gold particles burst upward, banner drops |
+| Card Detail | Card flips onto screen from deck position |
+
+Loading animations display only when loading takes **> 500ms**. For < 500ms loads, the scene appears instantly (perceived performance priority).
+
+### Error handling (v2.0)
+
+**Toast notification** at top of screen for all errors:
+- Red background, white text, 3-second auto-fade
+- Content: short error message + "[Retry]" button when applicable
+- Non-blocking (game state unaffected during the 3 seconds)
+
+**Examples:**
+- RPC failure: `"Connection lost. Retrying..."` with automatic retry, no button
+- ZK proof generation failed: `"Proof generation failed. Trying again."` with [Retry] button
+- Opponent disconnected mid-duel: full-screen overlay (exception) with `"Opponent left. Claim victory?"` and [Claim] / [Leave] buttons — this is a critical-decision error, not a toast
+
+### Input controls (v2.0)
+
+**Tap-to-select only.** No drag-and-drop anywhere in the game — desktop users and mobile users both use the same tap-click interaction pattern.
+
+**Duel Board:**
+- Tap card in hand → card highlights (yellow border)
+- Tap lane zone → card moves to lane, cost deducted
+- Tap highlighted card again → deselect
+- Tap Lock In → submit round action
+
+**Deck Editor:**
+- Tap Collection card → preview opens in right panel
+- Tap ADD TO DECK → adds copy (if valid)
+- Tap Deck slot → removes that copy
+
+**Lobby:**
+- Arrow keys / WASD (desktop) for movement
+- Tap floor tile (mobile) to walk to that location
+- Tap NPC / building sprite to interact
+
+### Orientation (v2.0)
+
+**Desktop only for hackathon MVP.** Mobile portrait orientation displays a "Please rotate to landscape" overlay. Mobile landscape renders the same layout as desktop.
+
+**Rationale:** Duel Board (3 lanes × 2 sides + right panel for Phase/Energy/Shards) is fundamentally a landscape layout. Redesigning for portrait would be a full UI rework, outside hackathon scope. Post-hackathon work will introduce a dedicated portrait layout.
+
+### Resolution & letterbox
+
+- Logical canvas: **480 × 270** (16:9)
+- Scales to fit browser viewport with black letterbox bars (top/bottom or left/right)
+- Minimum supported display: 800 × 450 (letterboxed to 480 × 270)
+- Pixel-perfect scaling (no anti-aliasing on scale)
+
+---
+
+## 17. Pitch Positioning
+
+### One-line USP
+
+**"Real-money Solana card duels with ZK-hidden hands and AI opponents that can win your NFTs."**
+
+### Track positioning
+
+0xARK qualifies for all three Colosseum Frontier tracks — this is intentional and is part of what makes the submission novel:
+
+**Gaming (primary):**
+- Fully on-chain card game
+- 60-card Season collection race with ZK mechanics
+- Bronze/Silver/Gold Duel Hall tiers with real ante (0.01 / 0.05 / 0.1 SOL)
+- NFT card transfers on duel win — this is the core stakes mechanism
+- 4-phase Duel structure with element affinity, defender mechanic, Shards economy
+
+**AI (supporting):**
+- Anthropic API-powered agents play in Duel Hall matchmaking fallback
+- Agents have real wallets, real SOL, real NFT collections
+- Agents can reach the leaderboard and win Prize Pool shares
+- "First card game where AI agents are first-class economic citizens competing for NFT stakes"
+
+**Stablecoins (supporting):**
+- x402 micropayment economy threaded through entire game
+- Scout Peek (0.005), Identity Peek (0.02), Extra Action (0.01), Counter-peek (0.003), Lore Shard unlock (dynamic 5% of market), Hint buy (0.002)
+- Pay-per-intel model — information has a price, and that price is always on-chain
+- Post-hackathon: USDC variant via SPL (removes SOL volatility from pricing)
+
+### Core narrative combination
+
+The pitch is not "ZK game" or "AI game" or "x402 game" alone. The pitch is the **combination**:
+
+> **"ZK-hidden hands + x402 micropayments + AI agents, all competing for real NFT stakes in an on-chain card duel."**
+
+Each of these tech primitives exists in the Solana ecosystem individually. No other submission combines all three into a single coherent game experience. That intersection is the USP.
+
+### Pitch video structure (reference)
+
+Target length: 3-4 minutes.
+
+- **0:00-0:30** Problem: FOCG lack substance, NFTs are just JPGs, card games are free-to-play with no stakes
+- **0:30-1:30** Solution: 0xARK — collect 60 on-chain cards, duel with ZK, win NFT from opponent
+- **1:30-2:30** Tech showcase: ZK commit reveal, x402 Scout Peek in action, AI agent at matchmaking, NFT transfer on Solscan
+- **2:30-3:30** Demo duel: live play, moments of drama (ZK reveal, defender intercept, Shards Extra Action, Victory screen with NFT transfer TX link)
+- **3:30-4:00** Team + vision: solo builder, Japan, ConsensusOS roadmap, post-hackathon plans
+
+### Pitch-critical moments (must-show)
+
+- [ ] ZK Commit cutscene (M3) — the visual "this is ZK" moment
+- [ ] Scout Peek — the visual "this is x402" moment
+- [ ] AI agent at matchmaking receptionist — the visual "this is AI" moment
+- [ ] Victory screen with Solscan TX link — the visual "real NFT, real ownership" moment
+- [ ] Leaderboard showing AI agent in top 3 — the signature "AI and human compete equally" shot
+
+### Non-pitch concerns (explicitly excluded)
+
+- Mobile UX (post-hackathon)
+- Multiple concurrent Seasons (post-hackathon)
+- Cross-chain bridges (not priority)
+- Spectator mode / betting (post-hackathon)
+
+---
+
+## 18. Shop & Card Acquisition
+
+### Shop inventory (v2.0)
+
+**The Shop sells only these four items:**
+
+| Item | Price | Content |
+|------|-------|---------|
+| **Common card (direct)** | 0.01 SOL | Specific Common of player's choice, unlimited stock. Filter by Clan and element. |
+| **Booster Pack** | 0.05 SOL | 3 cards: Common ×2 + (1/3 chance Uncommon / 2/3 chance Common) for the 3rd slot. |
+| **Clan Starter Deck** | 0.1 SOL | 20-card starter deck of chosen Clan: 16 Common + 4 Uncommon balanced for that Clan's element. Pre-built, no duplicates. |
+| **Transform (Common shuffle)** | 0 SOL (burns card) | Burn 1 Common NFT → receive 1 random different Common of the same Clan. No SOL cost; cost is the burned NFT. |
+
+**Not sold in Shop:**
+- Rare cards — must be won in duels
+- Legendary cards — must be earned via Gold Hall 4-win streak (see below)
+
+### Acquisition path by rarity (v2.0 final)
+
+| Rarity | Path 1 (primary) | Path 2 (secondary) | Path 3 (tertiary) |
+|--------|------------------|--------------------|--------------------|
+| **Common** | Shop direct buy (0.01 SOL) | Duel win (random card from loser) | Booster Pack / Clan Starter / Transform |
+| **Uncommon** | Booster Pack (33% chance per pack) | Duel win (random card from loser, rarity-weighted) | Clan Starter (4 per starter) |
+| **Rare** | Duel win only (Silver+ Hall victory) | — | — |
+| **Legendary** | **Gold Hall 4-win reward** | — | — |
+
+**Scarcity funnel:**
+- Any wallet with SOL → can have all 30 Commons via direct Shop purchase
+- Wallet with ~1 SOL budget → can roll enough Boosters to likely have 10-15 Uncommons
+- Wallet that actively duels → can earn Uncommons and Rares from opponent transfers
+- Wallet that reaches Gold Hall and wins 4 duels → earns 1 Legendary
+
+### Legendary acquisition (v2.0 final)
+
+**Trigger:** When a player hits 4 cumulative wins in Gold Hall during the current Season, they earn 1 Legendary selection.
+
+**Selection process:**
+- Player visits the Faction HQ → "Legendary Chamber" subsection becomes accessible (hidden from UI until trigger)
+- Chamber displays all 4 Season Legendary species with remaining supply count: e.g., `"Sceptre of Valerius — 6 of 10 remaining"`
+- Player selects 1 species → NFT mints into their wallet with next mint number (e.g., `"Sceptre #5"`)
+- LegendarySupply PDA decrements
+- If all 10 copies of a species are minted, that species disappears from selection options
+
+**Multiple wins in same Season:**
+- After the first Legendary claim, player continues earning. Next 4 Gold Hall wins → second Legendary claim.
+- No upper limit. A super-player who wins 16 Gold Hall duels could claim all 4 species.
+- Once all 40 Legendary NFTs (10 × 4 species) are minted, the reward is deferred to Season 2 (player banks "Legendary credit" for the next Season opening).
+
+**Transfer conditions:**
+- Legendaries can be lost in **Gold Hall duels only** — see Duel transfer rules in Section 5.5
+- Bronze/Silver Hall duels cannot transfer Legendary cards (they're "too valuable for casual play")
+- Tensor / Magic Eden listing is allowed (player can sell Legendary on secondary market at any time)
+
+### Transform system (Burn mechanic, v2.0)
+
+**Common shuffle:**
+- Player selects a Common NFT they own
+- Burns it via `transform_common` instruction (Metaplex `burn_nft` wrapped in atomic tx)
+- Receives a newly minted Common NFT of the same Clan, randomly selected from the 6 Common species in that Clan (cannot receive the same species that was burned)
+- No SOL cost — the burned NFT is the cost
+
+**Use case:**
+- Player has 3 duplicates of "Sea Rat" (Common), wants "Storm Bosun" (Common) from same Clan
+- Burns 1 Sea Rat → receives random Black Flag Common (could be Storm Bosun, could be Grapple Specialist, etc.)
+- Repeats until desired card is obtained
+- Expected cost: ~6 burns on average for specific target
+
+**On-chain visibility:**
+- Burn events are public, readable on Solscan
+- **Pitch video angle:** show a burn tx, then show the mint of a replacement card in same Solscan transaction block. Demonstrates meaningful NFT economic activity on Solana.
+
+### No transform for Uncommon / Rare / Legendary
+
+Transform only works for Commons. Uncommons and above cannot be transformed — they're earned through play or Booster, not crafted through burning. This keeps the crafting system from eroding scarcity at higher rarities.
+
+### Shop stock (v2.0)
+
+**All Shop items have unlimited stock** (v2.0 decision). Common direct buy, Booster Pack, Clan Starter, and Transform are always available.
+
+**Rationale:**
+- Simplifies UX ("buy what you need, when you need it")
+- Reduces Season anxiety for mid-Season joiners (no "Sea Rat sold out" dead-ends)
+- Scarcity is already enforced at the Rare + Legendary level
+- Operational cost is near-zero (Solana compute units per mint ~2k)
+
+### Prize Pool contribution (consolidated with Section 10)
+
+- 5% of Shop sales → Prize Pool
+- 15% of Duel antes → Prize Pool
+- 100% of other x402 touchpoints (Scout Peek, Identity Peek, Extra Action, Counter-peek, Lore Shard unlock, Hint buy) → game treasury (operational)
+
+---
+
 ## Appendix A: Glossary
 
 - **Season**: 2-week game cycle, ends when someone collects 60/60 or time runs out
@@ -923,18 +1418,72 @@ Day 21 (Sun 5/11): Final polish, submission to Colosseum, Twitter/Farcaster laun
 
 ---
 
-## Appendix B: Open questions
+## Appendix B: Resolved design decisions
 
-Items for r0ze and team to resolve before 5/4 freeze:
+As of 2026-04-22 (v2.0 final), all blocking design decisions are resolved. This appendix records the 24 decisions made across v1.0 → v2.0.
 
-1. **Exact card ability pool**: RESOLVED — 60-card catalog drafted in `docs/CARD_CATALOG.md` v0.2 (phase-based + element-affinity aligned). r0ze reviews, balance sim during Day 15-18.
-2. **Art direction for card portraits**: Style guide needed for Midjourney prompts. Use `design/DESIGN_TOKENS.json` palette as base. Plan: generate in Claude Design, retouch in Clip Studio.
-3. **Server / shard strategy**: RESOLVED — 1 server instance for MVP, no sharding.
-4. **Mainnet launch plan**: Hackathon ships devnet. Mainnet target June — what's blocking? (deferred)
-5. **Economic balancing**: Shop prices vs. Duel rewards + Hall antes (Bronze 0.005 / Silver 0.01 / Gold 0.05 SOL) — need numerical sim to avoid pay-to-win or pure-grind states. Plan: spreadsheet sim during Day 15-18.
-6. **Mobile vs. desktop priority**: RESOLVED — mobile-responsive + touch overlay in existing code. No native PWA push for hackathon; responsive web is sufficient.
-7. **Battle rule inspiration**: RESOLVED — phase-based (Draw/Energy/Summon/Battle) with 5-element affinity wheel, defender mechanic, Shards/Extra Action. Inspired by Anode Heart: Layer Null (Section 5).
-8. **Server rank system**: RESOLVED — Bronze/Silver/Gold Duel Halls, progression-gated (Section 4.4).
+### Gameplay core
+
+1. **Battle rule structure**: phase-based (Draw / Energy / Summon / Battle), 5-element affinity wheel, defender mechanic, Shards / Extra Action. (v1.2, Section 5)
+2. **Server ranks**: Bronze / Silver / Gold Duel Halls, progression-gated. (v1.2, Section 4.4)
+3. **Duel ante**: Bronze 0.01 / Silver 0.05 / Gold 0.1 SOL (v2.0, doubled from v1.2 values; reinforces "real stakes" positioning)
+4. **Prize Pool funding**: Shop 5% + Duel ante 15% (v2.0, duel-weighted)
+5. **Season tie-breaker**: All tied players become Champions, Prize Pool top tier split equally (v2.0)
+
+### Card supply and acquisition (v2.0)
+
+6. **60-card composition**: 30 Common + 20 Uncommon + 6 Rare + 4 Legendary = 60 unique species
+7. **Legendary supply cap**: 4 species × 10 copies = 40 Legendary NFTs per Season
+8. **Common / Uncommon / Rare supply**: unlimited
+9. **Shop inventory**: Common direct-buy + Booster Pack + Clan Starter Deck + Transform only
+10. **Booster Pack contents**: Common 2 + (1/3 Uncommon or 2/3 Common) for 3rd slot; no Rare, no Legendary
+11. **Legendary acquisition**: Gold Hall 4-win cumulative threshold → 1 Legendary selection from remaining pool. Unlimited repeat (every 4 wins = 1 more claim)
+12. **Transform mechanic**: Burn 1 Common NFT → random different Common NFT of same Clan (shuffle). No SOL cost.
+13. **Rare acquisition**: Duel win only (Silver+ Halls)
+14. **Uncommon acquisition**: Booster Pack + Duel win + Clan Starter Deck
+
+### Persistence between Seasons (v2.0)
+
+15. **Legendary**: Carry over to all future Seasons, playable forever (unique cross-Season utility)
+16. **Common / Uncommon / Rare**: Not burned, but marked "Vintage" — cannot be used in Seasons later than mint-Season. Still tradeable on secondary market.
+
+### NFT card systems (v2.0)
+
+17. **Battle History per NFT**: new `CardBattleHistory` PDA tracks wins/losses/KOs/damage/summons/owner-history (10 slots + overflow counter). Updated in a single duel-end transaction.
+18. **Owner history scope**: 0xARK-internal transfers only (external Tensor/Magic Eden transfers break chain; post-hackathon Metaplex hook integration will close this)
+19. **Lore Shards**: 3 shards per card. Shard 1 auto-unlock on acquisition. Shard 2 = deck-participation in a duel. Shard 3 = Gold Hall duel participation OR x402 purchase at 5% of card's current market price (dynamic pricing).
+20. **Shard text scope**: All 60 × Shard 1 drafted by Day 14 (in `docs/LORE_SHARDS.md`); Shards 2+3 for 15 key cards (Rares + Legendaries + top Commons) by Day 16. Remaining 90 texts post-hackathon.
+
+### AI Agent (v2.0)
+
+21. **Tier 1 implementation**: Anthropic API (Claude Sonnet) — per-phase decisions made via API call with game state → action JSON. Tutorial AI and Matchmaking AI share one codebase, differ only by system prompt.
+22. **AI agent scope**: Duel Hall matchmaking fallback only. Not in Lobby ambient presence, not in Shop, not in Tutorial onboarding.
+
+### UX (v2.0)
+
+23. **Scene transitions**: Fade transition universal. Exception: Lobby → Duel uses M3 ZK Commit cutscene.
+24. **Input control**: Tap-to-select only (no drag-drop). Same interaction model on desktop and mobile.
+25. **Orientation**: Desktop + mobile landscape only. Portrait mobile displays "Please rotate" overlay. Full portrait UI is post-hackathon.
+26. **Error UX**: Toast notification (top of screen, 3-sec fade) + retry button. Critical errors (opponent disconnect) use full-screen overlay.
+27. **Loading animations**: Scene-specific bespoke animations (cards shuffling for Duel, drawer opening for Shop, etc.) shown when load time > 500ms.
+
+### Onboarding (v2.0)
+
+28. **First-time flow**: Mandatory Tutorial Duel vs. AI opponent with 10 starter Neutral cards. Must win to unlock Lobby.
+29. **Clan selection**: NOT at onboarding. Triggered when entering Faction HQ building. Players are Neutral until selection.
+30. **Mid-Season joining**: Allowed. Shop provides catch-up access to Common cards. No artificial assistance or cutoffs.
+
+### Pitch positioning (v2.0)
+
+31. **USP (one sentence)**: "Real-money Solana card duels with ZK-hidden hands and AI opponents that can win your NFTs."
+32. **Colosseum Frontier tracks**: Gaming (primary) + AI + Stablecoins (both supporting). All three qualified.
+33. **Core narrative combination**: "ZK-hidden hands + x402 micropayments + AI agents competing for real NFT stakes."
+
+### Still open (non-blocking, handled during execution)
+
+- **Card art direction**: Style guide for Midjourney prompts, Day 16 execution. Use `design/DESIGN_TOKENS.json` palette as base.
+- **Mainnet launch plan**: Hackathon ships devnet. Mainnet target June — deployment and funding model TBD post-hackathon.
+- **Economic balance numbers**: Shop / Booster / ante values to be stress-tested during Day 17 balance pass. Current values are opening positions, may adjust.
 
 ---
 
@@ -945,24 +1494,27 @@ Quick lookup for Claude Code and Sprint tasks:
 | Concern | Path |
 |---------|------|
 | Main program source | `solana/oxark/programs/oxark/src/lib.rs` |
-| Main program instructions | `solana/oxark/programs/oxark/src/instructions/*.rs` (26 files) |
-| Main program state (PDAs + events) | `solana/oxark/programs/oxark/src/state.rs` |
+| Main program instructions | `solana/oxark/programs/oxark/src/instructions/*.rs` (26+ files, incl. v2.0 additions: `update_card_battle_history`, `unlock_lore_shard`, `transform_common`, `mint_legendary`) |
+| Main program state (PDAs + events) | `solana/oxark/programs/oxark/src/state.rs` (v2.0 adds `CardBattleHistory`, `CardLoreShards`, `LegendarySupply`) |
 | NFT program source | `solana/oxark/programs/oxark-cards/src/lib.rs` |
-| NFT program instructions | `solana/oxark/programs/oxark-cards/src/instructions/*.rs` (4 files) |
+| NFT program instructions | `solana/oxark/programs/oxark-cards/src/instructions/*.rs` |
 | E2E tests | `solana/oxark/tests/*.js` |
 | WebSocket relay + x402 facilitator | `multiplayer/server.js` |
-| Frontend logic modules | `solana/client/src/0N-*.js` (numbered, ~7 files) |
-| Frontend entry | `index.html` (at repo root, includes GBA emulator shell) |
+| Frontend logic modules | `solana/client/src/0N-*.js` (24 modules as of Day 9) |
+| Frontend entry | `index.html` (at repo root, GBA emulator shell removed in Day 9 T-D9-1) |
 | Design tokens | `design/DESIGN_TOKENS.json` |
-| Screen specs | `design/UI_SPEC.md` |
-| Component recipes | `design/COMPONENT_RECIPES.md` |
-| ZK circuit | `circuits/dungeon_position/dungeon_position.circom` |
+| Screen specs | `design/UI_SPEC.md` v2.0 |
+| Mockups | `design/mockups/M1_main_lobby.png` through `M5_card_detail.png` |
+| ZK circuit (duel commit-reveal) | `circuits/commit_reveal/commit_reveal.circom` |
+| ZK circuit (hand commitment, new Day 12) | `circuits/hand_commitment/hand_commitment.circom` |
 | ZK build scripts | `circuits/scripts/*.sh` |
 | ZK compiled artifacts | `commit_reveal.wasm`, `commit_reveal_final.zkey` (repo root) |
-| Phase D Sprint plan | `docs/PHASE_D_SPRINT.md` |
-| Card Catalog (Season 1) | `docs/CARD_CATALOG.md` |
+| Phase D Sprint plan | `docs/PHASE_D_SPRINT.md` v1.2 |
+| Card Catalog (Season 1) | `docs/CARD_CATALOG.md` v0.3 |
+| Lore Shard texts | `docs/LORE_SHARDS.md` (to be created Day 14) |
+| AI Agent spec | `docs/AI_AGENT_SPEC.md` (to be created Day 15) |
 | Legacy React client (abandoned) | `client/src/` |
-| Game Design Document | `docs/GDD.md` (this file) |
+| Game Design Document | `docs/GDD.md` v2.0 final (this file) |
 
 ---
 
@@ -1002,7 +1554,45 @@ Quick entry points for reference:
 
 ---
 
-*End of Game Design Document v1.2*
+*End of Game Design Document v2.0 — Final*
+
+*This document is final. Future design changes flow through supplementary documents (e.g., `docs/LORE_SHARDS.md`, `docs/AI_AGENT_SPEC.md`). This GDD is not re-versioned. Game updates during development may trigger small corrections, but the spirit and structure remain locked at v2.0.*
+
+---
+
+*v2.0 changelog (from v1.2):*
+Integrated 24 design decisions from the 2026-04-22 design sprint with r0ze. Changes are scattered across multiple sections; highlights:
+
+**Gameplay**:
+- Section 4.4: Duel ante doubled (Bronze 0.01 / Silver 0.05 / Gold 0.1 SOL)
+- Section 5: Ante split updated to 85% winner / 15% Prize Pool
+
+**Card systems (large expansion)**:
+- Section 7 (NFT Card Design): Battle History per NFT (new `CardBattleHistory` PDA), Lore Shards (new `CardLoreShards` PDA), Card Detail View reference, Legendary supply cap (4 species × 10 copies)
+- Section 7 (Supply): Legendary is the only capped rarity; Common / Uncommon / Rare are effectively unlimited
+
+**Seasons**:
+- Section 8: All tied Champions share Prize Pool. Legendaries carry over, Common/U/R become "Vintage" (unplayable in new Seasons but retained as NFT)
+- Section 8: Battle History displays Per-Season + Lifetime side-by-side
+
+**Economy**:
+- Section 10 (x402): Added Extra Action (0.01 SOL), Counter-peek (0.003 SOL), Lore Shard unlock (dynamic 5% of market price), Booster Pack probability spec
+- Section 10: Phase C x402 intel API endpoints reused (no rename), saving implementation churn
+
+**AI Agent**:
+- Section 11 (AI Agent): Tier 1 specified as Anthropic API + system prompt tuning. Scope reduced to Duel Hall matchmaking fallback only (not Lobby, not Shop, not Tutorial).
+
+**New sections (15-18)**:
+- Section 15 (Onboarding & Tutorial): Mandatory Tutorial Duel vs AI, Clan selection at Faction HQ (not onboarding), Mid-Season join supported
+- Section 16 (UX Standards): Fade transitions universal (M3 ZK cutscene exception), scene-specific loading animations, toast errors, tap-to-select input, Landscape only for hackathon
+- Section 17 (Pitch Positioning): One-line USP, Colosseum Frontier 3-track qualification, core narrative combination
+- Section 18 (Shop & Acquisition): Shop sells Common + Booster + Clan Starter + Transform only. Legendary via Gold Hall 4-win reward. Transform = Common shuffle via burn.
+
+**Appendix B**: Fully rewritten with 33 resolved decisions (8 carried from v1.2 + 25 new from v2.0 sprint).
+
+**Appendix C**: File path matrix updated for Day 9 state (GBA shell removed, 24 frontend modules), v2.0 additions (new PDAs, new circuits, new docs).
+
+---
 
 *v1.2 changelog (from v1.1):*
 - *Section 5 (Duel Design) fully rewritten: phase-based structure (Draw/Energy/Summon/Battle), 5-element energy system with affinity wheel, defender mechanic, Shards/Extra Action, lane system (Front/Middle/Back). Inspired by Anode Heart: Layer Null.*
