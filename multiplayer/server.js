@@ -48,8 +48,31 @@ const COMMITMENT = 'confirmed';
 // ─── HTTP health-check server ─────────────────────────────────────────────────
 // Railway / Render require an HTTP endpoint to verify the service is alive.
 // WebSocket connections are upgraded from this same server.
-const httpServer = http.createServer((req, res) => {
+// ─── x402 mock endpoint helpers ──────────────────────────────────────────────
+// Day 10: mock-only. Real payment verification arrives Day 11-12.
+function _readBody(req) {
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => {
+      try { resolve(JSON.parse(data)); } catch { resolve({}); }
+    });
+  });
+}
+
+const httpServer = http.createServer(async (req, res) => {
+  const setCORS = () => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  };
+
+  if (req.method === 'OPTIONS') {
+    setCORS(); res.writeHead(204); res.end(); return;
+  }
+
   if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
+    setCORS();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       status: 'ok',
@@ -57,10 +80,38 @@ const httpServer = http.createServer((req, res) => {
       connections: wss?.clients?.size ?? 0,
       rpc: RPC_URL,
     }));
-  } else {
-    res.writeHead(404);
-    res.end('Not found');
+    return;
   }
+
+  // x402 Extra Action (Day 10 mock — always succeeds)
+  if (req.method === 'POST' && req.url === '/x402/extra-action') {
+    setCORS();
+    const body = await _readBody(req);
+    // TODO Day 11: verify SOL payment from body.playerPubkey for 0.01 SOL
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, action: body.action || 'unknown', mock: true }));
+    return;
+  }
+
+  // x402 Scout Peek (Day 10 mock — always succeeds)
+  if (req.method === 'POST' && req.url === '/x402/scout-peek') {
+    setCORS();
+    const body = await _readBody(req);
+    // TODO Day 11: verify SOL payment for 0.005 SOL
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, mock: true }));
+    return;
+  }
+
+  // x402 Counter-peek (Day 10 stub)
+  if (req.method === 'POST' && req.url === '/x402/counter-peek') {
+    setCORS();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, mock: true }));
+    return;
+  }
+
+  res.writeHead(404); res.end('Not found');
 });
 
 const connection = new Connection(RPC_URL, COMMITMENT);
