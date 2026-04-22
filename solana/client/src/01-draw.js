@@ -457,7 +457,7 @@ async function onchainCommit(gameId,actionType,rivalIdx){
         const gameIdBytes=new Uint8Array(gameIdBuf);
         const playerKey=new solanaWeb3.PublicKey(walletPublicKey);
         const [gamePda]=solanaWeb3.PublicKey.findProgramAddressSync(
-          [Buffer.from('game'),gameIdBytes],PROGRAM_PUBKEY
+          [new TextEncoder().encode('game'),gameIdBytes],PROGRAM_PUBKEY
         );
         // Read round from game account
         let round=0;
@@ -480,11 +480,11 @@ async function onchainCommit(gameId,actionType,rivalIdx){
         const data=anchorInstructionData([75,26,232,17,11,158,202,221],args);
 
         const [playerPda]=solanaWeb3.PublicKey.findProgramAddressSync(
-          [Buffer.from('player'),gameIdBytes,playerKey.toBytes()],PROGRAM_PUBKEY
+          [new TextEncoder().encode('player'),gameIdBytes,playerKey.toBytes()],PROGRAM_PUBKEY
         );
         // Commit PDA includes round: [COMMIT_SEED, game_id, round, player]
         const [commitPda]=solanaWeb3.PublicKey.findProgramAddressSync(
-          [Buffer.from('commit'),gameIdBytes,roundBytes,playerKey.toBytes()],PROGRAM_PUBKEY
+          [new TextEncoder().encode('commit'),gameIdBytes,roundBytes,playerKey.toBytes()],PROGRAM_PUBKEY
         );
         const ix=new solanaWeb3.TransactionInstruction({
           keys:[
@@ -544,13 +544,13 @@ async function onchainReveal(gameId,actionType,rivalIdx,salt){
         }
 
         const [gamePda]=solanaWeb3.PublicKey.findProgramAddressSync(
-          [Buffer.from('game'),gameIdBytes],PROGRAM_PUBKEY
+          [new TextEncoder().encode('game'),gameIdBytes],PROGRAM_PUBKEY
         );
         const [playerPda]=solanaWeb3.PublicKey.findProgramAddressSync(
-          [Buffer.from('player'),gameIdBytes,playerKey.toBytes()],PROGRAM_PUBKEY
+          [new TextEncoder().encode('player'),gameIdBytes,playerKey.toBytes()],PROGRAM_PUBKEY
         );
         const [commitPda]=solanaWeb3.PublicKey.findProgramAddressSync(
-          [Buffer.from('commit'),gameIdBytes,roundBytes,playerKey.toBytes()],PROGRAM_PUBKEY
+          [new TextEncoder().encode('commit'),gameIdBytes,roundBytes,playerKey.toBytes()],PROGRAM_PUBKEY
         );
 
         // reveal_action discriminator: [251,43,123,150,183,44,178,210]
@@ -633,19 +633,19 @@ function gameIdBuf(id){
 
 function _gamePDA(gameId){
   return solanaWeb3.PublicKey.findProgramAddressSync(
-    [Buffer.from('game'),gameIdBuf(gameId)],PROGRAM_PUBKEY)[0];
+    [new TextEncoder().encode('game'),gameIdBuf(gameId)],PROGRAM_PUBKEY)[0];
 }
 function _playerPDA(gameId,pk){
   return solanaWeb3.PublicKey.findProgramAddressSync(
-    [Buffer.from('player'),gameIdBuf(gameId),pk.toBytes()],PROGRAM_PUBKEY)[0];
+    [new TextEncoder().encode('player'),gameIdBuf(gameId),pk.toBytes()],PROGRAM_PUBKEY)[0];
 }
 function _cardPoolPDA(gameId){
   return solanaWeb3.PublicKey.findProgramAddressSync(
-    [Buffer.from('card_pool'),gameIdBuf(gameId)],PROGRAM_PUBKEY)[0];
+    [new TextEncoder().encode('card_pool'),gameIdBuf(gameId)],PROGRAM_PUBKEY)[0];
 }
 function _stakeVaultPDA(gameId){
   return solanaWeb3.PublicKey.findProgramAddressSync(
-    [Buffer.from('stake_vault'),gameIdBuf(gameId)],PROGRAM_PUBKEY)[0];
+    [new TextEncoder().encode('stake_vault'),gameIdBuf(gameId)],PROGRAM_PUBKEY)[0];
 }
 
 async function _sendIx(keys,data){
@@ -767,7 +767,7 @@ const SPL_ATA_PROGRAM_ID='ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bq8';
 
 function _cardMintPDA(gameId,cardId){
   return solanaWeb3.PublicKey.findProgramAddressSync(
-    [Buffer.from(CARD_MINT_SEED_STR),gameIdBuf(gameId),Buffer.from([cardId&0xff])],
+    [new TextEncoder().encode(CARD_MINT_SEED_STR),gameIdBuf(gameId),new Uint8Array([cardId&0xff])],
     PROGRAM_PUBKEY)[0];
 }
 

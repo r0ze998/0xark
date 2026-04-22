@@ -84,7 +84,7 @@ async function mmBuildAndSend(instructionData, accounts) {
   tx.add(new solanaWeb3.TransactionInstruction({
     programId: MM_PROGRAM_ID,
     keys:      accounts,
-    data:      Buffer.from(instructionData),
+    data:      instructionData instanceof Uint8Array ? instructionData : new Uint8Array(instructionData),
   }));
 
   const signed = await window.solana.signTransaction(tx);

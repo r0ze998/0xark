@@ -605,7 +605,7 @@ let tutorialMsg='', tutorialMsgTimer=0;
 
 // T63: Guided step-by-step tutorial
 // isTutorial = true until player skips or completes step 6
-let isTutorial=(()=>{try{return localStorage.getItem('oxark_tutorial_done')!=='1';}catch(e){return true;}})();
+let isTutorial=false; // Disabled in Reborn — tutorial overlay replaced by hall intro flow
 let tutorialStep=0; // 0-5 (6 steps total)
 let tutorialStepFrame=0; // when current step started
 let tutorialPanelOpen=false; // show full tutorial panel

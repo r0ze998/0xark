@@ -620,7 +620,7 @@ function drawCpxRuin(idx,destX,destY,scale){
 // TODO(phase-b2-town): replace with Sprite Seas character sprites (VEGA/MIRA/player). Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const ZELDA_CHAR_SHEET = new Image();
-ZELDA_CHAR_SHEET.src = 'zelda-character.png';
+// zelda-character.png retired — Sprite Seas art pending (phase-b2-town)
 let zeldaCharLoaded = false;
 ZELDA_CHAR_SHEET.onload = () => { zeldaCharLoaded = true; };
 
@@ -641,7 +641,7 @@ function drawZeldaChar(charIdx, dir, frame, destX, destY, scale) {
 // TODO(phase-b2-town): replace with Sprite Seas overworld tile set (Pokémon FRLG language). Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const ZELDA_OVER_SHEET = new Image();
-ZELDA_OVER_SHEET.src = 'zelda-overworld.png';
+// zelda-overworld.png retired — Sprite Seas tile set pending (phase-b2-town)
 let zeldaOverLoaded = false;
 ZELDA_OVER_SHEET.onload = () => { zeldaOverLoaded = true; if(typeof tileCacheDirty!=='undefined')tileCacheDirty=true; };
 
