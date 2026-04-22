@@ -1136,6 +1136,20 @@ function dLobby() {
     g.fillText('SOL', 474, by2 + 26);
   }
 
+  // ── T-D17-B: Beta feedback micro-button (bottom-left, overlaid on player panel) ─
+  {
+    const fbX = 4, fbY = H - 12, fbW = 54, fbH = 10;
+    g.fillStyle = 'rgba(20,28,50,0.92)';
+    g.fillRect(fbX, fbY, fbW, fbH);
+    g.strokeStyle = '#334488'; g.lineWidth = 0.5;
+    g.strokeRect(fbX, fbY, fbW, fbH);
+    g.fillStyle = '#5588cc'; g.font = '7px monospace'; g.textAlign = 'center';
+    g.fillText('[ BETA FEEDBACK ]', fbX + fbW / 2, fbY + 7.5);
+    // Store rect for input detection
+    if (typeof _lobbyFeedbackRect === 'undefined') window._lobbyFeedbackRect = {};
+    window._lobbyFeedbackRect = { x: fbX, y: fbY, w: fbW, h: fbH };
+  }
+
   // ── T-D8-13: Proximity prompt — floats above the building being approached ─
   if (lobbyNearBuilding) {
     const bld = lobbyNearBuilding;

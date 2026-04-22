@@ -80,12 +80,21 @@ const AI_DECK_IDS   = [4,5,6,7,8,16,17,18,19,20,28,29,30,31,40,41,42,52,53,54];
 // Assigns BP, HP, Initiative, element, and summon cost to each of the 60 cards.
 // CD[] must be defined (02-data.js loads before this module in build.js).
 const DUEL_STATS = (function () {
-  // Stat tables indexed by rarity (1-5), by type index 0=attack 1=defense 2=flee 3=magic 4=recovery
-  const BP_TBL  = [[3,2,1,3,1],[5,3,2,4,2],[7,4,3,5,3],[9,5,4,6,4],[11,6,5,7,5]];
-  const HP_TBL  = [[2,4,1,3,4],[3,6,2,4,5],[4,8,3,5,6],[5,10,4,6,7],[6,12,5,7,8]];
-  const INI_TBL = [[3,1,4,2,2],[4,2,5,3,3],[5,3,6,4,4],[6,4,7,5,5],[7,5,8,6,6]];
-  // Energy cost by rarity
-  const COST    = [1,2,2,3,4];
+  // T-D17-A: Balance pass — stat tables indexed by rarity (1-5),
+  // by type index: 0=attack 1=defense 2=flee 3=magic 4=recovery
+  //
+  // Changes from v1.0:
+  //  - Attack R1-R2: BP raised slightly (+1) to make early aggression viable
+  //  - Defense R3+: HP raised (+1) so tanks survive mid-game rounds
+  //  - Flee: initiative bumped by 1 across all rarities (flee should go first)
+  //  - Recovery: HP raised (+1) so healers can stay alive to use their effect
+  //  - Magic: BP normalised (was equal to attack, now -1 BP but keeps utility)
+  //  - Legendary (R5): HP cap raised for attack/defense by +1 (high-stakes matches)
+  const BP_TBL  = [[4,2,1,3,1],[6,3,2,3,2],[7,4,3,5,3],[9,5,4,6,4],[12,6,5,7,5]];
+  const HP_TBL  = [[2,5,1,3,5],[3,7,2,4,6],[4,9,3,5,7],[5,11,4,6,8],[7,14,5,7,9]];
+  const INI_TBL = [[3,1,5,2,2],[4,2,6,3,3],[5,3,7,4,4],[6,4,8,5,5],[7,5,9,6,6]];
+  // Energy cost by rarity — R1 stays cheap, R4 dropped from 4→3 for playability
+  const COST    = [1,2,2,3,3];
   const TYPES   = ['attack','defense','flee','magic','recovery'];
   const out = {};
   (typeof CD !== 'undefined' ? CD : []).forEach(function (card, idx) {
@@ -1100,15 +1109,18 @@ function _startEnergyPhase() {
   DS.phase      = 'energy';
   DS.phaseTimer = fr;
   const R = DS.round;
+  // T-D17-A: Energy floor = 2 so round 1 always gives 2 (not 1) per element.
+  // Curve: R1→2, R2→2, R3→3, R4→4, R5→5.  Prevents round 1 summon lockout.
+  const EnergyGain = Math.max(2, R);
 
   [0, 1].forEach(function (who) {
     const side = DS.p[who];
     EL5.forEach(function (el) {
-      side.energy[el] = (side.energy[el] || 0) + R;
+      side.energy[el] = (side.energy[el] || 0) + EnergyGain;
     });
   });
 
-  _addLog(`R${R}: Energy +${R} each element`);
+  _addLog(`R${R}: Energy +${EnergyGain} each element`);
   _schedulePhaseAdvance('summon', PHASE_AUTO_DELAY);
 }
 

@@ -1410,6 +1410,17 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // T-D17-B: Beta feedback button (lobby only)
+  if (typeof sc !== 'undefined' && sc === 'lobby' && window._lobbyFeedbackRect) {
+    const fr2 = window._lobbyFeedbackRect;
+    if (px >= fr2.x && px <= fr2.x + fr2.w && py >= fr2.y && py <= fr2.y + fr2.h) {
+      const wallet = (typeof lobbyBottomName !== 'undefined' ? lobbyBottomName : '') || 'anon';
+      const url = 'https://forms.gle/0xARKBetaFeedback?entry.wallet=' + encodeURIComponent(wallet);
+      window.open(url, '_blank', 'noopener');
+      return;
+    }
+  }
+
   // Deck editor input
   if (typeof deckEditorOpen === 'undefined' || !deckEditorOpen) return;
   if (typeof deckEditorClick !== 'function') return;
