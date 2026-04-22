@@ -1392,6 +1392,12 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // M4 Victory scene input (T-D13-D)
+  if ((typeof sc !== 'undefined' && sc === 'duel_victory') && typeof handleVictoryInput === 'function') {
+    handleVictoryInput(px, py);
+    return;
+  }
+
   // Deck editor input
   if (typeof deckEditorOpen === 'undefined' || !deckEditorOpen) return;
   if (typeof deckEditorClick !== 'function') return;

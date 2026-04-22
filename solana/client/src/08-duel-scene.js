@@ -2079,6 +2079,57 @@ function _drawDuelOver() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// T-D13-E: Duel resolution → Victory scene bridge
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Build the duelResult object from DS state and launch M4 Victory scene.
+ * Called when player clicks CONTINUE on the duel-over overlay.
+ */
+function _launchVictoryScene() {
+  if (!DS) return;
+  const p0 = DS.p[0], p1 = DS.p[1];
+  const won = DS.winner === 0;
+
+  // Determine winner/loser HP
+  const winnerSide = DS.winner === 0 ? p0 : p1;
+  const loserSide  = DS.winner === 0 ? p1 : p0;
+
+  // Card count from global state (falls back gracefully if not available)
+  const cardCountBefore = (typeof cards !== 'undefined' && Array.isArray(cards))
+    ? cards.length : 0;
+
+  // T-D13-B: Select cards to transfer (stub — uses empty arrays until NFT infra lands)
+  // DECISION: NFT transfer deferred post-hackathon; Victory scene shows stub data.
+  // Proper selectTransferCards call will fire once fetchPlayerCards is wired to devnet.
+  const duelResult = {
+    won,
+    hallTier:         DS.hallTier || 0,
+    ante:             DS.ante     || 0,
+    roundsPlayed:     DS.round,
+    finalWinnerHP:    winnerSide.hp,
+    finalLoserHP:     loserSide.hp,
+    totalDamageDealt: (p0.dmgDealt || 0),
+    shardsEarned:     (typeof shards !== 'undefined' ? shards : 0),
+    cardCountBefore,
+    // NFT transfer: populated async once devnet transfer lands
+    transferredCards: [],   // TODO(post-hackathon): fill from selectTransferCards()
+    transferTxHash:   null,
+    transferFallback: null,
+  };
+
+  if (typeof triggerVictoryScene === 'function') {
+    triggerVictoryScene(duelResult);
+  } else {
+    // Fallback if 09-victory-scene.js not loaded
+    exitDuelScene();
+    if (typeof fadeOut === 'function') {
+      fadeOut(function () { sc = 'lobby'; if (typeof fadeIn === 'function') fadeIn(); });
+    } else { sc = 'lobby'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ZK HAND SERIALIZATION (DEF-E, Day 11 prep for Day 12 circuit)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -2249,14 +2300,11 @@ async function generateHandCommitmentProof(playerHand, round, playerPubkey) {
 function handleDuelInput(px, py) {
   if (!DS) return;
 
-  // Duel over — only Continue button works
+  // Duel over — launch M4 Victory/Defeat scene (T-D13-E)
   if (DS.over) {
     const bx = W / 2 - 50, by = 165, bw = 100, bh = 22;
     if (px >= bx && px <= bx + bw && py >= by && py <= by + bh) {
-      exitDuelScene();
-      if (typeof fadeOut === 'function') {
-        fadeOut(function () { sc = 'lobby'; if (typeof fadeIn === 'function') fadeIn(); });
-      } else { sc = 'lobby'; }
+      _launchVictoryScene();
     }
     return;
   }

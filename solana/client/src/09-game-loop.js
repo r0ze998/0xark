@@ -351,6 +351,7 @@ function draw(){
   else if(sc==='victory'){if(gameOverTimesUp)dGameOver();else dVictory();}
   else if(sc==='lobby')dLobby(); // Phase D Reborn LobbyScene
   else if(sc==='duel')drawDuelScene(); // M2 Duel Board
+  else if(sc==='duel_victory')drawVictoryScene(); // T-D13-D M4 Victory/Defeat
   drawCardAcquisition();
   drawDiscardOverlay();
   drawMarketplace();

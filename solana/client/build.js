@@ -139,6 +139,7 @@ const MODULES = [
   { file: '07-battle-resolve.js', desc: 'Card effect animations (crystal/shadow/flame/storm/void) · drawResolvingPhase · drawResultPhase · dAct' },
   { file: '07-deck-editor.js',   desc: 'Deck editor UI skeleton · 2-panel canvas overlay (storage left, deck right) · filter bar · 30pt cost cap validation · deckEditorOpen/drawDeckEditor/deckEditorKeydown' },
   { file: '08-duel-scene.js',   desc: 'Duel Board M2 — 4-phase state machine (Draw/Energy/Summon/Battle) · 5 rounds · element affinity · Defender mechanic · Shards · Extra Action · Scout Peek · Hotseat + AI stub modes' },
+  { file: '09-victory-scene.js', desc: 'T-D13-D M4 Victory/Defeat scene — card fly-in animation · reward panels · TX hash + Solscan link · NFT transfer card selection (selectTransferCards)' },
   { file: '08-overlays.js',      desc: 'Card acquisition animation · dungeon confirm · marketplace · discard overlay · tutorial · intro · victory screen · cards collection screen · card detail panel · log screen' },
   { file: '08-world-interact.js', desc: 'Fishing minigame · forest trap · puzzle pillars · buildings interior · object interactions · fountain exchange' },
   { file: '08-screens.js',       desc: 'Floor-clear fanfare · object interact messages · exit tooltip · map card use overlay · stats screen · credits · game over screen' },
