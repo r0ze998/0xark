@@ -1,15 +1,15 @@
 # 0xARK — ZK Card PvP on Solana
 
 ---
-## 🔥 Phase D Reborn — Full Game Redesign in Progress (2026-04-21 → 2026-05-11)
+## ✅ Phase D Reborn — Complete (2026-04-22)
 
-0xARK is undergoing a full redesign for the Solana Frontier Hackathon submission.
-The game is becoming a fully on-chain card collection race MMO — players compete to collect 60 unique NFT cards first, with ZK-hidden hands, x402 microeconomies, MagicBlock real-time lobby, and AI agents as first-class opponents.
+0xARK Reborn is a fully on-chain ZK card dueling game on Solana with three ranked halls, AI opponents, Legendary card economy, and Season Prize Pool distribution.
 
-- [Game Design Document v1.0](./docs/GDD.md) — full design spec
+- [Game Design Document](./docs/GDD.md)
 - [Phase D Sprint Plan](./docs/PHASE_D_SPRINT.md) — 21-day implementation roadmap
+- [Submission Materials](./docs/arena-submission.md)
 
-Current state: phase-d-reborn branch, Day 1 (Phase C wind-down). See you at submission 2026-05-11.
+Branch: `phase-d-reborn` — submitted to Colosseum Frontier 2026.
 
 ---
 
@@ -18,25 +18,31 @@ Current state: phase-d-reborn branch, Day 1 (Phase C wind-down). See you at subm
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Solana Devnet](https://img.shields.io/badge/Solana-Devnet-9945FF?logo=solana)](https://explorer.solana.com/address/5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN?cluster=devnet)
 
-> *Hidden positions. Real stakes. A next-gen Fully On-Chain Game where ZK hides your moves, MagicBlock ER runs them at the speed of thought, AI agents compete via x402 micropayments, and every card-flip can be a trade.*
+> *Hidden hands. Provable fairness. AI that fills every queue. Legendaries that only transfer at Gold Hall.*
 
-[▶️ Pitch Video (3 min)](TODO) | [▶️ Technical Demo (2 min)](TODO) | [🎮 Play Demo](https://r0ze998.github.io/0xark/) | [📄 Tokenomics Paper](docs/X402_DESIGN.md)
+[🎮 Play Demo](https://r0ze998.github.io/0xark/) | [📄 Submission](docs/arena-submission.md) | [📋 Pitch Script](docs/pitch-video-script.md) | [📣 X Posts](docs/x-post-draft.md)
 
-Built for **Solana Frontier Hackathon 2026**.
+Built for **Colosseum Frontier Hackathon 2026**.
 
 ---
 
 ## What Is 0xARK?
 
-0xARK is a Fully On-Chain Card PvP game built on Solana. Three players explore a roguelike dungeon with zero-knowledge hidden positions — you know your own location, but rivals are invisible until they step into your line of sight. When paths cross, a card battle begins. Win to steal cards; lose to surrender one. **The first player to collect all 60 unique cards claims the entire Prize Pool.**
+0xARK is a Fully On-Chain Card PvP game built on Solana. Players duel across three ranked halls — Bronze, Silver, Gold — using a ZK commit-reveal hand system. Win duels to collect cards. Reach 60/60 to claim the Season Prize Pool. Legendaries can only be won at Gold Hall.
 
-Every meaningful game state — card ownership, player balances, ZK proofs, battle outcomes — lives on Solana. No off-chain authority. No trust required.
+Every meaningful game state — card ownership, matchmaking queues, ZK commitments, Legendary supply, Prize Pool — lives on Solana. No off-chain authority. No trust required.
 
 ```
-Town (safe) → Dungeon B1–B5 → Card Battle → Floor Clear → Deeper → Repeat
+Lobby (Crown Plaza) → Choose Hall → Queue → ZK Hand Commit → 5-Round Duel → Transfer Cards → Season Leaderboard
 ```
 
-Hackathon tracks: **Gaming · AI · Stablecoins** — only project spanning all three.
+| Hall | Ante | Card Transfer | Legendary |
+|------|------|---------------|-----------|
+| Bronze | 0.1 SOL | 2 non-Legendary | No |
+| Silver | 0.2 SOL | 2 non-Legendary | No |
+| Gold | 0.5 SOL | 2 normal + 1 Legendary | Yes |
+
+Hackathon tracks: **Gaming · AI · Payments** — all three.
 
 ---
 
@@ -140,17 +146,19 @@ Full ZK verify tx: `2pkmJpGv1dVGMvgpqqzrbgwtwQ2FTnscKSx4etPWdoVwQA9LmNZSDcFQvJqK
 | Metric | Status |
 |--------|--------|
 | Live playable demo | ✅ [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/) |
-| Anchor program (devnet) | ✅ 16 instructions deployed |
-| ZK circuit + trusted setup | ✅ 625 constraints, pot12, browser proving < 2s |
-| Groth16 on-chain verifier | ✅ `alt_bn128_pairing`, < 200K CUs |
-| MagicBlock ER integration | ✅ `delegate_session` / `undelegate_session` on-chain |
-| AI Agent (AgentListing PDA) | ✅ `register_agent` / `deactivate_agent` live |
-| x402 Scout peek endpoint | ✅ `POST /scout-peek`, 0.005 SOL, live |
-| Card pixel art | ✅ All 60 unique sprites, per-frame animated |
-| React UI | ✅ Wallet / Lobby / NFT Inventory (TypeScript + wallet-adapter) |
-| Litesvm E2E tests | ✅ 9 passing |
-| JS card engine tests | ✅ 102 passing |
-| Hackathon tracks covered | Gaming · AI · Stablecoins (all three) |
+| Anchor program (devnet) | ✅ 30+ instructions deployed |
+| ZK hand commitment | ✅ Poseidon hash + Groth16, browser proving < 3s |
+| Matchmaking queues | ✅ Bronze/Silver/Gold, on-chain PDA |
+| 5-round duel system | ✅ Draw/Energy/Summon/Battle, element affinity |
+| AI opponent | ✅ claude-haiku-4-5, joins after 30s, tutorial mode |
+| Legendary system | ✅ 4 species, cap 10/season, supply PDA on-chain |
+| Victory scene + card transfer | ✅ 2 normal + 1 Legendary banner |
+| x402 in-duel payments | ✅ Scout Peek 0.005 SOL / Extra Action 0.01 SOL |
+| Season Prize Pool | ✅ 40% champion distribution instruction |
+| Lore Shards | ✅ 60 cards × 3 tiers (15 fully written) |
+| Card pixel sprites | ✅ 60 animated 16×16 sprites |
+| Portrait pipeline | ✅ Arweave upload + in-game cache ready (art pending) |
+| Hackathon tracks covered | Gaming · AI · Payments (all three) |
 
 ---
 
@@ -160,17 +168,18 @@ Full ZK verify tx: `2pkmJpGv1dVGMvgpqqzrbgwtwQ2FTnscKSx4etPWdoVwQA9LmNZSDcFQvJqK
 
 **[https://r0ze998.github.io/0xark/](https://r0ze998.github.io/0xark/)**
 
-Controls: Arrow keys (move) · Z / Enter (confirm) · X / Esc (back) · O (intel shop) · M (mute) · F (fps)
+Controls: Arrow keys (move) · Z / Enter (interact) · X / Esc (back/cancel) · M (mute)
 
 | Step | Action | What you see |
 |------|--------|-------------|
-| 1 | Open demo | FRLG-style pixel intro → title screen |
-| 2 | Press **ENTER** | Tutorial → 3 starter cards |
-| 3 | Walk south → **DUNGEON** | Fog of war, ZK-hidden rival positions |
-| 4 | Encounter VEGA (red !) | Card battle: DRAW / STEAL / BARRIER / SCOUT |
-| 5 | Connect **Phantom** (header) | Real devnet TX signing |
-| 6 | Press **O** in dungeon | x402 scout peek UI |
-| 7 | Win → victory screen | `C` = Claim Prize Pool · `M` = Mint NFTs |
+| 1 | Open demo | Title screen → Crown Plaza lobby |
+| 2 | Connect **Phantom** | SOL balance + card count in HUD |
+| 3 | Walk to **Bronze Hall** | Proximity prompt → queue dialog |
+| 4 | Join queue | Wait for opponent (AI joins after 30s) |
+| 5 | Duel starts | ZK commit animation → 5-round duel |
+| 6 | Win | Victory screen, cards flying in, TX hash |
+| 7 | Open **PC Box** | Card storage grid → tap card → Card Detail + Lore |
+| 8 | Walk to **Gold Hall** | 0.5 SOL ante → Legendary at stake |
 
 ### Local Development
 
@@ -251,15 +260,17 @@ The vision: x402 makes in-game advertising obsolete. ZK makes centralized positi
 
 ```
 solana/client/          Vanilla JS + PixiJS v7 game client
-  src/                  Modular source (01-pixi through 10-input)
-  build.js              Concatenates src/ → index.html
+  src/                  28 modular source files (00-tokens through 11-card-storage)
+  build.js              Concatenates src/ → index.html (32k lines)
 solana/oxark/           Anchor workspace
-  programs/oxark/src/   16 Anchor instructions
-  zk/                   Circom circuits + trusted setup
+  programs/oxark/src/   30+ Anchor instructions (matchmaking, ZK duel, Legendary, Season)
+  zk/                   Circom circuits + trusted setup artifacts
   er-sdk-patch/         MagicBlock SDK compatibility shim
 multiplayer/            WebSocket relay (pure event bus, no authority)
-x402/                   AI agent broker + x402 facilitator
-docs/                   Design docs, tokenomics, phase plans
+x402/                   x402 facilitator + AI agent broker
+tools/ai-agent/         Anthropic claude-haiku-4-5 matchmaking agent (duel-agent.js)
+tools/arweave-upload/   Card portrait Arweave uploader + NFT metadata generator
+docs/                   Design docs, GDD, sprint plan, submission materials
 ```
 
 On-chain vs off-chain:
