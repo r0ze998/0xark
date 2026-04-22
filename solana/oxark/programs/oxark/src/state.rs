@@ -707,3 +707,85 @@ pub struct CardOwnerChanged {
     pub source:     u8,
     pub timestamp:  i64,
 }
+
+// ─── T-D15-A: Season Champion / Prize Pool ────────────────────────────────────
+
+#[event]
+pub struct ChampionDeclared {
+    pub season_id: u32,
+    pub champion:  Pubkey,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct PrizePoolDistributed {
+    pub season_id:       u32,
+    pub total_lamports:  u64,
+    pub champion_share:  u64,
+}
+
+// ─── T-D15-B: Legendary Supply PDA ───────────────────────────────────────────
+
+/// Per-season Legendary supply PDA.
+/// Seed: ["legendary_supply", season_id.to_le_bytes()]
+/// Tracks 4 Legendary species: Sceptre(0), Nameless Blade(1), Elyon Crown(2), Kingmaker's Ring(3)
+#[account]
+#[derive(Default)]
+pub struct LegendarySupply {
+    pub season_id: u64,
+    /// minted[i] = how many of species i have been minted (0-10)
+    pub minted:    [u8; 4],
+    /// cap[i]    = max allowed per species per season (default 10)
+    pub cap:       [u8; 4],
+    pub bump:      u8,
+}
+
+impl LegendarySupply {
+    pub const LEGENDARY_SUPPLY_SEED: &'static [u8] = b"legendary_supply";
+    /// 8 disc + 8 season_id + 4 minted + 4 cap + 1 bump
+    pub const LEN: usize = 8 + 8 + 4 + 4 + 1;
+    /// Species indices
+    pub const SPECIES_SCEPTRE: u8     = 0;
+    pub const SPECIES_BLADE: u8       = 1;
+    pub const SPECIES_CROWN: u8       = 2;
+    pub const SPECIES_RING: u8        = 3;
+    pub const SPECIES_NAMES: [&'static str; 4] = ["Sceptre of Valerius", "Nameless Blade", "Elyon Crown", "Kingmaker's Ring"];
+}
+
+// ─── T-D15-B: PlayerDuelStats PDA ─────────────────────────────────────────────
+
+/// Per-player duel statistics for current season.
+/// Separate from PlayerRegistry to avoid size extension migration issues.
+/// Seed: ["player_duel_stats", player_pubkey]
+#[account]
+#[derive(Default)]
+pub struct PlayerDuelStats {
+    pub player:                         Pubkey,
+    pub gold_hall_wins_current_season:  u32,
+    pub legendary_claims_current_season: u32,
+    pub total_duels_won:                u32,
+    pub total_duels_lost:               u32,
+    pub current_season_id:              u32,
+    pub bump:                           u8,
+}
+
+impl PlayerDuelStats {
+    pub const PLAYER_DUEL_STATS_SEED: &'static [u8] = b"player_duel_stats";
+    /// 8 disc + 32 + 4 + 4 + 4 + 4 + 4 + 1
+    pub const LEN: usize = 8 + 32 + 4 + 4 + 4 + 4 + 4 + 1;
+}
+
+#[event]
+pub struct LegendaryClaimEarned {
+    pub player:        Pubkey,
+    pub pending_count: u32,
+    pub gold_hall_wins: u32,
+}
+
+#[event]
+pub struct LegendaryClaimed {
+    pub player:      Pubkey,
+    pub season_id:   u64,
+    pub species_id:  u8,
+    pub mint_number: u8,
+}

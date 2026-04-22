@@ -561,4 +561,35 @@ pub mod oxark {
             ctx, card_mint, new_owner, source,
         )
     }
+
+    // ── T-D15-B: Legendary acquisition ────────────────────────────────────────
+
+    pub fn init_legendary_supply(
+        ctx: Context<InitLegendarySupply>,
+        season_id: u64,
+    ) -> Result<()> {
+        instructions::legendary::handle_init_legendary_supply(ctx, season_id)
+    }
+
+    pub fn record_gold_hall_win(
+        ctx: Context<RecordGoldHallWin>,
+        season_id: u32,
+    ) -> Result<()> {
+        instructions::legendary::handle_record_gold_hall_win(ctx, season_id)
+    }
+
+    pub fn claim_legendary(
+        ctx: Context<ClaimLegendary>,
+        season_id: u64,
+        species_id: u8,
+    ) -> Result<()> {
+        instructions::legendary::handle_claim_legendary(ctx, season_id, species_id)
+    }
+
+    pub fn distribute_prize_pool(
+        ctx: Context<DistributePrizePool>,
+        season_id: u32,
+    ) -> Result<()> {
+        instructions::legendary::handle_distribute_prize_pool(ctx, season_id)
+    }
 }

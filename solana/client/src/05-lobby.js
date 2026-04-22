@@ -340,14 +340,28 @@ function lobbyOpenDialog(buildingName) {
         focusIdx: 0,
       };
       break;
-    case 'faction_hq':
+    case 'faction_hq': {
+      // T-D15-B5: Check if player has pending Legendary claims
+      const pendingLegendary = (typeof window.lobbyPendingLegendaryClaims !== 'undefined')
+        ? window.lobbyPendingLegendaryClaims : 0;
+      const legendaryLine = pendingLegendary > 0
+        ? 'Legendary Chamber: ' + pendingLegendary + ' claim(s) pending!'
+        : 'Legendary Chamber: No claims yet.';
+      const legendaryButtons = pendingLegendary > 0
+        ? [{ label: 'Legendary Chamber', action: 'open_legendary_chamber', disabled: false }]
+        : [];
       lobbyDialog = {
-        title: '🏴 Faction HQ',
-        lines: ['Join or manage your Clan.', 'Coming Day 4-6'],
-        buttons: [{ label: 'Close', action: 'close', disabled: false }],
+        title: 'Faction HQ',
+        lines: ['Join or manage your Clan.', legendaryLine],
+        buttons: [
+          ...legendaryButtons,
+          { label: 'Join Clan', action: 'join_clan', disabled: false },
+          { label: 'Close',     action: 'close',     disabled: false },
+        ],
         focusIdx: 0,
       };
       break;
+    }
     default:
       lobbyDialog = {
         title: buildingName.replace(/_/g,' ').toUpperCase(),
@@ -421,6 +435,16 @@ function lobbyDialogConfirm() {
   }
   if (btn.action === 'replay_tutorial') {
     lobbyDialog = { title: 'Tutorial', lines: ['Tutorial replay coming in Season 1 update.'], buttons: [{label:'Close',action:'close',disabled:false}], focusIdx:0 };
+    return;
+  }
+  if (btn.action === 'open_legendary_chamber') {
+    lobbyDialog = null;
+    if (typeof initLegendaryChamberScene === 'function') initLegendaryChamberScene();
+    else lobbyDialog = { title: 'Legendary Chamber', lines: ['Coming in Season 1.'], buttons: [{label:'Close',action:'close',disabled:false}], focusIdx:0 };
+    return;
+  }
+  if (btn.action === 'join_clan') {
+    lobbyDialog = { title: 'Join Clan', lines: ['Clan selection coming in Season 1 update.','Black Flag / Sovereign Bourse / Hollow Blade / Iron Circle / Nameless Silk'], buttons: [{label:'Close',action:'close',disabled:false}], focusIdx:0 };
     return;
   }
   // Shop purchase actions — placeholder responses until x402 micropayment integration

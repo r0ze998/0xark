@@ -67,3 +67,5 @@ pub use commit_hand::*;
 pub use reveal_hand::*;
 pub use update_card_battle_history::*;
 pub use record_card_owner_change::*;
+pub mod legendary;
+pub use legendary::*;

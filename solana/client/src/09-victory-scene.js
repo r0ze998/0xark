@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // MODULE: 09-victory-scene.js
 // T-D13-D: M4 Victory / Defeat screen per UI_SPEC v2.0 Section 4.
+// T-D15-E: Legendary transfer on Gold Hall loss.
 //
 // Scene key: 'duel_victory'
 // Entry:  triggerVictoryScene(duelResult)  — called from 08-duel-scene.js
@@ -11,7 +12,8 @@
 // duelResult shape:
 //   { won, hallTier, ante, roundsPlayed, finalWinnerHP, finalLoserHP,
 //     totalDamageDealt, cardsDestroyed, shardsEarned, cardCountBefore,
-//     transferredCards, transferTxHash, transferFallback }
+//     transferredCards, transferTxHash, transferFallback,
+//     legendaryTransferred }   ← T-D15-E: { card_id, name, mint, mintNumber, speciesId } | null
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── State ─────────────────────────────────────────────────────────────────
@@ -30,6 +32,9 @@ const VS_CONTINUE_BW = 88, VS_CONTINUE_BH = 16;
  * @param {Object} duelResult  — see header for shape
  */
 function triggerVictoryScene(duelResult) {
+  var transferred    = duelResult.transferredCards  || [];
+  var legendary      = duelResult.legendaryTransferred || null; // T-D15-E
+  var bonusCount     = (duelResult.won && legendary) ? 1 : 0;
   VS = {
     won:              duelResult.won,
     hallTier:         duelResult.hallTier || 0,
@@ -41,17 +46,20 @@ function triggerVictoryScene(duelResult) {
     shardsEarned:     duelResult.shardsEarned      || 0,
     cardCountBefore:  duelResult.cardCountBefore   || 0,
     // NFT transfer result
-    transferredCards: duelResult.transferredCards  || [],   // [{ card_id, name }]
+    transferredCards:    transferred,                          // [{ card_id, name }]
+    legendaryTransferred: legendary,                           // T-D15-E
     transferTxHash:   duelResult.transferTxHash    || null,
-    transferFallback: duelResult.transferFallback  || null, // null | { amount_sol }
+    transferFallback: duelResult.transferFallback  || null,   // null | { amount_sol }
     // UI animation state
     cardAnimFrame:    0,
+    legendaryAnimFrame: 0,   // T-D15-E separate anim for Legendary
     counterStart:     duelResult.cardCountBefore   || 0,
     counterTarget:    (duelResult.cardCountBefore  || 0) +
-                      (duelResult.won ? (duelResult.transferredCards || []).length : 0),
+                      (duelResult.won ? transferred.length + bonusCount : 0),
     counterCurrent:   duelResult.cardCountBefore   || 0,
-    confetti:         _makeConfetti(60),
+    confetti:         _makeConfetti(legendary && duelResult.won ? 100 : 60),
     phase:            'animate',  // 'animate' | 'idle'
+    _legendaryBannerAlpha: 0,
   };
   _vsFrame = 0;
 
@@ -107,6 +115,9 @@ function drawVictoryScene() {
   // ── Transferred cards animation
   _drawTransferredCards(cardAnim);
 
+  // ── Legendary banner (T-D15-E) — draws above reward panels
+  if (VS.legendaryTransferred && VS.won) _drawLegendaryBanner();
+
   // ── Reward panels
   _drawRewardPanels();
 
@@ -118,6 +129,7 @@ function drawVictoryScene() {
 
   // Advance animation state
   if (VS.cardAnimFrame < VS_CARD_ANIM_DURATION) VS.cardAnimFrame++;
+  if (VS.legendaryTransferred) VS.legendaryAnimFrame++;
   if (_vsFrame > VS_CARD_ANIM_DURATION) {
     var t = Math.min(1, (_vsFrame - VS_CARD_ANIM_DURATION) / VS_COUNTER_DURATION);
     VS.counterCurrent = Math.round(
@@ -456,6 +468,77 @@ function _drawConfetti() {
   g.globalAlpha = 1;
 }
 
+// ── Legendary Banner (T-D15-E) ─────────────────────────────────────────────
+// Shows a golden "LEGENDARY CLAIMED" banner + card frame when winner gets
+// a Legendary from Gold Hall loss. Positioned between transferred cards area
+// and reward panels to avoid layout shift.
+function _drawLegendaryBanner() {
+  var leg = VS.legendaryTransferred;
+  if (!leg) return;
+
+  var frame = VS.legendaryAnimFrame;
+  // Fade in over 30 frames, starting at frame 20 (after regular card anim begins)
+  var alpha = Math.min(1, Math.max(0, (frame - 20) / 30));
+  if (alpha <= 0) return;
+
+  var pulse   = 0.6 + 0.4 * Math.abs(Math.sin(frame * 0.08));
+  var bannerY = 128; // just below transferred cards area
+  var bannerH = 18;
+  var bx      = 14;
+  var bw      = W - 28;
+
+  g.save();
+  g.globalAlpha = alpha;
+
+  // Gold gradient banner background
+  var grad = g.createLinearGradient(bx, bannerY, bx + bw, bannerY);
+  grad.addColorStop(0,   'rgba(0,0,0,0)');
+  grad.addColorStop(0.15,'rgba(180,120,0,0.55)');
+  grad.addColorStop(0.5, 'rgba(255,200,0,0.70)');
+  grad.addColorStop(0.85,'rgba(180,120,0,0.55)');
+  grad.addColorStop(1,   'rgba(0,0,0,0)');
+  g.fillStyle = grad;
+  g.fillRect(bx, bannerY, bw, bannerH);
+
+  // Side accent lines
+  g.strokeStyle = 'rgba(255,220,80,' + (0.5 * pulse) + ')';
+  g.lineWidth   = 0.5;
+  g.beginPath(); g.moveTo(bx + 4, bannerY); g.lineTo(bx + 4, bannerY + bannerH); g.stroke();
+  g.beginPath(); g.moveTo(bx + bw - 4, bannerY); g.lineTo(bx + bw - 4, bannerY + bannerH); g.stroke();
+
+  // Icon
+  g.font         = '9px monospace';
+  g.fillStyle    = '#fff8c0';
+  g.textAlign    = 'left';
+  g.textBaseline = 'middle';
+  g.fillText('\u2605', bx + 10, bannerY + bannerH / 2); // ★
+
+  // "LEGENDARY CLAIMED:" label
+  g.font      = 'bold 6px monospace';
+  g.fillStyle = '#ffe080';
+  g.fillText('LEGENDARY CLAIMED:', bx + 22, bannerY + bannerH / 2);
+
+  // Card name + mint number
+  var speciesName = leg.name || 'Legendary';
+  var mintNum     = leg.mintNumber ? ' #' + leg.mintNumber : '';
+  g.font      = 'bold 7px monospace';
+  var glow    = 'rgba(255,' + Math.round(200 + 55*pulse) + ',0,1)';
+  g.fillStyle = glow;
+  g.fillText(speciesName + mintNum, bx + 100, bannerY + bannerH / 2);
+
+  // Right corner: Gold Hall badge
+  g.font      = '5px monospace';
+  g.fillStyle = 'rgba(255,220,80,0.7)';
+  g.textAlign = 'right';
+  g.fillText('GOLD HALL', bx + bw - 10, bannerY + bannerH / 2);
+
+  // Store rect for input detection
+  VS._legendaryBannerRect = { x: bx, y: bannerY, w: bw, h: bannerH };
+
+  g.globalAlpha = 1;
+  g.restore();
+}
+
 // ── Input handler ──────────────────────────────────────────────────────────
 function handleVictoryInput(px, py) {
   if (!VS) return;
@@ -477,6 +560,26 @@ function handleVictoryInput(px, py) {
         }
         return;
       }
+    }
+  }
+
+  // Tap Legendary banner → Card Detail (T-D15-E)
+  if (VS._legendaryBannerRect && VS.legendaryTransferred && VS.won) {
+    var lr = VS._legendaryBannerRect;
+    if (px >= lr.x && px <= lr.x + lr.w && py >= lr.y && py <= lr.y + lr.h) {
+      var leg = VS.legendaryTransferred;
+      var legCdIdx = (leg.card_id != null ? leg.card_id - 1 : -1);
+      if (legCdIdx >= 0 && typeof initCardDetailScene === 'function') {
+        initCardDetailScene({
+          cdIdx:     legCdIdx,
+          mint:      leg.mint || null,
+          owner:     null,
+          ownerSince: '—',
+          source:    'Legendary — Gold Hall',
+          isVintage: false,
+        }, 'duel_victory');
+      }
+      return;
     }
   }
 
@@ -512,31 +615,50 @@ function _exitVictoryScene() {
   });
 }
 
-// ── Card selection helper (T-D13-B) ────────────────────────────────────────
+// ── Card selection helper (T-D13-B, T-D15-E) ──────────────────────────────
 /**
  * Deterministic card selection for NFT transfer on duel win.
  * Per GDD v2.0 Section 5.5 — called when duel resolves.
  *
- * @param {Array}  loserCards    [{card_id, mint, name, rarity}]
+ * T-D15-E: Gold Hall — if loser holds a Legendary (rarity=5), the winner
+ * automatically claims 1 Legendary IN ADDITION to the normal 2-card transfer.
+ * The Legendary is returned separately as `legendary` so the UI can show a
+ * distinct banner. Non-Legendary selection proceeds as normal (excludes rarity=5).
+ *
+ * @param {Array}  loserCards    [{card_id, mint, name, rarity, mintNumber, speciesId}]
  * @param {Array}  winnerCards   [{card_id, mint, name}]
  * @param {string} duelId        duel PDA pubkey string (used as RNG seed)
  * @param {string} winnerPubkey  base58 pubkey (used as RNG seed)
  * @param {number} hallTier      0=bronze, 1=silver, 2=gold
- * @returns {{ cards: Array, fallback: Object|null }}
+ * @returns {{ cards: Array, fallback: Object|null, legendary: Object|null }}
  */
 function selectTransferCards(loserCards, winnerCards, duelId, winnerPubkey, hallTier) {
   var winnerCardIds = new Set(winnerCards.map(function (c) { return c.card_id; }));
 
-  // T-D13-B2: Exclude Legendaries (rarity=5) unless Gold Hall
+  // T-D15-E: At Gold Hall — separate out Legendaries for bonus transfer
+  var legendary = null;
+  if (hallTier >= 2) {
+    var loserLegendaries = loserCards.filter(function (c) { return c.rarity >= 5; });
+    if (loserLegendaries.length > 0) {
+      // Deterministic selection among loser's Legendaries
+      var legSeed = _hashStr(duelId + winnerPubkey + 'legendary');
+      var legRng  = _seedRng(legSeed);
+      var legIdx  = Math.floor(legRng() * loserLegendaries.length);
+      legendary   = loserLegendaries[legIdx];
+    }
+  }
+
+  // Normal 2-card transfer: exclude Legendaries (rarity=5) and duplicates
   var eligible = loserCards.filter(function (c) {
-    if (c.rarity >= 5 && hallTier < 2) return false; // not Gold Hall — skip Legendaries
-    return !winnerCardIds.has(c.card_id);             // skip duplicates
+    if (c.rarity >= 5) return false;            // Legendary handled separately above
+    return !winnerCardIds.has(c.card_id);       // skip duplicates winner already owns
   });
 
   if (eligible.length === 0) {
     return {
       cards:    [],
       fallback: { amount_sol: 0.024, reason: 'all_duplicates' },
+      legendary: legendary,
     };
   }
 
@@ -557,7 +679,7 @@ function selectTransferCards(loserCards, winnerCards, duelId, winnerPubkey, hall
     fallback = { amount_sol: 0.012, reason: 'only_one_eligible' };
   }
 
-  return { cards: selected, fallback };
+  return { cards: selected, fallback: fallback, legendary: legendary };
 }
 
 // Simple deterministic hash → seed

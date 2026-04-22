@@ -2116,6 +2116,10 @@ function _launchVictoryScene() {
     transferredCards: [],   // TODO(post-hackathon): fill from selectTransferCards()
     transferTxHash:   null,
     transferFallback: null,
+    // T-D15-E: Legendary bonus transfer on Gold Hall loss
+    // When selectTransferCards is wired, pass result.legendary here.
+    // For demo: if Gold Hall duel and loser held a Legendary, DS.loserLegendary is set.
+    legendaryTransferred: (DS.hallTier >= 2 && DS.loserLegendary) ? DS.loserLegendary : null,
   };
 
   if (typeof triggerVictoryScene === 'function') {

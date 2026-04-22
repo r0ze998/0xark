@@ -97,4 +97,13 @@ pub enum ErrorCode {
     // ── T-D13-A0: DEF-16 ────────────────────────────────────────────────────────
     #[msg("Poseidon hash computation failed (invalid inputs)")]
     PoseidonHashFailed,
+    // ── T-D15-B: Legendary / Season ─────────────────────────────────────────────
+    #[msg("Invalid state for this operation")]
+    InvalidState,
+    #[msg("Legendary supply cap reached for this species")]
+    LegendaryCapReached,
+    #[msg("No pending Legendary claim for this player")]
+    NoPendingLegendaryClaim,
+    #[msg("Season has not ended")]
+    SeasonNotEnded,
 }
