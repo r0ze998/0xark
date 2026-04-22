@@ -166,28 +166,10 @@ document.addEventListener('keydown',e=>{
       if(introPage>=INTRO_PAGES.length){
         introActive=false;
         if(sc==='title'){
-          // Set sc='map' immediately so any Z presses during the fade don't re-trigger
-          // the title screen new-game handler (which would restart the intro loop).
-          sc='map';
+          // Route to Lobby (Phase D Reborn — Phase C map removed)
+          sc='lobby';
           fadeOut(()=>{
-            currentMap=0;inDungeon=false;currentFloor=0;
-            pl[0].x=15;pl[0].y=13;pl[0].dir=0;
-            pl[0].visualX=15*TW;pl[0].visualY=13*TH;
-            fogRevealAll(0);fogSave();
-            encounterCooldown=600;
-            // Give 3 starter cards on first play
-            if(pl[0].cd.filter(c=>c>0).length===0){
-              const starterCards=[4,13,25]; // Strike, Guard, Dash
-              starterCards.forEach((cid,i)=>{pl[0].cd[i]=cid;pl[0].vault.add(cid);});
-              pl[0].cc=3;syncCardCount(0);
-              lg.push('You received: '+starterCards.map(id=>CD[id-1].n).join(', ')+'!');
-            }
-            camX=pl[0].visualX-W/2;camY=pl[0].visualY-H/2;
-            camTargetX=camX;camTargetY=camY;
-            tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
-            showBanner('はじまりの街','Your adventure begins here — safe zone');
-            twSet('Welcome to はじまりのまち! Enter the dungeon to collect cards.');
-            saveGame();
+            if(typeof enterLobby==='function')enterLobby();
             fadeIn();
           });
         }
@@ -345,19 +327,16 @@ document.addEventListener('keydown',e=>{
     if(e.code==='KeyZ'){
       const doContinue=()=>{
         fadeOut(()=>{
-          if(loadGame()){
-            sc='map';showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-            fadeIn();twSet('Welcome back! You\'re in town — safe zone.');
-          }else{
-            sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-            fogRevealAll(0);fogSave();
-            fadeIn();twSet('Welcome to はじまりのまち! Enter the dungeon to collect cards.');
-          }
+          // Phase D Reborn: skip Phase C map, go directly to Lobby
+          sc='lobby';
+          if(typeof enterLobby==='function')enterLobby();
+          fadeIn();
         });
       };
       const doNewSeason=()=>{
         resetGameState(true);
-        fadeOut(()=>{introActive=true;introPage=0;introFrame=fr;fadeIn();});
+        // Phase D Reborn: skip intro tutorial, go directly to Lobby
+        fadeOut(()=>{sc='lobby';if(typeof enterLobby==='function')enterLobby();fadeIn();});
       };
       if(saved&&titleMenuIdx===0){
         // CONTINUE
