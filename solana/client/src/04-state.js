@@ -1053,3 +1053,21 @@ let milestoneToastText='';
 let milestoneToastFrame=-999;
 const milestonesReached=new Set();
 
+// ── LORE SHARD UNLOCK STATE (T-D14-A3) ──
+// unlockedShards[card_mint] = [bool, bool, bool] (shards 1/2/3)
+// Shard 1 is always unlocked on acquisition (index 0 = true always after set).
+// Sync from on-chain CardLoreShards PDA on demand (when Card Detail opens).
+// Cache for session duration.
+const unlockedShards={};
+
+// setUnlockedShards(card_mint, boolArray) — cache PDA query result
+function setUnlockedShards(card_mint,bools){
+  if(!card_mint||!Array.isArray(bools))return;
+  unlockedShards[card_mint]=bools;
+}
+
+// getUnlockedShards(card_mint) — returns [bool,bool,bool] or [true,false,false] default
+function getUnlockedShards(card_mint){
+  return unlockedShards[card_mint]||[true,false,false];
+}
+

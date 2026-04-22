@@ -352,6 +352,8 @@ function draw(){
   else if(sc==='lobby')dLobby(); // Phase D Reborn LobbyScene
   else if(sc==='duel')drawDuelScene(); // M2 Duel Board
   else if(sc==='duel_victory')drawVictoryScene(); // T-D13-D M4 Victory/Defeat
+  else if(sc==='card_detail')drawCardDetailScene(); // T-D14-B M5 Card Detail
+  else if(sc==='card_storage')drawCardStorageScene(); // T-D14-C PC Box Card Storage
   drawCardAcquisition();
   drawDiscardOverlay();
   drawMarketplace();

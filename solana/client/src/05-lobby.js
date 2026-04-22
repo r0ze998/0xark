@@ -329,10 +329,15 @@ function lobbyOpenDialog(buildingName) {
       break;
     case 'pc_box':
       lobbyDialog = {
-        title: '💾 PC Box',
-        lines: ['Storage: — cards  |  Deck: —/20', 'Open Deck Editor to build your deck.', 'Coming Day 5'],
-        buttons: [{ label: 'Open Deck Editor', action: 'open_deck_editor', disabled: false }, { label: 'Close', action: 'close', disabled: false }],
-        focusIdx: 1,
+        title: 'PC Box',
+        lines: ['Manage your card collection and deck.'],
+        buttons: [
+          { label: 'View Cards',   action: 'open_card_storage', disabled: false },
+          { label: 'Deck Editor',  action: 'open_deck_editor',  disabled: false },
+          { label: 'Replay Tutorial', action: 'replay_tutorial', disabled: false },
+          { label: 'Close',        action: 'close',             disabled: false },
+        ],
+        focusIdx: 0,
       };
       break;
     case 'faction_hq':
@@ -407,6 +412,15 @@ function lobbyDialogConfirm() {
   if (btn.action === 'open_deck_editor') {
     lobbyDialog = null;
     if (typeof openDeckEditor === 'function') openDeckEditor();
+    return;
+  }
+  if (btn.action === 'open_card_storage') {
+    lobbyDialog = null;
+    if (typeof initCardStorageScene === 'function') initCardStorageScene();
+    return;
+  }
+  if (btn.action === 'replay_tutorial') {
+    lobbyDialog = { title: 'Tutorial', lines: ['Tutorial replay coming in Season 1 update.'], buttons: [{label:'Close',action:'close',disabled:false}], focusIdx:0 };
     return;
   }
   // Shop purchase actions — placeholder responses until x402 micropayment integration

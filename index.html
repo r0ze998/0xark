@@ -6252,6 +6252,47 @@ fogLoad();
 // Dungeon floor→next floor: step on glow tile at far end
 // Dungeon floor→town (escape): step on treasure tile near entrance
 
+// ── LORE SHARDS (T-D14-A2) ──
+// Inline lore shard data (60 cards, parsed from docs/LORE_SHARDS.md).
+// Shards 2+3 exist for 15 key cards; others have null (drafted in Season 1 expansion).
+// DECISION: Embedded inline (not dynamic import) to avoid fetch latency at card detail open.
+const _LORE_SHARDS_DATA=(function(){
+  const raw=[{"card_id":1,"name":"Sea Rat","shards":{"1":"Every port has them. Nobody asks where they came from. They don't answer. They watch the sailors drunk in the tavern. They watch the sailors' coin purses. They are watching you now.","2":null,"3":null}},{"card_id":2,"name":"Storm Bosun","shards":{"1":"The storm is a priest. The ship is his pulpit. We are his congregation. In the fifteen years since the kingdom fell, he has drowned four captains who tried to sail straight. The crew is grateful.","2":null,"3":null}},{"card_id":3,"name":"Grapple Specialist","shards":{"1":"He misses nothing. Not ships, not throats, not debts. Debts especially. Three clans owe him money, and he has not forgotten the amounts.","2":null,"3":null}},{"card_id":4,"name":"Salt-Bitten Deckhand","shards":{"1":"Twenty years at sea. He calls the wind by name. The wind answers. He has not been below deck since the captain changed, three captains ago. He is not sure which captain is current.","2":null,"3":null}},{"card_id":5,"name":"Powder Monkey","shards":{"1":"Twelve years old. Carrying powder charges the size of his own head. He is faster than anyone else because he has to be. The cannon does not care who fed it.","2":null,"3":null}},{"card_id":6,"name":"Crow's Nest Scout","shards":{"1":"He sees everything first. He has not told the captain everything he has seen. He will decide when it matters.","2":null,"3":null}},{"card_id":7,"name":"Harbor Thug","shards":{"1":"Not a sailor. Never a sailor. He does what the dock master pays for and what the dock master pays for is not discussed at harbor meetings.","2":null,"3":null}},{"card_id":8,"name":"Tide Reader","shards":{"1":"The sea has a language. He learned it before he learned to speak. He does not trust weather charts. He has never been wrong.","2":null,"3":null}},{"card_id":9,"name":"Reef Diver","shards":{"1":"She holds her breath for four minutes. She has found things at the bottom that have no names in any catalog. She has not described them to anyone.","2":null,"3":null}},{"card_id":10,"name":"Night Watch Corsair","shards":{"1":"He prefers the dark. Not because of what it hides but because of what it reveals. A man moving fast at midnight is always a man worth watching.","2":null,"3":null}},{"card_id":11,"name":"Bilge Rat Informant","shards":{"1":"Information is cargo. He moves it the same way: quietly, to the right buyer, without signing his name.","2":null,"3":null}},{"card_id":12,"name":"Flag Runner","shards":{"1":"Signals are a language. He is fluent. He has sent messages that ended wars, started blockades, and once misdirected an entire fleet into a sandbar. He was on neither ship.","2":null,"3":null}},{"card_id":13,"name":"Iron Circle Enforcer","shards":{"1":"The Iron Circle does not negotiate twice. He exists so that does not need to be explained more than once.","2":null,"3":null}},{"card_id":14,"name":"Sovereign Bourse Agent","shards":{"1":"She represents interests. The interests do not have names. She does not explain them. She settles disputes in numbers, and the numbers are always in the Bourse's favor.","2":null,"3":null}},{"card_id":15,"name":"Hollow Blade Duelist","shards":{"1":"The Hollow Blade does not recruit. It selects. Three challenges, three seconds each, and if you are still standing, you belong. He has been standing for six years.","2":null,"3":null}},{"card_id":16,"name":"Nameless Silk Envoy","shards":{"1":"The Nameless Silk does not officially exist. He definitely does not officially exist. He is having a conversation with you that is not officially happening.","2":null,"3":null}},{"card_id":17,"name":"Black Flag Raider","shards":{"1":"The Black Flag does not take prisoners. He does. But only the ones who know something worth knowing. The rest he lets swim.","2":null,"3":null}},{"card_id":18,"name":"Cannoneer","shards":{"1":"He loves the cannon more than any crew member. The cannon has never disappointed him.","2":null,"3":null}},{"card_id":19,"name":"Boarder","shards":{"1":"He does not wait for orders. He never has. He is already over the rail before the captain finishes the word \u201cboard.\u201d","2":null,"3":null}},{"card_id":20,"name":"Lookout","shards":{"1":"She is paid to see. She sees everything. She is paid not to say everything she sees. She is also paid that.","2":null,"3":null}},{"card_id":21,"name":"Fog Caller","shards":{"1":"She does not make the fog. She asks it to arrive early. The fog listens.","2":null,"3":null}},{"card_id":22,"name":"Wake Cutter","shards":{"1":"He sails in the silence behind other ships. He has been following this vessel for six days. They have not noticed. They will.","2":null,"3":null}},{"card_id":23,"name":"Trade Wind Smuggler","shards":{"1":"She moves with the wind. She moves against the law. She has never been stopped because she has never been searched. She knows which inspectors look away.","2":null,"3":null}},{"card_id":24,"name":"Compass Rose Navigator","shards":{"1":"He has charted thirty-one routes that do not appear on official maps. He will not say why they are not on official maps.","2":null,"3":null}},{"card_id":25,"name":"Saltwater Surgeon","shards":{"1":"She does not promise survival. She promises that what can be saved, she will save. She has been right fifty-three times this year. She has not counted the other times.","2":null,"3":null}},{"card_id":26,"name":"Chain Anchor","shards":{"1":"He stops ships. Not by boarding them. By placing himself between them and where they are going and being harder to move than the ship.","2":null,"3":null}},{"card_id":27,"name":"Crow's Eye Sniper","shards":{"1":"Distance is a courtesy. He is very courteous.","2":null,"3":null}},{"card_id":28,"name":"Tide Turner","shards":{"1":"She reads the battle the way she reads the current: three moves ahead, one course correction. Captains pay her to stand at the stern and not say anything until she has to.","2":null,"3":null}},{"card_id":29,"name":"Iron Hull Marine","shards":{"1":"He has been boarded six times. He is still on the same ship. The people who boarded him are not.","2":null,"3":null}},{"card_id":30,"name":"Salt Witch","shards":{"1":"She negotiated a contract with the sea during the winter of the Collapse. The sea keeps its end. So does she.","2":null,"3":null}},{"card_id":31,"name":"First Mate Kaelith","shards":{"1":"She was not born Kaelith. She took the name from the captain she outlived. She has outlived three captains. She is on her fourth name.","2":"Before the Collapse, Kaelith served the Royal Navy as a cipher officer. She memorized the entire naval codebook and burned her copy. She is the only living person who knows the Sovereign fleet\u2019s full signal language. She has not used it in six years. She is waiting for the right ship.","3":"The night the Elyon fleet sank, she was on a rowboat. She watched every flagship go down. She counted them. Forty-one ships. She did not cry. She took out a notebook and wrote the names of the forty-one captains she had served, one per page. She has burned thirty-seven pages. There are four left. She intends to meet them."}},{"card_id":32,"name":"Harbormaster Dregan","shards":{"1":"Every ship that enters this port pays. Every ship that leaves pays. He decides what the payment is after he sees what they are carrying.","2":null,"3":null}},{"card_id":33,"name":"Storm Caller","shards":{"1":"She does not control the storm. She convinces it that this direction is its own idea.","2":null,"3":null}},{"card_id":34,"name":"Void Walker","shards":{"1":"He walks between moments. He is never quite in the present. He is useful for things that should not technically happen.","2":null,"3":null}},{"card_id":35,"name":"Gold-Blooded Banker","shards":{"1":"He has financed twelve fleets. Three of them were technically at war with each other. He financed both sides. He is proud of this.","2":"The Bourse\u2019s lending system operates on a principle called \u2018cascade collateral.\u2019 When one debtor defaults, the debt cascades to their co-signers, who cascade to their backers, who cascade to their insurer, who is always the Bourse. The Bourse never loses. He helped design the system. He calls it elegant.","3":"During the Collapse, the Bourse issued a note: \u2018All debts to the Crown are herewith reassigned to Sovereign Bourse Holdings, in perpetuity, with interest accruing from the date of reassignment.\u2019 The Crown no longer exists. The Bourse collected the debts anyway. He signed the note. He still has the pen."}},{"card_id":36,"name":"Fleet Admiral Moreck","shards":{"1":"He commands from the rear. Not from cowardice. From mathematics. A fleet admiral who dies in the front line is a fleet admiral who miscalculated.","2":null,"3":null}},{"card_id":37,"name":"Relic Hunter","shards":{"1":"He collects objects that should not exist from places that should not have had them. He does not explain how he knew where to look.","2":null,"3":null}},{"card_id":38,"name":"Merchant Prince","shards":{"1":"He owns six ships, two harbors, and one island that does not appear on any map. He is currently buying a seventh ship and a second island. He is always currently buying something.","2":"The island is called Vael\u2019sor in the old charts. He renamed it after purchasing it from the previous owner, who was not aware it was for sale. The transaction was legal. He has lawyers who specialize in making transactions legal.","3":"Before the Collapse, he was a clerk at the Bourse\u2019s fourth branch. He filed documents. He noticed that no one checked the documents very carefully. He began filing different documents. He has been filing different documents for fifteen years. He now owns the fourth branch."}},{"card_id":39,"name":"Black Tide Commander","shards":{"1":"He does not sail. He strategizes. The sea is a board, the ships are pieces, and he has never lost a game he was allowed to finish.","2":null,"3":null}},{"card_id":40,"name":"Sea Serpent Tamer","shards":{"1":"She feeds them once a week. She does not tell people what she feeds them. The serpents are well-behaved.","2":null,"3":null}},{"card_id":41,"name":"Kraken's Herald","shards":{"1":"He speaks for something that does not use words. He is a translator. He will not explain the translation.","2":null,"3":null}},{"card_id":42,"name":"Duelmaster","shards":{"1":"She has never lost. Not because she has never been challenged. She has been challenged forty-four times. She does not discuss challenge forty-five.","2":"The Hollow Blade has three rules for the Duelmaster selection: first blood is insufficient, surrender is counted as a loss, and if neither party can stand at the end, the survivor is the one who falls last. She has fallen last eleven times. She considers this a poor record.","3":"After the Collapse, the Hollow Blade took contracts from all five clans simultaneously. She negotiated the rates. She set a clause: no contract will require a Hollow Blade duelist to fight another Hollow Blade duelist. Three clans tried to engineer such a confrontation anyway. She visited them personally. The clause was reaffirmed."}},{"card_id":43,"name":"Arcane Cartographer","shards":{"1":"She maps places that do not officially exist using instruments that cannot officially measure them. Her maps are accurate.","2":null,"3":null}},{"card_id":44,"name":"Tidebreaker","shards":{"1":"He broke the tide at the Battle of Ash Shoal by sailing directly into it. His crew did not vote on this. They have opinions about this.","2":null,"3":null}},{"card_id":45,"name":"Phantom Navigator","shards":{"1":"She has navigated without instruments since the night they were stolen. She found the thieves. She got the instruments back. She did not need them anymore.","2":null,"3":null}},{"card_id":46,"name":"Highland Chieftain","shards":{"1":"His clan holds the coastal highlands above the northern harbor. They have held them for two hundred years. They do not plan to stop.","2":"The Iron Circle approached him three times with incorporation offers. The first time, he declined politely. The second time, he declined less politely. The third time involved a message written on the side of one of their ships using the ship itself. The Iron Circle has not sent a fourth offer.","3":"He does not consider himself a warlord. He considers himself a landlord with very emphatic lease enforcement. His tenants agree with this characterization. His tenants are not given the option to disagree."}},{"card_id":47,"name":"Corsair Captain","shards":{"1":"She flies no flag. Not because she has no allegiance. Because she has too many to pick just one.","2":null,"3":null}},{"card_id":48,"name":"Abyssal Caller","shards":{"1":"She calls from the deep. The deep answers. She has not told anyone what it says.","2":null,"3":null}},{"card_id":49,"name":"Leviathan","shards":{"1":"It predates the kingdom. It predates the clans. It predates the sea, if the old songs are accurate. The old songs are not always accurate. It is old enough that it does not care.","2":null,"3":null}},{"card_id":50,"name":"Doubleface","shards":{"1":"She has two faces. Not metaphorically. She is genuinely difficult to describe to witnesses. Witnesses agree on one thing: she was there. They disagree on everything else.","2":"She was born in the Nameless Silk\u2019s operative class, trained specifically for identity ambiguity. Her assignment required her to be simultaneously a Black Flag raider and a Sovereign Bourse courier. She held both positions for four years. Neither side suspected the other. She was paid by both.","3":"After the Collapse, the Nameless Silk\u2019s archives were partially recovered. Her file contained two complete identities and a note: \u2018Asset shows concerning independence. Recommend continued deployment. Do not attempt to recall.\u2019 Whoever wrote the note is no longer at the Silk. She is still deployed. She has not been recalled."}},{"card_id":51,"name":"Ghost Fleet Captain","shards":{"1":"He commands ships that do not exist on any manifest. The ships are real. The manifests are wrong.","2":"During the final year before the Collapse, the Royal Navy quietly decommissioned seven warships without public record. The ships were not destroyed. He knows where they are. He has been using them since the decommission order. The Navy did not survive to object.","3":"He made a promise to the forty-one crews he inherited: no king, no flag, no port authority. The ships sail where the crew votes. He has vetoed the vote exactly once, the night someone proposed making him king. He threw the ballot into the sea and called a new vote. The new vote was unanimous."}},{"card_id":52,"name":"Kingmaker\u2019s Ring","shards":{"1":"It was not made to make kings. It was made to remind kings that someone made them. The someone is still watching.","2":null,"3":null}},{"card_id":53,"name":"King's Last Guard","shards":{"1":"He was assigned to protect the king. He protected the king until there was no king to protect. He has not been reassigned. He does not accept reassignment.","2":"The King\u2019s Last Guard is not an official position. It has not been an official position since the Collapse. He holds it anyway. He has refused three Bourse contracts, two Iron Circle sinecures, and one Black Flag captaincy. He is still waiting for the Crown to reinstate his orders.","3":"He knows where the last sealed order is. He has known for six years. The order is in a waterproof case at the bottom of the harbor, exactly where the king left it the night the fleet sank. He has not retrieved it. He is waiting for whoever the order was written for."}},{"card_id":54,"name":"Prince in Exile","shards":{"1":"He was the third son. The third son does not inherit. He has decided to renegotiate this arrangement.","2":"He spent four years in the Sovereign Bourse\u2019s protection, technically as a \u2018financial consultant.\u2019 He learned their accounting systems, their leverage structures, and exactly how much of the old Crown debt they hold. He is going to need that information.","3":"He has made contact with the King\u2019s Last Guard once, through an intermediary, through a letter with no signature. The Guard sent back an empty envelope. He understood the message. The Guard is still waiting for the right order. He is the order."}},{"card_id":55,"name":"Assassin's Letter","shards":{"1":"It was not written by an assassin. It was written to an assassin. It has changed hands fourteen times. Everyone who has held it has been very careful.","2":"The letter contains instructions written in the Nameless Silk\u2019s seven-layer cipher. Three layers are misdirection. One layer contains the actual contract. The remaining three are warnings addressed to whoever deciphered the first four layers. The warnings are detailed.","3":"The contract inside the letter was never fulfilled. The original target died in the Collapse before the letter was delivered. The Nameless Silk does not cancel contracts due to natural causes. The letter is still active. Whoever holds it is technically employed."}},{"card_id":56,"name":"Kingdom's Forgotten Oath","shards":{"1":"Some oaths survive the thing they were sworn to. This one has survived three kings, one Collapse, and two attempts to declare it legally void. It is still binding.","2":"The oath was sworn by the five clan founders during the Year of Ash, binding them and their successors to mutual non-aggression within harbor waters. The founders are dead. Their successors are the five clans. The oath was never publicly recorded. Each clan has a copy. Each clan believes theirs is the only copy.","3":"A sixth copy exists. It was held by the Crown as a guarantor. The Crown is gone. The copy survived in the waterproof case at the bottom of the harbor, next to the last sealed order. They were placed there together, on the same night, by the same hand."}},{"card_id":57,"name":"Sceptre of Valerius","shards":{"1":"It is not magic. It is not ceremonial. It is the physical record of legitimate authority, recognized by all five clans under the Ash Year accords. Whoever holds it has a legal claim that has not been tested in fifteen years.","2":"Valerius was the last king before the Collapse. He did not carry the Sceptre at the end. He gave it to someone for safekeeping the night before the fleet sank. No one knows who received it. The Sceptre has not appeared since. The claim is dormant.","3":"The Iron Circle has spent six years searching for it. The Bourse has spent six years buying information about it. The Nameless Silk has spent six years pretending not to search for it. The Black Flag has one member who claims to have seen it. The Hollow Blade has declined to comment. It is in a waterproof case at the bottom of the harbor."}},{"card_id":58,"name":"Nameless Blade","shards":{"1":"It has no maker\u2019s mark. It has no registered owner. It has no provenance. It has been used, very precisely, in seven situations that also have no official record.","2":"The Nameless Silk maintains exactly one weapon that belongs to the organization rather than any operative. It is cleaned after every use. It is returned to the same location. No operative is told where the location is until the moment they need it. After use, they forget the location. The mechanism for this forgetting is not documented.","3":"Seven times. Seven uses. The seven targets are officially listed as: two accidents, two illnesses, one disappearance, one resignation, and one defection. The Silk\u2019s archives list seven successful operations. The Blade has been cleaned seven times. These numbers are not a coincidence."}},{"card_id":59,"name":"Elyon Crown","shards":{"1":"The Crown was not the kingdom. The Crown was the symbol of the kingdom. The symbol has survived. It is unclear whether the kingdom has.","2":"The Crown was last worn publicly during the Victory Ceremony following the Battle of Vael\u2019sor, eleven years before the Collapse. The king who wore it died six years ago. The Crown was not with him. The Crown has not been seen since the Ceremony. There are seventeen documented accounts of its last verified location. They disagree.","3":"It is in the waterproof case at the bottom of the harbor, with the Sceptre, the last sealed order, and the sixth copy of the Ash Year oath. They were placed there together. Someone put them all there. Someone who believed they would be retrieved. The case is unlocked."}},{"card_id":60,"name":"Kingmaker's Ring","shards":{"1":"It was not made to make kings. It was made to remind kings that someone made them. The someone is still watching.","2":"The Ring predates the Elyon line by three dynasties. Each dynasty believed they possessed it through legitimate inheritance. Each dynasty was wrong. The Ring selects. It has been in the waterproof case for six years, next to the Crown, the Sceptre, and the sealed order. It has been waiting.","3":"Whoever retrieves the case will find four objects: the Ring, the Crown, the Sceptre, and the Order. They will also find a name written on the inside of the case lid. The name has been there since the case was sealed. It is the name of the person the case was sealed for. The sea has kept the secret. The sea is patient."}}];
+  const map={};
+  for(const entry of raw){map[entry.card_id]=entry;}
+  return map;
+})();
+
+// getLoreShardText(card_id, shard_index, card_mint)
+// shard_index: 1, 2, or 3
+// card_mint: used to check unlock state (unlockedShards map in 04-state.js)
+// Returns: shard text string, "(Lore text coming soon...)" if null, or "?" if locked
+function getLoreShardText(card_id,shard_index,card_mint){
+  const entry=_LORE_SHARDS_DATA[card_id];
+  if(!entry)return '(Lore text coming soon...)';
+  const text=entry.shards[String(shard_index)]||null;
+  // Shard 1 is always unlocked on card acquisition
+  if(shard_index===1)return text||'(Lore text coming soon...)';
+  // Shards 2+3: check unlock state
+  const unlocks=typeof unlockedShards!=='undefined'&&card_mint?unlockedShards[card_mint]:null;
+  const isUnlocked=unlocks&&unlocks[shard_index-1];
+  if(!isUnlocked)return '?';
+  return text||'(Lore text coming soon...)';
+}
+
+// getLoreShardRaw(card_id, shard_index) — returns raw text or null, no unlock check
+function getLoreShardRaw(card_id,shard_index){
+  const entry=_LORE_SHARDS_DATA[card_id];
+  if(!entry)return null;
+  return entry.shards[String(shard_index)]||null;
+}
+
+// getLoreCardName(card_id) — lookup name from lore data
+function getLoreCardName(card_id){
+  const entry=_LORE_SHARDS_DATA[card_id];
+  return entry?entry.name:null;
+}
+
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/03-zk-prove.js
 // ZK dungeon position module · Poseidon commitment · Groth16 proof generation · initPosition/verifyDungeonMove browser helpers (window.zkDungeon)
@@ -8671,6 +8712,24 @@ const CARD_MILESTONE_MSG={
 let milestoneToastText='';
 let milestoneToastFrame=-999;
 const milestonesReached=new Set();
+
+// ── LORE SHARD UNLOCK STATE (T-D14-A3) ──
+// unlockedShards[card_mint] = [bool, bool, bool] (shards 1/2/3)
+// Shard 1 is always unlocked on acquisition (index 0 = true always after set).
+// Sync from on-chain CardLoreShards PDA on demand (when Card Detail opens).
+// Cache for session duration.
+const unlockedShards={};
+
+// setUnlockedShards(card_mint, boolArray) — cache PDA query result
+function setUnlockedShards(card_mint,bools){
+  if(!card_mint||!Array.isArray(bools))return;
+  unlockedShards[card_mint]=bools;
+}
+
+// getUnlockedShards(card_mint) — returns [bool,bool,bool] or [true,false,false] default
+function getUnlockedShards(card_mint){
+  return unlockedShards[card_mint]||[true,false,false];
+}
 
 
 // ───────────────────────────────────────────────────────────────────────
@@ -11515,10 +11574,15 @@ function lobbyOpenDialog(buildingName) {
       break;
     case 'pc_box':
       lobbyDialog = {
-        title: '💾 PC Box',
-        lines: ['Storage: — cards  |  Deck: —/20', 'Open Deck Editor to build your deck.', 'Coming Day 5'],
-        buttons: [{ label: 'Open Deck Editor', action: 'open_deck_editor', disabled: false }, { label: 'Close', action: 'close', disabled: false }],
-        focusIdx: 1,
+        title: 'PC Box',
+        lines: ['Manage your card collection and deck.'],
+        buttons: [
+          { label: 'View Cards',   action: 'open_card_storage', disabled: false },
+          { label: 'Deck Editor',  action: 'open_deck_editor',  disabled: false },
+          { label: 'Replay Tutorial', action: 'replay_tutorial', disabled: false },
+          { label: 'Close',        action: 'close',             disabled: false },
+        ],
+        focusIdx: 0,
       };
       break;
     case 'faction_hq':
@@ -11593,6 +11657,15 @@ function lobbyDialogConfirm() {
   if (btn.action === 'open_deck_editor') {
     lobbyDialog = null;
     if (typeof openDeckEditor === 'function') openDeckEditor();
+    return;
+  }
+  if (btn.action === 'open_card_storage') {
+    lobbyDialog = null;
+    if (typeof initCardStorageScene === 'function') initCardStorageScene();
+    return;
+  }
+  if (btn.action === 'replay_tutorial') {
+    lobbyDialog = { title: 'Tutorial', lines: ['Tutorial replay coming in Season 1 update.'], buttons: [{label:'Close',action:'close',disabled:false}], focusIdx:0 };
     return;
   }
   // Shop purchase actions — placeholder responses until x402 micropayment integration
@@ -20837,7 +20910,17 @@ function deckEditorClick(px, py) {
     const row = Math.floor((py - storY - 20 + deckEditorScroll) / (CELL + 3));
     const idx = row * 5 + col;
     if (idx >= 0 && idx < list.length) {
-      deckEditorClickStorage(list[idx].card_id);
+      const cellX = DE_PAD + 4 + col * (CELL+3);
+      const cellY = storY + 20 + row * (CELL+3) - deckEditorScroll;
+      // Detail icon zone: top-right 12×12 of each cell → open Card Detail
+      if(px>=cellX+CELL-12&&px<=cellX+CELL&&py>=cellY&&py<=cellY+12){
+        if(typeof initCardDetailScene==='function'){
+          closeDeckEditor();
+          initCardDetailScene({cdIdx:list[idx].card_id-1,mint:null,owner:null,ownerSince:'—',source:'Collection',isVintage:false},'deck_editor');
+        }
+      }else{
+        deckEditorClickStorage(list[idx].card_id);
+      }
     }
     return true;
   }
@@ -23841,6 +23924,26 @@ function _drawConfetti() {
 // ── Input handler ──────────────────────────────────────────────────────────
 function handleVictoryInput(px, py) {
   if (!VS) return;
+
+  // Tap transferred card → Card Detail (T-D14-B5)
+  var cards = VS.transferredCards;
+  if (cards && cards.length > 0 && VS.won) {
+    var cardW = 44, cardH = 60, cardY0 = 62;
+    var count = Math.min(cards.length, 2);
+    var spacing = cardW + 12;
+    var startX = W / 2 - (count - 1) * spacing / 2;
+    for (var ci = 0; ci < count; ci++) {
+      var cardCX = startX + ci * spacing;
+      if (px >= cardCX - cardW/2 && px <= cardCX + cardW/2 && py >= cardY0 && py <= cardY0 + cardH) {
+        var card = cards[ci];
+        var cdIdx = (card.card_id != null ? card.card_id - 1 : -1);
+        if (cdIdx >= 0 && typeof initCardDetailScene === 'function') {
+          initCardDetailScene({cdIdx: cdIdx, mint: card.mint||null, owner: null, ownerSince:'—', source:'Duel Won', isVintage:false}, 'duel_victory');
+        }
+        return;
+      }
+    }
+  }
 
   // Solscan link
   if (VS._solscanRect && VS.transferTxHash) {
@@ -27982,6 +28085,8 @@ function draw(){
   else if(sc==='lobby')dLobby(); // Phase D Reborn LobbyScene
   else if(sc==='duel')drawDuelScene(); // M2 Duel Board
   else if(sc==='duel_victory')drawVictoryScene(); // T-D13-D M4 Victory/Defeat
+  else if(sc==='card_detail')drawCardDetailScene(); // T-D14-B M5 Card Detail
+  else if(sc==='card_storage')drawCardStorageScene(); // T-D14-C PC Box Card Storage
   drawCardAcquisition();
   drawDiscardOverlay();
   drawMarketplace();
@@ -28098,6 +28203,829 @@ function playDefeatAnimation(lostCards) {
   screenShake(4, 8);
   fadeOut(() => {
     sc = 'lobby';
+    fadeIn();
+  });
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/10-card-detail.js
+// T-D14-B M5 Card Detail scene — 3-panel layout (owner/card/battle+lore) · ADD TO DECK · SELL TO SHOP · lore shard typewriter UX
+// ───────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// MODULE: 10-card-detail.js
+// T-D14-B: M5 Card Detail scene — three-panel card viewer
+//
+// Scene key: 'card_detail'
+// Entry:  initCardDetailScene(cardInfo, returnScene)
+// Render: drawCardDetailScene()
+// Input:  handleCardDetailInput(px, py)
+// Exit:   exitCardDetailScene()
+//
+// cardInfo shape:
+//   { cdIdx: number,            // index into CD[] (required)
+//     mint: string|null,        // NFT mint pubkey (null if unowned/demo)
+//     owner: string|null,       // current owner wallet (truncated display)
+//     ownerSince: string|null,  // e.g. "Day 3 (2026-04-14)"
+//     source: string|null,      // "Duel Won" | "Shop" | "P2P" | "Gacha"
+//     prevOwner: string|null,
+//     hallContext: string|null, // "Bronze Hall · R4"
+//     isVintage: bool,          // prev-season card
+//   }
+// returnScene: 'deck_editor' | 'lobby' | 'card_storage' | 'duel_victory' | 'duel' | 'shop'
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── State ─────────────────────────────────────────────────────────────────
+let CDS = null;           // card detail scene state
+let _cdsFrame = 0;
+
+// ── Constants ─────────────────────────────────────────────────────────────
+const CDS_PANEL_L = 0, CDS_PANEL_L_W = 120;
+const CDS_PANEL_C = 120, CDS_PANEL_C_W = 220;
+const CDS_PANEL_R = 340, CDS_PANEL_R_W = 140;
+const CDS_BTN_Y = 254, CDS_BTN_H = 16;
+const CDS_BTN_BACK  = {x:2,   w:78,  label:'BACK'};
+const CDS_BTN_ADD   = {x:84,  w:108, label:'ADD TO DECK'};
+const CDS_BTN_SELL  = {x:196, w:80,  label:'SELL'};
+
+// Sell prices by rarity (SOL)
+const CDS_SELL_PRICE = [0.005, 0.015, 0.03, 0.06, 0.1]; // r1..r5
+// DECISION: BP/HP/Initiative derived from rarity if no on-chain data (T-D14-B2 approximation)
+function _cdsStat(cr){
+  const r = cr.r||1;
+  return { bp: r*2, hp: Math.max(1,7-r), initiative: r };
+}
+
+// ── Entry point ────────────────────────────────────────────────────────────
+/**
+ * Open the Card Detail scene.
+ * @param {Object} cardInfo   — see header for shape
+ * @param {string} returnScene — scene key to return to on BACK
+ */
+function initCardDetailScene(cardInfo, returnScene){
+  if(!cardInfo||cardInfo.cdIdx===undefined||cardInfo.cdIdx<0||cardInfo.cdIdx>=CD.length)return;
+  const cr = CD[cardInfo.cdIdx];
+  const cardId = cardInfo.cdIdx + 1; // lore card_id is 1-based
+  const unlocks = getUnlockedShards(cardInfo.mint||'');
+  const stats = _cdsStat(cr);
+  const rar = cr.r||1;
+  const sellPrice = CDS_SELL_PRICE[rar-1]||0.005;
+  const loreEntry = _LORE_SHARDS_DATA[cardId]||null;
+
+  CDS = {
+    cdIdx:        cardInfo.cdIdx,
+    cr:           cr,
+    cardId:       cardId,
+    mint:         cardInfo.mint||null,
+    owner:        cardInfo.owner||'Unknown',
+    ownerSince:   cardInfo.ownerSince||'—',
+    source:       cardInfo.source||'Unknown',
+    prevOwner:    cardInfo.prevOwner||null,
+    hallContext:  cardInfo.hallContext||null,
+    isVintage:    !!cardInfo.isVintage,
+    returnScene:  returnScene||'lobby',
+    unlocks:      unlocks,  // [bool,bool,bool]
+    stats:        stats,
+    sellPrice:    sellPrice,
+    loreEntry:    loreEntry,
+    // Shard reading UX
+    activeShardIdx:    0,     // 0=none, 1/2/3 = reading that shard
+    shardText:         '',    // full text to display
+    shardDisplayed:    '',    // text so far (typewriter)
+    shardTypeFrame:    0,     // frame counter for typewriter
+    shardTypeComplete: false,
+    // Sell confirmation
+    sellConfirm: false,
+    sellStatus:  '',   // ''|'pending'|'success'|'error'
+    sellMsg:     '',
+    // Add to deck feedback
+    addStatus:   '',   // ''|'pending'|'success'|'error'
+    addMsg:      '',
+  };
+  _cdsFrame = 0;
+
+  fadeOut(function(){
+    sc = 'card_detail';
+    fadeIn();
+  });
+}
+
+// ── Main render ────────────────────────────────────────────────────────────
+function drawCardDetailScene(){
+  if(!CDS)return;
+  _cdsFrame++;
+  const {cr,cardId,unlocks,stats,loreEntry,isVintage} = CDS;
+  const rar = cr.r||1;
+  const rarCol = CARD_RARITY_COL[rar-1]||'#606870';
+
+  // Background
+  bx(0,0,W,H,'#060d18');
+  // Panel dividers
+  bx(CDS_PANEL_L_W,0,1,H,'#1a2a3a');
+  bx(CDS_PANEL_R,0,1,H,'#1a2a3a');
+  // Bottom bar
+  bx(0,CDS_BTN_Y-2,W,1,'#1a2a3a');
+  bx(0,H-1,W,1,'#102030');
+
+  _cdsDrawLeftPanel(cr,rarCol,rar);
+  _cdsDrawCenterPanel(cr,cardId,rarCol,rar,stats,isVintage);
+  _cdsDrawRightPanel(cr,cardId,rarCol,rar,loreEntry,unlocks);
+  _cdsDrawShardOverlay();
+  _cdsDrawButtons(cr,rar,rarCol);
+  _cdsDrawToast();
+}
+
+// ── Left panel: Owner ──────────────────────────────────────────────────────
+function _cdsDrawLeftPanel(cr,rarCol,rar){
+  const lx=CDS_PANEL_L+4;
+  tx('OWNER',lx,10,5,rarCol);
+  bx(lx,13,CDS_PANEL_L_W-8,1,rarCol+'60');
+
+  const ownerStr=CDS.owner||'Unknown';
+  const ownerTrunc=ownerStr.length>12?ownerStr.slice(0,6)+'...'+ownerStr.slice(-4):ownerStr;
+  tx(ownerTrunc,lx,24,5,'#c0d0e0');
+  tx('Since:',lx,36,4,'#708090');
+  tx(CDS.ownerSince,lx,45,4,'#a0b8c8');
+  tx('Source:',lx,57,4,'#708090');
+  tx(CDS.source,lx,66,4,'#a0b8c8');
+
+  if(CDS.prevOwner){
+    tx('Prev:',lx,80,4,'#708090');
+    const p=CDS.prevOwner;
+    tx(p.length>12?p.slice(0,6)+'...'+p.slice(-4):p,lx,89,4,'#90a8b8');
+  }
+  if(CDS.hallContext){
+    tx('Acquired:',lx,103,4,'#708090');
+    tx(CDS.hallContext,lx,112,4,'#90a8b8');
+  }
+
+  // Mint badge
+  if(CDS.mint){
+    const mx=CDS_PANEL_L+4, my=H-44;
+    bx(mx,my,CDS_PANEL_L_W-8,10,'#0a1a2a');
+    bx(mx,my,CDS_PANEL_L_W-8,1,'#203040');
+    tx('NFT',mx+2,my+8,5,'#3080c8');
+  }
+}
+
+// ── Center panel: Card ─────────────────────────────────────────────────────
+function _cdsDrawCenterPanel(cr,cardId,rarCol,rar,stats,isVintage){
+  const cx=CDS_PANEL_C, cw=CDS_PANEL_C_W;
+  // Draw full card frame (120×160 at center of panel)
+  const cardW=100, cardH=140;
+  const cardX=cx+(cw-cardW)/2, cardY=20;
+  drawCardFrame(cardX,cardY,cardW,cardH,CDS.cdIdx,true,false);
+
+  // Vintage stripe
+  if(isVintage){
+    g.save();
+    g.globalAlpha=0.75;
+    bx(cardX,cardY,cardW,12,'#6a3010');
+    tx('VINTAGE',cardX+2,cardY+9,5,'#ffd080');
+    g.restore();
+  }
+
+  // Name
+  const nSz=Math.max(5,Math.min(8,Math.floor(cw/(cr.n.length*0.72))));
+  txShadow(cr.n,cx+cw/2-cr.n.length*nSz/2.1,cardY+cardH+14,nSz,'#f0e8d8','rgba(0,0,0,.6)');
+
+  // Clan / type badge
+  const typeLabel=(cr.t||'').toUpperCase();
+  const typeBadgeW=typeLabel.length*4+8;
+  bx(cx+cw/2-typeBadgeW/2,cardY+cardH+18,typeBadgeW,10,cr.d||'#102030');
+  tx(typeLabel,cx+cw/2-typeLabel.length*4/2,cardY+cardH+26,4,cr.h||'#fff');
+
+  // Stats row
+  const sy=cardY+cardH+36;
+  const statItems=[
+    ['BP',stats.bp],
+    ['HP',stats.hp],
+    ['INIT',stats.initiative],
+    ['R'+rar,'']
+  ];
+  const sw=Math.floor(cw/statItems.length);
+  for(let i=0;i<statItems.length;i++){
+    const [lbl,val]=statItems[i];
+    const sx=cx+i*sw+sw/2;
+    tx(lbl,sx-lbl.length*2,sy,4,'#708090');
+    tx(String(val),sx-String(val).length*2.5,sy+9,5,rarCol);
+  }
+
+  // Ability text
+  const abY=sy+24;
+  bx(cx+4,abY-2,cw-8,1,'#1a2a3a');
+  if(cr.f){
+    tx('ABILITY',cx+4,abY+7,4,'#708090');
+    tx(cr.f,cx+50,abY+7,5,cr.h||'#a0c0e0');
+  }
+
+  // Cost strip
+  const costStr='COST: '+(cr.ct!==undefined?cr.ct:'—');
+  const costY=abY+18;
+  bx(cx+4,costY-2,cw-8,12,cr.d||'#102030');
+  tx(costStr,cx+8,costY+8,5,rarCol);
+}
+
+// ── Right panel: Battle History + Lore Shards ─────────────────────────────
+function _cdsDrawRightPanel(cr,cardId,rarCol,rar,loreEntry,unlocks){
+  const rx=CDS_PANEL_R+4, rw=CDS_PANEL_R_W-8;
+
+  tx('BATTLE HISTORY',rx,10,5,rarCol);
+  bx(rx,13,rw,1,rarCol+'60');
+
+  // Battle history — show placeholder (real data from CardBattleHistory PDA, wired Day 14+)
+  // Safety gate: if PDA query failed, show 0/0/0/0
+  const bh=CDS._battleHistory||null;
+  if(bh){
+    tx('S1: '+bh.wins+'W/'+bh.losses+'L',rx,24,4,'#90c8e0');
+    tx(bh.kos+'KOs / '+bh.dmg_dealt+' dmg',rx,34,4,'#90c8e0');
+    bx(rx,40,rw,1,'#1a2a3a');
+    tx('Lifetime:',rx,50,4,'#708090');
+    tx(bh.wins+'W/'+bh.losses+'L/'+bh.kos+'KO',rx,60,4,'#a0c0e0');
+  }else{
+    g.globalAlpha=0.55;
+    tx('No battles yet',rx,28,4,'#606878');
+    tx('0W / 0L / 0KO',rx,40,4,'#505868');
+    g.globalAlpha=1;
+  }
+
+  // Previous owners
+  const histY=74;
+  tx('PREV OWNERS',rx,histY,4,'#708090');
+  if(CDS.prevOwner){
+    const p=CDS.prevOwner;
+    tx(p.length>14?p.slice(0,6)+'...'+p.slice(-4):p,rx,histY+10,4,'#8090a0');
+  }else{
+    g.globalAlpha=0.4;tx('none on record',rx,histY+10,4,'#606878');g.globalAlpha=1;
+  }
+
+  // Lore Shards section
+  const loreY=132;
+  tx('LORE SHARDS',rx,loreY,5,rarCol);
+  bx(rx,loreY+3,rw,1,rarCol+'60');
+
+  for(let si=1;si<=3;si++){
+    const shardX=rx+(si-1)*36+2;
+    const shardY=loreY+14;
+    const isUnlocked=si===1||(unlocks&&unlocks[si-1]);
+    const hasText=loreEntry&&loreEntry.shards&&loreEntry.shards[String(si)];
+    const isActive=CDS.activeShardIdx===si;
+
+    // Gem icon
+    const gemColor=isUnlocked?(hasText?'#50e090':'#e0b030'):isActive?'#e0e0e0':'#304050';
+    const gemBg=isActive?'#0a2a18':'#060f18';
+    bx(shardX-2,shardY-2,30,14,gemBg);
+    bx(shardX-2,shardY-2,30,1,isUnlocked?'#205030':'#102030');
+    tx('\u25C6',shardX,shardY+8,8,gemColor);
+    tx(String(si),shardX+10,shardY+8,4,isUnlocked?'#90c8a0':'#304050');
+    if(isActive){bx(shardX-2,shardY+12,30,1,gemColor);}
+  }
+
+  // Shard text preview (first line, non-interactive)
+  const previewY=loreY+34;
+  bx(rx,previewY,rw,50,'#060c16');
+  bx(rx,previewY,rw,1,'#102030');
+  if(CDS.activeShardIdx===0){
+    g.globalAlpha=0.5;
+    tx('Tap gem to read',rx+2,previewY+12,4,'#607080');
+    g.globalAlpha=1;
+  }
+}
+
+// ── Shard overlay (typewriter panel) ──────────────────────────────────────
+function _cdsDrawShardOverlay(){
+  if(CDS.activeShardIdx===0)return;
+  const si=CDS.activeShardIdx;
+  // Typewriter progress
+  _cdsFrame++;
+  const CHAR_DELAY=2; // frames per character
+  if(!CDS.shardTypeComplete){
+    const charsShown=Math.floor((_cdsFrame-CDS.shardTypeFrame)/CHAR_DELAY);
+    if(charsShown>=CDS.shardText.length){
+      CDS.shardDisplayed=CDS.shardText;
+      CDS.shardTypeComplete=true;
+    }else{
+      CDS.shardDisplayed=CDS.shardText.slice(0,charsShown);
+    }
+  }
+
+  // Overlay panel: bottom half of right panel
+  const px=CDS_PANEL_R+2, py=168, pw=CDS_PANEL_R_W-4, ph=72;
+  bx(px,py,pw,ph,'#050c1a');
+  bx(px,py,pw,1,'#1a3a2a');
+  bx(px,py+ph-1,pw,1,'#102030');
+
+  // Shard header
+  const rarCol=CARD_RARITY_COL[(CDS.cr.r||1)-1];
+  tx('SHARD '+si,px+2,py+8,4,rarCol);
+  // Close hint
+  tx('[X]',px+pw-14,py+8,4,'#507090');
+
+  // Wrapped text
+  const words=CDS.shardDisplayed.split(' ');
+  let line='',lineY=py+18,lineH=9,maxW=20;
+  for(let wi=0;wi<words.length;wi++){
+    const w=words[wi];
+    if((line+w).length>maxW){
+      g.globalAlpha=0.85;
+      tx(line.trim(),px+2,lineY,4,'#b0c8a0');
+      g.globalAlpha=1;
+      lineY+=lineH;line=w+' ';
+      if(lineY>py+ph-4)break;
+    }else line+=w+' ';
+  }
+  if(line.trim()&&lineY<=py+ph-4){
+    g.globalAlpha=0.85;tx(line.trim(),px+2,lineY,4,'#b0c8a0');g.globalAlpha=1;
+  }
+}
+
+// ── Buttons ────────────────────────────────────────────────────────────────
+function _cdsDrawButtons(cr,rar,rarCol){
+  const by=CDS_BTN_Y, bh=CDS_BTN_H;
+
+  // BACK
+  _cdsBtn(CDS_BTN_BACK.x,by,CDS_BTN_BACK.w,bh,'BACK',true,'#203040','#c0d0e0');
+
+  // ADD TO DECK
+  const {canAdd,addReason}=_cdsCanAdd();
+  const addCol=canAdd?'#205028':'#15201a';
+  const addTextCol=canAdd?'#80d898':'#405048';
+  _cdsBtn(CDS_BTN_ADD.x,by,CDS_BTN_ADD.w,bh,'ADD TO DECK',canAdd,addCol,addTextCol);
+  if(!canAdd&&addReason){
+    g.globalAlpha=0.55;
+    tx(addReason,CDS_BTN_ADD.x+2,by-6,3,'#708090');
+    g.globalAlpha=1;
+  }
+
+  // SELL
+  const {canSell,sellReason}=_cdsCanSell();
+  const sellCol=canSell?'#281515':'#111010';
+  const sellTextCol=canSell?'#e08080':'#403830';
+  const sellLabel=(CDS.sellConfirm?'CONFIRM?':'SELL '+(CDS_SELL_PRICE[rar-1]||0.005)+' SOL');
+  _cdsBtn(CDS_BTN_SELL.x,by,CDS_BTN_SELL.w,bh,sellLabel,canSell,sellCol,sellTextCol);
+  if(CDS.sellConfirm){
+    g.globalAlpha=0.7;
+    tx('CANCEL',CDS_BTN_SELL.x+CDS_BTN_SELL.w+2,by+bh/2+3,4,'#708090');
+    g.globalAlpha=1;
+  }
+}
+
+function _cdsBtn(x,y,w,h,label,enabled,bgCol,textCol){
+  bx(x,y,w,h,bgCol);
+  bx(x,y,w,1,enabled?'#304050':'#1a2030');
+  bx(x,y+h-1,w,1,'#080c14');
+  g.globalAlpha=enabled?1:0.45;
+  tx(label,x+w/2-label.length*2.2,y+h/2+3,4,textCol);
+  g.globalAlpha=1;
+}
+
+function _cdsCanAdd(){
+  if(CDS.isVintage) return {canAdd:false,addReason:'Vintage: not playable'};
+  const deck=typeof playerDeck!=='undefined'?playerDeck:[];
+  if(deck.length>=20) return {canAdd:false,addReason:'Deck full (20/20)'};
+  const copies=deck.filter(d=>d===CDS.cdIdx).length;
+  if(copies>=2) return {canAdd:false,addReason:'Max 2 copies in deck'};
+  return {canAdd:true,addReason:''};
+}
+
+function _cdsCanSell(){
+  if(!CDS.mint) return {canSell:false,sellReason:'No NFT to sell'};
+  return {canSell:true,sellReason:''};
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function _cdsDrawToast(){
+  const msg=CDS.addMsg||CDS.sellMsg;
+  if(!msg)return;
+  const tw=msg.length*4+12;
+  bx(W/2-tw/2,4,tw,14,'rgba(0,10,20,0.9)');
+  bx(W/2-tw/2,4,tw,1,'#204040');
+  tx(msg,W/2-msg.length*2,14,4,
+    (CDS.addStatus==='success'||CDS.sellStatus==='success')?'#50e090':'#e08050');
+}
+
+// ── Input handler ──────────────────────────────────────────────────────────
+function handleCardDetailInput(px_,py_){
+  if(!CDS||sc!=='card_detail')return;
+
+  // Close shard overlay on X area tap
+  if(CDS.activeShardIdx>0){
+    if(px_>=CDS_PANEL_R+CDS_PANEL_R_W-16&&px_<=W&&py_>=168&&py_<=180){
+      CDS.activeShardIdx=0;return;
+    }
+    if(px_<CDS_PANEL_R){CDS.activeShardIdx=0;}
+    return;
+  }
+
+  // Shard gem taps (3 gems in right panel)
+  const loreY=132+CDS_PANEL_R;
+  for(let si=1;si<=3;si++){
+    const gx=CDS_PANEL_R+4+(si-1)*36;
+    const gy=loreY-CDS_PANEL_R+14; // = 146+14 = nope let's compute absolute
+    // From _cdsDrawRightPanel: shardY = loreY+14 = 132+14 = 146, shardX = rx+(si-1)*36+2
+    const shardX=(CDS_PANEL_R+4)+(si-1)*36;
+    const shardY=146;
+    if(px_>=shardX-2&&px_<=shardX+28&&py_>=shardY-2&&py_<=shardY+12){
+      _cdsTapShard(si);return;
+    }
+  }
+
+  // Button taps
+  if(py_>=CDS_BTN_Y&&py_<=CDS_BTN_Y+CDS_BTN_H){
+    // BACK
+    if(px_>=CDS_BTN_BACK.x&&px_<=CDS_BTN_BACK.x+CDS_BTN_BACK.w){
+      exitCardDetailScene();return;
+    }
+    // ADD TO DECK
+    if(px_>=CDS_BTN_ADD.x&&px_<=CDS_BTN_ADD.x+CDS_BTN_ADD.w){
+      const {canAdd}=_cdsCanAdd();
+      if(canAdd)_cdsAddToDeck();return;
+    }
+    // SELL
+    if(px_>=CDS_BTN_SELL.x&&px_<=CDS_BTN_SELL.x+CDS_BTN_SELL.w){
+      const {canSell}=_cdsCanSell();
+      if(canSell){
+        if(!CDS.sellConfirm){CDS.sellConfirm=true;}
+        else{_cdsSell();}
+      }
+      return;
+    }
+    // Cancel sell (text beyond sell button)
+    if(CDS.sellConfirm&&px_>CDS_BTN_SELL.x+CDS_BTN_SELL.w){
+      CDS.sellConfirm=false;return;
+    }
+  }
+}
+
+function _cdsTapShard(si){
+  const unlocks=CDS.unlocks||[true,false,false];
+  const isUnlocked=si===1||unlocks[si-1];
+  if(!isUnlocked){
+    CDS.addMsg='Shard '+si+' is locked.';
+    CDS.addStatus='error';
+    setTimeout(()=>{if(CDS){CDS.addMsg='';CDS.addStatus='';}},1800);
+    return;
+  }
+  const text=getLoreShardText(CDS.cardId,si,CDS.mint);
+  CDS.activeShardIdx=si;
+  CDS.shardText=text;
+  CDS.shardDisplayed='';
+  CDS.shardTypeFrame=_cdsFrame;
+  CDS.shardTypeComplete=false;
+}
+
+// ── ADD TO DECK flow ───────────────────────────────────────────────────────
+function _cdsAddToDeck(){
+  const {canAdd,addReason}=_cdsCanAdd();
+  if(!canAdd){CDS.addMsg=addReason;CDS.addStatus='error';return;}
+  CDS.addStatus='pending';CDS.addMsg='Adding to deck...';
+  // Client-side deck update
+  if(typeof playerDeck==='undefined')window.playerDeck=[];
+  playerDeck.push(CDS.cdIdx);
+  const deckCount=playerDeck.length;
+  // Call save_deck instruction if wallet connected
+  const saveDeckFn=typeof window.oxarkSaveDeck==='function'?window.oxarkSaveDeck:null;
+  if(saveDeckFn){
+    saveDeckFn(playerDeck).then(()=>{
+      CDS.addStatus='success';
+      CDS.addMsg='Added '+CDS.cr.n+' to deck ('+deckCount+'/20)';
+      setTimeout(()=>{if(CDS){exitCardDetailScene();}},1200);
+    }).catch(e=>{
+      // Rollback
+      const idx=playerDeck.lastIndexOf(CDS.cdIdx);
+      if(idx>=0)playerDeck.splice(idx,1);
+      CDS.addStatus='error';
+      CDS.addMsg='Failed: '+(e&&e.message?e.message.slice(0,30):'tx error');
+    });
+  }else{
+    // Offline / no wallet — still update client state
+    CDS.addStatus='success';
+    CDS.addMsg='Added '+CDS.cr.n+' ('+deckCount+'/20)';
+    setTimeout(()=>{if(CDS){exitCardDetailScene();}},1000);
+  }
+}
+
+// ── SELL TO SHOP flow ──────────────────────────────────────────────────────
+function _cdsSell(){
+  if(!CDS.mint){CDS.sellMsg='No NFT mint';CDS.sellStatus='error';return;}
+  CDS.sellStatus='pending';CDS.sellMsg='Selling...';CDS.sellConfirm=false;
+  const sellFn=typeof window.oxarkSellCard==='function'?window.oxarkSellCard:null;
+  if(sellFn){
+    sellFn(CDS.mint,CDS.sellPrice).then(()=>{
+      CDS.sellStatus='success';
+      CDS.sellMsg='Sold for '+CDS.sellPrice+' SOL';
+      setTimeout(()=>{if(CDS){exitCardDetailScene();}},1400);
+    }).catch(e=>{
+      CDS.sellStatus='error';
+      CDS.sellMsg='Sell failed: '+(e&&e.message?e.message.slice(0,28):'err');
+    });
+  }else{
+    // Stub: no on-chain sell available
+    CDS.sellStatus='success';
+    CDS.sellMsg='Sold '+CDS.cr.n+' (stub)';
+    setTimeout(()=>{if(CDS){exitCardDetailScene();}},1000);
+  }
+}
+
+// ── Exit ───────────────────────────────────────────────────────────────────
+function exitCardDetailScene(){
+  if(!CDS)return;
+  const ret=CDS.returnScene||'lobby';
+  fadeOut(function(){
+    sc=ret;
+    CDS=null;
+    _cdsFrame=0;
+    fadeIn();
+  });
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// MODULE: src/11-card-storage.js
+// T-D14-C PC Box Card Storage grid — 8-col card grid · clan filter · dup/deck toggles · tap→Card Detail · PC Box building integration
+// ───────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// MODULE: 11-card-storage.js
+// T-D14-C: PC Box Card Storage — grid view of owned cards
+//
+// Scene key: 'card_storage'
+// Entry:  initCardStorageScene()
+// Render: drawCardStorageScene()
+// Input:  handleCardStorageInput(px, py)
+// Exit:   exitCardStorageScene()
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Constants ─────────────────────────────────────────────────────────────
+const CST_COLS = 8;
+const CST_CARD_W = 54, CST_CARD_H = 58;
+const CST_GRID_X = 2, CST_GRID_Y = 30, CST_GRID_W = W-4, CST_GRID_H = 210;
+const CST_BAR_Y = 240, CST_BAR_H = 30;
+const CST_CLANS = ['All','Black Flag','Sovereign Bourse','Hollow Blade','Iron Circle','Nameless Silk'];
+// Map card type to approximate clan for display (DECISION: type→clan approximation until NFT metadata)
+const CST_TYPE_CLAN = {attack:'Black Flag', defense:'Iron Circle', magic:'Nameless Silk', flee:'Hollow Blade', recovery:'Sovereign Bourse'};
+const CST_CLAN_BORDER = {'Black Flag':'#c03020','Sovereign Bourse':'#a09030','Hollow Blade':'#7040b0','Iron Circle':'#5090d0','Nameless Silk':'#30a060','All':'#406080'};
+
+// ── State ──────────────────────────────────────────────────────────────────
+let CST = null;
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function _cstGetPlayerCards(){
+  // Returns array of { cdIdx, mint, count, inDeck }
+  // Uses pl[0].vault (Set of card_ids) when available, falls back to all cards (demo mode)
+  const vault = (typeof pl !== 'undefined' && pl[0] && pl[0].vault) ? pl[0].vault : null;
+  const deck  = (typeof playerDeck !== 'undefined') ? playerDeck : [];
+  const result = [];
+  for(let i = 0; i < CD.length; i++){
+    const cardId = i+1;
+    const owned = !vault || vault.has(cardId);
+    if(!owned) continue;
+    const count = deck.filter(d=>d===i).length;
+    result.push({ cdIdx:i, cardId, mint:null, inDeck:count, count:1 });
+  }
+  // If vault is null (demo), return all 60 cards
+  if(!vault && result.length===0){
+    for(let i=0;i<CD.length;i++) result.push({cdIdx:i,cardId:i+1,mint:null,inDeck:0,count:1});
+  }
+  return result;
+}
+
+function _cstFilterSort(cards, clanFilter, showDups, showInDeck){
+  let out = cards.slice();
+  if(clanFilter && clanFilter !== 'All'){
+    out = out.filter(c=>{
+      const clan = CST_TYPE_CLAN[CD[c.cdIdx].t]||'';
+      return clan===clanFilter;
+    });
+  }
+  if(showDups) out = out.filter(c=>c.count>=2);
+  if(showInDeck) out = out.filter(c=>c.inDeck>0);
+  // Sort: clan → rarity desc → initiative desc
+  out.sort((a,b)=>{
+    const ca=CST_TYPE_CLAN[CD[a.cdIdx].t]||'';
+    const cb=CST_TYPE_CLAN[CD[b.cdIdx].t]||'';
+    if(ca!==cb)return ca<cb?-1:1;
+    const ra=CD[a.cdIdx].r||1, rb=CD[b.cdIdx].r||1;
+    if(ra!==rb)return rb-ra;
+    return 0;
+  });
+  return out;
+}
+
+// ── Entry ─────────────────────────────────────────────────────────────────
+function initCardStorageScene(){
+  const allCards = _cstGetPlayerCards();
+  CST = {
+    allCards,
+    clanFilter:  'All',
+    showDups:    false,
+    showInDeck:  false,
+    scrollY:     0,
+    maxScrollY:  0,
+    hoverIdx:    -1,
+    // Filter button rects (computed in draw)
+    filterBtns:  [],
+    speciesCt:   new Set(allCards.map(c=>c.cardId)).size,
+  };
+  _cstRefreshFiltered();
+
+  fadeOut(function(){
+    sc = 'card_storage';
+    fadeIn();
+  });
+}
+
+function _cstRefreshFiltered(){
+  if(!CST)return;
+  CST.filtered = _cstFilterSort(CST.allCards, CST.clanFilter, CST.showDups, CST.showInDeck);
+  const rows = Math.ceil(CST.filtered.length / CST_COLS);
+  CST.maxScrollY = Math.max(0, rows * (CST_CARD_H+2) - CST_GRID_H);
+  CST.scrollY = Math.min(CST.scrollY, CST.maxScrollY);
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function drawCardStorageScene(){
+  if(!CST)return;
+
+  // Background
+  bx(0,0,W,H,'#060d18');
+
+  // Top bar
+  bx(0,0,W,CST_GRID_Y,'#08131e');
+  bx(0,CST_GRID_Y-1,W,1,'#1a2a3a');
+  tx('CARD STORAGE',4,14,7,'#a0c8e0');
+
+  // Clan filter buttons
+  _cstDrawFilterBar();
+
+  // Card grid
+  _cstDrawGrid();
+
+  // Bottom bar
+  bx(0,CST_BAR_Y,W,CST_BAR_H,'#08131e');
+  bx(0,CST_BAR_Y,W,1,'#1a2a3a');
+  const specStr=CST.speciesCt+'/60 species';
+  tx(specStr,4,CST_BAR_Y+18,5,'#7090a8');
+  // Toggle buttons
+  _cstDrawToggle(W-130,CST_BAR_Y+5,60,18,'Dups Only',CST.showDups,'cst_dups');
+  _cstDrawToggle(W-66,CST_BAR_Y+5,60,18,'In Deck',CST.showInDeck,'cst_indeck');
+  // Back button
+  bx(W-30,CST_BAR_Y+4,28,20,'#102030');
+  bx(W-30,CST_BAR_Y+4,28,1,'#203040');
+  tx('BACK',W-28,CST_BAR_Y+17,4,'#8090a8');
+}
+
+function _cstDrawFilterBar(){
+  if(!CST)return;
+  CST.filterBtns=[];
+  let bx_=100, by_=4, bh=18;
+  for(let i=0;i<CST_CLANS.length;i++){
+    const clan=CST_CLANS[i];
+    const bw=clan.length*3+10;
+    const active=CST.clanFilter===clan;
+    const bcol=active?(CST_CLAN_BORDER[clan]||'#406080'):'#0d1a28';
+    bx(bx_,by_,bw,bh,bcol);
+    bx(bx_,by_,bw,1,active?'#ffffff40':'#1a2a3a');
+    tx(clan,bx_+3,by_+bh-5,4,active?'#e0e8f0':'#608090');
+    CST.filterBtns.push({x:bx_,y:by_,w:bw,h:bh,clan});
+    bx_+=bw+3;
+  }
+}
+
+function _cstDrawToggle(x,y,w,h,label,active,key){
+  bx(x,y,w,h,active?'#1a3028':'#0d1828');
+  bx(x,y,w,1,active?'#30a060':'#1a2a3a');
+  tx((active?'[x] ':'[ ] ')+label,x+2,y+h-5,3,active?'#60c888':'#5080a0');
+}
+
+function _cstDrawGrid(){
+  if(!CST||!CST.filtered)return;
+  const cards=CST.filtered;
+  // Clip to grid area
+  g.save();
+  g.rect(CST_GRID_X,CST_GRID_Y,CST_GRID_W,CST_GRID_H);
+  g.clip();
+
+  const scroll=Math.round(CST.scrollY);
+  for(let i=0;i<cards.length;i++){
+    const col=i%CST_COLS;
+    const row=Math.floor(i/CST_COLS);
+    const cx_=CST_GRID_X+col*(CST_CARD_W+2);
+    const cy_=CST_GRID_Y+row*(CST_CARD_H+2)-scroll;
+    if(cy_+CST_CARD_H<CST_GRID_Y||cy_>CST_GRID_Y+CST_GRID_H)continue;
+
+    const c=cards[i];
+    const cr=CD[c.cdIdx];
+    if(!cr)continue;
+    const rar=cr.r||1;
+    const rarCol=CARD_RARITY_COL[rar-1]||'#606870';
+    const clan=CST_TYPE_CLAN[cr.t]||'';
+    const clanBorder=CST_CLAN_BORDER[clan]||'#406080';
+
+    // Card mini frame
+    drawCardFrame(cx_,cy_,CST_CARD_W,CST_CARD_H,c.cdIdx,false,false);
+
+    // Clan border stripe (top)
+    bx(cx_,cy_,CST_CARD_W,2,clanBorder);
+
+    // In-deck check badge
+    if(c.inDeck>0){
+      bx(cx_+CST_CARD_W-10,cy_,10,10,'#20401a');
+      tx('\u2713',cx_+CST_CARD_W-9,cy_+8,5,'#50d068');
+    }
+    // Duplicate badge
+    if(c.count>=2){
+      const xs='x'+c.count;
+      bx(cx_,cy_+CST_CARD_H-10,xs.length*4+4,10,'#1a1428');
+      tx(xs,cx_+2,cy_+CST_CARD_H-3,4,'#c0a8e0');
+    }
+    // Legendary badge
+    if(rar>=5){
+      tx('L',cx_+2,cy_+10,5,'#e8c840');
+    }
+    // Name truncated (very small, bottom of card)
+    const n=cr.n.length>7?cr.n.slice(0,6)+'.':cr.n;
+    g.globalAlpha=0.7;
+    tx(n,cx_+CST_CARD_W/2-n.length*1.8,cy_+CST_CARD_H-3,3,'#c0c8d0');
+    g.globalAlpha=1;
+  }
+  g.restore();
+
+  // Scrollbar
+  if(CST.maxScrollY>0){
+    const sbH=CST_GRID_H;
+    const sbW=3,sbX=W-sbW-1,sbY=CST_GRID_Y;
+    bx(sbX,sbY,sbW,sbH,'#0d1828');
+    const thumbH=Math.max(12,Math.floor(sbH*(CST_GRID_H/(CST_GRID_H+CST.maxScrollY))));
+    const thumbY=sbY+Math.round((CST.scrollY/CST.maxScrollY)*(sbH-thumbH));
+    bx(sbX,thumbY,sbW,thumbH,'#304858');
+  }
+}
+
+// ── Input ──────────────────────────────────────────────────────────────────
+function handleCardStorageInput(px_,py_){
+  if(!CST||sc!=='card_storage')return;
+
+  // Filter bar taps
+  if(py_<=CST_GRID_Y){
+    for(const btn of CST.filterBtns){
+      if(px_>=btn.x&&px_<=btn.x+btn.w&&py_>=btn.y&&py_<=btn.y+btn.h){
+        CST.clanFilter=btn.clan;
+        _cstRefreshFiltered();
+        return;
+      }
+    }
+    return;
+  }
+
+  // Bottom bar
+  if(py_>=CST_BAR_Y){
+    // BACK
+    if(px_>=W-30){exitCardStorageScene();return;}
+    // Dups toggle
+    if(px_>=W-130&&px_<=W-70){CST.showDups=!CST.showDups;_cstRefreshFiltered();return;}
+    // In Deck toggle
+    if(px_>=W-66&&px_<=W-6){CST.showInDeck=!CST.showInDeck;_cstRefreshFiltered();return;}
+    return;
+  }
+
+  // Grid card taps
+  if(py_>=CST_GRID_Y&&py_<=CST_GRID_Y+CST_GRID_H){
+    const gridPy=py_-CST_GRID_Y+Math.round(CST.scrollY);
+    const col=Math.floor((px_-CST_GRID_X)/(CST_CARD_W+2));
+    const row=Math.floor(gridPy/(CST_CARD_H+2));
+    const idx=row*CST_COLS+col;
+    if(col>=0&&col<CST_COLS&&idx>=0&&idx<CST.filtered.length){
+      const c=CST.filtered[idx];
+      if(c&&c.cdIdx>=0){
+        const cardInfo={
+          cdIdx:   c.cdIdx,
+          mint:    c.mint||null,
+          owner:   (typeof window.walletAddress!=='undefined'?window.walletAddress:null),
+          ownerSince:'—',
+          source:  'Collection',
+          prevOwner:null,
+          hallContext:null,
+          isVintage:false,
+        };
+        if(typeof initCardDetailScene==='function'){
+          initCardDetailScene(cardInfo,'card_storage');
+        }
+      }
+    }
+    return;
+  }
+}
+
+// ── Scroll ─────────────────────────────────────────────────────────────────
+function cardStorageScroll(delta){
+  if(!CST)return;
+  CST.scrollY=Math.max(0,Math.min(CST.maxScrollY,CST.scrollY+delta));
+}
+
+// ── Exit ───────────────────────────────────────────────────────────────────
+function exitCardStorageScene(){
+  if(!CST)return;
+  fadeOut(function(){
+    sc='lobby';
+    CST=null;
     fadeIn();
   });
 }
@@ -29506,6 +30434,18 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // M5 Card Detail input (T-D14-B)
+  if ((typeof sc !== 'undefined' && sc === 'card_detail') && typeof handleCardDetailInput === 'function') {
+    handleCardDetailInput(px, py);
+    return;
+  }
+
+  // PC Box Card Storage input (T-D14-C)
+  if ((typeof sc !== 'undefined' && sc === 'card_storage') && typeof handleCardStorageInput === 'function') {
+    handleCardStorageInput(px, py);
+    return;
+  }
+
   // Deck editor input
   if (typeof deckEditorOpen === 'undefined' || !deckEditorOpen) return;
   if (typeof deckEditorClick !== 'function') return;
@@ -29518,6 +30458,14 @@ document.addEventListener('keydown', e => {
     handleDuelKey(e.code);
   }
 }, { capture: false });
+
+// ── Card Storage scroll (T-D14-C) ─────────────────────────────────────────
+document.addEventListener('wheel', e => {
+  if (typeof sc !== 'undefined' && sc === 'card_storage' && typeof cardStorageScroll === 'function') {
+    e.preventDefault();
+    cardStorageScroll(e.deltaY * 0.4);
+  }
+}, { passive: false });
 
 
 // ───────────────────────────────────────────────────────────────────────

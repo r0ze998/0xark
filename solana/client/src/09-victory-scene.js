@@ -460,6 +460,26 @@ function _drawConfetti() {
 function handleVictoryInput(px, py) {
   if (!VS) return;
 
+  // Tap transferred card → Card Detail (T-D14-B5)
+  var cards = VS.transferredCards;
+  if (cards && cards.length > 0 && VS.won) {
+    var cardW = 44, cardH = 60, cardY0 = 62;
+    var count = Math.min(cards.length, 2);
+    var spacing = cardW + 12;
+    var startX = W / 2 - (count - 1) * spacing / 2;
+    for (var ci = 0; ci < count; ci++) {
+      var cardCX = startX + ci * spacing;
+      if (px >= cardCX - cardW/2 && px <= cardCX + cardW/2 && py >= cardY0 && py <= cardY0 + cardH) {
+        var card = cards[ci];
+        var cdIdx = (card.card_id != null ? card.card_id - 1 : -1);
+        if (cdIdx >= 0 && typeof initCardDetailScene === 'function') {
+          initCardDetailScene({cdIdx: cdIdx, mint: card.mint||null, owner: null, ownerSince:'—', source:'Duel Won', isVintage:false}, 'duel_victory');
+        }
+        return;
+      }
+    }
+  }
+
   // Solscan link
   if (VS._solscanRect && VS.transferTxHash) {
     var sr = VS._solscanRect;

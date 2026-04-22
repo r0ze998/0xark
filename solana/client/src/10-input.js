@@ -1398,6 +1398,18 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // M5 Card Detail input (T-D14-B)
+  if ((typeof sc !== 'undefined' && sc === 'card_detail') && typeof handleCardDetailInput === 'function') {
+    handleCardDetailInput(px, py);
+    return;
+  }
+
+  // PC Box Card Storage input (T-D14-C)
+  if ((typeof sc !== 'undefined' && sc === 'card_storage') && typeof handleCardStorageInput === 'function') {
+    handleCardStorageInput(px, py);
+    return;
+  }
+
   // Deck editor input
   if (typeof deckEditorOpen === 'undefined' || !deckEditorOpen) return;
   if (typeof deckEditorClick !== 'function') return;
@@ -1410,4 +1422,12 @@ document.addEventListener('keydown', e => {
     handleDuelKey(e.code);
   }
 }, { capture: false });
+
+// ── Card Storage scroll (T-D14-C) ─────────────────────────────────────────
+document.addEventListener('wheel', e => {
+  if (typeof sc !== 'undefined' && sc === 'card_storage' && typeof cardStorageScroll === 'function') {
+    e.preventDefault();
+    cardStorageScroll(e.deltaY * 0.4);
+  }
+}, { passive: false });
 

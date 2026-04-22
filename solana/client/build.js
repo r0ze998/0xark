@@ -145,6 +145,8 @@ const MODULES = [
   { file: '08-screens.js',       desc: 'Floor-clear fanfare · object interact messages · exit tooltip · map card use overlay · stats screen · credits · game over screen' },
   { file: '09-game-loop.js',     desc: 'Main update() + draw() game loop · screen routing (title/map/battle/crd/log/stats/lobby)' },
   { file: '10-animations.js',    desc: 'Reusable animation primitives — playFinisherAnimation / playVictoryAnimation / playDefeatAnimation (stubs for Day 12-13)' },
+  { file: '10-card-detail.js',   desc: 'T-D14-B M5 Card Detail scene — 3-panel layout (owner/card/battle+lore) · ADD TO DECK · SELL TO SHOP · lore shard typewriter UX' },
+  { file: '11-card-storage.js',  desc: 'T-D14-C PC Box Card Storage grid — 8-col card grid · clan filter · dup/deck toggles · tap→Card Detail · PC Box building integration' },
   { file: '10-input.js',         desc: 'Keyboard event handlers · touch controls (d-pad, A/B buttons)' },
   { file: '11-save-init.js',     desc: 'Save/load system · game initialization · requestAnimationFrame bootstrap' },
 ];

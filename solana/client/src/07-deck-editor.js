@@ -464,7 +464,17 @@ function deckEditorClick(px, py) {
     const row = Math.floor((py - storY - 20 + deckEditorScroll) / (CELL + 3));
     const idx = row * 5 + col;
     if (idx >= 0 && idx < list.length) {
-      deckEditorClickStorage(list[idx].card_id);
+      const cellX = DE_PAD + 4 + col * (CELL+3);
+      const cellY = storY + 20 + row * (CELL+3) - deckEditorScroll;
+      // Detail icon zone: top-right 12×12 of each cell → open Card Detail
+      if(px>=cellX+CELL-12&&px<=cellX+CELL&&py>=cellY&&py<=cellY+12){
+        if(typeof initCardDetailScene==='function'){
+          closeDeckEditor();
+          initCardDetailScene({cdIdx:list[idx].card_id-1,mint:null,owner:null,ownerSince:'—',source:'Collection',isVintage:false},'deck_editor');
+        }
+      }else{
+        deckEditorClickStorage(list[idx].card_id);
+      }
     }
     return true;
   }
