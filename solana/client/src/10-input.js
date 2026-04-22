@@ -1399,16 +1399,30 @@ function ub(){document.querySelectorAll('.b').forEach((b,i)=>b.classList.toggle(
 // ── Deck editor canvas click handler ─────────────────────────────────────
 // Wires deckEditorClick() for mouse clicks when the deck editor overlay is open.
 document.addEventListener('click', e => {
-  if (typeof deckEditorOpen === 'undefined' || !deckEditorOpen) return;
-  if (typeof deckEditorClick !== 'function') return;
-  // Convert client coords → canvas game coords
   const canvas = document.querySelector('canvas');
   if (!canvas) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = (typeof W !== 'undefined' ? W : 480) / rect.width;
-  const scaleY = (typeof H !== 'undefined' ? H : 320) / rect.height;
+  const scaleY = (typeof H !== 'undefined' ? H : 270) / rect.height;
   const px = (e.clientX - rect.left) * scaleX;
   const py = (e.clientY - rect.top) * scaleY;
+
+  // Duel scene input
+  if ((typeof sc !== 'undefined' && sc === 'duel') && typeof handleDuelInput === 'function') {
+    handleDuelInput(px, py);
+    return;
+  }
+
+  // Deck editor input
+  if (typeof deckEditorOpen === 'undefined' || !deckEditorOpen) return;
+  if (typeof deckEditorClick !== 'function') return;
   deckEditorClick(px, py);
 });
+
+// ── Duel scene keydown handler ───────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((typeof sc !== 'undefined' && sc === 'duel') && typeof handleDuelKey === 'function') {
+    handleDuelKey(e.code);
+  }
+}, { capture: false });
 
