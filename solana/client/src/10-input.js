@@ -267,14 +267,11 @@ document.addEventListener('keydown',e=>{
       // Proceed with the game start that was pending
       if(window._stakeAction==='continue'){
         fadeOut(()=>{
-          if(loadGame()){
-            sc='map';showBanner(mapNames[currentMap],AREA_CARD_DESC[currentMap]+' cards found here');
-            fadeIn();twSet('Welcome back! Stake deposited.');
-          }else{
-            sc='map';currentMap=0;showBanner('TOWN - はじまりのまち',AREA_CARD_DESC[0]);
-            fogRevealAll(0);fogSave();
-            fadeIn();twSet('Stake deposited! Collect 60 cards to win the Prize Pool.');
-          }
+          loadGame();
+          sc='lobby';
+          if(typeof enterLobby==='function')enterLobby();
+          fadeIn();
+          twSet('Welcome back! Stake deposited.');
         });
       }else{
         resetGameState(true);

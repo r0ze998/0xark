@@ -1015,7 +1015,7 @@ function exitLobby() {
   lobbyWSDisconnect();
   if (_lobbyPollCardSol) { clearInterval(_lobbyPollCardSol); _lobbyPollCardSol = null; }
   if (_lobbyPollSeason)  { clearInterval(_lobbyPollSeason);  _lobbyPollSeason  = null; }
-  sc = 'map';
+  sc = 'title';
 }
 
 // ── Camera: fixed (no scrolling) — scene fits in 480×270 with LOBBY_RENDER_TS=15 ─
