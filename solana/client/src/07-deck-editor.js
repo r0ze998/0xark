@@ -12,6 +12,12 @@ let deckEditorScroll = 0;     // storage panel scroll offset (pixels)
 let deckSlots        = new Array(20).fill(null); // null | card_id (1-60)
 let deckSelectedCard = null;  // card_id hovered/selected in storage
 let deckSaveStatus   = '';    // '' | 'saving' | 'saved' | 'error'
+let deckEditorTab    = 'build'; // 'build' | 'evolve'
+let deEvolveParent1  = null;   // card_id (1-based)
+let deEvolveParent2  = null;
+let deEvolveStatus   = '';     // '' | 'pending' | 'success' | 'error'
+let deEvolveMsg      = '';
+let deEvolveAnimFr   = 0;
 
 // ── RPC connection (lazy, same devnet as matchmaking) ─────────────────────
 const DE_DEVNET_RPC = 'https://api.devnet.solana.com';
@@ -130,6 +136,12 @@ function openDeckEditor() {
   deckEditorScroll = 0;
   deckSelectedCard = null;
   deckSaveStatus   = '';
+  deckEditorTab    = 'build';
+  deEvolveParent1  = null;
+  deEvolveParent2  = null;
+  deEvolveStatus   = '';
+  deEvolveMsg      = '';
+  deEvolveAnimFr   = 0;
 
   // Async load from chain if wallet is connected (replaces fallback when ready)
   const playerKey = window.solana?.publicKey;
@@ -214,25 +226,50 @@ function drawDeckEditor() {
   const contentH = oh - DE_PAD * 2 - DE_TITLE_H - DE_BTN_H - 8;
   const midX = ow / 2;
 
+  // ── Tab bar ─────────────────────────────────────────────────────────────
+  const tabLabels=['BUILD','EVOLVE'];
+  const tabW=70;
+  for(let ti=0;ti<tabLabels.length;ti++){
+    const tab=tabLabels[ti].toLowerCase();
+    const isActive=deckEditorTab===tab;
+    const tx2=DE_PAD+4+ti*(tabW+4);
+    g.fillStyle=isActive?'#2a3a60':'#111128';
+    g.fillRect(tx2,contentY,tabW,22);
+    g.strokeStyle=isActive?'#5070c0':'#333';
+    g.lineWidth=1;
+    g.strokeRect(tx2+0.5,contentY+0.5,tabW-1,21);
+    g.fillStyle=isActive?'#c0d0ff':'#555';
+    g.font='13px VT323, monospace';
+    g.textAlign='center';
+    g.fillText(tabLabels[ti],tx2+tabW/2,contentY+15);
+  }
+
+  if(deckEditorTab==='evolve'){
+    drawEvolveTab(contentY+26,oh,midX,ow);
+    return;
+  }
+
   // ── Filter bar ─────────────────────────────────────────────────────────
   const filters = ['all','attack','defense','flee','magic','recovery'];
+  const tabBarH=26;
+  const filterContentY=contentY+tabBarH;
   const fw = (midX - DE_PAD - 4) / filters.length;
   filters.forEach((f, i) => {
     const fx = DE_PAD + i * fw;
     const isActive = deckEditorFilter === f;
     g.fillStyle = isActive ? '#3040a0' : '#1a1a2a';
-    g.fillRect(fx, contentY, fw - 2, DE_FILTER_H);
+    g.fillRect(fx, filterContentY, fw - 2, DE_FILTER_H);
     g.strokeStyle = isActive ? '#6080e0' : '#333';
     g.lineWidth = 1;
-    g.strokeRect(fx + 0.5, contentY + 0.5, fw - 3, DE_FILTER_H - 1);
+    g.strokeRect(fx + 0.5, filterContentY + 0.5, fw - 3, DE_FILTER_H - 1);
     g.fillStyle = isActive ? '#e8e8ff' : '#666';
     g.font = '12px VT323, monospace';
     g.textAlign = 'center';
-    g.fillText(f.toUpperCase(), fx + fw / 2 - 1, contentY + 19);
+    g.fillText(f.toUpperCase(), fx + fw / 2 - 1, filterContentY + 19);
   });
 
   // ── Storage panel (left) ───────────────────────────────────────────────
-  const storY = contentY + DE_FILTER_H + 4;
+  const storY = filterContentY + DE_FILTER_H + 4;
   const storH = contentH - DE_FILTER_H - 4;
   const storW = midX - DE_PAD - 8;
   const COLS = 5, CELL = 38;
@@ -410,6 +447,178 @@ function drawDeckEditor() {
   }
 }
 
+// ── Evolve tab ───────────────────────────────────────────────────────────
+function _deEvolveCommons(){
+  return deckStorageCards.filter(({card_id})=>{
+    if(typeof canBurnCard!=='function')return false;
+    return canBurnCard(card_id);
+  });
+}
+
+function _deEvolveResultId(p1,p2){
+  if(!p1||!p2)return null;
+  const v1=typeof CARD_V3!=='undefined'?CARD_V3[p1]:null;
+  const v2=typeof CARD_V3!=='undefined'?CARD_V3[p2]:null;
+  if(!v1||!v2||v1.clan!==v2.clan)return null;
+  // Find an Uncommon (rar=1) of the same clan
+  for(let id=1;id<=60;id++){
+    const v=CARD_V3&&CARD_V3[id];
+    if(v&&v.rar===1&&v.clan===v1.clan)return id;
+  }
+  return null;
+}
+
+function drawEvolveTab(startY,oh,midX,ow){
+  deEvolveAnimFr++;
+  const CELL=36, cols=5;
+  const commons=_deEvolveCommons();
+
+  g.fillStyle='#333355';g.font='11px VT323, monospace';g.textAlign='left';
+  g.fillText('EVOLVE: select 2 Common cards of the same Clan',DE_PAD+4,startY+14);
+
+  // Parent slots
+  for(let pi=0;pi<2;pi++){
+    const pid=pi===0?deEvolveParent1:deEvolveParent2;
+    const sx=DE_PAD+4+pi*90, sy=startY+20;
+    g.fillStyle=pid?'#1a1a3a':'#0c0c1c';
+    g.fillRect(sx,sy,CELL,CELL);
+    g.strokeStyle=pid?'#8080c0':'#2a2a4a';
+    g.lineWidth=1;g.strokeRect(sx+0.5,sy+0.5,CELL-1,CELL-1);
+    if(pid){
+      const card=CD[pid-1];
+      g.fillStyle=card?.c??'#888';g.font='14px VT323, monospace';g.textAlign='center';
+      g.fillText(card?.i??'?',sx+CELL/2,sy+16);
+      g.fillStyle='#aaa';g.font='8px VT323, monospace';
+      g.fillText((card?.n??'?').slice(0,5),sx+CELL/2,sy+25);
+    }else{
+      g.fillStyle='#333';g.font='12px VT323, monospace';g.textAlign='center';
+      g.fillText('P'+(pi+1),sx+CELL/2,sy+CELL/2+4);
+    }
+  }
+
+  // Arrow
+  g.fillStyle='#888';g.font='18px VT323, monospace';g.textAlign='center';
+  g.fillText('→',DE_PAD+4+2*90+4,startY+20+CELL/2+6);
+
+  // Result
+  const resId=_deEvolveResultId(deEvolveParent1,deEvolveParent2);
+  const rx=DE_PAD+4+2*90+20, ry=startY+20;
+  g.fillStyle=resId?'#1a2a1a':'#0c0c1c';
+  g.fillRect(rx,ry,CELL,CELL);
+  g.strokeStyle=resId?'#40c060':'#2a2a4a';
+  g.lineWidth=1;g.strokeRect(rx+0.5,ry+0.5,CELL-1,CELL-1);
+  if(resId){
+    const card=CD[resId-1];
+    g.fillStyle=card?.c??'#888';g.font='14px VT323, monospace';g.textAlign='center';
+    g.fillText(card?.i??'?',rx+CELL/2,ry+16);
+    g.fillStyle='#80e080';g.font='8px VT323, monospace';
+    g.fillText((card?.n??'?').slice(0,5),rx+CELL/2,ry+25);
+  }else{
+    g.fillStyle='#333';g.font='10px VT323, monospace';g.textAlign='center';
+    g.fillText('?',rx+CELL/2,ry+CELL/2+4);
+  }
+
+  // Commons grid
+  const gridY=startY+20+CELL+8;
+  g.fillStyle='#444466';g.font='10px VT323, monospace';g.textAlign='left';
+  g.fillText('Common cards in storage:',DE_PAD+4,gridY);
+  commons.forEach(({card_id},idx)=>{
+    const col=idx%cols, row=Math.floor(idx/cols);
+    const cx=DE_PAD+4+col*(CELL+3), cy=gridY+10+row*(CELL+3);
+    if(cy>oh-DE_PAD-DE_BTN_H-10)return;
+    const card=CD[card_id-1];
+    const isSel=deEvolveParent1===card_id||deEvolveParent2===card_id;
+    g.fillStyle=isSel?'#1a3020':'#111128';
+    g.fillRect(cx,cy,CELL,CELL);
+    g.strokeStyle=isSel?'#40c060':'#333';
+    g.lineWidth=1;g.strokeRect(cx+0.5,cy+0.5,CELL-1,CELL-1);
+    g.fillStyle=card?.c??'#888';g.font='14px VT323, monospace';g.textAlign='center';
+    g.fillText(card?.i??'?',cx+CELL/2,cy+16);
+    g.fillStyle='#aaa';g.font='8px VT323, monospace';
+    g.fillText((card?.n??'?').slice(0,5),cx+CELL/2,cy+25);
+  });
+
+  // FUSE button
+  const barY=oh-DE_PAD-DE_BTN_H;
+  const canFuse=!!resId&&deEvolveStatus!=='pending';
+  const fbx=ow-DE_PAD-90,fbw=84;
+  g.fillStyle=canFuse?'#1a3a22':'#101a12';
+  g.fillRect(fbx,barY+3,fbw,DE_BTN_H-6);
+  g.strokeStyle=canFuse?'#40c060':'#2a4a2a';
+  g.lineWidth=1;g.strokeRect(fbx,barY+3,fbw,DE_BTN_H-6);
+  const fuseLabel=deEvolveStatus==='pending'?'FUSING...':(deEvolveStatus==='success'?'✓ FUSED!':'FUSE');
+  g.fillStyle=canFuse?'#80e090':'#3a5a3a';
+  g.font='14px VT323, monospace';g.textAlign='center';
+  g.fillText(fuseLabel,fbx+fbw/2,barY+19);
+
+  if(deEvolveMsg){
+    g.fillStyle=deEvolveStatus==='error'?'#cc4444':'#50d060';
+    g.font='10px VT323, monospace';g.textAlign='left';
+    g.fillText(deEvolveMsg,DE_PAD+4,barY+19);
+  }
+
+  // Fusion flash animation
+  if(deEvolveStatus==='pending'&&deEvolveAnimFr%8<4){
+    g.save();g.globalAlpha=0.15;
+    g.fillStyle='#80e0a0';g.fillRect(DE_PAD,startY,ow-DE_PAD*2,oh-DE_PAD-startY);
+    g.restore();
+  }
+}
+
+function deckEvolveClick(px,py,startY,oh,midX,ow){
+  const CELL=36,cols=5;
+  // Parent slot deselect
+  for(let pi=0;pi<2;pi++){
+    const sx=DE_PAD+4+pi*90,sy=startY+20;
+    if(px>=sx&&px<=sx+CELL&&py>=sy&&py<=sy+CELL){
+      if(pi===0)deEvolveParent1=null;else deEvolveParent2=null;
+      return;
+    }
+  }
+  // Commons grid click
+  const commons=_deEvolveCommons();
+  const gridY=startY+20+CELL+18;
+  const col=Math.floor((px-DE_PAD-4)/(CELL+3));
+  const row=Math.floor((py-gridY)/(CELL+3));
+  const idx=row*cols+col;
+  if(idx>=0&&idx<commons.length){
+    const cid=commons[idx].card_id;
+    if(deEvolveParent1===cid){deEvolveParent1=null;return;}
+    if(deEvolveParent2===cid){deEvolveParent2=null;return;}
+    if(!deEvolveParent1){deEvolveParent1=cid;}
+    else if(!deEvolveParent2){deEvolveParent2=cid;}
+    return;
+  }
+  // FUSE button
+  const barY=oh-DE_PAD-DE_BTN_H;
+  const fbx=ow-DE_PAD-90,fbw=84;
+  if(px>=fbx&&px<=fbx+fbw&&py>=barY+3&&py<=barY+DE_BTN_H-3){
+    const resId=_deEvolveResultId(deEvolveParent1,deEvolveParent2);
+    if(resId&&deEvolveStatus!=='pending')deckEvolveFuse(resId);
+  }
+}
+
+function deckEvolveFuse(resultCardId){
+  if(!deEvolveParent1||!deEvolveParent2)return;
+  deEvolveStatus='pending';deEvolveMsg='Fusing cards...';deEvolveAnimFr=0;
+  const fn=typeof window.oxarkOnchain?.evolveCards==='function'?window.oxarkOnchain.evolveCards:null;
+  const _ok=()=>{
+    deEvolveStatus='success';deEvolveMsg='Evolution complete! '+((CD[resultCardId-1]?.n)||'Card')+' minted.';
+    deckStorageCards=deckStorageCards.filter(c=>c.card_id!==deEvolveParent1&&c.card_id!==deEvolveParent2);
+    deckStorageCards.push({card_id:resultCardId,qty:1});
+    deEvolveParent1=null;deEvolveParent2=null;
+    setTimeout(()=>{if(deEvolveStatus==='success'){deEvolveStatus='';deEvolveMsg='';}},3000);
+  };
+  if(fn){
+    fn(deEvolveParent1,deEvolveParent2).then(_ok).catch(e=>{
+      deEvolveStatus='error';
+      deEvolveMsg='Fuse failed: '+(e?.message??'err').slice(0,28);
+    });
+  }else{
+    setTimeout(_ok,600);
+  }
+}
+
 // ── Input handlers (called from 10-input.js) ──────────────────────────────
 // Returns true if the input was consumed.
 
@@ -444,17 +653,31 @@ function deckEditorClick(px, py) {
     return true;
   }
 
+  // Tab buttons
+  if(py>=contentY&&py<=contentY+22){
+    const tabLabels=['build','evolve'];
+    for(let ti=0;ti<tabLabels.length;ti++){
+      const tx2=DE_PAD+4+ti*74;
+      if(px>=tx2&&px<=tx2+70){deckEditorTab=tabLabels[ti];return true;}
+    }
+  }
+
+  // Evolve tab input
+  if(deckEditorTab==='evolve'){deckEvolveClick(px,py,contentY+26,oh,midX,ow);return true;}
+
   // Filter buttons
   const filters = ['all','attack','defense','flee','magic','recovery'];
+  const tabBarH2=26;
+  const filterContentY=contentY+tabBarH2;
   const fw = (midX - DE_PAD - 4) / filters.length;
-  if (py >= contentY && py <= contentY + DE_FILTER_H) {
+  if (py >= filterContentY && py <= filterContentY + DE_FILTER_H) {
     const fi = Math.floor((px - DE_PAD) / fw);
     if (fi >= 0 && fi < filters.length) { deckEditorFilter = filters[fi]; deckEditorScroll = 0; }
     return true;
   }
 
-  const storY = contentY + DE_FILTER_H + 4;
-  const storH = oh - DE_PAD * 2 - DE_TITLE_H - DE_BTN_H - 8 - DE_FILTER_H - 4;
+  const storY = filterContentY + DE_FILTER_H + 4;
+  const storH = oh - DE_PAD * 2 - DE_TITLE_H - DE_BTN_H - 8 - tabBarH2 - DE_FILTER_H - 4;
   const CELL = 38;
 
   // Storage panel click

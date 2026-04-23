@@ -6,7 +6,7 @@
 // Cards 1-12: Attack  13-24: Defense  25-36: Flee  37-48: Magic  49-60: Recovery
 const CD=[
   // ── ATTACK (1-12) ──
-  {n:'AEGIS',   t:'attack',r:5,c:'#e86040',d:'#b83828',h:'#f89070',a:'#f8c840',i:'\u2694',f:'Steal x2',   fl:'Shield of the last captain',
+  {n:'PCB',     t:'attack',r:5,c:'#e86040',d:'#b83828',h:'#f89070',a:'#f8c840',i:'\u2694',f:'Self-Burn +3BP',fl:'She boards with fire in hand',
    lo:'The last captain of the Sunken Fleet forged this shield from the prow of his own burning ship. Those who hold it may take twice what they are owed.'},
   {n:'UMBRA',   t:'attack',r:4,c:'#7858a0',d:'#503878',h:'#a080c8',a:'#302050',i:'\u2694',f:'Invis 1T',   fl:'The shadow that sails with no ship',
    lo:'A shadow that outlived the vessel that cast it, now drifting between ships at midnight. It boards without invitation and leaves without a trace.'},
@@ -14,13 +14,13 @@ const CD=[
    lo:'Fire that feeds on salt air and old grudges—once lit, it names its own targets.'},
   {n:'STRIKE',  t:'attack',r:1,c:'#c04830',d:'#902820',h:'#e07060',a:'#d0a030',i:'\u2694',f:'Deal 1 dmg', fl:'The simplest blow still cuts',
    lo:'Every sailor\'s first lesson: when in doubt, hit first.'},
-  {n:'SLASH',   t:'attack',r:1,c:'#b84030',d:'#882018',h:'#d86858',a:'#c89828',i:'\u2694',f:'Quick atk',  fl:'Faster than a shadow at noon',
+  {n:'FLARE SAB',t:'attack',r:1,c:'#b84030',d:'#882018',h:'#d86858',a:'#c89828',i:'\u2694',f:'Hand-Burn dth',fl:'He is only useful by dying',
    lo:'A blade needs no ceremony when the tide is against you.'},
   {n:'IMPALE',  t:'attack',r:2,c:'#c05038',d:'#903030',h:'#e07860',a:'#e0b030',i:'\u2694',f:'Pierce',     fl:'No armor stops this',
    lo:'The sea-lance of the coral hunters—one thrust to claim what sinks below.'},
-  {n:'CRUSH',   t:'attack',r:2,c:'#b84828',d:'#882820',h:'#d86848',a:'#d0a828',i:'\u2694',f:'Break guard', fl:'Force bends all things',
+  {n:'NOVICE MNT',t:'attack',r:2,c:'#b84828',d:'#882820',h:'#d86848',a:'#d0a828',i:'\u2694',f:'Evolve -1 cost',fl:'The first coin bears his flaw',
    lo:'Brute force is underestimated until it is the only thing that remains.'},
-  {n:'FLURRY',  t:'attack',r:3,c:'#d06040',d:'#a03828',h:'#e88868',a:'#f0c038',i:'\u2694',f:'Multi-hit',  fl:'A storm of fists and fury',
+  {n:'COIN REFGR',t:'attack',r:3,c:'#d06040',d:'#a03828',h:'#e88868',a:'#f0c038',i:'\u2694',f:'Clan Evolve', fl:'Old metal, new purpose',
    lo:'Twelve blows before the echo of the first—each one finding a gap the last opened.'},
   {n:'BERSERK', t:'attack',r:3,c:'#e05030',d:'#b02818',h:'#f07860',a:'#f8b830',i:'\u2694',f:'Rage atk',   fl:'No mind, only red',
    lo:'Rage that forgets whose blood it spills—the wielder\'s hands are the last thing it obeys.'},
@@ -31,7 +31,7 @@ const CD=[
   {n:'VOIDBLADE',t:'attack',r:5,c:'#504078',d:'#302858',h:'#7068a8',a:'#d0c8f8',i:'\u2694',f:'Reality cut',fl:'Cuts what cannot be cut',
    lo:'Folded from the edge of nothing itself, it cuts through armor, ward, and time alike. The wound it leaves is a question: what was ever really there?'},
   // ── DEFENSE (13-24) ──
-  {n:'GUARD',   t:'defense',r:1,c:'#4898d8',d:'#2870a8',h:'#70c0f8',a:'#b0c8e8',i:'\u25C6',f:'Block 1',   fl:'The first lesson: don\'t get hit',
+  {n:'OATH SQR',   t:'defense',r:1,c:'#4898d8',d:'#2870a8',h:'#70c0f8',a:'#b0c8e8',i:'\u25C6',f:'Veteran Imprint',   fl:'Five falls make a knight',
    lo:'The first shield is your own arm; the second is knowing when to raise it.'},
   {n:'PARRY',   t:'defense',r:1,c:'#4090c8',d:'#2068a0',h:'#68b8f0',a:'#a8c0e0',i:'\u25C6',f:'Deflect',   fl:'Let their strength become yours',
    lo:'A pirate who turns blades is worth ten who simply absorb them.'},
@@ -41,7 +41,7 @@ const CD=[
    lo:'You only need to let them commit first.'},
   {n:'AEGIS WARD',t:'defense',r:3,c:'#58a8e0',d:'#3888b8',h:'#80c8f8',a:'#c0d8f0',i:'\u25C6',f:'Magic barrier',fl:'Ancient sigil of the sea',
    lo:'The ward-glyphs of the Sea Shrine speak only once, but they speak clearly.'},
-  {n:'MIRROR',  t:'defense',r:3,c:'#60b0e8',d:'#4090c0',h:'#88d0f8',a:'#d0e8f8',i:'\u25C6',f:'Spell reflect',fl:'The face in still water',
+  {n:'ASH HERALD',  t:'defense',r:3,c:'#60b0e8',d:'#4090c0',h:'#88d0f8',a:'#d0e8f8',i:'\u25C6',f:'Burn counter+',fl:'Where there are ashes, he was',
    lo:'Still water returns the spell unchanged—and with compound interest.'},
   {n:'FORTRESS',t:'defense',r:3,c:'#4888c0',d:'#2868a0',h:'#70b0e8',a:'#b8c8e0',i:'\u25C6',f:'Immovable', fl:'Stone does not care',
    lo:'The island that would not be moved became the island that could not be taken.'},
@@ -56,11 +56,11 @@ const CD=[
   {n:'TITAN',   t:'defense',r:5,c:'#88b8e8',d:'#6898c8',h:'#a8d0f8',a:'#ffffff',i:'\u25C6',f:'Shield all',  fl:'Born from the deep earth',
    lo:'Risen from the seafloor after the age of gods, its shoulders are wide enough to shelter a fleet from any wind.'},
   // ── FLEE (25-36) ──
-  {n:'DASH',    t:'flee',r:1,c:'#38b878',d:'#207848',h:'#60d090',a:'#a0e8c0',i:'\u25CF',f:'Quick exit',fl:'Leave your shadow behind',
+  {n:'SHADOW LIFT',    t:'flee',r:1,c:'#38b878',d:'#207848',h:'#60d090',a:'#a0e8c0',i:'\u25CF',f:'Ransom-Steal',fl:'She takes at the last moment',
    lo:'Get gone before the question is asked.'},
   {n:'RETREAT', t:'flee',r:1,c:'#30b070',d:'#187040',h:'#58c888',a:'#98e0b8',i:'\u25CF',f:'Safe exit',  fl:'Wisdom knows when to run',
    lo:'The pirate code says nothing about leaving with dignity.'},
-  {n:'SMOKE',   t:'flee',r:2,c:'#909898',d:'#686870',h:'#b0b8b8',a:'#e0e8e0',i:'\u25CF',f:'Blind foe',  fl:'What you can\'t see can still run',
+  {n:'SOUL-BINDER',   t:'flee',r:2,c:'#909898',d:'#686870',h:'#b0b8b8',a:'#e0e8e0',i:'\u25CF',f:'Soul Imprint',  fl:'Cold hands, warm debts',
    lo:'Imported from the eastern archipelago—burns black, buys time, asks no further questions.'},
   {n:'PHASE',   t:'flee',r:2,c:'#40c090',d:'#288060',h:'#68d8a8',a:'#c0f0e0',i:'\u25CF',f:'Walk walls', fl:'The void between the waves',
    lo:'Step between the moments—no one catches a wind that has already become somewhere else.'},
@@ -68,9 +68,9 @@ const CD=[
    lo:'Distance is only a problem for those who cannot fold it in half.'},
   {n:'SHADOW',  t:'flee',r:3,c:'#506880',d:'#385060',h:'#7090a0',a:'#b0c8d0',i:'\u25CF',f:'Invisible',  fl:'Even hunters fear the dark',
    lo:'The dark between lanterns is wider than maps show—enough to hide a full crew.'},
-  {n:'WINDASH', t:'flee',r:3,c:'#58d0a0',d:'#38a878',h:'#80e8b8',a:'#d0f8ec',i:'\u25CF',f:'Supersonic', fl:'Outrun lightning itself',
+  {n:'ANC RANGER', t:'flee',r:3,c:'#58d0a0',d:'#38a878',h:'#80e8b8',a:'#d0f8ec',i:'\u25CF',f:'Imprint scale', fl:'The blade remembers all marks',
    lo:'Speed that makes the sea flat and the horizon a suggestion.'},
-  {n:'PHANTOM', t:'flee',r:4,c:'#60a890',d:'#408870',h:'#88c8a8',a:'#d0f0e8',i:'\u25CF',f:'Ghost mode',  fl:'Between the living world',
+  {n:'LINEAGE SCT', t:'flee',r:4,c:'#60a890',d:'#408870',h:'#88c8a8',a:'#d0f0e8',i:'\u25CF',f:'Owner scale',  fl:'Maps speak of past owners',
    lo:'Three generations of ghost-pirates have used this card. None of them stayed long enough to be counted.'},
   {n:'VOIDSTEP',t:'flee',r:4,c:'#486878',d:'#305860',h:'#68908a',a:'#c0d8e0',i:'\u25CF',f:'Dim-hop',    fl:'One foot in another world',
    lo:'Half a step sideways into the wrong dimension is enough—the pursuers stay in the right one.'},
@@ -83,7 +83,7 @@ const CD=[
   // ── MAGIC (37-48) ──
   {n:'TEMPEST', t:'magic',r:5,c:'#d8b028',d:'#a88818',h:'#f0d850',a:'#ffffff',i:'\u2605',f:'No barrier', fl:'The storm answers to no flag',
    lo:'The storm that the Sea Witch Calindra rides still does not check allegiances before it strikes. It was not the first great storm, only the last one with a name.'},
-  {n:'NIHIL',   t:'magic',r:4,c:'#9868d0',d:'#7048a8',h:'#c090e8',a:'#f0e8ff',i:'\u2605',f:'Copy card',  fl:'What is nothing can be all things',
+  {n:'MINT MASTER',   t:'magic',r:4,c:'#9868d0',d:'#7048a8',h:'#c090e8',a:'#f0e8ff',i:'\u2605',f:'Clan Evo+Imp',  fl:'Two copper into one silver',
    lo:'The Nullform is not emptiness—it is all potential held in suspension, waiting to become something it has studied.'},
   {n:'SPARK',   t:'magic',r:1,c:'#c0b030',d:'#908818',h:'#e0d050',a:'#f8f090',i:'\u2605',f:'1 magic dmg', fl:'Seed of the thundercloud',
    lo:'The first thing a storm-apprentice learns, and the one they use most throughout their lives.'},
@@ -103,7 +103,7 @@ const CD=[
    lo:'The whirlpool off the Shattered Coast has sunk forty-seven ships. This card is drawn, not created, from that record.'},
   {n:'GRAVITY', t:'magic',r:4,c:'#806890',d:'#605070',h:'#a088b8',a:'#e0d8f0',i:'\u2605',f:'Crush force', fl:'Even light bends',
    lo:'Used by the Astronomer-Pirates who chart courses by dark mass rather than stars—they found other uses.'},
-  {n:'SINGULARITY',t:'magic',r:5,c:'#302848',d:'#201838',h:'#504870',a:'#c0b8e0',i:'\u2605',f:'Black hole',fl:'Everything falls inward',
+  {n:'SOUL-THIEF',t:'magic',r:5,c:'#302848',d:'#201838',h:'#504870',a:'#c0b8e0',i:'\u2605',f:'Lease-Steal',fl:'He leaves with what was yours',
    lo:'The card that bends the field itself—once played, everything is pulled inward, sorted by density of consequence. Nothing escapes unweighted. Not even memory.'},
   // ── RECOVERY (49-60) ──
   {n:'MEND',    t:'recovery',r:1,c:'#e0b030',d:'#b08820',h:'#f8d050',a:'#fff8c0',i:'\u25CE',f:'Heal 1 HP',  fl:'Small acts of repair',
@@ -2582,3 +2582,331 @@ function getLoreCardName(card_id){
   const entry=_LORE_SHARDS_DATA[card_id];
   return entry?entry.name:null;
 }
+
+// ─── v3.0-plus CC v0.4 lore overrides (12 card replacements) ─────────────────
+(function(){
+  const _v3o=[
+    {card_id:1, name:'Powder-Charge Boarder', shards:{'1':"She carried a single powder charge onto the enemy deck. The charge was not for the cannon. The enemy ship sank. No trace of her remained.",'2':null,'3':null}},
+    {card_id:5, name:'Flare Saboteur',         shards:{'1':"He carried a single flare into the munitions hold. The raiders found the ship was empty. Then the hold detonated.",'2':null,'3':null}},
+    {card_id:7, name:'Novice Minter',          shards:{'1':"Every coin he strikes bears a flaw only he can find. It is his signature. The treasury has never noticed.",'2':null,'3':null}},
+    {card_id:8, name:'Coin Reforger',          shards:{'1':"He melts down old currency under moonlight. The new coins carry faint ghosts of faces — kings who no longer rule.",'2':null,'3':null}},
+    {card_id:13,name:'Oath-Branded Squire',   shards:{'1':"The guard master adds a notch to his sword each time he falls. After five notches, the oath is complete. After ten, he outranks the master.",'2':null,'3':null}},
+    {card_id:16,name:'Herald of Ashes',        shards:{'1':"No one sees him arrive. He is always standing among the embers, as if he had been there first.",'2':null,'3':null}},
+    {card_id:23,name:'Ancestral Ranger',       shards:{'1':"The ranger carries a blade older than his grandfather. Each generation has added a mark. The blade no longer has room for more.",'2':null,'3':null}},
+    {card_id:24,name:'Lineage Scout',          shards:{'1':"The scout does not read maps. She listens to what the maps have heard — the voices of their previous owners, faint but insistent.",'2':null,'3':null}},
+    {card_id:25,name:'Shadow Lifter',          shards:{'1':"She left behind a purse no one remembered giving her. Inside were three rings belonging to three merchants who had never met.",'2':null,'3':null}},
+    {card_id:27,name:'Soul-Binder',            shards:{'1':"Her fingers are always cold. Those who have touched her say they felt something being taken, but could not say what.",'2':null,'3':null}},
+    {card_id:35,name:'Mint Master',            shards:{'1':"Two copper coins, one silver. The trade is ancient. But no one else can perform it without wasting half the metal. He never wastes.",'2':"The Bourse knows exactly what he does and has spent fifteen years trying to understand how. They have not succeeded. He considers this a fair arrangement.",'3':null}},
+    {card_id:48,name:'Soul-Thief',             shards:{'1':"The bounty hunter died in a duel with a noble. The noble's prized sword vanished that same night. The sword reappeared three duels later, in the hunter's successor's hand.",'2':null,'3':null}},
+  ];
+  for(const e of _v3o)_LORE_SHARDS_DATA[e.card_id]=e;
+})();
+
+// ═══════════════════════════════════════
+// CARD_V3 — v3.0-plus NFT-native metadata (GDD v3.0-plus / CC v0.4)
+// clan: 0=BlackFlag 1=SovereignBourse 2=HollowBlade 3=IronCircle 4=NamelessSilk null=Neutral
+// rar:  0=Common    1=Uncommon        2=Rare        3=Legendary
+// bp/hp/ini: catalog combat stats (separate from CD battle-engine stats)
+// ab: ability handler key (null = no v3+ native ability)
+// Day 23 Balance Patch applied: #40 bp6, #44 bp6, #55 bp5/hp5
+// ═══════════════════════════════════════
+const CARD_V3=(function(){
+  const C=0,U=1,R=2,L=3;
+  const BF=0,SB=1,HB=2,IC=3,NS=4;
+  // index 0 = card_id 1; [clan, rar, bp, hp, ini, ability_key]
+  const _d=[
+    [BF,C, 3, 2,3,'self_burn_common_for_bp_boost'],  // 1 Powder-Charge Boarder
+    [BF,C, 3, 2,2,null],                              // 2 Storm Bosun
+    [BF,C, 4, 2,3,null],                              // 3 Grapple Specialist
+    [BF,C, 3, 2,1,null],                              // 4 Salt-Bitten Deckhand
+    [BF,C, 2, 2,2,'hand_burn_on_destroy'],             // 5 Flare Saboteur
+    [BF,C, 4, 3,1,null],                              // 6 Reef Pilot
+    [SB,C, 1, 3,0,'evolve_cost_reduction'],            // 7 Novice Minter
+    [SB,C, 2, 3,1,'clan_evolve'],                      // 8 Coin Reforger
+    [SB,C, 4, 4,1,null],                              // 9 Caravan Guard
+    [SB,C, 2, 3,0,null],                              // 10 Pawnbroker's Wife
+    [SB,C, 3, 3,2,null],                              // 11 Harbor Assessor
+    [SB,C, 3, 2,3,null],                              // 12 Traveling Scholar
+    [HB,C, 3, 3,1,'veteran_imprint_trigger'],          // 13 Oath-Branded Squire
+    [HB,C, 4, 4,1,null],                              // 14 Palace Sentinel
+    [HB,C, 2, 3,2,null],                              // 15 Sword Instructor
+    [HB,C, 2, 2,3,'burn_count_scaler'],                // 16 Herald of Ashes
+    [HB,C, 3, 2,1,null],                              // 17 Widowed Armorer
+    [HB,C, 4, 3,2,null],                              // 18 Dawn Patrol
+    [IC,C, 2, 3,1,null],                              // 19 Tax Collector
+    [IC,C, 3, 4,1,null],                              // 20 Border Magistrate
+    [IC,C, 3, 5,1,null],                              // 21 Fortress Quartermaster
+    [IC,C, 2, 4,0,null],                              // 22 Sworn Steward
+    [IC,C, 3, 4,2,'imprint_self_scale'],               // 23 Ancestral Ranger
+    [IC,C, 2, 3,2,'owner_history_scaler'],             // 24 Lineage Scout
+    [NS,C, 2, 2,3,'ransom_steal'],                     // 25 Shadow Lifter
+    [NS,C, 2, 2,2,null],                              // 26 Tavern Informant
+    [NS,C, 3, 2,3,'on_destroy_imprint_souls'],         // 27 Soul-Binder
+    [NS,C, 3, 2,4,null],                              // 28 Rooftop Runner
+    [NS,C, 2, 2,1,null],                              // 29 Poison Herbalist
+    [NS,C, 2, 2,2,null],                              // 30 Mask-Maker
+    [BF,U, 5, 4,3,null],                              // 31 First Mate Kaelith
+    [BF,U, 6, 3,2,null],                              // 32 Cannon Captain
+    [BF,U, 7, 3,3,null],                              // 33 Bloodflag Corsair
+    [BF,U, 4, 3,2,null],                              // 34 Mutineer
+    [SB,U, 3, 4,2,'clan_evolve_imprint'],              // 35 Mint Master
+    [SB,U, 5, 3,2,null],                              // 36 Weapons Trader
+    [SB,U, 4, 4,1,null],                              // 37 Treasury Keeper
+    [SB,U, 6, 4,2,null],                              // 38 Merchant Prince
+    [HB,U, 5, 5,2,null],                              // 39 Captain of the Guard
+    [HB,U, 6, 6,1,null],                              // 40 Oathsworn Knight  (Day23 bp7→6)
+    [HB,U, 4, 3,3,null],                              // 41 Royal Inquisitor
+    [IC,U, 6, 5,1,null],                              // 42 Regional Warlord
+    [IC,U, 5, 6,1,null],                              // 43 Fortress Baron
+    [IC,U, 6, 5,2,null],                              // 44 Highland Chieftain (Day23 bp7→6)
+    [NS,U, 5, 3,4,null],                              // 45 Silent Assassin
+    [NS,U, 4, 3,4,'battle_steal_probability'],         // 46 Soul-Thief
+    [NS,U, 4, 3,3,null],                              // 47 Master of Coins
+    [NS,U, 4, 3,3,null],                              // 48 Doubleface
+    [BF,R, 8, 5,4,null],                              // 49 Ghost Fleet Captain
+    [HB,R, 9, 6,2,null],                              // 50 King's Last Guard
+    [NS,R, 5, 4,5,null],                              // 51 Faceless Weaver
+    [null,R,6, 5,3,null],                             // 52 Prince in Exile (Neutral)
+    [NS,R, 0, 0,0,null],                              // 53 Assassin's Letter (Event)
+    [null,R,0, 0,0,null],                             // 54 Forgotten Oath (Event)
+    [HB,L, 5, 5,5,'hand_peek_steal'],                 // 55 Sceptre of Valerius (Day23 bp3→5,hp3→5)
+    [NS,L, 0,15,4,null],                              // 56 Nameless Blade (conditional 15BP)
+    [IC,L, 7,10,0,null],                              // 57 Elyon Crown
+    [SB,L, 5, 7,5,null],                              // 58 Kingmaker's Ring
+  ];
+  const map={};
+  for(let i=0;i<_d.length;i++){
+    const [clan,rar,bp,hp,ini,ab]=_d[i];
+    map[i+1]={clan,rar,bp,hp,ini,ab};
+  }
+  return map;
+})();
+
+/** getCardV3(card_id) → v3.0-plus metadata object or null */
+function getCardV3(card_id){return CARD_V3[card_id]||null;}
+
+/** canBurnCard(card_id) → mirrors on-chain burn_card rarity gate */
+function canBurnCard(card_id){
+  const v3=CARD_V3[card_id];
+  if(!v3)return false;
+  return v3.rar<2; // Common(0) and Uncommon(1) only; Rare/Legendary blocked
+}
+
+/** isLegendary(card_id) → burn and evolve protection check */
+function isLegendary(card_id){
+  const v3=CARD_V3[card_id];
+  return v3&&v3.rar===3;
+}
+
+const CLAN_NAMES=['Black Flag','Sovereign Bourse','Hollow Blade','Iron Circle','Nameless Silk'];
+const RARITY_NAMES_V3=['Common','Uncommon','Rare','Legendary'];
+
+/** getCardClanName(card_id) → clan display string or null */
+function getCardClanName(card_id){
+  const v3=CARD_V3[card_id];
+  if(!v3||v3.clan==null)return null;
+  return CLAN_NAMES[v3.clan]||null;
+}
+
+// ─── v3.0-plus ability handler registry ───────────────────────────────────────
+// Each handler receives (ctx) where ctx = {
+//   card_id, owner_idx, duel_state, events, history, is_gold_hall
+// }
+// Returns an array of battle events to push, or mutates duel_state directly.
+// ──────────────────────────────────────────────────────────────────────────────
+const CARD_V3_ABILITY_HANDLERS={
+
+  // #1 Powder-Charge Boarder — On-Summon: burn 1 Common from hand → +3 BP this duel
+  self_burn_common_for_bp_boost(ctx){
+    const{duel_state,owner_idx,events}=ctx;
+    const hand=duel_state.hands[owner_idx];
+    const commonIdx=hand.findIndex(id=>id>0&&(CARD_V3[id]?.rar===0));
+    if(commonIdx<0)return;
+    const burned=hand[commonIdx];
+    hand[commonIdx]=0;
+    duel_state.burn_counts[owner_idx]=(duel_state.burn_counts[owner_idx]||0)+1;
+    duel_state.bp_bonus[owner_idx]=(duel_state.bp_bonus[owner_idx]||0)+3;
+    events.push({type:'v3_burn',who:owner_idx,card_id:burned,source:1,
+      text:'Powder-Charge Boarder burned '+getLoreCardName(burned)+' → +3 BP!'});
+  },
+
+  // #5 Flare Saboteur — On-Destroy: burn 1 random Common from opponent's hand
+  hand_burn_on_destroy(ctx){
+    const{duel_state,owner_idx,events}=ctx;
+    const opp=(owner_idx===0)?1:0;
+    const hand=duel_state.hands[opp];
+    const commons=hand.map((id,i)=>({id,i})).filter(({id})=>id>0&&(CARD_V3[id]?.rar===0));
+    if(!commons.length)return;
+    const pick=commons[Math.floor(Math.random()*commons.length)];
+    hand[pick.i]=0;
+    duel_state.burn_counts[opp]=(duel_state.burn_counts[opp]||0)+1;
+    events.push({type:'v3_burn',who:opp,card_id:pick.id,source:5,
+      text:'Flare Saboteur burned '+getLoreCardName(pick.id)+' from opponent\'s hand!'});
+  },
+
+  // #7 Novice Minter — Passive: reduce next Evolve cost by 1 energy (minimum 0)
+  evolve_cost_reduction(ctx){
+    const{duel_state,owner_idx}=ctx;
+    duel_state.evolve_discount[owner_idx]=Math.max(0,(duel_state.evolve_discount[owner_idx]||0)+1);
+  },
+
+  // #8 Coin Reforger — On-Summon: sacrifice 1 Common (hand or play) → add random SB Uncommon to hand
+  clan_evolve(ctx){
+    const{duel_state,owner_idx,events}=ctx;
+    const hand=duel_state.hands[owner_idx];
+    const commonIdx=hand.findIndex(id=>id>0&&CARD_V3[id]?.rar===0&&CARD_V3[id]?.clan===1);
+    if(commonIdx<0)return;
+    const sacrificed=hand[commonIdx];
+    hand[commonIdx]=0;
+    // Sovereign Bourse Uncommons: 35-38
+    const sbU=[35,36,37,38];
+    const drawn=sbU[Math.floor(Math.random()*sbU.length)];
+    const emptySlot=hand.findIndex(id=>id===0);
+    if(emptySlot>=0)hand[emptySlot]=drawn;
+    duel_state.burn_counts[owner_idx]=(duel_state.burn_counts[owner_idx]||0)+1;
+    events.push({type:'v3_evolve',who:owner_idx,sacrificed,drawn,source:8,
+      text:'Coin Reforger evolved '+getLoreCardName(sacrificed)+' → '+getLoreCardName(drawn)+'!'});
+  },
+
+  // #13 Oath-Branded Squire — Passive: at destroy count 5 cumulative, grant +1 BP Veteran Imprint
+  veteran_imprint_trigger(ctx){
+    const{history,card_id,events}=ctx;
+    if(!history)return;
+    const destroyCount=history.times_destroyed||0;
+    if(destroyCount>0&&destroyCount%5===0){
+      events.push({type:'v3_imprint',card_id,imprint_key:'Veteran',value:1,is_cosmetic:false,
+        text:'Oath-Branded Squire earned Veteran Imprint (+1 BP permanent)!'});
+    }
+  },
+
+  // #16 Herald of Ashes — On-Summon: +1 BP per Burn triggered this duel (either player)
+  burn_count_scaler(ctx){
+    const{duel_state,owner_idx,events}=ctx;
+    const totalBurns=(duel_state.burn_counts[0]||0)+(duel_state.burn_counts[1]||0);
+    if(totalBurns>0){
+      duel_state.bp_bonus[owner_idx]=(duel_state.bp_bonus[owner_idx]||0)+totalBurns;
+      events.push({type:'v3_stat',who:owner_idx,source:16,
+        text:`Herald of Ashes: +${totalBurns} BP from ${totalBurns} Burn(s) this duel!`});
+    }
+  },
+
+  // #23 Ancestral Ranger — Passive: +1 BP per permanent Stat Imprint on this NFT (max +3)
+  imprint_self_scale(ctx){
+    const{history,duel_state,owner_idx,card_id,events}=ctx;
+    if(!history)return;
+    const statImprints=(history.imprints||[]).filter(imp=>!imp.is_cosmetic&&imp.value>0).length;
+    const bonus=Math.min(3,statImprints);
+    if(bonus>0){
+      duel_state.bp_bonus[owner_idx]=(duel_state.bp_bonus[owner_idx]||0)+bonus;
+      events.push({type:'v3_stat',who:owner_idx,source:23,
+        text:`Ancestral Ranger: +${bonus} BP from ${statImprints} Stat Imprint(s)!`});
+    }
+  },
+
+  // #24 Lineage Scout — On-Summon: draw 1 card per entry in chosen card's owner_history (max 3)
+  owner_history_scaler(ctx){
+    const{duel_state,owner_idx,events,target_card_id}=ctx;
+    if(!target_card_id)return;
+    const hist=duel_state.owner_histories?.[target_card_id]||[];
+    const draws=Math.min(3,hist.filter(pk=>pk&&pk!=='11111111111111111111111111111111').length);
+    for(let i=0;i<draws;i++){
+      const pool=duel_state.deck[owner_idx];
+      if(pool&&pool.length){
+        const drawn=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+        duel_state.hands[owner_idx].push(drawn);
+        events.push({type:'draw',who:owner_idx,card_id:drawn});
+      }
+    }
+    if(draws>0)events.push({type:'v3_stat',who:owner_idx,source:24,
+      text:`Lineage Scout: drew ${draws} card(s) from ${draws} previous owner(s)!`});
+  },
+
+  // #25 Shadow Lifter — On-Destroy: peek 1 opponent hand card; 25% Ransom-Steal on win
+  ransom_steal(ctx){
+    const{duel_state,owner_idx,events}=ctx;
+    const opp=(owner_idx===0)?1:0;
+    const hand=duel_state.hands[opp];
+    const visible=hand.filter(id=>id>0);
+    if(!visible.length)return;
+    const peeked=visible[Math.floor(Math.random()*visible.length)];
+    duel_state.ransom_target=duel_state.ransom_target||{};
+    duel_state.ransom_target[owner_idx]={card_id:peeked,chance:0.25};
+    events.push({type:'v3_peek',who:owner_idx,card_id:peeked,source:25,
+      text:'Shadow Lifter: peeked '+getLoreCardName(peeked)+'! 25% Ransom-Steal on win.'});
+  },
+
+  // #27 Soul-Binder — On-Destroy: destroy 1 opposing character; record to souls_collected
+  on_destroy_imprint_souls(ctx){
+    const{duel_state,owner_idx,events,history}=ctx;
+    const opp=(owner_idx===0)?1:0;
+    const field=duel_state.field[opp];
+    if(!field||!field.length)return;
+    const targetIdx=field.findIndex(id=>id>0);
+    if(targetIdx<0)return;
+    const killed=field[targetIdx];
+    field[targetIdx]=0;
+    if(history){history.souls_collected=(history.souls_collected||0)+1;}
+    const souls=history?.souls_collected||1;
+    const bonus=Math.floor(souls/5);
+    if(bonus>0&&history){
+      events.push({type:'v3_imprint',card_id:ctx.card_id,imprint_key:'SoulsBound',value:Math.min(1,bonus),is_cosmetic:false,
+        text:`Soul-Binder: ${souls} souls collected → +${Math.min(1,bonus)} BP Imprint!`});
+    }
+    events.push({type:'v3_destroy',who:opp,card_id:killed,source:27,
+      text:'Soul-Binder: destroyed '+getLoreCardName(killed)+' and bound its soul!'});
+  },
+
+  // #35 Mint Master — Clan Evolve (same as clan_evolve) + Imprint trigger at 3+ evolves
+  clan_evolve_imprint(ctx){
+    CARD_V3_ABILITY_HANDLERS.clan_evolve(ctx);
+    const{history,events,card_id}=ctx;
+    if(!history)return;
+    const evoCount=history.evolve_trigger_count||0;
+    if(evoCount>0&&evoCount%3===0){
+      events.push({type:'v3_imprint',card_id,imprint_key:'Evolved',value:1,is_cosmetic:false,
+        text:'Mint Master: 3 Evolve triggers → +1 BP permanent Imprint!'});
+    }
+  },
+
+  // #46 Soul-Thief — On-Destroy: 50% Lease-Steal highest-BP opponent; Gold+Legendary kill→75% permanent
+  battle_steal_probability(ctx){
+    const{duel_state,owner_idx,events,is_gold_hall}=ctx;
+    const opp=(owner_idx===0)?1:0;
+    const field=duel_state.field[opp];
+    if(!field||!field.length)return;
+    const target=field.filter(id=>id>0).sort((a,b)=>(CARD_V3[b]?.bp||0)-(CARD_V3[a]?.bp||0))[0];
+    if(!target)return;
+    const isLeg=isLegendary(target);
+    const chance=(is_gold_hall&&isLeg)?0.75:0.5;
+    const permanent=is_gold_hall&&isLeg;
+    if(Math.random()<chance){
+      const stealType=permanent?'permanent':'lease';
+      events.push({type:'steal_get',who:owner_idx,card_id:target,steal_type:stealType,source:46,
+        text:`Soul-Thief: ${stealType} steal of ${getLoreCardName(target)} (${Math.round(chance*100)}% chance)!`});
+      if(!permanent){
+        duel_state.leases=duel_state.leases||[];
+        duel_state.leases.push({card_id:target,owner:owner_idx,return_after_duels:3});
+      }
+    }
+  },
+
+  // #55 Sceptre of Valerius — On-Summon: reveal full hand, Hand-Peek-Steal 1 card
+  hand_peek_steal(ctx){
+    const{duel_state,owner_idx,events,is_gold_hall}=ctx;
+    const opp=(owner_idx===0)?1:0;
+    const hand=duel_state.hands[opp];
+    const visible=hand.filter(id=>id>0);
+    if(!visible.length)return;
+    const stolen=visible[Math.floor(Math.random()*visible.length)];
+    const stealType=is_gold_hall?'permanent':'lease';
+    events.push({type:'steal_get',who:owner_idx,card_id:stolen,steal_type:stealType,source:55,
+      text:`Sceptre of Valerius: ${stealType} Hand-Peek-Steal of ${getLoreCardName(stolen)}!`});
+    if(!is_gold_hall){
+      duel_state.leases=duel_state.leases||[];
+      duel_state.leases.push({card_id:stolen,owner:owner_idx,return_after_duels:3});
+    }
+    // Reveal full hand as bonus info
+    events.push({type:'v3_peek_all',who:owner_idx,hand:visible.slice(),source:55,
+      text:'Sceptre revealed opponent\'s full hand!'});
+  },
+};

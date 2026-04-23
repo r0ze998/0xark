@@ -35,6 +35,63 @@ window.zkDungeon = (function() {
   const WASM_PATH = 'dungeon_position.wasm';
   const ZKEY_PATH = 'dungeon_position_final.zkey';
   const VK_PATH   = 'dungeon_position_vk.json';
+  const WORKER_PATH = 'prover-worker.js';
+
+  // WebWorker for off-main-thread proof generation
+  let _worker = null;
+  let _workerReady = false;
+  let _workerPending = {}; // id → {resolve, reject}
+  let _workerNextId = 1;
+
+  function _getWorker() {
+    if (_worker) return _worker;
+    try {
+      _worker = new Worker(WORKER_PATH);
+      _worker.onmessage = function(e) {
+        const msg = e.data;
+        if (msg.type === 'ready') { _workerReady = true; return; }
+        if (msg.type === 'pong')  { _workerReady = msg.snarkjsReady; return; }
+        if (msg.id && _workerPending[msg.id]) {
+          const { resolve, reject } = _workerPending[msg.id];
+          delete _workerPending[msg.id];
+          if (msg.type === 'proof')  resolve({ proof: msg.proof, publicSignals: msg.publicSignals });
+          else if (msg.type === 'error') reject(new Error(msg.message));
+        }
+      };
+      _worker.onerror = function(e) {
+        console.warn('[ZK Worker] Error:', e.message);
+        _workerReady = false;
+      };
+      // Init: pass snarkjs path — assumes snarkjs.min.js is at page root
+      _worker.postMessage({ type: 'init', snarkjsPath: 'snarkjs.min.js' });
+    } catch (e) {
+      console.warn('[ZK Worker] Could not create worker:', e.message);
+      _worker = null;
+    }
+    return _worker;
+  }
+
+  function _proveInWorker(input, wasmPath, zkeyPath) {
+    return new Promise((resolve, reject) => {
+      const w = _getWorker();
+      if (!w) { reject(new Error('Worker unavailable')); return; }
+      const id = _workerNextId++;
+      _workerPending[id] = { resolve, reject };
+      // timeout 90s for large circuits
+      const timer = setTimeout(() => {
+        if (_workerPending[id]) {
+          delete _workerPending[id];
+          reject(new Error('Proof generation timed out'));
+        }
+      }, 90000);
+      const orig_resolve = resolve;
+      _workerPending[id] = {
+        resolve: (v) => { clearTimeout(timer); orig_resolve(v); },
+        reject:  (e) => { clearTimeout(timer); reject(e); },
+      };
+      w.postMessage({ id, type: 'prove', input, wasmPath, zkeyPath });
+    });
+  }
 
   // Anchor discriminators (sha256("global:<name>")[0..8])
   function _disc(name) {
@@ -238,9 +295,17 @@ window.zkDungeon = (function() {
           new_area: String(newArea),
           new_salt: String(_bytesToBigInt(newSalt)),
         };
-        const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, WASM_PATH, ZKEY_PATH);
+        let proof, publicSignals;
+        try {
+          ({ proof, publicSignals } = await _proveInWorker(input, WASM_PATH, ZKEY_PATH));
+          logLines('[ZK] Proof generated via Worker ✓');
+        } catch (_workerErr) {
+          logLines('[ZK] Worker failed, falling back to main thread: ' + _workerErr.message);
+          ({ proof, publicSignals } = await snarkjs.groth16.fullProve(input, WASM_PATH, ZKEY_PATH));
+          logLines('[ZK] Proof generated (main thread) ✓');
+        }
         proofBytes = _encodeProofBytes(proof, publicSignals);
-        logLines('[ZK] Proof generated ✓ (pi_a=' + proof.pi_a[0].slice(0, 8) + '..)');
+        logLines('[ZK] Proof encoded ✓ (pi_a=' + proof.pi_a[0].slice(0, 8) + '..)');
       } catch (e) {
         logLines('[ZK] Proof generation failed: ' + (e.message || '').slice(0, 40));
         // Fall through — submit without proof (devnet tolerance)
@@ -287,7 +352,7 @@ window.zkDungeon = (function() {
     return _currentPos ? _currentPos.commitment : null;
   }
 
-  return { initPosition, verifyDungeonMove, currentPosition, currentCommitment };
+  return { initPosition, verifyDungeonMove, currentPosition, currentCommitment, _proveInWorker };
 
 })();
 
@@ -347,11 +412,17 @@ window.zkCardCommit = (function() {
   async function proveCardCommit(cardId, salt) {
     const WASM = 'card_commit.wasm';
     const ZKEY = 'card_commit_final.zkey';
-    if (typeof snarkjs !== 'undefined') {
+    if (typeof snarkjs !== 'undefined' || (typeof Worker !== 'undefined')) {
       try {
         const saltBig = BigInt('0x' + Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join(''));
         const input = { card_id: cardId.toString(), salt: saltBig.toString() };
-        const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, WASM, ZKEY);
+        let proof, publicSignals;
+        // Try worker first, fall back to main thread
+        if (window.zkDungeon && typeof window.zkDungeon._proveInWorker === 'function') {
+          ({ proof, publicSignals } = await window.zkDungeon._proveInWorker(input, WASM, ZKEY));
+        } else {
+          ({ proof, publicSignals } = await snarkjs.groth16.fullProve(input, WASM, ZKEY));
+        }
         return { proof, publicSignals, ok: true };
       } catch (e) {
         console.warn('[zkCard] Groth16 prove failed (artifacts missing?) — SHA-256 mode active:', e.message);

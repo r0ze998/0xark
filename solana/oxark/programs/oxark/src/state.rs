@@ -661,32 +661,131 @@ pub struct HandRevealed {
     pub card_ids: [u64; 10],
 }
 
+// ─── v3.0-plus: Imprint System ───────────────────────────────────────────────
+
+/// Imprint types recorded permanently on an NFT's battle history.
+/// Order determines Borsh index (0=None, 1=Veteran, ..., 11=PerfectRecord).
+/// Keep in this exact order — changing it is a breaking schema change.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[repr(u8)]
+pub enum ImprintKey {
+    #[default]
+    None,           // 0
+    // Stat Imprints
+    Veteran,        // 1  +1 BP permanent (10 cumulative wins)
+    Elder,          // 2  +1 HP permanent (50 cumulative wins)
+    Kingslayer,     // 3  +2 BP vs Legendary only
+    Burner,         // 4  Burn energy cost −1
+    Evolved,        // 5  Dual On-Summon from parent lineage
+    // Cosmetic Imprints (is_cosmetic = true, value = 0)
+    ElderFrame,     // 6  gold card frame
+    KingslayerCrest, // 7 crown icon on card
+    LineageMark,    // 8  lineage icon (≥3 previous owners)
+    EvolvedHalo,    // 9  ambient glow (Evolve origin)
+    AshMark,        // 10 ash stripe (Burn ×10)
+    PerfectRecord,  // 11 ripple effect (10-win streak)
+}
+
+impl From<u8> for ImprintKey {
+    fn from(v: u8) -> Self {
+        match v {
+            1 => Self::Veteran,        2 => Self::Elder,
+            3 => Self::Kingslayer,     4 => Self::Burner,
+            5 => Self::Evolved,        6 => Self::ElderFrame,
+            7 => Self::KingslayerCrest, 8 => Self::LineageMark,
+            9 => Self::EvolvedHalo,    10 => Self::AshMark,
+            11 => Self::PerfectRecord,  _ => Self::None,
+        }
+    }
+}
+
+/// Single imprint entry — 22 bytes (fixed-size).
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, Default)]
+pub struct Imprint {
+    pub key:         u8,    // ImprintKey enum value
+    pub value:       i32,   // stat delta (0 for cosmetic)
+    pub is_cosmetic: bool,
+    pub acquired_at: i64,
+    pub duel_id:     u64,
+}
+
+impl Imprint {
+    pub const SIZE: usize = 1 + 4 + 1 + 8 + 8; // 22
+}
+
+// ─── v3.0-plus: Steal-Lease System ───────────────────────────────────────────
+
+/// Steal type determines ownership transfer semantics.
+/// LEASE_DURATION_SEC = 1800 (30 min, ≈3 duels); set via constant below.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
+pub enum StealType {
+    Lease,      // temporary (auto-return after LEASE_DURATION_SEC)
+    Ransom,     // win to keep, lose to return
+    HandPeek,   // Gold Hall only, permanent
+    Legendary,  // Gold Hall Legendary kill, permanent
+}
+
+pub const LEASE_DURATION_SEC: i64 = 1800;
+
 // ─── T-D13-A: CardBattleHistory PDA ──────────────────────────────────────────
 
-/// Per-NFT battle statistics PDA.
+/// Per-NFT battle statistics PDA (v3.0-plus extended).
 /// Seed: ["card_battle_history", card_mint]
-/// Total ≈ 400 bytes; init-if-needed on first update.
+/// v3.0-plus: added burn/evolve/imprint/lease fields at end.
+/// Devnet: existing PDAs must be closed and re-initted post-deploy (r0ze approved).
 #[account]
 pub struct CardBattleHistory {
-    pub card_mint:             Pubkey,       // 32 — NFT mint address
+    // ── original fields (Day 13) ──────────────────────────────────────────
+    pub card_mint:             Pubkey,       // 32
     pub wins:                  u32,          // 4
     pub losses:                u32,          // 4
     pub kos:                   u32,          // 4  — enemies destroyed
     pub dmg_dealt:             u64,          // 8  — cumulative BP damage
     pub times_summoned:        u32,          // 4
-    pub owners_history:        [Pubkey; 10], // 320 — ring buffer (index 0 = most recent ex-owner)
-    pub owners_history_len:    u8,           // 1   — slots filled (0–10)
-    pub owners_dropped_count:  u32,          // 4   — owners that rolled off the buffer
+    pub owners_history:        [Pubkey; 10], // 320 — ring buffer (index 0 = most recent)
+    pub owners_history_len:    u8,           // 1
+    pub owners_dropped_count:  u32,          // 4
     pub acquisition_source:    u8,           // 1   — 0=mint,1=shop,2=duel_won,3=p2p_trade
     pub current_owner_since:   i64,          // 8
     pub created_at:            i64,          // 8
     pub bump:                  u8,           // 1
+    // ── v3.0-plus additions ───────────────────────────────────────────────
+    pub burn_count:            u32,          // 4  — Burn abilities this card has triggered
+    pub souls_collected:       u32,          // 4  — Soul-Binder soul accumulator
+    pub legendary_kills:       u32,          // 4  — Kingslayer trigger counter
+    pub imprints:              [Imprint; 5], // 110 — max 5 imprints (rarity-gated)
+    pub imprint_count:         u8,           // 1
+    pub evolved_from_a:        Pubkey,       // 32 — parent A mint (zero if not evolved)
+    pub evolved_from_b:        Pubkey,       // 32 — parent B mint (zero if not evolved)
+    pub is_evolved:            bool,         // 1
+    pub lease_expires_at:      i64,          // 8  — 0 if no active lease
+    pub lease_returns_to:      Pubkey,       // 32 — original owner pubkey during lease
+    pub has_active_lease:      bool,         // 1
 }
 
 impl CardBattleHistory {
     pub const CARD_BATTLE_HISTORY_SEED: &'static [u8] = b"card_battle_history";
-    /// Discriminator(8) + fields
-    pub const LEN: usize = 8 + 32 + 4 + 4 + 4 + 8 + 4 + (32 * 10) + 1 + 4 + 1 + 8 + 8 + 1;
+
+    // Original 407 + new 229 = 636 bytes total
+    pub const LEN: usize =
+        8          // discriminator
+        + 32 + 4 + 4 + 4 + 8 + 4  // card_mint, wins, losses, kos, dmg_dealt, times_summoned
+        + (32 * 10) + 1 + 4 + 1 + 8 + 8 + 1  // owners_history, len, dropped, source, since, created_at, bump
+        // v3.0-plus
+        + 4 + 4 + 4                            // burn_count, souls_collected, legendary_kills
+        + (Imprint::SIZE * 5) + 1              // imprints[5], imprint_count
+        + 32 + 32 + 1                          // evolved_from_a/b, is_evolved
+        + 8 + 32 + 1;                          // lease_expires_at, lease_returns_to, has_active_lease
+
+    /// Max stat imprints by rarity (0=Common, 1=Uncommon, 2=Rare, 3=Legendary).
+    pub fn max_stat_imprints(rarity: u8) -> usize {
+        match rarity { 2 => 4, 3 => 5, _ => 3 }
+    }
+
+    /// Check if a lease is active and expired; caller should handle the return transfer.
+    pub fn lease_is_expired(&self, now: i64) -> bool {
+        self.has_active_lease && self.lease_expires_at > 0 && now >= self.lease_expires_at
+    }
 }
 
 // T-D13-A4: events
@@ -697,6 +796,73 @@ pub struct CardBattleHistoryUpdated {
     pub losses:    u32,
     pub kos:       u32,
     pub dmg_dealt: u64,
+}
+
+// ─── v3.0-plus: SeasonStats PDA ──────────────────────────────────────────────
+
+/// Aggregate season-level burn/evolve/steal counters.
+/// Seed: ["season_stats", season_id_le]
+#[account]
+#[derive(Default)]
+pub struct SeasonStats {
+    pub season_id:    u32,
+    pub total_burned: u32,
+    pub total_minted: u32,
+    pub total_evolved: u32,
+    pub total_stolen: u32,
+    pub bump:         u8,
+}
+
+impl SeasonStats {
+    pub const SEASON_STATS_SEED: &'static [u8] = b"season_stats";
+    // 8 disc + 4 + 4 + 4 + 4 + 4 + 1 = 29
+    pub const LEN: usize = 8 + 4 + 4 + 4 + 4 + 4 + 1;
+}
+
+// ─── v3.0-plus: events ───────────────────────────────────────────────────────
+
+#[event]
+pub struct CardBurnedEvent {
+    pub card_mint: Pubkey,
+    pub owner:     Pubkey,
+    pub rarity:    u8,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct CardEvolvedEvent {
+    pub parent_a:         Pubkey,
+    pub parent_b:         Pubkey,
+    pub child_mint:       Pubkey,
+    pub target_species_id: u16,
+    pub cumulative_wins:  u32,
+    pub timestamp:        i64,
+}
+
+#[event]
+pub struct ImprintGrantedEvent {
+    pub card_mint:   Pubkey,
+    pub imprint_key: u8,
+    pub is_cosmetic: bool,
+    pub duel_id:     u64,
+    pub timestamp:   i64,
+}
+
+#[event]
+pub struct LeaseStealEvent {
+    pub card_mint:  Pubkey,
+    pub from:       Pubkey,
+    pub to:         Pubkey,
+    pub expires_at: i64,
+    pub timestamp:  i64,
+}
+
+#[event]
+pub struct LeaseReturnedEvent {
+    pub card_mint:      Pubkey,
+    pub returned_to:    Pubkey,
+    pub returned_from:  Pubkey,
+    pub timestamp:      i64,
 }
 
 #[event]

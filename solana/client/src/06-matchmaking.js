@@ -225,7 +225,7 @@ function mmCurrentTier()  { return mmTier; }
 // ── Wire to lobby dialog ──────────────────────────────────────────────────
 // Called from lobbyDialogConfirm() when action === 'find_match'
 // Expects lobbyDialog.meta.tier to be set (0/1/2).
-async function lobbyFindMatch(tierIdx) {
+async function lobbyFindMatch(tierIdx, isGoldHall=false) {
   if (!window.solana?.publicKey) {
     // No wallet — show info in dialog and return
     if (typeof lobbyDialog !== 'undefined' && lobbyDialog) {
@@ -252,17 +252,21 @@ async function lobbyFindMatch(tierIdx) {
       1, // season 1
       // onMatch
       (playerA, playerB) => {
-        // Trigger canvas flash celebration
         if (typeof lobbyTriggerMatchFlash === 'function') lobbyTriggerMatchFlash();
+        const modeLabel=isGoldHall?'Competitive Gold':'Casual';
         if (typeof lobbyDialog !== 'undefined' && lobbyDialog) {
-          lobbyDialog.title = '⚔️ Match Found!';
+          lobbyDialog.title = 'Match Found!';
           lobbyDialog.lines = [
-            `${tierNames[tierIdx]} duel starting…`,
+            `${tierNames[tierIdx]} (${modeLabel}) starting…`,
             `${playerA.slice(0,6)}… vs ${playerB.slice(0,6)}…`,
-            'Duel scene coming Day 5',
+            isGoldHall?'Gold Hall rules — permanent steal ON':'Standard rules',
           ];
-          lobbyDialog.buttons = [{ label: 'Close', action: 'close', disabled: false }];
+          lobbyDialog.buttons = [{ label: 'Enter Duel', action: 'close', disabled: false }];
           lobbyDialog.focusIdx = 0;
+          lobbyDialog.meta = { tier: tierIdx, isGoldHall, playerA, playerB };
+        }
+        if (typeof initDuelScene === 'function') {
+          setTimeout(()=>initDuelScene('pvp', tierIdx, {isGoldHall, playerA, playerB}), 100);
         }
       },
       // onTick

@@ -33,6 +33,7 @@ const CDS_BTN_Y = 254, CDS_BTN_H = 16;
 const CDS_BTN_BACK  = {x:2,   w:78,  label:'BACK'};
 const CDS_BTN_ADD   = {x:84,  w:108, label:'ADD TO DECK'};
 const CDS_BTN_SELL  = {x:196, w:80,  label:'SELL'};
+const CDS_BTN_BURN  = {x:280, w:80,  label:'BURN'};
 
 // Sell prices by rarity (SOL)
 const CDS_SELL_PRICE = [0.005, 0.015, 0.03, 0.06, 0.1]; // r1..r5
@@ -70,6 +71,14 @@ function initCardDetailScene(cardInfo, returnScene){
     hallContext:  cardInfo.hallContext||null,
     isVintage:    !!cardInfo.isVintage,
     returnScene:  returnScene||'lobby',
+    v3:           (typeof CARD_V3!=='undefined'&&CARD_V3[cardId])||null,
+    stealInfo:    cardInfo.stealInfo||null,
+    burnConfirm:  false,
+    burnStatus:   '',
+    burnMsg:      '',
+    burnFlame:    false,
+    burnSolscanModal: false,
+    burnTxHash:   '',
     unlocks:      unlocks,  // [bool,bool,bool]
     stats:        stats,
     sellPrice:    sellPrice,
@@ -118,6 +127,7 @@ function drawCardDetailScene(){
   _cdsDrawRightPanel(cr,cardId,rarCol,rar,loreEntry,unlocks);
   _cdsDrawShardOverlay();
   _cdsDrawButtons(cr,rar,rarCol);
+  _cdsDrawBurnModal();
   _cdsDrawToast();
 }
 
@@ -212,31 +222,71 @@ function _cdsDrawCenterPanel(cr,cardId,rarCol,rar,stats,isVintage){
   tx(costStr,cx+8,costY+8,5,rarCol);
 }
 
-// ── Right panel: Battle History + Lore Shards ─────────────────────────────
+// ── Right panel: Battle History + Imprints + Lore Shards ─────────────────────────────
 function _cdsDrawRightPanel(cr,cardId,rarCol,rar,loreEntry,unlocks){
   const rx=CDS_PANEL_R+4, rw=CDS_PANEL_R_W-8;
 
   tx('BATTLE HISTORY',rx,10,5,rarCol);
   bx(rx,13,rw,1,rarCol+'60');
 
-  // Battle history — show placeholder (real data from CardBattleHistory PDA, wired Day 14+)
-  // Safety gate: if PDA query failed, show 0/0/0/0
   const bh=CDS._battleHistory||null;
   if(bh){
     tx('S1: '+bh.wins+'W/'+bh.losses+'L',rx,24,4,'#90c8e0');
-    tx(bh.kos+'KOs / '+bh.dmg_dealt+' dmg',rx,34,4,'#90c8e0');
-    bx(rx,40,rw,1,'#1a2a3a');
-    tx('Lifetime:',rx,50,4,'#708090');
-    tx(bh.wins+'W/'+bh.losses+'L/'+bh.kos+'KO',rx,60,4,'#a0c0e0');
+    tx(bh.kos+'KOs / '+bh.dmg_dealt+' dmg',rx,33,4,'#90c8e0');
+    const bc=bh.burn_count||0, sc=bh.souls_collected||0, lk=bh.legendary_kills||0;
+    if(bc||sc||lk){
+      g.globalAlpha=0.85;
+      tx('B:'+bc,rx,42,4,'#e06030');
+      tx('S:'+sc,rx+32,42,4,'#c0a050');
+      tx('K:'+lk,rx+64,42,4,'#9060c0');
+      g.globalAlpha=1;
+    }
+    bx(rx,50,rw,1,'#1a2a3a');
   }else{
     g.globalAlpha=0.55;
     tx('No battles yet',rx,28,4,'#606878');
     tx('0W / 0L / 0KO',rx,40,4,'#505868');
     g.globalAlpha=1;
+    bx(rx,50,rw,1,'#1a2a3a');
   }
 
+  // Imprints section
+  const imY=54;
+  tx('IMPRINTS',rx,imY,4,'#708090');
+  const imprints=(bh&&bh.imprints)||[];
+  if(imprints.length>0){
+    const IMPRINT_COLS={Veteran:'#4090c8',Evolved:'#40c870',SoulsCollected:'#c8a030',LegendaryKills:'#9060c0',BurnCount:'#c86030'};
+    const IMPRINT_ABBR={Veteran:'V',Evolved:'E',SoulsCollected:'S',LegendaryKills:'K',BurnCount:'B'};
+    for(let ii=0;ii<Math.min(imprints.length,5);ii++){
+      const imp=imprints[ii];
+      const col=IMPRINT_COLS[imp.key]||'#708090';
+      const abbr=IMPRINT_ABBR[imp.key]||'?';
+      const ix=rx+(ii*24), iy=imY+8;
+      if(!imp.is_cosmetic){
+        bx(ix,iy,20,12,col+'1a');
+        bx(ix,iy,20,1,col+'80');
+        tx(abbr,ix+2,iy+9,4,col);
+        tx(String(imp.value),ix+9,iy+9,3,col+'cc');
+      }else{
+        // Cosmetic imprint: elaborate gold frame
+        bx(ix,iy,20,12,'#c8a03012');
+        bx(ix,iy,20,1,'#c8a030');
+        bx(ix,iy+11,20,1,'#c8a030');
+        bx(ix,iy,1,12,'#c8a030');
+        bx(ix+19,iy,1,12,'#c8a030');
+        tx(abbr,ix+2,iy+9,4,'#ffd060');
+        tx(String(imp.value),ix+9,iy+9,3,'#c8a030');
+      }
+    }
+  }else{
+    g.globalAlpha=0.35;
+    tx('none yet',rx,imY+10,4,'#607080');
+    g.globalAlpha=1;
+  }
+  bx(rx,imY+22,rw,1,'#1a2a3a');
+
   // Previous owners
-  const histY=74;
+  const histY=82;
   tx('PREV OWNERS',rx,histY,4,'#708090');
   if(CDS.prevOwner){
     const p=CDS.prevOwner;
@@ -245,8 +295,26 @@ function _cdsDrawRightPanel(cr,cardId,rarCol,rar,loreEntry,unlocks){
     g.globalAlpha=0.4;tx('none on record',rx,histY+10,4,'#606878');g.globalAlpha=1;
   }
 
+  // Steal badge (lease vs. permanent)
+  if(CDS.stealInfo){
+    const si=CDS.stealInfo;
+    const isLease=si.stealType==='lease';
+    const badgeY=histY+22;
+    const badgeCol=isLease?'#0a2018':'#1a0808';
+    const borderCol=isLease?'#20603a':'#602020';
+    const textCol=isLease?'#40c870':'#e05050';
+    bx(rx,badgeY,rw,14,badgeCol);
+    bx(rx,badgeY,rw,1,borderCol);
+    if(isLease){
+      tx('LEASED',rx+2,badgeY+9,4,textCol);
+      tx('back in '+si.returnIn+'d',rx+40,badgeY+9,3,'#309060');
+    }else{
+      tx('STOLEN FOREVER',rx+2,badgeY+9,4,textCol);
+    }
+  }
+
   // Lore Shards section
-  const loreY=132;
+  const loreY=126;
   tx('LORE SHARDS',rx,loreY,5,rarCol);
   bx(rx,loreY+3,rw,1,rarCol+'60');
 
@@ -257,17 +325,15 @@ function _cdsDrawRightPanel(cr,cardId,rarCol,rar,loreEntry,unlocks){
     const hasText=loreEntry&&loreEntry.shards&&loreEntry.shards[String(si)];
     const isActive=CDS.activeShardIdx===si;
 
-    // Gem icon
     const gemColor=isUnlocked?(hasText?'#50e090':'#e0b030'):isActive?'#e0e0e0':'#304050';
     const gemBg=isActive?'#0a2a18':'#060f18';
     bx(shardX-2,shardY-2,30,14,gemBg);
     bx(shardX-2,shardY-2,30,1,isUnlocked?'#205030':'#102030');
-    tx('\u25C6',shardX,shardY+8,8,gemColor);
+    tx('◆',shardX,shardY+8,8,gemColor);
     tx(String(si),shardX+10,shardY+8,4,isUnlocked?'#90c8a0':'#304050');
     if(isActive){bx(shardX-2,shardY+12,30,1,gemColor);}
   }
 
-  // Shard text preview (first line, non-interactive)
   const previewY=loreY+34;
   bx(rx,previewY,rw,50,'#060c16');
   bx(rx,previewY,rw,1,'#102030');
@@ -354,6 +420,21 @@ function _cdsDrawButtons(cr,rar,rarCol){
     tx('CANCEL',CDS_BTN_SELL.x+CDS_BTN_SELL.w+2,by+bh/2+3,4,'#708090');
     g.globalAlpha=1;
   }
+
+  // BURN
+  const canBurn=typeof canBurnCard==='function'&&canBurnCard(CDS.cardId)&&!!CDS.mint;
+  const burnCol=canBurn?(CDS.burnConfirm?'#3a1000':'#261208'):'#0c0c0c';
+  const burnTextCol=canBurn?(CDS.burnConfirm?'#ff6020':'#c05020'):'#302828';
+  const burnLabel=CDS.burnConfirm?'CONFIRM?':'BURN';
+  _cdsBtn(CDS_BTN_BURN.x,by,CDS_BTN_BURN.w,bh,burnLabel,canBurn,burnCol,burnTextCol);
+  if(canBurn&&CDS.burnConfirm){
+    _cdsDrawMiniFlame(CDS_BTN_BURN.x,by-14,CDS_BTN_BURN.w,14,_cdsFrame);
+  }
+  if(canBurn&&!CDS.burnConfirm){
+    g.globalAlpha=0.4;
+    tx('Cmn/Uncmn only',CDS_BTN_BURN.x,by-6,3,'#806050');
+    g.globalAlpha=1;
+  }
 }
 
 function _cdsBtn(x,y,w,h,label,enabled,bgCol,textCol){
@@ -381,18 +462,101 @@ function _cdsCanSell(){
 
 // ── Toast ─────────────────────────────────────────────────────────────────
 function _cdsDrawToast(){
-  const msg=CDS.addMsg||CDS.sellMsg;
+  const msg=CDS.addMsg||CDS.sellMsg||CDS.burnMsg;
   if(!msg)return;
   const tw=msg.length*4+12;
   bx(W/2-tw/2,4,tw,14,'rgba(0,10,20,0.9)');
   bx(W/2-tw/2,4,tw,1,'#204040');
   tx(msg,W/2-msg.length*2,14,4,
-    (CDS.addStatus==='success'||CDS.sellStatus==='success')?'#50e090':'#e08050');
+    (CDS.addStatus==='success'||CDS.sellStatus==='success'||CDS.burnStatus==='success')?'#50e090':'#e08050');
+}
+
+// ── Burn UI helpers ────────────────────────────────────────────────────────
+function _cdsDrawMiniFlame(x,y,w,h,frame){
+  const cols=['#ff2200','#ff6600','#ffaa00','#ffdd00'];
+  for(let i=0;i<w;i+=2){
+    const fl=Math.abs(Math.sin(frame*0.15+i*0.9+0.5));
+    const fh=Math.floor(h*(0.3+0.7*fl));
+    for(let j=0;j<fh;j+=2){
+      const ci=Math.floor((j/fh)*(cols.length-1));
+      bx(x+i,y+h-j-2,2,2,cols[Math.max(0,cols.length-1-ci)]);
+    }
+  }
+}
+
+function _cdsDrawBurnModal(){
+  if(!CDS.burnSolscanModal)return;
+  g.save();
+  g.globalAlpha=0.88;
+  bx(0,0,W,H,'#020608');
+  g.restore();
+  const mw=240, mh=130, mx=(W-mw)/2, my=(H-mh)/2;
+  bx(mx,my,mw,mh,'#0a0f16');
+  bx(mx,my,mw,1,'#ff4400');
+  bx(mx,my+mh-1,mw,1,'#301510');
+  bx(mx,my,1,mh,'#301510');
+  bx(mx+mw-1,my,1,mh,'#301510');
+  _cdsDrawMiniFlame(mx+2,my-12,mw-4,16,_cdsFrame);
+  const title='CARD BURNED';
+  tx(title,mx+mw/2-title.length*3.5,my+14,7,'#ff6020');
+  g.globalAlpha=0.9;
+  const sub='THIS NFT HAS BEEN PERMANENTLY DESTROYED';
+  tx(sub,mx+4,my+28,3,'#e06030');
+  g.globalAlpha=1;
+  tx(CDS.cr.n,mx+mw/2-(CDS.cr.n.length*2.5),my+40,5,'#c0a0a0');
+  const supply=typeof window.seasonSupply==='number'?window.seasonSupply:'?';
+  tx('Season supply: '+supply+' remain',mx+4,my+54,4,'#708090');
+  bx(mx+4,my+64,mw-8,10,'#060c14');
+  bx(mx+4,my+64,mw-8,1,'#203040');
+  const txShort=CDS.burnTxHash.length>20?CDS.burnTxHash.slice(0,10)+'...'+CDS.burnTxHash.slice(-8):CDS.burnTxHash;
+  g.globalAlpha=0.75;
+  tx('TX: '+txShort,mx+6,my+72,3,'#4090b0');
+  g.globalAlpha=0.55;
+  tx('solscan.io/tx/'+CDS.burnTxHash.slice(0,16),mx+6,my+84,3,'#3080a0');
+  g.globalAlpha=1;
+  const cbx=mx+mw/2-30, cby=my+mh-20, cbw=60;
+  bx(cbx,cby,cbw,14,'#202830');
+  bx(cbx,cby,cbw,1,'#304050');
+  const cl='CLOSE';
+  tx(cl,cbx+cbw/2-cl.length*2.2,cby+10,4,'#80a0c0');
+}
+
+function _cdsBurnFlow(){
+  if(!CDS.mint){CDS.burnMsg='No NFT to burn';CDS.burnStatus='error';return;}
+  if(typeof canBurnCard==='function'&&!canBurnCard(CDS.cardId)){
+    CDS.burnMsg='Cannot burn: Rare+ protected';CDS.burnStatus='error';return;
+  }
+  CDS.burnStatus='pending';CDS.burnMsg='Burning...';CDS.burnConfirm=false;
+  const burnFn=typeof window.oxarkBurnCard==='function'?window.oxarkBurnCard:null;
+  const _resolve=txHash=>{
+    CDS.burnStatus='success';CDS.burnMsg='Burned!';
+    CDS.burnSolscanModal=true;CDS.burnTxHash=txHash||'';
+    if(typeof window.seasonSupply==='number')window.seasonSupply=Math.max(0,window.seasonSupply-1);
+  };
+  if(burnFn){
+    burnFn(CDS.mint).then(_resolve).catch(e=>{
+      CDS.burnStatus='error';
+      CDS.burnMsg='Burn failed: '+(e&&e.message?e.message.slice(0,28):'err');
+    });
+  }else{
+    _resolve('SimTx'+Date.now().toString(16));
+  }
 }
 
 // ── Input handler ──────────────────────────────────────────────────────────
 function handleCardDetailInput(px_,py_){
   if(!CDS||sc!=='card_detail')return;
+
+  // Burn modal blocks all other input
+  if(CDS.burnSolscanModal){
+    const mw=240,mh=130,mx=(W-mw)/2,my=(H-mh)/2;
+    const cbx=mx+mw/2-30,cby=my+mh-20,cbw=60;
+    if(px_>=cbx&&px_<=cbx+cbw&&py_>=cby&&py_<=cby+14){
+      CDS.burnSolscanModal=false;
+      exitCardDetailScene();
+    }
+    return;
+  }
 
   // Close shard overlay on X area tap
   if(CDS.activeShardIdx>0){
@@ -410,7 +574,7 @@ function handleCardDetailInput(px_,py_){
     const gy=loreY-CDS_PANEL_R+14; // = 146+14 = nope let's compute absolute
     // From _cdsDrawRightPanel: shardY = loreY+14 = 132+14 = 146, shardX = rx+(si-1)*36+2
     const shardX=(CDS_PANEL_R+4)+(si-1)*36;
-    const shardY=146;
+    const shardY=140;
     if(px_>=shardX-2&&px_<=shardX+28&&py_>=shardY-2&&py_<=shardY+12){
       _cdsTapShard(si);return;
     }
@@ -439,6 +603,19 @@ function handleCardDetailInput(px_,py_){
     // Cancel sell (text beyond sell button)
     if(CDS.sellConfirm&&px_>CDS_BTN_SELL.x+CDS_BTN_SELL.w){
       CDS.sellConfirm=false;return;
+    }
+    // BURN
+    if(px_>=CDS_BTN_BURN.x&&px_<=CDS_BTN_BURN.x+CDS_BTN_BURN.w){
+      const canBurn=typeof canBurnCard==='function'&&canBurnCard(CDS.cardId)&&!!CDS.mint;
+      if(canBurn){
+        if(!CDS.burnConfirm){CDS.burnConfirm=true;}
+        else{_cdsBurnFlow();}
+      }
+      return;
+    }
+    // Cancel burn
+    if(CDS.burnConfirm&&px_>CDS_BTN_BURN.x+CDS_BTN_BURN.w){
+      CDS.burnConfirm=false;return;
     }
   }
 }

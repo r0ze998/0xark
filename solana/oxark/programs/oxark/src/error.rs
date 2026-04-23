@@ -106,4 +106,29 @@ pub enum ErrorCode {
     NoPendingLegendaryClaim,
     #[msg("Season has not ended")]
     SeasonNotEnded,
+    // ── v3.0-plus: Burn / Evolve / Steal / Imprint ───────────────────────────────
+    #[msg("Legendary cards are permanently protected from Burn")]
+    LegendariesAreProtectedFromBurn,
+    #[msg("Rare cards require a special conditional Burn (not available in Season 1)")]
+    RareRequiresConditionalBurn,
+    #[msg("Both Evolve parents must be Common rarity")]
+    EvolveParentMustBeCommon,
+    #[msg("Evolve target must be Uncommon rarity (Season 1 restriction)")]
+    InvalidEvolveTarget,
+    #[msg("Stat Imprint limit reached for this card's rarity")]
+    StatImprintLimitReached,
+    #[msg("Starter deck cards are protected from Steal")]
+    StarterCardProtected,
+    #[msg("Permanent Steal (Hand-Peek / Legendary) requires Gold Hall")]
+    PermanentStealRequiresGoldHall,
+    #[msg("Legendary cards can only be stolen via Legendary Steal in Gold Hall")]
+    LegendaryRequiresLegendarySteal,
+    #[msg("Legendary Steal requires Gold Hall tier")]
+    LegendaryRequiresGoldHall,
+    #[msg("SeasonStats PDA for this season already initialized")]
+    SeasonStatsAlreadyInitialized,
+    #[msg("Card has no active lease to return")]
+    NoActiveLease,
+    #[msg("Lease has not expired yet")]
+    LeaseNotExpired,
 }

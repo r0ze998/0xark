@@ -291,19 +291,26 @@ function lobbyOpenDialog(buildingName) {
       let lockReason = '';
       if (tierIdx === 1 && wins[0] < 5) { locked = true; lockReason = `Requires 5 Bronze wins (current: ${wins[0]})`; }
       if (tierIdx === 2 && wins[1] < 3) { locked = true; lockReason = `Requires 3 Silver wins (current: ${wins[1]})`; }
+      const isGold=(tierIdx===2);
       lobbyDialog = {
         title: `${HALL_EMOJIS[tierIdx]} ${LOBBY_HALL_NAMES[tierIdx]}`,
         lines: [
           `Ante: ${LOBBY_HALL_ANTES[tierIdx]}`,
           `Current queue: — players`,
-          locked ? `🔒 LOCKED — ${lockReason}` : 'Ready to duel',
+          locked ? `LOCKED — ${lockReason}` : (isGold ? 'Casual or Competitive Gold?' : 'Ready to duel'),
         ],
         buttons: [
+          ...(isGold ? [
+            { label: 'Casual Gold (PvP)',       action: 'find_match_gold_casual',       disabled: locked, hint: locked?lockReason:'No permanent steal' },
+            { label: 'Competitive Gold (PvP)',  action: 'find_match_gold_competitive',  disabled: locked, hint: locked?lockReason:'Permanent steal ON for Legendary kills' },
+          ] : [
+            { label: 'Find Match (PvP)',        action: 'find_match',      disabled: locked, hint: locked?lockReason:null },
+          ]),
           { label: 'Find Match (AI)',       action: 'find_match_ai',  disabled: locked, hint: locked ? lockReason : null },
           { label: 'Local Hotseat (dev)',   action: 'hotseat_dev',    disabled: false },
           { label: 'Close',                 action: 'close',          disabled: false },
         ],
-        focusIdx: locked ? 2 : 0,
+        focusIdx: locked ? (isGold?4:3) : 0,
         meta: { tier: tierIdx },
       };
       break;
@@ -384,6 +391,49 @@ function lobbyDialogConfirm() {
     } else {
       lobbyDialog = null;
     }
+    return;
+  }
+  if (btn.action === 'find_match_gold_casual') {
+    lobbyDialog = {
+      title: 'Casual Gold',
+      lines: [
+        'Standard rules. Permanent steal disabled.',
+        'Legendary kills: Lease steal only (3 duels).',
+        'Ante: 0.05 SOL — cards at stake.',
+      ],
+      buttons: [
+        { label: 'Confirm — Enter Queue', action: 'find_match_gold_casual_confirm', disabled: false },
+        { label: 'Back',                  action: 'close', disabled: false },
+      ],
+      focusIdx: 0,
+      meta: { tier: 2, isGoldHall: false },
+    };
+    return;
+  }
+  if (btn.action === 'find_match_gold_casual_confirm') {
+    if (typeof lobbyFindMatch === 'function') lobbyFindMatch(lobbyDialog.meta?.tier??2, false);
+    return;
+  }
+  if (btn.action === 'find_match_gold_competitive') {
+    lobbyDialog = {
+      title: 'Competitive Gold',
+      lines: [
+        'GOLD HALL RULES ACTIVE:',
+        '  Permanent steal ON for Legendary kills.',
+        '  battle_steal: 75% permanent (vs 50% casual).',
+        'Ante: 0.05 SOL — cards at stake.',
+      ],
+      buttons: [
+        { label: 'I understand — Enter Queue', action: 'find_match_gold_competitive_confirm', disabled: false },
+        { label: 'Back',                       action: 'close', disabled: false },
+      ],
+      focusIdx: 0,
+      meta: { tier: 2, isGoldHall: true },
+    };
+    return;
+  }
+  if (btn.action === 'find_match_gold_competitive_confirm') {
+    if (typeof lobbyFindMatch === 'function') lobbyFindMatch(lobbyDialog.meta?.tier??2, true);
     return;
   }
   if (btn.action === 'find_match_ai') {
