@@ -1,108 +1,304 @@
-# 0xARK — Pitch Video Script (3 minutes)
-# Reborn Edition — Phase D
+# 0xARK — Pitch Video Script
+# v3.0-plus · Autonomous Agent Sandbox Edition
 
 ---
 
-## [0:00-0:12] Hook
-
-*[Screen: Crown Plaza lobby at night, three duel halls glowing]*
-
-"Your hand is sealed."
-
-*[ZK commit animation — hexagonal lock closing over card hand]*
-
-"Your opponent can't see it."
-
-*[Chain icon + Solana logo flash]*
-
-"But the chain can verify it."
-
-*[Title card: 0xARK — ZK CARD DUELING ON SOLANA]*
+## ENGLISH VERSION (3 minutes)
 
 ---
 
-## [0:12-0:40] Problem
+### [0:00–0:20] HOOK
 
-*[Split screen: transparent chain vs hidden gameplay]*
+*[Screen: AI agent matchmaking screen — "AGENT JOINED. Wallet: 3xF2...kQr. Balance: 0.42 SOL"]*
 
-"Every on-chain card game has one flaw: the blockchain is public. Your hand, your strategy, your deck — visible to anyone watching."
+*[Screen: ZK commit animation — hand sealed behind Poseidon hash]*
 
-"That kills the most important part of card games: information asymmetry."
+*[Screen: "SCOUT PEEK — PAY 0.005 SOL TO SEE ONE CARD?" — agent cursor clicks YES]*
 
-"What if we could have a card game where hands are provably hidden — not by a server you trust, but by math you can verify?"
+*[Screen: Solana transaction confirmed. 400ms. Agent saw one card. Now it reasons.]*
 
----
+**Voice (calm, no hype):**
 
-## [0:40-1:20] Demo
+> "This isn't a card game.
+>
+> This is an AI agent sandbox disguised as one."
 
-*[Show: Crown Plaza lobby walk-up to Gold Hall]*
-
-"0xARK drops you into the Crown Plaza. Three duel halls: Bronze, Silver, Gold."
-
-*[Show: queue join → 30 seconds → "AI OPPONENT JOINED"]*
-
-"Queue up. If no human joins in 30 seconds, our AI — claude-haiku-4-5 — joins instead. It reads the full game state. It reasons."
-
-*[Show: ZK commit animation]*
-
-"Every round: both players commit a Poseidon hash of their hand. Sealed on-chain. Neither can fake their cards."
-
-*[Show: Summon phase — placing cards in lanes]*
-
-"Five rounds. Three lanes. Element affinity: fire beats ice, ice beats lightning, lightning beats fire."
-
-*[Show: Battle resolution + Victory screen]*
-
-"Win: two of their cards become yours."
+*[Title card: 0xARK — On-chain TCG where NFTs are the gameplay, not the wallpaper.]*
 
 ---
 
-## [1:20-1:45] Gold Hall + Legendary
+### [0:20–0:50] PROBLEM
 
-*[Show: "LEGENDARY CLAIMED: Sceptre of Valerius #3" banner]*
+*[Split screen montage: Gods Unchained / Parallel / Marvel Snap logos]*
 
-"At Gold Hall: lose, and you lose a Legendary too. On-chain. Verifiable."
+> "The on-chain TCG market is saturated. Gods Unchained. Parallel. Axie. Dozens of clones.
+>
+> Every single one of them does the same thing: slap your card art on an NFT, call it ownership.
+>
+> But ownership isn't gameplay. You can't burn a card to fuel a tactical move. You can't evolve a Common into a Rare mid-season. You can't steal a Legendary from an AI agent and walk away with it.
+>
+> The blockchain is there. The NFTs are there. The gameplay isn't.
+>
+> We fixed that."
 
-"Four Legendary species. Ten of each per Season. Supply capped on a PDA."
-
-"Earn one every four Gold Hall wins. Take one from a player who loses to you."
-
----
-
-## [1:45-2:15] Technology
-
-"Anchor on Solana — 30+ instructions: matchmaking, ZK duel, Legendary supply, Season prize distribution."
-
-"Circom ZK — Poseidon hash of hand contents, Groth16 proof in-browser under 3 seconds."
-
-"claude-haiku-4-5 — AI opponent that fills empty queues, makes reasoned Summon decisions."
-
-"x402 — Scout Peek (0.005 SOL) and Extra Action (0.01 SOL) paid live in-duel."
+*[Image: card with padlock + chain icon → card on fire → card with "LEASED" badge]*
 
 ---
 
-## [2:15-2:40] Season System
+### [0:50–1:30] SOLUTION — THREE PILLARS
 
-*[Show: Season countdown + Prize Pool ticker]*
+**[Pillar 1: Information Economy]**
 
-"Seasons run 14 days. Entry fees flow into an on-chain Prize Pool. First to 60/60 wins 40%."
+*[Image: ZK commit/reveal flow diagram — hand sealed → Poseidon hash on-chain → Groth16 proof → battle resolution]*
+
+> "Every round, both players commit their hands as Poseidon hashes. Sealed on-chain. Groth16 proof. Your opponent literally cannot see your cards — not because we say so, but because math says so.
+>
+> But here's what makes it a market: x402 micropayments. Mid-duel, you can pay 0.005 SOL to peek one of your opponent's cards. Or they can pay to peek yours. You're buying the value of hidden information, on-chain, in real time."
+
+**[Pillar 2: NFT-Native Mechanics]**
+
+*[Image: 4-panel grid — Burn flame animation, Evolve card transformation, Steal with 'LEASE' badge, Imprint veteran mark]*
+
+> "Four mechanics no Web2 TCG can replicate:
+>
+> **Burn** — sacrifice a Common card on-chain to charge an ability. Real NFT destruction. Solscan-verifiable.
+>
+> **Evolve** — combine two Commons into one Uncommon. The originals are burned. The new card inherits Metaplex metadata.
+>
+> **Steal** — win a card from your opponent. Default is Lease: 3 duels, then auto-return. No death spirals.
+>
+> **Imprint** — battle history written permanently to the NFT. The card remembers every veteran who held it.
+>
+> Common cards burn. Legendary cards are protected. We designed the supply floor before we shipped Burn. 30 Common species, unlimited mint. 40 Legendaries, total, ever."
+
+**[Pillar 3: Autonomous Agent Sandbox]**
+
+*[Image: Claude agent decision log — "Peek value: 0.008 SOL > 0.005 SOL cost. Decision: BUY"]*
+
+> "The long game isn't humans playing cards. It's AI agents holding wallets, reasoning about economic tradeoffs, and evolving portfolios over time.
+>
+> A Claude Haiku agent joins your match. It has its own Solana wallet. It pays antes from its own balance. It decides — autonomously — whether peeking your hand is worth the cost. Win against it, and its Legendary card transfers to your wallet.
+>
+> 0xARK is the first playable sandbox for agent-to-agent economic behavior. Every architectural decision is aligned with this thesis."
 
 ---
 
-## [2:40-3:00] Vision + CTA
+### [1:30–2:20] DEMO
 
-"0xARK is provably fair, financially meaningful, AI-augmented PvP — fully on-chain on Solana."
+*[Live URL: r0ze998.github.io/0xark]*
 
-"r0ze998.github.io/0xark"
+> "It runs on Solana devnet today. Let's show you."
 
-*[Title card: 0xARK — Built for Colosseum Frontier 2026]*
+*[Screen: Hall selection screen — BRONZE / SILVER / GOLD HALL]*
+
+> "Three halls. Bronze for learning, Silver for stakes, Gold for everything."
+
+*[Screen: Deck Editor — select card, click BURN button]*
+*[Animation: Powder-Charge Boarder card bursts into flame → +6 BP power spike]*
+*[Screen: Solscan tx confirming NFT burn]*
+
+> "Burn. Real NFT, gone on-chain. Power spike activated."
+
+*[Screen: Deck Editor — select two Commons, click EVOLVE]*
+*[Animation: two Common cards merge → new Uncommon card appears with higher stats]*
+
+> "Evolve. Two Commons become one Uncommon. The originals are destroyed. The economy shifts."
+
+*[Screen: Duel in progress — opponent Sceptre card appears, click STEAL action]*
+*[Screen: "STEAL: LEASE (3 duels, auto-return)" notification → card with "LEASED" badge appears in hand]*
+
+> "Steal-Lease. We looked at the death-spiral risk and chose Lease as the default. Your opponent gets it back in three duels. Gold Hall only for permanent. We made that call explicitly."
+
+*[Screen: Card detail showing battle history Imprint — "Veteran: 12 wins"]*
+
+> "Imprint. The card's history, written on-chain. Capped at +1 BP. Competitive Gold Mode disables it entirely for pure-skill play."
+
+*[Screen: AI agent match — agent reasoning log streaming — "Round 2. Opponent committed hand. Peek cost: 0.005 SOL. Board advantage: +2. Decision: PEEK"]*
+
+> "AI opponent. Real wallet. Real stakes. Real reasoning."
 
 ---
 
-## Recording notes
-- Total runtime: 3:00 hard cap
-- Voice: calm, technical, confident — not hype
-- OBS at 1280×720, 60fps
-- ZK commit animation: use in-game M3 cutscene (triggered on duel start)
-- Legendary banner: Victory scene Gold Hall demo duel
-- Solscan LegendarySupply PDA: requires devnet init_legendary_supply(1) call first
+### [2:20–2:50] WHY SOLANA
+
+*[Image: Solana alt_bn128 syscall diagram + confirmation speed comparison]*
+
+> "Groth16 verification on-chain is feasible on Solana because of alt_bn128 precompile syscalls. On Ethereum, you'd need an L2 or an off-chain verifier. On Solana, it's native.
+>
+> Sub-400ms finality means x402 micropayments dissolve into gameplay. No loading spinner, no 'please wait for confirmation.' The information market moves at card-game speed.
+>
+> And for agent-to-agent economic behavior, Solana's payment rails are the only chain where this isn't a toy."
+
+---
+
+### [2:50–3:00] CLOSE
+
+*[Stats overlay: 141 tests passing / 35 Anchor instructions / Live on devnet]*
+
+> "Solo founder. Four prior blockchain game projects shipped. This is the fifth.
+>
+> 141 tests passing. Live on devnet now. Season 1 launches May 12th.
+>
+> Play it today: r0ze998.github.io/0xark"
+
+*[Title card: 0xARK — Colosseum Frontier 2026 · Gaming · AI · Stablecoins]*
+
+---
+
+---
+
+## JAPANESE VERSION（3分）
+
+---
+
+### [0:00–0:20] フック
+
+*[画面: AI エージェント参加通知 — "エージェント参加。ウォレット: 3xF2...kQr。残高: 0.42 SOL"]*
+
+*[画面: ZK コミット演出 — 手札が Poseidon ハッシュに封印される]*
+
+*[画面: "スカウトピーク — 0.005 SOL でカード1枚を見ますか？" — エージェントが YES を選択]*
+
+**ナレーション（落ち着いたトーン）:**
+
+> 「これはカードゲームじゃない。
+>
+> カードゲームに偽装した AI エージェント・サンドボックスです。」
+
+*[タイトルカード: 0xARK — NFT が壁紙ではなく、ゲームプレイそのものになる TCG]*
+
+---
+
+### [0:20–0:50] 課題
+
+*[スプリット画面: Gods Unchained / Parallel / Marvel Snap のロゴ]*
+
+> 「オンチェーン TCG 市場は飽和しています。Gods Unchained、Parallel、Axie、その他多数。
+>
+> 全員が同じことをしている。カードアートを NFT に貼り付けて、『所有権』と呼ぶ。
+>
+> でも所有権はゲームプレイじゃない。カードを燃やして戦術的な一手を作れない。Common を Rare に進化させられない。AI エージェントから Legendary を奪えない。
+>
+> ブロックチェーンはある。NFT もある。でもゲームプレイがない。
+>
+> 私たちはこれを解決しました。」
+
+---
+
+### [0:50–1:30] ソリューション — 3 本柱
+
+**[第1柱: 情報経済]**
+
+> 「毎ラウンド、両プレイヤーが手札を Poseidon ハッシュとしてコミット。Groth16 証明でオンチェーン封印。相手はあなたの手札を見ることができない。サーバーが言ってるんじゃない、数学が保証している。
+>
+> そして x402 マイクロペイメントで情報市場が生まれる。対戦中に 0.005 SOL を払えば相手の手札を1枚覗ける。情報の価値をリアルタイムで売買する、ブロックチェーンでしか実現できないシステムです。」
+
+**[第2柱: NFT ネイティブなゲームメカニクス]**
+
+> 「Web2 TCG には絶対に再現できない4つのメカニクス:
+>
+> **Burn（燃焼）** — Common カードをオンチェーンで焼却して能力発動。Solscan で確認できる、本物の NFT 消却。
+>
+> **Evolve（進化）** — Common 2枚を合成して Uncommon 1枚へ。素材カードは焼却、新カードは Metaplex メタデータを継承。
+>
+> **Steal（奪取）** — 相手のカードを勝ち取る。デフォルトは Lease（3戦後に自動返却）。死のスパイラルを回避するために意図的にこう設計した。
+>
+> **Imprint（刻印）** — 対戦履歴が NFT に永続書き込み。カードが歴代の持ち主を記憶する。
+>
+> Common は燃やせる。Legendary は保護される。Burn を実装する前に供給フロアを設計しました。Common 30 種は無制限ミント。Legendary は Season 1 で最大40枚のみ。」
+
+**[第3柱: 自律エージェント・サンドボックス]**
+
+> 「長期的なビジョンは人間がカードを遊ぶことじゃない。AI エージェントが自分のウォレットを持ち、経済的な判断をして、ポートフォリオを進化させていくことです。
+>
+> Claude Haiku エージェントがあなたのマッチに参加する。自分の Solana ウォレットを持ち、自分の残高からアンティを払い、手札を覗くことが経済的に得かどうかを自律判断する。そのエージェントに勝てば、Legendary カードがあなたのウォレットに移転する。
+>
+> 0xARK はエージェント間経済行動のための最初のプレイアブル・サンドボックスです。」
+
+---
+
+### [1:30–2:20] デモ
+
+*[Live URL: r0ze998.github.io/0xark]*
+
+> 「Solana devnet で今日から動いています。」
+
+*[画面: ホール選択 — BRONZE / SILVER / GOLD HALL]*
+
+> 「3つのホール。Bronze で学び、Silver でリスクをとり、Gold で全てを賭ける。」
+
+*[Burn → Evolve → Steal-Lease → Imprint → AI エージェント戦の順にデモ]*
+
+> 「Burn — 本物の NFT 焼却、Solscan 確認済み。」
+> 「Evolve — 2枚が1枚へ、オンチェーン合成。」
+> 「Steal-Lease — デフォルトは3戦返却。この設計判断は意図的です。」
+> 「Imprint — カードに刻まれた対戦歴。Competitive Gold Mode ではオフにできる。」
+> 「AI 対戦 — エージェントが自律判断で hand peek を購入する様子。」
+
+---
+
+### [2:20–2:50] なぜ Solana か
+
+> 「Groth16 のオンチェーン検証は、Solana の alt_bn128 プリコンパイル syscall があるから実現できる。Ethereum なら L2 かオフチェーン検証が必要。Solana ならネイティブ。
+>
+> 400ms 以下のファイナリティで、x402 マイクロペイメントがゲームプレイに溶け込む。確認待ちスピナーなしで、情報市場がカードゲームのスピードで動く。
+>
+> エージェント間の経済行動のために、Solana の決済レールは他に代えがたい。」
+
+---
+
+### [2:50–3:00] クロージング
+
+> 「ソロ創業者。過去4本のブロックチェーンゲームをリリース済み。これが5本目。
+>
+> 141 テスト通過。今日から devnet で稼働中。Season 1 は 2026 年 5 月 12 日開始。
+>
+> 今すぐプレイ: r0ze998.github.io/0xark」
+
+*[タイトルカード: 0xARK — Colosseum Frontier 2026 提出作品]*
+
+---
+
+---
+
+## 30-SECOND CUT (Twitter / SNS)
+
+*[Auto-play: AI agent pays 0.005 SOL → sees card → wins Legendary → transfers to player wallet]*
+
+> "An AI agent just paid real SOL to see your card.
+>
+> It won. Your Legendary transferred to its wallet.
+>
+> That's 0xARK. ZK-hidden hands. x402 information market. 4 NFT-native mechanics.
+>
+> Running on Solana devnet now.
+>
+> r0ze998.github.io/0xark"
+
+*[End card: 0xARK · Colosseum Frontier 2026]*
+
+---
+
+## Director's Notes
+
+- Total runtime: 3:00 hard cap (English), 3:00 (Japanese)
+- Voice: calm, technical, confident — never hype, never selling
+- Pacing: slower than you think. Let the on-chain confirmations breathe.
+- Demo order: Burn → Evolve → Steal → Imprint → AI Agent (escalating blockchain complexity)
+- OBS: 1280×720, 60fps, game canvas at CSS full-width
+- ZK animation: use in-game commit cutscene (auto-triggers on duel start)
+- Legendary transfer: use a pre-arranged demo wallet vs. agent, capture Solscan link live
+- Background music: Hans Zimmer-adjacent instrumental, no drops, under 60 BPM. Suggest: "First Step" (Interstellar OST) or similar royalty-free equivalent
+- Narration can be recorded JP first (r0ze's native), EN dubbed separately
+
+## Key Phrases (for caption / subtitle use)
+
+| English | Japanese |
+|---------|---------|
+| "AI agent sandbox disguised as a card game" | カードゲームに偽装したAIエージェントサンドボックス |
+| "NFTs are the gameplay, not the wallpaper" | NFTは壁紙じゃなく、ゲームプレイそのもの |
+| "Common burn, Legendary safe" | Commonは燃やせる、Legendaryは守られる |
+| "We chose Lease to avoid death spirals" | 死のスパイラル回避のためLeaseを選んだ |
+| "Competitive Gold Mode — pure skill" | Competitive Goldモード — 純粋なスキル |
+| "Solo is a feature, not a red flag" | ソロは弱点じゃなく強み |
+| "141 tests, live on devnet today" | 141テスト通過、今日からdevnetで稼働 |

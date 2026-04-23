@@ -102,7 +102,35 @@ jobs:
         run: |
           SIZE=$(wc -l < solana/client/index.html)
           echo "index.html: $SIZE lines"
-          if [ "$SIZE" -lt 10000 ]; then
-            echo "ERROR: build output suspiciously small ($SIZE lines)"
+          if [ "$SIZE" -lt 30000 ]; then
+            echo "ERROR: build output too small ($SIZE lines) — likely missing v3.0-plus modules"
             exit 1
           fi
+
+  # ─── AI Agent tests ───────────────────────────────────────────────────────────
+  ai-agent-test:
+    name: AI Agent Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install AI agent dependencies
+        working-directory: tools/ai-agent
+        run: npm ci
+
+      - name: Run AI agent unit tests (decision model)
+        working-directory: tools/ai-agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node tests/test_basic_decisions.js
+          node tests/test_burn_decisions.js
+          node tests/test_evolve_decisions.js
+          node tests/test_imprint_strategy.js
+          node tests/test_steal_decisions.js

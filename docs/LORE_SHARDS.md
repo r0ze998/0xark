@@ -426,6 +426,77 @@ Each Legendary represents one clan's answer to *"what is a king?"*
 
 ---
 
+## v3.0-plus Cards — Season 1 Clan Face Cards
+
+*These five cards replaced their predecessors in Card Catalog v0.4 (2026-04-23). All three shards drafted for Season 1 Frontier Hackathon submission.*
+
+---
+
+### #1. Powder-Charge Boarder
+
+**Clan:** Black Flag | **Rarity:** Common | **Ability:** Self-Burn
+**Shard 2 trigger:** Win 3 duels with this card in deck.
+
+**Shard 1:** *"She was aboard three ships the Black Flag lost to naval fire. She survived all three. The navy eventually stopped reporting her dead. It was faster to list her as undiscovered."*
+
+**Shard 2** *(unlocked after 3 wins with this card in deck):* *"She sailed for the Black Flag for three years before anyone learned her name. The crew simply called her 'Powder.' The first ship she boarded sank with her still inside it. The second, and the third. The captain eventually stopped asking how she survived."*
+
+**Shard 3** *(unlocked via Gold Hall or x402):* *"The powder keg was her idea. Not the crew's, not the captain's. 'If you die every time, die with a bigger hole in their hull.' She didn't say it to be brave. She said it the way one describes a routine."*
+
+---
+
+### #13. Oath-Branded Squire
+
+**Clan:** Hollow Blade | **Rarity:** Common | **Ability:** Veteran Imprint
+**Shard 2 trigger:** KO 5 opposing characters with this card (cumulative).
+
+**Shard 1:** *"He took the oath on his first day of service. Not the written oath all guards take, but the older one — the one that marks the skin. He did not know what he was agreeing to. The marking does not require consent."*
+
+**Shard 2** *(unlocked after 5 KOs with this card):* *"Three duels in, the mark had shifted. He showed it to the senior guard, who looked carefully and said nothing. The mark shows one thing on the day you take the oath. It shows another after you have used it enough times to matter. He studies it in poor light, between battles, trying to read what it is becoming."*
+
+**Shard 3** *(unlocked via Gold Hall or x402):* *"The oath is older than Valerius. It predates the guard, the kingdom, the throne room where it is now administered. The mark it leaves is a word in a language the squire was never taught. The Duelmaster knows it. He has not spoken it. It means: 'Your king will need you.' It also means: 'You will know your king when you see the need.' These are the same sentence."*
+
+---
+
+### #23. Ancestral Ranger
+
+**Clan:** Iron Circle | **Rarity:** Common | **Ability:** Imprint self-scale
+**Shard 2 trigger:** Defend 3 lanes successfully (via this card or its passive).
+
+**Shard 1:** *"She carries her grandfather's quiver. Three arrows from his original stock remain at the bottom. She has never fired them. When asked why: 'Those belong to someone I haven't met yet.' She does not mean an enemy."*
+
+**Shard 2** *(unlocked after 3 successful defends):* *"The Iron Circle's borders are older than maps. She knows them by muscle and stone. Her grandmother knew them before her; her grandmother's grandmother before that. The mountain does not change. It tests each ranger against the standard of the last. She has not failed yet. She is not certain this is courage. It may simply be inheritance gone deep enough to feel like instinct."*
+
+**Shard 3** *(unlocked via Gold Hall or x402):* *"Her bow has been passed down eleven generations. Each ranger added a single notch to the grip — not for kills, but for the shot they almost didn't take. Eleven notches. She has not added hers. She knows the moment will come: the first time she hesitates, and shoots anyway. The bow has been waiting eleven generations for that shot. She is close."*
+
+---
+
+### #27. Soul-Binder
+
+**Clan:** Nameless Silk | **Rarity:** Common | **Ability:** On-Destroy Imprint
+**Shard 2 trigger:** Have 3 opposing Scout Peeks attempted against your deck while holding this card.
+
+**Shard 1:** *"No one remembers commissioning her. She appears in records as a margin note — 'the silk woman,' 'the thread-counter,' 'her, again.' She was paid for work nobody ordered. The invoices are real. The authorization is not."*
+
+**Shard 2** *(unlocked after 3 opposing Scout Peeks against your deck):* *"The Nameless Silk sends her as a courier for things that cannot be written. She carries the message in the threading. Whoever reads the cloth receives the instruction. Whoever receives the instruction cannot pass it on without touching her work. She has been a letter, a contract, and once, a verdict. The verdict has not been appealed."*
+
+**Shard 3** *(unlocked via Gold Hall or x402):* *"She is not a person. She is a position. Every generation, the Nameless Silk selects someone to erase — not kill, but unmake, carefully — and rebuild as the next Soul-Binder. The current one has held the role for eleven years and suspects this. She cannot confirm it. The erasure includes the memory of being anyone else. She feels, sometimes, that her edges are not quite solid. This is correct."*
+
+---
+
+### #35. Mint Master
+
+**Clan:** Sovereign Bourse | **Rarity:** Uncommon | **Ability:** Clan Evolve + Imprint
+**Shard 2 trigger:** Accumulate 0.1 SOL of Shop credit while holding this card.
+
+**Shard 1:** *"The Bourse does not explain where new cards come from. He does — not because he is authorized to, but because the Bourse has never asked. It is better not to know. He files his own paperwork. The paperwork cites no authorization. The authorization has never been requested."*
+
+**Shard 2** *(unlocked after 0.1 SOL Shop credit while holding this card):* *"He has transmuted 34 Common seals into Uncommon charters over fourteen years. The process takes an evening. The Bourse's records reflect only the output. A Common brought to him on a Monday is entered as an Uncommon on Tuesday. No one audits the interval. No one has been authorized to ask what happens in the interval. He considers this the most elegant solution he has ever implemented."*
+
+**Shard 3** *(unlocked via Gold Hall or x402):* *"The Mint Master's secret is not the transmutation. It is the mark. Every card he has elevated carries a signature — invisible to the holder, legible to him. He holds the provenance of one-third of the cards currently in play in the succession war. The Bourse does not know this. Or the Bourse knows, and considers it a liability too expensive to remove. He has not yet determined which. He prefers the uncertainty. It is safer for both of them."*
+
+---
+
 ## Appendix: Deferred Shards
 
 **Cards with only Shard 1 drafted** (45 cards): Shards 2 and 3 to be drafted Season 2.
