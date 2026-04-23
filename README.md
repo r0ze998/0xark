@@ -1,306 +1,460 @@
-# 0xARK — ZK Card PvP on Solana
+<div align="center">
 
----
-## ✅ Phase D Reborn — Complete (2026-04-22)
+# 0xARK
 
-0xARK Reborn is a fully on-chain ZK card dueling game on Solana with three ranked halls, AI opponents, Legendary card economy, and Season Prize Pool distribution.
+### Solana on-chain card duels with ZK-hidden hands and AI opponents that can win your NFTs
 
-- [Game Design Document](./docs/GDD.md)
-- [Phase D Sprint Plan](./docs/PHASE_D_SPRINT.md) — 21-day implementation roadmap
-- [Submission Materials](./docs/arena-submission.md)
+[![Play Now](https://img.shields.io/badge/Play-Live_Demo-000000?style=for-the-badge&logo=solana)](https://r0ze998.github.io/0xark)
+[![Pitch Video](https://img.shields.io/badge/Pitch-Coming_Soon-lightgrey?style=for-the-badge&logo=youtube)](#)
+[![Network](https://img.shields.io/badge/Network-Solana_Devnet-9945FF?style=for-the-badge&logo=solana)](https://explorer.solana.com/address/5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN?cluster=devnet)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
-Branch: `phase-d-reborn` — submitted to Colosseum Frontier 2026.
+**Program ID** (Solana Devnet): `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`
 
----
+**Colosseum Frontier Hackathon 2026 Submission**  
+Tracks: Gaming (primary) · AI · Stablecoins
 
-[![CI](https://github.com/r0ze998/0xark/actions/workflows/ci.yml/badge.svg)](https://github.com/r0ze998/0xark/actions/workflows/ci.yml)
-[![Deploy](https://github.com/r0ze998/0xark/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/r0ze998/0xark/actions/workflows/deploy-pages.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Solana Devnet](https://img.shields.io/badge/Solana-Devnet-9945FF?logo=solana)](https://explorer.solana.com/address/5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN?cluster=devnet)
-
-> *Hidden hands. Provable fairness. AI that fills every queue. Legendaries that only transfer at Gold Hall.*
-
-[🎮 Play Demo](https://r0ze998.github.io/0xark/) | [📄 Submission](docs/arena-submission.md) | [📋 Pitch Script](docs/pitch-video-script.md) | [📣 X Posts](docs/x-post-draft.md)
-
-Built for **Colosseum Frontier Hackathon 2026**.
+</div>
 
 ---
 
-## What Is 0xARK?
+## What is 0xARK?
 
-0xARK is a Fully On-Chain Card PvP game built on Solana. Players duel across three ranked halls — Bronze, Silver, Gold — using a ZK commit-reveal hand system. Win duels to collect cards. Reach 60/60 to claim the Season Prize Pool. Legendaries can only be won at Gold Hall.
+**Every card is a real Metaplex NFT.** Not a database entry, not a license, not a rental — a real thing in your Solana wallet that you can sell on Tensor or send to anyone.
 
-Every meaningful game state — card ownership, matchmaking queues, ZK commitments, Legendary supply, Prize Pool — lives on Solana. No off-chain authority. No trust required.
+**Duels are fully on-chain with ZK-hidden hands.** Your cards are encrypted via Poseidon hash and Groth16 proofs. Your opponent cannot see what you're holding until the reveal phase. Cheating is mathematically impossible.
 
-```
-Lobby (Crown Plaza) → Choose Hall → Queue → ZK Hand Commit → 5-Round Duel → Transfer Cards → Season Leaderboard
-```
+**AI agents play against you — and they have real stakes.** A Claude-powered agent holds its own Solana wallet, pays real antes, and loses real NFTs when defeated. Win against the AI, and its Legendary enters your collection.
 
-| Hall | Ante | Card Transfer | Legendary |
-|------|------|---------------|-----------|
-| Bronze | 0.1 SOL | 2 non-Legendary | No |
-| Silver | 0.2 SOL | 2 non-Legendary | No |
-| Gold | 0.5 SOL | 2 normal + 1 Legendary | Yes |
+**When you lose a duel, your NFTs actually change hands.** Two cards transfer from your wallet to your opponent's in a single atomic transaction. You can verify every transfer on Solscan.
 
-Hackathon tracks: **Gaming · AI · Payments** — all three.
+---
+
+## The 3 pillars
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### 🔐 ZK-hidden hands
+
+Every round, your hand is committed via Poseidon hash and a Groth16 proof before the Battle phase. Your opponent sees nothing until reveal.
+
+- `commit_hand` instruction
+- `reveal_hand` with on-chain verification
+- Proof gen ~2s in browser
+- Replay-proof, mathematically sealed
+
+</td>
+<td width="33%" valign="top">
+
+### 🤖 AI with real stakes
+
+A Node.js/Bun agent running on real hardware. Its wallet holds NFTs. Its decisions come from Claude Haiku 4.5. Its losses transfer real cards.
+
+- Tutorial variant: teachably weak
+- Matchmaking variant: competitive
+- Signs its own ZK commitments
+- Pays its own x402 fees
+
+</td>
+<td width="33%" valign="top">
+
+### 💰 NFT ownership that moves
+
+Every card is a Metaplex NFT. Win a duel, two NFTs transfer to your wallet. Lose, and two leave. All transfers verifiable on Solscan.
+
+- Real Metaplex standard
+- Atomic 2-NFT transfer
+- Legendary only via Gold Hall
+- Tradeable on Tensor
+
+</td>
+</tr>
+</table>
+
+---
+
+## How to play (30 seconds)
+
+1. Visit **[r0ze998.github.io/0xark](https://r0ze998.github.io/0xark)**
+2. Connect Phantom (devnet mode)
+3. Get test SOL from [faucet.solana.com](https://faucet.solana.com/) (~0.5 SOL)
+4. Tutorial duel → enter Lobby
+5. Buy a Clan Starter Deck (0.1 SOL) → enter Bronze Hall → play
+
+Full rules: [docs/RULES.md](docs/RULES.md)
 
 ---
 
 ## Why Solana
 
-| Requirement | Why Solana delivers |
-|-------------|---------------------|
-| Real-time dungeon movement | MagicBlock Ephemeral Rollups — 10ms block time, base-layer composable |
-| ZK proof verification on-chain | `alt_bn128_pairing` syscall: EIP-197 Groth16 verify natively, < 200K CUs |
-| AI agents as first-class players | Anchor PDAs give agents verifiable on-chain identities, no multisig needed |
-| Micropayment economy | x402 + Solana USDC: HTTP-native pay-per-call, < $0.01 transaction fees |
-| NFT card secondary market | Metaplex Token Metadata standard, Tensor-compatible from day one |
-| Composability | ER sessions read/write L1 state; external dApps can query live game state |
+0xARK is not "blockchain-flavored." It is blockchain-native. Each mechanic requires Solana specifically:
 
-Solana is the only L1 where all five axes coexist in one transaction namespace. Ethereum gas makes micropayments impractical; alt chains lack the syscall ecosystem for on-chain ZK.
+| Mechanic | Why Solana |
+|---|---|
+| **Real-time duels with ZK commits** | 400ms block times. Anchor + Groth16 verifier on-chain (via `groth16-solana`). MagicBlock Ephemeral Rollups for sub-100ms duel state |
+| **Per-action micropayments (x402)** | Low-fee instant transfers (~$0.0001/tx). Scout Peek costs 0.005 SOL — impossible at Ethereum gas prices |
+| **60-card NFT collection per player** | Metaplex Bubblegum compressed NFTs feasibility. Each player holds 60+ real NFTs without bloating accounts |
+| **AI agents as economic participants** | Agent wallet with real SOL balance. x402 payments work identically for humans and agents. No special path |
 
 ---
 
-## 5-Axis Integrated Architecture
+## Why ZK (not just hash-commit)
+
+"Why not just SHA-256?" — because **every duel round requires cryptographic proof that your revealed hand matches your committed hand**. Without ZK, malicious clients can swap cards between commit and reveal. With Groth16:
+
+- Client generates proof locally (~2s)
+- On-chain `commit_hand` instruction verifies proof
+- `reveal_hand` reconstructs hash, compares to stored commitment
+- Any mismatch → automatic round forfeit
+
+This is the same pattern used in private voting, but applied to card games. The circuit is small (~500 constraints), making browser-side proof generation practical.
+
+Implementation: `circuits/hand_commitment/hand_commitment.circom` + `groth16-solana` on-chain verifier.
+
+---
+
+## Why x402
+
+x402 ([x402.org](https://x402.org)) is an HTTP-based micropayment protocol that uses the HTTP 402 status code. In 0xARK, three in-duel actions cost real SOL:
+
+- **Scout Peek** (0.005 SOL): glimpse 1 opponent card for 5 seconds
+- **Extra Action** (0.01 SOL): draw / half-cost summon / retarget / cancel event
+- **Counter-peek** (0.003 SOL): reveal if opponent Scout-peeked you
+
+Each request triggers a 402 response → client signs SOL transfer → server verifies on-chain → action executes. All within 2-3 seconds.
+
+This makes 0xARK a natural **Stablecoins track** fit: micropayments where rent-seeking is mechanically impossible.
+
+---
+
+## Why AI
+
+AI agents are not a bolt-on marketing gimmick. They solve a real cold-start problem and embody a distinct thesis:
+
+**Problem:** at launch, matchmaking queues are empty. Players arrive, find no opponent, leave.
+
+**Solution:** AI agents backfill the queue. They hold real NFTs. They pay real antes. When they lose, your collection grows; when they win, your cards become theirs.
+
+**Thesis:** if AI is going to be an economic participant in the 2030s, we should build systems where AI risks what humans risk. 0xARK is a small demonstration of that.
+
+The agent runs on Claude Haiku 4.5 (Anthropic API). See [docs/AI_AGENT_SPEC.md](docs/AI_AGENT_SPEC.md) for the full prompt design and architecture.
+
+---
+
+## Technical stack
 
 ```
-               ┌─────────────────────┐
-               │     Solana L1       │
-               │  Program 5i37j...   │
-               │  16 instructions    │
-               └──────────┬──────────┘
-                          │
-       ┌──────────────────┼──────────────────┐
-       │                  │                  │
-  ┌────▼────┐        ┌────▼────┐       ┌────▼────┐
-  │MagicBlock│        │   ZK    │       │  x402   │
-  │   ER    │        │verifier │       │micropay │
-  └────┬────┘        └────┬────┘       └────┬────┘
-       │                  │                  │
-       └──────────────────┼──────────────────┘
-                          │
-                 ┌────────▼────────┐
-                 │  AI Agent Layer │
-                 │  (auto-play)    │
-                 └─────────────────┘
+Frontend:     HTML5 Canvas, vanilla JS (27 modules, ~30k lines)
+Chain:        Solana (devnet), Anchor 0.29.x
+Smart:        Rust, ~15 instructions, ~8 PDAs
+ZK:           Circom 2.1, Groth16, snarkjs client / groth16-solana on-chain
+NFT:          Metaplex Token Metadata (soon: Bubblegum compressed)
+x402:         Custom server in Bun (multiplayer/server.js)
+AI:           Node/Bun agent calling Anthropic API (claude-sonnet-4-5)
+Storage:      Arweave via Bundlr (card portraits + metadata)
+Multiplayer:  WebSocket relay (1 server, stateless)
 ```
 
-### Axis 1 — FOCG (Fully On-Chain Game)
+---
 
-16 Anchor instructions, 9 action types, all executed on Solana. Card ownership, prize pool custody, battle resolution, ZK proof acceptance — every rule is enforced by the program, not a server. The WebSocket relay is a pure event bus; it holds no authority and cannot alter game state.
+## Project status
 
-### Axis 2 — MagicBlock Ephemeral Rollups (ER)
+<table>
+<tr>
+<td valign="top" width="50%">
 
-Dungeon movement delegates player PDAs to MagicBlock's ER via `delegate_session` / `undelegate_session` instructions. The ER processes position updates at 10ms block time while keeping card NFT ownership anchored to Solana L1. On-chain verified: PDA ownership delegation is a program instruction, not an off-chain promise.
+### ✅ Shipped
 
-### Axis 3 — ZK Hidden Information
+- [x] Wallet auth + Phantom integration
+- [x] Lobby scene (M1) with 6 building types
+- [x] Deck editor (save_deck with 20-card + 2-copy rules)
+- [x] Shop (Common direct / Booster Pack / Clan Starter / Transform)
+- [x] Matchmaking (Bronze / Silver / Gold Hall)
+- [x] Duel Board (M2) — 4 phases, 5 elements, 3 lanes, Defender
+- [x] Element affinity system (5-cycle)
+- [x] Shards + Extra Action + Scout Peek
+- [x] x402 micropayment integration
+- [x] ZK hand commitment (Groth16)
+- [x] M3 Duel Start cutscene
+- [x] WebSocket duel sync
+- [x] Victory screen (M4) with NFT transfer
+- [x] Card Detail (M5) with Battle History + Lore Shards
+- [x] Season engine (14-day countdown, Prize Pool)
+- [x] Legendary acquisition (Gold Hall 4-win)
+- [x] AI agent (Anthropic-powered)
+- [x] 60 card portraits on Arweave
 
-`dungeon_position.circom` (625 constraints, Groth16 BN254). Players prove their position commitment is valid without revealing coordinates. The on-chain verifier calls `alt_bn128_pairing` — Solana's native EIP-197 syscall — to check the proof. Rivals remain invisible until they enter your fog-of-war radius, enforced by math, not by a server.
+</td>
+<td valign="top" width="50%">
 
-### Axis 4 — AI Agents (x402-Hireable)
+### 🚧 Post-hackathon
 
-`AgentListing` PDA registers AI agents on-chain. Any player — human or AI — can hire an agent via `register_agent` and pay per session via x402. VEGA and MIRA (the rival NPCs) autonomously call the x402 intel API and make card battle decisions with on-chain signed actions.
+- [ ] Tensor integration for card listings
+- [ ] Season 2 (additional cards + narrative)
+- [ ] Portrait mode mobile
+- [ ] Tournament mode
+- [ ] Replays / spectator mode
+- [ ] Expanded Lore Shards (45 more cards)
+- [ ] Leaderboard / ranking ladder
+- [ ] Mainnet deployment
+- [ ] Bubblegum compressed NFTs
+- [ ] Agent learning across duels
+- [ ] Multi-agent personalities
+- [ ] Clan governance (token voting)
 
-### Axis 5 — x402 Microeconomy
-
-HTTP-402 micropayments thread through the entire game. The scout peek endpoint (`POST /scout-peek`) is live: pay 0.005 SOL via x402, receive one opponent card revealed. This is also the core design tension: **ZK hides information; x402 sells it back.** The interplay is a game mechanic, not just a payment rail.
+</td>
+</tr>
+</table>
 
 ---
 
-## Technical Highlights
+## Repository layout
 
-### Solana Groth16 G2 Point Encoding (Undocumented)
-
-`snarkjs` outputs G2 field elements in `[x₀(real), x₁(imag)]` order. Solana's `alt_bn128_pairing` syscall expects `[x₁(imag), x₀(real)]` — the reverse. This is undocumented in both the Solana syscall spec and snarkjs. Discovered by trial and traced to the EIP-197 reference implementation.
-
-→ [`programs/oxark/src/instructions/verify_dungeon_move.rs`](solana/oxark/programs/oxark/src/instructions/verify_dungeon_move.rs)
-
-### ZK × x402 — Information Asymmetry as a Game Mechanic
-
-ZK proofs make positions unprovable to opponents. x402 micropayments let players (and AI agents) buy that information back one card at a time. The economic cost of intelligence creates strategic depth: is the 0.005 SOL scout worth it? This mechanic cannot exist without both axes operating simultaneously.
-
-### MagicBlock SDK Compatibility (Anchor 1.0 + ER SDK 0.6.5)
-
-Anchor 1.0 changed workspace dependency resolution in ways that conflict with ER SDK's `SolanaSysvar` trait. Fixed via `modular-sdk` feature flag + a targeted `solana_compat.rs` shim. Details in [`er-sdk-patch/`](solana/oxark/er-sdk-patch/).
-
-### 625-Constraint Circuit — Browser Proving in < 2s
-
-`dungeon_position.circom` is compact enough for the `pot12` trusted setup (powers of tau, 12). Browser proof generation via `snarkjs` wasm runs in under 2 seconds on mid-range hardware. No server-side proving, no trusted prover.
-
----
-
-## On-Chain Evidence
-
-| Artifact | Value |
-|----------|-------|
-| Main Program (devnet) | [`5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`](https://explorer.solana.com/address/5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN?cluster=devnet) |
-| ZK verify tx (devnet) | [`2pkmJp...nXg7`](https://solscan.io/tx/2pkmJpGv1dVGMvgpqqzrbgwtwQ2FTnscKSx4etPWdoVwQA9LmNZSDcFQvJqKDbDgv5rSSN5439JCwnzoiEPQnXg7?cluster=devnet) |
-| MagicBlock Delegation Program | [`DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh`](https://explorer.solana.com/address/DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh?cluster=devnet) |
-
-Full ZK verify tx: `2pkmJpGv1dVGMvgpqqzrbgwtwQ2FTnscKSx4etPWdoVwQA9LmNZSDcFQvJqKDbDgv5rSSN5439JCwnzoiEPQnXg7`
-
----
-
-## Traction
-
-| Metric | Status |
-|--------|--------|
-| Live playable demo | ✅ [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/) |
-| Anchor program (devnet) | ✅ 30+ instructions deployed |
-| ZK hand commitment | ✅ Poseidon hash + Groth16, browser proving < 3s |
-| Matchmaking queues | ✅ Bronze/Silver/Gold, on-chain PDA |
-| 5-round duel system | ✅ Draw/Energy/Summon/Battle, element affinity |
-| AI opponent | ✅ claude-haiku-4-5, joins after 30s, tutorial mode |
-| Legendary system | ✅ 4 species, cap 10/season, supply PDA on-chain |
-| Victory scene + card transfer | ✅ 2 normal + 1 Legendary banner |
-| x402 in-duel payments | ✅ Scout Peek 0.005 SOL / Extra Action 0.01 SOL |
-| Season Prize Pool | ✅ 40% champion distribution instruction |
-| Lore Shards | ✅ 60 cards × 3 tiers (15 fully written) |
-| Card pixel sprites | ✅ 60 animated 16×16 sprites |
-| Portrait pipeline | ✅ Arweave upload + in-game cache ready (art pending) |
-| Hackathon tracks covered | Gaming · AI · Payments (all three) |
+```
+0xark/
+├── solana/
+│   ├── client/                  # Frontend (27 modules)
+│   │   ├── src/
+│   │   │   ├── 05-lobby.js          # M1 Lobby
+│   │   │   ├── 07-deck-editor.js    # Deck management
+│   │   │   ├── 08-duel-scene.js     # M2 Duel Board
+│   │   │   ├── 09-victory-scene.js  # M4 Victory
+│   │   │   ├── 10-card-detail.js    # M5 Card Detail
+│   │   │   ├── 11-card-storage.js   # PC Box
+│   │   │   └── ...
+│   │   ├── build.js
+│   │   └── index.html
+│   └── oxark/                   # Anchor program
+│       └── programs/oxark/src/
+│           ├── instructions/    # ~15 instructions
+│           ├── state.rs         # PDAs
+│           └── lib.rs
+├── circuits/
+│   ├── commit_reveal/           # Legacy (Phase C)
+│   └── hand_commitment/         # New: Day 12 ZK
+├── multiplayer/
+│   └── server.js                # WebSocket + x402 endpoints
+├── tools/
+│   ├── ai-agent/                # Anthropic-powered agent
+│   ├── card-art/                # Arweave upload pipeline
+│   └── balance-test/            # Simulation scripts
+├── docs/
+│   ├── GDD.md                   # Game Design Doc (v2.0)
+│   ├── RULES.md                 # Player-facing guide
+│   ├── CARD_CATALOG.md          # 60-card spec (v0.3+)
+│   ├── LORE_SHARDS.md           # Narrative texts
+│   ├── AI_AGENT_SPEC.md         # Agent architecture
+│   └── UI_SPEC.md               # UI specification
+└── design/
+    ├── mockups/                 # M1-M5 visual references
+    ├── cards/                   # 60 card portraits
+    └── pitch/                   # Pitch video assets
+```
 
 ---
 
-## Demo & Installation
-
-### Play Instantly (no install)
-
-**[https://r0ze998.github.io/0xark/](https://r0ze998.github.io/0xark/)**
-
-Controls: Arrow keys (move) · Z / Enter (interact) · X / Esc (back/cancel) · M (mute)
-
-| Step | Action | What you see |
-|------|--------|-------------|
-| 1 | Open demo | Title screen → Crown Plaza lobby |
-| 2 | Connect **Phantom** | SOL balance + card count in HUD |
-| 3 | Walk to **Bronze Hall** | Proximity prompt → queue dialog |
-| 4 | Join queue | Wait for opponent (AI joins after 30s) |
-| 5 | Duel starts | ZK commit animation → 5-round duel |
-| 6 | Win | Victory screen, cards flying in, TX hash |
-| 7 | Open **PC Box** | Card storage grid → tap card → Card Detail + Lore |
-| 8 | Walk to **Gold Hall** | 0.5 SOL ante → Legendary at stake |
-
-### Local Development
+## Quick start for developers
 
 ```bash
-git clone https://github.com/r0ze998/0xark
+# Clone
+git clone https://github.com/r0ze998/0xark.git
 cd 0xark
 
-# Anchor program
-anchor build
-anchor deploy --provider.cluster devnet
-# Program: 5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN
-
-# Frontend (generates index.html from modular src/ files)
+# Frontend
+cd solana/client
 node build.js
+# Open index.html in Chrome (or use live server)
 
-# Tests
-node tests/card-engine.test.js       # 53 tests
-node tests/battle-mechanics.test.js  # 49 tests
-cargo test -p oxark-tests            # 27 Anchor litesvm tests
+# Anchor program
+cd ../oxark
+anchor build
+anchor deploy  # to devnet
+
+# AI agent
+cd ../../tools/ai-agent
+bun install
+cp .env.example .env   # add ANTHROPIC_API_KEY
+bun run agent:start
+
+# Multiplayer server (x402 + WebSocket)
+cd ../../multiplayer
+bun install
+bun run server.js
 ```
+
+Full setup: [docs/SETUP.md](docs/SETUP.md)
 
 ---
 
-## x402 Microeconomy
+## Gameplay overview
 
-> **"ZK hides. x402 reveals."**
+<details>
+<summary><strong>How a duel works (click to expand)</strong></summary>
 
-The x402 payment layer threads through 15 transaction touchpoints across 4 categories. See [`docs/X402_DESIGN.md`](docs/X402_DESIGN.md) for full tokenomics.
+### 4-phase structure per round
 
-**Implemented (hackathon scope):**
+```
+Draw → Energy → Summon → Battle
+```
 
-| Endpoint | Price | Description |
-|----------|-------|-------------|
-| `POST /scout-peek` | 0.005 SOL | Reveal one opponent card |
-| `POST /agent/hire` | 0.05 SOL/session | Hire AI agent for auto-play |
-| Card P2P trade | variable | NFT card sale via x402 |
+- **Draw**: +1 card from deck (or 2 damage if empty — milling fatigue)
+- **Energy**: +N of each element, where N = current round
+- **Summon**: play cards from hand to lanes, lock in when done
+- **Battle**: auto-resolve by Initiative, apply element affinity
 
-**Designed (tokenomics paper, 12 touchpoints):**
+### 5-element affinity
 
-| Category | Examples |
-|----------|---------|
-| Game mechanics | Hint buy (0.002 SOL), Revive (0.03 SOL), Booster pack (0.01 SOL) |
-| AI agent economy | Strategy API (0.001 SOL/query), Agent-to-agent intel (0.005 SOL) |
-| Spectator layer | Spectator bet, Tournament entry, Leaderboard registration |
-| Composability | External dApp game state query (0.0001 SOL), NFT cosmetic update |
+```
+Fire → Earth → Wind → Shadow → Gold → Fire
+```
 
-VEGA and MIRA autonomously call the intel API each turn, creating x402 transaction volume without human players. **AI demand floors the economy.**
+- Attacker with strong affinity: +2 BP
+- Attacker with weak affinity (reverse): -1 BP
+- Same element or neutral: no modifier
+
+### 3 lanes per side
+
+```
+[Front]  [Middle]  [Back]
+```
+
+Some cards are Front-only (e.g. aggressive attackers). Some Back-only (e.g. ranged, protected units). Middle is versatile.
+
+### Win conditions
+
+- Enemy Heart HP drops to 0 → instant win
+- After Round 5 → higher HP wins
+- Tiebreakers: total BP in play, cumulative damage dealt, duel start timestamp
+
+### Transfer on win/loss
+
+- Bronze & Silver: 2 non-Legendary NFTs transfer from loser to winner
+- Gold Hall: 2 NFTs + potentially a Legendary (if loser holds one)
+- Shop credit fallback if all loser's cards are duplicates
+
+</details>
+
+<details>
+<summary><strong>The 60-card Season 1 collection (click to expand)</strong></summary>
+
+| Rarity | Count | Acquisition |
+|---|---|---|
+| Common | 30 | Shop (0.01 SOL), Booster, Duel wins |
+| Uncommon | 20 | Booster Pack (33% slot), Duel wins |
+| Rare | 6 | Duel wins only (Silver or Gold) |
+| Legendary | 4 | Gold Hall 4-win streak, 10 copies each = 40 total Season 1 |
+
+Full catalog: [docs/CARD_CATALOG.md](docs/CARD_CATALOG.md)
+
+### The 5 Clans
+
+- 🏴‍☠️ **Black Flag** (Wind) — exile navy, fast, mobile
+- 💰 **Sovereign Bourse** (Gold) — merchants, economic synergy
+- ⚔️ **Hollow Blade** (Fire) — royal guard, direct damage
+- 🛡 **Iron Circle** (Earth) — provincial lords, defensive
+- 🌑 **Nameless Silk** (Shadow) — mercenary spies, info warfare
+
+### The 4 Legendaries
+
+Each embodies a philosophy of kingship:
+
+| Legendary | Clan | Philosophy |
+|---|---|---|
+| Sceptre of Valerius | Hollow Blade | Might |
+| Nameless Blade | Nameless Silk | Erasure |
+| Elyon Crown | Iron Circle | Legitimacy |
+| Kingmaker's Ring | Sovereign Bourse | Patronage |
+
+Black Flag intentionally has no Legendary — pirates reject thrones.
+
+</details>
+
+<details>
+<summary><strong>Season mechanics (click to expand)</strong></summary>
+
+Each Season is **14 days**.
+
+- **Champion**: first player to collect all 60 species. Receives 40% of Prize Pool.
+- **Prize Pool**: 15% of every duel ante + 5% of Shop sales flow in.
+- **Season end**: distribution runs automatically via `distribute_prize_pool` instruction.
+- **Card persistence**: Legendaries carry to next Season. Common/Uncommon/Rare become "Vintage" (retained as NFTs, not playable).
+
+</details>
 
 ---
 
-## Roadmap & Vision
+## Colosseum tracks
 
-### Q2 2026 — Mainnet Beta
+0xARK qualifies for multiple tracks with genuine integration (not surface-level):
 
-- [ ] Security audit (OtterSec or Neodyme) + mainnet program deployment
-- [ ] 3-player live seasons with real SOL prize pools
-- [ ] Phantom + Backpack wallet support
-- [ ] x402 intel economy live on mainnet USDC
-- [ ] Referral system: 1% of referred player's prize to referrer
+### 🎮 Gaming (primary)
 
-### Q3–Q4 2026 — Growth
+- Fully on-chain TCG, every card is an NFT
+- 5-round duels with ZK, WebSocket multiplayer
+- 60 unique cards with distinct mechanics
+- MagicBlock Ephemeral Rollups (integration ongoing)
 
-- [ ] Season leaderboard, card gallery with lore (Metaplex metadata)
-- [ ] Trade market: SOL/USDC card listings (Tensor integration)
-- [ ] 5-player seasons, dungeon floors B6–B10
-- [ ] Rival AI difficulty tiers (VEGA Normal / Hard / Insane)
-- [ ] Mobile PWA (touch controls already implemented)
+### 🤖 AI
 
-### 2027 — ConsensusOS
+- Anthropic Claude Haiku 4.5 powers agent decisions
+- Agent holds its own Solana wallet with real NFTs
+- Matchmaking-queue backfill + Tutorial opponent
+- Full spec: [docs/AI_AGENT_SPEC.md](docs/AI_AGENT_SPEC.md)
 
-0xARK is the flagship game of **ConsensusOS** — a portable cross-game player identity and asset layer being built by Yukikaze. ConsensusOS allows cards won in 0xARK to carry provenance across future games, x402 to replace ad-based monetization at scale, and player identities to persist without platform lock-in.
+### 💰 Stablecoins
 
-The vision: x402 makes in-game advertising obsolete. ZK makes centralized position servers obsolete. Solana makes the off-chain game server obsolete. Build the new model.
+- x402 protocol for in-duel micropayments
+- 3 distinct x402 endpoints (Scout Peek / Extra Action / Counter-peek)
+- Real SOL transfers verified on-chain
+- Sub-second confirmation via Solana's 400ms block times
 
 ---
 
-## Architecture
+## Sponsor integrations
 
-```
-solana/client/          Vanilla JS + PixiJS v7 game client
-  src/                  28 modular source files (00-tokens through 11-card-storage)
-  build.js              Concatenates src/ → index.html (32k lines)
-solana/oxark/           Anchor workspace
-  programs/oxark/src/   30+ Anchor instructions (matchmaking, ZK duel, Legendary, Season)
-  zk/                   Circom circuits + trusted setup artifacts
-  er-sdk-patch/         MagicBlock SDK compatibility shim
-multiplayer/            WebSocket relay (pure event bus, no authority)
-x402/                   x402 facilitator + AI agent broker
-tools/ai-agent/         Anthropic claude-haiku-4-5 matchmaking agent (duel-agent.js)
-tools/arweave-upload/   Card portrait Arweave uploader + NFT metadata generator
-docs/                   Design docs, GDD, sprint plan, submission materials
-```
+- **MagicBlock** — Ephemeral Rollups for real-time duel state
+- **x402 protocol** — pay-per-action micropayments
+- **Anthropic** — Claude Haiku 4.5 for AI agents
+- **Metaplex** — NFT Token Metadata standard
+- **Arweave / Bundlr** — card portrait storage
+- **Phantom** — wallet adapter
 
-On-chain vs off-chain:
+---
 
-| Concern | On-chain | Off-chain |
-|---------|----------|-----------|
-| Card ownership | ✅ NFT mint + transfer | — |
-| Prize pool custody | ✅ PDA escrow | — |
-| ZK proof validity | ✅ `alt_bn128_pairing` | — |
-| Battle resolution | ✅ commit-reveal on L1 | — |
-| Dungeon movement | ✅ MagicBlock ER | — |
-| Pixel rendering | — | ✅ PixiJS WebGL |
-| Player presence | — | ✅ WebSocket relay |
+## Demos & documentation
+
+- **Live demo**: [r0ze998.github.io/0xark](https://r0ze998.github.io/0xark)
+- **Pitch video**: (Coming soon — see `docs/pitch-video-script.md`)
+- **Game Design Doc**: [docs/GDD.md](docs/GDD.md)
+- **Player rules**: [docs/RULES.md](docs/RULES.md)
+- **Card catalog**: [docs/CARD_CATALOG.md](docs/CARD_CATALOG.md)
+- **AI agent spec**: [docs/AI_AGENT_SPEC.md](docs/AI_AGENT_SPEC.md)
+- **Lore texts**: [docs/LORE_SHARDS.md](docs/LORE_SHARDS.md)
 
 ---
 
 ## Team
 
-**r0ze** — Solo founder, developer, BD.
+Built solo by **r0ze** ([X](https://x.com/r0ze_____)) with engineering assistance from **Claude** (Anthropic).
 
-- **株式会社雪風 (Yukikaze)**, Japanese Web3 innovation company
-- X / Twitter: [@r0ze_____](https://x.com/r0ze_____)
-- GitHub: [r0ze998](https://github.com/r0ze998)
+r0ze is a solo blockchain builder with 4+ prior on-chain games shipped. 0xARK combines 4 parallel hackathon research tracks into one submission: Solana smart contracts, ZK circuits, AI agents with economic stakes, and HTTP-native micropayments.
 
 ---
 
 ## License
 
-[MIT](./LICENSE) — Open source. Fork it, study the ZK integration, build on top.
+[MIT](LICENSE) for code. Card art and narrative (Lore Shards) are CC-BY 4.0.
 
 ---
 
-*Built for Colosseum Frontier Hackathon 2026.*
+<div align="center">
+
+### Season 1 launches 2026-05-12
+
+Want a Legendary #1 mint? Be among the first to claim.
+
+**[Play now ▶](https://r0ze998.github.io/0xark)**
+
+</div>
