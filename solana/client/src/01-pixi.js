@@ -1,3 +1,7 @@
+// 01-pixi.js — PixiJS canvas + FRLG game-UI framework
+// Canvas setup, HUD, audio, tile drawing, particle system, title effects, lerp helpers.
+// Also owns all tileset Image objects and the legacy sprite-sheet config.
+
 // Unregister any service workers and clear caches to prevent stale version serving
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(regs=>{regs.forEach(r=>r.unregister());});}
 if('caches' in window){caches.keys().then(names=>{names.forEach(n=>caches.delete(n));});}
@@ -434,7 +438,7 @@ function updatePixiHud(){
 
 // ═══════════════════════════════════════
 // KENNEY PIRATE SPRITE SHEET
-// TODO(phase-b2-town): replace with Sprite Seas Kenney Monochrome Pirates (assets/pirates/). Legacy sheet in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas Kenney Monochrome Pirates (assets/pirates/). Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const PIRATE_SHEET = new Image();
 PIRATE_SHEET.src = 'pirates-tilemap.png';
@@ -477,7 +481,7 @@ function drawKenneyTileTinted(col, row, destX, destY, scale, color) {
 // ═══════════════════════════════════════
 // WORLD TILESET (LPC Terrain v7, CC-BY-SA 3.0)
 // world-tileset.png: 1024x2048, 32x32 tiles, 32 cols x 64 rows
-// TODO(phase-b2-town): replace with Sprite Seas tile primitives. Legacy sheet in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas tile primitives. Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const WORLD_SHEET = new Image();
 WORLD_SHEET.src = 'world-tileset.png';
@@ -510,7 +514,7 @@ function drawWorldTile(col, row, destX, destY) {
 // ═══════════════════════════════════════
 // DUNGEON TILESET (Kenney Tiny Dungeon, CC0)
 // dungeon-tileset.png: 11 cols x 2 rows, 16x16 tiles, 1px gap
-// TODO(phase-b2-dungeon): replace with Sprite Seas Mystery Dungeon-style interior tiles. Legacy sheet in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas Mystery Dungeon-style interior tiles. Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const DUNGEON_SHEET = new Image();
 DUNGEON_SHEET.src = 'dungeon-tileset.png';
@@ -558,8 +562,8 @@ function drawDungeonTile(idx, destX, destY, scale) {
 // craftpix-ground.png   : 336x288 — grass/dirt scatter details
 // craftpix-ruins1-5.png : individual ruin prop sprites (blue-gray, dark texture)
 // craftpix-trees.png    : animated trees spritesheet
-// TODO(phase-b2-town): replace exterior/ground/trees with Sprite Seas town primitives. Legacy sheets in assets/retired/.
-// TODO(phase-b2-dungeon): replace walls/ruins with Sprite Seas interior primitives. Legacy sheets in assets/retired/.
+// POST-HACKATHON: replace exterior/ground/trees with Sprite Seas town primitives. Legacy sheets in assets/retired/.
+// POST-HACKATHON: replace walls/ruins with Sprite Seas interior primitives. Legacy sheets in assets/retired/.
 // ═══════════════════════════════════════
 const CPX_EXT   = new Image(); CPX_EXT.src   = 'craftpix-exterior.png';
 const CPX_WALL  = new Image(); CPX_WALL.src  = 'craftpix-walls.png';
@@ -617,7 +621,7 @@ function drawCpxRuin(idx,destX,destY,scale){
 //   charIdx 4 → cols 12-14 (NPC type B)
 // Frame:  0=left-stride, 1=neutral, 2=right-stride
 // Dir row: 0=down, 1=left, 2=right, 3=up
-// TODO(phase-b2-town): replace with Sprite Seas character sprites (VEGA/MIRA/player). Legacy sheet in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas character sprites (VEGA/MIRA/player). Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const ZELDA_CHAR_SHEET = new Image();
 // zelda-character.png retired — Sprite Seas art pending (phase-b2-town)
@@ -638,7 +642,7 @@ function drawZeldaChar(charIdx, dir, frame, destX, destY, scale) {
 // ═══════════════════════════════════════
 // ZELDA-LIKE OVERWORLD TILES (CC0 / public domain)
 // zelda-overworld.png: 640x576, 16x16 tiles, 40 cols x 36 rows, no gap
-// TODO(phase-b2-town): replace with Sprite Seas overworld tile set (Pokémon FRLG language). Legacy sheet in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas overworld tile set (Pokémon FRLG language). Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const ZELDA_OVER_SHEET = new Image();
 // zelda-overworld.png retired — Sprite Seas tile set pending (phase-b2-town)
@@ -671,7 +675,7 @@ function drawZeldaOverTile(col, row, destX, destY, scale) {
 // ═══════════════════════════════════════
 // CRAFTPIX FOREST OBJECT SPRITES
 // Individual top-down pixel art tree/mushroom PNGs (CC licensed from craftpix.net)
-// TODO(phase-b2-town): replace with Sprite Seas forest props. Legacy sprites in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas forest props. Legacy sprites in assets/retired/.
 // ═══════════════════════════════════════
 // CPX_FOREST: individual craftpix top-down tree/mushroom PNGs (different from CPX_TREES spritesheet)
 const CPX_FOREST = [];

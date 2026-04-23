@@ -2125,7 +2125,7 @@ function _launchVictoryScene() {
     shardsEarned:     (typeof shards !== 'undefined' ? shards : 0),
     cardCountBefore,
     // NFT transfer: populated async once devnet transfer lands
-    transferredCards: [],   // TODO(post-hackathon): fill from selectTransferCards()
+    transferredCards: [],   // POST-HACKATHON: fill from selectTransferCards()
     transferTxHash:   null,
     transferFallback: null,
     // T-D15-E: Legendary bonus transfer on Gold Hall loss

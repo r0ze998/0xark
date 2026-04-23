@@ -1,5 +1,6 @@
-// ═══════════════════════════════════════
-// ORGANIC TERRAIN HELPERS
+// 04-state.js — global game state, card timers/decay, rival AI, quest missions
+// Owns: player hand/deck arrays, map position, session stats, save state, rival bg timers
+// Also contains organic terrain helpers (tileHash/thRand) and x402 Intel menu data
 // ═══════════════════════════════════════
 function tileHash(x,y){return((x*2654435761+y*40503)&0xFFFF);}
 function thRand(x,y,idx){return((tileHash(x,y)+idx*7919)&0xFFFF)/65535;}

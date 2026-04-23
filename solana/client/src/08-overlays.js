@@ -1,3 +1,7 @@
+// 08-overlays.js — modal overlays: card acquisition, marketplace, tutorial, discard, log
+// Also owns: cards-collection screen, card detail panel, intro cutscene, victory screen
+// Each overlay function gates on a flag (mo, marketOpen, etc.) before drawing.
+
 // v303: log entry classification cache — classify once per entry, O(1) on repeat frames
 const _lgMeta=[]; // parallel to lg[]; entries: {col, icon}; cleared when lg resets
 function _classifyLog(l){

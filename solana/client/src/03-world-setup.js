@@ -1,3 +1,8 @@
+// 03-world-setup.js — static world data: exits, NPCs, fog-of-war system, terrain helpers
+// exits[]: map-transition definitions (fromMap → targetMap tile coordinates)
+// npcs[]: NPC dialogue and position data for all overworld locations
+// Fog-of-war: fogReveal[], fogSave/fogLoad per-map persistence
+
 const exits=[
   // Town dungeon portal (glow tiles x=27 y=11-13) → Dungeon Floor 1
   {fromMap:0, tiles:[[27,11],[27,12],[27,13]],

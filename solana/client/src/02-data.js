@@ -1,5 +1,6 @@
-// ═══════════════════════════════════════
-// DATA
+// 02-data.js — static game data: 60-card catalog + overworld/dungeon tile maps
+// CD[]: card definitions (id, name, rarity r1-r5, element, BP/HP/initiative, abilities)
+// MAP_PORT/MAP_FOREST/MAP_RUINS: overworld tile arrays; dungeonFloors[]: Phase C dungeon
 // ═══════════════════════════════════════
 // Card types: 'attack'|'defense'|'flee'|'magic'|'recovery'
 // Rarities: 1=Common 2=Uncommon 3=Rare 4=Epic 5=Legendary

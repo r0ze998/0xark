@@ -1,3 +1,8 @@
+// 07-battle-resolve.js — card effect animations + Phase C battle resolution rendering
+// drawResolvingPhase(): element particle bursts (crystal/shadow/flame/storm/void)
+// drawResultPhase(): post-battle summary screen; dAct(): Phase C battle scene draw entry
+// Pre-baked orbital angle tables for particle effects reduce per-frame trig cost.
+
 // v390: pre-baked orbital angle tables for battle particle effects (N=5,6,8,10,12)
 // sin-addition: cos(evT*K + i*2π/N) = cos(evT*K)*CI[i] - sin(evT*K)*SI[i]
 const _ORB_SI5=new Float32Array(5);const _ORB_CI5=new Float32Array(5);

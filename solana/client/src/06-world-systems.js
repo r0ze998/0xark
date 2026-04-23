@@ -1,3 +1,7 @@
+// 06-world-systems.js — camera, minimap, encounters, NPCs, trading, card mini-art
+// Camera scroll logic, location banners, map card-use overlay, NPC dialogue routing
+// Rival AI background timer, encounter spawn, trade shop UI, fountain exchange
+
 // v371: pre-baked tables for sin-addition in minimap encounter shimmer (phase 0-15, step 0.39)
 const _MM_SI39=new Float32Array(16);const _MM_CI39=new Float32Array(16);
 for(let i=0;i<16;i++){_MM_SI39[i]=Math.sin(i*0.39);_MM_CI39[i]=Math.cos(i*0.39);}

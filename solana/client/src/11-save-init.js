@@ -1,6 +1,6 @@
-// ═══════════════════════════════════════
-// SAVE / LOAD SYSTEM
-// ═══════════════════════════════════════
+// 11-save-init.js — save/load system, game initialisation, requestAnimationFrame bootstrap
+// saveGame()/loadGame(): localStorage serialise/deserialise player state
+// initGame(): fresh-start setup; last file in bundle → calls requestAnimationFrame(update)
 const SAVE_KEY='oxark_save';
 const SAVE_VERSION=37; // bump when save format changes — old saves auto-wiped
 // Auto-wipe incompatible old saves on load (also wipe legacy saves with no version key)

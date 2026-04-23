@@ -1,3 +1,7 @@
+// 08-screens.js — non-modal full-screen views: floor fanfare, stats, credits, game over
+// dStats(): player statistics screen; dGameOver(): time-up/loss screen; dCredits()
+// Also: object interact messages, exit tooltip, map card-use overlay
+
 // v262: Hoist screen per-frame inline literals
 const _SCR_RAR_COLS=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
 const _SCR_RAR_NAMES=['','Common','Uncommon','Rare','Epic','Legendary'];

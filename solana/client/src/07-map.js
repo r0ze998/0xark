@@ -1,5 +1,6 @@
-// MAP SCREEN
-// ═══════════════════════════════════════
+// 07-map.js — overworld + dungeon map rendering, atmosphere, fog-of-war, minimap
+// dMap(): main world draw — terrain blending, NPC/rival overlays, pirate decorations
+// dMenu(): pause menu overlay; rival alert animation; dungeon vignette + atmosphere
 const HUD_HEIGHT=72;
 // v386: Euler recurrence for dungeon vignette pulse per floor (5 depths, freq=0.02+d*0.008)
 const _VIG_SS=new Float32Array(6),_VIG_SC=new Float32Array(6); // sin/cos state

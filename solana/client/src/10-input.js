@@ -1,5 +1,6 @@
-// INPUT
-// ═══════════════════════════════════════
+// 10-input.js — keyboard event handlers + touch d-pad/A/B controls
+// Handles scene-specific key routing (title/map/lobby/duel/overlays/menus)
+// Touch: virtual d-pad + A/B buttons drawn on HUD canvas; tap events dispatch here
 
 // v295: Battle quip arrays hoisted to module scope (were re-allocated per battle end)
 const _VEGA_WIN=['Mine now.','As expected.','Collect the spoils.','The ARK rewards the strong.','Don\'t beg. It\'s beneath you.'];

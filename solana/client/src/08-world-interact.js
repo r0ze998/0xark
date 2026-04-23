@@ -1,3 +1,7 @@
+// 08-world-interact.js — interactive world objects: gacha, fishing, traps, puzzle pillars
+// Buildings interior (shop/inn/smithy), object interactions, fountain exchange
+// Also owns: gacha prayer UI, fishing minigame state machine, forest trap triggers
+
 // v329: prayer pity lazy cache (key=gachaPityCount)
 let _prayerLblCache='',_prayerLblKey=-1;
 // v334: gacha result label lazy cache (key=gachaResultCard)

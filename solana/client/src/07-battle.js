@@ -1,6 +1,6 @@
-// ═══════════════════════════════════════
-// BATTLE / ACTION SCREEN (FRLG STYLE)
-// ═══════════════════════════════════════
+// 07-battle.js — Phase C battle screen: FRLG-style card bar, HP boxes, VS splash
+// dBattle(): main battle draw; rival AI (generateResolveEvents); card engine:
+//   addCardToPlayer / removeCardFromPlayer / checkWinAndTransition
 
 // v262: Hoist battle per-frame inline literals to module scope
 // v360: pre-bake battle-BG frame-independent sin values

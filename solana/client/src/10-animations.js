@@ -9,7 +9,7 @@
 // Called when a duel lane resolves with a card destruction.
 // cardId: 1-60, laneIndex: 0-2, winnerSide: 'player'|'opponent'
 function playFinisherAnimation(cardId, laneIndex, winnerSide) {
-  // TODO(Day12): ZK seal burst + element particle cascade
+  // POST-HACKATHON: ZK seal burst + element particle cascade
   // For now: simple flash + shake
   flash();
   screenShake(2, 4);
@@ -19,7 +19,7 @@ function playFinisherAnimation(cardId, laneIndex, winnerSide) {
 // Called on duel win before NFT transfer scene.
 // transferredCards: array of card_ids won from opponent
 function playVictoryAnimation(transferredCards) {
-  // TODO(Day13): Gold particle cascade + "VICTORY" banner + card reveal flip
+  // POST-HACKATHON: Gold particle cascade + "VICTORY" banner + card reveal flip
   // For now: transition to victory scene
   fadeOut(() => {
     sc = 'victory';
@@ -32,7 +32,7 @@ function playVictoryAnimation(transferredCards) {
 // Called on duel loss (opponent wins cards from player).
 // lostCards: array of card_ids lost to opponent
 function playDefeatAnimation(lostCards) {
-  // TODO(Day13): Red vignette + "DEFEAT" + lore quote + XP consolation
+  // POST-HACKATHON: Red vignette + "DEFEAT" + lore quote + XP consolation
   screenShake(4, 8);
   fadeOut(() => {
     sc = 'lobby';

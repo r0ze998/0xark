@@ -75,7 +75,7 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
 <div class="touch-btn" id="btn-start">START</div>
 </div>
 <script>
-window.BUILD_VERSION = "v3+";
+window.BUILD_VERSION = "dev+";
 // ───────────────────────────────────────────────────────────────────────
 // MODULE: src/00-tokens.js
 // Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)
@@ -411,9 +411,55 @@ window.TOKENS.resolveColor = function(key) {
 };
 
 // ───────────────────────────────────────────────────────────────────────
+// MODULE: src/00-constants.js
+// Shared named constants — SCENE_IDS, GAME_CONSTANTS (economy values). Loaded first so all modules can reference without import.
+// ───────────────────────────────────────────────────────────────────────
+// 00-constants.js — shared named constants for 0xARK game client
+// Loaded first in bundle so every module can reference SCENE_IDS / GAME_CONSTANTS.
+// DO NOT add game-state variables here — this file is for compile-time constants only.
+
+// ── Scene routing IDs ────────────────────────────────────────────────────────
+// Global `sc` variable is compared against these string values in the main
+// render switch (09-game-loop.js). Centralised here so typos in string
+// literals are caught by grep/search rather than silent mis-routing.
+const SCENE_IDS = Object.freeze({
+  SPLASH: "splash", // loading/boot screen
+  TITLE: "title", // title screen (dTitle)
+  MAP: "map", // overworld + dungeon exploration (Phase C)
+  ACT: "act", // Phase C card battle resolver (dAct)
+  CRD: "crd", // card collection screen
+  LOG: "log", // battle log screen
+  STATS: "stats", // player stats screen
+  VICTORY: "victory", // win/game-over screen (Phase C)
+  LOBBY: "lobby", // Phase D Crown Plaza hub (dLobby)
+  DUEL: "duel", // M2 Duel Board (drawDuelScene)
+  DUEL_VICTORY: "duel_victory", // M4 Victory/Defeat scene (drawVictoryScene)
+  CARD_DETAIL: "card_detail", // M5 Card Detail scene (drawCardDetailScene)
+  CARD_STORAGE: "card_storage", // PC Box Card Storage (drawCardStorageScene)
+  BATTLE: "battle", // legacy Phase C guard value (08-overlays.js)
+});
+
+// ── Game economy constants ───────────────────────────────────────────────────
+// Per-feature costs in SOL (x402 micropayments). Matching amounts are in the
+// X-Payment-Required header served by the x402 broker; these constants are the
+// client-side reference values used in UI copy and validation.
+const GAME_CONSTANTS = Object.freeze({
+  SCOUT_PEEK_COST_SOL: 0.005, // x402 cost to reveal one opponent card
+  COUNTER_PEEK_COST_SOL: 0.01, // x402 cost for counter-peek response
+  LEASE_ROUNDS: 3, // default Steal-Lease duration (duels before auto-return)
+  IMPRINT_BP_CAP: 1, // max BP bonus a Veteran Imprint can grant
+  SEASON_LEGENDARY_CAP: 40, // total Legendaries mintable in Season 1 (10 per species × 4)
+  COMMON_SPECIES_COUNT: 30, // distinct Common species (unlimited mint)
+});
+
+// ───────────────────────────────────────────────────────────────────────
 // MODULE: src/01-pixi.js
 // PixiJS canvas setup · FRLG UI framework (PixiJS) · title effects · particles · menu · textbox · HUD · tile drawing · lerp/easeInOut · audio system
 // ───────────────────────────────────────────────────────────────────────
+// 01-pixi.js — PixiJS canvas + FRLG game-UI framework
+// Canvas setup, HUD, audio, tile drawing, particle system, title effects, lerp helpers.
+// Also owns all tileset Image objects and the legacy sprite-sheet config.
+
 // Unregister any service workers and clear caches to prevent stale version serving
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(regs=>{regs.forEach(r=>r.unregister());});}
 if('caches' in window){caches.keys().then(names=>{names.forEach(n=>caches.delete(n));});}
@@ -850,7 +896,7 @@ function updatePixiHud(){
 
 // ═══════════════════════════════════════
 // KENNEY PIRATE SPRITE SHEET
-// TODO(phase-b2-town): replace with Sprite Seas Kenney Monochrome Pirates (assets/pirates/). Legacy sheet in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas Kenney Monochrome Pirates (assets/pirates/). Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const PIRATE_SHEET = new Image();
 PIRATE_SHEET.src = 'pirates-tilemap.png';
@@ -893,7 +939,7 @@ function drawKenneyTileTinted(col, row, destX, destY, scale, color) {
 // ═══════════════════════════════════════
 // WORLD TILESET (LPC Terrain v7, CC-BY-SA 3.0)
 // world-tileset.png: 1024x2048, 32x32 tiles, 32 cols x 64 rows
-// TODO(phase-b2-town): replace with Sprite Seas tile primitives. Legacy sheet in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas tile primitives. Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const WORLD_SHEET = new Image();
 WORLD_SHEET.src = 'world-tileset.png';
@@ -926,7 +972,7 @@ function drawWorldTile(col, row, destX, destY) {
 // ═══════════════════════════════════════
 // DUNGEON TILESET (Kenney Tiny Dungeon, CC0)
 // dungeon-tileset.png: 11 cols x 2 rows, 16x16 tiles, 1px gap
-// TODO(phase-b2-dungeon): replace with Sprite Seas Mystery Dungeon-style interior tiles. Legacy sheet in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas Mystery Dungeon-style interior tiles. Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const DUNGEON_SHEET = new Image();
 DUNGEON_SHEET.src = 'dungeon-tileset.png';
@@ -974,8 +1020,8 @@ function drawDungeonTile(idx, destX, destY, scale) {
 // craftpix-ground.png   : 336x288 — grass/dirt scatter details
 // craftpix-ruins1-5.png : individual ruin prop sprites (blue-gray, dark texture)
 // craftpix-trees.png    : animated trees spritesheet
-// TODO(phase-b2-town): replace exterior/ground/trees with Sprite Seas town primitives. Legacy sheets in assets/retired/.
-// TODO(phase-b2-dungeon): replace walls/ruins with Sprite Seas interior primitives. Legacy sheets in assets/retired/.
+// POST-HACKATHON: replace exterior/ground/trees with Sprite Seas town primitives. Legacy sheets in assets/retired/.
+// POST-HACKATHON: replace walls/ruins with Sprite Seas interior primitives. Legacy sheets in assets/retired/.
 // ═══════════════════════════════════════
 const CPX_EXT   = new Image(); CPX_EXT.src   = 'craftpix-exterior.png';
 const CPX_WALL  = new Image(); CPX_WALL.src  = 'craftpix-walls.png';
@@ -1033,7 +1079,7 @@ function drawCpxRuin(idx,destX,destY,scale){
 //   charIdx 4 → cols 12-14 (NPC type B)
 // Frame:  0=left-stride, 1=neutral, 2=right-stride
 // Dir row: 0=down, 1=left, 2=right, 3=up
-// TODO(phase-b2-town): replace with Sprite Seas character sprites (VEGA/MIRA/player). Legacy sheet in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas character sprites (VEGA/MIRA/player). Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const ZELDA_CHAR_SHEET = new Image();
 // zelda-character.png retired — Sprite Seas art pending (phase-b2-town)
@@ -1054,7 +1100,7 @@ function drawZeldaChar(charIdx, dir, frame, destX, destY, scale) {
 // ═══════════════════════════════════════
 // ZELDA-LIKE OVERWORLD TILES (CC0 / public domain)
 // zelda-overworld.png: 640x576, 16x16 tiles, 40 cols x 36 rows, no gap
-// TODO(phase-b2-town): replace with Sprite Seas overworld tile set (Pokémon FRLG language). Legacy sheet in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas overworld tile set (Pokémon FRLG language). Legacy sheet in assets/retired/.
 // ═══════════════════════════════════════
 const ZELDA_OVER_SHEET = new Image();
 // zelda-overworld.png retired — Sprite Seas tile set pending (phase-b2-town)
@@ -1087,7 +1133,7 @@ function drawZeldaOverTile(col, row, destX, destY, scale) {
 // ═══════════════════════════════════════
 // CRAFTPIX FOREST OBJECT SPRITES
 // Individual top-down pixel art tree/mushroom PNGs (CC licensed from craftpix.net)
-// TODO(phase-b2-town): replace with Sprite Seas forest props. Legacy sprites in assets/retired/.
+// POST-HACKATHON: replace with Sprite Seas forest props. Legacy sprites in assets/retired/.
 // ═══════════════════════════════════════
 // CPX_FOREST: individual craftpix top-down tree/mushroom PNGs (different from CPX_TREES spritesheet)
 const CPX_FOREST = [];
@@ -2847,8 +2893,9 @@ window.oxarkMB = {
 // MODULE: src/01-net.js
 // WebSocket multiplayer client · typewriter text · fade/wipe transitions · screen shake · hand inspect · rival news display · run summary
 // ───────────────────────────────────────────────────────────────────────
-// ═══════════════════════════════════════
-// MULTIPLAYER SYSTEM (WebSocket client)
+// 01-net.js — WebSocket multiplayer client + typewriter text + transitions + HUD helpers
+// Lobby presence, rival news ticker, run summary overlay, fade/wipe/screen-shake effects
+// Also: hand inspect UI, WebSocket reconnect logic (ws.onclose retry)
 // ═══════════════════════════════════════
 // v381: pre-baked tables for MP lobby trig — star twinkle (60 entries, step 1.7) + card glow (8 entries, step 1.4)
 const _MPSTAR_SI17=new Float32Array(60);const _MPSTAR_CI17=new Float32Array(60);
@@ -3783,8 +3830,9 @@ function drawParticles(cx,cy){
 // MODULE: src/02-data.js
 // Card definitions (CD[]) · map tile arrays (MAP_PORT, MAP_FOREST, MAP_RUINS, dungeonFloors)
 // ───────────────────────────────────────────────────────────────────────
-// ═══════════════════════════════════════
-// DATA
+// 02-data.js — static game data: 60-card catalog + overworld/dungeon tile maps
+// CD[]: card definitions (id, name, rarity r1-r5, element, BP/HP/initiative, abilities)
+// MAP_PORT/MAP_FOREST/MAP_RUINS: overworld tile arrays; dungeonFloors[]: Phase C dungeon
 // ═══════════════════════════════════════
 // Card types: 'attack'|'defense'|'flee'|'magic'|'recovery'
 // Rarities: 1=Common 2=Uncommon 3=Rare 4=Epic 5=Legendary
@@ -7142,6 +7190,11 @@ window.zkCardCommit = (function() {
 // MODULE: src/03-world-setup.js
 // exits[] · npcs[] · fog-of-war system · terrain rendering helpers
 // ───────────────────────────────────────────────────────────────────────
+// 03-world-setup.js — static world data: exits, NPCs, fog-of-war system, terrain helpers
+// exits[]: map-transition definitions (fromMap → targetMap tile coordinates)
+// npcs[]: NPC dialogue and position data for all overworld locations
+// Fog-of-war: fogReveal[], fogSave/fogLoad per-map persistence
+
 const exits=[
   // Town dungeon portal (glow tiles x=27 y=11-13) → Dungeon Floor 1
   {fromMap:0, tiles:[[27,11],[27,12],[27,13]],
@@ -8132,8 +8185,9 @@ function tr(tx_,ty){return tileRand[(ty*MW+tx_)%(MW*MH)];}
 // MODULE: src/04-state.js
 // Global game-state variables · card timers/decay · rival AI background · quest missions
 // ───────────────────────────────────────────────────────────────────────
-// ═══════════════════════════════════════
-// ORGANIC TERRAIN HELPERS
+// 04-state.js — global game state, card timers/decay, rival AI, quest missions
+// Owns: player hand/deck arrays, map position, session stats, save state, rival bg timers
+// Also contains organic terrain helpers (tileHash/thRand) and x402 Intel menu data
 // ═══════════════════════════════════════
 function tileHash(x,y){return((x*2654435761+y*40503)&0xFFFF);}
 function thRand(x,y,idx){return((tileHash(x,y)+idx*7919)&0xFFFF)/65535;}
@@ -9210,8 +9264,9 @@ function getUnlockedShards(card_mint){
 // MODULE: src/05-rendering.js
 // Tile rendering (TILE section) · card character sprites (drawCardCharacter) · sprite animation
 // ───────────────────────────────────────────────────────────────────────
-// ═══════════════════════════════════════
-// TILE RENDERING
+// 05-rendering.js — tile rendering + card character sprites + sprite animation
+// drawTile(): 32×32 tile render with animated water/grass, 512-entry trig lookup table
+// drawCardCharacter(): clan portrait sprites for duel/card UI; drawSprite(): sheet helper
 // ═══════════════════════════════════════
 // v375: 512-entry integer sin/cos lookup — eliminates Math.sin(fr*x + integer_phase) per-tile calls
 // Phases like tx_*2+ty*3 (max 195), tx_*5+ty*7 (max 468), x+y (max 78) are all within 0-511
@@ -13265,6 +13320,10 @@ async function lobbyFindMatch(tierIdx, isGoldHall=false) {
 // MODULE: src/06-world-systems.js
 // Camera · card mini-art · map transitions · location banner · minimap · encounters · NPCs · trading
 // ───────────────────────────────────────────────────────────────────────
+// 06-world-systems.js — camera, minimap, encounters, NPCs, trading, card mini-art
+// Camera scroll logic, location banners, map card-use overlay, NPC dialogue routing
+// Rival AI background timer, encounter spawn, trade shop UI, fountain exchange
+
 // v371: pre-baked tables for sin-addition in minimap encounter shimmer (phase 0-15, step 0.39)
 const _MM_SI39=new Float32Array(16);const _MM_CI39=new Float32Array(16);
 for(let i=0;i<16;i++){_MM_SI39[i]=Math.sin(i*0.39);_MM_CI39[i]=Math.cos(i*0.39);}
@@ -15600,8 +15659,9 @@ function dTitle(){
 // MODULE: src/07-map.js
 // Terrain edge blending · atmosphere · fog of war · rival alert anim · pirate decorations · dMap (main world render) · dMenu
 // ───────────────────────────────────────────────────────────────────────
-// MAP SCREEN
-// ═══════════════════════════════════════
+// 07-map.js — overworld + dungeon map rendering, atmosphere, fog-of-war, minimap
+// dMap(): main world draw — terrain blending, NPC/rival overlays, pirate decorations
+// dMenu(): pause menu overlay; rival alert animation; dungeon vignette + atmosphere
 const HUD_HEIGHT=72;
 // v386: Euler recurrence for dungeon vignette pulse per floor (5 depths, freq=0.02+d*0.008)
 const _VIG_SS=new Float32Array(6),_VIG_SC=new Float32Array(6); // sin/cos state
@@ -17937,9 +17997,9 @@ function drawDungeonDoorGlow(){
 // MODULE: src/07-battle.js
 // Battle screen FRLG rendering · card bar · opponent/player info boxes · VS splash · phase banner · action grid · select/confirming phases · card engine (addCardToPlayer/removeCardFromPlayer/checkWinAndTransition) · rival AI · generateResolveEvents
 // ───────────────────────────────────────────────────────────────────────
-// ═══════════════════════════════════════
-// BATTLE / ACTION SCREEN (FRLG STYLE)
-// ═══════════════════════════════════════
+// 07-battle.js — Phase C battle screen: FRLG-style card bar, HP boxes, VS splash
+// dBattle(): main battle draw; rival AI (generateResolveEvents); card engine:
+//   addCardToPlayer / removeCardFromPlayer / checkWinAndTransition
 
 // v262: Hoist battle per-frame inline literals to module scope
 // v360: pre-bake battle-BG frame-independent sin values
@@ -19571,6 +19631,11 @@ function generateResolveEvents(){
 // MODULE: src/07-battle-resolve.js
 // Card effect animations (crystal/shadow/flame/storm/void) · drawResolvingPhase · drawResultPhase · dAct
 // ───────────────────────────────────────────────────────────────────────
+// 07-battle-resolve.js — card effect animations + Phase C battle resolution rendering
+// drawResolvingPhase(): element particle bursts (crystal/shadow/flame/storm/void)
+// drawResultPhase(): post-battle summary screen; dAct(): Phase C battle scene draw entry
+// Pre-baked orbital angle tables for particle effects reduce per-frame trig cost.
+
 // v390: pre-baked orbital angle tables for battle particle effects (N=5,6,8,10,12)
 // sin-addition: cos(evT*K + i*2π/N) = cos(evT*K)*CI[i] - sin(evT*K)*SI[i]
 const _ORB_SI5=new Float32Array(5);const _ORB_CI5=new Float32Array(5);
@@ -23860,7 +23925,7 @@ function _launchVictoryScene() {
     shardsEarned:     (typeof shards !== 'undefined' ? shards : 0),
     cardCountBefore,
     // NFT transfer: populated async once devnet transfer lands
-    transferredCards: [],   // TODO(post-hackathon): fill from selectTransferCards()
+    transferredCards: [],   // POST-HACKATHON: fill from selectTransferCards()
     transferTxHash:   null,
     transferFallback: null,
     // T-D15-E: Legendary bonus transfer on Gold Hall loss
@@ -24977,6 +25042,10 @@ function _seedRng(seed) {
 // MODULE: src/08-overlays.js
 // Card acquisition animation · dungeon confirm · marketplace · discard overlay · tutorial · intro · victory screen · cards collection screen · card detail panel · log screen
 // ───────────────────────────────────────────────────────────────────────
+// 08-overlays.js — modal overlays: card acquisition, marketplace, tutorial, discard, log
+// Also owns: cards-collection screen, card detail panel, intro cutscene, victory screen
+// Each overlay function gates on a flag (mo, marketOpen, etc.) before drawing.
+
 // v303: log entry classification cache — classify once per entry, O(1) on repeat frames
 const _lgMeta=[]; // parallel to lg[]; entries: {col, icon}; cleared when lg resets
 function _classifyLog(l){
@@ -26852,6 +26921,10 @@ function drawProgressionHub(cx,cy,cw,ch){
 // MODULE: src/08-world-interact.js
 // Fishing minigame · forest trap · puzzle pillars · buildings interior · object interactions · fountain exchange
 // ───────────────────────────────────────────────────────────────────────
+// 08-world-interact.js — interactive world objects: gacha, fishing, traps, puzzle pillars
+// Buildings interior (shop/inn/smithy), object interactions, fountain exchange
+// Also owns: gacha prayer UI, fishing minigame state machine, forest trap triggers
+
 // v329: prayer pity lazy cache (key=gachaPityCount)
 let _prayerLblCache='',_prayerLblKey=-1;
 // v334: gacha result label lazy cache (key=gachaResultCard)
@@ -27834,6 +27907,10 @@ function doFountainExchange(){
 // MODULE: src/08-screens.js
 // Floor-clear fanfare · object interact messages · exit tooltip · map card use overlay · stats screen · credits · game over screen
 // ───────────────────────────────────────────────────────────────────────
+// 08-screens.js — non-modal full-screen views: floor fanfare, stats, credits, game over
+// dStats(): player statistics screen; dGameOver(): time-up/loss screen; dCredits()
+// Also: object interact messages, exit tooltip, map card-use overlay
+
 // v262: Hoist screen per-frame inline literals
 const _SCR_RAR_COLS=['','#50d060','#5090f0','#b060e0','#e0a020','#fff8e0'];
 const _SCR_RAR_NAMES=['','Common','Uncommon','Rare','Epic','Legendary'];
@@ -28658,8 +28735,9 @@ function dGameOver(){
 // MODULE: src/09-game-loop.js
 // Main update() + draw() game loop · screen routing (title/map/battle/crd/log/stats/lobby)
 // ───────────────────────────────────────────────────────────────────────
-// GAME LOOP
-// ═══════════════════════════════════════
+// 09-game-loop.js — main update() + draw() loop · scene router · background systems
+// Scene switch on global `sc` variable; routes to dTitle/dMap/dLobby/drawDuelScene etc.
+// Background: stats ticks, rival AI, x402 polling, audio fade, scanline overlay
 
 // v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
 const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();
@@ -29103,7 +29181,7 @@ function loop(now){
 // Called when a duel lane resolves with a card destruction.
 // cardId: 1-60, laneIndex: 0-2, winnerSide: 'player'|'opponent'
 function playFinisherAnimation(cardId, laneIndex, winnerSide) {
-  // TODO(Day12): ZK seal burst + element particle cascade
+  // POST-HACKATHON: ZK seal burst + element particle cascade
   // For now: simple flash + shake
   flash();
   screenShake(2, 4);
@@ -29113,7 +29191,7 @@ function playFinisherAnimation(cardId, laneIndex, winnerSide) {
 // Called on duel win before NFT transfer scene.
 // transferredCards: array of card_ids won from opponent
 function playVictoryAnimation(transferredCards) {
-  // TODO(Day13): Gold particle cascade + "VICTORY" banner + card reveal flip
+  // POST-HACKATHON: Gold particle cascade + "VICTORY" banner + card reveal flip
   // For now: transition to victory scene
   fadeOut(() => {
     sc = 'victory';
@@ -29126,7 +29204,7 @@ function playVictoryAnimation(transferredCards) {
 // Called on duel loss (opponent wins cards from player).
 // lostCards: array of card_ids lost to opponent
 function playDefeatAnimation(lostCards) {
-  // TODO(Day13): Red vignette + "DEFEAT" + lore quote + XP consolation
+  // POST-HACKATHON: Red vignette + "DEFEAT" + lore quote + XP consolation
   screenShake(4, 8);
   fadeOut(() => {
     sc = 'lobby';
@@ -30138,8 +30216,9 @@ function exitCardStorageScene(){
 // MODULE: src/10-input.js
 // Keyboard event handlers · touch controls (d-pad, A/B buttons)
 // ───────────────────────────────────────────────────────────────────────
-// INPUT
-// ═══════════════════════════════════════
+// 10-input.js — keyboard event handlers + touch d-pad/A/B controls
+// Handles scene-specific key routing (title/map/lobby/duel/overlays/menus)
+// Touch: virtual d-pad + A/B buttons drawn on HUD canvas; tap events dispatch here
 
 // v295: Battle quip arrays hoisted to module scope (were re-allocated per battle end)
 const _VEGA_WIN=['Mine now.','As expected.','Collect the spoils.','The ARK rewards the strong.','Don\'t beg. It\'s beneath you.'];
@@ -31584,9 +31663,9 @@ document.addEventListener('wheel', e => {
 // MODULE: src/11-save-init.js
 // Save/load system · game initialization · requestAnimationFrame bootstrap
 // ───────────────────────────────────────────────────────────────────────
-// ═══════════════════════════════════════
-// SAVE / LOAD SYSTEM
-// ═══════════════════════════════════════
+// 11-save-init.js — save/load system, game initialisation, requestAnimationFrame bootstrap
+// saveGame()/loadGame(): localStorage serialise/deserialise player state
+// initGame(): fresh-start setup; last file in bundle → calls requestAnimationFrame(update)
 const SAVE_KEY='oxark_save';
 const SAVE_VERSION=37; // bump when save format changes — old saves auto-wiped
 // Auto-wipe incompatible old saves on load (also wipe legacy saves with no version key)

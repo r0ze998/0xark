@@ -1,5 +1,6 @@
-// ═══════════════════════════════════════
-// MULTIPLAYER SYSTEM (WebSocket client)
+// 01-net.js — WebSocket multiplayer client + typewriter text + transitions + HUD helpers
+// Lobby presence, rival news ticker, run summary overlay, fade/wipe/screen-shake effects
+// Also: hand inspect UI, WebSocket reconnect logic (ws.onclose retry)
 // ═══════════════════════════════════════
 // v381: pre-baked tables for MP lobby trig — star twinkle (60 entries, step 1.7) + card glow (8 entries, step 1.4)
 const _MPSTAR_SI17=new Float32Array(60);const _MPSTAR_CI17=new Float32Array(60);

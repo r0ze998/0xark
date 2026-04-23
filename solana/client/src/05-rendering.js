@@ -1,5 +1,6 @@
-// ═══════════════════════════════════════
-// TILE RENDERING
+// 05-rendering.js — tile rendering + card character sprites + sprite animation
+// drawTile(): 32×32 tile render with animated water/grass, 512-entry trig lookup table
+// drawCardCharacter(): clan portrait sprites for duel/card UI; drawSprite(): sheet helper
 // ═══════════════════════════════════════
 // v375: 512-entry integer sin/cos lookup — eliminates Math.sin(fr*x + integer_phase) per-tile calls
 // Phases like tx_*2+ty*3 (max 195), tx_*5+ty*7 (max 468), x+y (max 78) are all within 0-511

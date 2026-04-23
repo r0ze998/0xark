@@ -1,5 +1,6 @@
-// GAME LOOP
-// ═══════════════════════════════════════
+// 09-game-loop.js — main update() + draw() loop · scene router · background systems
+// Scene switch on global `sc` variable; routes to dTitle/dMap/dLobby/drawDuelScene etc.
+// Background: stats ticks, rival AI, x402 polling, audio fade, scanline overlay
 
 // v306: Pre-baked screen shake noise table — eliminates 2 Math.random() calls per frame during shake
 const _SHAKE_N=(()=>{const t=new Float32Array(32);for(let i=0;i<32;i++)t[i]=(Math.random()-0.5)*2;return t;})();

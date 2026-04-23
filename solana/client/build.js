@@ -122,6 +122,7 @@ function generateTokensModule() {
 // Each entry describes what the file contains for quick navigation.
 const MODULES = [
   { file: '00-tokens.js',        desc: 'Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)' },
+  { file: '00-constants.js',     desc: 'Shared named constants — SCENE_IDS, GAME_CONSTANTS (economy values). Loaded first so all modules can reference without import.' },
   { file: '01-pixi.js',          desc: 'PixiJS canvas setup · FRLG UI framework (PixiJS) · title effects · particles · menu · textbox · HUD · tile drawing · lerp/easeInOut · audio system' },
   { file: '01-draw.js',          desc: 'FRLG window system (canvas 2D) · bx/tx/win primitives · drawCardFrame · crypto utils · ZK proof system · Solana/wallet/blockchain helpers' },
   { file: '01-magicblock.js',    desc: 'MagicBlock Ephemeral Rollups · Magic Router connection · sendViaMagicRouter · checkDelegationStatus · delegation stubs (window.oxarkMB)' },
