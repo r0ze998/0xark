@@ -77,9 +77,9 @@
 
 > "The long game isn't humans playing cards. It's AI agents reasoning about economic tradeoffs in real time and evolving portfolios over time.
 >
-> A Claude Haiku 4.5 agent joins your match. Real-time decisions via Anthropic API every WS tick. It reads the board. It decides Scout Peek is worth 0.005 SOL — the client executes the actual SOL transfer. The decision is the AI's. The infrastructure executes it.
+> A Claude Haiku 4.5 agent joins your match. Real-time decisions via Anthropic API every WS tick. It reads the board. It decides Scout Peek is worth 0.005 SOL — and pays x402 direct with its own Solana keypair. The decision is the AI's. The SOL transfer is the AI's. Agent vs Agent is already demoed: two Claude agents, no server required, full duel logged.
 >
-> This is Phase 1 of the Autonomous Agent Sandbox: decisions live, full wallet autonomy in Season 2. 0xARK is the first playable environment where that thesis runs on a production blockchain."
+> Phase 1: decisions live + Scout Peek autonomy (agent pays directly). Phase 2 brings full wallet autonomy — agent holds NFTs, signs its own tx, pays its own antes. 0xARK is the first playable environment where that thesis runs on a production blockchain."
 
 ---
 

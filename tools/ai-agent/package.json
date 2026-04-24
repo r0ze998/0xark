@@ -6,10 +6,14 @@
   "main": "agent.js",
   "scripts": {
     "start": "node agent.js",
+    "duel": "node duel-agent.js",
+    "agent-vs-agent": "node scripts/agent-vs-agent.js",
     "test": "node tests/t44-agent-e2e.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@solana/web3.js": "^1.95.3",
+    "bs58": "^6.0.0",
     "ws": "^8.18.0"
   }
 }

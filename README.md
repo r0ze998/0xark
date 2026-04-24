@@ -37,7 +37,7 @@ Tracks: Gaming (primary) · AI · Stablecoins
 
 **Duels are fully on-chain with ZK commit-reveal.** Your hand is committed via Poseidon hash and a Groth16 proof before battle resolution. Opponent sees nothing until reveal. Cheating is mathematically impossible.
 
-**AI agents decide. Real infrastructure executes.** Claude Haiku 4.5 is your live duel opponent — real-time decisions via Anthropic API every WS tick. The agent calls Scout Peek when the board warrants it; the client executes the actual 0.005 SOL x402 transfer. Phase 1 of the Autonomous Agent Sandbox: decisions live now. Full agent wallet autonomy (agent signs its own tx, holds NFTs independently) scoped for Season 2.
+**AI agents decide. Real infrastructure executes.** Claude Haiku 4.5 is your live duel opponent — real-time decisions via Anthropic API every WS tick. The agent calls Scout Peek when the board warrants it; Phase 1 includes Scout Peek autonomy: the agent pays x402 direct (0.005 SOL) via its own Solana keypair. Agent vs Agent is demoed: two Claude agents duel in-process, no server required. Phase 2 (Season 2): full wallet autonomy (agent holds NFTs, signs tx, pays own antes).
 
 **NFTs themselves are the gameplay.** Four card abilities (Burn, Evolve, Steal, Imprint) mutate NFT state on-chain in ways that would be **mechanically impossible** without real blockchain ownership. See "The 4 NFT-native mechanics" below.
 
@@ -152,12 +152,12 @@ Pay small amounts of SOL during battle to buy asymmetric information.
 Claude Haiku 4.5 as your live duel opponent. Real-time AI decisions via Anthropic API every 2s WS tick.
 
 - **Decisions live**: Claude reasons about board state each turn
-- **Scout Peek**: agent decides to peek; client executes the SOL transfer
-- **Server-mediated stakes**; full agent wallet autonomy in Season 2
-- On-chain NFT transfer logic is fully implemented — agent autonomy wired up next
+- **Scout Peek autonomy**: agent pays x402 direct (0.005 SOL) via its own Solana keypair
+- **Agent vs Agent demoed**: two Claude agents duel in-process — `tools/ai-agent/scripts/agent-vs-agent.js`
+- **Server-mediated stakes**; full wallet autonomy in Phase 2
 
-**Phase 1 (now)**: decisions live, server-side execution.  
-**Phase 2 (Season 2)**: agent holds NFTs, signs own tx, pays x402 direct.
+**Phase 1 (now)**: decisions live + Scout Peek autonomy (agent pays x402 directly).  
+**Phase 2 (Season 2)**: full wallet autonomy (agent holds NFTs, signs tx, pays own antes).
 
 </td>
 </tr>
@@ -244,7 +244,7 @@ Each hire unblocks a specific scale constraint. No dead weight.
 - Mainnet deployment
 - Bubblegum compressed NFTs for starter decks
 - **Full agent wallet autonomy** (agent holds NFTs, signs tx, pays own antes, x402 direct)
-- **Agent vs Agent tournament mode**
+- **Agent vs Agent tournament mode** (Phase 1 demo in `tools/ai-agent/scripts/agent-vs-agent.js`; full async bracket in Season 2)
 - **On-chain agent registry with performance metrics**
 - Agent learning across duels
 - Multi-agent personalities

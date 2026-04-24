@@ -23,6 +23,7 @@ import WebSocket from 'ws';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { tryAgentScoutPeek, x402Config } from './src/x402-client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -277,6 +278,20 @@ class DuelAgent {
     if (phase === 'summon') {
       const decision = await llmSummonDecision(this.duelState, this.duelStats);
       log('debug', `Summon actions (${decision.source}): ${JSON.stringify(decision.actions)}`);
+
+      // Phase 1.5: agent-direct x402 Scout Peek (AGENT_DIRECT_X402=true)
+      const wantsScoutPeek = decision.actions?.some(a => a.type === 'use_scout_peek');
+      if (wantsScoutPeek && x402Config.enabled) {
+        const opponentId = this.duelState.opponentWallet || 'unknown';
+        const peekResult = await tryAgentScoutPeek({ playerId: opponentId, log });
+        if (peekResult) {
+          log('info', `[x402] Agent-direct Scout Peek succeeded: ${JSON.stringify(peekResult)}`);
+          // Remove the scout_peek action (already handled) to avoid double-execution
+          decision.actions = decision.actions.filter(a => a.type !== 'use_scout_peek');
+        }
+        // On failure, tryAgentScoutPeek returns null — client-side fallback remains in actions
+      }
+
       if (this.ws && this.ws.readyState === 1) {
         this.ws.send(JSON.stringify({
           type: 'duel_action',
