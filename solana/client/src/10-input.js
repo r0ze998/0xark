@@ -167,10 +167,10 @@ document.addEventListener('keydown',e=>{
       if(introPage>=INTRO_PAGES.length){
         introActive=false;
         if(sc==='title'){
-          // Route to Lobby (Phase D Reborn — Phase C map removed)
-          sc='lobby';
+          // Route to Menu hub (v3.0-plus — menu is the primary hub)
           fadeOut(()=>{
-            if(typeof enterLobby==='function')enterLobby();
+            if(typeof enterMenu==='function'){enterMenu();}
+            else{sc='lobby';if(typeof enterLobby==='function')enterLobby();}
             fadeIn();
           });
         }
@@ -315,38 +315,61 @@ document.addEventListener('keydown',e=>{
     return;
   }
   if(sc==='title'){
-    // [X] opens options overlay (preview-strict)
+    // [X] opens options overlay (wallet bind, multiplayer, credits)
     if(e.code==='KeyX'){sfxSelect();optionsOverlayOpen=true;optionsMenuIdx=0;return;}
-    const saved=hasSave();
-    const maxIdx=saved?1:0; // 2-item (CONTINUE/NEW SEASON) or 1-item (NEW SEASON)
-    if(titleMenuIdx>maxIdx)titleMenuIdx=maxIdx; // clamp if save cleared mid-session
+    // v3.0-plus title menu: 0=CONNECT WALLET (or ENTER ARENA), 1=HOW TO PLAY
     if(e.code==='ArrowUp'){titleMenuIdx=Math.max(0,titleMenuIdx-1);sfxCursor();}
-    if(e.code==='ArrowDown'){titleMenuIdx=Math.min(maxIdx,titleMenuIdx+1);sfxCursor();}
+    if(e.code==='ArrowDown'){titleMenuIdx=Math.min(1,titleMenuIdx+1);sfxCursor();}
     if(e.code==='KeyZ'){
-      const doContinue=()=>{
-        fadeOut(()=>{
-          // Phase D Reborn: skip Phase C map, go directly to Lobby
-          sc='lobby';
-          if(typeof enterLobby==='function')enterLobby();
-          fadeIn();
-        });
-      };
-      const doNewSeason=()=>{
-        resetGameState(true);
-        // Phase D Reborn: skip intro tutorial, go directly to Lobby
-        fadeOut(()=>{sc='lobby';if(typeof enterLobby==='function')enterLobby();fadeIn();});
-      };
-      if(saved&&titleMenuIdx===0){
-        // CONTINUE
-        sfxConfirm();
-        if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='continue';return;}
-        doContinue();
+      sfxConfirm();
+      if(titleMenuIdx===0){
+        // CONNECT WALLET / ENTER ARENA → Menu Hub
+        if(walletConnected){
+          fadeOut(()=>{if(typeof enterMenu==='function')enterMenu();fadeIn();});
+        }else if(window.solana&&window.solana.isPhantom){
+          connectPhantom().then(addr=>{
+            if(addr){
+              sfxWalletConnect();
+              showToast('Connected: '+walletAddressTruncated(),'#80d080');
+              fadeOut(()=>{if(typeof enterMenu==='function')enterMenu();fadeIn();});
+            }else{
+              showToast('Connection cancelled.','#d08080');
+            }
+          }).catch(()=>showToast('Wallet connection failed.','#d08080'));
+        }else{
+          showToast('Install Phantom from phantom.app','#d0a040');
+          // Allow access without wallet (gated features shown as SOON in menu)
+          fadeOut(()=>{if(typeof enterMenu==='function')enterMenu();fadeIn();});
+        }
       }else{
-        // NEW SEASON (idx 1 when saved, idx 0 when not)
-        sfxConfirm();
-        if(walletConnected&&!stakeDeposited){stakeConfirmActive=true;window._stakeAction='new';return;}
-        doNewSeason();
+        // HOW TO PLAY → intro tutorial
+        introActive=true;introPage=0;introFrame=fr;
       }
+    }
+    return;
+  }
+  // ── Menu Hub input (sc==='menu') ──────────────────────────────────────────
+  if(sc==='menu'){
+    if(e.code==='ArrowRight'&&_mnuSel%2===0){sfxCursor();_mnuSel=Math.min(5,_mnuSel+1);}
+    if(e.code==='ArrowLeft' &&_mnuSel%2===1){sfxCursor();_mnuSel=Math.max(0,_mnuSel-1);}
+    if(e.code==='ArrowDown' &&_mnuSel<4)    {sfxCursor();_mnuSel+=2;}
+    if(e.code==='ArrowUp'   &&_mnuSel>1)    {sfxCursor();_mnuSel-=2;}
+    if(e.code==='KeyZ'){
+      sfxConfirm();
+      switch(_mnuSel){
+        case 0: // BATTLE → Duel Hall (lobby matchmaking)
+          fadeOut(()=>{if(typeof enterLobby==='function')enterLobby();fadeIn();}); break;
+        case 1: // DECK → Deck Editor overlay (stays on menu scene)
+          if(typeof openDeckEditor==='function'){openDeckEditor();}
+          else{deckEditorOpen=true;deckEditorFilter='all';deckEditorScroll=0;deckEditorTab='build';} break;
+        default: // SHOP, AGENT, LORE, SETTINGS — stub
+          showToast('Coming in Season 2','#7060a0'); break;
+      }
+    }
+    if(e.code==='KeyX'||e.code==='Escape'){
+      sfxBack();
+      exitMenu();
+      fadeOut(()=>{sc='title';titleMenuIdx=0;fadeIn();});
     }
     return;
   }

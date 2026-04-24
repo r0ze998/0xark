@@ -2124,18 +2124,19 @@ function dTitle(){
     txShadow('ARK', lx+wLeft,   logoY,  baseSz, window.TOKENS.resolveColor('sail_cream'), 'rgba(0,0,0,0)');
   }
 
-  // Tagline "A ZK PIRATE CARD GAME" — 16px preview → ~32px render.
-  // Letter-spaced 0.28em; we approximate by padding single spaces (canvas 2D
-  // has no native letter-spacing until 2D ctx letterSpacing, not available in
-  // all targets). Use spaced string.
+  // Tagline — v3.0-plus "Autonomous agent sandbox" edition.
   {
-    const tagTxt='A  Z K   P I R A T E   C A R D   G A M E';
-    const tagSz=16;
+    const tagLine1='Autonomous agent sandbox \xD7 TCG';
+    const tagLine2='on Solana';
+    const tagSz=12;
     setFont(Math.max(12,Math.round(tagSz*1.4)));
-    const tw=g.measureText(tagTxt).width;
-    const tx_=((W-tw)/2)|0;
-    const ty=196; // preview 20% + 30px → ~200
-    txShadow(tagTxt, tx_, ty, tagSz, window.TOKENS.resolveColor('menu_border'), 'rgba(0,0,0,0.5)');
+    const tw1=g.measureText(tagLine1).width;
+    const tw2=g.measureText(tagLine2).width;
+    const ty1=192, ty2=207;
+    const goldCol=window.TOKENS.resolveColor('gold_accent');
+    const menuBdr=window.TOKENS.resolveColor('menu_border');
+    txShadow(tagLine1, ((W-tw1)/2)|0, ty1, tagSz, menuBdr,  'rgba(0,0,0,0.5)');
+    txShadow(tagLine2, ((W-tw2)/2)|0, ty2, tagSz, goldCol,  'rgba(0,0,0,0.5)');
   }
 
   // Galleon hero — centered, top:57% → y=365, 256×160 (2× preview 128×80).
@@ -2262,13 +2263,11 @@ function dTitle(){
     g.globalAlpha=1;
   }
 
-  // Main menu — bottom-centered dialog. Preview: bottom:44, 148px wide,
-  // 2 items. Production 2×: bottom:88, 296px, text 18px preview → 36 render.
+  // Main menu — v3.0-plus: two fixed CTAs replacing CONTINUE/NEW SEASON.
   {
-    const hasSv=hasSave();
-    const items=hasSv ? ['CONTINUE','NEW SEASON'] : ['NEW SEASON'];
-    const itemSz=18;
-    const rowStep=36;
+    const items=walletConnected ? ['ENTER ARENA','HOW TO PLAY'] : ['CONNECT WALLET','HOW TO PLAY'];
+    const itemSz=16;
+    const rowStep=32;
     const padX=16, padTop=12, padBot=12;
     const dw=296;
     const dh=padTop+padBot+items.length*rowStep;
@@ -2295,8 +2294,8 @@ function dTitle(){
     setFont(Math.max(12,Math.round(footSz*1.4)));
     const muted=window.TOKENS.resolveColor('fg_hint');
     const gold=window.TOKENS.resolveColor('menu_border');
-    const leftTxt='SOLANA  \u00B7  GROTH16  \u00B7  ';
-    const rightTxt='BY YUKIKAZE';
+    const leftTxt='v3.0-plus  \u00B7  280 tests  \u00B7  ';
+    const rightTxt='devnet';
     const lw=g.measureText(leftTxt).width;
     const rw=g.measureText(rightTxt).width;
     const totalFw=lw+rw;

@@ -21,6 +21,7 @@ const SCENE_IDS = Object.freeze({
   CARD_DETAIL: "card_detail", // M5 Card Detail scene (drawCardDetailScene)
   CARD_STORAGE: "card_storage", // PC Box Card Storage (drawCardStorageScene)
   BATTLE: "battle", // legacy Phase C guard value (08-overlays.js)
+  MENU: "menu",     // v3.0-plus top navigation hub (2×3 grid — 08-menu.js)
 });
 
 // ── Game economy constants ───────────────────────────────────────────────────

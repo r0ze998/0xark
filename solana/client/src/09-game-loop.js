@@ -350,6 +350,7 @@ function draw(){
   else if(sc==='log')dLog();
   else if(sc==='stats')dStats();
   else if(sc==='victory'){if(gameOverTimesUp)dGameOver();else dVictory();}
+  else if(sc==='menu')drawMenuScene(); // v3.0-plus Top Menu Hub (08-menu.js)
   else if(sc==='lobby')dLobby(); // Phase D Reborn LobbyScene
   else if(sc==='duel')drawDuelScene(); // M2 Duel Board
   else if(sc==='duel_victory')drawVictoryScene(); // T-D13-D M4 Victory/Defeat
