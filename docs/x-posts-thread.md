@@ -120,7 +120,7 @@
 > Play: r0ze998.github.io/0xark
 > Repo: github.com/r0ze998/0xark
 >
-> 141 tests passing. 35 Anchor instructions. Solo founder, 4 prior games shipped.
+> 274 tests passing. 35 Anchor instructions. Solo founder, 4 prior games shipped.
 >
 > Colosseum Frontier 2026 submission incoming.
 >

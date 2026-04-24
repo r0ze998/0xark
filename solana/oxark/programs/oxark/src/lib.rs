@@ -91,31 +91,36 @@ pub mod oxark {
 
     /// Commit a hidden action for the current round.
     ///
-    /// `hash = SHA-256(action_type_u8 | target_pubkey_32 | salt_32)`
+    /// `hash = SHA-256(card_ids_le_bytes || salt || round || phase)` (Reborn)
+    ///       or SHA-256(action_type | target | salt) (Phase C legacy).
     ///
-    /// The hash is stored in a per-round `commit` PDA. When all players commit,
-    /// the game transitions to `RevealPhase` automatically.
-    ///
-    /// A player cannot change their committed action — the hash binds them.
-    pub fn commit_action(ctx: Context<CommitActionCtx>, game_id: u64, hash: [u8; 32]) -> Result<()> {
-        instructions::commit_action::handle_commit(ctx, game_id, hash)
+    /// Reborn Day 8: `phase` and `played_cards` are now explicit params.
+    ///   phase: 0=Draw, 1=Energy, 2=Summon, 3=Battle
+    ///   played_cards: card IDs committed this phase (up to 3; empty for legacy)
+    pub fn commit_action(
+        ctx: Context<CommitActionCtx>,
+        game_id: u64,
+        hash: [u8; 32],
+        phase: u8,
+        played_cards: Vec<u64>,
+    ) -> Result<()> {
+        instructions::commit_action::handle_commit(ctx, game_id, hash, phase, played_cards)
     }
 
-    /// Reveal the previously committed action.
+    /// Reveal the previously committed action and verify hash.
     ///
-    /// Re-derives `SHA-256(action_type | target | salt)` on-chain and asserts it
-    /// matches the stored `commit.hash`. Rejects any mismatch (`ErrorCode::HashMismatch`).
+    /// Reborn path (played_cards non-empty):
+    ///   SHA-256(card_ids_le_bytes || salt || round || phase)
+    ///   Verified played_cards written into CommitAction for lane resolution.
     ///
-    /// After all players reveal, the program waits for `resolve_round` (or optionally
-    /// `verify_zk_proof` for ZK-attested reveals).
+    /// Legacy path (played_cards empty):
+    ///   SHA-256(action_type | target | salt)
     pub fn reveal_action(
         ctx: Context<RevealActionCtx>,
         game_id: u64,
         action_type: u8,
         target: Pubkey,
         salt: [u8; 32],
-        // Reborn: card IDs played this phase. Empty = Phase C legacy path.
-        // TODO: Reborn Day 8 — make this the primary param; retire action_type/target.
         played_cards: Vec<u64>,
     ) -> Result<()> {
         instructions::reveal_action::handle_reveal(ctx, game_id, action_type, target, salt, played_cards)
@@ -559,6 +564,86 @@ pub mod oxark {
     ) -> Result<()> {
         instructions::record_card_owner_change::handle_record_card_owner_change(
             ctx, card_mint, new_owner, source,
+        )
+    }
+
+    /// v3.0-plus: Record owner change with Steal semantics (Lease/Ransom/HandPeek/Legendary).
+    pub fn record_card_owner_change_with_steal(
+        ctx: Context<RecordCardOwnerChangeWithStats>,
+        card_mint: Pubkey,
+        new_owner: Pubkey,
+        steal_type: StealType,
+        hall_tier: u8,
+        is_starter_card: bool,
+        is_legendary: bool,
+    ) -> Result<()> {
+        instructions::record_card_owner_change::handle_record_card_owner_change_with_steal(
+            ctx, card_mint, new_owner, steal_type, hall_tier, is_starter_card, is_legendary,
+        )
+    }
+
+    // ── v3.0-plus: Burn / Evolve / Season Stats ───────────────────────────────
+
+    /// v3.0-plus: Permanently burn a Common or Uncommon NFT card.
+    ///
+    /// Legendary (rarity=3) and Rare (rarity=2) are protected.
+    /// Updates CardBattleHistory.burn_count and SeasonStats.total_burned.
+    /// Seeds for season_stats PDA: ["season_stats", season_id_le].
+    pub fn burn_card(
+        ctx: Context<BurnCard>,
+        card_mint: Pubkey,
+        rarity: u8,
+    ) -> Result<()> {
+        instructions::burn_card::handle_burn_card(ctx, card_mint, rarity)
+    }
+
+    /// v3.0-plus: Evolve two Common parent NFTs into one Uncommon child NFT.
+    ///
+    /// Burns parent_a and parent_b via SPL Token CPI.
+    /// Inits child CardBattleHistory with provenance (evolved_from_a/b,
+    /// cumulative_wins, Evolved+EvolvedHalo imprints).
+    /// Updates SeasonStats (+2 burned, +1 evolved, +1 minted).
+    pub fn evolve_cards(
+        ctx: Context<EvolveCards>,
+        parent_a_mint: Pubkey,
+        parent_b_mint: Pubkey,
+        child_mint: Pubkey,
+        target_species_id: u16,
+        parent_a_rarity: u8,
+        parent_b_rarity: u8,
+        target_rarity: u8,
+    ) -> Result<()> {
+        instructions::evolve_cards::handle_evolve_cards(
+            ctx, parent_a_mint, parent_b_mint, child_mint,
+            target_species_id, parent_a_rarity, parent_b_rarity, target_rarity,
+        )
+    }
+
+    /// v3.0-plus: Initialize the SeasonStats PDA for a new season.
+    ///
+    /// Must be called once before Burn/Evolve/Steal instructions.
+    /// Seeds: ["season_stats", season_id_le]
+    pub fn init_season_stats(
+        ctx: Context<InitSeasonStats>,
+        season_id: u32,
+    ) -> Result<()> {
+        instructions::init_season_stats::handle_init_season_stats(ctx, season_id)
+    }
+
+    /// v3.0-plus: Grant an Imprint to a card's battle history.
+    ///
+    /// Cosmetic Imprints have no cap. Stat Imprints are capped by rarity:
+    ///   Common/Uncommon → 3, Rare → 4, Legendary → 5.
+    pub fn grant_imprint(
+        ctx: Context<GrantImprint>,
+        card_mint: Pubkey,
+        imprint_key_val: u8,
+        is_cosmetic: bool,
+        rarity: u8,
+        duel_id: u64,
+    ) -> Result<()> {
+        instructions::update_card_battle_history::handle_grant_imprint(
+            ctx, card_mint, imprint_key_val, is_cosmetic, rarity, duel_id,
         )
     }
 

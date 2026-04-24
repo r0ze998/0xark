@@ -69,3 +69,10 @@ pub use update_card_battle_history::*;
 pub use record_card_owner_change::*;
 pub mod legendary;
 pub use legendary::*;
+// v3.0-plus
+pub mod burn_card;
+pub mod evolve_cards;
+pub mod init_season_stats;
+pub use burn_card::*;
+pub use evolve_cards::*;
+pub use init_season_stats::*;

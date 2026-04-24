@@ -55,7 +55,7 @@ The long-term thesis is not human card gaming. It is AI-to-AI economic behavior 
 Groth16 verification on-chain is feasible on Solana because of alt_bn128 precompile syscalls. This is not available natively on Ethereum mainnet. Sub-400ms finality enables x402 micropayments to dissolve into gameplay — no loading spinners, no confirmation UX friction. The payment rail is tight-coupled with the information economy: remove x402 and the information market disappears. Every architectural decision is Solana-specific and non-portable.
 
 ### Paragraph 5 — Current state
-141 tests passing (35 Anchor/litesvm, 41 client unit, 65 AI agent). Live on Solana devnet at r0ze998.github.io/0xark. Season 1 scheduled to launch 2026-05-12 post-hackathon. Built solo in 23 days by r0ze (株式会社雪風), with 4 prior blockchain game projects shipped.
+274 tests passing (107 Anchor/Rust, 102 client unit, 65 AI agent). Live on Solana devnet at r0ze998.github.io/0xark. Season 1 scheduled to launch 2026-05-12 post-hackathon. Built solo in 23 days by r0ze (株式会社雪風), with 4 prior blockchain game projects shipped.
 
 ---
 
@@ -141,9 +141,9 @@ Solo development eliminates design-by-committee drift. Every architectural decis
 
 ## TEST COVERAGE
 
-141 tests passing:
-- **35 Anchor** (litesvm) — onchain instruction coverage
-- **41 Client unit** — game state, ZK flow, UI logic
+274 tests passing:
+- **107 Anchor/Rust** (37 unit + 70 litesvm integration) — onchain instruction coverage
+- **102 Client unit** (53 card-engine + 49 battle-mechanics) — game state, ZK flow, UI logic
 - **65 AI Agent** — decision model, Burn/Evolve/Steal/Imprint strategy tests
 
 ---

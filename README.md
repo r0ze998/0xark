@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
 **Program ID** (Solana Devnet): `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`
-**Latest tag**: `v-phd-gdd-3.0-plus` · **Tests**: 141 passing (35 onchain + 41 client + 65 AI agent)
+**Latest tag**: `v-phd-ci-final` · **Tests**: 274 passing (107 Anchor/Rust + 102 client + 65 AI agent)
 
 **Colosseum Frontier Hackathon 2026 Submission**
 Tracks: Gaming (primary) · AI · Stablecoins
@@ -224,7 +224,7 @@ Each hire unblocks a specific scale constraint. No dead weight.
 - **WebWorker for Circom** — off-main-thread proof generation
 - **2 x402 endpoints live** — Scout Peek + Extra Action
 - **Claude Haiku 4.5 agent** — self-wallet, plays + peeks + stakes
-- **141 tests passing** — 35 litesvm + 41 client + 65 AI agent
+- **274 tests passing** — 107 Anchor/Rust + 102 client + 65 AI agent
 - **Multiplayer WebSocket** — 2-wallet real-time duels
 - **Arweave metadata pipeline** — Legendary media uploads
 

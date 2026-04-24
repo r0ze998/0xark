@@ -7,8 +7,14 @@ edition = "2021"
 name = "test_game"
 path = "test_game.rs"
 
+[[test]]
+name = "v3_plus_mechanics"
+path = "v3_plus_mechanics.rs"
+
 [dependencies]
 sha2 = "0.10"
+oxark = { path = "../programs/oxark", features = ["no-entrypoint"] }
+anchor-lang = "1.0.0"
 
 [dev-dependencies]
 litesvm = "0.10.0"

@@ -133,11 +133,11 @@
 
 ### [2:50–3:00] CLOSE
 
-*[Stats overlay: 141 tests passing / 35 Anchor instructions / Live on devnet]*
+*[Stats overlay: 274 tests passing / 35 Anchor instructions / Live on devnet]*
 
 > "Solo founder. Four prior blockchain game projects shipped. This is the fifth.
 >
-> 141 tests passing. Live on devnet now. Season 1 launches May 12th.
+> 274 tests passing. Live on devnet now. Season 1 launches May 12th.
 >
 > Play it today: r0ze998.github.io/0xark"
 

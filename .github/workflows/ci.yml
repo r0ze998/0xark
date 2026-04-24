@@ -41,8 +41,11 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             solana/oxark/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('solana/oxark/**/Cargo.lock') }}
+            ~/.local/share/solana
+            ~/.cache/solana
+          key: ${{ runner.os }}-cargo-sbf-${{ hashFiles('solana/oxark/**/Cargo.lock') }}
           restore-keys: |
+            ${{ runner.os }}-cargo-sbf-
             ${{ runner.os }}-cargo-
 
       - name: Install Rust stable
@@ -50,8 +53,17 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Run Anchor tests (litesvm — no validator)
-        working-directory: solana/oxark/tests
+      - name: Install Solana CLI (Agave v4.0.0)
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v4.0.0/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Build SBF program
+        working-directory: solana/oxark
+        run: cargo build-sbf --manifest-path programs/oxark/Cargo.toml
+
+      - name: Run all Anchor tests (107 total)
+        working-directory: solana/oxark
         run: cargo test -- --nocapture 2>&1
 
   # ─── TypeScript build (React wallet UI) ──────────────────────────────────────
