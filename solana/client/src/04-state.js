@@ -734,7 +734,7 @@ let infoBrokerConfirm=false, infoBrokerResult='', infoBrokerResultTimer=0;
 // ═══════════════════════════════════════
 // x402 INTEGRATION
 // ═══════════════════════════════════════
-const X402_DEFAULT_URL='http://localhost:3402';
+const X402_DEFAULT_URL='https://oxark-agent-broker.fly.dev';
 let x402ServerUrl=localStorage.getItem('oxark_x402_url')||X402_DEFAULT_URL;
 let x402Available=false;
 let x402CheckTimer=0;
@@ -834,10 +834,10 @@ async function x402FetchIntel(endpoint){
   if(!x402Available)return null;
   try{
     const r=await fetch(x402ServerUrl+endpoint,{
-      headers:{'X-Payment':'local-dev-bypass'},
       signal:AbortSignal.timeout(3000)
     });
     if(r.ok)return await r.json();
+    // 402 = payment required; return null so callers degrade gracefully
     return null;
   }catch(e){return null;}
 }

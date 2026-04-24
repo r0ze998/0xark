@@ -706,7 +706,7 @@ app.post('/card-buy', async (req, res) => {
   }
 
   try {
-    const result = await verifySolPayment(payment, RECIPIENT_WALLET, CARD_BUY_MIN_LAMPORTS);
+    const result = await verifySolPayment(payment, CARD_BUY_MIN_LAMPORTS);
     if (!result.valid) {
       return res.status(402).json({ reason: result.reason });
     }

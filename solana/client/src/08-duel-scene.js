@@ -1858,20 +1858,45 @@ function _doApplyExtraAction(choiceId) {
 // ═══════════════════════════════════════════════════════════════════════════
 // SCOUT PEEK
 // ═══════════════════════════════════════════════════════════════════════════
-function _triggerScoutPeek() {
+async function _triggerScoutPeek() {
   if (DS.scoutPeekUsed >= SCOUT_PEEK_MAX) return;
   const oppHand = DS.p[1].hand;
   if (oppHand.length === 0) {
     _showToast('Opponent hand is empty', '#ff6040', 90);
     return;
   }
+
+  // Real x402 path — Phantom wallet + broker
+  const wallet = window.solana;
+  const conn = typeof solConnection !== 'undefined' ? solConnection : null;
+  if (wallet?.publicKey && window.x402?.scoutPeek && conn) {
+    _showToast('Approve 0.005 SOL in wallet…', '#8090a8', 360);
+    try {
+      const gameId = DS.gameId || 0;
+      const target = DS.opponentPubkey || wallet.publicKey.toBase58();
+      await window.x402.scoutPeek(gameId, target, wallet, conn);
+      const idx = Math.floor(Math.random() * oppHand.length);
+      DS.scoutPeekUsed++;
+      DS.scoutActive = true;
+      DS.scoutExpire = fr + 300;
+      DS.scoutCardIdx = idx;
+      _addLog(`R${DS.round}: Scout Peek (x402 paid) — saw ${oppHand[idx].name}`);
+      _showToast(`Peeked: ${oppHand[idx].name}!`, '#80c0ff', 180);
+      return;
+    } catch (err) {
+      console.warn('[scoutPeek] x402 error:', err.message);
+      _showToast('Payment failed — demo mode', '#8090a8', 120);
+    }
+  }
+
+  // Fallback: multiplayer server polling (demo / wallet not connected)
   _showToast('Verifying payment...', '#8090a8', 240);
   _x402Mock('/x402/scout-peek', { duelId: 'mock' }).then(function (result) {
-    if (!result.ok) return; // toast already shown by _x402Mock
+    if (!result.ok) return;
     const idx = Math.floor(Math.random() * oppHand.length);
     DS.scoutPeekUsed++;
     DS.scoutActive = true;
-    DS.scoutExpire = fr + 300; // 5 sec at 60fps
+    DS.scoutExpire = fr + 300;
     DS.scoutCardIdx = idx;
     _addLog(`R${DS.round}: Scout Peek — saw ${oppHand[idx].name}`);
     _showToast(`Peeked: ${oppHand[idx].name}!`, '#80c0ff', 180);
