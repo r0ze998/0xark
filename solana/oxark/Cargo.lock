@@ -2023,6 +2023,7 @@ name = "oxark"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",
+ "anchor-spl",
  "ark-bn254 0.5.0",
  "ark-ff 0.5.0",
  "ephemeral-rollups-sdk",
@@ -2035,6 +2036,7 @@ dependencies = [
  "solana-message 3.1.0",
  "solana-pubkey 3.0.0",
  "solana-sdk-ids 3.1.0",
+ "solana-sha256-hasher 3.1.0",
  "solana-signer",
  "solana-transaction",
 ]
@@ -2051,7 +2053,9 @@ dependencies = [
 name = "oxark-tests"
 version = "0.1.0"
 dependencies = [
+ "anchor-lang",
  "litesvm",
+ "oxark",
  "sha2 0.10.9",
  "solana-instruction 3.4.0",
  "solana-keypair",

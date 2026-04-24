@@ -4,7 +4,7 @@
 
 ### On-chain TCG where NFTs are the gameplay, not the wallpaper.
 
-**ZK-hidden hands · x402 pay-to-peek · AI agents with real stakes · 4 NFT-native mechanics no Web2 TCG can replicate**
+**ZK commit-reveal (hands hidden until reveal) · x402 pay-to-peek · AI agents with real stakes · 4 NFT-native mechanics no Web2 TCG can replicate**
 
 [![Play Now](https://img.shields.io/badge/Play-Live_Demo-000000?style=for-the-badge&logo=solana)](https://r0ze998.github.io/0xark)
 [![Pitch Video](https://img.shields.io/badge/Pitch-Coming_Soon-lightgrey?style=for-the-badge&logo=youtube)](#)
@@ -31,11 +31,11 @@ Tracks: Gaming (primary) · AI · Stablecoins
 
 ## What is 0xARK?
 
-0xARK is an **autonomous agent sandbox** shaped like a card game. Two players — or two Claude agents with their own wallets — pay real SOL antes, duel with ZK-hidden hands, trade information through x402 micropayments mid-fight, and when it ends, real NFTs change hands on-chain.
+0xARK is an **autonomous agent sandbox** shaped like a card game. Two players — or two Claude agents with their own wallets — pay real SOL antes, duel with ZK commit-reveal, trade information through x402 micropayments mid-fight, and when it ends, real NFTs change hands on-chain.
 
 **Every card is a real Metaplex NFT.** Not a database entry, not a license, not a rental — a thing in your Solana wallet that you can sell on Tensor, send to anyone, or permanently burn for gameplay effect.
 
-**Duels are fully on-chain with ZK-hidden hands.** Your hand is committed via Poseidon hash and a Groth16 proof before battle resolution. Opponent sees nothing until reveal. Cheating is mathematically impossible.
+**Duels are fully on-chain with ZK commit-reveal.** Your hand is committed via Poseidon hash and a Groth16 proof before battle resolution. Opponent sees nothing until reveal. Cheating is mathematically impossible.
 
 **AI agents play with real stakes.** A Claude-powered agent holds its own Solana wallet, pays antes, peeks at opponent hands via x402 micropayments when worth the cost, and loses real NFTs when defeated. Win against the AI, and its Legendary card transfers to your wallet.
 
@@ -49,7 +49,7 @@ Three things make 0xARK genuinely different from every other TCG on Solana:
 
 ### 1. An information economy, not a card economy
 
-TCGs monetize cards. 0xARK monetizes **the value of hidden information**. ZK-hidden hands create an artificial information asymmetry. x402 micropayments let you buy your way into that asymmetry at a cost. The result is a **market for information during gameplay** — an idea only possible with blockchain-native payment rails.
+TCGs monetize cards. 0xARK monetizes **the value of hidden information**. ZK commit-reveal creates an artificial information asymmetry. x402 micropayments let you buy your way into that asymmetry at a cost. The result is a **market for information during gameplay** — an idea only possible with blockchain-native payment rails.
 
 ### 2. NFTs that do something, not NFTs that just exist
 
@@ -118,7 +118,7 @@ Other on-chain games (Axie) had death spirals because all NFTs were deflationary
 <tr>
 <td width="33%" valign="top">
 
-### 🔐 ZK-hidden hands
+### 🔐 ZK commit-reveal
 
 Every round, your hand is committed via Poseidon hash and a Groth16 proof **before** the Battle phase. Your opponent sees nothing until reveal.
 
@@ -396,7 +396,7 @@ Each Clan's identity reads as a distinct philosophy of power during the kingdom'
 
 - Fully on-chain card game (not a hybrid, not a wrapper)
 - Real NFT ownership on Metaplex, transferable immediately via Tensor
-- ZK-hidden hands for cheat-proof competitive play
+- ZK commit-reveal for cheat-proof competitive play
 - 60 cards, 4 NFT-native mechanics, 2-wallet duels running on devnet today
 
 ### 🤖 AI

@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use crate::state::{Game, CardCommitRecord, GameStatus};
 use crate::error::ErrorCode;
-use sha2::{Sha256, Digest};
+use solana_sha256_hasher::hashv;
 
 /// Reveal the previously committed card (Axis C — 2-phase bluff battle).
 ///
@@ -33,10 +33,7 @@ pub fn handle_reveal_card(
     require!(card_id >= 1 && card_id <= 60, ErrorCode::InvalidAction);
 
     // Verify: SHA256(card_id | salt) == commitment
-    let mut hasher = Sha256::new();
-    hasher.update([card_id]);
-    hasher.update(salt);
-    let hash: [u8; 32] = hasher.finalize().into();
+    let hash = hashv(&[&[card_id], &salt]).to_bytes();
 
     require!(hash == record.commitment, ErrorCode::HashMismatch);
 

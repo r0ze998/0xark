@@ -68,7 +68,7 @@ Connect wallet → Lobby (Crown Plaza) → Choose hall (Bronze/Silver/Gold) → 
 - **Vanilla JS + PixiJS v7** — 640×360 canvas client, 28-module build system
 
 ## What Makes This Unique
-1. **ZK hidden hands in a live PvP duel** — card hands are cryptographically sealed per round; no speculator can read opponent hand from chain state
+1. **ZK commit-reveal (hands hidden until reveal) in a live PvP duel** — card hands are cryptographically sealed per round; no speculator can read opponent hand from chain state
 2. **AI opponent that reasons** — claude-haiku-4-5 receives full game state and produces a JSON Summon decision; not scripted behavior
 3. **Legendary economy** — supply-capped NFT species create real scarcity; transferable only at Gold Hall creates a high-stakes capture moment
 4. **Season arc** — 14-day seasons with on-chain prize pool distribution; 40% to champion, season winner enshrined in-game

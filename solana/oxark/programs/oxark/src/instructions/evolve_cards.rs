@@ -35,7 +35,7 @@ pub struct EvolveCards<'info> {
         seeds = [CardBattleHistory::CARD_BATTLE_HISTORY_SEED, parent_a_mint.as_ref()],
         bump,
     )]
-    pub parent_a_history: Account<'info, CardBattleHistory>,
+    pub parent_a_history: Box<Account<'info, CardBattleHistory>>,
 
     // Parent B accounts
     /// CHECK: validated by ATA constraint
@@ -57,7 +57,7 @@ pub struct EvolveCards<'info> {
         seeds = [CardBattleHistory::CARD_BATTLE_HISTORY_SEED, parent_b_mint.as_ref()],
         bump,
     )]
-    pub parent_b_history: Account<'info, CardBattleHistory>,
+    pub parent_b_history: Box<Account<'info, CardBattleHistory>>,
 
     // Child card history (newly minted card; child_mint comes from the client
     // after off-chain / oxark-cards mint — provenance is recorded here)
@@ -68,14 +68,14 @@ pub struct EvolveCards<'info> {
         seeds = [CardBattleHistory::CARD_BATTLE_HISTORY_SEED, child_mint.as_ref()],
         bump,
     )]
-    pub child_history: Account<'info, CardBattleHistory>,
+    pub child_history: Box<Account<'info, CardBattleHistory>>,
 
     #[account(
         mut,
         seeds = [SeasonStats::SEASON_STATS_SEED, &parent_a_history.created_at.to_le_bytes()],
         bump = season_stats.bump,
     )]
-    pub season_stats: Account<'info, SeasonStats>,
+    pub season_stats: Box<Account<'info, SeasonStats>>,
 
     pub token_program:      Program<'info, Token>,
     pub system_program:     Program<'info, System>,

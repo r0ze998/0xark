@@ -230,6 +230,8 @@ mod tests {
             let mut data = disc("commit_action").to_vec();
             data.extend_from_slice(&game_id.to_le_bytes());
             data.extend_from_slice(&host_hash);
+            data.push(0u8);                      // phase = 0 (legacy)
+            data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
             send_ix(&mut svm, &host, vec![
                 AccountMeta::new(game_pda, false),
                 AccountMeta::new(host_player_pda, false),
@@ -248,6 +250,8 @@ mod tests {
             let mut data = disc("commit_action").to_vec();
             data.extend_from_slice(&game_id.to_le_bytes());
             data.extend_from_slice(&player_hash);
+            data.push(0u8);                      // phase = 0 (legacy)
+            data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
             send_ix(&mut svm, &player, vec![
                 AccountMeta::new(game_pda, false),
                 AccountMeta::new(player_pda, false),
@@ -267,10 +271,11 @@ mod tests {
             data.push(host_action);
             data.extend_from_slice(zero_target.as_ref());
             data.extend_from_slice(&host_salt);
+            data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
             send_ix(&mut svm, &host, vec![
                 AccountMeta::new(game_pda, false),
                 AccountMeta::new(host_player_pda, false),
-                AccountMeta::new_readonly(host_commit_pda, false),
+                AccountMeta::new(host_commit_pda, false),
                 AccountMeta::new(host.pubkey(), true),
             ], data, vec![&host]).expect("host reveal_action should succeed");
         }
@@ -282,10 +287,11 @@ mod tests {
             data.push(player_action);
             data.extend_from_slice(zero_target.as_ref());
             data.extend_from_slice(&player_salt);
+            data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
             send_ix(&mut svm, &player, vec![
                 AccountMeta::new(game_pda, false),
                 AccountMeta::new(player_pda, false),
-                AccountMeta::new_readonly(player_commit_pda, false),
+                AccountMeta::new(player_commit_pda, false),
                 AccountMeta::new(player.pubkey(), true),
             ], data, vec![&player]).expect("player reveal_action should succeed");
         }
@@ -452,6 +458,8 @@ mod tests {
                 let mut data = disc("commit_action").to_vec();
                 data.extend_from_slice(&game_id.to_le_bytes());
                 data.extend_from_slice(&host_hash);
+                data.push(0u8);                      // phase = 0 (legacy)
+                data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
                 send_ix(&mut svm, &host, vec![
                     AccountMeta::new(game_pda, false),
                     AccountMeta::new(host_player_pda, false),
@@ -469,6 +477,8 @@ mod tests {
                 let mut data = disc("commit_action").to_vec();
                 data.extend_from_slice(&game_id.to_le_bytes());
                 data.extend_from_slice(&player_hash);
+                data.push(0u8);                      // phase = 0 (legacy)
+                data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
                 send_ix(&mut svm, &player, vec![
                     AccountMeta::new(game_pda, false),
                     AccountMeta::new(player_pda, false),
@@ -485,10 +495,11 @@ mod tests {
                 data.push(1);
                 data.extend_from_slice(zero_target.as_ref());
                 data.extend_from_slice(&host_salt);
+                data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
                 send_ix(&mut svm, &host, vec![
                     AccountMeta::new(game_pda, false),
                     AccountMeta::new(host_player_pda, false),
-                    AccountMeta::new_readonly(host_commit_pda, false),
+                    AccountMeta::new(host_commit_pda, false),
                     AccountMeta::new(host.pubkey(), true),
                 ], data, vec![&host]).expect(&format!("R{round}: host reveal"));
             }
@@ -500,10 +511,11 @@ mod tests {
                 data.push(1);
                 data.extend_from_slice(zero_target.as_ref());
                 data.extend_from_slice(&player_salt);
+                data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
                 send_ix(&mut svm, &player, vec![
                     AccountMeta::new(game_pda, false),
                     AccountMeta::new(player_pda, false),
-                    AccountMeta::new_readonly(player_commit_pda, false),
+                    AccountMeta::new(player_commit_pda, false),
                     AccountMeta::new(player.pubkey(), true),
                 ], data, vec![&player]).expect(&format!("R{round}: player reveal"));
             }
@@ -551,6 +563,8 @@ mod tests {
             let mut data = disc("commit_action").to_vec();
             data.extend_from_slice(&game_id.to_le_bytes());
             data.extend_from_slice(&host_hash);
+            data.push(0u8);                      // phase = 0 (legacy)
+            data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
             send_ix(&mut svm, &host, vec![
                 AccountMeta::new(game_pda, false),
                 AccountMeta::new(host_player_pda, false),
@@ -568,6 +582,8 @@ mod tests {
             let mut data = disc("commit_action").to_vec();
             data.extend_from_slice(&game_id.to_le_bytes());
             data.extend_from_slice(&player_hash);
+            data.push(0u8);                      // phase = 0 (legacy)
+            data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
             send_ix(&mut svm, &player, vec![
                 AccountMeta::new(game_pda, false),
                 AccountMeta::new(player_pda, false),
@@ -583,11 +599,12 @@ mod tests {
         data.push(2); // WRONG action — committed 1 (DRAW)
         data.extend_from_slice(zero_target.as_ref());
         data.extend_from_slice(&host_salt);
+        data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
 
         let result = send_ix(&mut svm, &host, vec![
             AccountMeta::new(game_pda, false),
             AccountMeta::new(host_player_pda, false),
-            AccountMeta::new_readonly(host_commit_pda, false),
+            AccountMeta::new(host_commit_pda, false),
             AccountMeta::new(host.pubkey(), true),
         ], data, vec![&host]);
 
@@ -758,6 +775,8 @@ mod tests {
             let mut data = disc("commit_action").to_vec();
             data.extend_from_slice(&game_id.to_le_bytes());
             data.extend_from_slice(&hash);
+            data.push(0u8);                      // phase = 0 (legacy)
+            data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
             send_ix(&mut svm, &host, vec![
                 AccountMeta::new(game_pda, false),
                 AccountMeta::new(host_player_pda, false),
@@ -774,6 +793,8 @@ mod tests {
             let mut data = disc("commit_action").to_vec();
             data.extend_from_slice(&game_id.to_le_bytes());
             data.extend_from_slice(&hash2);
+            data.push(0u8);                      // phase = 0 (legacy)
+            data.extend_from_slice(&0u32.to_le_bytes()); // played_cards vec len = 0
             let result = send_ix(&mut svm, &host, vec![
                 AccountMeta::new(game_pda, false),
                 AccountMeta::new(host_player_pda, false),

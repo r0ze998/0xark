@@ -23,9 +23,10 @@ custom-panic = []
 
 [dependencies]
 anchor-lang = { version = "1.0.0", features = ["init-if-needed"] }
+anchor-spl = { version = "1.0.0", features = ["token", "associated_token"] }
 ephemeral-rollups-sdk = { version = "0.6.6", features = ["anchor", "disable-realloc"] }
 solana-bn254 = "3"
-sha2 = "0.10"
+solana-sha256-hasher = "3.1.0"
 # T-D13-A0: light-poseidon for on-chain Poseidon hash (DEF-16)
 pso-poseidon = { version = "0.2.0", default-features = false }
 ark-bn254 = { version = "0.5", default-features = false }
@@ -33,6 +34,7 @@ ark-ff = { version = "0.5", default-features = false }
 
 [dev-dependencies]
 litesvm = "0.10.0"
+sha2 = "0.10"
 solana-message = "3.0.1"
 solana-transaction = "3.0.2"
 solana-signer = "3.0.0"

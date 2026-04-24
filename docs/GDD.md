@@ -1,6 +1,6 @@
 # 0xARK — Game Design Document v2.0
 
-> **Real-money Solana card duels with ZK-hidden hands and AI opponents that can win your NFTs.**
+> **Real-money Solana card duels with ZK commit-reveal (hands hidden until reveal) and AI opponents that can win your NFTs.**
 
 **Status:** Final — 2026-04-22  
 **Submission target:** Solana Frontier Hackathon, 2026-05-11 (19 days remaining)  
@@ -41,7 +41,7 @@
 
 ### One-liner (v2.0 final)
 
-**Real-money Solana card duels with ZK-hidden hands and AI opponents that can win your NFTs.**
+**Real-money Solana card duels with ZK commit-reveal and AI opponents that can win your NFTs.**
 
 ### Full pitch
 
@@ -52,7 +52,7 @@
 Onchain card games today are built around **ladder ranking** — win matches, climb Elo, earn tokens. 0xARK inverts the loop: **ranking is a side-effect, the real race is collection**, and every card you win is a real NFT transferred from a real opponent's wallet.
 
 - **Real stakes**: Every duel has an ante (Bronze 0.01 / Silver 0.05 / Gold 0.1 SOL). Winner takes 2 cards from loser's collection.
-- **ZK-hidden**: Your hand is a Groth16 commitment until Battle phase reveal. Your opponent can't know what you'll play.
+- **ZK commit-reveal**: Your hand is a Groth16 commitment until Battle phase reveal. Your opponent can't know what you'll play.
 - **AI opponents**: Anthropic-powered agents enter matchmaking. They compete for the same Prize Pool. They can actually beat you.
 - **Cards remember**: Every NFT has on-chain Battle History (wins/losses/KOs/damage) and Lore Shards (narrative fragments unlocked via play).
 
@@ -66,7 +66,7 @@ No other hackathon submission puts all of this together, and nothing on Solana t
 - **AI** (supporting): Anthropic-powered AI agents that play alongside humans in matchmaking, pay x402 intel fees from their own wallets, can win Champion
 - **Stablecoins** (supporting): x402 micropayment economy — Scout Peek, Extra Action, Identity Peek, Lore Shard unlocks all priced in SOL (USDC variant post-hackathon)
 
-The **core pitch narrative** is the combination: *"ZK-hidden hands + x402 micropayments + AI agents competing for real NFT stakes."* Each element alone is interesting; the intersection is what has never been built before.
+The **core pitch narrative** is the combination: *"ZK commit-reveal + x402 micropayments + AI agents competing for real NFT stakes."* Each element alone is interesting; the intersection is what has never been built before.
 
 ### Design principles
 
@@ -1247,7 +1247,7 @@ Loading animations display only when loading takes **> 500ms**. For < 500ms load
 
 ### One-line USP
 
-**"Real-money Solana card duels with ZK-hidden hands and AI opponents that can win your NFTs."**
+**"Real-money Solana card duels with ZK commit-reveal and AI opponents that can win your NFTs."**
 
 ### Track positioning
 
@@ -1276,7 +1276,7 @@ Loading animations display only when loading takes **> 500ms**. For < 500ms load
 
 The pitch is not "ZK game" or "AI game" or "x402 game" alone. The pitch is the **combination**:
 
-> **"ZK-hidden hands + x402 micropayments + AI agents, all competing for real NFT stakes in an on-chain card duel."**
+> **"ZK commit-reveal + x402 micropayments + AI agents, all competing for real NFT stakes in an on-chain card duel."**
 
 Each of these tech primitives exists in the Solana ecosystem individually. No other submission combines all three into a single coherent game experience. That intersection is the USP.
 
@@ -1475,9 +1475,9 @@ As of 2026-04-22 (v2.0 final), all blocking design decisions are resolved. This 
 
 ### Pitch positioning (v2.0)
 
-31. **USP (one sentence)**: "Real-money Solana card duels with ZK-hidden hands and AI opponents that can win your NFTs."
+31. **USP (one sentence)**: "Real-money Solana card duels with ZK commit-reveal and AI opponents that can win your NFTs."
 32. **Colosseum Frontier tracks**: Gaming (primary) + AI + Stablecoins (both supporting). All three qualified.
-33. **Core narrative combination**: "ZK-hidden hands + x402 micropayments + AI agents competing for real NFT stakes."
+33. **Core narrative combination**: "ZK commit-reveal + x402 micropayments + AI agents competing for real NFT stakes."
 
 ### Still open (non-blocking, handled during execution)
 

@@ -282,7 +282,7 @@ fn test_commit_action() {
     let (commit_pda, _) = commit_pda(game_id, round, &host.pubkey());
 
     send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CommitAction { game_id, hash }.data(),
+        &oxark::instruction::CommitAction { game_id, hash, phase: 0, played_cards: vec![] }.data(),
         oxark::accounts::CommitActionCtx {
             game: game_key,
             player_state: hp,
@@ -343,14 +343,14 @@ fn test_full_commit_reveal_round() {
     let hash1 = compute_hash(1, &zero_target, &salt1);
     let (c1, _) = commit_pda(game_id, round, &host.pubkey());
     send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CommitAction { game_id, hash: hash1 }.data(),
+        &oxark::instruction::CommitAction { game_id, hash: hash1, phase: 0, played_cards: vec![] }.data(),
         oxark::accounts::CommitActionCtx { game: game_key, player_state: hp, commit: c1, player: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
 
     // Player 2 commits Draw (action_type=1)
     let hash2 = compute_hash(1, &zero_target, &salt2);
     let (c2, _) = commit_pda(game_id, round, &player2.pubkey());
     send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CommitAction { game_id, hash: hash2 }.data(),
+        &oxark::instruction::CommitAction { game_id, hash: hash2, phase: 0, played_cards: vec![] }.data(),
         oxark::accounts::CommitActionCtx { game: game_key, player_state: p2p, commit: c2, player: player2.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &player2);
 
     // Both committed — game should be in RevealPhase now
@@ -358,12 +358,12 @@ fn test_full_commit_reveal_round() {
     // === REVEAL PHASE ===
     // Player 1 reveals
     send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt1 }.data(),
+        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt1, played_cards: vec![] }.data(),
         oxark::accounts::RevealActionCtx { game: game_key, player_state: hp, commit: c1, player: host.pubkey() }.to_account_metas(None)), &host);
 
     // Player 2 reveals
     send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt2 }.data(),
+        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt2, played_cards: vec![] }.data(),
         oxark::accounts::RevealActionCtx { game: game_key, player_state: p2p, commit: c2, player: player2.pubkey() }.to_account_metas(None)), &player2);
 
     // Both revealed — game should be ready for resolve
@@ -414,21 +414,21 @@ fn test_full_round_with_resolve() {
     let hash1 = compute_hash(1, &zero_target, &salt1);
     let (c1, _) = commit_pda(game_id, round, &host.pubkey());
     send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CommitAction { game_id, hash: hash1 }.data(),
+        &oxark::instruction::CommitAction { game_id, hash: hash1, phase: 0, played_cards: vec![] }.data(),
         oxark::accounts::CommitActionCtx { game: game_key, player_state: hp, commit: c1, player: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
 
     let hash2 = compute_hash(1, &zero_target, &salt2);
     let (c2, _) = commit_pda(game_id, round, &player2.pubkey());
     send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CommitAction { game_id, hash: hash2 }.data(),
+        &oxark::instruction::CommitAction { game_id, hash: hash2, phase: 0, played_cards: vec![] }.data(),
         oxark::accounts::CommitActionCtx { game: game_key, player_state: p2p, commit: c2, player: player2.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &player2);
 
     // === REVEAL PHASE ===
     send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt1 }.data(),
+        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt1, played_cards: vec![] }.data(),
         oxark::accounts::RevealActionCtx { game: game_key, player_state: hp, commit: c1, player: host.pubkey() }.to_account_metas(None)), &host);
     send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt2 }.data(),
+        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt2, played_cards: vec![] }.data(),
         oxark::accounts::RevealActionCtx { game: game_key, player_state: p2p, commit: c2, player: player2.pubkey() }.to_account_metas(None)), &player2);
 
     // === RESOLVE ROUND ===

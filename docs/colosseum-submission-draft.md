@@ -16,12 +16,12 @@
 *Three variants — choose based on character limit or tone of field.*
 
 ### Variant A — Agent-first (280 chars)
-> An autonomous AI agent sandbox disguised as a TCG. ZK-hidden hands, x402 micropayments, and 4 NFT-native mechanics (Burn/Evolve/Steal-Lease/Imprint) that no Web2 game can replicate. Running on Solana devnet now.
+> An autonomous AI agent sandbox disguised as a TCG. ZK commit-reveal (hands hidden until reveal), x402 micropayments, and 4 NFT-native mechanics (Burn/Evolve/Steal-Lease/Imprint) that no Web2 game can replicate. Running on Solana devnet now.
 
 *(218 chars)*
 
 ### Variant B — Mechanics-first (280 chars)
-> On-chain TCG where NFTs are the gameplay, not the wallpaper. Burn cards to power abilities. Evolve Commons into Rares. Steal from AI agents with real wallets. All with ZK-hidden hands verified by Groth16 on Solana.
+> On-chain TCG where NFTs are the gameplay, not the wallpaper. Burn cards to power abilities. Evolve Commons into Rares. Steal from AI agents with real wallets. All with ZK commit-reveal verified by Groth16 on Solana.
 
 *(214 chars)*
 

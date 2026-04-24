@@ -18,7 +18,9 @@ pub struct RevealActionCtx<'info> {
         bump = player_state.bump,
     )]
     pub player_state: Account<'info, PlayerState>,
+    /// Mutable so we can write verified played_cards back for resolve_round lane scoring.
     #[account(
+        mut,
         seeds = [COMMIT_SEED, game_id.to_le_bytes().as_ref(), game.round.to_le_bytes().as_ref(), player.key().as_ref()],
         bump = commit.bump,
     )]
@@ -26,15 +28,21 @@ pub struct RevealActionCtx<'info> {
     pub player: Signer<'info>,
 }
 
+/// Reveal the committed action and verify the hash.
+///
+/// Reborn path (played_cards non-empty):
+///   commitment = SHA-256(card_ids_le_bytes || salt || round || phase)
+///   Verified played_cards are written into commit.played_cards so that
+///   resolve_round can read them for lane-based element affinity scoring.
+///
+/// Legacy path (played_cards empty):
+///   commitment = SHA-256(action_type | target | salt)  — Phase C compat
 pub fn handle_reveal(
     ctx: Context<RevealActionCtx>,
     game_id: u64,
     action_type: u8,
     target: Pubkey,
     salt: [u8; 32],
-    // Reborn: card IDs played in this phase (empty Vec = legacy Phase C reveal path).
-    // When non-empty: commitment = SHA-256(played_cards_bytes + salt + round + phase).
-    // TODO: Reborn Day 8 — replace action_type/target with lane scoring inputs.
     played_cards: Vec<u64>,
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
@@ -44,43 +52,46 @@ pub fn handle_reveal(
     require!(ps.has_committed, ErrorCode::NotCommitted);
     require!(!ps.has_revealed, ErrorCode::AlreadyRevealed);
 
-    use sha2::{Sha256, Digest};
+    use solana_sha256_hasher::hashv;
 
     if played_cards.is_empty() {
-        // ── Phase C legacy path: SHA256(action_type | target | salt) ──────────
-        // #[deprecated(since = "reborn")] — remove when Duel client ships (Day 8)
-        let mut hasher = Sha256::new();
-        hasher.update([action_type]);
-        hasher.update(target.as_ref());
-        hasher.update(salt);
-        let computed: [u8; 32] = hasher.finalize().into();
+        // ── Phase C legacy path ─────────────────────────────────────────────
+        let computed = hashv(&[&[action_type], target.as_ref(), &salt]).to_bytes();
         require!(computed == ctx.accounts.commit.hash, ErrorCode::HashMismatch);
     } else {
-        // ── Reborn path: SHA256(card_ids_le_bytes + salt + round + phase) ──────
-        // commitment binds: which cards, which nonce, which round, which phase.
-        let mut hasher = Sha256::new();
-        for &cid in &played_cards {
-            hasher.update(cid.to_le_bytes());
-        }
-        hasher.update(salt);
-        hasher.update([game.round]);
-        hasher.update([ctx.accounts.commit.phase]);
-        let computed: [u8; 32] = hasher.finalize().into();
+        // ── Reborn lane path ────────────────────────────────────────────────
+        // Build input slices: each card_id (8 bytes LE) + salt + round + phase
+        let card_bytes: Vec<[u8; 8]> = played_cards.iter().map(|c| c.to_le_bytes()).collect();
+        let mut parts: Vec<&[u8]> = card_bytes.iter().map(|b| b.as_slice()).collect();
+        parts.push(&salt);
+        parts.push(std::slice::from_ref(&game.round));
+        parts.push(std::slice::from_ref(&ctx.accounts.commit.phase));
+        let computed = hashv(&parts).to_bytes();
         require!(computed == ctx.accounts.commit.hash, ErrorCode::HashMismatch);
-        // TODO: Reborn Day 8 — store played_cards in PlayerState for lane resolution.
+
+        // Store verified played_cards in CommitAction for lane resolution
+        let card_count = played_cards.len().min(3);
+        let commit = &mut ctx.accounts.commit;
+        commit.played_cards = [0u64; 3];
+        for i in 0..card_count {
+            commit.played_cards[i] = played_cards[i];
+        }
+        commit.played_cards_len = card_count as u8;
     }
 
-    // Validate action
+    // Validate and store revealed action (legacy path compatibility)
     let at = ActionType::from(action_type);
     validate_action(ps, at, target, ctx.accounts.player.key())?;
 
-    // Store revealed action
     ps.revealed_action = action_type;
     ps.revealed_target = target;
-    ps.has_revealed = true;
-    game.reveal_count += 1;
+    ps.has_revealed    = true;
+    game.reveal_count  += 1;
 
-    msg!("Player {} revealed action {} for round {}", ctx.accounts.player.key(), action_type, game.round);
+    msg!(
+        "Player {} revealed action={} played_cards={} round={}",
+        ctx.accounts.player.key(), action_type, played_cards.len(), game.round,
+    );
     Ok(())
 }
 
@@ -116,7 +127,7 @@ fn validate_action(ps: &PlayerState, at: ActionType, target: Pubkey, caller: Pub
             require!(target != caller, ErrorCode::CannotTargetSelf);
         },
         ActionType::Move => {
-            // Move is always valid — target encodes the destination area in low byte
+            // Move is always valid — target encodes destination area in low byte
         },
         ActionType::None => {
             return Err(ErrorCode::InvalidAction.into());

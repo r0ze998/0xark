@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
+use anchor_lang::prelude::borsh::BorshDeserialize;
 use crate::constants::*;
 use crate::state::*;
 use crate::error::ErrorCode;
-use sha2::{Sha256, Digest};
+use solana_sha256_hasher::hashv;
 
 // ── T93: Element System v2 (6-element 2-triad) ────────────────────────────────
 // Elements: 0=Fire, 1=Water, 2=Wind, 3=Earth, 4=Shadow, 5=Light
@@ -75,10 +76,15 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     let mut players: Vec<PlayerData> = Vec::with_capacity(player_count);
     for account_info in ctx.remaining_accounts.iter().take(player_count) {
         let data = account_info.try_borrow_data()?;
-        // Parse PlayerState from account data (skip 8-byte discriminator)
-        let ps_bytes = &data[8..];
-        let ps: PlayerState = PlayerState::try_from_slice(ps_bytes)
-            .map_err(|_| ErrorCode::InvalidAction)?;
+        // Parse PlayerState from account data (skip 8-byte discriminator).
+        // Use reader-based deserialize (not try_from_slice) — SIZE over-allocates
+        // 32 bytes for Option<Pubkey>::None padding; try_from_slice (strict) fails
+        // on the trailing zeros, while deserialize stops after reading all fields.
+        let ps: PlayerState = {
+            let mut slice = &data[8..];
+            BorshDeserialize::deserialize(&mut slice)
+                .map_err(|_| ErrorCode::InvalidAction)?
+        };
         players.push(PlayerData {
             key: *account_info.key,
             action: ActionType::from(ps.revealed_action),
@@ -96,19 +102,105 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
 
     // === Resolution Order ===
     //
-    // TODO: Reborn lane scoring + element affinity (implement Day 8-11, GDD §5.5)
-    // ─────────────────────────────────────────────────────────────────────────────
-    // Phase C resolution order (BARRIER→STEAL→DRAW→SCOUT→MOVE→USE_CARD) is kept
-    // below as-is for now. In Reborn this entire block will be replaced by:
+    // Reborn lane scoring (GDD §5.5, Day 8): when CommitAction PDAs are provided
+    // in remaining_accounts[player_count..player_count*2], lane-based element
+    // affinity scoring replaces the Phase C turn-based model.
     //
-    //   Phase 0 (Draw):   each player draws 2 cards from their lane's card pool
-    //   Phase 1 (Energy): players set energy budget for this round
-    //   Phase 2 (Summon): played_cards placed into lanes; element affinity applied
-    //   Phase 3 (Battle): lanes resolved simultaneously; winner steals a card
-    //
-    // Element affinity is already implemented via calc_element_multiplier() above.
-    // When played_cards in CommitAction are non-empty, call that function here.
-    // ─────────────────────────────────────────────────────────────────────────────
+    // If CommitAction accounts are NOT provided (legacy / Phase C clients),
+    // the Phase C resolution order (BARRIER→STEAL→DRAW→SCOUT→MOVE→USE_CARD)
+    // runs unchanged below.
+
+    // Parse CommitAction accounts from remaining_accounts[player_count..] (Reborn).
+    let has_reborn_commits = ctx.remaining_accounts.len() >= player_count * 2;
+    if has_reborn_commits {
+        let mut played_per_player: Vec<([u64; 3], u8)> = Vec::with_capacity(player_count);
+        for account_info in ctx.remaining_accounts.iter().skip(player_count).take(player_count) {
+            let data = account_info.try_borrow_data()?;
+            if data.len() < CommitAction::SIZE {
+                played_per_player.push(([0u64; 3], 0));
+                continue;
+            }
+            // CommitAction layout (after 8-byte disc):
+            // game_id(8) + round(1) + player(32) + hash(32) + bump(1) + round_number(1)
+            // + phase(1) + played_cards(24) + played_cards_len(1)
+            let base = 8 + 8 + 1 + 32 + 32 + 1 + 1 + 1; // = 84
+            if data.len() >= base + 25 {
+                let mut cards = [0u64; 3];
+                for j in 0..3 {
+                    let off = base + j * 8;
+                    cards[j] = u64::from_le_bytes(data[off..off + 8].try_into().unwrap_or([0u8; 8]));
+                }
+                let card_len = data[base + 24];
+                played_per_player.push((cards, card_len));
+            } else {
+                played_per_player.push(([0u64; 3], 0));
+            }
+        }
+
+        // Reborn lane resolution: 3 lanes (Front/Middle/Back).
+        // Each player places one card per lane (played_cards[0..2]).
+        // BP comparison with element affinity multiplier determines lane winner.
+        // Lane winner draws one card from the pool as reward.
+        if player_count == 2 {
+            let a_cards = played_per_player[0].0;
+            let b_cards = played_per_player[1].0;
+            let a_len   = played_per_player[0].1 as usize;
+            let b_len   = played_per_player[1].1 as usize;
+            let lanes   = a_len.max(b_len).max(1);
+            let mut a_lane_wins: u8 = 0;
+            let mut b_lane_wins: u8 = 0;
+
+            for lane in 0..lanes {
+                let card_a = if lane < a_len { a_cards[lane] } else { 0 };
+                let card_b = if lane < b_len { b_cards[lane] } else { 0 };
+
+                // Derive element from card_id (1-60; 0-5 by group of 10)
+                let elem_a = if card_a > 0 { card_element((card_a % 60) as u8 + 1) } else { 0 };
+                let elem_b = if card_b > 0 { card_element((card_b % 60) as u8 + 1) } else { 0 };
+
+                // Base BP: card_id's last digit as proxy (full BP table lives client-side)
+                let bp_a = if card_a > 0 { (card_a % 7 + 2) as u32 } else { 0 };
+                let bp_b = if card_b > 0 { (card_b % 7 + 2) as u32 } else { 0 };
+
+                let adj_a = bp_a * calc_element_multiplier(elem_a, elem_b) / 1000;
+                let adj_b = bp_b * calc_element_multiplier(elem_b, elem_a) / 1000;
+
+                if adj_a > adj_b {
+                    a_lane_wins += 1;
+                    msg!("Lane {}: Player[0] wins ({} adj_bp={} vs adj_bp={})", lane, card_a, adj_a, adj_b);
+                } else if adj_b > adj_a {
+                    b_lane_wins += 1;
+                    msg!("Lane {}: Player[1] wins ({} adj_bp={} vs adj_bp={})", lane, card_b, adj_b, adj_a);
+                } else {
+                    msg!("Lane {}: draw", lane);
+                }
+            }
+
+            // Lane winners draw bonus cards from pool
+            let bonus_seed = clock.slot ^ (clock.unix_timestamp as u64) ^ (game.round as u64 * 0xdeadbeef);
+            if a_lane_wins > b_lane_wins {
+                let bonus = pick_card_from_pool(&mut pool.remaining, bonus_seed);
+                if bonus > 0 {
+                    place_card(&mut players[0].cards, bonus);
+                    players[0].card_count += 1;
+                    game.cards_in_pool = game.cards_in_pool.saturating_sub(1);
+                    msg!("Player[0] won {}/{} lanes, drew bonus card {}", a_lane_wins, lanes, bonus);
+                }
+            } else if b_lane_wins > a_lane_wins {
+                let bonus = pick_card_from_pool(&mut pool.remaining, bonus_seed ^ 0x1234567890abcdef);
+                if bonus > 0 {
+                    place_card(&mut players[1].cards, bonus);
+                    players[1].card_count += 1;
+                    game.cards_in_pool = game.cards_in_pool.saturating_sub(1);
+                    msg!("Player[1] won {}/{} lanes, drew bonus card {}", b_lane_wins, lanes, bonus);
+                }
+            }
+        }
+
+        // Write back player states and advance round, then return early
+        write_back_player_states(ctx.remaining_accounts, player_count, &players)?;
+        return finish_round(game, &players, game_id);
+    }
 
     // 0. Move (area transition — processed first so Steal etc. use new positions)
     //
@@ -200,7 +292,7 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                         b[8..].copy_from_slice(&(game.round as u64 * 1000 + i as u64).to_le_bytes());
                         b
                     };
-                    let steal_hash = Sha256::digest(&steal_input);
+                    let steal_hash = hashv(&[&steal_input]).to_bytes();
                     let seed = u64::from_le_bytes(steal_hash[..8].try_into().unwrap());
                     let stolen = steal_random_card(&mut players[ti].cards, seed);
                     if stolen > 0 {
@@ -211,7 +303,7 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
 
                         // T96: Deathrattle — if stolen card is a DR card, stealer loses a random card back to victim
                         if is_deathrattle(stolen) {
-                            let dr_seed = u64::from_le_bytes(steal_hash[..8].try_into().unwrap())
+                            let dr_seed = u64::from_le_bytes(steal_hash[..8].try_into().unwrap_or([0u8; 8]))
                                 ^ 0xdeadbeef_cafeba01;
                             let penalty = steal_random_card(&mut players[i].cards, dr_seed);
                             if penalty > 0 {
@@ -265,7 +357,7 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                         b[8..].copy_from_slice(&(game.round as u64 * 2000 + i as u64).to_le_bytes());
                         b
                     };
-                    let flame_hash = Sha256::digest(&flame_input);
+                    let flame_hash = hashv(&[&flame_input]).to_bytes();
                     let seed = u64::from_le_bytes(flame_hash[..8].try_into().unwrap());
                     let destroyed = steal_random_card(&mut players[ti].cards, seed);
                     if destroyed > 0 {
@@ -302,7 +394,7 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     seed_input[8..16].copy_from_slice(&clock.unix_timestamp.to_le_bytes());
     seed_input[16..24].copy_from_slice(&(game.round as u64).to_le_bytes());
     seed_input[24..].copy_from_slice(&caller_key.to_bytes()[..24]);
-    let hash = Sha256::digest(&seed_input);
+    let hash = hashv(&[&seed_input]).to_bytes();
     let mut seed = u64::from_le_bytes(hash[..8].try_into().unwrap());
 
     for (i, p) in players.iter_mut().enumerate() {
@@ -320,7 +412,7 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                 msg!("Player {} tried to draw but area pool empty", p.key);
             }
             // Re-hash for each draw to ensure independent randomness per player
-            let next_hash = Sha256::digest(&seed.to_le_bytes());
+            let next_hash = hashv(&[&seed.to_le_bytes()]).to_bytes();
             seed = u64::from_le_bytes(next_hash[..8].try_into().unwrap())
                 .wrapping_add(i as u64 * 0x9e3779b97f4a7c15);
         }
@@ -341,7 +433,7 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                         b[8..].copy_from_slice(&(game.round as u64 * 3000 + i as u64).to_le_bytes());
                         b
                     };
-                    let void_hash = Sha256::digest(&void_input);
+                    let void_hash = hashv(&[&void_input]).to_bytes();
                     let seed = u64::from_le_bytes(void_hash[..8].try_into().unwrap());
                     let copied = peek_random_card(&players[ti].cards, seed);
                     if copied > 0 {
@@ -356,61 +448,9 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
         }
     }
 
-    // === Write back player states ===
-    for (idx, account_info) in ctx.remaining_accounts.iter().take(player_count).enumerate() {
-        let mut data = account_info.try_borrow_mut_data()?;
-        let p = &players[idx];
-        // Offset: 8 (disc) + 8 (game_id) + 32 (player) + 1 (index) + 1 (area) = 50
-        data[49] = p.area;
-        data[50..55].copy_from_slice(&p.cards);
-        data[55] = p.card_count;
-        data[56] = p.steal_count;
-        data[57] = p.barrier_count;
-        data[58] = p.scout_count;
-        // Reset commit/reveal flags
-        data[59] = 0; // has_committed = false
-        data[60] = 0; // has_revealed = false
-    }
-
-    // === Check victory ===
-    let mut winner_key = Pubkey::default();
-
-    // Comp victory: 5 unique card types
-    for p in &players {
-        if count_unique_types(&p.cards) == TOTAL_CARD_TYPES {
-            winner_key = p.key;
-            break;
-        }
-    }
-
-    // Elimination victory: all others have 0 cards
-    if winner_key == Pubkey::default() {
-        let alive: Vec<&PlayerData> = players.iter().filter(|p| p.card_count > 0).collect();
-        if alive.len() == 1 {
-            winner_key = alive[0].key;
-        }
-    }
-
-    if winner_key != Pubkey::default() {
-        game.status = GameStatus::Finished;
-        game.winner = winner_key;
-        msg!("Game {} won by {}", game_id, winner_key);
-    } else if game.round >= game.max_rounds {
-        // Time's up — most unique cards wins
-        let best = players.iter().max_by_key(|p| count_unique_types(&p.cards)).unwrap();
-        game.status = GameStatus::Finished;
-        game.winner = best.key;
-        msg!("Game {} time up — winner {} with {} unique cards", game_id, best.key, count_unique_types(&best.cards));
-    } else {
-        // Next round
-        game.round += 1;
-        game.status = GameStatus::CommitPhase;
-        game.commit_count = 0;
-        game.reveal_count = 0;
-        msg!("Round {} resolved, advancing to round {}", game.round - 1, game.round);
-    }
-
-    Ok(())
+    // === Write back player states (Phase C path) ===
+    write_back_player_states(ctx.remaining_accounts, player_count, &players)?;
+    finish_round(game, &players, game_id)
 }
 
 // === Helper structs and functions ===
@@ -427,6 +467,68 @@ struct PlayerData {
     barrier_count: u8,
     scout_count: u8,
     position_commitment_initialized: bool,
+}
+
+fn write_back_player_states(
+    remaining: &[AccountInfo],
+    player_count: usize,
+    players: &[PlayerData],
+) -> Result<()> {
+    for (idx, account_info) in remaining.iter().take(player_count).enumerate() {
+        let mut data = account_info.try_borrow_mut_data()?;
+        let p = &players[idx];
+        // Offsets in PlayerState (after 8-byte discriminator):
+        //   0: game_id(8)  8: player(32)  40: player_index(1)  41: area(1)
+        //   42: cards[5]   47: card_count(1) 48: steal_count(1)
+        //   49: barrier_count(1) 50: scout_count(1)
+        //   51: has_committed(1) 52: has_revealed(1)
+        data[8 + 40 + 1] = p.area;              // area = offset 49
+        data[8 + 40 + 2..8 + 40 + 7].copy_from_slice(&p.cards);
+        data[8 + 40 + 7] = p.card_count;
+        data[8 + 40 + 8] = p.steal_count;
+        data[8 + 40 + 9] = p.barrier_count;
+        data[8 + 40 + 10] = p.scout_count;
+        data[8 + 40 + 11] = 0; // has_committed = false
+        data[8 + 40 + 12] = 0; // has_revealed  = false
+    }
+    Ok(())
+}
+
+fn finish_round(game: &mut Game, players: &[PlayerData], game_id: u64) -> Result<()> {
+    let mut winner_key = Pubkey::default();
+
+    for p in players {
+        if count_unique_types(&p.cards) == TOTAL_CARD_TYPES {
+            winner_key = p.key;
+            break;
+        }
+    }
+
+    if winner_key == Pubkey::default() {
+        let alive: Vec<&PlayerData> = players.iter().filter(|p| p.card_count > 0).collect();
+        if alive.len() == 1 {
+            winner_key = alive[0].key;
+        }
+    }
+
+    if winner_key != Pubkey::default() {
+        game.status = GameStatus::Finished;
+        game.winner = winner_key;
+        msg!("Game {} won by {}", game_id, winner_key);
+    } else if game.round >= game.max_rounds {
+        let best = players.iter().max_by_key(|p| count_unique_types(&p.cards)).unwrap();
+        game.status = GameStatus::Finished;
+        game.winner = best.key;
+        msg!("Game {} time up — winner {} with {} unique cards", game_id, best.key, count_unique_types(&best.cards));
+    } else {
+        game.round += 1;
+        game.status = GameStatus::CommitPhase;
+        game.commit_count = 0;
+        game.reveal_count = 0;
+        msg!("Round {} resolved, advancing to round {}", game.round - 1, game.round);
+    }
+
+    Ok(())
 }
 
 fn remove_card(cards: &mut [u8; 5], card_id: u8) {

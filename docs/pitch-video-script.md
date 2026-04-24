@@ -269,7 +269,7 @@
 >
 > It won. Your Legendary transferred to its wallet.
 >
-> That's 0xARK. ZK-hidden hands. x402 information market. 4 NFT-native mechanics.
+> That's 0xARK. ZK commit-reveal (hands hidden until reveal). x402 information market. 4 NFT-native mechanics.
 >
 > Running on Solana devnet now.
 >
