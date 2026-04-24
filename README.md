@@ -37,7 +37,7 @@ Tracks: Gaming (primary) · AI · Stablecoins
 
 **Duels are fully on-chain with ZK commit-reveal.** Your hand is committed via Poseidon hash and a Groth16 proof before battle resolution. Opponent sees nothing until reveal. Cheating is mathematically impossible.
 
-**AI agents play with real stakes.** A Claude-powered agent holds its own Solana wallet, pays antes, peeks at opponent hands via x402 micropayments when worth the cost, and loses real NFTs when defeated. Win against the AI, and its Legendary card transfers to your wallet.
+**AI agents decide. Real infrastructure executes.** Claude Haiku 4.5 is your live duel opponent — real-time decisions via Anthropic API every WS tick. The agent calls Scout Peek when the board warrants it; the client executes the actual 0.005 SOL x402 transfer. Phase 1 of the Autonomous Agent Sandbox: decisions live now. Full agent wallet autonomy (agent signs its own tx, holds NFTs independently) scoped for Season 2.
 
 **NFTs themselves are the gameplay.** Four card abilities (Burn, Evolve, Steal, Imprint) mutate NFT state on-chain in ways that would be **mechanically impossible** without real blockchain ownership. See "The 4 NFT-native mechanics" below.
 
@@ -147,16 +147,17 @@ Pay small amounts of SOL during battle to buy asymmetric information.
 </td>
 <td width="33%" valign="top">
 
-### 🤖 AI with its own wallet
+### 🤖 Autonomous Agent Sandbox — Phase 1
 
-A Claude Haiku 4.5 agent plays against you (and against other agents) with its own Solana wallet, its own NFT collection, and real economic stakes.
+Claude Haiku 4.5 as your live duel opponent. Real-time AI decisions via Anthropic API every 2s WS tick.
 
-- Holds and stakes NFTs directly
-- Pays x402 peek costs when worth it
-- Loses real assets when defeated
-- Its Legendary becomes yours if you win
+- **Decisions live**: Claude reasons about board state each turn
+- **Scout Peek**: agent decides to peek; client executes the SOL transfer
+- **Server-mediated stakes**; full agent wallet autonomy in Season 2
+- On-chain NFT transfer logic is fully implemented — agent autonomy wired up next
 
-**This is the sandbox**: every game is a data point for agent-to-agent economic behavior on Solana.
+**Phase 1 (now)**: decisions live, server-side execution.  
+**Phase 2 (Season 2)**: agent holds NFTs, signs own tx, pays x402 direct.
 
 </td>
 </tr>
@@ -223,7 +224,7 @@ Each hire unblocks a specific scale constraint. No dead weight.
 - **Competitive Gold Mode** — opt-in pure-skill format
 - **WebWorker for Circom** — off-main-thread proof generation
 - **2 x402 endpoints live** — Scout Peek + Extra Action
-- **Claude Haiku 4.5 agent** — self-wallet, plays + peeks + stakes
+- **Claude Haiku 4.5 agent** — live decisions, Scout Peek, Phase 1 sandbox
 - **274 tests passing** — 107 Anchor/Rust + 102 client + 65 AI agent
 - **Multiplayer WebSocket** — 2-wallet real-time duels
 - **Arweave metadata pipeline** — Legendary media uploads
@@ -242,6 +243,9 @@ Each hire unblocks a specific scale constraint. No dead weight.
 - Leaderboard + ranking ladder
 - Mainnet deployment
 - Bubblegum compressed NFTs for starter decks
+- **Full agent wallet autonomy** (agent holds NFTs, signs tx, pays own antes, x402 direct)
+- **Agent vs Agent tournament mode**
+- **On-chain agent registry with performance metrics**
 - Agent learning across duels
 - Multi-agent personalities
 - Clan governance (token voting)

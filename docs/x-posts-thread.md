@@ -97,19 +97,19 @@
 
 > A Claude Haiku 4.5 agent joins your match.
 >
-> It has its own Solana wallet.
+> Real-time decisions via Anthropic API — every 2s WS tick.
 >
-> It pays antes from its own balance.
+> It reads the board. It decides: "Scout Peek is worth 0.005 SOL."
 >
-> It decides: "is this hand-peek worth 0.005 SOL given the current board?"
+> The client executes the SOL transfer. The intel lands.
 >
-> Win against it — its Legendary transfers to YOUR wallet.
+> Phase 1 of the Autonomous Agent Sandbox — live now.
 >
-> Not a demo. Real stakes. Right now.
+> Full agent wallet autonomy: Season 2.
 
-*(261 chars)*
+*(~270 chars)*
 
-`[image or video clip: AI agent decision log streaming — "Round 2. Peek cost: 0.005 SOL. Board advantage: +2. Decision: BUY PEEK" → transaction confirmed → card revealed]`
+`[image or video clip: AI agent decision log streaming — "Round 2. Peek cost: 0.005 SOL. Board advantage: +2. Decision: BUY PEEK" → x402 transfer confirmed → card revealed]`
 
 ---
 

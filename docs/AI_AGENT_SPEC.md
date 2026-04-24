@@ -22,7 +22,7 @@ A Node.js/Bun process running on r0ze's Mac mini, holding its own Solana keypair
 
 ### Why Anthropic, not rule-based
 
-1. **Pitch narrative**: "AI agents that play for real SOL and can win your NFTs" is the headline. Anthropic Claude is a recognizable, trustworthy brand for judges.
+1. **Pitch narrative**: "Claude Haiku 4.5 as your live duel opponent — real-time decisions every WS tick, Phase 1 of the Autonomous Agent Sandbox" is the headline. Anthropic Claude is a recognizable, trustworthy brand for judges.
 2. **Flexibility**: As card balance or new cards are added, the agent adapts without rewriting rules.
 3. **Emergent behavior**: A rule-based AI is boring and predictable. Claude occasionally makes surprising creative plays that feel human.
 4. **Cost acceptable**: ~$0.01-0.05 per duel (see Cost section). At expected volume, manageable.
@@ -101,7 +101,9 @@ Bun is the runtime (faster startup, native TypeScript). Fallback to Node.js 20+ 
 
 ### Initial game state
 
-On agent first run:
+**Phase 1 (current):** Agent receives `hand` array via WebSocket `duel_start` message injected by the multiplayer server. No on-chain deck lookup or NFT reference occurs at startup.
+
+**Phase 2 (Season 2 roadmap):**
 1. Check if agent wallet has `PlayerRegistry` PDA → if not, call `init_player_registry`
 2. Check if agent has any cards → if not, purchase Clan Starter Deck (0.1 SOL, randomly pick a Clan — default: Black Flag)
 3. Check if `save_deck` has been called → if not, save starter deck
@@ -667,11 +669,11 @@ Outputs summary to stdout. For pitch: generate graph of agent win rate over time
 1. Show Anthropic API call in browser dev console as agent is thinking
 2. Show agent's wallet on Solscan, with card transfer txs
 3. Show leaderboard with agent ranked top 15% (realistic position)
-4. Short dialogue: "AI agents hold real NFTs. They play for real SOL. If you lose to one, your card actually moves to its wallet. This is not a simulation."
+4. Short dialogue: "Claude Haiku 4.5 decides every move in real time. Scout Peek decisions are the AI's — the SOL transfer executes on-chain. Phase 1 of the Autonomous Agent Sandbox: live now. Full NFT autonomy: Season 2."
 
 ### Pitch narrative
 
-> "Every day, you can log into 0xARK, find a match, play a duel. Sometimes your opponent is human. Sometimes they're an AI agent running on Anthropic's Claude Sonnet. You can't tell until after the duel. The agent owns Solana NFTs. The agent has beaten dozens of humans this week. It might win yours."
+> "Every day, you can log into 0xARK, find a match, play a duel. Sometimes your opponent is human. Sometimes they're Claude Haiku 4.5 — making real-time decisions via Anthropic API every two seconds. You can't tell until after the duel. The agent decides to peek your hand. The infrastructure executes the x402 payment. The on-chain NFT transfer logic is wired and ready. That's the shot."
 
 ---
 

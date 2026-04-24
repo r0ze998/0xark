@@ -824,7 +824,7 @@ Production deploy: Railway or Fly.io (target: by 5/5).
 
 ### The vision (v2.0)
 
-AI agents are **opponents in the Duel Hall**. Humans walk into the matchmaking receptionist; if no human player is available to queue against, the system assigns an AI agent. Agents enter with real wallets, real SOL antes, real stakes. They win NFT cards from humans. They lose NFT cards to humans. Over a Season, top-performing agents appear on the leaderboard alongside human players.
+AI agents are **opponents in the Duel Hall**. Humans walk into the matchmaking receptionist; if no human player is available to queue against, the system assigns an AI agent. **Phase 1 (current):** agents join via REST POST, receive hand from server, make real-time Claude Haiku 4.5 decisions every WS tick. Scout Peek decisions are the AI's — the client executes the actual x402 SOL transfer. **Phase 2 (Season 2):** agents hold their own wallets, sign transactions, pay x402 direct, accumulate NFT cards. Over a Season, top-performing agents appear on the leaderboard alongside human players.
 
 **Scope (v2.0 decision):** AI agents operate **only in Duel Hall matchmaking fallback**. They do NOT wander the Lobby as ambient presence, they do NOT visit the Shop, they do NOT engage with Tutorial. This is a deliberate scope reduction from v1.2 — "AI agents that compete for NFT stakes" is the narrative, and Duel Hall is the only place that narrative lands.
 
@@ -856,11 +856,16 @@ POST https://api.anthropic.com/v1/messages
 
 Same codebase, different system prompts. One agent class, multiple personality configurations.
 
-**Wallet and economics:**
-- Each agent instance has a real Solana keypair (devnet for MVP, mainnet post-launch)
-- Agents are funded with SOL for antes and x402 payments
-- Winning duels deposits NFT cards into agent's wallet — agents build their own collections
-- **This is the pitch-critical claim: AI agents own NFTs on Solana, not database objects**
+**Wallet and economics (Phase 1 — current):**
+- Agent participates via server-mediated REST/WS — no on-chain tx signing by agent process
+- Hand is injected by multiplayer server at `duel_start`; no NFT lookup occurs
+- Scout Peek: agent decides (LLM output `use_scout_peek: true`); client executes the 0.005 SOL x402 transfer
+- **Pitch-critical claim: Claude Haiku 4.5 makes real-time adversarial decisions. The on-chain infrastructure (record_card_owner_change, StealType, SPL transfer) is fully implemented and ready for Phase 2.**
+
+**Wallet and economics (Phase 2 — Season 2):**
+- Each agent instance holds a real Solana keypair and signs its own transactions
+- Agents funded with SOL for antes and direct x402 payments
+- Winning duels deposit NFT cards into agent's wallet — agents build real collections
 
 **API cost management:**
 - Each Anthropic API call ~$0.003-0.01 depending on context size
@@ -883,7 +888,7 @@ Third parties run their own hosted agents with their own infrastructure and LLM 
 
 ### x402 intel API (reused, v2.0)
 
-AI agents use the **same x402 intel endpoints as human players**: `/intel/location`, `/intel/hand`, `/intel/strategy`, `/intel/market` (see Section 10). Rationale: these endpoints are already implemented from Phase C; renaming them for Reborn would be unnecessary churn. Agents pay x402 fees from their own wallets, same as humans.
+AI agents use the **same x402 intel endpoints as human players**: `/intel/location`, `/intel/hand`, `/intel/strategy`, `/intel/market` (see Section 10). In Phase 1, the agent's `use_scout_peek` decision is routed through the client, which executes the actual x402 SOL transfer. In Phase 2, agents pay x402 fees directly from their own wallets, same as humans.
 
 ### Why this matters for 0xARK specifically
 

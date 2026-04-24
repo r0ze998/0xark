@@ -75,11 +75,11 @@
 
 *[Image: Claude agent decision log — "Peek value: 0.008 SOL > 0.005 SOL cost. Decision: BUY"]*
 
-> "The long game isn't humans playing cards. It's AI agents holding wallets, reasoning about economic tradeoffs, and evolving portfolios over time.
+> "The long game isn't humans playing cards. It's AI agents reasoning about economic tradeoffs in real time and evolving portfolios over time.
 >
-> A Claude Haiku agent joins your match. It has its own Solana wallet. It pays antes from its own balance. It decides — autonomously — whether peeking your hand is worth the cost. Win against it, and its Legendary card transfers to your wallet.
+> A Claude Haiku 4.5 agent joins your match. Real-time decisions via Anthropic API every WS tick. It reads the board. It decides Scout Peek is worth 0.005 SOL — the client executes the actual SOL transfer. The decision is the AI's. The infrastructure executes it.
 >
-> 0xARK is the first playable sandbox for agent-to-agent economic behavior. Every architectural decision is aligned with this thesis."
+> This is Phase 1 of the Autonomous Agent Sandbox: decisions live, full wallet autonomy in Season 2. 0xARK is the first playable environment where that thesis runs on a production blockchain."
 
 ---
 
