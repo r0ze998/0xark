@@ -749,11 +749,18 @@ The underlying circuit (`circuits/dungeon_position/dungeon_position.circom`) ada
 
 This is the novel contribution — **persistent pseudonymous identity with ZK-backed build privacy**. Dark Forest revealed your tools; 0xARK keeps them hidden forever unless you choose (or get paid) to reveal.
 
-### Why we keep ZK
+### ZK Verification Status (Day 24 — confirmed)
 
-The existing circuit (`circuits/dungeon_position/dungeon_position.circom`, compiled to `commit_reveal.wasm` + `commit_reveal_final.zkey`) is already working — proven on devnet with transaction `2pkmJpGv...`. Build scripts (`circuits/scripts/compile.sh`, `setup.sh`, `prove.sh`, `verify.sh`) are in place. We keep all the Rust verifier code, G2 Fp2 coefficient ordering fix, and Poseidon compatibility work.
+Three circuits verified end-to-end on-chain via LiteSVM (6/6 tests pass):
 
-The dungeon_position circuit dies; its engine lives on.
+| Circuit | Instruction | Constraints | CU consumed | Status |
+|---|---|---|---|---|
+| dungeon_position | `verify_dungeon_move` | 625 | 101,617 | ✓ verified |
+| commit_reveal | `verify_zk_proof` | 277 | 94,219 | ✓ verified |
+| hand_commitment | `commit_hand` | 576 | 129,993 | ✓ verified |
+
+All use Groth16 BN254 via `alt_bn128` syscalls. All CU budgets comfortably under 200k.
+VK byte-match audit: 22/22 fields match zkey exports. See `docs/ZK_VERIFICATION.md`.
 
 ---
 

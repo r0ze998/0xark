@@ -20,6 +20,15 @@ primary_region = "nrt"          # Tokyo — closest to devnet validators
     soft_limit = 100
     hard_limit = 150
 
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    port = 3402
+    timeout = "5s"
+    tls_skip_verify = false
+
 [[vm]]
   size = "shared-cpu-1x"
   memory = "256mb"
