@@ -15,5 +15,8 @@
     "@solana/web3.js": "^1.95.3",
     "bs58": "^6.0.0",
     "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "utf-8-validate": "^5.0.2"
   }
 }
