@@ -120,6 +120,9 @@ open https://r0ze998.github.io/0xark
 | Suite | Count | Status |
 |-------|-------|--------|
 | Anchor/Rust | 113 | ✓ |
-| Client (npm test) | 53 passed | ✓ (no game-logic changes) |
+| Client card-engine (npm test) | 53 passed | ✓ |
+| Client battle-mechanics (node tests/battle-mechanics.test.js) | 49 passed | ✓ |
 | AI agent | 65 | ✓ (no changes) |
 | lint-bundle.js | exit 0 | ✓ |
+
+**Note**: `npm test` only runs card-engine.test.js (53). battle-mechanics.test.js (49) must be run separately. Combined client total = 102. Grand total = 113 + 102 + 65 = 280.
