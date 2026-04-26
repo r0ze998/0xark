@@ -120,37 +120,35 @@ function generateTokensModule() {
 
 // ── Module manifest (ordered) ────────────────────────────────────────────────
 // Each entry describes what the file contains for quick navigation.
+// Phase C dungeon/map/town files live in src/legacy/phase-c-ui/ (not loaded).
 const MODULES = [
-  { file: '00-tokens.js',        desc: 'Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)' },
-  { file: '00-constants.js',     desc: 'Shared named constants — SCENE_IDS, GAME_CONSTANTS (economy values). Loaded first so all modules can reference without import.' },
-  { file: '01-pixi.js',          desc: 'PixiJS canvas setup · FRLG UI framework (PixiJS) · title effects · particles · menu · textbox · HUD · tile drawing · lerp/easeInOut · audio system' },
-  { file: '01-draw.js',          desc: 'FRLG window system (canvas 2D) · bx/tx/win primitives · drawCardFrame · crypto utils · ZK proof system · Solana/wallet/blockchain helpers' },
-  { file: '01-magicblock.js',    desc: 'MagicBlock Ephemeral Rollups · Magic Router connection · sendViaMagicRouter · checkDelegationStatus · delegation stubs (window.oxarkMB)' },
-  { file: '01-net.js',           desc: 'WebSocket multiplayer client · typewriter text · fade/wipe transitions · screen shake · hand inspect · rival news display · run summary' },
-  { file: '02-data.js',          desc: 'Card definitions (CD[]) · map tile arrays (MAP_PORT, MAP_FOREST, MAP_RUINS, dungeonFloors)' },
-  { file: '03-zk-prove.js',     desc: 'ZK dungeon position module · Poseidon commitment · Groth16 proof generation · initPosition/verifyDungeonMove browser helpers (window.zkDungeon)' },
-  { file: '03-world-setup.js',   desc: 'exits[] · npcs[] · fog-of-war system · terrain rendering helpers' },
-  { file: '04-state.js',         desc: 'Global game-state variables · card timers/decay · rival AI background · quest missions' },
-  { file: '05-rendering.js',     desc: 'Tile rendering (TILE section) · card character sprites (drawCardCharacter) · sprite animation' },
-  { file: '05-lobby.js',         desc: 'Phase D LobbyScene — Crown Plaza 25×18 tilemap · 6 buildings · block character sprites · 5 clan tints · HUD panels · bottom bar · WebSocket presence' },
-  { file: '06-matchmaking.js',   desc: 'Matchmaking queue client · enter_queue/leave_queue Anchor instructions · 2s PDA polling · lobbyFindMatch() wire-up' },
-  { file: '06-world-systems.js', desc: 'Camera · card mini-art · map transitions · location banner · minimap · encounters · NPCs · trading' },
-  { file: '07-map.js',           desc: 'Terrain edge blending · atmosphere · fog of war · rival alert anim · pirate decorations · dMap (main world render) · dMenu' },
-  { file: '07-battle.js',        desc: 'Battle screen FRLG rendering · card bar · opponent/player info boxes · VS splash · phase banner · action grid · select/confirming phases · card engine (addCardToPlayer/removeCardFromPlayer/checkWinAndTransition) · rival AI · generateResolveEvents' },
-  { file: '07-battle-resolve.js', desc: 'Card effect animations (crystal/shadow/flame/storm/void) · drawResolvingPhase · drawResultPhase · dAct' },
-  { file: '07-deck-editor.js',   desc: 'Deck editor UI skeleton · 2-panel canvas overlay (storage left, deck right) · filter bar · 30pt cost cap validation · deckEditorOpen/drawDeckEditor/deckEditorKeydown' },
-  { file: '08-duel-scene.js',   desc: 'Duel Board M2 — 4-phase state machine (Draw/Energy/Summon/Battle) · 5 rounds · element affinity · Defender mechanic · Shards · Extra Action · Scout Peek · Hotseat + AI stub modes' },
-  { file: '08-menu.js',         desc: 'v3.0-plus Top Menu Hub — 2×3 grid (BATTLE/DECK/SHOP/AGENT/LORE/SETTINGS) · enterMenu() · drawMenuScene() · wallet header · season countdown footer' },
-  { file: '09-victory-scene.js', desc: 'T-D13-D M4 Victory/Defeat scene — card fly-in animation · reward panels · TX hash + Solscan link · NFT transfer card selection (selectTransferCards)' },
-  { file: '08-overlays.js',      desc: 'Card acquisition animation · dungeon confirm · marketplace · discard overlay · tutorial · intro · victory screen · cards collection screen · card detail panel · log screen' },
-  { file: '08-world-interact.js', desc: 'Fishing minigame · forest trap · puzzle pillars · buildings interior · object interactions · fountain exchange' },
-  { file: '08-screens.js',       desc: 'Floor-clear fanfare · object interact messages · exit tooltip · map card use overlay · stats screen · credits · game over screen' },
-  { file: '09-game-loop.js',     desc: 'Main update() + draw() game loop · screen routing (title/map/battle/crd/log/stats/lobby)' },
-  { file: '10-animations.js',    desc: 'Reusable animation primitives — playFinisherAnimation / playVictoryAnimation / playDefeatAnimation (stubs for Day 12-13)' },
-  { file: '10-card-detail.js',   desc: 'T-D14-B M5 Card Detail scene — 3-panel layout (owner/card/battle+lore) · ADD TO DECK · SELL TO SHOP · lore shard typewriter UX' },
-  { file: '11-card-storage.js',  desc: 'T-D14-C PC Box Card Storage grid — 8-col card grid · clan filter · dup/deck toggles · tap→Card Detail · PC Box building integration' },
-  { file: '10-input.js',         desc: 'Keyboard event handlers · touch controls (d-pad, A/B buttons)' },
-  { file: '11-save-init.js',     desc: 'Save/load system · game initialization · requestAnimationFrame bootstrap' },
+  { file: '00-tokens.js',         desc: 'Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)' },
+  { file: '00-constants.js',      desc: 'Shared named constants — SCENE_IDS, GAME_CONSTANTS (economy values). Loaded first so all modules can reference without import.' },
+  { file: '01-draw.js',           desc: 'Canvas 2D drawing primitives · drawCardFrame · crypto utils · ZK proof system · Solana/wallet/blockchain helpers' },
+  { file: '01-magicblock.js',     desc: 'MagicBlock Ephemeral Rollups · Magic Router connection · sendViaMagicRouter · checkDelegationStatus · delegation stubs (window.oxarkMB)' },
+  { file: '01-net.js',            desc: 'WebSocket multiplayer client · typewriter text · fade/wipe transitions · screen shake' },
+  { file: '02-data.js',           desc: 'Card definitions (CD[]) · map tile arrays' },
+  { file: '02-router.js',         desc: 'DOM scene router · enterScene() · isDuelCanvasActive() · showToast()' },
+  { file: '02-x402.js',           desc: 'x402 micropayment client · cardBuy() · agentHire() · buyBooster()' },
+  { file: '03-zk-prove.js',       desc: 'ZK dungeon position module · Poseidon commitment · Groth16 proof generation · window.zkDungeon' },
+  { file: '04-state.js',          desc: 'Global game-state variables · card timers/decay · rival AI background · quest missions' },
+  { file: '06-matchmaking.js',    desc: 'Matchmaking queue client · enter_queue/leave_queue Anchor instructions · lobbyFindMatch()' },
+  { file: '07-battle.js',         desc: 'Battle logic · card engine (addCardToPlayer/removeCardFromPlayer/checkWinAndTransition) · rival AI · generateResolveEvents' },
+  { file: '07-battle-resolve.js', desc: 'Card effect animations · drawResolvingPhase · drawResultPhase · dAct' },
+  { file: '08-duel-scene.js',     desc: 'Duel Board — 4-phase state machine · element affinity · Defender · Shards · AI stub' },
+  { file: '09-game-loop.js',      desc: 'rAF loop · update() · draw() (duel canvas only) · x402 polling · mp ping' },
+  { file: '10-input.js',          desc: 'Duel canvas key/click/wheel handlers · battle quip arrays · keysHeld' },
+  { file: 'scenes/title.js',      desc: 'Title hero scene — Phantom connect · particle burst · enter arena' },
+  { file: 'scenes/menu.js',       desc: 'Menu hub — 6-cell grid · wallet card · season footer' },
+  { file: 'scenes/lobby.js',      desc: 'Battle lobby — hall select · confirm modal · casual/competitive toggle' },
+  { file: 'scenes/deck-editor.js', desc: 'Deck editor — BUILD/EVOLVE tabs · card add/remove (no scene nav)' },
+  { file: 'scenes/shop.js',       desc: 'Shop — card buy (x402) · booster pack · rarity filter' },
+  { file: 'scenes/agent.js',      desc: 'Agent hub — hire agent (x402) · list my agent (Season 2)' },
+  { file: 'scenes/lore.js',       desc: 'Lore — card lore shards · type filter · card detail modal' },
+  { file: 'scenes/settings.js',   desc: 'Settings — wallet info · audio sliders · disconnect' },
+  { file: 'scenes/how-to-play.js', desc: 'How to play — static game rules' },
+  { file: 'scenes/result.js',     desc: 'Duel result — Victory/Defeat · rewards · play again / back to menu' },
+  { file: '11-save-init.js',      desc: 'Save/load · Phase C stubs · rAF bootstrap · enterScene("title")' },
 ];
 
 function build() {
@@ -162,7 +160,17 @@ function build() {
     console.error('ERROR: template.html not found. Run from solana/client/ directory.');
     process.exit(1);
   }
-  const template = fs.readFileSync(TEMPLATE, 'utf8');
+  let template = fs.readFileSync(TEMPLATE, 'utf8');
+
+  // Inject CSS (src/01-styles.css → <!-- GAME_STYLES --> placeholder)
+  const CSS_PATH = path.join(SRC_DIR, '01-styles.css');
+  if (fs.existsSync(CSS_PATH)) {
+    const css = fs.readFileSync(CSS_PATH, 'utf8');
+    template = template.replace('<!-- GAME_STYLES -->', `<style>\n${css}\n</style>`);
+    console.log(`  Styles:       01-styles.css injected`);
+  } else {
+    console.warn('  WARNING: src/01-styles.css not found — GAME_STYLES placeholder left empty');
+  }
 
   // Concatenate modules
   const parts = MODULES.map(({ file, desc }) => {

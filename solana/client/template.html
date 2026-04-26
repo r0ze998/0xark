@@ -2,151 +2,473 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>0xARK — ZK Card PvP on Solana</title>
-<meta name="description" content="60 cards. One Prize Pool. Collect all 60 unique cards first to claim everything. Hidden positions, ZK proofs, real Solana stakes.">
-<meta name="theme-color" content="#9945FF">
-<!-- PWA manifest -->
+<meta name="description" content="Autonomous agent sandbox × TCG on Solana. ZK hidden positions, real NFT stakes, AI agents.">
+<meta name="theme-color" content="#8b5cf6">
 <link rel="manifest" href="/0xark/manifest.json">
-<!-- OpenGraph (Twitter card, Discord embed, LINE preview) -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://r0ze998.github.io/0xark/">
 <meta property="og:title" content="0xARK — ZK Card PvP on Solana">
-<meta property="og:description" content="60 cards. One Prize Pool. Steal cards from rivals you can't see. First to collect all 60 wins everything.">
+<meta property="og:description" content="Autonomous agent sandbox × TCG. Steal cards with ZK proofs, battle AI agents, win real SOL.">
 <meta property="og:image" content="https://r0ze998.github.io/0xark/og-image.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:site_name" content="0xARK">
-<!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@r0ze_____">
-<meta name="twitter:creator" content="@r0ze_____">
 <meta name="twitter:title" content="0xARK — ZK Card PvP on Solana">
-<meta name="twitter:description" content="60 cards. One Prize Pool. ZK hidden positions. Real on-chain stakes. #SolanaHackathon">
+<meta name="twitter:description" content="60 cards. ZK hidden positions. Real on-chain stakes. #SolanaHackathon">
 <meta name="twitter:image" content="https://r0ze998.github.io/0xark/og-image.png">
-<!-- Cache busting -->
 <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="pragma" content="no-cache">
-<meta http-equiv="expires" content="0">
-<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.min.js"></script>
 <script>if(typeof Buffer==='undefined'&&typeof buffer!=='undefined')window.Buffer=buffer.Buffer;</script>
-<script src="https://cdn.jsdelivr.net/npm/pixi.js@7.1.4/dist/pixi.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.5/build/snarkjs.min.js"></script>
 <script src="https://unpkg.com/@solana/web3.js@1.95.3/lib/index.iife.min.js"></script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-/* T-D9-1: Full-screen 16:9 letterbox — GBA shell removed */
-body{background:#0B1220;display:flex;justify-content:center;align-items:center;width:100vw;height:100vh;overflow:hidden;font-family:'VT323',monospace}
-#game-wrap{position:relative;width:min(100vw,calc(100vh * 16 / 9));height:min(100vh,calc(100vw * 9 / 16))}
-#pixi-wrap{position:relative;width:100%;height:100%;overflow:hidden}
-canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none}
-/* Touch Controls Overlay */
-#touch-overlay{display:none;position:fixed;bottom:0;left:0;right:0;height:180px;z-index:100;pointer-events:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
-#touch-overlay.active{display:block}
-#touch-overlay *{pointer-events:auto}
-.touch-btn{position:absolute;width:52px;height:52px;border-radius:14px;border:2px solid rgba(255,255,255,.3);background:rgba(30,30,50,.7);color:rgba(255,255,255,.8);font:16px 'VT323',monospace;display:flex;align-items:center;justify-content:center;transition:background .05s;-webkit-tap-highlight-color:transparent}
-.touch-btn.pressed{background:rgba(80,80,140,.85);border-color:rgba(255,255,255,.5)}
-/* D-pad: bottom-left */
-#dpad-up{left:64px;bottom:148px}
-#dpad-down{left:64px;bottom:38px}
-#dpad-left{left:8px;bottom:93px}
-#dpad-right{left:120px;bottom:93px}
-/* A/B buttons: bottom-right */
-#btn-a{right:20px;bottom:118px;width:56px;height:56px;background:rgba(0,180,200,.5);border-color:rgba(0,220,255,.5);font-size:16px}
-#btn-a.pressed{background:rgba(0,180,200,.8)}
-#btn-b{right:84px;bottom:58px;width:56px;height:56px;background:rgba(200,50,60,.5);border-color:rgba(255,80,80,.5);font-size:16px}
-#btn-b.pressed{background:rgba(200,50,60,.8)}
-/* START button: bottom-center */
-#btn-start{left:50%;transform:translateX(-50%);bottom:10px;width:72px;height:28px;border-radius:14px;font-size:12px}
-</style>
+<!-- GAME_STYLES -->
 </head>
 <body>
-<div id="game-wrap">
-<div id="pixi-wrap"><canvas id="g" width="480" height="270"></canvas></div>
+<div id="app">
+
+  <!-- ── TITLE ── -->
+  <div class="scene" id="scene-title">
+    <div class="title-bg">
+      <div class="title-particles" id="title-particles"></div>
+      <div class="title-glow"></div>
+    </div>
+    <div class="title-content">
+      <div class="title-logo">
+        <span class="logo-text">0x<span class="logo-accent">ARK</span></span>
+      </div>
+      <p class="title-tagline">Autonomous agent sandbox × TCG<br><span class="tagline-sub">on Solana</span></p>
+      <div class="title-actions">
+        <button class="btn btn-primary btn-full" id="btn-connect-wallet">Connect Wallet →</button>
+        <button class="btn btn-secondary btn-full" id="btn-how-to-play">How to Play</button>
+      </div>
+      <p class="title-credibility">v3.0-plus · 280 tests · devnet</p>
+    </div>
+  </div>
+
+  <!-- ── MENU ── -->
+  <div class="scene" id="scene-menu">
+    <header class="menu-header">
+      <span class="menu-logo">0xARK</span>
+      <button class="icon-btn" id="menu-settings-btn" aria-label="Settings">⋯</button>
+    </header>
+    <div class="menu-wallet-card" id="menu-wallet-card">
+      <div class="wallet-card-inner">
+        <span class="wallet-addr" id="menu-wallet-addr">Not connected</span>
+        <div class="wallet-stats">
+          <span class="wallet-stat" id="menu-sol-bal">💰 — SOL</span>
+          <span class="wallet-stat" id="menu-card-count">🃏 — cards</span>
+        </div>
+      </div>
+    </div>
+    <div class="menu-grid" id="menu-grid">
+      <div class="menu-cell" data-scene="lobby">
+        <span class="cell-icon">⚔️</span>
+        <span class="cell-title">Battle</span>
+        <span class="cell-sub">Bronze · Silver · Gold</span>
+      </div>
+      <div class="menu-cell" data-scene="deck_editor">
+        <span class="cell-icon">🃏</span>
+        <span class="cell-title">Deck</span>
+        <span class="cell-sub">Build · Evolve · 30pt cap</span>
+      </div>
+      <div class="menu-cell" data-scene="shop">
+        <span class="cell-icon">🛒</span>
+        <span class="cell-title">Shop</span>
+        <span class="cell-sub">Boosters · 0.01 SOL</span>
+      </div>
+      <div class="menu-cell" data-scene="agent">
+        <span class="cell-icon">🤖</span>
+        <span class="cell-title">Agent</span>
+        <span class="cell-sub">Hire AI · Listing</span>
+      </div>
+      <div class="menu-cell" data-scene="lore">
+        <span class="cell-icon">📜</span>
+        <span class="cell-title">Lore</span>
+        <span class="cell-sub">60 cards · Shards</span>
+      </div>
+      <div class="menu-cell" data-scene="settings">
+        <span class="cell-icon">⚙️</span>
+        <span class="cell-title">Settings</span>
+        <span class="cell-sub">Wallet · Network</span>
+      </div>
+    </div>
+    <footer class="menu-footer" id="menu-footer">Season 1 · Day — · — days left</footer>
+  </div>
+
+  <!-- ── LOBBY ── -->
+  <div class="scene" id="scene-lobby">
+    <header class="scene-header">
+      <button class="back-btn" data-back="menu">← Back</button>
+      <h1 class="scene-title">Battle Lobby</h1>
+      <div></div>
+    </header>
+    <div class="scene-body">
+      <h2 class="section-label">Choose a Hall</h2>
+      <div class="hall-list">
+        <div class="hall-card" data-hall="0">
+          <div class="hall-badge">🥉</div>
+          <div class="hall-info">
+            <div class="hall-name">Bronze Hall</div>
+            <div class="hall-meta">Ante: 0.001 SOL · ZK commit-reveal · AI agent</div>
+          </div>
+          <span class="hall-arrow">▶</span>
+        </div>
+        <div class="hall-card" data-hall="1">
+          <div class="hall-badge">🥈</div>
+          <div class="hall-info">
+            <div class="hall-name">Silver Hall</div>
+            <div class="hall-meta">Ante: 0.005 SOL · Ranked play</div>
+          </div>
+          <span class="hall-arrow">▶</span>
+        </div>
+        <div class="hall-card" data-hall="2">
+          <div class="hall-badge">🥇</div>
+          <div class="hall-info">
+            <div class="hall-name">Gold Hall</div>
+            <div class="hall-meta">Ante: 0.02 SOL · Legendary stake</div>
+          </div>
+          <span class="hall-arrow">▶</span>
+        </div>
+      </div>
+      <div class="mode-toggle-section">
+        <h2 class="section-label">Mode</h2>
+        <div class="mode-toggle">
+          <button class="mode-btn active" data-mode="casual">Casual</button>
+          <button class="mode-btn" data-mode="competitive">Competitive</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-overlay" id="hall-confirm-modal" style="display:none">
+      <div class="modal">
+        <h3 class="modal-title" id="hall-modal-title">Bronze Hall</h3>
+        <p class="modal-body" id="hall-modal-body">Ante 0.001 SOL. ZK commit-reveal protocol active.</p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="hall-modal-cancel">Cancel</button>
+          <button class="btn btn-primary" id="hall-modal-confirm">Find Match →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DUEL (canvas-based) ── -->
+  <div class="scene" id="scene-duel">
+    <canvas id="g" width="480" height="270"></canvas>
+  </div>
+
+  <!-- ── DECK EDITOR ── -->
+  <div class="scene" id="scene-deck_editor">
+    <header class="scene-header">
+      <button class="back-btn" data-back="menu">← Back</button>
+      <h1 class="scene-title">Deck Editor</h1>
+      <div></div>
+    </header>
+    <div class="scene-body deck-body">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="build">BUILD</button>
+        <button class="tab-btn" data-tab="evolve">EVOLVE</button>
+      </div>
+      <div class="tab-panel" id="tab-build">
+        <div class="filter-chips" id="deck-filter">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="attack">Atk</button>
+          <button class="chip" data-filter="defense">Def</button>
+          <button class="chip" data-filter="magic">Magic</button>
+          <button class="chip" data-filter="flee">Flee</button>
+        </div>
+        <div class="deck-section-label">Storage <span id="storage-count">(0 owned)</span></div>
+        <div class="card-grid-scroll">
+          <div class="card-grid" id="storage-grid"></div>
+        </div>
+        <div class="deck-section-label">Deck <span id="deck-count" class="deck-count-badge">0 / 20</span></div>
+        <div class="card-grid-scroll">
+          <div class="card-grid" id="deck-grid"></div>
+        </div>
+        <button class="btn btn-primary btn-full" id="btn-save-deck">Save Deck</button>
+      </div>
+      <div class="tab-panel hidden" id="tab-evolve">
+        <div class="evolve-panel">
+          <h3 class="evolve-title">Evolve Cards</h3>
+          <p class="evolve-desc">Burn 2 copies of a card to evolve it to the next rarity tier.<br>Requires Phantom signature.</p>
+          <div class="card-grid" id="evolve-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SHOP ── -->
+  <div class="scene" id="scene-shop">
+    <header class="scene-header">
+      <button class="back-btn" data-back="menu">← Back</button>
+      <h1 class="scene-title">Shop</h1>
+      <div></div>
+    </header>
+    <div class="scene-body">
+      <div class="shop-pack-card">
+        <div class="pack-art">
+          <div class="pack-inner">
+            <span class="pack-icon">📦</span>
+            <span class="pack-glow"></span>
+          </div>
+        </div>
+        <div class="pack-info">
+          <h3 class="pack-title">Booster Pack</h3>
+          <p class="pack-desc">5 random cards · 1 guaranteed Rare+</p>
+          <div class="pack-price">0.05 SOL</div>
+          <button class="btn btn-primary" id="btn-buy-pack">Buy Pack →</button>
+        </div>
+      </div>
+      <div class="shop-section">
+        <div class="shop-section-header">
+          <h2 class="section-label">Single Cards</h2>
+          <div class="filter-chips" id="shop-filter">
+            <button class="chip active" data-filter="all">All</button>
+            <button class="chip" data-filter="common">Common</button>
+            <button class="chip" data-filter="rare">Rare</button>
+            <button class="chip" data-filter="epic">Epic</button>
+          </div>
+        </div>
+        <div class="card-grid shop-grid" id="shop-grid"></div>
+      </div>
+    </div>
+    <div class="modal-overlay" id="shop-card-modal" style="display:none">
+      <div class="modal">
+        <div class="modal-card-art" id="shop-modal-art"></div>
+        <h3 class="modal-title" id="shop-modal-name"></h3>
+        <p class="modal-body" id="shop-modal-stats"></p>
+        <p class="modal-price" id="shop-modal-price"></p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="shop-modal-cancel">Cancel</button>
+          <button class="btn btn-primary" id="shop-modal-buy">Buy →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AGENT ── -->
+  <div class="scene" id="scene-agent">
+    <header class="scene-header">
+      <button class="back-btn" data-back="menu">← Back</button>
+      <h1 class="scene-title">Agent Hub</h1>
+      <div></div>
+    </header>
+    <div class="scene-body">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="hire">Hire Agent</button>
+        <button class="tab-btn" data-tab="list">List My Agent</button>
+      </div>
+      <div class="tab-panel" id="tab-hire">
+        <h2 class="section-label">Available Agents</h2>
+        <div class="agent-list" id="agent-list"></div>
+      </div>
+      <div class="tab-panel hidden" id="tab-list">
+        <div class="coming-soon-panel">
+          <span class="coming-icon">🔮</span>
+          <h3>Coming in Season 2</h3>
+          <p>Register your own AI agent to battle other players and earn fees.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-overlay" id="agent-modal" style="display:none">
+      <div class="modal">
+        <h3 class="modal-title" id="agent-modal-name"></h3>
+        <p class="modal-body" id="agent-modal-desc"></p>
+        <p class="modal-price">0.05 SOL / session</p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="agent-modal-cancel">Cancel</button>
+          <button class="btn btn-primary" id="agent-modal-hire">Hire →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LORE ── -->
+  <div class="scene" id="scene-lore">
+    <header class="scene-header">
+      <button class="back-btn" data-back="menu">← Back</button>
+      <h1 class="scene-title">Lore</h1>
+      <div></div>
+    </header>
+    <div class="scene-body">
+      <div class="lore-intro">
+        <p class="lore-world-text">In the fractured archipelago of the ARK, 60 legendary artifacts were scattered across the seas. Pirates, merchants, and gods compete for them — not knowing that the game itself is the trap.</p>
+      </div>
+      <div class="filter-chips" id="lore-filter">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="attack">Attack</button>
+        <button class="chip" data-filter="defense">Defense</button>
+        <button class="chip" data-filter="flee">Flee</button>
+        <button class="chip" data-filter="magic">Magic</button>
+      </div>
+      <div class="lore-card-list" id="lore-card-list"></div>
+    </div>
+    <div class="modal-overlay" id="lore-card-modal" style="display:none">
+      <div class="modal modal-lore">
+        <div class="lore-modal-header">
+          <div class="lore-modal-art" id="lore-modal-art"></div>
+          <div class="lore-modal-info">
+            <h3 class="modal-title" id="lore-modal-name"></h3>
+            <div class="lore-tags" id="lore-modal-tags"></div>
+          </div>
+        </div>
+        <p class="lore-flavor" id="lore-modal-flavor"></p>
+        <div class="lore-shards" id="lore-modal-shards"></div>
+        <button class="btn btn-secondary btn-full" id="lore-modal-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS ── -->
+  <div class="scene" id="scene-settings">
+    <header class="scene-header">
+      <button class="back-btn" data-back="menu">← Back</button>
+      <h1 class="scene-title">Settings</h1>
+      <div></div>
+    </header>
+    <div class="scene-body">
+      <div class="settings-section">
+        <h2 class="section-label">Wallet</h2>
+        <div class="card-panel">
+          <div class="settings-row">
+            <span class="settings-key">Address</span>
+            <span class="settings-val" id="settings-addr">—</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-key">Balance</span>
+            <span class="settings-val" id="settings-balance">—</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-key">Network</span>
+            <span class="settings-val status-badge-green">devnet</span>
+          </div>
+          <button class="btn btn-secondary" id="btn-disconnect-wallet">Disconnect</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h2 class="section-label">Network</h2>
+        <div class="card-panel">
+          <div class="settings-row">
+            <span class="settings-key">● Devnet</span>
+            <span class="settings-val" id="settings-program">5i37...XfmN</span>
+          </div>
+          <div class="settings-row muted">
+            <span class="settings-key">○ Mainnet</span>
+            <span class="settings-val muted">Coming soon</span>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h2 class="section-label">Audio</h2>
+        <div class="card-panel">
+          <div class="settings-row">
+            <span class="settings-key">SFX</span>
+            <input type="range" class="range-input" id="settings-sfx" min="0" max="100" value="80">
+          </div>
+          <div class="settings-row">
+            <span class="settings-key">Music</span>
+            <input type="range" class="range-input" id="settings-music" min="0" max="100" value="60">
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h2 class="section-label">About</h2>
+        <div class="card-panel">
+          <div class="settings-row">
+            <span class="settings-key">Version</span>
+            <span class="settings-val">v3.0-plus</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-key">Tests</span>
+            <span class="settings-val status-badge-green">280 passing</span>
+          </div>
+          <div class="settings-row">
+            <a href="https://github.com/r0ze998/0xark" target="_blank" rel="noopener" class="settings-link">GitHub →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HOW TO PLAY ── -->
+  <div class="scene" id="scene-how_to_play">
+    <header class="scene-header">
+      <button class="back-btn" data-back="title">← Back</button>
+      <h1 class="scene-title">How to Play</h1>
+      <div></div>
+    </header>
+    <div class="scene-body">
+      <div class="how-to-intro">
+        <h2 class="how-to-heading">Welcome to 0xARK</h2>
+        <p class="how-to-text">An autonomous agent sandbox disguised as a card game.</p>
+      </div>
+      <div class="how-to-section">
+        <h3 class="how-to-sub">Quick Start</h3>
+        <ol class="how-to-steps">
+          <li><strong>Connect Wallet</strong><br>Phantom (devnet) recommended</li>
+          <li><strong>Build Your Deck</strong><br>Choose 20 cards from your collection</li>
+          <li><strong>Battle</strong><br>Bronze Hall (0.001 SOL ante) → Gold (Legendary stake)</li>
+        </ol>
+      </div>
+      <div class="how-to-section">
+        <h3 class="how-to-sub">Core Mechanics</h3>
+        <ul class="how-to-list">
+          <li>ZK commit-reveal — opponents can't see your hand</li>
+          <li>Burn / Evolve / Steal / Imprint — advanced card actions</li>
+          <li>x402 information market — pay SOL to peek opponent cards</li>
+          <li>Real NFT economy — cards are on-chain assets</li>
+        </ul>
+      </div>
+      <div class="how-to-section">
+        <h3 class="how-to-sub">Winning</h3>
+        <p class="how-to-text">Collect all 60 unique cards to claim the Prize Pool. First to complete the set wins everything.</p>
+      </div>
+      <div class="how-to-links">
+        <button class="btn btn-secondary" id="how-to-lore-btn">Lore →</button>
+        <a href="https://github.com/r0ze998/0xark" target="_blank" rel="noopener" class="btn btn-secondary">GitHub →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RESULT ── -->
+  <div class="scene" id="scene-result">
+    <div class="result-content">
+      <div class="result-status" id="result-status">VICTORY</div>
+      <div class="result-stats">
+        <div class="result-stat">Round: <span id="result-round">—</span></div>
+        <div class="result-stat">Duration: <span id="result-duration">—</span></div>
+      </div>
+      <div class="result-divider"></div>
+      <div class="result-rewards" id="result-rewards"></div>
+      <div class="result-divider"></div>
+      <div class="result-actions">
+        <button class="btn btn-secondary" id="result-play-again">Play Again</button>
+        <button class="btn btn-primary" id="result-back-menu">Back to Menu</button>
+      </div>
+    </div>
+    <div class="result-particles" id="result-particles"></div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Card detail modal (shared) -->
+<div class="modal-overlay" id="card-detail-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-card-art large" id="card-detail-art"></div>
+    <h3 class="modal-title" id="card-detail-name"></h3>
+    <div class="card-detail-stats" id="card-detail-stats"></div>
+    <p class="lore-flavor" id="card-detail-lore"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-full" id="card-detail-close">Close</button>
+    </div>
+  </div>
 </div>
-<div id="touch-overlay">
-<div class="touch-btn" id="dpad-up">&uarr;</div>
-<div class="touch-btn" id="dpad-down">&darr;</div>
-<div class="touch-btn" id="dpad-left">&larr;</div>
-<div class="touch-btn" id="dpad-right">&rarr;</div>
-<div class="touch-btn" id="btn-a">A</div>
-<div class="touch-btn" id="btn-b">B</div>
-<div class="touch-btn" id="btn-start">START</div>
-</div>
+
 <!-- GAME_SCRIPT -->
-
-<!-- React UI: wallet / lobby / NFT inventory (mounted into #react-root) -->
-<div id="react-root"></div>
-
-<style>
-/* ── 0xARK React UI overlay ─────────────────────────────────── */
-#react-root{position:fixed;top:12px;right:12px;z-index:200;display:flex;flex-direction:column;gap:0;pointer-events:auto}
-.oxark-ui{display:flex;flex-direction:column;gap:6px;font-family:'VT323',monospace}
-/* Wallet panel */
-.wallet-panel{display:flex;align-items:center;gap:8px;background:rgba(10,10,24,.92);border:1px solid #2a2a4a;border-radius:10px;padding:6px 10px;backdrop-filter:blur(8px)}
-.wallet-info{display:flex;align-items:center;gap:6px}
-.wallet-address{font-size:13px;color:#8888cc;letter-spacing:.5px}
-.btn-disconnect{background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:0 2px;line-height:1}
-.btn-disconnect:hover{color:#aa4444}
-/* Override wallet-adapter button */
-.wallet-adapter-button{font-family:'VT323',monospace!important;font-size:15px!important;height:34px!important;padding:0 14px!important;border-radius:8px!important;background:#232342!important}
-.wallet-adapter-button:hover{background:#2e2e58!important}
-/* Tabs */
-.ui-tabs{display:flex;gap:2px;background:rgba(10,10,24,.85);border:1px solid #2a2a4a;border-radius:8px;padding:3px}
-.tab{flex:1;padding:4px 10px;border:none;border-radius:6px;background:transparent;color:#666;font:15px 'VT323',monospace;cursor:pointer;letter-spacing:.5px;transition:all .1s}
-.tab.active{background:#1e1e42;color:#aaaaee}
-/* Panel */
-.ui-panel{background:rgba(10,10,24,.92);border:1px solid #2a2a4a;border-radius:10px;padding:10px 12px;backdrop-filter:blur(8px);max-height:70vh;overflow-y:auto;min-width:220px}
-/* Lobby */
-.lobby-title{font-size:18px;color:#8888cc;margin-bottom:8px}
-.game-info{background:#111126;border-radius:6px;padding:6px 8px;margin-bottom:8px;font-size:13px}
-.info-row{display:flex;justify-content:space-between;color:#666;margin-bottom:2px}
-.info-row span:last-child{color:#aaa}
-.status-badge{color:#55cc88;font-size:12px}
-.lobby-actions{display:flex;flex-direction:column;gap:6px}
-.btn{padding:6px 12px;border:1px solid;border-radius:7px;font:15px 'VT323',monospace;cursor:pointer;letter-spacing:.5px;transition:all .1s}
-.btn:disabled{opacity:.4;cursor:default}
-.btn-primary{background:#1e2e6e;color:#aac;border-color:#3040aa}
-.btn-primary:not(:disabled):hover{background:#2a3e8e}
-.btn-secondary{background:#1e3e2e;color:#8ca;border-color:#2a6a4a;padding:6px 10px}
-.btn-secondary:not(:disabled):hover{background:#2a5a3e}
-.btn-stake{background:#4e2e0e;color:#fca;border-color:#8a5a1a;animation:pulse-stake .8s ease-in-out infinite alternate}
-@keyframes pulse-stake{from{box-shadow:0 0 0 rgba(200,120,20,0)}to{box-shadow:0 0 8px rgba(200,120,20,.6)}}
-.join-row{display:flex;gap:4px}
-.game-id-input{flex:1;background:#0c0c20;border:1px solid #2a2a4a;border-radius:6px;color:#aaa;padding:5px 8px;font:14px 'VT323',monospace}
-.game-id-input::placeholder{color:#444}
-.error-msg{color:#cc4444;font-size:13px;margin-top:4px}
-/* Inventory */
-.inventory-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.inventory-title{font-size:17px;color:#8888cc}
-.btn-refresh{background:none;border:1px solid #333;border-radius:5px;color:#666;cursor:pointer;padding:2px 6px;font-size:14px}
-.btn-refresh:hover{color:#aaa}
-.collection-progress{display:flex;align-items:center;gap:6px;margin-bottom:6px}
-.progress-bar-track{flex:1;height:5px;background:#1a1a32;border-radius:3px}
-.progress-bar-fill{height:100%;background:linear-gradient(90deg,#3344cc,#66aaff);border-radius:3px;transition:width .4s}
-.progress-label{font-size:12px;color:#666;min-width:36px;text-align:right}
-.legendary-badge{font-size:12px;color:#fbbf24;margin-bottom:6px;letter-spacing:.5px}
-.empty-inventory{color:#444;font-size:13px;text-align:center;padding:12px 0}
-.card-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:8px}
-.card-slot{background:#0e0e22;border:1px solid;border-radius:5px;padding:4px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;transition:transform .1s,background .1s}
-.card-slot:hover{background:#1a1a34;transform:scale(1.05)}
-.card-slot.selected{background:#1e1e40;box-shadow:0 0 6px rgba(100,120,255,.4)}
-.card-id{font-size:11px;color:#aaa}
-.card-rarity{font-size:11px;font-weight:bold}
-.card-detail{background:#0e0e22;border-radius:6px;padding:8px;border:1px solid #2a2a4a}
-.card-detail-header{display:flex;justify-content:space-between;margin-bottom:4px}
-.card-detail-header strong{color:#ccc;font-size:14px}
-.card-detail-rarity{font-size:13px}
-.card-detail-desc{color:#555;font-size:12px;margin-bottom:6px}
-.card-detail-link{color:#6688cc;font-size:12px;text-decoration:none}
-.card-detail-link:hover{color:#88aaee}
-/* Scrollbar */
-.ui-panel::-webkit-scrollbar{width:4px}.ui-panel::-webkit-scrollbar-track{background:transparent}.ui-panel::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
-</style>
-
-<link rel="stylesheet" href="react-dist/oxark-ui.css">
-<script>if(typeof require==='undefined'){window.require=function(){return{};};}</script>
-<script src="react-dist/oxark-ui.iife.js" defer></script>
 </body>
 </html>
