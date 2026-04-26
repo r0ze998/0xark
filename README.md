@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
 **Program ID** (Solana Devnet): `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`
-**Latest tag**: `v-phd-night-polish` · **Tests**: 280 passing (113 Anchor/Rust + 102 client + 65 AI agent)
+**Latest tag**: `v-phd-devnet-mint` · **Tests**: 280 passing (113 Anchor/Rust + 102 client + 65 AI agent)
 
 **Colosseum Frontier Hackathon 2026 Submission**
 Tracks: Gaming (primary) · AI · Stablecoins
@@ -228,6 +228,7 @@ Each hire unblocks a specific scale constraint. No dead weight.
 - **280 tests passing** — 113 Anchor/Rust + 102 client + 65 AI agent
 - **Multiplayer WebSocket** — 2-wallet real-time duels
 - **Arweave metadata pipeline** — Legendary media uploads
+- **60 NFTs minted on devnet** — all cards live on-chain with Metaplex metadata
 
 </td>
 <td valign="top" width="50%">
@@ -254,6 +255,25 @@ Each hire unblocks a specific scale constraint. No dead weight.
 </td>
 </tr>
 </table>
+
+---
+
+## 60 NFTs minted on devnet
+
+All 60 0xARK cards are live on Solana devnet as Metaplex NFTs.  
+Mint authority burned after creation — supply is permanently locked.
+
+| Cards program | `236FNPRbJr5W7qeV9fJCYsxDEkruSK6fnNAipf47Mq1S` |
+|---|---|
+| Minter wallet | `DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R` |
+| Minted | 2026-04-26 (59 fresh + 1 pre-existing) |
+| Full records | [`docs/devnet-mint-records.json`](docs/devnet-mint-records.json) |
+
+**Random sample (Solscan devnet):**
+
+- [#001 AEGIS](https://solscan.io/token/3iZQAt7D4F2gHNXcjwWJhKxfGVhKhzyELMm1tAwy21ni?cluster=devnet)
+- [#030 SHADOW](https://solscan.io/token/6FHSa3L7bvrgi8W9BGE32SricZxXBJuL2zNkebzZCFAv?cluster=devnet)
+- [#060 ARK BLESS](https://solscan.io/token/9LzFogJj4ohEndX4CCFqshfsEhfeSoJe51owcKVNwXz2?cluster=devnet)
 
 ---
 

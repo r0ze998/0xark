@@ -1,0 +1,493 @@
+{
+  "generated_at": "2026-04-26T23:42:02.532Z",
+  "wallet": "DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R",
+  "program_id": "236FNPRbJr5W7qeV9fJCYsxDEkruSK6fnNAipf47Mq1S",
+  "total_cards": 60,
+  "minted_ok": 59,
+  "already_minted": 1,
+  "errors": 0,
+  "records": [
+    {
+      "card_id": 1,
+      "name": "AEGIS",
+      "mint_address": "3iZQAt7D4F2gHNXcjwWJhKxfGVhKhzyELMm1tAwy21ni",
+      "metadata_address": "77Rnjy9KtE6VqvM5mmZhuM1J2X9NrvtnYx5JmwhSj8mH",
+      "sig": null,
+      "solscan_url": "https://solscan.io/token/3iZQAt7D4F2gHNXcjwWJhKxfGVhKhzyELMm1tAwy21ni?cluster=devnet",
+      "note": "already_minted"
+    },
+    {
+      "card_id": 2,
+      "name": "UMBRA",
+      "mint_address": "2MMutTj8W49rmbYqgsQNom4o7isWLetNUay2GhoBuuDi",
+      "metadata_address": "JC8Fy5FVdA97yAzGKvNgKBrXRhHE76Cef5VVoV5xuC6m",
+      "sig": "3QKLjztkztri5pqWzXrWmvdEnx2asToKnyAmxdjcsQkKXS53XZRTqZ9iK49PrYCD7BVg33KRZTRjYuLT2QS5qziM",
+      "solscan_url": "https://solscan.io/token/2MMutTj8W49rmbYqgsQNom4o7isWLetNUay2GhoBuuDi?cluster=devnet"
+    },
+    {
+      "card_id": 3,
+      "name": "IGNIS",
+      "mint_address": "C5e3eqguENWCnadHKZfs6fcXfaHwDokefbnjShuh9LGD",
+      "metadata_address": "8Aficmo1v9h79MD532j8baJdnJtBYXL6NqoNWP5Ur8Tg",
+      "sig": "5cPih2ABUg4YAma3BwBb9W3UoQQjdFEJqQNdpaaUnt7JfeNJNLMaMapuHVLiLUe2vLPfZfKtyUDCycTmdqTCSSWM",
+      "solscan_url": "https://solscan.io/token/C5e3eqguENWCnadHKZfs6fcXfaHwDokefbnjShuh9LGD?cluster=devnet"
+    },
+    {
+      "card_id": 4,
+      "name": "STRIKE",
+      "mint_address": "26rVR5ffVGctVd63YKoJVhnrn9zhkM2UDbXaiwGeonLx",
+      "metadata_address": "FzaBWdb7HZAUqcnmHRfdbGkfjAFs1YrMKhHSoSeVSYBN",
+      "sig": "5vHkgmRWxDcy5fuVPr7LWhQNGXzT4rCzn5XRGw9pPgMvJDoGUBWNqzP8HYvSuzBPwogKhh54gdtBLKfQh1HrPSTV",
+      "solscan_url": "https://solscan.io/token/26rVR5ffVGctVd63YKoJVhnrn9zhkM2UDbXaiwGeonLx?cluster=devnet"
+    },
+    {
+      "card_id": 5,
+      "name": "SLASH",
+      "mint_address": "GWApfQWz1Tnjh9xdDWLbc7cE9BrFVQRvq3AR6c1EaFAN",
+      "metadata_address": "5Y4US6zJt5NpsS6mqL5CigPesVHVsoWzd6uXTsut66Kr",
+      "sig": "37WNXKSK7ZZB2ZiqxmLSYEFGM5m2zKAZHTPZb2YKwg5JuJ5Xc18YWVL9QAhc8XauifdgViVs2gXX4Z3483bMRTYQ",
+      "solscan_url": "https://solscan.io/token/GWApfQWz1Tnjh9xdDWLbc7cE9BrFVQRvq3AR6c1EaFAN?cluster=devnet"
+    },
+    {
+      "card_id": 6,
+      "name": "IMPALE",
+      "mint_address": "8VnnQcfLKvEhEH6cCFsckojRWkhMB9iD4uKmSrrBr4VD",
+      "metadata_address": "4A34VZffRrvyy7mSMyUBWKRox7jUW4af7wjkB6Depi7c",
+      "sig": "4g2RovsEtcRMT5AoSqNb3iDBigipkHA6k3jaH2C14bGNg4SWFK1qrzPco5JmqgeCq31MjWhKUAKkk2J19x84S4e8",
+      "solscan_url": "https://solscan.io/token/8VnnQcfLKvEhEH6cCFsckojRWkhMB9iD4uKmSrrBr4VD?cluster=devnet"
+    },
+    {
+      "card_id": 7,
+      "name": "CRUSH",
+      "mint_address": "6X6ZNokNbLuZoFXdYAeZd2YCNv64NPzZ1tvw5suV9Fc7",
+      "metadata_address": "6Cs7EngKyCBk6mPHEdLFw3dg6C2eqPb8h4mnQuxfmn2o",
+      "sig": "2EkEVFKfy7LEZ6BbZvBHod1Wscwxvk87RqKTKkwKwi5bCVr8q9rMtsR4Rfj845VGoDJxFhPmbKfRjCY2UCH2ymHm",
+      "solscan_url": "https://solscan.io/token/6X6ZNokNbLuZoFXdYAeZd2YCNv64NPzZ1tvw5suV9Fc7?cluster=devnet"
+    },
+    {
+      "card_id": 8,
+      "name": "FLURRY",
+      "mint_address": "EVT917fE8ixqe7s3mXiPPQQjAQGQVxYiNeZkLp1tjNP8",
+      "metadata_address": "43X99oJP4oPqmzeBtVwamBjUfggfp38Nxkhb91ngbgGE",
+      "sig": "GGRq4JAPQFf2gwhXRz2gUnJ4xkzr3cyeo2FFtKvqMCM8qNSM8Bspj2Heq67ZRYciwmTMkTJt16YyU5uQ4qDdBzL",
+      "solscan_url": "https://solscan.io/token/EVT917fE8ixqe7s3mXiPPQQjAQGQVxYiNeZkLp1tjNP8?cluster=devnet"
+    },
+    {
+      "card_id": 9,
+      "name": "BERSERK",
+      "mint_address": "5kE3eGxxjTT98N9GmPthK4Q3ZTeVhGcMQkU5UNTjHrvD",
+      "metadata_address": "3PoXFoWQQ5DVUuXd5poQUKvSHiQY5Rot5pnTtuuX5Mvt",
+      "sig": "4MfoHgutUEU9zWTeKLyVn46a4LV6uwJtmuuhG99Ta4H6be2DkK4XGJwkUYiUeUFc68GNc81Lx1WLoHN1vwzWHoCe",
+      "solscan_url": "https://solscan.io/token/5kE3eGxxjTT98N9GmPthK4Q3ZTeVhGcMQkU5UNTjHrvD?cluster=devnet"
+    },
+    {
+      "card_id": 10,
+      "name": "VENOM",
+      "mint_address": "2btPLWkgNVTZYM1duAPqbKnzoub3ztYUnxppKjuLjomH",
+      "metadata_address": "CaFxC8mdyghTFfKcTGt6L17diyz1HFDB2BDGfR4ZRZuJ",
+      "sig": "2uxLdMY8qZagvAweVZmf7Y6DVeiY1kbZ3WDdqYdvh8QJT4zz2ahfvQkKMqdQMJAxiMnSrue787qEKUo8tCC46v7Z",
+      "solscan_url": "https://solscan.io/token/2btPLWkgNVTZYM1duAPqbKnzoub3ztYUnxppKjuLjomH?cluster=devnet"
+    },
+    {
+      "card_id": 11,
+      "name": "REAPER",
+      "mint_address": "w4yr2brVoweymvUi1D415t7gvoYj6qCsoYwMsffaQRC",
+      "metadata_address": "Bpba9Jt7YEnkpzRYsyTXouxurY7eL6Djs5ZdSdGeZhmA",
+      "sig": "4hYb66Ztq29XRGKaJAVSm4ti5PEVgvNDT8TYWVWSKEkc8Zres7wo5RXy42eyTiovajuv7gvZqsgXCX2UkxjqPqBR",
+      "solscan_url": "https://solscan.io/token/w4yr2brVoweymvUi1D415t7gvoYj6qCsoYwMsffaQRC?cluster=devnet"
+    },
+    {
+      "card_id": 12,
+      "name": "VOIDBLADE",
+      "mint_address": "7MmHp52GnXW97a4UadHgKaVDPfqKnn8oqW3rfPdR28aA",
+      "metadata_address": "3nmuNjKVyMEbgQozWSjNt2p9ewVb5fy29bZF5a6th6sQ",
+      "sig": "2MHwjtCTJCdr4uVto8wqfSAGW2QFsobmhnDoEEfDXoLYex4yi8wKY8xMtwQZB4CJVJKfLtWuudgSGmXHzFnWELLL",
+      "solscan_url": "https://solscan.io/token/7MmHp52GnXW97a4UadHgKaVDPfqKnn8oqW3rfPdR28aA?cluster=devnet"
+    },
+    {
+      "card_id": 13,
+      "name": "GUARD",
+      "mint_address": "4UMui9RqWtEWPfRavdnv4KU61AGuM4hvdsD1iiWJFiLB",
+      "metadata_address": "4Jb6X1P1CfB267AvJpHbY9EmeEYU2wkWW37DfviMEeR4",
+      "sig": "4YRhtWZcFLMmJH8BmFpeBUBVejThimetGEifHMCg4vGvnxHh6QoNvmzLNaX12puBpGgQRyckVwDGvDNwR9dQNkDJ",
+      "solscan_url": "https://solscan.io/token/4UMui9RqWtEWPfRavdnv4KU61AGuM4hvdsD1iiWJFiLB?cluster=devnet"
+    },
+    {
+      "card_id": 14,
+      "name": "PARRY",
+      "mint_address": "4MhUt1U5YKXA34PuTVknHRuC7qSTZogaR8X6hEwt1Hy7",
+      "metadata_address": "FgKRftJ4rEGUPadfgbmFBL3sdvDxervpUvYYgJD5QTZg",
+      "sig": "2uPr1dkFkQEiQWLPf9n2WoKdxyY2TN994HobBqNRfwjhipK2ngHH3jRsyJDYMPKCvnFayhhiWfbSxeNLRHwwdaH8",
+      "solscan_url": "https://solscan.io/token/4MhUt1U5YKXA34PuTVknHRuC7qSTZogaR8X6hEwt1Hy7?cluster=devnet"
+    },
+    {
+      "card_id": 15,
+      "name": "IRON WALL",
+      "mint_address": "H2yJSgGzUQ6NnTgSs7FQgemXFX7bNQAv6tPFBagrkQZn",
+      "metadata_address": "CTbBaCSBANc4W9kz9tbjLRdn59e9AomEuNKuYgTMovP6",
+      "sig": "3xWm84hJqVzs89jN8VacGxq2EPfnkfhp8TBTRYas3GaYRPyiUex2HXcaMrcLKU33jLDtrgrvm1L7gdfaH7HYmJwR",
+      "solscan_url": "https://solscan.io/token/H2yJSgGzUQ6NnTgSs7FQgemXFX7bNQAv6tPFBagrkQZn?cluster=devnet"
+    },
+    {
+      "card_id": 16,
+      "name": "COUNTER",
+      "mint_address": "3hdVDsLrqnsNCrgEd7ZCZyTFSpX1T8FAYATyFTeaHjfp",
+      "metadata_address": "GkF3Eo4zxRvP867iL7ZbaRBsa3ErhbBZxJehLmBunoDH",
+      "sig": "4p1BD87J2Vg48sKWSwwU3yM9gs8znDcfqABzrQh35CcL3qWkKzpE7P2y86qD9mQCHYW5JrpF19xs18ag2LLDkFR2",
+      "solscan_url": "https://solscan.io/token/3hdVDsLrqnsNCrgEd7ZCZyTFSpX1T8FAYATyFTeaHjfp?cluster=devnet"
+    },
+    {
+      "card_id": 17,
+      "name": "AEGIS WARD",
+      "mint_address": "7jhZFhs4wZSJZEyzfZL4WpwGdJLnscixiKoGg7EhCyn5",
+      "metadata_address": "6Rk6uqhB2hgbWi2GxqLJdddScgpwTFoDw84C1g3gfHuR",
+      "sig": "5L7wQ9ETbcdfmMhZuuFEq6uCMNHJX2N55nqtgqZVXU8TxXa1ZvsPYGgk2abtJUVMHBadysp47fDXgQzeoSRTdiDA",
+      "solscan_url": "https://solscan.io/token/7jhZFhs4wZSJZEyzfZL4WpwGdJLnscixiKoGg7EhCyn5?cluster=devnet"
+    },
+    {
+      "card_id": 18,
+      "name": "MIRROR",
+      "mint_address": "6ChSUL64JvVEu5UxiGkJBXfcCXxxA617T3nCHva9LiSw",
+      "metadata_address": "FVJRBENXY6UBDxL2tVH8eVs6MkiuqTjDFjZy3VYdkgrY",
+      "sig": "44kPV5xadShFixo6gWrE4RVeuEFga2Y17PCrsAoBbowQTWV1fhDc7w1S4CGZeaLnes3P78rxK8DnoxKt7aTkj2rC",
+      "solscan_url": "https://solscan.io/token/6ChSUL64JvVEu5UxiGkJBXfcCXxxA617T3nCHva9LiSw?cluster=devnet"
+    },
+    {
+      "card_id": 19,
+      "name": "FORTRESS",
+      "mint_address": "4mCfQXRdRWcu1gKsrXNo65SA1Vobh15HdZrMfUVsryGT",
+      "metadata_address": "BNmH81wPG9kp6RA5t1vwFouvZhpC4BYztaW4TyRejAm6",
+      "sig": "amyNdTFgYzXSFRJYNRvVQJGH1rKs1zRqoq2SQJ9mkSKPj4MsNcuzEQFyJr1VWTj2XXb8mjziLeJ8R7nbfqCNTgH",
+      "solscan_url": "https://solscan.io/token/4mCfQXRdRWcu1gKsrXNo65SA1Vobh15HdZrMfUVsryGT?cluster=devnet"
+    },
+    {
+      "card_id": 20,
+      "name": "CRYSTAL",
+      "mint_address": "5uAZzJRCXiuu922JMDc8e8p5QYZiNmLsQAS1a1d2nv21",
+      "metadata_address": "7FLbdW65fp9XPWZRCYVHLG5DsirtySmJUvbteJsoKYBi",
+      "sig": "2GNAr7XHjJERLYUFpZ84GdvNSEQhdPC849Tt2fehe8HWiefuHLaeUNfqWees4fUZfQHkDEBZ2hQeR8zrThrpKcWq",
+      "solscan_url": "https://solscan.io/token/5uAZzJRCXiuu922JMDc8e8p5QYZiNmLsQAS1a1d2nv21?cluster=devnet"
+    },
+    {
+      "card_id": 21,
+      "name": "NULLIFY",
+      "mint_address": "6EEv3pXWS8GQ1XjyRNDYoMAEyntJ24ynxcqX1a5tdrVf",
+      "metadata_address": "2PJaG3LXUBzinfRuaedjx2fSTyhjfd3SmHcUoPxcDgsy",
+      "sig": "5cUrEuv3ziSveR3ndM2UenA8WuBNUoDFimV7kUuHspMPTujtyQjefQYni1FMBnNg856CuexR6Dt8ej9rAQD8Gr3g",
+      "solscan_url": "https://solscan.io/token/6EEv3pXWS8GQ1XjyRNDYoMAEyntJ24ynxcqX1a5tdrVf?cluster=devnet"
+    },
+    {
+      "card_id": 22,
+      "name": "ABS GUARD",
+      "mint_address": "2WJQe1UwwT1uxA6d6X6ALMuCrHy6VBRQDvjDGQG5A8qG",
+      "metadata_address": "6yU51oNRMNty1d89np95oem2pqymVcSh6CSUD7xDjBxy",
+      "sig": "4KAbutP8nxEi3YP2JgMdGfvVjmubGsKsbqdjE98zoZAUapjbq6nmQm9YQAyKkZtXVE3NZpjv7dBosSkgrF8BTjmQ",
+      "solscan_url": "https://solscan.io/token/2WJQe1UwwT1uxA6d6X6ALMuCrHy6VBRQDvjDGQG5A8qG?cluster=devnet"
+    },
+    {
+      "card_id": 23,
+      "name": "SANCTUARY",
+      "mint_address": "AGaNN4B29iQjEsyzhCNra6NgpP8roUsPDajGoFSesxei",
+      "metadata_address": "F3fHC3iMMwuemwMATfvHoagqsoPD5uPCeULGvJ4UvCgh",
+      "sig": "37NjgimMrcdGWkutWMVdto19vRjLb7X2NP6D4N78rgD9FG5eZGXfi98C1YPNxZjuqebKAfY8rAzssmJhBRKQnhxu",
+      "solscan_url": "https://solscan.io/token/AGaNN4B29iQjEsyzhCNra6NgpP8roUsPDajGoFSesxei?cluster=devnet"
+    },
+    {
+      "card_id": 24,
+      "name": "TITAN",
+      "mint_address": "4Pc1aWyTJGpvTWpPxosFCGZ17ppL47WQpkZXpVoMTa4s",
+      "metadata_address": "8ZVXiZA6F81fZTLAsvsxfUaWQHKAJA5dW5SCYiCgJTqo",
+      "sig": "2o9XRAbxjmau4Epa6ELMgkenniXAgrcZEZ6ebk43nxur3wfhT2UEc3URYuLwuNYFm1o5qsHYDaWdHrc7jv4hipZX",
+      "solscan_url": "https://solscan.io/token/4Pc1aWyTJGpvTWpPxosFCGZ17ppL47WQpkZXpVoMTa4s?cluster=devnet"
+    },
+    {
+      "card_id": 25,
+      "name": "DASH",
+      "mint_address": "2YXyW4GmWVS3tuWGkM1HeXyJgVBAke2dtd2vMVawMyis",
+      "metadata_address": "G8RwqcxzxdCiri5uUxewPuHTqxkhcn5FVD5R8YA2VByd",
+      "sig": "4CrGz7EYcBtFE8Y1gqrUQMUbTEkJMUpyL7dqASqqexataVZ7L4o9a7ed3DC6xgrwpQkSHjnWhDZFqp2v3ogTRAsv",
+      "solscan_url": "https://solscan.io/token/2YXyW4GmWVS3tuWGkM1HeXyJgVBAke2dtd2vMVawMyis?cluster=devnet"
+    },
+    {
+      "card_id": 26,
+      "name": "RETREAT",
+      "mint_address": "4aK1zsqcbBQpdX9Vq7qC2rLoeps9H39yHTtMsU2uJioK",
+      "metadata_address": "BKQaQXVvm1byMY1pUMbFEmMfwdyEWqsPh7QosinWGb9z",
+      "sig": "3o8Du3e8MVqKtpb7YY3VsZAvEywH3JSYHzh6EKoU1ukEudUz9CTRbAZAAhY7nb8dXhcCUqH85rQc2AT4C72dGt8E",
+      "solscan_url": "https://solscan.io/token/4aK1zsqcbBQpdX9Vq7qC2rLoeps9H39yHTtMsU2uJioK?cluster=devnet"
+    },
+    {
+      "card_id": 27,
+      "name": "SMOKE",
+      "mint_address": "jt5GcnSpyHceH7joUyzGnxiSF2a4EGQdmgcvoNHGfQV",
+      "metadata_address": "9SFLqSAZFRtAxS1AVDVPZ9hoCYg3Aoqie1kzt13g5jGA",
+      "sig": "bPkmrhmAACMMftVxGGCRz3cP7mjSQiFPjbjuqSZizM37u2jvnw7k6dAmCSSuFQxhtFxDEL8oXARDiPXMt73hyUk",
+      "solscan_url": "https://solscan.io/token/jt5GcnSpyHceH7joUyzGnxiSF2a4EGQdmgcvoNHGfQV?cluster=devnet"
+    },
+    {
+      "card_id": 28,
+      "name": "PHASE",
+      "mint_address": "22SzoHrK7XuM8ti55Ds9Q16agL1YMf8QY4XFBx8totvH",
+      "metadata_address": "Cxxpa5oqNrjESwFU2oLC7T4tWvMcVamih3dU9HwWhpPH",
+      "sig": "48Biw7eV87LDTNMofC8DGmruRKjdhvTYJ2W6Xm787zroWi9TNz1aY6eRXPZNghzLY37xDwujSMZStS9VXKn6iJQW",
+      "solscan_url": "https://solscan.io/token/22SzoHrK7XuM8ti55Ds9Q16agL1YMf8QY4XFBx8totvH?cluster=devnet"
+    },
+    {
+      "card_id": 29,
+      "name": "BLINK",
+      "mint_address": "CWWm3ftogyGQVDfg3HeNSrhoDWkpKE9yJxn6Rje32sqq",
+      "metadata_address": "A8A114ABzHGgVgTbWVfLd9e6sJUbRUr2CDK8zctV95pY",
+      "sig": "MHdL39EJPBJ4AafmLp33CNCiUcNNbuyGWg36HJ6AAxMrn6iec4mTnJ1cjsmoR5cu9RhRbeUrd5f57nVQq7h85tE",
+      "solscan_url": "https://solscan.io/token/CWWm3ftogyGQVDfg3HeNSrhoDWkpKE9yJxn6Rje32sqq?cluster=devnet"
+    },
+    {
+      "card_id": 30,
+      "name": "SHADOW",
+      "mint_address": "6FHSa3L7bvrgi8W9BGE32SricZxXBJuL2zNkebzZCFAv",
+      "metadata_address": "Bk43mvtpA8qZuujfgEquA4YxKHvisXp3k7HVTAZBWoy1",
+      "sig": "4RuVBzogJ7jyNLeTtnwfwzyfyk1vHGYtcqeQQ4j44QnYe5PLPrbZViMt4PJyKsNYve8RYebmv8AGXxc1mT6Snphk",
+      "solscan_url": "https://solscan.io/token/6FHSa3L7bvrgi8W9BGE32SricZxXBJuL2zNkebzZCFAv?cluster=devnet"
+    },
+    {
+      "card_id": 31,
+      "name": "WINDASH",
+      "mint_address": "DNzosq7on4M5gCgw8Akg5fQHQM9WDFT2nApBqZg8pj3",
+      "metadata_address": "HnMAQZDRbU4VWua248jctN74cZs5gsjj7NQHKNNnF5hQ",
+      "sig": "2FBvyerxY8Hr3zJArwBvYK7MLaTg8SfPMUYYBXtkw5Bd98RB1fmLEuEfRax9cycDTp7pQukVABKqF7vh4CNPEuNq",
+      "solscan_url": "https://solscan.io/token/DNzosq7on4M5gCgw8Akg5fQHQM9WDFT2nApBqZg8pj3?cluster=devnet"
+    },
+    {
+      "card_id": 32,
+      "name": "PHANTOM",
+      "mint_address": "DVCmS5HRED63ok2V9nFio2MRRmfL4cZjqSmXA8ZCFVTV",
+      "metadata_address": "7nJ6dib9ejHXB46i6snkyQXT6GTNJ6jQww3ZvNY9jXhZ",
+      "sig": "371i8VXpEP6fjvYbBAuxXgskBiMhpymLzn4v7PFdEUFGoy6vW86wCfdheM8ohkQBJoceY6uZe4sDxKtd9tMmoRR8",
+      "solscan_url": "https://solscan.io/token/DVCmS5HRED63ok2V9nFio2MRRmfL4cZjqSmXA8ZCFVTV?cluster=devnet"
+    },
+    {
+      "card_id": 33,
+      "name": "VOIDSTEP",
+      "mint_address": "BWKsHircsFDUun3BaX3ZP2bJVu3P26Km9U31jCpMc9pC",
+      "metadata_address": "7c8FgpTRJUFXJrdLRDKu8grThDcDo1bovhzRHpL27HEg",
+      "sig": "59oVuYKQDCgTUEzPF7yLmFemeXQr3kbLfQwymcYkYYFX63fN4TXRZdQfRCm9Mnoj5JoJaEDgcVJicfRrUqGXgAqA",
+      "solscan_url": "https://solscan.io/token/BWKsHircsFDUun3BaX3ZP2bJVu3P26Km9U31jCpMc9pC?cluster=devnet"
+    },
+    {
+      "card_id": 34,
+      "name": "TIMESKIP",
+      "mint_address": "BgPtZrSgaRDnrR9uyG2NtdLuTP9FnjmHjWeQQsPseL4a",
+      "metadata_address": "5F7NZSHiPSFnURi2VNTATVNHgBqjfT41skDtye2sY9zD",
+      "sig": "3WVVVE4RciuasXYemdXHK9vYmvvX73PsGbv3VUhALM3dbXeVFjSkf3JTc4jim2H5tvvHECtYCAKWsA9HYgSydHbG",
+      "solscan_url": "https://solscan.io/token/BgPtZrSgaRDnrR9uyG2NtdLuTP9FnjmHjWeQQsPseL4a?cluster=devnet"
+    },
+    {
+      "card_id": 35,
+      "name": "ARK GATE",
+      "mint_address": "6d22TtvvGBwv6VkmmB6zSpa1Wn51GNjvm3Gv9TMTCaRv",
+      "metadata_address": "7YPobckxqEXX3DWDnawcwL7JE9LDHAjtm6XcDAZhjkoR",
+      "sig": "53s4b7d3qhLFiDws3NTBhuxe2GiTCzWzT4DK2Z7cBMpaEKpK3E1r6qmnHuNHa57KV5wj2rsY2s5DmEqhtCgp88nk",
+      "solscan_url": "https://solscan.io/token/6d22TtvvGBwv6VkmmB6zSpa1Wn51GNjvm3Gv9TMTCaRv?cluster=devnet"
+    },
+    {
+      "card_id": 36,
+      "name": "GENESIS",
+      "mint_address": "BSsTAh5hACsNaJiCneEsqJQ5hKYpt8UVUsWVYX9K1FTR",
+      "metadata_address": "69HwCkJokLDTeEbSR2HWM92MuafZ6qwZ91yVwexCvZVZ",
+      "sig": "5PZ3L5hbnxeFRHDVjqmQhVTZZNAiEYEdsxwbcBDwjkFzkuKDkjW6BKHFQ5PLrgJhcQqyqZJ6pYUysUGB8nijoxS",
+      "solscan_url": "https://solscan.io/token/BSsTAh5hACsNaJiCneEsqJQ5hKYpt8UVUsWVYX9K1FTR?cluster=devnet"
+    },
+    {
+      "card_id": 37,
+      "name": "TEMPEST",
+      "mint_address": "J5A5ADnTRvkKxvmMrGHTbGmcU51fwTmJGAg4CBnVDMy7",
+      "metadata_address": "HLLutttrgDdkz2bi7ubaoHuTprXfY6SkbtoCiWn5iXy3",
+      "sig": "4XJ7MCZHEdfYBJwcjeSBq8ga2787iir2BUZWe3U85Arqf1aR7EZRAe6CGyoxrBFLU6GYuCBKsJ2MRpAHWLAkh9h8",
+      "solscan_url": "https://solscan.io/token/J5A5ADnTRvkKxvmMrGHTbGmcU51fwTmJGAg4CBnVDMy7?cluster=devnet"
+    },
+    {
+      "card_id": 38,
+      "name": "NIHIL",
+      "mint_address": "EjZvMs3DyXiwkr2MWBYBWbrr2iKfBHNUVFmcoZDDzCQa",
+      "metadata_address": "43phEYyxZGvzaSeXZKLQALSuMr9AVcMp2ASoWWJxPJcz",
+      "sig": "2GgBLGp6HX2sYeTXwFUU8hmemh43RVNHDUsnqcuCEDHt79MQSv4ZWcpbTs8L2yKyTGTJx4Atxgs2cHhZzDPpRLVH",
+      "solscan_url": "https://solscan.io/token/EjZvMs3DyXiwkr2MWBYBWbrr2iKfBHNUVFmcoZDDzCQa?cluster=devnet"
+    },
+    {
+      "card_id": 39,
+      "name": "SPARK",
+      "mint_address": "DX3YSR2qkEsrPG97B7ECvzGVoqhjTStfoXeUBAE4vi2A",
+      "metadata_address": "4dQdEeM98KTGR67pMQZD8QEFVPUyBFK5otA3pLYPACKc",
+      "sig": "2c5DoyQkC4uoEwmZ4HbEndwHRzuZ9DusSZsJzZj5Hh38JHCKmcR39RQUagtK5NedMStmUJL5CU5sfGNgMDsG6qFX",
+      "solscan_url": "https://solscan.io/token/DX3YSR2qkEsrPG97B7ECvzGVoqhjTStfoXeUBAE4vi2A?cluster=devnet"
+    },
+    {
+      "card_id": 40,
+      "name": "FROST",
+      "mint_address": "9nr9iFUCjZdbcXBbQErYQFYUhjG37mojLoYcpjsYWwWP",
+      "metadata_address": "GZcMfiSHHwSW9WsqvejQrwqbkvAqY2hWe49UEKivEb6e",
+      "sig": "3E4HpUdedB5Y5aeN9AeqsgPiZWBD1Uwt8cTbDMG4UpWBEHyQRajZNbq4Q8LqhVr2aje1Kwk1Sw8BSMGuMMN9M3cD",
+      "solscan_url": "https://solscan.io/token/9nr9iFUCjZdbcXBbQErYQFYUhjG37mojLoYcpjsYWwWP?cluster=devnet"
+    },
+    {
+      "card_id": 41,
+      "name": "BLAZE",
+      "mint_address": "CSndaJLNeCXv1w3RYA2kTegWjrKiu2ZGFpefazQVVpUb",
+      "metadata_address": "ERUDEGEk2v1aoL957G2Udfi8J2UJWXyaNf3g9KyWQkf2",
+      "sig": "2xZpbTLNaRkhNejA8wK9cnd9jD3GvbTDoYBAsGbR95YKz1KHsjwkW7qpcRypzcLqA5dYUhjGJG1Ru6MYaTs8KiMz",
+      "solscan_url": "https://solscan.io/token/CSndaJLNeCXv1w3RYA2kTegWjrKiu2ZGFpefazQVVpUb?cluster=devnet"
+    },
+    {
+      "card_id": 42,
+      "name": "STATIC",
+      "mint_address": "9LgZ9HkPdEFg4b84APDas86haARBG2zzqs7hAWHnCYdJ",
+      "metadata_address": "6G8mcE3eXKp2CpDAWSBixBf27EhxdcwdPRAwQ8ti6yhx",
+      "sig": "2Ck7DhkH8YABX3dDn3MhDdroKFgBnDqJ6NjSMrrsyA8qeYYnTjcLPhBApwrD7deJQKNoPtF6bc7BW9nd6kmBAFi5",
+      "solscan_url": "https://solscan.io/token/9LgZ9HkPdEFg4b84APDas86haARBG2zzqs7hAWHnCYdJ?cluster=devnet"
+    },
+    {
+      "card_id": 43,
+      "name": "INFERNO",
+      "mint_address": "8cdERaW68VZAFndTW2prJpgAM8rDGPvC9qzBxqL57veG",
+      "metadata_address": "7av8zLF8FLyjPwmHLqupa7EMxzJ6P3NSSaM55EZWkuve",
+      "sig": "3QYtRfkjUXAF8u3U78XyzQPqW6KRLxXAU9S7h2PiK2tBdrR8eKmNAXgbucqC3qtgY7nhyKVpcWT99r6JfkbRRDTu",
+      "solscan_url": "https://solscan.io/token/8cdERaW68VZAFndTW2prJpgAM8rDGPvC9qzBxqL57veG?cluster=devnet"
+    },
+    {
+      "card_id": 44,
+      "name": "BLIZZARD",
+      "mint_address": "9YLcUDaKqDRFUozoj16Ff51M5MncvRemNTdjGK1vS4hA",
+      "metadata_address": "8mzMxMR37SGfPixbH9Nb4c4N9QiicSWLYFkAsUAjiaSF",
+      "sig": "26bCDygxtn7Ch42S5PMJurXczPjtsQWC8vgzhg8RYhpW3uEYGfmPTvnGLfSg7mko46aFNEHSqaQtvU4GdZLV6Xno",
+      "solscan_url": "https://solscan.io/token/9YLcUDaKqDRFUozoj16Ff51M5MncvRemNTdjGK1vS4hA?cluster=devnet"
+    },
+    {
+      "card_id": 45,
+      "name": "THUNDER",
+      "mint_address": "64RYUSqgsuqwAgCy93x8ft3GwiS9jEoY22LKq6d6HSa4",
+      "metadata_address": "EzWiCnqg5vKwAD27eNRWvZF4kM5JT9FUNAXUQkE5K4qZ",
+      "sig": "62GRRv7SMXagFxqa8baHqJFBhEiZTEDQnqi1qq6Di4pDHUCayWT4QdiHSXdkSBGaFr79z8GwBVERir3uKBtwi8q5",
+      "solscan_url": "https://solscan.io/token/64RYUSqgsuqwAgCy93x8ft3GwiS9jEoY22LKq6d6HSa4?cluster=devnet"
+    },
+    {
+      "card_id": 46,
+      "name": "MAELSTROM",
+      "mint_address": "74dKXU3Rxfhv5Vau9PVv6q6VC3tk2dyhAdTw4chJ3JtW",
+      "metadata_address": "6wcKnvXak9kkj15g1toz2DmwScqkWm44AiXhxfSZkmfS",
+      "sig": "4JRuSnes1JePWFKRPn4hGHwjVjn4UpQztLsZ17QJNDgU5rQAGicv6scD1DrKu4UwpzXQTxPQMG5CmcsgwRxyS6j2",
+      "solscan_url": "https://solscan.io/token/74dKXU3Rxfhv5Vau9PVv6q6VC3tk2dyhAdTw4chJ3JtW?cluster=devnet"
+    },
+    {
+      "card_id": 47,
+      "name": "GRAVITY",
+      "mint_address": "9ppW66C4vsrs9qyRW281R5Xr5Ec368q2BH2pYgKFRaZT",
+      "metadata_address": "3Rywq2vGR2UHxrCcTUyVwAgLPVoMiie2usxQLt2wdXpX",
+      "sig": "4As5oSuELZRmoDLZNENCd8r1V6Kw1FognSAwWAfiEUZG9BiVKF1cPvD1whVjAHbJJezJP4xZr67xyxgM69icRBoh",
+      "solscan_url": "https://solscan.io/token/9ppW66C4vsrs9qyRW281R5Xr5Ec368q2BH2pYgKFRaZT?cluster=devnet"
+    },
+    {
+      "card_id": 48,
+      "name": "SINGULARITY",
+      "mint_address": "2cxZr3YqsB3HsS7RSUuskxiekP2HcLERtmQVa7kHyexi",
+      "metadata_address": "8kttR1Kghu3y7MTwxxR43nPiWcbxYMRfTGApq9bknK2H",
+      "sig": "HfkDEZZ8TpfVcF53RVbuRDp4QFbriPfdfMzdcQiLK2gWygvJXMKN6d4y8X265QsCjawMtyzUF2jCQbMuAZnKR4Y",
+      "solscan_url": "https://solscan.io/token/2cxZr3YqsB3HsS7RSUuskxiekP2HcLERtmQVa7kHyexi?cluster=devnet"
+    },
+    {
+      "card_id": 49,
+      "name": "MEND",
+      "mint_address": "AvrpHV9nWd5E5kodw9RQXuee6ZW9Noak4sU5tf2hM8yh",
+      "metadata_address": "FgVwuvLEHg8xm3T9q5y3eC6J2WFQf9R7dSLSsrNCGQEr",
+      "sig": "3vbSUBQzTgHiRjGZE9kWgFx5czfywWNyDbUUwNfmm7SvJXcV6GDzQ5enctm55yECkpAWpsawXHB9BrSmtutEPMf3",
+      "solscan_url": "https://solscan.io/token/AvrpHV9nWd5E5kodw9RQXuee6ZW9Noak4sU5tf2hM8yh?cluster=devnet"
+    },
+    {
+      "card_id": 50,
+      "name": "REST",
+      "mint_address": "Giqrbw5n9EUfbmrqK8nnaBt3i4fzKK3KPQ6uBD8gTdae",
+      "metadata_address": "6aCUU5hJRHYCXQVW4AoaBUVvQcQDL9gZLhowUtADeZS1",
+      "sig": "5uZnvcxCM3xfKF5AQE7N5NFJHRRpCy2QzmJVwXiik1dXMYh19Fq3WTDpmHtGTMFxKe6Ry8HSVzRaotCHax4xwasB",
+      "solscan_url": "https://solscan.io/token/Giqrbw5n9EUfbmrqK8nnaBt3i4fzKK3KPQ6uBD8gTdae?cluster=devnet"
+    },
+    {
+      "card_id": 51,
+      "name": "POTION",
+      "mint_address": "2iaujN61v99j2Qt4dJcLC5SENtYKG2bntZfxpMYLDWVc",
+      "metadata_address": "6Brw6wBHobnrzsrXghde1EEBRFm6Kfw8X8zDTsmgjiB7",
+      "sig": "J3KTYapRpmwYpTLWt9ad1xubM2eT3E7zWY1qBHcAsapcgPXcWj6YtjDm9hrpg7dRJ3bf2r46ig5xDF6p8jWD1NS",
+      "solscan_url": "https://solscan.io/token/2iaujN61v99j2Qt4dJcLC5SENtYKG2bntZfxpMYLDWVc?cluster=devnet"
+    },
+    {
+      "card_id": 52,
+      "name": "BANDAGE",
+      "mint_address": "C8sYQR23G8KJAdhwjqud6x18jsy3kqXDT1pjt7SM57gj",
+      "metadata_address": "3fA33pcpevNoPqjmgjTE66w1PNsB8fjv4Wm6ddQL51b6",
+      "sig": "cqcyykcFbLqN6FEAdxxGU4LFSc8ngK43fcZjUdzb3XTBMYrSk7hPPniVBed53XM41AzeFkFebtUcCR8T9LVLtZ9",
+      "solscan_url": "https://solscan.io/token/C8sYQR23G8KJAdhwjqud6x18jsy3kqXDT1pjt7SM57gj?cluster=devnet"
+    },
+    {
+      "card_id": 53,
+      "name": "REJUVEN",
+      "mint_address": "BxQjpqTbSdG7CuYb3XTgpUyvpb61pCQ9Md2ypJDWmGWt",
+      "metadata_address": "CZWZGh9gMiFXUmokGgpckah7MDqZ5rFz1Pn7QmuLF9K8",
+      "sig": "51LuRP9HvXuFzhxoTQTZRgete8jJT2Byu7ifFenX4bqyAwLFTJGv1okRB1VvTy6mC1MEdL8CEmMWzmpH5acbhpqJ",
+      "solscan_url": "https://solscan.io/token/BxQjpqTbSdG7CuYb3XTgpUyvpb61pCQ9Md2ypJDWmGWt?cluster=devnet"
+    },
+    {
+      "card_id": 54,
+      "name": "WARD",
+      "mint_address": "9aNt3NL2YqXh3ptfprgN6ZgYhMHa7ENnsLhEWwcPurRM",
+      "metadata_address": "FpqHm7wR1o18nLCpTqJbJW5eomxwDMb7D7yqvh16ercC",
+      "sig": "3KHVnsXAxEc1rNiMVu7nS2coXAMBJzHsWR2B1FTGxk1z2bUPtuUBEga4jxGzjRsdDpW9PyzhAkC1At4eiLpZL5NP",
+      "solscan_url": "https://solscan.io/token/9aNt3NL2YqXh3ptfprgN6ZgYhMHa7ENnsLhEWwcPurRM?cluster=devnet"
+    },
+    {
+      "card_id": 55,
+      "name": "LIFEDRAIN",
+      "mint_address": "8Vdi2SzZfPRBgtw1PzwxzsFfJisbhxtmXWLqTk3on5u8",
+      "metadata_address": "D4gstLGQNXp5GwHKAhMHBQ81ckrjeeBdCHkjwKRRcXV5",
+      "sig": "5KA5XAwNh55PYZG58KGdig5n8qrDufhEY7mJM6GvugVntEBqtwHVVexbcTZxhFXQhVLjwsfjKpWvB3KAX6zBbjro",
+      "solscan_url": "https://solscan.io/token/8Vdi2SzZfPRBgtw1PzwxzsFfJisbhxtmXWLqTk3on5u8?cluster=devnet"
+    },
+    {
+      "card_id": 56,
+      "name": "PHOENIX",
+      "mint_address": "DA7vPNeM4df4mS4CAoFwzSLQPs3sgepZriC6yRjBPuzp",
+      "metadata_address": "G1FE3d6RvftLVDbJbDeAF9zEQLe9WbtoPX5be4ghi6KQ",
+      "sig": "5MZ8aXW3j1Gm1cvBg1c2yDAhXxh6PcugyfjDzu6KvZAmKVNizb37xRNTicpojiKAxgfe8NXiUrxGcYL8aaYQUpfB",
+      "solscan_url": "https://solscan.io/token/DA7vPNeM4df4mS4CAoFwzSLQPs3sgepZriC6yRjBPuzp?cluster=devnet"
+    },
+    {
+      "card_id": 57,
+      "name": "ELIXIR",
+      "mint_address": "8i73U7WCa3p3sj3zgCwadjCF8n29rtjaDDjHNsKLDZzi",
+      "metadata_address": "DteybCxrftxK1dGryS3PdsZK48qhL5mwrYT5Xv5Ymcc6",
+      "sig": "4UTUR7fcksPnG1aMdYUyfmuUETvVnXT6fbmB9VfCftjqnfPr3q8zrinrMoApVRdX3s9nodpvYGTi4smdZzJRjbnZ",
+      "solscan_url": "https://solscan.io/token/8i73U7WCa3p3sj3zgCwadjCF8n29rtjaDDjHNsKLDZzi?cluster=devnet"
+    },
+    {
+      "card_id": 58,
+      "name": "HOLY LIGHT",
+      "mint_address": "8d7s5hFsYB3hZqXRmKUkhrcLNFAQAzf1wcJtxHRgpoRm",
+      "metadata_address": "GrAdKHP6N5WHFoJaKthjD2zBrQmx149QWjhN9z1xfdLF",
+      "sig": "4TbUiVSKPeU93zeAEqunHMgDtsi67XPGUDq9xYKc4zVLZwoSSSq2cHeKBRPVaGLhGptHBv6CxT8KhQfh7iDQdEZV",
+      "solscan_url": "https://solscan.io/token/8d7s5hFsYB3hZqXRmKUkhrcLNFAQAzf1wcJtxHRgpoRm?cluster=devnet"
+    },
+    {
+      "card_id": 59,
+      "name": "GEN PULSE",
+      "mint_address": "CYuyGVxCfqmA6V5WHAHSLXJuSKi3nuoUaYaVQs84H4Rj",
+      "metadata_address": "2Z5ZB2VQnc6sJH1wTVJLdr5eRxAt5v6FsYwm31wkFgV3",
+      "sig": "2HkErZU3eMBvrB8ZaaRXnbyYaW2QBDdS3AQWXtDd8qpEtgLzBQX7zCmcuL7vXX8FE497dEF6bBpJG9L1fCm855KE",
+      "solscan_url": "https://solscan.io/token/CYuyGVxCfqmA6V5WHAHSLXJuSKi3nuoUaYaVQs84H4Rj?cluster=devnet"
+    },
+    {
+      "card_id": 60,
+      "name": "ARK BLESS",
+      "mint_address": "9LzFogJj4ohEndX4CCFqshfsEhfeSoJe51owcKVNwXz2",
+      "metadata_address": "BCMuUYS2dy3aXMyCceYRg4a9oTQDqgoe1na2arUF7cZS",
+      "sig": "5zD4cGaDuFja3C9HUqMwU1ZHuxGk5RKgg9UkADL4CuhdUyxh6ALV8tXJyjXwYUjqnBeVUAs11CdPNUesRrC5HzrD",
+      "solscan_url": "https://solscan.io/token/9LzFogJj4ohEndX4CCFqshfsEhfeSoJe51owcKVNwXz2?cluster=devnet"
+    }
+  ],
+  "error_list": []
+}
