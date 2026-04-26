@@ -43,6 +43,7 @@ function enterScene(sceneId, params = {}) {
   // Pause/resume canvas loop
   if (sceneId === 'duel') {
     _duelCanvasActive = true;
+    if (typeof initDuelCanvas === 'function') initDuelCanvas();
   } else {
     _duelCanvasActive = false;
   }

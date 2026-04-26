@@ -124,6 +124,7 @@ function generateTokensModule() {
 const MODULES = [
   { file: '00-tokens.js',         desc: 'Design tokens (GENERATED from design/DESIGN_TOKENS.json — do not hand-edit)' },
   { file: '00-constants.js',      desc: 'Shared named constants — SCENE_IDS, GAME_CONSTANTS (economy values). Loaded first so all modules can reference without import.' },
+  { file: '00-canvas.js',         desc: 'Canvas layout constants (W/H/TW/TH/HUD_HEIGHT/dt/g) + duel canvas bootstrap. Must load before 04-state.js.' },
   { file: '01-draw.js',           desc: 'Canvas 2D drawing primitives · drawCardFrame · crypto utils · ZK proof system · Solana/wallet/blockchain helpers' },
   { file: '01-magicblock.js',     desc: 'MagicBlock Ephemeral Rollups · Magic Router connection · sendViaMagicRouter · checkDelegationStatus · delegation stubs (window.oxarkMB)' },
   { file: '01-net.js',            desc: 'WebSocket multiplayer client · typewriter text · fade/wipe transitions · screen shake' },
