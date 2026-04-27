@@ -37,62 +37,62 @@
   <div id="app"></div>
 
   <script type="module">
-    import { mount as mountTitleA,    unmount as unmountTitleA    } from './src/screens/title-a.js';
-    import { mount as mountM1,        unmount as unmountM1        } from './src/screens/m1-lobby.js';
-    import { mount as mountM3,        unmount as unmountM3        } from './src/screens/m3-duel-open.js';
-    import { mount as mountM2,        unmount as unmountM2        } from './src/screens/m2-duel-board.js';
-    import { mount as mountM4,        unmount as unmountM4        } from './src/screens/m4-victory.js';
+    // ── Wave 1 ────────────────────────────────────────────────
+    import { mount as mountTitleA,  unmount as unmountTitleA  } from './src/screens/title-a.js';
+    import { mount as mountM1,      unmount as unmountM1      } from './src/screens/m1-lobby.js';
+    import { mount as mountM3,      unmount as unmountM3      } from './src/screens/m3-duel-open.js';
+    import { mount as mountM2,      unmount as unmountM2      } from './src/screens/m2-duel-board.js';
+    import { mount as mountM4,      unmount as unmountM4      } from './src/screens/m4-victory.js';
+
+    // ── Wave 2 ────────────────────────────────────────────────
+    import { mount as mountS1,      unmount as unmountS1      } from './src/screens/s1-menu.js';
+    import { mount as mountS8,      unmount as unmountS8      } from './src/screens/s8-defeat.js';
+    import { mount as mountS3,      unmount as unmountS3      } from './src/screens/s3-bourse.js';
+    import { mount as mountS2,      unmount as unmountS2      } from './src/screens/s2-deck-editor.js';
 
     const app = document.getElementById('app');
 
-    // ── Router ────────────────────────────────────────────
+    // ── Router ────────────────────────────────────────────────
     let currentUnmount = null;
 
     function navigate(screenName, detail = {}) {
       if (currentUnmount) currentUnmount(app);
 
       switch (screenName) {
-        case 'title-a':
-          mountTitleA(app);
-          currentUnmount = unmountTitleA;
-          break;
-        case 'm1-lobby':
-          mountM1(app, detail);
-          currentUnmount = unmountM1;
-          break;
-        case 'm3-duel-open':
-          mountM3(app, detail);
-          currentUnmount = unmountM3;
-          break;
-        case 'm2-duel-board':
-          mountM2(app, detail);
-          currentUnmount = unmountM2;
-          break;
-        case 'm4-victory':
-          mountM4(app, detail);
-          currentUnmount = unmountM4;
-          break;
+        // Wave 1
+        case 'title-a':       mountTitleA(app);         currentUnmount = unmountTitleA; break;
+        case 'm1-lobby':      mountM1(app, detail);     currentUnmount = unmountM1;     break;
+        case 'm3-duel-open':  mountM3(app, detail);     currentUnmount = unmountM3;     break;
+        case 'm2-duel-board': mountM2(app, detail);     currentUnmount = unmountM2;     break;
+        case 'm4-victory':    mountM4(app, detail);     currentUnmount = unmountM4;     break;
+
+        // Wave 2
+        case 's1-menu':       mountS1(app, detail);     currentUnmount = unmountS1;     break;
+        case 's8-defeat':     mountS8(app, detail);     currentUnmount = unmountS8;     break;
+        case 's3-bourse':     mountS3(app, detail);     currentUnmount = unmountS3;     break;
+        case 's2-deck-editor': mountS2(app, detail);    currentUnmount = unmountS2;     break;
+
         default:
-          app.innerHTML = `<div style="color:#c9a227;font-family:VT323,monospace;font-size:28px;padding:40px;">[${screenName}] — COMING IN WAVE 2</div>`;
+          app.innerHTML = `<div style="color:#c9a227;font-family:VT323,monospace;font-size:28px;padding:40px;">[${screenName}] — COMING IN WAVE 3</div>`;
           currentUnmount = null;
       }
     }
 
-    // ── Navigation events ─────────────────────────────────
+    // ── Navigation events ─────────────────────────────────────
     document.addEventListener('wallet:connected', (e) => {
-      navigate('m1-lobby', e.detail);
-    });
-
-    document.addEventListener('nav:howtoplay', () => {
-      navigate('s7-howtoplay');
-    });
-
-    document.addEventListener('nav:lobby', (e) => {
       navigate('m1-lobby', e.detail);
     });
 
     document.addEventListener('nav:title', () => {
       navigate('title-a');
+    });
+
+    document.addEventListener('nav:lobby', (e) => {
+      navigate('m1-lobby', e.detail ?? {});
+    });
+
+    document.addEventListener('nav:menu', (e) => {
+      navigate('s1-menu', e.detail ?? {});
     });
 
     document.addEventListener('nav:matchmaking', () => {
@@ -103,7 +103,7 @@
       navigate('m2-duel-board', { round: 1, maxRounds: 5, phase: 'COMMIT' });
     });
 
-    document.addEventListener('duel:locked', (e) => {
+    document.addEventListener('duel:locked', () => {
       navigate('m4-victory', {
         opponent: 'IRON COMMANDER',
         opponentClan: 'iron-circle',
@@ -113,11 +113,55 @@
       });
     });
 
-    document.addEventListener('nav:deck-editor', () => {
-      navigate('s2-deck-editor');
+    document.addEventListener('duel:defeat', (e) => {
+      navigate('s8-defeat', {
+        opponent:     e.detail?.opponent     ?? 'IRON COMMANDER',
+        opponentClan: e.detail?.opponentClan ?? 'iron-circle',
+        cardsLost:    e.detail?.cardsLost    ?? ['PHANTOM PISTOL'],
+        txHash:       e.detail?.txHash       ?? '7zN3pKqRsXt2mVwA',
+        solLost:      e.detail?.solLost      ?? 0.005,
+      });
     });
 
-    // ── Boot ──────────────────────────────────────────────
+    document.addEventListener('nav:shop', (e) => {
+      navigate('s3-bourse', e.detail ?? {});
+    });
+
+    document.addEventListener('nav:deck-editor', (e) => {
+      navigate('s2-deck-editor', e.detail ?? {});
+    });
+
+    // Wave 3 placeholders (routed after implementation)
+    document.addEventListener('nav:card-detail', (e) => {
+      navigate('m5-card-detail', e.detail ?? {});
+    });
+
+    document.addEventListener('nav:agent', (e) => {
+      navigate('s4-agent-hub', e.detail ?? {});
+    });
+
+    document.addEventListener('nav:lore', (e) => {
+      navigate('s5-lore', e.detail ?? {});
+    });
+
+    document.addEventListener('nav:settings', (e) => {
+      navigate('s6-settings', e.detail ?? {});
+    });
+
+    document.addEventListener('nav:howtoplay', () => {
+      navigate('s7-howtoplay');
+    });
+
+    // Wave 4 placeholders
+    document.addEventListener('nav:title-b', () => {
+      navigate('title-b');
+    });
+
+    document.addEventListener('nav:title-c', () => {
+      navigate('title-c');
+    });
+
+    // ── Boot ──────────────────────────────────────────────────
     navigate('title-a');
   </script>
 </body>
