@@ -1,0 +1,29 @@
+# fly.toml — 0xARK Multiplayer + x402 relay
+# Deploy: fly deploy (from multiplayer/ dir)
+# r0ze runs: fly deploy — final trigger
+
+app = "oxark-multiplayer"
+primary_region = "nrt"   # Tokyo — closest to Solana devnet latency
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+# Secrets (set via: fly secrets set KEY=value)
+# SOLANA_RPC_URL  — Solana devnet or mainnet RPC endpoint
+# TREASURY_PUBKEY — SOL address receiving x402 micropayments
+# (without TREASURY_PUBKEY the server runs in demo mode — x402 skipped)
