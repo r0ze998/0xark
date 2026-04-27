@@ -293,30 +293,7 @@ function getRevealProgress(cardId){
 // v389: pre-baked sin/cos for phase offsets used in card character animations
 const _CSIN15=Math.sin(1.5),_CCOS15=Math.cos(1.5); // +1.5 offset (tentacle wave, cloak waver)
 const _CSIN30=Math.sin(3.0),_CCOS30=Math.cos(3.0); // +3.0 offset
-// Reveal sparkle particles
-const revealSparkles=[];
-
-function drawCardCharacter(x,y,cardId,scale,time){
-  const s=scale||1;
-  const t=(typeof time==='number')?time:((typeof fr!=='undefined')?fr:0);
-  // Reveal: if this card is being revealed, apply silhouette->color effect
-  const revealProg=getRevealProgress(cardId);
-  const revealing=revealProg<1;
-  // v402: name-based sprite lookup (fixes mismatch from card list reordering)
-  const _cr0=CD[cardId-1];const _cn=_cr0?.n||'';
-
-  function px(rx,ry,w,h,c){
-    let finalColor=c;
-    if(revealing){
-      // Reveal from top to bottom: pixels above the reveal line show color, below show black
-      const pixelNormY=ry/20; // normalize to 0..1 range (char is ~20px tall)
-      if(pixelNormY>revealProg){
-        finalColor='#111118';
-      }
-    }
-    g.fillStyle=finalColor;g.fillRect(x+rx*s,y+ry*s,w*s,h*s);
-  }
-
+function _drawCC_A(cardId,_cn,px,x,y,s,t){
   if(cardId===1){
     // AEGIS — Crystal Knight
     // Idle: body sway
@@ -354,6 +331,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(4,18,4,1,'#484850');px(9,18,4,1,'#484850');
     // Armor highlight
     px(6+sway,9,4,1,'rgba(255,255,255,0.25)');
+    return true;
   }else if(cardId===2){
     // UMBRA — Shadow Rogue
     // Idle: cloak edge waver, eye glow pulse, shadow particles
@@ -402,6 +380,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
       g.fillStyle=_rv(a);
       g.fillRect(x+p.rx*s,y+p.ry*s,s,s);
     }
+    return true;
   }else if(cardId===3){
     // IGNIS — Fire Beast (four-legged wolf/fox)
     // Idle: flame flicker on horns/tail, body crouch, ember particles
@@ -455,6 +434,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
       g.fillRect(x+p.rx*s,y+p.ry*s,s,s);
       g.globalAlpha=1;
     }
+    return true;
   }else if(_cn==='TEMPEST'){
     // TEMPEST — Storm Prophet (floating cloud being)
     // Idle: float up/down, lightning sparks, cloud shape shift
@@ -495,6 +475,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     // Wispy cloud bottom
     px(5,15+floatY,6,1,'#b8b070');px(6,16+floatY,4,1,'#a8a060');
     px(7,17+floatY,2,1,'rgba(168,160,96,0.5)');
+    return true;
   }else if(_cn==='NIHIL'){
     // NIHIL — Void Observer (ghost with single eye)
     // Idle: eye pulse, body sway, vortex rotation, tentacle wave
@@ -546,6 +527,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     // Faint aura — with sway
     px(2+sway,4,1,8,_ra(auraBright));
     px(13+sway,4,1,8,_ra(auraBright));
+    return true;
   }
 
   // v402: Legendary card unique sprites (name-matched to survive CD reordering)
@@ -588,7 +570,12 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(15,4+tearPhase*2,1,2,'#6048a0');
     px(1,10+tearPhase,1,1,'#b080ff');
     g.globalAlpha=1;
-  }else if(_cn==='TITAN'){
+    return true;
+  }
+  return false;
+}
+function _drawCC_B(cardId,_cn,px,x,y,s,t){
+  if(_cn==='TITAN'){
     // TITAN — Earth Guardian (colossal stone being, Legendary defense)
     // Idle: slow breath expansion, lava crack glow between plates
     const breathW=Math.round(_sFr007);
@@ -629,6 +616,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     const orbPhase=Math.floor(t/15)%4;
     const _orbX=[-2,0,14,12],_orbY=[6,1,4,12];
     g.globalAlpha=0.6;px(_orbX[orbPhase],_orbY[orbPhase],2,2,'#8898b0');g.globalAlpha=1;
+    return true;
   }else if(_cn==='GENESIS'){
     // GENESIS — Temporal Revenant (rewind spirit, Legendary flee)
     // Idle: body phase in/out, temporal echo trails, clockwork shimmer
@@ -675,6 +663,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     // Sparkle particles along time stream
     const _gp=Math.floor(t/3)%6;
     g.globalAlpha=0.7;px(5+_gp,8,1,1,'#ffffff');g.globalAlpha=1;
+    return true;
   }else if(_cn==='SINGULARITY'){
     // SINGULARITY — Black Hole Entity (Legendary magic)
     // Idle: accretion disk rotation, gravity distortion, matter absorption
@@ -714,6 +703,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     const _gs=Math.floor(t/5)%8;
     const _gsX=[0,2,14,13,0,3,12,15],_gsY=[4,1,3,14,12,15,1,7];
     g.globalAlpha=0.4+0.3*_sFr08;px(_gsX[_gs],_gsY[_gs],1,1,'#c080ff');g.globalAlpha=1;
+    return true;
   }else if(_cn==='ARK BLESS'){
     // ARK BLESS — Divine Vessel (Legendary recovery)
     // Idle: wings pulse, healing particles rain down, golden radiance
@@ -759,6 +749,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(12,6,3,4,'#f0e8c0');px(14,6,2,3,'#e8d8b0');
     // Hands glow
     g.globalAlpha=radiance*0.8;px(0,5,2,2,'#f8f090');px(14,5,2,2,'#f8f090');g.globalAlpha=1;
+    return true;
   }else if(_cn==='SANCTUARY'){
     // SANCTUARY — Sacred Keeper (divine guardian, Legendary defense)
     // Idle: aura pulse, sacred barrier shimmer, halo glow
@@ -804,6 +795,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(5,13,6,1,'#a0dcf8'); // hem highlight
     px(4,15,3,2,'#4888b8');px(9,15,3,2,'#4888b8');
     px(4,16,4,1,'#38609a');px(8,16,4,1,'#38609a');
+    return true;
   }else if(_cn==='GEN PULSE'){
     // GEN PULSE — Genesis Core (primordial healing star, Legendary recovery)
     // Idle: radiant core pulses, rotating rays, expanding energy rings
@@ -842,6 +834,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(7,7,2,2,'#ffffff');
     // Radiant shimmer overlay
     g.globalAlpha=genGlow*0.5;px(5,5,6,6,'#ffffff');g.globalAlpha=1;
+    return true;
   }else if(_cn==='REAPER'){
     // REAPER — Death Harvester (Lifedrain, Epic attack)
     // Idle: cloak billow, scythe glow, soul orbs orbit
@@ -878,7 +871,12 @@ function drawCardCharacter(x,y,cardId,scale,time){
     const _sox=[-1,8,15,8],_soy=[9,0,9,16];
     g.globalAlpha=0.7;px(_sox[soulPhase],_soy[soulPhase],2,2,'#9060d0');g.globalAlpha=1;
     g.globalAlpha=0.35;px(_sox[(soulPhase+2)%4],_soy[(soulPhase+2)%4],2,2,'#c090f0');g.globalAlpha=1;
-  }else if(_cn==='ARK GATE'){
+    return true;
+  }
+  return false;
+}
+function _drawCC_C(cardId,_cn,px,x,y,s,t){
+  if(_cn==='ARK GATE'){
     // ARK GATE — The Invisible Door (instant escape, Legendary flee)
     // Idle: portal swirl, rune pulse, dimensional shimmer
     const gateSwirl=Math.floor(t/6)%6;
@@ -919,6 +917,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(7,8,2,1,'#ffffff'); // core point of light
     // Gate base
     px(1,17,14,1,'#38708a');px(2,17,12,1,'#4888a0');
+    return true;
   }else if(_cn==='PHOENIX'){
     // PHOENIX — Fire Reborn (revive once, Epic recovery)
     // Idle: wing flap, tail flame flicker, ember particles
@@ -969,6 +968,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     for(let _i=_pp.length-1;_i>=0;_i--){const _p=_pp[_i];_p.ry-=0.4;_p.life--;
       if(_p.life<=0){_pp.splice(_i,1);continue;}
       g.globalAlpha=Math.min(1,_p.life/8);g.fillStyle=_p.c;g.fillRect(x+_p.rx*s,y+_p.ry*s,s,s);g.globalAlpha=1;}
+    return true;
   }else if(_cn==='PHANTOM'){
     // PHANTOM — Ghost Walker (ghost mode, Epic flee)
     // Idle: phase shift (fade in/out), wisps drift, translucent form
@@ -997,6 +997,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=1;
     // Echo (ghost trail — opposite phase)
     g.globalAlpha=(1-phaseA)*0.3;px(6,2,4,14,'#88c8a8');g.globalAlpha=1;
+    return true;
   }else if(_cn==='GRAVITY'){
     // GRAVITY — Crush Force (even light bends, Epic magic)
     // Idle: gravity lens distortion, orbiting debris, crushing force
@@ -1030,6 +1031,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=1;
     // Crushed matter at center
     g.globalAlpha=crushPulse*0.8;px(7,7,2,2,'#c0a0e0');g.globalAlpha=1;
+    return true;
   }else if(_cn==='CRYSTAL'){
     // CRYSTAL — Unbreakable (perfect defense, Epic defense)
     // Idle: crystal facets shimmer, prismatic glow pulses, refraction ripples
@@ -1068,6 +1070,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(2,8,3,1,'#70c0f0');px(11,9,3,1,'#98d8f8');
     px(3,5,2,1,'#a0ddf8');px(11,6,2,1,'#c0eeff');
     g.globalAlpha=1;
+    return true;
   }else if(_cn==='MAELSTROM'){
     // MAELSTROM — Ocean Vortex (water vortex, Epic magic)
     // Idle: vortex spiral spins, waves crash, foam sprays
@@ -1105,6 +1108,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=1;
     // Spray particles at top
     px(5,0,2,2,'#a0d0f0');px(9,1,2,1,'#c0e4f8');px(3,1,1,1,'#b0d8f4');
+    return true;
   }else if(_cn==='ELIXIR'){
     // ELIXIR — Ultimate Cure (cure all, Epic recovery)
     // Idle: golden liquid swirls, bubbles rise, magical glow pulses
@@ -1147,6 +1151,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=glowPulse*0.6;
     px(1,8,1,1,'#f0c040');px(14,9,1,1,'#f8d060');px(1,12,1,1,'#f0c040');
     g.globalAlpha=1;
+    return true;
   }else if(_cn==='NULLIFY'){
     // NULLIFY — Perfect Cancel (cancel attack, Epic defense)
     // Idle: hexagonal barrier pulses, nullification ring expands, static sparks
@@ -1179,6 +1184,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     // Static sparks (6 positions cycling)
     const _nsx=[2,7,12,13,7,1],_nsy=[7,1,7,7,13,7];
     g.globalAlpha=0.7;px(_nsx[staticPh],_nsy[staticPh],2,1,'#a0d0f0');g.globalAlpha=1;
+    return true;
   }else if(_cn==='VOIDSTEP'){
     // VOIDSTEP — Dimension Hop (one foot in another world, Epic flee)
     // Idle: half-body phases, void portal below, dimensional drift
@@ -1218,6 +1224,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     // Step cycle trace (dimensional footprint)
     const _ftrx=[4,6,9,11],_ftry=[17,18,18,17];
     g.globalAlpha=0.25;px(_ftrx[stepCyc],_ftry[stepCyc],2,1,'#68a8b8');g.globalAlpha=1;
+    return true;
   }else if(_cn==='HOLY LIGHT'){
     // HOLY LIGHT — Divine Radiance (heal and purify, Epic recovery)
     // Idle: light column pulses, holy rays rotate, purification shimmer
@@ -1254,7 +1261,12 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(2,3,2,2,'#f8f090');px(12,3,2,2,'#f8f090');
     px(2,13,2,2,'#f8f090');px(12,13,2,2,'#f8f090');
     g.globalAlpha=1;
-  }else if(_cn==='INFERNO'){
+    return true;
+  }
+  return false;
+}
+function _drawCC_D(cardId,_cn,px,x,y,s,t){
+  if(_cn==='INFERNO'){
     // INFERNO — Area Fire (The ocean does not stop it, Rare magic)
     // Idle: fire column blazes, embers rise, heat shimmer
     const flamePh=Math.floor(t/5)%4;
@@ -1278,6 +1290,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     for(let _i=_pp.length-1;_i>=0;_i--){const _p=_pp[_i];_p.ry-=0.5;_p.rx+=(Math.random()-.5)*0.3;_p.life--;
       if(_p.life<=0){_pp.splice(_i,1);continue;}
       g.globalAlpha=Math.min(1,_p.life/8);g.fillStyle=_p.c;g.fillRect(x+_p.rx*s,y+_p.ry*s,s,s);g.globalAlpha=1;}
+    return true;
   }else if(_cn==='BLIZZARD'){
     // BLIZZARD — Freeze Area (Even memories freeze in it, Rare magic)
     // Idle: snowflake crystals spin, ice shards shimmer, cold mist swirls
@@ -1314,6 +1327,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=0.5;
     px(2,3,1,1,'#ffffff');px(5,7,1,1,'#e0f0ff');px(12,4,1,1,'#ffffff');px(14,9,1,1,'#e0f0ff');px(4,11,1,1,'#ffffff');
     g.globalAlpha=1;
+    return true;
   }else if(_cn==='BERSERK'){
     // BERSERK — Rage Attack (No mind, only red, Rare attack)
     // Idle: rage aura pulses, body shakes, red eyes glow
@@ -1353,6 +1367,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(-1,5,2,2,'#e03020');px(15,6,2,2,'#e03020');
     px(0,12,2,2,'#ff5040');
     g.globalAlpha=1;
+    return true;
   }else if(_cn==='FORTRESS'){
     // FORTRESS — Immovable (Stone does not care, Rare defense)
     // Idle: torch flickers, stone permanence, battlements cast shadow
@@ -1385,6 +1400,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(1,17,14,1,'#383828');px(2,16,12,1,'#484838');
     // Stone highlight (light catching top)
     g.globalAlpha=stonePulse*0.5;px(2,4,12,1,'#888868');g.globalAlpha=1;
+    return true;
   }else if(_cn==='SHADOW'){
     // SHADOW — Invisible (Even hunters fear the dark, Rare flee)
     // Idle: barely visible dark form, shadow ripples, eyes glow in darkness
@@ -1421,6 +1437,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=shadowAlpha*1.5;
     px(11,7,2,5,'#2a3848');px(12,6,1,2,'#40607a'); // dagger
     g.globalAlpha=1;
+    return true;
   }else if(_cn==='THUNDER'){
     // THUNDER — Chain Bolt (One strike, many wounds, Rare magic)
     // Idle: lightning bolt branches, static sparks, flash pulses
@@ -1447,6 +1464,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=0.5+flashPulse*0.3;px(_tsx[staticSpark],_tsy[staticSpark],2,2,'#ffffff');g.globalAlpha=1;
     // Electric glow overlay on bolt
     g.globalAlpha=flashPulse*0.4;px(6,0,4,18,'#d8d020');g.globalAlpha=1;
+    return true;
   }else if(_cn==='VENOM'){
     // VENOM — Poison Blade (Death on the blade tip, Rare attack)
     // Idle: venom drips, purple-green poison cloud, fang gleam
@@ -1476,7 +1494,12 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=0.4;px(_vdx[(venomDrip+2)%5]+1,_vdy[(venomDrip+2)%5]+1,1,1,'#70c040');g.globalAlpha=1;
     // Poison puddle at base
     g.globalAlpha=poisonPulse*0.5;px(4,16,8,2,'#40a030');px(5,17,6,1,'#60c050');g.globalAlpha=1;
-  }else if(_cn==='BLINK'){
+    return true;
+  }
+  return false;
+}
+function _drawCC_E(cardId,_cn,px,x,y,s,t){
+  if(_cn==='BLINK'){
     // BLINK — Teleport (Here and gone and here, Rare flee)
     // Idle: after-images at 3 positions, flash burst, location swap
     const blinkPh=Math.floor(t/8)%3; // 3 blink positions
@@ -1511,6 +1534,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(_bposx[_prv],_bposy[_prv]+4,1,6,'#48c898');px(_bposx[_prv]+7,_bposy[_prv]+4,1,6,'#48c898');
     px(_bposx[_prv],_bposy[_prv]+9,8,1,'#48c898');
     g.globalAlpha=1;
+    return true;
   }else if(_cn==='MIRROR'){
     // MIRROR — Spell Reflect (The face in still water, Rare defense)
     // Idle: reflection ripples, mirror surface shimmers, spell bounces
@@ -1542,6 +1566,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=0.6;px(_bsx[bouncePos],_bsy[bouncePos],3,2,'#f8e040');g.globalAlpha=1;
     // Mirror sheen diagonal
     g.globalAlpha=shimmer*0.4;px(3,3,5,1,'#ffffff');px(4,4,4,1,'rgba(255,255,255,.6)');g.globalAlpha=1;
+    return true;
   }else if(_cn==='LIFEDRAIN'){
     // LIFEDRAIN — Steal HP (Your health, my health, Rare recovery)
     // Idle: life energy siphon beam, red/orange vitality orb, drain pulse
@@ -1573,6 +1598,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(4,10,4,4,'#b04828');px(5,11,2,2,'#c05030');
     px(5,8,2,3,'#d06038'); // head
     px(5,8,2,1,'#e07848');px(6,9,1,1,'#f09060'); // face highlight
+    return true;
   }else if(_cn==='FLURRY'){
     // FLURRY — Multi-hit storm of fists (attack r:3, A storm of fists and fury)
     const furyPh=Math.floor(t/4)%4; // rapid punch phase
@@ -1598,6 +1624,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=ragePulse*0.4;
     px(0,4,4,1,'#f0a060');px(0,6,3,1,'#f0c080');px(0,8,4,1,'#f0a060');px(0,10,3,1,'#f0c080');
     g.globalAlpha=1;
+    return true;
   }else if(_cn==='AEGIS WARD'){
     // AEGIS WARD — Magic barrier shield (defense r:3, Ancient sigil of the sea)
     const wardPulse=0.4+0.4*_sFr04;
@@ -1618,6 +1645,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     g.globalAlpha=shimmer;px(_rwx[runePhase],_rwy[runePhase],2,2,'#c0e8ff');g.globalAlpha=1;
     // Top/bottom energy edge pulse
     g.globalAlpha=wardPulse*0.4;px(2,1,12,1,'#80d8ff');px(2,17,12,1,'#80d8ff');g.globalAlpha=1;
+    return true;
   }else if(_cn==='WINDASH'){
     // WINDASH — Supersonic flee (flee r:3, Outrun lightning itself)
     const dashPh=Math.floor(t/5)%4;
@@ -1646,6 +1674,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     // Swirl vortex trail
     const _swx=[1,0,2],_swy=[12,14,13];
     g.globalAlpha=0.35;px(_swx[windSwirl],_swy[windSwirl],4,2,'#58d0a0');g.globalAlpha=1;
+    return true;
   }else if(_cn==='REJUVEN'){
     // REJUVEN — Full HP recovery (recovery r:3, As if no wound was dealt)
     const healPulse=0.4+0.5*_sFr06;
@@ -1673,6 +1702,7 @@ function drawCardCharacter(x,y,cardId,scale,time){
     px(2,16,12,2,'#504030'); // bar bg
     g.globalAlpha=goldShim;px(2,16,hpFill,2,'#e8c040');g.globalAlpha=1;
     px(2,16,hpFill,1,'#fff8a0');
+    return true;
   }else if(_cn==='WARD'){
     // WARD — Next-dmg:0 protection (recovery r:3, Set a watch on the body)
     const wardGlow=0.4+0.4*_sFr04;
@@ -1699,7 +1729,40 @@ function drawCardCharacter(x,y,cardId,scale,time){
     // Expanding pulse ring
     const _pw=10-shieldPulse*2,_px2=3+shieldPulse,_py2=4+shieldPulse;
     g.globalAlpha=wardGlow*(0.4-shieldPulse*0.1);px(_px2,_py2,_pw,1,'#f8e078');px(_px2,_py2+8+shieldPulse*2,_pw,1,'#f8e078');g.globalAlpha=1;
+    return true;
   }
+  return false;
+}
+
+// Reveal sparkle particles
+const revealSparkles=[];
+
+function drawCardCharacter(x,y,cardId,scale,time){
+  const s=scale||1;
+  const t=(typeof time==='number')?time:((typeof fr!=='undefined')?fr:0);
+  // Reveal: if this card is being revealed, apply silhouette->color effect
+  const revealProg=getRevealProgress(cardId);
+  const revealing=revealProg<1;
+  // v402: name-based sprite lookup (fixes mismatch from card list reordering)
+  const _cr0=CD[cardId-1];const _cn=_cr0?.n||'';
+
+  function px(rx,ry,w,h,c){
+    let finalColor=c;
+    if(revealing){
+      // Reveal from top to bottom: pixels above the reveal line show color, below show black
+      const pixelNormY=ry/20; // normalize to 0..1 range (char is ~20px tall)
+      if(pixelNormY>revealProg){
+        finalColor='#111118';
+      }
+    }
+    g.fillStyle=finalColor;g.fillRect(x+rx*s,y+ry*s,w*s,h*s);
+  }
+
+  _drawCC_A(cardId,_cn,px,x,y,s,t)||
+  _drawCC_B(cardId,_cn,px,x,y,s,t)||
+  _drawCC_C(cardId,_cn,px,x,y,s,t)||
+  _drawCC_D(cardId,_cn,px,x,y,s,t)||
+  _drawCC_E(cardId,_cn,px,x,y,s,t);
 
   // Generic renderer for all other cards (type-based pixel art)
   if(_cn==='AEGIS'||_cn==='UMBRA'||_cn==='IGNIS'||_cn==='TEMPEST'||_cn==='NIHIL'||
