@@ -2,46 +2,81 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>0xARK · Succession War of Elyon</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>0xARK — Succession War of Elyon</title>
+
+  <!-- PWA / OG meta -->
+  <meta name="description" content="On-chain TCG × ZK × x402 × AI agents on Solana">
+  <meta name="theme-color" content="#0a0e1a">
+  <link rel="manifest" href="/0xark/manifest.json">
+  <meta property="og:title" content="0xARK — Succession War of Elyon">
+  <meta property="og:description" content="60 cards. One Prize Pool. Steal cards from rivals you can't see.">
+  <meta property="og:image" content="https://r0ze998.github.io/0xark/og-image.png">
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+
+  <!-- Design system -->
+  <link rel="stylesheet" href="src/style/sprite-seas.css">
+
   <style>
-    :root {
-      --bg-deep: #0a0e1a;
-      --accent-gold: #c9a227;
-      --accent-red: #d63b3b;
-      --text-cream: #e8dfc8;
-    }
-    * { box-sizing: border-box; image-rendering: pixelated; }
+    /* Centering shell for non-1024 viewports */
+    html, body { height: 100%; }
     body {
-      background: var(--bg-deep); color: var(--text-cream);
-      font-family: 'VT323', monospace; font-size: 20px;
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #03060f;
     }
-    .box {
-      border: 2px solid var(--accent-gold);
-      padding: 32px; max-width: 640px; text-align: center;
-    }
-    h1 { color: var(--accent-gold); font-size: 48px; margin: 0 0 8px; }
-    .sub { color: var(--accent-red); margin-bottom: 24px; }
-    a { color: var(--accent-gold); }
-    .meta { font-size: 16px; opacity: 0.7; margin-top: 24px; }
+    #app { flex-shrink: 0; }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1>0xARK</h1>
-    <div class="sub">◆ SUCCESSION WAR OF ELYON ◆</div>
-    <p>UI v4 Migration in Progress · Wave 1 着手中</p>
-    <p>
-      <a href="docs/mockups/v3/0xARK_Succession_War_Mockups_v3.pdf">▸ Mockup Pack v3</a> ·
-      <a href="https://github.com/r0ze998/0xark">▸ GitHub</a>
-    </p>
-    <div class="meta">
-      Anchor (devnet): 5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN<br>
-      v3.0-plus · 408 tests passing · Built on Solana
-    </div>
-  </div>
+  <div id="app"></div>
+
+  <script type="module">
+    import { mount as mountTitleA, unmount as unmountTitleA } from './src/screens/title-a.js';
+
+    const app = document.getElementById('app');
+
+    // ── Router ────────────────────────────────────────────
+    let currentUnmount = null;
+
+    function navigate(screenName, detail = {}) {
+      if (currentUnmount) currentUnmount(app);
+
+      switch (screenName) {
+        case 'title-a':
+          mountTitleA(app);
+          currentUnmount = unmountTitleA;
+          break;
+        default:
+          app.innerHTML = `<div style="color:#c9a227;font-family:VT323,monospace;font-size:28px;padding:40px;">[${screenName}] — COMING IN WAVE 1</div>`;
+          currentUnmount = null;
+      }
+    }
+
+    // ── Navigation events ─────────────────────────────────
+    document.addEventListener('wallet:connected', (e) => {
+      navigate('m1-lobby', e.detail);
+    });
+
+    document.addEventListener('nav:howtoplay', () => {
+      navigate('s7-howtoplay');
+    });
+
+    document.addEventListener('nav:lobby', (e) => {
+      navigate('m1-lobby', e.detail);
+    });
+
+    document.addEventListener('nav:title', () => {
+      navigate('title-a');
+    });
+
+    // ── Boot ──────────────────────────────────────────────
+    navigate('title-a');
+  </script>
 </body>
 </html>
