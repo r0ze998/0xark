@@ -1,179 +1,161 @@
 # Refactor Phase 1 Handoff — v-phd-refactor-phase1
 
-**Date**: 2026-04-24 (Day 24)  
+**Date**: 2026-04-27  
+**Branch**: `refactor-phase1`  
 **Tag**: `v-phd-refactor-phase1`  
-**Scope**: Conservative cleanup only — no behavior changes, no file moves, no architectural changes.
+**Scope**: Monolith function splits only — no behavior changes, no file moves, no architectural changes.
 
 ---
 
 ## Outcome Summary
 
-| Category | Status | Notes |
+| Split | Function | File | Before | After | Status |
+|---|---|---|---|---|---|
+| 1 | `drawCardCharacter` | `02-data.js` | 1383-line if-else chain | dispatcher + 5 sub-functions | ✅ Done |
+| 2 | `dMap` | `07-map.js` | 1059-line render function | dispatcher + 3 sub-functions | ✅ Done |
+
+Tests: **281 passing** (1 pre-existing Anchor failure, not in scope)
+
+---
+
+## Split 1 — `drawCardCharacter` (`02-data.js`)
+
+### What changed
+
+The 1383-line `if(cardId===1){...}else if(cardId===2){...}` chain inside `drawCardCharacter` was extracted into 5 module-level sub-functions. The original function now contains only preamble setup and a 5-line dispatcher.
+
+### Sub-functions
+
+| Function | Cards covered | Card IDs |
 |---|---|---|
-| A — Dead code | ✅ Verified clean | No dead code found; dungeon system is fully active |
-| B — Naming constants | ✅ Done | `00-constants.js` created; build updated |
-| C — Function split | ⚠️ Deferred | Large functions documented below; risky to split pre-submission |
-| D — Comments/JSDoc | ✅ Done | All 28 src files have overview; key functions annotated |
-| E — TODO triage | ✅ Done | `docs/TECH_DEBT.md` created; 12 items, all Class C |
-| F — Error handling | ✅ Verified solid | No gaps found in critical async paths |
-| G — Lint/formatter | ✅ Partial | `prettier` run on `00-constants.js`; cargo fmt deferred |
+| `_drawCC_A` | AEGIS, UMBRA, IGNIS, TEMPEST, NIHIL, VOIDBLADE | 1–6 |
+| `_drawCC_B` | TITAN, GENESIS, SINGULARITY, ARK BLESS, SANCTUARY, GEN PULSE, REAPER | 7–13 |
+| `_drawCC_C` | ARK GATE, PHOENIX, PHANTOM, GRAVITY, CRYSTAL, MAELSTROM, ELIXIR, NULLIFY, VOIDSTEP, HOLY LIGHT | 14–23 |
+| `_drawCC_D` | INFERNO, BLIZZARD, BERSERK, FORTRESS, SHADOW, THUNDER, VENOM | 24–30 |
+| `_drawCC_E` | BLINK, MIRROR, LIFEDRAIN, FLURRY, AEGIS WARD, WINDASH, REJUVEN, WARD | 31–38+ |
 
----
+### Dispatcher (new `drawCardCharacter` body)
 
-## A — Dead Code
-
-Full audit confirmed: all Phase C dungeon symbols (`DUNGEON_SHEET`, `DUNGEON_FLOOR_CARDS`,
-`DUNGEON_ENTRY_EXCLUDE`, `MAX_DUNGEON_FLOORS`, `TOWN_INTERACTABLES`) are actively used.
-The overworld/dungeon system remains live alongside Phase D Lobby+Duel. Nothing removed.
-
----
-
-## B — Naming Constants
-
-**New file**: `solana/client/src/00-constants.js`  
-Added to `build.js` MODULES at position 2 (after `00-tokens.js`, before `01-pixi.js`).
-
-**SCENE_IDS** (14 values):
-```
-SPLASH, TITLE, MAP, ACT, CRD, LOG, STATS, VICTORY,
-LOBBY, DUEL, DUEL_VICTORY, CARD_DETAIL, CARD_STORAGE, BATTLE
-```
-
-**GAME_CONSTANTS** (6 values):
-```
-SCOUT_PEEK_COST_SOL: 0.005
-COUNTER_PEEK_COST_SOL: 0.01
-LEASE_ROUNDS: 3
-IMPRINT_BP_CAP: 1
-SEASON_LEGENDARY_CAP: 40
-COMMON_SPECIES_COUNT: 30
+```javascript
+_drawCC_A(cardId,_cn,px,x,y,s,t)||
+_drawCC_B(cardId,_cn,px,x,y,s,t)||
+_drawCC_C(cardId,_cn,px,x,y,s,t)||
+_drawCC_D(cardId,_cn,px,x,y,s,t)||
+_drawCC_E(cardId,_cn,px,x,y,s,t);
 ```
 
-**Note**: Scene ID literals in existing files (`sc='title'`, `sc==='lobby'`, etc.) were NOT
-replaced with `SCENE_IDS.*` references in this phase. The constant file defines the canonical
-values; a Phase 2 find-replace sweep can complete the substitution after submission.
-Replacing ~60 scattered literals in 10+ files is a safe but time-consuming operation that
-should be done as a dedicated commit with full test coverage.
+### Sub-function signature
 
-**GAME_CONSTANTS already named in their modules** (not moved to 00-constants.js):
-- `STARTING_HP = 20` (08-duel-scene.js)
-- `SCOUT_PEEK_MAX = 3` (08-duel-scene.js)
-- `AUTO_SAVE_INTERVAL = 1800` (04-state.js)
-- `CDS_SELL_PRICE[]` (10-card-detail.js)
-- `HALL_ANTES[]` (08-duel-scene.js)
+```javascript
+function _drawCC_A(cardId, _cn, px, x, y, s, t) { ... return true/false; }
+```
 
----
+- `_cn` — card name pre-looked-up from `CD` array (passed to avoid repeated lookup)
+- `px` — inner pixel-draw closure (captures `g`, `revealing`, `revealProg` from outer scope)
+- `x`, `y`, `s` — explicit parameters for particle cards that use `g.fillRect` directly (UMBRA, IGNIS, PHOENIX, INFERNO)
+- Returns `true` on card match, `false` to fall through to next group
 
-## C — Function Split (DEFERRED)
+### Implementation notes
 
-The following functions exceed 200 lines. All are complex rendering loops where sub-extraction
-requires passing extensive local state or canvas context. Splitting carries meaningful regression
-risk pre-submission.
+**NIHIL/VOIDBLADE structural anomaly**: NIHIL is the only card in the chain where the closing `}` and `else if` are on separate lines (a comment block separates them). The split preserves this exactly:
 
-**Recommendation**: tackle these in Phase 2 (post-submission), one function at a time with
-dedicated test coverage.
+```javascript
+      return true;
+    }
 
-| Function | File | ~Lines | Risk |
-|---|---|---|---|
-| `keydown` handler | `10-input.js` | ~1260 | HIGH — handles 14 scenes |
-| `dMap()` | `07-map.js` | ~1064 | HIGH — main render loop |
-| `drawResolvingPhase()` | `07-battle-resolve.js` | ~770 | HIGH — particle system |
-| `drawBuildingInterior()` | `08-world-interact.js` | ~467 | MED — 8+ building types |
-| `drawSelectPhase()` | `07-battle.js` | ~409 | MED — Phase C battle |
-| `drawResultPhase()` | `07-battle-resolve.js` | ~357 | MED |
-| `drawResultPhase()` | `07-battle-resolve.js` | ~357 | MED |
-| `generateResolveEvents()` | `07-battle.js` | ~295 | MED |
-| `doMapTransition()` | `06-world-systems.js` | ~291 | MED |
-| `dTitle()` | `06-world-systems.js` | ~242 | LOW — visual only |
-| `drawDeckEditor()` | `07-deck-editor.js` | ~260 | LOW |
+    // v402: Legendary card unique sprites (name-matched to survive CD reordering)
+    else if(_cn==='VOIDBLADE'){
+```
+
+**Script**: `/tmp/splice_dcc.js` — Node.js line-number-based splice. Chain replacement done first (before sub-function insertion) to avoid `indexOf` ambiguity.
+
+**File size**: 2913 → 2976 lines (+63)
 
 ---
 
-## D — Comments/JSDoc
+## Split 2 — `dMap` (`07-map.js`)
 
-Added 2-3 line overview comment to all 28 src files that were missing one:
-`01-pixi.js`, `01-net.js`, `02-data.js`, `03-world-setup.js`, `04-state.js`,
-`05-rendering.js`, `06-world-systems.js`, `07-battle-resolve.js`, `07-battle.js`,
-`07-map.js`, `08-overlays.js`, `08-screens.js`, `08-world-interact.js`,
-`09-game-loop.js`, `10-input.js`, `11-save-init.js`
+### What changed
 
-Format: `// filename.js — short description\n// Detail on key functions/responsibilities`
+The 1059-line `dMap()` function was split into 3 sub-functions covering distinct rendering layers. `dMap` now contains only camera setup and sub-function calls.
 
----
+### Sub-functions
 
-## E — TODO Triage
-
-All 12 TODOs reclassified and given `// POST-HACKATHON:` prefix.  
-Full register: **`docs/TECH_DEBT.md`** (created this phase).
-
-| Old prefix | Count | New prefix |
+| Function | Signature | Responsibility |
 |---|---|---|
-| `TODO(phase-b2-*)` | 8 | `POST-HACKATHON:` |
-| `TODO(Day12/13)` | 3 | `POST-HACKATHON:` |
-| `TODO(post-hackathon)` | 1 | `POST-HACKATHON:` |
+| `_dMapWorldLayer` | `(startTX,startTY,endTX,endTY)` | Tile cache, fog, dungeon vignette, danger fx, particles, sprites, labels |
+| `_dMapHUDBar` | `()` | HUD background, HP/MP stats, card slots, rival trackers, danger meter |
+| `_dMapHUDPanels` | `()` | Minimap, scoreboard, race tracker, overlays, dialogs, banners |
 
-No Class B (pre-submission blockers) found.
+### Dispatcher (new `dMap` body)
 
----
+```javascript
+function dMap(){
+  updateCamera();
 
-## F — Error Handling
+  const startTX=Math.max(0,Math.floor(camX/TW));
+  const startTY=Math.max(0,Math.floor(camY/TH));
+  const endTX=Math.min(MW-1,Math.ceil((camX+W)/TW));
+  const endTY=Math.min(MH-1,Math.ceil((camY+H)/TH));
 
-Audit of all async functions across `02-x402.js`, `06-matchmaking.js`, `01-magicblock.js`,
-`08-duel-scene.js`:
+  _dMapWorldLayer(startTX,startTY,endTX,endTY);
+  _dMapHUDBar();
+  _dMapHUDPanels();
+}
+```
 
-- `scoutPeek()` / `hireAgent()` — throw on error; caller (`lobbyFindMatch`) wraps in try-catch ✓
-- `_x402Mock()` — `.catch()` with demo-mode fallback ✓
-- `mmBuildAndSend()` + `enterQueue()` — `lobbyFindMatch` catch block + `console.error` ✓
-- `mbDelegateGameAccounts()` / `mbUndelegateGameAccounts()` — own try-catch, return `{ok:false}` ✓
-- `_commitHandZK()` — outer try-catch; `_emitCommitHandTx` called with `.catch()` ✓
-- `mbPingRouter()` — two try-catch blocks ✓
+### Implementation notes
 
-**No try-catch gaps found on critical paths.**
+**`hudY` recomputation**: `const hudY=H-HUD_HEIGHT` is declared in `_dMapHUDBar`. `_dMapHUDPanels` also references `hudY`, so it recomputes it at its own top:
 
-Debug `console.log` check: all remaining `console.log` calls are operational module-tagged logs
-(`[MagicBlock]`, `[MM]`, `[x402]`, `[ZK]`) — appropriate to retain.
+```javascript
+function _dMapHUDPanels(){
+  const hudY=H-HUD_HEIGHT;
+  // ...
+}
+```
 
----
+**Script**: `/tmp/splice_dmap.js` — Node.js line-number-based splice. Extracted exact line slices from original file.
 
-## G — Lint / Formatter
-
-- **prettier**: ran on `00-constants.js` (new file) ✓
-- **prettier global pass**: deferred. No `.prettierrc` config exists; default settings would
-  reformat intentionally compact code in 28 files (massive diff, high review cost pre-submission).
-  Recommend: create `.prettierrc` with `printWidth: 120, singleQuote: true` and run as a
-  dedicated commit after submission.
-- **cargo fmt**: deferred. Rust files (`solana/oxark/`) have uncommitted in-progress changes
-  (r0ze's work). Running cargo fmt would modify those files and create conflicts. Run after
-  committing or stashing the Rust changes.
-- **cargo clippy**: not run (same reason as cargo fmt).
+**File size**: 2334 → 2345 lines (+11)
 
 ---
 
-## Build
+## Test Results
 
-| Metric | Before | After |
+| Suite | Passing | Notes |
 |---|---|---|
-| Source lines | 31,577 | 31,721 (+144 from overview comments + constants) |
-| Bundle (index.html) | 33,494 | 33,573 (+79) |
-| Modules | 28 | 29 (+00-constants.js) |
+| card-engine | ✅ | |
+| battle-mechanics | ✅ | |
+| AI agent | ✅ | |
+| map-render | ✅ | |
+| **Total** | **281** | 1 pre-existing Anchor failure (not in scope) |
+
+DoD requirement: 280 passing. **Met.**
 
 ---
 
-## Tests
+## Commits
 
-| Suite | Before | After |
-|---|---|---|
-| card-engine | 53 | 53 ✓ |
-| battle-mechanics | 49 | 49 ✓ |
-| AI agent (5 files) | 65 | 65 ✓ |
-| Anchor Rust | pre-existing failure | pre-existing failure (not our scope) |
-
-**Total passing: 167/167 (non-Anchor)**
+| Hash | Message |
+|---|---|
+| `e840e7b` | `refactor: split drawCardCharacter into _drawCC_A–E dispatcher` |
+| `fc89e0c` | `refactor: split dMap into _dMapWorldLayer/_dMapHUDBar/_dMapHUDPanels dispatcher` |
 
 ---
 
-## r0ze Next Steps
+## Files Changed
 
-1. Live URL 動作確認: https://r0ze998.github.io/0xark (after push)
-2. CI green check (node-tests + ai-agent-test; anchor/react remain pre-existing failures)
-3. Phase 2 (post-submission): scene ID literal replacement sweep, cargo fmt, prettier config, function splits
+- `solana/client/src/02-data.js` — drawCardCharacter split
+- `solana/client/src/07-map.js` — dMap split
+
+---
+
+## Out of Scope (Phase 1)
+
+- Phase 3 state namespace refactor
+- ui-v2-rebuild branch
+- Rust/ZK/onchain changes
+- Scene ID literal replacement sweep
+- keydown handler split
+- drawResolvingPhase split
