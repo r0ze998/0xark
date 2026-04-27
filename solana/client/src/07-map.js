@@ -1097,14 +1097,7 @@ function drawCpxTreesInRange(tyMin,tyMax){
 
 // v280: escape exit cache — exits[] is static, only re-find when currentMap changes
 let _escExitCache=null,_escExitForMap=-1;
-function dMap(){
-  updateCamera();
-
-  const startTX=Math.max(0,Math.floor(camX/TW));
-  const startTY=Math.max(0,Math.floor(camY/TH));
-  const endTX=Math.min(MW-1,Math.ceil((camX+W)/TW));
-  const endTY=Math.min(MH-1,Math.ceil((camY+H)/TH));
-
+function _dMapWorldLayer(startTX,startTY,endTX,endTY){
   // B2-5: GBA dungeon backdrop (replaces legacy jpg background for dungeon floors)
   if(inDungeon) drawGBADungeonBG();
 
@@ -1532,7 +1525,9 @@ function dMap(){
   drawDungeonAtmos();
   // Day/night overlay (after all rendering, before HUD)
   drawDayNightOverlay();
+}
 
+function _dMapHUDBar(){
   // ── HUD BAR ──
   const hudY=H-HUD_HEIGHT;
   win(0,hudY,W,HUD_HEIGHT);
@@ -1955,7 +1950,10 @@ function dMap(){
     txShadow('SAVING...',720,hudY+52,5,'#6080c0','rgba(0,0,0,.4)');
     g.globalAlpha=1;
   }
+}
 
+function _dMapHUDPanels(){
+  const hudY=H-HUD_HEIGHT;
   // Minimap
   drawMinimap();
 
@@ -2155,6 +2153,19 @@ function dMap(){
   drawBanner();
   // v155: PMD-style floor title card (draws over everything when active)
   drawFloorTitle();
+}
+
+function dMap(){
+  updateCamera();
+
+  const startTX=Math.max(0,Math.floor(camX/TW));
+  const startTY=Math.max(0,Math.floor(camY/TH));
+  const endTX=Math.min(MW-1,Math.ceil((camX+W)/TW));
+  const endTY=Math.min(MH-1,Math.ceil((camY+H)/TH));
+
+  _dMapWorldLayer(startTX,startTY,endTX,endTY);
+  _dMapHUDBar();
+  _dMapHUDPanels();
 }
 
 // ═══════════════════════════════════════
