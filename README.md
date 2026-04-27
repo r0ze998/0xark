@@ -269,11 +269,83 @@ Mint authority burned after creation — supply is permanently locked.
 | Minted | 2026-04-26 (59 fresh + 1 pre-existing) |
 | Full records | [`docs/devnet-mint-records.json`](docs/devnet-mint-records.json) |
 
-**Random sample (Solscan devnet):**
+**All 60 cards (Solscan devnet):**
 
-- [#001 AEGIS](https://solscan.io/token/3iZQAt7D4F2gHNXcjwWJhKxfGVhKhzyELMm1tAwy21ni?cluster=devnet)
-- [#030 SHADOW](https://solscan.io/token/6FHSa3L7bvrgi8W9BGE32SricZxXBJuL2zNkebzZCFAv?cluster=devnet)
-- [#060 ARK BLESS](https://solscan.io/token/9LzFogJj4ohEndX4CCFqshfsEhfeSoJe51owcKVNwXz2?cluster=devnet)
+| # | Name | Solscan |
+|---|---|---|
+| 1 | AEGIS | [link](https://solscan.io/token/3iZQAt7D4F2gHNXcjwWJhKxfGVhKhzyELMm1tAwy21ni?cluster=devnet) |
+| 2 | UMBRA | [link](https://solscan.io/token/2MMutTj8W49rmbYqgsQNom4o7isWLetNUay2GhoBuuDi?cluster=devnet) |
+| 3 | IGNIS | [link](https://solscan.io/token/C5e3eqguENWCnadHKZfs6fcXfaHwDokefbnjShuh9LGD?cluster=devnet) |
+| 4 | STRIKE | [link](https://solscan.io/token/26rVR5ffVGctVd63YKoJVhnrn9zhkM2UDbXaiwGeonLx?cluster=devnet) |
+| 5 | SLASH | [link](https://solscan.io/token/GWApfQWz1Tnjh9xdDWLbc7cE9BrFVQRvq3AR6c1EaFAN?cluster=devnet) |
+| 6 | IMPALE | [link](https://solscan.io/token/8VnnQcfLKvEhEH6cCFsckojRWkhMB9iD4uKmSrrBr4VD?cluster=devnet) |
+| 7 | CRUSH | [link](https://solscan.io/token/6X6ZNokNbLuZoFXdYAeZd2YCNv64NPzZ1tvw5suV9Fc7?cluster=devnet) |
+| 8 | FLURRY | [link](https://solscan.io/token/EVT917fE8ixqe7s3mXiPPQQjAQGQVxYiNeZkLp1tjNP8?cluster=devnet) |
+| 9 | BERSERK | [link](https://solscan.io/token/5kE3eGxxjTT98N9GmPthK4Q3ZTeVhGcMQkU5UNTjHrvD?cluster=devnet) |
+| 10 | VENOM | [link](https://solscan.io/token/2btPLWkgNVTZYM1duAPqbKnzoub3ztYUnxppKjuLjomH?cluster=devnet) |
+| 11 | REAPER | [link](https://solscan.io/token/w4yr2brVoweymvUi1D415t7gvoYj6qCsoYwMsffaQRC?cluster=devnet) |
+| 12 | VOIDBLADE | [link](https://solscan.io/token/7MmHp52GnXW97a4UadHgKaVDPfqKnn8oqW3rfPdR28aA?cluster=devnet) |
+| 13 | GUARD | [link](https://solscan.io/token/4UMui9RqWtEWPfRavdnv4KU61AGuM4hvdsD1iiWJFiLB?cluster=devnet) |
+| 14 | PARRY | [link](https://solscan.io/token/4MhUt1U5YKXA34PuTVknHRuC7qSTZogaR8X6hEwt1Hy7?cluster=devnet) |
+| 15 | IRON WALL | [link](https://solscan.io/token/H2yJSgGzUQ6NnTgSs7FQgemXFX7bNQAv6tPFBagrkQZn?cluster=devnet) |
+| 16 | COUNTER | [link](https://solscan.io/token/3hdVDsLrqnsNCrgEd7ZCZyTFSpX1T8FAYATyFTeaHjfp?cluster=devnet) |
+| 17 | AEGIS WARD | [link](https://solscan.io/token/7jhZFhs4wZSJZEyzfZL4WpwGdJLnscixiKoGg7EhCyn5?cluster=devnet) |
+| 18 | MIRROR | [link](https://solscan.io/token/6ChSUL64JvVEu5UxiGkJBXfcCXxxA617T3nCHva9LiSw?cluster=devnet) |
+| 19 | FORTRESS | [link](https://solscan.io/token/4mCfQXRdRWcu1gKsrXNo65SA1Vobh15HdZrMfUVsryGT?cluster=devnet) |
+| 20 | CRYSTAL | [link](https://solscan.io/token/5uAZzJRCXiuu922JMDc8e8p5QYZiNmLsQAS1a1d2nv21?cluster=devnet) |
+| 21 | NULLIFY | [link](https://solscan.io/token/6EEv3pXWS8GQ1XjyRNDYoMAEyntJ24ynxcqX1a5tdrVf?cluster=devnet) |
+| 22 | ABS GUARD | [link](https://solscan.io/token/2WJQe1UwwT1uxA6d6X6ALMuCrHy6VBRQDvjDGQG5A8qG?cluster=devnet) |
+| 23 | SANCTUARY | [link](https://solscan.io/token/AGaNN4B29iQjEsyzhCNra6NgpP8roUsPDajGoFSesxei?cluster=devnet) |
+| 24 | TITAN | [link](https://solscan.io/token/4Pc1aWyTJGpvTWpPxosFCGZ17ppL47WQpkZXpVoMTa4s?cluster=devnet) |
+| 25 | DASH | [link](https://solscan.io/token/2YXyW4GmWVS3tuWGkM1HeXyJgVBAke2dtd2vMVawMyis?cluster=devnet) |
+| 26 | RETREAT | [link](https://solscan.io/token/4aK1zsqcbBQpdX9Vq7qC2rLoeps9H39yHTtMsU2uJioK?cluster=devnet) |
+| 27 | SMOKE | [link](https://solscan.io/token/jt5GcnSpyHceH7joUyzGnxiSF2a4EGQdmgcvoNHGfQV?cluster=devnet) |
+| 28 | PHASE | [link](https://solscan.io/token/22SzoHrK7XuM8ti55Ds9Q16agL1YMf8QY4XFBx8totvH?cluster=devnet) |
+| 29 | BLINK | [link](https://solscan.io/token/CWWm3ftogyGQVDfg3HeNSrhoDWkpKE9yJxn6Rje32sqq?cluster=devnet) |
+| 30 | SHADOW | [link](https://solscan.io/token/6FHSa3L7bvrgi8W9BGE32SricZxXBJuL2zNkebzZCFAv?cluster=devnet) |
+| 31 | WINDASH | [link](https://solscan.io/token/DNzosq7on4M5gCgw8Akg5fQHQM9WDFT2nApBqZg8pj3?cluster=devnet) |
+| 32 | PHANTOM | [link](https://solscan.io/token/DVCmS5HRED63ok2V9nFio2MRRmfL4cZjqSmXA8ZCFVTV?cluster=devnet) |
+| 33 | VOIDSTEP | [link](https://solscan.io/token/BWKsHircsFDUun3BaX3ZP2bJVu3P26Km9U31jCpMc9pC?cluster=devnet) |
+| 34 | TIMESKIP | [link](https://solscan.io/token/BgPtZrSgaRDnrR9uyG2NtdLuTP9FnjmHjWeQQsPseL4a?cluster=devnet) |
+| 35 | ARK GATE | [link](https://solscan.io/token/6d22TtvvGBwv6VkmmB6zSpa1Wn51GNjvm3Gv9TMTCaRv?cluster=devnet) |
+| 36 | GENESIS | [link](https://solscan.io/token/BSsTAh5hACsNaJiCneEsqJQ5hKYpt8UVUsWVYX9K1FTR?cluster=devnet) |
+| 37 | TEMPEST | [link](https://solscan.io/token/J5A5ADnTRvkKxvmMrGHTbGmcU51fwTmJGAg4CBnVDMy7?cluster=devnet) |
+| 38 | NIHIL | [link](https://solscan.io/token/EjZvMs3DyXiwkr2MWBYBWbrr2iKfBHNUVFmcoZDDzCQa?cluster=devnet) |
+| 39 | SPARK | [link](https://solscan.io/token/DX3YSR2qkEsrPG97B7ECvzGVoqhjTStfoXeUBAE4vi2A?cluster=devnet) |
+| 40 | FROST | [link](https://solscan.io/token/9nr9iFUCjZdbcXBbQErYQFYUhjG37mojLoYcpjsYWwWP?cluster=devnet) |
+| 41 | BLAZE | [link](https://solscan.io/token/CSndaJLNeCXv1w3RYA2kTegWjrKiu2ZGFpefazQVVpUb?cluster=devnet) |
+| 42 | STATIC | [link](https://solscan.io/token/9LgZ9HkPdEFg4b84APDas86haARBG2zzqs7hAWHnCYdJ?cluster=devnet) |
+| 43 | INFERNO | [link](https://solscan.io/token/8cdERaW68VZAFndTW2prJpgAM8rDGPvC9qzBxqL57veG?cluster=devnet) |
+| 44 | BLIZZARD | [link](https://solscan.io/token/9YLcUDaKqDRFUozoj16Ff51M5MncvRemNTdjGK1vS4hA?cluster=devnet) |
+| 45 | THUNDER | [link](https://solscan.io/token/64RYUSqgsuqwAgCy93x8ft3GwiS9jEoY22LKq6d6HSa4?cluster=devnet) |
+| 46 | MAELSTROM | [link](https://solscan.io/token/74dKXU3Rxfhv5Vau9PVv6q6VC3tk2dyhAdTw4chJ3JtW?cluster=devnet) |
+| 47 | GRAVITY | [link](https://solscan.io/token/9ppW66C4vsrs9qyRW281R5Xr5Ec368q2BH2pYgKFRaZT?cluster=devnet) |
+| 48 | SINGULARITY | [link](https://solscan.io/token/2cxZr3YqsB3HsS7RSUuskxiekP2HcLERtmQVa7kHyexi?cluster=devnet) |
+| 49 | MEND | [link](https://solscan.io/token/AvrpHV9nWd5E5kodw9RQXuee6ZW9Noak4sU5tf2hM8yh?cluster=devnet) |
+| 50 | REST | [link](https://solscan.io/token/Giqrbw5n9EUfbmrqK8nnaBt3i4fzKK3KPQ6uBD8gTdae?cluster=devnet) |
+| 51 | POTION | [link](https://solscan.io/token/2iaujN61v99j2Qt4dJcLC5SENtYKG2bntZfxpMYLDWVc?cluster=devnet) |
+| 52 | BANDAGE | [link](https://solscan.io/token/C8sYQR23G8KJAdhwjqud6x18jsy3kqXDT1pjt7SM57gj?cluster=devnet) |
+| 53 | REJUVEN | [link](https://solscan.io/token/BxQjpqTbSdG7CuYb3XTgpUyvpb61pCQ9Md2ypJDWmGWt?cluster=devnet) |
+| 54 | WARD | [link](https://solscan.io/token/9aNt3NL2YqXh3ptfprgN6ZgYhMHa7ENnsLhEWwcPurRM?cluster=devnet) |
+| 55 | LIFEDRAIN | [link](https://solscan.io/token/8Vdi2SzZfPRBgtw1PzwxzsFfJisbhxtmXWLqTk3on5u8?cluster=devnet) |
+| 56 | PHOENIX | [link](https://solscan.io/token/DA7vPNeM4df4mS4CAoFwzSLQPs3sgepZriC6yRjBPuzp?cluster=devnet) |
+| 57 | ELIXIR | [link](https://solscan.io/token/8i73U7WCa3p3sj3zgCwadjCF8n29rtjaDDjHNsKLDZzi?cluster=devnet) |
+| 58 | HOLY LIGHT | [link](https://solscan.io/token/8d7s5hFsYB3hZqXRmKUkhrcLNFAQAzf1wcJtxHRgpoRm?cluster=devnet) |
+| 59 | GEN PULSE | [link](https://solscan.io/token/CYuyGVxCfqmA6V5WHAHSLXJuSKi3nuoUaYaVQs84H4Rj?cluster=devnet) |
+| 60 | ARK BLESS | [link](https://solscan.io/token/9LzFogJj4ohEndX4CCFqshfsEhfeSoJe51owcKVNwXz2?cluster=devnet) |
+
+---
+
+## Devnet Verification
+
+| Resource | Link |
+|---|---|
+| Game Program | [Solana Explorer](https://explorer.solana.com/address/5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN?cluster=devnet) |
+| Program Info | [`docs/devnet-program-info.md`](docs/devnet-program-info.md) |
+| Sample Txs | [`docs/devnet-sample-txs.md`](docs/devnet-sample-txs.md) |
+| x402 Cycle | [`docs/sample-x402-cycle.md`](docs/sample-x402-cycle.md) |
+| Agent Duel Log | [`docs/sample-duel-logs/agent-vs-agent-002.log`](docs/sample-duel-logs/agent-vs-agent-002.log) |
+| Mint Records | [`docs/devnet-mint-records.json`](docs/devnet-mint-records.json) |
 
 ---
 

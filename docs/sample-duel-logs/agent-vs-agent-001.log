@@ -1,0 +1,47 @@
+[2026-04-24T12:48:58.611Z] [SYSTEM] === 0xARK Agent vs Agent Duel ===
+[2026-04-24T12:48:58.612Z] [SYSTEM] Hall: bronze | Rounds: 5 | Model: claude-haiku-4-5-20251001
+[2026-04-24T12:48:58.612Z] [SYSTEM] Log: /Users/hiroprotagonist/Projects/0xark/docs/sample-duel-logs/agent-vs-agent-001.log
+[2026-04-24T12:48:58.612Z] [SYSTEM] LLM available: true
+[2026-04-24T12:48:58.612Z] [DUEL] Players: ALPHA (Black Flag) vs BETA (Hollow Blade)
+[2026-04-24T12:48:58.612Z] [DUEL] Alpha hand: Powder-Charge Boarder, Captain of the Guard, Soul-Binder, Grapple Specialist, Reef Pilot
+[2026-04-24T12:48:58.612Z] [DUEL] Beta  hand: Salt-Bitten Deckhand, Oath-Branded Squire, Ancestral Ranger, Shadow Lifter, Soul-Binder
+[2026-04-24T12:48:58.612Z] [ROUND] ─── Round 1/5 ─── Alpha HP:20 Beta HP:20
+[2026-04-24T12:48:58.612Z] [DRAW] Alpha drew: Ancestral Ranger | Beta drew: Storm Bosun
+[2026-04-24T12:48:58.612Z] [ENERGY] Alpha energy: 5 | Beta energy: 5
+[2026-04-24T12:48:59.021Z] [SUMMON] Alpha: {"action":"summon","card_id":39,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-24T12:48:59.022Z] [SUMMON] Beta:  {"action":"summon","card_id":4,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-24T12:48:59.022Z] [SUMMON] Alpha plays Captain of the Guard to front
+[2026-04-24T12:48:59.022Z] [SUMMON] Beta  plays Salt-Bitten Deckhand  to front
+[2026-04-24T12:48:59.022Z] [BATTLE] {"lane":"front","a":"Captain of the Guard","b":"Salt-Bitten Deckhand","aBP":5,"bBP":3,"net":2}
+[2026-04-24T12:48:59.022Z] [STATUS] After battle — Alpha HP:20 Beta HP:18
+[2026-04-24T12:48:59.022Z] [ROUND] ─── Round 2/5 ─── Alpha HP:20 Beta HP:18
+[2026-04-24T12:48:59.022Z] [DRAW] Alpha drew: Salt-Bitten Deckhand | Beta drew: Flare Saboteur
+[2026-04-24T12:48:59.022Z] [ENERGY] Alpha energy: 6 | Beta energy: 6
+[2026-04-24T12:48:59.323Z] [SUMMON] Alpha: {"action":"summon","card_id":3,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-24T12:48:59.323Z] [SUMMON] Beta:  {"action":"summon","card_id":13,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-24T12:48:59.323Z] [SUMMON] Alpha plays Grapple Specialist to front
+[2026-04-24T12:48:59.323Z] [SUMMON] Beta  plays Oath-Branded Squire  to front
+[2026-04-24T12:48:59.323Z] [BATTLE] {"lane":"front","a":"Grapple Specialist","b":"Oath-Branded Squire","aBP":4,"bBP":3,"net":1}
+[2026-04-24T12:48:59.323Z] [STATUS] After battle — Alpha HP:20 Beta HP:17
+[2026-04-24T12:48:59.323Z] [ROUND] ─── Round 3/5 ─── Alpha HP:20 Beta HP:17
+[2026-04-24T12:48:59.323Z] [DRAW] Alpha drew: Storm Bosun | Beta drew: Salt-Bitten Deckhand
+[2026-04-24T12:48:59.323Z] [ENERGY] Alpha energy: 7 | Beta energy: 7
+[2026-04-24T12:48:59.764Z] [SUMMON] Alpha: {"action":"summon","card_id":6,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-24T12:48:59.764Z] [SUMMON] Beta:  {"action":"summon","card_id":23,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-24T12:48:59.764Z] [SUMMON] Alpha plays Reef Pilot to front
+[2026-04-24T12:48:59.764Z] [SUMMON] Beta  plays Ancestral Ranger  to front
+[2026-04-24T12:48:59.764Z] [BATTLE] {"lane":"front","a":"Reef Pilot","b":"Ancestral Ranger","aBP":4,"bBP":5,"net":-1}
+[2026-04-24T12:48:59.764Z] [STATUS] After battle — Alpha HP:19 Beta HP:17
+[2026-04-24T12:48:59.764Z] [ROUND] ─── Round 4/5 ─── Alpha HP:19 Beta HP:17
+[2026-04-24T12:48:59.764Z] [DRAW] Alpha drew: Herald of Ashes | Beta drew: Ancestral Ranger
+[2026-04-24T12:48:59.764Z] [ENERGY] Alpha energy: 8 | Beta energy: 8
+[2026-04-24T12:49:00.262Z] [SUMMON] Alpha: {"action":"summon","card_id":1,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-24T12:49:00.262Z] [SUMMON] Beta:  {"action":"summon","card_id":27,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-24T12:49:00.262Z] [SUMMON] Alpha plays Powder-Charge Boarder to front
+[2026-04-24T12:49:00.262Z] [SUMMON] Beta  plays Soul-Binder  to front
+[2026-04-24T12:49:00.262Z] [BATTLE] {"lane":"front","a":"Powder-Charge Boarder","b":"Soul-Binder","aBP":5,"bBP":3,"net":2}
+[2026-04-24T12:49:00.262Z] [STATUS] After battle — Alpha HP:19 Beta HP:15
+[2026-04-24T12:49:00.262Z] [ROUND] ─── Round 5/5 ─── Alpha HP:19 Beta HP:15
+[2026-04-24T12:49:00.262Z] [DRAW] Alpha drew: Sword Instructor | Beta drew: Oath-Branded Squire
+[2026-04-24T12:49:00.262Z] [ENERGY] Alpha energy: 8 | Beta energy: 8
+[2026-04-24T12:49:00.501Z] [SUMMON] Alpha: {"action":"summon","card_id":27,"lane":"front","reasoning":"highest BP affordable card"}

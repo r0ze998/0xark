@@ -1,0 +1,47 @@
+[2026-04-27T09:01:22.664Z] [SYSTEM] === 0xARK Agent vs Agent Duel ===
+[2026-04-27T09:01:22.664Z] [SYSTEM] Hall: bronze | Rounds: 5 | Model: claude-haiku-4-5-20251001
+[2026-04-27T09:01:22.664Z] [SYSTEM] Log: /Users/hiroprotagonist/Projects/0xark/docs/sample-duel-logs/agent-vs-agent-002.log
+[2026-04-27T09:01:22.664Z] [SYSTEM] LLM available: true
+[2026-04-27T09:01:22.665Z] [DUEL] Players: ALPHA (Black Flag) vs BETA (Hollow Blade)
+[2026-04-27T09:01:22.665Z] [DUEL] Alpha hand: Palace Sentinel, Silent Assassin, Herald of Ashes, Soul-Thief, Ancestral Ranger
+[2026-04-27T09:01:22.665Z] [DUEL] Beta  hand: Palace Sentinel, Sword Instructor, Flare Saboteur, Oathsworn Knight, Lineage Scout
+[2026-04-27T09:01:22.665Z] [ROUND] ─── Round 1/5 ─── Alpha HP:20 Beta HP:20
+[2026-04-27T09:01:22.665Z] [DRAW] Alpha drew: Grapple Specialist | Beta drew: Grapple Specialist
+[2026-04-27T09:01:22.665Z] [ENERGY] Alpha energy: 5 | Beta energy: 5
+[2026-04-27T09:01:23.006Z] [SUMMON] Alpha: {"action":"summon","card_id":45,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-27T09:01:23.006Z] [SUMMON] Beta:  {"action":"summon","card_id":40,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-27T09:01:23.006Z] [SUMMON] Alpha plays Silent Assassin to front
+[2026-04-27T09:01:23.006Z] [SUMMON] Beta  plays Oathsworn Knight  to front
+[2026-04-27T09:01:23.007Z] [BATTLE] {"lane":"front","a":"Silent Assassin","b":"Oathsworn Knight","aBP":5,"bBP":6,"net":-1}
+[2026-04-27T09:01:23.007Z] [STATUS] After battle — Alpha HP:19 Beta HP:20
+[2026-04-27T09:01:23.007Z] [ROUND] ─── Round 2/5 ─── Alpha HP:19 Beta HP:20
+[2026-04-27T09:01:23.007Z] [DRAW] Alpha drew: Silent Assassin | Beta drew: Powder-Charge Boarder
+[2026-04-27T09:01:23.007Z] [ENERGY] Alpha energy: 6 | Beta energy: 6
+[2026-04-27T09:01:23.316Z] [SUMMON] Alpha: {"action":"summon","card_id":45,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-27T09:01:23.316Z] [SUMMON] Beta:  {"action":"summon","card_id":14,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-27T09:01:23.316Z] [SUMMON] Alpha plays Silent Assassin to front
+[2026-04-27T09:01:23.316Z] [SUMMON] Beta  plays Palace Sentinel  to front
+[2026-04-27T09:01:23.316Z] [BATTLE] {"lane":"front","a":"Silent Assassin","b":"Palace Sentinel","aBP":5,"bBP":4,"net":1}
+[2026-04-27T09:01:23.316Z] [STATUS] After battle — Alpha HP:19 Beta HP:19
+[2026-04-27T09:01:23.316Z] [ROUND] ─── Round 3/5 ─── Alpha HP:19 Beta HP:19
+[2026-04-27T09:01:23.316Z] [DRAW] Alpha drew: First Mate Kaelith | Beta drew: Reef Pilot
+[2026-04-27T09:01:23.316Z] [ENERGY] Alpha energy: 7 | Beta energy: 7
+[2026-04-27T09:01:23.724Z] [SUMMON] Alpha: {"action":"summon","card_id":31,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-27T09:01:23.724Z] [SUMMON] Beta:  {"action":"summon","card_id":3,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-27T09:01:23.724Z] [SUMMON] Alpha plays First Mate Kaelith to front
+[2026-04-27T09:01:23.724Z] [SUMMON] Beta  plays Grapple Specialist  to front
+[2026-04-27T09:01:23.724Z] [BATTLE] {"lane":"front","a":"First Mate Kaelith","b":"Grapple Specialist","aBP":5,"bBP":4,"net":1}
+[2026-04-27T09:01:23.724Z] [STATUS] After battle — Alpha HP:19 Beta HP:18
+[2026-04-27T09:01:23.724Z] [ROUND] ─── Round 4/5 ─── Alpha HP:19 Beta HP:18
+[2026-04-27T09:01:23.724Z] [DRAW] Alpha drew: Lineage Scout | Beta drew: Grapple Specialist
+[2026-04-27T09:01:23.724Z] [ENERGY] Alpha energy: 8 | Beta energy: 8
+[2026-04-27T09:01:24.024Z] [SUMMON] Alpha: {"action":"summon","card_id":14,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-27T09:01:24.024Z] [SUMMON] Beta:  {"action":"summon","card_id":6,"lane":"front","reasoning":"highest BP affordable card"}
+[2026-04-27T09:01:24.024Z] [SUMMON] Alpha plays Palace Sentinel to front
+[2026-04-27T09:01:24.024Z] [SUMMON] Beta  plays Reef Pilot  to front
+[2026-04-27T09:01:24.024Z] [BATTLE] {"lane":"front","a":"Palace Sentinel","b":"Reef Pilot","aBP":4,"bBP":4,"net":0}
+[2026-04-27T09:01:24.024Z] [STATUS] After battle — Alpha HP:19 Beta HP:18
+[2026-04-27T09:01:24.024Z] [ROUND] ─── Round 5/5 ─── Alpha HP:19 Beta HP:18
+[2026-04-27T09:01:24.024Z] [DRAW] Alpha drew: Soul-Binder | Beta drew: Ancestral Ranger
+[2026-04-27T09:01:24.024Z] [ENERGY] Alpha energy: 8 | Beta energy: 8
+[2026-04-27T09:01:24.482Z] [SUMMON] Alpha: {"action":"summon","card_id":46,"lane":"front","reasoning":"highest BP affordable card"}

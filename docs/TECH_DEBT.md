@@ -1,6 +1,7 @@
 # 0xARK — Technical Debt Register
 
 Generated: 2026-04-24 (Phase 1 conservative refactor)  
+Updated: 2026-04-27 (Phase 1-4 refactor complete)  
 Sprint: v3.0-plus submission prep · Deadline: 2026-05-11
 
 ---
@@ -15,6 +16,8 @@ Sprint: v3.0-plus submission prep · Deadline: 2026-05-11
 | D — KNOWN-LIMITATION | Permanent workaround; intentional design constraint | 0 |
 
 All 12 open items are Class C. **No blocking items exist for submission.**
+
+**2026-04-27 update**: Phase 1-4 refactor (`v-phd-refactor-phase4`) completed without introducing new debt. server.js HANDLERS dispatch table (+39 tests), onchain.js section headers, save-load test suite (+18 tests). Net: +57 tests, -14 lines of dead switch boilerplate. Tag: `v-phd-refactor-phase4`.
 
 ---
 
