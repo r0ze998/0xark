@@ -15,6 +15,8 @@
  *   await oxarkOnchain.claimPrize(gameId)
  */
 
+// ════ INFRASTRUCTURE ════
+
 const PROGRAM_ID_STR       = '5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN';
 const CARDS_PROGRAM_ID_STR = '236FNPRbJr5W7qeV9fJCYsxDEkruSK6fnNAipf47Mq1S';
 const DEVNET_RPC = 'https://api.devnet.solana.com';
@@ -363,6 +365,8 @@ async function buildAndSendViaMagicRouter(keys, data, computeUnits = COMPUTE_BUD
   return sig;
 }
 
+// ════ OXARK PROGRAM — CORE GAME ════
+
 // ─── Instruction: create_game ─────────────────────────────────────────────
 async function createGame(gameId, maxPlayers) {
   const payer = window.solana.publicKey;
@@ -601,6 +605,8 @@ async function generateZkProof(actionType, targetArea, salt, commitHash) {
   };
 }
 
+// ════ OXARK PROGRAM — ZK ════
+
 // ─── ZK Dungeon: init_position ────────────────────────────────────────────
 /**
  * Sends the init_position instruction to record a player's initial dungeon
@@ -778,6 +784,8 @@ async function claimPrize(gameId) {
   ], data);
 }
 
+// ════ MAGICBLOCK (MR mode variants) ════
+
 // ─── MagicBlock lifecycle wrappers ───────────────────────────────────────
 // T4: delegate after start_game, undelegate before claim_prize.
 // Full PDA delegation requires Phase C Day 2 Rust changes; until then the
@@ -847,6 +855,8 @@ async function computeCommitHash(actionType, targetPubkeyStr, salt) {
 function generateSalt() {
   return crypto.getRandomValues(new Uint8Array(32));
 }
+
+// ════ OXARK PROGRAM — AGENT / SEASON ════
 
 // ─── Instruction: register_agent ─────────────────────────────────────────────
 /**
@@ -1016,6 +1026,8 @@ async function readSeason(seasonId) {
     return null;
   }
 }
+
+// ════ OXARK-CARDS PROGRAM ════
 
 // ─── NFT Minting (mint_solo_card + Metaplex Token Metadata) ─────────────────
 // Each card (1-60) is a real Solana NFT:
@@ -1365,6 +1377,8 @@ async function undelegateSession(gameId) {
     { pubkey: magicProgramId, isSigner: false, isWritable: false }, // magic_program
   ], data, COMPUTE_BUDGET.default);
 }
+
+// ════ CLIENT-SIDE ════
 
 // ─── Exports ──────────────────────────────────────────────────────────────
 // ─── T72: NFT Trading — localStorage-backed listings ──────────────────────────
