@@ -32,7 +32,7 @@ const SAMPLE_CARDS = {
     name: 'PHANTOM PISTOL',
     type: 'ATK', clan: 'black-flag', sym: '⚔',
     atk: 7, def: 2, spd: 9, rarity: 'RARE',
-    lore: '"Loaded with gunpowder stolen from the Iron Circle's arsenal. Fires twice — once at the body, once at the soul."',
+    lore: `"Loaded with gunpowder stolen from the Iron Circle's arsenal. Fires twice — once at the body, once at the soul."`,
     history: [
       { result: 'WIN',  vs: 'ANCHOR SHIELD',  dmg: 5 },
       { result: 'WIN',  vs: 'IRON WALL',       dmg: 7 },
