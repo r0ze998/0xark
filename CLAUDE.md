@@ -36,13 +36,13 @@ Design system: `src/style/sprite-seas.css` (VT323, 1024×576, GBA palette).
 | S8 Defeat | `s8-defeat.js` | ✓ Wave 2 |
 | S3 Bourse Shop | `s3-bourse.js` | ✓ Wave 2 |
 | S2 Deck Editor | `s2-deck-editor.js` | ✓ Wave 2 |
-| M5 Card Detail | `m5-card-detail.js` | Wave 3 |
-| S4 Agent Hub | `s4-agent-hub.js` | Wave 3 |
-| S5 Lore Catalog | `s5-lore.js` | Wave 3 (6 tabs incl. Royal/KLG) |
-| S6 Settings | `s6-settings.js` | Wave 3 |
-| S7 How To Play | `s7-howtoplay.js` | Wave 3 |
-| Title B | `title-b.js` | Wave 4 |
-| Title C | `title-c.js` | Wave 4 |
+| M5 Card Detail | `m5-card-detail.js` | ✓ Wave 3 |
+| S4 Agent Hub | `s4-agent-hub.js` | ✓ Wave 3 |
+| S5 Lore Catalog | `s5-lore.js` | ✓ Wave 3 (6 tabs incl. Royal/KLG) |
+| S6 Settings | `s6-settings.js` | ✓ Wave 3 |
+| S7 How To Play | `s7-howtoplay.js` | ✓ Wave 3 |
+| Title B | `title-b.js` | ✓ Wave 4 |
+| Title C | `title-c.js` | ✓ Wave 4 |
 
 ## Hero Sprite Mapping (placeholders until /sprites/ PNGs arrive)
 | Hero | Screens |
@@ -58,6 +58,27 @@ Design system: `src/style/sprite-seas.css` (VT323, 1024×576, GBA palette).
 - Royal = KLG (King's Last Guard), currently 1 hero, grid layout for future expansion
 - KLG palette: `#d8b034` gold / `#f4ecd0` light / `#9098a8` armor / `#7a8088` dark / `#8c1c2e` red / `#000`
 - M5 Card Detail clan band = gold (Royal palette)
+
+## C-4 Fly.io Deploy (ready 2026-04-28)
+Server: `multiplayer/server.js` (WebSocket relay + x402 verify)  
+Files created: `multiplayer/Dockerfile`, `multiplayer/fly.toml`, `multiplayer/.dockerignore`  
+App: `oxark-multiplayer`, region `nrt` (Tokyo), `shared-cpu-1x/256mb`
+
+**r0ze triggers final deploy:**
+```sh
+cd multiplayer
+fly secrets set SOLANA_RPC_URL=<rpc> TREASURY_PUBKEY=<pubkey>
+fly deploy
+```
+Without `TREASURY_PUBKEY` the server runs in demo mode (x402 verification skipped).
+
+## C-3 IDL Rebuild (pending — needs anchor build)
+Run in `solana/oxark/`:
+```sh
+anchor build
+cp target/idl/oxark.json ../client/oxark-idl.json
+# then run init_season_stats(season_id=1) on devnet
+```
 
 ## Dev server
 ```
