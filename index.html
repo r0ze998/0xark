@@ -38,6 +38,7 @@
 
   <script type="module">
     import { mount as mountTitleA, unmount as unmountTitleA } from './src/screens/title-a.js';
+    import { mount as mountM1, unmount as unmountM1 } from './src/screens/m1-lobby.js';
 
     const app = document.getElementById('app');
 
@@ -51,6 +52,10 @@
         case 'title-a':
           mountTitleA(app);
           currentUnmount = unmountTitleA;
+          break;
+        case 'm1-lobby':
+          mountM1(app, detail);
+          currentUnmount = unmountM1;
           break;
         default:
           app.innerHTML = `<div style="color:#c9a227;font-family:VT323,monospace;font-size:28px;padding:40px;">[${screenName}] — COMING IN WAVE 1</div>`;
