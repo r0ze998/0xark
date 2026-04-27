@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
 **Program ID** (Solana Devnet): `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`
-**Latest tag**: `v-phd-refactor-phase4` · **Tests**: 408 passing (113 Anchor/Rust + 200 client + 95 AI agent)
+**Latest tag**: `v-phd-devnet-assets` · **Tests**: 408 passing (113 Anchor/Rust + 200 client + 95 AI agent)
 
 **Colosseum Frontier Hackathon 2026 Submission**
 Tracks: Gaming (primary) · AI · Stablecoins
