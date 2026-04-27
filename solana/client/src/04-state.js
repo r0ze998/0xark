@@ -2,6 +2,7 @@
 // Owns: player hand/deck arrays, map position, session stats, save state, rival bg timers
 // Also contains organic terrain helpers (tileHash/thRand) and x402 Intel menu data
 // ═══════════════════════════════════════
+// ── TERRAIN & TILE UTILS ──
 function tileHash(x,y){return((x*2654435761+y*40503)&0xFFFF);}
 function thRand(x,y,idx){return((tileHash(x,y)+idx*7919)&0xFFFF)/65535;}
 function getNeighborType(m,x,y,dx,dy){
@@ -29,6 +30,7 @@ for(let i=0;i<12;i++){
   pollenParticles.push({x:Math.random()*MW*TW,y:Math.random()*MH*TH,vx:0.15+Math.random()*0.2,vy:-0.1+Math.random()*0.2,phase:ph,sinPh:Math.sin(ph),cosPh:Math.cos(ph)});
 }
 
+// ── PLAYERS & SPELLS ──
 // Player: cd=hand array (HAND_SIZE slots), vault=Set of unique card IDs ever collected
 // Rivals use cd[5] for simplicity
 function makeEmptyHand(){return new Array(HAND_SIZE).fill(0);}
@@ -39,6 +41,7 @@ const pl=[
 ];
 
 const sp={s:2,b:3,c:2};
+// ── SCENE & NAVIGATION ──
 let sc='title',mo=false,mi=0,ai=0,fr=0,wt=0,rd=1;
 let splashFrame=0;
 let titleMenuIdx=0;
@@ -50,6 +53,7 @@ let saveIndicatorTimer=0;
 let autoSaveTimer=0;
 const AUTO_SAVE_INTERVAL=1800; // 30 seconds at 60fps
 let encounterCooldown=0;
+// ── CAMERA ──
 let camX=0,camY=0,camTargetX=0,camTargetY=0;
 let mapTransitioning=false;
 
@@ -201,6 +205,7 @@ function drawDayNightIcon(ix,iy){
 }
 
 // ── PLAYER STATUS EFFECTS ──
+// ── UI ANIMATIONS & VFX ──
 let cardGetAnimTimer=0,cardGetAnimX=0,cardGetAnimY=0;
 let cardLostAnimTimer=0,cardLostAnimX=0,cardLostAnimY=0;
 const statusSparkles=[];
@@ -291,6 +296,7 @@ function drawPlayerStatusEffects(){
 }
 
 // ── Battle phase system ──
+// ── BATTLE STATE ──
 let battlePhase='select';
 let bpFrame=0,bpAction=-1,bpResolveQueue=[],bpResolveIdx=0;
 let bpShakeTarget=-1,bpShakeTimer=0;
@@ -307,6 +313,7 @@ let bpEnemyElement=0; // 0 = unset, randomized on battle start
 // 'waiting' — Commitment sent, waiting for opponent to commit
 // 'reveal'  — Both committed, reveal phase
 // 'done'    — Reveal processed, merge with normal resolution
+// ── ZK COMMIT-REVEAL ──
 let zkCardPhase='off';
 let zkCardCommitment=null;  // Uint8Array(32) or null
 let zkCardSalt=null;        // Uint8Array(32) — kept private
@@ -325,6 +332,7 @@ function setZkCardPhase(phase){
 }
 
 // ── Card acquisition animation ──
+// ── CARD OVERLAY & VICTORY ──
 let cardAcqActive=false,cardAcqFrame=0,cardAcqCard=-1,cardAcqDone=false;
 let cardAcqIsNew=false,cardAcqWasNew=false; // v96: track first-time unique card
 const cardAcqParticles=[];
@@ -334,6 +342,7 @@ let victoryFrame=0,victoryCardsShown=0;
 let victoryClaimed=false,victoryClaimedTx='',victoryMinted=false,victoryMintProgress=0,victoryMinting=false;
 
 // ── Footstep counter ──
+// ── WORLD EVENTS & SHOPS ──
 let stepCounter=0;
 
 // ── Random map events ──
@@ -623,6 +632,7 @@ const TUTORIAL_STEPS=[
   {id:'zkcommit',  goal:'Try the ZK commit phase',       hint:'In battle, commit a card secretly. Your choice is hidden until both reveal!', obj:'Complete a ZK commit+reveal cycle'},
 ];
 // Completion tracker for each step objective
+// ── TUTORIAL & INTRO ──
 let tutorialProgress={move:0}; // move: tile count
 
 function tutorialStepDone(stepId){
@@ -666,6 +676,7 @@ const INTRO_PAGES=[
 ];
 
 // ── Battle encounter exclamation ──
+// ── ENCOUNTER & WORLD OBJECTS ──
 let encounterExclActive=false, encounterExclFrame=0, encounterExclTarget=-1;
 let encounterRivalLine=''; // context-sensitive line for exclamation animation
 let encounterExclPlayerX=0, encounterExclPlayerY=0, encounterExclRivalX=0, encounterExclRivalY=0;
@@ -734,6 +745,7 @@ let infoBrokerConfirm=false, infoBrokerResult='', infoBrokerResultTimer=0;
 // ═══════════════════════════════════════
 // x402 INTEGRATION
 // ═══════════════════════════════════════
+// ── X402 & AGENT MARKETPLACE ──
 const X402_DEFAULT_URL='https://oxark-agent-broker.fly.dev';
 let x402ServerUrl=localStorage.getItem('oxark_x402_url')||X402_DEFAULT_URL;
 let x402Available=false;
@@ -874,6 +886,7 @@ let mapCardDirSelect=false, mapCardDirIdx=0, mapCardPendingType=-1;
 
 // ── TENSION MECHANICS ──
 // Card Decay Timer: each slot stores timestamp when card was acquired (0 = empty)
+// ── CARD DECAY & STREAK ──
 const CARD_DECAY_MS=210000; // 210 seconds (3.5 minutes) real-time — slightly more breathing room
 const cardTimers=new Array(HAND_SIZE).fill(0); // parallel to pl[0].cd[HAND_SIZE] — only active in dungeon
 const decayWarn=new Array(HAND_SIZE).fill(0); // 0=none,1=50%warned,2=30swarned,3=criticalwarned per slot
@@ -889,6 +902,7 @@ let streakDisplayTimer=0; // frames to show streak pop animation
 let streakLostTimer=0; // frames to show streak lost
 
 // Area Danger Level: per-map dynamic danger (0=Town, 1-5=Dungeon floors)
+// ── AREA DANGER & QTE ──
 const areaDanger=new Array(FOG_MAP_COUNT).fill(0); // 0.0 to 1.0 per map
 const areaDangerStayTimer=new Array(FOG_MAP_COUNT).fill(0); // frames stayed per map
 const DANGER_LOW_THRESH=0.33;
@@ -900,6 +914,7 @@ let qteKeyPressed=false, qteEventIdx=-1, qteType=''; // 'defend' or 'attack'
 let qteResultText='', qteResultTimer=0;
 
 // SFX for new features
+// ── GAME RESET ──
 function resetNewFeatureState(){
   triggeredTraps.clear();shakenTrees.clear();pushedRocks.clear();usedCrystals.clear();_exploredBonusGiven.clear();
   puzzleStoneOrder=[2,0,1];puzzleSolved=false;campfireUsed=false;
@@ -977,6 +992,7 @@ function resetGameState(startCards){
   tileCacheDirty=true;edgeCacheDirty=true;fogCacheDirty=true;
 }
 
+// ── SOUND EFFECTS ──
 function sfxFishCast(){if(!soundEnabled)return;beep(300,.08,.06);setTimeout(()=>beep(200,.06,.05),80);}
 function sfxFishBite(){if(!soundEnabled)return;beep(880,.04,.08);setTimeout(()=>beep(1100,.06,.08),40);}
 function sfxFishCatch(){if(!soundEnabled)return;beep(440,.06,.06);setTimeout(()=>beep(660,.06,.06),60);setTimeout(()=>beep(880,.08,.07),120);}
@@ -1002,6 +1018,7 @@ function startTensionDrum(){if(!soundEnabled||tensionDrumNode)return;try{const o
 function stopTensionDrum(){if(tensionDrumNode){try{tensionDrumGain.gain.linearRampToValueAtTime(0,AC.currentTime+0.3);setTimeout(()=>{try{tensionDrumNode.stop();tensionDrumNode._lfo.stop();tensionDrumNode.disconnect();}catch(e){}tensionDrumNode=null;tensionDrumGain=null;},400);}catch(e){tensionDrumNode=null;tensionDrumGain=null;}}}
 
 // ── SESSION STATS ──
+// ── STATS & SEASON ──
 const STATS_KEY='oxark_stats';
 let stats={gamesPlayed:0,cardsCollected:0,cardsLost:0,stealsAttempted:0,stealsBlocked:0,scoutUses:0,stepsWalked:0,timePlayed:0,areaTime:new Array(FOG_MAP_COUNT).fill(0),sessionStart:Date.now(),bestClearRounds:0,bestClearTime:0};
 function loadStats(){try{const raw=localStorage.getItem(STATS_KEY);if(raw){const d=JSON.parse(raw);Object.keys(d).forEach(k=>{if(stats.hasOwnProperty(k))stats[k]=d[k];});// Migrate old 3-element areaTime to FOG_MAP_COUNT
@@ -1036,6 +1053,7 @@ function formatTimeRemaining(ms){
 }
 function getPlayElapsed(){return Date.now()-seasonStartTime;}
 
+// ── GAME LOG & MILESTONES ──
 const lg=['Game started. Collect all 60 cards to win the Prize Pool!'];
 let logScrollOff=0;
 
@@ -1059,6 +1077,7 @@ const milestonesReached=new Set();
 // Shard 1 is always unlocked on acquisition (index 0 = true always after set).
 // Sync from on-chain CardLoreShards PDA on demand (when Card Detail opens).
 // Cache for session duration.
+// ── LORE SHARDS ──
 const unlockedShards={};
 
 // setUnlockedShards(card_mint, boolArray) — cache PDA query result

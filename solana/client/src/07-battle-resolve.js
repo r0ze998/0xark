@@ -226,24 +226,8 @@ function drawVoidEffect(cx_,cy_,evT){
   g.globalAlpha=1;g.restore();
 }
 
-function drawResolvingPhase(){
-  // v457: GBA migration
-  drawGBABattleBG();
-  drawGBABattleHUD('resolving');
-  drawGBABattleArena();
-  drawGBAHpBox(1,8,36,200,56,'resolving');
-  drawGBAHpBox(2,214,36,180,56,'resolving');
-  drawGBAHpBox(0,W-310,H-130,300,100,'resolving');
-  const t=fr-bpFrame,eventDuration=50,currentIdx=Math.floor(t/eventDuration);
-  if(currentIdx<bpResolveQueue.length){
-    bpResolveIdx=currentIdx;const ev=bpResolveQueue[currentIdx];const evT=t%eventDuration;
-    // Trigger QTE on critical events (Steal, Flame, Void) at frame 15
-    if(ev.isCritical&&evT===15&&!qteActive&&qteEventIdx!==currentIdx){
-      qteActive=true;qteFrame=0;qteKeyPressed=false;qteSuccess=false;
-      qteEventIdx=currentIdx;
-      qteType=(ev.target===0)?'defend':'attack';
-      sfxQtePrompt();
-    }
+
+function _drawResBanners(ev,evT,t){
     // T82: SUPER EFFECTIVE! / not very effective... banner + audio
     if(ev._elemResult&&evT===5){if(ev._elemResult==='super')sfxSuperEffective();else sfxWeakEffect();}
     if(ev._elemResult&&evT>=5&&evT<45){
@@ -366,6 +350,9 @@ function drawResolvingPhase(){
     }
     // v335: Skip hint (appears after first event, not during QTE)
     if(currentIdx>0&&!qteActive){g.globalAlpha=0.5;txShadow('[Z] Skip',W-66,H-52,6,'#909090','rgba(0,0,0,.2)');g.globalAlpha=1;}
+}
+
+function _drawResEffects(ev,evT,currentIdx,t){
     // === EFFECT ANIMATIONS ===
     const playerCX=160,playerCY=H-130;
     const oppCX=W-200,oppCY=130;
@@ -838,6 +825,9 @@ function drawResolvingPhase(){
       }
       if(evT===1)sfxSlash(); // reuse slash sfx for hostile scan
     }
+}
+
+function _drawResOverlays(){
     // v89: Enhanced QTE overlay
     if(qteActive){
       const qteProgress=qteFrame/qteWindow;
@@ -984,6 +974,29 @@ function drawResolvingPhase(){
       txShadow(_BSTREAK_LBL[streakCount]||('\u2605 STREAK '+streakCount+'x'),_spX+8,_spY+1,9,_scol,'rgba(0,0,0,.5)'); // v327
       g.globalAlpha=1;
     }
+}
+
+function drawResolvingPhase(){
+  // v457: GBA migration
+  drawGBABattleBG();
+  drawGBABattleHUD('resolving');
+  drawGBABattleArena();
+  drawGBAHpBox(1,8,36,200,56,'resolving');
+  drawGBAHpBox(2,214,36,180,56,'resolving');
+  drawGBAHpBox(0,W-310,H-130,300,100,'resolving');
+  const t=fr-bpFrame,eventDuration=50,currentIdx=Math.floor(t/eventDuration);
+  if(currentIdx<bpResolveQueue.length){
+    bpResolveIdx=currentIdx;const ev=bpResolveQueue[currentIdx];const evT=t%eventDuration;
+    // Trigger QTE on critical events (Steal, Flame, Void) at frame 15
+    if(ev.isCritical&&evT===15&&!qteActive&&qteEventIdx!==currentIdx){
+      qteActive=true;qteFrame=0;qteKeyPressed=false;qteSuccess=false;
+      qteEventIdx=currentIdx;
+      qteType=(ev.target===0)?'defend':'attack';
+      sfxQtePrompt();
+    }
+    _drawResBanners(ev,evT,t);
+    _drawResEffects(ev,evT,currentIdx,t);
+    _drawResOverlays();
   }else{
     // Anti-softlock: if player has 0 cards and 0 spells after resolve, give a pity card
     if(cdCount(pl[0].cd)===0&&sp.s<=0&&sp.b<=0&&sp.c<=0){
