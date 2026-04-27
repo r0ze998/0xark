@@ -23,7 +23,7 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, usedSigs } from './state.js';
+import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, usedSigs, rateLimits } from './state.js';
 import { HANDLERS } from './handlers/index.js';
 
 const PORT = process.env.PORT || 3500;
@@ -55,9 +55,29 @@ function rateLimited(ws, isTx = false) {
   return false;
 }
 
+// ─── HTTP rate limiting (per-IP, x402 endpoints) ─────────────────────────────
+
+const HTTP_RATE_MAX    = parseInt(process.env.RATE_LIMIT_MAX,       10) || 20;
+const HTTP_RATE_WINDOW = parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60_000;
+
+function checkHttpRateLimit(ip, now = Date.now()) {
+  let entry = rateLimits.get(ip);
+  if (!entry || now - entry.windowStart >= HTTP_RATE_WINDOW) {
+    entry = { count: 0, windowStart: now };
+    rateLimits.set(ip, entry);
+  }
+  entry.count++;
+  if (entry.count > HTTP_RATE_MAX) {
+    const retryAfter = Math.ceil((HTTP_RATE_WINDOW - (now - entry.windowStart)) / 1000);
+    return { limited: true, retryAfter };
+  }
+  return { limited: false };
+}
+
 // ─── x402 payment verification ────────────────────────────────────────────────
 
 const TREASURY_ADDR    = process.env.TREASURY_PUBKEY || '11111111111111111111111111111111';
+const SOLANA_NETWORK   = process.env.SOLANA_NETWORK  || 'devnet';
 const X402_POLL_ATTEMPTS = 10;
 const X402_POLL_MS       = 500;
 const X402_MAX_AGE_MS    = 60_000;
@@ -132,13 +152,43 @@ const httpServer = http.createServer(async (req, res) => {
   };
   if (req.method === 'POST' && X402_ROUTES[req.url] !== undefined) {
     cors();
+
+    // Per-IP rate limit (RATE_LIMIT_MAX / RATE_LIMIT_WINDOW_MS, default 20/60s)
+    const ip = req.socket?.remoteAddress || 'unknown';
+    const rl = checkHttpRateLimit(ip);
+    if (rl.limited) {
+      res.setHeader('Retry-After', String(rl.retryAfter));
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'rate limited', retryAfter: rl.retryAfter }));
+      return;
+    }
+
+    const amountSol     = X402_ROUTES[req.url];
+    const amountLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
     const body   = await _readBody(req);
-    const result = await _verifyX402Payment(body.playerPubkey || '', X402_ROUTES[req.url]);
+    const result = await _verifyX402Payment(body.playerPubkey || '', amountSol);
+
     if (!result.ok) {
+      // x402 v2 spec: PAYMENT-REQUIRED header (Base64-encoded JSON)
+      // Spec: https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md
+      const paymentRequired = Buffer.from(JSON.stringify({
+        version: 'x402-v2',
+        accepts: [{
+          scheme:  'solana-transfer',
+          network: SOLANA_NETWORK,
+          amount:  String(amountLamports),
+          payTo:   TREASURY_ADDR,
+        }],
+      })).toString('base64');
+      res.setHeader('PAYMENT-REQUIRED',    paymentRequired);
+      res.setHeader('X-Payment-Recipient', TREASURY_ADDR);
+      res.setHeader('X-Payment-Amount',    String(amountLamports));
+      res.setHeader('X-Payment-Network',   SOLANA_NETWORK);
       res.writeHead(402, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, error: result.error }));
       return;
     }
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, action: body.action ?? 'unknown', sig: result.sig, demo: result.demo }));
     return;
@@ -159,10 +209,11 @@ httpServer.listen(PORT, () => {
 
 wss = new WebSocketServer({ server: httpServer });
 
-// GC usedSigs every 30s — remove entries whose 120s TTL has expired
+// GC every 30s: usedSigs (120s TTL) + expired rateLimits windows
 const _sigGcInterval = setInterval(() => {
   const now = Date.now();
   usedSigs.forEach((expiry, sig) => { if (expiry < now) usedSigs.delete(sig); });
+  rateLimits.forEach((entry, ip) => { if (now - entry.windowStart >= HTTP_RATE_WINDOW) rateLimits.delete(ip); });
 }, 30_000);
 process.on('exit', () => clearInterval(_sigGcInterval));
 

@@ -728,6 +728,54 @@ function makeX402Context() {
   return { usedSigs, makeVerify, gcUsedSigs };
 }
 
+// ─── HTTP rate limit context ──────────────────────────────────────────────────
+
+function makeRateLimitContext(opts = {}) {
+  const rateLimits    = new Map();
+  const HTTP_RATE_MAX    = opts.max    ?? 20;
+  const HTTP_RATE_WINDOW = opts.window ?? 60_000;
+
+  function checkHttpRateLimit(ip, now = Date.now()) {
+    let entry = rateLimits.get(ip);
+    if (!entry || now - entry.windowStart >= HTTP_RATE_WINDOW) {
+      entry = { count: 0, windowStart: now };
+      rateLimits.set(ip, entry);
+    }
+    entry.count++;
+    if (entry.count > HTTP_RATE_MAX) {
+      const retryAfter = Math.ceil((HTTP_RATE_WINDOW - (now - entry.windowStart)) / 1000);
+      return { limited: true, retryAfter };
+    }
+    return { limited: false };
+  }
+
+  return { rateLimits, checkHttpRateLimit };
+}
+
+// ─── x402 header context ──────────────────────────────────────────────────────
+
+function makeX402HeaderContext(opts = {}) {
+  const TREASURY_ADDR  = opts.treasury ?? 'TREASURY_PUBKEY_123';
+  const SOLANA_NETWORK = opts.network  ?? 'devnet';
+  const LAMPORTS       = 1_000_000_000;
+
+  function buildPaymentRequiredHeaders(amountSol) {
+    const amountLamports = Math.floor(amountSol * LAMPORTS);
+    const paymentRequired = Buffer.from(JSON.stringify({
+      version: 'x402-v2',
+      accepts: [{ scheme: 'solana-transfer', network: SOLANA_NETWORK, amount: String(amountLamports), payTo: TREASURY_ADDR }],
+    })).toString('base64');
+    return {
+      'PAYMENT-REQUIRED':    paymentRequired,
+      'X-Payment-Recipient': TREASURY_ADDR,
+      'X-Payment-Amount':    String(amountLamports),
+      'X-Payment-Network':   SOLANA_NETWORK,
+    };
+  }
+
+  return { buildPaymentRequiredHeaders, TREASURY_ADDR, SOLANA_NETWORK };
+}
+
 // ─── x402 tests + final summary ───────────────────────────────────────────────
 
 (async () => {
@@ -770,6 +818,81 @@ function makeX402Context() {
     const result = await verify('playerPk', 0.005);
     assert.equal(result.ok, true);
     assert.equal(result.sig, 'sig-fresh');
+  });
+
+  console.log('\nHTTP rate limiting');
+
+  await asyncTest('20 requests pass, 21st is rate limited (429)', async () => {
+    const { checkHttpRateLimit } = makeRateLimitContext({ max: 20, window: 60_000 });
+    const now = Date.now();
+    for (let i = 0; i < 20; i++) {
+      const r = checkHttpRateLimit('1.2.3.4', now);
+      assert.equal(r.limited, false, `request ${i + 1} should pass`);
+    }
+    const r21 = checkHttpRateLimit('1.2.3.4', now);
+    assert.equal(r21.limited, true);
+  });
+
+  await asyncTest('Retry-After is correct seconds remaining in window', async () => {
+    const WINDOW = 60_000;
+    const { checkHttpRateLimit } = makeRateLimitContext({ max: 1, window: WINDOW });
+    const now = Date.now();
+    checkHttpRateLimit('1.2.3.4', now);           // 1st — passes
+    const r = checkHttpRateLimit('1.2.3.4', now + 10_000); // 2nd — limited, 50s elapsed
+    assert.equal(r.limited, true);
+    // retryAfter = ceil((60000 - 10000) / 1000) = 50
+    assert.equal(r.retryAfter, 50);
+  });
+
+  await asyncTest('after window expires requests are allowed again', async () => {
+    const { checkHttpRateLimit } = makeRateLimitContext({ max: 1, window: 60_000 });
+    const now = Date.now();
+    checkHttpRateLimit('1.2.3.4', now);                 // 1st — passes, window starts
+    const blocked = checkHttpRateLimit('1.2.3.4', now); // 2nd — limited
+    assert.equal(blocked.limited, true);
+    // 61s later — new window
+    const after = checkHttpRateLimit('1.2.3.4', now + 61_000);
+    assert.equal(after.limited, false);
+  });
+
+  await asyncTest('different IP is not affected by another IP being limited', async () => {
+    const { checkHttpRateLimit } = makeRateLimitContext({ max: 1, window: 60_000 });
+    const now = Date.now();
+    checkHttpRateLimit('1.1.1.1', now);
+    checkHttpRateLimit('1.1.1.1', now); // 1.1.1.1 is now limited
+    const other = checkHttpRateLimit('2.2.2.2', now);
+    assert.equal(other.limited, false);
+  });
+
+  console.log('\nx402 payment headers');
+
+  await asyncTest('PAYMENT-REQUIRED header decodes to valid x402-v2 JSON', async () => {
+    const { buildPaymentRequiredHeaders, TREASURY_ADDR } = makeX402HeaderContext();
+    const headers = buildPaymentRequiredHeaders(0.005);
+    const decoded = JSON.parse(Buffer.from(headers['PAYMENT-REQUIRED'], 'base64').toString('utf8'));
+    assert.equal(decoded.version, 'x402-v2');
+    assert.ok(Array.isArray(decoded.accepts) && decoded.accepts.length > 0);
+    assert.equal(decoded.accepts[0].payTo, TREASURY_ADDR);
+    assert.equal(decoded.accepts[0].scheme, 'solana-transfer');
+    assert.equal(decoded.accepts[0].amount, '5000000'); // 0.005 SOL
+  });
+
+  await asyncTest('X-Payment-Recipient matches TREASURY_ADDR', async () => {
+    const { buildPaymentRequiredHeaders, TREASURY_ADDR } = makeX402HeaderContext({ treasury: 'MY_TREASURY_KEY' });
+    const headers = buildPaymentRequiredHeaders(0.01);
+    assert.equal(headers['X-Payment-Recipient'], 'MY_TREASURY_KEY');
+  });
+
+  await asyncTest('X-Payment-Amount is correct lamports string', async () => {
+    const { buildPaymentRequiredHeaders } = makeX402HeaderContext();
+    const headers = buildPaymentRequiredHeaders(0.01);
+    assert.equal(headers['X-Payment-Amount'], '10000000'); // 0.01 SOL = 10_000_000 lamports
+  });
+
+  await asyncTest('X-Payment-Network reflects SOLANA_NETWORK', async () => {
+    const { buildPaymentRequiredHeaders } = makeX402HeaderContext({ network: 'mainnet-beta' });
+    const headers = buildPaymentRequiredHeaders(0.003);
+    assert.equal(headers['X-Payment-Network'], 'mainnet-beta');
   });
 
   console.log('\n────────────────────────────────────────────');
