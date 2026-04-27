@@ -1,0 +1,172 @@
+/* sprite-seas.css — 0xARK UI v4 shared design system
+   GBA palette · VT323 · 1024×576 · 2px hard borders · no AA */
+
+/* ── Tokens ──────────────────────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --bg-deep:  #0a0e1a;
+  --bg-mid:   #1a1f33;
+  --bg-panel: rgba(10, 14, 26, 0.88);
+
+  /* Text */
+  --text-cream: #e8dfc8;
+  --text-dim:   rgba(232, 223, 200, 0.55);
+  --text-gold:  #c9a227;
+
+  /* Accent */
+  --accent-gold: #c9a227;
+  --accent-red:  #d63b3b;
+  --accent-blue: #4a90d9;
+
+  /* Clan palette */
+  --clan-black-flag:   #1a3a5c;
+  --clan-hollow-blade: #8c1c2e;
+  --clan-iron-circle:  #2d5a3d;
+  --clan-bourse:       #c9a227;
+  --clan-nameless-silk:#5a2a7a;
+
+  /* Borders */
+  --border-hard: 2px solid #000000;
+  --border-gold: 2px solid var(--accent-gold);
+  --border-dim:  1px solid rgba(201, 162, 39, 0.35);
+
+  /* Typography */
+  --font-main: 'VT323', monospace;
+  --ls-normal: 0.02em;
+  --ls-wide:   0.08em;
+}
+
+/* ── Reset ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  image-rendering: pixelated;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-cream);
+  font-family: var(--font-main);
+  font-size: 20px;
+  letter-spacing: var(--ls-normal);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Layout ─────────────────────────────────────────────── */
+#app {
+  width: 1024px;
+  height: 576px;
+  position: relative;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+/* ── GBA Button ──────────────────────────────────────────── */
+.gba-btn {
+  font-family: var(--font-main);
+  font-size: 20px;
+  letter-spacing: var(--ls-normal);
+  color: var(--text-cream);
+  background: var(--bg-mid);
+  border: var(--border-gold);
+  padding: 7px 22px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 80ms, color 80ms;
+  line-height: 1;
+}
+
+.gba-btn:hover,
+.gba-btn:focus-visible,
+.gba-btn.is-active {
+  background: var(--accent-gold);
+  color: var(--bg-deep);
+  outline: none;
+}
+
+.gba-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+.gba-btn--primary {
+  background: var(--accent-gold);
+  color: var(--bg-deep);
+  font-size: 22px;
+  border-width: 2px;
+}
+
+.gba-btn--primary:hover {
+  background: #dbb630;
+}
+
+.gba-btn--ghost {
+  background: transparent;
+  border: var(--border-dim);
+  color: var(--text-dim);
+}
+
+.gba-btn--ghost:hover {
+  border-color: var(--accent-gold);
+  color: var(--text-cream);
+  background: transparent;
+}
+
+.gba-btn--danger {
+  border-color: var(--accent-red);
+}
+
+.gba-btn--danger:hover {
+  background: var(--accent-red);
+  color: #fff;
+}
+
+/* ── Panel / chip ────────────────────────────────────────── */
+.panel {
+  background: var(--bg-panel);
+  border: var(--border-gold);
+  padding: 12px 16px;
+}
+
+.chip {
+  font-family: var(--font-main);
+  font-size: 15px;
+  letter-spacing: var(--ls-wide);
+  background: var(--bg-panel);
+  border: var(--border-dim);
+  padding: 3px 10px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* ── Typography helpers ──────────────────────────────────── */
+.label-gold  { color: var(--accent-gold); }
+.label-red   { color: var(--accent-red); }
+.label-dim   { color: var(--text-dim); font-size: 15px; }
+.sep         { color: var(--accent-gold); margin: 0 6px; }
+.mono        { font-family: 'Courier New', monospace; font-size: 13px; }
+
+/* ── Utility ─────────────────────────────────────────────── */
+.abs { position: absolute; }
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flex-row { display: flex; align-items: center; }
+.gap-8  { gap: 8px; }
+.gap-16 { gap: 16px; }
+.gap-24 { gap: 24px; }
+
+/* ── Clan color helpers ──────────────────────────────────── */
+.clan-black-flag    { color: #6a9fd8; }
+.clan-hollow-blade  { color: #e05070; }
+.clan-iron-circle   { color: #5ab87a; }
+.clan-bourse        { color: var(--accent-gold); }
+.clan-nameless-silk { color: #a070e0; }
