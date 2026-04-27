@@ -22,7 +22,6 @@
   <link rel="stylesheet" href="src/style/sprite-seas.css">
 
   <style>
-    /* Centering shell for non-1024 viewports */
     html, body { height: 100%; }
     body {
       display: flex;
@@ -50,6 +49,17 @@
     import { mount as mountS3,      unmount as unmountS3      } from './src/screens/s3-bourse.js';
     import { mount as mountS2,      unmount as unmountS2      } from './src/screens/s2-deck-editor.js';
 
+    // ── Wave 3 ────────────────────────────────────────────────
+    import { mount as mountM5,      unmount as unmountM5      } from './src/screens/m5-card-detail.js';
+    import { mount as mountS4,      unmount as unmountS4      } from './src/screens/s4-agent-hub.js';
+    import { mount as mountS5,      unmount as unmountS5      } from './src/screens/s5-lore.js';
+    import { mount as mountS6,      unmount as unmountS6      } from './src/screens/s6-settings.js';
+    import { mount as mountS7,      unmount as unmountS7      } from './src/screens/s7-howtoplay.js';
+
+    // ── Wave 4 ────────────────────────────────────────────────
+    import { mount as mountTitleB,  unmount as unmountTitleB  } from './src/screens/title-b.js';
+    import { mount as mountTitleC,  unmount as unmountTitleC  } from './src/screens/title-c.js';
+
     const app = document.getElementById('app');
 
     // ── Router ────────────────────────────────────────────────
@@ -60,59 +70,73 @@
 
       switch (screenName) {
         // Wave 1
-        case 'title-a':       mountTitleA(app);         currentUnmount = unmountTitleA; break;
-        case 'm1-lobby':      mountM1(app, detail);     currentUnmount = unmountM1;     break;
-        case 'm3-duel-open':  mountM3(app, detail);     currentUnmount = unmountM3;     break;
-        case 'm2-duel-board': mountM2(app, detail);     currentUnmount = unmountM2;     break;
-        case 'm4-victory':    mountM4(app, detail);     currentUnmount = unmountM4;     break;
+        case 'title-a':        mountTitleA(app);         currentUnmount = unmountTitleA; break;
+        case 'm1-lobby':       mountM1(app, detail);     currentUnmount = unmountM1;     break;
+        case 'm3-duel-open':   mountM3(app, detail);     currentUnmount = unmountM3;     break;
+        case 'm2-duel-board':  mountM2(app, detail);     currentUnmount = unmountM2;     break;
+        case 'm4-victory':     mountM4(app, detail);     currentUnmount = unmountM4;     break;
 
         // Wave 2
-        case 's1-menu':       mountS1(app, detail);     currentUnmount = unmountS1;     break;
-        case 's8-defeat':     mountS8(app, detail);     currentUnmount = unmountS8;     break;
-        case 's3-bourse':     mountS3(app, detail);     currentUnmount = unmountS3;     break;
-        case 's2-deck-editor': mountS2(app, detail);    currentUnmount = unmountS2;     break;
+        case 's1-menu':        mountS1(app, detail);     currentUnmount = unmountS1;     break;
+        case 's8-defeat':      mountS8(app, detail);     currentUnmount = unmountS8;     break;
+        case 's3-bourse':      mountS3(app, detail);     currentUnmount = unmountS3;     break;
+        case 's2-deck-editor': mountS2(app, detail);     currentUnmount = unmountS2;     break;
+
+        // Wave 3
+        case 'm5-card-detail': mountM5(app, detail);     currentUnmount = unmountM5;     break;
+        case 's4-agent-hub':   mountS4(app, detail);     currentUnmount = unmountS4;     break;
+        case 's5-lore':        mountS5(app, detail);     currentUnmount = unmountS5;     break;
+        case 's6-settings':    mountS6(app, detail);     currentUnmount = unmountS6;     break;
+        case 's7-howtoplay':   mountS7(app, detail);     currentUnmount = unmountS7;     break;
+
+        // Wave 4
+        case 'title-b':        mountTitleB(app, detail); currentUnmount = unmountTitleB; break;
+        case 'title-c':        mountTitleC(app, detail); currentUnmount = unmountTitleC; break;
 
         default:
-          app.innerHTML = `<div style="color:#c9a227;font-family:VT323,monospace;font-size:28px;padding:40px;">[${screenName}] — COMING IN WAVE 3</div>`;
+          app.innerHTML = `<div style="color:#c9a227;font-family:VT323,monospace;font-size:28px;padding:40px;">[${screenName}] — SCREEN NOT FOUND</div>`;
           currentUnmount = null;
       }
     }
 
     // ── Navigation events ─────────────────────────────────────
+
+    // Wallet / entry
     document.addEventListener('wallet:connected', (e) => {
       navigate('m1-lobby', e.detail);
     });
-
     document.addEventListener('nav:title', () => {
       navigate('title-a');
     });
+    document.addEventListener('nav:title-b', () => {
+      navigate('title-b');
+    });
+    document.addEventListener('nav:title-c', () => {
+      navigate('title-c');
+    });
 
+    // Lobby / menu
     document.addEventListener('nav:lobby', (e) => {
       navigate('m1-lobby', e.detail ?? {});
     });
-
     document.addEventListener('nav:menu', (e) => {
       navigate('s1-menu', e.detail ?? {});
     });
 
+    // Duel flow
     document.addEventListener('nav:matchmaking', () => {
       navigate('m3-duel-open', { round: 1, maxRounds: 5, playerName: 'CAPT. VEGA', playerClan: 'black-flag' });
     });
-
     document.addEventListener('zk:committed', () => {
       navigate('m2-duel-board', { round: 1, maxRounds: 5, phase: 'COMMIT' });
     });
-
     document.addEventListener('duel:locked', () => {
       navigate('m4-victory', {
-        opponent: 'IRON COMMANDER',
-        opponentClan: 'iron-circle',
+        opponent: 'IRON COMMANDER', opponentClan: 'iron-circle',
         cardsWon: ['PHANTOM PISTOL', "CROW'S EYE"],
-        txHash: '4xK2mNpQrSt8vWxy',
-        solEarned: 0.005,
+        txHash: '4xK2mNpQrSt8vWxy', solEarned: 0.005,
       });
     });
-
     document.addEventListener('duel:defeat', (e) => {
       navigate('s8-defeat', {
         opponent:     e.detail?.opponent     ?? 'IRON COMMANDER',
@@ -123,42 +147,29 @@
       });
     });
 
-    document.addEventListener('nav:shop', (e) => {
-      navigate('s3-bourse', e.detail ?? {});
-    });
-
+    // Collection / market
     document.addEventListener('nav:deck-editor', (e) => {
       navigate('s2-deck-editor', e.detail ?? {});
     });
-
-    // Wave 3 placeholders (routed after implementation)
+    document.addEventListener('nav:shop', (e) => {
+      navigate('s3-bourse', e.detail ?? {});
+    });
     document.addEventListener('nav:card-detail', (e) => {
       navigate('m5-card-detail', e.detail ?? {});
     });
 
+    // Meta screens
     document.addEventListener('nav:agent', (e) => {
       navigate('s4-agent-hub', e.detail ?? {});
     });
-
     document.addEventListener('nav:lore', (e) => {
       navigate('s5-lore', e.detail ?? {});
     });
-
     document.addEventListener('nav:settings', (e) => {
       navigate('s6-settings', e.detail ?? {});
     });
-
     document.addEventListener('nav:howtoplay', () => {
       navigate('s7-howtoplay');
-    });
-
-    // Wave 4 placeholders
-    document.addEventListener('nav:title-b', () => {
-      navigate('title-b');
-    });
-
-    document.addEventListener('nav:title-c', () => {
-      navigate('title-c');
     });
 
     // ── Boot ──────────────────────────────────────────────────
