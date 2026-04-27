@@ -133,11 +133,11 @@
 
 ### [2:50–3:00] CLOSE
 
-*[Stats overlay: 280 tests passing / 35 Anchor instructions / Live on devnet]*
+*[Stats overlay: 408 tests passing / 35 Anchor instructions / Live on devnet]*
 
 > "Solo founder. Four prior blockchain game projects shipped. This is the fifth.
 >
-> 280 tests passing. Live on devnet now. Season 1 launches May 12th.
+> 408 tests passing. Live on devnet now. Season 1 launches May 12th.
 >
 > Play it today: r0ze998.github.io/0xark"
 
@@ -301,4 +301,4 @@
 | "We chose Lease to avoid death spirals" | 死のスパイラル回避のためLeaseを選んだ |
 | "Competitive Gold Mode — pure skill" | Competitive Goldモード — 純粋なスキル |
 | "Solo is a feature, not a red flag" | ソロは弱点じゃなく強み |
-| "141 tests, live on devnet today" | 141テスト通過、今日からdevnetで稼働 |
+| "408 tests, live on devnet today" | 408テスト通過、今日からdevnetで稼働 |

@@ -55,7 +55,7 @@ The long-term thesis is not human card gaming. It is AI-to-AI economic behavior 
 Groth16 verification on-chain is feasible on Solana because of alt_bn128 precompile syscalls. This is not available natively on Ethereum mainnet. Sub-400ms finality enables x402 micropayments to dissolve into gameplay — no loading spinners, no confirmation UX friction. The payment rail is tight-coupled with the information economy: remove x402 and the information market disappears. Every architectural decision is Solana-specific and non-portable.
 
 ### Paragraph 5 — Current state
-280 tests passing (113 Anchor/Rust, 102 client unit, 65 AI agent). Live on Solana devnet at r0ze998.github.io/0xark. Season 1 scheduled to launch 2026-05-12 post-hackathon. Built solo in 23 days by r0ze (株式会社雪風), with 4 prior blockchain game projects shipped.
+408 tests passing (113 Anchor/Rust, 200 client unit, 95 AI agent). Live on Solana devnet at r0ze998.github.io/0xark. Season 1 scheduled to launch 2026-05-12 post-hackathon. Built solo in 23 days by r0ze (株式会社雪風), with 4 prior blockchain game projects shipped.
 
 ---
 
@@ -141,10 +141,10 @@ Solo development eliminates design-by-committee drift. Every architectural decis
 
 ## TEST COVERAGE
 
-280 tests passing:
+408 tests passing:
 - **113 Anchor/Rust** (37 unit + 76 litesvm integration, incl. 6 ZK e2e) — onchain instruction coverage
-- **102 Client unit** (53 card-engine + 49 battle-mechanics) — game state, ZK flow, UI logic
-- **65 AI Agent** — decision model, Burn/Evolve/Steal/Imprint strategy tests
+- **200 Client unit** (53 card-engine + 49 battle-mechanics + 41 v3-plus-abilities + 18 save-load + 39 server-handlers) — game state, ZK flow, UI logic, persistence, multiplayer routing
+- **95 AI Agent** — decision model, Burn/Evolve/Steal/Imprint strategy tests
 
 ---
 

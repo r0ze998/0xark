@@ -3,7 +3,7 @@
 **Branch:** main  
 **Assessment date:** 2026-04-27 (updated)  
 **Submission deadline:** 2026-05-11 (14 days)  
-**Tests on main:** 143 JS passing (53 + 49 + 41); AI agent tests separate
+**Tests on main:** 408 total (113 Rust + 200 JS + 95 AI agent)
 
 ---
 

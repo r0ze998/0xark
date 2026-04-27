@@ -56,7 +56,7 @@ Lobby → Duel → Lobby
 |--------|-------|
 | Tagline: "A ZK PIRATE CARD GAME" | "Autonomous agent sandbox × TCG / on Solana" |
 | Menu: CONTINUE / NEW SEASON | CONNECT WALLET / HOW TO PLAY (or ENTER ARENA if wallet connected) |
-| Footer: "SOLANA · GROTH16 · BY YUKIKAZE" | "v3.0-plus · 280 tests · devnet" |
+| Footer: "SOLANA · GROTH16 · BY YUKIKAZE" | "v3.0-plus · 408 tests · devnet" |
 
 ---
 

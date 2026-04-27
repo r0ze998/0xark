@@ -16,7 +16,7 @@
 | x402 information market | 14/15 | Scout Peek + Extra Action live; 5 planned endpoints not yet wired |
 | AI agent integration | 14/15 | Phase 1 decisions live; wallet autonomy is Season 2 |
 | NFT-native mechanics | 10/10 | Burn/Evolve/Steal/Imprint all on-chain |
-| Test coverage | 10/10 | 280 tests, 0 failures |
+| Test coverage | 10/10 | 408 tests, 0 failures |
 | Docs & narrative | 7/10 | AI agent narrative corrected; GDD ZK section updated |
 | **Total** | **94/100** | |
 
@@ -100,10 +100,11 @@ All four mechanics fully implemented and tested:
 
 ```
 113 Anchor/Rust    37 unit + 76 litesvm integration (incl. 6 ZK e2e)
-102 Client JS      53 card-engine + 49 battle-mechanics
- 65 AI Agent       7 basic + 10 burn + 10 evolve + 23 imprint + 15 steal
-─────────────────────────────────────────────────────────────────────
-280 total          0 failures
+200 Client JS      53 card-engine + 49 battle-mechanics + 41 v3-plus-abilities
+                   + 18 save-load + 39 server-handlers
+ 95 AI Agent       30 t44-e2e + 7 basic + 10 burn + 10 evolve + 23 imprint + 15 steal
+─────────────────────────────────────────────────────────────────────────────────────
+408 total          0 failures
 ```
 
 All tests run locally in CI-equivalent mode. See `docs/_scratch/ci-final-handoff.md`.
@@ -114,7 +115,7 @@ All tests run locally in CI-equivalent mode. See `docs/_scratch/ci-final-handoff
 **+1**: ZK_VERIFICATION.md created — submission-ready evidence chain  
 **+1**: AI agent narrative corrected — Phase 1/2 distinction explicit  
 **+1**: TECH_DEBT.md current — 0 Class A/B, 12 Class C (all post-hackathon)  
-**−1**: pitch-video-script.md Japanese section not updated to reflect 280 tests (English updated)  
+**+0**: pitch-video-script.md Japanese section updated to 408 tests (resolved)  
 **−1**: AI_REVIEW_META_ANALYSIS.md referenced in README but file is missing  
 **−1**: Arena submission draft not yet submitted (r0ze manual step)
 
