@@ -294,233 +294,219 @@ setInterval(() => {
 
 // ─── Message handler ─────────────────────────────────────────────────────────
 
-async function handleMessage(ws, msg) {
-  switch (msg.type) {
+function _handleCreateRoom(ws, msg) {
+  const roomId = generateRoomId();
+  ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : 'Host';
+  ws.wallet     = typeof msg.wallet === 'string' ? msg.wallet.slice(0, 44) : null;
+  ws.clan       = sanitizeClan(msg.clan);
+  ws.cardCount  = typeof msg.card_count === 'number' ? Math.max(0, msg.card_count | 0) : 0;
+  ws.season     = typeof msg.season === 'number' ? msg.season | 0 : 1;
+  ws.roomId     = roomId;
+  const room = {
+    id:      roomId,
+    gameId:  msg.gameId ?? null,  // on-chain game_id (u64 as decimal string)
+    host:    ws.playerId,
+    players: new Map(),
+  };
+  room.players.set(ws.playerId, player(ws, 15, 13));
+  rooms.set(roomId, room);
+  send(ws, { type: 'room_created', roomId, gameId: room.gameId, playerId: ws.playerId });
+}
 
-    case 'create_room': {
-      const roomId = generateRoomId();
-      ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : 'Host';
-      ws.wallet     = typeof msg.wallet === 'string' ? msg.wallet.slice(0, 44) : null;
-      ws.clan       = sanitizeClan(msg.clan);
-      ws.cardCount  = typeof msg.card_count === 'number' ? Math.max(0, msg.card_count | 0) : 0;
-      ws.season     = typeof msg.season === 'number' ? msg.season | 0 : 1;
-      ws.roomId     = roomId;
-      const room = {
-        id:      roomId,
-        gameId:  msg.gameId ?? null,  // on-chain game_id (u64 as decimal string)
-        host:    ws.playerId,
-        players: new Map(),
-      };
-      room.players.set(ws.playerId, player(ws, 15, 13));
-      rooms.set(roomId, room);
-      send(ws, { type: 'room_created', roomId, gameId: room.gameId, playerId: ws.playerId });
-      break;
-    }
+function _handleJoinRoom(ws, msg) {
+  const room = rooms.get(msg.roomId);
+  if (!room) { send(ws, { type: 'error', message: 'Room not found' }); return; }
+  ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : `Player ${room.players.size + 1}`;
+  ws.wallet     = typeof msg.wallet === 'string' ? msg.wallet.slice(0, 44) : null;
+  ws.clan       = sanitizeClan(msg.clan);
+  ws.cardCount  = typeof msg.card_count === 'number' ? Math.max(0, msg.card_count | 0) : 0;
+  ws.season     = typeof msg.season === 'number' ? msg.season | 0 : 1;
+  ws.roomId     = msg.roomId;
+  room.players.set(ws.playerId, player(ws, 20, 15));
+  const playerList = serializePlayers(room);
+  send(ws, { type: 'room_joined', roomId: msg.roomId, gameId: room.gameId, playerId: ws.playerId, players: playerList });
+  broadcast(room, {
+    type: 'player_joined',
+    player: { id: ws.playerId, name: ws.playerName, wallet: ws.wallet,
+              clan: ws.clan, card_count: ws.cardCount, season: ws.season,
+              position: { x: 20, y: 15 } },
+  }, ws.playerId);
+}
 
-    case 'join_room': {
-      const room = rooms.get(msg.roomId);
-      if (!room) { send(ws, { type: 'error', message: 'Room not found' }); return; }
-      ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : `Player ${room.players.size + 1}`;
-      ws.wallet     = typeof msg.wallet === 'string' ? msg.wallet.slice(0, 44) : null;
-      ws.clan       = sanitizeClan(msg.clan);
-      ws.cardCount  = typeof msg.card_count === 'number' ? Math.max(0, msg.card_count | 0) : 0;
-      ws.season     = typeof msg.season === 'number' ? msg.season | 0 : 1;
-      ws.roomId     = msg.roomId;
-      room.players.set(ws.playerId, player(ws, 20, 15));
+function _handlePresenceUpdate(ws, msg) {
+  // v2: clan or card_count changed without moving (e.g., after Shop purchase)
+  const room = ws.roomId ? rooms.get(ws.roomId) : null;
+  if (!room) return;
+  if (msg.clan !== undefined) ws.clan = sanitizeClan(msg.clan);
+  if (typeof msg.card_count === 'number') ws.cardCount = Math.max(0, msg.card_count | 0);
+  const p = room.players.get(ws.playerId);
+  if (p) { p.clan = ws.clan; p.card_count = ws.cardCount; }
+  broadcast(room, { type: 'presence_update', wallet: ws.wallet, clan: ws.clan, card_count: ws.cardCount });
+}
 
-      const playerList = serializePlayers(room);
-      send(ws, { type: 'room_joined', roomId: msg.roomId, gameId: room.gameId, playerId: ws.playerId, players: playerList });
-      broadcast(room, {
-        type: 'player_joined',
-        player: { id: ws.playerId, name: ws.playerName, wallet: ws.wallet,
-                  clan: ws.clan, card_count: ws.cardCount, season: ws.season,
-                  position: { x: 20, y: 15 } },
-      }, ws.playerId);
-      break;
-    }
+function _handleMove(ws, msg) {
+  const room = ws.roomId ? rooms.get(ws.roomId) : null;
+  if (!room) return;
+  const p = room.players.get(ws.playerId);
+  if (!p) return;
+  // Sanitize: enforce numeric coordinates within map bounds (0–79)
+  const nx = typeof msg.x === 'number' ? Math.max(0, Math.min(79, msg.x | 0)) : p.x;
+  const ny = typeof msg.y === 'number' ? Math.max(0, Math.min(79, msg.y | 0)) : p.y;
+  const na = typeof msg.area === 'number' ? Math.max(0, Math.min(5, msg.area | 0)) : p.area;
+  p.x = nx; p.y = ny; p.area = na;
+  // ZK fog-of-war: only send position to nearby players in the same area.
+  // Town (area 0) is always fully visible.
+  broadcastProximity(room, ws.playerId, { type: 'player_moved', playerId: ws.playerId, x: p.x, y: p.y, area: p.area });
+}
 
-    case 'presence_update': {
-      // v2: clan or card_count changed without moving (e.g., after Shop purchase)
-      const room = ws.roomId ? rooms.get(ws.roomId) : null;
-      if (!room) return;
-      if (msg.clan !== undefined) ws.clan = sanitizeClan(msg.clan);
-      if (typeof msg.card_count === 'number') ws.cardCount = Math.max(0, msg.card_count | 0);
-      // Update stored player object
-      const p = room.players.get(ws.playerId);
-      if (p) { p.clan = ws.clan; p.card_count = ws.cardCount; }
-      broadcast(room, {
-        type: 'presence_update',
-        wallet: ws.wallet,
-        clan: ws.clan,
-        card_count: ws.cardCount,
-      });
-      break;
-    }
+async function _handleSubmitTx(ws, msg) {
+  // The client builds and signs transactions locally using their wallet.
+  // The server only forwards to the RPC — it never holds private keys.
+  const room = ws.roomId ? rooms.get(ws.roomId) : null;
+  if (!room) return;
 
-    case 'move': {
-      const room = ws.roomId ? rooms.get(ws.roomId) : null;
-      if (!room) return;
-      const p = room.players.get(ws.playerId);
-      if (!p) return;
-      // Sanitize: enforce numeric coordinates within map bounds (0–79)
-      const nx = typeof msg.x === 'number' ? Math.max(0, Math.min(79, msg.x | 0)) : p.x;
-      const ny = typeof msg.y === 'number' ? Math.max(0, Math.min(79, msg.y | 0)) : p.y;
-      const na = typeof msg.area === 'number' ? Math.max(0, Math.min(5, msg.area | 0)) : p.area;
-      p.x = nx; p.y = ny; p.area = na;
-      // ZK fog-of-war: only send position to nearby players in the same area.
-      // Town (area 0) is always fully visible.
-      broadcastProximity(room, ws.playerId, { type: 'player_moved', playerId: ws.playerId, x: p.x, y: p.y, area: p.area });
-      break;
-    }
+  let txBuffer;
+  try {
+    txBuffer = Buffer.from(msg.txBase64, 'base64');
+  } catch {
+    send(ws, { type: 'tx_failed', error: 'Invalid base64 encoding', txType: msg.txType, playerId: ws.playerId });
+    return;
+  }
 
-    case 'submit_tx': {
-      // The client builds and signs transactions locally using their wallet.
-      // The server only forwards to the RPC — it never holds private keys.
-      const room = ws.roomId ? rooms.get(ws.roomId) : null;
-      if (!room) return;
-
-      let txBuffer;
-      try {
-        txBuffer = Buffer.from(msg.txBase64, 'base64');
-      } catch {
-        send(ws, { type: 'tx_failed', error: 'Invalid base64 encoding', txType: msg.txType, playerId: ws.playerId });
-        return;
-      }
-
-      // Support both versioned and legacy transactions
-      let tx;
-      try {
-        tx = VersionedTransaction.deserialize(txBuffer);
-      } catch {
-        try {
-          tx = Transaction.from(txBuffer);
-        } catch {
-          send(ws, { type: 'tx_failed', error: 'Cannot deserialize transaction', txType: msg.txType, playerId: ws.playerId });
-          return;
-        }
-      }
-      void tx; // deserialized for validation; sendRawTransaction takes the raw buffer
-
-      try {
-        const sig = await connection.sendRawTransaction(txBuffer, {
-          skipPreflight: false,
-          preflightCommitment: COMMITMENT,
-          maxRetries: 3,
-        });
-        await connection.confirmTransaction(sig, COMMITMENT);
-        // Notify all players so they know to re-fetch on-chain state
-        broadcast(room, { type: 'tx_confirmed', sig, txType: msg.txType ?? 'unknown', playerId: ws.playerId });
-      } catch (e) {
-        const error = extractError(e);
-        // Only the sender gets the error details; all others see the failure event
-        send(ws, { type: 'tx_failed', error, txType: msg.txType ?? 'unknown', playerId: ws.playerId });
-        broadcast(room, { type: 'tx_failed', error: 'Transaction failed', txType: msg.txType ?? 'unknown', playerId: ws.playerId }, ws.playerId);
-      }
-      break;
-    }
-
-    case 'chat': {
-      const room = ws.roomId ? rooms.get(ws.roomId) : null;
-      if (!room) return;
-      if (typeof msg.message !== 'string') return;
-      const message = msg.message.slice(0, 200); // cap at 200 chars
-      broadcast(room, { type: 'chat', playerId: ws.playerId, name: ws.playerName, message });
-      break;
-    }
-
-    // ── T-D12-D: Duel sync protocol ────────────────────────────────────────────
-
-    case 'duel_hand_committed': {
-      // Player committed their ZK hand — relay commitment hash to opponent (not proof or cards)
-      const room = ws.roomId ? rooms.get(ws.roomId) : null;
-      if (!room) return;
-      const duelId = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
-      const round  = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
-      const commitmentHex = typeof msg.commitment_hex === 'string' ? msg.commitment_hex.slice(0, 64) : null;
-      if (!duelId || round === null || !commitmentHex) return;
-      broadcast(room, {
-        type: 'duel_hand_committed',
-        playerId: ws.playerId,
-        duel_id: duelId,
-        round,
-        commitment_hex: commitmentHex,
-      }, ws.playerId);
-      break;
-    }
-
-    case 'duel_hand_revealed': {
-      // Player revealed their hand — relay card_ids + salt for verification
-      const room = ws.roomId ? rooms.get(ws.roomId) : null;
-      if (!room) return;
-      const duelId  = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
-      const round   = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
-      const cardIds = Array.isArray(msg.card_ids) ? msg.card_ids.map(x => (x | 0) & 0xffff).slice(0, 10) : null;
-      if (!duelId || round === null || !cardIds) return;
-      broadcast(room, {
-        type: 'duel_hand_revealed',
-        playerId: ws.playerId,
-        duel_id: duelId,
-        round,
-        card_ids: cardIds,
-      }, ws.playerId);
-      break;
-    }
-
-    case 'duel_phase_advance': {
-      // Host signals a phase transition (summon→battle, battle→draw, etc.)
-      const room = ws.roomId ? rooms.get(ws.roomId) : null;
-      if (!room) return;
-      // Only room host may advance phases
-      if (room.host !== ws.playerId) return;
-      const duelId = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
-      const phase  = typeof msg.phase === 'string' ? msg.phase.slice(0, 16) : null;
-      const round  = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
-      if (!duelId || !phase || round === null) return;
-      broadcast(room, {
-        type: 'duel_phase_advance',
-        duel_id: duelId,
-        phase,
-        round,
-      });
-      break;
-    }
-
-    case 'duel_battle_resolved': {
-      // Host broadcasts battle result for the round
-      const room = ws.roomId ? rooms.get(ws.roomId) : null;
-      if (!room) return;
-      if (room.host !== ws.playerId) return;
-      const duelId  = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
-      const round   = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
-      const p1Delta = typeof msg.p1_hp_delta === 'number' ? msg.p1_hp_delta | 0 : 0;
-      const p2Delta = typeof msg.p2_hp_delta === 'number' ? msg.p2_hp_delta | 0 : 0;
-      if (!duelId || round === null) return;
-      broadcast(room, {
-        type: 'duel_battle_resolved',
-        duel_id: duelId,
-        round,
-        p1_hp_delta: p1Delta,
-        p2_hp_delta: p2Delta,
-      });
-      break;
-    }
-
-    case 'duel_ended': {
-      // Notify room that duel is over, winner determined
-      const room = ws.roomId ? rooms.get(ws.roomId) : null;
-      if (!room) return;
-      if (room.host !== ws.playerId) return;
-      const duelId = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
-      const winner = typeof msg.winner === 'string' ? msg.winner.slice(0, 44) : null;
-      if (!duelId) return;
-      broadcast(room, {
-        type: 'duel_ended',
-        duel_id: duelId,
-        winner,
-      });
-      break;
+  // Support both versioned and legacy transactions
+  let tx;
+  try {
+    tx = VersionedTransaction.deserialize(txBuffer);
+  } catch {
+    try {
+      tx = Transaction.from(txBuffer);
+    } catch {
+      send(ws, { type: 'tx_failed', error: 'Cannot deserialize transaction', txType: msg.txType, playerId: ws.playerId });
+      return;
     }
   }
+  void tx; // deserialized for validation; sendRawTransaction takes the raw buffer
+
+  try {
+    const sig = await connection.sendRawTransaction(txBuffer, {
+      skipPreflight: false,
+      preflightCommitment: COMMITMENT,
+      maxRetries: 3,
+    });
+    await connection.confirmTransaction(sig, COMMITMENT);
+    // Notify all players so they know to re-fetch on-chain state
+    broadcast(room, { type: 'tx_confirmed', sig, txType: msg.txType ?? 'unknown', playerId: ws.playerId });
+  } catch (e) {
+    const error = extractError(e);
+    // Only the sender gets the error details; all others see the failure event
+    send(ws, { type: 'tx_failed', error, txType: msg.txType ?? 'unknown', playerId: ws.playerId });
+    broadcast(room, { type: 'tx_failed', error: 'Transaction failed', txType: msg.txType ?? 'unknown', playerId: ws.playerId }, ws.playerId);
+  }
+}
+
+function _handleChat(ws, msg) {
+  const room = ws.roomId ? rooms.get(ws.roomId) : null;
+  if (!room) return;
+  if (typeof msg.message !== 'string') return;
+  const message = msg.message.slice(0, 200); // cap at 200 chars
+  broadcast(room, { type: 'chat', playerId: ws.playerId, name: ws.playerName, message });
+}
+
+// ── T-D12-D: Duel sync protocol ────────────────────────────────────────────
+
+function _handleDuelHandCommitted(ws, msg) {
+  // Player committed their ZK hand — relay commitment hash to opponent (not proof or cards)
+  const room = ws.roomId ? rooms.get(ws.roomId) : null;
+  if (!room) return;
+  const duelId = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
+  const round  = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
+  const commitmentHex = typeof msg.commitment_hex === 'string' ? msg.commitment_hex.slice(0, 64) : null;
+  if (!duelId || round === null || !commitmentHex) return;
+  broadcast(room, {
+    type: 'duel_hand_committed',
+    playerId: ws.playerId,
+    duel_id: duelId,
+    round,
+    commitment_hex: commitmentHex,
+  }, ws.playerId);
+}
+
+function _handleDuelHandRevealed(ws, msg) {
+  // Player revealed their hand — relay card_ids + salt for verification
+  const room = ws.roomId ? rooms.get(ws.roomId) : null;
+  if (!room) return;
+  const duelId  = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
+  const round   = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
+  const cardIds = Array.isArray(msg.card_ids) ? msg.card_ids.map(x => (x | 0) & 0xffff).slice(0, 10) : null;
+  if (!duelId || round === null || !cardIds) return;
+  broadcast(room, {
+    type: 'duel_hand_revealed',
+    playerId: ws.playerId,
+    duel_id: duelId,
+    round,
+    card_ids: cardIds,
+  }, ws.playerId);
+}
+
+function _handleDuelPhaseAdvance(ws, msg) {
+  // Host signals a phase transition (summon→battle, battle→draw, etc.)
+  const room = ws.roomId ? rooms.get(ws.roomId) : null;
+  if (!room) return;
+  if (room.host !== ws.playerId) return;
+  const duelId = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
+  const phase  = typeof msg.phase === 'string' ? msg.phase.slice(0, 16) : null;
+  const round  = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
+  if (!duelId || !phase || round === null) return;
+  broadcast(room, { type: 'duel_phase_advance', duel_id: duelId, phase, round });
+}
+
+function _handleDuelBattleResolved(ws, msg) {
+  // Host broadcasts battle result for the round
+  const room = ws.roomId ? rooms.get(ws.roomId) : null;
+  if (!room) return;
+  if (room.host !== ws.playerId) return;
+  const duelId  = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
+  const round   = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
+  const p1Delta = typeof msg.p1_hp_delta === 'number' ? msg.p1_hp_delta | 0 : 0;
+  const p2Delta = typeof msg.p2_hp_delta === 'number' ? msg.p2_hp_delta | 0 : 0;
+  if (!duelId || round === null) return;
+  broadcast(room, {
+    type: 'duel_battle_resolved',
+    duel_id: duelId,
+    round,
+    p1_hp_delta: p1Delta,
+    p2_hp_delta: p2Delta,
+  });
+}
+
+function _handleDuelEnded(ws, msg) {
+  // Notify room that duel is over, winner determined
+  const room = ws.roomId ? rooms.get(ws.roomId) : null;
+  if (!room) return;
+  if (room.host !== ws.playerId) return;
+  const duelId = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
+  const winner = typeof msg.winner === 'string' ? msg.winner.slice(0, 44) : null;
+  if (!duelId) return;
+  broadcast(room, { type: 'duel_ended', duel_id: duelId, winner });
+}
+
+const HANDLERS = {
+  create_room:          _handleCreateRoom,
+  join_room:            _handleJoinRoom,
+  presence_update:      _handlePresenceUpdate,
+  move:                 _handleMove,
+  submit_tx:            _handleSubmitTx,
+  chat:                 _handleChat,
+  duel_hand_committed:  _handleDuelHandCommitted,
+  duel_hand_revealed:   _handleDuelHandRevealed,
+  duel_phase_advance:   _handleDuelPhaseAdvance,
+  duel_battle_resolved: _handleDuelBattleResolved,
+  duel_ended:           _handleDuelEnded,
+};
+
+async function handleMessage(ws, msg) {
+  const h = HANDLERS[msg.type];
+  if (h) await h(ws, msg);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
