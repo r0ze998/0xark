@@ -680,7 +680,99 @@ suite('sanitizeClan', () => {
   });
 });
 
-// ─── Summary ─────────────────────────────────────────────────────────────────
-console.log('\n────────────────────────────────────────────');
-console.log(`Results: ${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+// ─── Async test runner (for x402 tests) ──────────────────────────────────────
+
+async function asyncTest(name, fn) {
+  try {
+    await fn();
+    console.log(`  ✓ ${name}`);
+    passed++;
+  } catch (e) {
+    console.error(`  ✗ ${name}`);
+    console.error(`    ${e.message}`);
+    failed++;
+  }
+}
+
+// ─── x402 replay prevention context ──────────────────────────────────────────
+
+function makeX402Context() {
+  const usedSigs     = new Map();
+  const LAMPORTS     = 1_000_000_000;
+  const MAX_AGE_MS   = 60_000;
+  const SIG_TTL_MS   = 120_000;
+
+  // mockEntries: [{ sig, blockTimeSecs, err, receivedLamports }]
+  function makeVerify(mockEntries, nowOverride) {
+    return async function _verifyX402Payment(playerPubkeyStr, amountSol) {
+      const expectedLamports = Math.floor(amountSol * LAMPORTS);
+      const now = nowOverride ?? Date.now();
+      for (const entry of mockEntries) {
+        if (!entry.blockTimeSecs || entry.err) continue;
+        if (now - entry.blockTimeSecs * 1000 > MAX_AGE_MS) continue;
+        if (usedSigs.has(entry.sig)) return { ok: false, error: 'signature already used' };
+        if (entry.receivedLamports >= expectedLamports) {
+          usedSigs.set(entry.sig, now + SIG_TTL_MS);
+          return { ok: true, sig: entry.sig, received: entry.receivedLamports };
+        }
+      }
+      return { ok: false, error: 'Payment not detected' };
+    };
+  }
+
+  function gcUsedSigs(nowOverride) {
+    const now = nowOverride ?? Date.now();
+    usedSigs.forEach((expiry, sig) => { if (expiry < now) usedSigs.delete(sig); });
+  }
+
+  return { usedSigs, makeVerify, gcUsedSigs };
+}
+
+// ─── x402 tests + final summary ───────────────────────────────────────────────
+
+(async () => {
+  console.log('\nx402 replay prevention');
+
+  await asyncTest('new sig is accepted and recorded in usedSigs', async () => {
+    const { usedSigs, makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const verify = makeVerify([{ sig: 'sig-aaa', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000 }]);
+    const result = await verify('playerPk', 0.005);
+    assert.equal(result.ok, true);
+    assert.equal(result.sig, 'sig-aaa');
+    assert.equal(usedSigs.has('sig-aaa'), true);
+  });
+
+  await asyncTest('same sig on second call returns already-used error', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const verify = makeVerify([{ sig: 'sig-bbb', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000 }]);
+    await verify('playerPk', 0.005);                   // first call — accepted
+    const result = await verify('playerPk', 0.005);    // second call — replay
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'signature already used');
+  });
+
+  await asyncTest('GC removes entries past their expiry', async () => {
+    const { usedSigs, gcUsedSigs } = makeX402Context();
+    usedSigs.set('sig-expired', Date.now() - 1);  // already expired
+    gcUsedSigs();
+    assert.equal(usedSigs.has('sig-expired'), false);
+  });
+
+  await asyncTest('different sig is not blocked by a prior used sig', async () => {
+    const { usedSigs, makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    // Pre-mark an unrelated sig as used
+    usedSigs.set('sig-unrelated', Date.now() + 120_000);
+    // Fresh payment arrives with a different sig
+    const verify = makeVerify([{ sig: 'sig-fresh', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000 }]);
+    const result = await verify('playerPk', 0.005);
+    assert.equal(result.ok, true);
+    assert.equal(result.sig, 'sig-fresh');
+  });
+
+  console.log('\n────────────────────────────────────────────');
+  console.log(`Results: ${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exit(1);
+})();

@@ -69,3 +69,7 @@ export function extractError(e) {
   if (e.logs) return e.logs.slice(-3).join(' | ');
   return e.message ?? String(e);
 }
+
+// ─── x402 replay prevention ────────────────────────────────────────────────────
+// sig → expiryTimestamp (ms). GC'd by server.js setInterval every 30s.
+export const usedSigs = new Map();

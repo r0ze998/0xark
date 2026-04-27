@@ -23,7 +23,7 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast } from './state.js';
+import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, usedSigs } from './state.js';
 import { HANDLERS } from './handlers/index.js';
 
 const PORT = process.env.PORT || 3500;
@@ -76,6 +76,7 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol) {
       for (const sigInfo of sigs) {
         if (!sigInfo.blockTime || sigInfo.err) continue;
         if (now - sigInfo.blockTime * 1000 > X402_MAX_AGE_MS) continue;
+        if (usedSigs.has(sigInfo.signature)) return { ok: false, error: 'signature already used' };
         const tx = await connection.getTransaction(sigInfo.signature, {
           commitment: COMMITMENT, maxSupportedTransactionVersion: 0,
         });
@@ -86,6 +87,7 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol) {
         const received = (tx.meta.postBalances[idx] ?? 0) - (tx.meta.preBalances[idx] ?? 0);
         if (received >= expectedLamports) {
           console.log(`[x402] Verified: ${amountSol} SOL from ${playerPubkeyStr}`);
+          usedSigs.set(sigInfo.signature, Date.now() + 120_000);
           return { ok: true, sig: sigInfo.signature, received };
         }
       }
@@ -156,6 +158,13 @@ httpServer.listen(PORT, () => {
 });
 
 wss = new WebSocketServer({ server: httpServer });
+
+// GC usedSigs every 30s — remove entries whose 120s TTL has expired
+const _sigGcInterval = setInterval(() => {
+  const now = Date.now();
+  usedSigs.forEach((expiry, sig) => { if (expiry < now) usedSigs.delete(sig); });
+}, 30_000);
+process.on('exit', () => clearInterval(_sigGcInterval));
 
 wss.on('connection', (ws) => {
   ws.playerId   = Math.random().toString(36).slice(2, 8);
