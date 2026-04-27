@@ -1,98 +1,113 @@
 # 0xARK Refactor Plan — Pre-flight Assessment
 
 **Branch:** main  
-**Assessment date:** 2026-04-27  
-**Assessed by:** CC pre-flight (read-only — no code modified)  
-**Submission deadline:** 2026-05-11 (14 days)
+**Assessment date:** 2026-04-27 (updated)  
+**Submission deadline:** 2026-05-11 (14 days)  
+**Tests on main:** 143 JS passing (53 + 49 + 41); AI agent tests separate
 
 ---
 
-## §1. Current State Assessment
+## Phase 1 status (already completed on branch)
+
+> **`refactor-phase1` branch** completed both HIGH-priority splits.  
+> Not yet merged to main. First action before any new work: merge or PR this branch.
+
+| Task | Function | File | Status | Commits |
+|---|---|---|---|---|
+| H-1 | drawCardCharacter (1482L) | 02-data.js | ✅ DONE | e840e7b |
+| H-2 | dMap (1059L) | 07-map.js | ✅ DONE | fc89e0c |
+
+Implementation differed from original plan:
+- `drawCardCharacter` → dispatcher + `_drawCC_A..E` (split by **card ID range**, not by battle state)
+- `dMap` → dispatcher + `_dMapWorldLayer / _dMapHUDBar / _dMapHUDPanels` (split by **render layer**)
+
+Both approaches are correct and lower-risk than the original plan's state-based split.  
+281 tests pass on `refactor-phase1` (DoD: 280).
+
+---
+
+## §1. Current State Assessment (main, 2026-04-27)
 
 ### 1.1 File inventory
 
-| Layer | File | Lines | Top Function / Note |
+| Layer | File | Lines | Primary concern |
 |---|---|---|---|
 | **Rust — oxark program** | | | |
 | | programs/oxark/src/lib.rs | 680 | 30 exported instructions |
-| | programs/oxark/src/state.rs | 957 | 19 `#[account]` types |
+| | programs/oxark/src/state.rs | 957 | 19 `#[account]` types, DuelState=2552B |
 | | programs/oxark/src/error.rs | 134 | 61 error variants |
 | | programs/oxark/src/poseidon_helper.rs | 199 | compute_hand_commitment |
-| | programs/oxark/src/poseidon_t16_constants.rs | 1451 | lookup tables only |
-| | programs/oxark/src/instructions/resolve_round.rs | 639 | resolve_round (main battle engine) |
-| | programs/oxark/src/instructions/commit_hand.rs | 248 | commit_hand |
-| | programs/oxark/src/instructions/record_card_owner_change.rs | 243 | record_card_owner_change |
-| | programs/oxark/src/instructions/verify_dungeon_move.rs | 231 | verify_dungeon_move |
-| | programs/oxark/src/instructions/legendary.rs | 231 | legendary card mechanics |
+| | programs/oxark/src/poseidon_t16_constants.rs | 1451 | lookup tables only (do not touch) |
+| | programs/oxark/src/instructions/resolve_round.rs | 639 | main battle engine |
+| | programs/oxark/src/instructions/commit_hand.rs | 248 | |
+| | programs/oxark/src/instructions/record_card_owner_change.rs | 243 | |
+| | programs/oxark/src/instructions/verify_dungeon_move.rs | 231 | |
+| | programs/oxark/src/instructions/legendary.rs | 231 | |
 | | programs/oxark/src/instructions/verify_zk_proof.rs | 225 | on-chain Groth16 verify |
-| | programs/oxark/src/instructions/update_card_battle_history.rs | 209 | imprint/lease tracking |
-| | programs/oxark/src/instructions/evolve_cards.rs | 208 | NFT fusion |
-| | programs/oxark/src/instructions/[12 more] | 80–150 ea. | — |
-| | programs/oxark/tests/test_game.rs | 919 | 107 test cases (CI) / 35 local |
+| | programs/oxark/src/instructions/update_card_battle_history.rs | 209 | |
+| | programs/oxark/src/instructions/evolve_cards.rs | 208 | |
+| | programs/oxark/src/instructions/[12 more] | 80–150 ea. | |
+| | programs/oxark/tests/test_game.rs | 919 | 35 local / 107 CI test cases |
 | **Rust — oxark-cards program** | | | |
-| | programs/oxark-cards/src/instructions/card_market.rs | 238 | buy/sell market ops |
+| | programs/oxark-cards/src/instructions/card_market.rs | 238 | |
 | | programs/oxark-cards/src/instructions/mint_card_nft.rs | 137 | `mint_solo_card` |
-| | programs/oxark-cards/src/state.rs | 116 | 2 account types |
+| | programs/oxark-cards/src/state.rs | 116 | |
 | **Client JS** | | | |
 | | src/00-constants.js | 38 | SCENE_IDS, GAME_CONSTANTS |
-| | src/00-canvas.js | ~60 | W/H/TW/TH globals, initDuelCanvas |
-| | src/00-tokens.js | 329 | GENERATED — design tokens |
+| | src/00-tokens.js | 329 | GENERATED — do not edit |
 | | src/01-draw.js | 835 | bx/tx/win primitives, ZK utils, wallet helpers |
 | | src/01-pixi.js | 1336 | PixiJS setup, title effects, audio, HUD |
 | | src/01-net.js | 932 | WebSocket client, transitions, type-writer |
-| | src/01-magicblock.js | 251 | MagicBlock ephemeral rollups stub |
-| | src/02-data.js | 2913 | **drawCardCharacter (1482L)** ⚠ |
+| | src/01-magicblock.js | 251 | MagicBlock ephemeral rollups |
+| | src/02-data.js | **2913** | ⚠ drawCardCharacter (1482L) — FIXED on branch |
 | | src/02-x402.js | 182 | x402 pay-per-call endpoints |
 | | src/03-world-setup.js | 990 | exits[], npcs[], fog system |
 | | src/03-zk-prove.js | 437 | Poseidon commitment, Groth16 browser |
-| | src/04-state.js | 1074 | 100+ globals, rivalAI, quest missions |
+| | src/04-state.js | **1074** | ⚠ 199 module-level globals (sc, mo, ai, fr, …) |
 | | src/05-rendering.js | 2503 | tile rendering, card sprites, animation |
 | | src/05-lobby.js | 1237 | Crown Plaza lobby scene, WS presence |
-| | src/06-world-systems.js | 2333 | camera, encounters, NPCs, trading |
-| | src/06-matchmaking.js | 301 | enter_queue/leave_queue instructions |
-| | src/07-map.js | 2333 | **dMap (1059L)** ⚠, fog, terrain |
-| | src/07-battle.js | 1629 | Battle UI, card engine, rival AI |
-| | src/07-battle-resolve.js | 1439 | Effect animations, drawResolvingPhase |
-| | src/07-deck-editor.js | 718 | Deck editor UI, cost validation |
+| | src/06-world-systems.js | **2333** | ⚠ doMapTransition (254L), dTitle (239L) |
+| | src/06-matchmaking.js | 301 | enter_queue/leave_queue |
+| | src/07-map.js | **2333** | ⚠ dMap (1059L) — FIXED on branch |
+| | src/07-battle.js | 1629 | battle UI, card engine, rival AI |
+| | src/07-battle-resolve.js | **1439** | ⚠ drawResolvingPhase (769L), drawResultPhase (354L) |
+| | src/07-deck-editor.js | 718 | deck editor UI |
 | | src/08-duel-scene.js | 2555 | Duel Board M2 (4-phase state machine) |
-| | src/08-menu.js | 178 | Top menu hub |
-| | src/08-overlays.js | 1874 | Card acq, marketplace, tutorial, log |
-| | src/08-world-interact.js | 981 | Fishing, traps, puzzles, objects |
-| | src/08-screens.js | 823 | Floor fanfare, stats, credits, game over |
-| | src/09-game-loop.js | 432 | Main loop, sin/cos pre-compute |
-| | src/09-victory-scene.js | 704 | Victory/defeat, NFT transfer selection |
-| | src/10-animations.js | 41 | Stubs (POST-HACKATHON) |
-| | src/10-card-detail.js | 703 | Card detail 3-panel scene |
-| | src/10-input.js | 1465 | Keyboard handlers, touch controls |
+| | src/08-menu.js | 178 | top menu hub |
+| | src/08-overlays.js | 1874 | card acq, marketplace, tutorial, log |
+| | src/08-world-interact.js | 981 | fishing, traps, puzzles, objects |
+| | src/08-screens.js | 823 | floor fanfare, stats, credits, game over |
+| | src/09-game-loop.js | 431 | main loop, 48 sin/cos pre-computes |
+| | src/09-victory-scene.js | 704 | victory/defeat, NFT transfer |
+| | src/10-animations.js | 41 | stubs only (POST-HACKATHON) |
+| | src/10-card-detail.js | 703 | card detail 3-panel scene |
+| | src/10-input.js | **1465** | ⚠ 3 keydown listeners (L38/L111/L1452), main ~1300L |
 | | src/11-card-storage.js | 287 | PC Box card grid |
-| | src/11-save-init.js | 249 | saveGame/loadGame, requestAnimationFrame |
-| | onchain.js | 1576 | 72 on-chain instruction builders |
-| **Multiplayer server** | | | |
-| | multiplayer/server.js | 581 | handleMessage (228L) — WS relay |
-| | multiplayer/test/stress-test.js | 142 | load test only |
+| | src/11-save-init.js | 249 | saveGame/loadGame |
+| | onchain.js | **1576** | ⚠ 72 instruction builders, no grouping |
+| **Multiplayer** | | | |
+| | multiplayer/server.js | **581** | ⚠ handleMessage (L297, ~284L) |
 | **AI agent** | | | |
 | | tools/ai-agent/agent.js | 434 | Claude API + heuristic fallback |
-| | tools/ai-agent/duel-agent.js | 366 | Duel orchestrator |
-| | tools/ai-agent/strategy.js | 135 | Heuristic scoring |
-| | tools/ai-agent/src/x402-client.js | 188 | x402 micropayment client |
+| | tools/ai-agent/duel-agent.js | 366 | duel orchestrator |
 | | tools/ai-agent/scripts/agent-vs-agent.js | 332 | AvsA demo |
+| | tools/ai-agent/src/x402-client.js | 188 | x402 micropayment client |
+| | tools/ai-agent/strategy.js | 135 | heuristic scoring |
 | **Circuits** | | | |
-| | circuits/dungeon_position/dungeon_position.circom | 133 | ZK dungeon move circuit |
-| | circuits/hand_commitment/hand_commitment.circom | 59 | ZK hand commitment circuit |
+| | circuits/dungeon_position/dungeon_position.circom | 133 | ZK dungeon move |
+| | circuits/hand_commitment/hand_commitment.circom | 59 | ZK hand commitment |
 | **CI** | | | |
 | | .github/workflows/ci.yml | 148 | 5 jobs: node, anchor, react, game, ai |
 | | .github/workflows/deploy-pages.yml | 40 | gh-pages deploy |
 | **Tests** | | | |
-| | tests/card-engine.test.js | 610 | card engine unit tests |
-| | tests/battle-mechanics.test.js | 662 | battle mechanics unit tests |
-| | tests/v3-plus-abilities.test.js | 470 | burn/evolve/steal/imprint tests |
-| | tests/magicblock-connectivity.test.js | 85 | MB connectivity stub |
-| | solana/client/lint-bundle.test.js | ~120 | lint-bundle utility tests |
-| | tools/ai-agent/tests/ (5 files) | 880 | decision model tests |
+| | tests/card-engine.test.js | 610 | 53 tests |
+| | tests/battle-mechanics.test.js | 662 | 49 tests |
+| | tests/v3-plus-abilities.test.js | 470 | 41 tests |
+| | tests/magicblock-connectivity.test.js | 85 | stub |
+| | tools/ai-agent/tests/ (5 files) | 760 | decision model tests |
 
-**Total client JS source:** 32,101 lines across 28 modules  
-**Total Rust:** 9,844 lines  
-**Total non-node_modules:** ~44,000 lines
+**Total client JS source (main):** ~33,677 lines across 29 modules  
+**Total Rust:** ~9,181 lines
 
 ---
 
@@ -101,7 +116,6 @@
 ```mermaid
 graph TD
   CONST[00-constants.js] --> STATE[04-state.js]
-  CANVAS[00-canvas.js] --> STATE
   TOKENS[00-tokens.js] --> PIXI[01-pixi.js]
   STATE --> WORLD[06-world-systems.js]
   STATE --> MAP[07-map.js]
@@ -134,169 +148,159 @@ graph TD
 ```
 
 **Hub nodes (highest coupling):**
-1. `04-state.js` — read/written by virtually every module (100+ globals)
+1. `04-state.js` — 199 module-level globals, read/written by virtually every module
 2. `09-game-loop.js` — dispatches to all scene renderers
-3. `onchain.js` — called by 01-net.js, 06-matchmaking.js, 08-duel-scene.js
+3. `onchain.js` — called by net, matchmaking, duel-scene
 
 ---
 
 ### 1.3 Technical debt list
 
-| ID | Location | Debt description |
+| ID | Location | Debt |
 |---|---|---|
-| D-01 | src/01-pixi.js:441–678 (8 comments) | `POST-HACKATHON: replace with Sprite Seas ...` — 8 tileset/sprite sheet references pending replacement |
-| D-02 | src/10-animations.js:12,22,35 | `POST-HACKATHON:` stubs for finisher, victory, defeat animations — currently 41L file does nothing |
+| D-01 | src/01-pixi.js:441–678 | 8 `POST-HACKATHON: replace with Sprite Seas...` tileset references |
+| D-02 | src/10-animations.js:12,22,35 | 3 `POST-HACKATHON:` stubs — file does nothing at 41L |
 | D-03 | src/08-duel-scene.js:2153 | `POST-HACKATHON: fill from selectTransferCards()` — transferred cards not wired |
-| D-04 | src/04-state.js | 100+ single-letter/abbreviation globals (sc, mo, mi, ai, fr, wt, rd, etc.) — no encapsulation |
-| D-05 | src/02-data.js:299–1780 | drawCardCharacter is 1482 lines — 60 cards × multiple battle states, no dispatch table |
-| D-06 | src/07-map.js:1100–2158 | dMap is 1059 lines — terrain + fog + entities + HUD in one function |
-| D-07 | src/06-world-systems.js | doMapTransition 254L, triggerRandomEvent with 6+ levels of nesting |
-| D-08 | src/09-game-loop.js | 48+ per-frame sin/cos pre-computes (_sFr004.._cFr30), 70+ pre-baked strings — micro-opt reduces readability |
-| D-09 | multiplayer/server.js:handleMessage | 228L single handler for all WS message types — no message-type routing |
-| D-10 | Rust: state.rs | DuelState is 2552B on-chain (hands 5 rounds × 2 players × 5 cards = 50 card slots) — large but by design |
-| D-11 | tests/ | No tests for: game client JS (07-map, 09-game-loop, 06-world-systems), multiplayer server |
-| D-12 | onchain.js | 72 instruction builders in one 1576L file — no grouping by program or category |
-| D-13 | src/04-state.js | `rivalAI` and `rivalMaps` managed from multiple files (state, world-systems, save-init) — no single owner |
+| D-04 | src/04-state.js | 199 module-level globals, single-letter names (sc, mo, ai, fr, wt) |
+| D-05 | src/02-data.js | drawCardCharacter 1482L — **FIXED on refactor-phase1** |
+| D-06 | src/07-map.js | dMap 1059L — **FIXED on refactor-phase1** |
+| D-07 | src/07-battle-resolve.js | drawResolvingPhase 769L + drawResultPhase 354L |
+| D-08 | src/09-game-loop.js | 48 per-frame sin/cos caches (_sFr004.._cFr30), undocumented |
+| D-09 | multiplayer/server.js | handleMessage ~284L — all WS types in one handler |
+| D-10 | Rust: state.rs | DuelState 2552B on-chain (by design) |
+| D-11 | tests/ | No tests for: 06-world-systems, 07-map, 09-game-loop, multiplayer server |
+| D-12 | onchain.js | 72 instruction builders in 1576L, no grouping |
+| D-13 | src/04-state.js | rivalAI/rivalMaps managed from state + world-systems + save-init |
 
 ---
 
-### 1.4 Code smell list (priority ordered)
+### 1.4 Code smell priority list
 
 | Priority | ID | File | Smell | Impact |
 |---|---|---|---|---|
-| 🔴 HIGH | S-01 | 02-data.js:299 | drawCardCharacter (1482L): one fn does all 60 cards × 5 states | Impossible to add card without reading 1482 lines |
-| 🔴 HIGH | S-02 | 07-map.js:1100 | dMap (1059L): terrain + fog + NPCs + HUD + minimap | Any world render bug requires scanning 1059 lines |
-| 🔴 HIGH | S-03 | 04-state.js | 100+ module-level globals, single-letter names (sc, mo, ai, fr) | Implicit coupling across all 28 modules |
-| 🟡 MED | S-04 | 06-world-systems.js | triggerRandomEvent, doMapTransition: 6+ nesting levels | Hard to trace event logic |
-| 🟡 MED | S-05 | multiplayer/server.js:handleMessage | 228L with nested switch/if for all WS message types | Server bug = scan 228 lines |
-| 🟡 MED | S-06 | onchain.js | 72 fns × ~22L avg in one file, no grouping | Find instruction = grep |
-| 🟡 MED | S-07 | 04-state.js | rivalAI state owned by 3 files (state, world-systems, save-init) | Rival behavior bugs span 3 files |
-| 🟢 LOW | S-08 | 09-game-loop.js | 48 per-frame sin/cos caches, undocumented names (_sFr004 etc.) | Confusing but fast — keep, add comment block |
-| 🟢 LOW | S-09 | 07-map.js | 70+ pre-baked string/array literals at top | Readable after context; not a refactor priority |
-| 🟢 LOW | S-10 | src/10-animations.js | 41L stub file with 3 empty POST-HACKATHON functions | Minimal — can expand in place |
+| ✅ DONE | S-01 | 02-data.js | drawCardCharacter 1482L | Fixed on refactor-phase1 |
+| ✅ DONE | S-02 | 07-map.js | dMap 1059L | Fixed on refactor-phase1 |
+| 🔴 HIGH | S-03 | 04-state.js | 199 globals, single-letter names | Implicit coupling across 29 modules |
+| 🔴 HIGH | S-04 | 07-battle-resolve.js | drawResolvingPhase 769L (particle system) | Battle animation bugs require scanning 769L |
+| 🟡 MED | S-05 | multiplayer/server.js | handleMessage ~284L, all WS types mixed | Server bug = scan 284L nested handler |
+| 🟡 MED | S-06 | onchain.js | 72 fns, no grouping | Find instruction = grep |
+| 🟡 MED | S-07 | 04-state.js | rivalAI owned by 3 files | Rival behavior bugs span 3 files |
+| 🟢 LOW | S-08 | 09-game-loop.js | 48 sin/cos caches, undocumented | Confusing, keep with comment |
+| 🟢 LOW | S-09 | 10-input.js | 3 keydown listeners (not 1 big function) | Scattered but manageable |
+| 🟢 LOW | S-10 | 10-animations.js | 41L stub file | Post-hackathon |
 
 ---
 
 ## §2. Refactor Targets
 
+### Action 0 — Merge refactor-phase1 (immediate)
+
+Before any new work: merge `refactor-phase1` to main.  
+H-1 and H-2 are done, tested (281 passing), tagged, pushed.
+
 ### HIGH — must do
 
-**H-1: Split drawCardCharacter (02-data.js)**
-- Extract per-battle-state renderers: `_drawCardIdle`, `_drawCardAttack`, `_drawCardDefend`, `_drawCardSummon`, `_drawCardKO`
-- Extract shared layers: `_drawCardHPBar`, `_drawCardImprints`, `_drawCardStatus`
-- Keep a thin `drawCardCharacter(x,y,id,state,...)` dispatcher
-- Result: each function ~200-300L, focused responsibility
+**H-1 ✅: drawCardCharacter split** — done on refactor-phase1  
+**H-2 ✅: dMap split** — done on refactor-phase1
 
-**H-2: Split dMap (07-map.js)**
-- Extract: `_dMapTerrain`, `_dMapFog`, `_dMapEntities`, `_dMapDecorations`, `_dMapHUD`, `_dMapMinimap`
-- Keep `dMap()` as a 30-line orchestrator calling sub-functions
-- Minimap already isolated (drawMinimap fn exists); connect it cleanly
-- **Note:** dMapTerrain uses local variables shared across the 1059L body — must trace reads before splitting
+**H-3: Split drawResolvingPhase (07-battle-resolve.js, 769L)**
+- Extract `_drawResolveBackground`, `_drawResolveParticles`, `_drawResolveCards`, `_drawResolveResult`
+- Keep `drawResolvingPhase()` as thin dispatcher
+- Risk: particle system; extensive parameter threading required
+- **Note:** Safe only after Phase 1 is merged and smoke-tested
 
-**H-3: Group globals in 04-state.js**
-- Don't rename variables (too many callers, test-breakage risk)
-- Wrap into namespaced objects: `_gScene`, `_gCamera`, `_gTimers`, `_gPlayers` etc.
-- Export backward-compat aliases: `let sc = _gScene.current` → update setter
-- Long-term: module-level mutation still possible but documented
+**H-4: Group globals in 04-state.js (do NOT rename)**
+- Group into namespaced comment sections: `// ── SCENE ──`, `// ── CAMERA ──`, `// ── BATTLE ──`, `// ── PLAYERS ──`, `// ── UI ──`
+- No variable renaming (too many callers across 29 modules)
+- Add one-line ownership comment for each group
+- This is a **documentation-only** change (no code risk)
 
 ### MED — do if time permits
 
-**M-1: Route handleMessage by type (multiplayer/server.js)**
-- Replace 228L nested handler with `const HANDLERS = { join_game: fn, leave: fn, submit_tx: fn }` dispatch table
-- Each handler ~30L, tested independently
+**M-1: Route handleMessage (multiplayer/server.js)**
+- Replace 284L body with `const HANDLERS={join_game:fn,leave:fn,...}` dispatch table
+- Each handler ~30–50L
+- Pass `ws, rooms, broadcastToRoom` as params
 
 **M-2: Group onchain.js by program**
-- `// ── oxark program ──` / `// ── oxark-cards program ──` / `// ── ZK ──` sections
-- No function changes — cosmetic grouping + add JSDoc for each instruction fn
+- Section comments: `// ── oxark program ──` / `// ── oxark-cards ──` / `// ── ZK ──`
+- No function changes — cosmetic + JSDoc only
 
-**M-3: Add JS unit tests for game client**
-- `tests/world-systems.test.js`: triggerEncounter, doMapTransition (with mocked globals)
-- `tests/save-load.test.js`: saveGame/loadGame round-trip (JSDOM or lightweight mock)
-- Priority: get CI to run these so regressions surface automatically
+**M-3: Add JS unit tests**
+- `tests/save-load.test.js` — saveGame/loadGame round-trip
+- `tests/world-systems.test.js` — triggerEncounter, doMapTransition stubs
 
-**M-4: Multiplayer server unit tests**
-- `multiplayer/test/server.test.js`: mock WS + Solana RPC, test handleMessage routing
-- Focus: x402 verification path, tx relay path
+**M-4: Add multiplayer server test**
+- `multiplayer/test/server.test.js` — mock WS, test handleMessage routing
 
-### LOW — only if bandwidth allows
+### LOW — only if bandwidth
 
-**L-1: Rename 10-animations.js stubs to real functions**
-- Fill in the POST-HACKATHON stubs with minimal particle effects
-- 41L → ~150L
-
-**L-2: Add comment block for sin/cos pre-computes (09-game-loop.js)**
-- One 10-line comment explaining the micro-opt rationale
-- No code changes — just makes the intent clear for future devs
-
-**L-3: D-01: Sprite sheet comment cleanup (01-pixi.js)**
-- The 8 `POST-HACKATHON` sprite replacement comments are accurate; no action needed pre-submission
+**L-1: 04-state.js grouping** — section comment headers (H-4 above, very low risk)  
+**L-2: 09-game-loop.js** — add 10-line comment block explaining sin/cos micro-opt  
+**L-3: 10-animations.js** — fill stubs with minimal particle effects
 
 ---
 
 ## §3. Refactor Phases
 
-### Phase 1 — Function extraction (LOW risk, HIGH value)
-**Target: H-1 + H-2**  
-**Est. time: 6–8 hrs**  
-**Branch: `refactor/split-monoliths`**
+### Immediate — Merge refactor-phase1
+**Est. time: 15 min**
+
+```
+git checkout main
+git merge refactor-phase1
+git push origin main
+```
+
+Smoke-test: open live URL, walk map, trigger battle, open duel.
+
+### Phase 2 — drawResolvingPhase split + state grouping
+**Target: H-3 + H-4**  
+**Est. time: 4–6 hrs**  
+**Branch: `refactor/phase2`**
 
 | Task | File | Action |
 |---|---|---|
-| 1a | 02-data.js | Extract `_drawCardIdle`, `_drawCardAttack`, `_drawCardDefend`, `_drawCardSummon`, `_drawCardKO` from drawCardCharacter |
-| 1b | 02-data.js | Extract `_drawCardHPBar`, `_drawCardImprints`, `_drawCardStatus` |
-| 1c | 02-data.js | Keep `drawCardCharacter()` as thin dispatcher |
-| 1d | 07-map.js | Extract `_dMapTerrain`, `_dMapFog`, `_dMapEntities`, `_dMapDecorations`, `_dMapHUD` |
-| 1e | 07-map.js | Keep `dMap()` as 30L orchestrator |
-| 1f | — | `node build.js` + `node tests/card-engine.test.js` + `node tests/battle-mechanics.test.js` |
-| 1g | — | Manual smoke-test: open index.html, walk/battle/duel |
+| 2a | 07-battle-resolve.js | Trace all shared local vars in drawResolvingPhase |
+| 2b | 07-battle-resolve.js | Extract `_drawResolveBackground`, `_drawResolveParticles`, `_drawResolveCards` |
+| 2c | 07-battle-resolve.js | Keep dispatcher < 40L |
+| 2d | 04-state.js | Add section comment headers for globals (no code change) |
+| 2e | — | Run all 280 tests + build + smoke-test |
 
 **DoD:**
-- All 280 tests still pass
-- No new browser console errors
-- drawCardCharacter < 50L (dispatcher only)
-- dMap < 60L (dispatcher only)
-- Each extracted sub-function < 300L
+- 280 tests pass
+- drawResolvingPhase dispatcher < 40L
+- Each extracted function < 300L
+- 04-state.js globals grouped under section headers
 
-### Phase 2 — Server & test coverage (MED risk)
+### Phase 3 — Server dispatch + test coverage
 **Target: M-1 + M-3 + M-4**  
-**Est. time: 4–6 hrs**  
-**Branch: `refactor/server-tests`**
+**Est. time: 4–5 hrs**  
+**Branch: `refactor/phase3`**
 
 | Task | File | Action |
 |---|---|---|
-| 2a | multiplayer/server.js | Replace handleMessage body with HANDLERS dispatch table |
-| 2b | multiplayer/test/server.test.js | Add unit tests for join/leave/relay/x402 paths |
-| 2c | tests/save-load.test.js | saveGame/loadGame round-trip test with mocked localStorage |
-| 2d | .github/workflows/ci.yml | Add `multiplayer-test` and `save-load-test` CI jobs |
+| 3a | multiplayer/server.js | Replace handleMessage body with HANDLERS dispatch table |
+| 3b | multiplayer/test/server.test.js | Unit tests for join/leave/relay/x402 paths |
+| 3c | tests/save-load.test.js | saveGame/loadGame round-trip |
+| 3d | .github/workflows/ci.yml | Add `multiplayer-test` CI job |
 
 **DoD:**
 - CI green on new jobs
-- server.js handleMessage < 30L (dispatcher)
+- handleMessage dispatcher < 30L
 - At least 8 new test cases passing
 
-### Phase 3 — Global state grouping (MED-HIGH risk)
-**Target: H-3**  
-**Est. time: 4–6 hrs**  
-**Branch: `refactor/state-namespace`**
+### Phase 4 — onchain.js grouping (LOW risk)
+**Target: M-2**  
+**Est. time: 1–2 hrs**  
+**Branch: direct to main or `refactor/phase4`**
 
-| Task | File | Action |
-|---|---|---|
-| 3a | 04-state.js | Audit all 100+ globals: group into `_gScene`, `_gCamera`, `_gTimers`, `_gPlayers`, `_gWorld`, `_gBattle`, `_gUI` |
-| 3b | 04-state.js | Add backward-compat `let sc = _gScene.current` aliases for 20 most-referenced vars |
-| 3c | 04-state.js | Document ownership: who reads/writes each var |
-| 3d | — | Run all tests + build + manual smoke-test |
-
-**DoD:**
-- All 280 tests pass
-- No missing-variable errors in browser
-- Each global has a documented owner/group
-
-**Risk note:** Phase 3 is highest risk. Run after Phase 1 is merged and smoke-tested. Consider skipping if deadline pressure is high.
+Add section comment headers and JSDoc to onchain.js. No code changes.
 
 ### 280-test maintenance strategy
-- Run `node tests/card-engine.test.js && node tests/battle-mechanics.test.js && node tests/v3-plus-abilities.test.js` after every sub-task in Phase 1
-- Run `cargo test --manifest-path solana/oxark/Cargo.toml` before merging any branch (Rust not touched but confirms no file-system issues)
-- `node build.js --check` to verify no module listed twice or missing
+- `node tests/card-engine.test.js && node tests/battle-mechanics.test.js && node tests/v3-plus-abilities.test.js` after every sub-task
+- `node build.js` to verify bundle integrity
+- Commit after every completed sub-task — tests must be green at each commit
 
 ---
 
@@ -304,100 +308,89 @@ graph TD
 
 | Phase | Risk | Mitigation |
 |---|---|---|
-| Phase 1 (split monoliths) | dMap local variables shared across the 1059L body — accidental scope breakage | Read all variable declarations before extracting; pass shared vars as parameters |
-| Phase 1 | drawCardCharacter uses many context save/restore — mismatched save/restore after split | Keep ctx.save/restore within each sub-function; test all 60 card renders |
-| Phase 2 (server dispatch) | handleMessage has stateful `ws` and `rooms` closure — dispatch table must capture same closure | Pass `ws, rooms, broadcastToRoom` as params to each handler |
-| Phase 3 (state namespace) | 100+ references to `sc`, `mo`, `fr` etc. across 28 modules — alias drift | Use grep to find all occurrences before adding alias; update module-by-module |
-| All phases | Test suite doesn't cover game client JS — regression invisible | Add manual smoke-test checklist (title → map → encounter → battle → duel) |
+| Merge refactor-phase1 | Minimal — clean branch, 281 tests pass | Smoke-test live URL after merge |
+| Phase 2a–c (drawResolvingPhase) | Particle system has 10+ local vars across 769L — scope breakage risk | Read all declarations before extracting; pass as explicit params; test all battle outcomes |
+| Phase 2d (state grouping) | Comment-only — zero runtime risk | N/A |
+| Phase 3a (server dispatch) | handleMessage has `ws`, `rooms` closure state — dispatch table must capture same | Pass `ws, rooms, broadcastToRoom` as params to each handler fn |
+| Phase 4 (onchain grouping) | Comment-only — zero risk | N/A |
 
 ### Do NOT touch (high regression risk, low reward pre-submission)
-- **dMap render loop itself** (camera lerp, fog-of-war algorithm, tile blending math) — already tuned; splitting is safe but the *algorithm* must not change
-- **10-input.js:keydown handler** — large but simple; any change risks breaking movement/battle input
-- **07-battle-resolve.js generateResolveEvents** — battle balance; refactor only if a bug is found
+
+- **10-input.js keydown listeners** — 3 separate listeners at L38/L111/L1452; complex but working; any change risks breaking movement/battle/duel input
+- **drawResultPhase (354L)** — result sequence timing is exact; splitting carries animation regression risk
+- **generateResolveEvents** — battle balance; refactor only if a bug is found
 - **Rust instructions** — no changes to instruction logic, PDA seeds, or account layouts
-- **03-zk-prove.js / circuits/** — ZK circuit changes require re-ceremony (out of scope)
+- **03-zk-prove.js / circuits/** — ZK circuit changes require re-ceremony
 - **onchain.js instruction encoding** — bytes must match Anchor discriminators exactly
-- **09-game-loop.js sin/cos pre-computes** — micro-opt is correct; L-2 (add comment) only
+- **09-game-loop.js sin/cos pre-computes** — micro-opt is correct; add comment only
 
 ### Context-cutoff strategy
-- Commit after every sub-task (1a, 1b, … 3c)
-- Commit message: `refactor: [phase] [task] — [what changed]`
-- Each commit leaves tests green so any interruption leaves the codebase in a working state
-- Handoff doc updated at Phase boundary
+- Commit after every sub-task
+- Commit message: `refactor: phase[N] [task] — [what changed]`
+- Each commit leaves tests green — any interruption leaves the codebase working
+- Handoff doc in `docs/_scratch/` updated at each Phase boundary
 
 ---
 
 ## §5. Time Estimate
 
-| Phase | Tasks | Est. hours |
+| Action | Tasks | Est. hours |
 |---|---|---|
-| Phase 1 — split monoliths | H-1 + H-2 | 6–8 hrs |
-| Phase 2 — server & tests | M-1 + M-3 + M-4 | 4–6 hrs |
-| Phase 3 — state namespace | H-3 | 4–6 hrs |
-| Buffer (regression debug) | — | 2 hrs |
-| **Total** | | **16–22 hrs** |
+| Immediate: merge refactor-phase1 | — | 0.25 |
+| Phase 2 — drawResolvingPhase + state grouping | H-3 + H-4 | 4–6 |
+| Phase 3 — server dispatch + tests | M-1 + M-3 + M-4 | 4–5 |
+| Phase 4 — onchain grouping | M-2 | 1–2 |
+| Buffer (regression debug) | — | 2 |
+| **Total remaining** | | **11–15 hrs** |
 
 **Bandwidth vs deadline:**
-- Submission: 2026-05-11 (14 days out)
-- Level 2 Standard Refactor (5–10 hr) estimate in spec maps to: **Phase 1 only (6–8 hrs)**
-- Phase 2 adds 4–6 hrs → 10–14 hrs total → stays within Level 2 if done incrementally
-- Phase 3 is optional; only pursue if Phase 1+2 complete well before May 7
+- Submission: 2026-05-11 (14 days)
+- Phase 1 (H-1 + H-2) already done: saves ~6–8 hrs vs original estimate
+- Remaining phases (Phase 2+3+4) = 9–13 hrs → fits inside Level 2 Standard Refactor (5–10 hr estimate was for Phase 1 alone)
 
 **Recommendation:**
-- **Phase 1 first** (highest value, lowest risk, ~6 hrs) — merge by 2026-04-29
-- **Phase 2 if time** (~4–5 hrs) — merge by 2026-05-02
-- **Phase 3 only if confident** — skip if within 5 days of deadline
-- **Freeze new refactoring May 8** (3 days before submission for final smoke-test)
+- **Merge refactor-phase1 first** (today)
+- **Phase 2** by 2026-04-30 (highest remaining value)
+- **Phase 3** by 2026-05-04 (test coverage value)
+- **Phase 4** by 2026-05-07 (cosmetic, anytime)
+- **Freeze all refactoring 2026-05-08** (3 days buffer before submission)
 
 ---
 
 ## §6. Out of Scope
 
-The following are explicitly **excluded** from this refactor:
-
 ### Hard out-of-scope
-- `ui-v2-rebuild` branch — touch nothing
+- `ui-v2-rebuild` branch — do not touch
 - Anchor instruction specs (no semantic changes to on-chain logic)
 - ZK circuits (dungeon_position.circom, hand_commitment.circom) — re-ceremony required
-- Metaplex / SPL-token interaction in oxark-cards — live on devnet, don't break
+- Metaplex / SPL-token interaction in oxark-cards — live on devnet, do not break
 - New features of any kind
 - `legacy/` directory — Phase C isolated, archive only
 
 ### Soft out-of-scope (defer post-submission)
 - Full dependency injection / module pattern for game client
-- Replacing POST-HACKATHON sprite sheets (8 tileset references in 01-pixi.js)
-- Filling in 10-animations.js stubs (playFinisherAnimation etc.)
+- Replacing POST-HACKATHON sprite sheets (8 refs in 01-pixi.js)
+- Filling in 10-animations.js stubs
 - Wiring `transferredCards` in 08-duel-scene.js:2153
-- DuelState on-chain layout optimization (2552B → split account)
-- Multiplayer integration tests (multi-wallet scenario)
+- DuelState on-chain layout optimization
+- Multiplayer integration tests (multi-wallet)
 - Mainnet deployment prep
 
 ---
 
-## Appendix: Rust account types (state.rs)
+## Appendix: Rust account sizes (state.rs)
 
 | Account | Approx size | Note |
 |---|---|---|
-| Game | 123B | Core duel metadata |
-| PlayerState | 164B | Hand, area, cards |
-| CardPool | 22B | Supply per type |
-| CommitAction | 87B | ZK commit-reveal state |
-| CardCommitRecord | 84B | Revealed card tracking |
-| PlayerDeck | 98B | 20-card deck |
-| SeasonCardSupply | 62B | Per-season minting limits |
-| PlayerRegistry | 583B | 60-species bool array |
-| PlayerBattleStats | 48B | Tier win counts |
-| PlayerLevel | 51B | XP + level |
-| PlayerAchievements | 43B | Flags bitmask |
-| PlayerTitle | 43B | Unlocked titles |
+| Game | 123B | |
+| PlayerState | 164B | |
+| CommitAction | 87B | |
+| PlayerDeck | 98B | |
 | MatchmakingQueue | 2084B max | 64-player FIFO |
-| CardLoreShards | 103B | 3 shards + timestamps |
-| DuelState | **2552B** | 5 rounds × 2 players × 5 cards |
-| CardBattleHistory | **636B** | Imprints, lease, evolve parents |
-| SeasonStats | 29B | Burn/mint/evolve counters |
-| LegendarySupply | 25B | 4 species caps |
-| PlayerDuelStats | 61B | Gold hall, legendary claims |
+| DuelState | **2552B** | 5 rounds × 2 players × 5 cards (by design) |
+| CardBattleHistory | **636B** | imprints, lease, evolve parents |
+| PlayerRegistry | 583B | 60-species bool array |
 
 ---
 
-*Plan commit: docs/_scratch/refactor-plan.md — code not modified*
+*Plan updated: docs/_scratch/refactor-plan.md — code not modified*
