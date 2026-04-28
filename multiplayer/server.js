@@ -124,14 +124,40 @@ const X402_POLL_ATTEMPTS = 10;
 const X402_POLL_MS       = 500;
 const X402_MAX_AGE_MS    = 60_000;
 
-async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath) {
+// sigHint: signature provided directly by client (Phase 9+) — uses targeted getTransaction.
+// Without sigHint: legacy poll via getSignaturesForAddress (probe path).
+async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHint = null) {
   if (!process.env.TREASURY_PUBKEY) {
     console.log('[x402] No TREASURY_PUBKEY — demo mode');
     return { ok: true, demo: true };
   }
   try {
-    const playerKey       = new PublicKey(playerPubkeyStr);
     const expectedLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
+
+    if (sigHint) {
+      if (usedSigs.has(sigHint)) return { ok: false, error: 'signature already used' };
+      const tx = await connection.getTransaction(sigHint, {
+        commitment: COMMITMENT, maxSupportedTransactionVersion: 0,
+      });
+      if (!tx?.meta) return { ok: false, error: 'transaction not found' };
+      if (X402_REQUIRE_MEMO) {
+        const memoCheck = validateMemo(extractMemo(tx), requestPath);
+        if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
+      }
+      const accountKeys = tx.transaction.message.staticAccountKeys ?? tx.transaction.message.accountKeys;
+      const idx = accountKeys.findIndex(k => k.toBase58() === TREASURY_ADDR);
+      if (idx < 0) return { ok: false, error: 'payment not directed to treasury' };
+      const received = (tx.meta.postBalances[idx] ?? 0) - (tx.meta.preBalances[idx] ?? 0);
+      if (received >= expectedLamports) {
+        console.log(`[x402] Verified: ${amountSol} SOL`);
+        usedSigs.set(sigHint, Date.now() + 120_000);
+        return { ok: true, sig: sigHint, received };
+      }
+      return { ok: false, error: 'insufficient payment' };
+    }
+
+    // Legacy: poll recent sigs by player pubkey (probe path / old clients)
+    const playerKey        = new PublicKey(playerPubkeyStr);
     for (let attempt = 0; attempt < X402_POLL_ATTEMPTS; attempt++) {
       const sigs = await connection.getSignaturesForAddress(playerKey, { limit: 10 }, COMMITMENT);
       const now  = Date.now();
@@ -143,7 +169,6 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath) {
           commitment: COMMITMENT, maxSupportedTransactionVersion: 0,
         });
         if (!tx?.meta) continue;
-        // Memo-based endpoint binding (only when X402_REQUIRE_MEMO=true)
         if (X402_REQUIRE_MEMO) {
           const memoCheck = validateMemo(extractMemo(tx), requestPath);
           if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
@@ -212,8 +237,21 @@ const httpServer = http.createServer(async (req, res) => {
 
     const amountSol      = X402_ROUTES[req.url];
     const amountLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
-    const body   = await _readBody(req);
-    const result = await _verifyX402Payment(body.playerPubkey || '', amountSol, req.url);
+    const body         = await _readBody(req);
+    const playerPubkey = body.playerPubkey || req.headers['x-player-pubkey'] || '';
+    const signature    = body.signature    || req.headers['x-payment']       || '';
+    // One field present without the other → 400 (probe with neither field is fine → 402 from verify)
+    if (signature && !playerPubkey) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'playerPubkey required' }));
+      return;
+    }
+    if (playerPubkey && !signature) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'signature required' }));
+      return;
+    }
+    const result = await _verifyX402Payment(playerPubkey, amountSol, req.url, signature || null);
 
     if (!result.ok) {
       // x402 v2 spec: PAYMENT-REQUIRED header (Base64-encoded JSON)

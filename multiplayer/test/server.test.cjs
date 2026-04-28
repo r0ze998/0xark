@@ -838,6 +838,27 @@ function makeX402HeaderContext(opts = {}) {
   return { buildPaymentRequiredHeaders, TREASURY_ADDR, SOLANA_NETWORK };
 }
 
+// ─── x402 protocol gap fix context ───────────────────────────────────────────
+// Replicates the route-level input extraction + validation from server.js.
+// If signature present without playerPubkey (or vice-versa) → 400.
+// Both absent = probe path → falls through to _verifyX402Payment.
+
+function makeProtocolGapContext() {
+  function extractX402Inputs(body, headers = {}) {
+    const playerPubkey = body.playerPubkey || headers['x-player-pubkey'] || '';
+    const signature    = body.signature    || headers['x-payment']       || '';
+    return { playerPubkey, signature };
+  }
+
+  function validateX402Inputs(playerPubkey, signature) {
+    if (signature && !playerPubkey) return { valid: false, status: 400, error: 'playerPubkey required' };
+    if (playerPubkey && !signature) return { valid: false, status: 400, error: 'signature required' };
+    return { valid: true };
+  }
+
+  return { extractX402Inputs, validateX402Inputs };
+}
+
 // ─── x402 tests + final summary ───────────────────────────────────────────────
 
 (async () => {
@@ -1049,6 +1070,44 @@ function makeX402HeaderContext(opts = {}) {
     const result = await verify('playerPk', 0.005, '/x402/scout-peek');
     assert.equal(result.ok, false);
     assert.equal(result.error, 'invalid nonce');
+  });
+
+  console.log('\nx402 protocol gap fix');
+
+  await asyncTest('body.playerPubkey + body.signature → valid inputs', async () => {
+    const { extractX402Inputs, validateX402Inputs } = makeProtocolGapContext();
+    const { playerPubkey, signature } = extractX402Inputs(
+      { playerPubkey: 'wallet-pk-123', signature: 'sig-abc' }, {}
+    );
+    const v = validateX402Inputs(playerPubkey, signature);
+    assert.equal(v.valid, true);
+  });
+
+  await asyncTest('X-Player-Pubkey header fallback → valid inputs', async () => {
+    const { extractX402Inputs, validateX402Inputs } = makeProtocolGapContext();
+    const { playerPubkey, signature } = extractX402Inputs(
+      {}, { 'x-player-pubkey': 'wallet-pk-456', 'x-payment': 'sig-def' }
+    );
+    const v = validateX402Inputs(playerPubkey, signature);
+    assert.equal(v.valid, true);
+  });
+
+  await asyncTest('playerPubkey 欠落 (signature present, no pubkey) → 400', async () => {
+    const { extractX402Inputs, validateX402Inputs } = makeProtocolGapContext();
+    const { playerPubkey, signature } = extractX402Inputs({}, { 'x-payment': 'sig-xyz' });
+    const v = validateX402Inputs(playerPubkey, signature);
+    assert.equal(v.valid, false);
+    assert.equal(v.status, 400);
+    assert.equal(v.error, 'playerPubkey required');
+  });
+
+  await asyncTest('signature 欠落 (pubkey present, no signature) → 400', async () => {
+    const { extractX402Inputs, validateX402Inputs } = makeProtocolGapContext();
+    const { playerPubkey, signature } = extractX402Inputs({ playerPubkey: 'wallet-pk-789' }, {});
+    const v = validateX402Inputs(playerPubkey, signature);
+    assert.equal(v.valid, false);
+    assert.equal(v.status, 400);
+    assert.equal(v.error, 'signature required');
   });
 
   console.log('\n────────────────────────────────────────────');
