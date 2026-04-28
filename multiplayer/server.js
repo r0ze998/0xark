@@ -33,6 +33,10 @@ const PORT = process.env.PORT || 3500;
 const MOVE_PRICE_LAMPORTS = parseInt(process.env.X402_MOVE_PRICE_LAMPORTS, 10) || 100_000;
 const MOVE_PRICE_SOL = MOVE_PRICE_LAMPORTS / LAMPORTS_PER_SOL;
 
+// 0.005 SOL per AI move delegation (overridable via X402_AI_MOVE_PRICE_LAMPORTS)
+const AI_MOVE_PRICE_LAMPORTS = parseInt(process.env.X402_AI_MOVE_PRICE_LAMPORTS, 10) || 5_000_000;
+const AI_MOVE_PRICE_SOL = AI_MOVE_PRICE_LAMPORTS / LAMPORTS_PER_SOL;
+
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 
 const RATE_WINDOW_MS = 1_000;
@@ -224,7 +228,17 @@ const httpServer = http.createServer(async (req, res) => {
     '/x402/pa': MOVE_PRICE_SOL,
     '/x402/rs': MOVE_PRICE_SOL,
     '/x402/me': MOVE_PRICE_SOL,
+    // Phase 14: AI move delegation
+    '/x402/ai-move': AI_MOVE_PRICE_SOL,
   };
+  // Early 503 if AI move endpoint is called without an Anthropic API key configured
+  if (req.method === 'POST' && req.url === '/x402/ai-move' && !process.env.ANTHROPIC_API_KEY) {
+    cors();
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: false, error: 'AI delegation not configured (ANTHROPIC_API_KEY missing)' }));
+    return;
+  }
+
   if (req.method === 'POST' && X402_ROUTES[req.url] !== undefined) {
     cors();
 
@@ -293,6 +307,22 @@ const httpServer = http.createServer(async (req, res) => {
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, memo: memoStr, demo: result.demo }));
+      return;
+    }
+
+    // AI move delegation
+    if (req.url === '/x402/ai-move') {
+      let aiResult;
+      try {
+        const { delegateMove } = await import('../tools/ai-agent/src/move-delegate.js');
+        aiResult = await delegateMove(body.public_state ?? {});
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'AI delegation failed: ' + err.message }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, ...aiResult, sig: result.sig, demo: result.demo }));
       return;
     }
 

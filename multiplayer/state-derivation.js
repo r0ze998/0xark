@@ -20,6 +20,7 @@ export function emptyMatchState() {
     rounds:   [],        // completed RoundRecord[]
     winner:   null,
     lastSlot: 0,
+    history:  [],
   };
 }
 
@@ -73,7 +74,9 @@ function _applyCommit(state, fields, sender, slot) {
   const s = _clone(state, slot);
   if (s.matchId === null && fields.m) s.matchId = fields.m;
   if (!s.players[sender]) s.players[sender] = _initPlayer();
-  s.players[sender] = { ...s.players[sender], committed: true };
+  const commitSource = fields.i === 'ai' ? 'ai' : 'self';
+  s.players[sender] = { ...s.players[sender], committed: true, identitySource: commitSource };
+  s.history.push({ round: s.round, player: sender, action: 'commit', identity_source: commitSource, slot });
   return s;
 }
 
@@ -84,11 +87,14 @@ function _applyReveal(state, fields, sender, slot) {
 
   const s   = _clone(state, slot);
   const a   = parseInt(fields.a, 10);
+  const revealSource = fields.i === 'ai' ? 'ai' : 'self';
   s.players[sender] = {
     ...s.players[sender],
-    revealed:   true,
-    actionType: isNaN(a) ? null : a,
+    revealed:        true,
+    actionType:      isNaN(a) ? null : a,
+    identitySource:  revealSource,
   };
+  s.history.push({ round: s.round, player: sender, action: 'reveal', identity_source: revealSource, slot });
   return s;
 }
 
@@ -191,5 +197,6 @@ function _clone(state, slot) {
     lastSlot: Math.max(state.lastSlot, slot),
     players:  Object.fromEntries(Object.entries(state.players).map(([k, v]) => [k, { ...v }])),
     rounds:   [...state.rounds],
+    history:  [...(state.history ?? [])],
   };
 }

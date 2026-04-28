@@ -309,17 +309,64 @@ async function payMatchEnd({ matchId, winner }, wallet, conn) {
   return _payMove('/x402/me', { m: matchId, w: winner }, wallet, conn);
 }
 
+/** POST /x402/ai-move — delegate battle move to AI (0.005 SOL) */
+async function payAiMove({ matchId, round, publicState }, wallet, conn) {
+  const { Transaction, SystemProgram, PublicKey } = window.solanaWeb3 ?? {};
+  if (!Transaction) throw new Error('solanaWeb3 not found on window');
+
+  const fromPk       = new PublicKey(wallet.publicKey.toString());
+  const playerPubkey = fromPk.toBase58();
+  const endpoint     = '/x402/ai-move';
+
+  // Probe — check payment spec (or early 503 if AI not configured)
+  const probe = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerPubkey, match_id: matchId, round, public_state: publicState }),
+  });
+  if (probe.ok) return probe.json();
+  if (probe.status === 503) {
+    const err = await probe.json().catch(() => ({}));
+    throw new Error(err.error ?? 'AI delegation not available');
+  }
+  if (probe.status !== 402) throw new Error(`Unexpected status ${probe.status} from ${endpoint}`);
+
+  const amountHeader    = probe.headers.get('X-Payment-Amount');
+  const recipientHeader = probe.headers.get('X-Payment-Recipient');
+  const lamports        = amountHeader ? parseInt(amountHeader, 10) : 5_000_000;
+  const toPk            = new PublicKey(recipientHeader ?? TREASURY_ADDR_FALLBACK);
+
+  const { blockhash } = await conn.getLatestBlockhash('confirmed');
+  const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPk });
+  tx.add(SystemProgram.transfer({ fromPubkey: fromPk, toPubkey: toPk, lamports }));
+
+  const signed = await wallet.signTransaction(tx);
+  const sig    = await conn.sendRawTransaction(signed.serialize());
+  await conn.confirmTransaction(sig, 'confirmed');
+
+  const paid = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Payment': sig },
+    body: JSON.stringify({ playerPubkey, signature: sig, match_id: matchId, round, public_state: publicState }),
+  });
+  if (!paid.ok) {
+    const err = await paid.json().catch(() => ({}));
+    throw new Error(err.error ?? `${endpoint} failed: ${paid.status}`);
+  }
+  return paid.json();
+}
+
 // Export for both ESM browser and Node.js test environments
 if (typeof module !== 'undefined') {
   module.exports = {
     scoutPeek, scoutPeekDev, hireAgent, hireAgentDev, X402_BROKER_URL,
     payCommit, payReveal, payHandCommit, payHandReveal,
-    payPhaseAdvance, payRoundResolve, payMatchEnd,
+    payPhaseAdvance, payRoundResolve, payMatchEnd, payAiMove,
   };
 } else if (typeof window !== 'undefined') {
   window.x402 = {
     scoutPeek, scoutPeekDev, hireAgent, hireAgentDev,
     payCommit, payReveal, payHandCommit, payHandReveal,
-    payPhaseAdvance, payRoundResolve, payMatchEnd,
+    payPhaseAdvance, payRoundResolve, payMatchEnd, payAiMove,
   };
 }

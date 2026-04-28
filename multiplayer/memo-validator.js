@@ -105,7 +105,10 @@ function _validateCompactMemo(memoStr, requestPath) {
   }
   if (f.g !== undefined && !BASE58_RE.test(f.g))        return { ok: false, error: 'invalid target pubkey' };
   if (f.w !== undefined && !BASE58_RE.test(f.w))        return { ok: false, error: 'invalid winner pubkey' };
-  if (f.i !== undefined && !CARD_IDS_RE.test(f.i))      return { ok: false, error: 'invalid card_ids' };
+  if (f.i !== undefined && requestPath === '/x402/hr' && !CARD_IDS_RE.test(f.i))
+    return { ok: false, error: 'invalid card_ids' };
+  if (f.i !== undefined && requestPath !== '/x402/hr' && !['self', 'ai'].includes(f.i))
+    return { ok: false, error: 'invalid identity_source (must be self|ai)' };
   if (f.d !== undefined && !DELTA_RE.test(f.d))         return { ok: false, error: 'invalid hp delta' };
   if (f.n !== undefined && !HEX16_RE.test(f.n))         return { ok: false, error: 'invalid nonce (hex16)' };
 
