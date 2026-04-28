@@ -25,8 +25,13 @@ import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, usedSigs, rateLimits, gcRoundClaims } from './state.js';
 import { HANDLERS } from './handlers/index.js';
+import { validateMemo, MOVE_ENDPOINTS } from './memo-validator.js';
 
 const PORT = process.env.PORT || 3500;
+
+// 0.0001 SOL per move (overridable via X402_MOVE_PRICE_LAMPORTS)
+const MOVE_PRICE_LAMPORTS = parseInt(process.env.X402_MOVE_PRICE_LAMPORTS, 10) || 100_000;
+const MOVE_PRICE_SOL = MOVE_PRICE_LAMPORTS / LAMPORTS_PER_SOL;
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
 
@@ -110,16 +115,6 @@ function extractMemo(tx) {
   return null;
 }
 
-// Validate memo format "endpoint:<path>;nonce:<8+ chars>" against requestPath.
-function validateMemo(memoStr, requestPath) {
-  if (!memoStr) return { ok: false, error: 'memo required' };
-  const match = memoStr.match(/^endpoint:([^;]+);nonce:(.+)$/);
-  if (!match) return { ok: false, error: 'invalid memo format' };
-  const [, endpoint, nonce] = match;
-  if (endpoint !== requestPath)  return { ok: false, error: 'endpoint mismatch' };
-  if (nonce.length < 8)          return { ok: false, error: 'invalid nonce' };
-  return { ok: true };
-}
 const X402_POLL_ATTEMPTS = 10;
 const X402_POLL_MS       = 500;
 const X402_MAX_AGE_MS    = 60_000;
@@ -151,7 +146,7 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
       if (received >= expectedLamports) {
         console.log(`[x402] Verified: ${amountSol} SOL`);
         usedSigs.set(sigHint, Date.now() + 120_000);
-        return { ok: true, sig: sigHint, received };
+        return { ok: true, sig: sigHint, received, memo: extractMemo(tx) };
       }
       return { ok: false, error: 'insufficient payment' };
     }
@@ -180,7 +175,7 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
         if (received >= expectedLamports) {
           console.log(`[x402] Verified: ${amountSol} SOL from ${playerPubkeyStr}`);
           usedSigs.set(sigInfo.signature, Date.now() + 120_000);
-          return { ok: true, sig: sigInfo.signature, received };
+          return { ok: true, sig: sigInfo.signature, received, memo: extractMemo(tx) };
         }
       }
       if (attempt < X402_POLL_ATTEMPTS - 1) await new Promise(r => setTimeout(r, X402_POLL_MS));
@@ -221,6 +216,14 @@ const httpServer = http.createServer(async (req, res) => {
     '/x402/extra-action':  0.01,
     '/x402/scout-peek':    0.005,
     '/x402/counter-peek':  0.003,
+    // Phase 12 move endpoints — 0.0001 SOL (X402_MOVE_PRICE_LAMPORTS overrides)
+    '/x402/co': MOVE_PRICE_SOL,
+    '/x402/re': MOVE_PRICE_SOL,
+    '/x402/hc': MOVE_PRICE_SOL,
+    '/x402/hr': MOVE_PRICE_SOL,
+    '/x402/pa': MOVE_PRICE_SOL,
+    '/x402/rs': MOVE_PRICE_SOL,
+    '/x402/me': MOVE_PRICE_SOL,
   };
   if (req.method === 'POST' && X402_ROUTES[req.url] !== undefined) {
     cors();
@@ -271,6 +274,25 @@ const httpServer = http.createServer(async (req, res) => {
       res.setHeader('X-Payment-Network',   SOLANA_NETWORK);
       res.writeHead(402, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, error: result.error }));
+      return;
+    }
+
+    // Move endpoints: validate memo and return parsed fields
+    if (MOVE_ENDPOINTS.has(req.url)) {
+      const memoStr = result.demo ? (body.memo || '') : (result.memo || body.memo || '');
+      if (!result.demo && memoStr) {
+        const memoCheck = validateMemo(memoStr, req.url);
+        if (!memoCheck.ok) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: memoCheck.error }));
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, memo: memoStr, fields: memoCheck.fields, sig: result.sig }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, memo: memoStr, demo: result.demo }));
       return;
     }
 

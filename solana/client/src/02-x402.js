@@ -188,9 +188,138 @@ async function scoutPeekDev(gameId, target) {
   return res.json();
 }
 
+// ─── Phase 12: move memo payment helpers ─────────────────────────────────────
+// Each function pays 0.0001 SOL (or server-configured price) and attaches the
+// compact move memo as an SPL Memo instruction in the payment tx.
+// WS broadcast continues in parallel via existing handlers (dual-write).
+
+const MOVE_ENDPOINTS = ['/x402/co', '/x402/re', '/x402/hc', '/x402/hr', '/x402/pa', '/x402/rs', '/x402/me'];
+
+function _buildMoveMemoStr(endpoint, fields) {
+  const nonce = _generateNonce();
+  const parts  = [`e:${endpoint}`];
+  for (const [k, v] of Object.entries(fields)) parts.push(`${k}:${v}`);
+  parts.push(`n:${nonce}`);
+  return parts.join(';');
+}
+
+function _generateNonce() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+  return Math.random().toString(36).slice(2).padEnd(16, '0');
+}
+
+/**
+ * Pay for a move endpoint with the compact memo attached.
+ * Generic helper used by all 7 move functions below.
+ *
+ * @param {string} endpoint      - e.g. '/x402/co'
+ * @param {object} memoFields    - key-value pairs (excluding 'e' and 'n')
+ * @param {object} wallet        - wallet adapter
+ * @param {object} conn          - @solana/web3.js Connection
+ * @returns {{ ok, memo, fields?, sig?, demo? }}
+ */
+async function _payMove(endpoint, memoFields, wallet, conn) {
+  const { Transaction, SystemProgram, PublicKey, TransactionInstruction } = window.solanaWeb3 ?? {};
+  if (!Transaction) throw new Error('solanaWeb3 not found on window');
+
+  const fromPk       = new PublicKey(wallet.publicKey.toString());
+  const playerPubkey = fromPk.toBase58();
+  const memoStr      = _buildMoveMemoStr(endpoint, memoFields);
+
+  // ── Probe to get payment spec ─────────────────────────────────────────────
+  const probe = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerPubkey, memo: memoStr }),
+  });
+  if (probe.ok) return probe.json();
+  if (probe.status !== 402) throw new Error(`Unexpected status ${probe.status} from ${endpoint}`);
+
+  const spec     = JSON.parse(probe.headers.get('X-Payment-Required') || '{}');
+  const lamports = spec.accepts?.[0]?.amount ? parseInt(spec.accepts[0].amount, 10) : 100_000;
+  const toPk     = new PublicKey(spec.accepts?.[0]?.payTo ?? TREASURY_ADDR_FALLBACK);
+
+  // ── Build tx with payment + memo ──────────────────────────────────────────
+  const { blockhash } = await conn.getLatestBlockhash('confirmed');
+  const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPk });
+  tx.add(SystemProgram.transfer({ fromPubkey: fromPk, toPubkey: toPk, lamports }));
+  tx.add(new TransactionInstruction({
+    programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
+    keys: [],
+    data: (() => {
+      const enc = new TextEncoder();
+      return enc.encode(memoStr);
+    })(),
+  }));
+
+  const signed = await wallet.signTransaction(tx);
+  const sig    = await conn.sendRawTransaction(signed.serialize());
+  await conn.confirmTransaction(sig, 'confirmed');
+
+  // ── Retry with payment proof ──────────────────────────────────────────────
+  const paid = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Payment': sig },
+    body: JSON.stringify({ playerPubkey, signature: sig, memo: memoStr }),
+  });
+  if (!paid.ok) {
+    const err = await paid.json().catch(() => ({}));
+    throw new Error(err.error ?? `${endpoint} failed: ${paid.status}`);
+  }
+  return paid.json();
+}
+
+// Fallback treasury for probes before spec is known (only used for toPk estimation)
+const TREASURY_ADDR_FALLBACK = '11111111111111111111111111111111';
+
+/** POST /x402/co — action commit */
+async function payCommit({ matchId, round, playerSide = 's', hash }, wallet, conn) {
+  return _payMove('/x402/co', { m: matchId, r: round, p: playerSide, h: hash }, wallet, conn);
+}
+
+/** POST /x402/re — action reveal */
+async function payReveal({ matchId, round, playerSide = 's', actionType, target, salt }, wallet, conn) {
+  return _payMove('/x402/re', { m: matchId, r: round, p: playerSide, a: actionType, g: target, s: salt }, wallet, conn);
+}
+
+/** POST /x402/hc — hand commit (Poseidon) */
+async function payHandCommit({ matchId, round, commitment }, wallet, conn) {
+  return _payMove('/x402/hc', { m: matchId, r: round, c: commitment }, wallet, conn);
+}
+
+/** POST /x402/hr — hand reveal */
+async function payHandReveal({ matchId, round, cardIds }, wallet, conn) {
+  return _payMove('/x402/hr', { m: matchId, r: round, i: cardIds.join(',') }, wallet, conn);
+}
+
+/** POST /x402/pa — phase advance (host only) */
+async function payPhaseAdvance({ matchId, round, phase }, wallet, conn) {
+  return _payMove('/x402/pa', { m: matchId, r: round, p: phase }, wallet, conn);
+}
+
+/** POST /x402/rs — round resolve (host only) */
+async function payRoundResolve({ matchId, round, p1Delta, p2Delta }, wallet, conn) {
+  return _payMove('/x402/rs', { m: matchId, r: round, d: `${p1Delta}/${p2Delta}` }, wallet, conn);
+}
+
+/** POST /x402/me — match end (host only) */
+async function payMatchEnd({ matchId, winner }, wallet, conn) {
+  return _payMove('/x402/me', { m: matchId, w: winner }, wallet, conn);
+}
+
 // Export for both ESM browser and Node.js test environments
 if (typeof module !== 'undefined') {
-  module.exports = { scoutPeek, scoutPeekDev, hireAgent, hireAgentDev, X402_BROKER_URL };
+  module.exports = {
+    scoutPeek, scoutPeekDev, hireAgent, hireAgentDev, X402_BROKER_URL,
+    payCommit, payReveal, payHandCommit, payHandReveal,
+    payPhaseAdvance, payRoundResolve, payMatchEnd,
+  };
 } else if (typeof window !== 'undefined') {
-  window.x402 = { scoutPeek, scoutPeekDev, hireAgent, hireAgentDev };
+  window.x402 = {
+    scoutPeek, scoutPeekDev, hireAgent, hireAgentDev,
+    payCommit, payReveal, payHandCommit, payHandReveal,
+    payPhaseAdvance, payRoundResolve, payMatchEnd,
+  };
 }
