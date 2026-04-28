@@ -78,11 +78,53 @@ function checkHttpRateLimit(ip, now = Date.now()) {
 
 const TREASURY_ADDR    = process.env.TREASURY_PUBKEY || '11111111111111111111111111111111';
 const SOLANA_NETWORK   = process.env.SOLANA_NETWORK  || 'devnet';
+// X402_REQUIRE_MEMO=true: every payment tx must carry a memo binding it to the endpoint.
+// Default 'false' preserves backward compat with clients that don't yet attach memos.
+const X402_REQUIRE_MEMO = process.env.X402_REQUIRE_MEMO === 'true';
+
+// Memo Program IDs (legacy + v2). Ref: https://spl.solana.com/memo
+const MEMO_PROGRAM_IDS = new Set([
+  'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo',   // SPL Memo v1
+  'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',   // SPL Memo v2
+]);
+
+// Extract the first memo instruction data from a Solana transaction.
+// Handles both legacy Message (instructions[].data Buffer) and
+// MessageV0 (compiledInstructions[].data Uint8Array).
+function extractMemo(tx) {
+  const message = tx?.transaction?.message;
+  if (!message) return null;
+  const accountKeys  = message.staticAccountKeys ?? message.accountKeys ?? [];
+  const instructions = message.compiledInstructions ?? message.instructions ?? [];
+  for (const ix of instructions) {
+    const key = accountKeys[ix.programIdIndex];
+    if (!key) continue;
+    const programId = typeof key.toBase58 === 'function' ? key.toBase58() : String(key);
+    if (!MEMO_PROGRAM_IDS.has(programId)) continue;
+    const raw = ix.data;
+    if (raw == null) continue;
+    if (Buffer.isBuffer(raw))      return raw.toString('utf8');
+    if (raw instanceof Uint8Array) return Buffer.from(raw).toString('utf8');
+    if (typeof raw === 'string')   return raw;
+  }
+  return null;
+}
+
+// Validate memo format "endpoint:<path>;nonce:<8+ chars>" against requestPath.
+function validateMemo(memoStr, requestPath) {
+  if (!memoStr) return { ok: false, error: 'memo required' };
+  const match = memoStr.match(/^endpoint:([^;]+);nonce:(.+)$/);
+  if (!match) return { ok: false, error: 'invalid memo format' };
+  const [, endpoint, nonce] = match;
+  if (endpoint !== requestPath)  return { ok: false, error: 'endpoint mismatch' };
+  if (nonce.length < 8)          return { ok: false, error: 'invalid nonce' };
+  return { ok: true };
+}
 const X402_POLL_ATTEMPTS = 10;
 const X402_POLL_MS       = 500;
 const X402_MAX_AGE_MS    = 60_000;
 
-async function _verifyX402Payment(playerPubkeyStr, amountSol) {
+async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath) {
   if (!process.env.TREASURY_PUBKEY) {
     console.log('[x402] No TREASURY_PUBKEY — demo mode');
     return { ok: true, demo: true };
@@ -101,6 +143,11 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol) {
           commitment: COMMITMENT, maxSupportedTransactionVersion: 0,
         });
         if (!tx?.meta) continue;
+        // Memo-based endpoint binding (only when X402_REQUIRE_MEMO=true)
+        if (X402_REQUIRE_MEMO) {
+          const memoCheck = validateMemo(extractMemo(tx), requestPath);
+          if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
+        }
         const accountKeys = tx.transaction.message.staticAccountKeys ?? tx.transaction.message.accountKeys;
         const idx = accountKeys.findIndex(k => k.toBase58() === TREASURY_ADDR);
         if (idx < 0) continue;
@@ -163,10 +210,10 @@ const httpServer = http.createServer(async (req, res) => {
       return;
     }
 
-    const amountSol     = X402_ROUTES[req.url];
+    const amountSol      = X402_ROUTES[req.url];
     const amountLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
     const body   = await _readBody(req);
-    const result = await _verifyX402Payment(body.playerPubkey || '', amountSol);
+    const result = await _verifyX402Payment(body.playerPubkey || '', amountSol, req.url);
 
     if (!result.ok) {
       // x402 v2 spec: PAYMENT-REQUIRED header (Base64-encoded JSON)
@@ -204,6 +251,7 @@ let wss;
 httpServer.listen(PORT, () => {
   console.log(`0xARK Multiplayer Server — HTTP+WS on port ${PORT}`);
   console.log(`Solana RPC: ${RPC_URL}`);
+  console.log(`x402 memo binding: ${X402_REQUIRE_MEMO ? 'REQUIRED' : 'disabled (set X402_REQUIRE_MEMO=true to enforce)'}`);
   console.log('All game state is on-chain. Server holds no game authority.');
 });
 

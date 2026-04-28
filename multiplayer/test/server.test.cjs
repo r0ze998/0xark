@@ -694,23 +694,63 @@ async function asyncTest(name, fn) {
   }
 }
 
-// ─── x402 replay prevention context ──────────────────────────────────────────
+// ─── x402 replay prevention + endpoint binding context ───────────────────────
+
+const MEMO_PROGRAM_IDS = new Set([
+  'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo',
+  'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
+]);
 
 function makeX402Context() {
-  const usedSigs     = new Map();
-  const LAMPORTS     = 1_000_000_000;
-  const MAX_AGE_MS   = 60_000;
-  const SIG_TTL_MS   = 120_000;
+  const usedSigs   = new Map();
+  const LAMPORTS   = 1_000_000_000;
+  const MAX_AGE_MS = 60_000;
+  const SIG_TTL_MS = 120_000;
 
-  // mockEntries: [{ sig, blockTimeSecs, err, receivedLamports }]
-  function makeVerify(mockEntries, nowOverride) {
-    return async function _verifyX402Payment(playerPubkeyStr, amountSol) {
+  function extractMemo(tx) {
+    const message = tx?.transaction?.message;
+    if (!message) return null;
+    const accountKeys  = message.staticAccountKeys ?? message.accountKeys ?? [];
+    const instructions = message.compiledInstructions ?? message.instructions ?? [];
+    for (const ix of instructions) {
+      const key = accountKeys[ix.programIdIndex];
+      if (!key) continue;
+      const programId = typeof key.toBase58 === 'function' ? key.toBase58() : String(key);
+      if (!MEMO_PROGRAM_IDS.has(programId)) continue;
+      const raw = ix.data;
+      if (raw == null) continue;
+      if (Buffer.isBuffer(raw))      return raw.toString('utf8');
+      if (raw instanceof Uint8Array) return Buffer.from(raw).toString('utf8');
+      if (typeof raw === 'string')   return raw;
+    }
+    return null;
+  }
+
+  function validateMemo(memoStr, requestPath) {
+    if (!memoStr) return { ok: false, error: 'memo required' };
+    const match = memoStr.match(/^endpoint:([^;]+);nonce:(.+)$/);
+    if (!match) return { ok: false, error: 'invalid memo format' };
+    const [, endpoint, nonce] = match;
+    if (endpoint !== requestPath) return { ok: false, error: 'endpoint mismatch' };
+    if (nonce.length < 8)         return { ok: false, error: 'invalid nonce' };
+    return { ok: true };
+  }
+
+  // mockEntries: [{ sig, blockTimeSecs, err, receivedLamports, tx? }]
+  // opts: { requireMemo?, now? }  (nowOverride moved into opts for clarity)
+  function makeVerify(mockEntries, opts = {}) {
+    const requireMemo = opts.requireMemo ?? false;
+    return async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath) {
       const expectedLamports = Math.floor(amountSol * LAMPORTS);
-      const now = nowOverride ?? Date.now();
+      const now = opts.now ?? Date.now();
       for (const entry of mockEntries) {
         if (!entry.blockTimeSecs || entry.err) continue;
         if (now - entry.blockTimeSecs * 1000 > MAX_AGE_MS) continue;
         if (usedSigs.has(entry.sig)) return { ok: false, error: 'signature already used' };
+        if (requireMemo) {
+          const memoCheck = validateMemo(extractMemo(entry.tx ?? null), requestPath);
+          if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
+        }
         if (entry.receivedLamports >= expectedLamports) {
           usedSigs.set(entry.sig, now + SIG_TTL_MS);
           return { ok: true, sig: entry.sig, received: entry.receivedLamports };
@@ -726,6 +766,28 @@ function makeX402Context() {
   }
 
   return { usedSigs, makeVerify, gcUsedSigs };
+}
+
+// Build a minimal mock transaction with an optional memo instruction.
+// programId defaults to SPL Memo v2.
+function makeMockTx(opts = {}) {
+  const memoStr   = opts.memoStr   ?? null;
+  const programId = opts.programId ?? 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+  return {
+    meta: { preBalances: [0, 0, 0], postBalances: [0, 5_000_000, 0] },
+    transaction: {
+      message: {
+        accountKeys: [
+          { toBase58: () => 'player' },
+          { toBase58: () => 'TREASURY' },
+          { toBase58: () => programId },
+        ],
+        instructions: memoStr
+          ? [{ programIdIndex: 2, accounts: [], data: Buffer.from(memoStr, 'utf8') }]
+          : [],
+      },
+    },
+  };
 }
 
 // ─── HTTP rate limit context ──────────────────────────────────────────────────
@@ -893,6 +955,100 @@ function makeX402HeaderContext(opts = {}) {
     const { buildPaymentRequiredHeaders } = makeX402HeaderContext({ network: 'mainnet-beta' });
     const headers = buildPaymentRequiredHeaders(0.003);
     assert.equal(headers['X-Payment-Network'], 'mainnet-beta');
+  });
+
+  console.log('\nx402 endpoint binding (memo)');
+
+  await asyncTest('requireMemo=false: tx without memo still passes (regression)', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const verify = makeVerify(
+      [{ sig: 'sig-no-memo', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000, tx: makeMockTx() }],
+      { requireMemo: false },
+    );
+    const result = await verify('playerPk', 0.005, '/x402/scout-peek');
+    assert.equal(result.ok, true);
+  });
+
+  await asyncTest('requireMemo=true: valid memo (SPL Memo v2) passes', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const memo = 'endpoint:/x402/scout-peek;nonce:a1b2c3d4';
+    const verify = makeVerify(
+      [{ sig: 'sig-v2', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000,
+         tx: makeMockTx({ memoStr: memo, programId: 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr' }) }],
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.005, '/x402/scout-peek');
+    assert.equal(result.ok, true);
+  });
+
+  await asyncTest('requireMemo=true: valid memo (SPL Memo v1 legacy) passes', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const memo = 'endpoint:/x402/counter-peek;nonce:z9y8x7w6';
+    const verify = makeVerify(
+      [{ sig: 'sig-v1', blockTimeSecs: nowSecs, err: null, receivedLamports: 3_000_000,
+         tx: makeMockTx({ memoStr: memo, programId: 'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo' }) }],
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.003, '/x402/counter-peek');
+    assert.equal(result.ok, true);
+  });
+
+  await asyncTest('requireMemo=true: tx without memo → memo required', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const verify = makeVerify(
+      [{ sig: 'sig-nomemo', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000,
+         tx: makeMockTx() }],  // no memoStr → empty instructions
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.005, '/x402/scout-peek');
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'memo required');
+  });
+
+  await asyncTest('requireMemo=true: malformed memo ("foo:bar") → invalid memo format', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const verify = makeVerify(
+      [{ sig: 'sig-badmemo', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000,
+         tx: makeMockTx({ memoStr: 'foo:bar' }) }],
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.005, '/x402/scout-peek');
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'invalid memo format');
+  });
+
+  await asyncTest('requireMemo=true: endpoint mismatch → endpoint mismatch error', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    // Payment memo says scout-peek but client is hitting counter-peek
+    const memo = 'endpoint:/x402/scout-peek;nonce:a1b2c3d4';
+    const verify = makeVerify(
+      [{ sig: 'sig-mismatch', blockTimeSecs: nowSecs, err: null, receivedLamports: 3_000_000,
+         tx: makeMockTx({ memoStr: memo }) }],
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.003, '/x402/counter-peek');
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'endpoint mismatch');
+  });
+
+  await asyncTest('requireMemo=true: nonce < 8 chars → invalid nonce', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const memo = 'endpoint:/x402/scout-peek;nonce:ab';  // only 2 chars
+    const verify = makeVerify(
+      [{ sig: 'sig-shortnonce', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000,
+         tx: makeMockTx({ memoStr: memo }) }],
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.005, '/x402/scout-peek');
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'invalid nonce');
   });
 
   console.log('\n────────────────────────────────────────────');
