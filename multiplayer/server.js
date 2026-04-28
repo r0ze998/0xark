@@ -23,7 +23,7 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, usedSigs, rateLimits } from './state.js';
+import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, usedSigs, rateLimits, gcRoundClaims } from './state.js';
 import { HANDLERS } from './handlers/index.js';
 
 const PORT = process.env.PORT || 3500;
@@ -295,11 +295,12 @@ httpServer.listen(PORT, () => {
 
 wss = new WebSocketServer({ server: httpServer });
 
-// GC every 30s: usedSigs (120s TTL) + expired rateLimits windows
+// GC every 30s: usedSigs (120s TTL) + expired rateLimits windows + roundClaims (5m TTL)
 const _sigGcInterval = setInterval(() => {
   const now = Date.now();
   usedSigs.forEach((expiry, sig) => { if (expiry < now) usedSigs.delete(sig); });
   rateLimits.forEach((entry, ip) => { if (now - entry.windowStart >= HTTP_RATE_WINDOW) rateLimits.delete(ip); });
+  gcRoundClaims(300_000);
 }, 30_000);
 process.on('exit', () => clearInterval(_sigGcInterval));
 

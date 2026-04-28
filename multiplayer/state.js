@@ -77,3 +77,24 @@ export const usedSigs = new Map();
 // ─── HTTP rate limiting ───────────────────────────────────────────────────────
 // ip → { count, windowStart }. GC'd alongside usedSigs every 30s.
 export const rateLimits = new Map();
+
+// ─── Phase 11: deterministic damage verification ──────────────────────────────
+// roundClaims: `${duel_id}:${round}` → Map<playerId, { p1HpDelta, p2HpDelta }>
+// Both players submit their independently-computed delta; server cross-checks.
+export const roundClaims = new Map();
+
+// violationLog: duel_id → violation_record[]
+// { round, hostId, claimantId, hostDelta, claimantDelta, ts }
+export const violationLog = new Map();
+
+export function recordViolation(duelId, record) {
+  if (!violationLog.has(duelId)) violationLog.set(duelId, []);
+  violationLog.get(duelId).push({ ...record, ts: Date.now() });
+}
+
+export function gcRoundClaims(maxAgeMs = 300_000) {
+  const cutoff = Date.now() - maxAgeMs;
+  for (const [key, playerMap] of roundClaims) {
+    if (playerMap._ts && playerMap._ts < cutoff) roundClaims.delete(key);
+  }
+}
