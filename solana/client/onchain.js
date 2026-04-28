@@ -813,7 +813,7 @@ async function startGameMB(gameId, playerPubkeyStrs = []) {
       console.log('[MagicBlock] Delegation stub (Rust update required). MB routing OFF. sig:', sig);
     }
   }
-  return sig;
+  return { sig, erActive: _mbMode };
 }
 
 /**
@@ -1523,8 +1523,9 @@ async function registerCard(cardId) {
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
-  // MagicBlock ER mode toggle (requires window.oxarkMB / 01-magicblock.js)
+  // MagicBlock ER mode toggle and getter (requires window.oxarkMB / 01-magicblock.js)
   setMagicBlockMode,
+  getMbMode: () => _mbMode,
   // MagicBlock delegation instructions (Phase C Day 2 — real Rust CPI)
   delegateSession,
   undelegateSession,

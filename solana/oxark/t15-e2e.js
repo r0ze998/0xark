@@ -15,7 +15,15 @@ const DLGM_PROGRAM = new web3.PublicKey('DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARR
 const MAGIC_PROG   = new web3.PublicKey('Magic11111111111111111111111111111111111111');
 const MAGIC_CTX    = new web3.PublicKey('MagicContext1111111111111111111111111111111');
 const MB_ROUTER    = 'https://devnet-router.magicblock.app';
-const DEVNET_RPC   = 'https://api.devnet.solana.com';
+const DEVNET_RPC   = (() => {
+  const rpc = process.env.DEVNET_RPC;
+  if (!rpc) {
+    console.error('ERROR: DEVNET_RPC env var is required.');
+    console.error('  Run: DEVNET_RPC=https://api.devnet.solana.com node t15-e2e.js');
+    process.exit(1);
+  }
+  return rpc;
+})();
 
 // ─── Keypair ─────────────────────────────────────────────────────────────────
 const keypairRaw = JSON.parse(fs.readFileSync(`${process.env.HOME}/.config/solana/id.json`));
@@ -185,6 +193,26 @@ function ixCommitAction(gameId, p, hash32) {
   });
 }
 
+function ixRevealAction(gameId, p, actionType, target32, salt32) {
+  const data = Buffer.concat([
+    disc('reveal_action'),
+    u64LE(gameId),
+    Buffer.from([actionType]),
+    Buffer.from(target32),
+    Buffer.from(salt32),
+  ]);
+  return new web3.TransactionInstruction({
+    programId: PROGRAM_ID,
+    keys: [
+      { pubkey: p.game,                             isSigner: false, isWritable: true  },
+      { pubkey: p.playerState,                      isSigner: false, isWritable: true  },
+      { pubkey: p.commit,                           isSigner: false, isWritable: false },
+      { pubkey: payer.publicKey,                    isSigner: true,  isWritable: false },
+    ],
+    data,
+  });
+}
+
 function ixUndelegateSession(gameId, p) {
   const data = Buffer.concat([disc('undelegate_session'), u64LE(gameId)]);
   return new web3.TransactionInstruction({
@@ -203,9 +231,10 @@ function ixUndelegateSession(gameId, p) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
   const gameId = Date.now() % 1000000; // 6-digit game ID from timestamp
-  console.log('\n=== T15 E2E — Phase C Day 2 ===');
+  console.log('\n=== T15 E2E — Phase 10 (ER production) ===');
   console.log('Game ID:', gameId);
   console.log('Program:', PROGRAM_ID.toBase58());
+  console.log('DEVNET_RPC:', DEVNET_RPC);
   console.log('');
 
   const p = pdas(gameId);
@@ -214,6 +243,18 @@ async function main() {
   console.log('  playerState: ', p.playerState.toBase58());
   console.log('  cardPool:    ', p.cardPool.toBase58());
   console.log('');
+
+  // ── Action params for commit→reveal cycle ────────────────────────────────────
+  // ACTION_TYPE 1 = Draw (see ActionType enum in state.rs)
+  const ACTION_TYPE_DRAW = 1;
+  const actionTypeBuf = Buffer.from([ACTION_TYPE_DRAW]);
+  const target = Buffer.alloc(32); // null target (Draw has no target)
+
+  // Base-layer baseline uses salt1; ER cycle uses salt2 so they don't conflict.
+  const salt1 = crypto.randomBytes(32);
+  const salt2 = crypto.randomBytes(32);
+  const hash1 = crypto.createHash('sha256').update(Buffer.concat([actionTypeBuf, target, salt1])).digest();
+  const hash2 = crypto.createHash('sha256').update(Buffer.concat([actionTypeBuf, target, salt2])).digest();
 
   const results = {};
 
@@ -238,8 +279,9 @@ async function main() {
   results.delegateSession = await sendAndConfirm(devnet, txDelegate, [payer], 'delegate_session');
 
   // ── 5a. commit_action via base layer (latency baseline) ─────────────────────
-  console.log('[5a] commit_action — base layer (latency baseline)');
-  const hash1 = crypto.randomBytes(32);
+  // Expected to fail after delegation (game/playerState now owned by ER validator).
+  // SKIPPED result is normal — it confirms delegation is active.
+  console.log('[5a] commit_action — base layer (latency baseline; expected SKIP post-delegation)');
   const txCommitBase = new web3.Transaction().add(ixCommitAction(gameId, p, hash1));
   const bhBase = await devnet.getLatestBlockhash();
   txCommitBase.recentBlockhash = bhBase.blockhash;
@@ -252,21 +294,36 @@ async function main() {
     results.commitBase = { sig: sigBase, ms: Date.now() - t0base };
     console.log(`  [commit_action/base] sig=${sigBase.slice(0,20)}... (${results.commitBase.ms}ms)`);
   } catch(e) {
-    console.log(`  [commit_action/base] SKIPPED (already committed): ${e.message.slice(0,60)}`);
+    console.log(`  [commit_action/base] SKIPPED (expected — accounts delegated to ER): ${e.message.slice(0,80)}`);
     results.commitBase = { sig: null, ms: null, skipped: true };
   }
 
   // ── 5b. commit_action via Magic Router (ER) ──────────────────────────────────
+  // Uses salt2/hash2 to avoid collision with the base-layer attempt above.
   console.log('[5b] commit_action — Magic Router / ER');
-  // Note: After delegation, accounts are owned by ER validator.
-  // The Magic Router auto-routes to ER based on writable delegated accounts.
-  const hash2 = crypto.randomBytes(32); // new hash for round 2 (if applicable)
   const txCommitER = new web3.Transaction().add(ixCommitAction(gameId, p, hash2));
   try {
     results.commitER = await sendViaMagicRouter(txCommitER, 'commit_action/ER');
   } catch(e) {
     console.log(`  [commit_action/ER] ERROR: ${e.message.slice(0,100)}`);
     results.commitER = { sig: null, ms: null, error: e.message };
+  }
+
+  // ── 5c. reveal_action via Magic Router (ER) — completes the commit→reveal cycle
+  if (results.commitER?.sig) {
+    console.log('[5c] reveal_action — Magic Router / ER (reveals the 5b commit)');
+    const txRevealER = new web3.Transaction().add(
+      ixRevealAction(gameId, p, ACTION_TYPE_DRAW, target, salt2)
+    );
+    try {
+      results.revealER = await sendViaMagicRouter(txRevealER, 'reveal_action/ER');
+    } catch(e) {
+      console.log(`  [reveal_action/ER] ERROR: ${e.message.slice(0,100)}`);
+      results.revealER = { sig: null, ms: null, error: e.message };
+    }
+  } else {
+    console.log('[5c] reveal_action — SKIPPED (5b commit did not succeed)');
+    results.revealER = { sig: null, ms: null, skipped: true };
   }
 
   // ── 6. undelegate_session ───────────────────────────────────────────────────
@@ -285,34 +342,46 @@ async function main() {
   console.log('Program ID:     ', PROGRAM_ID.toBase58());
   for (const [k, v] of Object.entries(results)) {
     if (v && v.sig) {
-      console.log(`${k.padEnd(20)}: ${v.sig} (${v.ms}ms)`);
+      console.log(`${k.padEnd(22)}: ${v.sig} (${v.ms}ms)`);
     } else if (v && v.error) {
-      console.log(`${k.padEnd(20)}: ERROR — ${v.error.slice(0,80)}`);
+      console.log(`${k.padEnd(22)}: ERROR — ${v.error.slice(0,80)}`);
     } else if (v && v.skipped) {
-      console.log(`${k.padEnd(20)}: SKIPPED`);
+      console.log(`${k.padEnd(22)}: SKIPPED`);
     }
   }
 
-  // latency
-  if (results.commitBase?.ms && results.commitER?.ms) {
-    console.log(`\nLatency:`);
-    console.log(`  Base layer:  ${results.commitBase.ms}ms`);
-    console.log(`  ER (router): ${results.commitER.ms}ms`);
-    console.log(`  Speedup:     ${(results.commitBase.ms / results.commitER.ms).toFixed(1)}x`);
-  } else {
-    // ping comparison as fallback
-    console.log('\nLatency (ping comparison):');
-    const t1 = Date.now();
-    await fetch(DEVNET_RPC, { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({jsonrpc:'2.0',id:1,method:'getHealth',params:[]}) });
-    const baseMs = Date.now() - t1;
-    const t2 = Date.now();
-    await fetch(MB_ROUTER, { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({jsonrpc:'2.0',id:1,method:'getHealth',params:[]}) });
-    const routerMs = Date.now() - t2;
-    console.log(`  Devnet RPC:   ${baseMs}ms`);
-    console.log(`  Magic Router: ${routerMs}ms`);
+  // ── Latency report ───────────────────────────────────────────────────────────
+  console.log('\n=== LATENCY ===');
+  if (results.commitBase?.ms) {
+    console.log(`  Base layer commit:   ${results.commitBase.ms}ms`);
   }
+  if (results.commitER?.ms) {
+    console.log(`  ER commit (router):  ${results.commitER.ms}ms`);
+  }
+  if (results.revealER?.ms) {
+    console.log(`  ER reveal (router):  ${results.revealER.ms}ms`);
+  }
+  if (results.commitBase?.ms && results.commitER?.ms) {
+    console.log(`  Speedup (commit):    ${(results.commitBase.ms / results.commitER.ms).toFixed(1)}x`);
+  }
+
+  // Ping comparison as fallback baseline
+  console.log('\n  Ping baseline:');
+  const t1 = Date.now();
+  await fetch(DEVNET_RPC, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({jsonrpc:'2.0',id:1,method:'getHealth',params:[]}) });
+  const baseMs = Date.now() - t1;
+  const t2 = Date.now();
+  await fetch(MB_ROUTER, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({jsonrpc:'2.0',id:1,method:'getHealth',params:[]}) });
+  const routerMs = Date.now() - t2;
+  console.log(`    Devnet RPC:    ${baseMs}ms`);
+  console.log(`    Magic Router:  ${routerMs}ms`);
+
+  // ── ER cycle pass/fail verdict ────────────────────────────────────────────────
+  const erPassed = !!(results.commitER?.sig && results.revealER?.sig);
+  console.log(`\n=== ER COMMIT→REVEAL CYCLE: ${erPassed ? 'PASS ✓' : 'FAIL ✗'} ===`);
+  if (!erPassed) process.exit(1);
 }
 
 main().catch(err => {

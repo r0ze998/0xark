@@ -21,6 +21,9 @@
   <!-- Design system -->
   <link rel="stylesheet" href="src/style/sprite-seas.css">
 
+  <!-- Solana Web3 + on-chain wiring (non-module, loaded before the app module) -->
+  <script src="https://unpkg.com/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
+
   <style>
     html, body { height: 100%; }
     body {
@@ -34,6 +37,9 @@
 </head>
 <body>
   <div id="app"></div>
+
+  <script src="solana/client/onchain.js"></script>
+  <script src="solana/client/src/01-magicblock.js"></script>
 
   <script type="module">
     // ── Wave 1 ────────────────────────────────────────────────
@@ -123,9 +129,43 @@
       navigate('s1-menu', e.detail ?? {});
     });
 
+    // ── ER status banner ─────────────────────────────────────────────────────
+    function showErBanner(msg, color) {
+      const b = document.createElement('div');
+      b.style.cssText = [
+        'position:fixed', 'top:16px', 'left:50%', 'transform:translateX(-50%)',
+        `background:${color}`, 'color:#0a0e1a', 'font-family:VT323,monospace',
+        'font-size:20px', 'padding:8px 28px', 'border-radius:3px',
+        'z-index:9999', 'pointer-events:none', 'letter-spacing:1px',
+      ].join(';');
+      b.textContent = msg;
+      document.body.appendChild(b);
+      setTimeout(() => b.remove(), 4000);
+    }
+
     // Duel flow
-    document.addEventListener('nav:matchmaking', () => {
-      navigate('m3-duel-open', { round: 1, maxRounds: 5, playerName: 'CAPT. VEGA', playerClan: 'black-flag' });
+    document.addEventListener('nav:matchmaking', async () => {
+      const baseDetail = { round: 1, maxRounds: 5, playerName: 'CAPT. VEGA', playerClan: 'black-flag' };
+
+      if (window.oxarkOnchain && window.solana?.publicKey) {
+        const gameId = Date.now() % 1000000;
+        let erActive = false;
+        try {
+          const result = await window.oxarkOnchain.startGameMB(gameId);
+          erActive = result.erActive ?? false;
+          if (erActive) {
+            showErBanner('ER ACTIVE — MagicBlock routing enabled', '#00e87a');
+          } else {
+            showErBanner('ER UNAVAILABLE — base layer only', '#ff6b35');
+          }
+        } catch (e) {
+          console.warn('[matchmaking] on-chain start failed, continuing offline:', e.message);
+          showErBanner('ER UNAVAILABLE — base layer only', '#ff6b35');
+        }
+        navigate('m3-duel-open', { ...baseDetail, gameId, erActive });
+      } else {
+        navigate('m3-duel-open', baseDetail);
+      }
     });
     document.addEventListener('zk:committed', () => {
       navigate('m2-duel-board', { round: 1, maxRounds: 5, phase: 'COMMIT' });

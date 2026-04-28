@@ -104,10 +104,26 @@ Wallet接続 → 0.5 SOL デポジット → スターターカード3枚支給 
 
 ---
 
+## MagicBlock ER 本番化済み (Phase 10 — 2026-04-28)
+
+| 項目 | 内容 |
+|------|------|
+| 本番UI接続 | `index.html` の `nav:matchmaking` が `startGameMB()` を呼び出す |
+| ERステータス | バトル開始時にバナー表示 (緑: ER ACTIVE / 橙: ER UNAVAILABLE) |
+| フォールバック | delegation失敗時は `_mbMode=false` でbase layer透過動作 |
+| ルーター | `https://devnet-router.magicblock.app` |
+| E2Eテスト | `solana/oxark/t15-e2e.js` — commit→reveal→undelegateサイクル検証 |
+| 実行方法 | `DEVNET_RPC=https://api.devnet.solana.com node solana/oxark/t15-e2e.js` |
+
+`startGameMB()` の戻り値: `{ sig: string, erActive: boolean }`  
+`getMbMode()` でERモードの現在値を取得可能 (`window.oxarkOnchain.getMbMode()`)
+
+---
+
 ## 開発ルール
 
 - コード変更前に必ず現在のバージョン確認
 - バージョンは v29 → v30 のようにインクリメント (現在: v100)
 - コミットメッセージ: `vXX: <変更内容>`
-- メインファイル: `solana/client/index.html`（大きいファイル、慎重に編集）
+- メインファイル: `index.html`（ルート — UIエントリポイント）
 - GDD変更時はこのCLAUDE.mdも必ず更新
