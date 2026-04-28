@@ -26,7 +26,7 @@
 
 *[Show: resolve_round.rs resolution order]*
 
-"Resolution order matters: Move → Shadow → Storm → Barrier → Steal → Flame → Scout → Draw → Void. Same-area constraint for Steal, Flame, Void."
+"Each player commits a hand hash on-chain, then reveals simultaneously. The server resolves HP deltas per action — Draw, Steal, Barrier, Scout, and special card types. Five rounds determine the winner."
 
 *[Show: test results — 7/7 passing]*
 
@@ -55,13 +55,12 @@
 *[Show: curl requests]*
 
 ```
-GET /intel/location/1    — $0.002 — "Rival is in Deep Forest"
-GET /intel/hand/1        — $0.003 — "Rival has Umbra, Nihil"
-GET /intel/strategy      — $0.005 — "Go to Ruins, Draw Nihil"
-GET /intel/market        — $0.001 — "Pool status: 3 Aegis remaining"
+POST /x402/scout-peek    — 0.005 SOL — Reveal one card from rival's hand
+POST /x402/counter-peek  — 0.003 SOL — Preview rival's next action type
+POST /x402/extra-action  — 0.01 SOL  — Buy an extra card action slot
 ```
 
-"AI agents pay USDC micropayments for information. Sub-cent costs on Solana make this economically viable."
+"AI agents pay SOL micropayments for information. Sub-cent costs on Solana make this economically viable."
 
 ## [2:00-2:30] Game Client
 
@@ -71,7 +70,7 @@ GET /intel/market        — $0.001 — "Pool status: 3 Aegis remaining"
 
 *[Click through screens]*
 
-"Three interconnected maps with fog of war. Area-specific card drops. AI rivals with pathfinding and personality."
+"Multiplayer lobby, ZK commit-reveal duel board, 5-round card battles. AI rivals play autonomously via the agent framework."
 
 *[Show: battle screen]*
 
