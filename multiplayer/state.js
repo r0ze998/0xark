@@ -48,7 +48,7 @@ export function broadcast(room, msg, excludeId) {
   });
 }
 
-// ZK fog-of-war: town (area 0) always visible; dungeon uses Manhattan radius.
+// Proximity filter: town (area 0) always visible.
 const ZK_VISIBLE_RADIUS = 3;
 export function broadcastProximity(room, moverId, msg) {
   const mover = room.players.get(moverId);

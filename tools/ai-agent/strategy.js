@@ -5,7 +5,6 @@
  * All decisions are deterministic and rules-based.
  */
 
-// Card type counters: attack beats flee, defense beats attack, magic beats defense, recovery is utility
 const COUNTER = {
   attack:   'defense',
   defense:  'magic',
@@ -14,46 +13,7 @@ const COUNTER = {
   recovery: 'attack',  // recovery doesn't really counter — use offensively
 };
 
-// Card rarity weights for scoring
 const RARITY_WEIGHT = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 8 };
-
-/**
- * Heuristic dungeon move decision.
- *
- * Strategy:
- *  - Prefer going deeper (south = higher y) to find rarer cards
- *  - Avoid walls by trying directions in priority order
- *  - If health is low, head toward exit (north)
- *
- * @param {object} state - { x, y, area, hp, maxHp, hand, floorDepth }
- * @param {function} canMove - canMove(dx, dy) => boolean
- * @returns {{ dx: number, dy: number, reason: string }}
- */
-export function heuristicMove(state, canMove) {
-  const lowHp = state.hp / state.maxHp < 0.3;
-
-  // Priority order for directions
-  const priorities = lowHp
-    ? [
-        { dx:  0, dy: -1, reason: 'low hp — retreating north toward exit' },
-        { dx: -1, dy:  0, reason: 'low hp — heading west' },
-        { dx:  1, dy:  0, reason: 'low hp — heading east' },
-        { dx:  0, dy:  1, reason: 'low hp — forced south' },
-      ]
-    : [
-        { dx:  0, dy:  1, reason: 'exploring deeper south for rarer cards' },
-        { dx:  1, dy:  0, reason: 'exploring east' },
-        { dx: -1, dy:  0, reason: 'exploring west' },
-        { dx:  0, dy: -1, reason: 'backtracking north' },
-      ];
-
-  for (const dir of priorities) {
-    if (canMove(dir.dx, dir.dy)) return dir;
-  }
-
-  // Surrounded — stay
-  return { dx: 0, dy: 0, reason: 'surrounded by walls — waiting' };
-}
 
 /**
  * Heuristic card battle decision.

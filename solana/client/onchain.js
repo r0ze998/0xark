@@ -605,112 +605,6 @@ async function generateZkProof(actionType, targetArea, salt, commitHash) {
   };
 }
 
-// ════ OXARK PROGRAM — ZK ════
-
-// ─── ZK Dungeon: init_position ────────────────────────────────────────────
-/**
- * Sends the init_position instruction to record a player's initial dungeon
- * position commitment. Called once after join_game, before the first Move.
- *
- * @param {bigint}     gameId      — game PDA seed
- * @param {Uint8Array} commitment  — 32-byte Poseidon(x, y, area, salt) big-endian
- * @returns {string} transaction signature
- */
-async function initPositionIx(gameId, commitment) {
-  if (!window.solana?.publicKey) throw new Error('Wallet not connected');
-  const conn   = getConnection();
-  const player = new solanaWeb3.PublicKey(window.solana.publicKey.toBytes());
-
-  const [gamePda]   = await findGamePDA(gameId);
-  const [playerPda] = await findPlayerPDA(gameId, player.toBase58());
-
-  // Discriminator: sha256("global:init_position")[0..8]
-  const disc = new Uint8Array([0xfc, 0x28, 0x2a, 0x65, 0x97, 0xf4, 0x72, 0xa0]);
-  const gameIdBuf = new Uint8Array(8);
-  new DataView(gameIdBuf.buffer).setBigUint64(0, BigInt(gameId), true);
-
-  const data = new Uint8Array(8 + 8 + 32);
-  data.set(disc, 0);
-  data.set(gameIdBuf, 8);
-  data.set(commitment, 16);
-
-  const ix = new solanaWeb3.TransactionInstruction({
-    programId: getProgramId(),
-    keys: [
-      { pubkey: gamePda,   isSigner: false, isWritable: false },
-      { pubkey: playerPda, isSigner: false, isWritable: true  },
-      { pubkey: player,    isSigner: true,  isWritable: false },
-    ],
-    data,
-  });
-
-  const tx = new solanaWeb3.Transaction().add(ix);
-  const bh = await conn.getLatestBlockhash('confirmed');
-  tx.recentBlockhash = bh.blockhash;
-  tx.feePayer = player;
-  const signed = await window.solana.signTransaction(tx);
-  const sig    = await conn.sendRawTransaction(signed.serialize());
-  await conn.confirmTransaction({ signature: sig, ...bh }, 'confirmed');
-  return sig;
-}
-
-// ─── ZK Dungeon: verify_dungeon_move ─────────────────────────────────────────
-/**
- * Sends the verify_dungeon_move instruction with an optional Groth16 proof.
- * If proofBytes is null, submits zeroed proof data (devnet tolerance / stub).
- *
- * @param {bigint}          gameId         — game PDA seed
- * @param {Uint8Array}      oldCommitment  — 32-byte old position commitment
- * @param {Uint8Array}      newCommitment  — 32-byte new position commitment
- * @param {Uint8Array|null} proofBytes     — 320-byte encoded proof, or null
- * @returns {string} transaction signature
- */
-async function verifyDungeonMoveIx(gameId, oldCommitment, newCommitment, proofBytes) {
-  if (!window.solana?.publicKey) throw new Error('Wallet not connected');
-  const conn   = getConnection();
-  const player = new solanaWeb3.PublicKey(window.solana.publicKey.toBytes());
-
-  const [gamePda]   = await findGamePDA(gameId);
-  const [playerPda] = await findPlayerPDA(gameId, player.toBase58());
-
-  // Discriminator: sha256("global:verify_dungeon_move")[0..8]
-  const disc = new Uint8Array([0x3b, 0x14, 0x9f, 0xc2, 0x7e, 0x81, 0xd4, 0x7f]);
-  const gameIdBuf = new Uint8Array(8);
-  new DataView(gameIdBuf.buffer).setBigUint64(0, BigInt(gameId), true);
-
-  // Proof: 320 bytes (pi_a 64 + pi_b 128 + pi_c 64 + old_pub 32 + new_pub 32)
-  const proof = proofBytes instanceof Uint8Array && proofBytes.length === 320
-    ? proofBytes
-    : new Uint8Array(320); // zeroed stub if no proof
-
-  // Layout: disc[8] + game_id[8] + old_commitment[32] + new_commitment[32] + proof[320]
-  const data = new Uint8Array(8 + 8 + 32 + 32 + 320);
-  data.set(disc,          0);
-  data.set(gameIdBuf,     8);
-  data.set(oldCommitment, 16);
-  data.set(newCommitment, 48);
-  data.set(proof,         80);
-
-  const ix = new solanaWeb3.TransactionInstruction({
-    programId: getProgramId(),
-    keys: [
-      { pubkey: gamePda,   isSigner: false, isWritable: false },
-      { pubkey: playerPda, isSigner: false, isWritable: true  },
-      { pubkey: player,    isSigner: true,  isWritable: false },
-    ],
-    data,
-  });
-
-  const tx = new solanaWeb3.Transaction().add(ix);
-  const bh = await conn.getLatestBlockhash('confirmed');
-  tx.recentBlockhash = bh.blockhash;
-  tx.feePayer = player;
-  const signed = await window.solana.signTransaction(tx);
-  const sig    = await conn.sendRawTransaction(signed.serialize());
-  await conn.confirmTransaction({ signature: sig, ...bh }, 'confirmed');
-  return sig;
-}
-
 // ─── Instruction: resolve_round ───────────────────────────────────────────
 /**
  * @param {number}   gameId
@@ -1552,9 +1446,6 @@ window.oxarkOnchain = {
   mintCardWithMetadata,
   // ZK proof generation (browser-side, requires snarkjs)
   generateZkProof,
-  // ZK dungeon position (T48) — init_position + verify_dungeon_move
-  initPositionIx,
-  verifyDungeonMoveIx,
   // NFT Trading (T72) — localStorage-backed listings until on-chain escrow is deployed
   listCard,
   buyCard,

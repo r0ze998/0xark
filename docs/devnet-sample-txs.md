@@ -99,7 +99,6 @@ Accounts: StakeVault PDA, Game PDA, winner wallet (signer), System Program
 |---|---|---|---|
 | `commit_hand` | 256 bytes | ~130k | ~2s (WebWorker) |
 | `commit_reveal` | 256 bytes | ~94k | ~1.8s |
-| `dungeon_move` | 256 bytes | ~101k | ~1.5s |
 
 All three circuits use Groth16 BN254 with `pot12_final.ptau` trusted setup.  
 Verification uses Solana `alt_bn128` syscall (native, no L2 required).
