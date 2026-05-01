@@ -254,7 +254,8 @@ function showLegendaryEffect(container) {
 }
 
 function updatePersonalities(s, cardId) {
-  const LEGENDARY_TO_PERSO = { 10:'conqueror', 20:'patron', 30:'phoenix', 40:'sage', 50:'hermit', 60:'detective' };
+  // game-design-v2: Oracle(40)→detective, Architect(60)→sage
+  const LEGENDARY_TO_PERSO = { 10:'conqueror', 20:'patron', 30:'phoenix', 40:'detective', 50:'hermit', 60:'sage' };
   const perso = LEGENDARY_TO_PERSO[cardId];
   if (!perso) return '';
 

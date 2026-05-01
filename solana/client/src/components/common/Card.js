@@ -3,7 +3,14 @@ import { getCard } from '../../lib/cards.js';
 
 export const FACTION_NAMES  = ['Knight','Merchant','Pirate','Scholar','Monk','Engineer'];
 export const FACTION_ABBR   = ['KNT','MRC','PIR','SCH','MNK','ENG'];
-export const FACTION_COLORS = ['#6a9fd8','#c9a227','#e05070','#5ab87a','#a070e0','#d97a30'];
+export const FACTION_COLORS = [
+  'var(--clan-knight)',    // Knight
+  'var(--clan-merchant)',  // Merchant
+  'var(--clan-pirate)',    // Pirate
+  'var(--clan-scholar)',   // Scholar
+  'var(--clan-monk)',      // Monk
+  'var(--clan-engineer)',  // Engineer
+];
 export const RARITY_LABELS  = ['COM','UNC','RARE','LGD'];
 export const ACTION_LABELS  = ['◆ CRYSTAL','🛡 BARRIER','⚡ FLAME','🌀 STORM','◎ SHADOW','✦ VOID'];
 export const ACTION_ICONS   = ['◆','🛡','⚡','🌀','◎','✦'];

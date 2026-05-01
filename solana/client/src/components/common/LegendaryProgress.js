@@ -1,12 +1,19 @@
 // LegendaryProgress.js — 6-personality Legendary progress indicators
 
+// Personality ↔ Legendary mapping per game-design-v2:
+//   Conqueror ← Sentinel  (Knight,   id=10)
+//   Patron    ← Magnate   (Merchant, id=20)
+//   Phoenix   ← Marauder  (Pirate,   id=30)
+//   Detective ← Oracle    (Scholar,  id=40)
+//   Hermit    ← Ascetic   (Monk,     id=50)
+//   Sage      ← Architect (Engineer, id=60)
 export const PERSONALITIES = [
-  { id: 'conqueror', label: 'CONQUEROR', faction: 0, legendaryId: 10,  icon: '⚔',  color: '#6a9fd8' },
-  { id: 'patron',    label: 'PATRON',    faction: 1, legendaryId: 20,  icon: '◈',  color: '#c9a227' },
-  { id: 'phoenix',   label: 'PHOENIX',   faction: 2, legendaryId: 30,  icon: '⚡',  color: '#e05070' },
-  { id: 'sage',      label: 'SAGE',      faction: 3, legendaryId: 40,  icon: '◎',  color: '#5ab87a' },
-  { id: 'hermit',    label: 'HERMIT',    faction: 4, legendaryId: 50,  icon: '✦',  color: '#a070e0' },
-  { id: 'detective', label: 'DETECTIVE', faction: 5, legendaryId: 60,  icon: '⬡',  color: '#d97a30' },
+  { id: 'conqueror', label: 'CONQUEROR', faction: 0, legendaryId: 10, icon: '⚔', color: 'var(--clan-knight)'   },
+  { id: 'patron',    label: 'PATRON',    faction: 1, legendaryId: 20, icon: '◈', color: 'var(--clan-merchant)' },
+  { id: 'phoenix',   label: 'PHOENIX',   faction: 2, legendaryId: 30, icon: '⚡', color: 'var(--clan-pirate)'   },
+  { id: 'detective', label: 'DETECTIVE', faction: 3, legendaryId: 40, icon: '◎', color: 'var(--clan-scholar)'  },
+  { id: 'hermit',    label: 'HERMIT',    faction: 4, legendaryId: 50, icon: '✦', color: 'var(--clan-monk)'     },
+  { id: 'sage',      label: 'SAGE',      faction: 5, legendaryId: 60, icon: '⬡', color: 'var(--clan-engineer)' },
 ];
 
 /**

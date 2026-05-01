@@ -45,16 +45,15 @@ document.addEventListener('nav:interruption', e => navigate('interruption', e.de
 document.addEventListener('nav:reveal',       e => navigate('reveal',       e.detail ?? {}));
 document.addEventListener('nav:loot',         e => navigate('loot',         e.detail ?? {}));
 
-// Boot
-document.addEventListener('DOMContentLoaded', () => {
-  // Attempt wallet auto-connect
-  if (window.oxarkWallet?.isConnected?.()) {
-    const pub = window.oxarkWallet.getPublicKey?.()?.toString() ?? '';
-    navigate('main', { pubkey: pub, vault: getDemoVault() });
-  } else {
-    navigate('main', { vault: getDemoVault() });
-  }
-});
+// Boot — app.js loads via dynamic import() which resolves after DOMContentLoaded.
+// Calling navigate() directly here is always safe.
+function boot() {
+  const pub = window.oxarkWallet?.isConnected?.()
+    ? (window.oxarkWallet.getPublicKey?.()?.toString() ?? '')
+    : '';
+  navigate('main', { pubkey: pub, vault: getDemoVault() });
+}
+boot();
 
 // Demo vault for local testing — first 30 cards owned
 function getDemoVault() {

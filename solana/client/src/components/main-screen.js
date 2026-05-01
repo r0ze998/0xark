@@ -58,7 +58,7 @@ function buildHTML({ vault, pubkey, perso }) {
   <header class="ms-topbar">
     <div class="ms-brand">
       <span class="ms-brand-name">0xARK</span>
-      <span class="chip ms-tagline">SUCCESSION WAR OF ELYON</span>
+      <span class="chip ms-tagline">CARD BATTLE ON SOLANA</span>
     </div>
     <div class="ms-hud flex-row gap-8">
       <span class="chip">VAULT <span class="label-gold">${vaultCount}</span><span class="label-dim">/60</span></span>

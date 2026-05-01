@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>0xARK · Succession War of Elyon</title>
+  <title>0xARK — Card Battle on Solana</title>
 
   <!-- VT323 pixel font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,11 +22,12 @@
       --accent-gold: #c9a227;
       --accent-red:  #d63b3b;
       --accent-blue: #4a90d9;
-      --clan-black-flag:   #1a3a5c;
-      --clan-hollow-blade: #8c1c2e;
-      --clan-iron-circle:  #2d5a3d;
-      --clan-bourse:       #c9a227;
-      --clan-nameless-silk:#5a2a7a;
+      --clan-knight:    #4a90d9;  /* 騎士: 青 */
+      --clan-merchant:  #c9a227;  /* 商人: 金 */
+      --clan-pirate:    #d63b3b;  /* 海賊: 赤 */
+      --clan-scholar:   #8b6cb8;  /* 学者: 紫 */
+      --clan-monk:      #6a8a6a;  /* 僧: 緑 */
+      --clan-engineer:  #d4884a;  /* 技師: 茶橙 */
       --border-hard: 2px solid #000;
       --border-gold: 2px solid var(--accent-gold);
       --border-dim:  1px solid rgba(201, 162, 39, 0.35);
@@ -142,18 +143,19 @@
     .gap-16 { gap: 16px; }
     .gap-24 { gap: 24px; }
 
-    .clan-black-flag    { color: #6a9fd8; }
-    .clan-hollow-blade  { color: #e05070; }
-    .clan-iron-circle   { color: #5ab87a; }
-    .clan-bourse        { color: var(--accent-gold); }
-    .clan-nameless-silk { color: #a070e0; }
+    .clan-knight    { color: var(--clan-knight); }
+    .clan-merchant  { color: var(--clan-merchant); }
+    .clan-pirate    { color: var(--clan-pirate); }
+    .clan-scholar   { color: var(--clan-scholar); }
+    .clan-monk      { color: var(--clan-monk); }
+    .clan-engineer  { color: var(--clan-engineer); }
   </style>
 </head>
 <body>
   <div id="app">
     <div id="app-loading">
       <div class="load-logo">0xARK</div>
-      <div class="load-sub">SUCCESSION WAR OF ELYON</div>
+      <div class="load-sub">CARD BATTLE ON SOLANA</div>
       <div class="load-bar-wrap"><div class="load-bar"></div></div>
     </div>
   </div>
