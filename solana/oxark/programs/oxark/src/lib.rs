@@ -680,6 +680,22 @@ pub mod oxark {
 
     // ── Phase 15: Season v2 ───────────────────────────────────────────────────
 
+    /// Initialize the Season 1 GameWorld singleton PDA.
+    ///
+    /// Admin-only (ADMIN_PUBKEY). Can only be called once (init constraint).
+    ///
+    /// `game_start_timestamp`: Unix timestamp when the game goes active.
+    ///   waitlist_close = game_start - 14 days
+    ///   end            = game_start + 14 days
+    ///
+    /// PDA seeds: ["game_world"]
+    pub fn init_game_world(
+        ctx: Context<InitGameWorld>,
+        game_start_timestamp: i64,
+    ) -> Result<()> {
+        instructions::init_game_world::handle_init_game_world(ctx, game_start_timestamp)
+    }
+
     /// Register on the Season 1 waitlist.
     ///
     /// Deposits 0.5 SOL (85% → prize_pool, 15% → ops_treasury).

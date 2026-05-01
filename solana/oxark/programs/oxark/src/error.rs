@@ -131,7 +131,9 @@ pub enum ErrorCode {
     NoActiveLease,
     #[msg("Lease has not expired yet")]
     LeaseNotExpired,
-    // ── Phase 15: Waitlist / Season v2 ───────────────────────────────────────
+    // ── Phase 15: Admin / Waitlist / Season v2 ──────────────────────────────
+    #[msg("Caller is not the authorized admin")]
+    Unauthorized,
     #[msg("Waitlist registration is closed")]
     WaitlistClosed,
     #[msg("Player is already registered for this season")]
