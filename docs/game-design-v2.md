@@ -143,7 +143,7 @@ Tier 4〜5 (参加者の約 78%) はデポジット以下のリターンとな�
 | 5 | Ascetic | Monk | Hermit | x402 一切使わず5連勝した最初の10人 | バトル中、ActionType 一切作動しない (両者) |
 | 6 | Architect | Engineer | Sage | 10試合連続で違う ActionType 使った最初の10人 | バトル中、自陣 ActionType 2つ発動可能 |
 
-> **Note**: Legendary 能力の詳細実装は 5/11 後対応 (Section 11 参照)。入手判定ロジック (バッチ or リアルタイム) は TBD。
+> **Note**: Legendary 能力の詳細実装は 5/11 後対応 (Section 11 参照)。入手判定: **リアルタイム判定** 確定 (T-8 確定 → Phase 15 B-6 実装)。
 
 ---
 
@@ -194,9 +194,11 @@ Tier 4〜5 (参加者の約 78%) はデポジット以下のリターンとな�
 
 ### 制約事項
 
-- 1試合の最大時間: TBD
-- 中断フェーズのタイムアウト: TBD
-- 同一相手との連続マッチング制限: TBD
+- 1試合の最大時間: 準備フェーズ 3分 + 中断フェーズ 1分 + Reveal 自動 = 合計約 4〜5分 (T-2 確定)
+  - 準備フェーズ タイムアウト時: vault からランダム 5枚、ActionType もランダム割当
+  - 中断フェーズ タイムアウト時: peek なし、差し替えなしで進行
+- 中断フェーズのタイムアウト: 1分 (T-3 確定)
+- 同一相手との連続マッチング制限: TBD (T-4)
 
 ---
 
@@ -293,11 +295,12 @@ Step 6: 破壊カード / 生存カード判定
 
 ## 9. Waitlist
 
-- ゲーム開始 N日前まで登録受付 (期限: TBD)
+- ゲーム開始 **14日前** まで登録受付 (T-5 確定)
 - 登録者全員参加 (先着制ではなく全員参加)
 - 期限後は参加不可 — 次 Season 待ち
-- 登録方法: TBD (Web フォーム / on-chain 登録 / 両方)
-- Waitlist PDA 設計: TBD (Phase 15 スコープ)
+- 登録方法: Waitlist サイトから **Phantom 接続 + 即時 0.5 SOL deposit** (T-6 確定)
+  - 後払い不可、登録時に即時 deposit が必須
+- Waitlist PDA 設計: 各 PlayerState を player wallet seed で derive。GameWorld は singleton PDA (T-7 確定 → Phase 15 B-7 実装)
 
 ---
 
@@ -333,7 +336,7 @@ Step 6: 破壊カード / 生存カード判定
 | バトルルール | 新 damage_calc (Step 0〜6、Section 8 準拠) |
 | 賞金分配ロジック | Tier 1〜5 累進分配 + タイムアウト処理 (Section 3 準拠) |
 | Waitlist 管理 | 登録 PDA + 締切判定 |
-| 6 Legendary 入手判定 | バッチ処理 or リアルタイム判定 (方式: TBD) |
+| 6 Legendary 入手判定 | リアルタイム判定 (T-8 確定 → B-6 実装) — 各バトル終了後 + x402 支払い後 + peek 後にトリガー |
 
 ### 5/11 後対応
 
@@ -365,16 +368,21 @@ Claude レビューで指摘された点を正面から認識し記録する。
 
 | # | 箇所 | 内容 |
 |---|------|------|
-| T-1 | Section 1 | Season 1 の正確な開始日 |
-| T-2 | Section 6 | 1試合の最大時間 |
-| T-3 | Section 6 | 中断フェーズのタイムアウト時間 |
-| T-4 | Section 6 | 同一相手との連続マッチング制限 |
-| T-5 | Section 9 | Waitlist 登録期限 (ゲーム開始 N日前) |
-| T-6 | Section 9 | 登録方法 (Web フォーム / on-chain / 両方) |
-| T-7 | Section 9 | Waitlist PDA 設計 |
-| T-8 | Section 5 | Legendary 入手判定方式 (バッチ or リアルタイム) |
+| T-1 | Section 1 | Season 1 の正確な開始日 (マーケティング決定後) |
+| T-4 | Section 6 | 同一相手との連続マッチング制限 (Phase 15 実装中に判断) |
 | T-9 | Section 4 | 勢力シナジー詳細効果 (5/11後) |
 | T-10 | Section 5 | Legendary 能力詳細実装 (5/11後) |
+
+### 確定済み (Phase 15 で解決)
+
+| 旧 # | 内容 | 確定値 |
+|------|------|-------|
+| T-2 | 1試合の最大時間 | 準備 3分 + 中断 1分 + Reveal 自動 |
+| T-3 | 中断フェーズのタイムアウト | 1分 |
+| T-5 | Waitlist 登録期限 | ゲーム開始 14日前 |
+| T-6 | 登録方法 | Phantom 接続 + 即時 0.5 SOL deposit |
+| T-7 | Waitlist PDA 設計 | player wallet seed PlayerState + singleton GameWorld |
+| T-8 | Legendary 入手判定方式 | リアルタイム判定 (B-6) |
 
 ---
 

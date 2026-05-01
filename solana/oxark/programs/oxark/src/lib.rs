@@ -677,4 +677,42 @@ pub mod oxark {
     ) -> Result<()> {
         instructions::legendary::handle_distribute_prize_pool(ctx, season_id)
     }
+
+    // ── Phase 15: Season v2 ───────────────────────────────────────────────────
+
+    /// Register on the Season 1 waitlist.
+    ///
+    /// Deposits 0.5 SOL (85% → prize_pool, 15% → ops_treasury).
+    /// Initializes PlayerState v2 fields and distributes 5 starter cards.
+    /// Callable only while `game_world.waitlist_close_timestamp > now`.
+    ///
+    /// PDA seeds: `["player", player_pubkey]` (init_if_needed)
+    pub fn register_waitlist(ctx: Context<RegisterWaitlist>) -> Result<()> {
+        instructions::register_waitlist::handle_register_waitlist(ctx)
+    }
+
+    /// Check all 6 Legendary acquisition conditions for the calling player.
+    ///
+    /// Called after each battle, x402 payment, or peek action.
+    /// Awards up to one Legendary card per condition that becomes satisfied.
+    /// O(1) per condition — uses pre-tracked counters on PlayerState.
+    ///
+    /// Requires game_status == 1 (active season).
+    pub fn check_legendary_v2(ctx: Context<CheckLegendary>) -> Result<()> {
+        instructions::check_legendary::handle_check_legendary(ctx)
+    }
+
+    /// Claim tier-based prize after season ends (game_status == 2).
+    ///
+    /// Distributes prize proportional to vault_count:
+    ///   Tier 1 (60 cards): 50% / winner_60_count
+    ///   Tier 2 (50-59):    25% × vault_count / tier2_total_vault
+    ///   Tier 3 (30-49):    15% × vault_count / tier3_total_vault
+    ///   Tier 4 (10-29):     8% × vault_count / tier4_total_vault
+    ///   Tier 5  (1-9):      2% × vault_count / tier5_total_vault
+    ///
+    /// If no Tier 1 winner (timeout), player with highest vault_count gets Tier 1.
+    pub fn claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
+        instructions::claim_prize_v2::handle_claim_prize_v2(ctx)
+    }
 }

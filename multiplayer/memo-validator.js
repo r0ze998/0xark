@@ -101,7 +101,7 @@ function _validateCompactMemo(memoStr, requestPath) {
   if (f.s !== undefined && !HEX64_RE.test(f.s))         return { ok: false, error: 'invalid salt (hex64)' };
   if (f.a !== undefined) {
     const a = parseInt(f.a, 10);
-    if (isNaN(a) || a < 0 || a > 10) return { ok: false, error: 'invalid action_type' };
+    if (isNaN(a) || a < 0 || a > 5) return { ok: false, error: 'invalid action_type' };
   }
   if (f.g !== undefined && !BASE58_RE.test(f.g))        return { ok: false, error: 'invalid target pubkey' };
   if (f.w !== undefined && !BASE58_RE.test(f.w))        return { ok: false, error: 'invalid winner pubkey' };
