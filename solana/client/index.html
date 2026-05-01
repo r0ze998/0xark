@@ -2,46 +2,179 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>0xARK · Succession War of Elyon</title>
+
+  <!-- VT323 pixel font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+
+  <!-- Sprite Seas Design System -->
   <style>
+    /* ── Tokens ─────────────────────────────────────────── */
     :root {
-      --bg-deep: #0a0e1a;
-      --accent-gold: #c9a227;
-      --accent-red: #d63b3b;
+      --bg-deep:  #0a0e1a;
+      --bg-mid:   #1a1f33;
+      --bg-panel: rgba(10, 14, 26, 0.88);
       --text-cream: #e8dfc8;
+      --text-dim:   rgba(232, 223, 200, 0.55);
+      --text-gold:  #c9a227;
+      --accent-gold: #c9a227;
+      --accent-red:  #d63b3b;
+      --accent-blue: #4a90d9;
+      --clan-black-flag:   #1a3a5c;
+      --clan-hollow-blade: #8c1c2e;
+      --clan-iron-circle:  #2d5a3d;
+      --clan-bourse:       #c9a227;
+      --clan-nameless-silk:#5a2a7a;
+      --border-hard: 2px solid #000;
+      --border-gold: 2px solid var(--accent-gold);
+      --border-dim:  1px solid rgba(201, 162, 39, 0.35);
+      --font-main: 'VT323', monospace;
+      --ls-normal: 0.02em;
+      --ls-wide:   0.08em;
     }
-    * { box-sizing: border-box; image-rendering: pixelated; }
+
+    /* ── Reset ───────────────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      image-rendering: pixelated;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+    }
+
     body {
-      background: var(--bg-deep); color: var(--text-cream);
-      font-family: 'VT323', monospace; font-size: 20px;
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; margin: 0;
+      color: var(--text-cream);
+      font-family: var(--font-main);
+      font-size: 20px;
+      letter-spacing: var(--ls-normal);
+      overflow: hidden;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
     }
-    .box {
-      border: 2px solid var(--accent-gold);
-      padding: 32px; max-width: 640px; text-align: center;
+
+    /* ── App container ───────────────────────────────────── */
+    #app {
+      width: 1024px;
+      height: 576px;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg-deep);
+      flex-shrink: 0;
     }
-    h1 { color: var(--accent-gold); font-size: 48px; margin: 0 0 8px; }
-    .sub { color: var(--accent-red); margin-bottom: 24px; }
-    a { color: var(--accent-gold); }
-    .meta { font-size: 16px; opacity: 0.7; margin-top: 24px; }
+
+    /* ── Loading state ───────────────────────────────────── */
+    #app-loading {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      background: var(--bg-deep);
+      z-index: 999;
+    }
+    .load-logo { font-size: 72px; color: var(--accent-gold); letter-spacing: 0.12em; }
+    .load-sub  { font-size: 18px; color: var(--text-dim); letter-spacing: 0.1em; }
+    .load-bar-wrap {
+      width: 200px; height: 4px; background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .load-bar {
+      height: 100%; background: var(--accent-gold);
+      animation: load-sweep 1.2s ease-in-out infinite;
+    }
+    @keyframes load-sweep {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+
+    /* ── Shared component classes ────────────────────────── */
+    .gba-btn {
+      font-family: var(--font-main);
+      font-size: 20px;
+      letter-spacing: var(--ls-normal);
+      color: var(--text-cream);
+      background: var(--bg-mid);
+      border: var(--border-gold);
+      padding: 7px 22px;
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 80ms, color 80ms;
+      line-height: 1;
+    }
+    .gba-btn:hover, .gba-btn:focus-visible, .gba-btn.is-active {
+      background: var(--accent-gold); color: var(--bg-deep); outline: none;
+    }
+    .gba-btn:disabled { opacity: 0.45; cursor: default; pointer-events: none; }
+    .gba-btn--primary { background: var(--accent-gold); color: var(--bg-deep); font-size: 22px; border-width: 2px; }
+    .gba-btn--primary:hover { background: #dbb630; }
+    .gba-btn--ghost { background: transparent; border: var(--border-dim); color: var(--text-dim); }
+    .gba-btn--ghost:hover { border-color: var(--accent-gold); color: var(--text-cream); background: transparent; }
+    .gba-btn--danger { border-color: var(--accent-red); }
+    .gba-btn--danger:hover { background: var(--accent-red); color: #fff; }
+
+    .panel { background: var(--bg-panel); border: var(--border-gold); padding: 12px 16px; }
+    .chip {
+      font-family: var(--font-main); font-size: 15px; letter-spacing: var(--ls-wide);
+      background: var(--bg-panel); border: var(--border-dim); padding: 3px 10px;
+      white-space: nowrap; line-height: 1.4;
+    }
+
+    .label-gold { color: var(--accent-gold); }
+    .label-red  { color: var(--accent-red); }
+    .label-dim  { color: var(--text-dim); font-size: 15px; }
+    .sep        { color: var(--accent-gold); margin: 0 6px; }
+    .mono       { font-family: 'Courier New', monospace; font-size: 13px; }
+
+    .abs { position: absolute; }
+    .flex-center { display: flex; align-items: center; justify-content: center; }
+    .flex-row { display: flex; align-items: center; }
+    .gap-8  { gap: 8px; }
+    .gap-16 { gap: 16px; }
+    .gap-24 { gap: 24px; }
+
+    .clan-black-flag    { color: #6a9fd8; }
+    .clan-hollow-blade  { color: #e05070; }
+    .clan-iron-circle   { color: #5ab87a; }
+    .clan-bourse        { color: var(--accent-gold); }
+    .clan-nameless-silk { color: #a070e0; }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1>0xARK</h1>
-    <div class="sub">◆ SUCCESSION WAR OF ELYON ◆</div>
-    <p>UI v4 Migration in Progress · Wave 1 着手中</p>
-    <p>
-      <a href="docs/mockups/v3/0xARK_Succession_War_Mockups_v3.pdf">▸ Mockup Pack v3</a> ·
-      <a href="https://github.com/r0ze998/0xark">▸ GitHub</a>
-    </p>
-    <div class="meta">
-      Anchor (devnet): 5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN<br>
-      v3.0-plus · 408 tests passing · Built on Solana
+  <div id="app">
+    <div id="app-loading">
+      <div class="load-logo">0xARK</div>
+      <div class="load-sub">SUCCESSION WAR OF ELYON</div>
+      <div class="load-bar-wrap"><div class="load-bar"></div></div>
     </div>
   </div>
+
+  <!-- Optional: load Solana web3 & wallet adapter (devnet) -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@latest/lib/index.iife.min.js"></script> -->
+
+  <!-- Battle UI entry point -->
+  <script type="module">
+    // Hide loading once app.js executes
+    import('./app.js').then(() => {
+      const loading = document.getElementById('app-loading');
+      if (loading) loading.style.display = 'none';
+    }).catch(err => {
+      const loading = document.getElementById('app-loading');
+      if (loading) loading.innerHTML = `
+        <div class="load-logo" style="color:var(--accent-red)">ERROR</div>
+        <div class="load-sub">${err.message}</div>
+      `;
+      console.error(err);
+    });
+  </script>
 </body>
 </html>
