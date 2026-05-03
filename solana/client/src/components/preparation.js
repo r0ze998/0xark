@@ -6,6 +6,7 @@ import { CardHTML, injectCardCSS, ACTION_LABELS, ACTION_ICONS } from './common/C
 import { ActionTypeSelectorHTML, injectActionTypeSelectorCSS, ACTION_TYPES } from './common/ActionTypeSelector.js';
 import { startTimer } from './common/Timer.js';
 import { getState, setState } from '../state/battle-state.js';
+import * as duelWs from '../lib/duel-ws.js';
 
 const PREP_SECS = 180; // 3 minutes
 
@@ -232,34 +233,20 @@ async function onConfirm(container) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ COMMITTING…'; }
 
   try {
-    // Generate ZK commitment
-    let commitment = null;
-    let salt = null;
-    if (window.zkCardCommit) {
-      salt = window.zkCardCommit.generateSalt();
-      const cardIds = _field.map(s => s.cardId);
-      commitment = window.zkCardCommit.computeCommitment(cardIds, salt);
-    } else {
-      // Fallback: use timestamp as mock commitment
-      salt = new Uint8Array(32);
-      crypto.getRandomValues(salt);
-      commitment = `commit-${Date.now()}`;
-    }
+    const cardIds = _field.map(s => s.cardId);
+    const salt    = duelWs.generateSalt();
+    const hashBytes = await duelWs.computeHandCommitment(cardIds, salt);
+    const commitmentHex = duelWs.toHex(hashBytes);
 
-    setState({ fieldCards: [..._field], commitment, salt, phase: 'interruption' });
+    setState({ fieldCards: [..._field], commitment: commitmentHex, salt, phase: 'interruption' });
 
-    // POST commit to multiplayer server
-    if (window.x402?.payHandCommit) {
-      const s = getState();
-      await window.x402.payHandCommit({
-        matchId: s.matchId,
-        round: 1,
-        commitment,
-      }, window.solana, null).catch(() => {});
+    const s = getState();
+    if (s.duelId && duelWs.isConnected()) {
+      duelWs.sendHandCommitted(s.duelId, 1, commitmentHex);
     }
 
     document.dispatchEvent(new CustomEvent('nav:interruption'));
-  } catch (err) {
+  } catch {
     if (btn) { btn.disabled = false; btn.textContent = '✓ CONFIRM & COMMIT'; }
   }
 }

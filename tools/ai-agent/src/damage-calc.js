@@ -8,6 +8,7 @@
 //   - seed: SHA-256(salt_p1 || salt_p2 || [round & 0xff])
 
 import { createHash } from 'crypto';
+import { applyBurnEffects, applyPassiveAbilities } from './abilities.js';
 
 // ─── ActionType enum (Phase 15 v2 — 6 types) ─────────────────────────────────
 export const ActionType = Object.freeze({
@@ -85,7 +86,7 @@ function countFaction(cards, faction) {
  *   effects: string[],
  * }
  */
-export function damageCalc({ p1Field, p2Field, seed } = {}) {
+export function damageCalc({ p1Field, p2Field, seed, burnEffects = [] } = {}) {
   const s = seed ? Array.from(seed) : new Array(32).fill(0);
   const effects = [];
 
@@ -95,13 +96,20 @@ export function damageCalc({ p1Field, p2Field, seed } = {}) {
   if (synergyP1) effects.push(`p1_synergy_${synergyP1.faction}`);
   if (synergyP2) effects.push(`p2_synergy_${synergyP2.faction}`);
 
-  // ── Step 1: Pairing — sort each side by INI desc ────────────────────────────
-  const p1Sorted = sortByIniDesc(p1Field, s, 0);
-  const p2Sorted = sortByIniDesc(p2Field, s, 8);
+  // ── Step 0.5: Card abilities — passive + burn effects ────────────────────────
+  // Build work arrays first so ability handlers can mutate bpMod/hpMod/barrierUp.
+  const p1WorkPre = p1Field.map(c => ({ ...c, barrierUp: false, shadow: false, voidBlocked: false, bpMod: 0, hpMod: 0 }));
+  const p2WorkPre = p2Field.map(c => ({ ...c, barrierUp: false, shadow: false, voidBlocked: false, bpMod: 0, hpMod: 0 }));
+  applyPassiveAbilities(p1WorkPre, p2WorkPre, effects);
+  applyBurnEffects(p1WorkPre, p2WorkPre, burnEffects, effects);
 
-  // Working copies with mutable combat state
-  const p1Work = p1Sorted.map(c => ({ ...c, barrierUp: false, shadow: false, voidBlocked: false, bpMod: 0, hpMod: 0 }));
-  const p2Work = p2Sorted.map(c => ({ ...c, barrierUp: false, shadow: false, voidBlocked: false, bpMod: 0, hpMod: 0 }));
+  // ── Step 1: Pairing — sort each side by INI desc ────────────────────────────
+  const p1Sorted = sortByIniDesc(p1WorkPre, s, 0);
+  const p2Sorted = sortByIniDesc(p2WorkPre, s, 8);
+
+  // p1Sorted/p2Sorted already carry the bpMod/hpMod/barrierUp set in Step 0.5.
+  const p1Work = p1Sorted;
+  const p2Work = p2Sorted;
 
   // ── Step 2: Legendary effects (stub — Phase 15 flag mgmt only) ──────────────
   applyLegendaryStubs(p1Work, p2Work, effects);

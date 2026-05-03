@@ -121,6 +121,56 @@ export const cardById = (() => {
   return map;
 })();
 
+// ─── Phase 16: Card abilities (v3.0-plus mechanics) ──────────────────────────
+// Maps card ID → ability descriptor. Only 12 cards have abilities:
+//   - Burn-capable Commons (the 5th Common per faction)
+//   - Rare passive abilities (one per faction)
+export const CARD_ABILITIES = {
+  // Burn-capable Commons
+   5: { type: 'burn', effect: 'knight_bp_boost',      description: 'Burn: other Knight cards get +3 BP this battle' },
+  15: { type: 'burn', effect: 'merchant_bp_scale',    description: 'Burn: own BP total ×1.2 (rounded down) this battle' },
+  25: { type: 'burn', effect: 'pirate_aoe_dmg',       description: 'Burn: deal 3 damage to all enemy cards' },
+  35: { type: 'burn', effect: 'scholar_hand_reveal',  description: 'Burn: reveal opponent hand' },
+  45: { type: 'burn', effect: 'monk_barrier_all',     description: 'Burn: all own cards gain Barrier this battle' },
+  55: { type: 'burn', effect: 'engineer_bp_boost',    description: 'Burn: other Engineer cards get +5 BP this battle' },
+  // Rare passive abilities
+   9: { type: 'passive', effect: 'knight_aura',           description: 'Passive: other Knight cards on field get +1 BP' },
+  19: { type: 'passive', effect: 'merchant_gold_aura',    description: 'Passive: own BP total +5 when Magnate is in pool' },
+  29: { type: 'passive', effect: 'pirate_intimidate',     description: 'Passive: on kill, burn top card from opponent field' },
+  39: { type: 'passive', effect: 'scholar_imprint_scale', description: 'Passive: +1 BP per own stat imprint (max 3)' },
+  49: { type: 'passive', effect: 'monk_soul_harvest',     description: 'Passive: on destroy, reduce all enemy BP by 1' },
+  59: { type: 'passive', effect: 'engineer_overclock',    description: 'Passive: own Engineer cards get +2 BP when 3+ present' },
+};
+
+// ─── Phase 16: Merge recipes (Uncommon-only via merge) ───────────────────────
+// Maps merge-only Uncommon ID → two-Common recipe.
+export const MERGE_RECIPES = {
+   8: { result:  8, recipe: [ 1,  2], name: 'Knight Champion'      },
+  18: { result: 18, recipe: [11, 12], name: 'Merchant Magnate'     },
+  28: { result: 28, recipe: [21, 22], name: 'Pirate Quartermaster' },
+  38: { result: 38, recipe: [31, 32], name: 'Scholar Lorekeeper'   },
+  48: { result: 48, recipe: [41, 42], name: 'Monk Ascender'        },
+  58: { result: 58, recipe: [51, 52], name: 'Engineer Forgemaster' },
+};
+
+// Set of merge-only IDs for fast lookup
+export const MERGE_ONLY_IDS = new Set(Object.keys(MERGE_RECIPES).map(Number));
+
+/** True if card can be burned (Common only; ids 5,15,25,35,45,55) */
+export function isBurnable(id) {
+  return id in CARD_ABILITIES && CARD_ABILITIES[id].type === 'burn';
+}
+
+/** True if card is only obtainable via merge (not through battle loot) */
+export function isMergeOnly(id) {
+  return MERGE_ONLY_IDS.has(id);
+}
+
+/** Get merge recipe for a card, or null */
+export function getMergeRecipe(id) {
+  return MERGE_RECIPES[id] ?? null;
+}
+
 // ─── Card field accessors ─────────────────────────────────────────────────────
 export function getCard(id) {
   const row = cardById[id];
@@ -134,6 +184,9 @@ export function getCard(id) {
     ini:         row[5],
     actionType:  row[6],
     isLegendary: row[7],
+    ability:     CARD_ABILITIES[id] ?? null,
+    mergeOnly:   MERGE_ONLY_IDS.has(id),
+    mergeRecipe: MERGE_RECIPES[id] ?? null,
   };
 }
 

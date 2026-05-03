@@ -386,4 +386,79 @@ Claude レビューで指摘された点を正面から認識し記録する。
 
 ---
 
-*— 0xARK game-design-v2.md, 2026-05-01*
+---
+
+## 13. NFT メカニクス (Phase 16 追加)
+
+*Phase 16 (2026-05-02) で追加。5/11 ハッカソンデモ対象。*
+
+### 13-1. Burn メカニクス
+
+カードを永久破壊し、バトル効果を発動する。
+
+| 属性 | 仕様 |
+|------|------|
+| 対象 | Burn 能力を持つ Common 6枚 (各勢力 1枚) |
+| 実行タイミング | バトル外 — Vault 画面の Card Detail UI から実行 |
+| 効果発動 | 次のバトルの Step 0.5 (パッシブ発動直後) に適用 |
+| on-chain | `burn_card` Anchor 命令 (SPL Token 永続破壊) |
+| 保護 | Rare/Legendary は burn 不可 (rarity ≥ 2) |
+
+**Burn 対象 Common 6枚:**
+
+| カード ID | 名前 | Burn 効果 |
+|----------|------|----------|
+| 5 | Sacrificial Squire (Knight) | 自陣の他 Knight カード BP +3 |
+| 15 | Coin Burner (Merchant) | 自陣全カードの BP ×1.2 (切り捨て) |
+| 25 | Powder Charge (Pirate) | 敵全カードに固定 3 ダメージ |
+| 35 | Burning Tome (Scholar) | 相手手札を公開 (scout_event) |
+| 45 | Mantra Burner (Monk) | 自陣全カードに Barrier 付与 |
+| 55 | Forge Worker (Engineer) | 自陣の他 Engineer カード BP +5 |
+
+### 13-2. Evolve / Merge メカニクス
+
+同勢力の Common 2 枚を融合して、マージ限定 Uncommon を生成する。
+
+| 属性 | 仕様 |
+|------|------|
+| 対象 | 同勢力の Common 2 枚 (親カード) |
+| 結果 | マージ限定 Uncommon 1 枚 (子カード) |
+| 入手制限 | バトル奪取・ドロップ・ガチャでは入手不可 |
+| on-chain | `evolve_cards` Anchor 命令 (親 2 枚 burn + 子 mint) |
+
+**マージ限定 Uncommon 6 枚:**
+
+| カード ID | 名前 | 親カード (ID) |
+|----------|------|-------------|
+| 8 | Knight Champion | Squire (1) + Guard (2) |
+| 18 | Merchant Magnate | Peddler (11) + Trader (12) |
+| 28 | Pirate Quartermaster | Cutthroat (21) + Raider (22) |
+| 38 | Scholar Lorekeeper | Apprentice (31) + Archivist (32) |
+| 48 | Monk Ascender | Novice (41) + Initiate (42) |
+| 58 | Engineer Forgemaster | Tinkerer (51) + Mechanic (52) |
+
+60 枚コンプには必ずマージ限定カード 6 枚が必要 → 全 60 枚収集の戦略的障壁。
+
+### 13-3. Imprint メカニクス (5/11 実装分)
+
+バトル後、特定条件達成でカードに永続的な記録 (Imprint) が刻まれる。
+
+| ImprintKey | 条件 | 種別 |
+|-----------|------|------|
+| `FirstBlood` | プレイヤーの初勝利 | Stat (+1 BP permanent) |
+| `FlawlessVictory` | 自カード破壊ゼロで勝利 | Cosmetic (エフェクト) |
+| `LegendaryDefeat` | Legendary カード持ちを倒した | Stat (+2 BP vs Legendary) |
+
+on-chain: `grant_imprint` Anchor 命令。5/11 デモでは mock (コンソールログ) として動作。残り 8 種 ImprintKey は 5/11 後対応。
+
+### 13-4. Steal / Provenance (統合済み)
+
+バトル奪取時に `record_card_owner_change_with_steal` 命令で所有権変遷を on-chain 記録。5/11 ではモック呼び出しのみ。
+
+### 13-5. Lease メカニクス (5/11 後対応)
+
+一時貸出機能 (30 分リース)。UI/フロー実装は 5/11 後。on-chain PDA は実装済み。
+
+---
+
+*— 0xARK game-design-v2.md, 2026-05-01 / Phase 16 追加 2026-05-02*

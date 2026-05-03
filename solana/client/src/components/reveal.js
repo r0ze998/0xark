@@ -5,9 +5,12 @@ import { getCard } from '../lib/cards.js';
 import { damageCalc } from '../lib/damage-calc.js';
 import { CardHTML, injectCardCSS, FACTION_NAMES, ACTION_LABELS, FACTION_COLORS } from './common/Card.js';
 import { getState, setState } from '../state/battle-state.js';
+import * as duelWs from '../lib/duel-ws.js';
 
-let _animTimeout = null;
-let _skipped     = false;
+let _animTimeout      = null;
+let _skipped          = false;
+let _unsubOppReveal   = () => {};
+let _unsubResolved    = () => {};
 
 export function mount(container, detail = {}) {
   injectStyle();
@@ -16,28 +19,70 @@ export function mount(container, detail = {}) {
   const s = getState();
   setState({ phase: 'reveal' });
 
+  const opponentField = s.opponentField ??
+    s.fieldCards.map(c => ({ ...getCard(c.cardId), actionType: 0 }));
+
   // Compute battle result via damage-calc
   let result = null;
   try {
     const p1Field = s.fieldCards.filter(Boolean).map(c => ({ ...getCard(c.cardId), actionType: c.actionType }));
-    const opponentField = s.opponentField ??
-      s.fieldCards.map(c => ({ ...getCard(c.cardId), actionType: 0 }));
     const p2Field = opponentField.filter(Boolean).map(c => ({ ...getCard(c.cardId), actionType: c.actionType ?? 0 }));
     const seed = new Uint8Array(32);
     crypto.getRandomValues(seed);
     result = damageCalc({ p1Field, p2Field, seed });
   } catch {
-    result = simpleBattleCalc(s.fieldCards, s.opponentField ?? s.fieldCards);
+    result = simpleBattleCalc(s.fieldCards, opponentField);
   }
 
   setState({ battleResult: result, isWinner: result?.winner === 'p1' });
   container.innerHTML = buildHTML(s, result);
   bindEvents(container);
+
+  // Subscribe to opponent's reveal (update opponentField if not already set from peek)
+  if (!s.opponentField && duelWs.isConnected() && s.duelId) {
+    _unsubOppReveal = duelWs.on('duel_hand_revealed', (msg) => {
+      if (msg.playerId !== s.opponentPlayerId) return;
+      _unsubOppReveal();
+      const oppField = (msg.card_ids ?? []).map((id, i) => ({
+        cardId: id,
+        actionType: (msg.action_types ?? [])[i] ?? 0,
+      }));
+      setState({ opponentField: oppField });
+    });
+  }
+
+  // Wire Phase-11 consensus
+  if (duelWs.isConnected() && s.duelId) {
+    const p1BP = s.fieldCards.filter(Boolean).reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
+    const p2BP = opponentField.filter(Boolean).reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
+    if (s.isHost) {
+      duelWs.sendBattleResolved(s.duelId, 1, p1BP, p2BP, result?.winner ?? null);
+    } else {
+      duelWs.sendDamageClaim(s.duelId, 1, p1BP, p2BP);
+    }
+
+    _unsubResolved = duelWs.on('duel_battle_resolved', (msg) => {
+      if (msg.duel_id !== s.duelId) return;
+      _unsubResolved();
+      if (!_skipped && _animTimeout) {
+        clearTimeout(_animTimeout);
+        _animTimeout = null;
+      }
+      const final = getState().battleResult ?? result ?? { winner: msg.winner ?? 'p1' };
+      setState({ isWinner: final.winner === 'p1', battleResult: final, phase: 'loot' });
+      document.dispatchEvent(new CustomEvent('nav:loot'));
+    });
+  }
+
   runAnimation(container, s, result);
 }
 
 export function unmount(container) {
   if (_animTimeout) { clearTimeout(_animTimeout); _animTimeout = null; }
+  _unsubOppReveal();
+  _unsubResolved();
+  _unsubOppReveal = () => {};
+  _unsubResolved  = () => {};
   _skipped = false;
   container.innerHTML = '';
 }
@@ -245,9 +290,13 @@ function runAnimation(container, s, result) {
     container.querySelector('#rev-status').style.fontSize = '24px';
     container.querySelector('#rev-status').style.color = winner === 'p1' ? 'var(--accent-gold)' : 'var(--accent-red)';
 
+    // Only nav here in demo mode — real multiplayer navs via duel_battle_resolved
     after(1200, () => {
-      setState({ isWinner: winner === 'p1', battleResult: result, phase: 'loot' });
-      document.dispatchEvent(new CustomEvent('nav:loot'));
+      const st = getState();
+      if (!duelWs.isConnected() || !st.duelId) {
+        setState({ isWinner: winner === 'p1', battleResult: result, phase: 'loot' });
+        document.dispatchEvent(new CustomEvent('nav:loot'));
+      }
     });
   });
 }

@@ -4,6 +4,8 @@
 import { getCard } from '../lib/cards.js';
 import { CardHTML, injectCardCSS, CARD_NAMES } from './common/Card.js';
 import { getState, setState, resetBattle } from '../state/battle-state.js';
+import { computePostBattleImprints } from '../lib/abilities.js';
+import * as duelWs from '../lib/duel-ws.js';
 
 let _animTimeout  = null;
 let _lootCardId   = null;
@@ -242,6 +244,9 @@ function onCardPicked(container, cardId) {
     perso.textContent   = updatePersonalities(s, cardId);
   }
 
+  // Imprint hook
+  _applyImprints(container, s);
+
   setTimeout(() => enableContinue(container), 400);
 }
 
@@ -265,8 +270,65 @@ function updatePersonalities(s, cardId) {
   return `${perso.toUpperCase()}: ${personalities[perso]}/10`;
 }
 
-function onContinue() {
+function _applyImprints(container, s) {
+  const result = s.battleResult ?? {};
+  const imprints = computePostBattleImprints({
+    isFirstWin:  !(s.earnedImprints ?? []).includes('FirstBlood'),
+    winner:      'p1',
+    p1Cards:     s.fieldCards.filter(Boolean).map(c => getCard(c.cardId)).filter(Boolean),
+    p2Cards:     (s.opponentField ?? []).filter(Boolean).map(c => getCard(c.cardId)).filter(Boolean),
+    p1Destroyed: result.p1Destroyed ?? [],
+    p2Destroyed: result.p2Destroyed ?? [],
+  });
+
+  if (!imprints.length) return;
+
+  const keys = imprints.map(i => i.key);
+  setState({ earnedImprints: [...(s.earnedImprints ?? []), ...keys] });
+
+  _showImprintToasts(container, imprints);
+
+  // Call on-chain (mock for demo)
+  imprints.forEach(imp => {
+    if (window.oxarkOnchain?.grantImprint) {
+      window.oxarkOnchain.grantImprint(imp.cardId ?? 0, imp.key).catch(
+        err => console.warn('grant_imprint:', err)
+      );
+    }
+    console.log(`[demo] grant_imprint: key=${imp.key} card=${imp.cardId ?? 'n/a'}`);
+  });
+}
+
+function _showImprintToasts(container, imprints) {
+  imprints.forEach((imp, i) => {
+    const toast = document.createElement('div');
+    toast.className = 'loot-imprint-toast';
+    toast.innerHTML = `+ Imprint: <span class="label-gold">${imp.key}</span>${imp.description ? ` — ${imp.description}` : ''}`;
+    toast.style.animationDelay = `${i * 400}ms`;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000 + i * 400);
+  });
+}
+
+async function onContinue() {
+  const s = getState();
+
+  // Host announces match end to server
+  if (s.isHost && s.duelId && duelWs.isConnected()) {
+    const winner = s.isWinner ? s.playerPubkey : (s.opponentPubkey ?? 'opponent');
+    duelWs.sendDuelEnded(s.duelId, winner);
+  }
+
+  // x402 match-end payment
+  if (window.x402?.payMatchEnd && s.matchId) {
+    window.x402.payMatchEnd({
+      matchId: s.matchId,
+      winner:  s.isWinner ? (s.playerPubkey ?? 'p1') : (s.opponentPubkey ?? 'p2'),
+    }).catch(err => console.warn('[x402] payMatchEnd:', err));
+  }
+
   resetBattle();
+  duelWs.disconnect();
   document.dispatchEvent(new CustomEvent('nav:main'));
 }
 
@@ -346,4 +408,18 @@ const CSS = `
   pointer-events: none;
 }
 @keyframes lgd-flash { 0% { opacity: 0; } 15% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+.loot-imprint-toast {
+  position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+  background: rgba(10,14,26,0.9); border: 1px solid rgba(201,162,39,0.5);
+  padding: 6px 16px; font-size: 15px; letter-spacing: 0.04em; color: var(--text-cream);
+  white-space: nowrap; pointer-events: none;
+  animation: imprint-toast 3s ease forwards;
+}
+@keyframes imprint-toast {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  10%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+}
 `;

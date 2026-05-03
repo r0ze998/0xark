@@ -1,14 +1,25 @@
 // main-screen.js — Screen 1: Vault viewer + matchmaking
 // mount(container, detail) / unmount(container)
 
-import { ALL_CARD_IDS, getCard } from '../lib/cards.js';
-import { CardHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS } from './common/Card.js';
+import { ALL_CARD_IDS, getCard, isBurnable, isMergeOnly, getMergeRecipe, MERGE_RECIPES } from '../lib/cards.js';
+import { CardHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS, CARD_NAMES } from './common/Card.js';
 import { LegendaryProgressHTML, injectLegendaryProgressCSS, PERSONALITIES } from './common/LegendaryProgress.js';
 import { PrizePoolHTML, injectPrizePoolCSS } from './common/PrizePool.js';
 import { getState, setState } from '../state/battle-state.js';
+import { CardDetailModal } from './card-detail.js';
+import * as duelWs from '../lib/duel-ws.js';
 
-let _matchInterval = null;
-let _dots = 0;
+let _matchInterval  = null;
+let _dots           = 0;
+let _unsubWaiting   = () => {};
+let _unsubMatched   = () => {};
+
+function _unsubMatchmaking() {
+  _unsubWaiting();
+  _unsubMatched();
+  _unsubWaiting = () => {};
+  _unsubMatched = () => {};
+}
 
 export function mount(container, detail = {}) {
   injectStyle();
@@ -29,7 +40,38 @@ export function mount(container, detail = {}) {
 
 export function unmount(container) {
   if (_matchInterval) { clearInterval(_matchInterval); _matchInterval = null; }
+  _unsubMatchmaking();
   container.innerHTML = '';
+}
+
+/* ── Evolve helpers ─────────────────────────────────────────────────── */
+function _countEvolvable(owned) {
+  return Object.values(MERGE_RECIPES).filter(r => owned.has(r.recipe[0]) && owned.has(r.recipe[1])).length;
+}
+
+function _buildEvolveList(owned) {
+  const rows = Object.entries(MERGE_RECIPES).map(([childId, r]) => {
+    const cId    = parseInt(childId, 10);
+    const hasA   = owned.has(r.recipe[0]);
+    const hasB   = owned.has(r.recipe[1]);
+    const ready  = hasA && hasB;
+    const nameA  = CARD_NAMES[r.recipe[0]] ?? `#${r.recipe[0]}`;
+    const nameB  = CARD_NAMES[r.recipe[1]] ?? `#${r.recipe[1]}`;
+    const nameC  = CARD_NAMES[cId] ?? r.name;
+    return `
+<div class="ms-evolve-row${ready ? ' ms-evolve-row--ready' : ''}" data-child="${cId}">
+  <div class="ms-evolve-row-info">
+    <span class="ms-evolve-result label-gold">${nameC}</span>
+    <span class="ms-evolve-recipe label-dim">${nameA} + ${nameB}</span>
+  </div>
+  <button class="gba-btn gba-btn--primary ms-evolve-btn"
+    data-child="${cId}" data-a="${r.recipe[0]}" data-b="${r.recipe[1]}"
+    ${ready ? '' : 'disabled'}>
+    ${ready ? '⚗ EVOLVE' : '⚗ NEED CARDS'}
+  </button>
+</div>`;
+  });
+  return rows.join('') || '<div class="label-dim" style="padding:12px;">No merge-only cards available yet.</div>';
 }
 
 /* ── HTML ───────────────────────────────────────────────────────────── */
@@ -84,21 +126,40 @@ function buildHTML({ vault, pubkey, perso }) {
         <span class="ms-vault-progress-label">${Math.round((vaultCount/60)*100)}%</span>
       </div>
 
-      <!-- Faction filter -->
-      <div class="ms-faction-filters" role="group" aria-label="Filter by faction">
-        <button class="ms-faction-btn ms-faction-btn--active gba-btn gba-btn--ghost" data-faction="all">ALL</button>
-        ${PERSONALITIES.map(p => `
-          <button class="ms-faction-btn gba-btn gba-btn--ghost"
-            data-faction="${p.faction}"
-            style="--fc:${FACTION_COLORS[p.faction]};">
-            ${FACTION_NAMES[p.faction].toUpperCase().slice(0,3)}
-          </button>`).join('')}
+      <!-- Tab bar -->
+      <div class="ms-tab-bar" role="tablist">
+        <button class="ms-tab ms-tab--active" id="ms-tab-vault" role="tab" aria-selected="true" aria-controls="ms-pane-vault">VAULT</button>
+        <button class="ms-tab" id="ms-tab-evolve" role="tab" aria-selected="false" aria-controls="ms-pane-evolve">
+          EVOLVE${_countEvolvable(owned) > 0 ? ` <span class="ms-evolve-badge">${_countEvolvable(owned)}</span>` : ''}
+        </button>
       </div>
 
-      <!-- Card grid 10×6 -->
-      <div class="ms-card-grid" id="ms-card-grid" role="list" aria-label="All cards">
-        ${cardGrid}
+      <!-- VAULT pane -->
+      <div id="ms-pane-vault" role="tabpanel">
+        <!-- Faction filter -->
+        <div class="ms-faction-filters" role="group" aria-label="Filter by faction">
+          <button class="ms-faction-btn ms-faction-btn--active gba-btn gba-btn--ghost" data-faction="all">ALL</button>
+          ${PERSONALITIES.map(p => `
+            <button class="ms-faction-btn gba-btn gba-btn--ghost"
+              data-faction="${p.faction}"
+              style="--fc:${FACTION_COLORS[p.faction]};">
+              ${FACTION_NAMES[p.faction].toUpperCase().slice(0,3)}
+            </button>`).join('')}
+        </div>
+
+        <!-- Card grid 10×6 -->
+        <div class="ms-card-grid" id="ms-card-grid" role="list" aria-label="All cards">
+          ${cardGrid}
+        </div>
       </div>
+
+      <!-- EVOLVE pane -->
+      <div id="ms-pane-evolve" role="tabpanel" style="display:none;">
+        <div class="ms-evolve-list" id="ms-evolve-list">
+          ${_buildEvolveList(owned)}
+        </div>
+      </div>
+
     </section>
 
     <!-- Right: Side panels -->
@@ -157,6 +218,14 @@ function bindEvents(container) {
     }
   });
 
+  // Tab switching
+  container.querySelector('#ms-tab-vault')?.addEventListener('click', () => {
+    _switchTab(container, 'vault');
+  });
+  container.querySelector('#ms-tab-evolve')?.addEventListener('click', () => {
+    _switchTab(container, 'evolve');
+  });
+
   // Faction filter
   container.querySelectorAll('.ms-faction-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -168,10 +237,55 @@ function bindEvents(container) {
     });
   });
 
+  // Card click → detail modal
+  container.querySelector('#ms-card-grid')?.addEventListener('click', e => {
+    const card = e.target.closest('[data-id]');
+    if (!card) return;
+    const cardId = parseInt(card.dataset.id, 10);
+    if (!cardId) return;
+    CardDetailModal.show(container.querySelector('.ms-root'), cardId, {
+      onBurn:   () => _refreshVaultGrid(container),
+      onEvolve: () => _refreshVaultGrid(container),
+    });
+  });
+
+  // Evolve buttons in EVOLVE pane
+  container.querySelector('#ms-evolve-list')?.addEventListener('click', e => {
+    const btn = e.target.closest('.ms-evolve-btn');
+    if (!btn || btn.disabled) return;
+    const childId = parseInt(btn.dataset.child, 10);
+    CardDetailModal.show(container.querySelector('.ms-root'), childId, {
+      onEvolve: () => _refreshVaultGrid(container),
+    });
+  });
+
   // Start battle
   container.querySelector('#ms-start').addEventListener('click', () => {
     startMatchmaking(container);
   });
+}
+
+function _switchTab(container, tab) {
+  const vaultPane  = container.querySelector('#ms-pane-vault');
+  const evolvePane = container.querySelector('#ms-pane-evolve');
+  const tabVault   = container.querySelector('#ms-tab-vault');
+  const tabEvolve  = container.querySelector('#ms-tab-evolve');
+  const isVault    = tab === 'vault';
+  if (vaultPane)  vaultPane.style.display  = isVault  ? '' : 'none';
+  if (evolvePane) evolvePane.style.display = !isVault ? '' : 'none';
+  tabVault?.classList.toggle('ms-tab--active', isVault);
+  tabEvolve?.classList.toggle('ms-tab--active', !isVault);
+  tabVault?.setAttribute('aria-selected', String(isVault));
+  tabEvolve?.setAttribute('aria-selected', String(!isVault));
+}
+
+function _refreshVaultGrid(container) {
+  const s     = getState();
+  const owned = new Set(s.vault);
+  const grid  = container.querySelector('#ms-card-grid');
+  if (grid) grid.innerHTML = ALL_CARD_IDS.map(id => CardHTML({ id, owned: owned.has(id), compact: true })).join('');
+  const evolveList = container.querySelector('#ms-evolve-list');
+  if (evolveList) evolveList.innerHTML = _buildEvolveList(owned);
 }
 
 function filterVaultGrid(container, faction) {
@@ -186,27 +300,62 @@ function filterVaultGrid(container, faction) {
   grid.innerHTML = cards.map(id => CardHTML({ id, owned: owned.has(id), compact: true })).join('');
 }
 
-function startMatchmaking(container) {
-  const btn     = container.querySelector('#ms-start');
-  const info    = container.querySelector('#ms-match-info');
+async function startMatchmaking(container) {
+  const btn  = container.querySelector('#ms-start');
+  const info = container.querySelector('#ms-match-info');
   if (!btn || !info) return;
 
-  btn.disabled  = true;
+  btn.disabled    = true;
   btn.textContent = '● SEARCHING…';
+  info.textContent = 'Connecting to server…';
 
-  let dotCount = 0;
-  _matchInterval = setInterval(() => {
-    dotCount = (dotCount + 1) % 4;
-    btn.textContent = `● SEARCHING${'·'.repeat(dotCount + 1)}`;
-  }, 500);
+  try {
+    await duelWs.connect();
 
-  // Mock: transition after 2.5s (real: wait for multiplayer server match)
-  setTimeout(() => {
-    if (_matchInterval) { clearInterval(_matchInterval); _matchInterval = null; }
-    const matchId = `match-${Date.now()}`;
-    setState({ matchId, phase: 'preparation' });
-    document.dispatchEvent(new CustomEvent('nav:preparation', { detail: { matchId } }));
-  }, 2500);
+    _unsubWaiting = duelWs.on('matchmaking_waiting', ({ roomId }) => {
+      info.textContent = `Searching for opponent… [${roomId}]`;
+    });
+
+    _unsubMatched = duelWs.on('matchmaking_matched', ({ roomId, role, opponentWallet, opponentId }) => {
+      _unsubMatchmaking();
+      if (_matchInterval) { clearInterval(_matchInterval); _matchInterval = null; }
+      const isHost = role === 'host';
+      const duelId = `${roomId}-R1`;
+      setState({
+        matchId: roomId,
+        opponentPubkey: opponentWallet ?? null,
+        isHost,
+        duelId,
+        opponentPlayerId: opponentId,
+        phase: 'preparation',
+      });
+      document.dispatchEvent(new CustomEvent('nav:preparation', { detail: { matchId: roomId } }));
+    });
+
+    _matchInterval = setInterval(() => {
+      btn.textContent = `● SEARCHING${'·'.repeat((_dots++ % 3) + 1)}`;
+    }, 500);
+
+    const s = getState();
+    duelWs.enqueueMatchmaking({
+      wallet:     s.playerPubkey || null,
+      name:       (s.playerPubkey || 'Player').slice(0, 8),
+      card_count: s.vault.length,
+    });
+
+  } catch {
+    // Server unavailable — demo fallback
+    _matchInterval = setInterval(() => {
+      btn.textContent = `● SEARCHING${'·'.repeat((_dots++ % 3) + 1)}`;
+    }, 500);
+    info.textContent = 'Demo mode (server offline)';
+    setTimeout(() => {
+      if (_matchInterval) { clearInterval(_matchInterval); _matchInterval = null; }
+      const matchId = `demo-${Date.now()}`;
+      setState({ matchId, phase: 'preparation', isHost: true, duelId: `${matchId}-R1` });
+      document.dispatchEvent(new CustomEvent('nav:preparation', { detail: { matchId } }));
+    }, 2500);
+  }
 }
 
 /* ── Style ──────────────────────────────────────────────────────────── */
@@ -308,6 +457,40 @@ const CSS = `
   letter-spacing: 0.06em;
 }
 .ms-match-info { font-size: 12px; text-align: center; letter-spacing: 0.04em; }
+
+/* Tabs */
+.ms-tab-bar {
+  display: flex; gap: 0; flex-shrink: 0; border-bottom: var(--border-dim); margin-bottom: 6px;
+}
+.ms-tab {
+  padding: 4px 14px; font-size: 13px; letter-spacing: 0.08em;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--text-dim); cursor: pointer; font-family: var(--font-main);
+  transition: color 80ms, border-color 80ms;
+}
+.ms-tab:hover { color: var(--text-cream); }
+.ms-tab--active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); }
+.ms-evolve-badge {
+  display: inline-block; background: var(--accent-red); color: #fff;
+  font-size: 10px; padding: 0 4px; border-radius: 2px; margin-left: 4px;
+  vertical-align: middle; line-height: 15px;
+}
+
+/* Evolve list */
+.ms-evolve-list {
+  display: flex; flex-direction: column; gap: 6px;
+  overflow-y: auto; flex: 1; padding-right: 4px;
+}
+.ms-evolve-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.02);
+}
+.ms-evolve-row--ready { border-color: rgba(201,162,39,0.35); background: rgba(201,162,39,0.05); }
+.ms-evolve-row-info { display: flex; flex-direction: column; gap: 2px; }
+.ms-evolve-result { font-size: 15px; letter-spacing: 0.05em; }
+.ms-evolve-recipe { font-size: 12px; }
+.ms-evolve-btn { font-size: 14px; padding: 4px 12px; }
 
 /* Footer */
 .ms-footer {

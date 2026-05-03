@@ -6,6 +6,7 @@ import { CardHTML, injectCardCSS, ACTION_LABELS } from './common/Card.js';
 import { ActionTypeSelectorHTML, injectActionTypeSelectorCSS } from './common/ActionTypeSelector.js';
 import { startTimer } from './common/Timer.js';
 import { getState, setState } from '../state/battle-state.js';
+import * as duelWs from '../lib/duel-ws.js';
 
 const INTR_SECS = 60;
 
@@ -265,16 +266,28 @@ async function onReady(container) {
   btn.textContent = '⏳ COMMITTING…';
 
   try {
-    // Re-commit if swapped
     let commitment = getState().commitment;
     let salt       = getState().salt;
-    const fieldChanged = _field.some((s, i) => s?.cardId !== getState().fieldCards[i]?.cardId);
-    if (fieldChanged && window.zkCardCommit) {
-      salt = window.zkCardCommit.generateSalt();
-      commitment = window.zkCardCommit.computeCommitment(_field.map(s => s.cardId), salt);
+
+    // Re-commit if field changed after swap
+    const fieldChanged = _field.some((slot, i) => slot?.cardId !== getState().fieldCards[i]?.cardId);
+    if (fieldChanged) {
+      salt = duelWs.generateSalt();
+      const hashBytes = await duelWs.computeHandCommitment(_field.map(s => s.cardId), salt);
+      commitment = duelWs.toHex(hashBytes);
     }
 
     setState({ fieldCards: [..._field], commitment, salt, phase: 'reveal' });
+
+    const s = getState();
+    if (s.duelId && duelWs.isConnected()) {
+      duelWs.sendHandRevealed(
+        s.duelId, 1,
+        _field.map(slot => slot.cardId),
+        _field.map(slot => slot.actionType),
+      );
+    }
+
     document.dispatchEvent(new CustomEvent('nav:reveal'));
   } catch {
     btn.disabled = false;
@@ -283,7 +296,15 @@ async function onReady(container) {
 }
 
 function onTimeout(container) {
+  const s = getState();
   setState({ fieldCards: [..._field], phase: 'reveal' });
+  if (s.duelId && duelWs.isConnected()) {
+    duelWs.sendHandRevealed(
+      s.duelId, 1,
+      _field.map(slot => slot.cardId),
+      _field.map(slot => slot.actionType),
+    );
+  }
   document.dispatchEvent(new CustomEvent('nav:reveal'));
 }
 

@@ -7,6 +7,9 @@ let _state = {
   personalities: { conqueror: 0, patron: 0, phoenix: 0, sage: 0, hermit: 0, detective: 0 },
   matchId: null,
   opponentPubkey: null,
+  isHost: false,            // true if this client created the room
+  duelId: null,             // `${matchId}-R1` for round 1
+  opponentPlayerId: null,   // server-assigned playerId of opponent
 
   fieldCards: [null, null, null, null, null],  // each: { cardId, actionType } | null
   commitment: null,
@@ -18,6 +21,8 @@ let _state = {
   battleResult: null,     // damage-calc result object
   lootCard: null,
   isWinner: false,
+  pendingBurnEffects: [], // { effect, ownSide } — applied in next battle's Step 0.5
+  earnedImprints: [],     // ImprintKey strings awarded this session
 };
 
 export function getState() { return _state; }
@@ -32,6 +37,9 @@ export function resetBattle() {
     phase: 'main',
     matchId: null,
     opponentPubkey: null,
+    isHost: false,
+    duelId: null,
+    opponentPlayerId: null,
     fieldCards: [null, null, null, null, null],
     commitment: null,
     salt: null,
@@ -40,5 +48,6 @@ export function resetBattle() {
     battleResult: null,
     lootCard: null,
     isWinner: false,
+    pendingBurnEffects: [],
   });
 }

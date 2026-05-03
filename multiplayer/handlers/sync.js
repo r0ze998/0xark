@@ -18,11 +18,15 @@ export function _handleDuelHandCommitted(ws, msg) {
 export function _handleDuelHandRevealed(ws, msg) {
   const room = ws.roomId ? rooms.get(ws.roomId) : null;
   if (!room) return;
-  const duelId  = typeof msg.duel_id   === 'string' ? msg.duel_id.slice(0, 64) : null;
-  const round   = typeof msg.round     === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
-  const cardIds = Array.isArray(msg.card_ids) ? msg.card_ids.map(x => (x | 0) & 0xffff).slice(0, 10) : null;
+  const duelId      = typeof msg.duel_id     === 'string' ? msg.duel_id.slice(0, 64) : null;
+  const round       = typeof msg.round       === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
+  const cardIds     = Array.isArray(msg.card_ids) ? msg.card_ids.map(x => (x | 0) & 0xffff).slice(0, 10) : null;
+  const actionTypes = Array.isArray(msg.action_types) ? msg.action_types.map(x => (x | 0) & 0xff).slice(0, 10) : null;
   if (!duelId || round === null || !cardIds) return;
-  broadcast(room, { type: 'duel_hand_revealed', playerId: ws.playerId, duel_id: duelId, round, card_ids: cardIds }, ws.playerId);
+  broadcast(room, {
+    type: 'duel_hand_revealed', playerId: ws.playerId, duel_id: duelId, round, card_ids: cardIds,
+    ...(actionTypes ? { action_types: actionTypes } : {}),
+  }, ws.playerId);
 }
 
 export function _handleDuelPhaseAdvance(ws, msg) {
@@ -69,6 +73,7 @@ export function _handleDuelBattleResolved(ws, msg) {
   const round   = typeof msg.round        === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
   const p1Delta = typeof msg.p1_hp_delta  === 'number' ? msg.p1_hp_delta | 0 : 0;
   const p2Delta = typeof msg.p2_hp_delta  === 'number' ? msg.p2_hp_delta | 0 : 0;
+  const winner  = typeof msg.winner       === 'string' ? msg.winner.slice(0, 44)   : null;
   if (!duelId || round === null) return;
 
   const hostClaim = { p1HpDelta: p1Delta, p2HpDelta: p2Delta };
@@ -89,7 +94,11 @@ export function _handleDuelBattleResolved(ws, msg) {
   }
 
   if (!violated) {
-    broadcast(room, { type: 'duel_battle_resolved', duel_id: duelId, round, p1_hp_delta: p1Delta, p2_hp_delta: p2Delta });
+    broadcast(room, {
+      type: 'duel_battle_resolved', duel_id: duelId, round,
+      p1_hp_delta: p1Delta, p2_hp_delta: p2Delta,
+      ...(winner ? { winner } : {}),
+    });
   }
 }
 

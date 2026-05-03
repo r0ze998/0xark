@@ -4,6 +4,7 @@ import { _handleCreateRoom, _handleJoinRoom, _handlePresenceUpdate, _handleChat 
 import { _handleMove } from './game.js';
 import { _handleSubmitTx } from './zk.js';
 import { _handleDuelHandCommitted, _handleDuelHandRevealed, _handleDuelPhaseAdvance, _handleDuelBattleResolved, _handleDuelDamageClaim, _handleDuelEnded } from './sync.js';
+import { _handleMatchmakingEnqueue, _handleMatchmakingCancel } from './matchmaking.js';
 
 export const HANDLERS = {
   create_room:          _handleCreateRoom,
@@ -18,4 +19,6 @@ export const HANDLERS = {
   duel_battle_resolved: _handleDuelBattleResolved,
   duel_damage_claim:    _handleDuelDamageClaim,
   duel_ended:           _handleDuelEnded,
+  matchmaking_enqueue:  _handleMatchmakingEnqueue,
+  matchmaking_cancel:   _handleMatchmakingCancel,
 };

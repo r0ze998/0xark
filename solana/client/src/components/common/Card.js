@@ -15,18 +15,18 @@ export const RARITY_LABELS  = ['COM','UNC','RARE','LGD'];
 export const ACTION_LABELS  = ['◆ CRYSTAL','🛡 BARRIER','⚡ FLAME','🌀 STORM','◎ SHADOW','✦ VOID'];
 export const ACTION_ICONS   = ['◆','🛡','⚡','🌀','◎','✦'];
 export const CARD_NAMES = {
-   1:'Squire',    2:'Guard',     3:'Soldier',  4:'Paladin',  5:'Champion',
-   6:'Warden',    7:'Crusader',  8:'Ironclad',  9:'Vanguard', 10:'Sentinel',
-  11:'Peddler',  12:'Trader',   13:'Broker',   14:'Merchant',15:'Banker',
-  16:'Magnifier',17:'Speculator',18:'Cartel',  19:'Monopolist',20:'Magnate',
-  21:'Cutthroat',22:'Raider',   23:'Corsair',  24:'Buccaneer',25:'Swashbuckler',
-  26:'Privateer',27:'Freebooter',28:'Reaver',  29:'Dreadnaught',30:'Marauder',
-  31:'Apprentice',32:'Archivist',33:'Mage',    34:'Sage',    35:'Wizard',
-  36:'Diviner',  37:'Arcanist', 38:'Augur',    39:'Seer',    40:'Oracle',
-  41:'Novice',   42:'Initiate', 43:'Acolyte',  44:'Disciple',45:'Recluse',
-  46:'Devotee',  47:'Contemplator',48:'Abbot', 49:'Elder',   50:'Ascetic',
-  51:'Tinkerer', 52:'Mechanic', 53:'Forger',   54:'Inventor',55:'Artisan',
-  56:'Schematic',57:'Constructor',58:'Machinist',59:'Colossus',60:'Architect',
+   1:'Squire',    2:'Guard',       3:'Soldier',   4:'Paladin',  5:'Sacrificial Squire',
+   6:'Warden',    7:'Crusader',    8:'Knight Champion', 9:'Vanguard', 10:'Sentinel',
+  11:'Peddler',  12:'Trader',     13:'Broker',   14:'Merchant',15:'Coin Burner',
+  16:'Magnifier',17:'Speculator', 18:'Merchant Magnate', 19:'Monopolist',20:'Magnate',
+  21:'Cutthroat',22:'Raider',     23:'Corsair',  24:'Buccaneer',25:'Powder Charge',
+  26:'Privateer',27:'Freebooter', 28:'Pirate Quartermaster',29:'Dreadnaught',30:'Marauder',
+  31:'Apprentice',32:'Archivist', 33:'Mage',     34:'Sage',    35:'Burning Tome',
+  36:'Diviner',  37:'Arcanist',   38:'Scholar Lorekeeper',39:'Seer',    40:'Oracle',
+  41:'Novice',   42:'Initiate',   43:'Acolyte',  44:'Disciple',45:'Mantra Burner',
+  46:'Devotee',  47:'Contemplator',48:'Monk Ascender',49:'Elder',   50:'Ascetic',
+  51:'Tinkerer', 52:'Mechanic',   53:'Forger',   54:'Inventor',55:'Forge Worker',
+  56:'Schematic',57:'Constructor',58:'Engineer Forgemaster',59:'Colossus',60:'Architect',
 };
 
 /**
