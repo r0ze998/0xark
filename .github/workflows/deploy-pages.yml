@@ -18,15 +18,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           # Copy only solana/client/ to a temp dir and push it as gh-pages root
           mkdir -p /tmp/pages-deploy
           cp -r solana/client/. /tmp/pages-deploy/
 
           cd /tmp/pages-deploy
           git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b gh-pages
           git add -A
           git commit -m "gh-pages: deploy solana/client @ ${GITHUB_SHA}"
