@@ -12,6 +12,10 @@ let _lootCardId   = null;
 let _selectMode   = false;   // winner is picking which card to loot
 
 export function mount(container, detail = {}) {
+  if (!window.oxarkWallet?.isConnected?.()) {
+    document.dispatchEvent(new CustomEvent('nav:wallet-required'));
+    return;
+  }
   injectStyle();
   injectCardCSS();
 
