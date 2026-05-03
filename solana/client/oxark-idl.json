@@ -367,6 +367,133 @@
       "args": []
     },
     {
+      "name": "claim_battle_loot",
+      "docs": [
+        "Claim 1 random card from loser's battle field (on-chain loot via SlotHashes).",
+        "`duel_id`:     unique Pubkey for this duel (prevents double-claim via PDA init).",
+        "`loser_pubkey`: the loser's wallet pubkey.",
+        "`loser_field`:  the 5 card IDs the loser had on the field (0 = empty slot)."
+      ],
+      "discriminator": [
+        87,
+        2,
+        108,
+        28,
+        235,
+        246,
+        239,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "winner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "winner_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "winner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "loser_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "loser_pubkey"
+              }
+            ]
+          }
+        },
+        {
+          "name": "duel_loot_record",
+          "docs": [
+            "Initialized here — its existence means loot was claimed (double-spend guard)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108,
+                  95,
+                  108,
+                  111,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "slot_hashes"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        },
+        {
+          "name": "loser_pubkey",
+          "type": "pubkey"
+        },
+        {
+          "name": "loser_field",
+          "type": {
+            "array": [
+              "u8",
+              5
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "claim_legendary",
       "discriminator": [
         83,
@@ -4727,6 +4854,19 @@
       ]
     },
     {
+      "name": "DuelLootRecord",
+      "discriminator": [
+        164,
+        224,
+        166,
+        141,
+        43,
+        74,
+        1,
+        238
+      ]
+    },
+    {
       "name": "DuelState",
       "discriminator": [
         149,
@@ -5197,6 +5337,19 @@
       ]
     },
     {
+      "name": "LootClaimedEvent",
+      "discriminator": [
+        14,
+        131,
+        99,
+        124,
+        224,
+        191,
+        224,
+        221
+      ]
+    },
+    {
       "name": "LoreShardUnlocked",
       "discriminator": [
         169,
@@ -5604,36 +5757,76 @@
     },
     {
       "code": 6060,
+      "name": "CannotLootSelf",
+      "msg": "Cannot loot from yourself"
+    },
+    {
+      "code": 6061,
+      "name": "NotWinner",
+      "msg": "You are not the winner of this battle"
+    },
+    {
+      "code": 6062,
+      "name": "WrongLoser",
+      "msg": "Wrong loser specified"
+    },
+    {
+      "code": 6063,
+      "name": "InvalidFieldSize",
+      "msg": "Battle field size must be exactly 5"
+    },
+    {
+      "code": 6064,
+      "name": "SlotHashesUnavailable",
+      "msg": "SlotHashes sysvar unavailable or too short"
+    },
+    {
+      "code": 6065,
+      "name": "LoserDoesNotOwnCard",
+      "msg": "Loser does not own the stolen card in their vault"
+    },
+    {
+      "code": 6066,
+      "name": "InvalidCardId",
+      "msg": "Invalid card ID (must be 1-60)"
+    },
+    {
+      "code": 6067,
+      "name": "CardNotOwned",
+      "msg": "Card not owned by player"
+    },
+    {
+      "code": 6068,
       "name": "Unauthorized",
       "msg": "Caller is not the authorized admin"
     },
     {
-      "code": 6061,
+      "code": 6069,
       "name": "WaitlistClosed",
       "msg": "Waitlist registration is closed"
     },
     {
-      "code": 6062,
+      "code": 6070,
       "name": "AlreadyRegistered",
       "msg": "Player is already registered for this season"
     },
     {
-      "code": 6063,
+      "code": 6071,
       "name": "GameNotActive",
       "msg": "Game is not active (status != 1)"
     },
     {
-      "code": 6064,
+      "code": 6072,
       "name": "GameNotEnded",
       "msg": "Game has not ended (status != 2)"
     },
     {
-      "code": 6065,
+      "code": 6073,
       "name": "NotRegistered",
       "msg": "Player has no deposit — not registered"
     },
     {
-      "code": 6066,
+      "code": 6074,
       "name": "NoPrizeClaim",
       "msg": "No prize to claim (vault_count == 0 or tier has no pool)"
     }
@@ -6346,6 +6539,43 @@
       }
     },
     {
+      "name": "DuelLootRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "loser",
+            "type": "pubkey"
+          },
+          {
+            "name": "loser_field",
+            "type": {
+              "array": [
+                "u8",
+                5
+              ]
+            }
+          },
+          {
+            "name": "stolen_card_id",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "DuelState",
       "docs": [
         "Per-duel on-chain state for commit-reveal ZK hand system.",
@@ -6942,6 +7172,34 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LootClaimedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "loser",
+            "type": "pubkey"
+          },
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "stolen_card_id",
+            "type": "u8"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

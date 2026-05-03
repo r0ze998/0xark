@@ -11,6 +11,10 @@ path = "test_game.rs"
 name = "v3_plus_mechanics"
 path = "v3_plus_mechanics.rs"
 
+[[test]]
+name = "claim_battle_loot"
+path = "claim_battle_loot.rs"
+
 [dependencies]
 sha2 = "0.10"
 oxark = { path = "../programs/oxark", features = ["no-entrypoint"] }

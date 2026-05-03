@@ -53,17 +53,26 @@ function buildWinHTML(s) {
   <!-- Marauder bonus -->
   ${hasMrdr ? '<div class="loot-marauder label-gold">★ MARAUDER BONUS — TAKE 2 CARDS</div>' : ''}
 
-  <!-- Pick a card -->
+  <!-- Reveal label -->
   <div class="loot-pick-label" id="loot-pick-label">
-    Opponent's cards — <span class="label-gold">pick your prize</span>
+    Opponent's cards
   </div>
 
-  <!-- Opponent cards (face-down, then reveal on hover/click) -->
+  <!-- Opponent cards (face-down, revealed by animation) -->
   <div class="loot-opp-cards" id="loot-opp-cards" role="list">
     ${oppCards.map((c, i) => `
       <div class="loot-opp-card-wrap" data-idx="${i}" data-card="${c?.cardId ?? 0}">
         ${CardHTML({ id: c?.cardId ?? 1, faceDown: true })}
       </div>`).join('')}
+  </div>
+
+  <!-- On-chain claim button (enabled after cards revealed) -->
+  <div class="loot-claim-block" id="loot-claim-block" style="display:none;">
+    <p class="loot-claim-hint">Claim 1 random card on-chain (determined by SlotHashes)</p>
+    <button class="gba-btn gba-btn--primary loot-claim-btn" id="loot-claim-btn">
+      ◆ CLAIM LOOT
+    </button>
+    <div class="loot-claim-error" id="loot-claim-error" style="display:none;"></div>
   </div>
 
   <!-- Result message -->
@@ -127,10 +136,11 @@ function runLootAnimation(container, s) {
       });
     });
 
-    // 2. Enable picking
+    // 2. Show CLAIM LOOT button after cards are revealed
     after(400 + oppCards.length * 300 + 400, () => {
       _selectMode = true;
-      container.querySelector('#loot-pick-label').textContent = '◆ Choose your prize card!';
+      const claimBlock = container.querySelector('#loot-claim-block');
+      if (claimBlock) claimBlock.style.display = '';
     });
 
   } else {
@@ -197,15 +207,12 @@ function enableContinue(container) {
 
 /* ── Events ─────────────────────────────────────────────────────────── */
 function bindEvents(container) {
-  // Winner: pick a card
-  const oppCards = container.querySelector('#loot-opp-cards');
-  if (oppCards) {
-    oppCards.addEventListener('click', e => {
+  // Winner: CLAIM LOOT on-chain
+  const claimBtn = container.querySelector('#loot-claim-btn');
+  if (claimBtn) {
+    claimBtn.addEventListener('click', async () => {
       if (!_selectMode) return;
-      const wrap = e.target.closest('[data-card]');
-      if (!wrap) return;
-      const cardId = parseInt(wrap.dataset.card, 10);
-      onCardPicked(container, cardId);
+      await onClaimLoot(container);
     });
   }
 
@@ -215,24 +222,79 @@ function bindEvents(container) {
   });
 }
 
-function onCardPicked(container, cardId) {
-  if (!_selectMode) return;
+async function onClaimLoot(container) {
   _selectMode = false;
-  _lootCardId = cardId;
+  const btn   = container.querySelector('#loot-claim-btn');
+  const errEl = container.querySelector('#loot-claim-error');
+  if (btn) { btn.disabled = true; btn.textContent = 'CLAIMING…'; }
+  if (errEl) errEl.style.display = 'none';
 
-  // Mark selected
+  const s = getState();
+  const oppCards   = s.opponentField ?? s.fieldCards;
+  const loserField = oppCards.map(c => c?.cardId ?? 0).slice(0, 5);
+  // Pad to 5 slots
+  while (loserField.length < 5) loserField.push(0);
+
+  // duel_id: derive from matchId (deterministic Pubkey seed)
+  let duelIdPK = null;
+  if (window.oxarkOnchain && s.matchId) {
+    try {
+      const { PublicKey } = window.solanaWeb3 ?? solanaWeb3;
+      const seed = new TextEncoder().encode(String(s.matchId).padEnd(32, '0').slice(0, 32));
+      [duelIdPK] = PublicKey.findProgramAddressSync(
+        [new TextEncoder().encode('match'), seed],
+        new PublicKey(window.oxarkOnchain.PROGRAM_ID)
+      );
+    } catch (_) {}
+  }
+
+  if (!duelIdPK) {
+    // Fallback: generate a unique key per session (demo mode)
+    duelIdPK = window.solanaWeb3
+      ? new window.solanaWeb3.PublicKey(crypto.getRandomValues(new Uint8Array(32)))
+      : null;
+  }
+
+  if (!duelIdPK || !s.opponentPubkey || !window.oxarkOnchain?.claimBattleLoot) {
+    // On-chain unavailable — apply loot locally for demo
+    const idx    = Math.floor(Math.random() * loserField.filter(Boolean).length);
+    const cardId = loserField.filter(Boolean)[idx] ?? 1;
+    onCardPickedLocal(container, cardId, s);
+    if (btn) { btn.textContent = 'CLAIMED (demo)'; }
+    return;
+  }
+
+  try {
+    const result = await window.oxarkOnchain.claimBattleLoot(
+      duelIdPK.toString(),
+      s.opponentPubkey,
+      loserField
+    );
+    const cardId = result.stolenCardId ?? loserField.find(Boolean) ?? 1;
+    onCardPickedLocal(container, cardId, s);
+    if (btn) { btn.textContent = 'CLAIMED ✓'; }
+  } catch (err) {
+    _selectMode = true;
+    if (btn) { btn.disabled = false; btn.textContent = '◆ CLAIM LOOT'; }
+    if (errEl) {
+      errEl.textContent = err.message ?? 'Claim failed';
+      errEl.style.display = 'block';
+    }
+  }
+}
+
+function onCardPickedLocal(container, cardId, s) {
+  const cardName = CARD_NAMES[cardId] ?? `Card #${cardId}`;
+  const isLgd    = getCard(cardId)?.rarity === 3;
+  const newVault = [...s.vault, cardId];
+  setState({ vault: newVault, lootCard: cardId });
+
+  // Highlight chosen card
   container.querySelectorAll('.loot-opp-card-wrap').forEach(el => {
     const id = parseInt(el.dataset.card, 10);
     el.classList.toggle('loot-card--chosen', id === cardId);
     if (id !== cardId) el.style.opacity = '0.35';
   });
-
-  const s        = getState();
-  const cardName = CARD_NAMES[cardId] ?? `Card #${cardId}`;
-  const isLgd    = getCard(cardId)?.rarity === 3;
-  const newVault = [...s.vault, cardId];
-
-  setState({ vault: newVault, lootCard: cardId });
 
   const result = container.querySelector('#loot-result');
   if (result) {
@@ -248,11 +310,10 @@ function onCardPicked(container, cardId) {
     perso.textContent   = updatePersonalities(s, cardId);
   }
 
-  // Imprint hook
   _applyImprints(container, s);
-
   setTimeout(() => enableContinue(container), 400);
 }
+
 
 function showLegendaryEffect(container) {
   const flash = document.createElement('div');
@@ -400,6 +461,11 @@ const CSS = `
   text-align: center;
 }
 .loot-perso-update { font-size: 16px; color: var(--text-dim); }
+
+.loot-claim-block { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 16px 0; }
+.loot-claim-hint  { font-size: 14px; color: var(--text-dim); text-align: center; }
+.loot-claim-btn   { padding: 12px 36px; font-size: 20px; letter-spacing: 0.06em; }
+.loot-claim-error { font-size: 14px; color: #e55; text-align: center; }
 
 .loot-continue-btn { padding: 12px 40px; font-size: 22px; letter-spacing: 0.08em; margin-top: auto; }
 
