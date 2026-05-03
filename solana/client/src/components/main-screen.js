@@ -208,13 +208,19 @@ function buildHTML({ vault, pubkey, perso }) {
 function bindEvents(container) {
   // Wallet connect
   container.querySelector('#ms-wallet').addEventListener('click', async () => {
-    if (window.oxarkWallet?.connect) {
-      try {
-        await window.oxarkWallet.connect();
-        const pub = window.oxarkWallet.getPublicKey?.()?.toString() ?? '';
-        setState({ playerPubkey: pub });
-        document.dispatchEvent(new CustomEvent('nav:main', { detail: { pubkey: pub } }));
-      } catch { /* user rejected */ }
+    if (!window.oxarkWallet) {
+      _showWalletError(container, 'Phantom or Solflare required');
+      window.open('https://phantom.app/', '_blank', 'noopener');
+      return;
+    }
+    try {
+      await window.oxarkWallet.connect();
+      const pub = window.oxarkWallet.getPublicKey?.()?.toString() ?? '';
+      setState({ playerPubkey: pub });
+      document.dispatchEvent(new CustomEvent('nav:main', { detail: { pubkey: pub } }));
+    } catch (err) {
+      if (err?.code === 4001) return; // user rejected — silent
+      _showWalletError(container, err?.message ?? 'Wallet connection failed');
     }
   });
 
@@ -358,6 +364,17 @@ async function startMatchmaking(container) {
   }
 }
 
+/* ── Wallet error banner ────────────────────────────────────────────── */
+function _showWalletError(container, msg) {
+  const existing = container.querySelector('.ms-wallet-err');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.className = 'ms-wallet-err';
+  el.textContent = msg;
+  container.querySelector('.ms-root')?.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
 /* ── Style ──────────────────────────────────────────────────────────── */
 function injectStyle() {
   if (document.getElementById('style-ms')) return;
@@ -386,6 +403,13 @@ const CSS = `
 .ms-tagline { font-size: 12px; letter-spacing: 0.08em; color: var(--text-dim); }
 .ms-hud { flex-shrink: 0; }
 .ms-wallet-btn { font-size: 14px; padding: 3px 10px; }
+.ms-wallet-err {
+  position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+  background: var(--accent-red); color: #fff; padding: 6px 18px;
+  font-size: 16px; letter-spacing: 0.05em; z-index: 200;
+  animation: ms-err-fade 4s ease forwards;
+}
+@keyframes ms-err-fade { 0%,80%{opacity:1} 100%{opacity:0} }
 
 /* Body */
 .ms-body { flex: 1; display: flex; min-height: 0; }

@@ -6,7 +6,11 @@ let _ws = null;
 const _listeners = new Map(); // type → Set<fn>
 
 function _wsUrl() {
-  return localStorage.getItem('oxark_ws_url') ?? 'ws://localhost:3500';
+  if (localStorage.getItem('oxark_ws_url')) return localStorage.getItem('oxark_ws_url');
+  if (window.OXARK_WS_URL) return window.OXARK_WS_URL;
+  const h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return 'ws://localhost:3500';
+  return 'wss://oxark-multiplayer.fly.dev';
 }
 
 // ── Connection ────────────────────────────────────────────────────────────────
