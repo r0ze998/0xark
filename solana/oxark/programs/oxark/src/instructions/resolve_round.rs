@@ -202,35 +202,7 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
         return finish_round(game, &players, game_id);
     }
 
-    // 0. Move (area transition — processed first so Steal etc. use new positions)
-    //
-    // ZK gating (T47): Moving into the dungeon (area > 0) requires that the
-    // player has an initialized position commitment (set via init_position and
-    // updated by verify_dungeon_move). This ensures dungeon traversal is
-    // cryptographically attested — the prover demonstrated knowledge of (x, y, salt)
-    // consistent with the committed Poseidon hash.
-    //
-    // Town moves (area 0 → area 0) are exempt — no ZK required for open areas.
-    // Uninitialized players may still move freely within town.
-    for p in players.iter_mut() {
-        if p.action == ActionType::Move {
-            let dest = p.move_target;
-            if dest < crate::constants::NUM_AREAS {
-                // Gate: dungeon moves require ZK position commitment
-                if dest > 0 && !p.position_commitment_initialized {
-                    msg!(
-                        "Player {} blocked: dungeon Move requires init_position (ZK gate)",
-                        p.key
-                    );
-                    // Don't error — silently skip the move so the round can still resolve.
-                    // The player stays in their current area until they call init_position.
-                    continue;
-                }
-                msg!("Player {} moved from area {} to area {}", p.key, p.area, dest);
-                p.area = dest;
-            }
-        }
-    }
+    // Phase 15: Move action removed. Area transitions now handled via separate instructions.
 
     // 1. Shadow (invisibility)
     let mut invisible: Vec<bool> = vec![false; player_count];
@@ -267,11 +239,11 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
         }
     }
 
-    // 4. Steal (take card, check SAME AREA + barrier + invisibility + Crystal)
+    // 4. Crystal (Phase 15: Steal removed; UseCrystal targets opponent for effect)
     for i in 0..player_count {
-        if players[i].action == ActionType::Steal || players[i].action == ActionType::UseCrystal {
+        if players[i].action == ActionType::UseCrystal {
             let target_key = players[i].target;
-            let is_crystal = players[i].action == ActionType::UseCrystal;
+            let is_crystal = true;
 
             if let Some(ti) = players.iter().position(|p| p.key == target_key) {
                 let same_area = players[i].area == players[ti].area;
@@ -336,8 +308,6 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                 if is_crystal {
                     remove_card(&mut players[i].cards, 1); // Remove Crystal
                     players[i].card_count -= 1;
-                } else {
-                    players[i].steal_count -= 1;
                 }
             }
         }
@@ -372,53 +342,9 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
         }
     }
 
-    // 6. Scout (reveal target's hand — emit event)
-    for i in 0..player_count {
-        if players[i].action == ActionType::Scout {
-            let target_key = players[i].target;
-            let target_cards = players.iter()
-                .find(|pp| pp.key == target_key)
-                .map(|pp| pp.cards)
-                .unwrap_or([0; 5]);
-            players[i].scout_count -= 1;
-            msg!("Player {} scouted {}: cards {:?}", players[i].key, target_key, target_cards);
-        }
-    }
+    // Phase 15: Scout and Draw actions removed from ActionType.
 
-    // 7. Draw (from AREA-SPECIFIC pool)
-    // Mix slot + unix_timestamp + round + caller key to make seed unpredictable.
-    // Using sha2 prevents slot-manipulation attacks by validators/frontrunners.
-    let caller_key = ctx.accounts.caller.key();
-    let mut seed_input = [0u8; 48];
-    seed_input[..8].copy_from_slice(&clock.slot.to_le_bytes());
-    seed_input[8..16].copy_from_slice(&clock.unix_timestamp.to_le_bytes());
-    seed_input[16..24].copy_from_slice(&(game.round as u64).to_le_bytes());
-    seed_input[24..].copy_from_slice(&caller_key.to_bytes()[..24]);
-    let hash = hashv(&[&seed_input]).to_bytes();
-    let mut seed = u64::from_le_bytes(hash[..8].try_into().unwrap());
-
-    for (i, p) in players.iter_mut().enumerate() {
-        if p.action == ActionType::Draw {
-            // Only draw card types available in current area
-            let area_idx = p.area as usize;
-            let area_cards = if area_idx < 3 { crate::constants::AREA_CARDS[area_idx] } else { [1, 2] };
-            let card_id = pick_area_card_from_pool(&mut pool.remaining, seed, &area_cards);
-            if card_id > 0 {
-                place_card(&mut p.cards, card_id);
-                p.card_count += 1;
-                game.cards_in_pool -= 1;
-                msg!("Player {} drew card {} from area {}", p.key, card_id, p.area);
-            } else {
-                msg!("Player {} tried to draw but area pool empty", p.key);
-            }
-            // Re-hash for each draw to ensure independent randomness per player
-            let next_hash = hashv(&[&seed.to_le_bytes()]).to_bytes();
-            seed = u64::from_le_bytes(next_hash[..8].try_into().unwrap())
-                .wrapping_add(i as u64 * 0x9e3779b97f4a7c15);
-        }
-    }
-
-    // 8. Void (copy target's card — SAME AREA only)
+    // 6. Void (copy target's card — SAME AREA only)
     for i in 0..player_count {
         if players[i].action == ActionType::UseVoid {
             let target_key = players[i].target;
@@ -570,30 +496,6 @@ fn peek_random_card(cards: &[u8; 5], seed: u64) -> u8 {
         return 0;
     }
     filled[(seed as usize) % filled.len()]
-}
-
-fn pick_area_card_from_pool(remaining: &mut [u8; 5], seed: u64, area_cards: &[u8; 2]) -> u8 {
-    // Only consider card types available in this area
-    let mut total: u32 = 0;
-    for &cid in area_cards {
-        if cid > 0 && cid <= 5 {
-            total += remaining[(cid - 1) as usize] as u32;
-        }
-    }
-    if total == 0 { return 0; }
-    let pick = (seed % total as u64) as u32;
-    let mut cumulative: u32 = 0;
-    for &cid in area_cards {
-        if cid > 0 && cid <= 5 {
-            let idx = (cid - 1) as usize;
-            cumulative += remaining[idx] as u32;
-            if pick < cumulative {
-                remaining[idx] -= 1;
-                return cid;
-            }
-        }
-    }
-    0
 }
 
 fn pick_card_from_pool(remaining: &mut [u8; 5], seed: u64) -> u8 {

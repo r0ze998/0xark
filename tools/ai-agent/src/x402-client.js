@@ -22,6 +22,8 @@
  *   const result = await x402ScoutPeek({ playerId: 'opponent-wallet-pubkey' });
  */
 
+import { buildMemoIx, generateNonce } from './x402-memo.js';
+
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 const ENABLED      = process.env.AGENT_DIRECT_X402 === 'true';
@@ -62,19 +64,17 @@ async function _getAgentKeypair() {
  * Transfer SCOUT_PEEK_LAMPORTS from agent wallet to broker wallet.
  * Returns the confirmed transaction signature.
  */
-async function _paySOL() {
-  const { Connection, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } = await _getSolana();
+async function _paySOL(endpoint) {
+  const web3 = await _getSolana();
+  const { Connection, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } = web3;
   const keypair    = await _getAgentKeypair();
   const connection = new Connection(RPC_URL, 'confirmed');
   const recipient  = new PublicKey(BROKER_WALLET);
+  const nonce      = generateNonce();
 
-  const tx = new Transaction().add(
-    SystemProgram.transfer({
-      fromPubkey: keypair.publicKey,
-      toPubkey:   recipient,
-      lamports:   SCOUT_PEEK_LAMPORTS,
-    })
-  );
+  const tx = new Transaction()
+    .add(SystemProgram.transfer({ fromPubkey: keypair.publicKey, toPubkey: recipient, lamports: SCOUT_PEEK_LAMPORTS }))
+    .add(buildMemoIx({ solanaWeb3: web3, endpoint, nonce }));
 
   const sig = await sendAndConfirmTransaction(connection, tx, [keypair]);
   return sig;
@@ -107,12 +107,14 @@ export async function x402ScoutPeek({ playerId }) {
     throw new Error(`Broker returned unexpected status ${probe.status}`);
   }
 
-  // Step 2: pay SOL
-  const sig = await _paySOL();
+  // Step 2: pay SOL + memo
+  const endpoint = new URL(url).pathname;
+  const sig      = await _paySOL(endpoint);
+  const keypair  = await _getAgentKeypair();
 
-  // Step 3: retry with payment header
+  // Step 3: retry with payment proof headers
   const paid = await fetch(url, {
-    headers: { 'X-Payment': sig },
+    headers: { 'X-Payment': sig, 'X-Player-Pubkey': keypair.publicKey.toBase58() },
   });
 
   if (!paid.ok) {

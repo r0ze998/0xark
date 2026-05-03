@@ -18,7 +18,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import WebSocket from 'ws';
-import { heuristicMove, heuristicCard, heuristicFlee } from './strategy.js';
+import { heuristicCard, heuristicFlee } from './strategy.js';
 
 const WS_URL     = process.env.WS_URL     || 'ws://localhost:3001';
 const AGENT_NAME = process.env.AGENT_NAME || 'OxarkBot';
@@ -92,26 +92,6 @@ export class OxarkAgent {
   getDecisions() { return this._decisions; }
 
   // ── LLM Decision Interface (tested directly in unit tests) ─────────────────
-
-  /**
-   * Decide which direction to move in the dungeon.
-   * Falls back to heuristic if LLM unavailable or fails.
-   *
-   * @param {function} canMove - (dx,dy)=>boolean
-   * @returns {{ dx, dy, reason, source:'llm'|'heuristic' }}
-   */
-  async decideDungeonMove(canMove) {
-    if (this.anthropic) {
-      try {
-        const decision = await this._llmDungeonMove(canMove);
-        return { ...decision, source: 'llm' };
-      } catch (err) {
-        log('warn', 'LLM dungeon move failed, using heuristic:', err.message);
-      }
-    }
-    const decision = heuristicMove(this.state, canMove);
-    return { ...decision, source: 'heuristic' };
-  }
 
   /**
    * Decide which card to play in battle.
@@ -247,34 +227,6 @@ export class OxarkAgent {
 
     if (this.state.inBattle) {
       await this._doBattleTurn();
-    } else {
-      await this._doDungeonMove();
-    }
-  }
-
-  async _doDungeonMove() {
-    // Simple collision model: tile grid 40×40, walls at borders
-    const { x, y } = this.state;
-    const canMove = (dx, dy) => {
-      const nx = x + dx;
-      const ny = y + dy;
-      return nx >= 0 && nx < 40 && ny >= 0 && ny < 40;
-    };
-
-    const decision = await this.decideDungeonMove(canMove);
-    log('info', `Move: ${decision.reason} [${decision.source}]`);
-
-    this._decisions.push({ type: 'move', ...decision, tick: this._tickCount });
-
-    if (decision.dx !== 0 || decision.dy !== 0) {
-      this.state.x += decision.dx;
-      this.state.y += decision.dy;
-      this._send({
-        type: 'move',
-        x: this.state.x,
-        y: this.state.y,
-        area: this.state.area,
-      });
     }
   }
 
@@ -311,48 +263,6 @@ export class OxarkAgent {
   }
 
   // ── LLM Calls ───────────────────────────────────────────────────────────────
-
-  async _llmDungeonMove(canMove) {
-    const { x, y, hp, maxHp, hand, floorDepth } = this.state;
-    const validDirs = [
-      { dx:  0, dy: -1, name: 'north' },
-      { dx:  0, dy:  1, name: 'south' },
-      { dx: -1, dy:  0, name: 'west'  },
-      { dx:  1, dy:  0, name: 'east'  },
-    ].filter(d => canMove(d.dx, d.dy));
-
-    if (validDirs.length === 0) return { dx: 0, dy: 0, reason: 'no valid moves' };
-    if (validDirs.length === 1) return { ...validDirs[0], reason: `only option: ${validDirs[0].name}` };
-
-    const prompt = `You are an AI playing 0xARK, a dungeon-crawling card game on Solana.
-
-Current state:
-- Position: (${x}, ${y}) on floor ${floorDepth}
-- HP: ${hp}/${maxHp} (${Math.round(hp/maxHp*100)}%)
-- Cards in hand: ${hand.length} (${hand.map(c => `${c.name}(${c.type})`).join(', ') || 'none'})
-- Valid moves: ${validDirs.map(d => d.name).join(', ')}
-
-Goal: Collect all 60 unique cards. Rarer cards are found deeper in the dungeon.
-When HP is low, retreat toward the exit (north).
-
-Choose ONE direction from: ${validDirs.map(d => d.name).join(', ')}
-Reply with JSON: {"direction":"<choice>","reason":"<one sentence>"}`;
-
-    const response = await this.anthropic.messages.create({
-      model: this.llmModel,
-      max_tokens: 128,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const text = response.content[0]?.text ?? '';
-    const match = text.match(/\{[^}]+\}/);
-    if (!match) throw new Error('LLM returned no JSON');
-    const parsed = JSON.parse(match[0]);
-    const chosen = validDirs.find(d => d.name === parsed.direction);
-    if (!chosen) throw new Error(`LLM chose invalid direction: ${parsed.direction}`);
-
-    return { dx: chosen.dx, dy: chosen.dy, reason: parsed.reason ?? `moving ${chosen.name}` };
-  }
 
   async _llmBattleCard(opponentType) {
     const { hand, hp, maxHp } = this.state;

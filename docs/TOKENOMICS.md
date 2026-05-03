@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-0xARK is a Fully On-Chain Card PvP game built on Solana. Three players explore a zero-knowledge dungeon, battle for cards, and race to collect all 60 unique cards to claim the entire Prize Pool. The economic model is simple by design: entry fees accumulate on-chain, the winner takes 80%, and every micro-transaction within the game — scouting an opponent's card, hiring an AI agent, buying a rare card from another player — flows through x402 HTTP micropayments. No inflationary token. No ponzi loop. A closed-loop economy where skill, information asymmetry, and risk tolerance determine outcomes. This document describes the economic primitives, the season system, the x402 microeconomy, the NFT card secondary market, the AI agent economy, and the path to a governance token if the community demands one.
+0xARK is a Fully On-Chain Card PvP game built on Solana. Players battle each other in ZK commit-reveal card duels, racing to collect all 60 unique cards to claim the entire Prize Pool. The economic model is simple by design: entry fees accumulate on-chain, the winner takes 80%, and every micro-transaction within the game — scouting an opponent's card, hiring an AI agent, buying a rare card from another player — flows through x402 HTTP micropayments. No inflationary token. No ponzi loop. A closed-loop economy where skill, information asymmetry, and risk tolerance determine outcomes. This document describes the economic primitives, the season system, the x402 microeconomy, the NFT card secondary market, the AI agent economy, and the path to a governance token if the community demands one.
 
 ---
 
@@ -17,16 +17,16 @@
 Understanding the economics requires understanding how the game is played.
 
 ```
-Entry (0.5 SOL) → Town (safe zone) → Dungeon (ZK hidden positions)
-     ↓                                       ↓
-Prize Pool ← ── ── ── ── ── ── ── ←  Card Battle (win = steal, lose = surrender)
-     ↓                                       ↓
-Winner (60/60 cards) ←── ── ── ── ← Floor Clear (1 card reward)
+Entry (0.5 SOL) → Lobby → Match (ZK commit-reveal)
+     ↓                            ↓
+Prize Pool ← ── ── ── ── ← Card Battle (5 rounds, HP delta)
+     ↓                            ↓
+Winner (60/60 cards) ←── ── ← Outcome (win = steal card, lose = surrender card)
 ```
 
 1. **Entry.** A player deposits 0.5 SOL via `join_game`. Funds are custodied by the Anchor program — no off-chain escrow, no trust required.
-2. **Exploration.** The player navigates a 5-floor roguelike dungeon. Rival positions are hidden by Groth16 ZK proofs; you only see players who enter your fog-of-war radius.
-3. **Card Battles.** When two players collide, a 4-action card battle begins: Draw, Steal, Barrier, Scout. Winning steals one card. Losing surrenders one card.
+2. **Matchmaking.** Players enter the lobby and challenge rivals. Hand commitments are submitted on-chain via ZK hash — neither player sees the other's hand until reveal.
+3. **Card Battles.** A 5-round duel begins: each round resolves Draw, Steal, Barrier, Scout, or special card actions. HP deltas accumulate. Winning steals one card. Losing surrenders one card.
 4. **Victory.** The first player to collect all 60 unique cards triggers `claim_prize`, receiving 80% of the accumulated Prize Pool.
 5. **Season Reset.** After a winner is declared, the season resets. Unclaimed cards remain as NFTs; a new season begins with a fresh pool.
 
@@ -46,9 +46,9 @@ All entry fees, prize distributions, and x402 micropayments are denominated in S
 
 - **Fungible within the game session** (the game tracks card IDs, not mint addresses, during a season)
 - **Non-fungible as tradeable assets** (each minted NFT is unique, with provenance on-chain)
-- **Earned, not bought** — cards enter the game economy through dungeon rewards, battle wins, gacha, and floor-clear drops. No direct mint-to-buy path keeps the economy skill-gated.
+- **Earned, not bought** — cards enter the game economy through battle wins and gacha. No direct mint-to-buy path keeps the economy skill-gated.
 
-Five rarity tiers (Common → Legendary) determine drop rates and gacha probabilities. Higher rarity cards appear only on deeper dungeon floors (B3–B5).
+Five rarity tiers (Common → Legendary) determine drop rates and gacha probabilities.
 
 ### 3.3 x402 — The Microeconomy Layer
 
@@ -209,10 +209,10 @@ Expected secondary market price ranges (speculative, at launch):
 | Rarity | Expected range | Basis |
 |--------|---------------|-------|
 | Common (R1) | 0.01–0.05 SOL | High supply, low effort |
-| Uncommon (R2) | 0.05–0.2 SOL | Moderate dungeon depth required |
-| Rare (R3) | 0.2–1 SOL | B3+ floors, meaningful competition |
+| Uncommon (R2) | 0.05–0.2 SOL | Moderate game progress required |
+| Rare (R3) | 0.2–1 SOL | Multiple battle wins, meaningful competition |
 | Epic (R4) | 1–5 SOL | Near-endgame acquisition |
-| Legendary (R5) | 5–20 SOL | B5 boss drops only |
+| Legendary (R5) | 5–20 SOL | Near-complete collection only |
 
 These are estimates. The market will discover its own prices.
 
@@ -306,7 +306,7 @@ The prize pool mechanic (entry fee → skill-based winner-take-all) has analogue
 
 | Risk | Mitigation |
 |------|------------|
-| MagicBlock ER infra downtime | Fallback to L1-only mode (movement turns are slower but game continues) |
+| MagicBlock ER infra downtime | Fallback to L1-only mode (card actions are slower but game continues) |
 | ZK circuit bug | Circuit is auditable, 625 constraints. Trusted setup uses pot12 (public ceremony). |
 | x402 facilitator downtime | x402 features degrade gracefully — game remains playable without micropayments |
 | Solana network congestion | MagicBlock ER isolates game transactions from L1 congestion |

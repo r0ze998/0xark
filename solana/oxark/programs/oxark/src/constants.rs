@@ -1,5 +1,14 @@
 use anchor_lang::prelude::*;
 
+// Game admin (program deployer / Season 1 operator)
+// DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R
+pub const ADMIN_PUBKEY: Pubkey = Pubkey::new_from_array([
+    184,   6,  19, 220, 138, 154,  47,  19,
+    180, 112, 248, 182,  84,  24, 145,  15,
+    107, 160,  88,  67, 202,  30, 232,  14,
+    241, 152, 239, 100, 147, 100, 240,  26,
+]);
+
 #[constant]
 pub const GAME_SEED: &[u8] = b"game";
 #[constant]

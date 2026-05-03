@@ -131,4 +131,19 @@ pub enum ErrorCode {
     NoActiveLease,
     #[msg("Lease has not expired yet")]
     LeaseNotExpired,
+    // ── Phase 15: Admin / Waitlist / Season v2 ──────────────────────────────
+    #[msg("Caller is not the authorized admin")]
+    Unauthorized,
+    #[msg("Waitlist registration is closed")]
+    WaitlistClosed,
+    #[msg("Player is already registered for this season")]
+    AlreadyRegistered,
+    #[msg("Game is not active (status != 1)")]
+    GameNotActive,
+    #[msg("Game has not ended (status != 2)")]
+    GameNotEnded,
+    #[msg("Player has no deposit — not registered")]
+    NotRegistered,
+    #[msg("No prize to claim (vault_count == 0 or tier has no pool)")]
+    NoPrizeClaim,
 }

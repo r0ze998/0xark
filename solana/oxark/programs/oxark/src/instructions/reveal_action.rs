@@ -95,47 +95,14 @@ pub fn handle_reveal(
     Ok(())
 }
 
-fn validate_action(ps: &PlayerState, at: ActionType, target: Pubkey, caller: Pubkey) -> Result<()> {
+fn validate_action(_ps: &PlayerState, at: ActionType, target: Pubkey, caller: Pubkey) -> Result<()> {
+    // Phase 15: ActionType validation uses vault_bitmap on the v2 battle path.
+    // For the legacy commit-reveal path these basic target checks still apply.
     match at {
-        ActionType::Draw => {},
-        ActionType::Steal => {
-            require!(ps.steal_count > 0, ErrorCode::NoSpellsLeft);
+        ActionType::UseCrystal | ActionType::Barrier | ActionType::UseStorm | ActionType::UseShadow => {},
+        ActionType::UseFlame | ActionType::UseVoid => {
             require!(target != caller, ErrorCode::CannotTargetSelf);
-        },
-        ActionType::Barrier => {
-            require!(ps.barrier_count > 0, ErrorCode::NoSpellsLeft);
-        },
-        ActionType::Scout => {
-            require!(ps.scout_count > 0, ErrorCode::NoSpellsLeft);
-            require!(target != caller, ErrorCode::CannotTargetSelf);
-        },
-        ActionType::UseCrystal => {
-            require!(has_card(&ps.cards, 1), ErrorCode::CardNotFound);
-        },
-        ActionType::UseShadow => {
-            require!(has_card(&ps.cards, 2), ErrorCode::CardNotFound);
-        },
-        ActionType::UseFlame => {
-            require!(has_card(&ps.cards, 3), ErrorCode::CardNotFound);
-            require!(target != caller, ErrorCode::CannotTargetSelf);
-        },
-        ActionType::UseStorm => {
-            require!(has_card(&ps.cards, 4), ErrorCode::CardNotFound);
-        },
-        ActionType::UseVoid => {
-            require!(has_card(&ps.cards, 5), ErrorCode::CardNotFound);
-            require!(target != caller, ErrorCode::CannotTargetSelf);
-        },
-        ActionType::Move => {
-            // Move is always valid — target encodes destination area in low byte
-        },
-        ActionType::None => {
-            return Err(ErrorCode::InvalidAction.into());
         },
     }
     Ok(())
-}
-
-fn has_card(cards: &[u8; 5], card_id: u8) -> bool {
-    cards.contains(&card_id)
 }

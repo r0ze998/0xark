@@ -52,8 +52,6 @@ From `solana/oxark/target/idl/oxark.json`:
 | `deposit_stake` | 1 | Player deposits SOL ante into StakeVault |
 | `claim_prize` | 1 | Winner withdraws prize pool |
 | `verify_zk_proof` | 5 | On-chain Groth16 BN254 verification (alt_bn128) |
-| `verify_dungeon_move` | 5 | ZK-verify player movement in dungeon |
-| `init_position` | 2 | Initialize player position PDA |
 | `init_season_supply` | 2 | Set per-card supply caps for a season |
 | `register_agent` | 5 | Register an AI agent wallet |
 | `register_agent_hire` | 4 | Record an agent hire via x402 |

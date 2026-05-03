@@ -2,17 +2,22 @@
  * 02-x402.js — x402 micropayment client for 0xARK
  *
  * Handles the full x402 HTTP-402 flow:
- *   1. POST /scout-peek  →  402 + X-Payment-Required header
- *   2. User approves SOL payment (0.005 SOL)
- *   3. Retry with X-Payment: <tx_sig>
- *   4. Server verifies on-chain, returns revealed card
+ *   1. POST endpoint (no payment header) → 402 + PAYMENT-REQUIRED header (Base64 JSON)
+ *   2. Parse payment spec; build SOL tx (1 or 2 transfers + memo)
+ *   3. Sign + send via Phantom
+ *   4. Retry with X-Payment: <tx_sig>
+ *   5. Server verifies on-chain → 200 OK + content
  *
- * Dependencies: window.solana (Phantom/Backpack wallet adapter)
+ * Supports split payments (50% ops_treasury / 50% prize_pool).
+ * Backward-compatible with single-recipient servers.
+ *
+ * Dependencies: window.solana (Phantom/Backpack), window.solanaWeb3, window.x402Memo
  */
 
+// Server URL: configurable via window.X402_BROKER_URL (default: multiplayer server)
 const X402_BROKER_URL = typeof window !== 'undefined'
-  ? (window.X402_BROKER_URL || 'http://localhost:3402')
-  : 'http://localhost:3402';
+  ? (window.X402_BROKER_URL || 'http://localhost:3500')
+  : 'http://localhost:3500';
 
 /**
  * Scout peek — pay 0.005 SOL to reveal one card held by a target player.
@@ -24,6 +29,12 @@ const X402_BROKER_URL = typeof window !== 'undefined'
  * @returns {{ revealed: {id,name}|null, totalCards, area, timestamp }}
  */
 async function scoutPeek(gameId, target, wallet, conn) {
+  const { Transaction, SystemProgram, PublicKey } = window.solanaWeb3 ?? {};
+  if (!Transaction) throw new Error('solanaWeb3 not found on window');
+
+  const fromPk       = new PublicKey(wallet.publicKey.toString());
+  const playerPubkey = fromPk.toBase58();
+
   // ── Step 1: probe endpoint to get x402 payment spec ──────────────────────
   const probe = await fetch(`${X402_BROKER_URL}/scout-peek`, {
     method: 'POST',
@@ -32,7 +43,6 @@ async function scoutPeek(gameId, target, wallet, conn) {
   });
 
   if (probe.status !== 402) {
-    // Already paid or endpoint changed — try to use the response directly
     if (probe.ok) return probe.json();
     throw new Error(`Unexpected status ${probe.status} from scout-peek`);
   }
@@ -40,29 +50,28 @@ async function scoutPeek(gameId, target, wallet, conn) {
   const paymentSpec = JSON.parse(probe.headers.get('X-Payment-Required') || '{}');
   const lamports = paymentSpec.amount ?? 5_000_000;
 
-  // ── Step 2: build + sign SOL transfer to broker wallet ────────────────────
-  const { Transaction, SystemProgram, PublicKey, LAMPORTS_PER_SOL } = window.solanaWeb3 ?? {};
-  if (!Transaction) throw new Error('solanaWeb3 not found on window');
-
-  const fromPk = new PublicKey(wallet.publicKey.toString());
-  const toPk   = new PublicKey(paymentSpec.recipient);
+  // ── Step 2: build + sign SOL transfer + memo ──────────────────────────────
+  const toPk = new PublicKey(paymentSpec.recipient);
 
   const { blockhash } = await conn.getLatestBlockhash('confirmed');
   const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPk });
   tx.add(SystemProgram.transfer({ fromPubkey: fromPk, toPubkey: toPk, lamports }));
 
+  const memoHelper = typeof window !== 'undefined' ? window.x402Memo : null;
+  if (memoHelper?.buildMemoIx) {
+    const nonce = memoHelper.generateNonce();
+    tx.add(memoHelper.buildMemoIx({ solanaWeb3: window.solanaWeb3, endpoint: '/scout-peek', nonce }));
+  }
+
   const signed = await wallet.signTransaction(tx);
   const sig = await conn.sendRawTransaction(signed.serialize());
   await conn.confirmTransaction(sig, 'confirmed');
 
-  // ── Step 3: retry with payment signature ─────────────────────────────────
+  // ── Step 3: retry with payment proof ─────────────────────────────────────
   const paid = await fetch(`${X402_BROKER_URL}/scout-peek`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Payment': sig,
-    },
-    body: JSON.stringify({ game_id: gameId, target_pubkey: target }),
+    headers: { 'Content-Type': 'application/json', 'X-Payment': sig },
+    body: JSON.stringify({ game_id: gameId, target_pubkey: target, playerPubkey, signature: sig }),
   });
 
   if (!paid.ok) {
@@ -90,14 +99,18 @@ async function scoutPeek(gameId, target, wallet, conn) {
  * @returns {{ hire_session_id, agent_id, expires_at, payment_sig, agent_endpoint }}
  */
 async function hireAgent(agentId, gameId, durationSeconds = 3600, wallet, conn) {
-  const hirePubkey = wallet.publicKey.toString();
+  const { Transaction, SystemProgram, PublicKey } = window.solanaWeb3 ?? {};
+  if (!Transaction) throw new Error('solanaWeb3 not found on window');
+
+  const fromPk       = new PublicKey(wallet.publicKey.toString());
+  const playerPubkey = fromPk.toBase58();
+  const probeBody    = JSON.stringify({ agent_id: agentId, game_id: gameId, duration_seconds: durationSeconds, hirer_pubkey: playerPubkey });
 
   // ── Step 1: probe to get payment spec ────────────────────────────────────
-  const body = JSON.stringify({ agent_id: agentId, game_id: gameId, duration_seconds: durationSeconds, hirer_pubkey: hirePubkey });
   const probe = await fetch(`${X402_BROKER_URL}/agent-hire`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body,
+    body: probeBody,
   });
 
   if (probe.status !== 402) {
@@ -108,26 +121,32 @@ async function hireAgent(agentId, gameId, durationSeconds = 3600, wallet, conn) 
   const paymentSpec = JSON.parse(probe.headers.get('X-Payment-Required') || '{}');
   const lamports = paymentSpec.amount ?? 50_000_000;
 
-  // ── Step 2: pay 0.05 SOL ─────────────────────────────────────────────────
-  const { Transaction, SystemProgram, PublicKey } = window.solanaWeb3 ?? {};
-  if (!Transaction) throw new Error('solanaWeb3 not found on window');
-
-  const fromPk = new PublicKey(hirePubkey);
-  const toPk   = new PublicKey(paymentSpec.recipient);
+  // ── Step 2: pay 0.05 SOL + memo ──────────────────────────────────────────
+  const toPk = new PublicKey(paymentSpec.recipient);
 
   const { blockhash } = await conn.getLatestBlockhash('confirmed');
   const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPk });
   tx.add(SystemProgram.transfer({ fromPubkey: fromPk, toPubkey: toPk, lamports }));
+
+  const memoHelper = typeof window !== 'undefined' ? window.x402Memo : null;
+  if (memoHelper?.buildMemoIx) {
+    const nonce = memoHelper.generateNonce();
+    tx.add(memoHelper.buildMemoIx({ solanaWeb3: window.solanaWeb3, endpoint: '/agent-hire', nonce }));
+  }
 
   const signed = await wallet.signTransaction(tx);
   const sig = await conn.sendRawTransaction(signed.serialize());
   await conn.confirmTransaction(sig, 'confirmed');
 
   // ── Step 3: retry with payment proof ─────────────────────────────────────
+  const retryBody = JSON.stringify({
+    agent_id: agentId, game_id: gameId, duration_seconds: durationSeconds,
+    hirer_pubkey: playerPubkey, playerPubkey, signature: sig,
+  });
   const paid = await fetch(`${X402_BROKER_URL}/agent-hire`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Payment': sig },
-    body,
+    body: retryBody,
   });
 
   if (!paid.ok) {
@@ -174,9 +193,346 @@ async function scoutPeekDev(gameId, target) {
   return res.json();
 }
 
-// Export for both ESM browser and Node.js test environments
+// ─── Phase 12: move memo payment helpers ─────────────────────────────────────
+// Each function pays 0.0001 SOL (or server-configured price) and attaches the
+// compact move memo as an SPL Memo instruction in the payment tx.
+// WS broadcast continues in parallel via existing handlers (dual-write).
+
+const MOVE_ENDPOINTS = ['/x402/co', '/x402/re', '/x402/hc', '/x402/hr', '/x402/pa', '/x402/rs', '/x402/me'];
+
+function _buildMoveMemoStr(endpoint, fields) {
+  const nonce = _generateNonce();
+  const parts  = [`e:${endpoint}`];
+  for (const [k, v] of Object.entries(fields)) parts.push(`${k}:${v}`);
+  parts.push(`n:${nonce}`);
+  return parts.join(';');
+}
+
+function _generateNonce() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+  return Math.random().toString(36).slice(2).padEnd(16, '0');
+}
+
+/**
+ * Pay for a move endpoint with the compact memo attached.
+ * Generic helper used by all 7 move functions below.
+ *
+ * @param {string} endpoint      - e.g. '/x402/co'
+ * @param {object} memoFields    - key-value pairs (excluding 'e' and 'n')
+ * @param {object} wallet        - wallet adapter
+ * @param {object} conn          - @solana/web3.js Connection
+ * @returns {{ ok, memo, fields?, sig?, demo? }}
+ */
+async function _payMove(endpoint, memoFields, wallet, conn) {
+  const { Transaction, SystemProgram, PublicKey, TransactionInstruction } = window.solanaWeb3 ?? {};
+  if (!Transaction) throw new Error('solanaWeb3 not found on window');
+
+  const fromPk       = new PublicKey(wallet.publicKey.toString());
+  const playerPubkey = fromPk.toBase58();
+  const memoStr      = _buildMoveMemoStr(endpoint, memoFields);
+
+  // ── Probe to get payment spec ─────────────────────────────────────────────
+  const probe = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerPubkey, memo: memoStr }),
+  });
+  if (probe.ok) return probe.json();
+  if (probe.status !== 402) throw new Error(`Unexpected status ${probe.status} from ${endpoint}`);
+
+  const spec     = JSON.parse(probe.headers.get('X-Payment-Required') || '{}');
+  const lamports = spec.accepts?.[0]?.amount ? parseInt(spec.accepts[0].amount, 10) : 100_000;
+  const toPk     = new PublicKey(spec.accepts?.[0]?.payTo ?? TREASURY_ADDR_FALLBACK);
+
+  // ── Build tx with payment + memo ──────────────────────────────────────────
+  const { blockhash } = await conn.getLatestBlockhash('confirmed');
+  const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPk });
+  tx.add(SystemProgram.transfer({ fromPubkey: fromPk, toPubkey: toPk, lamports }));
+  tx.add(new TransactionInstruction({
+    programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
+    keys: [],
+    data: (() => {
+      const enc = new TextEncoder();
+      return enc.encode(memoStr);
+    })(),
+  }));
+
+  const signed = await wallet.signTransaction(tx);
+  const sig    = await conn.sendRawTransaction(signed.serialize());
+  await conn.confirmTransaction(sig, 'confirmed');
+
+  // ── Retry with payment proof ──────────────────────────────────────────────
+  const paid = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Payment': sig },
+    body: JSON.stringify({ playerPubkey, signature: sig, memo: memoStr }),
+  });
+  if (!paid.ok) {
+    const err = await paid.json().catch(() => ({}));
+    throw new Error(err.error ?? `${endpoint} failed: ${paid.status}`);
+  }
+  return paid.json();
+}
+
+// ─── Phase 19: unified x402 payment helper ───────────────────────────────────
+// Handles 402→pay→retry cycle. Supports split-recipient (ops + pool) or single payTo.
+
+const TREASURY_ADDR_FALLBACK = '11111111111111111111111111111111';
+
+function _getWalletAndConn() {
+  const w = window.solana;
+  const c = window.oxarkOnchain
+    ? (() => { const C = window.solanaWeb3?.Connection; const { DEVNET_RPC } = window; return C ? new C(DEVNET_RPC || 'https://api.devnet.solana.com', 'confirmed') : null; })()
+    : null;
+  // Prefer the shared connection from onchain module if available
+  if (!w?.isConnected) throw new Error('Phantom wallet not connected');
+  return { wallet: w, conn: c || _getDefaultConn() };
+}
+
+function _getDefaultConn() {
+  const { Connection } = window.solanaWeb3 ?? {};
+  if (!Connection) throw new Error('solanaWeb3 not loaded');
+  return new Connection('https://api.devnet.solana.com', 'confirmed');
+}
+
+/**
+ * Unified x402 payment flow for any endpoint.
+ *
+ * @param {string} endpoint   - e.g. '/x402/match-battle'
+ * @param {object} body       - request body for the final retry POST
+ * @param {object} [wallet]   - wallet adapter (defaults to window.solana)
+ * @param {object} [conn]     - Connection (defaults to devnet)
+ * @returns {Promise<object>} - server response JSON
+ */
+async function _x402Pay(endpoint, body = {}, wallet, conn) {
+  const { Transaction, SystemProgram, PublicKey, TransactionInstruction } = window.solanaWeb3 ?? {};
+  if (!Transaction) throw new Error('solanaWeb3 not loaded');
+
+  const w      = wallet ?? window.solana;
+  const c      = conn   ?? _getDefaultConn();
+  if (!w?.isConnected && !w?.publicKey) throw new Error('Wallet not connected');
+
+  const fromPk       = new PublicKey(w.publicKey.toString());
+  const playerPubkey = fromPk.toBase58();
+
+  // ── 1. Probe to get payment spec ─────────────────────────────────────────
+  const probeRes = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ ...body, playerPubkey }),
+  });
+
+  if (probeRes.ok) return probeRes.json(); // Already paid or server skip
+  if (probeRes.status !== 402) {
+    const errBody = await probeRes.json().catch(() => ({}));
+    throw Object.assign(new Error(errBody.error ?? `x402 ${endpoint} returned ${probeRes.status}`), { code: 'ServerError' });
+  }
+
+  // ── 2. Parse PAYMENT-REQUIRED header ─────────────────────────────────────
+  const specBase64 = probeRes.headers.get('PAYMENT-REQUIRED') || probeRes.headers.get('X-Payment-Required');
+  let spec = {};
+  try { spec = specBase64 ? JSON.parse(atob(specBase64)) : {}; } catch (_) {}
+
+  const accepts = spec.accepts?.[0] ?? {};
+  const totalLamports = parseInt(accepts.amount, 10)
+    || parseInt(probeRes.headers.get('X-Payment-Amount'), 10)
+    || 0;
+
+  // ── 3. Build transaction ──────────────────────────────────────────────────
+  const { blockhash } = await c.getLatestBlockhash('confirmed');
+  const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPk });
+
+  const splitRecipient = accepts.recipient;
+  if (splitRecipient?.ops && splitRecipient?.pool
+      && splitRecipient.ops.address !== splitRecipient.pool.address) {
+    // Split payment: 50% ops / 50% pool
+    tx.add(SystemProgram.transfer({
+      fromPubkey: fromPk,
+      toPubkey:   new PublicKey(splitRecipient.ops.address),
+      lamports:   splitRecipient.ops.lamports,
+    }));
+    tx.add(SystemProgram.transfer({
+      fromPubkey: fromPk,
+      toPubkey:   new PublicKey(splitRecipient.pool.address),
+      lamports:   splitRecipient.pool.lamports,
+    }));
+  } else {
+    // Single payment (backward compat or same address)
+    const payTo = accepts.payTo
+      || probeRes.headers.get('X-Payment-Recipient')
+      || TREASURY_ADDR_FALLBACK;
+    tx.add(SystemProgram.transfer({
+      fromPubkey: fromPk,
+      toPubkey:   new PublicKey(payTo),
+      lamports:   totalLamports,
+    }));
+  }
+
+  // Attach SPL Memo for endpoint binding
+  const nonce   = _generateNonce();
+  const memoStr = `endpoint:${endpoint};nonce:${nonce}`;
+  tx.add(new TransactionInstruction({
+    programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
+    keys: [],
+    data: new TextEncoder().encode(memoStr),
+  }));
+
+  // ── 4. Sign + send ────────────────────────────────────────────────────────
+  const signed = await w.signTransaction(tx);
+  const sig    = await c.sendRawTransaction(signed.serialize());
+  await c.confirmTransaction(sig, 'confirmed');
+
+  // ── 5. Retry with payment proof ───────────────────────────────────────────
+  const paidRes = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Payment': sig },
+    body:    JSON.stringify({ ...body, playerPubkey, signature: sig, memo: memoStr }),
+  });
+
+  if (!paidRes.ok) {
+    const errBody = await paidRes.json().catch(() => ({}));
+    const msg = errBody.error ?? errBody.reason ?? `${endpoint} failed: ${paidRes.status}`;
+    const code = paidRes.status === 402 ? 'PaymentFailed' : 'ServerError';
+    throw Object.assign(new Error(msg), { code });
+  }
+  return paidRes.json();
+}
+
+// ─── Phase 19: new game-design-v2 §3 endpoint wrappers ───────────────────────
+
+/** Pay 0.001 SOL to start a ranked match battle. */
+async function payMatchBattle(body = {}) {
+  return _x402Pay('/x402/match-battle', body);
+}
+
+/** Pay 0.0005 SOL to peek an opponent's vault card count. targetPubkey: base58 */
+async function payPeekVaultSize(targetPubkey, body = {}) {
+  return _x402Pay('/x402/peek-vault-size', { target_pubkey: targetPubkey, ...body });
+}
+
+/** Pay 0.005 SOL to reveal the contents of an opponent's vault. targetPubkey: base58 */
+async function payPeekVaultContent(targetPubkey, body = {}) {
+  return _x402Pay('/x402/peek-vault-content', { target_pubkey: targetPubkey, ...body });
+}
+
+/** Pay 0.01 SOL to draw an extra card this round. */
+async function payDrawExtra(body = {}) {
+  return _x402Pay('/x402/draw-extra', body);
+}
+
+/** Pay 0.003 SOL to get AI strategic advice for the current game state. */
+async function payAiStrategyAdvice(context = {}) {
+  return _x402Pay('/x402/ai-strategy-advice', { public_state: context });
+}
+
+/** POST /x402/co — action commit */
+async function payCommit({ matchId, round, playerSide = 's', hash }, wallet, conn) {
+  return _payMove('/x402/co', { m: matchId, r: round, p: playerSide, h: hash }, wallet, conn);
+}
+
+/** POST /x402/re — action reveal */
+async function payReveal({ matchId, round, playerSide = 's', actionType, target, salt }, wallet, conn) {
+  return _payMove('/x402/re', { m: matchId, r: round, p: playerSide, a: actionType, g: target, s: salt }, wallet, conn);
+}
+
+/** POST /x402/hc — hand commit (Poseidon) */
+async function payHandCommit({ matchId, round, commitment }, wallet, conn) {
+  return _payMove('/x402/hc', { m: matchId, r: round, c: commitment }, wallet, conn);
+}
+
+/** POST /x402/hr — hand reveal */
+async function payHandReveal({ matchId, round, cardIds }, wallet, conn) {
+  return _payMove('/x402/hr', { m: matchId, r: round, i: cardIds.join(',') }, wallet, conn);
+}
+
+/** POST /x402/pa — phase advance (host only) */
+async function payPhaseAdvance({ matchId, round, phase }, wallet, conn) {
+  return _payMove('/x402/pa', { m: matchId, r: round, p: phase }, wallet, conn);
+}
+
+/** POST /x402/rs — round resolve (host only) */
+async function payRoundResolve({ matchId, round, p1Delta, p2Delta }, wallet, conn) {
+  return _payMove('/x402/rs', { m: matchId, r: round, d: `${p1Delta}/${p2Delta}` }, wallet, conn);
+}
+
+/** POST /x402/me — match end (host only). Accepts wallet+conn for legacy callers. */
+async function payMatchEnd({ matchId, winner }, wallet, conn) {
+  // Phase 19: prefer _x402Pay (split payment); fall back to _payMove for old API
+  if (!wallet && !conn) {
+    return _x402Pay('/x402/me', { m: matchId, w: winner });
+  }
+  return _payMove('/x402/me', { m: matchId, w: winner }, wallet, conn);
+}
+
+/** POST /x402/ai-move — delegate battle move to AI (0.005 SOL) */
+async function payAiMove({ matchId, round, publicState }, wallet, conn) {
+  const { Transaction, SystemProgram, PublicKey } = window.solanaWeb3 ?? {};
+  if (!Transaction) throw new Error('solanaWeb3 not found on window');
+
+  const fromPk       = new PublicKey(wallet.publicKey.toString());
+  const playerPubkey = fromPk.toBase58();
+  const endpoint     = '/x402/ai-move';
+
+  // Probe — check payment spec (or early 503 if AI not configured)
+  const probe = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playerPubkey, match_id: matchId, round, public_state: publicState }),
+  });
+  if (probe.ok) return probe.json();
+  if (probe.status === 503) {
+    const err = await probe.json().catch(() => ({}));
+    throw new Error(err.error ?? 'AI delegation not available');
+  }
+  if (probe.status !== 402) throw new Error(`Unexpected status ${probe.status} from ${endpoint}`);
+
+  const amountHeader    = probe.headers.get('X-Payment-Amount');
+  const recipientHeader = probe.headers.get('X-Payment-Recipient');
+  const lamports        = amountHeader ? parseInt(amountHeader, 10) : 5_000_000;
+  const toPk            = new PublicKey(recipientHeader ?? TREASURY_ADDR_FALLBACK);
+
+  const { blockhash } = await conn.getLatestBlockhash('confirmed');
+  const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPk });
+  tx.add(SystemProgram.transfer({ fromPubkey: fromPk, toPubkey: toPk, lamports }));
+
+  const signed = await wallet.signTransaction(tx);
+  const sig    = await conn.sendRawTransaction(signed.serialize());
+  await conn.confirmTransaction(sig, 'confirmed');
+
+  const paid = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Payment': sig },
+    body: JSON.stringify({ playerPubkey, signature: sig, match_id: matchId, round, public_state: publicState }),
+  });
+  if (!paid.ok) {
+    const err = await paid.json().catch(() => ({}));
+    throw new Error(err.error ?? `${endpoint} failed: ${paid.status}`);
+  }
+  return paid.json();
+}
+
+const _x402Exports = {
+  // Phase 19: game-design-v2 §3 endpoints (real SOL, split payment)
+  payMatchBattle,
+  payPeekVaultSize,
+  payPeekVaultContent,
+  payDrawExtra,
+  payAiStrategyAdvice,
+  // Phase 12: move memo endpoints
+  payCommit, payReveal, payHandCommit, payHandReveal,
+  payPhaseAdvance, payRoundResolve, payMatchEnd,
+  // Phase 14: AI move delegation
+  payAiMove,
+  // Legacy / dev helpers
+  scoutPeek, scoutPeekDev, hireAgent, hireAgentDev,
+  // Internals (exposed for testing)
+  X402_BROKER_URL, _x402Pay,
+};
+
 if (typeof module !== 'undefined') {
-  module.exports = { scoutPeek, scoutPeekDev, hireAgent, hireAgentDev, X402_BROKER_URL };
+  module.exports = _x402Exports;
 } else if (typeof window !== 'undefined') {
-  window.x402 = { scoutPeek, scoutPeekDev, hireAgent, hireAgentDev };
+  window.x402 = _x402Exports;
 }

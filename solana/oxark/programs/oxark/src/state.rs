@@ -13,9 +13,6 @@ pub enum GameStatus {
 }
 
 
-/// Action types for commit-reveal
-/// 0=None, 1=Draw, 2=Steal, 3=Barrier, 4=Scout,
-/// 5=UseCrystal, 6=UseShadow, 7=UseFlame, 8=UseStorm, 9=UseVoid
 /// Area IDs: 0=Port, 1=Forest, 2=Ruins
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Area {
@@ -31,35 +28,41 @@ impl From<u8> for Area {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
+/// Phase 15 v2 ActionType (6 types — None/Draw/Steal/Scout/Move removed).
+/// 0=UseCrystal, 1=Barrier, 2=UseFlame, 3=UseStorm, 4=UseShadow, 5=UseVoid
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ActionType {
-    None,
-    Draw,
-    Steal,
-    Barrier,
-    Scout,
-    Move,         // NEW: move to adjacent area
-    UseCrystal,
-    UseShadow,
-    UseFlame,
-    UseStorm,
-    UseVoid,
+    #[default]
+    UseCrystal, // 0
+    Barrier,    // 1
+    UseFlame,   // 2
+    UseStorm,   // 3
+    UseShadow,  // 4
+    UseVoid,    // 5
 }
 
 impl From<u8> for ActionType {
     fn from(v: u8) -> Self {
         match v {
-            1 => ActionType::Draw,
-            2 => ActionType::Steal,
-            10 => ActionType::Move,
-            3 => ActionType::Barrier,
-            4 => ActionType::Scout,
-            5 => ActionType::UseCrystal,
-            6 => ActionType::UseShadow,
-            7 => ActionType::UseFlame,
-            8 => ActionType::UseStorm,
-            9 => ActionType::UseVoid,
-            _ => ActionType::None,
+            1 => ActionType::Barrier,
+            2 => ActionType::UseFlame,
+            3 => ActionType::UseStorm,
+            4 => ActionType::UseShadow,
+            5 => ActionType::UseVoid,
+            _ => ActionType::UseCrystal,  // 0 + unknown → UseCrystal
+        }
+    }
+}
+
+impl From<ActionType> for u8 {
+    fn from(a: ActionType) -> u8 {
+        match a {
+            ActionType::UseCrystal => 0,
+            ActionType::Barrier    => 1,
+            ActionType::UseFlame   => 2,
+            ActionType::UseStorm   => 3,
+            ActionType::UseShadow  => 4,
+            ActionType::UseVoid    => 5,
         }
     }
 }
@@ -115,17 +118,80 @@ pub struct PlayerState {
     // ── D4 Reborn: Matchmaking queue tracking (pre-approved layout extension) ──
     /// Pubkey of the MatchmakingQueue PDA this player is currently in, or None.
     pub current_queue: Option<Pubkey>,
+
+    // ── Phase 15: Season-wide progression fields ──────────────────────────────
+    /// Bitmask of owned card IDs (1-60). Bit (id-1) set = owned.
+    pub vault_bitmap: [u8; 8],
+    /// Initial deposit in lamports (0.5 SOL = 500_000_000).
+    pub deposit_amount: u64,
+    /// Current win streak (resets on loss).
+    pub win_streak: u8,
+    /// All-time max win streak this season.
+    pub max_win_streak: u8,
+    /// Total matches played (for Sage / Architect legendary judgment).
+    pub total_matches: u8,
+    /// action_type of the last committed action (u8, ActionType value).
+    pub last_action_type: u8,
+    /// Consecutive matches where action_type differed from the previous match.
+    pub consecutive_diff_actiontype: u8,
+    /// Cumulative x402 spend in lamports (for Patron / Magnate judgment).
+    pub x402_total_spend: u64,
+    /// Bitmap of unique peek target wallets (simplified: hash mod 64).
+    pub peek_unique_targets: [u8; 8],
+    /// Win streak with zero x402 spend (for Hermit / Ascetic judgment).
+    pub no_x402_win_streak: u8,
+    /// Legendary acquisition flags (index = Legendary index 0-5).
+    pub legendary_progress: [bool; 6],
+    /// Max vault size reached this season (for Phoenix / Marauder judgment).
+    pub vault_size_max: u8,
+    /// Min vault size reached after reaching max (for Phoenix judgment).
+    pub vault_size_min: u8,
+    /// Unix timestamp of last time player dropped to Tier 5 (for Phoenix).
+    pub last_drop_to_tier5_timestamp: i64,
 }
 
 impl PlayerState {
-    // Original fields: 8 (disc) + 8 (game_id) + 32 (player) + 1 (index) + 1 (area)
+    // Original: 8 (disc) + 8 (game_id) + 32 (player) + 1 (index) + 1 (area)
     //   + 5 (cards) + 1 (card_count) + 1 (steal) + 1 (barrier) + 1 (scout)
     //   + 1 (committed) + 1 (revealed) + 1 (revealed_action) + 32 (revealed_target)
-    //   + 1 (move_target) + 40 (card_timestamps: 5 * i64) + 1 (bump)
+    //   + 1 (move_target) + 40 (card_timestamps: 5×i64) + 1 (bump)
     //   + 32 (position_commitment) + 1 (position_commitment_initialized)
-    //   + 1 (Option discriminant) + 32 (Pubkey in Option<Pubkey>)
-    //   NOTE: existing devnet PlayerState accounts need migration (pre-approved by r0ze, Day 4).
-    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 40 + 1 + 32 + 1 + 1 + 32;
+    //   + 1 (Option disc) + 32 (Option<Pubkey>)
+    // Phase 15 additions: 8+8+1+1+1+1+1+8+8+1+6+1+1+8 = 55
+    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 40 + 1 + 32 + 1 + 1 + 32
+        + 8 + 8 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 6 + 1 + 1 + 8; // 258 total
+
+    /// Count how many vault_bitmap bits are set (cards owned).
+    pub fn vault_count(&self) -> u8 {
+        self.vault_bitmap.iter().map(|b| b.count_ones() as u8).sum()
+    }
+
+    /// Check if card_id (1-60) is in vault_bitmap.
+    pub fn has_vault_card(&self, card_id: u8) -> bool {
+        if card_id == 0 || card_id > 60 { return false; }
+        let idx = (card_id - 1) as usize;
+        let byte = idx / 8;
+        let bit  = idx % 8;
+        (self.vault_bitmap[byte] >> bit) & 1 == 1
+    }
+
+    /// Set card_id (1-60) in vault_bitmap.
+    pub fn set_vault_card(&mut self, card_id: u8) {
+        if card_id == 0 || card_id > 60 { return; }
+        let idx  = (card_id - 1) as usize;
+        let byte = idx / 8;
+        let bit  = idx % 8;
+        self.vault_bitmap[byte] |= 1 << bit;
+    }
+
+    /// Clear card_id (1-60) from vault_bitmap (looted by opponent).
+    pub fn clear_vault_card(&mut self, card_id: u8) {
+        if card_id == 0 || card_id > 60 { return; }
+        let idx  = (card_id - 1) as usize;
+        let byte = idx / 8;
+        let bit  = idx % 8;
+        self.vault_bitmap[byte] &= !(1 << bit);
+    }
 }
 
 #[account]
@@ -955,3 +1021,79 @@ pub struct LegendaryClaimed {
     pub species_id:  u8,
     pub mint_number: u8,
 }
+
+// === Phase 15: Game World + Legendary Realtime Judgment ===
+
+/// Global singleton for Season 1 state.
+/// PDA seeds: ["game_world"]
+#[account]
+pub struct GameWorld {
+    pub start_timestamp:         i64,
+    pub end_timestamp:           i64,   // start + 14 days
+    pub waitlist_close_timestamp: i64,  // start - 14 days
+    pub total_participants:       u32,
+    pub total_prize_pool:         u64,  // accumulated (lamports)
+    pub total_ops_revenue:        u64,  // accumulated (lamports)
+    /// How many players have acquired each Legendary (max 10 each).
+    pub legendary_acquired_count: [u8; 6],
+    pub winner_60_count:          u8,
+    /// 0=waitlist, 1=active, 2=ended
+    pub game_status:              u8,
+    /// Tier participant counts (set during finalize_game for claim_prize).
+    pub tier2_total_vault:        u64,  // sum of vault_count for tier-2 players
+    pub tier3_total_vault:        u64,
+    pub tier4_total_vault:        u64,
+    pub tier5_total_vault:        u64,
+    pub bump:                     u8,
+}
+
+impl GameWorld {
+    pub const SEED: &'static [u8] = b"game_world";
+    // 8 disc + 8+8+8+4+8+8+6+1+1+8+8+8+8+1
+    pub const SIZE: usize = 8 + 8 + 8 + 8 + 4 + 8 + 8 + 6 + 1 + 1 + 8 + 8 + 8 + 8 + 1;
+
+    pub const LEGENDARY_MAX_CLAIMANTS: u8 = 10;
+    pub const DEPOSIT_LAMPORTS: u64 = 500_000_000; // 0.5 SOL
+    pub const PRIZE_POOL_BPS: u64 = 8500;          // 85%
+    pub const OPS_REVENUE_BPS: u64 = 1500;         // 15%
+    pub const SEASON_DURATION_SECS: i64 = 14 * 24 * 3600;
+    pub const WAITLIST_WINDOW_SECS: i64 = 14 * 24 * 3600;
+
+    pub fn is_waitlist_open(&self, now: i64) -> bool {
+        self.game_status == 0 && now < self.waitlist_close_timestamp
+    }
+}
+
+impl Default for GameWorld {
+    fn default() -> Self {
+        Self {
+            start_timestamp:          0,
+            end_timestamp:            0,
+            waitlist_close_timestamp: 0,
+            total_participants:       0,
+            total_prize_pool:         0,
+            total_ops_revenue:        0,
+            legendary_acquired_count: [0u8; 6],
+            winner_60_count:          0,
+            game_status:              0,
+            tier2_total_vault:        0,
+            tier3_total_vault:        0,
+            tier4_total_vault:        0,
+            tier5_total_vault:        0,
+            bump:                     0,
+        }
+    }
+}
+
+/// Emitted when a player acquires a Legendary card (realtime judgment).
+#[event]
+pub struct LegendaryAcquired {
+    pub player:       Pubkey,
+    pub legendary_id: u8,   // card id (10, 20, 30, 40, 50, 60)
+    pub legendary_idx: u8,  // 0-5 (index into legendary_acquired_count)
+    pub claimant_num: u8,   // which claimant (1-10)
+    pub timestamp:    i64,
+}
+
+/// Legendary IDs by index (0-5).
+pub const LEGENDARY_CARD_IDS: [u8; 6] = [10, 20, 30, 40, 50, 60];

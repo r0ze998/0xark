@@ -21,7 +21,13 @@ for(let i=0;i<30;i++){_MLDS_SI07[i]=Math.sin(i*0.7);_MLDS_CI07[i]=Math.cos(i*0.7
   if(wsParam)localStorage.setItem('oxark_ws_url',wsParam);
   if(x402Param)localStorage.setItem('oxark_x402_url',x402Param);
 })();
-const _MP_DEFAULT_URL=localStorage.getItem('oxark_ws_url')||'ws://localhost:3500';
+const _MP_DEFAULT_URL=(()=>{
+  if(localStorage.getItem('oxark_ws_url'))return localStorage.getItem('oxark_ws_url');
+  if(window.OXARK_WS_URL)return window.OXARK_WS_URL;
+  const h=window.location.hostname;
+  if(h==='localhost'||h==='127.0.0.1')return 'ws://localhost:3500';
+  return 'wss://oxark-multiplayer.fly.dev';
+})();
 
 let mp={
   connected:false,
@@ -266,7 +272,6 @@ function drawMPPlayers(){
     if(op.area!==currentMap)continue;
     // ZK fog-of-war: in dungeon, only render if tile is revealed AND within visible radius
     // Town (map 0) is always visible — no fog restriction
-    if(inDungeon&&!isVisibleThroughFog(op.x,op.y,3))continue;
     const sx=op.x*TW-camX,sy=op.y*TH-camY-16;
     if(sx<-TW*2||sx>W+TW||sy<-TH*2||sy>H+TH)continue;
     const col=_MP_SPRITE_COLS[_mpi%3];
@@ -448,7 +453,6 @@ function drawWipe(){
 let mapLoadScreenActive=false, mapLoadScreenFrame=0, mapLoadScreenName='', mapLoadScreenCards='';
 let mapLoadScreenFloor=0; // 0=town/generic, 1-5=dungeon floor
 // v72: Dungeon Run Summary
-let dungeonRunSnapshot=null; // snapshot when entering dungeon
 let runSummaryActive=false, runSummaryFrame=0, runSummaryData=null;
 // v79: Active Run Mission
 let runMission=null; // {type,desc,progress,goal,reward,rewardKey,completed,rewardGiven}

@@ -1,219 +1,55 @@
 /**
- * 0xARK Multiplayer WebSocket Server — Pure Relayer (Phase 2)
+ * 0xARK Multiplayer WebSocket Server — Pure Relayer (Phase 5)
  *
  * Architecture: The Solana program is the single source of truth for all game
- * state (round, commits, reveals, card ownership, winner). This server is a
- * stateless relay — it has zero authority over game logic. It:
- *
+ * state. This server is a stateless relay that:
  *   1. Manages WebSocket connections and room presence (lobby only)
  *   2. Relays player movement with ZK proximity filter
  *   3. Submits client-signed transactions to the Solana RPC
  *   4. Broadcasts tx confirmations so clients know to refresh on-chain state
  *   5. Relays chat messages
  *
- * Protocol v2 (Phase D Reborn — adds Clan + card_count to presence)
- *   Backward-compatible: v1 clients that omit clan/card_count receive null/0 defaults.
+ * Protocol v2 (Phase D Reborn):
+ *   Client→Server: create_room | join_room | move | presence_update | submit_tx | chat
+ *                  duel_hand_committed | duel_hand_revealed | duel_phase_advance
+ *                  duel_battle_resolved | duel_ended
+ *   Server→Client: room_created | room_joined | player_joined | player_left
+ *                  player_moved | presence_update | tx_confirmed | tx_failed | chat | error
  *
- *   Client→Server:
- *     {type:'create_room', gameId, name, wallet?, clan?, card_count?, season?}
- *     {type:'join_room', roomId, name, wallet?, clan?, card_count?, season?}
- *     {type:'move', x, y, area}
- *     {type:'presence_update', clan, card_count}   — update clan/count without moving (v2)
- *     {type:'submit_tx', txBase64, txType}          — base64-encoded signed tx
- *     {type:'chat', message}
- *
- *   Server→Client:
- *     {type:'room_created', roomId, gameId, playerId}
- *     {type:'room_joined', roomId, gameId, playerId, players}
- *     {type:'player_joined', player}                — player includes clan, card_count, season
- *     {type:'player_left', playerId}
- *     {type:'player_moved', playerId, x, y, area}
- *     {type:'presence_update', wallet, clan, card_count}  — clan/count changed (v2)
- *     {type:'tx_confirmed', sig, txType, playerId}
- *     {type:'tx_failed', error, txType, playerId}
- *     {type:'chat', playerId, name, message}
- *     {type:'error', message}
- *
- * Clans (v2): 'black_flag'|'sovereign_bourse'|'hollow_blade'|'iron_circle'|'nameless_silk'|null
+ * Handler modules live in handlers/; shared state in state.js.
  */
 
 import http from 'http';
 import { WebSocketServer } from 'ws';
-import { Connection, VersionedTransaction, Transaction, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-const PORT          = process.env.PORT || 3500;
-const RPC_URL       = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-const COMMITMENT    = 'confirmed';
-// Game treasury address — receives x402 micropayments (devnet placeholder)
-const TREASURY_ADDR = process.env.TREASURY_PUBKEY || '11111111111111111111111111111111';
-// Verification: poll up to 10 times at 500ms each = 5 sec max
-const X402_POLL_ATTEMPTS = 10;
-const X402_POLL_MS       = 500;
-// Max tx age for payment verification (60 sec)
-const X402_MAX_AGE_MS    = 60_000;
+import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, usedSigs, rateLimits, gcRoundClaims } from './state.js';
+import { HANDLERS } from './handlers/index.js';
+import { validateMemo, MOVE_ENDPOINTS } from './memo-validator.js';
 
-// ─── x402 payment verification (Day 11) ─────────────────────────────────────
-// Verifies a SOL transfer from playerPubkey to TREASURY_ADDR of >= amountSol
-// within the last X402_MAX_AGE_MS. Uses confirmed signature list + tx data.
-async function _verifyX402Payment(playerPubkeyStr, amountSol) {
-  // Skip verification when treasury is default (devnet demo mode)
-  if (!process.env.TREASURY_PUBKEY) {
-    console.log(`[x402] No TREASURY_PUBKEY set — skipping real verification (demo mode)`);
-    return { ok: true, demo: true };
-  }
-  try {
-    const playerKey  = new PublicKey(playerPubkeyStr);
-    const treasuryKey = new PublicKey(TREASURY_ADDR);
-    const expectedLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
+const PORT = process.env.PORT || 3500;
 
-    // Poll for recent signatures from player
-    for (let attempt = 0; attempt < X402_POLL_ATTEMPTS; attempt++) {
-      const sigs = await connection.getSignaturesForAddress(playerKey, { limit: 10 }, COMMITMENT);
-      const now  = Date.now();
+// 0.0001 SOL per move (overridable via X402_MOVE_PRICE_LAMPORTS)
+const MOVE_PRICE_LAMPORTS = parseInt(process.env.X402_MOVE_PRICE_LAMPORTS, 10) || 100_000;
+const MOVE_PRICE_SOL = MOVE_PRICE_LAMPORTS / LAMPORTS_PER_SOL;
 
-      for (const sigInfo of sigs) {
-        if (!sigInfo.blockTime) continue;
-        const txAge = now - sigInfo.blockTime * 1000;
-        if (txAge > X402_MAX_AGE_MS) continue; // too old
-        if (sigInfo.err) continue; // failed tx
-
-        const tx = await connection.getTransaction(sigInfo.signature, {
-          commitment: COMMITMENT,
-          maxSupportedTransactionVersion: 0,
-        });
-        if (!tx || !tx.meta) continue;
-
-        // Check accounts: player is signer, treasury receives lamports
-        const accountKeys = tx.transaction.message.staticAccountKeys || tx.transaction.message.accountKeys;
-        const treasuryIdx = accountKeys.findIndex(k => k.toBase58() === TREASURY_ADDR);
-        if (treasuryIdx < 0) continue;
-
-        const preBalance  = tx.meta.preBalances[treasuryIdx] || 0;
-        const postBalance = tx.meta.postBalances[treasuryIdx] || 0;
-        const received    = postBalance - preBalance;
-
-        if (received >= expectedLamports) {
-          console.log(`[x402] Verified: ${amountSol} SOL from ${playerPubkeyStr} (sig=${sigInfo.signature.slice(0,8)}...)`);
-          return { ok: true, sig: sigInfo.signature, received };
-        }
-      }
-
-      if (attempt < X402_POLL_ATTEMPTS - 1) {
-        await new Promise(r => setTimeout(r, X402_POLL_MS));
-      }
-    }
-    return { ok: false, error: 'Payment not detected within 5 seconds' };
-  } catch (err) {
-    console.error('[x402] Verification error:', err.message);
-    return { ok: false, error: 'Verification failed: ' + err.message };
-  }
-}
-
-// ─── HTTP health-check server ─────────────────────────────────────────────────
-// Railway / Render require an HTTP endpoint to verify the service is alive.
-// WebSocket connections are upgraded from this same server.
-// ─── x402 body reader ────────────────────────────────────────────────────────
-function _readBody(req) {
-  return new Promise((resolve) => {
-    let data = '';
-    req.on('data', chunk => { data += chunk; });
-    req.on('end', () => {
-      try { resolve(JSON.parse(data)); } catch { resolve({}); }
-    });
-  });
-}
-
-const httpServer = http.createServer(async (req, res) => {
-  const setCORS = () => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  };
-
-  if (req.method === 'OPTIONS') {
-    setCORS(); res.writeHead(204); res.end(); return;
-  }
-
-  if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
-    setCORS();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'ok',
-      rooms: rooms.size,
-      connections: wss?.clients?.size ?? 0,
-      rpc: RPC_URL,
-    }));
-    return;
-  }
-
-  // x402 Extra Action — 0.01 SOL (Day 11: real verification)
-  if (req.method === 'POST' && req.url === '/x402/extra-action') {
-    setCORS();
-    const body = await _readBody(req);
-    const result = await _verifyX402Payment(body.playerPubkey || '', 0.01);
-    if (!result.ok) {
-      res.writeHead(402, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: false, error: result.error || 'Payment required: 0.01 SOL' }));
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, action: body.action || 'unknown', sig: result.sig, demo: result.demo }));
-    return;
-  }
-
-  // x402 Scout Peek — 0.005 SOL (Day 11: real verification)
-  if (req.method === 'POST' && req.url === '/x402/scout-peek') {
-    setCORS();
-    const body = await _readBody(req);
-    const result = await _verifyX402Payment(body.playerPubkey || '', 0.005);
-    if (!result.ok) {
-      res.writeHead(402, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: false, error: result.error || 'Payment required: 0.005 SOL' }));
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, sig: result.sig, demo: result.demo }));
-    return;
-  }
-
-  // x402 Counter-peek — 0.003 SOL (Day 11: real verification)
-  if (req.method === 'POST' && req.url === '/x402/counter-peek') {
-    setCORS();
-    const body = await _readBody(req);
-    const result = await _verifyX402Payment(body.playerPubkey || '', 0.003);
-    if (!result.ok) {
-      res.writeHead(402, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: false, error: result.error || 'Payment required: 0.003 SOL' }));
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, sig: result.sig, demo: result.demo }));
-    return;
-  }
-
-  res.writeHead(404); res.end('Not found');
-});
-
-const connection = new Connection(RPC_URL, COMMITMENT);
-const rooms      = new Map();
-let nextRoomId   = 1000;
-let wss;
+// 0.005 SOL per AI move delegation (overridable via X402_AI_MOVE_PRICE_LAMPORTS)
+const AI_MOVE_PRICE_LAMPORTS = parseInt(process.env.X402_AI_MOVE_PRICE_LAMPORTS, 10) || 5_000_000;
+const AI_MOVE_PRICE_SOL = AI_MOVE_PRICE_LAMPORTS / LAMPORTS_PER_SOL;
 
 // ─── Rate limiting ────────────────────────────────────────────────────────────
-// Prevents message floods and tx-relay abuse.
-// Buckets reset every RATE_WINDOW_MS; max RATE_MAX messages per window.
-const RATE_WINDOW_MS = 1_000; // 1 second
-const RATE_MAX_MSG   = 20;    // max messages per second per connection
-const RATE_MAX_TX    = 3;     // max submit_tx per second per connection
-const MSG_SIZE_LIMIT = 32_768; // 32 KB max raw message size
+
+const RATE_WINDOW_MS = 1_000;
+const RATE_MAX_MSG   = 20;
+const RATE_MAX_TX    = 3;
+const MSG_SIZE_LIMIT = 32_768;
 
 function initRateState(ws) {
-  ws._rateWindow  = Date.now();
-  ws._rateMsg     = 0;
-  ws._rateTx      = 0;
+  ws._rateWindow = Date.now();
+  ws._rateMsg    = 0;
+  ws._rateTx     = 0;
 }
 
-/** Returns true if the message should be dropped (rate exceeded). */
 function rateLimited(ws, isTx = false) {
   const now = Date.now();
   if (now - ws._rateWindow > RATE_WINDOW_MS) {
@@ -228,50 +64,365 @@ function rateLimited(ws, isTx = false) {
   return false;
 }
 
-function generateRoomId() {
-  return (nextRoomId++).toString(36).toUpperCase();
+// ─── HTTP rate limiting (per-IP, x402 endpoints) ─────────────────────────────
+
+const HTTP_RATE_MAX    = parseInt(process.env.RATE_LIMIT_MAX,       10) || 20;
+const HTTP_RATE_WINDOW = parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60_000;
+
+function checkHttpRateLimit(ip, now = Date.now()) {
+  let entry = rateLimits.get(ip);
+  if (!entry || now - entry.windowStart >= HTTP_RATE_WINDOW) {
+    entry = { count: 0, windowStart: now };
+    rateLimits.set(ip, entry);
+  }
+  entry.count++;
+  if (entry.count > HTTP_RATE_MAX) {
+    const retryAfter = Math.ceil((HTTP_RATE_WINDOW - (now - entry.windowStart)) / 1000);
+    return { limited: true, retryAfter };
+  }
+  return { limited: false };
 }
 
-// Attach WebSocket to the HTTP server so both share the same port
-// (required for Railway/Render which only expose a single port)
+// ─── x402 payment verification ────────────────────────────────────────────────
+
+const TREASURY_ADDR    = process.env.TREASURY_PUBKEY || '11111111111111111111111111111111';
+// Split payment recipients (default to single treasury when not configured)
+const OPS_TREASURY_ADDR  = process.env.OPS_TREASURY_PUBKEY  || TREASURY_ADDR;
+const PRIZE_POOL_ADDR    = process.env.PRIZE_POOL_PUBKEY     || TREASURY_ADDR;
+const SOLANA_NETWORK   = process.env.SOLANA_NETWORK  || 'devnet';
+// X402_REQUIRE_MEMO=true: every payment tx must carry a memo binding it to the endpoint.
+// Default 'false' preserves backward compat with clients that don't yet attach memos.
+const X402_REQUIRE_MEMO = process.env.X402_REQUIRE_MEMO === 'true';
+
+// Memo Program IDs (legacy + v2). Ref: https://spl.solana.com/memo
+const MEMO_PROGRAM_IDS = new Set([
+  'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo',   // SPL Memo v1
+  'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',   // SPL Memo v2
+]);
+
+// Extract the first memo instruction data from a Solana transaction.
+// Handles both legacy Message (instructions[].data Buffer) and
+// MessageV0 (compiledInstructions[].data Uint8Array).
+function extractMemo(tx) {
+  const message = tx?.transaction?.message;
+  if (!message) return null;
+  const accountKeys  = message.staticAccountKeys ?? message.accountKeys ?? [];
+  const instructions = message.compiledInstructions ?? message.instructions ?? [];
+  for (const ix of instructions) {
+    const key = accountKeys[ix.programIdIndex];
+    if (!key) continue;
+    const programId = typeof key.toBase58 === 'function' ? key.toBase58() : String(key);
+    if (!MEMO_PROGRAM_IDS.has(programId)) continue;
+    const raw = ix.data;
+    if (raw == null) continue;
+    if (Buffer.isBuffer(raw))      return raw.toString('utf8');
+    if (raw instanceof Uint8Array) return Buffer.from(raw).toString('utf8');
+    if (typeof raw === 'string')   return raw;
+  }
+  return null;
+}
+
+const X402_POLL_ATTEMPTS = 10;
+const X402_POLL_MS       = 500;
+const X402_MAX_AGE_MS    = 60_000;
+
+// sigHint: signature provided directly by client (Phase 9+) — uses targeted getTransaction.
+// Without sigHint: legacy poll via getSignaturesForAddress (probe path).
+// Sum balance delta across all known treasury addresses in a transaction.
+// Handles both single-transfer (all to ops) and split (50/50 ops+pool).
+function _sumTreasuryReceived(tx, knownAddrs) {
+  const accountKeys = tx.transaction.message.staticAccountKeys ?? tx.transaction.message.accountKeys;
+  let total = 0;
+  for (const addr of knownAddrs) {
+    const idx = accountKeys.findIndex(k => k.toBase58() === addr);
+    if (idx >= 0) {
+      total += (tx.meta.postBalances[idx] ?? 0) - (tx.meta.preBalances[idx] ?? 0);
+    }
+  }
+  return total;
+}
+
+async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHint = null) {
+  if (!process.env.TREASURY_PUBKEY) {
+    console.log('[x402] No TREASURY_PUBKEY — demo mode');
+    return { ok: true, demo: true };
+  }
+  // All known treasury addresses — payment can be split across any combination
+  const knownAddrs = [...new Set([TREASURY_ADDR, OPS_TREASURY_ADDR, PRIZE_POOL_ADDR])];
+  try {
+    const expectedLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
+
+    if (sigHint) {
+      if (usedSigs.has(sigHint)) return { ok: false, error: 'signature already used' };
+      const tx = await connection.getTransaction(sigHint, {
+        commitment: COMMITMENT, maxSupportedTransactionVersion: 0,
+      });
+      if (!tx?.meta) return { ok: false, error: 'transaction not found' };
+      if (X402_REQUIRE_MEMO) {
+        const memoCheck = validateMemo(extractMemo(tx), requestPath);
+        if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
+      }
+      const received = _sumTreasuryReceived(tx, knownAddrs);
+      if (received <= 0) return { ok: false, error: 'payment not directed to treasury' };
+      if (received >= expectedLamports) {
+        console.log(`[x402] Verified: ${amountSol} SOL`);
+        usedSigs.set(sigHint, Date.now() + 120_000);
+        return { ok: true, sig: sigHint, received, memo: extractMemo(tx) };
+      }
+      return { ok: false, error: 'insufficient payment' };
+    }
+
+    // Legacy: poll recent sigs by player pubkey (probe path / old clients)
+    const playerKey = new PublicKey(playerPubkeyStr);
+    for (let attempt = 0; attempt < X402_POLL_ATTEMPTS; attempt++) {
+      const sigs = await connection.getSignaturesForAddress(playerKey, { limit: 10 }, COMMITMENT);
+      const now  = Date.now();
+      for (const sigInfo of sigs) {
+        if (!sigInfo.blockTime || sigInfo.err) continue;
+        if (now - sigInfo.blockTime * 1000 > X402_MAX_AGE_MS) continue;
+        if (usedSigs.has(sigInfo.signature)) return { ok: false, error: 'signature already used' };
+        const tx = await connection.getTransaction(sigInfo.signature, {
+          commitment: COMMITMENT, maxSupportedTransactionVersion: 0,
+        });
+        if (!tx?.meta) continue;
+        if (X402_REQUIRE_MEMO) {
+          const memoCheck = validateMemo(extractMemo(tx), requestPath);
+          if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
+        }
+        const received = _sumTreasuryReceived(tx, knownAddrs);
+        if (received >= expectedLamports) {
+          console.log(`[x402] Verified: ${amountSol} SOL from ${playerPubkeyStr}`);
+          usedSigs.set(sigInfo.signature, Date.now() + 120_000);
+          return { ok: true, sig: sigInfo.signature, received, memo: extractMemo(tx) };
+        }
+      }
+      if (attempt < X402_POLL_ATTEMPTS - 1) await new Promise(r => setTimeout(r, X402_POLL_MS));
+    }
+    return { ok: false, error: 'Payment not detected within 5 seconds' };
+  } catch (err) {
+    console.error('[x402] Verification error:', err.message);
+    return { ok: false, error: 'Verification failed: ' + err.message };
+  }
+}
+
+function _readBody(req) {
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
+  });
+}
+
+// ─── HTTP server ──────────────────────────────────────────────────────────────
+
+const httpServer = http.createServer(async (req, res) => {
+  const cors = () => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  };
+  if (req.method === 'OPTIONS') { cors(); res.writeHead(204); res.end(); return; }
+
+  if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
+    cors();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', rooms: rooms.size, connections: wss?.clients?.size ?? 0, rpc: RPC_URL }));
+    return;
+  }
+
+  const X402_ROUTES = {
+    // Legacy aliases (kept for backward compat)
+    '/x402/extra-action':  0.01,
+    '/x402/scout-peek':    0.005,
+    '/x402/counter-peek':  0.003,
+    // Phase 19: new game-design-v2 §3 endpoints
+    '/x402/match-battle':        0.001,
+    '/x402/peek-vault-size':     0.0005,
+    '/x402/peek-vault-content':  0.005,
+    '/x402/draw-extra':          0.01,
+    '/x402/ai-strategy-advice':  0.003,
+    // Phase 12 move endpoints — 0.0001 SOL (X402_MOVE_PRICE_LAMPORTS overrides)
+    '/x402/co': MOVE_PRICE_SOL,
+    '/x402/re': MOVE_PRICE_SOL,
+    '/x402/hc': MOVE_PRICE_SOL,
+    '/x402/hr': MOVE_PRICE_SOL,
+    '/x402/pa': MOVE_PRICE_SOL,
+    '/x402/rs': MOVE_PRICE_SOL,
+    '/x402/me': MOVE_PRICE_SOL,
+    // Phase 14: AI move delegation
+    '/x402/ai-move': AI_MOVE_PRICE_SOL,
+  };
+  // Early 503 for AI endpoints when ANTHROPIC_API_KEY is not configured
+  if (req.method === 'POST'
+      && (req.url === '/x402/ai-move' || req.url === '/x402/ai-strategy-advice')
+      && !process.env.ANTHROPIC_API_KEY) {
+    cors();
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: false, error: 'AI not configured (ANTHROPIC_API_KEY missing)' }));
+    return;
+  }
+
+  if (req.method === 'POST' && X402_ROUTES[req.url] !== undefined) {
+    cors();
+
+    // Per-IP rate limit (RATE_LIMIT_MAX / RATE_LIMIT_WINDOW_MS, default 20/60s)
+    const ip = req.socket?.remoteAddress || 'unknown';
+    const rl = checkHttpRateLimit(ip);
+    if (rl.limited) {
+      res.setHeader('Retry-After', String(rl.retryAfter));
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'rate limited', retryAfter: rl.retryAfter }));
+      return;
+    }
+
+    const amountSol      = X402_ROUTES[req.url];
+    const amountLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
+    const body         = await _readBody(req);
+    const playerPubkey = body.playerPubkey || req.headers['x-player-pubkey'] || '';
+    const signature    = body.signature    || req.headers['x-payment']       || '';
+    // One field present without the other → 400 (probe with neither field is fine → 402 from verify)
+    if (signature && !playerPubkey) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'playerPubkey required' }));
+      return;
+    }
+    if (playerPubkey && !signature) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'signature required' }));
+      return;
+    }
+    const result = await _verifyX402Payment(playerPubkey, amountSol, req.url, signature || null);
+
+    if (!result.ok) {
+      // x402 v2 spec: PAYMENT-REQUIRED header (Base64-encoded JSON)
+      // Spec: https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md
+      const opsLamports  = Math.floor(amountLamports * 0.5);
+      const poolLamports = amountLamports - opsLamports;
+      const paymentRequired = Buffer.from(JSON.stringify({
+        version: 'x402-v2',
+        accepts: [{
+          scheme:  'solana-transfer',
+          network: SOLANA_NETWORK,
+          amount:  String(amountLamports),
+          // Single-recipient fallback for old clients
+          payTo:   OPS_TREASURY_ADDR,
+          // Split recipient for Phase 19+ clients
+          recipient: {
+            ops:  { address: OPS_TREASURY_ADDR,  lamports: opsLamports  },
+            pool: { address: PRIZE_POOL_ADDR,     lamports: poolLamports },
+          },
+        }],
+      })).toString('base64');
+      res.setHeader('PAYMENT-REQUIRED',    paymentRequired);
+      res.setHeader('X-Payment-Recipient', OPS_TREASURY_ADDR);
+      res.setHeader('X-Payment-Amount',    String(amountLamports));
+      res.setHeader('X-Payment-Network',   SOLANA_NETWORK);
+      res.writeHead(402, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: result.error }));
+      return;
+    }
+
+    // Move endpoints: validate memo and return parsed fields
+    if (MOVE_ENDPOINTS.has(req.url)) {
+      const memoStr = result.demo ? (body.memo || '') : (result.memo || body.memo || '');
+      if (!result.demo && memoStr) {
+        const memoCheck = validateMemo(memoStr, req.url);
+        if (!memoCheck.ok) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: memoCheck.error }));
+          return;
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, memo: memoStr, fields: memoCheck.fields, sig: result.sig }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, memo: memoStr, demo: result.demo }));
+      return;
+    }
+
+    // AI move delegation
+    if (req.url === '/x402/ai-move') {
+      let aiResult;
+      try {
+        const { delegateMove } = await import('../tools/ai-agent/src/move-delegate.js');
+        aiResult = await delegateMove(body.public_state ?? {});
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'AI delegation failed: ' + err.message }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, ...aiResult, sig: result.sig, demo: result.demo }));
+      return;
+    }
+
+    // AI strategy advice (non-binding suggestions)
+    if (req.url === '/x402/ai-strategy-advice') {
+      let adviceResult;
+      try {
+        const { adviseStrategy } = await import('../tools/ai-agent/src/strategy-advisor.js');
+        adviceResult = await adviseStrategy(body.context ?? body.public_state ?? {});
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'AI strategy advice failed: ' + err.message }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, ...adviceResult, sig: result.sig, demo: result.demo }));
+      return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, action: body.action ?? 'unknown', sig: result.sig, demo: result.demo }));
+    return;
+  }
+
+  res.writeHead(404); res.end('Not found');
+});
+
+// ─── WebSocket server ─────────────────────────────────────────────────────────
+
+let wss;
+
 httpServer.listen(PORT, () => {
   console.log(`0xARK Multiplayer Server — HTTP+WS on port ${PORT}`);
   console.log(`Solana RPC: ${RPC_URL}`);
+  console.log(`x402 memo binding: ${X402_REQUIRE_MEMO ? 'REQUIRED' : 'disabled (set X402_REQUIRE_MEMO=true to enforce)'}`);
   console.log('All game state is on-chain. Server holds no game authority.');
 });
 
 wss = new WebSocketServer({ server: httpServer });
 
+// GC every 30s: usedSigs (120s TTL) + expired rateLimits windows + roundClaims (5m TTL)
+const _sigGcInterval = setInterval(() => {
+  const now = Date.now();
+  usedSigs.forEach((expiry, sig) => { if (expiry < now) usedSigs.delete(sig); });
+  rateLimits.forEach((entry, ip) => { if (now - entry.windowStart >= HTTP_RATE_WINDOW) rateLimits.delete(ip); });
+  gcRoundClaims(300_000);
+}, 30_000);
+process.on('exit', () => clearInterval(_sigGcInterval));
+
 wss.on('connection', (ws) => {
-  ws.playerId    = Math.random().toString(36).slice(2, 8);
-  ws.roomId      = null;
-  ws.playerName  = 'Player';
-  ws.wallet      = null;   // v2: Solana pubkey string (optional)
-  ws.clan        = null;   // v2: clan string or null
-  ws.cardCount   = 0;      // v2: collected card species count
-  ws.season      = 1;      // v2: current season number
-  ws.isAlive     = true;
+  ws.playerId   = Math.random().toString(36).slice(2, 8);
+  ws.roomId     = null;
+  ws.playerName = 'Player';
+  ws.wallet     = null;
+  ws.clan       = null;
+  ws.cardCount  = 0;
+  ws.season     = 1;
+  ws.isAlive    = true;
   initRateState(ws);
 
   ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', (data) => {
-    // Size guard — drop oversized frames before parsing
-    if (data.length > MSG_SIZE_LIMIT) {
-      send(ws, { type: 'error', message: 'Message too large' });
-      return;
-    }
+    if (data.length > MSG_SIZE_LIMIT) { send(ws, { type: 'error', message: 'Message too large' }); return; }
     let msg;
-    try {
-      msg = JSON.parse(data);
-    } catch {
-      send(ws, { type: 'error', message: 'Invalid JSON' });
-      return;
-    }
-    // Rate limit — drop excess messages silently (no error response to avoid amplification)
-    const isTx = msg.type === 'submit_tx';
-    if (rateLimited(ws, isTx)) return;
-    handleMessage(ws, msg);
+    try { msg = JSON.parse(data); } catch { send(ws, { type: 'error', message: 'Invalid JSON' }); return; }
+    if (rateLimited(ws, msg.type === 'submit_tx')) return;
+    const h = HANDLERS[msg.type];
+    if (h) h(ws, msg);
   });
 
   ws.on('close', () => {
@@ -291,277 +442,3 @@ setInterval(() => {
     ws.ping();
   });
 }, 30_000);
-
-// ─── Message handler ─────────────────────────────────────────────────────────
-
-function _handleCreateRoom(ws, msg) {
-  const roomId = generateRoomId();
-  ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : 'Host';
-  ws.wallet     = typeof msg.wallet === 'string' ? msg.wallet.slice(0, 44) : null;
-  ws.clan       = sanitizeClan(msg.clan);
-  ws.cardCount  = typeof msg.card_count === 'number' ? Math.max(0, msg.card_count | 0) : 0;
-  ws.season     = typeof msg.season === 'number' ? msg.season | 0 : 1;
-  ws.roomId     = roomId;
-  const room = {
-    id:      roomId,
-    gameId:  msg.gameId ?? null,  // on-chain game_id (u64 as decimal string)
-    host:    ws.playerId,
-    players: new Map(),
-  };
-  room.players.set(ws.playerId, player(ws, 15, 13));
-  rooms.set(roomId, room);
-  send(ws, { type: 'room_created', roomId, gameId: room.gameId, playerId: ws.playerId });
-}
-
-function _handleJoinRoom(ws, msg) {
-  const room = rooms.get(msg.roomId);
-  if (!room) { send(ws, { type: 'error', message: 'Room not found' }); return; }
-  ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : `Player ${room.players.size + 1}`;
-  ws.wallet     = typeof msg.wallet === 'string' ? msg.wallet.slice(0, 44) : null;
-  ws.clan       = sanitizeClan(msg.clan);
-  ws.cardCount  = typeof msg.card_count === 'number' ? Math.max(0, msg.card_count | 0) : 0;
-  ws.season     = typeof msg.season === 'number' ? msg.season | 0 : 1;
-  ws.roomId     = msg.roomId;
-  room.players.set(ws.playerId, player(ws, 20, 15));
-  const playerList = serializePlayers(room);
-  send(ws, { type: 'room_joined', roomId: msg.roomId, gameId: room.gameId, playerId: ws.playerId, players: playerList });
-  broadcast(room, {
-    type: 'player_joined',
-    player: { id: ws.playerId, name: ws.playerName, wallet: ws.wallet,
-              clan: ws.clan, card_count: ws.cardCount, season: ws.season,
-              position: { x: 20, y: 15 } },
-  }, ws.playerId);
-}
-
-function _handlePresenceUpdate(ws, msg) {
-  // v2: clan or card_count changed without moving (e.g., after Shop purchase)
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room) return;
-  if (msg.clan !== undefined) ws.clan = sanitizeClan(msg.clan);
-  if (typeof msg.card_count === 'number') ws.cardCount = Math.max(0, msg.card_count | 0);
-  const p = room.players.get(ws.playerId);
-  if (p) { p.clan = ws.clan; p.card_count = ws.cardCount; }
-  broadcast(room, { type: 'presence_update', wallet: ws.wallet, clan: ws.clan, card_count: ws.cardCount });
-}
-
-function _handleMove(ws, msg) {
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room) return;
-  const p = room.players.get(ws.playerId);
-  if (!p) return;
-  // Sanitize: enforce numeric coordinates within map bounds (0–79)
-  const nx = typeof msg.x === 'number' ? Math.max(0, Math.min(79, msg.x | 0)) : p.x;
-  const ny = typeof msg.y === 'number' ? Math.max(0, Math.min(79, msg.y | 0)) : p.y;
-  const na = typeof msg.area === 'number' ? Math.max(0, Math.min(5, msg.area | 0)) : p.area;
-  p.x = nx; p.y = ny; p.area = na;
-  // ZK fog-of-war: only send position to nearby players in the same area.
-  // Town (area 0) is always fully visible.
-  broadcastProximity(room, ws.playerId, { type: 'player_moved', playerId: ws.playerId, x: p.x, y: p.y, area: p.area });
-}
-
-async function _handleSubmitTx(ws, msg) {
-  // The client builds and signs transactions locally using their wallet.
-  // The server only forwards to the RPC — it never holds private keys.
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room) return;
-
-  let txBuffer;
-  try {
-    txBuffer = Buffer.from(msg.txBase64, 'base64');
-  } catch {
-    send(ws, { type: 'tx_failed', error: 'Invalid base64 encoding', txType: msg.txType, playerId: ws.playerId });
-    return;
-  }
-
-  // Support both versioned and legacy transactions
-  let tx;
-  try {
-    tx = VersionedTransaction.deserialize(txBuffer);
-  } catch {
-    try {
-      tx = Transaction.from(txBuffer);
-    } catch {
-      send(ws, { type: 'tx_failed', error: 'Cannot deserialize transaction', txType: msg.txType, playerId: ws.playerId });
-      return;
-    }
-  }
-  void tx; // deserialized for validation; sendRawTransaction takes the raw buffer
-
-  try {
-    const sig = await connection.sendRawTransaction(txBuffer, {
-      skipPreflight: false,
-      preflightCommitment: COMMITMENT,
-      maxRetries: 3,
-    });
-    await connection.confirmTransaction(sig, COMMITMENT);
-    // Notify all players so they know to re-fetch on-chain state
-    broadcast(room, { type: 'tx_confirmed', sig, txType: msg.txType ?? 'unknown', playerId: ws.playerId });
-  } catch (e) {
-    const error = extractError(e);
-    // Only the sender gets the error details; all others see the failure event
-    send(ws, { type: 'tx_failed', error, txType: msg.txType ?? 'unknown', playerId: ws.playerId });
-    broadcast(room, { type: 'tx_failed', error: 'Transaction failed', txType: msg.txType ?? 'unknown', playerId: ws.playerId }, ws.playerId);
-  }
-}
-
-function _handleChat(ws, msg) {
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room) return;
-  if (typeof msg.message !== 'string') return;
-  const message = msg.message.slice(0, 200); // cap at 200 chars
-  broadcast(room, { type: 'chat', playerId: ws.playerId, name: ws.playerName, message });
-}
-
-// ── T-D12-D: Duel sync protocol ────────────────────────────────────────────
-
-function _handleDuelHandCommitted(ws, msg) {
-  // Player committed their ZK hand — relay commitment hash to opponent (not proof or cards)
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room) return;
-  const duelId = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
-  const round  = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
-  const commitmentHex = typeof msg.commitment_hex === 'string' ? msg.commitment_hex.slice(0, 64) : null;
-  if (!duelId || round === null || !commitmentHex) return;
-  broadcast(room, {
-    type: 'duel_hand_committed',
-    playerId: ws.playerId,
-    duel_id: duelId,
-    round,
-    commitment_hex: commitmentHex,
-  }, ws.playerId);
-}
-
-function _handleDuelHandRevealed(ws, msg) {
-  // Player revealed their hand — relay card_ids + salt for verification
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room) return;
-  const duelId  = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
-  const round   = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
-  const cardIds = Array.isArray(msg.card_ids) ? msg.card_ids.map(x => (x | 0) & 0xffff).slice(0, 10) : null;
-  if (!duelId || round === null || !cardIds) return;
-  broadcast(room, {
-    type: 'duel_hand_revealed',
-    playerId: ws.playerId,
-    duel_id: duelId,
-    round,
-    card_ids: cardIds,
-  }, ws.playerId);
-}
-
-function _handleDuelPhaseAdvance(ws, msg) {
-  // Host signals a phase transition (summon→battle, battle→draw, etc.)
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room) return;
-  if (room.host !== ws.playerId) return;
-  const duelId = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
-  const phase  = typeof msg.phase === 'string' ? msg.phase.slice(0, 16) : null;
-  const round  = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
-  if (!duelId || !phase || round === null) return;
-  broadcast(room, { type: 'duel_phase_advance', duel_id: duelId, phase, round });
-}
-
-function _handleDuelBattleResolved(ws, msg) {
-  // Host broadcasts battle result for the round
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room) return;
-  if (room.host !== ws.playerId) return;
-  const duelId  = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
-  const round   = typeof msg.round === 'number' ? Math.max(1, Math.min(5, msg.round | 0)) : null;
-  const p1Delta = typeof msg.p1_hp_delta === 'number' ? msg.p1_hp_delta | 0 : 0;
-  const p2Delta = typeof msg.p2_hp_delta === 'number' ? msg.p2_hp_delta | 0 : 0;
-  if (!duelId || round === null) return;
-  broadcast(room, {
-    type: 'duel_battle_resolved',
-    duel_id: duelId,
-    round,
-    p1_hp_delta: p1Delta,
-    p2_hp_delta: p2Delta,
-  });
-}
-
-function _handleDuelEnded(ws, msg) {
-  // Notify room that duel is over, winner determined
-  const room = ws.roomId ? rooms.get(ws.roomId) : null;
-  if (!room) return;
-  if (room.host !== ws.playerId) return;
-  const duelId = typeof msg.duel_id === 'string' ? msg.duel_id.slice(0, 64) : null;
-  const winner = typeof msg.winner === 'string' ? msg.winner.slice(0, 44) : null;
-  if (!duelId) return;
-  broadcast(room, { type: 'duel_ended', duel_id: duelId, winner });
-}
-
-const HANDLERS = {
-  create_room:          _handleCreateRoom,
-  join_room:            _handleJoinRoom,
-  presence_update:      _handlePresenceUpdate,
-  move:                 _handleMove,
-  submit_tx:            _handleSubmitTx,
-  chat:                 _handleChat,
-  duel_hand_committed:  _handleDuelHandCommitted,
-  duel_hand_revealed:   _handleDuelHandRevealed,
-  duel_phase_advance:   _handleDuelPhaseAdvance,
-  duel_battle_resolved: _handleDuelBattleResolved,
-  duel_ended:           _handleDuelEnded,
-};
-
-async function handleMessage(ws, msg) {
-  const h = HANDLERS[msg.type];
-  if (h) await h(ws, msg);
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const VALID_CLANS = new Set(['black_flag','sovereign_bourse','hollow_blade','iron_circle','nameless_silk']);
-function sanitizeClan(clan) {
-  return (typeof clan === 'string' && VALID_CLANS.has(clan)) ? clan : null;
-}
-
-function player(ws, x, y) {
-  return { id: ws.playerId, name: ws.playerName, wallet: ws.wallet,
-           clan: ws.clan, card_count: ws.cardCount, season: ws.season, ws, x, y, area: 0 };
-}
-
-function serializePlayers(room) {
-  return Array.from(room.players.values()).map(
-    ({ id, name, wallet, clan, card_count, season, x, y, area }) =>
-      ({ id, name, wallet, clan, card_count, season, position: { x, y }, area })
-  );
-}
-
-function send(ws, msg) {
-  if (ws.readyState === 1) ws.send(JSON.stringify(msg));
-}
-
-function broadcast(room, msg, excludeId) {
-  const data = JSON.stringify(msg);
-  room.players.forEach((p) => {
-    if (p.id !== excludeId && p.ws.readyState === 1) p.ws.send(data);
-  });
-}
-
-// ZK fog-of-war proximity filter.
-// Town (area 0) is the safe zone — all positions visible.
-// Dungeon positions only revealed within Manhattan distance ZK_VISIBLE_RADIUS.
-const ZK_VISIBLE_RADIUS = 3;
-function broadcastProximity(room, moverId, msg) {
-  const mover = room.players.get(moverId);
-  if (!mover) return;
-  const data = JSON.stringify(msg);
-  room.players.forEach((p) => {
-    if (p.id === moverId || p.ws.readyState !== 1) return;
-    const inTown = mover.area === 0 && p.area === 0;
-    const dist   = Math.abs(mover.x - p.x) + Math.abs(mover.y - p.y);
-    if (inTown || (mover.area === p.area && dist <= ZK_VISIBLE_RADIUS)) {
-      p.ws.send(data);
-    }
-  });
-}
-
-function extractError(e) {
-  if (!e) return 'Unknown error';
-  // Solana SendTransactionError embeds logs
-  if (e.logs) return e.logs.slice(-3).join(' | ');
-  return e.message ?? String(e);
-}
-
-// (startup logs moved to httpServer.listen callback above)

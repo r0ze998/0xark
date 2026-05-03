@@ -10,39 +10,31 @@ Hackathon deadline: 2026-05-11
 Deps: `anchor-spl = "1.0.0"` with `["token", "associated_token"]` features.  
 Cards are standard SPL token mints managed by the `oxark-cards` program.
 
-## IDL / Instruction Count (C-2, 2026-04-28)
+## IDL / Instruction Count (C-2 — updated 2026-05-03)
 | Source | Count | Status |
 |--------|-------|--------|
-| `programs/oxark/src/lib.rs` | 48 `pub fn` | Authoritative |
-| `target/idl/oxark.json` | 31 | **Stale** — needs `anchor build` |
-| `solana/client/oxark-idl.json` | 16 | **Very stale** — needs redeploy |
+| `programs/oxark/src/lib.rs` | 52 `pub fn` | Authoritative |
+| `target/idl/oxark.json` | 52 | ✓ In sync |
+| `solana/client/oxark-idl.json` | 52 | ✓ In sync |
 
-**Fix**: Run `anchor build` in `solana/oxark/` to regenerate IDL, then copy  
-`target/idl/oxark.json` → `solana/client/oxark-idl.json`.  
-Then run `init_season_stats(season_id=1)` on devnet.
+Both IDL files match and contain Program ID `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`.
 
-## UI v4 Screens
-Screens live in `src/screens/`. Each exports `mount(container, detail)` / `unmount(container)`.  
-Design system: `src/style/sprite-seas.css` (VT323, 1024×576, GBA palette).
+## Active UI — Phase 15 Battle Flow (5/11 submission)
+Entry point: `solana/client/app.js` → 5 battle components in `solana/client/src/components/`  
+Design system: inline CSS per component (VT323, 1024×576, dark GBA palette).
 
 | Screen | File | Status |
 |--------|------|--------|
-| Title A | `title-a.js` | ✓ Wave 1 |
-| M1 Lobby | `m1-lobby.js` | ✓ Wave 1 |
-| M3 Duel Open | `m3-duel-open.js` | ✓ Wave 1 |
-| M2 Duel Board | `m2-duel-board.js` | ✓ Wave 1 |
-| M4 Victory | `m4-victory.js` | ✓ Wave 1 |
-| S1 Menu Hub | `s1-menu.js` | ✓ Wave 2 |
-| S8 Defeat | `s8-defeat.js` | ✓ Wave 2 |
-| S3 Bourse Shop | `s3-bourse.js` | ✓ Wave 2 |
-| S2 Deck Editor | `s2-deck-editor.js` | ✓ Wave 2 |
-| M5 Card Detail | `m5-card-detail.js` | ✓ Wave 3 |
-| S4 Agent Hub | `s4-agent-hub.js` | ✓ Wave 3 |
-| S5 Lore Catalog | `s5-lore.js` | ✓ Wave 3 (6 tabs incl. Royal/KLG) |
-| S6 Settings | `s6-settings.js` | ✓ Wave 3 |
-| S7 How To Play | `s7-howtoplay.js` | ✓ Wave 3 |
-| Title B | `title-b.js` | ✓ Wave 4 |
-| Title C | `title-c.js` | ✓ Wave 4 |
+| Main / Vault | `components/main-screen.js` | ✓ Active |
+| Preparation | `components/preparation.js` | ✓ Active |
+| Interruption | `components/interruption.js` | ✓ Active |
+| Reveal | `components/reveal.js` | ✓ Active |
+| Loot | `components/loot.js` | ✓ Active |
+| Card Detail (modal) | `components/card-detail.js` | ✓ Active |
+
+## Wave 1–4 Screens (Post-hackathon — see docs/POST_HACKATHON_ROADMAP.md)
+16 additional screens are implemented in `src/screens/_archive/` and deferred to Season 2.  
+They are NOT wired to `app.js`. See `docs/POST_HACKATHON_ROADMAP.md` for roadmap.
 
 ## Hero Sprite Mapping (placeholders until /sprites/ PNGs arrive)
 | Hero | Screens |
@@ -71,14 +63,6 @@ fly secrets set SOLANA_RPC_URL=<rpc> TREASURY_PUBKEY=<pubkey>
 fly deploy
 ```
 Without `TREASURY_PUBKEY` the server runs in demo mode (x402 verification skipped).
-
-## C-3 IDL Rebuild (pending — needs anchor build)
-Run in `solana/oxark/`:
-```sh
-anchor build
-cp target/idl/oxark.json ../client/oxark-idl.json
-# then run init_season_stats(season_id=1) on devnet
-```
 
 ## Dev server
 ```

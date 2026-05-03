@@ -110,9 +110,16 @@ function buildSidebar() {
   <div class="m2-actions-block">
     <div class="m2-section-label">ACTIONS: <span class="label-gold">2 / 3</span></div>
   </div>
-  <button class="gba-btn gba-btn--primary m2-lockin" id="m2-lockin" aria-label="Lock in moves">
-    ► LOCK IN
-  </button>
+  <div class="m2-commit-btns flex-row gap-8">
+    <button class="gba-btn gba-btn--primary m2-lockin" id="m2-lockin" aria-label="Lock in moves">
+      ► LOCK IN
+    </button>
+    <button class="gba-btn gba-btn--secondary m2-ai-delegate" id="m2-ai-delegate"
+      aria-label="Delegate move to AI — costs 0.005 SOL">
+      ✦ AI ◎0.005
+    </button>
+  </div>
+  <div class="m2-ai-result label-dim" id="m2-ai-result" aria-live="polite"></div>
   <div class="m2-log" aria-label="Battle log" aria-live="polite">
     <div class="m2-log-header label-dim">LOG</div>
     ${logLines}
@@ -140,6 +147,19 @@ function bindEvents(container, round) {
   container.querySelector('#m2-lockin').addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('duel:locked', { detail: { round } }));
   });
+
+  const aiBtn = container.querySelector('#m2-ai-delegate');
+  if (aiBtn) {
+    aiBtn.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('duel:ai-move', { detail: { round } }));
+    });
+    document.addEventListener('duel:ai-result', (e) => {
+      const el = container.querySelector('#m2-ai-result');
+      if (!el) return;
+      const { action_type, target } = e.detail ?? {};
+      el.textContent = `AI chose: action ${action_type ?? '?'} → ${(target ?? '').slice(0, 8)}…`;
+    }, { once: true });
+  }
 
   container.querySelectorAll('.m2-card').forEach(cardEl => {
     cardEl.addEventListener('click', () => {
@@ -277,4 +297,10 @@ const CSS = `
 .m2-card-type  { font-size: 18px; line-height: 1; }
 .m2-card-name  { font-size: 12px; letter-spacing: 0.04em; white-space: nowrap; line-height: 1.2; }
 .m2-card-badge { font-size: 11px; letter-spacing: 0.06em; line-height: 1; }
+
+/* AI delegate */
+.m2-commit-btns { flex-wrap: wrap; }
+.m2-ai-delegate { font-size: 11px; letter-spacing: 0.06em; padding: 4px 8px; opacity: 0.9; }
+.m2-ai-delegate:hover { opacity: 1; }
+.m2-ai-result { min-height: 14px; font-size: 11px; margin-top: 4px; color: var(--accent-blue); }
 `;

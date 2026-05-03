@@ -18,7 +18,7 @@
 
 ## プロジェクト概要
 
-**コンセプト**: デッキ構築型カードバトル × ローグライクダンジョン × Solana NFT PvP  
+**コンセプト**: デッキ構築型カードバトル × Solana NFT PvP  
 **オーナー**: r0ze (株式会社雪風)  
 **連絡**: Telegram @r0ze998 (chat_id: 5126103942)
 
@@ -46,8 +46,8 @@
 | Smart Contract | Anchor (Solana) | カードNFT発行・Prize Pool管理 |
 | Program ID | `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` | devnet |
 | Game Client | Vanilla HTML/JS + PixiJS v7 WebGL | フロントエンド |
-| ZK (Circom) | Poseidon circuit + browser snarkjs | ダンジョン内位置秘匿 |
-| AI Agent | x402 broker | ダンジョン内の強力な敵 |
+| ZK (Circom) | Poseidon circuit + browser snarkjs | 手札コミット-リビール（情報非対称） |
+| AI Agent | x402 broker | カードバトル自動対戦・x402 scout-peek |
 | x402 | マイクロペイメント | ガチャ支払い |
 | Multiplayer | WebSocket | リアルタイムPvP |
 
@@ -71,16 +71,6 @@ Wallet接続 → 0.5 SOL デポジット → スターターカード3枚支給 
 
 ---
 
-### 🏚 ダンジョン
-- ローグライク風ランダムマップ、フロア制
-- 深いほどレアカード出やすい
-- **ZK**: 他プレイヤーの位置は自分の視野内に入るまで不明
-- AI agentとプレイヤーが敵として出現 → エンカウントでカードバトル
-- フロアクリア → カード1枚獲得
-- 脱出: クリアで通常脱出 / 脱出カード使用でいつでも脱出
-
----
-
 ### ⚔️ カードバトル（デッキ構築型）
 - 手持ちのカードからデッキを構築してバトル
 - 詳細ターン構造: **TBD**
@@ -95,11 +85,10 @@ Wallet接続 → 0.5 SOL デポジット → スターターカード3枚支給 
 
 ### カード入手方法
 1. バトル勝利（AI agent / プレイヤーから奪う）
-2. ダンジョンフロアクリア報酬
-3. ガチャ
-4. マーケットプレイスで購入
-5. プレイヤー間トレード
-6. 錬成（設計: **TBD**）
+2. ガチャ
+3. マーケットプレイスで購入
+4. プレイヤー間トレード
+5. 錬成（設計: **TBD**）
 
 ---
 
@@ -108,11 +97,26 @@ Wallet接続 → 0.5 SOL デポジット → スターターカード3枚支給 
 - カードバトルの詳細ターン構造・リソース設計
 - 敗北時のカード喪失ロジック
 - デッキ枚数制限
-- ダンジョンフロア数・難易度曲線
 - 60種カードリスト（属性・効果・レアリティ内訳）
 - 錬成レシピ
 - NFTミントのタイミング（購入時? ドロップ時?）
 - Prize Pool清算ロジック（複数コンプした場合は？）
+
+---
+
+## MagicBlock ER 本番化済み (Phase 10 — 2026-04-28)
+
+| 項目 | 内容 |
+|------|------|
+| 本番UI接続 | `index.html` の `nav:matchmaking` が `startGameMB()` を呼び出す |
+| ERステータス | バトル開始時にバナー表示 (緑: ER ACTIVE / 橙: ER UNAVAILABLE) |
+| フォールバック | delegation失敗時は `_mbMode=false` でbase layer透過動作 |
+| ルーター | `https://devnet-router.magicblock.app` |
+| E2Eテスト | `solana/oxark/t15-e2e.js` — commit→reveal→undelegateサイクル検証 |
+| 実行方法 | `DEVNET_RPC=https://api.devnet.solana.com node solana/oxark/t15-e2e.js` |
+
+`startGameMB()` の戻り値: `{ sig: string, erActive: boolean }`  
+`getMbMode()` でERモードの現在値を取得可能 (`window.oxarkOnchain.getMbMode()`)
 
 ---
 
@@ -121,5 +125,5 @@ Wallet接続 → 0.5 SOL デポジット → スターターカード3枚支給 
 - コード変更前に必ず現在のバージョン確認
 - バージョンは v29 → v30 のようにインクリメント (現在: v100)
 - コミットメッセージ: `vXX: <変更内容>`
-- メインファイル: `solana/client/index.html`（大きいファイル、慎重に編集）
+- メインファイル: `index.html`（ルート — UIエントリポイント）
 - GDD変更時はこのCLAUDE.mdも必ず更新

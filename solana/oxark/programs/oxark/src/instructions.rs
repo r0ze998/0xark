@@ -76,3 +76,12 @@ pub mod init_season_stats;
 pub use burn_card::*;
 pub use evolve_cards::*;
 pub use init_season_stats::*;
+// Phase 15
+pub mod register_waitlist;
+pub mod check_legendary;
+pub mod claim_prize_v2;
+pub mod init_game_world;
+pub use register_waitlist::*;
+pub use check_legendary::*;
+pub use claim_prize_v2::*;
+pub use init_game_world::*;

@@ -680,7 +680,437 @@ suite('sanitizeClan', () => {
   });
 });
 
-// ─── Summary ─────────────────────────────────────────────────────────────────
-console.log('\n────────────────────────────────────────────');
-console.log(`Results: ${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+// ─── Async test runner (for x402 tests) ──────────────────────────────────────
+
+async function asyncTest(name, fn) {
+  try {
+    await fn();
+    console.log(`  ✓ ${name}`);
+    passed++;
+  } catch (e) {
+    console.error(`  ✗ ${name}`);
+    console.error(`    ${e.message}`);
+    failed++;
+  }
+}
+
+// ─── x402 replay prevention + endpoint binding context ───────────────────────
+
+const MEMO_PROGRAM_IDS = new Set([
+  'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo',
+  'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr',
+]);
+
+function makeX402Context() {
+  const usedSigs   = new Map();
+  const LAMPORTS   = 1_000_000_000;
+  const MAX_AGE_MS = 60_000;
+  const SIG_TTL_MS = 120_000;
+
+  function extractMemo(tx) {
+    const message = tx?.transaction?.message;
+    if (!message) return null;
+    const accountKeys  = message.staticAccountKeys ?? message.accountKeys ?? [];
+    const instructions = message.compiledInstructions ?? message.instructions ?? [];
+    for (const ix of instructions) {
+      const key = accountKeys[ix.programIdIndex];
+      if (!key) continue;
+      const programId = typeof key.toBase58 === 'function' ? key.toBase58() : String(key);
+      if (!MEMO_PROGRAM_IDS.has(programId)) continue;
+      const raw = ix.data;
+      if (raw == null) continue;
+      if (Buffer.isBuffer(raw))      return raw.toString('utf8');
+      if (raw instanceof Uint8Array) return Buffer.from(raw).toString('utf8');
+      if (typeof raw === 'string')   return raw;
+    }
+    return null;
+  }
+
+  function validateMemo(memoStr, requestPath) {
+    if (!memoStr) return { ok: false, error: 'memo required' };
+    const match = memoStr.match(/^endpoint:([^;]+);nonce:(.+)$/);
+    if (!match) return { ok: false, error: 'invalid memo format' };
+    const [, endpoint, nonce] = match;
+    if (endpoint !== requestPath) return { ok: false, error: 'endpoint mismatch' };
+    if (nonce.length < 8)         return { ok: false, error: 'invalid nonce' };
+    return { ok: true };
+  }
+
+  // mockEntries: [{ sig, blockTimeSecs, err, receivedLamports, tx? }]
+  // opts: { requireMemo?, now? }  (nowOverride moved into opts for clarity)
+  function makeVerify(mockEntries, opts = {}) {
+    const requireMemo = opts.requireMemo ?? false;
+    return async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath) {
+      const expectedLamports = Math.floor(amountSol * LAMPORTS);
+      const now = opts.now ?? Date.now();
+      for (const entry of mockEntries) {
+        if (!entry.blockTimeSecs || entry.err) continue;
+        if (now - entry.blockTimeSecs * 1000 > MAX_AGE_MS) continue;
+        if (usedSigs.has(entry.sig)) return { ok: false, error: 'signature already used' };
+        if (requireMemo) {
+          const memoCheck = validateMemo(extractMemo(entry.tx ?? null), requestPath);
+          if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
+        }
+        if (entry.receivedLamports >= expectedLamports) {
+          usedSigs.set(entry.sig, now + SIG_TTL_MS);
+          return { ok: true, sig: entry.sig, received: entry.receivedLamports };
+        }
+      }
+      return { ok: false, error: 'Payment not detected' };
+    };
+  }
+
+  function gcUsedSigs(nowOverride) {
+    const now = nowOverride ?? Date.now();
+    usedSigs.forEach((expiry, sig) => { if (expiry < now) usedSigs.delete(sig); });
+  }
+
+  return { usedSigs, makeVerify, gcUsedSigs };
+}
+
+// Build a minimal mock transaction with an optional memo instruction.
+// programId defaults to SPL Memo v2.
+function makeMockTx(opts = {}) {
+  const memoStr   = opts.memoStr   ?? null;
+  const programId = opts.programId ?? 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+  return {
+    meta: { preBalances: [0, 0, 0], postBalances: [0, 5_000_000, 0] },
+    transaction: {
+      message: {
+        accountKeys: [
+          { toBase58: () => 'player' },
+          { toBase58: () => 'TREASURY' },
+          { toBase58: () => programId },
+        ],
+        instructions: memoStr
+          ? [{ programIdIndex: 2, accounts: [], data: Buffer.from(memoStr, 'utf8') }]
+          : [],
+      },
+    },
+  };
+}
+
+// ─── HTTP rate limit context ──────────────────────────────────────────────────
+
+function makeRateLimitContext(opts = {}) {
+  const rateLimits    = new Map();
+  const HTTP_RATE_MAX    = opts.max    ?? 20;
+  const HTTP_RATE_WINDOW = opts.window ?? 60_000;
+
+  function checkHttpRateLimit(ip, now = Date.now()) {
+    let entry = rateLimits.get(ip);
+    if (!entry || now - entry.windowStart >= HTTP_RATE_WINDOW) {
+      entry = { count: 0, windowStart: now };
+      rateLimits.set(ip, entry);
+    }
+    entry.count++;
+    if (entry.count > HTTP_RATE_MAX) {
+      const retryAfter = Math.ceil((HTTP_RATE_WINDOW - (now - entry.windowStart)) / 1000);
+      return { limited: true, retryAfter };
+    }
+    return { limited: false };
+  }
+
+  return { rateLimits, checkHttpRateLimit };
+}
+
+// ─── x402 header context ──────────────────────────────────────────────────────
+
+function makeX402HeaderContext(opts = {}) {
+  const TREASURY_ADDR  = opts.treasury ?? 'TREASURY_PUBKEY_123';
+  const SOLANA_NETWORK = opts.network  ?? 'devnet';
+  const LAMPORTS       = 1_000_000_000;
+
+  function buildPaymentRequiredHeaders(amountSol) {
+    const amountLamports = Math.floor(amountSol * LAMPORTS);
+    const paymentRequired = Buffer.from(JSON.stringify({
+      version: 'x402-v2',
+      accepts: [{ scheme: 'solana-transfer', network: SOLANA_NETWORK, amount: String(amountLamports), payTo: TREASURY_ADDR }],
+    })).toString('base64');
+    return {
+      'PAYMENT-REQUIRED':    paymentRequired,
+      'X-Payment-Recipient': TREASURY_ADDR,
+      'X-Payment-Amount':    String(amountLamports),
+      'X-Payment-Network':   SOLANA_NETWORK,
+    };
+  }
+
+  return { buildPaymentRequiredHeaders, TREASURY_ADDR, SOLANA_NETWORK };
+}
+
+// ─── x402 protocol gap fix context ───────────────────────────────────────────
+// Replicates the route-level input extraction + validation from server.js.
+// If signature present without playerPubkey (or vice-versa) → 400.
+// Both absent = probe path → falls through to _verifyX402Payment.
+
+function makeProtocolGapContext() {
+  function extractX402Inputs(body, headers = {}) {
+    const playerPubkey = body.playerPubkey || headers['x-player-pubkey'] || '';
+    const signature    = body.signature    || headers['x-payment']       || '';
+    return { playerPubkey, signature };
+  }
+
+  function validateX402Inputs(playerPubkey, signature) {
+    if (signature && !playerPubkey) return { valid: false, status: 400, error: 'playerPubkey required' };
+    if (playerPubkey && !signature) return { valid: false, status: 400, error: 'signature required' };
+    return { valid: true };
+  }
+
+  return { extractX402Inputs, validateX402Inputs };
+}
+
+// ─── x402 tests + final summary ───────────────────────────────────────────────
+
+(async () => {
+  console.log('\nx402 replay prevention');
+
+  await asyncTest('new sig is accepted and recorded in usedSigs', async () => {
+    const { usedSigs, makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const verify = makeVerify([{ sig: 'sig-aaa', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000 }]);
+    const result = await verify('playerPk', 0.005);
+    assert.equal(result.ok, true);
+    assert.equal(result.sig, 'sig-aaa');
+    assert.equal(usedSigs.has('sig-aaa'), true);
+  });
+
+  await asyncTest('same sig on second call returns already-used error', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const verify = makeVerify([{ sig: 'sig-bbb', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000 }]);
+    await verify('playerPk', 0.005);                   // first call — accepted
+    const result = await verify('playerPk', 0.005);    // second call — replay
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'signature already used');
+  });
+
+  await asyncTest('GC removes entries past their expiry', async () => {
+    const { usedSigs, gcUsedSigs } = makeX402Context();
+    usedSigs.set('sig-expired', Date.now() - 1);  // already expired
+    gcUsedSigs();
+    assert.equal(usedSigs.has('sig-expired'), false);
+  });
+
+  await asyncTest('different sig is not blocked by a prior used sig', async () => {
+    const { usedSigs, makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    // Pre-mark an unrelated sig as used
+    usedSigs.set('sig-unrelated', Date.now() + 120_000);
+    // Fresh payment arrives with a different sig
+    const verify = makeVerify([{ sig: 'sig-fresh', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000 }]);
+    const result = await verify('playerPk', 0.005);
+    assert.equal(result.ok, true);
+    assert.equal(result.sig, 'sig-fresh');
+  });
+
+  console.log('\nHTTP rate limiting');
+
+  await asyncTest('20 requests pass, 21st is rate limited (429)', async () => {
+    const { checkHttpRateLimit } = makeRateLimitContext({ max: 20, window: 60_000 });
+    const now = Date.now();
+    for (let i = 0; i < 20; i++) {
+      const r = checkHttpRateLimit('1.2.3.4', now);
+      assert.equal(r.limited, false, `request ${i + 1} should pass`);
+    }
+    const r21 = checkHttpRateLimit('1.2.3.4', now);
+    assert.equal(r21.limited, true);
+  });
+
+  await asyncTest('Retry-After is correct seconds remaining in window', async () => {
+    const WINDOW = 60_000;
+    const { checkHttpRateLimit } = makeRateLimitContext({ max: 1, window: WINDOW });
+    const now = Date.now();
+    checkHttpRateLimit('1.2.3.4', now);           // 1st — passes
+    const r = checkHttpRateLimit('1.2.3.4', now + 10_000); // 2nd — limited, 50s elapsed
+    assert.equal(r.limited, true);
+    // retryAfter = ceil((60000 - 10000) / 1000) = 50
+    assert.equal(r.retryAfter, 50);
+  });
+
+  await asyncTest('after window expires requests are allowed again', async () => {
+    const { checkHttpRateLimit } = makeRateLimitContext({ max: 1, window: 60_000 });
+    const now = Date.now();
+    checkHttpRateLimit('1.2.3.4', now);                 // 1st — passes, window starts
+    const blocked = checkHttpRateLimit('1.2.3.4', now); // 2nd — limited
+    assert.equal(blocked.limited, true);
+    // 61s later — new window
+    const after = checkHttpRateLimit('1.2.3.4', now + 61_000);
+    assert.equal(after.limited, false);
+  });
+
+  await asyncTest('different IP is not affected by another IP being limited', async () => {
+    const { checkHttpRateLimit } = makeRateLimitContext({ max: 1, window: 60_000 });
+    const now = Date.now();
+    checkHttpRateLimit('1.1.1.1', now);
+    checkHttpRateLimit('1.1.1.1', now); // 1.1.1.1 is now limited
+    const other = checkHttpRateLimit('2.2.2.2', now);
+    assert.equal(other.limited, false);
+  });
+
+  console.log('\nx402 payment headers');
+
+  await asyncTest('PAYMENT-REQUIRED header decodes to valid x402-v2 JSON', async () => {
+    const { buildPaymentRequiredHeaders, TREASURY_ADDR } = makeX402HeaderContext();
+    const headers = buildPaymentRequiredHeaders(0.005);
+    const decoded = JSON.parse(Buffer.from(headers['PAYMENT-REQUIRED'], 'base64').toString('utf8'));
+    assert.equal(decoded.version, 'x402-v2');
+    assert.ok(Array.isArray(decoded.accepts) && decoded.accepts.length > 0);
+    assert.equal(decoded.accepts[0].payTo, TREASURY_ADDR);
+    assert.equal(decoded.accepts[0].scheme, 'solana-transfer');
+    assert.equal(decoded.accepts[0].amount, '5000000'); // 0.005 SOL
+  });
+
+  await asyncTest('X-Payment-Recipient matches TREASURY_ADDR', async () => {
+    const { buildPaymentRequiredHeaders, TREASURY_ADDR } = makeX402HeaderContext({ treasury: 'MY_TREASURY_KEY' });
+    const headers = buildPaymentRequiredHeaders(0.01);
+    assert.equal(headers['X-Payment-Recipient'], 'MY_TREASURY_KEY');
+  });
+
+  await asyncTest('X-Payment-Amount is correct lamports string', async () => {
+    const { buildPaymentRequiredHeaders } = makeX402HeaderContext();
+    const headers = buildPaymentRequiredHeaders(0.01);
+    assert.equal(headers['X-Payment-Amount'], '10000000'); // 0.01 SOL = 10_000_000 lamports
+  });
+
+  await asyncTest('X-Payment-Network reflects SOLANA_NETWORK', async () => {
+    const { buildPaymentRequiredHeaders } = makeX402HeaderContext({ network: 'mainnet-beta' });
+    const headers = buildPaymentRequiredHeaders(0.003);
+    assert.equal(headers['X-Payment-Network'], 'mainnet-beta');
+  });
+
+  console.log('\nx402 endpoint binding (memo)');
+
+  await asyncTest('requireMemo=false: tx without memo still passes (regression)', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const verify = makeVerify(
+      [{ sig: 'sig-no-memo', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000, tx: makeMockTx() }],
+      { requireMemo: false },
+    );
+    const result = await verify('playerPk', 0.005, '/x402/scout-peek');
+    assert.equal(result.ok, true);
+  });
+
+  await asyncTest('requireMemo=true: valid memo (SPL Memo v2) passes', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const memo = 'endpoint:/x402/scout-peek;nonce:a1b2c3d4';
+    const verify = makeVerify(
+      [{ sig: 'sig-v2', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000,
+         tx: makeMockTx({ memoStr: memo, programId: 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr' }) }],
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.005, '/x402/scout-peek');
+    assert.equal(result.ok, true);
+  });
+
+  await asyncTest('requireMemo=true: valid memo (SPL Memo v1 legacy) passes', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const memo = 'endpoint:/x402/counter-peek;nonce:z9y8x7w6';
+    const verify = makeVerify(
+      [{ sig: 'sig-v1', blockTimeSecs: nowSecs, err: null, receivedLamports: 3_000_000,
+         tx: makeMockTx({ memoStr: memo, programId: 'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo' }) }],
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.003, '/x402/counter-peek');
+    assert.equal(result.ok, true);
+  });
+
+  await asyncTest('requireMemo=true: tx without memo → memo required', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const verify = makeVerify(
+      [{ sig: 'sig-nomemo', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000,
+         tx: makeMockTx() }],  // no memoStr → empty instructions
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.005, '/x402/scout-peek');
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'memo required');
+  });
+
+  await asyncTest('requireMemo=true: malformed memo ("foo:bar") → invalid memo format', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const verify = makeVerify(
+      [{ sig: 'sig-badmemo', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000,
+         tx: makeMockTx({ memoStr: 'foo:bar' }) }],
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.005, '/x402/scout-peek');
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'invalid memo format');
+  });
+
+  await asyncTest('requireMemo=true: endpoint mismatch → endpoint mismatch error', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    // Payment memo says scout-peek but client is hitting counter-peek
+    const memo = 'endpoint:/x402/scout-peek;nonce:a1b2c3d4';
+    const verify = makeVerify(
+      [{ sig: 'sig-mismatch', blockTimeSecs: nowSecs, err: null, receivedLamports: 3_000_000,
+         tx: makeMockTx({ memoStr: memo }) }],
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.003, '/x402/counter-peek');
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'endpoint mismatch');
+  });
+
+  await asyncTest('requireMemo=true: nonce < 8 chars → invalid nonce', async () => {
+    const { makeVerify } = makeX402Context();
+    const nowSecs = Math.floor(Date.now() / 1000);
+    const memo = 'endpoint:/x402/scout-peek;nonce:ab';  // only 2 chars
+    const verify = makeVerify(
+      [{ sig: 'sig-shortnonce', blockTimeSecs: nowSecs, err: null, receivedLamports: 5_000_000,
+         tx: makeMockTx({ memoStr: memo }) }],
+      { requireMemo: true },
+    );
+    const result = await verify('playerPk', 0.005, '/x402/scout-peek');
+    assert.equal(result.ok, false);
+    assert.equal(result.error, 'invalid nonce');
+  });
+
+  console.log('\nx402 protocol gap fix');
+
+  await asyncTest('body.playerPubkey + body.signature → valid inputs', async () => {
+    const { extractX402Inputs, validateX402Inputs } = makeProtocolGapContext();
+    const { playerPubkey, signature } = extractX402Inputs(
+      { playerPubkey: 'wallet-pk-123', signature: 'sig-abc' }, {}
+    );
+    const v = validateX402Inputs(playerPubkey, signature);
+    assert.equal(v.valid, true);
+  });
+
+  await asyncTest('X-Player-Pubkey header fallback → valid inputs', async () => {
+    const { extractX402Inputs, validateX402Inputs } = makeProtocolGapContext();
+    const { playerPubkey, signature } = extractX402Inputs(
+      {}, { 'x-player-pubkey': 'wallet-pk-456', 'x-payment': 'sig-def' }
+    );
+    const v = validateX402Inputs(playerPubkey, signature);
+    assert.equal(v.valid, true);
+  });
+
+  await asyncTest('playerPubkey 欠落 (signature present, no pubkey) → 400', async () => {
+    const { extractX402Inputs, validateX402Inputs } = makeProtocolGapContext();
+    const { playerPubkey, signature } = extractX402Inputs({}, { 'x-payment': 'sig-xyz' });
+    const v = validateX402Inputs(playerPubkey, signature);
+    assert.equal(v.valid, false);
+    assert.equal(v.status, 400);
+    assert.equal(v.error, 'playerPubkey required');
+  });
+
+  await asyncTest('signature 欠落 (pubkey present, no signature) → 400', async () => {
+    const { extractX402Inputs, validateX402Inputs } = makeProtocolGapContext();
+    const { playerPubkey, signature } = extractX402Inputs({ playerPubkey: 'wallet-pk-789' }, {});
+    const v = validateX402Inputs(playerPubkey, signature);
+    assert.equal(v.valid, false);
+    assert.equal(v.status, 400);
+    assert.equal(v.error, 'signature required');
+  });
+
+  console.log('\n────────────────────────────────────────────');
+  console.log(`Results: ${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exit(1);
+})();
