@@ -1677,6 +1677,66 @@ async function claimPrizeV2(prizePoolStr) {
 
 // ─── check_legendary_v2 ───────────────────────────────────────────────────
 // Checks if the player's vault has all 60 cards and triggers the legendary state.
+function findDuelLootRecordPDA(duelIdPubkey) {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('duel_loot'), duelIdPubkey.toBytes()],
+    getProgramId()
+  );
+}
+
+// SlotHashes sysvar pubkey (stable across all Solana versions).
+const SLOT_HASHES_PUBKEY = new solanaWeb3.PublicKey('SysvarS1otHashes111111111111111111111111111');
+
+/// Claim 1 random card from loser's battle field on-chain.
+/// @param {string|PublicKey} duelId  — unique duel identifier (Pubkey)
+/// @param {string}           loserPubkeyStr — loser's wallet address
+/// @param {number[]}         loserField  — [cardId, cardId, cardId, cardId, cardId]
+/// @returns {{ signature: string, stolenCardId: number|null }}
+async function claimBattleLoot(duelId, loserPubkeyStr, loserField) {
+  const winner = window.oxarkWallet?.getPublicKey?.();
+  if (!winner) throw new Error('Wallet not connected');
+
+  const duelIdPK  = typeof duelId === 'string'
+    ? new solanaWeb3.PublicKey(duelId)
+    : duelId;
+  const loserPK   = new solanaWeb3.PublicKey(loserPubkeyStr);
+
+  const [winnerStatePDA] = findPlayerStatePDA(winner);
+  const [loserStatePDA]  = findPlayerStatePDA(loserPK);
+  const [lootRecordPDA]  = findDuelLootRecordPDA(duelIdPK);
+
+  // Borsh: disc(8) + duel_id(Pubkey=32) + loser_pubkey(Pubkey=32) + loser_field([u8;5])
+  const d    = await disc('claim_battle_loot');
+  const data = new Uint8Array(8 + 32 + 32 + 5);
+  let off = writeBytes(data, 0, d);
+  off = writeBytes(data, off, duelIdPK.toBytes());
+  off = writeBytes(data, off, loserPK.toBytes());
+  const fieldArr = Array.from({ length: 5 }, (_, i) => (loserField[i] ?? 0) & 0xff);
+  fieldArr.forEach((b, i) => { data[off + i] = b; });
+
+  const sig = await buildAndSend([
+    { pubkey: winner,         isSigner: true,  isWritable: true  },
+    { pubkey: winnerStatePDA, isSigner: false, isWritable: true  },
+    { pubkey: loserStatePDA,  isSigner: false, isWritable: true  },
+    { pubkey: lootRecordPDA,  isSigner: false, isWritable: true  },
+    { pubkey: SLOT_HASHES_PUBKEY, isSigner: false, isWritable: false },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+
+  // Read stolen_card_id from the DuelLootRecord account.
+  // Account layout: 8 (disc) + 32 (duel_id) + 32 (winner) + 32 (loser) + 5 (field) + 1 (stolen)
+  let stolenCardId = null;
+  try {
+    const rpc  = new solanaWeb3.Connection(DEVNET_RPC, 'confirmed');
+    const info = await rpc.getAccountInfo(lootRecordPDA);
+    if (info && info.data.length >= 8 + 32 + 32 + 32 + 5 + 1) {
+      stolenCardId = info.data[8 + 32 + 32 + 32 + 5];
+    }
+  } catch (_) { /* non-fatal */ }
+
+  return { signature: sig, stolenCardId };
+}
+
 async function checkLegendaryV2() {
   const player = window.solana.publicKey;
   const [playerStatePDA] = findPlayerStatePDA(player);
@@ -1748,6 +1808,9 @@ window.oxarkOnchain = {
   grantImprint,
   claimPrizeV2,
   checkLegendaryV2,
+  // Phase 19 — claim_battle_loot
+  claimBattleLoot,
+  findDuelLootRecordPDA,
   // Helpers
   computeCommitHash,
   generateSalt,

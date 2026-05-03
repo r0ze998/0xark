@@ -85,3 +85,6 @@ pub use register_waitlist::*;
 pub use check_legendary::*;
 pub use claim_prize_v2::*;
 pub use init_game_world::*;
+// Phase 19
+pub mod claim_battle_loot;
+pub use claim_battle_loot::*;

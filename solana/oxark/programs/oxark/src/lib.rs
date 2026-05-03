@@ -731,4 +731,17 @@ pub mod oxark {
     pub fn claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
         instructions::claim_prize_v2::handle_claim_prize_v2(ctx)
     }
+
+    /// Claim 1 random card from loser's battle field (on-chain loot via SlotHashes).
+    /// `duel_id`:     unique Pubkey for this duel (prevents double-claim via PDA init).
+    /// `loser_pubkey`: the loser's wallet pubkey.
+    /// `loser_field`:  the 5 card IDs the loser had on the field (0 = empty slot).
+    pub fn claim_battle_loot(
+        ctx: Context<ClaimBattleLoot>,
+        duel_id: Pubkey,
+        loser_pubkey: Pubkey,
+        loser_field: [u8; 5],
+    ) -> Result<()> {
+        instructions::claim_battle_loot::handle_claim_battle_loot(ctx, duel_id, loser_pubkey, loser_field)
+    }
 }

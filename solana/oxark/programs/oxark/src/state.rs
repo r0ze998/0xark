@@ -192,6 +192,27 @@ impl PlayerState {
         let bit  = idx % 8;
         self.vault_bitmap[byte] &= !(1 << bit);
     }
+
+    // ── claim_battle_loot helpers ───────────────────────────────────────
+
+    pub fn has_card(&self, card_id: u8) -> bool {
+        self.has_vault_card(card_id)
+    }
+
+    pub fn add_card(&mut self, card_id: u8) -> anchor_lang::Result<()> {
+        use crate::error::ErrorCode;
+        require!(card_id > 0 && card_id <= 60, ErrorCode::InvalidCardId);
+        self.set_vault_card(card_id);
+        Ok(())
+    }
+
+    pub fn remove_card(&mut self, card_id: u8) -> anchor_lang::Result<()> {
+        use crate::error::ErrorCode;
+        require!(card_id > 0 && card_id <= 60, ErrorCode::InvalidCardId);
+        require!(self.has_vault_card(card_id), ErrorCode::CardNotOwned);
+        self.clear_vault_card(card_id);
+        Ok(())
+    }
 }
 
 #[account]
@@ -709,6 +730,26 @@ pub struct DuelInitialized {
     pub duel_id:  Pubkey,
     pub player_1: Pubkey,
     pub player_2: Pubkey,
+}
+
+// ─── DuelLootRecord PDA ────────────────────────────────────────────────────
+// Seeds: ["duel_loot", duel_id.as_ref()]
+// Created (init) on first and only successful claim_battle_loot call.
+// Its existence proves loot was already claimed — no loot_claimed flag needed.
+#[account]
+pub struct DuelLootRecord {
+    pub duel_id:        Pubkey,  // 32
+    pub winner:         Pubkey,  // 32
+    pub loser:          Pubkey,  // 32
+    pub loser_field:    [u8; 5], // 5  — the 5 card IDs loser had on field
+    pub stolen_card_id: u8,      // 1  — winner's prize
+    pub bump:           u8,      // 1
+}
+
+impl DuelLootRecord {
+    pub const SEED: &'static [u8] = b"duel_loot";
+    // 8 disc + 32 + 32 + 32 + 5 + 1 + 1
+    pub const SIZE: usize = 8 + 32 + 32 + 32 + 5 + 1 + 1;
 }
 
 #[event]

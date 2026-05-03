@@ -34,7 +34,7 @@ to `solana/client/app.js`. Priority order for Season 2:
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| カード喪失ロジック (敗北時) | HIGH | Core economic mechanic — needs design decision from r0ze |
+| カード喪失ロジック (敗北時) | ~~HIGH~~ | ~~Core economic mechanic~~ → **DONE** (claim_battle_loot, Phase 19) |
 | デッキ枚数制限 | HIGH | Prevents hand-overflow exploit |
 | 錬成レシピ詳細 | MEDIUM | Beyond 2×Common → 1×Uncommon |
 | Prize Pool同時クリア処理 | MEDIUM | Race condition when 2 players hit 60 cards |

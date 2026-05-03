@@ -131,6 +131,23 @@ pub enum ErrorCode {
     NoActiveLease,
     #[msg("Lease has not expired yet")]
     LeaseNotExpired,
+    // ── claim_battle_loot ────────────────────────────────────────────────────
+    #[msg("Cannot loot from yourself")]
+    CannotLootSelf,
+    #[msg("You are not the winner of this battle")]
+    NotWinner,
+    #[msg("Wrong loser specified")]
+    WrongLoser,
+    #[msg("Battle field size must be exactly 5")]
+    InvalidFieldSize,
+    #[msg("SlotHashes sysvar unavailable or too short")]
+    SlotHashesUnavailable,
+    #[msg("Loser does not own the stolen card in their vault")]
+    LoserDoesNotOwnCard,
+    #[msg("Invalid card ID (must be 1-60)")]
+    InvalidCardId,
+    #[msg("Card not owned by player")]
+    CardNotOwned,
     // ── Phase 15: Admin / Waitlist / Season v2 ──────────────────────────────
     #[msg("Caller is not the authorized admin")]
     Unauthorized,
