@@ -18,6 +18,10 @@ let _swapSlot    = null;    // which slot we're swapping
 let _vault       = [];
 
 export function mount(container, detail = {}) {
+  if (!window.oxarkWallet?.isConnected?.()) {
+    document.dispatchEvent(new CustomEvent('nav:wallet-required'));
+    return;
+  }
   injectStyle();
   injectCardCSS();
   injectActionTypeSelectorCSS();

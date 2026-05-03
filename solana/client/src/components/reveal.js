@@ -13,6 +13,10 @@ let _unsubOppReveal   = () => {};
 let _unsubResolved    = () => {};
 
 export function mount(container, detail = {}) {
+  if (!window.oxarkWallet?.isConnected?.()) {
+    document.dispatchEvent(new CustomEvent('nav:wallet-required'));
+    return;
+  }
   injectStyle();
   injectCardCSS();
 

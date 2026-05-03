@@ -16,6 +16,10 @@ let _field        = [null, null, null, null, null]; // {cardId, actionType}|null
 let _vault        = [];
 
 export function mount(container, detail = {}) {
+  if (!window.oxarkWallet?.isConnected?.()) {
+    document.dispatchEvent(new CustomEvent('nav:wallet-required'));
+    return;
+  }
   injectStyle();
   injectCardCSS();
   injectActionTypeSelectorCSS();
