@@ -2,17 +2,22 @@
  * 02-x402.js — x402 micropayment client for 0xARK
  *
  * Handles the full x402 HTTP-402 flow:
- *   1. POST /scout-peek  →  402 + X-Payment-Required header
- *   2. User approves SOL payment (0.005 SOL)
- *   3. Retry with X-Payment: <tx_sig>
- *   4. Server verifies on-chain, returns revealed card
+ *   1. POST endpoint (no payment header) → 402 + PAYMENT-REQUIRED header (Base64 JSON)
+ *   2. Parse payment spec; build SOL tx (1 or 2 transfers + memo)
+ *   3. Sign + send via Phantom
+ *   4. Retry with X-Payment: <tx_sig>
+ *   5. Server verifies on-chain → 200 OK + content
  *
- * Dependencies: window.solana (Phantom/Backpack wallet adapter)
+ * Supports split payments (50% ops_treasury / 50% prize_pool).
+ * Backward-compatible with single-recipient servers.
+ *
+ * Dependencies: window.solana (Phantom/Backpack), window.solanaWeb3, window.x402Memo
  */
 
+// Server URL: configurable via window.X402_BROKER_URL (default: multiplayer server)
 const X402_BROKER_URL = typeof window !== 'undefined'
-  ? (window.X402_BROKER_URL || 'http://localhost:3402')
-  : 'http://localhost:3402';
+  ? (window.X402_BROKER_URL || 'http://localhost:3500')
+  : 'http://localhost:3500';
 
 /**
  * Scout peek — pay 0.005 SOL to reveal one card held by a target player.
@@ -271,8 +276,156 @@ async function _payMove(endpoint, memoFields, wallet, conn) {
   return paid.json();
 }
 
-// Fallback treasury for probes before spec is known (only used for toPk estimation)
+// ─── Phase 19: unified x402 payment helper ───────────────────────────────────
+// Handles 402→pay→retry cycle. Supports split-recipient (ops + pool) or single payTo.
+
 const TREASURY_ADDR_FALLBACK = '11111111111111111111111111111111';
+
+function _getWalletAndConn() {
+  const w = window.solana;
+  const c = window.oxarkOnchain
+    ? (() => { const C = window.solanaWeb3?.Connection; const { DEVNET_RPC } = window; return C ? new C(DEVNET_RPC || 'https://api.devnet.solana.com', 'confirmed') : null; })()
+    : null;
+  // Prefer the shared connection from onchain module if available
+  if (!w?.isConnected) throw new Error('Phantom wallet not connected');
+  return { wallet: w, conn: c || _getDefaultConn() };
+}
+
+function _getDefaultConn() {
+  const { Connection } = window.solanaWeb3 ?? {};
+  if (!Connection) throw new Error('solanaWeb3 not loaded');
+  return new Connection('https://api.devnet.solana.com', 'confirmed');
+}
+
+/**
+ * Unified x402 payment flow for any endpoint.
+ *
+ * @param {string} endpoint   - e.g. '/x402/match-battle'
+ * @param {object} body       - request body for the final retry POST
+ * @param {object} [wallet]   - wallet adapter (defaults to window.solana)
+ * @param {object} [conn]     - Connection (defaults to devnet)
+ * @returns {Promise<object>} - server response JSON
+ */
+async function _x402Pay(endpoint, body = {}, wallet, conn) {
+  const { Transaction, SystemProgram, PublicKey, TransactionInstruction } = window.solanaWeb3 ?? {};
+  if (!Transaction) throw new Error('solanaWeb3 not loaded');
+
+  const w      = wallet ?? window.solana;
+  const c      = conn   ?? _getDefaultConn();
+  if (!w?.isConnected && !w?.publicKey) throw new Error('Wallet not connected');
+
+  const fromPk       = new PublicKey(w.publicKey.toString());
+  const playerPubkey = fromPk.toBase58();
+
+  // ── 1. Probe to get payment spec ─────────────────────────────────────────
+  const probeRes = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ ...body, playerPubkey }),
+  });
+
+  if (probeRes.ok) return probeRes.json(); // Already paid or server skip
+  if (probeRes.status !== 402) {
+    const errBody = await probeRes.json().catch(() => ({}));
+    throw Object.assign(new Error(errBody.error ?? `x402 ${endpoint} returned ${probeRes.status}`), { code: 'ServerError' });
+  }
+
+  // ── 2. Parse PAYMENT-REQUIRED header ─────────────────────────────────────
+  const specBase64 = probeRes.headers.get('PAYMENT-REQUIRED') || probeRes.headers.get('X-Payment-Required');
+  let spec = {};
+  try { spec = specBase64 ? JSON.parse(atob(specBase64)) : {}; } catch (_) {}
+
+  const accepts = spec.accepts?.[0] ?? {};
+  const totalLamports = parseInt(accepts.amount, 10)
+    || parseInt(probeRes.headers.get('X-Payment-Amount'), 10)
+    || 0;
+
+  // ── 3. Build transaction ──────────────────────────────────────────────────
+  const { blockhash } = await c.getLatestBlockhash('confirmed');
+  const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPk });
+
+  const splitRecipient = accepts.recipient;
+  if (splitRecipient?.ops && splitRecipient?.pool
+      && splitRecipient.ops.address !== splitRecipient.pool.address) {
+    // Split payment: 50% ops / 50% pool
+    tx.add(SystemProgram.transfer({
+      fromPubkey: fromPk,
+      toPubkey:   new PublicKey(splitRecipient.ops.address),
+      lamports:   splitRecipient.ops.lamports,
+    }));
+    tx.add(SystemProgram.transfer({
+      fromPubkey: fromPk,
+      toPubkey:   new PublicKey(splitRecipient.pool.address),
+      lamports:   splitRecipient.pool.lamports,
+    }));
+  } else {
+    // Single payment (backward compat or same address)
+    const payTo = accepts.payTo
+      || probeRes.headers.get('X-Payment-Recipient')
+      || TREASURY_ADDR_FALLBACK;
+    tx.add(SystemProgram.transfer({
+      fromPubkey: fromPk,
+      toPubkey:   new PublicKey(payTo),
+      lamports:   totalLamports,
+    }));
+  }
+
+  // Attach SPL Memo for endpoint binding
+  const nonce   = _generateNonce();
+  const memoStr = `endpoint:${endpoint};nonce:${nonce}`;
+  tx.add(new TransactionInstruction({
+    programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
+    keys: [],
+    data: new TextEncoder().encode(memoStr),
+  }));
+
+  // ── 4. Sign + send ────────────────────────────────────────────────────────
+  const signed = await w.signTransaction(tx);
+  const sig    = await c.sendRawTransaction(signed.serialize());
+  await c.confirmTransaction(sig, 'confirmed');
+
+  // ── 5. Retry with payment proof ───────────────────────────────────────────
+  const paidRes = await fetch(`${X402_BROKER_URL}${endpoint}`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Payment': sig },
+    body:    JSON.stringify({ ...body, playerPubkey, signature: sig, memo: memoStr }),
+  });
+
+  if (!paidRes.ok) {
+    const errBody = await paidRes.json().catch(() => ({}));
+    const msg = errBody.error ?? errBody.reason ?? `${endpoint} failed: ${paidRes.status}`;
+    const code = paidRes.status === 402 ? 'PaymentFailed' : 'ServerError';
+    throw Object.assign(new Error(msg), { code });
+  }
+  return paidRes.json();
+}
+
+// ─── Phase 19: new game-design-v2 §3 endpoint wrappers ───────────────────────
+
+/** Pay 0.001 SOL to start a ranked match battle. */
+async function payMatchBattle(body = {}) {
+  return _x402Pay('/x402/match-battle', body);
+}
+
+/** Pay 0.0005 SOL to peek an opponent's vault card count. targetPubkey: base58 */
+async function payPeekVaultSize(targetPubkey, body = {}) {
+  return _x402Pay('/x402/peek-vault-size', { target_pubkey: targetPubkey, ...body });
+}
+
+/** Pay 0.005 SOL to reveal the contents of an opponent's vault. targetPubkey: base58 */
+async function payPeekVaultContent(targetPubkey, body = {}) {
+  return _x402Pay('/x402/peek-vault-content', { target_pubkey: targetPubkey, ...body });
+}
+
+/** Pay 0.01 SOL to draw an extra card this round. */
+async function payDrawExtra(body = {}) {
+  return _x402Pay('/x402/draw-extra', body);
+}
+
+/** Pay 0.003 SOL to get AI strategic advice for the current game state. */
+async function payAiStrategyAdvice(context = {}) {
+  return _x402Pay('/x402/ai-strategy-advice', { public_state: context });
+}
 
 /** POST /x402/co — action commit */
 async function payCommit({ matchId, round, playerSide = 's', hash }, wallet, conn) {
@@ -304,8 +457,12 @@ async function payRoundResolve({ matchId, round, p1Delta, p2Delta }, wallet, con
   return _payMove('/x402/rs', { m: matchId, r: round, d: `${p1Delta}/${p2Delta}` }, wallet, conn);
 }
 
-/** POST /x402/me — match end (host only) */
+/** POST /x402/me — match end (host only). Accepts wallet+conn for legacy callers. */
 async function payMatchEnd({ matchId, winner }, wallet, conn) {
+  // Phase 19: prefer _x402Pay (split payment); fall back to _payMove for old API
+  if (!wallet && !conn) {
+    return _x402Pay('/x402/me', { m: matchId, w: winner });
+  }
   return _payMove('/x402/me', { m: matchId, w: winner }, wallet, conn);
 }
 
@@ -356,17 +513,26 @@ async function payAiMove({ matchId, round, publicState }, wallet, conn) {
   return paid.json();
 }
 
-// Export for both ESM browser and Node.js test environments
+const _x402Exports = {
+  // Phase 19: game-design-v2 §3 endpoints (real SOL, split payment)
+  payMatchBattle,
+  payPeekVaultSize,
+  payPeekVaultContent,
+  payDrawExtra,
+  payAiStrategyAdvice,
+  // Phase 12: move memo endpoints
+  payCommit, payReveal, payHandCommit, payHandReveal,
+  payPhaseAdvance, payRoundResolve, payMatchEnd,
+  // Phase 14: AI move delegation
+  payAiMove,
+  // Legacy / dev helpers
+  scoutPeek, scoutPeekDev, hireAgent, hireAgentDev,
+  // Internals (exposed for testing)
+  X402_BROKER_URL, _x402Pay,
+};
+
 if (typeof module !== 'undefined') {
-  module.exports = {
-    scoutPeek, scoutPeekDev, hireAgent, hireAgentDev, X402_BROKER_URL,
-    payCommit, payReveal, payHandCommit, payHandReveal,
-    payPhaseAdvance, payRoundResolve, payMatchEnd, payAiMove,
-  };
+  module.exports = _x402Exports;
 } else if (typeof window !== 'undefined') {
-  window.x402 = {
-    scoutPeek, scoutPeekDev, hireAgent, hireAgentDev,
-    payCommit, payReveal, payHandCommit, payHandReveal,
-    payPhaseAdvance, payRoundResolve, payMatchEnd, payAiMove,
-  };
+  window.x402 = _x402Exports;
 }

@@ -86,6 +86,9 @@ function checkHttpRateLimit(ip, now = Date.now()) {
 // ─── x402 payment verification ────────────────────────────────────────────────
 
 const TREASURY_ADDR    = process.env.TREASURY_PUBKEY || '11111111111111111111111111111111';
+// Split payment recipients (default to single treasury when not configured)
+const OPS_TREASURY_ADDR  = process.env.OPS_TREASURY_PUBKEY  || TREASURY_ADDR;
+const PRIZE_POOL_ADDR    = process.env.PRIZE_POOL_PUBKEY     || TREASURY_ADDR;
 const SOLANA_NETWORK   = process.env.SOLANA_NETWORK  || 'devnet';
 // X402_REQUIRE_MEMO=true: every payment tx must carry a memo binding it to the endpoint.
 // Default 'false' preserves backward compat with clients that don't yet attach memos.
@@ -125,11 +128,27 @@ const X402_MAX_AGE_MS    = 60_000;
 
 // sigHint: signature provided directly by client (Phase 9+) — uses targeted getTransaction.
 // Without sigHint: legacy poll via getSignaturesForAddress (probe path).
+// Sum balance delta across all known treasury addresses in a transaction.
+// Handles both single-transfer (all to ops) and split (50/50 ops+pool).
+function _sumTreasuryReceived(tx, knownAddrs) {
+  const accountKeys = tx.transaction.message.staticAccountKeys ?? tx.transaction.message.accountKeys;
+  let total = 0;
+  for (const addr of knownAddrs) {
+    const idx = accountKeys.findIndex(k => k.toBase58() === addr);
+    if (idx >= 0) {
+      total += (tx.meta.postBalances[idx] ?? 0) - (tx.meta.preBalances[idx] ?? 0);
+    }
+  }
+  return total;
+}
+
 async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHint = null) {
   if (!process.env.TREASURY_PUBKEY) {
     console.log('[x402] No TREASURY_PUBKEY — demo mode');
     return { ok: true, demo: true };
   }
+  // All known treasury addresses — payment can be split across any combination
+  const knownAddrs = [...new Set([TREASURY_ADDR, OPS_TREASURY_ADDR, PRIZE_POOL_ADDR])];
   try {
     const expectedLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
@@ -143,10 +162,8 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
         const memoCheck = validateMemo(extractMemo(tx), requestPath);
         if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
       }
-      const accountKeys = tx.transaction.message.staticAccountKeys ?? tx.transaction.message.accountKeys;
-      const idx = accountKeys.findIndex(k => k.toBase58() === TREASURY_ADDR);
-      if (idx < 0) return { ok: false, error: 'payment not directed to treasury' };
-      const received = (tx.meta.postBalances[idx] ?? 0) - (tx.meta.preBalances[idx] ?? 0);
+      const received = _sumTreasuryReceived(tx, knownAddrs);
+      if (received <= 0) return { ok: false, error: 'payment not directed to treasury' };
       if (received >= expectedLamports) {
         console.log(`[x402] Verified: ${amountSol} SOL`);
         usedSigs.set(sigHint, Date.now() + 120_000);
@@ -156,7 +173,7 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
     }
 
     // Legacy: poll recent sigs by player pubkey (probe path / old clients)
-    const playerKey        = new PublicKey(playerPubkeyStr);
+    const playerKey = new PublicKey(playerPubkeyStr);
     for (let attempt = 0; attempt < X402_POLL_ATTEMPTS; attempt++) {
       const sigs = await connection.getSignaturesForAddress(playerKey, { limit: 10 }, COMMITMENT);
       const now  = Date.now();
@@ -172,10 +189,7 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
           const memoCheck = validateMemo(extractMemo(tx), requestPath);
           if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
         }
-        const accountKeys = tx.transaction.message.staticAccountKeys ?? tx.transaction.message.accountKeys;
-        const idx = accountKeys.findIndex(k => k.toBase58() === TREASURY_ADDR);
-        if (idx < 0) continue;
-        const received = (tx.meta.postBalances[idx] ?? 0) - (tx.meta.preBalances[idx] ?? 0);
+        const received = _sumTreasuryReceived(tx, knownAddrs);
         if (received >= expectedLamports) {
           console.log(`[x402] Verified: ${amountSol} SOL from ${playerPubkeyStr}`);
           usedSigs.set(sigInfo.signature, Date.now() + 120_000);
@@ -217,9 +231,16 @@ const httpServer = http.createServer(async (req, res) => {
   }
 
   const X402_ROUTES = {
+    // Legacy aliases (kept for backward compat)
     '/x402/extra-action':  0.01,
     '/x402/scout-peek':    0.005,
     '/x402/counter-peek':  0.003,
+    // Phase 19: new game-design-v2 §3 endpoints
+    '/x402/match-battle':        0.001,
+    '/x402/peek-vault-size':     0.0005,
+    '/x402/peek-vault-content':  0.005,
+    '/x402/draw-extra':          0.01,
+    '/x402/ai-strategy-advice':  0.003,
     // Phase 12 move endpoints — 0.0001 SOL (X402_MOVE_PRICE_LAMPORTS overrides)
     '/x402/co': MOVE_PRICE_SOL,
     '/x402/re': MOVE_PRICE_SOL,
@@ -273,17 +294,25 @@ const httpServer = http.createServer(async (req, res) => {
     if (!result.ok) {
       // x402 v2 spec: PAYMENT-REQUIRED header (Base64-encoded JSON)
       // Spec: https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md
+      const opsLamports  = Math.floor(amountLamports * 0.5);
+      const poolLamports = amountLamports - opsLamports;
       const paymentRequired = Buffer.from(JSON.stringify({
         version: 'x402-v2',
         accepts: [{
           scheme:  'solana-transfer',
           network: SOLANA_NETWORK,
           amount:  String(amountLamports),
-          payTo:   TREASURY_ADDR,
+          // Single-recipient fallback for old clients
+          payTo:   OPS_TREASURY_ADDR,
+          // Split recipient for Phase 19+ clients
+          recipient: {
+            ops:  { address: OPS_TREASURY_ADDR,  lamports: opsLamports  },
+            pool: { address: PRIZE_POOL_ADDR,     lamports: poolLamports },
+          },
         }],
       })).toString('base64');
       res.setHeader('PAYMENT-REQUIRED',    paymentRequired);
-      res.setHeader('X-Payment-Recipient', TREASURY_ADDR);
+      res.setHeader('X-Payment-Recipient', OPS_TREASURY_ADDR);
       res.setHeader('X-Payment-Amount',    String(amountLamports));
       res.setHeader('X-Payment-Network',   SOLANA_NETWORK);
       res.writeHead(402, { 'Content-Type': 'application/json' });
