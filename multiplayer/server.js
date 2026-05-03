@@ -94,6 +94,28 @@ const SOLANA_NETWORK   = process.env.SOLANA_NETWORK  || 'devnet';
 // Default 'false' preserves backward compat with clients that don't yet attach memos.
 const X402_REQUIRE_MEMO = process.env.X402_REQUIRE_MEMO === 'true';
 
+// ─── Environment validation ───────────────────────────────────────────────────
+// In production (NODE_ENV=production), missing required vars are fatal.
+// In development/demo, they emit a warning and fall back to demo mode.
+
+const REQUIRED_PROD_ENVS = ['TREASURY_PUBKEY', 'SOLANA_RPC'];
+
+function validateEnv() {
+  const isProd = process.env.NODE_ENV === 'production';
+  for (const key of REQUIRED_PROD_ENVS) {
+    if (!process.env[key]?.trim()) {
+      if (isProd) {
+        console.error(`[FATAL] ${key} is required in production. Set via fly secrets or env. Exiting.`);
+        process.exit(1);
+      } else {
+        console.warn(`[WARN] ${key} not set — demo mode active (payments skipped)`);
+      }
+    }
+  }
+}
+
+validateEnv();
+
 // Memo Program IDs (legacy + v2). Ref: https://spl.solana.com/memo
 const MEMO_PROGRAM_IDS = new Set([
   'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo',   // SPL Memo v1

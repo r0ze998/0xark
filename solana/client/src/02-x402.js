@@ -193,6 +193,30 @@ async function scoutPeekDev(gameId, target) {
   return res.json();
 }
 
+// ─── Security helpers ─────────────────────────────────────────────────────────
+
+// H13: Reject endpoint paths with characters outside [a-zA-Z0-9/_-].
+// Prevents semicolon injection that would corrupt the server-side memo parser.
+function _sanitizeMemoEndpoint(path) {
+  const sanitized = path.replace(/[^a-zA-Z0-9/_-]/g, '');
+  if (sanitized !== path) throw new Error(`Invalid endpoint path: ${path}`);
+  return sanitized;
+}
+
+// H10: Assert split payment amounts sum to at least the required total.
+// Prevents a malicious server from under-declaring individual legs.
+function _validatePaymentSplit(splitRecipient, totalLamports) {
+  const opsLamports  = splitRecipient.ops?.lamports  ?? 0;
+  const poolLamports = splitRecipient.pool?.lamports ?? 0;
+  const sum = opsLamports + poolLamports;
+  if (sum < totalLamports) {
+    throw new Error(`Invalid payment split: ${sum} lamports < required ${totalLamports}`);
+  }
+  if (totalLamports > 0 && sum > totalLamports * 1.01) {
+    throw new Error(`Payment split exceeds required by >1%: ${sum} vs ${totalLamports}`);
+  }
+}
+
 // ─── Phase 12: move memo payment helpers ─────────────────────────────────────
 // Each function pays 0.0001 SOL (or server-configured price) and attaches the
 // compact move memo as an SPL Memo instruction in the payment tx.
@@ -201,8 +225,9 @@ async function scoutPeekDev(gameId, target) {
 const MOVE_ENDPOINTS = ['/x402/co', '/x402/re', '/x402/hc', '/x402/hr', '/x402/pa', '/x402/rs', '/x402/me'];
 
 function _buildMoveMemoStr(endpoint, fields) {
+  const safeEndpoint = _sanitizeMemoEndpoint(endpoint);
   const nonce = _generateNonce();
-  const parts  = [`e:${endpoint}`];
+  const parts  = [`e:${safeEndpoint}`];
   for (const [k, v] of Object.entries(fields)) parts.push(`${k}:${v}`);
   parts.push(`n:${nonce}`);
   return parts.join(';');
@@ -212,7 +237,12 @@ function _generateNonce() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID().replace(/-/g, '');
   }
-  return Math.random().toString(36).slice(2).padEnd(16, '0');
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  }
+  throw new Error('No secure random source available');
 }
 
 /**
@@ -347,6 +377,8 @@ async function _x402Pay(endpoint, body = {}, wallet, conn) {
   const splitRecipient = accepts.recipient;
   if (splitRecipient?.ops && splitRecipient?.pool
       && splitRecipient.ops.address !== splitRecipient.pool.address) {
+    // H10: Verify split amounts are not under-declared by the server.
+    _validatePaymentSplit(splitRecipient, totalLamports);
     // Split payment: 50% ops / 50% pool
     tx.add(SystemProgram.transfer({
       fromPubkey: fromPk,
@@ -370,9 +402,9 @@ async function _x402Pay(endpoint, body = {}, wallet, conn) {
     }));
   }
 
-  // Attach SPL Memo for endpoint binding
+  // H13: Sanitize endpoint before embedding in memo to prevent semicolon injection.
   const nonce   = _generateNonce();
-  const memoStr = `endpoint:${endpoint};nonce:${nonce}`;
+  const memoStr = `endpoint:${_sanitizeMemoEndpoint(endpoint)};nonce:${nonce}`;
   tx.add(new TransactionInstruction({
     programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
     keys: [],
