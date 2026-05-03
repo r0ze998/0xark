@@ -252,11 +252,13 @@ const httpServer = http.createServer(async (req, res) => {
     // Phase 14: AI move delegation
     '/x402/ai-move': AI_MOVE_PRICE_SOL,
   };
-  // Early 503 if AI move endpoint is called without an Anthropic API key configured
-  if (req.method === 'POST' && req.url === '/x402/ai-move' && !process.env.ANTHROPIC_API_KEY) {
+  // Early 503 for AI endpoints when ANTHROPIC_API_KEY is not configured
+  if (req.method === 'POST'
+      && (req.url === '/x402/ai-move' || req.url === '/x402/ai-strategy-advice')
+      && !process.env.ANTHROPIC_API_KEY) {
     cors();
     res.writeHead(503, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: false, error: 'AI delegation not configured (ANTHROPIC_API_KEY missing)' }));
+    res.end(JSON.stringify({ ok: false, error: 'AI not configured (ANTHROPIC_API_KEY missing)' }));
     return;
   }
 
@@ -352,6 +354,22 @@ const httpServer = http.createServer(async (req, res) => {
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, ...aiResult, sig: result.sig, demo: result.demo }));
+      return;
+    }
+
+    // AI strategy advice (non-binding suggestions)
+    if (req.url === '/x402/ai-strategy-advice') {
+      let adviceResult;
+      try {
+        const { adviseStrategy } = await import('../tools/ai-agent/src/strategy-advisor.js');
+        adviceResult = await adviseStrategy(body.context ?? body.public_state ?? {});
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'AI strategy advice failed: ' + err.message }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, ...adviceResult, sig: result.sig, demo: result.demo }));
       return;
     }
 
