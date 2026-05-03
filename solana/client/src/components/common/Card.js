@@ -14,6 +14,9 @@ export const FACTION_COLORS = [
 export const RARITY_LABELS  = ['COM','UNC','RARE','LGD'];
 export const ACTION_LABELS  = ['◆ CRYSTAL','🛡 BARRIER','⚡ FLAME','🌀 STORM','◎ SHADOW','✦ VOID'];
 export const ACTION_ICONS   = ['◆','🛡','⚡','🌀','◎','✦'];
+export const RARITY_KEYS    = ['c','u','r','l'];
+export const RARITY_COLORS  = ['#8a8a8a','#4a9c6f','#4a7ab5','#d8b034'];
+export const CLAN_EMOJI     = ['⚔','⚖','⚓','✦','☯','⚙'];
 export const CARD_NAMES = {
    1:'Squire',    2:'Guard',       3:'Soldier',   4:'Paladin',  5:'Sacrificial Squire',
    6:'Warden',    7:'Crusader',    8:'Knight Champion', 9:'Vanguard', 10:'Sentinel',
@@ -84,6 +87,58 @@ export function CardHTML({
     </div>
     ${showAction ? `<div class="ark-card-action" style="color:var(--cc);">${ACTION_LABELS[card.actionType]}</div>` : ''}
     `}
+    ${!owned ? '<div class="ark-card-overlay"><span>?</span></div>' : ''}
+    ${dead   ? '<div class="ark-card-dead-overlay"><span>✕</span></div>' : ''}
+  </div>`;
+}
+
+/**
+ * Returns an HTML string for a full-size framed card tile (vault display).
+ * Uses rarity-specific frame PNGs as background; art window shows clan emoji.
+ * Same props as CardHTML(); compact is ignored (framed cards are always full-size).
+ */
+export function CardFrameHTML({
+  id, owned = true, selected = false, faceDown = false,
+  hpCurrent = null, dead = false,
+} = {}) {
+  if (faceDown) {
+    return `<div class="card-frame card-frame--facedown" aria-label="Hidden card">
+      <div class="card-art-placeholder">?</div>
+    </div>`;
+  }
+
+  const card = getCard(id);
+  if (!card) return `<div class="card-frame card-frame--empty"></div>`;
+
+  const rKey    = RARITY_KEYS[card.rarity]   ?? 'c';
+  const cColor  = FACTION_COLORS[card.faction] ?? '#e8dfc8';
+  const rColor  = RARITY_COLORS[card.rarity]  ?? '#8a8a8a';
+  const emoji   = CLAN_EMOJI[card.faction]    ?? '◆';
+  const name    = CARD_NAMES[id] ?? `Card #${id}`;
+  const hp      = hpCurrent ?? card.hp;
+
+  const classes = [
+    'card-frame',
+    `rarity-${rKey}`,
+    !owned   && 'card-frame--locked',
+    selected && 'card-frame--selected',
+    dead     && 'card-frame--dead',
+  ].filter(Boolean).join(' ');
+
+  return `<div class="${classes}" data-id="${id}"
+    style="--cc:${cColor};--rc:${rColor};"
+    role="img" aria-label="${name}${!owned ? ' (locked)' : ''}">
+    <div class="clan-bar" style="background:var(--cc);"></div>
+    <div class="rarity-bar" style="background:var(--rc);"></div>
+    <div class="name-banner">${name}</div>
+    <div class="art-window">
+      <div class="card-art-placeholder">${emoji}</div>
+    </div>
+    <div class="stats-panel">
+      <span>BP&nbsp;<b>${card.bp}</b></span>
+      <span class="cf-hp">HP&nbsp;<b>${hp}</b></span>
+      <span>INI&nbsp;<b>${card.ini}</b></span>
+    </div>
     ${!owned ? '<div class="ark-card-overlay"><span>?</span></div>' : ''}
     ${dead   ? '<div class="ark-card-dead-overlay"><span>✕</span></div>' : ''}
   </div>`;
@@ -179,4 +234,71 @@ const CARD_CSS = `
   font-size: 28px; color: rgba(232,223,200,0.3);
 }
 .ark-card-dead-overlay { color: rgba(214,59,59,0.5); font-size: 36px; }
+
+/* ── Framed card (vault display) ─────────────────────────────────────── */
+.card-frame {
+  position: relative;
+  aspect-ratio: 5 / 7;
+  width: 100%;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  font-family: var(--font-main, 'VT323', monospace);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  cursor: pointer;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: filter 80ms;
+}
+.card-frame.rarity-c { background-image: url('public/img/frames/frame_common.png'); }
+.card-frame.rarity-u { background-image: url('public/img/frames/frame_uncommon.png'); }
+.card-frame.rarity-r { background-image: url('public/img/frames/frame_rare.png'); }
+.card-frame.rarity-l { background-image: url('public/img/frames/frame_legendary.png'); }
+
+.card-frame--locked  { opacity: 0.25; cursor: default; filter: grayscale(0.8); }
+.card-frame--dead    { opacity: 0.3;  filter: grayscale(1); }
+.card-frame--facedown {
+  aspect-ratio: 5 / 7; width: 100%;
+  background: repeating-linear-gradient(-45deg,#1a1f33,#1a1f33 4px,#0a0e1a 4px,#0a0e1a 8px);
+  border: 1px solid rgba(201,162,39,0.3);
+  display: flex; align-items: center; justify-content: center;
+}
+.card-frame--empty { aspect-ratio: 5 / 7; width: 100%; }
+.card-frame--selected { filter: drop-shadow(0 0 4px var(--accent-gold,#c9a227)); }
+
+.card-frame .clan-bar {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 4px; z-index: 2;
+}
+.card-frame .rarity-bar {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 4px; z-index: 2;
+}
+.card-frame .name-banner {
+  position: absolute; top: 7%; left: 18%; right: 18%; height: 8%;
+  display: flex; align-items: center; justify-content: center;
+  color: #1a0f0f; font-size: clamp(7px, 1.4cqi, 11px);
+  text-align: center; z-index: 3; line-height: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.card-frame .art-window {
+  position: absolute; top: 20%; left: 12%; right: 12%; bottom: 25%;
+  display: flex; align-items: center; justify-content: center; z-index: 1;
+}
+.card-frame .card-art-placeholder {
+  font-size: clamp(16px, 4cqi, 36px); opacity: 0.7; line-height: 1;
+  font-family: sans-serif;
+}
+.card-frame .card-art-img {
+  width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated;
+}
+.card-frame .stats-panel {
+  position: absolute; bottom: 9%; left: 15%; right: 15%; height: 8%;
+  display: flex; justify-content: space-around; align-items: center;
+  color: #1a0f0f; font-size: clamp(6px, 1.3cqi, 10px); z-index: 3;
+}
+.card-frame .stats-panel b   { font-weight: bold; }
+.card-frame .stats-panel .cf-hp b { color: #2a6e3a; }
+
+/* Legendary rarity — slight gold glow */
+.card-frame.rarity-l .name-banner { top: 9%; height: 10%; }
 `;
+

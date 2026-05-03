@@ -2,7 +2,7 @@
 // mount(container, detail) / unmount(container)
 
 import { ALL_CARD_IDS, getCard, isBurnable, isMergeOnly, getMergeRecipe, MERGE_RECIPES } from '../lib/cards.js';
-import { CardHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS, CARD_NAMES } from './common/Card.js';
+import { CardHTML, CardFrameHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS, CARD_NAMES } from './common/Card.js';
 import { LegendaryProgressHTML, injectLegendaryProgressCSS, PERSONALITIES } from './common/LegendaryProgress.js';
 import { PrizePoolHTML, injectPrizePoolCSS } from './common/PrizePool.js';
 import { getState, setState } from '../state/battle-state.js';
@@ -86,11 +86,9 @@ function buildHTML({ vault, pubkey, perso }) {
     ? `${pubkey.slice(0, 4)}…${pubkey.slice(-4)}`
     : (pubkey || '—');
 
-  const cardGrid = ALL_CARD_IDS.map(id => {
-    const isOwned = owned.has(id);
-    const card = getCard(id);
-    return CardHTML({ id, owned: isOwned, compact: true });
-  }).join('');
+  const cardGrid = ALL_CARD_IDS.map(id =>
+    CardFrameHTML({ id, owned: owned.has(id) })
+  ).join('');
 
   const FACTIONS = PERSONALITIES.map((p, i) => ({
     label: FACTION_NAMES[p.faction],
@@ -293,7 +291,7 @@ function _refreshVaultGrid(container) {
   const s     = getState();
   const owned = new Set(s.vault);
   const grid  = container.querySelector('#ms-card-grid');
-  if (grid) grid.innerHTML = ALL_CARD_IDS.map(id => CardHTML({ id, owned: owned.has(id), compact: true })).join('');
+  if (grid) grid.innerHTML = ALL_CARD_IDS.map(id => CardFrameHTML({ id, owned: owned.has(id) })).join('');
   const evolveList = container.querySelector('#ms-evolve-list');
   if (evolveList) evolveList.innerHTML = _buildEvolveList(owned);
 }
@@ -307,7 +305,7 @@ function filterVaultGrid(container, faction) {
     ? ALL_CARD_IDS
     : ALL_CARD_IDS.filter(id => getCard(id)?.faction === parseInt(faction, 10));
 
-  grid.innerHTML = cards.map(id => CardHTML({ id, owned: owned.has(id), compact: true })).join('');
+  grid.innerHTML = cards.map(id => CardFrameHTML({ id, owned: owned.has(id) })).join('');
 }
 
 async function startMatchmaking(container) {
@@ -460,7 +458,7 @@ const CSS = `
 }
 .ms-card-grid::-webkit-scrollbar { width: 3px; }
 .ms-card-grid::-webkit-scrollbar-thumb { background: rgba(201,162,39,0.2); }
-.ms-card-grid .ark-card--compact { width: 100%; min-width: 0; }
+.ms-card-grid .card-frame { width: 100%; min-width: 0; }
 
 /* Side panel */
 .ms-side {
