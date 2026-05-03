@@ -102,6 +102,18 @@ function writeBytes(buf, offset, bytes) {
   return offset + bytes.length;
 }
 
+function writeU16LE(buf, offset, value) {
+  const v = value & 0xffff;
+  buf[offset]     = v & 0xff;
+  buf[offset + 1] = (v >> 8) & 0xff;
+  return offset + 2;
+}
+
+function writeBool(buf, offset, value) {
+  buf[offset] = value ? 1 : 0;
+  return offset + 1;
+}
+
 // ─── Anchor error code mapping ────────────────────────────────────────────
 // Custom errors start at 6000 (Anchor default base).
 // Map code → human-readable message for UI display.
@@ -127,6 +139,52 @@ const ANCHOR_ERRORS = {
   6018: 'Game is already finished',
   6019: 'Round limit reached',
   6020: 'ZK proof is invalid',
+  6021: 'Wrong magic program address',
+  6022: 'Wrong magic context address',
+  6023: 'Wrong game account (PDA mismatch)',
+  6024: 'Wrong player_state account (PDA mismatch)',
+  6025: 'Wrong delegation program address',
+  6026: 'Wrong owner program address',
+  6027: 'Position commitment already initialized',
+  6028: 'Position commitment mismatch',
+  6029: 'Agent is not active',
+  6030: 'Duration must be > 0 seconds',
+  6031: 'Invalid deck composition',
+  6032: 'Deck is locked',
+  6033: 'Tier locked',
+  6034: 'Player is already in a matchmaking queue',
+  6035: 'Player is not in this queue',
+  6036: 'Matchmaking queue is full',
+  6037: 'Duel ID mismatch',
+  6038: 'Round mismatch',
+  6039: 'Caller is not a duel participant',
+  6040: 'Hand commitment not set',
+  6041: 'Hand already revealed',
+  6042: 'Duel is already over',
+  6043: 'Poseidon hash computation failed',
+  6044: 'Invalid state for this operation',
+  6045: 'Legendary supply cap reached',
+  6046: 'No pending Legendary claim',
+  6047: 'Season has not ended',
+  6048: 'Legendary cards cannot be burned',
+  6049: 'Rare cards require conditional burn',
+  6050: 'Evolve parents must be Common rarity',
+  6051: 'Evolve target must be Uncommon rarity',
+  6052: 'Stat imprint limit reached',
+  6053: 'Starter cards are protected from steal',
+  6054: 'Permanent steal requires Gold Hall',
+  6055: 'Legendary requires Legendary Steal',
+  6056: 'Legendary requires Gold Hall tier',
+  6057: 'Season stats already initialized',
+  6058: 'No active lease to return',
+  6059: 'Lease has not expired',
+  6060: 'Caller is not the authorized admin',
+  6061: 'Waitlist registration is closed',
+  6062: 'Player already registered',
+  6063: 'Game is not active',
+  6064: 'Game has not ended',
+  6065: 'Player not registered',
+  6066: 'No prize to claim',
 };
 
 function parseAnchorError(e) {
@@ -229,6 +287,55 @@ function findSeasonPDA(seasonId) {
     [ENC.encode('season'), seasonIdBytes(seasonId)],
     getProgramId()
   );
+}
+
+// ─── Phase 18: new PDA finders ────────────────────────────────────────────
+
+function findPlayerStatePDA(playerPubkey) {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('player'), playerPubkey.toBytes()],
+    getProgramId()
+  );
+}
+
+function findGameWorldPDA() {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('game_world')],
+    getProgramId()
+  );
+}
+
+function findCardBattleHistoryPDA(cardMintPubkey) {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('card_battle_history'), cardMintPubkey.toBytes()],
+    getProgramId()
+  );
+}
+
+function findSeasonStatsPDA(createdAtI64) {
+  const b = new Uint8Array(8);
+  writeI64LE(b, 0, createdAtI64);
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('season_stats'), b],
+    getProgramId()
+  );
+}
+
+// Read created_at (i64 LE) from CardBattleHistory account.
+// Layout: disc(8) + card_mint(32) + wins(4) + losses(4) + kos(4) + dmg_dealt(8) +
+//         times_summoned(4) + owners_history(320) + owners_history_len(1) +
+//         owners_dropped_count(4) + acquisition_source(1) + current_owner_since(8) → created_at at 398
+async function readCardBattleHistoryCreatedAt(cardMintStr) {
+  try {
+    const mint = new solanaWeb3.PublicKey(cardMintStr);
+    const [histPDA] = findCardBattleHistoryPDA(mint);
+    const info = await getConnection().getAccountInfo(histPDA);
+    if (info && info.data.length >= 406) {
+      const dv = new DataView(info.data.buffer, info.data.byteOffset);
+      return dv.getBigInt64(398, true);
+    }
+  } catch (_) {}
+  return 0n;
 }
 
 // ─── Compute budget constants ─────────────────────────────────────────────
@@ -1414,6 +1521,178 @@ async function registerCard(cardId) {
   return tx;
 }
 
+// ════ PHASE 18 — REAL ANCHOR INSTRUCTION WRAPPERS ════
+
+// ─── register_waitlist ────────────────────────────────────────────────────
+// Deposits 0.5 SOL and registers the player on the Season 1 waitlist.
+// prizePoolStr, opsTreasuryStr: base58 pubkeys of the vault accounts.
+async function registerWaitlist(prizePoolStr, opsTreasuryStr) {
+  const player = window.solana.publicKey;
+  const [playerStatePDA] = findPlayerStatePDA(player);
+  const [gameWorldPDA]   = findGameWorldPDA();
+  const prizePool        = new solanaWeb3.PublicKey(prizePoolStr);
+  const opsTreasury      = new solanaWeb3.PublicKey(opsTreasuryStr);
+
+  const d    = await disc('register_waitlist');
+  const data = new Uint8Array(8);
+  writeBytes(data, 0, d);
+
+  return buildAndSend([
+    { pubkey: playerStatePDA, isSigner: false, isWritable: true  },
+    { pubkey: gameWorldPDA,   isSigner: false, isWritable: true  },
+    { pubkey: prizePool,      isSigner: false, isWritable: true  },
+    { pubkey: opsTreasury,    isSigner: false, isWritable: true  },
+    { pubkey: player,         isSigner: true,  isWritable: true  },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+}
+
+// ─── burn_card ────────────────────────────────────────────────────────────
+// Burns a Common or Uncommon card NFT. cardMintStr: base58 mint pubkey.
+// rarity: 0=Common, 1=Uncommon (Rare/Legendary blocked on-chain).
+async function burnCard(cardMintStr, rarity) {
+  const owner    = window.solana.publicKey;
+  const mintPK   = new solanaWeb3.PublicKey(cardMintStr);
+  const [ata]    = findAssociatedTokenAddress(owner, mintPK);
+  const [histPDA] = findCardBattleHistoryPDA(mintPK);
+  const createdAt = await readCardBattleHistoryCreatedAt(cardMintStr);
+  const [statsPDA] = findSeasonStatsPDA(createdAt);
+
+  // disc(8) + card_mint(32) + rarity(1) = 41 bytes
+  const d    = await disc('burn_card');
+  const data = new Uint8Array(41);
+  let off = writeBytes(data, 0, d);
+  off = writeBytes(data, off, mintPK.toBytes());
+  writeU8(data, off, rarity & 0xff);
+
+  return buildAndSend([
+    { pubkey: owner,    isSigner: true,  isWritable: true  },
+    { pubkey: mintPK,   isSigner: false, isWritable: true  },
+    { pubkey: ata,      isSigner: false, isWritable: true  },
+    { pubkey: histPDA,  isSigner: false, isWritable: true  },
+    { pubkey: statsPDA, isSigner: false, isWritable: true  },
+    { pubkey: new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),        isSigner: false, isWritable: false },
+    { pubkey: solanaWeb3.SystemProgram.programId,                    isSigner: false, isWritable: false },
+    { pubkey: new solanaWeb3.PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID), isSigner: false, isWritable: false },
+    { pubkey: new solanaWeb3.PublicKey(SYSVAR_RENT_PUBKEY),         isSigner: false, isWritable: false },
+  ], data);
+}
+
+// ─── evolve_cards ─────────────────────────────────────────────────────────
+// Evolves two Common parents into an Uncommon child.
+// The child mint must be pre-minted by the oxark-cards program before calling this.
+// targetSpeciesId: u16 species id for the child card.
+// rarities: 0=Common, 1=Uncommon.
+async function evolveCards(parentAMintStr, parentBMintStr, childMintStr,
+                           targetSpeciesId, parentARarity, parentBRarity, targetRarity) {
+  const owner = window.solana.publicKey;
+  const mintA  = new solanaWeb3.PublicKey(parentAMintStr);
+  const mintB  = new solanaWeb3.PublicKey(parentBMintStr);
+  const mintC  = new solanaWeb3.PublicKey(childMintStr);
+
+  const [ataA]   = findAssociatedTokenAddress(owner, mintA);
+  const [ataB]   = findAssociatedTokenAddress(owner, mintB);
+  const [histA]  = findCardBattleHistoryPDA(mintA);
+  const [histB]  = findCardBattleHistoryPDA(mintB);
+  const [histC]  = findCardBattleHistoryPDA(mintC);
+
+  const createdAtA  = await readCardBattleHistoryCreatedAt(parentAMintStr);
+  const [statsPDA]  = findSeasonStatsPDA(createdAtA);
+
+  // disc(8) + parentA(32) + parentB(32) + child(32) + speciesId(2) + rarA(1) + rarB(1) + rarT(1) = 109
+  const d    = await disc('evolve_cards');
+  const data = new Uint8Array(109);
+  let off = writeBytes(data, 0, d);
+  off = writeBytes(data, off, mintA.toBytes());
+  off = writeBytes(data, off, mintB.toBytes());
+  off = writeBytes(data, off, mintC.toBytes());
+  off = writeU16LE(data, off, targetSpeciesId);
+  off = writeU8(data, off, parentARarity & 0xff);
+  off = writeU8(data, off, parentBRarity & 0xff);
+  writeU8(data, off, targetRarity & 0xff);
+
+  return buildAndSend([
+    { pubkey: owner,    isSigner: true,  isWritable: true  },
+    { pubkey: mintA,    isSigner: false, isWritable: true  },
+    { pubkey: ataA,     isSigner: false, isWritable: true  },
+    { pubkey: histA,    isSigner: false, isWritable: true  },
+    { pubkey: mintB,    isSigner: false, isWritable: true  },
+    { pubkey: ataB,     isSigner: false, isWritable: true  },
+    { pubkey: histB,    isSigner: false, isWritable: true  },
+    { pubkey: histC,    isSigner: false, isWritable: true  },
+    { pubkey: statsPDA, isSigner: false, isWritable: true  },
+    { pubkey: new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),        isSigner: false, isWritable: false },
+    { pubkey: solanaWeb3.SystemProgram.programId,                    isSigner: false, isWritable: false },
+    { pubkey: new solanaWeb3.PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID), isSigner: false, isWritable: false },
+    { pubkey: new solanaWeb3.PublicKey(SYSVAR_RENT_PUBKEY),         isSigner: false, isWritable: false },
+  ], data);
+}
+
+// ─── grant_imprint ────────────────────────────────────────────────────────
+// Records a battle imprint onto a card's history PDA.
+// imprintKeyVal: u8 stat key; isCosmetic: bool; duelId: u64 (BigInt or number).
+async function grantImprint(cardMintStr, imprintKeyVal, isCosmetic, rarity, duelId) {
+  const payer = window.solana.publicKey;
+  const mintPK = new solanaWeb3.PublicKey(cardMintStr);
+  const [histPDA] = findCardBattleHistoryPDA(mintPK);
+
+  // disc(8) + card_mint(32) + imprint_key_val(1) + is_cosmetic(1) + rarity(1) + duel_id(8) = 51
+  const d    = await disc('grant_imprint');
+  const data = new Uint8Array(51);
+  let off = writeBytes(data, 0, d);
+  off = writeBytes(data, off, mintPK.toBytes());
+  off = writeU8(data, off, imprintKeyVal & 0xff);
+  off = writeBool(data, off, isCosmetic);
+  off = writeU8(data, off, rarity & 0xff);
+  writeU64LE(data, off, duelId);
+
+  return buildAndSend([
+    { pubkey: histPDA, isSigner: false, isWritable: true },
+    { pubkey: payer,   isSigner: true,  isWritable: true },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+}
+
+// ─── claim_prize_v2 ───────────────────────────────────────────────────────
+// Claims tier-proportional prize from the prize pool after game ends.
+// prizePoolStr: base58 pubkey of the prize vault account.
+async function claimPrizeV2(prizePoolStr) {
+  const player = window.solana.publicKey;
+  const [playerStatePDA] = findPlayerStatePDA(player);
+  const [gameWorldPDA]   = findGameWorldPDA();
+  const prizePool        = new solanaWeb3.PublicKey(prizePoolStr);
+
+  const d    = await disc('claim_prize_v2');
+  const data = new Uint8Array(8);
+  writeBytes(data, 0, d);
+
+  return buildAndSend([
+    { pubkey: playerStatePDA, isSigner: false, isWritable: true  },
+    { pubkey: gameWorldPDA,   isSigner: false, isWritable: true  },
+    { pubkey: prizePool,      isSigner: false, isWritable: true  },
+    { pubkey: player,         isSigner: true,  isWritable: true  },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+}
+
+// ─── check_legendary_v2 ───────────────────────────────────────────────────
+// Checks if the player's vault has all 60 cards and triggers the legendary state.
+async function checkLegendaryV2() {
+  const player = window.solana.publicKey;
+  const [playerStatePDA] = findPlayerStatePDA(player);
+  const [gameWorldPDA]   = findGameWorldPDA();
+
+  const d    = await disc('check_legendary_v2');
+  const data = new Uint8Array(8);
+  writeBytes(data, 0, d);
+
+  return buildAndSend([
+    { pubkey: playerStatePDA, isSigner: false, isWritable: true  },
+    { pubkey: gameWorldPDA,   isSigner: false, isWritable: false },
+    { pubkey: player,         isSigner: true,  isWritable: false },
+  ], data);
+}
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -1462,21 +1741,34 @@ window.oxarkOnchain = {
   // Player Registry (T95 — GI Rule) — register_card on-chain PDA
   registerCard,
   findPlayerRegistryPDA,
+  // Phase 18 — on-chain wiring (Season 1 instructions)
+  registerWaitlist,
+  burnCard,
+  evolveCards,
+  grantImprint,
+  claimPrizeV2,
+  checkLegendaryV2,
   // Helpers
   computeCommitHash,
   generateSalt,
   parseAnchorError,
+  writeU16LE,
   // Account readers
   readGameAccount,
   readPlayerState,
   readAgentListing,
   readSeason,
+  readCardBattleHistoryCreatedAt,
   // PDA finders (exported for React UI)
   findGamePDA,
   findPlayerPDA,
   findAgentPDA,
   findSeasonPDA,
   findStakeVaultPDA,
+  findPlayerStatePDA,
+  findGameWorldPDA,
+  findCardBattleHistoryPDA,
+  findSeasonStatsPDA,
 };
 
 console.log('[0xARK] onchain module loaded. Program:', PROGRAM_ID_STR);
