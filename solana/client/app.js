@@ -1,5 +1,5 @@
 // app.js — Phase 15 battle UI entry point + screen router
-// Screens: walletGate → main → preparation → interruption → reveal → loot → main
+// Screens: walletGate → register → main → preparation → interruption → reveal → loot → main
 
 import { mount as mountMain,         unmount as unmountMain         } from './src/components/main-screen.js';
 import { mount as mountPrep,         unmount as unmountPrep         } from './src/components/preparation.js';
@@ -7,6 +7,7 @@ import { mount as mountIntr,         unmount as unmountIntr         } from './sr
 import { mount as mountReveal,       unmount as unmountReveal       } from './src/components/reveal.js';
 import { mount as mountLoot,         unmount as unmountLoot         } from './src/components/loot.js';
 import { getState } from './src/state/battle-state.js';
+import { PRIZE_POOL_PUBKEY, OPS_TREASURY_PUBKEY } from './src/config.js';
 
 const SCREENS = {
   main:          { mount: mountMain,   unmount: unmountMain   },
@@ -58,8 +59,157 @@ async function initApp() {
     showWalletConnectScreen();
     return;
   }
-  const pub = window.oxarkWallet.getPublicKey?.()?.toString() ?? '';
-  navigate('main', { pubkey: pub, vault: getDemoVault() });
+
+  const pubkey = window.oxarkWallet.getPublicKey?.();
+  if (!pubkey) { showWalletConnectScreen(); return; }
+
+  try {
+    const registered = await window.oxarkOnchain.checkPlayerStateExists(pubkey);
+    if (!registered) {
+      showRegisterScreen();
+      return;
+    }
+  } catch {
+    // RPC failure — fall through to main screen so offline demo still works
+  }
+
+  navigate('main', { pubkey: pubkey.toString(), vault: getDemoVault() });
+}
+
+function showRegisterScreen() {
+  if (_currentUnmount) {
+    const app = document.getElementById('app');
+    if (app) _currentUnmount(app);
+    _currentUnmount = null;
+    _currentScreen  = null;
+  }
+
+  _injectRegisterCSS();
+
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  const pubkey = window.oxarkWallet.getPublicKey?.()?.toString() ?? '';
+  const short  = pubkey ? `${pubkey.slice(0, 4)}...${pubkey.slice(-4)}` : '—';
+
+  app.innerHTML = `
+    <div class="reg-screen">
+      <div class="reg-logo">0xARK</div>
+      <div class="reg-subtitle">Card Battle on Solana</div>
+
+      <div class="reg-prompt">
+        <h2 class="reg-title">JOIN THE WAITLIST</h2>
+        <p class="reg-desc">Deposit 0.5 SOL to register and receive 5 starter cards</p>
+
+        <ul class="reg-benefits">
+          <li>5 random starter cards from 60 unique cards</li>
+          <li>14 days of on-chain card battles</li>
+          <li>Prize Pool funded by deposits + x402 fees</li>
+          <li>Tier 1 (60 cards) gets 50% of prize pool</li>
+        </ul>
+
+        <div class="reg-cost">
+          <span class="reg-cost-label">Entry Fee</span>
+          <span class="reg-cost-amount">0.5 SOL</span>
+        </div>
+
+        <button id="reg-btn" class="reg-primary-btn">JOIN WAITLIST</button>
+        <div id="reg-error" class="reg-error" style="display:none;"></div>
+        <p class="reg-note">15% → operations / 85% → prize pool</p>
+      </div>
+
+      <div class="reg-wallet-info">
+        <span>Connected: <span class="reg-addr">${short}</span></span>
+        <button id="reg-disconnect-btn" class="reg-link-btn">Disconnect</button>
+      </div>
+    </div>
+  `;
+
+  const btn = document.getElementById('reg-btn');
+  const errEl = document.getElementById('reg-error');
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'CONFIRMING…';
+    errEl.style.display = 'none';
+
+    try {
+      const result = await window.oxarkOnchain.registerWaitlist(
+        PRIZE_POOL_PUBKEY,
+        OPS_TREASURY_PUBKEY
+      );
+      _showToast(`Registered! tx: ${result.signature.slice(0, 8)}…`, 'info');
+      await initApp();
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'JOIN WAITLIST';
+      const msg = err?.message ?? String(err);
+      if (msg.includes('insufficient') || err?.code === 'InsufficientFunds') {
+        errEl.textContent = 'Insufficient SOL. You need at least 0.5 SOL + tx fees.';
+      } else if (err?.code === 4001 || msg.includes('User rejected')) {
+        errEl.textContent = 'Registration cancelled.';
+      } else {
+        errEl.textContent = `Registration failed: ${msg}`;
+      }
+      errEl.style.display = 'block';
+    }
+  });
+
+  document.getElementById('reg-disconnect-btn').addEventListener('click', async () => {
+    try { await window.oxarkWallet?.disconnect?.(); } catch { /* ignore */ }
+    _walletEventsAttached = false;
+    showWalletConnectScreen();
+  });
+}
+
+function _injectRegisterCSS() {
+  if (document.getElementById('reg-css')) return;
+  const s = document.createElement('style');
+  s.id = 'reg-css';
+  s.textContent = `
+.reg-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 2rem; text-align: center;
+  font-family: 'VT323', monospace; background: #0a0e1a; color: #e8dfc8;
+}
+.reg-logo { font-size: 4rem; letter-spacing: 0.2em; color: #c9a227; margin-bottom: 0.5rem; }
+.reg-subtitle { color: #888; margin-bottom: 3rem; letter-spacing: 0.1em; font-size: 1.1rem; }
+.reg-prompt {
+  max-width: 500px; width: 100%; padding: 2rem;
+  border: 2px solid #c9a227; background: rgba(201,162,39,0.05);
+}
+.reg-title { color: #c9a227; margin: 0 0 0.75rem; letter-spacing: 0.1em; font-size: 1.6rem; }
+.reg-desc { font-size: 1rem; color: #b0a890; margin-bottom: 1.25rem; }
+.reg-benefits { list-style: none; padding: 0; text-align: left; margin: 1.25rem 0; }
+.reg-benefits li { padding: 4px 0 4px 20px; position: relative; font-size: 1rem; }
+.reg-benefits li::before { content: '▸'; position: absolute; left: 0; color: #c9a227; }
+.reg-cost {
+  margin: 1.25rem 0; padding: 0.75rem 1rem; background: rgba(0,0,0,0.3);
+  border: 1px solid #4a90d9; display: flex; justify-content: space-between; align-items: center;
+}
+.reg-cost-label { color: #888; font-size: 1rem; }
+.reg-cost-amount { color: #c9a227; font-size: 1.5rem; font-weight: bold; }
+.reg-primary-btn {
+  font-family: 'VT323', monospace; font-size: 1.4rem; letter-spacing: 0.1em;
+  padding: 1rem 2.5rem; background: #c9a227; color: #0a0e1a;
+  border: 2px solid #000; cursor: pointer; width: 100%; margin: 1rem 0;
+  transition: background 0.15s, transform 0.15s;
+}
+.reg-primary-btn:hover:not(:disabled) { background: #d8b034; transform: translateY(-2px); }
+.reg-primary-btn:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; }
+.reg-error { margin-top: 0.5rem; color: #e55; font-size: 0.95rem; }
+.reg-note { font-size: 0.85rem; color: #888; margin-top: 0.5rem; }
+.reg-wallet-info {
+  margin-top: 2rem; display: flex; align-items: center; gap: 1rem;
+  color: #888; font-size: 0.9rem;
+}
+.reg-addr { color: #c9a227; }
+.reg-link-btn {
+  background: none; border: none; color: #4a90d9;
+  text-decoration: underline; cursor: pointer; font-family: inherit; font-size: 0.9rem;
+}
+`;
+  document.head.appendChild(s);
 }
 
 function showWalletConnectScreen() {

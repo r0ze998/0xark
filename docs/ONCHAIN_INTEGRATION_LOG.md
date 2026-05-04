@@ -92,7 +92,7 @@ _Fill in as each instruction is verified on devnet:_
 
 | Instruction | TX Hash | Date |
 |-------------|---------|------|
-| `init_game_world` | — | — |
+| `init_game_world` | `4EUynBDnBvXQ7vYkWdvyvWNagocC18xBwpvo2k2zPZo5paHTczPCWQaKV2aXUK625y1vqwBndxfqj2WZVcJE4ra5` | 2026-05-04 |
 | `register_waitlist` | — | — |
 | `burn_card` | — | — |
 | `evolve_cards` | — | — |
@@ -153,4 +153,14 @@ Full mapping in `ANCHOR_ERRORS` table in `solana/client/onchain.js`.
 
 ### Remaining
 - Set `ANTHROPIC_API_KEY` secret to enable AI endpoints
-- Run `init-game-world.js` to initialize on-chain world state
+- ~~Run `init-game-world.js` to initialize on-chain world state~~ ✓ Done 2026-05-04
+
+---
+
+## GameWorld PDA — Init Log (2026-05-04)
+
+- **GameWorld PDA**: `9EZ1KsXTjErwhbxthCLkT9CZuBdEC53yiXdkacgsHSSf`
+- **game_start_timestamp**: `1777865191` (2026-05-04T03:26:31 UTC)
+- **TX**: `4EUynBDnBvXQ7vYkWdvyvWNagocC18xBwpvo2k2zPZo5paHTczPCWQaKV2aXUK625y1vqwBndxfqj2WZVcJE4ra5`
+- **Explorer**: https://explorer.solana.com/tx/4EUynBDnBvXQ7vYkWdvyvWNagocC18xBwpvo2k2zPZo5paHTczPCWQaKV2aXUK625y1vqwBndxfqj2WZVcJE4ra5?cluster=devnet
+- **Note**: Program was upgraded in same session (deployed binary was outdated). Upgrade TX: `52XSA5RvbXsWfuSvWJ8tCVYnHauvkju39RF5bNXFQUcWfZXPDf4VNFtYrUAUCbDDJhqMi95dLAbatnbTWQviS2EM`

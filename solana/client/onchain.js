@@ -1523,6 +1523,13 @@ async function registerCard(cardId) {
 
 // ════ PHASE 18 — REAL ANCHOR INSTRUCTION WRAPPERS ════
 
+// ─── PlayerState existence check ─────────────────────────────────────────
+async function checkPlayerStateExists(playerPubkey) {
+  const [pda] = findPlayerStatePDA(playerPubkey);
+  const info  = await getConnection().getAccountInfo(pda);
+  return info !== null;
+}
+
 // ─── register_waitlist ────────────────────────────────────────────────────
 // Deposits 0.5 SOL and registers the player on the Season 1 waitlist.
 // prizePoolStr, opsTreasuryStr: base58 pubkeys of the vault accounts.
@@ -1802,6 +1809,7 @@ window.oxarkOnchain = {
   registerCard,
   findPlayerRegistryPDA,
   // Phase 18 — on-chain wiring (Season 1 instructions)
+  checkPlayerStateExists,
   registerWaitlist,
   burnCard,
   evolveCards,
