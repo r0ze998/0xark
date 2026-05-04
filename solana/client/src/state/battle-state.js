@@ -11,9 +11,14 @@ let _state = {
   duelId: null,             // `${matchId}-R1` for round 1
   opponentPlayerId: null,   // server-assigned playerId of opponent
 
+  round: 1,                 // current duel round (1-5)
   fieldCards: [null, null, null, null, null],  // each: { cardId, actionType } | null
   commitment: null,
   salt: null,
+  zkProofBytes: null,       // { proofA, proofB, proofC } Uint8Arrays — set at preparation
+  zkPublicSignals: null,    // raw snarkjs publicSignals string[]
+  zkPublicInputBytes: null, // Uint8Array[](32) × 4 — ready for on-chain
+  zkTxHash: null,           // devnet tx signature after on-chain verify
 
   hasPeeked: false,
   opponentField: null,    // [{cardId, actionType}] if peeked

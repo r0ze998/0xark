@@ -86,6 +86,44 @@ window.zkCardCommit = (function() {
     }
   }
 
-  return { commitCard, verifyAndReveal, proveHandCommit, generateSalt, computeCommitment };
+  // ── Byte conversion helpers (used by preparation.js + reveal.js) ───────────
+
+  function _toBuf32(s) {
+    const bi = BigInt(s);
+    const buf = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) buf[31 - i] = Number((bi >> BigInt(i * 8)) & 0xffn);
+    return buf;
+  }
+
+  // Convert snarkjs proof object → { proofA: Uint8Array(64), proofB: Uint8Array(128), proofC: Uint8Array(64) }
+  // for on-chain submission via oxarkOnchain.verifyZkProof().
+  function proofToBytes(proof) {
+    const a = new Uint8Array(64);
+    a.set(_toBuf32(proof.pi_a[0]), 0);
+    a.set(_toBuf32(proof.pi_a[1]), 32);
+
+    const b = new Uint8Array(128);
+    b.set(_toBuf32(proof.pi_b[0][1]), 0);   // x1
+    b.set(_toBuf32(proof.pi_b[0][0]), 32);  // x0
+    b.set(_toBuf32(proof.pi_b[1][1]), 64);  // y1
+    b.set(_toBuf32(proof.pi_b[1][0]), 96);  // y0
+
+    const c = new Uint8Array(64);
+    c.set(_toBuf32(proof.pi_c[0]), 0);
+    c.set(_toBuf32(proof.pi_c[1]), 32);
+
+    return { proofA: a, proofB: b, proofC: c };
+  }
+
+  // Convert snarkjs publicSignals (string[]) → Uint8Array[](32 each), Borsh-encoded for on-chain.
+  function publicSignalsToBytes(signals) {
+    return signals.map(_toBuf32);
+  }
+
+  return {
+    commitCard, verifyAndReveal, proveHandCommit,
+    generateSalt, computeCommitment,
+    proofToBytes, publicSignalsToBytes,
+  };
 
 })();

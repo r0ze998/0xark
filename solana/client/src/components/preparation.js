@@ -233,25 +233,71 @@ function updateConfirm(container) {
 }
 
 async function onConfirm(container) {
-  const btn = container.querySelector('#prep-confirm');
+  const btn  = container.querySelector('#prep-confirm');
+  const hint = container.querySelector('#prep-hint');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ COMMITTING…'; }
 
   try {
     const cardIds = _field.map(s => s.cardId);
     const salt    = duelWs.generateSalt();
-    const hashBytes = await duelWs.computeHandCommitment(cardIds, salt);
+
+    // SHA-256 hand commitment (always present)
+    const hashBytes    = await duelWs.computeHandCommitment(cardIds, salt);
     const commitmentHex = duelWs.toHex(hashBytes);
 
-    setState({ fieldCards: [..._field], commitment: commitmentHex, salt, phase: 'interruption' });
+    // ── ZK proof generation ───────────────────────────────────────────────
+    let zkProofBytes      = null; // { proofA, proofB, proofC }
+    let zkPublicSignals   = null; // raw snarkjs string[]
+    let zkPublicInputBytes = null; // Uint8Array[](32) × 4
+
+    const zkAvailable = typeof window.zkCardCommit?.proveHandCommit === 'function';
+    const zkRequired  = !window.OXARK_ALLOW_NO_ZK;
+
+    if (zkAvailable) {
+      if (btn)  btn.textContent  = '⏳ ZK PROOF…';
+      if (hint) hint.textContent = 'Generating ZK proof — takes a few seconds…';
+
+      const s          = getState();
+      const round      = s.round ?? 1;
+      const pubkeyBytes = window.oxarkWallet?.getPublicKey?.()?.toBytes?.() ?? null;
+
+      const zkResult = await window.zkCardCommit.proveHandCommit(cardIds, salt, round, pubkeyBytes);
+
+      if (zkResult.ok) {
+        zkProofBytes       = window.zkCardCommit.proofToBytes(zkResult.proof);
+        zkPublicSignals    = zkResult.publicSignals;
+        zkPublicInputBytes = window.zkCardCommit.publicSignalsToBytes(zkResult.publicSignals);
+      } else if (zkRequired) {
+        throw new Error('ZK proof failed: ' + (zkResult.error ?? 'snarkjs unavailable'));
+      }
+    } else if (zkRequired) {
+      throw new Error('snarkjs not loaded. Set window.OXARK_ALLOW_NO_ZK=true for dev mode.');
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    setState({
+      fieldCards: [..._field],
+      commitment: commitmentHex,
+      salt,
+      zkProofBytes,
+      zkPublicSignals,
+      zkPublicInputBytes,
+      phase: 'interruption',
+    });
 
     const s = getState();
     if (s.duelId && duelWs.isConnected()) {
-      duelWs.sendHandCommitted(s.duelId, 1, commitmentHex);
+      duelWs.sendHandCommitted(s.duelId, s.round ?? 1, commitmentHex, {
+        zkHasProof: zkProofBytes !== null,
+        zkPublicSignals,
+      });
     }
 
     document.dispatchEvent(new CustomEvent('nav:interruption'));
-  } catch {
-    if (btn) { btn.disabled = false; btn.textContent = '✓ CONFIRM & COMMIT'; }
+  } catch (err) {
+    console.error('[Prep] Commit failed:', err);
+    if (btn)  { btn.disabled = false; btn.textContent = '✓ CONFIRM & COMMIT'; }
+    if (hint) hint.textContent = 'Error: ' + (err.message ?? 'commit failed');
   }
 }
 

@@ -66,12 +66,26 @@ export function cancelMatchmaking() {
 
 // ── Duel protocol ─────────────────────────────────────────────────────────────
 
-export function sendHandCommitted(duelId, round, commitmentHex) {
-  send({ type: 'duel_hand_committed', duel_id: duelId, round, commitment_hex: commitmentHex });
+export function sendHandCommitted(duelId, round, commitmentHex, zkMeta = {}) {
+  send({
+    type: 'duel_hand_committed',
+    duel_id: duelId,
+    round,
+    commitment_hex: commitmentHex,
+    zk_has_proof: zkMeta.zkHasProof ?? false,
+    zk_public_signals: zkMeta.zkPublicSignals ?? null,
+  });
 }
 
-export function sendHandRevealed(duelId, round, cardIds, actionTypes) {
-  send({ type: 'duel_hand_revealed', duel_id: duelId, round, card_ids: cardIds, action_types: actionTypes ?? [] });
+export function sendHandRevealed(duelId, round, cardIds, actionTypes, zkTxHash = null) {
+  send({
+    type: 'duel_hand_revealed',
+    duel_id: duelId,
+    round,
+    card_ids: cardIds,
+    action_types: actionTypes ?? [],
+    zk_tx_hash: zkTxHash,
+  });
 }
 
 // Host-only: broadcast battle result to all room players (server relays back to both).

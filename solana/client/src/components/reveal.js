@@ -11,6 +11,42 @@ let _animTimeout      = null;
 let _skipped          = false;
 let _unsubOppReveal   = () => {};
 let _unsubResolved    = () => {};
+let _zkSubmitPromise  = Promise.resolve(null);
+
+// Derive a u64 duelId from an arbitrary string (stable hash for PDA seeds).
+function _duelIdU64(duelIdStr) {
+  if (!duelIdStr) return 1n;
+  let h = 0n;
+  for (const c of String(duelIdStr)) h = (h * 31n + BigInt(c.charCodeAt(0))) & 0xffffffffffffffffn;
+  return h || 1n;
+}
+
+// Fire-and-forget: submit the ZK proof on-chain using the player's wallet.
+// Stores txHash in state on success; logs warning on failure (non-blocking).
+async function _submitZkProofOnChain(s) {
+  const { zkProofBytes, zkPublicInputBytes, duelId } = s;
+  if (!zkProofBytes || !zkPublicInputBytes || !duelId) return null;
+  if (typeof window.oxarkOnchain?.verifyZkProof !== 'function') return null;
+
+  const duelIdNum  = _duelIdU64(duelId);
+  const roundNum   = BigInt(s.round ?? 1);
+
+  try {
+    const txHash = await window.oxarkOnchain.verifyZkProof(
+      duelIdNum, roundNum,
+      zkProofBytes.proofA,
+      zkProofBytes.proofB,
+      zkProofBytes.proofC,
+      zkPublicInputBytes,
+    );
+    setState({ zkTxHash: txHash });
+    console.log('[ZK] on-chain proof verified:', txHash);
+    return txHash;
+  } catch (err) {
+    console.warn('[ZK] on-chain verify failed (non-blocking):', err.message ?? err);
+    return null;
+  }
+}
 
 export function mount(container, detail = {}) {
   if (!window.oxarkWallet?.isConnected?.()) {
@@ -55,6 +91,21 @@ export function mount(container, detail = {}) {
     });
   }
 
+  // ── ZK proof on-chain submit (fire-and-forget, runs parallel with animation) ──
+  // Client wallet signs verify_zk_proof tx; ZkProofRecord PDA is created on devnet.
+  _zkSubmitPromise = _submitZkProofOnChain(s);
+
+  // Send hand reveal to server (ZK tx hash appended when available)
+  if (duelWs.isConnected() && s.duelId) {
+    const myCardIds     = s.fieldCards.filter(Boolean).map(c => c.cardId);
+    const myActionTypes = s.fieldCards.filter(Boolean).map(c => c.actionType ?? 0);
+    _zkSubmitPromise.then(txHash => {
+      duelWs.sendHandRevealed(s.duelId, s.round ?? 1, myCardIds, myActionTypes, txHash);
+    }).catch(() => {
+      duelWs.sendHandRevealed(s.duelId, s.round ?? 1, myCardIds, myActionTypes, null);
+    });
+  }
+
   // Wire Phase-11 consensus
   if (duelWs.isConnected() && s.duelId) {
     const p1BP = s.fieldCards.filter(Boolean).reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
@@ -85,9 +136,10 @@ export function unmount(container) {
   if (_animTimeout) { clearTimeout(_animTimeout); _animTimeout = null; }
   _unsubOppReveal();
   _unsubResolved();
-  _unsubOppReveal = () => {};
-  _unsubResolved  = () => {};
-  _skipped = false;
+  _unsubOppReveal  = () => {};
+  _unsubResolved   = () => {};
+  _skipped         = false;
+  _zkSubmitPromise = Promise.resolve(null);
   container.innerHTML = '';
 }
 
@@ -200,6 +252,30 @@ function runAnimation(container, s, result) {
 
   function clearLog() {
     if (log) log.innerHTML = '';
+  }
+
+  // Step 0: ZK status indicator (non-blocking — updates when tx confirms)
+  const zkIndicatorId = 'rev-zk-indicator';
+  if (s.zkProofBytes) {
+    after(100, () => {
+      addLog('◈ ZK proof submitted — verifying on-chain…', 'log-dim');
+      // Patch log entry once tx hash is known
+      _zkSubmitPromise.then(txHash => {
+        const el = container.querySelector('#' + zkIndicatorId);
+        if (el) {
+          el.className = 'rev-log-line log-gold';
+          el.textContent = txHash
+            ? `◈ ZK VERIFIED on-chain ✓  (${txHash.slice(0, 8)}…)`
+            : '◈ ZK verified (local only)';
+        }
+      }).catch(() => {
+        const el = container.querySelector('#' + zkIndicatorId);
+        if (el) { el.className = 'rev-log-line log-dim'; el.textContent = '◈ ZK verify skipped (dev mode)'; }
+      });
+      // Tag the last log line for patching
+      const lastLine = container.querySelector('#rev-log .rev-log-line:last-child');
+      if (lastLine) lastLine.id = zkIndicatorId;
+    });
   }
 
   // Step 1: Reveal all cards (1s)
