@@ -117,3 +117,40 @@ Full mapping in `ANCHOR_ERRORS` table in `solana/client/onchain.js`.
 - Wire `window.oxarkOnchain.burnCard` into loot screen burn UI
 - Wire `window.oxarkOnchain.grantImprint` into post-battle flow
 - Wire `window.oxarkOnchain.registerWaitlist` into main-screen wallet connect flow
+
+---
+
+## Fly.io Multiplayer Server — Deploy Log (2026-05-04)
+
+### App
+- **App name**: oxark-multiplayer
+- **Region**: nrt (Tokyo)
+- **URL**: https://oxark-multiplayer.fly.dev
+- **WSS**: wss://oxark-multiplayer.fly.dev
+- **VM**: shared-cpu-1x / 256MB, auto_stop=stop, min_machines_running=0
+
+### Secrets configured (keys only — values not logged)
+- `TREASURY_PUBKEY`
+- `OPS_TREASURY_PUBKEY`
+- `PRIZE_POOL_PUBKEY`
+- `SOLANA_RPC`
+- `AI_MODEL_NAME`
+- `NODE_ENV`
+
+### Wallet pubkeys (public info)
+- OPS_TREASURY: `GN3aBaUFPpejXBy2u4SgXuwQkkqRFauqAfXNsXhTPz4f`
+- PRIZE_POOL:   `C8ui4h9tuYiU55VrMohAoFwjsm5RxKPpmQizX9eAAgMa`
+
+### Verification results
+- `/health` → `{"status":"ok","rooms":0,"connections":0,"rpc":"https://api.devnet.solana.com"}` ✓
+- `POST /x402/match-battle` → HTTP 402 ✓
+- WebSocket handshake `wss://oxark-multiplayer.fly.dev` → connected ✓
+- AI endpoints (`/x402/ai-move`, `/x402/ai-strategy-advice`) → 503 (ANTHROPIC_API_KEY not set — add later)
+
+### Dockerfile fix
+- Changed `npm ci` → `npm install --omit=dev` (lock file sync issue)
+- Added `COPY handlers/ state.js state-derivation.js memo-validator.js` (were missing from original)
+
+### Remaining
+- Set `ANTHROPIC_API_KEY` secret to enable AI endpoints
+- Run `init-game-world.js` to initialize on-chain world state
