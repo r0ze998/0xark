@@ -3,7 +3,7 @@
 
 import { getCard } from '../lib/cards.js';
 import { damageCalc } from '../lib/damage-calc.js';
-import { CardHTML, injectCardCSS, FACTION_NAMES, ACTION_LABELS, FACTION_COLORS } from './common/Card.js';
+import { CardFrameHTML, injectCardCSS, FACTION_NAMES, ACTION_LABELS, FACTION_COLORS } from './common/Card.js';
 import { getState, setState } from '../state/battle-state.js';
 import * as duelWs from '../lib/duel-ws.js';
 
@@ -138,7 +138,7 @@ function buildHTML(s, result) {
       <div class="rev-card-row" id="rev-opp-row">
         ${p2.map((c, i) =>
           `<div class="rev-card-wrap" id="rev-opp-${i}" style="animation-delay:${i * 0.12}s;">
-            ${CardHTML({ id: c.cardId, faceDown: true })}
+            ${CardFrameHTML({ id: c.cardId, faceDown: true })}
           </div>`
         ).join('')}
       </div>
@@ -161,7 +161,7 @@ function buildHTML(s, result) {
       <div class="rev-card-row" id="rev-your-row">
         ${p1.map((c, i) =>
           `<div class="rev-card-wrap" id="rev-your-${i}" style="animation-delay:${i * 0.12}s;">
-            ${CardHTML({ id: c.cardId, faceDown: true })}
+            ${CardFrameHTML({ id: c.cardId, faceDown: true })}
           </div>`
         ).join('')}
       </div>
@@ -266,7 +266,7 @@ function runAnimation(container, s, result) {
         // Update HP display
         const resPair = result.p2Cards?.[i];
         if (resPair !== undefined) {
-          const oppCard = container.querySelector(`#rev-opp-${i} .ark-hp-val`);
+          const oppCard = container.querySelector(`#rev-opp-${i} .cf-hp .stat-value`);
           if (oppCard) {
             const newHp = resPair.hpCurrent ?? 0;
             oppCard.textContent = newHp;
@@ -310,7 +310,7 @@ function flipCard(container, id, cardId) {
   if (!wrap) return;
   wrap.classList.add('rev-card--flip');
   setTimeout(() => {
-    wrap.innerHTML = CardHTML({ id: cardId });
+    wrap.innerHTML = CardFrameHTML({ id: cardId });
     wrap.classList.remove('rev-card--flip');
   }, 150);
 }
@@ -399,7 +399,8 @@ const CSS = `
 .rev-card--highlight {
   filter: drop-shadow(0 0 8px rgba(201,162,39,0.8));
 }
-.rev-card--dead .ark-card { opacity: 0.3; filter: grayscale(1); }
+.rev-card--dead .card-frame { opacity: 0.3; filter: grayscale(1); }
+.rev-card-wrap .card-frame { width: 120px; }
 
 /* Center log */
 .rev-center {

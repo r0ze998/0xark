@@ -2,7 +2,7 @@
 // mount(container, detail) / unmount(container)
 
 import { getCard } from '../lib/cards.js';
-import { CardHTML, injectCardCSS, CARD_NAMES } from './common/Card.js';
+import { CardFrameHTML, injectCardCSS, CARD_NAMES } from './common/Card.js';
 import { getState, setState, resetBattle } from '../state/battle-state.js';
 import { computePostBattleImprints } from '../lib/abilities.js';
 import * as duelWs from '../lib/duel-ws.js';
@@ -62,7 +62,7 @@ function buildWinHTML(s) {
   <div class="loot-opp-cards" id="loot-opp-cards" role="list">
     ${oppCards.map((c, i) => `
       <div class="loot-opp-card-wrap" data-idx="${i}" data-card="${c?.cardId ?? 0}">
-        ${CardHTML({ id: c?.cardId ?? 1, faceDown: true })}
+        ${CardFrameHTML({ id: c?.cardId ?? 1, faceDown: true })}
       </div>`).join('')}
   </div>
 
@@ -104,7 +104,7 @@ function buildLoseHTML(s) {
   <div class="loot-your-cards" id="loot-your-cards" role="list">
     ${myCards.map((c, i) => `
       <div class="loot-your-card-wrap" id="loot-my-${i}" data-idx="${i}" data-card="${c.cardId}">
-        ${CardHTML({ id: c.cardId })}
+        ${CardFrameHTML({ id: c.cardId })}
       </div>`).join('')}
   </div>
 
@@ -187,7 +187,7 @@ function revealOppCard(container, idx, cardId) {
   if (!wrap) return;
   wrap.classList.add('loot-card--flip');
   setTimeout(() => {
-    wrap.innerHTML = CardHTML({ id: cardId });
+    wrap.innerHTML = CardFrameHTML({ id: cardId });
     wrap.dataset.card = cardId;
     wrap.setAttribute('data-idx', idx);
     wrap.classList.remove('loot-card--flip');
@@ -441,6 +441,8 @@ const CSS = `
 .loot-opp-cards, .loot-your-cards {
   display: flex; gap: 10px; justify-content: center;
 }
+.loot-opp-card-wrap .card-frame,
+.loot-your-card-wrap .card-frame { width: 140px; }
 .loot-opp-card-wrap, .loot-your-card-wrap {
   cursor: pointer; transition: transform 0.2s, opacity 0.3s;
 }
