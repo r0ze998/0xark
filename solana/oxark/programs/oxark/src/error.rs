@@ -163,4 +163,13 @@ pub enum ErrorCode {
     NotRegistered,
     #[msg("No prize to claim (vault_count == 0 or tier has no pool)")]
     NoPrizeClaim,
+    // ── ZK Proof v2 (hand_commitment circuit) ───────────────────────────────
+    #[msg("ZK proof pubkey does not match signer")]
+    ZkPubkeyMismatch,
+    #[msg("ZK proof round does not match instruction argument")]
+    ZkRoundMismatch,
+    #[msg("ZK proof verification failed")]
+    ZkProofInvalid,
+    #[msg("ZK proof already verified for this duel/round/signer")]
+    ZkProofAlreadyVerified,
 }

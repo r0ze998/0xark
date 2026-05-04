@@ -618,98 +618,132 @@ async function revealAction(gameId, actionType, targetPubkeyStr, salt) {
   return _mbMode ? buildAndSendViaMagicRouter(accts, data) : buildAndSend(accts, data);
 }
 
+// ─── ZK helper: PDA for ZkProofRecord ────────────────────────────────────
+function findZkProofRecordPDA(duelId, round, playerPubkey) {
+  const duelIdBuf = new Uint8Array(8);
+  new DataView(duelIdBuf.buffer).setBigUint64(0, BigInt(duelId), true);
+  const roundBuf = new Uint8Array(8);
+  new DataView(roundBuf.buffer).setBigUint64(0, BigInt(round), true);
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [new TextEncoder().encode('zk_proof'), duelIdBuf, roundBuf, playerPubkey.toBytes()],
+    getProgramId()
+  );
+}
+
 // ─── Instruction: verify_zk_proof ────────────────────────────────────────
 /**
- * Submit a Groth16 ZK proof on-chain to prove knowledge of a committed action.
- * Must be called after revealAction completes.
+ * Submit a hand_commitment v2 Groth16 ZK proof on-chain.
+ * Proves: Poseidon(round, pubkey_lo, pubkey_hi, card_ids[10], salt_lo, salt_hi) == commitment
+ * with range/uniqueness constraints on active cards, without revealing card selection.
  *
- * @param {number}     gameId
- * @param {Uint8Array} proofA       — 64 bytes (G1 point, x||y big-endian)
- * @param {Uint8Array} proofB       — 128 bytes (G2 point, x1||x0||y1||y0 big-endian)
- * @param {Uint8Array} proofC       — 64 bytes (G1 point, x||y big-endian)
- * @param {Uint8Array} publicInputs — 32 bytes (Poseidon commitHash, big-endian)
+ * @param {number|bigint} duelId       — duel identifier (u64)
+ * @param {number|bigint} round        — round number 1-5 (u64)
+ * @param {Uint8Array}    proofA       — 64 bytes (G1 point, x||y big-endian)
+ * @param {Uint8Array}    proofB       — 128 bytes (G2, x1||x0||y1||y0 big-endian)
+ * @param {Uint8Array}    proofC       — 64 bytes (G1 point, x||y big-endian)
+ * @param {Uint8Array[]}  publicInputs — 4 × 32-byte arrays: [commitment, round_fe, pubkey_lo_fe, pubkey_hi_fe]
  */
-async function verifyZkProof(gameId, proofA, proofB, proofC, publicInputs) {
-  const payer    = window.solana.publicKey;
-  const [gamePDA]   = findGamePDA(gameId);
-  const [playerPDA] = findPlayerPDA(gameId, payer);
+async function verifyZkProof(duelId, round, proofA, proofB, proofC, publicInputs) {
+  const payer = window.solana.publicKey;
+  const [zkRecordPDA] = findZkProofRecordPDA(duelId, round, payer);
+  const systemProgram = new solanaWeb3.PublicKey('11111111111111111111111111111111');
 
-  // disc(8) + game_id(8) + proof_a(64) + proof_b(128) + proof_c(64) + public_inputs(32) = 304
+  // disc(8) + proof_a(64) + proof_b(128) + proof_c(64) + public_inputs(4×32=128) + duel_id(8) + round(8) = 408
   const d    = await disc('verify_zk_proof');
-  const data = new Uint8Array(304);
+  const data = new Uint8Array(408);
   let off = writeBytes(data, 0, d);
-  off = writeU64LE(data, off, gameId);
   off = writeBytes(data, off, proofA);
   off = writeBytes(data, off, proofB);
   off = writeBytes(data, off, proofC);
-  writeBytes(data, off, publicInputs);
+  for (const pi of publicInputs) off = writeBytes(data, off, pi);  // 4 × 32 bytes
+  off = writeU64LE(data, off, duelId);
+  writeU64LE(data, off, round);
 
-  // Account order matches VerifyZkProof Anchor struct: game (0), player_state (1), player/signer (2)
   return buildAndSend([
-    { pubkey: gamePDA,   isSigner: false, isWritable: false }, // game
-    { pubkey: playerPDA, isSigner: false, isWritable: false }, // player_state
-    { pubkey: payer,     isSigner: true,  isWritable: false }, // player (signer)
+    { pubkey: payer,       isSigner: true,  isWritable: true  }, // signer
+    { pubkey: zkRecordPDA, isSigner: false, isWritable: true  }, // zk_proof_record (init)
+    { pubkey: systemProgram, isSigner: false, isWritable: false }, // system_program
   ], data, COMPUTE_BUDGET.verify_zk_proof);
 }
 
+// ─── ZK: field element helpers ────────────────────────────────────────────
+function _fieldToBytes32(s) {
+  const bi = BigInt(s);
+  const buf = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) buf[31 - i] = Number((bi >> BigInt(i * 8)) & 0xffn);
+  return buf;
+}
+function _g1ToBytes64(pt) {
+  const b = new Uint8Array(64);
+  b.set(_fieldToBytes32(pt[0]), 0);
+  b.set(_fieldToBytes32(pt[1]), 32);
+  return b;
+}
+function _g2ToBytes128(pt) {
+  const b = new Uint8Array(128);
+  b.set(_fieldToBytes32(pt[0][1]), 0);   // x1
+  b.set(_fieldToBytes32(pt[0][0]), 32);  // x0
+  b.set(_fieldToBytes32(pt[1][1]), 64);  // y1
+  b.set(_fieldToBytes32(pt[1][0]), 96);  // y0
+  return b;
+}
+
 /**
- * Generate a Groth16 proof in the browser using snarkjs + the wasm witness calculator.
- * Requires snarkjs and the circuit wasm/zkey to be loaded.
+ * Generate a hand_commitment v2 Groth16 proof in the browser via snarkjs.
  *
- * @param {number}     actionType   — 1-10
- * @param {number}     targetArea   — 0-2
- * @param {BigInt}     salt         — random 253-bit field element
- * @param {BigInt}     commitHash   — on-chain commit hash (Poseidon output)
- * @returns {{ proofA, proofB, proofC, publicInputs }} — Uint8Array buffers for verifyZkProof
+ * @param {number[]}  cardIds   — 10 card catalog IDs; [0..4] active (1-60), [5..9] padding (0)
+ * @param {bigint}    saltLo    — lower 16 bytes of 32-byte salt as u128
+ * @param {bigint}    saltHi    — upper 16 bytes of 32-byte salt as u128
+ * @param {number}    round     — round number 1-5
+ * @param {bigint}    pubkeyLo  — bytes[0..16] of player pubkey as u128
+ * @param {bigint}    pubkeyHi  — bytes[16..32] of player pubkey as u128
+ * @returns {{ proofA, proofB, proofC, publicInputs: Uint8Array[] }}
+ *   publicInputs is [commitment_fe, round_fe, pubkey_lo_fe, pubkey_hi_fe] (each 32 bytes)
  */
-async function generateZkProof(actionType, targetArea, salt, commitHash) {
+async function generateZkProof(cardIds, saltLo, saltHi, round, pubkeyLo, pubkeyHi) {
   if (typeof snarkjs === 'undefined') {
-    throw new Error('snarkjs not loaded — include snarkjs.min.js');
+    throw new Error('snarkjs not loaded — include snarkjs.min.js before calling generateZkProof');
   }
+
   const input = {
-    actionType: actionType.toString(),
-    targetArea:  targetArea.toString(),
-    salt:        salt.toString(),
-    commitHash:  commitHash.toString(),
+    card_ids:  cardIds.map(String),
+    salt_lo:   saltLo.toString(),
+    salt_hi:   saltHi.toString(),
+    round:     round.toString(),
+    pubkey_lo: pubkeyLo.toString(),
+    pubkey_hi: pubkeyHi.toString(),
   };
 
-  // Resolve paths relative to the page's base (handles GitHub Pages /0xark/ prefix)
   const base = (document.querySelector('base')?.href ?? window.location.origin + '/');
   const basePath = new URL('.', base).pathname;
-  const wasmPath = basePath + 'zk/build/commit_reveal_js/commit_reveal.wasm';
-  const zkeyPath = basePath + 'zk/build/commit_reveal_final.zkey';
+  const wasmPath = basePath + 'hand_commitment.wasm';
+  const zkeyPath = basePath + 'hand_commitment_final.zkey';
 
   const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasmPath, zkeyPath);
 
-  // Convert snarkjs proof (decimal strings) to Solana byte format (big-endian)
-  function fieldToBytes32(s) {
-    const bi = BigInt(s);
-    const buf = new Uint8Array(32);
-    for (let i = 0; i < 32; i++) buf[31 - i] = Number((bi >> BigInt(i * 8)) & 0xffn);
-    return buf;
-  }
-  function g1ToBytes64(pt) {
-    const b = new Uint8Array(64);
-    b.set(fieldToBytes32(pt[0]), 0);
-    b.set(fieldToBytes32(pt[1]), 32);
-    return b;
-  }
-  // G2: snarkjs format [[c0,c1],[c0,c1]] → Solana format x1||x0||y1||y0
-  function g2ToBytes128(pt) {
-    const b = new Uint8Array(128);
-    b.set(fieldToBytes32(pt[0][1]), 0);   // x1
-    b.set(fieldToBytes32(pt[0][0]), 32);  // x0
-    b.set(fieldToBytes32(pt[1][1]), 64);  // y1
-    b.set(fieldToBytes32(pt[1][0]), 96);  // y0
-    return b;
-  }
-
+  // publicSignals order: [commitment, round, pubkey_lo, pubkey_hi]
   return {
-    proofA:       g1ToBytes64(proof.pi_a),
-    proofB:       g2ToBytes128(proof.pi_b),
-    proofC:       g1ToBytes64(proof.pi_c),
-    publicInputs: fieldToBytes32(publicSignals[0]),
+    proofA: _g1ToBytes64(proof.pi_a),
+    proofB: _g2ToBytes128(proof.pi_b),
+    proofC: _g1ToBytes64(proof.pi_c),
+    publicInputs: publicSignals.map(_fieldToBytes32),
   };
+}
+
+/**
+ * Split a Solana PublicKey into lo/hi u128 field elements (matching the circuit packing).
+ * pubkey_lo = bytes[0..16] as u128 big-endian
+ * pubkey_hi = bytes[16..32] as u128 big-endian
+ *
+ * @param {solanaWeb3.PublicKey} pubkey
+ * @returns {{ lo: bigint, hi: bigint }}
+ */
+function splitPubkeyForZk(pubkey) {
+  const bytes = pubkey.toBytes();
+  let lo = 0n, hi = 0n;
+  for (let i = 0; i < 16; i++) lo = (lo << 8n) | BigInt(bytes[i]);
+  for (let i = 16; i < 32; i++) hi = (hi << 8n) | BigInt(bytes[i]);
+  return { lo, hi };
 }
 
 // ─── Instruction: resolve_round ───────────────────────────────────────────
@@ -1790,8 +1824,10 @@ window.oxarkOnchain = {
   endSeason,
   // NFT minting (mint + Metaplex metadata + burn authority — one atomic tx)
   mintCardWithMetadata,
-  // ZK proof generation (browser-side, requires snarkjs)
+  // ZK proof generation + helpers (browser-side, requires snarkjs)
   generateZkProof,
+  splitPubkeyForZk,
+  findZkProofRecordPDA,
   // NFT Trading (T72) — localStorage-backed listings until on-chain escrow is deployed
   listCard,
   buyCard,

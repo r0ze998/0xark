@@ -4667,61 +4667,52 @@
       ],
       "accounts": [
         {
-          "name": "game",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
+          "name": "signer",
+          "writable": true,
+          "signer": true
         },
         {
-          "name": "player_state",
+          "name": "zk_proof_record",
+          "docs": [
+            "Replay prevention — `init` fails if the PDA already exists (already verified)."
+          ],
+          "writable": true,
           "pda": {
             "seeds": [
               {
                 "kind": "const",
                 "value": [
+                  122,
+                  107,
+                  95,
                   112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
+                  114,
+                  111,
+                  111,
+                  102
                 ]
               },
               {
                 "kind": "arg",
-                "path": "game_id"
+                "path": "duel_id"
+              },
+              {
+                "kind": "arg",
+                "path": "round"
               },
               {
                 "kind": "account",
-                "path": "player"
+                "path": "signer"
               }
             ]
           }
         },
         {
-          "name": "player",
-          "signer": true
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        },
         {
           "name": "proof_a",
           "type": {
@@ -4753,10 +4744,23 @@
           "name": "public_inputs",
           "type": {
             "array": [
-              "u8",
-              32
+              {
+                "array": [
+                  "u8",
+                  32
+                ]
+              },
+              4
             ]
           }
+        },
+        {
+          "name": "duel_id",
+          "type": "u64"
+        },
+        {
+          "name": "round",
+          "type": "u64"
         }
       ]
     }
@@ -5085,6 +5089,19 @@
         151,
         173,
         226
+      ]
+    },
+    {
+      "name": "ZkProofRecord",
+      "discriminator": [
+        204,
+        146,
+        135,
+        64,
+        250,
+        227,
+        31,
+        5
       ]
     }
   ],
@@ -5829,6 +5846,26 @@
       "code": 6074,
       "name": "NoPrizeClaim",
       "msg": "No prize to claim (vault_count == 0 or tier has no pool)"
+    },
+    {
+      "code": 6075,
+      "name": "ZkPubkeyMismatch",
+      "msg": "ZK proof pubkey does not match signer"
+    },
+    {
+      "code": 6076,
+      "name": "ZkRoundMismatch",
+      "msg": "ZK proof round does not match instruction argument"
+    },
+    {
+      "code": 6077,
+      "name": "ZkProofInvalid",
+      "msg": "ZK proof verification failed"
+    },
+    {
+      "code": 6078,
+      "name": "ZkProofAlreadyVerified",
+      "msg": "ZK proof already verified for this duel/round/signer"
     }
   ],
   "types": [
@@ -8190,6 +8227,48 @@
           },
           {
             "name": "Legendary"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ZkProofRecord",
+      "docs": [
+        "ZK proof record — created on first successful verify, prevents replay.",
+        "",
+        "PDA seeds: [\"zk_proof\", duel_id_le, round_le, signer_pubkey]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "u64"
+          },
+          {
+            "name": "round",
+            "type": "u64"
+          },
+          {
+            "name": "signer",
+            "type": "pubkey"
+          },
+          {
+            "name": "commit",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "verified_at",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }

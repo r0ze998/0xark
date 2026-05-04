@@ -164,3 +164,22 @@ Full mapping in `ANCHOR_ERRORS` table in `solana/client/onchain.js`.
 - **TX**: `4EUynBDnBvXQ7vYkWdvyvWNagocC18xBwpvo2k2zPZo5paHTczPCWQaKV2aXUK625y1vqwBndxfqj2WZVcJE4ra5`
 - **Explorer**: https://explorer.solana.com/tx/4EUynBDnBvXQ7vYkWdvyvWNagocC18xBwpvo2k2zPZo5paHTczPCWQaKV2aXUK625y1vqwBndxfqj2WZVcJE4ra5?cluster=devnet
 - **Note**: Program was upgraded in same session (deployed binary was outdated). Upgrade TX: `52XSA5RvbXsWfuSvWJ8tCVYnHauvkju39RF5bNXFQUcWfZXPDf4VNFtYrUAUCbDDJhqMi95dLAbatnbTWQviS2EM`
+
+---
+
+## ZK Phase 2 — verify_zk_proof upgrade (2026-05-04)
+
+- **Circuit**: `circuits/hand_commitment/hand_commitment.circom` v2
+  - 15 Poseidon inputs: round, pubkey_lo, pubkey_hi, card_ids[10], salt_lo, salt_hi
+  - Constraints: 2040 (range + uniqueness on card_ids[0..4])
+  - Trusted setup: `pot12_final.ptau` (4096 cap)
+- **VK**: nPublic=4, IC len=5
+  - VK sha256: `af25dda1e4c19dadc05477128ff77cd9e58228fe74bc8c4f5ebb0392c8a1a2c3`
+- **Changes**:
+  - `verify_zk_proof.rs`: new VK (VK_DELTA_G2 + IC[0..4]), 4-input compute_vk_x(), ZkProofRecord PDA init, pubkey + round validation
+  - `lib.rs`: updated signature (`duel_id: u64, round: u64, public_inputs: [[u8;32];4]`)
+  - `state.rs`: ZkProofRecord struct added (SIZE=97)
+  - `error.rs`: ZkPubkeyMismatch, ZkRoundMismatch, ZkProofInvalid, ZkProofAlreadyVerified
+- **Deploy TX**: `2Wu8wQCdRZQwhbx4rpwB6m59GanjMoUPoKGF8GYGM6vgoAdaUZybRtQszeRwPtm3mfyERSbaxgkmo6v1oBMQDLcR`
+- **Program ID**: `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`
+- **Binary size**: 1,127,168 bytes

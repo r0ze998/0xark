@@ -1138,3 +1138,22 @@ pub struct LegendaryAcquired {
 
 /// Legendary IDs by index (0-5).
 pub const LEGENDARY_CARD_IDS: [u8; 6] = [10, 20, 30, 40, 50, 60];
+
+/// ZK proof record — created on first successful verify, prevents replay.
+///
+/// PDA seeds: ["zk_proof", duel_id_le, round_le, signer_pubkey]
+#[account]
+pub struct ZkProofRecord {
+    pub duel_id:     u64,
+    pub round:       u64,
+    pub signer:      Pubkey,
+    pub commit:      [u8; 32],
+    pub verified_at: u64,
+    pub bump:        u8,
+}
+
+impl ZkProofRecord {
+    pub const SEED: &'static [u8] = b"zk_proof";
+    // 8 disc + 8 + 8 + 32 + 32 + 8 + 1
+    pub const SIZE: usize = 8 + 8 + 8 + 32 + 32 + 8 + 1;
+}
