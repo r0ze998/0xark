@@ -23,9 +23,10 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
-import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, usedSigs, rateLimits, gcRoundClaims } from './state.js';
+import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, rateLimits, gcRoundClaims } from './state.js';
 import { HANDLERS } from './handlers/index.js';
 import { validateMemo, MOVE_ENDPOINTS } from './memo-validator.js';
+import { isSigUsed, markSigUsed, isNonceUsed, markNonceUsed, gcMemory } from './redis-store.js';
 
 const PORT = process.env.PORT || 3500;
 
@@ -90,15 +91,15 @@ const TREASURY_ADDR    = process.env.TREASURY_PUBKEY || '11111111111111111111111
 const OPS_TREASURY_ADDR  = process.env.OPS_TREASURY_PUBKEY  || TREASURY_ADDR;
 const PRIZE_POOL_ADDR    = process.env.PRIZE_POOL_PUBKEY     || TREASURY_ADDR;
 const SOLANA_NETWORK   = process.env.SOLANA_NETWORK  || 'devnet';
-// X402_REQUIRE_MEMO=true: every payment tx must carry a memo binding it to the endpoint.
-// Default 'false' preserves backward compat with clients that don't yet attach memos.
-const X402_REQUIRE_MEMO = process.env.X402_REQUIRE_MEMO === 'true';
+// X402_REQUIRE_MEMO: every payment tx must carry a memo binding it to the endpoint.
+// Default 'true' (Phase B). Set X402_REQUIRE_MEMO=false to disable for legacy clients.
+const X402_REQUIRE_MEMO = process.env.X402_REQUIRE_MEMO !== 'false';
 
 // ─── Environment validation ───────────────────────────────────────────────────
 // In production (NODE_ENV=production), missing required vars are fatal.
 // In development/demo, they emit a warning and fall back to demo mode.
 
-const REQUIRED_PROD_ENVS = ['TREASURY_PUBKEY', 'SOLANA_RPC'];
+const REQUIRED_PROD_ENVS = ['TREASURY_PUBKEY', 'SOLANA_RPC', 'REDIS_URL'];
 
 function validateEnv() {
   const isProd = process.env.NODE_ENV === 'production';
@@ -185,20 +186,29 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
     const expectedLamports = Math.floor(amountSol * LAMPORTS_PER_SOL);
 
     if (sigHint) {
-      if (usedSigs.has(sigHint)) return { ok: false, error: 'signature already used' };
+      // C1: persistent replay prevention via redis-store
+      if (await isSigUsed(sigHint)) return { ok: false, error: 'tx signature already used' };
+      // H2: use 'finalized' commitment for payment verification
       const tx = await connection.getTransaction(sigHint, {
-        commitment: COMMITMENT, maxSupportedTransactionVersion: 0,
+        commitment: 'finalized', maxSupportedTransactionVersion: 0,
       });
       if (!tx?.meta) return { ok: false, error: 'transaction not found' };
+      let memoNonce = null;
       if (X402_REQUIRE_MEMO) {
         const memoCheck = validateMemo(extractMemo(tx), requestPath);
         if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
+        // C3: nonce uniqueness check (prevents memo replay within TTL window)
+        memoNonce = memoCheck.fields?.nonce ?? memoCheck.fields?.n ?? null;
+        if (memoNonce && await isNonceUsed(memoNonce, requestPath)) {
+          return { ok: false, error: 'nonce already used' };
+        }
       }
       const received = _sumTreasuryReceived(tx, knownAddrs);
       if (received <= 0) return { ok: false, error: 'payment not directed to treasury' };
       if (received >= expectedLamports) {
         console.log(`[x402] Verified: ${amountSol} SOL`);
-        usedSigs.set(sigHint, Date.now() + 120_000);
+        await markSigUsed(sigHint);
+        if (memoNonce) await markNonceUsed(memoNonce, requestPath);
         return { ok: true, sig: sigHint, received, memo: extractMemo(tx) };
       }
       return { ok: false, error: 'insufficient payment' };
@@ -212,19 +222,27 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
       for (const sigInfo of sigs) {
         if (!sigInfo.blockTime || sigInfo.err) continue;
         if (now - sigInfo.blockTime * 1000 > X402_MAX_AGE_MS) continue;
-        if (usedSigs.has(sigInfo.signature)) return { ok: false, error: 'signature already used' };
+        // C1: persistent replay prevention
+        if (await isSigUsed(sigInfo.signature)) return { ok: false, error: 'signature already used' };
         const tx = await connection.getTransaction(sigInfo.signature, {
-          commitment: COMMITMENT, maxSupportedTransactionVersion: 0,
+          commitment: 'finalized', maxSupportedTransactionVersion: 0,  // H2
         });
         if (!tx?.meta) continue;
+        let memoNonce = null;
         if (X402_REQUIRE_MEMO) {
           const memoCheck = validateMemo(extractMemo(tx), requestPath);
           if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
+          // C3: nonce uniqueness
+          memoNonce = memoCheck.fields?.nonce ?? memoCheck.fields?.n ?? null;
+          if (memoNonce && await isNonceUsed(memoNonce, requestPath)) {
+            return { ok: false, error: 'nonce already used' };
+          }
         }
         const received = _sumTreasuryReceived(tx, knownAddrs);
         if (received >= expectedLamports) {
           console.log(`[x402] Verified: ${amountSol} SOL from ${playerPubkeyStr}`);
-          usedSigs.set(sigInfo.signature, Date.now() + 120_000);
+          await markSigUsed(sigInfo.signature);
+          if (memoNonce) await markNonceUsed(memoNonce, requestPath);
           return { ok: true, sig: sigInfo.signature, received, memo: extractMemo(tx) };
         }
       }
@@ -420,16 +438,16 @@ let wss;
 httpServer.listen(PORT, () => {
   console.log(`0xARK Multiplayer Server — HTTP+WS on port ${PORT}`);
   console.log(`Solana RPC: ${RPC_URL}`);
-  console.log(`x402 memo binding: ${X402_REQUIRE_MEMO ? 'REQUIRED' : 'disabled (set X402_REQUIRE_MEMO=true to enforce)'}`);
+  console.log(`x402 memo binding: ${X402_REQUIRE_MEMO ? 'REQUIRED' : 'disabled (set X402_REQUIRE_MEMO=false to disable)'}`);
   console.log('All game state is on-chain. Server holds no game authority.');
 });
 
 wss = new WebSocketServer({ server: httpServer });
 
-// GC every 30s: usedSigs (120s TTL) + expired rateLimits windows + roundClaims (5m TTL)
+// GC every 30s: in-memory sig/nonce maps + expired rateLimits + roundClaims (5m TTL)
 const _sigGcInterval = setInterval(() => {
+  gcMemory();  // no-op when Redis is active; cleans in-memory Maps otherwise
   const now = Date.now();
-  usedSigs.forEach((expiry, sig) => { if (expiry < now) usedSigs.delete(sig); });
   rateLimits.forEach((entry, ip) => { if (now - entry.windowStart >= HTTP_RATE_WINDOW) rateLimits.delete(ip); });
   gcRoundClaims(300_000);
 }, 30_000);

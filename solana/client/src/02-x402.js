@@ -65,7 +65,7 @@ async function scoutPeek(gameId, target, wallet, conn) {
     throw new Error(`Unexpected status ${probe.status} from scout-peek`);
   }
 
-  const paymentSpec = JSON.parse(probe.headers.get('X-Payment-Required') || '{}');
+  const paymentSpec = _parsePaymentRequiredHeader(probe.headers.get('X-Payment-Required') || probe.headers.get('PAYMENT-REQUIRED'));
   const lamports = paymentSpec.amount ?? 5_000_000;
 
   // ── Step 2: build + sign SOL transfer + memo ──────────────────────────────
@@ -136,7 +136,7 @@ async function hireAgent(agentId, gameId, durationSeconds = 3600, wallet, conn) 
     throw new Error(`Unexpected status ${probe.status} from agent-hire`);
   }
 
-  const paymentSpec = JSON.parse(probe.headers.get('X-Payment-Required') || '{}');
+  const paymentSpec = _parsePaymentRequiredHeader(probe.headers.get('X-Payment-Required') || probe.headers.get('PAYMENT-REQUIRED'));
   const lamports = paymentSpec.amount ?? 50_000_000;
 
   // ── Step 2: pay 0.05 SOL + memo ──────────────────────────────────────────
@@ -213,11 +213,46 @@ async function scoutPeekDev(gameId, target) {
 
 // ─── Security helpers ─────────────────────────────────────────────────────────
 
-// H13: Reject endpoint paths with characters outside [a-zA-Z0-9/_-].
+// H1: Parse PAYMENT-REQUIRED header — handles Base64 JSON (v2) and raw JSON (legacy).
+function _parsePaymentRequiredHeader(headerValue) {
+  if (!headerValue) return {};
+  try { return JSON.parse(atob(headerValue)); } catch (_) {}
+  try { return JSON.parse(headerValue); } catch (_) {}
+  return {};
+}
+
+// H3: Allowlist of known treasury addresses. Set window.OXARK_ALLOWED_TREASURIES (string[]).
+// When set, any address not in the list causes payment to be refused (MITM protection).
+const ALLOWED_TREASURIES = (typeof window !== 'undefined' && Array.isArray(window.OXARK_ALLOWED_TREASURIES))
+  ? new Set(window.OXARK_ALLOWED_TREASURIES)
+  : null;
+
+function _validateRecipient(addr, source) {
+  _requireTreasuryAddress(addr, source);  // H4: rejects null / System Program
+  if (ALLOWED_TREASURIES && !ALLOWED_TREASURIES.has(addr)) {
+    throw new Error(`Recipient not in allowed treasury list (${source}): ${addr}`);
+  }
+  return addr;
+}
+
+// H5: Reject endpoint paths with illegal chars, wrong prefix, or excessive length.
 function _sanitizeMemoEndpoint(path) {
+  if (!path || path.length > 64) throw new Error(`Invalid endpoint path: too long or empty`);
+  if (!path.startsWith('/x402/')) throw new Error(`Invalid endpoint path: must start with /x402/`);
   const sanitized = path.replace(/[^a-zA-Z0-9/_-]/g, '');
   if (sanitized !== path) throw new Error(`Invalid endpoint path: ${path}`);
   return sanitized;
+}
+
+// H5: Validate nonce format — must be 16–64 chars of hex or UUID form.
+function _sanitizeNonce(nonce) {
+  if (!nonce || nonce.length < 16 || nonce.length > 64) {
+    throw new Error(`Invalid nonce: length must be 16–64 chars`);
+  }
+  if (!/^[a-f0-9-]+$/i.test(nonce)) {
+    throw new Error(`Invalid nonce: must be hex or UUID format`);
+  }
+  return nonce;
 }
 
 // H10: Assert split payment amounts sum to at least the required total.
@@ -257,11 +292,10 @@ function _requireTreasuryAddress(addr, source) {
 
 // C5: Unified memo format for all x402 endpoints.
 // Format: "endpoint=<path>;nonce=<uuid>;v=1"
-// Replaces the two-format system (legacy verbose + Phase 12 compact base).
 function _buildMemoStr(endpoint, nonce) {
   const safeEndpoint = _sanitizeMemoEndpoint(endpoint);
-  if (!nonce || nonce.length < 8) throw new Error(`Invalid nonce for memo: too short`);
-  return `endpoint=${safeEndpoint};nonce=${nonce};v=1`;
+  const safeNonce    = _sanitizeNonce(nonce);
+  return `endpoint=${safeEndpoint};nonce=${safeNonce};v=1`;
 }
 
 // ─── Phase 12: move memo payment helpers ─────────────────────────────────────
@@ -311,11 +345,12 @@ async function _payMove(endpoint, memoFields, wallet, conn) {
   if (probe.ok) return probe.json();
   if (probe.status !== 402) throw new Error(`Unexpected status ${probe.status} from ${endpoint}`);
 
-  const spec     = JSON.parse(probe.headers.get('X-Payment-Required') || '{}');
+  // H1: parse Base64 or raw JSON header; try both header names
+  const spec     = _parsePaymentRequiredHeader(probe.headers.get('PAYMENT-REQUIRED') || probe.headers.get('X-Payment-Required'));
   const lamports = spec.accepts?.[0]?.amount ? parseInt(spec.accepts[0].amount, 10) : 100_000;
-  // C2: validate against known price; H4: refuse System Program address
+  // C2: validate against known price; H3+H4: allowlist + refuse System Program address
   _validateExpectedPrice(endpoint, lamports);
-  const toPk = new PublicKey(_requireTreasuryAddress(spec.accepts?.[0]?.payTo, 'X-Payment-Required'));
+  const toPk = new PublicKey(_validateRecipient(spec.accepts?.[0]?.payTo, 'PAYMENT-REQUIRED'));
 
   // ── Build tx with payment + memo ──────────────────────────────────────────
   const { blockhash } = await conn.getLatestBlockhash('confirmed');
@@ -389,10 +424,9 @@ async function _x402Pay(endpoint, body = {}, wallet, conn) {
     throw Object.assign(new Error(errBody.error ?? `x402 ${endpoint} returned ${probeRes.status}`), { code: 'ServerError' });
   }
 
-  // ── 2. Parse PAYMENT-REQUIRED header ─────────────────────────────────────
-  const specBase64 = probeRes.headers.get('PAYMENT-REQUIRED') || probeRes.headers.get('X-Payment-Required');
-  let spec = {};
-  try { spec = specBase64 ? JSON.parse(atob(specBase64)) : {}; } catch (_) {}
+  // ── 2. Parse PAYMENT-REQUIRED header (H1: handles Base64 or raw JSON) ────
+  const specRaw = probeRes.headers.get('PAYMENT-REQUIRED') || probeRes.headers.get('X-Payment-Required');
+  const spec = _parsePaymentRequiredHeader(specRaw);
 
   const accepts = spec.accepts?.[0] ?? {};
   const totalLamports = parseInt(accepts.amount, 10)
@@ -411,24 +445,24 @@ async function _x402Pay(endpoint, body = {}, wallet, conn) {
       && splitRecipient.ops.address !== splitRecipient.pool.address) {
     // H10: Verify split amounts are not under-declared by the server.
     _validatePaymentSplit(splitRecipient, totalLamports);
-    // H4: Refuse System Program address as payment recipient.
+    // H3+H4: Allowlist + refuse System Program address as payment recipient.
     tx.add(SystemProgram.transfer({
       fromPubkey: fromPk,
-      toPubkey:   new PublicKey(_requireTreasuryAddress(splitRecipient.ops.address, 'split.ops')),
+      toPubkey:   new PublicKey(_validateRecipient(splitRecipient.ops.address, 'split.ops')),
       lamports:   splitRecipient.ops.lamports,
     }));
     tx.add(SystemProgram.transfer({
       fromPubkey: fromPk,
-      toPubkey:   new PublicKey(_requireTreasuryAddress(splitRecipient.pool.address, 'split.pool')),
+      toPubkey:   new PublicKey(_validateRecipient(splitRecipient.pool.address, 'split.pool')),
       lamports:   splitRecipient.pool.lamports,
     }));
   } else {
     // Single payment (backward compat or same address)
     const payTo = accepts.payTo || probeRes.headers.get('X-Payment-Recipient');
-    // H4: Refuse System Program address as payment recipient.
+    // H3+H4: Allowlist + refuse System Program address as payment recipient.
     tx.add(SystemProgram.transfer({
       fromPubkey: fromPk,
-      toPubkey:   new PublicKey(_requireTreasuryAddress(payTo, 'payTo')),
+      toPubkey:   new PublicKey(_validateRecipient(payTo, 'payTo')),
       lamports:   totalLamports,
     }));
   }
@@ -554,9 +588,9 @@ async function payAiMove({ matchId, round, publicState }, wallet, conn) {
   const amountHeader    = probe.headers.get('X-Payment-Amount');
   const recipientHeader = probe.headers.get('X-Payment-Recipient');
   const lamports        = amountHeader ? parseInt(amountHeader, 10) : 5_000_000;
-  // C2: validate price; H4: refuse System Program address
+  // C2: validate price; H3+H4: allowlist + refuse System Program address
   _validateExpectedPrice(endpoint, lamports);
-  const toPk = new PublicKey(_requireTreasuryAddress(recipientHeader, 'X-Payment-Recipient'));
+  const toPk = new PublicKey(_validateRecipient(recipientHeader, 'X-Payment-Recipient'));
 
   const { blockhash } = await conn.getLatestBlockhash('confirmed');
   const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPk });
@@ -594,6 +628,8 @@ const _x402Exports = {
   scoutPeek, scoutPeekDev, hireAgent, hireAgentDev,
   // Internals (exposed for testing)
   X402_BROKER_URL, _x402Pay,
+  _parsePaymentRequiredHeader, _validateRecipient,
+  _sanitizeMemoEndpoint, _sanitizeNonce, _buildMemoStr,
 };
 
 if (typeof module !== 'undefined') {
