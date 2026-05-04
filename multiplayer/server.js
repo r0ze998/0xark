@@ -165,6 +165,16 @@ function _sumTreasuryReceived(tx, knownAddrs) {
 }
 
 async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHint = null) {
+  // C4: local-dev-bypass is only valid in development; block in all other envs (including demo mode).
+  if (sigHint === 'local-dev-bypass') {
+    if (process.env.NODE_ENV !== 'development') {
+      console.error('[SECURITY] local-dev-bypass attempted outside development — rejected');
+      return { ok: false, error: 'dev-bypass denied outside development environment' };
+    }
+    console.warn('[DEV] local-dev-bypass accepted (NODE_ENV=development)');
+    return { ok: true, demo: true };
+  }
+
   if (!process.env.TREASURY_PUBKEY) {
     console.log('[x402] No TREASURY_PUBKEY — demo mode');
     return { ok: true, demo: true };

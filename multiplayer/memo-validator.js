@@ -55,26 +55,46 @@ export function formatMoveMemo(endpoint, fieldMap) {
 
 /**
  * Validate a memo string against the expected endpoint.
- * Supports both:
- *   - Legacy format: "endpoint:<path>;nonce:<8+chars>"
- *   - Phase 12 compact: "e:/x402/...;m:...;...;n:<hex16>"
+ * Supports three formats (newest first):
+ *   - v1 unified:      "endpoint=<path>;nonce=<uuid>;v=1" (Phase 19+)
+ *   - legacy verbose:  "endpoint:<path>;nonce:<8+chars>"  (Phase 12–18)
+ *   - legacy compact:  "e:/x402/...;m:...;n:<hex16>"     (Phase 12 move endpoints)
  *
  * @returns {{ ok: boolean, error?: string, fields?: object }}
  */
 export function validateMemo(memoStr, requestPath) {
   if (!memoStr) return { ok: false, error: 'memo required' };
 
+  // v1 unified format: endpoint=<path>;nonce=<uuid>;v=1[;<extra>]
+  if (memoStr.startsWith('endpoint=')) {
+    return _validateUnifiedMemo(memoStr, requestPath);
+  }
+
+  // Legacy compact format: e:<path>;...;n:<hex16>
   if (memoStr.startsWith('e:')) {
     return _validateCompactMemo(memoStr, requestPath);
   }
 
-  // Legacy format
+  // Legacy verbose format: endpoint:<path>;nonce:<8+chars>
   const match = memoStr.match(/^endpoint:([^;]+);nonce:(.+)$/);
   if (!match) return { ok: false, error: 'invalid memo format' };
   const [, endpoint, nonce] = match;
   if (endpoint !== requestPath) return { ok: false, error: 'endpoint mismatch' };
   if (nonce.length < 8)         return { ok: false, error: 'invalid nonce' };
   return { ok: true };
+}
+
+function _validateUnifiedMemo(memoStr, requestPath) {
+  // Parse "key=value" pairs separated by ";"
+  const fields = {};
+  for (const part of String(memoStr).split(';')) {
+    const idx = part.indexOf('=');
+    if (idx > 0) fields[part.slice(0, idx)] = part.slice(idx + 1);
+  }
+  if (fields.endpoint !== requestPath) return { ok: false, error: 'endpoint mismatch' };
+  if (!fields.nonce || fields.nonce.length < 8) return { ok: false, error: 'invalid nonce' };
+  if (!fields.v)  return { ok: false, error: 'missing version field' };
+  return { ok: true, fields };
 }
 
 function _validateCompactMemo(memoStr, requestPath) {
