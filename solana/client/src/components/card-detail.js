@@ -3,7 +3,7 @@
 // opts: { onBurn(cardId), onEvolve(resultId, [parentA, parentB]), vault[] }
 
 import { getCard, isBurnable, isMergeOnly, getMergeRecipe } from '../lib/cards.js';
-import { CardHTML, injectCardCSS, CARD_NAMES, FACTION_NAMES, RARITY_LABELS, ACTION_LABELS } from './common/Card.js';
+import { CardFrameHTML, injectCardCSS, CARD_NAMES, FACTION_NAMES, RARITY_LABELS, ACTION_LABELS } from './common/Card.js';
 import { getState, setState } from '../state/battle-state.js';
 
 let _onBurn   = null;
@@ -83,7 +83,7 @@ function _render(container, cardId) {
 
   <div class="cd-top">
     <div class="cd-card-wrap">
-      ${CardHTML({ id: cardId, owned, compact: false })}
+      ${CardFrameHTML({ id: cardId, owned })}
     </div>
     <div class="cd-info">
       <div class="cd-name">${name} ${mergeOnlyBadge}</div>
@@ -186,7 +186,7 @@ function _handleEvolve(container, cardId, recipe) {
   const wrap = container.querySelector('.cd-card-wrap');
   if (wrap) {
     wrap.innerHTML = `<div class="cd-evolve-flash">✦</div>`;
-    setTimeout(() => { wrap.innerHTML = CardHTML({ id: cardId, owned: true, compact: false }); }, 600);
+    setTimeout(() => { wrap.innerHTML = CardFrameHTML({ id: cardId, owned: true }); }, 600);
   }
 
   const evolveBtn = container.querySelector('#cd-evolve');
@@ -229,10 +229,10 @@ const CSS = `
   backdrop-filter: blur(2px);
 }
 .cd-modal {
-  position: relative; width: 560px;
+  position: relative; width: 680px; max-height: 90%;
   background: var(--bg-mid); border: var(--border-dim);
   box-shadow: 0 0 40px rgba(0,0,0,0.8);
-  padding: 20px;
+  padding: 20px; overflow: hidden;
 }
 .cd-close {
   position: absolute; top: 10px; right: 12px;
@@ -242,12 +242,23 @@ const CSS = `
 }
 .cd-close:hover { color: var(--text-cream); }
 
-.cd-top { display: flex; gap: 20px; align-items: flex-start; }
-.cd-card-wrap { flex-shrink: 0; position: relative; }
+/* ── 2-column layout: card (left) | details (right) ── */
+.cd-top { display: flex; gap: 24px; align-items: flex-start; }
 
-.cd-info { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.cd-card-wrap {
+  flex-shrink: 0;
+  width: 240px;     /* 240 × 7/5 = 336px tall — fits in 576px game screen */
+  position: relative;
+}
+.cd-card-wrap .card-frame { width: 100%; }
+
+.cd-info {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 10px;
+  overflow-y: auto; max-height: 360px;
+}
 .cd-name {
-  font-size: 22px; letter-spacing: 0.06em;
+  font-size: 20px; letter-spacing: 0.06em;
   color: var(--text-cream); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .cd-meta { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -287,9 +298,9 @@ const CSS = `
 .cd-feedback { font-size: 12px; min-height: 18px; }
 
 .cd-evolve-flash {
-  width: 80px; height: 112px;
+  width: 240px; aspect-ratio: 5 / 7;
   display: flex; align-items: center; justify-content: center;
-  font-size: 48px; color: var(--accent-gold);
+  font-size: 64px; color: var(--accent-gold);
   background: rgba(201,162,39,0.15);
   animation: cd-flash 0.6s ease forwards;
 }
