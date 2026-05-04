@@ -2,7 +2,7 @@
 // mount(container, detail) / unmount(container)
 
 import { getCard } from '../lib/cards.js';
-import { CardHTML, injectCardCSS, ACTION_LABELS } from './common/Card.js';
+import { CardFrameHTML, injectCardCSS, ACTION_LABELS } from './common/Card.js';
 import { ActionTypeSelectorHTML, injectActionTypeSelectorCSS } from './common/ActionTypeSelector.js';
 import { startTimer } from './common/Timer.js';
 import { getState, setState } from '../state/battle-state.js';
@@ -137,13 +137,9 @@ function buildHTML() {
 
 function renderOppSlots() {
   if (!_opponentField) {
-    return Array(5).fill(0).map(() =>
-      `<div class="intr-opp-slot ark-card--facedown"><span class="intr-card-back">?</span></div>`
-    ).join('');
+    return Array(5).fill(0).map(() => CardFrameHTML({ faceDown: true })).join('');
   }
-  return _opponentField.map(c =>
-    CardHTML({ id: c.cardId, showAction: false })
-  ).join('');
+  return _opponentField.map(c => CardFrameHTML({ id: c.cardId })).join('');
 }
 
 function renderYourSlots() {
@@ -152,7 +148,7 @@ function renderYourSlots() {
     return `<div class="intr-your-slot${_swapSlot === i ? ' intr-slot--swap-active' : ''}"
       data-your-slot="${i}" tabindex="0"
       aria-label="Your card slot ${i+1}, ${slot.cardId}">
-      ${CardHTML({ id: slot.cardId })}
+      ${CardFrameHTML({ id: slot.cardId })}
       <div class="intr-slot-action label-gold" style="font-size:11px;">${ACTION_LABELS[slot.actionType] ?? ''}</div>
     </div>`;
   }).join('');
@@ -161,7 +157,7 @@ function renderYourSlots() {
 function renderSwapGrid() {
   const placedIds = new Set(_field.filter(Boolean).map(s => s.cardId));
   const avail = (_vault).filter(id => !placedIds.has(id) || id === _field[_swapSlot]?.cardId);
-  return avail.map(id => CardHTML({ id, owned: true })).join('');
+  return avail.map(id => CardFrameHTML({ id, owned: true })).join('');
 }
 
 /* ── Events ─────────────────────────────────────────────────────────── */
@@ -385,12 +381,9 @@ const CSS = `
 .intr-opp-slots, .intr-your-slots {
   display: flex; gap: 6px; flex-shrink: 0;
 }
-.intr-opp-slot {
-  width: 80px; height: 90px;
-  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.intr-card-back { font-size: 24px; color: rgba(201,162,39,0.2); }
+.intr-opp-slots .card-frame,
+.intr-your-slots .card-frame,
+.intr-swap-grid .card-frame { width: 80px; }
 
 .intr-your-slot {
   cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;

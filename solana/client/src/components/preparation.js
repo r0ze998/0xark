@@ -2,7 +2,7 @@
 // mount(container, detail) / unmount(container)
 
 import { ALL_CARD_IDS, getCard } from '../lib/cards.js';
-import { CardHTML, injectCardCSS, ACTION_LABELS, ACTION_ICONS } from './common/Card.js';
+import { CardFrameHTML, injectCardCSS, ACTION_LABELS, ACTION_ICONS } from './common/Card.js';
 import { ActionTypeSelectorHTML, injectActionTypeSelectorCSS, ACTION_TYPES } from './common/ActionTypeSelector.js';
 import { startTimer } from './common/Timer.js';
 import { getState, setState } from '../state/battle-state.js';
@@ -92,7 +92,7 @@ function buildHTML() {
         <span class="label-dim" style="font-size:13px;">Click to place in empty slot</span>
       </div>
       <div class="prep-vault-grid" id="prep-vault-grid" role="list">
-        ${ownedCards.map(id => CardHTML({ id, owned: true })).join('')}
+        ${ownedCards.map(id => CardFrameHTML({ id, owned: true })).join('')}
       </div>
     </section>
 
@@ -116,7 +116,7 @@ function renderSlots() {
     return `<div class="prep-slot prep-slot--filled${isActive ? ' prep-slot--active' : ''}"
       data-slot="${i}" role="listitem" tabindex="0"
       aria-label="Slot ${i + 1}: card ${slot.cardId}">
-      ${CardHTML({ id: slot.cardId, compact: true })}
+      ${CardFrameHTML({ id: slot.cardId })}
       <div class="prep-slot-action" style="font-size:11px;color:var(--accent-gold);">${actionLabel}</div>
       <button class="prep-slot-remove" data-slot="${i}" aria-label="Remove card from slot ${i+1}">✕</button>
     </div>`;
@@ -217,7 +217,7 @@ function refreshVault(container) {
   const placedIds = new Set(_field.filter(Boolean).map(s => s.cardId));
   container.querySelectorAll('#prep-vault-grid [data-id]').forEach(el => {
     const id = parseInt(el.dataset.id, 10);
-    el.classList.toggle('ark-card--selected', placedIds.has(id));
+    el.classList.toggle('card-frame--selected', placedIds.has(id));
     el.style.opacity = placedIds.has(id) ? '0.4' : '1';
   });
 }
@@ -336,7 +336,8 @@ const CSS = `
   padding: 1px 3px;
 }
 .prep-slot-remove:hover { background: rgba(214,59,59,0.2); }
-.prep-slot .ark-card { width: 100%; height: auto; min-height: 60px; }
+.prep-slot .card-frame { width: 100%; }
+.prep-vault-grid .card-frame { width: 80px; }
 
 /* Action picker */
 .prep-action-picker {
