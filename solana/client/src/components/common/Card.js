@@ -273,32 +273,33 @@ const CARD_CSS = `
   position: absolute; right: 0; top: 0; bottom: 0; width: 4px; z-index: 2;
 }
 .card-frame .name-banner {
-  position: absolute; top: 7%; left: 18%; right: 18%; height: 8%;
+  position: absolute; top: 10%; left: 18%; right: 18%; height: 10%;
   display: flex; align-items: center; justify-content: center;
-  color: #1a0f0f; font-size: clamp(7px, 1.4cqi, 11px);
+  color: #1a0f0f; font-size: 0.85rem; font-weight: bold;
   text-align: center; z-index: 3; line-height: 1;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .card-frame .art-window {
-  position: absolute; top: 20%; left: 12%; right: 12%; bottom: 25%;
+  position: absolute; top: 22%; left: 12%; right: 12%; bottom: 25%;
   display: flex; align-items: center; justify-content: center; z-index: 1;
+  font-size: 3rem;
 }
 .card-frame .card-art-placeholder {
-  font-size: clamp(16px, 4cqi, 36px); opacity: 0.7; line-height: 1;
+  font-size: 3rem; opacity: 0.75; line-height: 1;
   font-family: sans-serif;
 }
 .card-frame .card-art-img {
   width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated;
 }
 .card-frame .stats-panel {
-  position: absolute; bottom: 9%; left: 15%; right: 15%; height: 8%;
+  position: absolute; bottom: 11%; left: 15%; right: 15%; height: 8%;
   display: flex; justify-content: space-around; align-items: center;
-  color: #1a0f0f; font-size: clamp(6px, 1.3cqi, 10px); z-index: 3;
+  color: #1a0f0f; font-size: 0.85rem; z-index: 3;
 }
 .card-frame .stats-panel b   { font-weight: bold; }
 .card-frame .stats-panel .cf-hp b { color: #2a6e3a; }
 
 /* Legendary rarity — slight gold glow */
-.card-frame.rarity-l .name-banner { top: 9%; height: 10%; }
+.card-frame.rarity-l .name-banner { top: 11%; height: 11%; }
 `;
 
