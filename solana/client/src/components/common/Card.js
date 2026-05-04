@@ -135,9 +135,9 @@ export function CardFrameHTML({
       <div class="card-art-placeholder">${emoji}</div>
     </div>
     <div class="stats-panel">
-      <span>BP&nbsp;<b>${card.bp}</b></span>
-      <span class="cf-hp">HP&nbsp;<b>${hp}</b></span>
-      <span>INI&nbsp;<b>${card.ini}</b></span>
+      <span class="stat-badge"><span class="stat-label">BP</span><span class="stat-value">${card.bp}</span></span>
+      <span class="stat-badge cf-hp"><span class="stat-label">HP</span><span class="stat-value">${hp}</span></span>
+      <span class="stat-badge"><span class="stat-label">INI</span><span class="stat-value">${card.ini}</span></span>
     </div>
     ${!owned ? '<div class="ark-card-overlay"><span>?</span></div>' : ''}
     ${dead   ? '<div class="ark-card-dead-overlay"><span>✕</span></div>' : ''}
@@ -293,13 +293,19 @@ const CARD_CSS = `
 }
 .card-frame .stats-panel {
   position: absolute; bottom: 11%; left: 15%; right: 15%; height: 8%;
-  display: flex; justify-content: space-around; align-items: center;
-  color: #1a0f0f; font-size: 0.85rem; z-index: 3;
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  text-align: center; align-items: center;
+  color: #1a0f0f; font-size: 0.75rem; z-index: 3;
 }
-.card-frame .stats-panel b   { font-weight: bold; }
-.card-frame .stats-panel .cf-hp b { color: #2a6e3a; }
+.card-frame .stat-badge {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.card-frame .stat-label { font-size: 0.65rem; opacity: 0.7; }
+.card-frame .stat-value { font-size: 0.85rem; font-weight: bold; }
+.card-frame .cf-hp .stat-value { color: #2a6e3a; }
 
-/* Legendary rarity — slight gold glow */
-.card-frame.rarity-l .name-banner { top: 11%; height: 11%; }
+/* Legendary rarity — crown decoration offset + stats bump */
+.card-frame.rarity-l .name-banner { top: 13%; height: 9%; align-items: flex-end; }
+.card-frame.rarity-l .stats-panel { bottom: 13%; }
 `;
 
