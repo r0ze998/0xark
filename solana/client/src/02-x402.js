@@ -19,6 +19,24 @@ const X402_BROKER_URL = typeof window !== 'undefined'
   ? (window.X402_BROKER_URL || 'http://localhost:3500')
   : 'http://localhost:3500';
 
+// C2: Client-side price floor — server-declared amounts are validated against these.
+// If the server declares less than the expected amount, payment is refused.
+// Amounts in lamports (1 SOL = 1_000_000_000 lamports).
+const EXPECTED_PRICES = Object.freeze({
+  '/x402/match-battle':             1_000_000,  // 0.001 SOL
+  '/x402/peek-vault-size':            500_000,  // 0.0005 SOL
+  '/x402/peek-vault-content':       5_000_000,  // 0.005 SOL
+  '/x402/draw-extra':              10_000_000,  // 0.01 SOL
+  '/x402/ai-strategy-advice':       3_000_000,  // 0.003 SOL
+  '/x402/ai-move':                  5_000_000,  // 0.005 SOL
+  '/x402/co': 100_000, '/x402/re': 100_000, '/x402/hc': 100_000,
+  '/x402/hr': 100_000, '/x402/pa': 100_000, '/x402/rs': 100_000,
+  '/x402/me': 100_000,
+  '/x402/extra-action':            10_000_000,
+  '/x402/scout-peek':               5_000_000,
+  '/x402/counter-peek':             3_000_000,
+});
+
 /**
  * Scout peek — pay 0.005 SOL to reveal one card held by a target player.
  *
@@ -47,7 +65,7 @@ async function scoutPeek(gameId, target, wallet, conn) {
     throw new Error(`Unexpected status ${probe.status} from scout-peek`);
   }
 
-  const paymentSpec = JSON.parse(probe.headers.get('X-Payment-Required') || '{}');
+  const paymentSpec = _parsePaymentRequiredHeader(probe.headers.get('X-Payment-Required') || probe.headers.get('PAYMENT-REQUIRED'));
   const lamports = paymentSpec.amount ?? 5_000_000;
 
   // ── Step 2: build + sign SOL transfer + memo ──────────────────────────────
@@ -118,7 +136,7 @@ async function hireAgent(agentId, gameId, durationSeconds = 3600, wallet, conn) 
     throw new Error(`Unexpected status ${probe.status} from agent-hire`);
   }
 
-  const paymentSpec = JSON.parse(probe.headers.get('X-Payment-Required') || '{}');
+  const paymentSpec = _parsePaymentRequiredHeader(probe.headers.get('X-Payment-Required') || probe.headers.get('PAYMENT-REQUIRED'));
   const lamports = paymentSpec.amount ?? 50_000_000;
 
   // ── Step 2: pay 0.05 SOL + memo ──────────────────────────────────────────
@@ -195,16 +213,49 @@ async function scoutPeekDev(gameId, target) {
 
 // ─── Security helpers ─────────────────────────────────────────────────────────
 
-// H13: Reject endpoint paths with characters outside [a-zA-Z0-9/_-].
-// Prevents semicolon injection that would corrupt the server-side memo parser.
+// H1: Parse PAYMENT-REQUIRED header — handles Base64 JSON (v2) and raw JSON (legacy).
+function _parsePaymentRequiredHeader(headerValue) {
+  if (!headerValue) return {};
+  try { return JSON.parse(atob(headerValue)); } catch (_) {}
+  try { return JSON.parse(headerValue); } catch (_) {}
+  return {};
+}
+
+// H3: Allowlist of known treasury addresses. Set window.OXARK_ALLOWED_TREASURIES (string[]).
+// When set, any address not in the list causes payment to be refused (MITM protection).
+const ALLOWED_TREASURIES = (typeof window !== 'undefined' && Array.isArray(window.OXARK_ALLOWED_TREASURIES))
+  ? new Set(window.OXARK_ALLOWED_TREASURIES)
+  : null;
+
+function _validateRecipient(addr, source) {
+  _requireTreasuryAddress(addr, source);  // H4: rejects null / System Program
+  if (ALLOWED_TREASURIES && !ALLOWED_TREASURIES.has(addr)) {
+    throw new Error(`Recipient not in allowed treasury list (${source}): ${addr}`);
+  }
+  return addr;
+}
+
+// H5: Reject endpoint paths with illegal chars, wrong prefix, or excessive length.
 function _sanitizeMemoEndpoint(path) {
+  if (!path || path.length > 64) throw new Error(`Invalid endpoint path: too long or empty`);
+  if (!path.startsWith('/x402/')) throw new Error(`Invalid endpoint path: must start with /x402/`);
   const sanitized = path.replace(/[^a-zA-Z0-9/_-]/g, '');
   if (sanitized !== path) throw new Error(`Invalid endpoint path: ${path}`);
   return sanitized;
 }
 
+// H5: Validate nonce format — must be 16–64 chars of hex or UUID form.
+function _sanitizeNonce(nonce) {
+  if (!nonce || nonce.length < 16 || nonce.length > 64) {
+    throw new Error(`Invalid nonce: length must be 16–64 chars`);
+  }
+  if (!/^[a-f0-9-]+$/i.test(nonce)) {
+    throw new Error(`Invalid nonce: must be hex or UUID format`);
+  }
+  return nonce;
+}
+
 // H10: Assert split payment amounts sum to at least the required total.
-// Prevents a malicious server from under-declaring individual legs.
 function _validatePaymentSplit(splitRecipient, totalLamports) {
   const opsLamports  = splitRecipient.ops?.lamports  ?? 0;
   const poolLamports = splitRecipient.pool?.lamports ?? 0;
@@ -217,21 +268,42 @@ function _validatePaymentSplit(splitRecipient, totalLamports) {
   }
 }
 
+// C2: Validate that server-declared total lamports match the known price for this endpoint.
+// Prevents a malicious server from under-declaring the required payment.
+function _validateExpectedPrice(endpoint, declaredLamports) {
+  const expected = EXPECTED_PRICES[endpoint];
+  if (expected === undefined) return; // unknown endpoint — allow (new endpoints not yet in map)
+  if (declaredLamports < expected) {
+    throw new Error(`Payment price mismatch for ${endpoint}: expected >=${expected} lamports, server declared ${declaredLamports}`);
+  }
+  if (declaredLamports > expected * 1.01) {
+    throw new Error(`Payment price excessive for ${endpoint}: expected ${expected} lamports, server declared ${declaredLamports}`);
+  }
+}
+
+// H4: Never fall back to the System Program address as a payment recipient.
+// '11111111111111111111111111111111' is Solana's System Program — any SOL sent there is burned.
+function _requireTreasuryAddress(addr, source) {
+  if (!addr || addr === '11111111111111111111111111111111') {
+    throw new Error(`Treasury address missing or unsafe (${source}): refusing payment to System Program`);
+  }
+  return addr;
+}
+
+// C5: Unified memo format for all x402 endpoints.
+// Format: "endpoint=<path>;nonce=<uuid>;v=1"
+function _buildMemoStr(endpoint, nonce) {
+  const safeEndpoint = _sanitizeMemoEndpoint(endpoint);
+  const safeNonce    = _sanitizeNonce(nonce);
+  return `endpoint=${safeEndpoint};nonce=${safeNonce};v=1`;
+}
+
 // ─── Phase 12: move memo payment helpers ─────────────────────────────────────
 // Each function pays 0.0001 SOL (or server-configured price) and attaches the
-// compact move memo as an SPL Memo instruction in the payment tx.
+// unified memo as an SPL Memo instruction in the payment tx.
 // WS broadcast continues in parallel via existing handlers (dual-write).
 
 const MOVE_ENDPOINTS = ['/x402/co', '/x402/re', '/x402/hc', '/x402/hr', '/x402/pa', '/x402/rs', '/x402/me'];
-
-function _buildMoveMemoStr(endpoint, fields) {
-  const safeEndpoint = _sanitizeMemoEndpoint(endpoint);
-  const nonce = _generateNonce();
-  const parts  = [`e:${safeEndpoint}`];
-  for (const [k, v] of Object.entries(fields)) parts.push(`${k}:${v}`);
-  parts.push(`n:${nonce}`);
-  return parts.join(';');
-}
 
 function _generateNonce() {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -261,7 +333,8 @@ async function _payMove(endpoint, memoFields, wallet, conn) {
 
   const fromPk       = new PublicKey(wallet.publicKey.toString());
   const playerPubkey = fromPk.toBase58();
-  const memoStr      = _buildMoveMemoStr(endpoint, memoFields);
+  // C5: unified memo format
+  const memoStr      = _buildMemoStr(endpoint, _generateNonce());
 
   // ── Probe to get payment spec ─────────────────────────────────────────────
   const probe = await fetch(`${X402_BROKER_URL}${endpoint}`, {
@@ -272,9 +345,12 @@ async function _payMove(endpoint, memoFields, wallet, conn) {
   if (probe.ok) return probe.json();
   if (probe.status !== 402) throw new Error(`Unexpected status ${probe.status} from ${endpoint}`);
 
-  const spec     = JSON.parse(probe.headers.get('X-Payment-Required') || '{}');
+  // H1: parse Base64 or raw JSON header; try both header names
+  const spec     = _parsePaymentRequiredHeader(probe.headers.get('PAYMENT-REQUIRED') || probe.headers.get('X-Payment-Required'));
   const lamports = spec.accepts?.[0]?.amount ? parseInt(spec.accepts[0].amount, 10) : 100_000;
-  const toPk     = new PublicKey(spec.accepts?.[0]?.payTo ?? TREASURY_ADDR_FALLBACK);
+  // C2: validate against known price; H3+H4: allowlist + refuse System Program address
+  _validateExpectedPrice(endpoint, lamports);
+  const toPk = new PublicKey(_validateRecipient(spec.accepts?.[0]?.payTo, 'PAYMENT-REQUIRED'));
 
   // ── Build tx with payment + memo ──────────────────────────────────────────
   const { blockhash } = await conn.getLatestBlockhash('confirmed');
@@ -308,18 +384,6 @@ async function _payMove(endpoint, memoFields, wallet, conn) {
 
 // ─── Phase 19: unified x402 payment helper ───────────────────────────────────
 // Handles 402→pay→retry cycle. Supports split-recipient (ops + pool) or single payTo.
-
-const TREASURY_ADDR_FALLBACK = '11111111111111111111111111111111';
-
-function _getWalletAndConn() {
-  const w = window.solana;
-  const c = window.oxarkOnchain
-    ? (() => { const C = window.solanaWeb3?.Connection; const { DEVNET_RPC } = window; return C ? new C(DEVNET_RPC || 'https://api.devnet.solana.com', 'confirmed') : null; })()
-    : null;
-  // Prefer the shared connection from onchain module if available
-  if (!w?.isConnected) throw new Error('Phantom wallet not connected');
-  return { wallet: w, conn: c || _getDefaultConn() };
-}
 
 function _getDefaultConn() {
   const { Connection } = window.solanaWeb3 ?? {};
@@ -360,15 +424,17 @@ async function _x402Pay(endpoint, body = {}, wallet, conn) {
     throw Object.assign(new Error(errBody.error ?? `x402 ${endpoint} returned ${probeRes.status}`), { code: 'ServerError' });
   }
 
-  // ── 2. Parse PAYMENT-REQUIRED header ─────────────────────────────────────
-  const specBase64 = probeRes.headers.get('PAYMENT-REQUIRED') || probeRes.headers.get('X-Payment-Required');
-  let spec = {};
-  try { spec = specBase64 ? JSON.parse(atob(specBase64)) : {}; } catch (_) {}
+  // ── 2. Parse PAYMENT-REQUIRED header (H1: handles Base64 or raw JSON) ────
+  const specRaw = probeRes.headers.get('PAYMENT-REQUIRED') || probeRes.headers.get('X-Payment-Required');
+  const spec = _parsePaymentRequiredHeader(specRaw);
 
   const accepts = spec.accepts?.[0] ?? {};
   const totalLamports = parseInt(accepts.amount, 10)
     || parseInt(probeRes.headers.get('X-Payment-Amount'), 10)
     || 0;
+
+  // C2: Validate server-declared price against known expected price for this endpoint.
+  _validateExpectedPrice(endpoint, totalLamports);
 
   // ── 3. Build transaction ──────────────────────────────────────────────────
   const { blockhash } = await c.getLatestBlockhash('confirmed');
@@ -379,32 +445,31 @@ async function _x402Pay(endpoint, body = {}, wallet, conn) {
       && splitRecipient.ops.address !== splitRecipient.pool.address) {
     // H10: Verify split amounts are not under-declared by the server.
     _validatePaymentSplit(splitRecipient, totalLamports);
-    // Split payment: 50% ops / 50% pool
+    // H3+H4: Allowlist + refuse System Program address as payment recipient.
     tx.add(SystemProgram.transfer({
       fromPubkey: fromPk,
-      toPubkey:   new PublicKey(splitRecipient.ops.address),
+      toPubkey:   new PublicKey(_validateRecipient(splitRecipient.ops.address, 'split.ops')),
       lamports:   splitRecipient.ops.lamports,
     }));
     tx.add(SystemProgram.transfer({
       fromPubkey: fromPk,
-      toPubkey:   new PublicKey(splitRecipient.pool.address),
+      toPubkey:   new PublicKey(_validateRecipient(splitRecipient.pool.address, 'split.pool')),
       lamports:   splitRecipient.pool.lamports,
     }));
   } else {
     // Single payment (backward compat or same address)
-    const payTo = accepts.payTo
-      || probeRes.headers.get('X-Payment-Recipient')
-      || TREASURY_ADDR_FALLBACK;
+    const payTo = accepts.payTo || probeRes.headers.get('X-Payment-Recipient');
+    // H3+H4: Allowlist + refuse System Program address as payment recipient.
     tx.add(SystemProgram.transfer({
       fromPubkey: fromPk,
-      toPubkey:   new PublicKey(payTo),
+      toPubkey:   new PublicKey(_validateRecipient(payTo, 'payTo')),
       lamports:   totalLamports,
     }));
   }
 
-  // H13: Sanitize endpoint before embedding in memo to prevent semicolon injection.
+  // C5: Unified memo format "endpoint=<path>;nonce=<uuid>;v=1"
   const nonce   = _generateNonce();
-  const memoStr = `endpoint:${_sanitizeMemoEndpoint(endpoint)};nonce:${nonce}`;
+  const memoStr = _buildMemoStr(endpoint, nonce);
   tx.add(new TransactionInstruction({
     programId: new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),
     keys: [],
@@ -523,7 +588,9 @@ async function payAiMove({ matchId, round, publicState }, wallet, conn) {
   const amountHeader    = probe.headers.get('X-Payment-Amount');
   const recipientHeader = probe.headers.get('X-Payment-Recipient');
   const lamports        = amountHeader ? parseInt(amountHeader, 10) : 5_000_000;
-  const toPk            = new PublicKey(recipientHeader ?? TREASURY_ADDR_FALLBACK);
+  // C2: validate price; H3+H4: allowlist + refuse System Program address
+  _validateExpectedPrice(endpoint, lamports);
+  const toPk = new PublicKey(_validateRecipient(recipientHeader, 'X-Payment-Recipient'));
 
   const { blockhash } = await conn.getLatestBlockhash('confirmed');
   const tx = new Transaction({ recentBlockhash: blockhash, feePayer: fromPk });
@@ -561,6 +628,8 @@ const _x402Exports = {
   scoutPeek, scoutPeekDev, hireAgent, hireAgentDev,
   // Internals (exposed for testing)
   X402_BROKER_URL, _x402Pay,
+  _parsePaymentRequiredHeader, _validateRecipient,
+  _sanitizeMemoEndpoint, _sanitizeNonce, _buildMemoStr,
 };
 
 if (typeof module !== 'undefined') {
