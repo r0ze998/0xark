@@ -39,6 +39,7 @@ Live multiplayer server: https://oxark-multiplayer.fly.dev
 - 💰 **x402 micropayments** (HTTP 402 standard) で 0.005 SOL から peek/draw
 - 🤖 **AI agents** (Claude Haiku 4.5) が戦略アドバイス + autonomous battle
 - 🔥 **Burn / Evolve / Imprint** で NFT が永久変化
+- 🏪 **Complete game economy**: Shop pack purchases + Trade Floor marketplace + Tier prize distribution
 
 ---
 
@@ -49,6 +50,8 @@ Live multiplayer server: https://oxark-multiplayer.fly.dev
 | GameWorld PDA init | `4EUynBDn…` | [Solana Explorer](https://explorer.solana.com/tx/4EUynBDnBvXQ7vYkWdvyvWNagocC18xBwpvo2k2zPZo5paHTczPCWQaKV2aXUK625y1vqwBndxfqj2WZVcJE4ra5?cluster=devnet) |
 | Anchor program upgrade (ZK Phase 2) | `2Wu8wQCd…` | [Solana Explorer](https://explorer.solana.com/tx/2Wu8wQCdRZQwhbx4rpwB6m59GanjMoUPoKGF8GYGM6vgoAdaUZybRtQszeRwPtm3mfyERSbaxgkmo6v1oBMQDLcR?cluster=devnet) |
 | ZK proof verify e2e | `5WoVAmNC…` | [Solana Explorer](https://explorer.solana.com/tx/5WoVAmNCB8ttyoybigKZAcpU3PQavJApTuLuXr9GQXpNhBTSVsbv8CQFjS58x1HkXGuanjMun3devi3cyk2irJqf?cluster=devnet) |
+| GameWorld Phase 20-B migration | `2eyAJEJz…` | [Solana Explorer](https://explorer.solana.com/tx/2eyAJEJzpBd6fbJZw5BijFGjqdq1B57vZoE6wjHifwUbxfduK2Jecd6BAJ8WuqsWvZnxUQcAESztz8PiPqaQZva9?cluster=devnet) |
+| Shop params set (threshold=0) | `3SYqk9HV…` | [Solana Explorer](https://explorer.solana.com/tx/3SYqk9HV5m4XMLnt5sfHPr8p4KmitQF1cukmCG2ULoW4WzpzNicc6LxQicudw8XgAHzcTV4K7su6toBMSfqfup9b?cluster=devnet) |
 
 Anchor program: [`5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`](https://explorer.solana.com/address/5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN?cluster=devnet) (devnet)
 
@@ -107,7 +110,10 @@ Anchor program: [`5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`](https://explore
 │ - grant_imprint / claim_battle_loot       │
 │ - claim_prize_v2 / check_legendary        │
 │ - verify_zk_proof (alt_bn128 pairing)     │
-│ - 18+ PDAs, 52 instructions               │
+│ - buy_pack / update_game_params           │
+│ - create_listing / accept_listing         │
+│ - cancel_listing                          │
+│ - 20+ PDAs, 59 instructions               │
 └────────────────────────────────────────────┘
                    ▲
                    │
@@ -142,6 +148,41 @@ Anchor program: [`5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`](https://explore
 - **Evolve**: 2枚合体 → 1枚 child card 生成
 - **Steal**: バトル勝利で敗者から1枚奪取 (`claim_battle_loot`, SlotHashes random)
 - **Imprint**: 勝利の刻印が Legendary card に永久記録
+
+### Shop (Phase 20-B)
+
+Players can purchase card packs with SOL:
+
+| Pack | Cards | Price | Special |
+|---|---|---|---|
+| Standard | 5 random | 0.05 SOL | — |
+| Premium | 3 cards | 0.15 SOL | +1 Uncommon guaranteed |
+
+Drop rates (admin-tunable via `update_game_params`):
+
+| Phase | Common | Uncommon | Rare | Legendary |
+|---|---|---|---|---|
+| Phase 1 (Days 1–7) | 80% | 18% | 2% | 0% |
+| Phase 2 (Days 8–14) | 79% | 17% | 2.5% | 1.5% |
+
+- Sales split: **50% Operations / 50% Prize Pool**
+- Random source: Solana **SlotHashes** sysvar (verifiable on-chain, no oracle dependency)
+- Legendary drop gated until Day 8 to preserve "first 10 achievers" exclusivity
+
+### Trade Floor (Phase 20-C)
+
+Player-to-player marketplace with **0% platform fee**:
+
+| Action | Description |
+|---|---|
+| Create listing | Seller lists a card with custom SOL price (min 0.001 SOL) |
+| Accept listing | Buyer pays seller directly; card moves atomically |
+| Cancel listing | Seller withdraws listing and recovers card |
+
+- **Card escrow**: listed cards are removed from seller's vault at listing time, returned on cancel
+- **All rarities tradable**: Common through Legendary
+- **Direct SOL transfer**: buyer → seller, no intermediary cut
+- Built on `TradeListing` PDAs: `seeds = [b"trade", seller_pubkey, card_id]`
 
 ---
 
@@ -215,7 +256,8 @@ Claude Haiku 4.5 を使った2つの AI 機能:
 - ✅ 2026-05: Hackathon submission (Colosseum Frontier)
 - ✅ 2026-05: ZK Phase 1–3 + devnet e2e
 - ✅ 2026-05: x402 Critical A + B (全クローズ)
-- 🔲 2026-06: Public preparation (Discord / Twitter / landing page)
+- ✅ 2026-05-04: Phase 20 complete — full game economy loop (Shop + Trade Floor + Prize Distribution)
+- 🔲 2026-06: Card art 60枚 + Public preparation (Discord / Twitter / landing page)
 - 🔲 2026-07: Waitlist 14-day Season 1 (devnet)
 - 🔲 2026-08–12: Season 2/3 (devnet) + audit + legal
 
@@ -249,7 +291,9 @@ Claude Haiku 4.5 を使った2つの AI 機能:
 | Client (JS) | 110+ tests |
 | ZK e2e | 6 tests + devnet integration |
 | x402 security | 54 tests (Phase A + B) |
-| **合計** | **200+ passing** |
+| Phase 20-B Shop | 22 tests (9 Rust unit + 13 JS integration) |
+| Phase 20-C Trade Floor | 33 tests |
+| **合計** | **260+ passing** |
 
 ---
 
