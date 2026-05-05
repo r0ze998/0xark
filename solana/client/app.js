@@ -1,6 +1,7 @@
-// app.js — Phase 15 battle UI entry point + screen router
-// Screens: walletGate → register → main → preparation → interruption → reveal → loot → main
+// app.js — Phase 20-A battle UI entry point + screen router
+// Screens: walletGate → register → home → main/matchmaking → preparation → interruption → reveal → loot
 
+import { mount as mountHome,         unmount as unmountHome         } from './src/components/home-screen.js';
 import { mount as mountMain,         unmount as unmountMain         } from './src/components/main-screen.js';
 import { mount as mountPrep,         unmount as unmountPrep         } from './src/components/preparation.js';
 import { mount as mountIntr,         unmount as unmountIntr         } from './src/components/interruption.js';
@@ -10,6 +11,7 @@ import { getState } from './src/state/battle-state.js';
 import { PRIZE_POOL_PUBKEY, OPS_TREASURY_PUBKEY } from './src/config.js';
 
 const SCREENS = {
+  home:          { mount: mountHome,   unmount: unmountHome   },
   main:          { mount: mountMain,   unmount: unmountMain   },
   matchmaking:   { mount: mountMain,   unmount: unmountMain   },
   preparation:   { mount: mountPrep,   unmount: unmountPrep   },
@@ -40,6 +42,7 @@ function navigate(name, detail = {}) {
 }
 
 // Navigation event listeners
+document.addEventListener('nav:home',         e => navigate('home',         e.detail ?? {}));
 document.addEventListener('nav:main',         e => navigate('main',         e.detail ?? {}));
 document.addEventListener('nav:matchmaking',  e => navigate('matchmaking',  e.detail ?? {}));
 document.addEventListener('nav:preparation',  e => navigate('preparation',  e.detail ?? {}));
@@ -52,6 +55,23 @@ document.addEventListener('nav:wallet-required', () => showWalletConnectScreen()
 
 function _isWalletConnected() {
   return !!window.oxarkWallet?.isConnected?.();
+}
+
+// ── Player state (Phase 20-A) ──────────────────────────────────────────────
+
+let _playerState = null;
+let _gameWorld   = null;
+
+async function _loadPlayerState() {
+  const pubkey = window.oxarkWallet.getPublicKey?.();
+  try {
+    if (window.oxarkOnchain?.getPlayerState)
+      _playerState = await window.oxarkOnchain.getPlayerState(pubkey);
+    if (window.oxarkOnchain?.getGameWorld)
+      _gameWorld = await window.oxarkOnchain.getGameWorld();
+  } catch { /* fall through to defaults */ }
+  if (!_playerState) _playerState = { vault_count: getDemoVault().length };
+  if (!_gameWorld)   _gameWorld   = { game_start_timestamp: Math.floor(Date.now() / 1000) - 86400 };
 }
 
 async function initApp() {
@@ -70,10 +90,15 @@ async function initApp() {
       return;
     }
   } catch {
-    // RPC failure — fall through to main screen so offline demo still works
+    // RPC failure — fall through so offline demo still works
   }
 
-  navigate('main', { pubkey: pubkey.toString(), vault: getDemoVault() });
+  await _loadPlayerState();
+  navigate('home', {
+    pubkey:      pubkey.toString(),
+    playerState: _playerState,
+    gameWorld:   _gameWorld,
+  });
 }
 
 function showRegisterScreen() {
