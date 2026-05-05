@@ -1884,6 +1884,94 @@ async function updateShopParams({
   ], data.slice(0, off));
 }
 
+// ─── Phase 20-C: Trade Floor ──────────────────────────────────────────────────
+
+function findTradeListingPDA(sellerPubkey, cardId) {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('trade'), sellerPubkey.toBytes(), new Uint8Array([cardId])],
+    getProgramId()
+  );
+}
+
+async function createListing(cardId, priceLamports) {
+  const seller          = window.solana.publicKey;
+  const [sellerStatePDA] = findPlayerStatePDA(seller);
+  const [listingPDA]     = findTradeListingPDA(seller, cardId);
+
+  // disc(8) + card_id(u8=1) + price(u64=8)
+  const data = new Uint8Array(17);
+  let off = writeBytes(data, 0, await disc('create_listing'));
+  data[off] = cardId; off += 1;
+  writeU64LE(data, off, BigInt(priceLamports));
+
+  return buildAndSend([
+    { pubkey: seller,          isSigner: true,  isWritable: true  },
+    { pubkey: sellerStatePDA,  isSigner: false, isWritable: true  },
+    { pubkey: listingPDA,      isSigner: false, isWritable: true  },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+}
+
+async function acceptListing(cardId, sellerPubkeyStr) {
+  const buyer           = window.solana.publicKey;
+  const sellerPK        = new solanaWeb3.PublicKey(sellerPubkeyStr);
+  const [buyerStatePDA]  = findPlayerStatePDA(buyer);
+  const [listingPDA]     = findTradeListingPDA(sellerPK, cardId);
+
+  // disc(8) + seller_pubkey(32) + card_id(u8=1)
+  const data = new Uint8Array(41);
+  let off = writeBytes(data, 0, await disc('accept_listing'));
+  off = writeBytes(data, off, sellerPK.toBytes());
+  data[off] = cardId;
+
+  return buildAndSend([
+    { pubkey: buyer,          isSigner: true,  isWritable: true  },
+    { pubkey: buyerStatePDA,  isSigner: false, isWritable: true  },
+    { pubkey: listingPDA,     isSigner: false, isWritable: true  },
+    { pubkey: sellerPK,       isSigner: false, isWritable: true  },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+}
+
+async function cancelListingOnchain(cardId) {
+  const seller          = window.solana.publicKey;
+  const [sellerStatePDA] = findPlayerStatePDA(seller);
+  const [listingPDA]     = findTradeListingPDA(seller, cardId);
+
+  // disc(8) + card_id(u8=1)
+  const data = new Uint8Array(9);
+  let off = writeBytes(data, 0, await disc('cancel_listing'));
+  data[off] = cardId;
+
+  return buildAndSend([
+    { pubkey: seller,         isSigner: true,  isWritable: true  },
+    { pubkey: sellerStatePDA, isSigner: false, isWritable: true  },
+    { pubkey: listingPDA,     isSigner: false, isWritable: true  },
+  ], data);
+}
+
+async function fetchAllListings() {
+  const conn = getConnection();
+  const programId = getProgramId();
+  // Account discriminator for TradeListing = sha256("account:TradeListing")[0..8]
+  const accountDiscBytes = await disc('account:TradeListing');
+  const accounts = await conn.getProgramAccounts(programId, {
+    filters: [
+      { memcmp: { offset: 0, bytes: solanaWeb3.bs58.encode(accountDiscBytes) } },
+    ],
+  });
+  return accounts.map(({ account }) => {
+    const d = account.data;
+    // Layout (after 8-byte disc): seller(32) + card_id(u8) + price(u64) + created_at(i64) + active(bool)
+    const seller     = new solanaWeb3.PublicKey(d.slice(8, 40)).toString();
+    const cardId     = d[40];
+    const price      = Number(new DataView(d.buffer, d.byteOffset + 41, 8).getBigUint64(0, true));
+    const createdAt  = Number(new DataView(d.buffer, d.byteOffset + 49, 8).getBigInt64(0, true));
+    const active     = d[57] === 1;
+    return { seller, cardId, price, createdAt, active };
+  }).filter(l => l.active);
+}
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -1918,11 +2006,16 @@ window.oxarkOnchain = {
   generateZkProof,
   splitPubkeyForZk,
   findZkProofRecordPDA,
-  // NFT Trading (T72) — localStorage-backed listings until on-chain escrow is deployed
+  // NFT Trading (T72) — localStorage-backed listings (legacy)
   listCard,
   buyCard,
-  cancelListing,
   getListings,
+  // Phase 20-C: Trade Floor — on-chain escrow listings
+  createListing,
+  acceptListing,
+  cancelListing: cancelListingOnchain,
+  fetchAllListings,
+  findTradeListingPDA,
   // Deck system (T81 — Axis A) — save_deck + lock_deck on-chain PDAs
   saveDeck,
   lockDeck,

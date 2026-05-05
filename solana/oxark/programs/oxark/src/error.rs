@@ -181,4 +181,13 @@ pub enum ErrorCode {
     InvalidThreshold,
     #[msg("Not admin (game_world authority required)")]
     NotAdmin,
+    // ── Phase 20-C: Trade Floor ──────────────────────────────────────────────
+    #[msg("Price too low (minimum 0.001 SOL)")]
+    PriceTooLow,
+    #[msg("Listing already inactive")]
+    ListingInactive,
+    #[msg("Not the seller of this listing")]
+    NotSeller,
+    #[msg("Wrong seller specified")]
+    WrongSeller,
 }
