@@ -1,4 +1,4 @@
-// home-screen.js — Phase 20-A: 4-button navigation hub
+// home-screen.js — Phase 20-B: 4-button navigation hub (SHOP enabled)
 
 function _injectCSS() {
   if (document.getElementById('home-css')) return;
@@ -123,10 +123,10 @@ export function mount(container, props = {}) {
           <span class="home-btn-subtitle">See cards</span>
         </button>
 
-        <button class="home-btn home-btn--dim" id="btn-shop">
+        <button class="home-btn" id="btn-shop">
           <span class="home-btn-icon">💰</span>
           <span class="home-btn-title">SHOP</span>
-          <span class="home-btn-subtitle">Phase 20-B</span>
+          <span class="home-btn-subtitle">Buy card packs</span>
         </button>
 
         <button class="home-btn home-btn--dim" id="btn-trade">
@@ -147,7 +147,7 @@ export function mount(container, props = {}) {
     document.dispatchEvent(new CustomEvent('nav:main'));
   });
   document.getElementById('btn-shop').addEventListener('click', () => {
-    _toast('Shop launching in Phase 20-B', 'info');
+    document.dispatchEvent(new CustomEvent('nav:shop'));
   });
   document.getElementById('btn-trade').addEventListener('click', () => {
     _toast('Trade Floor launching in Phase 20-C', 'info');

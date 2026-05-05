@@ -292,6 +292,99 @@
       ]
     },
     {
+      "name": "buy_pack",
+      "docs": [
+        "Purchase a card pack (Standard: 5 cards / Premium: 3 cards + Uncommon guarantee).",
+        "",
+        "Transfers SOL 50/50 to ops_treasury and prize_pool.",
+        "Uses SlotHashes sysvar for on-chain verifiable randomness.",
+        "Drop rates are admin-adjustable via update_game_params."
+      ],
+      "discriminator": [
+        151,
+        46,
+        141,
+        93,
+        174,
+        5,
+        49,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "game_world",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ops_treasury",
+          "writable": true
+        },
+        {
+          "name": "prize_pool",
+          "writable": true
+        },
+        {
+          "name": "slot_hashes"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pack_type",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "check_legendary_v2",
       "docs": [
         "Check all 6 Legendary acquisition conditions for the calling player.",
@@ -2293,6 +2386,14 @@
         {
           "name": "game_start_timestamp",
           "type": "i64"
+        },
+        {
+          "name": "ops_treasury",
+          "type": "pubkey"
+        },
+        {
+          "name": "prize_pool",
+          "type": "pubkey"
         }
       ]
     },
@@ -2797,6 +2898,69 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "migrate_shop_fields",
+      "docs": [
+        "Admin-only: reallocate GameWorld PDA to Phase 20-B size and initialize shop fields.",
+        "",
+        "Must be called once after program upgrade from a pre-Phase-20-B deployment.",
+        "Sets ops_treasury, prize_pool, and all drop rate defaults."
+      ],
+      "discriminator": [
+        196,
+        212,
+        47,
+        237,
+        212,
+        107,
+        32,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "ops_treasury",
+          "type": "pubkey"
+        },
+        {
+          "name": "prize_pool",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "record_battle_result",
@@ -4523,6 +4687,94 @@
       ]
     },
     {
+      "name": "update_game_params",
+      "docs": [
+        "Admin-only: adjust shop drop rates and phase threshold.",
+        "",
+        "All rate params are in ppm (parts per million out of 1_000_000).",
+        "Pass `None` for any param to leave it unchanged.",
+        "Legendary rates are validated ≤ 100_000 (10%)."
+      ],
+      "discriminator": [
+        209,
+        14,
+        201,
+        173,
+        27,
+        22,
+        35,
+        2
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "legendary_rate_phase1",
+          "type": {
+            "option": "u32"
+          }
+        },
+        {
+          "name": "legendary_rate_phase2",
+          "type": {
+            "option": "u32"
+          }
+        },
+        {
+          "name": "rare_rate_phase1",
+          "type": {
+            "option": "u32"
+          }
+        },
+        {
+          "name": "rare_rate_phase2",
+          "type": {
+            "option": "u32"
+          }
+        },
+        {
+          "name": "uncommon_rate",
+          "type": {
+            "option": "u32"
+          }
+        },
+        {
+          "name": "threshold_seconds",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
+    },
+    {
       "name": "verify_dungeon_move",
       "docs": [
         "Verify a Groth16 ZK proof that the player made a valid dungeon move.",
@@ -5250,6 +5502,19 @@
       ]
     },
     {
+      "name": "GameParamsUpdatedEvent",
+      "discriminator": [
+        255,
+        123,
+        118,
+        118,
+        145,
+        48,
+        184,
+        195
+      ]
+    },
+    {
       "name": "HandCommitted",
       "discriminator": [
         236,
@@ -5377,6 +5642,19 @@
         206,
         205,
         185
+      ]
+    },
+    {
+      "name": "PackOpenedEvent",
+      "discriminator": [
+        34,
+        218,
+        255,
+        81,
+        168,
+        113,
+        148,
+        86
       ]
     },
     {
@@ -5866,6 +6144,26 @@
       "code": 6078,
       "name": "ZkProofAlreadyVerified",
       "msg": "ZK proof already verified for this duel/round/signer"
+    },
+    {
+      "code": 6079,
+      "name": "InvalidPackType",
+      "msg": "Invalid pack type (must be 0=Standard or 1=Premium)"
+    },
+    {
+      "code": 6080,
+      "name": "InvalidRate",
+      "msg": "Invalid drop rate (Legendary must be ≤100000 = 10%)"
+    },
+    {
+      "code": 6081,
+      "name": "InvalidThreshold",
+      "msg": "Invalid threshold (must be ≤14 days in seconds)"
+    },
+    {
+      "code": 6082,
+      "name": "NotAdmin",
+      "msg": "Not admin (game_world authority required)"
     }
   ],
   "types": [
@@ -6819,6 +7117,38 @@
       }
     },
     {
+      "name": "GameParamsUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "legendary_rate_phase1",
+            "type": "u32"
+          },
+          {
+            "name": "legendary_rate_phase2",
+            "type": "u32"
+          },
+          {
+            "name": "rare_rate_phase1",
+            "type": "u32"
+          },
+          {
+            "name": "rare_rate_phase2",
+            "type": "u32"
+          },
+          {
+            "name": "uncommon_rate",
+            "type": "u32"
+          },
+          {
+            "name": "threshold_seconds",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "GameStatus",
       "docs": [
         "Card types (1-indexed, 0 = empty)",
@@ -6920,6 +7250,44 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "ops_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "prize_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "shop_phase_threshold_seconds",
+            "docs": [
+              "Seconds after game_start at which Phase 2 drop rates activate (default 7 days)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "legendary_drop_rate_phase1",
+            "docs": [
+              "Drop rates in ppm (parts per million, out of 1_000_000). u32 required for uncommon (180000)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "legendary_drop_rate_phase2",
+            "type": "u32"
+          },
+          {
+            "name": "rare_drop_rate_phase1",
+            "type": "u32"
+          },
+          {
+            "name": "rare_drop_rate_phase2",
+            "type": "u32"
+          },
+          {
+            "name": "uncommon_drop_rate",
+            "type": "u32"
           }
         ]
       }
@@ -7303,6 +7671,30 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PackOpenedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "pack_type",
+            "type": "u8"
+          },
+          {
+            "name": "card_ids",
+            "type": "bytes"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
           }
         ]
       }

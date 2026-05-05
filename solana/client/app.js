@@ -1,7 +1,8 @@
-// app.js — Phase 20-A battle UI entry point + screen router
-// Screens: walletGate → register → home → main/matchmaking → preparation → interruption → reveal → loot
+// app.js — Phase 20-B battle UI entry point + screen router
+// Screens: walletGate → register → home → main/matchmaking/shop → preparation → interruption → reveal → loot
 
 import { mount as mountHome,         unmount as unmountHome         } from './src/components/home-screen.js';
+import { mount as mountShop,         unmount as unmountShop         } from './src/components/shop-screen.js';
 import { mount as mountMain,         unmount as unmountMain         } from './src/components/main-screen.js';
 import { mount as mountPrep,         unmount as unmountPrep         } from './src/components/preparation.js';
 import { mount as mountIntr,         unmount as unmountIntr         } from './src/components/interruption.js';
@@ -12,6 +13,7 @@ import { PRIZE_POOL_PUBKEY, OPS_TREASURY_PUBKEY } from './src/config.js';
 
 const SCREENS = {
   home:          { mount: mountHome,   unmount: unmountHome   },
+  shop:          { mount: mountShop,   unmount: unmountShop   },
   main:          { mount: mountMain,   unmount: unmountMain   },
   matchmaking:   { mount: mountMain,   unmount: unmountMain   },
   preparation:   { mount: mountPrep,   unmount: unmountPrep   },
@@ -43,6 +45,7 @@ function navigate(name, detail = {}) {
 
 // Navigation event listeners
 document.addEventListener('nav:home',         e => navigate('home',         e.detail ?? {}));
+document.addEventListener('nav:shop',         e => navigate('shop',         { ...(_gameWorld ? { gameWorld: _gameWorld } : {}), ...(e.detail ?? {}) }));
 document.addEventListener('nav:main',         e => navigate('main',         e.detail ?? {}));
 document.addEventListener('nav:matchmaking',  e => navigate('matchmaking',  e.detail ?? {}));
 document.addEventListener('nav:preparation',  e => navigate('preparation',  e.detail ?? {}));

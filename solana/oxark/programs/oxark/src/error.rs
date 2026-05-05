@@ -172,4 +172,13 @@ pub enum ErrorCode {
     ZkProofInvalid,
     #[msg("ZK proof already verified for this duel/round/signer")]
     ZkProofAlreadyVerified,
+    // ── Phase 20-B: Shop ─────────────────────────────────────────────────────
+    #[msg("Invalid pack type (must be 0=Standard or 1=Premium)")]
+    InvalidPackType,
+    #[msg("Invalid drop rate (Legendary must be ≤100000 = 10%)")]
+    InvalidRate,
+    #[msg("Invalid threshold (must be ≤14 days in seconds)")]
+    InvalidThreshold,
+    #[msg("Not admin (game_world authority required)")]
+    NotAdmin,
 }
