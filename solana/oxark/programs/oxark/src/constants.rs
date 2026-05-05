@@ -34,6 +34,7 @@ pub const AREA_CARDS: [[u8; 2]; 3] = [
     [5, 1], // Ruins
 ];
 // ── Phase 20-B: Shop ─────────────────────────────────────────────────────────
+
 pub const PACK_STANDARD: u8 = 0;
 pub const PACK_PREMIUM:  u8 = 1;
 pub const STANDARD_PACK_PRICE: u64 = 50_000_000;   // 0.05 SOL
@@ -44,6 +45,9 @@ pub const SLOT_HASHES_ID_BYTES: [u8; 32] = [
     6, 167, 213, 23, 24, 117, 247, 41, 199, 61, 147, 64, 143, 33, 97, 67,
     174, 106, 71, 54, 145, 210, 142, 26, 6, 42, 187, 69, 102, 151, 148, 0,
 ];
+
+// ── Phase 20-C: Trade Floor ──────────────────────────────────────────────────
+pub const MIN_LISTING_PRICE: u64 = 1_000_000;  // 0.001 SOL minimum
 
 pub const INITIAL_STEAL_SPELLS: u8 = 3;
 pub const INITIAL_BARRIER_SPELLS: u8 = 2;

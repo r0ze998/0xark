@@ -1188,6 +1188,55 @@ pub struct LegendaryAcquired {
 /// Legendary IDs by index (0-5).
 pub const LEGENDARY_CARD_IDS: [u8; 6] = [10, 20, 30, 40, 50, 60];
 
+// ── Phase 20-C: Trade Floor ──────────────────────────────────────────────────
+
+/// Active trade listing PDA. Card is escrowed (removed from seller vault on creation).
+/// Seeds: ["trade", seller_pubkey, card_id_byte]
+#[account]
+pub struct TradeListing {
+    pub seller:     Pubkey,  // 32
+    pub card_id:    u8,      // 1
+    pub price:      u64,     // 8
+    pub created_at: i64,     // 8
+    pub active:     bool,    // 1
+}
+
+impl TradeListing {
+    pub const TRADE_SEED: &'static [u8] = b"trade";
+    // 8 disc + 32 + 1 + 8 + 8 + 1 = 58
+    pub const SIZE: usize = 8 + 32 + 1 + 8 + 8 + 1;
+}
+
+impl Default for TradeListing {
+    fn default() -> Self {
+        Self { seller: Pubkey::default(), card_id: 0, price: 0, created_at: 0, active: false }
+    }
+}
+
+#[event]
+pub struct ListingCreatedEvent {
+    pub seller:  Pubkey,
+    pub card_id: u8,
+    pub price:   u64,
+    pub slot:    u64,
+}
+
+#[event]
+pub struct ListingCancelledEvent {
+    pub seller:  Pubkey,
+    pub card_id: u8,
+    pub slot:    u64,
+}
+
+#[event]
+pub struct ListingAcceptedEvent {
+    pub buyer:   Pubkey,
+    pub seller:  Pubkey,
+    pub card_id: u8,
+    pub price:   u64,
+    pub slot:    u64,
+}
+
 /// ZK proof record — created on first successful verify, prevents replay.
 ///
 /// PDA seeds: ["zk_proof", duel_id_le, round_le, signer_pubkey]

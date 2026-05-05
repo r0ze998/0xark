@@ -790,4 +790,32 @@ pub mod oxark {
     ) -> Result<()> {
         instructions::migrate_shop_fields::handle_migrate_shop_fields(ctx, ops_treasury, prize_pool)
     }
+
+    // ── Phase 20-C: Trade Floor ────────────────────────────────────────────────
+
+    /// Create a sell listing, escrowing the card from the seller's vault.
+    ///
+    /// - card_id must be owned by seller (vault bitmap check)
+    /// - price must be ≥ 0.001 SOL (1_000_000 lamports)
+    /// - A TradeListing PDA is initialized; card is removed from vault immediately
+    pub fn create_listing(ctx: Context<CreateListing>, card_id: u8, price: u64) -> Result<()> {
+        instructions::create_listing::handle_create_listing(ctx, card_id, price)
+    }
+
+    /// Cancel an active listing and return the escrowed card to the seller.
+    ///
+    /// - Only the original seller may cancel
+    /// - TradeListing PDA is closed; rent refunded to seller
+    pub fn cancel_listing(ctx: Context<CancelListing>, card_id: u8) -> Result<()> {
+        instructions::cancel_listing::handle_cancel_listing(ctx, card_id)
+    }
+
+    /// Purchase a listed card.
+    ///
+    /// - Buyer pays price in SOL directly to seller (0% fee)
+    /// - Card is added to buyer's vault
+    /// - TradeListing PDA is closed; rent refunded to seller
+    pub fn accept_listing(ctx: Context<AcceptListing>, seller_pubkey: Pubkey, card_id: u8) -> Result<()> {
+        instructions::accept_listing::handle_accept_listing(ctx, seller_pubkey, card_id)
+    }
 }

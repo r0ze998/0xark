@@ -391,7 +391,7 @@
         "",
         "Called after each battle, x402 payment, or peek action.",
         "Awards up to one Legendary card per condition that becomes satisfied.",
-        "O(1) per condition — uses pre-tracked counters on PlayerState.",
+        "O(1) per condition \u2014 uses pre-tracked counters on PlayerState.",
         "",
         "Requires game_status == 1 (active season)."
       ],
@@ -532,7 +532,7 @@
         {
           "name": "duel_loot_record",
           "docs": [
-            "Initialized here — its existence means loot was claimed (double-spend guard)."
+            "Initialized here \u2014 its existence means loot was claimed (double-spend guard)."
           ],
           "writable": true,
           "pda": {
@@ -779,10 +779,10 @@
         "",
         "Distributes prize proportional to vault_count:",
         "Tier 1 (60 cards): 50% / winner_60_count",
-        "Tier 2 (50-59):    25% × vault_count / tier2_total_vault",
-        "Tier 3 (30-49):    15% × vault_count / tier3_total_vault",
-        "Tier 4 (10-29):     8% × vault_count / tier4_total_vault",
-        "Tier 5  (1-9):      2% × vault_count / tier5_total_vault",
+        "Tier 2 (50-59):    25% \u00d7 vault_count / tier2_total_vault",
+        "Tier 3 (30-49):    15% \u00d7 vault_count / tier3_total_vault",
+        "Tier 4 (10-29):     8% \u00d7 vault_count / tier4_total_vault",
+        "Tier 5  (1-9):      2% \u00d7 vault_count / tier5_total_vault",
         "",
         "If no Tier 1 winner (timeout), player with highest vault_count gets Tier 1."
       ],
@@ -1008,7 +1008,7 @@
         "",
         "The player computes `commitment = SHA256(card_id | salt)` in the browser",
         "and sends it before seeing the opponent's choice. Both players commit",
-        "before either reveals — preventing last-mover advantage.",
+        "before either reveals \u2014 preventing last-mover advantage.",
         "",
         "PDA seeds: `[\"card_commit\", player_pubkey, game_id_le, round_u8]`"
       ],
@@ -1171,7 +1171,7 @@
         "",
         "- Allocates `game` PDA and `card_pool` PDA.",
         "- Sets `status = Lobby`, `round = 0`.",
-        "- `max_players` must be 2–4.",
+        "- `max_players` must be 2\u20134.",
         "",
         "Caller becomes the host; only the host may call `start_game`."
       ],
@@ -1462,7 +1462,7 @@
         "",
         "- Callable by any participant before or during the game.",
         "- Funds are held in `stake_vault` PDA owned by the program.",
-        "- No EOA can withdraw directly — only `claim_prize` can release funds.",
+        "- No EOA can withdraw directly \u2014 only `claim_prize` can release funds.",
         "",
         "Approximate CU cost: ~3,500 (SystemProgram::transfer CPI)."
       ],
@@ -2169,7 +2169,7 @@
         "v3.0-plus: Grant an Imprint to a card's battle history.",
         "",
         "Cosmetic Imprints have no cap. Stat Imprints are capped by rarity:",
-        "Common/Uncommon → 3, Rare → 4, Legendary → 5."
+        "Common/Uncommon \u2192 3, Rare \u2192 4, Legendary \u2192 5."
       ],
       "discriminator": [
         213,
@@ -3355,7 +3355,7 @@
         "`strategy_hash` and `endpoint_hash` let clients discover agent capabilities",
         "without revealing the agent's internal logic or private endpoint URL.",
         "",
-        "`price_per_query` is in lamports — paid via x402 micropayment protocol."
+        "`price_per_query` is in lamports \u2014 paid via x402 micropayment protocol."
       ],
       "discriminator": [
         135,
@@ -3494,7 +3494,7 @@
         {
           "name": "agent_listing",
           "docs": [
-            "The AgentListing PDA — must be active before hire is valid."
+            "The AgentListing PDA \u2014 must be active before hire is valid."
           ],
           "pda": {
             "seeds": [
@@ -3563,9 +3563,9 @@
       "docs": [
         "Register a card species in the player's permanent registry (GI rule).",
         "",
-        "First time a player acquires card species X → registered[X] = true (permanent).",
-        "Subsequent copies → does not change registry (card is battle-consumable extra).",
-        "When count reaches 60 → season_complete = true.",
+        "First time a player acquires card species X \u2192 registered[X] = true (permanent).",
+        "Subsequent copies \u2192 does not change registry (card is battle-consumable extra).",
+        "When count reaches 60 \u2192 season_complete = true.",
         "",
         "PDA seeds: `[\"player_registry\", player_pubkey]` (init_if_needed)"
       ],
@@ -3634,7 +3634,7 @@
       "docs": [
         "Register on the Season 1 waitlist.",
         "",
-        "Deposits 0.5 SOL (85% → prize_pool, 15% → ops_treasury).",
+        "Deposits 0.5 SOL (85% \u2192 prize_pool, 15% \u2192 ops_treasury).",
         "Initializes PlayerState v2 fields and distributes 5 starter cards.",
         "Callable only while `game_world.waitlist_close_timestamp > now`.",
         "",
@@ -3729,12 +3729,12 @@
         "Resolve the current round after all players have revealed.",
         "",
         "Resolution order (simultaneous semantics, caller-triggered):",
-        "1. BARRIER — players raising barriers are flagged.",
-        "2. STEAL — transfers a random card from victim to stealer; blocked if victim has BARRIER.",
-        "3. DRAW — gives caller the top card from the shared pool for their area.",
-        "4. SCOUT — records target's revealed action for client-side intel display.",
-        "5. MOVE — updates `player_state.area`.",
-        "6. USE_CARD — applies card effect; removes card from hand.",
+        "1. BARRIER \u2014 players raising barriers are flagged.",
+        "2. STEAL \u2014 transfers a random card from victim to stealer; blocked if victim has BARRIER.",
+        "3. DRAW \u2014 gives caller the top card from the shared pool for their area.",
+        "4. SCOUT \u2014 records target's revealed action for client-side intel display.",
+        "5. MOVE \u2014 updates `player_state.area`.",
+        "6. USE_CARD \u2014 applies card effect; removes card from hand.",
         "",
         "Emits `RoundResolved` event. Transitions back to `CommitPhase` for next round,",
         "or to `Finished` if win condition met (player holds all 5 unique card types)."
@@ -3961,7 +3961,7 @@
         "On-chain verifies `SHA256(card_id | salt) == stored_commitment`.",
         "After both players reveal, `resolve_round` fires with element multipliers.",
         "",
-        "Full Groth16/Poseidon ZK verification targets Mainnet v1 —",
+        "Full Groth16/Poseidon ZK verification targets Mainnet v1 \u2014",
         "the circuit `card_commit.circom` is ready; MVP uses SHA-256."
       ],
       "discriminator": [
@@ -4102,12 +4102,12 @@
         "",
         "Validates composition before storing:",
         "- card IDs 1-60 only; 0 = empty (rejected)",
-        "- total cost ≤ 30  (Common=1, Rare=2, Legendary=5)",
-        "- Legendary cards ≤ 2",
-        "- Rare cards ≤ 6",
+        "- total cost \u2264 30  (Common=1, Rare=2, Legendary=5)",
+        "- Legendary cards \u2264 2",
+        "- Rare cards \u2264 6",
         "GDD v1.2: exactly 20 cards, max 2 copies of any card_id.",
-        "lane_assignments: 0=Front 1=Middle 2=Back 255=Any; empty vec → all 255.",
-        "deck must be unlocked (locked_until == 0 OR now ≥ locked_until)"
+        "lane_assignments: 0=Front 1=Middle 2=Back 255=Any; empty vec \u2192 all 255.",
+        "deck must be unlocked (locked_until == 0 OR now \u2265 locked_until)"
       ],
       "discriminator": [
         60,
@@ -4240,7 +4240,7 @@
         "Start the game and deal opening hands.",
         "",
         "- Restricted to the game host.",
-        "- Transitions `status: Lobby → CommitPhase`.",
+        "- Transitions `status: Lobby \u2192 CommitPhase`.",
         "- Shuffles `card_pool` using recent slot hash as PRNG seed.",
         "- Deals 3 cards to each player; remaining cards stay in pool."
       ],
@@ -4448,9 +4448,9 @@
         "Unlock a lore shard for a card the player owns.",
         "",
         "Shard indices:",
-        "0 = Shard 1 — auto-unlocked on card acquisition",
-        "1 = Shard 2 — unlocked by duel participation with card in deck",
-        "2 = Shard 3 — unlocked via Gold Hall win or x402 payment",
+        "0 = Shard 1 \u2014 auto-unlocked on card acquisition",
+        "1 = Shard 2 \u2014 unlocked by duel participation with card in deck",
+        "2 = Shard 3 \u2014 unlocked via Gold Hall win or x402 payment",
         "",
         "Method codes: 0=auto, 1=condition_met, 2=x402_payment",
         "",
@@ -4693,7 +4693,7 @@
         "",
         "All rate params are in ppm (parts per million out of 1_000_000).",
         "Pass `None` for any param to leave it unchanged.",
-        "Legendary rates are validated ≤ 100_000 (10%)."
+        "Legendary rates are validated \u2264 100_000 (10%)."
       ],
       "discriminator": [
         209,
@@ -4901,11 +4901,11 @@
         "- Proving key: `zk/build/commit_reveal_final.zkey`",
         "- Verification key: `zk/build/verification_key.json`",
         "",
-        "This instruction is optional — standard `reveal_action` provides the same",
+        "This instruction is optional \u2014 standard `reveal_action` provides the same",
         "correctness guarantee. ZK proof adds an additional privacy layer when the",
         "client wishes to hide action metadata from on-chain observers.",
         "",
-        "Approximate CU cost: 80,000–200,000 (BN254 pairing). Budget 300,000."
+        "Approximate CU cost: 80,000\u2013200,000 (BN254 pairing). Budget 300,000."
       ],
       "discriminator": [
         251,
@@ -4926,7 +4926,7 @@
         {
           "name": "zk_proof_record",
           "docs": [
-            "Replay prevention — `init` fails if the PDA already exists (already verified)."
+            "Replay prevention \u2014 `init` fails if the PDA already exists (already verified)."
           ],
           "writable": true,
           "pda": {
@@ -5013,6 +5013,265 @@
         {
           "name": "round",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "create_listing",
+      "docs": [
+        "Create a sell listing, escrowing the card from the seller's vault.",
+        "card_id must be owned by seller. Price must be >= 0.001 SOL.",
+        "Card is removed from vault immediately. TradeListing PDA is initialized."
+      ],
+      "discriminator": [
+        18,
+        168,
+        45,
+        24,
+        191,
+        31,
+        117,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "seller_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "seller"
+              }
+            ]
+          }
+        },
+        {
+          "name": "listing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  97,
+                  100,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "seller"
+              },
+              {
+                "kind": "arg",
+                "path": "card_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_id",
+          "type": "u8"
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "cancel_listing",
+      "docs": [
+        "Cancel an active listing and return the escrowed card to the seller.",
+        "Only the original seller may cancel. TradeListing PDA is closed; rent refunded."
+      ],
+      "discriminator": [
+        41,
+        183,
+        50,
+        232,
+        230,
+        233,
+        157,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "seller_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "seller"
+              }
+            ]
+          }
+        },
+        {
+          "name": "listing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  97,
+                  100,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "seller"
+              },
+              {
+                "kind": "arg",
+                "path": "card_id"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "card_id",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "accept_listing",
+      "docs": [
+        "Purchase a listed card.",
+        "Buyer pays price in SOL directly to seller (0% fee).",
+        "Card is added to buyer's vault. TradeListing PDA is closed."
+      ],
+      "discriminator": [
+        73,
+        126,
+        21,
+        99,
+        71,
+        13,
+        177,
+        202
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "buyer_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "listing",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  97,
+                  100,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "seller_pubkey"
+              },
+              {
+                "kind": "arg",
+                "path": "card_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "seller",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "seller_pubkey",
+          "type": "pubkey"
+        },
+        {
+          "name": "card_id",
+          "type": "u8"
         }
       ]
     }
@@ -5355,6 +5614,44 @@
         31,
         5
       ]
+    },
+    {
+      "name": "TradeListing",
+      "discriminator": [
+        69,
+        43,
+        175,
+        151,
+        184,
+        142,
+        145,
+        85
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
+            "type": "u8"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
     }
   ],
   "events": [
@@ -5747,6 +6044,45 @@
         111,
         69
       ]
+    },
+    {
+      "name": "ListingCreatedEvent",
+      "discriminator": [
+        73,
+        147,
+        169,
+        146,
+        121,
+        205,
+        118,
+        3
+      ]
+    },
+    {
+      "name": "ListingCancelledEvent",
+      "discriminator": [
+        203,
+        204,
+        24,
+        205,
+        33,
+        24,
+        151,
+        195
+      ]
+    },
+    {
+      "name": "ListingAcceptedEvent",
+      "discriminator": [
+        150,
+        83,
+        252,
+        152,
+        60,
+        196,
+        231,
+        83
+      ]
     }
   ],
   "errors": [
@@ -5908,17 +6244,17 @@
     {
       "code": 6031,
       "name": "InvalidDeckComposition",
-      "msg": "Invalid deck composition (cost cap, Legendary ≤2, Rare ≤6, Common ≥12)"
+      "msg": "Invalid deck composition (cost cap, Legendary \u22642, Rare \u22646, Common \u226512)"
     },
     {
       "code": 6032,
       "name": "DeckLocked",
-      "msg": "Deck is locked — unlock timer has not expired"
+      "msg": "Deck is locked \u2014 unlock timer has not expired"
     },
     {
       "code": 6033,
       "name": "TierLocked",
-      "msg": "Tier locked — insufficient wins at prerequisite tier"
+      "msg": "Tier locked \u2014 insufficient wins at prerequisite tier"
     },
     {
       "code": 6034,
@@ -6118,7 +6454,7 @@
     {
       "code": 6073,
       "name": "NotRegistered",
-      "msg": "Player has no deposit — not registered"
+      "msg": "Player has no deposit \u2014 not registered"
     },
     {
       "code": 6074,
@@ -6153,12 +6489,12 @@
     {
       "code": 6080,
       "name": "InvalidRate",
-      "msg": "Invalid drop rate (Legendary must be ≤100000 = 10%)"
+      "msg": "Invalid drop rate (Legendary must be \u2264100000 = 10%)"
     },
     {
       "code": 6081,
       "name": "InvalidThreshold",
-      "msg": "Invalid threshold (must be ≤14 days in seconds)"
+      "msg": "Invalid threshold (must be \u226414 days in seconds)"
     },
     {
       "code": 6082,
@@ -6174,7 +6510,7 @@
         "",
         "Created by the hirer after completing the x402 payment to the facilitator.",
         "The `payment_tx` field stores the Solana tx signature that was verified by",
-        "the facilitator — providing a verifiable audit trail linking the hire to",
+        "the facilitator \u2014 providing a verifiable audit trail linking the hire to",
         "the actual SOL payment.",
         "",
         "PDA seeds: `[\"agent_hire\", hirer_pubkey, agent_id_le_bytes]`"
@@ -6258,7 +6594,7 @@
     {
       "name": "AgentListing",
       "docs": [
-        "Agent Registry — On-chain marketplace for AI agents.",
+        "Agent Registry \u2014 On-chain marketplace for AI agents.",
         "Developers register their agents with strategy descriptions and pricing.",
         "Players can browse and hire agents to play on their behalf.",
         "",
@@ -6553,7 +6889,7 @@
           {
             "name": "commitment",
             "docs": [
-              "Poseidon(card_id, salt) — 32-byte big-endian field element."
+              "Poseidon(card_id, salt) \u2014 32-byte big-endian field element."
             ],
             "type": {
               "array": [
@@ -7001,7 +7337,7 @@
           {
             "name": "player_1_revealed",
             "docs": [
-              "Revealed card IDs after battle (10 cards × 5 rounds)"
+              "Revealed card IDs after battle (10 cards \u00d7 5 rounds)"
             ],
             "type": {
               "array": [
@@ -7353,7 +7689,7 @@
     {
       "name": "Imprint",
       "docs": [
-        "Single imprint entry — 22 bytes (fixed-size)."
+        "Single imprint entry \u2014 22 bytes (fixed-size)."
       ],
       "type": {
         "kind": "struct",
@@ -7781,7 +8117,7 @@
         "Player's prepared battle deck (up to 20 cards).",
         "PDA seeds: [\"player_deck\", player_pubkey]",
         "",
-        "Composition rules (GDD v1.2 — simplified from Phase C):",
+        "Composition rules (GDD v1.2 \u2014 simplified from Phase C):",
         "- exactly 20 cards",
         "- max 2 copies of any single card",
         "(Phase C cost cap + rarity balance removed)",
@@ -7791,7 +8127,7 @@
         "Existing accounts that were init_if_needed before this change have",
         "zero-padding in the new bytes, which is treated as Front (0). Clients",
         "should write 255 (Any) for all lanes when saving a deck without lane data.",
-        "SIZE updated from 78 → 98 bytes; new accounts created after this deploy",
+        "SIZE updated from 78 \u2192 98 bytes; new accounts created after this deploy",
         "will be allocated correctly via init_if_needed."
       ],
       "type": {
@@ -8095,7 +8431,7 @@
           {
             "name": "position_commitment",
             "docs": [
-              "Poseidon(x, y, area, salt) — set by init_position, updated by verify_dungeon_move"
+              "Poseidon(x, y, area, salt) \u2014 set by init_position, updated by verify_dungeon_move"
             ],
             "type": {
               "array": [
@@ -8355,10 +8691,10 @@
         "Each season has: entry fee, prize pool, leaderboard, NFT carry-over.",
         "",
         "Season lifecycle:",
-        "1. create_season — Set parameters (entry fee, max players, duration)",
+        "1. create_season \u2014 Set parameters (entry fee, max players, duration)",
         "2. Players join via deposit_stake",
         "3. Games play out",
-        "4. end_season — Distribute prizes, record legends"
+        "4. end_season \u2014 Distribute prizes, record legends"
       ],
       "type": {
         "kind": "struct",
@@ -8603,7 +8939,7 @@
       "name": "StealType",
       "docs": [
         "Steal type determines ownership transfer semantics.",
-        "LEASE_DURATION_SEC = 1800 (30 min, ≈3 duels); set via constant below."
+        "LEASE_DURATION_SEC = 1800 (30 min, \u22483 duels); set via constant below."
       ],
       "type": {
         "kind": "enum",
@@ -8626,7 +8962,7 @@
     {
       "name": "ZkProofRecord",
       "docs": [
-        "ZK proof record — created on first successful verify, prevents replay.",
+        "ZK proof record \u2014 created on first successful verify, prevents replay.",
         "",
         "PDA seeds: [\"zk_proof\", duel_id_le, round_le, signer_pubkey]"
       ],
