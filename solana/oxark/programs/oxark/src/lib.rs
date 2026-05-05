@@ -693,8 +693,10 @@ pub mod oxark {
     pub fn init_game_world(
         ctx: Context<InitGameWorld>,
         game_start_timestamp: i64,
+        ops_treasury: Pubkey,
+        prize_pool: Pubkey,
     ) -> Result<()> {
-        instructions::init_game_world::handle_init_game_world(ctx, game_start_timestamp)
+        instructions::init_game_world::handle_init_game_world(ctx, game_start_timestamp, ops_treasury, prize_pool)
     }
 
     /// Register on the Season 1 waitlist.
@@ -744,5 +746,48 @@ pub mod oxark {
         loser_field: [u8; 5],
     ) -> Result<()> {
         instructions::claim_battle_loot::handle_claim_battle_loot(ctx, duel_id, loser_pubkey, loser_field)
+    }
+
+    // ── Phase 20-B: Shop ──────────────────────────────────────────────────────
+
+    /// Purchase a card pack (Standard: 5 cards / Premium: 3 cards + Uncommon guarantee).
+    ///
+    /// Transfers SOL 50/50 to ops_treasury and prize_pool.
+    /// Uses SlotHashes sysvar for on-chain verifiable randomness.
+    /// Drop rates are admin-adjustable via update_game_params.
+    pub fn buy_pack(ctx: Context<BuyPack>, pack_type: u8) -> Result<()> {
+        instructions::buy_pack::handle_buy_pack(ctx, pack_type)
+    }
+
+    /// Admin-only: adjust shop drop rates and phase threshold.
+    ///
+    /// All rate params are in ppm (parts per million out of 1_000_000).
+    /// Pass `None` for any param to leave it unchanged.
+    /// Legendary rates are validated ≤ 100_000 (10%).
+    pub fn update_game_params(
+        ctx: Context<UpdateGameParams>,
+        legendary_rate_phase1: Option<u32>,
+        legendary_rate_phase2: Option<u32>,
+        rare_rate_phase1:      Option<u32>,
+        rare_rate_phase2:      Option<u32>,
+        uncommon_rate:         Option<u32>,
+        threshold_seconds:     Option<u64>,
+    ) -> Result<()> {
+        instructions::update_game_params::handle_update_game_params(
+            ctx, legendary_rate_phase1, legendary_rate_phase2,
+            rare_rate_phase1, rare_rate_phase2, uncommon_rate, threshold_seconds,
+        )
+    }
+
+    /// Admin-only: reallocate GameWorld PDA to Phase 20-B size and initialize shop fields.
+    ///
+    /// Must be called once after program upgrade from a pre-Phase-20-B deployment.
+    /// Sets ops_treasury, prize_pool, and all drop rate defaults.
+    pub fn migrate_shop_fields(
+        ctx: Context<MigrateShopFields>,
+        ops_treasury: Pubkey,
+        prize_pool: Pubkey,
+    ) -> Result<()> {
+        instructions::migrate_shop_fields::handle_migrate_shop_fields(ctx, ops_treasury, prize_pool)
     }
 }

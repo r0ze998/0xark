@@ -1086,12 +1086,25 @@ pub struct GameWorld {
     pub tier4_total_vault:        u64,
     pub tier5_total_vault:        u64,
     pub bump:                     u8,
+    // ── Phase 20-B: Shop config (admin adjustable) ──────────────────────────
+    pub ops_treasury:                   Pubkey,
+    pub prize_pool:                     Pubkey,
+    /// Seconds after game_start at which Phase 2 drop rates activate (default 7 days).
+    pub shop_phase_threshold_seconds:   u64,
+    /// Drop rates in ppm (parts per million, out of 1_000_000). u32 required for uncommon (180000).
+    pub legendary_drop_rate_phase1:     u32,  // default 0
+    pub legendary_drop_rate_phase2:     u32,  // default 15000 (1.5%)
+    pub rare_drop_rate_phase1:          u32,  // default 20000 (2%)
+    pub rare_drop_rate_phase2:          u32,  // default 25000 (2.5%)
+    pub uncommon_drop_rate:             u32,  // default 180000 (18%)
 }
 
 impl GameWorld {
     pub const SEED: &'static [u8] = b"game_world";
-    // 8 disc + 8+8+8+4+8+8+6+1+1+8+8+8+8+1
-    pub const SIZE: usize = 8 + 8 + 8 + 8 + 4 + 8 + 8 + 6 + 1 + 1 + 8 + 8 + 8 + 8 + 1;
+    // Original: 8 disc + 8+8+8+4+8+8+6+1+1+8+8+8+8+1 = 93
+    // Phase 20-B additions: +32+32+8+4+4+4+4+4 = +92 → total 185
+    pub const SIZE: usize = 8 + 8 + 8 + 8 + 4 + 8 + 8 + 6 + 1 + 1 + 8 + 8 + 8 + 8 + 1
+        + 32 + 32 + 8 + 4 + 4 + 4 + 4 + 4;
 
     pub const LEGENDARY_MAX_CLAIMANTS: u8 = 10;
     pub const DEPOSIT_LAMPORTS: u64 = 500_000_000; // 0.5 SOL
@@ -1099,6 +1112,14 @@ impl GameWorld {
     pub const OPS_REVENUE_BPS: u64 = 1500;         // 15%
     pub const SEASON_DURATION_SECS: i64 = 14 * 24 * 3600;
     pub const WAITLIST_WINDOW_SECS: i64 = 14 * 24 * 3600;
+
+    // Shop defaults
+    pub const DEFAULT_SHOP_PHASE_THRESHOLD: u64 = 7 * 24 * 3600; // 7 days
+    pub const DEFAULT_LEGENDARY_RATE_PHASE1: u32 = 0;
+    pub const DEFAULT_LEGENDARY_RATE_PHASE2: u32 = 15_000;  // 1.5%
+    pub const DEFAULT_RARE_RATE_PHASE1: u32 = 20_000;       // 2.0%
+    pub const DEFAULT_RARE_RATE_PHASE2: u32 = 25_000;       // 2.5%
+    pub const DEFAULT_UNCOMMON_RATE: u32 = 180_000;         // 18.0%
 
     pub fn is_waitlist_open(&self, now: i64) -> bool {
         self.game_status == 0 && now < self.waitlist_close_timestamp
@@ -1108,22 +1129,50 @@ impl GameWorld {
 impl Default for GameWorld {
     fn default() -> Self {
         Self {
-            start_timestamp:          0,
-            end_timestamp:            0,
-            waitlist_close_timestamp: 0,
-            total_participants:       0,
-            total_prize_pool:         0,
-            total_ops_revenue:        0,
-            legendary_acquired_count: [0u8; 6],
-            winner_60_count:          0,
-            game_status:              0,
-            tier2_total_vault:        0,
-            tier3_total_vault:        0,
-            tier4_total_vault:        0,
-            tier5_total_vault:        0,
-            bump:                     0,
+            start_timestamp:              0,
+            end_timestamp:                0,
+            waitlist_close_timestamp:     0,
+            total_participants:           0,
+            total_prize_pool:             0,
+            total_ops_revenue:            0,
+            legendary_acquired_count:     [0u8; 6],
+            winner_60_count:              0,
+            game_status:                  0,
+            tier2_total_vault:            0,
+            tier3_total_vault:            0,
+            tier4_total_vault:            0,
+            tier5_total_vault:            0,
+            bump:                         0,
+            ops_treasury:                 Pubkey::default(),
+            prize_pool:                   Pubkey::default(),
+            shop_phase_threshold_seconds: GameWorld::DEFAULT_SHOP_PHASE_THRESHOLD,
+            legendary_drop_rate_phase1:   GameWorld::DEFAULT_LEGENDARY_RATE_PHASE1,
+            legendary_drop_rate_phase2:   GameWorld::DEFAULT_LEGENDARY_RATE_PHASE2,
+            rare_drop_rate_phase1:        GameWorld::DEFAULT_RARE_RATE_PHASE1,
+            rare_drop_rate_phase2:        GameWorld::DEFAULT_RARE_RATE_PHASE2,
+            uncommon_drop_rate:           GameWorld::DEFAULT_UNCOMMON_RATE,
         }
     }
+}
+
+// ── Phase 20-B: Shop Events ──────────────────────────────────────────────────
+
+#[event]
+pub struct PackOpenedEvent {
+    pub buyer:     Pubkey,
+    pub pack_type: u8,
+    pub card_ids:  Vec<u8>,
+    pub slot:      u64,
+}
+
+#[event]
+pub struct GameParamsUpdatedEvent {
+    pub legendary_rate_phase1: u32,
+    pub legendary_rate_phase2: u32,
+    pub rare_rate_phase1:      u32,
+    pub rare_rate_phase2:      u32,
+    pub uncommon_rate:         u32,
+    pub threshold_seconds:     u64,
 }
 
 /// Emitted when a player acquires a Legendary card (realtime judgment).

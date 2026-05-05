@@ -37,6 +37,8 @@ pub struct InitGameWorld<'info> {
 pub fn handle_init_game_world(
     ctx: Context<InitGameWorld>,
     game_start_timestamp: i64,
+    ops_treasury: Pubkey,
+    prize_pool: Pubkey,
 ) -> Result<()> {
     let world = &mut ctx.accounts.game_world;
     let bump  = ctx.bumps.game_world;
@@ -55,13 +57,24 @@ pub fn handle_init_game_world(
     world.tier4_total_vault        = 0;
     world.tier5_total_vault        = 0;
     world.bump                     = bump;
+    // Phase 20-B shop defaults
+    world.ops_treasury                   = ops_treasury;
+    world.prize_pool                     = prize_pool;
+    world.shop_phase_threshold_seconds   = GameWorld::DEFAULT_SHOP_PHASE_THRESHOLD;
+    world.legendary_drop_rate_phase1     = GameWorld::DEFAULT_LEGENDARY_RATE_PHASE1;
+    world.legendary_drop_rate_phase2     = GameWorld::DEFAULT_LEGENDARY_RATE_PHASE2;
+    world.rare_drop_rate_phase1          = GameWorld::DEFAULT_RARE_RATE_PHASE1;
+    world.rare_drop_rate_phase2          = GameWorld::DEFAULT_RARE_RATE_PHASE2;
+    world.uncommon_drop_rate             = GameWorld::DEFAULT_UNCOMMON_RATE;
 
     msg!(
-        "InitGameWorld: start={} waitlist_close={} end={} bump={}",
+        "InitGameWorld: start={} waitlist_close={} end={} bump={} ops={} pool={}",
         world.start_timestamp,
         world.waitlist_close_timestamp,
         world.end_timestamp,
         bump,
+        ops_treasury,
+        prize_pool,
     );
     Ok(())
 }

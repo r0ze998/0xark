@@ -1794,6 +1794,96 @@ async function checkLegendaryV2() {
   ], data);
 }
 
+// ── Phase 20-B: Shop instructions ────────────────────────────────────────────
+
+const OPS_TREASURY_PK  = new solanaWeb3.PublicKey('GN3aBaUFPpejXBy2u4SgXuwQkkqRFauqAfXNsXhTPz4f');
+const PRIZE_POOL_PK    = new solanaWeb3.PublicKey('C8ui4h9tuYiU55VrMohAoFwjsm5RxKPpmQizX9eAAgMa');
+
+async function buyPack(packType) {
+  const buyer         = window.solana.publicKey;
+  const [playerStatePDA] = findPlayerStatePDA(buyer);
+  const [gameWorldPDA]   = findGameWorldPDA();
+
+  // disc(8) + pack_type(1) = 9 bytes
+  const d    = await disc('buy_pack');
+  const data = new Uint8Array(9);
+  let off = writeBytes(data, 0, d);
+  writeU8(data, off, packType & 0xff);
+
+  const sig = await buildAndSend([
+    { pubkey: buyer,            isSigner: true,  isWritable: true  },
+    { pubkey: playerStatePDA,   isSigner: false, isWritable: true  },
+    { pubkey: gameWorldPDA,     isSigner: false, isWritable: false },
+    { pubkey: OPS_TREASURY_PK,  isSigner: false, isWritable: true  },
+    { pubkey: PRIZE_POOL_PK,    isSigner: false, isWritable: true  },
+    { pubkey: SLOT_HASHES_PUBKEY, isSigner: false, isWritable: false },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+
+  const cardIds = await _getPackCardIds(sig);
+  return { signature: sig, cardIds };
+}
+
+async function _getPackCardIds(signature) {
+  try {
+    const conn = getConnection();
+    const tx   = await conn.getTransaction(signature, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    });
+    if (!tx?.meta?.logMessages) return [];
+    // Anchor emits: "Program log: Instruction: BuyPack" then event data
+    // Parse msg "buy_pack: buyer=... cards=[id1, id2, ...]"
+    for (const line of tx.meta.logMessages) {
+      const m = line.match(/buy_pack:.*cards=\[([^\]]+)\]/);
+      if (m) {
+        return m[1].split(',').map(s => parseInt(s.trim(), 10)).filter(n => n > 0);
+      }
+    }
+  } catch (_) {}
+  return [];
+}
+
+async function updateShopParams({
+  legendaryRatePhase1 = null,
+  legendaryRatePhase2 = null,
+  rareRatePhase1      = null,
+  rareRatePhase2      = null,
+  uncommonRate        = null,
+  thresholdSeconds    = null,
+} = {}) {
+  const [gameWorldPDA] = findGameWorldPDA();
+  const admin          = window.solana.publicKey;
+
+  // Each Option<u32> = 1 (present) + 4 = 5 bytes, or 1 byte (None).
+  // Each Option<u64> = 1 + 8 = 9 bytes, or 1 byte.
+  function writeOptionU32(buf, off, val) {
+    if (val === null || val === undefined) { buf[off] = 0; return off + 1; }
+    buf[off] = 1; off++;
+    writeU32LE(buf, off, val >>> 0); return off + 4;
+  }
+  function writeOptionU64(buf, off, val) {
+    if (val === null || val === undefined) { buf[off] = 0; return off + 1; }
+    buf[off] = 1; off++;
+    writeU64LE(buf, off, val); return off + 8;
+  }
+
+  const maxSize = 8 + 5 + 5 + 5 + 5 + 5 + 9; // disc + 5×Option<u32> + Option<u64>
+  const data    = new Uint8Array(maxSize);
+  let off = writeBytes(data, 0, await disc('update_game_params'));
+  off = writeOptionU32(data, off, legendaryRatePhase1);
+  off = writeOptionU32(data, off, legendaryRatePhase2);
+  off = writeOptionU32(data, off, rareRatePhase1);
+  off = writeOptionU32(data, off, rareRatePhase2);
+  off = writeOptionU32(data, off, uncommonRate);
+  off = writeOptionU64(data, off, thresholdSeconds);
+
+  return buildAndSend([
+    { pubkey: admin,        isSigner: true,  isWritable: true  },
+    { pubkey: gameWorldPDA, isSigner: false, isWritable: true  },
+  ], data.slice(0, off));
+}
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -1855,6 +1945,9 @@ window.oxarkOnchain = {
   // Phase 19 — claim_battle_loot
   claimBattleLoot,
   findDuelLootRecordPDA,
+  // Phase 20-B — shop
+  buyPack,
+  updateShopParams,
   // Helpers
   computeCommitHash,
   generateSalt,

@@ -88,3 +88,10 @@ pub use init_game_world::*;
 // Phase 19
 pub mod claim_battle_loot;
 pub use claim_battle_loot::*;
+// Phase 20-B: Shop
+pub mod buy_pack;
+pub mod update_game_params;
+pub mod migrate_shop_fields;
+pub use buy_pack::*;
+pub use update_game_params::*;
+pub use migrate_shop_fields::*;
