@@ -1561,7 +1561,15 @@ async function registerCard(cardId) {
 async function checkPlayerStateExists(playerPubkey) {
   const [pda] = findPlayerStatePDA(playerPubkey);
   const info  = await getConnection().getAccountInfo(pda);
-  return info !== null;
+  if (!info) return false;
+  // Account may exist but be in reset state (deposit_amount=0 = unregistered).
+  // Treat deposit=0 as "not registered" so the register screen shows.
+  const d = info.data;
+  const queueNone  = d.length > 169 && d[169] === 0;
+  const depositOff = queueNone ? 178 : 210;
+  if (d.length < depositOff + 8) return false;
+  const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
+  return Number(dv.getBigUint64(depositOff, true)) > 0;
 }
 
 // ─── register_waitlist ────────────────────────────────────────────────────
@@ -1983,14 +1991,18 @@ async function getPlayerState(playerPubkey) {
   const info = await conn.getAccountInfo(pda);
   if (!info) return null;
   const d = info.data;
-  // vault_bitmap: 8 bytes at offset 170 (bit i of byte b = card b*8+i+1)
-  // deposit_amount: u64 LE at offset 178
+  // current_queue (Option<Pubkey>) at offset 169:
+  //   None (0x00) → vault_bitmap@170, deposit@178
+  //   Some (0x01) → vault_bitmap@202, deposit@210
+  const queueNone  = d[169] === 0;
+  const vaultOff   = queueNone ? 170 : 202;
+  const depositOff = queueNone ? 178 : 210;
   const vault = [];
   for (let b = 0; b < 8; b++)
     for (let bit = 0; bit < 8; bit++)
-      if ((d[170 + b] >> bit) & 1) vault.push(b * 8 + bit + 1);
+      if ((d[vaultOff + b] >> bit) & 1) vault.push(b * 8 + bit + 1);
   const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
-  const deposit = Number(dv.getBigUint64(178, true));
+  const deposit = Number(dv.getBigUint64(depositOff, true));
   return { vault, vault_count: vault.length, deposit_amount: deposit };
 }
 
