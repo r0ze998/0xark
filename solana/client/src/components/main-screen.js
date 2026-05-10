@@ -26,6 +26,14 @@ export function mount(container, detail = {}) {
     document.dispatchEvent(new CustomEvent('nav:wallet-required'));
     return;
   }
+
+  const mode = detail.mode ?? 'vault';
+
+  if (mode === 'battle') {
+    _mountBattle(container, detail);
+    return;
+  }
+
   injectStyle();
   injectCardCSS();
   injectLegendaryProgressCSS();
@@ -100,7 +108,8 @@ function buildHTML({ vault, pubkey, perso }) {
 
   <!-- Top bar -->
   <header class="ms-topbar">
-    <div class="ms-brand">
+    <div class="ms-brand flex-row gap-8">
+      <button class="ms-back-btn" id="ms-home-btn">← Home</button>
       <span class="ms-brand-name">0xARK</span>
       <span class="chip ms-tagline">CARD BATTLE ON SOLANA</span>
     </div>
@@ -208,6 +217,11 @@ function buildHTML({ vault, pubkey, perso }) {
 
 /* ── Events ─────────────────────────────────────────────────────────── */
 function bindEvents(container) {
+  // Back to home
+  container.querySelector('#ms-home-btn')?.addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('nav:home'));
+  });
+
   // Wallet connect
   container.querySelector('#ms-wallet').addEventListener('click', async () => {
     if (!window.oxarkWallet) {
@@ -377,6 +391,35 @@ function _showWalletError(container, msg) {
   setTimeout(() => el.remove(), 4000);
 }
 
+/* ── Battle lobby (mode=battle) ─────────────────────────────────────── */
+function _mountBattle(container, detail) {
+  injectStyle();
+
+  const pubkey = detail.pubkey ?? getState().playerPubkey ?? '';
+  const truncPub = pubkey.length >= 8 ? `${pubkey.slice(0,4)}…${pubkey.slice(-4)}` : (pubkey || '—');
+
+  container.innerHTML = `
+<div class="ms-battle-root">
+  <button class="ms-battle-back" id="ms-battle-back">← Home</button>
+  <div class="ms-battle-title">BATTLE</div>
+  <div class="ms-battle-sub">Find a duel · Win cards · Earn SOL</div>
+  <button class="ms-battle-start" id="ms-start">▶ START MATCHMAKING</button>
+  <div class="ms-battle-fee">Entry fee: <span>0.001 SOL</span></div>
+  <div class="ms-battle-info label-dim" id="ms-match-info">
+    WIN CARDS · EARN SOL · UNLOCK LEGENDARIES
+  </div>
+  <div style="position:absolute;bottom:12px;font-size:12px;color:#333;">${truncPub} · DEVNET</div>
+</div>`;
+
+  container.querySelector('#ms-battle-back').addEventListener('click', () => {
+    document.dispatchEvent(new CustomEvent('nav:home'));
+  });
+
+  container.querySelector('#ms-start').addEventListener('click', () => {
+    startMatchmaking(container);
+  });
+}
+
 /* ── Style ──────────────────────────────────────────────────────────── */
 function injectStyle() {
   if (document.getElementById('style-ms')) return;
@@ -525,4 +568,35 @@ const CSS = `
   font-size: 12px; gap: 0; border-top: var(--border-dim);
   background: rgba(3,6,15,0.7);
 }
+.ms-back-btn {
+  background: none; border: 1px solid #555; color: #888;
+  padding: 4px 12px; cursor: pointer; font-family: var(--font-main);
+  font-size: 16px; transition: border-color 0.2s, color 0.2s;
+}
+.ms-back-btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+.ms-battle-root {
+  width: 1024px; height: 576px; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--bg-deep); font-family: var(--font-main); color: var(--text-cream);
+  position: relative;
+}
+.ms-battle-back {
+  position: absolute; top: 16px; left: 16px;
+  background: none; border: 1px solid #555; color: #888;
+  padding: 4px 12px; cursor: pointer; font-family: var(--font-main);
+  font-size: 18px; transition: border-color 0.2s, color 0.2s;
+}
+.ms-battle-back:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+.ms-battle-title { font-size: 2.5rem; letter-spacing: 0.2em; color: var(--accent-gold); margin-bottom: 0.5rem; }
+.ms-battle-sub { color: #888; font-size: 1rem; margin-bottom: 2rem; letter-spacing: 0.05em; }
+.ms-battle-start {
+  font-family: var(--font-main); font-size: 1.8rem; letter-spacing: 0.12em;
+  padding: 1rem 3rem; background: var(--accent-gold); color: var(--bg-deep);
+  border: 2px solid #000; cursor: pointer; transition: background 0.15s, transform 0.15s;
+}
+.ms-battle-start:hover:not(:disabled) { background: #dbb630; transform: translateY(-2px); }
+.ms-battle-start:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; }
+.ms-battle-info { margin-top: 1rem; color: #666; font-size: 0.9rem; }
+.ms-battle-fee { margin-top: 2rem; color: #888; font-size: 1rem; }
+.ms-battle-fee span { color: var(--accent-gold); }
 `;

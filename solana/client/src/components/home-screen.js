@@ -7,43 +7,43 @@ function _injectCSS() {
   s.textContent = `
 .home-screen {
   font-family: 'VT323', monospace;
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 0.75rem 1rem;
   text-align: center;
   background: #0a0e1a;
   color: #e8dfc8;
 }
 .home-header h1 {
-  font-size: 4rem;
+  font-size: 3rem;
   letter-spacing: 0.2em;
   color: #c9a227;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.25rem;
 }
 .home-meta {
   color: #888;
   font-size: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: 0.5rem;
   max-width: 600px;
 }
 .home-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  max-width: 600px;
+  gap: 0.75rem;
+  max-width: 560px;
   width: 100%;
   margin: 0 auto;
 }
 .home-btn {
   background: rgba(201, 162, 39, 0.05);
   border: 2px solid #c9a227;
-  padding: 2rem;
+  padding: 0.75rem 1rem;
   cursor: pointer;
   transition: background 0.2s, transform 0.2s;
   font-family: 'VT323', monospace;
@@ -51,15 +51,15 @@ function _injectCSS() {
 }
 .home-btn:hover { background: rgba(201, 162, 39, 0.15); transform: translateY(-2px); }
 .home-btn:active { transform: translateY(0); }
-.home-btn-icon  { font-size: 3rem; margin-bottom: 0.5rem; display: block; }
+.home-btn-icon  { font-size: 2rem; margin-bottom: 0.25rem; display: block; }
 .home-btn-title {
   font-size: 1.5rem; font-weight: bold; letter-spacing: 0.1em;
   color: #c9a227; display: block;
 }
-.home-btn-subtitle { font-size: 0.9rem; color: #aaa; margin-top: 0.3rem; display: block; }
+.home-btn-subtitle { font-size: 0.9rem; color: #aaa; margin-top: 0.1rem; display: block; }
 .home-btn--dim { opacity: 0.5; border-color: #555; }
 .home-btn--dim .home-btn-title { color: #888; }
-.home-footer { margin-top: 2.5rem; color: #555; font-size: 0.9rem; }
+.home-footer { margin-top: 0.75rem; color: #555; font-size: 0.9rem; }
 `;
   document.head.appendChild(s);
 }
