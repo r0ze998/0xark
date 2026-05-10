@@ -39,10 +39,10 @@
     /* ── Reset ───────────────────────────────────────────── */
     *, *::before, *::after {
       box-sizing: border-box;
-      image-rendering: pixelated;
       margin: 0;
       padding: 0;
     }
+    img { image-rendering: auto; }
 
     html, body {
       width: 100%; height: 100%;
@@ -159,6 +159,12 @@
       <div class="load-bar-wrap"><div class="load-bar"></div></div>
     </div>
   </div>
+
+  <!-- Solana web3.js (required by onchain.js — sets window.solanaWeb3) -->
+  <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
+
+  <!-- On-chain transaction module (sets window.oxarkOnchain) -->
+  <script src="onchain.js"></script>
 
   <!-- ZK proof library (hand_commitment.circom Groth16) -->
   <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
