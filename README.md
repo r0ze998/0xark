@@ -20,8 +20,6 @@ Try it now:
 4. Receive 5 starter cards
 5. Battle, burn, evolve, claim prizes
 
-Live multiplayer server: https://oxark-multiplayer.fly.dev
-
 ---
 
 ## 🏆 Hackathon Submission
@@ -68,7 +66,7 @@ Live multiplayer server: https://oxark-multiplayer.fly.dev
 
 ### Core
 
-- **Solana** (Anchor, devnet → mainnet January 2027)
+- **Solana** (Anchor, devnet)
 - **Circom 2.x + snarkjs** (Groth16 BN254)
 - **Node.js + WebSocket** (Fly.io)
 - **Phantom wallet adapter**
@@ -257,34 +255,41 @@ Two AI features powered by Claude Haiku 4.5:
 
 ### Strategy Advisor
 
-- Recommends actions based on player's board + visible opponent info
-- Returns primaryAction + alternativeActions + reasoning (JSON)
+A non-autonomous AI advisor — the player remains in control.
+
+- AI analyzes the current battle state and recommends the next move
+- Returns `primaryAction + alternativeActions + reasoning` (JSON)
+- Player decides whether to follow the advice or play differently
+- Use case: assistance for new players, learning strategy
 - 0.003 SOL micropayment
 
 ### AI Move Delegation
 
-- AI plays autonomously through battle
-- Agent vs agent battle supported
+A fully autonomous AI agent — the AI plays for the user.
+
+- AI takes over and plays the entire battle on the player's behalf
+- Selects cards, attacks, and finishes the round without user input
+- Supports agent-vs-agent battles (two AIs fight each other)
+- Use case: hands-free play, automated battles, AI tournaments
 - 0.005 SOL micropayment
 
 ---
 
 ## 🗺 Roadmap
 
-### Devnet (current → 2026)
+### Devnet (current)
 
-- ✅ 2026-05: Hackathon submission (Colosseum Frontier)
-- ✅ 2026-05: ZK Phase 1–3 + devnet e2e
-- ✅ 2026-05: x402 Critical A + B (all closed)
-- ✅ 2026-05-04: Phase 20 complete — full game economy loop (Shop + Trade Floor + Prize Distribution)
-- 🔲 2026-06: Card art 60 pieces + Public preparation (Discord / Twitter / landing page)
-- 🔲 2026-07: Waitlist 14-day Season 1 (devnet)
-- 🔲 2026-08–12: Season 2/3 (devnet) + audit + legal
+- ✅ Hackathon submission (Colosseum Frontier 2026)
+- ✅ ZK Phase 1–3 + devnet e2e
+- ✅ x402 Critical A + B (all closed)
+- ✅ Phase 20 complete — full game economy loop (Shop + Trade Floor + Prize Distribution)
+- 🔲 Card art (60 pieces) + Public preparation
+- 🔲 Waitlist Season 1 (devnet)
+- 🔲 Continued development on devnet
 
-### Mainnet (2027+)
+### Mainnet
 
-- 2027-01: Mainnet Season 1
-- After: Continuous game expansion
+- Future migration to mainnet after sufficient testing on devnet
 
 ---
 
@@ -379,7 +384,5 @@ Built solo by r0ze under Yukikaze.
 MIT
 
 ---
-
-*Season 1 launches 2026-07 (devnet) · Mainnet 2027-01*
 
 [▶ Play now](https://r0ze998.github.io/0xark/)
