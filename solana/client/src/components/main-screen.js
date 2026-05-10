@@ -41,7 +41,8 @@ export function mount(container, detail = {}) {
 
   const s = getState();
   const vault   = detail.vault   ?? s.vault   ?? [];
-  const pubkey  = detail.pubkey  ?? s.playerPubkey ?? '';
+  const pubkey  = detail.pubkey  ?? s.playerPubkey
+    ?? window.oxarkWallet?.getPublicKey?.()?.toString() ?? '';
   const perso   = detail.personalities ?? s.personalities ?? {};
 
   setState({ vault, playerPubkey: pubkey, personalities: perso, phase: 'main' });
@@ -116,7 +117,7 @@ function buildHTML({ vault, pubkey, perso }) {
     <div class="ms-hud flex-row gap-8">
       <span class="chip">VAULT <span class="label-gold">${vaultCount}</span><span class="label-dim">/60</span></span>
       <button class="gba-btn gba-btn--ghost ms-wallet-btn" id="ms-wallet">
-        ${pubkey ? `✓ ${truncPub}` : '◆ CONNECT WALLET'}
+        ✓ ${truncPub || 'Connected'}
       </button>
     </div>
   </header>
@@ -191,7 +192,6 @@ function buildHTML({ vault, pubkey, perso }) {
 
       <!-- Matchmaking -->
       <div class="ms-matchmaking">
-        <div class="ms-match-fee">ENTRY FEE: <span class="label-gold">0.001 SOL</span></div>
         <button class="gba-btn gba-btn--primary ms-start-btn" id="ms-start">
           ▶ START BATTLE
         </button>
@@ -282,7 +282,7 @@ function bindEvents(container) {
   });
 
   // Start battle
-  container.querySelector('#ms-start').addEventListener('click', () => {
+  container.querySelector('#ms-start')?.addEventListener('click', () => {
     startMatchmaking(container);
   });
 }

@@ -1972,6 +1972,46 @@ async function fetchAllListings() {
   }).filter(l => l.active);
 }
 
+// ── Season 1 account readers (Bug 8 fix) ──────────────────────────────────
+
+async function getPlayerState(playerPubkey) {
+  const conn = getConnection();
+  const pk = typeof playerPubkey === 'string'
+    ? new solanaWeb3.PublicKey(playerPubkey)
+    : playerPubkey;
+  const [pda] = findPlayerStatePDA(pk);
+  const info = await conn.getAccountInfo(pda);
+  if (!info) return null;
+  const d = info.data;
+  // vault_bitmap: 8 bytes at offset 170 (bit i of byte b = card b*8+i+1)
+  // deposit_amount: u64 LE at offset 178
+  const vault = [];
+  for (let b = 0; b < 8; b++)
+    for (let bit = 0; bit < 8; bit++)
+      if ((d[170 + b] >> bit) & 1) vault.push(b * 8 + bit + 1);
+  const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
+  const deposit = Number(dv.getBigUint64(178, true));
+  return { vault, vault_count: vault.length, deposit_amount: deposit };
+}
+
+async function getGameWorld() {
+  const conn = getConnection();
+  const [pda] = findGameWorldPDA();
+  const info = await conn.getAccountInfo(pda);
+  if (!info) return null;
+  const d = info.data;
+  const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
+  const readI64 = off => Number(dv.getBigInt64(off, true));
+  return {
+    game_start_timestamp:         readI64(8),
+    end_timestamp:                readI64(16),
+    waitlist_close_timestamp:     readI64(24),
+    total_participants:           dv.getUint32(32, true),
+    game_status:                  d[59],
+    shop_phase_threshold_seconds: Number(dv.getBigUint64(157, true)),
+  };
+}
+
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
@@ -2046,6 +2086,9 @@ window.oxarkOnchain = {
   generateSalt,
   parseAnchorError,
   writeU16LE,
+  // Season 1 account readers
+  getPlayerState,
+  getGameWorld,
   // Account readers
   readGameAccount,
   readPlayerState,

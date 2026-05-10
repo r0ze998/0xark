@@ -9,7 +9,7 @@ import { mount as mountPrep,         unmount as unmountPrep         } from './sr
 import { mount as mountIntr,         unmount as unmountIntr         } from './src/components/interruption.js';
 import { mount as mountReveal,       unmount as unmountReveal       } from './src/components/reveal.js';
 import { mount as mountLoot,         unmount as unmountLoot         } from './src/components/loot.js';
-import { getState } from './src/state/battle-state.js';
+import { getState, setState } from './src/state/battle-state.js';
 import { PRIZE_POOL_PUBKEY, OPS_TREASURY_PUBKEY } from './src/config.js';
 
 const SCREENS = {
@@ -76,8 +76,9 @@ async function _loadPlayerState() {
     if (window.oxarkOnchain?.getGameWorld)
       _gameWorld = await window.oxarkOnchain.getGameWorld();
   } catch { /* fall through to defaults */ }
-  if (!_playerState) _playerState = { vault_count: getDemoVault().length };
+  if (!_playerState) _playerState = { vault_count: getDemoVault().length, vault: [] };
   if (!_gameWorld)   _gameWorld   = { game_start_timestamp: Math.floor(Date.now() / 1000) - 86400 };
+  setState({ vault: _playerState.vault ?? [], playerPubkey: pubkey?.toString() ?? '' });
 }
 
 async function initApp() {
