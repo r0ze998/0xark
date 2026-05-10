@@ -9,9 +9,9 @@ use crate::constants::ADMIN_PUBKEY;
 /// Sets up season timestamps and initializes all counters to zero.
 ///
 /// Timeline:
-///   waitlist_close = game_start - 14 days  (waitlist window closes)
-///   game_start                              (status → 1 via separate ix)
-///   end           = game_start + 14 days   (status → 2 via separate ix)
+///   game_start                              (pass current time to open registration now)
+///   waitlist_close = game_start + 14 days  (waitlist window closes at season end)
+///   end            = game_start + 14 days   (status → 2 via finalize ix)
 ///
 /// PDA seeds: ["game_world"]
 #[derive(Accounts)]
@@ -45,7 +45,7 @@ pub fn handle_init_game_world(
 
     world.start_timestamp          = game_start_timestamp;
     world.end_timestamp            = game_start_timestamp + GameWorld::SEASON_DURATION_SECS;
-    world.waitlist_close_timestamp = game_start_timestamp - GameWorld::WAITLIST_WINDOW_SECS;
+    world.waitlist_close_timestamp = game_start_timestamp + GameWorld::WAITLIST_WINDOW_SECS;
     world.total_participants       = 0;
     world.total_prize_pool         = 0;
     world.total_ops_revenue        = 0;

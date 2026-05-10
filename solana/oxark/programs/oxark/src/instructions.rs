@@ -92,9 +92,11 @@ pub use claim_battle_loot::*;
 pub mod buy_pack;
 pub mod update_game_params;
 pub mod migrate_shop_fields;
+pub mod set_waitlist_deadline;
 pub use buy_pack::*;
 pub use update_game_params::*;
 pub use migrate_shop_fields::*;
+pub use set_waitlist_deadline::*;
 // Phase 20-C: Trade Floor
 pub mod create_listing;
 pub mod cancel_listing;

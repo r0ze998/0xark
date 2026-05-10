@@ -779,6 +779,15 @@ pub mod oxark {
         )
     }
 
+    /// Admin-only: override waitlist_close_timestamp in-place.
+    ///
+    /// Use when the GameWorld is already on-chain but the deadline must be extended.
+    /// Pass `new_deadline = Clock::get().unix_timestamp + 14 * 24 * 3600` to open
+    /// registration for 14 more days from now.
+    pub fn set_waitlist_deadline(ctx: Context<SetWaitlistDeadline>, new_deadline: i64) -> Result<()> {
+        instructions::set_waitlist_deadline::handle_set_waitlist_deadline(ctx, new_deadline)
+    }
+
     /// Admin-only: reallocate GameWorld PDA to Phase 20-B size and initialize shop fields.
     ///
     /// Must be called once after program upgrade from a pre-Phase-20-B deployment.
