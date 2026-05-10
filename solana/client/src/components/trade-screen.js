@@ -7,11 +7,12 @@ function _injectCSS() {
   s.textContent = `
 .trade-screen {
   font-family: 'VT323', monospace;
-  min-height: 100vh;
+  height: 100%;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem;
+  padding: 0.75rem 1.5rem;
   background: #0a0e1a;
   color: #e8dfc8;
 }
@@ -21,7 +22,8 @@ function _injectCSS() {
   gap: 1rem;
   width: 100%;
   max-width: 960px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 .trade-back-btn {
   background: none;
@@ -49,11 +51,12 @@ function _injectCSS() {
 .trade-filters {
   display: flex;
   gap: 1rem;
-  margin: 0 0 1.5rem;
+  margin: 0 0 0.75rem;
   justify-content: center;
   flex-wrap: wrap;
   width: 100%;
   max-width: 960px;
+  flex-shrink: 0;
 }
 .trade-filters select {
   background: #0d1221;
@@ -157,7 +160,7 @@ function _injectCSS() {
   padding: 4rem 0;
 }
 .trade-info {
-  margin-top: 2rem;
+  margin-top: 1rem;
   color: #555;
   font-size: 0.9rem;
   text-align: center;

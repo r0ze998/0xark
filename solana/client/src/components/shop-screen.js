@@ -7,11 +7,12 @@ function _injectCSS() {
   s.textContent = `
 .shop-screen {
   font-family: 'VT323', monospace;
-  min-height: 100vh;
+  height: 100%;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem;
+  padding: 0.75rem 1.5rem;
   background: #0a0e1a;
   color: #e8dfc8;
 }
@@ -21,7 +22,8 @@ function _injectCSS() {
   gap: 1rem;
   width: 100%;
   max-width: 800px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 .shop-back-btn {
   background: none;
@@ -45,22 +47,22 @@ function _injectCSS() {
 .shop-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  gap: 1rem;
   max-width: 800px;
   width: 100%;
-  margin: 0 auto 2rem;
+  margin: 0 auto 0.5rem;
 }
 .pack-card {
   background: rgba(201, 162, 39, 0.05);
   border: 2px solid #c9a227;
-  padding: 2rem;
+  padding: 1rem 1.25rem;
   text-align: center;
   transition: background 0.2s, transform 0.15s;
 }
 .pack-card:hover { background: rgba(201, 162, 39, 0.1); transform: translateY(-2px); }
 .pack-card.pack-premium { border-color: #e8d4a0; background: rgba(216, 176, 52, 0.08); }
 .pack-card.pack-premium:hover { background: rgba(216, 176, 52, 0.15); }
-.pack-icon { font-size: 4rem; margin-bottom: 0.75rem; display: block; }
+.pack-icon { font-size: 2.5rem; margin-bottom: 0.25rem; display: block; }
 .pack-card h3 { font-size: 1.6rem; color: #c9a227; margin: 0 0 0.5rem; letter-spacing: 0.1em; }
 .pack-card.pack-premium h3 { color: #e8d4a0; }
 .pack-content { font-size: 1rem; color: #aaa; margin: 0.25rem 0; }

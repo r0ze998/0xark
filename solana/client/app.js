@@ -200,38 +200,38 @@ function _injectRegisterCSS() {
   s.textContent = `
 .reg-screen {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: 100vh; padding: 2rem; text-align: center;
+  height: 100%; padding: 0.75rem 1rem; text-align: center;
   font-family: 'VT323', monospace; background: #0a0e1a; color: #e8dfc8;
 }
-.reg-logo { font-size: 4rem; letter-spacing: 0.2em; color: #c9a227; margin-bottom: 0.5rem; }
-.reg-subtitle { color: #888; margin-bottom: 3rem; letter-spacing: 0.1em; font-size: 1.1rem; }
+.reg-logo { font-size: 2.5rem; letter-spacing: 0.2em; color: #c9a227; margin-bottom: 0.2rem; }
+.reg-subtitle { color: #888; margin-bottom: 0.5rem; letter-spacing: 0.1em; font-size: 1rem; }
 .reg-prompt {
-  max-width: 500px; width: 100%; padding: 2rem;
+  max-width: 500px; width: 100%; padding: 0.75rem 1.25rem;
   border: 2px solid #c9a227; background: rgba(201,162,39,0.05);
 }
-.reg-title { color: #c9a227; margin: 0 0 0.75rem; letter-spacing: 0.1em; font-size: 1.6rem; }
-.reg-desc { font-size: 1rem; color: #b0a890; margin-bottom: 1.25rem; }
-.reg-benefits { list-style: none; padding: 0; text-align: left; margin: 1.25rem 0; }
-.reg-benefits li { padding: 4px 0 4px 20px; position: relative; font-size: 1rem; }
+.reg-title { color: #c9a227; margin: 0 0 0.4rem; letter-spacing: 0.1em; font-size: 1.6rem; }
+.reg-desc { font-size: 1rem; color: #b0a890; margin-bottom: 0.5rem; }
+.reg-benefits { list-style: none; padding: 0; text-align: left; margin: 0.5rem 0; }
+.reg-benefits li { padding: 2px 0 2px 20px; position: relative; font-size: 0.95rem; }
 .reg-benefits li::before { content: '▸'; position: absolute; left: 0; color: #c9a227; }
 .reg-cost {
-  margin: 1.25rem 0; padding: 0.75rem 1rem; background: rgba(0,0,0,0.3);
+  margin: 0.5rem 0; padding: 0.5rem 1rem; background: rgba(0,0,0,0.3);
   border: 1px solid #4a90d9; display: flex; justify-content: space-between; align-items: center;
 }
 .reg-cost-label { color: #888; font-size: 1rem; }
-.reg-cost-amount { color: #c9a227; font-size: 1.5rem; font-weight: bold; }
+.reg-cost-amount { color: #c9a227; font-size: 1.4rem; font-weight: bold; }
 .reg-primary-btn {
   font-family: 'VT323', monospace; font-size: 1.4rem; letter-spacing: 0.1em;
-  padding: 1rem 2.5rem; background: #c9a227; color: #0a0e1a;
-  border: 2px solid #000; cursor: pointer; width: 100%; margin: 1rem 0;
+  padding: 0.6rem 2.5rem; background: #c9a227; color: #0a0e1a;
+  border: 2px solid #000; cursor: pointer; width: 100%; margin: 0.4rem 0;
   transition: background 0.15s, transform 0.15s;
 }
 .reg-primary-btn:hover:not(:disabled) { background: #d8b034; transform: translateY(-2px); }
 .reg-primary-btn:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; }
-.reg-error { margin-top: 0.5rem; color: #e55; font-size: 0.95rem; }
-.reg-note { font-size: 0.85rem; color: #888; margin-top: 0.5rem; }
+.reg-error { margin-top: 0.3rem; color: #e55; font-size: 0.95rem; }
+.reg-note { font-size: 0.85rem; color: #888; margin-top: 0.3rem; }
 .reg-wallet-info {
-  margin-top: 2rem; display: flex; align-items: center; gap: 1rem;
+  margin-top: 0.5rem; display: flex; align-items: center; gap: 1rem;
   color: #888; font-size: 0.9rem;
 }
 .reg-addr { color: #c9a227; }
@@ -350,26 +350,26 @@ function _injectWalletCSS() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  padding: 2rem;
+  height: 100%;
+  padding: 1rem;
   text-align: center;
   font-family: 'VT323', monospace;
   background: #0a0e1a;
   color: #e8dfc8;
 }
 .wg-logo {
-  font-size: 4rem;
+  font-size: 3rem;
   letter-spacing: 0.2em;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
   color: #c9a227;
 }
 .wg-subtitle {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   color: #888;
-  margin-bottom: 3rem;
+  margin-bottom: 1rem;
   letter-spacing: 0.1em;
 }
-.wg-connect-block { margin: 2rem 0; }
+.wg-connect-block { margin: 1rem 0; }
 .wg-prompt {
   font-size: 1.2rem;
   margin-bottom: 1rem;
@@ -378,7 +378,7 @@ function _injectWalletCSS() {
   font-family: 'VT323', monospace;
   font-size: 1.4rem;
   letter-spacing: 0.1em;
-  padding: 1rem 2.5rem;
+  padding: 0.75rem 2.5rem;
   background: #c9a227;
   color: #0a0e1a;
   border: 2px solid #000;
@@ -391,12 +391,12 @@ function _injectWalletCSS() {
 }
 .wg-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .wg-error {
-  margin-top: 0.75rem;
+  margin-top: 0.5rem;
   color: #e55;
   font-size: 1rem;
 }
 .wg-help {
-  margin-top: 3rem;
+  margin-top: 1.5rem;
   color: #888;
 }
 .wg-help a {
@@ -404,8 +404,8 @@ function _injectWalletCSS() {
   text-decoration: underline;
 }
 .wg-network {
-  margin-top: 4rem;
-  padding: 1rem;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
   background: rgba(74,144,217,0.1);
   border: 1px solid #4a90d9;
   color: #4a90d9;
