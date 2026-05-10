@@ -117,6 +117,10 @@ export function CardFrameHTML({
   const name    = CARD_NAMES[id] ?? `Card #${id}`;
   const hp      = hpCurrent ?? card.hp;
 
+  const artHtml = card.imageUrl
+    ? `<img src="${card.imageUrl}" alt="${name}" class="card-art-img" loading="lazy" />`
+    : `<div class="card-art-placeholder">${emoji}</div>`;
+
   const classes = [
     'card-frame',
     `rarity-${rKey}`,
@@ -132,7 +136,7 @@ export function CardFrameHTML({
     <div class="rarity-bar" style="background:var(--rc);"></div>
     <div class="name-banner">${name}</div>
     <div class="art-window">
-      <div class="card-art-placeholder">${emoji}</div>
+      ${artHtml}
     </div>
     <div class="stats-panel">
       <span class="stat-badge"><span class="stat-label">BP</span><span class="stat-value">${card.bp}</span></span>
@@ -289,7 +293,9 @@ const CARD_CSS = `
   font-family: sans-serif;
 }
 .card-frame .card-art-img {
-  width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center top;
+  image-rendering: auto;
 }
 .card-frame .stats-panel {
   position: absolute; bottom: 11%; left: 15%; right: 15%; height: 8%;

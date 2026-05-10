@@ -187,6 +187,7 @@ export function getCard(id) {
     ability:     CARD_ABILITIES[id] ?? null,
     mergeOnly:   MERGE_ONLY_IDS.has(id),
     mergeRecipe: MERGE_RECIPES[id] ?? null,
+    imageUrl:    CARD_ART_URLS[id] ?? null,
   };
 }
 
@@ -194,6 +195,16 @@ export function getCard(id) {
 export const LEGENDARY_IDS = CARD_DATA
   .filter(row => row[7] === true)
   .map(row => row[0]);
+
+// Phase 20-D: Legendary character art URLs (faction-keyed, one per clan)
+export const CARD_ART_URLS = {
+  10: 'public/img/cards/legendary/knight.jpg',
+  20: 'public/img/cards/legendary/merchant.jpg',
+  30: 'public/img/cards/legendary/pirate.jpg',
+  40: 'public/img/cards/legendary/scholar.jpg',
+  50: 'public/img/cards/legendary/monk.jpg',
+  60: 'public/img/cards/legendary/engineer.jpg',
+};
 
 // All 60 card IDs
 export const ALL_CARD_IDS = CARD_DATA.map(row => row[0]);
