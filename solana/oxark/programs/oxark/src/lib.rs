@@ -788,6 +788,11 @@ pub mod oxark {
         instructions::set_waitlist_deadline::handle_set_waitlist_deadline(ctx, new_deadline)
     }
 
+    /// Admin-only: reset a player's season state for devnet re-registration testing.
+    pub fn reset_player_state(ctx: Context<ResetPlayerState>) -> Result<()> {
+        instructions::reset_player_state::handle_reset_player_state(ctx)
+    }
+
     /// Admin-only: reallocate GameWorld PDA to Phase 20-B size and initialize shop fields.
     ///
     /// Must be called once after program upgrade from a pre-Phase-20-B deployment.
