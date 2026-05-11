@@ -2,9 +2,28 @@
 
 **On-chain TCG card battle on Solana** — with ZK proofs, x402 micropayments, and AI agents.
 
+**🔗 [Live Demo → r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/)**
+
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-r0ze998.github.io%2F0xark-d8b034)](https://r0ze998.github.io/0xark/)
 [![Devnet](https://img.shields.io/badge/Solana-Devnet-9370db)](https://explorer.solana.com/?cluster=devnet)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
+
+---
+
+## 📋 Implementation Status
+
+Honest snapshot as of hackathon submission (2026-05-11):
+
+| Feature | Status | Notes |
+|---|---|---|
+| ZK proof — on-chain `verify_zk_proof` | ✅ | Groth16 BN254, `alt_bn128_pairing` precompile; devnet TX confirmed |
+| ZK proof — client-side proof generation | ⚠️ | Circuit + zkey complete; WASM artifacts not bundled in this demo — SHA-256 commitment used instead |
+| x402 micropayments (13 endpoints) | ✅ | Redis replay protection, Coinbase spec compliant, fully tested |
+| AI strategy advisor | ✅ | Claude Haiku 4.5; returns ranked move recommendations (JSON) |
+| AI autonomous move delegation | ⚠️ | Phase 1: AI selects moves, player wallet signs. Phase 2 (autonomous tx signing) is planned, not yet implemented |
+| NFT mint / burn / evolve (SPL) | ✅ | Standard SPL tokens via anchor-spl; on-chain permanent |
+| Multiplayer WebSocket sync | ✅ | Matchmaking + duel relay, deployed on Fly.io |
+| MagicBlock Ephemeral Rollups | 🚧 | Architecture planned; not yet integrated |
 
 ---
 
@@ -40,11 +59,23 @@ Try it now:
 ## ⚡ 30-second overview
 
 🎴 **60 NFT cards** for a 14-day on-chain TCG
-🔐 **ZK proofs** for hand secrecy and provable fair-play (Solana-native implementation)
+🔐 **ZK proofs** for hand secrecy and provable fair-play (on-chain Groth16 BN254 verification)
 💰 **x402 micropayments** (HTTP 402 standard) — peek/draw from 0.005 SOL
 🤖 **AI agents** (Claude Haiku 4.5) for strategy advice and autonomous battle
 🔥 **Burn / Evolve / Imprint** — NFTs change permanently on-chain
 🏪 **Complete game economy**: Shop pack purchases + Trade Floor marketplace + Tier prize distribution
+
+---
+
+## 🌐 Why Solana?
+
+Two core features of 0xARK are Solana-native requirements.
+
+**x402 micropayments** work because SOL transfers settle in ~400ms with sub-cent fees. The per-action pricing model (0.0001–0.01 SOL per endpoint call) is economically unviable on any chain with $1+ gas costs. On Solana it's a real mechanic, not a gimmick.
+
+**Ephemeral Rollups** (MagicBlock, planned) will let battle state update in real time without committing every card play on-chain, while the final result settles atomically to the Anchor program. This collapses the usual tradeoff between on-chain trust and playable latency — the fight happens off-chain at game speed, the outcome is on-chain truth.
+
+Together, these make a genuinely playable, economically-grounded on-chain TCG feasible today.
 
 ---
 
@@ -59,6 +90,8 @@ Try it now:
 | Shop params set (threshold=0) | `3SYqk9HV…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
 
 **Anchor program**: `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` (devnet)
+
+**Upgrade Authority**: Held by r0ze during active devnet development. Planned to be renounced on mainnet deployment.
 
 ---
 
@@ -213,11 +246,11 @@ Player-to-player marketplace with 0% platform fee:
 - `ZkProofRecord` PDA prevents replay
 - pubkey + round consistency verified on-chain
 
-### Battle Flow (Active)
+### Battle Flow
 
-- Preparation: client-side proof generation (~250ms)
-- Reveal: on-chain verification via server
-- Invalid reveals rejected on ZK failure
+**Phase 1 (current — hackathon demo):** SHA-256 commitment used client-side. On-chain `verify_zk_proof` instruction is fully deployed and tested (see TX hash above); WASM proof generation artifacts are not bundled in the current frontend build.
+
+**Phase 2 (post-hackathon):** Full client-side Groth16 proof generation re-enabled once WASM/zkey files are bundled. Invalid reveals rejected on ZK failure end-to-end.
 
 Details: `docs/ZK_REVIEW_VERIFICATION.md`
 
@@ -253,7 +286,7 @@ Details: docs/X402_INTEGRATION_LOG.md
 
 Two AI features powered by Claude Haiku 4.5:
 
-### Strategy Advisor
+### Strategy Advisor (Phase 1 — implemented)
 
 A non-autonomous AI advisor — the player remains in control.
 
@@ -263,15 +296,17 @@ A non-autonomous AI advisor — the player remains in control.
 - Use case: assistance for new players, learning strategy
 - 0.003 SOL micropayment
 
-### AI Move Delegation
+### AI Move Delegation (Phase 1 implemented / Phase 2 planned)
 
-A fully autonomous AI agent — the AI plays for the user.
+**Phase 1 (current):** A fully autonomous AI agent — the AI plays for the user.
 
 - AI takes over and plays the entire battle on the player's behalf
 - Selects cards, attacks, and finishes the round without user input
 - Supports agent-vs-agent battles (two AIs fight each other)
 - Use case: hands-free play, automated battles, AI tournaments
 - 0.005 SOL micropayment
+
+**Phase 2 (planned):** Autonomous on-chain transaction signing — the AI agent holds a delegated session key and submits Solana transactions without prompting the user wallet. Not yet implemented.
 
 ---
 
@@ -371,11 +406,21 @@ npm test
 
 ## 👤 About
 
-Built solo by r0ze under Yukikaze.
+Built solo by **r0ze** under **Yukikaze** — indie on-chain game developer.
 
 - Twitter: [@r0ze_](https://twitter.com/r0ze_)
 - GitHub: [@r0ze998](https://github.com/r0ze998)
 - Other projects: ConsensusOS, ZeroGarden
+
+### Post-Hackathon 30-Day Plan
+
+1. **Playable MVP** — close remaining battle flow gaps; full end-to-end 2-player game on devnet
+2. **ZK Phase 2** — bundle WASM/zkey artifacts, re-enable client-side Groth16 proof generation
+3. **Card art** — commission 60 card illustrations
+4. **Community** — open Discord + Twitter launch thread
+5. **On-chain game analysis** — Substack publication launching May 2026; writing about design decisions, ZK tradeoffs, and the economics of on-chain TCGs
+
+The goal is a real Season 1 on devnet with 50+ players within 60 days of the hackathon.
 
 ---
 
