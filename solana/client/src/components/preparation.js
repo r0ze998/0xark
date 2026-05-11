@@ -261,7 +261,10 @@ async function onConfirm(container) {
       const round      = s.round ?? 1;
       const pubkeyBytes = window.oxarkWallet?.getPublicKey?.()?.toBytes?.() ?? null;
 
+      const _zkT0 = performance.now();
       const zkResult = await window.zkCardCommit.proveHandCommit(cardIds, salt, round, pubkeyBytes);
+      const _zkMs = Math.round(performance.now() - _zkT0);
+      console.log(`[ZK] proveHandCommit done in ${_zkMs}ms — ok=${zkResult.ok}${zkResult.error ? ' err=' + zkResult.error : ''}`);
 
       if (zkResult.ok) {
         zkProofBytes       = window.zkCardCommit.proofToBytes(zkResult.proof);
