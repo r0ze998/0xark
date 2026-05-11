@@ -16,14 +16,14 @@ Honest snapshot as of hackathon submission (2026-05-11):
 
 | Feature | Status | Notes |
 |---|---|---|
-| ZK proof — on-chain `verify_zk_proof` | ✅ | Groth16 BN254, `alt_bn128_pairing` precompile; devnet TX confirmed |
-| ZK proof — client-side proof generation | ⚠️ | Circuit + zkey complete; WASM artifacts not bundled in this demo — SHA-256 commitment used instead |
-| x402 micropayments (13 endpoints) | ✅ | Redis replay protection, Coinbase spec compliant, fully tested |
-| AI strategy advisor | ✅ | Claude Haiku 4.5; returns ranked move recommendations (JSON) |
-| AI autonomous move delegation | ⚠️ | Phase 1: AI selects moves, player wallet signs. Phase 2 (autonomous tx signing) is planned, not yet implemented |
-| NFT mint / burn / evolve (SPL) | ✅ | Standard SPL tokens via anchor-spl; on-chain permanent |
-| Multiplayer WebSocket sync | ✅ | Matchmaking + duel relay, deployed on Fly.io |
-| MagicBlock Ephemeral Rollups | 🚧 | Architecture planned; not yet integrated |
+| ZK proof — on-chain `verify_zk_proof` | ⚠️ | Instruction deployed + historic devnet TX confirmed (`5WoVAmNC…`). Not called in current demo: `reveal.js:28` gates on `zkProofBytes !== null`, which is null while `OXARK_ALLOW_NO_ZK=true` |
+| ZK proof — SHA-256 commitment (client) | ⚠️ | SHA-256 commitment generated every battle (`preparation.js:245`). Groth16 circuit + zkey complete; WASM artifacts not bundled — proof skipped for this demo |
+| x402 micropayments — server | ⚠️ | 13 server endpoints fully implemented, Redis replay protection, Coinbase spec compliant. Client module (`02-x402.js`) not loaded in the battle UI — `window.x402` is undefined in current demo |
+| AI strategy advisor | ⚠️ | Server endpoint `/x402/ai-strategy-advice` implemented (Claude Haiku 4.5). Not called from active battle screens in current demo |
+| AI autonomous move delegation | 🚧 | Server endpoint `/x402/ai-move` implemented. Client integration and autonomous TX signing not yet implemented |
+| NFT mint / burn / evolve (SPL) | ✅ | `register_waitlist` (`app.js:169`) and `buy_pack` (`shop-screen.js:306`) call on-chain SPL mint CPI. `burn_card` / `evolve_cards` instructions available |
+| Multiplayer WebSocket sync | ✅ | Matchmaking + duel relay deployed on Fly.io; single-instance guaranteed |
+| MagicBlock Ephemeral Rollups | 🚧 | Not yet integrated |
 
 ---
 
@@ -248,9 +248,9 @@ Player-to-player marketplace with 0% platform fee:
 
 ### Battle Flow
 
-**Phase 1 (current — hackathon demo):** SHA-256 commitment used client-side. On-chain `verify_zk_proof` instruction is fully deployed and tested (see TX hash above); WASM proof generation artifacts are not bundled in the current frontend build.
+**Current demo:** SHA-256 commitment generated client-side (`preparation.js:245`). `verify_zk_proof` on-chain instruction is deployed and has been called manually on devnet (TX `5WoVAmNC…`), but is not triggered by the live battle UI — the call at `reveal.js:28` is gated on `zkProofBytes !== null`, which is null while WASM artifacts are not bundled.
 
-**Phase 2 (post-hackathon):** Full client-side Groth16 proof generation re-enabled once WASM/zkey files are bundled. Invalid reveals rejected on ZK failure end-to-end.
+**Post-hackathon:** Bundle WASM/zkey artifacts, remove `OXARK_ALLOW_NO_ZK`, re-enable full Groth16 proof generation → `verify_zk_proof` fires automatically on every reveal.
 
 Details: `docs/ZK_REVIEW_VERIFICATION.md`
 
@@ -270,6 +270,10 @@ Details: `docs/ZK_REVIEW_VERIFICATION.md`
 | `/x402/ai-move` | 0.005 SOL |
 | `/x402/co /re /hc /hr /pa /rs /me` | 0.0001 SOL |
 
+### Status
+
+Server-side infrastructure is fully implemented and tested. The client module (`src/02-x402.js`) contains the full payment flow with hardcoded `EXPECTED_PRICES` validation, but is not loaded in the current battle UI (`index.html`). Battle screens use optional-chained calls (`window.x402?.scoutPeek`) that silently no-op when the module is absent.
+
 ### Security (Phase A + B closed)
 
 - Replay protection: Redis persistence (sig + nonce, TTL applied)
@@ -286,27 +290,20 @@ Details: docs/X402_INTEGRATION_LOG.md
 
 Two AI features powered by Claude Haiku 4.5:
 
-### Strategy Advisor (Phase 1 — implemented)
+### Strategy Advisor
 
-A non-autonomous AI advisor — the player remains in control.
+Server endpoint `/x402/ai-strategy-advice` is implemented (Claude Haiku 4.5). Returns `primaryAction + alternativeActions + reasoning` (JSON). Client-side integration into battle screens is not wired in the current demo — calling the endpoint requires loading `02-x402.js` and connecting it to the interruption screen UI.
 
-- AI analyzes the current battle state and recommends the next move
-- Returns `primaryAction + alternativeActions + reasoning` (JSON)
-- Player decides whether to follow the advice or play differently
 - Use case: assistance for new players, learning strategy
-- 0.003 SOL micropayment
+- 0.003 SOL micropayment (server-side implemented)
 
-### AI Move Delegation (Phase 1 implemented / Phase 2 planned)
+### AI Move Delegation
 
-**Phase 1 (current):** A fully autonomous AI agent — the AI plays for the user.
+Server endpoint `/x402/ai-move` is implemented. End-to-end client integration and autonomous TX signing are not yet implemented.
 
-- AI takes over and plays the entire battle on the player's behalf
-- Selects cards, attacks, and finishes the round without user input
-- Supports agent-vs-agent battles (two AIs fight each other)
 - Use case: hands-free play, automated battles, AI tournaments
-- 0.005 SOL micropayment
-
-**Phase 2 (planned):** Autonomous on-chain transaction signing — the AI agent holds a delegated session key and submits Solana transactions without prompting the user wallet. Not yet implemented.
+- 0.005 SOL micropayment (server-side implemented)
+- Post-hackathon: wire client UI + delegate session key for autonomous on-chain moves
 
 ---
 
