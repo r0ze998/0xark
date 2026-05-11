@@ -16,8 +16,8 @@ Honest snapshot as of hackathon submission (2026-05-11):
 
 | Feature | Status | Notes |
 |---|---|---|
-| ZK proof — on-chain `verify_zk_proof` | ⚠️ | Instruction deployed + historic devnet TX confirmed (`5WoVAmNC…`). Not called in current demo: `reveal.js:28` gates on `zkProofBytes !== null`, which is null while `OXARK_ALLOW_NO_ZK=true` |
-| ZK proof — SHA-256 commitment (client) | ⚠️ | SHA-256 commitment generated every battle (`preparation.js:245`). Groth16 circuit + zkey complete; WASM artifacts not bundled — proof skipped for this demo |
+| ZK proof — on-chain `verify_zk_proof` | ✅ | Fires automatically on every battle reveal. Groth16 proof generated client-side (~272ms); `reveal.js:28` submits TX when `zkProofBytes !== null`. Devnet TXs: `5WoVAmNC…` · `M2fwWd2m…` |
+| ZK proof — Groth16 + SHA-256 commitment (client) | ✅ | Groth16 proof + SHA-256 commitment generated every battle (`preparation.js:264`). ~272ms. WASM + zkey bundled in `solana/client/` |
 | x402 micropayments — server | ⚠️ | 13 server endpoints fully implemented, Redis replay protection, Coinbase spec compliant. Client module (`02-x402.js`) not loaded in the battle UI — `window.x402` is undefined in current demo |
 | AI strategy advisor | ⚠️ | Server endpoint `/x402/ai-strategy-advice` implemented (Claude Haiku 4.5). Not called from active battle screens in current demo |
 | AI autonomous move delegation | 🚧 | Server endpoint `/x402/ai-move` implemented. Client integration and autonomous TX signing not yet implemented |
@@ -85,7 +85,8 @@ Together, these make a genuinely playable, economically-grounded on-chain TCG fe
 |---|---|---|
 | GameWorld PDA init | `4EUynBDn…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
 | Anchor program upgrade (ZK Phase 2) | `2Wu8wQCd…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
-| ZK proof verify e2e | `5WoVAmNC…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
+| ZK proof verify (Phase 2 deploy) | `5WoVAmNC…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
+| ZK proof verify (live battle flow) | `M2fwWd2m…` | [Solana Explorer](https://explorer.solana.com/tx/M2fwWd2mUQErAP1qCy9HRAFSUbnb527q55dFoipAY9CNJnJ1KojQE8JmQCGFttntwpjDmqCSd53uqTL4FBM7qbY?cluster=devnet) |
 | GameWorld Phase 20-B migration | `2eyAJEJz…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
 | Shop params set (threshold=0) | `3SYqk9HV…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
 
@@ -248,9 +249,9 @@ Player-to-player marketplace with 0% platform fee:
 
 ### Battle Flow
 
-**Current demo:** SHA-256 commitment generated client-side (`preparation.js:245`). `verify_zk_proof` on-chain instruction is deployed and has been called manually on devnet (TX `5WoVAmNC…`), but is not triggered by the live battle UI — the call at `reveal.js:28` is gated on `zkProofBytes !== null`, which is null while WASM artifacts are not bundled.
+**Live battle flow:** Groth16 proof generated client-side (~272ms) on every hand commit (`preparation.js:264`). `reveal.js:28` submits `verify_zk_proof` TX automatically when proof bytes are present. Replay prevented by `ZkProofRecord` PDA (`init` fails on re-use).
 
-**Post-hackathon:** Bundle WASM/zkey artifacts, remove `OXARK_ALLOW_NO_ZK`, re-enable full Groth16 proof generation → `verify_zk_proof` fires automatically on every reveal.
+Devnet TXs: `5WoVAmNC…` (Phase 2 deploy) · `M2fwWd2m…` (live flow, 2026-05-11)
 
 Details: `docs/ZK_REVIEW_VERIFICATION.md`
 
@@ -412,7 +413,7 @@ Built solo by **r0ze** under **Yukikaze** — indie on-chain game developer.
 ### Post-Hackathon 30-Day Plan
 
 1. **Playable MVP** — close remaining battle flow gaps; full end-to-end 2-player game on devnet
-2. **ZK Phase 2** — bundle WASM/zkey artifacts, re-enable client-side Groth16 proof generation
+2. ✅ **ZK live** — Groth16 proof + `verify_zk_proof` TX wired in live battle flow (2026-05-11)
 3. **Card art** — commission 60 card illustrations
 4. **Community** — open Discord + Twitter launch thread
 5. **On-chain game analysis** — Substack publication launching May 2026; writing about design decisions, ZK tradeoffs, and the economics of on-chain TCGs
