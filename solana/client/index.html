@@ -210,8 +210,8 @@
     });
   </script>
 
-  <!-- Dev flag: skip ZK proof (snarkjs WASM artifacts not bundled for hackathon) -->
-  <script>window.OXARK_ALLOW_NO_ZK = true;</script>
+  <!-- ZK proof module (sets window.zkCardCommit — required for Groth16 proving) -->
+  <script src="src/03-zk-prove.js"></script>
 
   <!-- Battle UI entry point -->
   <script type="module">
