@@ -16,6 +16,12 @@ pub const CARD_POOL_SEED: &[u8] = b"card_pool";
 #[constant]
 pub const COMMIT_SEED: &[u8] = b"commit";
 
+// Card rarity scale (matches client CARDS[i].rarity and CardMintRecord.rarity)
+pub const RARITY_COMMON: u8 = 0;
+pub const RARITY_UNCOMMON: u8 = 1;
+pub const RARITY_RARE: u8 = 2;
+pub const RARITY_LEGENDARY: u8 = 3;
+
 pub const TOTAL_CARD_TYPES: u8 = 5;
 pub const MAX_PLAYERS: u8 = 3;
 pub const MAX_ROUNDS: u8 = 30;

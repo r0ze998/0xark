@@ -4,7 +4,9 @@ use crate::state::{
 };
 use anchor_lang::prelude::*;
 
-pub const CARD_BATTLE_HISTORY_SEED: &[u8] = b"card_battle_history";
+/// Canonical seed lives on the struct in state.rs; this alias keeps the
+/// `#[account(seeds = ...)]` attributes below readable.
+const CARD_BATTLE_HISTORY_SEED: &[u8] = CardBattleHistory::CARD_BATTLE_HISTORY_SEED;
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────
 
@@ -62,12 +64,7 @@ pub fn handle_update_card_battle_history(
 ) -> Result<()> {
     let history = &mut ctx.accounts.card_battle_history;
     let now = Clock::get()?.unix_timestamp;
-
-    if history.card_mint == Pubkey::default() {
-        history.card_mint = card_mint;
-        history.created_at = now;
-        history.bump = ctx.bumps.card_battle_history;
-    }
+    history.ensure_initialized(card_mint, now, ctx.bumps.card_battle_history);
 
     let old_wins = history.wins;
     history.wins = history.wins.saturating_add(wins_delta);
@@ -121,7 +118,10 @@ pub fn handle_update_card_battle_history(
 /// v3.0-plus: Explicitly grant an Imprint to a card's battle history.
 ///
 /// `imprint_key_val` is the u8 value of ImprintKey enum.
-/// `rarity` (0=Common/Uncommon, 1=Rare, 2=Legendary) gates stat imprint limits.
+/// `rarity` (0=Common, 1=Uncommon, 2=Rare, 3=Legendary — same scale as
+/// CardMintRecord.rarity) gates stat imprint limits. NOTE: rarity is
+/// caller-supplied and not verified on-chain; wiring CardMintRecord into
+/// this instruction requires an interface change (deferred, post-devnet).
 /// Cosmetic imprints have no limit; stat imprints are capped by rarity.
 pub fn handle_grant_imprint(
     ctx: Context<GrantImprint>,
@@ -133,12 +133,7 @@ pub fn handle_grant_imprint(
 ) -> Result<()> {
     let history = &mut ctx.accounts.card_battle_history;
     let now = Clock::get()?.unix_timestamp;
-
-    if history.card_mint == Pubkey::default() {
-        history.card_mint = card_mint;
-        history.created_at = now;
-        history.bump = ctx.bumps.card_battle_history;
-    }
+    history.ensure_initialized(card_mint, now, ctx.bumps.card_battle_history);
 
     // Stat imprint limit check
     if !is_cosmetic {

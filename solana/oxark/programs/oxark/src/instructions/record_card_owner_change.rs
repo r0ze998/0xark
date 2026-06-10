@@ -1,5 +1,4 @@
 use crate::error::ErrorCode;
-use crate::instructions::update_card_battle_history::CARD_BATTLE_HISTORY_SEED;
 use crate::state::{
     CardBattleHistory, CardOwnerChanged, LeaseReturnedEvent, LeaseStealEvent, SeasonStats,
     StealType, LEASE_DURATION_SEC,
@@ -10,6 +9,10 @@ use anchor_lang::prelude::*;
 pub const HALL_BRONZE: u8 = 0;
 pub const HALL_SILVER: u8 = 1;
 pub const HALL_GOLD: u8 = 2;
+
+/// Canonical seed lives on the struct in state.rs; this alias keeps the
+/// `#[account(seeds = ...)]` attributes below readable.
+const CARD_BATTLE_HISTORY_SEED: &[u8] = CardBattleHistory::CARD_BATTLE_HISTORY_SEED;
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────
 
@@ -92,11 +95,7 @@ pub fn handle_record_card_owner_change(
     let old_owner = ctx.accounts.current_owner.key();
     let now = Clock::get()?.unix_timestamp;
 
-    if history.card_mint == Pubkey::default() {
-        history.card_mint = card_mint;
-        history.created_at = now;
-        history.bump = ctx.bumps.card_battle_history;
-    }
+    history.ensure_initialized(card_mint, now, ctx.bumps.card_battle_history);
 
     // Lazy lease-return: if the lease expired, clear lease state before recording new owner
     if history.lease_is_expired(now) {
@@ -184,11 +183,7 @@ pub fn handle_record_card_owner_change_with_steal(
     let old_owner = ctx.accounts.current_owner.key();
     let now = Clock::get()?.unix_timestamp;
 
-    if history.card_mint == Pubkey::default() {
-        history.card_mint = card_mint;
-        history.created_at = now;
-        history.bump = ctx.bumps.card_battle_history;
-    }
+    history.ensure_initialized(card_mint, now, ctx.bumps.card_battle_history);
 
     // Lazy lease-return for any prior lease
     if history.lease_is_expired(now) {

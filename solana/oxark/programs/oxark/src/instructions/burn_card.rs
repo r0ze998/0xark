@@ -1,13 +1,8 @@
+use crate::constants::{RARITY_LEGENDARY, RARITY_RARE};
 use crate::error::ErrorCode;
 use crate::state::{CardBattleHistory, CardBurnedEvent, CardMintRecord, SeasonStats};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount};
-
-// Rarity constants (matches client CARDS[i].rarity)
-pub const RARITY_COMMON: u8 = 0;
-pub const RARITY_UNCOMMON: u8 = 1;
-pub const RARITY_RARE: u8 = 2;
-pub const RARITY_LEGENDARY: u8 = 3;
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +65,14 @@ pub struct BurnCard<'info> {
 ///
 /// Rarity is read from the on-chain CardMintRecord PDA (C5 fix).
 pub fn handle_burn_card(ctx: Context<BurnCard>, card_mint: Pubkey) -> Result<()> {
+    // The card_mint instruction arg seeds both the CardBattleHistory and
+    // CardMintRecord PDAs — pin it to the mint actually being burned so a
+    // caller cannot burn mint Y while updating the records of mint X.
+    require!(
+        ctx.accounts.card_mint_account.key() == card_mint,
+        ErrorCode::InvalidAccount
+    );
+
     // C5 fix: rarity sourced from on-chain record, not from caller argument.
     let rarity = ctx.accounts.card_mint_record.rarity;
 
@@ -106,11 +109,7 @@ pub fn handle_burn_card(ctx: Context<BurnCard>, card_mint: Pubkey) -> Result<()>
 
     // 4. Update CardBattleHistory
     let history = &mut ctx.accounts.card_history;
-    if history.card_mint == Pubkey::default() {
-        history.card_mint = card_mint;
-        history.created_at = now;
-        history.bump = ctx.bumps.card_history;
-    }
+    history.ensure_initialized(card_mint, now, ctx.bumps.card_history);
     history.burn_count = history.burn_count.saturating_add(1);
     // Clear any expired lease state
     if history.lease_is_expired(now) {

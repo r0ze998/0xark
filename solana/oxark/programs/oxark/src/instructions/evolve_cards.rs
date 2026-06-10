@@ -1,5 +1,5 @@
+use crate::constants::{RARITY_COMMON, RARITY_UNCOMMON};
 use crate::error::ErrorCode;
-use crate::instructions::burn_card::{RARITY_COMMON, RARITY_UNCOMMON};
 use crate::state::{CardBattleHistory, CardEvolvedEvent, Imprint, ImprintKey, SeasonStats};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount};

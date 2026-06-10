@@ -1016,8 +1016,8 @@ impl CardBattleHistory {
     /// Max stat imprints by rarity (0=Common, 1=Uncommon, 2=Rare, 3=Legendary).
     pub fn max_stat_imprints(rarity: u8) -> usize {
         match rarity {
-            2 => 4,
-            3 => 5,
+            crate::constants::RARITY_RARE => 4,
+            crate::constants::RARITY_LEGENDARY => 5,
             _ => 3,
         }
     }
@@ -1025,6 +1025,17 @@ impl CardBattleHistory {
     /// Check if a lease is active and expired; caller should handle the return transfer.
     pub fn lease_is_expired(&self, now: i64) -> bool {
         self.has_active_lease && self.lease_expires_at > 0 && now >= self.lease_expires_at
+    }
+
+    /// Lazy-init guard for `init_if_needed` handlers: sets the identity fields
+    /// exactly once, when the account is still zero-initialized. Safe to call
+    /// on every write path that may create the PDA.
+    pub fn ensure_initialized(&mut self, card_mint: Pubkey, now: i64, bump: u8) {
+        if self.card_mint == Pubkey::default() {
+            self.card_mint = card_mint;
+            self.created_at = now;
+            self.bump = bump;
+        }
     }
 }
 
