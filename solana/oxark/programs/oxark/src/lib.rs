@@ -41,9 +41,9 @@ pub mod damage_calc; // D12+: Phase 15 battle resolver (Rust port of damage-calc
 pub mod error;
 pub mod groth16; // shared BN254/Groth16 math (VK constants stay per-instruction)
 pub mod instructions;
-pub mod poseidon_helper;
+pub mod poseidon_helper; // T-D13-A0: on-chain Poseidon(15) for reveal_hand
 pub mod poseidon_t16_constants; // T-D13-A0: auto-generated circomlib t=16 constants
-pub mod state; // T-D13-A0: on-chain Poseidon(15) for reveal_hand
+pub mod state;
 
 use anchor_lang::prelude::*;
 
@@ -78,7 +78,7 @@ pub mod oxark {
     ///
     /// - Allocates `game` PDA and `card_pool` PDA.
     /// - Sets `status = Lobby`, `round = 0`.
-    /// - `max_players` must be 2–4.
+    /// - `max_players` must be 1–3 (`constants::MAX_PLAYERS`).
     ///
     /// Caller becomes the host; only the host may call `start_game`.
     pub fn create_game(ctx: Context<CreateGame>, game_id: u64, max_players: u8) -> Result<()> {

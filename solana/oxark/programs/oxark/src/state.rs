@@ -92,6 +92,20 @@ impl Game {
     // Original: 8 + 8 + 32 + 1*6 + 32 + 1*3 = 89
     // C3 addition: [Pubkey; 3] = 96 → total 185
     pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 1 + 1 + (3 * 32);
+
+    /// 0-based index of `key` among the joined players, or None.
+    /// Only the first `player_count` slots are live; trailing slots are
+    /// Pubkey::default() until join_game fills them.
+    pub fn player_index(&self, key: &Pubkey) -> Option<usize> {
+        self.players[..self.player_count as usize]
+            .iter()
+            .position(|p| p == key)
+    }
+
+    /// Whether `key` has joined this game (C3 whitelist membership).
+    pub fn is_participant(&self, key: &Pubkey) -> bool {
+        self.player_index(key).is_some()
+    }
 }
 
 #[account]
@@ -1409,4 +1423,38 @@ impl ZkProofRecord {
     pub const SEED: &'static [u8] = b"zk_proof";
     // 8 disc + 32 + 8 + 32 + 32 + 8 + 1
     pub const SIZE: usize = 8 + 32 + 8 + 32 + 32 + 8 + 1;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn game_player_index_only_scans_joined_slots() {
+        let p1 = Pubkey::new_unique();
+        let p2 = Pubkey::new_unique();
+        let ghost = Pubkey::new_unique();
+        let game = Game {
+            player_count: 2,
+            players: [p1, p2, ghost], // slot 2 not joined (player_count = 2)
+            ..Game::default()
+        };
+
+        assert_eq!(game.player_index(&p1), Some(0));
+        assert_eq!(game.player_index(&p2), Some(1));
+        assert_eq!(
+            game.player_index(&ghost),
+            None,
+            "slots beyond player_count must be ignored"
+        );
+        assert!(game.is_participant(&p2));
+        assert!(!game.is_participant(&ghost));
+    }
+
+    #[test]
+    fn game_player_index_ignores_default_pubkey_slots() {
+        let game = Game::default(); // player_count = 0, all slots default
+        assert_eq!(game.player_index(&Pubkey::default()), None);
+        assert!(!game.is_participant(&Pubkey::default()));
+    }
 }
