@@ -68,36 +68,12 @@ jobs:
         working-directory: solana/oxark
         run: cargo test -- --nocapture 2>&1
 
-  # ─── TypeScript build (React wallet UI) ──────────────────────────────────────
-  react-build:
-    name: React Wallet UI Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: solana/client/react/package-lock.json
-
-      - name: Install dependencies
-        working-directory: solana/client/react
-        run: npm install --legacy-peer-deps
-
-      - name: TypeScript type check
-        working-directory: solana/client/react
-        run: npx tsc --noEmit
-
-      - name: Build React UI
-        working-directory: solana/client/react
-        run: npm run build
-
-  # ─── Game client build ────────────────────────────────────────────────────────
-  game-build:
-    name: Game Client Build
+  # ─── Game client syntax check ─────────────────────────────────────────────────
+  # The Phase 15 client has no build step (app.js + components loaded directly);
+  # the previous "node build.js" concatenation job and the React wallet UI job
+  # referenced files removed in 49183d7 (legacy UI removal).
+  game-client-check:
+    name: Game Client Syntax Check
     runs-on: ubuntu-latest
 
     steps:
@@ -108,18 +84,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Build game client (concatenate modules → index.html)
+      - name: Syntax-check all client modules
         working-directory: solana/client
-        run: node build.js
-
-      - name: Verify output size
         run: |
-          SIZE=$(wc -l < solana/client/index.html)
-          echo "index.html: $SIZE lines"
-          if [ "$SIZE" -lt 30000 ]; then
-            echo "ERROR: build output too small ($SIZE lines) — likely missing v3.0-plus modules"
-            exit 1
-          fi
+          STATUS=0
+          while IFS= read -r f; do
+            node --check "$f" || STATUS=1
+          done < <(find . -name '*.js' -not -path './react/*' -not -path '*/node_modules/*')
+          exit $STATUS
 
   # ─── AI Agent tests ───────────────────────────────────────────────────────────
   ai-agent-test:
