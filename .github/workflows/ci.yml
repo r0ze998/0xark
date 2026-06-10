@@ -58,11 +58,13 @@ jobs:
           sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
+      # The litesvm tests run target/deploy/oxark.so via include_bytes! —
+      # the SBF build MUST precede cargo test (same ordering as `make test`).
       - name: Build SBF program
         working-directory: solana/oxark
-        run: cargo build-sbf --manifest-path programs/oxark/Cargo.toml
+        run: make build
 
-      - name: Run all Anchor tests (107 total)
+      - name: Run all Anchor tests
         working-directory: solana/oxark
         run: cargo test -- --nocapture 2>&1
 

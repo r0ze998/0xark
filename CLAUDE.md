@@ -64,6 +64,15 @@ fly deploy
 ```
 Without `TREASURY_PUBKEY` the server runs in demo mode (x402 verification skipped).
 
+## Anchor tests
+```sh
+cd solana/oxark
+make test        # anchor build → cargo test (REQUIRED order)
+make test-fast   # cargo test only — safe ONLY if no program source changed
+```
+The litesvm tests execute `target/deploy/oxark.so` via `include_bytes!`;
+`cargo test` alone does NOT rebuild it and will silently test a stale binary.
+
 ## Dev server
 ```
 npx serve . -l 4200
