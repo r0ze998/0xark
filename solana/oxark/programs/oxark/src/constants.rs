@@ -3,10 +3,8 @@ use anchor_lang::prelude::*;
 // Game admin (program deployer / Season 1 operator)
 // DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R
 pub const ADMIN_PUBKEY: Pubkey = Pubkey::new_from_array([
-    184,   6,  19, 220, 138, 154,  47,  19,
-    180, 112, 248, 182,  84,  24, 145,  15,
-    107, 160,  88,  67, 202,  30, 232,  14,
-    241, 152, 239, 100, 147, 100, 240,  26,
+    184, 6, 19, 220, 138, 154, 47, 19, 180, 112, 248, 182, 84, 24, 145, 15, 107, 160, 88, 67, 202,
+    30, 232, 14, 241, 152, 239, 100, 147, 100, 240, 26,
 ]);
 
 #[constant]
@@ -36,18 +34,18 @@ pub const AREA_CARDS: [[u8; 2]; 3] = [
 // ── Phase 20-B: Shop ─────────────────────────────────────────────────────────
 
 pub const PACK_STANDARD: u8 = 0;
-pub const PACK_PREMIUM:  u8 = 1;
-pub const STANDARD_PACK_PRICE: u64 = 50_000_000;   // 0.05 SOL
-pub const PREMIUM_PACK_PRICE:  u64 = 150_000_000;  // 0.15 SOL
+pub const PACK_PREMIUM: u8 = 1;
+pub const STANDARD_PACK_PRICE: u64 = 50_000_000; // 0.05 SOL
+pub const PREMIUM_PACK_PRICE: u64 = 150_000_000; // 0.15 SOL
 
 // SlotHashes sysvar address bytes (SysvarS1otHashes111111111111111111111111111)
 pub const SLOT_HASHES_ID_BYTES: [u8; 32] = [
-    6, 167, 213, 23, 25, 47, 10, 175, 198, 242, 101, 227, 251, 119, 204, 122,
-    218, 130, 197, 41, 208, 190, 59, 19, 110, 45, 0, 85, 32, 0, 0, 0,
+    6, 167, 213, 23, 25, 47, 10, 175, 198, 242, 101, 227, 251, 119, 204, 122, 218, 130, 197, 41,
+    208, 190, 59, 19, 110, 45, 0, 85, 32, 0, 0, 0,
 ];
 
 // ── Phase 20-C: Trade Floor ──────────────────────────────────────────────────
-pub const MIN_LISTING_PRICE: u64 = 1_000_000;  // 0.001 SOL minimum
+pub const MIN_LISTING_PRICE: u64 = 1_000_000; // 0.001 SOL minimum
 
 pub const INITIAL_STEAL_SPELLS: u8 = 3;
 pub const INITIAL_BARRIER_SPELLS: u8 = 2;

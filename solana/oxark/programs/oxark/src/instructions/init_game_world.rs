@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
-use crate::state::GameWorld;
-use crate::error::ErrorCode;
 use crate::constants::ADMIN_PUBKEY;
+use crate::error::ErrorCode;
+use crate::state::GameWorld;
+use anchor_lang::prelude::*;
 
 /// Phase 15: One-time GameWorld PDA initialization.
 ///
@@ -41,31 +41,31 @@ pub fn handle_init_game_world(
     prize_pool: Pubkey,
 ) -> Result<()> {
     let world = &mut ctx.accounts.game_world;
-    let bump  = ctx.bumps.game_world;
+    let bump = ctx.bumps.game_world;
 
-    world.start_timestamp          = game_start_timestamp;
-    world.end_timestamp            = game_start_timestamp + GameWorld::SEASON_DURATION_SECS;
+    world.start_timestamp = game_start_timestamp;
+    world.end_timestamp = game_start_timestamp + GameWorld::SEASON_DURATION_SECS;
     world.waitlist_close_timestamp = game_start_timestamp + GameWorld::WAITLIST_WINDOW_SECS;
-    world.total_participants       = 0;
-    world.total_prize_pool         = 0;
-    world.total_ops_revenue        = 0;
+    world.total_participants = 0;
+    world.total_prize_pool = 0;
+    world.total_ops_revenue = 0;
     world.legendary_acquired_count = [0u8; 6];
-    world.winner_60_count          = 0;
-    world.game_status              = 0;   // waitlist phase
-    world.tier2_total_vault        = 0;
-    world.tier3_total_vault        = 0;
-    world.tier4_total_vault        = 0;
-    world.tier5_total_vault        = 0;
-    world.bump                     = bump;
+    world.winner_60_count = 0;
+    world.game_status = 0; // waitlist phase
+    world.tier2_total_vault = 0;
+    world.tier3_total_vault = 0;
+    world.tier4_total_vault = 0;
+    world.tier5_total_vault = 0;
+    world.bump = bump;
     // Phase 20-B shop defaults
-    world.ops_treasury                   = ops_treasury;
-    world.prize_pool                     = prize_pool;
-    world.shop_phase_threshold_seconds   = GameWorld::DEFAULT_SHOP_PHASE_THRESHOLD;
-    world.legendary_drop_rate_phase1     = GameWorld::DEFAULT_LEGENDARY_RATE_PHASE1;
-    world.legendary_drop_rate_phase2     = GameWorld::DEFAULT_LEGENDARY_RATE_PHASE2;
-    world.rare_drop_rate_phase1          = GameWorld::DEFAULT_RARE_RATE_PHASE1;
-    world.rare_drop_rate_phase2          = GameWorld::DEFAULT_RARE_RATE_PHASE2;
-    world.uncommon_drop_rate             = GameWorld::DEFAULT_UNCOMMON_RATE;
+    world.ops_treasury = ops_treasury;
+    world.prize_pool = prize_pool;
+    world.shop_phase_threshold_seconds = GameWorld::DEFAULT_SHOP_PHASE_THRESHOLD;
+    world.legendary_drop_rate_phase1 = GameWorld::DEFAULT_LEGENDARY_RATE_PHASE1;
+    world.legendary_drop_rate_phase2 = GameWorld::DEFAULT_LEGENDARY_RATE_PHASE2;
+    world.rare_drop_rate_phase1 = GameWorld::DEFAULT_RARE_RATE_PHASE1;
+    world.rare_drop_rate_phase2 = GameWorld::DEFAULT_RARE_RATE_PHASE2;
+    world.uncommon_drop_rate = GameWorld::DEFAULT_UNCOMMON_RATE;
 
     msg!(
         "InitGameWorld: start={} waitlist_close={} end={} bump={} ops={} pool={}",

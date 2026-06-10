@@ -1,11 +1,8 @@
-use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Mint, Burn};
 use crate::error::ErrorCode;
-use crate::state::{
-    CardBattleHistory, SeasonStats, CardEvolvedEvent,
-    Imprint, ImprintKey,
-};
 use crate::instructions::burn_card::{RARITY_COMMON, RARITY_UNCOMMON};
+use crate::state::{CardBattleHistory, CardEvolvedEvent, Imprint, ImprintKey, SeasonStats};
+use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount};
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────
 
@@ -77,10 +74,10 @@ pub struct EvolveCards<'info> {
     )]
     pub season_stats: Box<Account<'info, SeasonStats>>,
 
-    pub token_program:      Program<'info, Token>,
-    pub system_program:     Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
-    pub rent:               Sysvar<'info, Rent>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -105,7 +102,7 @@ pub fn handle_evolve_cards(
     target_species_id: u16,
     parent_a_rarity: u8,
     parent_b_rarity: u8,
-    _target_rarity: u8,  // must be RARITY_UNCOMMON; validated below
+    _target_rarity: u8, // must be RARITY_UNCOMMON; validated below
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
@@ -135,8 +132,8 @@ pub fn handle_evolve_cards(
         CpiContext::new(
             ctx.accounts.token_program.key(),
             Burn {
-                mint:      ctx.accounts.parent_a_mint_account.to_account_info(),
-                from:      ctx.accounts.parent_a_token_account.to_account_info(),
+                mint: ctx.accounts.parent_a_mint_account.to_account_info(),
+                from: ctx.accounts.parent_a_token_account.to_account_info(),
                 authority: ctx.accounts.owner.to_account_info(),
             },
         ),
@@ -148,8 +145,8 @@ pub fn handle_evolve_cards(
         CpiContext::new(
             ctx.accounts.token_program.key(),
             Burn {
-                mint:      ctx.accounts.parent_b_mint_account.to_account_info(),
-                from:      ctx.accounts.parent_b_token_account.to_account_info(),
+                mint: ctx.accounts.parent_b_mint_account.to_account_info(),
+                from: ctx.accounts.parent_b_token_account.to_account_info(),
                 authority: ctx.accounts.owner.to_account_info(),
             },
         ),
@@ -158,38 +155,38 @@ pub fn handle_evolve_cards(
 
     // 6. Init child CardBattleHistory with provenance
     let child = &mut ctx.accounts.child_history;
-    child.card_mint          = child_mint;
-    child.created_at         = now;
+    child.card_mint = child_mint;
+    child.created_at = now;
     child.current_owner_since = now;
-    child.acquisition_source  = 4; // 4 = evolved
-    child.bump               = ctx.bumps.child_history;
-    child.is_evolved         = true;
-    child.evolved_from_a     = parent_a_mint;
-    child.evolved_from_b     = parent_b_mint;
+    child.acquisition_source = 4; // 4 = evolved
+    child.bump = ctx.bumps.child_history;
+    child.is_evolved = true;
+    child.evolved_from_a = parent_a_mint;
+    child.evolved_from_b = parent_b_mint;
     // Inherit cumulative wins as "battle-hardened from birth"
-    child.wins               = cumulative_wins;
+    child.wins = cumulative_wins;
     // Grant Evolved Imprint automatically
     child.imprints[0] = Imprint {
-        key:         ImprintKey::Evolved as u8,
-        value:       0,
+        key: ImprintKey::Evolved as u8,
+        value: 0,
         is_cosmetic: false,
         acquired_at: now,
-        duel_id:     0,
+        duel_id: 0,
     };
     child.imprints[1] = Imprint {
-        key:         ImprintKey::EvolvedHalo as u8,
-        value:       0,
+        key: ImprintKey::EvolvedHalo as u8,
+        value: 0,
         is_cosmetic: true,
         acquired_at: now,
-        duel_id:     0,
+        duel_id: 0,
     };
     child.imprint_count = 2;
 
     // 7. Update SeasonStats
     let stats = &mut ctx.accounts.season_stats;
-    stats.total_burned  = stats.total_burned.saturating_add(2);
+    stats.total_burned = stats.total_burned.saturating_add(2);
     stats.total_evolved = stats.total_evolved.saturating_add(1);
-    stats.total_minted  = stats.total_minted.saturating_add(1);
+    stats.total_minted = stats.total_minted.saturating_add(1);
 
     emit!(CardEvolvedEvent {
         parent_a: parent_a_mint,
@@ -202,7 +199,10 @@ pub fn handle_evolve_cards(
 
     msg!(
         "CardEvolved: child={} from=[{},{}] cumulative_wins={}",
-        child_mint, parent_a_mint, parent_b_mint, cumulative_wins,
+        child_mint,
+        parent_a_mint,
+        parent_b_mint,
+        cumulative_wins,
     );
     Ok(())
 }

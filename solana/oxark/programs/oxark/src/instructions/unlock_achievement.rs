@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::PlayerAchievements;
 use crate::error::ErrorCode;
+use crate::state::PlayerAchievements;
+use anchor_lang::prelude::*;
 
 /// Achievement indices 0-9:
 ///   0=first_blood, 1=collector_10, 2=collector_30, 3=full_set,
@@ -37,7 +37,11 @@ pub fn handle_unlock_achievement(ctx: Context<UnlockAchievement>, idx: u8) -> Re
 
     let newly_unlocked = pa.unlock(idx);
     if newly_unlocked {
-        msg!("Achievement #{} unlocked for {}", idx, ctx.accounts.player.key());
+        msg!(
+            "Achievement #{} unlocked for {}",
+            idx,
+            ctx.accounts.player.key()
+        );
     } else {
         msg!("Achievement #{} already unlocked", idx);
     }

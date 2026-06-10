@@ -1,3 +1,6 @@
+use crate::error::ErrorCode;
+use crate::instructions::init_duel::DUEL_SEED;
+use crate::state::*;
 /// T-D15-B: Legendary acquisition instructions
 ///   init_legendary_supply — Called once per Season by admin to create supply PDA
 ///   record_gold_hall_win  — Called after Gold Hall duel win, tracks wins & grants claims
@@ -5,11 +8,7 @@
 ///
 /// Note: Actual NFT minting (Metaplex) is stubbed; the on-chain PDA tracks supply.
 /// Real mint CPI is wired in Day 16 after art + metadata are available.
-
 use anchor_lang::prelude::*;
-use crate::state::*;
-use crate::error::ErrorCode;
-use crate::instructions::init_duel::DUEL_SEED;
 
 // ─── init_legendary_supply ────────────────────────────────────────────────────
 
@@ -35,11 +34,14 @@ pub fn handle_init_legendary_supply(
 ) -> Result<()> {
     let supply = &mut ctx.accounts.legendary_supply;
     supply.season_id = season_id;
-    supply.minted    = [0u8; 4];
-    supply.cap       = [10u8; 4]; // 10 of each species per Season
-    supply.bump      = ctx.bumps.legendary_supply;
+    supply.minted = [0u8; 4];
+    supply.cap = [10u8; 4]; // 10 of each species per Season
+    supply.bump = ctx.bumps.legendary_supply;
 
-    msg!("LegendarySupply initialized for Season {}: 4 species, cap 10 each", season_id);
+    msg!(
+        "LegendarySupply initialized for Season {}: 4 species, cap 10 each",
+        season_id
+    );
     Ok(())
 }
 
@@ -91,8 +93,8 @@ pub fn handle_record_gold_hall_win(
     // Initialize the double-record guard PDA.
     let record = &mut ctx.accounts.gold_hall_record;
     record.duel_id = duel_id;
-    record.winner  = ctx.accounts.player.key();
-    record.bump    = ctx.bumps.gold_hall_record;
+    record.winner = ctx.accounts.player.key();
+    record.bump = ctx.bumps.gold_hall_record;
 
     let stats = &mut ctx.accounts.player_duel_stats;
     let player_key = ctx.accounts.player.key();
@@ -120,13 +122,18 @@ pub fn handle_record_gold_hall_win(
 
     if pending > 0 {
         emit!(LegendaryClaimEarned {
-            player:         player_key,
-            pending_count:  pending,
+            player: player_key,
+            pending_count: pending,
             gold_hall_wins: wins,
         });
     }
 
-    msg!("Gold Hall win #{} recorded for player {}. Pending Legendary claims: {}", wins, player_key, pending);
+    msg!(
+        "Gold Hall win #{} recorded for player {}. Pending Legendary claims: {}",
+        wins,
+        player_key,
+        pending
+    );
     Ok(())
 }
 
@@ -138,12 +145,12 @@ mod tests {
     fn non_winner_cannot_record_win() {
         // Simulate the C6 constraint: duel.winner must equal the caller.
         let real_winner = Pubkey::new_unique();
-        let attacker    = Pubkey::new_unique();
+        let attacker = Pubkey::new_unique();
         assert_ne!(real_winner, attacker);
         // Constraint passes only when caller IS the winner.
         let ok = real_winner == real_winner;
         let blocked = real_winner == attacker;
-        assert!(ok,      "real winner must pass the constraint");
+        assert!(ok, "real winner must pass the constraint");
         assert!(!blocked, "attacker must be blocked");
     }
 
@@ -186,15 +193,12 @@ pub fn handle_claim_legendary(
 ) -> Result<()> {
     require!(species_id < 4, ErrorCode::InvalidState); // 0-3 valid
 
-    let stats   = &mut ctx.accounts.player_duel_stats;
-    let supply  = &mut ctx.accounts.legendary_supply;
+    let stats = &mut ctx.accounts.player_duel_stats;
+    let supply = &mut ctx.accounts.legendary_supply;
     let player_key = ctx.accounts.player.key();
 
     // Check season matches
-    require!(
-        supply.season_id == season_id,
-        ErrorCode::InvalidState
-    );
+    require!(supply.season_id == season_id, ErrorCode::InvalidState);
 
     // Check player has a pending claim
     let expected_claims = stats.gold_hall_wins_current_season / 4;
@@ -205,10 +209,7 @@ pub fn handle_claim_legendary(
 
     // Check species supply available
     let si = species_id as usize;
-    require!(
-        supply.minted[si] < supply.cap[si],
-        ErrorCode::InvalidState
-    );
+    require!(supply.minted[si] < supply.cap[si], ErrorCode::InvalidState);
 
     // Record the claim
     let mint_number = supply.minted[si] + 1;
@@ -216,7 +217,7 @@ pub fn handle_claim_legendary(
     stats.legendary_claims_current_season = stats.legendary_claims_current_season.saturating_add(1);
 
     emit!(LegendaryClaimed {
-        player:      player_key,
+        player: player_key,
         season_id,
         species_id,
         mint_number,

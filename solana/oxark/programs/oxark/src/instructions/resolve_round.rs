@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
-use anchor_lang::prelude::borsh::BorshDeserialize;
 use crate::constants::*;
-use crate::state::*;
 use crate::error::ErrorCode;
+use crate::state::*;
+use anchor_lang::prelude::borsh::BorshDeserialize;
+use anchor_lang::prelude::*;
 use solana_sha256_hasher::hashv;
 
 // ── T93: Element System v2 (6-element 2-triad) ────────────────────────────────
@@ -34,12 +34,29 @@ pub fn calc_element_multiplier(attacker_elem: u8, defender_elem: u8) -> u32 {
 /// Assign element (0-5) to card_id (1-60) based on ID range.
 /// 0=Fire(1-10), 1=Water(11-20), 2=Wind(21-30), 3=Earth(31-40), 4=Shadow(41-50), 5=Light(51-60)
 pub fn card_element(card_id: u8) -> u8 {
-    if card_id <= 10 { 0 }       // Fire
-    else if card_id <= 20 { 1 }  // Water
-    else if card_id <= 30 { 2 }  // Wind
-    else if card_id <= 40 { 3 }  // Earth
-    else if card_id <= 50 { 4 }  // Shadow
-    else { 5 }                   // Light
+    if card_id <= 10 {
+        0
+    }
+    // Fire
+    else if card_id <= 20 {
+        1
+    }
+    // Water
+    else if card_id <= 30 {
+        2
+    }
+    // Wind
+    else if card_id <= 40 {
+        3
+    }
+    // Earth
+    else if card_id <= 50 {
+        4
+    }
+    // Shadow
+    else {
+        5
+    } // Light
 }
 
 #[derive(Accounts)]
@@ -63,7 +80,10 @@ pub struct ResolveRound<'info> {
 
 pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    require!(game.status == GameStatus::RevealPhase, ErrorCode::NotRevealPhase);
+    require!(
+        game.status == GameStatus::RevealPhase,
+        ErrorCode::NotRevealPhase
+    );
     require!(game.reveal_count >= 1, ErrorCode::NotRevealPhase);
 
     // Get clock once at the top — used for all randomness in this instruction
@@ -97,8 +117,7 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
         // on the trailing zeros, while deserialize stops after reading all fields.
         let ps: PlayerState = {
             let mut slice = &data[8..];
-            BorshDeserialize::deserialize(&mut slice)
-                .map_err(|_| ErrorCode::InvalidAction)?
+            BorshDeserialize::deserialize(&mut slice).map_err(|_| ErrorCode::InvalidAction)?
         };
         players.push(PlayerData {
             key: *account_info.key,
@@ -129,7 +148,12 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     let has_reborn_commits = ctx.remaining_accounts.len() >= player_count * 2;
     if has_reborn_commits {
         let mut played_per_player: Vec<([u64; 3], u8)> = Vec::with_capacity(player_count);
-        for account_info in ctx.remaining_accounts.iter().skip(player_count).take(player_count) {
+        for account_info in ctx
+            .remaining_accounts
+            .iter()
+            .skip(player_count)
+            .take(player_count)
+        {
             require!(
                 account_info.owner == &crate::ID,
                 ErrorCode::InvalidAccountOwner
@@ -147,7 +171,8 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                 let mut cards = [0u64; 3];
                 for j in 0..3 {
                     let off = base + j * 8;
-                    cards[j] = u64::from_le_bytes(data[off..off + 8].try_into().unwrap_or([0u8; 8]));
+                    cards[j] =
+                        u64::from_le_bytes(data[off..off + 8].try_into().unwrap_or([0u8; 8]));
                 }
                 let card_len = data[base + 24];
                 played_per_player.push((cards, card_len));
@@ -163,9 +188,9 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
         if player_count == 2 {
             let a_cards = played_per_player[0].0;
             let b_cards = played_per_player[1].0;
-            let a_len   = played_per_player[0].1 as usize;
-            let b_len   = played_per_player[1].1 as usize;
-            let lanes   = a_len.max(b_len).max(1);
+            let a_len = played_per_player[0].1 as usize;
+            let b_len = played_per_player[1].1 as usize;
+            let lanes = a_len.max(b_len).max(1);
             let mut a_lane_wins: u8 = 0;
             let mut b_lane_wins: u8 = 0;
 
@@ -174,44 +199,84 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                 let card_b = if lane < b_len { b_cards[lane] } else { 0 };
 
                 // Derive element from card_id (1-60; 0-5 by group of 10)
-                let elem_a = if card_a > 0 { card_element((card_a % 60) as u8 + 1) } else { 0 };
-                let elem_b = if card_b > 0 { card_element((card_b % 60) as u8 + 1) } else { 0 };
+                let elem_a = if card_a > 0 {
+                    card_element((card_a % 60) as u8 + 1)
+                } else {
+                    0
+                };
+                let elem_b = if card_b > 0 {
+                    card_element((card_b % 60) as u8 + 1)
+                } else {
+                    0
+                };
 
                 // Base BP: card_id's last digit as proxy (full BP table lives client-side)
-                let bp_a = if card_a > 0 { (card_a % 7 + 2) as u32 } else { 0 };
-                let bp_b = if card_b > 0 { (card_b % 7 + 2) as u32 } else { 0 };
+                let bp_a = if card_a > 0 {
+                    (card_a % 7 + 2) as u32
+                } else {
+                    0
+                };
+                let bp_b = if card_b > 0 {
+                    (card_b % 7 + 2) as u32
+                } else {
+                    0
+                };
 
                 let adj_a = bp_a * calc_element_multiplier(elem_a, elem_b) / 1000;
                 let adj_b = bp_b * calc_element_multiplier(elem_b, elem_a) / 1000;
 
                 if adj_a > adj_b {
                     a_lane_wins += 1;
-                    msg!("Lane {}: Player[0] wins ({} adj_bp={} vs adj_bp={})", lane, card_a, adj_a, adj_b);
+                    msg!(
+                        "Lane {}: Player[0] wins ({} adj_bp={} vs adj_bp={})",
+                        lane,
+                        card_a,
+                        adj_a,
+                        adj_b
+                    );
                 } else if adj_b > adj_a {
                     b_lane_wins += 1;
-                    msg!("Lane {}: Player[1] wins ({} adj_bp={} vs adj_bp={})", lane, card_b, adj_b, adj_a);
+                    msg!(
+                        "Lane {}: Player[1] wins ({} adj_bp={} vs adj_bp={})",
+                        lane,
+                        card_b,
+                        adj_b,
+                        adj_a
+                    );
                 } else {
                     msg!("Lane {}: draw", lane);
                 }
             }
 
             // Lane winners draw bonus cards from pool
-            let bonus_seed = clock.slot ^ (clock.unix_timestamp as u64) ^ (game.round as u64 * 0xdeadbeef);
+            let bonus_seed =
+                clock.slot ^ (clock.unix_timestamp as u64) ^ (game.round as u64 * 0xdeadbeef);
             if a_lane_wins > b_lane_wins {
                 let bonus = pick_card_from_pool(&mut pool.remaining, bonus_seed);
                 if bonus > 0 {
                     place_card(&mut players[0].cards, bonus);
                     players[0].card_count += 1;
                     game.cards_in_pool = game.cards_in_pool.saturating_sub(1);
-                    msg!("Player[0] won {}/{} lanes, drew bonus card {}", a_lane_wins, lanes, bonus);
+                    msg!(
+                        "Player[0] won {}/{} lanes, drew bonus card {}",
+                        a_lane_wins,
+                        lanes,
+                        bonus
+                    );
                 }
             } else if b_lane_wins > a_lane_wins {
-                let bonus = pick_card_from_pool(&mut pool.remaining, bonus_seed ^ 0x1234567890abcdef);
+                let bonus =
+                    pick_card_from_pool(&mut pool.remaining, bonus_seed ^ 0x1234567890abcdef);
                 if bonus > 0 {
                     place_card(&mut players[1].cards, bonus);
                     players[1].card_count += 1;
                     game.cards_in_pool = game.cards_in_pool.saturating_sub(1);
-                    msg!("Player[1] won {}/{} lanes, drew bonus card {}", b_lane_wins, lanes, bonus);
+                    msg!(
+                        "Player[1] won {}/{} lanes, drew bonus card {}",
+                        b_lane_wins,
+                        lanes,
+                        bonus
+                    );
                 }
             }
         }
@@ -280,7 +345,8 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                     let steal_input: [u8; 16] = {
                         let mut b = [0u8; 16];
                         b[..8].copy_from_slice(&clock.slot.to_le_bytes());
-                        b[8..].copy_from_slice(&(game.round as u64 * 1000 + i as u64).to_le_bytes());
+                        b[8..]
+                            .copy_from_slice(&(game.round as u64 * 1000 + i as u64).to_le_bytes());
                         b
                     };
                     let steal_hash = hashv(&[&steal_input]).to_bytes();
@@ -290,12 +356,18 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                         place_card(&mut players[i].cards, stolen);
                         players[i].card_count += 1;
                         players[ti].card_count -= 1;
-                        msg!("Player {} stole card {} from {}", players[i].key, stolen, target_key);
+                        msg!(
+                            "Player {} stole card {} from {}",
+                            players[i].key,
+                            stolen,
+                            target_key
+                        );
 
                         // T96: Deathrattle — if stolen card is a DR card, stealer loses a random card back to victim
                         if is_deathrattle(stolen) {
-                            let dr_seed = u64::from_le_bytes(steal_hash[..8].try_into().unwrap_or([0u8; 8]))
-                                ^ 0xdeadbeef_cafeba01;
+                            let dr_seed =
+                                u64::from_le_bytes(steal_hash[..8].try_into().unwrap_or([0u8; 8]))
+                                    ^ 0xdeadbeef_cafeba01;
                             let penalty = steal_random_card(&mut players[i].cards, dr_seed);
                             if penalty > 0 {
                                 place_card(&mut players[ti].cards, penalty);
@@ -309,7 +381,8 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                         // T97: Chain — bonus pool card for each chain card stealer holds (max 3)
                         let chain_n = count_chains(&players[i].cards);
                         if chain_n > 0 {
-                            let mut chain_seed = u64::from_le_bytes(steal_hash[8..16].try_into().unwrap());
+                            let mut chain_seed =
+                                u64::from_le_bytes(steal_hash[8..16].try_into().unwrap());
                             for _c in 0..chain_n.min(3) {
                                 let extra = pick_card_from_pool(&mut pool.remaining, chain_seed);
                                 if extra > 0 {
@@ -343,7 +416,8 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                     let flame_input: [u8; 16] = {
                         let mut b = [0u8; 16];
                         b[..8].copy_from_slice(&clock.unix_timestamp.to_le_bytes());
-                        b[8..].copy_from_slice(&(game.round as u64 * 2000 + i as u64).to_le_bytes());
+                        b[8..]
+                            .copy_from_slice(&(game.round as u64 * 2000 + i as u64).to_le_bytes());
                         b
                     };
                     let flame_hash = hashv(&[&flame_input]).to_bytes();
@@ -352,7 +426,12 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                     if destroyed > 0 {
                         players[ti].card_count -= 1;
                         // Card is destroyed, not transferred
-                        msg!("Player {} burned card {} from {}", players[i].key, destroyed, target_key);
+                        msg!(
+                            "Player {} burned card {} from {}",
+                            players[i].key,
+                            destroyed,
+                            target_key
+                        );
                     }
                 }
             }
@@ -375,7 +454,8 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                     let void_input: [u8; 16] = {
                         let mut b = [0u8; 16];
                         b[..8].copy_from_slice(&clock.slot.to_le_bytes());
-                        b[8..].copy_from_slice(&(game.round as u64 * 3000 + i as u64).to_le_bytes());
+                        b[8..]
+                            .copy_from_slice(&(game.round as u64 * 3000 + i as u64).to_le_bytes());
                         b
                     };
                     let void_hash = hashv(&[&void_input]).to_bytes();
@@ -384,7 +464,12 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
                     if copied > 0 {
                         place_card(&mut players[i].cards, copied);
                         players[i].card_count += 1;
-                        msg!("Player {} copied card {} from {}", players[i].key, copied, target_key);
+                        msg!(
+                            "Player {} copied card {} from {}",
+                            players[i].key,
+                            copied,
+                            target_key
+                        );
                     }
                 }
             }
@@ -431,7 +516,7 @@ fn write_back_player_states(
         //   42: cards[5]   47: card_count(1) 48: steal_count(1)
         //   49: barrier_count(1) 50: scout_count(1)
         //   51: has_committed(1) 52: has_revealed(1)
-        data[8 + 40 + 1] = p.area;              // area = offset 49
+        data[8 + 40 + 1] = p.area; // area = offset 49
         data[8 + 40 + 2..8 + 40 + 7].copy_from_slice(&p.cards);
         data[8 + 40 + 7] = p.card_count;
         data[8 + 40 + 8] = p.steal_count;
@@ -465,16 +550,28 @@ fn finish_round(game: &mut Game, players: &[PlayerData], game_id: u64) -> Result
         game.winner = winner_key;
         msg!("Game {} won by {}", game_id, winner_key);
     } else if game.round >= game.max_rounds {
-        let best = players.iter().max_by_key(|p| count_unique_types(&p.cards)).unwrap();
+        let best = players
+            .iter()
+            .max_by_key(|p| count_unique_types(&p.cards))
+            .unwrap();
         game.status = GameStatus::Finished;
         game.winner = best.key;
-        msg!("Game {} time up — winner {} with {} unique cards", game_id, best.key, count_unique_types(&best.cards));
+        msg!(
+            "Game {} time up — winner {} with {} unique cards",
+            game_id,
+            best.key,
+            count_unique_types(&best.cards)
+        );
     } else {
         game.round += 1;
         game.status = GameStatus::CommitPhase;
         game.commit_count = 0;
         game.reveal_count = 0;
-        msg!("Round {} resolved, advancing to round {}", game.round - 1, game.round);
+        msg!(
+            "Round {} resolved, advancing to round {}",
+            game.round - 1,
+            game.round
+        );
     }
 
     Ok(())
@@ -499,7 +596,9 @@ fn place_card(cards: &mut [u8; 5], card_id: u8) {
 }
 
 fn steal_random_card(cards: &mut [u8; 5], seed: u64) -> u8 {
-    let filled: Vec<usize> = cards.iter().enumerate()
+    let filled: Vec<usize> = cards
+        .iter()
+        .enumerate()
         .filter(|(_, &c)| c > 0)
         .map(|(i, _)| i)
         .collect();
@@ -545,7 +644,10 @@ fn is_deathrattle(card_id: u8) -> bool {
 
 // T97: Chain card IDs (Chain cards: 11,12,15,21,22,27,33,35,51,52,53,57)
 fn is_chain(card_id: u8) -> bool {
-    matches!(card_id, 11 | 12 | 15 | 21 | 22 | 27 | 33 | 35 | 51 | 52 | 53 | 57)
+    matches!(
+        card_id,
+        11 | 12 | 15 | 21 | 22 | 27 | 33 | 35 | 51 | 52 | 53 | 57
+    )
 }
 
 /// Count how many Chain cards are currently in the player's hand.
@@ -573,9 +675,15 @@ mod tests {
         game_id: u64,
         program_id: Pubkey,
     ) -> bool {
-        if expected_player == Pubkey::default() { return false; }
+        if expected_player == Pubkey::default() {
+            return false;
+        }
         let (pda, _) = Pubkey::find_program_address(
-            &[PLAYER_SEED, &game_id.to_le_bytes(), expected_player.as_ref()],
+            &[
+                PLAYER_SEED,
+                &game_id.to_le_bytes(),
+                expected_player.as_ref(),
+            ],
             &program_id,
         );
         account_key == pda
@@ -593,21 +701,31 @@ mod tests {
     fn pda_validation_rejects_wrong_account() {
         let program_id = Pubkey::new_unique();
         let real_player = Pubkey::new_unique();
-        let attacker    = Pubkey::new_unique();
+        let attacker = Pubkey::new_unique();
         let game_id: u64 = 42;
         let (real_pda, _) = Pubkey::find_program_address(
             &[PLAYER_SEED, &game_id.to_le_bytes(), real_player.as_ref()],
             &program_id,
         );
         // Attacker passing their own pubkey instead of the real player PDA fails.
-        assert!(validate_player_pda(real_pda, real_player, game_id, program_id));
-        assert!(!validate_player_pda(attacker, real_player, game_id, program_id));
+        assert!(validate_player_pda(
+            real_pda,
+            real_player,
+            game_id,
+            program_id
+        ));
+        assert!(!validate_player_pda(
+            attacker,
+            real_player,
+            game_id,
+            program_id
+        ));
     }
 
     #[test]
     fn pda_validation_rejects_different_game() {
-        let program_id  = Pubkey::new_unique();
-        let player      = Pubkey::new_unique();
+        let program_id = Pubkey::new_unique();
+        let player = Pubkey::new_unique();
         let game_a: u64 = 1;
         let game_b: u64 = 2;
         let (pda_a, _) = Pubkey::find_program_address(

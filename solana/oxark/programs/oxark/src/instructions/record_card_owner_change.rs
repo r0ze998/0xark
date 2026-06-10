@@ -1,15 +1,15 @@
-use anchor_lang::prelude::*;
 use crate::error::ErrorCode;
-use crate::state::{
-    CardBattleHistory, CardOwnerChanged, SeasonStats,
-    StealType, LeaseStealEvent, LeaseReturnedEvent, LEASE_DURATION_SEC,
-};
 use crate::instructions::update_card_battle_history::CARD_BATTLE_HISTORY_SEED;
+use crate::state::{
+    CardBattleHistory, CardOwnerChanged, LeaseReturnedEvent, LeaseStealEvent, SeasonStats,
+    StealType, LEASE_DURATION_SEC,
+};
+use anchor_lang::prelude::*;
 
 // Hall tier constants (matches DuelState.hall_tier)
 pub const HALL_BRONZE: u8 = 0;
 pub const HALL_SILVER: u8 = 1;
-pub const HALL_GOLD:   u8 = 2;
+pub const HALL_GOLD: u8 = 2;
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────
 
@@ -86,25 +86,25 @@ pub fn handle_record_card_owner_change(
     ctx: Context<RecordCardOwnerChange>,
     card_mint: Pubkey,
     new_owner: Pubkey,
-    source: u8,   // 0=mint, 1=shop, 2=duel_won, 3=p2p_trade
+    source: u8, // 0=mint, 1=shop, 2=duel_won, 3=p2p_trade
 ) -> Result<()> {
-    let history   = &mut ctx.accounts.card_battle_history;
+    let history = &mut ctx.accounts.card_battle_history;
     let old_owner = ctx.accounts.current_owner.key();
-    let now       = Clock::get()?.unix_timestamp;
+    let now = Clock::get()?.unix_timestamp;
 
     if history.card_mint == Pubkey::default() {
-        history.card_mint  = card_mint;
+        history.card_mint = card_mint;
         history.created_at = now;
-        history.bump       = ctx.bumps.card_battle_history;
+        history.bump = ctx.bumps.card_battle_history;
     }
 
     // Lazy lease-return: if the lease expired, clear lease state before recording new owner
     if history.lease_is_expired(now) {
         emit!(LeaseReturnedEvent {
             card_mint,
-            returned_to:   history.lease_returns_to,
+            returned_to: history.lease_returns_to,
             returned_from: old_owner,
-            timestamp:     now,
+            timestamp: now,
         });
         history.has_active_lease = false;
         history.lease_expires_at = 0;
@@ -112,7 +112,7 @@ pub fn handle_record_card_owner_change(
     }
 
     push_owner_to_ring(history, old_owner);
-    history.acquisition_source  = source;
+    history.acquisition_source = source;
     history.current_owner_since = now;
 
     emit!(CardOwnerChanged {
@@ -125,7 +125,10 @@ pub fn handle_record_card_owner_change(
 
     msg!(
         "CardOwnerChanged: mint={} old={} new={} source={}",
-        card_mint, old_owner, new_owner, source,
+        card_mint,
+        old_owner,
+        new_owner,
+        source,
     );
     Ok(())
 }
@@ -169,28 +172,31 @@ pub fn handle_record_card_owner_change_with_steal(
     // Gold-Hall-only steal types
     match steal_type {
         StealType::HandPeek | StealType::Legendary => {
-            require!(hall_tier == HALL_GOLD, ErrorCode::PermanentStealRequiresGoldHall);
+            require!(
+                hall_tier == HALL_GOLD,
+                ErrorCode::PermanentStealRequiresGoldHall
+            );
         }
         _ => {}
     }
 
-    let history   = &mut ctx.accounts.card_battle_history;
+    let history = &mut ctx.accounts.card_battle_history;
     let old_owner = ctx.accounts.current_owner.key();
-    let now       = Clock::get()?.unix_timestamp;
+    let now = Clock::get()?.unix_timestamp;
 
     if history.card_mint == Pubkey::default() {
-        history.card_mint  = card_mint;
+        history.card_mint = card_mint;
         history.created_at = now;
-        history.bump       = ctx.bumps.card_battle_history;
+        history.bump = ctx.bumps.card_battle_history;
     }
 
     // Lazy lease-return for any prior lease
     if history.lease_is_expired(now) {
         emit!(LeaseReturnedEvent {
             card_mint,
-            returned_to:   history.lease_returns_to,
+            returned_to: history.lease_returns_to,
             returned_from: old_owner,
-            timestamp:     now,
+            timestamp: now,
         });
         history.has_active_lease = false;
         history.lease_expires_at = 0;
@@ -200,12 +206,12 @@ pub fn handle_record_card_owner_change_with_steal(
     push_owner_to_ring(history, old_owner);
 
     let source = match steal_type {
-        StealType::Lease     => 5,
-        StealType::Ransom    => 6,
-        StealType::HandPeek  => 7,
+        StealType::Lease => 5,
+        StealType::Ransom => 6,
+        StealType::HandPeek => 7,
         StealType::Legendary => 8,
     };
-    history.acquisition_source  = source;
+    history.acquisition_source = source;
     history.current_owner_since = now;
 
     // Record lease parameters for Lease-Steal
@@ -216,10 +222,10 @@ pub fn handle_record_card_owner_change_with_steal(
 
         emit!(LeaseStealEvent {
             card_mint,
-            from:       old_owner,
-            to:         new_owner,
+            from: old_owner,
+            to: new_owner,
             expires_at: history.lease_expires_at,
-            timestamp:  now,
+            timestamp: now,
         });
     }
 
@@ -237,7 +243,10 @@ pub fn handle_record_card_owner_change_with_steal(
 
     msg!(
         "CardOwnerChanged (steal={:?}): mint={} old={} new={}",
-        steal_type, card_mint, old_owner, new_owner,
+        steal_type,
+        card_mint,
+        old_owner,
+        new_owner,
     );
     Ok(())
 }

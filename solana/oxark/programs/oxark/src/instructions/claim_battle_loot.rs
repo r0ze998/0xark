@@ -10,15 +10,15 @@
 //
 // Seeds for DuelLootRecord: ["duel_loot", duel_id.as_ref()]
 
-use anchor_lang::prelude::*;
-use crate::state::{PlayerState, DuelLootRecord, DuelState};
 use crate::error::ErrorCode;
 use crate::instructions::init_duel::DUEL_SEED;
+use crate::state::{DuelLootRecord, DuelState, PlayerState};
+use anchor_lang::prelude::*;
 
 // SysvarS1otHashes111111111111111111111111111
 const SLOT_HASHES_ID_BYTES: [u8; 32] = [
-    6, 167, 213, 23, 25, 47, 10, 175, 198, 242, 101, 227, 251, 119, 204, 122,
-    218, 130, 197, 41, 208, 190, 59, 19, 110, 45, 0, 85, 32, 0, 0, 0,
+    6, 167, 213, 23, 25, 47, 10, 175, 198, 242, 101, 227, 251, 119, 204, 122, 218, 130, 197, 41,
+    208, 190, 59, 19, 110, 45, 0, 85, 32, 0, 0, 0,
 ];
 
 #[derive(Accounts)]
@@ -78,7 +78,7 @@ pub fn handle_claim_battle_loot(
     loser_pubkey: Pubkey,
     loser_field: [u8; 5],
 ) -> Result<()> {
-    let loser_state  = &mut ctx.accounts.loser_state;
+    let loser_state = &mut ctx.accounts.loser_state;
     let winner_state = &mut ctx.accounts.winner_state;
 
     // 1. All non-zero slots must be valid card IDs (1-60).
@@ -86,7 +86,9 @@ pub fn handle_claim_battle_loot(
     require!(!field_cards.is_empty(), ErrorCode::InvalidFieldSize);
 
     // 2. Verify loser owns at least one of the field cards.
-    let owned: Vec<u8> = field_cards.iter().copied()
+    let owned: Vec<u8> = field_cards
+        .iter()
+        .copied()
         .filter(|&id| loser_state.has_card(id))
         .collect();
     require!(!owned.is_empty(), ErrorCode::LoserDoesNotOwnCard);
@@ -109,20 +111,20 @@ pub fn handle_claim_battle_loot(
 
     // 5. Record result.
     let record = &mut ctx.accounts.duel_loot_record;
-    record.duel_id        = duel_id;
-    record.winner         = ctx.accounts.winner.key();
-    record.loser          = loser_pubkey;
-    record.loser_field    = loser_field;
+    record.duel_id = duel_id;
+    record.winner = ctx.accounts.winner.key();
+    record.loser = loser_pubkey;
+    record.loser_field = loser_field;
     record.stolen_card_id = stolen_card_id;
-    record.bump           = ctx.bumps.duel_loot_record;
+    record.bump = ctx.bumps.duel_loot_record;
 
     // 6. Emit.
     emit!(LootClaimedEvent {
-        winner:         ctx.accounts.winner.key(),
-        loser:          loser_pubkey,
+        winner: ctx.accounts.winner.key(),
+        loser: loser_pubkey,
         duel_id,
         stolen_card_id,
-        slot:           Clock::get()?.slot,
+        slot: Clock::get()?.slot,
     });
 
     msg!(
@@ -138,11 +140,11 @@ pub fn handle_claim_battle_loot(
 
 #[event]
 pub struct LootClaimedEvent {
-    pub winner:         Pubkey,
-    pub loser:          Pubkey,
-    pub duel_id:        Pubkey,
+    pub winner: Pubkey,
+    pub loser: Pubkey,
+    pub duel_id: Pubkey,
     pub stolen_card_id: u8,
-    pub slot:           u64,
+    pub slot: u64,
 }
 
 #[cfg(test)]
@@ -169,8 +171,8 @@ mod tests {
 
     #[test]
     fn arbitrary_loser_rejected() {
-        let p1      = Pubkey::new_unique();
-        let p2      = Pubkey::new_unique();
+        let p1 = Pubkey::new_unique();
+        let p2 = Pubkey::new_unique();
         let attacker = Pubkey::new_unique();
         assert!(!loser_is_participant(attacker, p1, p2));
     }

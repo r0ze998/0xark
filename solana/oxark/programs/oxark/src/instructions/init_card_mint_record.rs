@@ -6,10 +6,10 @@
 // Must be called by the game admin (ADMIN_PUBKEY) once per NFT card mint,
 // typically as part of the oxark-cards mint flow or immediately after.
 
-use anchor_lang::prelude::*;
-use crate::state::CardMintRecord;
-use crate::error::ErrorCode;
 use crate::constants::ADMIN_PUBKEY;
+use crate::error::ErrorCode;
+use crate::state::CardMintRecord;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(card_mint: Pubkey, card_id: u8, rarity: u8)]
@@ -42,11 +42,16 @@ pub fn handle_init_card_mint_record(
 
     let record = &mut ctx.accounts.card_mint_record;
     record.card_mint = card_mint;
-    record.card_id   = card_id;
-    record.rarity    = rarity;
-    record.bump      = ctx.bumps.card_mint_record;
+    record.card_id = card_id;
+    record.rarity = rarity;
+    record.bump = ctx.bumps.card_mint_record;
 
-    msg!("CardMintRecord: mint={} card_id={} rarity={}", card_mint, card_id, rarity);
+    msg!(
+        "CardMintRecord: mint={} card_id={} rarity={}",
+        card_mint,
+        card_id,
+        rarity
+    );
     Ok(())
 }
 
@@ -62,9 +67,9 @@ mod tests {
 
     #[test]
     fn card_id_zero_rejected() {
-        let valid   = 1u8 > 0 && 1u8 <= 60;
+        let valid = 1u8 > 0 && 1u8 <= 60;
         let invalid = 0u8 > 0;
-        assert!(valid,   "card_id=1 must pass");
+        assert!(valid, "card_id=1 must pass");
         assert!(!invalid, "card_id=0 must be rejected");
     }
 
@@ -75,7 +80,7 @@ mod tests {
 
     #[test]
     fn rarity_out_of_range_rejected() {
-        assert!(3u8 <= 3,  "rarity=3 (Legendary) must pass");
+        assert!(3u8 <= 3, "rarity=3 (Legendary) must pass");
         assert!(!(4u8 <= 3), "rarity=4 must be rejected");
     }
 }

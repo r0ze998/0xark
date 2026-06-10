@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::PlayerTitle;
 use crate::error::ErrorCode;
+use crate::state::PlayerTitle;
+use anchor_lang::prelude::*;
 
 /// Title indices 0-7:
 ///   0=Traveler (always unlocked), 1=Card Hunter, 2=Chain Wizard,
@@ -38,7 +38,11 @@ pub fn handle_set_title(ctx: Context<SetTitle>, title_idx: u8) -> Result<()> {
 
     require!(pt.is_title_unlocked(title_idx), ErrorCode::InvalidAction);
     pt.equipped = title_idx;
-    msg!("Title #{} equipped for {}", title_idx, ctx.accounts.player.key());
+    msg!(
+        "Title #{} equipped for {}",
+        title_idx,
+        ctx.accounts.player.key()
+    );
     Ok(())
 }
 
@@ -73,7 +77,11 @@ pub fn handle_unlock_title(ctx: Context<UnlockTitle>, title_idx: u8) -> Result<(
 
     let newly = pt.unlock_title(title_idx);
     if newly {
-        msg!("Title #{} unlocked for {}", title_idx, ctx.accounts.player.key());
+        msg!(
+            "Title #{} unlocked for {}",
+            title_idx,
+            ctx.accounts.player.key()
+        );
     } else {
         msg!("Title #{} already unlocked", title_idx);
     }

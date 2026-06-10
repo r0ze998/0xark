@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::*;
 use crate::error::ErrorCode;
+use crate::state::*;
+use anchor_lang::prelude::*;
 
 /// Phase 15 B-6: Realtime Legendary card acquisition judgment.
 /// Called after each battle, x402 payment, or peek action.
@@ -28,10 +28,10 @@ pub struct CheckLegendary<'info> {
 }
 
 pub fn handle_check_legendary(ctx: Context<CheckLegendary>) -> Result<()> {
-    let world  = &mut ctx.accounts.game_world;
-    let ps     = &mut ctx.accounts.player_state;
+    let world = &mut ctx.accounts.game_world;
+    let ps = &mut ctx.accounts.player_state;
     let player = ctx.accounts.player.key();
-    let now    = Clock::get()?.unix_timestamp;
+    let now = Clock::get()?.unix_timestamp;
 
     require!(world.game_status == 1, ErrorCode::GameNotActive);
 
@@ -41,12 +41,25 @@ pub fn handle_check_legendary(ctx: Context<CheckLegendary>) -> Result<()> {
 
 /// Check all 6 Legendary conditions for the given player and award if eligible.
 /// All checks are O(1) using pre-tracked counters on PlayerState.
-pub fn check_all_legendaries(ps: &mut PlayerState, world: &mut GameWorld, player: Pubkey, now: i64) {
+pub fn check_all_legendaries(
+    ps: &mut PlayerState,
+    world: &mut GameWorld,
+    player: Pubkey,
+    now: i64,
+) {
     // Legendary 0: Sentinel (Knight, id=10) — Conqueror: 5-win streak
     check_legendary_condition(ps, world, player, now, 0, 10, ps.win_streak >= 5);
 
     // Legendary 1: Magnate (Merchant, id=20) — Patron: 1 SOL cumulative x402 spend
-    check_legendary_condition(ps, world, player, now, 1, 20, ps.x402_total_spend >= 1_000_000_000);
+    check_legendary_condition(
+        ps,
+        world,
+        player,
+        now,
+        1,
+        20,
+        ps.x402_total_spend >= 1_000_000_000,
+    );
 
     // Legendary 2: Marauder (Pirate, id=30) — Phoenix: dropped to Tier5 in last 3 days AND now Tier3+
     {
@@ -67,8 +80,15 @@ pub fn check_all_legendaries(ps: &mut PlayerState, world: &mut GameWorld, player
     check_legendary_condition(ps, world, player, now, 4, 50, ps.no_x402_win_streak >= 5);
 
     // Legendary 5: Architect (Engineer, id=60) — Sage: 10 consecutive matches with different ActionType
-    check_legendary_condition(ps, world, player, now, 5, 60,
-        ps.total_matches >= 10 && ps.consecutive_diff_actiontype >= 10);
+    check_legendary_condition(
+        ps,
+        world,
+        player,
+        now,
+        5,
+        60,
+        ps.total_matches >= 10 && ps.consecutive_diff_actiontype >= 10,
+    );
 }
 
 /// Award Legendary card_id (index idx) if condition is met and slots remain.
@@ -81,9 +101,15 @@ fn check_legendary_condition(
     card_id: u8,
     condition: bool,
 ) {
-    if ps.legendary_progress[idx] { return; } // already acquired
-    if !condition { return; }
-    if world.legendary_acquired_count[idx] >= GameWorld::LEGENDARY_MAX_CLAIMANTS { return; }
+    if ps.legendary_progress[idx] {
+        return;
+    } // already acquired
+    if !condition {
+        return;
+    }
+    if world.legendary_acquired_count[idx] >= GameWorld::LEGENDARY_MAX_CLAIMANTS {
+        return;
+    }
 
     // Award the Legendary card
     ps.set_vault_card(card_id);
@@ -93,7 +119,10 @@ fn check_legendary_condition(
     let claimant_num = world.legendary_acquired_count[idx];
     msg!(
         "LegendaryAcquired: player={} legendary_id={} idx={} claimant={}",
-        player, card_id, idx, claimant_num
+        player,
+        card_id,
+        idx,
+        claimant_num
     );
 
     emit!(LegendaryAcquired {

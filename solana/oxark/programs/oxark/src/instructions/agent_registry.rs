@@ -1,5 +1,5 @@
-use anchor_lang::prelude::*;
 use crate::error::ErrorCode;
+use anchor_lang::prelude::*;
 
 /// Agent Registry — On-chain marketplace for AI agents.
 /// Developers register their agents with strategy descriptions and pricing.
@@ -11,8 +11,8 @@ use crate::error::ErrorCode;
 #[derive(Default)]
 pub struct AgentListing {
     pub agent_id: u32,
-    pub owner: Pubkey,          // Developer who deployed the agent
-    pub name_hash: [u8; 32],    // SHA256 of agent name (stored off-chain)
+    pub owner: Pubkey,           // Developer who deployed the agent
+    pub name_hash: [u8; 32],     // SHA256 of agent name (stored off-chain)
     pub strategy_hash: [u8; 32], // SHA256 of strategy description
     pub endpoint_hash: [u8; 32], // SHA256 of x402 endpoint URL
     pub price_per_query: u64,    // Lamports per intel query
@@ -66,8 +66,12 @@ pub fn handle_register_agent(
     agent.active = true;
     agent.bump = ctx.bumps.agent;
 
-    msg!("Agent {} registered by {}. Price: {} lamports/query",
-        agent_id, ctx.accounts.owner.key(), price_per_query);
+    msg!(
+        "Agent {} registered by {}. Price: {} lamports/query",
+        agent_id,
+        ctx.accounts.owner.key(),
+        price_per_query
+    );
 
     emit!(AgentRegistered {
         agent_id,

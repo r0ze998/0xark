@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::MatchmakingQueue;
 use crate::error::ErrorCode;
+use crate::state::MatchmakingQueue;
+use anchor_lang::prelude::*;
 
 /// Remove the calling player from the matchmaking queue.
 ///

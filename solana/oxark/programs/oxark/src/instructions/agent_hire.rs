@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::instructions::agent_registry::{AgentListing, AGENT_SEED};
 use crate::error::ErrorCode;
+use crate::instructions::agent_registry::{AgentListing, AGENT_SEED};
+use anchor_lang::prelude::*;
 
 pub const AGENT_HIRE_SEED: &[u8] = b"agent_hire";
 
@@ -14,11 +14,11 @@ pub const AGENT_HIRE_SEED: &[u8] = b"agent_hire";
 /// PDA seeds: `["agent_hire", hirer_pubkey, agent_id_le_bytes]`
 #[account]
 pub struct AgentHireSession {
-    pub hirer: Pubkey,          // Player who hired the agent
-    pub agent_owner: Pubkey,    // Owner of the AgentListing (agent developer)
-    pub agent_id: u32,          // Links to AgentListing PDA
-    pub started_at: i64,        // Unix timestamp when hire was registered
-    pub expires_at: i64,        // Unix timestamp when hire expires
+    pub hirer: Pubkey,       // Player who hired the agent
+    pub agent_owner: Pubkey, // Owner of the AgentListing (agent developer)
+    pub agent_id: u32,       // Links to AgentListing PDA
+    pub started_at: i64,     // Unix timestamp when hire was registered
+    pub expires_at: i64,     // Unix timestamp when hire expires
     /// First 32 bytes of the Solana tx signature that funded the x402 payment.
     /// Full sig is stored off-chain; this field provides an on-chain audit link.
     pub payment_tx_lo: [u8; 32],
@@ -86,15 +86,15 @@ pub fn handle_register_agent_hire(
     let now = ctx.accounts.clock.unix_timestamp;
     let session = &mut ctx.accounts.hire_session;
 
-    session.hirer         = ctx.accounts.hirer.key();
-    session.agent_owner   = ctx.accounts.agent_listing.owner;
-    session.agent_id      = agent_id;
-    session.started_at    = now;
-    session.expires_at    = now.saturating_add(duration_seconds);
+    session.hirer = ctx.accounts.hirer.key();
+    session.agent_owner = ctx.accounts.agent_listing.owner;
+    session.agent_id = agent_id;
+    session.started_at = now;
+    session.expires_at = now.saturating_add(duration_seconds);
     session.payment_tx_lo = payment_tx_lo;
     session.payment_tx_hi = payment_tx_hi;
-    session.active        = true;
-    session.bump          = ctx.bumps.hire_session;
+    session.active = true;
+    session.bump = ctx.bumps.hire_session;
 
     msg!(
         "AgentHireSession created: hirer={} agent_id={} expires_at={}",
@@ -104,7 +104,7 @@ pub fn handle_register_agent_hire(
     );
 
     emit!(AgentHired {
-        hirer:     ctx.accounts.hirer.key(),
+        hirer: ctx.accounts.hirer.key(),
         agent_id,
         expires_at: session.expires_at,
     });

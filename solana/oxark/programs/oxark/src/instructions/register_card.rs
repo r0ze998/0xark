@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::PlayerRegistry;
 use crate::error::ErrorCode;
+use crate::state::PlayerRegistry;
+use anchor_lang::prelude::*;
 
 /// Register a card species in the player's permanent registry (GI rule).
 ///
@@ -9,10 +9,7 @@ use crate::error::ErrorCode;
 /// When count reaches 60 → season_complete = true.
 ///
 /// PDA seeds: ["player_registry", player_pubkey]
-pub fn handle_register_card(
-    ctx: Context<RegisterCardCtx>,
-    card_id: u8,
-) -> Result<()> {
+pub fn handle_register_card(ctx: Context<RegisterCardCtx>, card_id: u8) -> Result<()> {
     require!(card_id >= 1 && card_id <= 60, ErrorCode::InvalidAction);
     let registry = &mut ctx.accounts.player_registry;
     let idx = (card_id - 1) as usize;

@@ -1,5 +1,5 @@
-use anchor_lang::prelude::*;
 use crate::state::PlayerBattleStats;
+use anchor_lang::prelude::*;
 
 /// Record the outcome of a card battle round for combo tracking.
 ///
@@ -54,9 +54,11 @@ pub fn handle_record_battle_result(
         let tier = PlayerBattleStats::combo_tier(stats.combo_count);
         msg!(
             "COMBO x{} (tier={}) for {} — max={} xp2x={}",
-            stats.combo_count, tier,
+            stats.combo_count,
+            tier,
             ctx.accounts.player.key(),
-            stats.max_combo, stats.xp_2x_flag
+            stats.max_combo,
+            stats.xp_2x_flag
         );
     } else {
         stats.combo_count = 0;

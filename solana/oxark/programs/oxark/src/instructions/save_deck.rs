@@ -1,7 +1,7 @@
+use crate::error::ErrorCode;
+use crate::state::PlayerDeck;
 use anchor_lang::prelude::*;
 use std::collections::HashMap;
-use crate::state::PlayerDeck;
-use crate::error::ErrorCode;
 
 /// Save (or update) the player's prepared battle deck.
 ///
@@ -35,7 +35,10 @@ pub fn handle_save_deck(
     // Validate card IDs and count copies (max 2 per card)
     let mut copy_count: HashMap<u8, u8> = HashMap::new();
     for &card_id in &cards {
-        require!(card_id >= 1 && card_id <= 60, ErrorCode::InvalidDeckComposition);
+        require!(
+            card_id >= 1 && card_id <= 60,
+            ErrorCode::InvalidDeckComposition
+        );
         let count = copy_count.entry(card_id).or_insert(0);
         *count += 1;
         require!(*count <= 2, ErrorCode::InvalidDeckComposition);

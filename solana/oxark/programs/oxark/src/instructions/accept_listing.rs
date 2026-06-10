@@ -4,10 +4,10 @@
 // The card is transferred to the buyer's vault.
 // The TradeListing PDA is closed (close = seller) — rent refund goes to seller.
 
+use crate::error::ErrorCode;
+use crate::state::{ListingAcceptedEvent, PlayerState, TradeListing};
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
-use crate::state::{PlayerState, TradeListing, ListingAcceptedEvent};
-use crate::error::ErrorCode;
 
 #[derive(Accounts)]
 #[instruction(seller_pubkey: Pubkey, card_id: u8)]
@@ -44,7 +44,7 @@ pub fn handle_accept_listing(
     _seller_pubkey: Pubkey,
     card_id: u8,
 ) -> Result<()> {
-    let price  = ctx.accounts.listing.price;
+    let price = ctx.accounts.listing.price;
     let seller = ctx.accounts.listing.seller;
 
     // Transfer SOL: buyer → seller (0% fee, no platform cut)
@@ -53,7 +53,7 @@ pub fn handle_accept_listing(
             ctx.accounts.system_program.key(),
             Transfer {
                 from: ctx.accounts.buyer.to_account_info(),
-                to:   ctx.accounts.seller.clone(),
+                to: ctx.accounts.seller.clone(),
             },
         ),
         price,
@@ -74,7 +74,10 @@ pub fn handle_accept_listing(
 
     msg!(
         "accept_listing: buyer={} seller={} card={} price={}",
-        ctx.accounts.buyer.key(), seller, card_id, price
+        ctx.accounts.buyer.key(),
+        seller,
+        card_id,
+        price
     );
     Ok(())
 }

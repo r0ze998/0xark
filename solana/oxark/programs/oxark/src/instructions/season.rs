@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::constants::*;
-use crate::state::*;
 use crate::error::ErrorCode;
+use crate::state::*;
+use anchor_lang::prelude::*;
 
 /// Season system for competitive play.
 /// Each season has: entry fee, prize pool, leaderboard, NFT carry-over.
@@ -17,11 +17,11 @@ use crate::error::ErrorCode;
 pub struct Season {
     pub season_id: u32,
     pub authority: Pubkey,
-    pub entry_fee: u64,           // Lamports
-    pub prize_pool: u64,          // Accumulated from fees + x402 cuts
+    pub entry_fee: u64,  // Lamports
+    pub prize_pool: u64, // Accumulated from fees + x402 cuts
     pub player_count: u32,
     pub max_players: u32,
-    pub status: u8,               // 0=Open, 1=Active, 2=Ended
+    pub status: u8, // 0=Open, 1=Active, 2=Ended
     pub winner: Pubkey,
     pub winner_time: i64,         // Unix timestamp of completion
     pub fastest_clear_rounds: u8, // Fewest rounds to win
@@ -75,7 +75,12 @@ pub fn handle_create_season(
     season.season_end = clock.unix_timestamp + duration_seconds;
     season.bump = ctx.bumps.season;
 
-    msg!("Season {} created. Entry: {} lamports. Duration: {}s", season_id, entry_fee, duration_seconds);
+    msg!(
+        "Season {} created. Entry: {} lamports. Duration: {}s",
+        season_id,
+        entry_fee,
+        duration_seconds
+    );
 
     emit!(SeasonCreated {
         season_id,
@@ -104,8 +109,12 @@ pub fn handle_end_season(ctx: Context<EndSeason>, season_id: u32) -> Result<()> 
     let season = &mut ctx.accounts.season;
     season.status = 2; // Ended
 
-    msg!("Season {} ended. Winner: {}. Prize pool: {} lamports",
-        season_id, season.winner, season.prize_pool);
+    msg!(
+        "Season {} ended. Winner: {}. Prize pool: {} lamports",
+        season_id,
+        season.winner,
+        season.prize_pool
+    );
 
     emit!(SeasonEnded {
         season_id,

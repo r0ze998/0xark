@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::{DuelState, DuelInitialized};
 use crate::error::ErrorCode;
+use crate::state::{DuelInitialized, DuelState};
+use anchor_lang::prelude::*;
 
 pub const DUEL_SEED: &[u8] = b"duel";
 
@@ -44,17 +44,17 @@ pub fn handle_init_duel(
     require!(hall_tier <= 2, ErrorCode::InvalidArea); // reuse for tier range check
 
     let duel = &mut ctx.accounts.duel;
-    duel.id        = duel_id;
-    duel.player_1  = ctx.accounts.player_1.key();
-    duel.player_2  = ctx.accounts.player_2.key();
+    duel.id = duel_id;
+    duel.player_1 = ctx.accounts.player_1.key();
+    duel.player_2 = ctx.accounts.player_2.key();
     duel.hall_tier = hall_tier;
-    duel.round     = 1;
-    duel.phase     = 0; // Draw
-    duel.ante      = ante;
+    duel.round = 1;
+    duel.phase = 0; // Draw
+    duel.ante = ante;
     duel.started_at = Clock::get()?.unix_timestamp;
-    duel.ended_at  = 0;
-    duel.winner    = Pubkey::default();
-    duel.bump      = ctx.bumps.duel;
+    duel.ended_at = 0;
+    duel.winner = Pubkey::default();
+    duel.bump = ctx.bumps.duel;
 
     emit!(DuelInitialized {
         duel_id,
@@ -62,6 +62,11 @@ pub fn handle_init_duel(
         player_2: duel.player_2,
     });
 
-    msg!("DuelState initialized: {} (tier={} ante={})", duel_id, hall_tier, ante);
+    msg!(
+        "DuelState initialized: {} (tier={} ante={})",
+        duel_id,
+        hall_tier,
+        ante
+    );
     Ok(())
 }

@@ -3,9 +3,9 @@
 // Only the original seller may cancel. The card is returned to their vault.
 // The TradeListing PDA is closed and rent is refunded to the seller.
 
-use anchor_lang::prelude::*;
-use crate::state::{PlayerState, TradeListing, ListingCancelledEvent};
 use crate::error::ErrorCode;
+use crate::state::{ListingCancelledEvent, PlayerState, TradeListing};
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(card_id: u8)]
@@ -36,12 +36,16 @@ pub fn handle_cancel_listing(ctx: Context<CancelListing>, card_id: u8) -> Result
     ctx.accounts.seller_state.add_card(card_id)?;
 
     emit!(ListingCancelledEvent {
-        seller:  ctx.accounts.seller.key(),
+        seller: ctx.accounts.seller.key(),
         card_id,
         slot: Clock::get()?.slot,
     });
 
-    msg!("cancel_listing: seller={} card={}", ctx.accounts.seller.key(), card_id);
+    msg!(
+        "cancel_listing: seller={} card={}",
+        ctx.accounts.seller.key(),
+        card_id
+    );
     Ok(())
 }
 

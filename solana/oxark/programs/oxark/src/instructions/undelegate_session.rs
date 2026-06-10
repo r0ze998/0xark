@@ -1,8 +1,8 @@
+use crate::constants::{GAME_SEED, PLAYER_SEED};
+use crate::error::ErrorCode;
 use anchor_lang::prelude::*;
 use ephemeral_rollups_sdk::consts::{MAGIC_CONTEXT_ID, MAGIC_PROGRAM_ID};
 use ephemeral_rollups_sdk::ephem::commit_and_undelegate_accounts;
-use crate::constants::{GAME_SEED, PLAYER_SEED};
-use crate::error::ErrorCode;
 
 // ─── Accounts ─────────────────────────────────────────────────────────────
 //
@@ -35,10 +35,7 @@ pub struct UndelegateSession<'info> {
 
 // ─── Instruction handler ──────────────────────────────────────────────────
 
-pub fn handle_undelegate_session(
-    ctx: Context<UndelegateSession>,
-    game_id: u64,
-) -> Result<()> {
+pub fn handle_undelegate_session(ctx: Context<UndelegateSession>, game_id: u64) -> Result<()> {
     // Verify magic program address
     require_keys_eq!(
         ctx.accounts.magic_program.key(),
@@ -55,10 +52,8 @@ pub fn handle_undelegate_session(
 
     // Verify game PDA derivation
     let game_id_bytes = game_id.to_le_bytes();
-    let (expected_game, _) = Pubkey::find_program_address(
-        &[GAME_SEED, &game_id_bytes],
-        &crate::id(),
-    );
+    let (expected_game, _) =
+        Pubkey::find_program_address(&[GAME_SEED, &game_id_bytes], &crate::id());
     require_keys_eq!(
         ctx.accounts.game.key(),
         expected_game,
@@ -88,6 +83,9 @@ pub fn handle_undelegate_session(
     )
     .map_err(anchor_lang::error::Error::from)?;
 
-    msg!("UndelegateSession: game {} commit+undelegate scheduled", game_id);
+    msg!(
+        "UndelegateSession: game {} commit+undelegate scheduled",
+        game_id
+    );
     Ok(())
 }

@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::constants::*;
-use crate::state::*;
 use crate::error::ErrorCode;
+use crate::state::*;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(game_id: u64)]
@@ -51,6 +51,11 @@ pub fn handle_join_game(ctx: Context<JoinGame>, game_id: u64) -> Result<()> {
     game.players[ps.player_index as usize] = ctx.accounts.player.key();
     game.player_count += 1;
 
-    msg!("Player {} joined game {} (index {})", ctx.accounts.player.key(), game_id, ps.player_index);
+    msg!(
+        "Player {} joined game {} (index {})",
+        ctx.accounts.player.key(),
+        game_id,
+        ps.player_index
+    );
     Ok(())
 }

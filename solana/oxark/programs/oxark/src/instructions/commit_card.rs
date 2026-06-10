@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::{Game, CardCommitRecord, GameStatus};
 use crate::error::ErrorCode;
+use crate::state::{CardCommitRecord, Game, GameStatus};
+use anchor_lang::prelude::*;
 
 /// Submit a ZK card commitment for the 2-phase bluff battle (Axis C).
 ///
@@ -25,12 +25,12 @@ pub fn handle_commit_card(
     );
 
     let record = &mut ctx.accounts.card_commit_record;
-    record.game_id    = game_id;
-    record.player     = ctx.accounts.player.key();
-    record.round      = game.round;
+    record.game_id = game_id;
+    record.player = ctx.accounts.player.key();
+    record.round = game.round;
     record.commitment = commitment;
-    record.revealed   = false;
-    record.card_id    = 0;
+    record.revealed = false;
+    record.card_id = 0;
 
     Ok(())
 }

@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::PlayerDeck;
 use crate::error::ErrorCode;
+use crate::state::PlayerDeck;
+use anchor_lang::prelude::*;
 
 /// Lock the player's deck for 1 hour (3600 seconds).
 ///

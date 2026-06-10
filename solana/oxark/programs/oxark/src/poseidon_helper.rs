@@ -1,3 +1,5 @@
+use ark_bn254::Fr;
+use ark_ff::PrimeField;
 /// T-D13-A0: On-chain Poseidon(15) matching circuits/hand_commitment/hand_commitment.circom
 ///
 /// Circuit input order:
@@ -10,18 +12,11 @@
 ///   salt_hi   = bytesToBigInt(salt.slice(0, 16))
 ///
 /// This module replicates that encoding so on-chain hash == circuit commitment.
-
 use pso_poseidon::{Poseidon, PoseidonParameters};
-use ark_bn254::Fr;
-use ark_ff::PrimeField;
 
 use crate::poseidon_t16_constants::{
-    POSEIDON_T16_ARK,
-    POSEIDON_T16_MDS,
-    POSEIDON_T16_FULL_ROUNDS,
-    POSEIDON_T16_PARTIAL_ROUNDS,
-    POSEIDON_T16_WIDTH,
-    POSEIDON_T16_ALPHA,
+    POSEIDON_T16_ALPHA, POSEIDON_T16_ARK, POSEIDON_T16_FULL_ROUNDS, POSEIDON_T16_MDS,
+    POSEIDON_T16_PARTIAL_ROUNDS, POSEIDON_T16_WIDTH,
 };
 
 /// Build the Poseidon(15) hasher using hardcoded t=16 circomlib constants.
@@ -92,9 +87,7 @@ pub fn compute_hand_commitment(
     let mut hasher = build_poseidon_t16();
 
     use pso_poseidon::PoseidonHasher;
-    let commitment = hasher
-        .hash(&inputs)
-        .map_err(|_| PoseidonHashError)?;
+    let commitment = hasher.hash(&inputs).map_err(|_| PoseidonHashError)?;
 
     // Serialize to 32-byte little-endian (matches commitment bytes sent by client)
     let bigint = commitment.into_bigint();
@@ -134,14 +127,20 @@ mod tests {
         // Build pubkey_bytes: [pubkey_hi BE | pubkey_lo BE]
         let mut pubkey_bytes = [0u8; 32];
         // pubkey_hi (bytes 0..16): 295147905179352825855 = 0x00000000000000_0F_FFFFFFFFFFFFFFFF
-        pubkey_bytes[0..16].copy_from_slice(&[0, 0, 0, 0, 0, 0, 0, 15, 255, 255, 255, 255, 255, 255, 255, 255]);
+        pubkey_bytes[0..16].copy_from_slice(&[
+            0, 0, 0, 0, 0, 0, 0, 15, 255, 255, 255, 255, 255, 255, 255, 255,
+        ]);
         // pubkey_lo (bytes 16..32): 147573952589676412927 = 0x00000000000000_07_FFFFFFFFFFFFFF
-        pubkey_bytes[16..32].copy_from_slice(&[0, 0, 0, 0, 0, 0, 0, 7, 255, 255, 255, 255, 255, 255, 255, 255]);
+        pubkey_bytes[16..32].copy_from_slice(&[
+            0, 0, 0, 0, 0, 0, 0, 7, 255, 255, 255, 255, 255, 255, 255, 255,
+        ]);
 
         // Build salt_bytes: [salt_hi BE | salt_lo BE]
         let mut salt_bytes = [0u8; 32];
         // salt_hi (bytes 0..16): 79228162514264337593543950335 = 2^96 - 1
-        salt_bytes[0..16].copy_from_slice(&[0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255]);
+        salt_bytes[0..16].copy_from_slice(&[
+            0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ]);
         // salt_lo (bytes 16..32): 39614081257132168796771975168 = 2^95
         salt_bytes[16..32].copy_from_slice(&[0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
@@ -153,10 +152,8 @@ mod tests {
         // Expected LE bytes of commitment decimal
         // 10100113277745503718751020503234026402412313156239001215309700981685679881829
         let expected_le: [u8; 32] = [
-            101, 254, 20, 78, 171, 229, 171, 10,
-            239, 99, 224, 42, 72, 213, 240, 241,
-            156, 199, 190, 29, 65, 187, 243, 72,
-            65, 52, 174, 236, 38, 118, 84, 22,
+            101, 254, 20, 78, 171, 229, 171, 10, 239, 99, 224, 42, 72, 213, 240, 241, 156, 199,
+            190, 29, 65, 187, 243, 72, 65, 52, 174, 236, 38, 118, 84, 22,
         ];
 
         assert_eq!(
@@ -181,7 +178,10 @@ mod tests {
         let h_a = compute_hand_commitment(1, &pubkey, &cards_a, &salt).unwrap();
         let h_b = compute_hand_commitment(1, &pubkey, &cards_b, &salt).unwrap();
 
-        assert_ne!(h_a, h_b, "Different card_ids must produce different commitments");
+        assert_ne!(
+            h_a, h_b,
+            "Different card_ids must produce different commitments"
+        );
     }
 
     /// Determinism: same inputs always produce same output.

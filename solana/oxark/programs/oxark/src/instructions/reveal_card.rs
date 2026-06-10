@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::{Game, CardCommitRecord, GameStatus};
 use crate::error::ErrorCode;
+use crate::state::{CardCommitRecord, Game, GameStatus};
+use anchor_lang::prelude::*;
 use solana_sha256_hasher::hashv;
 
 /// Reveal the previously committed card (Axis C — 2-phase bluff battle).
@@ -37,7 +37,7 @@ pub fn handle_reveal_card(
 
     require!(hash == record.commitment, ErrorCode::HashMismatch);
 
-    record.card_id  = card_id;
+    record.card_id = card_id;
     record.revealed = true;
 
     Ok(())

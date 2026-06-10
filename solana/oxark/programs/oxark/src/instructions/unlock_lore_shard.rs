@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::{CardLoreShards, LoreShardUnlocked};
 use crate::error::ErrorCode;
+use crate::state::{CardLoreShards, LoreShardUnlocked};
+use anchor_lang::prelude::*;
 
 /// Shard indices for a card's lore progression (3 shards per card):
 ///   0 = Shard 1 — auto-unlocked on first card acquisition (record_mint)
@@ -52,11 +52,18 @@ pub fn handle_unlock_lore_shard(
     }
 
     // Verify ownership matches
-    require!(cls.owner == ctx.accounts.owner.key(), ErrorCode::InvalidAction);
+    require!(
+        cls.owner == ctx.accounts.owner.key(),
+        ErrorCode::InvalidAction
+    );
 
     // Idempotent — already unlocked is a no-op
     if cls.shards_found[shard_index as usize] {
-        msg!("Shard {} already unlocked for card {}", shard_index, card_mint);
+        msg!(
+            "Shard {} already unlocked for card {}",
+            shard_index,
+            card_mint
+        );
         return Ok(());
     }
 

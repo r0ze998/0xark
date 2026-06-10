@@ -1,13 +1,11 @@
 use {
-    anchor_lang::{
-        solana_program::instruction::Instruction, InstructionData, ToAccountMetas,
-    },
+    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
     litesvm::LiteSVM,
+    sha2::{Digest, Sha256},
     solana_keypair::Keypair,
     solana_message::{Message, VersionedMessage},
     solana_signer::Signer,
     solana_transaction::versioned::VersionedTransaction,
-    sha2::{Sha256, Digest},
 };
 
 // ── ZK proof byte arrays (generated from circuits/*/build/proof.json) ─────────
@@ -17,37 +15,36 @@ use {
 // commit_reveal circuit (277 constraints) — input: actionType=2, targetArea=1, salt=12345678901234567890123456789012
 // Proof generated with fresh pot12 trusted setup (zkey regenerated; VK in verify_zk_proof.rs updated to match)
 const PROOF_CR_A: [u8; 64] = [
-    20,21,113,24,5,43,114,72,116,241,3,169,169,45,174,204,
-    246,215,186,43,32,236,219,6,158,47,206,161,143,32,66,161,
-    0,46,43,253,47,158,23,143,68,149,89,23,1,246,185,177,
-    23,174,5,178,109,25,32,127,182,107,33,162,54,124,59,51,
+    20, 21, 113, 24, 5, 43, 114, 72, 116, 241, 3, 169, 169, 45, 174, 204, 246, 215, 186, 43, 32,
+    236, 219, 6, 158, 47, 206, 161, 143, 32, 66, 161, 0, 46, 43, 253, 47, 158, 23, 143, 68, 149,
+    89, 23, 1, 246, 185, 177, 23, 174, 5, 178, 109, 25, 32, 127, 182, 107, 33, 162, 54, 124, 59,
+    51,
 ];
 const PROOF_CR_B: [u8; 128] = [
-    17,158,72,20,86,162,118,73,205,227,150,176,150,212,60,46,
-    180,50,79,194,186,176,64,48,43,18,31,254,176,130,186,3,
-    4,102,38,151,103,56,246,85,38,215,215,167,232,154,97,19,
-    89,135,160,238,214,39,78,104,40,23,124,215,204,220,162,121,
-    2,1,125,233,118,180,1,67,43,131,158,159,6,12,9,249,
-    70,84,77,165,116,153,232,221,96,218,124,61,17,124,69,80,
-    15,18,74,108,175,123,67,167,30,202,105,37,237,13,106,145,
-    185,83,101,178,136,47,95,229,188,102,217,151,152,173,219,101,
+    17, 158, 72, 20, 86, 162, 118, 73, 205, 227, 150, 176, 150, 212, 60, 46, 180, 50, 79, 194, 186,
+    176, 64, 48, 43, 18, 31, 254, 176, 130, 186, 3, 4, 102, 38, 151, 103, 56, 246, 85, 38, 215,
+    215, 167, 232, 154, 97, 19, 89, 135, 160, 238, 214, 39, 78, 104, 40, 23, 124, 215, 204, 220,
+    162, 121, 2, 1, 125, 233, 118, 180, 1, 67, 43, 131, 158, 159, 6, 12, 9, 249, 70, 84, 77, 165,
+    116, 153, 232, 221, 96, 218, 124, 61, 17, 124, 69, 80, 15, 18, 74, 108, 175, 123, 67, 167, 30,
+    202, 105, 37, 237, 13, 106, 145, 185, 83, 101, 178, 136, 47, 95, 229, 188, 102, 217, 151, 152,
+    173, 219, 101,
 ];
 const PROOF_CR_C: [u8; 64] = [
-    42,163,66,88,82,44,191,185,184,93,226,178,135,193,79,134,
-    100,209,200,104,187,189,40,47,246,203,12,156,203,111,132,232,
-    45,190,100,178,86,24,9,48,95,140,216,90,27,143,131,79,
-    73,14,186,188,110,251,89,140,134,215,101,164,246,108,183,72,
+    42, 163, 66, 88, 82, 44, 191, 185, 184, 93, 226, 178, 135, 193, 79, 134, 100, 209, 200, 104,
+    187, 189, 40, 47, 246, 203, 12, 156, 203, 111, 132, 232, 45, 190, 100, 178, 86, 24, 9, 48, 95,
+    140, 216, 90, 27, 143, 131, 79, 73, 14, 186, 188, 110, 251, 89, 140, 134, 215, 101, 164, 246,
+    108, 183, 72,
 ];
 // commitHash = Poseidon(2, 1, 12345678901234567890123456789012) = 18900108544938186552350079369873888314453412378062376133398837163123226377055
 const PUBLIC_CR_HASH: [u8; 32] = [
-    41,201,21,20,162,172,152,196,113,91,6,84,21,1,203,227,
-    176,240,18,226,247,243,201,204,107,155,114,150,225,142,251,95,
+    41, 201, 21, 20, 162, 172, 152, 196, 113, 91, 6, 84, 21, 1, 203, 227, 176, 240, 18, 226, 247,
+    243, 201, 204, 107, 155, 114, 150, 225, 142, 251, 95,
 ];
 const PROOF_CR_A_BAD: [u8; 64] = [
-    235,21,113,24,5,43,114,72,116,241,3,169,169,45,174,204,
-    246,215,186,43,32,236,219,6,158,47,206,161,143,32,66,161,
-    0,46,43,253,47,158,23,143,68,149,89,23,1,246,185,177,
-    23,174,5,178,109,25,32,127,182,107,33,162,54,124,59,51,
+    235, 21, 113, 24, 5, 43, 114, 72, 116, 241, 3, 169, 169, 45, 174, 204, 246, 215, 186, 43, 32,
+    236, 219, 6, 158, 47, 206, 161, 143, 32, 66, 161, 0, 46, 43, 253, 47, 158, 23, 143, 68, 149,
+    89, 23, 1, 246, 185, 177, 23, 174, 5, 178, 109, 25, 32, 127, 182, 107, 33, 162, 54, 124, 59,
+    51,
 ];
 
 // hand_commitment circuit (576 constraints) — input: cards=[1,5,23,47,2,...], round=1, pubkey_lo/hi example
@@ -104,8 +101,11 @@ fn setup() -> (LiteSVM, Keypair) {
     // custom-heap is enabled by default: the program's BumpAllocator is 256KB.
     // The VM must map at least 256KB of heap or the first alloc causes an
     // access violation at ~0x30003ff38 (above the default 32KB mapped region).
-    let base   = ComputeBudget::new_with_defaults(false, false);
-    let budget = ComputeBudget { heap_size: 256 * 1024, ..base };
+    let base = ComputeBudget::new_with_defaults(false, false);
+    let budget = ComputeBudget {
+        heap_size: 256 * 1024,
+        ..base
+    };
     let mut svm = LiteSVM::new().with_compute_budget(budget);
     let bytes = include_bytes!("../../../target/deploy/oxark.so");
     svm.add_program(program_id, bytes).unwrap();
@@ -127,17 +127,17 @@ fn send_ix_with_signers(svm: &mut LiteSVM, ix: Instruction, payer: &Keypair, sig
     all_signers.extend_from_slice(signers);
     let tx = VersionedTransaction::try_new(
         VersionedMessage::Legacy(msg),
-        &all_signers.iter().map(|k| *k as &dyn solana_signer::Signer).collect::<Vec<_>>(),
+        &all_signers
+            .iter()
+            .map(|k| *k as &dyn solana_signer::Signer)
+            .collect::<Vec<_>>(),
     )
     .unwrap();
     svm.send_transaction(tx).unwrap();
 }
 
 fn game_pda(game_id: u64) -> (solana_pubkey::Pubkey, u8) {
-    solana_pubkey::Pubkey::find_program_address(
-        &[b"game", &game_id.to_le_bytes()],
-        &oxark::id(),
-    )
+    solana_pubkey::Pubkey::find_program_address(&[b"game", &game_id.to_le_bytes()], &oxark::id())
 }
 
 fn card_pool_pda(game_id: u64) -> (solana_pubkey::Pubkey, u8) {
@@ -154,18 +154,24 @@ fn player_pda(game_id: u64, player: &solana_pubkey::Pubkey) -> (solana_pubkey::P
     )
 }
 
-fn commit_pda(game_id: u64, round: u8, player: &solana_pubkey::Pubkey) -> (solana_pubkey::Pubkey, u8) {
+fn commit_pda(
+    game_id: u64,
+    round: u8,
+    player: &solana_pubkey::Pubkey,
+) -> (solana_pubkey::Pubkey, u8) {
     solana_pubkey::Pubkey::find_program_address(
-        &[b"commit", &game_id.to_le_bytes(), &round.to_le_bytes(), player.as_ref()],
+        &[
+            b"commit",
+            &game_id.to_le_bytes(),
+            &round.to_le_bytes(),
+            player.as_ref(),
+        ],
         &oxark::id(),
     )
 }
 
 fn duel_pda(duel_id: &solana_pubkey::Pubkey) -> (solana_pubkey::Pubkey, u8) {
-    solana_pubkey::Pubkey::find_program_address(
-        &[b"duel", duel_id.as_ref()],
-        &oxark::id(),
-    )
+    solana_pubkey::Pubkey::find_program_address(&[b"duel", duel_id.as_ref()], &oxark::id())
 }
 
 fn send_ix_result(
@@ -188,7 +194,9 @@ fn send_ix_result_multi(
     let blockhash = svm.latest_blockhash();
     let msg = Message::new_with_blockhash(&[ix], Some(&payer.pubkey()), &blockhash);
     let mut signers: Vec<&dyn solana_signer::Signer> = vec![payer];
-    for s in extra_signers { signers.push(*s); }
+    for s in extra_signers {
+        signers.push(*s);
+    }
     let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &signers).unwrap();
     svm.send_transaction(tx)
 }
@@ -236,7 +244,11 @@ fn test_join_game() {
     // Create game
     let create_ix = Instruction::new_with_bytes(
         oxark::id(),
-        &oxark::instruction::CreateGame { game_id, max_players: 2 }.data(),
+        &oxark::instruction::CreateGame {
+            game_id,
+            max_players: 2,
+        }
+        .data(),
         oxark::accounts::CreateGame {
             game: game_pda,
             card_pool: pool_pda,
@@ -299,7 +311,11 @@ fn test_create_and_start_game() {
         &mut svm,
         Instruction::new_with_bytes(
             oxark::id(),
-            &oxark::instruction::CreateGame { game_id, max_players: 2 }.data(),
+            &oxark::instruction::CreateGame {
+                game_id,
+                max_players: 2,
+            }
+            .data(),
             oxark::accounts::CreateGame {
                 game: game_key,
                 card_pool: pool_key,
@@ -386,35 +402,100 @@ fn test_commit_action() {
     let (p2p, _) = player_pda(game_id, &player2.pubkey());
 
     // Create + Join + Join + Start
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CreateGame { game_id, max_players: 2 }.data(),
-        oxark::accounts::CreateGame { game: game_key, card_pool: pool_key, host: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::JoinGame { game_id }.data(),
-        oxark::accounts::JoinGame { game: game_key, player_state: hp, player: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::JoinGame { game_id }.data(),
-        oxark::accounts::JoinGame { game: game_key, player_state: p2p, player: player2.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &player2);
-    let mut sa = oxark::accounts::StartGame { game: game_key, card_pool: pool_key, host: host.pubkey() }.to_account_metas(None);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::CreateGame {
+                game_id,
+                max_players: 2,
+            }
+            .data(),
+            oxark::accounts::CreateGame {
+                game: game_key,
+                card_pool: pool_key,
+                host: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::JoinGame { game_id }.data(),
+            oxark::accounts::JoinGame {
+                game: game_key,
+                player_state: hp,
+                player: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::JoinGame { game_id }.data(),
+            oxark::accounts::JoinGame {
+                game: game_key,
+                player_state: p2p,
+                player: player2.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &player2,
+    );
+    let mut sa = oxark::accounts::StartGame {
+        game: game_key,
+        card_pool: pool_key,
+        host: host.pubkey(),
+    }
+    .to_account_metas(None);
     sa.push(solana_instruction::AccountMeta::new(hp, false));
     sa.push(solana_instruction::AccountMeta::new(p2p, false));
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::StartGame { game_id }.data(), sa), &host);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::StartGame { game_id }.data(),
+            sa,
+        ),
+        &host,
+    );
 
     // Now in CommitPhase (round 1). Commit action for host.
     let round: u8 = 1;
     let hash = [0u8; 32]; // dummy hash for testing
     let (commit_pda, _) = commit_pda(game_id, round, &host.pubkey());
 
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CommitAction { game_id, hash, phase: 0, played_cards: vec![] }.data(),
-        oxark::accounts::CommitActionCtx {
-            game: game_key,
-            player_state: hp,
-            commit: commit_pda,
-            player: host.pubkey(),
-            system_program: solana_sdk_ids::system_program::id(),
-        }.to_account_metas(None)), &host);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::CommitAction {
+                game_id,
+                hash,
+                phase: 0,
+                played_cards: vec![],
+            }
+            .data(),
+            oxark::accounts::CommitActionCtx {
+                game: game_key,
+                player_state: hp,
+                commit: commit_pda,
+                player: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
 
     // Verify commit account exists
     let commit_data = svm.get_account(&commit_pda).unwrap();
@@ -443,20 +524,72 @@ fn test_full_commit_reveal_round() {
     let (p2p, _) = player_pda(game_id, &player2.pubkey());
 
     // Create + Join + Join + Start
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CreateGame { game_id, max_players: 2 }.data(),
-        oxark::accounts::CreateGame { game: game_key, card_pool: pool_key, host: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::JoinGame { game_id }.data(),
-        oxark::accounts::JoinGame { game: game_key, player_state: hp, player: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::JoinGame { game_id }.data(),
-        oxark::accounts::JoinGame { game: game_key, player_state: p2p, player: player2.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &player2);
-    let mut sa = oxark::accounts::StartGame { game: game_key, card_pool: pool_key, host: host.pubkey() }.to_account_metas(None);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::CreateGame {
+                game_id,
+                max_players: 2,
+            }
+            .data(),
+            oxark::accounts::CreateGame {
+                game: game_key,
+                card_pool: pool_key,
+                host: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::JoinGame { game_id }.data(),
+            oxark::accounts::JoinGame {
+                game: game_key,
+                player_state: hp,
+                player: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::JoinGame { game_id }.data(),
+            oxark::accounts::JoinGame {
+                game: game_key,
+                player_state: p2p,
+                player: player2.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &player2,
+    );
+    let mut sa = oxark::accounts::StartGame {
+        game: game_key,
+        card_pool: pool_key,
+        host: host.pubkey(),
+    }
+    .to_account_metas(None);
     sa.push(solana_instruction::AccountMeta::new(hp, false));
     sa.push(solana_instruction::AccountMeta::new(p2p, false));
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::StartGame { game_id }.data(), sa), &host);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::StartGame { game_id }.data(),
+            sa,
+        ),
+        &host,
+    );
 
     // === COMMIT PHASE (round 1) ===
     let round: u8 = 1;
@@ -467,29 +600,105 @@ fn test_full_commit_reveal_round() {
     // Player 1 commits Draw (action_type=1)
     let hash1 = compute_hash(1, &zero_target, &salt1);
     let (c1, _) = commit_pda(game_id, round, &host.pubkey());
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CommitAction { game_id, hash: hash1, phase: 0, played_cards: vec![] }.data(),
-        oxark::accounts::CommitActionCtx { game: game_key, player_state: hp, commit: c1, player: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::CommitAction {
+                game_id,
+                hash: hash1,
+                phase: 0,
+                played_cards: vec![],
+            }
+            .data(),
+            oxark::accounts::CommitActionCtx {
+                game: game_key,
+                player_state: hp,
+                commit: c1,
+                player: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
 
     // Player 2 commits Draw (action_type=1)
     let hash2 = compute_hash(1, &zero_target, &salt2);
     let (c2, _) = commit_pda(game_id, round, &player2.pubkey());
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CommitAction { game_id, hash: hash2, phase: 0, played_cards: vec![] }.data(),
-        oxark::accounts::CommitActionCtx { game: game_key, player_state: p2p, commit: c2, player: player2.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &player2);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::CommitAction {
+                game_id,
+                hash: hash2,
+                phase: 0,
+                played_cards: vec![],
+            }
+            .data(),
+            oxark::accounts::CommitActionCtx {
+                game: game_key,
+                player_state: p2p,
+                commit: c2,
+                player: player2.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &player2,
+    );
 
     // Both committed — game should be in RevealPhase now
 
     // === REVEAL PHASE ===
     // Player 1 reveals
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt1, played_cards: vec![] }.data(),
-        oxark::accounts::RevealActionCtx { game: game_key, player_state: hp, commit: c1, player: host.pubkey() }.to_account_metas(None)), &host);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::RevealAction {
+                game_id,
+                action_type: 1,
+                target: zero_target,
+                salt: salt1,
+                played_cards: vec![],
+            }
+            .data(),
+            oxark::accounts::RevealActionCtx {
+                game: game_key,
+                player_state: hp,
+                commit: c1,
+                player: host.pubkey(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
 
     // Player 2 reveals
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt2, played_cards: vec![] }.data(),
-        oxark::accounts::RevealActionCtx { game: game_key, player_state: p2p, commit: c2, player: player2.pubkey() }.to_account_metas(None)), &player2);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::RevealAction {
+                game_id,
+                action_type: 1,
+                target: zero_target,
+                salt: salt2,
+                played_cards: vec![],
+            }
+            .data(),
+            oxark::accounts::RevealActionCtx {
+                game: game_key,
+                player_state: p2p,
+                commit: c2,
+                player: player2.pubkey(),
+            }
+            .to_account_metas(None),
+        ),
+        &player2,
+    );
 
     // Both revealed — game should be ready for resolve
     // Verify accounts are still valid
@@ -510,24 +719,76 @@ fn test_full_round_with_resolve() {
     let (p2p, _) = player_pda(game_id, &player2.pubkey());
 
     // === Create game ===
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CreateGame { game_id, max_players: 2 }.data(),
-        oxark::accounts::CreateGame { game: game_key, card_pool: pool_key, host: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::CreateGame {
+                game_id,
+                max_players: 2,
+            }
+            .data(),
+            oxark::accounts::CreateGame {
+                game: game_key,
+                card_pool: pool_key,
+                host: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
 
     // === Join both players ===
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::JoinGame { game_id }.data(),
-        oxark::accounts::JoinGame { game: game_key, player_state: hp, player: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::JoinGame { game_id }.data(),
-        oxark::accounts::JoinGame { game: game_key, player_state: p2p, player: player2.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &player2);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::JoinGame { game_id }.data(),
+            oxark::accounts::JoinGame {
+                game: game_key,
+                player_state: hp,
+                player: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::JoinGame { game_id }.data(),
+            oxark::accounts::JoinGame {
+                game: game_key,
+                player_state: p2p,
+                player: player2.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &player2,
+    );
 
     // === Start game ===
-    let mut sa = oxark::accounts::StartGame { game: game_key, card_pool: pool_key, host: host.pubkey() }.to_account_metas(None);
+    let mut sa = oxark::accounts::StartGame {
+        game: game_key,
+        card_pool: pool_key,
+        host: host.pubkey(),
+    }
+    .to_account_metas(None);
     sa.push(solana_instruction::AccountMeta::new(hp, false));
     sa.push(solana_instruction::AccountMeta::new(p2p, false));
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::StartGame { game_id }.data(), sa), &host);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::StartGame { game_id }.data(),
+            sa,
+        ),
+        &host,
+    );
 
     // === COMMIT PHASE (round 1) ===
     let round: u8 = 1;
@@ -538,23 +799,99 @@ fn test_full_round_with_resolve() {
     // Both players commit Draw (action_type=1) with proper SHA256 hashes
     let hash1 = compute_hash(1, &zero_target, &salt1);
     let (c1, _) = commit_pda(game_id, round, &host.pubkey());
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CommitAction { game_id, hash: hash1, phase: 0, played_cards: vec![] }.data(),
-        oxark::accounts::CommitActionCtx { game: game_key, player_state: hp, commit: c1, player: host.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &host);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::CommitAction {
+                game_id,
+                hash: hash1,
+                phase: 0,
+                played_cards: vec![],
+            }
+            .data(),
+            oxark::accounts::CommitActionCtx {
+                game: game_key,
+                player_state: hp,
+                commit: c1,
+                player: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
 
     let hash2 = compute_hash(1, &zero_target, &salt2);
     let (c2, _) = commit_pda(game_id, round, &player2.pubkey());
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CommitAction { game_id, hash: hash2, phase: 0, played_cards: vec![] }.data(),
-        oxark::accounts::CommitActionCtx { game: game_key, player_state: p2p, commit: c2, player: player2.pubkey(), system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), &player2);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::CommitAction {
+                game_id,
+                hash: hash2,
+                phase: 0,
+                played_cards: vec![],
+            }
+            .data(),
+            oxark::accounts::CommitActionCtx {
+                game: game_key,
+                player_state: p2p,
+                commit: c2,
+                player: player2.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &player2,
+    );
 
     // === REVEAL PHASE ===
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt1, played_cards: vec![] }.data(),
-        oxark::accounts::RevealActionCtx { game: game_key, player_state: hp, commit: c1, player: host.pubkey() }.to_account_metas(None)), &host);
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::RevealAction { game_id, action_type: 1, target: zero_target, salt: salt2, played_cards: vec![] }.data(),
-        oxark::accounts::RevealActionCtx { game: game_key, player_state: p2p, commit: c2, player: player2.pubkey() }.to_account_metas(None)), &player2);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::RevealAction {
+                game_id,
+                action_type: 1,
+                target: zero_target,
+                salt: salt1,
+                played_cards: vec![],
+            }
+            .data(),
+            oxark::accounts::RevealActionCtx {
+                game: game_key,
+                player_state: hp,
+                commit: c1,
+                player: host.pubkey(),
+            }
+            .to_account_metas(None),
+        ),
+        &host,
+    );
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::RevealAction {
+                game_id,
+                action_type: 1,
+                target: zero_target,
+                salt: salt2,
+                played_cards: vec![],
+            }
+            .data(),
+            oxark::accounts::RevealActionCtx {
+                game: game_key,
+                player_state: p2p,
+                commit: c2,
+                player: player2.pubkey(),
+            }
+            .to_account_metas(None),
+        ),
+        &player2,
+    );
 
     // === RESOLVE ROUND ===
     // Build the ResolveRound instruction with both player state PDAs as remaining_accounts
@@ -568,9 +905,15 @@ fn test_full_round_with_resolve() {
     resolve_accounts.push(solana_instruction::AccountMeta::new(hp, false));
     resolve_accounts.push(solana_instruction::AccountMeta::new(p2p, false));
 
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::ResolveRound { game_id }.data(),
-        resolve_accounts), &host);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::ResolveRound { game_id }.data(),
+            resolve_accounts,
+        ),
+        &host,
+    );
 
     // === VERIFY: game advanced to round 2 (CommitPhase) ===
     let game_data = svm.get_account(&game_key).unwrap();
@@ -583,7 +926,10 @@ fn test_full_round_with_resolve() {
     let round_byte = data[8 + 8 + 32 + 1]; // round offset
 
     // status should be CommitPhase (1) since game is not finished
-    assert_eq!(status_byte, 1, "Game status should be CommitPhase (1) after resolve");
+    assert_eq!(
+        status_byte, 1,
+        "Game status should be CommitPhase (1) after resolve"
+    );
     // round should be 2
     assert_eq!(round_byte, 2, "Game round should be 2 after first resolve");
 }
@@ -594,38 +940,81 @@ fn test_full_round_with_resolve() {
 // against the on-chain alt_bn128_pairing syscall.  Three circuits × 2 cases = 6 tests.
 
 /// Helper: full game setup up to CommitPhase (create + join × 2 + start).
-fn setup_game_commit_phase(
-    svm: &mut LiteSVM,
-    game_id: u64,
-    host: &Keypair,
-    player2: &Keypair,
-) {
+fn setup_game_commit_phase(svm: &mut LiteSVM, game_id: u64, host: &Keypair, player2: &Keypair) {
     let (game_key, _) = game_pda(game_id);
     let (pool_key, _) = card_pool_pda(game_id);
     let (hp, _) = player_pda(game_id, &host.pubkey());
     let (p2p, _) = player_pda(game_id, &player2.pubkey());
 
-    send_ix(svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::CreateGame { game_id, max_players: 2 }.data(),
-        oxark::accounts::CreateGame { game: game_key, card_pool: pool_key, host: host.pubkey(),
-            system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), host);
+    send_ix(
+        svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::CreateGame {
+                game_id,
+                max_players: 2,
+            }
+            .data(),
+            oxark::accounts::CreateGame {
+                game: game_key,
+                card_pool: pool_key,
+                host: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        host,
+    );
 
-    send_ix(svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::JoinGame { game_id }.data(),
-        oxark::accounts::JoinGame { game: game_key, player_state: hp, player: host.pubkey(),
-            system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), host);
+    send_ix(
+        svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::JoinGame { game_id }.data(),
+            oxark::accounts::JoinGame {
+                game: game_key,
+                player_state: hp,
+                player: host.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        host,
+    );
 
-    send_ix(svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::JoinGame { game_id }.data(),
-        oxark::accounts::JoinGame { game: game_key, player_state: p2p, player: player2.pubkey(),
-            system_program: solana_sdk_ids::system_program::id() }.to_account_metas(None)), player2);
+    send_ix(
+        svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::JoinGame { game_id }.data(),
+            oxark::accounts::JoinGame {
+                game: game_key,
+                player_state: p2p,
+                player: player2.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        player2,
+    );
 
-    let mut sa = oxark::accounts::StartGame { game: game_key, card_pool: pool_key, host: host.pubkey() }
-        .to_account_metas(None);
+    let mut sa = oxark::accounts::StartGame {
+        game: game_key,
+        card_pool: pool_key,
+        host: host.pubkey(),
+    }
+    .to_account_metas(None);
     sa.push(solana_instruction::AccountMeta::new(hp, false));
     sa.push(solana_instruction::AccountMeta::new(p2p, false));
-    send_ix(svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::StartGame { game_id }.data(), sa), host);
+    send_ix(
+        svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::StartGame { game_id }.data(),
+            sa,
+        ),
+        host,
+    );
 }
 
 // ── Circuit 2 → hand_commitment v2 (verify_zk_proof) ────────────────────────
@@ -647,10 +1036,16 @@ fn test_verify_zk_proof_valid() {
     let public_inputs: [[u8; 32]; 4] = [[0u8; 32]; 4];
 
     let (zk_record, _) = solana_pubkey::Pubkey::find_program_address(
-        &[b"zk_proof", duel_pda.as_ref(), &round_u64.to_le_bytes(), host.pubkey().as_ref()],
+        &[
+            b"zk_proof",
+            duel_pda.as_ref(),
+            &round_u64.to_le_bytes(),
+            host.pubkey().as_ref(),
+        ],
         &oxark::id(),
     );
-    let ix = Instruction::new_with_bytes(oxark::id(),
+    let ix = Instruction::new_with_bytes(
+        oxark::id(),
         &oxark::instruction::VerifyZkProof {
             proof_a: PROOF_CR_A,
             proof_b: PROOF_CR_B,
@@ -658,12 +1053,15 @@ fn test_verify_zk_proof_valid() {
             public_inputs,
             duel_pda,
             round: round_u64,
-        }.data(),
+        }
+        .data(),
         oxark::accounts::VerifyZkProof {
             signer: host.pubkey(),
             zk_proof_record: zk_record,
             system_program: solana_sdk_ids::system_program::id(),
-        }.to_account_metas(None));
+        }
+        .to_account_metas(None),
+    );
 
     let meta = send_ix_result(&mut svm, ix, &host)
         .expect("verify_zk_proof with valid hand_commitment proof must succeed");
@@ -694,26 +1092,38 @@ fn test_verify_zk_proof_tampered() {
     let public_inputs: [[u8; 32]; 4] = [[0u8; 32], round_fe, pubkey_lo, pubkey_hi];
 
     let (zk_record, _) = solana_pubkey::Pubkey::find_program_address(
-        &[b"zk_proof", duel_pda.as_ref(), &round_u64.to_le_bytes(), host.pubkey().as_ref()],
+        &[
+            b"zk_proof",
+            duel_pda.as_ref(),
+            &round_u64.to_le_bytes(),
+            host.pubkey().as_ref(),
+        ],
         &oxark::id(),
     );
-    let ix = Instruction::new_with_bytes(oxark::id(),
+    let ix = Instruction::new_with_bytes(
+        oxark::id(),
         &oxark::instruction::VerifyZkProof {
-            proof_a: PROOF_CR_A_BAD,  // tampered: not a valid hand_commitment v2 proof
+            proof_a: PROOF_CR_A_BAD, // tampered: not a valid hand_commitment v2 proof
             proof_b: PROOF_CR_B,
             proof_c: PROOF_CR_C,
             public_inputs,
             duel_pda,
             round: round_u64,
-        }.data(),
+        }
+        .data(),
         oxark::accounts::VerifyZkProof {
             signer: host.pubkey(),
             zk_proof_record: zk_record,
             system_program: solana_sdk_ids::system_program::id(),
-        }.to_account_metas(None));
+        }
+        .to_account_metas(None),
+    );
 
     let result = send_ix_result(&mut svm, ix, &host);
-    assert!(result.is_err(), "tampered hand_commitment proof must be rejected");
+    assert!(
+        result.is_err(),
+        "tampered hand_commitment proof must be rejected"
+    );
 }
 
 // ── Circuit 3: hand_commitment ────────────────────────────────────────────────
@@ -731,15 +1141,27 @@ fn test_commit_hand_valid_proof() {
     let (duel_key, _) = duel_pda(&duel_id);
 
     // Initialize duel: authority pays, player1 and player2 are participants
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::InitDuel { duel_id, hall_tier: 0, ante: 0 }.data(),
-        oxark::accounts::InitDuel {
-            duel: duel_key,
-            player_1: player1.pubkey(),
-            player_2: player2.pubkey(),
-            authority: authority.pubkey(),
-            system_program: solana_sdk_ids::system_program::id(),
-        }.to_account_metas(None)), &authority);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::InitDuel {
+                duel_id,
+                hall_tier: 0,
+                ante: 0,
+            }
+            .data(),
+            oxark::accounts::InitDuel {
+                duel: duel_key,
+                player_1: player1.pubkey(),
+                player_2: player2.pubkey(),
+                authority: authority.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &authority,
+    );
 
     // public_signals: [commitment, round=1, pubkey_lo, pubkey_hi]
     let public_signals = [
@@ -750,7 +1172,8 @@ fn test_commit_hand_valid_proof() {
     ];
 
     // player1 submits hand commitment (must be a duel participant)
-    let ix = Instruction::new_with_bytes(oxark::id(),
+    let ix = Instruction::new_with_bytes(
+        oxark::id(),
         &oxark::instruction::CommitHand {
             duel_id,
             round: 1,
@@ -758,9 +1181,14 @@ fn test_commit_hand_valid_proof() {
             proof_b: PROOF_HC_B,
             proof_c: PROOF_HC_C,
             public_signals,
-        }.data(),
-        oxark::accounts::CommitHand { duel: duel_key, player: player1.pubkey() }
-            .to_account_metas(None));
+        }
+        .data(),
+        oxark::accounts::CommitHand {
+            duel: duel_key,
+            player: player1.pubkey(),
+        }
+        .to_account_metas(None),
+    );
 
     let meta = send_ix_result_multi(&mut svm, ix, &authority, &[&player1])
         .expect("commit_hand with valid hand_commitment proof must succeed");
@@ -781,15 +1209,27 @@ fn test_commit_hand_tampered_proof() {
     let duel_id = solana_pubkey::Pubkey::new_unique();
     let (duel_key, _) = duel_pda(&duel_id);
 
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::InitDuel { duel_id, hall_tier: 0, ante: 0 }.data(),
-        oxark::accounts::InitDuel {
-            duel: duel_key,
-            player_1: player1.pubkey(),
-            player_2: player2.pubkey(),
-            authority: authority.pubkey(),
-            system_program: solana_sdk_ids::system_program::id(),
-        }.to_account_metas(None)), &authority);
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::InitDuel {
+                duel_id,
+                hall_tier: 0,
+                ante: 0,
+            }
+            .data(),
+            oxark::accounts::InitDuel {
+                duel: duel_key,
+                player_1: player1.pubkey(),
+                player_2: player2.pubkey(),
+                authority: authority.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &authority,
+    );
 
     let public_signals = [
         PUBLIC_HC_COMMITMENT,
@@ -798,18 +1238,27 @@ fn test_commit_hand_tampered_proof() {
         PUBLIC_HC_PUBKEY_HI,
     ];
 
-    let ix = Instruction::new_with_bytes(oxark::id(),
+    let ix = Instruction::new_with_bytes(
+        oxark::id(),
         &oxark::instruction::CommitHand {
             duel_id,
             round: 1,
-            proof_a: PROOF_HC_A_BAD,  // tampered: first byte flipped
+            proof_a: PROOF_HC_A_BAD, // tampered: first byte flipped
             proof_b: PROOF_HC_B,
             proof_c: PROOF_HC_C,
             public_signals,
-        }.data(),
-        oxark::accounts::CommitHand { duel: duel_key, player: player1.pubkey() }
-            .to_account_metas(None));
+        }
+        .data(),
+        oxark::accounts::CommitHand {
+            duel: duel_key,
+            player: player1.pubkey(),
+        }
+        .to_account_metas(None),
+    );
 
     let result = send_ix_result_multi(&mut svm, ix, &authority, &[&player1]);
-    assert!(result.is_err(), "tampered hand_commitment proof must be rejected");
+    assert!(
+        result.is_err(),
+        "tampered hand_commitment proof must be rejected"
+    );
 }

@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
-use crate::state::{MatchmakingQueue, PlayerBattleStats, PlayerState, QueueMatchReady};
 use crate::error::ErrorCode;
+use crate::state::{MatchmakingQueue, PlayerBattleStats, PlayerState, QueueMatchReady};
+use anchor_lang::prelude::*;
 
 /// Enter the matchmaking queue for the given tier (0=Bronze, 1=Silver, 2=Gold).
 ///
@@ -52,7 +52,10 @@ pub struct EnterQueue<'info> {
 
 pub fn handle_enter_queue(ctx: Context<EnterQueue>, tier: u8, season: u16) -> Result<()> {
     require!(tier <= 2, ErrorCode::InvalidAction);
-    require!(ctx.accounts.queue.players.len() < MatchmakingQueue::MAX_PLAYERS, ErrorCode::QueueFull);
+    require!(
+        ctx.accounts.queue.players.len() < MatchmakingQueue::MAX_PLAYERS,
+        ErrorCode::QueueFull
+    );
 
     // Initialise PlayerBattleStats if new
     let stats = &mut ctx.accounts.battle_stats;
@@ -91,7 +94,10 @@ pub fn handle_enter_queue(ctx: Context<EnterQueue>, tier: u8, season: u16) -> Re
     }
 
     let player_key = ctx.accounts.player.key();
-    require!(!queue.players.contains(&player_key), ErrorCode::AlreadyInQueue);
+    require!(
+        !queue.players.contains(&player_key),
+        ErrorCode::AlreadyInQueue
+    );
 
     queue.players.push(player_key);
 
@@ -99,7 +105,8 @@ pub fn handle_enter_queue(ctx: Context<EnterQueue>, tier: u8, season: u16) -> Re
         "Player {} entered {} queue (tier={} season={} queue_len={})",
         player_key,
         ["Bronze", "Silver", "Gold"][tier as usize],
-        tier, season,
+        tier,
+        season,
         queue.players.len(),
     );
 
@@ -107,7 +114,12 @@ pub fn handle_enter_queue(ctx: Context<EnterQueue>, tier: u8, season: u16) -> Re
     if queue.players.len() == 2 {
         let player_a = queue.players[0];
         let player_b = queue.players[1];
-        emit!(QueueMatchReady { tier, season, player_a, player_b });
+        emit!(QueueMatchReady {
+            tier,
+            season,
+            player_a,
+            player_b
+        });
         msg!("MATCH READY — {} vs {} (tier={})", player_a, player_b, tier);
     }
 

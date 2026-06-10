@@ -1,7 +1,7 @@
+use crate::error::ErrorCode;
+use crate::state::*;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
-use crate::state::*;
-use crate::error::ErrorCode;
 
 /// Phase 15 B-7: Register a player on the Season 1 waitlist.
 /// Validates waitlist deadline, deposits 0.5 SOL (85% → prize_pool, 15% → ops_treasury),
@@ -63,7 +63,7 @@ pub fn handle_register_waitlist(ctx: Context<RegisterWaitlist>) -> Result<()> {
 
     let deposit = GameWorld::DEPOSIT_LAMPORTS;
     let prize_share = deposit * GameWorld::PRIZE_POOL_BPS / 10_000;
-    let ops_share   = deposit - prize_share;
+    let ops_share = deposit - prize_share;
 
     // Transfer to prize pool
     transfer(
@@ -71,7 +71,7 @@ pub fn handle_register_waitlist(ctx: Context<RegisterWaitlist>) -> Result<()> {
             ctx.accounts.system_program.key(),
             Transfer {
                 from: ctx.accounts.player.to_account_info(),
-                to:   ctx.accounts.prize_pool.to_account_info(),
+                to: ctx.accounts.prize_pool.to_account_info(),
             },
         ),
         prize_share,
@@ -83,7 +83,7 @@ pub fn handle_register_waitlist(ctx: Context<RegisterWaitlist>) -> Result<()> {
             ctx.accounts.system_program.key(),
             Transfer {
                 from: ctx.accounts.player.to_account_info(),
-                to:   ctx.accounts.ops_treasury.to_account_info(),
+                to: ctx.accounts.ops_treasury.to_account_info(),
             },
         ),
         ops_share,
@@ -91,20 +91,20 @@ pub fn handle_register_waitlist(ctx: Context<RegisterWaitlist>) -> Result<()> {
 
     // Initialize PlayerState v2 fields
     let ps = &mut ctx.accounts.player_state;
-    ps.player          = ctx.accounts.player.key();
-    ps.deposit_amount  = deposit;
-    ps.vault_bitmap    = [0u8; 8];
-    ps.win_streak      = 0;
-    ps.max_win_streak  = 0;
-    ps.total_matches   = 0;
+    ps.player = ctx.accounts.player.key();
+    ps.deposit_amount = deposit;
+    ps.vault_bitmap = [0u8; 8];
+    ps.win_streak = 0;
+    ps.max_win_streak = 0;
+    ps.total_matches = 0;
     ps.last_action_type = 0;
     ps.consecutive_diff_actiontype = 0;
     ps.x402_total_spend = 0;
     ps.peek_unique_targets = [0u8; 8];
     ps.no_x402_win_streak = 0;
     ps.legendary_progress = [false; 6];
-    ps.vault_size_max  = 0;
-    ps.vault_size_min  = 0;
+    ps.vault_size_max = 0;
+    ps.vault_size_min = 0;
     ps.last_drop_to_tier5_timestamp = 0;
 
     // Distribute 5 deterministic starter cards
@@ -116,8 +116,8 @@ pub fn handle_register_waitlist(ctx: Context<RegisterWaitlist>) -> Result<()> {
 
     // Update world state
     world.total_participants += 1;
-    world.total_prize_pool   += prize_share;
-    world.total_ops_revenue  += ops_share;
+    world.total_prize_pool += prize_share;
+    world.total_ops_revenue += ops_share;
 
     msg!(
         "Waitlist: {} registered, deposit={}lam, starter_cards={:?}",
@@ -139,7 +139,10 @@ mod tests {
         let attacker = Pubkey::new_unique();
         assert_ne!(attacker, expected);
         // Constraint passes only when addresses match.
-        assert!(attacker != expected, "attacker address must not equal expected prize_pool");
+        assert!(
+            attacker != expected,
+            "attacker address must not equal expected prize_pool"
+        );
     }
 
     #[test]
@@ -147,7 +150,10 @@ mod tests {
         let expected = Pubkey::new_unique();
         let attacker = Pubkey::new_unique();
         assert_ne!(attacker, expected);
-        assert!(attacker != expected, "attacker address must not equal expected ops_treasury");
+        assert!(
+            attacker != expected,
+            "attacker address must not equal expected ops_treasury"
+        );
     }
 
     #[test]
@@ -172,7 +178,9 @@ fn generate_initial_cards(player: Pubkey, now: i64) -> [u8; 5] {
         // Pick a Common card (id 0-4 within the faction) deterministically
         let slot = (seed % 5) as u8;
         cards[faction as usize] = faction * 10 + slot + 1; // 1-indexed
-        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
     }
     cards
 }

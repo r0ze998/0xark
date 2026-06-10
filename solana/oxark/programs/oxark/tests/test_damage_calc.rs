@@ -9,26 +9,26 @@ const FIXTURES_JSON: &str = include_str!("../../../../../fixtures/damage_calc.js
 
 #[derive(Deserialize)]
 struct Expected {
-    winner:         String, // "p1" | "p2"
-    p1_bp_total:    u32,
-    p2_bp_total:    u32,
+    winner: String, // "p1" | "p2"
+    p1_bp_total: u32,
+    p2_bp_total: u32,
     looted_card_id: u8,
 }
 
 #[derive(Deserialize)]
 struct Fixture {
-    card_ids_p1:    [u64; 10],
-    card_ids_p2:    [u64; 10],
+    card_ids_p1: [u64; 10],
+    card_ids_p2: [u64; 10],
     action_types_p1: [u8; 5],
     action_types_p2: [u8; 5],
-    seed:           [u8; 32],
-    expected:       Expected,
+    seed: [u8; 32],
+    expected: Expected,
 }
 
 #[test]
 fn damage_calc_cross_test() {
-    let fixtures: Vec<Fixture> = serde_json::from_str(FIXTURES_JSON)
-        .expect("failed to parse damage_calc.json");
+    let fixtures: Vec<Fixture> =
+        serde_json::from_str(FIXTURES_JSON).expect("failed to parse damage_calc.json");
 
     assert!(!fixtures.is_empty(), "fixture file is empty");
 
@@ -48,10 +48,13 @@ fn damage_calc_cross_test() {
         };
 
         assert_eq!(
-            result.winner, expected_winner,
+            result.winner,
+            expected_winner,
             "fixture {i}: winner — p1_ids={:?} p2_ids={:?} at1={:?} at2={:?}",
-            &f.card_ids_p1[..5], &f.card_ids_p2[..5],
-            f.action_types_p1, f.action_types_p2,
+            &f.card_ids_p1[..5],
+            &f.card_ids_p2[..5],
+            f.action_types_p1,
+            f.action_types_p2,
         );
         assert_eq!(
             result.p1_bp_total, f.expected.p1_bp_total,
@@ -67,5 +70,9 @@ fn damage_calc_cross_test() {
         );
     }
 
-    println!("damage_calc cross-test: {}/{} fixtures passed", fixtures.len(), fixtures.len());
+    println!(
+        "damage_calc cross-test: {}/{} fixtures passed",
+        fixtures.len(),
+        fixtures.len()
+    );
 }

@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::constants::*;
-use crate::state::*;
 use crate::error::ErrorCode;
+use crate::state::*;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(game_id: u64, hash: [u8; 32])]
@@ -46,7 +46,10 @@ pub fn handle_commit(
     played_cards: Vec<u64>,
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    require!(game.status == GameStatus::CommitPhase, ErrorCode::NotCommitPhase);
+    require!(
+        game.status == GameStatus::CommitPhase,
+        ErrorCode::NotCommitPhase
+    );
 
     let ps = &mut ctx.accounts.player_state;
     require!(!ps.has_committed, ErrorCode::AlreadyCommitted);
@@ -59,14 +62,14 @@ pub fn handle_commit(
     }
 
     let commit = &mut ctx.accounts.commit;
-    commit.game_id         = game_id;
-    commit.round           = game.round;
-    commit.player          = ctx.accounts.player.key();
-    commit.hash            = hash;
-    commit.bump            = ctx.bumps.commit;
-    commit.round_number    = game.round;
-    commit.phase           = phase;
-    commit.played_cards    = cards_arr;
+    commit.game_id = game_id;
+    commit.round = game.round;
+    commit.player = ctx.accounts.player.key();
+    commit.hash = hash;
+    commit.bump = ctx.bumps.commit;
+    commit.round_number = game.round;
+    commit.phase = phase;
+    commit.played_cards = cards_arr;
     commit.played_cards_len = card_count as u8;
 
     ps.has_committed = true;
@@ -78,7 +81,10 @@ pub fn handle_commit(
 
     msg!(
         "Player {} committed phase={} cards={} for round {}",
-        ctx.accounts.player.key(), phase, card_count, game.round,
+        ctx.accounts.player.key(),
+        phase,
+        card_count,
+        game.round,
     );
     Ok(())
 }

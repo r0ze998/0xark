@@ -1,9 +1,9 @@
-use anchor_lang::prelude::*;
-use crate::state::{DuelState, HandRevealed};
+use crate::damage_calc::{damage_calc, Winner};
 use crate::error::ErrorCode;
 use crate::instructions::init_duel::DUEL_SEED;
 use crate::poseidon_helper::compute_hand_commitment;
-use crate::damage_calc::{damage_calc, Winner};
+use crate::state::{DuelState, HandRevealed};
+use anchor_lang::prelude::*;
 use solana_sha256_hasher::hashv;
 
 // ─── Instruction ─────────────────────────────────────────────────────────────
@@ -56,8 +56,11 @@ pub fn handle_reveal_hand(
     let round_idx = (round - 1) as usize;
 
     // ZK gate: commit_hand must have been called with a valid Groth16 proof for this round
-    let zk_ok = if is_p1 { duel.player_1_zk_verified[round_idx] }
-                else      { duel.player_2_zk_verified[round_idx] };
+    let zk_ok = if is_p1 {
+        duel.player_1_zk_verified[round_idx]
+    } else {
+        duel.player_2_zk_verified[round_idx]
+    };
     require!(zk_ok, ErrorCode::ZkNotVerified);
 
     // Fetch stored commitment from commit_hand
@@ -93,7 +96,10 @@ pub fn handle_reveal_hand(
     let mut recomputed_be = recomputed;
     recomputed_be.reverse();
 
-    require!(recomputed_be == stored_commitment, ErrorCode::CommitmentMismatch);
+    require!(
+        recomputed_be == stored_commitment,
+        ErrorCode::CommitmentMismatch
+    );
 
     // Save salt (needed by second revealer to compute deterministic seed)
     if is_p1 {
@@ -119,7 +125,8 @@ pub fn handle_reveal_hand(
             &duel.player_1_salt[round_idx],
             &duel.player_2_salt[round_idx],
             &[round],
-        ]).to_bytes();
+        ])
+        .to_bytes();
 
         let result = damage_calc(
             &duel.player_1_revealed[round_idx],

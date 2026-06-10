@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::constants::{GAME_SEED, PLAYER_SEED};
-use crate::state::{Game, PlayerState};
 use crate::error::ErrorCode;
+use crate::state::{Game, PlayerState};
+use anchor_lang::prelude::*;
 
 // ─── Instruction ─────────────────────────────────────────────────────────────
 //

@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::constants::*;
-use crate::state::*;
 use crate::error::ErrorCode;
+use crate::state::*;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(game_id: u64)]
@@ -56,7 +56,11 @@ pub fn handle_start_game(ctx: Context<StartGame>, game_id: u64) -> Result<()> {
     game.commit_count = 0;
     game.reveal_count = 0;
 
-    msg!("Game {} started with {} players", game_id, game.player_count);
+    msg!(
+        "Game {} started with {} players",
+        game_id,
+        game.player_count
+    );
     Ok(())
 }
 

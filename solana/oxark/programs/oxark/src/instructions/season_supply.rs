@@ -1,5 +1,5 @@
-use anchor_lang::prelude::*;
 use crate::state::SeasonCardSupply;
+use anchor_lang::prelude::*;
 
 /// Initialize or reset SeasonCardSupply for a new season.
 ///
@@ -31,7 +31,10 @@ pub fn handle_record_mint(
     requested_tier: u8,
 ) -> Result<u8> {
     let supply = &mut ctx.accounts.season_supply;
-    require!(supply.season_id == season_id, crate::error::ErrorCode::WrongGameAccount);
+    require!(
+        supply.season_id == season_id,
+        crate::error::ErrorCode::WrongGameAccount
+    );
 
     // Find a non-exhausted tier at or below requested_tier
     let mut tier = requested_tier.min(4);
@@ -44,7 +47,9 @@ pub fn handle_record_mint(
             }
             return Ok(tier);
         }
-        if tier == 0 { break; }
+        if tier == 0 {
+            break;
+        }
         tier -= 1;
     }
     // All tiers exhausted — allow C anyway (safety fallback)

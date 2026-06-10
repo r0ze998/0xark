@@ -3,10 +3,10 @@
 // The card is removed from the seller's vault bitmap immediately.
 // The TradeListing PDA holds the escrow record until purchase or cancellation.
 
-use anchor_lang::prelude::*;
-use crate::state::{PlayerState, TradeListing, ListingCreatedEvent};
-use crate::error::ErrorCode;
 use crate::constants::MIN_LISTING_PRICE;
+use crate::error::ErrorCode;
+use crate::state::{ListingCreatedEvent, PlayerState, TradeListing};
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(card_id: u8)]
@@ -40,20 +40,25 @@ pub fn handle_create_listing(ctx: Context<CreateListing>, card_id: u8, price: u6
     ctx.accounts.seller_state.remove_card(card_id)?;
 
     let listing = &mut ctx.accounts.listing;
-    listing.seller     = ctx.accounts.seller.key();
-    listing.card_id    = card_id;
-    listing.price      = price;
+    listing.seller = ctx.accounts.seller.key();
+    listing.card_id = card_id;
+    listing.price = price;
     listing.created_at = Clock::get()?.unix_timestamp;
-    listing.active     = true;
+    listing.active = true;
 
     emit!(ListingCreatedEvent {
-        seller:  ctx.accounts.seller.key(),
+        seller: ctx.accounts.seller.key(),
         card_id,
         price,
         slot: Clock::get()?.slot,
     });
 
-    msg!("create_listing: seller={} card={} price={}", ctx.accounts.seller.key(), card_id, price);
+    msg!(
+        "create_listing: seller={} card={} price={}",
+        ctx.accounts.seller.key(),
+        card_id,
+        price
+    );
     Ok(())
 }
 

@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::constants::*;
-use crate::state::*;
 use crate::error::ErrorCode;
+use crate::state::*;
+use anchor_lang::prelude::*;
 
 /// Entry stake system for competitive play.
 /// Players deposit SOL (or USDC in Phase 2) when joining a game.
@@ -15,9 +15,9 @@ use crate::error::ErrorCode;
 #[derive(Default)]
 pub struct StakeVault {
     pub game_id: u64,
-    pub total_staked: u64,       // Total lamports staked
-    pub stake_per_player: u64,   // Required stake per player
-    pub claimed: bool,           // Whether winner has claimed
+    pub total_staked: u64,     // Total lamports staked
+    pub stake_per_player: u64, // Required stake per player
+    pub claimed: bool,         // Whether winner has claimed
     pub bump: u8,
 }
 
@@ -76,7 +76,12 @@ pub fn handle_deposit_stake(ctx: Context<DepositStake>, game_id: u64) -> Result<
         vault.bump = ctx.bumps.stake_vault;
     }
 
-    msg!("Player {} staked {} lamports for game {}", ctx.accounts.player.key(), stake_amount, game_id);
+    msg!(
+        "Player {} staked {} lamports for game {}",
+        ctx.accounts.player.key(),
+        stake_amount,
+        game_id
+    );
     Ok(())
 }
 
@@ -108,11 +113,19 @@ pub fn handle_claim_prize(ctx: Context<ClaimPrize>, _game_id: u64) -> Result<()>
 
     // Transfer all staked SOL from vault to winner
     **vault.to_account_info().try_borrow_mut_lamports()? -= prize;
-    **ctx.accounts.player.to_account_info().try_borrow_mut_lamports()? += prize;
+    **ctx
+        .accounts
+        .player
+        .to_account_info()
+        .try_borrow_mut_lamports()? += prize;
 
     vault.claimed = true;
 
-    msg!("Winner {} claimed {} lamports prize!", ctx.accounts.player.key(), prize);
+    msg!(
+        "Winner {} claimed {} lamports prize!",
+        ctx.accounts.player.key(),
+        prize
+    );
 
     emit!(PrizeClaimed {
         game_id: vault.game_id,

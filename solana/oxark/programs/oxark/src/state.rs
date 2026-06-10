@@ -2,8 +2,7 @@ use anchor_lang::prelude::*;
 
 /// Card types (1-indexed, 0 = empty)
 /// 1=Aegis (Crystal Knight), 2=Umbra (Shadow Rogue), 3=Ignis (Fire Beast), 4=Tempest (Storm Prophet), 5=Nihil (Void Observer)
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
-#[derive(Default)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum GameStatus {
     #[default]
     Lobby,
@@ -11,7 +10,6 @@ pub enum GameStatus {
     RevealPhase,
     Finished,
 }
-
 
 /// Area IDs: 0=Port, 1=Forest, 2=Ruins
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -24,7 +22,11 @@ pub enum Area {
 
 impl From<u8> for Area {
     fn from(v: u8) -> Self {
-        match v { 1 => Area::Forest, 2 => Area::Ruins, _ => Area::Port }
+        match v {
+            1 => Area::Forest,
+            2 => Area::Ruins,
+            _ => Area::Port,
+        }
     }
 }
 
@@ -34,11 +36,11 @@ impl From<u8> for Area {
 pub enum ActionType {
     #[default]
     UseCrystal, // 0
-    Barrier,    // 1
-    UseFlame,   // 2
-    UseStorm,   // 3
-    UseShadow,  // 4
-    UseVoid,    // 5
+    Barrier,   // 1
+    UseFlame,  // 2
+    UseStorm,  // 3
+    UseShadow, // 4
+    UseVoid,   // 5
 }
 
 impl From<u8> for ActionType {
@@ -49,7 +51,7 @@ impl From<u8> for ActionType {
             3 => ActionType::UseStorm,
             4 => ActionType::UseShadow,
             5 => ActionType::UseVoid,
-            _ => ActionType::UseCrystal,  // 0 + unknown → UseCrystal
+            _ => ActionType::UseCrystal, // 0 + unknown → UseCrystal
         }
     }
 }
@@ -58,11 +60,11 @@ impl From<ActionType> for u8 {
     fn from(a: ActionType) -> u8 {
         match a {
             ActionType::UseCrystal => 0,
-            ActionType::Barrier    => 1,
-            ActionType::UseFlame   => 2,
-            ActionType::UseStorm   => 3,
-            ActionType::UseShadow  => 4,
-            ActionType::UseVoid    => 5,
+            ActionType::Barrier => 1,
+            ActionType::UseFlame => 2,
+            ActionType::UseStorm => 3,
+            ActionType::UseShadow => 4,
+            ActionType::UseVoid => 5,
         }
     }
 }
@@ -98,7 +100,7 @@ pub struct PlayerState {
     pub game_id: u64,
     pub player: Pubkey,
     pub player_index: u8,
-    pub area: u8,  // 0=Port, 1=Forest, 2=Ruins
+    pub area: u8, // 0=Port, 1=Forest, 2=Ruins
     /// Cards held: array of 5 slots, value = card_id (1-5), 0 = empty
     pub cards: [u8; 5],
     pub card_count: u8,
@@ -162,8 +164,41 @@ impl PlayerState {
     //   + 32 (position_commitment) + 1 (position_commitment_initialized)
     //   + 1 (Option disc) + 32 (Option<Pubkey>)
     // Phase 15 additions: 8+8+1+1+1+1+1+8+8+1+6+1+1+8 = 55
-    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 5 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 40 + 1 + 32 + 1 + 1 + 32
-        + 8 + 8 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 6 + 1 + 1 + 8; // 258 total
+    pub const SIZE: usize = 8
+        + 8
+        + 32
+        + 1
+        + 1
+        + 5
+        + 1
+        + 1
+        + 1
+        + 1
+        + 1
+        + 1
+        + 1
+        + 32
+        + 1
+        + 40
+        + 1
+        + 32
+        + 1
+        + 1
+        + 32
+        + 8
+        + 8
+        + 1
+        + 1
+        + 1
+        + 1
+        + 1
+        + 8
+        + 8
+        + 1
+        + 6
+        + 1
+        + 1
+        + 8; // 258 total
 
     /// Count how many vault_bitmap bits are set (cards owned).
     pub fn vault_count(&self) -> u8 {
@@ -172,28 +207,34 @@ impl PlayerState {
 
     /// Check if card_id (1-60) is in vault_bitmap.
     pub fn has_vault_card(&self, card_id: u8) -> bool {
-        if card_id == 0 || card_id > 60 { return false; }
+        if card_id == 0 || card_id > 60 {
+            return false;
+        }
         let idx = (card_id - 1) as usize;
         let byte = idx / 8;
-        let bit  = idx % 8;
+        let bit = idx % 8;
         (self.vault_bitmap[byte] >> bit) & 1 == 1
     }
 
     /// Set card_id (1-60) in vault_bitmap.
     pub fn set_vault_card(&mut self, card_id: u8) {
-        if card_id == 0 || card_id > 60 { return; }
-        let idx  = (card_id - 1) as usize;
+        if card_id == 0 || card_id > 60 {
+            return;
+        }
+        let idx = (card_id - 1) as usize;
         let byte = idx / 8;
-        let bit  = idx % 8;
+        let bit = idx % 8;
         self.vault_bitmap[byte] |= 1 << bit;
     }
 
     /// Clear card_id (1-60) from vault_bitmap (looted by opponent).
     pub fn clear_vault_card(&mut self, card_id: u8) {
-        if card_id == 0 || card_id > 60 { return; }
-        let idx  = (card_id - 1) as usize;
+        if card_id == 0 || card_id > 60 {
+            return;
+        }
+        let idx = (card_id - 1) as usize;
         let byte = idx / 8;
-        let bit  = idx % 8;
+        let bit = idx % 8;
         self.vault_bitmap[byte] &= !(1 << bit);
     }
 
@@ -266,16 +307,16 @@ impl CommitAction {
 #[account]
 #[derive(Default)]
 pub struct CardCommitRecord {
-    pub game_id:    u64,
-    pub player:     Pubkey,
-    pub round:      u8,
+    pub game_id: u64,
+    pub player: Pubkey,
+    pub round: u8,
     /// Poseidon(card_id, salt) — 32-byte big-endian field element.
     pub commitment: [u8; 32],
     /// Set to true after reveal_card verifies the ZK proof.
-    pub revealed:   bool,
+    pub revealed: bool,
     /// 0 until reveal phase; populated after valid reveal.
-    pub card_id:    u8,
-    pub bump:       u8,
+    pub card_id: u8,
+    pub bump: u8,
 }
 
 impl CardCommitRecord {
@@ -300,14 +341,14 @@ impl CardCommitRecord {
 ///   will be allocated correctly via init_if_needed.
 #[account]
 pub struct PlayerDeck {
-    pub owner:            Pubkey,
+    pub owner: Pubkey,
     /// Card IDs in deck (0 = empty slot). Always exactly 20 entries.
-    pub deck_cards:       [u8; 20],
-    pub card_count:       u8,
+    pub deck_cards: [u8; 20],
+    pub card_count: u8,
     /// Unix timestamp until which the deck is locked (0 = not locked).
-    pub locked_until:     i64,
-    pub last_modified:    i64,
-    pub bump:             u8,
+    pub locked_until: i64,
+    pub last_modified: i64,
+    pub bump: u8,
     /// Lane assignment per deck slot. 0=Front, 1=Middle, 2=Back, 255=Any.
     /// Defaults to 255 (Any) when not explicitly set.
     pub lane_assignments: [u8; 20],
@@ -325,15 +366,15 @@ impl PlayerDeck {
 #[account]
 #[derive(Default)]
 pub struct SeasonCardSupply {
-    pub season_id:         u32,
+    pub season_id: u32,
     pub participant_count: u32,
     /// Max mintable cards per tier [C, B, A, S, SS]
-    pub supply:            [u32; 5],
+    pub supply: [u32; 5],
     /// Cards minted per tier so far
-    pub minted:            [u32; 5],
+    pub minted: [u32; 5],
     /// true when a tier's supply is exhausted
-    pub exhausted:         [bool; 5],
-    pub bump:              u8,
+    pub exhausted: [bool; 5],
+    pub bump: u8,
 }
 
 impl SeasonCardSupply {
@@ -343,11 +384,11 @@ impl SeasonCardSupply {
     /// Compute initial supply for N participants.
     pub fn compute_supply(n: u32) -> [u32; 5] {
         [
-            (n * 16).max(8),                     // C: 16×N, min 8
-            ((n * 5) / 2).max(4),                // B: 2.5×N, min 4
-            ((n * 2) / 5).max(2),                // A: 0.4×N, min 2
-            (n / 20).max(1),                     // S: 0.05×N, min 1
-            1,                                   // SS: always 1 per season
+            (n * 16).max(8),      // C: 16×N, min 8
+            ((n * 5) / 2).max(4), // B: 2.5×N, min 4
+            ((n * 2) / 5).max(2), // A: 0.4×N, min 2
+            (n / 20).max(1),      // S: 0.05×N, min 1
+            1,                    // SS: always 1 per season
         ]
     }
 }
@@ -436,11 +477,11 @@ pub struct PlayerMoved {
 #[account]
 #[derive(Default)]
 pub struct PlayerBattleStats {
-    pub owner:        Pubkey,
-    pub combo_count:  u8,    // current consecutive SUPER EFFECTIVE streak
-    pub max_combo:    u8,    // all-time max combo this player has reached
-    pub xp_2x_flag:   bool,  // true when combo hit 7+ (next battle XP doubled)
-    pub bump:         u8,
+    pub owner: Pubkey,
+    pub combo_count: u8,  // current consecutive SUPER EFFECTIVE streak
+    pub max_combo: u8,    // all-time max combo this player has reached
+    pub xp_2x_flag: bool, // true when combo hit 7+ (next battle XP doubled)
+    pub bump: u8,
     // ── D4 Reborn: Tier win tracking (pre-approved layout extension) ──────────
     /// Wins per matchmaking tier: [0]=Bronze, [1]=Silver, [2]=Gold.
     /// Used to gate access: Silver requires wins_at_tier[0] >= 5, Gold requires wins_at_tier[1] >= 3.
@@ -453,7 +494,15 @@ impl PlayerBattleStats {
 
     /// Combo tier for visual effects. Returns 0 (none), 3 (PERFECT), 5 (LEGENDARY), 7 (UNSTOPPABLE).
     pub fn combo_tier(count: u8) -> u8 {
-        if count >= 7 { 7 } else if count >= 5 { 5 } else if count >= 3 { 3 } else { 0 }
+        if count >= 7 {
+            7
+        } else if count >= 5 {
+            5
+        } else if count >= 3 {
+            3
+        } else {
+            0
+        }
     }
 }
 
@@ -465,10 +514,10 @@ impl PlayerBattleStats {
 #[account]
 #[derive(Default)]
 pub struct PlayerLevel {
-    pub owner:       Pubkey,
-    pub xp_total:    u64,
-    pub level:       u8,   // 1-60
-    pub bump:        u8,
+    pub owner: Pubkey,
+    pub xp_total: u64,
+    pub level: u8, // 1-60
+    pub bump: u8,
 }
 
 impl PlayerLevel {
@@ -486,7 +535,9 @@ impl PlayerLevel {
     pub fn level_from_xp(xp: u64) -> u8 {
         let mut lv = 1u8;
         while lv < 60 {
-            if xp < Self::xp_for_level(lv + 1) { break; }
+            if xp < Self::xp_for_level(lv + 1) {
+                break;
+            }
             lv += 1;
         }
         lv
@@ -494,13 +545,13 @@ impl PlayerLevel {
 }
 
 // XP reward constants (matches client XP_REWARDS)
-pub const XP_BATTLE_WIN:       u64 = 50;
-pub const XP_BATTLE_LOSS:      u64 = 15;
-pub const XP_CARD_COLLECT:     u64 = 10;
-pub const XP_SUPER_EFFECTIVE:  u64 = 20;
-pub const XP_ZK_CYCLE:         u64 = 30;
-pub const XP_DEATHRATTLE:      u64 = 15;
-pub const XP_CHAIN:            u64 = 15;
+pub const XP_BATTLE_WIN: u64 = 50;
+pub const XP_BATTLE_LOSS: u64 = 15;
+pub const XP_CARD_COLLECT: u64 = 10;
+pub const XP_SUPER_EFFECTIVE: u64 = 20;
+pub const XP_ZK_CYCLE: u64 = 30;
+pub const XP_DEATHRATTLE: u64 = 15;
+pub const XP_CHAIN: u64 = 15;
 
 // === T99: Achievement System ===
 
@@ -515,9 +566,9 @@ pub const XP_CHAIN:            u64 = 15;
 #[account]
 #[derive(Default)]
 pub struct PlayerAchievements {
-    pub owner:    Pubkey,
-    pub flags:    u16,   // bitmask, bit i = achievement i unlocked
-    pub bump:     u8,
+    pub owner: Pubkey,
+    pub flags: u16, // bitmask, bit i = achievement i unlocked
+    pub bump: u8,
 }
 
 impl PlayerAchievements {
@@ -529,7 +580,9 @@ impl PlayerAchievements {
     }
 
     pub fn unlock(&mut self, idx: u8) -> bool {
-        if idx >= 16 || self.is_unlocked(idx) { return false; }
+        if idx >= 16 || self.is_unlocked(idx) {
+            return false;
+        }
         self.flags |= 1u16 << idx;
         true
     }
@@ -546,10 +599,10 @@ impl PlayerAchievements {
 #[account]
 #[derive(Default)]
 pub struct PlayerTitle {
-    pub owner:    Pubkey,
-    pub equipped: u8,    // 0-7, currently equipped title index
-    pub unlocked: u8,    // bitmask, bit i = title i available (always has bit 0)
-    pub bump:     u8,
+    pub owner: Pubkey,
+    pub equipped: u8, // 0-7, currently equipped title index
+    pub unlocked: u8, // bitmask, bit i = title i available (always has bit 0)
+    pub bump: u8,
 }
 
 impl PlayerTitle {
@@ -561,7 +614,9 @@ impl PlayerTitle {
     }
 
     pub fn unlock_title(&mut self, idx: u8) -> bool {
-        if idx >= 8 || self.is_title_unlocked(idx) { return false; }
+        if idx >= 8 || self.is_title_unlocked(idx) {
+            return false;
+        }
         self.unlocked |= 1u8 << idx;
         true
     }
@@ -574,11 +629,11 @@ impl PlayerTitle {
 /// PDA seeds: ["queue", tier_u8, season_le_u16]
 #[account]
 pub struct MatchmakingQueue {
-    pub tier:       u8,         // 0=Bronze, 1=Silver, 2=Gold
-    pub season:     u16,        // current season number
-    pub players:    Vec<Pubkey>, // FIFO, max 64
+    pub tier: u8,             // 0=Bronze, 1=Silver, 2=Gold
+    pub season: u16,          // current season number
+    pub players: Vec<Pubkey>, // FIFO, max 64
     pub created_at: i64,
-    pub bump:       u8,
+    pub bump: u8,
 }
 
 impl MatchmakingQueue {
@@ -590,11 +645,11 @@ impl MatchmakingQueue {
 impl Default for MatchmakingQueue {
     fn default() -> Self {
         Self {
-            tier:       0,
-            season:     1,
-            players:    Vec::new(),
+            tier: 0,
+            season: 1,
+            players: Vec::new(),
             created_at: 0,
-            bump:       0,
+            bump: 0,
         }
     }
 }
@@ -602,8 +657,8 @@ impl Default for MatchmakingQueue {
 /// Emitted when a matchmaking queue slot reaches 2 players.
 #[event]
 pub struct QueueMatchReady {
-    pub tier:     u8,
-    pub season:   u16,
+    pub tier: u8,
+    pub season: u16,
     pub player_a: Pubkey,
     pub player_b: Pubkey,
 }
@@ -619,11 +674,11 @@ pub struct QueueMatchReady {
 /// PDA seeds: ["card_lore_shards", card_mint, owner_pubkey]
 #[account]
 pub struct CardLoreShards {
-    pub card_mint:          Pubkey,
-    pub owner:              Pubkey,
-    pub shards_found:       [bool; 3],
-    pub unlock_timestamps:  [i64; 3],
-    pub bump:               u8,
+    pub card_mint: Pubkey,
+    pub owner: Pubkey,
+    pub shards_found: [bool; 3],
+    pub unlock_timestamps: [i64; 3],
+    pub bump: u8,
 }
 
 impl CardLoreShards {
@@ -642,11 +697,11 @@ impl CardLoreShards {
 impl Default for CardLoreShards {
     fn default() -> Self {
         Self {
-            card_mint:         Pubkey::default(),
-            owner:             Pubkey::default(),
-            shards_found:      [false; 3],
+            card_mint: Pubkey::default(),
+            owner: Pubkey::default(),
+            shards_found: [false; 3],
             unlock_timestamps: [0i64; 3],
-            bump:              0,
+            bump: 0,
         }
     }
 }
@@ -654,11 +709,11 @@ impl Default for CardLoreShards {
 /// Emitted when a lore shard is unlocked for a card.
 #[event]
 pub struct LoreShardUnlocked {
-    pub card_mint:   Pubkey,
-    pub owner:       Pubkey,
+    pub card_mint: Pubkey,
+    pub owner: Pubkey,
     pub shard_index: u8,
-    pub method:      u8,   // 0=auto, 1=condition_met, 2=x402_payment
-    pub timestamp:   i64,
+    pub method: u8, // 0=auto, 1=condition_met, 2=x402_payment
+    pub timestamp: i64,
 }
 
 // === D12: ZK Duel State (Hand Commitment / Reveal) ===
@@ -672,23 +727,23 @@ pub struct LoreShardUnlocked {
 #[account]
 pub struct DuelState {
     /// Unique duel identifier (random Pubkey generated at matchmaking)
-    pub id:         Pubkey,
-    pub player_1:   Pubkey,
-    pub player_2:   Pubkey,
-    pub hall_tier:  u8,   // 0=Bronze, 1=Silver, 2=Gold
-    pub round:      u8,   // current round (1-5)
-    pub phase:      u8,   // 0=Draw, 1=Energy, 2=Summon, 3=Battle
-    pub ante:       u64,  // lamports per player
+    pub id: Pubkey,
+    pub player_1: Pubkey,
+    pub player_2: Pubkey,
+    pub hall_tier: u8, // 0=Bronze, 1=Silver, 2=Gold
+    pub round: u8,     // current round (1-5)
+    pub phase: u8,     // 0=Draw, 1=Energy, 2=Summon, 3=Battle
+    pub ante: u64,     // lamports per player
     pub started_at: i64,
-    pub ended_at:   i64,  // 0 until duel ends
-    pub winner:     Pubkey,
+    pub ended_at: i64, // 0 until duel ends
+    pub winner: Pubkey,
     /// Poseidon commitment per round per player (index: [round-1], 0-indexed)
     /// Stored as 32-byte big-endian BN254 field element
     pub player_1_commitment: [[u8; 32]; 5],
     pub player_2_commitment: [[u8; 32]; 5],
     /// Revealed card IDs after battle (10 cards × 5 rounds)
-    pub player_1_revealed:   [[u64; 10]; 5],
-    pub player_2_revealed:   [[u64; 10]; 5],
+    pub player_1_revealed: [[u64; 10]; 5],
+    pub player_2_revealed: [[u64; 10]; 5],
     /// Salt used during commit_hand per round — stored on first reveal so
     /// the second player's reveal_hand call can compute the deterministic
     /// SHA-256 seed for damage_calc: sha256(p1_salt || p2_salt || round).
@@ -709,37 +764,50 @@ impl DuelState {
     // + 5*32 p1_salt + 5*32 p2_salt
     // + 5 p1_zk_verified + 5 p2_zk_verified
     // + 1 bump
-    pub const SIZE: usize = 8 + 32 + 32 + 32 + 1 + 1 + 1 + 8
-        + 8 + 8 + 32
-        + (5 * 32) + (5 * 32)
-        + (5 * 10 * 8) + (5 * 10 * 8)
-        + (5 * 32) + (5 * 32)
-        + 5 + 5
+    pub const SIZE: usize = 8
+        + 32
+        + 32
+        + 32
+        + 1
+        + 1
+        + 1
+        + 8
+        + 8
+        + 8
+        + 32
+        + (5 * 32)
+        + (5 * 32)
+        + (5 * 10 * 8)
+        + (5 * 10 * 8)
+        + (5 * 32)
+        + (5 * 32)
+        + 5
+        + 5
         + 1;
 }
 
 impl Default for DuelState {
     fn default() -> Self {
         Self {
-            id:                    Pubkey::default(),
-            player_1:              Pubkey::default(),
-            player_2:              Pubkey::default(),
-            hall_tier:             0,
-            round:                 1,
-            phase:                 0,
-            ante:                  0,
-            started_at:            0,
-            ended_at:              0,
-            winner:                Pubkey::default(),
-            player_1_commitment:   [[0u8; 32]; 5],
-            player_2_commitment:   [[0u8; 32]; 5],
-            player_1_revealed:     [[0u64; 10]; 5],
-            player_2_revealed:     [[0u64; 10]; 5],
-            player_1_salt:         [[0u8; 32]; 5],
-            player_2_salt:         [[0u8; 32]; 5],
-            player_1_zk_verified:  [false; 5],
-            player_2_zk_verified:  [false; 5],
-            bump:                  0,
+            id: Pubkey::default(),
+            player_1: Pubkey::default(),
+            player_2: Pubkey::default(),
+            hall_tier: 0,
+            round: 1,
+            phase: 0,
+            ante: 0,
+            started_at: 0,
+            ended_at: 0,
+            winner: Pubkey::default(),
+            player_1_commitment: [[0u8; 32]; 5],
+            player_2_commitment: [[0u8; 32]; 5],
+            player_1_revealed: [[0u64; 10]; 5],
+            player_2_revealed: [[0u64; 10]; 5],
+            player_1_salt: [[0u8; 32]; 5],
+            player_2_salt: [[0u8; 32]; 5],
+            player_1_zk_verified: [false; 5],
+            player_2_zk_verified: [false; 5],
+            bump: 0,
         }
     }
 }
@@ -748,7 +816,7 @@ impl Default for DuelState {
 
 #[event]
 pub struct DuelInitialized {
-    pub duel_id:  Pubkey,
+    pub duel_id: Pubkey,
     pub player_1: Pubkey,
     pub player_2: Pubkey,
 }
@@ -759,12 +827,12 @@ pub struct DuelInitialized {
 // Its existence proves loot was already claimed — no loot_claimed flag needed.
 #[account]
 pub struct DuelLootRecord {
-    pub duel_id:        Pubkey,  // 32
-    pub winner:         Pubkey,  // 32
-    pub loser:          Pubkey,  // 32
-    pub loser_field:    [u8; 5], // 5  — the 5 card IDs loser had on field
-    pub stolen_card_id: u8,      // 1  — winner's prize
-    pub bump:           u8,      // 1
+    pub duel_id: Pubkey,      // 32
+    pub winner: Pubkey,       // 32
+    pub loser: Pubkey,        // 32
+    pub loser_field: [u8; 5], // 5  — the 5 card IDs loser had on field
+    pub stolen_card_id: u8,   // 1  — winner's prize
+    pub bump: u8,             // 1
 }
 
 impl DuelLootRecord {
@@ -779,9 +847,9 @@ impl DuelLootRecord {
 // Its existence prevents the same duel from being reported twice.
 #[account]
 pub struct GoldHallRecord {
-    pub duel_id: Pubkey,  // 32
-    pub winner:  Pubkey,  // 32
-    pub bump:    u8,      // 1
+    pub duel_id: Pubkey, // 32
+    pub winner: Pubkey,  // 32
+    pub bump: u8,        // 1
 }
 
 impl GoldHallRecord {
@@ -796,10 +864,10 @@ impl GoldHallRecord {
 // burn_card reads rarity from this PDA instead of trusting the caller (C5 fix).
 #[account]
 pub struct CardMintRecord {
-    pub card_mint: Pubkey,  // 32
-    pub card_id:   u8,      // 1
-    pub rarity:    u8,      // 1  — 0=Common, 1=Uncommon, 2=Rare, 3=Legendary
-    pub bump:      u8,      // 1
+    pub card_mint: Pubkey, // 32
+    pub card_id: u8,       // 1
+    pub rarity: u8,        // 1  — 0=Common, 1=Uncommon, 2=Rare, 3=Legendary
+    pub bump: u8,          // 1
 }
 
 impl CardMintRecord {
@@ -810,17 +878,17 @@ impl CardMintRecord {
 
 #[event]
 pub struct HandCommitted {
-    pub duel_id:    Pubkey,
-    pub player:     Pubkey,
-    pub round:      u8,
+    pub duel_id: Pubkey,
+    pub player: Pubkey,
+    pub round: u8,
     pub commitment: [u8; 32],
 }
 
 #[event]
 pub struct HandRevealed {
-    pub duel_id:  Pubkey,
-    pub player:   Pubkey,
-    pub round:    u8,
+    pub duel_id: Pubkey,
+    pub player: Pubkey,
+    pub round: u8,
     pub card_ids: [u64; 10],
 }
 
@@ -833,31 +901,37 @@ pub struct HandRevealed {
 #[repr(u8)]
 pub enum ImprintKey {
     #[default]
-    None,           // 0
+    None, // 0
     // Stat Imprints
-    Veteran,        // 1  +1 BP permanent (10 cumulative wins)
-    Elder,          // 2  +1 HP permanent (50 cumulative wins)
-    Kingslayer,     // 3  +2 BP vs Legendary only
-    Burner,         // 4  Burn energy cost −1
-    Evolved,        // 5  Dual On-Summon from parent lineage
+    Veteran,    // 1  +1 BP permanent (10 cumulative wins)
+    Elder,      // 2  +1 HP permanent (50 cumulative wins)
+    Kingslayer, // 3  +2 BP vs Legendary only
+    Burner,     // 4  Burn energy cost −1
+    Evolved,    // 5  Dual On-Summon from parent lineage
     // Cosmetic Imprints (is_cosmetic = true, value = 0)
-    ElderFrame,     // 6  gold card frame
+    ElderFrame,      // 6  gold card frame
     KingslayerCrest, // 7 crown icon on card
-    LineageMark,    // 8  lineage icon (≥3 previous owners)
-    EvolvedHalo,    // 9  ambient glow (Evolve origin)
-    AshMark,        // 10 ash stripe (Burn ×10)
-    PerfectRecord,  // 11 ripple effect (10-win streak)
+    LineageMark,     // 8  lineage icon (≥3 previous owners)
+    EvolvedHalo,     // 9  ambient glow (Evolve origin)
+    AshMark,         // 10 ash stripe (Burn ×10)
+    PerfectRecord,   // 11 ripple effect (10-win streak)
 }
 
 impl From<u8> for ImprintKey {
     fn from(v: u8) -> Self {
         match v {
-            1 => Self::Veteran,        2 => Self::Elder,
-            3 => Self::Kingslayer,     4 => Self::Burner,
-            5 => Self::Evolved,        6 => Self::ElderFrame,
-            7 => Self::KingslayerCrest, 8 => Self::LineageMark,
-            9 => Self::EvolvedHalo,    10 => Self::AshMark,
-            11 => Self::PerfectRecord,  _ => Self::None,
+            1 => Self::Veteran,
+            2 => Self::Elder,
+            3 => Self::Kingslayer,
+            4 => Self::Burner,
+            5 => Self::Evolved,
+            6 => Self::ElderFrame,
+            7 => Self::KingslayerCrest,
+            8 => Self::LineageMark,
+            9 => Self::EvolvedHalo,
+            10 => Self::AshMark,
+            11 => Self::PerfectRecord,
+            _ => Self::None,
         }
     }
 }
@@ -865,11 +939,11 @@ impl From<u8> for ImprintKey {
 /// Single imprint entry — 22 bytes (fixed-size).
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, Default)]
 pub struct Imprint {
-    pub key:         u8,    // ImprintKey enum value
-    pub value:       i32,   // stat delta (0 for cosmetic)
+    pub key: u8,    // ImprintKey enum value
+    pub value: i32, // stat delta (0 for cosmetic)
     pub is_cosmetic: bool,
     pub acquired_at: i64,
-    pub duel_id:     u64,
+    pub duel_id: u64,
 }
 
 impl Imprint {
@@ -882,10 +956,10 @@ impl Imprint {
 /// LEASE_DURATION_SEC = 1800 (30 min, ≈3 duels); set via constant below.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum StealType {
-    Lease,      // temporary (auto-return after LEASE_DURATION_SEC)
-    Ransom,     // win to keep, lose to return
-    HandPeek,   // Gold Hall only, permanent
-    Legendary,  // Gold Hall Legendary kill, permanent
+    Lease,     // temporary (auto-return after LEASE_DURATION_SEC)
+    Ransom,    // win to keep, lose to return
+    HandPeek,  // Gold Hall only, permanent
+    Legendary, // Gold Hall Legendary kill, permanent
 }
 
 pub const LEASE_DURATION_SEC: i64 = 1800;
@@ -899,50 +973,53 @@ pub const LEASE_DURATION_SEC: i64 = 1800;
 #[account]
 pub struct CardBattleHistory {
     // ── original fields (Day 13) ──────────────────────────────────────────
-    pub card_mint:             Pubkey,       // 32
-    pub wins:                  u32,          // 4
-    pub losses:                u32,          // 4
-    pub kos:                   u32,          // 4  — enemies destroyed
-    pub dmg_dealt:             u64,          // 8  — cumulative BP damage
-    pub times_summoned:        u32,          // 4
-    pub owners_history:        [Pubkey; 10], // 320 — ring buffer (index 0 = most recent)
-    pub owners_history_len:    u8,           // 1
-    pub owners_dropped_count:  u32,          // 4
-    pub acquisition_source:    u8,           // 1   — 0=mint,1=shop,2=duel_won,3=p2p_trade
-    pub current_owner_since:   i64,          // 8
-    pub created_at:            i64,          // 8
-    pub bump:                  u8,           // 1
+    pub card_mint: Pubkey,            // 32
+    pub wins: u32,                    // 4
+    pub losses: u32,                  // 4
+    pub kos: u32,                     // 4  — enemies destroyed
+    pub dmg_dealt: u64,               // 8  — cumulative BP damage
+    pub times_summoned: u32,          // 4
+    pub owners_history: [Pubkey; 10], // 320 — ring buffer (index 0 = most recent)
+    pub owners_history_len: u8,       // 1
+    pub owners_dropped_count: u32,    // 4
+    pub acquisition_source: u8,       // 1   — 0=mint,1=shop,2=duel_won,3=p2p_trade
+    pub current_owner_since: i64,     // 8
+    pub created_at: i64,              // 8
+    pub bump: u8,                     // 1
     // ── v3.0-plus additions ───────────────────────────────────────────────
-    pub burn_count:            u32,          // 4  — Burn abilities this card has triggered
-    pub souls_collected:       u32,          // 4  — Soul-Binder soul accumulator
-    pub legendary_kills:       u32,          // 4  — Kingslayer trigger counter
-    pub imprints:              [Imprint; 5], // 110 — max 5 imprints (rarity-gated)
-    pub imprint_count:         u8,           // 1
-    pub evolved_from_a:        Pubkey,       // 32 — parent A mint (zero if not evolved)
-    pub evolved_from_b:        Pubkey,       // 32 — parent B mint (zero if not evolved)
-    pub is_evolved:            bool,         // 1
-    pub lease_expires_at:      i64,          // 8  — 0 if no active lease
-    pub lease_returns_to:      Pubkey,       // 32 — original owner pubkey during lease
-    pub has_active_lease:      bool,         // 1
+    pub burn_count: u32,          // 4  — Burn abilities this card has triggered
+    pub souls_collected: u32,     // 4  — Soul-Binder soul accumulator
+    pub legendary_kills: u32,     // 4  — Kingslayer trigger counter
+    pub imprints: [Imprint; 5],   // 110 — max 5 imprints (rarity-gated)
+    pub imprint_count: u8,        // 1
+    pub evolved_from_a: Pubkey,   // 32 — parent A mint (zero if not evolved)
+    pub evolved_from_b: Pubkey,   // 32 — parent B mint (zero if not evolved)
+    pub is_evolved: bool,         // 1
+    pub lease_expires_at: i64,    // 8  — 0 if no active lease
+    pub lease_returns_to: Pubkey, // 32 — original owner pubkey during lease
+    pub has_active_lease: bool,   // 1
 }
 
 impl CardBattleHistory {
     pub const CARD_BATTLE_HISTORY_SEED: &'static [u8] = b"card_battle_history";
 
     // Original 407 + new 229 = 636 bytes total
-    pub const LEN: usize =
-        8          // discriminator
+    pub const LEN: usize = 8          // discriminator
         + 32 + 4 + 4 + 4 + 8 + 4  // card_mint, wins, losses, kos, dmg_dealt, times_summoned
         + (32 * 10) + 1 + 4 + 1 + 8 + 8 + 1  // owners_history, len, dropped, source, since, created_at, bump
         // v3.0-plus
         + 4 + 4 + 4                            // burn_count, souls_collected, legendary_kills
         + (Imprint::SIZE * 5) + 1              // imprints[5], imprint_count
         + 32 + 32 + 1                          // evolved_from_a/b, is_evolved
-        + 8 + 32 + 1;                          // lease_expires_at, lease_returns_to, has_active_lease
+        + 8 + 32 + 1; // lease_expires_at, lease_returns_to, has_active_lease
 
     /// Max stat imprints by rarity (0=Common, 1=Uncommon, 2=Rare, 3=Legendary).
     pub fn max_stat_imprints(rarity: u8) -> usize {
-        match rarity { 2 => 4, 3 => 5, _ => 3 }
+        match rarity {
+            2 => 4,
+            3 => 5,
+            _ => 3,
+        }
     }
 
     /// Check if a lease is active and expired; caller should handle the return transfer.
@@ -955,9 +1032,9 @@ impl CardBattleHistory {
 #[event]
 pub struct CardBattleHistoryUpdated {
     pub card_mint: Pubkey,
-    pub wins:      u32,
-    pub losses:    u32,
-    pub kos:       u32,
+    pub wins: u32,
+    pub losses: u32,
+    pub kos: u32,
     pub dmg_dealt: u64,
 }
 
@@ -968,12 +1045,12 @@ pub struct CardBattleHistoryUpdated {
 #[account]
 #[derive(Default)]
 pub struct SeasonStats {
-    pub season_id:    u32,
+    pub season_id: u32,
     pub total_burned: u32,
     pub total_minted: u32,
     pub total_evolved: u32,
     pub total_stolen: u32,
-    pub bump:         u8,
+    pub bump: u8,
 }
 
 impl SeasonStats {
@@ -987,54 +1064,54 @@ impl SeasonStats {
 #[event]
 pub struct CardBurnedEvent {
     pub card_mint: Pubkey,
-    pub owner:     Pubkey,
-    pub rarity:    u8,
+    pub owner: Pubkey,
+    pub rarity: u8,
     pub timestamp: i64,
 }
 
 #[event]
 pub struct CardEvolvedEvent {
-    pub parent_a:         Pubkey,
-    pub parent_b:         Pubkey,
-    pub child_mint:       Pubkey,
+    pub parent_a: Pubkey,
+    pub parent_b: Pubkey,
+    pub child_mint: Pubkey,
     pub target_species_id: u16,
-    pub cumulative_wins:  u32,
-    pub timestamp:        i64,
+    pub cumulative_wins: u32,
+    pub timestamp: i64,
 }
 
 #[event]
 pub struct ImprintGrantedEvent {
-    pub card_mint:   Pubkey,
+    pub card_mint: Pubkey,
     pub imprint_key: u8,
     pub is_cosmetic: bool,
-    pub duel_id:     u64,
-    pub timestamp:   i64,
+    pub duel_id: u64,
+    pub timestamp: i64,
 }
 
 #[event]
 pub struct LeaseStealEvent {
-    pub card_mint:  Pubkey,
-    pub from:       Pubkey,
-    pub to:         Pubkey,
+    pub card_mint: Pubkey,
+    pub from: Pubkey,
+    pub to: Pubkey,
     pub expires_at: i64,
-    pub timestamp:  i64,
+    pub timestamp: i64,
 }
 
 #[event]
 pub struct LeaseReturnedEvent {
-    pub card_mint:      Pubkey,
-    pub returned_to:    Pubkey,
-    pub returned_from:  Pubkey,
-    pub timestamp:      i64,
+    pub card_mint: Pubkey,
+    pub returned_to: Pubkey,
+    pub returned_from: Pubkey,
+    pub timestamp: i64,
 }
 
 #[event]
 pub struct CardOwnerChanged {
-    pub card_mint:  Pubkey,
-    pub old_owner:  Pubkey,
-    pub new_owner:  Pubkey,
-    pub source:     u8,
-    pub timestamp:  i64,
+    pub card_mint: Pubkey,
+    pub old_owner: Pubkey,
+    pub new_owner: Pubkey,
+    pub source: u8,
+    pub timestamp: i64,
 }
 
 // ─── T-D15-A: Season Champion / Prize Pool ────────────────────────────────────
@@ -1042,15 +1119,15 @@ pub struct CardOwnerChanged {
 #[event]
 pub struct ChampionDeclared {
     pub season_id: u32,
-    pub champion:  Pubkey,
+    pub champion: Pubkey,
     pub timestamp: i64,
 }
 
 #[event]
 pub struct PrizePoolDistributed {
-    pub season_id:       u32,
-    pub total_lamports:  u64,
-    pub champion_share:  u64,
+    pub season_id: u32,
+    pub total_lamports: u64,
+    pub champion_share: u64,
 }
 
 // ─── T-D15-B: Legendary Supply PDA ───────────────────────────────────────────
@@ -1063,10 +1140,10 @@ pub struct PrizePoolDistributed {
 pub struct LegendarySupply {
     pub season_id: u64,
     /// minted[i] = how many of species i have been minted (0-10)
-    pub minted:    [u8; 4],
+    pub minted: [u8; 4],
     /// cap[i]    = max allowed per species per season (default 10)
-    pub cap:       [u8; 4],
-    pub bump:      u8,
+    pub cap: [u8; 4],
+    pub bump: u8,
 }
 
 impl LegendarySupply {
@@ -1074,11 +1151,16 @@ impl LegendarySupply {
     /// 8 disc + 8 season_id + 4 minted + 4 cap + 1 bump
     pub const LEN: usize = 8 + 8 + 4 + 4 + 1;
     /// Species indices
-    pub const SPECIES_SCEPTRE: u8     = 0;
-    pub const SPECIES_BLADE: u8       = 1;
-    pub const SPECIES_CROWN: u8       = 2;
-    pub const SPECIES_RING: u8        = 3;
-    pub const SPECIES_NAMES: [&'static str; 4] = ["Sceptre of Valerius", "Nameless Blade", "Elyon Crown", "Kingmaker's Ring"];
+    pub const SPECIES_SCEPTRE: u8 = 0;
+    pub const SPECIES_BLADE: u8 = 1;
+    pub const SPECIES_CROWN: u8 = 2;
+    pub const SPECIES_RING: u8 = 3;
+    pub const SPECIES_NAMES: [&'static str; 4] = [
+        "Sceptre of Valerius",
+        "Nameless Blade",
+        "Elyon Crown",
+        "Kingmaker's Ring",
+    ];
 }
 
 // ─── T-D15-B: PlayerDuelStats PDA ─────────────────────────────────────────────
@@ -1089,13 +1171,13 @@ impl LegendarySupply {
 #[account]
 #[derive(Default)]
 pub struct PlayerDuelStats {
-    pub player:                         Pubkey,
-    pub gold_hall_wins_current_season:  u32,
+    pub player: Pubkey,
+    pub gold_hall_wins_current_season: u32,
     pub legendary_claims_current_season: u32,
-    pub total_duels_won:                u32,
-    pub total_duels_lost:               u32,
-    pub current_season_id:              u32,
-    pub bump:                           u8,
+    pub total_duels_won: u32,
+    pub total_duels_lost: u32,
+    pub current_season_id: u32,
+    pub bump: u8,
 }
 
 impl PlayerDuelStats {
@@ -1106,16 +1188,16 @@ impl PlayerDuelStats {
 
 #[event]
 pub struct LegendaryClaimEarned {
-    pub player:        Pubkey,
+    pub player: Pubkey,
     pub pending_count: u32,
     pub gold_hall_wins: u32,
 }
 
 #[event]
 pub struct LegendaryClaimed {
-    pub player:      Pubkey,
-    pub season_id:   u64,
-    pub species_id:  u8,
+    pub player: Pubkey,
+    pub season_id: u64,
+    pub species_id: u8,
     pub mint_number: u8,
 }
 
@@ -1125,57 +1207,57 @@ pub struct LegendaryClaimed {
 /// PDA seeds: ["game_world"]
 #[account]
 pub struct GameWorld {
-    pub start_timestamp:         i64,
-    pub end_timestamp:           i64,   // start + 14 days
-    pub waitlist_close_timestamp: i64,  // start - 14 days
-    pub total_participants:       u32,
-    pub total_prize_pool:         u64,  // accumulated (lamports)
-    pub total_ops_revenue:        u64,  // accumulated (lamports)
+    pub start_timestamp: i64,
+    pub end_timestamp: i64,            // start + 14 days
+    pub waitlist_close_timestamp: i64, // start - 14 days
+    pub total_participants: u32,
+    pub total_prize_pool: u64,  // accumulated (lamports)
+    pub total_ops_revenue: u64, // accumulated (lamports)
     /// How many players have acquired each Legendary (max 10 each).
     pub legendary_acquired_count: [u8; 6],
-    pub winner_60_count:          u8,
+    pub winner_60_count: u8,
     /// 0=waitlist, 1=active, 2=ended
-    pub game_status:              u8,
+    pub game_status: u8,
     /// Tier participant counts (set during finalize_game for claim_prize).
-    pub tier2_total_vault:        u64,  // sum of vault_count for tier-2 players
-    pub tier3_total_vault:        u64,
-    pub tier4_total_vault:        u64,
-    pub tier5_total_vault:        u64,
-    pub bump:                     u8,
+    pub tier2_total_vault: u64, // sum of vault_count for tier-2 players
+    pub tier3_total_vault: u64,
+    pub tier4_total_vault: u64,
+    pub tier5_total_vault: u64,
+    pub bump: u8,
     // ── Phase 20-B: Shop config (admin adjustable) ──────────────────────────
-    pub ops_treasury:                   Pubkey,
-    pub prize_pool:                     Pubkey,
+    pub ops_treasury: Pubkey,
+    pub prize_pool: Pubkey,
     /// Seconds after game_start at which Phase 2 drop rates activate (default 7 days).
-    pub shop_phase_threshold_seconds:   u64,
+    pub shop_phase_threshold_seconds: u64,
     /// Drop rates in ppm (parts per million, out of 1_000_000). u32 required for uncommon (180000).
-    pub legendary_drop_rate_phase1:     u32,  // default 0
-    pub legendary_drop_rate_phase2:     u32,  // default 15000 (1.5%)
-    pub rare_drop_rate_phase1:          u32,  // default 20000 (2%)
-    pub rare_drop_rate_phase2:          u32,  // default 25000 (2.5%)
-    pub uncommon_drop_rate:             u32,  // default 180000 (18%)
+    pub legendary_drop_rate_phase1: u32, // default 0
+    pub legendary_drop_rate_phase2: u32, // default 15000 (1.5%)
+    pub rare_drop_rate_phase1: u32,      // default 20000 (2%)
+    pub rare_drop_rate_phase2: u32,      // default 25000 (2.5%)
+    pub uncommon_drop_rate: u32,         // default 180000 (18%)
 }
 
 impl GameWorld {
     pub const SEED: &'static [u8] = b"game_world";
     // Original: 8 disc + 8+8+8+4+8+8+6+1+1+8+8+8+8+1 = 93
     // Phase 20-B additions: +32+32+8+4+4+4+4+4 = +92 → total 185
-    pub const SIZE: usize = 8 + 8 + 8 + 8 + 4 + 8 + 8 + 6 + 1 + 1 + 8 + 8 + 8 + 8 + 1
-        + 32 + 32 + 8 + 4 + 4 + 4 + 4 + 4;
+    pub const SIZE: usize =
+        8 + 8 + 8 + 8 + 4 + 8 + 8 + 6 + 1 + 1 + 8 + 8 + 8 + 8 + 1 + 32 + 32 + 8 + 4 + 4 + 4 + 4 + 4;
 
     pub const LEGENDARY_MAX_CLAIMANTS: u8 = 10;
     pub const DEPOSIT_LAMPORTS: u64 = 500_000_000; // 0.5 SOL
-    pub const PRIZE_POOL_BPS: u64 = 8500;          // 85%
-    pub const OPS_REVENUE_BPS: u64 = 1500;         // 15%
+    pub const PRIZE_POOL_BPS: u64 = 8500; // 85%
+    pub const OPS_REVENUE_BPS: u64 = 1500; // 15%
     pub const SEASON_DURATION_SECS: i64 = 14 * 24 * 3600;
     pub const WAITLIST_WINDOW_SECS: i64 = 14 * 24 * 3600;
 
     // Shop defaults
     pub const DEFAULT_SHOP_PHASE_THRESHOLD: u64 = 7 * 24 * 3600; // 7 days
     pub const DEFAULT_LEGENDARY_RATE_PHASE1: u32 = 0;
-    pub const DEFAULT_LEGENDARY_RATE_PHASE2: u32 = 15_000;  // 1.5%
-    pub const DEFAULT_RARE_RATE_PHASE1: u32 = 20_000;       // 2.0%
-    pub const DEFAULT_RARE_RATE_PHASE2: u32 = 25_000;       // 2.5%
-    pub const DEFAULT_UNCOMMON_RATE: u32 = 180_000;         // 18.0%
+    pub const DEFAULT_LEGENDARY_RATE_PHASE2: u32 = 15_000; // 1.5%
+    pub const DEFAULT_RARE_RATE_PHASE1: u32 = 20_000; // 2.0%
+    pub const DEFAULT_RARE_RATE_PHASE2: u32 = 25_000; // 2.5%
+    pub const DEFAULT_UNCOMMON_RATE: u32 = 180_000; // 18.0%
 
     pub fn is_waitlist_open(&self, now: i64) -> bool {
         self.game_status == 0 && now < self.waitlist_close_timestamp
@@ -1185,28 +1267,28 @@ impl GameWorld {
 impl Default for GameWorld {
     fn default() -> Self {
         Self {
-            start_timestamp:              0,
-            end_timestamp:                0,
-            waitlist_close_timestamp:     0,
-            total_participants:           0,
-            total_prize_pool:             0,
-            total_ops_revenue:            0,
-            legendary_acquired_count:     [0u8; 6],
-            winner_60_count:              0,
-            game_status:                  0,
-            tier2_total_vault:            0,
-            tier3_total_vault:            0,
-            tier4_total_vault:            0,
-            tier5_total_vault:            0,
-            bump:                         0,
-            ops_treasury:                 Pubkey::default(),
-            prize_pool:                   Pubkey::default(),
+            start_timestamp: 0,
+            end_timestamp: 0,
+            waitlist_close_timestamp: 0,
+            total_participants: 0,
+            total_prize_pool: 0,
+            total_ops_revenue: 0,
+            legendary_acquired_count: [0u8; 6],
+            winner_60_count: 0,
+            game_status: 0,
+            tier2_total_vault: 0,
+            tier3_total_vault: 0,
+            tier4_total_vault: 0,
+            tier5_total_vault: 0,
+            bump: 0,
+            ops_treasury: Pubkey::default(),
+            prize_pool: Pubkey::default(),
             shop_phase_threshold_seconds: GameWorld::DEFAULT_SHOP_PHASE_THRESHOLD,
-            legendary_drop_rate_phase1:   GameWorld::DEFAULT_LEGENDARY_RATE_PHASE1,
-            legendary_drop_rate_phase2:   GameWorld::DEFAULT_LEGENDARY_RATE_PHASE2,
-            rare_drop_rate_phase1:        GameWorld::DEFAULT_RARE_RATE_PHASE1,
-            rare_drop_rate_phase2:        GameWorld::DEFAULT_RARE_RATE_PHASE2,
-            uncommon_drop_rate:           GameWorld::DEFAULT_UNCOMMON_RATE,
+            legendary_drop_rate_phase1: GameWorld::DEFAULT_LEGENDARY_RATE_PHASE1,
+            legendary_drop_rate_phase2: GameWorld::DEFAULT_LEGENDARY_RATE_PHASE2,
+            rare_drop_rate_phase1: GameWorld::DEFAULT_RARE_RATE_PHASE1,
+            rare_drop_rate_phase2: GameWorld::DEFAULT_RARE_RATE_PHASE2,
+            uncommon_drop_rate: GameWorld::DEFAULT_UNCOMMON_RATE,
         }
     }
 }
@@ -1215,30 +1297,30 @@ impl Default for GameWorld {
 
 #[event]
 pub struct PackOpenedEvent {
-    pub buyer:     Pubkey,
+    pub buyer: Pubkey,
     pub pack_type: u8,
-    pub card_ids:  Vec<u8>,
-    pub slot:      u64,
+    pub card_ids: Vec<u8>,
+    pub slot: u64,
 }
 
 #[event]
 pub struct GameParamsUpdatedEvent {
     pub legendary_rate_phase1: u32,
     pub legendary_rate_phase2: u32,
-    pub rare_rate_phase1:      u32,
-    pub rare_rate_phase2:      u32,
-    pub uncommon_rate:         u32,
-    pub threshold_seconds:     u64,
+    pub rare_rate_phase1: u32,
+    pub rare_rate_phase2: u32,
+    pub uncommon_rate: u32,
+    pub threshold_seconds: u64,
 }
 
 /// Emitted when a player acquires a Legendary card (realtime judgment).
 #[event]
 pub struct LegendaryAcquired {
-    pub player:       Pubkey,
-    pub legendary_id: u8,   // card id (10, 20, 30, 40, 50, 60)
-    pub legendary_idx: u8,  // 0-5 (index into legendary_acquired_count)
-    pub claimant_num: u8,   // which claimant (1-10)
-    pub timestamp:    i64,
+    pub player: Pubkey,
+    pub legendary_id: u8,  // card id (10, 20, 30, 40, 50, 60)
+    pub legendary_idx: u8, // 0-5 (index into legendary_acquired_count)
+    pub claimant_num: u8,  // which claimant (1-10)
+    pub timestamp: i64,
 }
 
 /// Legendary IDs by index (0-5).
@@ -1250,11 +1332,11 @@ pub const LEGENDARY_CARD_IDS: [u8; 6] = [10, 20, 30, 40, 50, 60];
 /// Seeds: ["trade", seller_pubkey, card_id_byte]
 #[account]
 pub struct TradeListing {
-    pub seller:     Pubkey,  // 32
-    pub card_id:    u8,      // 1
-    pub price:      u64,     // 8
-    pub created_at: i64,     // 8
-    pub active:     bool,    // 1
+    pub seller: Pubkey,  // 32
+    pub card_id: u8,     // 1
+    pub price: u64,      // 8
+    pub created_at: i64, // 8
+    pub active: bool,    // 1
 }
 
 impl TradeListing {
@@ -1265,32 +1347,38 @@ impl TradeListing {
 
 impl Default for TradeListing {
     fn default() -> Self {
-        Self { seller: Pubkey::default(), card_id: 0, price: 0, created_at: 0, active: false }
+        Self {
+            seller: Pubkey::default(),
+            card_id: 0,
+            price: 0,
+            created_at: 0,
+            active: false,
+        }
     }
 }
 
 #[event]
 pub struct ListingCreatedEvent {
-    pub seller:  Pubkey,
+    pub seller: Pubkey,
     pub card_id: u8,
-    pub price:   u64,
-    pub slot:    u64,
+    pub price: u64,
+    pub slot: u64,
 }
 
 #[event]
 pub struct ListingCancelledEvent {
-    pub seller:  Pubkey,
+    pub seller: Pubkey,
     pub card_id: u8,
-    pub slot:    u64,
+    pub slot: u64,
 }
 
 #[event]
 pub struct ListingAcceptedEvent {
-    pub buyer:   Pubkey,
-    pub seller:  Pubkey,
+    pub buyer: Pubkey,
+    pub seller: Pubkey,
     pub card_id: u8,
-    pub price:   u64,
-    pub slot:    u64,
+    pub price: u64,
+    pub slot: u64,
 }
 
 /// ZK proof record — created on first successful verify, prevents replay.
@@ -1298,12 +1386,12 @@ pub struct ListingAcceptedEvent {
 /// PDA seeds: ["zk_proof", duel_pda_pubkey, round_le, signer_pubkey]
 #[account]
 pub struct ZkProofRecord {
-    pub duel_id:     Pubkey,
-    pub round:       u64,
-    pub signer:      Pubkey,
-    pub commit:      [u8; 32],
+    pub duel_id: Pubkey,
+    pub round: u64,
+    pub signer: Pubkey,
+    pub commit: [u8; 32],
     pub verified_at: u64,
-    pub bump:        u8,
+    pub bump: u8,
 }
 
 impl ZkProofRecord {

@@ -1,14 +1,14 @@
+use crate::constants::{GAME_SEED, PLAYER_SEED};
+use crate::error::ErrorCode;
 use anchor_lang::prelude::*;
 use ephemeral_rollups_sdk::cpi::{
     delegate_account, DelegateAccounts, DelegateConfig, DELEGATION_PROGRAM_ID,
 };
-use crate::constants::{GAME_SEED, PLAYER_SEED};
-use crate::error::ErrorCode;
 
 // Asia validator: MAS1Dt9qreoRMQ14YQuhg8UTZMMzDdKhmkZMECCzk57
 const ASIA_VALIDATOR: Pubkey = Pubkey::new_from_array([
-    5, 42, 71, 171, 131, 122, 182, 12, 61, 216, 159, 196, 200, 74, 97, 158,
-    42, 140, 82, 47, 63, 129, 136, 254, 226, 67, 138, 88, 169, 118, 23, 178,
+    5, 42, 71, 171, 131, 122, 182, 12, 61, 216, 159, 196, 200, 74, 97, 158, 42, 140, 82, 47, 63,
+    129, 136, 254, 226, 67, 138, 88, 169, 118, 23, 178,
 ]);
 
 // ─── Accounts ─────────────────────────────────────────────────────────────
@@ -78,10 +78,8 @@ pub fn handle_delegate_session(ctx: Context<DelegateSession>, game_id: u64) -> R
     );
 
     // Verify game PDA derivation
-    let (expected_game, _) = Pubkey::find_program_address(
-        &[GAME_SEED, &game_id_bytes],
-        &crate::id(),
-    );
+    let (expected_game, _) =
+        Pubkey::find_program_address(&[GAME_SEED, &game_id_bytes], &crate::id());
     require_keys_eq!(
         ctx.accounts.game.key(),
         expected_game,
@@ -145,6 +143,9 @@ pub fn handle_delegate_session(ctx: Context<DelegateSession>, game_id: u64) -> R
     )
     .map_err(anchor_lang::error::Error::from)?;
 
-    msg!("DelegateSession: game {} + player_state delegated to ER", game_id);
+    msg!(
+        "DelegateSession: game {} + player_state delegated to ER",
+        game_id
+    );
     Ok(())
 }

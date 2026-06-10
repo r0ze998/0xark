@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::constants::*;
-use crate::state::*;
 use crate::error::ErrorCode;
+use crate::state::*;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(game_id: u64, action_type: u8, target: Pubkey, salt: [u8; 32])]
@@ -46,7 +46,10 @@ pub fn handle_reveal(
     played_cards: Vec<u64>,
 ) -> Result<()> {
     let game = &mut ctx.accounts.game;
-    require!(game.status == GameStatus::RevealPhase, ErrorCode::NotRevealPhase);
+    require!(
+        game.status == GameStatus::RevealPhase,
+        ErrorCode::NotRevealPhase
+    );
 
     let ps = &mut ctx.accounts.player_state;
     require!(ps.has_committed, ErrorCode::NotCommitted);
@@ -57,7 +60,10 @@ pub fn handle_reveal(
     if played_cards.is_empty() {
         // ── Phase C legacy path ─────────────────────────────────────────────
         let computed = hashv(&[&[action_type], target.as_ref(), &salt]).to_bytes();
-        require!(computed == ctx.accounts.commit.hash, ErrorCode::HashMismatch);
+        require!(
+            computed == ctx.accounts.commit.hash,
+            ErrorCode::HashMismatch
+        );
     } else {
         // ── Reborn lane path ────────────────────────────────────────────────
         // Build input slices: each card_id (8 bytes LE) + salt + round + phase
@@ -67,7 +73,10 @@ pub fn handle_reveal(
         parts.push(std::slice::from_ref(&game.round));
         parts.push(std::slice::from_ref(&ctx.accounts.commit.phase));
         let computed = hashv(&parts).to_bytes();
-        require!(computed == ctx.accounts.commit.hash, ErrorCode::HashMismatch);
+        require!(
+            computed == ctx.accounts.commit.hash,
+            ErrorCode::HashMismatch
+        );
 
         // Store verified played_cards in CommitAction for lane resolution
         let card_count = played_cards.len().min(3);
@@ -85,24 +94,35 @@ pub fn handle_reveal(
 
     ps.revealed_action = action_type;
     ps.revealed_target = target;
-    ps.has_revealed    = true;
-    game.reveal_count  += 1;
+    ps.has_revealed = true;
+    game.reveal_count += 1;
 
     msg!(
         "Player {} revealed action={} played_cards={} round={}",
-        ctx.accounts.player.key(), action_type, played_cards.len(), game.round,
+        ctx.accounts.player.key(),
+        action_type,
+        played_cards.len(),
+        game.round,
     );
     Ok(())
 }
 
-fn validate_action(_ps: &PlayerState, at: ActionType, target: Pubkey, caller: Pubkey) -> Result<()> {
+fn validate_action(
+    _ps: &PlayerState,
+    at: ActionType,
+    target: Pubkey,
+    caller: Pubkey,
+) -> Result<()> {
     // Phase 15: ActionType validation uses vault_bitmap on the v2 battle path.
     // For the legacy commit-reveal path these basic target checks still apply.
     match at {
-        ActionType::UseCrystal | ActionType::Barrier | ActionType::UseStorm | ActionType::UseShadow => {},
+        ActionType::UseCrystal
+        | ActionType::Barrier
+        | ActionType::UseStorm
+        | ActionType::UseShadow => {}
         ActionType::UseFlame | ActionType::UseVoid => {
             require!(target != caller, ErrorCode::CannotTargetSelf);
-        },
+        }
     }
     Ok(())
 }

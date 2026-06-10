@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
 use crate::error::ErrorCode;
 use crate::state::{
-    CardBattleHistory, CardBattleHistoryUpdated, Imprint, ImprintKey, ImprintGrantedEvent,
+    CardBattleHistory, CardBattleHistoryUpdated, Imprint, ImprintGrantedEvent, ImprintKey,
 };
+use anchor_lang::prelude::*;
 
 pub const CARD_BATTLE_HISTORY_SEED: &[u8] = b"card_battle_history";
 
@@ -61,19 +61,19 @@ pub fn handle_update_card_battle_history(
     summon_delta: u32,
 ) -> Result<()> {
     let history = &mut ctx.accounts.card_battle_history;
-    let now     = Clock::get()?.unix_timestamp;
+    let now = Clock::get()?.unix_timestamp;
 
     if history.card_mint == Pubkey::default() {
-        history.card_mint  = card_mint;
+        history.card_mint = card_mint;
         history.created_at = now;
-        history.bump       = ctx.bumps.card_battle_history;
+        history.bump = ctx.bumps.card_battle_history;
     }
 
     let old_wins = history.wins;
-    history.wins           = history.wins.saturating_add(wins_delta);
-    history.losses         = history.losses.saturating_add(losses_delta);
-    history.kos            = history.kos.saturating_add(kos_delta);
-    history.dmg_dealt      = history.dmg_dealt.saturating_add(dmg_delta);
+    history.wins = history.wins.saturating_add(wins_delta);
+    history.losses = history.losses.saturating_add(losses_delta);
+    history.kos = history.kos.saturating_add(kos_delta);
+    history.dmg_dealt = history.dmg_dealt.saturating_add(dmg_delta);
     history.times_summoned = history.times_summoned.saturating_add(summon_delta);
 
     // Auto-grant Veteran Imprint at 10 cumulative wins (first time crossing threshold)
@@ -99,15 +99,19 @@ pub fn handle_update_card_battle_history(
 
     emit!(CardBattleHistoryUpdated {
         card_mint,
-        wins:      history.wins,
-        losses:    history.losses,
-        kos:       history.kos,
+        wins: history.wins,
+        losses: history.losses,
+        kos: history.kos,
         dmg_dealt: history.dmg_dealt,
     });
 
     msg!(
         "CardBattleHistory updated: mint={} wins={} losses={} kos={} dmg={}",
-        card_mint, history.wins, history.losses, history.kos, history.dmg_dealt,
+        card_mint,
+        history.wins,
+        history.losses,
+        history.kos,
+        history.dmg_dealt,
     );
     Ok(())
 }
@@ -128,12 +132,12 @@ pub fn handle_grant_imprint(
     duel_id: u64,
 ) -> Result<()> {
     let history = &mut ctx.accounts.card_battle_history;
-    let now     = Clock::get()?.unix_timestamp;
+    let now = Clock::get()?.unix_timestamp;
 
     if history.card_mint == Pubkey::default() {
-        history.card_mint  = card_mint;
+        history.card_mint = card_mint;
         history.created_at = now;
-        history.bump       = ctx.bumps.card_battle_history;
+        history.bump = ctx.bumps.card_battle_history;
     }
 
     // Stat imprint limit check
@@ -171,10 +175,10 @@ pub fn handle_grant_imprint(
 /// Returns the stat delta associated with a stat Imprint type.
 fn stat_delta_for(key: ImprintKey) -> i32 {
     match key {
-        ImprintKey::Veteran    => 1,  // +1 BP
-        ImprintKey::Elder      => 1,  // +1 HP
-        ImprintKey::Kingslayer => 2,  // +2 BP vs Legendary
-        _                      => 0,
+        ImprintKey::Veteran => 1,    // +1 BP
+        ImprintKey::Elder => 1,      // +1 HP
+        ImprintKey::Kingslayer => 2, // +2 BP vs Legendary
+        _ => 0,
     }
 }
 
@@ -189,13 +193,17 @@ pub fn try_grant_imprint(
     now: i64,
 ) -> bool {
     let count = history.imprint_count as usize;
-    if count >= 5 { return false; }
+    if count >= 5 {
+        return false;
+    }
 
     // Deduplicate: don't grant the same key twice (except None)
     let already_has = history.imprints[..count]
         .iter()
         .any(|i| i.key == key as u8 && key != ImprintKey::None);
-    if already_has { return false; }
+    if already_has {
+        return false;
+    }
 
     history.imprints[count] = Imprint {
         key: key as u8,

@@ -1,7 +1,9 @@
-use anchor_lang::prelude::*;
-use crate::state::{PlayerLevel, XP_BATTLE_WIN, XP_BATTLE_LOSS, XP_CARD_COLLECT,
-                   XP_SUPER_EFFECTIVE, XP_ZK_CYCLE, XP_DEATHRATTLE, XP_CHAIN};
 use crate::error::ErrorCode;
+use crate::state::{
+    PlayerLevel, XP_BATTLE_LOSS, XP_BATTLE_WIN, XP_CARD_COLLECT, XP_CHAIN, XP_DEATHRATTLE,
+    XP_SUPER_EFFECTIVE, XP_ZK_CYCLE,
+};
+use anchor_lang::prelude::*;
 
 /// XP reason codes (client must pass one of these).
 /// 1=battle_win, 2=battle_loss, 3=card_collect,
@@ -51,6 +53,12 @@ pub fn handle_add_xp(ctx: Context<AddXp>, reason: u8) -> Result<()> {
     pl.xp_total = pl.xp_total.saturating_add(amount);
     pl.level = PlayerLevel::level_from_xp(pl.xp_total);
 
-    msg!("XP +{} (reason={}) → total={} level={}", amount, reason, pl.xp_total, pl.level);
+    msg!(
+        "XP +{} (reason={}) → total={} level={}",
+        amount,
+        reason,
+        pl.xp_total,
+        pl.level
+    );
     Ok(())
 }

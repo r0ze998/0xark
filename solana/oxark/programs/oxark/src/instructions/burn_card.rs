@@ -1,12 +1,12 @@
-use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Mint, Burn};
 use crate::error::ErrorCode;
-use crate::state::{CardBattleHistory, CardMintRecord, SeasonStats, CardBurnedEvent};
+use crate::state::{CardBattleHistory, CardBurnedEvent, CardMintRecord, SeasonStats};
+use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount};
 
 // Rarity constants (matches client CARDS[i].rarity)
-pub const RARITY_COMMON:    u8 = 0;
-pub const RARITY_UNCOMMON:  u8 = 1;
-pub const RARITY_RARE:      u8 = 2;
+pub const RARITY_COMMON: u8 = 0;
+pub const RARITY_UNCOMMON: u8 = 1;
+pub const RARITY_RARE: u8 = 2;
 pub const RARITY_LEGENDARY: u8 = 3;
 
 // ─── Accounts ─────────────────────────────────────────────────────────────────
@@ -53,10 +53,10 @@ pub struct BurnCard<'info> {
     )]
     pub season_stats: Account<'info, SeasonStats>,
 
-    pub token_program:      Program<'info, Token>,
-    pub system_program:     Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, anchor_spl::associated_token::AssociatedToken>,
-    pub rent:               Sysvar<'info, Rent>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -69,10 +69,7 @@ pub struct BurnCard<'info> {
 ///   Common/Uncommon      → allowed
 ///
 /// Rarity is read from the on-chain CardMintRecord PDA (C5 fix).
-pub fn handle_burn_card(
-    ctx: Context<BurnCard>,
-    card_mint: Pubkey,
-) -> Result<()> {
+pub fn handle_burn_card(ctx: Context<BurnCard>, card_mint: Pubkey) -> Result<()> {
     // C5 fix: rarity sourced from on-chain record, not from caller argument.
     let rarity = ctx.accounts.card_mint_record.rarity;
 
@@ -99,8 +96,8 @@ pub fn handle_burn_card(
         CpiContext::new(
             ctx.accounts.token_program.key(),
             Burn {
-                mint:      ctx.accounts.card_mint_account.to_account_info(),
-                from:      ctx.accounts.card_token_account.to_account_info(),
+                mint: ctx.accounts.card_mint_account.to_account_info(),
+                from: ctx.accounts.card_token_account.to_account_info(),
                 authority: ctx.accounts.owner.to_account_info(),
             },
         ),
@@ -110,9 +107,9 @@ pub fn handle_burn_card(
     // 4. Update CardBattleHistory
     let history = &mut ctx.accounts.card_history;
     if history.card_mint == Pubkey::default() {
-        history.card_mint  = card_mint;
+        history.card_mint = card_mint;
         history.created_at = now;
-        history.bump       = ctx.bumps.card_history;
+        history.bump = ctx.bumps.card_history;
     }
     history.burn_count = history.burn_count.saturating_add(1);
     // Clear any expired lease state
@@ -134,7 +131,9 @@ pub fn handle_burn_card(
 
     msg!(
         "CardBurned: mint={} owner={} rarity={}",
-        card_mint, ctx.accounts.owner.key(), rarity,
+        card_mint,
+        ctx.accounts.owner.key(),
+        rarity,
     );
     Ok(())
 }

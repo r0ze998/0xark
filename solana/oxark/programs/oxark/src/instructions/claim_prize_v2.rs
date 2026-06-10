@@ -1,7 +1,7 @@
+use crate::error::ErrorCode;
+use crate::state::*;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
-use crate::state::*;
-use crate::error::ErrorCode;
 
 /// Phase 15 B-8: Tier-based prize distribution.
 /// Called by each player after game_status == 2 (ended).
@@ -48,7 +48,7 @@ pub fn handle_claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
     // Read all values before any mutation (avoids borrow-checker conflicts).
     let (vault_count, actual_prize) = {
         let world = &ctx.accounts.game_world;
-        let ps    = &ctx.accounts.player_state;
+        let ps = &ctx.accounts.player_state;
 
         require!(world.game_status == 2, ErrorCode::GameNotEnded);
         // C1 guard: deposit_amount is zeroed after claim; a second call hits this.
@@ -76,7 +76,7 @@ pub fn handle_claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
             ctx.accounts.system_program.key(),
             Transfer {
                 from: ctx.accounts.prize_pool.to_account_info(),
-                to:   ctx.accounts.player.to_account_info(),
+                to: ctx.accounts.player.to_account_info(),
             },
         ),
         actual_prize,
@@ -106,7 +106,10 @@ mod tests {
         deposit = 0; // simulates the C1 fix
         assert_eq!(deposit, 0, "deposit_amount must be 0 after claim");
         let result = if deposit > 0 { Ok(()) } else { Err(()) };
-        assert!(result.is_err(), "second claim must be rejected once deposit is zeroed");
+        assert!(
+            result.is_err(),
+            "second claim must be rejected once deposit is zeroed"
+        );
     }
 }
 
@@ -127,19 +130,27 @@ fn compute_tier_prize(
         tier1_pool / divisor
     } else if vault_count >= 50 {
         // Tier 2: 25% proportional
-        if world.tier2_total_vault == 0 { return 0; }
+        if world.tier2_total_vault == 0 {
+            return 0;
+        }
         prize_pool * 25 / 100 * vault_count / world.tier2_total_vault
     } else if vault_count >= 30 {
         // Tier 3: 15% proportional
-        if world.tier3_total_vault == 0 { return 0; }
+        if world.tier3_total_vault == 0 {
+            return 0;
+        }
         prize_pool * 15 / 100 * vault_count / world.tier3_total_vault
     } else if vault_count >= 10 {
         // Tier 4: 8% proportional
-        if world.tier4_total_vault == 0 { return 0; }
+        if world.tier4_total_vault == 0 {
+            return 0;
+        }
         prize_pool * 8 / 100 * vault_count / world.tier4_total_vault
     } else {
         // Tier 5: 2% proportional
-        if world.tier5_total_vault == 0 { return 0; }
+        if world.tier5_total_vault == 0 {
+            return 0;
+        }
         prize_pool * 2 / 100 * vault_count / world.tier5_total_vault
     }
 }

@@ -1,10 +1,10 @@
 // set_waitlist_deadline — Admin emergency instruction.
 // Allows the admin to push or reset the waitlist close timestamp.
 
-use anchor_lang::prelude::*;
-use crate::state::GameWorld;
-use crate::error::ErrorCode;
 use crate::constants::ADMIN_PUBKEY;
+use crate::error::ErrorCode;
+use crate::state::GameWorld;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct SetWaitlistDeadline<'info> {
@@ -27,6 +27,9 @@ pub fn handle_set_waitlist_deadline(
     new_deadline: i64,
 ) -> Result<()> {
     ctx.accounts.game_world.waitlist_close_timestamp = new_deadline;
-    msg!("set_waitlist_deadline: waitlist_close_timestamp → {}", new_deadline);
+    msg!(
+        "set_waitlist_deadline: waitlist_close_timestamp → {}",
+        new_deadline
+    );
     Ok(())
 }

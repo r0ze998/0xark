@@ -7,11 +7,13 @@
 // Randomness:    SlotHashes sysvar — 4 bytes per card → u32 roll % 1_000_000 (ppm).
 // Drop rates:    stored on GameWorld, admin-adjustable via update_game_params.
 
+use crate::constants::{
+    PACK_PREMIUM, PACK_STANDARD, PREMIUM_PACK_PRICE, SLOT_HASHES_ID_BYTES, STANDARD_PACK_PRICE,
+};
+use crate::error::ErrorCode;
+use crate::state::{GameWorld, PackOpenedEvent, PlayerState};
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
-use crate::state::{GameWorld, PlayerState, PackOpenedEvent};
-use crate::error::ErrorCode;
-use crate::constants::{PACK_STANDARD, PACK_PREMIUM, STANDARD_PACK_PRICE, PREMIUM_PACK_PRICE, SLOT_HASHES_ID_BYTES};
 
 #[derive(Accounts)]
 #[instruction(pack_type: u8)]
@@ -47,37 +49,51 @@ pub struct BuyPack<'info> {
 pub fn handle_buy_pack(ctx: Context<BuyPack>, pack_type: u8) -> Result<()> {
     let (price, pack_size): (u64, usize) = match pack_type {
         PACK_STANDARD => (STANDARD_PACK_PRICE, 5),
-        PACK_PREMIUM  => (PREMIUM_PACK_PRICE,  3),
-        _             => return Err(ErrorCode::InvalidPackType.into()),
+        PACK_PREMIUM => (PREMIUM_PACK_PRICE, 3),
+        _ => return Err(ErrorCode::InvalidPackType.into()),
     };
 
     // 1. SOL split: 50% ops / 50% pool
-    let ops_amount  = price / 2;
+    let ops_amount = price / 2;
     let pool_amount = price - ops_amount;
     transfer(
         CpiContext::new(
             ctx.accounts.system_program.key(),
-            Transfer { from: ctx.accounts.buyer.to_account_info(), to: ctx.accounts.ops_treasury.clone() },
+            Transfer {
+                from: ctx.accounts.buyer.to_account_info(),
+                to: ctx.accounts.ops_treasury.clone(),
+            },
         ),
         ops_amount,
     )?;
     transfer(
         CpiContext::new(
             ctx.accounts.system_program.key(),
-            Transfer { from: ctx.accounts.buyer.to_account_info(), to: ctx.accounts.prize_pool.clone() },
+            Transfer {
+                from: ctx.accounts.buyer.to_account_info(),
+                to: ctx.accounts.prize_pool.clone(),
+            },
         ),
         pool_amount,
     )?;
 
     // 2. Phase determination
-    let gw  = &ctx.accounts.game_world;
+    let gw = &ctx.accounts.game_world;
     let now = Clock::get()?.unix_timestamp;
     let elapsed = (now.saturating_sub(gw.start_timestamp)) as u64;
     let is_phase2 = elapsed >= gw.shop_phase_threshold_seconds;
 
-    let legendary_rate = if is_phase2 { gw.legendary_drop_rate_phase2 } else { gw.legendary_drop_rate_phase1 };
-    let rare_rate      = if is_phase2 { gw.rare_drop_rate_phase2 }      else { gw.rare_drop_rate_phase1 };
-    let uncommon_rate  = gw.uncommon_drop_rate;
+    let legendary_rate = if is_phase2 {
+        gw.legendary_drop_rate_phase2
+    } else {
+        gw.legendary_drop_rate_phase1
+    };
+    let rare_rate = if is_phase2 {
+        gw.rare_drop_rate_phase2
+    } else {
+        gw.rare_drop_rate_phase1
+    };
+    let uncommon_rate = gw.uncommon_drop_rate;
 
     // 3. Read 32 hash bytes from SlotHashes sysvar
     let slot_data = ctx.accounts.slot_hashes.try_borrow_data()?;
@@ -92,40 +108,72 @@ pub fn handle_buy_pack(ctx: Context<BuyPack>, pack_type: u8) -> Result<()> {
 
     for i in 0..pack_size {
         // 4 bytes → u32 → ppm roll (0..999999)
-        let b = [(i * 4) % 32, (i * 4 + 1) % 32, (i * 4 + 2) % 32, (i * 4 + 3) % 32];
-        let seed = u32::from_le_bytes([hash_bytes[b[0]], hash_bytes[b[1]], hash_bytes[b[2]], hash_bytes[b[3]]]);
+        let b = [
+            (i * 4) % 32,
+            (i * 4 + 1) % 32,
+            (i * 4 + 2) % 32,
+            (i * 4 + 3) % 32,
+        ];
+        let seed = u32::from_le_bytes([
+            hash_bytes[b[0]],
+            hash_bytes[b[1]],
+            hash_bytes[b[2]],
+            hash_bytes[b[3]],
+        ]);
         let roll = seed % 1_000_000;
 
         let force_uncommon = pack_type == PACK_PREMIUM && i == 0;
-        let card_id = _pick_card(roll, legendary_rate, rare_rate, uncommon_rate, force_uncommon);
+        let card_id = _pick_card(
+            roll,
+            legendary_rate,
+            rare_rate,
+            uncommon_rate,
+            force_uncommon,
+        );
 
         player_state.add_card(card_id)?;
         card_ids.push(card_id);
     }
 
     emit!(PackOpenedEvent {
-        buyer:     ctx.accounts.buyer.key(),
+        buyer: ctx.accounts.buyer.key(),
         pack_type,
-        card_ids:  card_ids.clone(),
-        slot:      Clock::get()?.slot,
+        card_ids: card_ids.clone(),
+        slot: Clock::get()?.slot,
     });
 
-    msg!("buy_pack: buyer={} type={} cards={:?}", ctx.accounts.buyer.key(), pack_type, card_ids);
+    msg!(
+        "buy_pack: buyer={} type={} cards={:?}",
+        ctx.accounts.buyer.key(),
+        pack_type,
+        card_ids
+    );
     Ok(())
 }
 
-fn _pick_card(roll: u32, legendary_rate: u32, rare_rate: u32, uncommon_rate: u32, force_uncommon: bool) -> u8 {
+fn _pick_card(
+    roll: u32,
+    legendary_rate: u32,
+    rare_rate: u32,
+    uncommon_rate: u32,
+    force_uncommon: bool,
+) -> u8 {
     if force_uncommon {
         return _pick_random_uncommon(roll);
     }
     let leg_threshold = legendary_rate;
     let rare_threshold = leg_threshold.saturating_add(rare_rate);
-    let unc_threshold  = rare_threshold.saturating_add(uncommon_rate);
+    let unc_threshold = rare_threshold.saturating_add(uncommon_rate);
 
-    if roll < leg_threshold       { _pick_random_legendary(roll) }
-    else if roll < rare_threshold { _pick_random_rare(roll) }
-    else if roll < unc_threshold  { _pick_random_uncommon(roll) }
-    else                          { _pick_random_common(roll) }
+    if roll < leg_threshold {
+        _pick_random_legendary(roll)
+    } else if roll < rare_threshold {
+        _pick_random_rare(roll)
+    } else if roll < unc_threshold {
+        _pick_random_uncommon(roll)
+    } else {
+        _pick_random_common(roll)
+    }
 }
 
 // Card ID ranges (matches cards.js and game-design-v2):
@@ -133,10 +181,18 @@ fn _pick_card(roll: u32, legendary_rate: u32, rare_rate: u32, uncommon_rate: u32
 // Uncommon: 31-48  (3 cards × 6 factions)
 // Rare:     49-54  (1 card  × 6 factions)
 // Legendary:55-60  (1 card  × 6 factions)
-fn _pick_random_common(roll: u32)    -> u8 { ((roll % 30) + 1)  as u8 }
-fn _pick_random_uncommon(roll: u32)  -> u8 { ((roll % 18) + 31) as u8 }
-fn _pick_random_rare(roll: u32)      -> u8 { ((roll % 6)  + 49) as u8 }
-fn _pick_random_legendary(roll: u32) -> u8 { ((roll % 6)  + 55) as u8 }
+fn _pick_random_common(roll: u32) -> u8 {
+    ((roll % 30) + 1) as u8
+}
+fn _pick_random_uncommon(roll: u32) -> u8 {
+    ((roll % 18) + 31) as u8
+}
+fn _pick_random_rare(roll: u32) -> u8 {
+    ((roll % 6) + 49) as u8
+}
+fn _pick_random_legendary(roll: u32) -> u8 {
+    ((roll % 6) + 55) as u8
+}
 
 #[cfg(test)]
 mod tests {
@@ -162,10 +218,10 @@ mod tests {
     #[test]
     fn pick_card_legendary_phase2_drops_in_range() {
         // legendary_rate = 15000 → rolls 0-14999 are legendary
-        let id0    = _pick_card(0,     15000, 25000, 180000, false);
-        let id14k  = _pick_card(14999, 15000, 25000, 180000, false);
-        let id15k  = _pick_card(15000, 15000, 25000, 180000, false);
-        assert!(id0   >= 55 && id0   <= 60, "roll=0 should be legendary");
+        let id0 = _pick_card(0, 15000, 25000, 180000, false);
+        let id14k = _pick_card(14999, 15000, 25000, 180000, false);
+        let id15k = _pick_card(15000, 15000, 25000, 180000, false);
+        assert!(id0 >= 55 && id0 <= 60, "roll=0 should be legendary");
         assert!(id14k >= 55 && id14k <= 60, "roll=14999 should be legendary");
         assert!(id15k >= 49 && id15k <= 54, "roll=15000 should be rare");
     }
@@ -183,7 +239,11 @@ mod tests {
     fn pick_card_uncommon_range() {
         // With legendary=0, rare=20000: uncommon range 20000-199999
         let id = _pick_card(20000, 0, 20000, 180000, false);
-        assert!(id >= 31 && id <= 48, "roll=20000 should be uncommon: {}", id);
+        assert!(
+            id >= 31 && id <= 48,
+            "roll=20000 should be uncommon: {}",
+            id
+        );
     }
 
     #[test]
@@ -215,15 +275,19 @@ mod tests {
         let seed = u32::from_le_bytes([hash_bytes[0], hash_bytes[1], hash_bytes[2], hash_bytes[3]]);
         let roll = seed % 1_000_000;
         let id = _pick_card(roll, 15000, 25000, 180000, true); // force_uncommon
-        assert!(id >= 31 && id <= 48, "premium first card not uncommon: {}", id);
+        assert!(
+            id >= 31 && id <= 48,
+            "premium first card not uncommon: {}",
+            id
+        );
     }
 
     #[test]
     fn card_range_helpers_in_bounds() {
         for roll in [0u32, 1, 17, 29, 100, 999999] {
-            assert!((_pick_random_common(roll)    >= 1  && _pick_random_common(roll)    <= 30));
-            assert!((_pick_random_uncommon(roll)  >= 31 && _pick_random_uncommon(roll)  <= 48));
-            assert!((_pick_random_rare(roll)      >= 49 && _pick_random_rare(roll)      <= 54));
+            assert!((_pick_random_common(roll) >= 1 && _pick_random_common(roll) <= 30));
+            assert!((_pick_random_uncommon(roll) >= 31 && _pick_random_uncommon(roll) <= 48));
+            assert!((_pick_random_rare(roll) >= 49 && _pick_random_rare(roll) <= 54));
             assert!((_pick_random_legendary(roll) >= 55 && _pick_random_legendary(roll) <= 60));
         }
     }
