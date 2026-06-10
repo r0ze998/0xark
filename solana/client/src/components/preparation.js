@@ -235,6 +235,10 @@ function updateConfirm(container) {
 async function onConfirm(container) {
   const btn  = container.querySelector('#prep-confirm');
   const hint = container.querySelector('#prep-hint');
+
+  // Guard: already committed this round
+  if (getState().commitment !== null) return;
+
   if (btn) { btn.disabled = true; btn.textContent = '⏳ COMMITTING…'; }
 
   try {
@@ -251,7 +255,6 @@ async function onConfirm(container) {
     let zkPublicInputBytes = null; // Uint8Array[](32) × 4
 
     const zkAvailable = typeof window.zkCardCommit?.proveHandCommit === 'function';
-    const zkRequired  = !window.OXARK_ALLOW_NO_ZK;
 
     if (zkAvailable) {
       if (btn)  btn.textContent  = '⏳ ZK PROOF…';
@@ -270,11 +273,11 @@ async function onConfirm(container) {
         zkProofBytes       = window.zkCardCommit.proofToBytes(zkResult.proof);
         zkPublicSignals    = zkResult.publicSignals;
         zkPublicInputBytes = window.zkCardCommit.publicSignalsToBytes(zkResult.publicSignals);
-      } else if (zkRequired) {
+      } else {
         throw new Error('ZK proof failed: ' + (zkResult.error ?? 'snarkjs unavailable'));
       }
-    } else if (zkRequired) {
-      throw new Error('snarkjs not loaded. Set window.OXARK_ALLOW_NO_ZK=true for dev mode.');
+    } else {
+      throw new Error('snarkjs not loaded — ZK proof required to commit hand.');
     }
     // ─────────────────────────────────────────────────────────────────────
 
@@ -285,10 +288,34 @@ async function onConfirm(container) {
       zkProofBytes,
       zkPublicSignals,
       zkPublicInputBytes,
-      phase: 'interruption',
     });
 
     const s = getState();
+
+    // ── On-chain: initDuel (host only) → commitHand ───────────────────────
+    if (typeof window.oxarkOnchain?.commitHand === 'function') {
+      if (s.isHost && typeof window.oxarkOnchain?.initDuel === 'function') {
+        if (btn) btn.textContent = '⏳ INIT DUEL…';
+        const myPubkey = window.solana?.publicKey?.toBase58();
+        await window.oxarkOnchain.initDuel(
+          s.duelId, myPubkey, s.opponentPubkey,
+        );
+      }
+
+      if (btn) btn.textContent = '⏳ ON-CHAIN COMMIT…';
+      await window.oxarkOnchain.commitHand(
+        s.duelId,
+        s.round ?? 1,
+        zkProofBytes.proofA,
+        zkProofBytes.proofB,
+        zkProofBytes.proofC,
+        zkPublicInputBytes,
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    setState({ phase: 'interruption' });
+
     if (s.duelId && duelWs.isConnected()) {
       duelWs.sendHandCommitted(s.duelId, s.round ?? 1, commitmentHex, {
         zkHasProof: zkProofBytes !== null,
@@ -299,8 +326,13 @@ async function onConfirm(container) {
     document.dispatchEvent(new CustomEvent('nav:interruption'));
   } catch (err) {
     console.error('[Prep] Commit failed:', err);
+    const msg = err.message ?? 'commit failed';
+    const userMsg = msg.includes('AlreadyCommitted')
+      ? 'Already committed for this round'
+      : 'Error: ' + msg;
     if (btn)  { btn.disabled = false; btn.textContent = '✓ CONFIRM & COMMIT'; }
-    if (hint) hint.textContent = 'Error: ' + (err.message ?? 'commit failed');
+    if (hint) hint.textContent = userMsg;
+    setState({ commitment: null }); // allow retry
   }
 }
 

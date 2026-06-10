@@ -94,6 +94,8 @@ pub enum ErrorCode {
     HandAlreadyRevealed,
     #[msg("Duel is already over")]
     DuelOver,
+    #[msg("Duel has not ended yet")]
+    DuelNotOver,
     // ── T-D13-A0: DEF-16 ────────────────────────────────────────────────────────
     #[msg("Poseidon hash computation failed (invalid inputs)")]
     PoseidonHashFailed,
@@ -190,4 +192,13 @@ pub enum ErrorCode {
     NotSeller,
     #[msg("Wrong seller specified")]
     WrongSeller,
+    // ── Security fixes ───────────────────────────────────────────────────────
+    #[msg("Account does not match expected address")]
+    InvalidAccount,
+    #[msg("ZK public signal does not match instruction argument")]
+    InvalidPublicSignal,
+    #[msg("Account owner is not the expected program")]
+    InvalidAccountOwner,
+    #[msg("ZK proof not verified for this round — call commit_hand first")]
+    ZkNotVerified,
 }

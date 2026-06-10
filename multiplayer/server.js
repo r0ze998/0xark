@@ -20,11 +20,12 @@
  */
 
 import http from 'http';
+import crypto from 'crypto';
 import { WebSocketServer } from 'ws';
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, rateLimits, gcRoundClaims } from './state.js';
-import { HANDLERS } from './handlers/index.js';
+import { HANDLERS, _handleAuthVerify } from './handlers/index.js';
 import { validateMemo, MOVE_ENDPOINTS } from './memo-validator.js';
 import { isSigUsed, markSigUsed, isNonceUsed, markNonceUsed, gcMemory } from './redis-store.js';
 
@@ -96,17 +97,18 @@ const SOLANA_NETWORK   = process.env.SOLANA_NETWORK  || 'devnet';
 const X402_REQUIRE_MEMO = process.env.X402_REQUIRE_MEMO !== 'false';
 
 // ─── Environment validation ───────────────────────────────────────────────────
-// In production (NODE_ENV=production), missing required vars are fatal.
-// In development/demo, they emit a warning and fall back to demo mode.
+// Outside development (NODE_ENV=development), missing required vars are fatal.
+// Set NODE_ENV=development explicitly to enable demo mode (payments skipped).
 
 const REQUIRED_PROD_ENVS = ['TREASURY_PUBKEY', 'SOLANA_RPC', 'REDIS_URL'];
 
 function validateEnv() {
-  const isProd = process.env.NODE_ENV === 'production';
+  const isDev = process.env.NODE_ENV === 'development';
   for (const key of REQUIRED_PROD_ENVS) {
     if (!process.env[key]?.trim()) {
-      if (isProd) {
-        console.error(`[FATAL] ${key} is required in production. Set via fly secrets or env. Exiting.`);
+      if (!isDev) {
+        console.error(`[FATAL] ${key} is required outside development mode.`);
+        console.error(`[FATAL] Set via 'fly secrets set ${key}=...' or run with NODE_ENV=development to enable demo mode.`);
         process.exit(1);
       } else {
         console.warn(`[WARN] ${key} not set — demo mode active (payments skipped)`);
@@ -454,15 +456,18 @@ const _sigGcInterval = setInterval(() => {
 process.on('exit', () => clearInterval(_sigGcInterval));
 
 wss.on('connection', (ws) => {
-  ws.playerId   = Math.random().toString(36).slice(2, 8);
-  ws.roomId     = null;
-  ws.playerName = 'Player';
-  ws.wallet     = null;
-  ws.clan       = null;
-  ws.cardCount  = 0;
-  ws.season     = 1;
-  ws.isAlive    = true;
+  ws.playerId      = Math.random().toString(36).slice(2, 8);
+  ws.roomId        = null;
+  ws.playerName    = 'Player';
+  ws.wallet        = null;
+  ws.clan          = null;
+  ws.cardCount     = 0;
+  ws.season        = 1;
+  ws.isAlive       = true;
+  ws.authenticated = false;
+  ws.authChallenge = `0xARK:${Date.now()}:${crypto.randomBytes(16).toString('hex')}`;
   initRateState(ws);
+  send(ws, { type: 'auth_challenge', challenge: ws.authChallenge });
 
   ws.on('pong', () => { ws.isAlive = true; });
 
@@ -471,6 +476,7 @@ wss.on('connection', (ws) => {
     let msg;
     try { msg = JSON.parse(data); } catch { send(ws, { type: 'error', message: 'Invalid JSON' }); return; }
     if (rateLimited(ws, msg.type === 'submit_tx')) return;
+    if (msg.type === 'auth_verify') { _handleAuthVerify(ws, msg); return; }
     const h = HANDLERS[msg.type];
     if (h) h(ws, msg);
   });

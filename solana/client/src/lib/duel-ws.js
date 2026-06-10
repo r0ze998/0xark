@@ -22,9 +22,34 @@ export function connect() {
     const timer = setTimeout(() => reject(new Error('WS connect timeout')), 5000);
     _ws.onopen    = () => { clearTimeout(timer); resolve(); };
     _ws.onerror   = () => { clearTimeout(timer); reject(new Error('WS connection failed')); };
-    _ws.onmessage = (e) => { try { _dispatch(JSON.parse(e.data)); } catch {} };
+    _ws.onmessage = (e) => {
+      let msg;
+      try { msg = JSON.parse(e.data); } catch { return; }
+      if (msg.type === 'auth_challenge') {
+        _handleAuthChallenge(msg.challenge).catch(err => {
+          console.error('[auth] challenge handling failed', err);
+        });
+        return;
+      }
+      _dispatch(msg);
+    };
     _ws.onclose   = () => _dispatch({ type: 'ws_closed' });
   });
+}
+
+async function _handleAuthChallenge(challenge) {
+  if (!window.solana?.signMessage) {
+    console.warn('[auth] window.solana.signMessage not available — wallet auth skipped');
+    return;
+  }
+  try {
+    const encoded = new TextEncoder().encode(challenge);
+    const { signature } = await window.solana.signMessage(encoded, 'utf8');
+    const sigB64 = btoa(String.fromCharCode(...signature));
+    send({ type: 'auth_verify', wallet: window.solana.publicKey.toBase58(), signature: sigB64 });
+  } catch (e) {
+    console.error('[auth] signMessage failed', e);
+  }
 }
 
 export function disconnect() {

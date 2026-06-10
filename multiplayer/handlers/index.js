@@ -1,10 +1,12 @@
 // handlers/index.js — HANDLERS dispatch table
 
-import { _handleCreateRoom, _handleJoinRoom, _handlePresenceUpdate, _handleChat } from './lobby.js';
+import { _handleAuthVerify, _handleCreateRoom, _handleJoinRoom, _handlePresenceUpdate, _handleChat } from './lobby.js';
 import { _handleMove } from './game.js';
 import { _handleSubmitTx } from './zk.js';
 import { _handleDuelHandCommitted, _handleDuelHandRevealed, _handleDuelPhaseAdvance, _handleDuelBattleResolved, _handleDuelDamageClaim, _handleDuelEnded } from './sync.js';
 import { _handleMatchmakingEnqueue, _handleMatchmakingCancel } from './matchmaking.js';
+
+export { _handleAuthVerify };
 
 export const HANDLERS = {
   create_room:          _handleCreateRoom,

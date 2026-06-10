@@ -10,9 +10,12 @@ use {
 
 #[test]
 fn test_initialize() {
+    use solana_compute_budget::compute_budget::ComputeBudget;
     let program_id = oxark::id();
     let payer = Keypair::new();
-    let mut svm = LiteSVM::new();
+    let base   = ComputeBudget::new_with_defaults(false, false);
+    let budget = ComputeBudget { heap_size: 256 * 1024, ..base };
+    let mut svm = LiteSVM::new().with_compute_budget(budget);
     let bytes = include_bytes!("../../../target/deploy/oxark.so");
     svm.add_program(program_id, bytes).unwrap();
     svm.airdrop(&payer.pubkey(), 1_000_000_000).unwrap();

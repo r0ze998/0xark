@@ -11,8 +11,9 @@
 // Seeds for DuelLootRecord: ["duel_loot", duel_id.as_ref()]
 
 use anchor_lang::prelude::*;
-use crate::state::{PlayerState, DuelLootRecord};
+use crate::state::{PlayerState, DuelLootRecord, DuelState};
 use crate::error::ErrorCode;
+use crate::instructions::init_duel::DUEL_SEED;
 
 // SysvarS1otHashes111111111111111111111111111
 const SLOT_HASHES_ID_BYTES: [u8; 32] = [
@@ -40,6 +41,19 @@ pub struct ClaimBattleLoot<'info> {
         constraint = loser_state.key() != winner_state.key() @ ErrorCode::CannotLootSelf
     )]
     pub loser_state: Account<'info, PlayerState>,
+
+    /// DuelState — must be ended, signer must be the winner, and loser_pubkey must be
+    /// one of the two registered participants.
+    /// Boxed to keep stack frame within BPF 4096-byte limit.
+    #[account(
+        seeds = [DUEL_SEED, duel_id.as_ref()],
+        bump = duel.bump,
+        constraint = duel.ended_at > 0          @ ErrorCode::DuelNotOver,
+        constraint = duel.winner == winner.key() @ ErrorCode::NotWinner,
+        // C4 fix: loser_pubkey must be a registered participant of this duel.
+        constraint = (loser_pubkey == duel.player_1 || loser_pubkey == duel.player_2) @ ErrorCode::WrongLoser,
+    )]
+    pub duel: Box<Account<'info, DuelState>>,
 
     /// Initialized here — its existence means loot was claimed (double-spend guard).
     #[account(
@@ -129,4 +143,35 @@ pub struct LootClaimedEvent {
     pub duel_id:        Pubkey,
     pub stolen_card_id: u8,
     pub slot:           u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn loser_is_participant(loser: Pubkey, player_1: Pubkey, player_2: Pubkey) -> bool {
+        loser == player_1 || loser == player_2
+    }
+
+    #[test]
+    fn valid_loser_player_1_accepted() {
+        let p1 = Pubkey::new_unique();
+        let p2 = Pubkey::new_unique();
+        assert!(loser_is_participant(p1, p1, p2));
+    }
+
+    #[test]
+    fn valid_loser_player_2_accepted() {
+        let p1 = Pubkey::new_unique();
+        let p2 = Pubkey::new_unique();
+        assert!(loser_is_participant(p2, p1, p2));
+    }
+
+    #[test]
+    fn arbitrary_loser_rejected() {
+        let p1      = Pubkey::new_unique();
+        let p2      = Pubkey::new_unique();
+        let attacker = Pubkey::new_unique();
+        assert!(!loser_is_participant(attacker, p1, p2));
+    }
 }

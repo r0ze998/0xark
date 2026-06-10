@@ -32,6 +32,10 @@ mod tests {
         Pubkey::find_program_address(&[b"player", player.as_ref()], &program_id())
     }
 
+    fn find_duel_pda(duel_id: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[b"duel", duel_id.as_ref()], &program_id())
+    }
+
     fn find_duel_loot_pda(duel_id: &Pubkey) -> (Pubkey, u8) {
         Pubkey::find_program_address(&[b"duel_loot", duel_id.as_ref()], &program_id())
     }
@@ -58,6 +62,7 @@ mod tests {
         winner:        &Pubkey,
         winner_state:  &Pubkey,
         loser_state:   &Pubkey,
+        duel_pda:      &Pubkey,
         duel_loot_pda: &Pubkey,
         duel_id:       &Pubkey,
         loser_pubkey:  &Pubkey,
@@ -73,6 +78,7 @@ mod tests {
             AccountMeta::new(*winner, true),
             AccountMeta::new(*winner_state, false),
             AccountMeta::new(*loser_state, false),
+            AccountMeta::new_readonly(*duel_pda, false),   // DuelState (ended_at/winner guard)
             AccountMeta::new(*duel_loot_pda, false),
             AccountMeta::new_readonly(slot_hashes_id(), false),
             AccountMeta::new_readonly(system_program::id(), false),

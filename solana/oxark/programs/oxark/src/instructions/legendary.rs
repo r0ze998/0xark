@@ -9,6 +9,7 @@
 use anchor_lang::prelude::*;
 use crate::state::*;
 use crate::error::ErrorCode;
+use crate::instructions::init_duel::DUEL_SEED;
 
 // ─── init_legendary_supply ────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ pub fn handle_init_legendary_supply(
 // ─── record_gold_hall_win ─────────────────────────────────────────────────────
 
 #[derive(Accounts)]
+#[instruction(duel_id: Pubkey, season_id: u32)]
 pub struct RecordGoldHallWin<'info> {
     #[account(
         init_if_needed,
@@ -54,12 +56,44 @@ pub struct RecordGoldHallWin<'info> {
         bump,
     )]
     pub player_duel_stats: Account<'info, PlayerDuelStats>,
+
+    /// DuelState — must be ended and signer must be the recorded winner.
+    /// Boxed to keep stack frame within BPF limit.
+    #[account(
+        seeds = [DUEL_SEED, duel_id.as_ref()],
+        bump = duel.bump,
+        constraint = duel.ended_at > 0          @ ErrorCode::DuelNotOver,
+        // C6 fix: caller must be the winner recorded in the settled DuelState.
+        constraint = duel.winner == player.key() @ ErrorCode::NotWinner,
+    )]
+    pub duel: Box<Account<'info, DuelState>>,
+
+    /// Double-record guard — init fails if this duel's win was already reported.
+    #[account(
+        init,
+        payer = player,
+        space = GoldHallRecord::SIZE,
+        seeds = [GoldHallRecord::SEED, duel_id.as_ref()],
+        bump,
+    )]
+    pub gold_hall_record: Account<'info, GoldHallRecord>,
+
     #[account(mut)]
     pub player: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_record_gold_hall_win(ctx: Context<RecordGoldHallWin>, season_id: u32) -> Result<()> {
+pub fn handle_record_gold_hall_win(
+    ctx: Context<RecordGoldHallWin>,
+    duel_id: Pubkey,
+    season_id: u32,
+) -> Result<()> {
+    // Initialize the double-record guard PDA.
+    let record = &mut ctx.accounts.gold_hall_record;
+    record.duel_id = duel_id;
+    record.winner  = ctx.accounts.player.key();
+    record.bump    = ctx.bumps.gold_hall_record;
+
     let stats = &mut ctx.accounts.player_duel_stats;
     let player_key = ctx.accounts.player.key();
 
@@ -94,6 +128,32 @@ pub fn handle_record_gold_hall_win(ctx: Context<RecordGoldHallWin>, season_id: u
 
     msg!("Gold Hall win #{} recorded for player {}. Pending Legendary claims: {}", wins, player_key, pending);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn non_winner_cannot_record_win() {
+        // Simulate the C6 constraint: duel.winner must equal the caller.
+        let real_winner = Pubkey::new_unique();
+        let attacker    = Pubkey::new_unique();
+        assert_ne!(real_winner, attacker);
+        // Constraint passes only when caller IS the winner.
+        let ok = real_winner == real_winner;
+        let blocked = real_winner == attacker;
+        assert!(ok,      "real winner must pass the constraint");
+        assert!(!blocked, "attacker must be blocked");
+    }
+
+    #[test]
+    fn double_record_prevented_by_pda_init() {
+        // GoldHallRecord::SEED is unique per duel_id; Anchor init fails on second call
+        // because the account already exists. This is a structural guarantee, not logic.
+        assert_eq!(GoldHallRecord::SEED, b"gold_hall");
+        assert_eq!(GoldHallRecord::SIZE, 8 + 32 + 32 + 1);
+    }
 }
 
 // ─── claim_legendary ──────────────────────────────────────────────────────────

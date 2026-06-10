@@ -82,10 +82,14 @@ pub struct Game {
     pub commit_count: u8,
     pub reveal_count: u8,
     pub bump: u8,
+    // C3 fix: stores registered player pubkeys so resolve_round can validate PDAs.
+    pub players: [Pubkey; 3], // MAX_PLAYERS = 3
 }
 
 impl Game {
-    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 1 + 1;
+    // Original: 8 + 8 + 32 + 1*6 + 32 + 1*3 = 89
+    // C3 addition: [Pubkey; 3] = 96 → total 185
+    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 1 + 1 + (3 * 32);
 }
 
 #[account]
@@ -685,6 +689,15 @@ pub struct DuelState {
     /// Revealed card IDs after battle (10 cards × 5 rounds)
     pub player_1_revealed:   [[u64; 10]; 5],
     pub player_2_revealed:   [[u64; 10]; 5],
+    /// Salt used during commit_hand per round — stored on first reveal so
+    /// the second player's reveal_hand call can compute the deterministic
+    /// SHA-256 seed for damage_calc: sha256(p1_salt || p2_salt || round).
+    pub player_1_salt: [[u8; 32]; 5],
+    pub player_2_salt: [[u8; 32]; 5],
+    /// Set to true in commit_hand after Groth16 verification passes.
+    /// reveal_hand requires the corresponding flag to be true (ZK gate).
+    pub player_1_zk_verified: [bool; 5],
+    pub player_2_zk_verified: [bool; 5],
     pub bump: u8,
 }
 
@@ -693,32 +706,40 @@ impl DuelState {
     // + 8 started_at + 8 ended_at + 32 winner
     // + 5*32 p1_commit + 5*32 p2_commit
     // + 5*10*8 p1_reveal + 5*10*8 p2_reveal
+    // + 5*32 p1_salt + 5*32 p2_salt
+    // + 5 p1_zk_verified + 5 p2_zk_verified
     // + 1 bump
     pub const SIZE: usize = 8 + 32 + 32 + 32 + 1 + 1 + 1 + 8
         + 8 + 8 + 32
         + (5 * 32) + (5 * 32)
         + (5 * 10 * 8) + (5 * 10 * 8)
+        + (5 * 32) + (5 * 32)
+        + 5 + 5
         + 1;
 }
 
 impl Default for DuelState {
     fn default() -> Self {
         Self {
-            id:                  Pubkey::default(),
-            player_1:            Pubkey::default(),
-            player_2:            Pubkey::default(),
-            hall_tier:           0,
-            round:               1,
-            phase:               0,
-            ante:                0,
-            started_at:          0,
-            ended_at:            0,
-            winner:              Pubkey::default(),
-            player_1_commitment: [[0u8; 32]; 5],
-            player_2_commitment: [[0u8; 32]; 5],
-            player_1_revealed:   [[0u64; 10]; 5],
-            player_2_revealed:   [[0u64; 10]; 5],
-            bump:                0,
+            id:                    Pubkey::default(),
+            player_1:              Pubkey::default(),
+            player_2:              Pubkey::default(),
+            hall_tier:             0,
+            round:                 1,
+            phase:                 0,
+            ante:                  0,
+            started_at:            0,
+            ended_at:              0,
+            winner:                Pubkey::default(),
+            player_1_commitment:   [[0u8; 32]; 5],
+            player_2_commitment:   [[0u8; 32]; 5],
+            player_1_revealed:     [[0u64; 10]; 5],
+            player_2_revealed:     [[0u64; 10]; 5],
+            player_1_salt:         [[0u8; 32]; 5],
+            player_2_salt:         [[0u8; 32]; 5],
+            player_1_zk_verified:  [false; 5],
+            player_2_zk_verified:  [false; 5],
+            bump:                  0,
         }
     }
 }
@@ -750,6 +771,41 @@ impl DuelLootRecord {
     pub const SEED: &'static [u8] = b"duel_loot";
     // 8 disc + 32 + 32 + 32 + 5 + 1 + 1
     pub const SIZE: usize = 8 + 32 + 32 + 32 + 5 + 1 + 1;
+}
+
+// ─── GoldHallRecord PDA ────────────────────────────────────────────────────────
+// Seeds: ["gold_hall", duel_id.as_ref()]
+// Created (init) on first and only successful record_gold_hall_win call.
+// Its existence prevents the same duel from being reported twice.
+#[account]
+pub struct GoldHallRecord {
+    pub duel_id: Pubkey,  // 32
+    pub winner:  Pubkey,  // 32
+    pub bump:    u8,      // 1
+}
+
+impl GoldHallRecord {
+    pub const SEED: &'static [u8] = b"gold_hall";
+    // 8 disc + 32 + 32 + 1
+    pub const SIZE: usize = 8 + 32 + 32 + 1;
+}
+
+// ─── CardMintRecord PDA ────────────────────────────────────────────────────────
+// Seeds: ["card_mint_record", card_mint.as_ref()]
+// Created (init) by admin when an NFT card is minted via the oxark-cards program.
+// burn_card reads rarity from this PDA instead of trusting the caller (C5 fix).
+#[account]
+pub struct CardMintRecord {
+    pub card_mint: Pubkey,  // 32
+    pub card_id:   u8,      // 1
+    pub rarity:    u8,      // 1  — 0=Common, 1=Uncommon, 2=Rare, 3=Legendary
+    pub bump:      u8,      // 1
+}
+
+impl CardMintRecord {
+    pub const SEED: &'static [u8] = b"card_mint_record";
+    // 8 disc + 32 + 1 + 1 + 1
+    pub const SIZE: usize = 8 + 32 + 1 + 1 + 1;
 }
 
 #[event]
@@ -1239,10 +1295,10 @@ pub struct ListingAcceptedEvent {
 
 /// ZK proof record — created on first successful verify, prevents replay.
 ///
-/// PDA seeds: ["zk_proof", duel_id_le, round_le, signer_pubkey]
+/// PDA seeds: ["zk_proof", duel_pda_pubkey, round_le, signer_pubkey]
 #[account]
 pub struct ZkProofRecord {
-    pub duel_id:     u64,
+    pub duel_id:     Pubkey,
     pub round:       u64,
     pub signer:      Pubkey,
     pub commit:      [u8; 32],
@@ -1252,6 +1308,6 @@ pub struct ZkProofRecord {
 
 impl ZkProofRecord {
     pub const SEED: &'static [u8] = b"zk_proof";
-    // 8 disc + 8 + 8 + 32 + 32 + 8 + 1
-    pub const SIZE: usize = 8 + 8 + 8 + 32 + 32 + 8 + 1;
+    // 8 disc + 32 + 8 + 32 + 32 + 8 + 1
+    pub const SIZE: usize = 8 + 32 + 8 + 32 + 32 + 8 + 1;
 }

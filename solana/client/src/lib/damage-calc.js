@@ -43,7 +43,10 @@ function sortByIniDesc(cards, seed, seedOffset) {
     .map((c, i) => ({ ...c, _origIdx: i }))
     .sort((a, b) => {
       if (b.ini !== a.ini) return b.ini - a.ini;
-      return seedByte(seed, seedOffset + a._origIdx) - seedByte(seed, seedOffset + b._origIdx);
+      const sa = seedByte(seed, seedOffset + a._origIdx);
+      const sb = seedByte(seed, seedOffset + b._origIdx);
+      if (sa !== sb) return sa - sb;
+      return a._origIdx - b._origIdx; // stable 3rd key: orig position asc
     });
 }
 

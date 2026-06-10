@@ -1,5 +1,9 @@
 # 0xARK — Comprehensive Audit (Phase 5–19.5)
 
+> **INTERNAL DOCUMENT — NOT FOR PUBLIC DISTRIBUTION**  
+> Specific exploit details for open items have been redacted pending remediation.  
+> Contact the maintainers for the full internal version.
+
 **Date**: 2026-05-03  
 **Branch**: `audit-comprehensive`  
 **Deadline**: 2026-05-11 (8 days)  
@@ -143,9 +147,7 @@ Model deprecation breaks the default silently. Pin to the env var; add a startup
 Server-provided addresses (ops, pool, payTo) are constructed directly. An invalid or honeypot address causes an uncaught exception mid-transaction, leaving the user with a signed but unsubmittable transaction.  
 *Fix*: Wrap every `new PublicKey(...)` sourced from server responses in try/catch.
 
-**[Critical] A4-02 — `hireAgentDev` / `scoutPeekDev` bypass string left in production**  
-Both functions send `'X-Payment': 'local-dev-bypass'` — a hardcoded string that the server must whitelist (or reject) to work at all. Presence in production is a dev/test artifact.  
-*Fix*: Remove or gate behind `process.env.NODE_ENV !== 'production'`.
+**[Critical] A4-02 — Dev-only payment bypass present in client code** [REDACTED — server-side fix applied; client-side removal pending]
 
 **[Critical] A4-03 — `TREASURY_ADDR_FALLBACK = '11111…'` used in transfer**  
 The system program address (`11111111111111111111111111111111`) is not a valid recipient. Constructing a `SystemProgram.transfer` to it creates an invalid instruction that wastes the user's signature.  
@@ -162,7 +164,7 @@ The probe request and the follow-up payment request both lack `AbortController` 
 If `crypto.randomUUID` is unavailable (some older browsers), nonces can collide, enabling memo replay if the server doesn't enforce signature uniqueness independently.
 
 **[High] A4-07 — Memo string not sanitized before SPL Memo instruction**  
-`endpoint:/x402/ai-strategy-advice;nonce:<uuid>` — if `endpoint` is user-supplied in a future refactor, a semicolon injection can break the server's memo parser.
+[REDACTED — memo field injection risk, pending validation fix]
 
 **[Medium] A4-08 — Lamport amounts parsed with `parseInt` without range check**  
 A server response of `"amount": "999999999999999999"` overflows a JS safe integer and `parseInt` returns a wrong value silently.

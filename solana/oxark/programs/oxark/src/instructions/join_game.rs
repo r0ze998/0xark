@@ -47,6 +47,8 @@ pub fn handle_join_game(ctx: Context<JoinGame>, game_id: u64) -> Result<()> {
     ps.move_target = 0;
     ps.bump = ctx.bumps.player_state;
 
+    // C3 fix: record this player's pubkey so resolve_round can validate remaining_accounts.
+    game.players[ps.player_index as usize] = ctx.accounts.player.key();
     game.player_count += 1;
 
     msg!("Player {} joined game {} (index {})", ctx.accounts.player.key(), game_id, ps.player_index);

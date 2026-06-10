@@ -9,7 +9,7 @@ import { mount as mountPrep,         unmount as unmountPrep         } from './sr
 import { mount as mountIntr,         unmount as unmountIntr         } from './src/components/interruption.js';
 import { mount as mountReveal,       unmount as unmountReveal       } from './src/components/reveal.js';
 import { mount as mountLoot,         unmount as unmountLoot         } from './src/components/loot.js';
-import { getState, setState } from './src/state/battle-state.js';
+import { getState, setState, wasRestored } from './src/state/battle-state.js';
 import { PRIZE_POOL_PUBKEY, OPS_TREASURY_PUBKEY } from './src/config.js';
 
 const SCREENS = {
@@ -101,6 +101,20 @@ async function initApp() {
   }
 
   await _loadPlayerState();
+
+  if (wasRestored) {
+    const { phase } = getState();
+    // matchmaking: WS connection died on reload — drop back to battle lobby
+    if (phase === 'matchmaking' || phase === 'main') {
+      navigate('main', { mode: 'battle' });
+    } else {
+      // preparation / interruption / reveal / loot — navigate directly; the
+      // component is responsible for handling null zkProofBytes / salt after reload.
+      navigate(phase);
+    }
+    return;
+  }
+
   navigate('home', {
     pubkey:      pubkey.toString(),
     playerState: _playerState,

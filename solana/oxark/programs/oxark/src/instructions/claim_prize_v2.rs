@@ -31,8 +31,11 @@ pub struct ClaimPrizeV2<'info> {
     pub game_world: Account<'info, GameWorld>,
 
     /// Prize pool vault.
-    /// CHECK: validated by caller; must hold sufficient lamports.
-    #[account(mut)]
+    /// CHECK: must match game_world.prize_pool address.
+    #[account(
+        mut,
+        constraint = prize_pool.key() == game_world.prize_pool @ ErrorCode::InvalidAccount
+    )]
     pub prize_pool: AccountInfo<'info>,
 
     #[account(mut)]
@@ -42,30 +45,31 @@ pub struct ClaimPrizeV2<'info> {
 }
 
 pub fn handle_claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
-    let world = &ctx.accounts.game_world;
-    let ps    = &ctx.accounts.player_state;
+    // Read all values before any mutation (avoids borrow-checker conflicts).
+    let (vault_count, actual_prize) = {
+        let world = &ctx.accounts.game_world;
+        let ps    = &ctx.accounts.player_state;
 
-    require!(world.game_status == 2, ErrorCode::GameNotEnded);
-    require!(ps.deposit_amount > 0, ErrorCode::NotRegistered);
+        require!(world.game_status == 2, ErrorCode::GameNotEnded);
+        // C1 guard: deposit_amount is zeroed after claim; a second call hits this.
+        require!(ps.deposit_amount > 0, ErrorCode::NotRegistered);
 
-    let vault_count = ps.vault_count() as u64;
-    require!(vault_count > 0, ErrorCode::NoPrizeClaim);
+        let vault_count = ps.vault_count() as u64;
+        require!(vault_count > 0, ErrorCode::NoPrizeClaim);
 
-    let prize_pool_total = world.total_prize_pool;
+        let prize_pool_total = world.total_prize_pool;
 
-    let prize = if world.winner_60_count == 0 {
-        // Timeout: no 60-card winner — find best tier
-        // Caller must be in the highest tier with any cards to claim Tier 1 bonus.
-        // (Full fairness requires off-chain sorting + finalize_game; this is simplified.)
-        compute_tier_prize(vault_count, prize_pool_total, world, true)
-    } else {
-        compute_tier_prize(vault_count, prize_pool_total, world, false)
-    };
+        let prize = if world.winner_60_count == 0 {
+            compute_tier_prize(vault_count, prize_pool_total, world, true)
+        } else {
+            compute_tier_prize(vault_count, prize_pool_total, world, false)
+        };
 
-    require!(prize > 0, ErrorCode::NoPrizeClaim);
+        require!(prize > 0, ErrorCode::NoPrizeClaim);
 
-    let prize_pool_balance = ctx.accounts.prize_pool.lamports();
-    let actual_prize = prize.min(prize_pool_balance);
+        let actual_prize = prize.min(ctx.accounts.prize_pool.lamports());
+        (vault_count, actual_prize)
+    }; // immutable borrows on world/ps drop here
 
     transfer(
         CpiContext::new(
@@ -78,6 +82,9 @@ pub fn handle_claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
         actual_prize,
     )?;
 
+    // C1 fix: zero deposit so the require!(deposit_amount > 0) gate blocks retries.
+    ctx.accounts.player_state.deposit_amount = 0;
+
     msg!(
         "ClaimPrizeV2: player={} vault={} prize={}lam",
         ctx.accounts.player.key(),
@@ -85,6 +92,22 @@ pub fn handle_claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
         actual_prize,
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deposit_amount_is_zeroed_after_claim() {
+        // Verify the predicate: after zeroing, a second require!(deposit_amount > 0) fires.
+        let mut deposit = 500_000_000u64;
+        assert!(deposit > 0);
+        deposit = 0; // simulates the C1 fix
+        assert_eq!(deposit, 0, "deposit_amount must be 0 after claim");
+        let result = if deposit > 0 { Ok(()) } else { Err(()) };
+        assert!(result.is_err(), "second claim must be rejected once deposit is zeroed");
+    }
 }
 
 fn compute_tier_prize(

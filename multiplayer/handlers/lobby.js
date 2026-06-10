@@ -1,8 +1,38 @@
 // handlers/lobby.js — Lobby: create_room, join_room, presence_update, chat
 
+import nacl from 'tweetnacl';
+import { PublicKey } from '@solana/web3.js';
 import { rooms, generateRoomId, sanitizeClan, player, serializePlayers, send, broadcast } from '../state.js';
 
+// ── C-3: wallet signature authentication ──────────────────────────────────────
+
+export function _handleAuthVerify(ws, msg) {
+  if (ws.authenticated) return;
+  const { wallet, signature } = msg;
+  if (!wallet || !signature || !ws.authChallenge) {
+    send(ws, { type: 'auth_failed', reason: 'missing fields' });
+    return;
+  }
+  try {
+    const pk = new PublicKey(wallet);
+    const challengeBytes = new TextEncoder().encode(ws.authChallenge);
+    const sigBytes = Buffer.from(signature, 'base64');
+    const valid = nacl.sign.detached.verify(challengeBytes, sigBytes, pk.toBytes());
+    if (!valid) {
+      send(ws, { type: 'auth_failed', reason: 'invalid signature' });
+      return;
+    }
+    ws.wallet        = wallet;
+    ws.authenticated = true;
+    ws.authChallenge = null; // consumed — prevent replay
+    send(ws, { type: 'auth_ok' });
+  } catch {
+    send(ws, { type: 'auth_failed', reason: 'verification error' });
+  }
+}
+
 export function _handleCreateRoom(ws, msg) {
+  if (!ws.authenticated) { send(ws, { type: 'error', msg: 'not authenticated' }); return; }
   const roomId = generateRoomId();
   ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : 'Host';
   ws.wallet     = typeof msg.wallet === 'string' ? msg.wallet.slice(0, 44) : null;
@@ -22,6 +52,7 @@ export function _handleCreateRoom(ws, msg) {
 }
 
 export function _handleJoinRoom(ws, msg) {
+  if (!ws.authenticated) { send(ws, { type: 'error', msg: 'not authenticated' }); return; }
   const room = rooms.get(msg.roomId);
   if (!room) { send(ws, { type: 'error', message: 'Room not found' }); return; }
   ws.playerName = typeof msg.name === 'string' ? msg.name.slice(0, 24) : `Player ${room.players.size + 1}`;

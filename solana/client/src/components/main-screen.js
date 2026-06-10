@@ -338,16 +338,15 @@ async function startMatchmaking(container) {
       info.textContent = `Searching for opponent… [${roomId}]`;
     });
 
-    _unsubMatched = duelWs.on('matchmaking_matched', ({ roomId, role, opponentWallet, opponentId }) => {
+    _unsubMatched = duelWs.on('matchmaking_matched', ({ roomId, duelId, role, opponentWallet, opponentId }) => {
       _unsubMatchmaking();
       if (_matchInterval) { clearInterval(_matchInterval); _matchInterval = null; }
       const isHost = role === 'host';
-      const duelId = `${roomId}-R1`;
       setState({
         matchId: roomId,
         opponentPubkey: opponentWallet ?? null,
         isHost,
-        duelId,
+        duelId: duelId ?? `${roomId}-R1`,
         opponentPlayerId: opponentId,
         phase: 'preparation',
       });

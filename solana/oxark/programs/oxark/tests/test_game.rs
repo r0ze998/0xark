@@ -14,46 +14,6 @@ use {
 // Encoding: G1 = x_BE||y_BE (64 bytes); G2 = x_re_BE||x_im_BE||y_re_BE||y_im_BE (128 bytes)
 // EIP-197 real-first ordering for G2 (opposite of snarkjs JSON [[x_im,x_re]...])
 
-// dungeon_position circuit (625 constraints)
-const PROOF_DM_A: [u8; 64] = [
-    0x06, 0x21, 0x53, 0x4d, 0xbb, 0x5a, 0xbc, 0x38, 0xfa, 0x10, 0xd6, 0xb1, 0x1e, 0x64, 0x06, 0x4b,
-    0xde, 0xd6, 0x0e, 0xe9, 0x6d, 0x85, 0x0f, 0x68, 0xd7, 0x60, 0x0d, 0x53, 0x61, 0x66, 0x77, 0xb0,
-    0x0a, 0x1e, 0xb7, 0x0d, 0xeb, 0xbb, 0x75, 0x8e, 0xa8, 0xb7, 0xa8, 0xa6, 0x91, 0xd3, 0xbc, 0xaf,
-    0xb0, 0x5a, 0xa2, 0x1b, 0x9f, 0x13, 0xa4, 0xaa, 0x03, 0x1c, 0x98, 0xce, 0xf0, 0x02, 0xa3, 0x12,
-];
-const PROOF_DM_B: [u8; 128] = [
-    0x1d, 0x3a, 0x82, 0xe9, 0xeb, 0x2e, 0xec, 0x6d, 0xbe, 0xb3, 0x12, 0xe7, 0x0a, 0xf6, 0x4a, 0x71,
-    0xa8, 0xfa, 0x24, 0xa6, 0x10, 0x96, 0x1a, 0x29, 0xc2, 0x87, 0x50, 0x5d, 0xbd, 0xa8, 0xcc, 0xc1,
-    0x02, 0x63, 0xe6, 0x16, 0xd5, 0xc9, 0xcf, 0x7c, 0xd5, 0x78, 0x39, 0x36, 0xea, 0xb7, 0x4d, 0xbb,
-    0x46, 0xcd, 0x06, 0xfb, 0x40, 0xb0, 0x7b, 0x14, 0x76, 0xd1, 0x11, 0x89, 0x78, 0x9a, 0x03, 0x70,
-    0x1c, 0x55, 0x92, 0xde, 0x9f, 0x63, 0xab, 0x95, 0xd0, 0x06, 0xfe, 0x9b, 0x11, 0xff, 0xbb, 0xd0,
-    0x44, 0x4d, 0xc2, 0x5e, 0x9c, 0x1f, 0x45, 0xc5, 0x32, 0xdd, 0x3e, 0xec, 0xe9, 0x1a, 0xde, 0x8d,
-    0x01, 0xcf, 0x89, 0x33, 0xc5, 0xb4, 0x35, 0x48, 0xbc, 0x6a, 0x56, 0xbb, 0xe9, 0xf0, 0xc2, 0x08,
-    0x9f, 0x5e, 0xec, 0xd6, 0x92, 0xef, 0x1f, 0x05, 0xd0, 0x07, 0x1f, 0x1a, 0xca, 0x89, 0x6c, 0xd4,
-];
-const PROOF_DM_C: [u8; 64] = [
-    0x23, 0x2e, 0x09, 0x2a, 0x2f, 0x39, 0x9d, 0x66, 0xd6, 0x8c, 0x01, 0x23, 0x23, 0x80, 0x1c, 0x19,
-    0x45, 0x94, 0x92, 0x9d, 0x14, 0x5e, 0xa3, 0xce, 0x0d, 0x01, 0xca, 0x73, 0xaf, 0x7b, 0xd5, 0x6e,
-    0x25, 0xf7, 0x07, 0x64, 0xe4, 0xf8, 0xf6, 0x05, 0x50, 0x25, 0xfa, 0x79, 0x79, 0xc8, 0x4a, 0x92,
-    0x93, 0x5f, 0x98, 0x80, 0x13, 0xd1, 0x5c, 0xb7, 0xaa, 0x5a, 0x60, 0x44, 0xcd, 0xc3, 0xb1, 0x18,
-];
-// public[0] = old_commitment = 4493193737375249868515347432860810969140867202363742203298502554108550134423
-const PUBLIC_DM_OLD: [u8; 32] = [
-    0x09, 0xef, 0x0e, 0xba, 0x78, 0x12, 0x02, 0x3b, 0xe0, 0xd7, 0x6b, 0xca, 0xc4, 0x37, 0xa0, 0xa7,
-    0x4b, 0x72, 0xd7, 0xd3, 0xf0, 0x04, 0xd3, 0x15, 0x74, 0x36, 0x13, 0x67, 0x11, 0xd3, 0x3a, 0x97,
-];
-// public[1] = new_commitment = 18052127481429945192058376372470398440470043119119312788628425142576310732002
-const PUBLIC_DM_NEW: [u8; 32] = [
-    0x27, 0xe9, 0x24, 0x5e, 0xdf, 0x02, 0xa0, 0x42, 0xe0, 0x93, 0xe1, 0xa6, 0x57, 0x6c, 0x0e, 0x93,
-    0x1a, 0x93, 0x47, 0x53, 0xf7, 0xfd, 0x19, 0xd5, 0xb3, 0xc4, 0xaa, 0x91, 0x65, 0xb5, 0x44, 0xe2,
-];
-const PROOF_DM_A_BAD: [u8; 64] = [
-    0xf9, 0x21, 0x53, 0x4d, 0xbb, 0x5a, 0xbc, 0x38, 0xfa, 0x10, 0xd6, 0xb1, 0x1e, 0x64, 0x06, 0x4b,
-    0xde, 0xd6, 0x0e, 0xe9, 0x6d, 0x85, 0x0f, 0x68, 0xd7, 0x60, 0x0d, 0x53, 0x61, 0x66, 0x77, 0xb0,
-    0x0a, 0x1e, 0xb7, 0x0d, 0xeb, 0xbb, 0x75, 0x8e, 0xa8, 0xb7, 0xa8, 0xa6, 0x91, 0xd3, 0xbc, 0xaf,
-    0xb0, 0x5a, 0xa2, 0x1b, 0x9f, 0x13, 0xa4, 0xaa, 0x03, 0x1c, 0x98, 0xce, 0xf0, 0x02, 0xa3, 0x12,
-];
-
 // commit_reveal circuit (277 constraints) — input: actionType=2, targetArea=1, salt=12345678901234567890123456789012
 // Proof generated with fresh pot12 trusted setup (zkey regenerated; VK in verify_zk_proof.rs updated to match)
 const PROOF_CR_A: [u8; 64] = [
@@ -138,9 +98,15 @@ const PROOF_HC_A_BAD: [u8; 64] = [
 ];
 
 fn setup() -> (LiteSVM, Keypair) {
+    use solana_compute_budget::compute_budget::ComputeBudget;
     let program_id = oxark::id();
     let payer = Keypair::new();
-    let mut svm = LiteSVM::new();
+    // custom-heap is enabled by default: the program's BumpAllocator is 256KB.
+    // The VM must map at least 256KB of heap or the first alloc causes an
+    // access violation at ~0x30003ff38 (above the default 32KB mapped region).
+    let base   = ComputeBudget::new_with_defaults(false, false);
+    let budget = ComputeBudget { heap_size: 256 * 1024, ..base };
+    let mut svm = LiteSVM::new().with_compute_budget(budget);
     let bytes = include_bytes!("../../../target/deploy/oxark.so");
     svm.add_program(program_id, bytes).unwrap();
     svm.airdrop(&payer.pubkey(), 10_000_000_000).unwrap();
@@ -662,86 +628,6 @@ fn setup_game_commit_phase(
         &oxark::instruction::StartGame { game_id }.data(), sa), host);
 }
 
-// ── Circuit 1: dungeon_position ───────────────────────────────────────────────
-
-#[test]
-fn test_verify_dungeon_move_valid_proof() {
-    let (mut svm, host) = setup();
-    let player2 = Keypair::new();
-    svm.airdrop(&player2.pubkey(), 10_000_000_000).unwrap();
-    let game_id: u64 = 1001;
-
-    setup_game_commit_phase(&mut svm, game_id, &host, &player2);
-
-    let (game_key, _) = game_pda(game_id);
-    let (hp, _) = player_pda(game_id, &host.pubkey());
-
-    // Set initial position commitment = PUBLIC_DM_OLD
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::InitPosition { game_id, commitment: PUBLIC_DM_OLD }.data(),
-        oxark::accounts::InitPosition { game: game_key, player_state: hp, player: host.pubkey() }
-            .to_account_metas(None)), &host);
-
-    // public_inputs = old_commitment || new_commitment
-    let mut public_inputs = [0u8; 64];
-    public_inputs[..32].copy_from_slice(&PUBLIC_DM_OLD);
-    public_inputs[32..].copy_from_slice(&PUBLIC_DM_NEW);
-
-    let ix = Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::VerifyDungeonMove {
-            game_id,
-            proof_a: PROOF_DM_A,
-            proof_b: PROOF_DM_B,
-            proof_c: PROOF_DM_C,
-            public_inputs,
-        }.data(),
-        oxark::accounts::VerifyDungeonMove { game: game_key, player_state: hp, player: host.pubkey() }
-            .to_account_metas(None));
-
-    let meta = send_ix_result(&mut svm, ix, &host)
-        .expect("verify_dungeon_move with valid proof must succeed");
-
-    let cu = meta.compute_units_consumed;
-    println!("verify_dungeon_move CU: {cu}");
-    assert!(cu < 200_000, "CU budget exceeded: {cu} >= 200_000");
-}
-
-#[test]
-fn test_verify_dungeon_move_tampered_proof() {
-    let (mut svm, host) = setup();
-    let player2 = Keypair::new();
-    svm.airdrop(&player2.pubkey(), 10_000_000_000).unwrap();
-    let game_id: u64 = 1002;
-
-    setup_game_commit_phase(&mut svm, game_id, &host, &player2);
-
-    let (game_key, _) = game_pda(game_id);
-    let (hp, _) = player_pda(game_id, &host.pubkey());
-
-    send_ix(&mut svm, Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::InitPosition { game_id, commitment: PUBLIC_DM_OLD }.data(),
-        oxark::accounts::InitPosition { game: game_key, player_state: hp, player: host.pubkey() }
-            .to_account_metas(None)), &host);
-
-    let mut public_inputs = [0u8; 64];
-    public_inputs[..32].copy_from_slice(&PUBLIC_DM_OLD);
-    public_inputs[32..].copy_from_slice(&PUBLIC_DM_NEW);
-
-    let ix = Instruction::new_with_bytes(oxark::id(),
-        &oxark::instruction::VerifyDungeonMove {
-            game_id,
-            proof_a: PROOF_DM_A_BAD,  // tampered: first byte flipped
-            proof_b: PROOF_DM_B,
-            proof_c: PROOF_DM_C,
-            public_inputs,
-        }.data(),
-        oxark::accounts::VerifyDungeonMove { game: game_key, player_state: hp, player: host.pubkey() }
-            .to_account_metas(None));
-
-    let result = send_ix_result(&mut svm, ix, &host);
-    assert!(result.is_err(), "tampered proof must be rejected");
-}
-
 // ── Circuit 2 → hand_commitment v2 (verify_zk_proof) ────────────────────────
 
 /// Ignored: requires a real hand_commitment v2 proof from the circom circuit.
@@ -750,7 +636,10 @@ fn test_verify_dungeon_move_tampered_proof() {
 #[ignore]
 fn test_verify_zk_proof_valid() {
     let (mut svm, host) = setup();
-    let duel_id: u64 = 1003;
+    // duel_pda is now a full Pubkey (32 bytes) used as the PDA seed.
+    let mut duel_pda_bytes = [0u8; 32];
+    duel_pda_bytes[..8].copy_from_slice(&1003u64.to_le_bytes());
+    let duel_pda = solana_pubkey::Pubkey::from(duel_pda_bytes);
     let round_u64: u64 = 1;
 
     // public_inputs: [commitment, round_fe, pubkey_lo_fe, pubkey_hi_fe]
@@ -758,7 +647,7 @@ fn test_verify_zk_proof_valid() {
     let public_inputs: [[u8; 32]; 4] = [[0u8; 32]; 4];
 
     let (zk_record, _) = solana_pubkey::Pubkey::find_program_address(
-        &[b"zk_proof", &duel_id.to_le_bytes(), &round_u64.to_le_bytes(), host.pubkey().as_ref()],
+        &[b"zk_proof", duel_pda.as_ref(), &round_u64.to_le_bytes(), host.pubkey().as_ref()],
         &oxark::id(),
     );
     let ix = Instruction::new_with_bytes(oxark::id(),
@@ -767,7 +656,7 @@ fn test_verify_zk_proof_valid() {
             proof_b: PROOF_CR_B,
             proof_c: PROOF_CR_C,
             public_inputs,
-            duel_id,
+            duel_pda,
             round: round_u64,
         }.data(),
         oxark::accounts::VerifyZkProof {
@@ -786,7 +675,10 @@ fn test_verify_zk_proof_valid() {
 #[test]
 fn test_verify_zk_proof_tampered() {
     let (mut svm, host) = setup();
-    let duel_id: u64 = 1004;
+    // duel_pda is now a full Pubkey (32 bytes) used as the PDA seed.
+    let mut duel_pda_bytes = [0u8; 32];
+    duel_pda_bytes[..8].copy_from_slice(&1004u64.to_le_bytes());
+    let duel_pda = solana_pubkey::Pubkey::from(duel_pda_bytes);
     let round_u64: u64 = 1;
 
     // Build public_inputs with correct round + pubkey so validation passes,
@@ -802,7 +694,7 @@ fn test_verify_zk_proof_tampered() {
     let public_inputs: [[u8; 32]; 4] = [[0u8; 32], round_fe, pubkey_lo, pubkey_hi];
 
     let (zk_record, _) = solana_pubkey::Pubkey::find_program_address(
-        &[b"zk_proof", &duel_id.to_le_bytes(), &round_u64.to_le_bytes(), host.pubkey().as_ref()],
+        &[b"zk_proof", duel_pda.as_ref(), &round_u64.to_le_bytes(), host.pubkey().as_ref()],
         &oxark::id(),
     );
     let ix = Instruction::new_with_bytes(oxark::id(),
@@ -811,7 +703,7 @@ fn test_verify_zk_proof_tampered() {
             proof_b: PROOF_CR_B,
             proof_c: PROOF_CR_C,
             public_inputs,
-            duel_id,
+            duel_pda,
             round: round_u64,
         }.data(),
         oxark::accounts::VerifyZkProof {

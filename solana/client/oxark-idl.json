@@ -661,6 +661,30 @@
           }
         },
         {
+          "name": "duel",
+          "docs": [
+            "DuelState — must be ended (ended_at > 0) and signer must be the recorded winner.",
+            "Boxed to keep stack frame within BPF 4096-byte limit."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
           "name": "duel_loot_record",
           "docs": [
             "Initialized here — its existence means loot was claimed (double-spend guard)."
@@ -3923,6 +3947,56 @@
       "args": []
     },
     {
+      "name": "reset_player_state",
+      "docs": [
+        "Admin-only: reset a player's season state for devnet re-registration testing."
+      ],
+      "discriminator": [
+        24,
+        14,
+        243,
+        62,
+        19,
+        167,
+        131,
+        191
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "resolve_round",
       "docs": [
         "Resolve the current round after all players have revealed.",
@@ -5201,7 +5275,7 @@
               },
               {
                 "kind": "arg",
-                "path": "duel_id"
+                "path": "duel_pda"
               },
               {
                 "kind": "arg",
@@ -5262,8 +5336,8 @@
           }
         },
         {
-          "name": "duel_id",
-          "type": "u64"
+          "name": "duel_pda",
+          "type": "pubkey"
         },
         {
           "name": "round",
@@ -6274,223 +6348,243 @@
     },
     {
       "code": 6043,
+      "name": "DuelNotOver",
+      "msg": "Duel has not ended yet"
+    },
+    {
+      "code": 6044,
       "name": "PoseidonHashFailed",
       "msg": "Poseidon hash computation failed (invalid inputs)"
     },
     {
-      "code": 6044,
+      "code": 6045,
       "name": "InvalidState",
       "msg": "Invalid state for this operation"
     },
     {
-      "code": 6045,
+      "code": 6046,
       "name": "LegendaryCapReached",
       "msg": "Legendary supply cap reached for this species"
     },
     {
-      "code": 6046,
+      "code": 6047,
       "name": "NoPendingLegendaryClaim",
       "msg": "No pending Legendary claim for this player"
     },
     {
-      "code": 6047,
+      "code": 6048,
       "name": "SeasonNotEnded",
       "msg": "Season has not ended"
     },
     {
-      "code": 6048,
+      "code": 6049,
       "name": "LegendariesAreProtectedFromBurn",
       "msg": "Legendary cards are permanently protected from Burn"
     },
     {
-      "code": 6049,
+      "code": 6050,
       "name": "RareRequiresConditionalBurn",
       "msg": "Rare cards require a special conditional Burn (not available in Season 1)"
     },
     {
-      "code": 6050,
+      "code": 6051,
       "name": "EvolveParentMustBeCommon",
       "msg": "Both Evolve parents must be Common rarity"
     },
     {
-      "code": 6051,
+      "code": 6052,
       "name": "InvalidEvolveTarget",
       "msg": "Evolve target must be Uncommon rarity (Season 1 restriction)"
     },
     {
-      "code": 6052,
+      "code": 6053,
       "name": "StatImprintLimitReached",
       "msg": "Stat Imprint limit reached for this card's rarity"
     },
     {
-      "code": 6053,
+      "code": 6054,
       "name": "StarterCardProtected",
       "msg": "Starter deck cards are protected from Steal"
     },
     {
-      "code": 6054,
+      "code": 6055,
       "name": "PermanentStealRequiresGoldHall",
       "msg": "Permanent Steal (Hand-Peek / Legendary) requires Gold Hall"
     },
     {
-      "code": 6055,
+      "code": 6056,
       "name": "LegendaryRequiresLegendarySteal",
       "msg": "Legendary cards can only be stolen via Legendary Steal in Gold Hall"
     },
     {
-      "code": 6056,
+      "code": 6057,
       "name": "LegendaryRequiresGoldHall",
       "msg": "Legendary Steal requires Gold Hall tier"
     },
     {
-      "code": 6057,
+      "code": 6058,
       "name": "SeasonStatsAlreadyInitialized",
       "msg": "SeasonStats PDA for this season already initialized"
     },
     {
-      "code": 6058,
+      "code": 6059,
       "name": "NoActiveLease",
       "msg": "Card has no active lease to return"
     },
     {
-      "code": 6059,
+      "code": 6060,
       "name": "LeaseNotExpired",
       "msg": "Lease has not expired yet"
     },
     {
-      "code": 6060,
+      "code": 6061,
       "name": "CannotLootSelf",
       "msg": "Cannot loot from yourself"
     },
     {
-      "code": 6061,
+      "code": 6062,
       "name": "NotWinner",
       "msg": "You are not the winner of this battle"
     },
     {
-      "code": 6062,
+      "code": 6063,
       "name": "WrongLoser",
       "msg": "Wrong loser specified"
     },
     {
-      "code": 6063,
+      "code": 6064,
       "name": "InvalidFieldSize",
       "msg": "Battle field size must be exactly 5"
     },
     {
-      "code": 6064,
+      "code": 6065,
       "name": "SlotHashesUnavailable",
       "msg": "SlotHashes sysvar unavailable or too short"
     },
     {
-      "code": 6065,
+      "code": 6066,
       "name": "LoserDoesNotOwnCard",
       "msg": "Loser does not own the stolen card in their vault"
     },
     {
-      "code": 6066,
+      "code": 6067,
       "name": "InvalidCardId",
       "msg": "Invalid card ID (must be 1-60)"
     },
     {
-      "code": 6067,
+      "code": 6068,
       "name": "CardNotOwned",
       "msg": "Card not owned by player"
     },
     {
-      "code": 6068,
+      "code": 6069,
       "name": "Unauthorized",
       "msg": "Caller is not the authorized admin"
     },
     {
-      "code": 6069,
+      "code": 6070,
       "name": "WaitlistClosed",
       "msg": "Waitlist registration is closed"
     },
     {
-      "code": 6070,
+      "code": 6071,
       "name": "AlreadyRegistered",
       "msg": "Player is already registered for this season"
     },
     {
-      "code": 6071,
+      "code": 6072,
       "name": "GameNotActive",
       "msg": "Game is not active (status != 1)"
     },
     {
-      "code": 6072,
+      "code": 6073,
       "name": "GameNotEnded",
       "msg": "Game has not ended (status != 2)"
     },
     {
-      "code": 6073,
+      "code": 6074,
       "name": "NotRegistered",
       "msg": "Player has no deposit — not registered"
     },
     {
-      "code": 6074,
+      "code": 6075,
       "name": "NoPrizeClaim",
       "msg": "No prize to claim (vault_count == 0 or tier has no pool)"
     },
     {
-      "code": 6075,
+      "code": 6076,
       "name": "ZkPubkeyMismatch",
       "msg": "ZK proof pubkey does not match signer"
     },
     {
-      "code": 6076,
+      "code": 6077,
       "name": "ZkRoundMismatch",
       "msg": "ZK proof round does not match instruction argument"
     },
     {
-      "code": 6077,
+      "code": 6078,
       "name": "ZkProofInvalid",
       "msg": "ZK proof verification failed"
     },
     {
-      "code": 6078,
+      "code": 6079,
       "name": "ZkProofAlreadyVerified",
       "msg": "ZK proof already verified for this duel/round/signer"
     },
     {
-      "code": 6079,
+      "code": 6080,
       "name": "InvalidPackType",
       "msg": "Invalid pack type (must be 0=Standard or 1=Premium)"
     },
     {
-      "code": 6080,
+      "code": 6081,
       "name": "InvalidRate",
       "msg": "Invalid drop rate (Legendary must be ≤100000 = 10%)"
     },
     {
-      "code": 6081,
+      "code": 6082,
       "name": "InvalidThreshold",
       "msg": "Invalid threshold (must be ≤14 days in seconds)"
     },
     {
-      "code": 6082,
+      "code": 6083,
       "name": "NotAdmin",
       "msg": "Not admin (game_world authority required)"
     },
     {
-      "code": 6083,
+      "code": 6084,
       "name": "PriceTooLow",
       "msg": "Price too low (minimum 0.001 SOL)"
     },
     {
-      "code": 6084,
+      "code": 6085,
       "name": "ListingInactive",
       "msg": "Listing already inactive"
     },
     {
-      "code": 6085,
+      "code": 6086,
       "name": "NotSeller",
       "msg": "Not the seller of this listing"
     },
     {
-      "code": 6086,
+      "code": 6087,
       "name": "WrongSeller",
       "msg": "Wrong seller specified"
+    },
+    {
+      "code": 6088,
+      "name": "InvalidAccount",
+      "msg": "Account does not match expected address"
+    },
+    {
+      "code": 6089,
+      "name": "InvalidPublicSignal",
+      "msg": "ZK public signal does not match instruction argument"
+    },
+    {
+      "code": 6090,
+      "name": "InvalidAccountOwner",
+      "msg": "Account owner is not the expected program"
     }
   ],
   "types": [
@@ -7350,6 +7444,39 @@
                   "array": [
                     "u64",
                     10
+                  ]
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "player_1_salt",
+            "docs": [
+              "Salt used during commit_hand per round — stored on first reveal so",
+              "the second player's reveal_hand call can compute the deterministic",
+              "SHA-256 seed for damage_calc: sha256(p1_salt || p2_salt || round)."
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "player_2_salt",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
                   ]
                 },
                 5
@@ -9059,14 +9186,14 @@
       "docs": [
         "ZK proof record — created on first successful verify, prevents replay.",
         "",
-        "PDA seeds: [\"zk_proof\", duel_id_le, round_le, signer_pubkey]"
+        "PDA seeds: [\"zk_proof\", duel_pda_pubkey, round_le, signer_pubkey]"
       ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "duel_id",
-            "type": "u64"
+            "type": "pubkey"
           },
           {
             "name": "round",

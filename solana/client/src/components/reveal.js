@@ -11,41 +11,45 @@ let _animTimeout      = null;
 let _skipped          = false;
 let _unsubOppReveal   = () => {};
 let _unsubResolved    = () => {};
-let _zkSubmitPromise  = Promise.resolve(null);
+let _revealPromise    = Promise.resolve(null);
+let _revealFailed     = false;
+let _uiAddLog         = null;
 
-// Derive a u64 duelId from an arbitrary string (stable hash for PDA seeds).
-function _duelIdU64(duelIdStr) {
-  if (!duelIdStr) return 1n;
-  let h = 0n;
-  for (const c of String(duelIdStr)) h = (h * 31n + BigInt(c.charCodeAt(0))) & 0xffffffffffffffffn;
-  return h || 1n;
+// Build card_ids [u64; 10]: first 5 are field card IDs, last 5 are 0n.
+function _buildCardIds10(fieldCards) {
+  return Array.from({ length: 10 }, (_, i) => BigInt(fieldCards[i]?.cardId ?? 0));
 }
 
-// Fire-and-forget: submit the ZK proof on-chain using the player's wallet.
-// Stores txHash in state on success; logs warning on failure (non-blocking).
-async function _submitZkProofOnChain(s) {
-  const { zkProofBytes, zkPublicInputBytes, duelId } = s;
-  if (!zkProofBytes || !zkPublicInputBytes || !duelId) return null;
-  if (typeof window.oxarkOnchain?.verifyZkProof !== 'function') return null;
-
-  const duelIdNum  = _duelIdU64(duelId);
-  const roundNum   = BigInt(s.round ?? 1);
-
+async function _submitRevealOnChain(s) {
+  if (!s.duelId || !s.salt) return null;
+  if (typeof window.oxarkOnchain?.revealHand !== 'function') return null;
   try {
-    const txHash = await window.oxarkOnchain.verifyZkProof(
-      duelIdNum, roundNum,
-      zkProofBytes.proofA,
-      zkProofBytes.proofB,
-      zkProofBytes.proofC,
-      zkPublicInputBytes,
+    const cardIds10 = _buildCardIds10(s.fieldCards ?? []);
+    const txHash = await window.oxarkOnchain.revealHand(
+      s.duelId, s.round ?? 1, cardIds10, s.salt,
     );
-    setState({ zkTxHash: txHash });
-    console.log('[ZK] on-chain proof verified:', txHash);
+    console.log('[Reveal] reveal_hand confirmed:', txHash);
     return txHash;
   } catch (err) {
-    console.warn('[ZK] on-chain verify failed (non-blocking):', err.message ?? err);
+    _revealFailed = true;
+    const msg = err.message ?? String(err);
+    console.error('[Reveal] reveal_hand failed (navigation blocked):', msg);
+    _uiAddLog?.(`✕ reveal TX failed — tap to retry: ${msg.slice(0, 80)}`, 'log-error rev-retry-reveal');
     return null;
   }
+}
+
+// Poll DuelState until ended_at > 0 (max ~10 s, 500 ms interval).
+async function _pollDuelResolution(duelIdStr) {
+  if (typeof window.oxarkOnchain?.getDuelState !== 'function') return null;
+  for (let i = 0; i < 20; i++) {
+    await new Promise(r => setTimeout(r, 500));
+    try {
+      const ds = await window.oxarkOnchain.getDuelState(duelIdStr);
+      if (ds && ds.endedAt > 0) return ds;
+    } catch (_) { /* retry */ }
+  }
+  return null;
 }
 
 export function mount(container, detail = {}) {
@@ -91,22 +95,51 @@ export function mount(container, detail = {}) {
     });
   }
 
-  // ── ZK proof on-chain submit (fire-and-forget, runs parallel with animation) ──
-  // Client wallet signs verify_zk_proof tx; ZkProofRecord PDA is created on devnet.
-  _zkSubmitPromise = _submitZkProofOnChain(s);
+  // ── reveal_hand on-chain submit (parallel with animation; gates WS + nav) ─
+  _revealFailed = false;
+  _revealPromise = _submitRevealOnChain(s);
 
-  // Send hand reveal to server (ZK tx hash appended when available)
+  // Send hand reveal to server only after reveal TX confirms.
+  // If the TX fails, _revealFailed is set and navigation is blocked.
   if (duelWs.isConnected() && s.duelId) {
     const myCardIds     = s.fieldCards.filter(Boolean).map(c => c.cardId);
     const myActionTypes = s.fieldCards.filter(Boolean).map(c => c.actionType ?? 0);
-    _zkSubmitPromise.then(txHash => {
-      duelWs.sendHandRevealed(s.duelId, s.round ?? 1, myCardIds, myActionTypes, txHash);
-    }).catch(() => {
-      duelWs.sendHandRevealed(s.duelId, s.round ?? 1, myCardIds, myActionTypes, null);
-    });
+    _revealPromise.then(txHash => {
+      if (!_revealFailed) {
+        duelWs.sendHandRevealed(s.duelId, s.round ?? 1, myCardIds, myActionTypes, txHash);
+      }
+    }).catch(() => { /* _revealFailed already set inside _submitRevealOnChain */ });
   }
 
-  // Wire Phase-11 consensus
+  // ── Round-5 on-chain resolution ───────────────────────────────────────────
+  // After both players call reveal_hand on round 5, damage_calc runs on-chain
+  // and duel.ended_at is set. Poll DuelState to detect winner.
+  const isRound5 = (s.round ?? 1) === 5;
+  if (isRound5 && s.duelId) {
+    const duelIdStr = s.duelId;
+
+    const _resolveFromChain = async () => {
+      const ds = await _pollDuelResolution(duelIdStr);
+      if (!ds) return; // timed out — fall back to WS consensus
+      const myPubkey = window.solana?.publicKey?.toBase58?.() ?? null;
+      const isWinner = myPubkey ? ds.winner === myPubkey : false;
+      const final = getState().battleResult ?? result ?? { winner: isWinner ? 'p1' : 'p2' };
+      setState({ isWinner, battleResult: { ...final, winner: isWinner ? 'p1' : 'p2' }, phase: 'loot' });
+      document.dispatchEvent(new CustomEvent('nav:loot'));
+    };
+
+    // Trigger poll once our own reveal TX is done, OR when opponent reveals via WS.
+    _revealPromise.then(_resolveFromChain).catch(() => {});
+    if (!s.opponentField && duelWs.isConnected()) {
+      const unsubR5 = duelWs.on('duel_hand_revealed', (msg) => {
+        if (msg.playerId !== s.opponentPlayerId) return;
+        unsubR5();
+        _resolveFromChain();
+      });
+    }
+  }
+
+  // Wire Phase-11 consensus (rounds 1-4 and fallback for round 5)
   if (duelWs.isConnected() && s.duelId) {
     const p1BP = s.fieldCards.filter(Boolean).reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
     const p2BP = opponentField.filter(Boolean).reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
@@ -118,6 +151,7 @@ export function mount(container, detail = {}) {
 
     _unsubResolved = duelWs.on('duel_battle_resolved', (msg) => {
       if (msg.duel_id !== s.duelId) return;
+      if (_revealFailed) return; // reveal TX not confirmed — block navigation
       _unsubResolved();
       if (!_skipped && _animTimeout) {
         clearTimeout(_animTimeout);
@@ -138,8 +172,10 @@ export function unmount(container) {
   _unsubResolved();
   _unsubOppReveal  = () => {};
   _unsubResolved   = () => {};
-  _skipped         = false;
-  _zkSubmitPromise = Promise.resolve(null);
+  _skipped       = false;
+  _revealFailed  = false;
+  _revealPromise = Promise.resolve(null);
+  _uiAddLog      = null;
   container.innerHTML = '';
 }
 
@@ -246,36 +282,37 @@ function runAnimation(container, s, result) {
     const line = document.createElement('div');
     line.className = `rev-log-line ${cls}`;
     line.textContent = text;
+    // Retry click handler for error log lines
+    if (cls.includes('rev-retry-reveal')) {
+      line.style.cursor = 'pointer';
+      line.addEventListener('click', () => {
+        _revealFailed = false;
+        line.textContent = '↻ retrying reveal TX…';
+        line.className = 'rev-log-line log-dim';
+        const s = getState();
+        _submitRevealOnChain(s).then(tx => {
+          if (tx) {
+            line.textContent = `◈ reveal TX confirmed ✓ (${tx.slice(0,8)}…)`;
+            line.className = 'rev-log-line log-gold';
+            if (duelWs.isConnected() && s.duelId) {
+              const myCardIds     = s.fieldCards.filter(Boolean).map(c => c.cardId);
+              const myActionTypes = s.fieldCards.filter(Boolean).map(c => c.actionType ?? 0);
+              duelWs.sendHandRevealed(s.duelId, s.round ?? 1, myCardIds, myActionTypes, tx);
+            }
+          } else {
+            line.textContent = '✕ retry failed — check wallet';
+            line.className = 'rev-log-line log-error rev-retry-reveal';
+          }
+        });
+      });
+    }
     log.appendChild(line);
     log.scrollTop = log.scrollHeight;
   }
+  _uiAddLog = addLog;
 
   function clearLog() {
     if (log) log.innerHTML = '';
-  }
-
-  // Step 0: ZK status indicator (non-blocking — updates when tx confirms)
-  const zkIndicatorId = 'rev-zk-indicator';
-  if (s.zkProofBytes) {
-    after(100, () => {
-      addLog('◈ ZK proof submitted — verifying on-chain…', 'log-dim');
-      // Patch log entry once tx hash is known
-      _zkSubmitPromise.then(txHash => {
-        const el = container.querySelector('#' + zkIndicatorId);
-        if (el) {
-          el.className = 'rev-log-line log-gold';
-          el.textContent = txHash
-            ? `◈ ZK VERIFIED on-chain ✓  (${txHash.slice(0, 8)}…)`
-            : '◈ ZK verified (local only)';
-        }
-      }).catch(() => {
-        const el = container.querySelector('#' + zkIndicatorId);
-        if (el) { el.className = 'rev-log-line log-dim'; el.textContent = '◈ ZK verify skipped (dev mode)'; }
-      });
-      // Tag the last log line for patching
-      const lastLine = container.querySelector('#rev-log .rev-log-line:last-child');
-      if (lastLine) lastLine.id = zkIndicatorId;
-    });
   }
 
   // Step 1: Reveal all cards (1s)
@@ -374,6 +411,7 @@ function runAnimation(container, s, result) {
     after(1200, () => {
       const st = getState();
       if (!duelWs.isConnected() || !st.duelId) {
+        if (_revealFailed) return; // reveal TX not confirmed — block navigation
         setState({ isWinner: winner === 'p1', battleResult: result, phase: 'loot' });
         document.dispatchEvent(new CustomEvent('nav:loot'));
       }
@@ -410,6 +448,7 @@ function checkSynergy(factions) {
 /* ── Events ─────────────────────────────────────────────────────────── */
 function bindEvents(container) {
   container.querySelector('#rev-skip').addEventListener('click', () => {
+    if (_revealFailed) return; // reveal TX not confirmed — block skip
     _skipped = true;
     if (_animTimeout) { clearTimeout(_animTimeout); _animTimeout = null; }
     const s = getState();

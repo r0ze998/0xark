@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Mint, Burn};
 use crate::error::ErrorCode;
-use crate::state::{CardBattleHistory, SeasonStats, CardBurnedEvent};
+use crate::state::{CardBattleHistory, CardMintRecord, SeasonStats, CardBurnedEvent};
 
 // Rarity constants (matches client CARDS[i].rarity)
 pub const RARITY_COMMON:    u8 = 0;
@@ -12,7 +12,7 @@ pub const RARITY_LEGENDARY: u8 = 3;
 // ─── Accounts ─────────────────────────────────────────────────────────────────
 
 #[derive(Accounts)]
-#[instruction(card_mint: Pubkey, rarity: u8)]
+#[instruction(card_mint: Pubkey)]
 pub struct BurnCard<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
@@ -39,6 +39,13 @@ pub struct BurnCard<'info> {
     )]
     pub card_history: Account<'info, CardBattleHistory>,
 
+    // C5 fix: rarity is read from this on-chain record, not trusted from the caller.
+    #[account(
+        seeds = [CardMintRecord::SEED, card_mint.as_ref()],
+        bump  = card_mint_record.bump,
+    )]
+    pub card_mint_record: Account<'info, CardMintRecord>,
+
     #[account(
         mut,
         seeds = [SeasonStats::SEASON_STATS_SEED, &card_history.created_at.to_le_bytes()],
@@ -61,13 +68,14 @@ pub struct BurnCard<'info> {
 ///   Rare      (rarity=2) → blocked in Season 1
 ///   Common/Uncommon      → allowed
 ///
-/// `rarity` is supplied by the client and validated against the card ID range;
-/// the game server must verify before co-signing in production.
+/// Rarity is read from the on-chain CardMintRecord PDA (C5 fix).
 pub fn handle_burn_card(
     ctx: Context<BurnCard>,
     card_mint: Pubkey,
-    rarity: u8,
 ) -> Result<()> {
+    // C5 fix: rarity sourced from on-chain record, not from caller argument.
+    let rarity = ctx.accounts.card_mint_record.rarity;
+
     // 1. Rarity protection gate
     require!(
         rarity != RARITY_LEGENDARY,

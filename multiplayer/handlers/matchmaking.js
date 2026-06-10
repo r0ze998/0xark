@@ -2,10 +2,11 @@
 // Protocol:
 //   client → { type: 'matchmaking_enqueue', wallet, name, card_count }
 //     server → { type: 'matchmaking_waiting', roomId }          (first player)
-//     server → { type: 'matchmaking_matched', roomId, role, opponentWallet, opponentId } (both)
+//     server → { type: 'matchmaking_matched', roomId, duelId, role, opponentWallet, opponentId } (both)
 //   client → { type: 'matchmaking_cancel' }
 //     server → { type: 'matchmaking_cancelled' }
 
+import { Keypair } from '@solana/web3.js';
 import { rooms, generateRoomId, player, send } from '../state.js';
 
 const _queue = []; // [{ ws, roomId }]
@@ -38,12 +39,14 @@ export function _handleMatchmakingEnqueue(ws, msg) {
     ws.roomId = waiting.roomId;
     room.players.set(ws.playerId, player(ws, 20, 15));
 
+    const duelId = Keypair.generate().publicKey.toBase58();
+
     send(waiting.ws, {
-      type: 'matchmaking_matched', roomId: waiting.roomId,
+      type: 'matchmaking_matched', roomId: waiting.roomId, duelId,
       role: 'host', opponentWallet: ws.wallet, opponentId: ws.playerId,
     });
     send(ws, {
-      type: 'matchmaking_matched', roomId: waiting.roomId,
+      type: 'matchmaking_matched', roomId: waiting.roomId, duelId,
       role: 'guest', opponentWallet: waiting.ws.wallet, opponentId: waiting.ws.playerId,
     });
   } else {

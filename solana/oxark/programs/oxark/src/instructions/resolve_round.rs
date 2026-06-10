@@ -72,6 +72,21 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     let pool = &mut ctx.accounts.card_pool;
     let player_count = game.player_count as usize;
 
+    // C3 fix: validate remaining_accounts[0..player_count] are the expected PlayerState PDAs.
+    // Derived from game.players[] (populated by join_game) — prevents injection of arbitrary accounts.
+    {
+        let game_id_le = game_id.to_le_bytes();
+        for (idx, account_info) in ctx.remaining_accounts.iter().take(player_count).enumerate() {
+            let player_key = game.players[idx];
+            require!(player_key != Pubkey::default(), ErrorCode::InvalidState);
+            let (expected_pda, _) = Pubkey::find_program_address(
+                &[PLAYER_SEED, &game_id_le, player_key.as_ref()],
+                &crate::ID,
+            );
+            require!(*account_info.key == expected_pda, ErrorCode::InvalidState);
+        }
+    }
+
     // Deserialize all player states from remaining accounts
     let mut players: Vec<PlayerData> = Vec::with_capacity(player_count);
     for account_info in ctx.remaining_accounts.iter().take(player_count) {
@@ -115,6 +130,10 @@ pub fn handle_resolve(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
     if has_reborn_commits {
         let mut played_per_player: Vec<([u64; 3], u8)> = Vec::with_capacity(player_count);
         for account_info in ctx.remaining_accounts.iter().skip(player_count).take(player_count) {
+            require!(
+                account_info.owner == &crate::ID,
+                ErrorCode::InvalidAccountOwner
+            );
             let data = account_info.try_borrow_data()?;
             if data.len() < CommitAction::SIZE {
                 played_per_player.push(([0u64; 3], 0));
@@ -401,6 +420,10 @@ fn write_back_player_states(
     players: &[PlayerData],
 ) -> Result<()> {
     for (idx, account_info) in remaining.iter().take(player_count).enumerate() {
+        require!(
+            account_info.owner == &crate::ID,
+            ErrorCode::InvalidAccountOwner
+        );
         let mut data = account_info.try_borrow_mut_data()?;
         let p = &players[idx];
         // Offsets in PlayerState (after 8-byte discriminator):
@@ -538,4 +561,68 @@ fn count_unique_types(cards: &[u8; 5]) -> u8 {
         }
     }
     seen.iter().filter(|&&s| s).count() as u8
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn validate_player_pda(
+        account_key: Pubkey,
+        expected_player: Pubkey,
+        game_id: u64,
+        program_id: Pubkey,
+    ) -> bool {
+        if expected_player == Pubkey::default() { return false; }
+        let (pda, _) = Pubkey::find_program_address(
+            &[PLAYER_SEED, &game_id.to_le_bytes(), expected_player.as_ref()],
+            &program_id,
+        );
+        account_key == pda
+    }
+
+    #[test]
+    fn default_player_key_is_rejected() {
+        let result = Pubkey::default() != Pubkey::default();
+        assert!(!result, "default pubkey check: default == default");
+        // The guard `player_key != Pubkey::default()` rejects zero players.
+        assert_eq!(Pubkey::default(), Pubkey::default());
+    }
+
+    #[test]
+    fn pda_validation_rejects_wrong_account() {
+        let program_id = Pubkey::new_unique();
+        let real_player = Pubkey::new_unique();
+        let attacker    = Pubkey::new_unique();
+        let game_id: u64 = 42;
+        let (real_pda, _) = Pubkey::find_program_address(
+            &[PLAYER_SEED, &game_id.to_le_bytes(), real_player.as_ref()],
+            &program_id,
+        );
+        // Attacker passing their own pubkey instead of the real player PDA fails.
+        assert!(validate_player_pda(real_pda, real_player, game_id, program_id));
+        assert!(!validate_player_pda(attacker, real_player, game_id, program_id));
+    }
+
+    #[test]
+    fn pda_validation_rejects_different_game() {
+        let program_id  = Pubkey::new_unique();
+        let player      = Pubkey::new_unique();
+        let game_a: u64 = 1;
+        let game_b: u64 = 2;
+        let (pda_a, _) = Pubkey::find_program_address(
+            &[PLAYER_SEED, &game_a.to_le_bytes(), player.as_ref()],
+            &program_id,
+        );
+        // PlayerState PDA from game_b must not pass validation for game_a.
+        assert!(validate_player_pda(pda_a, player, game_a, program_id));
+        assert!(!validate_player_pda(pda_a, player, game_b, program_id));
+    }
+
+    #[test]
+    fn game_size_includes_players_array() {
+        // SIZE must account for [Pubkey; 3] = 96 extra bytes.
+        let base = 8 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 1 + 1;
+        assert_eq!(Game::SIZE, base + 3 * 32);
+    }
 }

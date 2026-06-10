@@ -42,6 +42,7 @@ pub fn handle_create_game(ctx: Context<CreateGame>, game_id: u64, max_players: u
     game.commit_count = 0;
     game.reveal_count = 0;
     game.bump = ctx.bumps.game;
+    game.players = [Pubkey::default(); 3]; // populated in join_game (C3 fix)
 
     let pool = &mut ctx.accounts.card_pool;
     pool.game_id = game_id;

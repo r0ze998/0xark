@@ -39,13 +39,16 @@ function seedByte(seed, idx) {
   return (s[idx % Math.max(s.length, 1)] ?? 0) & 0xff;
 }
 
-// Stable deterministic sort: sort by key desc; ties broken by seedByte(pos)
+// Stable deterministic sort: INI desc → seed_byte asc → orig_idx asc (3-level key)
 function sortByIniDesc(cards, seed, seedOffset) {
   return cards
     .map((c, i) => ({ ...c, _origIdx: i }))
     .sort((a, b) => {
       if (b.ini !== a.ini) return b.ini - a.ini;
-      return seedByte(seed, seedOffset + a._origIdx) - seedByte(seed, seedOffset + b._origIdx);
+      const sa = seedByte(seed, seedOffset + a._origIdx);
+      const sb = seedByte(seed, seedOffset + b._origIdx);
+      if (sa !== sb) return sa - sb;
+      return a._origIdx - b._origIdx;
     });
 }
 

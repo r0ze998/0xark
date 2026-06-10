@@ -210,10 +210,21 @@ pub fn handle_commit_hand(
     require!(duel.round == round, ErrorCode::WrongRound);
     require!(round >= 1 && round <= 5, ErrorCode::WrongRound);
 
+    // Verify ZK circuit's round signal matches the instruction round argument.
+    let mut round_field = [0u8; 32];
+    round_field[31] = round; // round is u8, fits in last byte of 32-byte BE field element
+    require!(public_signals[1] == round_field, ErrorCode::InvalidPublicSignal);
+
     let player_key = ctx.accounts.player.key();
     let is_p1 = player_key == duel.player_1;
     let is_p2 = player_key == duel.player_2;
     require!(is_p1 || is_p2, ErrorCode::NotADuelParticipant);
+
+    // Guard: reject double-commit for the same round (before expensive ZK verify)
+    let round_idx = (round - 1) as usize;
+    let prior_commit = if is_p1 { duel.player_1_commitment[round_idx] }
+                       else      { duel.player_2_commitment[round_idx] };
+    require!(prior_commit == [0u8; 32], ErrorCode::AlreadyCommitted);
 
     // Verify the ZK proof
     let vk_x = compute_vk_x_hc(&public_signals)?;
@@ -222,12 +233,12 @@ pub fn handle_commit_hand(
 
     // Extract commitment (index 0 in public_signals — snarkjs output order)
     let commitment: [u8; 32] = public_signals[0];
-    let round_idx = (round - 1) as usize;
-
     if is_p1 {
         duel.player_1_commitment[round_idx] = commitment;
+        duel.player_1_zk_verified[round_idx] = true;
     } else {
         duel.player_2_commitment[round_idx] = commitment;
+        duel.player_2_zk_verified[round_idx] = true;
     }
 
     emit!(HandCommitted {

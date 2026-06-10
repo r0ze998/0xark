@@ -35,6 +35,8 @@
 //!
 //! Program ID: `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` (devnet, Phase C fresh deploy)
 
+pub mod card_data;               // D12+: static 60-card table for on-chain damage_calc
+pub mod damage_calc;             // D12+: Phase 15 battle resolver (Rust port of damage-calc.js)
 pub mod constants;
 pub mod error;
 pub mod instructions;
@@ -49,6 +51,18 @@ pub use instructions::*;
 pub use state::*;
 
 declare_id!("5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN");
+
+// Poseidon(15) with ark-bn254 needs ~45KB heap; default SBF heap is 32KB.
+// custom-heap disables Anchor's default BumpAllocator so we can provide 256KB.
+// Clients must include RequestHeapFrame(262144) for reveal_hand transactions.
+#[cfg(all(feature = "custom-heap", target_os = "solana"))]
+#[global_allocator]
+static HEAP: anchor_lang::solana_program::entrypoint::BumpAllocator = unsafe {
+    anchor_lang::solana_program::entrypoint::BumpAllocator::with_fixed_address_range(
+        anchor_lang::solana_program::entrypoint::HEAP_START_ADDRESS as usize,
+        256 * 1024,
+    )
+};
 
 #[program]
 pub mod oxark {
@@ -162,10 +176,10 @@ pub mod oxark {
         proof_b: [u8; 128],
         proof_c: [u8; 64],
         public_inputs: [[u8; 32]; 4],
-        duel_id: u64,
+        duel_pda: Pubkey,
         round: u64,
     ) -> Result<()> {
-        instructions::verify_zk_proof::handle_verify_zk(ctx, proof_a, proof_b, proof_c, public_inputs, duel_id, round)
+        instructions::verify_zk_proof::handle_verify_zk(ctx, proof_a, proof_b, proof_c, public_inputs, duel_pda, round)
     }
 
     /// Deposit entry stake (0.5 SOL) into the game's prize vault PDA.
@@ -283,24 +297,6 @@ pub mod oxark {
         payment_tx_hi: [u8; 32],
     ) -> Result<()> {
         instructions::agent_hire::handle_register_agent_hire(ctx, agent_id, duration_seconds, payment_tx_lo, payment_tx_hi)
-    }
-
-    /// Verify a Groth16 ZK proof that the player made a valid dungeon move.
-    ///
-    /// Circuit: dungeon_position.circom (625 constraints, BN254 / Groth16)
-    /// Public inputs (64 bytes): old_commitment[0..32] || new_commitment[32..64]
-    /// Proof generation: snarkjs in browser WASM (<1s for 625 constraints)
-    pub fn verify_dungeon_move(
-        ctx: Context<VerifyDungeonMove>,
-        game_id: u64,
-        proof_a: [u8; 64],
-        proof_b: [u8; 128],
-        proof_c: [u8; 64],
-        public_inputs: [u8; 64],
-    ) -> Result<()> {
-        instructions::verify_dungeon_move::handle_verify_dungeon_move(
-            ctx, game_id, proof_a, proof_b, proof_c, public_inputs,
-        )
     }
 
     // ── Deck system (軸 A) ────────────────────────────────────────────────────
@@ -590,12 +586,25 @@ pub mod oxark {
     /// Legendary (rarity=3) and Rare (rarity=2) are protected.
     /// Updates CardBattleHistory.burn_count and SeasonStats.total_burned.
     /// Seeds for season_stats PDA: ["season_stats", season_id_le].
+    /// Rarity is read from the on-chain CardMintRecord PDA (C5 fix).
     pub fn burn_card(
         ctx: Context<BurnCard>,
         card_mint: Pubkey,
+    ) -> Result<()> {
+        instructions::burn_card::handle_burn_card(ctx, card_mint)
+    }
+
+    /// C5 fix: Admin registers the on-chain rarity record for an NFT card mint.
+    ///
+    /// Must be called once per NFT card mint before burn_card can be invoked.
+    /// Only ADMIN_PUBKEY can call this instruction.
+    pub fn init_card_mint_record(
+        ctx: Context<InitCardMintRecord>,
+        card_mint: Pubkey,
+        card_id: u8,
         rarity: u8,
     ) -> Result<()> {
-        instructions::burn_card::handle_burn_card(ctx, card_mint, rarity)
+        instructions::init_card_mint_record::handle_init_card_mint_record(ctx, card_mint, card_id, rarity)
     }
 
     /// v3.0-plus: Evolve two Common parent NFTs into one Uncommon child NFT.
@@ -659,9 +668,10 @@ pub mod oxark {
 
     pub fn record_gold_hall_win(
         ctx: Context<RecordGoldHallWin>,
+        duel_id: Pubkey,
         season_id: u32,
     ) -> Result<()> {
-        instructions::legendary::handle_record_gold_hall_win(ctx, season_id)
+        instructions::legendary::handle_record_gold_hall_win(ctx, duel_id, season_id)
     }
 
     pub fn claim_legendary(

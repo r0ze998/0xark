@@ -195,7 +195,7 @@ fn u64_to_field(n: u64) -> [u8; 32] {
 ///   [2] = pubkey_lo   — bytes[0..16] of signer pubkey as u128 field element
 ///   [3] = pubkey_hi   — bytes[16..32] of signer pubkey as u128 field element
 #[derive(Accounts)]
-#[instruction(proof_a: [u8; 64], proof_b: [u8; 128], proof_c: [u8; 64], public_inputs: [[u8; 32]; 4], duel_id: u64, round: u64)]
+#[instruction(proof_a: [u8; 64], proof_b: [u8; 128], proof_c: [u8; 64], public_inputs: [[u8; 32]; 4], duel_pda: Pubkey, round: u64)]
 pub struct VerifyZkProof<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -207,7 +207,7 @@ pub struct VerifyZkProof<'info> {
         space = ZkProofRecord::SIZE,
         seeds = [
             ZkProofRecord::SEED,
-            duel_id.to_le_bytes().as_ref(),
+            duel_pda.as_ref(),
             round.to_le_bytes().as_ref(),
             signer.key().as_ref(),
         ],
@@ -224,7 +224,7 @@ pub fn handle_verify_zk(
     proof_b: [u8; 128],
     proof_c: [u8; 64],
     public_inputs: [[u8; 32]; 4],
-    duel_id: u64,
+    duel_pda: Pubkey,
     round: u64,
 ) -> Result<()> {
     // Validate round matches public_inputs[1]
@@ -245,7 +245,7 @@ pub fn handle_verify_zk(
 
     // Persist record — replay is blocked at the account level by `init`
     let record = &mut ctx.accounts.zk_proof_record;
-    record.duel_id     = duel_id;
+    record.duel_id     = duel_pda;
     record.round       = round;
     record.signer      = *ctx.accounts.signer.key;
     record.commit      = public_inputs[0];
@@ -254,7 +254,7 @@ pub fn handle_verify_zk(
 
     msg!(
         "ZK proof verified: duel={} round={} signer={}",
-        duel_id,
+        duel_pda,
         round,
         ctx.accounts.signer.key(),
     );
