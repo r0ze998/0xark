@@ -154,7 +154,8 @@
         "",
         "Legendary (rarity=3) and Rare (rarity=2) are protected.",
         "Updates CardBattleHistory.burn_count and SeasonStats.total_burned.",
-        "Seeds for season_stats PDA: [\"season_stats\", season_id_le]."
+        "Seeds for season_stats PDA: [\"season_stats\", season_id_le].",
+        "Rarity is read from the on-chain CardMintRecord PDA (C5 fix)."
       ],
       "discriminator": [
         153,
@@ -306,6 +307,38 @@
           }
         },
         {
+          "name": "card_mint_record",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
           "name": "season_stats",
           "writable": true,
           "pda": {
@@ -356,10 +389,6 @@
         {
           "name": "card_mint",
           "type": "pubkey"
-        },
-        {
-          "name": "rarity",
-          "type": "u8"
         }
       ]
     },
@@ -663,7 +692,8 @@
         {
           "name": "duel",
           "docs": [
-            "DuelState — must be ended (ended_at > 0) and signer must be the recorded winner.",
+            "DuelState — must be ended, signer must be the winner, and loser_pubkey must be",
+            "one of the two registered participants.",
             "Boxed to keep stack frame within BPF 4096-byte limit."
           ],
           "pda": {
@@ -1326,7 +1356,7 @@
         "",
         "- Allocates `game` PDA and `card_pool` PDA.",
         "- Sets `status = Lobby`, `round = 0`.",
-        "- `max_players` must be 2–4.",
+        "- `max_players` must be 1–3 (`constants::MAX_PLAYERS`).",
         "",
         "Caller becomes the host; only the host may call `start_game`."
       ],
@@ -2475,6 +2505,83 @@
       ]
     },
     {
+      "name": "init_card_mint_record",
+      "docs": [
+        "C5 fix: Admin registers the on-chain rarity record for an NFT card mint.",
+        "",
+        "Must be called once per NFT card mint before burn_card can be invoked.",
+        "Only ADMIN_PUBKEY can call this instruction."
+      ],
+      "discriminator": [
+        40,
+        61,
+        146,
+        218,
+        254,
+        13,
+        17,
+        119
+      ],
+      "accounts": [
+        {
+          "name": "card_mint_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "card_id",
+          "type": "u8"
+        },
+        {
+          "name": "rarity",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "init_duel",
       "discriminator": [
         226,
@@ -3490,6 +3597,59 @@
           }
         },
         {
+          "name": "duel",
+          "docs": [
+            "DuelState — must be ended and signer must be the recorded winner.",
+            "Boxed to keep stack frame within BPF limit."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gold_hall_record",
+          "docs": [
+            "Double-record guard — init fails if this duel's win was already reported."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  111,
+                  108,
+                  100,
+                  95,
+                  104,
+                  97,
+                  108,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
           "name": "player",
           "writable": true,
           "signer": true
@@ -3500,6 +3660,10 @@
         }
       ],
       "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        },
         {
           "name": "season_id",
           "type": "u32"
@@ -3923,14 +4087,14 @@
         {
           "name": "prize_pool",
           "docs": [
-            "Prize pool vault (system account; receives 85% of deposit)."
+            "Prize pool vault — must match the address registered in GameWorld."
           ],
           "writable": true
         },
         {
           "name": "ops_treasury",
           "docs": [
-            "Operations treasury (receives 15% of deposit)."
+            "Operations treasury — must match the address registered in GameWorld."
           ],
           "writable": true
         },
@@ -5104,121 +5268,6 @@
       ]
     },
     {
-      "name": "verify_dungeon_move",
-      "docs": [
-        "Verify a Groth16 ZK proof that the player made a valid dungeon move.",
-        "",
-        "Circuit: dungeon_position.circom (625 constraints, BN254 / Groth16)",
-        "Public inputs (64 bytes): old_commitment[0..32] || new_commitment[32..64]",
-        "Proof generation: snarkjs in browser WASM (<1s for 625 constraints)"
-      ],
-      "discriminator": [
-        85,
-        25,
-        9,
-        96,
-        207,
-        71,
-        227,
-        20
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              },
-              {
-                "kind": "account",
-                "path": "player"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player",
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        },
-        {
-          "name": "proof_a",
-          "type": {
-            "array": [
-              "u8",
-              64
-            ]
-          }
-        },
-        {
-          "name": "proof_b",
-          "type": {
-            "array": [
-              "u8",
-              128
-            ]
-          }
-        },
-        {
-          "name": "proof_c",
-          "type": {
-            "array": [
-              "u8",
-              64
-            ]
-          }
-        },
-        {
-          "name": "public_inputs",
-          "type": {
-            "array": [
-              "u8",
-              64
-            ]
-          }
-        }
-      ]
-    },
-    {
       "name": "verify_zk_proof",
       "docs": [
         "Verify a Groth16 ZK proof for a committed action.",
@@ -5413,6 +5462,19 @@
       ]
     },
     {
+      "name": "CardMintRecord",
+      "discriminator": [
+        226,
+        83,
+        213,
+        214,
+        180,
+        213,
+        5,
+        127
+      ]
+    },
+    {
       "name": "CardPool",
       "discriminator": [
         164,
@@ -5488,6 +5550,19 @@
         173,
         158,
         122
+      ]
+    },
+    {
+      "name": "GoldHallRecord",
+      "discriminator": [
+        214,
+        40,
+        188,
+        21,
+        232,
+        194,
+        176,
+        82
       ]
     },
     {
@@ -6585,6 +6660,11 @@
       "code": 6090,
       "name": "InvalidAccountOwner",
       "msg": "Account owner is not the expected program"
+    },
+    {
+      "code": 6091,
+      "name": "ZkNotVerified",
+      "msg": "ZK proof not verified for this round — call commit_hand first"
     }
   ],
   "types": [
@@ -7108,6 +7188,30 @@
       }
     },
     {
+      "name": "CardMintRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
+            "type": "u8"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "CardOwnerChanged",
       "type": {
         "kind": "struct",
@@ -7484,6 +7588,28 @@
             }
           },
           {
+            "name": "player_1_zk_verified",
+            "docs": [
+              "Set to true in commit_hand after Groth16 verification passes.",
+              "reveal_hand requires the corresponding flag to be true (ZK gate)."
+            ],
+            "type": {
+              "array": [
+                "bool",
+                5
+              ]
+            }
+          },
+          {
+            "name": "player_2_zk_verified",
+            "type": {
+              "array": [
+                "bool",
+                5
+              ]
+            }
+          },
+          {
             "name": "bump",
             "type": "u8"
           }
@@ -7546,6 +7672,15 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "players",
+            "type": {
+              "array": [
+                "pubkey",
+                3
+              ]
+            }
           }
         ]
       }
@@ -7742,6 +7877,26 @@
           {
             "name": "uncommon_drop_rate",
             "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GoldHallRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }
