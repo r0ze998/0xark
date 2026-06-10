@@ -35,14 +35,15 @@
 //!
 //! Program ID: `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` (devnet, Phase C fresh deploy)
 
-pub mod card_data;               // D12+: static 60-card table for on-chain damage_calc
-pub mod damage_calc;             // D12+: Phase 15 battle resolver (Rust port of damage-calc.js)
+pub mod card_data; // D12+: static 60-card table for on-chain damage_calc
 pub mod constants;
+pub mod damage_calc; // D12+: Phase 15 battle resolver (Rust port of damage-calc.js)
 pub mod error;
+pub mod groth16; // shared BN254/Groth16 math (VK constants stay per-instruction)
 pub mod instructions;
-pub mod state;
-pub mod poseidon_t16_constants;  // T-D13-A0: auto-generated circomlib t=16 constants
-pub mod poseidon_helper;         // T-D13-A0: on-chain Poseidon(15) for reveal_hand
+pub mod poseidon_helper;
+pub mod poseidon_t16_constants; // T-D13-A0: auto-generated circomlib t=16 constants
+pub mod state; // T-D13-A0: on-chain Poseidon(15) for reveal_hand
 
 use anchor_lang::prelude::*;
 
@@ -137,7 +138,14 @@ pub mod oxark {
         salt: [u8; 32],
         played_cards: Vec<u64>,
     ) -> Result<()> {
-        instructions::reveal_action::handle_reveal(ctx, game_id, action_type, target, salt, played_cards)
+        instructions::reveal_action::handle_reveal(
+            ctx,
+            game_id,
+            action_type,
+            target,
+            salt,
+            played_cards,
+        )
     }
 
     /// Resolve the current round after all players have revealed.
@@ -179,7 +187,15 @@ pub mod oxark {
         duel_pda: Pubkey,
         round: u64,
     ) -> Result<()> {
-        instructions::verify_zk_proof::handle_verify_zk(ctx, proof_a, proof_b, proof_c, public_inputs, duel_pda, round)
+        instructions::verify_zk_proof::handle_verify_zk(
+            ctx,
+            proof_a,
+            proof_b,
+            proof_c,
+            public_inputs,
+            duel_pda,
+            round,
+        )
     }
 
     /// Deposit entry stake (0.5 SOL) into the game's prize vault PDA.
@@ -213,7 +229,13 @@ pub mod oxark {
         max_players: u32,
         duration_seconds: i64,
     ) -> Result<()> {
-        instructions::season::handle_create_season(ctx, season_id, entry_fee, max_players, duration_seconds)
+        instructions::season::handle_create_season(
+            ctx,
+            season_id,
+            entry_fee,
+            max_players,
+            duration_seconds,
+        )
     }
 
     /// End a season, compute leaderboard, and emit results.
@@ -240,7 +262,12 @@ pub mod oxark {
         price_per_query: u64,
     ) -> Result<()> {
         instructions::agent_registry::handle_register_agent(
-            ctx, agent_id, name_hash, strategy_hash, endpoint_hash, price_per_query,
+            ctx,
+            agent_id,
+            name_hash,
+            strategy_hash,
+            endpoint_hash,
+            price_per_query,
         )
     }
 
@@ -296,7 +323,13 @@ pub mod oxark {
         payment_tx_lo: [u8; 32],
         payment_tx_hi: [u8; 32],
     ) -> Result<()> {
-        instructions::agent_hire::handle_register_agent_hire(ctx, agent_id, duration_seconds, payment_tx_lo, payment_tx_hi)
+        instructions::agent_hire::handle_register_agent_hire(
+            ctx,
+            agent_id,
+            duration_seconds,
+            payment_tx_lo,
+            payment_tx_hi,
+        )
     }
 
     // ── Deck system (軸 A) ────────────────────────────────────────────────────
@@ -313,7 +346,11 @@ pub mod oxark {
     ///   GDD v1.2: exactly 20 cards, max 2 copies of any card_id.
     ///   lane_assignments: 0=Front 1=Middle 2=Back 255=Any; empty vec → all 255.
     ///   deck must be unlocked (locked_until == 0 OR now ≥ locked_until)
-    pub fn save_deck(ctx: Context<SaveDeck>, cards: Vec<u8>, lane_assignments: Vec<u8>) -> Result<()> {
+    pub fn save_deck(
+        ctx: Context<SaveDeck>,
+        cards: Vec<u8>,
+        lane_assignments: Vec<u8>,
+    ) -> Result<()> {
         instructions::save_deck::handle_save_deck(ctx, cards, lane_assignments)
     }
 
@@ -335,11 +372,7 @@ pub mod oxark {
     /// before either reveals — preventing last-mover advantage.
     ///
     /// PDA seeds: `["card_commit", player_pubkey, game_id_le, round_u8]`
-    pub fn commit_card(
-        ctx: Context<CommitCard>,
-        game_id: u64,
-        commitment: [u8; 32],
-    ) -> Result<()> {
+    pub fn commit_card(ctx: Context<CommitCard>, game_id: u64, commitment: [u8; 32]) -> Result<()> {
         instructions::commit_card::handle_commit_card(ctx, game_id, commitment)
     }
 
@@ -355,11 +388,7 @@ pub mod oxark {
 
     /// Record a card mint against the season supply, with tier fallback.
     /// Returns the tier actually used (may be lower than requested if exhausted).
-    pub fn record_mint(
-        ctx: Context<RecordMint>,
-        season_id: u32,
-        requested_tier: u8,
-    ) -> Result<()> {
+    pub fn record_mint(ctx: Context<RecordMint>, season_id: u32, requested_tier: u8) -> Result<()> {
         instructions::season_supply::handle_record_mint(ctx, season_id, requested_tier)?;
         Ok(())
     }
@@ -400,7 +429,10 @@ pub mod oxark {
     /// At 7+ the xp_2x_flag is set for the next add_xp call.
     ///
     /// PDA seeds: `["player_battle_stats", player_pubkey]` (init_if_needed)
-    pub fn record_battle_result(ctx: Context<RecordBattleResult>, is_super_effective: bool) -> Result<()> {
+    pub fn record_battle_result(
+        ctx: Context<RecordBattleResult>,
+        is_super_effective: bool,
+    ) -> Result<()> {
         instructions::record_battle_result::handle_record_battle_result(ctx, is_super_effective)
     }
 
@@ -497,7 +529,12 @@ pub mod oxark {
         shard_index: u8,
         method: u8,
     ) -> Result<()> {
-        instructions::unlock_lore_shard::handle_unlock_lore_shard(ctx, card_mint, shard_index, method)
+        instructions::unlock_lore_shard::handle_unlock_lore_shard(
+            ctx,
+            card_mint,
+            shard_index,
+            method,
+        )
     }
 
     // ── D12: ZK Duel (hand commitment / reveal) ──────────────────────────────
@@ -521,7 +558,13 @@ pub mod oxark {
         public_signals: [[u8; 32]; 4],
     ) -> Result<()> {
         instructions::commit_hand::handle_commit_hand(
-            ctx, duel_id, round, proof_a, proof_b, proof_c, public_signals,
+            ctx,
+            duel_id,
+            round,
+            proof_a,
+            proof_b,
+            proof_c,
+            public_signals,
         )
     }
 
@@ -532,9 +575,7 @@ pub mod oxark {
         card_ids: [u64; 10],
         salt: [u8; 32],
     ) -> Result<()> {
-        instructions::reveal_hand::handle_reveal_hand(
-            ctx, duel_id, round, card_ids, salt,
-        )
+        instructions::reveal_hand::handle_reveal_hand(ctx, duel_id, round, card_ids, salt)
     }
 
     // ─── T-D13-A: CardBattleHistory ───────────────────────────────────────────
@@ -549,7 +590,13 @@ pub mod oxark {
         summon_delta: u32,
     ) -> Result<()> {
         instructions::update_card_battle_history::handle_update_card_battle_history(
-            ctx, card_mint, wins_delta, losses_delta, kos_delta, dmg_delta, summon_delta,
+            ctx,
+            card_mint,
+            wins_delta,
+            losses_delta,
+            kos_delta,
+            dmg_delta,
+            summon_delta,
         )
     }
 
@@ -575,7 +622,13 @@ pub mod oxark {
         is_legendary: bool,
     ) -> Result<()> {
         instructions::record_card_owner_change::handle_record_card_owner_change_with_steal(
-            ctx, card_mint, new_owner, steal_type, hall_tier, is_starter_card, is_legendary,
+            ctx,
+            card_mint,
+            new_owner,
+            steal_type,
+            hall_tier,
+            is_starter_card,
+            is_legendary,
         )
     }
 
@@ -587,10 +640,7 @@ pub mod oxark {
     /// Updates CardBattleHistory.burn_count and SeasonStats.total_burned.
     /// Seeds for season_stats PDA: ["season_stats", season_id_le].
     /// Rarity is read from the on-chain CardMintRecord PDA (C5 fix).
-    pub fn burn_card(
-        ctx: Context<BurnCard>,
-        card_mint: Pubkey,
-    ) -> Result<()> {
+    pub fn burn_card(ctx: Context<BurnCard>, card_mint: Pubkey) -> Result<()> {
         instructions::burn_card::handle_burn_card(ctx, card_mint)
     }
 
@@ -604,7 +654,9 @@ pub mod oxark {
         card_id: u8,
         rarity: u8,
     ) -> Result<()> {
-        instructions::init_card_mint_record::handle_init_card_mint_record(ctx, card_mint, card_id, rarity)
+        instructions::init_card_mint_record::handle_init_card_mint_record(
+            ctx, card_mint, card_id, rarity,
+        )
     }
 
     /// v3.0-plus: Evolve two Common parent NFTs into one Uncommon child NFT.
@@ -624,8 +676,14 @@ pub mod oxark {
         target_rarity: u8,
     ) -> Result<()> {
         instructions::evolve_cards::handle_evolve_cards(
-            ctx, parent_a_mint, parent_b_mint, child_mint,
-            target_species_id, parent_a_rarity, parent_b_rarity, target_rarity,
+            ctx,
+            parent_a_mint,
+            parent_b_mint,
+            child_mint,
+            target_species_id,
+            parent_a_rarity,
+            parent_b_rarity,
+            target_rarity,
         )
     }
 
@@ -633,10 +691,7 @@ pub mod oxark {
     ///
     /// Must be called once before Burn/Evolve/Steal instructions.
     /// Seeds: ["season_stats", season_id_le]
-    pub fn init_season_stats(
-        ctx: Context<InitSeasonStats>,
-        season_id: u32,
-    ) -> Result<()> {
+    pub fn init_season_stats(ctx: Context<InitSeasonStats>, season_id: u32) -> Result<()> {
         instructions::init_season_stats::handle_init_season_stats(ctx, season_id)
     }
 
@@ -653,16 +708,18 @@ pub mod oxark {
         duel_id: u64,
     ) -> Result<()> {
         instructions::update_card_battle_history::handle_grant_imprint(
-            ctx, card_mint, imprint_key_val, is_cosmetic, rarity, duel_id,
+            ctx,
+            card_mint,
+            imprint_key_val,
+            is_cosmetic,
+            rarity,
+            duel_id,
         )
     }
 
     // ── T-D15-B: Legendary acquisition ────────────────────────────────────────
 
-    pub fn init_legendary_supply(
-        ctx: Context<InitLegendarySupply>,
-        season_id: u64,
-    ) -> Result<()> {
+    pub fn init_legendary_supply(ctx: Context<InitLegendarySupply>, season_id: u64) -> Result<()> {
         instructions::legendary::handle_init_legendary_supply(ctx, season_id)
     }
 
@@ -682,10 +739,7 @@ pub mod oxark {
         instructions::legendary::handle_claim_legendary(ctx, season_id, species_id)
     }
 
-    pub fn distribute_prize_pool(
-        ctx: Context<DistributePrizePool>,
-        season_id: u32,
-    ) -> Result<()> {
+    pub fn distribute_prize_pool(ctx: Context<DistributePrizePool>, season_id: u32) -> Result<()> {
         instructions::legendary::handle_distribute_prize_pool(ctx, season_id)
     }
 
@@ -706,7 +760,12 @@ pub mod oxark {
         ops_treasury: Pubkey,
         prize_pool: Pubkey,
     ) -> Result<()> {
-        instructions::init_game_world::handle_init_game_world(ctx, game_start_timestamp, ops_treasury, prize_pool)
+        instructions::init_game_world::handle_init_game_world(
+            ctx,
+            game_start_timestamp,
+            ops_treasury,
+            prize_pool,
+        )
     }
 
     /// Register on the Season 1 waitlist.
@@ -755,7 +814,12 @@ pub mod oxark {
         loser_pubkey: Pubkey,
         loser_field: [u8; 5],
     ) -> Result<()> {
-        instructions::claim_battle_loot::handle_claim_battle_loot(ctx, duel_id, loser_pubkey, loser_field)
+        instructions::claim_battle_loot::handle_claim_battle_loot(
+            ctx,
+            duel_id,
+            loser_pubkey,
+            loser_field,
+        )
     }
 
     // ── Phase 20-B: Shop ──────────────────────────────────────────────────────
@@ -778,14 +842,19 @@ pub mod oxark {
         ctx: Context<UpdateGameParams>,
         legendary_rate_phase1: Option<u32>,
         legendary_rate_phase2: Option<u32>,
-        rare_rate_phase1:      Option<u32>,
-        rare_rate_phase2:      Option<u32>,
-        uncommon_rate:         Option<u32>,
-        threshold_seconds:     Option<u64>,
+        rare_rate_phase1: Option<u32>,
+        rare_rate_phase2: Option<u32>,
+        uncommon_rate: Option<u32>,
+        threshold_seconds: Option<u64>,
     ) -> Result<()> {
         instructions::update_game_params::handle_update_game_params(
-            ctx, legendary_rate_phase1, legendary_rate_phase2,
-            rare_rate_phase1, rare_rate_phase2, uncommon_rate, threshold_seconds,
+            ctx,
+            legendary_rate_phase1,
+            legendary_rate_phase2,
+            rare_rate_phase1,
+            rare_rate_phase2,
+            uncommon_rate,
+            threshold_seconds,
         )
     }
 
@@ -794,7 +863,10 @@ pub mod oxark {
     /// Use when the GameWorld is already on-chain but the deadline must be extended.
     /// Pass `new_deadline = Clock::get().unix_timestamp + 14 * 24 * 3600` to open
     /// registration for 14 more days from now.
-    pub fn set_waitlist_deadline(ctx: Context<SetWaitlistDeadline>, new_deadline: i64) -> Result<()> {
+    pub fn set_waitlist_deadline(
+        ctx: Context<SetWaitlistDeadline>,
+        new_deadline: i64,
+    ) -> Result<()> {
         instructions::set_waitlist_deadline::handle_set_waitlist_deadline(ctx, new_deadline)
     }
 
@@ -839,7 +911,11 @@ pub mod oxark {
     /// - Buyer pays price in SOL directly to seller (0% fee)
     /// - Card is added to buyer's vault
     /// - TradeListing PDA is closed; rent refunded to seller
-    pub fn accept_listing(ctx: Context<AcceptListing>, seller_pubkey: Pubkey, card_id: u8) -> Result<()> {
+    pub fn accept_listing(
+        ctx: Context<AcceptListing>,
+        seller_pubkey: Pubkey,
+        card_id: u8,
+    ) -> Result<()> {
         instructions::accept_listing::handle_accept_listing(ctx, seller_pubkey, card_id)
     }
 }
