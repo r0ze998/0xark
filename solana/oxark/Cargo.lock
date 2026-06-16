@@ -2024,11 +2024,8 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
- "ark-bn254 0.5.0",
- "ark-ff 0.5.0",
  "ephemeral-rollups-sdk",
  "litesvm",
- "pso-poseidon",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -2037,6 +2034,7 @@ dependencies = [
  "solana-instruction 3.4.0",
  "solana-keypair",
  "solana-message 3.1.0",
+ "solana-poseidon",
  "solana-pubkey 3.0.0",
  "solana-sdk-ids 3.1.0",
  "solana-sha256-hasher 3.1.0",
@@ -2186,17 +2184,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "pso-poseidon"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcb44ea70d1d456257f1294e351171285d0e38ad80122221c2cb4200614f0f74"
-dependencies = [
- "ark-bn254 0.5.0",
- "ark-ff 0.5.0",
- "thiserror 2.0.18",
 ]
 
 [[package]]

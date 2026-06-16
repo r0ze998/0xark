@@ -50,33 +50,34 @@ const PROOF_CR_A_BAD: [u8; 64] = [
     51,
 ];
 
-// hand_commitment circuit (576 constraints) — cards=[1,5,23,47,2], round=1,
-// salt=0x11*32, prover keypair seed = [0x42; 32] (see HC_PROVER_SEED in tests)
+// hand_commitment circuit v3 (Poseidon(6), 1103 constraints) — cards=[1,5,23,47,2],
+// round=1, salt=0x11*32, prover keypair seed = [0x42; 32] (see HC_PROVER_SEED).
+// Regenerate via circuits/hand_commitment build + the _genfix flow in the YKK-33 PR.
 const PROOF_HC_A: [u8; 64] = [
-    24, 4, 79, 234, 197, 88, 166, 128, 69, 202, 117, 104, 121, 176, 65, 212, 243, 31, 14, 91, 140,
-    132, 225, 161, 84, 123, 223, 155, 110, 118, 116, 98, 18, 215, 153, 89, 223, 252, 69, 78, 112,
-    68, 252, 124, 154, 96, 134, 241, 197, 201, 93, 96, 7, 16, 232, 50, 253, 64, 171, 85, 105, 61,
-    23, 245,
+    23, 149, 148, 64, 42, 125, 20, 194, 148, 243, 142, 186, 165, 55, 210, 35, 7, 21, 23, 30, 21,
+    200, 147, 190, 176, 198, 117, 233, 176, 142, 36, 24, 31, 75, 62, 57, 122, 236, 88, 181, 159,
+    242, 78, 216, 122, 247, 232, 71, 235, 254, 188, 145, 249, 72, 48, 87, 58, 228, 145, 49, 253,
+    12, 102, 60,
 ];
 const PROOF_HC_B: [u8; 128] = [
-    4, 2, 17, 10, 71, 83, 16, 83, 133, 186, 248, 93, 117, 60, 179, 201, 161, 93, 106, 160, 6, 48,
-    136, 22, 11, 183, 14, 162, 115, 58, 226, 131, 20, 115, 80, 186, 11, 82, 142, 184, 117, 133,
-    215, 178, 171, 26, 17, 11, 249, 69, 251, 255, 147, 214, 124, 113, 91, 169, 41, 208, 208, 192,
-    101, 184, 31, 219, 175, 96, 234, 243, 202, 214, 98, 97, 15, 157, 128, 237, 177, 14, 162, 125,
-    95, 63, 56, 5, 47, 110, 171, 21, 39, 30, 67, 135, 200, 143, 6, 155, 74, 227, 49, 64, 24, 205,
-    92, 136, 70, 67, 128, 100, 223, 182, 153, 210, 119, 61, 127, 166, 107, 146, 236, 238, 158, 208,
-    117, 29, 161, 248,
+    6, 177, 81, 188, 195, 206, 130, 21, 54, 85, 10, 48, 72, 196, 226, 37, 30, 20, 65, 142, 161, 57,
+    94, 199, 1, 10, 53, 28, 28, 203, 116, 4, 32, 73, 16, 44, 148, 24, 38, 189, 58, 204, 123, 38,
+    155, 209, 49, 195, 193, 37, 175, 37, 93, 141, 119, 167, 254, 233, 186, 43, 16, 70, 195, 45, 36,
+    35, 203, 232, 138, 200, 145, 243, 177, 126, 101, 176, 80, 121, 64, 161, 2, 0, 192, 110, 94, 96,
+    106, 49, 173, 233, 251, 226, 122, 9, 180, 6, 9, 124, 172, 184, 55, 130, 156, 41, 118, 55, 216,
+    83, 183, 121, 156, 141, 161, 242, 238, 208, 247, 110, 187, 17, 188, 101, 142, 93, 142, 82, 4,
+    13,
 ];
 const PROOF_HC_C: [u8; 64] = [
-    41, 182, 156, 33, 32, 195, 149, 100, 30, 191, 86, 227, 230, 198, 218, 221, 167, 49, 232, 128,
-    47, 44, 132, 59, 236, 188, 117, 62, 148, 12, 14, 125, 16, 198, 215, 69, 120, 95, 185, 107, 36,
-    83, 65, 225, 141, 102, 193, 155, 115, 184, 100, 115, 40, 143, 182, 151, 160, 237, 238, 150,
-    214, 143, 107, 117,
+    6, 163, 91, 135, 143, 140, 203, 86, 113, 146, 11, 227, 255, 80, 159, 16, 186, 221, 216, 50,
+    132, 202, 227, 109, 40, 171, 103, 60, 156, 135, 128, 76, 46, 27, 131, 80, 14, 136, 207, 113,
+    164, 235, 232, 28, 106, 62, 73, 179, 154, 114, 241, 244, 119, 77, 110, 22, 164, 101, 146, 113,
+    241, 207, 2, 190,
 ];
 // public_signals: [commitment, round=1, pubkey_lo, pubkey_hi] for seed-0x42 keypair
 const PUBLIC_HC_COMMITMENT: [u8; 32] = [
-    5, 218, 86, 161, 233, 241, 109, 211, 200, 97, 9, 12, 85, 248, 14, 32, 198, 72, 217, 144, 0, 49,
-    164, 26, 223, 70, 118, 126, 29, 170, 29, 10,
+    0, 20, 134, 167, 18, 145, 144, 171, 251, 48, 134, 8, 236, 167, 231, 59, 141, 7, 30, 94, 76, 86,
+    188, 46, 8, 141, 48, 255, 21, 157, 88, 35,
 ];
 const PUBLIC_HC_ROUND: [u8; 32] = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
@@ -90,10 +91,10 @@ const PUBLIC_HC_PUBKEY_HI: [u8; 32] = [
     14, 6, 152, 129, 219, 18,
 ];
 const PROOF_HC_A_BAD: [u8; 64] = [
-    231, 4, 79, 234, 197, 88, 166, 128, 69, 202, 117, 104, 121, 176, 65, 212, 243, 31, 14, 91, 140,
-    132, 225, 161, 84, 123, 223, 155, 110, 118, 116, 98, 18, 215, 153, 89, 223, 252, 69, 78, 112,
-    68, 252, 124, 154, 96, 134, 241, 197, 201, 93, 96, 7, 16, 232, 50, 253, 64, 171, 85, 105, 61,
-    23, 245,
+    232, 149, 148, 64, 42, 125, 20, 194, 148, 243, 142, 186, 165, 55, 210, 35, 7, 21, 23, 30, 21,
+    200, 147, 190, 176, 198, 117, 233, 176, 142, 36, 24, 31, 75, 62, 57, 122, 236, 88, 181, 159,
+    242, 78, 216, 122, 247, 232, 71, 235, 254, 188, 145, 249, 72, 48, 87, 58, 228, 145, 49, 253,
+    12, 102, 60,
 ];
 
 /// Seed of the keypair the PROOF_HC_* fixture is bound to (pubkey_lo/hi public
@@ -1288,21 +1289,16 @@ const HC_CARD_IDS: [u64; 10] = [1, 5, 23, 47, 2, 0, 0, 0, 0, 0];
 /// This is the integration test whose absence let the poseidon_helper lo/hi
 /// swap (and earlier the orphaned commit_hand VK) ship undetected — the only
 /// reveal tests exercised the unrelated SHA-256 commit_action/reveal_action
-/// path, and the Poseidon test ran the helper NATIVELY where CU cost is
+/// path, and the old Poseidon test ran the helper NATIVELY where CU cost is
 /// invisible. Here commit_hand stores the circuit commitment and reveal_hand
-/// recomputes Poseidon(15) ON-CHAIN over the same pubkey/salt/cards; with the
-/// lo/hi fix in poseidon_helper the recomputed commitment matches.
+/// recomputes Poseidon(6) ON-CHAIN via the sol_poseidon syscall over the same
+/// pubkey/salt/cards; the recomputed commitment must match.
 ///
-/// IGNORED — running this in BPF surfaced a second, independent blocker: the
-/// on-chain Poseidon(15) costs >8,000,000 CU, far over Solana's 1,400,000
-/// CU-per-transaction maximum, so reveal_hand cannot execute on devnet as
-/// implemented (pure-Rust ark-bn254 via pso_poseidon; the sol_poseidon syscall
-/// only takes ≤12 inputs, this hash takes 15). The lo/hi fix itself is verified
-/// by the native `poseidon_match_circuit_commitment` unit test. Remove the
-/// #[ignore] once the commitment recomputation fits the CU budget (e.g. a
-/// ≤12-input Poseidon usable via the syscall, or a lighter commitment scheme).
+/// YKK-33: this previously had to be #[ignore]'d because the v2 on-chain
+/// Poseidon(15) cost >8M CU (over Solana's 1.4M/tx max). v3 packs the cards and
+/// uses Poseidon(6) via the syscall (~2,738 CU), so reveal_hand now fits — the
+/// test asserts the measured CU is well under the 1.4M ceiling.
 #[test]
-#[ignore = "reveal_hand on-chain Poseidon(15) exceeds Solana's 1.4M CU/tx max (measured >8M); fix the CU cost before un-ignoring"]
 fn test_commit_hand_then_reveal_hand_roundtrip() {
     let (mut svm, authority) = setup();
     let player1 = Keypair::new_from_array(HC_PROVER_SEED);
@@ -1399,8 +1395,15 @@ fn test_commit_hand_then_reveal_hand_roundtrip() {
     );
 
     // Honest reveal: same pubkey/salt/cards as the committed proof → succeeds.
-    send_ix_result_multi(&mut svm, reveal_ix(HC_CARD_IDS), &authority, &[&player1])
+    let honest = send_ix_result_multi(&mut svm, reveal_ix(HC_CARD_IDS), &authority, &[&player1])
         .expect("honest reveal_hand must succeed (Poseidon commitment must match)");
+    // YKK-33: reveal_hand must fit Solana's 1.4M CU/tx ceiling (v2 needed >8M).
+    let reveal_cu = honest.compute_units_consumed;
+    println!("reveal_hand CU (Poseidon(6) via sol_poseidon syscall): {reveal_cu}");
+    assert!(
+        reveal_cu < 1_400_000,
+        "reveal_hand exceeded Solana CU/tx max: {reveal_cu} >= 1_400_000"
+    );
 
     // The revealed hand is recorded on-chain.
     let acct = svm.get_account(&duel_key).expect("duel account exists");
