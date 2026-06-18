@@ -1273,4 +1273,155 @@ mod tests {
         println!("✅ ZK gate passed: error is CommitmentNotSet (not ZkNotVerified)");
     }
 
+    // ─── YKK-32: grant_imprint rarity sourced from CardMintRecord (C5) ─────────
+    //
+    // Before YKK-32, grant_imprint took `rarity` as a caller argument, so a caller
+    // could pass rarity=3 (Legendary, cap 5) on a Common card and stamp extra stat
+    // imprints. Now rarity is read from the on-chain CardMintRecord PDA. These are
+    // the first tests that drive grant_imprint on-chain — its absence is why the
+    // bug survived.
+
+    const CARD_MINT_RECORD_SEED: &[u8] = b"card_mint_record";
+    const CARD_BATTLE_HISTORY_SEED: &[u8] = b"card_battle_history";
+
+    /// Anchor account discriminator: sha256("account:<Name>")[..8].
+    fn account_disc(name: &str) -> [u8; 8] {
+        use sha2::{Digest, Sha256};
+        let hash = Sha256::digest(format!("account:{name}").as_bytes());
+        hash[..8].try_into().unwrap()
+    }
+
+    fn find_card_mint_record_pda(card_mint: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[CARD_MINT_RECORD_SEED, card_mint.as_ref()], &program_id())
+    }
+
+    fn find_card_battle_history_pda(card_mint: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[CARD_BATTLE_HISTORY_SEED, card_mint.as_ref()], &program_id())
+    }
+
+    /// Craft a CardMintRecord PDA directly (init_card_mint_record requires the
+    /// ADMIN signer, whose key we don't hold). Borsh layout: card_mint(32) +
+    /// card_id(1) + rarity(1) + bump(1), behind the 8-byte account discriminator.
+    fn seed_card_mint_record(svm: &mut LiteSVM, card_mint: &Pubkey, card_id: u8, rarity: u8) -> Pubkey {
+        let (pda, bump) = find_card_mint_record_pda(card_mint);
+        let mut data = account_disc("CardMintRecord").to_vec();
+        data.extend_from_slice(card_mint.as_ref());
+        data.push(card_id);
+        data.push(rarity);
+        data.push(bump);
+        let lamports = svm.minimum_balance_for_rent_exemption(data.len()) + 1_000_000;
+        svm.airdrop(&pda, lamports).unwrap();
+        let mut acc = svm.get_account(&pda).unwrap();
+        acc.data = data;
+        acc.owner = program_id();
+        svm.set_account(pda, acc).unwrap();
+        pda
+    }
+
+    fn grant_imprint_ix_data(card_mint: &Pubkey, key: u8, is_cosmetic: bool, duel_id: u64) -> Vec<u8> {
+        let mut d = disc("grant_imprint").to_vec();
+        d.extend_from_slice(card_mint.as_ref());
+        d.push(key);
+        d.push(is_cosmetic as u8);
+        d.extend_from_slice(&duel_id.to_le_bytes());
+        d
+    }
+
+    #[test]
+    fn grant_imprint_common_caps_stat_imprints_by_record_rarity() {
+        let mut svm = setup_svm();
+        let payer = Keypair::new();
+        fund_account(&mut svm, &payer.pubkey(), 5_000_000_000);
+
+        // A Common (rarity=0) card → stat-imprint cap is 3.
+        let card_mint = Keypair::new().pubkey();
+        let record = seed_card_mint_record(&mut svm, &card_mint, 1, 0);
+        let (history, _) = find_card_battle_history_pda(&card_mint);
+
+        let metas = || {
+            vec![
+                AccountMeta::new(history, false),
+                AccountMeta::new_readonly(record, false),
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ]
+        };
+
+        // 3 distinct non-cosmetic imprints succeed (cap = 3 for Common).
+        for key in 1u8..=3 {
+            send_ix(
+                &mut svm,
+                &payer,
+                metas(),
+                grant_imprint_ix_data(&card_mint, key, false, key as u64),
+                vec![&payer],
+            )
+            .unwrap_or_else(|e| panic!("stat imprint #{key} should succeed for Common: {e}"));
+        }
+
+        // 4th non-cosmetic imprint exceeds the Common cap → StatImprintLimitReached.
+        // (Pre-YKK-32, a caller could pass rarity=3 to raise the cap to 5.)
+        let err = send_ix(
+            &mut svm,
+            &payer,
+            metas(),
+            grant_imprint_ix_data(&card_mint, 4, false, 4),
+            vec![&payer],
+        )
+        .expect_err("4th stat imprint must exceed the Common cap");
+        let err = format!("{err}");
+        assert!(
+            err.contains("StatImprintLimitReached"),
+            "expected StatImprintLimitReached, got: {err}"
+        );
+    }
+
+    #[test]
+    fn grant_imprint_rejects_foreign_card_mint_record() {
+        let mut svm = setup_svm();
+        let payer = Keypair::new();
+        fund_account(&mut svm, &payer.pubkey(), 5_000_000_000);
+
+        // Record exists for card A; we try to imprint card B while passing A's record.
+        let card_a = Keypair::new().pubkey();
+        let card_b = Keypair::new().pubkey();
+        let record_a = seed_card_mint_record(&mut svm, &card_a, 1, 0);
+        let (history_b, _) = find_card_battle_history_pda(&card_b);
+
+        // card_mint arg = B, but card_mint_record account = A's PDA. Anchor derives
+        // the expected record PDA from B and the addresses won't match (and the
+        // handler's require!(record.card_mint == card_mint) is a second backstop).
+        let err = send_ix(
+            &mut svm,
+            &payer,
+            vec![
+                AccountMeta::new(history_b, false),
+                AccountMeta::new_readonly(record_a, false),
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+            grant_imprint_ix_data(&card_b, 1, false, 0),
+            vec![&payer],
+        )
+        .expect_err("passing another card's CardMintRecord must be rejected");
+        let err = format!("{err}");
+        assert!(
+            err.contains("ConstraintSeeds")
+                || err.contains("2006")
+                || err.contains("InvalidAccount"),
+            "expected a seeds/InvalidAccount rejection, got: {err}"
+        );
+    }
+
+    // NOTE (YKK-32): evolve_cards applies the identical fix — parent rarities are
+    // read from parent_a_mint_record / parent_b_mint_record (require!(record
+    // .card_mint == parent_mint) + record.rarity), with the target hardcoded to
+    // Uncommon. An on-chain integration test for it would need the EvolveCards
+    // account graph to pass Anchor validation, which includes Program<Token> and
+    // Program<AssociatedToken> — and litesvm 0.10 does NOT bundle the SPL Token /
+    // ATA programs (it only lets you *write* token account data, not execute the
+    // programs). Loading those program binaries is a separate harness change;
+    // the rarity-from-record + mint-pinning logic is regression-covered above via
+    // grant_imprint, which uses the same pattern and needs no SPL programs.
+    // Tracked as a follow-up.
 }

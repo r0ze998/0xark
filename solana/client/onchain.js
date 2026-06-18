@@ -312,6 +312,14 @@ function findCardBattleHistoryPDA(cardMintPubkey) {
   );
 }
 
+// CardMintRecord PDA — on-chain rarity source (C5 / YKK-32).
+function findCardMintRecordPDA(cardMintPubkey) {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('card_mint_record'), cardMintPubkey.toBytes()],
+    getProgramId()
+  );
+}
+
 function findSeasonStatsPDA(createdAtI64) {
   const b = new Uint8Array(8);
   writeI64LE(b, 0, createdAtI64);
@@ -1648,43 +1656,45 @@ async function burnCard(cardMintStr, rarity) {
 // Evolves two Common parents into an Uncommon child.
 // The child mint must be pre-minted by the oxark-cards program before calling this.
 // targetSpeciesId: u16 species id for the child card.
-// rarities: 0=Common, 1=Uncommon.
-async function evolveCards(parentAMintStr, parentBMintStr, childMintStr,
-                           targetSpeciesId, parentARarity, parentBRarity, targetRarity) {
+// YKK-32: parent rarities are read on-chain from each parent's CardMintRecord PDA;
+// the caller no longer passes rarity arguments (they were spoofable).
+async function evolveCards(parentAMintStr, parentBMintStr, childMintStr, targetSpeciesId) {
   const owner = window.solana.publicKey;
   const mintA  = new solanaWeb3.PublicKey(parentAMintStr);
   const mintB  = new solanaWeb3.PublicKey(parentBMintStr);
   const mintC  = new solanaWeb3.PublicKey(childMintStr);
 
-  const [ataA]   = findAssociatedTokenAddress(owner, mintA);
-  const [ataB]   = findAssociatedTokenAddress(owner, mintB);
-  const [histA]  = findCardBattleHistoryPDA(mintA);
-  const [histB]  = findCardBattleHistoryPDA(mintB);
-  const [histC]  = findCardBattleHistoryPDA(mintC);
+  const [ataA]    = findAssociatedTokenAddress(owner, mintA);
+  const [ataB]    = findAssociatedTokenAddress(owner, mintB);
+  const [histA]   = findCardBattleHistoryPDA(mintA);
+  const [histB]   = findCardBattleHistoryPDA(mintB);
+  const [histC]   = findCardBattleHistoryPDA(mintC);
+  const [recordA] = findCardMintRecordPDA(mintA);
+  const [recordB] = findCardMintRecordPDA(mintB);
 
   const createdAtA  = await readCardBattleHistoryCreatedAt(parentAMintStr);
   const [statsPDA]  = findSeasonStatsPDA(createdAtA);
 
-  // disc(8) + parentA(32) + parentB(32) + child(32) + speciesId(2) + rarA(1) + rarB(1) + rarT(1) = 109
+  // disc(8) + parentA(32) + parentB(32) + child(32) + speciesId(2) = 106 bytes
   const d    = await disc('evolve_cards');
-  const data = new Uint8Array(109);
+  const data = new Uint8Array(106);
   let off = writeBytes(data, 0, d);
   off = writeBytes(data, off, mintA.toBytes());
   off = writeBytes(data, off, mintB.toBytes());
   off = writeBytes(data, off, mintC.toBytes());
-  off = writeU16LE(data, off, targetSpeciesId);
-  off = writeU8(data, off, parentARarity & 0xff);
-  off = writeU8(data, off, parentBRarity & 0xff);
-  writeU8(data, off, targetRarity & 0xff);
+  writeU16LE(data, off, targetSpeciesId);
 
+  // Account order must match EvolveCards: parent_X_mint_record follows parent_X_history.
   return buildAndSend([
     { pubkey: owner,    isSigner: true,  isWritable: true  },
     { pubkey: mintA,    isSigner: false, isWritable: true  },
     { pubkey: ataA,     isSigner: false, isWritable: true  },
     { pubkey: histA,    isSigner: false, isWritable: true  },
+    { pubkey: recordA,  isSigner: false, isWritable: false },
     { pubkey: mintB,    isSigner: false, isWritable: true  },
     { pubkey: ataB,     isSigner: false, isWritable: true  },
     { pubkey: histB,    isSigner: false, isWritable: true  },
+    { pubkey: recordB,  isSigner: false, isWritable: false },
     { pubkey: histC,    isSigner: false, isWritable: true  },
     { pubkey: statsPDA, isSigner: false, isWritable: true  },
     { pubkey: new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),        isSigner: false, isWritable: false },
@@ -1697,24 +1707,28 @@ async function evolveCards(parentAMintStr, parentBMintStr, childMintStr,
 // ─── grant_imprint ────────────────────────────────────────────────────────
 // Records a battle imprint onto a card's history PDA.
 // imprintKeyVal: u8 stat key; isCosmetic: bool; duelId: u64 (BigInt or number).
-async function grantImprint(cardMintStr, imprintKeyVal, isCosmetic, rarity, duelId) {
+// YKK-32: stat-imprint rarity cap is read on-chain from the card's CardMintRecord
+// PDA; the caller no longer passes a rarity argument (it was spoofable).
+async function grantImprint(cardMintStr, imprintKeyVal, isCosmetic, duelId) {
   const payer = window.solana.publicKey;
   const mintPK = new solanaWeb3.PublicKey(cardMintStr);
-  const [histPDA] = findCardBattleHistoryPDA(mintPK);
+  const [histPDA]   = findCardBattleHistoryPDA(mintPK);
+  const [recordPDA] = findCardMintRecordPDA(mintPK);
 
-  // disc(8) + card_mint(32) + imprint_key_val(1) + is_cosmetic(1) + rarity(1) + duel_id(8) = 51
+  // disc(8) + card_mint(32) + imprint_key_val(1) + is_cosmetic(1) + duel_id(8) = 50
   const d    = await disc('grant_imprint');
-  const data = new Uint8Array(51);
+  const data = new Uint8Array(50);
   let off = writeBytes(data, 0, d);
   off = writeBytes(data, off, mintPK.toBytes());
   off = writeU8(data, off, imprintKeyVal & 0xff);
   off = writeBool(data, off, isCosmetic);
-  off = writeU8(data, off, rarity & 0xff);
   writeU64LE(data, off, duelId);
 
+  // Account order must match GrantImprint: card_mint_record follows card_battle_history.
   return buildAndSend([
-    { pubkey: histPDA, isSigner: false, isWritable: true },
-    { pubkey: payer,   isSigner: true,  isWritable: true },
+    { pubkey: histPDA,   isSigner: false, isWritable: true  },
+    { pubkey: recordPDA, isSigner: false, isWritable: false },
+    { pubkey: payer,     isSigner: true,  isWritable: true  },
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
   ], data);
 }

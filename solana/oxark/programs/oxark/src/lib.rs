@@ -670,9 +670,6 @@ pub mod oxark {
         parent_b_mint: Pubkey,
         child_mint: Pubkey,
         target_species_id: u16,
-        parent_a_rarity: u8,
-        parent_b_rarity: u8,
-        target_rarity: u8,
     ) -> Result<()> {
         instructions::evolve_cards::handle_evolve_cards(
             ctx,
@@ -680,9 +677,6 @@ pub mod oxark {
             parent_b_mint,
             child_mint,
             target_species_id,
-            parent_a_rarity,
-            parent_b_rarity,
-            target_rarity,
         )
     }
 
@@ -698,12 +692,12 @@ pub mod oxark {
     ///
     /// Cosmetic Imprints have no cap. Stat Imprints are capped by rarity:
     ///   Common/Uncommon → 3, Rare → 4, Legendary → 5.
+    /// Rarity is read on-chain from CardMintRecord (C5 fix, YKK-32).
     pub fn grant_imprint(
         ctx: Context<GrantImprint>,
         card_mint: Pubkey,
         imprint_key_val: u8,
         is_cosmetic: bool,
-        rarity: u8,
         duel_id: u64,
     ) -> Result<()> {
         instructions::update_card_battle_history::handle_grant_imprint(
@@ -711,7 +705,6 @@ pub mod oxark {
             card_mint,
             imprint_key_val,
             is_cosmetic,
-            rarity,
             duel_id,
         )
     }
