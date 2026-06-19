@@ -1,6 +1,7 @@
 use crate::error::ErrorCode;
 use crate::state::{
-    CardBattleHistory, CardBattleHistoryUpdated, Imprint, ImprintGrantedEvent, ImprintKey,
+    CardBattleHistory, CardBattleHistoryUpdated, CardMintRecord, Imprint, ImprintGrantedEvent,
+    ImprintKey,
 };
 use anchor_lang::prelude::*;
 
@@ -39,6 +40,15 @@ pub struct GrantImprint<'info> {
         bump,
     )]
     pub card_battle_history: Account<'info, CardBattleHistory>,
+
+    // C5 fix (YKK-32): rarity is read from this on-chain record, not trusted
+    // from a caller argument. Seeded by the same card_mint that seeds the
+    // battle history, so the caller cannot point it at a different card.
+    #[account(
+        seeds = [CardMintRecord::SEED, card_mint.as_ref()],
+        bump  = card_mint_record.bump,
+    )]
+    pub card_mint_record: Account<'info, CardMintRecord>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -118,19 +128,25 @@ pub fn handle_update_card_battle_history(
 /// v3.0-plus: Explicitly grant an Imprint to a card's battle history.
 ///
 /// `imprint_key_val` is the u8 value of ImprintKey enum.
-/// `rarity` (0=Common, 1=Uncommon, 2=Rare, 3=Legendary — same scale as
-/// CardMintRecord.rarity) gates stat imprint limits. NOTE: rarity is
-/// caller-supplied and not verified on-chain; wiring CardMintRecord into
-/// this instruction requires an interface change (deferred, post-devnet).
-/// Cosmetic imprints have no limit; stat imprints are capped by rarity.
+/// Rarity (0=Common .. 3=Legendary) gates stat imprint limits and is read
+/// from the on-chain CardMintRecord PDA (C5 fix, YKK-32) — never trusted
+/// from the caller. Cosmetic imprints have no limit; stat imprints are
+/// capped by rarity.
 pub fn handle_grant_imprint(
     ctx: Context<GrantImprint>,
     card_mint: Pubkey,
     imprint_key_val: u8,
     is_cosmetic: bool,
-    rarity: u8,
     duel_id: u64,
 ) -> Result<()> {
+    // C5 fix: pin the rarity record to the card actually being imprinted, then
+    // source rarity from chain state instead of a caller argument.
+    require!(
+        ctx.accounts.card_mint_record.card_mint == card_mint,
+        ErrorCode::InvalidAccount
+    );
+    let rarity = ctx.accounts.card_mint_record.rarity;
+
     let history = &mut ctx.accounts.card_battle_history;
     let now = Clock::get()?.unix_timestamp;
     history.ensure_initialized(card_mint, now, ctx.bumps.card_battle_history);

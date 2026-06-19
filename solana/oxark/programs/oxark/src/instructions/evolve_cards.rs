@@ -1,6 +1,8 @@
 use crate::constants::{RARITY_COMMON, RARITY_UNCOMMON};
 use crate::error::ErrorCode;
-use crate::state::{CardBattleHistory, CardEvolvedEvent, Imprint, ImprintKey, SeasonStats};
+use crate::state::{
+    CardBattleHistory, CardEvolvedEvent, CardMintRecord, Imprint, ImprintKey, SeasonStats,
+};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, Token, TokenAccount};
 
@@ -34,6 +36,13 @@ pub struct EvolveCards<'info> {
     )]
     pub parent_a_history: Box<Account<'info, CardBattleHistory>>,
 
+    // C5 fix (YKK-32): parent A rarity read on-chain, not from a caller arg.
+    #[account(
+        seeds = [CardMintRecord::SEED, parent_a_mint.as_ref()],
+        bump  = parent_a_mint_record.bump,
+    )]
+    pub parent_a_mint_record: Box<Account<'info, CardMintRecord>>,
+
     // Parent B accounts
     /// CHECK: validated by ATA constraint
     #[account(mut)]
@@ -55,6 +64,13 @@ pub struct EvolveCards<'info> {
         bump,
     )]
     pub parent_b_history: Box<Account<'info, CardBattleHistory>>,
+
+    // C5 fix (YKK-32): parent B rarity read on-chain, not from a caller arg.
+    #[account(
+        seeds = [CardMintRecord::SEED, parent_b_mint.as_ref()],
+        bump  = parent_b_mint_record.bump,
+    )]
+    pub parent_b_mint_record: Box<Account<'info, CardMintRecord>>,
 
     // Child card history (newly minted card; child_mint comes from the client
     // after off-chain / oxark-cards mint — provenance is recorded here)
@@ -100,11 +116,21 @@ pub fn handle_evolve_cards(
     parent_b_mint: Pubkey,
     child_mint: Pubkey,
     target_species_id: u16,
-    parent_a_rarity: u8,
-    parent_b_rarity: u8,
-    _target_rarity: u8, // must be RARITY_UNCOMMON; validated below
 ) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
+
+    // C5 fix (YKK-32): pin each rarity record to the parent mint actually being
+    // evolved, then source rarity from chain state instead of caller arguments.
+    require!(
+        ctx.accounts.parent_a_mint_record.card_mint == parent_a_mint,
+        ErrorCode::InvalidAccount
+    );
+    require!(
+        ctx.accounts.parent_b_mint_record.card_mint == parent_b_mint,
+        ErrorCode::InvalidAccount
+    );
+    let parent_a_rarity = ctx.accounts.parent_a_mint_record.rarity;
+    let parent_b_rarity = ctx.accounts.parent_b_mint_record.rarity;
 
     // 1. Validate parent rarities (both must be Common)
     require!(
@@ -116,11 +142,9 @@ pub fn handle_evolve_cards(
         ErrorCode::EvolveParentMustBeCommon
     );
 
-    // 2. Validate target is Uncommon (Season 1 restriction)
-    require!(
-        _target_rarity == RARITY_UNCOMMON,
-        ErrorCode::InvalidEvolveTarget
-    );
+    // 2. Target is fixed to Uncommon (Season 1 restriction). Previously a
+    //    caller arg; now a hardcoded invariant so it cannot be spoofed.
+    let _target_rarity = RARITY_UNCOMMON;
 
     // 3. Capture parent win counts before burning
     let parent_a_wins = ctx.accounts.parent_a_history.wins;

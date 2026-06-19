@@ -2173,6 +2173,38 @@
           }
         },
         {
+          "name": "parent_a_mint_record",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "parent_a_mint"
+              }
+            ]
+          }
+        },
+        {
           "name": "parent_b_mint_account",
           "writable": true
         },
@@ -2303,6 +2335,38 @@
           }
         },
         {
+          "name": "parent_b_mint_record",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "parent_b_mint"
+              }
+            ]
+          }
+        },
+        {
           "name": "child_history",
           "writable": true,
           "pda": {
@@ -2401,18 +2465,6 @@
         {
           "name": "target_species_id",
           "type": "u16"
-        },
-        {
-          "name": "parent_a_rarity",
-          "type": "u8"
-        },
-        {
-          "name": "parent_b_rarity",
-          "type": "u8"
-        },
-        {
-          "name": "target_rarity",
-          "type": "u8"
         }
       ]
     },
@@ -2422,7 +2474,8 @@
         "v3.0-plus: Grant an Imprint to a card's battle history.",
         "",
         "Cosmetic Imprints have no cap. Stat Imprints are capped by rarity:",
-        "Common/Uncommon → 3, Rare → 4, Legendary → 5."
+        "Common/Uncommon → 3, Rare → 4, Legendary → 5.",
+        "Rarity is read on-chain from CardMintRecord (C5 fix, YKK-32)."
       ],
       "discriminator": [
         213,
@@ -2472,6 +2525,38 @@
           }
         },
         {
+          "name": "card_mint_record",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
           "name": "payer",
           "writable": true,
           "signer": true
@@ -2493,10 +2578,6 @@
         {
           "name": "is_cosmetic",
           "type": "bool"
-        },
-        {
-          "name": "rarity",
-          "type": "u8"
         },
         {
           "name": "duel_id",
