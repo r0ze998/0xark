@@ -66,6 +66,11 @@ pub fn handle_init_game_world(
     world.rare_drop_rate_phase1 = GameWorld::DEFAULT_RARE_RATE_PHASE1;
     world.rare_drop_rate_phase2 = GameWorld::DEFAULT_RARE_RATE_PHASE2;
     world.uncommon_drop_rate = GameWorld::DEFAULT_UNCOMMON_RATE;
+    // Prize-settlement finalize fields (populated by finalize_season_tally).
+    world.max_vault = 0;
+    world.max_vault_count = 0;
+    world.finalize_processed = 0;
+    world.finalize_cursor = Pubkey::default();
 
     msg!(
         "InitGameWorld: start={} waitlist_close={} end={} bump={} ops={} pool={}",

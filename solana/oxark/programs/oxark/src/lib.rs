@@ -796,6 +796,29 @@ pub mod oxark {
         instructions::claim_prize_v2::handle_claim_prize_v2(ctx)
     }
 
+    // ─── YKK season-end prize settlement (finalize → end → claim) ─────────────
+
+    /// Season state: waitlist (0) → active (1). Admin-only, after the waitlist window.
+    pub fn activate_season(ctx: Context<ActivateSeason>) -> Result<()> {
+        instructions::activate_season::handle_activate_season(ctx)
+    }
+
+    /// Tally a batch of participants into the GameWorld tier totals (admin crank).
+    /// `players` must be strictly increasing and > `finalize_cursor`; their
+    /// PlayerState PDAs are passed as remaining_accounts in the same order.
+    pub fn finalize_season_tally(
+        ctx: Context<FinalizeSeasonTally>,
+        players: Vec<Pubkey>,
+    ) -> Result<()> {
+        instructions::finalize_season_tally::handle_finalize_season_tally(ctx, players)
+    }
+
+    /// Season state: active (1) → ended (2). Admin-only; requires the full tally
+    /// (finalize_processed == total_participants) so claims open on complete data.
+    pub fn end_season_final(ctx: Context<EndSeasonFinal>) -> Result<()> {
+        instructions::end_season_final::handle_end_season_final(ctx)
+    }
+
     /// Claim 1 random card from loser's battle field (on-chain loot via SlotHashes).
     /// `duel_id`:     unique Pubkey for this duel (prevents double-claim via PDA init).
     /// `loser_pubkey`: the loser's wallet pubkey.
