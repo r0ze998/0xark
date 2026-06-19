@@ -3522,69 +3522,6 @@
       "args": []
     },
     {
-      "name": "migrate_shop_fields",
-      "docs": [
-        "Admin-only: reallocate GameWorld PDA to Phase 20-B size and initialize shop fields.",
-        "",
-        "Must be called once after program upgrade from a pre-Phase-20-B deployment.",
-        "Sets ops_treasury, prize_pool, and all drop rate defaults."
-      ],
-      "discriminator": [
-        196,
-        212,
-        47,
-        237,
-        212,
-        107,
-        32,
-        221
-      ],
-      "accounts": [
-        {
-          "name": "game_world",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101,
-                  95,
-                  119,
-                  111,
-                  114,
-                  108,
-                  100
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "admin",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "ops_treasury",
-          "type": "pubkey"
-        },
-        {
-          "name": "prize_pool",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
       "name": "record_battle_result",
       "docs": [
         "Record a card battle outcome for combo tracking.",

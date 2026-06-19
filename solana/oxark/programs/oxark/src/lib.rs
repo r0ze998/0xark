@@ -888,17 +888,12 @@ pub mod oxark {
         instructions::reset_player_state::handle_reset_player_state(ctx)
     }
 
-    /// Admin-only: reallocate GameWorld PDA to Phase 20-B size and initialize shop fields.
-    ///
-    /// Must be called once after program upgrade from a pre-Phase-20-B deployment.
-    /// Sets ops_treasury, prize_pool, and all drop rate defaults.
-    pub fn migrate_shop_fields(
-        ctx: Context<MigrateShopFields>,
-        ops_treasury: Pubkey,
-        prize_pool: Pubkey,
-    ) -> Result<()> {
-        instructions::migrate_shop_fields::handle_migrate_shop_fields(ctx, ops_treasury, prize_pool)
-    }
+    // YKK-39: `migrate_shop_fields` entrypoint removed. It wrote `world.prize_pool`
+    // from an external arg WITHOUT setting `prize_pool_bump`, which (post YKK-38)
+    // would desync the PDA vault address from its bump and lock all prize/deposit
+    // flows. It was never called from any client or test; the fresh-init path
+    // (YKK-34/38) makes it unnecessary. The module is retained for reference only
+    // (see instructions::migrate_shop_fields), not dispatched.
 
     // ── Phase 20-C: Trade Floor ────────────────────────────────────────────────
 
