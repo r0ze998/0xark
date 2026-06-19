@@ -5,11 +5,12 @@ use ark_ff::PrimeField;
 /// Circuit input order:
 ///   [round, pubkey_lo, pubkey_hi, card_ids[0..10], salt_lo, salt_hi]
 ///
-/// JS client encoding (08-duel-scene.js generateHandCommitmentProof):
-///   pubkey_lo = bytesToBigInt(pubkeyBytes.slice(16, 32))  ← bytes 16-31 (big-endian)
-///   pubkey_hi = bytesToBigInt(pubkeyBytes.slice(0, 16))   ← bytes 0-15  (big-endian)
-///   salt_lo   = bytesToBigInt(salt.slice(16, 32))
-///   salt_hi   = bytesToBigInt(salt.slice(0, 16))
+/// JS client encoding (03-zk-prove.js _splitSalt) and the circuit both take the
+/// LOW half from the FIRST 16 bytes:
+///   pubkey_lo = bytesToBigInt(pubkeyBytes.slice(0, 16))   ← bytes 0-15  (big-endian)
+///   pubkey_hi = bytesToBigInt(pubkeyBytes.slice(16, 32))  ← bytes 16-31 (big-endian)
+///   salt_lo   = bytesToBigInt(salt.slice(0, 16))
+///   salt_hi   = bytesToBigInt(salt.slice(16, 32))
 ///
 /// This module replicates that encoding so on-chain hash == circuit commitment.
 use pso_poseidon::{Poseidon, PoseidonParameters};
@@ -53,11 +54,11 @@ fn bytes_to_u128_be(bytes: &[u8]) -> u128 {
 ///
 /// Input order matches hand_commitment.circom exactly:
 ///   inputs[0]    = round
-///   inputs[1]    = pubkey_lo  (bytes 16-31 of pubkey, big-endian u128)
-///   inputs[2]    = pubkey_hi  (bytes 0-15 of pubkey,  big-endian u128)
+///   inputs[1]    = pubkey_lo  (bytes 0-15 of pubkey,  big-endian u128)
+///   inputs[2]    = pubkey_hi  (bytes 16-31 of pubkey, big-endian u128)
 ///   inputs[3..13] = card_ids[0..10]
-///   inputs[13]   = salt_lo   (bytes 16-31 of salt)
-///   inputs[14]   = salt_hi   (bytes 0-15 of salt)
+///   inputs[13]   = salt_lo   (bytes 0-15 of salt)
+///   inputs[14]   = salt_hi   (bytes 16-31 of salt)
 ///
 /// Returns 32-byte little-endian representation of the commitment field element.
 pub fn compute_hand_commitment(
@@ -66,13 +67,12 @@ pub fn compute_hand_commitment(
     card_ids: &[u64; 10],
     salt_bytes: &[u8; 32],
 ) -> Result<[u8; 32], PoseidonHashError> {
-    // Match JS: pubkey_lo = bytes 16-31, pubkey_hi = bytes 0-15
-    let pubkey_lo = bytes_to_u128_be(&pubkey_bytes[16..32]);
-    let pubkey_hi = bytes_to_u128_be(&pubkey_bytes[0..16]);
+    // Match client/circuit: lo = first 16 bytes, hi = last 16 bytes
+    let pubkey_lo = bytes_to_u128_be(&pubkey_bytes[0..16]);
+    let pubkey_hi = bytes_to_u128_be(&pubkey_bytes[16..32]);
 
-    // Match JS: salt_lo = bytes 16-31, salt_hi = bytes 0-15
-    let salt_lo = bytes_to_u128_be(&salt_bytes[16..32]);
-    let salt_hi = bytes_to_u128_be(&salt_bytes[0..16]);
+    let salt_lo = bytes_to_u128_be(&salt_bytes[0..16]);
+    let salt_hi = bytes_to_u128_be(&salt_bytes[16..32]);
 
     let mut inputs: Vec<Fr> = Vec::with_capacity(15);
     inputs.push(Fr::from(round as u64));
@@ -111,49 +111,52 @@ mod tests {
 
     /// T-D13-A0: Verify Rust Poseidon(15) matches the circom circuit output.
     ///
-    /// Test vector from Day 12 proof.json/public.json (hand_commitment circuit):
-    ///   round      = 1
-    ///   pubkey_lo  = 147573952589676412927   (bytes 16-31 of pubkey, BE u128)
-    ///   pubkey_hi  = 295147905179352825855   (bytes 0-15  of pubkey, BE u128)
-    ///   card_ids   = [1, 5, 23, 47, 2, 0, 0, 0, 0, 0]
-    ///   salt_lo    = 39614081257132168796771975168   (bytes 16-31 of salt)
-    ///   salt_hi    = 79228162514264337593543950335   (bytes 0-15  of salt)
-    ///   commitment = 10100113277745503718751020503234026402412313156239001215309700981685679881829
+    /// HONEST vector — pubkey_bytes / salt_bytes are laid out exactly as a real
+    /// Solana pubkey / salt reaches `compute_hand_commitment` (lo = first 16
+    /// bytes, hi = last 16 bytes). The previous version of this test pre-swapped
+    /// the halves to match the helper's (buggy) reversed read, so the two errors
+    /// cancelled and it passed even while every honest reveal_hand failed
+    /// CommitmentMismatch. With the natural layout below, a reversed-read helper
+    /// produces the wrong commitment and this test fails — catching the bug.
     ///
-    /// The expected LE bytes were computed from the decimal commitment via:
-    ///   buf[i] = (commitment >> i*8) & 0xFF
+    /// Circuit vector (regenerated from hand_commitment.circom):
+    ///   round      = 1
+    ///   card_ids   = [1, 5, 23, 47, 2, 0, 0, 0, 0, 0]
+    ///   pubkey_lo  = 147573952589676412927   (bytes 0-15  of pubkey, BE u128)
+    ///   pubkey_hi  = 295147905179352825855   (bytes 16-31 of pubkey, BE u128)
+    ///   salt_lo    = 147573952589676412927   (bytes 0-15  of salt)
+    ///   salt_hi    = 295147905179352825855   (bytes 16-31 of salt)
+    ///   commitment = 17463847584621727651010613540357406880358104918389010558000377047778559303304
     #[test]
     fn poseidon_match_circuit_commitment() {
-        // Build pubkey_bytes: [pubkey_hi BE | pubkey_lo BE]
-        let mut pubkey_bytes = [0u8; 32];
-        // pubkey_hi (bytes 0..16): 295147905179352825855 = 0x00000000000000_0F_FFFFFFFFFFFFFFFF
-        pubkey_bytes[0..16].copy_from_slice(&[
-            0, 0, 0, 0, 0, 0, 0, 15, 255, 255, 255, 255, 255, 255, 255, 255,
-        ]);
-        // pubkey_lo (bytes 16..32): 147573952589676412927 = 0x00000000000000_07_FFFFFFFFFFFFFF
-        pubkey_bytes[16..32].copy_from_slice(&[
+        // lo = 147573952589676412927 = 0x0000000000000007FFFFFFFFFFFFFFFF
+        let lo: [u8; 16] = [
             0, 0, 0, 0, 0, 0, 0, 7, 255, 255, 255, 255, 255, 255, 255, 255,
-        ]);
+        ];
+        // hi = 295147905179352825855 = 0x000000000000000FFFFFFFFFFFFFFFFF
+        let hi: [u8; 16] = [
+            0, 0, 0, 0, 0, 0, 0, 15, 255, 255, 255, 255, 255, 255, 255, 255,
+        ];
 
-        // Build salt_bytes: [salt_hi BE | salt_lo BE]
+        // Natural layout: bytes[0..16] = lo, bytes[16..32] = hi (NO pre-swap).
+        let mut pubkey_bytes = [0u8; 32];
+        pubkey_bytes[0..16].copy_from_slice(&lo);
+        pubkey_bytes[16..32].copy_from_slice(&hi);
+
         let mut salt_bytes = [0u8; 32];
-        // salt_hi (bytes 0..16): 79228162514264337593543950335 = 2^96 - 1
-        salt_bytes[0..16].copy_from_slice(&[
-            0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-        ]);
-        // salt_lo (bytes 16..32): 39614081257132168796771975168 = 2^95
-        salt_bytes[16..32].copy_from_slice(&[0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        salt_bytes[0..16].copy_from_slice(&lo);
+        salt_bytes[16..32].copy_from_slice(&hi);
 
         let card_ids: [u64; 10] = [1, 5, 23, 47, 2, 0, 0, 0, 0, 0];
 
         let result = compute_hand_commitment(1, &pubkey_bytes, &card_ids, &salt_bytes)
             .expect("poseidon computation should succeed");
 
-        // Expected LE bytes of commitment decimal
-        // 10100113277745503718751020503234026402412313156239001215309700981685679881829
+        // LE bytes of commitment decimal
+        // 17463847584621727651010613540357406880358104918389010558000377047778559303304
         let expected_le: [u8; 32] = [
-            101, 254, 20, 78, 171, 229, 171, 10, 239, 99, 224, 42, 72, 213, 240, 241, 156, 199,
-            190, 29, 65, 187, 243, 72, 65, 52, 174, 236, 38, 118, 84, 22,
+            136, 158, 32, 139, 134, 208, 171, 167, 140, 10, 22, 229, 193, 225, 110, 74, 64, 138,
+            29, 181, 254, 90, 211, 100, 229, 52, 102, 193, 252, 47, 156, 38,
         ];
 
         assert_eq!(

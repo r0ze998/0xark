@@ -1,5 +1,8 @@
 use {
-    anchor_lang::{solana_program::instruction::Instruction, InstructionData, ToAccountMetas},
+    anchor_lang::{
+        solana_program::instruction::Instruction, AccountDeserialize, InstructionData,
+        ToAccountMetas,
+    },
     litesvm::LiteSVM,
     sha2::{Digest, Sha256},
     solana_keypair::Keypair,
@@ -100,6 +103,10 @@ const PROOF_HC_A_BAD: [u8; 64] = [
 const HC_PROVER_SEED: [u8; 32] = [0x42; 32];
 
 fn setup() -> (LiteSVM, Keypair) {
+    setup_with_cu(1_400_000)
+}
+
+fn setup_with_cu(compute_unit_limit: u64) -> (LiteSVM, Keypair) {
     use solana_compute_budget::compute_budget::ComputeBudget;
     let program_id = oxark::id();
     let payer = Keypair::new();
@@ -109,6 +116,7 @@ fn setup() -> (LiteSVM, Keypair) {
     let base = ComputeBudget::new_with_defaults(false, false);
     let budget = ComputeBudget {
         heap_size: 256 * 1024,
+        compute_unit_limit,
         ..base
     };
     let mut svm = LiteSVM::new().with_compute_budget(budget);
@@ -1265,5 +1273,141 @@ fn test_commit_hand_tampered_proof() {
     assert!(
         result.is_err(),
         "tampered hand_commitment proof must be rejected"
+    );
+}
+
+// The salt and card_ids that the PROOF_HC_* / PUBLIC_HC_* fixtures were
+// generated from (tools/gen-zk-test-fixtures.mjs: salt = [0x11; 32],
+// cards [1,5,23,47,2] padded to 10, round 1). reveal_hand must be called with
+// these exact values to recompute the same Poseidon commitment.
+const HC_SALT: [u8; 32] = [0x11; 32];
+const HC_CARD_IDS: [u64; 10] = [1, 5, 23, 47, 2, 0, 0, 0, 0, 0];
+
+/// Full ZK dispatch happy path: init_duel → commit_hand → reveal_hand.
+///
+/// This is the integration test whose absence let the poseidon_helper lo/hi
+/// swap (and earlier the orphaned commit_hand VK) ship undetected — the only
+/// reveal tests exercised the unrelated SHA-256 commit_action/reveal_action
+/// path, and the Poseidon test ran the helper NATIVELY where CU cost is
+/// invisible. Here commit_hand stores the circuit commitment and reveal_hand
+/// recomputes Poseidon(15) ON-CHAIN over the same pubkey/salt/cards; with the
+/// lo/hi fix in poseidon_helper the recomputed commitment matches.
+///
+/// IGNORED — running this in BPF surfaced a second, independent blocker: the
+/// on-chain Poseidon(15) costs >8,000,000 CU, far over Solana's 1,400,000
+/// CU-per-transaction maximum, so reveal_hand cannot execute on devnet as
+/// implemented (pure-Rust ark-bn254 via pso_poseidon; the sol_poseidon syscall
+/// only takes ≤12 inputs, this hash takes 15). The lo/hi fix itself is verified
+/// by the native `poseidon_match_circuit_commitment` unit test. Remove the
+/// #[ignore] once the commitment recomputation fits the CU budget (e.g. a
+/// ≤12-input Poseidon usable via the syscall, or a lighter commitment scheme).
+#[test]
+#[ignore = "reveal_hand on-chain Poseidon(15) exceeds Solana's 1.4M CU/tx max (measured >8M); fix the CU cost before un-ignoring"]
+fn test_commit_hand_then_reveal_hand_roundtrip() {
+    let (mut svm, authority) = setup();
+    let player1 = Keypair::new_from_array(HC_PROVER_SEED);
+    let player2 = Keypair::new();
+    svm.airdrop(&player1.pubkey(), 10_000_000_000).unwrap();
+    svm.airdrop(&player2.pubkey(), 10_000_000_000).unwrap();
+
+    let duel_id = solana_pubkey::Pubkey::new_unique();
+    let (duel_key, _) = duel_pda(&duel_id);
+
+    // init_duel
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::InitDuel {
+                duel_id,
+                hall_tier: 0,
+                ante: 0,
+            }
+            .data(),
+            oxark::accounts::InitDuel {
+                duel: duel_key,
+                player_1: player1.pubkey(),
+                player_2: player2.pubkey(),
+                authority: authority.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &authority,
+    );
+
+    // commit_hand (round 1) — stores the circuit commitment + sets zk_verified
+    let public_signals = [
+        PUBLIC_HC_COMMITMENT,
+        PUBLIC_HC_ROUND,
+        PUBLIC_HC_PUBKEY_LO,
+        PUBLIC_HC_PUBKEY_HI,
+    ];
+    let commit_ix = Instruction::new_with_bytes(
+        oxark::id(),
+        &oxark::instruction::CommitHand {
+            duel_id,
+            round: 1,
+            proof_a: PROOF_HC_A,
+            proof_b: PROOF_HC_B,
+            proof_c: PROOF_HC_C,
+            public_signals,
+        }
+        .data(),
+        oxark::accounts::CommitHand {
+            duel: duel_key,
+            player: player1.pubkey(),
+        }
+        .to_account_metas(None),
+    );
+    send_ix_result_multi(&mut svm, commit_ix, &authority, &[&player1])
+        .expect("commit_hand with valid proof must succeed");
+
+    // Build a reveal_hand instruction for the given card_ids.
+    let reveal_ix = |card_ids: [u64; 10]| {
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::RevealHand {
+                duel_id,
+                round: 1,
+                card_ids,
+                salt: HC_SALT,
+            }
+            .data(),
+            oxark::accounts::RevealHand {
+                duel: duel_key,
+                player: player1.pubkey(),
+            }
+            .to_account_metas(None),
+        )
+    };
+
+    // Cheat direction first: reveal a different hand than was committed. The
+    // recomputed Poseidon won't match the stored commitment → CommitmentMismatch.
+    // A failed tx rolls back, so the honest reveal below still works.
+    let cheat_cards: [u64; 10] = [1, 5, 23, 47, 3, 0, 0, 0, 0, 0];
+    let cheat = send_ix_result_multi(&mut svm, reveal_ix(cheat_cards), &authority, &[&player1]);
+    let cheat_err = cheat.expect_err("reveal_hand with mismatched card_ids must be rejected");
+    assert!(
+        cheat_err
+            .meta
+            .logs
+            .iter()
+            .any(|l| l.contains("CommitmentMismatch")),
+        "expected CommitmentMismatch, got logs: {:?}",
+        cheat_err.meta.logs
+    );
+
+    // Honest reveal: same pubkey/salt/cards as the committed proof → succeeds.
+    send_ix_result_multi(&mut svm, reveal_ix(HC_CARD_IDS), &authority, &[&player1])
+        .expect("honest reveal_hand must succeed (Poseidon commitment must match)");
+
+    // The revealed hand is recorded on-chain.
+    let acct = svm.get_account(&duel_key).expect("duel account exists");
+    let mut data: &[u8] = &acct.data;
+    let duel = oxark::state::DuelState::try_deserialize(&mut data).expect("deserialize DuelState");
+    assert_eq!(
+        duel.player_1_revealed[0], HC_CARD_IDS,
+        "player_1 round-1 revealed cards must be recorded"
     );
 }
