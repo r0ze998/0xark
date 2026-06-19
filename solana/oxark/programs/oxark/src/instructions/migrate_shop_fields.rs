@@ -1,6 +1,17 @@
-// migrate_shop_fields — Phase 20-B migration.
+// migrate_shop_fields — Phase 20-B migration. REFERENCE ONLY since YKK-39
+// (un-wired from lib.rs; not dispatchable).
+//
 // Resizes the GameWorld PDA to the new SIZE and initializes shop defaults.
-// Call once after program upgrade; idempotent (writing defaults again is safe).
+// Originally meant to be called once after a pre-Phase-20-B program upgrade.
+//
+// ⚠️ YKK-39 footgun: this writes `prize_pool` (byte 125) from an external arg but
+// does NOT write `prize_pool_bump` (appended in YKK-38). After YKK-38 made the pool
+// a PDA vault, running this would leave the stored address and its seeds/bump
+// inconsistent, breaking claim_prize_v2 / buy_pack / register_waitlist (prize/deposit
+// DoS). The fresh-init path (YKK-34/38) makes migration unnecessary, so the
+// entrypoint was removed. Kept here only as a historical reference; if it is ever
+// resurrected for a real migration it MUST also set prize_pool_bump (and likely
+// derive prize_pool as the PDA rather than accept it as an argument).
 //
 // Uses UncheckedAccount + manual realloc because Anchor cannot deserialize the
 // pre-Phase-20-B account (it's 93 bytes, the new struct expects 185).
@@ -29,6 +40,7 @@ pub struct MigrateShopFields<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[allow(dead_code)] // YKK-39: reference only, no longer dispatched from lib.rs
 pub fn handle_migrate_shop_fields(
     ctx: Context<MigrateShopFields>,
     ops_treasury: Pubkey,
