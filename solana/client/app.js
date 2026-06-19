@@ -10,7 +10,7 @@ import { mount as mountIntr,         unmount as unmountIntr         } from './sr
 import { mount as mountReveal,       unmount as unmountReveal       } from './src/components/reveal.js';
 import { mount as mountLoot,         unmount as unmountLoot         } from './src/components/loot.js';
 import { getState, setState, wasRestored } from './src/state/battle-state.js';
-import { PRIZE_POOL_PUBKEY, OPS_TREASURY_PUBKEY } from './src/config.js';
+import { OPS_TREASURY_PUBKEY } from './src/config.js';
 
 const SCREENS = {
   home:          { mount: mountHome,   unmount: unmountHome   },
@@ -180,8 +180,9 @@ function showRegisterScreen() {
     errEl.style.display = 'none';
 
     try {
+      // YKK-38: prize pool is a program PDA derived on-chain; only ops treasury
+      // is passed as an external address.
       const result = await window.oxarkOnchain.registerWaitlist(
-        PRIZE_POOL_PUBKEY,
         OPS_TREASURY_PUBKEY
       );
       _showToast(`Registered! tx: ${result.signature.slice(0, 8)}…`, 'info');

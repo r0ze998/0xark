@@ -27,11 +27,12 @@ pub struct RegisterWaitlist<'info> {
     )]
     pub game_world: Account<'info, GameWorld>,
 
-    /// Prize pool vault — must match the address registered in GameWorld.
-    /// CHECK: address constraint enforced below.
+    /// Prize-pool PDA vault (YKK-38); address enforced by seeds.
+    /// CHECK: lamports-only System PDA, validated by seeds/bump.
     #[account(
         mut,
-        constraint = prize_pool.key() == game_world.prize_pool @ ErrorCode::InvalidAccount
+        seeds = [GameWorld::PRIZE_POOL_SEED],
+        bump = game_world.prize_pool_bump,
     )]
     pub prize_pool: AccountInfo<'info>,
 
@@ -134,14 +135,15 @@ mod tests {
 
     #[test]
     fn wrong_prize_pool_rejected_by_constraint() {
-        // Simulate the constraint logic: prize_pool.key() must equal game_world.prize_pool.
-        let expected = Pubkey::new_unique();
+        // YKK-38: prize_pool is now the PDA seeds=[b"prize_pool"]. The seeds
+        // constraint passes only for that exact derived address; any other key
+        // (an attacker-supplied account) cannot match it.
+        let (expected, _bump) =
+            Pubkey::find_program_address(&[GameWorld::PRIZE_POOL_SEED], &crate::ID);
         let attacker = Pubkey::new_unique();
-        assert_ne!(attacker, expected);
-        // Constraint passes only when addresses match.
-        assert!(
-            attacker != expected,
-            "attacker address must not equal expected prize_pool"
+        assert_ne!(
+            attacker, expected,
+            "attacker address must not equal the prize-pool PDA"
         );
     }
 

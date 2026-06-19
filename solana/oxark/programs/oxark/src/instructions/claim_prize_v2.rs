@@ -30,13 +30,15 @@ pub struct ClaimPrizeV2<'info> {
     )]
     pub game_world: Account<'info, GameWorld>,
 
-    /// Prize pool vault.
-    /// CHECK: must match game_world.prize_pool address.
+    /// Prize-pool PDA vault (YKK-38). Program-owned System account holding the
+    /// season's lamports; payouts are authorized via invoke_signed using
+    /// `game_world.prize_pool_bump`, so the pool no longer needs an external signer.
     #[account(
         mut,
-        constraint = prize_pool.key() == game_world.prize_pool @ ErrorCode::InvalidAccount
+        seeds = [GameWorld::PRIZE_POOL_SEED],
+        bump = game_world.prize_pool_bump,
     )]
-    pub prize_pool: AccountInfo<'info>,
+    pub prize_pool: SystemAccount<'info>,
 
     #[account(mut)]
     pub player: Signer<'info>,
@@ -67,17 +69,33 @@ pub fn handle_claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
 
         require!(prize > 0, ErrorCode::NoPrizeClaim);
 
-        let actual_prize = prize.min(ctx.accounts.prize_pool.lamports());
+        // Balance guard: never pay beyond the pool, and never drain it below the
+        // rent-exempt floor (a lamports-only System PDA with 0 data still needs
+        // minimum_balance(0) to stay alive). The floor (~0.00089 SOL) is stranded
+        // dust by design — see PR notes.
+        let rent_exempt_min = Rent::get()?.minimum_balance(0);
+        let spendable = ctx
+            .accounts
+            .prize_pool
+            .lamports()
+            .saturating_sub(rent_exempt_min);
+        let actual_prize = prize.min(spendable);
         (vault_count, actual_prize)
     }; // immutable borrows on world/ps drop here
 
+    require!(actual_prize > 0, ErrorCode::NoPrizeClaim);
+
+    // YKK-38: pay out from the prize-pool PDA via invoke_signed.
+    let bump = ctx.accounts.game_world.prize_pool_bump;
+    let signer_seeds: &[&[u8]] = &[GameWorld::PRIZE_POOL_SEED, std::slice::from_ref(&bump)];
     transfer(
-        CpiContext::new(
+        CpiContext::new_with_signer(
             ctx.accounts.system_program.key(),
             Transfer {
                 from: ctx.accounts.prize_pool.to_account_info(),
                 to: ctx.accounts.player.to_account_info(),
             },
+            &[signer_seeds],
         ),
         actual_prize,
     )?;

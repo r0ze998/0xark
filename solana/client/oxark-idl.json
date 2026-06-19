@@ -514,7 +514,26 @@
         },
         {
           "name": "prize_pool",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  122,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "slot_hashes"
@@ -1077,9 +1096,30 @@
         {
           "name": "prize_pool",
           "docs": [
-            "Prize pool vault."
+            "Prize-pool PDA vault (YKK-38). Program-owned System account holding the",
+            "season's lamports; payouts are authorized via invoke_signed using",
+            "`game_world.prize_pool_bump`, so the pool no longer needs an external signer."
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  122,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "player",
@@ -2932,6 +2972,33 @@
           }
         },
         {
+          "name": "prize_pool",
+          "docs": [
+            "Prize-pool PDA vault (YKK-38). Lamports-only, System-owned; created lazily",
+            "on the first deposit. Here we only derive it to record its address + bump",
+            "into the GameWorld so `claim_prize_v2` can sign payouts via invoke_signed."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  122,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
           "name": "authority",
           "writable": true,
           "signer": true
@@ -2948,10 +3015,6 @@
         },
         {
           "name": "ops_treasury",
-          "type": "pubkey"
-        },
-        {
-          "name": "prize_pool",
           "type": "pubkey"
         }
       ]
@@ -4316,9 +4379,28 @@
         {
           "name": "prize_pool",
           "docs": [
-            "Prize pool vault — must match the address registered in GameWorld."
+            "Prize-pool PDA vault (YKK-38); address enforced by seeds."
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  122,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "ops_treasury",
@@ -8155,6 +8237,14 @@
               "pubkeys so each participant is counted exactly once across batches."
             ],
             "type": "pubkey"
+          },
+          {
+            "name": "prize_pool_bump",
+            "docs": [
+              "Bump for the prize-pool PDA (seeds = [b\"prize_pool\"]). The pool is a",
+              "program-owned System account; `claim_prize_v2` signs payouts with this."
+            ],
+            "type": "u8"
           }
         ]
       }

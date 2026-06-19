@@ -25,6 +25,15 @@ pub struct InitGameWorld<'info> {
     )]
     pub game_world: Account<'info, GameWorld>,
 
+    /// Prize-pool PDA vault (YKK-38). Lamports-only, System-owned; created lazily
+    /// on the first deposit. Here we only derive it to record its address + bump
+    /// into the GameWorld so `claim_prize_v2` can sign payouts via invoke_signed.
+    #[account(
+        seeds = [GameWorld::PRIZE_POOL_SEED],
+        bump,
+    )]
+    pub prize_pool: SystemAccount<'info>,
+
     #[account(
         mut,
         constraint = authority.key() == ADMIN_PUBKEY @ ErrorCode::Unauthorized,
@@ -38,10 +47,12 @@ pub fn handle_init_game_world(
     ctx: Context<InitGameWorld>,
     game_start_timestamp: i64,
     ops_treasury: Pubkey,
-    prize_pool: Pubkey,
 ) -> Result<()> {
-    let world = &mut ctx.accounts.game_world;
     let bump = ctx.bumps.game_world;
+    // YKK-38: the prize pool is now a program-derived vault, not an external key.
+    let prize_pool = ctx.accounts.prize_pool.key();
+    let prize_pool_bump = ctx.bumps.prize_pool;
+    let world = &mut ctx.accounts.game_world;
 
     world.start_timestamp = game_start_timestamp;
     world.end_timestamp = game_start_timestamp + GameWorld::SEASON_DURATION_SECS;
@@ -60,6 +71,7 @@ pub fn handle_init_game_world(
     // Phase 20-B shop defaults
     world.ops_treasury = ops_treasury;
     world.prize_pool = prize_pool;
+    world.prize_pool_bump = prize_pool_bump;
     world.shop_phase_threshold_seconds = GameWorld::DEFAULT_SHOP_PHASE_THRESHOLD;
     world.legendary_drop_rate_phase1 = GameWorld::DEFAULT_LEGENDARY_RATE_PHASE1;
     world.legendary_drop_rate_phase2 = GameWorld::DEFAULT_LEGENDARY_RATE_PHASE2;

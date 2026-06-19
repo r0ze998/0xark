@@ -1427,16 +1427,19 @@ fn test_commit_hand_then_reveal_hand_roundtrip() {
 // covered below. (The admin-signed success paths of finalize/end can't be signed
 // in litesvm — noted in the PR.)
 //
-// NOTE: claim_prize_v2 transfers `from: prize_pool` via CpiContext::new, so the
-// prize_pool vault must SIGN the claim — a separate pre-existing design issue (a
-// shared vault can't realistically sign every claim). Tests co-sign with the
-// vault to validate the distribution amounts.
+// YKK-38: the prize pool is now the PDA seeds=[b"prize_pool"]; claim_prize_v2 pays
+// out via invoke_signed, so the program (not the vault) signs. Tests below craft the
+// pool as that PDA and claim with ONLY the player signing — exactly the production
+// flow — proving payouts work without any external vault signature.
 
 fn gw_pda() -> (Pubkey, u8) {
     solana_pubkey::Pubkey::find_program_address(&[b"game_world"], &oxark::id())
 }
 fn player_state_pda(p: &Pubkey) -> (Pubkey, u8) {
     solana_pubkey::Pubkey::find_program_address(&[b"player", p.as_ref()], &oxark::id())
+}
+fn prize_pool_pda() -> (Pubkey, u8) {
+    solana_pubkey::Pubkey::find_program_address(&[b"prize_pool"], &oxark::id())
 }
 
 fn craft_owned(svm: &mut LiteSVM, addr: &Pubkey, data: Vec<u8>) {
@@ -1472,9 +1475,9 @@ fn craft_ended_world(
     t3: u64,
     t4: u64,
     t5: u64,
-) -> (Pubkey, Keypair) {
+) -> (Pubkey, Pubkey) {
     let (pda, bump) = gw_pda();
-    let prize_pool = Keypair::new();
+    let (pool_pda, pool_bump) = prize_pool_pda();
     let mut gw = oxark::state::GameWorld::default();
     gw.total_prize_pool = total_prize_pool;
     gw.game_status = 2;
@@ -1486,40 +1489,39 @@ fn craft_ended_world(
     gw.tier4_total_vault = t4;
     gw.tier5_total_vault = t5;
     gw.bump = bump;
-    gw.prize_pool = prize_pool.pubkey();
+    gw.prize_pool = pool_pda;
+    gw.prize_pool_bump = pool_bump;
     let mut buf = Vec::new();
     gw.try_serialize(&mut buf).unwrap();
     craft_owned(svm, &pda, buf);
-    svm.airdrop(&prize_pool.pubkey(), total_prize_pool + 10_000_000)
+    // Fund the prize-pool PDA as a lamports-only System account (the production
+    // shape: deposits land here, claim pays out via invoke_signed). The +10M
+    // buffer keeps it above the rent-exempt floor after payouts.
+    svm.airdrop(&pool_pda, total_prize_pool + 10_000_000)
         .unwrap();
-    (pda, prize_pool)
+    (pda, pool_pda)
 }
 
-/// Claim for `player`; returns the prize_pool balance delta (= the payout).
-fn do_claim(svm: &mut LiteSVM, player: &Keypair, prize_pool: &Keypair, gw: &Pubkey) -> u64 {
+/// Claim for `player` (player-only signature — production flow); returns the
+/// prize_pool balance delta (= the payout).
+fn do_claim(svm: &mut LiteSVM, player: &Keypair, prize_pool: &Pubkey, gw: &Pubkey) -> u64 {
     let (ps_pda, _) = player_state_pda(&player.pubkey());
-    let before = svm.get_account(&prize_pool.pubkey()).unwrap().lamports;
-    let mut metas = oxark::accounts::ClaimPrizeV2 {
+    let before = svm.get_account(prize_pool).unwrap().lamports;
+    let metas = oxark::accounts::ClaimPrizeV2 {
         player_state: ps_pda,
         game_world: *gw,
-        prize_pool: prize_pool.pubkey(),
+        prize_pool: *prize_pool,
         player: player.pubkey(),
         system_program: solana_sdk_ids::system_program::id(),
     }
     .to_account_metas(None);
-    // prize_pool is the system-transfer source → must be a signer.
-    for m in metas.iter_mut() {
-        if m.pubkey == prize_pool.pubkey() {
-            m.is_signer = true;
-        }
-    }
     let ix = Instruction::new_with_bytes(
         oxark::id(),
         &oxark::instruction::ClaimPrizeV2 {}.data(),
         metas,
     );
-    send_ix_result_multi(svm, ix, player, &[prize_pool]).expect("claim_prize_v2 should succeed");
-    let after = svm.get_account(&prize_pool.pubkey()).unwrap().lamports;
+    send_ix_result_multi(svm, ix, player, &[]).expect("claim_prize_v2 should succeed");
+    let after = svm.get_account(prize_pool).unwrap().lamports;
     before - after
 }
 
@@ -1627,5 +1629,104 @@ fn finalize_and_end_reject_non_admin() {
     assert!(
         format!("{:?}", r2.unwrap_err()).contains("NotAdmin"),
         "end_season_final must reject a non-admin signer"
+    );
+}
+
+/// Build a `ClaimPrizeV2` instruction (player-only signer) for the negative tests.
+fn claim_ix(player: &Pubkey, prize_pool: &Pubkey, gw: &Pubkey) -> Instruction {
+    let (ps_pda, _) = player_state_pda(player);
+    Instruction::new_with_bytes(
+        oxark::id(),
+        &oxark::instruction::ClaimPrizeV2 {}.data(),
+        oxark::accounts::ClaimPrizeV2 {
+            player_state: ps_pda,
+            game_world: *gw,
+            prize_pool: *prize_pool,
+            player: *player,
+            system_program: solana_sdk_ids::system_program::id(),
+        }
+        .to_account_metas(None),
+    )
+}
+
+/// YKK-38: after a claim, the prize-pool PDA must never drop below the rent-exempt
+/// floor (a lamports-only System account with 0 data still needs minimum_balance(0)).
+#[test]
+fn claim_prize_v2_preserves_rent_exempt_floor() {
+    let (mut svm, _authority) = setup();
+    let pool = 100_000_000_000u64;
+    // Single champion claims the full Tier-1 share; pool drains the most here.
+    let (gw, prize_pool) = craft_ended_world(&mut svm, pool, 0, 40, 1, 0, 0, 0, 0);
+    let a = Keypair::new();
+    svm.airdrop(&a.pubkey(), 1_000_000_000).unwrap();
+    craft_player(&mut svm, &a.pubkey(), 40);
+
+    let paid = do_claim(&mut svm, &a, &prize_pool, &gw);
+    assert_eq!(paid, pool * 50 / 100, "champion gets Tier-1 50%");
+
+    let rent_floor = svm.minimum_balance_for_rent_exemption(0);
+    let remaining = svm.get_account(&prize_pool).unwrap().lamports;
+    assert!(
+        remaining >= rent_floor,
+        "pool ({remaining}) must stay at/above the rent-exempt floor ({rent_floor})"
+    );
+}
+
+/// C1 invariant survives the invoke_signed rewrite: a second claim is rejected
+/// (deposit_amount is zeroed after the first), so no one can drain twice.
+#[test]
+fn claim_prize_v2_double_claim_rejected() {
+    let (mut svm, _authority) = setup();
+    let pool = 100_000_000_000u64;
+    let (gw, prize_pool) = craft_ended_world(&mut svm, pool, 0, 40, 1, 0, 0, 0, 0);
+    let a = Keypair::new();
+    svm.airdrop(&a.pubkey(), 1_000_000_000).unwrap();
+    craft_player(&mut svm, &a.pubkey(), 40);
+
+    let _first = do_claim(&mut svm, &a, &prize_pool, &gw);
+    // New blockhash so the second tx is re-executed (not deduped as already
+    // processed) and actually reaches the program's C1 deposit gate.
+    svm.expire_blockhash();
+    let r = send_ix_result_multi(&mut svm, claim_ix(&a.pubkey(), &prize_pool, &gw), &a, &[]);
+    assert!(
+        format!("{:?}", r.unwrap_err()).contains("NotRegistered"),
+        "a second claim must be rejected by the C1 deposit gate"
+    );
+}
+
+/// Claiming before the season is finalized (game_status != 2) is rejected.
+#[test]
+fn claim_prize_v2_rejects_before_game_ended() {
+    let (mut svm, _authority) = setup();
+    let pool = 100_000_000_000u64;
+    let (gw_pda_addr, bump) = gw_pda();
+    let (pool_pda, pool_bump) = prize_pool_pda();
+    // Craft a world still ACTIVE (status 1), not ended.
+    let mut gw = oxark::state::GameWorld::default();
+    gw.total_prize_pool = pool;
+    gw.game_status = 1;
+    gw.max_vault = 40;
+    gw.max_vault_count = 1;
+    gw.bump = bump;
+    gw.prize_pool = pool_pda;
+    gw.prize_pool_bump = pool_bump;
+    let mut buf = Vec::new();
+    gw.try_serialize(&mut buf).unwrap();
+    craft_owned(&mut svm, &gw_pda_addr, buf);
+    svm.airdrop(&pool_pda, pool + 10_000_000).unwrap();
+
+    let a = Keypair::new();
+    svm.airdrop(&a.pubkey(), 1_000_000_000).unwrap();
+    craft_player(&mut svm, &a.pubkey(), 40);
+
+    let r = send_ix_result_multi(
+        &mut svm,
+        claim_ix(&a.pubkey(), &pool_pda, &gw_pda_addr),
+        &a,
+        &[],
+    );
+    assert!(
+        format!("{:?}", r.unwrap_err()).contains("GameNotEnded"),
+        "claim before game_status==2 must be rejected with GameNotEnded"
     );
 }

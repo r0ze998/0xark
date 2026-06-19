@@ -1270,14 +1270,21 @@ pub struct GameWorld {
     /// Last PlayerState owner tallied; the crank must pass strictly-increasing
     /// pubkeys so each participant is counted exactly once across batches.
     pub finalize_cursor: Pubkey,
+    // ── YKK-38: prize-pool PDA vault ─────────────────────────────────────────
+    /// Bump for the prize-pool PDA (seeds = [b"prize_pool"]). The pool is a
+    /// program-owned System account; `claim_prize_v2` signs payouts with this.
+    pub prize_pool_bump: u8,
 }
 
 impl GameWorld {
     pub const SEED: &'static [u8] = b"game_world";
+    /// Seeds for the single prize-pool PDA vault (YKK-38).
+    pub const PRIZE_POOL_SEED: &'static [u8] = b"prize_pool";
     // Original: 8 disc + 8+8+8+4+8+8+6+1+1+8+8+8+8+1 = 93
     // Phase 20-B additions: +32+32+8+4+4+4+4+4 = +92 → 185
     // Finalize additions: +1 (max_vault) +4 (max_vault_count) +4 (finalize_processed)
     //                     +32 (finalize_cursor) = +41 → 226
+    // YKK-38 addition: +1 (prize_pool_bump) → 227
     pub const SIZE: usize = 8
         + 8
         + 8
@@ -1304,7 +1311,8 @@ impl GameWorld {
         + 1
         + 4
         + 4
-        + 32;
+        + 32
+        + 1;
 
     pub const LEGENDARY_MAX_CLAIMANTS: u8 = 10;
     pub const DEPOSIT_LAMPORTS: u64 = 500_000_000; // 0.5 SOL
@@ -1371,6 +1379,7 @@ impl Default for GameWorld {
             max_vault_count: 0,
             finalize_processed: 0,
             finalize_cursor: Pubkey::default(),
+            prize_pool_bump: 0,
         }
     }
 }

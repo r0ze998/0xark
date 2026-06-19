@@ -750,13 +750,11 @@ pub mod oxark {
         ctx: Context<InitGameWorld>,
         game_start_timestamp: i64,
         ops_treasury: Pubkey,
-        prize_pool: Pubkey,
     ) -> Result<()> {
         instructions::init_game_world::handle_init_game_world(
             ctx,
             game_start_timestamp,
             ops_treasury,
-            prize_pool,
         )
     }
 
