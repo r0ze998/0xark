@@ -35,8 +35,12 @@ pub struct BuyPack<'info> {
     #[account(mut, constraint = ops_treasury.key() == game_world.ops_treasury @ ErrorCode::Unauthorized)]
     pub ops_treasury: AccountInfo<'info>,
 
-    /// CHECK: verified against game_world.prize_pool
-    #[account(mut, constraint = prize_pool.key() == game_world.prize_pool @ ErrorCode::Unauthorized)]
+    /// CHECK: prize-pool PDA vault (YKK-38); address enforced by seeds.
+    #[account(
+        mut,
+        seeds = [GameWorld::PRIZE_POOL_SEED],
+        bump = game_world.prize_pool_bump,
+    )]
     pub prize_pool: AccountInfo<'info>,
 
     /// CHECK: SlotHashes sysvar (SysvarS1otHashes111111111111111111111111111)

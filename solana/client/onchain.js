@@ -305,6 +305,15 @@ function findGameWorldPDA() {
   );
 }
 
+// YKK-38: the prize pool is the PDA seeds=[b"prize_pool"]. claim_prize_v2 pays out
+// from it via invoke_signed, and deposits (register_waitlist / buy_pack) land here.
+function findPrizePoolPDA() {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('prize_pool')],
+    getProgramId()
+  );
+}
+
 function findCardBattleHistoryPDA(cardMintPubkey) {
   return solanaWeb3.PublicKey.findProgramAddressSync(
     [ENC.encode('card_battle_history'), cardMintPubkey.toBytes()],
@@ -1599,12 +1608,13 @@ async function checkPlayerStateExists(playerPubkey) {
 
 // ─── register_waitlist ────────────────────────────────────────────────────
 // Deposits 0.5 SOL and registers the player on the Season 1 waitlist.
-// prizePoolStr, opsTreasuryStr: base58 pubkeys of the vault accounts.
-async function registerWaitlist(prizePoolStr, opsTreasuryStr) {
+// YKK-38: prize_pool is the program PDA; only opsTreasury is an external address.
+// opsTreasuryStr: base58 pubkey of the ops treasury account.
+async function registerWaitlist(opsTreasuryStr) {
   const player = window.solana.publicKey;
   const [playerStatePDA] = findPlayerStatePDA(player);
   const [gameWorldPDA]   = findGameWorldPDA();
-  const prizePool        = new solanaWeb3.PublicKey(prizePoolStr);
+  const [prizePool]      = findPrizePoolPDA();
   const opsTreasury      = new solanaWeb3.PublicKey(opsTreasuryStr);
 
   const d    = await disc('register_waitlist');
@@ -1738,12 +1748,12 @@ async function grantImprint(cardMintStr, imprintKeyVal, isCosmetic, duelId) {
 
 // ─── claim_prize_v2 ───────────────────────────────────────────────────────
 // Claims tier-proportional prize from the prize pool after game ends.
-// prizePoolStr: base58 pubkey of the prize vault account.
-async function claimPrizeV2(prizePoolStr) {
+// YKK-38: prize_pool is the program PDA; no external address argument needed.
+async function claimPrizeV2() {
   const player = window.solana.publicKey;
   const [playerStatePDA] = findPlayerStatePDA(player);
   const [gameWorldPDA]   = findGameWorldPDA();
-  const prizePool        = new solanaWeb3.PublicKey(prizePoolStr);
+  const [prizePool]      = findPrizePoolPDA();
 
   const d    = await disc('claim_prize_v2');
   const data = new Uint8Array(8);
@@ -2005,12 +2015,13 @@ async function checkLegendaryV2() {
 // ── Phase 20-B: Shop instructions ────────────────────────────────────────────
 
 const OPS_TREASURY_PK  = new solanaWeb3.PublicKey('GN3aBaUFPpejXBy2u4SgXuwQkkqRFauqAfXNsXhTPz4f');
-const PRIZE_POOL_PK    = new solanaWeb3.PublicKey('C8ui4h9tuYiU55VrMohAoFwjsm5RxKPpmQizX9eAAgMa');
+// YKK-38: prize pool is now the program PDA (findPrizePoolPDA), not a fixed account.
 
 async function buyPack(packType) {
   const buyer         = window.solana.publicKey;
   const [playerStatePDA] = findPlayerStatePDA(buyer);
   const [gameWorldPDA]   = findGameWorldPDA();
+  const [prizePool]      = findPrizePoolPDA(); // YKK-38: PDA vault
 
   // disc(8) + pack_type(1) = 9 bytes
   const d    = await disc('buy_pack');
@@ -2023,7 +2034,7 @@ async function buyPack(packType) {
     { pubkey: playerStatePDA,   isSigner: false, isWritable: true  },
     { pubkey: gameWorldPDA,     isSigner: false, isWritable: false },
     { pubkey: OPS_TREASURY_PK,  isSigner: false, isWritable: true  },
-    { pubkey: PRIZE_POOL_PK,    isSigner: false, isWritable: true  },
+    { pubkey: prizePool,        isSigner: false, isWritable: true  },
     { pubkey: SLOT_HASHES_PUBKEY, isSigner: false, isWritable: false },
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
   ], data);
