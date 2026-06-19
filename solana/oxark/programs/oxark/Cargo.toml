@@ -27,10 +27,9 @@ anchor-spl = { version = "1.0.0", features = ["token", "associated_token"] }
 ephemeral-rollups-sdk = { version = "0.6.6", features = ["anchor", "disable-realloc"] }
 solana-bn254 = "3"
 solana-sha256-hasher = "3.1.0"
-# T-D13-A0: light-poseidon for on-chain Poseidon hash (DEF-16)
-pso-poseidon = { version = "0.2.0", default-features = false }
-ark-bn254 = { version = "0.5", default-features = false }
-ark-ff = { version = "0.5", default-features = false }
+# YKK-33: on-chain Poseidon via the sol_poseidon syscall (Bn254X5). Replaces the
+# pure-Rust ark-bn254 Poseidon(15) that cost >8M CU. Syscall cost 61*n^2+542.
+solana-poseidon = "3.1.12"
 
 [dev-dependencies]
 litesvm = "0.10.0"

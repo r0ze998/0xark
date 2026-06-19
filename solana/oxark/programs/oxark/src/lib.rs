@@ -41,8 +41,7 @@ pub mod damage_calc; // D12+: Phase 15 battle resolver (Rust port of damage-calc
 pub mod error;
 pub mod groth16; // shared BN254/Groth16 math (VK constants stay per-instruction)
 pub mod instructions;
-pub mod poseidon_helper; // T-D13-A0: on-chain Poseidon(15) for reveal_hand
-pub mod poseidon_t16_constants; // T-D13-A0: auto-generated circomlib t=16 constants
+pub mod poseidon_helper; // YKK-33: on-chain Poseidon(6) via sol_poseidon syscall
 pub mod state;
 
 use anchor_lang::prelude::*;
