@@ -1623,28 +1623,31 @@ async function registerWaitlist(prizePoolStr, opsTreasuryStr) {
 
 // ─── burn_card ────────────────────────────────────────────────────────────
 // Burns a Common or Uncommon card NFT. cardMintStr: base58 mint pubkey.
-// rarity: 0=Common, 1=Uncommon (Rare/Legendary blocked on-chain).
-async function burnCard(cardMintStr, rarity) {
+// YKK-37: rarity is read on-chain from CardMintRecord (C5); the caller no longer
+// passes it (Rare/Legendary remain blocked on-chain). Account order must match
+// BurnCard: card_mint_record sits between card_history and season_stats.
+async function burnCard(cardMintStr) {
   const owner    = window.solana.publicKey;
   const mintPK   = new solanaWeb3.PublicKey(cardMintStr);
-  const [ata]    = findAssociatedTokenAddress(owner, mintPK);
-  const [histPDA] = findCardBattleHistoryPDA(mintPK);
-  const createdAt = await readCardBattleHistoryCreatedAt(cardMintStr);
-  const [statsPDA] = findSeasonStatsPDA(createdAt);
+  const [ata]       = findAssociatedTokenAddress(owner, mintPK);
+  const [histPDA]   = findCardBattleHistoryPDA(mintPK);
+  const [recordPDA] = findCardMintRecordPDA(mintPK);
+  const createdAt   = await readCardBattleHistoryCreatedAt(cardMintStr);
+  const [statsPDA]  = findSeasonStatsPDA(createdAt);
 
-  // disc(8) + card_mint(32) + rarity(1) = 41 bytes
+  // disc(8) + card_mint(32) = 40 bytes
   const d    = await disc('burn_card');
-  const data = new Uint8Array(41);
+  const data = new Uint8Array(40);
   let off = writeBytes(data, 0, d);
-  off = writeBytes(data, off, mintPK.toBytes());
-  writeU8(data, off, rarity & 0xff);
+  writeBytes(data, off, mintPK.toBytes());
 
   return buildAndSend([
-    { pubkey: owner,    isSigner: true,  isWritable: true  },
-    { pubkey: mintPK,   isSigner: false, isWritable: true  },
-    { pubkey: ata,      isSigner: false, isWritable: true  },
-    { pubkey: histPDA,  isSigner: false, isWritable: true  },
-    { pubkey: statsPDA, isSigner: false, isWritable: true  },
+    { pubkey: owner,     isSigner: true,  isWritable: true  },
+    { pubkey: mintPK,    isSigner: false, isWritable: true  },
+    { pubkey: ata,       isSigner: false, isWritable: true  },
+    { pubkey: histPDA,   isSigner: false, isWritable: true  },
+    { pubkey: recordPDA, isSigner: false, isWritable: false },
+    { pubkey: statsPDA,  isSigner: false, isWritable: true  },
     { pubkey: new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),        isSigner: false, isWritable: false },
     { pubkey: solanaWeb3.SystemProgram.programId,                    isSigner: false, isWritable: false },
     { pubkey: new solanaWeb3.PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID), isSigner: false, isWritable: false },
