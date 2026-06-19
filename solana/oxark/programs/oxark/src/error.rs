@@ -201,4 +201,13 @@ pub enum ErrorCode {
     InvalidAccountOwner,
     #[msg("ZK proof not verified for this round — call commit_hand first")]
     ZkNotVerified,
+    // ── Season prize settlement (finalize) — appended (no enum renumbering) ───
+    #[msg("Season is not in the expected status for this instruction")]
+    SeasonWrongStatus,
+    #[msg("Waitlist window is still open")]
+    WaitlistStillOpen,
+    #[msg("Finalize batch players must be strictly increasing and unprocessed")]
+    TallyOutOfOrder,
+    #[msg("Season tally incomplete — finalize all participants before ending")]
+    TallyIncomplete,
 }

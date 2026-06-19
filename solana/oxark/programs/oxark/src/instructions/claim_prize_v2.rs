@@ -111,46 +111,133 @@ mod tests {
             "second claim must be rejected once deposit is zeroed"
         );
     }
+
+    #[test]
+    fn band_shares_all_populated_sum_100() {
+        let eff = effective_band_shares([true, true, true, true, true]);
+        assert_eq!(eff, [50, 25, 15, 8, 2]);
+        assert_eq!(eff.iter().sum::<u64>(), 100);
+    }
+
+    #[test]
+    fn band_shares_single_empty_carries_to_next() {
+        // T2 empty → its 25% carries down to T3 (next populated).
+        let eff = effective_band_shares([true, false, true, true, true]);
+        assert_eq!(eff, [50, 0, 40, 8, 2]); // T3 = 15 + 25
+        assert!(eff.iter().sum::<u64>() <= 100);
+    }
+
+    #[test]
+    fn band_shares_chained_empty_carries_two_levels() {
+        // T2 and T3 empty → 25+15 carries down to T4.
+        let eff = effective_band_shares([true, false, false, true, true]);
+        assert_eq!(eff, [50, 0, 0, 48, 2]); // T4 = 8 + 25 + 15
+        assert!(eff.iter().sum::<u64>() <= 100);
+    }
+
+    #[test]
+    fn band_shares_trailing_empty_stays_in_pool() {
+        // Only T1 populated → 25+15+8+2 = 50% has nowhere below to go: stays in pool.
+        let eff = effective_band_shares([true, false, false, false, false]);
+        assert_eq!(eff, [50, 0, 0, 0, 0]);
+        assert_eq!(eff.iter().sum::<u64>(), 50); // < 100; remainder stays in pool
+    }
+
+    #[test]
+    fn band_shares_empty_top_carries_into_first_populated() {
+        // T1 empty (no champion) → 50% carries to T2.
+        let eff = effective_band_shares([false, true, true, true, true]);
+        assert_eq!(eff, [0, 75, 15, 8, 2]); // T2 = 25 + 50
+        assert_eq!(eff.iter().sum::<u64>(), 100);
+    }
 }
 
+/// Effective share (percent of pool) per band T1..T5 with empty-band carry-over.
+/// `populated[i]` = band i has ≥1 member. An empty band's base share carries DOWN
+/// to the next populated band; trailing carry (no populated band below) is dropped
+/// (stays in pool). Σ over populated bands ≤ 100, so Σ(payouts) ≤ pool.
+pub(crate) fn effective_band_shares(populated: [bool; 5]) -> [u64; 5] {
+    let base = [50u64, 25, 15, 8, 2];
+    let mut eff = [0u64; 5];
+    let mut carry = 0u64;
+    for i in 0..5 {
+        if populated[i] {
+            eff[i] = base[i] + carry;
+            carry = 0;
+        } else {
+            carry += base[i];
+        }
+    }
+    eff
+}
+
+/// Tier-based payout for one player, computed from the GameWorld tallies that
+/// `finalize_season_tally` / `end_season_final` populate. Deterministic and
+/// order-independent, so claim order cannot change anyone's share.
+///
+/// Band base shares of the pool: T1 50%, T2 25%, T3 15%, T4 8%, T5 2%.
+///   - Normal (winner_60_count > 0): T1 = `vault_count == 60`, divisor = winner_60_count.
+///   - Timeout (winner_60_count == 0): T1 = `vault_count == max_vault`, divisor =
+///     max_vault_count; those champions were removed from their natural band by
+///     `end_season_final`, so they are paid once.
+///
+/// Empty-band carry-over (YKK ③): a band with no members carries its share DOWN to
+/// the next populated band; a share with no populated band below it stays in the
+/// pool. Empty bands are never used as a divisor, so there is no division by zero,
+/// and Σ(payouts) ≤ pool.
 fn compute_tier_prize(
     vault_count: u64,
     prize_pool: u64,
     world: &GameWorld,
     timeout_mode: bool,
 ) -> u64 {
-    if vault_count == 60 || (timeout_mode && vault_count > 0) {
-        // Tier 1
-        let tier1_pool = prize_pool * 50 / 100;
-        let divisor = if world.winner_60_count > 0 {
-            world.winner_60_count as u64
-        } else {
-            1
-        };
-        tier1_pool / divisor
-    } else if vault_count >= 50 {
-        // Tier 2: 25% proportional
+    // Tier-1 divisor / membership depends on normal vs timeout.
+    let t1_divisor = if timeout_mode {
+        world.max_vault_count as u64
+    } else {
+        world.winner_60_count as u64
+    };
+
+    // Effective share per band (own base + carry from empty bands above).
+    let eff = effective_band_shares([
+        t1_divisor > 0,
+        world.tier2_total_vault > 0,
+        world.tier3_total_vault > 0,
+        world.tier4_total_vault > 0,
+        world.tier5_total_vault > 0,
+    ]);
+
+    // Which band is THIS player in? Tier-1 (champions) is checked first.
+    let is_t1 = if timeout_mode {
+        vault_count == world.max_vault as u64
+    } else {
+        vault_count == 60
+    };
+    if is_t1 {
+        if t1_divisor == 0 {
+            return 0;
+        }
+        return prize_pool * eff[0] / 100 / t1_divisor;
+    }
+    if vault_count >= 50 {
         if world.tier2_total_vault == 0 {
             return 0;
         }
-        prize_pool * 25 / 100 * vault_count / world.tier2_total_vault
+        prize_pool * eff[1] / 100 * vault_count / world.tier2_total_vault
     } else if vault_count >= 30 {
-        // Tier 3: 15% proportional
         if world.tier3_total_vault == 0 {
             return 0;
         }
-        prize_pool * 15 / 100 * vault_count / world.tier3_total_vault
+        prize_pool * eff[2] / 100 * vault_count / world.tier3_total_vault
     } else if vault_count >= 10 {
-        // Tier 4: 8% proportional
         if world.tier4_total_vault == 0 {
             return 0;
         }
-        prize_pool * 8 / 100 * vault_count / world.tier4_total_vault
+        prize_pool * eff[3] / 100 * vault_count / world.tier4_total_vault
     } else {
-        // Tier 5: 2% proportional
         if world.tier5_total_vault == 0 {
             return 0;
         }
-        prize_pool * 2 / 100 * vault_count / world.tier5_total_vault
+        prize_pool * eff[4] / 100 * vault_count / world.tier5_total_vault
     }
 }

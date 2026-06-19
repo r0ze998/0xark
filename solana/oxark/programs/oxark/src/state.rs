@@ -1260,14 +1260,51 @@ pub struct GameWorld {
     pub rare_drop_rate_phase1: u32,      // default 20000 (2%)
     pub rare_drop_rate_phase2: u32,      // default 25000 (2.5%)
     pub uncommon_drop_rate: u32,         // default 180000 (18%)
+    // ── Prize-settlement finalize (YKK season-end tally) ─────────────────────
+    /// Highest vault_count seen during finalize (timeout-champion tier).
+    pub max_vault: u8,
+    /// How many players share `max_vault` (timeout Tier-1 divisor).
+    pub max_vault_count: u32,
+    /// Participants tallied so far; `end_season_final` requires == total_participants.
+    pub finalize_processed: u32,
+    /// Last PlayerState owner tallied; the crank must pass strictly-increasing
+    /// pubkeys so each participant is counted exactly once across batches.
+    pub finalize_cursor: Pubkey,
 }
 
 impl GameWorld {
     pub const SEED: &'static [u8] = b"game_world";
     // Original: 8 disc + 8+8+8+4+8+8+6+1+1+8+8+8+8+1 = 93
-    // Phase 20-B additions: +32+32+8+4+4+4+4+4 = +92 → total 185
-    pub const SIZE: usize =
-        8 + 8 + 8 + 8 + 4 + 8 + 8 + 6 + 1 + 1 + 8 + 8 + 8 + 8 + 1 + 32 + 32 + 8 + 4 + 4 + 4 + 4 + 4;
+    // Phase 20-B additions: +32+32+8+4+4+4+4+4 = +92 → 185
+    // Finalize additions: +1 (max_vault) +4 (max_vault_count) +4 (finalize_processed)
+    //                     +32 (finalize_cursor) = +41 → 226
+    pub const SIZE: usize = 8
+        + 8
+        + 8
+        + 8
+        + 4
+        + 8
+        + 8
+        + 6
+        + 1
+        + 1
+        + 8
+        + 8
+        + 8
+        + 8
+        + 1
+        + 32
+        + 32
+        + 8
+        + 4
+        + 4
+        + 4
+        + 4
+        + 4
+        + 1
+        + 4
+        + 4
+        + 32;
 
     pub const LEGENDARY_MAX_CLAIMANTS: u8 = 10;
     pub const DEPOSIT_LAMPORTS: u64 = 500_000_000; // 0.5 SOL
@@ -1286,6 +1323,22 @@ impl GameWorld {
 
     pub fn is_waitlist_open(&self, now: i64) -> bool {
         self.game_status == 0 && now < self.waitlist_close_timestamp
+    }
+
+    /// Proportional tier band for a vault_count: 2/3/4/5. (Band 1 = the 60-card
+    /// or timeout-champion tier, handled separately.) `vault_count` is assumed > 0.
+    pub fn band_of(vault_count: u64) -> u8 {
+        if vault_count >= 60 {
+            1
+        } else if vault_count >= 50 {
+            2
+        } else if vault_count >= 30 {
+            3
+        } else if vault_count >= 10 {
+            4
+        } else {
+            5
+        }
     }
 }
 
@@ -1314,6 +1367,10 @@ impl Default for GameWorld {
             rare_drop_rate_phase1: GameWorld::DEFAULT_RARE_RATE_PHASE1,
             rare_drop_rate_phase2: GameWorld::DEFAULT_RARE_RATE_PHASE2,
             uncommon_drop_rate: GameWorld::DEFAULT_UNCOMMON_RATE,
+            max_vault: 0,
+            max_vault_count: 0,
+            finalize_processed: 0,
+            finalize_cursor: Pubkey::default(),
         }
     }
 }

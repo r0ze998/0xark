@@ -80,6 +80,52 @@
       ]
     },
     {
+      "name": "activate_season",
+      "docs": [
+        "Season state: waitlist (0) → active (1). Admin-only, after the waitlist window."
+      ],
+      "discriminator": [
+        65,
+        12,
+        62,
+        60,
+        29,
+        166,
+        239,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "add_xp",
       "docs": [
         "Add XP to a player's progression account.",
@@ -1903,6 +1949,53 @@
       ]
     },
     {
+      "name": "end_season_final",
+      "docs": [
+        "Season state: active (1) → ended (2). Admin-only; requires the full tally",
+        "(finalize_processed == total_participants) so claims open on complete data."
+      ],
+      "discriminator": [
+        237,
+        179,
+        252,
+        233,
+        201,
+        227,
+        134,
+        44
+      ],
+      "accounts": [
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "enter_queue",
       "docs": [
         "Enter the matchmaking queue for the given tier (0=Bronze, 1=Silver, 2=Gold).",
@@ -2465,6 +2558,61 @@
         {
           "name": "target_species_id",
           "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "finalize_season_tally",
+      "docs": [
+        "Tally a batch of participants into the GameWorld tier totals (admin crank).",
+        "`players` must be strictly increasing and > `finalize_cursor`; their",
+        "PlayerState PDAs are passed as remaining_accounts in the same order."
+      ],
+      "discriminator": [
+        155,
+        255,
+        39,
+        31,
+        170,
+        169,
+        210,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "players",
+          "type": {
+            "vec": "pubkey"
+          }
         }
       ]
     },
@@ -6746,6 +6894,26 @@
       "code": 6091,
       "name": "ZkNotVerified",
       "msg": "ZK proof not verified for this round — call commit_hand first"
+    },
+    {
+      "code": 6092,
+      "name": "SeasonWrongStatus",
+      "msg": "Season is not in the expected status for this instruction"
+    },
+    {
+      "code": 6093,
+      "name": "WaitlistStillOpen",
+      "msg": "Waitlist window is still open"
+    },
+    {
+      "code": 6094,
+      "name": "TallyOutOfOrder",
+      "msg": "Finalize batch players must be strictly increasing and unprocessed"
+    },
+    {
+      "code": 6095,
+      "name": "TallyIncomplete",
+      "msg": "Season tally incomplete — finalize all participants before ending"
     }
   ],
   "types": [
@@ -7958,6 +8126,35 @@
           {
             "name": "uncommon_drop_rate",
             "type": "u32"
+          },
+          {
+            "name": "max_vault",
+            "docs": [
+              "Highest vault_count seen during finalize (timeout-champion tier)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "max_vault_count",
+            "docs": [
+              "How many players share `max_vault` (timeout Tier-1 divisor)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "finalize_processed",
+            "docs": [
+              "Participants tallied so far; `end_season_final` requires == total_participants."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "finalize_cursor",
+            "docs": [
+              "Last PlayerState owner tallied; the crank must pass strictly-increasing",
+              "pubkeys so each participant is counted exactly once across batches."
+            ],
+            "type": "pubkey"
           }
         ]
       }

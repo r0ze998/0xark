@@ -1,12 +1,13 @@
 use {
     anchor_lang::{
-        solana_program::instruction::Instruction, AccountDeserialize, InstructionData,
-        ToAccountMetas,
+        solana_program::instruction::Instruction, AccountDeserialize, AccountSerialize,
+        InstructionData, ToAccountMetas,
     },
     litesvm::LiteSVM,
     sha2::{Digest, Sha256},
     solana_keypair::Keypair,
     solana_message::{Message, VersionedMessage},
+    solana_pubkey::Pubkey,
     solana_signer::Signer,
     solana_transaction::versioned::VersionedTransaction,
 };
@@ -1412,5 +1413,219 @@ fn test_commit_hand_then_reveal_hand_roundtrip() {
     assert_eq!(
         duel.player_1_revealed[0], HC_CARD_IDS,
         "player_1 round-1 revealed cards must be recorded"
+    );
+}
+
+// ─── YKK: claim_prize_v2 rank distribution + carry-over (post-settlement) ──────
+//
+// finalize_season_tally / end_season_final are ADMIN-gated (ADMIN_PUBKEY), whose
+// key we don't hold in-process, so these e2e tests craft the GameWorld in its
+// post-`end_season_final` state (status=2, tallies populated, timeout-champion
+// already removed from its band) and exercise claim_prize_v2 — the player-facing
+// path that the bug lived in. The carry-over math itself is unit-tested in
+// claim_prize_v2.rs (`band_shares_*`). Non-admin rejection of the crank/end is
+// covered below. (The admin-signed success paths of finalize/end can't be signed
+// in litesvm — noted in the PR.)
+//
+// NOTE: claim_prize_v2 transfers `from: prize_pool` via CpiContext::new, so the
+// prize_pool vault must SIGN the claim — a separate pre-existing design issue (a
+// shared vault can't realistically sign every claim). Tests co-sign with the
+// vault to validate the distribution amounts.
+
+fn gw_pda() -> (Pubkey, u8) {
+    solana_pubkey::Pubkey::find_program_address(&[b"game_world"], &oxark::id())
+}
+fn player_state_pda(p: &Pubkey) -> (Pubkey, u8) {
+    solana_pubkey::Pubkey::find_program_address(&[b"player", p.as_ref()], &oxark::id())
+}
+
+fn craft_owned(svm: &mut LiteSVM, addr: &Pubkey, data: Vec<u8>) {
+    let lamports = svm.minimum_balance_for_rent_exemption(data.len()) + 2_000_000;
+    svm.airdrop(addr, lamports).unwrap();
+    let mut acc = svm.get_account(addr).unwrap();
+    acc.data = data;
+    acc.owner = oxark::id();
+    svm.set_account(*addr, acc).unwrap();
+}
+
+fn craft_player(svm: &mut LiteSVM, player: &Pubkey, vault_count: usize) {
+    let (pda, _) = player_state_pda(player);
+    let mut ps = oxark::state::PlayerState::default();
+    ps.deposit_amount = 500_000_000; // >0 so the C1 claim gate passes
+    for i in 0..vault_count {
+        ps.vault_bitmap[i / 8] |= 1u8 << (i % 8);
+    }
+    let mut buf = Vec::new();
+    ps.try_serialize(&mut buf).unwrap();
+    craft_owned(svm, &pda, buf);
+}
+
+/// Craft a GameWorld already in the post-`end_season_final` (status=2) state.
+#[allow(clippy::too_many_arguments)]
+fn craft_ended_world(
+    svm: &mut LiteSVM,
+    total_prize_pool: u64,
+    winner_60_count: u8,
+    max_vault: u8,
+    max_vault_count: u32,
+    t2: u64,
+    t3: u64,
+    t4: u64,
+    t5: u64,
+) -> (Pubkey, Keypair) {
+    let (pda, bump) = gw_pda();
+    let prize_pool = Keypair::new();
+    let mut gw = oxark::state::GameWorld::default();
+    gw.total_prize_pool = total_prize_pool;
+    gw.game_status = 2;
+    gw.winner_60_count = winner_60_count;
+    gw.max_vault = max_vault;
+    gw.max_vault_count = max_vault_count;
+    gw.tier2_total_vault = t2;
+    gw.tier3_total_vault = t3;
+    gw.tier4_total_vault = t4;
+    gw.tier5_total_vault = t5;
+    gw.bump = bump;
+    gw.prize_pool = prize_pool.pubkey();
+    let mut buf = Vec::new();
+    gw.try_serialize(&mut buf).unwrap();
+    craft_owned(svm, &pda, buf);
+    svm.airdrop(&prize_pool.pubkey(), total_prize_pool + 10_000_000)
+        .unwrap();
+    (pda, prize_pool)
+}
+
+/// Claim for `player`; returns the prize_pool balance delta (= the payout).
+fn do_claim(svm: &mut LiteSVM, player: &Keypair, prize_pool: &Keypair, gw: &Pubkey) -> u64 {
+    let (ps_pda, _) = player_state_pda(&player.pubkey());
+    let before = svm.get_account(&prize_pool.pubkey()).unwrap().lamports;
+    let mut metas = oxark::accounts::ClaimPrizeV2 {
+        player_state: ps_pda,
+        game_world: *gw,
+        prize_pool: prize_pool.pubkey(),
+        player: player.pubkey(),
+        system_program: solana_sdk_ids::system_program::id(),
+    }
+    .to_account_metas(None);
+    // prize_pool is the system-transfer source → must be a signer.
+    for m in metas.iter_mut() {
+        if m.pubkey == prize_pool.pubkey() {
+            m.is_signer = true;
+        }
+    }
+    let ix = Instruction::new_with_bytes(
+        oxark::id(),
+        &oxark::instruction::ClaimPrizeV2 {}.data(),
+        metas,
+    );
+    send_ix_result_multi(svm, ix, player, &[prize_pool]).expect("claim_prize_v2 should succeed");
+    let after = svm.get_account(&prize_pool.pubkey()).unwrap().lamports;
+    before - after
+}
+
+/// Timeout (no 60-collector): A(40)=champion, B(35)=tier3, C(10)=tier4.
+/// Old bug: first two claimers each take 50% (whole pool), C gets 0.
+/// Fixed: A=50% (Tier-1), B=tier3 with T2's empty 25% carried in (=40%), C=tier4 8%.
+#[test]
+fn claim_prize_v2_timeout_distributes_by_rank_not_arrival() {
+    let (mut svm, _authority) = setup();
+    let pool = 100_000_000_000u64; // 100 SOL
+                                   // Post-end timeout state: champion (40) removed from tier3 → tier3 = B's 35.
+    let (gw, prize_pool) = craft_ended_world(&mut svm, pool, 0, 40, 1, 0, 35, 10, 0);
+
+    let a = Keypair::new();
+    let b = Keypair::new();
+    let c = Keypair::new();
+    for k in [&a, &b, &c] {
+        svm.airdrop(&k.pubkey(), 1_000_000_000).unwrap();
+    }
+    craft_player(&mut svm, &a.pubkey(), 40);
+    craft_player(&mut svm, &b.pubkey(), 35);
+    craft_player(&mut svm, &c.pubkey(), 10);
+
+    let pa = do_claim(&mut svm, &a, &prize_pool, &gw);
+    let pb = do_claim(&mut svm, &b, &prize_pool, &gw);
+    let pc = do_claim(&mut svm, &c, &prize_pool, &gw);
+
+    assert_eq!(pa, pool * 50 / 100, "champion A gets Tier-1 50%");
+    assert_eq!(
+        pb,
+        pool * 40 / 100,
+        "B (sole tier3) gets 15% + carried-down empty-T2 25%"
+    );
+    assert_eq!(pc, pool * 8 / 100, "C (sole tier4) gets 8%");
+    assert!(pa + pb + pc <= pool, "Σ payouts must not exceed the pool");
+    assert!(
+        pc > 0,
+        "C must not be starved — the old bug gave the 3rd claimer 0"
+    );
+    assert_ne!(
+        pb,
+        pool * 50 / 100,
+        "B must NOT also receive a full 50% (old drain)"
+    );
+}
+
+/// Same scenario, reversed claim order → identical payouts (order-independence).
+#[test]
+fn claim_prize_v2_payout_is_order_independent() {
+    let (mut svm, _authority) = setup();
+    let pool = 100_000_000_000u64;
+    let (gw, prize_pool) = craft_ended_world(&mut svm, pool, 0, 40, 1, 0, 35, 10, 0);
+    let a = Keypair::new();
+    let b = Keypair::new();
+    let c = Keypair::new();
+    for k in [&a, &b, &c] {
+        svm.airdrop(&k.pubkey(), 1_000_000_000).unwrap();
+    }
+    craft_player(&mut svm, &a.pubkey(), 40);
+    craft_player(&mut svm, &b.pubkey(), 35);
+    craft_player(&mut svm, &c.pubkey(), 10);
+
+    // Reverse order: C, B, A.
+    let pc = do_claim(&mut svm, &c, &prize_pool, &gw);
+    let pb = do_claim(&mut svm, &b, &prize_pool, &gw);
+    let pa = do_claim(&mut svm, &a, &prize_pool, &gw);
+
+    assert_eq!(pa, pool * 50 / 100);
+    assert_eq!(pb, pool * 40 / 100);
+    assert_eq!(pc, pool * 8 / 100);
+}
+
+#[test]
+fn finalize_and_end_reject_non_admin() {
+    let (mut svm, _authority) = setup();
+    let (gw, _pp) = craft_ended_world(&mut svm, 1_000_000_000, 0, 5, 1, 0, 0, 0, 5);
+    let attacker = Keypair::new();
+    svm.airdrop(&attacker.pubkey(), 1_000_000_000).unwrap();
+
+    let fin = Instruction::new_with_bytes(
+        oxark::id(),
+        &oxark::instruction::FinalizeSeasonTally { players: vec![] }.data(),
+        oxark::accounts::FinalizeSeasonTally {
+            game_world: gw,
+            admin: attacker.pubkey(),
+        }
+        .to_account_metas(None),
+    );
+    let r = send_ix_result_multi(&mut svm, fin, &attacker, &[]);
+    assert!(
+        format!("{:?}", r.unwrap_err()).contains("NotAdmin"),
+        "finalize_season_tally must reject a non-admin signer"
+    );
+
+    let end = Instruction::new_with_bytes(
+        oxark::id(),
+        &oxark::instruction::EndSeasonFinal {}.data(),
+        oxark::accounts::EndSeasonFinal {
+            game_world: gw,
+            admin: attacker.pubkey(),
+        }
+        .to_account_metas(None),
+    );
+    let r2 = send_ix_result_multi(&mut svm, end, &attacker, &[]);
+    assert!(
+        format!("{:?}", r2.unwrap_err()).contains("NotAdmin"),
+        "end_season_final must reject a non-admin signer"
     );
 }

@@ -107,3 +107,13 @@ pub use create_listing::*;
 // C5 fix: admin registers on-chain rarity for each NFT card mint
 pub mod init_card_mint_record;
 pub use init_card_mint_record::*;
+
+// YKK season-end prize settlement (finalize → end → claim).
+pub mod activate_season;
+pub mod end_season_final;
+pub mod finalize_season_tally;
+pub use activate_season::*;
+pub use end_season_final::*;
+pub use finalize_season_tally::*;
+// Reference only (not dispatched from lib.rs): realloc an existing GameWorld.
+pub mod migrate_game_world_finalize;
