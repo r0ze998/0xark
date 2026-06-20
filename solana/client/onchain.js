@@ -371,8 +371,11 @@ const COMPUTE_BUDGET = {
 const PRIORITY_FEE_MICRO_LAMPORTS = 1_000;
 
 // ComputeBudgetProgram.requestHeapFrame — instruction ID 0x01, u32 LE bytes.
-// reveal_hand requires 262144 (256KB) as the FIRST instruction in the TX.
-// Without it the validator maps only 32KB and the program faults on first alloc.
+// YKK-40: the program is built with `default = ["custom-heap"]`, which disables
+// the default allocator and assumes a 256KB heap — so EVERY instruction (not just
+// reveal_hand) needs this frame, else the program faults on its first heap alloc
+// ("Access violation in heap section", ~331 CU; verified on a local validator).
+const HEAP_FRAME_BYTES = 262144; // 256KB — must match the program's custom-heap size
 function requestHeapFrameIx(heapBytes) {
   const data = new Uint8Array(5);
   data[0] = 0x01;
@@ -433,10 +436,11 @@ async function buildAndSend(keys, data, computeUnits = COMPUTE_BUDGET.default) {
   const programId = getProgramId();
 
   const ix = new solanaWeb3.TransactionInstruction({ keys, programId, data });
+  const heapIx = requestHeapFrameIx(HEAP_FRAME_BYTES); // YKK-40: custom-heap needs this on every tx
   const [limitIx, priceIx] = computeBudgetIxs(computeUnits);
 
   const tx = new solanaWeb3.Transaction();
-  tx.add(limitIx, priceIx, ix); // compute budget must come first
+  tx.add(heapIx, limitIx, priceIx, ix); // compute budget (heap + limit + price) must come first
   tx.feePayer = window.solana.publicKey;
 
   const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
@@ -484,10 +488,11 @@ async function buildAndSendViaMagicRouter(keys, data, computeUnits = COMPUTE_BUD
   }
   const programId = getProgramId();
   const ix = new solanaWeb3.TransactionInstruction({ keys, programId, data });
+  const heapIx = requestHeapFrameIx(HEAP_FRAME_BYTES); // YKK-40: custom-heap needs this on every tx
   const [limitIx, priceIx] = computeBudgetIxs(computeUnits);
 
   const tx = new solanaWeb3.Transaction();
-  tx.add(limitIx, priceIx, ix);
+  tx.add(heapIx, limitIx, priceIx, ix);
   tx.feePayer = window.solana.publicKey;
 
   // Use Magic Router's account-aware blockhash (routes to ER if accounts are delegated)
