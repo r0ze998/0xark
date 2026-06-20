@@ -1,6 +1,6 @@
 # 0xARK
 
-**On-chain TCG card battle on Solana** — with ZK proofs, x402 micropayments, and AI agents.
+**An on-chain TCG on Solana** — 14-day Seasons, 2-player ZK card duels, and a 60-card collection race settled by an on-chain prize ladder.
 
 **🔗 [Live Demo → r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/)**
 
@@ -8,424 +8,219 @@
 [![Devnet](https://img.shields.io/badge/Solana-Devnet-9370db)](https://explorer.solana.com/?cluster=devnet)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
+> This README is the canonical description of what is **actually implemented** in the
+> Anchor program (`solana/oxark/programs/oxark`), the card program (`oxark-cards`),
+> the client (`solana/client`), and the server (`multiplayer`). Anything not
+> code-confirmed is marked **Planned** or **Stub**. The design document
+> ([`docs/GDD.md`](docs/GDD.md)) is kept consistent with this README.
+
 ---
 
-## 📋 Implementation Status
+## 🎮 What 0xARK is
 
-Honest snapshot as of hackathon submission (2026-05-11):
+A **14-day Season** is the unit of play:
 
-| Feature | Status | Notes |
+1. **Register** for the Season with a 0.5 SOL deposit. You receive 5 starter cards.
+2. **Duel** other players in 2-player matches. Each duel is a **ZK commit–reveal**:
+   both hands stay hidden behind a Groth16 commitment until the reveal, then an
+   on-chain `damage_calc` decides the winner over 5 rounds. The winner loots **1**
+   card from the loser.
+3. **Collect** toward the full **60-card** set, also via shop packs and the player
+   trade floor.
+4. **Settle**: at Season end the prize pool is distributed **by rank** (how many
+   unique cards you hold), not first-come — see [Prize distribution](#-prize-distribution).
+
+There is no dungeon, no fog-of-war, no NPC overworld, and no 3-player free-for-all.
+(An older 3-player engine exists in the program as unused legacy code; it is not part
+of the shipped game — see [Legacy code](#-legacy-code).)
+
+---
+
+## 📋 Implementation status
+
+Honest snapshot of the current `main`. ✅ = implemented & on-chain, ⚠️ = partial,
+🧩 = stub (records state, no value transfer), 🔭 = planned.
+
+| Area | Status | Notes |
 |---|---|---|
-| ZK proof — on-chain `verify_zk_proof` | ✅ | Fires automatically on every battle reveal. Groth16 proof generated client-side (~272ms); `reveal.js:28` submits TX when `zkProofBytes !== null`. Devnet TXs: `5WoVAmNC…` · `M2fwWd2m…` |
-| ZK proof — Groth16 + SHA-256 commitment (client) | ✅ | Groth16 proof + SHA-256 commitment generated every battle (`preparation.js:264`). ~272ms. WASM + zkey bundled in `solana/client/` |
-| x402 micropayments — server | ⚠️ | 13 server endpoints fully implemented, Redis replay protection, Coinbase spec compliant. Client module (`02-x402.js`) not loaded in the battle UI — `window.x402` is undefined in current demo |
-| AI strategy advisor | ⚠️ | Server endpoint `/x402/ai-strategy-advice` implemented (Claude Haiku 4.5). Not called from active battle screens in current demo |
-| AI autonomous move delegation | 🚧 | Server endpoint `/x402/ai-move` implemented. Client integration and autonomous TX signing not yet implemented |
-| NFT mint / burn / evolve (SPL) | ✅ | `register_waitlist` (`app.js:169`) and `buy_pack` (`shop-screen.js:306`) call on-chain SPL mint CPI. `burn_card` / `evolve_cards` instructions available |
-| Multiplayer WebSocket sync | ✅ | Matchmaking + duel relay deployed on Fly.io; single-instance guaranteed |
-| MagicBlock Ephemeral Rollups | 🚧 | Not yet integrated |
+| Season lifecycle | ✅ | `init_game_world` → `register_waitlist` → `activate_season` → `finalize_season_tally` → `end_season_final` |
+| Prize settlement (rank + carry-over) | ✅ | `claim_prize_v2` pays out from a **PDA vault** via `invoke_signed`; e2e-verified on a local validator |
+| 2-player ZK duel | ✅ (round 1) | `init_duel` → `commit_hand` (Groth16) → `reveal_hand` (Poseidon syscall) → `damage_calc`. Round advancement for rounds 2–5 is **not yet wired** (see [Known gaps](#-known-gaps)) |
+| Battle loot (steal 1 card) | ✅ | `claim_battle_loot`, SlotHashes randomness |
+| Shop packs | ✅ | `buy_pack` (50% ops / 50% pool); drop rates admin-tunable |
+| Trade floor (P2P) | ✅ | `create_listing` / `accept_listing` / `cancel_listing`, **0% platform fee** |
+| Burn / Evolve / Imprint | ✅ | `burn_card`, `evolve_cards`, `grant_imprint` (rarity read on-chain from `CardMintRecord`) |
+| SPL card NFTs | ✅ | In the **separate `oxark-cards` program** (`mint_card_nft` / `mint_solo_card`), not the main program |
+| x402 micropayments — server | ⚠️ | Server endpoints implemented (Redis replay protection); client module is not loaded in the current battle UI |
+| AI strategy / move (x402) | ⚠️ | Server endpoints implemented (Claude Haiku 4.5); not wired into active battle screens |
+| MagicBlock Ephemeral Rollups | ⚠️ | Real `delegate_session` / `undelegate_session` CPI (ephemeral-rollups SDK) + client Magic Router with base-layer fallback — but wired to the legacy Game engine, **not the active duel path** |
+| Legendary NFT claim / season distribute | 🧩 | `claim_legendary`, `distribute_prize_pool` emit events, no transfer (the live payout path is `claim_prize_v2`) |
+| `oxark-cards` P2P `buy_card` | 🧩 | Records the sale; SOL/token move handled off-chain (x402) |
 
 ---
 
-## 🎮 Live Demo
+## 💰 Economy
 
-**🔗 https://r0ze998.github.io/0xark/**
+### Entry & revenue
 
-Try it now:
+- **Entry**: `register_waitlist` deposits **0.5 SOL**, split **85% → prize pool / 15% → ops treasury** (`GameWorld::PRIZE_POOL_BPS = 8500`, `OPS_REVENUE_BPS = 1500`).
+- **Four revenue sources**:
+  1. Waitlist entry — **15%** of each 0.5 SOL deposit → ops treasury
+  2. Shop packs (`buy_pack`) — **50%** of pack price → ops treasury (50% → prize pool)
+  3. x402 micropayments (`multiplayer/server.js`) — **50/50** ops/pool, off-chain verified
+  4. Metaplex royalty — **5%**, advisory (not protocol-enforced)
+- **Trade floor** (`accept_listing`): **0% platform fee** — buyer pays seller directly.
 
-1. Connect Phantom wallet (Devnet)
-2. Get devnet SOL: https://faucet.solana.com/
-3. Register Waitlist (0.5 SOL deposit)
-4. Receive 5 starter cards
-5. Battle, burn, evolve, claim prizes
+### Prize distribution
 
----
+The prize pool is a **program-derived vault** (`seeds = ["prize_pool"]`), created lazily
+on the first deposit. At Season end, `claim_prize_v2` pays each player **by rank**
+(unique cards held), pulling from the vault via `invoke_signed` — so a player needs
+only their own signature to withdraw.
 
-## 🏆 Hackathon Submission
-
-**Colosseum Frontier 2026** (deadline 2026-05-11)
-
-- Track: Gaming and AI
-- Developer: r0ze (Yukikaze)
-- Built solo
-
-### 🎬 Submission Videos
-
-- **Pitch Video**: [link to be added]
-- **Technical Demo Video**: [link to be added]
-
----
-
-## ⚡ 30-second overview
-
-🎴 **60 NFT cards** for a 14-day on-chain TCG
-🔐 **ZK proofs** for hand secrecy and provable fair-play (on-chain Groth16 BN254 verification)
-💰 **x402 micropayments** (HTTP 402 standard) — peek/draw from 0.005 SOL
-🤖 **AI agents** (Claude Haiku 4.5) for strategy advice and autonomous battle
-🔥 **Burn / Evolve / Imprint** — NFTs change permanently on-chain
-🏪 **Complete game economy**: Shop pack purchases + Trade Floor marketplace + Tier prize distribution
-
----
-
-## 🌐 Why Solana?
-
-Two core features of 0xARK are Solana-native requirements.
-
-**x402 micropayments** work because SOL transfers settle in ~400ms with sub-cent fees. The per-action pricing model (0.0001–0.01 SOL per endpoint call) is economically unviable on any chain with $1+ gas costs. On Solana it's a real mechanic, not a gimmick.
-
-**Ephemeral Rollups** (MagicBlock, planned) will let battle state update in real time without committing every card play on-chain, while the final result settles atomically to the Anchor program. This collapses the usual tradeoff between on-chain trust and playable latency — the fight happens off-chain at game speed, the outcome is on-chain truth.
-
-Together, these make a genuinely playable, economically-grounded on-chain TCG feasible today.
-
----
-
-## 🔗 Live On-Chain Evidence
-
-| Event | TX hash | Explorer |
+| Band | Cards | Base share |
 |---|---|---|
-| GameWorld PDA init | `4EUynBDn…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
-| Anchor program upgrade (ZK Phase 2) | `2Wu8wQCd…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
-| ZK proof verify (Phase 2 deploy) | `5WoVAmNC…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
-| ZK proof verify (live battle flow) | `M2fwWd2m…` | [Solana Explorer](https://explorer.solana.com/tx/M2fwWd2mUQErAP1qCy9HRAFSUbnb527q55dFoipAY9CNJnJ1KojQE8JmQCGFttntwpjDmqCSd53uqTL4FBM7qbY?cluster=devnet) |
-| GameWorld Phase 20-B migration | `2eyAJEJz…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
-| Shop params set (threshold=0) | `3SYqk9HV…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
+| T1 | 60 (full set) | 50% |
+| T2 | 50–59 | 25% |
+| T3 | 30–49 | 15% |
+| T4 | 10–29 | 8% |
+| T5 | 1–9 | 2% |
 
-**Anchor program**: `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` (devnet)
+- **Normal end** (someone reached 60): T1 = the 60-card holders, split among them.
+- **Timeout end** (no one reached 60): the **max-vault** holders take T1, split among them.
+- **Empty-band carry-over**: if a band has no members, its share carries down to the
+  next populated band; a share with no band below it stays in the pool. This keeps
+  **Σ(payouts) ≤ pool** and avoids division by an empty band.
+- **Safety**: a double-claim is rejected (`deposit_amount` is zeroed after claim), and
+  every payout is capped at the vault balance (kept above the rent-exempt floor) — no
+  over-draw, no rug.
 
-**Upgrade Authority**: Held by r0ze during active devnet development. Planned to be renounced on mainnet deployment.
+Settlement is driven by an admin crank: `activate_season` (status 0→1) →
+`finalize_season_tally` (aggregates each `PlayerState`'s vault into the band totals,
+in cursor-batched transactions for large participant counts) → `end_season_final`
+(status 1→2). This full path is **e2e-verified on a local validator**: a registered
+player received their exact rank share from the vault, and a second claim was rejected.
 
 ---
 
-## 🧪 Tech Stack
+## 🔬 ZK system
 
-### Core
+The live duel uses a **hand-commitment** ZK flow (Groth16 over BN254):
 
-- **Solana** (Anchor, devnet)
-- **Circom 2.x + snarkjs** (Groth16 BN254)
-- **Node.js + WebSocket** (Fly.io)
-- **Phantom wallet adapter**
-- **Vanilla JS + GBA palette** (Sprite Seas design system)
+- **`commit_hand`** — the player submits a Groth16 proof that their committed hand is
+  well-formed and **bound to their own pubkey** (prevents replaying an opponent's
+  proof). The program verifies it on-chain via the `alt_bn128` pairing syscalls.
+  Measured **~135k CU**.
+- **`reveal_hand`** — the program **recomputes the Poseidon commitment on-chain** from
+  the revealed cards (via the `sol_poseidon` syscall) and checks it matches. The
+  circuit packs the cards and hashes **Poseidon(6)** so the on-chain recompute is cheap:
+  measured **~43k CU** (the earlier Poseidon(15) design exceeded the 1.4M CU/tx limit;
+  `circuits/hand_commitment/hand_commitment.circom` documents the v2→v3 change).
 
-### Web3 Innovations
+Both figures were measured on a local validator and are far under the 1.4M CU/tx cap.
+A separate `verify_zk_proof` instruction (the `commit_reveal` circuit, 277 constraints,
+~94k CU, LiteSVM-verified) exists for the legacy engine.
 
-- **ZK proof on-chain verification** via `alt_bn128_pairing` precompile
-- **x402** (HTTP 402) SOL micropayment, Coinbase x402 spec compliant
-- **NFT mechanics**: Burn, Evolve, Imprint (on-chain permanent)
+Because the duel program is built with `default = ["custom-heap"]`, **every** transaction
+to it must lead with a `ComputeBudget::RequestHeapFrame(262144)` instruction; the client
+adds this automatically in its shared send path.
 
-### AI
+---
 
-- **Claude Haiku 4.5** via Anthropic API
-- **AI Strategy Advisor** (`/x402/ai-strategy-advice` endpoint)
-- **AI Move Delegation** (`/x402/ai-move` endpoint)
+## 🃏 Cards
+
+- **60 unique cards** across 6 clans. In-Season ownership is tracked as a 60-bit
+  `vault_bitmap` on each `PlayerState`; SPL NFTs are minted in the separate
+  `oxark-cards` program and are a parallel representation.
+- **Acquisition**: starter cards (register), shop packs (`buy_pack`), duel loot
+  (`claim_battle_loot`, 1 card), trade floor purchase.
+- **Mechanics**: `burn_card` (Common/Uncommon only — rarity read on-chain from
+  `CardMintRecord`), `evolve_cards` (burn 2 parents), `grant_imprint` (victory mark on
+  Legendaries).
 
 ---
 
 ## 🏗 Architecture
 
 ```
-┌────────────────────────────────────────────────────┐
-│  Frontend (GitHub Pages)                            │
-│  - Phantom wallet                                   │
-│  - 60-card vault grid + 4 battle screens           │
-│  - 4 rarity frames (Sprite Seas design)            │
-└──────────────────┬──────────────────────────────────┘
-                   │
-       ┌───────────┴───────────┐
-       │                       │
-       ▼                       ▼
-┌──────────────┐     ┌──────────────────┐
-│ ZK Layer     │     │ Multiplayer      │
-│ - Circom     │     │ Server           │
-│ - snarkjs    │     │ - WebSocket      │
-│ - Groth16    │     │ - x402 endpoint  │
-└──────┬───────┘     │ - Redis          │
-       │             │   (replay        │
-       │             │    protection)   │
-       │             └─────────┬────────┘
-       │                       │
-       └───────────┬───────────┘
-                   ▼
-┌──────────────────────────────────────────┐
-│ Anchor Program (Solana devnet)            │
-│ Program ID: 5i37jW...XfmN                 │
-│ - register_waitlist (0.5 SOL deposit)     │
-│ - burn_card / evolve_cards                │
-│ - grant_imprint / claim_battle_loot       │
-│ - claim_prize_v2 / check_legendary        │
-│ - verify_zk_proof (alt_bn128 pairing)     │
-│ - buy_pack / update_game_params           │
-│ - create_listing / accept_listing         │
-│ - cancel_listing                          │
-│ - 20+ PDAs, 59 instructions               │
-└────────────────────────────────────────────┘
-                   ▲
-                   │
-          ┌────────┴────────┐
-          │ AI Agent        │
-          │ Claude          │
-          │ Haiku 4.5       │
-          └─────────────────┘
+Frontend (GitHub Pages)            Multiplayer server (Fly.io)
+  Phantom · vault grid · battle      WebSocket relay · x402 endpoints · Redis
+  screens · onchain.js                       │
+        │                                     │
+        └──────────────────┬──────────────────┘
+                           ▼
+        Anchor program  5i37jW…XfmN  (Solana devnet)   ── 63 instructions
+          Season:  init_game_world · register_waitlist · activate_season
+                   finalize_season_tally · end_season_final · claim_prize_v2
+          Duel:    init_duel · commit_hand · reveal_hand · claim_battle_loot
+          Cards:   burn_card · evolve_cards · grant_imprint · check_legendary_v2
+          Shop:    buy_pack · update_game_params · create/accept/cancel_listing
+          ZK:      verify_zk_proof (alt_bn128 pairing)
+                           │  (CPI)
+                           ▼
+        oxark-cards  236FNP…Mq1S   — SPL mint_card_nft / mint_solo_card / card_market
 ```
 
----
-
-## 🎯 Game Design
-
-### 14-day 1-shot Season
-
-- 60 unique cards across 6 clans (Knight / Merchant / Pirate / Scholar / Monk / Engineer)
-- 6 Legendaries with unique personalities (Conqueror / Patron / Phoenix / Detective / Hermit / Sage)
-- 14 days to collect, win, burn, evolve
-
-### Tier Prize Distribution
-
-| Tier | Cards | Reward Share |
-|---|---|---|
-| T1 | 60 cards (full collection) | 50% |
-| T2 | 50–59 cards | 25% |
-| T3 | 30–49 cards | 15% |
-| T4 | 10–29 cards | 8% |
-| T5 | 1–9 cards | 2% |
-
-### v3+ Mechanics
-
-- Burn: permanent removal + ability effect (e.g., "Burn: deal 3 damage to all enemy cards")
-- Evolve: merge 2 cards into 1 child card
-- Steal: battle winner takes 1 card from loser (`claim_battle_loot`, SlotHashes random)
-- Imprint: victory mark permanently recorded on Legendary cards
-
-### Shop (Phase 20-B)
-
-Players can purchase card packs with SOL:
-
-| Pack | Cards | Price | Special |
-|---|---|---|---|
-| Standard | 5 random | 0.05 SOL | — |
-| Premium | 3 cards | 0.15 SOL | +1 Uncommon guaranteed |
-
-Drop rates (admin-tunable via `update_game_params`):
-
-| Phase | Common | Uncommon | Rare | Legendary |
-|---|---|---|---|---|
-| Phase 1 (Days 1–7) | 80% | 18% | 2% | 0% |
-| Phase 2 (Days 8–14) | 79% | 17% | 2.5% | 1.5% |
-
-- Sales split: 50% Operations / 50% Prize Pool
-- Random source: Solana SlotHashes sysvar (verifiable on-chain, no oracle dependency)
-- Legendary drop gated until Day 8 to preserve "first 10 achievers" exclusivity
-
-### Trade Floor (Phase 20-C)
-
-Player-to-player marketplace with 0% platform fee:
-
-| Action | Description |
-|---|---|
-| Create listing | Seller lists a card with custom SOL price (min 0.001 SOL) |
-| Accept listing | Buyer pays seller directly; card moves atomically |
-| Cancel listing | Seller withdraws listing and recovers card |
-
-- Card escrow: listed cards are removed from seller's vault at listing time, returned on cancel
-- All rarities tradable: Common through Legendary
-- Direct SOL transfer: buyer → seller, no intermediary cut
-- Built on TradeListing PDAs: `seeds = [b"trade", seller_pubkey, card_id]`
+- **Main program**: `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` (devnet)
+- **Card program**: `236FNPRbJr5W7qeV9fJCYsxDEkruSK6fnNAipf47Mq1S` (devnet)
+- **Instruction count**: **63** (`lib.rs` `#[program]` and `oxark-idl.json` agree)
+- **Upgrade authority**: held during devnet development; to be renounced on mainnet.
 
 ---
 
-## 🔬 ZK Proof System
+## ⚠️ Known gaps
 
-### Circuit (`hand_commitment.circom v2`)
-
-- 5 cards + salt + pubkey + round → Poseidon commit
-- Range check: `1 <= card_id <= 60`
-- Uniqueness check: all 5 cards unique
-- 2,040 constraints (BN254)
-
-### On-Chain Verification
-
-- `verify_zk_proof` Anchor instruction
-- Uses `alt_bn128_pairing` precompile
-- `ZkProofRecord` PDA prevents replay
-- pubkey + round consistency verified on-chain
-
-### Battle Flow
-
-**Live battle flow:** Groth16 proof generated client-side (~272ms) on every hand commit (`preparation.js:264`). `reveal.js:28` submits `verify_zk_proof` TX automatically when proof bytes are present. Replay prevented by `ZkProofRecord` PDA (`init` fails on re-use).
-
-Devnet TXs: `5WoVAmNC…` (Phase 2 deploy) · `M2fwWd2m…` (live flow, 2026-05-11)
-
-Details: `docs/ZK_REVIEW_VERIFICATION.md`
+- **Duel rounds 2–5**: `DuelState.round` is set to 1 by `init_duel` and **no instruction
+  advances it**, so only round 1 is currently playable on-chain and the round-5 winner
+  resolution is unreachable. The ZK commit/reveal primitives themselves are fully
+  verified for a round.
+- **x402 / AI client wiring**: the server endpoints exist; the client modules are not
+  loaded into the active battle UI.
+- **Stubs**: `claim_legendary` and `distribute_prize_pool` record state but transfer no
+  value; the live payout path is `claim_prize_v2`.
 
 ---
 
-## 💰 x402 Micropayment System
+## 🗂 Legacy code
 
-### 13 endpoints
-
-| Endpoint | Price |
-|---|---|
-| `/x402/match-battle` | 0.001 SOL |
-| `/x402/peek-vault-size` | 0.0005 SOL |
-| `/x402/peek-vault-content` | 0.005 SOL |
-| `/x402/draw-extra` | 0.01 SOL |
-| `/x402/ai-strategy-advice` | 0.003 SOL |
-| `/x402/ai-move` | 0.005 SOL |
-| `/x402/co /re /hc /hr /pa /rs /me` | 0.0001 SOL |
-
-### Status
-
-Server-side infrastructure is fully implemented and tested. The client module (`src/02-x402.js`) contains the full payment flow with hardcoded `EXPECTED_PRICES` validation, but is not loaded in the current battle UI (`index.html`). Battle screens use optional-chained calls (`window.x402?.scoutPeek`) that silently no-op when the module is absent.
-
-### Security (Phase A + B closed)
-
-- Replay protection: Redis persistence (sig + nonce, TTL applied)
-- Price hardcode: client-side EXPECTED_PRICES validates server-declared values
-- Memo nonce required: X402_REQUIRE_MEMO=true by default
-- Memo format unified: endpoint=path;nonce=uuid;v=1
-- Recipient allowlist + dev-bypass blocked in production
-
-Details: docs/X402_INTEGRATION_LOG.md
+The program still contains an earlier **3-player "Game" engine**
+(`create_game` / `join_game` / `commit_action` / `reveal_action` / `resolve_round`,
+plus `init_position`, `deposit_stake`, `claim_prize`, `commit_card`/`reveal_card`).
+The client never calls it; it is a fossil of the pre-Phase-15 design and is **not part
+of the shipped game**. MagicBlock delegation (`delegate_session`) targets this engine.
 
 ---
 
-## 🤖 AI Agent
-
-Two AI features powered by Claude Haiku 4.5:
-
-### Strategy Advisor
-
-Server endpoint `/x402/ai-strategy-advice` is implemented (Claude Haiku 4.5). Returns `primaryAction + alternativeActions + reasoning` (JSON). Client-side integration into battle screens is not wired in the current demo — calling the endpoint requires loading `02-x402.js` and connecting it to the interruption screen UI.
-
-- Use case: assistance for new players, learning strategy
-- 0.003 SOL micropayment (server-side implemented)
-
-### AI Move Delegation
-
-Server endpoint `/x402/ai-move` is implemented. End-to-end client integration and autonomous TX signing are not yet implemented.
-
-- Use case: hands-free play, automated battles, AI tournaments
-- 0.005 SOL micropayment (server-side implemented)
-- Post-hackathon: wire client UI + delegate session key for autonomous on-chain moves
-
----
-
-## 🗺 Roadmap
-
-### Devnet (current)
-
-- ✅ Hackathon submission (Colosseum Frontier 2026)
-- ✅ ZK Phase 1–3 + devnet e2e
-- ✅ x402 Critical A + B (all closed)
-- ✅ Phase 20 complete — full game economy loop (Shop + Trade Floor + Prize Distribution)
-- 🔲 Card art (60 pieces) + Public preparation
-- 🔲 Waitlist Season 1 (devnet)
-- 🔲 Continued development on devnet
-
-### Mainnet
-
-- Future migration to mainnet after sufficient testing on devnet
-
----
-
-## 🛡 Audits
-
-| Source | Score | Critical Issues |
-|---|---|---|
-| Internal Audit | 73 issues found | Major issues resolved |
-| GPT — ZK Proof | 7.2/10 → 9.0+/10 | 5/5 Critical resolved |
-| GPT — x402 | 7.2/10 → 9.0+/10 | 5/5 Critical resolved |
-| Grok — Overall | 89/100 | Top 12–18 range |
-
-Details:
-
-- docs/COMPREHENSIVE_AUDIT.md
-- docs/ZK_REVIEW_VERIFICATION.md
-- docs/x402-review-bundle.md
-
----
-
-## 📊 Test Coverage
-
-| Suite | Count |
-|---|---|
-| Anchor (Rust) | 35 tests |
-| Client (JS) | 110+ tests |
-| ZK e2e | 6 tests + devnet integration |
-| x402 security | 54 tests (Phase A + B) |
-| Phase 20-B Shop | 22 tests (9 Rust unit + 13 JS integration) |
-| Phase 20-C Trade Floor | 33 tests |
-| Total | 260+ passing |
-
----
-
-## 📚 Documentation
-
-| Doc | Contents |
-|---|---|
-| docs/game-design-v2.md | Game design specification |
-| docs/COMPREHENSIVE_AUDIT.md | Internal security audit (73 items) |
-| docs/V3_PLUS_INTEGRATION_LOG.md | v3+ mechanics integration |
-| docs/SERVER_WIRING_PLAN.md | Multiplayer server architecture |
-| docs/ONCHAIN_INTEGRATION_LOG.md | Anchor program deployment log |
-| docs/X402_INTEGRATION_LOG.md | x402 micropayment implementation |
-| docs/ZK_REVIEW_VERIFICATION.md | ZK proof system verification |
-| docs/POST_HACKATHON_ROADMAP.md | Post-submission roadmap |
-
----
-
-## 🚀 Local Development
+## 🧪 Build & test
 
 ```bash
-# Clone the repository
-git clone https://github.com/r0ze998/0xark.git
-cd 0xark
+git clone https://github.com/r0ze998/0xark.git && cd 0xark
 
-# Build and deploy Anchor program
+# Anchor program (build order matters: anchor build → cargo test)
 cd solana/oxark
-anchor build
-anchor deploy --provider.cluster devnet
+make build           # anchor build (emits target/deploy/oxark.so + IDL)
+make test            # anchor build → cargo test   (181 passing / 1 ignored)
 
-# Start frontend client
-cd ../client
-npx serve . -l 4200
-# open http://localhost:4200
-
-# Start multiplayer server
-cd ../../multiplayer
-npm install
-node server.js  # localhost:3500
-
-# (Optional) Run AI Agent
-cd ../tools/ai-agent
-npm install
-npm test
+# Client
+cd ../client && npx serve . -l 4200   # open http://localhost:4200
 ```
+
+- **Tests**: `make test` runs the LiteSVM suite against a freshly built `.so`
+  (`make test-fast` skips the rebuild — only safe when no program source changed).
+- **Deploy note**: the toolchain emits **SBPFv3** bytecode; devnet has SBPFv3
+  deployment disabled (SIMD-0178/0179/0189 inactive), so on-chain e2e is run on a
+  local validator (which enables all SBPF versions). Devnet redeploy is gated on that
+  feature activation.
 
 ---
 
 ## 👤 About
 
-Built solo by **r0ze** under **Yukikaze** — indie on-chain game developer.
-
-- Twitter: [@r0ze_](https://twitter.com/r0ze_)
-- GitHub: [@r0ze998](https://github.com/r0ze998)
-- Other projects: ConsensusOS, ZeroGarden
-
-### Post-Hackathon 30-Day Plan
-
-1. **Playable MVP** — close remaining battle flow gaps; full end-to-end 2-player game on devnet
-2. ✅ **ZK live** — Groth16 proof + `verify_zk_proof` TX wired in live battle flow (2026-05-11)
-3. **Card art** — commission 60 card illustrations
-4. **Community** — open Discord + Twitter launch thread
-5. **On-chain game analysis** — Substack publication launching May 2026; writing about design decisions, ZK tradeoffs, and the economics of on-chain TCGs
-
-The goal is a real Season 1 on devnet with 50+ players within 60 days of the hackathon.
-
----
+Built by **r0ze** (Yukikaze). Originally submitted to **Colosseum Frontier 2026**
+(Gaming + AI). Devnet program ID `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`.
 
 ## 📝 License
 
-MIT
-
----
+MIT — see [LICENSE](LICENSE).
 
 [▶ Play now](https://r0ze998.github.io/0xark/)
