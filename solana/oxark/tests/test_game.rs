@@ -1239,10 +1239,12 @@ mod tests {
         //   + 5*32 p1_commit + 5*32 p2_commit = 483
         //   + 5*10*8 p1_reveal + 5*10*8 p2_reveal = 1283
         //   + 5*32 p1_salt + 5*32 p2_salt = 1603
-        // Trailing layout: [p1_zk(5)][p2_zk(5)][bump(1)] → P1_ZK0 = SIZE-11
-        const P1_ZK0: usize = oxark::state::DuelState::SIZE - 11;
+        // Trailing layout (YKK-41 appended 2 round-win bytes after bump):
+        //   [p1_zk(5)][p2_zk(5)][bump(1)][p1_round_wins(1)][p2_round_wins(1)]
+        //   → P1_ZK0 = SIZE-13
+        const P1_ZK0: usize = oxark::state::DuelState::SIZE - 13;
         // Compile-time guard: if DuelState grows or shrinks, this assertion fails.
-        const _: () = assert!(oxark::state::DuelState::SIZE == 1614);
+        const _: () = assert!(oxark::state::DuelState::SIZE == 1616);
 
         // Inject zk_verified[0] = true; leave commitment as all-zeros.
         let mut acc = svm.get_account(&duel_pda).expect("duel account must exist");

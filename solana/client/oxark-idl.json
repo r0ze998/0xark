@@ -7880,6 +7880,20 @@
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "player_1_round_wins",
+            "docs": [
+              "Rounds won by player 1 so far this duel."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "player_2_round_wins",
+            "docs": [
+              "Rounds won by player 2 so far this duel."
+            ],
+            "type": "u8"
           }
         ]
       }

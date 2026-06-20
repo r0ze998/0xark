@@ -768,9 +768,16 @@ pub struct DuelState {
     pub player_1_zk_verified: [bool; 5],
     pub player_2_zk_verified: [bool; 5],
     pub bump: u8,
+    // ── YKK-41: best-of-3 round-win tally (5 rounds, first to 3 wins) ─────────
+    /// Rounds won by player 1 so far this duel.
+    pub player_1_round_wins: u8,
+    /// Rounds won by player 2 so far this duel.
+    pub player_2_round_wins: u8,
 }
 
 impl DuelState {
+    /// Rounds a player must win to take the duel (best-of-5, 3-win majority).
+    pub const ROUNDS_TO_WIN: u8 = 3;
     // 8 disc + 32 id + 32 p1 + 32 p2 + 1 tier + 1 round + 1 phase + 8 ante
     // + 8 started_at + 8 ended_at + 32 winner
     // + 5*32 p1_commit + 5*32 p2_commit
@@ -778,6 +785,7 @@ impl DuelState {
     // + 5*32 p1_salt + 5*32 p2_salt
     // + 5 p1_zk_verified + 5 p2_zk_verified
     // + 1 bump
+    // + 1 p1_round_wins + 1 p2_round_wins  (YKK-41)
     pub const SIZE: usize = 8
         + 32
         + 32
@@ -797,6 +805,8 @@ impl DuelState {
         + (5 * 32)
         + 5
         + 5
+        + 1
+        + 1
         + 1;
 }
 
@@ -822,6 +832,8 @@ impl Default for DuelState {
             player_1_zk_verified: [false; 5],
             player_2_zk_verified: [false; 5],
             bump: 0,
+            player_1_round_wins: 0,
+            player_2_round_wins: 0,
         }
     }
 }
