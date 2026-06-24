@@ -1,3 +1,8 @@
+> **⚠️ ARCHIVED — legacy vision (3-player roguelike + dungeon map + fog-of-war).**
+> This is not the current design and does not match the shipped code. The canonical
+> design is [`docs/GDD.md`](../../docs/GDD.md) (14-day Season, 2-player ZK duels,
+> 60-card collection race, rank prize). Kept for historical reference only.
+
 # 0xARK — Game Design Document v0.3 (Solana Frontier)
 
 > **触って面白い最小限のものを、ブレないビジョンで磨く。説明しない、足さない、削る。**
