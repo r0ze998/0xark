@@ -22,6 +22,10 @@ pub const RARITY_UNCOMMON: u8 = 1;
 pub const RARITY_RARE: u8 = 2;
 pub const RARITY_LEGENDARY: u8 = 3;
 
+// YKK-45: provenance-gated single-card promotion. Wins a card must have earned to
+// promote Common → Uncommon. Placeholder value pending balancing (design v3 §2 / §6).
+pub const PROMOTE_COMMON_TO_UNCOMMON_WINS: u32 = 10;
+
 pub const TOTAL_CARD_TYPES: u8 = 5;
 pub const MAX_PLAYERS: u8 = 3;
 pub const MAX_ROUNDS: u8 = 30;

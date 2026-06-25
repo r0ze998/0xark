@@ -658,26 +658,17 @@ pub mod oxark {
         )
     }
 
-    /// v3.0-plus: Evolve two Common parent NFTs into one Uncommon child NFT.
-    ///
-    /// Burns parent_a and parent_b via SPL Token CPI.
-    /// Inits child CardBattleHistory with provenance (evolved_from_a/b,
-    /// cumulative_wins, Evolved+EvolvedHalo imprints).
-    /// Updates SeasonStats (+2 burned, +1 evolved, +1 minted).
-    pub fn evolve_cards(
-        ctx: Context<EvolveCards>,
-        parent_a_mint: Pubkey,
-        parent_b_mint: Pubkey,
-        child_mint: Pubkey,
-        target_species_id: u16,
-    ) -> Result<()> {
-        instructions::evolve_cards::handle_evolve_cards(
-            ctx,
-            parent_a_mint,
-            parent_b_mint,
-            child_mint,
-            target_species_id,
-        )
+    // YKK-45: `evolve_cards` (2-burn → new mint) is UNWIRED. The 2-card merge severs
+    // a card's history (new mint = new CardBattleHistory key), which contradicts the
+    // provenance-driven design. It is superseded by `promote_card` (in-place single-card
+    // promotion: same mint, history continuous). The module is retained for reference
+    // only (see instructions::evolve_cards); removing it from here drops it from the IDL.
+
+    /// YKK-45: Provenance-gated single-card promotion (design v3 §2). Raises a card's
+    /// rarity in place (Common → Uncommon) — same SPL mint, no burn — gated on the
+    /// card's `wins`. Holder-only. Token cost (YKK-43) and higher tiers come later.
+    pub fn promote_card(ctx: Context<PromoteCard>, card_mint: Pubkey) -> Result<()> {
+        instructions::promote_card::handle_promote_card(ctx, card_mint)
     }
 
     /// v3.0-plus: Initialize the SeasonStats PDA for a new season.
