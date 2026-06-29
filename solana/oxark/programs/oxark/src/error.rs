@@ -210,4 +210,9 @@ pub enum ErrorCode {
     TallyOutOfOrder,
     #[msg("Season tally incomplete — finalize all participants before ending")]
     TallyIncomplete,
+    // ── YKK-45 provenance promotion — appended (no enum renumbering) ──────────
+    #[msg("Card has not earned enough wins to promote")]
+    InsufficientWinsForPromotion,
+    #[msg("Card is not at the rarity tier this promotion expects")]
+    PromoteWrongTier,
 }

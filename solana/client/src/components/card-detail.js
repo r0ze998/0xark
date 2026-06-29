@@ -207,10 +207,10 @@ async function _callBurnOnchain(cardId) {
 }
 
 async function _callEvolveOnchain(parentA, parentB, childId) {
-  if (window.oxarkOnchain?.evolveCards) {
-    await window.oxarkOnchain.evolveCards(parentA, parentB, childId);
-  }
-  console.log(`[demo] evolve_cards instruction: ${parentA}+${parentB}→${childId}`);
+  // YKK-45: evolve_cards (2-burn → new mint) was unwired in favor of single-card
+  // promotion (promote_card / oxarkOnchain.promoteCard). This 2-merge UI no longer
+  // maps to an on-chain instruction; rewiring it to the promotion flow is a follow-up.
+  console.log(`[demo] evolve UI (no on-chain call; superseded by promote_card): ${parentA}+${parentB}→${childId}`);
 }
 
 function injectStyle() {

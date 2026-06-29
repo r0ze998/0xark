@@ -2150,458 +2150,6 @@
       ]
     },
     {
-      "name": "evolve_cards",
-      "docs": [
-        "v3.0-plus: Evolve two Common parent NFTs into one Uncommon child NFT.",
-        "",
-        "Burns parent_a and parent_b via SPL Token CPI.",
-        "Inits child CardBattleHistory with provenance (evolved_from_a/b,",
-        "cumulative_wins, Evolved+EvolvedHalo imprints).",
-        "Updates SeasonStats (+2 burned, +1 evolved, +1 minted)."
-      ],
-      "discriminator": [
-        64,
-        41,
-        38,
-        246,
-        110,
-        157,
-        200,
-        246
-      ],
-      "accounts": [
-        {
-          "name": "owner",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "parent_a_mint_account",
-          "writable": true
-        },
-        {
-          "name": "parent_a_token_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "owner"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "parent_a_mint_account"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "parent_a_history",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  97,
-                  114,
-                  100,
-                  95,
-                  98,
-                  97,
-                  116,
-                  116,
-                  108,
-                  101,
-                  95,
-                  104,
-                  105,
-                  115,
-                  116,
-                  111,
-                  114,
-                  121
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "parent_a_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "parent_a_mint_record",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  97,
-                  114,
-                  100,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  114,
-                  101,
-                  99,
-                  111,
-                  114,
-                  100
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "parent_a_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "parent_b_mint_account",
-          "writable": true
-        },
-        {
-          "name": "parent_b_token_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "owner"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "parent_b_mint_account"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "parent_b_history",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  97,
-                  114,
-                  100,
-                  95,
-                  98,
-                  97,
-                  116,
-                  116,
-                  108,
-                  101,
-                  95,
-                  104,
-                  105,
-                  115,
-                  116,
-                  111,
-                  114,
-                  121
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "parent_b_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "parent_b_mint_record",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  97,
-                  114,
-                  100,
-                  95,
-                  109,
-                  105,
-                  110,
-                  116,
-                  95,
-                  114,
-                  101,
-                  99,
-                  111,
-                  114,
-                  100
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "parent_b_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "child_history",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  97,
-                  114,
-                  100,
-                  95,
-                  98,
-                  97,
-                  116,
-                  116,
-                  108,
-                  101,
-                  95,
-                  104,
-                  105,
-                  115,
-                  116,
-                  111,
-                  114,
-                  121
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "child_mint"
-              }
-            ]
-          }
-        },
-        {
-          "name": "season_stats",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  101,
-                  97,
-                  115,
-                  111,
-                  110,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  115
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "parent_a_history.created_at",
-                "account": "CardBattleHistory"
-              }
-            ]
-          }
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        },
-        {
-          "name": "rent",
-          "address": "SysvarRent111111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "parent_a_mint",
-          "type": "pubkey"
-        },
-        {
-          "name": "parent_b_mint",
-          "type": "pubkey"
-        },
-        {
-          "name": "child_mint",
-          "type": "pubkey"
-        },
-        {
-          "name": "target_species_id",
-          "type": "u16"
-        }
-      ]
-    },
-    {
       "name": "finalize_season_tally",
       "docs": [
         "Tally a batch of participants into the GameWorld tier totals (admin crank).",
@@ -3520,6 +3068,211 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "promote_card",
+      "docs": [
+        "YKK-45: Provenance-gated single-card promotion (design v3 §2). Raises a card's",
+        "rarity in place (Common → Uncommon) — same SPL mint, no burn — gated on the",
+        "card's `wins`. Holder-only. Token cost (YKK-43) and higher tiers come later."
+      ],
+      "discriminator": [
+        3,
+        23,
+        131,
+        83,
+        5,
+        25,
+        102,
+        191
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "The card holder requesting the promotion."
+          ],
+          "signer": true
+        },
+        {
+          "name": "card_mint_account",
+          "docs": [
+            "The card's SPL mint; pinned to the `card_mint` argument used in the PDA seeds."
+          ]
+        },
+        {
+          "name": "owner_token_account",
+          "docs": [
+            "Proves `owner` actually holds this card (the NFT lives in their ATA)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "card_mint_account"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "card_mint_record",
+          "docs": [
+            "On-chain rarity record (the thing we update in place)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "card_battle_history",
+          "docs": [
+            "Provenance record (read-only here — the promotion gate reads `wins`)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  98,
+                  97,
+                  116,
+                  116,
+                  108,
+                  101,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "record_battle_result",
@@ -6115,6 +5868,19 @@
       ]
     },
     {
+      "name": "CardPromoted",
+      "discriminator": [
+        133,
+        61,
+        17,
+        17,
+        39,
+        191,
+        205,
+        234
+      ]
+    },
+    {
       "name": "CardStolen",
       "discriminator": [
         61,
@@ -6933,6 +6699,16 @@
       "code": 6095,
       "name": "TallyIncomplete",
       "msg": "Season tally incomplete — finalize all participants before ending"
+    },
+    {
+      "code": 6096,
+      "name": "InsufficientWinsForPromotion",
+      "msg": "Card has not earned enough wins to promote"
+    },
+    {
+      "code": 6097,
+      "name": "PromoteWrongTier",
+      "msg": "Card is not at the rarity tier this promotion expects"
     }
   ],
   "types": [
@@ -7531,6 +7307,30 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardPromoted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "from_rarity",
+            "type": "u8"
+          },
+          {
+            "name": "to_rarity",
+            "type": "u8"
+          },
+          {
+            "name": "wins",
+            "type": "u32"
           }
         ]
       }

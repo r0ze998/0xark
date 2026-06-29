@@ -1670,55 +1670,32 @@ async function burnCard(cardMintStr) {
   ], data);
 }
 
-// ─── evolve_cards ─────────────────────────────────────────────────────────
-// Evolves two Common parents into an Uncommon child.
-// The child mint must be pre-minted by the oxark-cards program before calling this.
-// targetSpeciesId: u16 species id for the child card.
-// YKK-32: parent rarities are read on-chain from each parent's CardMintRecord PDA;
-// the caller no longer passes rarity arguments (they were spoofable).
-async function evolveCards(parentAMintStr, parentBMintStr, childMintStr, targetSpeciesId) {
-  const owner = window.solana.publicKey;
-  const mintA  = new solanaWeb3.PublicKey(parentAMintStr);
-  const mintB  = new solanaWeb3.PublicKey(parentBMintStr);
-  const mintC  = new solanaWeb3.PublicKey(childMintStr);
+// ─── promote_card ───────────────────────────────────────────────────────────
+// YKK-45: provenance-driven single-card promotion (supersedes evolve_cards). One
+// card is promoted IN PLACE — same SPL mint, no burn — by raising the rarity stored
+// in its CardMintRecord PDA, gated on the card's on-chain `wins`. The holder must own
+// the NFT. First step is Common→Uncommon only. cardMintStr: base58 mint pubkey.
+async function promoteCard(cardMintStr) {
+  const owner  = window.solana.publicKey;
+  const mintPK = new solanaWeb3.PublicKey(cardMintStr);
+  const [ata]       = findAssociatedTokenAddress(owner, mintPK);
+  const [recordPDA] = findCardMintRecordPDA(mintPK);
+  const [histPDA]   = findCardBattleHistoryPDA(mintPK);
 
-  const [ataA]    = findAssociatedTokenAddress(owner, mintA);
-  const [ataB]    = findAssociatedTokenAddress(owner, mintB);
-  const [histA]   = findCardBattleHistoryPDA(mintA);
-  const [histB]   = findCardBattleHistoryPDA(mintB);
-  const [histC]   = findCardBattleHistoryPDA(mintC);
-  const [recordA] = findCardMintRecordPDA(mintA);
-  const [recordB] = findCardMintRecordPDA(mintB);
-
-  const createdAtA  = await readCardBattleHistoryCreatedAt(parentAMintStr);
-  const [statsPDA]  = findSeasonStatsPDA(createdAtA);
-
-  // disc(8) + parentA(32) + parentB(32) + child(32) + speciesId(2) = 106 bytes
-  const d    = await disc('evolve_cards');
-  const data = new Uint8Array(106);
+  // disc(8) + card_mint(32) = 40 bytes
+  const d    = await disc('promote_card');
+  const data = new Uint8Array(40);
   let off = writeBytes(data, 0, d);
-  off = writeBytes(data, off, mintA.toBytes());
-  off = writeBytes(data, off, mintB.toBytes());
-  off = writeBytes(data, off, mintC.toBytes());
-  writeU16LE(data, off, targetSpeciesId);
+  writeBytes(data, off, mintPK.toBytes());
 
-  // Account order must match EvolveCards: parent_X_mint_record follows parent_X_history.
+  // Account order must match PromoteCard:
+  // owner, card_mint_account, owner_token_account, card_mint_record, card_battle_history
   return buildAndSend([
-    { pubkey: owner,    isSigner: true,  isWritable: true  },
-    { pubkey: mintA,    isSigner: false, isWritable: true  },
-    { pubkey: ataA,     isSigner: false, isWritable: true  },
-    { pubkey: histA,    isSigner: false, isWritable: true  },
-    { pubkey: recordA,  isSigner: false, isWritable: false },
-    { pubkey: mintB,    isSigner: false, isWritable: true  },
-    { pubkey: ataB,     isSigner: false, isWritable: true  },
-    { pubkey: histB,    isSigner: false, isWritable: true  },
-    { pubkey: recordB,  isSigner: false, isWritable: false },
-    { pubkey: histC,    isSigner: false, isWritable: true  },
-    { pubkey: statsPDA, isSigner: false, isWritable: true  },
-    { pubkey: new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID),        isSigner: false, isWritable: false },
-    { pubkey: solanaWeb3.SystemProgram.programId,                    isSigner: false, isWritable: false },
-    { pubkey: new solanaWeb3.PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID), isSigner: false, isWritable: false },
-    { pubkey: new solanaWeb3.PublicKey(SYSVAR_RENT_PUBKEY),         isSigner: false, isWritable: false },
+    { pubkey: owner,     isSigner: true,  isWritable: false },
+    { pubkey: mintPK,    isSigner: false, isWritable: false },
+    { pubkey: ata,       isSigner: false, isWritable: false },
+    { pubkey: recordPDA, isSigner: false, isWritable: true  },
+    { pubkey: histPDA,   isSigner: false, isWritable: false },
   ], data);
 }
 
@@ -2299,7 +2276,7 @@ window.oxarkOnchain = {
   checkPlayerStateExists,
   registerWaitlist,
   burnCard,
-  evolveCards,
+  promoteCard,
   grantImprint,
   claimPrizeV2,
   checkLegendaryV2,

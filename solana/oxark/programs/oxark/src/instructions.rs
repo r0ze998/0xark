@@ -69,11 +69,14 @@ pub mod legendary;
 pub use legendary::*;
 // v3.0-plus
 pub mod burn_card;
+// YKK-45: evolve_cards (2-burn → new mint) is superseded by promote_card (in-place
+// single-card promotion) and unwired from lib.rs; module kept for reference only.
 pub mod evolve_cards;
 pub mod init_season_stats;
+pub mod promote_card;
 pub use burn_card::*;
-pub use evolve_cards::*;
 pub use init_season_stats::*;
+pub use promote_card::*;
 // Phase 15
 pub mod check_legendary;
 pub mod claim_prize_v2;
