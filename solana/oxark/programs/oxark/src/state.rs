@@ -168,6 +168,12 @@ pub struct PlayerState {
     pub vault_size_min: u8,
     /// Unix timestamp of last time player dropped to Tier 5 (for Phoenix).
     pub last_drop_to_tier5_timestamp: i64,
+    // ── Energy system (YKK-44) ────────────────────────────────────────────────
+    /// Current energy (0..=ENERGY_MAX). Spent to enter a duel, regenerates on a
+    /// clock (see `regenerated_energy`), refillable for SOL (`refill_energy`).
+    pub energy: u8,
+    /// Unix timestamp the energy clock was last settled (last regen/spend/refill).
+    pub last_energy_regen_at: i64,
 }
 
 impl PlayerState {
@@ -212,7 +218,9 @@ impl PlayerState {
         + 6
         + 1
         + 1
-        + 8; // 258 total
+        + 8 // last_drop_to_tier5_timestamp
+        + 1 // energy
+        + 8; // last_energy_regen_at → 267 total
 
     /// Count how many vault_bitmap bits are set (cards owned).
     pub fn vault_count(&self) -> u8 {

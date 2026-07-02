@@ -693,6 +693,13 @@ pub mod oxark {
         instructions::claim_timeout_win::handle_claim_timeout_win(ctx, duel_id)
     }
 
+    /// Refill energy to full for SOL (YKK-44 anti-whale gate / YKK-43 sink).
+    /// The regen/spend math lives in `instructions::refill_energy`; the duel-entry
+    /// consumption point is a separate change (the duel flow loads no PlayerState yet).
+    pub fn refill_energy(ctx: Context<RefillEnergy>) -> Result<()> {
+        instructions::refill_energy::handle_refill_energy(ctx)
+    }
+
     /// v3.0-plus: Initialize the SeasonStats PDA for a new season.
     ///
     /// Must be called once before Burn/Evolve/Steal instructions.

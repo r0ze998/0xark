@@ -2130,6 +2130,33 @@ async function checkLegendaryV2() {
 const OPS_TREASURY_PK  = new solanaWeb3.PublicKey('GN3aBaUFPpejXBy2u4SgXuwQkkqRFauqAfXNsXhTPz4f');
 // YKK-38: prize pool is now the program PDA (findPrizePoolPDA), not a fixed account.
 
+// ─── refill_energy ────────────────────────────────────────────────────────
+// Refill energy to full for SOL (YKK-44 gate / YKK-43 sink). No args — the fee
+// (ENERGY_REFILL_COST_LAMPORTS) and target (ops_treasury) are fixed on-chain.
+// NOTE: energy is not yet consumed anywhere (the duel-entry gate is a pending
+// change), so this currently just sets energy=max; wire the commit_hand gate to
+// make it meaningful.
+async function refillEnergy() {
+  const player           = window.solana.publicKey;
+  const [playerStatePDA] = findPlayerStatePDA(player);
+  const [gameWorldPDA]   = findGameWorldPDA();
+
+  // disc(8) only — no instruction args
+  const d    = await disc('refill_energy');
+  const data = new Uint8Array(8);
+  writeBytes(data, 0, d);
+
+  // Account order must match RefillEnergy:
+  // player, player_state, game_world, ops_treasury, system_program
+  return buildAndSend([
+    { pubkey: player,          isSigner: true,  isWritable: true  },
+    { pubkey: playerStatePDA,  isSigner: false, isWritable: true  },
+    { pubkey: gameWorldPDA,    isSigner: false, isWritable: false },
+    { pubkey: OPS_TREASURY_PK, isSigner: false, isWritable: true  },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+}
+
 async function buyPack(packType) {
   const buyer         = window.solana.publicKey;
   const [playerStatePDA] = findPlayerStatePDA(buyer);
@@ -2425,6 +2452,7 @@ window.oxarkOnchain = {
   findDuelLootRecordPDA,
   // Phase 20-B — shop
   buyPack,
+  refillEnergy,
   updateShopParams,
   // Helpers
   computeCommitHash,

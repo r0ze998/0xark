@@ -224,6 +224,9 @@ pub enum ErrorCode {
     InsufficientKosForPromotion,
     #[msg("Card is already at the maximum rarity")]
     AlreadyMaxRarity,
+    // ── Energy system (YKK-44) — appended ─────────────────────────────────────
+    #[msg("Not enough energy to enter a duel — wait for regen or refill")]
+    InsufficientEnergy,
     // ── Duel history settlement + stall timeout — appended ────────────────────
     #[msg("Duel has not ended — settle after ended_at is set")]
     DuelNotEnded,

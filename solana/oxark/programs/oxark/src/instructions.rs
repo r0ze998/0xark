@@ -75,6 +75,10 @@ pub mod settle_duel_history;
 pub use claim_timeout_win::*;
 pub use settle_duel_history::*;
 
+// Energy system (YKK-44 gate / YKK-43 sink): refill_energy + pure regen/spend math.
+pub mod refill_energy;
+pub use refill_energy::*;
+
 // YKK-45: evolve_cards (2-burn → new mint) is superseded by promote_card (in-place
 // single-card promotion) and unwired from lib.rs; module kept for reference only.
 pub mod evolve_cards;

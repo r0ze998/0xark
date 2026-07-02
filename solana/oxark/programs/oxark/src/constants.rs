@@ -40,6 +40,22 @@ pub const PROMOTE_RARE_TO_LEGENDARY_KOS: u32 = 30;
 // bare magic number.
 pub const ACQUISITION_DUEL_WON: u8 = 2;
 
+// ── Energy system (YKK-44 anti-whale gate / YKK-43 SOL sink) ─────────────────
+// Duel participation is energy-gated so time-invested ≠ pay-to-win: casual and
+// hardcore players reach a similar card count. Energy regenerates on a clock and
+// can be refilled for SOL (the "buy time back" sink).
+/// Max energy a player can hold.
+pub const ENERGY_MAX: u8 = 5;
+/// Seconds per natural +1 regen (4h → 6/day at full uptime).
+pub const ENERGY_REGEN_INTERVAL_SECONDS: i64 = 4 * 60 * 60;
+/// Energy consumed to enter one duel (spent once per duel, not per round).
+/// (Used by the pending commit_hand duel-entry gate.)
+#[allow(dead_code)]
+pub const ENERGY_COST_PER_DUEL: u8 = 1;
+/// SOL cost to refill energy to full. Placeholder pending YKK-43 balancing
+/// (design v3 §6 / economy sim): 0.001–0.01 SOL range → start at 0.003 SOL.
+pub const ENERGY_REFILL_COST_LAMPORTS: u64 = 3_000_000;
+
 // Stall timeout: seconds without duel progress (commit/reveal) after which the
 // non-stalling participant may call `claim_timeout_win` and take the duel.
 // Placeholder pending balancing — long enough for proof generation + network
