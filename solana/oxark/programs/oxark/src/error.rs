@@ -215,6 +215,15 @@ pub enum ErrorCode {
     InsufficientWinsForPromotion,
     #[msg("Card is not at the rarity tier this promotion expects")]
     PromoteWrongTier,
+    // ── Higher-tier promotion gates (design v3 §2) — appended ─────────────────
+    #[msg("Card lacks the combat/ownership provenance required for Rare (a legendary kill or a prior-owner drop)")]
+    MissingRareProvenance,
+    #[msg("Only a card won in a duel (acquisition_source == duel_won) can reach Legendary")]
+    NotDuelWonAcquisition,
+    #[msg("Card has not destroyed enough enemies (kos) to reach Legendary")]
+    InsufficientKosForPromotion,
+    #[msg("Card is already at the maximum rarity")]
+    AlreadyMaxRarity,
     // ── Duel history settlement + stall timeout — appended ────────────────────
     #[msg("Duel has not ended — settle after ended_at is set")]
     DuelNotEnded,

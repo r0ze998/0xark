@@ -26,6 +26,20 @@ pub const RARITY_LEGENDARY: u8 = 3;
 // promote Common → Uncommon. Placeholder value pending balancing (design v3 §2 / §6).
 pub const PROMOTE_COMMON_TO_UNCOMMON_WINS: u32 = 10;
 
+// Higher-tier promotion gates (design v3 §2, たたき台 — all placeholders pending §6).
+// Uncommon → Rare: enough wins AND at least one "deep provenance" mark
+// (a legendary kill, or having been dropped/stolen from a prior owner).
+pub const PROMOTE_UNCOMMON_TO_RARE_WINS: u32 = 25;
+// Rare → Legendary: heavy win history AND the card was itself won in a duel
+// (acquisition_source == duel_won) AND enough enemies destroyed.
+pub const PROMOTE_RARE_TO_LEGENDARY_WINS: u32 = 50;
+pub const PROMOTE_RARE_TO_LEGENDARY_KOS: u32 = 30;
+
+// acquisition_source values (mirror CardBattleHistory::acquisition_source encoding:
+// 0=mint, 1=shop, 2=duel_won, 3=p2p_trade). Named so the promotion gate isn't a
+// bare magic number.
+pub const ACQUISITION_DUEL_WON: u8 = 2;
+
 // Stall timeout: seconds without duel progress (commit/reveal) after which the
 // non-stalling participant may call `claim_timeout_win` and take the duel.
 // Placeholder pending balancing — long enough for proof generation + network
