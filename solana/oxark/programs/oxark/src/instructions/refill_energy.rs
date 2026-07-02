@@ -26,9 +26,7 @@ use anchor_lang::system_program::{transfer, Transfer};
 // ── Pure energy math (unit-tested) ───────────────────────────────────────────
 
 /// Settle natural regen up to `now` without exceeding ENERGY_MAX.
-/// (Primitive for the pending duel-entry consumption gate; currently exercised by
-/// unit tests and `settle_and_spend` — `#[allow(dead_code)]` until commit_hand wires it.)
-#[allow(dead_code)]
+/// (Used by `settle_and_spend`, which commit_hand calls to charge duel entry.)
 pub(crate) fn regenerated_energy(energy: u8, last_regen_at: i64, now: i64) -> (u8, i64) {
     if energy >= ENERGY_MAX {
         return (ENERGY_MAX, now);
@@ -55,8 +53,7 @@ pub(crate) fn regenerated_energy(energy: u8, last_regen_at: i64, now: i64) -> (u
 /// (energy, anchor) on success, or `None` if energy is insufficient after regen.
 /// On a successful spend the anchor is reset to `now` so the next regen point is a
 /// full interval away (no retroactive credit).
-/// (This is the primitive commit_hand will call to charge duel entry; wired next.)
-#[allow(dead_code)]
+/// (commit_hand calls this to charge 1 energy on duel entry.)
 pub(crate) fn settle_and_spend(
     energy: u8,
     last_regen_at: i64,

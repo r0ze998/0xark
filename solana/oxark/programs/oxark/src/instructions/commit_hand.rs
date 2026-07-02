@@ -1,7 +1,9 @@
+use crate::constants::ENERGY_COST_PER_DUEL;
 use crate::error::ErrorCode;
 use crate::groth16::{self, hand_commitment_vk};
 use crate::instructions::init_duel::DUEL_SEED;
-use crate::state::{DuelState, HandCommitted};
+use crate::instructions::refill_energy::settle_and_spend;
+use crate::state::{DuelState, HandCommitted, PlayerState};
 use anchor_lang::prelude::*;
 
 // ─── Instruction ─────────────────────────────────────────────────────────────
@@ -17,6 +19,16 @@ pub struct CommitHand<'info> {
     pub duel: Account<'info, DuelState>,
 
     pub player: Signer<'info>,
+
+    /// The committing player's season account — holds energy. Charged 1 energy on
+    /// the first commit of round 1 (duel entry gate, YKK-44). Seeds bind it to the
+    /// signer, so a player can only spend their own energy.
+    #[account(
+        mut,
+        seeds = [b"player", player.key().as_ref()],
+        bump = player_state.bump,
+    )]
+    pub player_state: Account<'info, PlayerState>,
 }
 
 /// Commit a player's hand for the current round via Groth16 ZK proof.
@@ -88,6 +100,27 @@ pub fn handle_commit_hand(
 
     // Extract commitment (index 0 in public_signals — snarkjs output order)
     let commitment: [u8; 32] = public_signals[0];
+
+    // Duel-entry energy gate (YKK-44): charge 1 energy once per duel, on this
+    // player's FIRST commit of round 1. Placed after proof verification so an
+    // invalid proof is still rejected on the proof, not the energy check.
+    if round == 1 {
+        let first_commit = if is_p1 {
+            duel.player_1_commitment[round_idx] == [0u8; 32]
+        } else {
+            duel.player_2_commitment[round_idx] == [0u8; 32]
+        };
+        if first_commit {
+            let now = Clock::get()?.unix_timestamp;
+            let ps = &mut ctx.accounts.player_state;
+            let (energy, anchor) =
+                settle_and_spend(ps.energy, ps.last_energy_regen_at, now, ENERGY_COST_PER_DUEL)
+                    .ok_or(ErrorCode::InsufficientEnergy)?;
+            ps.energy = energy;
+            ps.last_energy_regen_at = anchor;
+        }
+    }
+
     if is_p1 {
         duel.player_1_commitment[round_idx] = commitment;
         duel.player_1_zk_verified[round_idx] = true;

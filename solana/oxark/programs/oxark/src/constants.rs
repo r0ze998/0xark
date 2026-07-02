@@ -56,8 +56,6 @@ pub const ENERGY_MAX: u8 = 5;
 /// Seconds per natural +1 regen (4h → 6/day at full uptime).
 pub const ENERGY_REGEN_INTERVAL_SECONDS: i64 = 4 * 60 * 60;
 /// Energy consumed to enter one duel (spent once per duel, not per round).
-/// (Used by the pending commit_hand duel-entry gate.)
-#[allow(dead_code)]
 pub const ENERGY_COST_PER_DUEL: u8 = 1;
 /// SOL cost to refill energy to full. Placeholder pending YKK-43 balancing
 /// (design v3 §6 / economy sim): 0.001–0.01 SOL range → start at 0.003 SOL.

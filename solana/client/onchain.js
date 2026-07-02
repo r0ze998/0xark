@@ -1951,6 +1951,7 @@ async function commitHand(duelIdStr, round, proofA, proofB, proofC, publicSignal
 
   const duelIdPK = new solanaWeb3.PublicKey(duelIdStr);
   const [duelPDA] = findDuelPDA(duelIdPK);
+  const [playerStatePDA] = findPlayerStatePDA(player);  // energy gate (YKK-44)
 
   // Borsh: disc(8) + duel_id(32) + round(1) + proof_a(64) + proof_b(128) + proof_c(64)
   //        + public_signals(4×32=128) = 425 bytes
@@ -1969,6 +1970,7 @@ async function commitHand(duelIdStr, round, proofA, proofB, proofC, publicSignal
   return buildAndSend([
     { pubkey: duelPDA, isSigner: false, isWritable: true },
     { pubkey: player,  isSigner: true,  isWritable: false },
+    { pubkey: playerStatePDA, isSigner: false, isWritable: true },
   ], data, COMPUTE_BUDGET.commit_hand);
 }
 
