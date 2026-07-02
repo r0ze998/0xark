@@ -55,6 +55,8 @@ pub fn handle_init_duel(
     duel.ended_at = 0;
     duel.winner = Pubkey::default();
     duel.bump = ctx.bumps.duel;
+    // Stall-timeout clock starts at creation.
+    duel.last_progress_at = duel.started_at;
 
     emit!(DuelInitialized {
         duel_id,

@@ -215,4 +215,19 @@ pub enum ErrorCode {
     InsufficientWinsForPromotion,
     #[msg("Card is not at the rarity tier this promotion expects")]
     PromoteWrongTier,
+    // ── Duel history settlement + stall timeout — appended ────────────────────
+    #[msg("Duel has not ended — settle after ended_at is set")]
+    DuelNotEnded,
+    #[msg("Card id was not in this player's revealed hands for this duel")]
+    CardNotInRevealedHand,
+    #[msg("This card has already been settled for this duel")]
+    CardAlreadySettled,
+    #[msg("Card id 0 cannot be settled (0 is the empty-slot sentinel in revealed hands)")]
+    UnsupportedCardId,
+    #[msg("Settle record does not belong to this duel/player")]
+    WrongSettleRecord,
+    #[msg("Stall timeout has not elapsed yet")]
+    TimeoutNotReached,
+    #[msg("Opponent is not the stalling side for the current round (or you owe the next action)")]
+    OpponentNotStalled,
 }

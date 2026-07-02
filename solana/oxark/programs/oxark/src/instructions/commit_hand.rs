@@ -96,6 +96,9 @@ pub fn handle_commit_hand(
         duel.player_2_zk_verified[round_idx] = true;
     }
 
+    // Stall-timeout clock: every successful commit is progress.
+    duel.last_progress_at = Clock::get()?.unix_timestamp;
+
     emit!(HandCommitted {
         duel_id,
         player: player_key,

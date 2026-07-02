@@ -26,6 +26,12 @@ pub const RARITY_LEGENDARY: u8 = 3;
 // promote Common → Uncommon. Placeholder value pending balancing (design v3 §2 / §6).
 pub const PROMOTE_COMMON_TO_UNCOMMON_WINS: u32 = 10;
 
+// Stall timeout: seconds without duel progress (commit/reveal) after which the
+// non-stalling participant may call `claim_timeout_win` and take the duel.
+// Placeholder pending balancing — long enough for proof generation + network
+// hiccups, short enough that a reveal-refuser can't hold the duel hostage.
+pub const DUEL_STALL_TIMEOUT_SECONDS: i64 = 600;
+
 pub const TOTAL_CARD_TYPES: u8 = 5;
 pub const MAX_PLAYERS: u8 = 3;
 pub const MAX_ROUNDS: u8 = 30;

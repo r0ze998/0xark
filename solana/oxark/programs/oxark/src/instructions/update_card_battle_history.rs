@@ -1,3 +1,4 @@
+use crate::constants::ADMIN_PUBKEY;
 use crate::error::ErrorCode;
 use crate::state::{
     CardBattleHistory, CardBattleHistoryUpdated, CardMintRecord, Imprint, ImprintGrantedEvent,
@@ -16,15 +17,21 @@ const CARD_BATTLE_HISTORY_SEED: &[u8] = CardBattleHistory::CARD_BATTLE_HISTORY_S
 pub struct UpdateCardBattleHistory<'info> {
     #[account(
         init_if_needed,
-        payer = payer,
+        payer = admin,
         space = CardBattleHistory::LEN,
         seeds = [CARD_BATTLE_HISTORY_SEED, card_mint.as_ref()],
         bump,
     )]
     pub card_battle_history: Account<'info, CardBattleHistory>,
 
-    #[account(mut)]
-    pub payer: Signer<'info>,
+    /// ADMIN-only (migration / ops escape hatch). CardBattleHistory became an
+    /// economic gate when `promote_card` (YKK-45) started reading `wins` from it:
+    /// leaving this open lets any wallet mint provenance for free and bypass the
+    /// promotion gate — the same caller-trusted pattern as C5/C6. The normal,
+    /// player-facing write path is `settle_duel_history`, which derives deltas
+    /// from a finished on-chain DuelState instead of trusting arguments.
+    #[account(mut, constraint = admin.key() == ADMIN_PUBKEY @ ErrorCode::NotAdmin)]
+    pub admin: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -50,8 +57,12 @@ pub struct GrantImprint<'info> {
     )]
     pub card_mint_record: Account<'info, CardMintRecord>,
 
-    #[account(mut)]
-    pub payer: Signer<'info>,
+    /// ADMIN-only. Stat imprints add battle power (+BP/+HP), so an open grant
+    /// path is direct stat inflation — same caller-trusted class as above.
+    /// Organic imprints are earned via the threshold auto-grants inside
+    /// `settle_duel_history` / this module's helpers.
+    #[account(mut, constraint = admin.key() == ADMIN_PUBKEY @ ErrorCode::NotAdmin)]
+    pub admin: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -83,26 +94,7 @@ pub fn handle_update_card_battle_history(
     history.dmg_dealt = history.dmg_dealt.saturating_add(dmg_delta);
     history.times_summoned = history.times_summoned.saturating_add(summon_delta);
 
-    // Auto-grant Veteran Imprint at 10 cumulative wins (first time crossing threshold)
-    if old_wins < 10 && history.wins >= 10 {
-        try_grant_imprint(history, ImprintKey::Veteran, 1, false, 0, now);
-    }
-
-    // Auto-grant Elder Imprint at 50 cumulative wins
-    if old_wins < 50 && history.wins >= 50 {
-        try_grant_imprint(history, ImprintKey::Elder, 1, false, 0, now);
-        try_grant_imprint(history, ImprintKey::ElderFrame, 0, true, 0, now);
-    }
-
-    // Auto-grant Lineage Mark when owner ring has ≥ 3 entries
-    if history.owners_history_len >= 3 {
-        let has_lineage = history.imprints[..history.imprint_count as usize]
-            .iter()
-            .any(|imp| imp.key == ImprintKey::LineageMark as u8);
-        if !has_lineage {
-            try_grant_imprint(history, ImprintKey::LineageMark, 0, true, 0, now);
-        }
-    }
+    apply_threshold_imprints(history, old_wins, now);
 
     emit!(CardBattleHistoryUpdated {
         card_mint,
@@ -182,6 +174,31 @@ pub fn handle_grant_imprint(
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/// Threshold auto-imprints, shared by the admin update path and by
+/// `settle_duel_history` (the trustless player-facing write path). Grants:
+///   - Veteran (+1 BP, stat) on first crossing 10 cumulative wins
+///   - Elder (+1 HP, stat) + ElderFrame (cosmetic) on first crossing 50 wins
+///   - LineageMark (cosmetic) once the owner ring holds ≥ 3 entries
+pub(crate) fn apply_threshold_imprints(history: &mut CardBattleHistory, old_wins: u32, now: i64) {
+    if old_wins < 10 && history.wins >= 10 {
+        try_grant_imprint(history, ImprintKey::Veteran, 1, false, 0, now);
+    }
+
+    if old_wins < 50 && history.wins >= 50 {
+        try_grant_imprint(history, ImprintKey::Elder, 1, false, 0, now);
+        try_grant_imprint(history, ImprintKey::ElderFrame, 0, true, 0, now);
+    }
+
+    if history.owners_history_len >= 3 {
+        let has_lineage = history.imprints[..history.imprint_count as usize]
+            .iter()
+            .any(|imp| imp.key == ImprintKey::LineageMark as u8);
+        if !has_lineage {
+            try_grant_imprint(history, ImprintKey::LineageMark, 0, true, 0, now);
+        }
+    }
+}
 
 /// Returns the stat delta associated with a stat Imprint type.
 fn stat_delta_for(key: ImprintKey) -> i32 {

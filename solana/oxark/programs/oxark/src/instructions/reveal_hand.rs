@@ -115,6 +115,9 @@ pub fn handle_reveal_hand(
         duel.player_2_revealed[round_idx] = card_ids;
     }
 
+    // Stall-timeout clock: every successful reveal is progress.
+    duel.last_progress_at = Clock::get()?.unix_timestamp;
+
     // YKK-41: best-of-5, first to 3 round wins. Resolve THIS round once both
     // players have revealed it (gated above by zk_verified + already-revealed, so
     // this fires exactly once per round, on the second reveal), then either end

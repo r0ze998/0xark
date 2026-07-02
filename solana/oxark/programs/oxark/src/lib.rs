@@ -671,6 +671,28 @@ pub mod oxark {
         instructions::promote_card::handle_promote_card(ctx, card_mint)
     }
 
+    /// Trustless CardBattleHistory settlement: derives one card's win/loss credit
+    /// from a FINISHED on-chain DuelState (participant + revealed-hand membership
+    /// + per-duel dedup bitmap) instead of trusting caller-supplied deltas. This
+    /// is the player-facing write path that feeds `promote_card`'s wins gate;
+    /// `update_card_battle_history` is now ADMIN-only (see that instruction).
+    /// One card per call — clients batch several into a single transaction.
+    pub fn settle_duel_history(
+        ctx: Context<SettleDuelHistory>,
+        duel_id: Pubkey,
+        card_mint: Pubkey,
+    ) -> Result<()> {
+        instructions::settle_duel_history::handle_settle_duel_history(ctx, duel_id, card_mint)
+    }
+
+    /// Stall-timeout guard: after `DUEL_STALL_TIMEOUT_SECONDS` without progress,
+    /// the participant who has done their part for the current round may end a
+    /// duel whose opponent refuses to commit/reveal, taking the win. Must exist
+    /// before YKK-44 escrow, or a reveal-refuser could lock escrowed cards forever.
+    pub fn claim_timeout_win(ctx: Context<ClaimTimeoutWin>, duel_id: Pubkey) -> Result<()> {
+        instructions::claim_timeout_win::handle_claim_timeout_win(ctx, duel_id)
+    }
+
     /// v3.0-plus: Initialize the SeasonStats PDA for a new season.
     ///
     /// Must be called once before Burn/Evolve/Steal instructions.
