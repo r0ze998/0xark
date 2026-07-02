@@ -41,7 +41,7 @@ pub struct UpdateCardBattleHistory<'info> {
 pub struct GrantImprint<'info> {
     #[account(
         init_if_needed,
-        payer = payer,
+        payer = admin,
         space = CardBattleHistory::LEN,
         seeds = [CARD_BATTLE_HISTORY_SEED, card_mint.as_ref()],
         bump,

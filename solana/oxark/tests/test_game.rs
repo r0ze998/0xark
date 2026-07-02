@@ -1239,12 +1239,13 @@ mod tests {
         //   + 5*32 p1_commit + 5*32 p2_commit = 483
         //   + 5*10*8 p1_reveal + 5*10*8 p2_reveal = 1283
         //   + 5*32 p1_salt + 5*32 p2_salt = 1603
-        // Trailing layout (YKK-41 appended 2 round-win bytes after bump):
-        //   [p1_zk(5)][p2_zk(5)][bump(1)][p1_round_wins(1)][p2_round_wins(1)]
-        //   → P1_ZK0 = SIZE-13
-        const P1_ZK0: usize = oxark::state::DuelState::SIZE - 13;
+        // Trailing layout (YKK-41 appended 2 round-win bytes after bump; the
+        // provenance-gate fix appended last_progress_at(8) after those):
+        //   [p1_zk(5)][p2_zk(5)][bump(1)][p1_round_wins(1)][p2_round_wins(1)][last_progress_at(8)]
+        //   → P1_ZK0 = SIZE-21
+        const P1_ZK0: usize = oxark::state::DuelState::SIZE - 21;
         // Compile-time guard: if DuelState grows or shrinks, this assertion fails.
-        const _: () = assert!(oxark::state::DuelState::SIZE == 1616);
+        const _: () = assert!(oxark::state::DuelState::SIZE == 1624);
 
         // Inject zk_verified[0] = true; leave commitment as all-zeros.
         let mut acc = svm.get_account(&duel_pda).expect("duel account must exist");
@@ -1329,52 +1330,45 @@ mod tests {
         d
     }
 
+    // YKK-32's rarity-cap logic (grant_imprint reads rarity from CardMintRecord and
+    // caps stat imprints accordingly) is unchanged, but the provenance-gate fix made
+    // grant_imprint ADMIN-only: stat imprints add battle power (+BP/+HP), so an open
+    // grant path was direct stat inflation — the same caller-trusted class the fix
+    // closes for update_card_battle_history. The ADMIN_PUBKEY const has no matching
+    // secret in-repo, so the cap *success* path can no longer be signed here (same
+    // limitation Fable documented for update_card_battle_history_rejects_non_admin).
+    // What this test asserts is the security property that now precedes the cap: a
+    // non-admin grant_imprint is rejected with NotAdmin. Organic imprints now flow
+    // through settle_duel_history's threshold auto-grants, not this admin path.
     #[test]
-    fn grant_imprint_common_caps_stat_imprints_by_record_rarity() {
+    fn grant_imprint_rejects_non_admin() {
         let mut svm = setup_svm();
         let payer = Keypair::new();
         fund_account(&mut svm, &payer.pubkey(), 5_000_000_000);
 
-        // A Common (rarity=0) card → stat-imprint cap is 3.
+        // Common (rarity=0) card with its OWN matching record, so the seeds checks
+        // pass and account validation reaches the admin-signer constraint.
         let card_mint = Keypair::new().pubkey();
         let record = seed_card_mint_record(&mut svm, &card_mint, 1, 0);
         let (history, _) = find_card_battle_history_pda(&card_mint);
 
-        let metas = || {
+        let err = send_ix(
+            &mut svm,
+            &payer,
             vec![
                 AccountMeta::new(history, false),
                 AccountMeta::new_readonly(record, false),
                 AccountMeta::new(payer.pubkey(), true),
                 AccountMeta::new_readonly(system_program::id(), false),
-            ]
-        };
-
-        // 3 distinct non-cosmetic imprints succeed (cap = 3 for Common).
-        for key in 1u8..=3 {
-            send_ix(
-                &mut svm,
-                &payer,
-                metas(),
-                grant_imprint_ix_data(&card_mint, key, false, key as u64),
-                vec![&payer],
-            )
-            .unwrap_or_else(|e| panic!("stat imprint #{key} should succeed for Common: {e}"));
-        }
-
-        // 4th non-cosmetic imprint exceeds the Common cap → StatImprintLimitReached.
-        // (Pre-YKK-32, a caller could pass rarity=3 to raise the cap to 5.)
-        let err = send_ix(
-            &mut svm,
-            &payer,
-            metas(),
-            grant_imprint_ix_data(&card_mint, 4, false, 4),
+            ],
+            grant_imprint_ix_data(&card_mint, 1, false, 1),
             vec![&payer],
         )
-        .expect_err("4th stat imprint must exceed the Common cap");
+        .expect_err("non-admin grant_imprint must be rejected");
         let err = format!("{err}");
         assert!(
-            err.contains("StatImprintLimitReached"),
-            "expected StatImprintLimitReached, got: {err}"
+            err.contains("NotAdmin") || err.contains("6083"),
+            "expected NotAdmin rejection, got: {err}"
         );
     }
 
