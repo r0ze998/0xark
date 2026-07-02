@@ -17,19 +17,23 @@
 // YKK-43's economy work; this instruction only enforces the history gates. Adding a
 // cost later is an account + transfer in this same handler, gate logic unchanged.
 use crate::constants::{
-    ACQUISITION_DUEL_WON, PROMOTE_COMMON_TO_UNCOMMON_WINS, PROMOTE_RARE_TO_LEGENDARY_KOS,
+    ACQUISITION_DUEL_WON, PROMOTE_COMMON_TO_UNCOMMON_WINS,
+    PROMOTE_COST_COMMON_TO_UNCOMMON_LAMPORTS, PROMOTE_COST_RARE_TO_LEGENDARY_LAMPORTS,
+    PROMOTE_COST_UNCOMMON_TO_RARE_LAMPORTS, PROMOTE_RARE_TO_LEGENDARY_KOS,
     PROMOTE_RARE_TO_LEGENDARY_WINS, PROMOTE_UNCOMMON_TO_RARE_WINS, RARITY_COMMON, RARITY_LEGENDARY,
     RARITY_RARE, RARITY_UNCOMMON,
 };
 use crate::error::ErrorCode;
-use crate::state::{CardBattleHistory, CardMintRecord};
+use crate::state::{CardBattleHistory, CardMintRecord, GameWorld};
 use anchor_lang::prelude::*;
+use anchor_lang::system_program::{transfer, Transfer};
 use anchor_spl::token::{Mint, TokenAccount};
 
 #[derive(Accounts)]
 #[instruction(card_mint: Pubkey)]
 pub struct PromoteCard<'info> {
-    /// The card holder requesting the promotion.
+    /// The card holder requesting the promotion (pays the promotion fee).
+    #[account(mut)]
     pub owner: Signer<'info>,
 
     /// The card's SPL mint; pinned to the `card_mint` argument used in the PDA seeds.
@@ -58,6 +62,16 @@ pub struct PromoteCard<'info> {
         bump,
     )]
     pub card_battle_history: Account<'info, CardBattleHistory>,
+
+    /// Holds the canonical ops_treasury address the fee is checked against.
+    #[account(seeds = [b"game_world"], bump = game_world.bump)]
+    pub game_world: Account<'info, GameWorld>,
+
+    /// CHECK: verified against game_world.ops_treasury (same pattern as buy_pack).
+    #[account(mut, constraint = ops_treasury.key() == game_world.ops_treasury @ ErrorCode::Unauthorized)]
+    pub ops_treasury: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
 }
 
 #[event]
@@ -89,6 +103,22 @@ pub fn handle_promote_card(ctx: Context<PromoteCard>, card_mint: Pubkey) -> Resu
         h.acquisition_source,
     )?;
 
+    // Promotion fee (YKK-43 sink): pay the tier-step cost to ops_treasury. Charged
+    // only after the gate passes, so a rejected promotion is free.
+    let fee = promotion_cost_lamports(from);
+    if fee > 0 {
+        transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                Transfer {
+                    from: ctx.accounts.owner.to_account_info(),
+                    to: ctx.accounts.ops_treasury.to_account_info(),
+                },
+            ),
+            fee,
+        )?;
+    }
+
     // In-place promotion: same mint, history untouched, only rarity rises.
     let wins = h.wins;
     record.rarity = target;
@@ -100,13 +130,27 @@ pub fn handle_promote_card(ctx: Context<PromoteCard>, card_mint: Pubkey) -> Resu
         wins,
     });
     msg!(
-        "promote_card: mint={} rarity {}->{} wins={} (same mint, history continuous)",
+        "promote_card: mint={} rarity {}->{} wins={} fee={}lamports (same mint, history continuous)",
         card_mint,
         from,
         target,
         wins,
+        fee,
     );
     Ok(())
+}
+
+/// SOL fee (lamports) for promoting a card that is currently at `from_rarity`.
+/// Escalates with tier; anything at/above Legendary or unknown pays 0 (it can't
+/// promote anyway — `evaluate_promotion` rejects it before this is charged).
+/// Placeholder amounts pending the YKK-43 economy sim.
+pub(crate) fn promotion_cost_lamports(from_rarity: u8) -> u64 {
+    match from_rarity {
+        RARITY_COMMON => PROMOTE_COST_COMMON_TO_UNCOMMON_LAMPORTS,
+        RARITY_UNCOMMON => PROMOTE_COST_UNCOMMON_TO_RARE_LAMPORTS,
+        RARITY_RARE => PROMOTE_COST_RARE_TO_LEGENDARY_LAMPORTS,
+        _ => 0,
+    }
 }
 
 // ── Pure promotion gate (unit-tested; no accounts/SVM needed) ────────────────
@@ -166,9 +210,11 @@ pub(crate) fn evaluate_promotion(
 
 #[cfg(test)]
 mod tests {
-    use super::evaluate_promotion;
+    use super::{evaluate_promotion, promotion_cost_lamports};
     use crate::constants::{
-        ACQUISITION_DUEL_WON, RARITY_COMMON, RARITY_LEGENDARY, RARITY_RARE, RARITY_UNCOMMON,
+        ACQUISITION_DUEL_WON, PROMOTE_COST_COMMON_TO_UNCOMMON_LAMPORTS,
+        PROMOTE_COST_RARE_TO_LEGENDARY_LAMPORTS, PROMOTE_COST_UNCOMMON_TO_RARE_LAMPORTS,
+        RARITY_COMMON, RARITY_LEGENDARY, RARITY_RARE, RARITY_UNCOMMON,
     };
     use crate::error::ErrorCode;
 
@@ -257,5 +303,31 @@ mod tests {
             evaluate_promotion(RARITY_LEGENDARY, 999, 999, 9, 9, ACQUISITION_DUEL_WON),
             Err(ErrorCode::AlreadyMaxRarity)
         ));
+    }
+
+    // Promotion fee escalates by tier; max/unknown pays nothing.
+    #[test]
+    fn cost_escalates_by_tier() {
+        assert_eq!(
+            promotion_cost_lamports(RARITY_COMMON),
+            PROMOTE_COST_COMMON_TO_UNCOMMON_LAMPORTS
+        );
+        assert_eq!(
+            promotion_cost_lamports(RARITY_UNCOMMON),
+            PROMOTE_COST_UNCOMMON_TO_RARE_LAMPORTS
+        );
+        assert_eq!(
+            promotion_cost_lamports(RARITY_RARE),
+            PROMOTE_COST_RARE_TO_LEGENDARY_LAMPORTS
+        );
+        assert!(
+            PROMOTE_COST_COMMON_TO_UNCOMMON_LAMPORTS < PROMOTE_COST_UNCOMMON_TO_RARE_LAMPORTS
+                && PROMOTE_COST_UNCOMMON_TO_RARE_LAMPORTS < PROMOTE_COST_RARE_TO_LEGENDARY_LAMPORTS
+        );
+    }
+    #[test]
+    fn cost_zero_for_legendary_and_unknown() {
+        assert_eq!(promotion_cost_lamports(RARITY_LEGENDARY), 0);
+        assert_eq!(promotion_cost_lamports(99), 0);
     }
 }

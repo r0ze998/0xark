@@ -1723,9 +1723,10 @@ async function burnCard(cardMintStr) {
 async function promoteCard(cardMintStr) {
   const owner  = window.solana.publicKey;
   const mintPK = new solanaWeb3.PublicKey(cardMintStr);
-  const [ata]       = findAssociatedTokenAddress(owner, mintPK);
-  const [recordPDA] = findCardMintRecordPDA(mintPK);
-  const [histPDA]   = findCardBattleHistoryPDA(mintPK);
+  const [ata]           = findAssociatedTokenAddress(owner, mintPK);
+  const [recordPDA]     = findCardMintRecordPDA(mintPK);
+  const [histPDA]       = findCardBattleHistoryPDA(mintPK);
+  const [gameWorldPDA]  = findGameWorldPDA();
 
   // disc(8) + card_mint(32) = 40 bytes
   const d    = await disc('promote_card');
@@ -1734,13 +1735,18 @@ async function promoteCard(cardMintStr) {
   writeBytes(data, off, mintPK.toBytes());
 
   // Account order must match PromoteCard:
-  // owner, card_mint_account, owner_token_account, card_mint_record, card_battle_history
+  // owner, card_mint_account, owner_token_account, card_mint_record,
+  // card_battle_history, game_world, ops_treasury, system_program.
+  // owner is now writable (pays the tier promotion fee → ops_treasury).
   return buildAndSend([
-    { pubkey: owner,     isSigner: true,  isWritable: false },
-    { pubkey: mintPK,    isSigner: false, isWritable: false },
-    { pubkey: ata,       isSigner: false, isWritable: false },
-    { pubkey: recordPDA, isSigner: false, isWritable: true  },
-    { pubkey: histPDA,   isSigner: false, isWritable: false },
+    { pubkey: owner,           isSigner: true,  isWritable: true  },
+    { pubkey: mintPK,          isSigner: false, isWritable: false },
+    { pubkey: ata,             isSigner: false, isWritable: false },
+    { pubkey: recordPDA,       isSigner: false, isWritable: true  },
+    { pubkey: histPDA,         isSigner: false, isWritable: false },
+    { pubkey: gameWorldPDA,    isSigner: false, isWritable: false },
+    { pubkey: OPS_TREASURY_PK, isSigner: false, isWritable: true  },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
   ], data);
 }
 

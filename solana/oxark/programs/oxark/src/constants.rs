@@ -35,6 +35,13 @@ pub const PROMOTE_UNCOMMON_TO_RARE_WINS: u32 = 25;
 pub const PROMOTE_RARE_TO_LEGENDARY_WINS: u32 = 50;
 pub const PROMOTE_RARE_TO_LEGENDARY_KOS: u32 = 30;
 
+// Promotion SOL cost per tier step (YKK-43 sink). Paid to ops_treasury on
+// promote_card. Escalating with tier. All placeholders pending the economy sim
+// (design v3 §6): 0.01 / 0.03 / 0.1 SOL.
+pub const PROMOTE_COST_COMMON_TO_UNCOMMON_LAMPORTS: u64 = 10_000_000;
+pub const PROMOTE_COST_UNCOMMON_TO_RARE_LAMPORTS: u64 = 30_000_000;
+pub const PROMOTE_COST_RARE_TO_LEGENDARY_LAMPORTS: u64 = 100_000_000;
+
 // acquisition_source values (mirror CardBattleHistory::acquisition_source encoding:
 // 0=mint, 1=shop, 2=duel_won, 3=p2p_trade). Named so the promotion gate isn't a
 // bare magic number.
