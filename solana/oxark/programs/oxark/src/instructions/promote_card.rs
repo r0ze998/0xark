@@ -109,7 +109,7 @@ pub fn handle_promote_card(ctx: Context<PromoteCard>, card_mint: Pubkey) -> Resu
     if fee > 0 {
         transfer(
             CpiContext::new(
-                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.system_program.key(),
                 Transfer {
                     from: ctx.accounts.owner.to_account_info(),
                     to: ctx.accounts.ops_treasury.to_account_info(),

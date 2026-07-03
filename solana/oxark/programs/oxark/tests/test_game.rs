@@ -1458,8 +1458,9 @@ fn craft_owned(svm: &mut LiteSVM, addr: &Pubkey, data: Vec<u8>) {
 }
 
 fn craft_player(svm: &mut LiteSVM, player: &Pubkey, vault_count: usize) {
-    let (pda, _) = player_state_pda(player);
+    let (pda, bump) = player_state_pda(player);
     let mut ps = oxark::state::PlayerState::default();
+    ps.bump = bump; // canonical bump so commit_hand's `bump = player_state.bump` matches
     ps.deposit_amount = 500_000_000; // >0 so the C1 claim gate passes
     ps.energy = 5; // full energy so commit_hand's duel-entry gate passes
     for i in 0..vault_count {

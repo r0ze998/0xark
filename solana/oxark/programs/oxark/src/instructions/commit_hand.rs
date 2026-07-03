@@ -28,7 +28,7 @@ pub struct CommitHand<'info> {
         seeds = [b"player", player.key().as_ref()],
         bump = player_state.bump,
     )]
-    pub player_state: Account<'info, PlayerState>,
+    pub player_state: Box<Account<'info, PlayerState>>,
 }
 
 /// Commit a player's hand for the current round via Groth16 ZK proof.

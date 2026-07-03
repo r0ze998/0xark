@@ -96,7 +96,7 @@ pub fn handle_refill_energy(ctx: Context<RefillEnergy>) -> Result<()> {
     // Pay the refill fee to ops_treasury (SOL sink).
     transfer(
         CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.system_program.key(),
             Transfer {
                 from: ctx.accounts.player.to_account_info(),
                 to: ctx.accounts.ops_treasury.to_account_info(),
