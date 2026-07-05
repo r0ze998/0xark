@@ -37,7 +37,7 @@ fn setup() -> (LiteSVM, Keypair) {
         ..base
     };
     let mut svm = LiteSVM::new().with_compute_budget(budget);
-    let bytes = include_bytes!("../../../target/deploy/oxark.so");
+    let bytes = include_bytes!("../target/deploy/oxark.so");
     svm.add_program(oxark::id(), bytes).unwrap();
     svm.airdrop(&payer.pubkey(), 10_000_000_000).unwrap();
     (svm, payer)
@@ -212,6 +212,9 @@ fn settle_credits_winner_and_is_idempotent() {
     assert_eq!(h.losses, 0);
 
     // Second settle of the same card for the same duel must be rejected.
+    // Fresh blockhash so the identical retry is a distinct signature (not a
+    // duplicate-tx rejection) and actually reaches the program's dedup check.
+    svm.expire_blockhash();
     let dup = send(&mut svm, settle_ix(duel_id, card_mint, &p1.pubkey()), &[&p1]);
     let err = dup.expect_err("double settle must fail");
     assert!(
@@ -389,6 +392,7 @@ fn timeout_rejected_when_claimant_owes_the_reveal() {
     let (mut svm, _payer) = setup();
     let p1 = Keypair::new();
     let p2 = Keypair::new();
+    svm.airdrop(&p1.pubkey(), 5_000_000_000).unwrap(); // p1 pays for its own (rejected) claim tx
     svm.airdrop(&p2.pubkey(), 5_000_000_000).unwrap();
     let duel_id = Pubkey::new_unique();
 

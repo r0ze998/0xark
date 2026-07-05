@@ -47,7 +47,7 @@ pub struct SettleDuelHistory<'info> {
         seeds = [DUEL_SEED, duel_id.as_ref()],
         bump = duel.bump,
     )]
-    pub duel: Account<'info, DuelState>,
+    pub duel: Box<Account<'info, DuelState>>,
 
     /// The participant settling their own side of the duel. Pays for the
     /// lazily-created PDAs below.
@@ -62,14 +62,14 @@ pub struct SettleDuelHistory<'info> {
         seeds = [DuelSettleRecord::SEED, duel_id.as_ref(), player.key().as_ref()],
         bump,
     )]
-    pub settle_record: Account<'info, DuelSettleRecord>,
+    pub settle_record: Box<Account<'info, DuelSettleRecord>>,
 
     /// On-chain card identity: bridges mint → card_id (species) and rarity.
     #[account(
         seeds = [CardMintRecord::SEED, card_mint.as_ref()],
         bump = card_mint_record.bump,
     )]
-    pub card_mint_record: Account<'info, CardMintRecord>,
+    pub card_mint_record: Box<Account<'info, CardMintRecord>>,
 
     /// The provenance ledger being credited. Created here on first credit so a
     /// fresh card's first real duel initializes its history.
@@ -80,7 +80,7 @@ pub struct SettleDuelHistory<'info> {
         seeds = [CardBattleHistory::CARD_BATTLE_HISTORY_SEED, card_mint.as_ref()],
         bump,
     )]
-    pub card_battle_history: Account<'info, CardBattleHistory>,
+    pub card_battle_history: Box<Account<'info, CardBattleHistory>>,
 
     pub system_program: Program<'info, System>,
 }

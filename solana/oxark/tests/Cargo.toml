@@ -15,6 +15,10 @@ path = "v3_plus_mechanics.rs"
 name = "claim_battle_loot"
 path = "claim_battle_loot.rs"
 
+[[test]]
+name = "provenance_settle"
+path = "provenance_settle.rs"
+
 [dependencies]
 sha2 = "0.10"
 oxark = { path = "../programs/oxark", features = ["no-entrypoint"] }
