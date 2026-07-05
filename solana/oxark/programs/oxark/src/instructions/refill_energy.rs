@@ -9,13 +9,13 @@
 //     unit-tested with no accounts/clock, and
 //   - the `refill_energy` instruction (player-signed SOL → ops_treasury, energy→max).
 //
-// The CONSUMPTION point (spending 1 energy to enter a duel) is intentionally NOT
-// wired here. The DuelState duel flow (init_duel/commit_hand/reveal_hand) currently
-// loads no PlayerState — init_duel is server-signed and the players aren't even
-// signers — so choosing where to charge energy (round-1 commit_hand, which is the
-// first player-signed duel action) means adding a PlayerState account to that core
-// ZK instruction. That's an architecture decision left for its own change;
-// `settle_and_spend` below is the ready-made, tested primitive it will call.
+// The CONSUMPTION point (spending 1 energy to enter a duel) is wired in
+// `commit_hand`: on a player's FIRST round-1 commit it calls `settle_and_spend`
+// below to charge `ENERGY_COST_PER_DUEL`, after proof verification, failing with
+// `InsufficientEnergy` if the player can't afford entry. commit_hand carries the
+// signer-bound PlayerState account for this. Coverage: `commit_hand_*energy*`
+// integration tests in tests/test_game.rs (charge fires, 0-energy blocked,
+// per-duel-not-per-round). This file owns the primitive; commit_hand is the caller.
 
 use crate::constants::{ENERGY_MAX, ENERGY_REFILL_COST_LAMPORTS, ENERGY_REGEN_INTERVAL_SECONDS};
 use crate::error::ErrorCode;

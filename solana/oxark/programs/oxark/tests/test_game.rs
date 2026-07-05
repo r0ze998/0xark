@@ -1738,3 +1738,191 @@ fn claim_prize_v2_rejects_before_game_ended() {
         "claim before game_status==2 must be rejected with GameNotEnded"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Energy consumption at duel entry (YKK-44).
+//
+// The pure regen/spend math (`settle_and_spend`) is unit-tested in
+// instructions::refill_energy. These tests cover the WIRING that `dc540b8` added
+// to commit_hand: that entering a duel actually charges 1 energy on the player's
+// first round-1 commit, and that a player with 0 energy is blocked. Without these,
+// the gate could silently no-op (the same "tested primitive, untested wiring" gap
+// that hid the settle_duel_history stack overflow).
+//
+// All three reuse the committed valid-proof fixture (HC_PROVER_SEED / PROOF_HC_*)
+// so commit_hand's Groth16 check passes and we reach the energy charge.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Craft the season PlayerState for `player` with a specific starting energy,
+/// leaving the regen clock at 0 (so no natural regen interferes with the test —
+/// litesvm's clock starts near 0 and these tests don't advance it a full 4h).
+fn craft_player_energy(svm: &mut LiteSVM, player: &Pubkey, energy: u8) {
+    let (pda, bump) = player_state_pda(player);
+    let mut ps = oxark::state::PlayerState::default();
+    ps.bump = bump;
+    ps.deposit_amount = 500_000_000;
+    ps.energy = energy;
+    ps.last_energy_regen_at = 0;
+    let mut buf = Vec::new();
+    ps.try_serialize(&mut buf).unwrap();
+    craft_owned(svm, &pda, buf);
+}
+
+/// Read a player's current energy by deserializing PlayerState (offset-agnostic).
+fn read_energy(svm: &LiteSVM, player: &Pubkey) -> u8 {
+    let (pda, _) = player_state_pda(player);
+    let acc = svm.get_account(&pda).expect("player_state must exist");
+    let mut data: &[u8] = &acc.data;
+    let ps = oxark::state::PlayerState::try_deserialize(&mut data)
+        .expect("deserialize PlayerState");
+    ps.energy
+}
+
+/// Build the round-1 commit_hand instruction for the fixture prover.
+fn fixture_commit_ix(
+    duel_id: solana_pubkey::Pubkey,
+    duel_key: Pubkey,
+    player: &Pubkey,
+) -> Instruction {
+    Instruction::new_with_bytes(
+        oxark::id(),
+        &oxark::instruction::CommitHand {
+            duel_id,
+            round: 1,
+            proof_a: PROOF_HC_A,
+            proof_b: PROOF_HC_B,
+            proof_c: PROOF_HC_C,
+            public_signals: [
+                PUBLIC_HC_COMMITMENT,
+                PUBLIC_HC_ROUND,
+                PUBLIC_HC_PUBKEY_LO,
+                PUBLIC_HC_PUBKEY_HI,
+            ],
+        }
+        .data(),
+        oxark::accounts::CommitHand {
+            duel: duel_key,
+            player: *player,
+            player_state: player_state_pda(player).0,
+        }
+        .to_account_metas(None),
+    )
+}
+
+/// Init a fresh duel with the fixture prover as player_1. Returns (duel_id, duel_key).
+fn init_fixture_duel(
+    svm: &mut LiteSVM,
+    authority: &Keypair,
+    player1: &Pubkey,
+    player2: &Pubkey,
+) -> (solana_pubkey::Pubkey, Pubkey) {
+    let duel_id = solana_pubkey::Pubkey::new_unique();
+    let (duel_key, _) = duel_pda(&duel_id);
+    send_ix(
+        svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::InitDuel {
+                duel_id,
+                hall_tier: 0,
+                ante: 0,
+            }
+            .data(),
+            oxark::accounts::InitDuel {
+                duel: duel_key,
+                player_1: *player1,
+                player_2: *player2,
+                authority: authority.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        authority,
+    );
+    (duel_id, duel_key)
+}
+
+#[test]
+fn commit_hand_charges_one_energy_on_duel_entry() {
+    let (mut svm, authority) = setup();
+    let player1 = Keypair::new_from_array(HC_PROVER_SEED);
+    let player2 = Keypair::new();
+    svm.airdrop(&player1.pubkey(), 10_000_000_000).unwrap();
+
+    let (duel_id, duel_key) = init_fixture_duel(&mut svm, &authority, &player1.pubkey(), &player2.pubkey());
+
+    // Start at full energy (5). First round-1 commit should spend exactly 1 → 4.
+    craft_player_energy(&mut svm, &player1.pubkey(), 5);
+    assert_eq!(read_energy(&svm, &player1.pubkey()), 5, "precondition: energy 5");
+
+    let ix = fixture_commit_ix(duel_id, duel_key, &player1.pubkey());
+    send_ix_result_multi(&mut svm, ix, &authority, &[&player1])
+        .expect("commit_hand with full energy must succeed");
+
+    assert_eq!(
+        read_energy(&svm, &player1.pubkey()),
+        4,
+        "duel entry must spend exactly 1 energy (5 → 4)"
+    );
+}
+
+#[test]
+fn commit_hand_blocked_when_zero_energy() {
+    let (mut svm, authority) = setup();
+    let player1 = Keypair::new_from_array(HC_PROVER_SEED);
+    let player2 = Keypair::new();
+    svm.airdrop(&player1.pubkey(), 10_000_000_000).unwrap();
+
+    let (duel_id, duel_key) = init_fixture_duel(&mut svm, &authority, &player1.pubkey(), &player2.pubkey());
+
+    // Zero energy, clock at 0 → no regen available → duel entry must be refused.
+    craft_player_energy(&mut svm, &player1.pubkey(), 0);
+
+    let ix = fixture_commit_ix(duel_id, duel_key, &player1.pubkey());
+    let err = send_ix_result_multi(&mut svm, ix, &authority, &[&player1])
+        .expect_err("commit_hand with 0 energy must fail");
+
+    assert!(
+        format!("{:?}", err).contains("InsufficientEnergy"),
+        "expected InsufficientEnergy, got: {err:?}"
+    );
+    // Energy stays at 0 (the failed tx reverts any state).
+    assert_eq!(read_energy(&svm, &player1.pubkey()), 0, "energy unchanged after rejected entry");
+}
+
+#[test]
+fn commit_hand_charges_per_duel_entry_not_per_round() {
+    // Honest per-duel semantics: entering duel A spends 1 (5→4), then entering a
+    // SEPARATE duel B spends another 1 (4→3). This proves the charge is a
+    // per-duel-entry cost that re-fires on each new duel — using only the fixture
+    // proof (valid round-1 commits), no fabricated round-2 proof required.
+    //
+    // (The round==1 gate in commit_hand already prevents a second charge within the
+    // same duel: round-2+ commits skip the charge block, and a repeat round-1
+    // commit is rejected by AlreadyCommitted before the charge. This test locks in
+    // the positive half — that each distinct duel entry costs exactly 1.)
+    let (mut svm, authority) = setup();
+    let player1 = Keypair::new_from_array(HC_PROVER_SEED);
+    let player2 = Keypair::new();
+    svm.airdrop(&player1.pubkey(), 10_000_000_000).unwrap();
+
+    craft_player_energy(&mut svm, &player1.pubkey(), 5);
+
+    // Duel A entry: 5 → 4.
+    let (duel_id_a, duel_key_a) = init_fixture_duel(&mut svm, &authority, &player1.pubkey(), &player2.pubkey());
+    let ix_a = fixture_commit_ix(duel_id_a, duel_key_a, &player1.pubkey());
+    send_ix_result_multi(&mut svm, ix_a, &authority, &[&player1])
+        .expect("duel A entry must succeed");
+    assert_eq!(read_energy(&svm, &player1.pubkey()), 4, "duel A entry spends 1 (5→4)");
+
+    // Duel B entry (fresh duel, same prover): 4 → 3.
+    let (duel_id_b, duel_key_b) = init_fixture_duel(&mut svm, &authority, &player1.pubkey(), &player2.pubkey());
+    let ix_b = fixture_commit_ix(duel_id_b, duel_key_b, &player1.pubkey());
+    send_ix_result_multi(&mut svm, ix_b, &authority, &[&player1])
+        .expect("duel B entry must succeed");
+    assert_eq!(
+        read_energy(&svm, &player1.pubkey()),
+        3,
+        "each distinct duel entry costs exactly 1 (4→3)"
+    );
+}

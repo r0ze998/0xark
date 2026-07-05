@@ -78,7 +78,7 @@
 | FR-13 | x402 マイクロペイメント: peek/intel 等の従量課金（HTTP 402） | ⚠️ | サーバ13エンドポイント実装済（Coinbase spec、Redis replay防止）。**バトルUIにclient未ロード**、Fly.io本番デプロイ未（YKK-14） |
 | FR-14 | AI agent: 戦略助言・自律プレイ（x402で対価支払い） | ⚠️/🚧 | `/x402/ai-strategy-advice` 実装済（Claude Haiku 4.5）・UI未接続。自律TX署名は未実装 |
 | FR-15 | Imprint: 戦績由来の刻印（Veteran/Elder/Kingslayer 等、レアリティ別上限） | ⚠️ | 実装・レアリティはオンチェーン読み（C5是正済）。ただし付与トリガーが FR-6 経路 |
-| FR-16 | エネルギー制・昇格コスト等の恒常 sink | ⚠️ | **energy 基盤 + `refill_energy` 実装済**（MAX5 / regen4h / cost1/duel / refill 0.003 SOL）。promote コストも実装（§4.5）。デュエル入口での energy 消費配線は未（PlayerState 未ロード）。数値は placeholder |
+| FR-16 | エネルギー制・昇格コスト等の恒常 sink | ✅ | **energy 完全配線**（MAX5 / regen4h / cost1/duel / refill 0.003 SOL）。デュエル入口消費は `commit_hand`（round1 first commit で1消費、0なら `InsufficientEnergy`）に配線済＋integration テスト3件緑。promote コストも実装（§4.5）。数値は placeholder |
 | FR-17 | MagicBlock Ephemeral Rollups によるリアルタイム対戦 | 🚧 | `er-sdk-patch` vendor済み、未統合（post-hackathon） |
 
 ### 2.2 非機能要件
@@ -234,7 +234,7 @@ Metaplex royalty 5% ──────── 非強制（設計上の宣言の�
 - ドロップ率は GameWorld に ppm 保持・admin調整可: Legendary phase1 0% → phase2 1.5%（開始7日後 threshold）、Rare 2%→2.5%、Uncommon 18%
 - シーズン: 14日、waitlist 締切 gate、finalize は strictly-increasing pubkey cursor の batch crank（二重集計不能）
 - **promote コスト（sink, `dc540b8`）**: 昇格 gate 通過後にティア別 SOL を ops_treasury へ（C→U 0.01 / U→R 0.03 / R→L 0.1 SOL）。戦い続けないと上に行けない恒常 sink（3AI の「sink 頭打ち」批判への回答）
-- **energy 制（anti-whale + sink, `dc540b8`）**: `ENERGY_MAX=5` / 自然回復 `4h` ごと+1（満稼働で6/日）/ デュエル入口で `1` 消費 / `refill_energy` で満タン復帰 `0.003 SOL` → ops。※ 消費配線はデュエルフロー側が未実装（PlayerState 未ロード）。数値は全て placeholder（YKK-43 balancing 待ち）
+- **energy 制（anti-whale + sink, `dc540b8`）**: `ENERGY_MAX=5` / 自然回復 `4h` ごと+1（満稼働で6/日）/ **デュエル入口で `1` 消費 = `commit_hand` の round1 first commit に配線済**（proof検証後に `settle_and_spend`、不足なら `InsufficientEnergy` で入口ブロック、二重課金は AlreadyCommitted ガードで防止）/ `refill_energy` で満タン復帰 `0.003 SOL` → ops。integration テスト3件（課金発火 / 0でブロック / per-duel）緑。数値は全て placeholder（YKK-43 balancing 待ち）
 - 賭博性の主因（ante/rake）の最終形は YKK-47 の弁護士回答待ち。v3 ノートは「トークン ante 撤廃・換金は市場売買へ」の方向を記録
 
 ### 4.6 主要アカウント / PDA（Gen 3 で生きているもの）
