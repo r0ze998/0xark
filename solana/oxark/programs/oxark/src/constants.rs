@@ -26,6 +26,47 @@ pub const RARITY_LEGENDARY: u8 = 3;
 // promote Common → Uncommon. Placeholder value pending balancing (design v3 §2 / §6).
 pub const PROMOTE_COMMON_TO_UNCOMMON_WINS: u32 = 10;
 
+// Higher-tier promotion gates (design v3 §2, たたき台 — all placeholders pending §6).
+// Uncommon → Rare: enough wins AND at least one "deep provenance" mark
+// (a legendary kill, or having been dropped/stolen from a prior owner).
+pub const PROMOTE_UNCOMMON_TO_RARE_WINS: u32 = 25;
+// Rare → Legendary: heavy win history AND the card was itself won in a duel
+// (acquisition_source == duel_won) AND enough enemies destroyed.
+pub const PROMOTE_RARE_TO_LEGENDARY_WINS: u32 = 50;
+pub const PROMOTE_RARE_TO_LEGENDARY_KOS: u32 = 30;
+
+// Promotion SOL cost per tier step (YKK-43 sink). Paid to ops_treasury on
+// promote_card. Escalating with tier. All placeholders pending the economy sim
+// (design v3 §6): 0.01 / 0.03 / 0.1 SOL.
+pub const PROMOTE_COST_COMMON_TO_UNCOMMON_LAMPORTS: u64 = 10_000_000;
+pub const PROMOTE_COST_UNCOMMON_TO_RARE_LAMPORTS: u64 = 30_000_000;
+pub const PROMOTE_COST_RARE_TO_LEGENDARY_LAMPORTS: u64 = 100_000_000;
+
+// acquisition_source values (mirror CardBattleHistory::acquisition_source encoding:
+// 0=mint, 1=shop, 2=duel_won, 3=p2p_trade). Named so the promotion gate isn't a
+// bare magic number.
+pub const ACQUISITION_DUEL_WON: u8 = 2;
+
+// ── Energy system (YKK-44 anti-whale gate / YKK-43 SOL sink) ─────────────────
+// Duel participation is energy-gated so time-invested ≠ pay-to-win: casual and
+// hardcore players reach a similar card count. Energy regenerates on a clock and
+// can be refilled for SOL (the "buy time back" sink).
+/// Max energy a player can hold.
+pub const ENERGY_MAX: u8 = 5;
+/// Seconds per natural +1 regen (4h → 6/day at full uptime).
+pub const ENERGY_REGEN_INTERVAL_SECONDS: i64 = 4 * 60 * 60;
+/// Energy consumed to enter one duel (spent once per duel, not per round).
+pub const ENERGY_COST_PER_DUEL: u8 = 1;
+/// SOL cost to refill energy to full. Placeholder pending YKK-43 balancing
+/// (design v3 §6 / economy sim): 0.001–0.01 SOL range → start at 0.003 SOL.
+pub const ENERGY_REFILL_COST_LAMPORTS: u64 = 3_000_000;
+
+// Stall timeout: seconds without duel progress (commit/reveal) after which the
+// non-stalling participant may call `claim_timeout_win` and take the duel.
+// Placeholder pending balancing — long enough for proof generation + network
+// hiccups, short enough that a reveal-refuser can't hold the duel hostage.
+pub const DUEL_STALL_TIMEOUT_SECONDS: i64 = 600;
+
 pub const TOTAL_CARD_TYPES: u8 = 5;
 pub const MAX_PLAYERS: u8 = 3;
 pub const MAX_ROUNDS: u8 = 30;

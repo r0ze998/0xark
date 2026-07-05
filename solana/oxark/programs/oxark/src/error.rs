@@ -215,4 +215,31 @@ pub enum ErrorCode {
     InsufficientWinsForPromotion,
     #[msg("Card is not at the rarity tier this promotion expects")]
     PromoteWrongTier,
+    // ── Higher-tier promotion gates (design v3 §2) — appended ─────────────────
+    #[msg("Card lacks the combat/ownership provenance required for Rare (a legendary kill or a prior-owner drop)")]
+    MissingRareProvenance,
+    #[msg("Only a card won in a duel (acquisition_source == duel_won) can reach Legendary")]
+    NotDuelWonAcquisition,
+    #[msg("Card has not destroyed enough enemies (kos) to reach Legendary")]
+    InsufficientKosForPromotion,
+    #[msg("Card is already at the maximum rarity")]
+    AlreadyMaxRarity,
+    // ── Energy system (YKK-44) — appended ─────────────────────────────────────
+    #[msg("Not enough energy to enter a duel — wait for regen or refill")]
+    InsufficientEnergy,
+    // ── Duel history settlement + stall timeout — appended ────────────────────
+    #[msg("Duel has not ended — settle after ended_at is set")]
+    DuelNotEnded,
+    #[msg("Card id was not in this player's revealed hands for this duel")]
+    CardNotInRevealedHand,
+    #[msg("This card has already been settled for this duel")]
+    CardAlreadySettled,
+    #[msg("Card id 0 cannot be settled (0 is the empty-slot sentinel in revealed hands)")]
+    UnsupportedCardId,
+    #[msg("Settle record does not belong to this duel/player")]
+    WrongSettleRecord,
+    #[msg("Stall timeout has not elapsed yet")]
+    TimeoutNotReached,
+    #[msg("Opponent is not the stalling side for the current round (or you owe the next action)")]
+    OpponentNotStalled,
 }

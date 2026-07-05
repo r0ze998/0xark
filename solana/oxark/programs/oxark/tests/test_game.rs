@@ -1201,10 +1201,12 @@ fn test_commit_hand_valid_proof() {
         oxark::accounts::CommitHand {
             duel: duel_key,
             player: player1.pubkey(),
+            player_state: player_state_pda(&player1.pubkey()).0,
         }
         .to_account_metas(None),
     );
 
+    craft_player(&mut svm, &player1.pubkey(), 0);
     let meta = send_ix_result_multi(&mut svm, ix, &authority, &[&player1])
         .expect("commit_hand with valid hand_commitment proof must succeed");
 
@@ -1267,10 +1269,12 @@ fn test_commit_hand_tampered_proof() {
         oxark::accounts::CommitHand {
             duel: duel_key,
             player: player1.pubkey(),
+            player_state: player_state_pda(&player1.pubkey()).0,
         }
         .to_account_metas(None),
     );
 
+    craft_player(&mut svm, &player1.pubkey(), 0);
     let result = send_ix_result_multi(&mut svm, ix, &authority, &[&player1]);
     assert!(
         result.is_err(),
@@ -1354,9 +1358,11 @@ fn test_commit_hand_then_reveal_hand_roundtrip() {
         oxark::accounts::CommitHand {
             duel: duel_key,
             player: player1.pubkey(),
+            player_state: player_state_pda(&player1.pubkey()).0,
         }
         .to_account_metas(None),
     );
+    craft_player(&mut svm, &player1.pubkey(), 0);
     send_ix_result_multi(&mut svm, commit_ix, &authority, &[&player1])
         .expect("commit_hand with valid proof must succeed");
 
@@ -1452,9 +1458,11 @@ fn craft_owned(svm: &mut LiteSVM, addr: &Pubkey, data: Vec<u8>) {
 }
 
 fn craft_player(svm: &mut LiteSVM, player: &Pubkey, vault_count: usize) {
-    let (pda, _) = player_state_pda(player);
+    let (pda, bump) = player_state_pda(player);
     let mut ps = oxark::state::PlayerState::default();
+    ps.bump = bump; // canonical bump so commit_hand's `bump = player_state.bump` matches
     ps.deposit_amount = 500_000_000; // >0 so the C1 claim gate passes
+    ps.energy = 5; // full energy so commit_hand's duel-entry gate passes
     for i in 0..vault_count {
         ps.vault_bitmap[i / 8] |= 1u8 << (i % 8);
     }

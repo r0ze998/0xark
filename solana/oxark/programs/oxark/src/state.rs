@@ -168,6 +168,12 @@ pub struct PlayerState {
     pub vault_size_min: u8,
     /// Unix timestamp of last time player dropped to Tier 5 (for Phoenix).
     pub last_drop_to_tier5_timestamp: i64,
+    // ── Energy system (YKK-44) ────────────────────────────────────────────────
+    /// Current energy (0..=ENERGY_MAX). Spent to enter a duel, regenerates on a
+    /// clock (see `regenerated_energy`), refillable for SOL (`refill_energy`).
+    pub energy: u8,
+    /// Unix timestamp the energy clock was last settled (last regen/spend/refill).
+    pub last_energy_regen_at: i64,
 }
 
 impl PlayerState {
@@ -212,7 +218,9 @@ impl PlayerState {
         + 6
         + 1
         + 1
-        + 8; // 258 total
+        + 8 // last_drop_to_tier5_timestamp
+        + 1 // energy
+        + 8; // last_energy_regen_at → 267 total
 
     /// Count how many vault_bitmap bits are set (cards owned).
     pub fn vault_count(&self) -> u8 {
@@ -773,6 +781,12 @@ pub struct DuelState {
     pub player_1_round_wins: u8,
     /// Rounds won by player 2 so far this duel.
     pub player_2_round_wins: u8,
+    // ── Stall timeout (reveal-refusal griefing guard) ─────────────────────────
+    /// Unix timestamp of the last state-advancing action on this duel
+    /// (init_duel / commit_hand / reveal_hand). `claim_timeout_win` compares
+    /// `now - last_progress_at` against `DUEL_STALL_TIMEOUT_SECONDS` to let the
+    /// non-stalling player end a duel the opponent refuses to progress.
+    pub last_progress_at: i64,
 }
 
 impl DuelState {
@@ -786,6 +800,7 @@ impl DuelState {
     // + 5 p1_zk_verified + 5 p2_zk_verified
     // + 1 bump
     // + 1 p1_round_wins + 1 p2_round_wins  (YKK-41)
+    // + 8 last_progress_at  (stall timeout)
     pub const SIZE: usize = 8
         + 32
         + 32
@@ -807,7 +822,8 @@ impl DuelState {
         + 5
         + 1
         + 1
-        + 1;
+        + 1
+        + 8;
 }
 
 impl Default for DuelState {
@@ -834,6 +850,7 @@ impl Default for DuelState {
             bump: 0,
             player_1_round_wins: 0,
             player_2_round_wins: 0,
+            last_progress_at: 0,
         }
     }
 }
@@ -1501,6 +1518,54 @@ impl ZkProofRecord {
     pub const SEED: &'static [u8] = b"zk_proof";
     // 8 disc + 32 + 8 + 32 + 32 + 8 + 1
     pub const SIZE: usize = 8 + 32 + 8 + 32 + 32 + 8 + 1;
+}
+
+/// Per-(duel, player) settlement ledger for `settle_duel_history`.
+///
+/// Prevents the same duel from crediting a player's card history more than once
+/// per card species: bit `card_id` of `settled_bitmap` is set on settlement.
+/// Created lazily (init_if_needed) on the player's first settle call for a duel.
+///
+/// PDA seeds: ["duel_settle", duel_id, player]
+#[account]
+pub struct DuelSettleRecord {
+    /// Duel this record belongs to (defense-in-depth vs seed confusion).
+    pub duel_id: Pubkey,
+    /// Player whose settlements this record tracks.
+    pub player: Pubkey,
+    /// Bit `i` set ⇔ card_id `i` already settled for this (duel, player).
+    /// Card ids are 0..59, so a single u64 covers the full catalog.
+    pub settled_bitmap: u64,
+    pub bump: u8,
+}
+
+impl DuelSettleRecord {
+    pub const SEED: &'static [u8] = b"duel_settle";
+    // 8 disc + 32 + 32 + 8 + 1
+    pub const SIZE: usize = 8 + 32 + 32 + 8 + 1;
+}
+
+/// Emitted by `settle_duel_history` for each card credited.
+#[event]
+pub struct DuelHistorySettled {
+    pub duel_id: Pubkey,
+    pub player: Pubkey,
+    pub card_mint: Pubkey,
+    pub card_id: u8,
+    /// true = credited as a win, false = credited as a loss (draws credit neither).
+    pub won: bool,
+}
+
+/// Emitted by `claim_timeout_win` when a stalled duel is force-ended.
+#[event]
+pub struct DuelTimeoutClaimed {
+    pub duel_id: Pubkey,
+    pub winner: Pubkey,
+    pub loser: Pubkey,
+    /// Round the duel was stuck on when claimed.
+    pub round: u8,
+    /// Seconds the duel had been stalled when claimed.
+    pub stalled_for: i64,
 }
 
 #[cfg(test)]

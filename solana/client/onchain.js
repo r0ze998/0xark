@@ -471,6 +471,51 @@ async function buildAndSend(keys, data, computeUnits = COMPUTE_BUDGET.default) {
   return sig;
 }
 
+// buildAndSend for SEVERAL program instructions in one transaction (single
+// Phantom approval). Same heap/compute-budget prelude and preflight simulation.
+// Used by settleDuelHistory to pack per-card settle instructions together.
+async function buildAndSendMulti(ixSpecs, computeUnits = COMPUTE_BUDGET.default) {
+  if (!window.solana || !window.solana.isConnected) {
+    throw new Error('Phantom wallet not connected');
+  }
+  const conn = getConnection();
+  const programId = getProgramId();
+
+  const heapIx = requestHeapFrameIx(HEAP_FRAME_BYTES); // YKK-40: custom-heap needs this on every tx
+  const [limitIx, priceIx] = computeBudgetIxs(computeUnits);
+
+  const tx = new solanaWeb3.Transaction();
+  tx.add(heapIx, limitIx, priceIx);
+  for (const { keys, data } of ixSpecs) {
+    tx.add(new solanaWeb3.TransactionInstruction({ keys, programId, data }));
+  }
+  tx.feePayer = window.solana.publicKey;
+
+  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
+  tx.recentBlockhash = blockhash;
+
+  const sim = await conn.simulateTransaction(tx);
+  if (sim.value.err) {
+    const logs = sim.value.logs ?? [];
+    const logErr = logs.find(l => l.includes('Error Number:') || l.includes('Error Code:'));
+    if (logErr) {
+      const m = logErr.match(/Error Number: (\d+)/);
+      const code = m ? parseInt(m[1], 10) : null;
+      const msg = code ? (ANCHOR_ERRORS[code] ?? `Program error ${code}`) : logErr;
+      throw new Error(msg);
+    }
+    throw new Error(JSON.stringify(sim.value.err));
+  }
+
+  const signed = await window.solana.signTransaction(tx);
+  const sig = await conn.sendRawTransaction(signed.serialize(), {
+    skipPreflight: true,
+    maxRetries: 5,
+  });
+  await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
+  return sig;
+}
+
 // ─── Magic Router transaction builder ────────────────────────────────────
 // Replaces buildAndSend for commitAction/revealAction when _mbMode is true.
 // Key differences vs buildAndSend:
@@ -1678,9 +1723,10 @@ async function burnCard(cardMintStr) {
 async function promoteCard(cardMintStr) {
   const owner  = window.solana.publicKey;
   const mintPK = new solanaWeb3.PublicKey(cardMintStr);
-  const [ata]       = findAssociatedTokenAddress(owner, mintPK);
-  const [recordPDA] = findCardMintRecordPDA(mintPK);
-  const [histPDA]   = findCardBattleHistoryPDA(mintPK);
+  const [ata]           = findAssociatedTokenAddress(owner, mintPK);
+  const [recordPDA]     = findCardMintRecordPDA(mintPK);
+  const [histPDA]       = findCardBattleHistoryPDA(mintPK);
+  const [gameWorldPDA]  = findGameWorldPDA();
 
   // disc(8) + card_mint(32) = 40 bytes
   const d    = await disc('promote_card');
@@ -1689,17 +1735,108 @@ async function promoteCard(cardMintStr) {
   writeBytes(data, off, mintPK.toBytes());
 
   // Account order must match PromoteCard:
-  // owner, card_mint_account, owner_token_account, card_mint_record, card_battle_history
+  // owner, card_mint_account, owner_token_account, card_mint_record,
+  // card_battle_history, game_world, ops_treasury, system_program.
+  // owner is now writable (pays the tier promotion fee → ops_treasury).
   return buildAndSend([
-    { pubkey: owner,     isSigner: true,  isWritable: false },
-    { pubkey: mintPK,    isSigner: false, isWritable: false },
-    { pubkey: ata,       isSigner: false, isWritable: false },
-    { pubkey: recordPDA, isSigner: false, isWritable: true  },
-    { pubkey: histPDA,   isSigner: false, isWritable: false },
+    { pubkey: owner,           isSigner: true,  isWritable: true  },
+    { pubkey: mintPK,          isSigner: false, isWritable: false },
+    { pubkey: ata,             isSigner: false, isWritable: false },
+    { pubkey: recordPDA,       isSigner: false, isWritable: true  },
+    { pubkey: histPDA,         isSigner: false, isWritable: false },
+    { pubkey: gameWorldPDA,    isSigner: false, isWritable: false },
+    { pubkey: OPS_TREASURY_PK, isSigner: false, isWritable: true  },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+}
+
+// ─── settle_duel_history ──────────────────────────────────────────────────
+// Trustless provenance settlement: after a duel ENDS, each participant settles
+// their own cards' win/loss credit FROM the on-chain DuelState — this replaces
+// the old client-side self-reporting (update_card_battle_history is admin-only
+// now; open deltas let anyone forge the wins that gate promote_card).
+// duelIdStr: base58 duel id; cardMintStrs: mints of the cards this player used
+// (their species must appear in the player's revealed hands for that duel).
+// One on-chain instruction per card, packed 5 per transaction. Safe to retry:
+// already-settled cards fail preflight with CardAlreadySettled — drop them and
+// resend the rest.
+const SETTLE_BATCH = 5;
+
+function findDuelSettleRecordPDA(duelIdPubkey, playerPubkey) {
+  return solanaWeb3.PublicKey.findProgramAddressSync(
+    [ENC.encode('duel_settle'), duelIdPubkey.toBytes(), playerPubkey.toBytes()],
+    getProgramId()
+  );
+}
+
+async function settleDuelHistory(duelIdStr, cardMintStrs) {
+  const player = window.solana.publicKey;
+  const duelId = new solanaWeb3.PublicKey(duelIdStr);
+  const [duelPDA]   = findDuelPDA(duelId);
+  const [settlePDA] = findDuelSettleRecordPDA(duelId, player);
+
+  const d = await disc('settle_duel_history');
+  const ixSpecs = cardMintStrs.map((mintStr) => {
+    const mintPK = new solanaWeb3.PublicKey(mintStr);
+    const [recordPDA] = findCardMintRecordPDA(mintPK);
+    const [histPDA]   = findCardBattleHistoryPDA(mintPK);
+
+    // disc(8) + duel_id(32) + card_mint(32) = 72 bytes
+    const data = new Uint8Array(72);
+    let off = writeBytes(data, 0, d);
+    off = writeBytes(data, off, duelId.toBytes());
+    writeBytes(data, off, mintPK.toBytes());
+
+    // Account order must match SettleDuelHistory:
+    // duel, player, settle_record, card_mint_record, card_battle_history, system_program
+    return {
+      keys: [
+        { pubkey: duelPDA,   isSigner: false, isWritable: false },
+        { pubkey: player,    isSigner: true,  isWritable: true  },
+        { pubkey: settlePDA, isSigner: false, isWritable: true  },
+        { pubkey: recordPDA, isSigner: false, isWritable: false },
+        { pubkey: histPDA,   isSigner: false, isWritable: true  },
+        { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+      ],
+      data,
+    };
+  });
+
+  const sigs = [];
+  for (let i = 0; i < ixSpecs.length; i += SETTLE_BATCH) {
+    sigs.push(await buildAndSendMulti(ixSpecs.slice(i, i + SETTLE_BATCH)));
+  }
+  return sigs;
+}
+
+// ─── claim_timeout_win ────────────────────────────────────────────────────
+// Ends a stalled duel: if the opponent has owed the current round's commit or
+// reveal for DUEL_STALL_TIMEOUT_SECONDS (and this player has done their part),
+// this player takes the duel. Winner/ended_at are set exactly like a played-out
+// decision, so settleDuelHistory works on timeout wins too.
+async function claimTimeoutWin(duelIdStr) {
+  const claimant = window.solana.publicKey;
+  const duelId = new solanaWeb3.PublicKey(duelIdStr);
+  const [duelPDA] = findDuelPDA(duelId);
+
+  // disc(8) + duel_id(32) = 40 bytes
+  const d    = await disc('claim_timeout_win');
+  const data = new Uint8Array(40);
+  let off = writeBytes(data, 0, d);
+  writeBytes(data, off, duelId.toBytes());
+
+  // Account order must match ClaimTimeoutWin: duel, claimant
+  return buildAndSend([
+    { pubkey: duelPDA,  isSigner: false, isWritable: true  },
+    { pubkey: claimant, isSigner: true,  isWritable: false },
   ], data);
 }
 
 // ─── grant_imprint ────────────────────────────────────────────────────────
+// ⚠️ ADMIN-ONLY since the provenance-gate fix: imprints carry battle-stat
+// bonuses, so open grants were stat inflation. The connected wallet must be
+// ADMIN_PUBKEY or the program rejects with NotAdmin. Organic imprints are
+// auto-granted by settle_duel_history at win thresholds.
 // Records a battle imprint onto a card's history PDA.
 // imprintKeyVal: u8 stat key; isCosmetic: bool; duelId: u64 (BigInt or number).
 // YKK-32: stat-imprint rarity cap is read on-chain from the card's CardMintRecord
@@ -1814,6 +1951,7 @@ async function commitHand(duelIdStr, round, proofA, proofB, proofC, publicSignal
 
   const duelIdPK = new solanaWeb3.PublicKey(duelIdStr);
   const [duelPDA] = findDuelPDA(duelIdPK);
+  const [playerStatePDA] = findPlayerStatePDA(player);  // energy gate (YKK-44)
 
   // Borsh: disc(8) + duel_id(32) + round(1) + proof_a(64) + proof_b(128) + proof_c(64)
   //        + public_signals(4×32=128) = 425 bytes
@@ -1832,6 +1970,7 @@ async function commitHand(duelIdStr, round, proofA, proofB, proofC, publicSignal
   return buildAndSend([
     { pubkey: duelPDA, isSigner: false, isWritable: true },
     { pubkey: player,  isSigner: true,  isWritable: false },
+    { pubkey: playerStatePDA, isSigner: false, isWritable: true },
   ], data, COMPUTE_BUDGET.commit_hand);
 }
 
@@ -1998,6 +2137,33 @@ async function checkLegendaryV2() {
 
 const OPS_TREASURY_PK  = new solanaWeb3.PublicKey('GN3aBaUFPpejXBy2u4SgXuwQkkqRFauqAfXNsXhTPz4f');
 // YKK-38: prize pool is now the program PDA (findPrizePoolPDA), not a fixed account.
+
+// ─── refill_energy ────────────────────────────────────────────────────────
+// Refill energy to full for SOL (YKK-44 gate / YKK-43 sink). No args — the fee
+// (ENERGY_REFILL_COST_LAMPORTS) and target (ops_treasury) are fixed on-chain.
+// NOTE: energy is not yet consumed anywhere (the duel-entry gate is a pending
+// change), so this currently just sets energy=max; wire the commit_hand gate to
+// make it meaningful.
+async function refillEnergy() {
+  const player           = window.solana.publicKey;
+  const [playerStatePDA] = findPlayerStatePDA(player);
+  const [gameWorldPDA]   = findGameWorldPDA();
+
+  // disc(8) only — no instruction args
+  const d    = await disc('refill_energy');
+  const data = new Uint8Array(8);
+  writeBytes(data, 0, d);
+
+  // Account order must match RefillEnergy:
+  // player, player_state, game_world, ops_treasury, system_program
+  return buildAndSend([
+    { pubkey: player,          isSigner: true,  isWritable: true  },
+    { pubkey: playerStatePDA,  isSigner: false, isWritable: true  },
+    { pubkey: gameWorldPDA,    isSigner: false, isWritable: false },
+    { pubkey: OPS_TREASURY_PK, isSigner: false, isWritable: true  },
+    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+  ], data);
+}
 
 async function buyPack(packType) {
   const buyer         = window.solana.publicKey;
@@ -2277,6 +2443,9 @@ window.oxarkOnchain = {
   registerWaitlist,
   burnCard,
   promoteCard,
+  settleDuelHistory,
+  claimTimeoutWin,
+  findDuelSettleRecordPDA,
   grantImprint,
   claimPrizeV2,
   checkLegendaryV2,
@@ -2291,6 +2460,7 @@ window.oxarkOnchain = {
   findDuelLootRecordPDA,
   // Phase 20-B — shop
   buyPack,
+  refillEnergy,
   updateShopParams,
   // Helpers
   computeCommitHash,
