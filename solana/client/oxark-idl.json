@@ -1134,6 +1134,58 @@
       "args": []
     },
     {
+      "name": "claim_timeout_win",
+      "docs": [
+        "Stall-timeout guard: after `DUEL_STALL_TIMEOUT_SECONDS` without progress,",
+        "the participant who has done their part for the current round may end a",
+        "duel whose opponent refuses to commit/reveal, taking the win. Must exist",
+        "before YKK-44 escrow, or a reveal-refuser could lock escrowed cards forever."
+      ],
+      "discriminator": [
+        175,
+        234,
+        101,
+        151,
+        53,
+        30,
+        177,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "claimant",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "commit_action",
       "docs": [
         "Commit a hidden action for the current round.",
@@ -1381,6 +1433,34 @@
         {
           "name": "player",
           "signer": true
+        },
+        {
+          "name": "player_state",
+          "docs": [
+            "The committing player's season account — holds energy. Charged 1 energy on",
+            "the first commit of round 1 (duel entry gate, YKK-44). Seeds bind it to the",
+            "signer, so a player can only spend their own energy."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -2293,7 +2373,13 @@
           }
         },
         {
-          "name": "payer",
+          "name": "admin",
+          "docs": [
+            "ADMIN-only. Stat imprints add battle power (+BP/+HP), so an open grant",
+            "path is direct stat inflation — same caller-trusted class as above.",
+            "Organic imprints are earned via the threshold auto-grants inside",
+            "`settle_duel_history` / this module's helpers."
+          ],
           "writable": true,
           "signer": true
         },
@@ -3090,8 +3176,9 @@
         {
           "name": "owner",
           "docs": [
-            "The card holder requesting the promotion."
+            "The card holder requesting the promotion (pays the promotion fee)."
           ],
+          "writable": true,
           "signer": true
         },
         {
@@ -3265,6 +3352,39 @@
               }
             ]
           }
+        },
+        {
+          "name": "game_world",
+          "docs": [
+            "Holds the canonical ops_treasury address the fee is checked against."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ops_treasury",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -3714,6 +3834,85 @@
           "type": "u8"
         }
       ]
+    },
+    {
+      "name": "refill_energy",
+      "docs": [
+        "Refill energy to full for SOL (YKK-44 anti-whale gate / YKK-43 sink).",
+        "The regen/spend math lives in `instructions::refill_energy`; the duel-entry",
+        "consumption point is a separate change (the duel flow loads no PlayerState yet)."
+      ],
+      "discriminator": [
+        249,
+        210,
+        36,
+        106,
+        250,
+        196,
+        4,
+        176
+      ],
+      "accounts": [
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "game_world",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ops_treasury",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "register_agent",
@@ -4729,6 +4928,186 @@
       ]
     },
     {
+      "name": "settle_duel_history",
+      "docs": [
+        "Trustless CardBattleHistory settlement: derives one card's win/loss credit",
+        "from a FINISHED on-chain DuelState (participant + revealed-hand membership",
+        "+ per-duel dedup bitmap) instead of trusting caller-supplied deltas. This",
+        "is the player-facing write path that feeds `promote_card`'s wins gate;",
+        "`update_card_battle_history` is now ADMIN-only (see that instruction).",
+        "One card per call — clients batch several into a single transaction."
+      ],
+      "discriminator": [
+        224,
+        125,
+        253,
+        140,
+        189,
+        92,
+        148,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "docs": [
+            "The finished duel this settlement draws from. Program-owned: only the",
+            "ZK commit/reveal flow ever writes revealed hands / winner into it."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "docs": [
+            "The participant settling their own side of the duel. Pays for the",
+            "lazily-created PDAs below."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "settle_record",
+          "docs": [
+            "Per-(duel, player) dedup ledger — bit `card_id` set once settled."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108,
+                  95,
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "card_mint_record",
+          "docs": [
+            "On-chain card identity: bridges mint → card_id (species) and rarity."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "card_battle_history",
+          "docs": [
+            "The provenance ledger being credited. Created here on first credit so a",
+            "fresh card's first real duel initializes its history."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  98,
+                  97,
+                  116,
+                  116,
+                  108,
+                  101,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        },
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "start_game",
       "docs": [
         "Start the game and deal opening hands.",
@@ -5144,7 +5523,15 @@
           }
         },
         {
-          "name": "payer",
+          "name": "admin",
+          "docs": [
+            "ADMIN-only (migration / ops escape hatch). CardBattleHistory became an",
+            "economic gate when `promote_card` (YKK-45) started reading `wins` from it:",
+            "leaving this open lets any wallet mint provenance for free and bypass the",
+            "promotion gate — the same caller-trusted pattern as C5/C6. The normal,",
+            "player-facing write path is `settle_duel_history`, which derives deltas",
+            "from a finished on-chain DuelState instead of trusting arguments."
+          ],
           "writable": true,
           "signer": true
         },
@@ -5512,6 +5899,19 @@
         74,
         1,
         238
+      ]
+    },
+    {
+      "name": "DuelSettleRecord",
+      "discriminator": [
+        16,
+        157,
+        32,
+        155,
+        1,
+        31,
+        192,
+        248
       ]
     },
     {
@@ -5907,6 +6307,19 @@
       ]
     },
     {
+      "name": "DuelHistorySettled",
+      "discriminator": [
+        178,
+        235,
+        62,
+        225,
+        148,
+        66,
+        41,
+        15
+      ]
+    },
+    {
       "name": "DuelInitialized",
       "discriminator": [
         127,
@@ -5917,6 +6330,19 @@
         53,
         187,
         253
+      ]
+    },
+    {
+      "name": "DuelTimeoutClaimed",
+      "discriminator": [
+        41,
+        26,
+        211,
+        249,
+        179,
+        164,
+        214,
+        105
       ]
     },
     {
@@ -6709,6 +7135,66 @@
       "code": 6097,
       "name": "PromoteWrongTier",
       "msg": "Card is not at the rarity tier this promotion expects"
+    },
+    {
+      "code": 6098,
+      "name": "MissingRareProvenance",
+      "msg": "Card lacks the combat/ownership provenance required for Rare (a legendary kill or a prior-owner drop)"
+    },
+    {
+      "code": 6099,
+      "name": "NotDuelWonAcquisition",
+      "msg": "Only a card won in a duel (acquisition_source == duel_won) can reach Legendary"
+    },
+    {
+      "code": 6100,
+      "name": "InsufficientKosForPromotion",
+      "msg": "Card has not destroyed enough enemies (kos) to reach Legendary"
+    },
+    {
+      "code": 6101,
+      "name": "AlreadyMaxRarity",
+      "msg": "Card is already at the maximum rarity"
+    },
+    {
+      "code": 6102,
+      "name": "InsufficientEnergy",
+      "msg": "Not enough energy to enter a duel — wait for regen or refill"
+    },
+    {
+      "code": 6103,
+      "name": "DuelNotEnded",
+      "msg": "Duel has not ended — settle after ended_at is set"
+    },
+    {
+      "code": 6104,
+      "name": "CardNotInRevealedHand",
+      "msg": "Card id was not in this player's revealed hands for this duel"
+    },
+    {
+      "code": 6105,
+      "name": "CardAlreadySettled",
+      "msg": "This card has already been settled for this duel"
+    },
+    {
+      "code": 6106,
+      "name": "UnsupportedCardId",
+      "msg": "Card id 0 cannot be settled (0 is the empty-slot sentinel in revealed hands)"
+    },
+    {
+      "code": 6107,
+      "name": "WrongSettleRecord",
+      "msg": "Settle record does not belong to this duel/player"
+    },
+    {
+      "code": 6108,
+      "name": "TimeoutNotReached",
+      "msg": "Stall timeout has not elapsed yet"
+    },
+    {
+      "code": 6109,
+      "name": "OpponentNotStalled",
+      "msg": "Opponent is not the stalling side for the current round (or you owe the next action)"
     }
   ],
   "types": [
@@ -7447,6 +7933,40 @@
       }
     },
     {
+      "name": "DuelHistorySettled",
+      "docs": [
+        "Emitted by `settle_duel_history` for each card credited."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
+            "type": "u8"
+          },
+          {
+            "name": "won",
+            "docs": [
+              "true = credited as a win, false = credited as a loss (draws credit neither)."
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
       "name": "DuelInitialized",
       "type": {
         "kind": "struct",
@@ -7495,6 +8015,49 @@
           {
             "name": "stolen_card_id",
             "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelSettleRecord",
+      "docs": [
+        "Per-(duel, player) settlement ledger for `settle_duel_history`.",
+        "",
+        "Prevents the same duel from crediting a player's card history more than once",
+        "per card species: bit `card_id` of `settled_bitmap` is set on settlement.",
+        "Created lazily (init_if_needed) on the player's first settle call for a duel.",
+        "",
+        "PDA seeds: [\"duel_settle\", duel_id, player]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "docs": [
+              "Duel this record belongs to (defense-in-depth vs seed confusion)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "player",
+            "docs": [
+              "Player whose settlements this record tracks."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "settled_bitmap",
+            "docs": [
+              "Bit `i` set ⇔ card_id `i` already settled for this (duel, player).",
+              "Card ids are 0..59, so a single u64 covers the full catalog."
+            ],
+            "type": "u64"
           },
           {
             "name": "bump",
@@ -7694,6 +8257,53 @@
               "Rounds won by player 2 so far this duel."
             ],
             "type": "u8"
+          },
+          {
+            "name": "last_progress_at",
+            "docs": [
+              "Unix timestamp of the last state-advancing action on this duel",
+              "(init_duel / commit_hand / reveal_hand). `claim_timeout_win` compares",
+              "`now - last_progress_at` against `DUEL_STALL_TIMEOUT_SECONDS` to let the",
+              "non-stalling player end a duel the opponent refuses to progress."
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelTimeoutClaimed",
+      "docs": [
+        "Emitted by `claim_timeout_win` when a stalled duel is force-ended."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "loser",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "docs": [
+              "Round the duel was stuck on when claimed."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "stalled_for",
+            "docs": [
+              "Seconds the duel had been stalled when claimed."
+            ],
+            "type": "i64"
           }
         ]
       }
@@ -9027,6 +9637,21 @@
             "name": "last_drop_to_tier5_timestamp",
             "docs": [
               "Unix timestamp of last time player dropped to Tier 5 (for Phoenix)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "energy",
+            "docs": [
+              "Current energy (0..=ENERGY_MAX). Spent to enter a duel, regenerates on a",
+              "clock (see `regenerated_energy`), refillable for SOL (`refill_energy`)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "last_energy_regen_at",
+            "docs": [
+              "Unix timestamp the energy clock was last settled (last regen/spend/refill)."
             ],
             "type": "i64"
           }
