@@ -6,6 +6,10 @@
 
 ---
 
+> **更新 (2026-07-05 later / merge `dc540b8`)**: 本書初版で P0 とした来歴ゲート穴は、PR #32 のマージで**実装・オンチェーン検証とも解消**した。あわせて reveal timeout・energy 制・promote 全ティア ladder + コストが入った。実装は本書初版の仮称と一部名前が違う（`settle_duel_card_history` → **`settle_duel_history`**）。§6.1・§6.2・§4.4・§5・§7・§8 を追随更新済み。main = `dc540b8`、`make test` = 227 passed / 0 failed / 1 ignored（実ログ確認）。
+
+---
+
 ## 0. この文書の読み方
 
 0xARK の設計文書は生成時期の異なる4世代が repo に共存しており（GDD v2.0、TOKENOMICS v1.0、CARD_SYSTEM_DESIGN v1.0、design v3）、**どれか1つを読むと現状を誤認する**状態になっている。本書は:
@@ -64,9 +68,9 @@
 | FR-3 | 不正 reveal の拒否: commit と異なる手札は通らない | ✅ | reveal_hand がオンチェーンで Poseidon 再計算・照合 |
 | FR-4 | 決定論的バトル解決: 同一入力→同一結果、運営介在ゼロ | ✅ | `damage_calc`（Rust、整数演算のみ、seed = SHA-256(salt₁‖salt₂‖round)） |
 | FR-5 | カード60種コレクション（1シーズン14日、60/60でChampion） | ✅ | GameWorld PDA、`card_data.rs` 60枚テーブル |
-| FR-6 | 来歴の不可逆記録: カード単位の wins/losses/kos/dmg/所有履歴 | ⚠️ | `CardBattleHistory` PDA は完備。ただし**書き込み経路が無権限**（P0、§6.1） |
-| FR-7 | 来歴ゲート昇格: 戦歴でしかアンロックできない単体昇格（同一mint・履歴連続） | ⚠️ | `promote_card` merge済（PR #31、C→U wins≥10）。ゲートのデータ源が FR-6 の穴で捏造可能 + テスト0件 |
-| FR-8 | カード steal: 勝者が敗者から NFT 1枚永久奪取（エスクロー + タイムアウト付き） | 🚧 | YKK-44 仕様確定（2026-07-02）。実装未着手。reveal timeout は前倒し切り出し対象（P1） |
+| FR-6 | 来歴の不可逆記録: カード単位の wins/losses/kos/dmg/所有履歴 | ✅ | `CardBattleHistory` PDA 完備。書き込みは `settle_duel_history`（trustless）+ `update_card_battle_history`（admin専用化）で権限化済み（旧P0解消、§6.1） |
+| FR-7 | 来歴ゲート昇格: 戦歴でしかアンロックできない単体昇格（同一mint・履歴連続） | ✅ | `promote_card` 全ティア ladder（C→U/U→R/R→L）+ ティア別 SOL コスト。ゲートのデータ源は `settle_duel_history` で権限化。promote 13 + settle 9 テスト緑（§4.4） |
+| FR-8 | カード steal: 勝者が敗者から NFT 1枚永久奪取（エスクロー + タイムアウト付き） | ⚠️ | **reveal/stall timeout は実装済**（`claim_timeout_win`, 600s, テスト7件緑）。NFT奪取本体・エスクローは YKK-44 で未実装（YKK-47法務待ち） |
 | FR-9 | Shop: パック購入（Standard 0.05 / Premium 0.15 SOL、phase制ドロップ率） | ✅ | `buy_pack`、GameWorld にドロップ率(ppm)を admin 調整可能に保持 |
 | FR-10 | Trade Floor: P2P 売買（最低 0.001 SOL、プラットフォーム手数料 0%） | ✅ | `create/cancel/accept_listing` |
 | FR-11 | 参加登録: waitlist 0.5 SOL デポジット + スターター5枚 | ✅ | `register_waitlist`（85% prize_pool PDA / 15% ops_treasury） |
@@ -74,7 +78,7 @@
 | FR-13 | x402 マイクロペイメント: peek/intel 等の従量課金（HTTP 402） | ⚠️ | サーバ13エンドポイント実装済（Coinbase spec、Redis replay防止）。**バトルUIにclient未ロード**、Fly.io本番デプロイ未（YKK-14） |
 | FR-14 | AI agent: 戦略助言・自律プレイ（x402で対価支払い） | ⚠️/🚧 | `/x402/ai-strategy-advice` 実装済（Claude Haiku 4.5）・UI未接続。自律TX署名は未実装 |
 | FR-15 | Imprint: 戦績由来の刻印（Veteran/Elder/Kingslayer 等、レアリティ別上限） | ⚠️ | 実装・レアリティはオンチェーン読み（C5是正済）。ただし付与トリガーが FR-6 経路 |
-| FR-16 | エネルギー制・昇格コスト等の恒常 sink | 📝 | YKK-43（数値設計）。SOLネイティブは確定、数値バランス未 |
+| FR-16 | エネルギー制・昇格コスト等の恒常 sink | ⚠️ | **energy 基盤 + `refill_energy` 実装済**（MAX5 / regen4h / cost1/duel / refill 0.003 SOL）。promote コストも実装（§4.5）。デュエル入口での energy 消費配線は未（PlayerState 未ロード）。数値は placeholder |
 | FR-17 | MagicBlock Ephemeral Rollups によるリアルタイム対戦 | 🚧 | `er-sdk-patch` vendor済み、未統合（post-hackathon） |
 
 ### 2.2 非機能要件
@@ -189,7 +193,7 @@ reveal_hand(P2) ──┘  両者reveal揃った2人目のTX内で:
 - **コミットメント構造**: `Poseidon(round, pubkey_lo, pubkey_hi, cards_packed, salt_lo, salt_hi)`。round と pubkey を焼き込むことで**ラウンド跨ぎ再利用・他人proof流用・クロスデュエル流用**を回路レベルで殺す（C7 の教訓を commit 系に一般化）
 - **ラウンド乱数**: 両者の salt から導出 = どちらか一方では操作不能、かつ2人目の reveal 時点で初めて確定（reveal 前に結果を知る経路がない）
 - **勝敗判定の所在**: reveal_hand の中（第2 reveal のTX）で完結。resolve 用の追加TXや運営 crank が不要 = 信頼点を増やさない
-- **既知の穴**: 負け確定側が reveal（または commit）を放棄するとデュエルが永久スタック。deadline系コードは存在しない → **reveal timeout（P1）**。ante エスクロー実装前に必須の土台で、YKK-47（法務）と独立に実装可能
+- **旧・既知の穴（解消済）**: 負け確定側の reveal 放棄でデュエルが永久スタックしたが、`claim_timeout_win`（`DUEL_STALL_TIMEOUT_SECONDS=600`）で解消。自分の手番を済ませた側が、放棄した相手から勝ちを取れる（相互スタック・期限前・請求側が未 reveal のケースは拒否、テスト7件緑）
 
 ### 4.3 バトル解決 — damage_calc（決定論契約）
 
@@ -206,10 +210,12 @@ reveal_hand(P2) ──┘  両者reveal揃った2人目のTX内で:
 
 - **CardBattleHistory PDA**（seed: `["card_battle_history", card_mint]`, 636B）: wins / losses / kos / dmg_dealt / times_summoned / owners_history(ring 10) / owners_dropped_count / acquisition_source(mint·shop·duel_won·p2p) / imprints[5] / legendary_kills / lease_* / evolved_from_*
 - **CardMintRecord PDA**: レアリティのオンチェーン正（C5是正パターン: 呼び出し側申告を信用しない）
-- **promote_card**（YKK-45, PR #31 merge済・In Review）: 所有証明（ATA amount≥1）+ record を mint にピン + `rarity == Common` + `history.wins >= 10` → **同一mintのまま rarity を書き換え**。履歴連続・イベント発火
+- **promote_card**（全ティア ladder, `dc540b8`）: 所有証明（ATA amount≥1）+ record を mint にピン + ティア別ゲート → **同一mintのまま rarity を書き換え**（履歴連続）。ゲート: C→U `wins≥10` / U→R `wins≥25 ∧ (legendary_kills≥1 ∨ owners_dropped≥1)` / R→L `wins≥50 ∧ acquisition==duel_won ∧ kos≥30`（`evaluate_promotion` pure helper, unit 13件）。**ティア別 SOL コスト**を gate 通過後に ops_treasury へ徴収（0.01 / 0.03 / 0.1 SOL、`game_world`+`ops_treasury`+`system_program` アカウント追加、owner writable）
+- **settle_duel_history**（P0 解消, `dc540b8`）: `promote_card` の wins ゲートに food を供給する trustless 書き込み経路。完成 DuelState から ①winner 署名 ②card_id を CardMintRecord から解決 ③winner の revealed 手札に含有 ④保有証明（ATA≥1、species farming 防止）⑤DuelState の u64 bitmap 2本で二重精算防止。**1枚/命令**、client が複数を1txにバッチ。v1 は wins のみ（losses/kos は mint 確定する YKK-44 側へ）。litesvm 統合テスト9件緑
+- **update_card_battle_history は admin専用化**（旧: 無権限で誰でも wins 注入可能だった＝旧P0）。auto-imprint も admin 経路
 - **Imprint 自動付与**: Veteran(累計10勝, +1BP) / Elder(50勝, +1HP + cosmetic frame) / LineageMark(所有者3人以上) / Kingslayer(+2BP vs Legendary)。stat imprint はレアリティ別上限
 - **evolve_cards は unwire**（2枚burn→新mintは履歴を切るため v3 で棄却。参照用にソースのみ残置。YKK-36 は moot）
-- ⚠️ この層の**唯一かつ致命的な穴**が §6.1（wins の書き込み経路が無権限）
+- ✅ 旧P0（wins 書き込み無権限）は §6.1 の通り解消済み。詳細は上の settle_duel_history / admin専用化
 
 ### 4.5 経済設計 — 実装済みマネーフロー
 
@@ -227,6 +233,8 @@ Metaplex royalty 5% ──────── 非強制（設計上の宣言の�
 - prize_pool は **PDA vault**（seeds=`[b"prize_pool"]`）+ invoke_signed 送金（YKK-38: 「共有口座の署名要求で本番不成立」を是正）。migrate 系の footgun も除去済み（YKK-39）
 - ドロップ率は GameWorld に ppm 保持・admin調整可: Legendary phase1 0% → phase2 1.5%（開始7日後 threshold）、Rare 2%→2.5%、Uncommon 18%
 - シーズン: 14日、waitlist 締切 gate、finalize は strictly-increasing pubkey cursor の batch crank（二重集計不能）
+- **promote コスト（sink, `dc540b8`）**: 昇格 gate 通過後にティア別 SOL を ops_treasury へ（C→U 0.01 / U→R 0.03 / R→L 0.1 SOL）。戦い続けないと上に行けない恒常 sink（3AI の「sink 頭打ち」批判への回答）
+- **energy 制（anti-whale + sink, `dc540b8`）**: `ENERGY_MAX=5` / 自然回復 `4h` ごと+1（満稼働で6/日）/ デュエル入口で `1` 消費 / `refill_energy` で満タン復帰 `0.003 SOL` → ops。※ 消費配線はデュエルフロー側が未実装（PlayerState 未ロード）。数値は全て placeholder（YKK-43 balancing 待ち）
 - 賭博性の主因（ante/rake）の最終形は YKK-47 の弁護士回答待ち。v3 ノートは「トークン ante 撤廃・換金は市場売買へ」の方向を記録
 
 ### 4.6 主要アカウント / PDA（Gen 3 で生きているもの）
@@ -288,18 +296,20 @@ GDD Appendix B（v2.0 の24判断）以降に確定したものを中心に。**
 
 ## 6. 未決事項・既知ギャップ（優先度順）
 
-### 6.1 🔴 P0 — 来歴ゲートの無権限書き込み（YKK-45 の完了条件）
+### 6.1 ✅ 旧P0 — 来歴ゲートの無権限書き込み（解消済 `dc540b8`）
 
 `update_card_battle_history`（lib.rs 配線中）のアカウント構造が `payer: Signer` + system_program のみ。**権限チェックもデュエル証明も無い**。任意のウォレットが任意 mint に `wins_delta` を注入でき、promote_card の wins≥10 ゲートを自己申告で突破できる。
 
 - 性質: C5（呼出側レアリティ）・C6（無証明勝利記録）と完全同型の第3例 = **呼び出し側申告の来歴**。YKK-45 で CardBattleHistory が経済ゲートに昇格した瞬間に信頼前提が破綻した
-- 修正は trustless で可能（回路変更ゼロ・既存データで完結）: 新命令 `settle_duel_card_history` — DuelState の `ended_at/winner` 確認 → CardMintRecord で mint→card_id 解決 → `player_X_revealed` 配列に含有確認 → 勝者wins+1/敗者losses+1 → 二重精算フラグ
-- **r0ze 判断待ち 2点**: ① 既存 `update_card_battle_history` を admin-gate 温存か完全 unwire か ② settle の粒度（カード1枚ずつ vs デュエル一括で手札分精算）
-- 併走: promote_card の回帰テスト新設（現状 **0件**）— 偽wins注入→promote失敗 / 正規duel経由→成功
+- **解消方法**: 新命令 **`settle_duel_history`**（実装名。初版の仮称 `settle_duel_card_history` から改名）が trustless 書き込み経路を提供。完成 DuelState から winner署名 + card_id をCardMintRecordで解決 + revealed含有 + 保有証明 + u64 bitmap で二重精算防止。回路変更ゼロ・既存データで完結
+- **確定した2判断**（初版で「r0ze 判断待ち」としていた点）: ① `update_card_battle_history` は **admin-gate 温存**（完全unwireではなく）② settle 粒度は **1枚/命令**（client が複数を1txバッチ）
+- **テスト**: `provenance_settle.rs` 統合テスト9件（settle 4 + timeout 4 + non-admin 1）+ promote unit 13件。全て litesvm で緑（初版指摘の promote テスト0件も解消）
+- **実装時に踏んだ落とし穴**（教訓）: (a) `settle_duel_history` の SBF スタックオーバーフロー（frame 5376B/5056B）→ 重い4アカウントを `Box<Account>` 化して解消（commit_hand と同型）。放置すれば devnet で Access violation クラッシュ。(b) `provenance_settle.rs` が `tests/Cargo.toml` に未登録で一度も走っていなかった → 登録して初めて緑を実証。**「テストがある」と「テストが走っている」は別**
+- **未決の残り**: admin-gate 温存を mainnet でも許容するか。本書の立場は「devnet 可・mainnet 前に unwire 検討」（admin が来歴を書ける信頼点は "歴史でしかアンロックできない" の対外主張と競合しうる）
 
-### 6.2 🟠 P1 — reveal timeout（YKK-44 から前倒し切り出し）
+### 6.2 ✅ 旧P1 — reveal timeout（解消済 `dc540b8`）
 
-deadline 系コードが存在せず、負け確定側の reveal 拒否でデュエルが永久スタックする。DuelState に ante フィールドがある以上、エスクロー実装と同時に資金ロック級へ昇格する。**YKK-47（法務）と独立に今作れる**。設計案: `started_at` 起点 or per-round deadline + `claim_timeout_win` 命令（未commit/未reveal側の敗北確定）。
+`claim_timeout_win` 命令として実装済（`DUEL_STALL_TIMEOUT_SECONDS=600`）。自分の手番を済ませた側が、期限超過後に放棄側から勝ちを取れる。相互スタック・期限前・請求側が未 reveal のケースは拒否（テスト7件緑）。YKK-44 エスクロー本体の前提となる土台が整った（エスクロー自体は YKK-47 法務待ち）。
 
 ### 6.3 実装ブロッカー / インフラ
 
@@ -355,17 +365,28 @@ YKK-48: `nft/card/*.json` のレアリティが `card_data.rs`（オンチェー
 | 8 | instruction 数 | CLAUDE.md: 52 | lib.rs: **63**（post-hackathon +11） | CLAUDE.md 更新 |
 | 9 | 命令の生死 | GDD Appendix C に transform_common / mint_legendary 等 | 一部未実装/改名。evolve_cards は unwire | Appendix C 棚卸し |
 | 10 | ante | GDD: Hall ante 0.01/0.05/0.1 実装前提 | ante はフィールドのみ・エスクロー未実装、扱いは YKK-47 待ち | 判断後に反映 |
+| 11 | 命令名（本書内） | 初版 §6.1/§8: 仮称 `settle_duel_card_history` | 実装名は **`settle_duel_history`**（card 抜き） | 本更新で修正済 |
+| 12 | promote_card 構造 | 初版 §4.4: 単体 C→U・wins≥10・5アカウント | 全ティア ladder + ティア別コスト・8アカウント（game_world/ops_treasury/system_program 追加） | 本更新で §4.4 反映 |
 
 ---
 
 ## 8. 推奨ネクストアクション（本書からの導線）
 
-1. **P0 着手の2判断を下す**（§6.1: admin-gate vs unwire / 1枚 vs 一括）→ settle_duel_card_history 実装 + promote_card 回帰テスト → YKK-45 を Done に
-2. **reveal timeout 実装**（§6.2, YKK-47 非依存）→ YKK-44 の土台
+1. ~~**P0 の2判断 → settle 実装 + テスト**~~ **完了**（`dc540b8`）: `settle_duel_history`（admin-gate 温存・1枚粒度）+ 統合テスト9件。YKK-45 は Done 相当
+2. ~~**reveal timeout 実装**~~ **完了**（`dc540b8`）: `claim_timeout_win`（600s、テスト7件）
 3. **YKK-34 デプロイ実施**（r0ze 手番）→ YKK-12 e2e 完走 = ZKフローの実機証明
 4. `docs/0xARK-session-summary-2026-07-02.md` / `HANDOFF-TO-FABLE.md` を repo に commit（設計判断の正本散逸防止）
 5. **GDD v3.0 改版 or SUPERSEDED 注記**（§7 の10件を反映）— 本書をその下書きとして流用可
 6. YKK-47 弁護士アポ（実装と並走・最優先のまま）
+
+---
+
+**現在の次段（`dc540b8` 以降）**:
+- **YKK-34 devnet v3 デプロイ**（r0ze 手番、鍵要）→ YKK-12 e2e 実機通し。DuelState がまた成長した（settle bitmap + 旧サイズ変更）ので fresh deploy 必須
+- **energy 消費のデュエル入口配線**（現状 refill/regen 判定はあるが、デュエル入口で実際に 1 消費する経路が未接続）
+- **YKK-47 弁護士確認**（NFT奪取本体 YKK-44 の前提、Urgent のまま）
+- **mainnet 前**: admin-gate 温存の是非（§6.1）、trusted setup 多者 ceremony（YKK-35）
+- **doc 保守**: 本書は `dc540b8` 時点。GDD v3.0 全面改版はまだ（§7 の乖離は本書が吸収）
 
 ---
 
