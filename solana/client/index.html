@@ -34,13 +34,18 @@
       letter-spacing: var(--ls-normal);
       overflow: hidden;
       user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
     }
 
-    /* ── App container ───────────────────────────────────── */
+    /* ── Stage viewport — letterbox host; centers + scales #app ──
+       (DESIGN.md Stage & Layout; scaling driven by src/stage-scaler.js) */
+    #stage-viewport {
+      width: 100vw; height: 100dvh;
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+
+    /* ── App container: the 1024×576 logical box (scaled by the scaler) ── */
     #app {
       width: 1024px;
       height: 576px;
@@ -49,6 +54,19 @@
       background: var(--bg-deep);
       flex-shrink: 0;
     }
+
+    /* Portrait (desktop-first): dim the stage, show the rotate overlay. */
+    #rotate-overlay {
+      position: fixed; inset: 0; z-index: var(--z-modal, 100);
+      display: none; align-items: center; justify-content: center;
+      background: var(--overlay-scrim, rgba(0,0,0,0.6));
+      color: var(--text-cream);
+      font-family: var(--font-main);
+      font-size: var(--fs-title, 32px); letter-spacing: var(--ls-wide, 0.08em);
+      text-align: center; padding: 24px;
+    }
+    html.is-portrait #rotate-overlay { display: flex; }
+    html.is-portrait #stage-viewport { filter: brightness(0.22); }
 
     /* ── Loading state ───────────────────────────────────── */
     #app-loading {
@@ -130,13 +148,16 @@
   </style>
 </head>
 <body>
-  <div id="app">
-    <div id="app-loading">
-      <div class="load-logo">0xARK</div>
-      <div class="load-sub">CARD BATTLE ON SOLANA</div>
-      <div class="load-bar-wrap"><div class="load-bar"></div></div>
+  <div id="stage-viewport">
+    <div id="app">
+      <div id="app-loading">
+        <div class="load-logo">0xARK</div>
+        <div class="load-sub">CARD BATTLE ON SOLANA</div>
+        <div class="load-bar-wrap"><div class="load-bar"></div></div>
+      </div>
     </div>
   </div>
+  <div id="rotate-overlay" role="alert">ROTATE DEVICE ⟳<br><span style="font-size:var(--fs-ui,16px);color:var(--text-dim);">0xARK is landscape-first</span></div>
 
   <!-- Solana web3.js (required by onchain.js — sets window.solanaWeb3) -->
   <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
@@ -209,5 +230,8 @@
       console.error(err);
     });
   </script>
+
+  <!-- Stage scaler — fits the 1024×576 logical box to any display (F0-2) -->
+  <script type="module" src="src/stage-scaler.js"></script>
 </body>
 </html>
