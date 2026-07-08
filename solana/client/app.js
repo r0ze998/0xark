@@ -446,7 +446,72 @@ function _injectWalletCSS() {
 function boot() {
   initApp();
 }
-boot();
+
+// ── TEMP screen viewer (dev/screen-viewer — throwaway, NOT for PR #34) ─────────
+// Eyeball any screen without a wallet:  /?screen=<name>   ·   index at /?screen=menu
+// Self-contained: deleting this whole if/else block (and restoring `boot();`)
+// removes it. Wallet + on-chain are stubbed and the state is mock.
+const _viewerScreen = new URLSearchParams(location.search).get('screen');
+if (_viewerScreen) {
+  const MOCK_PK = 'DEMoV1ewer1111111111111111111111111111111';
+  window.oxarkWallet = {
+    isConnected: () => true,
+    getPublicKey: () => MOCK_PK,
+    getPublicKeyString: () => MOCK_PK,
+    connect: async () => MOCK_PK,
+    disconnect: async () => {},
+  };
+  window.oxarkOnchain = window.oxarkOnchain || {};
+
+  const _demoVault  = Array.from({ length: 30 }, (_, i) => i + 1);          // cards 1-30 owned
+  const _fieldCards = [1, 12, 24, 35, 50].map((cardId, i) => ({ cardId, actionType: i }));
+  const _oppField   = [7, 20, 29, 41, 60].map((cardId, i) => ({ cardId, actionType: i }));
+  const _gw = { game_start_timestamp: Math.floor(Date.now() / 1000) - 3 * 86400 };
+  const _ps = { vault_count: _demoVault.length, vault: _demoVault };
+
+  setState({
+    phase: 'main', playerPubkey: MOCK_PK, vault: _demoVault, round: 1,
+    fieldCards: _fieldCards, opponentField: _oppField, hasPeeked: true,
+    isWinner: true, lootCard: 29,
+    battleResult: { lootCard: 29, isWinner: true, winner: 'p1' },
+  });
+
+  const _app = document.getElementById('app');
+  document.getElementById('app-loading')?.remove();
+
+  const _views = {
+    home:         () => mountHome(_app, { playerState: _ps, gameWorld: _gw, pubkey: MOCK_PK }),
+    main:         () => mountMain(_app, { ...getState(), mode: 'vault', vault: _demoVault, pubkey: MOCK_PK }),
+    shop:         () => mountShop(_app, { gameWorld: _gw }),
+    trade:        () => mountTrade(_app, { playerState: _ps }),
+    preparation:  () => mountPrep(_app, { ...getState(), vault: _demoVault }),
+    interruption: () => mountIntr(_app, { ...getState() }),
+    reveal:       () => mountReveal(_app, { ...getState() }),
+    loot:         () => mountLoot(_app, { ...getState() }),
+    'card-detail': async () => {
+      mountMain(_app, { ...getState(), mode: 'vault', vault: _demoVault, pubkey: MOCK_PK });
+      const { CardDetailModal } = await import('./src/components/card-detail.js');
+      CardDetailModal.show(_app.querySelector('.ms-root') || _app, 12, {});
+    },
+  };
+
+  const _viewNames = ['home','main','shop','trade','preparation','interruption','reveal','loot','card-detail'];
+  if (_viewerScreen === 'menu') {
+    _app.innerHTML = `<div style="padding:24px;font-family:var(--font-main);color:var(--text-cream);height:100%;overflow:auto;">
+      <div style="font-size:32px;color:var(--accent-gold);letter-spacing:0.08em;">SCREEN VIEWER — F0-A QA</div>
+      <div style="font-size:16px;color:var(--text-dim);margin:8px 0 16px;">temp · wallet bypassed · mock state (30-card vault, 5-card field)</div>
+      ${_viewNames.map(n => `<div style="margin:6px 0;"><a class="tx-link" href="?screen=${n}" style="font-size:20px;">?screen=${n}</a></div>`).join('')}
+    </div>`;
+  } else if (_views[_viewerScreen]) {
+    Promise.resolve().then(_views[_viewerScreen]).catch(e => {
+      _app.innerHTML = `<pre style="color:var(--accent-red);padding:24px;white-space:pre-wrap;">viewer error "${_viewerScreen}":\n${e?.stack ?? e}</pre>`;
+    });
+  } else {
+    _app.innerHTML = `<div style="padding:24px;color:var(--accent-red);">unknown screen "${_viewerScreen}" — try <a class="tx-link" href="?screen=menu">?screen=menu</a></div>`;
+  }
+} else {
+  boot();
+}
 
 // Demo vault for local testing — first 30 cards owned
 function getDemoVault() {
