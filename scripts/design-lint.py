@@ -22,6 +22,17 @@ import argparse
 import os
 import re
 import sys
+from pathlib import Path
+
+# Scan root is derived from THIS script's location, not cwd — running from /tmp
+# (or anywhere) must scan the real tree, never zero files. scripts/design-lint.py
+# → parents[1] == repo root.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# Belt-and-suspenders against a vacuous pass: a healthy client tree has well over
+# this many JS files. If we scan fewer, the root is wrong or the tree moved —
+# hard-FAIL loudly rather than report a misleading PASS over nothing.
+MIN_SCANNED_FILES = 20
 
 # Palette hex that has a tokens.css variable. Untokenized greys (#888/#555/…)
 # and the residual grey ladder are intentionally NOT listed yet.
@@ -134,13 +145,27 @@ def scan(root):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--root", default=os.getcwd())
+    ap.add_argument("--root", default=str(REPO_ROOT),
+                    help="scan root (defaults to the repo root derived from this script's path)")
     ap.add_argument("-v", "--verbose", action="store_true", help="print every offending line")
     args = ap.parse_args()
+
+    # Vacuous-scan guard: refuse to report PASS over an empty/wrong tree.
+    scanned = len(js_files(args.root))
+    if scanned < MIN_SCANNED_FILES:
+        print("── Sprite Seas design-lint ─────────────────────────────")
+        print(f"  FAIL  scanned only {scanned} file(s) under {args.root} "
+              f"(expected ≥ {MIN_SCANNED_FILES}).")
+        print("  The scan root is wrong or the client tree moved — refusing a "
+              "vacuous PASS.")
+        print("────────────────────────────────────────────────────────")
+        print("RESULT: FAIL")
+        return 1
 
     checks, results = scan(args.root)
     failed = False
     print("── Sprite Seas design-lint ─────────────────────────────")
+    print(f"  scanned {scanned} JS files under {os.path.relpath(args.root)}")
     for name, (_rx, enforced) in checks.items():
         r = results[name]
         n_lines = len(r["lines"])
