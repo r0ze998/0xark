@@ -13,6 +13,7 @@ Categories (all must be 0 to PASS):
   faux-bold     font-weight:bold / "bold ... VT323" (VT323 ships one weight)
   emoji         OS emoji / symbol glyphs in UI strings (reports LINES + OCCURRENCES)
   round-hardcode (ENFORCED since F1-1) hardcoded round arg `duelId, 1,`
+  bare-import   (ENFORCED since F1-1) shared symbol used with no import/definition
 
 Usage: python3 scripts/design-lint.py [--root DIR]
 Exit 0 = PASS, 1 = violations in an enforced category.
@@ -34,6 +35,54 @@ SUB_FLOOR_REM_RE = re.compile(r"font-size:\s*0\.[0-7]")
 FAUX_BOLD_RE = re.compile(r"font-weight:\s*bold|bold\s+[^;'\"]*VT323")
 EMOJI_RE = re.compile("[\U0001F300-\U0001FAFF☀-➿⌀-⏿]")
 ROUND_HARDCODE_RE = re.compile(r"duelId,\s*1,")
+
+# ── bare-import guard (ENFORCED since F1-1 V-2) ──────────────────────────────
+# Shared symbols live in their own modules and MUST be imported (or defined) in
+# any file that calls them. ES modules do NOT leak scope, so a bare reference is
+# a runtime ReferenceError, not a warning. This class shipped three times during
+# F0-4 (preparation/interruption/loot all used pxIcon() with no import). Any file
+# that uses `SYM(` or `${SYM` without importing or defining SYM fails the lint.
+SHARED_SYMBOLS = [
+    "pxIcon", "showToast", "tierForVault", "CardHTML", "CardFrameHTML",
+    "ACTION_NAMES", "ACTION_LABELS", "RoundHudHTML", "showRoundBridge",
+    "injectRoundUiCSS", "advanceRound", "rarityOf", "factionOf", "rarityKeyOf",
+]
+IMPORT_STMT_RE = re.compile(r"import\b.*?from\s*['\"][^'\"]+['\"]", re.S)
+
+
+def _uses_symbol(sym, line):
+    # call form `SYM(` or template-interpolation form `${SYM`, not a longer ident.
+    call = re.search(r"(?<![\w$])" + re.escape(sym) + r"\s*\(", line)
+    interp = re.search(r"\$\{\s*" + re.escape(sym) + r"(?![\w$])", line)
+    return bool(call or interp)
+
+
+def _has_binding(sym, content, imports_blob):
+    # imported (named/default) anywhere, or locally defined.
+    if re.search(r"\b" + re.escape(sym) + r"\b", imports_blob):
+        return True
+    return bool(re.search(r"\b(?:function|const|let|var)\s+" + re.escape(sym) + r"\b", content))
+
+
+def scan_bare_imports(root):
+    violations = []  # (rel, lineno, sym)
+    for path in js_files(root):
+        rel = os.path.relpath(path, root)
+        try:
+            with open(path, encoding="utf-8") as fh:
+                content = fh.read()
+        except (OSError, UnicodeDecodeError) as e:
+            print(f"WARN: could not read {rel}: {e}", file=sys.stderr)
+            continue
+        imports_blob = "\n".join(IMPORT_STMT_RE.findall(content))
+        for sym in SHARED_SYMBOLS:
+            if _has_binding(sym, content, imports_blob):
+                continue
+            for lineno, line in enumerate(content.splitlines(), 1):
+                if _uses_symbol(sym, line):
+                    violations.append((rel, lineno, sym))
+                    break  # one hit per (file, symbol) is enough to fail
+    return violations
 
 
 def js_files(root):
@@ -105,6 +154,15 @@ def main():
         if (args.verbose or (enforced and n_lines)) and n_lines:
             for rel, lineno, text in r["lines"][:200]:
                 print(f"        {rel}:{lineno}: {text.strip()[:110]}")
+
+    # bare-import guard (whole-file analysis, ENFORCED)
+    bare = scan_bare_imports(args.root)
+    b_status = "ok" if not bare else "FAIL"
+    print(f"  {b_status:4} {'bare-import':16} {len(bare)} hits")
+    if bare:
+        failed = True
+        for rel, lineno, sym in bare[:200]:
+            print(f"        {rel}:{lineno}: {sym}() used without import/definition")
     print("────────────────────────────────────────────────────────")
     if failed:
         print("RESULT: FAIL")
