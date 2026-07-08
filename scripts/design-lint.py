@@ -6,13 +6,13 @@ ranges, so we do NOT shell out to grep). Scans the active client JS
 (solana/client/src/**/*.js + solana/client/app.js; tokens.css excluded — it is
 the one file allowed to hold raw palette hex).
 
-Categories (all must be 0 to PASS, except round-hardcode which is report-only):
+Categories (all must be 0 to PASS):
   brand-hex     raw hex that HAS a token → must go through var(--token)
   sub-13px      font-size in px below the 13px floor
   sub-floor-rem font-size in rem below ~0.81rem (13px @16) → 0.0–0.7 range
   faux-bold     font-weight:bold / "bold ... VT323" (VT323 ships one weight)
   emoji         OS emoji / symbol glyphs in UI strings (reports LINES + OCCURRENCES)
-  round-hardcode (REPORT-ONLY, F1 scope) hardcoded round arg `duelId, 1,`
+  round-hardcode (ENFORCED since F1-1) hardcoded round arg `duelId, 1,`
 
 Usage: python3 scripts/design-lint.py [--root DIR]
 Exit 0 = PASS, 1 = violations in an enforced category.
@@ -58,7 +58,10 @@ def scan(root):
         # ENFORCED since F0-4: the 72 emoji were replaced by the px-icon SVG sprite
         # (src/lib/px-icons.js). OS emoji are banned in UI strings (DESIGN.md).
         "emoji": (EMOJI_RE, True),
-        "round-hardcode": (ROUND_HARDCODE_RE, False),  # report-only (F1 scope)
+        # ENFORCED since F1-1: the hardcoded round arg `duelId, 1,` was removed
+        # (reveal.js now passes s.round; interruption's premature reveal was deleted).
+        # advanceRound() is the only round transition — no literal round may recur.
+        "round-hardcode": (ROUND_HARDCODE_RE, True),
     }
     # name -> {"lines": [(file, lineno, text)], "occ": int}
     results = {k: {"lines": [], "occ": 0} for k in checks}
