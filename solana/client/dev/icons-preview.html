@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>0xARK — px-icon glyph reference (F0-4)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <!-- design tokens (bg-deep / text-cream / accent-gold) -->
+  <link rel="stylesheet" href="../src/style/tokens.css">
+  <style>
+    /* Permanent glyph reference for the px-icon set (DESIGN.md Iconography).
+       Serve locally: `cd solana/client && python3 -m http.server 4200`
+       then open /dev/icons-preview.html */
+    body {
+      margin: 0; padding: 24px;
+      background: var(--bg-deep);
+      color: var(--text-cream);
+      font-family: var(--font-main), 'VT323', monospace;
+    }
+    h1 { font-size: var(--fs-title); letter-spacing: var(--ls-wide); color: var(--accent-gold); margin: 0 0 4px; }
+    .sub { color: var(--text-dim); font-size: var(--fs-ui); margin-bottom: 24px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .cell {
+      border: 1px solid rgba(201,162,39,0.25);
+      padding: 12px; text-align: center;
+      background: rgba(0,0,0,0.2);
+    }
+    .name { font-size: var(--fs-caption); letter-spacing: var(--ls-caption); color: var(--text-dim); margin-bottom: 8px; }
+    .row { display: flex; align-items: center; justify-content: center; gap: 14px; }
+    .row + .row { margin-top: 8px; }
+    .cream { color: var(--text-cream); }
+    .gold  { color: var(--accent-gold); }
+    .szlab { font-size: var(--fs-caption); color: var(--text-dim); }
+    /* integer-scaled crisp pixels */
+    .px-icon { image-rendering: pixelated; }
+  </style>
+</head>
+<body>
+  <h1>px-icon set — glyph reference</h1>
+  <div class="sub">27 glyphs · 16×16 unit grid · crispEdges · currentColor · shown at 16 / 32 / 48px in cream &amp; gold</div>
+  <div class="grid" id="grid"></div>
+
+  <script type="module">
+    import { PX_ICON_IDS, pxIcon, injectPxIconSheet } from '../src/lib/px-icons.js';
+    injectPxIconSheet();
+    const grid = document.getElementById('grid');
+    grid.innerHTML = PX_ICON_IDS.map(id => `
+      <div class="cell">
+        <div class="name">px-${id}</div>
+        <div class="row cream">
+          ${pxIcon(id, { size: 16 })}${pxIcon(id, { size: 32 })}${pxIcon(id, { size: 48 })}
+        </div>
+        <div class="row gold">
+          ${pxIcon(id, { size: 16 })}${pxIcon(id, { size: 32 })}${pxIcon(id, { size: 48 })}
+        </div>
+        <div class="row szlab">16 &nbsp; 32 &nbsp; 48</div>
+      </div>`).join('');
+  </script>
+</body>
+</html>
