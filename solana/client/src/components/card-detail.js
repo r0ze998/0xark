@@ -3,6 +3,7 @@
 // opts: { onBurn(cardId), onEvolve(resultId, [parentA, parentB]), vault[] }
 
 import { getCard, isBurnable, isMergeOnly, getMergeRecipe } from '../lib/cards.js';
+import { pxIcon } from '../lib/px-icons.js';
 import { CardFrameHTML, injectCardCSS, CARD_NAMES, FACTION_NAMES, RARITY_LABELS, ACTION_LABELS } from './common/Card.js';
 import { getState, setState } from '../state/battle-state.js';
 
@@ -61,13 +62,13 @@ function _render(container, cardId) {
     : '';
 
   const burnBtn = burnable
-    ? `<button class="gba-btn gba-btn--danger cd-burn-btn" id="cd-burn">🔥 BURN</button>`
+    ? `<button class="gba-btn gba-btn--danger cd-burn-btn" id="cd-burn">${pxIcon('burn')} BURN</button>`
     : '';
 
   const evolveBtn = mergeOnly && canEvolve
-    ? `<button class="gba-btn gba-btn--primary cd-evolve-btn" id="cd-evolve">⚗ EVOLVE</button>`
+    ? `<button class="gba-btn gba-btn--primary cd-evolve-btn" id="cd-evolve">${pxIcon('arrow-up')} EVOLVE</button>`
     : mergeOnly
-    ? `<button class="gba-btn gba-btn--ghost cd-evolve-btn" id="cd-evolve" disabled title="Need both source Commons">⚗ EVOLVE</button>`
+    ? `<button class="gba-btn gba-btn--ghost cd-evolve-btn" id="cd-evolve" disabled title="Need both source Commons">${pxIcon('arrow-up')} EVOLVE</button>`
     : '';
 
   const overlay = document.createElement('div');
@@ -79,7 +80,7 @@ function _render(container, cardId) {
 
   overlay.innerHTML = `
 <div class="cd-modal">
-  <button class="cd-close" id="cd-close" aria-label="Close">✕</button>
+  <button class="cd-close" id="cd-close" aria-label="Close">${pxIcon('cross')}</button>
 
   <div class="cd-top">
     <div class="cd-card-wrap">
@@ -151,10 +152,10 @@ function _handleBurn(container, cardId) {
   setState({ vault: newVault, pendingBurnEffects });
 
   const fb = container.querySelector('#cd-feedback');
-  if (fb) fb.textContent = `✓ ${name} burned! Effect active for next battle.`;
+  if (fb) fb.textContent = `${name} burned! Effect active for next battle.`;
 
   const burnBtn = container.querySelector('#cd-burn');
-  if (burnBtn) { burnBtn.disabled = true; burnBtn.textContent = '✓ BURNED'; }
+  if (burnBtn) { burnBtn.disabled = true; burnBtn.textContent = 'BURNED'; }
 
   if (_onBurn) _onBurn(cardId);
 
@@ -179,18 +180,18 @@ function _handleEvolve(container, cardId, recipe) {
 
   const fb = container.querySelector('#cd-feedback');
   if (fb) {
-    fb.innerHTML = `<span class="label-gold">✓ ${name} evolved!</span> ${parentA} + ${parentB} consumed.`;
+    fb.innerHTML = `<span class="label-gold">${pxIcon('check')} ${name} evolved!</span> ${parentA} + ${parentB} consumed.`;
   }
 
   // Play evolve animation flash
   const wrap = container.querySelector('.cd-card-wrap');
   if (wrap) {
-    wrap.innerHTML = `<div class="cd-evolve-flash">✦</div>`;
+    wrap.innerHTML = `<div class="cd-evolve-flash">${pxIcon('void')}</div>`;
     setTimeout(() => { wrap.innerHTML = CardFrameHTML({ id: cardId, owned: true }); }, 600);
   }
 
   const evolveBtn = container.querySelector('#cd-evolve');
-  if (evolveBtn) { evolveBtn.disabled = true; evolveBtn.textContent = '✓ EVOLVED'; }
+  if (evolveBtn) { evolveBtn.disabled = true; evolveBtn.textContent = 'EVOLVED'; }
 
   if (_onEvolve) _onEvolve(cardId, [aId, bId]);
 

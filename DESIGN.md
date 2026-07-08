@@ -370,11 +370,11 @@ Scope: `solana/client/src/**/*.js` + `solana/client/app.js` (tokens.css excepted
 | sub-13px | 34 hits | ✅ fail on >0 | `font-size` px below the 13px floor. |
 | sub-floor-rem | 4 hits | ✅ fail on >0 | `font-size` rem below ~0.81rem. |
 | faux-bold | 10 hits | ✅ fail on >0 | `font-weight:bold` / `bold … VT323` (one weight). |
-| emoji | **58 lines / 72 occurrences**, 11 files | ⏳ report-only | Both counts are correct and use the same ranges (58 = lines with ≥1 glyph, 72 = total glyphs). Flips to enforced in **PR-C / F0-4** once the px-icon sprite lands. |
+| emoji | **58 lines / 72 occurrences**, 11 files | ✅ enforced (F0-4) | All 72 replaced by the px-icon SVG sprite (`src/lib/px-icons.js`); OS emoji banned in UI strings. (58 = lines with ≥1 glyph, 72 = total glyphs — same ranges, both correct.) |
 | round-hardcode | 4 hits | 📋 report-only | `duelId, 1,` — F1 scope (round loop). |
 
-Enforced categories are **0** after PR-A (F0-1 + F0-5). emoji/round remain
-report-only until PR-C / F1 respectively.
+Enforced categories are **0** after F0-1 + F0-5 + F0-4 (emoji). Only
+round-hardcode stays report-only (F1 scope).
 
 ---
 *Supersedes: `design/DESIGN_TOKENS.json` (archive to `design/archive/`).

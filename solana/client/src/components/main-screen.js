@@ -1,5 +1,6 @@
 // main-screen.js — Screen 1: Vault viewer + matchmaking
 // mount(container, detail) / unmount(container)
+import { pxIcon } from '../lib/px-icons.js';
 
 import { ALL_CARD_IDS, getCard, isBurnable, isMergeOnly, getMergeRecipe, MERGE_RECIPES } from '../lib/cards.js';
 import { CardFrameHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS, CARD_NAMES } from './common/Card.js';
@@ -80,7 +81,7 @@ function _buildEvolveList(owned) {
   <button class="gba-btn gba-btn--primary ms-evolve-btn"
     data-child="${cId}" data-a="${r.recipe[0]}" data-b="${r.recipe[1]}"
     ${ready ? '' : 'disabled'}>
-    ${ready ? '⚗ EVOLVE' : '⚗ NEED CARDS'}
+    ${ready ? `${pxIcon('arrow-up')} EVOLVE` : `${pxIcon('arrow-up')} NEED CARDS`}
   </button>
 </div>`;
   });
@@ -117,7 +118,7 @@ function buildHTML({ vault, pubkey, perso }) {
     <div class="ms-hud flex-row gap-8">
       <span class="chip">VAULT <span class="label-gold">${vaultCount}</span><span class="label-dim">/60</span></span>
       <button class="gba-btn gba-btn--ghost ms-wallet-btn" id="ms-wallet">
-        ✓ ${truncPub || 'Connected'}
+        ${pxIcon('check')} ${truncPub || 'Connected'}
       </button>
     </div>
   </header>

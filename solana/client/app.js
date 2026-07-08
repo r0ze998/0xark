@@ -11,6 +11,7 @@ import { mount as mountReveal,       unmount as unmountReveal       } from './sr
 import { mount as mountLoot,         unmount as unmountLoot         } from './src/components/loot.js';
 import { getState, setState, wasRestored } from './src/state/battle-state.js';
 import { OPS_TREASURY_PUBKEY } from './src/config.js';
+import { injectPxIconSheet } from './src/lib/px-icons.js';
 import { showToast as _showToast } from './src/lib/ui-shared.js';
 
 const SCREENS = {
@@ -442,6 +443,8 @@ function _injectWalletCSS() {
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────
+
+injectPxIconSheet(); // global icon sprite before any screen mounts
 
 function boot() {
   initApp();

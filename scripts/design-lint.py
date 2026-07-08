@@ -55,9 +55,9 @@ def scan(root):
         "sub-13px": (SUB13_PX_RE, True),
         "sub-floor-rem": (SUB_FLOOR_REM_RE, True),
         "faux-bold": (FAUX_BOLD_RE, True),
-        # emoji cleanup is PR-C (F0-4 px-icon set). Report-only until then; PR-C
-        # flips this to True once the 72 glyphs are replaced by the SVG sprite.
-        "emoji": (EMOJI_RE, False),
+        # ENFORCED since F0-4: the 72 emoji were replaced by the px-icon SVG sprite
+        # (src/lib/px-icons.js). OS emoji are banned in UI strings (DESIGN.md).
+        "emoji": (EMOJI_RE, True),
         "round-hardcode": (ROUND_HARDCODE_RE, False),  # report-only (F1 scope)
     }
     # name -> {"lines": [(file, lineno, text)], "occ": int}

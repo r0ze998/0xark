@@ -51,7 +51,7 @@ function buildWinHTML(s) {
   <h1 class="loot-title" id="loot-title">YOU WON!</h1>
 
   <!-- Marauder bonus -->
-  ${hasMrdr ? '<div class="loot-marauder label-gold">★ MARAUDER BONUS — TAKE 2 CARDS</div>' : ''}
+  ${hasMrdr ? `<div class="loot-marauder label-gold">${pxIcon('star')} MARAUDER BONUS — TAKE 2 CARDS</div>` : ''}
 
   <!-- Reveal label -->
   <div class="loot-pick-label" id="loot-pick-label">
@@ -272,7 +272,7 @@ async function onClaimLoot(container) {
     );
     const cardId = result.stolenCardId ?? loserField.find(Boolean) ?? 1;
     onCardPickedLocal(container, cardId, s);
-    if (btn) { btn.textContent = 'CLAIMED ✓'; }
+    if (btn) { btn.textContent = 'CLAIMED'; }
   } catch (err) {
     _selectMode = true;
     if (btn) { btn.disabled = false; btn.textContent = '◆ CLAIM LOOT'; }
@@ -299,7 +299,7 @@ function onCardPickedLocal(container, cardId, s) {
   const result = container.querySelector('#loot-result');
   if (result) {
     result.style.display = 'block';
-    result.innerHTML = `+ <span class="label-gold">${cardName}</span> added to vault${isLgd ? ' <span class="label-gold">★ LEGENDARY!</span>' : ''}`;
+    result.innerHTML = `+ <span class="label-gold">${cardName}</span> added to vault${isLgd ? ` <span class="label-gold">${pxIcon('star')} LEGENDARY!</span>` : ''}`;
   }
 
   if (isLgd) showLegendaryEffect(container);
@@ -318,7 +318,7 @@ function onCardPickedLocal(container, cardId, s) {
 function showLegendaryEffect(container) {
   const flash = document.createElement('div');
   flash.className = 'loot-legendary-flash';
-  flash.textContent = '★ LEGENDARY ACQUIRED ★';
+  flash.textContent = 'LEGENDARY ACQUIRED';
   container.appendChild(flash);
   setTimeout(() => flash.remove(), 2500);
 }

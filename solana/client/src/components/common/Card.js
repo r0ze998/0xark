@@ -1,5 +1,6 @@
 // Card.js — renders one card tile; used by all battle screens
 import { getCard } from '../../lib/cards.js';
+import { pxIcon, injectPxIconSheet } from '../../lib/px-icons.js';
 
 export const FACTION_NAMES  = ['Knight','Merchant','Pirate','Scholar','Monk','Engineer'];
 export const FACTION_ABBR   = ['KNT','MRC','PIR','SCH','MNK','ENG'];
@@ -12,11 +13,14 @@ export const FACTION_COLORS = [
   'var(--clan-engineer)',  // Engineer
 ];
 export const RARITY_LABELS  = ['COM','UNC','RARE','LGD'];
-export const ACTION_LABELS  = ['◆ CRYSTAL','🛡 BARRIER','⚡ FLAME','🌀 STORM','◎ SHADOW','✦ VOID'];
-export const ACTION_ICONS   = ['◆','🛡','⚡','🌀','◎','✦'];
+// ActionTypes: plain-text NAMES for aria/text contexts; ICONS are px-icon SVG;
+// LABELS combine both for HTML contexts (never put SVG in an attribute).
+export const ACTION_KEYS    = ['crystal','barrier','flame','storm','shadow','void'];
+export const ACTION_NAMES   = ['CRYSTAL','BARRIER','FLAME','STORM','SHADOW','VOID'];
+export const ACTION_ICONS   = ACTION_KEYS.map(k => pxIcon(k));
+export const ACTION_LABELS  = ACTION_KEYS.map((k, i) => `${ACTION_ICONS[i]} ${ACTION_NAMES[i]}`);
 export const RARITY_KEYS    = ['c','u','r','l'];
 export const RARITY_COLORS  = ['var(--rarity-c)','var(--rarity-u)','var(--rarity-r)','var(--rarity-l)'];
-export const CLAN_EMOJI     = ['⚔','⚖','⚓','✦','☯','⚙'];
 export const CARD_NAMES = {
    1:'Squire',    2:'Guard',       3:'Soldier',   4:'Paladin',  5:'Sacrificial Squire',
    6:'Warden',    7:'Crusader',    8:'Knight Champion', 9:'Vanguard', 10:'Sentinel',
@@ -80,15 +84,16 @@ export function CardHTML({
     </div>
     <div class="ark-card-bp"><b>${card.bp}</b></div>
     <div class="ark-card-name">${name}</div>
-    ${isLgd ? '<div class="ark-card-legend">★</div>' : ''}
+    ${isLgd ? `<div class="ark-card-legend">${pxIcon('star')}</div>` : ''}
     ${!owned ? '<div class="ark-card-overlay"><span>?</span></div>' : ''}
-    ${dead   ? '<div class="ark-card-dead-overlay"><span>✕</span></div>' : ''}
+    ${dead   ? `<div class="ark-card-dead-overlay">${pxIcon('skull')}</div>` : ''}
   </div>`;
 }
 
 /**
  * Returns an HTML string for a full-size framed card tile (vault display).
- * Uses rarity-specific frame PNGs as background; art window shows clan emoji.
+ * Uses rarity-specific frame PNGs as background; art window shows the faction
+ * abbr as an interim placeholder until real card art arrives.
  * Same props as CardHTML(); compact is ignored (framed cards are always full-size).
  */
 export function CardFrameHTML({
@@ -107,7 +112,7 @@ export function CardFrameHTML({
   const rKey    = RARITY_KEYS[card.rarity]   ?? 'c';
   const cColor  = FACTION_COLORS[card.faction] ?? 'var(--text-cream)';
   const rColor  = RARITY_COLORS[card.rarity]  ?? 'var(--rarity-c)';
-  const emoji   = CLAN_EMOJI[card.faction]    ?? '◆';
+  const emoji   = FACTION_ABBR[card.faction]  ?? '?';
   const name    = CARD_NAMES[id] ?? `Card #${id}`;
   const hp      = hpCurrent ?? card.hp;
 
@@ -138,11 +143,12 @@ export function CardFrameHTML({
       <span class="stat-badge"><span class="stat-label">INI</span><span class="stat-value">${card.ini}</span></span>
     </div>
     ${!owned ? '<div class="ark-card-overlay"><span>?</span></div>' : ''}
-    ${dead   ? '<div class="ark-card-dead-overlay"><span>✕</span></div>' : ''}
+    ${dead   ? `<div class="ark-card-dead-overlay">${pxIcon('skull')}</div>` : ''}
   </div>`;
 }
 
 export function injectCardCSS() {
+  injectPxIconSheet(); // every screen renders cards → guarantees the icon sprite
   if (document.getElementById('style-ark-card')) return;
   const el = document.createElement('style');
   el.id = 'style-ark-card';
