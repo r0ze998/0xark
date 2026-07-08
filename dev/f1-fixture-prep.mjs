@@ -11,11 +11,12 @@
 //  every "// ASSUMPTION" as something to confirm on the first real run.
 //
 //  WHAT IT DOES (spec §10 fixture prep):
-//    A) preflight: RPC reachable + program deployed (else exit with guidance)
-//    B) win fixture:  A wins 10 decisive duels vs a throwaway opponent and
-//                     settles A's fixture card each time → CardBattleHistory.wins
-//                     reaches ≥ 10 (promote gate C→U).
-//    C) energy fixture: wallet-B commits in 5 duels WITHOUT refill → energy 0.
+//    A) preflight + self-bootstrap: RPC/program check → init_game_world (if absent)
+//       → register_waitlist A & B (PlayerState @ energy MAX; starter-card bitmap).
+//    B) win fixture:  mint a REAL Common SPL card to A + init_card_mint_record
+//       (buy_pack does NOT mint), then A wins 10 decisive duels settling that mint
+//       each time → CardBattleHistory.wins ≥ 10 (promote gate C→U).
+//    C) energy fixture: wallet-B round-1 entry-commits 5 separate duels → energy 0.
 //
 //  RUN:
 //    1. Install solana CLI, start `solana-test-validator`.
@@ -41,12 +42,17 @@ const {
   Connection, Keypair, PublicKey, Transaction, TransactionInstruction,
   SystemProgram, ComputeBudgetProgram, sendAndConfirmTransaction,
 } = web3;
+// FIX-A: real SPL card mints (buy_pack does NOT mint — cards come from oxark-cards;
+// the fixture mints directly + registers the CardMintRecord as admin).
+const spl = require(`${ROOT}/solana/oxark/node_modules/@solana/spl-token`);
+const { createMint, getOrCreateAssociatedTokenAccount, mintTo } = spl;
 
 // ── config ──
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : d; };
 const RPC        = arg('--rpc', 'http://localhost:8899');
 const WIN_TARGET = parseInt(arg('--win-target', '10'), 10);
 const PROGRAM_ID = new PublicKey('5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN'); // CLAUDE.md / onchain.js
+const ADMIN_PUBKEY = new PublicKey('DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R'); // constants.rs ADMIN_PUBKEY (== id.json here)
 const CLIENT     = `${ROOT}/solana/client`;
 const ENERGY_MAX = 5; // constants.rs ENERGY_MAX
 
@@ -187,6 +193,18 @@ const ixInitGameWorld = (admin, gameStart, opsTreasury) => new TransactionInstru
     { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
   ],
 });
+// init_card_mint_record — from init_card_mint_record.rs (args card_mint:Pubkey,
+// card_id:u8, rarity:u8; admin-gated admin==ADMIN_PUBKEY). Registers the rarity/card_id
+// the burn/promote gates read. Accounts: card_mint_record(init), admin(signer), system.
+const ixInitCardMintRecord = (admin, mint, cardId, rarity) => new TransactionInstruction({
+  programId: PROGRAM_ID,
+  data: Buffer.concat([disc('init_card_mint_record'), mint.toBuffer(), Buffer.from([cardId & 0xff, rarity & 0xff])]),
+  keys: [
+    { pubkey: cardRecordPda(mint), isSigner: false, isWritable: true },
+    { pubkey: admin, isSigner: true, isWritable: true },
+    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+  ],
+});
 // register_waitlist — from register_waitlist.rs (accounts; no args). Deposits 0.5 SOL,
 // inits PlayerState (energy=MAX) + distributes 5 starter cards. Account order:
 // player_state(init_if_needed), game_world(mut), prize_pool(mut), ops_treasury(mut), player, system.
@@ -310,24 +328,43 @@ async function winOneDuel(auth, A, B, handA, handB, fixtureMint, n) {
   await send([ixRegister(A.publicKey)], [A], 'register A');
   await send([ixRegister(B.publicKey)], [B], 'register B');
 
-  // A already owns 5 starter cards from registration; buy extra packs for hand variety.
-  for (let i = 0; i < 2; i++) await send([ixBuyPack(A.publicKey, 0)], [A], `A buy_pack ${i}`).catch(e => console.warn('  buy_pack A skipped:', e.message));
+  // ── FIX-A: acquire the promote fixture as a REAL SPL card mint ──
+  // buy_pack only flips the vault bitmap — it mints NO SPL token (no token program in
+  // its accounts); real NFTs come from the oxark-cards program. So we mint directly and
+  // register the CardMintRecord (admin-gated). This is what the UI's promote/engrave
+  // paths read via getOwnedCardMints → CardMintRecord.
+  if (!auth.publicKey.equals(ADMIN_PUBKEY)) {
+    console.error(`FATAL: init_card_mint_record is HARD-GATED to ADMIN_PUBKEY (${ADMIN_PUBKEY.toBase58()}).`);
+    console.error(`Your admin key is ${auth.publicKey.toBase58()} — pass --admin <ADMIN keypair.json> matching that constant.`);
+    process.exit(1);
+  }
+  const FIXTURE_CARD_ID = 3; // a Common (card_id must be 1..=60)
+  const FIXTURE_RARITY  = 0; // MUST be 0/Common so the C→U gate applies at wins>=10 (promote acceptance)
+  const fixtureMint = await createMint(conn, auth, auth.publicKey, null, 0); // decimals 0; mint authority = admin
+  const ata = await getOrCreateAssociatedTokenAccount(conn, auth, fixtureMint, A.publicKey);
+  await mintTo(conn, auth, fixtureMint, ata.address, auth, 1); // 1 NFT → A
+  await send([ixInitCardMintRecord(auth.publicKey, fixtureMint, FIXTURE_CARD_ID, FIXTURE_RARITY)], [auth], 'init_card_mint_record');
+  const fixtureCardId = FIXTURE_CARD_ID;
+  console.log(`minted fixture: card_id=${fixtureCardId} rarity=${FIXTURE_RARITY} mint=${fixtureMint.toBase58()} → A`);
+  // CBH needs NO pre-init: settle_duel_history is init_if_needed for both settle_record
+  // and card_battle_history (settle_duel_history.rs:59,:77).
 
+  // FIX-B: keep buy_pack (exercises the ix + vault bitmap the UI reads) — but it does
+  // NOT produce SPL mints, so it is NOT part of fixture acquisition.
+  for (let i = 0; i < 2; i++) await send([ixBuyPack(A.publicKey, 0)], [A], `A buy_pack ${i} (bitmap only, no mint)`).catch(e => console.warn('  buy_pack A skipped:', e.message));
+
+  // POST-mint assertion: discovery MUST find the fixture in A's ATAs — the UI's
+  // promote/engrave path depends on getOwnedCardMints resolving this mint's record.
   const aMap = await ownedMints(A.publicKey);
-  const aCards = [...aMap.keys()];
-  if (aCards.length < 5) { console.error(`A owns only ${aCards.length} distinct cards after register+packs; raise pack count.`); process.exit(1); }
-  // FLAG 2 (resolved): reveal_hand is free-form — it does NOT check card ownership.
-  // We only need the fixture cardId present in A's 10 revealed slots each duel;
-  // ownership is enforced at SETTLE via the mint ATA, which the real starter mint
-  // satisfies. So fielding fixtureCardId (an owned starter) is sufficient.
-  const fixtureCardId = aCards[0];
-  const fixtureMint = new PublicKey(aMap.get(fixtureCardId)[0].mint);
-  // Because reveal is free-form (FLAG 2), only slot 0 must be owned (the fixture we
-  // settle). Fill 1-4 with high-BP pirates (24,25,27,28) and give B low-BP (1,2,11,12,13)
-  // so A wins DECISIVELY every round → 3-0 by round 3 (mirrors e2e_duel_bo3 scenario 1).
+  const found = (aMap.get(fixtureCardId) ?? []).some(c => c.mint === fixtureMint.toBase58());
+  if (!found) { console.error(`FATAL: fixture mint not discoverable in A's owned mints — UI would not see it for promote/engrave.`); process.exit(1); }
+
+  // reveal_hand is free-form (verified): only slot 0 must be the owned fixture (settle
+  // checks the mint ATA + card_id in the revealed hand). Fill 1-4 with high-BP pirates
+  // and give B low-BP so A wins DECISIVELY → 3-0 by round 3 (e2e_duel_bo3 scenario 1).
   const handA = [fixtureCardId, 24, 25, 27, 28, 0, 0, 0, 0, 0];
   const handB = [1, 2, 11, 12, 13, 0, 0, 0, 0, 0];
-  console.log(`fixture card=${fixtureCardId} mint=${fixtureMint.toBase58()}  handA=[${handA.slice(0, 5)}] handB=[${handB.slice(0, 5)}]`);
+  console.log(`handA=[${handA.slice(0, 5)}] handB=[${handB.slice(0, 5)}]`);
 
   // ── B) win fixture: 10 decisive duels, settle A's fixture mint each ──
   const wins0 = await readWins(fixtureMint);
