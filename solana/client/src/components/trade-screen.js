@@ -100,7 +100,7 @@ function _injectCSS() {
 .trade-card-id {
   font-size: 2rem;
   color: var(--rarity-color, #888);
-  font-weight: bold;
+
 }
 .trade-card-name {
   font-size: 0.8rem;
@@ -110,7 +110,7 @@ function _injectCSS() {
   margin-top: 4px;
 }
 .trade-card-rarity {
-  font-size: 0.7rem;
+  font-size: var(--fs-caption);
   letter-spacing: 0.1em;
   color: var(--rarity-color, #888);
   text-transform: uppercase;
@@ -124,7 +124,7 @@ function _injectCSS() {
 .listing-price {
   font-size: 1.2rem;
   color: var(--accent-gold);
-  font-weight: bold;
+
   margin: 0 0 0.2rem;
 }
 .listing-seller {
@@ -212,7 +212,7 @@ function _injectCSS() {
 .modal-card-tile:hover { border-color: #888; background: rgba(201,162,39,0.07); }
 .modal-card-tile.selected { border-color: var(--accent-gold); background: rgba(201,162,39,0.15); }
 .modal-card-num { font-size: 1.6rem; color: var(--accent-gold); display: block; }
-.modal-card-label { font-size: 0.7rem; color: #888; }
+.modal-card-label { font-size: var(--fs-caption); color: #888; }
 .price-input-row {
   display: flex;
   align-items: center;

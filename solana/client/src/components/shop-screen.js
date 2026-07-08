@@ -74,7 +74,7 @@ function _injectCSS() {
   border-top: 1px solid #222;
   padding-top: 0.5rem;
 }
-.pack-price { font-size: 1.8rem; color: var(--accent-gold); margin: 0.75rem 0; font-weight: bold; }
+.pack-price { font-size: 1.8rem; color: var(--accent-gold); margin: 0.75rem 0; }
 .pack-card.pack-premium .pack-price { color: #e8d4a0; }
 .pack-buy-btn {
   background: rgba(201, 162, 39, 0.1);
@@ -133,7 +133,7 @@ function _injectCSS() {
 .reveal-card-slot.rarity-legendary{ border-color: #f90; background: rgba(255, 153, 0, 0.15);
   box-shadow: 0 0 12px rgba(255, 153, 0, 0.4); }
 .reveal-card-id { font-size: 1.6rem; color: var(--accent-gold); }
-.reveal-card-label { font-size: 0.7rem; color: #888; }
+.reveal-card-label { font-size: var(--fs-caption); color: #888; }
 .reveal-close-btn {
   background: none;
   border: 2px solid var(--accent-gold);

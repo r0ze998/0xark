@@ -2,7 +2,7 @@
 // mount(container, detail) / unmount(container)
 
 import { ALL_CARD_IDS, getCard, isBurnable, isMergeOnly, getMergeRecipe, MERGE_RECIPES } from '../lib/cards.js';
-import { CardHTML, CardFrameHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS, CARD_NAMES } from './common/Card.js';
+import { CardFrameHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS, CARD_NAMES } from './common/Card.js';
 import { LegendaryProgressHTML, injectLegendaryProgressCSS, PERSONALITIES } from './common/LegendaryProgress.js';
 import { PrizePoolHTML, injectPrizePoolCSS } from './common/PrizePool.js';
 import { getState, setState } from '../state/battle-state.js';
@@ -407,7 +407,7 @@ function _mountBattle(container, detail) {
   <div class="ms-battle-info label-dim" id="ms-match-info">
     WIN CARDS · EARN SOL · UNLOCK LEGENDARIES
   </div>
-  <div style="position:absolute;bottom:12px;font-size:12px;color:#333;">${truncPub} · DEVNET</div>
+  <div style="position:absolute;bottom:12px;font-size:13px;color:#333;">${truncPub} · DEVNET</div>
 </div>`;
 
   container.querySelector('#ms-battle-back').addEventListener('click', () => {
@@ -444,7 +444,7 @@ const CSS = `
 }
 .ms-brand { display: flex; align-items: center; gap: 10px; }
 .ms-brand-name { font-size: 24px; color: var(--accent-gold); letter-spacing: 0.12em; }
-.ms-tagline { font-size: 12px; letter-spacing: 0.08em; color: var(--text-dim); }
+.ms-tagline { font-size: 13px; letter-spacing: 0.08em; color: var(--text-dim); }
 .ms-hud { flex-shrink: 0; }
 .ms-wallet-btn { font-size: 14px; padding: 3px 10px; }
 .ms-wallet-err {
@@ -478,7 +478,7 @@ const CSS = `
 .ms-vault-progress-fill { height: 100%; background: var(--accent-gold); transition: width 0.5s; }
 .ms-vault-progress-label {
   position: absolute; right: 0; top: -14px;
-  font-size: 11px; color: var(--text-dim);
+  font-size: 13px; color: var(--text-dim);
 }
 
 /* Faction filters */
@@ -486,7 +486,7 @@ const CSS = `
   display: flex; gap: 3px; flex-shrink: 0; margin-bottom: 6px; flex-wrap: wrap;
 }
 .ms-faction-btn {
-  font-size: 12px; padding: 2px 8px;
+  font-size: 13px; padding: 2px 8px;
   border-color: rgba(255,255,255,0.12);
 }
 .ms-faction-btn:hover { border-color: var(--fc, var(--accent-gold)); color: var(--text-cream); }
@@ -495,12 +495,12 @@ const CSS = `
 /* Card grid */
 .ms-card-grid {
   flex: 1; overflow-y: auto;
-  display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px;
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px;
   align-content: start; padding-bottom: 4px;
 }
 .ms-card-grid::-webkit-scrollbar { width: 3px; }
 .ms-card-grid::-webkit-scrollbar-thumb { background: rgba(201,162,39,0.2); }
-.ms-card-grid .card-frame { width: 100%; min-width: 0; }
+.ms-card-grid .card-frame { width: 100%; }
 
 /* Side panel */
 .ms-side {
@@ -524,7 +524,7 @@ const CSS = `
   width: 100%; justify-content: center; font-size: 20px; padding: 10px;
   letter-spacing: 0.06em;
 }
-.ms-match-info { font-size: 12px; text-align: center; letter-spacing: 0.04em; }
+.ms-match-info { font-size: 13px; text-align: center; letter-spacing: 0.04em; }
 
 /* Tabs */
 .ms-tab-bar {
@@ -540,7 +540,7 @@ const CSS = `
 .ms-tab--active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); }
 .ms-evolve-badge {
   display: inline-block; background: var(--accent-red); color: #fff;
-  font-size: 10px; padding: 0 4px; border-radius: 2px; margin-left: 4px;
+  font-size: 13px; padding: 0 4px; border-radius: 2px; margin-left: 4px;
   vertical-align: middle; line-height: 15px;
 }
 
@@ -557,14 +557,14 @@ const CSS = `
 .ms-evolve-row--ready { border-color: rgba(201,162,39,0.35); background: rgba(201,162,39,0.05); }
 .ms-evolve-row-info { display: flex; flex-direction: column; gap: 2px; }
 .ms-evolve-result { font-size: 15px; letter-spacing: 0.05em; }
-.ms-evolve-recipe { font-size: 12px; }
+.ms-evolve-recipe { font-size: 13px; }
 .ms-evolve-btn { font-size: 14px; padding: 4px 12px; }
 
 /* Footer */
 .ms-footer {
   height: 32px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; gap: 0; border-top: var(--border-dim);
+  font-size: 13px; gap: 0; border-top: var(--border-dim);
   background: rgba(3,6,15,0.7);
 }
 .ms-back-btn {

@@ -53,7 +53,7 @@ function _injectCSS() {
 .home-btn:active { transform: translateY(0); }
 .home-btn-icon  { font-size: 2rem; margin-bottom: 0.25rem; display: block; }
 .home-btn-title {
-  font-size: 1.5rem; font-weight: bold; letter-spacing: 0.1em;
+  font-size: 1.5rem; letter-spacing: 0.1em;
   color: var(--accent-gold); display: block;
 }
 .home-btn-subtitle { font-size: 0.9rem; color: #aaa; margin-top: 0.1rem; display: block; }

@@ -110,7 +110,7 @@ function buildHTML() {
           👁 PEEK OPPONENT
           <span class="intr-fee">(0.005 SOL)</span>
         </button>
-        ${getState().hasPeeked ? '<div class="label-dim" style="font-size:12px;">Peeked ✓</div>' : ''}
+        ${getState().hasPeeked ? '<div class="label-dim" style="font-size:13px;">Peeked ✓</div>' : ''}
       </div>
 
       <!-- Swap info -->
@@ -119,7 +119,7 @@ function buildHTML() {
         <div class="label-dim" style="font-size:13px;" id="intr-swap-count">
           1 free swap remaining
         </div>
-        <div class="label-dim" style="font-size:12px;">Click your card to swap</div>
+        <div class="label-dim" style="font-size:13px;">Click your card to swap</div>
       </div>
 
       <!-- Ready -->
@@ -149,7 +149,7 @@ function renderYourSlots() {
       data-your-slot="${i}" tabindex="0"
       aria-label="Your card slot ${i+1}, ${slot.cardId}">
       ${CardFrameHTML({ id: slot.cardId })}
-      <div class="intr-slot-action label-gold" style="font-size:11px;">${ACTION_LABELS[slot.actionType] ?? ''}</div>
+      <div class="intr-slot-action label-gold" style="font-size:13px;">${ACTION_LABELS[slot.actionType] ?? ''}</div>
     </div>`;
   }).join('');
 }
@@ -376,14 +376,14 @@ const CSS = `
 .intr-controls { grid-column: 2; grid-row: 1 / 3; border-left: var(--border-dim); padding: 10px; display: flex; flex-direction: column; gap: 10px; }
 
 .intr-area-label { font-size: 13px; letter-spacing: 0.1em; margin-bottom: 4px; flex-shrink: 0; }
-.intr-opp-hint { font-size: 12px; }
+.intr-opp-hint { font-size: 13px; }
 
 .intr-opp-slots, .intr-your-slots {
   display: flex; gap: 6px; flex-shrink: 0;
 }
 .intr-opp-slots .card-frame,
 .intr-your-slots .card-frame,
-.intr-swap-grid .card-frame { width: 80px; }
+.intr-swap-grid .card-frame { width: 112px; }
 
 .intr-your-slot {
   cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -392,14 +392,14 @@ const CSS = `
 }
 .intr-your-slot:hover { border-color: var(--accent-gold); }
 .intr-slot--swap-active { border-color: var(--accent-blue) !important; background: rgba(74,144,217,0.08); }
-.intr-slot-action { font-size: 10px; text-align: center; }
+.intr-slot-action { font-size: 13px; text-align: center; }
 
 /* Swap vault */
 .intr-swap-vault {
   flex-shrink: 0; border: var(--border-dim); padding: 6px;
   max-height: 100px;
 }
-.intr-swap-title { font-size: 12px; letter-spacing: 0.06em; margin-bottom: 4px; }
+.intr-swap-title { font-size: 13px; letter-spacing: 0.06em; margin-bottom: 4px; }
 .intr-swap-grid {
   display: flex; gap: 4px; overflow-x: auto; flex-wrap: nowrap;
 }
@@ -413,6 +413,6 @@ const CSS = `
 .intr-ctrl-section { display: flex; flex-direction: column; gap: 5px; }
 .intr-ctrl-title { font-size: 14px; letter-spacing: 0.1em; color: var(--accent-gold); }
 .intr-peek-btn { font-size: 15px; padding: 6px 10px; display: flex; flex-direction: column; gap: 1px; }
-.intr-fee { font-size: 11px; color: var(--text-dim); }
+.intr-fee { font-size: 13px; color: var(--text-dim); }
 .intr-ready-btn { width: 100%; justify-content: center; font-size: 20px; padding: 10px; }
 `;

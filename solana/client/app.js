@@ -235,7 +235,7 @@ function _injectRegisterCSS() {
   border: 1px solid var(--accent-blue); display: flex; justify-content: space-between; align-items: center;
 }
 .reg-cost-label { color: #888; font-size: 1rem; }
-.reg-cost-amount { color: var(--accent-gold); font-size: 1.4rem; font-weight: bold; }
+.reg-cost-amount { color: var(--accent-gold); font-size: 1.4rem; }
 .reg-primary-btn {
   font-family: 'VT323', monospace; font-size: 1.4rem; letter-spacing: 0.1em;
   padding: 0.6rem 2.5rem; background: var(--accent-gold); color: var(--bg-deep);

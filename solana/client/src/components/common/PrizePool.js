@@ -46,7 +46,7 @@ const PP_CSS = `
 .pp-tier {
   display: flex; align-items: center; gap: 8px;
   padding: 2px 6px; border: 1px solid rgba(255,255,255,0.08);
-  font-size: 12px;
+  font-size: 13px;
 }
 .pp-tier--active { border-color: var(--tc); background: color-mix(in srgb, var(--tc) 12%, transparent); }
 .pp-tier-label { color: var(--tc); width: 48px; flex-shrink: 0; }

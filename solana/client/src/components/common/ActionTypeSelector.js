@@ -51,5 +51,5 @@ const ATS_CSS = `
 }
 .ats-btn--active { background: rgba(201,162,39,0.22) !important; }
 .ats-icon { font-size: 16px; line-height: 1; }
-.ats-label { font-size: 10px; letter-spacing: 0.04em; color: var(--text-cream); }
+.ats-label { font-size: 13px; letter-spacing: 0.04em; color: var(--text-cream); }
 `;
