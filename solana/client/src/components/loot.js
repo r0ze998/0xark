@@ -4,7 +4,9 @@
 import { getCard } from '../lib/cards.js';
 import { CardFrameHTML, injectCardCSS, CARD_NAMES } from './common/Card.js';
 import { pxIcon } from '../lib/px-icons.js';
-import { showToast, txLink } from '../lib/ui-shared.js';
+import { showToast, txLink, setDemoMode } from '../lib/ui-shared.js';
+import { roundWinsFor } from './common/round-ui.js';
+import { STEAL_ENABLED } from '../config.js';
 import { getState, setState, resetBattle } from '../state/battle-state.js';
 import { computePostBattleImprints } from '../lib/abilities.js';
 import * as duelWs from '../lib/duel-ws.js';
@@ -69,14 +71,8 @@ function buildWinHTML(s) {
       </div>`).join('')}
   </div>
 
-  <!-- On-chain claim button (enabled after cards revealed) -->
-  <div class="loot-claim-block" id="loot-claim-block" style="display:none;">
-    <p class="loot-claim-hint">Claim 1 random card on-chain (determined by SlotHashes)</p>
-    <button class="gba-btn gba-btn--primary loot-claim-btn" id="loot-claim-btn">
-      ◆ CLAIM LOOT
-    </button>
-    <div class="loot-claim-error" id="loot-claim-error" style="display:none;"></div>
-  </div>
+  <!-- Steal act (gated by STEAL_ENABLED — F1-5) -->
+  ${_stealActHTML()}
 
   <!-- Result message -->
   <div class="loot-result" id="loot-result" style="display:none;"></div>
@@ -100,32 +96,55 @@ function buildWinHTML(s) {
 </div>`;
 }
 
+// Winner's third act. STEAL is gated OFF until YKK-47/YKK-44 (config.STEAL_ENABLED):
+// no client-side vault transfer is faked — an honest sealed slot is shown instead.
+function _stealActHTML() {
+  if (STEAL_ENABLED) {
+    return `
+  <div class="loot-claim-block" id="loot-claim-block" style="display:none;">
+    <p class="loot-claim-hint">Claim 1 card from the loser (on-chain)</p>
+    <button class="gba-btn gba-btn--primary loot-claim-btn" id="loot-claim-btn">
+      ${pxIcon('battle')} STEAL A CARD
+    </button>
+    <div class="loot-claim-error" id="loot-claim-error" style="display:none;"></div>
+  </div>`;
+  }
+  return `
+  <div class="loot-steal-sealed" id="loot-steal-sealed" style="display:none;">
+    <span class="chip loot-steal-chip">${pxIcon('lock')} STEAL — sealed pending review</span>
+  </div>`;
+}
+
+// Loser recap (F1-5): honest learning panel — both hands side-by-side + the
+// final round score. No card is taken client-side; nothing about the loss is faked.
 function buildLoseHTML(s) {
-  const myCards = s.fieldCards.filter(Boolean);
-  const lootId  = _lootCardId;
+  const myCards  = s.fieldCards.filter(Boolean);
+  const oppCards = (s.opponentField ?? []).filter(Boolean);
+  const { my, opp } = roundWinsFor(s);
+
+  const row = (cards, label, cls) => `
+    <div class="loot-recap-row">
+      <div class="loot-recap-label label-dim">${label}</div>
+      <div class="loot-recap-cards ${cls}">
+        ${cards.length
+          ? cards.map(c => CardFrameHTML({ id: c.cardId })).join('')
+          : `<span class="label-dim">— hidden —</span>`}
+      </div>
+    </div>`;
 
   return `
 <div class="loot-root loot-root--lose" role="main" aria-label="Defeat. Loot phase">
 
-  <!-- Title -->
-  <h1 class="loot-title loot-title--lose" id="loot-title">YOU LOST…</h1>
+  <h1 class="loot-title loot-title--lose display-xl" id="loot-title">YOU LOST…</h1>
 
-  <!-- Your field -->
-  <div class="loot-pick-label">Your cards:</div>
-  <div class="loot-your-cards" id="loot-your-cards" role="list">
-    ${myCards.map((c, i) => `
-      <div class="loot-your-card-wrap" id="loot-my-${i}" data-idx="${i}" data-card="${c.cardId}">
-        ${CardFrameHTML({ id: c.cardId })}
-      </div>`).join('')}
+  <div class="loot-recap">
+    ${row(oppCards, 'OPPONENT', 'loot-recap-cards--opp')}
+    <div class="loot-recap-score">${my} <span class="loot-recap-dash">–</span> ${opp}</div>
+    ${row(myCards, 'YOUR HAND', 'loot-recap-cards--mine')}
   </div>
 
-  <!-- Result message -->
-  <div class="loot-result" id="loot-result"></div>
+  <div class="loot-result" id="loot-result">no card was taken — steal is not yet enabled</div>
 
-  <!-- Progress update -->
-  <div class="loot-perso-update" id="loot-perso" style="display:none;"></div>
-
-  <!-- Continue -->
   <button class="gba-btn gba-btn--ghost loot-continue-btn" id="loot-continue" disabled>
     CONTINUE →
   </button>
@@ -147,49 +166,25 @@ function runLootAnimation(container, s) {
       });
     });
 
-    // 2. Show CLAIM LOOT button after cards are revealed
+    // 2. Winner's steal act after reveal — gated by STEAL_ENABLED (F1-5).
     after(400 + oppCards.length * 300 + 400, () => {
-      _selectMode = true;
-      const claimBlock = container.querySelector('#loot-claim-block');
-      if (claimBlock) claimBlock.style.display = '';
+      if (STEAL_ENABLED) {
+        _selectMode = true;
+        const claimBlock = container.querySelector('#loot-claim-block');
+        if (claimBlock) claimBlock.style.display = '';
+      } else {
+        const sealed = container.querySelector('#loot-steal-sealed');
+        if (sealed) sealed.style.display = '';
+        enableContinue(container);
+      }
     });
 
   } else {
-    // Loser: 1 card is taken
+    // Loser: honest recap only — NO card is taken client-side (spec §6).
     after(500, () => {
       container.querySelector('#loot-title')?.classList.add('loot-title--visible');
     });
-
-    after(1200, () => {
-      const idx = Math.floor(Math.random() * s.fieldCards.filter(Boolean).length);
-      _lootCardId = s.fieldCards[idx]?.cardId ?? null;
-
-      // Highlight the taken card
-      const wrap = container.querySelector(`#loot-my-${idx}`);
-      if (wrap) wrap.classList.add('loot-card--taken');
-
-      const result = container.querySelector('#loot-result');
-      const cardName = CARD_NAMES[_lootCardId] ?? `Card #${_lootCardId}`;
-      if (result) result.textContent = `— ${cardName} was taken by your opponent`;
-
-      after(800, () => {
-        // Other cards return to vault animation
-        s.fieldCards.forEach((c, i) => {
-          if (i !== idx && c) {
-            const w = container.querySelector(`#loot-my-${i}`);
-            if (w) w.classList.add('loot-card--return');
-          }
-        });
-
-        const perso = container.querySelector('#loot-perso');
-        if (perso) { perso.style.display = 'block'; perso.textContent = '↩ Cards returned to vault'; }
-
-        after(600, () => {
-          updateVaultAfterLoss(s, idx);
-          enableContinue(container);
-        });
-      });
-    });
+    after(1200, () => enableContinue(container));
   }
 }
 
@@ -203,12 +198,6 @@ function revealOppCard(container, idx, cardId) {
     wrap.setAttribute('data-idx', idx);
     wrap.classList.remove('loot-card--flip');
   }, 150);
-}
-
-function updateVaultAfterLoss(s, takenIdx) {
-  const takenId  = s.fieldCards[takenIdx]?.cardId ?? null;
-  const newVault = s.vault.filter(id => id !== takenId);
-  setState({ vault: newVault });
 }
 
 function enableContinue(container) {
@@ -457,6 +446,8 @@ async function onContinue() {
       matchId: s.matchId,
       winner:  s.isWinner ? (s.playerPubkey ?? 'p1') : (s.opponentPubkey ?? 'p2'),
     }).catch(err => console.warn('[x402] payMatchEnd:', err));
+  } else {
+    setDemoMode('match-end payment skipped (x402 offline)');
   }
 
   resetBattle();
@@ -530,6 +521,22 @@ const CSS = `
   text-align: center;
 }
 .loot-perso-update { font-size: 16px; color: var(--text-dim); }
+
+/* Sealed steal (STEAL_ENABLED=false) */
+.loot-steal-sealed { display: flex; justify-content: center; margin: 14px 0; }
+.loot-steal-chip {
+  color: var(--text-dim); border-color: var(--text-dim); opacity: 0.85;
+  display: inline-flex; align-items: center; gap: 5px; font-size: 14px; letter-spacing: 0.06em;
+}
+
+/* Loser recap (honest learning panel) */
+.loot-recap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 10px 0; }
+.loot-recap-row { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.loot-recap-label { font-size: 13px; letter-spacing: 0.1em; }
+.loot-recap-cards { display: flex; gap: 6px; }
+.loot-recap-cards .card-frame { width: 112px; }
+.loot-recap-score { font-size: 34px; color: var(--text-cream); letter-spacing: 0.08em; }
+.loot-recap-dash { color: var(--text-dim); padding: 0 6px; }
 
 .loot-claim-block { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 16px 0; }
 .loot-claim-hint  { font-size: 14px; color: var(--text-dim); text-align: center; }
