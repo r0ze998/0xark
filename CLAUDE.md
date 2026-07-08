@@ -79,7 +79,9 @@ The litesvm tests execute `target/deploy/oxark.so` via `include_bytes!`;
 `cargo test` alone does NOT rebuild it and will silently test a stale binary.
 
 ## Dev server
+The active client is `solana/client/` (plain ES modules — no build step). Serve
+from there, NOT the repo root (the old root `index.html` is deleted):
 ```
-npx serve . -l 4200
+cd solana/client && python3 -m http.server 4200
 # open http://localhost:4200
 ```
