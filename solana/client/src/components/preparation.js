@@ -5,6 +5,8 @@ import { ALL_CARD_IDS, getCard } from '../lib/cards.js';
 import { CardHTML, CardFrameHTML, injectCardCSS, ACTION_LABELS, ACTION_ICONS } from './common/Card.js';
 import { ActionTypeSelectorHTML, injectActionTypeSelectorCSS, ACTION_TYPES } from './common/ActionTypeSelector.js';
 import { startTimer } from './common/Timer.js';
+import { RoundHudHTML, injectRoundUiCSS } from './common/round-ui.js';
+import { pxIcon } from '../lib/px-icons.js';
 import { getState, setState } from '../state/battle-state.js';
 import * as duelWs from '../lib/duel-ws.js';
 
@@ -23,6 +25,7 @@ export function mount(container, detail = {}) {
   injectStyle();
   injectCardCSS();
   injectActionTypeSelectorCSS();
+  injectRoundUiCSS();
 
   const s    = getState();
   _vault     = detail.vault   ?? s.vault   ?? [];
@@ -60,7 +63,7 @@ function buildHTML() {
       <span class="label-dim" style="font-size:14px;">TIME</span>
       <span class="prep-timer" id="prep-timer" aria-label="Time remaining">3:00</span>
     </div>
-    <div class="label-dim" style="font-size:14px;">SELECT 5 CARDS + ACTIONS</div>
+    ${RoundHudHTML()}
   </header>
 
   <div class="prep-body">

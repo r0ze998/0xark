@@ -46,11 +46,21 @@ const _DEFAULT_STATE = {
   personalities: { conqueror: 0, patron: 0, phoenix: 0, sage: 0, hermit: 0, detective: 0 },
   matchId: null,
   opponentPubkey: null,
-  isHost: false,            // true if this client created the room
-  duelId: null,             // `${matchId}-R1` for round 1
+  isHost: false,            // true if this client created the room (host = on-chain player1)
+  // duelId is CONSTANT for the entire 5-round duel. The `-R1` suffix in the demo
+  // fallback (`${matchId}-R1`) is a misleading legacy name kept for server
+  // compatibility — never regenerate it per round (spec §2.2). advanceRound() must
+  // leave duelId untouched.
+  duelId: null,
   opponentPlayerId: null,   // server-assigned playerId of opponent
 
-  round: 1,                 // current duel round (1-5)
+  round: 1,                 // current duel round (1-5) — only advanceRound() may change this
+  p1RoundWins: 0,           // YKK-41 on-chain round-win tally for duel player1
+  p2RoundWins: 0,           //                                        player2
+  // Which on-chain side is me. Resolved from getDuelStateFull().player1 === myPubkey
+  // (real mode) or isHost (host inits the duel as player1). Round HUD maps
+  // p1/p2RoundWins to my-side through this. null = fall back to isHost.
+  duelP1IsMe: null,
   fieldCards: [null, null, null, null, null],  // each: { cardId, actionType } | null
   commitment: null,         // null after reload — regenerate from fieldCards + new salt
   salt: null,               // null after reload — must re-derive
@@ -95,6 +105,10 @@ export function resetBattle() {
     isHost: false,
     duelId: null,
     opponentPlayerId: null,
+    round: 1,
+    p1RoundWins: 0,
+    p2RoundWins: 0,
+    duelP1IsMe: null,
     fieldCards: [null, null, null, null, null],
     commitment: null,
     salt: null,
@@ -105,4 +119,34 @@ export function resetBattle() {
     isWinner: false,
     pendingBurnEffects: [],
   });
+}
+
+// advanceRound — the ONLY legal way to move to the next duel round (spec §2.2).
+// Accepts a normalized descriptor `{ round, p1RoundWins, p2RoundWins, p1IsMe }`
+// (from getDuelStateFull in real mode, or synthesized locally in demo mode).
+// It carries the duel-scoped tally forward, CLEARS the per-round column
+// (fieldCards / commitment / salt / zk material / peek / opponentField /
+// battleResult), leaves duelId + match identity untouched, then routes to
+// preparation for the new round. No other code path may write `round`.
+export function advanceRound(ds = {}) {
+  const round = ds.round ?? ((_state.round ?? 1) + 1);
+  setState({
+    round,
+    p1RoundWins: ds.p1RoundWins ?? _state.p1RoundWins ?? 0,
+    p2RoundWins: ds.p2RoundWins ?? _state.p2RoundWins ?? 0,
+    duelP1IsMe:  ds.p1IsMe ?? _state.duelP1IsMe,
+    // ── per-round reset column ──
+    fieldCards: [null, null, null, null, null],
+    commitment: null,
+    salt: null,
+    zkProofBytes: null,
+    zkPublicSignals: null,
+    zkPublicInputBytes: null,
+    zkTxHash: null,
+    hasPeeked: false,
+    opponentField: null,
+    battleResult: null,
+    phase: 'preparation',
+  });
+  document.dispatchEvent(new CustomEvent('nav:preparation', { detail: { round } }));
 }

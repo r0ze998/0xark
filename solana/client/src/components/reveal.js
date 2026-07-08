@@ -5,16 +5,27 @@ import { getCard } from '../lib/cards.js';
 import { factionOf, isLegendaryOf } from '../lib/card-meta.js';
 import { damageCalc } from '../lib/damage-calc.js';
 import { CardFrameHTML, injectCardCSS, FACTION_NAMES, ACTION_LABELS, ACTION_NAMES, FACTION_COLORS } from './common/Card.js';
-import { getState, setState } from '../state/battle-state.js';
+import { RoundHudHTML, injectRoundUiCSS, showRoundBridge } from './common/round-ui.js';
+import { pxIcon } from '../lib/px-icons.js';
+import { showToast } from '../lib/ui-shared.js';
+import { getState, setState, advanceRound } from '../state/battle-state.js';
 import * as duelWs from '../lib/duel-ws.js';
+
+const POLL_MS = 1500; // getDuelStateFull poll cadence during resolution
 
 let _animTimeout      = null;
 let _skipped          = false;
 let _unsubOppReveal   = () => {};
-let _unsubResolved    = () => {};
 let _revealPromise    = Promise.resolve(null);
 let _revealFailed     = false;
 let _uiAddLog         = null;
+
+// ── round-loop resolution state ──
+let _playbackDone       = false; // battle animation reached its end (or skipped)
+let _resolutionStarted  = false; // resolveRound() has begun for this mount
+let _resolutionAborted  = false; // set on unmount to stop the poll loop
+let _navigated          = false; // guard against double navigation
+let _bridgeDispose       = null; // active round-bridge disposer
 
 // Build card_ids [u64; 10]: first 5 are field card IDs, last 5 are 0n.
 function _buildCardIds10(fieldCards) {
@@ -40,17 +51,191 @@ async function _submitRevealOnChain(s) {
   }
 }
 
-// Poll DuelState until ended_at > 0 (max ~10 s, 500 ms interval).
-async function _pollDuelResolution(duelIdStr) {
-  if (typeof window.oxarkOnchain?.getDuelState !== 'function') return null;
-  for (let i = 0; i < 20; i++) {
-    await new Promise(r => setTimeout(r, 500));
-    try {
-      const ds = await window.oxarkOnchain.getDuelState(duelIdStr);
-      if (ds && ds.endedAt > 0) return ds;
-    } catch (_) { /* retry */ }
+const _sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function _safeDuelState(duelIdStr) {
+  if (typeof window.oxarkOnchain?.getDuelStateFull !== 'function') return null;
+  try { return await window.oxarkOnchain.getDuelStateFull(duelIdStr); }
+  catch (_) { return null; }
+}
+
+// Which on-chain side am I? player1 === myPubkey when known, else isHost
+// (the host inits the duel as player1).
+function _p1IsMe(ds, s) {
+  const myPk = window.solana?.publicKey?.toBase58?.() ?? null;
+  if (myPk && ds?.player1) return ds.player1 === myPk;
+  return s.duelP1IsMe ?? s.isHost ?? true;
+}
+
+// Start (or resume) resolution once BOTH the battle playback finished AND our
+// reveal tx is confirmed. Re-entrant: the reveal-retry handler calls this again
+// after a successful retry.
+function maybeStartResolution(container) {
+  if (_resolutionStarted || _navigated || _resolutionAborted) return;
+  if (!_playbackDone || _revealFailed) return;
+  _resolutionStarted = true;
+  resolveRound(container, getState()).catch(err => {
+    console.error('[Reveal] resolution error:', err);
+  });
+}
+
+// The single resolution entry point. Real mode (WS connected) reads chain truth
+// via getDuelStateFull; demo mode resolves locally. Both funnel through
+// _endDuel / _bridgeToNextRound so there is exactly one round-transition path.
+async function resolveRound(container, s) {
+  const realMode = duelWs.isConnected() && !!s.duelId
+    && typeof window.oxarkOnchain?.getDuelStateFull === 'function';
+  if (realMode) return _chainResolve(container, s);
+  return _localResolve(container, s);
+}
+
+// Poll the chain until this round resolves (round advances) or the duel ends.
+// While waiting on the opponent, surface WAITING + a 600s CLAIM TIMEOUT WIN.
+async function _chainResolve(container, s) {
+  const duelId    = s.duelId;
+  const prevRound = s.round ?? 1;
+  const prevP1    = s.p1RoundWins ?? 0;
+  const prevP2    = s.p2RoundWins ?? 0;
+  const stallSecs = window.oxarkOnchain?.DUEL_STALL_TIMEOUT_SECONDS ?? 600;
+  const t0 = Date.now();
+  let claimShown = false;
+
+  while (!_resolutionAborted && !_navigated) {
+    const ds = await _safeDuelState(duelId);
+    if (ds) {
+      const p1IsMe = _p1IsMe(ds, s);
+      if (ds.endedAt > 0) { _endDuel(container, ds, p1IsMe); return; }
+      if ((ds.round ?? prevRound) > prevRound) {
+        _bridgeToNextRound(container, ds, p1IsMe, prevRound, prevP1, prevP2);
+        return;
+      }
+    }
+    const elapsed = Math.floor((Date.now() - t0) / 1000);
+    _showWaiting(container, elapsed);
+    if (elapsed >= stallSecs && !claimShown) {
+      claimShown = true;
+      _showClaimTimeout(container, duelId);
+    }
+    await _sleep(POLL_MS);
   }
-  return null;
+}
+
+// Demo / no-server path: decide the round from the local battle result, keep a
+// local best-of-3 tally, and end at first-to-3 or after round 5.
+function _localResolve(container, s) {
+  const p1IsMe = s.duelP1IsMe ?? s.isHost ?? true;
+  const iWon   = (s.battleResult?.winner ?? 'p1') === 'p1';
+  let p1w = s.p1RoundWins ?? 0;
+  let p2w = s.p2RoundWins ?? 0;
+  if (iWon) { p1IsMe ? p1w++ : p2w++; } else { p1IsMe ? p2w++ : p1w++; }
+
+  const myWins  = p1IsMe ? p1w : p2w;
+  const oppWins = p1IsMe ? p2w : p1w;
+  const round   = s.round ?? 1;
+  const ended   = myWins >= 3 || oppWins >= 3 || round >= 5;
+
+  setState({ p1RoundWins: p1w, p2RoundWins: p2w, duelP1IsMe: p1IsMe });
+
+  if (ended) {
+    _navigate(() => {
+      setState({ isWinner: myWins >= oppWins, phase: 'loot' });
+      document.dispatchEvent(new CustomEvent('nav:loot'));
+    });
+    return;
+  }
+  _hideWait(container);
+  _bridgeDispose = showRoundBridge(container, {
+    round, myWins, oppWins,
+    outcome: iWon ? 'win' : 'loss',
+    onDone: () => _navigate(() => advanceRound({ round: round + 1, p1RoundWins: p1w, p2RoundWins: p2w, p1IsMe })),
+  });
+}
+
+function _endDuel(container, ds, p1IsMe) {
+  const myPk = window.solana?.publicKey?.toBase58?.() ?? null;
+  const isWinner = myPk ? ds.winner === myPk : false;
+  _navigate(() => {
+    setState({
+      isWinner,
+      p1RoundWins: ds.p1RoundWins ?? 0,
+      p2RoundWins: ds.p2RoundWins ?? 0,
+      duelP1IsMe: p1IsMe,
+      phase: 'loot',
+    });
+    document.dispatchEvent(new CustomEvent('nav:loot'));
+  });
+}
+
+function _bridgeToNextRound(container, ds, p1IsMe, prevRound, prevP1, prevP2) {
+  const iWon   = p1IsMe ? (ds.p1RoundWins > prevP1) : (ds.p2RoundWins > prevP2);
+  const oppWon = p1IsMe ? (ds.p2RoundWins > prevP2) : (ds.p1RoundWins > prevP1);
+  const myWins  = p1IsMe ? ds.p1RoundWins : ds.p2RoundWins;
+  const oppWins = p1IsMe ? ds.p2RoundWins : ds.p1RoundWins;
+  _hideWait(container);
+  _bridgeDispose = showRoundBridge(container, {
+    round: prevRound,
+    myWins, oppWins,
+    outcome: iWon ? 'win' : oppWon ? 'loss' : 'draw', // neither incremented = draw (§2.6)
+    onDone: () => _navigate(() => advanceRound({
+      round: ds.round, p1RoundWins: ds.p1RoundWins, p2RoundWins: ds.p2RoundWins, p1IsMe,
+    })),
+  });
+}
+
+function _navigate(fn) {
+  if (_navigated) return;
+  _navigated = true;
+  fn();
+}
+
+/* ── Waiting / stall UI ─────────────────────────────────────────────── */
+function _showWaiting(container, elapsedSecs) {
+  const panel = container.querySelector('#rev-wait');
+  if (!panel) return;
+  panel.style.display = 'flex';
+  const el = container.querySelector('#rev-wait-elapsed');
+  if (el) el.textContent = `${elapsedSecs}s`;
+}
+
+function _hideWait(container) {
+  const panel = container.querySelector('#rev-wait');
+  if (panel) panel.style.display = 'none';
+}
+
+function _showClaimTimeout(container, duelId) {
+  const btn = container.querySelector('#rev-claim');
+  if (!btn || btn.dataset.wired) return;
+  btn.style.display = 'inline-flex';
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => _onClaimTimeout(container, duelId));
+}
+
+async function _onClaimTimeout(container, duelId) {
+  const btn = container.querySelector('#rev-claim');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = 'CLAIMING…';
+  try {
+    if (typeof window.oxarkOnchain?.claimTimeoutWin !== 'function') throw new Error('claim unavailable');
+    await window.oxarkOnchain.claimTimeoutWin(duelId);
+    for (let i = 0; i < 20 && !_resolutionAborted; i++) {
+      const ds = await _safeDuelState(duelId);
+      if (ds && ds.endedAt > 0) { _endDuel(container, ds, _p1IsMe(ds, getState())); return; }
+      await _sleep(500);
+    }
+    btn.disabled = false;
+    btn.innerHTML = `${pxIcon('warn')} CLAIM TIMEOUT WIN`;
+  } catch (err) {
+    const msg = err?.message ?? String(err);
+    // "too early" → keep waiting; "claimer not revealed" can't originate here
+    // (we gate on our own reveal) but map defensively.
+    const friendly = /too\s*early/i.test(msg) ? 'Too early — keep waiting'
+      : /not\s*reveal/i.test(msg) ? 'Reveal your hand first'
+      : `Claim failed: ${msg.slice(0, 60)}`;
+    showToast(friendly, 'error');
+    btn.disabled = false;
+    btn.innerHTML = `${pxIcon('warn')} CLAIM TIMEOUT WIN`;
+  }
 }
 
 export function mount(container, detail = {}) {
@@ -60,6 +245,13 @@ export function mount(container, detail = {}) {
   }
   injectStyle();
   injectCardCSS();
+  injectRoundUiCSS();
+
+  _playbackDone      = false;
+  _resolutionStarted = false;
+  _resolutionAborted = false;
+  _navigated         = false;
+  _bridgeDispose     = null;
 
   const s = getState();
   setState({ phase: 'reveal' });
@@ -96,72 +288,37 @@ export function mount(container, detail = {}) {
     });
   }
 
-  // ── reveal_hand on-chain submit (parallel with animation; gates WS + nav) ─
+  // ── reveal_hand on-chain submit (parallel with animation; gates resolution) ─
+  // Resolution (round bridge / RESULT) is blocked until this tx confirms — the
+  // chain is the sole arbiter of round wins and duel end. _revealPromise resolves
+  // to the tx hash (or null on failure, with _revealFailed set + retry line).
   _revealFailed = false;
   _revealPromise = _submitRevealOnChain(s);
 
+  const myCardIds     = s.fieldCards.filter(Boolean).map(c => c.cardId);
+  const myActionTypes = s.fieldCards.filter(Boolean).map(c => c.actionType ?? 0);
+  const round         = s.round ?? 1;
+
   // Send hand reveal to server only after reveal TX confirms.
-  // If the TX fails, _revealFailed is set and navigation is blocked.
   if (duelWs.isConnected() && s.duelId) {
-    const myCardIds     = s.fieldCards.filter(Boolean).map(c => c.cardId);
-    const myActionTypes = s.fieldCards.filter(Boolean).map(c => c.actionType ?? 0);
     _revealPromise.then(txHash => {
       if (!_revealFailed) {
-        duelWs.sendHandRevealed(s.duelId, s.round ?? 1, myCardIds, myActionTypes, txHash);
+        duelWs.sendHandRevealed(s.duelId, round, myCardIds, myActionTypes, txHash);
       }
+      maybeStartResolution(container);
     }).catch(() => { /* _revealFailed already set inside _submitRevealOnChain */ });
-  }
 
-  // ── Round-5 on-chain resolution ───────────────────────────────────────────
-  // After both players call reveal_hand on round 5, damage_calc runs on-chain
-  // and duel.ended_at is set. Poll DuelState to detect winner.
-  const isRound5 = (s.round ?? 1) === 5;
-  if (isRound5 && s.duelId) {
-    const duelIdStr = s.duelId;
-
-    const _resolveFromChain = async () => {
-      const ds = await _pollDuelResolution(duelIdStr);
-      if (!ds) return; // timed out — fall back to WS consensus
-      const myPubkey = window.solana?.publicKey?.toBase58?.() ?? null;
-      const isWinner = myPubkey ? ds.winner === myPubkey : false;
-      const final = getState().battleResult ?? result ?? { winner: isWinner ? 'p1' : 'p2' };
-      setState({ isWinner, battleResult: { ...final, winner: isWinner ? 'p1' : 'p2' }, phase: 'loot' });
-      document.dispatchEvent(new CustomEvent('nav:loot'));
-    };
-
-    // Trigger poll once our own reveal TX is done, OR when opponent reveals via WS.
-    _revealPromise.then(_resolveFromChain).catch(() => {});
-    if (!s.opponentField && duelWs.isConnected()) {
-      const unsubR5 = duelWs.on('duel_hand_revealed', (msg) => {
-        if (msg.playerId !== s.opponentPlayerId) return;
-        unsubR5();
-        _resolveFromChain();
-      });
-    }
-  }
-
-  // Wire Phase-11 consensus (rounds 1-4 and fallback for round 5)
-  if (duelWs.isConnected() && s.duelId) {
+    // Phase-11 server bookkeeping (no longer drives navigation — chain truth does).
     const p1BP = s.fieldCards.filter(Boolean).reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
     const p2BP = opponentField.filter(Boolean).reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
     if (s.isHost) {
-      duelWs.sendBattleResolved(s.duelId, 1, p1BP, p2BP, result?.winner ?? null);
+      duelWs.sendBattleResolved(s.duelId, round, p1BP, p2BP, result?.winner ?? null);
     } else {
-      duelWs.sendDamageClaim(s.duelId, 1, p1BP, p2BP);
+      duelWs.sendDamageClaim(s.duelId, round, p1BP, p2BP);
     }
-
-    _unsubResolved = duelWs.on('duel_battle_resolved', (msg) => {
-      if (msg.duel_id !== s.duelId) return;
-      if (_revealFailed) return; // reveal TX not confirmed — block navigation
-      _unsubResolved();
-      if (!_skipped && _animTimeout) {
-        clearTimeout(_animTimeout);
-        _animTimeout = null;
-      }
-      const final = getState().battleResult ?? result ?? { winner: msg.winner ?? 'p1' };
-      setState({ isWinner: final.winner === 'p1', battleResult: final, phase: 'loot' });
-      document.dispatchEvent(new CustomEvent('nav:loot'));
-    });
+  } else {
+    // Demo / no-chain: nothing gates us; resolution runs once playback ends.
+    _revealPromise.then(() => maybeStartResolution(container)).catch(() => {});
   }
 
   runAnimation(container, s, result);
@@ -169,14 +326,17 @@ export function mount(container, detail = {}) {
 
 export function unmount(container) {
   if (_animTimeout) { clearTimeout(_animTimeout); _animTimeout = null; }
+  _resolutionAborted = true;           // stop any in-flight poll loop
+  if (_bridgeDispose) { try { _bridgeDispose(); } catch (_) {} _bridgeDispose = null; }
   _unsubOppReveal();
-  _unsubResolved();
   _unsubOppReveal  = () => {};
-  _unsubResolved   = () => {};
-  _skipped       = false;
-  _revealFailed  = false;
-  _revealPromise = Promise.resolve(null);
-  _uiAddLog      = null;
+  _skipped           = false;
+  _revealFailed      = false;
+  _revealPromise     = Promise.resolve(null);
+  _uiAddLog          = null;
+  _playbackDone      = false;
+  _resolutionStarted = false;
+  _navigated         = false;
   container.innerHTML = '';
 }
 
@@ -214,10 +374,20 @@ function buildHTML(s, result) {
   <header class="rev-topbar">
     <div class="chip rev-phase-label">REVEAL</div>
     <div class="rev-status label-gold" id="rev-status">Revealing hands…</div>
+    ${RoundHudHTML(s)}
     <button class="gba-btn gba-btn--ghost rev-skip-btn" id="rev-skip" style="font-size:14px;">
       SKIP
     </button>
   </header>
+
+  <!-- Waiting-for-opponent / stall overlay (shown during resolution) -->
+  <div class="rev-wait" id="rev-wait" style="display:none;" role="status" aria-live="polite">
+    <div class="rev-wait-msg">WAITING FOR OPPONENT…</div>
+    <div class="rev-wait-elapsed" id="rev-wait-elapsed">0s</div>
+    <button class="gba-btn gba-btn--primary rev-claim-btn" id="rev-claim" style="display:none;">
+      ${pxIcon('warn')} CLAIM TIMEOUT WIN
+    </button>
+  </div>
 
   <div class="rev-body">
 
@@ -300,6 +470,7 @@ function runAnimation(container, s, result) {
               const myActionTypes = s.fieldCards.filter(Boolean).map(c => c.actionType ?? 0);
               duelWs.sendHandRevealed(s.duelId, s.round ?? 1, myCardIds, myActionTypes, tx);
             }
+            maybeStartResolution(container); // retry cleared the block — resume resolution
           } else {
             line.textContent = 'retry failed — check wallet';
             line.className = 'rev-log-line log-error rev-retry-reveal';
@@ -408,14 +579,12 @@ function runAnimation(container, s, result) {
     container.querySelector('#rev-status').style.fontSize = '24px';
     container.querySelector('#rev-status').style.color = winner === 'p1' ? 'var(--accent-gold)' : 'var(--accent-red)';
 
-    // Only nav here in demo mode — real multiplayer navs via duel_battle_resolved
+    // Playback finished — hand off to the unified resolver. It reads chain truth
+    // (getDuelStateFull) in real mode or the local tally in demo, then routes to
+    // RESULT (duel ended) or the round bridge → advanceRound (duel continues).
     after(1200, () => {
-      const st = getState();
-      if (!duelWs.isConnected() || !st.duelId) {
-        if (_revealFailed) return; // reveal TX not confirmed — block navigation
-        setState({ isWinner: winner === 'p1', battleResult: result, phase: 'loot' });
-        document.dispatchEvent(new CustomEvent('nav:loot'));
-      }
+      _playbackDone = true;
+      maybeStartResolution(container);
     });
   });
 }
@@ -449,13 +618,12 @@ function checkSynergy(factions) {
 /* ── Events ─────────────────────────────────────────────────────────── */
 function bindEvents(container) {
   container.querySelector('#rev-skip').addEventListener('click', () => {
-    if (_revealFailed) return; // reveal TX not confirmed — block skip
     _skipped = true;
     if (_animTimeout) { clearTimeout(_animTimeout); _animTimeout = null; }
-    const s = getState();
-    const result = s.battleResult ?? { winner: 'p1' };
-    setState({ isWinner: result.winner === 'p1', phase: 'loot' });
-    document.dispatchEvent(new CustomEvent('nav:loot'));
+    _playbackDone = true;
+    // Resolver is gated on reveal-confirmed; if the reveal tx failed it stays put
+    // and the retry line remains actionable.
+    maybeStartResolution(container);
   });
 }
 
@@ -541,4 +709,14 @@ const CSS = `
   font-size: 18px;
 }
 .rev-vs { color: var(--text-dim); font-size: 14px; }
+
+/* Waiting-for-opponent / stall overlay */
+.rev-wait {
+  position: absolute; inset: 44px 0 0 0; z-index: 40;
+  display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  background: rgba(3,6,15,0.86); font-family: var(--font-main);
+}
+.rev-wait-msg { font-size: 22px; letter-spacing: 0.12em; color: var(--accent-gold); }
+.rev-wait-elapsed { font-size: 32px; color: var(--text-cream); letter-spacing: 0.05em; }
+.rev-claim-btn { font-size: 18px; padding: 10px 18px; margin-top: 6px; }
 `;
