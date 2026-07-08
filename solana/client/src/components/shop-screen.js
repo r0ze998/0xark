@@ -1,5 +1,6 @@
 // shop-screen.js — Phase 20-B: Pack shop with reveal animation
 import { showToast as _toast } from '../lib/ui-shared.js';
+import { rarityOf } from '../lib/card-meta.js';
 
 function _injectCSS() {
   if (document.getElementById('shop-css')) return;
@@ -129,10 +130,10 @@ function _injectCSS() {
 }
 .reveal-card-slot.flipping { animation: cardFlip 0.6s ease forwards; }
 .reveal-card-slot.revealed { border-color: var(--accent-gold); background: rgba(201, 162, 39, 0.1); }
-.reveal-card-slot.rarity-uncommon { border-color: #4a9; background: rgba(68, 170, 136, 0.1); }
-.reveal-card-slot.rarity-rare     { border-color: #66f; background: rgba(102, 102, 255, 0.1); }
-.reveal-card-slot.rarity-legendary{ border-color: #f90; background: rgba(255, 153, 0, 0.15);
-  box-shadow: 0 0 12px rgba(255, 153, 0, 0.4); }
+.reveal-card-slot.rarity-uncommon { border-color: var(--rarity-u); background: rgba(74, 156, 111, 0.1); }
+.reveal-card-slot.rarity-rare     { border-color: var(--rarity-r); background: rgba(74, 122, 181, 0.1); }
+.reveal-card-slot.rarity-legendary{ border-color: var(--rarity-l); background: rgba(216, 176, 52, 0.15);
+  box-shadow: 0 0 12px rgba(216, 176, 52, 0.4); }
 .reveal-card-id { font-size: 1.6rem; color: var(--accent-gold); }
 .reveal-card-label { font-size: var(--fs-caption); color: #888; }
 .reveal-close-btn {
@@ -173,11 +174,11 @@ function _injectCSS() {
   document.head.appendChild(s);
 }
 
+// Rarity from card-meta (cards.js data). The old id>=55/49/31 heuristic
+// mislabeled 37 of 60 cards (e.g. Knight uncommons id6-8 → Common); gone.
+const _RARITY_NAMES = ['common', 'uncommon', 'rare', 'legendary'];
 function _cardRarity(id) {
-  if (id >= 55) return 'legendary';
-  if (id >= 49) return 'rare';
-  if (id >= 31) return 'uncommon';
-  return 'common';
+  return _RARITY_NAMES[rarityOf(id)] ?? 'common';
 }
 
 function _rarityLabel(id) {

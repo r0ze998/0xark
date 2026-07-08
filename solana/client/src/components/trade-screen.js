@@ -1,5 +1,6 @@
 // trade-screen.js — Phase 20-C: Trade Floor marketplace
 import { showToast } from '../lib/ui-shared.js';
+import { factionOf, rarityKeyOf } from '../lib/card-meta.js';
 const _toast = (msg, type) => showToast(msg, type, { className: 'trade-toast' });
 
 function _injectCSS() {
@@ -322,36 +323,14 @@ function _shortAddr(addr) {
 }
 
 // ── Filter/sort helpers ───────────────────────────────────────────────────────
-
-const CLAN_RANGES = [
-  { name: 'Knight',   start: 1  },
-  { name: 'Merchant', start: 7  },
-  { name: 'Pirate',   start: 13 },
-  { name: 'Scholar',  start: 19 },
-  { name: 'Monk',     start: 25 },
-  { name: 'Engineer', start: 31 },
-];
-
-function _clanOf(id) {
-  if (id <= 0 || id > 60) return -1;
-  if (id >= 31) {
-    const off = (id - 31) % 6;
-    return off; // 0-5 = clan index for Uncommon/Rare/Legendary (shared clan mapping)
-  }
-  return Math.floor((id - 1) / 6);
-}
-
-function _rarityKey(id) {
-  if (id >= 55) return 'l';
-  if (id >= 49) return 'r';
-  if (id >= 31) return 'u';
-  return 'c';
-}
+// Faction/rarity come from card-meta (cards.js data). The old CLAN_RANGES /
+// _clanOf / _rarityKey modeled a fictional 6-per-clan interleave and mislabeled
+// both filters — removed.
 
 function _applyFilters(listings, filterClan, filterRarity, sortMode) {
   let out = listings.slice();
-  if (filterClan !== '')   out = out.filter(l => _clanOf(l.cardId) === parseInt(filterClan));
-  if (filterRarity !== '') out = out.filter(l => _rarityKey(l.cardId) === filterRarity);
+  if (filterClan !== '')   out = out.filter(l => factionOf(l.cardId) === parseInt(filterClan));
+  if (filterRarity !== '') out = out.filter(l => rarityKeyOf(l.cardId) === filterRarity);
   if (sortMode === 'price-asc')  out.sort((a, b) => a.price - b.price);
   if (sortMode === 'price-desc') out.sort((a, b) => b.price - a.price);
   if (sortMode === 'newest')     out.sort((a, b) => b.createdAt - a.createdAt);
