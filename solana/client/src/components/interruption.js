@@ -1,21 +1,28 @@
-// interruption.js — Screen 3: Interruption Phase (1-min, peek, swap, ready)
+// interruption.js — Screen 3: INTEL PHASE (spec F1-2). 60s, read-only.
+//
+// This replaces the old "Interruption" screen. Post-commit hand mutation (the
+// swap UI) is GONE: a swapped hand makes the on-chain reveal_hand fail forever,
+// because the commitment was sealed at preparation. INTEL is now purely a
+// read/pay phase — PEEK the opponent, buy AI ADVICE, then LOCK IN. Your hand is
+// immutable here; the only navigation out is nav:reveal (no WS, no state write).
+//
+// There is deliberately NO WS reveal here. The single reveal path is the gated
+// one in reveal.js that fires only after the on-chain reveal_hand tx confirms.
 // mount(container, detail) / unmount(container)
 
 import { getCard } from '../lib/cards.js';
 import { CardFrameHTML, injectCardCSS, ACTION_LABELS } from './common/Card.js';
-import { ActionTypeSelectorHTML, injectActionTypeSelectorCSS } from './common/ActionTypeSelector.js';
+import { RoundHudHTML, injectRoundUiCSS } from './common/round-ui.js';
 import { startTimer } from './common/Timer.js';
+import { pxIcon } from '../lib/px-icons.js';
+import { showToast } from '../lib/ui-shared.js';
 import { getState, setState } from '../state/battle-state.js';
-import * as duelWs from '../lib/duel-ws.js';
 
-const INTR_SECS = 60;
+const INTEL_SECS = 60;
 
-let _stopTimer   = null;
-let _field       = [];
+let _stopTimer     = null;
+let _field         = [];
 let _opponentField = null;
-let _swapMode    = false;   // are we currently picking a replacement?
-let _swapSlot    = null;    // which slot we're swapping
-let _vault       = [];
 
 export function mount(container, detail = {}) {
   if (!window.oxarkWallet?.isConnected?.()) {
@@ -24,395 +31,339 @@ export function mount(container, detail = {}) {
   }
   injectStyle();
   injectCardCSS();
-  injectActionTypeSelectorCSS();
+  injectRoundUiCSS();
 
-  const s    = getState();
-  _field     = s.fieldCards.map(c => c ? { ...c } : null);
-  _vault     = s.vault ?? [];
-  _opponentField = null;
-  _swapMode  = false;
-  _swapSlot  = null;
+  const s        = getState();
+  _field         = s.fieldCards.map(c => (c ? { ...c } : null));
+  _opponentField = s.opponentField ?? null;
 
   setState({ phase: 'interruption' });
   container.innerHTML = buildHTML();
   bindEvents(container);
 
-  const timerEl = container.querySelector('#intr-timer');
-  _stopTimer = startTimer(timerEl, INTR_SECS, () => onTimeout(container));
+  const timerEl = container.querySelector('#intel-timer');
+  _stopTimer = startTimer(timerEl, INTEL_SECS, () => lockIn());
 }
 
 export function unmount(container) {
   _stopTimer?.();
   _stopTimer = null;
-  _swapMode = false;
-  _swapSlot = null;
+  _field = [];
+  _opponentField = null;
   container.innerHTML = '';
 }
 
 /* ── HTML ───────────────────────────────────────────────────────────── */
 function buildHTML() {
-  const s = getState();
+  const peeked = getState().hasPeeked;
   return `
-<div class="intr-root" role="main" aria-label="Interruption Phase">
+<div class="intel-root" role="main" aria-label="Intel Phase">
 
-  <!-- Top bar -->
-  <header class="intr-topbar">
-    <div class="chip intr-phase-label">INTERRUPTION PHASE</div>
-    <div class="intr-timer-wrap">
+  <header class="intel-topbar">
+    <div class="chip intel-phase-label">INTEL PHASE</div>
+    <div class="intel-timer-wrap" aria-live="polite" aria-atomic="true">
       <span class="label-dim" style="font-size:14px;">TIME</span>
-      <span class="intr-timer" id="intr-timer">1:00</span>
+      <span class="intel-timer" id="intel-timer" aria-label="Time remaining">0:${INTEL_SECS}</span>
     </div>
-    <div class="label-dim" style="font-size:14px;">PEEK · SWAP · READY</div>
+    ${RoundHudHTML()}
   </header>
 
-  <div class="intr-body">
+  <div class="intel-body">
 
-    <!-- Opponent area (visible after peek) -->
-    <section class="intr-opponent-area" id="intr-opp-area" aria-label="Opponent field">
-      <div class="intr-area-label label-dim">OPPONENT FIELD</div>
-      <div class="intr-opp-slots" id="intr-opp-slots">
-        ${renderOppSlots()}
-      </div>
-      <div class="intr-opp-hint label-dim" id="intr-opp-hint">
-        ${_opponentField ? '' : 'Peek to reveal'}
-      </div>
-    </section>
-
-    <!-- Your field -->
-    <section class="intr-your-area" aria-label="Your field">
-      <div class="intr-area-label label-dim">YOUR FIELD</div>
-      <div class="intr-your-slots" id="intr-your-slots">
-        ${renderYourSlots()}
-      </div>
-
-      <!-- Swap vault (hidden until swap mode) -->
-      <div class="intr-swap-vault" id="intr-swap-vault" style="display:none;">
-        <div class="intr-swap-title label-dim">SELECT REPLACEMENT CARD</div>
-        <div class="intr-swap-grid" id="intr-swap-grid">
-          ${renderSwapGrid()}
+    <!-- Left column: opponent (sealed) + your locked hand -->
+    <div class="intel-left">
+      <section class="intel-opp" aria-label="Opponent hand">
+        <div class="intel-section-label label-dim">OPPONENT — <span id="intel-opp-state">${peeked ? 'REVEALED' : 'SEALED'}</span></div>
+        <div class="intel-opp-slots" id="intel-opp-slots">
+          ${renderOppSlots()}
         </div>
-      </div>
+      </section>
 
-      <!-- Action edit for selected slot -->
-      <div class="intr-action-edit" id="intr-action-edit" style="display:none;">
-        <div class="label-dim" style="font-size:13px;margin-bottom:4px;">RE-ASSIGN ACTION</div>
-        ${ActionTypeSelectorHTML()}
-      </div>
-    </section>
-
-    <!-- Controls -->
-    <aside class="intr-controls">
-      <!-- Peek -->
-      <div class="intr-ctrl-section">
-        <div class="intr-ctrl-title">INTEL</div>
-        <button class="gba-btn intr-peek-btn" id="intr-peek"
-          ${getState().hasPeeked ? 'disabled' : ''}>
-          ${pxIcon('eye')} PEEK OPPONENT
-          <span class="intr-fee">(0.005 SOL)</span>
-        </button>
-        ${getState().hasPeeked ? `<div class="label-dim" style="font-size:13px;">Peeked ${pxIcon('check')}</div>` : ''}
-      </div>
-
-      <!-- Swap info -->
-      <div class="intr-ctrl-section">
-        <div class="intr-ctrl-title">SWAP</div>
-        <div class="label-dim" style="font-size:13px;" id="intr-swap-count">
-          1 free swap remaining
+      <section class="intel-hand" aria-label="Your locked hand">
+        <div class="intel-section-label label-dim">YOUR HAND — LOCKED ${pxIcon('lock')}</div>
+        <div class="intel-hand-slots">
+          ${renderHandSlots()}
         </div>
-        <div class="label-dim" style="font-size:13px;">Click your card to swap</div>
+      </section>
+    </div>
+
+    <!-- Right column: intel actions -->
+    <aside class="intel-actions" aria-label="Intel actions">
+      <div class="intel-action-block">
+        <button class="gba-btn intel-peek-btn" id="intel-peek" ${peeked ? 'disabled' : ''}>
+          ${pxIcon('eye')} ${peeked ? 'PEEKED' : 'PEEK'}${peeked ? ` ${pxIcon('check')}` : ''}
+        </button>
+        <div class="intel-cost label-dim">0.005 SOL</div>
       </div>
 
-      <!-- Ready -->
-      <div class="intr-ctrl-section" style="margin-top:auto;">
-        <button class="gba-btn gba-btn--primary intr-ready-btn" id="intr-ready">
-          ${pxIcon('check')} READY
+      <div class="intel-divider"></div>
+
+      <div class="intel-action-block">
+        <button class="gba-btn intel-advice-btn" id="intel-advice">
+          ${pxIcon('chip')} AI ADVICE
         </button>
+        <div class="intel-cost label-dim">0.003 SOL</div>
+        <div class="intel-advice-panel" id="intel-advice-panel" role="log" aria-live="polite"></div>
       </div>
+
+      <div class="intel-divider"></div>
+
+      <button class="gba-btn gba-btn--primary intel-lockin-btn" id="intel-lockin">
+        ${pxIcon('check')} LOCK IN
+      </button>
     </aside>
 
   </div>
-
 </div>`;
 }
 
 function renderOppSlots() {
   if (!_opponentField) {
-    return Array(5).fill(0).map(() => CardFrameHTML({ faceDown: true })).join('');
+    // Sealed chests — the CRACK ritual's object, not a generic face-down card.
+    return Array(5).fill(0).map((_, i) =>
+      `<div class="intel-chest" id="intel-chest-${i}" aria-label="Sealed opponent card ${i + 1}">${pxIcon('chest', { size: 44 })}</div>`
+    ).join('');
   }
-  return _opponentField.map(c => CardFrameHTML({ id: c.cardId })).join('');
+  return _opponentField.map((c, i) =>
+    `<div class="intel-opp-card" id="intel-opp-card-${i}">${CardFrameHTML({ id: c.cardId })}</div>`
+  ).join('');
 }
 
-function renderYourSlots() {
+function renderHandSlots() {
   return _field.map((slot, i) => {
-    if (!slot) return `<div class="intr-your-slot" data-your-slot="${i}"></div>`;
-    return `<div class="intr-your-slot${_swapSlot === i ? ' intr-slot--swap-active' : ''}"
-      data-your-slot="${i}" tabindex="0"
-      aria-label="Your card slot ${i+1}, ${slot.cardId}">
+    if (!slot) return `<div class="intel-hand-slot intel-hand-slot--empty" aria-label="Empty slot ${i + 1}"></div>`;
+    return `<div class="intel-hand-slot" aria-label="Your card ${slot.cardId}, action ${slot.actionType}">
       ${CardFrameHTML({ id: slot.cardId })}
-      <div class="intr-slot-action label-gold" style="font-size:13px;">${ACTION_LABELS[slot.actionType] ?? ''}</div>
+      <span class="intel-hand-lock">${pxIcon('lock', { size: 12 })}</span>
+      <div class="intel-hand-action label-gold" style="font-size:13px;">${ACTION_LABELS[slot.actionType] ?? ''}</div>
     </div>`;
   }).join('');
 }
 
-function renderSwapGrid() {
-  const placedIds = new Set(_field.filter(Boolean).map(s => s.cardId));
-  const avail = (_vault).filter(id => !placedIds.has(id) || id === _field[_swapSlot]?.cardId);
-  return avail.map(id => CardFrameHTML({ id, owned: true })).join('');
-}
-
 /* ── Events ─────────────────────────────────────────────────────────── */
 function bindEvents(container) {
-  // Peek
-  container.querySelector('#intr-peek').addEventListener('click', async () => {
-    await doPeek(container);
-  });
-
-  // Your slot click — enter swap mode
-  container.querySelector('#intr-your-slots').addEventListener('click', e => {
-    const slotEl = e.target.closest('[data-your-slot]');
-    if (!slotEl) return;
-    const idx = parseInt(slotEl.dataset.yourSlot, 10);
-    enterSwapMode(container, idx);
-  });
-
-  // Swap grid card click
-  container.querySelector('#intr-swap-grid').addEventListener('click', e => {
-    const cardEl = e.target.closest('[data-id]');
-    if (!cardEl || _swapSlot === null) return;
-    const newId = parseInt(cardEl.dataset.id, 10);
-    doSwap(container, _swapSlot, newId);
-  });
-
-  // Action edit
-  container.querySelector('#intr-action-edit').addEventListener('click', e => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn || _swapSlot === null) return;
-    const at = parseInt(btn.dataset.action, 10);
-    if (_field[_swapSlot]) {
-      _field[_swapSlot] = { ..._field[_swapSlot], actionType: at };
-      refreshYourSlots(container);
-      highlightAction(container, at);
-    }
-  });
-
-  // Ready
-  container.querySelector('#intr-ready').addEventListener('click', () => {
-    onReady(container);
-  });
+  container.querySelector('#intel-peek').addEventListener('click', () => doPeek(container));
+  container.querySelector('#intel-advice').addEventListener('click', () => doAdvice(container));
+  container.querySelector('#intel-lockin').addEventListener('click', () => lockIn());
 }
 
+/* ── PEEK ───────────────────────────────────────────────────────────── */
 async function doPeek(container) {
-  const btn = container.querySelector('#intr-peek');
+  const btn = container.querySelector('#intel-peek');
   btn.disabled = true;
-  btn.textContent = 'PEEKING…';
+  btn.innerHTML = 'PEEKING…';
 
-  try {
-    let result = null;
-    if (window.x402?.scoutPeek) {
-      const s = getState();
-      result = await window.x402.scoutPeek(s.matchId, s.opponentPubkey, window.solana, null);
-    }
-    // Fallback: random opponent hand for demo
-    if (!result) {
-      result = { cards: [21,22,23,24,25].map(id => ({ cardId: id, actionType: 2 })) };
-    }
-    _opponentField = result.cards ?? result;
-    setState({ hasPeeked: true, opponentField: _opponentField });
-    refreshOppSlots(container);
-    btn.textContent = 'PEEKED';
-    container.querySelector('#intr-opp-hint').textContent = 'Opponent field revealed';
-  } catch (err) {
-    btn.disabled = false;
-    btn.textContent = 'PEEK OPPONENT\n(0.005 SOL)';
-  }
-}
-
-function enterSwapMode(container, idx) {
   const s = getState();
-  if (s.hasPeeked && _swapSlot !== null && _swapSlot !== idx) {
-    // Already used swap
+  let result = null;
+  let real = false;
+  try {
+    if (window.x402?.scoutPeek) {
+      const conn = window.oxarkOnchain?.getConnection?.() ?? null;
+      result = await window.x402.scoutPeek(s.matchId, s.opponentPubkey, window.solana, conn);
+      real = true;
+    }
+  } catch (err) {
+    console.warn('[Intel] scoutPeek failed, falling back to mock:', err?.message ?? err);
+    result = null;
+  }
+
+  if (result) {
+    _opponentField = normalizeField(result.cards ?? result);
+    setState({ hasPeeked: true, opponentField: _opponentField });
+    revealChests(container);
+    btn.innerHTML = `PEEKED ${pxIcon('check')}`;
+    const sig = result.signature ?? result.sig ?? null;
+    if (real && sig) showTxToast('Peek paid', sig);
     return;
   }
-  _swapSlot = idx;
-  _swapMode = true;
-  refreshYourSlots(container);
 
-  const swapVault = container.querySelector('#intr-swap-vault');
-  const actionEdit = container.querySelector('#intr-action-edit');
-  const swapGrid = container.querySelector('#intr-swap-grid');
-  swapVault.style.display = 'block';
-  actionEdit.style.display = 'block';
-  swapGrid.innerHTML = renderSwapGrid();
-  if (_field[idx]) highlightAction(container, _field[idx].actionType);
+  // Fallback: never silently — light DEMO mode + mock intel with an explicit hint.
+  _opponentField = mockOpponentField();
+  setState({ hasPeeked: true, opponentField: _opponentField });
+  revealChests(container);
+  btn.innerHTML = `PEEKED ${pxIcon('check')}`;
+  lightDemo('scoutPeek unavailable — showing mock intel');
+  const stateEl = container.querySelector('#intel-opp-state');
+  if (stateEl) stateEl.innerHTML = 'MOCK INTEL (demo)';
+  showToast('MOCK INTEL (demo) — x402 peek offline', 'info');
 }
 
-function doSwap(container, idx, newCardId) {
-  _field[idx] = { cardId: newCardId, actionType: _field[idx]?.actionType ?? 0 };
-  refreshYourSlots(container);
-  const swapGrid = container.querySelector('#intr-swap-grid');
-  swapGrid.innerHTML = renderSwapGrid();
-
-  container.querySelector('#intr-swap-count').textContent = '0 swaps remaining';
-  // Close swap vault after selection
-  container.querySelector('#intr-swap-vault').style.display = 'none';
-  container.querySelector('#intr-action-edit').style.display = 'none';
-  _swapMode = false;
-  _swapSlot = null;
+// Per-slot chest CRACK-lite: swap each sealed chest for the face-up opponent
+// frame on a 120ms stagger (spec §3.3).
+function revealChests(container) {
+  const slots = container.querySelector('#intel-opp-slots');
+  if (!slots) return;
+  _opponentField.forEach((c, i) => {
+    setTimeout(() => {
+      const chest = container.querySelector(`#intel-chest-${i}`);
+      if (!chest) return;
+      chest.classList.add('intel-chest--crack');
+      setTimeout(() => {
+        chest.outerHTML = `<div class="intel-opp-card intel-opp-card--reveal" id="intel-opp-card-${i}">${CardFrameHTML({ id: c.cardId })}</div>`;
+      }, 140);
+    }, i * 120);
+  });
+  const stateEl = container.querySelector('#intel-opp-state');
+  if (stateEl && !stateEl.textContent.includes('MOCK')) stateEl.textContent = 'REVEALED';
 }
 
-async function onReady(container) {
-  const btn = container.querySelector('#intr-ready');
+/* ── AI ADVICE ──────────────────────────────────────────────────────── */
+async function doAdvice(container) {
+  const btn   = container.querySelector('#intel-advice');
+  const panel = container.querySelector('#intel-advice-panel');
   btn.disabled = true;
-  btn.textContent = 'COMMITTING…';
+  btn.innerHTML = 'THINKING…';
+  panel.classList.add('intel-advice-panel--open');
+  panel.textContent = 'Requesting AI strategy…';
+
+  const s = getState();
+  const context = {
+    round:         s.round ?? 1,
+    myFieldCardIds: _field.filter(Boolean).map(c => c.cardId),
+    myActionTypes:  _field.filter(Boolean).map(c => c.actionType ?? 0),
+    // Only disclose opponent hand if we actually peeked.
+    opponentField:  s.hasPeeked ? (_opponentField ?? []).map(c => c.cardId) : null,
+  };
 
   try {
-    let commitment = getState().commitment;
-    let salt       = getState().salt;
-
-    // Re-commit if field changed after swap
-    const fieldChanged = _field.some((slot, i) => slot?.cardId !== getState().fieldCards[i]?.cardId);
-    if (fieldChanged) {
-      salt = duelWs.generateSalt();
-      const hashBytes = await duelWs.computeHandCommitment(_field.map(s => s.cardId), salt);
-      commitment = duelWs.toHex(hashBytes);
-    }
-
-    setState({ fieldCards: [..._field], commitment, salt, phase: 'reveal' });
-
-    const s = getState();
-    if (s.duelId && duelWs.isConnected()) {
-      duelWs.sendHandRevealed(
-        s.duelId, 1,
-        _field.map(slot => slot.cardId),
-        _field.map(slot => slot.actionType),
-      );
-    }
-
-    document.dispatchEvent(new CustomEvent('nav:reveal'));
-  } catch {
+    if (!window.x402?.payAiStrategyAdvice) throw new Error('advice endpoint offline');
+    const result = await window.x402.payAiStrategyAdvice(context);
+    const text = result?.advice ?? result?.message ?? result?.text ?? '';
+    panel.textContent = text || 'No advice returned.';
+    const sig = result?.signature ?? result?.sig ?? null;
+    if (sig) showTxToast('Advice paid', sig);
     btn.disabled = false;
-    btn.textContent = 'READY';
+    btn.innerHTML = `${pxIcon('chip')} AI ADVICE`;
+  } catch (err) {
+    console.warn('[Intel] AI advice failed:', err?.message ?? err);
+    panel.textContent = 'MOCK ADVICE (demo): balance FLAME up front, hold VOID to counter BARRIER. Advice service offline.';
+    lightDemo('AI advice unavailable — mock advice shown');
+    btn.disabled = false;
+    btn.innerHTML = `${pxIcon('chip')} AI ADVICE`;
   }
 }
 
-function onTimeout(container) {
-  const s = getState();
-  setState({ fieldCards: [..._field], phase: 'reveal' });
-  if (s.duelId && duelWs.isConnected()) {
-    duelWs.sendHandRevealed(
-      s.duelId, 1,
-      _field.map(slot => slot.cardId),
-      _field.map(slot => slot.actionType),
-    );
-  }
+/* ── LOCK IN (also the 60s timeout path) ────────────────────────────── */
+// Pure navigation. No state mutation, no WS send — the hand was already sealed
+// at preparation and the reveal tx is the only thing that unseals it.
+function lockIn() {
+  _stopTimer?.();
+  _stopTimer = null;
   document.dispatchEvent(new CustomEvent('nav:reveal'));
 }
 
-function refreshOppSlots(container) {
-  const el = container.querySelector('#intr-opp-slots');
-  if (el) el.innerHTML = renderOppSlots();
+/* ── Helpers ────────────────────────────────────────────────────────── */
+function normalizeField(cards) {
+  return (cards ?? []).map(c => ({
+    cardId: c.cardId ?? c.id ?? c,
+    actionType: c.actionType ?? 0,
+  }));
 }
 
-function refreshYourSlots(container) {
-  const el = container.querySelector('#intr-your-slots');
-  if (el) el.innerHTML = renderYourSlots();
+function mockOpponentField() {
+  // Deterministic-ish mock hand for demo (5 distinct card ids).
+  return [21, 22, 23, 24, 25].map(id => ({ cardId: id, actionType: 2 }));
 }
 
-function highlightAction(container, actionType) {
-  container.querySelectorAll('.ats-btn').forEach(btn => {
-    const on = parseInt(btn.dataset.action, 10) === actionType;
-    btn.classList.toggle('ats-btn--active', on);
-    btn.setAttribute('aria-pressed', String(on));
-  });
+// Forward-compatible: F1-7 (PR-G) adds window.oxarkUI.setDemoMode + txLink. Use
+// them when present; otherwise degrade to a plain toast so nothing is silent.
+function lightDemo(reason) {
+  if (window.oxarkUI?.setDemoMode) window.oxarkUI.setDemoMode(reason);
+  else console.info('[DEMO]', reason);
+}
+
+function txExplorerUrl(sig) {
+  // F1-7 will centralize this via config.EXPLORER_TX_URL; devnet stopgap for now.
+  if (window.oxarkUI?.txLink) return null; // handled by helper below
+  return `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
+}
+
+function showTxToast(label, sig) {
+  if (window.oxarkUI?.txLink) {
+    const t = showToast(label, 'success');
+    try { t.innerHTML = `${pxIcon('check')} ${label} ${window.oxarkUI.txLink(sig)}`; } catch (_) {}
+    return;
+  }
+  const url = txExplorerUrl(sig);
+  const t = showToast(`${label} — ${sig.slice(0, 8)}`, 'success');
+  try {
+    t.innerHTML = `${pxIcon('check')} ${label} <a class="tx-link" href="${url}" target="_blank" rel="noopener">${sig.slice(0, 8)} ↗</a>`;
+  } catch (_) {}
 }
 
 /* ── Style ──────────────────────────────────────────────────────────── */
 function injectStyle() {
-  if (document.getElementById('style-intr')) return;
+  if (document.getElementById('style-intel')) return;
   const el = document.createElement('style');
-  el.id = 'style-intr';
+  el.id = 'style-intel';
   el.textContent = CSS;
   document.head.appendChild(el);
 }
 
 const CSS = `
-.intr-root {
+.intel-root {
   position: relative; width: 1024px; height: 576px; overflow: hidden;
   font-family: var(--font-main); background: var(--bg-deep);
   display: flex; flex-direction: column;
 }
 
-.intr-topbar {
+.intel-topbar {
   height: 44px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 14px; border-bottom: var(--border-dim);
   background: rgba(3,6,15,0.75); z-index: 10;
 }
-.intr-phase-label { font-size: 16px; letter-spacing: 0.1em; color: var(--accent-blue); border-color: var(--accent-blue); }
-.intr-timer-wrap { display: flex; align-items: baseline; gap: 6px; }
-.intr-timer {
-  font-size: 32px; color: var(--accent-gold); letter-spacing: 0.04em;
-  transition: color 0.3s;
+.intel-phase-label { font-size: 16px; letter-spacing: 0.1em; color: var(--accent-blue); border-color: var(--accent-blue); }
+.intel-timer-wrap { display: flex; align-items: baseline; gap: 6px; }
+.intel-timer { font-size: 32px; color: var(--accent-gold); letter-spacing: 0.04em; line-height: 1; transition: color 0.3s; }
+.intel-timer.timer--urgent { color: var(--accent-red); animation: pulse 0.6s ease-in-out infinite alternate; }
+
+.intel-body { flex: 1; display: grid; grid-template-columns: 1fr 240px; min-height: 0; }
+
+.intel-left { grid-column: 1; display: flex; flex-direction: column; padding: 10px 12px; gap: 12px; min-height: 0; overflow: hidden; }
+.intel-section-label { font-size: 13px; letter-spacing: 0.1em; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
+
+.intel-opp-slots, .intel-hand-slots { display: flex; gap: 8px; }
+.intel-opp-slots .card-frame, .intel-hand-slots .card-frame { width: 128px; }
+
+/* Sealed chest tile */
+.intel-chest {
+  width: 128px; height: 172px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(201,162,39,0.25); background: rgba(10,14,26,0.7);
+  color: var(--accent-gold); transition: transform 140ms, opacity 140ms;
 }
-.intr-timer.timer--urgent { color: var(--accent-red); animation: pulse 0.6s ease-in-out infinite alternate; }
+.intel-chest--crack { transform: scale(1.08) rotate(-2deg); opacity: 0.15; }
+.intel-opp-card--reveal { animation: intel-reveal 220ms var(--ease-out, ease-out); }
+@keyframes intel-reveal { from { opacity: 0; transform: translateY(6px) scale(0.96); } to { opacity: 1; transform: none; } }
 
-.intr-body { flex: 1; display: flex; min-height: 0; }
-
-/* Opponent area */
-.intr-opponent-area {
-  width: 100%; border-bottom: var(--border-dim);
-  display: flex; flex-direction: column; gap: 5px;
-  flex-shrink: 0;
+/* Locked hand */
+.intel-hand-slot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.intel-hand-slot--empty { width: 128px; height: 172px; border: 1px dashed rgba(201,162,39,0.2); }
+.intel-hand-lock {
+  position: absolute; top: 4px; right: 4px; z-index: 2;
+  color: var(--accent-gold); background: rgba(3,6,15,0.8);
+  padding: 1px 2px; line-height: 0; border: 1px solid rgba(201,162,39,0.3);
 }
+.intel-hand-action { text-align: center; }
 
-.intr-body {
-  flex: 1; display: grid;
-  grid-template-rows: auto 1fr;
-  grid-template-columns: 1fr 220px;
-  min-height: 0;
+/* Actions column */
+.intel-actions {
+  grid-column: 2; border-left: var(--border-dim); padding: 12px;
+  display: flex; flex-direction: column; gap: 10px; background: rgba(10,14,26,0.4);
 }
-.intr-opponent-area { grid-column: 1; grid-row: 1; padding: 8px 12px 6px; border-bottom: var(--border-dim); }
-.intr-your-area { grid-column: 1; grid-row: 2; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
-.intr-controls { grid-column: 2; grid-row: 1 / 3; border-left: var(--border-dim); padding: 10px; display: flex; flex-direction: column; gap: 10px; }
-
-.intr-area-label { font-size: 13px; letter-spacing: 0.1em; margin-bottom: 4px; flex-shrink: 0; }
-.intr-opp-hint { font-size: 13px; }
-
-.intr-opp-slots, .intr-your-slots {
-  display: flex; gap: 6px; flex-shrink: 0;
+.intel-action-block { display: flex; flex-direction: column; gap: 3px; }
+.intel-peek-btn, .intel-advice-btn { width: 100%; justify-content: center; font-size: 16px; padding: 8px; }
+.intel-cost { font-size: 13px; text-align: center; }
+.intel-divider { height: 1px; background: rgba(201,162,39,0.15); margin: 2px 0; }
+.intel-advice-panel {
+  display: none; font-size: 13px; line-height: 1.5; color: var(--text-cream);
+  max-height: 118px; overflow-y: auto; padding: 6px 8px; margin-top: 4px;
+  border: var(--border-dim); background: rgba(3,6,15,0.6);
 }
-.intr-opp-slots .card-frame,
-.intr-your-slots .card-frame,
-.intr-swap-grid .card-frame { width: 112px; }
-
-.intr-your-slot {
-  cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  border: 1px solid rgba(201,162,39,0.2); flex-shrink: 0;
-  transition: border-color 80ms;
-}
-.intr-your-slot:hover { border-color: var(--accent-gold); }
-.intr-slot--swap-active { border-color: var(--accent-blue) !important; background: rgba(74,144,217,0.08); }
-.intr-slot-action { font-size: 13px; text-align: center; }
-
-/* Swap vault */
-.intr-swap-vault {
-  flex-shrink: 0; border: var(--border-dim); padding: 6px;
-  max-height: 100px;
-}
-.intr-swap-title { font-size: 13px; letter-spacing: 0.06em; margin-bottom: 4px; }
-.intr-swap-grid {
-  display: flex; gap: 4px; overflow-x: auto; flex-wrap: nowrap;
-}
-.intr-swap-grid::-webkit-scrollbar { height: 3px; }
-.intr-swap-grid::-webkit-scrollbar-thumb { background: rgba(201,162,39,0.2); }
-
-/* Action edit */
-.intr-action-edit { flex-shrink: 0; padding: 4px 0; }
-
-/* Controls */
-.intr-ctrl-section { display: flex; flex-direction: column; gap: 5px; }
-.intr-ctrl-title { font-size: 14px; letter-spacing: 0.1em; color: var(--accent-gold); }
-.intr-peek-btn { font-size: 15px; padding: 6px 10px; display: flex; flex-direction: column; gap: 1px; }
-.intr-fee { font-size: 13px; color: var(--text-dim); }
-.intr-ready-btn { width: 100%; justify-content: center; font-size: 20px; padding: 10px; }
+.intel-advice-panel--open { display: block; }
+.intel-advice-panel::-webkit-scrollbar { width: 3px; }
+.intel-advice-panel::-webkit-scrollbar-thumb { background: rgba(201,162,39,0.2); }
+.intel-lockin-btn { width: 100%; justify-content: center; font-size: 20px; padding: 10px; margin-top: auto; }
+.tx-link { color: var(--accent-blue); text-decoration: none; }
+.tx-link:hover { text-decoration: underline; }
 `;
