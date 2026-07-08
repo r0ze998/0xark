@@ -40,13 +40,12 @@ export const CARD_NAMES = {
  *   selected — highlight border (default false)
  *   faceDown — show back of card (default false)
  *   showAction — show ActionType label (default true)
- *   compact  — smaller tile without stats (default false)
  *   hpCurrent — override displayed HP (for battle animation)
  *   dead     — show destroyed overlay (default false)
  */
 export function CardHTML({
   id, owned = true, selected = false, faceDown = false,
-  showAction = true, compact = false, hpCurrent = null, dead = false,
+  showAction = true, hpCurrent = null, dead = false,
 } = {}) {
   if (faceDown) {
     return `<div class="ark-card ark-card--facedown" aria-label="Hidden card">
@@ -66,7 +65,6 @@ export function CardHTML({
     'ark-card',
     !owned   && 'ark-card--locked',
     selected && 'ark-card--selected',
-    compact  && 'ark-card--compact',
     isLgd    && 'ark-card--legendary',
     dead     && 'ark-card--dead',
   ].filter(Boolean).join(' ');
@@ -182,7 +180,6 @@ const CARD_CSS = `
 }
 .ark-card--locked { opacity: 0.3; cursor: default; filter: grayscale(0.6); }
 .ark-card--dead { opacity: 0.35; filter: grayscale(1); }
-.ark-card--compact { width: 60px; height: 82px; padding: 4px 3px; }
 .ark-card--facedown {
   width: 80px; height: 112px;
   background: repeating-linear-gradient(-45deg,var(--bg-mid),var(--bg-mid) 4px,var(--bg-deep) 4px,var(--bg-deep) 8px);
@@ -255,7 +252,7 @@ const CARD_CSS = `
   display: flex; align-items: center; justify-content: center;
 }
 .card-frame--empty { aspect-ratio: 5 / 7; width: 100%; }
-.card-frame--selected { filter: drop-shadow(0 0 4px var(--accent-gold,var(--accent-gold))); }
+.card-frame--selected { filter: drop-shadow(0 0 4px var(--accent-gold)); }
 
 .card-frame .clan-bar {
   position: absolute; left: 0; top: 0; bottom: 0; width: 4px; z-index: 2;

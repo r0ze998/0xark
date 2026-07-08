@@ -515,7 +515,7 @@ const CSS = `
   filter: drop-shadow(0 0 8px rgba(201,162,39,0.8));
 }
 .rev-card--dead .card-frame { opacity: 0.3; filter: grayscale(1); }
-.rev-card-wrap .card-frame { width: 120px; }
+.rev-card-wrap .card-frame { width: 140px; }
 
 /* Center log */
 .rev-center {

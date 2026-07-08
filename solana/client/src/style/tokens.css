@@ -86,6 +86,10 @@
 
 /* ── System floor (global, one-time rules) ───────────────── */
 
+/* VT323 ships one weight — synthesized bold breaks the pixel grid.
+   <b>/<strong> remain semantic; render at normal weight. */
+b, strong { font-weight: normal; }
+
 /* Focus is always visible, always gold */
 :focus-visible {
   outline: 2px solid var(--accent-gold);
