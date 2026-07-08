@@ -3,6 +3,7 @@
 
 import { getCard } from '../lib/cards.js';
 import { CardFrameHTML, injectCardCSS, CARD_NAMES } from './common/Card.js';
+import { pxIcon } from '../lib/px-icons.js';
 import { getState, setState, resetBattle } from '../state/battle-state.js';
 import { computePostBattleImprints } from '../lib/abilities.js';
 import * as duelWs from '../lib/duel-ws.js';
