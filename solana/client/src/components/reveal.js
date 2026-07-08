@@ -2,6 +2,7 @@
 // mount(container, detail) / unmount(container)
 
 import { getCard } from '../lib/cards.js';
+import { factionOf, isLegendaryOf } from '../lib/card-meta.js';
 import { damageCalc } from '../lib/damage-calc.js';
 import { CardFrameHTML, injectCardCSS, FACTION_NAMES, ACTION_LABELS, FACTION_COLORS } from './common/Card.js';
 import { getState, setState } from '../state/battle-state.js';
@@ -330,8 +331,8 @@ function runAnimation(container, s, result) {
   after(1400, () => {
     clearLog();
     setStatus('Checking synergies…');
-    const p1Factions = p1.map(c => getCard(c.cardId)?.faction);
-    const p2Factions = p2.map(c => getCard(c.cardId)?.faction);
+    const p1Factions = p1.map(c => factionOf(c.cardId));
+    const p2Factions = p2.map(c => factionOf(c.cardId));
     const p1Synergy = checkSynergy(p1Factions);
     const p2Synergy = checkSynergy(p2Factions);
     if (p1Synergy) addLog(`◆ YOUR ${FACTION_NAMES[p1Synergy]} SYNERGY ACTIVE! (+10% BP)`, 'log-gold');
@@ -342,10 +343,10 @@ function runAnimation(container, s, result) {
   // Step 3: Legendary effects (2s)
   after(2400, () => {
     setStatus('Legendary effects…');
-    const lgdCards = [...p1, ...p2].filter(c => getCard(c.cardId)?.rarity === 3);
+    const lgdCards = [...p1, ...p2].filter(c => isLegendaryOf(c.cardId));
     lgdCards.forEach((c, i) => {
       after(i * 800, () => {
-        addLog(`★ ${FACTION_NAMES[getCard(c.cardId).faction]} LEGENDARY ACTIVATES!`, 'log-gold');
+        addLog(`★ ${FACTION_NAMES[factionOf(c.cardId)]} LEGENDARY ACTIVATES!`, 'log-gold');
       });
     });
   });
