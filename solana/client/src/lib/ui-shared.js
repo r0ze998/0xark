@@ -17,14 +17,14 @@ export function showToast(msg, type = 'info', { className = 'wg-toast', duration
 }
 
 // ── Tx short-link ─────────────────────────────────────────────────────────────
-// Minimal explorer link for on-chain confirmation toasts (DESIGN.md tx-link).
-// F1-7 (PR-G) will centralize the cluster in config.EXPLORER_TX_URL; devnet is
-// the current network (CLAUDE.md) so it is the stopgap default here.
-export function txLink(sig, { cluster = 'devnet' } = {}) {
+// Explorer link for on-chain confirmation toasts (DESIGN.md tx-link). Cluster
+// comes from config (F1-7) — no inline network literal.
+import { EXPLORER_TX_URL } from '../config.js';
+
+export function txLink(sig) {
   if (!sig) return '';
   const short = String(sig).slice(0, 8);
-  const url = `https://explorer.solana.com/tx/${sig}?cluster=${cluster}`;
-  return `<a class="tx-link" href="${url}" target="_blank" rel="noopener">${short}… ↗</a>`;
+  return `<a class="tx-link" href="${EXPLORER_TX_URL(sig)}" target="_blank" rel="noopener">${short}… ↗</a>`;
 }
 
 // Convenience: success toast whose body carries a tx short-link.
@@ -32,6 +32,39 @@ export function showTxToast(label, sig, type = 'success') {
   const t = showToast(label, type);
   try { t.innerHTML = `${label} ${txLink(sig)}`; } catch (_) {}
   return t;
+}
+
+// ── DEMO MODE badge ───────────────────────────────────────────────────────────
+// Lights a persistent header badge whenever the client silently falls back to a
+// non-authoritative path (server down, x402 offline, payment skipped). Idempotent;
+// logs the reason so a fallback is never invisible (DESIGN.md demo-badge).
+let _demoLit = false;
+export function setDemoMode(reason = 'demo fallback') {
+  console.info('[DEMO MODE]', reason);
+  if (_demoLit) return;
+  _demoLit = true;
+  if (typeof document === 'undefined') return;
+  if (document.getElementById('demo-badge-css') == null) {
+    const st = document.createElement('style');
+    st.id = 'demo-badge-css';
+    st.textContent = `.demo-badge{position:fixed;top:8px;left:50%;transform:translateX(-50%);`
+      + `z-index:9999;font-family:var(--font-main);font-size:13px;letter-spacing:0.14em;`
+      + `color:var(--bg-deep);background:var(--accent-gold);padding:2px 10px;`
+      + `border:1px solid var(--bg-deep);pointer-events:none;}`;
+    document.head.appendChild(st);
+  }
+  const badge = document.createElement('div');
+  badge.className = 'demo-badge';
+  badge.id = 'demo-badge';
+  badge.textContent = 'DEMO MODE';
+  badge.title = reason;
+  document.body.appendChild(badge);
+}
+
+// Expose the shared UI primitives on window so components that ship before this
+// module loads (or check optionally) can use them (interruption.js already does).
+if (typeof window !== 'undefined') {
+  window.oxarkUI = { ...(window.oxarkUI ?? {}), txLink, showTxToast, setDemoMode };
 }
 
 // ── Season prize tiers ───────────────────────────────────────────────────────

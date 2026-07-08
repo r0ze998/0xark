@@ -7,7 +7,8 @@ import { CardFrameHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS, CARD_NAMES
 import { LegendaryProgressHTML, injectLegendaryProgressCSS, PERSONALITIES } from './common/LegendaryProgress.js';
 import { PrizePoolHTML, injectPrizePoolCSS } from './common/PrizePool.js';
 import { EnergyHudHTML, attachEnergyHud, injectEnergyCss, computeEnergy } from './common/energy-hud.js';
-import { showToast } from '../lib/ui-shared.js';
+import { showToast, setDemoMode } from '../lib/ui-shared.js';
+import { NETWORK, PROGRAM_ID } from '../config.js';
 import { getState, setState } from '../state/battle-state.js';
 import { CardDetailModal } from './card-detail.js';
 import * as duelWs from '../lib/duel-ws.js';
@@ -171,9 +172,9 @@ function buildHTML({ vault, pubkey, perso, playerState }) {
   <footer class="ms-footer">
     <span class="mono label-dim">${truncPub}</span>
     <span class="sep">·</span>
-    <span class="label-dim">DEVNET</span>
+    <span class="label-dim">${NETWORK.toUpperCase()}</span>
     <span class="sep">·</span>
-    <span class="label-dim">Program: 5i37jW…XfmN</span>
+    <span class="label-dim">Program: ${PROGRAM_ID.slice(0, 6)}…${PROGRAM_ID.slice(-4)}</span>
   </footer>
 
 </div>`;
@@ -336,6 +337,7 @@ async function startMatchmaking(container) {
 
   } catch {
     // Server unavailable — demo fallback
+    setDemoMode('matchmaking server unreachable');
     _matchInterval = setInterval(() => {
       btn.textContent = `● SEARCHING${'·'.repeat((_dots++ % 3) + 1)}`;
     }, 500);
@@ -379,7 +381,7 @@ function _mountBattle(container, detail) {
   <div class="ms-battle-info label-dim" id="ms-match-info">
     WIN CARDS · EARN SOL · UNLOCK LEGENDARIES
   </div>
-  <div style="position:absolute;bottom:12px;font-size:13px;color:#333;">${truncPub} · DEVNET</div>
+  <div style="position:absolute;bottom:12px;font-size:13px;color:#333;">${truncPub} · ${NETWORK.toUpperCase()}</div>
 </div>`;
 
   container.querySelector('#ms-battle-back').addEventListener('click', () => {

@@ -115,42 +115,47 @@ function _bindEvents(container, cardId, card) {
   }
 }
 
-function _handleBurn(container, cardId) {
+// Burn — pending→confirm (F1-5 §6). No fire-and-forget: the vault mutates and the
+// success state shows ONLY after the burn tx confirms; on failure the button is
+// restored and the vault is untouched.
+async function _handleBurn(container, cardId) {
   const name = CARD_NAMES[cardId] ?? `Card #${cardId}`;
   if (!confirm(`BURN ${name}?\n\nThis permanently destroys the card and activates its effect.\nThis action cannot be undone.`)) return;
 
-  const s   = getState();
-  const abi = getCard(cardId)?.ability;
-
-  // Remove from vault
-  const newVault = s.vault.filter(id => id !== cardId);
-
-  // Record burn effect for next battle
-  const pendingBurnEffects = [
-    ...(s.pendingBurnEffects ?? []),
-    { effect: abi?.effect, ownSide: 'p1' },
-  ];
-
-  setState({ vault: newVault, pendingBurnEffects });
-
-  const fb = container.querySelector('#cd-feedback');
-  if (fb) fb.textContent = `${name} burned! Effect active for next battle.`;
-
+  const fb   = container.querySelector('#cd-feedback');
   const burnBtn = container.querySelector('#cd-burn');
-  if (burnBtn) { burnBtn.disabled = true; burnBtn.textContent = 'BURNED'; }
+  if (burnBtn) { burnBtn.disabled = true; burnBtn.innerHTML = 'BURNING…'; }
+  if (fb) fb.textContent = '';
 
-  if (_onBurn) _onBurn(cardId);
+  try {
+    let sig = null;
+    if (window.oxarkOnchain?.burnCard) {
+      sig = await window.oxarkOnchain.burnCard(cardId);   // awaited — gates everything below
+    } else {
+      console.log(`[demo] burn_card instruction: cardId=${cardId}`); // no-chain demo path
+    }
 
-  // Call on-chain (mock for 5/11 demo)
-  _callBurnOnchain(cardId).catch(err => console.warn('burn_card onchain:', err));
-}
+    // Confirmed → now mutate local vault + record the pending burn effect.
+    const s   = getState();
+    const abi = getCard(cardId)?.ability;
+    setState({
+      vault: s.vault.filter(id => id !== cardId),
+      pendingBurnEffects: [...(s.pendingBurnEffects ?? []), { effect: abi?.effect, ownSide: 'p1' }],
+    });
 
-async function _callBurnOnchain(cardId) {
-  if (window.oxarkOnchain?.burnCard) {
-    await window.oxarkOnchain.burnCard(cardId);
+    if (burnBtn) burnBtn.innerHTML = `${pxIcon('check')} BURNED`;
+    if (fb) {
+      fb.innerHTML = sig
+        ? `${name} burned — effect active next battle ${txLink(sig)}`
+        : `${name} burned — effect active next battle`;
+    }
+    _onBurn?.(cardId);
+  } catch (err) {
+    const msg = err?.message ?? String(err);
+    if (burnBtn) { burnBtn.disabled = false; burnBtn.innerHTML = `${pxIcon('burn')} BURN`; }
+    if (fb) fb.textContent = `Burn failed: ${msg.slice(0, 60)}`;
+    showToast('Burn failed — card not destroyed', 'error');
   }
-  // mock: log to console for demo
-  console.log(`[demo] burn_card instruction: cardId=${cardId}`);
 }
 
 /* ── PROMOTE (F1-4) ─────────────────────────────────────────────────────────
