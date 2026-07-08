@@ -7,13 +7,15 @@
 //   Detective ← Oracle    (Scholar,  id=40)
 //   Hermit    ← Ascetic   (Monk,     id=50)
 //   Sage      ← Architect (Engineer, id=60)
+import { pxIcon } from '../../lib/px-icons.js';
+
 export const PERSONALITIES = [
-  { id: 'conqueror', label: 'CONQUEROR', faction: 0, legendaryId: 10, icon: '⚔', color: 'var(--clan-knight)'   },
-  { id: 'patron',    label: 'PATRON',    faction: 1, legendaryId: 20, icon: '◈', color: 'var(--clan-merchant)' },
-  { id: 'phoenix',   label: 'PHOENIX',   faction: 2, legendaryId: 30, icon: '⚡', color: 'var(--clan-pirate)'   },
-  { id: 'detective', label: 'DETECTIVE', faction: 3, legendaryId: 40, icon: '◎', color: 'var(--clan-scholar)'  },
-  { id: 'hermit',    label: 'HERMIT',    faction: 4, legendaryId: 50, icon: '✦', color: 'var(--clan-monk)'     },
-  { id: 'sage',      label: 'SAGE',      faction: 5, legendaryId: 60, icon: '⬡', color: 'var(--clan-engineer)' },
+  { id: 'conqueror', label: 'CONQUEROR', faction: 0, legendaryId: 10, icon: pxIcon('battle'), color: 'var(--clan-knight)'   },
+  { id: 'patron',    label: 'PATRON',    faction: 1, legendaryId: 20, icon: pxIcon('coin'),   color: 'var(--clan-merchant)' },
+  { id: 'phoenix',   label: 'PHOENIX',   faction: 2, legendaryId: 30, icon: pxIcon('flame'),  color: 'var(--clan-pirate)'   },
+  { id: 'detective', label: 'DETECTIVE', faction: 3, legendaryId: 40, icon: pxIcon('eye'),    color: 'var(--clan-scholar)'  },
+  { id: 'hermit',    label: 'HERMIT',    faction: 4, legendaryId: 50, icon: pxIcon('void'),   color: 'var(--clan-monk)'     },
+  { id: 'sage',      label: 'SAGE',      faction: 5, legendaryId: 60, icon: pxIcon('star'),   color: 'var(--clan-engineer)' },
 ];
 
 /**
@@ -34,8 +36,8 @@ export function LegendaryProgressHTML(progress = {}, target = 10, owned = []) {
         <div class="lgp-info">
           <div class="lgp-label-row">
             <span class="lgp-label">${p.label}</span>
-            ${achieved ? '<span class="lgp-check">✓</span>' : ''}
-            ${hasCard  ? '<span class="lgp-card-check" title="Legendary owned">★</span>' : ''}
+            ${achieved ? `<span class="lgp-check">${pxIcon('check')}</span>` : ''}
+            ${hasCard  ? `<span class="lgp-card-check" title="Legendary owned">${pxIcon('star')}</span>` : ''}
           </div>
           <div class="lgp-bar-bg">
             <div class="lgp-bar-fill" style="width:${pct}%;"></div>

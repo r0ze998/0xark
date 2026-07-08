@@ -80,7 +80,7 @@ function buildHTML() {
 
       <!-- Confirm button -->
       <button class="gba-btn gba-btn--primary prep-confirm-btn" id="prep-confirm" disabled>
-        ✓ CONFIRM &amp; COMMIT
+        ${pxIcon('check')} CONFIRM &amp; COMMIT
       </button>
       <div class="label-dim prep-hint" id="prep-hint">Fill all 5 slots to confirm</div>
     </section>
@@ -118,7 +118,7 @@ function renderSlots() {
       aria-label="Slot ${i + 1}: card ${slot.cardId}">
       ${CardHTML({ id: slot.cardId })}
       <div class="prep-slot-action" style="font-size:13px;color:var(--accent-gold);">${actionLabel}</div>
-      <button class="prep-slot-remove" data-slot="${i}" aria-label="Remove card from slot ${i+1}">✕</button>
+      <button class="prep-slot-remove" data-slot="${i}" aria-label="Remove card from slot ${i+1}">${pxIcon('cross')}</button>
     </div>`;
   }).join('');
 }
@@ -239,7 +239,7 @@ async function onConfirm(container) {
   // Guard: already committed this round
   if (getState().commitment !== null) return;
 
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ COMMITTING…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'COMMITTING…'; }
 
   try {
     const cardIds = _field.map(s => s.cardId);
@@ -257,7 +257,7 @@ async function onConfirm(container) {
     const zkAvailable = typeof window.zkCardCommit?.proveHandCommit === 'function';
 
     if (zkAvailable) {
-      if (btn)  btn.textContent  = '⏳ ZK PROOF…';
+      if (btn)  btn.textContent  = 'ZK PROOF…';
       if (hint) hint.textContent = 'Generating ZK proof — takes a few seconds…';
 
       const s          = getState();
@@ -295,14 +295,14 @@ async function onConfirm(container) {
     // ── On-chain: initDuel (host only) → commitHand ───────────────────────
     if (typeof window.oxarkOnchain?.commitHand === 'function') {
       if (s.isHost && typeof window.oxarkOnchain?.initDuel === 'function') {
-        if (btn) btn.textContent = '⏳ INIT DUEL…';
+        if (btn) btn.textContent = 'INIT DUEL…';
         const myPubkey = window.solana?.publicKey?.toBase58();
         await window.oxarkOnchain.initDuel(
           s.duelId, myPubkey, s.opponentPubkey,
         );
       }
 
-      if (btn) btn.textContent = '⏳ ON-CHAIN COMMIT…';
+      if (btn) btn.textContent = 'ON-CHAIN COMMIT…';
       await window.oxarkOnchain.commitHand(
         s.duelId,
         s.round ?? 1,
@@ -330,7 +330,7 @@ async function onConfirm(container) {
     const userMsg = msg.includes('AlreadyCommitted')
       ? 'Already committed for this round'
       : 'Error: ' + msg;
-    if (btn)  { btn.disabled = false; btn.textContent = '✓ CONFIRM & COMMIT'; }
+    if (btn)  { btn.disabled = false; btn.textContent = 'CONFIRM & COMMIT'; }
     if (hint) hint.textContent = userMsg;
     setState({ commitment: null }); // allow retry
   }

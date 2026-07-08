@@ -1,4 +1,5 @@
 // shop-screen.js — Phase 20-B: Pack shop with reveal animation
+import { pxIcon } from '../lib/px-icons.js';
 import { showToast as _toast } from '../lib/ui-shared.js';
 import { rarityOf } from '../lib/card-meta.js';
 
@@ -249,7 +250,7 @@ export function mount(container, props = {}) {
 
       <div class="shop-grid">
         <div class="pack-card pack-standard">
-          <span class="pack-icon">📦</span>
+          <span class="pack-icon">${pxIcon('vault')}</span>
           <h3>Standard Pack</h3>
           <p class="pack-content">5 random cards</p>
           <p class="pack-rates">
@@ -261,7 +262,7 @@ export function mount(container, props = {}) {
         </div>
 
         <div class="pack-card pack-premium">
-          <span class="pack-icon">✨</span>
+          <span class="pack-icon">${pxIcon('star')}</span>
           <h3>Premium Pack</h3>
           <p class="pack-content">3 cards</p>
           <p class="pack-rates">
@@ -274,8 +275,8 @@ export function mount(container, props = {}) {
       </div>
 
       <div class="shop-info">
-        <p>📊 Revenue: 50% Operations / 50% Prize Pool</p>
-        <p>🎲 Verifiable randomness via Solana SlotHashes</p>
+        <p>${pxIcon('coin')} Revenue: 50% Operations / 50% Prize Pool</p>
+        <p>${pxIcon('chip')} Verifiable randomness via Solana SlotHashes</p>
       </div>
     </div>
   `;

@@ -1,4 +1,5 @@
 // home-screen.js — Phase 20-C: 4-button navigation hub (SHOP + TRADE enabled)
+import { pxIcon } from '../lib/px-icons.js';
 import { tierForVault, PRIZE_TIERS } from '../lib/ui-shared.js';
 
 function _injectCSS() {
@@ -103,25 +104,25 @@ export function mount(container, props = {}) {
 
       <div class="home-grid">
         <button class="home-btn" id="btn-battle">
-          <span class="home-btn-icon">⚔</span>
+          <span class="home-btn-icon">${pxIcon('battle')}</span>
           <span class="home-btn-title">BATTLE</span>
           <span class="home-btn-subtitle">Find a duel</span>
         </button>
 
         <button class="home-btn" id="btn-vault">
-          <span class="home-btn-icon">📦</span>
+          <span class="home-btn-icon">${pxIcon('vault')}</span>
           <span class="home-btn-title">VAULT</span>
           <span class="home-btn-subtitle">See cards</span>
         </button>
 
         <button class="home-btn" id="btn-shop">
-          <span class="home-btn-icon">💰</span>
+          <span class="home-btn-icon">${pxIcon('shop')}</span>
           <span class="home-btn-title">SHOP</span>
           <span class="home-btn-subtitle">Buy card packs</span>
         </button>
 
         <button class="home-btn" id="btn-trade">
-          <span class="home-btn-icon">🤝</span>
+          <span class="home-btn-icon">${pxIcon('trade')}</span>
           <span class="home-btn-title">TRADE</span>
           <span class="home-btn-subtitle">P2P marketplace</span>
         </button>

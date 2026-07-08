@@ -107,10 +107,10 @@ function buildHTML() {
         <div class="intr-ctrl-title">INTEL</div>
         <button class="gba-btn intr-peek-btn" id="intr-peek"
           ${getState().hasPeeked ? 'disabled' : ''}>
-          👁 PEEK OPPONENT
+          ${pxIcon('eye')} PEEK OPPONENT
           <span class="intr-fee">(0.005 SOL)</span>
         </button>
-        ${getState().hasPeeked ? '<div class="label-dim" style="font-size:13px;">Peeked ✓</div>' : ''}
+        ${getState().hasPeeked ? `<div class="label-dim" style="font-size:13px;">Peeked ${pxIcon('check')}</div>` : ''}
       </div>
 
       <!-- Swap info -->
@@ -125,7 +125,7 @@ function buildHTML() {
       <!-- Ready -->
       <div class="intr-ctrl-section" style="margin-top:auto;">
         <button class="gba-btn gba-btn--primary intr-ready-btn" id="intr-ready">
-          ✓ READY
+          ${pxIcon('check')} READY
         </button>
       </div>
     </aside>
@@ -204,7 +204,7 @@ function bindEvents(container) {
 async function doPeek(container) {
   const btn = container.querySelector('#intr-peek');
   btn.disabled = true;
-  btn.textContent = '⏳ PEEKING…';
+  btn.textContent = 'PEEKING…';
 
   try {
     let result = null;
@@ -219,11 +219,11 @@ async function doPeek(container) {
     _opponentField = result.cards ?? result;
     setState({ hasPeeked: true, opponentField: _opponentField });
     refreshOppSlots(container);
-    btn.textContent = '👁 PEEKED ✓';
+    btn.textContent = 'PEEKED';
     container.querySelector('#intr-opp-hint').textContent = 'Opponent field revealed';
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = '👁 PEEK OPPONENT\n(0.005 SOL)';
+    btn.textContent = 'PEEK OPPONENT\n(0.005 SOL)';
   }
 }
 
@@ -263,7 +263,7 @@ function doSwap(container, idx, newCardId) {
 async function onReady(container) {
   const btn = container.querySelector('#intr-ready');
   btn.disabled = true;
-  btn.textContent = '⏳ COMMITTING…';
+  btn.textContent = 'COMMITTING…';
 
   try {
     let commitment = getState().commitment;
@@ -291,7 +291,7 @@ async function onReady(container) {
     document.dispatchEvent(new CustomEvent('nav:reveal'));
   } catch {
     btn.disabled = false;
-    btn.textContent = '✓ READY';
+    btn.textContent = 'READY';
   }
 }
 

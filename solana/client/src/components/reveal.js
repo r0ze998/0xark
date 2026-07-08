@@ -4,7 +4,7 @@
 import { getCard } from '../lib/cards.js';
 import { factionOf, isLegendaryOf } from '../lib/card-meta.js';
 import { damageCalc } from '../lib/damage-calc.js';
-import { CardFrameHTML, injectCardCSS, FACTION_NAMES, ACTION_LABELS, FACTION_COLORS } from './common/Card.js';
+import { CardFrameHTML, injectCardCSS, FACTION_NAMES, ACTION_LABELS, ACTION_NAMES, FACTION_COLORS } from './common/Card.js';
 import { getState, setState } from '../state/battle-state.js';
 import * as duelWs from '../lib/duel-ws.js';
 
@@ -35,7 +35,7 @@ async function _submitRevealOnChain(s) {
     _revealFailed = true;
     const msg = err.message ?? String(err);
     console.error('[Reveal] reveal_hand failed (navigation blocked):', msg);
-    _uiAddLog?.(`✕ reveal TX failed — tap to retry: ${msg.slice(0, 80)}`, 'log-error rev-retry-reveal');
+    _uiAddLog?.(`reveal TX failed — tap to retry: ${msg.slice(0, 80)}`, 'log-error rev-retry-reveal');
     return null;
   }
 }
@@ -215,7 +215,7 @@ function buildHTML(s, result) {
     <div class="chip rev-phase-label">REVEAL</div>
     <div class="rev-status label-gold" id="rev-status">Revealing hands…</div>
     <button class="gba-btn gba-btn--ghost rev-skip-btn" id="rev-skip" style="font-size:14px;">
-      ⏭ SKIP
+      SKIP
     </button>
   </header>
 
@@ -293,7 +293,7 @@ function runAnimation(container, s, result) {
         const s = getState();
         _submitRevealOnChain(s).then(tx => {
           if (tx) {
-            line.textContent = `◈ reveal TX confirmed ✓ (${tx.slice(0,8)}…)`;
+            line.textContent = `◈ reveal TX confirmed (${tx.slice(0,8)}…)`;
             line.className = 'rev-log-line log-gold';
             if (duelWs.isConnected() && s.duelId) {
               const myCardIds     = s.fieldCards.filter(Boolean).map(c => c.cardId);
@@ -301,7 +301,7 @@ function runAnimation(container, s, result) {
               duelWs.sendHandRevealed(s.duelId, s.round ?? 1, myCardIds, myActionTypes, tx);
             }
           } else {
-            line.textContent = '✕ retry failed — check wallet';
+            line.textContent = 'retry failed — check wallet';
             line.className = 'rev-log-line log-error rev-retry-reveal';
           }
         });
@@ -346,7 +346,7 @@ function runAnimation(container, s, result) {
     const lgdCards = [...p1, ...p2].filter(c => isLegendaryOf(c.cardId));
     lgdCards.forEach((c, i) => {
       after(i * 800, () => {
-        addLog(`★ ${FACTION_NAMES[factionOf(c.cardId)]} LEGENDARY ACTIVATES!`, 'log-gold');
+        addLog(`${FACTION_NAMES[factionOf(c.cardId)]} LEGENDARY ACTIVATES!`, 'log-gold');
       });
     });
   });
@@ -359,7 +359,7 @@ function runAnimation(container, s, result) {
     allCards.forEach((c, i) => {
       after(i * 400, () => {
         const card = getCard(c.cardId);
-        addLog(`[${c.side.toUpperCase()}] ${ACTION_LABELS[c.actionType] ?? '—'} (INI ${card?.ini})`, '');
+        addLog(`[${c.side.toUpperCase()}] ${ACTION_NAMES[c.actionType] ?? '—'} (INI ${card?.ini})`, '');
       });
     });
   });

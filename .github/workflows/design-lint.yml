@@ -3,8 +3,8 @@ name: design-lint
 # Sprite Seas design-floor gate (DESIGN.md Appendix B). Runs the one canonical
 # linter — identical to what you run locally — instead of raw greps (GNU/BSD grep
 # disagree on -P + astral emoji ranges). Enforced: brand-hex, sub-13px,
-# sub-floor-rem, faux-bold. Report-only (do not fail the build yet): emoji
-# (PR-C / F0-4) and round-hardcode (F1). The script's exit code is the gate.
+# sub-floor-rem, faux-bold, emoji (px-icon sprite landed in F0-4). Report-only:
+# round-hardcode (F1). The script's exit code is the gate.
 
 on:
   pull_request:

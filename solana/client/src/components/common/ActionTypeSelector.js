@@ -1,12 +1,13 @@
 // ActionTypeSelector.js — 6-action picker
+import { pxIcon } from '../../lib/px-icons.js';
 
 export const ACTION_TYPES = [
-  { id: 0, icon: '◆', label: 'CRYSTAL', desc: '+5 BP modifier'        },
-  { id: 1, icon: '🛡', label: 'BARRIER', desc: 'Negate first hit'      },
-  { id: 2, icon: '⚡', label: 'FLAME',   desc: 'Double ATK vs Common'  },
-  { id: 3, icon: '🌀', label: 'STORM',   desc: '-2 BP on opponent'     },
-  { id: 4, icon: '◎', label: 'SHADOW',  desc: 'Steal opponent card'    },
-  { id: 5, icon: '✦', label: 'VOID',    desc: 'Ignore Barrier'        },
+  { id: 0, icon: pxIcon('crystal'), label: 'CRYSTAL', desc: '+5 BP modifier'        },
+  { id: 1, icon: pxIcon('barrier'), label: 'BARRIER', desc: 'Negate first hit'      },
+  { id: 2, icon: pxIcon('flame'),   label: 'FLAME',   desc: 'Double ATK vs Common'  },
+  { id: 3, icon: pxIcon('storm'),   label: 'STORM',   desc: '-2 BP on opponent'     },
+  { id: 4, icon: pxIcon('shadow'),  label: 'SHADOW',  desc: 'Steal opponent card'    },
+  { id: 5, icon: pxIcon('void'),    label: 'VOID',    desc: 'Ignore Barrier'        },
 ];
 
 /**
