@@ -15,7 +15,7 @@ import { CardFrameHTML, injectCardCSS, ACTION_LABELS } from './common/Card.js';
 import { RoundHudHTML, injectRoundUiCSS } from './common/round-ui.js';
 import { startTimer } from './common/Timer.js';
 import { pxIcon } from '../lib/px-icons.js';
-import { showToast } from '../lib/ui-shared.js';
+import { showToast, txLink } from '../lib/ui-shared.js';
 import { getState, setState } from '../state/battle-state.js';
 
 const INTEL_SECS = 60;
@@ -272,23 +272,9 @@ function lightDemo(reason) {
   else console.info('[DEMO]', reason);
 }
 
-function txExplorerUrl(sig) {
-  // F1-7 will centralize this via config.EXPLORER_TX_URL; devnet stopgap for now.
-  if (window.oxarkUI?.txLink) return null; // handled by helper below
-  return `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
-}
-
 function showTxToast(label, sig) {
-  if (window.oxarkUI?.txLink) {
-    const t = showToast(label, 'success');
-    try { t.innerHTML = `${pxIcon('check')} ${label} ${window.oxarkUI.txLink(sig)}`; } catch (_) {}
-    return;
-  }
-  const url = txExplorerUrl(sig);
-  const t = showToast(`${label} — ${sig.slice(0, 8)}`, 'success');
-  try {
-    t.innerHTML = `${pxIcon('check')} ${label} <a class="tx-link" href="${url}" target="_blank" rel="noopener">${sig.slice(0, 8)} ↗</a>`;
-  } catch (_) {}
+  const t = showToast(label, 'success');
+  try { t.innerHTML = `${pxIcon('check')} ${label} ${txLink(sig)}`; } catch (_) {}
 }
 
 /* ── Style ──────────────────────────────────────────────────────────── */
