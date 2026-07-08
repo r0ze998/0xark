@@ -2045,21 +2045,128 @@ async function revealHand(duelIdStr, round, cardIds, salt) {
 /// Fetch DuelState account and return { winner, endedAt, round }.
 /// Used by clients after round-5 reveal to detect duel resolution.
 /// @param {string} duelIdStr — base58 Pubkey
-async function getDuelState(duelIdStr) {
+// ── F1-0 constants, mirrored from the Rust program (chain is authoritative at
+//    spend time; these drive client-side projection/gating only).
+//    mirror of solana/oxark/programs/oxark/src/constants.rs
+const ENERGY_MAX = 5;                     // constants.rs ENERGY_MAX
+const ENERGY_REGEN_SECS = 4 * 3600;       // constants.rs ENERGY_REGEN_INTERVAL_SECONDS (4h)
+const DUEL_STALL_TIMEOUT_SECONDS = 600;   // constants.rs DUEL_STALL_TIMEOUT_SECONDS
+
+// ── F1-0: full DuelState reader. Offsets RE-DERIVED from state.rs `DuelState`
+//    (SIZE 1624), NOT the old comment block — which had winner/started_at/
+//    ended_at in the wrong order and returned a garbage winner/endedAt.
+//    After the 8-byte disc:
+//      id@8 p1@40 p2@72 hall_tier@104 round@105 phase@106 ante@107
+//      started_at@115 ended_at@123 winner@131
+//      p1_commit@163 p2_commit@323 ([u8;32]×5)
+//      p1_reveal@483 p2_reveal@883 ([u64;10]×5 = 80 bytes/round)
+//      p1_round_wins@1614 p2_round_wins@1615 last_progress_at@1616
+async function getDuelStateFull(duelIdStr) {
   const duelIdPK = new solanaWeb3.PublicKey(duelIdStr);
   const [duelPDA] = findDuelPDA(duelIdPK);
-  const rpc  = new solanaWeb3.Connection(DEVNET_RPC, 'confirmed');
-  const info = await rpc.getAccountInfo(duelPDA);
+  const info = await getConnection().getAccountInfo(duelPDA);
   if (!info) return null;
   const d = info.data;
-  // DuelState layout (after 8-byte disc):
-  // id(32) player_1(32) player_2(32) hall_tier(1) round(1) phase(1) ante(8)
-  // winner(32) started_at(8) ended_at(8) bump(1) ...
-  const off = 8 + 32 + 32 + 32 + 1 + 1 + 1 + 8; // = 115
-  const winner   = new solanaWeb3.PublicKey(d.slice(off, off + 32)).toBase58();
-  const endedAt  = Number(new DataView(d.buffer, d.byteOffset + off + 32, 8).getBigInt64(0, true));
-  const round    = d[8 + 32 + 32 + 32 + 1];
-  return { winner, endedAt, round };
+  const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
+  const b58 = (o) => new solanaWeb3.PublicKey(d.slice(o, o + 32)).toBase58();
+  const i64 = (o) => Number(dv.getBigInt64(o, true));
+  const nonZero = (o, len) => { for (let i = 0; i < len; i++) if (d[o + i] !== 0) return true; return false; };
+
+  const P1_COMMIT = 163, P2_COMMIT = 323;   // [[u8;32];5]
+  const P1_REVEAL = 483, P2_REVEAL = 883;   // [[u64;10];5], 80 bytes/round
+  const committed = [], revealed = [];      // [round0..4][ p1, p2 ]
+  for (let r = 0; r < 5; r++) {
+    committed.push([nonZero(P1_COMMIT + r * 32, 32), nonZero(P2_COMMIT + r * 32, 32)]);
+    revealed.push([nonZero(P1_REVEAL + r * 80, 80), nonZero(P2_REVEAL + r * 80, 80)]);
+  }
+  return {
+    player1: b58(8), player2: b58(40),
+    round: d[105],
+    p1RoundWins: d[1614], p2RoundWins: d[1615],
+    winner: b58(131), startedAt: i64(115), endedAt: i64(123),
+    lastProgressAt: i64(1616),
+    committed, revealed,
+  };
+}
+
+// Back-compat thin wrapper over getDuelStateFull (fixes the old winner/endedAt bug).
+async function getDuelState(duelIdStr) {
+  const full = await getDuelStateFull(duelIdStr);
+  return full ? { winner: full.winner, endedAt: full.endedAt, round: full.round } : null;
+}
+
+// ── F1-0: CardMintRecord → { cardId, rarity }. state.rs: disc8 + card_mint@8 +
+//    card_id@40 + rarity@41.
+async function getCardMintRecord(mintStr) {
+  const [pda] = findCardMintRecordPDA(new solanaWeb3.PublicKey(mintStr));
+  const info = await getConnection().getAccountInfo(pda);
+  if (!info) return null;
+  const d = info.data;
+  return { cardId: d[40], rarity: d[41] };
+}
+
+// ── F1-0: enumerate the wallet's owned card mints (amount 1, decimals 0),
+//    resolve each to its CardMintRecord, group by cardId. Session-cached; call
+//    invalidateOwnedCardMints() after buyPack / burn / promote / (future) steal.
+let _ownedCardMintsCache = null;
+function invalidateOwnedCardMints() { _ownedCardMintsCache = null; }
+async function getOwnedCardMints() {
+  if (_ownedCardMintsCache) return _ownedCardMintsCache;
+  const wallet = window.oxarkWallet?.getPublicKey?.();
+  if (!wallet) return new Map();
+  const conn = getConnection();
+  const ownerPK = typeof wallet === 'string' ? new solanaWeb3.PublicKey(wallet) : wallet;
+  const resp = await conn.getParsedTokenAccountsByOwner(
+    ownerPK, { programId: new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID) });
+  const mints = resp.value
+    .map(a => a.account.data.parsed?.info)
+    .filter(i => i && i.tokenAmount?.amount === '1' && i.tokenAmount?.decimals === 0)
+    .map(i => i.mint);
+  const recordPDAs = mints.map(m => findCardMintRecordPDA(new solanaWeb3.PublicKey(m))[0]);
+  const infos = recordPDAs.length ? await conn.getMultipleAccountsInfo(recordPDAs) : [];
+  const map = new Map(); // cardId -> [{ mint, rarity }]  (multiple copies possible)
+  infos.forEach((info, i) => {
+    if (!info) return;                     // token not a card mint (no record)
+    const cardId = info.data[40], rarity = info.data[41];
+    if (!map.has(cardId)) map.set(cardId, []);
+    map.get(cardId).push({ mint: mints[i], rarity });
+  });
+  _ownedCardMintsCache = map;
+  return map;
+}
+
+// ── F1-0: full CardBattleHistory decode (scalar fields; lease_* skipped).
+//    state.rs `CardBattleHistory` (LEN 636), after 8-byte disc:
+//      card_mint@8 wins@40 losses@44 kos@48 dmg_dealt@52 times_summoned@60
+//      owners_history@64 owners_history_len@384 owners_dropped@385 acq_source@389
+//      current_owner_since@390 created_at@398 bump@406
+//      burn_count@407 souls@411 legendary_kills@415
+//      imprints@419 ([Imprint;5], 22 bytes each) imprint_count@529
+async function getCardBattleHistory(mintStr) {
+  const [pda] = findCardBattleHistoryPDA(new solanaWeb3.PublicKey(mintStr));
+  const info = await getConnection().getAccountInfo(pda);
+  if (!info) return null;
+  const d = info.data;
+  const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
+  const IMP = 419, IMP_SIZE = 22;          // Imprint: key u8@0, value i32@1, is_cosmetic@5, acquired_at i64@6, duel_id u64@14
+  const imprintCount = d[529];
+  const imprints = [];
+  for (let i = 0; i < imprintCount && i < 5; i++) {
+    const o = IMP + i * IMP_SIZE;
+    imprints.push({ key: d[o], value: dv.getInt32(o + 1, true), isCosmetic: d[o + 5] === 1 });
+  }
+  return {
+    wins: dv.getUint32(40, true),
+    losses: dv.getUint32(44, true),
+    kos: dv.getUint32(48, true),
+    dmgDealt: Number(dv.getBigUint64(52, true)),
+    timesSummoned: dv.getUint32(60, true),
+    ownersHistoryCount: d[384],
+    ownersDroppedCount: dv.getUint32(385, true),
+    acquisitionSource: d[389],
+    legendaryKills: dv.getUint32(415, true),
+    imprints,
+  };
 }
 
 // SlotHashes sysvar pubkey (stable across all Solana versions).
@@ -2362,7 +2469,13 @@ async function getPlayerState(playerPubkey) {
       if ((d[vaultOff + b] >> bit) & 1) vault.push(b * 8 + bit + 1);
   const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
   const deposit = Number(dv.getBigUint64(depositOff, true));
-  return { vault, vault_count: vault.length, deposit_amount: deposit };
+  // F1-0: energy fields are the LAST two of PlayerState, so they sit at a fixed
+  // offset from vaultOff (which already absorbs the current_queue Option shift):
+  //   from vaultOff: vault_bitmap(8) deposit(8) +5 u8 + x402(8) + peek(8) +1 u8
+  //   + legendary_progress(6) +2 u8 + last_drop_ts(8) → energy@+54, regen_ts@+55.
+  const energy = d[vaultOff + 54];
+  const energyLastTs = Number(dv.getBigInt64(vaultOff + 55, true));
+  return { vault, vault_count: vault.length, deposit_amount: deposit, energy, energyLastTs };
 }
 
 async function getGameWorld() {
@@ -2454,6 +2567,15 @@ window.oxarkOnchain = {
   commitHand,
   revealHand,
   getDuelState,
+  // F1-0 — onchain.js reader plumbing
+  getDuelStateFull,
+  getCardMintRecord,
+  getOwnedCardMints,
+  invalidateOwnedCardMints,
+  getCardBattleHistory,
+  ENERGY_MAX,
+  ENERGY_REGEN_SECS,
+  DUEL_STALL_TIMEOUT_SECONDS,
   // Phase 19 — claim_battle_loot
   claimBattleLoot,
   findDuelPDA,
@@ -2486,6 +2608,25 @@ window.oxarkOnchain = {
   findGameWorldPDA,
   findCardBattleHistoryPDA,
   findSeasonStatsPDA,
+};
+
+// ── F1-0 acceptance: dev-only readers dump. Compare against `solana account`
+//    dumps of the same PDAs on a local validator (spec §1 acceptance). Stripped
+//    in a later PR. Usage: await window.__oxarkDebugReaders({ duelId, mint, player })
+window.__oxarkDebugReaders = async ({ duelId, mint, player } = {}) => {
+  const w = player ?? window.oxarkWallet?.getPublicKey?.()?.toString?.();
+  const out = {};
+  try {
+    if (w)      out.playerState       = await getPlayerState(w);
+    if (duelId) out.duelStateFull     = await getDuelStateFull(duelId);
+    if (mint) {
+      out.cardMintRecord    = await getCardMintRecord(mint);
+      out.cardBattleHistory = await getCardBattleHistory(mint);
+    }
+    out.ownedCardMints = Object.fromEntries(await getOwnedCardMints());
+  } catch (e) { out.error = String(e?.stack ?? e); }
+  console.log('[__oxarkDebugReaders]', out);
+  return out;
 };
 
 console.log('[0xARK] onchain module loaded. Program:', PROGRAM_ID_STR);
