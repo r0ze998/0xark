@@ -290,7 +290,7 @@ async function startMatchmaking(container) {
   const info = container.querySelector('#ms-match-info');
   if (!btn || !info) return;
 
-  // Energy gate (F1-3 §4): entering a duel spends ⚡1 at commit; block up front.
+  // Energy gate (F1-3 §4): entering a duel spends 1 energy at commit; block up front.
   if (_energyNow === 0) {
     showToast('Out of energy — refill to battle', 'error');
     if (info) info.innerHTML = `Out of energy — <span class="label-gold">refill above</span> to battle`;

@@ -1,5 +1,5 @@
 // energy-hud.js — shared energy display + refill (spec F1-3, DESIGN.md energy-pips).
-// 5 px-bolt pips + n/5 + a live "next ⚡ in H:MM:SS" countdown. The chain is
+// 5 px-bolt pips + n/5 + a live "next energy in H:MM:SS" countdown. The chain is
 // authoritative at spend time; this is a display projection off the last regen
 // anchor. Mounted on home / vault topbar / battle lobby / preparation.
 //
@@ -158,7 +158,7 @@ const CSS = `
 
 .energy-refill {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
-  background: var(--bg-mid, #1a1f33); border: var(--border-dim);
+  background: var(--bg-mid); border: var(--border-dim);
   padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; min-width: 150px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.5);
 }
