@@ -449,7 +449,64 @@ injectPxIconSheet(); // global icon sprite before any screen mounts
 function boot() {
   initApp();
 }
-boot();
+
+// ── DEV screen viewer (F1-0 rider) — guarded, one self-contained block ────────
+// Eyeball any screen state without a wallet:  /?devview=<name>  (index: =menu).
+// Wallet + on-chain are stubbed and state is mock, so this is dev-only; deleting
+// this if/else (and restoring `boot();`) removes it. r0ze uses it to review each
+// F1 screen state (bridge, INTEL, promote gates) as they land in PR-E/F/G.
+const _devView = new URLSearchParams(location.search).get('devview');
+if (_devView) {
+  const MOCK_PK = 'DEMoV1ewer1111111111111111111111111111111';
+  window.oxarkWallet = {
+    isConnected: () => true, getPublicKey: () => MOCK_PK,
+    getPublicKeyString: () => MOCK_PK, connect: async () => MOCK_PK, disconnect: async () => {},
+  };
+  window.oxarkOnchain = window.oxarkOnchain || {};
+  const _vault = getDemoVault();
+  const _field = [1, 12, 24, 35, 50].map((cardId, i) => ({ cardId, actionType: i }));
+  const _opp   = [7, 20, 29, 41, 60].map((cardId, i) => ({ cardId, actionType: i }));
+  const _gw = { game_start_timestamp: Math.floor(Date.now() / 1000) - 3 * 86400 };
+  const _ps = { vault_count: _vault.length, vault: _vault, energy: 4 };
+  setState({
+    phase: 'main', playerPubkey: MOCK_PK, vault: _vault, round: 1,
+    fieldCards: _field, opponentField: _opp, hasPeeked: true,
+    isWinner: true, lootCard: 29, battleResult: { lootCard: 29, isWinner: true, winner: 'p1' },
+  });
+  const _app = document.getElementById('app');
+  document.getElementById('app-loading')?.remove();
+  const _views = {
+    home:         () => mountHome(_app, { playerState: _ps, gameWorld: _gw, pubkey: MOCK_PK }),
+    main:         () => mountMain(_app, { ...getState(), mode: 'vault', vault: _vault, pubkey: MOCK_PK }),
+    shop:         () => mountShop(_app, { gameWorld: _gw }),
+    trade:        () => mountTrade(_app, { playerState: _ps }),
+    preparation:  () => mountPrep(_app, { ...getState(), vault: _vault }),
+    interruption: () => mountIntr(_app, { ...getState() }),
+    reveal:       () => mountReveal(_app, { ...getState() }),
+    loot:         () => mountLoot(_app, { ...getState() }),
+    'card-detail': async () => {
+      mountMain(_app, { ...getState(), mode: 'vault', vault: _vault, pubkey: MOCK_PK });
+      const { CardDetailModal } = await import('./src/components/card-detail.js');
+      CardDetailModal.show(_app.querySelector('.ms-root') || _app, 12, {});
+    },
+  };
+  const _names = ['home','main','shop','trade','preparation','interruption','reveal','loot','card-detail'];
+  if (_devView === 'menu') {
+    _app.innerHTML = `<div style="padding:24px;font-family:var(--font-main);color:var(--text-cream);height:100%;overflow:auto;">
+      <div style="font-size:var(--fs-title);color:var(--accent-gold);letter-spacing:var(--ls-wide);">DEV SCREEN VIEWER</div>
+      <div style="font-size:var(--fs-ui);color:var(--text-dim);margin:8px 0 16px;">dev-only · wallet bypassed · mock state</div>
+      ${_names.map(n => `<div style="margin:6px 0;"><a class="tx-link" href="?devview=${n}" style="font-size:var(--fs-body);">?devview=${n}</a></div>`).join('')}
+    </div>`;
+  } else if (_views[_devView]) {
+    Promise.resolve().then(_views[_devView]).catch(e => {
+      _app.innerHTML = `<pre style="color:var(--accent-red);padding:24px;white-space:pre-wrap;">devview error "${_devView}":\n${e?.stack ?? e}</pre>`;
+    });
+  } else {
+    _app.innerHTML = `<div style="padding:24px;color:var(--accent-red);">unknown screen "${_devView}" — try <a class="tx-link" href="?devview=menu">?devview=menu</a></div>`;
+  }
+} else {
+  boot();
+}
 
 // Demo vault for local testing — first 30 cards owned
 function getDemoVault() {
