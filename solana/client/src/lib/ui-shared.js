@@ -16,6 +16,24 @@ export function showToast(msg, type = 'info', { className = 'wg-toast', duration
   return t;
 }
 
+// ── Tx short-link ─────────────────────────────────────────────────────────────
+// Minimal explorer link for on-chain confirmation toasts (DESIGN.md tx-link).
+// F1-7 (PR-G) will centralize the cluster in config.EXPLORER_TX_URL; devnet is
+// the current network (CLAUDE.md) so it is the stopgap default here.
+export function txLink(sig, { cluster = 'devnet' } = {}) {
+  if (!sig) return '';
+  const short = String(sig).slice(0, 8);
+  const url = `https://explorer.solana.com/tx/${sig}?cluster=${cluster}`;
+  return `<a class="tx-link" href="${url}" target="_blank" rel="noopener">${short}… ↗</a>`;
+}
+
+// Convenience: success toast whose body carries a tx short-link.
+export function showTxToast(label, sig, type = 'success') {
+  const t = showToast(label, type);
+  try { t.innerHTML = `${label} ${txLink(sig)}`; } catch (_) {}
+  return t;
+}
+
 // ── Season prize tiers ───────────────────────────────────────────────────────
 // Canonical tier table (mirrors claim_prize_v2 compute_tier_prize): vault-count
 // band → share of the pool. `color` chrome for the tier chip (greys below T3 are

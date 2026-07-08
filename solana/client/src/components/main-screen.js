@@ -2,10 +2,12 @@
 // mount(container, detail) / unmount(container)
 import { pxIcon } from '../lib/px-icons.js';
 
-import { ALL_CARD_IDS, getCard, isBurnable, isMergeOnly, getMergeRecipe, MERGE_RECIPES } from '../lib/cards.js';
+import { ALL_CARD_IDS, getCard, isBurnable } from '../lib/cards.js';
 import { CardFrameHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS, CARD_NAMES } from './common/Card.js';
 import { LegendaryProgressHTML, injectLegendaryProgressCSS, PERSONALITIES } from './common/LegendaryProgress.js';
 import { PrizePoolHTML, injectPrizePoolCSS } from './common/PrizePool.js';
+import { EnergyHudHTML, attachEnergyHud, injectEnergyCss, computeEnergy } from './common/energy-hud.js';
+import { showToast } from '../lib/ui-shared.js';
 import { getState, setState } from '../state/battle-state.js';
 import { CardDetailModal } from './card-detail.js';
 import * as duelWs from '../lib/duel-ws.js';
@@ -14,6 +16,8 @@ let _matchInterval  = null;
 let _dots           = 0;
 let _unsubWaiting   = () => {};
 let _unsubMatched   = () => {};
+let _detachEnergy   = () => {};
+let _energyNow      = null;   // projected energy, null until first PlayerState load
 
 function _unsubMatchmaking() {
   _unsubWaiting();
@@ -39,6 +43,7 @@ export function mount(container, detail = {}) {
   injectCardCSS();
   injectLegendaryProgressCSS();
   injectPrizePoolCSS();
+  injectEnergyCss();
 
   const s = getState();
   const vault   = detail.vault   ?? s.vault   ?? [];
@@ -48,48 +53,20 @@ export function mount(container, detail = {}) {
 
   setState({ vault, playerPubkey: pubkey, personalities: perso, phase: 'main' });
 
-  container.innerHTML = buildHTML({ vault, pubkey, perso });
+  container.innerHTML = buildHTML({ vault, pubkey, perso, playerState: detail.playerState });
   bindEvents(container);
+  _loadEnergy(container, pubkey, detail.playerState);
 }
 
 export function unmount(container) {
   if (_matchInterval) { clearInterval(_matchInterval); _matchInterval = null; }
+  _detachEnergy(); _detachEnergy = () => {};
   _unsubMatchmaking();
   container.innerHTML = '';
 }
 
-/* ── Evolve helpers ─────────────────────────────────────────────────── */
-function _countEvolvable(owned) {
-  return Object.values(MERGE_RECIPES).filter(r => owned.has(r.recipe[0]) && owned.has(r.recipe[1])).length;
-}
-
-function _buildEvolveList(owned) {
-  const rows = Object.entries(MERGE_RECIPES).map(([childId, r]) => {
-    const cId    = parseInt(childId, 10);
-    const hasA   = owned.has(r.recipe[0]);
-    const hasB   = owned.has(r.recipe[1]);
-    const ready  = hasA && hasB;
-    const nameA  = CARD_NAMES[r.recipe[0]] ?? `#${r.recipe[0]}`;
-    const nameB  = CARD_NAMES[r.recipe[1]] ?? `#${r.recipe[1]}`;
-    const nameC  = CARD_NAMES[cId] ?? r.name;
-    return `
-<div class="ms-evolve-row${ready ? ' ms-evolve-row--ready' : ''}" data-child="${cId}">
-  <div class="ms-evolve-row-info">
-    <span class="ms-evolve-result label-gold">${nameC}</span>
-    <span class="ms-evolve-recipe label-dim">${nameA} + ${nameB}</span>
-  </div>
-  <button class="gba-btn gba-btn--primary ms-evolve-btn"
-    data-child="${cId}" data-a="${r.recipe[0]}" data-b="${r.recipe[1]}"
-    ${ready ? '' : 'disabled'}>
-    ${ready ? `${pxIcon('arrow-up')} EVOLVE` : `${pxIcon('arrow-up')} NEED CARDS`}
-  </button>
-</div>`;
-  });
-  return rows.join('') || '<div class="label-dim" style="padding:12px;">No merge-only cards available yet.</div>';
-}
-
 /* ── HTML ───────────────────────────────────────────────────────────── */
-function buildHTML({ vault, pubkey, perso }) {
+function buildHTML({ vault, pubkey, perso, playerState }) {
   const owned = new Set(vault);
   const vaultCount = vault.length;
   const truncPub   = pubkey.length >= 8
@@ -117,6 +94,7 @@ function buildHTML({ vault, pubkey, perso }) {
     </div>
     <div class="ms-hud flex-row gap-8">
       <span class="chip">VAULT <span class="label-gold">${vaultCount}</span><span class="label-dim">/60</span></span>
+      ${EnergyHudHTML(playerState, { refill: true })}
       <button class="gba-btn gba-btn--ghost ms-wallet-btn" id="ms-wallet">
         ${pxIcon('check')} ${truncPub || 'Connected'}
       </button>
@@ -139,14 +117,6 @@ function buildHTML({ vault, pubkey, perso }) {
         <span class="ms-vault-progress-label">${Math.round((vaultCount/60)*100)}%</span>
       </div>
 
-      <!-- Tab bar -->
-      <div class="ms-tab-bar" role="tablist">
-        <button class="ms-tab ms-tab--active" id="ms-tab-vault" role="tab" aria-selected="true" aria-controls="ms-pane-vault">VAULT</button>
-        <button class="ms-tab" id="ms-tab-evolve" role="tab" aria-selected="false" aria-controls="ms-pane-evolve">
-          EVOLVE${_countEvolvable(owned) > 0 ? ` <span class="ms-evolve-badge">${_countEvolvable(owned)}</span>` : ''}
-        </button>
-      </div>
-
       <!-- VAULT pane -->
       <div id="ms-pane-vault" role="tabpanel">
         <!-- Faction filter -->
@@ -163,13 +133,6 @@ function buildHTML({ vault, pubkey, perso }) {
         <!-- Card grid 10×6 -->
         <div class="ms-card-grid" id="ms-card-grid" role="list" aria-label="All cards">
           ${cardGrid}
-        </div>
-      </div>
-
-      <!-- EVOLVE pane -->
-      <div id="ms-pane-evolve" role="tabpanel" style="display:none;">
-        <div class="ms-evolve-list" id="ms-evolve-list">
-          ${_buildEvolveList(owned)}
         </div>
       </div>
 
@@ -241,14 +204,6 @@ function bindEvents(container) {
     }
   });
 
-  // Tab switching
-  container.querySelector('#ms-tab-vault')?.addEventListener('click', () => {
-    _switchTab(container, 'vault');
-  });
-  container.querySelector('#ms-tab-evolve')?.addEventListener('click', () => {
-    _switchTab(container, 'evolve');
-  });
-
   // Faction filter
   container.querySelectorAll('.ms-faction-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -267,18 +222,8 @@ function bindEvents(container) {
     const cardId = parseInt(card.dataset.id, 10);
     if (!cardId) return;
     CardDetailModal.show(container.querySelector('.ms-root'), cardId, {
-      onBurn:   () => _refreshVaultGrid(container),
-      onEvolve: () => _refreshVaultGrid(container),
-    });
-  });
-
-  // Evolve buttons in EVOLVE pane
-  container.querySelector('#ms-evolve-list')?.addEventListener('click', e => {
-    const btn = e.target.closest('.ms-evolve-btn');
-    if (!btn || btn.disabled) return;
-    const childId = parseInt(btn.dataset.child, 10);
-    CardDetailModal.show(container.querySelector('.ms-root'), childId, {
-      onEvolve: () => _refreshVaultGrid(container),
+      onBurn:    () => _refreshVaultGrid(container),
+      onPromote: () => _refreshVaultGrid(container),
     });
   });
 
@@ -288,27 +233,44 @@ function bindEvents(container) {
   });
 }
 
-function _switchTab(container, tab) {
-  const vaultPane  = container.querySelector('#ms-pane-vault');
-  const evolvePane = container.querySelector('#ms-pane-evolve');
-  const tabVault   = container.querySelector('#ms-tab-vault');
-  const tabEvolve  = container.querySelector('#ms-tab-evolve');
-  const isVault    = tab === 'vault';
-  if (vaultPane)  vaultPane.style.display  = isVault  ? '' : 'none';
-  if (evolvePane) evolvePane.style.display = !isVault ? '' : 'none';
-  tabVault?.classList.toggle('ms-tab--active', isVault);
-  tabEvolve?.classList.toggle('ms-tab--active', !isVault);
-  tabVault?.setAttribute('aria-selected', String(isVault));
-  tabEvolve?.setAttribute('aria-selected', String(!isVault));
-}
-
 function _refreshVaultGrid(container) {
   const s     = getState();
   const owned = new Set(s.vault);
   const grid  = container.querySelector('#ms-card-grid');
   if (grid) grid.innerHTML = ALL_CARD_IDS.map(id => CardFrameHTML({ id, owned: owned.has(id) })).join('');
-  const evolveList = container.querySelector('#ms-evolve-list');
-  if (evolveList) evolveList.innerHTML = _buildEvolveList(owned);
+}
+
+// ── Energy (F1-3) ──────────────────────────────────────────────────────────
+// Fetch PlayerState, wire the topbar HUD (with refill), and gate START on
+// energyNow === 0. Refresh the gate after a refill. Chain is authoritative at
+// commit; this is the belt (gate) to the commit-time suspenders (§4).
+async function _loadEnergy(container, pubkey, seedPlayerState) {
+  const apply = (ps) => {
+    _energyNow = computeEnergy(ps).energyNow;
+    _detachEnergy();
+    _detachEnergy = attachEnergyHud(container, {
+      playerState: ps, refill: true,
+      onRefill: () => _loadEnergy(container, pubkey), // re-read fresh state
+    });
+    _applyEnergyGate(container);
+  };
+  if (seedPlayerState) apply(seedPlayerState);
+  if (typeof window.oxarkOnchain?.getPlayerState !== 'function' || !pubkey) return;
+  try {
+    const ps = await window.oxarkOnchain.getPlayerState(pubkey);
+    if (ps) apply(ps);
+  } catch (err) {
+    console.warn('[energy] getPlayerState failed:', err?.message ?? err);
+  }
+}
+
+function _applyEnergyGate(container) {
+  const btn = container.querySelector('#ms-start');
+  if (!btn) return;
+  const drained = _energyNow === 0;
+  btn.disabled = drained;
+  const info = container.querySelector('#ms-match-info');
+  if (drained && info) info.innerHTML = `Out of energy — <span class="label-gold">refill above</span> to battle`;
 }
 
 function filterVaultGrid(container, faction) {
@@ -327,6 +289,13 @@ async function startMatchmaking(container) {
   const btn  = container.querySelector('#ms-start');
   const info = container.querySelector('#ms-match-info');
   if (!btn || !info) return;
+
+  // Energy gate (F1-3 §4): entering a duel spends 1 energy at commit; block up front.
+  if (_energyNow === 0) {
+    showToast('Out of energy — refill to battle', 'error');
+    if (info) info.innerHTML = `Out of energy — <span class="label-gold">refill above</span> to battle`;
+    return;
+  }
 
   btn.disabled    = true;
   btn.textContent = '● SEARCHING…';
@@ -394,6 +363,7 @@ function _showWalletError(container, msg) {
 /* ── Battle lobby (mode=battle) ─────────────────────────────────────── */
 function _mountBattle(container, detail) {
   injectStyle();
+  injectEnergyCss();
 
   const pubkey = detail.pubkey ?? getState().playerPubkey ?? '';
   const truncPub = pubkey.length >= 8 ? `${pubkey.slice(0,4)}…${pubkey.slice(-4)}` : (pubkey || '—');
@@ -403,6 +373,7 @@ function _mountBattle(container, detail) {
   <button class="ms-battle-back" id="ms-battle-back">← Home</button>
   <div class="ms-battle-title">BATTLE</div>
   <div class="ms-battle-sub">Find a duel · Win cards · Earn SOL</div>
+  <div class="ms-battle-energy">${EnergyHudHTML(detail.playerState, { refill: true })}</div>
   <button class="ms-battle-start" id="ms-start">▶ START MATCHMAKING</button>
   <div class="ms-battle-fee">Entry fee: <span>0.001 SOL</span></div>
   <div class="ms-battle-info label-dim" id="ms-match-info">
@@ -418,6 +389,8 @@ function _mountBattle(container, detail) {
   container.querySelector('#ms-start').addEventListener('click', () => {
     startMatchmaking(container);
   });
+
+  _loadEnergy(container, pubkey, detail.playerState);
 }
 
 /* ── Style ──────────────────────────────────────────────────────────── */
@@ -526,40 +499,7 @@ const CSS = `
   letter-spacing: 0.06em;
 }
 .ms-match-info { font-size: 13px; text-align: center; letter-spacing: 0.04em; }
-
-/* Tabs */
-.ms-tab-bar {
-  display: flex; gap: 0; flex-shrink: 0; border-bottom: var(--border-dim); margin-bottom: 6px;
-}
-.ms-tab {
-  padding: 4px 14px; font-size: 13px; letter-spacing: 0.08em;
-  background: none; border: none; border-bottom: 2px solid transparent;
-  color: var(--text-dim); cursor: pointer; font-family: var(--font-main);
-  transition: color 80ms, border-color 80ms;
-}
-.ms-tab:hover { color: var(--text-cream); }
-.ms-tab--active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); }
-.ms-evolve-badge {
-  display: inline-block; background: var(--accent-red); color: #fff;
-  font-size: 13px; padding: 0 4px; border-radius: 2px; margin-left: 4px;
-  vertical-align: middle; line-height: 15px;
-}
-
-/* Evolve list */
-.ms-evolve-list {
-  display: flex; flex-direction: column; gap: 6px;
-  overflow-y: auto; flex: 1; padding-right: 4px;
-}
-.ms-evolve-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 10px; border: 1px solid rgba(255,255,255,0.07);
-  background: rgba(255,255,255,0.02);
-}
-.ms-evolve-row--ready { border-color: rgba(201,162,39,0.35); background: rgba(201,162,39,0.05); }
-.ms-evolve-row-info { display: flex; flex-direction: column; gap: 2px; }
-.ms-evolve-result { font-size: 15px; letter-spacing: 0.05em; }
-.ms-evolve-recipe { font-size: 13px; }
-.ms-evolve-btn { font-size: 14px; padding: 4px 12px; }
+.ms-battle-energy { margin: 4px 0 2px; }
 
 /* Footer */
 .ms-footer {

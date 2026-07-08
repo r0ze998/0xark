@@ -6,9 +6,12 @@ import { CardHTML, CardFrameHTML, injectCardCSS, ACTION_LABELS, ACTION_ICONS } f
 import { ActionTypeSelectorHTML, injectActionTypeSelectorCSS, ACTION_TYPES } from './common/ActionTypeSelector.js';
 import { startTimer } from './common/Timer.js';
 import { RoundHudHTML, injectRoundUiCSS } from './common/round-ui.js';
+import { EnergyHudHTML, attachEnergyHud, injectEnergyCss } from './common/energy-hud.js';
 import { pxIcon } from '../lib/px-icons.js';
 import { getState, setState } from '../state/battle-state.js';
 import * as duelWs from '../lib/duel-ws.js';
+
+let _detachEnergy = () => {};
 
 const PREP_SECS = 180; // 3 minutes
 
@@ -26,6 +29,7 @@ export function mount(container, detail = {}) {
   injectCardCSS();
   injectActionTypeSelectorCSS();
   injectRoundUiCSS();
+  injectEnergyCss();
 
   const s    = getState();
   _vault     = detail.vault   ?? s.vault   ?? [];
@@ -38,14 +42,32 @@ export function mount(container, detail = {}) {
 
   const timerEl = container.querySelector('#prep-timer');
   _stopTimer = startTimer(timerEl, PREP_SECS, () => onTimeout(container));
+
+  // Energy HUD (display only here; the spend + gate live at commit / lobby).
+  const pubkey = s.playerPubkey ?? window.oxarkWallet?.getPublicKey?.()?.toString();
+  _loadEnergy(container, pubkey, detail.playerState);
 }
 
 export function unmount(container) {
   _stopTimer?.();
   _stopTimer = null;
+  _detachEnergy(); _detachEnergy = () => {};
   _activeSlot = null;
   _field = [null, null, null, null, null];
   container.innerHTML = '';
+}
+
+async function _loadEnergy(container, pubkey, seed) {
+  const apply = (ps) => {
+    _detachEnergy();
+    _detachEnergy = attachEnergyHud(container, { playerState: ps, refill: true });
+  };
+  if (seed) apply(seed);
+  if (typeof window.oxarkOnchain?.getPlayerState !== 'function' || !pubkey) return;
+  try {
+    const ps = await window.oxarkOnchain.getPlayerState(pubkey);
+    if (ps) apply(ps);
+  } catch (_) { /* keep seed/placeholder */ }
 }
 
 /* ── HTML ───────────────────────────────────────────────────────────── */
@@ -63,7 +85,10 @@ function buildHTML() {
       <span class="label-dim" style="font-size:14px;">TIME</span>
       <span class="prep-timer" id="prep-timer" aria-label="Time remaining">3:00</span>
     </div>
-    ${RoundHudHTML()}
+    <div class="prep-topbar-right">
+      ${EnergyHudHTML(null, { refill: true })}
+      ${RoundHudHTML()}
+    </div>
   </header>
 
   <div class="prep-body">
@@ -86,6 +111,9 @@ function buildHTML() {
         ${pxIcon('check')} CONFIRM &amp; COMMIT
       </button>
       <div class="label-dim prep-hint" id="prep-hint">Fill all 5 slots to confirm</div>
+      ${(getState().round ?? 1) === 1
+        ? `<div class="prep-energy-note label-dim">consumes ${pxIcon('bolt', { size: 12 })}1 (charged once per duel)</div>`
+        : ''}
     </section>
 
     <!-- Vault grid (owned cards) -->
@@ -330,8 +358,12 @@ async function onConfirm(container) {
   } catch (err) {
     console.error('[Prep] Commit failed:', err);
     const msg = err.message ?? 'commit failed';
+    // InsufficientEnergy is belt-and-suspenders — the lobby gate should prevent
+    // it, but map it to a friendly refill nudge if it slips through (spec §4).
     const userMsg = msg.includes('AlreadyCommitted')
       ? 'Already committed for this round'
+      : /InsufficientEnergy/i.test(msg)
+      ? 'Out of energy — refill from the topbar to enter this duel'
       : 'Error: ' + msg;
     if (btn)  { btn.disabled = false; btn.textContent = 'CONFIRM & COMMIT'; }
     if (hint) hint.textContent = userMsg;
@@ -434,6 +466,8 @@ const CSS = `
   width: 100%; justify-content: center; font-size: 20px; padding: 10px; flex-shrink: 0;
 }
 .prep-hint { font-size: 13px; text-align: center; flex-shrink: 0; }
+.prep-topbar-right { display: flex; align-items: center; gap: 14px; }
+.prep-energy-note { font-size: 13px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 3px; }
 
 /* Vault panel */
 .prep-vault-panel {

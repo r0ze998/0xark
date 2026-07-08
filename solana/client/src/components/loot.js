@@ -4,6 +4,7 @@
 import { getCard } from '../lib/cards.js';
 import { CardFrameHTML, injectCardCSS, CARD_NAMES } from './common/Card.js';
 import { pxIcon } from '../lib/px-icons.js';
+import { showToast, txLink } from '../lib/ui-shared.js';
 import { getState, setState, resetBattle } from '../state/battle-state.js';
 import { computePostBattleImprints } from '../lib/abilities.js';
 import * as duelWs from '../lib/duel-ws.js';
@@ -28,6 +29,7 @@ export function mount(container, detail = {}) {
   container.innerHTML = s.isWinner ? buildWinHTML(s) : buildLoseHTML(s);
   bindEvents(container);
   runLootAnimation(container, s);
+  if (s.isWinner) _setupEngrave(container, s);
 }
 
 export function unmount(container) {
@@ -81,6 +83,14 @@ function buildWinHTML(s) {
 
   <!-- Progress update -->
   <div class="loot-perso-update" id="loot-perso" style="display:none;"></div>
+
+  <!-- ENGRAVE VICTORY (F1-6) — the winner's signature on-chain verb -->
+  <div class="loot-engrave" id="loot-engrave" style="display:none;">
+    <button class="gba-btn gba-btn--primary loot-engrave-btn" id="loot-engrave-btn">
+      ${pxIcon('chisel')} ENGRAVE VICTORY
+    </button>
+    <div class="loot-engrave-hint label-dim" id="loot-engrave-hint">record this duel on-chain forever</div>
+  </div>
 
   <!-- Continue -->
   <button class="gba-btn gba-btn--primary loot-continue-btn" id="loot-continue" disabled>
@@ -376,6 +386,62 @@ function _showImprintToasts(container, imprints) {
   });
 }
 
+/* ── ENGRAVE VICTORY (F1-6) ──────────────────────────────────────────────────
+ * settle_duel_history: the winner records each of their used cards' win credit
+ * trustlessly FROM the on-chain DuelState. Available once the chain confirms this
+ * player is the winner and the duel ended. Skippable (CONTINUE stays live).      */
+async function _setupEngrave(container, s) {
+  const oc = window.oxarkOnchain;
+  if (typeof oc?.getDuelStateFull !== 'function' || typeof oc?.settleDuelHistory !== 'function' || !s.duelId) return;
+  try {
+    const ds = await oc.getDuelStateFull(s.duelId);
+    if (!ds || !(ds.endedAt > 0)) return;
+    const myPk = window.solana?.publicKey?.toBase58?.() ?? null;
+    if (myPk && ds.winner && ds.winner !== myPk) return; // only the on-chain winner engraves
+    const block = container.querySelector('#loot-engrave');
+    if (block) block.style.display = '';
+    container.querySelector('#loot-engrave-btn')
+      ?.addEventListener('click', () => _doEngrave(container, s));
+  } catch (err) {
+    console.warn('[engrave] eligibility check failed:', err?.message ?? err);
+  }
+}
+
+async function _doEngrave(container, s) {
+  const btn  = container.querySelector('#loot-engrave-btn');
+  const hint = container.querySelector('#loot-engrave-hint');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.innerHTML = 'ENGRAVING…';
+  try {
+    // Resolve the used cardIds → mints (a card must still be held; unresolved
+    // slots are dropped and the rest settle — spec §7.1).
+    const cardIds = s.fieldCards.filter(Boolean).map(c => c.cardId);
+    const map = await window.oxarkOnchain.getOwnedCardMints();
+    const mints = cardIds.map(id => map.get(id)?.[0]?.mint).filter(Boolean);
+    if (!mints.length) throw new Error('no held cards to settle');
+
+    const sig = await window.oxarkOnchain.settleDuelHistory(s.duelId, mints);
+    container.querySelector('#loot-engrave')?.classList.add('loot-engrave--done');
+    const t = showToast('recorded on-chain forever', 'success');
+    try { t.innerHTML = `${pxIcon('chisel')} recorded on-chain forever ${txLink(sig)}`; } catch (_) {}
+    btn.disabled = true;
+    btn.innerHTML = `${pxIcon('check')} ENGRAVED`;
+    if (hint) hint.textContent = `${mints.length} card${mints.length === 1 ? '' : 's'} settled`;
+  } catch (err) {
+    const msg = err?.message ?? String(err);
+    if (/already|settled/i.test(msg)) { // on-chain bitmap already set → completed state
+      btn.disabled = true;
+      btn.innerHTML = `${pxIcon('check')} ENGRAVED`;
+      if (hint) hint.textContent = 'already engraved';
+      return;
+    }
+    showToast(`Engrave failed: ${msg.slice(0, 50)}`, 'error');
+    btn.disabled = false;
+    btn.innerHTML = `${pxIcon('chisel')} ENGRAVE VICTORY`;
+  }
+}
+
 async function onContinue() {
   const s = getState();
 
@@ -471,6 +537,17 @@ const CSS = `
 .loot-claim-error { font-size: 14px; color: #e55; text-align: center; }
 
 .loot-continue-btn { padding: 12px 40px; font-size: 22px; letter-spacing: 0.08em; margin-top: auto; }
+
+/* ENGRAVE VICTORY */
+.loot-engrave { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 6px 0; }
+.loot-engrave-btn { font-size: 18px; padding: 10px 22px; letter-spacing: 0.06em; }
+.loot-engrave-hint { font-size: 13px; }
+.loot-engrave--done .loot-engrave-btn { animation: loot-engrave-sweep 700ms var(--ease-out, ease-out); }
+@keyframes loot-engrave-sweep {
+  0% { box-shadow: 0 0 0 rgba(201,162,39,0); }
+  40% { box-shadow: 0 0 22px rgba(201,162,39,0.85); }
+  100% { box-shadow: 0 0 0 rgba(201,162,39,0); }
+}
 
 .loot-legendary-flash {
   position: absolute; inset: 0; z-index: 100;
