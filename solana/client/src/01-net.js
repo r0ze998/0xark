@@ -512,7 +512,7 @@ function drawMapLoadScreen(){
     // Glowing floor number
     const glowA=0.12+Math.sin(mapLoadScreenFrame*0.12)*0.08;
     g.globalAlpha=alpha*glowA;
-    g.font='bold 120px VT323, monospace';
+    g.font='120px VT323, monospace';
     g.textAlign='center';
     g.fillStyle=atmosAccent;
     g.fillText(floorLabel,W/2,H/2+45);
@@ -543,7 +543,7 @@ function drawMapLoadScreen(){
       const warnAlpha=t<0.48?(t-0.38)/0.10:t>0.82?(0.90-t)/0.08:1;
       // v270: inline rival check — no rivalsHere array or cd.filter per frame
       let _rhN=0;
-      g.textAlign='center';g.font='bold 9px VT323, monospace';
+      g.textAlign='center';g.font='9px VT323, monospace';
       const _rhBaseY=H/2+60;
       if(rivalMaps[0]===mapLoadScreenFloor){
         const _wTxt='\u26a0 '+pl[1].n+': '+cdCount(pl[1].cd)+' cards \u2014 HERE';

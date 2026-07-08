@@ -1,4 +1,5 @@
 // home-screen.js — Phase 20-C: 4-button navigation hub (SHOP + TRADE enabled)
+import { tierForVault, PRIZE_TIERS } from '../lib/ui-shared.js';
 
 function _injectCSS() {
   if (document.getElementById('home-css')) return;
@@ -14,13 +15,13 @@ function _injectCSS() {
   justify-content: center;
   padding: 0.75rem 1rem;
   text-align: center;
-  background: #0a0e1a;
-  color: #e8dfc8;
+  background: var(--bg-deep);
+  color: var(--text-cream);
 }
 .home-header h1 {
   font-size: 3rem;
   letter-spacing: 0.2em;
-  color: #c9a227;
+  color: var(--accent-gold);
   margin: 0 0 0.25rem;
 }
 .home-meta {
@@ -42,19 +43,19 @@ function _injectCSS() {
 }
 .home-btn {
   background: rgba(201, 162, 39, 0.05);
-  border: 2px solid #c9a227;
+  border: 2px solid var(--accent-gold);
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: background 0.2s, transform 0.2s;
   font-family: 'VT323', monospace;
-  color: #e8dfc8;
+  color: var(--text-cream);
 }
 .home-btn:hover { background: rgba(201, 162, 39, 0.15); transform: translateY(-2px); }
 .home-btn:active { transform: translateY(0); }
 .home-btn-icon  { font-size: 2rem; margin-bottom: 0.25rem; display: block; }
 .home-btn-title {
-  font-size: 1.5rem; font-weight: bold; letter-spacing: 0.1em;
-  color: #c9a227; display: block;
+  font-size: 1.5rem; letter-spacing: 0.1em;
+  color: var(--accent-gold); display: block;
 }
 .home-btn-subtitle { font-size: 0.9rem; color: #aaa; margin-top: 0.1rem; display: block; }
 .home-btn--dim { opacity: 0.5; border-color: #555; }
@@ -76,19 +77,9 @@ function _calculateDay(gameStartTimestamp) {
 }
 
 function _calculateTier(vaultCount) {
-  if (vaultCount >= 60) return { tier: 1, percent: 50 };
-  if (vaultCount >= 50) return { tier: 2, percent: 25 };
-  if (vaultCount >= 30) return { tier: 3, percent: 15 };
-  if (vaultCount >= 10) return { tier: 4, percent: 8 };
-  return { tier: 5, percent: 2 };
-}
-
-function _toast(msg, type = 'info') {
-  const t = document.createElement('div');
-  t.className = `wg-toast wg-toast--${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  // Canonical tiers from ui-shared (PRIZE_TIERS). 0 cards falls back to the
+  // bottom tier for display, matching the previous local behavior.
+  return tierForVault(vaultCount) ?? PRIZE_TIERS[PRIZE_TIERS.length - 1];
 }
 
 export function mount(container, props = {}) {

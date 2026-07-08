@@ -94,7 +94,7 @@ function _render(container, cardId) {
       </div>
       <div class="cd-stats">
         <div class="cd-stat"><span class="cd-stat-label">BP</span><span class="cd-stat-val label-gold">${card.bp}</span></div>
-        <div class="cd-stat"><span class="cd-stat-label">HP</span><span class="cd-stat-val" style="color:#5ab87a">${card.hp}</span></div>
+        <div class="cd-stat"><span class="cd-stat-label">HP</span><span class="cd-stat-val" style="color:var(--hp-green)">${card.hp}</span></div>
         <div class="cd-stat"><span class="cd-stat-label">INI</span><span class="cd-stat-val">${card.ini}</span></div>
       </div>
       ${abilityHTML}
@@ -266,7 +266,7 @@ const CSS = `
 
 .cd-stats { display: flex; gap: 16px; }
 .cd-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.cd-stat-label { font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; }
+.cd-stat-label { font-size: 13px; color: var(--text-dim); letter-spacing: 0.08em; }
 .cd-stat-val { font-size: 24px; color: var(--text-cream); line-height: 1; }
 
 .cd-ability {
@@ -275,17 +275,17 @@ const CSS = `
   background: rgba(255,255,255,0.03);
 }
 .cd-ability-type {
-  font-size: 11px; letter-spacing: 0.08em; flex-shrink: 0;
+  font-size: 13px; letter-spacing: 0.08em; flex-shrink: 0;
   padding: 1px 5px; border: 1px solid;
 }
-.cd-ability-type--burn    { border-color: #d63b3b; color: #d63b3b; }
+.cd-ability-type--burn    { border-color: var(--accent-red); color: var(--accent-red); }
 .cd-ability-type--passive { border-color: #6a8a6a; color: #6a8a6a; }
 .cd-ability-desc { font-size: 13px; color: var(--text-dim); }
 
-.cd-recipe { font-size: 12px; }
+.cd-recipe { font-size: 13px; }
 
 .cd-badge {
-  font-size: 10px; padding: 2px 5px; border: 1px solid;
+  font-size: 13px; padding: 2px 5px; border: 1px solid;
   letter-spacing: 0.06em;
 }
 .cd-badge--merge { border-color: var(--clan-merchant); color: var(--clan-merchant); }
@@ -295,7 +295,7 @@ const CSS = `
 .cd-burn-btn:hover:not(:disabled) { background: rgba(214,59,59,0.3); }
 .cd-evolve-btn { background: rgba(201,162,39,0.1); }
 
-.cd-feedback { font-size: 12px; min-height: 18px; }
+.cd-feedback { font-size: 13px; min-height: 18px; }
 
 .cd-evolve-flash {
   width: 240px; aspect-ratio: 5 / 7;

@@ -11,6 +11,7 @@ import { mount as mountReveal,       unmount as unmountReveal       } from './sr
 import { mount as mountLoot,         unmount as unmountLoot         } from './src/components/loot.js';
 import { getState, setState, wasRestored } from './src/state/battle-state.js';
 import { OPS_TREASURY_PUBKEY } from './src/config.js';
+import { showToast as _showToast } from './src/lib/ui-shared.js';
 
 const SCREENS = {
   home:          { mount: mountHome,   unmount: unmountHome   },
@@ -217,32 +218,32 @@ function _injectRegisterCSS() {
 .reg-screen {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   height: 100%; padding: 0.75rem 1rem; text-align: center;
-  font-family: 'VT323', monospace; background: #0a0e1a; color: #e8dfc8;
+  font-family: 'VT323', monospace; background: var(--bg-deep); color: var(--text-cream);
 }
-.reg-logo { font-size: 2.5rem; letter-spacing: 0.2em; color: #c9a227; margin-bottom: 0.2rem; }
+.reg-logo { font-size: 2.5rem; letter-spacing: 0.2em; color: var(--accent-gold); margin-bottom: 0.2rem; }
 .reg-subtitle { color: #888; margin-bottom: 0.5rem; letter-spacing: 0.1em; font-size: 1rem; }
 .reg-prompt {
   max-width: 500px; width: 100%; padding: 0.75rem 1.25rem;
-  border: 2px solid #c9a227; background: rgba(201,162,39,0.05);
+  border: 2px solid var(--accent-gold); background: rgba(201,162,39,0.05);
 }
-.reg-title { color: #c9a227; margin: 0 0 0.4rem; letter-spacing: 0.1em; font-size: 1.6rem; }
+.reg-title { color: var(--accent-gold); margin: 0 0 0.4rem; letter-spacing: 0.1em; font-size: 1.6rem; }
 .reg-desc { font-size: 1rem; color: #b0a890; margin-bottom: 0.5rem; }
 .reg-benefits { list-style: none; padding: 0; text-align: left; margin: 0.5rem 0; }
 .reg-benefits li { padding: 2px 0 2px 20px; position: relative; font-size: 0.95rem; }
-.reg-benefits li::before { content: '▸'; position: absolute; left: 0; color: #c9a227; }
+.reg-benefits li::before { content: '▸'; position: absolute; left: 0; color: var(--accent-gold); }
 .reg-cost {
   margin: 0.5rem 0; padding: 0.5rem 1rem; background: rgba(0,0,0,0.3);
-  border: 1px solid #4a90d9; display: flex; justify-content: space-between; align-items: center;
+  border: 1px solid var(--accent-blue); display: flex; justify-content: space-between; align-items: center;
 }
 .reg-cost-label { color: #888; font-size: 1rem; }
-.reg-cost-amount { color: #c9a227; font-size: 1.4rem; font-weight: bold; }
+.reg-cost-amount { color: var(--accent-gold); font-size: 1.4rem; }
 .reg-primary-btn {
   font-family: 'VT323', monospace; font-size: 1.4rem; letter-spacing: 0.1em;
-  padding: 0.6rem 2.5rem; background: #c9a227; color: #0a0e1a;
+  padding: 0.6rem 2.5rem; background: var(--accent-gold); color: var(--bg-deep);
   border: 2px solid #000; cursor: pointer; width: 100%; margin: 0.4rem 0;
   transition: background 0.15s, transform 0.15s;
 }
-.reg-primary-btn:hover:not(:disabled) { background: #d8b034; transform: translateY(-2px); }
+.reg-primary-btn:hover:not(:disabled) { background: var(--accent-gold-bright); transform: translateY(-2px); }
 .reg-primary-btn:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; }
 .reg-error { margin-top: 0.3rem; color: #e55; font-size: 0.95rem; }
 .reg-note { font-size: 0.85rem; color: #888; margin-top: 0.3rem; }
@@ -250,9 +251,9 @@ function _injectRegisterCSS() {
   margin-top: 0.5rem; display: flex; align-items: center; gap: 1rem;
   color: #888; font-size: 0.9rem;
 }
-.reg-addr { color: #c9a227; }
+.reg-addr { color: var(--accent-gold); }
 .reg-link-btn {
-  background: none; border: none; color: #4a90d9;
+  background: none; border: none; color: var(--accent-blue);
   text-decoration: underline; cursor: pointer; font-family: inherit; font-size: 0.9rem;
 }
 `;
@@ -348,14 +349,6 @@ function setupWalletEvents() {
   });
 }
 
-function _showToast(msg, type = 'info') {
-  const t = document.createElement('div');
-  t.className = `wg-toast wg-toast--${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
-
 function _injectWalletCSS() {
   if (document.getElementById('wg-css')) return;
   const s = document.createElement('style');
@@ -370,14 +363,14 @@ function _injectWalletCSS() {
   padding: 1rem;
   text-align: center;
   font-family: 'VT323', monospace;
-  background: #0a0e1a;
-  color: #e8dfc8;
+  background: var(--bg-deep);
+  color: var(--text-cream);
 }
 .wg-logo {
   font-size: 3rem;
   letter-spacing: 0.2em;
   margin-bottom: 0.25rem;
-  color: #c9a227;
+  color: var(--accent-gold);
 }
 .wg-subtitle {
   font-size: 1.1rem;
@@ -395,14 +388,14 @@ function _injectWalletCSS() {
   font-size: 1.4rem;
   letter-spacing: 0.1em;
   padding: 0.75rem 2.5rem;
-  background: #c9a227;
-  color: #0a0e1a;
+  background: var(--accent-gold);
+  color: var(--bg-deep);
   border: 2px solid #000;
   cursor: pointer;
   transition: background 0.15s, transform 0.15s;
 }
 .wg-btn-primary:hover:not(:disabled) {
-  background: #d8b034;
+  background: var(--accent-gold-bright);
   transform: translateY(-2px);
 }
 .wg-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -416,15 +409,15 @@ function _injectWalletCSS() {
   color: #888;
 }
 .wg-help a {
-  color: #4a90d9;
+  color: var(--accent-blue);
   text-decoration: underline;
 }
 .wg-network {
   margin-top: 1.5rem;
   padding: 0.75rem 1rem;
   background: rgba(74,144,217,0.1);
-  border: 1px solid #4a90d9;
-  color: #4a90d9;
+  border: 1px solid var(--accent-blue);
+  color: var(--accent-blue);
   font-size: 1rem;
 }
 .wg-network small { font-size: 0.85rem; }
@@ -440,8 +433,8 @@ function _injectWalletCSS() {
   z-index: 9999;
   animation: wg-toast-in 0.2s ease;
 }
-.wg-toast--warn  { background: #7a5200; color: #f5c842; border: 1px solid #f5c842; }
-.wg-toast--info  { background: #0a1e3a; color: #4a90d9; border: 1px solid #4a90d9; }
+.wg-toast--warn  { background: #7a5200; color: var(--accent-warn); border: 1px solid var(--accent-warn); }
+.wg-toast--info  { background: #0a1e3a; color: var(--accent-blue); border: 1px solid var(--accent-blue); }
 .wg-toast--error { background: #3a0a0a; color: #e55;    border: 1px solid #e55; }
 @keyframes wg-toast-in { from { opacity:0; bottom:0.5rem; } to { opacity:1; bottom:1.5rem; } }
 `;

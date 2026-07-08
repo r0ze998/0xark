@@ -1,4 +1,5 @@
 // shop-screen.js — Phase 20-B: Pack shop with reveal animation
+import { showToast as _toast } from '../lib/ui-shared.js';
 
 function _injectCSS() {
   if (document.getElementById('shop-css')) return;
@@ -13,8 +14,8 @@ function _injectCSS() {
   flex-direction: column;
   align-items: center;
   padding: 0.75rem 1.5rem;
-  background: #0a0e1a;
-  color: #e8dfc8;
+  background: var(--bg-deep);
+  color: var(--text-cream);
 }
 .shop-header {
   display: flex;
@@ -35,8 +36,8 @@ function _injectCSS() {
   font-size: 1rem;
   transition: border-color 0.2s, color 0.2s;
 }
-.shop-back-btn:hover { border-color: #c9a227; color: #c9a227; }
-.shop-header h2 { font-size: 2rem; letter-spacing: 0.2em; color: #c9a227; margin: 0; }
+.shop-back-btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+.shop-header h2 { font-size: 2rem; letter-spacing: 0.2em; color: var(--accent-gold); margin: 0; }
 .shop-phase-badge {
   margin-left: auto;
   font-size: 0.85rem;
@@ -54,7 +55,7 @@ function _injectCSS() {
 }
 .pack-card {
   background: rgba(201, 162, 39, 0.05);
-  border: 2px solid #c9a227;
+  border: 2px solid var(--accent-gold);
   padding: 1rem 1.25rem;
   text-align: center;
   transition: background 0.2s, transform 0.15s;
@@ -63,7 +64,7 @@ function _injectCSS() {
 .pack-card.pack-premium { border-color: #e8d4a0; background: rgba(216, 176, 52, 0.08); }
 .pack-card.pack-premium:hover { background: rgba(216, 176, 52, 0.15); }
 .pack-icon { font-size: 2.5rem; margin-bottom: 0.25rem; display: block; }
-.pack-card h3 { font-size: 1.6rem; color: #c9a227; margin: 0 0 0.5rem; letter-spacing: 0.1em; }
+.pack-card h3 { font-size: 1.6rem; color: var(--accent-gold); margin: 0 0 0.5rem; letter-spacing: 0.1em; }
 .pack-card.pack-premium h3 { color: #e8d4a0; }
 .pack-content { font-size: 1rem; color: #aaa; margin: 0.25rem 0; }
 .pack-rates {
@@ -74,12 +75,12 @@ function _injectCSS() {
   border-top: 1px solid #222;
   padding-top: 0.5rem;
 }
-.pack-price { font-size: 1.8rem; color: #c9a227; margin: 0.75rem 0; font-weight: bold; }
+.pack-price { font-size: 1.8rem; color: var(--accent-gold); margin: 0.75rem 0; }
 .pack-card.pack-premium .pack-price { color: #e8d4a0; }
 .pack-buy-btn {
   background: rgba(201, 162, 39, 0.1);
-  border: 2px solid #c9a227;
-  color: #c9a227;
+  border: 2px solid var(--accent-gold);
+  color: var(--accent-gold);
   padding: 0.75rem 2rem;
   cursor: pointer;
   font-family: 'VT323', monospace;
@@ -112,7 +113,7 @@ function _injectCSS() {
   z-index: 100;
   font-family: 'VT323', monospace;
 }
-.reveal-title { font-size: 2rem; color: #c9a227; letter-spacing: 0.2em; margin-bottom: 1.5rem; }
+.reveal-title { font-size: 2rem; color: var(--accent-gold); letter-spacing: 0.2em; margin-bottom: 1.5rem; }
 .reveal-cards { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.5rem; }
 .reveal-card-slot {
   width: 80px; height: 120px;
@@ -121,23 +122,23 @@ function _injectCSS() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #0a0e1a;
+  background: var(--bg-deep);
   transition: all 0.4s ease;
   position: relative;
   overflow: hidden;
 }
 .reveal-card-slot.flipping { animation: cardFlip 0.6s ease forwards; }
-.reveal-card-slot.revealed { border-color: #c9a227; background: rgba(201, 162, 39, 0.1); }
+.reveal-card-slot.revealed { border-color: var(--accent-gold); background: rgba(201, 162, 39, 0.1); }
 .reveal-card-slot.rarity-uncommon { border-color: #4a9; background: rgba(68, 170, 136, 0.1); }
 .reveal-card-slot.rarity-rare     { border-color: #66f; background: rgba(102, 102, 255, 0.1); }
 .reveal-card-slot.rarity-legendary{ border-color: #f90; background: rgba(255, 153, 0, 0.15);
   box-shadow: 0 0 12px rgba(255, 153, 0, 0.4); }
-.reveal-card-id { font-size: 1.6rem; color: #c9a227; }
-.reveal-card-label { font-size: 0.7rem; color: #888; }
+.reveal-card-id { font-size: 1.6rem; color: var(--accent-gold); }
+.reveal-card-label { font-size: var(--fs-caption); color: #888; }
 .reveal-close-btn {
   background: none;
-  border: 2px solid #c9a227;
-  color: #c9a227;
+  border: 2px solid var(--accent-gold);
+  color: var(--accent-gold);
   padding: 0.5rem 2rem;
   font-family: 'VT323', monospace;
   font-size: 1.2rem;
@@ -166,18 +167,10 @@ function _injectCSS() {
 }
 .wg-toast--success { background: #1a3a2a; border: 1px solid #4a9; color: #4a9; }
 .wg-toast--error   { background: #3a1a1a; border: 1px solid #a44; color: #a44; }
-.wg-toast--info    { background: #1a2230; border: 1px solid #c9a227; color: #c9a227; }
+.wg-toast--info    { background: #1a2230; border: 1px solid var(--accent-gold); color: var(--accent-gold); }
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 `;
   document.head.appendChild(s);
-}
-
-function _toast(msg, type = 'info') {
-  const t = document.createElement('div');
-  t.className = `wg-toast wg-toast--${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
 }
 
 function _cardRarity(id) {

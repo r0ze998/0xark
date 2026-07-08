@@ -2,7 +2,7 @@
 // mount(container, detail) / unmount(container)
 
 import { ALL_CARD_IDS, getCard } from '../lib/cards.js';
-import { CardFrameHTML, injectCardCSS, ACTION_LABELS, ACTION_ICONS } from './common/Card.js';
+import { CardHTML, CardFrameHTML, injectCardCSS, ACTION_LABELS, ACTION_ICONS } from './common/Card.js';
 import { ActionTypeSelectorHTML, injectActionTypeSelectorCSS, ACTION_TYPES } from './common/ActionTypeSelector.js';
 import { startTimer } from './common/Timer.js';
 import { getState, setState } from '../state/battle-state.js';
@@ -116,8 +116,8 @@ function renderSlots() {
     return `<div class="prep-slot prep-slot--filled${isActive ? ' prep-slot--active' : ''}"
       data-slot="${i}" role="listitem" tabindex="0"
       aria-label="Slot ${i + 1}: card ${slot.cardId}">
-      ${CardFrameHTML({ id: slot.cardId })}
-      <div class="prep-slot-action" style="font-size:11px;color:var(--accent-gold);">${actionLabel}</div>
+      ${CardHTML({ id: slot.cardId })}
+      <div class="prep-slot-action" style="font-size:13px;color:var(--accent-gold);">${actionLabel}</div>
       <button class="prep-slot-remove" data-slot="${i}" aria-label="Remove card from slot ${i+1}">✕</button>
     </div>`;
   }).join('');
@@ -382,7 +382,7 @@ const CSS = `
 
 /* Field panel */
 .prep-field-panel {
-  width: 320px; flex-shrink: 0;
+  width: 460px; flex-shrink: 0;
   display: flex; flex-direction: column; gap: 8px;
   padding: 10px 12px; border-right: var(--border-dim);
   background: rgba(10,14,26,0.5);
@@ -396,7 +396,7 @@ const CSS = `
   display: flex; gap: 5px; flex-shrink: 0;
 }
 .prep-slot {
-  flex: 1; min-height: 100px; border: 2px solid;
+  flex: 1; min-height: 124px; border: 2px solid;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 3px; cursor: pointer; position: relative; overflow: hidden;
   transition: border-color 80ms, background 80ms;
@@ -412,20 +412,19 @@ const CSS = `
 .prep-slot-action { text-align: center; padding: 0 2px; }
 .prep-slot-remove {
   position: absolute; top: 2px; right: 2px;
-  background: none; border: none; font-size: 11px;
+  background: none; border: none; font-size: 13px;
   color: var(--accent-red); cursor: pointer; font-family: var(--font-main);
   padding: 1px 3px;
 }
 .prep-slot-remove:hover { background: rgba(214,59,59,0.2); }
-.prep-slot .card-frame { width: 100%; }
-.prep-vault-grid .card-frame { width: 80px; }
+.prep-vault-grid .card-frame { width: 112px; }
 
 /* Action picker */
 .prep-action-picker {
   flex-shrink: 0; padding: 6px; background: rgba(10,14,26,0.6);
   border: var(--border-dim);
 }
-.prep-action-title { font-size: 12px; letter-spacing: 0.06em; margin-bottom: 5px; }
+.prep-action-title { font-size: 13px; letter-spacing: 0.06em; margin-bottom: 5px; }
 
 /* Confirm */
 .prep-confirm-btn {

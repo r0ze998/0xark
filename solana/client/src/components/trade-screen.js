@@ -1,4 +1,6 @@
 // trade-screen.js — Phase 20-C: Trade Floor marketplace
+import { showToast } from '../lib/ui-shared.js';
+const _toast = (msg, type) => showToast(msg, type, { className: 'trade-toast' });
 
 function _injectCSS() {
   if (document.getElementById('trade-css')) return;
@@ -13,8 +15,8 @@ function _injectCSS() {
   flex-direction: column;
   align-items: center;
   padding: 0.75rem 1.5rem;
-  background: #0a0e1a;
-  color: #e8dfc8;
+  background: var(--bg-deep);
+  color: var(--text-cream);
 }
 .trade-header {
   display: flex;
@@ -35,12 +37,12 @@ function _injectCSS() {
   font-size: 1rem;
   transition: border-color 0.2s, color 0.2s;
 }
-.trade-back-btn:hover { border-color: #c9a227; color: #c9a227; }
-.trade-header h2 { font-size: 2rem; letter-spacing: 0.2em; color: #c9a227; margin: 0; flex: 1; }
+.trade-back-btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+.trade-header h2 { font-size: 2rem; letter-spacing: 0.2em; color: var(--accent-gold); margin: 0; flex: 1; }
 .create-listing-btn {
   background: rgba(201, 162, 39, 0.1);
-  border: 1px solid #c9a227;
-  color: #c9a227;
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
   padding: 0.5rem 1.2rem;
   cursor: pointer;
   font-family: 'VT323', monospace;
@@ -61,13 +63,13 @@ function _injectCSS() {
 .trade-filters select {
   background: #0d1221;
   border: 1px solid #333;
-  color: #e8dfc8;
+  color: var(--text-cream);
   padding: 0.4rem 0.8rem;
   font-family: 'VT323', monospace;
   font-size: 1rem;
   cursor: pointer;
 }
-.trade-filters select:focus { outline: 1px solid #c9a227; }
+.trade-filters select:focus { outline: 1px solid var(--accent-gold); }
 .trade-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -77,7 +79,7 @@ function _injectCSS() {
 }
 .listing-card {
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid #c9a227;
+  border: 1px solid var(--accent-gold);
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -100,7 +102,7 @@ function _injectCSS() {
 .trade-card-id {
   font-size: 2rem;
   color: var(--rarity-color, #888);
-  font-weight: bold;
+
 }
 .trade-card-name {
   font-size: 0.8rem;
@@ -110,7 +112,7 @@ function _injectCSS() {
   margin-top: 4px;
 }
 .trade-card-rarity {
-  font-size: 0.7rem;
+  font-size: var(--fs-caption);
   letter-spacing: 0.1em;
   color: var(--rarity-color, #888);
   text-transform: uppercase;
@@ -123,8 +125,8 @@ function _injectCSS() {
 }
 .listing-price {
   font-size: 1.2rem;
-  color: #c9a227;
-  font-weight: bold;
+  color: var(--accent-gold);
+
   margin: 0 0 0.2rem;
 }
 .listing-seller {
@@ -142,8 +144,8 @@ function _injectCSS() {
 }
 .buy-listing-btn {
   background: rgba(201, 162, 39, 0.1);
-  border: 1px solid #c9a227;
-  color: #c9a227;
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
 }
 .buy-listing-btn:hover { background: rgba(201, 162, 39, 0.25); }
 .cancel-listing-btn {
@@ -180,16 +182,16 @@ function _injectCSS() {
 }
 .trade-modal {
   background: #0d1221;
-  border: 2px solid #c9a227;
+  border: 2px solid var(--accent-gold);
   padding: 2rem;
   width: 90%;
   max-width: 500px;
   font-family: 'VT323', monospace;
-  color: #e8dfc8;
+  color: var(--text-cream);
 }
 .trade-modal h3 {
   font-size: 1.8rem;
-  color: #c9a227;
+  color: var(--accent-gold);
   margin: 0 0 1rem;
   letter-spacing: 0.1em;
 }
@@ -210,9 +212,9 @@ function _injectCSS() {
   transition: border-color 0.15s, background 0.15s;
 }
 .modal-card-tile:hover { border-color: #888; background: rgba(201,162,39,0.07); }
-.modal-card-tile.selected { border-color: #c9a227; background: rgba(201,162,39,0.15); }
-.modal-card-num { font-size: 1.6rem; color: #c9a227; display: block; }
-.modal-card-label { font-size: 0.7rem; color: #888; }
+.modal-card-tile.selected { border-color: var(--accent-gold); background: rgba(201,162,39,0.15); }
+.modal-card-num { font-size: 1.6rem; color: var(--accent-gold); display: block; }
+.modal-card-label { font-size: var(--fs-caption); color: #888; }
 .price-input-row {
   display: flex;
   align-items: center;
@@ -221,21 +223,21 @@ function _injectCSS() {
 }
 .price-input-row label { color: #888; font-size: 1rem; }
 .price-input-row input {
-  background: #0a0e1a;
+  background: var(--bg-deep);
   border: 1px solid #555;
-  color: #e8dfc8;
+  color: var(--text-cream);
   padding: 0.4rem 0.6rem;
   font-family: 'VT323', monospace;
   font-size: 1.1rem;
   width: 120px;
 }
-.price-input-row input:focus { outline: 1px solid #c9a227; }
+.price-input-row input:focus { outline: 1px solid var(--accent-gold); }
 .modal-actions { display: flex; gap: 1rem; margin-top: 1rem; }
 .modal-btn-primary {
   flex: 1;
   background: rgba(201,162,39,0.15);
-  border: 1px solid #c9a227;
-  color: #c9a227;
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
   padding: 0.6rem;
   cursor: pointer;
   font-family: 'VT323', monospace;
@@ -266,7 +268,7 @@ function _injectCSS() {
 }
 .trade-toast--success { background: rgba(40,167,69,0.9); border-color: #28a745; color: #fff; }
 .trade-toast--error   { background: rgba(220,53,69,0.9);  border-color: #dc3545; color: #fff; }
-.trade-toast--info    { background: rgba(0,0,0,0.9);       border-color: #555;    color: #e8dfc8; }
+.trade-toast--info    { background: rgba(0,0,0,0.9);       border-color: #555;    color: var(--text-cream); }
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 `;
   document.head.appendChild(s);
@@ -363,14 +365,6 @@ let _listings   = [];
 let _myPubkey   = '';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
-
-function _toast(msg, type = 'info') {
-  const t = document.createElement('div');
-  t.className = `trade-toast trade-toast--${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
 
 // ── Render listings ───────────────────────────────────────────────────────────
 

@@ -474,7 +474,7 @@ const CSS = `
 .loot-legendary-flash {
   position: absolute; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
-  font-size: 48px; color: #d8b034; letter-spacing: 0.1em;
+  font-size: 48px; color: var(--accent-gold-bright); letter-spacing: 0.1em;
   background: rgba(216,176,52,0.15);
   animation: lgd-flash 2.5s ease forwards;
   pointer-events: none;

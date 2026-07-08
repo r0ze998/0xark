@@ -1,0 +1,28 @@
+name: design-lint
+
+# Sprite Seas design-floor gate (DESIGN.md Appendix B). Runs the one canonical
+# linter — identical to what you run locally — instead of raw greps (GNU/BSD grep
+# disagree on -P + astral emoji ranges). Enforced: brand-hex, sub-13px,
+# sub-floor-rem, faux-bold. Report-only (do not fail the build yet): emoji
+# (PR-C / F0-4) and round-hardcode (F1). The script's exit code is the gate.
+
+on:
+  pull_request:
+    paths:
+      - 'solana/client/**'
+      - 'scripts/design-lint.py'
+      - 'DESIGN.md'
+      - '.github/workflows/design-lint.yml'
+  push:
+    branches: [main]
+
+jobs:
+  design-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Sprite Seas design floor
+        run: python3 scripts/design-lint.py -v

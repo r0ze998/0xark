@@ -1,0 +1,118 @@
+/* tokens.css — 0xARK Sprite Seas design tokens
+   Canonical mapping of DESIGN.md v1.0 frontmatter. Single source for color,
+   type, spacing, motion. No other file may declare raw palette hex.
+   Target location: solana/client/src/style/tokens.css (load before all
+   component CSS; the :root block in index.html gets replaced by this file). */
+
+:root {
+  /* ── Surfaces ─────────────────────────────────────────── */
+  --bg-deep:        #0a0e1a;
+  --bg-mid:         #1a1f33;
+  --bg-panel:       rgba(10, 14, 26, 0.88);
+  --overlay-scrim:  rgba(0, 0, 0, 0.6);
+
+  /* ── Text ─────────────────────────────────────────────── */
+  --text-cream:     #e8dfc8;
+  --text-dim:       rgba(232, 223, 200, 0.55);
+
+  /* ── Semantic accents (chrome/status — never faction) ─── */
+  --accent-gold:        #c9a227;
+  --accent-gold-bright: #d8b034;
+  --accent-red:         #d63b3b;
+  --accent-blue:        #4a90d9;
+  --accent-warn:        #f5c842;
+  --success:            #4a9c6f;
+  --hp-green:           #5ab87a;
+
+  /* ── Faction identity (faction-scoped elements ONLY) ──── */
+  --clan-knight:    #4a90d9;
+  --clan-merchant:  #c9a227;
+  --clan-pirate:    #d63b3b;
+  --clan-scholar:   #8b6cb8;
+  --clan-monk:      #6a8a6a;
+  --clan-engineer:  #d4884a;
+
+  /* ── Rarity ladder ────────────────────────────────────── */
+  --rarity-c: #8a8a8a;
+  --rarity-u: #4a9c6f;
+  --rarity-r: #4a7ab5;
+  --rarity-l: #d8b034;
+
+  /* ── Borders ──────────────────────────────────────────── */
+  --border-hard: 2px solid #000000;
+  --border-gold: 2px solid var(--accent-gold);
+  --border-dim:  1px solid rgba(201, 162, 39, 0.35);
+  --border-red:  2px solid var(--accent-red);
+
+  /* ── Typography ───────────────────────────────────────── */
+  --font-main: 'VT323', monospace;
+  /* future JP face: 'DotGothic16' — pair, do not substitute */
+  --fs-display-xl: 72px;
+  --fs-display:    48px;
+  --fs-title:      32px;
+  --fs-heading:    24px;
+  --fs-body:       20px;
+  --fs-ui:         16px;
+  --fs-caption:    13px;   /* ABSOLUTE FLOOR — nothing renders below this */
+  --ls-normal:  0.02em;
+  --ls-caption: 0.04em;
+  --ls-wide:    0.08em;
+  --ls-display: 0.12em;
+  --lh-tight: 1.0;
+  --lh-ui:    1.1;
+  --lh-body:  1.4;
+
+  /* ── Spacing (4px grid) ───────────────────────────────── */
+  --sp-1: 4px;  --sp-2: 8px;   --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px;  --sp-7: 48px;
+
+  /* ── Motion ───────────────────────────────────────────── */
+  --t-fast: 80ms;
+  --t-base: 160ms;
+  --t-slow: 320ms;
+  --ease-pop:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-step: steps(3, end);
+
+  /* ── Radii (pixel art: square; chip only) ─────────────── */
+  --r-none: 0;
+  --r-chip: 2px;
+
+  /* ── Z-layers ─────────────────────────────────────────── */
+  --z-hud: 10; --z-dialog: 50; --z-modal: 100; --z-toast: 200; --z-ceremony: 300;
+
+  /* ── Legacy aliases (remove after F0 hex cleanup) ─────── */
+  --text-gold: var(--accent-gold);
+}
+
+/* ── System floor (global, one-time rules) ───────────────── */
+
+/* VT323 ships one weight — synthesized bold breaks the pixel grid.
+   <b>/<strong> remain semantic; render at normal weight. */
+b, strong { font-weight: normal; }
+
+/* Focus is always visible, always gold */
+:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+/* tx hashes / addresses stay copyable despite global user-select:none */
+.tx-link, .selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+.tx-link {
+  color: var(--accent-blue);
+  font-size: var(--fs-caption);
+  letter-spacing: var(--ls-caption);
+  text-decoration: underline;
+}
+
+/* Motion respect: kill loops, keep fades */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-iteration-count: 1 !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

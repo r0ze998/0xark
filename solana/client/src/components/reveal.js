@@ -515,7 +515,7 @@ const CSS = `
   filter: drop-shadow(0 0 8px rgba(201,162,39,0.8));
 }
 .rev-card--dead .card-frame { opacity: 0.3; filter: grayscale(1); }
-.rev-card-wrap .card-frame { width: 120px; }
+.rev-card-wrap .card-frame { width: 140px; }
 
 /* Center log */
 .rev-center {
@@ -533,7 +533,7 @@ const CSS = `
 .log-gold { color: var(--accent-gold); }
 .log-red  { color: var(--accent-red); }
 .log-dim  { color: var(--text-dim); }
-.log-combat { color: #4a90d9; }
+.log-combat { color: var(--accent-blue); }
 
 .rev-bp-totals {
   display: flex; align-items: center; justify-content: center; gap: 24px;
