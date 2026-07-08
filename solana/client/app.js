@@ -11,6 +11,7 @@ import { mount as mountReveal,       unmount as unmountReveal       } from './sr
 import { mount as mountLoot,         unmount as unmountLoot         } from './src/components/loot.js';
 import { getState, setState, wasRestored } from './src/state/battle-state.js';
 import { OPS_TREASURY_PUBKEY } from './src/config.js';
+import { showToast as _showToast } from './src/lib/ui-shared.js';
 
 const SCREENS = {
   home:          { mount: mountHome,   unmount: unmountHome   },
@@ -346,14 +347,6 @@ function setupWalletEvents() {
       showWalletConnectScreen();
     }
   });
-}
-
-function _showToast(msg, type = 'info') {
-  const t = document.createElement('div');
-  t.className = `wg-toast wg-toast--${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
 }
 
 function _injectWalletCSS() {

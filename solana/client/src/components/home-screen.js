@@ -1,4 +1,5 @@
 // home-screen.js — Phase 20-C: 4-button navigation hub (SHOP + TRADE enabled)
+import { tierForVault, PRIZE_TIERS } from '../lib/ui-shared.js';
 
 function _injectCSS() {
   if (document.getElementById('home-css')) return;
@@ -76,19 +77,9 @@ function _calculateDay(gameStartTimestamp) {
 }
 
 function _calculateTier(vaultCount) {
-  if (vaultCount >= 60) return { tier: 1, percent: 50 };
-  if (vaultCount >= 50) return { tier: 2, percent: 25 };
-  if (vaultCount >= 30) return { tier: 3, percent: 15 };
-  if (vaultCount >= 10) return { tier: 4, percent: 8 };
-  return { tier: 5, percent: 2 };
-}
-
-function _toast(msg, type = 'info') {
-  const t = document.createElement('div');
-  t.className = `wg-toast wg-toast--${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  // Canonical tiers from ui-shared (PRIZE_TIERS). 0 cards falls back to the
+  // bottom tier for display, matching the previous local behavior.
+  return tierForVault(vaultCount) ?? PRIZE_TIERS[PRIZE_TIERS.length - 1];
 }
 
 export function mount(container, props = {}) {

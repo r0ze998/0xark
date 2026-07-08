@@ -1,4 +1,5 @@
 // shop-screen.js — Phase 20-B: Pack shop with reveal animation
+import { showToast as _toast } from '../lib/ui-shared.js';
 
 function _injectCSS() {
   if (document.getElementById('shop-css')) return;
@@ -170,14 +171,6 @@ function _injectCSS() {
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 `;
   document.head.appendChild(s);
-}
-
-function _toast(msg, type = 'info') {
-  const t = document.createElement('div');
-  t.className = `wg-toast wg-toast--${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
 }
 
 function _cardRarity(id) {

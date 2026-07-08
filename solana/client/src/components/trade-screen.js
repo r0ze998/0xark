@@ -1,4 +1,6 @@
 // trade-screen.js — Phase 20-C: Trade Floor marketplace
+import { showToast } from '../lib/ui-shared.js';
+const _toast = (msg, type) => showToast(msg, type, { className: 'trade-toast' });
 
 function _injectCSS() {
   if (document.getElementById('trade-css')) return;
@@ -363,14 +365,6 @@ let _listings   = [];
 let _myPubkey   = '';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
-
-function _toast(msg, type = 'info') {
-  const t = document.createElement('div');
-  t.className = `trade-toast trade-toast--${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
 
 // ── Render listings ───────────────────────────────────────────────────────────
 

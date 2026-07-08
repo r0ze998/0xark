@@ -1,4 +1,5 @@
 // PrizePool.js — prize pool display
+import { PRIZE_TIERS, tierForVault } from '../../lib/ui-shared.js';
 
 /**
  * Returns HTML showing the current prize pool tiers.
@@ -6,25 +7,17 @@
  * @param {number} vaultCount  — local player's vault count
  */
 export function PrizePoolHTML(totalCards = 0, vaultCount = 0) {
-  const TIERS = [
-    { label: 'TIER 1', min: 60, max: 60, share: '50%',  color: 'var(--accent-gold-bright)' },
-    { label: 'TIER 2', min: 50, max: 59, share: '25%',  color: 'var(--accent-gold)' },
-    { label: 'TIER 3', min: 30, max: 49, share: '15%',  color: '#a0a0a0' },
-    { label: 'TIER 4', min: 10, max: 29, share: '8%',   color: '#808080' },
-    { label: 'TIER 5', min:  1, max:  9, share: '2%',   color: '#606060' },
-  ];
-
-  const myTier = TIERS.find(t => vaultCount >= t.min && vaultCount <= t.max) ?? null;
+  const myTier = tierForVault(vaultCount);
 
   return `<div class="pp-root">
     <div class="pp-title">PRIZE POOL</div>
     <div class="pp-tiers">
-      ${TIERS.map(t => {
-        const active = myTier?.label === t.label;
+      ${PRIZE_TIERS.map(t => {
+        const active = myTier?.tier === t.tier;
         return `<div class="pp-tier${active ? ' pp-tier--active' : ''}" style="--tc:${t.color};">
-          <span class="pp-tier-label">${t.label}</span>
+          <span class="pp-tier-label">TIER ${t.tier}</span>
           <span class="pp-tier-range">${t.min}${t.max !== t.min ? `–${t.max}` : ''} cards</span>
-          <span class="pp-tier-share">${t.share}</span>
+          <span class="pp-tier-share">${t.percent}%</span>
         </div>`;
       }).join('')}
     </div>
