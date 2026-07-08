@@ -349,31 +349,32 @@ The canonical CSS mapping ships as `solana/client/src/style/tokens.css`
 (1:1 with the frontmatter; legacy variable names from the current
 `index.html :root` are kept as aliases until the hex cleanup lands).
 
-## Appendix B — F0 cleanup greps (with measured baseline @ `6444dc8`)
+## Appendix B — F0 design-floor linter (baseline @ `6444dc8`)
 
-All targets are **0**. Baselines measured 2026-07-08 so progress is checkable.
+The raw greps that seeded this list are **superseded by one canonical linter**,
+`scripts/design-lint.py`, so the check runs identically on macOS (BSD grep) and
+CI (GNU grep) — the two disagree on `-P` + astral emoji ranges, which made the
+raw emoji grep silently return 0 on macOS. CI (`.github/workflows/design-lint.yml`)
+just runs this script; run it locally the same way:
 
 ```sh
-# raw hex outside tokens.css                      — baseline: 85 hits
-grep -rn "#c9a227\|#0a0e1a\|#1a1f33\|#d63b3b\|#4a90d9\|#e8dfc8\|#d8b034" \
-  solana/client/src solana/client/app.js --include="*.js" | grep -v tokens.css
-
-# emoji / symbol glyphs in UI strings             — baseline: 58 hits
-# (note: GNU grep needs the (*UTF) prefix for astral code points)
-grep -rnP "(*UTF)[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2300}-\x{23FF}]" \
-  solana/client/src solana/client/app.js --include="*.js"
-
-# px sizes below the 13px floor                   — baseline: 34 hits
-grep -rn "font-size: *\(8\|9\|10\|11\|12\)px" solana/client/src --include="*.js"
-# rem sizes below the floor (≤0.79rem)            — baseline: 4 hits
-grep -rn "font-size: *0\.[0-7]" solana/client/src --include="*.js"
-
-# faux bold on VT323                              — baseline: 9 hits
-grep -rn "font-weight: *bold\|bold .*VT323" solana/client/src --include="*.js"
-
-# stale round hardcodes (F1 scope, tracked here)  — baseline: 4 hits
-grep -rn "duelId, 1," solana/client/src/components
+python3 scripts/design-lint.py        # summary + PASS/FAIL
+python3 scripts/design-lint.py -v     # + every offending line
 ```
+
+Scope: `solana/client/src/**/*.js` + `solana/client/app.js` (tokens.css excepted).
+
+| Category | Baseline @ `6444dc8` | Enforced | Notes |
+|---|---|---|---|
+| brand-hex | 85 hits | ✅ fail on >0 | tokened palette hex → `var(--token)`. Untokenized greys (residual ladder) not yet listed. |
+| sub-13px | 34 hits | ✅ fail on >0 | `font-size` px below the 13px floor. |
+| sub-floor-rem | 4 hits | ✅ fail on >0 | `font-size` rem below ~0.81rem. |
+| faux-bold | 10 hits | ✅ fail on >0 | `font-weight:bold` / `bold … VT323` (one weight). |
+| emoji | **58 lines / 72 occurrences**, 11 files | ⏳ report-only | Both counts are correct and use the same ranges (58 = lines with ≥1 glyph, 72 = total glyphs). Flips to enforced in **PR-C / F0-4** once the px-icon sprite lands. |
+| round-hardcode | 4 hits | 📋 report-only | `duelId, 1,` — F1 scope (round loop). |
+
+Enforced categories are **0** after PR-A (F0-1 + F0-5). emoji/round remain
+report-only until PR-C / F1 respectively.
 
 ---
 *Supersedes: `design/DESIGN_TOKENS.json` (archive to `design/archive/`).
