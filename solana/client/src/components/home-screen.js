@@ -14,13 +14,13 @@ function _injectCSS() {
   justify-content: center;
   padding: 0.75rem 1rem;
   text-align: center;
-  background: #0a0e1a;
-  color: #e8dfc8;
+  background: var(--bg-deep);
+  color: var(--text-cream);
 }
 .home-header h1 {
   font-size: 3rem;
   letter-spacing: 0.2em;
-  color: #c9a227;
+  color: var(--accent-gold);
   margin: 0 0 0.25rem;
 }
 .home-meta {
@@ -42,19 +42,19 @@ function _injectCSS() {
 }
 .home-btn {
   background: rgba(201, 162, 39, 0.05);
-  border: 2px solid #c9a227;
+  border: 2px solid var(--accent-gold);
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: background 0.2s, transform 0.2s;
   font-family: 'VT323', monospace;
-  color: #e8dfc8;
+  color: var(--text-cream);
 }
 .home-btn:hover { background: rgba(201, 162, 39, 0.15); transform: translateY(-2px); }
 .home-btn:active { transform: translateY(0); }
 .home-btn-icon  { font-size: 2rem; margin-bottom: 0.25rem; display: block; }
 .home-btn-title {
   font-size: 1.5rem; font-weight: bold; letter-spacing: 0.1em;
-  color: #c9a227; display: block;
+  color: var(--accent-gold); display: block;
 }
 .home-btn-subtitle { font-size: 0.9rem; color: #aaa; margin-top: 0.1rem; display: block; }
 .home-btn--dim { opacity: 0.5; border-color: #555; }

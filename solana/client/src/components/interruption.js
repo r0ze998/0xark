@@ -348,7 +348,7 @@ const CSS = `
   padding: 0 14px; border-bottom: var(--border-dim);
   background: rgba(3,6,15,0.75); z-index: 10;
 }
-.intr-phase-label { font-size: 16px; letter-spacing: 0.1em; color: #4a90d9; border-color: #4a90d9; }
+.intr-phase-label { font-size: 16px; letter-spacing: 0.1em; color: var(--accent-blue); border-color: var(--accent-blue); }
 .intr-timer-wrap { display: flex; align-items: baseline; gap: 6px; }
 .intr-timer {
   font-size: 32px; color: var(--accent-gold); letter-spacing: 0.04em;
@@ -391,7 +391,7 @@ const CSS = `
   transition: border-color 80ms;
 }
 .intr-your-slot:hover { border-color: var(--accent-gold); }
-.intr-slot--swap-active { border-color: #4a90d9 !important; background: rgba(74,144,217,0.08); }
+.intr-slot--swap-active { border-color: var(--accent-blue) !important; background: rgba(74,144,217,0.08); }
 .intr-slot-action { font-size: 10px; text-align: center; }
 
 /* Swap vault */

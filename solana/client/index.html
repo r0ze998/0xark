@@ -9,33 +9,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 
-  <!-- Sprite Seas Design System -->
+  <!-- Sprite Seas Design System — tokens are the single source of palette/type
+       (DESIGN.md v1.0 / Appendix A). The :root palette that used to live here is
+       replaced by tokens.css; load it before all component CSS below. -->
+  <link rel="stylesheet" href="src/style/tokens.css">
   <style>
-    /* ── Tokens ─────────────────────────────────────────── */
-    :root {
-      --bg-deep:  #0a0e1a;
-      --bg-mid:   #1a1f33;
-      --bg-panel: rgba(10, 14, 26, 0.88);
-      --text-cream: #e8dfc8;
-      --text-dim:   rgba(232, 223, 200, 0.55);
-      --text-gold:  #c9a227;
-      --accent-gold: #c9a227;
-      --accent-red:  #d63b3b;
-      --accent-blue: #4a90d9;
-      --clan-knight:    #4a90d9;  /* 騎士: 青 */
-      --clan-merchant:  #c9a227;  /* 商人: 金 */
-      --clan-pirate:    #d63b3b;  /* 海賊: 赤 */
-      --clan-scholar:   #8b6cb8;  /* 学者: 紫 */
-      --clan-monk:      #6a8a6a;  /* 僧: 緑 */
-      --clan-engineer:  #d4884a;  /* 技師: 茶橙 */
-      --border-hard: 2px solid #000;
-      --border-gold: 2px solid var(--accent-gold);
-      --border-dim:  1px solid rgba(201, 162, 39, 0.35);
-      --font-main: 'VT323', monospace;
-      --ls-normal: 0.02em;
-      --ls-wide:   0.08em;
-    }
-
     /* ── Reset ───────────────────────────────────────────── */
     *, *::before, *::after {
       box-sizing: border-box;
@@ -117,7 +95,7 @@
     }
     .gba-btn:disabled { opacity: 0.45; cursor: default; pointer-events: none; }
     .gba-btn--primary { background: var(--accent-gold); color: var(--bg-deep); font-size: 22px; border-width: 2px; }
-    .gba-btn--primary:hover { background: #dbb630; }
+    .gba-btn--primary:hover { background: var(--accent-gold-bright); }
     .gba-btn--ghost { background: transparent; border: var(--border-dim); color: var(--text-dim); }
     .gba-btn--ghost:hover { border-color: var(--accent-gold); color: var(--text-cream); background: transparent; }
     .gba-btn--danger { border-color: var(--accent-red); }

@@ -66,8 +66,8 @@ const LGP_CSS = `
 .lgp-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .lgp-label-row { display: flex; align-items: center; gap: 6px; }
 .lgp-label { font-size: 12px; letter-spacing: 0.06em; color: var(--text-cream); }
-.lgp-check { font-size: 13px; color: #5ab87a; }
-.lgp-card-check { font-size: 13px; color: #d8b034; }
+.lgp-check { font-size: 13px; color: var(--hp-green); }
+.lgp-card-check { font-size: 13px; color: var(--rarity-l); }
 .lgp-bar-bg {
   height: 4px; background: rgba(255,255,255,0.08); border-radius: 0;
   overflow: hidden;

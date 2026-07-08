@@ -7,8 +7,8 @@
  */
 export function PrizePoolHTML(totalCards = 0, vaultCount = 0) {
   const TIERS = [
-    { label: 'TIER 1', min: 60, max: 60, share: '50%',  color: '#d8b034' },
-    { label: 'TIER 2', min: 50, max: 59, share: '25%',  color: '#c9a227' },
+    { label: 'TIER 1', min: 60, max: 60, share: '50%',  color: 'var(--accent-gold-bright)' },
+    { label: 'TIER 2', min: 50, max: 59, share: '25%',  color: 'var(--accent-gold)' },
     { label: 'TIER 3', min: 30, max: 49, share: '15%',  color: '#a0a0a0' },
     { label: 'TIER 4', min: 10, max: 29, share: '8%',   color: '#808080' },
     { label: 'TIER 5', min:  1, max:  9, share: '2%',   color: '#606060' },

@@ -533,7 +533,7 @@ const CSS = `
 .log-gold { color: var(--accent-gold); }
 .log-red  { color: var(--accent-red); }
 .log-dim  { color: var(--text-dim); }
-.log-combat { color: #4a90d9; }
+.log-combat { color: var(--accent-blue); }
 
 .rev-bp-totals {
   display: flex; align-items: center; justify-content: center; gap: 24px;

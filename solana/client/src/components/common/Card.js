@@ -15,7 +15,7 @@ export const RARITY_LABELS  = ['COM','UNC','RARE','LGD'];
 export const ACTION_LABELS  = ['◆ CRYSTAL','🛡 BARRIER','⚡ FLAME','🌀 STORM','◎ SHADOW','✦ VOID'];
 export const ACTION_ICONS   = ['◆','🛡','⚡','🌀','◎','✦'];
 export const RARITY_KEYS    = ['c','u','r','l'];
-export const RARITY_COLORS  = ['#8a8a8a','#4a9c6f','#4a7ab5','#d8b034'];
+export const RARITY_COLORS  = ['var(--rarity-c)','var(--rarity-u)','var(--rarity-r)','var(--rarity-l)'];
 export const CLAN_EMOJI     = ['⚔','⚖','⚓','✦','☯','⚙'];
 export const CARD_NAMES = {
    1:'Squire',    2:'Guard',       3:'Soldier',   4:'Paladin',  5:'Sacrificial Squire',
@@ -57,7 +57,7 @@ export function CardHTML({
   const card = getCard(id);
   if (!card) return `<div class="ark-card ark-card--empty"></div>`;
 
-  const color  = FACTION_COLORS[card.faction] ?? '#e8dfc8';
+  const color  = FACTION_COLORS[card.faction] ?? 'var(--text-cream)';
   const isLgd  = card.rarity === 3;
   const name   = CARD_NAMES[id] ?? `Card #${id}`;
   const hp     = hpCurrent ?? card.hp;
@@ -111,8 +111,8 @@ export function CardFrameHTML({
   if (!card) return `<div class="card-frame card-frame--empty"></div>`;
 
   const rKey    = RARITY_KEYS[card.rarity]   ?? 'c';
-  const cColor  = FACTION_COLORS[card.faction] ?? '#e8dfc8';
-  const rColor  = RARITY_COLORS[card.rarity]  ?? '#8a8a8a';
+  const cColor  = FACTION_COLORS[card.faction] ?? 'var(--text-cream)';
+  const rColor  = RARITY_COLORS[card.rarity]  ?? 'var(--rarity-c)';
   const emoji   = CLAN_EMOJI[card.faction]    ?? '◆';
   const name    = CARD_NAMES[id] ?? `Card #${id}`;
   const hp      = hpCurrent ?? card.hp;
@@ -163,22 +163,22 @@ const CARD_CSS = `
   display: flex; flex-direction: column; align-items: center;
   padding: 5px 4px 4px;
   background: var(--bg-mid);
-  border: 1px solid color-mix(in srgb, var(--cc,#e8dfc8) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cc,var(--text-cream)) 40%, transparent);
   cursor: pointer;
   transition: border-color 80ms, box-shadow 80ms;
   flex-shrink: 0;
   overflow: hidden;
 }
 .ark-card:hover:not(.ark-card--locked):not(.ark-card--dead) {
-  border-color: var(--cc,#e8dfc8);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--cc,#e8dfc8) 40%, transparent);
+  border-color: var(--cc,var(--text-cream));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--cc,var(--text-cream)) 40%, transparent);
 }
 .ark-card--selected {
   border-color: var(--accent-gold) !important;
   box-shadow: 0 0 10px rgba(201,162,39,0.5);
 }
 .ark-card--legendary {
-  border-color: #d8b034;
+  border-color: var(--rarity-l);
   box-shadow: 0 0 8px rgba(216,176,52,0.4), inset 0 0 12px rgba(216,176,52,0.06);
 }
 .ark-card--legendary.ark-card--selected {
@@ -189,7 +189,7 @@ const CARD_CSS = `
 .ark-card--compact { width: 60px; height: 82px; padding: 4px 3px; }
 .ark-card--facedown {
   width: 80px; height: 112px;
-  background: repeating-linear-gradient(-45deg,#1a1f33,#1a1f33 4px,#0a0e1a 4px,#0a0e1a 8px);
+  background: repeating-linear-gradient(-45deg,var(--bg-mid),var(--bg-mid) 4px,var(--bg-deep) 4px,var(--bg-deep) 8px);
   border: 1px solid rgba(201,162,39,0.3);
   display: flex; align-items: center; justify-content: center;
 }
@@ -213,7 +213,7 @@ const CARD_CSS = `
 .ark-card--compact .ark-card-name { font-size: 8px; }
 
 .ark-card-legend {
-  font-size: 14px; color: #d8b034; line-height: 1; flex-shrink: 0;
+  font-size: 14px; color: var(--rarity-l); line-height: 1; flex-shrink: 0;
   text-shadow: 0 0 6px rgba(216,176,52,0.8);
 }
 
@@ -224,7 +224,7 @@ const CARD_CSS = `
 .ark-stat { display: flex; flex-direction: column; align-items: center; gap: 0; }
 .ark-stat-label { color: var(--text-dim); font-size: 8px; }
 .ark-stat b { color: var(--text-cream); font-size: 11px; }
-.ark-hp-val { color: #5ab87a; }
+.ark-hp-val { color: var(--hp-green); }
 
 .ark-card-action {
   font-size: 8px; letter-spacing: 0.02em; text-align: center;
@@ -263,12 +263,12 @@ const CARD_CSS = `
 .card-frame--dead    { opacity: 0.3;  filter: grayscale(1); }
 .card-frame--facedown {
   aspect-ratio: 5 / 7; width: 100%;
-  background: repeating-linear-gradient(-45deg,#1a1f33,#1a1f33 4px,#0a0e1a 4px,#0a0e1a 8px);
+  background: repeating-linear-gradient(-45deg,var(--bg-mid),var(--bg-mid) 4px,var(--bg-deep) 4px,var(--bg-deep) 8px);
   border: 1px solid rgba(201,162,39,0.3);
   display: flex; align-items: center; justify-content: center;
 }
 .card-frame--empty { aspect-ratio: 5 / 7; width: 100%; }
-.card-frame--selected { filter: drop-shadow(0 0 4px var(--accent-gold,#c9a227)); }
+.card-frame--selected { filter: drop-shadow(0 0 4px var(--accent-gold,var(--accent-gold))); }
 
 .card-frame .clan-bar {
   position: absolute; left: 0; top: 0; bottom: 0; width: 4px; z-index: 2;

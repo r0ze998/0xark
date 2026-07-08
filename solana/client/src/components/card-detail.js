@@ -94,7 +94,7 @@ function _render(container, cardId) {
       </div>
       <div class="cd-stats">
         <div class="cd-stat"><span class="cd-stat-label">BP</span><span class="cd-stat-val label-gold">${card.bp}</span></div>
-        <div class="cd-stat"><span class="cd-stat-label">HP</span><span class="cd-stat-val" style="color:#5ab87a">${card.hp}</span></div>
+        <div class="cd-stat"><span class="cd-stat-label">HP</span><span class="cd-stat-val" style="color:var(--hp-green)">${card.hp}</span></div>
         <div class="cd-stat"><span class="cd-stat-label">INI</span><span class="cd-stat-val">${card.ini}</span></div>
       </div>
       ${abilityHTML}
@@ -278,7 +278,7 @@ const CSS = `
   font-size: 11px; letter-spacing: 0.08em; flex-shrink: 0;
   padding: 1px 5px; border: 1px solid;
 }
-.cd-ability-type--burn    { border-color: #d63b3b; color: #d63b3b; }
+.cd-ability-type--burn    { border-color: var(--accent-red); color: var(--accent-red); }
 .cd-ability-type--passive { border-color: #6a8a6a; color: #6a8a6a; }
 .cd-ability-desc { font-size: 13px; color: var(--text-dim); }
 
