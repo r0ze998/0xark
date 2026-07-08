@@ -1,6 +1,9 @@
 // home-screen.js — Phase 20-C: 4-button navigation hub (SHOP + TRADE enabled)
 import { pxIcon } from '../lib/px-icons.js';
 import { tierForVault, PRIZE_TIERS } from '../lib/ui-shared.js';
+import { EnergyHudHTML, attachEnergyHud, injectEnergyCss } from './common/energy-hud.js';
+
+let _detachEnergy = () => {};
 
 function _injectCSS() {
   if (document.getElementById('home-css')) return;
@@ -85,6 +88,7 @@ function _calculateTier(vaultCount) {
 
 export function mount(container, props = {}) {
   _injectCSS();
+  injectEnergyCss();
 
   const { playerState = {}, gameWorld = {}, pubkey = '' } = props;
   const vaultCount = playerState.vault_count ?? 0;
@@ -100,6 +104,7 @@ export function mount(container, props = {}) {
           <span>Vault ${vaultCount} / 60</span>
           <span>Tier ${tier.tier} (${tier.percent}%)</span>
         </div>
+        <div class="home-energy">${EnergyHudHTML(playerState, { refill: true })}</div>
       </div>
 
       <div class="home-grid">
@@ -144,8 +149,16 @@ export function mount(container, props = {}) {
   document.getElementById('btn-trade').addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('nav:trade'));
   });
+
+  _detachEnergy();
+  _detachEnergy = attachEnergyHud(container, {
+    playerState,
+    refill: true,
+    onRefill: () => document.dispatchEvent(new CustomEvent('nav:home')),
+  });
 }
 
 export function unmount(container) {
+  _detachEnergy(); _detachEnergy = () => {};
   container.innerHTML = '';
 }
