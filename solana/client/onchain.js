@@ -1701,7 +1701,7 @@ async function burnCard(cardMintStr) {
   let off = writeBytes(data, 0, d);
   writeBytes(data, off, mintPK.toBytes());
 
-  return buildAndSend([
+  const sig = await buildAndSend([
     { pubkey: owner,     isSigner: true,  isWritable: true  },
     { pubkey: mintPK,    isSigner: false, isWritable: true  },
     { pubkey: ata,       isSigner: false, isWritable: true  },
@@ -1713,6 +1713,8 @@ async function burnCard(cardMintStr) {
     { pubkey: new solanaWeb3.PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID), isSigner: false, isWritable: false },
     { pubkey: new solanaWeb3.PublicKey(SYSVAR_RENT_PUBKEY),         isSigner: false, isWritable: false },
   ], data);
+  invalidateOwnedCardMints(); // spec §1.4: burn removes a mint from the owner
+  return sig;
 }
 
 // ─── promote_card ───────────────────────────────────────────────────────────
@@ -1738,7 +1740,7 @@ async function promoteCard(cardMintStr) {
   // owner, card_mint_account, owner_token_account, card_mint_record,
   // card_battle_history, game_world, ops_treasury, system_program.
   // owner is now writable (pays the tier promotion fee → ops_treasury).
-  return buildAndSend([
+  const sig = await buildAndSend([
     { pubkey: owner,           isSigner: true,  isWritable: true  },
     { pubkey: mintPK,          isSigner: false, isWritable: false },
     { pubkey: ata,             isSigner: false, isWritable: false },
@@ -1748,6 +1750,8 @@ async function promoteCard(cardMintStr) {
     { pubkey: OPS_TREASURY_PK, isSigner: false, isWritable: true  },
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
   ], data);
+  invalidateOwnedCardMints(); // spec §1.4: promote changes the mint's stored rarity
+  return sig;
 }
 
 // ─── settle_duel_history ──────────────────────────────────────────────────
@@ -2293,6 +2297,7 @@ async function buyPack(packType) {
     { pubkey: SLOT_HASHES_PUBKEY, isSigner: false, isWritable: false },
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
   ], data);
+  invalidateOwnedCardMints(); // spec §1.4: buyPack adds new mints to the owner
 
   const cardIds = await _getPackCardIds(sig);
   return { signature: sig, cardIds };
