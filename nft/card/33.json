@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #033 — VOIDSTEP",
+  "name": "0xARK #033 — Mage",
   "symbol": "0xARK",
-  "description": "One foot in another world · Dim-hop · Epic Flee card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Scholar Common · Mage — BP4/HP6/INI5. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/33.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 33
     },
     {
-      "trait_type": "Name",
-      "value": "VOIDSTEP"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Flee"
+      "trait_type": "Faction",
+      "value": "Scholar"
     },
     {
       "trait_type": "Rarity",
-      "value": "Epic"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
       "value": 4
     },
     {
-      "trait_type": "Effect",
-      "value": "Dim-hop"
+      "trait_type": "HP",
+      "value": 6
     },
     {
-      "trait_type": "Lore",
-      "value": "One foot in another world"
+      "trait_type": "INI",
+      "value": 5
     }
   ],
   "properties": {

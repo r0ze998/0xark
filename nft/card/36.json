@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #036 — GENESIS",
+  "name": "0xARK #036 — Diviner",
   "symbol": "0xARK",
-  "description": "Begin again from the start · Rewind self · Legendary Flee card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Scholar Uncommon · Diviner — BP5/HP7/INI5. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/36.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 36
     },
     {
-      "trait_type": "Name",
-      "value": "GENESIS"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Flee"
+      "trait_type": "Faction",
+      "value": "Scholar"
     },
     {
       "trait_type": "Rarity",
-      "value": "Legendary"
+      "value": "Uncommon"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
       "value": 5
     },
     {
-      "trait_type": "Effect",
-      "value": "Rewind self"
+      "trait_type": "HP",
+      "value": 7
     },
     {
-      "trait_type": "Lore",
-      "value": "Begin again from the start"
+      "trait_type": "INI",
+      "value": 5
     }
   ],
   "properties": {

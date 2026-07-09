@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #017 — AEGIS WARD",
+  "name": "0xARK #017 — Speculator",
   "symbol": "0xARK",
-  "description": "Ancient sigil of the sea · Magic barrier · Rare Defense card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Merchant Uncommon · Speculator — BP8/HP8/INI2. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/17.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 17
     },
     {
-      "trait_type": "Name",
-      "value": "AEGIS WARD"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Defense"
+      "trait_type": "Faction",
+      "value": "Merchant"
     },
     {
       "trait_type": "Rarity",
-      "value": "Rare"
+      "value": "Uncommon"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 3
+      "trait_type": "BP",
+      "value": 8
     },
     {
-      "trait_type": "Effect",
-      "value": "Magic barrier"
+      "trait_type": "HP",
+      "value": 8
     },
     {
-      "trait_type": "Lore",
-      "value": "Ancient sigil of the sea"
+      "trait_type": "INI",
+      "value": 2
     }
   ],
   "properties": {

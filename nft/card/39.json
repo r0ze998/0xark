@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #039 — SPARK",
+  "name": "0xARK #039 — Seer",
   "symbol": "0xARK",
-  "description": "Seed of the thundercloud · 1 magic dmg · Common Magic card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Scholar Rare · Seer — BP5/HP8/INI5. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/39.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 39
     },
     {
-      "trait_type": "Name",
-      "value": "SPARK"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Magic"
+      "trait_type": "Faction",
+      "value": "Scholar"
     },
     {
       "trait_type": "Rarity",
-      "value": "Common"
+      "value": "Rare"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 1
+      "trait_type": "BP",
+      "value": 5
     },
     {
-      "trait_type": "Effect",
-      "value": "1 magic dmg"
+      "trait_type": "HP",
+      "value": 8
     },
     {
-      "trait_type": "Lore",
-      "value": "Seed of the thundercloud"
+      "trait_type": "INI",
+      "value": 5
     }
   ],
   "properties": {

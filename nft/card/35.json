@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #035 — ARK GATE",
+  "name": "0xARK #035 — Burning Tome",
   "symbol": "0xARK",
-  "description": "The door was always there · Instant esc · Legendary Flee card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Scholar Common · Burning Tome — BP5/HP7/INI5. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/35.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 35
     },
     {
-      "trait_type": "Name",
-      "value": "ARK GATE"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Flee"
+      "trait_type": "Faction",
+      "value": "Scholar"
     },
     {
       "trait_type": "Rarity",
-      "value": "Legendary"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
       "value": 5
     },
     {
-      "trait_type": "Effect",
-      "value": "Instant esc"
+      "trait_type": "HP",
+      "value": 7
     },
     {
-      "trait_type": "Lore",
-      "value": "The door was always there"
+      "trait_type": "INI",
+      "value": 5
     }
   ],
   "properties": {

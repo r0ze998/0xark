@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #009 — BERSERK",
+  "name": "0xARK #009 — Vanguard",
   "symbol": "0xARK",
-  "description": "No mind, only red · Rage atk · Rare Attack card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Knight Rare · Vanguard — BP8/HP12/INI3. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/9.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 9
     },
     {
-      "trait_type": "Name",
-      "value": "BERSERK"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Attack"
+      "trait_type": "Faction",
+      "value": "Knight"
     },
     {
       "trait_type": "Rarity",
       "value": "Rare"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
+      "value": 8
+    },
+    {
+      "trait_type": "HP",
+      "value": 12
+    },
+    {
+      "trait_type": "INI",
       "value": 3
-    },
-    {
-      "trait_type": "Effect",
-      "value": "Rage atk"
-    },
-    {
-      "trait_type": "Lore",
-      "value": "No mind, only red"
     }
   ],
   "properties": {

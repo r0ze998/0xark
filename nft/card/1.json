@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #001 — AEGIS",
+  "name": "0xARK #001 — Squire",
   "symbol": "0xARK",
-  "description": "Shield of the last captain · Steal x2 · Legendary Attack card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Knight Common · Squire — BP5/HP8/INI2. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/1.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 1
     },
     {
-      "trait_type": "Name",
-      "value": "AEGIS"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Attack"
+      "trait_type": "Faction",
+      "value": "Knight"
     },
     {
       "trait_type": "Rarity",
-      "value": "Legendary"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
       "value": 5
     },
     {
-      "trait_type": "Effect",
-      "value": "Steal x2"
+      "trait_type": "HP",
+      "value": 8
     },
     {
-      "trait_type": "Lore",
-      "value": "Shield of the last captain"
+      "trait_type": "INI",
+      "value": 2
     }
   ],
   "properties": {

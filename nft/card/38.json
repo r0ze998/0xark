@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #038 — NIHIL",
+  "name": "0xARK #038 — Scholar Lorekeeper",
   "symbol": "0xARK",
-  "description": "What is nothing can be all things · Copy card · Epic Magic card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Scholar Uncommon · Scholar Lorekeeper — BP5/HP8/INI5. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/38.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 38
     },
     {
-      "trait_type": "Name",
-      "value": "NIHIL"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Magic"
+      "trait_type": "Faction",
+      "value": "Scholar"
     },
     {
       "trait_type": "Rarity",
-      "value": "Epic"
+      "value": "Uncommon"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 4
+      "trait_type": "BP",
+      "value": 5
     },
     {
-      "trait_type": "Effect",
-      "value": "Copy card"
+      "trait_type": "HP",
+      "value": 8
     },
     {
-      "trait_type": "Lore",
-      "value": "What is nothing can be all things"
+      "trait_type": "INI",
+      "value": 5
     }
   ],
   "properties": {

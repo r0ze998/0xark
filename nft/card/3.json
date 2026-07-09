@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #003 — IGNIS",
+  "name": "0xARK #003 — Soldier",
   "symbol": "0xARK",
-  "description": "Fire that never drowns · Burn card · Rare Attack card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Knight Common · Soldier — BP6/HP10/INI3. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/3.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 3
     },
     {
-      "trait_type": "Name",
-      "value": "IGNIS"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Attack"
+      "trait_type": "Faction",
+      "value": "Knight"
     },
     {
       "trait_type": "Rarity",
-      "value": "Rare"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
+      "value": 6
+    },
+    {
+      "trait_type": "HP",
+      "value": 10
+    },
+    {
+      "trait_type": "INI",
       "value": 3
-    },
-    {
-      "trait_type": "Effect",
-      "value": "Burn card"
-    },
-    {
-      "trait_type": "Lore",
-      "value": "Fire that never drowns"
     }
   ],
   "properties": {

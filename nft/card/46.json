@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #046 — MAELSTROM",
+  "name": "0xARK #046 — Devotee",
   "symbol": "0xARK",
-  "description": "Drawn into the deep · Water vortex · Epic Magic card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Monk Uncommon · Devotee — BP7/HP11/INI1. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/46.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 46
     },
     {
-      "trait_type": "Name",
-      "value": "MAELSTROM"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Magic"
+      "trait_type": "Faction",
+      "value": "Monk"
     },
     {
       "trait_type": "Rarity",
-      "value": "Epic"
+      "value": "Uncommon"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 4
+      "trait_type": "BP",
+      "value": 7
     },
     {
-      "trait_type": "Effect",
-      "value": "Water vortex"
+      "trait_type": "HP",
+      "value": 11
     },
     {
-      "trait_type": "Lore",
-      "value": "Drawn into the deep"
+      "trait_type": "INI",
+      "value": 1
     }
   ],
   "properties": {

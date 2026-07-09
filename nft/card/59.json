@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #059 — GEN PULSE",
+  "name": "0xARK #059 — Colossus",
   "symbol": "0xARK",
-  "description": "From the source of all things · Restore all · Legendary Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Engineer Rare · Colossus — BP12/HP8/INI3. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/59.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 59
     },
     {
-      "trait_type": "Name",
-      "value": "GEN PULSE"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Recovery"
+      "trait_type": "Faction",
+      "value": "Engineer"
     },
     {
       "trait_type": "Rarity",
-      "value": "Legendary"
+      "value": "Rare"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 5
+      "trait_type": "BP",
+      "value": 12
     },
     {
-      "trait_type": "Effect",
-      "value": "Restore all"
+      "trait_type": "HP",
+      "value": 8
     },
     {
-      "trait_type": "Lore",
-      "value": "From the source of all things"
+      "trait_type": "INI",
+      "value": 3
     }
   ],
   "properties": {

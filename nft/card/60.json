@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #060 — ARK BLESS",
+  "name": "0xARK #060 — Architect",
   "symbol": "0xARK",
-  "description": "The ARK's final gift · Ultimate heal · Legendary Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Engineer Legendary · Architect — BP12/HP8/INI3. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/60.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 60
     },
     {
-      "trait_type": "Name",
-      "value": "ARK BLESS"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Recovery"
+      "trait_type": "Faction",
+      "value": "Engineer"
     },
     {
       "trait_type": "Rarity",
       "value": "Legendary"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 5
+      "trait_type": "BP",
+      "value": 12
     },
     {
-      "trait_type": "Effect",
-      "value": "Ultimate heal"
+      "trait_type": "HP",
+      "value": 8
     },
     {
-      "trait_type": "Lore",
-      "value": "The ARK's final gift"
+      "trait_type": "INI",
+      "value": 3
     }
   ],
   "properties": {

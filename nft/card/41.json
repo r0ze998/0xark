@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #041 — BLAZE",
+  "name": "0xARK #041 — Novice",
   "symbol": "0xARK",
-  "description": "The first element, oldest anger · Fire dmg · Uncommon Magic card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Monk Common · Novice — BP5/HP8/INI0. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/41.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 41
     },
     {
-      "trait_type": "Name",
-      "value": "BLAZE"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Magic"
+      "trait_type": "Faction",
+      "value": "Monk"
     },
     {
       "trait_type": "Rarity",
-      "value": "Uncommon"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 2
+      "trait_type": "BP",
+      "value": 5
     },
     {
-      "trait_type": "Effect",
-      "value": "Fire dmg"
+      "trait_type": "HP",
+      "value": 8
     },
     {
-      "trait_type": "Lore",
-      "value": "The first element, oldest anger"
+      "trait_type": "INI",
+      "value": 0
     }
   ],
   "properties": {

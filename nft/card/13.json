@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #013 — GUARD",
+  "name": "0xARK #013 — Broker",
   "symbol": "0xARK",
-  "description": "The first lesson: don't get hit · Block 1 · Common Defense card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Merchant Common · Broker — BP6/HP6/INI3. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/13.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 13
     },
     {
-      "trait_type": "Name",
-      "value": "GUARD"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Defense"
+      "trait_type": "Faction",
+      "value": "Merchant"
     },
     {
       "trait_type": "Rarity",
       "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 1
+      "trait_type": "BP",
+      "value": 6
     },
     {
-      "trait_type": "Effect",
-      "value": "Block 1"
+      "trait_type": "HP",
+      "value": 6
     },
     {
-      "trait_type": "Lore",
-      "value": "The first lesson: don't get hit"
+      "trait_type": "INI",
+      "value": 3
     }
   ],
   "properties": {
