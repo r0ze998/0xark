@@ -24,18 +24,20 @@ hand-builds instruction data via `disc()` — so a stale client IDL does not blo
 client, but resync it for tooling hygiene. All three contain Program ID
 `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN`.
 
-## Active UI — Phase 15 Battle Flow (5/11 submission)
-Entry point: `solana/client/app.js` → 5 battle components in `solana/client/src/components/`  
-Design system: inline CSS per component (VT323, 1024×576, dark GBA palette).
+## Active UI — battle client (post-F0/F1)
+`solana/client/` — plain ES modules, no build step.  
+Dev server: `cd solana/client && python3 -m http.server 4200`
 
-| Screen | File | Status |
-|--------|------|--------|
-| Main / Vault | `components/main-screen.js` | ✓ Active |
-| Preparation | `components/preparation.js` | ✓ Active |
-| Interruption | `components/interruption.js` | ✓ Active |
-| Reveal | `components/reveal.js` | ✓ Active |
-| Loot | `components/loot.js` | ✓ Active |
-| Card Detail (modal) | `components/card-detail.js` | ✓ Active |
+**Design authority:** `/DESIGN.md` (Sprite Seas) + `src/style/tokens.css`.  
+**CI:** `scripts/design-lint.py` — enforced: brand-hex / sub-13px / rem / faux-bold / emoji / round-hardcode / bare-import.
+
+**Battle flow (F1):** 5-round best-of-3 on chain truth (`advanceRound()` = the only
+round transition) · INTEL phase (swap removed) · energy HUD · PROMOTE (evolve removed)
+· ENGRAVE VICTORY · `STEAL_ENABLED = false` in `src/config.js` until YKK-44.
+
+**Specs:** `docs/F1_SPEC.md` (implemented) · F2 spec pending kickoff.
+
+**Rule:** read `/DESIGN.md` before ANY UI work; read `F1_SPEC` §2 before touching the battle flow.
 
 ## Wave 1–4 Screens (Post-hackathon — see docs/POST_HACKATHON_ROADMAP.md)
 16 additional screens are implemented in `src/screens/_archive/` and deferred to Season 2.  

@@ -1,3 +1,6 @@
+> **HISTORICAL (5/11 era).** Most items here were resolved by F0 (#34–37) / F1 (#38–41).
+> Current known-issues live in Linear. Kept for historical reference; not maintained.
+
 # Phase 15 UI — Known Issues & Remaining Work
 
 Branch: `phase15-ui-fix` / Tag: `v-phd-phase15-ui-fix`
