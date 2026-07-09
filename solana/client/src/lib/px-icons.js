@@ -65,27 +65,62 @@ const G = {
           [7,5,2,4],[7,10,2,1]],                                     // ! inside
 };
 
-// Normalize any negative w/h (defensive).
-function _rects(id) {
-  return (G[id] || []).map(([x, y, w, h]) => {
+// -- XL glyphs (F2 pre-assets) -------------------------------------------------
+// Large 32×32-grid glyphs for big surfaces (vault chest, card packs, lock states).
+// Same rule as G: rects only ADD pixels, so hollow shapes are drawn as outlines
+// with features in the negative space. Rendered via 32-viewBox symbols. Ids carry
+// their own names; call them exactly like the 16-grid set: pxIcon('chest-lg', {size:64}).
+// UNWIRED: no screen references these yet (F2 wiring lands in PR-H/I/K).
+const GXL = {
+  'chest-lg': [                                                      // closed treasure chest
+    [10,5,12,1],[8,6,2,1],[22,6,2,1],[7,7,1,6],[24,7,1,6],[7,13,18,1], // domed lid
+    [11,6,1,7],[20,6,1,7],[15,5,2,8],                                  // lid straps + center
+    [7,12,3,2],[22,12,3,2],                                            // hinges on the seam
+    [6,13,20,1],[6,14,1,13],[25,14,1,13],[6,26,20,1],                  // body outline
+    [14,16,4,1],[14,21,4,1],[14,16,1,6],[17,16,1,6],[15,18,2,1],[15,19,1,2], // latch + keyhole
+  ],
+  'scroll': [                                                        // rolled scroll, band at middle
+    [6,5,20,1],[5,6,22,1],[5,7,1,2],[26,7,1,2],[5,9,22,1],[8,7,2,1],[13,7,2,1],[18,7,2,1],[22,7,2,1], // top roll
+    [7,10,18,1],[7,10,1,12],[24,10,1,12],[7,22,18,1],                 // sheet (hollow)
+    [5,23,22,1],[5,24,1,2],[26,24,1,2],[6,26,20,1],[8,24,2,1],[13,24,2,1],[18,24,2,1],[22,24,2,1], // bottom roll
+    [4,15,24,1],[4,18,24,1],[4,15,1,4],[27,15,1,4],[15,14,3,1],[15,19,3,1], // ribbon band + knot
+  ],
+  'padlock-lg': [                                                    // chunky padlock, keyhole
+    [11,4,10,1],[9,5,2,1],[21,5,2,1],[9,6,1,6],[22,6,1,6],[13,6,1,6],[18,6,1,6],[13,6,6,1], // shackle (hollow U)
+    [6,12,20,1],[6,13,1,14],[25,13,1,14],[6,27,20,1],                 // body outline
+    [14,16,4,1],[13,17,1,3],[18,17,1,3],[14,20,4,1],[15,21,2,3],      // keyhole ring + slot
+  ],
+  'pack': [                                                          // card pack, tear-notch + 5-card fan
+    [7,8,18,1],[7,8,1,20],[24,8,1,20],[7,28,18,1],                    // pouch outline
+    [9,6,1,2],[12,6,1,2],[15,6,1,2],[18,6,1,2],[21,6,1,2],            // tear-notch teeth
+    [8,10,16,1],                                                      // top seal band
+    [10,15,2,9],[13,13,2,11],[15,12,2,12],[18,13,2,11],[20,15,2,9],[11,23,10,1], // 5-card fan (splayed)
+  ],
+};
+
+// Normalize any negative w/h (defensive). `map` defaults to the 16-grid set.
+function _rects(id, map = G) {
+  return (map[id] || []).map(([x, y, w, h]) => {
     if (w < 0) { x += w; w = -w; }
     if (h < 0) { y += h; h = -h; }
     return [x, y, w, h];
   });
 }
 
-export const PX_ICON_IDS = Object.keys(G);
+const _symbols = (map, vb) => Object.keys(map).map(id => {
+  const rects = _rects(id, map)
+    .map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}"/>`)
+    .join('');
+  return `<symbol id="px-${id}" viewBox="0 0 ${vb} ${vb}">${rects}</symbol>`;
+}).join('');
+
+export const PX_ICON_IDS = [...Object.keys(G), ...Object.keys(GXL)];
 
 const SHEET_ID = 'px-icon-sheet';
 
 export function injectPxIconSheet() {
   if (document.getElementById(SHEET_ID)) return;
-  const symbols = Object.keys(G).map(id => {
-    const rects = _rects(id)
-      .map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}"/>`)
-      .join('');
-    return `<symbol id="px-${id}" viewBox="0 0 16 16">${rects}</symbol>`;
-  }).join('');
+  const symbols = _symbols(G, 16) + _symbols(GXL, 32);
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.id = SHEET_ID;
   svg.setAttribute('width', '0');
