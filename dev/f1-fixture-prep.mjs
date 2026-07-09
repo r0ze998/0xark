@@ -366,13 +366,48 @@ async function winOneDuel(auth, A, B, handA, handB, fixtureMint, n) {
   const handB = [1, 2, 11, 12, 13, 0, 0, 0, 0, 0];
   console.log(`handA=[${handA.slice(0, 5)}] handB=[${handB.slice(0, 5)}]`);
 
+  // ── DIAGNOSTIC (refill_energy ConstraintSeeds 2006) ─────────────────────────
+  // register_waitlist(A) succeeded, so the program derived A's PlayerState to the
+  // SAME address this script passes. refill_energy uses IDENTICAL seeds
+  // [b"player", player.key()]. If it still 2006s, the program-id used for on-chain
+  // seed derivation != the one this script uses (3-way id mismatch:
+  // Anchor.toml localnet 3QEa… / declare_id! 5i37 / deploy 8CH9…). This block
+  // proves whether A's PlayerState really lives at playerStatePda(A) under PROGRAM_ID.
+  console.log('\n── DIAG: program id + PlayerState resolution ──');
+  console.log(`  PROGRAM_ID (script, invoke + PDA)  = ${PROGRAM_ID.toBase58()}`);
+  for (const [lbl, kp] of [['A', A], ['B', B]]) {
+    const ps = playerStatePda(kp.publicKey);
+    const info = await conn.getAccountInfo(ps);
+    console.log(`  ${lbl} = ${kp.publicKey.toBase58()}`);
+    console.log(`    playerStatePda(${lbl}) = ${ps.toBase58()}`);
+    console.log(`    on-chain: ${info ? `EXISTS owner=${info.owner.toBase58()} len=${info.data.length}` : 'MISSING (register wrote elsewhere → PDA/program-id mismatch)'}`);
+  }
+  // Self-resolving catch: on the refill 2006, parse the program-expected ("Right:")
+  // address from the error and brute-force which (key) it derives from — pinpoints
+  // whether it's a wrong key or a wrong program id.
+  const _diagResolveExpected = (msg) => {
+    const m = msg.match(/Right:\s*([1-9A-HJ-NP-Za-km-z]{32,44})/);
+    if (!m) return;
+    const want = m[1];
+    for (const [lbl, pk] of [['A', A.publicKey], ['B', B.publicKey], ['auth', auth.publicKey], ['fixtureMint', fixtureMint], ['OPS', OPS_TREASURY]]) {
+      if (playerStatePda(pk).toBase58() === want) { console.log(`  DIAG: program-expected ${want} = playerStatePda(${lbl}) under PROGRAM_ID → seeds key mismatch`); return; }
+    }
+    console.log(`  DIAG: program-expected ${want} matches NO key under PROGRAM_ID → on-chain derives with a DIFFERENT program id (rebuild/redeploy so declare_id! == deploy addr == script PROGRAM_ID)`);
+  };
+
   // ── B) win fixture: 10 decisive duels, settle A's fixture mint each ──
   const wins0 = await readWins(fixtureMint);
   console.log(`\nfixture wins before: ${wins0}`);
   for (let n = 1; n <= WIN_TARGET; n++) {
     const w = await readWins(fixtureMint);
     if (w >= WIN_TARGET) { console.log(`already at ${w} wins — stopping early`); break; }
-    await winOneDuel(auth, A, B, handA, handB, fixtureMint, n);
+    try {
+      await winOneDuel(auth, A, B, handA, handB, fixtureMint, n);
+    } catch (e) {
+      console.error(`\nwin-duel ${n} failed: ${e.message ?? e}`);
+      _diagResolveExpected(e.message ?? String(e));
+      throw e;
+    }
   }
   const winsN = await readWins(fixtureMint);
   console.log(`\n✓ fixture card wins after: ${winsN}  (target ${WIN_TARGET})  mint=${fixtureMint.toBase58()}`);
