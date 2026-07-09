@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #034 — TIMESKIP",
+  "name": "0xARK #034 — Sage",
   "symbol": "0xARK",
-  "description": "The clock obeys no one · Pause time · Epic Flee card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Scholar Common · Sage — BP4/HP7/INI4. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/34.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 34
     },
     {
-      "trait_type": "Name",
-      "value": "TIMESKIP"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Flee"
+      "trait_type": "Faction",
+      "value": "Scholar"
     },
     {
       "trait_type": "Rarity",
-      "value": "Epic"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
       "value": 4
     },
     {
-      "trait_type": "Effect",
-      "value": "Pause time"
+      "trait_type": "HP",
+      "value": 7
     },
     {
-      "trait_type": "Lore",
-      "value": "The clock obeys no one"
+      "trait_type": "INI",
+      "value": 4
     }
   ],
   "properties": {

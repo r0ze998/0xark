@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #049 — MEND",
+  "name": "0xARK #049 — Elder",
   "symbol": "0xARK",
-  "description": "Small acts of repair · Heal 1 HP · Common Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Monk Rare · Elder — BP8/HP12/INI1. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/49.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 49
     },
     {
-      "trait_type": "Name",
-      "value": "MEND"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Recovery"
+      "trait_type": "Faction",
+      "value": "Monk"
     },
     {
       "trait_type": "Rarity",
-      "value": "Common"
+      "value": "Rare"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
+      "value": 8
+    },
+    {
+      "trait_type": "HP",
+      "value": 12
+    },
+    {
+      "trait_type": "INI",
       "value": 1
-    },
-    {
-      "trait_type": "Effect",
-      "value": "Heal 1 HP"
-    },
-    {
-      "trait_type": "Lore",
-      "value": "Small acts of repair"
     }
   ],
   "properties": {

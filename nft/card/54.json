@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #054 — WARD",
+  "name": "0xARK #054 — Inventor",
   "symbol": "0xARK",
-  "description": "Set a watch on the body · Next-dmg:0 · Rare Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Engineer Common · Inventor — BP10/HP6/INI2. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/54.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 54
     },
     {
-      "trait_type": "Name",
-      "value": "WARD"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Recovery"
+      "trait_type": "Faction",
+      "value": "Engineer"
     },
     {
       "trait_type": "Rarity",
-      "value": "Rare"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 3
+      "trait_type": "BP",
+      "value": 10
     },
     {
-      "trait_type": "Effect",
-      "value": "Next-dmg:0"
+      "trait_type": "HP",
+      "value": 6
     },
     {
-      "trait_type": "Lore",
-      "value": "Set a watch on the body"
+      "trait_type": "INI",
+      "value": 2
     }
   ],
   "properties": {

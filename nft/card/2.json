@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #002 — UMBRA",
+  "name": "0xARK #002 — Guard",
   "symbol": "0xARK",
-  "description": "The shadow that sails with no ship · Invis 1T · Epic Attack card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Knight Common · Guard — BP6/HP9/INI2. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/2.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 2
     },
     {
-      "trait_type": "Name",
-      "value": "UMBRA"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Attack"
+      "trait_type": "Faction",
+      "value": "Knight"
     },
     {
       "trait_type": "Rarity",
-      "value": "Epic"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 4
+      "trait_type": "BP",
+      "value": 6
     },
     {
-      "trait_type": "Effect",
-      "value": "Invis 1T"
+      "trait_type": "HP",
+      "value": 9
     },
     {
-      "trait_type": "Lore",
-      "value": "The shadow that sails with no ship"
+      "trait_type": "INI",
+      "value": 2
     }
   ],
   "properties": {

@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #058 — HOLY LIGHT",
+  "name": "0xARK #058 — Engineer Forgemaster",
   "symbol": "0xARK",
-  "description": "Light that cleans as well as heals · Heal+purify · Epic Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Engineer Uncommon · Engineer Forgemaster — BP11/HP8/INI3. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/58.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 58
     },
     {
-      "trait_type": "Name",
-      "value": "HOLY LIGHT"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Recovery"
+      "trait_type": "Faction",
+      "value": "Engineer"
     },
     {
       "trait_type": "Rarity",
-      "value": "Epic"
+      "value": "Uncommon"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 4
+      "trait_type": "BP",
+      "value": 11
     },
     {
-      "trait_type": "Effect",
-      "value": "Heal+purify"
+      "trait_type": "HP",
+      "value": 8
     },
     {
-      "trait_type": "Lore",
-      "value": "Light that cleans as well as heals"
+      "trait_type": "INI",
+      "value": 3
     }
   ],
   "properties": {

@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #050 — REST",
+  "name": "0xARK #050 — Ascetic",
   "symbol": "0xARK",
-  "description": "The body knows what it needs · Restore SP · Common Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Monk Legendary · Ascetic — BP8/HP12/INI1. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/50.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 50
     },
     {
-      "trait_type": "Name",
-      "value": "REST"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Recovery"
+      "trait_type": "Faction",
+      "value": "Monk"
     },
     {
       "trait_type": "Rarity",
-      "value": "Common"
+      "value": "Legendary"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
+      "value": 8
+    },
+    {
+      "trait_type": "HP",
+      "value": 12
+    },
+    {
+      "trait_type": "INI",
       "value": 1
-    },
-    {
-      "trait_type": "Effect",
-      "value": "Restore SP"
-    },
-    {
-      "trait_type": "Lore",
-      "value": "The body knows what it needs"
     }
   ],
   "properties": {

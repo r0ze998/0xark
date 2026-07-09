@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #047 — GRAVITY",
+  "name": "0xARK #047 — Contemplator",
   "symbol": "0xARK",
-  "description": "Even light bends · Crush force · Epic Magic card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Monk Uncommon · Contemplator — BP8/HP11/INI1. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/47.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 47
     },
     {
-      "trait_type": "Name",
-      "value": "GRAVITY"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Magic"
+      "trait_type": "Faction",
+      "value": "Monk"
     },
     {
       "trait_type": "Rarity",
-      "value": "Epic"
+      "value": "Uncommon"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 4
+      "trait_type": "BP",
+      "value": 8
     },
     {
-      "trait_type": "Effect",
-      "value": "Crush force"
+      "trait_type": "HP",
+      "value": 11
     },
     {
-      "trait_type": "Lore",
-      "value": "Even light bends"
+      "trait_type": "INI",
+      "value": 1
     }
   ],
   "properties": {

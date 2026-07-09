@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #053 — REJUVEN",
+  "name": "0xARK #053 — Forger",
   "symbol": "0xARK",
-  "description": "As if no wound was dealt · Full HP · Rare Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Engineer Common · Forger — BP9/HP6/INI3. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/53.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 53
     },
     {
-      "trait_type": "Name",
-      "value": "REJUVEN"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Recovery"
+      "trait_type": "Faction",
+      "value": "Engineer"
     },
     {
       "trait_type": "Rarity",
-      "value": "Rare"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
+      "value": 9
+    },
+    {
+      "trait_type": "HP",
+      "value": 6
+    },
+    {
+      "trait_type": "INI",
       "value": 3
-    },
-    {
-      "trait_type": "Effect",
-      "value": "Full HP"
-    },
-    {
-      "trait_type": "Lore",
-      "value": "As if no wound was dealt"
     }
   ],
   "properties": {

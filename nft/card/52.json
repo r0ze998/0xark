@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #052 — BANDAGE",
+  "name": "0xARK #052 — Mechanic",
   "symbol": "0xARK",
-  "description": "Simple, but it saves lives · Stop bleed · Uncommon Recovery card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Engineer Common · Mechanic — BP9/HP5/INI2. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/52.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 52
     },
     {
-      "trait_type": "Name",
-      "value": "BANDAGE"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Recovery"
+      "trait_type": "Faction",
+      "value": "Engineer"
     },
     {
       "trait_type": "Rarity",
-      "value": "Uncommon"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
+      "value": 9
+    },
+    {
+      "trait_type": "HP",
+      "value": 5
+    },
+    {
+      "trait_type": "INI",
       "value": 2
-    },
-    {
-      "trait_type": "Effect",
-      "value": "Stop bleed"
-    },
-    {
-      "trait_type": "Lore",
-      "value": "Simple, but it saves lives"
     }
   ],
   "properties": {

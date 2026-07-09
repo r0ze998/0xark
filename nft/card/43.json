@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #043 — INFERNO",
+  "name": "0xARK #043 — Acolyte",
   "symbol": "0xARK",
-  "description": "The ocean does not stop it · Area fire · Rare Magic card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Monk Common · Acolyte — BP6/HP10/INI0. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/43.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 43
     },
     {
-      "trait_type": "Name",
-      "value": "INFERNO"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Magic"
+      "trait_type": "Faction",
+      "value": "Monk"
     },
     {
       "trait_type": "Rarity",
-      "value": "Rare"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 3
+      "trait_type": "BP",
+      "value": 6
     },
     {
-      "trait_type": "Effect",
-      "value": "Area fire"
+      "trait_type": "HP",
+      "value": 10
     },
     {
-      "trait_type": "Lore",
-      "value": "The ocean does not stop it"
+      "trait_type": "INI",
+      "value": 0
     }
   ],
   "properties": {

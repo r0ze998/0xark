@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #045 — THUNDER",
+  "name": "0xARK #045 — Mantra Burner",
   "symbol": "0xARK",
-  "description": "One strike, many wounds · Chain bolt · Rare Magic card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Monk Common · Mantra Burner — BP7/HP11/INI0. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/45.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 45
     },
     {
-      "trait_type": "Name",
-      "value": "THUNDER"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Magic"
+      "trait_type": "Faction",
+      "value": "Monk"
     },
     {
       "trait_type": "Rarity",
-      "value": "Rare"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 3
+      "trait_type": "BP",
+      "value": 7
     },
     {
-      "trait_type": "Effect",
-      "value": "Chain bolt"
+      "trait_type": "HP",
+      "value": 11
     },
     {
-      "trait_type": "Lore",
-      "value": "One strike, many wounds"
+      "trait_type": "INI",
+      "value": 0
     }
   ],
   "properties": {

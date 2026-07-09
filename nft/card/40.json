@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #040 — FROST",
+  "name": "0xARK #040 — Oracle",
   "symbol": "0xARK",
-  "description": "Cold has patience · Slow foe · Common Magic card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Scholar Legendary · Oracle — BP5/HP8/INI5. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/40.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 40
     },
     {
-      "trait_type": "Name",
-      "value": "FROST"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Magic"
+      "trait_type": "Faction",
+      "value": "Scholar"
     },
     {
       "trait_type": "Rarity",
-      "value": "Common"
+      "value": "Legendary"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 1
+      "trait_type": "BP",
+      "value": 5
     },
     {
-      "trait_type": "Effect",
-      "value": "Slow foe"
+      "trait_type": "HP",
+      "value": 8
     },
     {
-      "trait_type": "Lore",
-      "value": "Cold has patience"
+      "trait_type": "INI",
+      "value": 5
     }
   ],
   "properties": {

@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #018 — MIRROR",
+  "name": "0xARK #018 — Merchant Magnate",
   "symbol": "0xARK",
-  "description": "The face in still water · Spell reflect · Rare Defense card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Merchant Uncommon · Merchant Magnate — BP8/HP8/INI3. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/18.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 18
     },
     {
-      "trait_type": "Name",
-      "value": "MIRROR"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Defense"
+      "trait_type": "Faction",
+      "value": "Merchant"
     },
     {
       "trait_type": "Rarity",
-      "value": "Rare"
+      "value": "Uncommon"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
+      "value": 8
+    },
+    {
+      "trait_type": "HP",
+      "value": 8
+    },
+    {
+      "trait_type": "INI",
       "value": 3
-    },
-    {
-      "trait_type": "Effect",
-      "value": "Spell reflect"
-    },
-    {
-      "trait_type": "Lore",
-      "value": "The face in still water"
     }
   ],
   "properties": {

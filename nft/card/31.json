@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #031 — WINDASH",
+  "name": "0xARK #031 — Apprentice",
   "symbol": "0xARK",
-  "description": "Outrun lightning itself · Supersonic · Rare Flee card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Scholar Common · Apprentice — BP3/HP5/INI4. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/31.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 31
     },
     {
-      "trait_type": "Name",
-      "value": "WINDASH"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Flee"
+      "trait_type": "Faction",
+      "value": "Scholar"
     },
     {
       "trait_type": "Rarity",
-      "value": "Rare"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
       "value": 3
     },
     {
-      "trait_type": "Effect",
-      "value": "Supersonic"
+      "trait_type": "HP",
+      "value": 5
     },
     {
-      "trait_type": "Lore",
-      "value": "Outrun lightning itself"
+      "trait_type": "INI",
+      "value": 4
     }
   ],
   "properties": {

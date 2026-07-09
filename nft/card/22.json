@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #022 — ABS GUARD",
+  "name": "0xARK #022 — Raider",
   "symbol": "0xARK",
-  "description": "Beyond perfect · Negate all · Epic Defense card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Pirate Common · Raider — BP9/HP4/INI4. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/22.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 22
     },
     {
-      "trait_type": "Name",
-      "value": "ABS GUARD"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Defense"
+      "trait_type": "Faction",
+      "value": "Pirate"
     },
     {
       "trait_type": "Rarity",
-      "value": "Epic"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
+      "trait_type": "BP",
+      "value": 9
+    },
+    {
+      "trait_type": "HP",
       "value": 4
     },
     {
-      "trait_type": "Effect",
-      "value": "Negate all"
-    },
-    {
-      "trait_type": "Lore",
-      "value": "Beyond perfect"
+      "trait_type": "INI",
+      "value": 4
     }
   ],
   "properties": {

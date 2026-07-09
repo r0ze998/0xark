@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #030 — SHADOW",
+  "name": "0xARK #030 — Marauder",
   "symbol": "0xARK",
-  "description": "Even hunters fear the dark · Invisible · Rare Flee card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Pirate Legendary · Marauder — BP12/HP5/INI5. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/30.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 30
     },
     {
-      "trait_type": "Name",
-      "value": "SHADOW"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Flee"
+      "trait_type": "Faction",
+      "value": "Pirate"
     },
     {
       "trait_type": "Rarity",
-      "value": "Rare"
+      "value": "Legendary"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 3
+      "trait_type": "BP",
+      "value": 12
     },
     {
-      "trait_type": "Effect",
-      "value": "Invisible"
+      "trait_type": "HP",
+      "value": 5
     },
     {
-      "trait_type": "Lore",
-      "value": "Even hunters fear the dark"
+      "trait_type": "INI",
+      "value": 5
     }
   ],
   "properties": {

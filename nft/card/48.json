@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #048 — SINGULARITY",
+  "name": "0xARK #048 — Monk Ascender",
   "symbol": "0xARK",
-  "description": "Everything falls inward · Black hole · Legendary Magic card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Monk Uncommon · Monk Ascender — BP8/HP12/INI0. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/48.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 48
     },
     {
-      "trait_type": "Name",
-      "value": "SINGULARITY"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Magic"
+      "trait_type": "Faction",
+      "value": "Monk"
     },
     {
       "trait_type": "Rarity",
-      "value": "Legendary"
+      "value": "Uncommon"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 5
+      "trait_type": "BP",
+      "value": 8
     },
     {
-      "trait_type": "Effect",
-      "value": "Black hole"
+      "trait_type": "HP",
+      "value": 12
     },
     {
-      "trait_type": "Lore",
-      "value": "Everything falls inward"
+      "trait_type": "INI",
+      "value": 0
     }
   ],
   "properties": {

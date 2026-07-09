@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #042 — STATIC",
+  "name": "0xARK #042 — Initiate",
   "symbol": "0xARK",
-  "description": "The air before a strike · Stun 1T · Uncommon Magic card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Monk Common · Initiate — BP6/HP9/INI1. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/42.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 42
     },
     {
-      "trait_type": "Name",
-      "value": "STATIC"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Magic"
+      "trait_type": "Faction",
+      "value": "Monk"
     },
     {
       "trait_type": "Rarity",
-      "value": "Uncommon"
+      "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 2
+      "trait_type": "BP",
+      "value": 6
     },
     {
-      "trait_type": "Effect",
-      "value": "Stun 1T"
+      "trait_type": "HP",
+      "value": 9
     },
     {
-      "trait_type": "Lore",
-      "value": "The air before a strike"
+      "trait_type": "INI",
+      "value": 1
     }
   ],
   "properties": {

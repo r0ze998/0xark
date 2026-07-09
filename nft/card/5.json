@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #005 — SLASH",
+  "name": "0xARK #005 — Sacrificial Squire",
   "symbol": "0xARK",
-  "description": "Faster than a shadow at noon · Quick atk · Common Attack card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Knight Common · Sacrificial Squire — BP7/HP11/INI3. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/5.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 5
     },
     {
-      "trait_type": "Name",
-      "value": "SLASH"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Attack"
+      "trait_type": "Faction",
+      "value": "Knight"
     },
     {
       "trait_type": "Rarity",
       "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 1
+      "trait_type": "BP",
+      "value": 7
     },
     {
-      "trait_type": "Effect",
-      "value": "Quick atk"
+      "trait_type": "HP",
+      "value": 11
     },
     {
-      "trait_type": "Lore",
-      "value": "Faster than a shadow at noon"
+      "trait_type": "INI",
+      "value": 3
     }
   ],
   "properties": {

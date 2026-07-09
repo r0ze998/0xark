@@ -1,7 +1,7 @@
 {
-  "name": "0xARK #004 — STRIKE",
+  "name": "0xARK #004 — Paladin",
   "symbol": "0xARK",
-  "description": "The simplest blow still cuts · Deal 1 dmg · Common Attack card from 0xARK, the on-chain ZK card PvP game on Solana.",
+  "description": "Knight Common · Paladin — BP7/HP10/INI2. Provenance-bearing card from 0xARK, the on-chain ZK card game on Solana.",
   "image": "https://r0ze998.github.io/0xark/nft/img/4.svg",
   "external_url": "https://r0ze998.github.io/0xark",
   "attributes": [
@@ -10,28 +10,24 @@
       "value": 4
     },
     {
-      "trait_type": "Name",
-      "value": "STRIKE"
-    },
-    {
-      "trait_type": "Type",
-      "value": "Attack"
+      "trait_type": "Faction",
+      "value": "Knight"
     },
     {
       "trait_type": "Rarity",
       "value": "Common"
     },
     {
-      "trait_type": "Rarity Level",
-      "value": 1
+      "trait_type": "BP",
+      "value": 7
     },
     {
-      "trait_type": "Effect",
-      "value": "Deal 1 dmg"
+      "trait_type": "HP",
+      "value": 10
     },
     {
-      "trait_type": "Lore",
-      "value": "The simplest blow still cuts"
+      "trait_type": "INI",
+      "value": 2
     }
   ],
   "properties": {
