@@ -93,6 +93,10 @@ pub fn handle_register_waitlist(ctx: Context<RegisterWaitlist>) -> Result<()> {
     // Initialize PlayerState v2 fields
     let ps = &mut ctx.accounts.player_state;
     ps.player = ctx.accounts.player.key();
+    // Persist the PDA bump. Consumers that re-derive with `bump = player_state.bump`
+    // (refill_energy, commit_hand — the whole F1 energy path) fail ConstraintSeeds(2006)
+    // if this stays at init's zero, since bump 0 yields a different address.
+    ps.bump = ctx.bumps.player_state;
     ps.deposit_amount = deposit;
     ps.vault_bitmap = [0u8; 8];
     ps.win_streak = 0;
