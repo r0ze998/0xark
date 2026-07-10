@@ -32,7 +32,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import * as snarkjs from 'snarkjs';
 import crypto from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -46,6 +46,7 @@ const {
 // the fixture mints directly + registers the CardMintRecord as admin).
 const spl = require(`${ROOT}/solana/oxark/node_modules/@solana/spl-token`);
 const { createMint, getOrCreateAssociatedTokenAccount, mintTo } = spl;
+const bs58 = require(`${ROOT}/solana/oxark/node_modules/bs58`); // Phantom-importable secrets
 
 // ── config ──
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : d; };
@@ -318,8 +319,14 @@ async function winOneDuel(auth, A, B, handA, handB, fixtureMint, n) {
   const adminPath = arg('--admin', `${process.env.HOME}/.config/solana/id.json`);
   const auth = Keypair.fromSecretKey(new Uint8Array(JSON.parse(readFileSync(adminPath, 'utf8')))); // == ADMIN_PUBKEY
   const A = Keypair.generate(), B = Keypair.generate();
+  // Persist the fixture wallets so the browser e2e has holdable keys (throwaway
+  // localnet keys; dev/fixture-keys/ is gitignored).
+  mkdirSync(`${ROOT}/dev/fixture-keys`, { recursive: true });
+  writeFileSync(`${ROOT}/dev/fixture-keys/A.json`, JSON.stringify([...A.secretKey]));
+  writeFileSync(`${ROOT}/dev/fixture-keys/B.json`, JSON.stringify([...B.secretKey]));
   await airdrop(A.publicKey, 5); await airdrop(B.publicKey, 5);
   console.log(`admin=${auth.publicKey.toBase58()}  A=${A.publicKey.toBase58()}  B=${B.publicKey.toBase58()}`);
+  console.log('persisted secrets → dev/fixture-keys/{A,B}.json');
 
   // ── bootstrap GameWorld (init_game_world, admin-signed) if the fresh validator has none ──
   let ops = await readOpsTreasury();
@@ -447,6 +454,8 @@ async function winOneDuel(auth, A, B, handA, handB, fixtureMint, n) {
   console.log(`              card_id=${fixtureCardId} mint=${fixtureMint.toBase58()} wins=${winsN}`);
   console.log(`ENERGY FIXTURE wallet=${B.publicKey.toBase58()} energy=${bEnergy}`);
   console.log('Import A and B secret keys into the two browser wallet profiles to run the UI e2e.');
-  console.log(`A secret (base58 array): [saved to dev/f1-fixture-A.json — DO NOT COMMIT]`);
+  console.log(`A secret (Phantom import): ${bs58.encode(A.secretKey)}`);
+  console.log(`B secret (Phantom import): ${bs58.encode(B.secretKey)}`);
+  console.log('(also saved as byte arrays: dev/fixture-keys/{A,B}.json)');
   process.exit(winsN >= WIN_TARGET && bEnergy === 0 ? 0 : 1);
 })().catch((e) => { console.error('\nFIXTURE FAILED:', e.message || e); process.exit(1); });
