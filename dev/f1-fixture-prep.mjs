@@ -51,7 +51,10 @@ const { createMint, getOrCreateAssociatedTokenAccount, mintTo } = spl;
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > -1 ? process.argv[i + 1] : d; };
 const RPC        = arg('--rpc', 'http://localhost:8899');
 const WIN_TARGET = parseInt(arg('--win-target', '10'), 10);
-const PROGRAM_ID = new PublicKey('5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN'); // CLAUDE.md / onchain.js
+// Program id: env override so the deployed localnet id no longer needs a manual re-sed.
+//   OXARK_PROGRAM_ID=<deployed id> node dev/f1-fixture-prep.mjs
+// Falls back to the devnet id only if the env var is unset.
+const PROGRAM_ID = new PublicKey(process.env.OXARK_PROGRAM_ID || '5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN');
 const ADMIN_PUBKEY = new PublicKey('DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R'); // constants.rs ADMIN_PUBKEY (== id.json here)
 const CLIENT     = `${ROOT}/solana/client`;
 const ENERGY_MAX = 5; // constants.rs ENERGY_MAX
@@ -275,8 +278,15 @@ async function winOneDuel(auth, A, B, handA, handB, fixtureMint, n) {
   const salt = Buffer.alloc(32, 0x11);
   console.log(`\n── win-duel ${n}/${WIN_TARGET}  duel=${id.toBase58().slice(0, 8)}… ──`);
   // Refill both so commit_hand's energy charge never blocks the farm.
-  await send([ixRefill(A.publicKey)], [A], 'refill A');
-  await send([ixRefill(B.publicKey)], [B], 'refill B');
+  // INSTRUMENTED: log the ACTUAL constructed refill ix accounts (not just intent) —
+  // acct[0] is what the program reads as `player` for the seeds. If acct[0] != the
+  // labeled keypair, or acct[1] != playerStatePda(that keypair), that names the bug.
+  for (const [lbl, kp] of [['A', A], ['B', B]]) {
+    const ix = ixRefill(kp.publicKey);
+    console.log(`  DIAG refill ${lbl}: signer=${kp.publicKey.toBase58()}  expected player_state=${playerStatePda(kp.publicKey).toBase58()}`);
+    ix.keys.forEach((k, i) => console.log(`    acct[${i}]=${k.pubkey.toBase58()} signer=${k.isSigner} w=${k.isWritable}`));
+    await send([ix], [kp], `refill ${lbl}`);
+  }
   await send([ixInit(id, A.publicKey, B.publicKey, auth.publicKey)], [auth], 'init');
   for (let r = 1; r <= 5; r++) {
     const pfA = await genProof(A, handA, salt, r);
