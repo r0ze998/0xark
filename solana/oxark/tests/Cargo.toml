@@ -19,6 +19,10 @@ path = "claim_battle_loot.rs"
 name = "provenance_settle"
 path = "provenance_settle.rs"
 
+[[test]]
+name = "register_bump"
+path = "register_bump.rs"
+
 [dependencies]
 sha2 = "0.10"
 oxark = { path = "../programs/oxark", features = ["no-entrypoint"] }
