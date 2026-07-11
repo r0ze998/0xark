@@ -2084,7 +2084,7 @@ async function getDuelStateFull(duelIdStr) {
     revealed.push([nonZero(P1_REVEAL + r * 80, 80), nonZero(P2_REVEAL + r * 80, 80)]);
   }
   return {
-    player1: b58(8), player2: b58(40),
+    player1: b58(40), player2: b58(72),
     round: d[105],
     p1RoundWins: d[1614], p2RoundWins: d[1615],
     winner: b58(131), startedAt: i64(115), endedAt: i64(123),
