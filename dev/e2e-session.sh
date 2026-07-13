@@ -14,7 +14,7 @@
 #    2. program        (8CH9… executable) → NO-GO if absent
 #    3. WS relay :3500  → restart from the clone that has multiplayer deps
 #    4. client  :4200   → restart python3 http.server from solana/client
-#    5. localnet patches (localhost:8899 + 8CH9 in onchain.js/config.js) → re-sed
+#    5. localnet patches (8CH9 in pda.js/config.js + localhost:8899 in rpc.js) → re-sed
 #    6. chain sanity    (B energy 0 · FPTM CBH wins 10 · CMR rarity 0 · 15 duels)
 #    7. print READY + browser steps, or NO-GO + reason
 # ─────────────────────────────────────────────────────────────────────────────
@@ -131,26 +131,29 @@ else
 fi
 
 # ── 5. localnet patches ─────────────────────────────────────────────────────
-hdr "[5/6] localnet patches (onchain.js + config.js)"
-ONCHAIN="$CLIENT_DIR/onchain.js"
+hdr "[5/6] localnet patches (onchain split: pda.js + rpc.js + config.js)"
+# YKK-15 split: PROGRAM_ID_STR now lives in src/onchain/pda.js, DEVNET_RPC in
+# src/onchain/rpc.js (was onchain.js, deleted). config.js still holds PROGRAM_ID.
+PDA_JS="$CLIENT_DIR/src/onchain/pda.js"
+RPC_JS="$CLIENT_DIR/src/onchain/rpc.js"
 CONFIG="$CLIENT_DIR/src/config.js"
 patched() { # all three markers present?
-  grep -q "$PROGRAM_ID" "$ONCHAIN" \
-    && grep -q "http://localhost:8899" "$ONCHAIN" \
+  grep -q "$PROGRAM_ID" "$PDA_JS" \
+    && grep -q "http://localhost:8899" "$RPC_JS" \
     && grep -q "$PROGRAM_ID" "$CONFIG"
 }
 if patched; then
-  ok "already applied (8CH9 + localhost:8899 present)"
+  ok "already applied (8CH9 in pda.js/config.js + localhost:8899 in rpc.js)"
 else
   warn "wiped — reapplying the two seds (program-id + rpc)"
-  #  sed 1: devnet program id → localnet program id  (onchain.js + config.js)
-  sed -i '' "s/$DEVNET_ID/$PROGRAM_ID/g" "$ONCHAIN" "$CONFIG"
-  #  sed 2: devnet RPC → localhost                     (onchain.js)
-  sed -i '' 's#https://api.devnet.solana.com#http://localhost:8899#g' "$ONCHAIN"
+  #  sed 1: devnet program id → localnet program id  (pda.js + config.js)
+  sed -i '' "s/$DEVNET_ID/$PROGRAM_ID/g" "$PDA_JS" "$CONFIG"
+  #  sed 2: devnet RPC → localhost                     (rpc.js)
+  sed -i '' 's#https://api.devnet.solana.com#http://localhost:8899#g' "$RPC_JS"
   if patched; then
     ok "reapplied"
   else
-    bad "seds did not take — inspect $ONCHAIN / $CONFIG by hand"
+    bad "seds did not take — inspect $PDA_JS / $RPC_JS / $CONFIG by hand"
   fi
 fi
 
