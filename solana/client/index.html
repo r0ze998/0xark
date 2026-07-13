@@ -162,8 +162,10 @@
   <!-- Solana web3.js (required by onchain.js — sets window.solanaWeb3) -->
   <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
 
-  <!-- On-chain transaction module (sets window.oxarkOnchain) -->
-  <script src="onchain.js"></script>
+  <!-- On-chain module (YKK-15 split: sets window.oxarkOnchain via compat shim).
+       ES module — runs after the web3 CDN classic script, before app.js's module
+       graph, so window.oxarkOnchain is populated before any screen consumes it. -->
+  <script type="module" src="src/onchain/index.js"></script>
 
   <!-- x402 micropayment client (sets window.x402) -->
   <script src="src/02-x402.js"></script>
