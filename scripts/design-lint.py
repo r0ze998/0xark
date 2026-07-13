@@ -57,6 +57,23 @@ SHARED_SYMBOLS = [
     "pxIcon", "showToast", "tierForVault", "CardHTML", "CardFrameHTML",
     "ACTION_NAMES", "ACTION_LABELS", "RoundHudHTML", "showRoundBridge",
     "injectRoundUiCSS", "advanceRound", "rarityOf", "factionOf", "rarityKeyOf",
+    # YKK-15: onchain.js split into src/onchain/{pda,readers,tx,rpc}.js. These are
+    # the INTERNAL cross-module exports (never on the window.oxarkOnchain public
+    # surface, so screens never reference them) — any src/onchain module using one
+    # must import it. Surface symbols (createGame, getPlayerState, findGamePDA, …)
+    # are intentionally omitted: screens call them as oxarkOnchain.<name>(), which
+    # this guard would otherwise flag as a bare use.
+    "getConnection", "disc", "getProgramId", "getCardsProgramId",
+    "getDelegationProgramId", "computeBudgetIxs", "requestHeapFrameIx",
+    "writeU8", "writeU32LE", "writeU64LE", "writeI64LE", "writeBytes", "writeBool",
+    "encodeCreateMetadataV3", "findAssociatedTokenAddress", "findMetadataPDA",
+    "findSoloCardMintPDA", "findCardMintRecordPDA", "findCardPoolPDA",
+    "findDelegationPDAs",  # NB: findPrizePoolPDA omitted — a config.js comment
+    # references "findPrizePoolPDA()" and this guard does not strip comments.
+    "ANCHOR_ERRORS", "COMPUTE_BUDGET", "HEAP_FRAME_BYTES", "NFT_CARD_NAMES",
+    "OPS_TREASURY_PK", "SETTLE_BATCH", "SLOT_HASHES_PUBKEY", "DEVNET_RPC",
+    "SPL_TOKEN_PROGRAM_ID", "ASSOCIATED_TOKEN_PROGRAM_ID", "SYSVAR_RENT_PUBKEY",
+    "TOKEN_METADATA_PROGRAM_ID",
 ]
 IMPORT_STMT_RE = re.compile(r"import\b.*?from\s*['\"][^'\"]+['\"]", re.S)
 
