@@ -26,6 +26,24 @@ jobs:
       - name: Run battle mechanics tests
         run: node tests/battle-mechanics.test.js
 
+  # ─── Client IDL sync guard (YKK-53) ──────────────────────────────────────────
+  # anchor build regenerates target/idl/oxark.json but nothing copies it to the
+  # offline client IDL (solana/client/oxark-idl.json) — it drifts on every
+  # instruction add. The Makefile build target now auto-copies it locally; this
+  # job is the review guard. CI has no anchor CLI (the Rust job builds via
+  # cargo build-sbf, which emits no IDL), so instead of diffing a fresh anchor
+  # build we compare the committed client IDL's instruction set to lib.rs's
+  # #[program] pub fns — the same source anchor derives the IDL from.
+  idl-sync:
+    name: Client IDL Sync
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Client IDL matches lib.rs instructions
+        run: python3 scripts/check-idl-sync.py
+
   # ─── Rust Anchor tests (litesvm, no validator needed) ────────────────────────
   anchor-tests:
     name: Anchor Rust Tests
