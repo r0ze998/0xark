@@ -1,6 +1,7 @@
-# 0xARK — Phase F2 Spec: Ceremony (v1.0)
+# 0xARK — Phase F2 Spec: Ceremony (v1.1)
 
-> Author: Claude (design) · 2026-07-09 · authored against main `de9ef01`
+> Author: Claude (design) · v1.0 2026-07-09 · **v1.1 2026-07-15** (post-#46/#47, reconciled against tree `28cbefb` + cc review)
+> v1.1 changes: §3.1 corrected (random-seed, not zero — a live non-determinism bug); onchain.js→src/onchain/ path sweep; §5 motion-token ruling; §8 getRoundSalts struck from SHARED_SYMBOLS.
 > Prereq: **YKK-12 §10 local-validator e2e GREEN** (start gate per YKK-57 —
 > do not move verified ground before acceptance).
 > Companions: `DESIGN.md` (Rituals/motion/token authority — its beat tables
@@ -11,7 +12,7 @@
 > vocabulary (damage-calc.js), the on-chain seed formula
 > (reveal_hand.rs:128 `SHA-256(p1_salt‖p2_salt‖[round])`), DuelState salt
 > offsets (from the PR-D layout derivation), `commit_reveal.*` = zero code
-> references, `getGameWorld()` exists at onchain.js:2486.
+> references, `getGameWorld()` exists at src/onchain/readers.js:380 (was onchain.js pre-#46).
 
 ---
 
@@ -145,20 +146,27 @@ The reveal playback stops being a scripted log and becomes a **replay of
 `damageCalc().effects[]`** — the same deterministic events that decide the
 winner. Presentation and truth can no longer diverge.
 
-### 3.1 Truth alignment first — the seed reader (additive, onchain.js)
+### 3.1 Truth alignment first — the seed reader (additive, src/onchain/readers.js)
 
-**Verified gap**: on-chain combat uses
+**Verified gap (v1.1 correction)**: on-chain combat uses
 `seed = SHA-256(p1_salt ‖ p2_salt ‖ [round])` (reveal_hand.rs:128) for INI
-tie-breaks and action ordering. Client `damageCalc` accepts the same seed
-(its header documents the identical formula) — **but reveal.js currently
-passes none** → zero-seed playback can flip INI-tie outcomes vs the chain.
+tie-breaks and action ordering. Client `damageCalc` accepts the same seed —
+**but reveal.js:267-269 currently generates a FRESH RANDOM seed every
+playback** (`crypto.getRandomValues(new Uint8Array(32))`), NOT zero/none as
+v1.0 stated. This is worse than a static mismatch: it's **non-deterministic**
+— the same INI-tie hand can replay differently each time AND differs from the
+chain. The fix below removes a live source of non-determinism, not merely a
+chain-mismatch. (The try/catch `simpleBattleCalc` fallback is unaffected.)
 
-Fix (small reader, PR-D style):
+Fix (small reader in **src/onchain/readers.js**, + exposed on the index.js shim surface — PR-D style):
 
 ```js
 getRoundSalts(duelIdStr, round) → { p1Salt, p2Salt }   // Uint8Array(32)×2
-// DuelState offsets (from the verified PR-D layout):
-//   p1_salt @ 1283 + (round-1)*32     p2_salt @ 1443 + (round-1)*32
+// DuelState offsets — RE-DERIVED from state.rs field order (v1.1, validated):
+//   player_1_salt @ 1283 + (round-1)*32   player_2_salt @ 1443 + (round-1)*32
+//   (id@8 p1@40 p2@72 tier@104 round@105 phase@106 ante@107 started@115
+//    ended@123 winner@131 p1commit@163 p2commit@323 p1rev@483 p2rev@883
+//    → p1_salt@1283 p2_salt@1443; stride 32×5 ends @1602, fits 1624 ✓)
 // All-zero slice ⇒ salt not yet on-chain (opponent hasn't revealed).
 ```
 
@@ -246,7 +254,7 @@ staged by `rarityOf` (card-meta — the 37/60 bug class cannot return):
 
 Multi-pack purchases queue packs one at a time. Footer caption:
 `drop rates live on-chain — provably fair`, numbers from `getGameWorld()`
-ppm fields (reader exists at onchain.js:2486; **cc verifies the decoder
+ppm fields (reader exists at src/onchain/readers.js:380; **cc verifies the decoder
 covers the drop-rate fields, extends additively if not** — the GameWorld
 layout was re-derived in the fixture-script review, `shop_phase_threshold
 @157` anchor). Reduced-motion: instant grid of results + telop list.
@@ -263,11 +271,16 @@ F0-3 harness); soundboard sign-off recorded (§1.2 gate).
   (`--bg-deep`) darkens in `--t-base`, swap `innerHTML`, reveal in
   `--t-base`. GBA two-frame feel; `prefers-reduced-motion` ⇒ instant swap.
   One implementation point — screens change nothing.
-- **Motion audit** (one-time sweep, not a new lint category): every
-  `transition:`/`animation:` duration in `src/**` resolves to
-  `var(--t-fast|base|slow)` and eases to `--ease-pop|step|linear`.
-  Acceptance grep: `grep -rn "transition[^;]*[0-9]ms\|animation[^;]*[0-9]ms"
-  solana/client/src --include="*.js" | grep -v "var(--t-"` → 0.
+- **Motion audit** (one-time sweep, not a new lint category). v1.1 ruling:
+  the acceptance grep currently returns **14 live hits** (energy-hud.js
+  sweep 480ms + stagger delays 0/80/160/240ms; preparation.js:437 80ms;
+  others). These are **stagger `animation-delay`s and one keyframe sweep**
+  that don't map to the three duration tokens. Ruling: (a) add
+  `--t-stagger: 80ms` + `--t-sweep: 480ms` tokens for these two families;
+  (b) refine the acceptance grep to exempt `animation-delay` (offsets, not
+  durations) and keyframe `@` timings. Transitions/animation DURATIONS must
+  resolve to `var(--t-*)`; the amended grep target is 0 after tokenizing the
+  sweep. Deliver the before/after grep in the PR-H body.
 
 ## §6. F2-6 — Load hygiene (PR-H)
 
@@ -283,18 +296,24 @@ F0-3 harness); soundboard sign-off recorded (§1.2 gate).
 
 - reveal.js: drop the dead `ACTION_LABELS` import.
 - Card.js: delete the stale `compact is ignored` doc line.
-- Sealed-steal copy (legal cleared 2026-07-05, YKK-47): chip →
-  `STEAL — coming with YKK-44`; loser line → `no card was taken — steal
-  arrives with the escrow update`. `STEAL_ENABLED` stays `false` (that flag
-  waits on YKK-44 the implementation, not the law).
+- Sealed-steal copy (legal cleared 2026-07-05, YKK-47) — three sites
+  confirmed in tree: **loot.js:99** comment ("honest sealed slot"),
+  **loot.js:114** chip (`STEAL — sealed pending review` → `STEAL — coming
+  with YKK-44`), **loot.js:146** loser line (`steal is not yet enabled` →
+  `no card was taken — steal arrives with the escrow update`).
+  `STEAL_ENABLED` stays `false` (waits on YKK-44 the implementation, not the
+  law).
 
 ---
 
 ## §8. Acceptance & CI (phase level)
 
 - design-lint PASS on every PR (all enforced categories incl. bare-import —
-  add `runCeremony`, `sfx`, `getRoundSalts` etc. to the shared-symbol list
-  when they ship).
+  add `runCeremony` and `sfx` to SHARED_SYMBOLS when they ship. **NOT
+  `getRoundSalts`** — it's a public-surface symbol on the index.js shim,
+  excluded by the same principle as #46's surface names, else it false-FAILs
+  the guard. Pre-sweep `sfx` (3 chars) for substring collisions before
+  adding.).
 - Ceremony trio (SEAL/CRACK skip + reduced-motion) verified via devview.
 - §3.1 seed-parity fixture green on local validator.
 - Deploy size delta recorded (expect ≈ −2.1 MB).
@@ -310,3 +329,7 @@ F0-3 harness); soundboard sign-off recorded (§1.2 gate).
 3. **Four new XL glyphs** (`px-chest-lg`, `px-scroll`, `px-padlock-lg`,
    `px-pack`) go through the F0-4 render-review gate — expect one extra
    STOP inside PR-I and PR-K.
+4. **Sequencing (v1.1)**: PR-J adds `getRoundSalts` to the index.js surface
+   (+1) while YKK-52 removes 11 client wrappers (87→76). Both edit the same
+   shim object post-e2e — order them (YKK-52 first, then PR-J rebases) and
+   keep the design-lint surface-exclusion reasoning identical across both.
