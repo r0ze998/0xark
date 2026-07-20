@@ -14,10 +14,20 @@
 # stale on every instruction add (hand-cp'd 63->66 on 2026-07-05). The cargo
 # build-sbf fallback (CI, no anchor) emits no IDL, so it is skipped there —
 # CI staleness is caught by scripts/check-idl-sync.py instead.
+# --tools-version v1.52: pin the SBF platform-tools. A dead-code path in the
+# ER-SDK dep chain (ephemeral-rollups-sdk -> solana-program 2.3 -> blake3/digest
+# 0.11 -> hybrid-array/crypto-common 0.2) has SBF stack frames > 4KB in
+# crypto_common::hazmat::SerializableState. oxark never CALLS it (grep-empty in
+# src/; all tests pass; program runs), but Agave-stable's platform-tools in CI
+# treats the frame overflow as FATAL -> `make build` dies. v1.52 (the locally
+# working toolchain) emits it non-fatally, so the build completes as it does
+# locally. This is the CI "Anchor Rust Tests" red — NOT the workspace no-entry-
+# point stub (that stub only appears on a bare `cargo build-sbf`; --manifest-path
+# below already isolates oxark's features correctly).
 build:
 	@command -v anchor >/dev/null 2>&1 \
 		&& { anchor build && cp target/idl/oxark.json ../client/oxark-idl.json; } \
-		|| cargo build-sbf --manifest-path programs/oxark/Cargo.toml
+		|| cargo build-sbf --manifest-path programs/oxark/Cargo.toml --tools-version v1.52
 
 test: build
 	cargo test
