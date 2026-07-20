@@ -15,7 +15,7 @@
 #    3. WS relay :3500  → restart from the clone that has multiplayer deps
 #    4. client  :4200   → restart python3 http.server from solana/client
 #    5. localnet patches (8CH9 in pda.js/config.js + localhost:8899 in rpc.js) → re-sed
-#    6. chain sanity    (B energy 0 · FPTM CBH wins 10 · CMR rarity 0 · 15 duels)
+#    6. chain sanity    (DuelState >=16 HARD; B energy + FPTM wins/rarity print-only, YKK-59)
 #    7. print READY + browser steps, or NO-GO + reason
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
@@ -201,10 +201,18 @@ NODE
   if [ -n "$SANITY_ERR" ]; then
     bad "sanity read failed: $SANITY_ERR (stderr: /tmp/e2e-sanity.err)"
   else
-    [ "$ENERGY_B"   = "0"  ] && ok "B(Hcmn…) energy = 0"                 || bad "B energy = ${ENERGY_B:-?} (expected 0)"
-    [ "$CBH_WINS"   = "10" ] && ok "FPTM… CBH wins = 10 (promote gate)"  || bad "FPTM CBH wins = ${CBH_WINS:-?} (expected 10)"
-    [ "$CMR_RARITY" = "0"  ] && ok "FPTM… CMR rarity = 0 (Common)"       || bad "FPTM CMR rarity = ${CMR_RARITY:-?} (expected 0)"
-    [ "$DUEL_COUNT" = "15" ] && ok "DuelState count = 15"               || bad "DuelState count = ${DUEL_COUNT:-?} (expected 15)"
+    # DuelState count: HARD blocker — 15 fixtures + >=1 real browser duel; grows
+    # with every browser duel (F1 closed via duel 16). Assert >= 16.
+    case "$DUEL_COUNT" in
+      ''|*[!0-9]*) bad "DuelState count = ${DUEL_COUNT:-?} (expected >= 16, unreadable)" ;;
+      *) [ "$DUEL_COUNT" -ge 16 ] && ok "DuelState count = $DUEL_COUNT (>= 16)" \
+                                  || bad "DuelState count = $DUEL_COUNT (expected >= 16)" ;;
+    esac
+    # PRINT-ONLY (not hard-fails): B energy regenerates on a clock (any pinned value
+    # goes stale); FPTM wins/rarity flip to their gate values only once YKK-59 lands.
+    printf '  \033[36m·\033[0m B(Hcmn…) energy = %s  (print-only — regenerates on a clock)\n' "${ENERGY_B:-?}"
+    printf '  \033[36m·\033[0m FPTM… CBH wins = %s    (expected: 10 until YKK-59 flips it)\n' "${CBH_WINS:-?}"
+    printf '  \033[36m·\033[0m FPTM… CMR rarity = %s   (expected: 0 until YKK-59 flips it)\n' "${CMR_RARITY:-?}"
   fi
 else
   bad "validator down — cannot read chain sanity"
