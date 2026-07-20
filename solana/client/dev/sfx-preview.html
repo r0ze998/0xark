@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>oxARK — SFX soundboard (F2)</title>
+  <link rel="stylesheet" href="../src/style/tokens.css" />
+  <style>
+    body { background: var(--bg-deep); color: var(--text-cream); font-family: var(--font-main); padding: 32px; }
+    h1 { font-size: var(--fs-title); letter-spacing: var(--ls-wide); color: var(--accent-gold); margin: 0 0 4px; }
+    .sub { color: var(--text-dim); font-size: var(--fs-ui); margin-bottom: 20px; }
+    .warn { color: var(--accent-red); font-size: var(--fs-caption); margin-bottom: 20px; max-width: 640px; line-height: 1.5; }
+    .bar { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    button.sfx {
+      background: rgba(201,162,39,0.08); color: var(--text-cream);
+      border: 1px solid rgba(201,162,39,0.35); font-family: var(--font-main);
+      font-size: var(--fs-ui); letter-spacing: 0.04em; padding: 14px 10px; cursor: pointer;
+      transition: background 80ms, border-color 80ms;
+    }
+    button.sfx:hover { background: rgba(201,162,39,0.2); border-color: var(--accent-gold); }
+    button.sfx:active { background: rgba(201,162,39,0.35); }
+    .toggle { padding: 8px 14px; border: 1px solid var(--accent-gold); background: none; color: var(--accent-gold); cursor: pointer; font-family: var(--font-main); }
+    .toggle.on { background: var(--accent-red); border-color: var(--accent-red); color: #fff; }
+    label { color: var(--text-dim); font-size: var(--fs-caption); }
+    input[type=range] { accent-color: var(--accent-gold); }
+  </style>
+</head>
+<body>
+  <h1>SFX soundboard</h1>
+  <div class="sub">12 F2_SPEC §1.2 ids · vendored ZzFX · first click unlocks audio · master 0.5</div>
+  <div class="warn">
+    Note: ids are the normative F2_SPEC §1.2 manifest; PARAMS are draft presets —
+    ear-check &amp; tune (reconcile against §1.2's character column) before PR-K.
+  </div>
+
+  <div class="bar">
+    <button class="toggle" id="mute">MUTE: off</button>
+    <label>master <input type="range" id="vol" min="0" max="1" step="0.05" value="0.5" /></label>
+    <span id="volval" class="sub" style="margin:0;">0.50</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <script type="module">
+    import { sfx, setMuted, isMuted, SFX_IDS } from '../src/lib/audio.js';
+    import { setMasterVolume } from '../src/vendor/zzfx.js';
+
+    const grid = document.getElementById('grid');
+    grid.innerHTML = SFX_IDS.map(id => `<button class="sfx" data-id="${id}">${id}</button>`).join('');
+    grid.addEventListener('click', e => {
+      const b = e.target.closest('[data-id]');
+      if (b) sfx(b.dataset.id);
+    });
+
+    const mute = document.getElementById('mute');
+    const sync = () => { const m = isMuted(); mute.textContent = `MUTE: ${m ? 'on' : 'off'}`; mute.classList.toggle('on', m); };
+    mute.addEventListener('click', () => { setMuted(!isMuted()); sync(); });
+    sync();
+
+    const vol = document.getElementById('vol'), volval = document.getElementById('volval');
+    vol.addEventListener('input', () => { setMasterVolume(parseFloat(vol.value)); volval.textContent = parseFloat(vol.value).toFixed(2); });
+  </script>
+</body>
+</html>
