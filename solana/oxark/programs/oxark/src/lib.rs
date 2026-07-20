@@ -73,149 +73,14 @@ pub mod oxark {
         instructions::initialize::handle_initialize(ctx)
     }
 
-    /// Create a new game session.
-    ///
-    /// - Allocates `game` PDA and `card_pool` PDA.
-    /// - Sets `status = Lobby`, `round = 0`.
-    /// - `max_players` must be 1–3 (`constants::MAX_PLAYERS`).
-    ///
-    /// Caller becomes the host; only the host may call `start_game`.
-    pub fn create_game(ctx: Context<CreateGame>, game_id: u64, max_players: u8) -> Result<()> {
-        instructions::create_game::handle_create_game(ctx, game_id, max_players)
-    }
 
-    /// Join an open game session.
-    ///
-    /// - Allocates a `player_state` PDA for the signer.
-    /// - Fails if `game.status != Lobby` or `game.player_count == game.max_players`.
-    /// - Initializes starting hand: 1 random card drawn from the pool.
-    pub fn join_game(ctx: Context<JoinGame>, game_id: u64) -> Result<()> {
-        instructions::join_game::handle_join_game(ctx, game_id)
-    }
 
-    /// Start the game and deal opening hands.
-    ///
-    /// - Restricted to the game host.
-    /// - Transitions `status: Lobby → CommitPhase`.
-    /// - Shuffles `card_pool` using recent slot hash as PRNG seed.
-    /// - Deals 3 cards to each player; remaining cards stay in pool.
-    pub fn start_game(ctx: Context<StartGame>, game_id: u64) -> Result<()> {
-        instructions::start_game::handle_start_game(ctx, game_id)
-    }
 
-    /// Commit a hidden action for the current round.
-    ///
-    /// `hash = SHA-256(card_ids_le_bytes || salt || round || phase)` (Reborn)
-    ///       or SHA-256(action_type | target | salt) (Phase C legacy).
-    ///
-    /// Reborn Day 8: `phase` and `played_cards` are now explicit params.
-    ///   phase: 0=Draw, 1=Energy, 2=Summon, 3=Battle
-    ///   played_cards: card IDs committed this phase (up to 3; empty for legacy)
-    pub fn commit_action(
-        ctx: Context<CommitActionCtx>,
-        game_id: u64,
-        hash: [u8; 32],
-        phase: u8,
-        played_cards: Vec<u64>,
-    ) -> Result<()> {
-        instructions::commit_action::handle_commit(ctx, game_id, hash, phase, played_cards)
-    }
 
-    /// Reveal the previously committed action and verify hash.
-    ///
-    /// Reborn path (played_cards non-empty):
-    ///   SHA-256(card_ids_le_bytes || salt || round || phase)
-    ///   Verified played_cards written into CommitAction for lane resolution.
-    ///
-    /// Legacy path (played_cards empty):
-    ///   SHA-256(action_type | target | salt)
-    pub fn reveal_action(
-        ctx: Context<RevealActionCtx>,
-        game_id: u64,
-        action_type: u8,
-        target: Pubkey,
-        salt: [u8; 32],
-        played_cards: Vec<u64>,
-    ) -> Result<()> {
-        instructions::reveal_action::handle_reveal(
-            ctx,
-            game_id,
-            action_type,
-            target,
-            salt,
-            played_cards,
-        )
-    }
 
-    /// Resolve the current round after all players have revealed.
-    ///
-    /// Resolution order (simultaneous semantics, caller-triggered):
-    /// 1. BARRIER — players raising barriers are flagged.
-    /// 2. STEAL — transfers a random card from victim to stealer; blocked if victim has BARRIER.
-    /// 3. DRAW — gives caller the top card from the shared pool for their area.
-    /// 4. SCOUT — records target's revealed action for client-side intel display.
-    /// 5. MOVE — updates `player_state.area`.
-    /// 6. USE_CARD — applies card effect; removes card from hand.
-    ///
-    /// Emits `RoundResolved` event. Transitions back to `CommitPhase` for next round,
-    /// or to `Finished` if win condition met (player holds all 5 unique card types).
-    pub fn resolve_round(ctx: Context<ResolveRound>, game_id: u64) -> Result<()> {
-        instructions::resolve_round::handle_resolve(ctx, game_id)
-    }
 
-    /// Verify a Groth16 ZK proof for a committed action.
-    ///
-    /// The proof attests that `Poseidon(action, target, salt) == commitment_hash`
-    /// without revealing `action`, `target`, or `salt` on-chain.
-    ///
-    /// - Circuit: `zk/circuits/commit_reveal.circom` (277 constraints, BN254 curve)
-    /// - Proving key: `zk/build/commit_reveal_final.zkey`
-    /// - Verification key: `zk/build/verification_key.json`
-    ///
-    /// This instruction is optional — standard `reveal_action` provides the same
-    /// correctness guarantee. ZK proof adds an additional privacy layer when the
-    /// client wishes to hide action metadata from on-chain observers.
-    ///
-    /// Approximate CU cost: 80,000–200,000 (BN254 pairing). Budget 300,000.
-    pub fn verify_zk_proof(
-        ctx: Context<VerifyZkProof>,
-        proof_a: [u8; 64],
-        proof_b: [u8; 128],
-        proof_c: [u8; 64],
-        public_inputs: [[u8; 32]; 4],
-        duel_pda: Pubkey,
-        round: u64,
-    ) -> Result<()> {
-        instructions::verify_zk_proof::handle_verify_zk(
-            ctx,
-            proof_a,
-            proof_b,
-            proof_c,
-            public_inputs,
-            duel_pda,
-            round,
-        )
-    }
 
-    /// Deposit entry stake (0.5 SOL) into the game's prize vault PDA.
-    ///
-    /// - Callable by any participant before or during the game.
-    /// - Funds are held in `stake_vault` PDA owned by the program.
-    /// - No EOA can withdraw directly — only `claim_prize` can release funds.
-    ///
-    /// Approximate CU cost: ~3,500 (SystemProgram::transfer CPI).
-    pub fn deposit_stake(ctx: Context<DepositStake>, game_id: u64) -> Result<()> {
-        instructions::stake_entry::handle_deposit_stake(ctx, game_id)
-    }
 
-    /// Claim the full prize pool after winning a game.
-    ///
-    /// - Verifies `game.status == Finished` and `game.winner == signer`.
-    /// - Transfers entire `stake_vault` balance to the winner.
-    /// - Uses PDA signer (no admin key required).
-    pub fn claim_prize(ctx: Context<ClaimPrize>, game_id: u64) -> Result<()> {
-        instructions::stake_entry::handle_claim_prize(ctx, game_id)
-    }
 
     /// Create a competitive season with a shared entry fee and prize pool.
     ///
@@ -298,15 +163,6 @@ pub mod oxark {
         instructions::undelegate_session::handle_undelegate_session(ctx, game_id)
     }
 
-    /// Set a player's initial dungeon position commitment.
-    /// Called once after join_game.  commitment = Poseidon(x, y, area, salt).
-    pub fn init_position(
-        ctx: Context<InitPosition>,
-        game_id: u64,
-        commitment: [u8; 32],
-    ) -> Result<()> {
-        instructions::init_position::handle_init_position(ctx, game_id, commitment)
-    }
 
     /// Register an on-chain AgentHireSession after x402 payment verification.
     ///
@@ -362,18 +218,6 @@ pub mod oxark {
         instructions::lock_deck::handle_lock_deck(ctx)
     }
 
-    // ── ZK Card Commit (軸 C) ──────────────────────────────────────────────────
-
-    /// Submit a ZK card commitment for the 2-phase bluff battle.
-    ///
-    /// The player computes `commitment = SHA256(card_id | salt)` in the browser
-    /// and sends it before seeing the opponent's choice. Both players commit
-    /// before either reveals — preventing last-mover advantage.
-    ///
-    /// PDA seeds: `["card_commit", player_pubkey, game_id_le, round_u8]`
-    pub fn commit_card(ctx: Context<CommitCard>, game_id: u64, commitment: [u8; 32]) -> Result<()> {
-        instructions::commit_card::handle_commit_card(ctx, game_id, commitment)
-    }
 
     /// Initialize or reset season card supply for N participants.
     /// PDA: ["season_supply", season_id_le]
@@ -403,21 +247,6 @@ pub mod oxark {
         instructions::register_card::handle_register_card(ctx, card_id)
     }
 
-    /// Reveal the previously committed card.
-    ///
-    /// On-chain verifies `SHA256(card_id | salt) == stored_commitment`.
-    /// After both players reveal, `resolve_round` fires with element multipliers.
-    ///
-    /// Full Groth16/Poseidon ZK verification targets Mainnet v1 —
-    /// the circuit `card_commit.circom` is ready; MVP uses SHA-256.
-    pub fn reveal_card(
-        ctx: Context<RevealCard>,
-        game_id: u64,
-        card_id: u8,
-        salt: [u8; 32],
-    ) -> Result<()> {
-        instructions::reveal_card::handle_reveal_card(ctx, game_id, card_id, salt)
-    }
 
     // ── T110: Combo System ────────────────────────────────────────────────────
 
@@ -484,28 +313,7 @@ pub mod oxark {
         instructions::set_title::handle_set_title(ctx, title_idx)
     }
 
-    // ── D4 Reborn: Matchmaking Queue ──────────────────────────────────────────
 
-    /// Enter the matchmaking queue for the given tier (0=Bronze, 1=Silver, 2=Gold).
-    ///
-    /// Tier gates:
-    ///   Bronze (0): open
-    ///   Silver (1): requires wins_at_tier[0] >= 5
-    ///   Gold   (2): requires wins_at_tier[1] >= 3
-    ///
-    /// Emits QueueMatchReady when queue length reaches 2.
-    /// PDA seeds: `["queue", tier_u8, season_le_u16]` (init_if_needed)
-    pub fn enter_queue(ctx: Context<EnterQueue>, tier: u8, season: u16) -> Result<()> {
-        instructions::enter_queue::handle_enter_queue(ctx, tier, season)
-    }
-
-    /// Leave the matchmaking queue for the given tier.
-    ///
-    /// Fails with NotInQueue if the player is not currently in the queue.
-    /// PDA seeds: `["queue", tier_u8, season_le_u16]`
-    pub fn leave_queue(ctx: Context<LeaveQueue>, tier: u8, season: u16) -> Result<()> {
-        instructions::leave_queue::handle_leave_queue(ctx, tier, season)
-    }
 
     // ── D11: Lore Shard System ────────────────────────────────────────────────
 

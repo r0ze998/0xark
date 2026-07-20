@@ -8,14 +8,6 @@
  * Depends on: solanaWeb3 global (from CDN), window.solana (Phantom).
  *
  * Usage:
- *   await oxarkOnchain.createGame(gameId, maxPlayers)
- *   await oxarkOnchain.joinGame(gameId)
- *   await oxarkOnchain.commitAction(gameId, actionType, targetPubkeyStr, salt)
- *   await oxarkOnchain.revealAction(gameId, actionType, targetPubkeyStr, salt)
- *   await oxarkOnchain.verifyZkProof(gameId, proofA, proofB, proofC, publicInputs)
- *   await oxarkOnchain.resolveRound(gameId, playerPubkeyStrs)
- *   await oxarkOnchain.depositStake(gameId)
- *   await oxarkOnchain.claimPrize(gameId)
  */
 
 // ════ INFRASTRUCTURE ════

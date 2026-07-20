@@ -153,116 +153,9 @@ async function buildAndSendViaMagicRouter(keys, data, computeUnits = COMPUTE_BUD
 
 // ════ OXARK PROGRAM — CORE GAME ════
 
-// ─── Instruction: create_game ─────────────────────────────────────────────
-async function createGame(gameId, maxPlayers) {
-  const payer = window.solana.publicKey;
-  const [gamePDA] = findGamePDA(gameId);
-  const [cardPoolPDA] = findCardPoolPDA(gameId);
 
-  // disc(8) + game_id(8) + max_players(1) = 17 bytes
-  const d = await disc('create_game');
-  const data = new Uint8Array(17);
-  let off = writeBytes(data, 0, d);
-  off = writeU64LE(data, off, gameId);
-  writeU8(data, off, maxPlayers);
 
-  // Account order matches CreateGame: game (0), card_pool (1), host/signer (2), system_program (3)
-  return buildAndSend([
-    { pubkey: gamePDA,     isSigner: false, isWritable: true  }, // game
-    { pubkey: cardPoolPDA, isSigner: false, isWritable: true  }, // card_pool
-    { pubkey: payer,       isSigner: true,  isWritable: true  }, // host (signer)
-    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
-  ], data);
-}
 
-// ─── Instruction: join_game ───────────────────────────────────────────────
-async function joinGame(gameId) {
-  const payer = window.solana.publicKey;
-  const [gamePDA] = findGamePDA(gameId);
-  const [playerPDA] = findPlayerPDA(gameId, payer);
-
-  // disc(8) + game_id(8) = 16 bytes
-  const d = await disc('join_game');
-  const data = new Uint8Array(16);
-  let off = writeBytes(data, 0, d);
-  writeU64LE(data, off, gameId);
-
-  // Account order matches JoinGame: game (0), player_state (1), player/signer (2), system_program (3)
-  return buildAndSend([
-    { pubkey: gamePDA,   isSigner: false, isWritable: true  }, // game
-    { pubkey: playerPDA, isSigner: false, isWritable: true  }, // player_state
-    { pubkey: payer,     isSigner: true,  isWritable: true  }, // player (signer)
-    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
-  ], data);
-}
-
-// ─── Instruction: start_game ──────────────────────────────────────────────
-/**
- * @param {number}   gameId
- * @param {string[]} playerPubkeyStrs  — base58 pubkeys of players to distribute starter cards
- *                                       passed as remaining_accounts so Rust can init their hands
- */
-async function startGame(gameId, playerPubkeyStrs = []) {
-  const payer = window.solana.publicKey;
-  const [gamePDA]     = findGamePDA(gameId);
-  const [cardPoolPDA] = findCardPoolPDA(gameId);
-
-  const d = await disc('start_game');
-  const data = new Uint8Array(16);
-  let off = writeBytes(data, 0, d);
-  writeU64LE(data, off, gameId);
-
-  // Account order matches StartGame: game (0), card_pool (1), host/signer (2)
-  // Player PDAs are remaining_accounts — appended after named accounts
-  const keys = [
-    { pubkey: gamePDA,     isSigner: false, isWritable: true  }, // game
-    { pubkey: cardPoolPDA, isSigner: false, isWritable: true  }, // card_pool
-    { pubkey: payer,       isSigner: true,  isWritable: false }, // host (signer)
-  ];
-  for (const pkStr of playerPubkeyStrs) {
-    const pk = new solanaWeb3.PublicKey(pkStr);
-    const [playerPDA] = findPlayerPDA(gameId, pk);
-    keys.push({ pubkey: playerPDA, isSigner: false, isWritable: true });
-  }
-  return buildAndSend(keys, data);
-}
-
-// ─── Instruction: verify_zk_proof ────────────────────────────────────────
-/**
- * Submit a hand_commitment v2 Groth16 ZK proof on-chain.
- * Proves: Poseidon(round, pubkey_lo, pubkey_hi, card_ids[10], salt_lo, salt_hi) == commitment
- * with range/uniqueness constraints on active cards, without revealing card selection.
- *
- * @param {string}        duelId       — duel PDA pubkey (base58)
- * @param {number|bigint} round        — round number 1-5 (u64)
- * @param {Uint8Array}    proofA       — 64 bytes (G1 point, x||y big-endian)
- * @param {Uint8Array}    proofB       — 128 bytes (G2, x1||x0||y1||y0 big-endian)
- * @param {Uint8Array}    proofC       — 64 bytes (G1 point, x||y big-endian)
- * @param {Uint8Array[]}  publicInputs — 4 × 32-byte arrays: [commitment, round_fe, pubkey_lo_fe, pubkey_hi_fe]
- */
-async function verifyZkProof(duelId, round, proofA, proofB, proofC, publicInputs) {
-  const payer = window.solana.publicKey;
-  const [zkRecordPDA] = findZkProofRecordPDA(duelId, round, payer);
-  const systemProgram = new solanaWeb3.PublicKey('11111111111111111111111111111111');
-  const duelPdaBytes  = new solanaWeb3.PublicKey(duelId).toBytes();
-
-  // disc(8) + proof_a(64) + proof_b(128) + proof_c(64) + public_inputs(4×32=128) + duel_pda(32) + round(8) = 432
-  const d    = await disc('verify_zk_proof');
-  const data = new Uint8Array(432);
-  let off = writeBytes(data, 0, d);
-  off = writeBytes(data, off, proofA);
-  off = writeBytes(data, off, proofB);
-  off = writeBytes(data, off, proofC);
-  for (const pi of publicInputs) off = writeBytes(data, off, pi);  // 4 × 32 bytes
-  off = writeBytes(data, off, duelPdaBytes);
-  writeU64LE(data, off, round);
-
-  return buildAndSend([
-    { pubkey: payer,       isSigner: true,  isWritable: true  }, // signer
-    { pubkey: zkRecordPDA, isSigner: false, isWritable: true  }, // zk_proof_record (init)
-    { pubkey: systemProgram, isSigner: false, isWritable: false }, // system_program
-  ], data, COMPUTE_BUDGET.verify_zk_proof);
-}
 
 // ─── ZK: field element helpers ────────────────────────────────────────────
 function _fieldToBytes32(s) {
@@ -344,78 +237,8 @@ function splitPubkeyForZk(pubkey) {
   return { lo, hi };
 }
 
-// ─── Instruction: resolve_round ───────────────────────────────────────────
-/**
- * @param {number}   gameId
- * @param {string[]} playerPubkeyStrs  — base58 pubkeys of all players in-game
- */
-async function resolveRound(gameId, playerPubkeyStrs) {
-  const payer = window.solana.publicKey;
-  const [gamePDA]     = findGamePDA(gameId);
-  const [cardPoolPDA] = findCardPoolPDA(gameId);
 
-  const d = await disc('resolve_round');
-  const data = new Uint8Array(16);
-  let off = writeBytes(data, 0, d);
-  writeU64LE(data, off, gameId);
 
-  // Account order MUST match Anchor struct ResolveRound field order:
-  //   game (0), card_pool (1), caller/signer (2), remaining_accounts (player PDAs)
-  const keys = [
-    { pubkey: gamePDA,     isSigner: false, isWritable: true  }, // game
-    { pubkey: cardPoolPDA, isSigner: false, isWritable: true  }, // card_pool
-    { pubkey: payer,       isSigner: true,  isWritable: false }, // caller (signer)
-  ];
-
-  // Append each player PDA as remaining_accounts (writable for state updates)
-  for (const pkStr of playerPubkeyStrs) {
-    const pk = new solanaWeb3.PublicKey(pkStr);
-    const [playerPDA] = findPlayerPDA(gameId, pk);
-    keys.push({ pubkey: playerPDA, isSigner: false, isWritable: true });
-  }
-
-  return buildAndSend(keys, data);
-}
-
-// ─── Instruction: deposit_stake ───────────────────────────────────────────
-async function depositStake(gameId) {
-  const payer = window.solana.publicKey;
-  const [gamePDA]       = findGamePDA(gameId);
-  const [stakeVaultPDA] = findStakeVaultPDA(gameId);
-
-  const d = await disc('deposit_stake');
-  const data = new Uint8Array(16);
-  let off = writeBytes(data, 0, d);
-  writeU64LE(data, off, gameId);
-
-  // Account order matches DepositStake: game (0, readonly), stake_vault (1), player/signer (2), system_program (3)
-  return buildAndSend([
-    { pubkey: gamePDA,       isSigner: false, isWritable: false }, // game (readonly — no mut in Rust struct)
-    { pubkey: stakeVaultPDA, isSigner: false, isWritable: true  }, // stake_vault (init)
-    { pubkey: payer,         isSigner: true,  isWritable: true  }, // player (signer + payer)
-    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
-  ], data);
-}
-
-// ─── Instruction: claim_prize ─────────────────────────────────────────────
-async function claimPrize(gameId) {
-  const payer = window.solana.publicKey;
-  const [gamePDA]       = findGamePDA(gameId);
-  const [stakeVaultPDA] = findStakeVaultPDA(gameId);
-
-  const d = await disc('claim_prize');
-  const data = new Uint8Array(16);
-  let off = writeBytes(data, 0, d);
-  writeU64LE(data, off, gameId);
-
-  // Account order matches ClaimPrize: game (0, readonly), stake_vault (1), player/signer (2), system_program (3)
-  return buildAndSend([
-    { pubkey: gamePDA,       isSigner: false, isWritable: false }, // game (readonly — no mut in Rust struct)
-    { pubkey: stakeVaultPDA, isSigner: false, isWritable: true  }, // stake_vault
-    { pubkey: payer,         isSigner: true,  isWritable: true  }, // player (signer + winner)
-    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
-  ], data);
-}
 
 // ════ MAGICBLOCK (MR mode variants) ════
 
@@ -424,51 +247,7 @@ async function claimPrize(gameId) {
 // Full PDA delegation requires Phase C Day 2 Rust changes; until then the
 // delegation step logs a warning and continues (graceful degradation).
 
-/**
- * startGameMB — starts the game then attempts to delegate Game PDA to the ER.
- * Falls back gracefully if delegation stubs are not yet implemented in Rust.
- * Activates _mbMode so subsequent commitAction/revealAction use Magic Router.
- */
-async function startGameMB(gameId, playerPubkeyStrs = []) {
-  // 1. Submit start_game to base layer (delegation always goes to base layer)
-  const sig = await startGame(gameId, playerPubkeyStrs);
 
-  // 2. Attempt delegation (stub returns { ok: false } until Rust is updated)
-  if (window.oxarkMB) {
-    const result = await window.oxarkMB.delegateGameAccounts(gameId);
-    if (result.ok) {
-      // Delegation succeeded — activate MB routing for game actions
-      setMagicBlockMode(true);
-      console.log('[MagicBlock] Game PDAs delegated — routing via ER. sig:', sig);
-    } else {
-      // Stub path — Magic Router still adds value as a routing layer
-      // even without delegation (base-layer fallback is transparent)
-      console.log('[MagicBlock] Delegation stub (Rust update required). MB routing OFF. sig:', sig);
-    }
-  }
-  return { sig, erActive: _mbMode };
-}
-
-/**
- * claimPrizeMB — undelegates Game PDA back to base layer then claims the prize.
- * Deactivates _mbMode so future calls use the standard base-layer path.
- */
-async function claimPrizeMB(gameId) {
-  // 1. Undelegate (returns state to base layer so claim_prize can mutate it)
-  if (window.oxarkMB) {
-    const result = await window.oxarkMB.undelegateGameAccounts(gameId);
-    if (result.ok) {
-      console.log('[MagicBlock] Game PDAs undelegated — ready for base-layer claim.');
-    } else {
-      console.log('[MagicBlock] Undelegation stub (Rust update required). Proceeding anyway.');
-    }
-  }
-  // 2. Deactivate MB routing — claim always goes to base layer
-  setMagicBlockMode(false);
-
-  // 3. Submit claim_prize to base layer
-  return claimPrize(gameId);
-}
 
 // ════ OXARK PROGRAM — AGENT / SEASON ════
 
@@ -796,29 +575,7 @@ async function lockDeck() {
   return tx;
 }
 
-async function commitCard(gameId, commitment) {
-  // commitment: Uint8Array(32) from zkCardCommit.commitCard()
-  const provider = _getProvider();
-  const program = _getProgram(provider);
-  const player = provider.wallet.publicKey;
-  const tx = await program.methods
-    .commitCard(new solanaWeb3.BN(gameId), Array.from(commitment))
-    .accounts({ player })
-    .rpc();
-  return tx;
-}
 
-async function revealCard(gameId, cardId, salt) {
-  // salt: Uint8Array(32) from zkCardCommit.commitCard() result
-  const provider = _getProvider();
-  const program = _getProgram(provider);
-  const player = provider.wallet.publicKey;
-  const tx = await program.methods
-    .revealCard(new solanaWeb3.BN(gameId), cardId & 0xff, Array.from(salt))
-    .accounts({ player })
-    .rpc();
-  return tx;
-}
 
 async function registerCard(cardId) {
   const provider = _getProvider();
@@ -1432,20 +1189,11 @@ export {
   buildAndSend,
   buildAndSendMulti,
   buildAndSendViaMagicRouter,
-  createGame,
-  joinGame,
-  startGame,
-  verifyZkProof,
   _fieldToBytes32,
   _g1ToBytes64,
   _g2ToBytes128,
   generateZkProof,
   splitPubkeyForZk,
-  resolveRound,
-  depositStake,
-  claimPrize,
-  startGameMB,
-  claimPrizeMB,
   registerAgent,
   deactivateAgent,
   createSeason,
@@ -1462,8 +1210,6 @@ export {
   getListings,
   saveDeck,
   lockDeck,
-  commitCard,
-  revealCard,
   registerCard,
   registerWaitlist,
   burnCard,
