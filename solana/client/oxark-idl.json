@@ -938,91 +938,6 @@
       ]
     },
     {
-      "name": "claim_prize",
-      "docs": [
-        "Claim the full prize pool after winning a game.",
-        "",
-        "- Verifies `game.status == Finished` and `game.winner == signer`.",
-        "- Transfers entire `stake_vault` balance to the winner.",
-        "- Uses PDA signer (no admin key required)."
-      ],
-      "discriminator": [
-        157,
-        233,
-        139,
-        121,
-        246,
-        62,
-        234,
-        235
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "stake_vault",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  107,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "claim_prize_v2",
       "docs": [
         "Claim tier-based prize after season ends (game_status == 2).",
@@ -1186,217 +1101,6 @@
       ]
     },
     {
-      "name": "commit_action",
-      "docs": [
-        "Commit a hidden action for the current round.",
-        "",
-        "`hash = SHA-256(card_ids_le_bytes || salt || round || phase)` (Reborn)",
-        "or SHA-256(action_type | target | salt) (Phase C legacy).",
-        "",
-        "Reborn Day 8: `phase` and `played_cards` are now explicit params.",
-        "phase: 0=Draw, 1=Energy, 2=Summon, 3=Battle",
-        "played_cards: card IDs committed this phase (up to 3; empty for legacy)"
-      ],
-      "discriminator": [
-        75,
-        26,
-        232,
-        17,
-        11,
-        158,
-        202,
-        221
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              },
-              {
-                "kind": "account",
-                "path": "player"
-              }
-            ]
-          }
-        },
-        {
-          "name": "commit",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  109,
-                  109,
-                  105,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              },
-              {
-                "kind": "account",
-                "path": "game.round",
-                "account": "Game"
-              },
-              {
-                "kind": "account",
-                "path": "player"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        },
-        {
-          "name": "hash",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "phase",
-          "type": "u8"
-        },
-        {
-          "name": "played_cards",
-          "type": {
-            "vec": "u64"
-          }
-        }
-      ]
-    },
-    {
-      "name": "commit_card",
-      "docs": [
-        "Submit a ZK card commitment for the 2-phase bluff battle.",
-        "",
-        "The player computes `commitment = SHA256(card_id | salt)` in the browser",
-        "and sends it before seeing the opponent's choice. Both players commit",
-        "before either reveals — preventing last-mover advantage.",
-        "",
-        "PDA seeds: `[\"card_commit\", player_pubkey, game_id_le, round_u8]`"
-      ],
-      "discriminator": [
-        188,
-        46,
-        225,
-        248,
-        187,
-        75,
-        112,
-        228
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "card_commit_record",
-          "writable": true
-        },
-        {
-          "name": "player",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        },
-        {
-          "name": "commitment",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        }
-      ]
-    },
-    {
       "name": "commit_hand",
       "discriminator": [
         92,
@@ -1512,96 +1216,6 @@
               4
             ]
           }
-        }
-      ]
-    },
-    {
-      "name": "create_game",
-      "docs": [
-        "Create a new game session.",
-        "",
-        "- Allocates `game` PDA and `card_pool` PDA.",
-        "- Sets `status = Lobby`, `round = 0`.",
-        "- `max_players` must be 1–3 (`constants::MAX_PLAYERS`).",
-        "",
-        "Caller becomes the host; only the host may call `start_game`."
-      ],
-      "discriminator": [
-        124,
-        69,
-        75,
-        66,
-        184,
-        220,
-        72,
-        206
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "card_pool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  97,
-                  114,
-                  100,
-                  95,
-                  112,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "host",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        },
-        {
-          "name": "max_players",
-          "type": "u8"
         }
       ]
     },
@@ -1875,93 +1489,6 @@
       ]
     },
     {
-      "name": "deposit_stake",
-      "docs": [
-        "Deposit entry stake (0.5 SOL) into the game's prize vault PDA.",
-        "",
-        "- Callable by any participant before or during the game.",
-        "- Funds are held in `stake_vault` PDA owned by the program.",
-        "- No EOA can withdraw directly — only `claim_prize` can release funds.",
-        "",
-        "Approximate CU cost: ~3,500 (SystemProgram::transfer CPI)."
-      ],
-      "discriminator": [
-        160,
-        167,
-        9,
-        220,
-        74,
-        243,
-        228,
-        43
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "stake_vault",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  116,
-                  97,
-                  107,
-                  101,
-                  95,
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        }
-      ]
-    },
-    {
       "name": "distribute_prize_pool",
       "discriminator": [
         108,
@@ -2114,120 +1641,6 @@
         }
       ],
       "args": []
-    },
-    {
-      "name": "enter_queue",
-      "docs": [
-        "Enter the matchmaking queue for the given tier (0=Bronze, 1=Silver, 2=Gold).",
-        "",
-        "Tier gates:",
-        "Bronze (0): open",
-        "Silver (1): requires wins_at_tier[0] >= 5",
-        "Gold   (2): requires wins_at_tier[1] >= 3",
-        "",
-        "Emits QueueMatchReady when queue length reaches 2.",
-        "PDA seeds: `[\"queue\", tier_u8, season_le_u16]` (init_if_needed)"
-      ],
-      "discriminator": [
-        139,
-        116,
-        15,
-        125,
-        189,
-        53,
-        96,
-        0
-      ],
-      "accounts": [
-        {
-          "name": "queue",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  113,
-                  117,
-                  101,
-                  117,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "tier"
-              },
-              {
-                "kind": "arg",
-                "path": "season"
-              }
-            ]
-          }
-        },
-        {
-          "name": "battle_stats",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114,
-                  95,
-                  98,
-                  97,
-                  116,
-                  116,
-                  108,
-                  101,
-                  95,
-                  115,
-                  116,
-                  97,
-                  116,
-                  115
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "player"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player_state",
-          "docs": [
-            "We only read current_queue; caller must pass their PlayerState if they have one."
-          ],
-          "writable": true
-        },
-        {
-          "name": "player",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "tier",
-          "type": "u8"
-        },
-        {
-          "name": "season",
-          "type": "u16"
-        }
-      ]
     },
     {
       "name": "finalize_season_tally",
@@ -2717,91 +2130,6 @@
       ]
     },
     {
-      "name": "init_position",
-      "docs": [
-        "Set a player's initial dungeon position commitment.",
-        "Called once after join_game.  commitment = Poseidon(x, y, area, salt)."
-      ],
-      "discriminator": [
-        197,
-        20,
-        10,
-        1,
-        97,
-        160,
-        177,
-        91
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              },
-              {
-                "kind": "account",
-                "path": "player"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player",
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        },
-        {
-          "name": "commitment",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        }
-      ]
-    },
-    {
       "name": "init_season_stats",
       "docs": [
         "v3.0-plus: Initialize the SeasonStats PDA for a new season.",
@@ -2951,153 +2279,6 @@
       ],
       "accounts": [],
       "args": []
-    },
-    {
-      "name": "join_game",
-      "docs": [
-        "Join an open game session.",
-        "",
-        "- Allocates a `player_state` PDA for the signer.",
-        "- Fails if `game.status != Lobby` or `game.player_count == game.max_players`.",
-        "- Initializes starting hand: 1 random card drawn from the pool."
-      ],
-      "discriminator": [
-        107,
-        112,
-        18,
-        38,
-        56,
-        173,
-        60,
-        128
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              },
-              {
-                "kind": "account",
-                "path": "player"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "leave_queue",
-      "docs": [
-        "Leave the matchmaking queue for the given tier.",
-        "",
-        "Fails with NotInQueue if the player is not currently in the queue.",
-        "PDA seeds: `[\"queue\", tier_u8, season_le_u16]`"
-      ],
-      "discriminator": [
-        95,
-        75,
-        87,
-        92,
-        172,
-        245,
-        65,
-        97
-      ],
-      "accounts": [
-        {
-          "name": "queue",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  113,
-                  117,
-                  101,
-                  117,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "tier"
-              },
-              {
-                "kind": "arg",
-                "path": "season"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player",
-          "writable": true,
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "tier",
-          "type": "u8"
-        },
-        {
-          "name": "season",
-          "type": "u16"
-        }
-      ]
     },
     {
       "name": "lock_deck",
@@ -4361,308 +3542,6 @@
       "args": []
     },
     {
-      "name": "resolve_round",
-      "docs": [
-        "Resolve the current round after all players have revealed.",
-        "",
-        "Resolution order (simultaneous semantics, caller-triggered):",
-        "1. BARRIER — players raising barriers are flagged.",
-        "2. STEAL — transfers a random card from victim to stealer; blocked if victim has BARRIER.",
-        "3. DRAW — gives caller the top card from the shared pool for their area.",
-        "4. SCOUT — records target's revealed action for client-side intel display.",
-        "5. MOVE — updates `player_state.area`.",
-        "6. USE_CARD — applies card effect; removes card from hand.",
-        "",
-        "Emits `RoundResolved` event. Transitions back to `CommitPhase` for next round,",
-        "or to `Finished` if win condition met (player holds all 5 unique card types)."
-      ],
-      "discriminator": [
-        165,
-        114,
-        237,
-        158,
-        1,
-        36,
-        70,
-        254
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "card_pool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  97,
-                  114,
-                  100,
-                  95,
-                  112,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "caller",
-          "docs": [
-            "All player states passed as remaining accounts"
-          ],
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "reveal_action",
-      "docs": [
-        "Reveal the previously committed action and verify hash.",
-        "",
-        "Reborn path (played_cards non-empty):",
-        "SHA-256(card_ids_le_bytes || salt || round || phase)",
-        "Verified played_cards written into CommitAction for lane resolution.",
-        "",
-        "Legacy path (played_cards empty):",
-        "SHA-256(action_type | target | salt)"
-      ],
-      "discriminator": [
-        251,
-        43,
-        123,
-        150,
-        183,
-        44,
-        178,
-        210
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player_state",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  112,
-                  108,
-                  97,
-                  121,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              },
-              {
-                "kind": "account",
-                "path": "player"
-              }
-            ]
-          }
-        },
-        {
-          "name": "commit",
-          "docs": [
-            "Mutable so we can write verified played_cards back for resolve_round lane scoring."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  111,
-                  109,
-                  109,
-                  105,
-                  116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              },
-              {
-                "kind": "account",
-                "path": "game.round",
-                "account": "Game"
-              },
-              {
-                "kind": "account",
-                "path": "player"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player",
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        },
-        {
-          "name": "action_type",
-          "type": "u8"
-        },
-        {
-          "name": "target",
-          "type": "pubkey"
-        },
-        {
-          "name": "salt",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "played_cards",
-          "type": {
-            "vec": "u64"
-          }
-        }
-      ]
-    },
-    {
-      "name": "reveal_card",
-      "docs": [
-        "Reveal the previously committed card.",
-        "",
-        "On-chain verifies `SHA256(card_id | salt) == stored_commitment`.",
-        "After both players reveal, `resolve_round` fires with element multipliers.",
-        "",
-        "Full Groth16/Poseidon ZK verification targets Mainnet v1 —",
-        "the circuit `card_commit.circom` is ready; MVP uses SHA-256."
-      ],
-      "discriminator": [
-        152,
-        230,
-        28,
-        32,
-        204,
-        156,
-        215,
-        35
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "card_commit_record",
-          "writable": true
-        },
-        {
-          "name": "player",
-          "writable": true,
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
-        },
-        {
-          "name": "card_id",
-          "type": "u8"
-        },
-        {
-          "name": "salt",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        }
-      ]
-    },
-    {
       "name": "reveal_hand",
       "discriminator": [
         207,
@@ -5104,89 +3983,6 @@
         {
           "name": "card_mint",
           "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "start_game",
-      "docs": [
-        "Start the game and deal opening hands.",
-        "",
-        "- Restricted to the game host.",
-        "- Transitions `status: Lobby → CommitPhase`.",
-        "- Shuffles `card_pool` using recent slot hash as PRNG seed.",
-        "- Deals 3 cards to each player; remaining cards stay in pool."
-      ],
-      "discriminator": [
-        249,
-        47,
-        252,
-        172,
-        184,
-        162,
-        245,
-        14
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "card_pool",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  99,
-                  97,
-                  114,
-                  100,
-                  95,
-                  112,
-                  111,
-                  111,
-                  108
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
-        },
-        {
-          "name": "host",
-          "docs": [
-            "Player states passed as remaining accounts"
-          ],
-          "signer": true
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
-          "type": "u64"
         }
       ]
     },
@@ -5654,133 +4450,6 @@
           }
         }
       ]
-    },
-    {
-      "name": "verify_zk_proof",
-      "docs": [
-        "Verify a Groth16 ZK proof for a committed action.",
-        "",
-        "The proof attests that `Poseidon(action, target, salt) == commitment_hash`",
-        "without revealing `action`, `target`, or `salt` on-chain.",
-        "",
-        "- Circuit: `zk/circuits/commit_reveal.circom` (277 constraints, BN254 curve)",
-        "- Proving key: `zk/build/commit_reveal_final.zkey`",
-        "- Verification key: `zk/build/verification_key.json`",
-        "",
-        "This instruction is optional — standard `reveal_action` provides the same",
-        "correctness guarantee. ZK proof adds an additional privacy layer when the",
-        "client wishes to hide action metadata from on-chain observers.",
-        "",
-        "Approximate CU cost: 80,000–200,000 (BN254 pairing). Budget 300,000."
-      ],
-      "discriminator": [
-        251,
-        39,
-        91,
-        14,
-        62,
-        74,
-        223,
-        108
-      ],
-      "accounts": [
-        {
-          "name": "signer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "zk_proof_record",
-          "docs": [
-            "Replay prevention — `init` fails if the PDA already exists (already verified)."
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  122,
-                  107,
-                  95,
-                  112,
-                  114,
-                  111,
-                  111,
-                  102
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "duel_pda"
-              },
-              {
-                "kind": "arg",
-                "path": "round"
-              },
-              {
-                "kind": "account",
-                "path": "signer"
-              }
-            ]
-          }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "proof_a",
-          "type": {
-            "array": [
-              "u8",
-              64
-            ]
-          }
-        },
-        {
-          "name": "proof_b",
-          "type": {
-            "array": [
-              "u8",
-              128
-            ]
-          }
-        },
-        {
-          "name": "proof_c",
-          "type": {
-            "array": [
-              "u8",
-              64
-            ]
-          }
-        },
-        {
-          "name": "public_inputs",
-          "type": {
-            "array": [
-              {
-                "array": [
-                  "u8",
-                  32
-                ]
-              },
-              4
-            ]
-          }
-        },
-        {
-          "name": "duel_pda",
-          "type": "pubkey"
-        },
-        {
-          "name": "round",
-          "type": "u64"
-        }
-      ]
     }
   ],
   "accounts": [
@@ -5824,19 +4493,6 @@
       ]
     },
     {
-      "name": "CardCommitRecord",
-      "discriminator": [
-        62,
-        70,
-        21,
-        210,
-        50,
-        125,
-        192,
-        178
-      ]
-    },
-    {
       "name": "CardLoreShards",
       "discriminator": [
         187,
@@ -5860,32 +4516,6 @@
         213,
         5,
         127
-      ]
-    },
-    {
-      "name": "CardPool",
-      "discriminator": [
-        164,
-        203,
-        232,
-        12,
-        118,
-        156,
-        254,
-        87
-      ]
-    },
-    {
-      "name": "CommitAction",
-      "discriminator": [
-        33,
-        141,
-        168,
-        168,
-        159,
-        149,
-        78,
-        94
       ]
     },
     {
@@ -5928,19 +4558,6 @@
       ]
     },
     {
-      "name": "Game",
-      "discriminator": [
-        27,
-        90,
-        166,
-        125,
-        74,
-        100,
-        121,
-        18
-      ]
-    },
-    {
       "name": "GameWorld",
       "discriminator": [
         105,
@@ -5977,19 +4594,6 @@
         111,
         121,
         49
-      ]
-    },
-    {
-      "name": "MatchmakingQueue",
-      "discriminator": [
-        255,
-        123,
-        198,
-        201,
-        75,
-        236,
-        165,
-        103
       ]
     },
     {
@@ -6136,19 +4740,6 @@
       ]
     },
     {
-      "name": "StakeVault",
-      "discriminator": [
-        192,
-        112,
-        65,
-        125,
-        129,
-        151,
-        173,
-        226
-      ]
-    },
-    {
       "name": "TradeListing",
       "discriminator": [
         69,
@@ -6159,19 +4750,6 @@
         142,
         145,
         85
-      ]
-    },
-    {
-      "name": "ZkProofRecord",
-      "discriminator": [
-        204,
-        146,
-        135,
-        64,
-        250,
-        227,
-        31,
-        5
       ]
     }
   ],
@@ -6229,19 +4807,6 @@
       ]
     },
     {
-      "name": "CardDrawn",
-      "discriminator": [
-        142,
-        210,
-        202,
-        117,
-        222,
-        153,
-        86,
-        100
-      ]
-    },
-    {
       "name": "CardEvolvedEvent",
       "discriminator": [
         171,
@@ -6278,19 +4843,6 @@
         191,
         205,
         234
-      ]
-    },
-    {
-      "name": "CardStolen",
-      "discriminator": [
-        61,
-        36,
-        87,
-        199,
-        238,
-        236,
-        239,
-        151
       ]
     },
     {
@@ -6343,19 +4895,6 @@
         164,
         214,
         105
-      ]
-    },
-    {
-      "name": "GameFinishedEvent",
-      "discriminator": [
-        23,
-        227,
-        204,
-        194,
-        33,
-        108,
-        97,
-        163
       ]
     },
     {
@@ -6554,32 +5093,6 @@
       ]
     },
     {
-      "name": "PlayerMoved",
-      "discriminator": [
-        167,
-        114,
-        108,
-        144,
-        204,
-        62,
-        98,
-        128
-      ]
-    },
-    {
-      "name": "PrizeClaimed",
-      "discriminator": [
-        213,
-        150,
-        192,
-        76,
-        199,
-        33,
-        212,
-        38
-      ]
-    },
-    {
       "name": "PrizePoolDistributed",
       "discriminator": [
         48,
@@ -6590,32 +5103,6 @@
         35,
         182,
         135
-      ]
-    },
-    {
-      "name": "QueueMatchReady",
-      "discriminator": [
-        64,
-        67,
-        189,
-        120,
-        245,
-        123,
-        100,
-        22
-      ]
-    },
-    {
-      "name": "RoundResolved",
-      "discriminator": [
-        204,
-        146,
-        253,
-        187,
-        8,
-        61,
-        75,
-        29
       ]
     },
     {
@@ -7557,88 +6044,6 @@
       }
     },
     {
-      "name": "CardCommitRecord",
-      "docs": [
-        "ZK card commitment record for 2-phase bluff battle (Axis C).",
-        "PDA seeds: [\"card_commit\", player_pubkey, game_id_le, round_u8]",
-        "",
-        "Phase 1 (COMMIT): player sends commitment = Poseidon(card_id, salt).",
-        "Phase 2 (REVEAL): player sends (card_id, salt, zk_proof); on-chain",
-        "verifies Poseidon(card_id, salt) == stored commitment before revealing."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "player",
-            "type": "pubkey"
-          },
-          {
-            "name": "round",
-            "type": "u8"
-          },
-          {
-            "name": "commitment",
-            "docs": [
-              "Poseidon(card_id, salt) — 32-byte big-endian field element."
-            ],
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "revealed",
-            "docs": [
-              "Set to true after reveal_card verifies the ZK proof."
-            ],
-            "type": "bool"
-          },
-          {
-            "name": "card_id",
-            "docs": [
-              "0 until reveal phase; populated after valid reveal."
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CardDrawn",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "player",
-            "type": "pubkey"
-          },
-          {
-            "name": "card_id",
-            "type": "u8"
-          },
-          {
-            "name": "area",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "CardEvolvedEvent",
       "type": {
         "kind": "struct",
@@ -7770,34 +6175,6 @@
       }
     },
     {
-      "name": "CardPool",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "remaining",
-            "docs": [
-              "Remaining cards per type: index 0 = Crystal, 1 = Shadow, etc."
-            ],
-            "type": {
-              "array": [
-                "u8",
-                5
-              ]
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "CardPromoted",
       "type": {
         "kind": "struct",
@@ -7822,30 +6199,6 @@
       }
     },
     {
-      "name": "CardStolen",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "stealer",
-            "type": "pubkey"
-          },
-          {
-            "name": "victim",
-            "type": "pubkey"
-          },
-          {
-            "name": "card_id",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "ChampionDeclared",
       "type": {
         "kind": "struct",
@@ -7861,73 +6214,6 @@
           {
             "name": "timestamp",
             "type": "i64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CommitAction",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "round",
-            "type": "u8"
-          },
-          {
-            "name": "player",
-            "type": "pubkey"
-          },
-          {
-            "name": "hash",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "round_number",
-            "docs": [
-              "Round number from Game.round at commit time (Reborn: 0-based round index)."
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "phase",
-            "docs": [
-              "Duel phase at commit time: 0=Draw, 1=Energy, 2=Summon, 3=Battle."
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "played_cards",
-            "docs": [
-              "Cards played in this phase commit (up to 3 card IDs; 0 = empty slot).",
-              "Reborn: commitment = SHA-256(played_cards + nonce + round + phase)."
-            ],
-            "type": {
-              "array": [
-                "u64",
-                3
-              ]
-            }
-          },
-          {
-            "name": "played_cards_len",
-            "docs": [
-              "Number of valid card IDs stored in played_cards (0-3)."
-            ],
-            "type": "u8"
           }
         ]
       }
@@ -8309,95 +6595,6 @@
       }
     },
     {
-      "name": "Game",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "host",
-            "type": "pubkey"
-          },
-          {
-            "name": "status",
-            "type": {
-              "defined": {
-                "name": "GameStatus"
-              }
-            }
-          },
-          {
-            "name": "round",
-            "type": "u8"
-          },
-          {
-            "name": "max_rounds",
-            "type": "u8"
-          },
-          {
-            "name": "player_count",
-            "type": "u8"
-          },
-          {
-            "name": "max_players",
-            "type": "u8"
-          },
-          {
-            "name": "cards_in_pool",
-            "type": "u8"
-          },
-          {
-            "name": "winner",
-            "type": "pubkey"
-          },
-          {
-            "name": "commit_count",
-            "type": "u8"
-          },
-          {
-            "name": "reveal_count",
-            "type": "u8"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
-            "name": "players",
-            "type": {
-              "array": [
-                "pubkey",
-                3
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "GameFinishedEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "winner",
-            "type": "pubkey"
-          },
-          {
-            "name": "round",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "GameParamsUpdatedEvent",
       "type": {
         "kind": "struct",
@@ -8425,30 +6622,6 @@
           {
             "name": "threshold_seconds",
             "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "GameStatus",
-      "docs": [
-        "Card types (1-indexed, 0 = empty)",
-        "1=Aegis (Crystal Knight), 2=Umbra (Shadow Rogue), 3=Ignis (Fire Beast), 4=Tempest (Storm Prophet), 5=Nihil (Void Observer)"
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Lobby"
-          },
-          {
-            "name": "CommitPhase"
-          },
-          {
-            "name": "RevealPhase"
-          },
-          {
-            "name": "Finished"
           }
         ]
       }
@@ -9051,41 +7224,6 @@
       }
     },
     {
-      "name": "MatchmakingQueue",
-      "docs": [
-        "FIFO queue per tier per season. Max 64 players.",
-        "When queue length reaches 2 after a push, emits QueueMatchReady.",
-        "PDA seeds: [\"queue\", tier_u8, season_le_u16]"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "tier",
-            "type": "u8"
-          },
-          {
-            "name": "season",
-            "type": "u16"
-          },
-          {
-            "name": "players",
-            "type": {
-              "vec": "pubkey"
-            }
-          },
-          {
-            "name": "created_at",
-            "type": "i64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "PackOpenedEvent",
       "type": {
         "kind": "struct",
@@ -9323,30 +7461,6 @@
           },
           {
             "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "PlayerMoved",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "player",
-            "type": "pubkey"
-          },
-          {
-            "name": "from_area",
-            "type": "u8"
-          },
-          {
-            "name": "to_area",
             "type": "u8"
           }
         ]
@@ -9691,26 +7805,6 @@
       }
     },
     {
-      "name": "PrizeClaimed",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "winner",
-            "type": "pubkey"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
       "name": "PrizePoolDistributed",
       "type": {
         "kind": "struct",
@@ -9726,49 +7820,6 @@
           {
             "name": "champion_share",
             "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "QueueMatchReady",
-      "docs": [
-        "Emitted when a matchmaking queue slot reaches 2 players."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "tier",
-            "type": "u8"
-          },
-          {
-            "name": "season",
-            "type": "u16"
-          },
-          {
-            "name": "player_a",
-            "type": "pubkey"
-          },
-          {
-            "name": "player_b",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "RoundResolved",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "round",
-            "type": "u8"
           }
         ]
       }
@@ -9988,43 +8039,6 @@
       }
     },
     {
-      "name": "StakeVault",
-      "docs": [
-        "Entry stake system for competitive play.",
-        "Players deposit SOL (or USDC in Phase 2) when joining a game.",
-        "Winner takes the entire pot when the game ends.",
-        "",
-        "Phase 1: SOL-based staking (simpler, no SPL token dependency)",
-        "Phase 2: USDC staking via SPL token transfers",
-        "Stake vault PDA that holds entry fees"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "game_id",
-            "type": "u64"
-          },
-          {
-            "name": "total_staked",
-            "type": "u64"
-          },
-          {
-            "name": "stake_per_player",
-            "type": "u64"
-          },
-          {
-            "name": "claimed",
-            "type": "bool"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "StealType",
       "docs": [
         "Steal type determines ownership transfer semantics.",
@@ -10076,48 +8090,6 @@
           {
             "name": "active",
             "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "ZkProofRecord",
-      "docs": [
-        "ZK proof record — created on first successful verify, prevents replay.",
-        "",
-        "PDA seeds: [\"zk_proof\", duel_pda_pubkey, round_le, signer_pubkey]"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "duel_id",
-            "type": "pubkey"
-          },
-          {
-            "name": "round",
-            "type": "u64"
-          },
-          {
-            "name": "signer",
-            "type": "pubkey"
-          },
-          {
-            "name": "commit",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "verified_at",
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
           }
         ]
       }

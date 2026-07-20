@@ -3,7 +3,7 @@
 
 import { CARDS_PROGRAM_ID_STR, DUEL_STALL_TIMEOUT_SECONDS, ENERGY_MAX, ENERGY_REGEN_SECS, PROGRAM_ID_STR, computeCommitHash, findAgentPDA, findCardBattleHistoryPDA, findCardCommitPDA, findDuelLootRecordPDA, findDuelPDA, findDuelSettleRecordPDA, findGamePDA, findGameWorldPDA, findPlayerDeckPDA, findPlayerPDA, findPlayerRegistryPDA, findPlayerStatePDA, findSeasonPDA, findSeasonStatsPDA, findStakeVaultPDA, findTradeListingPDA, findZkProofRecordPDA, generateSalt, parseAnchorError, writeU16LE } from './pda.js';
 import { checkPlayerStateExists, fetchAllListings, getCardBattleHistory, getCardMintRecord, getDuelState, getDuelStateFull, getGameWorld, getOwnedCardMints, getPlayerState, invalidateOwnedCardMints, readAgentListing, readCardBattleHistoryCreatedAt, readGameAccount, readPlayerState, readSeason } from './readers.js';
-import { _mbMode, acceptListing, burnCard, buyCard, buyPack, cancelListingOnchain, checkLegendaryV2, claimBattleLoot, claimPrize, claimPrizeMB, claimPrizeV2, claimTimeoutWin, commitCard, commitHand, createGame, createListing, createSeason, deactivateAgent, delegateSession, depositStake, endSeason, generateZkProof, getListings, grantImprint, initDuel, joinGame, listCard, lockDeck, mintCardWithMetadata, promoteCard, refillEnergy, registerAgent, registerCard, registerWaitlist, resolveRound, revealCard, revealHand, saveDeck, setMagicBlockMode, settleDuelHistory, splitPubkeyForZk, startGame, startGameMB, undelegateSession, updateShopParams, verifyZkProof } from './tx.js';
+import { _mbMode, acceptListing, burnCard, buyCard, buyPack, cancelListingOnchain, checkLegendaryV2, claimBattleLoot, claimPrizeV2, claimTimeoutWin, commitHand, createListing, createSeason, deactivateAgent, delegateSession, endSeason, generateZkProof, getListings, grantImprint, initDuel, listCard, lockDeck, mintCardWithMetadata, promoteCard, refillEnergy, registerAgent, registerCard, registerWaitlist, revealHand, saveDeck, setMagicBlockMode, settleDuelHistory, splitPubkeyForZk, undelegateSession, updateShopParams } from './tx.js';
 
 window.oxarkOnchain = {
   PROGRAM_ID:       PROGRAM_ID_STR,
@@ -15,16 +15,7 @@ window.oxarkOnchain = {
   delegateSession,
   undelegateSession,
   // MagicBlock lifecycle wrappers (T4: delegate after start, undelegate before claim)
-  startGameMB,
-  claimPrizeMB,
   // Core game instructions
-  createGame,
-  joinGame,
-  startGame,
-  verifyZkProof,
-  resolveRound,
-  depositStake,
-  claimPrize,
   // Agent registry instructions
   registerAgent,
   deactivateAgent,
@@ -52,8 +43,6 @@ window.oxarkOnchain = {
   lockDeck,
   findPlayerDeckPDA,
   // ZK Card Commit (T83 — Axis C) — commit_card + reveal_card on-chain PDAs
-  commitCard,
-  revealCard,
   findCardCommitPDA,
   // Player Registry (T95 — GI Rule) — register_card on-chain PDA
   registerCard,

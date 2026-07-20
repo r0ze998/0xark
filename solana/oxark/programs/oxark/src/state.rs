@@ -69,44 +69,7 @@ impl From<ActionType> for u8 {
     }
 }
 
-#[account]
-#[derive(Default)]
-pub struct Game {
-    pub game_id: u64,
-    pub host: Pubkey,
-    pub status: GameStatus,
-    pub round: u8,
-    pub max_rounds: u8,
-    pub player_count: u8,
-    pub max_players: u8,
-    pub cards_in_pool: u8,
-    pub winner: Pubkey,
-    pub commit_count: u8,
-    pub reveal_count: u8,
-    pub bump: u8,
-    // C3 fix: stores registered player pubkeys so resolve_round can validate PDAs.
-    pub players: [Pubkey; 3], // MAX_PLAYERS = 3
-}
 
-impl Game {
-    // Original: 8 + 8 + 32 + 1*6 + 32 + 1*3 = 89
-    // C3 addition: [Pubkey; 3] = 96 → total 185
-    pub const SIZE: usize = 8 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 32 + 1 + 1 + 1 + (3 * 32);
-
-    /// 0-based index of `key` among the joined players, or None.
-    /// Only the first `player_count` slots are live; trailing slots are
-    /// Pubkey::default() until join_game fills them.
-    pub fn player_index(&self, key: &Pubkey) -> Option<usize> {
-        self.players[..self.player_count as usize]
-            .iter()
-            .position(|p| p == key)
-    }
-
-    /// Whether `key` has joined this game (C3 whitelist membership).
-    pub fn is_participant(&self, key: &Pubkey) -> bool {
-        self.player_index(key).is_some()
-    }
-}
 
 #[account]
 #[derive(Default)]
@@ -282,69 +245,11 @@ impl PlayerState {
     }
 }
 
-#[account]
-#[derive(Default)]
-pub struct CardPool {
-    pub game_id: u64,
-    /// Remaining cards per type: index 0 = Crystal, 1 = Shadow, etc.
-    pub remaining: [u8; 5],
-    pub bump: u8,
-}
 
-impl CardPool {
-    pub const SIZE: usize = 8 + 8 + 5 + 1;
-}
 
-#[account]
-#[derive(Default)]
-pub struct CommitAction {
-    pub game_id: u64,
-    pub round: u8,
-    pub player: Pubkey,
-    pub hash: [u8; 32],
-    pub bump: u8,
-    // ── Reborn: Duel phase tracking ───────────────────────────────────────
-    /// Round number from Game.round at commit time (Reborn: 0-based round index).
-    pub round_number: u8,
-    /// Duel phase at commit time: 0=Draw, 1=Energy, 2=Summon, 3=Battle.
-    pub phase: u8,
-    /// Cards played in this phase commit (up to 3 card IDs; 0 = empty slot).
-    /// Reborn: commitment = SHA-256(played_cards + nonce + round + phase).
-    pub played_cards: [u64; 3],
-    /// Number of valid card IDs stored in played_cards (0-3).
-    pub played_cards_len: u8,
-}
 
-impl CommitAction {
-    // Legacy SIZE (Phase C) + Reborn fields: round_number(1) + phase(1) + played_cards(24) + played_cards_len(1)
-    pub const SIZE: usize = 8 + 8 + 1 + 32 + 32 + 1 + 1 + 1 + 24 + 1;
-}
 
-/// ZK card commitment record for 2-phase bluff battle (Axis C).
-/// PDA seeds: ["card_commit", player_pubkey, game_id_le, round_u8]
-///
-/// Phase 1 (COMMIT): player sends commitment = Poseidon(card_id, salt).
-/// Phase 2 (REVEAL): player sends (card_id, salt, zk_proof); on-chain
-///   verifies Poseidon(card_id, salt) == stored commitment before revealing.
-#[account]
-#[derive(Default)]
-pub struct CardCommitRecord {
-    pub game_id: u64,
-    pub player: Pubkey,
-    pub round: u8,
-    /// Poseidon(card_id, salt) — 32-byte big-endian field element.
-    pub commitment: [u8; 32],
-    /// Set to true after reveal_card verifies the ZK proof.
-    pub revealed: bool,
-    /// 0 until reveal phase; populated after valid reveal.
-    pub card_id: u8,
-    pub bump: u8,
-}
 
-impl CardCommitRecord {
-    // 8 disc + 8 game_id + 32 player + 1 round + 32 commitment + 1 revealed + 1 card_id + 1 bump
-    pub const SIZE: usize = 8 + 8 + 32 + 1 + 32 + 1 + 1 + 1;
-}
 
 /// Player's prepared battle deck (up to 20 cards).
 /// PDA seeds: ["player_deck", player_pubkey]
@@ -452,44 +357,10 @@ impl PlayerRegistry {
     pub const SIZE: usize = 8 + 32 + 60 + 480 + 1 + 1 + 1;
 }
 
-// === Anchor Events ===
 
-#[event]
-pub struct CardDrawn {
-    pub game_id: u64,
-    pub player: Pubkey,
-    pub card_id: u8,
-    pub area: u8,
-}
 
-#[event]
-pub struct CardStolen {
-    pub game_id: u64,
-    pub stealer: Pubkey,
-    pub victim: Pubkey,
-    pub card_id: u8,
-}
 
-#[event]
-pub struct RoundResolved {
-    pub game_id: u64,
-    pub round: u8,
-}
 
-#[event]
-pub struct GameFinishedEvent {
-    pub game_id: u64,
-    pub winner: Pubkey,
-    pub round: u8,
-}
-
-#[event]
-pub struct PlayerMoved {
-    pub game_id: u64,
-    pub player: Pubkey,
-    pub from_area: u8,
-    pub to_area: u8,
-}
 
 // === T110: Battle Stats (Combo System) ===
 
@@ -644,46 +515,9 @@ impl PlayerTitle {
     }
 }
 
-// === D4 Reborn: Matchmaking Queue ===
 
-/// FIFO queue per tier per season. Max 64 players.
-/// When queue length reaches 2 after a push, emits QueueMatchReady.
-/// PDA seeds: ["queue", tier_u8, season_le_u16]
-#[account]
-pub struct MatchmakingQueue {
-    pub tier: u8,             // 0=Bronze, 1=Silver, 2=Gold
-    pub season: u16,          // current season number
-    pub players: Vec<Pubkey>, // FIFO, max 64
-    pub created_at: i64,
-    pub bump: u8,
-}
 
-impl MatchmakingQueue {
-    pub const MAX_PLAYERS: usize = 64;
-    // 8 disc + 1 tier + 2 season + 4 (vec len prefix) + 64*32 (players) + 8 created_at + 1 bump
-    pub const SIZE: usize = 8 + 1 + 2 + 4 + (Self::MAX_PLAYERS * 32) + 8 + 1;
-}
 
-impl Default for MatchmakingQueue {
-    fn default() -> Self {
-        Self {
-            tier: 0,
-            season: 1,
-            players: Vec::new(),
-            created_at: 0,
-            bump: 0,
-        }
-    }
-}
-
-/// Emitted when a matchmaking queue slot reaches 2 players.
-#[event]
-pub struct QueueMatchReady {
-    pub tier: u8,
-    pub season: u16,
-    pub player_a: Pubkey,
-    pub player_b: Pubkey,
-}
 
 // === D11: Lore Shard System ===
 
@@ -1501,24 +1335,7 @@ pub struct ListingAcceptedEvent {
     pub slot: u64,
 }
 
-/// ZK proof record — created on first successful verify, prevents replay.
-///
-/// PDA seeds: ["zk_proof", duel_pda_pubkey, round_le, signer_pubkey]
-#[account]
-pub struct ZkProofRecord {
-    pub duel_id: Pubkey,
-    pub round: u64,
-    pub signer: Pubkey,
-    pub commit: [u8; 32],
-    pub verified_at: u64,
-    pub bump: u8,
-}
 
-impl ZkProofRecord {
-    pub const SEED: &'static [u8] = b"zk_proof";
-    // 8 disc + 32 + 8 + 32 + 32 + 8 + 1
-    pub const SIZE: usize = 8 + 32 + 8 + 32 + 32 + 8 + 1;
-}
 
 /// Per-(duel, player) settlement ledger for `settle_duel_history`.
 ///
@@ -1566,38 +1383,4 @@ pub struct DuelTimeoutClaimed {
     pub round: u8,
     /// Seconds the duel had been stalled when claimed.
     pub stalled_for: i64,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn game_player_index_only_scans_joined_slots() {
-        let p1 = Pubkey::new_unique();
-        let p2 = Pubkey::new_unique();
-        let ghost = Pubkey::new_unique();
-        let game = Game {
-            player_count: 2,
-            players: [p1, p2, ghost], // slot 2 not joined (player_count = 2)
-            ..Game::default()
-        };
-
-        assert_eq!(game.player_index(&p1), Some(0));
-        assert_eq!(game.player_index(&p2), Some(1));
-        assert_eq!(
-            game.player_index(&ghost),
-            None,
-            "slots beyond player_count must be ignored"
-        );
-        assert!(game.is_participant(&p2));
-        assert!(!game.is_participant(&ghost));
-    }
-
-    #[test]
-    fn game_player_index_ignores_default_pubkey_slots() {
-        let game = Game::default(); // player_count = 0, all slots default
-        assert_eq!(game.player_index(&Pubkey::default()), None);
-        assert!(!game.is_participant(&Pubkey::default()));
-    }
 }
