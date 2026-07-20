@@ -395,6 +395,24 @@ async function getGameWorld() {
   };
 }
 
+// F2-2 §3.1: per-round ZK salts, for a deterministic playback seed that matches
+// on-chain combat (seed = SHA-256(p1_salt‖p2_salt‖[round]), reveal_hand.rs:128).
+// DuelState offsets (validated): p1_salt @ 1283+(r-1)*32, p2_salt @ 1443+(r-1)*32
+// (after p1rev@483 / p2rev@883). An all-zero slice ⇒ that salt isn't on-chain yet
+// (the side hasn't revealed) → null, so callers know to keep waiting.
+async function getRoundSalts(duelIdStr, round) {
+  const [duelPDA] = findDuelPDA(new solanaWeb3.PublicKey(duelIdStr));
+  const info = await getConnection().getAccountInfo(duelPDA);
+  if (!info) return { p1Salt: null, p2Salt: null };
+  const d = info.data;
+  const r = Math.max(1, round | 0);
+  const salt = (off) => {
+    const slice = d.slice(off, off + 32);
+    return slice.some((b) => b !== 0) ? new Uint8Array(slice) : null;
+  };
+  return { p1Salt: salt(1283 + (r - 1) * 32), p2Salt: salt(1443 + (r - 1) * 32) };
+}
+
 export {
   readGameRound,
   readCardBattleHistoryCreatedAt,
@@ -404,6 +422,7 @@ export {
   readPlayerState,
   checkPlayerStateExists,
   getDuelStateFull,
+  getRoundSalts,
   getDuelState,
   getCardMintRecord,
   _ownedCardMintsCache,

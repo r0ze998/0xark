@@ -2,7 +2,7 @@
 // See PR: onchain.js -> src/onchain/{pda,readers,tx,rpc}.js + index.js shim.
 
 import { CARDS_PROGRAM_ID_STR, DUEL_STALL_TIMEOUT_SECONDS, ENERGY_MAX, ENERGY_REGEN_SECS, PROGRAM_ID_STR, computeCommitHash, findAgentPDA, findCardBattleHistoryPDA, findCardCommitPDA, findDuelLootRecordPDA, findDuelPDA, findDuelSettleRecordPDA, findGamePDA, findGameWorldPDA, findPlayerDeckPDA, findPlayerPDA, findPlayerRegistryPDA, findPlayerStatePDA, findSeasonPDA, findSeasonStatsPDA, findStakeVaultPDA, findTradeListingPDA, findZkProofRecordPDA, generateSalt, parseAnchorError, writeU16LE } from './pda.js';
-import { checkPlayerStateExists, fetchAllListings, getCardBattleHistory, getCardMintRecord, getDuelState, getDuelStateFull, getGameWorld, getOwnedCardMints, getPlayerState, invalidateOwnedCardMints, readAgentListing, readCardBattleHistoryCreatedAt, readGameAccount, readPlayerState, readSeason } from './readers.js';
+import { checkPlayerStateExists, fetchAllListings, getCardBattleHistory, getCardMintRecord, getDuelState, getDuelStateFull, getRoundSalts, getGameWorld, getOwnedCardMints, getPlayerState, invalidateOwnedCardMints, readAgentListing, readCardBattleHistoryCreatedAt, readGameAccount, readPlayerState, readSeason } from './readers.js';
 import { _mbMode, acceptListing, burnCard, buyCard, buyPack, cancelListingOnchain, checkLegendaryV2, claimBattleLoot, claimPrizeV2, claimTimeoutWin, commitHand, createListing, createSeason, deactivateAgent, delegateSession, endSeason, generateZkProof, getListings, grantImprint, initDuel, listCard, lockDeck, mintCardWithMetadata, promoteCard, refillEnergy, registerAgent, registerCard, registerWaitlist, revealHand, saveDeck, setMagicBlockMode, settleDuelHistory, splitPubkeyForZk, undelegateSession, updateShopParams } from './tx.js';
 
 window.oxarkOnchain = {
@@ -65,6 +65,7 @@ window.oxarkOnchain = {
   getDuelState,
   // F1-0 — onchain.js reader plumbing
   getDuelStateFull,
+  getRoundSalts,
   getCardMintRecord,
   getOwnedCardMints,
   invalidateOwnedCardMints,
