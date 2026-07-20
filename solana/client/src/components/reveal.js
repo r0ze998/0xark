@@ -242,9 +242,14 @@ async function _playbackSeed(s) {
   try {
     if (realMode) {
       const { p1Salt, p2Salt } = await window.oxarkOnchain.getRoundSalts(s.duelId, round);
-      if (p1Salt && p2Salt) return await computeSeed(p1Salt, p2Salt, round);
+      if (p1Salt && p2Salt) {
+        // YKK-59 live-pass check: a real duel MUST take this branch (chain parity).
+        console.log(`[Reveal] playback seed: CHAIN salts (round ${round})`);
+        return await computeSeed(p1Salt, p2Salt, round);
+      }
     }
     // Demo / not-yet-on-chain: local salt on both sides — same formula, deterministic.
+    console.log(`[Reveal] playback seed: LOCAL fallback (round ${round})${realMode ? ' — chain salts not on-chain yet' : ' — demo/no-WS'}`);
     const local = s.salt instanceof Uint8Array ? s.salt : new Uint8Array(32);
     return await computeSeed(local, local, round);
   } catch (_) {
