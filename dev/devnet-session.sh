@@ -46,11 +46,19 @@ if echo "$SHOW" | grep -q "Program Id: $PROGRAM_ID"; then
   LEN=$(echo "$SHOW" | grep "Data Length" | grep -oE "[0-9]+" | head -1)
   AUTH=$(echo "$SHOW" | grep "Authority" | awk '{print $2}')
   ok "deployed — Data Length: ${LEN} bytes · Authority: ${AUTH}"
+  if [ "$AUTH" = "$ADMIN" ]; then
+    ok "authority == r0ze id.json ($ADMIN) — upgrade WILL be accepted"
+  else
+    bad "authority ${AUTH} != r0ze id.json ${ADMIN} — a foreign/stale authority would REJECT the upgrade. Resolve before deploying."
+  fi
   if [ "$LEN" != "$EXPECT_BYTES" ]; then
     warn "deployed size ${LEN} != fresh v0 build ${EXPECT_BYTES} — UPGRADE recommended (see punch-list)"
-    TODO+=("UPGRADE the devnet program to the fresh v0 build (size mismatch $LEN vs $EXPECT_BYTES):|solana program deploy $FIXTURE_SO --program-id $PROGRAM_ID --url $RPC --upgrade-authority ~/.config/solana/id.json")
+    # Pre-flight the user asked for: SEE authority+size before committing the upgrade.
+    TODO+=("PRE-FLIGHT — confirm Authority == your id.json ($ADMIN) and note size, BEFORE upgrading:|solana program show $PROGRAM_ID --url $RPC")
+    # Smaller-program upgrade is safe: the deploy buffer's rent is refunded on completion;
+    # the (larger) ProgramData account keeps its size — nothing new is stranded.
+    TODO+=("UPGRADE to the fresh v0 build ($LEN B -> $EXPECT_BYTES B; safe — buffer rent refunds, ProgramData over-alloc is pre-existing):|solana program deploy $FIXTURE_SO --program-id $PROGRAM_ID --url $RPC --upgrade-authority ~/.config/solana/id.json")
   fi
-  [ "$AUTH" = "$ADMIN" ] || warn "authority $AUTH != expected admin $ADMIN"
 else
   bad "NOT deployed at $PROGRAM_ID on devnet"
   TODO+=("DEPLOY the v0 program to devnet (r0ze's key signs):|solana program deploy $FIXTURE_SO --program-id $PROGRAM_ID --url $RPC")
