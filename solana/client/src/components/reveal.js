@@ -1,10 +1,11 @@
-// reveal.js — Screen 4: Reveal Phase + battle animation (~17s)
+// reveal.js — Screen 4: Reveal Phase + Battle Stage v2 (F2-2, PR-J)
+// The playback is now a REPLAY of damageCalc().effects[] — the same deterministic
+// events that decide the winner — so presentation and truth cannot diverge.
 // mount(container, detail) / unmount(container)
 
 import { getCard } from '../lib/cards.js';
-import { factionOf, isLegendaryOf } from '../lib/card-meta.js';
-import { damageCalc } from '../lib/damage-calc.js';
-import { CardFrameHTML, injectCardCSS, FACTION_NAMES, ACTION_LABELS, ACTION_NAMES, FACTION_COLORS } from './common/Card.js';
+import { damageCalc, computeSeed } from '../lib/damage-calc.js';
+import { CardFrameHTML, injectCardCSS, FACTION_NAMES } from './common/Card.js';
 import { RoundHudHTML, injectRoundUiCSS, showRoundBridge } from './common/round-ui.js';
 import { pxIcon } from '../lib/px-icons.js';
 import { showToast } from '../lib/ui-shared.js';
@@ -13,7 +14,6 @@ import * as duelWs from '../lib/duel-ws.js';
 
 const POLL_MS = 1500; // getDuelStateFull poll cadence during resolution
 
-let _animTimeout      = null;
 let _skipped          = false;
 let _unsubOppReveal   = () => {};
 let _revealPromise    = Promise.resolve(null);
@@ -25,7 +25,7 @@ let _playbackDone       = false; // battle animation reached its end (or skipped
 let _resolutionStarted  = false; // resolveRound() has begun for this mount
 let _resolutionAborted  = false; // set on unmount to stop the poll loop
 let _navigated          = false; // guard against double navigation
-let _bridgeDispose       = null; // active round-bridge disposer
+let _bridgeDispose      = null;  // active round-bridge disposer
 
 // Build card_ids [u64; 10]: first 5 are field card IDs, last 5 are 0n.
 function _buildCardIds10(fieldCards) {
@@ -59,8 +59,7 @@ async function _safeDuelState(duelIdStr) {
   catch (_) { return null; }
 }
 
-// Which on-chain side am I? player1 === myPubkey when known, else isHost
-// (the host inits the duel as player1).
+// Which on-chain side am I? player1 === myPubkey when known, else isHost.
 function _p1IsMe(ds, s) {
   const myPk = window.solana?.publicKey?.toBase58?.() ?? null;
   if (myPk && ds?.player1) return ds.player1 === myPk;
@@ -68,8 +67,7 @@ function _p1IsMe(ds, s) {
 }
 
 // Start (or resume) resolution once BOTH the battle playback finished AND our
-// reveal tx is confirmed. Re-entrant: the reveal-retry handler calls this again
-// after a successful retry.
+// reveal tx is confirmed. Re-entrant: the reveal-retry handler calls this again.
 function maybeStartResolution(container) {
   if (_resolutionStarted || _navigated || _resolutionAborted) return;
   if (!_playbackDone || _revealFailed) return;
@@ -79,8 +77,8 @@ function maybeStartResolution(container) {
   });
 }
 
-// The single resolution entry point. Real mode (WS connected) reads chain truth
-// via getDuelStateFull; demo mode resolves locally. Both funnel through
+// The single resolution entry point (SEAM — unchanged from PR-E). Real mode reads
+// chain truth via getDuelStateFull; demo resolves locally. Both funnel through
 // _endDuel / _bridgeToNextRound so there is exactly one round-transition path.
 async function resolveRound(container, s) {
   const realMode = duelWs.isConnected() && !!s.duelId
@@ -89,8 +87,6 @@ async function resolveRound(container, s) {
   return _localResolve(container, s);
 }
 
-// Poll the chain until this round resolves (round advances) or the duel ends.
-// While waiting on the opponent, surface WAITING + a 600s CLAIM TIMEOUT WIN.
 async function _chainResolve(container, s) {
   const duelId    = s.duelId;
   const prevRound = s.round ?? 1;
@@ -120,8 +116,6 @@ async function _chainResolve(container, s) {
   }
 }
 
-// Demo / no-server path: decide the round from the local battle result, keep a
-// local best-of-3 tally, and end at first-to-3 or after round 5.
 function _localResolve(container, s) {
   const p1IsMe = s.duelP1IsMe ?? s.isHost ?? true;
   const iWon   = (s.battleResult?.winner ?? 'p1') === 'p1';
@@ -227,14 +221,39 @@ async function _onClaimTimeout(container, duelId) {
     btn.innerHTML = `${pxIcon('warn')} CLAIM TIMEOUT WIN`;
   } catch (err) {
     const msg = err?.message ?? String(err);
-    // "too early" → keep waiting; "claimer not revealed" can't originate here
-    // (we gate on our own reveal) but map defensively.
     const friendly = /too\s*early/i.test(msg) ? 'Too early — keep waiting'
       : /not\s*reveal/i.test(msg) ? 'Reveal your hand first'
       : `Claim failed: ${msg.slice(0, 60)}`;
     showToast(friendly, 'error');
     btn.disabled = false;
     btn.innerHTML = `${pxIcon('warn')} CLAIM TIMEOUT WIN`;
+  }
+}
+
+/* ── §3.1: deterministic playback seed ──────────────────────────────────
+ * On-chain combat seeds INI tie-breaks with SHA-256(p1_salt‖p2_salt‖[round]).
+ * Real mode reads both salts off DuelState (getRoundSalts) once both revealed;
+ * demo mode derives them locally. Either way the seed is DETERMINISTIC — the old
+ * crypto.getRandomValues() was a live source of replay non-determinism (v1.1). */
+async function _playbackSeed(s) {
+  const round = s.round ?? 1;
+  const realMode = duelWs.isConnected() && !!s.duelId
+    && typeof window.oxarkOnchain?.getRoundSalts === 'function';
+  try {
+    if (realMode) {
+      const { p1Salt, p2Salt } = await window.oxarkOnchain.getRoundSalts(s.duelId, round);
+      if (p1Salt && p2Salt) {
+        // YKK-59 live-pass check: a real duel MUST take this branch (chain parity).
+        console.log(`[Reveal] playback seed: CHAIN salts (round ${round})`);
+        return await computeSeed(p1Salt, p2Salt, round);
+      }
+    }
+    // Demo / not-yet-on-chain: local salt on both sides — same formula, deterministic.
+    console.log(`[Reveal] playback seed: LOCAL fallback (round ${round})${realMode ? ' — chain salts not on-chain yet' : ' — demo/no-WS'}`);
+    const local = s.salt instanceof Uint8Array ? s.salt : new Uint8Array(32);
+    return await computeSeed(local, local, round);
+  } catch (_) {
+    return new Uint8Array(32); // last-resort deterministic zero seed
   }
 }
 
@@ -251,6 +270,7 @@ export function mount(container, detail = {}) {
   _resolutionStarted = false;
   _resolutionAborted = false;
   _navigated         = false;
+  _skipped           = false;
   _bridgeDispose     = null;
 
   const s = getState();
@@ -259,23 +279,11 @@ export function mount(container, detail = {}) {
   const opponentField = s.opponentField ??
     s.fieldCards.map(c => ({ ...getCard(c.cardId), actionType: 0 }));
 
-  // Compute battle result via damage-calc
-  let result = null;
-  try {
-    const p1Field = s.fieldCards.filter(Boolean).map(c => ({ ...getCard(c.cardId), actionType: c.actionType }));
-    const p2Field = opponentField.filter(Boolean).map(c => ({ ...getCard(c.cardId), actionType: c.actionType ?? 0 }));
-    const seed = new Uint8Array(32);
-    crypto.getRandomValues(seed);
-    result = damageCalc({ p1Field, p2Field, seed });
-  } catch {
-    result = simpleBattleCalc(s.fieldCards, opponentField);
-  }
-
-  setState({ battleResult: result, isWinner: result?.winner === 'p1' });
-  container.innerHTML = buildHTML(s, result);
+  // Skeleton first (fields render from state, not from the result).
+  container.innerHTML = buildHTML(s);
   bindEvents(container);
 
-  // Subscribe to opponent's reveal (update opponentField if not already set from peek)
+  // Subscribe to opponent's reveal (update opponentField if not from peek).
   if (!s.opponentField && duelWs.isConnected() && s.duelId) {
     _unsubOppReveal = duelWs.on('duel_hand_revealed', (msg) => {
       if (msg.playerId !== s.opponentPlayerId) return;
@@ -288,10 +296,7 @@ export function mount(container, detail = {}) {
     });
   }
 
-  // ── reveal_hand on-chain submit (parallel with animation; gates resolution) ─
-  // Resolution (round bridge / RESULT) is blocked until this tx confirms — the
-  // chain is the sole arbiter of round wins and duel end. _revealPromise resolves
-  // to the tx hash (or null on failure, with _revealFailed set + retry line).
+  // ── reveal_hand on-chain submit (parallel with playback; gates resolution) ──
   _revealFailed = false;
   _revealPromise = _submitRevealOnChain(s);
 
@@ -299,7 +304,6 @@ export function mount(container, detail = {}) {
   const myActionTypes = s.fieldCards.filter(Boolean).map(c => c.actionType ?? 0);
   const round         = s.round ?? 1;
 
-  // Send hand reveal to server only after reveal TX confirms.
   if (duelWs.isConnected() && s.duelId) {
     _revealPromise.then(txHash => {
       if (!_revealFailed) {
@@ -307,30 +311,42 @@ export function mount(container, detail = {}) {
       }
       maybeStartResolution(container);
     }).catch(() => { /* _revealFailed already set inside _submitRevealOnChain */ });
-
-    // Phase-11 server bookkeeping (no longer drives navigation — chain truth does).
-    const p1BP = s.fieldCards.filter(Boolean).reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
-    const p2BP = opponentField.filter(Boolean).reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
-    if (s.isHost) {
-      duelWs.sendBattleResolved(s.duelId, round, p1BP, p2BP, result?.winner ?? null);
-    } else {
-      duelWs.sendDamageClaim(s.duelId, round, p1BP, p2BP);
-    }
   } else {
-    // Demo / no-chain: nothing gates us; resolution runs once playback ends.
     _revealPromise.then(() => maybeStartResolution(container)).catch(() => {});
   }
 
-  runAnimation(container, s, result);
+  // ── Battle Stage v2: deterministic seed → damageCalc → effect-replay playback ─
+  (async () => {
+    const p1Field = s.fieldCards.filter(Boolean).map(c => ({ ...getCard(c.cardId), actionType: c.actionType }));
+    const p2Field = opponentField.filter(Boolean).map(c => ({ ...getCard(c.cardId), actionType: c.actionType ?? 0 }));
+    let result;
+    try {
+      const seed = await _playbackSeed(s);
+      result = damageCalc({ p1Field, p2Field, seed });
+    } catch {
+      result = simpleBattleCalc(s.fieldCards, opponentField);
+    }
+    if (_navigated || _resolutionAborted) return;
+    setState({ battleResult: result, isWinner: result?.winner === 'p1' });
+
+    // Phase-11 server bookkeeping (chain truth drives navigation, not this).
+    if (duelWs.isConnected() && s.duelId) {
+      const p1BP = p1Field.reduce((a, c) => a + (c.bp ?? 0), 0);
+      const p2BP = p2Field.reduce((a, c) => a + (c.bp ?? 0), 0);
+      if (s.isHost) duelWs.sendBattleResolved(s.duelId, round, p1BP, p2BP, result?.winner ?? null);
+      else          duelWs.sendDamageClaim(s.duelId, round, p1BP, p2BP);
+    }
+
+    await runPlayback(container, s, result);
+  })();
 }
 
 export function unmount(container) {
-  if (_animTimeout) { clearTimeout(_animTimeout); _animTimeout = null; }
-  _resolutionAborted = true;           // stop any in-flight poll loop
+  _skipped           = true;               // stop any in-flight beat queue
+  _resolutionAborted = true;               // stop any in-flight poll loop
   if (_bridgeDispose) { try { _bridgeDispose(); } catch (_) {} _bridgeDispose = null; }
   _unsubOppReveal();
   _unsubOppReveal  = () => {};
-  _skipped           = false;
   _revealFailed      = false;
   _revealPromise     = Promise.resolve(null);
   _uiAddLog          = null;
@@ -340,7 +356,7 @@ export function unmount(container) {
   container.innerHTML = '';
 }
 
-/* ── Simple fallback battle calc ────────────────────────────────────── */
+/* ── Simple fallback battle calc (unchanged) ────────────────────────── */
 function simpleBattleCalc(p1Field, p2Field) {
   const p1Cards = p1Field.filter(Boolean).map(s => ({ ...getCard(s.cardId), actionType: s.actionType, hpCurrent: getCard(s.cardId)?.hp ?? 0, dead: false }));
   const p2Cards = (p2Field || p1Field).filter(Boolean).map(s => ({ ...getCard(s.cardId), actionType: s.actionType ?? 0, hpCurrent: getCard(s.cardId)?.hp ?? 0, dead: false }));
@@ -348,7 +364,6 @@ function simpleBattleCalc(p1Field, p2Field) {
   let p1BP = p1Cards.reduce((a, c) => a + (c.bp ?? 0), 0);
   let p2BP = p2Cards.reduce((a, c) => a + (c.bp ?? 0), 0);
 
-  // Simple resolution: subtract BPs
   for (let i = 0; i < Math.min(p1Cards.length, p2Cards.length); i++) {
     const dmg = p1Cards[i]?.bp ?? 0;
     if (p2Cards[i]) p2Cards[i].hpCurrent = Math.max(0, (p2Cards[i].hpCurrent ?? 0) - dmg);
@@ -356,31 +371,29 @@ function simpleBattleCalc(p1Field, p2Field) {
   }
 
   const winner = p1BP >= p2BP ? 'p1' : 'p2';
-  const lootPool = p2Cards.map(c => c.id ?? 0);
-  const lootCard = lootPool[Math.floor(Math.random() * lootPool.length)] ?? null;
-
-  return { winner, p1Cards, p2Cards, lootPool, lootCard, effects: [] };
+  const finalize = (c) => ({ id: c.id, finalBp: c.bp ?? 0, finalHp: c.hpCurrent ?? 0, destroyed: !!c.dead, isLegendary: !!c.isLegendary });
+  return { winner, p1BpTotal: p1BP, p2BpTotal: p2BP, p1Cards: p1Cards.map(finalize), p2Cards: p2Cards.map(finalize), effects: [] };
 }
 
-/* ── HTML ───────────────────────────────────────────────────────────── */
-function buildHTML(s, result) {
+/* ── HTML (§3.4 layout: 140px frames · ΣBP counters · duel zone · 2-row telop) ─ */
+function buildHTML(s) {
   const p1  = s.fieldCards.filter(Boolean);
   const p2  = s.opponentField ?? s.fieldCards;
 
+  const row = (cards, side) => cards.map((c, i) =>
+    `<div class="rev-card-wrap" id="rev-${side}-${i}" style="animation-delay:${i * 0.12}s;">
+       ${CardFrameHTML({ id: c.cardId, faceDown: true })}
+     </div>`).join('');
+
   return `
 <div class="rev-root" role="main" aria-label="Reveal Phase">
-
-  <!-- Top bar -->
   <header class="rev-topbar">
     <div class="chip rev-phase-label">REVEAL</div>
     <div class="rev-status label-gold" id="rev-status">Revealing hands…</div>
     ${RoundHudHTML(s)}
-    <button class="gba-btn gba-btn--ghost rev-skip-btn" id="rev-skip" style="font-size:14px;">
-      SKIP
-    </button>
+    <button class="gba-btn gba-btn--ghost rev-skip-btn" id="rev-skip" style="font-size:14px;">SKIP</button>
   </header>
 
-  <!-- Waiting-for-opponent / stall overlay (shown during resolution) -->
   <div class="rev-wait" id="rev-wait" style="display:none;" role="status" aria-live="polite">
     <div class="rev-wait-msg">WAITING FOR OPPONENT…</div>
     <div class="rev-wait-elapsed" id="rev-wait-elapsed">0s</div>
@@ -390,203 +403,188 @@ function buildHTML(s, result) {
   </div>
 
   <div class="rev-body">
-
-    <!-- Opponent field (top) -->
     <section class="rev-opp-field" aria-label="Opponent field">
-      <div class="rev-field-label label-dim">OPPONENT</div>
-      <div class="rev-card-row" id="rev-opp-row">
-        ${p2.map((c, i) =>
-          `<div class="rev-card-wrap" id="rev-opp-${i}" style="animation-delay:${i * 0.12}s;">
-            ${CardFrameHTML({ id: c.cardId, faceDown: true })}
-          </div>`
-        ).join('')}
+      <div class="rev-field-head">
+        <span class="rev-field-label label-dim">OPPONENT</span>
+        <span class="rev-bp" id="rev-p2-bp">ΣBP <b class="label-red">—</b></span>
       </div>
+      <div class="rev-card-row" id="rev-opp-row">${row(p2, 'opp')}</div>
     </section>
 
-    <!-- Battle log (center) -->
-    <div class="rev-center">
-      <div class="rev-log" id="rev-log" role="log" aria-live="polite">
-        <div class="rev-log-line label-dim">… waiting for reveal …</div>
-      </div>
-      <div class="rev-bp-totals" id="rev-bp-totals">
-        <span class="rev-bp-p1">P1: <b class="label-gold" id="rev-p1-bp">—</b> BP</span>
-        <span class="rev-vs">VS</span>
-        <span class="rev-bp-p2">P2: <b class="label-gold" id="rev-p2-bp">—</b> BP</span>
-      </div>
+    <!-- Center duel zone + 2-row telop (replaces the scripted center log) -->
+    <div class="rev-stage" id="rev-stage" aria-hidden="true"></div>
+    <div class="rev-telop" id="rev-telop" role="log" aria-live="polite">
+      <div class="rev-telop-line" id="rev-telop-0"></div>
+      <div class="rev-telop-line" id="rev-telop-1"></div>
     </div>
 
-    <!-- Your field (bottom) -->
     <section class="rev-your-field" aria-label="Your field">
-      <div class="rev-card-row" id="rev-your-row">
-        ${p1.map((c, i) =>
-          `<div class="rev-card-wrap" id="rev-your-${i}" style="animation-delay:${i * 0.12}s;">
-            ${CardFrameHTML({ id: c.cardId, faceDown: true })}
-          </div>`
-        ).join('')}
+      <div class="rev-card-row" id="rev-your-row">${row(p1, 'your')}</div>
+      <div class="rev-field-head">
+        <span class="rev-field-label label-dim">YOU</span>
+        <span class="rev-bp" id="rev-p1-bp">ΣBP <b class="label-gold">—</b></span>
       </div>
-      <div class="rev-field-label label-dim">YOU</div>
     </section>
-
   </div>
-
 </div>`;
 }
 
-/* ── Animation sequence ─────────────────────────────────────────────── */
-function runAnimation(container, s, result) {
+/* ── §3.3: effect string → beat mapping ─────────────────────────────────
+ * damageCalc().effects[] is the timeline. Each string parses to a beat; the pair
+ * `duel` beats are synthesized from p1Cards/p2Cards (the authoritative finals).
+ * Unknown strings get a verbatim dim telop and no beat (forward-compat rule). */
+const M = { t: 'var(--t-fast)' }; // motion token hint (durations below are ms)
+function buildTimeline(result) {
+  const fx = result?.effects ?? [];
+  const beats = [];
+  // §3.3 ordering: void-blocked SEALED stamps render first (before any actions).
+  for (const e of fx) if (/_void_blocked_/.test(e)) beats.push({ kind: 'seal-stamp', e, dur: 160 });
+  for (const e of fx) {
+    let m;
+    if (/_void_blocked_/.test(e)) continue; // already emitted
+    if ((m = e.match(/^p([12])_synergy_(\d+)$/)))            beats.push({ kind: 'banner', side: 'p' + m[1], faction: +m[2], dur: 320, sfx: 'sfx-ui-confirm' });
+    else if ((m = e.match(/^p([12])_legendary_(\d+)_present$/))) beats.push({ kind: 'crown', side: 'p' + m[1], id: +m[2], dur: 160, sfx: 'sfx-legendary' });
+    else if ((m = e.match(/^(p[12])_crystal_(\d+)$/)))       beats.push({ kind: 'buff', side: m[1], id: +m[2], dur: 160 });
+    else if ((m = e.match(/^(p[12])_barrier_(\d+)$/)))       beats.push({ kind: 'shield', side: m[1], id: +m[2], dur: 160 });
+    else if ((m = e.match(/^(p[12])_flame_(\d+)_hits_(\d+)$/))) beats.push({ kind: 'ember', side: m[1], id: +m[2], target: +m[3], dur: 320, sfx: 'sfx-hit' });
+    else if ((m = e.match(/^(p[12])_storm_sweeps_(p[12])$/))) beats.push({ kind: 'gust', side: m[1], opp: m[2], dur: 320, sfx: 'sfx-hit' });
+    else if ((m = e.match(/^(p[12])_shadow_(\d+)$/)))        beats.push({ kind: 'fade', side: m[1], id: +m[2], dur: 160 });
+    else if ((m = e.match(/^(p[12])_void_(\d+)$/)))          beats.push({ kind: 'spark', side: m[1], id: +m[2], dur: 160 });
+    else if ((m = e.match(/^p([12])_shadow_skip_pair_(\d+)$/))) beats.push({ kind: 'skip', side: 'p' + m[1], pair: +m[2], dur: 240 });
+    else if ((m = e.match(/^winner_(p[12])_bp_(\d+)_vs_(\d+)$/))) beats.push({ kind: 'verdict', winner: m[1], p1bp: +m[2], p2bp: +m[3], dur: 480, sfx: null });
+    else if (/^loot_card_/.test(e)) { /* RESULT concern — ignored in playback */ }
+    else if (/_barrier_blocked_pair_/.test(e)) { /* rendered inside the duel beat */ }
+    else beats.push({ kind: 'telop', text: e, dur: 0 }); // forward-compat: verbatim dim telop
+  }
+  // Synthesize the 5 pair `duel` beats from the authoritative finals, in order.
+  const barrierBlocked = new Set(fx.filter(e => /_barrier_blocked_pair_/.test(e)));
+  for (let i = 0; i < 5; i++) {
+    if (fx.includes(`p1_shadow_skip_pair_${i}`) || fx.includes(`p2_shadow_skip_pair_${i}`)) continue;
+    beats.push({
+      kind: 'duel', pair: i, dur: 640,
+      p1: result?.p1Cards?.[i], p2: result?.p2Cards?.[i],
+      p1Blocked: barrierBlocked.has(`p1_barrier_blocked_pair_${i}`),
+      p2Blocked: barrierBlocked.has(`p2_barrier_blocked_pair_${i}`),
+      sfx: 'sfx-hit',
+    });
+  }
+  // Move the verdict to the very end (it hands off to the bridge).
+  const vi = beats.findIndex(b => b.kind === 'verdict');
+  if (vi >= 0) beats.push(beats.splice(vi, 1)[0]);
+  return beats;
+}
+
+/* ── §3.5: async beat queue ─────────────────────────────────────────────
+ * for (const beat of timeline) await play(beat); a `_skipped` flag short-circuits
+ * to the end-state. Reduced-motion collapses beats to 0ms except three anchors. */
+async function runPlayback(container, s, result) {
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
   const p1 = s.fieldCards.filter(Boolean);
   const p2 = s.opponentField ?? s.fieldCards;
-  const log = container.querySelector('#rev-log');
 
-  const after = (ms, fn) => {
-    if (_skipped) return;
-    _animTimeout = setTimeout(fn, ms);
+  setStatus(container, 'Revealing hands…');
+  // Reveal flip (staggered), then the effect replay.
+  p1.forEach((c, i) => flipCard(container, `rev-your-${i}`, c.cardId));
+  p2.forEach((c, i) => flipCard(container, `rev-opp-${i}`, c.cardId));
+  if (!reduce && !_skipped) await _sleep(400);
+
+  setStatus(container, 'COMBAT');
+  const timeline = buildTimeline(result);
+  const anchors = new Set(['banner', 'verdict']); // + KO stills handled in the duel beat
+  for (const beat of timeline) {
+    if (_skipped) break;
+    play(container, beat, result, p1, p2);
+    const dur = reduce && !anchors.has(beat.kind) ? 0 : beat.dur;
+    if (dur > 0) await _sleep(dur);
+  }
+
+  applyEndState(container, result, p1, p2); // idempotent — SKIP lands here directly too
+  const winner = result?.winner ?? 'p1';
+  setStatus(container, winner === 'p1' ? '◆ YOU WIN' : '◇ OPPONENT WINS');
+  const st = container.querySelector('#rev-status');
+  if (st) { st.style.fontSize = '24px'; st.style.color = winner === 'p1' ? 'var(--accent-gold)' : 'var(--accent-red)'; }
+
+  await _sleep(_skipped ? 800 : 300); // 800ms verdict still on SKIP
+  _playbackDone = true;
+  maybeStartResolution(container);
+}
+
+function play(container, beat, result, p1, p2) {
+  const telop = (text, ch = 'combat') => addTelop(container, text, ch);
+  const frameOf = (side, id) => {
+    const arr = side === 'p1' ? p1 : p2;
+    const idx = arr.findIndex(c => c.cardId === id);
+    return idx < 0 ? null : container.querySelector(`#rev-${side === 'p1' ? 'your' : 'opp'}-${idx}`);
   };
+  const rowFrame = (side, i) => container.querySelector(`#rev-${side === 'p1' ? 'your' : 'opp'}-${i}`);
+  const pulse = (el, cls, ms) => { if (!el) return; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); };
 
-  function setStatus(text) {
-    const el = container.querySelector('#rev-status');
-    if (el) el.textContent = text;
-  }
-
-  function addLog(text, cls = '') {
-    if (!log) return;
-    const line = document.createElement('div');
-    line.className = `rev-log-line ${cls}`;
-    line.textContent = text;
-    // Retry click handler for error log lines
-    if (cls.includes('rev-retry-reveal')) {
-      line.style.cursor = 'pointer';
-      line.addEventListener('click', () => {
-        _revealFailed = false;
-        line.textContent = '↻ retrying reveal TX…';
-        line.className = 'rev-log-line log-dim';
-        const s = getState();
-        _submitRevealOnChain(s).then(tx => {
-          if (tx) {
-            line.textContent = `◈ reveal TX confirmed (${tx.slice(0,8)}…)`;
-            line.className = 'rev-log-line log-gold';
-            if (duelWs.isConnected() && s.duelId) {
-              const myCardIds     = s.fieldCards.filter(Boolean).map(c => c.cardId);
-              const myActionTypes = s.fieldCards.filter(Boolean).map(c => c.actionType ?? 0);
-              duelWs.sendHandRevealed(s.duelId, s.round ?? 1, myCardIds, myActionTypes, tx);
-            }
-            maybeStartResolution(container); // retry cleared the block — resume resolution
-          } else {
-            line.textContent = 'retry failed — check wallet';
-            line.className = 'rev-log-line log-error rev-retry-reveal';
-          }
-        });
-      });
+  switch (beat.kind) {
+    case 'banner':
+      telop(`${FACTION_NAMES[beat.faction] ?? 'FACTION'} SYNERGY +10%`, beat.side === 'p1' ? 'gold' : 'red');
+      pulse(container.querySelector(beat.side === 'p1' ? '#rev-your-row' : '#rev-opp-row'), 'rev-banner', beat.dur);
+      sfx(beat.sfx); break;
+    case 'crown':
+      pulse(frameOf(beat.side, beat.id), 'rev-crown', beat.dur); telop('LEGENDARY', 'gold'); sfx(beat.sfx); break;
+    case 'seal-stamp': { const m = beat.e.match(/^(p[12])_void_blocked_(\d+)$/);
+      if (m) { pulse(frameOf(m[1], +m[2]), 'rev-sealed', beat.dur); telop('SEALED', 'dim'); } break; }
+    case 'buff': pulse(frameOf(beat.side, beat.id), 'rev-buff', beat.dur); telop('+5 BP', 'combat'); break;
+    case 'shield': pulse(frameOf(beat.side, beat.id), 'rev-shield', beat.dur); telop('BARRIER', 'combat'); break;
+    case 'ember': pulse(frameOf(beat.side, beat.id), 'rev-ember', beat.dur); telop('-5 HP', 'red'); sfx(beat.sfx); break;
+    case 'gust': pulse(container.querySelector(beat.opp === 'p1' ? '#rev-your-row' : '#rev-opp-row'), 'rev-gust', beat.dur); telop('STORM SWEEP', 'combat'); sfx(beat.sfx); break;
+    case 'fade': pulse(frameOf(beat.side, beat.id), 'rev-fade', beat.dur); telop('SHADOW', 'dim'); break;
+    case 'spark': pulse(frameOf(beat.side, beat.id), 'rev-spark', beat.dur); telop('VOID', 'combat'); break;
+    case 'skip': pulse(rowFrame('p1', beat.pair), 'rev-sidestep', beat.dur); pulse(rowFrame('p2', beat.pair), 'rev-sidestep', beat.dur); telop('SKIP', 'dim'); break;
+    case 'duel': {
+      pulse(rowFrame('p1', beat.pair), 'rev-clash', beat.dur);
+      pulse(rowFrame('p2', beat.pair), 'rev-clash', beat.dur);
+      const koed = [];
+      if (beat.p2?.destroyed) { rowFrame('p2', beat.pair)?.classList.add('rev-card--dead', 'rev-ko'); koed.push('OPP'); }
+      if (beat.p1?.destroyed) { rowFrame('p1', beat.pair)?.classList.add('rev-card--dead', 'rev-ko'); koed.push('YOU'); }
+      updateBpTotals(container, result);
+      telop(koed.length ? `KO — ${koed.join(' & ')}` : `PAIR ${beat.pair + 1}`, koed.length ? 'red' : 'combat');
+      sfx(koed.length ? 'sfx-ko' : 'sfx-hit'); break;
     }
-    log.appendChild(line);
-    log.scrollTop = log.scrollHeight;
-  }
-  _uiAddLog = addLog;
-
-  function clearLog() {
-    if (log) log.innerHTML = '';
-  }
-
-  // Step 1: Reveal all cards (1s)
-  after(200, () => {
-    setStatus('Revealing hands…');
-    p1.forEach((c, i) => {
-      after(i * 120, () => flipCard(container, `rev-your-${i}`, c.cardId));
-    });
-    p2.forEach((c, i) => {
-      after(i * 120, () => flipCard(container, `rev-opp-${i}`, c.cardId));
-    });
-  });
-
-  // Step 2: Synergy check (1s after reveal)
-  after(1400, () => {
-    clearLog();
-    setStatus('Checking synergies…');
-    const p1Factions = p1.map(c => factionOf(c.cardId));
-    const p2Factions = p2.map(c => factionOf(c.cardId));
-    const p1Synergy = checkSynergy(p1Factions);
-    const p2Synergy = checkSynergy(p2Factions);
-    if (p1Synergy) addLog(`◆ YOUR ${FACTION_NAMES[p1Synergy]} SYNERGY ACTIVE! (+10% BP)`, 'log-gold');
-    if (p2Synergy) addLog(`◇ OPPONENT ${FACTION_NAMES[p2Synergy]} SYNERGY ACTIVE! (+10% BP)`, 'log-red');
-    if (!p1Synergy && !p2Synergy) addLog('No faction synergy.', 'log-dim');
-  });
-
-  // Step 3: Legendary effects (2s)
-  after(2400, () => {
-    setStatus('Legendary effects…');
-    const lgdCards = [...p1, ...p2].filter(c => isLegendaryOf(c.cardId));
-    lgdCards.forEach((c, i) => {
-      after(i * 800, () => {
-        addLog(`${FACTION_NAMES[factionOf(c.cardId)]} LEGENDARY ACTIVATES!`, 'log-gold');
-      });
-    });
-  });
-
-  // Step 4: Action types (5s)
-  after(4600, () => {
-    setStatus('Resolving actions…');
-    const allCards = [...p1.map((c,i) => ({...c, side:'p1', idx:i})), ...p2.map((c,i) => ({...c, side:'p2', idx:i}))]
-      .sort((a, b) => (getCard(b.cardId)?.ini ?? 0) - (getCard(a.cardId)?.ini ?? 0));
-    allCards.forEach((c, i) => {
-      after(i * 400, () => {
-        const card = getCard(c.cardId);
-        addLog(`[${c.side.toUpperCase()}] ${ACTION_NAMES[c.actionType] ?? '—'} (INI ${card?.ini})`, '');
-      });
-    });
-  });
-
-  // Step 5: Combat pairs (7.5s)
-  after(9600, () => {
-    setStatus('COMBAT!');
-    clearLog();
-    const pairCount = Math.min(p1.length, p2.length);
-    for (let i = 0; i < pairCount; i++) {
-      after(i * 1200, () => {
-        const c1 = p1[i], c2 = p2[i];
-        const card1 = getCard(c1.cardId), card2 = getCard(c2.cardId);
-        const dmg   = card1?.bp ?? 0;
-        addLog(`PAIR ${i+1}: YOUR ${dmg}BP → OPP ${card2?.hp}HP`, 'log-combat');
-        highlightPair(container, i);
-
-        // Update HP display
-        const resPair = result.p2Cards?.[i];
-        if (resPair !== undefined) {
-          const oppCard = container.querySelector(`#rev-opp-${i} .cf-hp .stat-value`);
-          if (oppCard) {
-            const newHp = resPair.hpCurrent ?? 0;
-            oppCard.textContent = newHp;
-            if (newHp <= 0) {
-              container.querySelector(`#rev-opp-${i}`)?.classList.add('rev-card--dead');
-              addLog(`  └ OPP card ${i+1} DESTROYED`, 'log-red');
-            }
-          }
-        }
-      });
+    case 'verdict': {
+      updateBpTotals(container, result);
+      const w = beat.winner === 'p1' ? 'YOU' : 'OPP';
+      telop(`${w} WIN — ${beat.p1bp} vs ${beat.p2bp} BP`, beat.winner === 'p1' ? 'gold' : 'red');
+      sfx(beat.winner === 'p1' ? 'sfx-victory' : 'sfx-defeat'); break;
     }
-  });
+    case 'telop': telop(beat.text, 'dim'); break;
+  }
+}
 
-  // Step 6: Result (1s)
-  after(17200, () => {
-    const p1BP = p1.reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
-    const p2BP = p2.reduce((a, c) => a + (getCard(c.cardId)?.bp ?? 0), 0);
-    const p1El = container.querySelector('#rev-p1-bp');
-    const p2El = container.querySelector('#rev-p2-bp');
-    if (p1El) p1El.textContent = p1BP;
-    if (p2El) p2El.textContent = p2BP;
+// SKIP / end: apply every final HP/KO + the final ΣBP tug in one shot.
+function applyEndState(container, result, p1, p2) {
+  updateBpTotals(container, result);
+  (result?.p1Cards ?? []).forEach((c, i) => { if (c?.destroyed) container.querySelector(`#rev-your-${i}`)?.classList.add('rev-card--dead'); });
+  (result?.p2Cards ?? []).forEach((c, i) => { if (c?.destroyed) container.querySelector(`#rev-opp-${i}`)?.classList.add('rev-card--dead'); });
+}
 
-    const winner = result?.winner ?? (p1BP >= p2BP ? 'p1' : 'p2');
-    setStatus(winner === 'p1' ? '◆ YOU WIN!' : '◇ OPPONENT WINS');
-    container.querySelector('#rev-status').style.fontSize = '24px';
-    container.querySelector('#rev-status').style.color = winner === 'p1' ? 'var(--accent-gold)' : 'var(--accent-red)';
+function updateBpTotals(container, result) {
+  const p1 = container.querySelector('#rev-p1-bp b');
+  const p2 = container.querySelector('#rev-p2-bp b');
+  if (p1) p1.textContent = result?.p1BpTotal ?? '—';
+  if (p2) p2.textContent = result?.p2BpTotal ?? '—';
+}
 
-    // Playback finished — hand off to the unified resolver. It reads chain truth
-    // (getDuelStateFull) in real mode or the local tally in demo, then routes to
-    // RESULT (duel ended) or the round bridge → advanceRound (duel continues).
-    after(1200, () => {
-      _playbackDone = true;
-      maybeStartResolution(container);
-    });
-  });
+function sfx(id) { if (id) try { window.oxarkAudio?.sfx?.(id); } catch (_) {} }
+
+function setStatus(container, text) {
+  const el = container.querySelector('#rev-status');
+  if (el) el.textContent = text;
+}
+
+// addLog is retained as the TELOP writer (§3.4). Two rolling rows.
+function addTelop(container, text, ch = 'combat') {
+  const rows = [container.querySelector('#rev-telop-0'), container.querySelector('#rev-telop-1')];
+  if (!rows[0]) return;
+  rows[0].textContent = rows[1]?.textContent ?? '';
+  rows[0].className = `rev-telop-line ${rows[1]?.dataset.ch ? 'telop-' + rows[1].dataset.ch : ''}`;
+  rows[1].textContent = text;
+  rows[1].dataset.ch = ch;
+  rows[1].className = `rev-telop-line telop-${ch}`;
 }
 
 function flipCard(container, id, cardId) {
@@ -599,30 +597,13 @@ function flipCard(container, id, cardId) {
   }, 150);
 }
 
-function highlightPair(container, idx) {
-  [`#rev-your-${idx}`, `#rev-opp-${idx}`].forEach(sel => {
-    const el = container.querySelector(sel);
-    if (!el) return;
-    el.classList.add('rev-card--highlight');
-    setTimeout(() => el.classList.remove('rev-card--highlight'), 800);
-  });
-}
-
-function checkSynergy(factions) {
-  const counts = {};
-  factions.forEach(f => { if (f != null) counts[f] = (counts[f] ?? 0) + 1; });
-  const entry = Object.entries(counts).find(([, n]) => n >= 3);
-  return entry ? parseInt(entry[0], 10) : null;
-}
-
 /* ── Events ─────────────────────────────────────────────────────────── */
 function bindEvents(container) {
+  // reveal-tx failures surface on the telop; wire the writer so _submitRevealOnChain can use it.
+  _uiAddLog = (text, cls) => addTelop(container, text, /error/.test(cls || '') ? 'red' : 'dim');
   container.querySelector('#rev-skip').addEventListener('click', () => {
     _skipped = true;
-    if (_animTimeout) { clearTimeout(_animTimeout); _animTimeout = null; }
     _playbackDone = true;
-    // Resolver is gated on reveal-confirmed; if the reveal tx failed it stays put
-    // and the retry line remains actionable.
     maybeStartResolution(container);
   });
 }
@@ -637,85 +618,54 @@ function injectStyle() {
 }
 
 const CSS = `
-.rev-root {
-  position: relative; width: 1024px; height: 576px; overflow: hidden;
-  font-family: var(--font-main); background: var(--bg-deep);
-  display: flex; flex-direction: column;
-}
-
-/* Top bar */
-.rev-topbar {
-  height: 44px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 14px; border-bottom: var(--border-dim);
-  background: rgba(3,6,15,0.75); z-index: 10;
-}
+.rev-root { position: relative; width: 1024px; height: 576px; overflow: hidden;
+  font-family: var(--font-main); background: var(--bg-deep); display: flex; flex-direction: column; }
+.rev-topbar { height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px; border-bottom: var(--border-dim); background: rgba(3,6,15,0.75); z-index: 10; }
 .rev-phase-label { font-size: 16px; letter-spacing: 0.1em; color: var(--accent-red); border-color: var(--accent-red); }
-.rev-status { font-size: 20px; letter-spacing: 0.06em; transition: color 0.5s, font-size 0.3s; }
+.rev-status { font-size: 20px; letter-spacing: 0.06em; transition: color var(--t-slow, 0.5s), font-size var(--t-base, 0.3s); }
 .rev-skip-btn { font-size: 14px; padding: 3px 10px; }
 
-.rev-body {
-  flex: 1; display: grid;
-  grid-template-rows: 1fr auto 1fr;
-  padding: 8px 12px;
-  gap: 6px; overflow: hidden;
-}
-
-/* Fields */
-.rev-opp-field, .rev-your-field {
-  display: flex; flex-direction: column; justify-content: center; gap: 4px;
-}
-.rev-opp-field { align-items: flex-start; }
-.rev-your-field { align-items: flex-start; }
-
+.rev-body { flex: 1; display: grid; grid-template-rows: 1fr auto auto 1fr; padding: 8px 12px; gap: 6px; overflow: hidden; }
+.rev-opp-field, .rev-your-field { display: flex; flex-direction: column; justify-content: center; gap: 4px; align-items: flex-start; }
+.rev-field-head { display: flex; align-items: center; gap: 14px; }
 .rev-field-label { font-size: 13px; letter-spacing: 0.1em; }
+.rev-bp { font-size: 15px; letter-spacing: 0.06em; color: var(--text-dim); }
+.rev-bp b { font-size: 18px; }
 
-.rev-card-row {
-  display: flex; gap: 8px; align-items: center;
-}
-
-.rev-card-wrap {
-  transition: transform 0.3s, opacity 0.3s;
-}
-.rev-card--flip {
-  transform: rotateY(90deg); opacity: 0.2;
-}
-.rev-card--highlight {
-  filter: drop-shadow(0 0 8px rgba(201,162,39,0.8));
-}
-.rev-card--dead .card-frame { opacity: 0.3; filter: grayscale(1); }
+.rev-card-row { display: flex; gap: 8px; align-items: center; transition: filter var(--t-base, 0.3s); }
+.rev-card-wrap { transition: transform var(--t-base, 0.3s), opacity var(--t-base, 0.3s), filter var(--t-base, 0.3s); }
 .rev-card-wrap .card-frame { width: 140px; }
+.rev-card--flip { transform: rotateY(90deg); opacity: 0.2; }
+.rev-card--dead .card-frame { opacity: 0.3; filter: grayscale(1); }
 
-/* Center log */
-.rev-center {
-  display: flex; flex-direction: column; gap: 4px;
-  border-top: var(--border-dim); border-bottom: var(--border-dim);
-  padding: 4px 0;
-}
+/* Center duel zone (~1024×200) + 2-row telop */
+.rev-stage { min-height: 40px; display: flex; align-items: center; justify-content: center; }
+.rev-telop { display: flex; flex-direction: column; gap: 1px; border-top: var(--border-dim); border-bottom: var(--border-dim); padding: 4px 8px; min-height: 40px; }
+.rev-telop-line { font-size: 15px; letter-spacing: 0.03em; line-height: 1.4; min-height: 20px; transition: opacity var(--t-base, 0.3s); }
+.telop-gold { color: var(--accent-gold); }
+.telop-red  { color: var(--accent-red); }
+.telop-dim  { color: var(--text-dim); }
+.telop-combat { color: var(--accent-blue); }
 
-.rev-log {
-  flex: 1; overflow-y: auto; max-height: 80px;
-  display: flex; flex-direction: column; gap: 1px;
-}
-.rev-log::-webkit-scrollbar { width: 2px; }
-.rev-log-line { font-size: 13px; letter-spacing: 0.02em; line-height: 1.4; padding: 0 4px; }
-.log-gold { color: var(--accent-gold); }
-.log-red  { color: var(--accent-red); }
-.log-dim  { color: var(--text-dim); }
-.log-combat { color: var(--accent-blue); }
-
-.rev-bp-totals {
-  display: flex; align-items: center; justify-content: center; gap: 24px;
-  font-size: 18px;
-}
-.rev-vs { color: var(--text-dim); font-size: 14px; }
+/* Beat animations (compositor-friendly: transform / opacity / filter) */
+@keyframes rev-clash { 0%,100% { transform: scale(1); } 40% { transform: scale(1.1) translateX(4px); } 55% { transform: translateX(-3px); } }
+@keyframes rev-ko { 0% { transform: scale(1); } 60% { transform: scale(1.2) rotate(6deg); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.3; } }
+@keyframes rev-pop { 0%,100% { filter: none; } 50% { filter: drop-shadow(0 0 8px rgba(201,162,39,0.9)); } }
+@keyframes rev-sweep { 0% { filter: none; } 50% { filter: brightness(1.4); } 100% { filter: none; } }
+.rev-clash .card-frame { animation: rev-clash 0.5s var(--ease-pop, ease-out); }
+.rev-ko .card-frame { animation: rev-ko 0.32s var(--ease-pop, ease-out) forwards; }
+.rev-crown .card-frame, .rev-buff .card-frame, .rev-spark .card-frame { animation: rev-pop 0.16s ease-out; }
+.rev-shield .card-frame { filter: drop-shadow(0 0 6px rgba(74,144,217,0.8)); }
+.rev-ember .card-frame { animation: rev-pop 0.32s ease-out; }
+.rev-fade .card-frame { opacity: 0.4; filter: grayscale(0.6); }
+.rev-sealed .card-frame { filter: grayscale(1) brightness(0.7); }
+.rev-sidestep .card-frame { transform: translateX(6px); }
+.rev-banner, .rev-gust { animation: rev-sweep 0.32s ease-out; }
 
 /* Waiting-for-opponent / stall overlay */
-.rev-wait {
-  position: absolute; inset: 44px 0 0 0; z-index: 40;
-  display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
-  background: rgba(3,6,15,0.86); font-family: var(--font-main);
-}
+.rev-wait { position: absolute; inset: 44px 0 0 0; z-index: 40; display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px; background: rgba(3,6,15,0.86); font-family: var(--font-main); }
 .rev-wait-msg { font-size: 22px; letter-spacing: 0.12em; color: var(--accent-gold); }
 .rev-wait-elapsed { font-size: 32px; color: var(--text-cream); letter-spacing: 0.05em; }
 .rev-claim-btn { font-size: 18px; padding: 10px 18px; margin-top: 6px; }
