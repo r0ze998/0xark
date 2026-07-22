@@ -53,9 +53,6 @@ pub use settle_duel_history::*;
 pub mod refill_energy;
 pub use refill_energy::*;
 
-// YKK-45: evolve_cards (2-burn → new mint) is superseded by promote_card (in-place
-// single-card promotion) and unwired from lib.rs; module kept for reference only.
-pub mod evolve_cards;
 pub mod init_season_stats;
 pub mod promote_card;
 pub use burn_card::*;
@@ -100,8 +97,3 @@ pub mod finalize_season_tally;
 pub use activate_season::*;
 pub use end_season_final::*;
 pub use finalize_season_tally::*;
-// Reference only (not dispatched from lib.rs): realloc an existing GameWorld.
-pub mod migrate_game_world_finalize;
-// Reference only (un-wired in YKK-39): pre-YKK-38 shop-field migration. It sets
-// prize_pool without prize_pool_bump, so it must NOT run against a PDA-vault world.
-pub mod migrate_shop_fields;

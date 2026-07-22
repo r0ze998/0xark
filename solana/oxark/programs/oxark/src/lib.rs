@@ -469,8 +469,8 @@ pub mod oxark {
     // YKK-45: `evolve_cards` (2-burn → new mint) is UNWIRED. The 2-card merge severs
     // a card's history (new mint = new CardBattleHistory key), which contradicts the
     // provenance-driven design. It is superseded by `promote_card` (in-place single-card
-    // promotion: same mint, history continuous). The module is retained for reference
-    // only (see instructions::evolve_cards); removing it from here drops it from the IDL.
+    // promotion: same mint, history continuous). Handler removed in YKK-60 — see git
+    // history (YKK-45); it was never dispatched, so it never shipped in the IDL.
 
     /// YKK-45: Provenance-gated single-card promotion (design v3 §2). Raises a card's
     /// rarity in place (Common → Uncommon) — same SPL mint, no burn — gated on the
@@ -720,8 +720,8 @@ pub mod oxark {
     // from an external arg WITHOUT setting `prize_pool_bump`, which (post YKK-38)
     // would desync the PDA vault address from its bump and lock all prize/deposit
     // flows. It was never called from any client or test; the fresh-init path
-    // (YKK-34/38) makes it unnecessary. The module is retained for reference only
-    // (see instructions::migrate_shop_fields), not dispatched.
+    // (YKK-34/38) makes it unnecessary. Module removed in YKK-60 — see git history
+    // (YKK-39); it was never dispatched. (`migrate_game_world_finalize` removed too.)
 
     // ── Phase 20-C: Trade Floor ────────────────────────────────────────────────
 
