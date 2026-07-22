@@ -167,6 +167,22 @@ function _sumTreasuryReceived(tx, knownAddrs) {
   return total;
 }
 
+// Shared memo+nonce guard for the two byte-identical verification paths (sigHint +
+// legacy poll). Validates the tx memo against the request path, extracts the nonce
+// (compact `n` or verbose `nonce`), and rejects a replayed nonce within its TTL
+// window. Behavior-preserving extract — returns { ok, error?, nonce }.
+async function _validateMemoNonce(tx, path) {
+  if (!X402_REQUIRE_MEMO) return { ok: true, nonce: null };
+  const memoCheck = validateMemo(extractMemo(tx), path);
+  if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
+  // C3: nonce uniqueness check (prevents memo replay within TTL window)
+  const nonce = memoCheck.fields?.nonce ?? memoCheck.fields?.n ?? null;
+  if (nonce && await isNonceUsed(nonce, path)) {
+    return { ok: false, error: 'nonce already used' };
+  }
+  return { ok: true, nonce };
+}
+
 async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHint = null) {
   // C4: local-dev-bypass is only valid in development; block in all other envs (including demo mode).
   if (sigHint === 'local-dev-bypass') {
@@ -195,16 +211,9 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
         commitment: 'finalized', maxSupportedTransactionVersion: 0,
       });
       if (!tx?.meta) return { ok: false, error: 'transaction not found' };
-      let memoNonce = null;
-      if (X402_REQUIRE_MEMO) {
-        const memoCheck = validateMemo(extractMemo(tx), requestPath);
-        if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
-        // C3: nonce uniqueness check (prevents memo replay within TTL window)
-        memoNonce = memoCheck.fields?.nonce ?? memoCheck.fields?.n ?? null;
-        if (memoNonce && await isNonceUsed(memoNonce, requestPath)) {
-          return { ok: false, error: 'nonce already used' };
-        }
-      }
+      const memoGate = await _validateMemoNonce(tx, requestPath);
+      if (!memoGate.ok) return { ok: false, error: memoGate.error };
+      const memoNonce = memoGate.nonce;
       const received = _sumTreasuryReceived(tx, knownAddrs);
       if (received <= 0) return { ok: false, error: 'payment not directed to treasury' };
       if (received >= expectedLamports) {
@@ -230,16 +239,9 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
           commitment: 'finalized', maxSupportedTransactionVersion: 0,  // H2
         });
         if (!tx?.meta) continue;
-        let memoNonce = null;
-        if (X402_REQUIRE_MEMO) {
-          const memoCheck = validateMemo(extractMemo(tx), requestPath);
-          if (!memoCheck.ok) return { ok: false, error: memoCheck.error };
-          // C3: nonce uniqueness
-          memoNonce = memoCheck.fields?.nonce ?? memoCheck.fields?.n ?? null;
-          if (memoNonce && await isNonceUsed(memoNonce, requestPath)) {
-            return { ok: false, error: 'nonce already used' };
-          }
-        }
+        const memoGate = await _validateMemoNonce(tx, requestPath);
+        if (!memoGate.ok) return { ok: false, error: memoGate.error };
+        const memoNonce = memoGate.nonce;
         const received = _sumTreasuryReceived(tx, knownAddrs);
         if (received >= expectedLamports) {
           console.log(`[x402] Verified: ${amountSol} SOL from ${playerPubkeyStr}`);

@@ -70,12 +70,8 @@ export function extractError(e) {
   return e.message ?? String(e);
 }
 
-// ─── x402 replay prevention ────────────────────────────────────────────────────
-// sig → expiryTimestamp (ms). GC'd by server.js setInterval every 30s.
-export const usedSigs = new Map();
-
 // ─── HTTP rate limiting ───────────────────────────────────────────────────────
-// ip → { count, windowStart }. GC'd alongside usedSigs every 30s.
+// ip → { count, windowStart }. GC'd by server.js setInterval every 30s.
 export const rateLimits = new Map();
 
 // ─── Phase 11: deterministic damage verification ──────────────────────────────
