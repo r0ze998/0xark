@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [[test]]
-name = "test_game"
-path = "test_game.rs"
+name = "primitives"
+path = "primitives.rs"
 
 [[test]]
 name = "v3_plus_mechanics"

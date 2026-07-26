@@ -14,7 +14,7 @@
 // below to charge `ENERGY_COST_PER_DUEL`, after proof verification, failing with
 // `InsufficientEnergy` if the player can't afford entry. commit_hand carries the
 // signer-bound PlayerState account for this. Coverage: `commit_hand_*energy*`
-// integration tests in tests/test_game.rs (charge fires, 0-energy blocked,
+// integration tests in tests/duel_mechanics.rs (charge fires, 0-energy blocked,
 // per-duel-not-per-round). This file owns the primitive; commit_hand is the caller.
 
 use crate::constants::{ENERGY_MAX, ENERGY_REFILL_COST_LAMPORTS, ENERGY_REGEN_INTERVAL_SECONDS};

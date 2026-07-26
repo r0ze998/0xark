@@ -21,7 +21,7 @@ mod v3_plus {
     // ─── Re-exports from program crate ────────────────────────────────────────
     // We test the pure business logic directly via the library crate,
     // without spinning up a full Solana VM (faster, no BPF needed).
-    // Instruction-level integration tests that need a live VM are covered in test_game.rs.
+    // Instruction-level integration tests that need a live VM are covered in primitives.rs.
 
     // Pull in state types and constants
     use oxark::state::{
