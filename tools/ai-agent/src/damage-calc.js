@@ -1,6 +1,10 @@
 // damage-calc.js — Phase 15 card-level battle resolver (Node ESM)
 // Identical logic in solana/client/src/lib/damage-calc.js (browser ESM).
 //
+// PARITY-BASELINE: fixtures-sha256=828c18a5 (2026-07-27). This is the CANONICAL
+//   source the fixtures are generated from. All 3 impls must stay byte-parity; on
+//   any logic edit, follow /MAINTENANCE.md (regen fixtures + bump this in all 3).
+//
 // Determinism contract:
 //   - Integer arithmetic only (no floats)
 //   - No Math.random(), Date.now(), or external state

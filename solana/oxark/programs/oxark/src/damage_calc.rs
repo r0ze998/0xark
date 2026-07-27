@@ -1,6 +1,10 @@
 // damage_calc.rs — On-chain battle resolver (Phase 15 v2)
 //
 // Mirrors solana/client/src/lib/damage-calc.js exactly.
+//
+// PARITY-BASELINE: fixtures-sha256=828c18a5 (2026-07-27). Enforced against the JS
+//   canonical via tests/test_damage_calc.rs (180 fixtures/damage_calc.json cases).
+//   On any logic edit, follow /MAINTENANCE.md (regen fixtures + bump this in all 3).
 // Determinism contract:
 //   - Integer arithmetic only (no floats)
 //   - seed: SHA-256(salt_p1 || salt_p2 || [round & 0xff]) — caller's responsibility
