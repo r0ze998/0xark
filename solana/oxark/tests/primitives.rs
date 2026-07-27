@@ -16,57 +16,20 @@ mod tests {
     use solana_message::Message;
     use solana_transaction::Transaction;
     use solana_sdk_ids::system_program;
+    // YKK-61: PDA finders now live in the shared crate. Glob import; this file's
+    // own Result-returning `send_ix` (distinct API) shadows the crate's same-named
+    // one, which is the intended local precedence.
+    use oxark_test_support::*;
 
     // Program ID matching Anchor.toml [programs.devnet]
     const PROGRAM_ID: &str = "5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN";
-    const GAME_SEED: &[u8]      = b"game";
-    const PLAYER_SEED: &[u8]    = b"player";
-    const CARD_POOL_SEED: &[u8] = b"card_pool";
-    const COMMIT_SEED: &[u8]    = b"commit";
-    const STAKE_VAULT_SEED: &[u8] = b"stake_vault";
 
     fn program_id() -> Pubkey {
         PROGRAM_ID.parse().unwrap()
     }
 
-    fn game_id_bytes(game_id: u64) -> [u8; 8] {
-        game_id.to_le_bytes()
-    }
-
-    fn find_game_pda(game_id: u64) -> (Pubkey, u8) {
-        Pubkey::find_program_address(
-            &[GAME_SEED, &game_id_bytes(game_id)],
-            &program_id(),
-        )
-    }
-
-    fn find_player_pda(game_id: u64, player: &Pubkey) -> (Pubkey, u8) {
-        Pubkey::find_program_address(
-            &[PLAYER_SEED, &game_id_bytes(game_id), player.as_ref()],
-            &program_id(),
-        )
-    }
-
-    fn find_card_pool_pda(game_id: u64) -> (Pubkey, u8) {
-        Pubkey::find_program_address(
-            &[CARD_POOL_SEED, &game_id_bytes(game_id)],
-            &program_id(),
-        )
-    }
-
-    fn find_commit_pda(game_id: u64, round: u8, player: &Pubkey) -> (Pubkey, u8) {
-        Pubkey::find_program_address(
-            &[COMMIT_SEED, &game_id_bytes(game_id), &[round], player.as_ref()],
-            &program_id(),
-        )
-    }
-
-    fn find_stake_vault_pda(game_id: u64) -> (Pubkey, u8) {
-        Pubkey::find_program_address(
-            &[STAKE_VAULT_SEED, &game_id_bytes(game_id)],
-            &program_id(),
-        )
-    }
+    // YKK-61: find_game_pda / find_player_pda / find_card_pool_pda / find_commit_pda /
+    // find_stake_vault_pda / find_agent_pda are imported from oxark-test-support.
 
     /// Compute Anchor instruction discriminator: sha256("global:<name>")[..8]
     fn disc(name: &str) -> [u8; 8] {
@@ -253,12 +216,7 @@ mod tests {
 
     // ─── Test: register_agent ─────────────────────────────────────────────────
 
-    fn find_agent_pda(agent_id: u32) -> (Pubkey, u8) {
-        Pubkey::find_program_address(
-            &[b"agent", &agent_id.to_le_bytes()],
-            &program_id(),
-        )
-    }
+    // YKK-61: find_agent_pda is imported from oxark-test-support.
 
     #[test]
     fn test_register_agent() {

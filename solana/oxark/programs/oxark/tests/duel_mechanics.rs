@@ -6,10 +6,8 @@ use {
     litesvm::LiteSVM,
     sha2::{Digest, Sha256},
     solana_keypair::Keypair,
-    solana_message::{Message, VersionedMessage},
     solana_pubkey::Pubkey,
     solana_signer::Signer,
-    solana_transaction::versioned::VersionedTransaction,
 };
 
 // ── ZK proof byte arrays (generated from circuits/*/build/proof.json) ─────────
@@ -128,93 +126,10 @@ fn setup_with_cu(compute_unit_limit: u64) -> (LiteSVM, Keypair) {
     (svm, payer)
 }
 
-fn send_ix(svm: &mut LiteSVM, ix: Instruction, payer: &Keypair) {
-    let blockhash = svm.latest_blockhash();
-    let msg = Message::new_with_blockhash(&[ix], Some(&payer.pubkey()), &blockhash);
-    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer]).unwrap();
-    svm.send_transaction(tx).unwrap();
-}
-
-fn send_ix_with_signers(svm: &mut LiteSVM, ix: Instruction, payer: &Keypair, signers: &[&Keypair]) {
-    let blockhash = svm.latest_blockhash();
-    let msg = Message::new_with_blockhash(&[ix], Some(&payer.pubkey()), &blockhash);
-    let mut all_signers: Vec<&Keypair> = vec![payer];
-    all_signers.extend_from_slice(signers);
-    let tx = VersionedTransaction::try_new(
-        VersionedMessage::Legacy(msg),
-        &all_signers
-            .iter()
-            .map(|k| *k as &dyn solana_signer::Signer)
-            .collect::<Vec<_>>(),
-    )
-    .unwrap();
-    svm.send_transaction(tx).unwrap();
-}
-
-fn game_pda(game_id: u64) -> (solana_pubkey::Pubkey, u8) {
-    solana_pubkey::Pubkey::find_program_address(&[b"game", &game_id.to_le_bytes()], &oxark::id())
-}
-
-fn card_pool_pda(game_id: u64) -> (solana_pubkey::Pubkey, u8) {
-    solana_pubkey::Pubkey::find_program_address(
-        &[b"card_pool", &game_id.to_le_bytes()],
-        &oxark::id(),
-    )
-}
-
-fn player_pda(game_id: u64, player: &solana_pubkey::Pubkey) -> (solana_pubkey::Pubkey, u8) {
-    solana_pubkey::Pubkey::find_program_address(
-        &[b"player", &game_id.to_le_bytes(), player.as_ref()],
-        &oxark::id(),
-    )
-}
-
-fn commit_pda(
-    game_id: u64,
-    round: u8,
-    player: &solana_pubkey::Pubkey,
-) -> (solana_pubkey::Pubkey, u8) {
-    solana_pubkey::Pubkey::find_program_address(
-        &[
-            b"commit",
-            &game_id.to_le_bytes(),
-            &round.to_le_bytes(),
-            player.as_ref(),
-        ],
-        &oxark::id(),
-    )
-}
-
-fn duel_pda(duel_id: &solana_pubkey::Pubkey) -> (solana_pubkey::Pubkey, u8) {
-    solana_pubkey::Pubkey::find_program_address(&[b"duel", duel_id.as_ref()], &oxark::id())
-}
-
-fn send_ix_result(
-    svm: &mut LiteSVM,
-    ix: Instruction,
-    payer: &Keypair,
-) -> litesvm::types::TransactionResult {
-    let blockhash = svm.latest_blockhash();
-    let msg = Message::new_with_blockhash(&[ix], Some(&payer.pubkey()), &blockhash);
-    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &[payer]).unwrap();
-    svm.send_transaction(tx)
-}
-
-fn send_ix_result_multi(
-    svm: &mut LiteSVM,
-    ix: Instruction,
-    payer: &Keypair,
-    extra_signers: &[&Keypair],
-) -> litesvm::types::TransactionResult {
-    let blockhash = svm.latest_blockhash();
-    let msg = Message::new_with_blockhash(&[ix], Some(&payer.pubkey()), &blockhash);
-    let mut signers: Vec<&dyn solana_signer::Signer> = vec![payer];
-    for s in extra_signers {
-        signers.push(*s);
-    }
-    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), &signers).unwrap();
-    svm.send_transaction(tx)
-}
+// PDA finders + Instruction-based send family now live in the shared crate
+// (YKK-61). Glob import avoids unused-import warnings for finders this file
+// doesn't call.
+use oxark_test_support::*;
 
 
 
@@ -253,7 +168,7 @@ fn test_commit_hand_valid_proof() {
 
     // Use a fixed Pubkey as duel_id (derived from a known seed for reproducibility)
     let duel_id = solana_pubkey::Pubkey::new_unique();
-    let (duel_key, _) = duel_pda(&duel_id);
+    let (duel_key, _) = find_duel_pda(&duel_id);
 
     // Initialize duel: authority pays, player1 and player2 are participants
     send_ix(
@@ -324,7 +239,7 @@ fn test_commit_hand_tampered_proof() {
     svm.airdrop(&player2.pubkey(), 10_000_000_000).unwrap();
 
     let duel_id = solana_pubkey::Pubkey::new_unique();
-    let (duel_key, _) = duel_pda(&duel_id);
+    let (duel_key, _) = find_duel_pda(&duel_id);
 
     send_ix(
         &mut svm,
@@ -412,7 +327,7 @@ fn test_commit_hand_then_reveal_hand_roundtrip() {
     svm.airdrop(&player2.pubkey(), 10_000_000_000).unwrap();
 
     let duel_id = solana_pubkey::Pubkey::new_unique();
-    let (duel_key, _) = duel_pda(&duel_id);
+    let (duel_key, _) = find_duel_pda(&duel_id);
 
     // init_duel
     send_ix(
@@ -917,7 +832,7 @@ fn init_fixture_duel(
     player2: &Pubkey,
 ) -> (solana_pubkey::Pubkey, Pubkey) {
     let duel_id = solana_pubkey::Pubkey::new_unique();
-    let (duel_key, _) = duel_pda(&duel_id);
+    let (duel_key, _) = find_duel_pda(&duel_id);
     send_ix(
         svm,
         Instruction::new_with_bytes(

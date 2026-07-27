@@ -1,0 +1,21 @@
+[package]
+name = "oxark-test-support"
+version = "0.1.0"
+edition = "2021"
+
+# Shared litesvm test harness (YKK-61): unified PDA finders + the Instruction-
+# based send family, consumed as a dev-dependency by both the `oxark` crate's
+# integration tests and the `oxark-tests` package.
+
+[dependencies]
+litesvm = "0.10.0"
+solana-message = "3.0.1"
+solana-transaction = "3.0.2"
+solana-signer = "3.0.0"
+solana-keypair = "3.0.1"
+solana-pubkey = "3.0.0"
+solana-instruction = "3.0.0"
+oxark = { path = "../programs/oxark", features = ["no-entrypoint"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }
