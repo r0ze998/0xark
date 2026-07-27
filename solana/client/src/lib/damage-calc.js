@@ -1,6 +1,11 @@
 // damage-calc.js — Phase 15 card-level battle resolver (browser ESM)
 // Identical logic in tools/ai-agent/src/damage-calc.js (Node ESM).
 //
+// PARITY-BASELINE: fixtures-sha256=828c18a5 (2026-07-27). Hand-kept mirror of the
+//   canonical tools/ai-agent copy — NO automated cross-test guards this file, so a
+//   one-sided edit here is the top drift risk. On any logic edit, follow
+//   /MAINTENANCE.md (regen fixtures + bump this in all 3).
+//
 // Determinism contract:
 //   - Integer arithmetic only (no floats)
 //   - No Math.random(), Date.now(), or external state
