@@ -269,6 +269,87 @@ function _readBody(req) {
 
 // ─── HTTP server ──────────────────────────────────────────────────────────────
 
+// ─── x402 POST response helpers (extracted from the request handler) ───────────
+// All handlers own their full response (writeHead + end). Behaviour and response
+// shapes are byte-identical to the previous inline cascade.
+
+function _json(res, status, obj) {
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(obj));
+}
+
+// x402 v2 spec: PAYMENT-REQUIRED header (Base64-encoded JSON)
+// Spec: https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md
+function _paymentRequired402(res, amountLamports, errorMsg) {
+  const opsLamports  = Math.floor(amountLamports * 0.5);
+  const poolLamports = amountLamports - opsLamports;
+  const paymentRequired = Buffer.from(JSON.stringify({
+    version: 'x402-v2',
+    accepts: [{
+      scheme:  'solana-transfer',
+      network: SOLANA_NETWORK,
+      amount:  String(amountLamports),
+      // Single-recipient fallback for old clients
+      payTo:   OPS_TREASURY_ADDR,
+      // Split recipient for Phase 19+ clients
+      recipient: {
+        ops:  { address: OPS_TREASURY_ADDR,  lamports: opsLamports  },
+        pool: { address: PRIZE_POOL_ADDR,     lamports: poolLamports },
+      },
+    }],
+  })).toString('base64');
+  res.setHeader('PAYMENT-REQUIRED',    paymentRequired);
+  res.setHeader('X-Payment-Recipient', OPS_TREASURY_ADDR);
+  res.setHeader('X-Payment-Amount',    String(amountLamports));
+  res.setHeader('X-Payment-Network',   SOLANA_NETWORK);
+  res.writeHead(402, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ ok: false, error: errorMsg }));
+}
+
+// Move endpoints: validate memo and return parsed fields.
+function _handleMoveEndpoint(res, req, body, result) {
+  const memoStr = result.demo ? (body.memo || '') : (result.memo || body.memo || '');
+  if (!result.demo && memoStr) {
+    const memoCheck = validateMemo(memoStr, req.url);
+    if (!memoCheck.ok) return _json(res, 400, { ok: false, error: memoCheck.error });
+    return _json(res, 200, { ok: true, memo: memoStr, fields: memoCheck.fields, sig: result.sig });
+  }
+  return _json(res, 200, { ok: true, memo: memoStr, demo: result.demo });
+}
+
+// AI move delegation (dynamic import — heavy dep loaded only on paid hit).
+async function _handleAiMove(res, body, result) {
+  let aiResult;
+  try {
+    const { delegateMove } = await import('../tools/ai-agent/src/move-delegate.js');
+    aiResult = await delegateMove(body.public_state ?? {});
+  } catch (err) {
+    return _json(res, 500, { ok: false, error: 'AI delegation failed: ' + err.message });
+  }
+  _json(res, 200, { ok: true, ...aiResult, sig: result.sig, demo: result.demo });
+}
+
+// AI strategy advice (non-binding suggestions).
+async function _handleAiAdvice(res, body, result) {
+  let adviceResult;
+  try {
+    const { adviseStrategy } = await import('../tools/ai-agent/src/strategy-advisor.js');
+    adviceResult = await adviseStrategy(body.context ?? body.public_state ?? {});
+  } catch (err) {
+    return _json(res, 500, { ok: false, error: 'AI strategy advice failed: ' + err.message });
+  }
+  _json(res, 200, { ok: true, ...adviceResult, sig: result.sig, demo: result.demo });
+}
+
+// Route a verified/paid POST to its handler. Each handler owns its response.
+async function _dispatchPaidRequest(res, req, body, result) {
+  if (MOVE_ENDPOINTS.has(req.url))            return _handleMoveEndpoint(res, req, body, result);
+  if (req.url === '/x402/ai-move')            return _handleAiMove(res, body, result);
+  if (req.url === '/x402/ai-strategy-advice') return _handleAiAdvice(res, body, result);
+  // Default: paid non-move, non-AI endpoint (scout-peek, match-battle, …).
+  _json(res, 200, { ok: true, action: body.action ?? 'unknown', sig: result.sig, demo: result.demo });
+}
+
 const httpServer = http.createServer(async (req, res) => {
   const cors = () => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -348,87 +429,11 @@ const httpServer = http.createServer(async (req, res) => {
     const result = await _verifyX402Payment(playerPubkey, amountSol, req.url, signature || null);
 
     if (!result.ok) {
-      // x402 v2 spec: PAYMENT-REQUIRED header (Base64-encoded JSON)
-      // Spec: https://github.com/coinbase/x402/blob/main/specs/transports-v2/http.md
-      const opsLamports  = Math.floor(amountLamports * 0.5);
-      const poolLamports = amountLamports - opsLamports;
-      const paymentRequired = Buffer.from(JSON.stringify({
-        version: 'x402-v2',
-        accepts: [{
-          scheme:  'solana-transfer',
-          network: SOLANA_NETWORK,
-          amount:  String(amountLamports),
-          // Single-recipient fallback for old clients
-          payTo:   OPS_TREASURY_ADDR,
-          // Split recipient for Phase 19+ clients
-          recipient: {
-            ops:  { address: OPS_TREASURY_ADDR,  lamports: opsLamports  },
-            pool: { address: PRIZE_POOL_ADDR,     lamports: poolLamports },
-          },
-        }],
-      })).toString('base64');
-      res.setHeader('PAYMENT-REQUIRED',    paymentRequired);
-      res.setHeader('X-Payment-Recipient', OPS_TREASURY_ADDR);
-      res.setHeader('X-Payment-Amount',    String(amountLamports));
-      res.setHeader('X-Payment-Network',   SOLANA_NETWORK);
-      res.writeHead(402, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: false, error: result.error }));
+      _paymentRequired402(res, amountLamports, result.error);
       return;
     }
 
-    // Move endpoints: validate memo and return parsed fields
-    if (MOVE_ENDPOINTS.has(req.url)) {
-      const memoStr = result.demo ? (body.memo || '') : (result.memo || body.memo || '');
-      if (!result.demo && memoStr) {
-        const memoCheck = validateMemo(memoStr, req.url);
-        if (!memoCheck.ok) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ ok: false, error: memoCheck.error }));
-          return;
-        }
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, memo: memoStr, fields: memoCheck.fields, sig: result.sig }));
-        return;
-      }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, memo: memoStr, demo: result.demo }));
-      return;
-    }
-
-    // AI move delegation
-    if (req.url === '/x402/ai-move') {
-      let aiResult;
-      try {
-        const { delegateMove } = await import('../tools/ai-agent/src/move-delegate.js');
-        aiResult = await delegateMove(body.public_state ?? {});
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: false, error: 'AI delegation failed: ' + err.message }));
-        return;
-      }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, ...aiResult, sig: result.sig, demo: result.demo }));
-      return;
-    }
-
-    // AI strategy advice (non-binding suggestions)
-    if (req.url === '/x402/ai-strategy-advice') {
-      let adviceResult;
-      try {
-        const { adviseStrategy } = await import('../tools/ai-agent/src/strategy-advisor.js');
-        adviceResult = await adviseStrategy(body.context ?? body.public_state ?? {});
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: false, error: 'AI strategy advice failed: ' + err.message }));
-        return;
-      }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, ...adviceResult, sig: result.sig, demo: result.demo }));
-      return;
-    }
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, action: body.action ?? 'unknown', sig: result.sig, demo: result.demo }));
+    await _dispatchPaidRequest(res, req, body, result);
     return;
   }
 
