@@ -66,13 +66,12 @@ mod tests {
         duel_loot_pda: &Pubkey,
         duel_id:       &Pubkey,
         loser_pubkey:  &Pubkey,
-        loser_field:   [u8; 5],
     ) -> Instruction {
-        let mut data = Vec::with_capacity(8 + 32 + 32 + 5);
+        // loser_field is no longer an instruction arg — derived on-chain from DuelState.
+        let mut data = Vec::with_capacity(8 + 32 + 32);
         data.extend_from_slice(&claim_loot_discriminator());
         data.extend_from_slice(&encode_pubkey(duel_id));
         data.extend_from_slice(&encode_pubkey(loser_pubkey));
-        data.extend_from_slice(&loser_field);
 
         let accounts = vec![
             AccountMeta::new(*winner, true),

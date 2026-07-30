@@ -944,11 +944,12 @@ async function revealHand(duelIdStr, round, cardIds, salt) {
 }
 
 /// Claim 1 random card from loser's battle field on-chain.
+/// The loot pool is derived on-chain from the loser's revealed hands in
+/// DuelState — the client no longer supplies (and cannot steer) the field.
 /// @param {string|PublicKey} duelId  — unique duel identifier (Pubkey)
 /// @param {string}           loserPubkeyStr — loser's wallet address
-/// @param {number[]}         loserField  — [cardId, cardId, cardId, cardId, cardId]
 /// @returns {{ signature: string, stolenCardId: number|null }}
-async function claimBattleLoot(duelId, loserPubkeyStr, loserField) {
+async function claimBattleLoot(duelId, loserPubkeyStr) {
   const winner = window.oxarkWallet?.getPublicKey?.();
   if (!winner) throw new Error('Wallet not connected');
 
@@ -962,14 +963,13 @@ async function claimBattleLoot(duelId, loserPubkeyStr, loserField) {
   const [duelPDA]        = findDuelPDA(duelIdPK);
   const [lootRecordPDA]  = findDuelLootRecordPDA(duelIdPK);
 
-  // Borsh: disc(8) + duel_id(Pubkey=32) + loser_pubkey(Pubkey=32) + loser_field([u8;5])
+  // Borsh: disc(8) + duel_id(Pubkey=32) + loser_pubkey(Pubkey=32).
+  // loser_field is no longer an argument — the program derives it from chain.
   const d    = await disc('claim_battle_loot');
-  const data = new Uint8Array(8 + 32 + 32 + 5);
+  const data = new Uint8Array(8 + 32 + 32);
   let off = writeBytes(data, 0, d);
   off = writeBytes(data, off, duelIdPK.toBytes());
   off = writeBytes(data, off, loserPK.toBytes());
-  const fieldArr = Array.from({ length: 5 }, (_, i) => (loserField[i] ?? 0) & 0xff);
-  fieldArr.forEach((b, i) => { data[off + i] = b; });
 
   const sig = await buildAndSend([
     { pubkey: winner,         isSigner: true,  isWritable: true  },

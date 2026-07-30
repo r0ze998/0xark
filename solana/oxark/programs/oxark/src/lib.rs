@@ -646,21 +646,17 @@ pub mod oxark {
     }
 
     /// Claim 1 random card from loser's battle field (on-chain loot via SlotHashes).
-    /// `duel_id`:     unique Pubkey for this duel (prevents double-claim via PDA init).
+    /// The loot pool is derived on-chain from the loser's revealed hands in
+    /// DuelState — the winner supplies only the loser's pubkey (PDA seed), never
+    /// the field. See instructions::claim_battle_loot for the rationale.
+    /// `duel_id`:      unique Pubkey for this duel (prevents double-claim via PDA init).
     /// `loser_pubkey`: the loser's wallet pubkey.
-    /// `loser_field`:  the 5 card IDs the loser had on the field (0 = empty slot).
     pub fn claim_battle_loot(
         ctx: Context<ClaimBattleLoot>,
         duel_id: Pubkey,
         loser_pubkey: Pubkey,
-        loser_field: [u8; 5],
     ) -> Result<()> {
-        instructions::claim_battle_loot::handle_claim_battle_loot(
-            ctx,
-            duel_id,
-            loser_pubkey,
-            loser_field,
-        )
+        instructions::claim_battle_loot::handle_claim_battle_loot(ctx, duel_id, loser_pubkey)
     }
 
     // ── Phase 20-B: Shop ──────────────────────────────────────────────────────
