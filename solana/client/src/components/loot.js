@@ -265,10 +265,10 @@ async function onClaimLoot(container) {
   }
 
   try {
+    // loser_field is derived on-chain from DuelState now — not passed in.
     const result = await window.oxarkOnchain.claimBattleLoot(
       duelIdPK.toString(),
-      s.opponentPubkey,
-      loserField
+      s.opponentPubkey
     );
     const cardId = result.stolenCardId ?? loserField.find(Boolean) ?? 1;
     onCardPickedLocal(container, cardId, s);

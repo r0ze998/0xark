@@ -688,9 +688,11 @@
       "name": "claim_battle_loot",
       "docs": [
         "Claim 1 random card from loser's battle field (on-chain loot via SlotHashes).",
-        "`duel_id`:     unique Pubkey for this duel (prevents double-claim via PDA init).",
-        "`loser_pubkey`: the loser's wallet pubkey.",
-        "`loser_field`:  the 5 card IDs the loser had on the field (0 = empty slot)."
+        "The loot pool is derived on-chain from the loser's revealed hands in",
+        "DuelState — the winner supplies only the loser's pubkey (PDA seed), never",
+        "the field. See instructions::claim_battle_loot for the rationale.",
+        "`duel_id`:      unique Pubkey for this duel (prevents double-claim via PDA init).",
+        "`loser_pubkey`: the loser's wallet pubkey."
       ],
       "discriminator": [
         87,
@@ -824,15 +826,6 @@
         {
           "name": "loser_pubkey",
           "type": "pubkey"
-        },
-        {
-          "name": "loser_field",
-          "type": {
-            "array": [
-              "u8",
-              5
-            ]
-          }
         }
       ]
     },
