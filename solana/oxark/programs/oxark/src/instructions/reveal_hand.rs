@@ -2,7 +2,7 @@ use crate::damage_calc::damage_calc;
 use crate::error::ErrorCode;
 use crate::instructions::init_duel::DUEL_SEED;
 use crate::poseidon_helper::compute_hand_commitment;
-use crate::state::{DuelState, HandRevealed};
+use crate::state::{DuelState, HandRevealed, PlayerState};
 use anchor_lang::prelude::*;
 use solana_sha256_hasher::hashv;
 
@@ -11,14 +11,28 @@ use solana_sha256_hasher::hashv;
 #[derive(Accounts)]
 #[instruction(duel_id: Pubkey)]
 pub struct RevealHand<'info> {
+    // Boxed to keep the stack frame within BPF's 4096-byte limit: DuelState is
+    // ~1624 B and reveal_hand's Poseidon(15) path is already stack-heavy; adding
+    // the player_state account overflowed frame 5 until these moved to the heap.
     #[account(
         mut,
         seeds = [DUEL_SEED, duel_id.as_ref()],
         bump = duel.bump,
     )]
-    pub duel: Account<'info, DuelState>,
+    pub duel: Box<Account<'info, DuelState>>,
 
     pub player: Signer<'info>,
+
+    /// The revealer's card vault. Reveal is the earliest point the plaintext card
+    /// IDs are visible (commit_hand sees only the Poseidon commitment), so this is
+    /// where card ownership is enforced: every fielded species must be a bit set in
+    /// this vault. Read-only — reveal never mutates the vault. PDA-bound to `player`,
+    /// so the signer can only present their OWN vault.
+    #[account(
+        seeds = [b"player", player.key().as_ref()],
+        bump = player_state.bump,
+    )]
+    pub player_state: Box<Account<'info, PlayerState>>,
 }
 
 /// Reveal a player's hand after battle resolution for a given round.
@@ -100,6 +114,36 @@ pub fn handle_reveal_hand(
         recomputed_be == stored_commitment,
         ErrorCode::CommitmentMismatch
     );
+
+    // ── Card-ownership gate (BUG-1) ──────────────────────────────────────────────
+    // The commitment now proves these ARE the player's committed cards; require the
+    // player to actually OWN each fielded species in their vault. Without this a
+    // player can commit+reveal (and thus field, via damage_calc) cards they never
+    // owned — the ZK proof binds the hand to the signer but says nothing about
+    // ownership (the circuit commits species IDs, not vault membership).
+    //
+    // ⚠ ASSUMPTION — checked at REVEAL against the LIVE vault. This is correct ONLY
+    // while no third party can remove a fielded card from a vault mid-duel:
+    //   - claim_battle_loot (the only cross-player vault removal) requires
+    //     duel.ended_at > 0, so it cannot fire during a live duel; and
+    //   - listings/trades that remove a card mid-duel are the player's OWN action —
+    //     a self-inflicted forfeit (they then can't reveal → lose via the existing
+    //     claim_timeout_win), which is the correct outcome.
+    // This assumption HOLDS ONLY while STEAL_ENABLED is false (loot gated off until
+    // YKK-44). ENABLING loot/steal REQUIRES first resolving the cross-duel strip
+    // vector: an attacker banks an unclaimed loot from a won duel, waits for the
+    // victim to commit a hand in a NEW duel, then fires the claim to strip a
+    // committed card — the victim then can't reveal and an HONEST player forfeits.
+    // Leading fix: snapshot the fielded species at commit and check the reveal
+    // against the snapshot (decouples the check from live vault mutations).
+    if let Some(unowned) = first_unowned_field(&ctx.accounts.player_state, &card_ids) {
+        msg!(
+            "reveal_hand: player {} does not own fielded species {}",
+            player_key,
+            unowned,
+        );
+        return Err(error!(ErrorCode::RevealCardNotOwned));
+    }
 
     // Save salt (needed by second revealer to compute deterministic seed)
     if is_p1 {
@@ -212,6 +256,22 @@ pub(crate) fn round_point(p1_bp: u32, p2_bp: u32) -> Option<bool> {
     }
 }
 
+/// First non-zero fielded species (1-60) the player does NOT own, or `None` if the
+/// player owns every fielded card. Checks every non-zero slot of the committed hand
+/// (padding is 0). Bounds `1..=60` BEFORE the u64→u8 cast so a stray id can't
+/// truncate into a valid card.
+pub(crate) fn first_unowned_field(ps: &PlayerState, card_ids: &[u64; 10]) -> Option<u8> {
+    for &id in card_ids.iter() {
+        if (1..=60).contains(&id) {
+            let cid = id as u8;
+            if !ps.has_card(cid) {
+                return Some(cid);
+            }
+        }
+    }
+    None
+}
+
 /// Duel outcome after a round, given cumulative round wins and the round number.
 /// `None` = continue (advance to next round). `Some(decision)` = duel ends, where
 /// `decision` is `Some(true)`=P1 wins, `Some(false)`=P2 wins, `None`=draw.
@@ -235,7 +295,57 @@ pub(crate) fn duel_outcome(p1w: u8, p2w: u8, round: u8) -> Option<Option<bool>> 
 
 #[cfg(test)]
 mod tests {
-    use super::{duel_outcome, round_point};
+    use super::{duel_outcome, first_unowned_field, round_point};
+    use crate::state::PlayerState;
+
+    fn player_owning(cards: &[u8]) -> PlayerState {
+        let mut ps = PlayerState::default();
+        for &c in cards {
+            ps.set_vault_card(c);
+        }
+        ps
+    }
+
+    #[test]
+    fn ownership_ok_when_all_fielded_cards_owned() {
+        let ps = player_owning(&[1, 5, 23, 47, 2]);
+        let hand = [1u64, 5, 23, 47, 2, 0, 0, 0, 0, 0];
+        assert_eq!(first_unowned_field(&ps, &hand), None);
+    }
+
+    #[test]
+    fn ownership_flags_the_first_unowned_field_card() {
+        // Owns everything except species 2 → fielding 2 is rejected.
+        let ps = player_owning(&[1, 5, 23, 47]);
+        let hand = [1u64, 5, 23, 47, 2, 0, 0, 0, 0, 0];
+        assert_eq!(first_unowned_field(&ps, &hand), Some(2));
+    }
+
+    #[test]
+    fn ownership_ignores_padding_and_out_of_range_ids() {
+        // Owns 9. Hand: 9 (owned) + 0 padding + 61 (out of range) — the non-9 slots
+        // are not valid fielded cards, so they are ignored, not flagged → None.
+        let ps = player_owning(&[9]);
+        let hand = [9u64, 0, 61, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(first_unowned_field(&ps, &hand), None);
+    }
+
+    #[test]
+    fn ownership_truncation_guard_does_not_forge_a_card() {
+        // Player owns NOTHING. A u64 whose low byte equals a valid species must NOT
+        // be treated as that species (would be Some(9) if truncated to u8) — it is
+        // out of the 1..=60 range and therefore ignored → None.
+        let ps = PlayerState::default();
+        let hand = [0x1_0000_0009u64, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(first_unowned_field(&ps, &hand), None);
+    }
+
+    #[test]
+    fn ownership_empty_vault_flags_first_fielded() {
+        let ps = PlayerState::default();
+        let hand = [7u64, 12, 0, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(first_unowned_field(&ps, &hand), Some(7));
+    }
 
     #[test]
     fn round_point_picks_higher_bp_and_draws_on_tie() {
