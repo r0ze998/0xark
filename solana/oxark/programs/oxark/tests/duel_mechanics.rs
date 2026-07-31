@@ -377,7 +377,9 @@ fn test_commit_hand_then_reveal_hand_roundtrip() {
         }
         .to_account_metas(None),
     );
-    craft_player(&mut svm, &player1.pubkey(), 0);
+    // Seed player1's vault with cards 1..=47 so it owns the fielded species
+    // [1,5,23,47,2] — reveal_hand now verifies vault ownership of the field (BUG-1).
+    craft_player(&mut svm, &player1.pubkey(), 47);
     send_ix_result_multi(&mut svm, commit_ix, &authority, &[&player1])
         .expect("commit_hand with valid proof must succeed");
 
@@ -395,6 +397,7 @@ fn test_commit_hand_then_reveal_hand_roundtrip() {
             oxark::accounts::RevealHand {
                 duel: duel_key,
                 player: player1.pubkey(),
+                player_state: player_state_pda(&player1.pubkey()).0,
             }
             .to_account_metas(None),
         )
@@ -434,6 +437,96 @@ fn test_commit_hand_then_reveal_hand_roundtrip() {
     assert_eq!(
         duel.player_1_revealed[0], HC_CARD_IDS,
         "player_1 round-1 revealed cards must be recorded"
+    );
+}
+
+/// Craft a PlayerState owning exactly `cards` (not a contiguous 1..N range).
+fn craft_player_cards(svm: &mut LiteSVM, player: &Pubkey, cards: &[u8]) {
+    let (pda, bump) = player_state_pda(player);
+    let mut ps = oxark::state::PlayerState::default();
+    ps.bump = bump;
+    ps.deposit_amount = 500_000_000;
+    ps.energy = 5;
+    for &c in cards {
+        ps.set_vault_card(c);
+    }
+    let mut buf = Vec::new();
+    ps.try_serialize(&mut buf).unwrap();
+    craft_owned(svm, &pda, buf);
+}
+
+/// BUG-1: a player who committed a valid hand but does NOT own one of the fielded
+/// species must be REJECTED at reveal (RevealCardNotOwned) — even though the
+/// Poseidon commitment matches. Closes the "field cards you don't own" hole.
+#[test]
+fn reveal_rejects_unowned_field_card() {
+    let (mut svm, authority) = setup();
+    let player1 = Keypair::new_from_array(HC_PROVER_SEED);
+    let player2 = Keypair::new();
+    svm.airdrop(&player1.pubkey(), 10_000_000_000).unwrap();
+    svm.airdrop(&player2.pubkey(), 10_000_000_000).unwrap();
+
+    let duel_id = solana_pubkey::Pubkey::new_unique();
+    let (duel_key, _) = find_duel_pda(&duel_id);
+
+    send_ix(
+        &mut svm,
+        Instruction::new_with_bytes(
+            oxark::id(),
+            &oxark::instruction::InitDuel { duel_id, hall_tier: 0, ante: 0 }.data(),
+            oxark::accounts::InitDuel {
+                duel: duel_key,
+                player_1: player1.pubkey(),
+                player_2: player2.pubkey(),
+                authority: authority.pubkey(),
+                system_program: solana_sdk_ids::system_program::id(),
+            }
+            .to_account_metas(None),
+        ),
+        &authority,
+    );
+
+    // Own the field EXCEPT species 2 (HC_CARD_IDS = [1,5,23,47,2,...]).
+    craft_player_cards(&mut svm, &player1.pubkey(), &[1, 5, 23, 47]);
+
+    let commit_ix = Instruction::new_with_bytes(
+        oxark::id(),
+        &oxark::instruction::CommitHand {
+            duel_id,
+            round: 1,
+            proof_a: PROOF_HC_A,
+            proof_b: PROOF_HC_B,
+            proof_c: PROOF_HC_C,
+            public_signals: [PUBLIC_HC_COMMITMENT, PUBLIC_HC_ROUND, PUBLIC_HC_PUBKEY_LO, PUBLIC_HC_PUBKEY_HI],
+        }
+        .data(),
+        oxark::accounts::CommitHand {
+            duel: duel_key,
+            player: player1.pubkey(),
+            player_state: player_state_pda(&player1.pubkey()).0,
+        }
+        .to_account_metas(None),
+    );
+    send_ix_result_multi(&mut svm, commit_ix, &authority, &[&player1])
+        .expect("commit_hand must succeed (ownership is checked at reveal, not commit)");
+
+    // Honest reveal (correct cards/salt → Poseidon matches) but species 2 unowned.
+    let reveal_ix = Instruction::new_with_bytes(
+        oxark::id(),
+        &oxark::instruction::RevealHand { duel_id, round: 1, card_ids: HC_CARD_IDS, salt: HC_SALT }.data(),
+        oxark::accounts::RevealHand {
+            duel: duel_key,
+            player: player1.pubkey(),
+            player_state: player_state_pda(&player1.pubkey()).0,
+        }
+        .to_account_metas(None),
+    );
+    let err = send_ix_result_multi(&mut svm, reveal_ix, &authority, &[&player1])
+        .expect_err("reveal must be rejected: player does not own fielded species 2");
+    assert!(
+        err.meta.logs.iter().any(|l| l.contains("RevealCardNotOwned")),
+        "expected RevealCardNotOwned, got logs: {:?}",
+        err.meta.logs
     );
 }
 

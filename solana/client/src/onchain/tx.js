@@ -887,6 +887,8 @@ async function revealHand(duelIdStr, round, cardIds, salt) {
 
   const duelIdPK = new solanaWeb3.PublicKey(duelIdStr);
   const [duelPDA] = findDuelPDA(duelIdPK);
+  // BUG-1: reveal_hand now verifies the revealer owns each fielded species.
+  const [playerStatePDA] = findPlayerStatePDA(player);
 
   // Borsh: disc(8) + duel_id(32) + round(1) + card_ids(10×8=80) + salt(32) = 153 bytes
   const d    = await disc('reveal_hand');
@@ -906,8 +908,9 @@ async function revealHand(duelIdStr, round, cardIds, salt) {
   const [limitIx, priceIx] = computeBudgetIxs(COMPUTE_BUDGET.reveal_hand);
   const revealIx = new solanaWeb3.TransactionInstruction({
     keys: [
-      { pubkey: duelPDA, isSigner: false, isWritable: true  },
-      { pubkey: player,  isSigner: true,  isWritable: false },
+      { pubkey: duelPDA,        isSigner: false, isWritable: true  },
+      { pubkey: player,         isSigner: true,  isWritable: false },
+      { pubkey: playerStatePDA, isSigner: false, isWritable: false }, // BUG-1: vault-ownership
     ],
     programId: getProgramId(),
     data,

@@ -3571,6 +3571,35 @@
         {
           "name": "player",
           "signer": true
+        },
+        {
+          "name": "player_state",
+          "docs": [
+            "The revealer's card vault. Reveal is the earliest point the plaintext card",
+            "IDs are visible (commit_hand sees only the Poseidon commitment), so this is",
+            "where card ownership is enforced: every fielded species must be a bit set in",
+            "this vault. Read-only — reveal never mutates the vault. PDA-bound to `player`,",
+            "so the signer can only present their OWN vault."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -5675,6 +5704,11 @@
       "code": 6109,
       "name": "OpponentNotStalled",
       "msg": "Opponent is not the stalling side for the current round (or you owe the next action)"
+    },
+    {
+      "code": 6110,
+      "name": "RevealCardNotOwned",
+      "msg": "Revealed hand fields a card the player does not own"
     }
   ],
   "types": [

@@ -242,4 +242,8 @@ pub enum ErrorCode {
     TimeoutNotReached,
     #[msg("Opponent is not the stalling side for the current round (or you owe the next action)")]
     OpponentNotStalled,
+    // BUG-1: appended (not inserted) so existing Anchor error codes don't shift —
+    // the client hardcodes ANCHOR_ERRORS by numeric code.
+    #[msg("Revealed hand fields a card the player does not own")]
+    RevealCardNotOwned,
 }
