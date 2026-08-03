@@ -248,7 +248,7 @@ client silently. Layout changes need matching offset updates in
 ## Testing
 
 ```bash
-cd solana/oxark && cargo test     # 169 tests, litesvm
+cd solana/oxark && cargo test     # 213 test cases across the workspace (litesvm)
 ```
 
 Tests run against the real compiled `.so` through litesvm, which uses the
@@ -301,12 +301,22 @@ has already committed in a *different* live duel, forcing a forfeit. The
 leading fix is snapshotting the fielded cards at commit time. This is
 documented in `reveal_hand.rs` where the assumption lives.
 
-**x402 micropayments are server-side only.** The endpoints, replay
-protection, and memo-nonce validation are implemented and tested, but the
-client module isn't wired into the battle UI — paid features silently no-op.
+**x402 micropayments depend on a broker the repo doesn't run for you.** The
+endpoints, replay protection, and memo-nonce validation are implemented and
+tested. The client module (`src/02-x402.js`) *is* loaded by `index.html` and
+exposes ~20 paid calls on `window.x402`, but only three are reachable from
+the battle UI: `scoutPeek` and `payAiStrategyAdvice` (INTEL phase,
+`components/interruption.js`) and `payMatchEnd` (`components/loot.js`).
+Without the broker running, those three fall back to a *visible* demo mode —
+a toast (`MOCK INTEL (demo) — x402 peek offline`) or a demo-mode banner, not
+a silent no-op. The remaining exports have no caller yet.
 
-**MagicBlock ephemeral rollups are not integrated.** The SDK is still a
-dependency and drags in a crate that overflows the SBF stack frame in dead
+**MagicBlock ephemeral rollups are implemented but not enabled.**
+`delegate_session` / `undelegate_session` are real Delegation Program CPIs
+on chain, and `onchain/tx.js` has the matching builders plus a Magic Router
+path — but `src/01-magicblock.js` is not in `index.html`'s script tags and
+`_mbMode` defaults to `false`, so nothing routes through the ER at runtime.
+The SDK also drags in a crate that overflows the SBF stack frame in dead
 code paths; the build pins `--tools-version v1.52` to keep that non-fatal.
 
 **The client's `ANCHOR_ERRORS` map is stale** — it stops around code 6066
