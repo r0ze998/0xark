@@ -9,6 +9,11 @@
 #     --reset` wipes that ledger and destroys every fixture.  This script starts
 #     the validator WITHOUT --reset and hard-refuses if --reset leaks in.
 #
+#  ⚠  STOP THE VALIDATOR WITH dev/stop-e2e-validator.sh (SIGTERM + wait).
+#     NEVER use `pkill -9` / SIGKILL — unflushed WAL = corrupted RocksDB.
+#     This script backs up the newest snapshot on every GO so a hard-kill is
+#     survivable, but the backup is the belt, not an excuse to skip the buckle.
+#
 #  Checks & revives, in order:
 #    1. validator      (solana cluster-version @ localhost) → restart if dead
 #    2. program        (8CH9… executable) → NO-GO if absent
@@ -42,6 +47,9 @@ VALIDATOR_LOG=/tmp/e2e-validator.log
 RELAY_LOG=/tmp/e2e-relay.log
 CLIENT_LOG=/tmp/e2e-client.log
 
+BACKUP_ROOT=~/0xark-ledger-backups   # outside working tree — survives git clean / rm -rf
+BACKUP_KEEP=5                        # rolling window: oldest pruned beyond this
+
 # ── --reset guard ───────────────────────────────────────────────────────────
 for a in "$@"; do
   if [ "$a" = "--reset" ]; then
@@ -63,6 +71,55 @@ wait_for(){ # wait_for <predicate-fn> <arg> <secs>
   local fn=$1 arg=$2 secs=$3 i
   for ((i=1;i<=secs;i++)); do "$fn" "$arg" && return 0; sleep 1; done
   return 1
+}
+
+# auto_backup — called on every successful GO.
+# Copies the newest snapshot dir + .tar.zst + genesis + accounts to BACKUP_ROOT.
+# Skips if that snapshot slot is already backed up. Prunes to BACKUP_KEEP dirs.
+#
+# Restore procedure (scratch port :9099, scratch ledger $SCRATCH):
+#   mkdir -p $SCRATCH
+#   cp <bdir>/genesis.bin <bdir>/genesis.tar.bz2 $SCRATCH/
+#   cp <bdir>/snapshot-<slot>-*.tar.zst $SCRATCH/
+#   cp -r <bdir>/snapshots $SCRATCH/
+#   cp -r <bdir>/accounts/snapshot/<slot> $SCRATCH/accounts/snapshot/<slot>
+#   # Fix accounts_hardlinks symlink to absolute path (NOT .tar.zst — runtime rejects it cold):
+#   rm $SCRATCH/snapshots/<slot>/accounts_hardlinks/account_path_0
+#   ln -sf $SCRATCH/accounts/snapshot/<slot> \
+#     $SCRATCH/snapshots/<slot>/accounts_hardlinks/account_path_0
+#   solana-test-validator --ledger $SCRATCH --rpc-port 9099 ...
+auto_backup() {
+  local newest slot bdir size count excess d snapdir
+  mkdir -p "$BACKUP_ROOT"
+  newest=$(ls -t "$LEDGER"/snapshot-*.tar.zst 2>/dev/null | head -1)
+  if [ -z "$newest" ]; then
+    warn "auto-backup: no snapshot in $LEDGER — skipping"
+    return
+  fi
+  slot=$(basename "$newest" | sed 's/snapshot-\([0-9]*\)-.*/\1/')
+  # Already backed up this exact slot?
+  if ls -d "$BACKUP_ROOT"/snap-"$slot"-* >/dev/null 2>&1; then
+    ok "auto-backup: slot $slot already in $BACKUP_ROOT — skip"
+    return
+  fi
+  bdir="$BACKUP_ROOT/snap-${slot}-$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$bdir"
+  cp "$newest"                   "$bdir/"
+  [ -f "$LEDGER/genesis.bin"      ] && cp "$LEDGER/genesis.bin"      "$bdir/"
+  [ -f "$LEDGER/genesis.tar.bz2"  ] && cp "$LEDGER/genesis.tar.bz2"  "$bdir/"
+  # snapshots/ dir contains the bank serialization — required for restore
+  # (.tar.zst alone is rejected by the Agave runtime on cold restore)
+  snapdir="$LEDGER/snapshots/$slot"
+  [ -d "$snapdir" ] && cp -r "$LEDGER/snapshots" "$bdir/"
+  [ -d "$LEDGER/accounts"         ] && cp -r "$LEDGER/accounts"       "$bdir/"
+  size=$(du -sh "$bdir" | cut -f1)
+  ok "auto-backup: slot $slot → $bdir ($size)"
+  # Prune: keep the most recent BACKUP_KEEP entries, delete the rest
+  count=$(ls -d "$BACKUP_ROOT"/snap-*/ 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$count" -gt "$BACKUP_KEEP" ]; then
+    excess=$(ls -dt "$BACKUP_ROOT"/snap-*/ | tail -n "+$((BACKUP_KEEP + 1))")
+    for d in $excess; do rm -rf "$d" && warn "auto-backup: pruned $d"; done
+  fi
 }
 
 echo    "════════════════════════════════════════════════════════════"
@@ -223,6 +280,9 @@ echo    ""
 echo    "════════════════════════════════════════════════════════════"
 if [ ${#NOGO[@]} -eq 0 ]; then
   printf '  \033[1;32m● GO — READY\033[0m\n'
+  echo  "════════════════════════════════════════════════════════════"
+  hdr "[8/8] auto-backup (snapshot → $BACKUP_ROOT)"
+  auto_backup
   echo  "════════════════════════════════════════════════════════════"
   cat <<STEPS
 
