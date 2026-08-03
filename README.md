@@ -1,431 +1,347 @@
 # 0xARK
 
-**On-chain TCG card battle on Solana** — with ZK proofs, x402 micropayments, and AI agents.
+**A card battle game on Solana where cards remember who held them.**
 
-**🔗 [Live Demo → r0ze998.github.io/0xark](https://r0ze998.github.io/0xark/)**
+Every duel is settled on-chain. Every win is engraved onto the card that won
+it. Cards carry an immutable battle history — wins, KOs, and the chain of
+wallets that have owned them — and that history is what makes a card rare,
+not a number stamped on it at mint.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-r0ze998.github.io%2F0xark-d8b034)](https://r0ze998.github.io/0xark/)
-[![Devnet](https://img.shields.io/badge/Solana-Devnet-9370db)](https://explorer.solana.com/?cluster=devnet)
-[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
-
----
-
-## 📋 Implementation Status
-
-Honest snapshot as of hackathon submission (2026-05-11):
-
-| Feature | Status | Notes |
-|---|---|---|
-| ZK proof — on-chain `verify_zk_proof` | ✅ | Fires automatically on every battle reveal. Groth16 proof generated client-side (~272ms); `reveal.js:28` submits TX when `zkProofBytes !== null`. Devnet TXs: `5WoVAmNC…` · `M2fwWd2m…` |
-| ZK proof — Groth16 + SHA-256 commitment (client) | ✅ | Groth16 proof + SHA-256 commitment generated every battle (`preparation.js:264`). ~272ms. WASM + zkey bundled in `solana/client/` |
-| x402 micropayments — server | ⚠️ | 13 server endpoints fully implemented, Redis replay protection, Coinbase spec compliant. Client module (`02-x402.js`) not loaded in the battle UI — `window.x402` is undefined in current demo |
-| AI strategy advisor | ⚠️ | Server endpoint `/x402/ai-strategy-advice` implemented (Claude Haiku 4.5). Not called from active battle screens in current demo |
-| AI autonomous move delegation | 🚧 | Server endpoint `/x402/ai-move` implemented. Client integration and autonomous TX signing not yet implemented |
-| NFT mint / burn / evolve (SPL) | ✅ | `register_waitlist` (`app.js:169`) and `buy_pack` (`shop-screen.js:306`) call on-chain SPL mint CPI. `burn_card` / `evolve_cards` instructions available |
-| Multiplayer WebSocket sync | ✅ | Matchmaking + duel relay deployed on Fly.io; single-instance guaranteed |
-| MagicBlock Ephemeral Rollups | 🚧 | Not yet integrated |
+Built with Anchor. Hands are hidden with a Groth16 commit–reveal so neither
+player can see the other's play until both are locked in.
 
 ---
 
-## 🎮 Live Demo
+## Table of contents
 
-**🔗 https://r0ze998.github.io/0xark/**
-
-Try it now:
-
-1. Connect Phantom wallet (Devnet)
-2. Get devnet SOL: https://faucet.solana.com/
-3. Register Waitlist (0.5 SOL deposit)
-4. Receive 5 starter cards
-5. Battle, burn, evolve, claim prizes
-
----
-
-## 🏆 Hackathon Submission
-
-**Colosseum Frontier 2026** (deadline 2026-05-11)
-
-- Track: Gaming and AI
-- Developer: r0ze (Yukikaze)
-- Built solo
-
-### 🎬 Submission Videos
-
-- **Pitch Video**: [link to be added]
-- **Technical Demo Video**: [link to be added]
+- [How a duel works](#how-a-duel-works)
+- [Provenance: the point of the whole thing](#provenance-the-point-of-the-whole-thing)
+- [The cards](#the-cards)
+- [Repository layout](#repository-layout)
+- [Running it locally](#running-it-locally)
+- [On-chain program](#on-chain-program)
+- [ZK commit–reveal](#zk-commitreveal)
+- [Client](#client)
+- [Testing](#testing)
+- [Known gaps and open design questions](#known-gaps-and-open-design-questions)
+- [Contributing](#contributing)
 
 ---
 
-## ⚡ 30-second overview
+## How a duel works
 
-🎴 **60 NFT cards** for a 14-day on-chain TCG
-🔐 **ZK proofs** for hand secrecy and provable fair-play (on-chain Groth16 BN254 verification)
-💰 **x402 micropayments** (HTTP 402 standard) — peek/draw from 0.005 SOL
-🤖 **AI agents** (Claude Haiku 4.5) for strategy advice and autonomous battle
-🔥 **Burn / Evolve / Imprint** — NFTs change permanently on-chain
-🏪 **Complete game economy**: Shop pack purchases + Trade Floor marketplace + Tier prize distribution
-
----
-
-## 🌐 Why Solana?
-
-Two core features of 0xARK are Solana-native requirements.
-
-**x402 micropayments** work because SOL transfers settle in ~400ms with sub-cent fees. The per-action pricing model (0.0001–0.01 SOL per endpoint call) is economically unviable on any chain with $1+ gas costs. On Solana it's a real mechanic, not a gimmick.
-
-**Ephemeral Rollups** (MagicBlock, planned) will let battle state update in real time without committing every card play on-chain, while the final result settles atomically to the Anchor program. This collapses the usual tradeoff between on-chain trust and playable latency — the fight happens off-chain at game speed, the outcome is on-chain truth.
-
-Together, these make a genuinely playable, economically-grounded on-chain TCG feasible today.
-
----
-
-## 🔗 Live On-Chain Evidence
-
-| Event | TX hash | Explorer |
-|---|---|---|
-| GameWorld PDA init | `4EUynBDn…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
-| Anchor program upgrade (ZK Phase 2) | `2Wu8wQCd…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
-| ZK proof verify (Phase 2 deploy) | `5WoVAmNC…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
-| ZK proof verify (live battle flow) | `M2fwWd2m…` | [Solana Explorer](https://explorer.solana.com/tx/M2fwWd2mUQErAP1qCy9HRAFSUbnb527q55dFoipAY9CNJnJ1KojQE8JmQCGFttntwpjDmqCSd53uqTL4FBM7qbY?cluster=devnet) |
-| GameWorld Phase 20-B migration | `2eyAJEJz…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
-| Shop params set (threshold=0) | `3SYqk9HV…` | [Solana Explorer](https://explorer.solana.com/?cluster=devnet) |
-
-**Anchor program**: `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` (devnet)
-
-**Upgrade Authority**: Held by r0ze during active devnet development. Planned to be renounced on mainnet deployment.
-
----
-
-## 🧪 Tech Stack
-
-### Core
-
-- **Solana** (Anchor, devnet)
-- **Circom 2.x + snarkjs** (Groth16 BN254)
-- **Node.js + WebSocket** (Fly.io)
-- **Phantom wallet adapter**
-- **Vanilla JS + GBA palette** (Sprite Seas design system)
-
-### Web3 Innovations
-
-- **ZK proof on-chain verification** via `alt_bn128_pairing` precompile
-- **x402** (HTTP 402) SOL micropayment, Coinbase x402 spec compliant
-- **NFT mechanics**: Burn, Evolve, Imprint (on-chain permanent)
-
-### AI
-
-- **Claude Haiku 4.5** via Anthropic API
-- **AI Strategy Advisor** (`/x402/ai-strategy-advice` endpoint)
-- **AI Move Delegation** (`/x402/ai-move` endpoint)
-
----
-
-## 🏗 Architecture
+Best-of-five, first to three round wins.
 
 ```
-┌────────────────────────────────────────────────────┐
-│  Frontend (GitHub Pages)                            │
-│  - Phantom wallet                                   │
-│  - 60-card vault grid + 4 battle screens           │
-│  - 4 rarity frames (Sprite Seas design)            │
-└──────────────────┬──────────────────────────────────┘
-                   │
-       ┌───────────┴───────────┐
-       │                       │
-       ▼                       ▼
-┌──────────────┐     ┌──────────────────┐
-│ ZK Layer     │     │ Multiplayer      │
-│ - Circom     │     │ Server           │
-│ - snarkjs    │     │ - WebSocket      │
-│ - Groth16    │     │ - x402 endpoint  │
-└──────┬───────┘     │ - Redis          │
-       │             │   (replay        │
-       │             │    protection)   │
-       │             └─────────┬────────┘
-       │                       │
-       └───────────┬───────────┘
-                   ▼
-┌──────────────────────────────────────────┐
-│ Anchor Program (Solana devnet)            │
-│ Program ID: 5i37jW...XfmN                 │
-│ - register_waitlist (0.5 SOL deposit)     │
-│ - burn_card / evolve_cards                │
-│ - grant_imprint / claim_battle_loot       │
-│ - claim_prize_v2 / check_legendary        │
-│ - verify_zk_proof (alt_bn128 pairing)     │
-│ - buy_pack / update_game_params           │
-│ - create_listing / accept_listing         │
-│ - cancel_listing                          │
-│ - 20+ PDAs, 59 instructions               │
-└────────────────────────────────────────────┘
-                   ▲
-                   │
-          ┌────────┴────────┐
-          │ AI Agent        │
-          │ Claude          │
-          │ Haiku 4.5       │
-          └─────────────────┘
+  init_duel          two wallets are matched; the duel account is created
+       │
+       ▼
+  commit_hand        each player picks 5 cards, hashes them with a private
+       │             salt (Poseidon), and posts ONLY the hash. Costs 1 energy.
+       │             Neither side can see the other's hand.
+       ▼
+  reveal_hand        each player posts the plaintext hand + salt. The program
+       │             recomputes the hash and rejects any mismatch — you cannot
+       │             change your mind after seeing the opponent's commitment.
+       │             It also verifies you actually own every card you fielded.
+       ▼
+  resolution         when both hands are revealed, the program runs the combat
+       │             math on-chain and writes the round winner.
+       ▼
+  settle_duel_history   the winner engraves the result onto the cards that
+                        fought — wins, KOs, times summoned.
 ```
 
----
+If an opponent commits and then disappears, `claim_timeout_win` lets the
+other player claim the duel after `DUEL_STALL_TIMEOUT_SECONDS` (600s). A
+stalled duel can't hold a player hostage.
 
-## 🎯 Game Design
+**Energy** gates play: `ENERGY_MAX` is 5, a duel costs 1, and one point
+regenerates every 4 hours. `refill_energy` buys a top-up for 0.003 SOL.
 
-### 14-day 1-shot Season
+## Provenance: the point of the whole thing
 
-- 60 unique cards across 6 clans (Knight / Merchant / Pirate / Scholar / Monk / Engineer)
-- 6 Legendaries with unique personalities (Conqueror / Patron / Phoenix / Detective / Hermit / Sage)
-- 14 days to collect, win, burn, evolve
+Most card games mint a card with a rarity and that rarity never changes.
+0xARK inverts it — **rarity is earned by the individual card.**
 
-### Tier Prize Distribution
+`CardBattleHistory` (a PDA keyed by the card's mint) accumulates:
 
-| Tier | Cards | Reward Share |
+| Field | Meaning |
+|---|---|
+| `wins` / `losses` / `kos` | what this specific card has done in battle |
+| `times_summoned` | how often it's been fielded |
+| `owners_history[10]` | the wallets that have held it, as a ring buffer |
+| `owners_dropped_count` | how many times it has changed hands |
+| `acquisition_source` | how the current owner got it |
+| `current_owner_since` | when |
+| `imprints[5]` | milestone marks earned at thresholds |
+
+Once a card clears the thresholds, `promote_card` raises its rarity **in
+place** — same mint, same history PDA:
+
+| Promotion | Requires | Cost |
 |---|---|---|
-| T1 | 60 cards (full collection) | 50% |
-| T2 | 50–59 cards | 25% |
-| T3 | 30–49 cards | 15% |
-| T4 | 10–29 cards | 8% |
-| T5 | 1–9 cards | 2% |
+| Common → Uncommon | 10 wins | 0.01 SOL |
+| Uncommon → Rare | 25 wins | 0.03 SOL |
+| Rare → Legendary | 50 wins + 30 KOs | 0.1 SOL |
 
-### v3+ Mechanics
+Promotion is deliberately a **single-card, in-place upgrade** rather than a
+two-card fusion. Fusion would destroy one lineage to create another; the
+whole design premise is that a card's history is continuous and unbroken.
+An older `evolve_cards` instruction (burn two, mint one) existed and was
+removed for exactly this reason.
 
-- Burn: permanent removal + ability effect (e.g., "Burn: deal 3 damage to all enemy cards")
-- Evolve: merge 2 cards into 1 child card
-- Steal: battle winner takes 1 card from loser (`claim_battle_loot`, SlotHashes random)
-- Imprint: victory mark permanently recorded on Legendary cards
+## The cards
 
-### Shop (Phase 20-B)
+60 cards, verified against `solana/client/src/lib/cards.js`:
 
-Players can purchase card packs with SOL:
+- **6 factions × 10 cards** — Knight, Merchant, Pirate, Scholar, Monk, Engineer
+- **By rarity**: 30 Common, 18 Uncommon, 6 Rare, 6 Legendary
 
-| Pack | Cards | Price | Special |
-|---|---|---|---|
-| Standard | 5 random | 0.05 SOL | — |
-| Premium | 3 cards | 0.15 SOL | +1 Uncommon guaranteed |
+Each card has BP (attack), HP (durability), and INI (initiative), and the
+stat shape defines the faction's identity: Pirates are glass cannons (high
+BP, low HP, fast), Monks are immovable (high HP, lowest INI), Engineers hit
+hard at middling speed.
 
-Drop rates (admin-tunable via `update_game_params`):
+Card stats live in **`cards.js` on the client and `card_data.rs` on-chain**,
+and the two must agree — see [Testing](#testing) for the parity fixtures
+that enforce it.
 
-| Phase | Common | Uncommon | Rare | Legendary |
-|---|---|---|---|---|
-| Phase 1 (Days 1–7) | 80% | 18% | 2% | 0% |
-| Phase 2 (Days 8–14) | 79% | 17% | 2.5% | 1.5% |
+## Repository layout
 
-- Sales split: 50% Operations / 50% Prize Pool
-- Random source: Solana SlotHashes sysvar (verifiable on-chain, no oracle dependency)
-- Legendary drop gated until Day 8 to preserve "first 10 achievers" exclusivity
+```
+solana/
+  oxark/                 Anchor workspace
+    programs/oxark/      the main program (52 instructions)
+      src/
+        lib.rs           #[program] — instruction entrypoints
+        state.rs         account layouts (PlayerState, DuelState, …)
+        instructions/    one file per handler
+        damage_calc.rs   combat math (on-chain authority)
+        groth16.rs       pairing verification for the ZK proof
+        poseidon_helper.rs
+        card_data.rs     the 60-card table
+      tests/             duel_mechanics, damage-calc parity, init
+    programs/oxark-cards/  separate program: 1-of-1 SPL card NFTs
+    tests/               oxark-tests package (primitives, loot, provenance…)
+    test-support/        shared test harness crate
+  client/                browser client (vanilla ES modules, no framework)
+    src/onchain/         pda.js · readers.js · tx.js · rpc.js
+    src/components/      screens (preparation, reveal, vault, shop, trade)
+    src/lib/             cards.js, damage-calc.js, audio, pixel icons
+circuits/hand_commitment/  the Circom circuit + build scripts
+multiplayer/             WebSocket matchmaking relay + x402 endpoints
+fixtures/                cross-language parity fixtures (180 combat cases)
+dev/                     local session scripts, previews
+scripts/                 CI checks (IDL sync, design lint)
+```
 
-### Trade Floor (Phase 20-C)
+## Running it locally
 
-Player-to-player marketplace with 0% platform fee:
-
-| Action | Description |
-|---|---|
-| Create listing | Seller lists a card with custom SOL price (min 0.001 SOL) |
-| Accept listing | Buyer pays seller directly; card moves atomically |
-| Cancel listing | Seller withdraws listing and recovers card |
-
-- Card escrow: listed cards are removed from seller's vault at listing time, returned on cancel
-- All rarities tradable: Common through Legendary
-- Direct SOL transfer: buyer → seller, no intermediary cut
-- Built on TradeListing PDAs: `seeds = [b"trade", seller_pubkey, card_id]`
-
----
-
-## 🔬 ZK Proof System
-
-### Circuit (`hand_commitment.circom v2`)
-
-- 5 cards + salt + pubkey + round → Poseidon commit
-- Range check: `1 <= card_id <= 60`
-- Uniqueness check: all 5 cards unique
-- 2,040 constraints (BN254)
-
-### On-Chain Verification
-
-- `verify_zk_proof` Anchor instruction
-- Uses `alt_bn128_pairing` precompile
-- `ZkProofRecord` PDA prevents replay
-- pubkey + round consistency verified on-chain
-
-### Battle Flow
-
-**Live battle flow:** Groth16 proof generated client-side (~272ms) on every hand commit (`preparation.js:264`). `reveal.js:28` submits `verify_zk_proof` TX automatically when proof bytes are present. Replay prevented by `ZkProofRecord` PDA (`init` fails on re-use).
-
-Devnet TXs: `5WoVAmNC…` (Phase 2 deploy) · `M2fwWd2m…` (live flow, 2026-05-11)
-
-Details: `docs/ZK_REVIEW_VERIFICATION.md`
-
----
-
-## 💰 x402 Micropayment System
-
-### 13 endpoints
-
-| Endpoint | Price |
-|---|---|
-| `/x402/match-battle` | 0.001 SOL |
-| `/x402/peek-vault-size` | 0.0005 SOL |
-| `/x402/peek-vault-content` | 0.005 SOL |
-| `/x402/draw-extra` | 0.01 SOL |
-| `/x402/ai-strategy-advice` | 0.003 SOL |
-| `/x402/ai-move` | 0.005 SOL |
-| `/x402/co /re /hc /hr /pa /rs /me` | 0.0001 SOL |
-
-### Status
-
-Server-side infrastructure is fully implemented and tested. The client module (`src/02-x402.js`) contains the full payment flow with hardcoded `EXPECTED_PRICES` validation, but is not loaded in the current battle UI (`index.html`). Battle screens use optional-chained calls (`window.x402?.scoutPeek`) that silently no-op when the module is absent.
-
-### Security (Phase A + B closed)
-
-- Replay protection: Redis persistence (sig + nonce, TTL applied)
-- Price hardcode: client-side EXPECTED_PRICES validates server-declared values
-- Memo nonce required: X402_REQUIRE_MEMO=true by default
-- Memo format unified: endpoint=path;nonce=uuid;v=1
-- Recipient allowlist + dev-bypass blocked in production
-
-Details: docs/X402_INTEGRATION_LOG.md
-
----
-
-## 🤖 AI Agent
-
-Two AI features powered by Claude Haiku 4.5:
-
-### Strategy Advisor
-
-Server endpoint `/x402/ai-strategy-advice` is implemented (Claude Haiku 4.5). Returns `primaryAction + alternativeActions + reasoning` (JSON). Client-side integration into battle screens is not wired in the current demo — calling the endpoint requires loading `02-x402.js` and connecting it to the interruption screen UI.
-
-- Use case: assistance for new players, learning strategy
-- 0.003 SOL micropayment (server-side implemented)
-
-### AI Move Delegation
-
-Server endpoint `/x402/ai-move` is implemented. End-to-end client integration and autonomous TX signing are not yet implemented.
-
-- Use case: hands-free play, automated battles, AI tournaments
-- 0.005 SOL micropayment (server-side implemented)
-- Post-hackathon: wire client UI + delegate session key for autonomous on-chain moves
-
----
-
-## 🗺 Roadmap
-
-### Devnet (current)
-
-- ✅ Hackathon submission (Colosseum Frontier 2026)
-- ✅ ZK Phase 1–3 + devnet e2e
-- ✅ x402 Critical A + B (all closed)
-- ✅ Phase 20 complete — full game economy loop (Shop + Trade Floor + Prize Distribution)
-- 🔲 Card art (60 pieces) + Public preparation
-- 🔲 Waitlist Season 1 (devnet)
-- 🔲 Continued development on devnet
-
-### Mainnet
-
-- Future migration to mainnet after sufficient testing on devnet
-
----
-
-## 🛡 Audits
-
-| Source | Score | Critical Issues |
-|---|---|---|
-| Internal Audit | 73 issues found | Major issues resolved |
-| GPT — ZK Proof | 7.2/10 → 9.0+/10 | 5/5 Critical resolved |
-| GPT — x402 | 7.2/10 → 9.0+/10 | 5/5 Critical resolved |
-| Grok — Overall | 89/100 | Top 12–18 range |
-
-Details:
-
-- docs/COMPREHENSIVE_AUDIT.md
-- docs/ZK_REVIEW_VERIFICATION.md
-- docs/x402-review-bundle.md
-
----
-
-## 📊 Test Coverage
-
-| Suite | Count |
-|---|---|
-| Anchor (Rust) | 35 tests |
-| Client (JS) | 110+ tests |
-| ZK e2e | 6 tests + devnet integration |
-| x402 security | 54 tests (Phase A + B) |
-| Phase 20-B Shop | 22 tests (9 Rust unit + 13 JS integration) |
-| Phase 20-C Trade Floor | 33 tests |
-| Total | 260+ passing |
-
----
-
-## 📚 Documentation
-
-| Doc | Contents |
-|---|---|
-| docs/game-design-v2.md | Game design specification |
-| docs/COMPREHENSIVE_AUDIT.md | Internal security audit (73 items) |
-| docs/V3_PLUS_INTEGRATION_LOG.md | v3+ mechanics integration |
-| docs/SERVER_WIRING_PLAN.md | Multiplayer server architecture |
-| docs/ONCHAIN_INTEGRATION_LOG.md | Anchor program deployment log |
-| docs/X402_INTEGRATION_LOG.md | x402 micropayment implementation |
-| docs/ZK_REVIEW_VERIFICATION.md | ZK proof system verification |
-| docs/POST_HACKATHON_ROADMAP.md | Post-submission roadmap |
-
----
-
-## 🚀 Local Development
+**Prerequisites:** Rust + Solana CLI (Agave 3.x), Anchor, Node 18+, and
+`solana-test-validator`.
 
 ```bash
-# Clone the repository
-git clone https://github.com/r0ze998/0xark.git
-cd 0xark
+# 1. build the program (also regenerates and syncs the client IDL)
+cd solana/oxark && make build
 
-# Build and deploy Anchor program
-cd solana/oxark
-anchor build
-anchor deploy --provider.cluster devnet
+# 2. run the on-chain test suite
+cargo test
 
-# Start frontend client
-cd ../client
-npx serve . -l 4200
-# open http://localhost:4200
+# 3. start a local validator and deploy
+solana-test-validator
+anchor deploy --provider.cluster localnet
 
-# Start multiplayer server
-cd ../../multiplayer
-npm install
-node server.js  # localhost:3500
+# 4. serve the client
+cd ../client && python3 -m http.server 4200
 
-# (Optional) Run AI Agent
-cd ../tools/ai-agent
-npm install
-npm test
+# 5. the WebSocket relay (matchmaking)
+cd ../../multiplayer && npm install && node server.js
 ```
 
----
+Then point a wallet at `http://localhost:8899` and open
+`http://localhost:4200`.
 
-## 👤 About
+> **Note on wallets:** the client signs with `signTransaction` and submits
+> the transaction itself, rather than delegating submission to the wallet.
+> That means a wallet showing "0 SOL" or "simulation failed" against a local
+> validator is expected — the wallet is quoting a different cluster. The
+> transaction still goes through.
 
-Built solo by **r0ze** under **Yukikaze** — indie on-chain game developer.
+`make build` runs `anchor build` and copies the generated IDL to
+`solana/client/oxark-idl.json`. **Never hand-edit that file** — CI verifies
+it against `lib.rs` down to argument names (`scripts/check-idl-sync.py`).
 
-- Twitter: [@r0ze_](https://twitter.com/r0ze_)
-- GitHub: [@r0ze998](https://github.com/r0ze998)
-- Other projects: ConsensusOS, ZeroGarden
+## On-chain program
 
-### Post-Hackathon 30-Day Plan
+52 instructions. The ones that matter:
 
-1. **Playable MVP** — close remaining battle flow gaps; full end-to-end 2-player game on devnet
-2. ✅ **ZK live** — Groth16 proof + `verify_zk_proof` TX wired in live battle flow (2026-05-11)
-3. **Card art** — commission 60 card illustrations
-4. **Community** — open Discord + Twitter launch thread
-5. **On-chain game analysis** — Substack publication launching May 2026; writing about design decisions, ZK tradeoffs, and the economics of on-chain TCGs
+**Duel**
+`init_duel` · `commit_hand` · `reveal_hand` · `claim_timeout_win` ·
+`settle_duel_history`
 
-The goal is a real Season 1 on devnet with 50+ players within 60 days of the hackathon.
+**Cards and provenance**
+`buy_pack` · `promote_card` · `burn_card` · `init_card_mint_record` ·
+`update_card_battle_history` · `record_card_owner_change`
 
----
+**Economy**
+`refill_energy` · `create_listing` · `accept_listing` · `cancel_listing` ·
+`claim_prize_v2`
 
-## 📝 License
+**Key accounts**
 
-MIT
+| Account | Holds |
+|---|---|
+| `PlayerState` | vault bitmap, energy, season stats |
+| `DuelState` | commitments, revealed hands, salts, round state, winner |
+| `CardMintRecord` | mint → card_id + rarity |
+| `CardBattleHistory` | the provenance record described above |
+| `TradeListing` | marketplace escrow |
 
----
+Combat resolution is **deterministic and on-chain**. Initiative ties are
+broken by a seed derived from both players' revealed salts —
+`SHA-256(p1_salt ‖ p2_salt ‖ round)` — so neither player can influence it
+alone, and the client can replay the exact same fight for animation.
 
-[▶ Play now](https://r0ze998.github.io/0xark/)
+## ZK commit–reveal
+
+The circuit (`circuits/hand_commitment/`) proves that a player knows a hand
+matching a published Poseidon commitment, without revealing it. Groth16,
+verified on-chain in `groth16.rs`.
+
+```
+commit:  H = Poseidon(card_ids[10], salt, round, pubkey)   →  post H only
+reveal:  post (card_ids, salt)  →  program recomputes H and compares
+```
+
+The commitment binds to the player's pubkey and the round, so a commitment
+can't be replayed by someone else or into a different round.
+
+> The circuit currently commits to **card IDs (species), not individual card
+> mints.** See [known gaps](#known-gaps-and-open-design-questions).
+
+> ⚠️ The proving key in this repository comes from a development ceremony
+> and **is not suitable for production.** A real trusted setup is required
+> before mainnet.
+
+## Client
+
+Vanilla ES modules, no framework, no build step. The pixel art, the GBA-era
+palette, and the icon set are all drawn programmatically
+(`src/lib/px-icons.js`) rather than shipped as image assets.
+
+On-chain access is split into four modules:
+
+| Module | Responsibility |
+|---|---|
+| `onchain/pda.js` | PDA derivation, program ID, error map |
+| `onchain/readers.js` | deserializing account bytes into JS objects |
+| `onchain/tx.js` | building and submitting instructions |
+| `onchain/rpc.js` | connection and cluster config |
+
+Account readers decode by **hardcoded byte offsets** rather than an IDL
+deserializer, which keeps the client dependency-free but means
+`state.rs` layouts are effectively frozen — reordering a field breaks the
+client silently. Layout changes need matching offset updates in
+`readers.js`.
+
+## Testing
+
+```bash
+cd solana/oxark && cargo test     # 213 test cases across the workspace (litesvm)
+```
+
+Tests run against the real compiled `.so` through litesvm, which uses the
+same rbpf VM as the chain — not a mock.
+
+**Cross-language parity.** Combat math exists in three places: `damage_calc.rs`
+(on-chain authority), `client/src/lib/damage-calc.js` (animation), and the
+AI agent's copy. They must agree exactly, or the animation would show a
+different fight than the chain settled. `fixtures/damage_calc.json` holds
+180 generated cases, and `test_damage_calc.rs` runs the Rust implementation
+against all of them. Each implementation carries a `PARITY-BASELINE` stamp
+with the fixture hash; see `MAINTENANCE.md` for the regeneration procedure.
+
+**CI** runs the test suite, an IDL sync check (instruction names *and*
+argument names against `lib.rs`), and a design lint that rejects
+off-palette colors.
+
+## Known gaps and open design questions
+
+This section is deliberately blunt. If you're reading the code, these are
+the things that will confuse you, and they're honest open problems rather
+than oversights we're hiding.
+
+**Two ownership systems that aren't reconciled.**
+The game tracks ownership in `PlayerState.vault_bitmap` — 60 bits, one per
+card ID. That's what packs, duels, loot, and the trade floor all read and
+write. Separately, `oxark-cards` mints real 1-of-1 SPL NFTs, and
+`CardBattleHistory` is keyed by those mints. **No instruction keeps the two
+in sync.** A card obtained through normal play has a bitmap bit but no NFT
+and no provenance record; provenance currently attaches only to separately
+minted NFTs. Unifying these is the largest open design question in the
+project, and it blocks the "steal" mechanic below.
+
+**A bitmap can't represent copies.** One bit per card ID means a player
+either owns a species or doesn't — there's no way to hold two of the same
+card, and no way to say *which* copy was played.
+
+**The circuit commits to species, not instances.** `card_ids` is `[u64; 10]`
+of catalog IDs. Consequently the chain records *what kind* of card was
+played, never *which one*. Any feature that needs per-instance identity in
+a duel (permanent card theft, most obviously) requires a circuit change —
+and therefore a new trusted setup.
+
+**Steal is designed but not implemented.** `StealType` (Lease / Ransom /
+HandPeek / Legendary) and `claim_battle_loot` exist, but loot is gated off
+(`STEAL_ENABLED = false`) pending the ownership question above, a legal
+review of permanent transfer, and one known griefing vector: a player
+holding an unclaimed loot from a finished duel could strip a card the victim
+has already committed in a *different* live duel, forcing a forfeit. The
+leading fix is snapshotting the fielded cards at commit time. This is
+documented in `reveal_hand.rs` where the assumption lives.
+
+**x402 micropayments depend on a broker the repo doesn't run for you.** The
+endpoints, replay protection, and memo-nonce validation are implemented and
+tested. The client module (`src/02-x402.js`) *is* loaded by `index.html` and
+exposes ~20 paid calls on `window.x402`, but only three are reachable from
+the battle UI: `scoutPeek` and `payAiStrategyAdvice` (INTEL phase,
+`components/interruption.js`) and `payMatchEnd` (`components/loot.js`).
+Without the broker running, those three fall back to a *visible* demo mode —
+a toast (`MOCK INTEL (demo) — x402 peek offline`) or a demo-mode banner, not
+a silent no-op. The remaining exports have no caller yet.
+
+**MagicBlock ephemeral rollups are implemented but not enabled.**
+`delegate_session` / `undelegate_session` are real Delegation Program CPIs
+on chain, and `onchain/tx.js` has the matching builders plus a Magic Router
+path — but `src/01-magicblock.js` is not in `index.html`'s script tags and
+`_mbMode` defaults to `false`, so nothing routes through the ER at runtime.
+The SDK also drags in a crate that overflows the SBF stack frame in dead
+code paths; the build pins `--tools-version v1.52` to keep that non-fatal.
+
+**The client's `ANCHOR_ERRORS` map is stale** — it stops around code 6066
+while the program now defines codes past 6100. Unknown codes fall back to a
+generic message rather than mismapping, but the map should be generated from
+the IDL rather than maintained by hand.
+
+## Contributing
+
+Issues and PRs welcome. A few conventions that will save you a round trip:
+
+- **Don't hand-edit `solana/client/oxark-idl.json`.** Run `make build` in
+  `solana/oxark` with the program keypairs present. CI checks argument-level
+  sync.
+- **Append new error variants** to the end of the `ErrorCode` enum. Inserting
+  in the middle renumbers every subsequent Anchor error code, and the client
+  maps them by number.
+- **Account layouts in `state.rs` are frozen** in field order. The client
+  reads by byte offset. If you must change a layout, update `readers.js`
+  offsets in the same PR.
+- **Box large accounts** in instruction contexts. `DuelState` is 1624 bytes
+  and a third unboxed account in one context will overflow the BPF stack.
+- **Colors come from the palette.** `scripts/design-lint.py` rejects hex
+  values outside the defined set.
+
+## License
+
+See `LICENSE`. Third-party notices: `solana/client/src/vendor/ZZFX-LICENSE` (ZzFX audio engine).
