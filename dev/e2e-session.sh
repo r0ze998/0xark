@@ -19,7 +19,8 @@
 #    2. program        (8CH9… executable) → NO-GO if absent
 #    3. WS relay :3500  → restart from the clone that has multiplayer deps
 #    4. client  :4200   → restart python3 http.server from solana/client
-#    5. localnet patches (8CH9 in pda.js/config.js + localhost:8899 in rpc.js) → re-sed
+#    5. localnet patches → delegates to dev/apply-localnet-patches.sh
+#       (8CH9 in pda.js/config.js + localhost:8899 in rpc.js; --revert undoes)
 #    6. chain sanity    (DuelState >=16 HARD; B energy + FPTM wins/rarity print-only, YKK-59)
 #    7. print READY + browser steps, or NO-GO + reason
 # ─────────────────────────────────────────────────────────────────────────────
@@ -34,7 +35,8 @@ FIXTURE_KEYS="$RELAY_CLONE/dev/fixture-keys"           # A.json / B.json (gitign
 
 RPC=http://localhost:8899
 PROGRAM_ID=8CH9NtjP6iKSpc8A6RgyM1iD7bdxaKgSNSLaPaQQhx85
-DEVNET_ID=5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN
+# DEVNET_ID moved to dev/apply-localnet-patches.sh — step 5 is the only thing
+# that ever needed it, and that step now delegates.
 B_WALLET=HcmnQXvyRysaZTqrNYAdputmjB9Z4XSXdYFrTTWrRTQL   # fixture wallet B (energy 0)
 A_WALLET=78eQHYx1ckTSVREbK9mZnV32Ukx257XJ4U54x5eock6N   # fixture wallet A (10 wins)
 CARD_MINT=FPTMMMYMXXYQ4L4FU1GgDLqPn8ZK4W1gf2UuGZ1cvpGk  # FPTM… fixture Common card mint
@@ -189,29 +191,17 @@ fi
 
 # ── 5. localnet patches ─────────────────────────────────────────────────────
 hdr "[5/6] localnet patches (onchain split: pda.js + rpc.js + config.js)"
-# YKK-15 split: PROGRAM_ID_STR now lives in src/onchain/pda.js, DEVNET_RPC in
-# src/onchain/rpc.js (was onchain.js, deleted). config.js still holds PROGRAM_ID.
-PDA_JS="$CLIENT_DIR/src/onchain/pda.js"
-RPC_JS="$CLIENT_DIR/src/onchain/rpc.js"
-CONFIG="$CLIENT_DIR/src/config.js"
-patched() { # all three markers present?
-  grep -q "$PROGRAM_ID" "$PDA_JS" \
-    && grep -q "http://localhost:8899" "$RPC_JS" \
-    && grep -q "$PROGRAM_ID" "$CONFIG"
-}
-if patched; then
-  ok "already applied (8CH9 in pda.js/config.js + localhost:8899 in rpc.js)"
+# The seds themselves live in dev/apply-localnet-patches.sh — one source of
+# truth, so `--revert` (needed before any commit or branch switch) can't drift
+# from what this step applies. That script also refuses to guess when a target
+# line matches neither the devnet nor the localnet value.
+PATCH_SH="$ROOT/dev/apply-localnet-patches.sh"
+if [ -x "$PATCH_SH" ]; then
+  PATCH_OUT=$("$PATCH_SH" 2>&1); PATCH_RC=$?
+  printf '%s\n' "$PATCH_OUT" | grep -v 'intentionally dirty'
+  [ "$PATCH_RC" -eq 0 ] || bad "localnet patches failed (rc=$PATCH_RC) — see output above"
 else
-  warn "wiped — reapplying the two seds (program-id + rpc)"
-  #  sed 1: devnet program id → localnet program id  (pda.js + config.js)
-  sed -i '' "s/$DEVNET_ID/$PROGRAM_ID/g" "$PDA_JS" "$CONFIG"
-  #  sed 2: devnet RPC → localhost                     (rpc.js)
-  sed -i '' 's#https://api.devnet.solana.com#http://localhost:8899#g' "$RPC_JS"
-  if patched; then
-    ok "reapplied"
-  else
-    bad "seds did not take — inspect $PDA_JS / $RPC_JS / $CONFIG by hand"
-  fi
+  bad "missing or non-executable: $PATCH_SH"
 fi
 
 # ── 6. chain sanity ─────────────────────────────────────────────────────────
