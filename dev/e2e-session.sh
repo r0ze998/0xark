@@ -79,19 +79,26 @@ wait_for(){ # wait_for <predicate-fn> <arg> <secs>
 # Copies the newest snapshot dir + .tar.zst + genesis + accounts to BACKUP_ROOT.
 # Skips if that snapshot slot is already backed up. Prunes to BACKUP_KEEP dirs.
 #
+# Verifies before reporting success: .tar.zst + genesis.bin + bank file +
+# a resolvable accounts_hardlinks symlink, and account-file count == live.
+# On any shortfall it prints ✗ INCOMPLETE and returns 1 rather than a green ✓ —
+# a backup that can't distinguish complete from partial is the failure this
+# step exists to prevent.
+#
 # Restore procedure (scratch port :9099, scratch ledger $SCRATCH):
-#   mkdir -p $SCRATCH
+#   mkdir -p $SCRATCH/accounts/snapshot
 #   cp <bdir>/genesis.bin <bdir>/genesis.tar.bz2 $SCRATCH/
 #   cp <bdir>/snapshot-<slot>-*.tar.zst $SCRATCH/
-#   cp -r <bdir>/snapshots $SCRATCH/
-#   cp -r <bdir>/accounts/snapshot/<slot> $SCRATCH/accounts/snapshot/<slot>
-#   # Fix accounts_hardlinks symlink to absolute path (NOT .tar.zst — runtime rejects it cold):
-#   rm $SCRATCH/snapshots/<slot>/accounts_hardlinks/account_path_0
-#   ln -sf $SCRATCH/accounts/snapshot/<slot> \
+#   cp -R <bdir>/snapshots $SCRATCH/
+#   cp -R <bdir>/accounts/snapshot/<slot> $SCRATCH/accounts/snapshot/<slot>
+#   # Repoint the hardlink at the SCRATCH accounts dir (it is absolute, so it
+#   # currently points back into <bdir>; leaving it would boot off the backup):
+#   ln -sfn $SCRATCH/accounts/snapshot/<slot> \
 #     $SCRATCH/snapshots/<slot>/accounts_hardlinks/account_path_0
 #   solana-test-validator --ledger $SCRATCH --rpc-port 9099 ...
+#   # (the .tar.zst alone will NOT cold-restore — the runtime rejects it)
 auto_backup() {
-  local newest slot bdir size count excess d snapdir
+  local newest slot bdir size count excess d snapdir rc
   mkdir -p "$BACKUP_ROOT"
   newest=$(ls -t "$LEDGER"/snapshot-*.tar.zst 2>/dev/null | head -1)
   if [ -z "$newest" ]; then
@@ -106,16 +113,47 @@ auto_backup() {
   fi
   bdir="$BACKUP_ROOT/snap-${slot}-$(date +%Y%m%d-%H%M%S)"
   mkdir -p "$bdir"
-  cp "$newest"                   "$bdir/"
-  [ -f "$LEDGER/genesis.bin"      ] && cp "$LEDGER/genesis.bin"      "$bdir/"
-  [ -f "$LEDGER/genesis.tar.bz2"  ] && cp "$LEDGER/genesis.tar.bz2"  "$bdir/"
+  rc=0
+  cp "$newest"                   "$bdir/" || rc=1
+  [ -f "$LEDGER/genesis.bin"      ] && { cp "$LEDGER/genesis.bin"     "$bdir/" || rc=1; }
+  [ -f "$LEDGER/genesis.tar.bz2"  ] && { cp "$LEDGER/genesis.tar.bz2" "$bdir/" || rc=1; }
   # snapshots/ dir contains the bank serialization — required for restore
-  # (.tar.zst alone is rejected by the Agave runtime on cold restore)
+  # (.tar.zst alone is rejected by the Agave runtime on cold restore).
+  #
+  # The one expected cp failure: snapshots/<slot>/accounts_hardlinks/account_path_0
+  # is a symlink to "test-ledger/accounts/snapshot/<slot>" — relative to the REPO
+  # ROOT, not to the link's own directory, so it dangles from where cp reads it.
+  # Swallow that one and recreate it absolutely below, which also makes the
+  # backup self-contained (no hand-fix needed at restore time).
   snapdir="$LEDGER/snapshots/$slot"
-  [ -d "$snapdir" ] && cp -r "$LEDGER/snapshots" "$bdir/"
-  [ -d "$LEDGER/accounts"         ] && cp -r "$LEDGER/accounts"       "$bdir/"
+  [ -d "$snapdir" ] && { cp -R "$LEDGER/snapshots" "$bdir/" 2>/dev/null || true; }
+  [ -d "$LEDGER/accounts"         ] && { cp -R "$LEDGER/accounts" "$bdir/" || rc=1; }
+  if [ -d "$bdir/accounts/snapshot/$slot" ] && [ -d "$bdir/snapshots/$slot" ]; then
+    mkdir -p "$bdir/snapshots/$slot/accounts_hardlinks"
+    ln -sfn "$bdir/accounts/snapshot/$slot" \
+            "$bdir/snapshots/$slot/accounts_hardlinks/account_path_0" || rc=1
+  fi
+
+  # ── verify before claiming success ────────────────────────────────────────
+  # A backup that cannot tell complete from partial is the failure this whole
+  # step exists to prevent. Check the four artifacts a cold restore needs, and
+  # that the account file count matches the live ledger.
+  local live_n back_n
+  [ -f "$bdir/$(basename "$newest")" ]                                  || { bad "auto-backup: .tar.zst missing";        rc=1; }
+  [ -f "$bdir/genesis.bin" ]                                            || { bad "auto-backup: genesis.bin missing";     rc=1; }
+  [ -f "$bdir/snapshots/$slot/$slot" ]                                  || { bad "auto-backup: bank file missing";       rc=1; }
+  [ -e "$bdir/snapshots/$slot/accounts_hardlinks/account_path_0" ]      || { bad "auto-backup: hardlink unresolvable";   rc=1; }
+  live_n=$(ls "$LEDGER/accounts/snapshot/$slot" 2>/dev/null | wc -l | tr -d ' ')
+  back_n=$(ls "$bdir/accounts/snapshot/$slot"   2>/dev/null | wc -l | tr -d ' ')
+  [ "$live_n" = "$back_n" ] || { bad "auto-backup: account files $back_n/$live_n — PARTIAL"; rc=1; }
+
   size=$(du -sh "$bdir" | cut -f1)
-  ok "auto-backup: slot $slot → $bdir ($size)"
+  if [ "$rc" -ne 0 ]; then
+    bad "auto-backup: slot $slot INCOMPLETE at $bdir — do NOT rely on it"
+    printf '  \033[31m  a hard-kill is not survivable until this is fixed\033[0m\n'
+    return 1
+  fi
+  ok "auto-backup: slot $slot → $bdir ($size, ${back_n} account files, restore-ready)"
   # Prune: keep the most recent BACKUP_KEEP entries, delete the rest
   count=$(ls -d "$BACKUP_ROOT"/snap-*/ 2>/dev/null | wc -l | tr -d ' ')
   if [ "$count" -gt "$BACKUP_KEEP" ]; then
