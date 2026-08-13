@@ -23,3 +23,9 @@ TASKS.md
 GDD-v0.2.md
 GDD-v0.3.md
 logs/
+
+# Local validator ledgers. /test-ledger holds the parked F1 manual-e2e
+# fixtures (17 DuelStates, fixture wallet vaults) — it is irreplaceable
+# evidence, not build output. Ignoring it is not a backup, but it does stop
+# a plain `git clean -fd` at the repo root from deleting it.
+/test-ledger/
