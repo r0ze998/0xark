@@ -22,7 +22,9 @@
 #    5. localnet patches → delegates to dev/apply-localnet-patches.sh
 #       (8CH9 in pda.js/config.js + localhost:8899 in rpc.js; --revert undoes)
 #    6. chain sanity    (DuelState >=16 HARD; B energy + FPTM wins/rarity print-only, YKK-59)
-#    7. print READY + browser steps, or NO-GO + reason
+#    7. auto-backup     (runs BEFORE the verdict so a shortfall annotates the
+#                        banner; warning only — never blocks GO)
+#    then: print READY + browser steps, or NO-GO + reason
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 
@@ -66,6 +68,10 @@ ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
 warn() { printf '  \033[33m…\033[0m %s\n' "$1"; }
 bad()  { printf '  \033[31m✗\033[0m %s\n' "$1"; NOGO+=("$1"); }
 hdr()  { printf '\n\033[1m%s\033[0m\n' "$1"; }
+# bfail — a red ✗ that does NOT enter NOGO. Used only by auto_backup: the env
+# being usable and the backup being complete are separate facts, so a backup
+# shortfall annotates the verdict (see BACKUP_WARN) instead of blocking it.
+bfail(){ printf '  \033[31m✗\033[0m %s\n' "$1"; }
 
 port_up() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 rpc_up()  { solana cluster-version -u localhost >/dev/null 2>&1; }
@@ -139,17 +145,17 @@ auto_backup() {
   # step exists to prevent. Check the four artifacts a cold restore needs, and
   # that the account file count matches the live ledger.
   local live_n back_n
-  [ -f "$bdir/$(basename "$newest")" ]                                  || { bad "auto-backup: .tar.zst missing";        rc=1; }
-  [ -f "$bdir/genesis.bin" ]                                            || { bad "auto-backup: genesis.bin missing";     rc=1; }
-  [ -f "$bdir/snapshots/$slot/$slot" ]                                  || { bad "auto-backup: bank file missing";       rc=1; }
-  [ -e "$bdir/snapshots/$slot/accounts_hardlinks/account_path_0" ]      || { bad "auto-backup: hardlink unresolvable";   rc=1; }
+  [ -f "$bdir/$(basename "$newest")" ]                                  || { bfail "auto-backup: .tar.zst missing";        rc=1; }
+  [ -f "$bdir/genesis.bin" ]                                            || { bfail "auto-backup: genesis.bin missing";     rc=1; }
+  [ -f "$bdir/snapshots/$slot/$slot" ]                                  || { bfail "auto-backup: bank file missing";       rc=1; }
+  [ -e "$bdir/snapshots/$slot/accounts_hardlinks/account_path_0" ]      || { bfail "auto-backup: hardlink unresolvable";   rc=1; }
   live_n=$(ls "$LEDGER/accounts/snapshot/$slot" 2>/dev/null | wc -l | tr -d ' ')
   back_n=$(ls "$bdir/accounts/snapshot/$slot"   2>/dev/null | wc -l | tr -d ' ')
-  [ "$live_n" = "$back_n" ] || { bad "auto-backup: account files $back_n/$live_n — PARTIAL"; rc=1; }
+  [ "$live_n" = "$back_n" ] || { bfail "auto-backup: account files $back_n/$live_n — PARTIAL"; rc=1; }
 
-  size=$(du -sh "$bdir" | cut -f1)
+  size=$(du -sh "$bdir" 2>/dev/null | cut -f1)   # only used in the ✓ line
   if [ "$rc" -ne 0 ]; then
-    bad "auto-backup: slot $slot INCOMPLETE at $bdir — do NOT rely on it"
+    bfail "auto-backup: slot $slot INCOMPLETE at $bdir — do NOT rely on it"
     printf '  \033[31m  a hard-kill is not survivable until this is fixed\033[0m\n'
     return 1
   fi
@@ -167,7 +173,7 @@ echo    "  0xARK F1 e2e — session revive     $(date '+%Y-%m-%d %H:%M:%S')"
 echo    "════════════════════════════════════════════════════════════"
 
 # ── 1. validator ────────────────────────────────────────────────────────────
-hdr "[1/6] validator (localhost:$PORT_VALIDATOR)"
+hdr "[1/7] validator (localhost:$PORT_VALIDATOR)"
 if rpc_up; then
   ok "already up — cluster-version $(solana cluster-version -u localhost 2>/dev/null)"
 else
@@ -185,7 +191,7 @@ else
 fi
 
 # ── 2. program executable ───────────────────────────────────────────────────
-hdr "[2/6] program $PROGRAM_ID"
+hdr "[2/7] program $PROGRAM_ID"
 if rpc_up; then
   SHOW=$(solana program show "$PROGRAM_ID" -u localhost 2>&1)
   if echo "$SHOW" | grep -q "Program Id: $PROGRAM_ID"; then
@@ -198,7 +204,7 @@ else
 fi
 
 # ── 3. WS relay :3500 ───────────────────────────────────────────────────────
-hdr "[3/6] WS relay (localhost:$PORT_RELAY)"
+hdr "[3/7] WS relay (localhost:$PORT_RELAY)"
 if port_up "$PORT_RELAY"; then
   ok "already up"
 elif [ ! -d "$RELAY_CLONE/multiplayer/node_modules" ]; then
@@ -214,7 +220,7 @@ else
 fi
 
 # ── 4. client :4200 ─────────────────────────────────────────────────────────
-hdr "[4/6] client (localhost:$PORT_CLIENT)"
+hdr "[4/7] client (localhost:$PORT_CLIENT)"
 if port_up "$PORT_CLIENT"; then
   ok "already up"
 else
@@ -228,7 +234,7 @@ else
 fi
 
 # ── 5. localnet patches ─────────────────────────────────────────────────────
-hdr "[5/6] localnet patches (onchain split: pda.js + rpc.js + config.js)"
+hdr "[5/7] localnet patches (onchain split: pda.js + rpc.js + config.js)"
 # The seds themselves live in dev/apply-localnet-patches.sh — one source of
 # truth, so `--revert` (needed before any commit or branch switch) can't drift
 # from what this step applies. That script also refuses to guess when a target
@@ -243,7 +249,7 @@ else
 fi
 
 # ── 6. chain sanity ─────────────────────────────────────────────────────────
-hdr "[6/6] chain sanity (fixtures intact?)"
+hdr "[6/7] chain sanity (fixtures intact?)"
 if rpc_up; then
   SANITY=$(cd "$ROOT" && node --input-type=module <<'NODE' 2>/tmp/e2e-sanity.err
 import web3 from '@solana/web3.js';
@@ -303,14 +309,27 @@ else
   bad "validator down — cannot read chain sanity"
 fi
 
-# ── 7. verdict ──────────────────────────────────────────────────────────────
+# ── 7. auto-backup ──────────────────────────────────────────────────────────
+# Runs BEFORE the verdict so a shortfall can annotate the banner. The banner is
+# the one line that actually gets read; a red ✗ printed underneath a green
+# ● GO gets skimmed past, and a silently partial backup is the exact failure
+# this step exists to catch.
+#
+# Annotation, not a blocker: the env being usable and the backup being complete
+# are separate facts (auto_backup reports via bfail, which stays out of NOGO).
+# Skipped entirely when the env is already NO-GO — backing up a broken ledger
+# is not useful, and a second red line would only bury the real reason.
+BACKUP_WARN=""
+if [ ${#NOGO[@]} -eq 0 ]; then
+  hdr "[7/7] auto-backup (snapshot → $BACKUP_ROOT)"
+  auto_backup || BACKUP_WARN=$'  \033[1;33m(⚠ backup incomplete — see above)\033[0m'
+fi
+
+# ── verdict ─────────────────────────────────────────────────────────────────
 echo    ""
 echo    "════════════════════════════════════════════════════════════"
 if [ ${#NOGO[@]} -eq 0 ]; then
-  printf '  \033[1;32m● GO — READY\033[0m\n'
-  echo  "════════════════════════════════════════════════════════════"
-  hdr "[8/8] auto-backup (snapshot → $BACKUP_ROOT)"
-  auto_backup
+  printf '  \033[1;32m● GO — READY\033[0m%s\n' "$BACKUP_WARN"
   echo  "════════════════════════════════════════════════════════════"
   cat <<STEPS
 
