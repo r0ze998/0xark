@@ -1,8 +1,10 @@
 // preparation.js — Screen 2: Preparation Phase (3-min timer, 5-slot field, ZK commit)
 // mount(container, detail) / unmount(container)
 
-import { ALL_CARD_IDS } from '../lib/cards.js';
-import { CardHTML, CardFrameHTML, injectCardCSS, ACTION_LABELS, CARD_NAMES } from './common/Card.js';
+import { practiceOpponent } from '../lib/practice-mode.js';
+import { summarizeHand } from '../lib/hand-summary.js';
+import { ALL_CARD_IDS, getCard } from '../lib/cards.js';
+import { CardFrameHTML, injectCardCSS, ACTION_LABELS, CARD_NAMES, FACTION_NAMES } from './common/Card.js';
 import { ActionTypeSelectorHTML, injectActionTypeSelectorCSS, ACTION_TYPES } from './common/ActionTypeSelector.js';
 import { placeInHand, completeHand, snapshotHand } from '../lib/preparation-hand.js';
 import { startTimer } from './common/Timer.js';
@@ -53,7 +55,10 @@ export function mount(container, detail = {}) {
   refreshVault(container);
   updateConfirm(container);
   refreshAction(container);
-  resumeTimer(container);
+  if (window.oxarkPreview) {
+    container.querySelector('#prep-timer').textContent = '∞';
+    container.querySelector('#prep-timer').setAttribute('aria-label', 'Untimed practice');
+  } else resumeTimer(container);
 
   // Energy HUD (display only here; the spend + gate live at commit / lobby).
   const pubkey = s.playerPubkey ?? window.oxarkWallet?.getPublicKey?.()?.toString();
@@ -111,8 +116,9 @@ function buildHTML() {
 
     <!-- Field (5 slots) -->
     <section class="prep-field-panel" aria-label="Your field">
-      <div class="prep-field-heading"><div class="prep-field-title">BUILD YOUR HAND</div><span class="chip" id="prep-count">0 / 5</span></div>
+      <div class="prep-field-heading"><div class="prep-field-title">Build your hand</div><span class="chip" id="prep-count">0 / 5</span></div>
       <div class="prep-next" id="prep-next" role="status" aria-live="polite">Choose a card from your vault</div>
+      <div class="prep-hand-summary" id="prep-hand-summary" aria-live="polite"></div>
       <div class="prep-slots" id="prep-slots" role="group" aria-label="Your five card slots">
         ${renderSlots()}
       </div>
@@ -126,10 +132,10 @@ function buildHTML() {
 
       <!-- Confirm button -->
       <button class="gba-btn gba-btn--primary prep-confirm-btn" id="prep-confirm" disabled>
-        ${pxIcon('check')} CONFIRM &amp; COMMIT
+        ${pxIcon('check')} SEAL YOUR HAND
       </button>
       <div class="prep-hint" id="prep-hint" role="status" aria-live="polite">Fill all 5 slots to confirm</div>
-      ${(getState().round ?? 1) === 1
+      ${!window.oxarkPreview && (getState().round ?? 1) === 1
         ? `<div class="prep-energy-note label-dim">consumes ${pxIcon('bolt', { size: 12 })}1 (charged once per duel)</div>`
         : ''}
     </section>
@@ -137,13 +143,14 @@ function buildHTML() {
     <!-- Vault grid (owned cards) -->
     <section class="prep-vault-panel" aria-label="Vault — select cards">
       <div class="prep-vault-header">
-        <span class="prep-vault-title">VAULT <span class="label-dim">(${ownedCards.length})</span></span>
-        <span class="label-dim" style="font-size:13px;">Choose 5 · arrows to browse · Enter to add</span>
+        <span class="prep-vault-title">COLLECTION <span class="label-dim">(${ownedCards.length})</span></span>
+        <span class="label-dim" style="font-size:13px;">Choose 5 · arrows to browse · Enter to add</span>${window.oxarkPreview ? '<button id="prep-sample" class="gba-btn gba-btn--ghost">Deal me five</button>' : ''}
       </div>
+      <div class="prep-filter-row"><label for="prep-faction">Faction</label><select id="prep-faction"><option value="">All factions</option>${FACTION_NAMES.map((name, i) => `<option value="${i}">${name}</option>`).join('')}</select><span id="prep-filter-count" role="status">${ownedCards.length} cards</span></div>
       <div class="prep-vault-grid" id="prep-vault-grid" role="group" aria-label="Owned cards">
         ${ownedCards.map(id => CardFrameHTML({ id, owned: true })).join('')}
       </div>
-      <div class="prep-timeout-note label-dim">At 0:00, empty slots fill and your hand commits. Selected cards and actions stay.</div>
+      <div class="prep-timeout-note label-dim">${window.oxarkPreview ? 'UNTIMED PRACTICE · Select a card above to change its action. Seal when you are ready.' : 'At 0:00, empty slots fill and your hand commits. Selected cards and actions stay.'}</div>
     </section>
 
   </div>
@@ -159,7 +166,7 @@ function renderSlots() {
     return `<div class="prep-slot ${slot ? 'prep-slot--filled' : 'prep-slot--empty'}${active ? ' prep-slot--active' : ''}${next ? ' prep-slot--next' : ''}"
       data-slot="${i}" role="button" tabindex="${_committing ? -1 : 0}" aria-pressed="${active}" aria-disabled="${_committing}" aria-label="${label}">
       <span class="prep-slot-index">${i + 1}</span>
-      ${slot ? `${CardHTML({ id: slot.cardId })}<div class="prep-slot-action">${ACTION_LABELS[slot.actionType] ?? '—'}</div>` : `<span class="prep-slot-num">+</span><span class="prep-slot-empty-label">${next ? 'NEXT' : 'EMPTY'}</span>`}
+      ${slot ? `${CardFrameHTML({ id: slot.cardId })}<div class="prep-slot-action">${ACTION_LABELS[slot.actionType] ?? '—'}</div>` : `<span class="prep-slot-num">+</span><span class="prep-slot-empty-label">${next ? 'NEXT' : 'EMPTY'}</span>`}
     </div>`;
   }).join('');
 }
@@ -185,6 +192,15 @@ function bindEvents(container) {
     }
   });
   const vault = container.querySelector('#prep-vault-grid');
+  container.querySelector('#prep-faction').addEventListener('change', event => {
+    const faction = event.target.value;
+    let count = 0;
+    vault.querySelectorAll('[data-id]').forEach(card => {
+      card.hidden = faction !== '' && getCard(Number(card.dataset.id)).faction !== Number(faction);
+      if (!card.hidden) count++;
+    });
+    container.querySelector('#prep-filter-count').textContent = `${count} cards`;
+  });
   vault.addEventListener('click', e => {
     const el = e.target.closest('[data-id]');
     if (el && !_committing) placeCard(container, Number(el.dataset.id));
@@ -193,7 +209,7 @@ function bindEvents(container) {
     const el = e.target.closest('[data-id]');
     if (!el || _committing) return;
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); placeCard(container, Number(el.dataset.id)); return; }
-    const cards = [...vault.querySelectorAll('[data-id]')];
+    const cards = [...vault.querySelectorAll('[data-id]:not([hidden])')];
     const idx = cards.indexOf(el);
     const columns = cards.filter(card => card.offsetTop === cards[0]?.offsetTop).length || 1;
     const offset = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns }[e.key];
@@ -206,6 +222,12 @@ function bindEvents(container) {
   });
   container.querySelector('#prep-remove').addEventListener('click', () => {
     if (_activeSlot !== null) removeCard(container, _activeSlot);
+  });
+  container.querySelector('#prep-sample')?.addEventListener('click', () => {
+    if (_committing) return;
+    _field = completeHand(_field, [5, 18, 30, 43, 60, ..._vault].filter(id => _vault.includes(id)));
+    _activeSlot = 0; _targetSlot = null;
+    refreshSlots(container); refreshVault(container); refreshAction(container); updateConfirm(container);
   });
   container.querySelector('#prep-confirm').addEventListener('click', () => onConfirm(container));
 }
@@ -292,6 +314,10 @@ function refreshVault(container) {
 }
 
 function updateConfirm(container) {
+  const summary = summarizeHand(_field);
+  const host = container.querySelector('#prep-hand-summary');
+  host.innerHTML = `<span><b>${summary.bp}</b> base BP</span><span><b>${summary.hp}</b> base HP</span><span class="prep-synergy">${summary.synergyFactions.length ? summary.synergyFactions.map(f => FACTION_NAMES[f]).join(' / ') + ' synergy ready' : '3 of one faction unlocks synergy'}</span>`;
+  container.querySelector('#prep-faction').disabled = _committing;
   const count = _field.filter(Boolean).length;
   const filled = count === 5;
   container.querySelector('#prep-confirm').disabled = _committing || !filled;
@@ -342,6 +368,16 @@ async function onConfirm(container) {
   refreshAction(container);
   updateConfirm(container);
   if (btn) { btn.disabled = true; btn.textContent = 'SEALING HAND…'; }
+
+  if (window.oxarkPreview) {
+    if (hint) hint.textContent = 'Sealing your practice hand. No proof or transaction is submitted.';
+    await new Promise(resolve => setTimeout(resolve, 450));
+    if (mountId !== _mountId) return;
+    setState({ fieldCards: hand.map(card => ({ ...card })), opponentField: practiceOpponent(duel.round),
+      commitment: 'practice-only', hasPeeked: false, phase: 'interruption', duelId: null, matchId: null });
+    document.dispatchEvent(new CustomEvent('nav:interruption'));
+    return;
+  }
 
   try {
     const cardIds = hand.map(s => s.cardId);
@@ -460,7 +496,7 @@ async function onConfirm(container) {
       : /InsufficientEnergy/i.test(msg)
       ? 'Out of energy — refill from the topbar to enter this duel'
       : 'Error: ' + msg;
-    if (btn)  { btn.disabled = false; btn.textContent = 'CONFIRM & COMMIT'; }
+    if (btn)  { btn.disabled = false; btn.textContent = 'SEAL YOUR HAND'; }
     if (hint) hint.textContent = `${userMsg}. Your hand is preserved — retry when ready.`;
   }
 }

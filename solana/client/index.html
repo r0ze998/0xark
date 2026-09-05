@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>0xARK — Card Battle on Solana</title>
+  <title>0xARK — The Drowned Archive</title>
 
-  <!-- VT323 pixel font -->
+  <!-- Display typography and high-legibility tactical UI. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Sprite Seas Design System — tokens are the single source of palette/type
        (DESIGN.md v1.0 / Appendix A). The :root palette that used to live here is
@@ -146,92 +146,22 @@
     .clan-monk      { color: var(--clan-monk); }
     .clan-engineer  { color: var(--clan-engineer); }
   </style>
+  <link rel="stylesheet" href="src/style/archive.css">
 </head>
 <body>
   <div id="stage-viewport">
     <div id="app">
       <div id="app-loading">
         <div class="load-logo">0xARK</div>
-        <div class="load-sub">CARD BATTLE ON SOLANA</div>
+        <div class="load-sub">THE DROWNED ARCHIVE</div>
         <div class="load-bar-wrap"><div class="load-bar"></div></div>
       </div>
     </div>
   </div>
   <div id="rotate-overlay" role="alert">ROTATE DEVICE ⟳<br><span style="font-size:var(--fs-ui,16px);color:var(--text-dim);">0xARK is landscape-first</span></div>
 
-  <!-- Solana web3.js (required by onchain.js — sets window.solanaWeb3) -->
-  <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
-
-  <!-- On-chain module (YKK-15 split: sets window.oxarkOnchain via compat shim).
-       ES module — runs after the web3 CDN classic script, before app.js's module
-       graph, so window.oxarkOnchain is populated before any screen consumes it. -->
-  <script type="module" src="src/onchain/index.js"></script>
-
-  <!-- x402 micropayment client (sets window.x402) -->
-  <script src="src/02-x402.js"></script>
-
-  <!-- ZK proof library (hand_commitment.circom Groth16) -->
-  <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
-
-  <!-- Server config — override WS URL for production (auto-detected when unset) -->
-  <!-- <script>window.OXARK_WS_URL = "wss://oxark-multiplayer.fly.dev";</script> -->
-
-  <!-- Wallet adapter — bridges Phantom / Solflare to window.oxarkWallet -->
-  <script>
-    (function detectWallet() {
-      var p  = window.phantom?.solana;
-      var sf = window.solflare;
-      var raw = (p?.isPhantom) ? p : (sf?.isSolflare) ? sf : null;
-      if (!raw) { window.oxarkWallet = null; return; }
-      window.oxarkWallet = {
-        connect:      function() { return raw.connect(); },
-        disconnect:   function() { return raw.disconnect?.(); },
-        getPublicKey: function() { return raw.publicKey ?? null; },
-        isConnected:  function() { return !!raw.isConnected; },
-      };
-    })();
-
-    // If Phantom injects after this script runs, re-detect on first connect attempt.
-    // main-screen.js calls window.oxarkWallet?.connect — the getter below ensures
-    // we always read the freshest wallet state.
-    Object.defineProperty(window, 'oxarkWallet', {
-      get: function() {
-        if (this._oxarkWallet) return this._oxarkWallet;
-        var p  = window.phantom?.solana;
-        var sf = window.solflare;
-        var raw = (p?.isPhantom) ? p : (sf?.isSolflare) ? sf : null;
-        if (!raw) return null;
-        this._oxarkWallet = {
-          connect:      function() { return raw.connect(); },
-          disconnect:   function() { return raw.disconnect?.(); },
-          getPublicKey: function() { return raw.publicKey ?? null; },
-          isConnected:  function() { return !!raw.isConnected; },
-        };
-        return this._oxarkWallet;
-      },
-      set: function(v) { this._oxarkWallet = v; },
-      configurable: true,
-    });
-  </script>
-
-  <!-- ZK proof module (sets window.zkCardCommit — required for Groth16 proving) -->
-  <script src="src/03-zk-prove.js"></script>
-
-  <!-- Battle UI entry point -->
-  <script type="module">
-    // Hide loading once app.js executes
-    import('./app.js').then(() => {
-      const loading = document.getElementById('app-loading');
-      if (loading) loading.style.display = 'none';
-    }).catch(err => {
-      const loading = document.getElementById('app-loading');
-      if (loading) loading.innerHTML = `
-        <div class="load-logo" style="color:var(--accent-red)">ERROR</div>
-        <div class="load-sub">${err.message}</div>
-      `;
-      console.error(err);
-    });
-  </script>
+  <!-- Runtime selects an isolated practice environment before importing the game. -->
+  <script type="module" src="src/runtime.js"></script>
 
   <!-- Stage scaler — fits the 1024×576 logical box to any display (F0-2) -->
   <script type="module" src="src/stage-scaler.js"></script>

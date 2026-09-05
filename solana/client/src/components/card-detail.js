@@ -11,12 +11,14 @@ import { evaluatePromotion, RARITY_LABEL } from '../lib/promotion.js';
 import { showToast, txLink } from '../lib/ui-shared.js';
 import { getState, setState } from '../state/battle-state.js';
 
+let _previousFocus = null;
 let _onBurn    = null;
 let _onPromote = null;
 let _promoteState = null; // { mint, copies, rarity, allMet, conditions, costSol, nextTier, maxTier }
 
 export const CardDetailModal = {
   show(container, cardId, { onBurn, onPromote } = {}) {
+    _previousFocus = document.activeElement;
     injectStyle();
     injectCardCSS();
     _onBurn    = onBurn    ?? null;
@@ -27,6 +29,7 @@ export const CardDetailModal = {
   hide(container) {
     const el = container.querySelector('#cd-modal-overlay');
     if (el) el.remove();
+    if (_previousFocus?.isConnected) _previousFocus.focus();
   },
 };
 
@@ -55,10 +58,10 @@ function _render(container, cardId) {
     : '';
 
   const burnBtn = burnable
-    ? `<button class="gba-btn gba-btn--danger cd-burn-btn" id="cd-burn">${pxIcon('burn')} BURN</button>`
+    ? `<button class="gba-btn gba-btn--danger cd-burn-btn" id="cd-burn" ${window.oxarkPreview ? 'disabled title="Burning is disabled in practice"' : ''}>${pxIcon('burn')} BURN</button>`
     : '';
 
-  const overlay = document.createElement('div');
+  const overlay = document.createElement('dialog');
   overlay.id        = 'cd-modal-overlay';
   overlay.className = 'cd-overlay';
   overlay.setAttribute('role', 'dialog');
@@ -90,12 +93,14 @@ function _render(container, cardId) {
       <div class="cd-actions">
         ${burnBtn}
       </div>
-      <div class="cd-feedback label-dim" id="cd-feedback"></div>
+      <div class="cd-feedback label-dim" id="cd-feedback">${window.oxarkPreview ? 'Sample collection · Burning and promotion are disabled in practice.' : ''}</div>
     </div>
   </div>
 </div>`;
 
   container.appendChild(overlay);
+  overlay.addEventListener('cancel', event => { event.preventDefault(); CardDetailModal.hide(container); });
+  overlay.showModal();
   _bindEvents(container, cardId, card);
   if (owned) _loadPromote(container, cardId, card);
 }

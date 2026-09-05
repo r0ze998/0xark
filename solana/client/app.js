@@ -15,6 +15,10 @@ import { injectPxIconSheet, pxIcon } from './src/lib/px-icons.js';
 import { showToast as _showToast, showTxToast, setDemoMode } from './src/lib/ui-shared.js';
 import { CardFrameHTML, injectCardCSS } from './src/components/common/Card.js';
 
+import { mountArchiveShell, setArchiveScreen } from './src/lib/archive-shell.js';
+import { isPractice, practicePlayer, practiceOpponent, PRACTICE_PLAYER } from './src/lib/practice-mode.js';
+
+const _devView = isPractice ? new URLSearchParams(location.search).get('devview') || 'home' : null;
 const SCREENS = {
   home:          { mount: mountHome,   unmount: unmountHome   },
   shop:          { mount: mountShop,   unmount: unmountShop   },
@@ -36,6 +40,7 @@ let _homeGeneration = 0;
 function navigate(name, detail = {}) {
   const app = document.getElementById('app');
   if (!app) return;
+  if (!isPractice && (!_playerState || !_isWalletConnected())) { showWalletConnectScreen(); return; }
 
   if (_currentUnmount) {
     _currentUnmount(app);
@@ -45,6 +50,7 @@ function navigate(name, detail = {}) {
   const screen = SCREENS[name];
   if (!screen) { console.warn('Unknown screen:', name); return; }
 
+  setArchiveScreen(name);
   _currentScreen  = name;
   _currentUnmount = screen.unmount;
   screen.mount(app, {
@@ -180,6 +186,7 @@ function showRegisterScreen() {
     _currentScreen  = null;
   }
 
+  setArchiveScreen('register');
   _injectRegisterCSS();
 
   const app = document.getElementById('app');
@@ -212,6 +219,7 @@ function showRegisterScreen() {
         <button id="reg-btn" class="reg-primary-btn">JOIN WAITLIST</button>
         <div id="reg-error" class="reg-error" style="display:none;"></div>
         <p class="reg-note">15% → operations / 85% → prize pool</p>
+        <a class="archive-practice-link" href="?devview=home">Explore the game first — free practice ↗</a>
       </div>
 
       <div class="reg-wallet-info">
@@ -235,7 +243,7 @@ function showRegisterScreen() {
       const result = await window.oxarkOnchain.registerWaitlist(
         OPS_TREASURY_PUBKEY
       );
-      showTxToast('Registration confirmed', result.signature);
+      showTxToast('Registration confirmed', typeof result === 'string' ? result : result.signature);
       await initApp();
     } catch (err) {
       btn.disabled = false;
@@ -310,6 +318,8 @@ function _injectRegisterCSS() {
 }
 
 function showWalletConnectScreen() {
+  _playerState = null;
+  _gameWorld = null;
   ++_loadGeneration;
   ++_homeGeneration;
   if (_currentUnmount) {
@@ -319,6 +329,7 @@ function showWalletConnectScreen() {
     _currentScreen  = null;
   }
 
+  setArchiveScreen('welcome');
   _injectWalletCSS();
   injectCardCSS();
 
@@ -347,6 +358,7 @@ function showWalletConnectScreen() {
           <h2>Your cards.<br>Your next move.</h2>
           <p class="wg-prompt">Connect your wallet to load your collection.</p>
           <button id="wg-connect-btn" class="wg-btn-primary">CONNECT WALLET</button>
+          <a class="archive-practice-link" href="?devview=home">Play without a wallet — practice ↗</a>
           <p class="wg-connection-note">Connecting does not spend SOL.<br>Review paid actions before signing.</p>
           <div id="wg-error" class="wg-error selectable" role="alert" style="display:none;"></div>
           <div class="wg-help">
@@ -490,68 +502,35 @@ function boot() {
   initApp();
 }
 
-// ── DEV screen viewer (F1-0 rider) — guarded, one self-contained block ────────
-// Eyeball any screen state without a wallet:  /?devview=<name>  (index: =menu).
-// Wallet + on-chain are stubbed and state is mock, so this is dev-only; deleting
-// this if/else (and restoring `boot();`) removes it. r0ze uses it to review each
-// F1 screen state (bridge, INTEL, promote gates) as they land in PR-E/F/G.
-const _devView = new URLSearchParams(location.search).get('devview');
-if (_devView) {
-  const MOCK_PK = 'DEMoV1ewer1111111111111111111111111111111';
-  window.oxarkWallet = {
-    isConnected: () => true, getPublicKey: () => MOCK_PK,
-    getPublicKeyString: () => MOCK_PK, connect: async () => MOCK_PK, disconnect: async () => {},
-  };
-  window.oxarkOnchain = window.oxarkOnchain || {};
-  const _vault = getDemoVault();
-  const _field = [1, 12, 24, 35, 50].map((cardId, i) => ({ cardId, actionType: i }));
-  const _opp   = [7, 20, 29, 41, 60].map((cardId, i) => ({ cardId, actionType: i }));
-  const _gw = { game_start_timestamp: Math.floor(Date.now() / 1000) - 3 * 86400 };
-  const _ps = { vault_count: _vault.length, vault: _vault, energy: 4, energyLastTs: Math.floor(Date.now() / 1000) };
-  _playerState = _ps;
-  _gameWorld = _gw;
-  setDemoMode('Explicit development screen viewer');
+// Explicit fixtures never touch production session storage, adapters or payment clients.
+mountArchiveShell(isPractice);
+if (isPractice) {
+  _playerState = practicePlayer();
+  _gameWorld = { game_start_timestamp: Math.floor(Date.now() / 1000) - 3 * 86400 };
+  const field = [5, 18, 30, 43, 60].map((cardId, i) => ({ cardId, actionType: i }));
   setState({
-    phase: 'main', playerPubkey: MOCK_PK, vault: _vault, round: 1,
-    fieldCards: _field, opponentField: _opp, hasPeeked: true,
-    isWinner: true, lootCard: 29, battleResult: { lootCard: 29, isWinner: true, winner: 'p1' },
+    phase: 'main', playerPubkey: PRACTICE_PLAYER, vault: _playerState.vault,
+    isHost: true, duelP1IsMe: true, duelId: null, matchId: null, round: 1,
+    fieldCards: field, opponentField: practiceOpponent(), hasPeeked: false,
+    isWinner: true, p1RoundWins: 3, p2RoundWins: 1,
+    battleResult: { winner: 'p1', log: [] },
   });
-  const _app = document.getElementById('app');
-  document.getElementById('app-loading')?.remove();
-  const _views = {
-    home:         () => mountHome(_app, { playerState: _ps, gameWorld: _gw, pubkey: MOCK_PK }),
-    main:         () => mountMain(_app, { ...getState(), mode: 'vault', vault: _vault, pubkey: MOCK_PK }),
-    shop:         () => mountShop(_app, { gameWorld: _gw }),
-    trade:        () => mountTrade(_app, { playerState: _ps }),
-    preparation:  () => mountPrep(_app, { ...getState(), vault: _vault }),
-    interruption: () => mountIntr(_app, { ...getState() }),
-    reveal:       () => mountReveal(_app, { ...getState() }),
-    loot:         () => mountLoot(_app, { ...getState() }),
-    'card-detail': async () => {
-      mountMain(_app, { ...getState(), mode: 'vault', vault: _vault, pubkey: MOCK_PK });
-      const { CardDetailModal } = await import('./src/components/card-detail.js');
-      CardDetailModal.show(_app.querySelector('.ms-root') || _app, 12, {});
-    },
-  };
-  const _names = ['home','main','shop','trade','preparation','interruption','reveal','loot','card-detail'];
+  if (!['loot', 'loss'].includes(_devView)) setState({ p1RoundWins: 0, p2RoundWins: 0 });
   if (_devView === 'menu') {
-    _app.innerHTML = `<div style="padding:24px;font-family:var(--font-main);color:var(--text-cream);height:100%;overflow:auto;">
-      <div style="font-size:var(--fs-title);color:var(--accent-gold);letter-spacing:var(--ls-wide);">DEV SCREEN VIEWER</div>
-      <div style="font-size:var(--fs-ui);color:var(--text-dim);margin:8px 0 16px;">dev-only · wallet bypassed · mock state</div>
-      ${_names.map(n => `<div style="margin:6px 0;"><a class="tx-link" href="?devview=${n}" style="font-size:var(--fs-body);">?devview=${n}</a></div>`).join('')}
-    </div>`;
-  } else if (_views[_devView]) {
-    Promise.resolve().then(_views[_devView]).catch(e => {
-      _app.innerHTML = `<pre style="color:var(--accent-red);padding:24px;white-space:pre-wrap;">devview error "${_devView}":\n${e?.stack ?? e}</pre>`;
+    setArchiveScreen('menu');
+    const views = [['home','The Archive','Your next duel starts here.'],['main','Your collection','Explore six factions and inspect each card.'],['preparation','Build your hand','Select five cards. Choose their actions.'],['interruption','The sealed table','Study your opponent before the reveal.'],['reveal','The confrontation','See actions resolve on the battlefield.'],['loot','Victory','The duel recap and return to your collection.'],['loss','Defeat','A different ending. A chance to rethink your hand.'],['shop','Sealed packs','Try the opening ceremony. No purchase.'],['trade','The exchange','Browse the market interface. Trading is disabled.'],['card-detail','Card study','Art, statistics and abilities in one place.']];
+    document.getElementById('app').innerHTML = '<main class="archive-gallery"><p class="archive-eyebrow">0xARK / DESIGN STUDY 01</p><h1>The Drowned Archive</h1><p>A playable, isolated practice build. Sample cards only. No wallet, payments or live opponents.</p><div class="archive-gallery-grid">' + views.map(([route,title,desc],i) => '<a href="?devview='+route+'"><span>0'+(i+1)+'</span><h2>'+title+'</h2><p>'+desc+'</p><b>Explore ↗</b></a>').join('') + '</div></main>';
+  } else if (_devView === 'card-detail') {
+    navigate('main', { mode: 'vault' });
+    import('./src/components/card-detail.js').then(({ CardDetailModal }) => {
+      CardDetailModal.show(document.querySelector('.ms-root'), 30, {});
     });
+  } else if (_devView === 'loss') {
+    setState({ isWinner: false, p1RoundWins: 1, p2RoundWins: 3, battleResult: { winner: 'p2', log: [] } });
+    navigate('loot');
   } else {
-    _app.innerHTML = `<div style="padding:24px;color:var(--accent-red);">unknown screen "${_devView}" — try <a class="tx-link" href="?devview=menu">?devview=menu</a></div>`;
+    navigate(SCREENS[_devView] ? _devView : 'home', _devView === 'main' ? { mode: 'vault' } : {});
   }
 } else {
   boot();
-}
-
-// Demo vault for local testing — first 30 cards owned
-function getDemoVault() {
-  return Array.from({ length: 30 }, (_, i) => i + 1);
 }

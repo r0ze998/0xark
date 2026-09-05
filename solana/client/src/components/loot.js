@@ -1,6 +1,7 @@
 // loot.js — Screen 5: Loot Phase (winner/loser animations, vault update)
 // mount(container, detail) / unmount(container)
 
+import { playbackSummary } from '../lib/hand-summary.js';
 import { getCard } from '../lib/cards.js';
 import { CardFrameHTML, injectCardCSS, CARD_NAMES } from './common/Card.js';
 import { pxIcon } from '../lib/px-icons.js';
@@ -11,7 +12,7 @@ import { getState, setState, resetBattle } from '../state/battle-state.js';
 import { computePostBattleImprints } from '../lib/abilities.js';
 import * as duelWs from '../lib/duel-ws.js';
 
-let _animTimeout  = null;
+let _animTimeouts = [];
 let _lootCardId   = null;
 let _selectMode   = false;   // winner is picking which card to loot
 
@@ -35,13 +36,18 @@ export function mount(container, detail = {}) {
 }
 
 export function unmount(container) {
-  if (_animTimeout) { clearTimeout(_animTimeout); _animTimeout = null; }
+  _animTimeouts.forEach(clearTimeout); _animTimeouts = [];
   _lootCardId = null;
   _selectMode = false;
   container.innerHTML = '';
 }
 
 /* ── HTML ───────────────────────────────────────────────────────────── */
+function resultSummaryHTML(s) {
+  const summary = playbackSummary(s.battleResult);
+  if (!summary) return '';
+  return `<section class="loot-analysis" aria-label="Final round playback summary"><p class="archive-eyebrow">FINAL ROUND / PLAYBACK</p><div class="loot-analysis-values"><div><span>YOUR SURVIVING BP</span><strong>${summary.myBP}</strong><small>${summary.mySurvivors} cards standing</small></div><span class="loot-analysis-divider">/</span><div><span>OPPONENT BP</span><strong>${summary.opponentBP}</strong><small>${summary.opponentSurvivors} cards standing</small></div></div><p>Compare the surviving cards, then try another action mix in your next duel.</p></section>`;
+}
 function buildWinHTML(s) {
   const oppCards = s.opponentField ?? s.fieldCards;
   const hasMrdr  = s.fieldCards.some(c => c?.cardId === 30);
@@ -52,8 +58,10 @@ function buildWinHTML(s) {
   <!-- Radial glow -->
   <div class="loot-glow" aria-hidden="true"></div>
 
-  <!-- Title -->
-  <h1 class="loot-title" id="loot-title">YOU WON!</h1>
+  <p class="archive-eyebrow">DUEL COMPLETE ${window.oxarkPreview ? '· PRACTICE' : ''}</p>
+  <h1 class="loot-title" id="loot-title">Victory.</h1>
+  <p class="loot-outcome-copy">The table is yours.</p>
+  <div class="loot-final-score">${roundWinsFor(s).my}<span> — </span>${roundWinsFor(s).opp}</div>
 
   <!-- Marauder bonus -->
   ${STEAL_ENABLED && hasMrdr ? `<div class="loot-marauder label-gold">${pxIcon('star')} MARAUDER BONUS — TAKE 2 CARDS</div>` : ''}
@@ -88,9 +96,11 @@ function buildWinHTML(s) {
     <div class="loot-engrave-hint label-dim" id="loot-engrave-hint">record this duel on-chain forever</div>
   </div>
 
+  ${resultSummaryHTML(s)}
+  <details class="loot-hand-review"><summary>Review your final hand</summary><div class="loot-recap-cards">${s.fieldCards.filter(Boolean).map(c => CardFrameHTML({ id: c.cardId })).join('')}</div></details>
   <!-- Continue -->
   <button class="gba-btn gba-btn--primary loot-continue-btn" id="loot-continue" disabled>
-    CONTINUE →
+    RETURN TO ARCHIVE →
   </button>
 
 </div>`;
@@ -135,15 +145,17 @@ function buildLoseHTML(s) {
   return `
 <div class="loot-root loot-root--lose" role="main" aria-label="Defeat. Loot phase">
 
-  <h1 class="loot-title loot-title--lose display-xl" id="loot-title">YOU LOST…</h1>
+  <h1 class="loot-title loot-title--lose display-xl" id="loot-title">Defeat.</h1>
+  <p class="loot-outcome-copy">A new hand. Another possibility.</p>
 
+  ${resultSummaryHTML(s)}
   <div class="loot-recap">
     ${row(oppCards, 'OPPONENT', 'loot-recap-cards--opp')}
     <div class="loot-recap-score">${my} <span class="loot-recap-dash">–</span> ${opp}</div>
     ${row(myCards, 'YOUR HAND', 'loot-recap-cards--mine')}
   </div>
 
-  <div class="loot-result" id="loot-result">no card was taken — steal is not yet enabled</div>
+  <div class="loot-result" id="loot-result">${window.oxarkPreview ? 'Practice complete. No cards or funds were exchanged.' : 'No card was taken — steal is not yet enabled'}</div>
 
   <button class="gba-btn gba-btn--ghost loot-continue-btn" id="loot-continue" disabled>
     CONTINUE →
@@ -154,7 +166,7 @@ function buildLoseHTML(s) {
 
 /* ── Animation ──────────────────────────────────────────────────────── */
 function runLootAnimation(container, s) {
-  const after = (ms, fn) => { _animTimeout = setTimeout(fn, ms); };
+  const after = (ms, fn) => { _animTimeouts.push(setTimeout(fn, ms)); };
 
   if (s.isWinner) {
     // 1. Reveal all opp cards one by one
@@ -380,6 +392,7 @@ function _showImprintToasts(container, imprints) {
  * trustlessly FROM the on-chain DuelState. Available once the chain confirms this
  * player is the winner and the duel ended. Skippable (CONTINUE stays live).      */
 async function _setupEngrave(container, s) {
+  if (window.oxarkPreview) return;
   const oc = window.oxarkOnchain;
   if (typeof oc?.getDuelStateFull !== 'function' || typeof oc?.settleDuelHistory !== 'function' || !s.duelId) return;
   try {
@@ -433,6 +446,7 @@ async function _doEngrave(container, s) {
 
 async function onContinue() {
   const s = getState();
+  if (window.oxarkPreview) { resetBattle(); document.dispatchEvent(new CustomEvent('nav:home')); return; }
 
   // Host announces match end to server
   if (s.isHost && s.duelId && duelWs.isConnected()) {
@@ -452,7 +466,7 @@ async function onContinue() {
 
   resetBattle();
   duelWs.disconnect();
-  document.dispatchEvent(new CustomEvent('nav:main'));
+  document.dispatchEvent(new CustomEvent('nav:home'));
 }
 
 /* ── Style ──────────────────────────────────────────────────────────── */

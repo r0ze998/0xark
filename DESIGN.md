@@ -1,419 +1,132 @@
----
-version: 1.0
-name: 0xARK — Sprite Seas Design System
-description: >
-  GBA-era pixel TCG on Solana. A deep-navy night canvas with cream text; one
-  gold accent that always means "value / decision / commitment"; six faction
-  hues that only ever mean "identity"; a four-step rarity ladder. Hard 1–2px
-  square borders, integer-pixel discipline, VT323 with a strict 13px floor.
-  Every on-chain action is staged as a physical ritual — seal, crack, engrave,
-  promote, steal, open. Nothing rendered may contradict on-chain truth
-  (card_data.rs / damage_calc). Locked direction: Sprite Seas (道A), deepened
-  2026-07-08. Supersedes design/DESIGN_TOKENS.json (PixiJS era) for all
-  HTML/CSS client work.
+# 0xARK — The Drowned Archive
+Version 2.0 · September 5, 2026
 
-colors:
-  # ── Surfaces ────────────────────────────────────────────
-  bg-deep:        "#0a0e1a"                 # canvas — the night sea
-  bg-mid:         "#1a1f33"                 # raised tile / input
-  bg-panel:       "rgba(10,14,26,0.88)"     # floating panel over art
-  overlay-scrim:  "rgba(0,0,0,0.6)"         # modal backdrop
-  # ── Text ────────────────────────────────────────────────
-  text-cream:     "#e8dfc8"                 # primary text
-  text-dim:       "rgba(232,223,200,0.55)"  # captions only, ≥13px
-  # ── Semantic accents (chrome / status — never faction) ──
-  accent-gold:    "#c9a227"   # THE accent: value, CTA, commitment, focus
-  accent-gold-bright: "#d8b034"  # legendary glow, hover lift
-  accent-red:     "#d63b3b"   # danger, loss, opponent side
-  accent-blue:    "#4a90d9"   # intel, info, links
-  accent-warn:    "#f5c842"   # warning toast text
-  success:        "#4a9c6f"   # confirmations
-  hp-green:       "#5ab87a"   # HP values
-  # ── Faction identity (ONLY on faction-scoped elements) ──
-  clan-knight:    "#4a90d9"
-  clan-merchant:  "#c9a227"
-  clan-pirate:    "#d63b3b"
-  clan-scholar:   "#8b6cb8"
-  clan-monk:      "#6a8a6a"
-  clan-engineer:  "#d4884a"
-  # ── Rarity ladder ────────────────────────────────────────
-  rarity-c:       "#8a8a8a"
-  rarity-u:       "#4a9c6f"
-  rarity-r:       "#4a7ab5"
-  rarity-l:       "#d8b034"
+## Authority and scope
 
-typography:
-  display-xl: { fontFamily: "VT323, monospace", fontSize: 72px, letterSpacing: 0.10em, lineHeight: 1.0 }  # victory/defeat title
-  display:    { fontFamily: "VT323, monospace", fontSize: 48px, letterSpacing: 0.12em, lineHeight: 1.0 }  # logo, round bridge
-  title:      { fontFamily: "VT323, monospace", fontSize: 32px, letterSpacing: 0.08em, lineHeight: 1.1 }  # timers, screen titles
-  heading:    { fontFamily: "VT323, monospace", fontSize: 24px, letterSpacing: 0.08em, lineHeight: 1.1 }  # panel titles
-  body:       { fontFamily: "VT323, monospace", fontSize: 20px, letterSpacing: 0.02em, lineHeight: 1.4 }  # default
-  ui:         { fontFamily: "VT323, monospace", fontSize: 16px, letterSpacing: 0.02em, lineHeight: 1.4 }  # buttons, chips, log
-  caption:    { fontFamily: "VT323, monospace", fontSize: 13px, letterSpacing: 0.04em, lineHeight: 1.4 }  # ABSOLUTE FLOOR
+The owner explicitly requested a zero-base, game-wide redesign. This document
+supersedes the Sprite Seas / fixed GBA-stage visual rules in the previous revision.
+The gameplay specification, card identities and on-chain authority are unchanged.
+See the previous Git revision for the retired visual system. Do not reintroduce
+its 1024×576 scaling, portrait-blocking overlay, pixel font or decorative frames.
 
-rounded:
-  none: 0        # pixel art has square corners
-  chip: 2px      # permitted ONLY on toast / badge
+This is a redesign of the existing `solana/client` application, not an alternate
+marketing page. Home, collection, hand preparation, intel, combat, inter-round
+bridge, results, card detail, packs, exchange and wallet entry share one system.
 
-spacing: { 1: 4px, 2: 8px, 3: 12px, 4: 16px, 5: 24px, 6: 32px, 7: 48px }
+## Experience
 
-stage:
-  logical:      { width: 1024, height: 576 }   # all screens author to this box
-  scaling:      fit-scale with letterbox; CSS `zoom` preferred (crisp text), transform fallback
-  integer-snap: floor(scale) when scale ≥ 2 (pixel authenticity on large displays)
-  orientation:  landscape-first (desktop priority); portrait shows a "rotate device" overlay
-  viewport:     wrapper 100vw × 100dvh, background #000, content centered
+**A quiet hand. A decisive move.** The player is a strategist at a sealed table in
+an ancient coastal archive. The environment sets the tone; cards and decisions
+remain the foreground. Home must immediately offer play and a visible collection,
+not sales content, invented activity, testimonials or fake player counts.
 
-motion:
-  t-fast:   80ms    # hover, press
-  t-base:   160ms   # flips, panel in/out
-  t-slow:   320ms   # screen wipe
-  ceremony: 600–1600ms budget per ritual beat sequence (see Rituals)
-  ease-pop:  cubic-bezier(0.16, 1, 0.3, 1)
-  ease-step: steps(3, end)          # sprite-like motion
-  reduced-motion: pulse/shake/parallax OFF, opacity fades kept
+1. **Orient** — a cinematic title screen, a physical fan of cards, one primary play
+   action and persistent destinations.
+2. **Build** — five spatial slots above the collection. Selecting a card fills the
+   next empty slot. Explicitly selecting a filled slot enables replacement.
+   Action controls remain beside the hand on desktop and below it on mobile.
+   Faction filtering supports intentional composition. A planning strip shows
+   catalog BP/HP totals and three-card faction synergy; these are not predicted
+   combat totals. Keyboard navigation skips cards hidden by the filter.
+3. **Seal** — one clear commitment action. Freeze the exact card/action snapshot
+   before asynchronous proof/transaction work; edits are disabled while pending.
+4. **Read** — the sealed table and read-only intelligence. No post-commit edits.
+5. **Reveal** — the existing deterministic combat effect stream drives playback.
+   Skipping may shorten animation, never resolve before the computed result.
+   Card action labels remain visible after reveal. A scrollable battle record
+   retains action events so players can review them instead of losing a two-line
+   ticker. Auto-follow stops when the player scrolls up.
+6. **Reflect** — round score, clear outcome, hands for comparison, next hand or home.
+   Practice round bridges wait for the player instead of advancing automatically.
+   Final-round playback totals show surviving BP and card counts only when the
+   calculator supplied complete results. Victory includes a final-hand review.
 
-z-layers: { hud: 10, dialog: 50, modal: 100, toast: 200, ceremony: 300 }
+## Visual language
 
-components:
-  gba-btn:          { bg: "{bg-mid}", border: "2px {accent-gold}", text: "{text-cream}", fs: 20px, hoverBg: "{accent-gold}", hoverText: "{bg-deep}", press: "translateY(1px)" }
-  gba-btn-primary:  { bg: "{accent-gold}", text: "{bg-deep}", border: "2px #000", fs: 22px, hoverBg: "{accent-gold-bright}" }
-  gba-btn-ghost:    { bg: transparent, border: "1px rgba(201,162,39,0.35)", text: "{text-dim}", hoverBorder: "{accent-gold}", hoverText: "{text-cream}" }
-  gba-btn-danger:   { border: "2px {accent-red}", hoverBg: "{accent-red}", hoverText: "#fff" }
-  panel:            { bg: "{bg-panel}", border: "2px {accent-gold}", pad: "12px 16px" }
-  chip:             { border: "1px rgba(201,162,39,0.35)", fs: 15px, ls: 0.08em, pad: "3px 10px" }
-  card-tile:        { size: "80×112", shows: "faction abbr + rarity letter (13px) / BP (24px) / name (13px ellipsis)", note: "no HP/INI on tile" }
-  card-frame:       { aspect: "5/7", frames: "public/img/frames/frame_{common|uncommon|rare|legendary}.png", minWidth: 112px, statLabelsHiddenBelow: 140px }
-  timer:            { fs: 32px, color: "{accent-gold}", urgentAt: 30s, urgentColor: "{accent-red}", ariaLive: polite }
-  energy-pips:      { icon: "px-bolt", filled: "{accent-gold}", empty: "rgba(201,162,39,0.25)", label: "n/5 + next-regen countdown" }
-  round-pips:       { win: "● {accent-gold}", pending: "○ {text-dim}", loss: "● {accent-red}", header: "ROUND n/5" }
-  battle-telop:     { rows: 2, fs: 16px, channels: { gold: "{accent-gold}", red: "{accent-red}", dim: "{text-dim}", combat: "{accent-blue}" } }
-  toast:            { pos: bottom-center, rounded: "{rounded.chip}", variants: [info, success, warn, error], rule: "on-chain toasts MUST carry a tx short-link" }
-  demo-badge:       { text: "DEMO MODE", bg: "rgba(214,59,59,0.15)", border: "1px {accent-red}", textColor: "{accent-red}", pos: "header, persistent while any fallback is active" }
-  tx-link:          { fs: 13px, color: "{accent-blue}", format: "abcd1234… → explorer", selectable: true }
-  focus-ring:       { outline: "2px solid {accent-gold}", offset: 2px }
----
+- Green-black obsidian, aged brass, seafoam and warm ivory.
+- Environment: the Drowned Archive, a coastal fortress/library at night.
+- Card back: a fine brass astrolabe engraved in black-green stone.
+- Thin borders, restrained surface contrast and generous breathing room.
+- Avoid decorative dashboard boxes around every label. The table and the card
+  silhouette provide the main structure.
+- Display typography: Cormorant Garamond, with Georgia fallback.
+- Controls and prose: Manrope, with system sans fallback.
+- Numbers: IBM Plex Mono, with system monospace fallback.
+- Main prose starts at 16px, control labels at 14px where space allows, compact
+  tactical labels and metadata at 12–13px. Never reduce an entire screen with zoom.
+- Dark overlays behind text; no bright art behind body copy.
 
-# 0xARK — Sprite Seas Design System
+The functional tokens live in `solana/client/src/style/tokens.css`.
+`archive.css` is the presentation layer over existing lazily mounted components.
+Its `#app` scope is intentional: it wins over legacy component selectors while
+preserving dynamic state, inline transforms, disabled controls and combat hooks.
 
-## Overview
+## Cards
 
-0xARK looks like a game you'd have played on a bus ride home from school in
-2004 — and every number on screen is on-chain truth. The design language holds
-those two facts together.
+A 2:3, full-bleed portrait with a low dark gradient, character name, BP/HP/initiative
+and faction marking. Names and stats are real catalog data. Preserve `data-id`,
+`.card-frame`, `.cf-hp .stat-value`, and the combat effect classes.
 
-The canvas is a deep navy night (`{colors.bg-deep}`). Cream text
-(`{colors.text-cream}`) does the reading work. **Gold**
-(`{colors.accent-gold}`) is the single chromatic event of the chrome: it marks
-value, decisions, and on-chain commitment — buttons, borders, the prize pool,
-the seal on your hand. Red is danger and the opponent. Blue is intel. Six
-faction hues exist, but they are *identity paint*, never chrome. Rarity is a
-four-step ladder (grey → green → blue → gold) that never changes meaning.
+The repository contains six existing legendary character portraits. This version
+uses those as **representative faction art** for other cards. They are not sixty
+new unique illustrations. Catalog number, name and statistics distinguish cards;
+a future art pass can provide a per-card image without changing the component.
+Generated imagery is used only for the environment and card back. See
+`design/archive-assets.md` for provenance and prompts.
 
-Structure is hard-edged: 1px and 2px square borders, integer pixel positions,
-zero border-radius (2px on toasts only). Type is VT323, one weight, with a
-non-negotiable 13px floor. Icons are hand-placed pixels, never OS emoji.
+Face-down cards must not expose their identity. Ownership is derived from actual
+vault data in live mode; browsing the full catalog does not imply ownership.
 
-The signature of this system is the **ritual layer**: commit is a chest being
-locked, reveal is that chest cracking open, recording history is an engraving,
-promotion is the frame itself transmuting around an unchanged card. ZK and
-provenance are abstract; the rituals make them physical. Spend the boldness
-there — keep everything around them quiet and disciplined.
+## Responsive and accessible behavior
 
-## How AI agents must use this file
+- Full viewport, no 1024×576 logical-stage zoom or forced rotation.
+- Desktop: 92px navigation rail, 80px screen headers, readable scrolling content.
+- Medium viewport: 76px rail and reflowed collection/battle sections.
+- Mobile: bottom navigation, vertically stacked panels, reachable actions.
+- Five-card tactical rows may scroll horizontally instead of shrinking card text
+  into unreadable miniatures.
+- Visible keyboard focus; native buttons and select labels; keyboard card browsing.
+- Modal pack opening uses the native dialog top layer with Escape, focus
+  containment and focus restoration.
+- Reduced motion shortens CSS animation; combat retains its existing reduced-motion
+  handling and skip control.
+- Live navigation is locked while a duel is active to protect recovery state.
 
-1. **Read this file before any UI work.** It is the single design authority
-   for the active client (`solana/client/`). It supersedes
-   `design/DESIGN_TOKENS.json` (PixiJS era — archived) and absorbs the
-   normative rules of `design/UI_SPEC.md`.
-2. **Code serves this spec, not the inverse.** If rendered output contradicts
-   this file, the code is wrong.
-3. **No raw hex in components.** Every color resolves through the CSS custom
-   properties in `tokens.css` (Appendix A). CI guard:
-   `grep -rn "#c9a227\|#0a0e1a\|#d63b3b\|#4a90d9\|#e8dfc8" solana/client/src solana/client/app.js` → must return 0 hits.
-4. **Display truth comes from one place** (see Data-truth rules). Never
-   re-derive card names, rarity, faction, stats, or rule text inside a screen.
-5. **New/changed components update this file in the same PR** (governance
-   carried over from `docs/VISUAL_DIRECTION.md`).
+## Practice versus live game
 
-## Colors
+The private review build is explicitly practice-only. It has 30 sample cards
+spanning six factions and a deterministic set of local opponent hands. It uses
+the existing combat calculator, but is not multiplayer or a verified on-chain duel.
 
-### Role rules (the part that prevents drift)
+`runtime.js` chooses the environment **before** importing the application.
+Practice does not import Solana, x402, proof libraries or the wallet adapter.
+Transaction-shaped methods reject; the WebSocket client refuses live connections.
+Practice reads and writes no production battle session storage. Timers are
+untimed; pack openings and exchange listings are explicitly labeled samples.
+Practice never issues transaction signatures, grants owned cards or records wins.
 
-- **Gold = value / decision / commitment.** CTAs, panel borders, the seal,
-  engraving, prize pool, energy. If something costs, earns, or commits — gold.
-- **Red = danger / loss / opponent.** Destructive buttons, the opponent's side
-  of any versus layout, defeat, the DEMO badge.
-- **Blue = intel / info.** Peek, AI advice, links, tx links, the INTEL phase
-  label, combat telop channel.
-- **Faction hues are identity paint only.** They may appear exclusively on
-  faction-scoped elements: faction abbr text, the clan bar on a card frame,
-  faction filter buttons, synergy banners. They must never color free-standing
-  chrome or status text. (Three faction hues intentionally share values with
-  semantic accents — knight/blue, merchant/gold, pirate/red — the scoping rule
-  above is what keeps them unambiguous.)
-- **Rarity ladder is fixed**: `{colors.rarity-c}` grey → `{colors.rarity-u}`
-  green → `{colors.rarity-r}` blue → `{colors.rarity-l}` gold. Used on rarity
-  bars, pack-reveal staging, promote ceremony. Never for anything else.
-- `{colors.text-dim}` is for captions and metadata at 13px+. Never body copy.
+The normal GitHub client remains wallet-gated. It provides a clearly labeled free
+practice link without bypassing the registration requirement for real gameplay.
+No contract, circuit, card-stat, economic-rule or STEAL feature-flag changes are
+part of this visual redesign.
 
-## Typography
+## Review routes
 
-### Hierarchy
+`?devview=home` is the entry. `?devview=menu` is the screen index.
+Other fixtures: `main`, `preparation`, `interruption`, `reveal`, `loot`,
+`loss`, `shop`, `trade`, `card-detail`.
+The main practice CTA starts with an empty hand; “Deal me five” fills only holes.
+Sealing continues through actual local combat and the first-to-three round loop.
 
-| Token | Size | Tracking | Use |
-|---|---|---|---|
-| `display-xl` | 72px | 0.10em | Victory / defeat titles |
-| `display` | 48px | 0.12em | Logo, round-bridge interstitial |
-| `title` | 32px | 0.08em | Phase timers, screen titles |
-| `heading` | 24px | 0.08em | Panel titles |
-| `body` | 20px | 0.02em | Default text |
-| `ui` | 16px | 0.02em | Buttons, chips, battle telop |
-| `caption` | 13px | 0.04em | Metadata, tx links — **absolute floor** |
+## Verification and release
 
-### Principles
+Run the client unit tests, the design linter, module syntax/import checks and local
+asset checks. A private practice preview must not be described as a live-wallet or
+multiplayer test. Browser/visual verification is a separate explicitly requested
+step in this environment. Do not overwrite the public game merely to publish a
+design review.
 
-- **13px is a hard floor.** VT323 is a bitmap-style face designed around 16px;
-  below 13px it stops being text. If information doesn't fit, remove
-  information from that surface (move it to detail views) — do not shrink.
-- **One weight.** VT323 ships regular only; `font-weight: bold` produces
-  synthesized faux-bold that breaks the pixel grid. Emphasize with size and
-  color, never weight. (Existing `bold` declarations are cleanup targets.)
-- **Uppercase + tracking for labels**, sentence case for sentences.
-- **Japanese (future):** VT323 has no CJK glyphs. When JP ships, pair with
-  **DotGothic16** (Google Fonts, pixel-native Japanese) as the JP face at the
-  same scale; do not let the monospace fallback render JP.
-
-## Stage & Layout
-
-- All screens are authored to a **1024×576 logical box**. One scaler makes
-  every screen fit every display; screens never implement their own
-  responsiveness.
-- **Scaler spec** (implemented once, in `index.html`):
-  - Wrapper `#stage-viewport`: `100vw × 100dvh`, background `#000`
-    (letterbox), content centered, `overflow: hidden`.
-  - `scale = min(vw/1024, vh/576)`; if `scale ≥ 2`, snap to `floor(scale)`
-    for integer pixel authenticity.
-  - Prefer CSS `zoom` (text re-renders crisply at fractional scales);
-    `transform: scale()` as fallback.
-  - Portrait (`vh > vw`): dim stage, show "ROTATE DEVICE ⟳" overlay in
-    `title` type. Desktop-first; portrait-native layout is out of scope.
-- **Spacing grid**: 4/8/12/16/24/32/48 only. GBA dialog padding: 12px
-  vertical, 16px horizontal.
-- **Selection**: `user-select: none` globally, **except** `.tx-link`,
-  addresses, and error details, which are selectable.
-
-## Iconography — px-icon set
-
-OS emoji are banned (they are anti-aliased, multi-color, and off-palette).
-All glyphs come from one pixel icon set.
-
-- **Format**: inline SVG sprite, 16×16 unit grid, `shape-rendering:
-  crispEdges`, drawn from whole-pixel rects. Fill via `currentColor` so icons
-  inherit token colors. Scale only by integers (16/32/48).
-- **Class pattern**: `<svg class="px-icon"><use href="#px-battle"/></svg>`.
-
-Required glyphs (v1):
-
-| id | Use | Replaces |
-|---|---|---|
-| `px-battle` | nav: battle | ⚔ |
-| `px-vault` | nav: vault | 📦 |
-| `px-shop` | nav: shop | 💰 |
-| `px-trade` | nav: trade | 🤝 |
-| `px-home`, `px-back` | navigation chrome | ← |
-| `px-crystal` `px-barrier` `px-flame` `px-storm` `px-shadow` `px-void` | the 6 ActionTypes | ◆🛡⚡🌀◎✦ |
-| `px-bolt` | energy pip | — |
-| `px-coin` | SOL / cost | ◎ |
-| `px-eye` | peek / intel | 👁 |
-| `px-chip` | AI advice | 🤖 |
-| `px-lock`, `px-chest` | seal / commit | ⏳ |
-| `px-crack` | reveal | — |
-| `px-chisel` | engrave victory | — |
-| `px-crown` | legendary / champion | ♛ |
-| `px-star` | legendary marker | ★ |
-| `px-skull` | steal / KO | ✕ |
-| `px-burn` | burn | 🔥 |
-| `px-arrow-up` | promote | ⚗ |
-| `px-check` `px-cross` `px-warn` | status | ✓ ✕ ⚠ |
-
-## Components
-
-- **Buttons** (`gba-btn` family): square, 2px border, VT323 20px. Hover
-  inverts to gold fill / navy text over `{motion.t-fast}`. Press =
-  `translateY(1px)` (no scale). Primary is gold-filled with hard black border;
-  ghost is the quiet variant; danger swaps gold for red. Disabled: 45%
-  opacity, no pointer.
-- **Panel / chip**: panels are `{colors.bg-panel}` with gold 2px border;
-  chips are the 15px metadata unit with the dim gold hairline.
-- **Card tile (`card-tile`)** — for grids and any render < 112px wide.
-  80×112. Row 1: faction abbr (faction hue) + rarity letter. Center: BP at
-  24px. Bottom: name at 13px, single line, ellipsis. No HP/INI on tiles.
-- **Card frame (`card-frame`)** — the PNG-framed presentation card
-  (`frame_{rarity}.png`). Minimum render width **112px**; hide stat labels
-  (keep values) below 140px. Provenance chips (see Rituals/Provenance) mount
-  on the frame's lower-left.
-- **Timer**: 32px gold; at ≤30s turns red with a pulse (pulse disabled under
-  reduced-motion). Always `aria-live="polite"`.
-- **Energy pips**: 5 bolt glyphs, gold filled / 25%-gold empty, plus
-  `n/5` and next-regen countdown. Present on home, main, preparation.
-- **Round pips**: `ROUND n/5` + win markers (`● gold` yours, `● red`
-  opponent's, `○` pending). Present on every battle-flow header.
-- **Toast**: bottom-center, 2px radius allowed, four variants. Any toast
-  confirming an on-chain action **must** include a `tx-link`.
-- **DEMO badge**: appears in the header the moment any fallback path
-  (mock matchmaking, mock peek, skipped payment) activates, and stays for the
-  session. Real mode is proven by tx-links, demo mode is confessed by the
-  badge — the UI never blurs the two.
-
-## Rituals — staging on-chain actions
-
-Each ritual is: **intro beats (fixed) → idle loop (absorbs variable
-chain/proof latency) → confirm beat (fires on tx confirmation) → toast with
-tx-link**. All rituals are skippable after first play (per session). Sound
-hooks are named now, wired later.
-
-| Ritual | Trigger | Beats | SFX hook |
-|---|---|---|---|
-| **SEAL** | `commit_hand` (proof ~272ms + tx) | 5 cards flip face-down → stack → wrap into scroll → drop into chest → *idle: chest shimmer* → lock snaps shut, `COMMITTED · Groth16` chip | `sfx-lock` |
-| **CRACK** | reveal phase opens | chest shakes ×2 → crack lines → burst → cards fan out face-down | `sfx-crack` |
-| **ENGRAVE** | `settle_duel_history` (winner-signed) | chisel strike sweeps across the 5 used cards → `+1 WIN` counters tick → gold dust settles → "recorded on-chain forever" | `sfx-engrave` |
-| **PROMOTE** | `promote_card` | the card art holds still; the **frame** cross-fades C→U (or U→R, R→L) with a rarity-color flash sweep — same mint, new tier | `sfx-promote` |
-| **STEAL** | YKK-44 (post legal) | loser's card slides from its row → hooked → flies to winner's side → sockets in. Until YKK-44 ships, the loot act shows a **sealed slot**: "STEAL — sealed pending review", never a fake loss | `sfx-steal` |
-| **PACK OPEN** | `buy_pack` reveal | pack tears → cards fan face-down → staged flips: Commons chain at `t-base`; Rare holds 400ms + blue flash; Legendary full-screen gold flash + 1200ms hold | `sfx-flip`, `sfx-legendary` |
-
-Battle presentation (reveal screen) is not a ritual but follows the same law:
-it **replays `damageCalc().effects[]` in order** — synergy banner → legendary
-banner → actions in INI order → pair duels (advance, hit flash + shake, HP
-pop, KO shatter) → BP tug-of-war verdict. The log is a 2-row telop under the
-board, never the main event.
-
-## Lobby and preparation interaction rules (2026-09-05)
-
-- **Entry and home:** card artwork leads the composition. The entry lineup is
-  explicitly catalog art; the home showcase contains only owned cards. BATTLE
-  is the primary home action; VAULT, SHOP, and TRADE are secondary destinations.
-- **Collection:** default to owned cards. Ownership scope and faction filters
-  combine and survive confirmed card updates. Frames remain at least 112px
-  wide in a five-column scrolling pane. Missing cards are inspectable catalog
-  entries, visibly labelled as not owned. Native card buttons support arrow
-  navigation and Enter/Space activation.
-- **Readiness:** show the reason for fewer than five cards or known-zero energy.
-  Missing energy and season data are unavailable, never zero or an invented
-  day. Do not advertise disabled theft, unsupported entry fees, or a tier's
-  pool allocation as the player's payout.
-- **Navigation and network failure:** load account state before mounting home
-  controls. Failed reads offer retry, never fabricated inventory. A failed
-  matchmaking connection stays in the lobby with explicit retry; it does not
-  start a simulated match. Explicit `devview` screens carry the DEMO badge.
-- **Energy:** use a native refill button and preserve it during countdown ticks.
-  The popover discloses the refill cost plus network fees. Cancel/Escape closes
-  it and restores focus. Pending disables repeat submission and cancellation;
-  confirmed refills update the existing HUD without replacing it with cached
-  account data. Missing data disables refill.
-- **Preparation:** display the hand count, the next placement/replacement, and
-  the selected card's ActionType description. A newly placed card stays active
-  for action editing; the next vault choice fills an empty slot. Replacing a
-  filled slot requires explicitly selecting it. Enter/Space activates cards,
-  arrows browse, and Delete/Backspace removes a selected field card.
-- **Sealing:** freeze one snapshot before proof generation. Disable all hand
-  editing, stop the preparation timer, and reject repeat submission while
-  pending. Every subsequent proof and saved hand uses that snapshot. Failure
-  preserves choices and restores the remaining timer; an expired timer does
-  not repeatedly auto-submit. Timeout fills only unselected slots.
-- **Battle completion:** end/skip presentation applies final HP, BP, and KO
-  state from the existing combat result. Do not invent intermediate HP values.
-
-## Provenance surfaces
-
-Provenance is the product's spine; it must be visible wherever a card is.
-
-- **Card detail**: PROVENANCE panel — `W / KO / LGD-K / DMG` counters, owner
-  ring (`3 owners · 2 dropped`), acquisition tag (`DUEL WON` in red),
-  imprint badges, and the **promotion gate** progress bar with cost
-  (`C→U ████████░░ 8/10 W · 0.01 SOL`).
-- **Vault grid**: lightweight chips on frames — `W12` in gold, imprint dot,
-  red dot for duel-won cards.
-- **Trade listing**: CardFrame + `W12 · 2 owners` line. History is the price
-  story.
-
-## Accessibility floor
-
-- Interactive cards: `role="button"`, `tabindex="0"`, Enter/Space activate;
-  grids support arrow-key movement.
-- All timers `aria-live="polite"`; phase changes announced.
-- `@media (prefers-reduced-motion: reduce)`: kill pulse/shake/flash loops,
-  keep opacity fades; rituals collapse to intro+confirm stills.
-- Focus visible everywhere: gold 2px ring, 2px offset.
-- `{colors.text-dim}` never below 13px (contrast holds at caption size).
-
-## Data-truth rules
-
-- Card names, faction, rarity, stats: **only** from `lib/cards.js` /
-  `Card.js` exports. No screen may define its own id→rarity or id→faction
-  mapping. (Shop and trade currently do — cleanup targets.)
-- ActionType rule text: derived from `damage_calc` semantics (Rust is the
-  authority); the selector descriptions are generated/verified against it.
-- Tier thresholds, drop rates, costs: read from one shared module /
-  GameWorld — never duplicated per screen.
-- Assets never change optimistically. On-chain mutations render as `pending`
-  until confirmed; failures roll back visibly. Losing a card client-side
-  while the chain disagrees is forbidden.
-
-## Do's and Don'ts
-
-**Do**
-- Route every color through `tokens.css`; keep the CI grep at zero.
-- Author to 1024×576 and let the stage scaler do the rest.
-- Give every on-chain confirmation a ritual + tx-link.
-- Light the DEMO badge the instant a fallback fires.
-- Emphasize with size and color; keep borders 1px or 2px; snap to integers.
-
-**Don't**
-- No emoji, anywhere in the UI.
-- No text below 13px.
-- No `font-weight: bold` on VT323.
-- No border-radius (except 2px toast/badge).
-- No gradients or soft drop shadows as decoration — glow is reserved for
-  gold/red ritual moments.
-- No per-screen re-implementations of card facts, tiers, or synergy math.
-- No silent demo fallbacks, no optimistic asset destruction.
-
-## Appendix A — tokens.css
-
-The canonical CSS mapping ships as `solana/client/src/style/tokens.css`
-(1:1 with the frontmatter; legacy variable names from the current
-`index.html :root` are kept as aliases until the hex cleanup lands).
-
-## Appendix B — F0 design-floor linter (baseline @ `6444dc8`)
-
-The raw greps that seeded this list are **superseded by one canonical linter**,
-`scripts/design-lint.py`, so the check runs identically on macOS (BSD grep) and
-CI (GNU grep) — the two disagree on `-P` + astral emoji ranges, which made the
-raw emoji grep silently return 0 on macOS. CI (`.github/workflows/design-lint.yml`)
-just runs this script; run it locally the same way:
-
-```sh
-python3 scripts/design-lint.py        # summary + PASS/FAIL
-python3 scripts/design-lint.py -v     # + every offending line
-```
-
-Scope: `solana/client/src/**/*.js` + `solana/client/app.js` (tokens.css excepted).
-
-| Category | Baseline @ `6444dc8` | Enforced | Notes |
-|---|---|---|---|
-| brand-hex | 85 hits | ✅ fail on >0 | tokened palette hex → `var(--token)`. Untokenized greys (residual ladder) not yet listed. |
-| sub-13px | 34 hits | ✅ fail on >0 | `font-size` px below the 13px floor. |
-| sub-floor-rem | 4 hits | ✅ fail on >0 | `font-size` rem below ~0.81rem. |
-| faux-bold | 10 hits | ✅ fail on >0 | `font-weight:bold` / `bold … VT323` (one weight). |
-| emoji | **58 lines / 72 occurrences**, 11 files | ✅ enforced (F0-4) | All 72 replaced by the px-icon SVG sprite (`src/lib/px-icons.js`); OS emoji banned in UI strings. (58 = lines with ≥1 glyph, 72 = total glyphs — same ranges, both correct.) |
-| round-hardcode | 4 hits | 📋 report-only | `duelId, 1,` — F1 scope (round loop). |
-
-Enforced categories are **0** after F0-1 + F0-5 + F0-4 (emoji). Only
-round-hardcode stays report-only (F1 scope).
-
----
-*Supersedes: `design/DESIGN_TOKENS.json` (archive to `design/archive/`).
-Absorbs: normative rules from `design/UI_SPEC.md` §1.7 (no emoji) and
-`docs/VISUAL_DIRECTION.md` (governance, no-hex rule). Companion:
-`0xark-frontend-review.md` v1.0 (findings F-1…F-23, phases F0–F3).*
+`scripts/prepare-archive-preview.mjs` stages this existing buildless client into
+`dist` with a preview-only flag and a restrictive connection policy. It never
+edits the live source entrypoint. The Sites manifest identifies the private review
+site, not the public GitHub Pages deployment.

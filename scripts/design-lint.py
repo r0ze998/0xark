@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""design-lint.py — canonical Sprite Seas design-floor linter (DESIGN.md Appendix B).
+"""design-lint.py — 0xARK legacy-component regression linter (DESIGN.md v2).
 
 One linter, identical on macOS and CI (GNU/BSD grep disagree on -P + astral
 ranges, so we do NOT shell out to grep). Scans the active client JS
@@ -170,7 +170,7 @@ def main():
     # Vacuous-scan guard: refuse to report PASS over an empty/wrong tree.
     scanned = len(js_files(args.root))
     if scanned < MIN_SCANNED_FILES:
-        print("── Sprite Seas design-lint ─────────────────────────────")
+        print("── 0xARK design-lint ─────────────────────────────")
         print(f"  FAIL  scanned only {scanned} file(s) under {args.root} "
               f"(expected ≥ {MIN_SCANNED_FILES}).")
         print("  The scan root is wrong or the client tree moved — refusing a "
@@ -181,7 +181,7 @@ def main():
 
     checks, results = scan(args.root)
     failed = False
-    print("── Sprite Seas design-lint ─────────────────────────────")
+    print("── 0xARK design-lint ─────────────────────────────")
     print(f"  scanned {scanned} JS files under {os.path.relpath(args.root)}")
     for name, (_rx, enforced) in checks.items():
         r = results[name]
