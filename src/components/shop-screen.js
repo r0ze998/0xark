@@ -1,0 +1,349 @@
+// shop-screen.js — Phase 20-B: Pack shop with reveal animation
+import { pxIcon } from '../lib/px-icons.js';
+import { showToast as _toast } from '../lib/ui-shared.js';
+import { CardFrameHTML, injectCardCSS } from './common/Card.js';
+import { rarityOf } from '../lib/card-meta.js';
+import { createScreenScope } from '../lib/screen-scope.js';
+
+function _injectCSS() {
+  if (document.getElementById('shop-css')) return;
+  const s = document.createElement('style');
+  s.id = 'shop-css';
+  s.textContent = `
+.shop-screen {
+  font-family: 'VT323', monospace;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-deep);
+  color: var(--text-cream);
+}
+.shop-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 800px;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+.shop-back-btn {
+  background: none;
+  border: 1px solid #555;
+  color: #888;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+.shop-back-btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
+.shop-header h2 { font-size: 2rem; letter-spacing: 0.2em; color: var(--accent-gold); margin: 0; }
+.shop-phase-badge {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: #888;
+  border: 1px solid #333;
+  padding: 0.2rem 0.6rem;
+}
+.shop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto 0.5rem;
+}
+.pack-card {
+  background: rgba(201, 162, 39, 0.05);
+  border: 2px solid var(--accent-gold);
+  padding: 1rem 1.25rem;
+  text-align: center;
+  transition: background 0.2s, transform 0.15s;
+}
+.pack-card:hover { background: rgba(201, 162, 39, 0.1); transform: translateY(-2px); }
+.pack-card.pack-premium { border-color: #e8d4a0; background: rgba(216, 176, 52, 0.08); }
+.pack-card.pack-premium:hover { background: rgba(216, 176, 52, 0.15); }
+.pack-icon { font-size: 2.5rem; margin-bottom: 0.25rem; display: block; }
+.pack-card h3 { font-size: 1.6rem; color: var(--accent-gold); margin: 0 0 0.5rem; letter-spacing: 0.1em; }
+.pack-card.pack-premium h3 { color: #e8d4a0; }
+.pack-content { font-size: 1rem; color: #aaa; margin: 0.25rem 0; }
+.pack-rates {
+  font-size: 0.82rem;
+  color: #888;
+  margin: 0.75rem 0;
+  line-height: 1.5;
+  border-top: 1px solid #222;
+  padding-top: 0.5rem;
+}
+.pack-price { font-size: 1.8rem; color: var(--accent-gold); margin: 0.75rem 0; }
+.pack-card.pack-premium .pack-price { color: #e8d4a0; }
+.pack-buy-btn {
+  background: rgba(201, 162, 39, 0.1);
+  border: 2px solid var(--accent-gold);
+  color: var(--accent-gold);
+  padding: 0.75rem 2rem;
+  cursor: pointer;
+  font-family: 'VT323', monospace;
+  font-size: 1.3rem;
+  letter-spacing: 0.1em;
+  width: 100%;
+  transition: background 0.2s;
+}
+.pack-buy-btn:hover:not(:disabled) { background: rgba(201, 162, 39, 0.25); }
+.pack-buy-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pack-card.pack-premium .pack-buy-btn { border-color: #e8d4a0; color: #e8d4a0; background: rgba(216, 176, 52, 0.08); }
+.pack-card.pack-premium .pack-buy-btn:hover:not(:disabled) { background: rgba(216, 176, 52, 0.2); }
+.shop-info {
+  text-align: center;
+  margin-top: 1rem;
+  color: #555;
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+
+/* Pack reveal modal */
+.reveal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  font-family: 'VT323', monospace;
+}
+.reveal-title { font-size: 2rem; color: var(--accent-gold); letter-spacing: 0.2em; margin-bottom: 1.5rem; }
+.reveal-cards { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.5rem; }
+.reveal-card-slot {
+  width: 80px; height: 120px;
+  border: 2px solid #333;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-deep);
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+.reveal-card-slot.flipping { animation: cardFlip 0.6s ease forwards; }
+.reveal-card-slot.revealed { border-color: var(--accent-gold); background: rgba(201, 162, 39, 0.1); }
+.reveal-card-slot.rarity-uncommon { border-color: var(--rarity-u); background: rgba(74, 156, 111, 0.1); }
+.reveal-card-slot.rarity-rare     { border-color: var(--rarity-r); background: rgba(74, 122, 181, 0.1); }
+.reveal-card-slot.rarity-legendary{ border-color: var(--rarity-l); background: rgba(216, 176, 52, 0.15);
+  box-shadow: 0 0 12px rgba(216, 176, 52, 0.4); }
+.reveal-card-id { font-size: 1.6rem; color: var(--accent-gold); }
+.reveal-card-label { font-size: var(--fs-caption); color: #888; }
+.reveal-close-btn {
+  background: none;
+  border: 2px solid var(--accent-gold);
+  color: var(--accent-gold);
+  padding: 0.5rem 2rem;
+  font-family: 'VT323', monospace;
+  font-size: 1.2rem;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+}
+.reveal-close-btn:hover { background: rgba(201, 162, 39, 0.15); }
+@keyframes cardFlip {
+  0%   { transform: rotateY(0deg);   }
+  50%  { transform: rotateY(90deg);  }
+  100% { transform: rotateY(0deg);   }
+}
+
+/* Toast */
+.wg-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.6rem 1.4rem;
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  border-radius: 2px;
+  z-index: 200;
+  animation: toastIn 0.2s ease;
+}
+.wg-toast--success { background: #1a3a2a; border: 1px solid #4a9; color: #4a9; }
+.wg-toast--error   { background: #3a1a1a; border: 1px solid #a44; color: #a44; }
+.wg-toast--info    { background: #1a2230; border: 1px solid var(--accent-gold); color: var(--accent-gold); }
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+`;
+  document.head.appendChild(s);
+}
+
+// Rarity from card-meta (cards.js data). The old id>=55/49/31 heuristic
+// mislabeled 37 of 60 cards (e.g. Knight uncommons id6-8 → Common); gone.
+const _RARITY_NAMES = ['common', 'uncommon', 'rare', 'legendary'];
+function _cardRarity(id) {
+  return _RARITY_NAMES[rarityOf(id)] ?? 'common';
+}
+
+function _rarityLabel(id) {
+  const map = { legendary: 'LEGENDARY', rare: 'RARE', uncommon: 'UNCOMMON', common: 'COMMON' };
+  return map[_cardRarity(id)] || 'COMMON';
+}
+
+let _scope = null;
+let _closeOpening = () => {};
+function _showRevealModal(container, cardIds, scope) {
+  if (!scope.active) return;
+  _closeOpening();
+  const opening = createScreenScope();
+  const close = scope.defer(() => opening.dispose());
+  _closeOpening = close;
+  injectCardCSS();
+  const overlay = document.createElement('dialog');
+  opening.defer(() => overlay.remove());
+  overlay.className = 'reveal-overlay';
+  overlay.setAttribute('aria-label', window.oxarkPreview ? 'Practice pack opening' : 'Pack opening');
+
+  const title = document.createElement('div');
+  title.className = 'reveal-title';
+  title.textContent = window.oxarkPreview ? 'A practice opening' : 'The seal is broken';
+  const note = document.createElement('p'); note.className = 'reveal-note';
+  note.textContent = window.oxarkPreview ? 'Sample cards only. No purchase. Your collection is unchanged.' : 'These cards have been added to your collection.';
+
+  const cardsRow = document.createElement('div');
+  cardsRow.className = 'reveal-cards';
+
+  const slots = cardIds.map(() => {
+    const slot = document.createElement('div');
+    slot.className = 'reveal-card-slot';
+    slot.innerHTML = CardFrameHTML({ id: 1, faceDown: true });
+    cardsRow.appendChild(slot);
+    return slot;
+  });
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'reveal-close-btn';
+  closeBtn.textContent = 'CONTINUE';
+  const previousFocus = document.activeElement;
+  const dismiss = () => {
+    if (!opening.active) return;
+    close();
+    if (previousFocus?.isConnected) previousFocus.focus();
+  };
+  closeBtn.onclick = dismiss;
+  overlay.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
+
+  overlay.append(title, note, cardsRow, closeBtn);
+  container.appendChild(overlay);
+  overlay.showModal();
+
+  // Stagger the flips; each card reveals halfway through its own animation.
+  cardIds.forEach((id, i) => {
+    opening.timeout(() => {
+      const slot = slots[i];
+      slot.classList.add('flipping');
+      opening.timeout(() => {
+        slot.classList.remove('flipping');
+        slot.classList.add('revealed', `rarity-${_cardRarity(id)}`);
+        slot.innerHTML = CardFrameHTML({ id });
+      }, 200);
+    }, 250 + i * 450);
+  });
+}
+
+function _buildPhaseInfo(gameWorld) {
+  if (!gameWorld?.game_start_timestamp) return 'Phase 1';
+  const elapsed = Math.floor(Date.now() / 1000) - gameWorld.game_start_timestamp;
+  const thresholdSecs = gameWorld.shop_phase_threshold_seconds ?? 7 * 24 * 3600;
+  return elapsed >= thresholdSecs ? 'Phase 2 (Legendary unlocked)' : 'Phase 1 (Day 1-7)';
+}
+
+export function mount(container, props = {}) {
+  _scope?.dispose();
+  const scope = _scope = createScreenScope();
+  _injectCSS();
+  injectCardCSS();
+  const { gameWorld = {} } = props;
+  const phaseInfo = _buildPhaseInfo(gameWorld);
+
+  container.innerHTML = `
+    <div class="shop-screen">
+      <div class="shop-header">
+        <button class="shop-back-btn" id="shop-back-btn">← Home</button>
+        <h2>Sealed packs</h2>
+        <span class="shop-phase-badge">${phaseInfo}</span>
+      </div>
+
+      <div class="shop-grid">
+        <div class="pack-card pack-standard">
+          <span class="pack-icon">${pxIcon('vault')}</span>
+          <h3>Standard Pack</h3>
+          <p class="pack-content">5 random cards</p>
+          <p class="pack-rates">
+            Common 80% · Uncommon 18% · Rare 2%<br>
+            Legendary 0% → 1.5% (Phase 2)
+          </p>
+          <p class="pack-price">0.05 SOL</p>
+          <button class="pack-buy-btn" id="buy-standard-btn">${window.oxarkPreview ? 'Try an opening' : 'Open standard pack'}</button>
+        </div>
+
+        <div class="pack-card pack-premium">
+          <span class="pack-icon">${pxIcon('star')}</span>
+          <h3>Premium Pack</h3>
+          <p class="pack-content">3 cards</p>
+          <p class="pack-rates">
+            +1 Uncommon GUARANTEED<br>
+            +2 cards at standard rates
+          </p>
+          <p class="pack-price">0.15 SOL</p>
+          <button class="pack-buy-btn" id="buy-premium-btn">${window.oxarkPreview ? 'Try an opening' : 'Open premium pack'}</button>
+        </div>
+      </div>
+
+      <div class="shop-info">
+        <p>${window.oxarkPreview ? 'PRACTICE · Displayed SOL prices are live-game reference only. Openings here are free.' : pxIcon('coin') + ' Revenue: 50% Operations / 50% Prize Pool'}</p>
+        <p>${window.oxarkPreview ? 'A fixed sample is used to demonstrate the opening animation.' : pxIcon('chip') + ' Verifiable randomness via Solana SlotHashes'}</p>
+      </div>
+    </div>
+  `;
+
+  container.querySelector('#shop-back-btn').addEventListener('click', () => {
+    if (!scope.active) return;
+    document.dispatchEvent(new CustomEvent('nav:home'));
+  });
+
+  container.querySelector('#buy-standard-btn').addEventListener('click', () => _buyPack(container, 0, scope));
+  container.querySelector('#buy-premium-btn').addEventListener('click', () => _buyPack(container, 1, scope));
+}
+
+async function _buyPack(container, packType, scope) {
+  if (!scope.active) return;
+  const btnId = packType === 0 ? 'buy-standard-btn' : 'buy-premium-btn';
+  const btn   = container.querySelector(`#${btnId}`);
+  if (!btn || btn.disabled) return;
+  if (window.oxarkPreview) { _showRevealModal(container, packType === 0 ? [3, 13, 25, 43, 58] : [8, 35, 51], scope); return; }
+
+  try {
+    btn.disabled    = true;
+    btn.textContent = 'CONFIRMING...';
+
+    const result = await window.oxarkOnchain.buyPack(packType);
+    if (!scope.active) return;
+    _toast(`Pack opened! ${result.cardIds.length} cards received.`, 'success');
+    _showRevealModal(container, result.cardIds, scope);
+  } catch (err) {
+    if (!scope.active) return;
+    _toast(`Purchase failed: ${err.message}`, 'error');
+  } finally {
+    if (scope.active) {
+      btn.disabled    = false;
+      btn.textContent = packType === 0 ? 'Open standard pack' : 'Open premium pack';
+    }
+  }
+}
+
+export function unmount(container) {
+  _scope?.dispose();
+  _scope = null;
+  _closeOpening = () => {};
+  container.innerHTML = '';
+}

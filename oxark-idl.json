@@ -1,0 +1,8147 @@
+{
+  "address": "5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN",
+  "metadata": {
+    "name": "oxark",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "accept_listing",
+      "docs": [
+        "Purchase a listed card.",
+        "",
+        "- Buyer pays price in SOL directly to seller (0% fee)",
+        "- Card is added to buyer's vault",
+        "- TradeListing PDA is closed; rent refunded to seller"
+      ],
+      "discriminator": [
+        73,
+        126,
+        21,
+        99,
+        71,
+        13,
+        177,
+        202
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "buyer_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "listing",
+          "writable": true
+        },
+        {
+          "name": "seller",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "seller_pubkey",
+          "type": "pubkey"
+        },
+        {
+          "name": "card_id",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "activate_season",
+      "docs": [
+        "Season state: waitlist (0) → active (1). Admin-only, after the waitlist window."
+      ],
+      "discriminator": [
+        65,
+        12,
+        62,
+        60,
+        29,
+        166,
+        239,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "add_xp",
+      "docs": [
+        "Add XP to a player's progression account.",
+        "",
+        "`reason` codes: 1=battle_win(50), 2=battle_loss(15), 3=card_collect(10),",
+        "4=super_effective(20), 5=zk_cycle(30), 6=deathrattle(15), 7=chain(15)",
+        "",
+        "Level is recomputed from total XP using xpForLevel(n) = floor((n-1)*n*55).",
+        "PDA seeds: `[\"player_level\", player_pubkey]` (init_if_needed)"
+      ],
+      "discriminator": [
+        188,
+        3,
+        166,
+        230,
+        6,
+        209,
+        28,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "player_level",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  108,
+                  101,
+                  118,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "reason",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "burn_card",
+      "docs": [
+        "v3.0-plus: Permanently burn a Common or Uncommon NFT card.",
+        "",
+        "Legendary (rarity=3) and Rare (rarity=2) are protected.",
+        "Updates CardBattleHistory.burn_count and SeasonStats.total_burned.",
+        "Seeds for season_stats PDA: [\"season_stats\", season_id_le].",
+        "Rarity is read from the on-chain CardMintRecord PDA (C5 fix)."
+      ],
+      "discriminator": [
+        153,
+        111,
+        207,
+        181,
+        251,
+        1,
+        182,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "card_mint_account",
+          "writable": true
+        },
+        {
+          "name": "card_token_account",
+          "docs": [
+            "Owner's ATA for this NFT mint."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "card_mint_account"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "card_history",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  98,
+                  97,
+                  116,
+                  116,
+                  108,
+                  101,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "card_mint_record",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "season_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  97,
+                  115,
+                  111,
+                  110,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "card_history.created_at",
+                "account": "CardBattleHistory"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "buy_pack",
+      "docs": [
+        "Purchase a card pack (Standard: 5 cards / Premium: 3 cards + Uncommon guarantee).",
+        "",
+        "Transfers SOL 50/50 to ops_treasury and prize_pool.",
+        "Uses SlotHashes sysvar for on-chain verifiable randomness.",
+        "Drop rates are admin-adjustable via update_game_params."
+      ],
+      "discriminator": [
+        151,
+        46,
+        141,
+        93,
+        174,
+        5,
+        49,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "buyer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "buyer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "game_world",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ops_treasury",
+          "writable": true
+        },
+        {
+          "name": "prize_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  122,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "slot_hashes"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "pack_type",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "cancel_listing",
+      "docs": [
+        "Cancel an active listing and return the escrowed card to the seller.",
+        "",
+        "- Only the original seller may cancel",
+        "- TradeListing PDA is closed; rent refunded to seller"
+      ],
+      "discriminator": [
+        41,
+        183,
+        50,
+        232,
+        230,
+        233,
+        157,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "seller_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "seller"
+              }
+            ]
+          }
+        },
+        {
+          "name": "listing",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "card_id",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "check_legendary_v2",
+      "docs": [
+        "Check all 6 Legendary acquisition conditions for the calling player.",
+        "",
+        "Called after each battle, x402 payment, or peek action.",
+        "Awards up to one Legendary card per condition that becomes satisfied.",
+        "O(1) per condition — uses pre-tracked counters on PlayerState.",
+        "",
+        "Requires game_status == 1 (active season)."
+      ],
+      "discriminator": [
+        23,
+        90,
+        54,
+        165,
+        146,
+        104,
+        91,
+        239
+      ],
+      "accounts": [
+        {
+          "name": "player_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_battle_loot",
+      "docs": [
+        "Claim 1 random card from loser's battle field (on-chain loot via SlotHashes).",
+        "The loot pool is derived on-chain from the loser's revealed hands in",
+        "DuelState — the winner supplies only the loser's pubkey (PDA seed), never",
+        "the field. See instructions::claim_battle_loot for the rationale.",
+        "`duel_id`:      unique Pubkey for this duel (prevents double-claim via PDA init).",
+        "`loser_pubkey`: the loser's wallet pubkey."
+      ],
+      "discriminator": [
+        87,
+        2,
+        108,
+        28,
+        235,
+        246,
+        239,
+        120
+      ],
+      "accounts": [
+        {
+          "name": "winner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "winner_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "winner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "loser_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "loser_pubkey"
+              }
+            ]
+          }
+        },
+        {
+          "name": "duel",
+          "docs": [
+            "DuelState — must be ended, signer must be the winner, and loser_pubkey must be",
+            "one of the two registered participants.",
+            "Boxed to keep stack frame within BPF 4096-byte limit."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "duel_loot_record",
+          "docs": [
+            "Initialized here — its existence means loot was claimed (double-spend guard)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108,
+                  95,
+                  108,
+                  111,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "slot_hashes"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        },
+        {
+          "name": "loser_pubkey",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "claim_legendary",
+      "discriminator": [
+        83,
+        42,
+        160,
+        74,
+        229,
+        177,
+        197,
+        131
+      ],
+      "accounts": [
+        {
+          "name": "legendary_supply",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  101,
+                  103,
+                  101,
+                  110,
+                  100,
+                  97,
+                  114,
+                  121,
+                  95,
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "season_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player_duel_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  100,
+                  117,
+                  101,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u64"
+        },
+        {
+          "name": "species_id",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "claim_prize_v2",
+      "docs": [
+        "Claim tier-based prize after season ends (game_status == 2).",
+        "",
+        "Distributes prize proportional to vault_count:",
+        "Tier 1 (60 cards): 50% / winner_60_count",
+        "Tier 2 (50-59):    25% × vault_count / tier2_total_vault",
+        "Tier 3 (30-49):    15% × vault_count / tier3_total_vault",
+        "Tier 4 (10-29):     8% × vault_count / tier4_total_vault",
+        "Tier 5  (1-9):      2% × vault_count / tier5_total_vault",
+        "",
+        "If no Tier 1 winner (timeout), player with highest vault_count gets Tier 1."
+      ],
+      "discriminator": [
+        248,
+        51,
+        132,
+        203,
+        254,
+        70,
+        113,
+        139
+      ],
+      "accounts": [
+        {
+          "name": "player_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "prize_pool",
+          "docs": [
+            "Prize-pool PDA vault (YKK-38). Program-owned System account holding the",
+            "season's lamports; payouts are authorized via invoke_signed using",
+            "`game_world.prize_pool_bump`, so the pool no longer needs an external signer."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  122,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim_timeout_win",
+      "docs": [
+        "Stall-timeout guard: after `DUEL_STALL_TIMEOUT_SECONDS` without progress,",
+        "the participant who has done their part for the current round may end a",
+        "duel whose opponent refuses to commit/reveal, taking the win. Must exist",
+        "before YKK-44 escrow, or a reveal-refuser could lock escrowed cards forever."
+      ],
+      "discriminator": [
+        175,
+        234,
+        101,
+        151,
+        53,
+        30,
+        177,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "claimant",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "commit_hand",
+      "discriminator": [
+        92,
+        158,
+        144,
+        204,
+        19,
+        38,
+        244,
+        244
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "signer": true
+        },
+        {
+          "name": "player_state",
+          "docs": [
+            "The committing player's season account — holds energy. Charged 1 energy on",
+            "the first commit of round 1 (duel entry gate, YKK-44). Seeds bind it to the",
+            "signer, so a player can only spend their own energy."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        },
+        {
+          "name": "round",
+          "type": "u8"
+        },
+        {
+          "name": "proof_a",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "proof_b",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "proof_c",
+          "type": {
+            "array": [
+              "u8",
+              64
+            ]
+          }
+        },
+        {
+          "name": "public_signals",
+          "type": {
+            "array": [
+              {
+                "array": [
+                  "u8",
+                  32
+                ]
+              },
+              4
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_listing",
+      "docs": [
+        "Create a sell listing, escrowing the card from the seller's vault.",
+        "",
+        "- card_id must be owned by seller (vault bitmap check)",
+        "- price must be ≥ 0.001 SOL (1_000_000 lamports)",
+        "- A TradeListing PDA is initialized; card is removed from vault immediately"
+      ],
+      "discriminator": [
+        18,
+        168,
+        45,
+        24,
+        191,
+        31,
+        117,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "seller",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "seller_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "seller"
+              }
+            ]
+          }
+        },
+        {
+          "name": "listing",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_id",
+          "type": "u8"
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "create_season",
+      "docs": [
+        "Create a competitive season with a shared entry fee and prize pool.",
+        "",
+        "Seasons run for `duration_seconds` wall-clock time. Players pay `entry_fee`",
+        "lamports to register; the accumulated pool is distributed at `end_season`."
+      ],
+      "discriminator": [
+        38,
+        108,
+        29,
+        127,
+        60,
+        126,
+        101,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "season",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  97,
+                  115,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "season_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u32"
+        },
+        {
+          "name": "entry_fee",
+          "type": "u64"
+        },
+        {
+          "name": "max_players",
+          "type": "u32"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "deactivate_agent",
+      "docs": [
+        "Deactivate an AI agent listing (soft-delete; agent data is preserved).",
+        "",
+        "Only the agent's original registrant may deactivate. Deactivated agents",
+        "are hidden from discovery but remain on-chain for audit purposes."
+      ],
+      "discriminator": [
+        205,
+        171,
+        239,
+        225,
+        82,
+        126,
+        96,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agent_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "delegate_session",
+      "docs": [
+        "Delegate game + player_state accounts to the MagicBlock Ephemeral Rollup.",
+        "",
+        "Must be called on base layer before routing transactions via the Magic Router.",
+        "After delegation, `commit_action` and `reveal_action` should be sent to the",
+        "ER validator (via Magic Router) for 10-50ms latency instead of ~400ms.",
+        "",
+        "Calls the MagicBlock Delegation Program CPI for both `game` and `player_state` PDAs."
+      ],
+      "discriminator": [
+        82,
+        83,
+        119,
+        119,
+        196,
+        219,
+        5,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game",
+          "writable": true
+        },
+        {
+          "name": "player_state",
+          "writable": true
+        },
+        {
+          "name": "game_buffer",
+          "writable": true
+        },
+        {
+          "name": "game_delegation_record",
+          "writable": true
+        },
+        {
+          "name": "game_delegation_metadata",
+          "writable": true
+        },
+        {
+          "name": "player_buffer",
+          "writable": true
+        },
+        {
+          "name": "player_delegation_record",
+          "writable": true
+        },
+        {
+          "name": "player_delegation_metadata",
+          "writable": true
+        },
+        {
+          "name": "owner_program"
+        },
+        {
+          "name": "delegation_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "distribute_prize_pool",
+      "discriminator": [
+        108,
+        131,
+        77,
+        52,
+        230,
+        69,
+        251,
+        146
+      ],
+      "accounts": [
+        {
+          "name": "season",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  97,
+                  115,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "season_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "end_season",
+      "docs": [
+        "End a season, compute leaderboard, and emit results.",
+        "",
+        "Emits final standings so clients can display the leaderboard.",
+        "Prize distribution logic is handled off-chain based on emitted events."
+      ],
+      "discriminator": [
+        167,
+        166,
+        166,
+        109,
+        166,
+        71,
+        15,
+        68
+      ],
+      "accounts": [
+        {
+          "name": "season",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  97,
+                  115,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "season_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "end_season_final",
+      "docs": [
+        "Season state: active (1) → ended (2). Admin-only; requires the full tally",
+        "(finalize_processed == total_participants) so claims open on complete data."
+      ],
+      "discriminator": [
+        237,
+        179,
+        252,
+        233,
+        201,
+        227,
+        134,
+        44
+      ],
+      "accounts": [
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "finalize_season_tally",
+      "docs": [
+        "Tally a batch of participants into the GameWorld tier totals (admin crank).",
+        "`players` must be strictly increasing and > `finalize_cursor`; their",
+        "PlayerState PDAs are passed as remaining_accounts in the same order."
+      ],
+      "discriminator": [
+        155,
+        255,
+        39,
+        31,
+        170,
+        169,
+        210,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "players",
+          "type": {
+            "vec": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "grant_imprint",
+      "docs": [
+        "v3.0-plus: Grant an Imprint to a card's battle history.",
+        "",
+        "Cosmetic Imprints have no cap. Stat Imprints are capped by rarity:",
+        "Common/Uncommon → 3, Rare → 4, Legendary → 5.",
+        "Rarity is read on-chain from CardMintRecord (C5 fix, YKK-32)."
+      ],
+      "discriminator": [
+        213,
+        217,
+        179,
+        61,
+        111,
+        189,
+        142,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "card_battle_history",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  98,
+                  97,
+                  116,
+                  116,
+                  108,
+                  101,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "card_mint_record",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "ADMIN-only. Stat imprints add battle power (+BP/+HP), so an open grant",
+            "path is direct stat inflation — same caller-trusted class as above.",
+            "Organic imprints are earned via the threshold auto-grants inside",
+            "`settle_duel_history` / this module's helpers."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "imprint_key_val",
+          "type": "u8"
+        },
+        {
+          "name": "is_cosmetic",
+          "type": "bool"
+        },
+        {
+          "name": "duel_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "init_card_mint_record",
+      "docs": [
+        "C5 fix: Admin registers the on-chain rarity record for an NFT card mint.",
+        "",
+        "Must be called once per NFT card mint before burn_card can be invoked.",
+        "Only ADMIN_PUBKEY can call this instruction."
+      ],
+      "discriminator": [
+        40,
+        61,
+        146,
+        218,
+        254,
+        13,
+        17,
+        119
+      ],
+      "accounts": [
+        {
+          "name": "card_mint_record",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "card_id",
+          "type": "u8"
+        },
+        {
+          "name": "rarity",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "init_duel",
+      "discriminator": [
+        226,
+        223,
+        208,
+        41,
+        197,
+        8,
+        5,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player_1",
+          "docs": [
+            "Player 1 in the matched pair"
+          ]
+        },
+        {
+          "name": "player_2",
+          "docs": [
+            "Player 2 in the matched pair"
+          ]
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Matchmaking authority (server wallet) that pays for PDA creation"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        },
+        {
+          "name": "hall_tier",
+          "type": "u8"
+        },
+        {
+          "name": "ante",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "init_game_world",
+      "docs": [
+        "Initialize the Season 1 GameWorld singleton PDA.",
+        "",
+        "Admin-only (ADMIN_PUBKEY). Can only be called once (init constraint).",
+        "",
+        "`game_start_timestamp`: Unix timestamp when the game goes active.",
+        "waitlist_close = game_start - 14 days",
+        "end            = game_start + 14 days",
+        "",
+        "PDA seeds: [\"game_world\"]"
+      ],
+      "discriminator": [
+        151,
+        168,
+        80,
+        79,
+        15,
+        203,
+        197,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "prize_pool",
+          "docs": [
+            "Prize-pool PDA vault (YKK-38). Lamports-only, System-owned; created lazily",
+            "on the first deposit. Here we only derive it to record its address + bump",
+            "into the GameWorld so `claim_prize_v2` can sign payouts via invoke_signed."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  122,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_start_timestamp",
+          "type": "i64"
+        },
+        {
+          "name": "ops_treasury",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "init_legendary_supply",
+      "discriminator": [
+        131,
+        77,
+        41,
+        97,
+        26,
+        67,
+        178,
+        157
+      ],
+      "accounts": [
+        {
+          "name": "legendary_supply",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  101,
+                  103,
+                  101,
+                  110,
+                  100,
+                  97,
+                  114,
+                  121,
+                  95,
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "season_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "init_season_stats",
+      "docs": [
+        "v3.0-plus: Initialize the SeasonStats PDA for a new season.",
+        "",
+        "Must be called once before Burn/Evolve/Steal instructions.",
+        "Seeds: [\"season_stats\", season_id_le]"
+      ],
+      "discriminator": [
+        203,
+        116,
+        131,
+        193,
+        188,
+        184,
+        145,
+        50
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "season_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  97,
+                  115,
+                  111,
+                  110,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "season_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "init_season_supply",
+      "docs": [
+        "Initialize or reset season card supply for N participants.",
+        "PDA: [\"season_supply\", season_id_le]"
+      ],
+      "discriminator": [
+        99,
+        212,
+        51,
+        99,
+        88,
+        227,
+        110,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "season_supply",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  97,
+                  115,
+                  111,
+                  110,
+                  95,
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "season_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u32"
+        },
+        {
+          "name": "participant_count",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "docs": [
+        "One-time program initializer (idempotent; can be skipped in production)."
+      ],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [],
+      "args": []
+    },
+    {
+      "name": "lock_deck",
+      "docs": [
+        "Lock the player's deck for 1 hour (3600 seconds).",
+        "",
+        "A locked deck cannot be modified until the timer expires.",
+        "The client requires `locked_until > now` before allowing dungeon entry.",
+        "Re-locking refreshes the timer from *now* (not from the old expiry)."
+      ],
+      "discriminator": [
+        188,
+        189,
+        14,
+        169,
+        207,
+        172,
+        195,
+        137
+      ],
+      "accounts": [
+        {
+          "name": "player_deck",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  100,
+                  101,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "promote_card",
+      "docs": [
+        "YKK-45: Provenance-gated single-card promotion (design v3 §2). Raises a card's",
+        "rarity in place (Common → Uncommon) — same SPL mint, no burn — gated on the",
+        "card's `wins`. Holder-only. Token cost (YKK-43) and higher tiers come later."
+      ],
+      "discriminator": [
+        3,
+        23,
+        131,
+        83,
+        5,
+        25,
+        102,
+        191
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "The card holder requesting the promotion (pays the promotion fee)."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "card_mint_account",
+          "docs": [
+            "The card's SPL mint; pinned to the `card_mint` argument used in the PDA seeds."
+          ]
+        },
+        {
+          "name": "owner_token_account",
+          "docs": [
+            "Proves `owner` actually holds this card (the NFT lives in their ATA)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "card_mint_account"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "card_mint_record",
+          "docs": [
+            "On-chain rarity record (the thing we update in place)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "card_battle_history",
+          "docs": [
+            "Provenance record (read-only here — the promotion gate reads `wins`)."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  98,
+                  97,
+                  116,
+                  116,
+                  108,
+                  101,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "game_world",
+          "docs": [
+            "Holds the canonical ops_treasury address the fee is checked against."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ops_treasury",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "record_battle_result",
+      "docs": [
+        "Record a card battle outcome for combo tracking.",
+        "",
+        "`is_super_effective = true` increments the combo streak.",
+        "Hitting 3/5/7 unlocks combo tiers (PERFECT/LEGENDARY/UNSTOPPABLE).",
+        "At 7+ the xp_2x_flag is set for the next add_xp call.",
+        "",
+        "PDA seeds: `[\"player_battle_stats\", player_pubkey]` (init_if_needed)"
+      ],
+      "discriminator": [
+        94,
+        218,
+        160,
+        207,
+        177,
+        58,
+        23,
+        219
+      ],
+      "accounts": [
+        {
+          "name": "player_battle_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  98,
+                  97,
+                  116,
+                  116,
+                  108,
+                  101,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "is_super_effective",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "record_card_owner_change",
+      "discriminator": [
+        88,
+        143,
+        111,
+        73,
+        126,
+        70,
+        148,
+        194
+      ],
+      "accounts": [
+        {
+          "name": "card_battle_history",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  98,
+                  97,
+                  116,
+                  116,
+                  108,
+                  101,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "current_owner",
+          "docs": [
+            "The current owner being displaced."
+          ],
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "new_owner",
+          "type": "pubkey"
+        },
+        {
+          "name": "source",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "record_card_owner_change_with_steal",
+      "docs": [
+        "v3.0-plus: Record owner change with Steal semantics (Lease/Ransom/HandPeek/Legendary)."
+      ],
+      "discriminator": [
+        40,
+        68,
+        6,
+        185,
+        55,
+        207,
+        60,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "card_battle_history",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  98,
+                  97,
+                  116,
+                  116,
+                  108,
+                  101,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "current_owner",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "season_stats",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "new_owner",
+          "type": "pubkey"
+        },
+        {
+          "name": "steal_type",
+          "type": {
+            "defined": {
+              "name": "StealType"
+            }
+          }
+        },
+        {
+          "name": "hall_tier",
+          "type": "u8"
+        },
+        {
+          "name": "is_starter_card",
+          "type": "bool"
+        },
+        {
+          "name": "is_legendary",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "record_gold_hall_win",
+      "discriminator": [
+        244,
+        57,
+        22,
+        12,
+        178,
+        147,
+        200,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "player_duel_stats",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  100,
+                  117,
+                  101,
+                  108,
+                  95,
+                  115,
+                  116,
+                  97,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "duel",
+          "docs": [
+            "DuelState — must be ended and signer must be the recorded winner.",
+            "Boxed to keep stack frame within BPF limit."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "gold_hall_record",
+          "docs": [
+            "Double-record guard — init fails if this duel's win was already reported."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  111,
+                  108,
+                  100,
+                  95,
+                  104,
+                  97,
+                  108,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        },
+        {
+          "name": "season_id",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "record_mint",
+      "docs": [
+        "Record a card mint against the season supply, with tier fallback.",
+        "Returns the tier actually used (may be lower than requested if exhausted)."
+      ],
+      "discriminator": [
+        162,
+        92,
+        105,
+        126,
+        18,
+        1,
+        158,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "season_supply",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  97,
+                  115,
+                  111,
+                  110,
+                  95,
+                  115,
+                  117,
+                  112,
+                  112,
+                  108,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "season_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "season_id",
+          "type": "u32"
+        },
+        {
+          "name": "requested_tier",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "refill_energy",
+      "docs": [
+        "Refill energy to full for SOL (YKK-44 anti-whale gate / YKK-43 sink).",
+        "The regen/spend math lives in `instructions::refill_energy`; the duel-entry",
+        "consumption point is a separate change (the duel flow loads no PlayerState yet)."
+      ],
+      "discriminator": [
+        249,
+        210,
+        36,
+        106,
+        250,
+        196,
+        4,
+        176
+      ],
+      "accounts": [
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "game_world",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ops_treasury",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_agent",
+      "docs": [
+        "Register an AI agent in the on-chain agent marketplace.",
+        "",
+        "Agents are identified by a `name_hash` (SHA-256 of human-readable name).",
+        "`strategy_hash` and `endpoint_hash` let clients discover agent capabilities",
+        "without revealing the agent's internal logic or private endpoint URL.",
+        "",
+        "`price_per_query` is in lamports — paid via x402 micropayment protocol."
+      ],
+      "discriminator": [
+        135,
+        157,
+        66,
+        195,
+        2,
+        113,
+        175,
+        30
+      ],
+      "accounts": [
+        {
+          "name": "agent",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agent_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "u32"
+        },
+        {
+          "name": "name_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "strategy_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "endpoint_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "price_per_query",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "register_agent_hire",
+      "docs": [
+        "Register an on-chain AgentHireSession after x402 payment verification.",
+        "",
+        "The hirer calls this after the x402 facilitator confirms the 0.05 SOL",
+        "payment. `payment_tx` links the session to the Solana payment tx for",
+        "audit purposes. The AgentListing must be active.",
+        "",
+        "PDA seeds: `[\"agent_hire\", hirer_pubkey, agent_id_le_bytes]`"
+      ],
+      "discriminator": [
+        82,
+        233,
+        197,
+        13,
+        189,
+        0,
+        43,
+        13
+      ],
+      "accounts": [
+        {
+          "name": "hire_session",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116,
+                  95,
+                  104,
+                  105,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "hirer"
+              },
+              {
+                "kind": "arg",
+                "path": "agent_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "agent_listing",
+          "docs": [
+            "The AgentListing PDA — must be active before hire is valid."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  103,
+                  101,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "agent_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "hirer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "clock",
+          "address": "SysvarC1ock11111111111111111111111111111111"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "agent_id",
+          "type": "u32"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "i64"
+        },
+        {
+          "name": "payment_tx_lo",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "payment_tx_hi",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "register_card",
+      "docs": [
+        "Register a card species in the player's permanent registry (GI rule).",
+        "",
+        "First time a player acquires card species X → registered[X] = true (permanent).",
+        "Subsequent copies → does not change registry (card is battle-consumable extra).",
+        "When count reaches 60 → season_complete = true.",
+        "",
+        "PDA seeds: `[\"player_registry\", player_pubkey]` (init_if_needed)"
+      ],
+      "discriminator": [
+        33,
+        25,
+        154,
+        111,
+        155,
+        31,
+        45,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "player_registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_id",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "register_waitlist",
+      "docs": [
+        "Register on the Season 1 waitlist.",
+        "",
+        "Deposits 0.5 SOL (85% → prize_pool, 15% → ops_treasury).",
+        "Initializes PlayerState v2 fields and distributes 5 starter cards.",
+        "Callable only while `game_world.waitlist_close_timestamp > now`.",
+        "",
+        "PDA seeds: `[\"player\", player_pubkey]` (init_if_needed)"
+      ],
+      "discriminator": [
+        46,
+        124,
+        61,
+        137,
+        194,
+        124,
+        128,
+        98
+      ],
+      "accounts": [
+        {
+          "name": "player_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "prize_pool",
+          "docs": [
+            "Prize-pool PDA vault (YKK-38); address enforced by seeds."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  122,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "ops_treasury",
+          "docs": [
+            "Operations treasury — must match the address registered in GameWorld."
+          ],
+          "writable": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reset_player_state",
+      "docs": [
+        "Admin-only: reset a player's season state for devnet re-registration testing."
+      ],
+      "discriminator": [
+        24,
+        14,
+        243,
+        62,
+        19,
+        167,
+        131,
+        191
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player_state",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reveal_hand",
+      "discriminator": [
+        207,
+        208,
+        54,
+        80,
+        138,
+        93,
+        197,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "signer": true
+        },
+        {
+          "name": "player_state",
+          "docs": [
+            "The revealer's card vault. Reveal is the earliest point the plaintext card",
+            "IDs are visible (commit_hand sees only the Poseidon commitment), so this is",
+            "where card ownership is enforced: every fielded species must be a bit set in",
+            "this vault. Read-only — reveal never mutates the vault. PDA-bound to `player`,",
+            "so the signer can only present their OWN vault."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        },
+        {
+          "name": "round",
+          "type": "u8"
+        },
+        {
+          "name": "card_ids",
+          "type": {
+            "array": [
+              "u64",
+              10
+            ]
+          }
+        },
+        {
+          "name": "salt",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "save_deck",
+      "docs": [
+        "Save or update the player's prepared battle deck.",
+        "",
+        "PDA seeds: `[\"player_deck\", player_pubkey]` (init_if_needed)",
+        "",
+        "Validates composition before storing:",
+        "- card IDs 1-60 only; 0 = empty (rejected)",
+        "- total cost ≤ 30  (Common=1, Rare=2, Legendary=5)",
+        "- Legendary cards ≤ 2",
+        "- Rare cards ≤ 6",
+        "GDD v1.2: exactly 20 cards, max 2 copies of any card_id.",
+        "lane_assignments: 0=Front 1=Middle 2=Back 255=Any; empty vec → all 255.",
+        "deck must be unlocked (locked_until == 0 OR now ≥ locked_until)"
+      ],
+      "discriminator": [
+        60,
+        123,
+        78,
+        73,
+        68,
+        233,
+        192,
+        56
+      ],
+      "accounts": [
+        {
+          "name": "player_deck",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  100,
+                  101,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "cards",
+          "type": "bytes"
+        },
+        {
+          "name": "lane_assignments",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "set_title",
+      "docs": [
+        "Equip a previously unlocked title.",
+        "",
+        "Fails with InvalidAction if the title is not yet unlocked.",
+        "PDA seeds: `[\"player_title\", player_pubkey]` (init_if_needed)"
+      ],
+      "discriminator": [
+        22,
+        168,
+        113,
+        174,
+        255,
+        172,
+        246,
+        2
+      ],
+      "accounts": [
+        {
+          "name": "player_title",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  116,
+                  105,
+                  116,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "title_idx",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "set_waitlist_deadline",
+      "docs": [
+        "Admin-only: override waitlist_close_timestamp in-place.",
+        "",
+        "Use when the GameWorld is already on-chain but the deadline must be extended.",
+        "Pass `new_deadline = Clock::get().unix_timestamp + 14 * 24 * 3600` to open",
+        "registration for 14 more days from now."
+      ],
+      "discriminator": [
+        255,
+        219,
+        17,
+        56,
+        213,
+        3,
+        53,
+        185
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "new_deadline",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "settle_duel_history",
+      "docs": [
+        "Trustless CardBattleHistory settlement: derives one card's win/loss credit",
+        "from a FINISHED on-chain DuelState (participant + revealed-hand membership",
+        "+ per-duel dedup bitmap) instead of trusting caller-supplied deltas. This",
+        "is the player-facing write path that feeds `promote_card`'s wins gate;",
+        "`update_card_battle_history` is now ADMIN-only (see that instruction).",
+        "One card per call — clients batch several into a single transaction."
+      ],
+      "discriminator": [
+        224,
+        125,
+        253,
+        140,
+        189,
+        92,
+        148,
+        234
+      ],
+      "accounts": [
+        {
+          "name": "duel",
+          "docs": [
+            "The finished duel this settlement draws from. Program-owned: only the",
+            "ZK commit/reveal flow ever writes revealed hands / winner into it."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "docs": [
+            "The participant settling their own side of the duel. Pays for the",
+            "lazily-created PDAs below."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "settle_record",
+          "docs": [
+            "Per-(duel, player) dedup ledger — bit `card_id` set once settled."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  117,
+                  101,
+                  108,
+                  95,
+                  115,
+                  101,
+                  116,
+                  116,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "duel_id"
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "card_mint_record",
+          "docs": [
+            "On-chain card identity: bridges mint → card_id (species) and rarity."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  114,
+                  101,
+                  99,
+                  111,
+                  114,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "card_battle_history",
+          "docs": [
+            "The provenance ledger being credited. Created here on first credit so a",
+            "fresh card's first real duel initializes its history."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  98,
+                  97,
+                  116,
+                  116,
+                  108,
+                  101,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "duel_id",
+          "type": "pubkey"
+        },
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "undelegate_session",
+      "docs": [
+        "Schedule commit + undelegate for game + player_state via the Magic Program.",
+        "",
+        "Must be sent to the ER validator (not base layer). The ER processes this,",
+        "commits all pending state diffs to base layer, then calls the Delegation",
+        "Program's Undelegate instruction to restore account ownership to this program."
+      ],
+      "discriminator": [
+        110,
+        234,
+        80,
+        245,
+        77,
+        79,
+        58,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game",
+          "writable": true
+        },
+        {
+          "name": "player_state",
+          "writable": true
+        },
+        {
+          "name": "magic_context",
+          "writable": true
+        },
+        {
+          "name": "magic_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "unlock_achievement",
+      "docs": [
+        "Unlock an achievement for the calling player.",
+        "",
+        "Achievement indices 0-9:",
+        "0=first_blood, 1=collector_10, 2=collector_30, 3=full_set,",
+        "4=chain_master, 5=dr_survived, 6=zk_committed, 7=super_x5,",
+        "8=dungeon_floor5, 9=season_top",
+        "",
+        "Already-unlocked achievements are a no-op (idempotent).",
+        "PDA seeds: `[\"player_achievements\", player_pubkey]` (init_if_needed)"
+      ],
+      "discriminator": [
+        99,
+        19,
+        51,
+        67,
+        94,
+        87,
+        67,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "player_achievements",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  97,
+                  99,
+                  104,
+                  105,
+                  101,
+                  118,
+                  101,
+                  109,
+                  101,
+                  110,
+                  116,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "idx",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "unlock_lore_shard",
+      "docs": [
+        "Unlock a lore shard for a card the player owns.",
+        "",
+        "Shard indices:",
+        "0 = Shard 1 — auto-unlocked on card acquisition",
+        "1 = Shard 2 — unlocked by duel participation with card in deck",
+        "2 = Shard 3 — unlocked via Gold Hall win or x402 payment",
+        "",
+        "Method codes: 0=auto, 1=condition_met, 2=x402_payment",
+        "",
+        "Idempotent: calling for an already-unlocked shard is a no-op.",
+        "Emits `LoreShardUnlocked` event.",
+        "",
+        "PDA seeds: `[\"card_lore_shards\", card_mint, owner_pubkey]` (init_if_needed)"
+      ],
+      "discriminator": [
+        156,
+        222,
+        228,
+        196,
+        204,
+        58,
+        120,
+        153
+      ],
+      "accounts": [
+        {
+          "name": "card_lore_shards",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  108,
+                  111,
+                  114,
+                  101,
+                  95,
+                  115,
+                  104,
+                  97,
+                  114,
+                  100,
+                  115
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "shard_index",
+          "type": "u8"
+        },
+        {
+          "name": "method",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "unlock_title",
+      "docs": [
+        "Unlock a title badge for the calling player.",
+        "",
+        "Title indices 0-7:",
+        "0=Traveler (always on), 1=Card Hunter, 2=Chain Wizard,",
+        "3=Dread Pirate, 4=ZK Mystic, 5=Half-Deck, 6=The Collector, 7=Champion",
+        "",
+        "PDA seeds: `[\"player_title\", player_pubkey]` (init_if_needed)"
+      ],
+      "discriminator": [
+        22,
+        246,
+        87,
+        51,
+        30,
+        5,
+        167,
+        121
+      ],
+      "accounts": [
+        {
+          "name": "player_title",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114,
+                  95,
+                  116,
+                  105,
+                  116,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "player"
+              }
+            ]
+          }
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "title_idx",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "update_card_battle_history",
+      "discriminator": [
+        232,
+        3,
+        202,
+        222,
+        49,
+        231,
+        249,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "card_battle_history",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  114,
+                  100,
+                  95,
+                  98,
+                  97,
+                  116,
+                  116,
+                  108,
+                  101,
+                  95,
+                  104,
+                  105,
+                  115,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "card_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "docs": [
+            "ADMIN-only (migration / ops escape hatch). CardBattleHistory became an",
+            "economic gate when `promote_card` (YKK-45) started reading `wins` from it:",
+            "leaving this open lets any wallet mint provenance for free and bypass the",
+            "promotion gate — the same caller-trusted pattern as C5/C6. The normal,",
+            "player-facing write path is `settle_duel_history`, which derives deltas",
+            "from a finished on-chain DuelState instead of trusting arguments."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "card_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "wins_delta",
+          "type": "u32"
+        },
+        {
+          "name": "losses_delta",
+          "type": "u32"
+        },
+        {
+          "name": "kos_delta",
+          "type": "u32"
+        },
+        {
+          "name": "dmg_delta",
+          "type": "u64"
+        },
+        {
+          "name": "summon_delta",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "update_game_params",
+      "docs": [
+        "Admin-only: adjust shop drop rates and phase threshold.",
+        "",
+        "All rate params are in ppm (parts per million out of 1_000_000).",
+        "Pass `None` for any param to leave it unchanged.",
+        "Legendary rates are validated ≤ 100_000 (10%)."
+      ],
+      "discriminator": [
+        209,
+        14,
+        201,
+        173,
+        27,
+        22,
+        35,
+        2
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "legendary_rate_phase1",
+          "type": {
+            "option": "u32"
+          }
+        },
+        {
+          "name": "legendary_rate_phase2",
+          "type": {
+            "option": "u32"
+          }
+        },
+        {
+          "name": "rare_rate_phase1",
+          "type": {
+            "option": "u32"
+          }
+        },
+        {
+          "name": "rare_rate_phase2",
+          "type": {
+            "option": "u32"
+          }
+        },
+        {
+          "name": "uncommon_rate",
+          "type": {
+            "option": "u32"
+          }
+        },
+        {
+          "name": "threshold_seconds",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "AgentHireSession",
+      "discriminator": [
+        200,
+        148,
+        189,
+        41,
+        140,
+        116,
+        49,
+        44
+      ]
+    },
+    {
+      "name": "AgentListing",
+      "discriminator": [
+        224,
+        156,
+        61,
+        213,
+        111,
+        100,
+        43,
+        56
+      ]
+    },
+    {
+      "name": "CardBattleHistory",
+      "discriminator": [
+        151,
+        18,
+        9,
+        97,
+        111,
+        107,
+        20,
+        80
+      ]
+    },
+    {
+      "name": "CardLoreShards",
+      "discriminator": [
+        187,
+        234,
+        36,
+        201,
+        102,
+        57,
+        112,
+        210
+      ]
+    },
+    {
+      "name": "CardMintRecord",
+      "discriminator": [
+        226,
+        83,
+        213,
+        214,
+        180,
+        213,
+        5,
+        127
+      ]
+    },
+    {
+      "name": "DuelLootRecord",
+      "discriminator": [
+        164,
+        224,
+        166,
+        141,
+        43,
+        74,
+        1,
+        238
+      ]
+    },
+    {
+      "name": "DuelSettleRecord",
+      "discriminator": [
+        16,
+        157,
+        32,
+        155,
+        1,
+        31,
+        192,
+        248
+      ]
+    },
+    {
+      "name": "DuelState",
+      "discriminator": [
+        149,
+        213,
+        59,
+        165,
+        124,
+        116,
+        145,
+        120
+      ]
+    },
+    {
+      "name": "GameWorld",
+      "discriminator": [
+        105,
+        247,
+        122,
+        86,
+        222,
+        173,
+        158,
+        122
+      ]
+    },
+    {
+      "name": "GoldHallRecord",
+      "discriminator": [
+        214,
+        40,
+        188,
+        21,
+        232,
+        194,
+        176,
+        82
+      ]
+    },
+    {
+      "name": "LegendarySupply",
+      "discriminator": [
+        199,
+        108,
+        249,
+        200,
+        160,
+        111,
+        121,
+        49
+      ]
+    },
+    {
+      "name": "PlayerAchievements",
+      "discriminator": [
+        108,
+        185,
+        169,
+        217,
+        73,
+        77,
+        75,
+        170
+      ]
+    },
+    {
+      "name": "PlayerBattleStats",
+      "discriminator": [
+        205,
+        175,
+        18,
+        197,
+        56,
+        161,
+        39,
+        161
+      ]
+    },
+    {
+      "name": "PlayerDeck",
+      "discriminator": [
+        178,
+        95,
+        155,
+        231,
+        240,
+        250,
+        127,
+        13
+      ]
+    },
+    {
+      "name": "PlayerDuelStats",
+      "discriminator": [
+        23,
+        182,
+        176,
+        190,
+        231,
+        28,
+        205,
+        142
+      ]
+    },
+    {
+      "name": "PlayerLevel",
+      "discriminator": [
+        79,
+        204,
+        185,
+        171,
+        158,
+        215,
+        150,
+        124
+      ]
+    },
+    {
+      "name": "PlayerRegistry",
+      "discriminator": [
+        24,
+        85,
+        115,
+        117,
+        158,
+        194,
+        20,
+        163
+      ]
+    },
+    {
+      "name": "PlayerState",
+      "discriminator": [
+        56,
+        3,
+        60,
+        86,
+        174,
+        16,
+        244,
+        195
+      ]
+    },
+    {
+      "name": "PlayerTitle",
+      "discriminator": [
+        219,
+        222,
+        219,
+        194,
+        237,
+        199,
+        171,
+        179
+      ]
+    },
+    {
+      "name": "Season",
+      "discriminator": [
+        76,
+        67,
+        93,
+        156,
+        180,
+        157,
+        248,
+        47
+      ]
+    },
+    {
+      "name": "SeasonCardSupply",
+      "discriminator": [
+        69,
+        47,
+        249,
+        217,
+        180,
+        192,
+        140,
+        79
+      ]
+    },
+    {
+      "name": "SeasonStats",
+      "discriminator": [
+        23,
+        137,
+        84,
+        131,
+        148,
+        235,
+        209,
+        2
+      ]
+    },
+    {
+      "name": "TradeListing",
+      "discriminator": [
+        69,
+        43,
+        175,
+        151,
+        184,
+        142,
+        145,
+        85
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AgentHired",
+      "discriminator": [
+        65,
+        63,
+        180,
+        221,
+        86,
+        13,
+        58,
+        225
+      ]
+    },
+    {
+      "name": "AgentRegistered",
+      "discriminator": [
+        191,
+        78,
+        217,
+        54,
+        232,
+        100,
+        189,
+        85
+      ]
+    },
+    {
+      "name": "CardBattleHistoryUpdated",
+      "discriminator": [
+        183,
+        58,
+        94,
+        152,
+        109,
+        251,
+        189,
+        176
+      ]
+    },
+    {
+      "name": "CardBurnedEvent",
+      "discriminator": [
+        211,
+        140,
+        58,
+        17,
+        228,
+        47,
+        62,
+        226
+      ]
+    },
+    {
+      "name": "CardEvolvedEvent",
+      "discriminator": [
+        171,
+        182,
+        204,
+        144,
+        158,
+        199,
+        181,
+        166
+      ]
+    },
+    {
+      "name": "CardOwnerChanged",
+      "discriminator": [
+        36,
+        237,
+        25,
+        123,
+        86,
+        44,
+        2,
+        248
+      ]
+    },
+    {
+      "name": "CardPromoted",
+      "discriminator": [
+        133,
+        61,
+        17,
+        17,
+        39,
+        191,
+        205,
+        234
+      ]
+    },
+    {
+      "name": "ChampionDeclared",
+      "discriminator": [
+        222,
+        93,
+        105,
+        52,
+        70,
+        241,
+        166,
+        66
+      ]
+    },
+    {
+      "name": "DuelHistorySettled",
+      "discriminator": [
+        178,
+        235,
+        62,
+        225,
+        148,
+        66,
+        41,
+        15
+      ]
+    },
+    {
+      "name": "DuelInitialized",
+      "discriminator": [
+        127,
+        133,
+        87,
+        38,
+        56,
+        53,
+        187,
+        253
+      ]
+    },
+    {
+      "name": "DuelTimeoutClaimed",
+      "discriminator": [
+        41,
+        26,
+        211,
+        249,
+        179,
+        164,
+        214,
+        105
+      ]
+    },
+    {
+      "name": "GameParamsUpdatedEvent",
+      "discriminator": [
+        255,
+        123,
+        118,
+        118,
+        145,
+        48,
+        184,
+        195
+      ]
+    },
+    {
+      "name": "HandCommitted",
+      "discriminator": [
+        236,
+        231,
+        134,
+        181,
+        15,
+        85,
+        131,
+        78
+      ]
+    },
+    {
+      "name": "HandRevealed",
+      "discriminator": [
+        178,
+        165,
+        222,
+        181,
+        146,
+        63,
+        35,
+        184
+      ]
+    },
+    {
+      "name": "ImprintGrantedEvent",
+      "discriminator": [
+        93,
+        250,
+        186,
+        140,
+        205,
+        80,
+        155,
+        252
+      ]
+    },
+    {
+      "name": "LeaseReturnedEvent",
+      "discriminator": [
+        96,
+        159,
+        243,
+        150,
+        213,
+        223,
+        134,
+        102
+      ]
+    },
+    {
+      "name": "LeaseStealEvent",
+      "discriminator": [
+        30,
+        191,
+        46,
+        18,
+        181,
+        81,
+        64,
+        104
+      ]
+    },
+    {
+      "name": "LegendaryAcquired",
+      "discriminator": [
+        36,
+        222,
+        18,
+        12,
+        128,
+        45,
+        165,
+        189
+      ]
+    },
+    {
+      "name": "LegendaryClaimEarned",
+      "discriminator": [
+        190,
+        116,
+        89,
+        184,
+        23,
+        125,
+        56,
+        101
+      ]
+    },
+    {
+      "name": "LegendaryClaimed",
+      "discriminator": [
+        22,
+        239,
+        88,
+        10,
+        138,
+        241,
+        64,
+        164
+      ]
+    },
+    {
+      "name": "ListingAcceptedEvent",
+      "discriminator": [
+        150,
+        83,
+        252,
+        152,
+        60,
+        196,
+        231,
+        83
+      ]
+    },
+    {
+      "name": "ListingCancelledEvent",
+      "discriminator": [
+        203,
+        204,
+        24,
+        205,
+        33,
+        24,
+        151,
+        195
+      ]
+    },
+    {
+      "name": "ListingCreatedEvent",
+      "discriminator": [
+        73,
+        147,
+        169,
+        146,
+        121,
+        205,
+        118,
+        3
+      ]
+    },
+    {
+      "name": "LootClaimedEvent",
+      "discriminator": [
+        14,
+        131,
+        99,
+        124,
+        224,
+        191,
+        224,
+        221
+      ]
+    },
+    {
+      "name": "LoreShardUnlocked",
+      "discriminator": [
+        169,
+        165,
+        243,
+        14,
+        166,
+        206,
+        205,
+        185
+      ]
+    },
+    {
+      "name": "PackOpenedEvent",
+      "discriminator": [
+        34,
+        218,
+        255,
+        81,
+        168,
+        113,
+        148,
+        86
+      ]
+    },
+    {
+      "name": "PrizePoolDistributed",
+      "discriminator": [
+        48,
+        99,
+        231,
+        244,
+        10,
+        35,
+        182,
+        135
+      ]
+    },
+    {
+      "name": "SeasonCreated",
+      "discriminator": [
+        69,
+        129,
+        125,
+        162,
+        208,
+        173,
+        40,
+        68
+      ]
+    },
+    {
+      "name": "SeasonEnded",
+      "discriminator": [
+        231,
+        210,
+        35,
+        6,
+        231,
+        92,
+        111,
+        69
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "NotInLobby",
+      "msg": "Game is not in lobby"
+    },
+    {
+      "code": 6001,
+      "name": "GameFull",
+      "msg": "Game is full"
+    },
+    {
+      "code": 6002,
+      "name": "NotEnoughPlayers",
+      "msg": "Not enough players"
+    },
+    {
+      "code": 6003,
+      "name": "NotHost",
+      "msg": "Only host can start"
+    },
+    {
+      "code": 6004,
+      "name": "NotCommitPhase",
+      "msg": "Not in commit phase"
+    },
+    {
+      "code": 6005,
+      "name": "NotRevealPhase",
+      "msg": "Not in reveal phase"
+    },
+    {
+      "code": 6006,
+      "name": "AlreadyCommitted",
+      "msg": "Already committed"
+    },
+    {
+      "code": 6007,
+      "name": "AlreadyRevealed",
+      "msg": "Already revealed"
+    },
+    {
+      "code": 6008,
+      "name": "NotCommitted",
+      "msg": "Not committed yet"
+    },
+    {
+      "code": 6009,
+      "name": "HashMismatch",
+      "msg": "Hash mismatch"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidAction",
+      "msg": "Invalid action"
+    },
+    {
+      "code": 6011,
+      "name": "NoSpellsLeft",
+      "msg": "No spells left"
+    },
+    {
+      "code": 6012,
+      "name": "CannotTargetSelf",
+      "msg": "Cannot target self"
+    },
+    {
+      "code": 6013,
+      "name": "CardNotFound",
+      "msg": "Card not found in hand"
+    },
+    {
+      "code": 6014,
+      "name": "PoolEmpty",
+      "msg": "Pool is empty"
+    },
+    {
+      "code": 6015,
+      "name": "PoolEmptyForArea",
+      "msg": "No cards left in area pool to draw"
+    },
+    {
+      "code": 6016,
+      "name": "NotInSameArea",
+      "msg": "Players must be in the same area"
+    },
+    {
+      "code": 6017,
+      "name": "InvalidArea",
+      "msg": "Area ID is out of range"
+    },
+    {
+      "code": 6018,
+      "name": "GameFinished",
+      "msg": "Game is already finished"
+    },
+    {
+      "code": 6019,
+      "name": "RoundLimitReached",
+      "msg": "Round limit reached"
+    },
+    {
+      "code": 6020,
+      "name": "InvalidProof",
+      "msg": "ZK proof is invalid"
+    },
+    {
+      "code": 6021,
+      "name": "WrongMagicProgram",
+      "msg": "Wrong magic program address"
+    },
+    {
+      "code": 6022,
+      "name": "WrongMagicContext",
+      "msg": "Wrong magic context address"
+    },
+    {
+      "code": 6023,
+      "name": "WrongGameAccount",
+      "msg": "Wrong game account (PDA mismatch)"
+    },
+    {
+      "code": 6024,
+      "name": "WrongPlayerStateAccount",
+      "msg": "Wrong player_state account (PDA mismatch)"
+    },
+    {
+      "code": 6025,
+      "name": "WrongDelegationProgram",
+      "msg": "Wrong delegation program address"
+    },
+    {
+      "code": 6026,
+      "name": "WrongOwnerProgram",
+      "msg": "Wrong owner program address"
+    },
+    {
+      "code": 6027,
+      "name": "AlreadyInitialized",
+      "msg": "Position commitment already initialized"
+    },
+    {
+      "code": 6028,
+      "name": "CommitmentMismatch",
+      "msg": "Position commitment mismatch: old_commitment != stored commitment"
+    },
+    {
+      "code": 6029,
+      "name": "AgentNotActive",
+      "msg": "Agent is not active"
+    },
+    {
+      "code": 6030,
+      "name": "InvalidDuration",
+      "msg": "Duration must be > 0 seconds"
+    },
+    {
+      "code": 6031,
+      "name": "InvalidDeckComposition",
+      "msg": "Invalid deck composition (cost cap, Legendary ≤2, Rare ≤6, Common ≥12)"
+    },
+    {
+      "code": 6032,
+      "name": "DeckLocked",
+      "msg": "Deck is locked — unlock timer has not expired"
+    },
+    {
+      "code": 6033,
+      "name": "TierLocked",
+      "msg": "Tier locked — insufficient wins at prerequisite tier"
+    },
+    {
+      "code": 6034,
+      "name": "AlreadyInQueue",
+      "msg": "Player is already in a matchmaking queue"
+    },
+    {
+      "code": 6035,
+      "name": "NotInQueue",
+      "msg": "Player is not in this queue"
+    },
+    {
+      "code": 6036,
+      "name": "QueueFull",
+      "msg": "Matchmaking queue is full (max 64 players)"
+    },
+    {
+      "code": 6037,
+      "name": "WrongDuel",
+      "msg": "Duel ID mismatch"
+    },
+    {
+      "code": 6038,
+      "name": "WrongRound",
+      "msg": "Round mismatch"
+    },
+    {
+      "code": 6039,
+      "name": "NotADuelParticipant",
+      "msg": "Caller is not a participant in this duel"
+    },
+    {
+      "code": 6040,
+      "name": "CommitmentNotSet",
+      "msg": "Hand commitment not set for this round"
+    },
+    {
+      "code": 6041,
+      "name": "HandAlreadyRevealed",
+      "msg": "Hand already revealed for this round"
+    },
+    {
+      "code": 6042,
+      "name": "DuelOver",
+      "msg": "Duel is already over"
+    },
+    {
+      "code": 6043,
+      "name": "DuelNotOver",
+      "msg": "Duel has not ended yet"
+    },
+    {
+      "code": 6044,
+      "name": "PoseidonHashFailed",
+      "msg": "Poseidon hash computation failed (invalid inputs)"
+    },
+    {
+      "code": 6045,
+      "name": "InvalidState",
+      "msg": "Invalid state for this operation"
+    },
+    {
+      "code": 6046,
+      "name": "LegendaryCapReached",
+      "msg": "Legendary supply cap reached for this species"
+    },
+    {
+      "code": 6047,
+      "name": "NoPendingLegendaryClaim",
+      "msg": "No pending Legendary claim for this player"
+    },
+    {
+      "code": 6048,
+      "name": "SeasonNotEnded",
+      "msg": "Season has not ended"
+    },
+    {
+      "code": 6049,
+      "name": "LegendariesAreProtectedFromBurn",
+      "msg": "Legendary cards are permanently protected from Burn"
+    },
+    {
+      "code": 6050,
+      "name": "RareRequiresConditionalBurn",
+      "msg": "Rare cards require a special conditional Burn (not available in Season 1)"
+    },
+    {
+      "code": 6051,
+      "name": "EvolveParentMustBeCommon",
+      "msg": "Both Evolve parents must be Common rarity"
+    },
+    {
+      "code": 6052,
+      "name": "InvalidEvolveTarget",
+      "msg": "Evolve target must be Uncommon rarity (Season 1 restriction)"
+    },
+    {
+      "code": 6053,
+      "name": "StatImprintLimitReached",
+      "msg": "Stat Imprint limit reached for this card's rarity"
+    },
+    {
+      "code": 6054,
+      "name": "StarterCardProtected",
+      "msg": "Starter deck cards are protected from Steal"
+    },
+    {
+      "code": 6055,
+      "name": "PermanentStealRequiresGoldHall",
+      "msg": "Permanent Steal (Hand-Peek / Legendary) requires Gold Hall"
+    },
+    {
+      "code": 6056,
+      "name": "LegendaryRequiresLegendarySteal",
+      "msg": "Legendary cards can only be stolen via Legendary Steal in Gold Hall"
+    },
+    {
+      "code": 6057,
+      "name": "LegendaryRequiresGoldHall",
+      "msg": "Legendary Steal requires Gold Hall tier"
+    },
+    {
+      "code": 6058,
+      "name": "SeasonStatsAlreadyInitialized",
+      "msg": "SeasonStats PDA for this season already initialized"
+    },
+    {
+      "code": 6059,
+      "name": "NoActiveLease",
+      "msg": "Card has no active lease to return"
+    },
+    {
+      "code": 6060,
+      "name": "LeaseNotExpired",
+      "msg": "Lease has not expired yet"
+    },
+    {
+      "code": 6061,
+      "name": "CannotLootSelf",
+      "msg": "Cannot loot from yourself"
+    },
+    {
+      "code": 6062,
+      "name": "NotWinner",
+      "msg": "You are not the winner of this battle"
+    },
+    {
+      "code": 6063,
+      "name": "WrongLoser",
+      "msg": "Wrong loser specified"
+    },
+    {
+      "code": 6064,
+      "name": "InvalidFieldSize",
+      "msg": "Battle field size must be exactly 5"
+    },
+    {
+      "code": 6065,
+      "name": "SlotHashesUnavailable",
+      "msg": "SlotHashes sysvar unavailable or too short"
+    },
+    {
+      "code": 6066,
+      "name": "LoserDoesNotOwnCard",
+      "msg": "Loser does not own the stolen card in their vault"
+    },
+    {
+      "code": 6067,
+      "name": "InvalidCardId",
+      "msg": "Invalid card ID (must be 1-60)"
+    },
+    {
+      "code": 6068,
+      "name": "CardNotOwned",
+      "msg": "Card not owned by player"
+    },
+    {
+      "code": 6069,
+      "name": "Unauthorized",
+      "msg": "Caller is not the authorized admin"
+    },
+    {
+      "code": 6070,
+      "name": "WaitlistClosed",
+      "msg": "Waitlist registration is closed"
+    },
+    {
+      "code": 6071,
+      "name": "AlreadyRegistered",
+      "msg": "Player is already registered for this season"
+    },
+    {
+      "code": 6072,
+      "name": "GameNotActive",
+      "msg": "Game is not active (status != 1)"
+    },
+    {
+      "code": 6073,
+      "name": "GameNotEnded",
+      "msg": "Game has not ended (status != 2)"
+    },
+    {
+      "code": 6074,
+      "name": "NotRegistered",
+      "msg": "Player has no deposit — not registered"
+    },
+    {
+      "code": 6075,
+      "name": "NoPrizeClaim",
+      "msg": "No prize to claim (vault_count == 0 or tier has no pool)"
+    },
+    {
+      "code": 6076,
+      "name": "ZkPubkeyMismatch",
+      "msg": "ZK proof pubkey does not match signer"
+    },
+    {
+      "code": 6077,
+      "name": "ZkRoundMismatch",
+      "msg": "ZK proof round does not match instruction argument"
+    },
+    {
+      "code": 6078,
+      "name": "ZkProofInvalid",
+      "msg": "ZK proof verification failed"
+    },
+    {
+      "code": 6079,
+      "name": "ZkProofAlreadyVerified",
+      "msg": "ZK proof already verified for this duel/round/signer"
+    },
+    {
+      "code": 6080,
+      "name": "InvalidPackType",
+      "msg": "Invalid pack type (must be 0=Standard or 1=Premium)"
+    },
+    {
+      "code": 6081,
+      "name": "InvalidRate",
+      "msg": "Invalid drop rate (Legendary must be ≤100000 = 10%)"
+    },
+    {
+      "code": 6082,
+      "name": "InvalidThreshold",
+      "msg": "Invalid threshold (must be ≤14 days in seconds)"
+    },
+    {
+      "code": 6083,
+      "name": "NotAdmin",
+      "msg": "Not admin (game_world authority required)"
+    },
+    {
+      "code": 6084,
+      "name": "PriceTooLow",
+      "msg": "Price too low (minimum 0.001 SOL)"
+    },
+    {
+      "code": 6085,
+      "name": "ListingInactive",
+      "msg": "Listing already inactive"
+    },
+    {
+      "code": 6086,
+      "name": "NotSeller",
+      "msg": "Not the seller of this listing"
+    },
+    {
+      "code": 6087,
+      "name": "WrongSeller",
+      "msg": "Wrong seller specified"
+    },
+    {
+      "code": 6088,
+      "name": "InvalidAccount",
+      "msg": "Account does not match expected address"
+    },
+    {
+      "code": 6089,
+      "name": "InvalidPublicSignal",
+      "msg": "ZK public signal does not match instruction argument"
+    },
+    {
+      "code": 6090,
+      "name": "InvalidAccountOwner",
+      "msg": "Account owner is not the expected program"
+    },
+    {
+      "code": 6091,
+      "name": "ZkNotVerified",
+      "msg": "ZK proof not verified for this round — call commit_hand first"
+    },
+    {
+      "code": 6092,
+      "name": "SeasonWrongStatus",
+      "msg": "Season is not in the expected status for this instruction"
+    },
+    {
+      "code": 6093,
+      "name": "WaitlistStillOpen",
+      "msg": "Waitlist window is still open"
+    },
+    {
+      "code": 6094,
+      "name": "TallyOutOfOrder",
+      "msg": "Finalize batch players must be strictly increasing and unprocessed"
+    },
+    {
+      "code": 6095,
+      "name": "TallyIncomplete",
+      "msg": "Season tally incomplete — finalize all participants before ending"
+    },
+    {
+      "code": 6096,
+      "name": "InsufficientWinsForPromotion",
+      "msg": "Card has not earned enough wins to promote"
+    },
+    {
+      "code": 6097,
+      "name": "PromoteWrongTier",
+      "msg": "Card is not at the rarity tier this promotion expects"
+    },
+    {
+      "code": 6098,
+      "name": "MissingRareProvenance",
+      "msg": "Card lacks the combat/ownership provenance required for Rare (a legendary kill or a prior-owner drop)"
+    },
+    {
+      "code": 6099,
+      "name": "NotDuelWonAcquisition",
+      "msg": "Only a card won in a duel (acquisition_source == duel_won) can reach Legendary"
+    },
+    {
+      "code": 6100,
+      "name": "InsufficientKosForPromotion",
+      "msg": "Card has not destroyed enough enemies (kos) to reach Legendary"
+    },
+    {
+      "code": 6101,
+      "name": "AlreadyMaxRarity",
+      "msg": "Card is already at the maximum rarity"
+    },
+    {
+      "code": 6102,
+      "name": "InsufficientEnergy",
+      "msg": "Not enough energy to enter a duel — wait for regen or refill"
+    },
+    {
+      "code": 6103,
+      "name": "DuelNotEnded",
+      "msg": "Duel has not ended — settle after ended_at is set"
+    },
+    {
+      "code": 6104,
+      "name": "CardNotInRevealedHand",
+      "msg": "Card id was not in this player's revealed hands for this duel"
+    },
+    {
+      "code": 6105,
+      "name": "CardAlreadySettled",
+      "msg": "This card has already been settled for this duel"
+    },
+    {
+      "code": 6106,
+      "name": "UnsupportedCardId",
+      "msg": "Card id 0 cannot be settled (0 is the empty-slot sentinel in revealed hands)"
+    },
+    {
+      "code": 6107,
+      "name": "WrongSettleRecord",
+      "msg": "Settle record does not belong to this duel/player"
+    },
+    {
+      "code": 6108,
+      "name": "TimeoutNotReached",
+      "msg": "Stall timeout has not elapsed yet"
+    },
+    {
+      "code": 6109,
+      "name": "OpponentNotStalled",
+      "msg": "Opponent is not the stalling side for the current round (or you owe the next action)"
+    },
+    {
+      "code": 6110,
+      "name": "RevealCardNotOwned",
+      "msg": "Revealed hand fields a card the player does not own"
+    }
+  ],
+  "types": [
+    {
+      "name": "AgentHireSession",
+      "docs": [
+        "On-chain record of an x402-paid agent hire session.",
+        "",
+        "Created by the hirer after completing the x402 payment to the facilitator.",
+        "The `payment_tx` field stores the Solana tx signature that was verified by",
+        "the facilitator — providing a verifiable audit trail linking the hire to",
+        "the actual SOL payment.",
+        "",
+        "PDA seeds: `[\"agent_hire\", hirer_pubkey, agent_id_le_bytes]`"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hirer",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_id",
+            "type": "u32"
+          },
+          {
+            "name": "started_at",
+            "type": "i64"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "payment_tx_lo",
+            "docs": [
+              "First 32 bytes of the Solana tx signature that funded the x402 payment.",
+              "Full sig is stored off-chain; this field provides an on-chain audit link."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "payment_tx_hi",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentHired",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "hirer",
+            "type": "pubkey"
+          },
+          {
+            "name": "agent_id",
+            "type": "u32"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentListing",
+      "docs": [
+        "Agent Registry — On-chain marketplace for AI agents.",
+        "Developers register their agents with strategy descriptions and pricing.",
+        "Players can browse and hire agents to play on their behalf.",
+        "",
+        "Revenue model: Agent earns 95% of intel revenue, platform takes 5%."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_id",
+            "type": "u32"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "name_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "strategy_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "endpoint_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "price_per_query",
+            "type": "u64"
+          },
+          {
+            "name": "total_queries",
+            "type": "u64"
+          },
+          {
+            "name": "total_revenue",
+            "type": "u64"
+          },
+          {
+            "name": "rating",
+            "type": "u16"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AgentRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "agent_id",
+            "type": "u32"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "price_per_query",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardBattleHistory",
+      "docs": [
+        "Per-NFT battle statistics PDA (v3.0-plus extended).",
+        "Seed: [\"card_battle_history\", card_mint]",
+        "v3.0-plus: added burn/evolve/imprint/lease fields at end.",
+        "Devnet: existing PDAs must be closed and re-initted post-deploy (r0ze approved)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "wins",
+            "type": "u32"
+          },
+          {
+            "name": "losses",
+            "type": "u32"
+          },
+          {
+            "name": "kos",
+            "type": "u32"
+          },
+          {
+            "name": "dmg_dealt",
+            "type": "u64"
+          },
+          {
+            "name": "times_summoned",
+            "type": "u32"
+          },
+          {
+            "name": "owners_history",
+            "type": {
+              "array": [
+                "pubkey",
+                10
+              ]
+            }
+          },
+          {
+            "name": "owners_history_len",
+            "type": "u8"
+          },
+          {
+            "name": "owners_dropped_count",
+            "type": "u32"
+          },
+          {
+            "name": "acquisition_source",
+            "type": "u8"
+          },
+          {
+            "name": "current_owner_since",
+            "type": "i64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "burn_count",
+            "type": "u32"
+          },
+          {
+            "name": "souls_collected",
+            "type": "u32"
+          },
+          {
+            "name": "legendary_kills",
+            "type": "u32"
+          },
+          {
+            "name": "imprints",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Imprint"
+                  }
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "imprint_count",
+            "type": "u8"
+          },
+          {
+            "name": "evolved_from_a",
+            "type": "pubkey"
+          },
+          {
+            "name": "evolved_from_b",
+            "type": "pubkey"
+          },
+          {
+            "name": "is_evolved",
+            "type": "bool"
+          },
+          {
+            "name": "lease_expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "lease_returns_to",
+            "type": "pubkey"
+          },
+          {
+            "name": "has_active_lease",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardBattleHistoryUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "wins",
+            "type": "u32"
+          },
+          {
+            "name": "losses",
+            "type": "u32"
+          },
+          {
+            "name": "kos",
+            "type": "u32"
+          },
+          {
+            "name": "dmg_dealt",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardBurnedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardEvolvedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "parent_a",
+            "type": "pubkey"
+          },
+          {
+            "name": "parent_b",
+            "type": "pubkey"
+          },
+          {
+            "name": "child_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "target_species_id",
+            "type": "u16"
+          },
+          {
+            "name": "cumulative_wins",
+            "type": "u32"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardLoreShards",
+      "docs": [
+        "Per-card lore discovery tracker (3 shards per card).",
+        "",
+        "Shard 0: Auto-unlocked on first acquisition.",
+        "Shard 1: Unlocked by playing a duel with this card in the active deck.",
+        "Shard 2: Unlocked via Gold Hall win or direct x402 payment.",
+        "",
+        "PDA seeds: [\"card_lore_shards\", card_mint, owner_pubkey]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "shards_found",
+            "type": {
+              "array": [
+                "bool",
+                3
+              ]
+            }
+          },
+          {
+            "name": "unlock_timestamps",
+            "type": {
+              "array": [
+                "i64",
+                3
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardMintRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
+            "type": "u8"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardOwnerChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "source",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CardPromoted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "from_rarity",
+            "type": "u8"
+          },
+          {
+            "name": "to_rarity",
+            "type": "u8"
+          },
+          {
+            "name": "wins",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ChampionDeclared",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "champion",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelHistorySettled",
+      "docs": [
+        "Emitted by `settle_duel_history` for each card credited."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
+            "type": "u8"
+          },
+          {
+            "name": "won",
+            "docs": [
+              "true = credited as a win, false = credited as a loss (draws credit neither)."
+            ],
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "player_1",
+            "type": "pubkey"
+          },
+          {
+            "name": "player_2",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelLootRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "loser",
+            "type": "pubkey"
+          },
+          {
+            "name": "loser_field",
+            "type": {
+              "array": [
+                "u8",
+                5
+              ]
+            }
+          },
+          {
+            "name": "stolen_card_id",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelSettleRecord",
+      "docs": [
+        "Per-(duel, player) settlement ledger for `settle_duel_history`.",
+        "",
+        "Prevents the same duel from crediting a player's card history more than once",
+        "per card species: bit `card_id` of `settled_bitmap` is set on settlement.",
+        "Created lazily (init_if_needed) on the player's first settle call for a duel.",
+        "",
+        "PDA seeds: [\"duel_settle\", duel_id, player]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "docs": [
+              "Duel this record belongs to (defense-in-depth vs seed confusion)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "player",
+            "docs": [
+              "Player whose settlements this record tracks."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "settled_bitmap",
+            "docs": [
+              "Bit `i` set ⇔ card_id `i` already settled for this (duel, player).",
+              "Card ids are 0..59, so a single u64 covers the full catalog."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelState",
+      "docs": [
+        "Per-duel on-chain state for commit-reveal ZK hand system.",
+        "",
+        "Both players commit their hands via Groth16 ZK proof at Lock In,",
+        "then reveal after battle resolves.",
+        "",
+        "PDA seeds: [\"duel\", duel_id.as_ref()]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "docs": [
+              "Unique duel identifier (random Pubkey generated at matchmaking)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "player_1",
+            "type": "pubkey"
+          },
+          {
+            "name": "player_2",
+            "type": "pubkey"
+          },
+          {
+            "name": "hall_tier",
+            "type": "u8"
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          },
+          {
+            "name": "phase",
+            "type": "u8"
+          },
+          {
+            "name": "ante",
+            "type": "u64"
+          },
+          {
+            "name": "started_at",
+            "type": "i64"
+          },
+          {
+            "name": "ended_at",
+            "type": "i64"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "player_1_commitment",
+            "docs": [
+              "Poseidon commitment per round per player (index: [round-1], 0-indexed)",
+              "Stored as 32-byte big-endian BN254 field element"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "player_2_commitment",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "player_1_revealed",
+            "docs": [
+              "Revealed card IDs after battle (10 cards × 5 rounds)"
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u64",
+                    10
+                  ]
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "player_2_revealed",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u64",
+                    10
+                  ]
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "player_1_salt",
+            "docs": [
+              "Salt used during commit_hand per round — stored on first reveal so",
+              "the second player's reveal_hand call can compute the deterministic",
+              "SHA-256 seed for damage_calc: sha256(p1_salt || p2_salt || round)."
+            ],
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "player_2_salt",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                5
+              ]
+            }
+          },
+          {
+            "name": "player_1_zk_verified",
+            "docs": [
+              "Set to true in commit_hand after Groth16 verification passes.",
+              "reveal_hand requires the corresponding flag to be true (ZK gate)."
+            ],
+            "type": {
+              "array": [
+                "bool",
+                5
+              ]
+            }
+          },
+          {
+            "name": "player_2_zk_verified",
+            "type": {
+              "array": [
+                "bool",
+                5
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "player_1_round_wins",
+            "docs": [
+              "Rounds won by player 1 so far this duel."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "player_2_round_wins",
+            "docs": [
+              "Rounds won by player 2 so far this duel."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "last_progress_at",
+            "docs": [
+              "Unix timestamp of the last state-advancing action on this duel",
+              "(init_duel / commit_hand / reveal_hand). `claim_timeout_win` compares",
+              "`now - last_progress_at` against `DUEL_STALL_TIMEOUT_SECONDS` to let the",
+              "non-stalling player end a duel the opponent refuses to progress."
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuelTimeoutClaimed",
+      "docs": [
+        "Emitted by `claim_timeout_win` when a stalled duel is force-ended."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "loser",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "docs": [
+              "Round the duel was stuck on when claimed."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "stalled_for",
+            "docs": [
+              "Seconds the duel had been stalled when claimed."
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GameParamsUpdatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "legendary_rate_phase1",
+            "type": "u32"
+          },
+          {
+            "name": "legendary_rate_phase2",
+            "type": "u32"
+          },
+          {
+            "name": "rare_rate_phase1",
+            "type": "u32"
+          },
+          {
+            "name": "rare_rate_phase2",
+            "type": "u32"
+          },
+          {
+            "name": "uncommon_rate",
+            "type": "u32"
+          },
+          {
+            "name": "threshold_seconds",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GameWorld",
+      "docs": [
+        "Global singleton for Season 1 state.",
+        "PDA seeds: [\"game_world\"]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "start_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "end_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "waitlist_close_timestamp",
+            "type": "i64"
+          },
+          {
+            "name": "total_participants",
+            "type": "u32"
+          },
+          {
+            "name": "total_prize_pool",
+            "type": "u64"
+          },
+          {
+            "name": "total_ops_revenue",
+            "type": "u64"
+          },
+          {
+            "name": "legendary_acquired_count",
+            "docs": [
+              "How many players have acquired each Legendary (max 10 each)."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                6
+              ]
+            }
+          },
+          {
+            "name": "winner_60_count",
+            "type": "u8"
+          },
+          {
+            "name": "game_status",
+            "docs": [
+              "0=waitlist, 1=active, 2=ended"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "tier2_total_vault",
+            "docs": [
+              "Tier participant counts (set during finalize_game for claim_prize)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "tier3_total_vault",
+            "type": "u64"
+          },
+          {
+            "name": "tier4_total_vault",
+            "type": "u64"
+          },
+          {
+            "name": "tier5_total_vault",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "ops_treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "prize_pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "shop_phase_threshold_seconds",
+            "docs": [
+              "Seconds after game_start at which Phase 2 drop rates activate (default 7 days)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "legendary_drop_rate_phase1",
+            "docs": [
+              "Drop rates in ppm (parts per million, out of 1_000_000). u32 required for uncommon (180000)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "legendary_drop_rate_phase2",
+            "type": "u32"
+          },
+          {
+            "name": "rare_drop_rate_phase1",
+            "type": "u32"
+          },
+          {
+            "name": "rare_drop_rate_phase2",
+            "type": "u32"
+          },
+          {
+            "name": "uncommon_drop_rate",
+            "type": "u32"
+          },
+          {
+            "name": "max_vault",
+            "docs": [
+              "Highest vault_count seen during finalize (timeout-champion tier)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "max_vault_count",
+            "docs": [
+              "How many players share `max_vault` (timeout Tier-1 divisor)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "finalize_processed",
+            "docs": [
+              "Participants tallied so far; `end_season_final` requires == total_participants."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "finalize_cursor",
+            "docs": [
+              "Last PlayerState owner tallied; the crank must pass strictly-increasing",
+              "pubkeys so each participant is counted exactly once across batches."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "prize_pool_bump",
+            "docs": [
+              "Bump for the prize-pool PDA (seeds = [b\"prize_pool\"]). The pool is a",
+              "program-owned System account; `claim_prize_v2` signs payouts with this."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GoldHallRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HandCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          },
+          {
+            "name": "commitment",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "HandRevealed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "round",
+            "type": "u8"
+          },
+          {
+            "name": "card_ids",
+            "type": {
+              "array": [
+                "u64",
+                10
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Imprint",
+      "docs": [
+        "Single imprint entry — 22 bytes (fixed-size)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "type": "u8"
+          },
+          {
+            "name": "value",
+            "type": "i32"
+          },
+          {
+            "name": "is_cosmetic",
+            "type": "bool"
+          },
+          {
+            "name": "acquired_at",
+            "type": "i64"
+          },
+          {
+            "name": "duel_id",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ImprintGrantedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "imprint_key",
+            "type": "u8"
+          },
+          {
+            "name": "is_cosmetic",
+            "type": "bool"
+          },
+          {
+            "name": "duel_id",
+            "type": "u64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LeaseReturnedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "returned_to",
+            "type": "pubkey"
+          },
+          {
+            "name": "returned_from",
+            "type": "pubkey"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LeaseStealEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "from",
+            "type": "pubkey"
+          },
+          {
+            "name": "to",
+            "type": "pubkey"
+          },
+          {
+            "name": "expires_at",
+            "type": "i64"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LegendaryAcquired",
+      "docs": [
+        "Emitted when a player acquires a Legendary card (realtime judgment)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "legendary_id",
+            "type": "u8"
+          },
+          {
+            "name": "legendary_idx",
+            "type": "u8"
+          },
+          {
+            "name": "claimant_num",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LegendaryClaimEarned",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_count",
+            "type": "u32"
+          },
+          {
+            "name": "gold_hall_wins",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LegendaryClaimed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "season_id",
+            "type": "u64"
+          },
+          {
+            "name": "species_id",
+            "type": "u8"
+          },
+          {
+            "name": "mint_number",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LegendarySupply",
+      "docs": [
+        "Per-season Legendary supply PDA.",
+        "Seed: [\"legendary_supply\", season_id.to_le_bytes()]",
+        "Tracks 4 Legendary species: Sceptre(0), Nameless Blade(1), Elyon Crown(2), Kingmaker's Ring(3)"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u64"
+          },
+          {
+            "name": "minted",
+            "docs": [
+              "minted[i] = how many of species i have been minted (0-10)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
+          },
+          {
+            "name": "cap",
+            "docs": [
+              "cap[i]    = max allowed per species per season (default 10)"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ListingAcceptedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
+            "type": "u8"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ListingCancelledEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
+            "type": "u8"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ListingCreatedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
+            "type": "u8"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LootClaimedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "loser",
+            "type": "pubkey"
+          },
+          {
+            "name": "duel_id",
+            "type": "pubkey"
+          },
+          {
+            "name": "stolen_card_id",
+            "type": "u8"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LoreShardUnlocked",
+      "docs": [
+        "Emitted when a lore shard is unlocked for a card."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "card_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "shard_index",
+            "type": "u8"
+          },
+          {
+            "name": "method",
+            "type": "u8"
+          },
+          {
+            "name": "timestamp",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PackOpenedEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buyer",
+            "type": "pubkey"
+          },
+          {
+            "name": "pack_type",
+            "type": "u8"
+          },
+          {
+            "name": "card_ids",
+            "type": "bytes"
+          },
+          {
+            "name": "slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerAchievements",
+      "docs": [
+        "Per-player achievement flags (10 achievements, bitmask in u16).",
+        "Bit i = achievement index i unlocked.",
+        "PDA seeds: [\"player_achievements\", player_pubkey]",
+        "",
+        "Achievement indices:",
+        "0=first_blood, 1=collector_10, 2=collector_30, 3=full_set,",
+        "4=chain_master, 5=dr_survived, 6=zk_committed, 7=super_x5,",
+        "8=dungeon_floor5, 9=season_top"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "flags",
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerBattleStats",
+      "docs": [
+        "Per-player battle combo and streak tracking.",
+        "combo_count resets on non-SUPER-EFFECTIVE battle outcome.",
+        "PDA seeds: [\"player_battle_stats\", player_pubkey]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "combo_count",
+            "type": "u8"
+          },
+          {
+            "name": "max_combo",
+            "type": "u8"
+          },
+          {
+            "name": "xp_2x_flag",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "wins_at_tier",
+            "docs": [
+              "Wins per matchmaking tier: [0]=Bronze, [1]=Silver, [2]=Gold.",
+              "Used to gate access: Silver requires wins_at_tier[0] >= 5, Gold requires wins_at_tier[1] >= 3."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                3
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerDeck",
+      "docs": [
+        "Player's prepared battle deck (up to 20 cards).",
+        "PDA seeds: [\"player_deck\", player_pubkey]",
+        "",
+        "Composition rules (GDD v1.2 — simplified from Phase C):",
+        "- exactly 20 cards",
+        "- max 2 copies of any single card",
+        "(Phase C cost cap + rarity balance removed)",
+        "",
+        "DECISION (2026-04-22): Added lane_assignments [u8; 20] field.",
+        "Values: 0=Front, 1=Middle, 2=Back, 255=Any (default).",
+        "Existing accounts that were init_if_needed before this change have",
+        "zero-padding in the new bytes, which is treated as Front (0). Clients",
+        "should write 255 (Any) for all lanes when saving a deck without lane data.",
+        "SIZE updated from 78 → 98 bytes; new accounts created after this deploy",
+        "will be allocated correctly via init_if_needed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "deck_cards",
+            "docs": [
+              "Card IDs in deck (0 = empty slot). Always exactly 20 entries."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                20
+              ]
+            }
+          },
+          {
+            "name": "card_count",
+            "type": "u8"
+          },
+          {
+            "name": "locked_until",
+            "docs": [
+              "Unix timestamp until which the deck is locked (0 = not locked)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "last_modified",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "lane_assignments",
+            "docs": [
+              "Lane assignment per deck slot. 0=Front, 1=Middle, 2=Back, 255=Any.",
+              "Defaults to 255 (Any) when not explicitly set."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                20
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerDuelStats",
+      "docs": [
+        "Per-player duel statistics for current season.",
+        "Separate from PlayerRegistry to avoid size extension migration issues.",
+        "Seed: [\"player_duel_stats\", player_pubkey]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "gold_hall_wins_current_season",
+            "type": "u32"
+          },
+          {
+            "name": "legendary_claims_current_season",
+            "type": "u32"
+          },
+          {
+            "name": "total_duels_won",
+            "type": "u32"
+          },
+          {
+            "name": "total_duels_lost",
+            "type": "u32"
+          },
+          {
+            "name": "current_season_id",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerLevel",
+      "docs": [
+        "Per-player XP and level progression.",
+        "xpForLevel(n) = floor((n-1)*n*55), 60 levels.",
+        "PDA seeds: [\"player_level\", player_pubkey]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "xp_total",
+            "type": "u64"
+          },
+          {
+            "name": "level",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerRegistry",
+      "docs": [
+        "Per-player permanent card species registry.",
+        "First acquisition of species X sets registered[X-1] = true (permanent).",
+        "PDA seeds: [\"player_registry\", player_pubkey]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "registered",
+            "docs": [
+              "registered[i] = true means card_id i+1 has been seen at least once"
+            ],
+            "type": {
+              "array": [
+                "bool",
+                60
+              ]
+            }
+          },
+          {
+            "name": "registered_at",
+            "docs": [
+              "unix timestamp of first registration, 0 if not registered"
+            ],
+            "type": {
+              "array": [
+                "i64",
+                60
+              ]
+            }
+          },
+          {
+            "name": "count",
+            "docs": [
+              "total distinct species registered"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "season_complete",
+            "docs": [
+              "true when count == 60 (all species collected)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "game_id",
+            "type": "u64"
+          },
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "player_index",
+            "type": "u8"
+          },
+          {
+            "name": "area",
+            "type": "u8"
+          },
+          {
+            "name": "cards",
+            "docs": [
+              "Cards held: array of 5 slots, value = card_id (1-5), 0 = empty"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                5
+              ]
+            }
+          },
+          {
+            "name": "card_count",
+            "type": "u8"
+          },
+          {
+            "name": "steal_count",
+            "type": "u8"
+          },
+          {
+            "name": "barrier_count",
+            "type": "u8"
+          },
+          {
+            "name": "scout_count",
+            "type": "u8"
+          },
+          {
+            "name": "has_committed",
+            "type": "bool"
+          },
+          {
+            "name": "has_revealed",
+            "type": "bool"
+          },
+          {
+            "name": "revealed_action",
+            "docs": [
+              "Revealed action (stored after reveal, used during resolution)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "revealed_target",
+            "type": "pubkey"
+          },
+          {
+            "name": "move_target",
+            "docs": [
+              "Move target area (if action is Move)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "card_timestamps",
+            "docs": [
+              "Solana clock timestamp when each card slot was acquired (0 = empty/unset)"
+            ],
+            "type": {
+              "array": [
+                "i64",
+                5
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "position_commitment",
+            "docs": [
+              "Poseidon(x, y, area, salt) — set by init_position, updated by verify_dungeon_move"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "position_commitment_initialized",
+            "type": "bool"
+          },
+          {
+            "name": "current_queue",
+            "docs": [
+              "Pubkey of the MatchmakingQueue PDA this player is currently in, or None."
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "vault_bitmap",
+            "docs": [
+              "Bitmask of owned card IDs (1-60). Bit (id-1) set = owned."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "deposit_amount",
+            "docs": [
+              "Initial deposit in lamports (0.5 SOL = 500_000_000)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "win_streak",
+            "docs": [
+              "Current win streak (resets on loss)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "max_win_streak",
+            "docs": [
+              "All-time max win streak this season."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "total_matches",
+            "docs": [
+              "Total matches played (for Sage / Architect legendary judgment)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "last_action_type",
+            "docs": [
+              "action_type of the last committed action (u8, ActionType value)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "consecutive_diff_actiontype",
+            "docs": [
+              "Consecutive matches where action_type differed from the previous match."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "x402_total_spend",
+            "docs": [
+              "Cumulative x402 spend in lamports (for Patron / Magnate judgment)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "peek_unique_targets",
+            "docs": [
+              "Bitmap of unique peek target wallets (simplified: hash mod 64)."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "no_x402_win_streak",
+            "docs": [
+              "Win streak with zero x402 spend (for Hermit / Ascetic judgment)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "legendary_progress",
+            "docs": [
+              "Legendary acquisition flags (index = Legendary index 0-5)."
+            ],
+            "type": {
+              "array": [
+                "bool",
+                6
+              ]
+            }
+          },
+          {
+            "name": "vault_size_max",
+            "docs": [
+              "Max vault size reached this season (for Phoenix / Marauder judgment)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "vault_size_min",
+            "docs": [
+              "Min vault size reached after reaching max (for Phoenix judgment)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "last_drop_to_tier5_timestamp",
+            "docs": [
+              "Unix timestamp of last time player dropped to Tier 5 (for Phoenix)."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "energy",
+            "docs": [
+              "Current energy (0..=ENERGY_MAX). Spent to enter a duel, regenerates on a",
+              "clock (see `regenerated_energy`), refillable for SOL (`refill_energy`)."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "last_energy_regen_at",
+            "docs": [
+              "Unix timestamp the energy clock was last settled (last regen/spend/refill)."
+            ],
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlayerTitle",
+      "docs": [
+        "Per-player equipped title (0-7) and unlocked title bitmask.",
+        "PDA seeds: [\"player_title\", player_pubkey]",
+        "",
+        "Title indices:",
+        "0=Traveler, 1=Card Hunter, 2=Chain Wizard, 3=Dread Pirate,",
+        "4=ZK Mystic, 5=Half-Deck, 6=The Collector, 7=Champion"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "equipped",
+            "type": "u8"
+          },
+          {
+            "name": "unlocked",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PrizePoolDistributed",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "total_lamports",
+            "type": "u64"
+          },
+          {
+            "name": "champion_share",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Season",
+      "docs": [
+        "Season system for competitive play.",
+        "Each season has: entry fee, prize pool, leaderboard, NFT carry-over.",
+        "",
+        "Season lifecycle:",
+        "1. create_season — Set parameters (entry fee, max players, duration)",
+        "2. Players join via deposit_stake",
+        "3. Games play out",
+        "4. end_season — Distribute prizes, record legends"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "entry_fee",
+            "type": "u64"
+          },
+          {
+            "name": "prize_pool",
+            "type": "u64"
+          },
+          {
+            "name": "player_count",
+            "type": "u32"
+          },
+          {
+            "name": "max_players",
+            "type": "u32"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "winner_time",
+            "type": "i64"
+          },
+          {
+            "name": "fastest_clear_rounds",
+            "type": "u8"
+          },
+          {
+            "name": "season_start",
+            "type": "i64"
+          },
+          {
+            "name": "season_end",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeasonCardSupply",
+      "docs": [
+        "Tracks per-season card supply limits derived from participant count.",
+        "PDA seeds: [\"season_supply\", season_id_le]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "participant_count",
+            "type": "u32"
+          },
+          {
+            "name": "supply",
+            "docs": [
+              "Max mintable cards per tier [C, B, A, S, SS]"
+            ],
+            "type": {
+              "array": [
+                "u32",
+                5
+              ]
+            }
+          },
+          {
+            "name": "minted",
+            "docs": [
+              "Cards minted per tier so far"
+            ],
+            "type": {
+              "array": [
+                "u32",
+                5
+              ]
+            }
+          },
+          {
+            "name": "exhausted",
+            "docs": [
+              "true when a tier's supply is exhausted"
+            ],
+            "type": {
+              "array": [
+                "bool",
+                5
+              ]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeasonCreated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "entry_fee",
+            "type": "u64"
+          },
+          {
+            "name": "max_players",
+            "type": "u32"
+          },
+          {
+            "name": "duration_seconds",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeasonEnded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "winner",
+            "type": "pubkey"
+          },
+          {
+            "name": "prize_pool",
+            "type": "u64"
+          },
+          {
+            "name": "fastest_rounds",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SeasonStats",
+      "docs": [
+        "Aggregate season-level burn/evolve/steal counters.",
+        "Seed: [\"season_stats\", season_id_le]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "season_id",
+            "type": "u32"
+          },
+          {
+            "name": "total_burned",
+            "type": "u32"
+          },
+          {
+            "name": "total_minted",
+            "type": "u32"
+          },
+          {
+            "name": "total_evolved",
+            "type": "u32"
+          },
+          {
+            "name": "total_stolen",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StealType",
+      "docs": [
+        "Steal type determines ownership transfer semantics.",
+        "LEASE_DURATION_SEC = 1800 (30 min, ≈3 duels); set via constant below."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Lease"
+          },
+          {
+            "name": "Ransom"
+          },
+          {
+            "name": "HandPeek"
+          },
+          {
+            "name": "Legendary"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeListing",
+      "docs": [
+        "Active trade listing PDA. Card is escrowed (removed from seller vault on creation).",
+        "Seeds: [\"trade\", seller_pubkey, card_id_byte]"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "seller",
+            "type": "pubkey"
+          },
+          {
+            "name": "card_id",
+            "type": "u8"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "CARD_POOL_SEED",
+      "type": "bytes",
+      "value": "[99, 97, 114, 100, 95, 112, 111, 111, 108]"
+    },
+    {
+      "name": "COMMIT_SEED",
+      "type": "bytes",
+      "value": "[99, 111, 109, 109, 105, 116]"
+    },
+    {
+      "name": "GAME_SEED",
+      "type": "bytes",
+      "value": "[103, 97, 109, 101]"
+    },
+    {
+      "name": "PLAYER_SEED",
+      "type": "bytes",
+      "value": "[112, 108, 97, 121, 101, 114]"
+    }
+  ]
+}

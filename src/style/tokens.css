@@ -1,0 +1,37 @@
+/* The Drowned Archive — 0xARK 2.0. Functional aliases keep game modules stable. */
+:root {
+  color-scheme: dark;
+  --bg-deep: #101719; --bg-mid: #1b282b;
+  --bg-panel: rgba(18,28,30,.94); --overlay-scrim: rgba(4,9,11,.84);
+  --text-cream: #f1f0e8; --text-dim: #a8b6b6;
+  --accent-gold: #d9be87; --accent-gold-bright: #f4dda9;
+  --accent-red: #ed877a; --accent-blue: #99d9d2; --accent-warn: #e7c888;
+  --success: #9fceb6; --hp-green: #a9d8b2;
+  --clan-knight: #aac4e2; --clan-merchant: #e1c88f; --clan-pirate: #ef9d8d;
+  --clan-scholar: #bbb1d9; --clan-monk: #a3c49e; --clan-engineer: #d7aa7e;
+  --rarity-c: #a4b4b6; --rarity-u: #a3c49e; --rarity-r: #aac4e2; --rarity-l: #e1c88f;
+  --line: rgba(195,215,207,.16); --line-strong: rgba(217,190,135,.5);
+  --border-hard: 1px solid var(--line-strong); --border-gold: 1px solid var(--line-strong);
+  --border-dim: 1px solid var(--line); --border-red: 1px solid var(--accent-red);
+  --font-main: 'Manrope','Hiragino Kaku Gothic ProN',sans-serif;
+  --font-display: 'Cormorant Garamond',Georgia,serif;
+  --font-mono: 'IBM Plex Mono',monospace;
+  --fs-display-xl: clamp(64px,7vw,112px); --fs-display: 56px; --fs-title: 36px;
+  --fs-heading: 24px; --fs-body: 16px; --fs-ui: 14px; --fs-caption: 13px;
+  --ls-normal: 0; --ls-caption: .04em; --ls-wide: .12em; --ls-display: .02em;
+  --lh-tight: 1.05; --lh-ui: 1.35; --lh-body: 1.6;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
+  --t-fast: 150ms; --t-base: 240ms; --t-slow: 420ms;
+  --ease-pop: cubic-bezier(.16,1,.3,1); --ease-step: ease-out;
+  --r-none: 4px; --r-chip: 4px;
+  --z-hud: 10; --z-dialog: 50; --z-modal: 100; --z-toast: 200; --z-ceremony: 300;
+  --text-gold: var(--accent-gold); --shadow-card: 0 14px 26px rgba(0,0,0,.45);
+}
+b,strong { font-weight: 600; }
+:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 4px; }
+.tx-link,.selectable { user-select: text; -webkit-user-select: text; }
+.tx-link { color: var(--accent-blue); font-size: var(--fs-caption); text-decoration: underline; }
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

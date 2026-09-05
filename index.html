@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>0xARK — The Drowned Archive</title>
+
+  <!-- Display typography and high-legibility tactical UI. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Drowned Archive palette/type tokens load before the compatibility base
+       below and archive.css. See DESIGN.md and this client's README.md. -->
+  <link rel="stylesheet" href="src/style/tokens.css">
+  <style>
+    /* ── Reset ───────────────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    img { image-rendering: auto; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+    }
+
+    body {
+      color: var(--text-cream);
+      font-family: var(--font-main);
+      font-size: 20px;
+      letter-spacing: var(--ls-normal);
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Compatibility base. archive.css owns the current fluid viewport layout. */
+    #stage-viewport {
+      width: 100vw; height: 100dvh;
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Retained base dimensions, overridden by archive.css (no stage scaling). */
+    #app {
+      width: 1024px;
+      height: 576px;
+      position: relative;
+      overflow: hidden;
+      background: var(--bg-deep);
+      flex-shrink: 0;
+    }
+
+    /* Retired portrait overlay rules; archive.css keeps this overlay hidden. */
+    #rotate-overlay {
+      position: fixed; inset: 0; z-index: var(--z-modal, 100);
+      display: none; align-items: center; justify-content: center;
+      background: var(--overlay-scrim, rgba(0,0,0,0.6));
+      color: var(--text-cream);
+      font-family: var(--font-main);
+      font-size: var(--fs-title, 32px); letter-spacing: var(--ls-wide, 0.08em);
+      text-align: center; padding: 24px;
+    }
+    html.is-portrait #rotate-overlay { display: flex; }
+    html.is-portrait #stage-viewport { filter: brightness(0.22); }
+
+    /* ── Loading state ───────────────────────────────────── */
+    #app-loading {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      background: var(--bg-deep);
+      z-index: 999;
+    }
+    .load-logo { font-size: 72px; color: var(--accent-gold); letter-spacing: 0.12em; }
+    .load-sub  { font-size: 18px; color: var(--text-dim); letter-spacing: 0.1em; }
+    .load-bar-wrap {
+      width: 200px; height: 4px; background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .load-bar {
+      height: 100%; background: var(--accent-gold);
+      animation: load-sweep 1.2s ease-in-out infinite;
+    }
+    @keyframes load-sweep {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+
+    /* ── Shared component classes ────────────────────────── */
+    .gba-btn {
+      font-family: var(--font-main);
+      font-size: 20px;
+      letter-spacing: var(--ls-normal);
+      color: var(--text-cream);
+      background: var(--bg-mid);
+      border: var(--border-gold);
+      padding: 7px 22px;
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 80ms, color 80ms;
+      line-height: 1;
+    }
+    .gba-btn:hover, .gba-btn:focus-visible, .gba-btn.is-active {
+      background: var(--accent-gold); color: var(--bg-deep); outline: none;
+    }
+    .gba-btn:disabled { opacity: 0.45; cursor: default; pointer-events: none; }
+    .gba-btn--primary { background: var(--accent-gold); color: var(--bg-deep); font-size: 22px; border-width: 2px; }
+    .gba-btn--primary:hover { background: var(--accent-gold-bright); }
+    .gba-btn--ghost { background: transparent; border: var(--border-dim); color: var(--text-dim); }
+    .gba-btn--ghost:hover { border-color: var(--accent-gold); color: var(--text-cream); background: transparent; }
+    .gba-btn--danger { border-color: var(--accent-red); }
+    .gba-btn--danger:hover { background: var(--accent-red); color: #fff; }
+
+    .panel { background: var(--bg-panel); border: var(--border-gold); padding: 12px 16px; }
+    .chip {
+      font-family: var(--font-main); font-size: 15px; letter-spacing: var(--ls-wide);
+      background: var(--bg-panel); border: var(--border-dim); padding: 3px 10px;
+      white-space: nowrap; line-height: 1.4;
+    }
+
+    .label-gold { color: var(--accent-gold); }
+    .label-red  { color: var(--accent-red); }
+    .label-dim  { color: var(--text-dim); font-size: 15px; }
+    .sep        { color: var(--accent-gold); margin: 0 6px; }
+    .mono       { font-family: 'Courier New', monospace; font-size: 13px; }
+
+    .abs { position: absolute; }
+    .flex-center { display: flex; align-items: center; justify-content: center; }
+    .flex-row { display: flex; align-items: center; }
+    .gap-8  { gap: 8px; }
+    .gap-16 { gap: 16px; }
+    .gap-24 { gap: 24px; }
+
+    .clan-knight    { color: var(--clan-knight); }
+    .clan-merchant  { color: var(--clan-merchant); }
+    .clan-pirate    { color: var(--clan-pirate); }
+    .clan-scholar   { color: var(--clan-scholar); }
+    .clan-monk      { color: var(--clan-monk); }
+    .clan-engineer  { color: var(--clan-engineer); }
+  </style>
+  <link rel="stylesheet" href="src/style/archive.css">
+</head>
+<body>
+  <div id="stage-viewport">
+    <div id="app">
+      <div id="app-loading">
+        <div class="load-logo">0xARK</div>
+        <div class="load-sub">THE DROWNED ARCHIVE</div>
+        <div class="load-bar-wrap"><div class="load-bar"></div></div>
+      </div>
+    </div>
+  </div>
+  <div id="rotate-overlay" role="alert">ROTATE DEVICE ⟳<br><span style="font-size:var(--fs-ui,16px);color:var(--text-dim);">0xARK is landscape-first</span></div>
+
+  <!-- Runtime selects an isolated practice environment before importing the game. -->
+  <script type="module" src="src/runtime.js"></script>
+
+  <!-- Compatibility reset: clear retired zoom/transform and portrait state. -->
+  <script type="module" src="src/stage-scaler.js"></script>
+</body>
+</html>

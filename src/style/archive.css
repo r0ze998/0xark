@@ -1,0 +1,563 @@
+/* 0xARK / THE DROWNED ARCHIVE
+   Presentation layer only. The #app scope wins against lazy component styles;
+   dynamic display, selection, pending state and combat transforms stay owned
+   by their components. All card/stat hooks remain compatible with playback. */
+html.archive-ui, .archive-ui body { background: var(--bg-deep); }
+.archive-ui body { font: 16px/1.5 var(--font-main); }
+.archive-ui #stage-viewport { width:100%; height:100dvh; padding-left:92px; background:var(--bg-deep); }
+.archive-ui #app { width:100%; height:100%; overflow:hidden; background:var(--bg-deep); }
+.archive-ui #rotate-overlay { display:none !important; }
+.is-preview #stage-viewport { padding-bottom:36px; }
+.archive-rail { width:92px; position:fixed; left:0; top:0; bottom:0; background:var(--bg-deep); border-right:var(--border-dim); display:flex; flex-direction:column; align-items:center; z-index:20; }
+.archive-mark { height:92px; display:flex; align-items:center; color:var(--text-cream); text-decoration:none; font:500 30px var(--font-display); letter-spacing:-2px; }
+.archive-mark span { font:20px var(--font-main); color:var(--accent-gold); margin:0 2px; }
+.rail-links { display:flex; flex-direction:column; gap:14px; width:100%; margin-top:38px; }
+.rail-links a { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:76px; color:var(--text-dim); text-decoration:none; position:relative; font-size:12px; }
+.rail-links a:hover,.rail-links a[aria-current] { color:var(--accent-gold-bright); background:linear-gradient(90deg,rgba(217,190,135,.1),transparent); }
+.rail-links a[aria-current]::before { content:''; position:absolute; left:0; top:18px; bottom:18px; width:2px; background:var(--accent-gold); }
+.rail-edition { margin-top:auto; margin-bottom:54px; color:var(--text-dim); font:12px/1.8 var(--font-mono); text-align:center; letter-spacing:.1em; }
+.archive-preview { height:36px; position:fixed; bottom:0; left:92px; right:0; z-index:80; display:flex; align-items:center; gap:20px; padding:0 28px; background:var(--bg-mid); border-top:var(--border-dim); font:12px var(--font-main); color:var(--text-dim); }
+.archive-preview > span { margin-right:auto; }
+.archive-preview i { display:inline-block; width:5px; height:5px; background:var(--accent-blue); margin-right:8px; }
+.archive-preview a { color:var(--accent-blue); text-underline-offset:4px; }
+.is-preview .demo-badge { display:none; } /* persistent, more informative practice strip replaces badge */
+#app { --archive-scene:url('../../public/img/archive/drowned-archive.png'); --archive-back:url('../../public/img/archive/sealed-card.png'); }
+#app :is(.home-screen,.wg-screen,.reg-screen,.ms-root,.prep-root,.intel-root,.rev-root,.loot-root,.shop-screen,.trade-screen) { width:100%; height:100%; font-family:var(--font-main); color:var(--text-cream); position:relative; }
+#app :is(h1,h2,h3,.ms-panel-title,.ms-battle-title,.prep-field-title,.loot-title) { font-family:var(--font-display); font-weight:500; letter-spacing:-.025em; }
+#app :is(button,input,select) { font-family:var(--font-main); }
+#app :is(button,a) { -webkit-tap-highlight-color:transparent; }
+#app button { transition:background .18s,border-color .18s,color .18s,box-shadow .18s; }
+#app button:not(:disabled):active { translate:0 1px; }
+#app button:disabled { cursor:not-allowed; }
+#app .gba-btn { font-size:14px; min-height:42px; padding:12px 18px; border-radius:3px; line-height:1.3; letter-spacing:.03em; font-weight:600; }
+#app .gba-btn--primary { background:var(--accent-gold); color:var(--bg-deep); border:var(--border-hard); }
+#app .gba-btn--primary:hover:not(:disabled) { background:var(--accent-gold-bright); box-shadow:0 0 24px rgba(217,190,135,.14); }
+#app .chip { font-size:12px; border-radius:3px; padding:6px 10px; background:rgba(0,0,0,.12); letter-spacing:.06em; }
+#app .label-dim { color:var(--text-dim); }
+#app :is(.home-header,.ms-topbar,.prep-topbar,.intel-topbar,.rev-topbar,.shop-header,.trade-header) { min-height:80px; height:80px; border-bottom:var(--border-dim); padding:0 32px; background:rgba(10,18,20,.76); flex-shrink:0; gap:20px; }
+#app :is(.home-brand h1,.ms-brand-name,.wg-logo,.reg-logo) { color:var(--text-cream); font:500 34px/1 var(--font-display); letter-spacing:.035em; }
+#app :is(.home-brand-label,.home-eyebrow,.ms-eyebrow,.ms-tagline) { font:12px/1.5 var(--font-main); letter-spacing:.14em; color:var(--accent-gold); }
+#app .ms-back-btn,#app .shop-back-btn,#app .trade-back-btn { font-size:13px; padding:10px 14px; color:var(--text-dim); border:var(--border-dim); border-radius:3px; }
+#app .ms-footer { height:38px; min-height:38px; padding:0 32px; font:12px var(--font-mono); color:var(--text-dim); border-top:var(--border-dim); }
+#app .energy-hud { font-family:var(--font-main); gap:10px; }
+#app .energy-count { font:14px var(--font-mono); }
+#app .energy-next { font-size:12px; }
+#app .energy-refill-btn { border-radius:4px; }
+#app .round-hud { font-family:var(--font-main); font-size:13px; }
+#app .timer--urgent { color:var(--accent-red); }
+
+/* Cards: full-bleed illustration with readable data anchored to the foot.
+   The six existing portraits are shared faction art, never new card identities. */
+#app .card-frame { width:100%; min-width:0; aspect-ratio:2/3; border:1px solid color-mix(in srgb,var(--rc) 55%,var(--bg-mid)); border-radius:7px; background:var(--bg-mid); box-shadow:var(--shadow-card); isolation:isolate; image-rendering:auto; overflow:hidden; container-type:inline-size; transition:transform .22s var(--ease-pop),box-shadow .22s,border-color .22s; }
+#app .card-frame .art-window { inset:0; position:absolute; width:auto; height:auto; margin:0; border:0; overflow:hidden; background:var(--bg-mid); z-index:-2; }
+#app .card-frame .card-art-img { width:100%; height:100%; object-fit:cover; image-rendering:auto; }
+#app .card-frame::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg,rgba(4,9,11,.42),transparent 28%,rgba(4,9,11,.08) 47%,rgba(4,9,11,.94) 87%); z-index:-1; pointer-events:none; }
+#app .card-frame .name-banner { position:absolute; top:auto; bottom:21%; left:9%; right:9%; padding:0; height:auto; display:block; font:500 clamp(15px,12cqw,23px)/1.05 var(--font-display); letter-spacing:0; text-align:left; color:var(--text-cream); white-space:normal; text-shadow:0 2px 8px rgba(0,0,0,.8); background:none; border:0; }
+#app .card-frame .stats-panel { position:absolute; bottom:4%; top:auto; left:8%; right:8%; height:13%; padding:7px 0 0; border:0; border-top:1px solid rgba(241,240,232,.25); display:flex; justify-content:space-between; background:none; }
+#app .card-frame .stat-badge { display:flex; flex-direction:column; justify-content:center; gap:0; background:transparent; border:0; padding:0; line-height:1.05; color:var(--text-cream); min-width:0; }
+#app .card-frame .stat-value { font:500 clamp(13px,10cqw,20px)/1.1 var(--font-mono); }
+#app .card-frame .stat-label { display:block; font:12px/1.4 var(--font-main); color:var(--text-dim); letter-spacing:.03em; }
+#app .card-frame .cf-hp .stat-value { color:var(--hp-green); }
+#app .card-frame .clan-bar { width:3px; height:27px; left:0; top:12px; }
+#app .card-frame .rarity-bar { height:2px; left:8%; right:8%; width:auto; bottom:0; top:auto; }
+#app .card-identity { position:absolute; top:7%; left:9%; right:9%; display:flex; justify-content:space-between; align-items:center; color:var(--text-cream); text-shadow:0 1px 3px black; text-transform:uppercase; font:12px/1 var(--font-main); letter-spacing:.05em; gap:4px; }
+#app .card-rarity-label { color:var(--rc); font-size:12px; }
+#app .card-catalog-no { position:absolute; top:14%; left:9%; font:12px var(--font-mono); color:var(--text-cream); opacity:.8; }
+#app .card-frame--facedown { background:var(--bg-deep) var(--archive-back) center/cover; }
+#app .card-frame--facedown::after { background:none; }
+#app .card-frame--locked { opacity:.4; filter:grayscale(.8); }
+#app .card-frame--dead { opacity:.32; filter:grayscale(1); }
+#app .card-frame--selected { border-color:var(--accent-blue); box-shadow:0 0 0 2px var(--accent-blue),var(--shadow-card); }
+#app .ark-card { border-radius:5px; font-family:var(--font-main); }
+#app .ark-card-bp { font-family:var(--font-display); }
+#app .ark-card--facedown { background:var(--bg-deep) var(--archive-back) center/cover; }
+#app .ark-card-back { opacity:0; }
+
+/* Home: a playable title screen, a physical card fan, and a quiet scenic world. */
+#app .home-screen { display:grid; grid-template-rows:80px minmax(0,1fr) 112px 40px; padding:0 32px; gap:0; background:linear-gradient(90deg,rgba(9,17,19,.95),rgba(9,17,19,.45) 70%),var(--archive-scene) center/cover; }
+#app .home-header { padding:0; background:transparent; }
+#app .home-brand { gap:24px; }
+#app .home-brand-label { border-left:var(--border-dim); padding-left:24px; }
+#app .home-session { font-size:12px; gap:16px; }
+#app .home-wallet { background:rgba(20,32,34,.64); border-radius:4px; font-size:12px; }
+#app .home-main { display:grid; grid-template-columns:42% 58%; gap:0; align-items:center; min-height:0; }
+#app .home-battle { padding:20px 0; max-width:490px; display:flex; flex-direction:column; border:0; background:none; min-height:0; }
+#app .home-battle h2 { font:500 clamp(44px,4.7vw,76px)/.98 var(--font-display); margin:22px 0 18px; letter-spacing:-.035em; }
+#app .home-battle h2 em { color:var(--accent-gold); font-weight:400; }
+#app .home-battle-copy { font-size:16px; line-height:1.8; color:var(--text-dim); }
+#app .home-rule { display:flex; gap:24px; border:0; font-size:12px; letter-spacing:.09em; color:var(--text-dim); margin:28px 0 18px; padding:0; }
+#app .home-battle-action { margin:0; padding:0; }
+#app .home-battle-button { border:var(--border-hard); border-radius:3px; padding:18px 22px; background:var(--accent-gold); color:var(--bg-deep); width:100%; max-width:370px; font:600 16px/1.4 var(--font-main); letter-spacing:0; box-shadow:0 8px 28px rgba(0,0,0,.24); }
+#app .home-battle-button:hover:not(:disabled) { background:var(--accent-gold-bright); }
+#app .home-readiness { font:12px/1.5 var(--font-main); margin-top:12px; min-height:18px; }
+#app .home-energy { margin-top:22px; opacity:.85; min-height:24px; }
+#app .home-screen .energy-next { flex-basis:auto; }
+#app .home-showcase { border:0; min-width:0; height:100%; max-height:540px; display:flex; flex-direction:column; padding:20px 0 0 24px; }
+#app .home-showcase-heading { display:flex; justify-content:space-between; border:0; padding:0 12px; }
+#app .home-gallery-index { color:var(--text-dim); font:12px var(--font-mono); }
+#app .home-gallery { flex:1; padding:24px 10px; gap:0; align-items:center; justify-content:center; perspective:1200px; overflow:visible; }
+#app .home-gallery::before { display:none; }
+#app .home-card { flex:0 0 30%; width:30%; max-width:228px; padding:0; margin:0; transform:rotate(-9deg) translateY(22px); background:none; border:0; }
+#app .home-card:nth-child(2) { width:34%; flex-basis:34%; z-index:2; margin:0 -8%; transform:translateY(-10px); max-width:255px; }
+#app .home-card:last-child:not(:first-child) { margin:0; transform:rotate(9deg) translateY(22px); }
+#app .home-card:hover { transform:rotate(-4deg) translateY(0); z-index:3; }
+#app .home-card:nth-child(2):hover { transform:translateY(-22px); }
+#app .home-card:last-child:hover { transform:rotate(4deg) translateY(0); }
+#app .home-card .card-frame { border-color:var(--line-strong); box-shadow:0 20px 50px rgba(0,0,0,.55); }
+#app .home-showcase-caption { font:12px/1.5 var(--font-main); letter-spacing:.12em; padding:0 0 24px; text-align:center; color:var(--text-dim); }
+#app .home-destinations { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:0; padding:0; border-top:var(--border-dim); border-bottom:var(--border-dim); background:rgba(12,22,24,.72); }
+#app .home-destination { border:0; border-right:var(--border-dim); background:transparent; border-radius:0; gap:20px; padding:20px 24px; color:var(--text-cream); }
+#app .home-destination:last-child { border-right:0; }
+#app .home-destination:hover { background:rgba(217,190,135,.07); }
+#app .destination-number { color:var(--accent-gold); font:12px var(--font-mono); align-self:flex-start; }
+#app .home-destination-label { font:500 26px/1.1 var(--font-display); letter-spacing:0; }
+#app .home-destination-copy { font:12px/1.4 var(--font-main); color:var(--text-dim); margin-top:7px; }
+#app .home-vault-count { font:18px var(--font-mono); }
+#app .home-progress { height:2px; margin-top:12px; background:var(--bg-mid); }
+#app .home-progress-fill { background:var(--accent-blue); }
+#app .home-destination > .px-icon { margin-left:auto; width:24px; }
+#app .home-footer { font:12px var(--font-mono); letter-spacing:.09em; align-items:center; color:var(--text-dim); }
+
+/* Vault: generous, scrollable catalog with a persistent collection brief. */
+#app .ms-root { background:linear-gradient(rgba(16,23,25,.96),rgba(16,23,25,.96)),var(--archive-scene) center/cover; }
+#app .ms-vault-panel { padding:28px 32px; }
+#app .ms-panel-title { font-size:42px; margin-top:6px; }
+#app .ms-side { width:260px; padding:28px 24px; background:rgba(0,0,0,.12); }
+#app .ms-side-title { font-size:28px; }
+#app .ms-side-copy { font-size:14px; line-height:1.65; }
+#app .ms-side-section { padding-bottom:24px; }
+#app .ms-collection-total { font:48px var(--font-display); }
+#app .ms-vault-progress { height:2px; margin:10px 0 24px; }
+#app .ms-scope-filters { justify-content:flex-start; gap:24px; border-bottom:var(--border-dim); margin-bottom:16px; }
+#app .ms-scope-btn { flex:0 1 auto; border:0; border-bottom:2px solid transparent; padding:10px 0 14px; background:transparent; color:var(--text-dim); font-size:12px; letter-spacing:.12em; }
+#app .ms-scope-btn[aria-pressed=true] { color:var(--accent-gold); border-bottom-color:var(--accent-gold); background:transparent; }
+#app .ms-faction-filters { flex-wrap:wrap; gap:6px; }
+#app .ms-faction-btn { flex:0 0 auto; border-radius:3px; font-size:12px; padding:8px 10px; }
+#app .ms-grid-summary { font-size:12px; padding:12px 0; }
+#app .ms-card-grid { grid-template-columns:repeat(5,minmax(0,1fr)); gap:24px 16px; padding:8px 6px 28px; }
+#app .ms-card-button:hover .card-frame { transform:translateY(-5px); border-color:var(--accent-gold); }
+#app .ms-card-caption { font-size:12px; letter-spacing:.1em; margin-top:9px; }
+#app .ms-start-btn { width:100%; font-size:14px; }
+#app .ms-match-info,#app .ms-cost,#app .ms-steal-note { font-size:12px; line-height:1.7; }
+#app .ms-matchmaking { margin-top:auto; }
+#app .ms-battle-body { padding:32px; overflow:auto; }
+#app .ms-battle-title { font-size:52px; }
+#app .ms-battle-layout { grid-template-columns:minmax(0,1fr) 280px; gap:32px; margin-top:30px; }
+#app .ms-battle-deck { padding:28px; background:rgba(0,0,0,.16); border:var(--border-dim); }
+#app .ms-battle-cards { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; margin:36px 0; }
+#app .ms-battle-cards .ms-card-button { width:100%; }
+#app .ms-battle-brief { background:var(--bg-panel); border:var(--border-dim); border-radius:5px; padding:24px; }
+#app .ms-battle-steps { gap:28px; }
+#app .ms-battle-steps p { font-size:14px; line-height:1.7; }
+#app .ms-step-number { font-family:var(--font-mono); color:var(--accent-gold); }
+
+/* Preparation: cards on the table above, collection below. Actions on the right.
+   This changes the task's spatial model, not just the component colours. */
+#app .prep-root { background:linear-gradient(rgba(11,20,22,.89),rgba(11,20,22,.95)),var(--archive-scene) center/cover; }
+#app .prep-phase-label,#app .intel-phase-label,#app .rev-phase-label { padding:0; background:transparent; border:0; color:var(--accent-gold); font-size:12px; letter-spacing:.15em; }
+#app .prep-timer,#app .intel-timer { font:28px/1 var(--font-mono); }
+#app .prep-body { display:flex; flex-direction:column; min-height:0; overflow:auto; }
+#app .prep-field-panel { width:100%; flex-shrink:0; display:grid; grid-template-columns:minmax(0,1fr) 310px; grid-template-rows:auto auto minmax(190px,1fr) auto; gap:8px 32px; padding:24px 32px 20px; background:transparent; border:0; border-bottom:var(--border-dim); overflow:visible; }
+#app .prep-field-heading { grid-column:1; grid-row:1; }
+#app .prep-field-title { font-size:38px; text-transform:none; letter-spacing:-.03em; }
+#app .prep-next { grid-column:1; grid-row:2; font-size:12px; min-height:18px; color:var(--accent-blue); letter-spacing:.025em; }
+#app .prep-slots { grid-column:1; grid-row:3 / 5; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:16px; align-items:start; margin-top:8px; }
+#app .prep-slot { width:100%; height:auto; aspect-ratio:2/3.5; min-height:0; border-radius:6px; gap:0; overflow:visible; background:rgba(0,0,0,.12); border:1px dashed var(--line-strong); }
+#app .prep-slot--filled { border-color:transparent; background:none; }
+#app .prep-slot .card-frame { width:100%; }
+#app .prep-slot-index { top:-10px; left:calc(50% - 10px); width:20px; height:20px; display:flex; align-items:center; justify-content:center; background:var(--bg-deep); border:var(--border-dim); border-radius:50%; font:12px var(--font-mono); color:var(--text-dim); z-index:4; }
+#app .prep-slot--active .card-frame { box-shadow:0 0 0 2px var(--accent-blue),var(--shadow-card); }
+#app .prep-slot--empty .prep-slot-num { font:38px var(--font-display); color:var(--accent-gold); }
+#app .prep-slot-empty-label { font-size:12px; letter-spacing:.14em; }
+#app .prep-slot-action { min-height:27px; font-size:12px; letter-spacing:.08em; padding-top:7px; }
+#app .prep-slot--next.prep-slot--empty { border-color:var(--accent-blue); background:rgba(153,217,210,.025); }
+#app .prep-action-picker { grid-column:2; grid-row:1 / 4; padding:20px; border:var(--border-dim); border-radius:5px; background:var(--bg-panel); margin:0; align-self:start; }
+#app .prep-action-heading { gap:8px; margin-bottom:18px; align-items:center; }
+#app .prep-action-title { font-size:14px; text-transform:none; letter-spacing:0; }
+#app .prep-remove-selected { font-size:12px; min-height:28px; padding:4px 6px; }
+#app .prep-action-picker .ats-root { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+#app .prep-action-picker .ats-btn { width:100%; padding:9px 8px; min-height:38px; border:var(--border-dim); border-radius:3px; background:var(--bg-deep); font-size:12px; display:flex; gap:6px; align-items:center; }
+#app .prep-action-picker .ats-btn[aria-pressed=true] { color:var(--accent-blue); border-color:var(--accent-blue); background:rgba(153,217,210,.05); }
+#app .prep-action-desc { font-size:13px; line-height:1.7; min-height:62px; padding-top:14px; margin-top:14px; border-top:var(--border-dim); }
+#app .prep-confirm-btn { grid-column:2; grid-row:4; margin-top:0; min-height:48px; }
+#app .prep-hint { grid-column:2; font-size:12px; line-height:1.6; text-align:center; }
+#app .prep-energy-note { grid-column:1; grid-row:5; font-size:12px; text-align:left; justify-content:flex-start; }
+#app .prep-vault-panel { display:flex; flex-direction:column; flex:1; min-height:230px; padding:18px 32px 12px; background:rgba(5,12,14,.45); overflow:visible; }
+#app .prep-vault-header { flex-direction:row; align-items:center; margin-bottom:14px; }
+#app .prep-vault-title { font-size:12px; letter-spacing:.15em; }
+#app .prep-vault-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); overflow:visible; gap:14px; padding:6px 2px 16px; }
+#app .prep-vault-grid .card-frame { width:100%; max-width:150px; }
+#app .prep-timeout-note { font-size:12px; line-height:1.5; padding:8px 0; text-align:left; }
+#app .prep-root[aria-busy=true] .prep-slots { border:0; opacity:.65; filter:saturate(.3); }
+
+/* Intel and combat — one wide table, discrete regions, readable chronology. */
+#app .intel-root,#app .rev-root { background:linear-gradient(rgba(10,20,22,.85),rgba(10,20,22,.97)),var(--archive-scene) center/cover; }
+#app .intel-body { grid-template-columns:minmax(0,1fr) 280px; overflow:auto; }
+#app .intel-left { padding:28px 40px; gap:28px; overflow:auto; }
+#app .intel-section-label { font-size:12px; letter-spacing:.13em; margin-bottom:18px; }
+#app .intel-opp-slots,#app .intel-hand-slots { gap:16px; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); }
+#app .intel-opp-slots .card-frame,#app .intel-hand-slots .card-frame { width:100%; }
+#app .intel-chest { width:100%; height:auto; aspect-ratio:2/3; background:var(--bg-deep) var(--archive-back) center/cover; border:var(--border-dim); border-radius:5px; box-shadow:var(--shadow-card); }
+#app .intel-chest .px-icon { display:none; }
+#app .intel-hand-action { font-size:12px !important; letter-spacing:.04em; margin-top:9px; }
+#app .intel-actions { background:var(--bg-panel); border-left:var(--border-dim); padding:28px 24px; gap:18px; }
+#app .intel-actions .gba-btn { width:100%; }
+#app .intel-cost { font:12px var(--font-mono); margin:10px 0; }
+#app .intel-advice-panel { font-size:13px; line-height:1.7; }
+#app .rev-body { display:flex; flex-direction:column; padding:16px 40px; gap:8px; overflow:auto; }
+#app .rev-card-row { display:flex; gap:22px; justify-content:center; }
+#app .rev-card-wrap { width:clamp(102px,10.5vw,175px); }
+#app .rev-card-wrap .card-frame { width:100%; }
+#app .rev-field-head { display:flex; align-items:center; justify-content:space-between; max-width:960px; width:100%; margin:6px auto; }
+#app .rev-field-label { font-size:12px; letter-spacing:.17em; }
+#app .rev-bp { font:18px var(--font-mono); }
+#app .rev-telop { border:0; border-top:var(--border-dim); border-bottom:var(--border-dim); background:rgba(0,0,0,.28); margin:14px auto; min-height:60px; max-width:960px; width:100%; }
+#app .rev-telop-line { font-size:13px; line-height:1.6; }
+#app .rev-status { font:13px var(--font-main); }
+#app .rev-wait { background:var(--bg-panel); border:var(--border-dim); padding:20px; }
+#app .round-bridge { width:100%; height:100%; background:var(--overlay-scrim); backdrop-filter:blur(12px); }
+#app .bridge-headline { font-family:var(--font-display); }
+#app .loot-root { overflow:auto; padding:36px 32px; background:radial-gradient(ellipse at 50% 25%,rgba(217,190,135,.08),transparent 60%),var(--bg-deep); }
+#app .loot-root--lose { background:radial-gradient(ellipse at 50% 25%,rgba(237,135,122,.07),transparent 60%),var(--bg-deep); }
+#app .loot-title { font-size:clamp(64px,7vw,104px); line-height:1; letter-spacing:-.035em; margin:14px 0; }
+#app .loot-pick-label { font-size:12px; letter-spacing:.13em; color:var(--text-dim); margin:8px 0 24px; }
+#app .loot-opp-cards { gap:20px; justify-content:center; }
+#app .loot-opp-card-wrap { width:clamp(112px,12vw,190px); }
+#app .loot-opp-card-wrap .card-frame { width:100%; }
+#app .loot-result { font-size:14px; color:var(--text-dim); margin:22px 0; }
+#app .loot-continue-btn { min-width:260px; margin:24px auto; }
+#app .loot-engrave-hint { font-size:12px; }
+#app .loot-steal-chip { font-size:12px; }
+#app .loot-recap-cards .card-frame { width:110px; }
+#app .loot-recap-score { font:52px var(--font-display); }
+
+/* Connection and registration — practice is always reachable without payment. */
+#app .wg-screen { padding:0 40px; background:linear-gradient(90deg,rgba(9,17,19,.87),rgba(9,17,19,.35)),var(--archive-scene) center/cover; }
+#app .wg-topbar { height:88px; min-height:88px; border-bottom:var(--border-dim); }
+#app .wg-body { display:grid; grid-template-columns:1.15fr 1fr; gap:64px; align-items:center; padding:24px 0; min-height:0; overflow:auto; }
+#app .wg-intro h1 { font-size:clamp(48px,5vw,80px); font-family:var(--font-display); line-height:1; letter-spacing:-.035em; margin:14px 0; }
+#app .wg-eyebrow { font-size:12px; letter-spacing:.15em; }
+#app .wg-story { font-size:16px; line-height:1.7; color:var(--text-dim); }
+#app .wg-card-lineup { display:flex; gap:14px; margin:30px 0 16px; }
+#app .wg-card-lineup .card-frame { width:28%; max-width:150px; }
+#app .wg-catalog-note { font-size:12px; letter-spacing:.08em; }
+#app .wg-connect-block { padding:38px; border:var(--border-dim); border-top:1px solid var(--line-strong); border-radius:6px; background:var(--bg-panel); }
+#app .wg-connect-block h2 { font:500 46px/1.05 var(--font-display); margin:20px 0; }
+#app .wg-prompt { font-size:14px; line-height:1.7; }
+#app .wg-btn-primary { padding:16px 20px; font:600 14px var(--font-main); border-radius:3px; margin-top:24px; }
+#app .wg-connection-note { font-size:12px; line-height:1.6; margin-top:12px; }
+#app .wg-help,#app .wg-network { font-size:12px; line-height:1.6; }
+#app .archive-practice-link { display:block; padding:14px; margin-top:16px; text-align:center; font-size:14px; color:var(--accent-blue); border:var(--border-dim); text-decoration:none; border-radius:3px; }
+#app .archive-practice-link:hover { border-color:var(--accent-blue); }
+#app .reg-screen { padding:32px; background:linear-gradient(rgba(9,17,19,.8),rgba(9,17,19,.93)),var(--archive-scene) center/cover; overflow:auto; }
+#app .reg-prompt { background:var(--bg-panel); border:var(--border-dim); border-radius:6px; padding:28px 36px; max-width:560px; }
+#app .reg-title { font-size:38px; margin-bottom:12px; }
+#app .reg-desc,#app .reg-benefits { font-size:14px; line-height:1.8; }
+#app .reg-primary-btn { font:600 14px var(--font-main); padding:16px; border-radius:3px; }
+#app .reg-cost-amount { font:32px var(--font-display); }
+#app .reg-note,#app .reg-wallet-info { font-size:12px; line-height:1.6; }
+
+/* Economy and details use the same physical card language, not number tiles. */
+#app .shop-screen,#app .trade-screen { padding:0; background:linear-gradient(rgba(12,23,25,.94),rgba(12,23,25,.97)),var(--archive-scene) center/cover; align-items:stretch; }
+#app .shop-header,#app .trade-header { width:100%; max-width:none; margin:0; }
+#app .shop-header h2,#app .trade-header h2 { font:500 36px var(--font-display); letter-spacing:-.025em; color:var(--text-cream); }
+#app .shop-phase-badge { font-size:12px; border:var(--border-dim); border-radius:3px; padding:8px 12px; }
+#app .shop-grid { max-width:1050px; margin:36px auto; gap:24px; padding:0 32px; }
+#app .pack-card { position:relative; border:var(--border-dim); border-radius:6px; padding:28px; background:var(--bg-panel); display:flex; flex-direction:column; align-items:center; }
+#app .pack-card.pack-premium { border-color:var(--line-strong); background:linear-gradient(150deg,rgba(217,190,135,.06),transparent 70%),var(--bg-panel); }
+#app .pack-icon { width:130px; aspect-ratio:2/3; display:block; background:var(--bg-deep) var(--archive-back) center/cover; border:var(--border-gold); border-radius:6px; margin:0 0 24px; box-shadow:10px 8px 0 -3px var(--bg-mid),11px 8px 0 -3px var(--line-strong),var(--shadow-card); transform:rotate(-6deg); }
+#app .pack-premium .pack-icon { transform:rotate(6deg); filter:brightness(1.25); }
+#app .pack-icon .px-icon { display:none; }
+#app .pack-card h3 { font:500 32px var(--font-display); color:var(--text-cream); letter-spacing:0; }
+#app .pack-content { font-size:14px; color:var(--text-dim); }
+#app .pack-rates { font-size:12px; line-height:1.8; color:var(--text-dim); border-color:var(--line); width:100%; margin:16px 0 0; }
+#app .pack-price { font:30px var(--font-display); margin:16px 0; }
+#app .pack-buy-btn { width:100%; padding:14px 24px; font:600 14px var(--font-main); border:var(--border-hard); border-radius:3px; background:var(--accent-gold); color:var(--bg-deep); }
+#app .shop-info { text-align:center; font-size:12px; color:var(--text-dim); padding:0 24px 32px; }
+#app .trade-filters { padding:24px 32px; margin:0; gap:16px; }
+#app .trade-filters select { font-size:14px; border:var(--border-dim); border-radius:3px; padding:10px; color:var(--text-cream); background:var(--bg-mid); }
+#app .trade-grid { padding:8px 32px 32px; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:20px; }
+#app .listing-card { border:var(--border-dim); border-radius:5px; background:var(--bg-panel); padding:12px; }
+#app .listing-price { font:24px var(--font-display); color:var(--accent-gold); }
+#app .listing-seller { font:12px var(--font-mono); color:var(--text-dim); }
+#app .listing-card button,#app .create-listing-btn { font-size:13px; border:var(--border-dim); border-radius:3px; padding:10px 16px; }
+#app .trade-empty { grid-column:1/-1; padding:100px 24px; font:32px var(--font-display); text-align:center; color:var(--text-dim); border:var(--border-dim); }
+#app .trade-info { font-size:12px; padding:16px 32px; }
+#app .cd-modal { width:min(820px,95%); height:auto; max-height:90%; padding:32px; background:var(--bg-panel); border:var(--border-dim); border-radius:8px; box-shadow:0 40px 100px rgba(0,0,0,.5); gap:32px; overflow:auto; }
+#app .cd-card-wrap { width:220px; min-width:180px; }
+#app .cd-card-wrap .card-frame { width:100%; }
+#app .cd-name { font:42px/1.1 var(--font-display); }
+#app .cd-info { font-family:var(--font-main); font-size:14px; min-width:0; }
+#app .cd-ability-desc { font-size:14px; line-height:1.8; }
+#app .cd-overlay { background:var(--overlay-scrim); backdrop-filter:blur(10px); }
+.archive-ui .wg-toast { font:14px/1.6 var(--font-main); bottom:52px; max-width:calc(100vw - 36px); border:var(--border-dim); border-radius:5px; background:var(--bg-panel); box-shadow:var(--shadow-card); }
+.archive-ui .reveal-overlay { background:var(--overlay-scrim); backdrop-filter:blur(10px); }
+.archive-ui .reveal-title { font:56px var(--font-display); color:var(--accent-gold); }
+.archive-ui .reveal-card-slot { width:150px; height:225px; padding:0; border:0; background:none; }
+.archive-ui .reveal-card-slot .card-frame { width:100%; }
+.archive-ui .reveal-close-btn { font:14px var(--font-main); }
+.archive-ui ::-webkit-scrollbar { width:5px; height:5px; }
+.archive-ui ::-webkit-scrollbar-thumb { background:var(--line-strong); border-radius:8px; }
+
+/* Medium desktop and portrait layouts retain readable text and reachable actions. */
+@media (min-width:1600px) {
+  #app .home-screen { padding:0 64px; grid-template-rows:92px minmax(0,1fr) 136px 48px; }
+  #app .home-showcase { max-height:630px; }
+  #app .home-card { max-width:260px; }
+  #app .home-card:nth-child(2) { max-width:290px; }
+  #app .prep-field-panel { grid-template-columns:minmax(0,1fr) 360px; padding:28px 60px; }
+  #app .prep-slots { max-width:1020px; }
+  #app .prep-slot { max-width:175px; }
+  #app .prep-vault-panel { padding:24px 60px; }
+}
+@media (max-width:1150px) {
+  .archive-rail { width:76px; }
+  .archive-ui #stage-viewport { padding-left:76px; }
+  .archive-preview { left:76px; }
+  #app .home-screen { padding:0 24px; grid-template-rows:72px minmax(0,1fr) 104px 34px; }
+  #app .home-brand-label { display:none; }
+  #app .home-battle h2 { font-size:48px; }
+  #app .home-battle-copy { font-size:14px; }
+  #app .home-rule { gap:12px; margin:20px 0; }
+  #app .home-destination { padding:16px; gap:12px; }
+  #app .home-destination-label { font-size:22px; }
+  #app .ms-side { width:220px; padding:20px 16px; }
+  #app .ms-vault-panel { padding:24px; }
+  #app .ms-card-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px 14px; }
+  #app .prep-field-panel { grid-template-columns:minmax(0,1fr) 260px; padding:24px; gap:8px 20px; }
+  #app .prep-slots { gap:10px; }
+  #app .prep-action-picker { padding:14px; }
+  #app .prep-vault-panel { padding:18px 24px; }
+  #app .ms-battle-layout { grid-template-columns:1fr; }
+  #app .ms-battle-brief { display:flex; gap:24px; align-items:center; }
+  #app .ms-battle-steps { display:flex; flex:1; }
+  #app .ms-battle-cards { margin:20px 0; }
+  #app .wg-body { gap:24px; }
+  #app .wg-connect-block { padding:24px; }
+}
+@media (max-width:800px) {
+  .archive-rail { top:auto; width:100%; height:64px; flex-direction:row; bottom:0; border-right:0; border-top:var(--border-dim); }
+  .archive-mark { display:none; }
+  .rail-links { flex-direction:row; width:100%; margin:0; gap:0; }
+  .rail-links a { min-height:64px; flex:1; font-size:12px; gap:3px; }
+  .rail-links a .px-icon { width:20px; height:20px; }
+  .rail-links a[aria-current]::before { top:0; left:24px; right:24px; bottom:auto; height:2px; width:auto; }
+  .rail-edition { display:none; }
+  .archive-ui #stage-viewport { padding:0 0 64px; }
+  .is-preview #stage-viewport { padding-bottom:100px; }
+  .archive-preview { left:0; bottom:64px; padding:0 14px; gap:14px; font-size:12px; }
+  .preview-description { display:none; }
+  #app :is(.home-header,.ms-topbar,.prep-topbar,.intel-topbar,.rev-topbar,.shop-header,.trade-header) { min-height:64px; height:auto; padding:12px 20px; gap:12px; flex-wrap:wrap; }
+  #app .home-screen { display:flex; flex-direction:column; padding:0 20px; overflow-y:auto; background-position:60% center; }
+  #app .home-header { padding:18px 0; flex-shrink:0; }
+  #app .home-main { display:flex; flex-direction:column; flex:none; align-items:stretch; }
+  #app .home-battle { padding:32px 0 8px; max-width:none; }
+  #app .home-battle h2 { font-size:56px; margin:12px 0; }
+  #app .home-battle-button { max-width:none; }
+  #app .home-battle-copy { font-size:15px; }
+  #app .home-energy { margin-top:18px; }
+  #app .home-showcase { height:310px; padding:26px 0 0; }
+  #app .home-card { max-width:135px; }
+  #app .home-card:nth-child(2) { max-width:154px; }
+  #app .home-showcase-caption { display:none; }
+  #app .home-destinations { grid-template-columns:1fr; margin-top:20px; }
+  #app .home-destination { min-height:90px; border:0; border-bottom:var(--border-dim); }
+  #app .home-footer { min-height:48px; gap:16px; font-size:12px; }
+  #app .ms-body { display:block; overflow:auto; }
+  #app .ms-vault-panel { padding:24px 20px; border:0; min-height:450px; }
+  #app .ms-card-grid { grid-template-columns:repeat(3,minmax(0,1fr)); overflow:visible; gap:20px 12px; }
+  #app .ms-panel-title { font-size:34px; }
+  #app .ms-side { width:100%; padding:24px 20px; border-top:var(--border-dim); }
+  #app .ms-side-section { display:none; }
+  #app .ms-hud { flex-wrap:wrap; }
+  #app .ms-hud .energy-hud,#app .ms-wallet-btn { display:none; }
+  #app .ms-grid-summary > :last-child { display:none; }
+  #app .ms-battle-body { padding:24px 20px; }
+  #app .ms-battle-title { font-size:38px; }
+  #app .ms-battle-heading { flex-wrap:wrap; gap:12px; }
+  #app .ms-battle-brief { flex-direction:column; align-items:stretch; }
+  #app .ms-battle-steps { flex-direction:column; }
+  #app .ms-battle-deck { padding:18px; }
+  #app .ms-battle-cards { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  #app .ms-battle-cards .ms-card-caption { display:none; }
+  #app .prep-field-panel { display:flex; flex-direction:column; padding:24px 20px; gap:12px; }
+  #app .prep-field-title { font-size:34px; }
+  #app .prep-slots { grid-template-columns:repeat(5,minmax(78px,1fr)); overflow-x:auto; padding:12px 4px; width:100%; gap:8px; }
+  #app .prep-slot { min-width:78px; }
+  #app .prep-action-picker { width:100%; padding:18px; }
+  #app .prep-action-picker .ats-root { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  #app .prep-action-desc { min-height:30px; }
+  #app .prep-hint { order:2; }
+  #app .prep-energy-note { order:3; }
+  #app .prep-confirm-btn { min-height:48px; }
+  #app .prep-topbar-right .energy-hud { display:none; }
+  #app .prep-vault-panel { padding:20px; }
+  #app .prep-vault-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  #app .prep-vault-header { flex-wrap:wrap; }
+  #app .intel-body { display:flex; flex-direction:column; }
+  #app .intel-left { padding:24px 20px; flex-shrink:0; }
+  #app .intel-opp-slots,#app .intel-hand-slots { grid-template-columns:repeat(5,minmax(78px,1fr)); overflow-x:auto; padding-bottom:14px; gap:8px; }
+  #app .intel-actions { padding:20px; border-left:0; }
+  #app .rev-body { padding:18px 12px; }
+  #app .rev-card-row { gap:7px; }
+  #app .rev-card-wrap { width:calc((100vw - 70px)/5); min-width:55px; }
+  #app .rev-telop-line { font-size:12px; }
+  #app .loot-root { padding:24px 16px; }
+  #app .loot-opp-cards { gap:8px; flex-wrap:wrap; }
+  #app .loot-opp-card-wrap { width:28%; min-width:85px; }
+  #app .wg-screen { padding:0 20px; overflow:auto; }
+  #app .wg-body { display:flex; flex-direction:column; gap:28px; overflow:visible; align-items:stretch; }
+  #app .wg-intro h1 { font-size:56px; }
+  #app .wg-card-lineup { display:none; }
+  #app .wg-catalog-note { display:none; }
+  #app .wg-connect-block { padding:24px; }
+  #app .reg-screen { padding:24px 16px; justify-content:flex-start; }
+  #app .reg-prompt { padding:24px 20px; }
+  #app .shop-grid { grid-template-columns:1fr; padding:0 20px; margin:24px auto; width:100%; }
+  #app .trade-filters { padding:20px; flex-wrap:wrap; }
+  #app .trade-grid { padding:0 20px 24px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #app .cd-modal { padding:24px; width:95%; }
+  #app .cd-top { flex-direction:column; align-items:center; }
+  #app .loot-recap-cards { flex-wrap:wrap; max-width:100%; }
+  #app .cd-card-wrap { width:175px; min-width:0; }
+  #app .cd-info { width:100%; }
+}
+@media (max-height:760px) and (min-width:801px) {
+  #app .home-screen { grid-template-rows:64px minmax(0,1fr) 90px 30px; }
+  #app .home-header { min-height:64px; height:64px; }
+  #app .home-battle h2 { font-size:48px; margin:12px 0; }
+  #app .home-battle-copy { font-size:14px; }
+  #app .home-rule { margin:14px 0; }
+  #app .home-energy { margin-top:12px; }
+  #app .home-card { max-width:160px; }
+  #app .home-card:nth-child(2) { max-width:182px; }
+  #app .home-showcase-caption { padding-bottom:12px; }
+  #app .rev-card-wrap { width:100px; }
+  #app .rev-body { padding:10px 32px; }
+  #app .rev-telop { margin:8px auto; min-height:50px; }
+}
+/* Completion pass: keyboard access, compact card hierarchy and screen index. */
+.archive-ui :is(button,a,input,select):focus-visible { outline:2px solid var(--accent-blue); outline-offset:4px; }
+#app .card-identity { flex-wrap:wrap; line-height:1.25; }
+#app .card-rarity-label { display:none; } /* rarity still encoded in label/edge; detail provides full text */
+#app .card-frame .stats-panel { height:16%; }
+#app .card-frame .name-banner { bottom:24%; }
+#app .prep-slot { display:flex; flex-direction:column; }
+#app .prep-slot .card-frame { flex-shrink:0; }
+#app .prep-vault-header { gap:14px; flex-wrap:wrap; }
+#app .prep-vault-header #prep-sample { margin-left:auto; min-height:36px; padding:8px 12px; }
+#app .prep-action-picker .ats-btn { min-height:44px; font-size:12px; }
+#app .rev-wait-overlay { top:80px; }
+#app .archive-gallery { height:100%; padding:48px; overflow:auto; background:linear-gradient(rgba(10,18,20,.88),rgba(10,18,20,.94)),var(--archive-scene) center/cover; }
+#app .archive-eyebrow { font-size:12px; letter-spacing:.15em; color:var(--accent-gold); }
+#app .archive-gallery h1 { font:56px/1.1 var(--font-display); margin:18px 0; }
+#app .archive-gallery > p { max-width:650px; color:var(--text-dim); line-height:1.8; }
+#app .archive-gallery-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin-top:36px; }
+#app .archive-gallery-grid a { padding:24px; border:var(--border-dim); background:var(--bg-panel); border-radius:5px; text-decoration:none; color:var(--text-cream); }
+#app .archive-gallery-grid a:hover { border-color:var(--accent-gold); }
+#app .archive-gallery-grid span { color:var(--accent-gold); font:12px var(--font-mono); }
+#app .archive-gallery-grid h2 { font:30px var(--font-display); margin:12px 0; }
+#app .archive-gallery-grid p { color:var(--text-dim); font-size:14px; margin:12px 0 24px; }
+#app .archive-gallery-grid b { font-size:13px; color:var(--accent-blue); }
+@container (max-width:110px) {
+  #app .card-frame .card-identity { display:none; }
+  #app .card-frame .name-banner { font-size:14px; bottom:31%; }
+  #app .card-frame .stats-panel { height:24%; padding-top:3px; }
+  #app .card-frame .stat-value { font-size:12px; }
+  #app .card-frame .stat-label { font-size:12px; letter-spacing:0; }
+}
+@media(max-width:800px) {
+  #app .archive-gallery { padding:28px 20px; }
+  #app .archive-gallery h1 { font-size:42px; }
+  #app .archive-gallery-grid { grid-template-columns:1fr; }
+  #app .reveal-overlay { overflow-y:auto; justify-content:flex-start; padding:28px 16px; }
+  #app .reveal-title { font-size:40px; }
+  #app .rev-wait-overlay { top:64px; }
+}
+#app .reveal-overlay { inset:0; width:100%; height:100%; max-width:none; max-height:none; margin:0; border:0; color:var(--text-cream); padding:40px; overflow:auto; }
+#app .reveal-overlay:not([open]) { display:none; }
+#app .reveal-overlay::backdrop { background:var(--overlay-scrim); }
+#app .reveal-note { font-size:14px; text-align:center; color:var(--text-dim); margin:-12px 0 28px; }
+#app .reveal-cards { flex-shrink:0; }
+#app .reveal-card-slot .card-frame { height:100%; }
+#app .reveal-close-btn { margin-top:28px; min-height:44px; flex-shrink:0; }
+#app .loot-final-score { font:36px var(--font-mono); color:var(--accent-gold); margin:14px 0; }
+#app .loot-final-score span { color:var(--text-dim); }
+#app .loot-outcome-copy { font-size:16px; color:var(--text-dim); margin-bottom:12px; }
+#app .loot-root > * { flex-shrink:0; }
+#app .listing-preview-btn { cursor:default; color:var(--text-dim); }
+@media(max-width:800px) {
+  #app .reveal-overlay { padding:28px 16px; }
+  #app .rev-card-row { min-width:565px; justify-content:flex-start; gap:10px; }
+  #app .rev-card-wrap { width:105px; min-width:105px; flex:0 0 105px; }
+  #app .rev-field-head,#app .rev-telop { min-width:565px; }
+  #app .rev-body { align-items:flex-start; }
+  #app .home-footer { flex-wrap:wrap; font-size:12px; }
+}
+.archive-rail a[aria-disabled=true] { opacity:.35; cursor:not-allowed; }
+#app .bridge-inner { padding:32px; }
+#app .bridge-headline { font-size:clamp(38px,5vw,72px); line-height:1.05; letter-spacing:-.02em; }
+#app .bridge-score { font:48px var(--font-mono); margin:12px 0; }
+#app .cd-overlay { position:fixed; inset:0; width:100%; height:100%; max-width:none; max-height:none; margin:0; padding:16px; border:0; color:var(--text-cream); }
+#app .cd-overlay:not([open]) { display:none; }
+#app .cd-overlay::backdrop { background:var(--overlay-scrim); }
+/* Tactical clarity: planning summary, sustained battle record and reflection. */
+#app .prep-hand-summary { grid-column:1; grid-row:3; display:flex; gap:22px; flex-wrap:wrap; padding:10px 0 16px; font-size:12px; color:var(--text-dim); }
+#app .prep-hand-summary b { font:18px var(--font-mono); color:var(--text-cream); margin-right:6px; }
+#app .prep-hand-summary .prep-synergy { color:var(--accent-blue); align-self:center; }
+#app .prep-field-panel { grid-template-rows:auto auto auto minmax(180px,1fr) auto; }
+#app .prep-slots { grid-row:4 / 6; }
+#app .prep-action-picker { grid-row:1 / 5; }
+#app .prep-confirm-btn { grid-row:5; }
+#app .prep-energy-note { grid-row:6; }
+#app .prep-filter-row { display:flex; gap:12px; align-items:center; margin-bottom:14px; color:var(--text-dim); font-size:13px; }
+#app .prep-filter-row select { background:var(--bg-mid); color:var(--text-cream); border:var(--border-dim); border-radius:3px; padding:8px 12px; min-height:40px; font-size:14px; }
+#app #prep-filter-count { margin-left:auto; }
+#app .prep-vault-grid [hidden] { display:none !important; }
+#app .rev-arena-layout { display:grid; grid-template-columns:minmax(0,1fr) 270px; flex:1; min-height:0; }
+#app .rev-body { padding:20px 28px; gap:12px; min-width:0; min-height:0; align-items:center; }
+#app .rev-opp-field,#app .rev-your-field { width:100%; align-items:center; flex-shrink:0; }
+#app .rev-card-wrap { width:clamp(95px,8.2vw,152px); position:relative; padding-bottom:22px; }
+#app .rev-card-action { position:absolute; left:0; right:0; bottom:0; color:var(--accent-gold); font-size:12px; text-align:center; letter-spacing:.06em; }
+#app .rev-stage { width:100%; min-height:42px; gap:14px; color:var(--text-dim); font:12px var(--font-main); flex-shrink:0; }
+#app .rev-stage i { height:1px; width:12%; background:var(--line-strong); }
+#app .rev-stage strong { font:30px var(--font-display); color:var(--accent-gold); }
+#app .rev-telop { flex-shrink:0; margin:0; padding:12px 16px; min-height:64px; }
+#app .rev-journal { border-left:var(--border-dim); background:var(--bg-panel); display:flex; flex-direction:column; min-height:0; }
+#app .rev-journal-heading { padding:26px 22px 20px; border-bottom:var(--border-dim); }
+#app .rev-journal h2 { font:32px var(--font-display); margin:12px 0; }
+#app .rev-journal p { font-size:14px; line-height:1.7; color:var(--text-dim); }
+#app #rev-record { list-style:none; padding:12px 22px; flex:1; overflow:auto; counter-reset:beat; }
+#app #rev-record li { counter-increment:beat; border-bottom:var(--border-dim); padding:12px 0; font-size:13px; line-height:1.6; animation:archive-record-in .2s ease-out; overflow-wrap:anywhere; }
+#app #rev-record li::before { content:counter(beat,decimal-leading-zero); font:12px var(--font-mono); color:var(--text-dim); margin-right:10px; }
+#app .record-gold { color:var(--accent-gold); }
+#app .record-red { color:var(--accent-red); }
+#app .record-dim { color:var(--text-dim); }
+#app .rev-journal-foot { padding:18px 22px; font-size:12px; line-height:1.7; color:var(--text-dim); border-top:var(--border-dim); }
+#app .loot-analysis { width:min(590px,100%); border-top:var(--border-dim); border-bottom:var(--border-dim); padding:22px 16px; margin:22px auto; text-align:center; }
+#app .loot-analysis-values { display:flex; gap:24px; justify-content:center; align-items:center; margin:20px 0; }
+#app .loot-analysis-values div { display:flex; flex-direction:column; gap:8px; }
+#app .loot-analysis-values span,#app .loot-analysis-values small { font-size:12px; color:var(--text-dim); }
+#app .loot-analysis-values strong { font:42px var(--font-mono); color:var(--accent-gold); }
+#app .loot-analysis > p:last-child { font-size:14px; line-height:1.7; color:var(--text-dim); }
+#app .loot-hand-review { max-width:100%; text-align:center; }
+#app .loot-hand-review summary { cursor:pointer; padding:14px; color:var(--accent-blue); font-size:14px; }
+#app .loot-hand-review .loot-recap-cards { padding:18px 0; justify-content:center; flex-wrap:wrap; }
+@keyframes archive-record-in { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+@media (max-width:1100px) {
+  #app .rev-arena-layout { grid-template-columns:1fr; overflow:auto; }
+  #app .rev-body { overflow:visible; flex:none; }
+  #app .rev-journal { min-height:280px; border-left:0; border-top:var(--border-dim); }
+  #app #rev-record { max-height:280px; flex:auto; }
+  #app .rev-card-wrap { width:clamp(95px,12vw,145px); }
+}
+@media (max-width:800px) {
+  #app .rev-body { overflow-x:auto; align-items:flex-start; padding:20px 12px; }
+  #app .rev-opp-field,#app .rev-your-field { width:565px; }
+  #app .rev-stage { min-width:565px; }
+  #app .rev-card-wrap { width:105px; flex:0 0 105px; }
+  #app .prep-hand-summary { gap:12px 18px; }
+  #app .prep-hand-summary .prep-synergy { flex-basis:100%; }
+}
+#app .loot-root { justify-content:flex-start; }
+#app .loot-root > .archive-eyebrow:first-child { margin-top:12px; }
