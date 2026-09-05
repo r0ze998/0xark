@@ -17,18 +17,21 @@ import { startTimer } from './common/Timer.js';
 import { pxIcon } from '../lib/px-icons.js';
 import { showToast, txLink } from '../lib/ui-shared.js';
 import { getState, setState } from '../state/battle-state.js';
+import { createScreenScope } from '../lib/screen-scope.js';
 
 const INTEL_SECS = 60;
 
-let _stopTimer     = null;
+let _scope        = null;
 let _field         = [];
 let _opponentField = null;
 
 export function mount(container, detail = {}) {
+  _scope?.dispose();
   if (!window.oxarkWallet?.isConnected?.()) {
     document.dispatchEvent(new CustomEvent('nav:wallet-required'));
     return;
   }
+  const scope = _scope = createScreenScope();
   injectStyle();
   injectCardCSS();
   injectRoundUiCSS();
@@ -39,16 +42,16 @@ export function mount(container, detail = {}) {
 
   setState({ phase: 'interruption' });
   container.innerHTML = buildHTML();
-  bindEvents(container);
+  bindEvents(container, scope);
 
   const timerEl = container.querySelector('#intel-timer');
   if (window.oxarkPreview) { timerEl.textContent = '∞'; timerEl.setAttribute('aria-label','Untimed practice'); }
-  else _stopTimer = startTimer(timerEl, INTEL_SECS, () => lockIn());
+  else scope.defer(startTimer(timerEl, INTEL_SECS, () => lockIn(scope)));
 }
 
 export function unmount(container) {
-  _stopTimer?.();
-  _stopTimer = null;
+  _scope?.dispose();
+  _scope = null;
   _field = [];
   _opponentField = null;
   container.innerHTML = '';
@@ -142,15 +145,17 @@ function renderHandSlots() {
 }
 
 /* ── Events ─────────────────────────────────────────────────────────── */
-function bindEvents(container) {
-  container.querySelector('#intel-peek').addEventListener('click', () => doPeek(container));
-  container.querySelector('#intel-advice').addEventListener('click', () => doAdvice(container));
-  container.querySelector('#intel-lockin').addEventListener('click', () => lockIn());
+function bindEvents(container, scope) {
+  container.querySelector('#intel-peek').addEventListener('click', () => doPeek(container, scope));
+  container.querySelector('#intel-advice').addEventListener('click', () => doAdvice(container, scope));
+  container.querySelector('#intel-lockin').addEventListener('click', () => lockIn(scope));
 }
 
 /* ── PEEK ───────────────────────────────────────────────────────────── */
-async function doPeek(container) {
+async function doPeek(container, scope) {
+  if (!scope.active) return;
   const btn = container.querySelector('#intel-peek');
+  if (btn.disabled) return;
   btn.disabled = true;
   btn.innerHTML = 'PEEKING…';
 
@@ -158,7 +163,7 @@ async function doPeek(container) {
   if (window.oxarkPreview) {
     _opponentField = normalizeField(s.opponentField);
     setState({ hasPeeked: true });
-    revealChests(container);
+    revealChests(container, scope);
     btn.innerHTML = `REVEALED ${pxIcon('check')}`;
     return;
   }
@@ -171,14 +176,18 @@ async function doPeek(container) {
       real = true;
     }
   } catch (err) {
+    if (!scope.active) return;
     console.warn('[Intel] scoutPeek failed, falling back to mock:', err?.message ?? err);
     result = null;
   }
+  // Payment confirmation may outlive the 60-second phase or a replacement mount.
+  // Never apply that old hand to the next round's battle state.
+  if (!scope.active) return;
 
   if (result) {
     _opponentField = normalizeField(result.cards ?? result);
     setState({ hasPeeked: true, opponentField: _opponentField });
-    revealChests(container);
+    revealChests(container, scope);
     btn.innerHTML = `PEEKED ${pxIcon('check')}`;
     const sig = result.signature ?? result.sig ?? null;
     if (real && sig) showTxToast('Peek paid', sig);
@@ -188,7 +197,7 @@ async function doPeek(container) {
   // Fallback: never silently — light DEMO mode + mock intel with an explicit hint.
   _opponentField = mockOpponentField();
   setState({ hasPeeked: true, opponentField: _opponentField });
-  revealChests(container);
+  revealChests(container, scope);
   btn.innerHTML = `PEEKED ${pxIcon('check')}`;
   lightDemo('scoutPeek unavailable — showing mock intel');
   const stateEl = container.querySelector('#intel-opp-state');
@@ -198,15 +207,15 @@ async function doPeek(container) {
 
 // Per-slot chest CRACK-lite: swap each sealed chest for the face-up opponent
 // frame on a 120ms stagger (spec §3.3).
-function revealChests(container) {
+function revealChests(container, scope) {
   const slots = container.querySelector('#intel-opp-slots');
   if (!slots) return;
   _opponentField.forEach((c, i) => {
-    setTimeout(() => {
+    scope.timeout(() => {
       const chest = container.querySelector(`#intel-chest-${i}`);
       if (!chest) return;
       chest.classList.add('intel-chest--crack');
-      setTimeout(() => {
+      scope.timeout(() => {
         chest.outerHTML = `<div class="intel-opp-card intel-opp-card--reveal" id="intel-opp-card-${i}">${CardFrameHTML({ id: c.cardId })}</div>`;
       }, 140);
     }, i * 120);
@@ -216,8 +225,10 @@ function revealChests(container) {
 }
 
 /* ── AI ADVICE ──────────────────────────────────────────────────────── */
-async function doAdvice(container) {
+async function doAdvice(container, scope) {
+  if (!scope.active) return;
   const btn   = container.querySelector('#intel-advice');
+  if (btn.disabled) return;
   const panel = container.querySelector('#intel-advice-panel');
   btn.disabled = true;
   btn.innerHTML = 'THINKING…';
@@ -242,6 +253,7 @@ async function doAdvice(container) {
   try {
     if (!window.x402?.payAiStrategyAdvice) throw new Error('advice endpoint offline');
     const result = await window.x402.payAiStrategyAdvice(context);
+    if (!scope.active) return;
     const text = result?.advice ?? result?.message ?? result?.text ?? '';
     panel.textContent = text || 'No advice returned.';
     const sig = result?.signature ?? result?.sig ?? null;
@@ -249,6 +261,7 @@ async function doAdvice(container) {
     btn.disabled = false;
     btn.innerHTML = `${pxIcon('chip')} AI ADVICE`;
   } catch (err) {
+    if (!scope.active) return;
     console.warn('[Intel] AI advice failed:', err?.message ?? err);
     panel.textContent = 'MOCK ADVICE (demo): balance FLAME up front, hold VOID to counter BARRIER. Advice service offline.';
     lightDemo('AI advice unavailable — mock advice shown');
@@ -260,9 +273,9 @@ async function doAdvice(container) {
 /* ── LOCK IN (also the 60s timeout path) ────────────────────────────── */
 // Pure navigation. No state mutation, no WS send — the hand was already sealed
 // at preparation and the reveal tx is the only thing that unseals it.
-function lockIn() {
-  _stopTimer?.();
-  _stopTimer = null;
+function lockIn(scope) {
+  if (!scope.active) return;
+  scope.dispose();
   document.dispatchEvent(new CustomEvent('nav:reveal'));
 }
 

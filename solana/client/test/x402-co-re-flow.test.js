@@ -1,4 +1,3 @@
-'use strict';
 /**
  * x402-co-re-flow.test.js — Phase 12 client-side memo chain + state derivation
  *
@@ -10,16 +9,12 @@
  * Run: node solana/client/test/x402-co-re-flow.test.js
  */
 
-const assert = require('node:assert/strict');
-const path   = require('path');
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { validateMemo } from '../../../multiplayer/memo-validator.js';
+import { deriveGameState } from '../../../multiplayer/state-derivation.js';
 
-let passed = 0, failed = 0;
-function test(name, fn) {
-  try { fn(); console.log(`  ✓ ${name}`); passed++; }
-  catch (e) { console.error(`  ✗ ${name}\n    ${e.message}`); failed++; }
-}
-
-// ─── Helpers (inline memo builder — mirrors x402-memo.js logic) ───────────────
+// Compact memo fixtures for the legacy Phase 12 protocol.
 
 const HEX64 = 'c'.repeat(64);
 const HEX16 = 'd'.repeat(16);
@@ -56,99 +51,85 @@ function makeRound(matchId = 'testmatch1', round = 1) {
   ];
 }
 
-async function run() {
-  const rootDir = path.resolve(__dirname, '../../../');
-  const { validateMemo } = await import(path.join(rootDir, 'multiplayer/memo-validator.js'));
-  const { deriveGameState } = await import(path.join(rootDir, 'multiplayer/state-derivation.js'));
+const chain = makeRound();
 
-  const chain = makeRound();
 
-  console.log('\nx402 co→re flow — memo chain validation');
+test('all memos in chain pass validateMemo', () => {
+  for (const entry of chain) {
+    const ep  = entry.memo.split(';')[0].slice(2); // e: → strip
+    const res = validateMemo(entry.memo, ep);
+    if (!res.ok) throw new Error(`${ep} failed: ${res.error} | memo=${entry.memo}`);
+  }
+});
 
-  test('all memos in chain pass validateMemo', () => {
-    for (const entry of chain) {
-      const ep  = entry.memo.split(';')[0].slice(2); // e: → strip
-      const res = validateMemo(entry.memo, ep);
-      if (!res.ok) throw new Error(`${ep} failed: ${res.error} | memo=${entry.memo}`);
-    }
-  });
+test('hc memos pass /x402/hc validation', () => {
+  const hcEntries = chain.filter(e => e.memo.startsWith('e:/x402/hc'));
+  assert.equal(hcEntries.length, 2);
+  for (const e of hcEntries) assert.equal(validateMemo(e.memo, '/x402/hc').ok, true);
+});
 
-  test('hc memos pass /x402/hc validation', () => {
-    const hcEntries = chain.filter(e => e.memo.startsWith('e:/x402/hc'));
-    assert.equal(hcEntries.length, 2);
-    for (const e of hcEntries) assert.equal(validateMemo(e.memo, '/x402/hc').ok, true);
-  });
+test('co memos pass /x402/co validation', () => {
+  const coEntries = chain.filter(e => e.memo.startsWith('e:/x402/co'));
+  assert.equal(coEntries.length, 2);
+  for (const e of coEntries) assert.equal(validateMemo(e.memo, '/x402/co').ok, true);
+});
 
-  test('co memos pass /x402/co validation', () => {
-    const coEntries = chain.filter(e => e.memo.startsWith('e:/x402/co'));
-    assert.equal(coEntries.length, 2);
-    for (const e of coEntries) assert.equal(validateMemo(e.memo, '/x402/co').ok, true);
-  });
+test('re memos pass /x402/re validation', () => {
+  const reEntries = chain.filter(e => e.memo.startsWith('e:/x402/re'));
+  assert.equal(reEntries.length, 2);
+  for (const e of reEntries) assert.equal(validateMemo(e.memo, '/x402/re').ok, true);
+});
 
-  test('re memos pass /x402/re validation', () => {
-    const reEntries = chain.filter(e => e.memo.startsWith('e:/x402/re'));
-    assert.equal(reEntries.length, 2);
-    for (const e of reEntries) assert.equal(validateMemo(e.memo, '/x402/re').ok, true);
-  });
+test('rs memo passes /x402/rs validation', () => {
+  const rsEntry = chain.find(e => e.memo.startsWith('e:/x402/rs'));
+  assert.ok(rsEntry);
+  assert.equal(validateMemo(rsEntry.memo, '/x402/rs').ok, true);
+});
 
-  test('rs memo passes /x402/rs validation', () => {
-    const rsEntry = chain.find(e => e.memo.startsWith('e:/x402/rs'));
-    assert.ok(rsEntry);
-    assert.equal(validateMemo(rsEntry.memo, '/x402/rs').ok, true);
-  });
 
-  console.log('\nx402 co→re flow — state derivation after full round');
+test('status is commit after pa(b)', () => {
+  const s = deriveGameState(chain);
+  assert.equal(s.status, 'commit');
+});
 
-  test('status is commit after pa(b)', () => {
-    const s = deriveGameState(chain);
-    assert.equal(s.status, 'commit');
-  });
+test('round incremented to 1', () => {
+  const s = deriveGameState(chain);
+  assert.equal(s.round, 1);
+});
 
-  test('round incremented to 1', () => {
-    const s = deriveGameState(chain);
-    assert.equal(s.round, 1);
-  });
+test('both players present in state', () => {
+  const s = deriveGameState(chain);
+  assert.ok(s.players[HOST], 'HOST player missing');
+  assert.ok(s.players[P2],   'P2 player missing');
+});
 
-  test('both players present in state', () => {
-    const s = deriveGameState(chain);
-    assert.ok(s.players[HOST], 'HOST player missing');
-    assert.ok(s.players[P2],   'P2 player missing');
-  });
+test('both players hp=100 (Draw vs Draw: no damage)', () => {
+  const s = deriveGameState(chain);
+  assert.equal(s.players[HOST].hp, 100);
+  assert.equal(s.players[P2].hp,   100);
+});
 
-  test('both players hp=100 (Draw vs Draw: no damage)', () => {
-    const s = deriveGameState(chain);
-    assert.equal(s.players[HOST].hp, 100);
-    assert.equal(s.players[P2].hp,   100);
-  });
+test('both players have handCommitment', () => {
+  const s = deriveGameState(chain);
+  assert.equal(s.players[HOST].handCommitment, HEX64);
+  assert.equal(s.players[P2].handCommitment,   HEX64);
+});
 
-  test('both players have handCommitment', () => {
-    const s = deriveGameState(chain);
-    assert.equal(s.players[HOST].handCommitment, HEX64);
-    assert.equal(s.players[P2].handCommitment,   HEX64);
-  });
+test('1 round recorded in history', () => {
+  const s = deriveGameState(chain);
+  assert.equal(s.rounds.length, 1);
+  assert.equal(s.rounds[0].p1Delta, 0);
+  assert.equal(s.rounds[0].p2Delta, 0);
+});
 
-  test('1 round recorded in history', () => {
-    const s = deriveGameState(chain);
-    assert.equal(s.rounds.length, 1);
-    assert.equal(s.rounds[0].p1Delta, 0);
-    assert.equal(s.rounds[0].p2Delta, 0);
-  });
+test('host set correctly', () => {
+  const s = deriveGameState(chain);
+  assert.equal(s.host, HOST);
+});
 
-  test('host set correctly', () => {
-    const s = deriveGameState(chain);
-    assert.equal(s.host, HOST);
-  });
-
-  test('match-end memo sets finished+winner', () => {
-    const chain2 = [...chain, { memo: buildMemo('/x402/me', { m: 'testmatch1', w: HOST }), sender: HOST, slot: 11 }];
-    const s = deriveGameState(chain2);
-    assert.equal(s.status, 'finished');
-    assert.equal(s.winner, HOST);
-  });
-
-  console.log('\n' + '─'.repeat(50));
-  console.log(`x402-co-re-flow: ${passed} passed, ${failed} failed`);
-  if (failed > 0) process.exitCode = 1;
-}
-
-run().catch(err => { console.error('Test runner error:', err); process.exitCode = 1; });
+test('match-end memo sets finished+winner', () => {
+  const chain2 = [...chain, { memo: buildMemo('/x402/me', { m: 'testmatch1', w: HOST }), sender: HOST, slot: 11 }];
+  const s = deriveGameState(chain2);
+  assert.equal(s.status, 'finished');
+  assert.equal(s.winner, HOST);
+});

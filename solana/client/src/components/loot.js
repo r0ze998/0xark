@@ -11,16 +11,19 @@ import { STEAL_ENABLED } from '../config.js';
 import { getState, setState, resetBattle } from '../state/battle-state.js';
 import { computePostBattleImprints } from '../lib/abilities.js';
 import * as duelWs from '../lib/duel-ws.js';
+import { createScreenScope } from '../lib/screen-scope.js';
 
-let _animTimeouts = [];
+let _scope       = null;
 let _lootCardId   = null;
 let _selectMode   = false;   // winner is picking which card to loot
 
 export function mount(container, detail = {}) {
+  _scope?.dispose();
   if (!window.oxarkWallet?.isConnected?.()) {
     document.dispatchEvent(new CustomEvent('nav:wallet-required'));
     return;
   }
+  const scope = _scope = createScreenScope();
   injectStyle();
   injectCardCSS();
 
@@ -30,13 +33,14 @@ export function mount(container, detail = {}) {
 
   setState({ phase: 'loot' });
   container.innerHTML = s.isWinner ? buildWinHTML(s) : buildLoseHTML(s);
-  bindEvents(container);
-  runLootAnimation(container, s);
-  if (s.isWinner) _setupEngrave(container, s);
+  bindEvents(container, scope);
+  runLootAnimation(container, s, scope);
+  if (s.isWinner) _setupEngrave(container, s, scope);
 }
 
 export function unmount(container) {
-  _animTimeouts.forEach(clearTimeout); _animTimeouts = [];
+  _scope?.dispose();
+  _scope = null;
   _lootCardId = null;
   _selectMode = false;
   container.innerHTML = '';
@@ -165,8 +169,8 @@ function buildLoseHTML(s) {
 }
 
 /* ── Animation ──────────────────────────────────────────────────────── */
-function runLootAnimation(container, s) {
-  const after = (ms, fn) => { _animTimeouts.push(setTimeout(fn, ms)); };
+function runLootAnimation(container, s, scope) {
+  const after = (ms, fn) => scope.timeout(fn, ms);
 
   if (s.isWinner) {
     // 1. Reveal all opp cards one by one
@@ -174,7 +178,7 @@ function runLootAnimation(container, s) {
     after(400, () => {
       container.querySelector('#loot-title')?.classList.add('loot-title--visible');
       oppCards.forEach((c, i) => {
-        after(i * 300, () => revealOppCard(container, i, c?.cardId ?? 1));
+        after(i * 300, () => revealOppCard(container, i, c?.cardId ?? 1, scope));
       });
     });
 
@@ -200,11 +204,11 @@ function runLootAnimation(container, s) {
   }
 }
 
-function revealOppCard(container, idx, cardId) {
+function revealOppCard(container, idx, cardId, scope) {
   const wrap = container.querySelector(`.loot-opp-card-wrap[data-idx="${idx}"]`);
   if (!wrap) return;
   wrap.classList.add('loot-card--flip');
-  setTimeout(() => {
+  scope.timeout(() => {
     wrap.innerHTML = CardFrameHTML({ id: cardId });
     wrap.dataset.card = cardId;
     wrap.setAttribute('data-idx', idx);
@@ -218,23 +222,24 @@ function enableContinue(container) {
 }
 
 /* ── Events ─────────────────────────────────────────────────────────── */
-function bindEvents(container) {
+function bindEvents(container, scope) {
   // Winner: CLAIM LOOT on-chain
   const claimBtn = container.querySelector('#loot-claim-btn');
   if (claimBtn) {
     claimBtn.addEventListener('click', async () => {
-      if (!_selectMode) return;
-      await onClaimLoot(container);
+      if (!scope.active || !_selectMode) return;
+      await onClaimLoot(container, scope);
     });
   }
 
   // Continue
   container.querySelector('#loot-continue').addEventListener('click', () => {
-    onContinue();
+    onContinue(scope);
   });
 }
 
-async function onClaimLoot(container) {
+async function onClaimLoot(container, scope) {
+  if (!scope.active) return;
   _selectMode = false;
   const btn   = container.querySelector('#loot-claim-btn');
   const errEl = container.querySelector('#loot-claim-error');
@@ -271,7 +276,7 @@ async function onClaimLoot(container) {
     // On-chain unavailable — apply loot locally for demo
     const idx    = Math.floor(Math.random() * loserField.filter(Boolean).length);
     const cardId = loserField.filter(Boolean)[idx] ?? 1;
-    onCardPickedLocal(container, cardId, s);
+    onCardPickedLocal(container, cardId, s, scope);
     if (btn) { btn.textContent = 'CLAIMED (demo)'; }
     return;
   }
@@ -282,10 +287,12 @@ async function onClaimLoot(container) {
       duelIdPK.toString(),
       s.opponentPubkey
     );
+    if (!scope.active) return;
     const cardId = result.stolenCardId ?? loserField.find(Boolean) ?? 1;
-    onCardPickedLocal(container, cardId, s);
+    onCardPickedLocal(container, cardId, s, scope);
     if (btn) { btn.textContent = 'CLAIMED'; }
   } catch (err) {
+    if (!scope.active) return;
     _selectMode = true;
     if (btn) { btn.disabled = false; btn.textContent = '◆ CLAIM LOOT'; }
     if (errEl) {
@@ -295,7 +302,7 @@ async function onClaimLoot(container) {
   }
 }
 
-function onCardPickedLocal(container, cardId, s) {
+function onCardPickedLocal(container, cardId, s, scope) {
   const cardName = CARD_NAMES[cardId] ?? `Card #${cardId}`;
   const isLgd    = getCard(cardId)?.rarity === 3;
   const newVault = [...s.vault, cardId];
@@ -314,7 +321,7 @@ function onCardPickedLocal(container, cardId, s) {
     result.innerHTML = `+ <span class="label-gold">${cardName}</span> added to vault${isLgd ? ` <span class="label-gold">${pxIcon('star')} LEGENDARY!</span>` : ''}`;
   }
 
-  if (isLgd) showLegendaryEffect(container);
+  if (isLgd) showLegendaryEffect(container, scope);
 
   const perso = container.querySelector('#loot-perso');
   if (perso) {
@@ -322,17 +329,17 @@ function onCardPickedLocal(container, cardId, s) {
     perso.textContent   = updatePersonalities(s, cardId);
   }
 
-  _applyImprints(container, s);
-  setTimeout(() => enableContinue(container), 400);
+  _applyImprints(container, s, scope);
+  scope.timeout(() => enableContinue(container), 400);
 }
 
 
-function showLegendaryEffect(container) {
+function showLegendaryEffect(container, scope) {
   const flash = document.createElement('div');
   flash.className = 'loot-legendary-flash';
   flash.textContent = 'LEGENDARY ACQUIRED';
   container.appendChild(flash);
-  setTimeout(() => flash.remove(), 2500);
+  scope.timeout(() => flash.remove(), 2500);
 }
 
 function updatePersonalities(s, cardId) {
@@ -347,7 +354,7 @@ function updatePersonalities(s, cardId) {
   return `${perso.toUpperCase()}: ${personalities[perso]}/10`;
 }
 
-function _applyImprints(container, s) {
+function _applyImprints(container, s, scope) {
   const result = s.battleResult ?? {};
   const imprints = computePostBattleImprints({
     isFirstWin:  !(s.earnedImprints ?? []).includes('FirstBlood'),
@@ -363,7 +370,7 @@ function _applyImprints(container, s) {
   const keys = imprints.map(i => i.key);
   setState({ earnedImprints: [...(s.earnedImprints ?? []), ...keys] });
 
-  _showImprintToasts(container, imprints);
+  _showImprintToasts(container, imprints, scope);
 
   // Call on-chain (mock for demo)
   imprints.forEach(imp => {
@@ -376,14 +383,14 @@ function _applyImprints(container, s) {
   });
 }
 
-function _showImprintToasts(container, imprints) {
+function _showImprintToasts(container, imprints, scope) {
   imprints.forEach((imp, i) => {
     const toast = document.createElement('div');
     toast.className = 'loot-imprint-toast';
     toast.innerHTML = `+ Imprint: <span class="label-gold">${imp.key}</span>${imp.description ? ` — ${imp.description}` : ''}`;
     toast.style.animationDelay = `${i * 400}ms`;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000 + i * 400);
+    scope.timeout(() => toast.remove(), 3000 + i * 400);
   });
 }
 
@@ -391,28 +398,31 @@ function _showImprintToasts(container, imprints) {
  * settle_duel_history: the winner records each of their used cards' win credit
  * trustlessly FROM the on-chain DuelState. Available once the chain confirms this
  * player is the winner and the duel ended. Skippable (CONTINUE stays live).      */
-async function _setupEngrave(container, s) {
+async function _setupEngrave(container, s, scope) {
   if (window.oxarkPreview) return;
   const oc = window.oxarkOnchain;
   if (typeof oc?.getDuelStateFull !== 'function' || typeof oc?.settleDuelHistory !== 'function' || !s.duelId) return;
   try {
     const ds = await oc.getDuelStateFull(s.duelId);
+    if (!scope.active) return;
     if (!ds || !(ds.endedAt > 0)) return;
     const myPk = window.solana?.publicKey?.toBase58?.() ?? null;
     if (myPk && ds.winner && ds.winner !== myPk) return; // only the on-chain winner engraves
     const block = container.querySelector('#loot-engrave');
     if (block) block.style.display = '';
     container.querySelector('#loot-engrave-btn')
-      ?.addEventListener('click', () => _doEngrave(container, s));
+      ?.addEventListener('click', () => _doEngrave(container, s, scope));
   } catch (err) {
+    if (!scope.active) return;
     console.warn('[engrave] eligibility check failed:', err?.message ?? err);
   }
 }
 
-async function _doEngrave(container, s) {
+async function _doEngrave(container, s, scope) {
+  if (!scope.active) return;
   const btn  = container.querySelector('#loot-engrave-btn');
   const hint = container.querySelector('#loot-engrave-hint');
-  if (!btn) return;
+  if (!btn || btn.disabled) return;
   btn.disabled = true;
   btn.innerHTML = 'ENGRAVING…';
   try {
@@ -420,10 +430,13 @@ async function _doEngrave(container, s) {
     // slots are dropped and the rest settle — spec §7.1).
     const cardIds = s.fieldCards.filter(Boolean).map(c => c.cardId);
     const map = await window.oxarkOnchain.getOwnedCardMints();
+    // A completed read must not open a new wallet request after leaving results.
+    if (!scope.active) return;
     const mints = cardIds.map(id => map.get(id)?.[0]?.mint).filter(Boolean);
     if (!mints.length) throw new Error('no held cards to settle');
 
     const sig = await window.oxarkOnchain.settleDuelHistory(s.duelId, mints);
+    if (!scope.active) return;
     container.querySelector('#loot-engrave')?.classList.add('loot-engrave--done');
     const t = showToast('recorded on-chain forever', 'success');
     try { t.innerHTML = `${pxIcon('chisel')} recorded on-chain forever ${txLink(sig)}`; } catch (_) {}
@@ -431,6 +444,7 @@ async function _doEngrave(container, s) {
     btn.innerHTML = `${pxIcon('check')} ENGRAVED`;
     if (hint) hint.textContent = `${mints.length} card${mints.length === 1 ? '' : 's'} settled`;
   } catch (err) {
+    if (!scope.active) return;
     const msg = err?.message ?? String(err);
     if (/already|settled/i.test(msg)) { // on-chain bitmap already set → completed state
       btn.disabled = true;
@@ -444,7 +458,9 @@ async function _doEngrave(container, s) {
   }
 }
 
-async function onContinue() {
+async function onContinue(scope) {
+  if (!scope.active) return;
+  scope.dispose();
   const s = getState();
   if (window.oxarkPreview) { resetBattle(); document.dispatchEvent(new CustomEvent('nav:home')); return; }
 

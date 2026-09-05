@@ -28,8 +28,11 @@ client, but resync it for tooling hygiene. All three contain Program ID
 `solana/client/` — plain ES modules, no build step.  
 Dev server: `cd solana/client && python3 -m http.server 4200`
 
-**Design authority:** `/DESIGN.md` (Sprite Seas) + `src/style/tokens.css`.  
+**Design authority:** `/DESIGN.md` (The Drowned Archive) + `solana/client/src/style/tokens.css`.
 **CI:** `scripts/design-lint.py` — enforced: brand-hex / sub-13px / rem / faux-bold / emoji / round-hardcode / bare-import.
+
+**Client maintenance:** `solana/client/README.md` describes startup, screen/resource
+ownership and CSS injection. Run `npm test` and `npm run check` from that directory.
 
 **Battle flow (F1):** 5-round best-of-3 on chain truth (`advanceRound()` = the only
 round transition) · INTEL phase (swap removed) · energy HUD · PROMOTE (evolve removed)

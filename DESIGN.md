@@ -57,6 +57,10 @@ not sales content, invented activity, testimonials or fake player counts.
 - Dark overlays behind text; no bright art behind body copy.
 
 The functional tokens live in `solana/client/src/style/tokens.css`.
+Extracted component base styles live in `src/style/*.js` and are installed with
+`src/lib/inject-style.js`. These remain synchronous, lazy style elements so the
+existing cascade order and document-relative asset URLs are preserved. Keep
+style IDs stable. The design linter includes these modules.
 `archive.css` is the presentation layer over existing lazily mounted components.
 Its `#app` scope is intentional: it wins over legacy component selectors while
 preserving dynamic state, inline transforms, disabled controls and combat hooks.

@@ -1,50 +1,21 @@
 /**
  * x402-memo.test.js — unit tests for solana/client/src/lib/x402-memo.js
  *
- * Inline logic mirrors the helper so tests run without a live Solana node.
+ * Execute the real browser helper with a minimal SDK fixture; no Solana node.
  * Run: node solana/client/test/x402-memo.test.js
  */
 
-'use strict';
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import { webcrypto } from 'node:crypto';
 
-const assert = require('node:assert/strict');
-
-let passed = 0, failed = 0;
-function test(name, fn) {
-  try {
-    fn();
-    console.log(`  ✓ ${name}`);
-    passed++;
-  } catch (e) {
-    console.error(`  ✗ ${name}`);
-    console.error(`    ${e.message}`);
-    failed++;
-  }
-}
-
-// ── Inline logic (mirrors x402-memo.js) ──────────────────────────────────────
-
+const source = readFileSync(new URL('../src/lib/x402-memo.js', import.meta.url), 'utf8');
+const browser = { window: {}, TextEncoder, Buffer, crypto: webcrypto };
+runInNewContext(source, browser, { filename: 'x402-memo.js' });
+const { generateNonce, formatMemo, buildMemoIx } = browser.window.x402Memo;
 const SPL_MEMO_V2 = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
-
-function generateNonce() {
-  const uuid = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
-  return uuid.replace(/-/g, '');
-}
-
-function formatMemo(endpoint, nonce) {
-  return `endpoint:${endpoint};nonce:${nonce}`;
-}
-
-function buildMemoIx({ solanaWeb3, endpoint, nonce }) {
-  const { TransactionInstruction, PublicKey } = solanaWeb3;
-  const memoStr = formatMemo(endpoint, nonce);
-  const data = typeof TextEncoder !== 'undefined'
-    ? new TextEncoder().encode(memoStr)
-    : Buffer.from(memoStr, 'utf8');
-  return new TransactionInstruction({ programId: new PublicKey(SPL_MEMO_V2), keys: [], data });
-}
 
 // Minimal mock for TransactionInstruction / PublicKey (no real Solana SDK needed)
 const mockSolanaWeb3 = {
@@ -62,8 +33,6 @@ const mockSolanaWeb3 = {
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
-
-console.log('\nx402-memo.js (browser/client helper)');
 
 test('generateNonce returns at least 8 chars', () => {
   assert.ok(generateNonce().length >= 8);
@@ -96,6 +65,3 @@ test('buildMemoIx has no account keys (SPL Memo needs none)', () => {
   const ix = buildMemoIx({ solanaWeb3: mockSolanaWeb3, endpoint: '/x402/scout-peek', nonce: 'x9y8z7w6' });
   assert.equal(ix.keys.length, 0);
 });
-
-console.log(`\nResults: ${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);

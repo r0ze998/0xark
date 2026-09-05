@@ -9,9 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Sprite Seas Design System — tokens are the single source of palette/type
-       (DESIGN.md v1.0 / Appendix A). The :root palette that used to live here is
-       replaced by tokens.css; load it before all component CSS below. -->
+  <!-- Drowned Archive palette/type tokens load before the compatibility base
+       below and archive.css. See DESIGN.md and this client's README.md. -->
   <link rel="stylesheet" href="src/style/tokens.css">
   <style>
     /* ── Reset ───────────────────────────────────────────── */
@@ -36,8 +35,7 @@
       user-select: none;
     }
 
-    /* ── Stage viewport — letterbox host; centers + scales #app ──
-       (DESIGN.md Stage & Layout; scaling driven by src/stage-scaler.js) */
+    /* Compatibility base. archive.css owns the current fluid viewport layout. */
     #stage-viewport {
       width: 100vw; height: 100dvh;
       background: #000;
@@ -45,7 +43,7 @@
       overflow: hidden;
     }
 
-    /* ── App container: the 1024×576 logical box (scaled by the scaler) ── */
+    /* Retained base dimensions, overridden by archive.css (no stage scaling). */
     #app {
       width: 1024px;
       height: 576px;
@@ -55,7 +53,7 @@
       flex-shrink: 0;
     }
 
-    /* Portrait (desktop-first): dim the stage, show the rotate overlay. */
+    /* Retired portrait overlay rules; archive.css keeps this overlay hidden. */
     #rotate-overlay {
       position: fixed; inset: 0; z-index: var(--z-modal, 100);
       display: none; align-items: center; justify-content: center;
@@ -163,7 +161,7 @@
   <!-- Runtime selects an isolated practice environment before importing the game. -->
   <script type="module" src="src/runtime.js"></script>
 
-  <!-- Stage scaler — fits the 1024×576 logical box to any display (F0-2) -->
+  <!-- Compatibility reset: clear retired zoom/transform and portrait state. -->
   <script type="module" src="src/stage-scaler.js"></script>
 </body>
 </html>
