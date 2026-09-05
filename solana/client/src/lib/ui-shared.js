@@ -10,6 +10,7 @@
 export function showToast(msg, type = 'info', { className = 'wg-toast', duration = 3000 } = {}) {
   const t = document.createElement('div');
   t.className = `${className} ${className}--${type}`;
+  t.setAttribute('role', type === 'error' ? 'alert' : 'status');
   t.textContent = msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), duration);

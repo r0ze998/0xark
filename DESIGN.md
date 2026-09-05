@@ -288,6 +288,42 @@ banner → actions in INI order → pair duels (advance, hit flash + shake, HP
 pop, KO shatter) → BP tug-of-war verdict. The log is a 2-row telop under the
 board, never the main event.
 
+## Lobby and preparation interaction rules (2026-09-05)
+
+- **Entry and home:** card artwork leads the composition. The entry lineup is
+  explicitly catalog art; the home showcase contains only owned cards. BATTLE
+  is the primary home action; VAULT, SHOP, and TRADE are secondary destinations.
+- **Collection:** default to owned cards. Ownership scope and faction filters
+  combine and survive confirmed card updates. Frames remain at least 112px
+  wide in a five-column scrolling pane. Missing cards are inspectable catalog
+  entries, visibly labelled as not owned. Native card buttons support arrow
+  navigation and Enter/Space activation.
+- **Readiness:** show the reason for fewer than five cards or known-zero energy.
+  Missing energy and season data are unavailable, never zero or an invented
+  day. Do not advertise disabled theft, unsupported entry fees, or a tier's
+  pool allocation as the player's payout.
+- **Navigation and network failure:** load account state before mounting home
+  controls. Failed reads offer retry, never fabricated inventory. A failed
+  matchmaking connection stays in the lobby with explicit retry; it does not
+  start a simulated match. Explicit `devview` screens carry the DEMO badge.
+- **Energy:** use a native refill button and preserve it during countdown ticks.
+  The popover discloses the refill cost plus network fees. Cancel/Escape closes
+  it and restores focus. Pending disables repeat submission and cancellation;
+  confirmed refills update the existing HUD without replacing it with cached
+  account data. Missing data disables refill.
+- **Preparation:** display the hand count, the next placement/replacement, and
+  the selected card's ActionType description. A newly placed card stays active
+  for action editing; the next vault choice fills an empty slot. Replacing a
+  filled slot requires explicitly selecting it. Enter/Space activates cards,
+  arrows browse, and Delete/Backspace removes a selected field card.
+- **Sealing:** freeze one snapshot before proof generation. Disable all hand
+  editing, stop the preparation timer, and reject repeat submission while
+  pending. Every subsequent proof and saved hand uses that snapshot. Failure
+  preserves choices and restores the remaining timer; an expired timer does
+  not repeatedly auto-submit. Timeout fills only unselected slots.
+- **Battle completion:** end/skip presentation applies final HP, BP, and KO
+  state from the existing combat result. Do not invent intermediate HP values.
+
 ## Provenance surfaces
 
 Provenance is the product's spine; it must be visible wherever a card is.

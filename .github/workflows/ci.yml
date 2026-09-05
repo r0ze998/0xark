@@ -26,6 +26,9 @@ jobs:
       - name: Run battle mechanics tests
         run: node tests/battle-mechanics.test.js
 
+      - name: Run hand selection and energy UI regressions
+        run: node --test solana/client/test/preparation-hand.test.js solana/client/test/energy-hud.test.js
+
   # ─── Client IDL sync guard (YKK-53) ──────────────────────────────────────────
   # anchor build regenerates target/idl/oxark.json but nothing copies it to the
   # offline client IDL (solana/client/oxark-idl.json) — it drifts on every

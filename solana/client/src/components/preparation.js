@@ -1,12 +1,13 @@
 // preparation.js — Screen 2: Preparation Phase (3-min timer, 5-slot field, ZK commit)
 // mount(container, detail) / unmount(container)
 
-import { ALL_CARD_IDS, getCard } from '../lib/cards.js';
-import { CardHTML, CardFrameHTML, injectCardCSS, ACTION_LABELS, ACTION_ICONS } from './common/Card.js';
+import { ALL_CARD_IDS } from '../lib/cards.js';
+import { CardHTML, CardFrameHTML, injectCardCSS, ACTION_LABELS, CARD_NAMES } from './common/Card.js';
 import { ActionTypeSelectorHTML, injectActionTypeSelectorCSS, ACTION_TYPES } from './common/ActionTypeSelector.js';
+import { placeInHand, completeHand, snapshotHand } from '../lib/preparation-hand.js';
 import { startTimer } from './common/Timer.js';
 import { RoundHudHTML, injectRoundUiCSS } from './common/round-ui.js';
-import { EnergyHudHTML, attachEnergyHud, injectEnergyCss } from './common/energy-hud.js';
+import { EnergyHudHTML, attachEnergyHud, injectEnergyCss, computeEnergy } from './common/energy-hud.js';
 import { pxIcon } from '../lib/px-icons.js';
 import { getState, setState } from '../state/battle-state.js';
 import * as duelWs from '../lib/duel-ws.js';
@@ -19,6 +20,11 @@ let _stopTimer    = null;
 let _activeSlot   = null;   // index 0-4 currently editing
 let _field        = [null, null, null, null, null]; // {cardId, actionType}|null
 let _vault        = [];
+let _targetSlot   = null; // explicit replacement/empty slot; null fills next empty
+let _committing   = false;
+let _remaining   = PREP_SECS;
+let _timerStarted = 0;
+let _mountId      = 0;
 
 export function mount(container, detail = {}) {
   if (!window.oxarkWallet?.isConnected?.()) {
@@ -35,13 +41,19 @@ export function mount(container, detail = {}) {
   _vault     = detail.vault   ?? s.vault   ?? [];
   _field     = [null, null, null, null, null];
   _activeSlot = null;
+  _targetSlot = null;
+  _committing = false;
+  _remaining = PREP_SECS;
+  _mountId++;
 
   setState({ phase: 'preparation', fieldCards: _field });
   container.innerHTML = buildHTML();
   bindEvents(container);
 
-  const timerEl = container.querySelector('#prep-timer');
-  _stopTimer = startTimer(timerEl, PREP_SECS, () => onTimeout(container));
+  refreshVault(container);
+  updateConfirm(container);
+  refreshAction(container);
+  resumeTimer(container);
 
   // Energy HUD (display only here; the spend + gate live at commit / lobby).
   const pubkey = s.playerPubkey ?? window.oxarkWallet?.getPublicKey?.()?.toString();
@@ -49,6 +61,7 @@ export function mount(container, detail = {}) {
 }
 
 export function unmount(container) {
+  _mountId++;
   _stopTimer?.();
   _stopTimer = null;
   _detachEnergy(); _detachEnergy = () => {};
@@ -58,11 +71,14 @@ export function unmount(container) {
 }
 
 async function _loadEnergy(container, pubkey, seed) {
+  const mountId = _mountId;
   const apply = (ps) => {
+    if (mountId !== _mountId) return;
     _detachEnergy();
     _detachEnergy = attachEnergyHud(container, { playerState: ps, refill: true });
   };
   if (seed) apply(seed);
+  if (computeEnergy(seed).energyNow != null) return;
   if (typeof window.oxarkOnchain?.getPlayerState !== 'function' || !pubkey) return;
   try {
     const ps = await window.oxarkOnchain.getPlayerState(pubkey);
@@ -95,22 +111,24 @@ function buildHTML() {
 
     <!-- Field (5 slots) -->
     <section class="prep-field-panel" aria-label="Your field">
-      <div class="prep-field-title">YOUR FIELD</div>
-      <div class="prep-slots" id="prep-slots" role="list">
+      <div class="prep-field-heading"><div class="prep-field-title">BUILD YOUR HAND</div><span class="chip" id="prep-count">0 / 5</span></div>
+      <div class="prep-next" id="prep-next" role="status" aria-live="polite">Choose a card from your vault</div>
+      <div class="prep-slots" id="prep-slots" role="group" aria-label="Your five card slots">
         ${renderSlots()}
       </div>
 
       <!-- Action type selector (shown when a slot is active) -->
-      <div class="prep-action-picker" id="prep-action-picker" style="display:none;">
-        <div class="prep-action-title label-dim">CHOOSE ACTION TYPE</div>
+      <div class="prep-action-picker" id="prep-action-picker">
+        <div class="prep-action-heading"><div class="prep-action-title" id="prep-action-title">CHOOSE A CARD</div><button class="gba-btn gba-btn--ghost prep-remove-selected" id="prep-remove" disabled>REMOVE</button></div>
         ${ActionTypeSelectorHTML()}
+        <div class="prep-action-desc" id="prep-action-desc" aria-live="polite">Each card gets one action. Select a field slot to review or change it.</div>
       </div>
 
       <!-- Confirm button -->
       <button class="gba-btn gba-btn--primary prep-confirm-btn" id="prep-confirm" disabled>
         ${pxIcon('check')} CONFIRM &amp; COMMIT
       </button>
-      <div class="label-dim prep-hint" id="prep-hint">Fill all 5 slots to confirm</div>
+      <div class="prep-hint" id="prep-hint" role="status" aria-live="polite">Fill all 5 slots to confirm</div>
       ${(getState().round ?? 1) === 1
         ? `<div class="prep-energy-note label-dim">consumes ${pxIcon('bolt', { size: 12 })}1 (charged once per duel)</div>`
         : ''}
@@ -120,11 +138,12 @@ function buildHTML() {
     <section class="prep-vault-panel" aria-label="Vault — select cards">
       <div class="prep-vault-header">
         <span class="prep-vault-title">VAULT <span class="label-dim">(${ownedCards.length})</span></span>
-        <span class="label-dim" style="font-size:13px;">Click to place in empty slot</span>
+        <span class="label-dim" style="font-size:13px;">Choose 5 · arrows to browse · Enter to add</span>
       </div>
-      <div class="prep-vault-grid" id="prep-vault-grid" role="list">
+      <div class="prep-vault-grid" id="prep-vault-grid" role="group" aria-label="Owned cards">
         ${ownedCards.map(id => CardFrameHTML({ id, owned: true })).join('')}
       </div>
+      <div class="prep-timeout-note label-dim">At 0:00, empty slots fill and your hand commits. Selected cards and actions stay.</div>
     </section>
 
   </div>
@@ -134,151 +153,205 @@ function buildHTML() {
 
 function renderSlots() {
   return _field.map((slot, i) => {
-    const isActive = _activeSlot === i;
-    if (!slot) {
-      return `<div class="prep-slot prep-slot--empty${isActive ? ' prep-slot--active' : ''}"
-        data-slot="${i}" role="listitem" tabindex="0"
-        aria-label="Empty slot ${i + 1}">
-        <span class="prep-slot-num">${i + 1}</span>
-      </div>`;
-    }
-    const card = getCard(slot.cardId);
-    const actionLabel = ACTION_LABELS[slot.actionType] ?? '—';
-    return `<div class="prep-slot prep-slot--filled${isActive ? ' prep-slot--active' : ''}"
-      data-slot="${i}" role="listitem" tabindex="0"
-      aria-label="Slot ${i + 1}: card ${slot.cardId}">
-      ${CardHTML({ id: slot.cardId })}
-      <div class="prep-slot-action" style="font-size:13px;color:var(--accent-gold);">${actionLabel}</div>
-      <button class="prep-slot-remove" data-slot="${i}" aria-label="Remove card from slot ${i+1}">${pxIcon('cross')}</button>
+    const active = _activeSlot === i;
+    const next = _targetSlot === i || (_targetSlot === null && _field.findIndex(c => !c) === i);
+    const label = slot ? `Slot ${i + 1}: ${CARD_NAMES[slot.cardId] ?? 'Card'}, ${ACTION_TYPES[slot.actionType]?.label ?? ''}` : `Empty slot ${i + 1}`;
+    return `<div class="prep-slot ${slot ? 'prep-slot--filled' : 'prep-slot--empty'}${active ? ' prep-slot--active' : ''}${next ? ' prep-slot--next' : ''}"
+      data-slot="${i}" role="button" tabindex="${_committing ? -1 : 0}" aria-pressed="${active}" aria-disabled="${_committing}" aria-label="${label}">
+      <span class="prep-slot-index">${i + 1}</span>
+      ${slot ? `${CardHTML({ id: slot.cardId })}<div class="prep-slot-action">${ACTION_LABELS[slot.actionType] ?? '—'}</div>` : `<span class="prep-slot-num">+</span><span class="prep-slot-empty-label">${next ? 'NEXT' : 'EMPTY'}</span>`}
     </div>`;
   }).join('');
 }
 
 /* ── Events ─────────────────────────────────────────────────────────── */
 function bindEvents(container) {
-  // Slot click — activate slot or show action picker
-  container.querySelector('#prep-slots').addEventListener('click', e => {
-    const slotEl = e.target.closest('[data-slot]');
-    if (!slotEl) return;
-    const removeBtn = e.target.closest('.prep-slot-remove');
-    if (removeBtn) {
-      const idx = parseInt(removeBtn.dataset.slot, 10);
-      removeCard(container, idx);
-      return;
+  const slots = container.querySelector('#prep-slots');
+  slots.addEventListener('click', e => {
+    const el = e.target.closest('[data-slot]');
+    if (el && !_committing) selectSlot(container, Number(el.dataset.slot));
+  });
+  slots.addEventListener('keydown', e => {
+    const el = e.target.closest('[data-slot]');
+    if (!el || _committing) return;
+    const idx = Number(el.dataset.slot);
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); selectSlot(container, idx);
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault(); removeCard(container, idx);
+    } else {
+      const next = e.key === 'ArrowRight' ? (idx + 1) % 5 : e.key === 'ArrowLeft' ? (idx + 4) % 5 : e.key === 'Home' ? 0 : e.key === 'End' ? 4 : null;
+      if (next !== null) { e.preventDefault(); slots.querySelector(`[data-slot="${next}"]`)?.focus(); }
     }
-    const idx = parseInt(slotEl.dataset.slot, 10);
-    selectSlot(container, idx);
   });
-
-  // Vault card click — place into active slot
-  container.querySelector('#prep-vault-grid').addEventListener('click', e => {
-    const cardEl = e.target.closest('[data-id]');
-    if (!cardEl) return;
-    const id = parseInt(cardEl.dataset.id, 10);
-    placeCard(container, id);
+  const vault = container.querySelector('#prep-vault-grid');
+  vault.addEventListener('click', e => {
+    const el = e.target.closest('[data-id]');
+    if (el && !_committing) placeCard(container, Number(el.dataset.id));
   });
-
-  // Action type picker
+  vault.addEventListener('keydown', e => {
+    const el = e.target.closest('[data-id]');
+    if (!el || _committing) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); placeCard(container, Number(el.dataset.id)); return; }
+    const cards = [...vault.querySelectorAll('[data-id]')];
+    const idx = cards.indexOf(el);
+    const columns = cards.filter(card => card.offsetTop === cards[0]?.offsetTop).length || 1;
+    const offset = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns, ArrowUp: -columns }[e.key];
+    const next = e.key === 'Home' ? 0 : e.key === 'End' ? cards.length - 1 : offset !== undefined ? Math.max(0, Math.min(cards.length - 1, idx + offset)) : null;
+    if (next !== null) { e.preventDefault(); cards[next]?.focus(); }
+  });
   container.querySelector('#prep-action-picker').addEventListener('click', e => {
     const btn = e.target.closest('[data-action]');
-    if (!btn || _activeSlot === null) return;
-    const at = parseInt(btn.dataset.action, 10);
-    setAction(container, _activeSlot, at);
+    if (btn && _activeSlot !== null && !_committing) setAction(container, _activeSlot, Number(btn.dataset.action));
   });
-
-  // Confirm
-  container.querySelector('#prep-confirm').addEventListener('click', () => {
-    onConfirm(container);
+  container.querySelector('#prep-remove').addEventListener('click', () => {
+    if (_activeSlot !== null) removeCard(container, _activeSlot);
   });
+  container.querySelector('#prep-confirm').addEventListener('click', () => onConfirm(container));
 }
 
 function selectSlot(container, idx) {
+  if (_committing) return;
   _activeSlot = idx;
+  _targetSlot = idx;
   refreshSlots(container);
-  const picker = container.querySelector('#prep-action-picker');
-  picker.style.display = _field[idx] ? 'block' : 'none';
-  if (_field[idx]) highlightAction(container, _field[idx].actionType);
+  refreshAction(container);
+  updateConfirm(container);
 }
 
 function placeCard(container, cardId) {
-  // Find first empty slot, or use active slot
-  let targetSlot = _activeSlot !== null ? _activeSlot : _field.findIndex(s => !s);
-  if (targetSlot < 0) return; // all full
-
-  // Check if card already placed
-  if (_field.some(s => s?.cardId === cardId)) return;
-
-  _field[targetSlot] = { cardId, actionType: 0 };
-  selectSlot(container, targetSlot);
+  if (_committing || !_vault.includes(cardId)) return;
+  const existing = _field.findIndex(c => c?.cardId === cardId);
+  if (existing >= 0) { selectSlot(container, existing); return; }
+  const next = placeInHand(_field, cardId, _targetSlot);
+  if (next === _field) {
+    container.querySelector('#prep-next').textContent = 'Hand full — select a field slot to replace it';
+    return;
+  }
+  _field = next;
+  _activeSlot = _field.findIndex(c => c?.cardId === cardId);
+  _targetSlot = null; // keep the new card's action visible; next choice fills a hole
+  refreshSlots(container);
   refreshVault(container);
+  refreshAction(container);
   updateConfirm(container);
 }
 
 function removeCard(container, idx) {
-  _field[idx] = null;
-  if (_activeSlot === idx) _activeSlot = null;
+  if (_committing || !_field[idx]) return;
+  _field = _field.map((card, i) => i === idx ? null : card);
+  _activeSlot = idx;
+  _targetSlot = idx;
   refreshSlots(container);
-  const picker = container.querySelector('#prep-action-picker');
-  picker.style.display = 'none';
   refreshVault(container);
+  refreshAction(container);
   updateConfirm(container);
 }
 
 function setAction(container, idx, actionType) {
-  if (!_field[idx]) return;
-  _field[idx] = { ..._field[idx], actionType };
-  highlightAction(container, actionType);
+  if (_committing || !_field[idx] || !ACTION_TYPES.some(a => a.id === actionType)) return;
+  _field = _field.map((card, i) => i === idx ? { ...card, actionType } : card);
+  refreshAction(container);
   refreshSlots(container);
 }
 
-function highlightAction(container, actionType) {
+function refreshAction(container) {
+  const card = _field[_activeSlot];
+  const action = card ? ACTION_TYPES.find(a => a.id === card.actionType) : null;
+  container.querySelector('#prep-action-title').textContent = card
+    ? `SLOT ${_activeSlot + 1} · ${CARD_NAMES[card.cardId] ?? 'CARD'}` : 'CHOOSE A CARD';
+  container.querySelector('#prep-action-desc').textContent = action
+    ? `${action.label} — ${action.desc}` : 'Choose a card, then set its action here.';
   container.querySelectorAll('.ats-btn').forEach(btn => {
-    const on = parseInt(btn.dataset.action, 10) === actionType;
+    const on = Number(btn.dataset.action) === action?.id;
     btn.classList.toggle('ats-btn--active', on);
     btn.setAttribute('aria-pressed', String(on));
+    btn.disabled = _committing || !card;
   });
+  container.querySelector('#prep-remove').disabled = _committing || !card;
 }
 
 function refreshSlots(container) {
   const el = container.querySelector('#prep-slots');
+  const focused = el?.contains(document.activeElement) ? document.activeElement.dataset.slot : null;
   if (el) el.innerHTML = renderSlots();
+  if (focused != null && !_committing) el.querySelector(`[data-slot="${focused}"]`)?.focus();
 }
 
 function refreshVault(container) {
   const placedIds = new Set(_field.filter(Boolean).map(s => s.cardId));
   container.querySelectorAll('#prep-vault-grid [data-id]').forEach(el => {
-    const id = parseInt(el.dataset.id, 10);
-    el.classList.toggle('card-frame--selected', placedIds.has(id));
-    el.style.opacity = placedIds.has(id) ? '0.4' : '1';
+    const selected = placedIds.has(Number(el.dataset.id));
+    el.classList.toggle('card-frame--selected', selected);
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', _committing ? '-1' : '0');
+    el.setAttribute('aria-pressed', String(selected));
+    el.setAttribute('aria-disabled', String(_committing));
+    el.style.opacity = selected ? '0.55' : '1';
   });
 }
 
 function updateConfirm(container) {
-  const filled  = _field.every(s => s !== null);
-  const btn     = container.querySelector('#prep-confirm');
-  const hint    = container.querySelector('#prep-hint');
-  if (btn) btn.disabled = !filled;
-  if (hint) hint.textContent = filled
-    ? 'Ready — click to commit hand'
-    : `Fill all 5 slots to confirm (${_field.filter(Boolean).length}/5)`;
+  const count = _field.filter(Boolean).length;
+  const filled = count === 5;
+  container.querySelector('#prep-confirm').disabled = _committing || !filled;
+  container.querySelector('#prep-count').textContent = `${count} / 5`;
+  container.querySelector('#prep-hint').textContent = filled
+    ? 'Sealing locks these 5 cards and their actions for this round.' : 'Choose 5 different cards. Each starts with Crystal.';
+  const next = _targetSlot ?? _field.findIndex(c => !c);
+  container.querySelector('#prep-next').textContent = _committing ? 'SEALING YOUR HAND — selection locked'
+    : _targetSlot !== null && _field[_targetSlot] ? `REPLACE SLOT ${_targetSlot + 1} — choose a card from your vault`
+    : filled ? 'HAND READY — review actions, then seal'
+    : `CHOOSE CARD ${count + 1} — next: slot ${next + 1}`;
+}
+
+function resumeTimer(container) {
+  if (_remaining <= 0) return; // expired failures stay editable for a manual retry
+  _timerStarted = Date.now();
+  _stopTimer = startTimer(container.querySelector('#prep-timer'), _remaining, () => {
+    _remaining = 0;
+    _stopTimer = null;
+    onTimeout(container);
+  });
+}
+
+function pauseTimer() {
+  if (_stopTimer) {
+    _remaining = Math.max(0, _remaining - Math.floor((Date.now() - _timerStarted) / 1000));
+    _stopTimer();
+    _stopTimer = null;
+  }
 }
 
 async function onConfirm(container) {
   const btn  = container.querySelector('#prep-confirm');
   const hint = container.querySelector('#prep-hint');
 
-  // Guard: already committed this round
-  if (getState().commitment !== null) return;
-
-  if (btn) { btn.disabled = true; btn.textContent = 'COMMITTING…'; }
+  // Freeze the exact choices before the first async boundary. Neither UI edits
+  // nor timer expiry may change the hand while its proof or transaction is pending.
+  if (_committing || getState().commitment !== null || _field.some(c => !c)) return;
+  const hand = snapshotHand(_field);
+  const duel = getState();
+  const mountId = _mountId;
+  let attemptCommitment = null;
+  _committing = true;
+  pauseTimer();
+  container.querySelector('.prep-root')?.setAttribute('aria-busy', 'true');
+  refreshSlots(container);
+  refreshVault(container);
+  refreshAction(container);
+  updateConfirm(container);
+  if (btn) { btn.disabled = true; btn.textContent = 'SEALING HAND…'; }
 
   try {
-    const cardIds = _field.map(s => s.cardId);
+    const cardIds = hand.map(s => s.cardId);
     const salt    = duelWs.generateSalt();
 
     // SHA-256 hand commitment (always present)
     const hashBytes    = await duelWs.computeHandCommitment(cardIds, salt);
+    if (mountId !== _mountId) return;
     const commitmentHex = duelWs.toHex(hashBytes);
+    attemptCommitment = commitmentHex;
 
     // ── ZK proof generation ───────────────────────────────────────────────
     let zkProofBytes      = null; // { proofA, proofB, proofC }
@@ -288,15 +361,15 @@ async function onConfirm(container) {
     const zkAvailable = typeof window.zkCardCommit?.proveHandCommit === 'function';
 
     if (zkAvailable) {
-      if (btn)  btn.textContent  = 'ZK PROOF…';
-      if (hint) hint.textContent = 'Generating ZK proof — takes a few seconds…';
+      if (btn)  btn.textContent  = 'PREPARING SEAL…';
+      if (hint) hint.textContent = 'Proving your hidden hand. Your selection is locked.';
 
-      const s          = getState();
-      const round      = s.round ?? 1;
+      const round      = duel.round ?? 1;
       const pubkeyBytes = window.oxarkWallet?.getPublicKey?.()?.toBytes?.() ?? null;
 
       const _zkT0 = performance.now();
       const zkResult = await window.zkCardCommit.proveHandCommit(cardIds, salt, round, pubkeyBytes);
+      if (mountId !== _mountId) return;
       const _zkMs = Math.round(performance.now() - _zkT0);
       console.log(`[ZK] proveHandCommit done in ${_zkMs}ms — ok=${zkResult.ok}${zkResult.error ? ' err=' + zkResult.error : ''}`);
 
@@ -313,7 +386,7 @@ async function onConfirm(container) {
     // ─────────────────────────────────────────────────────────────────────
 
     setState({
-      fieldCards: [..._field],
+      fieldCards: hand.map(card => ({ ...card })),
       commitment: commitmentHex,
       salt,
       zkProofBytes,
@@ -321,19 +394,25 @@ async function onConfirm(container) {
       zkPublicInputBytes,
     });
 
-    const s = getState();
+    const s = duel;
 
     // ── On-chain: initDuel (host only) → commitHand ───────────────────────
+    if (typeof window.oxarkOnchain?.commitHand !== 'function') {
+      throw new Error('Connection unavailable. Your hand has not been sealed.');
+    }
     if (typeof window.oxarkOnchain?.commitHand === 'function') {
       if (s.isHost && typeof window.oxarkOnchain?.initDuel === 'function') {
-        if (btn) btn.textContent = 'INIT DUEL…';
+        if (btn) btn.textContent = 'OPENING DUEL…';
+        if (hint) hint.textContent = 'Confirm the duel transaction in your wallet.';
         const myPubkey = window.solana?.publicKey?.toBase58();
         await window.oxarkOnchain.initDuel(
           s.duelId, myPubkey, s.opponentPubkey,
         );
+        if (mountId !== _mountId) return;
       }
 
-      if (btn) btn.textContent = 'ON-CHAIN COMMIT…';
+      if (btn) btn.textContent = 'CONFIRMING SEAL…';
+      if (hint) hint.textContent = 'Confirm in your wallet, then wait for the seal to record on-chain.';
       await window.oxarkOnchain.commitHand(
         s.duelId,
         s.round ?? 1,
@@ -345,6 +424,7 @@ async function onConfirm(container) {
     }
     // ─────────────────────────────────────────────────────────────────────
 
+    if (mountId !== _mountId) return;
     setState({ phase: 'interruption' });
 
     if (s.duelId && duelWs.isConnected()) {
@@ -356,6 +436,21 @@ async function onConfirm(container) {
 
     document.dispatchEvent(new CustomEvent('nav:interruption'));
   } catch (err) {
+    // A disconnected screen still owns its failed attempt, but never clear a
+    // newer duel/round/attempt that may have started while the request awaited.
+    const current = getState();
+    if (attemptCommitment && current.duelId === duel.duelId
+      && current.round === duel.round && current.commitment === attemptCommitment) {
+      setState({ commitment: null });
+    }
+    if (mountId !== _mountId) return;
+    _committing = false;
+    container.querySelector('.prep-root')?.setAttribute('aria-busy', 'false');
+    refreshSlots(container);
+    refreshVault(container);
+    refreshAction(container);
+    updateConfirm(container);
+    resumeTimer(container);
     console.error('[Prep] Commit failed:', err);
     const msg = err.message ?? 'commit failed';
     // InsufficientEnergy is belt-and-suspenders — the lobby gate should prevent
@@ -366,17 +461,25 @@ async function onConfirm(container) {
       ? 'Out of energy — refill from the topbar to enter this duel'
       : 'Error: ' + msg;
     if (btn)  { btn.disabled = false; btn.textContent = 'CONFIRM & COMMIT'; }
-    if (hint) hint.textContent = userMsg;
-    setState({ commitment: null }); // allow retry
+    if (hint) hint.textContent = `${userMsg}. Your hand is preserved — retry when ready.`;
   }
 }
 
 function onTimeout(container) {
-  // Auto-select 5 random owned cards
-  const avail = [..._vault].sort(() => Math.random() - 0.5).slice(0, 5);
-  avail.forEach((id, i) => { _field[i] = { cardId: id, actionType: 0 }; });
+  if (_committing) return;
+  // Keep the player's cards and actions; random selection applies only to holes.
+  const candidates = [..._vault].sort(() => Math.random() - 0.5);
+  _field = completeHand(_field, candidates);
+  _targetSlot = null;
+  if (_activeSlot === null) _activeSlot = _field.findIndex(Boolean);
   refreshSlots(container);
+  refreshVault(container);
+  refreshAction(container);
   updateConfirm(container);
+  if (_field.some(card => !card)) {
+    container.querySelector('#prep-hint').textContent = 'Not enough different cards to fill your hand. Add cards to your vault before sealing.';
+    return;
+  }
   onConfirm(container);
 }
 
@@ -400,7 +503,7 @@ const CSS = `
 .prep-topbar {
   height: 44px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 14px; border-bottom: var(--border-dim);
+  padding: 0 16px; border-bottom: var(--border-dim);
   background: rgba(3,6,15,0.75); z-index: 10;
 }
 .prep-phase-label { font-size: 16px; letter-spacing: 0.1em; color: var(--accent-gold); border-color: var(--accent-gold); }
@@ -417,21 +520,21 @@ const CSS = `
 
 /* Field panel */
 .prep-field-panel {
-  width: 460px; flex-shrink: 0;
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 10px 12px; border-right: var(--border-dim);
+  width: 488px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 4px; overflow-y: auto;
+  padding: 12px; border-right: var(--border-dim);
   background: rgba(10,14,26,0.5);
 }
 .prep-field-title {
-  font-size: 14px; letter-spacing: 0.1em; color: var(--text-dim); flex-shrink: 0;
+  font-size: 24px; letter-spacing: 0.08em; color: var(--text-cream); flex-shrink: 0;
 }
 
 /* 5 slots row */
 .prep-slots {
-  display: flex; gap: 5px; flex-shrink: 0;
+  display: flex; gap: 8px; flex-shrink: 0;
 }
 .prep-slot {
-  flex: 1; min-height: 124px; border: 2px solid;
+  flex: 1; min-width: 0; height: 136px; border: 2px solid;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 3px; cursor: pointer; position: relative; overflow: hidden;
   transition: border-color 80ms, background 80ms;
@@ -444,28 +547,40 @@ const CSS = `
 .prep-slot--filled { border-color: rgba(201,162,39,0.4); border-style: solid; background: rgba(10,14,26,0.8); }
 .prep-slot--active { border-color: var(--accent-gold) !important; background: rgba(201,162,39,0.08) !important; }
 .prep-slot-num { font-size: 20px; color: var(--text-dim); }
-.prep-slot-action { text-align: center; padding: 0 2px; }
-.prep-slot-remove {
-  position: absolute; top: 2px; right: 2px;
-  background: none; border: none; font-size: 13px;
-  color: var(--accent-red); cursor: pointer; font-family: var(--font-main);
-  padding: 1px 3px;
+.prep-slot-action { display: flex; align-items: center; justify-content: center; gap: 0; width: 100%; font-size: 13px; color: var(--accent-gold); text-align: center; }
+.prep-slot-action .px-icon { display: none; }
+.prep-slot .ark-card { border: 0; cursor: inherit; background: transparent; }
+.prep-slot-index { position: absolute; top: 0; left: 4px; font-size: 13px; color: var(--text-dim); z-index: 2; }
+.prep-slot-empty-label { font-size: 13px; color: var(--text-dim); }
+.prep-slot--next.prep-slot--empty { border-color: var(--accent-gold); }
+.prep-field-heading { display: flex; align-items: center; justify-content: space-between; }
+.prep-next { min-height: 20px; font-size: 16px; color: var(--accent-gold); }
+.prep-timeout-note { font-size: 13px; text-align: center; }
+.prep-action-desc { min-height: 24px; margin-top: 4px; font-size: 16px; line-height: 1.4; color: var(--text-cream); }
+.prep-action-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.prep-remove-selected { padding: 4px 8px; font-size: 13px; flex-shrink: 0; }
+.prep-slot[aria-disabled="true"], .prep-vault-grid [aria-disabled="true"] { cursor: wait; }
+.prep-root[aria-busy="true"] .prep-slots { border-bottom: 2px solid var(--accent-gold); }
+.prep-root :focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .prep-root *, .prep-root *::before, .prep-root *::after { animation: none !important; transition: none !important; }
 }
-.prep-slot-remove:hover { background: rgba(214,59,59,0.2); }
 .prep-vault-grid .card-frame { width: 112px; }
 
 /* Action picker */
 .prep-action-picker {
-  flex-shrink: 0; padding: 6px; background: rgba(10,14,26,0.6);
+  flex-shrink: 0; padding: 8px; background: var(--bg-mid);
   border: var(--border-dim);
 }
-.prep-action-title { font-size: 13px; letter-spacing: 0.06em; margin-bottom: 5px; }
+.prep-action-title { font-size: 16px; color: var(--text-cream); letter-spacing: 0.04em; }
+.prep-action-picker .ats-root { flex-wrap: nowrap; }
+.prep-action-picker .ats-btn { flex: 1; min-width: 0; padding: 4px; }
 
 /* Confirm */
 .prep-confirm-btn {
-  width: 100%; justify-content: center; font-size: 20px; padding: 10px; flex-shrink: 0;
+  width: 100%; justify-content: center; font-size: 20px; padding: 8px; flex-shrink: 0;
 }
-.prep-hint { font-size: 13px; text-align: center; flex-shrink: 0; }
+.prep-hint { font-size: 13px; line-height: 1.4; text-align: center; flex-shrink: 0; color: var(--text-cream); user-select: text; }
 .prep-topbar-right { display: flex; align-items: center; gap: 14px; }
 .prep-energy-note { font-size: 13px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 3px; }
 
@@ -475,13 +590,13 @@ const CSS = `
   padding: 8px 10px; overflow: hidden;
 }
 .prep-vault-header {
-  display: flex; align-items: baseline; justify-content: space-between;
-  margin-bottom: 6px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 4px;
+  margin-bottom: 8px; flex-shrink: 0;
 }
 .prep-vault-title { font-size: 16px; letter-spacing: 0.1em; color: var(--accent-gold); }
 .prep-vault-grid {
   flex: 1; overflow-y: auto;
-  display: flex; flex-wrap: wrap; gap: 4px; align-content: start;
+  display: flex; flex-wrap: wrap; gap: 8px; align-content: start;
   padding-bottom: 4px;
 }
 .prep-vault-grid::-webkit-scrollbar { width: 3px; }

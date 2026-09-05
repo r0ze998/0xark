@@ -558,8 +558,17 @@ function play(container, beat, result, p1, p2) {
 // SKIP / end: apply every final HP/KO + the final ΣBP tug in one shot.
 function applyEndState(container, result, p1, p2) {
   updateBpTotals(container, result);
-  (result?.p1Cards ?? []).forEach((c, i) => { if (c?.destroyed) container.querySelector(`#rev-your-${i}`)?.classList.add('rev-card--dead'); });
-  (result?.p2Cards ?? []).forEach((c, i) => { if (c?.destroyed) container.querySelector(`#rev-opp-${i}`)?.classList.add('rev-card--dead'); });
+  const applyCards = (cards, row) => (cards ?? []).forEach((card, index) => {
+    const slot = container.querySelector(`#rev-${row}-${index}`);
+    if (!slot || !card) return;
+    slot.classList.toggle('rev-card--dead', !!card.destroyed);
+    const hp = slot.querySelector('.cf-hp .stat-value');
+    if (hp && Number.isFinite(card.finalHp)) hp.textContent = String(Math.max(0, card.finalHp));
+    const bp = slot.querySelector('.stat-badge:first-child .stat-value');
+    if (bp && Number.isFinite(card.finalBp)) bp.textContent = String(card.finalBp);
+  });
+  applyCards(result?.p1Cards, 'your');
+  applyCards(result?.p2Cards, 'opp');
 }
 
 function updateBpTotals(container, result) {

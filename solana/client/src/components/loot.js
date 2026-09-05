@@ -56,7 +56,7 @@ function buildWinHTML(s) {
   <h1 class="loot-title" id="loot-title">YOU WON!</h1>
 
   <!-- Marauder bonus -->
-  ${hasMrdr ? `<div class="loot-marauder label-gold">${pxIcon('star')} MARAUDER BONUS — TAKE 2 CARDS</div>` : ''}
+  ${STEAL_ENABLED && hasMrdr ? `<div class="loot-marauder label-gold">${pxIcon('star')} MARAUDER BONUS — TAKE 2 CARDS</div>` : ''}
 
   <!-- Reveal label -->
   <div class="loot-pick-label" id="loot-pick-label">
