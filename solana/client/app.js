@@ -10,9 +10,10 @@ import { mount as mountIntr,         unmount as unmountIntr         } from './sr
 import { mount as mountReveal,       unmount as unmountReveal       } from './src/components/reveal.js';
 import { mount as mountLoot,         unmount as unmountLoot         } from './src/components/loot.js';
 import { getState, setState, wasRestored } from './src/state/battle-state.js';
-import { OPS_TREASURY_PUBKEY } from './src/config.js';
-import { injectPxIconSheet } from './src/lib/px-icons.js';
-import { showToast as _showToast } from './src/lib/ui-shared.js';
+import { OPS_TREASURY_PUBKEY, NETWORK } from './src/config.js';
+import { injectPxIconSheet, pxIcon } from './src/lib/px-icons.js';
+import { showToast as _showToast, showTxToast, setDemoMode } from './src/lib/ui-shared.js';
+import { CardFrameHTML, injectCardCSS } from './src/components/common/Card.js';
 
 const SCREENS = {
   home:          { mount: mountHome,   unmount: unmountHome   },
@@ -29,6 +30,8 @@ const SCREENS = {
 let _currentScreen  = null;
 let _currentUnmount = null;
 let _walletEventsAttached = false;
+let _loadGeneration = 0;
+let _homeGeneration = 0;
 
 function navigate(name, detail = {}) {
   const app = document.getElementById('app');
@@ -44,11 +47,33 @@ function navigate(name, detail = {}) {
 
   _currentScreen  = name;
   _currentUnmount = screen.unmount;
-  screen.mount(app, { ...getState(), ...detail });
+  screen.mount(app, {
+    ...getState(),
+    playerState: _playerState,
+    gameWorld: _gameWorld,
+    pubkey: getState().playerPubkey,
+    ...detail,
+  });
 }
 
 // Navigation event listeners
-document.addEventListener('nav:home',         e => navigate('home',         e.detail ?? {}));
+document.addEventListener('nav:home', e => {
+  const generation = ++_homeGeneration;
+  if (_devView) { navigate('home', e.detail ?? {}); return; }
+  // Load before mounting interactive paid controls. A background remount could
+  // discard a refill's pending lock or replace its confirmed state with a cache.
+  const app = document.getElementById('app');
+  if (!app) return;
+  _currentUnmount?.(app);
+  _currentUnmount = null;
+  _currentScreen = 'home-loading';
+  app.innerHTML = '<div id="app-loading" role="status"><div class="load-logo">0xARK</div><p class="load-sub">LOADING YOUR COLLECTION…</p></div>';
+  _loadPlayerState().then(() => {
+    if (_currentScreen === 'home-loading' && generation === _homeGeneration) navigate('home', e.detail ?? {});
+  }).catch(() => {
+    if (_currentScreen === 'home-loading' && generation === _homeGeneration) showConnectionRetry();
+  });
+});
 document.addEventListener('nav:shop',         e => navigate('shop',         { ...(_gameWorld ? { gameWorld: _gameWorld } : {}), ...(e.detail ?? {}) }));
 document.addEventListener('nav:trade',        e => navigate('trade',        { ...(_playerState ? { playerState: _playerState } : {}), ...(e.detail ?? {}) }));
 document.addEventListener('nav:main',         e => navigate('main',         { mode: 'vault',  ...(e.detail ?? {}) }));
@@ -71,19 +96,25 @@ let _playerState = null;
 let _gameWorld   = null;
 
 async function _loadPlayerState() {
-  const pubkey = window.oxarkWallet.getPublicKey?.();
-  try {
-    if (window.oxarkOnchain?.getPlayerState)
-      _playerState = await window.oxarkOnchain.getPlayerState(pubkey);
-    if (window.oxarkOnchain?.getGameWorld)
-      _gameWorld = await window.oxarkOnchain.getGameWorld();
-  } catch { /* fall through to defaults */ }
-  if (!_playerState) _playerState = { vault_count: getDemoVault().length, vault: [] };
-  if (!_gameWorld)   _gameWorld   = { game_start_timestamp: Math.floor(Date.now() / 1000) - 86400 };
-  setState({ vault: _playerState.vault ?? [], playerPubkey: pubkey?.toString() ?? '' });
+  const pubkey = window.oxarkWallet?.getPublicKey?.();
+  if (!pubkey || !window.oxarkOnchain?.getPlayerState) throw new Error('Collection connection unavailable');
+  const [player, world] = await Promise.allSettled([
+    window.oxarkOnchain.getPlayerState(pubkey),
+    window.oxarkOnchain.getGameWorld?.(),
+  ]);
+  if (pubkey.toString() !== window.oxarkWallet?.getPublicKey?.()?.toString()) {
+    throw new Error('Wallet changed while loading');
+  }
+  if (player.status !== 'fulfilled' || !Array.isArray(player.value?.vault)) {
+    throw new Error('Could not load your collection');
+  }
+  _playerState = player.value;
+  _gameWorld = world.status === 'fulfilled' ? world.value ?? null : null;
+  setState({ vault: _playerState.vault, playerPubkey: pubkey.toString() });
 }
 
 async function initApp() {
+  const generation = ++_loadGeneration;
   if (!_isWalletConnected()) {
     showWalletConnectScreen();
     return;
@@ -94,15 +125,23 @@ async function initApp() {
 
   try {
     const registered = await window.oxarkOnchain.checkPlayerStateExists(pubkey);
+    if (generation !== _loadGeneration) return;
     if (!registered) {
       showRegisterScreen();
       return;
     }
   } catch {
-    // RPC failure — fall through so offline demo still works
+    if (generation === _loadGeneration) showConnectionRetry();
+    return;
   }
 
-  await _loadPlayerState();
+  try {
+    await _loadPlayerState();
+  } catch {
+    if (generation === _loadGeneration) showConnectionRetry();
+    return;
+  }
+  if (generation !== _loadGeneration) return;
 
   if (wasRestored) {
     const { phase } = getState();
@@ -122,6 +161,15 @@ async function initApp() {
     playerState: _playerState,
     gameWorld:   _gameWorld,
   });
+}
+
+// A failed read is not a new player or a fabricated demo collection.
+function showConnectionRetry() {
+  showWalletConnectScreen();
+  const prompt = document.querySelector('.wg-prompt');
+  const button = document.getElementById('wg-connect-btn');
+  if (prompt) prompt.textContent = 'Your collection could not be loaded. Reconnect to try again.';
+  if (button) button.textContent = 'RETRY CONNECTION';
 }
 
 function showRegisterScreen() {
@@ -187,7 +235,7 @@ function showRegisterScreen() {
       const result = await window.oxarkOnchain.registerWaitlist(
         OPS_TREASURY_PUBKEY
       );
-      _showToast(`Registered! tx: ${result.signature.slice(0, 8)}…`, 'info');
+      showTxToast('Registration confirmed', result.signature);
       await initApp();
     } catch (err) {
       btn.disabled = false;
@@ -262,6 +310,8 @@ function _injectRegisterCSS() {
 }
 
 function showWalletConnectScreen() {
+  ++_loadGeneration;
+  ++_homeGeneration;
   if (_currentUnmount) {
     const app = document.getElementById('app');
     if (app) _currentUnmount(app);
@@ -270,29 +320,41 @@ function showWalletConnectScreen() {
   }
 
   _injectWalletCSS();
+  injectCardCSS();
 
   const app = document.getElementById('app');
   if (!app) return;
 
   app.innerHTML = `
-    <div class="wg-screen">
-      <div class="wg-logo">0xARK</div>
-      <div class="wg-subtitle">Card Battle on Solana × ZK × x402</div>
-
-      <div class="wg-connect-block">
-        <p class="wg-prompt">Connect your wallet to start playing</p>
-        <button id="wg-connect-btn" class="wg-btn-primary">CONNECT WALLET</button>
-        <div id="wg-error" class="wg-error" style="display:none;"></div>
-      </div>
-
-      <div class="wg-help">
-        <p>Don't have a wallet?</p>
-        <a href="https://phantom.app/" target="_blank" rel="noopener">Install Phantom</a>
-      </div>
-
-      <div class="wg-network">
-        <p>Network: Devnet</p>
-        <small>Make sure your wallet is set to Devnet</small>
+    <div class="wg-screen" role="main" aria-label="Welcome to 0xARK">
+      <header class="wg-topbar">
+        <div class="wg-logo">0xARK</div>
+        <span class="chip">${NETWORK.toUpperCase()}${NETWORK === 'mainnet-beta' ? '' : ' · TEST NETWORK'}</span>
+      </header>
+      <div class="wg-body">
+        <section class="wg-intro">
+          <p class="wg-eyebrow">SIX FACTIONS. YOUR STRATEGY.</p>
+          <h1>Five cards.<br>One sealed plan.</h1>
+          <p class="wg-story">Choose your cards. Set their actions.<br>Reveal together and let the battle unfold.</p>
+          <div class="wg-card-lineup" aria-label="Cards from the catalog, not your collection">
+            ${[10, 30, 60].map(id => CardFrameHTML({ id })).join('')}
+          </div>
+          <p class="wg-catalog-note">FROM THE CARD CATALOG · 60 CARDS TO DISCOVER</p>
+        </section>
+        <section class="wg-connect-block" aria-label="Connect to play">
+          <span class="wg-seal">${pxIcon('lock', { size: 32 })}</span>
+          <p class="wg-eyebrow">ENTER THE ARENA</p>
+          <h2>Your cards.<br>Your next move.</h2>
+          <p class="wg-prompt">Connect your wallet to load your collection.</p>
+          <button id="wg-connect-btn" class="wg-btn-primary">CONNECT WALLET</button>
+          <p class="wg-connection-note">Connecting does not spend SOL.<br>Review paid actions before signing.</p>
+          <div id="wg-error" class="wg-error selectable" role="alert" style="display:none;"></div>
+          <div class="wg-help">
+            <span>New to Solana?</span>
+            <a href="https://phantom.app/" target="_blank" rel="noopener">Get a wallet ↗</a>
+          </div>
+          <div class="wg-network">Set your wallet to ${NETWORK}.${NETWORK === 'mainnet-beta' ? '' : '<br><span>Test-network play uses test SOL.</span>'}</div>
+        </section>
       </div>
     </div>
   `;
@@ -356,72 +418,48 @@ function _injectWalletCSS() {
   s.id = 'wg-css';
   s.textContent = `
 .wg-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  padding: 1rem;
-  text-align: center;
-  font-family: 'VT323', monospace;
-  background: var(--bg-deep);
-  color: var(--text-cream);
+  height: 100%; display: flex; flex-direction: column;
+  padding: 0 32px; font-family: var(--font-main);
+  background: var(--bg-deep); color: var(--text-cream);
 }
-.wg-logo {
-  font-size: 3rem;
-  letter-spacing: 0.2em;
-  margin-bottom: 0.25rem;
-  color: var(--accent-gold);
+.wg-topbar {
+  height: 64px; flex-shrink: 0; display: flex; align-items: center;
+  justify-content: space-between; border-bottom: var(--border-dim);
 }
-.wg-subtitle {
-  font-size: 1.1rem;
-  color: #888;
-  margin-bottom: 1rem;
-  letter-spacing: 0.1em;
+.wg-logo { font-size: 32px; letter-spacing: var(--ls-display); color: var(--accent-gold); }
+.wg-topbar .chip { color: var(--accent-blue); border-color: var(--accent-blue); }
+.wg-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 336px; gap: 32px; padding: 24px 0; }
+.wg-intro { min-width: 0; }
+.wg-eyebrow { font-size: 13px; letter-spacing: var(--ls-wide); color: var(--accent-gold); }
+.wg-intro h1 { font-size: 48px; line-height: 1; font-weight: normal; margin: 8px 0; }
+.wg-story { font-size: 20px; line-height: 1.2; }
+.wg-card-lineup { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.wg-card-lineup .card-frame { width: 144px; flex-shrink: 0; cursor: default; }
+.wg-card-lineup .card-frame:hover { transform: none; box-shadow: none; }
+.wg-catalog-note { margin-top: 8px; font-size: 13px; color: var(--text-dim); letter-spacing: var(--ls-caption); }
+.wg-connect-block {
+  min-height: 0; padding: 24px; border: var(--border-dim); background: var(--bg-mid);
+  display: flex; flex-direction: column; align-items: flex-start; overflow-y: auto;
 }
-.wg-connect-block { margin: 1rem 0; }
-.wg-prompt {
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
-}
+.wg-seal { color: var(--accent-gold); margin-bottom: 12px; }
+.wg-connect-block h2 { font-size: 32px; line-height: 1.1; font-weight: normal; margin: 8px 0 12px; }
+.wg-prompt { font-size: 20px; line-height: 1.2; margin-bottom: 16px; }
 .wg-btn-primary {
-  font-family: 'VT323', monospace;
-  font-size: 1.4rem;
-  letter-spacing: 0.1em;
-  padding: 0.75rem 2.5rem;
-  background: var(--accent-gold);
-  color: var(--bg-deep);
-  border: 2px solid #000;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
+  width: 100%; min-height: 48px; flex-shrink: 0; padding: 12px 16px;
+  font-family: var(--font-main); font-size: 22px; letter-spacing: var(--ls-wide);
+  background: var(--accent-gold); color: var(--bg-deep); border: var(--border-hard);
+  cursor: pointer; transition: background var(--t-fast);
 }
-.wg-btn-primary:hover:not(:disabled) {
-  background: var(--accent-gold-bright);
-  transform: translateY(-2px);
-}
+.wg-btn-primary:hover:not(:disabled) { background: var(--accent-gold-bright); }
+.wg-btn-primary:active:not(:disabled) { transform: translateY(1px); }
+.wg-btn-primary:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 4px; }
 .wg-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.wg-error {
-  margin-top: 0.5rem;
-  color: #e55;
-  font-size: 1rem;
-}
-.wg-help {
-  margin-top: 1.5rem;
-  color: #888;
-}
-.wg-help a {
-  color: var(--accent-blue);
-  text-decoration: underline;
-}
-.wg-network {
-  margin-top: 1.5rem;
-  padding: 0.75rem 1rem;
-  background: rgba(74,144,217,0.1);
-  border: 1px solid var(--accent-blue);
-  color: var(--accent-blue);
-  font-size: 1rem;
-}
-.wg-network small { font-size: 0.85rem; }
+.wg-connection-note { margin-top: 8px; font-size: 13px; line-height: 1.3; color: var(--text-dim); }
+.wg-error { margin-top: 12px; color: var(--accent-red); font-size: 16px; overflow-wrap: anywhere; }
+.wg-help { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; font-size: 16px; }
+.wg-help a { color: var(--accent-blue); text-decoration: underline; }
+.wg-network { margin-top: auto; padding-top: 16px; font-size: 13px; line-height: 1.3; color: var(--accent-blue); }
+.wg-network span { color: var(--text-dim); }
 .wg-toast {
   position: fixed;
   bottom: 1.5rem;
@@ -434,9 +472,10 @@ function _injectWalletCSS() {
   z-index: 9999;
   animation: wg-toast-in 0.2s ease;
 }
-.wg-toast--warn  { background: #7a5200; color: var(--accent-warn); border: 1px solid var(--accent-warn); }
-.wg-toast--info  { background: #0a1e3a; color: var(--accent-blue); border: 1px solid var(--accent-blue); }
-.wg-toast--error { background: #3a0a0a; color: #e55;    border: 1px solid #e55; }
+.wg-toast--warn  { background: var(--bg-panel); color: var(--accent-warn); border: 1px solid var(--accent-warn); }
+.wg-toast--info  { background: var(--bg-panel); color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+.wg-toast--error { background: var(--bg-panel); color: var(--accent-red); border: 1px solid var(--accent-red); }
+.wg-toast--success { background: var(--bg-panel); color: var(--success); border: 1px solid var(--success); }
 @keyframes wg-toast-in { from { opacity:0; bottom:0.5rem; } to { opacity:1; bottom:1.5rem; } }
 `;
   document.head.appendChild(s);
@@ -445,6 +484,7 @@ function _injectWalletCSS() {
 // ── Boot ───────────────────────────────────────────────────────────────────
 
 injectPxIconSheet(); // global icon sprite before any screen mounts
+_injectWalletCSS(); // shared toasts must also work for an already connected wallet
 
 function boot() {
   initApp();
@@ -467,7 +507,10 @@ if (_devView) {
   const _field = [1, 12, 24, 35, 50].map((cardId, i) => ({ cardId, actionType: i }));
   const _opp   = [7, 20, 29, 41, 60].map((cardId, i) => ({ cardId, actionType: i }));
   const _gw = { game_start_timestamp: Math.floor(Date.now() / 1000) - 3 * 86400 };
-  const _ps = { vault_count: _vault.length, vault: _vault, energy: 4 };
+  const _ps = { vault_count: _vault.length, vault: _vault, energy: 4, energyLastTs: Math.floor(Date.now() / 1000) };
+  _playerState = _ps;
+  _gameWorld = _gw;
+  setDemoMode('Explicit development screen viewer');
   setState({
     phase: 'main', playerPubkey: MOCK_PK, vault: _vault, round: 1,
     fieldCards: _field, opponentField: _opp, hasPeeked: true,

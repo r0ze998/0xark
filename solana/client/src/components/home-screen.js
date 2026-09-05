@@ -1,9 +1,12 @@
-// home-screen.js — Phase 20-C: 4-button navigation hub (SHOP + TRADE enabled)
+// Home is the player's lobby: an owned-card showcase and one clear way into battle.
 import { pxIcon } from '../lib/px-icons.js';
+import { getCard } from '../lib/cards.js';
+import { getState } from '../state/battle-state.js';
 import { tierForVault, PRIZE_TIERS } from '../lib/ui-shared.js';
-import { EnergyHudHTML, attachEnergyHud, injectEnergyCss } from './common/energy-hud.js';
+import { CardFrameHTML, CARD_NAMES, injectCardCSS } from './common/Card.js';
+import { EnergyHudHTML, attachEnergyHud, injectEnergyCss, computeEnergy } from './common/energy-hud.js';
 
-let _detachEnergy = () => {};
+let _cleanup = () => {};
 
 function _injectCSS() {
   if (document.getElementById('home-css')) return;
@@ -11,154 +14,174 @@ function _injectCSS() {
   s.id = 'home-css';
   s.textContent = `
 .home-screen {
-  font-family: 'VT323', monospace;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1rem;
-  text-align: center;
-  background: var(--bg-deep);
-  color: var(--text-cream);
+  height:100%; box-sizing:border-box; padding:20px 24px;
+  display:grid; grid-template-rows:52px minmax(0,1fr) 80px 16px; gap:12px;
+  font-family:var(--font-main); color:var(--text-cream); background:var(--bg-deep);
+  font-size:var(--fs-ui); text-align:left;
 }
-.home-header h1 {
-  font-size: 3rem;
-  letter-spacing: 0.2em;
-  color: var(--accent-gold);
-  margin: 0 0 0.25rem;
-}
-.home-meta {
-  color: #888;
-  font-size: 1rem;
-  margin-bottom: 0.75rem;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-  max-width: 600px;
-}
-.home-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  max-width: 560px;
-  width: 100%;
-  margin: 0 auto;
-}
-.home-btn {
-  background: rgba(201, 162, 39, 0.05);
-  border: 2px solid var(--accent-gold);
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
-  font-family: 'VT323', monospace;
-  color: var(--text-cream);
-}
-.home-btn:hover { background: rgba(201, 162, 39, 0.15); transform: translateY(-2px); }
-.home-btn:active { transform: translateY(0); }
-.home-btn-icon  { font-size: 2rem; margin-bottom: 0.25rem; display: block; }
-.home-btn-title {
-  font-size: 1.5rem; letter-spacing: 0.1em;
-  color: var(--accent-gold); display: block;
-}
-.home-btn-subtitle { font-size: 0.9rem; color: #aaa; margin-top: 0.1rem; display: block; }
-.home-btn--dim { opacity: 0.5; border-color: #555; }
-.home-btn--dim .home-btn-title { color: #888; }
-.home-footer { margin-top: 0.75rem; color: #555; font-size: 0.9rem; }
+.home-screen * { box-sizing:border-box; }
+.home-screen button { font-family:inherit; border-radius:0; }
+.home-screen h1,.home-screen h2,.home-screen p { margin:0; font-weight:normal; }
+.home-screen .home-header { display:flex; align-items:center; justify-content:space-between; border-bottom:var(--border-dim); padding-bottom:12px; }
+.home-screen .home-brand { display:flex; align-items:center; gap:16px; }
+.home-screen .home-brand h1 { font-size:40px; line-height:1; letter-spacing:0.12em; color:var(--accent-gold); }
+.home-screen .home-brand-label { border-left:var(--border-dim); padding-left:16px; letter-spacing:var(--ls-wide); }
+.home-screen .home-session { display:flex; align-items:center; gap:16px; color:var(--text-cream); }
+.home-screen .home-day { font-size:var(--fs-caption); color:var(--text-dim); }
+.home-screen .home-wallet { font-size:var(--fs-caption); border:var(--border-dim); padding:8px 12px; }
+.home-screen .home-main { display:grid; grid-template-columns:minmax(0,1fr) 336px; gap:24px; min-height:0; }
+.home-screen .home-showcase { min-width:0; position:relative; display:flex; flex-direction:column; border-bottom:var(--border-dim); }
+.home-screen .home-showcase-heading { display:flex; align-items:flex-start; justify-content:space-between; padding:12px 0 0; }
+.home-screen .home-eyebrow { color:var(--text-dim); font-size:var(--fs-caption); letter-spacing:var(--ls-wide); }
+.home-screen .home-showcase h2 { font-size:var(--fs-title); line-height:1.1; margin-top:4px; }
+.home-screen .home-card-note { max-width:156px; padding-top:4px; text-align:right; color:var(--text-dim); font-size:var(--fs-caption); line-height:1.4; }
+.home-screen .home-gallery { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; gap:12px; padding:12px 0 8px; position:relative; }
+.home-screen .home-gallery::before { content:''; position:absolute; left:8px; right:8px; top:40%; bottom:28px; border:var(--border-dim); background:var(--bg-mid); }
+.home-screen .home-card { position:relative; width:144px; padding:0; background:transparent; border:0; cursor:pointer; transition:transform var(--t-fast); }
+.home-screen .home-card:first-child { margin-top:24px; }
+.home-screen .home-card:last-child:not(:first-child) { margin-top:24px; }
+.home-screen .home-card:nth-child(2) { width:168px; }
+.home-screen .home-card:hover { transform:translateY(-4px); }
+.home-screen .home-card:active { transform:translateY(1px); }
+.home-screen .home-card .card-frame { cursor:inherit; }
+.home-screen .home-card .name-banner { font-size:13px; left:13%; right:13%; }
+.home-screen .home-card .stats-panel { left:12%; right:12%; padding:0; }
+.home-screen .home-card .stat-label { font-size:13px; }
+.home-screen .home-card .stat-value { font-size:15px; }
+.home-screen .home-showcase-caption { padding:0 0 8px; font-size:var(--fs-caption); color:var(--text-dim); text-align:center; letter-spacing:var(--ls-caption); }
+.home-screen .home-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; margin:16px 0; border:var(--border-dim); background:var(--bg-mid); text-align:center; padding:16px 32px; }
+.home-screen .home-empty > .px-icon { color:var(--accent-gold); }
+.home-screen .home-empty p { font-size:var(--fs-body); }
+.home-screen .home-empty span { color:var(--text-dim); line-height:1.4; }
+.home-screen .home-battle { display:flex; flex-direction:column; background:var(--bg-mid); border:var(--border-dim); border-top:2px solid var(--accent-gold); padding:20px; min-height:0; }
+.home-screen .home-battle-title { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.home-screen .home-battle-title > .px-icon { color:var(--accent-gold); }
+.home-screen .home-battle h2 { font-size:var(--fs-title); line-height:1; margin-top:4px; }
+.home-screen .home-battle-copy { font-size:var(--fs-body); line-height:1.2; }
+.home-screen .home-rule { display:flex; align-items:center; gap:8px; margin-top:12px; padding:8px 0; border-top:var(--border-dim); border-bottom:var(--border-dim); font-size:var(--fs-caption); color:var(--text-dim); }
+.home-screen .home-rule .px-icon { color:var(--accent-gold); }
+.home-screen .home-energy { margin-top:12px; min-height:40px; }
+.home-screen .energy-hud { display:flex; flex-wrap:wrap; column-gap:8px; row-gap:4px; }
+.home-screen .energy-count { font-size:16px; }
+.home-screen .energy-next { flex-basis:100%; color:var(--text-dim); }
+.home-screen .home-energy-unknown { display:flex; align-items:center; gap:8px; font-size:16px; }
+.home-screen .home-energy-unknown .px-icon { color:var(--text-dim); }
+.home-screen .home-battle-action { margin-top:auto; padding-top:8px; }
+.home-screen .home-battle-button { width:100%; display:flex; align-items:center; justify-content:space-between; padding:12px 16px; font-size:32px; line-height:1; letter-spacing:var(--ls-wide); border:var(--border-hard); background:var(--accent-gold); color:var(--bg-deep); cursor:pointer; transition:background var(--t-fast),transform var(--t-fast); }
+.home-screen .home-battle-button:hover:not(:disabled) { background:var(--accent-gold-bright); }
+.home-screen .home-battle-button:active:not(:disabled) { transform:translateY(1px); }
+.home-screen .home-battle-button:disabled { opacity:0.45; cursor:not-allowed; }
+.home-screen .home-readiness { font-size:var(--fs-caption); color:var(--text-dim); margin-top:6px; line-height:1.2; min-height:16px; }
+.home-screen .home-destinations { display:grid; grid-template-columns:minmax(0,1.65fr) 1fr 1fr; gap:12px; }
+.home-screen .home-destination { min-width:0; display:flex; align-items:center; gap:12px; padding:12px 16px; border:var(--border-dim); background:var(--bg-deep); color:var(--text-cream); text-align:left; cursor:pointer; transition:background var(--t-fast),border-color var(--t-fast); }
+.home-screen .home-destination:hover { background:var(--bg-mid); border-color:var(--accent-gold); }
+.home-screen .home-destination:active { transform:translateY(1px); }
+.home-screen .home-destination > .px-icon { color:var(--accent-gold); }
+.home-screen .home-destination-label { display:block; font-size:24px; line-height:1; letter-spacing:var(--ls-wide); }
+.home-screen .home-destination-copy { display:block; font-size:13px; line-height:1.3; color:var(--text-dim); margin-top:4px; }
+.home-screen .home-vault-info { flex:1; min-width:0; }
+.home-screen .home-vault-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.home-screen .home-vault-count { color:var(--accent-gold); font-size:20px; }
+.home-screen .home-progress { display:block; height:4px; margin-top:8px; background:var(--bg-mid); }
+.home-screen .home-progress-fill { display:block; height:100%; background:var(--accent-gold); }
+.home-screen .home-footer { display:flex; justify-content:space-between; align-items:center; font-size:var(--fs-caption); color:var(--text-dim); letter-spacing:var(--ls-caption); }
+.home-screen button:focus-visible { outline:2px solid var(--accent-gold); outline-offset:3px; }
+@media (prefers-reduced-motion:reduce) { .home-screen .home-card,.home-screen button { transition:none; transform:none; } }
 `;
   document.head.appendChild(s);
 }
 
-function _shortAddr(pubkey) {
-  const s = typeof pubkey === 'string' ? pubkey : (pubkey?.toString?.() ?? '');
-  return s ? `${s.slice(0, 4)}...${s.slice(-4)}` : '—';
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
 }
 
-function _calculateDay(gameStartTimestamp) {
-  if (!gameStartTimestamp) return 1;
-  const elapsed = Math.floor((Date.now() / 1000 - gameStartTimestamp) / 86400);
-  return Math.min(elapsed + 1, 14);
-}
-
-function _calculateTier(vaultCount) {
-  // Canonical tiers from ui-shared (PRIZE_TIERS). 0 cards falls back to the
-  // bottom tier for display, matching the previous local behavior.
-  return tierForVault(vaultCount) ?? PRIZE_TIERS[PRIZE_TIERS.length - 1];
+function dayLabel(world) {
+  const start = Number(world?.game_start_timestamp);
+  if (!Number.isFinite(start) || start <= 0) return 'GAME DAY UNAVAILABLE';
+  const elapsed = Math.floor((Date.now() / 1000 - start) / 86400);
+  return elapsed < 0 ? 'SEASON NOT STARTED' : elapsed >= 14 ? 'SEASON ENDED' : `DAY ${elapsed + 1} / 14`;
 }
 
 export function mount(container, props = {}) {
-  _injectCSS();
+  _cleanup();
+  injectCardCSS();
   injectEnergyCss();
-
-  const { playerState = {}, gameWorld = {}, pubkey = '' } = props;
-  const vaultCount = playerState.vault_count ?? 0;
-  const day        = _calculateDay(gameWorld.game_start_timestamp);
-  const tier       = _calculateTier(vaultCount);
-
+  _injectCSS();
+  const state = getState();
+  const ps = props.playerState ?? state.playerState ?? {};
+  const world = props.gameWorld ?? state.gameWorld ?? {};
+  // An explicitly empty chain vault remains empty; never substitute preview cards.
+  const source = Array.isArray(ps.vault) ? ps.vault : Array.isArray(props.vault) ? props.vault : state.vault;
+  const vault = [...new Set((Array.isArray(source) ? source : []).filter(id => Number.isInteger(id) && getCard(id)))];
+  const count = vault.length;
+  const featured = [...vault].sort((a,b) => getCard(b).rarity - getCard(a).rarity).slice(0,3);
+  // Keep the strongest frame at the center of a three-card showcase.
+  if (featured.length === 3) [featured[0], featured[1]] = [featured[1], featured[0]];
+  const tier = tierForVault(count);
+  const nextTier = [...PRIZE_TIERS].reverse().find(t => t.min > count);
+  const progressText = nextTier ? `${nextTier.min - count} to Tier ${nextTier.tier}` : count ? 'Collection complete' : 'Start your collection';
+  const pubkey = String(props.pubkey ?? props.playerPubkey ?? state.playerPubkey ?? '');
+  const wallet = pubkey ? `${pubkey.slice(0,4)}…${pubkey.slice(-4)}` : 'Wallet unavailable';
+  let energyNow = computeEnergy(ps).energyNow;
+  const energyKnown = energyNow != null;
+  const disabledReason = () => count < 5 ? `Own ${5-count} more card${5-count === 1 ? '' : 's'} to enter a duel.` : energyNow === 0 ? 'No energy. Refill or wait for regeneration.' : '';
+  const energyHTML = energyKnown ? EnergyHudHTML(ps, { refill:true }) : `<div class="home-energy-unknown">${pxIcon('bolt', { size:16 })} Energy unavailable</div>`;
   container.innerHTML = `
-    <div class="home-screen">
-      <div class="home-header">
-        <h1>0xARK</h1>
-        <div class="home-meta">
-          <span>Day ${day} / 14</span>
-          <span>Vault ${vaultCount} / 60</span>
-          <span>Tier ${tier.tier} (${tier.percent}%)</span>
-        </div>
-        <div class="home-energy">${EnergyHudHTML(playerState, { refill: true })}</div>
+    <main class="home-screen" aria-label="0xARK lobby">
+      <header class="home-header">
+        <div class="home-brand"><h1>0xARK</h1><span class="home-brand-label">THE LOBBY</span></div>
+        <div class="home-session"><span class="home-day">${dayLabel(world)}</span><span class="home-wallet selectable" aria-label="Wallet ${escapeHTML(pubkey || 'unavailable')}">${escapeHTML(wallet)}</span></div>
+      </header>
+      <div class="home-main">
+        <section class="home-showcase" aria-labelledby="home-vault-title">
+          <div class="home-showcase-heading"><div><p class="home-eyebrow">YOUR COLLECTION. YOUR STRATEGY.</p><h2 id="home-vault-title">Every card has a future.</h2></div><p class="home-card-note">Build your hand.<br>Make your next move.</p></div>
+          ${featured.length ? `<div class="home-gallery">${featured.map(id => `<button type="button" class="home-card" data-home-nav="main" aria-label="Open vault: ${escapeHTML(CARD_NAMES[id])}">${CardFrameHTML({id})}</button>`).join('')}</div><p class="home-showcase-caption">FROM YOUR VAULT · SELECT YOUR FIVE CARDS IN BATTLE</p>` : `<div class="home-empty">${pxIcon('chest-lg',{size:64})}<p>Your story starts with a card.</p><span>Your vault has no cards to display.<br>Open the shop to begin your collection.</span></div>`}
+        </section>
+        <section class="home-battle" aria-labelledby="home-battle-title">
+          <div class="home-battle-title"><div><p class="home-eyebrow">THE ARENA</p><h2 id="home-battle-title">Make your play.</h2></div>${pxIcon('battle',{size:32})}</div>
+          <p class="home-battle-copy">Five cards. A sealed hand.<br>Outthink your opponent.</p>
+          <div class="home-rule">${pxIcon('lock',{size:16})}<span>FIRST TO 3 ROUND WINS · UP TO 5 ROUNDS</span></div>
+          <div class="home-energy" aria-label="Battle energy">${energyHTML}</div>
+          <div class="home-battle-action"><button type="button" class="home-battle-button" id="btn-battle" aria-describedby="home-readiness" ${disabledReason() ? 'disabled' : ''}><span>BATTLE</span>${pxIcon('battle',{size:32})}</button><p class="home-readiness" id="home-readiness" role="status">${disabledReason() || (energyKnown ? '1 energy to duel · Select your hand next' : 'Energy will be checked before battle.')}</p></div>
+        </section>
       </div>
+      <nav class="home-destinations" aria-label="Explore 0xARK">
+        <button type="button" class="home-destination" id="btn-vault" data-home-nav="main">${pxIcon('vault',{size:32})}<span class="home-vault-info"><span class="home-vault-heading"><span class="home-destination-label">VAULT</span><span class="home-vault-count">${count}<span class="home-day"> / 60</span></span></span><span class="home-progress" role="progressbar" aria-label="Vault collection" aria-valuenow="${count}" aria-valuemin="0" aria-valuemax="60"><span class="home-progress-fill" style="width:${Math.min(100,count/60*100)}%"></span></span><span class="home-destination-copy">${tier ? `TIER ${tier.tier} · ` : ''}${progressText}</span></span></button>
+        <button type="button" class="home-destination" id="btn-shop" data-home-nav="shop">${pxIcon('pack',{size:32})}<span><span class="home-destination-label">SHOP</span><span class="home-destination-copy">Open packs. Find your next card.</span></span></button>
+        <button type="button" class="home-destination" id="btn-trade" data-home-nav="trade">${pxIcon('trade',{size:32})}<span><span class="home-destination-label">TRADE</span><span class="home-destination-copy">Explore the player marketplace.</span></span></button>
+      </nav>
+      <footer class="home-footer"><span>ON-CHAIN CARDS · HIDDEN HANDS · OPEN POSSIBILITIES</span><span>0xARK / SOLANA</span></footer>
+    </main>`;
 
-      <div class="home-grid">
-        <button class="home-btn" id="btn-battle">
-          <span class="home-btn-icon">${pxIcon('battle')}</span>
-          <span class="home-btn-title">BATTLE</span>
-          <span class="home-btn-subtitle">Find a duel</span>
-        </button>
-
-        <button class="home-btn" id="btn-vault">
-          <span class="home-btn-icon">${pxIcon('vault')}</span>
-          <span class="home-btn-title">VAULT</span>
-          <span class="home-btn-subtitle">See cards</span>
-        </button>
-
-        <button class="home-btn" id="btn-shop">
-          <span class="home-btn-icon">${pxIcon('shop')}</span>
-          <span class="home-btn-title">SHOP</span>
-          <span class="home-btn-subtitle">Buy card packs</span>
-        </button>
-
-        <button class="home-btn" id="btn-trade">
-          <span class="home-btn-icon">${pxIcon('trade')}</span>
-          <span class="home-btn-title">TRADE</span>
-          <span class="home-btn-subtitle">P2P marketplace</span>
-        </button>
-      </div>
-
-      <div class="home-footer">Wallet: ${_shortAddr(pubkey)}</div>
-    </div>
-  `;
-
-  document.getElementById('btn-battle').addEventListener('click', () => {
-    document.dispatchEvent(new CustomEvent('nav:matchmaking'));
-  });
-  document.getElementById('btn-vault').addEventListener('click', () => {
-    document.dispatchEvent(new CustomEvent('nav:main'));
-  });
-  document.getElementById('btn-shop').addEventListener('click', () => {
-    document.dispatchEvent(new CustomEvent('nav:shop'));
-  });
-  document.getElementById('btn-trade').addEventListener('click', () => {
-    document.dispatchEvent(new CustomEvent('nav:trade'));
-  });
-
-  _detachEnergy();
-  _detachEnergy = attachEnergyHud(container, {
-    playerState,
-    refill: true,
-    onRefill: () => document.dispatchEvent(new CustomEvent('nav:home')),
-  });
+  const onClick = (event) => {
+    const nav = event.target.closest('[data-home-nav]');
+    if (nav) document.dispatchEvent(new CustomEvent(`nav:${nav.dataset.homeNav}`));
+    const battle = event.target.closest('#btn-battle');
+    if (battle && !disabledReason()) document.dispatchEvent(new CustomEvent('nav:matchmaking'));
+  };
+  container.addEventListener('click', onClick);
+  const detachEnergy = energyKnown ? attachEnergyHud(container, {
+    playerState:ps,
+    refill:true,
+    onChange:(value) => {
+      energyNow = value;
+      const button = container.querySelector('#btn-battle');
+      if (!button) return;
+      const reason = disabledReason();
+      button.disabled = !!reason;
+      const status = container.querySelector('#home-readiness');
+      const text = reason || (value == null ? 'Energy will be checked before battle.' : '1 energy to duel · Select your hand next');
+      if (status.textContent !== text) status.textContent = text;
+    },
+  }) : () => {};
+  _cleanup = () => {
+    detachEnergy();
+    container.removeEventListener('click', onClick);
+  };
 }
 
 export function unmount(container) {
-  _detachEnergy(); _detachEnergy = () => {};
+  _cleanup();
+  _cleanup = () => {};
   container.innerHTML = '';
 }

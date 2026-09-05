@@ -1,401 +1,296 @@
-// main-screen.js — Screen 1: Vault viewer + matchmaking
-// mount(container, detail) / unmount(container)
+// main-screen.js — collection and battle lobby. Chain state owns assets and energy.
 import { pxIcon } from '../lib/px-icons.js';
-
-import { ALL_CARD_IDS, getCard, isBurnable } from '../lib/cards.js';
+import { ALL_CARD_IDS, getCard } from '../lib/cards.js';
 import { CardFrameHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS, CARD_NAMES } from './common/Card.js';
-import { LegendaryProgressHTML, injectLegendaryProgressCSS, PERSONALITIES } from './common/LegendaryProgress.js';
-import { PrizePoolHTML, injectPrizePoolCSS } from './common/PrizePool.js';
+import { LegendaryProgressHTML, injectLegendaryProgressCSS } from './common/LegendaryProgress.js';
 import { EnergyHudHTML, attachEnergyHud, injectEnergyCss, computeEnergy } from './common/energy-hud.js';
-import { showToast, setDemoMode } from '../lib/ui-shared.js';
-import { NETWORK, PROGRAM_ID } from '../config.js';
+import { NETWORK, PROGRAM_ID, STEAL_ENABLED } from '../config.js';
 import { getState, setState } from '../state/battle-state.js';
 import { CardDetailModal } from './card-detail.js';
 import * as duelWs from '../lib/duel-ws.js';
 
-let _matchInterval  = null;
-let _dots           = 0;
-let _unsubWaiting   = () => {};
-let _unsubMatched   = () => {};
-let _detachEnergy   = () => {};
-let _energyNow      = null;   // projected energy, null until first PlayerState load
+let _detachEnergy = () => {};
+let _energyNow = null;
+let _generation = 0;
+let _energyRequest = 0;
+let _searching = false;
+let _matchError = '';
+let _matchDisposers = [];
 
 function _unsubMatchmaking() {
-  _unsubWaiting();
-  _unsubMatched();
-  _unsubWaiting = () => {};
-  _unsubMatched = () => {};
+  _matchDisposers.forEach(dispose => dispose());
+  _matchDisposers = [];
 }
 
 export function mount(container, detail = {}) {
+  _generation++;
+  _energyNow = null;
+  _matchError = '';
+  _searching = false;
+  _detachEnergy();
+  _unsubMatchmaking();
   if (!window.oxarkWallet?.isConnected?.()) {
     document.dispatchEvent(new CustomEvent('nav:wallet-required'));
     return;
   }
-
-  const mode = detail.mode ?? 'vault';
-
-  if (mode === 'battle') {
-    _mountBattle(container, detail);
-    return;
-  }
-
   injectStyle();
   injectCardCSS();
   injectLegendaryProgressCSS();
-  injectPrizePoolCSS();
   injectEnergyCss();
-
   const s = getState();
-  const vault   = detail.vault   ?? s.vault   ?? [];
-  const pubkey  = detail.pubkey  ?? s.playerPubkey
+  const vault = detail.vault ?? s.vault ?? [];
+  const pubkey = detail.pubkey ?? s.playerPubkey
     ?? window.oxarkWallet?.getPublicKey?.()?.toString() ?? '';
-  const perso   = detail.personalities ?? s.personalities ?? {};
-
+  const perso = detail.personalities ?? s.personalities ?? {};
   setState({ vault, playerPubkey: pubkey, personalities: perso, phase: 'main' });
-
-  container.innerHTML = buildHTML({ vault, pubkey, perso, playerState: detail.playerState });
-  bindEvents(container);
+  if (detail.mode === 'battle') {
+    _mountBattle(container, { ...detail, vault, pubkey });
+  } else {
+    container.innerHTML = buildHTML({ vault, pubkey, perso, playerState: detail.playerState });
+    bindEvents(container);
+    _refreshVaultGrid(container);
+  }
+  _applyEnergyGate(container);
   _loadEnergy(container, pubkey, detail.playerState);
 }
 
 export function unmount(container) {
-  if (_matchInterval) { clearInterval(_matchInterval); _matchInterval = null; }
-  _detachEnergy(); _detachEnergy = () => {};
+  _generation++;
+  _energyRequest++;
+  _detachEnergy();
+  _detachEnergy = () => {};
   _unsubMatchmaking();
+  if (_searching) duelWs.cancelMatchmaking();
+  _searching = false;
+  _energyNow = null;
   container.innerHTML = '';
 }
 
-/* ── HTML ───────────────────────────────────────────────────────────── */
-function buildHTML({ vault, pubkey, perso, playerState }) {
-  const owned = new Set(vault);
-  const vaultCount = vault.length;
-  const truncPub   = pubkey.length >= 8
-    ? `${pubkey.slice(0, 4)}…${pubkey.slice(-4)}`
-    : (pubkey || '—');
+const _shortKey = pubkey => pubkey.length >= 8 ? `${pubkey.slice(0, 4)}…${pubkey.slice(-4)}` : (pubkey || '—');
+const _ownedIds = () => ALL_CARD_IDS.filter(id => (getState().vault ?? []).includes(id));
+const _costCopy = '1 energy when you seal · Solana network fees apply';
+const _stealCopy = () => STEAL_ENABLED ? '' : `${pxIcon('lock')} STEAL IS OFF · Your cards stay yours after a duel.`;
 
-  const cardGrid = ALL_CARD_IDS.map(id =>
-    CardFrameHTML({ id, owned: owned.has(id) })
-  ).join('');
-
-  const FACTIONS = PERSONALITIES.map((p, i) => ({
-    label: FACTION_NAMES[p.faction],
-    color: FACTION_COLORS[p.faction],
-  }));
-
-  return `
-<div class="ms-root" role="main" aria-label="0xARK Main Screen">
-
-  <!-- Top bar -->
-  <header class="ms-topbar">
-    <div class="ms-brand flex-row gap-8">
-      <button class="ms-back-btn" id="ms-home-btn">← Home</button>
-      <span class="ms-brand-name">0xARK</span>
-      <span class="chip ms-tagline">CARD BATTLE ON SOLANA</span>
-    </div>
-    <div class="ms-hud flex-row gap-8">
-      <span class="chip">VAULT <span class="label-gold">${vaultCount}</span><span class="label-dim">/60</span></span>
-      ${EnergyHudHTML(playerState, { refill: true })}
-      <button class="gba-btn gba-btn--ghost ms-wallet-btn" id="ms-wallet">
-        ${pxIcon('check')} ${truncPub || 'Connected'}
-      </button>
-    </div>
-  </header>
-
-  <div class="ms-body">
-
-    <!-- Left: Vault panel -->
-    <section class="ms-vault-panel" aria-label="Card vault">
-      <div class="ms-panel-header">
-        <span class="ms-panel-title">VAULT</span>
-        <span class="label-dim" style="font-size:14px;">${vaultCount}/60 CARDS</span>
-      </div>
-
-      <!-- Progress bar -->
-      <div class="ms-vault-progress" role="progressbar"
-           aria-valuenow="${vaultCount}" aria-valuemax="60">
-        <div class="ms-vault-progress-fill" style="width:${Math.round((vaultCount/60)*100)}%;"></div>
-        <span class="ms-vault-progress-label">${Math.round((vaultCount/60)*100)}%</span>
-      </div>
-
-      <!-- VAULT pane -->
-      <div id="ms-pane-vault" role="tabpanel">
-        <!-- Faction filter -->
-        <div class="ms-faction-filters" role="group" aria-label="Filter by faction">
-          <button class="ms-faction-btn ms-faction-btn--active gba-btn gba-btn--ghost" data-faction="all">ALL</button>
-          ${PERSONALITIES.map(p => `
-            <button class="ms-faction-btn gba-btn gba-btn--ghost"
-              data-faction="${p.faction}"
-              style="--fc:${FACTION_COLORS[p.faction]};">
-              ${FACTION_NAMES[p.faction].toUpperCase().slice(0,3)}
-            </button>`).join('')}
-        </div>
-
-        <!-- Card grid 10×6 -->
-        <div class="ms-card-grid" id="ms-card-grid" role="list" aria-label="All cards">
-          ${cardGrid}
-        </div>
-      </div>
-
-    </section>
-
-    <!-- Right: Side panels -->
-    <aside class="ms-side">
-
-      <!-- Personality progress -->
-      <div class="ms-side-section">
-        <div class="ms-panel-header">
-          <span class="ms-panel-title">PERSONALITIES</span>
-        </div>
-        ${LegendaryProgressHTML(perso, 10, vault)}
-      </div>
-
-      <!-- Prize pool -->
-      <div class="ms-side-section">
-        ${PrizePoolHTML(0, vaultCount)}
-      </div>
-
-      <!-- Matchmaking -->
-      <div class="ms-matchmaking">
-        <button class="gba-btn gba-btn--primary ms-start-btn" id="ms-start">
-          ▶ START BATTLE
-        </button>
-        <div class="ms-match-info label-dim" id="ms-match-info">
-          WIN CARDS · EARN SOL · UNLOCK LEGENDARIES
-        </div>
-      </div>
-
-    </aside>
-  </div>
-
-  <!-- Footer -->
-  <footer class="ms-footer">
-    <span class="mono label-dim">${truncPub}</span>
-    <span class="sep">·</span>
-    <span class="label-dim">${NETWORK.toUpperCase()}</span>
-    <span class="sep">·</span>
-    <span class="label-dim">Program: ${PROGRAM_ID.slice(0, 6)}…${PROGRAM_ID.slice(-4)}</span>
-  </footer>
-
-</div>`;
+function _footer(pubkey) {
+  return `<footer class="ms-footer"><span class="selectable">${_shortKey(pubkey)}</span><span>${NETWORK.toUpperCase()}</span><span class="selectable">PROGRAM ${PROGRAM_ID.slice(0, 6)}…${PROGRAM_ID.slice(-4)}</span></footer>`;
 }
 
-/* ── Events ─────────────────────────────────────────────────────────── */
+function buildHTML({ vault, pubkey, perso, playerState }) {
+  const count = new Set(vault).size;
+  return `<div class="ms-root" role="main" aria-label="Card vault" data-scope="owned" data-faction="all">
+    <header class="ms-topbar">
+      <div class="ms-brand"><button class="ms-back-btn" id="ms-home-btn">← Home</button><span class="ms-brand-name">0xARK</span><span class="ms-tagline">THE VAULT</span></div>
+      <div class="ms-hud"><span class="chip" id="ms-vault-count">${count}/${ALL_CARD_IDS.length} COLLECTED</span>${EnergyHudHTML(playerState, { refill: true })}<span class="chip ms-wallet-btn selectable" id="ms-wallet" title="${pubkey}">${pxIcon('check')} ${_shortKey(pubkey)}</span></div>
+    </header>
+    <div class="ms-body">
+      <section class="ms-vault-panel" aria-label="Your collection">
+        <div class="ms-panel-header"><div><span class="ms-eyebrow">YOUR COLLECTION</span><h1 class="ms-panel-title">Every card has a story.</h1></div><span class="ms-collection-total" id="ms-collection-total">${count}<span> / ${ALL_CARD_IDS.length}</span></span></div>
+        <div class="ms-vault-progress" role="progressbar" aria-label="Collection complete" aria-valuemin="0" aria-valuenow="${count}" aria-valuemax="${ALL_CARD_IDS.length}"><div class="ms-vault-progress-fill" style="width:${count / ALL_CARD_IDS.length * 100}%"></div></div>
+        <div id="ms-pane-vault">
+          <div class="ms-scope-filters" role="group" aria-label="Collection scope">
+            <button class="ms-scope-btn" data-scope="owned" aria-pressed="true">OWNED</button><button class="ms-scope-btn" data-scope="all" aria-pressed="false">ALL CARDS</button><button class="ms-scope-btn" data-scope="missing" aria-pressed="false">MISSING</button>
+          </div>
+          <div class="ms-faction-filters" role="group" aria-label="Filter by faction"><button class="ms-faction-btn" data-faction="all" aria-pressed="true">ALL FACTIONS</button>${FACTION_NAMES.map((name, faction) => `<button class="ms-faction-btn" data-faction="${faction}" style="--fc:${FACTION_COLORS[faction]}" aria-pressed="false">${name.toUpperCase()}</button>`).join('')}</div>
+          <div class="ms-grid-summary"><span id="ms-filter-count" role="status"></span><span>ARROWS TO BROWSE · ENTER TO INSPECT</span></div>
+          <div class="ms-card-grid" id="ms-card-grid" role="group" aria-label="Collection cards"></div>
+        </div>
+      </section>
+      <aside class="ms-side">
+        <section class="ms-side-section"><span class="ms-eyebrow">THE LONG GAME</span><h2 class="ms-side-title">Legendary paths</h2><p class="ms-side-copy">Your personality progress toward the six Legendary cards.</p><div id="ms-legendary-progress">${LegendaryProgressHTML(perso, undefined, vault)}</div></section>
+        <div class="ms-matchmaking"><button class="gba-btn gba-btn--primary ms-start-btn" id="ms-start">${pxIcon('battle')} START BATTLE</button><p class="ms-match-info" id="ms-match-info" role="status"></p><span class="ms-cost">${_costCopy}</span><p class="ms-steal-note">${_stealCopy()}</p></div>
+      </aside>
+    </div>${_footer(pubkey)}
+  </div>`;
+}
+
+function _cardButton(id, owned, first = false) {
+  const name = CARD_NAMES[id] ?? `Card #${id}`;
+  return `<button type="button" class="ms-card-button${owned ? '' : ' ms-card-button--missing'}" data-card-id="${id}" tabindex="${first ? 0 : -1}" aria-label="${name}, ${owned ? 'owned' : 'not owned'}. Inspect card">${CardFrameHTML({ id, owned })}<span class="ms-card-caption">${owned ? 'INSPECT CARD' : 'NOT OWNED · INSPECT'}</span></button>`;
+}
+
 function bindEvents(container) {
-  // Back to home
-  container.querySelector('#ms-home-btn')?.addEventListener('click', () => {
-    document.dispatchEvent(new CustomEvent('nav:home'));
-  });
-
-  // Wallet connect
-  container.querySelector('#ms-wallet').addEventListener('click', async () => {
-    if (!window.oxarkWallet) {
-      _showWalletError(container, 'Phantom or Solflare required');
-      window.open('https://phantom.app/', '_blank', 'noopener');
-      return;
-    }
-    try {
-      await window.oxarkWallet.connect();
-      const pub = window.oxarkWallet.getPublicKey?.()?.toString() ?? '';
-      setState({ playerPubkey: pub });
-      document.dispatchEvent(new CustomEvent('nav:main', { detail: { pubkey: pub } }));
-    } catch (err) {
-      if (err?.code === 4001) return; // user rejected — silent
-      _showWalletError(container, err?.message ?? 'Wallet connection failed');
-    }
-  });
-
-  // Faction filter
-  container.querySelectorAll('.ms-faction-btn').forEach(btn => {
+  container.querySelector('#ms-home-btn')?.addEventListener('click', () => document.dispatchEvent(new CustomEvent('nav:home')));
+  container.querySelectorAll('.ms-scope-btn, .ms-faction-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const faction = btn.dataset.faction;
-      container.querySelectorAll('.ms-faction-btn').forEach(b => {
-        b.classList.toggle('ms-faction-btn--active', b === btn);
-      });
-      filterVaultGrid(container, faction);
+      const root = container.querySelector('.ms-root');
+      const key = btn.classList.contains('ms-scope-btn') ? 'scope' : 'faction';
+      root.dataset[key] = btn.dataset[key];
+      _refreshVaultGrid(container);
     });
   });
+  _bindCards(container, '#ms-card-grid');
+  container.querySelector('#ms-start')?.addEventListener('click', () => startMatchmaking(container));
+}
 
-  // Card click → detail modal
-  container.querySelector('#ms-card-grid')?.addEventListener('click', e => {
-    const card = e.target.closest('[data-id]');
-    if (!card) return;
-    const cardId = parseInt(card.dataset.id, 10);
-    if (!cardId) return;
-    CardDetailModal.show(container.querySelector('.ms-root'), cardId, {
-      onBurn:    () => _refreshVaultGrid(container),
-      onPromote: () => _refreshVaultGrid(container),
-    });
+function _bindCards(container, selector) {
+  const grid = container.querySelector(selector);
+  grid?.addEventListener('click', event => {
+    const button = event.target.closest('[data-card-id]');
+    if (!button) return;
+    const id = Number(button.dataset.cardId);
+    const root = container.querySelector('.ms-root');
+    CardDetailModal.show(root, id, { onBurn: () => _refreshVaultGrid(container), onPromote: () => _refreshVaultGrid(container) });
+    if (!(getState().vault ?? []).includes(id)) {
+      const label = document.createElement('div');
+      label.className = 'ms-not-owned';
+      label.textContent = 'NOT OWNED · Collection preview';
+      root.querySelector('.cd-info')?.prepend(label);
+    }
   });
-
-  // Start battle
-  container.querySelector('#ms-start')?.addEventListener('click', () => {
-    startMatchmaking(container);
+  grid?.addEventListener('keydown', event => {
+    if (!event.target.matches('[data-card-id]')) return;
+    const cards = [...grid.querySelectorAll('[data-card-id]')];
+    const index = cards.indexOf(event.target);
+    const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -5, ArrowDown: 5 };
+    let next;
+    if (event.key in moves) next = Math.max(0, Math.min(cards.length - 1, index + moves[event.key]));
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = cards.length - 1;
+    else return;
+    event.preventDefault();
+    cards.forEach((card, i) => card.tabIndex = i === next ? 0 : -1);
+    cards[next]?.focus();
+  });
+  grid?.addEventListener('focusin', event => {
+    if (!event.target.matches('[data-card-id]')) return;
+    grid.querySelectorAll('[data-card-id]').forEach(card => card.tabIndex = card === event.target ? 0 : -1);
   });
 }
 
 function _refreshVaultGrid(container) {
-  const s     = getState();
-  const owned = new Set(s.vault);
-  const grid  = container.querySelector('#ms-card-grid');
-  if (grid) grid.innerHTML = ALL_CARD_IDS.map(id => CardFrameHTML({ id, owned: owned.has(id) })).join('');
+  const root = container.querySelector('.ms-root');
+  const grid = container.querySelector('#ms-card-grid');
+  if (!root) return;
+  const owned = new Set(_ownedIds());
+  const s = getState();
+  if (grid) {
+    const { scope, faction } = root.dataset;
+    const ids = ALL_CARD_IDS.filter(id => (faction === 'all' || getCard(id)?.faction === Number(faction)) && (scope === 'all' || (scope === 'owned' ? owned.has(id) : !owned.has(id))));
+    const focusedId = document.activeElement?.dataset?.cardId;
+    const scrollTop = grid.scrollTop;
+    grid.innerHTML = ids.length ? ids.map((id, i) => _cardButton(id, owned.has(id), i === 0)).join('') : '<div class="ms-empty"><span>No cards here yet.</span><p>Try another faction or switch to All cards to explore the collection.</p></div>';
+    grid.scrollTop = scrollTop;
+    if (focusedId) (grid.querySelector(`[data-card-id="${focusedId}"]`) ?? grid.querySelector('[data-card-id]'))?.focus();
+    container.querySelector('#ms-filter-count').textContent = `${ids.length} ${scope === 'all' ? 'CARDS' : scope.toUpperCase()} · ${faction === 'all' ? 'ALL FACTIONS' : FACTION_NAMES[Number(faction)].toUpperCase()}`;
+    root.querySelectorAll('.ms-scope-btn, .ms-faction-btn').forEach(button => {
+      const key = button.classList.contains('ms-scope-btn') ? 'scope' : 'faction';
+      button.setAttribute('aria-pressed', String(button.dataset[key] === root.dataset[key]));
+    });
+    container.querySelector('#ms-vault-count').textContent = `${owned.size}/${ALL_CARD_IDS.length} COLLECTED`;
+    container.querySelector('#ms-collection-total').innerHTML = `${owned.size}<span> / ${ALL_CARD_IDS.length}</span>`;
+    container.querySelector('.ms-vault-progress').setAttribute('aria-valuenow', owned.size);
+    container.querySelector('.ms-vault-progress-fill').style.width = `${owned.size / ALL_CARD_IDS.length * 100}%`;
+    container.querySelector('#ms-legendary-progress').innerHTML = LegendaryProgressHTML(s.personalities, undefined, s.vault);
+  }
+  const preview = container.querySelector('#ms-battle-cards');
+  if (preview) preview.innerHTML = _battleCards();
+  _applyEnergyGate(container);
 }
 
-// ── Energy (F1-3) ──────────────────────────────────────────────────────────
-// Fetch PlayerState, wire the topbar HUD (with refill), and gate START on
-// energyNow === 0. Refresh the gate after a refill. Chain is authoritative at
-// commit; this is the belt (gate) to the commit-time suspenders (§4).
 async function _loadEnergy(container, pubkey, seedPlayerState) {
-  const apply = (ps) => {
+  const generation = _generation;
+  const request = ++_energyRequest;
+  const current = () => generation === _generation && request === _energyRequest;
+  const apply = ps => {
+    if (!current()) return;
     _energyNow = computeEnergy(ps).energyNow;
     _detachEnergy();
-    _detachEnergy = attachEnergyHud(container, {
-      playerState: ps, refill: true,
-      onRefill: () => _loadEnergy(container, pubkey), // re-read fresh state
+    _detachEnergy = attachEnergyHud(container, { playerState: ps, refill: true,
+      onChange: energyNow => { if (current()) { _energyNow = energyNow; _applyEnergyGate(container); } },
     });
     _applyEnergyGate(container);
   };
-  if (seedPlayerState) apply(seedPlayerState);
+  apply(seedPlayerState);
+  // Keep a known HUD mounted throughout refill: it owns pending state and
+  // confirmed energy, and onChange above keeps the battle gate synchronized.
+  if (_energyNow != null) return;
   if (typeof window.oxarkOnchain?.getPlayerState !== 'function' || !pubkey) return;
   try {
     const ps = await window.oxarkOnchain.getPlayerState(pubkey);
     if (ps) apply(ps);
   } catch (err) {
-    console.warn('[energy] getPlayerState failed:', err?.message ?? err);
+    if (current()) console.warn('[energy] getPlayerState failed:', err?.message ?? err);
   }
 }
 
 function _applyEnergyGate(container) {
   const btn = container.querySelector('#ms-start');
-  if (!btn) return;
-  const drained = _energyNow === 0;
-  btn.disabled = drained;
   const info = container.querySelector('#ms-match-info');
-  if (drained && info) info.innerHTML = `Out of energy — <span class="label-gold">refill above</span> to battle`;
-}
-
-function filterVaultGrid(container, faction) {
-  const grid = container.querySelector('#ms-card-grid');
-  if (!grid) return;
-  const s     = getState();
-  const owned = new Set(s.vault);
-  const cards = faction === 'all'
-    ? ALL_CARD_IDS
-    : ALL_CARD_IDS.filter(id => getCard(id)?.faction === parseInt(faction, 10));
-
-  grid.innerHTML = cards.map(id => CardFrameHTML({ id, owned: owned.has(id) })).join('');
+  if (!btn || !info) return;
+  const count = _ownedIds().length;
+  btn.disabled = _searching || count < 5 || _energyNow === 0;
+  if (_searching) return;
+  btn.innerHTML = `${pxIcon('battle')} ${_matchError ? 'RETRY MATCHMAKING' : 'START BATTLE'}`;
+  info.textContent = count < 5 ? `Collect ${5 - count} more ${5 - count === 1 ? 'card' : 'cards'} to bring a hand of five.`
+    : _energyNow === 0 ? 'Out of energy. Refill above or wait for the next charge.'
+    : _matchError || (_energyNow == null ? 'Energy not loaded. It will be checked when you seal.' : 'Ready for a duel. First to three round wins.');
 }
 
 async function startMatchmaking(container) {
-  const btn  = container.querySelector('#ms-start');
+  if (_searching || _energyNow === 0 || _ownedIds().length < 5) return;
+  const generation = _generation;
+  const current = () => generation === _generation && _searching;
+  const btn = container.querySelector('#ms-start');
   const info = container.querySelector('#ms-match-info');
   if (!btn || !info) return;
-
-  // Energy gate (F1-3 §4): entering a duel spends 1 energy at commit; block up front.
-  if (_energyNow === 0) {
-    showToast('Out of energy — refill to battle', 'error');
-    if (info) info.innerHTML = `Out of energy — <span class="label-gold">refill above</span> to battle`;
-    return;
-  }
-
-  btn.disabled    = true;
-  btn.textContent = '● SEARCHING…';
-  info.textContent = 'Connecting to server…';
-
+  _searching = true;
+  _matchError = '';
+  btn.disabled = true;
+  btn.textContent = 'FINDING OPPONENT…';
+  info.textContent = 'Connecting to the duel server…';
+  const fail = message => {
+    if (!current()) return;
+    _unsubMatchmaking();
+    duelWs.cancelMatchmaking();
+    _searching = false;
+    _matchError = message;
+    _applyEnergyGate(container);
+  };
   try {
     await duelWs.connect();
-
-    _unsubWaiting = duelWs.on('matchmaking_waiting', ({ roomId }) => {
-      info.textContent = `Searching for opponent… [${roomId}]`;
-    });
-
-    _unsubMatched = duelWs.on('matchmaking_matched', ({ roomId, duelId, role, opponentWallet, opponentId }) => {
-      _unsubMatchmaking();
-      if (_matchInterval) { clearInterval(_matchInterval); _matchInterval = null; }
-      const isHost = role === 'host';
-      setState({
-        matchId: roomId,
-        opponentPubkey: opponentWallet ?? null,
-        isHost,
-        duelId: duelId ?? `${roomId}-R1`,
-        opponentPlayerId: opponentId,
-        phase: 'preparation',
-      });
-      document.dispatchEvent(new CustomEvent('nav:preparation', { detail: { matchId: roomId } }));
-    });
-
-    _matchInterval = setInterval(() => {
-      btn.textContent = `● SEARCHING${'·'.repeat((_dots++ % 3) + 1)}`;
-    }, 500);
-
+    if (!current()) return;
+    if (!duelWs.isConnected()) throw new Error('Connection is not ready');
+    _matchDisposers = [
+      duelWs.on('matchmaking_waiting', () => { if (current()) info.textContent = 'In the queue. Waiting for another player…'; }),
+      duelWs.on('ws_closed', () => fail('Connection lost. Retry when you are ready.')),
+      duelWs.on('error', () => fail('The server could not start a duel. Please retry.')),
+      duelWs.on('matchmaking_matched', ({ roomId, duelId, role, opponentWallet, opponentId }) => {
+        if (!current()) return;
+        _unsubMatchmaking();
+        _searching = false;
+        setState({ matchId: roomId, opponentPubkey: opponentWallet ?? null, isHost: role === 'host',
+          // Legacy server suffix: this duel ID remains constant across all rounds.
+          duelId: duelId ?? `${roomId}-R1`, opponentPlayerId: opponentId, phase: 'preparation' });
+        document.dispatchEvent(new CustomEvent('nav:preparation', { detail: { matchId: roomId } }));
+      }),
+    ];
     const s = getState();
-    duelWs.enqueueMatchmaking({
-      wallet:     s.playerPubkey || null,
-      name:       (s.playerPubkey || 'Player').slice(0, 8),
-      card_count: s.vault.length,
-    });
-
+    duelWs.enqueueMatchmaking({ wallet: s.playerPubkey || null, name: (s.playerPubkey || 'Player').slice(0, 8), card_count: s.vault.length });
   } catch {
-    // Server unavailable — demo fallback
-    setDemoMode('matchmaking server unreachable');
-    _matchInterval = setInterval(() => {
-      btn.textContent = `● SEARCHING${'·'.repeat((_dots++ % 3) + 1)}`;
-    }, 500);
-    info.textContent = 'Demo mode (server offline)';
-    setTimeout(() => {
-      if (_matchInterval) { clearInterval(_matchInterval); _matchInterval = null; }
-      const matchId = `demo-${Date.now()}`;
-      setState({ matchId, phase: 'preparation', isHost: true, duelId: `${matchId}-R1` });
-      document.dispatchEvent(new CustomEvent('nav:preparation', { detail: { matchId } }));
-    }, 2500);
+    fail('Duel server unavailable. Retry to reconnect.');
   }
 }
 
-/* ── Wallet error banner ────────────────────────────────────────────── */
-function _showWalletError(container, msg) {
-  const existing = container.querySelector('.ms-wallet-err');
-  if (existing) existing.remove();
-  const el = document.createElement('div');
-  el.className = 'ms-wallet-err';
-  el.textContent = msg;
-  container.querySelector('.ms-root')?.appendChild(el);
-  setTimeout(() => el.remove(), 4000);
+function _battleCards() {
+  const cards = _ownedIds().slice(0, 5);
+  return Array.from({ length: 5 }, (_, index) => cards[index]
+    ? _cardButton(cards[index], true, index === 0)
+    : `<div class="ms-card-slot">${pxIcon('vault', { size: 32 })}<span>CARD ${index + 1}</span><span>Not collected</span></div>`).join('');
 }
 
-/* ── Battle lobby (mode=battle) ─────────────────────────────────────── */
 function _mountBattle(container, detail) {
-  injectStyle();
-  injectEnergyCss();
-
-  const pubkey = detail.pubkey ?? getState().playerPubkey ?? '';
-  const truncPub = pubkey.length >= 8 ? `${pubkey.slice(0,4)}…${pubkey.slice(-4)}` : (pubkey || '—');
-
-  container.innerHTML = `
-<div class="ms-battle-root">
-  <button class="ms-battle-back" id="ms-battle-back">← Home</button>
-  <div class="ms-battle-title">BATTLE</div>
-  <div class="ms-battle-sub">Find a duel · Win cards · Earn SOL</div>
-  <div class="ms-battle-energy">${EnergyHudHTML(detail.playerState, { refill: true })}</div>
-  <button class="ms-battle-start" id="ms-start">▶ START MATCHMAKING</button>
-  <div class="ms-battle-fee">Entry fee: <span>0.001 SOL</span></div>
-  <div class="ms-battle-info label-dim" id="ms-match-info">
-    WIN CARDS · EARN SOL · UNLOCK LEGENDARIES
-  </div>
-  <div style="position:absolute;bottom:12px;font-size:13px;color:#333;">${truncPub} · ${NETWORK.toUpperCase()}</div>
-</div>`;
-
-  container.querySelector('#ms-battle-back').addEventListener('click', () => {
-    document.dispatchEvent(new CustomEvent('nav:home'));
-  });
-
-  container.querySelector('#ms-start').addEventListener('click', () => {
-    startMatchmaking(container);
-  });
-
-  _loadEnergy(container, pubkey, detail.playerState);
+  container.innerHTML = `<div class="ms-root ms-battle-root" role="main" aria-label="Battle lobby">
+    <header class="ms-topbar"><div class="ms-brand"><button class="ms-back-btn" id="ms-battle-back">← Home</button><span class="ms-brand-name">0xARK</span><span class="ms-tagline">DUEL LOBBY</span></div>${EnergyHudHTML(detail.playerState, { refill: true })}</header>
+    <div class="ms-battle-body">
+      <div class="ms-battle-heading"><div><span class="ms-eyebrow">FIVE CARDS. ONE SEA.</span><h1 class="ms-battle-title">Make your next move.</h1></div><span class="chip">FIRST TO 3 · UP TO 5 ROUNDS</span></div>
+      <div class="ms-battle-layout"><section class="ms-battle-deck" aria-label="Owned card preview"><div class="ms-deck-label"><span>FROM YOUR VAULT</span><span>Choose your hand after matching</span></div><div class="ms-battle-cards" id="ms-battle-cards" role="group" aria-label="Five cards from your vault">${_battleCards()}</div><p class="ms-deck-note">Your cards. Your strategy. Inspect any card before entering the queue.</p><p class="ms-steal-note">${_stealCopy()}</p></section>
+      <aside class="ms-battle-brief"><ol class="ms-battle-steps"><li><span class="ms-step-number">01</span><div><span>SELECT</span><p>Choose five owned cards and set their actions.</p></div></li><li><span class="ms-step-number">02</span><div><span>SEAL</span><p>Commit your hidden hand with a ZK proof.</p></div></li><li><span class="ms-step-number">03</span><div><span>REVEAL</span><p>Play each round. First to three wins takes the duel.</p></div></li></ol><div class="ms-battle-action"><button class="gba-btn gba-btn--primary ms-start-btn" id="ms-start">${pxIcon('battle')} START BATTLE</button><p class="ms-cost">${_costCopy}</p><p class="ms-match-info" id="ms-match-info" role="status"></p></div></aside></div>
+    </div>${_footer(detail.pubkey)}</div>`;
+  container.querySelector('#ms-battle-back').addEventListener('click', () => document.dispatchEvent(new CustomEvent('nav:home')));
+  container.querySelector('#ms-start').addEventListener('click', () => startMatchmaking(container));
+  _bindCards(container, '#ms-battle-cards');
 }
 
-/* ── Style ──────────────────────────────────────────────────────────── */
 function injectStyle() {
   if (document.getElementById('style-ms')) return;
   const el = document.createElement('style');
@@ -405,140 +300,72 @@ function injectStyle() {
 }
 
 const CSS = `
-.ms-root {
-  position: relative; width: 1024px; height: 576px; overflow: hidden;
-  font-family: var(--font-main); background: var(--bg-deep);
-  display: flex; flex-direction: column;
-}
-
-/* Top bar */
-.ms-topbar {
-  height: 44px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 14px; border-bottom: var(--border-dim);
-  background: rgba(3,6,15,0.75); z-index: 10;
-}
-.ms-brand { display: flex; align-items: center; gap: 10px; }
-.ms-brand-name { font-size: 24px; color: var(--accent-gold); letter-spacing: 0.12em; }
-.ms-tagline { font-size: 13px; letter-spacing: 0.08em; color: var(--text-dim); }
-.ms-hud { flex-shrink: 0; }
-.ms-wallet-btn { font-size: 14px; padding: 3px 10px; }
-.ms-wallet-err {
-  position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
-  background: var(--accent-red); color: #fff; padding: 6px 18px;
-  font-size: 16px; letter-spacing: 0.05em; z-index: 200;
-  animation: ms-err-fade 4s ease forwards;
-}
-@keyframes ms-err-fade { 0%,80%{opacity:1} 100%{opacity:0} }
-
-/* Body */
-.ms-body { flex: 1; display: flex; min-height: 0; }
-
-/* Vault panel */
-.ms-vault-panel {
-  flex: 1; display: flex; flex-direction: column; min-width: 0;
-  padding: 8px 10px 0; border-right: var(--border-dim);
-  overflow: hidden;
-}
-.ms-panel-header {
-  display: flex; align-items: baseline; justify-content: space-between;
-  margin-bottom: 5px; flex-shrink: 0;
-}
-.ms-panel-title { font-size: 16px; letter-spacing: 0.12em; color: var(--accent-gold); }
-
-/* Progress bar */
-.ms-vault-progress {
-  height: 6px; background: rgba(255,255,255,0.07); margin-bottom: 6px;
-  position: relative; flex-shrink: 0; overflow: hidden;
-}
-.ms-vault-progress-fill { height: 100%; background: var(--accent-gold); transition: width 0.5s; }
-.ms-vault-progress-label {
-  position: absolute; right: 0; top: -14px;
-  font-size: 13px; color: var(--text-dim);
-}
-
-/* Faction filters */
-.ms-faction-filters {
-  display: flex; gap: 3px; flex-shrink: 0; margin-bottom: 6px; flex-wrap: wrap;
-}
-.ms-faction-btn {
-  font-size: 13px; padding: 2px 8px;
-  border-color: rgba(255,255,255,0.12);
-}
-.ms-faction-btn:hover { border-color: var(--fc, var(--accent-gold)); color: var(--text-cream); }
-.ms-faction-btn--active { border-color: var(--accent-gold); color: var(--text-cream); background: rgba(201,162,39,0.1); }
-
-/* Card grid */
-.ms-card-grid {
-  flex: 1; overflow-y: auto;
-  display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px;
-  align-content: start; padding-bottom: 4px;
-}
-.ms-card-grid::-webkit-scrollbar { width: 3px; }
-.ms-card-grid::-webkit-scrollbar-thumb { background: rgba(201,162,39,0.2); }
-.ms-card-grid .card-frame { width: 100%; }
-
-/* Side panel */
-.ms-side {
-  width: 240px; flex-shrink: 0;
-  display: flex; flex-direction: column;
-  padding: 8px 10px; gap: 10px; overflow-y: auto;
-}
-.ms-side::-webkit-scrollbar { width: 2px; }
-.ms-side-section {
-  display: flex; flex-direction: column; gap: 5px;
-  padding-bottom: 8px; border-bottom: var(--border-dim);
-}
-
-/* Matchmaking */
-.ms-matchmaking {
-  display: flex; flex-direction: column; gap: 6px; margin-top: auto;
-  padding-top: 8px; border-top: var(--border-dim);
-}
-.ms-match-fee { font-size: 14px; letter-spacing: 0.06em; color: var(--text-dim); }
-.ms-start-btn {
-  width: 100%; justify-content: center; font-size: 20px; padding: 10px;
-  letter-spacing: 0.06em;
-}
-.ms-match-info { font-size: 13px; text-align: center; letter-spacing: 0.04em; }
-.ms-battle-energy { margin: 4px 0 2px; }
-
-/* Footer */
-.ms-footer {
-  height: 32px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; gap: 0; border-top: var(--border-dim);
-  background: rgba(3,6,15,0.7);
-}
-.ms-back-btn {
-  background: none; border: 1px solid #555; color: #888;
-  padding: 4px 12px; cursor: pointer; font-family: var(--font-main);
-  font-size: 16px; transition: border-color 0.2s, color 0.2s;
-}
-.ms-back-btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
-.ms-battle-root {
-  width: 1024px; height: 576px; overflow: hidden;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: var(--bg-deep); font-family: var(--font-main); color: var(--text-cream);
-  position: relative;
-}
-.ms-battle-back {
-  position: absolute; top: 16px; left: 16px;
-  background: none; border: 1px solid #555; color: #888;
-  padding: 4px 12px; cursor: pointer; font-family: var(--font-main);
-  font-size: 18px; transition: border-color 0.2s, color 0.2s;
-}
-.ms-battle-back:hover { border-color: var(--accent-gold); color: var(--accent-gold); }
-.ms-battle-title { font-size: 2.5rem; letter-spacing: 0.2em; color: var(--accent-gold); margin-bottom: 0.5rem; }
-.ms-battle-sub { color: #888; font-size: 1rem; margin-bottom: 2rem; letter-spacing: 0.05em; }
-.ms-battle-start {
-  font-family: var(--font-main); font-size: 1.8rem; letter-spacing: 0.12em;
-  padding: 1rem 3rem; background: var(--accent-gold); color: var(--bg-deep);
-  border: 2px solid #000; cursor: pointer; transition: background 0.15s, transform 0.15s;
-}
-.ms-battle-start:hover:not(:disabled) { background: #dbb630; transform: translateY(-2px); }
-.ms-battle-start:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; }
-.ms-battle-info { margin-top: 1rem; color: #666; font-size: 0.9rem; }
-.ms-battle-fee { margin-top: 2rem; color: #888; font-size: 1rem; }
-.ms-battle-fee span { color: var(--accent-gold); }
+.ms-root { position:relative; width:1024px; height:576px; overflow:hidden; font-family:var(--font-main); color:var(--text-cream); background:var(--bg-deep); display:flex; flex-direction:column; }
+.ms-root *, .ms-root *::before, .ms-root *::after { box-sizing:border-box; }
+.ms-root h1, .ms-root h2, .ms-root p { margin:0; font-weight:normal; }
+.ms-topbar { height:56px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:0 var(--sp-4); border-bottom:var(--border-dim); background:var(--bg-panel); z-index:var(--z-hud); }
+.ms-brand, .ms-hud { display:flex; align-items:center; gap:var(--sp-3); }
+.ms-brand-name { font-size:var(--fs-heading); color:var(--accent-gold); letter-spacing:var(--ls-display); }
+.ms-tagline, .ms-eyebrow { color:var(--text-dim); font-size:var(--fs-caption); letter-spacing:var(--ls-wide); }
+.ms-wallet-btn { font-size:var(--fs-ui); padding:var(--sp-1) var(--sp-2); }
+.ms-back-btn { background:transparent; border:var(--border-dim); color:var(--text-cream); padding:var(--sp-1) var(--sp-3); cursor:pointer; font:var(--fs-ui) var(--font-main); }
+.ms-back-btn:hover { border-color:var(--accent-gold); }
+.ms-body { flex:1; display:flex; min-height:0; }
+.ms-vault-panel { flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; padding:var(--sp-4); border-right:var(--border-dim); }
+.ms-panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--sp-3); flex-shrink:0; }
+.ms-panel-title { font-size:var(--fs-title); line-height:var(--lh-ui); margin-top:var(--sp-1) !important; }
+.ms-collection-total { color:var(--accent-gold); font-size:var(--fs-title); }
+.ms-collection-total span { color:var(--text-dim); font-size:var(--fs-ui); }
+.ms-vault-progress { height:4px; background:var(--bg-mid); flex-shrink:0; margin-bottom:var(--sp-3); }
+.ms-vault-progress-fill { height:100%; background:var(--accent-gold); transition:width var(--t-base); }
+#ms-pane-vault { display:flex; flex-direction:column; flex:1; min-height:0; }
+.ms-scope-filters, .ms-faction-filters { display:flex; gap:var(--sp-1); flex-shrink:0; margin-bottom:var(--sp-2); }
+.ms-scope-btn, .ms-faction-btn { background:transparent; border:var(--border-dim); color:var(--text-cream); cursor:pointer; font:var(--fs-ui) var(--font-main); padding:var(--sp-1) var(--sp-2); }
+.ms-scope-btn { flex:1; padding:var(--sp-2); }
+.ms-scope-btn[aria-pressed="true"] { background:var(--accent-gold); border-color:var(--accent-gold); color:var(--bg-deep); }
+.ms-faction-btn { font-size:var(--fs-caption); flex:1; white-space:nowrap; }
+.ms-faction-btn[aria-pressed="true"], .ms-faction-btn:hover { border-color:var(--fc,var(--accent-gold)); color:var(--fc,var(--accent-gold)); }
+.ms-grid-summary { display:flex; justify-content:space-between; color:var(--text-dim); font-size:var(--fs-caption); padding:var(--sp-1) 0 var(--sp-2); }
+.ms-card-grid { flex:1; min-height:0; overflow-y:auto; display:grid; grid-template-columns:repeat(5,minmax(112px,1fr)); gap:var(--sp-2); align-content:start; padding:var(--sp-1); scrollbar-color:var(--accent-gold) var(--bg-mid); scrollbar-width:thin; }
+.ms-card-button { min-width:0; width:100%; border:0; padding:0; background:transparent; color:var(--text-cream); font-family:var(--font-main); cursor:pointer; text-align:center; }
+.ms-card-button .card-frame { width:100%; pointer-events:none; }
+.ms-card-button .card-frame .stat-label { display:none; }
+.ms-card-button .card-frame--locked { opacity:0.65; }
+.ms-card-button:hover .card-frame { outline:1px solid var(--accent-gold); }
+.ms-card-caption { display:block; padding:var(--sp-1) 0; font-size:var(--fs-caption); color:var(--text-dim); }
+.ms-card-button--missing .ms-card-caption { color:var(--text-cream); }
+.ms-empty { grid-column:1/-1; padding:var(--sp-6) var(--sp-4); text-align:center; border:var(--border-dim); }
+.ms-empty > span { font-size:var(--fs-heading); }
+.ms-empty p { margin-top:var(--sp-2); font-size:var(--fs-ui); }
+.ms-side { width:284px; flex-shrink:0; display:flex; flex-direction:column; min-height:0; padding:var(--sp-4); gap:var(--sp-3); overflow-y:auto; }
+.ms-side-section { display:flex; flex:1; min-height:0; flex-direction:column; gap:var(--sp-2); }
+#ms-legendary-progress { min-height:0; overflow-y:auto; }
+.ms-side-title { font-size:var(--fs-heading); }
+.ms-side-copy { font-size:var(--fs-ui); line-height:var(--lh-ui); }
+.ms-vault-tip { font-size:var(--fs-caption); color:var(--text-dim); line-height:var(--lh-body); }
+.ms-matchmaking { flex-shrink:0; display:flex; flex-direction:column; gap:var(--sp-2); margin-top:auto; padding-top:var(--sp-3); border-top:var(--border-dim); }
+.ms-start-btn { width:100%; justify-content:center; font-size:var(--fs-heading); padding:var(--sp-3); letter-spacing:var(--ls-normal); }
+.ms-start-btn:disabled { opacity:0.45; cursor:not-allowed; }
+.ms-match-info { font-size:var(--fs-ui); line-height:var(--lh-ui); }
+.ms-cost { font-size:var(--fs-caption); color:var(--text-dim); line-height:var(--lh-body); }
+.ms-steal-note { font-size:var(--fs-caption); color:var(--text-dim); line-height:var(--lh-body); }
+.ms-footer { height:32px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:0 var(--sp-4); font-size:var(--fs-caption); color:var(--text-dim); border-top:var(--border-dim); }
+.ms-not-owned { color:var(--accent-blue); font-size:var(--fs-ui); margin-bottom:var(--sp-2); }
+.ms-battle-body { flex:1; min-height:0; display:flex; flex-direction:column; padding:var(--sp-5); gap:var(--sp-5); }
+.ms-battle-heading { display:flex; justify-content:space-between; align-items:center; }
+.ms-battle-title { font-size:var(--fs-display); line-height:var(--lh-tight); margin-top:var(--sp-1) !important; }
+.ms-battle-layout { flex:1; display:grid; grid-template-columns:minmax(0,1fr) 288px; gap:var(--sp-5); min-height:0; }
+.ms-battle-deck { min-width:0; display:flex; flex-direction:column; gap:var(--sp-3); }
+.ms-deck-label { display:flex; justify-content:space-between; font-size:var(--fs-caption); color:var(--text-dim); }
+.ms-deck-label > span:first-child { color:var(--accent-gold); }
+.ms-battle-cards { display:grid; grid-template-columns:repeat(5,minmax(112px,1fr)); gap:var(--sp-2); padding:var(--sp-1); }
+.ms-card-slot { aspect-ratio:5/7; border:var(--border-dim); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:var(--sp-2); color:var(--text-dim); font-size:var(--fs-caption); background:var(--bg-mid); }
+.ms-deck-note { font-size:var(--fs-ui); line-height:var(--lh-body); }
+.ms-battle-brief { display:flex; flex-direction:column; gap:var(--sp-4); border-left:var(--border-dim); padding-left:var(--sp-5); }
+.ms-battle-steps { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:var(--sp-3); }
+.ms-battle-steps li { display:flex; gap:var(--sp-3); }
+.ms-step-number { color:var(--accent-gold); font-size:var(--fs-heading); }
+.ms-battle-steps li div > span { font-size:var(--fs-ui); letter-spacing:var(--ls-wide); }
+.ms-battle-steps p { font-size:var(--fs-ui); line-height:var(--lh-ui); margin-top:var(--sp-1); }
+.ms-battle-action { display:flex; flex-direction:column; gap:var(--sp-2); margin-top:auto; }
 `;

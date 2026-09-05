@@ -1,131 +1,201 @@
-// energy-hud.js — shared energy display + refill (spec F1-3, DESIGN.md energy-pips).
-// 5 px-bolt pips + n/5 + a live "next energy in H:MM:SS" countdown. The chain is
-// authoritative at spend time; this is a display projection off the last regen
-// anchor. Mounted on home / vault topbar / battle lobby / preparation.
-//
-// mirror of constants.rs (solana/oxark/programs/oxark/src/constants.rs):
-//   ENERGY_MAX, ENERGY_REGEN_INTERVAL_SECONDS, ENERGY_REFILL_COST_LAMPORTS
+// Shared energy display + confirmed refill (F1-3, DESIGN.md energy-pips).
+// Constants mirror programs/oxark/src/constants.rs. The chain is authoritative
+// at spend time; countdowns project from the last known regeneration anchor.
 import { pxIcon } from '../../lib/px-icons.js';
 import { showToast, txLink } from '../../lib/ui-shared.js';
 
 export const ENERGY_MAX = 5;
-export const ENERGY_REGEN_SECS = 4 * 60 * 60;    // 4h
-export const ENERGY_REFILL_COST_SOL = 0.003;     // 3_000_000 lamports
+export const ENERGY_REGEN_SECS = 4 * 60 * 60;
+export const ENERGY_REFILL_COST_SOL = 0.003;
 
-// Client projection (spec §1.2). `nowSecs` = unix seconds.
+// Keep missing account data distinct from a known, empty energy balance.
 export function computeEnergy(ps, nowSecs = Math.floor(Date.now() / 1000)) {
-  const base = ps?.energy ?? 0;
-  const ts   = ps?.energyLastTs ?? nowSecs;
-  const elapsed = Math.max(0, nowSecs - ts);
-  const energyNow = Math.min(ENERGY_MAX, base + Math.floor(elapsed / ENERGY_REGEN_SECS));
+  if (!Number.isInteger(ps?.energy) || ps.energy < 0 || ps.energy > ENERGY_MAX
+    || !Number.isFinite(ps?.energyLastTs) || ps.energyLastTs < 0) {
+    return { energyNow: null, nextPipInSecs: null, max: ENERGY_MAX };
+  }
+  const elapsed = Math.max(0, nowSecs - ps.energyLastTs);
+  const energyNow = Math.min(ENERGY_MAX, ps.energy + Math.floor(elapsed / ENERGY_REGEN_SECS));
   const nextPipInSecs = energyNow >= ENERGY_MAX ? null : ENERGY_REGEN_SECS - (elapsed % ENERGY_REGEN_SECS);
   return { energyNow, nextPipInSecs, max: ENERGY_MAX };
 }
 
 function fmtCountdown(secs) {
-  if (secs == null) return 'FULL';
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
   return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+function nextLabel(energyNow, nextPipInSecs) {
+  return energyNow == null ? 'ENERGY UNKNOWN'
+    : nextPipInSecs == null ? 'FULL' : `Next in ${fmtCountdown(nextPipInSecs)}`;
+}
+
 function pipsHTML(energyNow) {
-  let out = '';
-  for (let i = 0; i < ENERGY_MAX; i++) {
-    out += `<span class="ep ${i < energyNow ? 'ep--on' : 'ep--off'}">${pxIcon('bolt', { size: 14 })}</span>`;
-  }
-  return out;
+  return Array.from({ length: ENERGY_MAX }, (_, i) =>
+    `<span aria-hidden="true" class="ep ${energyNow != null && i < energyNow ? 'ep--on' : 'ep--off'}">${pxIcon('bolt', { size: 16 })}</span>`).join('');
 }
 
 function _innerHTML(ps, refill) {
   const { energyNow, nextPipInSecs } = computeEnergy(ps);
-  const clickable = refill && energyNow < ENERGY_MAX;
+  const canRefill = energyNow != null && energyNow < ENERGY_MAX;
+  const pips = pipsHTML(energyNow);
   return `
-    <span class="energy-pips" ${clickable ? 'data-energy-open="1" role="button" tabindex="0" aria-label="Refill energy"' : ''}>${pipsHTML(energyNow)}</span>
-    <span class="energy-count">${energyNow}/${ENERGY_MAX}</span>
-    <span class="energy-next label-dim">next ${pxIcon('bolt', { size: 11 })} in ${fmtCountdown(nextPipInSecs)}</span>`;
+    ${refill ? `<button type="button" class="energy-pips" data-energy-open="1" aria-label="Refill energy for ${ENERGY_REFILL_COST_SOL} SOL" aria-expanded="false" ${canRefill ? '' : 'disabled'}>${pips}</button>`
+      : `<span class="energy-pips">${pips}</span>`}
+    <span class="energy-count">${energyNow ?? '—'}/${ENERGY_MAX}</span>
+    <span class="energy-next label-dim" aria-live="polite">${nextLabel(energyNow, nextPipInSecs)}</span>`;
 }
 
-// Static markup for a mount point. Caller injects this, then calls attachEnergyHud
-// on the same container to wire the live tick + optional refill.
+// Caller injects this mount point, then calls attachEnergyHud on its container.
 export function EnergyHudHTML(ps, { refill = false, cls = '' } = {}) {
   return `<div class="energy-hud ${cls}" data-energy-hud data-refill="${refill ? 1 : 0}">${_innerHTML(ps, refill)}</div>`;
 }
 
-// Wire the live countdown + (optional) refill popover. Self-cleaning: stops when
-// the node leaves the DOM. Returns a disposer for explicit unmount. onRefill(sig)
-// is called after a confirmed refill so the caller can re-fetch fresh state.
-export function attachEnergyHud(container, { playerState, refill = false, onRefill } = {}) {
+// Stop automatically on unmount, or explicitly through the returned disposer.
+export function attachEnergyHud(container, { playerState, refill = false, onRefill, onChange } = {}) {
   const hud = container.querySelector('[data-energy-hud]');
   if (!hud) return () => {};
   let ps = playerState;
   let stopped = false;
+  let pending = false;
+  let popup = null;
+  let tick;
+  let previousEnergy;
+  // Mount once. Tick updates below preserve keyboard focus and event targets.
+  hud.innerHTML = _innerHTML(ps, refill);
+  const trigger = hud.querySelector('[data-energy-open]');
+  const count = hud.querySelector('.energy-count');
+  const next = hud.querySelector('.energy-next');
+  const pips = hud.querySelectorAll('.ep');
 
   const render = () => {
     if (stopped) return;
     if (!document.body.contains(hud)) { stop(); return; }
-    // preserve an open refill popover across ticks
-    if (hud.querySelector('.energy-refill')) return;
-    hud.innerHTML = _innerHTML(ps, refill);
-  };
-  const tick = setInterval(render, 1000);
-  render();
-
-  if (refill) {
-    hud.addEventListener('click', async (e) => {
-      const openEl = e.target.closest('[data-energy-open]');
-      const doBtn  = e.target.closest('[data-energy-do]');
-      const cancel = e.target.closest('[data-energy-cancel]');
-      if (cancel) { render(); return; }
-      if (openEl && !hud.querySelector('.energy-refill')) { _openRefill(hud); return; }
-      if (doBtn) {
-        const sig = await _doRefill(hud, doBtn);
-        if (sig) {
-          // optimistic: full now, anchor to now
-          ps = { ...(ps ?? {}), energy: ENERGY_MAX, energyLastTs: Math.floor(Date.now() / 1000) };
-          render();
-          onRefill?.(sig);
-        }
-      }
+    const { energyNow, nextPipInSecs } = computeEnergy(ps);
+    const countText = `${energyNow ?? '—'}/${ENERGY_MAX}`;
+    const nextText = nextLabel(energyNow, nextPipInSecs);
+    if (count.textContent !== countText) count.textContent = countText;
+    if (next.textContent !== nextText) next.textContent = nextText;
+    pips.forEach((pip, i) => {
+      pip.className = `ep ${energyNow != null && i < energyNow ? 'ep--on' : 'ep--off'}`;
     });
+    const unavailable = energyNow == null || energyNow >= ENERGY_MAX;
+    if (trigger) trigger.disabled = pending || unavailable;
+    const confirm = popup?.querySelector('[data-energy-do]');
+    if (confirm) confirm.disabled = pending || unavailable;
+    if (energyNow !== previousEnergy) {
+      previousEnergy = energyNow;
+      onChange?.(energyNow);
+    }
+  };
+
+  function closePopup({ restoreFocus = true } = {}) {
+    popup?.remove();
+    popup = null;
+    trigger?.setAttribute('aria-expanded', 'false');
+    if (restoreFocus && trigger) {
+      if (!trigger.disabled) trigger.focus();
+      else { count.setAttribute('tabindex', '-1'); count.focus(); }
+    }
   }
 
-  function stop() { stopped = true; clearInterval(tick); }
+  function onKeydown(event) {
+    if (event.key === 'Escape' && popup && !pending) {
+      event.preventDefault();
+      event.stopPropagation();
+      closePopup();
+    }
+  }
+
+  async function onClick(event) {
+    if (stopped || pending) return;
+    if (event.target.closest('[data-energy-cancel]')) { closePopup(); return; }
+    const { energyNow } = computeEnergy(ps);
+    if (energyNow == null || energyNow >= ENERGY_MAX) return;
+    if (event.target.closest('[data-energy-open]') && !popup) {
+      popup = _openRefill(hud);
+      trigger.setAttribute('aria-expanded', 'true');
+      popup.querySelector('[data-energy-do]').focus();
+      return;
+    }
+    if (!event.target.closest('[data-energy-do]') || !popup) return;
+    pending = true;
+    const confirm = popup.querySelector('[data-energy-do]');
+    const cancel = popup.querySelector('[data-energy-cancel]');
+    const status = popup.querySelector('[data-energy-status]');
+    confirm.disabled = true;
+    cancel.disabled = true;
+    confirm.textContent = 'REFILLING…';
+    status.textContent = 'Waiting for transaction confirmation…';
+    popup.setAttribute('aria-busy', 'true');
+    render();
+    let sig;
+    try {
+      if (typeof window.oxarkOnchain?.refillEnergy !== 'function') throw new Error('refill unavailable');
+      sig = await window.oxarkOnchain.refillEnergy();
+      if (typeof sig !== 'string' || !sig.trim()) throw new Error('no transaction confirmation received');
+    } catch (err) {
+      if (stopped || !document.body.contains(hud)) { stop(); return; }
+      const msg = err?.message ?? String(err);
+      status.textContent = /insufficient/i.test(msg) ? 'Not enough SOL for refill.' : `Refill failed: ${msg.slice(0, 100)}`;
+      pending = false;
+      popup.removeAttribute('aria-busy');
+      cancel.disabled = false;
+      confirm.innerHTML = `${pxIcon('bolt')} REFILL`;
+      render();
+      confirm.focus();
+      return;
+    }
+    if (stopped || !document.body.contains(hud)) { stop(); return; }
+    // refillEnergy resolves after confirmation; never change the projection
+    // while a signature request or transaction is still pending.
+    ps = { ...ps, energy: ENERGY_MAX, energyLastTs: Math.floor(Date.now() / 1000) };
+    pending = false;
+    closePopup({ restoreFocus: false });
+    render();
+    // The now-full trigger is disabled; preserve a focus destination instead.
+    count.setAttribute('tabindex', '-1');
+    count.focus();
+    const toast = showToast('Energy refilled', 'success');
+    toast.innerHTML = `${pxIcon('bolt')} Energy refilled ${txLink(sig)}`;
+    onRefill?.(sig);
+  }
+
+  function stop() {
+    if (stopped) return;
+    stopped = true;
+    clearInterval(tick);
+    hud.removeEventListener('click', onClick);
+    hud.removeEventListener('keydown', onKeydown);
+    closePopup({ restoreFocus: false });
+  }
+
+  if (refill) {
+    hud.addEventListener('click', onClick);
+    hud.addEventListener('keydown', onKeydown);
+  }
+  tick = setInterval(render, 1000);
+  render();
   return stop;
 }
 
 function _openRefill(hud) {
   const pop = document.createElement('div');
   pop.className = 'energy-refill';
+  pop.setAttribute('role', 'dialog');
+  pop.setAttribute('aria-label', 'Refill energy');
   pop.innerHTML = `
     <div class="energy-refill-title">REFILL TO ${ENERGY_MAX}</div>
-    <div class="energy-refill-cost label-dim">${ENERGY_REFILL_COST_SOL} SOL</div>
+    <div class="energy-refill-cost">${ENERGY_REFILL_COST_SOL} SOL + network fee</div>
     <div class="energy-refill-actions">
-      <button class="gba-btn gba-btn--primary" data-energy-do="1">${pxIcon('bolt')} REFILL</button>
-      <button class="gba-btn gba-btn--ghost" data-energy-cancel="1">CANCEL</button>
-    </div>`;
+      <button type="button" class="gba-btn gba-btn--primary" data-energy-do="1">${pxIcon('bolt')} REFILL</button>
+      <button type="button" class="gba-btn gba-btn--ghost" data-energy-cancel="1">CANCEL</button>
+    </div>
+    <div class="energy-refill-status" data-energy-status role="status"></div>`;
   hud.appendChild(pop);
-}
-
-async function _doRefill(hud, btn) {
-  btn.disabled = true;
-  btn.innerHTML = 'REFILLING…';
-  try {
-    if (typeof window.oxarkOnchain?.refillEnergy !== 'function') throw new Error('refill unavailable');
-    const sig = await window.oxarkOnchain.refillEnergy();
-    const pips = hud.querySelector('.energy-pips');
-    if (pips) pips.classList.add('energy-pips--sweep');
-    const t = showToast('Energy refilled', 'success');
-    try { t.innerHTML = `${pxIcon('bolt')} Energy refilled ${txLink(sig)}`; } catch (_) {}
-    return sig;
-  } catch (err) {
-    const msg = err?.message ?? String(err);
-    showToast(/insufficient/i.test(msg) ? 'Not enough SOL for refill' : `Refill failed: ${msg.slice(0, 50)}`, 'error');
-    btn.disabled = false;
-    btn.innerHTML = `${pxIcon('bolt')} REFILL`;
-    return null;
-  }
+  return pop;
 }
 
 export function injectEnergyCss() {
@@ -138,32 +208,33 @@ export function injectEnergyCss() {
 
 const CSS = `
 .energy-hud {
-  position: relative; display: inline-flex; align-items: center; gap: 7px;
+  position: relative; display: inline-flex; align-items: center; gap: var(--sp-2);
   font-family: var(--font-main); white-space: nowrap;
 }
 .energy-pips { display: inline-flex; gap: 2px; align-items: center; }
-.energy-pips[data-energy-open] { cursor: pointer; }
-.ep { line-height: 0; display: inline-flex; }
-.ep--on  { color: var(--accent-gold); }
-.ep--off { color: var(--text-dim); opacity: 0.4; }
-.energy-count { font-size: 14px; color: var(--text-cream); letter-spacing: 0.04em; }
-.energy-next { font-size: 13px; display: inline-flex; align-items: center; gap: 3px; }
-.energy-pips--sweep .ep--on { animation: energy-sweep 480ms var(--ease-out, ease-out) both; }
-.energy-pips--sweep .ep:nth-child(1){animation-delay:0ms}
-.energy-pips--sweep .ep:nth-child(2){animation-delay:80ms}
-.energy-pips--sweep .ep:nth-child(3){animation-delay:160ms}
-.energy-pips--sweep .ep:nth-child(4){animation-delay:240ms}
-.energy-pips--sweep .ep:nth-child(5){animation-delay:320ms}
-@keyframes energy-sweep { from { transform: scale(0.4); opacity: 0.2; } to { transform: none; opacity: 1; } }
-
-.energy-refill {
-  position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
-  background: var(--bg-mid); border: var(--border-dim);
-  padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; min-width: 150px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+button.energy-pips {
+  appearance: none; background: transparent; border: 1px solid transparent;
+  padding: var(--sp-1); font: inherit; border-radius: 0; cursor: pointer;
 }
-.energy-refill-title { font-size: 14px; letter-spacing: 0.08em; color: var(--accent-gold); }
-.energy-refill-cost { font-size: 13px; }
-.energy-refill-actions { display: flex; gap: 5px; }
-.energy-refill-actions .gba-btn { font-size: 13px; padding: 5px 8px; flex: 1; justify-content: center; }
+button.energy-pips:hover:not(:disabled) { border-color: var(--accent-gold); }
+button.energy-pips:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 2px; }
+button.energy-pips:disabled { cursor: default; }
+.ep { line-height: 0; display: inline-flex; }
+.ep--on { color: var(--accent-gold); }
+.ep--off { color: var(--accent-gold); opacity: 0.25; }
+.energy-count { font-size: var(--fs-ui); color: var(--text-cream); letter-spacing: var(--ls-caption); }
+.energy-next { font-size: var(--fs-caption); }
+.energy-refill {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-dialog);
+  background: var(--bg-panel); border: var(--border-gold);
+  padding: var(--sp-3) var(--sp-4); display: flex; flex-direction: column;
+  gap: var(--sp-2); width: 240px; white-space: normal;
+}
+.energy-refill-title { font-size: var(--fs-ui); letter-spacing: var(--ls-wide); color: var(--accent-gold); }
+.energy-refill-cost { font-size: var(--fs-ui); color: var(--text-cream); }
+.energy-refill-status { font-size: var(--fs-caption); color: var(--text-cream); }
+.energy-refill-status:empty { display: none; }
+.energy-refill-actions { display: flex; gap: var(--sp-2); }
+.energy-refill-actions .gba-btn { font-size: var(--fs-ui); padding: var(--sp-1) var(--sp-2); flex: 1; justify-content: center; }
+.energy-refill-actions .gba-btn:disabled { opacity: 0.45; cursor: default; }
 `;
