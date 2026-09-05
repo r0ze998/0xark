@@ -1,5 +1,5 @@
 // Card.js — renders one card tile; used by all battle screens
-import { getCard } from '../../lib/cards.js';
+import { getCard, CARD_ART_URLS } from '../../lib/cards.js';
 import { pxIcon, injectPxIconSheet } from '../../lib/px-icons.js';
 
 export const FACTION_NAMES  = ['Knight','Merchant','Pirate','Scholar','Monk','Engineer'];
@@ -102,7 +102,7 @@ export function CardFrameHTML({
 } = {}) {
   if (faceDown) {
     return `<div class="card-frame card-frame--facedown" aria-label="Hidden card">
-      <div class="card-art-placeholder">?</div>
+      <div class="card-back-seal" aria-hidden="true"></div>
     </div>`;
   }
 
@@ -116,8 +116,9 @@ export function CardFrameHTML({
   const name    = CARD_NAMES[id] ?? `Card #${id}`;
   const hp      = hpCurrent ?? card.hp;
 
-  const artHtml = card.imageUrl
-    ? `<img src="${card.imageUrl}" alt="${name}" class="card-art-img" loading="lazy" />`
+  const artwork = card.imageUrl ?? CARD_ART_URLS[(card.faction + 1) * 10];
+  const artHtml = artwork
+    ? `<img src="${artwork}" alt="${name}" class="card-art-img" decoding="async" loading="lazy" />`
     : `<div class="card-art-placeholder">${emoji}</div>`;
 
   const classes = [
@@ -130,7 +131,9 @@ export function CardFrameHTML({
 
   return `<div class="${classes}" data-id="${id}"
     style="--cc:${cColor};--rc:${rColor};"
-    role="img" aria-label="${name}${!owned ? ' (locked)' : ''}">
+    role="img" aria-label="${name}, ${FACTION_NAMES[card.faction]}, ${RARITY_LABELS[card.rarity]}, BP ${card.bp}, HP ${hp}, initiative ${card.ini}${!owned ? ' (not owned)' : ''}">
+    <div class="card-identity"><span>${FACTION_NAMES[card.faction]}</span><span class="card-rarity-label">${RARITY_LABELS[card.rarity]}</span></div>
+    <div class="card-catalog-no">No. ${String(id).padStart(2, '0')}</div>
     <div class="clan-bar" style="background:var(--cc);"></div>
     <div class="rarity-bar" style="background:var(--rc);"></div>
     <div class="name-banner">${name}</div>
@@ -308,4 +311,3 @@ const CARD_CSS = `
 .card-frame.rarity-l .name-banner { top: 13%; height: 9%; align-items: flex-end; }
 .card-frame.rarity-l .stats-panel { bottom: 13%; }
 `;
-

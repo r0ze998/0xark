@@ -2,6 +2,8 @@
 // Wraps the multiplayer server's room + duel message protocol.
 // All send functions no-op gracefully if WebSocket is not connected.
 
+import { isPractice } from './practice-mode.js';
+
 let _ws = null;
 const _listeners = new Map(); // type → Set<fn>
 
@@ -16,6 +18,7 @@ function _wsUrl() {
 // ── Connection ────────────────────────────────────────────────────────────────
 
 export function connect() {
+  if (isPractice) return Promise.reject(new Error('Live matchmaking is disabled in practice.'));
   if (_ws && (_ws.readyState === 0 || _ws.readyState === 1)) return Promise.resolve();
   return new Promise((resolve, reject) => {
     _ws = new WebSocket(_wsUrl());
@@ -71,6 +74,7 @@ export function on(type, fn) {
 }
 
 export function send(msg) {
+  if (isPractice) return;
   if (_ws?.readyState === 1) _ws.send(JSON.stringify(msg));
 }
 

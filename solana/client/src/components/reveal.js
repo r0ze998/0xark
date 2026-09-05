@@ -5,7 +5,7 @@
 
 import { getCard } from '../lib/cards.js';
 import { damageCalc, computeSeed } from '../lib/damage-calc.js';
-import { CardFrameHTML, injectCardCSS, FACTION_NAMES } from './common/Card.js';
+import { CardFrameHTML, injectCardCSS, FACTION_NAMES, CARD_NAMES, ACTION_LABELS } from './common/Card.js';
 import { RoundHudHTML, injectRoundUiCSS, showRoundBridge } from './common/round-ui.js';
 import { pxIcon } from '../lib/px-icons.js';
 import { showToast } from '../lib/ui-shared.js';
@@ -14,6 +14,7 @@ import * as duelWs from '../lib/duel-ws.js';
 
 const POLL_MS = 1500; // getDuelStateFull poll cadence during resolution
 
+let _generation = 0;
 let _skipped          = false;
 let _unsubOppReveal   = () => {};
 let _revealPromise    = Promise.resolve(null);
@@ -88,6 +89,7 @@ async function resolveRound(container, s) {
 }
 
 async function _chainResolve(container, s) {
+  const generation = _generation;
   const duelId    = s.duelId;
   const prevRound = s.round ?? 1;
   const prevP1    = s.p1RoundWins ?? 0;
@@ -98,6 +100,7 @@ async function _chainResolve(container, s) {
 
   while (!_resolutionAborted && !_navigated) {
     const ds = await _safeDuelState(duelId);
+    if (generation !== _generation) return;
     if (ds) {
       const p1IsMe = _p1IsMe(ds, s);
       if (ds.endedAt > 0) { _endDuel(container, ds, p1IsMe); return; }
@@ -118,10 +121,11 @@ async function _chainResolve(container, s) {
 
 function _localResolve(container, s) {
   const p1IsMe = s.duelP1IsMe ?? s.isHost ?? true;
-  const iWon   = (s.battleResult?.winner ?? 'p1') === 'p1';
+  const iWon   = s.battleResult?.winner === 'p1';
+  const opponentWon = s.battleResult?.winner === 'p2';
   let p1w = s.p1RoundWins ?? 0;
   let p2w = s.p2RoundWins ?? 0;
-  if (iWon) { p1IsMe ? p1w++ : p2w++; } else { p1IsMe ? p2w++ : p1w++; }
+  if (iWon) { p1IsMe ? p1w++ : p2w++; } else if (opponentWon) { p1IsMe ? p2w++ : p1w++; }
 
   const myWins  = p1IsMe ? p1w : p2w;
   const oppWins = p1IsMe ? p2w : p1w;
@@ -140,7 +144,7 @@ function _localResolve(container, s) {
   _hideWait(container);
   _bridgeDispose = showRoundBridge(container, {
     round, myWins, oppWins,
-    outcome: iWon ? 'win' : 'loss',
+    outcome: iWon ? 'win' : opponentWon ? 'loss' : 'draw',
     onDone: () => _navigate(() => advanceRound({ round: round + 1, p1RoundWins: p1w, p2RoundWins: p2w, p1IsMe })),
   });
 }
@@ -266,6 +270,7 @@ export function mount(container, detail = {}) {
   injectCardCSS();
   injectRoundUiCSS();
 
+  const generation = ++_generation;
   _playbackDone      = false;
   _resolutionStarted = false;
   _resolutionAborted = false;
@@ -277,7 +282,7 @@ export function mount(container, detail = {}) {
   setState({ phase: 'reveal' });
 
   const opponentField = s.opponentField ??
-    s.fieldCards.map(c => ({ ...getCard(c.cardId), actionType: 0 }));
+    s.fieldCards.filter(Boolean).map(c => ({ cardId: c.cardId, actionType: 0 }));
 
   // Skeleton first (fields render from state, not from the result).
   container.innerHTML = buildHTML(s);
@@ -326,7 +331,7 @@ export function mount(container, detail = {}) {
     } catch {
       result = simpleBattleCalc(s.fieldCards, opponentField);
     }
-    if (_navigated || _resolutionAborted) return;
+    if (generation !== _generation || _navigated || _resolutionAborted) return;
     setState({ battleResult: result, isWinner: result?.winner === 'p1' });
 
     // Phase-11 server bookkeeping (chain truth drives navigation, not this).
@@ -337,11 +342,12 @@ export function mount(container, detail = {}) {
       else          duelWs.sendDamageClaim(s.duelId, round, p1BP, p2BP);
     }
 
-    await runPlayback(container, s, result);
+    await runPlayback(container, s, result, generation);
   })();
 }
 
 export function unmount(container) {
+  _generation++;
   _skipped           = true;               // stop any in-flight beat queue
   _resolutionAborted = true;               // stop any in-flight poll loop
   if (_bridgeDispose) { try { _bridgeDispose(); } catch (_) {} _bridgeDispose = null; }
@@ -402,7 +408,7 @@ function buildHTML(s) {
     </button>
   </div>
 
-  <div class="rev-body">
+  <div class="rev-arena-layout"><div class="rev-body">
     <section class="rev-opp-field" aria-label="Opponent field">
       <div class="rev-field-head">
         <span class="rev-field-label label-dim">OPPONENT</span>
@@ -412,7 +418,7 @@ function buildHTML(s) {
     </section>
 
     <!-- Center duel zone + 2-row telop (replaces the scripted center log) -->
-    <div class="rev-stage" id="rev-stage" aria-hidden="true"></div>
+    <div class="rev-stage" id="rev-stage" aria-hidden="true"><span>YOUR PLAN</span><i></i><strong>VS</strong><i></i><span>THEIR PLAN</span></div>
     <div class="rev-telop" id="rev-telop" role="log" aria-live="polite">
       <div class="rev-telop-line" id="rev-telop-0"></div>
       <div class="rev-telop-line" id="rev-telop-1"></div>
@@ -425,7 +431,7 @@ function buildHTML(s) {
         <span class="rev-bp" id="rev-p1-bp">ΣBP <b class="label-gold">—</b></span>
       </div>
     </section>
-  </div>
+  </div><aside class="rev-journal" aria-label="Battle record"><div class="rev-journal-heading"><span class="archive-eyebrow">THE CONFRONTATION</span><h2>Battle record</h2><p>Follow each action as your sealed hand unfolds.</p></div><ol id="rev-record" aria-label="Actions in resolution order"></ol><div class="rev-journal-foot">The winner is decided by surviving battle power after actions resolve.</div></aside></div>
 </div>`;
 }
 
@@ -477,7 +483,7 @@ function buildTimeline(result) {
 /* ── §3.5: async beat queue ─────────────────────────────────────────────
  * for (const beat of timeline) await play(beat); a `_skipped` flag short-circuits
  * to the end-state. Reduced-motion collapses beats to 0ms except three anchors. */
-async function runPlayback(container, s, result) {
+async function runPlayback(container, s, result, generation) {
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
   const p1 = s.fieldCards.filter(Boolean);
   const p2 = s.opponentField ?? s.fieldCards;
@@ -492,12 +498,14 @@ async function runPlayback(container, s, result) {
   const timeline = buildTimeline(result);
   const anchors = new Set(['banner', 'verdict']); // + KO stills handled in the duel beat
   for (const beat of timeline) {
+    if (generation !== _generation) return;
     if (_skipped) break;
     play(container, beat, result, p1, p2);
     const dur = reduce && !anchors.has(beat.kind) ? 0 : beat.dur;
     if (dur > 0) await _sleep(dur);
   }
 
+  if (generation !== _generation) return;
   applyEndState(container, result, p1, p2); // idempotent — SKIP lands here directly too
   const winner = result?.winner ?? 'p1';
   setStatus(container, winner === 'p1' ? '◆ YOU WIN' : '◇ OPPONENT WINS');
@@ -505,6 +513,7 @@ async function runPlayback(container, s, result) {
   if (st) { st.style.fontSize = '24px'; st.style.color = winner === 'p1' ? 'var(--accent-gold)' : 'var(--accent-red)'; }
 
   await _sleep(_skipped ? 800 : 300); // 800ms verdict still on SKIP
+  if (generation !== _generation) return;
   _playbackDone = true;
   maybeStartResolution(container);
 }
@@ -528,12 +537,12 @@ function play(container, beat, result, p1, p2) {
       pulse(frameOf(beat.side, beat.id), 'rev-crown', beat.dur); telop('LEGENDARY', 'gold'); sfx(beat.sfx); break;
     case 'seal-stamp': { const m = beat.e.match(/^(p[12])_void_blocked_(\d+)$/);
       if (m) { pulse(frameOf(m[1], +m[2]), 'rev-sealed', beat.dur); telop('SEALED', 'dim'); } break; }
-    case 'buff': pulse(frameOf(beat.side, beat.id), 'rev-buff', beat.dur); telop('+5 BP', 'combat'); break;
-    case 'shield': pulse(frameOf(beat.side, beat.id), 'rev-shield', beat.dur); telop('BARRIER', 'combat'); break;
-    case 'ember': pulse(frameOf(beat.side, beat.id), 'rev-ember', beat.dur); telop('-5 HP', 'red'); sfx(beat.sfx); break;
+    case 'buff': pulse(frameOf(beat.side, beat.id), 'rev-buff', beat.dur); telop(`${CARD_NAMES[beat.id]} · CRYSTAL +5 BP`, beat.side === 'p1' ? 'gold' : 'red'); break;
+    case 'shield': pulse(frameOf(beat.side, beat.id), 'rev-shield', beat.dur); telop(`${CARD_NAMES[beat.id]} · BARRIER`, beat.side === 'p1' ? 'gold' : 'red'); break;
+    case 'ember': pulse(frameOf(beat.side, beat.id), 'rev-ember', beat.dur); telop(`${CARD_NAMES[beat.id]} · FLAME hits ${CARD_NAMES[beat.target]}`, 'red'); sfx(beat.sfx); break;
     case 'gust': pulse(container.querySelector(beat.opp === 'p1' ? '#rev-your-row' : '#rev-opp-row'), 'rev-gust', beat.dur); telop('STORM SWEEP', 'combat'); sfx(beat.sfx); break;
-    case 'fade': pulse(frameOf(beat.side, beat.id), 'rev-fade', beat.dur); telop('SHADOW', 'dim'); break;
-    case 'spark': pulse(frameOf(beat.side, beat.id), 'rev-spark', beat.dur); telop('VOID', 'combat'); break;
+    case 'fade': pulse(frameOf(beat.side, beat.id), 'rev-fade', beat.dur); telop(`${CARD_NAMES[beat.id]} · SHADOW`, 'dim'); break;
+    case 'spark': pulse(frameOf(beat.side, beat.id), 'rev-spark', beat.dur); telop(`${CARD_NAMES[beat.id]} · VOID`, 'combat'); break;
     case 'skip': pulse(rowFrame('p1', beat.pair), 'rev-sidestep', beat.dur); pulse(rowFrame('p2', beat.pair), 'rev-sidestep', beat.dur); telop('SKIP', 'dim'); break;
     case 'duel': {
       pulse(rowFrame('p1', beat.pair), 'rev-clash', beat.dur);
@@ -587,6 +596,13 @@ function setStatus(container, text) {
 
 // addLog is retained as the TELOP writer (§3.4). Two rolling rows.
 function addTelop(container, text, ch = 'combat') {
+  const record = container.querySelector('#rev-record');
+  if (record) {
+    const following = record.scrollHeight - record.scrollTop - record.clientHeight < 48;
+    const item = document.createElement('li'); item.className = `record-${ch}`;
+    item.textContent = text; record.appendChild(item);
+    if (following) record.scrollTop = record.scrollHeight;
+  }
   const rows = [container.querySelector('#rev-telop-0'), container.querySelector('#rev-telop-1')];
   if (!rows[0]) return;
   rows[0].textContent = rows[1]?.textContent ?? '';
@@ -601,7 +617,9 @@ function flipCard(container, id, cardId) {
   if (!wrap) return;
   wrap.classList.add('rev-card--flip');
   setTimeout(() => {
-    wrap.innerHTML = CardFrameHTML({ id: cardId });
+    const field = getState()[id.startsWith('rev-your') ? 'fieldCards' : 'opponentField'] ?? [];
+    const action = field.find(card => card?.cardId === cardId)?.actionType;
+    wrap.innerHTML = CardFrameHTML({ id: cardId }) + `<span class="rev-card-action">${ACTION_LABELS[action] ?? ''}</span>`;
     wrap.classList.remove('rev-card--flip');
   }, 150);
 }
@@ -612,8 +630,8 @@ function bindEvents(container) {
   _uiAddLog = (text, cls) => addTelop(container, text, /error/.test(cls || '') ? 'red' : 'dim');
   container.querySelector('#rev-skip').addEventListener('click', () => {
     _skipped = true;
-    _playbackDone = true;
-    maybeStartResolution(container);
+    // Let playback apply the computed result before resolving this round.
+    container.querySelector('#rev-skip').disabled = true;
   });
 }
 

@@ -1,3 +1,4 @@
+import { CardFrameHTML, injectCardCSS } from './common/Card.js';
 // trade-screen.js — Phase 20-C: Trade Floor marketplace
 import { showToast } from '../lib/ui-shared.js';
 import { factionOf, rarityKeyOf } from '../lib/card-meta.js';
@@ -306,15 +307,7 @@ function _rarityColor(id) {
 }
 
 function _cardFrameHTML(cardId) {
-  const name   = CARD_NAMES[cardId] ?? `Card #${cardId}`;
-  const rarity = _rarityOf(cardId);
-  const color  = _rarityColor(cardId);
-  return `
-    <div class="trade-card-frame" style="--rarity-color:${color}">
-      <span class="trade-card-id">${cardId}</span>
-      <span class="trade-card-name">${name}</span>
-      <span class="trade-card-rarity">${rarity}</span>
-    </div>`;
+  return CardFrameHTML({ id: cardId });
 }
 
 function _shortAddr(addr) {
@@ -353,7 +346,7 @@ function _renderListings(listings) {
   }
   return listings.map(l => {
     const isMine = l.seller === _myPubkey;
-    const btn = isMine
+    const btn = window.oxarkPreview ? '<button disabled class="listing-preview-btn">Sample listing</button>' : isMine
       ? `<button class="cancel-listing-btn" data-card-id="${l.cardId}">CANCEL</button>`
       : `<button class="buy-listing-btn"    data-card-id="${l.cardId}" data-seller="${l.seller}">BUY</button>`;
     return `
@@ -371,6 +364,7 @@ function _renderListings(listings) {
 // ── Fetch all listings ────────────────────────────────────────────────────────
 
 async function _fetchAllListings() {
+  if (window.oxarkPreview) return [10, 23, 40, 18, 55, 48].map((cardId, i) => ({ cardId, seller: 'Practice listing', price: (i + 1) * 12000000, createdAt: i }));
   if (!window.oxarkOnchain?.fetchAllListings) return [];
   try {
     return await window.oxarkOnchain.fetchAllListings();
@@ -515,6 +509,7 @@ function _showCreateListingModal(playerState) {
 
 export async function mount(container, props = {}) {
   _injectCSS();
+  injectCardCSS();
   _container = container;
   _myPubkey  = window.oxarkWallet?.getPublicKey?.()?.toString?.() ?? '';
 
@@ -522,12 +517,12 @@ export async function mount(container, props = {}) {
     <div class="trade-screen">
       <div class="trade-header">
         <button class="trade-back-btn" id="trade-back">← Home</button>
-        <h2>TRADE FLOOR</h2>
-        <button class="create-listing-btn" id="create-listing-btn">+ List a Card</button>
+        <h2>The exchange</h2>
+        <button class="create-listing-btn" id="create-listing-btn" ${window.oxarkPreview ? 'disabled' : ''}>+ List a Card</button>
       </div>
 
       <div class="trade-filters">
-        <select id="filter-clan">
+        <select id="filter-clan" aria-label="Filter by faction">
           <option value="">All clans</option>
           <option value="0">Knight</option>
           <option value="1">Merchant</option>
@@ -536,14 +531,14 @@ export async function mount(container, props = {}) {
           <option value="4">Monk</option>
           <option value="5">Engineer</option>
         </select>
-        <select id="filter-rarity">
+        <select id="filter-rarity" aria-label="Filter by rarity">
           <option value="">All rarities</option>
           <option value="c">Common</option>
           <option value="u">Uncommon</option>
           <option value="r">Rare</option>
           <option value="l">Legendary</option>
         </select>
-        <select id="filter-sort">
+        <select id="filter-sort" aria-label="Sort listings">
           <option value="price-asc">Price: Low → High</option>
           <option value="price-desc">Price: High → Low</option>
           <option value="newest">Newest first</option>
@@ -555,7 +550,7 @@ export async function mount(container, props = {}) {
       </div>
 
       <div class="trade-info">
-        <p>0% Trading Fee — Direct seller-to-buyer</p>
+        <p>${window.oxarkPreview ? 'SAMPLE LISTINGS · Illustrative prices, not live offers. Buying and selling are disabled.' : '0% Trading Fee — Direct seller-to-buyer'}</p>
         <p>Card escrowed when listed, returned if cancelled</p>
       </div>
     </div>

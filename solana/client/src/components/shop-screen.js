@@ -1,6 +1,7 @@
 // shop-screen.js — Phase 20-B: Pack shop with reveal animation
 import { pxIcon } from '../lib/px-icons.js';
 import { showToast as _toast } from '../lib/ui-shared.js';
+import { CardFrameHTML, injectCardCSS } from './common/Card.js';
 import { rarityOf } from '../lib/card-meta.js';
 
 function _injectCSS() {
@@ -187,13 +188,25 @@ function _rarityLabel(id) {
   return map[_cardRarity(id)] || 'COMMON';
 }
 
+let _openingTimers = [];
+let _openingDialog = null;
+function _closeOpening() {
+  _openingTimers.forEach(clearTimeout); _openingTimers = [];
+  _openingDialog?.remove(); _openingDialog = null;
+}
 function _showRevealModal(cardIds) {
-  const overlay = document.createElement('div');
+  _closeOpening();
+  injectCardCSS();
+  const overlay = document.createElement('dialog');
+  _openingDialog = overlay;
   overlay.className = 'reveal-overlay';
+  overlay.setAttribute('aria-label', window.oxarkPreview ? 'Practice pack opening' : 'Pack opening');
 
   const title = document.createElement('div');
   title.className = 'reveal-title';
-  title.textContent = 'PACK OPENED!';
+  title.textContent = window.oxarkPreview ? 'A practice opening' : 'The seal is broken';
+  const note = document.createElement('p'); note.className = 'reveal-note';
+  note.textContent = window.oxarkPreview ? 'Sample cards only. No purchase. Your collection is unchanged.' : 'These cards have been added to your collection.';
 
   const cardsRow = document.createElement('div');
   cardsRow.className = 'reveal-cards';
@@ -201,7 +214,7 @@ function _showRevealModal(cardIds) {
   const slots = cardIds.map(() => {
     const slot = document.createElement('div');
     slot.className = 'reveal-card-slot';
-    slot.innerHTML = '<span style="color:#333;font-size:2rem">?</span>';
+    slot.innerHTML = CardFrameHTML({ id: 1, faceDown: true });
     cardsRow.appendChild(slot);
     return slot;
   });
@@ -209,22 +222,25 @@ function _showRevealModal(cardIds) {
   const closeBtn = document.createElement('button');
   closeBtn.className = 'reveal-close-btn';
   closeBtn.textContent = 'CONTINUE';
-  closeBtn.onclick = () => overlay.remove();
+  const previousFocus = document.activeElement;
+  closeBtn.onclick = () => { _closeOpening(); previousFocus?.focus(); };
+  overlay.addEventListener('cancel', event => { event.preventDefault(); _closeOpening(); previousFocus?.focus(); });
 
-  overlay.append(title, cardsRow, closeBtn);
-  document.body.appendChild(overlay);
+  overlay.append(title, note, cardsRow, closeBtn);
+  document.getElementById('app').appendChild(overlay);
+  overlay.showModal();
 
   // Flip each card 800ms apart
   cardIds.forEach((id, i) => {
-    setTimeout(() => {
+    _openingTimers.push(setTimeout(() => {
       const slot = slots[i];
       slot.classList.add('flipping');
-      setTimeout(() => {
+      _openingTimers.push(setTimeout(() => {
         slot.classList.remove('flipping');
         slot.classList.add('revealed', `rarity-${_cardRarity(id)}`);
-        slot.innerHTML = `<span class="reveal-card-id">#${id}</span><span class="reveal-card-label">${_rarityLabel(id)}</span>`;
-      }, 300);
-    }, i * 800);
+        slot.innerHTML = CardFrameHTML({ id });
+      }, 200));
+    }, 250 + i * 450));
   });
 }
 
@@ -237,6 +253,7 @@ function _buildPhaseInfo(gameWorld) {
 
 export function mount(container, props = {}) {
   _injectCSS();
+  injectCardCSS();
   const { gameWorld = {} } = props;
   const phaseInfo = _buildPhaseInfo(gameWorld);
 
@@ -244,7 +261,7 @@ export function mount(container, props = {}) {
     <div class="shop-screen">
       <div class="shop-header">
         <button class="shop-back-btn" id="shop-back-btn">← Home</button>
-        <h2>SHOP</h2>
+        <h2>Sealed packs</h2>
         <span class="shop-phase-badge">${phaseInfo}</span>
       </div>
 
@@ -258,7 +275,7 @@ export function mount(container, props = {}) {
             Legendary 0% → 1.5% (Phase 2)
           </p>
           <p class="pack-price">0.05 SOL</p>
-          <button class="pack-buy-btn" id="buy-standard-btn">BUY</button>
+          <button class="pack-buy-btn" id="buy-standard-btn">${window.oxarkPreview ? 'Try an opening' : 'Open standard pack'}</button>
         </div>
 
         <div class="pack-card pack-premium">
@@ -270,13 +287,13 @@ export function mount(container, props = {}) {
             +2 cards at standard rates
           </p>
           <p class="pack-price">0.15 SOL</p>
-          <button class="pack-buy-btn" id="buy-premium-btn">BUY</button>
+          <button class="pack-buy-btn" id="buy-premium-btn">${window.oxarkPreview ? 'Try an opening' : 'Open premium pack'}</button>
         </div>
       </div>
 
       <div class="shop-info">
-        <p>${pxIcon('coin')} Revenue: 50% Operations / 50% Prize Pool</p>
-        <p>${pxIcon('chip')} Verifiable randomness via Solana SlotHashes</p>
+        <p>${window.oxarkPreview ? 'PRACTICE · Displayed SOL prices are live-game reference only. Openings here are free.' : pxIcon('coin') + ' Revenue: 50% Operations / 50% Prize Pool'}</p>
+        <p>${window.oxarkPreview ? 'A fixed sample is used to demonstrate the opening animation.' : pxIcon('chip') + ' Verifiable randomness via Solana SlotHashes'}</p>
       </div>
     </div>
   `;
@@ -293,6 +310,7 @@ async function _buyPack(packType) {
   const btnId = packType === 0 ? 'buy-standard-btn' : 'buy-premium-btn';
   const btn   = document.getElementById(btnId);
   if (!btn) return;
+  if (window.oxarkPreview) { _showRevealModal(packType === 0 ? [3, 13, 25, 43, 58] : [8, 35, 51]); return; }
 
   try {
     btn.disabled    = true;
@@ -305,10 +323,11 @@ async function _buyPack(packType) {
     _toast(`Purchase failed: ${err.message}`, 'error');
   } finally {
     btn.disabled    = false;
-    btn.textContent = 'BUY';
+    btn.textContent = packType === 0 ? 'Open standard pack' : 'Open premium pack';
   }
 }
 
 export function unmount(container) {
+  _closeOpening();
   container.innerHTML = '';
 }

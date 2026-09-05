@@ -1,118 +1,37 @@
-/* tokens.css — 0xARK Sprite Seas design tokens
-   Canonical mapping of DESIGN.md v1.0 frontmatter. Single source for color,
-   type, spacing, motion. No other file may declare raw palette hex.
-   Target location: solana/client/src/style/tokens.css (load before all
-   component CSS; the :root block in index.html gets replaced by this file). */
-
+/* The Drowned Archive — 0xARK 2.0. Functional aliases keep game modules stable. */
 :root {
-  /* ── Surfaces ─────────────────────────────────────────── */
-  --bg-deep:        #0a0e1a;
-  --bg-mid:         #1a1f33;
-  --bg-panel:       rgba(10, 14, 26, 0.88);
-  --overlay-scrim:  rgba(0, 0, 0, 0.6);
-
-  /* ── Text ─────────────────────────────────────────────── */
-  --text-cream:     #e8dfc8;
-  --text-dim:       rgba(232, 223, 200, 0.55);
-
-  /* ── Semantic accents (chrome/status — never faction) ─── */
-  --accent-gold:        #c9a227;
-  --accent-gold-bright: #d8b034;
-  --accent-red:         #d63b3b;
-  --accent-blue:        #4a90d9;
-  --accent-warn:        #f5c842;
-  --success:            #4a9c6f;
-  --hp-green:           #5ab87a;
-
-  /* ── Faction identity (faction-scoped elements ONLY) ──── */
-  --clan-knight:    #4a90d9;
-  --clan-merchant:  #c9a227;
-  --clan-pirate:    #d63b3b;
-  --clan-scholar:   #8b6cb8;
-  --clan-monk:      #6a8a6a;
-  --clan-engineer:  #d4884a;
-
-  /* ── Rarity ladder ────────────────────────────────────── */
-  --rarity-c: #8a8a8a;
-  --rarity-u: #4a9c6f;
-  --rarity-r: #4a7ab5;
-  --rarity-l: #d8b034;
-
-  /* ── Borders ──────────────────────────────────────────── */
-  --border-hard: 2px solid #000000;
-  --border-gold: 2px solid var(--accent-gold);
-  --border-dim:  1px solid rgba(201, 162, 39, 0.35);
-  --border-red:  2px solid var(--accent-red);
-
-  /* ── Typography ───────────────────────────────────────── */
-  --font-main: 'VT323', monospace;
-  /* future JP face: 'DotGothic16' — pair, do not substitute */
-  --fs-display-xl: 72px;
-  --fs-display:    48px;
-  --fs-title:      32px;
-  --fs-heading:    24px;
-  --fs-body:       20px;
-  --fs-ui:         16px;
-  --fs-caption:    13px;   /* ABSOLUTE FLOOR — nothing renders below this */
-  --ls-normal:  0.02em;
-  --ls-caption: 0.04em;
-  --ls-wide:    0.08em;
-  --ls-display: 0.12em;
-  --lh-tight: 1.0;
-  --lh-ui:    1.1;
-  --lh-body:  1.4;
-
-  /* ── Spacing (4px grid) ───────────────────────────────── */
-  --sp-1: 4px;  --sp-2: 8px;   --sp-3: 12px; --sp-4: 16px;
-  --sp-5: 24px; --sp-6: 32px;  --sp-7: 48px;
-
-  /* ── Motion ───────────────────────────────────────────── */
-  --t-fast: 80ms;
-  --t-base: 160ms;
-  --t-slow: 320ms;
-  --ease-pop:  cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-step: steps(3, end);
-
-  /* ── Radii (pixel art: square; chip only) ─────────────── */
-  --r-none: 0;
-  --r-chip: 2px;
-
-  /* ── Z-layers ─────────────────────────────────────────── */
+  color-scheme: dark;
+  --bg-deep: #101719; --bg-mid: #1b282b;
+  --bg-panel: rgba(18,28,30,.94); --overlay-scrim: rgba(4,9,11,.84);
+  --text-cream: #f1f0e8; --text-dim: #a8b6b6;
+  --accent-gold: #d9be87; --accent-gold-bright: #f4dda9;
+  --accent-red: #ed877a; --accent-blue: #99d9d2; --accent-warn: #e7c888;
+  --success: #9fceb6; --hp-green: #a9d8b2;
+  --clan-knight: #aac4e2; --clan-merchant: #e1c88f; --clan-pirate: #ef9d8d;
+  --clan-scholar: #bbb1d9; --clan-monk: #a3c49e; --clan-engineer: #d7aa7e;
+  --rarity-c: #a4b4b6; --rarity-u: #a3c49e; --rarity-r: #aac4e2; --rarity-l: #e1c88f;
+  --line: rgba(195,215,207,.16); --line-strong: rgba(217,190,135,.5);
+  --border-hard: 1px solid var(--line-strong); --border-gold: 1px solid var(--line-strong);
+  --border-dim: 1px solid var(--line); --border-red: 1px solid var(--accent-red);
+  --font-main: 'Manrope','Hiragino Kaku Gothic ProN',sans-serif;
+  --font-display: 'Cormorant Garamond',Georgia,serif;
+  --font-mono: 'IBM Plex Mono',monospace;
+  --fs-display-xl: clamp(64px,7vw,112px); --fs-display: 56px; --fs-title: 36px;
+  --fs-heading: 24px; --fs-body: 16px; --fs-ui: 14px; --fs-caption: 13px;
+  --ls-normal: 0; --ls-caption: .04em; --ls-wide: .12em; --ls-display: .02em;
+  --lh-tight: 1.05; --lh-ui: 1.35; --lh-body: 1.6;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
+  --t-fast: 150ms; --t-base: 240ms; --t-slow: 420ms;
+  --ease-pop: cubic-bezier(.16,1,.3,1); --ease-step: ease-out;
+  --r-none: 4px; --r-chip: 4px;
   --z-hud: 10; --z-dialog: 50; --z-modal: 100; --z-toast: 200; --z-ceremony: 300;
-
-  /* ── Legacy aliases (remove after F0 hex cleanup) ─────── */
-  --text-gold: var(--accent-gold);
+  --text-gold: var(--accent-gold); --shadow-card: 0 14px 26px rgba(0,0,0,.45);
 }
-
-/* ── System floor (global, one-time rules) ───────────────── */
-
-/* VT323 ships one weight — synthesized bold breaks the pixel grid.
-   <b>/<strong> remain semantic; render at normal weight. */
-b, strong { font-weight: normal; }
-
-/* Focus is always visible, always gold */
-:focus-visible {
-  outline: 2px solid var(--accent-gold);
-  outline-offset: 2px;
-}
-
-/* tx hashes / addresses stay copyable despite global user-select:none */
-.tx-link, .selectable {
-  user-select: text;
-  -webkit-user-select: text;
-}
-.tx-link {
-  color: var(--accent-blue);
-  font-size: var(--fs-caption);
-  letter-spacing: var(--ls-caption);
-  text-decoration: underline;
-}
-
-/* Motion respect: kill loops, keep fades */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-iteration-count: 1 !important;
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+b,strong { font-weight: 600; }
+:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 4px; }
+.tx-link,.selectable { user-select: text; -webkit-user-select: text; }
+.tx-link { color: var(--accent-blue); font-size: var(--fs-caption); text-decoration: underline; }
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }

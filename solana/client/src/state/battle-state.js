@@ -1,5 +1,7 @@
 // battle-state.js — Phase 15 battle flow state
 
+import { isPractice } from '../lib/practice-mode.js';
+
 const _STORAGE_KEY = 'oxark_battle_state';
 
 // These keys contain Uint8Arrays or ephemeral crypto material that cannot survive
@@ -13,6 +15,7 @@ const _NON_RECOVERABLE = new Set([
 ]);
 
 function _saveToStorage(state) {
+  if (isPractice) return;
   if (state.phase === 'main') { _clearStorage(); return; }
   try {
     const out = {};
@@ -24,6 +27,7 @@ function _saveToStorage(state) {
 }
 
 function _loadFromStorage() {
+  if (isPractice) return null;
   try {
     const raw = sessionStorage.getItem(_STORAGE_KEY);
     if (!raw) return null;
@@ -36,6 +40,7 @@ function _loadFromStorage() {
 }
 
 function _clearStorage() {
+  if (isPractice) return;
   try { sessionStorage.removeItem(_STORAGE_KEY); } catch (_) {}
 }
 

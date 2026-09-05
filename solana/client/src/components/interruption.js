@@ -35,14 +35,15 @@ export function mount(container, detail = {}) {
 
   const s        = getState();
   _field         = s.fieldCards.map(c => (c ? { ...c } : null));
-  _opponentField = s.opponentField ?? null;
+  _opponentField = s.hasPeeked ? s.opponentField ?? null : null;
 
   setState({ phase: 'interruption' });
   container.innerHTML = buildHTML();
   bindEvents(container);
 
   const timerEl = container.querySelector('#intel-timer');
-  _stopTimer = startTimer(timerEl, INTEL_SECS, () => lockIn());
+  if (window.oxarkPreview) { timerEl.textContent = '∞'; timerEl.setAttribute('aria-label','Untimed practice'); }
+  else _stopTimer = startTimer(timerEl, INTEL_SECS, () => lockIn());
 }
 
 export function unmount(container) {
@@ -93,23 +94,23 @@ function buildHTML() {
         <button class="gba-btn intel-peek-btn" id="intel-peek" ${peeked ? 'disabled' : ''}>
           ${pxIcon('eye')} ${peeked ? 'PEEKED' : 'PEEK'}${peeked ? ` ${pxIcon('check')}` : ''}
         </button>
-        <div class="intel-cost label-dim">0.005 SOL</div>
+        <div class="intel-cost label-dim">${window.oxarkPreview ? 'Free practice reveal' : '0.005 SOL'}</div>
       </div>
 
       <div class="intel-divider"></div>
 
       <div class="intel-action-block">
         <button class="gba-btn intel-advice-btn" id="intel-advice">
-          ${pxIcon('chip')} AI ADVICE
+          ${pxIcon('chip')} ${window.oxarkPreview ? 'TACTICAL NOTE' : 'AI ADVICE'}
         </button>
-        <div class="intel-cost label-dim">0.003 SOL</div>
+        <div class="intel-cost label-dim">${window.oxarkPreview ? 'Local strategy note · not AI' : '0.003 SOL'}</div>
         <div class="intel-advice-panel" id="intel-advice-panel" role="log" aria-live="polite"></div>
       </div>
 
       <div class="intel-divider"></div>
 
       <button class="gba-btn gba-btn--primary intel-lockin-btn" id="intel-lockin">
-        ${pxIcon('check')} LOCK IN
+        ${pxIcon('check')} REVEAL & BATTLE
       </button>
     </aside>
 
@@ -154,6 +155,13 @@ async function doPeek(container) {
   btn.innerHTML = 'PEEKING…';
 
   const s = getState();
+  if (window.oxarkPreview) {
+    _opponentField = normalizeField(s.opponentField);
+    setState({ hasPeeked: true });
+    revealChests(container);
+    btn.innerHTML = `REVEALED ${pxIcon('check')}`;
+    return;
+  }
   let result = null;
   let real = false;
   try {
@@ -216,6 +224,12 @@ async function doAdvice(container) {
   panel.classList.add('intel-advice-panel--open');
   panel.textContent = 'Requesting AI strategy…';
 
+  if (window.oxarkPreview) {
+    panel.textContent = 'Your hand is sealed. You cannot change it now. Watch initiative, surviving HP and the battle log as actions resolve. After this round, build a new hand and try a different combination. This is a fixed practice tip, not AI advice.';
+    btn.disabled = false;
+    btn.innerHTML = `${pxIcon('chip')} TACTICAL NOTE`;
+    return;
+  }
   const s = getState();
   const context = {
     round:         s.round ?? 1,

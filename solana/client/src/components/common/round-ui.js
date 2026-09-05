@@ -54,9 +54,9 @@ export function injectRoundUiCSS() {
 // onDone exactly once. Returns a disposer that removes the overlay early.
 export function showRoundBridge(container, { round, myWins, oppWins, outcome, onDone }) {
   injectRoundUiCSS();
-  const headline = outcome === 'win'  ? 'YOU TAKE IT'
-                 : outcome === 'loss' ? 'OPPONENT TAKES IT'
-                 : 'DRAW';
+  const headline = outcome === 'win'  ? 'The round is yours.'
+                 : outcome === 'loss' ? 'Their move prevailed.'
+                 : 'An even match.';
   const cls = outcome === 'win' ? 'bridge--win' : outcome === 'loss' ? 'bridge--loss' : 'bridge--draw';
   const overlay = document.createElement('div');
   overlay.className = `round-bridge ${cls}`;
@@ -68,23 +68,27 @@ export function showRoundBridge(container, { round, myWins, oppWins, outcome, on
       <div class="bridge-headline">${headline}</div>
       <div class="bridge-score">${myWins} <span class="bridge-dash">–</span> ${oppWins}</div>
       <div class="bridge-pips">${pipsHTML(myWins, oppWins)}</div>
-      <div class="bridge-skip">tap to continue</div>
+      <button type="button" class="gba-btn gba-btn--ghost bridge-skip">Build the next hand →</button>
     </div>`;
 
   let done = false;
   let timer = null;
-  const finish = () => {
-    if (done) return;
+  const dispose = () => {
     done = true;
     if (timer) { clearTimeout(timer); timer = null; }
     overlay.removeEventListener('click', finish);
     overlay.remove();
+  };
+  const finish = () => {
+    if (done) return;
+    dispose();
     onDone?.();
   };
   overlay.addEventListener('click', finish);
   (container ?? document.body).appendChild(overlay);
-  timer = setTimeout(finish, BRIDGE_MS);
-  return finish;
+  overlay.querySelector('button')?.focus();
+  if (!window.oxarkPreview) timer = setTimeout(finish, BRIDGE_MS);
+  return dispose;
 }
 
 const CSS = `

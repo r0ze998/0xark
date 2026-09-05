@@ -5,7 +5,7 @@ import { CardFrameHTML, injectCardCSS, FACTION_NAMES, FACTION_COLORS, CARD_NAMES
 import { LegendaryProgressHTML, injectLegendaryProgressCSS } from './common/LegendaryProgress.js';
 import { EnergyHudHTML, attachEnergyHud, injectEnergyCss, computeEnergy } from './common/energy-hud.js';
 import { NETWORK, PROGRAM_ID, STEAL_ENABLED } from '../config.js';
-import { getState, setState } from '../state/battle-state.js';
+import { getState, setState, resetBattle } from '../state/battle-state.js';
 import { CardDetailModal } from './card-detail.js';
 import * as duelWs from '../lib/duel-ws.js';
 
@@ -141,7 +141,8 @@ function _bindCards(container, selector) {
     if (!event.target.matches('[data-card-id]')) return;
     const cards = [...grid.querySelectorAll('[data-card-id]')];
     const index = cards.indexOf(event.target);
-    const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -5, ArrowDown: 5 };
+    const columns = cards.filter(card => card.offsetTop === cards[0]?.offsetTop).length || 1;
+    const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -columns, ArrowDown: columns };
     let next;
     if (event.key in moves) next = Math.max(0, Math.min(cards.length - 1, index + moves[event.key]));
     else if (event.key === 'Home') next = 0;
@@ -220,7 +221,7 @@ function _applyEnergyGate(container) {
   const count = _ownedIds().length;
   btn.disabled = _searching || count < 5 || _energyNow === 0;
   if (_searching) return;
-  btn.innerHTML = `${pxIcon('battle')} ${_matchError ? 'RETRY MATCHMAKING' : 'START BATTLE'}`;
+  btn.innerHTML = `${pxIcon('battle')} ${window.oxarkPreview ? 'PLAY PRACTICE' : _matchError ? 'RETRY MATCHMAKING' : 'START BATTLE'}`;
   info.textContent = count < 5 ? `Collect ${5 - count} more ${5 - count === 1 ? 'card' : 'cards'} to bring a hand of five.`
     : _energyNow === 0 ? 'Out of energy. Refill above or wait for the next charge.'
     : _matchError || (_energyNow == null ? 'Energy not loaded. It will be checked when you seal.' : 'Ready for a duel. First to three round wins.');
@@ -228,6 +229,12 @@ function _applyEnergyGate(container) {
 
 async function startMatchmaking(container) {
   if (_searching || _energyNow === 0 || _ownedIds().length < 5) return;
+  if (window.oxarkPreview) {
+    resetBattle();
+    setState({ isHost: true, duelP1IsMe: true, phase: 'preparation' });
+    document.dispatchEvent(new CustomEvent('nav:preparation'));
+    return;
+  }
   const generation = _generation;
   const current = () => generation === _generation && _searching;
   const btn = container.querySelector('#ms-start');
