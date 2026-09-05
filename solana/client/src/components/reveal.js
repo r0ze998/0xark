@@ -11,14 +11,17 @@ import { pxIcon } from '../lib/px-icons.js';
 import { showToast } from '../lib/ui-shared.js';
 import { getState, setState, advanceRound } from '../state/battle-state.js';
 import * as duelWs from '../lib/duel-ws.js';
+import { createScreenScope } from '../lib/screen-scope.js';
 
 const POLL_MS = 1500; // getDuelStateFull poll cadence during resolution
 
 let _generation = 0;
+let _scope = null;
 let _skipped          = false;
 let _unsubOppReveal   = () => {};
 let _revealPromise    = Promise.resolve(null);
 let _revealFailed     = false;
+let _revealReady      = false; // a pending transaction is not a successful reveal
 let _uiAddLog         = null;
 
 // ── round-loop resolution state ──
@@ -33,7 +36,7 @@ function _buildCardIds10(fieldCards) {
   return Array.from({ length: 10 }, (_, i) => BigInt(fieldCards[i]?.cardId ?? 0));
 }
 
-async function _submitRevealOnChain(s) {
+async function _submitRevealOnChain(s, generation) {
   if (!s.duelId || !s.salt) return null;
   if (typeof window.oxarkOnchain?.revealHand !== 'function') return null;
   try {
@@ -44,6 +47,7 @@ async function _submitRevealOnChain(s) {
     console.log('[Reveal] reveal_hand confirmed:', txHash);
     return txHash;
   } catch (err) {
+    if (generation !== _generation || _resolutionAborted || _navigated) return null;
     _revealFailed = true;
     const msg = err.message ?? String(err);
     console.error('[Reveal] reveal_hand failed (navigation blocked):', msg);
@@ -71,7 +75,7 @@ function _p1IsMe(ds, s) {
 // reveal tx is confirmed. Re-entrant: the reveal-retry handler calls this again.
 function maybeStartResolution(container) {
   if (_resolutionStarted || _navigated || _resolutionAborted) return;
-  if (!_playbackDone || _revealFailed) return;
+  if (!_playbackDone || !_revealReady || _revealFailed) return;
   _resolutionStarted = true;
   resolveRound(container, getState()).catch(err => {
     console.error('[Reveal] resolution error:', err);
@@ -98,9 +102,9 @@ async function _chainResolve(container, s) {
   const t0 = Date.now();
   let claimShown = false;
 
-  while (!_resolutionAborted && !_navigated) {
+  while (generation === _generation && !_resolutionAborted && !_navigated) {
     const ds = await _safeDuelState(duelId);
-    if (generation !== _generation) return;
+    if (generation !== _generation || _resolutionAborted || _navigated) return;
     if (ds) {
       const p1IsMe = _p1IsMe(ds, s);
       if (ds.endedAt > 0) { _endDuel(container, ds, p1IsMe); return; }
@@ -205,25 +209,31 @@ function _showClaimTimeout(container, duelId) {
   if (!btn || btn.dataset.wired) return;
   btn.style.display = 'inline-flex';
   btn.dataset.wired = '1';
-  btn.addEventListener('click', () => _onClaimTimeout(container, duelId));
+  const generation = _generation;
+  btn.addEventListener('click', () => _onClaimTimeout(container, duelId, generation));
 }
 
-async function _onClaimTimeout(container, duelId) {
+async function _onClaimTimeout(container, duelId, generation) {
+  if (generation !== _generation || _resolutionAborted || _navigated) return;
   const btn = container.querySelector('#rev-claim');
-  if (!btn) return;
+  if (!btn || btn.disabled) return;
   btn.disabled = true;
   btn.innerHTML = 'CLAIMING…';
   try {
     if (typeof window.oxarkOnchain?.claimTimeoutWin !== 'function') throw new Error('claim unavailable');
     await window.oxarkOnchain.claimTimeoutWin(duelId);
-    for (let i = 0; i < 20 && !_resolutionAborted; i++) {
+    if (generation !== _generation || _resolutionAborted || _navigated) return;
+    for (let i = 0; i < 20 && generation === _generation && !_resolutionAborted && !_navigated; i++) {
       const ds = await _safeDuelState(duelId);
+      if (generation !== _generation || _resolutionAborted || _navigated) return;
       if (ds && ds.endedAt > 0) { _endDuel(container, ds, _p1IsMe(ds, getState())); return; }
       await _sleep(500);
     }
+    if (generation !== _generation || _resolutionAborted || _navigated) return;
     btn.disabled = false;
     btn.innerHTML = `${pxIcon('warn')} CLAIM TIMEOUT WIN`;
   } catch (err) {
+    if (generation !== _generation || _resolutionAborted || _navigated) return;
     const msg = err?.message ?? String(err);
     const friendly = /too\s*early/i.test(msg) ? 'Too early — keep waiting'
       : /not\s*reveal/i.test(msg) ? 'Reveal your hand first'
@@ -262,6 +272,12 @@ async function _playbackSeed(s) {
 }
 
 export function mount(container, detail = {}) {
+  _scope?.dispose();
+  _bridgeDispose?.();
+  _bridgeDispose = null;
+  _unsubOppReveal();
+  _unsubOppReveal = () => {};
+  const generation = ++_generation;
   if (!window.oxarkWallet?.isConnected?.()) {
     document.dispatchEvent(new CustomEvent('nav:wallet-required'));
     return;
@@ -270,7 +286,7 @@ export function mount(container, detail = {}) {
   injectCardCSS();
   injectRoundUiCSS();
 
-  const generation = ++_generation;
+  _scope = createScreenScope();
   _playbackDone      = false;
   _resolutionStarted = false;
   _resolutionAborted = false;
@@ -286,11 +302,12 @@ export function mount(container, detail = {}) {
 
   // Skeleton first (fields render from state, not from the result).
   container.innerHTML = buildHTML(s);
-  bindEvents(container);
+  bindEvents(container, generation);
 
   // Subscribe to opponent's reveal (update opponentField if not from peek).
   if (!s.opponentField && duelWs.isConnected() && s.duelId) {
     _unsubOppReveal = duelWs.on('duel_hand_revealed', (msg) => {
+      if (generation !== _generation || _resolutionAborted || _navigated) return;
       if (msg.playerId !== s.opponentPlayerId) return;
       _unsubOppReveal();
       const oppField = (msg.card_ids ?? []).map((id, i) => ({
@@ -303,22 +320,22 @@ export function mount(container, detail = {}) {
 
   // ── reveal_hand on-chain submit (parallel with playback; gates resolution) ──
   _revealFailed = false;
-  _revealPromise = _submitRevealOnChain(s);
+  _revealReady = false;
+  _revealPromise = _submitRevealOnChain(s, generation);
 
   const myCardIds     = s.fieldCards.filter(Boolean).map(c => c.cardId);
   const myActionTypes = s.fieldCards.filter(Boolean).map(c => c.actionType ?? 0);
   const round         = s.round ?? 1;
 
-  if (duelWs.isConnected() && s.duelId) {
-    _revealPromise.then(txHash => {
-      if (!_revealFailed) {
-        duelWs.sendHandRevealed(s.duelId, round, myCardIds, myActionTypes, txHash);
-      }
-      maybeStartResolution(container);
-    }).catch(() => { /* _revealFailed already set inside _submitRevealOnChain */ });
-  } else {
-    _revealPromise.then(() => maybeStartResolution(container)).catch(() => {});
-  }
+  _revealPromise.then(txHash => {
+    if (generation !== _generation || _resolutionAborted || _navigated) return;
+    _revealReady = !_revealFailed;
+    if (!_revealReady) return;
+    if (duelWs.isConnected() && s.duelId) {
+      duelWs.sendHandRevealed(s.duelId, round, myCardIds, myActionTypes, txHash);
+    }
+    maybeStartResolution(container);
+  }).catch(() => { /* _revealFailed already set inside _submitRevealOnChain */ });
 
   // ── Battle Stage v2: deterministic seed → damageCalc → effect-replay playback ─
   (async () => {
@@ -348,12 +365,15 @@ export function mount(container, detail = {}) {
 
 export function unmount(container) {
   _generation++;
+  _scope?.dispose();
+  _scope = null;
   _skipped           = true;               // stop any in-flight beat queue
   _resolutionAborted = true;               // stop any in-flight poll loop
   if (_bridgeDispose) { try { _bridgeDispose(); } catch (_) {} _bridgeDispose = null; }
   _unsubOppReveal();
   _unsubOppReveal  = () => {};
   _revealFailed      = false;
+  _revealReady       = false;
   _revealPromise     = Promise.resolve(null);
   _uiAddLog          = null;
   _playbackDone      = false;
@@ -493,6 +513,7 @@ async function runPlayback(container, s, result, generation) {
   p1.forEach((c, i) => flipCard(container, `rev-your-${i}`, c.cardId));
   p2.forEach((c, i) => flipCard(container, `rev-opp-${i}`, c.cardId));
   if (!reduce && !_skipped) await _sleep(400);
+  if (generation !== _generation) return;
 
   setStatus(container, 'COMBAT');
   const timeline = buildTimeline(result);
@@ -526,7 +547,8 @@ function play(container, beat, result, p1, p2) {
     return idx < 0 ? null : container.querySelector(`#rev-${side === 'p1' ? 'your' : 'opp'}-${idx}`);
   };
   const rowFrame = (side, i) => container.querySelector(`#rev-${side === 'p1' ? 'your' : 'opp'}-${i}`);
-  const pulse = (el, cls, ms) => { if (!el) return; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), ms); };
+  const scope = _scope;
+  const pulse = (el, cls, ms) => { if (!el) return; el.classList.add(cls); scope.timeout(() => el.classList.remove(cls), ms); };
 
   switch (beat.kind) {
     case 'banner':
@@ -616,7 +638,7 @@ function flipCard(container, id, cardId) {
   const wrap = container.querySelector(`#${id}`);
   if (!wrap) return;
   wrap.classList.add('rev-card--flip');
-  setTimeout(() => {
+  _scope.timeout(() => {
     const field = getState()[id.startsWith('rev-your') ? 'fieldCards' : 'opponentField'] ?? [];
     const action = field.find(card => card?.cardId === cardId)?.actionType;
     wrap.innerHTML = CardFrameHTML({ id: cardId }) + `<span class="rev-card-action">${ACTION_LABELS[action] ?? ''}</span>`;
@@ -625,10 +647,11 @@ function flipCard(container, id, cardId) {
 }
 
 /* ── Events ─────────────────────────────────────────────────────────── */
-function bindEvents(container) {
+function bindEvents(container, generation) {
   // reveal-tx failures surface on the telop; wire the writer so _submitRevealOnChain can use it.
   _uiAddLog = (text, cls) => addTelop(container, text, /error/.test(cls || '') ? 'red' : 'dim');
   container.querySelector('#rev-skip').addEventListener('click', () => {
+    if (generation !== _generation || _resolutionAborted || _navigated) return;
     _skipped = true;
     // Let playback apply the computed result before resolving this round.
     container.querySelector('#rev-skip').disabled = true;

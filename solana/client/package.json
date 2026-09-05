@@ -2,14 +2,13 @@
   "name": "0xark-client",
   "version": "3.0.0",
   "type": "module",
-  "description": "0xARK game client build system",
+  "description": "0xARK buildless browser game client",
   "scripts": {
-    "build": "node build.js",
-    "watch": "node -e \"const{execSync}=require('child_process');const{watch}=require('fs');console.log('Watching src/ for changes...');watch('src/',{recursive:true},(ev,f)=>{if(!f.endsWith('.js'))return;console.log('Changed:',f);try{execSync('node build.js',{stdio:'inherit'});}catch(e){}});\" ",
-    "dev": "npm run build && npm run watch",
-    "test": "node ../../tests/card-engine.test.js"
+    "dev": "python3 -m http.server 4200",
+    "test": "node --test test/*.test.js",
+    "check": "node --experimental-vm-modules ../../scripts/check-client.mjs"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   }
 }

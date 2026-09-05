@@ -1,10 +1,7 @@
 name: design-lint
 
-# Sprite Seas design-floor gate (DESIGN.md Appendix B). Runs the one canonical
-# linter — identical to what you run locally — instead of raw greps (GNU/BSD grep
-# disagree on -P + astral emoji ranges). Enforced: brand-hex, sub-13px,
-# sub-floor-rem, faux-bold, emoji (px-icon sprite landed in F0-4). Report-only:
-# round-hardcode (F1). The script's exit code is the gate.
+# Canonical client design/source guard, identical to the local command.
+# Includes extracted src/style/*.js; round-hardcode and bare-import are enforced.
 
 on:
   pull_request:
@@ -24,5 +21,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Sprite Seas design floor
+      - name: Client design and source guard
         run: python3 scripts/design-lint.py -v

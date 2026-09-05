@@ -3,6 +3,7 @@ import { pxIcon } from '../lib/px-icons.js';
 import { showToast as _toast } from '../lib/ui-shared.js';
 import { CardFrameHTML, injectCardCSS } from './common/Card.js';
 import { rarityOf } from '../lib/card-meta.js';
+import { createScreenScope } from '../lib/screen-scope.js';
 
 function _injectCSS() {
   if (document.getElementById('shop-css')) return;
@@ -188,17 +189,17 @@ function _rarityLabel(id) {
   return map[_cardRarity(id)] || 'COMMON';
 }
 
-let _openingTimers = [];
-let _openingDialog = null;
-function _closeOpening() {
-  _openingTimers.forEach(clearTimeout); _openingTimers = [];
-  _openingDialog?.remove(); _openingDialog = null;
-}
-function _showRevealModal(cardIds) {
+let _scope = null;
+let _closeOpening = () => {};
+function _showRevealModal(container, cardIds, scope) {
+  if (!scope.active) return;
   _closeOpening();
+  const opening = createScreenScope();
+  const close = scope.defer(() => opening.dispose());
+  _closeOpening = close;
   injectCardCSS();
   const overlay = document.createElement('dialog');
-  _openingDialog = overlay;
+  opening.defer(() => overlay.remove());
   overlay.className = 'reveal-overlay';
   overlay.setAttribute('aria-label', window.oxarkPreview ? 'Practice pack opening' : 'Pack opening');
 
@@ -223,24 +224,29 @@ function _showRevealModal(cardIds) {
   closeBtn.className = 'reveal-close-btn';
   closeBtn.textContent = 'CONTINUE';
   const previousFocus = document.activeElement;
-  closeBtn.onclick = () => { _closeOpening(); previousFocus?.focus(); };
-  overlay.addEventListener('cancel', event => { event.preventDefault(); _closeOpening(); previousFocus?.focus(); });
+  const dismiss = () => {
+    if (!opening.active) return;
+    close();
+    if (previousFocus?.isConnected) previousFocus.focus();
+  };
+  closeBtn.onclick = dismiss;
+  overlay.addEventListener('cancel', event => { event.preventDefault(); dismiss(); });
 
   overlay.append(title, note, cardsRow, closeBtn);
-  document.getElementById('app').appendChild(overlay);
+  container.appendChild(overlay);
   overlay.showModal();
 
-  // Flip each card 800ms apart
+  // Stagger the flips; each card reveals halfway through its own animation.
   cardIds.forEach((id, i) => {
-    _openingTimers.push(setTimeout(() => {
+    opening.timeout(() => {
       const slot = slots[i];
       slot.classList.add('flipping');
-      _openingTimers.push(setTimeout(() => {
+      opening.timeout(() => {
         slot.classList.remove('flipping');
         slot.classList.add('revealed', `rarity-${_cardRarity(id)}`);
         slot.innerHTML = CardFrameHTML({ id });
-      }, 200));
-    }, 250 + i * 450));
+      }, 200);
+    }, 250 + i * 450);
   });
 }
 
@@ -252,6 +258,8 @@ function _buildPhaseInfo(gameWorld) {
 }
 
 export function mount(container, props = {}) {
+  _scope?.dispose();
+  const scope = _scope = createScreenScope();
   _injectCSS();
   injectCardCSS();
   const { gameWorld = {} } = props;
@@ -298,36 +306,44 @@ export function mount(container, props = {}) {
     </div>
   `;
 
-  document.getElementById('shop-back-btn').addEventListener('click', () => {
+  container.querySelector('#shop-back-btn').addEventListener('click', () => {
+    if (!scope.active) return;
     document.dispatchEvent(new CustomEvent('nav:home'));
   });
 
-  document.getElementById('buy-standard-btn').addEventListener('click', () => _buyPack(0));
-  document.getElementById('buy-premium-btn').addEventListener('click', () => _buyPack(1));
+  container.querySelector('#buy-standard-btn').addEventListener('click', () => _buyPack(container, 0, scope));
+  container.querySelector('#buy-premium-btn').addEventListener('click', () => _buyPack(container, 1, scope));
 }
 
-async function _buyPack(packType) {
+async function _buyPack(container, packType, scope) {
+  if (!scope.active) return;
   const btnId = packType === 0 ? 'buy-standard-btn' : 'buy-premium-btn';
-  const btn   = document.getElementById(btnId);
-  if (!btn) return;
-  if (window.oxarkPreview) { _showRevealModal(packType === 0 ? [3, 13, 25, 43, 58] : [8, 35, 51]); return; }
+  const btn   = container.querySelector(`#${btnId}`);
+  if (!btn || btn.disabled) return;
+  if (window.oxarkPreview) { _showRevealModal(container, packType === 0 ? [3, 13, 25, 43, 58] : [8, 35, 51], scope); return; }
 
   try {
     btn.disabled    = true;
     btn.textContent = 'CONFIRMING...';
 
     const result = await window.oxarkOnchain.buyPack(packType);
+    if (!scope.active) return;
     _toast(`Pack opened! ${result.cardIds.length} cards received.`, 'success');
-    _showRevealModal(result.cardIds);
+    _showRevealModal(container, result.cardIds, scope);
   } catch (err) {
+    if (!scope.active) return;
     _toast(`Purchase failed: ${err.message}`, 'error');
   } finally {
-    btn.disabled    = false;
-    btn.textContent = packType === 0 ? 'Open standard pack' : 'Open premium pack';
+    if (scope.active) {
+      btn.disabled    = false;
+      btn.textContent = packType === 0 ? 'Open standard pack' : 'Open premium pack';
+    }
   }
 }
 
 export function unmount(container) {
-  _closeOpening();
+  _scope?.dispose();
+  _scope = null;
+  _closeOpening = () => {};
   container.innerHTML = '';
 }

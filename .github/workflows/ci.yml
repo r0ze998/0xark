@@ -26,8 +26,9 @@ jobs:
       - name: Run battle mechanics tests
         run: node tests/battle-mechanics.test.js
 
-      - name: Run hand selection and energy UI regressions
-        run: node --test solana/client/test/preparation-hand.test.js solana/client/test/energy-hud.test.js
+      - name: Run all client unit tests
+        working-directory: solana/client
+        run: npm test
 
   # ─── Client IDL sync guard (YKK-53) ──────────────────────────────────────────
   # anchor build regenerates target/idl/oxark.json but nothing copies it to the
@@ -105,14 +106,9 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Syntax-check all client modules
+      - name: Check client syntax and module bindings
         working-directory: solana/client
-        run: |
-          STATUS=0
-          while IFS= read -r f; do
-            node --check "$f" || STATUS=1
-          done < <(find . -name '*.js' -not -path './react/*' -not -path '*/node_modules/*')
-          exit $STATUS
+        run: npm run check
 
   # ─── AI Agent tests ───────────────────────────────────────────────────────────
   ai-agent-test:
