@@ -162,13 +162,67 @@ test('overlapping exchange refreshes keep the newest requested snapshot', async 
   assert.doesNotMatch(container.querySelector('#trade-grid').innerHTML, /data-card-id="3"/);
 });
 
-test('exchange unmount removes its body-mounted listing dialog', async t => {
+test('exchange unmount removes its native listing dialog', async t => {
   const { container, document } = setup(t, { fetchAllListings: async () => [] });
   await trade.mount(container, { playerState: { vault: [1, 2] } });
   await container.querySelector('#create-listing-btn').click();
-  assert.ok(document.body.querySelector('.trade-modal-overlay'));
+  const modal = container.querySelector('.trade-modal-overlay');
+  assert.equal(modal.tagName, 'dialog');
+  assert.equal(modal.open, true);
   trade.unmount(container);
   assert.equal(document.body.querySelector('.trade-modal-overlay'), null);
+});
+
+test('listing errors stay inside the native dialog and allow a corrected retry', async t => {
+  let submissions = 0;
+  const { container, document } = setup(t, {
+    fetchAllListings: async () => [],
+    createListing: async () => { submissions++; throw new Error('Wallet declined'); },
+  });
+  await trade.mount(container, { playerState: { vault: [1, 2] } });
+  const opener = container.querySelector('#create-listing-btn');
+  opener.focus();
+  await opener.click();
+  const modal = container.querySelector('.trade-modal-overlay');
+  const tile = modal.querySelector('.modal-card-tile');
+  assert.equal(tile.tagName, 'button');
+  assert.equal(tile.querySelector('img').src, 'public/img/cards/archive/001-squire.webp');
+  await tile.click();
+  assert.equal(tile['aria-pressed'], 'true');
+  const input = modal.querySelector('#listing-price-input');
+  const submit = modal.querySelector('#confirm-listing-btn');
+  input.value = '0';
+  await submit.click();
+  assert.equal(submissions, 0);
+  assert.match(modal.querySelector('#listing-feedback').textContent, /at least 0.001 SOL/);
+  assert.equal(document.activeElement, input);
+  input.value = '0.05';
+  await submit.click();
+  assert.equal(submissions, 1);
+  assert.equal(modal.querySelector('#listing-feedback').textContent, 'Wallet declined');
+  assert.equal(submit.disabled, false);
+  let prevented = false;
+  modal.listeners.get('cancel')[0]({ preventDefault: () => { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.equal(modal.isConnected, false);
+  assert.equal(document.activeElement, opener);
+});
+
+test('full artwork toggles both ways and resets when inspecting another card', async t => {
+  const { container } = setup(t, {});
+  CardDetailModal.show(container, 1);
+  const toggle = container.querySelector('#cd-art-toggle');
+  assert.equal(container.querySelector('#cd-full-art').hidden, true);
+  await toggle.click();
+  assert.equal(container.querySelector('#cd-full-art').hidden, false);
+  assert.equal(container.querySelector('#cd-framed-art').hidden, true);
+  assert.equal(toggle['aria-pressed'], 'true');
+  await toggle.click();
+  assert.equal(container.querySelector('#cd-full-art').hidden, true);
+  assert.equal(container.querySelector('#cd-framed-art').hidden, false);
+  CardDetailModal.show(container, 2);
+  assert.equal(container.querySelector('#cd-full-art').hidden, true);
+  assert.equal(container.querySelector('#cd-art-toggle')['aria-pressed'], 'false');
 });
 
 test('a dismissed listing confirmation leaves a replacement modal intact and refreshes confirmed listings', async t => {

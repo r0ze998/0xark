@@ -1,5 +1,5 @@
 // Review-only card frame. Uses catalog truth; imports no live game adapters.
-import { getCard, CARD_ART_URLS } from '../../lib/cards.js';
+import { getCard } from '../../lib/cards.js';
 import { CARD_NAMES, FACTION_NAMES, FACTION_ABBR, FACTION_COLORS, ACTION_NAMES, ACTION_KEYS } from './Card.js';
 import { pxIcon } from '../../lib/px-icons.js';
 
@@ -14,7 +14,7 @@ export function ArchiveCardStudy({ id, hidden = false, selected = false, hp = nu
   const health = hp ?? card.hp;
   const damaged = health < card.hp;
   const classes = ['study-card', `study-rarity-${card.rarity}`, selected && 'study-selected', damaged && 'study-damaged', destroyed && 'study-destroyed'].filter(Boolean).join(' ');
-  const art = card.imageUrl ?? CARD_ART_URLS[(card.faction + 1) * 10];
+  const art = card.imageUrl;
   return `<div class="study-unit"><article class="${classes}" style="--faction:${FACTION_COLORS[card.faction]}" aria-label="${name}, ${FACTION_NAMES[card.faction]}, ${RARITIES[card.rarity]}, BP ${card.bp}, HP ${health} of ${card.hp}, initiative ${card.ini}${selected ? ', selected' : ''}${destroyed ? ', knocked out' : ''}">
     <div class="study-cap"><span>${pxIcon(CRESTS[card.faction])} ${FACTION_ABBR[card.faction]}</span><span>${String(id).padStart(3, '0')} / 060</span></div>
     <div class="study-portrait"><img src="${art}" alt="" loading="lazy" decoding="async"><span class="study-rarity"><i aria-hidden="true">${'|'.repeat(card.rarity + 1)}</i>${RARITIES[card.rarity]}</span>${selected ? '<span class="study-state">SELECTED</span>' : destroyed ? '<span class="study-state">KNOCKED OUT</span>' : ''}</div>

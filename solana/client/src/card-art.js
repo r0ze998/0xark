@@ -3,7 +3,7 @@ import { CardFrameHTML, CARD_NAMES, FACTION_NAMES, injectCardCSS } from './compo
 import { ART_BRIEFS, cardArtUrl } from './lib/card-art-briefs.js';
 
 // This gallery uses catalog data and the game's shared frame. It has no wallet,
-// runtime, transaction or multiplayer imports, and never changes game art.
+// runtime, transaction or multiplayer imports. It shares the approved game art.
 injectCardCSS();
 
 const RARITIES = ['Common', 'Uncommon', 'Rare', 'Legendary'];
@@ -86,8 +86,7 @@ function makeCard(id) {
   button.className = 'art-card-button';
   button.setAttribute('aria-label', `${CARD_NAMES[id]}のアートと制作意図を見る`);
 
-  // Templates are inert: the shared renderer's original image cannot request
-  // or flash before the per-card candidate URL is installed.
+  // Keep the frame inert until loading listeners and status are attached.
   const template = document.createElement('template');
   template.innerHTML = CardFrameHTML({ id });
   const frame = template.content.firstElementChild;

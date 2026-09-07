@@ -27,7 +27,7 @@ export function createModalHost() {
       if (name === 'class') this.className = value;
       else if (name === 'style') this.style.cssText = value;
       else if (name.startsWith('data-')) this.dataset[name.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = value;
-      else this[name] = name === 'disabled' ? true : value;
+      else this[name] = ['disabled', 'hidden'].includes(name) ? true : value;
     }
     set innerHTML(html) {
       this._html = html;

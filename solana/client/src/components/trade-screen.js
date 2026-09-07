@@ -1,9 +1,9 @@
 import { injectStyle } from '../lib/inject-style.js';
 import { TRADE_SCREEN_CSS } from '../style/trade-screen.js';
-import { CardFrameHTML, injectCardCSS } from './common/Card.js';
+import { CardFrameHTML, CARD_NAMES, injectCardCSS } from './common/Card.js';
 // trade-screen.js — Phase 20-C: Trade Floor marketplace
 import { showToast } from '../lib/ui-shared.js';
-import { factionOf, rarityKeyOf, rarityOf } from '../lib/card-meta.js';
+import { factionOf, rarityKeyOf } from '../lib/card-meta.js';
 import { ownedCardIds, listingLamports } from '../lib/trade-values.js';
 import { createScreenScope } from '../lib/screen-scope.js';
 const _toast = (msg, type) => showToast(msg, type, { className: 'trade-toast' });
@@ -13,10 +13,6 @@ function _injectCSS() {
 }
 
 // ── Card helpers ─────────────────────────────────────────────────────────────
-
-function _rarityOf(id) {
-  return ['common', 'uncommon', 'rare', 'legendary'][rarityOf(id)] ?? 'unknown';
-}
 
 function _cardFrameHTML(cardId) {
   return CardFrameHTML({ id: cardId });
@@ -166,48 +162,59 @@ function _showCreateListingModal(screen, playerState) {
   let selectedCardId = null;
   let submitting = false;
 
-  const overlay = document.createElement('div');
+  const previousFocus = document.activeElement;
+  const overlay = document.createElement('dialog');
   overlay.className = 'trade-modal-overlay';
+  overlay.setAttribute('aria-label', 'List a card');
   overlay.innerHTML = `
     <div class="trade-modal">
-      <h3>List a Card</h3>
-      <p style="color:#888;font-size:0.95rem">Select a card from your vault:</p>
+      <p class="archive-eyebrow">FROM YOUR VAULT</p>
+      <h3>Offer a card.</h3>
+      <p class="modal-instruction">Select the card you want to list.</p>
       <div class="modal-vault-grid">
         ${available.length === 0
-          ? '<p style="color:#555;grid-column:1/-1">No cards available to list</p>'
+          ? '<p class="modal-empty">No cards available to list.</p>'
           : available.map(id => `
-            <div class="modal-card-tile" data-id="${id}">
-              <span class="modal-card-num">${id}</span>
-              <span class="modal-card-label">${_rarityOf(id)}</span>
-            </div>`).join('')}
+            <button type="button" class="modal-card-tile" data-id="${id}" aria-pressed="false" aria-label="Select ${CARD_NAMES[id]}">
+              ${_cardFrameHTML(id)}
+            </button>`).join('')}
       </div>
       <div class="price-input-row">
-        <label>Price (SOL):</label>
-        <input type="number" id="listing-price-input" min="0.001" step="0.001" value="0.05">
+        <label for="listing-price-input">Price (SOL)</label>
+        <input type="number" id="listing-price-input" min="0.001" step="0.001" value="0.05" aria-describedby="listing-feedback">
       </div>
+      <p class="modal-feedback" id="listing-feedback" role="alert"></p>
       <div class="modal-actions">
         <button id="confirm-listing-btn" class="modal-btn-primary" disabled>LIST</button>
         <button id="cancel-modal-btn"    class="modal-btn-secondary">CANCEL</button>
       </div>
     </div>`;
 
-  document.body.appendChild(overlay);
+  screen.root.appendChild(overlay);
   const close = screen.scope.defer(() => scope.dispose());
   screen.closeModal = close;
   scope.defer(() => {
     overlay.remove();
+    if (previousFocus?.isConnected) previousFocus.focus();
     if (screen.closeModal === close) screen.closeModal = null;
   });
   const isActive = () => _isActive(screen) && scope.active && overlay.isConnected;
   const btn = overlay.querySelector('#confirm-listing-btn');
   const priceInput = overlay.querySelector('#listing-price-input');
+  const feedback = overlay.querySelector('#listing-feedback');
+  overlay.addEventListener('cancel', event => { event.preventDefault(); close(); });
+  overlay.showModal();
 
   // Card selection
   overlay.querySelectorAll('.modal-card-tile').forEach(tile => {
     tile.addEventListener('click', () => {
       if (!isActive() || submitting) return;
-      overlay.querySelectorAll('.modal-card-tile').forEach(t => t.classList.remove('selected'));
+      overlay.querySelectorAll('.modal-card-tile').forEach(t => {
+        t.classList.remove('selected');
+        t.setAttribute('aria-pressed', 'false');
+      });
       tile.classList.add('selected');
+      tile.setAttribute('aria-pressed', 'true');
       selectedCardId = parseInt(tile.dataset.id);
       btn.disabled = false;
     });
@@ -218,7 +225,14 @@ function _showCreateListingModal(screen, playerState) {
     if (!isActive() || submitting || btn.disabled || !selectedCardId) return;
     const priceSOL = priceInput.value.trim();
     const priceLamports = listingLamports(priceSOL);
-    if (priceLamports === null) { _toast('Enter at least 0.001 SOL, with up to 9 decimal places.', 'error'); return; }
+    if (priceLamports === null) {
+      feedback.textContent = 'Enter at least 0.001 SOL, with up to 9 decimal places.';
+      priceInput.setAttribute('aria-invalid', 'true');
+      priceInput.focus();
+      return;
+    }
+    priceInput.setAttribute('aria-invalid', 'false');
+    feedback.textContent = 'Waiting for wallet confirmation…';
     submitting = true;
     btn.disabled = true;
     btn.textContent = '…';
@@ -234,7 +248,7 @@ function _showCreateListingModal(screen, playerState) {
     } catch (e) {
       if (!isActive()) return;
       submitting = false;
-      _toast(e.message ?? 'Listing failed', 'error');
+      feedback.textContent = e.message ?? 'Listing failed. Please try again.';
       btn.disabled = false;
       btn.textContent = 'LIST';
     }
@@ -265,7 +279,7 @@ export async function mount(container, props = {}) {
 
       <div class="trade-filters">
         <select id="filter-clan" aria-label="Filter by faction">
-          <option value="">All clans</option>
+          <option value="">All factions</option>
           <option value="0">Knight</option>
           <option value="1">Merchant</option>
           <option value="2">Pirate</option>

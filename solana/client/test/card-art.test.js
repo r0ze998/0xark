@@ -3,8 +3,38 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { ALL_CARD_IDS, getCard } from '../src/lib/cards.js';
-import { CARD_NAMES, FACTION_NAMES } from '../src/components/common/Card.js';
+import { CARD_NAMES, FACTION_NAMES, CardFrameHTML, CardHTML } from '../src/components/common/Card.js';
 import { ART_BRIEFS, cardArtUrl } from '../src/lib/card-art-briefs.js';
+
+test('production and gallery resolve every card to its approved illustration', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../../../design/cards/asset-manifest.json', import.meta.url), 'utf8'));
+  const sources = [];
+  for (const asset of manifest) {
+    const expected = asset.file.replace('solana/client/', '');
+    const card = getCard(asset.id);
+    assert.equal(card.imageUrl, expected);
+    assert.equal(cardArtUrl(asset.id), expected);
+    const html = CardFrameHTML({ id: asset.id, hpCurrent: 0, dead: true });
+    const src = html.match(/<img src="([^"]+)"/)?.[1];
+    assert.equal(src, expected);
+    assert.match(html, /HP 0/);
+    sources.push(src);
+  }
+  assert.equal(sources.length, ALL_CARD_IDS.length);
+  assert.equal(new Set(sources).size, ALL_CARD_IDS.length);
+});
+
+test('sealed markup is identical across every identity and public card state', () => {
+  for (const render of [CardFrameHTML, CardHTML]) {
+    const sealed = render({ faceDown: true });
+    for (const id of ALL_CARD_IDS) {
+      for (const owned of [true, false]) {
+        assert.equal(render({ id, faceDown: true, owned, selected: true, hpCurrent: 0, dead: true }), sealed);
+      }
+    }
+    assert.doesNotMatch(sealed, /<img|data-id|public\/img|BP|HP|INI|rarity-|--cc/);
+  }
+});
 
 test('all 60 art briefs and unique image paths match actual catalog identities', () => {
   assert.deepEqual(ART_BRIEFS.map(brief => brief.id), ALL_CARD_IDS);
@@ -26,7 +56,7 @@ test('all 60 art briefs and unique image paths match actual catalog identities',
 
 test('public art review imports only rendering and catalog modules', () => {
   const allowed = new Set([
-    'src/card-art.js', 'src/lib/cards.js', 'src/lib/card-art-briefs.js',
+    'src/card-art.js', 'src/lib/cards.js', 'src/lib/card-art-briefs.js', 'src/lib/card-art-assets.js',
     'src/components/common/Card.js', 'src/lib/inject-style.js',
     'src/style/card.js', 'src/lib/px-icons.js',
   ]);

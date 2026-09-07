@@ -41,6 +41,8 @@ resizing or compositing is applied during encoding. Regeneration of browser
 derivatives uses `node scripts/encode-card-art.mjs` with ImageMagick installed and
 the original PNGs locally present; it validates dimensions and publishes atomically.
 
-This edition is available in the separate art-review page. The live game's
-`CARD_ART_URLS` remains on its previously approved portraits until an integration
-change is made; reviewing artwork does not modify ownership, abilities or stats.
+This approved edition is integrated into the live game's shared card renderer.
+The separate art-review page uses the same lightweight URL catalog, and remains
+available for full-set browsing and production notes. Gameplay detail also offers
+a full-art toggle. Artwork never changes ownership, abilities, stats or on-chain
+rules.

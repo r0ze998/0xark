@@ -67,7 +67,7 @@ export function mount(container, props = {}) {
           <div class="home-energy" aria-label="Battle energy">${energyHTML}</div>
         </section>
         <section class="home-showcase" aria-label="Featured cards from your collection">
-          <div class="home-showcase-heading"><p class="home-eyebrow">SELECTED FROM YOUR VAULT</p><span class="home-gallery-index">I / III</span></div>
+          <div class="home-showcase-heading"><p class="home-eyebrow">SELECTED FROM YOUR VAULT</p><span class="home-gallery-index">${featured.length} CARDS</span></div>
           ${featured.length ? `<div class="home-gallery">${featured.map(id=>`<button type="button" class="home-card" data-home-nav="main" aria-label="Inspect collection: ${escapeHTML(CARD_NAMES[id])}">${CardFrameHTML({id})}</button>`).join('')}</div><p class="home-showcase-caption">COLLECT THE CARDS. LEARN THEIR POSSIBILITIES.</p>` : `<div class="home-empty">${pxIcon('vault',{size:48})}<p>Your collection begins here.</p><button class="gba-btn" data-home-nav="shop">Explore packs</button></div>`}
         </section>
       </div>

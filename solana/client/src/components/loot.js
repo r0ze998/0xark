@@ -79,7 +79,7 @@ function buildWinHTML(s) {
   <!-- Opponent cards (face-down, revealed by animation) -->
   <div class="loot-opp-cards" id="loot-opp-cards" role="list">
     ${oppCards.map((c, i) => `
-      <div class="loot-opp-card-wrap" data-idx="${i}" data-card="${c?.cardId ?? 0}">
+      <div class="loot-opp-card-wrap" data-idx="${i}">
         ${CardFrameHTML({ id: c?.cardId ?? 1, faceDown: true })}
       </div>`).join('')}
   </div>
