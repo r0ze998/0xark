@@ -4,7 +4,7 @@ import { CARD_NAMES, FACTION_NAMES, FACTION_ABBR, FACTION_COLORS, ACTION_NAMES, 
 import { pxIcon } from '../../lib/px-icons.js';
 
 const RARITIES = ['COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'];
-const CRESTS = ['barrier', 'crystal', 'flame', 'eye', 'shield', 'chip'];
+const CRESTS = ['barrier', 'coin', 'flame', 'eye', 'shadow', 'chip'];
 
 export function ArchiveCardStudy({ id, hidden = false, selected = false, hp = null, destroyed = false, action = null } = {}) {
   if (hidden) return '<div class="study-card study-card--back" role="img" aria-label="Sealed card"><span class="study-back-label">0xARK<span>THE DROWNED ARCHIVE</span></span></div>';
