@@ -68,11 +68,11 @@ App: `oxark-multiplayer`, region `nrt` (Tokyo), `shared-cpu-1x/256mb`
 
 **r0ze triggers final deploy:**
 ```sh
-cd multiplayer
-fly secrets set SOLANA_RPC_URL=<rpc> TREASURY_PUBKEY=<pubkey>
-fly deploy
+fly deploy --config multiplayer/fly.toml --dockerfile multiplayer/Dockerfile
 ```
-Without `TREASURY_PUBKEY` the server runs in demo mode (x402 verification skipped).
+Run from the repository root. Configure `SOLANA_RPC_URL`, `TREASURY_PUBKEY` and
+`REDIS_URL` through the hosting secret manager. Missing required production
+configuration aborts startup. See `docs/RELEASE_READINESS.md` for remaining gates.
 
 ## Anchor tests
 ```sh
