@@ -203,8 +203,11 @@ function _showRevealModal(container, cardIds, scope) {
   overlay.className = 'reveal-overlay';
   overlay.setAttribute('aria-label', window.oxarkPreview ? 'Practice pack opening' : 'Pack opening');
 
-  const title = document.createElement('div');
+  const title = document.createElement('h2');
   title.className = 'reveal-title';
+  // Start at the first reveal on narrow screens, rather than scrolling to CONTINUE.
+  title.setAttribute('tabindex', '-1');
+  title.setAttribute('autofocus', '');
   title.textContent = window.oxarkPreview ? 'A practice opening' : 'The seal is broken';
   const note = document.createElement('p'); note.className = 'reveal-note';
   note.textContent = window.oxarkPreview ? 'Sample cards only. No purchase. Your collection is unchanged.' : 'These cards have been added to your collection.';

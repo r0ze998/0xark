@@ -8,7 +8,7 @@ import { CARD_DETAIL_CSS } from '../style/card-detail.js';
 
 import { getCard, isBurnable } from '../lib/cards.js';
 import { pxIcon } from '../lib/px-icons.js';
-import { CardFrameHTML, injectCardCSS, CARD_NAMES, FACTION_NAMES, RARITY_LABELS, RARITY_COLORS, ACTION_LABELS } from './common/Card.js';
+import { CardFrameHTML, injectCardCSS, CARD_NAMES, FACTION_NAMES, RARITY_LABELS, RARITY_COLORS } from './common/Card.js';
 import { evaluatePromotion, RARITY_LABEL } from '../lib/promotion.js';
 import { showToast, txLink } from '../lib/ui-shared.js';
 import { getState, setState } from '../state/battle-state.js';
@@ -62,7 +62,6 @@ function _render(modal) {
   const name     = CARD_NAMES[cardId] ?? `Card #${cardId}`;
   const faction  = FACTION_NAMES[card.faction] ?? '—';
   const rarity   = RARITY_LABELS[card.rarity] ?? '—';
-  const action   = ACTION_LABELS[card.actionType] ?? '—';
 
   const abilityHTML = card.ability
     ? `<div class="cd-ability">
@@ -89,14 +88,17 @@ function _render(modal) {
 
   <div class="cd-top">
     <div class="cd-card-wrap">
-      ${CardFrameHTML({ id: cardId, owned })}
+      <div id="cd-framed-art">${CardFrameHTML({ id: cardId, owned })}</div>
+      <figure class="cd-full-art" id="cd-full-art" hidden>
+        <img src="${card.imageUrl}" alt="${name} — full illustration" width="1254" height="1254" decoding="async">
+      </figure>
+      <button type="button" class="cd-art-toggle" id="cd-art-toggle" aria-pressed="false" aria-controls="cd-full-art">Full artwork</button>
     </div>
     <div class="cd-info">
       <div class="cd-name">${name}</div>
       <div class="cd-meta">
         <span class="chip cd-faction" style="--fc:var(--clan-${faction.toLowerCase()});">${faction.toUpperCase()}</span>
         <span class="chip" id="cd-rarity-chip">${rarity}</span>
-        <span class="chip">${action}</span>
       </div>
       <div class="cd-stats">
         <div class="cd-stat"><span class="cd-stat-label">BP</span><span class="cd-stat-val label-gold">${card.bp}</span></div>
@@ -104,6 +106,7 @@ function _render(modal) {
         <div class="cd-stat"><span class="cd-stat-label">INI</span><span class="cd-stat-val">${card.ini}</span></div>
       </div>
       ${abilityHTML}
+      <p class="cd-action-note">Choose one of six actions when preparing your hand.</p>
       <div class="cd-promote" id="cd-promote"></div>
       <div class="cd-actions">
         ${burnBtn}
@@ -122,6 +125,13 @@ function _render(modal) {
 
 function _bindEvents(modal) {
   const { overlay } = modal;
+  overlay.querySelector('#cd-art-toggle').addEventListener('click', event => {
+    const fullArt = overlay.querySelector('#cd-full-art');
+    const showArtwork = fullArt.hidden;
+    fullArt.hidden = !showArtwork;
+    overlay.querySelector('#cd-framed-art').hidden = showArtwork;
+    event.currentTarget.setAttribute('aria-pressed', String(showArtwork));
+  });
   overlay.querySelector('#cd-close').addEventListener('click', () => {
     _close(modal);
   });

@@ -1,7 +1,7 @@
 import { injectStyle } from '../../lib/inject-style.js';
 import { CARD_CSS } from '../../style/card.js';
 // Card.js — renders one card tile; used by all battle screens
-import { getCard, CARD_ART_URLS } from '../../lib/cards.js';
+import { getCard } from '../../lib/cards.js';
 import { pxIcon, injectPxIconSheet } from '../../lib/px-icons.js';
 
 export const FACTION_NAMES  = ['Knight','Merchant','Pirate','Scholar','Monk','Engineer'];
@@ -89,14 +89,14 @@ export function CardHTML({
     <div class="ark-card-bp"><b>${card.bp}</b></div>
     <div class="ark-card-name">${name}</div>
     ${isLgd ? `<div class="ark-card-legend">${pxIcon('star')}</div>` : ''}
-    ${!owned ? '<div class="ark-card-overlay"><span>?</span></div>' : ''}
+    ${!owned ? '<div class="ark-card-overlay"><span>Not owned</span></div>' : ''}
     ${dead   ? `<div class="ark-card-dead-overlay">${pxIcon('skull')}</div>` : ''}
   </div>`;
 }
 
 /**
  * Shared Archive Standard frame for collection, preparation and combat.
- * Opaque identity/name/stat bands remain readable over representative faction art.
+ * Opaque identity/name/stat bands remain readable over each card’s illustration.
  * Same props as CardHTML(); compact is ignored (framed cards are always full-size).
  */
 export function CardFrameHTML({
@@ -120,9 +120,9 @@ export function CardFrameHTML({
   const name    = CARD_NAMES[id] ?? `Card #${id}`;
   const hp      = hpCurrent ?? card.hp;
 
-  const artwork = card.imageUrl ?? CARD_ART_URLS[(card.faction + 1) * 10];
+  const artwork = card.imageUrl;
   const artHtml = artwork
-    ? `<img src="${artwork}" alt="" class="card-art-img" decoding="async" loading="lazy" />`
+    ? `<img src="${artwork}" alt="" class="card-art-img" width="1254" height="1254" decoding="async" loading="lazy" />`
     : `<div class="card-art-placeholder">${FACTION_ABBR[card.faction] ?? '?'}</div>`;
 
   const classes = [
@@ -150,7 +150,7 @@ export function CardFrameHTML({
       <span class="stat-badge cf-hp"><span class="stat-label">HP</span><span class="stat-value">${hp}</span></span>
       <span class="stat-badge"><span class="stat-label">INI</span><span class="stat-value">${card.ini}</span></span>
     </div>
-    ${!owned ? '<div class="ark-card-overlay"><span>?</span></div>' : ''}
+    ${!owned ? '<div class="ark-card-overlay"><span>Not owned</span></div>' : ''}
     ${dead   ? `<div class="ark-card-dead-overlay">${pxIcon('skull')}</div>` : ''}
   </div>`;
 }

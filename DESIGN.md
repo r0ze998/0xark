@@ -1,5 +1,5 @@
 # 0xARK — The Drowned Archive
-Version 2.0 · September 5, 2026
+Version 2.1 · September 7, 2026
 
 ## Authority and scope
 
@@ -67,12 +67,12 @@ preserving dynamic state, inline transforms, disabled controls and combat hooks.
 
 ## Cards
 
-**Archive Standard** uses a 2:3 silhouette with an opaque black-green faction cap,
+**Archive Standard** uses a 5:8 silhouette with an opaque black-green faction cap,
 portrait window, name band and three-column BP/HP/initiative band. Brass edges
 carry the archive identity; artwork does not sit behind the name or statistics.
 The faction is always written in full beside its crest. Rarity has a written label
 and one to four marks, so neither faction nor rarity depends on colour alone.
-Catalog numbers remain visible because the current portraits are shared.
+Catalog numbers remain visible as stable collection references.
 
 `CardFrameHTML` is the production renderer across collection, hand preparation,
 intel and combat. Names and stats are real catalog data. Preserve `data-id`,
@@ -86,12 +86,25 @@ needed, and collection grids reflow rather than hiding names, faction or stat
 labels. Long names wrap across the solid band. The separate card-design page is
 a design study; changes to gameplay cards belong in the shared production frame.
 
-The repository contains six existing legendary character portraits. This version
-uses those as **representative faction art** for other cards. They are not sixty
-new unique illustrations. Catalog number, name and statistics distinguish cards;
-a future art pass can provide a per-card image without changing the component.
-Generated imagery is used only for the environment and card back. See
-`design/archive-assets.md` for provenance and prompts.
+All sixty cards now use their approved individual Drowned Archive illustrations.
+`src/lib/card-art-assets.js` is the lightweight URL catalog shared by the game
+and art review. Each actual ID resolves to its own WebP; missing art must not fall
+back to another character. Keep document-relative asset paths for GitHub Pages.
+Images are lazy-loaded and decoded asynchronously; facedown cards render no image
+or identity-bearing attributes before reveal.
+
+The larger portrait window keeps illustrations near square at collection sizes;
+name and statistic bands retain their 140px reading floor. Missing cards retain
+legible text and a written ownership badge, with only the artwork subdued. Detail
+has a keyboard-operable full-art toggle and one scrolling modal surface. The
+exchange listing dialog uses illustrated native buttons and reports transaction
+errors within its native top layer. Functional line icons retain historical
+`pxIcon` names and IDs for compatibility while matching the engraved Archive style.
+
+Art prompts and provenance are in `design/cards/`; environment and card-back
+provenance is in `design/archive-assets.md`. The six original Legendary identities
+are preserved in their new illustrations. None of this changes ownership, card
+statistics, promotion rules or combat outcomes.
 
 Face-down cards must not expose their identity. Ownership is derived from actual
 vault data in live mode; browsing the full catalog does not imply ownership.

@@ -1,3 +1,6 @@
+import { CARD_ART_URLS } from './card-art-assets.js';
+export { CARD_ART_URLS } from './card-art-assets.js';
+
 // cards.js — Phase 15: 60-card dataset (v2 design, 6 factions)
 // Layout: [id, faction, rarity, bp, hp, ini, actionType, isLegendary]
 //   id:         1-60 (1-indexed; id = (faction * 10) + slot + 1)
@@ -195,16 +198,6 @@ export function getCard(id) {
 export const LEGENDARY_IDS = CARD_DATA
   .filter(row => row[7] === true)
   .map(row => row[0]);
-
-// Phase 20-D: Legendary character art URLs (faction-keyed, one per clan)
-export const CARD_ART_URLS = {
-  10: 'public/img/cards/legendary/knight.jpg',
-  20: 'public/img/cards/legendary/merchant.jpg',
-  30: 'public/img/cards/legendary/pirate.jpg',
-  40: 'public/img/cards/legendary/scholar.jpg',
-  50: 'public/img/cards/legendary/monk.jpg',
-  60: 'public/img/cards/legendary/engineer.jpg',
-};
 
 // All 60 card IDs
 export const ALL_CARD_IDS = CARD_DATA.map(row => row[0]);

@@ -1,3 +1,5 @@
+import { CARD_ART_URLS } from './card-art-assets.js';
+
 // Review copy of design/cards/briefs-*.json. Names and identities are verified
 // against the live catalog; these visual situations do not add game mechanics.
 export const ART_BRIEFS = [
@@ -603,11 +605,7 @@ export const ART_BRIEFS = [
   }
 ];
 
-const byId = new Map(ART_BRIEFS.map(brief => [brief.id, brief]));
-
 export function cardArtUrl(id) {
-  const brief = byId.get(id);
-  if (!brief) throw new RangeError(`Unknown card art ID: ${id}`);
-  const slug = brief.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return `public/img/cards/archive/${String(id).padStart(3, "0")}-${slug}.webp`;
+  if (!Number.isInteger(id) || !CARD_ART_URLS[id]) throw new RangeError(`Unknown card art ID: ${id}`);
+  return CARD_ART_URLS[id];
 }
