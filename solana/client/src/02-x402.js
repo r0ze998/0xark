@@ -83,7 +83,7 @@ async function scoutPeek(gameId, target, wallet, conn) {
 
   const signed = await wallet.signTransaction(tx);
   const sig = await conn.sendRawTransaction(signed.serialize());
-  await conn.confirmTransaction(sig, 'confirmed');
+  await _confirmPayment(conn, sig);
 
   // ── Step 3: retry with payment proof ─────────────────────────────────────
   const paid = await fetch(`${X402_BROKER_URL}/scout-peek`, {
@@ -154,7 +154,7 @@ async function hireAgent(agentId, gameId, durationSeconds = 3600, wallet, conn) 
 
   const signed = await wallet.signTransaction(tx);
   const sig = await conn.sendRawTransaction(signed.serialize());
-  await conn.confirmTransaction(sig, 'confirmed');
+  await _confirmPayment(conn, sig);
 
   // ── Step 3: retry with payment proof ─────────────────────────────────────
   const retryBody = JSON.stringify({
@@ -367,7 +367,7 @@ async function _payMove(endpoint, memoFields, wallet, conn) {
 
   const signed = await wallet.signTransaction(tx);
   const sig    = await conn.sendRawTransaction(signed.serialize());
-  await conn.confirmTransaction(sig, 'confirmed');
+  await _confirmPayment(conn, sig);
 
   // ── Retry with payment proof ──────────────────────────────────────────────
   const paid = await fetch(`${X402_BROKER_URL}${endpoint}`, {
@@ -404,7 +404,7 @@ async function _x402Pay(endpoint, body = {}, wallet, conn) {
   const { Transaction, SystemProgram, PublicKey, TransactionInstruction } = window.solanaWeb3 ?? {};
   if (!Transaction) throw new Error('solanaWeb3 not loaded');
 
-  const w      = wallet ?? window.solana;
+  const w      = wallet ?? window.oxarkWallet?.provider ?? window.solana;
   const c      = conn   ?? _getDefaultConn();
   if (!w?.isConnected && !w?.publicKey) throw new Error('Wallet not connected');
 
@@ -479,7 +479,7 @@ async function _x402Pay(endpoint, body = {}, wallet, conn) {
   // ── 4. Sign + send ────────────────────────────────────────────────────────
   const signed = await w.signTransaction(tx);
   const sig    = await c.sendRawTransaction(signed.serialize());
-  await c.confirmTransaction(sig, 'confirmed');
+  await _confirmPayment(c, sig);
 
   // ── 5. Retry with payment proof ───────────────────────────────────────────
   const paidRes = await fetch(`${X402_BROKER_URL}${endpoint}`, {
@@ -598,7 +598,7 @@ async function payAiMove({ matchId, round, publicState }, wallet, conn) {
 
   const signed = await wallet.signTransaction(tx);
   const sig    = await conn.sendRawTransaction(signed.serialize());
-  await conn.confirmTransaction(sig, 'confirmed');
+  await _confirmPayment(conn, sig);
 
   const paid = await fetch(`${X402_BROKER_URL}${endpoint}`, {
     method: 'POST',
@@ -636,4 +636,10 @@ if (typeof module !== 'undefined') {
   module.exports = _x402Exports;
 } else if (typeof window !== 'undefined') {
   window.x402 = _x402Exports;
+}
+
+// The relay verifies finalized payments. Do not race a confirmed-only receipt.
+async function _confirmPayment(connection, signature) {
+  const result = await connection.confirmTransaction(signature, 'finalized');
+  if (result?.value?.err) throw new Error('Payment transaction failed. No service requested.');
 }

@@ -10,6 +10,7 @@ import { SCREENS, GAME_ROUTES } from './src/app/screens.js';
 import { createScreenRouter, listenForNavigation } from './src/app/router.js';
 import { createLiveApp } from './src/app/live-app.js';
 import { createPracticeApp } from './src/app/practice.js';
+import { getWalletProvider } from './src/lib/wallet-provider.js';
 
 injectPxIconSheet();
 injectEntryCSS(); // Shared toasts also work with an already connected wallet.
@@ -21,11 +22,7 @@ const application = isPractice
   : createLiveApp({ router, getState, setState, wasRestored,
       getWallet: () => window.oxarkWallet,
       getOnchain: () => window.oxarkOnchain,
-      getProvider: () => {
-        const phantom = window.phantom?.solana;
-        const solflare = window.solflare;
-        return phantom?.isPhantom ? phantom : solflare?.isSolflare ? solflare : null;
-      },
+      getProvider: getWalletProvider,
       reload: () => window.location.reload(),
       openWalletSite: () => window.open('https://phantom.app/', '_blank', 'noopener'),
       showToast, showTxToast,

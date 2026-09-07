@@ -1,4 +1,5 @@
 import { isPractice, createPracticeAdapters } from './lib/practice-mode.js';
+import { RELAY_URL } from './config.js';
 
 function classic(src) {
   return new Promise((resolve, reject) => {
@@ -18,8 +19,11 @@ async function start() {
     window.x402 = null;
     window.zkCardCommit = null;
   } else {
+    const local = ['localhost', '127.0.0.1'].includes(location.hostname);
+    window.X402_BROKER_URL ??= local ? 'http://localhost:3500' : RELAY_URL;
     await classic('https://cdn.jsdelivr.net/npm/@solana/web3.js@1.98.0/lib/index.iife.min.js');
     await import('./onchain/index.js');
+    await classic('src/lib/x402-memo.js');
     await classic('src/02-x402.js');
     await classic('https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js');
     await import('./lib/wallet-adapter.js');

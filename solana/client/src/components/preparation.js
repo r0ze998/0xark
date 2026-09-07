@@ -1,3 +1,4 @@
+import { getWalletProvider } from '../lib/wallet-provider.js';
 import { injectStyle } from '../lib/inject-style.js';
 import { PREPARATION_CSS } from '../style/preparation.js';
 // preparation.js — Screen 2: Preparation Phase (3-min timer, 5-slot field, ZK commit)
@@ -442,7 +443,7 @@ async function onConfirm(container) {
       if (s.isHost && typeof window.oxarkOnchain?.initDuel === 'function') {
         if (btn) btn.textContent = 'OPENING DUEL…';
         if (hint) hint.textContent = 'Confirm the duel transaction in your wallet.';
-        const myPubkey = window.solana?.publicKey?.toBase58();
+        const myPubkey = getWalletProvider()?.publicKey?.toBase58();
         await window.oxarkOnchain.initDuel(
           s.duelId, myPubkey, s.opponentPubkey,
         );

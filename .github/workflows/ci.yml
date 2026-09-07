@@ -30,6 +30,22 @@ jobs:
         working-directory: solana/client
         run: npm test
 
+      - name: Install relay dependencies from lockfile
+        working-directory: multiplayer
+        run: npm ci --ignore-scripts
+
+      - name: Verify relay HTTP and payment release gates
+        working-directory: multiplayer
+        run: node --test test/release.test.js
+
+  relay-image:
+    name: Relay container build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build complete relay and AI image
+        run: docker build -f multiplayer/Dockerfile -t oxark-relay:check .
+
   # ─── Client IDL sync guard (YKK-53) ──────────────────────────────────────────
   # anchor build regenerates target/idl/oxark.json but nothing copies it to the
   # offline client IDL (solana/client/oxark-idl.json) — it drifts on every

@@ -4,6 +4,12 @@
 
 // Solana cluster this build targets.
 export const NETWORK = 'devnet';
+export const RPC_URL = 'https://api.devnet.solana.com';
+export const RELAY_URL = 'https://oxark-multiplayer.fly.dev';
+
+// Peek cannot yet deliver a verified sealed hand. Keep payment unavailable
+// until the service implements that contract; practice has its own free peek.
+export const LIVE_PEEK_ENABLED = false;
 
 // oxark program id (matches CLAUDE.md / onchain.js PROGRAM_ID).
 export const PROGRAM_ID = '5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN';

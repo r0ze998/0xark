@@ -164,7 +164,7 @@ test('overlapping exchange refreshes keep the newest requested snapshot', async 
 
 test('exchange unmount removes its body-mounted listing dialog', async t => {
   const { container, document } = setup(t, { fetchAllListings: async () => [] });
-  await trade.mount(container, { playerState: { vault_bitmap: [3] } });
+  await trade.mount(container, { playerState: { vault: [1, 2] } });
   await container.querySelector('#create-listing-btn').click();
   assert.ok(document.body.querySelector('.trade-modal-overlay'));
   trade.unmount(container);
@@ -179,7 +179,7 @@ test('a dismissed listing confirmation leaves a replacement modal intact and ref
     fetchAllListings: async () => ++reads === 1 ? [] : [listing(1)],
     createListing: () => { submissions++; return confirmation.promise; },
   });
-  await trade.mount(container, { playerState: { vault_bitmap: [3] } });
+  await trade.mount(container, { playerState: { vault: [1, 2] } });
   await container.querySelector('#create-listing-btn').click();
   const oldModal = document.body.querySelector('.trade-modal-overlay');
   await oldModal.querySelector('.modal-card-tile').click();

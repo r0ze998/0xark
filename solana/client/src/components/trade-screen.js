@@ -3,7 +3,8 @@ import { TRADE_SCREEN_CSS } from '../style/trade-screen.js';
 import { CardFrameHTML, injectCardCSS } from './common/Card.js';
 // trade-screen.js — Phase 20-C: Trade Floor marketplace
 import { showToast } from '../lib/ui-shared.js';
-import { factionOf, rarityKeyOf } from '../lib/card-meta.js';
+import { factionOf, rarityKeyOf, rarityOf } from '../lib/card-meta.js';
+import { ownedCardIds, listingLamports } from '../lib/trade-values.js';
 import { createScreenScope } from '../lib/screen-scope.js';
 const _toast = (msg, type) => showToast(msg, type, { className: 'trade-toast' });
 
@@ -14,10 +15,7 @@ function _injectCSS() {
 // ── Card helpers ─────────────────────────────────────────────────────────────
 
 function _rarityOf(id) {
-  if (id >= 55) return 'legendary';
-  if (id >= 49) return 'rare';
-  if (id >= 31) return 'uncommon';
-  return 'common';
+  return ['common', 'uncommon', 'rare', 'legendary'][rarityOf(id)] ?? 'unknown';
 }
 
 function _cardFrameHTML(cardId) {
@@ -159,13 +157,7 @@ function _showCreateListingModal(screen, playerState) {
   if (!_isActive(screen)) return;
   screen.closeModal?.();
   const scope = createScreenScope();
-  // Decode vault bitmap → array of owned card ids
-  const bitmap = playerState?.vault_bitmap ?? [];
-  const myCards = [];
-  for (let i = 0; i < 60; i++) {
-    const byte = bitmap[Math.floor(i / 8)] ?? 0;
-    if ((byte >> (i % 8)) & 1) myCards.push(i + 1);
-  }
+  const myCards = ownedCardIds(playerState);
 
   // Filter out cards already listed by this player
   const listed = new Set(screen.listings.filter(l => l.seller === screen.myPubkey).map(l => l.cardId));
@@ -224,9 +216,9 @@ function _showCreateListingModal(screen, playerState) {
   // Confirm
   btn.addEventListener('click', async () => {
     if (!isActive() || submitting || btn.disabled || !selectedCardId) return;
-    const priceSOL = parseFloat(priceInput.value);
-    if (!priceSOL || priceSOL < 0.001) { _toast('Minimum price is 0.001 SOL', 'error'); return; }
-    const priceLamports = Math.round(priceSOL * 1e9);
+    const priceSOL = priceInput.value.trim();
+    const priceLamports = listingLamports(priceSOL);
+    if (priceLamports === null) { _toast('Enter at least 0.001 SOL, with up to 9 decimal places.', 'error'); return; }
     submitting = true;
     btn.disabled = true;
     btn.textContent = '…';

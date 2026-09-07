@@ -1,7 +1,8 @@
 // AUTO-SPLIT from onchain.js (YKK-15) — pure move, function bodies byte-identical.
 // See PR: onchain.js -> src/onchain/{pda,readers,tx,rpc}.js + index.js shim.
 
-const DEVNET_RPC = 'https://api.devnet.solana.com';
+import { RPC_URL } from '../config.js';
+const DEVNET_RPC = RPC_URL;
 
 // ─── Lazy connection (reuses between calls) ───────────────────────────────
 let _connection = null;
