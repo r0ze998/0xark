@@ -23,20 +23,21 @@ function host(t) {
   // Deterministic local crypto and transport doubles; no signing or network.
   t.mock.method(globalThis.crypto.subtle, 'digest', async () => new ArrayBuffer(32));
   const messages = [];
+  let socket;
   globalThis.WebSocket = class {
-    constructor() { this.readyState = 1; queueMicrotask(() => this.onopen?.()); }
+    constructor() { socket = this; this.readyState = 1; queueMicrotask(() => this.onopen?.()); }
     send(message) { messages.push(JSON.parse(message)); }
     close() { this.readyState = 3; this.onclose?.(); }
   };
   resetBattle();
   setState({
-    playerPubkey: 'me', opponentPubkey: 'opponent', isHost: true, duelId: 'duel-a',
+    playerPubkey: 'me', opponentPubkey: 'opponent', opponentPlayerId: 'opponent-player', isHost: true, duelId: 'duel-a',
     salt: new Uint8Array(32),
     fieldCards: [1, 2, 3, 4, 5].map(cardId => ({ cardId, actionType: 0 })),
     opponentField: [11, 12, 13, 14, 15].map(cardId => ({ cardId, actionType: 0 })),
   });
   t.after(() => { reveal.unmount(screen.app); loot.unmount(screen.app); duelWs.disconnect(); });
-  return { ...screen, messages };
+  return { ...screen, messages, receive: message => socket.onmessage({ data: JSON.stringify(message) }) };
 }
 
 async function finishPlayback(t, app) {
@@ -127,8 +128,9 @@ test('missing salt blocks live settlement without generating a new commitment', 
   assert.equal(app.querySelector('#rev-retry').disabled, false);
 });
 
-test('absent opponent data never produces a fabricated live replay', async t => {
-  const { app } = host(t);
+test('absent opponent data has a bounded chain-only fallback without a fabricated replay', async t => {
+  const { app, receive } = host(t);
+  await duelWs.connect();
   setState({ opponentField: null });
   window.oxarkOnchain.revealHand = async () => 'confirmed';
   let reads = 0;
@@ -138,7 +140,77 @@ test('absent opponent data never produces a fabricated live replay', async t => 
   await flushMicrotasks();
   assert.equal(getState().battleResult, null);
   assert.equal(getState().opponentField, null);
+  assert.equal(reads, 0, 'a healthy relay gets time to deliver the actual hand');
+  t.mock.timers.tick(7999);
+  await flushMicrotasks();
+  assert.equal(reads, 0);
+  t.mock.timers.tick(1);
+  await flushMicrotasks();
   assert.equal(reads, 1, 'chain settlement remains available without a relay replay');
+  assert.match(app.querySelector('#rev-status').textContent, /Replay unavailable/);
+  receive({ type: 'duel_hand_revealed', playerId: 'opponent-player', duel_id: 'duel-a', round: 1,
+    card_ids: [11, 12, 13, 14, 15], action_types: [0, 0, 0, 0, 0] });
+  await flushMicrotasks();
+  assert.equal(getState().battleResult, null, 'a late relay packet cannot restart playback during fallback settlement');
+});
+
+test('a confirmed chain result waits for the current opponent hand and its playback', async t => {
+  const { app, events, receive } = host(t);
+  await duelWs.connect();
+  setState({ opponentField: null });
+  window.oxarkOnchain.revealHand = async () => 'confirmed';
+  let reads = 0;
+  window.oxarkOnchain.getDuelStateFull = async () => {
+    reads++;
+    return { endedAt: 1, winner: 'me', p1RoundWins: 3, p2RoundWins: 0 };
+  };
+  reveal.mount(app);
+  await flushMicrotasks();
+  assert.equal(reads, 0, 'confirmation must not mark an absent replay complete');
+  const packet = { type: 'duel_hand_revealed', playerId: 'opponent-player', duel_id: 'duel-a', round: 1,
+    card_ids: [11, 12, 13, 14, 15], action_types: [0, 0, 0, 0, 0] };
+  receive({ ...packet, round: 2 });
+  receive({ ...packet, duel_id: 'old-duel' });
+  await flushMicrotasks();
+  assert.equal(getState().opponentField, null, 'another round or duel cannot supply this replay');
+  receive(packet);
+  await flushMicrotasks();
+  assert.ok(getState().battleResult);
+  assert.equal(reads, 0, 'chain settlement cannot interrupt a running replay');
+  assert.equal(events.filter(e => e.type === 'nav:loot').length, 0);
+  t.mock.timers.tick(8000);
+  await flushMicrotasks();
+  assert.equal(reads, 0, 'receiving the hand cancels the missing-replay timer');
+  await finishPlayback(t, app);
+  t.mock.timers.tick(800);
+  await flushMicrotasks();
+  assert.equal(reads, 1);
+  assert.equal(events.filter(e => e.type === 'nav:loot').length, 1);
+});
+
+test('an early opponent reveal waits for our confirmed salt before abandoning replay', async t => {
+  const { app, receive } = host(t);
+  await duelWs.connect();
+  setState({ opponentField: null });
+  const transaction = deferred();
+  window.oxarkOnchain.revealHand = () => transaction.promise;
+  let seedReads = 0;
+  window.oxarkOnchain.getRoundSalts = async () => {
+    seedReads++;
+    return seedReads === 1 ? { p1Salt: null, p2Salt: new Uint8Array(32) }
+      : { p1Salt: new Uint8Array(32), p2Salt: new Uint8Array(32) };
+  };
+  window.oxarkOnchain.getDuelStateFull = async () => ({ endedAt: 0, round: 1 });
+  reveal.mount(app);
+  receive({ type: 'duel_hand_revealed', playerId: 'opponent-player', duel_id: 'duel-a', round: 1,
+    card_ids: [11, 12, 13, 14, 15], action_types: [0, 0, 0, 0, 0] });
+  await flushMicrotasks();
+  assert.equal(seedReads, 1);
+  assert.equal(getState().battleResult, null);
+  transaction.resolve('confirmed');
+  await flushMicrotasks();
+  assert.equal(seedReads, 2);
+  assert.ok(getState().battleResult, 'the real verified seed must resume the waiting replay');
 });
 
 for (const outcome of ['success', 'failure']) {

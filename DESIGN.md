@@ -67,9 +67,24 @@ preserving dynamic state, inline transforms, disabled controls and combat hooks.
 
 ## Cards
 
-A 2:3, full-bleed portrait with a low dark gradient, character name, BP/HP/initiative
-and faction marking. Names and stats are real catalog data. Preserve `data-id`,
-`.card-frame`, `.cf-hp .stat-value`, and the combat effect classes.
+**Archive Standard** uses a 2:3 silhouette with an opaque black-green faction cap,
+portrait window, name band and three-column BP/HP/initiative band. Brass edges
+carry the archive identity; artwork does not sit behind the name or statistics.
+The faction is always written in full beside its crest. Rarity has a written label
+and one to four marks, so neither faction nor rarity depends on colour alone.
+Catalog numbers remain visible because the current portraits are shared.
+
+`CardFrameHTML` is the production renderer across collection, hand preparation,
+intel and combat. Names and stats are real catalog data. Preserve `data-id`,
+`.card-frame`, `.cf-hp .stat-value`, and the combat effect classes. Selected actions
+remain outside the card frame, as decisions made by the player rather than fixed
+card attributes. Selected, locked and knocked-out states retain their existing
+game hooks. Face-down rendering includes no faction, number, name or statistics.
+
+Tactical cards have a 140px reading floor. Five-card rows scroll horizontally when
+needed, and collection grids reflow rather than hiding names, faction or stat
+labels. Long names wrap across the solid band. The separate card-design page is
+a design study; changes to gameplay cards belong in the shared production frame.
 
 The repository contains six existing legendary character portraits. This version
 uses those as **representative faction art** for other cards. They are not sixty

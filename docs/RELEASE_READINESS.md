@@ -19,6 +19,14 @@ quote behavior, and reject unavailable services before requesting payment.
 Unit tests cover payer identity, proof age and concurrent in-memory replay claims.
 Actual Redis-backed concurrency/outage testing remains a deployment gate.
 
+Pre-merge checks on 2026-09-07: 101 client tests and 3 relay tests passed;
+86 client JavaScript files parsed, 67 source modules linked, design lint passed,
+and IDL names/arguments matched 52 Rust instructions. Desktop browser review
+covered the card catalog faction filter and 160px long names, then practice hand
+selection/action assignment, sealing, peek, tactical note, combat HP updates and
+the next-round reset. No application console errors were observed in those flows.
+This does not cover real mobile devices or signed wallet operations.
+
 ## Deployment
 
 The relay now needs the repository root as Docker build context so it can include
@@ -46,7 +54,7 @@ The `/health` response reports liveness, not full RPC/Redis readiness.
 - Relay deployment and Redis-backed replay/outage tests; paid AI delivery recovery
   after a confirmed payment. A service failure must not cause a blind second payment.
 - Real mobile/touch, wallet app return, reduced motion and keyboard interaction.
-- Card design visual review and approval, followed by distinct illustrations.
+- Distinct card illustrations and art review (the frame uses existing faction portraits).
 
 ## Card proposal
 
@@ -57,7 +65,13 @@ and a sealed back without identity. Selected actions remain outside the frame.
 It includes six factions, all 60 catalog cards and 160/208/260px widths.
 The six existing portraits are representative faction images, not 60 finished
 illustrations. No wallet or payment adapter is loaded by this page.
-The production card component has not been replaced by this study.
+The production shared card frame now uses the same opaque identity/stat-band
+direction, retaining its existing combat, selection and HP-update hooks. The
+standalone study remains a catalog reference, not a second game renderer.
+
+Local preview uses Vite only for development; Pages still publishes the buildless
+client directly. Install the client lockfile before `npm run dev`. Production does
+not need Vite or an npm install.
 
 ## Rollback
 

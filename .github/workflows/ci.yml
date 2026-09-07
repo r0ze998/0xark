@@ -26,6 +26,10 @@ jobs:
       - name: Run battle mechanics tests
         run: node tests/battle-mechanics.test.js
 
+      - name: Install client development dependencies from lockfile
+        working-directory: solana/client
+        run: npm ci --ignore-scripts
+
       - name: Run all client unit tests
         working-directory: solana/client
         run: npm test

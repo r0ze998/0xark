@@ -15,6 +15,7 @@ import * as duelWs from '../lib/duel-ws.js';
 import { createScreenScope } from '../lib/screen-scope.js';
 
 const POLL_MS = 1500; // getDuelStateFull poll cadence during resolution
+const REPLAY_WAIT_MS = 8000; // bounded relay grace after our reveal confirms
 
 let _generation = 0;
 let _scope = null;
@@ -94,7 +95,7 @@ async function resolveRound(container, s) {
   _uiAddLog?.('Duel connection unavailable. No result has been recorded.', 'log-error');
 }
 
-async function submitReveal(container, s, generation) {
+async function submitReveal(container, s, generation, onConfirmed) {
   if (_revealPending || _revealReady || generation !== _generation || _resolutionAborted || _navigated) return;
   _revealPending = true;
   _revealFailed = false;
@@ -110,6 +111,7 @@ async function submitReveal(container, s, generation) {
   retry.disabled = _revealReady;
   retry.textContent = 'RETRY REVEAL';
   if (!_revealReady) return;
+  onConfirmed?.();
   if (duelWs.isConnected() && s.duelId) {
     const field = s.fieldCards.filter(Boolean);
     duelWs.sendHandRevealed(s.duelId, s.round ?? 1, field.map(c => c.cardId), field.map(c => c.actionType ?? 0), txHash);
@@ -317,10 +319,26 @@ export function mount(container, detail = {}) {
   setState({ phase: 'reveal' });
 
   let opponentField = s.opponentField;
+  let cancelMissingReplay = () => {};
+  let releaseOwnReveal;
+  const ownRevealReady = new Promise(resolve => { releaseOwnReveal = resolve; });
+  _scope.defer(() => releaseOwnReveal(false));
+  const onRevealConfirmed = () => {
+    releaseOwnReveal(true);
+    if (opponentField || window.oxarkPreview) return;
+    // Give a healthy relay time to deliver the hand before allowing settlement
+    // to bypass playback. Missing relay data must still have a bounded fallback.
+    cancelMissingReplay = _scope.timeout(() => {
+      if (generation !== _generation || _resolutionAborted || _navigated || opponentField) return;
+      _playbackDone = true;
+      setStatus(container, 'Replay unavailable — waiting for chain settlement…');
+      maybeStartResolution(container);
+    }, REPLAY_WAIT_MS);
+  };
 
   // Skeleton first (fields render from state, not from the result).
   container.innerHTML = buildHTML(s);
-  bindEvents(container, generation, s);
+  bindEvents(container, generation, s, onRevealConfirmed);
 
   let releaseOpponent;
   const opponentReady = new Promise(resolve => { releaseOpponent = resolve; });
@@ -331,14 +349,17 @@ export function mount(container, detail = {}) {
   // Subscribe to opponent's reveal (update opponentField if not from peek).
   if (!s.opponentField && duelWs.isConnected() && s.duelId) {
     _unsubOppReveal = duelWs.on('duel_hand_revealed', (msg) => {
-      if (generation !== _generation || _resolutionAborted || _navigated) return;
+      if (generation !== _generation || _resolutionAborted || _navigated || _resolutionStarted) return;
       if (msg.playerId !== s.opponentPlayerId) return;
+      if (msg.duel_id !== s.duelId || msg.round !== (s.round ?? 1)) return;
       const oppField = (msg.card_ids ?? []).map((id, i) => ({
         cardId: id,
         actionType: (msg.action_types ?? [])[i] ?? 0,
       }));
       if (oppField.length !== 5 || !oppField.every(c => getCard(c.cardId) && Number.isInteger(c.actionType) && c.actionType >= 0 && c.actionType <= 5)) return;
       _unsubOppReveal();
+      opponentField = oppField;
+      cancelMissingReplay();
       setState({ opponentField: oppField });
       releaseOpponent(oppField);
     });
@@ -349,12 +370,9 @@ export function mount(container, detail = {}) {
   _revealReady = false;
   _revealPending = false;
   if (!opponentField && !window.oxarkPreview) {
-    // Missing relay data cannot justify inventing a replay. Chain settlement
-    // remains available after our reveal, including when the socket is lost.
-    _playbackDone = true;
     setStatus(container, 'Waiting for the opponent’s revealed hand…');
   }
-  submitReveal(container, s, generation);
+  submitReveal(container, s, generation, onRevealConfirmed);
   const round         = s.round ?? 1;
 
   // ── Battle Stage v2: deterministic seed → damageCalc → effect-replay playback ─
@@ -366,7 +384,16 @@ export function mount(container, detail = {}) {
     const p2Field = opponentField.filter(Boolean).map(c => ({ ...getCard(c.cardId), actionType: c.actionType ?? 0 }));
     let result;
     try {
-      const seed = await _playbackSeed(s);
+      let seed;
+      try {
+        seed = await _playbackSeed(s);
+      } catch (err) {
+        // The opponent may reveal while our own wallet prompt is still open.
+        // Retry the verified seed after our successful reveal, including retry.
+        if (window.oxarkPreview || _revealReady) throw err;
+        if (!await ownRevealReady) return;
+        seed = await _playbackSeed(s);
+      }
       result = damageCalc({ p1Field, p2Field, seed });
     } catch {
       if (!window.oxarkPreview) {
@@ -679,10 +706,10 @@ function flipCard(container, id, cardId) {
 }
 
 /* ── Events ─────────────────────────────────────────────────────────── */
-function bindEvents(container, generation, snapshot) {
+function bindEvents(container, generation, snapshot, onConfirmed) {
   // reveal-tx failures surface on the telop; wire the writer so _submitRevealOnChain can use it.
   _uiAddLog = (text, cls) => addTelop(container, text, /error/.test(cls || '') ? 'red' : 'dim');
-  container.querySelector('#rev-retry').addEventListener('click', () => submitReveal(container, snapshot, generation));
+  container.querySelector('#rev-retry').addEventListener('click', () => submitReveal(container, snapshot, generation, onConfirmed));
   container.querySelector('#rev-skip').addEventListener('click', () => {
     if (generation !== _generation || _resolutionAborted || _navigated) return;
     _skipped = true;

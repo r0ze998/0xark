@@ -1,15 +1,17 @@
 # 0xARK browser client
 
 The active game is a buildless ES-module application. GitHub Pages publishes this
-directory as-is; there is no bundler, generated app bundle or npm dependency install.
+directory as-is; production needs no generated app bundle or npm dependency install.
+Vite is used only as the local development/preview server.
 Read the root `DESIGN.md` before UI changes and `docs/F1_SPEC.md` §2 before changing
 battle flow. The visual system is **The Drowned Archive**.
 
 ## Local development and checks
 
-From `solana/client`, with Node 20+ and Python 3:
+From `solana/client`, with Node 20.19+ or 22.12+ and Python 3:
 
 ```sh
+npm ci            # development server dependencies only
 npm run dev       # http://localhost:4200
 npm test          # every test/*.test.js, including async screen regressions
 npm run check    # syntax + static module import/export linking, no execution
