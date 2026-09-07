@@ -1,0 +1,4 @@
+# Generation masters remain preserved at their original image-generation source.
+# WebP derivatives are the versioned browser deliverables.
+*.png
+*.encoding.webp
