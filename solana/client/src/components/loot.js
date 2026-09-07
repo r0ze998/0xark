@@ -1,3 +1,4 @@
+import { getWalletProvider } from '../lib/wallet-provider.js';
 // loot.js — Screen 5: Loot Phase (winner/loser animations, vault update)
 // mount(container, detail) / unmount(container)
 
@@ -406,7 +407,7 @@ async function _setupEngrave(container, s, scope) {
     const ds = await oc.getDuelStateFull(s.duelId);
     if (!scope.active) return;
     if (!ds || !(ds.endedAt > 0)) return;
-    const myPk = window.solana?.publicKey?.toBase58?.() ?? null;
+    const myPk = getWalletProvider()?.publicKey?.toBase58?.() ?? null;
     if (myPk && ds.winner && ds.winner !== myPk) return; // only the on-chain winner engraves
     const block = container.querySelector('#loot-engrave');
     if (block) block.style.display = '';

@@ -1,3 +1,4 @@
+import { getWalletProvider, signWalletMessage } from './wallet-provider.js';
 // duel-ws.js — WebSocket client for the duel/matchmaking protocol
 // Wraps the multiplayer server's room + duel message protocol.
 // All send functions no-op gracefully if WebSocket is not connected.
@@ -41,15 +42,19 @@ export function connect() {
 }
 
 async function _handleAuthChallenge(challenge) {
-  if (!window.solana?.signMessage) {
-    console.warn('[auth] window.solana.signMessage not available — wallet auth skipped');
+  if (!getWalletProvider()?.signMessage) {
+    console.warn('[auth] getWalletProvider().signMessage not available — wallet auth skipped');
     return;
   }
   try {
+    const socket = _ws;
+    const provider = getWalletProvider();
+    const wallet = provider.publicKey.toBase58();
     const encoded = new TextEncoder().encode(challenge);
-    const { signature } = await window.solana.signMessage(encoded, 'utf8');
+    const signature = await signWalletMessage(provider, encoded);
+    if (socket !== _ws || provider.publicKey?.toBase58() !== wallet) return;
     const sigB64 = btoa(String.fromCharCode(...signature));
-    send({ type: 'auth_verify', wallet: window.solana.publicKey.toBase58(), signature: sigB64 });
+    send({ type: 'auth_verify', wallet, signature: sigB64 });
   } catch (e) {
     console.error('[auth] signMessage failed', e);
   }

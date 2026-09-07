@@ -1,3 +1,4 @@
+import { getWalletProvider } from '../lib/wallet-provider.js';
 // interruption.js — Screen 3: INTEL PHASE (spec F1-2). 60s, read-only.
 //
 // This replaces the old "Interruption" screen. Post-commit hand mutation (the
@@ -18,6 +19,7 @@ import { pxIcon } from '../lib/px-icons.js';
 import { showToast, txLink } from '../lib/ui-shared.js';
 import { getState, setState } from '../state/battle-state.js';
 import { createScreenScope } from '../lib/screen-scope.js';
+import { LIVE_PEEK_ENABLED } from '../config.js';
 
 const INTEL_SECS = 60;
 
@@ -94,10 +96,10 @@ function buildHTML() {
     <!-- Right column: intel actions -->
     <aside class="intel-actions" aria-label="Intel actions">
       <div class="intel-action-block">
-        <button class="gba-btn intel-peek-btn" id="intel-peek" ${peeked ? 'disabled' : ''}>
+        <button class="gba-btn intel-peek-btn" id="intel-peek" ${peeked || (!window.oxarkPreview && !LIVE_PEEK_ENABLED) ? 'disabled' : ''}>
           ${pxIcon('eye')} ${peeked ? 'PEEKED' : 'PEEK'}${peeked ? ` ${pxIcon('check')}` : ''}
         </button>
-        <div class="intel-cost label-dim">${window.oxarkPreview ? 'Free practice reveal' : '0.005 SOL'}</div>
+        <div class="intel-cost label-dim">${window.oxarkPreview ? 'Free practice reveal' : LIVE_PEEK_ENABLED ? '0.005 SOL' : 'Peek unavailable · no payment'}</div>
       </div>
 
       <div class="intel-divider"></div>
@@ -172,19 +174,20 @@ async function doPeek(container, scope) {
   try {
     if (window.x402?.scoutPeek) {
       const conn = window.oxarkOnchain?.getConnection?.() ?? null;
-      result = await window.x402.scoutPeek(s.matchId, s.opponentPubkey, window.solana, conn);
+      result = await window.x402.scoutPeek(s.matchId, s.opponentPubkey, getWalletProvider(), conn);
       real = true;
     }
   } catch (err) {
     if (!scope.active) return;
-    console.warn('[Intel] scoutPeek failed, falling back to mock:', err?.message ?? err);
+    console.warn('[Intel] scoutPeek failed:', err?.message ?? err);
     result = null;
   }
   // Payment confirmation may outlive the 60-second phase or a replacement mount.
   // Never apply that old hand to the next round's battle state.
   if (!scope.active) return;
 
-  if (result) {
+  const cards = result?.cards ?? result;
+  if (Array.isArray(cards) && cards.length === 5 && cards.every(c => getCard(c?.cardId ?? c?.id ?? c))) {
     _opponentField = normalizeField(result.cards ?? result);
     setState({ hasPeeked: true, opponentField: _opponentField });
     revealChests(container, scope);
@@ -194,15 +197,10 @@ async function doPeek(container, scope) {
     return;
   }
 
-  // Fallback: never silently — light DEMO mode + mock intel with an explicit hint.
-  _opponentField = mockOpponentField();
-  setState({ hasPeeked: true, opponentField: _opponentField });
-  revealChests(container, scope);
-  btn.innerHTML = `PEEKED ${pxIcon('check')}`;
-  lightDemo('scoutPeek unavailable — showing mock intel');
-  const stateEl = container.querySelector('#intel-opp-state');
-  if (stateEl) stateEl.innerHTML = 'MOCK INTEL (demo)';
-  showToast('MOCK INTEL (demo) — x402 peek offline', 'info');
+  // Failed or malformed intelligence must never become battle state.
+  btn.disabled = !LIVE_PEEK_ENABLED;
+  btn.innerHTML = `${pxIcon('eye')} PEEK`;
+  showToast('Peek unavailable. The opponent hand remains sealed.', 'error');
 }
 
 // Per-slot chest CRACK-lite: swap each sealed chest for the face-up opponent
@@ -263,8 +261,7 @@ async function doAdvice(container, scope) {
   } catch (err) {
     if (!scope.active) return;
     console.warn('[Intel] AI advice failed:', err?.message ?? err);
-    panel.textContent = 'MOCK ADVICE (demo): balance FLAME up front, hold VOID to counter BARRIER. Advice service offline.';
-    lightDemo('AI advice unavailable — mock advice shown');
+    panel.textContent = 'Advice unavailable. Your sealed hand is unchanged. If you signed a payment, check its transaction before trying again.';
     btn.disabled = false;
     btn.innerHTML = `${pxIcon('chip')} AI ADVICE`;
   }
@@ -285,18 +282,6 @@ function normalizeField(cards) {
     cardId: c.cardId ?? c.id ?? c,
     actionType: c.actionType ?? 0,
   }));
-}
-
-function mockOpponentField() {
-  // Deterministic-ish mock hand for demo (5 distinct card ids).
-  return [21, 22, 23, 24, 25].map(id => ({ cardId: id, actionType: 2 }));
-}
-
-// Forward-compatible: F1-7 (PR-G) adds window.oxarkUI.setDemoMode + txLink. Use
-// them when present; otherwise degrade to a plain toast so nothing is silent.
-function lightDemo(reason) {
-  if (window.oxarkUI?.setDemoMode) window.oxarkUI.setDemoMode(reason);
-  else console.info('[DEMO]', reason);
 }
 
 function showTxToast(label, sig) {

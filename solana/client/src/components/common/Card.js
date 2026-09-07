@@ -15,6 +15,8 @@ export const FACTION_COLORS = [
   'var(--clan-engineer)',  // Engineer
 ];
 export const RARITY_LABELS  = ['COM','UNC','RARE','LGD'];
+const RARITY_NAMES = ['Common', 'Uncommon', 'Rare', 'Legendary'];
+const FACTION_CRESTS = ['barrier', 'coin', 'flame', 'eye', 'shadow', 'chip'];
 // ActionTypes: plain-text NAMES for aria/text contexts; ICONS are px-icon SVG;
 // LABELS combine both for HTML contexts (never put SVG in an attribute).
 export const ACTION_KEYS    = ['crystal','barrier','flame','storm','shadow','void'];
@@ -93,9 +95,8 @@ export function CardHTML({
 }
 
 /**
- * Returns an HTML string for a full-size framed card tile (vault display).
- * Uses rarity-specific frame PNGs as background; art window shows the faction
- * abbr as an interim placeholder until real card art arrives.
+ * Shared Archive Standard frame for collection, preparation and combat.
+ * Opaque identity/name/stat bands remain readable over representative faction art.
  * Same props as CardHTML(); compact is ignored (framed cards are always full-size).
  */
 export function CardFrameHTML({
@@ -114,14 +115,15 @@ export function CardFrameHTML({
   const rKey    = RARITY_KEYS[card.rarity]   ?? 'c';
   const cColor  = FACTION_COLORS[card.faction] ?? 'var(--text-cream)';
   const rColor  = RARITY_COLORS[card.rarity]  ?? 'var(--rarity-c)';
-  const emoji   = FACTION_ABBR[card.faction]  ?? '?';
+  const faction = FACTION_NAMES[card.faction] ?? 'Unknown';
+  const rarity  = RARITY_NAMES[card.rarity] ?? RARITY_NAMES[0];
   const name    = CARD_NAMES[id] ?? `Card #${id}`;
   const hp      = hpCurrent ?? card.hp;
 
   const artwork = card.imageUrl ?? CARD_ART_URLS[(card.faction + 1) * 10];
   const artHtml = artwork
-    ? `<img src="${artwork}" alt="${name}" class="card-art-img" decoding="async" loading="lazy" />`
-    : `<div class="card-art-placeholder">${emoji}</div>`;
+    ? `<img src="${artwork}" alt="" class="card-art-img" decoding="async" loading="lazy" />`
+    : `<div class="card-art-placeholder">${FACTION_ABBR[card.faction] ?? '?'}</div>`;
 
   const classes = [
     'card-frame',
@@ -133,14 +135,15 @@ export function CardFrameHTML({
 
   return `<div class="${classes}" data-id="${id}"
     style="--cc:${cColor};--rc:${rColor};"
-    role="img" aria-label="${name}, ${FACTION_NAMES[card.faction]}, ${RARITY_LABELS[card.rarity]}, BP ${card.bp}, HP ${hp}, initiative ${card.ini}${!owned ? ' (not owned)' : ''}">
-    <div class="card-identity"><span>${FACTION_NAMES[card.faction]}</span><span class="card-rarity-label">${RARITY_LABELS[card.rarity]}</span></div>
+    role="img" aria-label="${name}, ${faction}, ${rarity}, BP ${card.bp}, HP ${hp}, initiative ${card.ini}${!owned ? ' (not owned)' : ''}${selected ? ' (selected)' : ''}${dead ? ' (knocked out)' : ''}">
+    <div class="card-identity"><span class="card-faction-crest" aria-hidden="true">${pxIcon(FACTION_CRESTS[card.faction] ?? 'star')}</span><span>${faction}</span></div>
     <div class="card-catalog-no">No. ${String(id).padStart(2, '0')}</div>
     <div class="clan-bar" style="background:var(--cc);"></div>
     <div class="rarity-bar" style="background:var(--rc);"></div>
     <div class="name-banner">${name}</div>
     <div class="art-window">
       ${artHtml}
+      <span class="card-rarity-label"><span class="card-rarity-marks" aria-hidden="true">${'|'.repeat(card.rarity + 1)}</span>${rarity}</span>
     </div>
     <div class="stats-panel">
       <span class="stat-badge"><span class="stat-label">BP</span><span class="stat-value">${card.bp}</span></span>

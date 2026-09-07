@@ -27,7 +27,8 @@ import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { rooms, connection, COMMITMENT, RPC_URL, send, broadcast, rateLimits, gcRoundClaims } from './state.js';
 import { HANDLERS, _handleAuthVerify } from './handlers/index.js';
 import { validateMemo, MOVE_ENDPOINTS } from './memo-validator.js';
-import { isSigUsed, markSigUsed, isNonceUsed, markNonceUsed, gcMemory } from './redis-store.js';
+import { isSigUsed, isNonceUsed, consumePayment, gcMemory } from './redis-store.js';
+import { paymentIdentityError } from './payment-identity.js';
 
 const PORT = process.env.PORT || 3500;
 
@@ -100,7 +101,7 @@ const X402_REQUIRE_MEMO = process.env.X402_REQUIRE_MEMO !== 'false';
 // Outside development (NODE_ENV=development), missing required vars are fatal.
 // Set NODE_ENV=development explicitly to enable demo mode (payments skipped).
 
-const REQUIRED_PROD_ENVS = ['TREASURY_PUBKEY', 'SOLANA_RPC', 'REDIS_URL'];
+const REQUIRED_PROD_ENVS = ['TREASURY_PUBKEY', 'SOLANA_RPC_URL', 'REDIS_URL'];
 
 function validateEnv() {
   const isDev = process.env.NODE_ENV === 'development';
@@ -211,6 +212,8 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
         commitment: 'finalized', maxSupportedTransactionVersion: 0,
       });
       if (!tx?.meta) return { ok: false, error: 'transaction not found' };
+      const identityError = paymentIdentityError(tx, playerPubkeyStr);
+      if (identityError) return { ok: false, error: identityError };
       const memoGate = await _validateMemoNonce(tx, requestPath);
       if (!memoGate.ok) return { ok: false, error: memoGate.error };
       const memoNonce = memoGate.nonce;
@@ -218,8 +221,7 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
       if (received <= 0) return { ok: false, error: 'payment not directed to treasury' };
       if (received >= expectedLamports) {
         console.log(`[x402] Verified: ${amountSol} SOL`);
-        await markSigUsed(sigHint);
-        if (memoNonce) await markNonceUsed(memoNonce, requestPath);
+        if (!await consumePayment(sigHint, memoNonce, requestPath)) return { ok: false, error: 'payment already used' };
         return { ok: true, sig: sigHint, received, memo: extractMemo(tx) };
       }
       return { ok: false, error: 'insufficient payment' };
@@ -239,14 +241,14 @@ async function _verifyX402Payment(playerPubkeyStr, amountSol, requestPath, sigHi
           commitment: 'finalized', maxSupportedTransactionVersion: 0,  // H2
         });
         if (!tx?.meta) continue;
+        if (paymentIdentityError(tx, playerPubkeyStr)) continue;
         const memoGate = await _validateMemoNonce(tx, requestPath);
         if (!memoGate.ok) return { ok: false, error: memoGate.error };
         const memoNonce = memoGate.nonce;
         const received = _sumTreasuryReceived(tx, knownAddrs);
         if (received >= expectedLamports) {
           console.log(`[x402] Verified: ${amountSol} SOL from ${playerPubkeyStr}`);
-          await markSigUsed(sigInfo.signature);
-          if (memoNonce) await markNonceUsed(memoNonce, requestPath);
+          if (!await consumePayment(sigInfo.signature, memoNonce, requestPath)) return { ok: false, error: 'payment already used' };
           return { ok: true, sig: sigInfo.signature, received, memo: extractMemo(tx) };
         }
       }
@@ -354,14 +356,15 @@ const httpServer = http.createServer(async (req, res) => {
   const cors = () => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Payment, X-Player-Pubkey');
+    res.setHeader('Access-Control-Expose-Headers', 'PAYMENT-REQUIRED, X-Payment-Recipient, X-Payment-Amount, X-Payment-Network, Retry-After');
   };
   if (req.method === 'OPTIONS') { cors(); res.writeHead(204); res.end(); return; }
 
   if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
     cors();
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', rooms: rooms.size, connections: wss?.clients?.size ?? 0, rpc: RPC_URL }));
+    res.end(JSON.stringify({ status: 'ok', network: SOLANA_NETWORK, mode: process.env.NODE_ENV === 'development' ? 'development' : 'production', rooms: rooms.size, connections: wss?.clients?.size ?? 0 }));
     return;
   }
 
@@ -387,6 +390,14 @@ const httpServer = http.createServer(async (req, res) => {
     // Phase 14: AI move delegation
     '/x402/ai-move': AI_MOVE_PRICE_SOL,
   };
+  // Do not sell a receipt for a feature without a delivery implementation.
+  // Move receipts and AI responses have real handlers; other routes do not.
+  if (req.method === 'POST' && X402_ROUTES[req.url] !== undefined
+      && !MOVE_ENDPOINTS.has(req.url)
+      && !['/x402/ai-move', '/x402/ai-strategy-advice'].includes(req.url)) {
+    cors();
+    return _json(res, 503, { ok: false, error: 'This service is not available. No payment requested.' });
+  }
   // Early 503 for AI endpoints when ANTHROPIC_API_KEY is not configured
   if (req.method === 'POST'
       && (req.url === '/x402/ai-move' || req.url === '/x402/ai-strategy-advice')
@@ -421,12 +432,12 @@ const httpServer = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ ok: false, error: 'playerPubkey required' }));
       return;
     }
-    if (playerPubkey && !signature) {
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: false, error: 'signature required' }));
+    // Quotes must never search or consume an earlier wallet transaction.
+    if (!signature) {
+      _paymentRequired402(res, amountLamports, 'Payment required');
       return;
     }
-    const result = await _verifyX402Payment(playerPubkey, amountSol, req.url, signature || null);
+    const result = await _verifyX402Payment(playerPubkey, amountSol, req.url, signature);
 
     if (!result.ok) {
       _paymentRequired402(res, amountLamports, result.error);
@@ -445,7 +456,7 @@ const httpServer = http.createServer(async (req, res) => {
 let wss;
 
 httpServer.listen(PORT, () => {
-  console.log(`0xARK Multiplayer Server — HTTP+WS on port ${PORT}`);
+  console.log(`0xARK Multiplayer Server — listening on ${httpServer.address().port}`);
   console.log(`Solana RPC: ${RPC_URL}`);
   console.log(`x402 memo binding: ${X402_REQUIRE_MEMO ? 'REQUIRED' : 'disabled (set X402_REQUIRE_MEMO=false to disable)'}`);
   console.log('All game state is on-chain. Server holds no game authority.');

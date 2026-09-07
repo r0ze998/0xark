@@ -1,3 +1,4 @@
+import { getWalletProvider } from '../lib/wallet-provider.js';
 // AUTO-SPLIT from onchain.js (YKK-15) — pure move, function bodies byte-identical.
 // See PR: onchain.js -> src/onchain/{pda,readers,tx,rpc}.js + index.js shim.
 
@@ -24,7 +25,7 @@ function setMagicBlockMode(enabled) { _mbMode = !!enabled; }
  * @returns {Promise<string>}  transaction signature
  */
 async function buildAndSend(keys, data, computeUnits = COMPUTE_BUDGET.default) {
-  if (!window.solana || !window.solana.isConnected) {
+  if (!getWalletProvider() || !getWalletProvider().isConnected) {
     throw new Error('Phantom wallet not connected');
   }
   const conn = getConnection();
@@ -36,7 +37,7 @@ async function buildAndSend(keys, data, computeUnits = COMPUTE_BUDGET.default) {
 
   const tx = new solanaWeb3.Transaction();
   tx.add(heapIx, limitIx, priceIx, ix); // compute budget (heap + limit + price) must come first
-  tx.feePayer = window.solana.publicKey;
+  tx.feePayer = getWalletProvider().publicKey;
 
   const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
   tx.recentBlockhash = blockhash;
@@ -57,7 +58,7 @@ async function buildAndSend(keys, data, computeUnits = COMPUTE_BUDGET.default) {
     throw new Error(JSON.stringify(sim.value.err));
   }
 
-  const signed = await window.solana.signTransaction(tx);
+  const signed = await getWalletProvider().signTransaction(tx);
   const sig = await conn.sendRawTransaction(signed.serialize(), {
     skipPreflight: true, // already simulated above
     maxRetries: 5,
@@ -70,7 +71,7 @@ async function buildAndSend(keys, data, computeUnits = COMPUTE_BUDGET.default) {
 // Phantom approval). Same heap/compute-budget prelude and preflight simulation.
 // Used by settleDuelHistory to pack per-card settle instructions together.
 async function buildAndSendMulti(ixSpecs, computeUnits = COMPUTE_BUDGET.default) {
-  if (!window.solana || !window.solana.isConnected) {
+  if (!getWalletProvider() || !getWalletProvider().isConnected) {
     throw new Error('Phantom wallet not connected');
   }
   const conn = getConnection();
@@ -84,7 +85,7 @@ async function buildAndSendMulti(ixSpecs, computeUnits = COMPUTE_BUDGET.default)
   for (const { keys, data } of ixSpecs) {
     tx.add(new solanaWeb3.TransactionInstruction({ keys, programId, data }));
   }
-  tx.feePayer = window.solana.publicKey;
+  tx.feePayer = getWalletProvider().publicKey;
 
   const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
   tx.recentBlockhash = blockhash;
@@ -102,7 +103,7 @@ async function buildAndSendMulti(ixSpecs, computeUnits = COMPUTE_BUDGET.default)
     throw new Error(JSON.stringify(sim.value.err));
   }
 
-  const signed = await window.solana.signTransaction(tx);
+  const signed = await getWalletProvider().signTransaction(tx);
   const sig = await conn.sendRawTransaction(signed.serialize(), {
     skipPreflight: true,
     maxRetries: 5,
@@ -120,7 +121,7 @@ async function buildAndSendMulti(ixSpecs, computeUnits = COMPUTE_BUDGET.default)
 //   • Sends via Magic Router connection (auto-selects ER or base layer)
 //   • No maxRetries — ER confirms faster; caller can retry on timeout
 async function buildAndSendViaMagicRouter(keys, data, computeUnits = COMPUTE_BUDGET.default) {
-  if (!window.solana || !window.solana.isConnected) {
+  if (!getWalletProvider() || !getWalletProvider().isConnected) {
     throw new Error('Phantom wallet not connected');
   }
   if (!window.oxarkMB) {
@@ -133,7 +134,7 @@ async function buildAndSendViaMagicRouter(keys, data, computeUnits = COMPUTE_BUD
 
   const tx = new solanaWeb3.Transaction();
   tx.add(heapIx, limitIx, priceIx, ix);
-  tx.feePayer = window.solana.publicKey;
+  tx.feePayer = getWalletProvider().publicKey;
 
   // Use Magic Router's account-aware blockhash (routes to ER if accounts are delegated)
   const writableAccts = window.oxarkMB.getWritableAccounts(tx);
@@ -141,7 +142,7 @@ async function buildAndSendViaMagicRouter(keys, data, computeUnits = COMPUTE_BUD
   tx.recentBlockhash = bh.blockhash;
   tx.lastValidBlockHeight = bh.lastValidBlockHeight;
 
-  const signed = await window.solana.signTransaction(tx);
+  const signed = await getWalletProvider().signTransaction(tx);
   const mbConn = window.oxarkMB.getConnection();
   const sig = await mbConn.sendRawTransaction(signed.serialize(), { skipPreflight: true });
   await mbConn.confirmTransaction(
@@ -261,7 +262,7 @@ function splitPubkeyForZk(pubkey) {
  * @param {number}   pricePerQuery    — lamports per intel query
  */
 async function registerAgent(agentId, nameHash, strategyHash, endpointHash, pricePerQuery) {
-  const owner = window.solana.publicKey;
+  const owner = getWalletProvider().publicKey;
   const [agentPDA] = findAgentPDA(agentId);
 
   // disc(8) + agent_id(4) + name_hash(32) + strategy_hash(32) + endpoint_hash(32) + price_per_query(8)
@@ -283,7 +284,7 @@ async function registerAgent(agentId, nameHash, strategyHash, endpointHash, pric
 
 // ─── Instruction: deactivate_agent ────────────────────────────────────────────
 async function deactivateAgent(agentId) {
-  const owner = window.solana.publicKey;
+  const owner = getWalletProvider().publicKey;
   const [agentPDA] = findAgentPDA(agentId);
 
   // disc(8) + agent_id(4)
@@ -306,7 +307,7 @@ async function deactivateAgent(agentId) {
  * @param {number} durationSeconds   — season length in seconds
  */
 async function createSeason(seasonId, entryFee, maxPlayers, durationSeconds) {
-  const authority = window.solana.publicKey;
+  const authority = getWalletProvider().publicKey;
   const [seasonPDA] = findSeasonPDA(seasonId);
 
   // disc(8) + season_id(4) + entry_fee(8) + max_players(4) + duration_seconds(8)
@@ -327,7 +328,7 @@ async function createSeason(seasonId, entryFee, maxPlayers, durationSeconds) {
 
 // ─── Instruction: end_season ──────────────────────────────────────────────────
 async function endSeason(seasonId) {
-  const authority = window.solana.publicKey;
+  const authority = getWalletProvider().publicKey;
   const [seasonPDA] = findSeasonPDA(seasonId);
 
   // disc(8) + season_id(4)
@@ -350,8 +351,8 @@ async function endSeason(seasonId) {
  *   3. set_authority (SPL Token) — burn mint authority → provably 1-of-1
  */
 async function mintCardWithMetadata(cardId) {
-  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
-  const player        = window.solana.publicKey;
+  if (!getWalletProvider()?.isConnected) throw new Error('Phantom not connected');
+  const player        = getWalletProvider().publicKey;
   const splToken      = new solanaWeb3.PublicKey(SPL_TOKEN_PROGRAM_ID);
   const assocToken    = new solanaWeb3.PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID);
   const metaProgram   = new solanaWeb3.PublicKey(TOKEN_METADATA_PROGRAM_ID);
@@ -438,7 +439,7 @@ async function mintCardWithMetadata(cardId) {
     throw new Error(JSON.stringify(sim.value.err));
   }
 
-  const signed = await window.solana.signTransaction(tx);
+  const signed = await getWalletProvider().signTransaction(tx);
   const sig = await conn.sendRawTransaction(signed.serialize(), { skipPreflight: true, maxRetries: 5 });
   await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
   return sig;
@@ -448,7 +449,7 @@ async function mintCardWithMetadata(cardId) {
 // Sent to base layer. Delegates game + player_state PDAs to the MagicBlock ER.
 // Account order matches DelegateSession in delegate_session.rs.
 async function delegateSession(gameId) {
-  const payer = window.solana.publicKey;
+  const payer = getWalletProvider().publicKey;
   const [gamePDA]    = findGamePDA(gameId);
   const [playerPDA]  = findPlayerPDA(gameId, payer);
 
@@ -484,7 +485,7 @@ async function delegateSession(gameId) {
 // The ER commits pending state diffs to base layer then restores account ownership.
 // Account order matches UndelegateSession in undelegate_session.rs.
 async function undelegateSession(gameId) {
-  const payer = window.solana.publicKey;
+  const payer = getWalletProvider().publicKey;
   const [gamePDA]        = findGamePDA(gameId);
   const [playerPDA]      = findPlayerPDA(gameId, payer);
   const magicContextId   = new solanaWeb3.PublicKey('MagicContext1111111111111111111111111111111');
@@ -520,8 +521,8 @@ function _saveListings(arr) {
   try { localStorage.setItem(_LISTINGS_KEY, JSON.stringify(arr)); } catch(e) {}
 }
 async function listCard(cardId, priceSol) {
-  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
-  const seller = window.solana.publicKey.toBase58();
+  if (!getWalletProvider()?.isConnected) throw new Error('Phantom not connected');
+  const seller = getWalletProvider().publicKey.toBase58();
   const listing = { id: Date.now(), cardId, seller, priceSol, ts: Date.now() };
   const arr = _loadListings();
   arr.push(listing);
@@ -529,8 +530,8 @@ async function listCard(cardId, priceSol) {
   return listing.id;
 }
 async function buyCard(listingId) {
-  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
-  const buyer = window.solana.publicKey.toBase58();
+  if (!getWalletProvider()?.isConnected) throw new Error('Phantom not connected');
+  const buyer = getWalletProvider().publicKey.toBase58();
   const arr = _loadListings();
   const idx = arr.findIndex(l => l.id === listingId);
   if (idx < 0) throw new Error('Listing not found');
@@ -540,8 +541,8 @@ async function buyCard(listingId) {
   return listing;
 }
 async function cancelListing(listingId) {
-  if (!window.solana?.isConnected) throw new Error('Phantom not connected');
-  const seller = window.solana.publicKey.toBase58();
+  if (!getWalletProvider()?.isConnected) throw new Error('Phantom not connected');
+  const seller = getWalletProvider().publicKey.toBase58();
   const arr = _loadListings();
   const idx = arr.findIndex(l => l.id === listingId && l.seller === seller);
   if (idx < 0) throw new Error('Listing not found or not yours');
@@ -593,7 +594,7 @@ async function registerCard(cardId) {
 // YKK-38: prize_pool is the program PDA; only opsTreasury is an external address.
 // opsTreasuryStr: base58 pubkey of the ops treasury account.
 async function registerWaitlist(opsTreasuryStr) {
-  const player = window.solana.publicKey;
+  const player = getWalletProvider().publicKey;
   const [playerStatePDA] = findPlayerStatePDA(player);
   const [gameWorldPDA]   = findGameWorldPDA();
   const [prizePool]      = findPrizePoolPDA();
@@ -619,7 +620,7 @@ async function registerWaitlist(opsTreasuryStr) {
 // passes it (Rare/Legendary remain blocked on-chain). Account order must match
 // BurnCard: card_mint_record sits between card_history and season_stats.
 async function burnCard(cardMintStr) {
-  const owner    = window.solana.publicKey;
+  const owner    = getWalletProvider().publicKey;
   const mintPK   = new solanaWeb3.PublicKey(cardMintStr);
   const [ata]       = findAssociatedTokenAddress(owner, mintPK);
   const [histPDA]   = findCardBattleHistoryPDA(mintPK);
@@ -655,7 +656,7 @@ async function burnCard(cardMintStr) {
 // in its CardMintRecord PDA, gated on the card's on-chain `wins`. The holder must own
 // the NFT. First step is Common→Uncommon only. cardMintStr: base58 mint pubkey.
 async function promoteCard(cardMintStr) {
-  const owner  = window.solana.publicKey;
+  const owner  = getWalletProvider().publicKey;
   const mintPK = new solanaWeb3.PublicKey(cardMintStr);
   const [ata]           = findAssociatedTokenAddress(owner, mintPK);
   const [recordPDA]     = findCardMintRecordPDA(mintPK);
@@ -687,7 +688,7 @@ async function promoteCard(cardMintStr) {
 }
 
 async function settleDuelHistory(duelIdStr, cardMintStrs) {
-  const player = window.solana.publicKey;
+  const player = getWalletProvider().publicKey;
   const duelId = new solanaWeb3.PublicKey(duelIdStr);
   const [duelPDA]   = findDuelPDA(duelId);
   const [settlePDA] = findDuelSettleRecordPDA(duelId, player);
@@ -732,7 +733,7 @@ async function settleDuelHistory(duelIdStr, cardMintStrs) {
 // this player takes the duel. Winner/ended_at are set exactly like a played-out
 // decision, so settleDuelHistory works on timeout wins too.
 async function claimTimeoutWin(duelIdStr) {
-  const claimant = window.solana.publicKey;
+  const claimant = getWalletProvider().publicKey;
   const duelId = new solanaWeb3.PublicKey(duelIdStr);
   const [duelPDA] = findDuelPDA(duelId);
 
@@ -759,7 +760,7 @@ async function claimTimeoutWin(duelIdStr) {
 // YKK-32: stat-imprint rarity cap is read on-chain from the card's CardMintRecord
 // PDA; the caller no longer passes a rarity argument (it was spoofable).
 async function grantImprint(cardMintStr, imprintKeyVal, isCosmetic, duelId) {
-  const payer = window.solana.publicKey;
+  const payer = getWalletProvider().publicKey;
   const mintPK = new solanaWeb3.PublicKey(cardMintStr);
   const [histPDA]   = findCardBattleHistoryPDA(mintPK);
   const [recordPDA] = findCardMintRecordPDA(mintPK);
@@ -786,7 +787,7 @@ async function grantImprint(cardMintStr, imprintKeyVal, isCosmetic, duelId) {
 // Claims tier-proportional prize from the prize pool after game ends.
 // YKK-38: prize_pool is the program PDA; no external address argument needed.
 async function claimPrizeV2() {
-  const player = window.solana.publicKey;
+  const player = getWalletProvider().publicKey;
   const [playerStatePDA] = findPlayerStatePDA(player);
   const [gameWorldPDA]   = findGameWorldPDA();
   const [prizePool]      = findPrizePoolPDA();
@@ -814,7 +815,7 @@ async function claimPrizeV2() {
 /// @param {number} [hallTier]  — 0–2 (default 0)
 /// @param {bigint} [ante]      — ante in lamports (default 0n)
 async function initDuel(duelIdStr, player1Str, player2Str, hallTier = 0, ante = 0n) {
-  const authority = window.solana?.publicKey;
+  const authority = getWalletProvider()?.publicKey;
   if (!authority) throw new Error('Wallet not connected');
 
   const duelIdPK  = new solanaWeb3.PublicKey(duelIdStr);
@@ -847,7 +848,7 @@ async function initDuel(duelIdStr, player1Str, player2Str, hallTier = 0, ante = 
 /// @param {Uint8Array}   proofC         — 64 bytes
 /// @param {Uint8Array[]} publicSignals  — 4 × 32-byte arrays: [commitment, round, pubkey_lo, pubkey_hi]
 async function commitHand(duelIdStr, round, proofA, proofB, proofC, publicSignals) {
-  const player = window.solana?.publicKey;
+  const player = getWalletProvider()?.publicKey;
   if (!player) throw new Error('Wallet not connected');
 
   const duelIdPK = new solanaWeb3.PublicKey(duelIdStr);
@@ -882,8 +883,8 @@ async function commitHand(duelIdStr, round, proofA, proofB, proofC, publicSignal
 /// @param {bigint[]}   cardIds   — 10 u64s (5 card IDs × 2 slots per card, or 10 card positions)
 /// @param {Uint8Array} salt      — 32 bytes
 async function revealHand(duelIdStr, round, cardIds, salt) {
-  if (!window.solana || !window.solana.isConnected) throw new Error('Phantom wallet not connected');
-  const player = window.solana.publicKey;
+  if (!getWalletProvider() || !getWalletProvider().isConnected) throw new Error('Phantom wallet not connected');
+  const player = getWalletProvider().publicKey;
 
   const duelIdPK = new solanaWeb3.PublicKey(duelIdStr);
   const [duelPDA] = findDuelPDA(duelIdPK);
@@ -937,7 +938,7 @@ async function revealHand(duelIdStr, round, cardIds, salt) {
     throw new Error(JSON.stringify(sim.value.err));
   }
 
-  const signed = await window.solana.signTransaction(tx);
+  const signed = await getWalletProvider().signTransaction(tx);
   const sig = await conn.sendRawTransaction(signed.serialize(), {
     skipPreflight: true,
     maxRetries: 5,
@@ -999,7 +1000,7 @@ async function claimBattleLoot(duelId, loserPubkeyStr) {
 }
 
 async function checkLegendaryV2() {
-  const player = window.solana.publicKey;
+  const player = getWalletProvider().publicKey;
   const [playerStatePDA] = findPlayerStatePDA(player);
   const [gameWorldPDA]   = findGameWorldPDA();
 
@@ -1022,7 +1023,7 @@ async function checkLegendaryV2() {
 // change), so this currently just sets energy=max; wire the commit_hand gate to
 // make it meaningful.
 async function refillEnergy() {
-  const player           = window.solana.publicKey;
+  const player           = getWalletProvider().publicKey;
   const [playerStatePDA] = findPlayerStatePDA(player);
   const [gameWorldPDA]   = findGameWorldPDA();
 
@@ -1043,7 +1044,7 @@ async function refillEnergy() {
 }
 
 async function buyPack(packType) {
-  const buyer         = window.solana.publicKey;
+  const buyer         = getWalletProvider().publicKey;
   const [playerStatePDA] = findPlayerStatePDA(buyer);
   const [gameWorldPDA]   = findGameWorldPDA();
   const [prizePool]      = findPrizePoolPDA(); // YKK-38: PDA vault
@@ -1098,7 +1099,7 @@ async function updateShopParams({
   thresholdSeconds    = null,
 } = {}) {
   const [gameWorldPDA] = findGameWorldPDA();
-  const admin          = window.solana.publicKey;
+  const admin          = getWalletProvider().publicKey;
 
   // Each Option<u32> = 1 (present) + 4 = 5 bytes, or 1 byte (None).
   // Each Option<u64> = 1 + 8 = 9 bytes, or 1 byte.
@@ -1130,7 +1131,7 @@ async function updateShopParams({
 }
 
 async function createListing(cardId, priceLamports) {
-  const seller          = window.solana.publicKey;
+  const seller          = getWalletProvider().publicKey;
   const [sellerStatePDA] = findPlayerStatePDA(seller);
   const [listingPDA]     = findTradeListingPDA(seller, cardId);
 
@@ -1149,7 +1150,7 @@ async function createListing(cardId, priceLamports) {
 }
 
 async function acceptListing(cardId, sellerPubkeyStr) {
-  const buyer           = window.solana.publicKey;
+  const buyer           = getWalletProvider().publicKey;
   const sellerPK        = new solanaWeb3.PublicKey(sellerPubkeyStr);
   const [buyerStatePDA]  = findPlayerStatePDA(buyer);
   const [listingPDA]     = findTradeListingPDA(sellerPK, cardId);
@@ -1170,7 +1171,7 @@ async function acceptListing(cardId, sellerPubkeyStr) {
 }
 
 async function cancelListingOnchain(cardId) {
-  const seller          = window.solana.publicKey;
+  const seller          = getWalletProvider().publicKey;
   const [sellerStatePDA] = findPlayerStatePDA(seller);
   const [listingPDA]     = findTradeListingPDA(seller, cardId);
 

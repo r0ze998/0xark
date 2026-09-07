@@ -1,14 +1,18 @@
 FROM node:22-slim
 
-WORKDIR /app
+WORKDIR /app/multiplayer
 
-COPY package.json package-lock.json ./
-RUN npm install --omit=dev
+COPY multiplayer/package.json multiplayer/package-lock.json ./
+RUN npm ci --omit=dev
 
-COPY server.js state.js state-derivation.js memo-validator.js ./
-COPY handlers/ ./handlers/
+COPY multiplayer/*.js ./
+COPY multiplayer/handlers/ ./handlers/
+COPY tools/ai-agent/package.json tools/ai-agent/package-lock.json /app/tools/ai-agent/
+RUN npm ci --omit=dev --prefix /app/tools/ai-agent
+COPY tools/ai-agent/src/ /app/tools/ai-agent/src/
 
 ENV PORT=8080
+ENV NODE_ENV=production
 EXPOSE 8080
 
 CMD ["node", "server.js"]

@@ -17,11 +17,34 @@ function host(t, { practice = false } = {}) {
   return { app, body, events };
 }
 
+test('unavailable live peek requests no payment and leaves the opponent sealed', async t => {
+  const { app } = host(t);
+  let calls = 0;
+  window.x402 = { scoutPeek: () => { calls++; } };
+  intel.mount(app);
+  await app.querySelector('#intel-peek').click();
+  assert.equal(calls, 0);
+  assert.equal(getState().hasPeeked, false);
+  assert.equal(getState().opponentField, null);
+});
+
+test('failed live advice shows failure without inventing tactical information', async t => {
+  const { app } = host(t);
+  window.x402 = { payAiStrategyAdvice: async () => { throw new Error('offline'); } };
+  intel.mount(app);
+  await app.querySelector('#intel-advice').click();
+  assert.match(app.querySelector('#intel-advice-panel').textContent, /Advice unavailable/);
+  assert.doesNotMatch(app.querySelector('#intel-advice-panel').textContent, /MOCK|FLAME|VOID/);
+  assert.equal(getState().hasPeeked, false);
+});
+
 test('a paid peek completing after timeout cannot write the next round opponent hand', async t => {
   const { app, events } = host(t);
   const payment = deferred();
   window.x402 = { scoutPeek: () => payment.promise };
   intel.mount(app);
+  // Exercise the lifecycle of a service-enabled peek; public live UI is gated.
+  app.querySelector('#intel-peek').disabled = false;
   const pending = app.querySelector('#intel-peek').click();
   t.mock.timers.tick(60_000);
   assert.equal(events.filter(event => event.type === 'nav:reveal').length, 1);
@@ -33,7 +56,7 @@ test('a paid peek completing after timeout cannot write the next round opponent 
   assert.equal(getState().round, 2);
   assert.equal(getState().hasPeeked, false);
   assert.equal(getState().opponentField, null);
-  assert.equal(app.querySelector('#intel-peek').disabled, false);
+  assert.equal(app.querySelector('#intel-peek').disabled, true);
   t.mock.timers.tick(1000);
   assert.equal(app.querySelector('#intel-chest-0').outerHTML, undefined);
 });
@@ -43,6 +66,7 @@ test('a failed old peek cannot apply mock intel to a replacement mount', async t
   const payment = deferred();
   window.x402 = { scoutPeek: () => payment.promise };
   intel.mount(app);
+  app.querySelector('#intel-peek').disabled = false;
   const pending = app.querySelector('#intel-peek').click();
   intel.mount(app);
   payment.reject(new Error('payment unavailable'));

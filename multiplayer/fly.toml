@@ -1,5 +1,5 @@
 # fly.toml — 0xARK Multiplayer + x402 relay
-# Deploy: fly deploy (from multiplayer/ dir)
+# Deploy from repository root: fly deploy --config multiplayer/fly.toml --dockerfile multiplayer/Dockerfile
 # r0ze runs: fly deploy — final trigger
 
 app = "oxark-multiplayer"
@@ -24,6 +24,8 @@ primary_region = "nrt"   # Tokyo — closest to Solana devnet latency
   memory = "256mb"
 
 # Secrets (set via: fly secrets set KEY=value)
-# SOLANA_RPC_URL  — Solana devnet or mainnet RPC endpoint
+# SOLANA_RPC_URL  — Solana devnet RPC endpoint for this release
 # TREASURY_PUBKEY — SOL address receiving x402 micropayments
-# (without TREASURY_PUBKEY the server runs in demo mode — x402 skipped)
+# REDIS_URL      — persistent replay store; required in production
+# ANTHROPIC_API_KEY — optional AI advice/delegation (503 when absent)
+# Missing required secrets abort startup. NODE_ENV=development is local only.

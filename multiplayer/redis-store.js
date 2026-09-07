@@ -49,6 +49,7 @@ async function _getRedis() {
         _redis = client;
         return client;
       } catch (e) {
+        if (process.env.NODE_ENV !== 'development') throw e;
         console.warn('[Redis] init failed, using in-memory fallback:', e.message);
         return null;
       }
@@ -130,3 +131,24 @@ export function gcMemory() {
 
 /** Expose in-memory maps for testing (unit tests bypass Redis). */
 export const _test = { _memSigs, _memNonces, _memHas, _memSet };
+
+// Atomic consumption is the authorization gate. Reads alone cannot prevent two
+// concurrent requests from spending the same proof. Never fall back in prod.
+export async function consumePayment(sig, nonce, endpoint) {
+  const r = await _getRedis();
+  const nonceKey = `nonce:${endpoint}:${nonce ?? sig}`;
+  if (r) {
+    const accepted = await r.eval(`
+      if redis.call('EXISTS', KEYS[1]) == 1 or redis.call('EXISTS', KEYS[2]) == 1 then return 0 end
+      redis.call('SET', KEYS[1], '1', 'EX', 3600)
+      redis.call('SET', KEYS[2], '1', 'EX', 3600)
+      return 1
+    `, 2, `sig:${sig}`, nonceKey);
+    return accepted === 1;
+  }
+  if (process.env.NODE_ENV !== 'development') throw new Error('Persistent payment replay store unavailable');
+  if (_memHas(_memSigs, sig) || _memHas(_memNonces, nonceKey)) return false;
+  _memSet(_memSigs, sig, 3600);
+  _memSet(_memNonces, nonceKey, 3600);
+  return true;
+}
