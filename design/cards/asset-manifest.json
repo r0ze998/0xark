@@ -1,0 +1,602 @@
+[
+  {
+    "id": 1,
+    "name": "Squire",
+    "file": "solana/client/public/img/cards/archive/001-squire.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 295366,
+    "sha256": "573737514cb1286b13413d7debc731f66173624a2ea67be86263302c81e7243f",
+    "master_sha256": "11dadfb951be8c7d81f43f424b976752bb4a60f4c6e728fffa84db7e5fc7d8c7"
+  },
+  {
+    "id": 2,
+    "name": "Guard",
+    "file": "solana/client/public/img/cards/archive/002-guard.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 253412,
+    "sha256": "e5506c818d3c4a451a57646bc86100a777f8c7dd67023f49d0f3eee3e7d3397c",
+    "master_sha256": "83de0bb755533f8fd670350df19261a63b24b9867de442aaca5ff972602b5a93"
+  },
+  {
+    "id": 3,
+    "name": "Soldier",
+    "file": "solana/client/public/img/cards/archive/003-soldier.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 196114,
+    "sha256": "c9850fb5e69ba04997876ead62ce0722e77b42292369dc6183e9fcfce2b3ba21",
+    "master_sha256": "8e3fdfbc229cf553e51df4b7f76bded9ce804b4a37a1d3adddc8fd855a139220"
+  },
+  {
+    "id": 4,
+    "name": "Paladin",
+    "file": "solana/client/public/img/cards/archive/004-paladin.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 253298,
+    "sha256": "55334848757066bed3a99942fb899f4726224ff38453ef00991a55f9ea9d874c",
+    "master_sha256": "c278248a938a1cd0ef649d3f8a5bedb31e961081f5fdf1c9ea21713cee6611f3"
+  },
+  {
+    "id": 5,
+    "name": "Sacrificial Squire",
+    "file": "solana/client/public/img/cards/archive/005-sacrificial-squire.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 268780,
+    "sha256": "bf0f3ed2b2e0ea09e73ca41c53bce292fc3d8bc96976d3e71923480e894eb760",
+    "master_sha256": "8d6209d9776cdaac37ffd7b55b93eb199c673decbe1a30285d0ae67d9b82d06b"
+  },
+  {
+    "id": 6,
+    "name": "Warden",
+    "file": "solana/client/public/img/cards/archive/006-warden.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 245850,
+    "sha256": "3ced909859596b2cccfc6ce5a39e748f1bca0a1d667c0178a20d159ea7aa9fc8",
+    "master_sha256": "64ba820918601671af394075b08348a998d4b8a77f5253444c8df05f96757251"
+  },
+  {
+    "id": 7,
+    "name": "Crusader",
+    "file": "solana/client/public/img/cards/archive/007-crusader.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 299778,
+    "sha256": "9f4e9284279093efde8f20db0fa6d896de5c8b040e81502529905a8237c1ce8e",
+    "master_sha256": "d7abe8d0495841690f0c76ea18aca2cf0afdb59b917b040d58161487d067f58e"
+  },
+  {
+    "id": 8,
+    "name": "Knight Champion",
+    "file": "solana/client/public/img/cards/archive/008-knight-champion.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 280782,
+    "sha256": "80651fda879e8fb2cfd3ef570216ba3ac74357fe6f9f751530c5be79f82ebe4f",
+    "master_sha256": "644f651220e2c04e138927c604b3820fe62f493ee8dc8cbdd4e31481f48f7a7b"
+  },
+  {
+    "id": 9,
+    "name": "Vanguard",
+    "file": "solana/client/public/img/cards/archive/009-vanguard.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 242434,
+    "sha256": "f944b5e26cded66e333b41be368a636d1c6dab1a52a477b56586ccb258a550a6",
+    "master_sha256": "5d8f4850f2a8a4743778fea320eafd4b9b9c46f8a3b589ac5ae269f49364af41"
+  },
+  {
+    "id": 10,
+    "name": "Sentinel",
+    "file": "solana/client/public/img/cards/archive/010-sentinel.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 248030,
+    "sha256": "2470e95cf571288e4c4d6863903c1233aacc801eff05807f42c36ca95cfe8595",
+    "master_sha256": "d9256d59b21772f91ccab2bba7946ea59444c352ac3cfa0e0e5e057354859a97"
+  },
+  {
+    "id": 11,
+    "name": "Peddler",
+    "file": "solana/client/public/img/cards/archive/011-peddler.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 247666,
+    "sha256": "ee443f2082f32f5379e83c26414c7e5b2b610b50c975d122d4e4cda35e3de692",
+    "master_sha256": "dc0a2b14bd629352f0a539cc6e10aec8c50aaeb11cd9c1426890cc00fb1472f4"
+  },
+  {
+    "id": 12,
+    "name": "Trader",
+    "file": "solana/client/public/img/cards/archive/012-trader.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 212860,
+    "sha256": "f33d97551850764bb53579dc216fd455d86ef3e26278d12430b1962b86b9faee",
+    "master_sha256": "b6e066ce8ca24f2452473dd8549a77225614b5c47d0575ed3614fa540e56dbbf"
+  },
+  {
+    "id": 13,
+    "name": "Broker",
+    "file": "solana/client/public/img/cards/archive/013-broker.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 229890,
+    "sha256": "58a4ac57a67ea70c57299dee67ac62db91876fb9718b9c6b62bba90560a31fbc",
+    "master_sha256": "bb9fab9fcd5602d7b95e0c25e8efb07c7e08295d25b5a92e56e9ef6d036efb24"
+  },
+  {
+    "id": 14,
+    "name": "Merchant",
+    "file": "solana/client/public/img/cards/archive/014-merchant.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 230910,
+    "sha256": "9dab9636ec50c2b2b3ed83a58d89c37d3bb7df6322c72e90fed8d82d775cc124",
+    "master_sha256": "0fb92e3e4f7fcd9496d00ff5630666cab3000c8dfedfcb635163d88211df091c"
+  },
+  {
+    "id": 15,
+    "name": "Coin Burner",
+    "file": "solana/client/public/img/cards/archive/015-coin-burner.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 231832,
+    "sha256": "010636f38f52284fa9190c9e148c072ea14c30614c0635cef779ad788e773f4a",
+    "master_sha256": "3c27a507c3438d484500b0171fe1cfff2bc80fbd75871d72102113aaeb3b8e66"
+  },
+  {
+    "id": 16,
+    "name": "Magnifier",
+    "file": "solana/client/public/img/cards/archive/016-magnifier.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 223126,
+    "sha256": "1a133f5a2ef52243f6a661ecaeed3d6fbfdb1befc8bd04983de830e1cb5a9e32",
+    "master_sha256": "7b26e60af63f9a21ee61bf414401e9b9fbba5fbb0096a13e2d3cbf7221a10685"
+  },
+  {
+    "id": 17,
+    "name": "Speculator",
+    "file": "solana/client/public/img/cards/archive/017-speculator.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 217744,
+    "sha256": "d8c864afe3c27987d60eaff5b5d91e516b0931d22ba2c2706600766e5facf74c",
+    "master_sha256": "c6791e1f9b5ac497ef4b6e8a08cf5b2dcc2a738dbe9010cf3cdcb34255b363fd"
+  },
+  {
+    "id": 18,
+    "name": "Merchant Magnate",
+    "file": "solana/client/public/img/cards/archive/018-merchant-magnate.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 250618,
+    "sha256": "82c8c3a8257167f8513fc9ce56e0f8f8a6e05f40a1e0958e491ce0383c67d9f2",
+    "master_sha256": "5b36a8f9cc4b0f30c20ac9b102fa54d11fda64a0794c572d17bf69921fa10a6c"
+  },
+  {
+    "id": 19,
+    "name": "Monopolist",
+    "file": "solana/client/public/img/cards/archive/019-monopolist.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 261846,
+    "sha256": "8fa5403939d644dbb9b4c03f4ae085fc858dbbb0e89ad0c861faa4b0684659b4",
+    "master_sha256": "a2db8ca6746a18abd3eca1105fd1b354134206b09f7c60c90e128390f98dddd3"
+  },
+  {
+    "id": 20,
+    "name": "Magnate",
+    "file": "solana/client/public/img/cards/archive/020-magnate.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 228354,
+    "sha256": "49ae2594ff2d37d52bd625f83e135db5afb5caab598a3f69a278b96ab5d3da33",
+    "master_sha256": "155c728b36a5cb4aca9f9e2be69f92fde889bdb7726cab24b2b58164209ea431"
+  },
+  {
+    "id": 21,
+    "name": "Cutthroat",
+    "file": "solana/client/public/img/cards/archive/021-cutthroat.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 209242,
+    "sha256": "f1e5db4512d1b517f9c0c32955215dbef865bd6a6253a6bcfedf4eb016a5a02c",
+    "master_sha256": "f5c35303b660bda2d78d7f2d5eb1cfd608a638e2832c9deb512b60aa6e73ea05"
+  },
+  {
+    "id": 22,
+    "name": "Raider",
+    "file": "solana/client/public/img/cards/archive/022-raider.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 287514,
+    "sha256": "9723093c790a8c34131881c2b3ba85cf39ef96fdd7285a2966c229e5d77f8a24",
+    "master_sha256": "cab943c6a1c8109e6e84b81cc9fb7c64f2a9707e58da3fedc505e6e9ad140cc0"
+  },
+  {
+    "id": 23,
+    "name": "Corsair",
+    "file": "solana/client/public/img/cards/archive/023-corsair.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 237976,
+    "sha256": "f30fe9b1024e9defb8176cebc183a7088827beb381229d108c7f3cd516ff325a",
+    "master_sha256": "2e5b4919a844806e010ff5ca8b4817ffe68b24bcb7d4947c4e50bd1551ea96b0"
+  },
+  {
+    "id": 24,
+    "name": "Buccaneer",
+    "file": "solana/client/public/img/cards/archive/024-buccaneer.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 283510,
+    "sha256": "9bf7da7b67fc218cc3587d1c7109b32ed3849d13ad43addafc3a11ee079b61d9",
+    "master_sha256": "3eeeac5591ee073319ed7cdfc8a0c921653bbd6282daa8625a06a6829e969741"
+  },
+  {
+    "id": 25,
+    "name": "Powder Charge",
+    "file": "solana/client/public/img/cards/archive/025-powder-charge.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 192910,
+    "sha256": "a7696beb7e8fca16ae9d290da4bf04f0dbe25bcfdbef03dede372c9837b445d1",
+    "master_sha256": "9deb53d35842fab11676879cfaf4bc17433c45c17fac2c4f00c02bfd55a02241"
+  },
+  {
+    "id": 26,
+    "name": "Privateer",
+    "file": "solana/client/public/img/cards/archive/026-privateer.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 251190,
+    "sha256": "c6ce5b30535bb0de3c275f388200e6f262832925f1ada7fdb4b6228dd29dcaa7",
+    "master_sha256": "adb55c6a75b4fcb878890ccd5129c6df01b14b0df805745cb56f7abdc9c3034a"
+  },
+  {
+    "id": 27,
+    "name": "Freebooter",
+    "file": "solana/client/public/img/cards/archive/027-freebooter.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 253044,
+    "sha256": "2bf736451194217e77322fa1381060660523a247c7789f7d60c59e1804b8fc8b",
+    "master_sha256": "b838951eb01925d6be1e0e9485f1056472efdaefbd555c1179ea753fccf412b7"
+  },
+  {
+    "id": 28,
+    "name": "Pirate Quartermaster",
+    "file": "solana/client/public/img/cards/archive/028-pirate-quartermaster.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 243376,
+    "sha256": "5025c379183bf836946d9b08259522fdedb693614e7aedb591dbb4f7d234b9f7",
+    "master_sha256": "beaf9601d535c807d4466fc3b2c25958c3b923761a084df176c09a78103bd2a5"
+  },
+  {
+    "id": 29,
+    "name": "Dreadnaught",
+    "file": "solana/client/public/img/cards/archive/029-dreadnaught.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 244588,
+    "sha256": "b36c88207d7f1c7adf77314a780edf23f604a5d3b110b6d864f088f5fe00aecf",
+    "master_sha256": "daeafad76ca976c90fc1627543250a733400f7fd5c7cc7be7189949150fdd4e3"
+  },
+  {
+    "id": 30,
+    "name": "Marauder",
+    "file": "solana/client/public/img/cards/archive/030-marauder.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 267308,
+    "sha256": "0a5f2d4c6a0936813f1cdba0f9718e23ba30f625437ee742af786298103e7ca1",
+    "master_sha256": "d7e330688936d3fccc28a19a7979ca96b7691658dc9de796a513f852550f95cb"
+  },
+  {
+    "id": 31,
+    "name": "Apprentice",
+    "file": "solana/client/public/img/cards/archive/031-apprentice.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 220396,
+    "sha256": "5e87767fa956f20c9b2745c0672446a9341b853f8263c7cf89ed9993adac5b77",
+    "master_sha256": "6b087bb0f76951e722c8a09f6c7d6bd708bc56cd66e6b415f919c3ce78c37d7b"
+  },
+  {
+    "id": 32,
+    "name": "Archivist",
+    "file": "solana/client/public/img/cards/archive/032-archivist.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 220634,
+    "sha256": "9d496183921722bf868e1602e201a2c9ed718a0a3ae781cf8bfc605e668bd949",
+    "master_sha256": "466c2ded030fb5ac6ab722d55c1b0892e7c6f03ced8d237235e65a0627b52fa8"
+  },
+  {
+    "id": 33,
+    "name": "Mage",
+    "file": "solana/client/public/img/cards/archive/033-mage.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 197436,
+    "sha256": "37b27c99c48f11f8d2e728a9ba09934c54f5a72ae9e242c411c77537ce314ac3",
+    "master_sha256": "a312160c5c5adc8ef07c4f61d81e0c198395db5f95913eb556425dca7d6b1a39"
+  },
+  {
+    "id": 34,
+    "name": "Sage",
+    "file": "solana/client/public/img/cards/archive/034-sage.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 233084,
+    "sha256": "a1540186883b31d04069700a5b6e96ac69f7e8c8b661db8e90f3c587915ddb7b",
+    "master_sha256": "e94c3f56037db0c4f23afd81bc1000e49d9dbb07b1b79e65018e545f781b2392"
+  },
+  {
+    "id": 35,
+    "name": "Burning Tome",
+    "file": "solana/client/public/img/cards/archive/035-burning-tome.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 194484,
+    "sha256": "e277a173dc16dbc72f682755abdfb4344b241adc514f558508122fca16f09759",
+    "master_sha256": "ada07ce8dab96ed5684520c08e2c6f71313a68f4229235c3df8336302c601ad6"
+  },
+  {
+    "id": 36,
+    "name": "Diviner",
+    "file": "solana/client/public/img/cards/archive/036-diviner.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 212264,
+    "sha256": "7f12bde5782d6eb96ed2dfe109ccfd7fc9ff4fd3266b6562a3d0ac969b67544d",
+    "master_sha256": "58a39f97959ee4bb03d70f1103e3c6620770665974b431837e7f4ea25b16a65e"
+  },
+  {
+    "id": 37,
+    "name": "Arcanist",
+    "file": "solana/client/public/img/cards/archive/037-arcanist.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 201912,
+    "sha256": "bd0f9a20b21bc5af8aa9cd0e0017d3ef45cca7199ff76935b5330dda7568079f",
+    "master_sha256": "25f278a48b8bd9bfc4d3731b1160cf25a49e5cbc0e30bc43e5d024dba51b0af2"
+  },
+  {
+    "id": 38,
+    "name": "Scholar Lorekeeper",
+    "file": "solana/client/public/img/cards/archive/038-scholar-lorekeeper.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 238438,
+    "sha256": "e57af8226ed4e35923849d245d815dd58d85cc952bb2c1840e5727e60e44fa01",
+    "master_sha256": "ff8564881741d8d2f06443f17094d2118f9d9981d7e41561828ee0adf86cc8ac"
+  },
+  {
+    "id": 39,
+    "name": "Seer",
+    "file": "solana/client/public/img/cards/archive/039-seer.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 254208,
+    "sha256": "bd9bb83b2dee3bb67c85c1fd708cc3a9a86be3631e1b6ce64d2d026c3bd831ee",
+    "master_sha256": "42ee949ffd7d9f296c5b6d4468a3fd03eef01792535015bb3f5c93e1572d4909"
+  },
+  {
+    "id": 40,
+    "name": "Oracle",
+    "file": "solana/client/public/img/cards/archive/040-oracle.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 226106,
+    "sha256": "8e3d782dafd9e6e2a6e97b50e80a9e0b0f61799826ec116736290f1be1d79e97",
+    "master_sha256": "4ca8c83d0d623b573bd6dd07ad1cde513d805d8ac72eca5e25c5cfacb2a1b5a6"
+  },
+  {
+    "id": 41,
+    "name": "Novice",
+    "file": "solana/client/public/img/cards/archive/041-novice.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 257744,
+    "sha256": "790dbd0c3ca9628eb0c32006bee5f9ac6aa65b1f816cca9fe8110a550c66ce4b",
+    "master_sha256": "7c67bcf8b72f02d865203e870b90f98f88a9896fa186fce40088b30bde89fd63"
+  },
+  {
+    "id": 42,
+    "name": "Initiate",
+    "file": "solana/client/public/img/cards/archive/042-initiate.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 195830,
+    "sha256": "2e34b81dcec85b98d7a4bf3377cf90f98d4ff33f8efd10c7ec06ce2c56558260",
+    "master_sha256": "ccad9078c2269214e9afcbbac963c62b648fecb376fc82eb7a67bd92815a02aa"
+  },
+  {
+    "id": 43,
+    "name": "Acolyte",
+    "file": "solana/client/public/img/cards/archive/043-acolyte.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 248824,
+    "sha256": "806dca1776693a9dafcb1e427f9485b3920ebcbea91b67d283705d6d7cc37d3e",
+    "master_sha256": "9b310ba4e53eac66f1a77d6126a82d14a2eaab9e2806be3e4b2defe08d06b680"
+  },
+  {
+    "id": 44,
+    "name": "Disciple",
+    "file": "solana/client/public/img/cards/archive/044-disciple.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 260066,
+    "sha256": "0a2609d3dbfe3317aa3f8ebe20a240dce94b08f1ef9292894b25b2c97859f5f3",
+    "master_sha256": "ec8ed03fd7ac1e4fb1835b37aa569d7104954893c64ed1d58d94fb7b1cf1891c"
+  },
+  {
+    "id": 45,
+    "name": "Mantra Burner",
+    "file": "solana/client/public/img/cards/archive/045-mantra-burner.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 190854,
+    "sha256": "9c1b4e9fc9f7ab2a82c5f43b6ad1973fa1250f517386ae4b5b641b9eee0fa8aa",
+    "master_sha256": "584c03619721b14adecba9d832e5ed288a379d393d7b49bb9664799079a69089"
+  },
+  {
+    "id": 46,
+    "name": "Devotee",
+    "file": "solana/client/public/img/cards/archive/046-devotee.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 254630,
+    "sha256": "bf0112f001821dfe41c798cfe77d907b839c2d3bb395542444d8e2c4cdb2597d",
+    "master_sha256": "37c0e4d2273bbb6b3c46cb0e0b4a8ad9c065450f3b3edb0a0d049e25276380c5"
+  },
+  {
+    "id": 47,
+    "name": "Contemplator",
+    "file": "solana/client/public/img/cards/archive/047-contemplator.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 210314,
+    "sha256": "c5f4267c5ea0d8448828c3478491d9e9651a2e1d945138e8c9032b7f3c81a125",
+    "master_sha256": "a0e2012e44131a045ff22928827fff14ae95836e1edc1a265a75b6ffc576360e"
+  },
+  {
+    "id": 48,
+    "name": "Monk Ascender",
+    "file": "solana/client/public/img/cards/archive/048-monk-ascender.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 186536,
+    "sha256": "79f89762f3056227e2ded26a92b7c0d0e14acfbd0a24e29ef7100036ffacfafb",
+    "master_sha256": "944c9f39050aa47167b0e36c15c741138d74d6992a24f55849fcdd960a36ec27"
+  },
+  {
+    "id": 49,
+    "name": "Elder",
+    "file": "solana/client/public/img/cards/archive/049-elder.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 312654,
+    "sha256": "b614ed88138781e20bc6f0425565ba859bca93069e76640d15c10b75dd5e4212",
+    "master_sha256": "3047c1d5bfe7c459de79950917da268696e62d0b376bdde627d00932b3de73e4"
+  },
+  {
+    "id": 50,
+    "name": "Ascetic",
+    "file": "solana/client/public/img/cards/archive/050-ascetic.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 243414,
+    "sha256": "1c453f83c627f0d0b4ca498c9afd6e8adc61fa652d29322e211e426316970dc6",
+    "master_sha256": "9f143d89ddde2728961aa738b0f94aec3c54ac97e992ecc9b8ce959d52e24739"
+  },
+  {
+    "id": 51,
+    "name": "Tinkerer",
+    "file": "solana/client/public/img/cards/archive/051-tinkerer.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 212666,
+    "sha256": "43c8dc3fb1148617526832ef0acf936231792ef9ae7b17bb0bfc4d7e6b21aa3e",
+    "master_sha256": "1528455f0a3fa01cec89208271653c38595872caad285ba56b77267ed893dbe2"
+  },
+  {
+    "id": 52,
+    "name": "Mechanic",
+    "file": "solana/client/public/img/cards/archive/052-mechanic.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 261170,
+    "sha256": "524e245654f94e848e340b0f0bf7adb774ec5dbccf34b75cb3ec1387d9fd9c5d",
+    "master_sha256": "9c599b56aba997b17d01c21120b2cbc36142a7fb042bcd65b35f40ac2b74b185"
+  },
+  {
+    "id": 53,
+    "name": "Forger",
+    "file": "solana/client/public/img/cards/archive/053-forger.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 258238,
+    "sha256": "e8a333e2f0fa7ba8c07b9501477d6f54775cc5f4544e3f9948662cdd0e2f0f8b",
+    "master_sha256": "0ede51ca213c6f849e46ba4e996eff21f51a1db95fc83c3e568ccf5b1cf149cc"
+  },
+  {
+    "id": 54,
+    "name": "Inventor",
+    "file": "solana/client/public/img/cards/archive/054-inventor.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 210756,
+    "sha256": "7ef0f587c8f463868767f14d3f5226fb2afccb419aa3d79eeff11161db9f8a79",
+    "master_sha256": "74b8818b23251b8f997c2c2b22bd0f8d90db1ca2c335719c79fc9920ce1dba2c"
+  },
+  {
+    "id": 55,
+    "name": "Forge Worker",
+    "file": "solana/client/public/img/cards/archive/055-forge-worker.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 263460,
+    "sha256": "aba44db8a352bdd5766ac1d1396043d800e034f46af62b1025a2134ab396b0c8",
+    "master_sha256": "60dfcd249ed3f2a4d571fe5553701a5255c5c57a8b53b91bbd3f02bd02733e7f"
+  },
+  {
+    "id": 56,
+    "name": "Schematic",
+    "file": "solana/client/public/img/cards/archive/056-schematic.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 222928,
+    "sha256": "cc0cc9227ddf0a00b259c5c06bd4c8df0abe47092cef1ebc18e6760ccff4d52b",
+    "master_sha256": "e684ab62dfaf2fef856bd6ec8bbcadf622e0a8743471b040eccac88ffc3f744d"
+  },
+  {
+    "id": 57,
+    "name": "Constructor",
+    "file": "solana/client/public/img/cards/archive/057-constructor.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 308022,
+    "sha256": "67fe18469a89b59d521adb3c723f7ab3da023e0faa4928ba090b0edde73f50a6",
+    "master_sha256": "756f26fb760a64df8e35ad548d927d12a290572e382fdf63a1c6702a513944ea"
+  },
+  {
+    "id": 58,
+    "name": "Engineer Forgemaster",
+    "file": "solana/client/public/img/cards/archive/058-engineer-forgemaster.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 227490,
+    "sha256": "3bd647948e4a47e64ca7eb1207ddae50af2f5f51ef3cec1383878b10410606c9",
+    "master_sha256": "028437929918f0ff1591131d0a57b0b37da9a6217319dc0f7f9bc2649f06b5e6"
+  },
+  {
+    "id": 59,
+    "name": "Colossus",
+    "file": "solana/client/public/img/cards/archive/059-colossus.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 273010,
+    "sha256": "616e217fbb1c4cf9578b9c162fe5aedce153defce2ef764b682d619a6ef2288c",
+    "master_sha256": "dfd509da7ebca5875bd49011c0facf11991b507397eadad18fe500eaa5cfe019"
+  },
+  {
+    "id": 60,
+    "name": "Architect",
+    "file": "solana/client/public/img/cards/archive/060-architect.webp",
+    "width": 1254,
+    "height": 1254,
+    "bytes": 298152,
+    "sha256": "49db78f3656c9a755115fc8a66b714f769ef93f5f8f799897ae4a9a9ce189e17",
+    "master_sha256": "e881efc7b86cccbba60da448073defce76f513aa98af9b4f35a341e88d2fe3a3"
+  }
+]
