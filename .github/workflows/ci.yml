@@ -113,6 +113,22 @@ jobs:
         working-directory: solana/oxark
         run: cargo test -- --nocapture 2>&1
 
+      # Package only the binary just exercised by LiteSVM. Never upload target/
+      # wholesale: it can contain build keypairs and unrelated cached binaries.
+      - name: Package tested devnet program
+        run: |
+          python3 scripts/check-idl-sync.py
+          python3 solana/oxark/check-deployed-vk.py solana/oxark/target/deploy/oxark.so
+          python3 scripts/package-tested-program.py
+
+      - name: Upload tested devnet program
+        uses: actions/upload-artifact@v4
+        with:
+          name: oxark-devnet-${{ github.sha }}
+          path: tested-program/
+          if-no-files-found: error
+          retention-days: 30
+
   # ─── Game client syntax check ─────────────────────────────────────────────────
   # The Phase 15 client has no build step (app.js + components loaded directly);
   # the previous "node build.js" concatenation job and the React wallet UI job
