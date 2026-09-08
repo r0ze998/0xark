@@ -2518,7 +2518,18 @@
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "registered_players",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "additional_prize_lamports",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "promote_card",

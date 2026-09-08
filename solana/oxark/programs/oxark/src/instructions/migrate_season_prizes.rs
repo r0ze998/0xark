@@ -1,7 +1,11 @@
 //! One-time, admin-authorized migration of the 185-byte pre-settlement world.
 //! Preserve participants and collection accounts. An external legacy vault must
 //! ALSO sign; only its recorded season allocation moves, never its whole balance.
-use crate::{constants::ADMIN_PUBKEY, error::ErrorCode, state::GameWorld};
+use crate::{
+    constants::ADMIN_PUBKEY,
+    error::ErrorCode,
+    state::{GameWorld, PlayerState},
+};
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
 
@@ -20,7 +24,11 @@ pub struct MigrateSeasonPrizes<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handle_migrate_season_prizes(ctx: Context<MigrateSeasonPrizes>) -> Result<()> {
+pub fn handle_migrate_season_prizes(
+    ctx: Context<MigrateSeasonPrizes>,
+    registered_players: Vec<Pubkey>,
+    additional_prize_lamports: u64,
+) -> Result<()> {
     let info = ctx.accounts.game_world.to_account_info();
     let original = info.try_borrow_data()?.to_vec();
     require!(original.len() == 185, ErrorCode::InvalidSeasonMigration);
@@ -50,6 +58,42 @@ pub fn handle_migrate_season_prizes(ctx: Context<MigrateSeasonPrizes>) -> Result
     require!(
         ctx.accounts.legacy_pool.data_is_empty(),
         ErrorCode::InvalidSeasonMigration
+    );
+
+    // The admin attests that this is the COMPLETE canonical participant set.
+    // Legacy reset/re-registration inflated the event counter; validate every
+    // supplied identity and retain all player balances/cards while repairing it.
+    let old_count = world.total_participants;
+    require!(
+        registered_players.len() == ctx.remaining_accounts.len()
+            && registered_players.len() <= old_count as usize
+            && (old_count == 0 || !registered_players.is_empty()),
+        ErrorCode::InvalidSeasonMigration
+    );
+    let mut previous = Pubkey::default();
+    for (owner, account) in registered_players.iter().zip(ctx.remaining_accounts.iter()) {
+        require!(*owner > previous, ErrorCode::TallyOutOfOrder);
+        let expected = Pubkey::find_program_address(&[b"player", owner.as_ref()], &crate::ID).0;
+        require_keys_eq!(account.key(), expected, ErrorCode::InvalidAccount);
+        require_keys_eq!(*account.owner, crate::ID, ErrorCode::InvalidAccountOwner);
+        let ps = PlayerState::try_deserialize(&mut account.try_borrow_data()?.as_ref())?;
+        require!(
+            ps.player == *owner && ps.deposit_amount > 0,
+            ErrorCode::NotRegistered
+        );
+        previous = *owner;
+    }
+    world.total_participants = registered_players.len() as u32;
+    // Explicit, audited historical inflows only; never sweep an external wallet.
+    world.total_prize_pool = world
+        .total_prize_pool
+        .checked_add(additional_prize_lamports)
+        .ok_or(ErrorCode::SeasonArithmeticOverflow)?;
+    msg!(
+        "MigrationReconciliation: old_count={} unique_count={} additional_prize={}",
+        old_count,
+        world.total_participants,
+        additional_prize_lamports
     );
 
     let floor = Rent::get()?.minimum_balance(0);
