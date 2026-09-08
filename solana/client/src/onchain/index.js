@@ -1,3 +1,4 @@
+import { getPrizeSnapshot, submitPrizeClaim, getPrizeReceipt } from './prizes.js';
 // AUTO-SPLIT from onchain.js (YKK-15) — pure move, function bodies byte-identical.
 // See PR: onchain.js -> src/onchain/{pda,readers,tx,rpc}.js + index.js shim.
 
@@ -6,6 +7,7 @@ import { checkPlayerStateExists, fetchAllListings, getCardBattleHistory, getCard
 import { _mbMode, acceptListing, burnCard, buyCard, buyPack, cancelListingOnchain, checkLegendaryV2, claimBattleLoot, claimPrizeV2, claimTimeoutWin, commitHand, createListing, createSeason, deactivateAgent, delegateSession, endSeason, generateZkProof, getListings, grantImprint, initDuel, listCard, lockDeck, mintCardWithMetadata, promoteCard, refillEnergy, registerAgent, registerCard, registerWaitlist, revealHand, saveDeck, setMagicBlockMode, settleDuelHistory, splitPubkeyForZk, undelegateSession, updateShopParams } from './tx.js';
 
 window.oxarkOnchain = {
+  getPrizeSnapshot, submitPrizeClaim, getPrizeReceipt,
   PROGRAM_ID:       PROGRAM_ID_STR,
   CARDS_PROGRAM_ID: CARDS_PROGRAM_ID_STR,
   // MagicBlock ER mode toggle and getter (requires window.oxarkMB / 01-magicblock.js)

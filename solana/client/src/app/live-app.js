@@ -73,6 +73,9 @@ export function createLiveApp({ router, getState, setState, wasRestored,
       if (!current(request)) return;
       if (pubkey !== owner()) { showWallet(); return; }
       if (!registered) {
+        const world = await getOnchain().getGameWorld?.();
+        if (!current(request) || pubkey !== owner()) return;
+        if (world?.game_status === 2) { router.navigate('prizes', { pubkey }); return; }
         router.navigate('register', { pubkey, onRegister: register, onDisconnect: disconnect });
         return;
       }
@@ -82,6 +85,7 @@ export function createLiveApp({ router, getState, setState, wasRestored,
       return;
     }
     if (!current(request)) return;
+    if (session.world?.game_status === 2) { navigate('prizes'); return; }
     if (wasRestored) {
       const { phase } = getState();
       // A reload loses the matchmaking socket. Other phases recover themselves.

@@ -1,3 +1,4 @@
+import { decodePrizeWorld } from '../lib/season-prize.js';
 // AUTO-SPLIT from onchain.js (YKK-15) — pure move, function bodies byte-identical.
 // See PR: onchain.js -> src/onchain/{pda,readers,tx,rpc}.js + index.js shim.
 
@@ -203,7 +204,10 @@ async function checkPlayerStateExists(playerPubkey) {
   const depositOff = queueNone ? 178 : 210;
   if (d.length < depositOff + 8) return false;
   const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
-  return Number(dv.getBigUint64(depositOff, true)) > 0;
+  if (dv.getBigUint64(depositOff, true) > 0n) return true;
+  // claim_prize_v2 zeroes the deposit. Keep ended-season participants able to
+  // reconnect to results and their persisted receipt instead of registering again.
+  return (await getGameWorld())?.game_status === 2;
 }   // constants.rs DUEL_STALL_TIMEOUT_SECONDS
 
 // ── F1-0: full DuelState reader. Offsets RE-DERIVED from state.rs `DuelState`
@@ -386,6 +390,7 @@ async function getGameWorld() {
   const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
   const readI64 = off => Number(dv.getBigInt64(off, true));
   return {
+    ...(d.length >= 227 ? decodePrizeWorld(d) : {}),
     game_start_timestamp:         readI64(8),
     end_timestamp:                readI64(16),
     waitlist_close_timestamp:     readI64(24),
