@@ -20,6 +20,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Check coherent Pages asset versions
+        run: node --test scripts/version-pages-assets.test.mjs
+
       - name: Run card engine tests
         run: node tests/card-engine.test.js
 
