@@ -20,8 +20,8 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Check coherent Pages asset versions
-        run: node --test scripts/version-pages-assets.test.mjs
+      - name: Check deployment operator and Pages asset versions
+        run: node --test scripts/version-pages-assets.test.mjs scripts/season-prize-operator.test.mjs
 
       - name: Run card engine tests
         run: node tests/card-engine.test.js

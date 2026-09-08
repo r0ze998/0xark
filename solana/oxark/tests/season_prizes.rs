@@ -271,6 +271,12 @@ fn listing_cannot_change_collection_at_deadline_or_during_tally() {
 fn migration_preserves_participants_moves_only_recorded_funds_and_needs_legacy_signer() {
     let mut svm = setup();
     active_world(&mut svm, 3);
+    let mut participants = vec![player(&mut svm, 10), player(&mut svm, 4)];
+    participants.sort();
+    let player_before: Vec<_> = participants
+        .iter()
+        .map(|p| bytes(&read_player(&svm, *p)))
+        .collect();
     let legacy = Keypair::new().pubkey();
     svm.airdrop(&legacy, 3_000_000_000).unwrap();
     let mut w = read_world(&svm);
@@ -280,9 +286,20 @@ fn migration_preserves_participants_moves_only_recorded_funds_and_needs_legacy_s
     let mut old = bytes(&w);
     old.truncate(185);
     put(&mut svm, world_key().0, old.clone());
+    // Match live devnet: the destination is unfunded and the old world only
+    // carries its old rent floor. Exercise both admin-funded rent top-ups.
+    let mut account = svm.get_account(&pool_key().0).unwrap();
+    account.lamports = 0;
+    svm.set_account(pool_key().0, account).unwrap();
+    let mut account = svm.get_account(&world_key().0).unwrap();
+    account.lamports = svm.minimum_balance_for_rent_exemption(185);
+    svm.set_account(world_key().0, account).unwrap();
     let migration = || {
-        ix(
-            oxark::instruction::MigrateSeasonPrizes {},
+        let mut instruction = ix(
+            oxark::instruction::MigrateSeasonPrizes {
+                registered_players: participants.clone(),
+                additional_prize_lamports: 25_000_000,
+            },
             oxark::accounts::MigrateSeasonPrizes {
                 game_world: world_key().0,
                 admin: oxark::constants::ADMIN_PUBKEY,
@@ -290,7 +307,13 @@ fn migration_preserves_participants_moves_only_recorded_funds_and_needs_legacy_s
                 prize_pool: pool_key().0,
                 system_program: solana_sdk_ids::system_program::id(),
             },
-        )
+        );
+        instruction.accounts.extend(
+            participants
+                .iter()
+                .map(|p| AccountMeta::new_readonly(player_key(*p), false)),
+        );
+        instruction
     };
     assert!(format!(
         "{:?}",
@@ -305,19 +328,59 @@ fn migration_preserves_participants_moves_only_recorded_funds_and_needs_legacy_s
         .find(|a| a.pubkey == legacy)
         .unwrap()
         .is_signer = true;
+    let mut duplicate = signed.clone();
+    duplicate.data = oxark::instruction::MigrateSeasonPrizes {
+        registered_players: vec![participants[0], participants[0]],
+        additional_prize_lamports: 25_000_000,
+    }
+    .data();
+    let last = duplicate.accounts.len() - 1;
+    duplicate.accounts[last] = duplicate.accounts[last - 1].clone();
+    assert!(format!(
+        "{:?}",
+        run(&mut svm, oxark::constants::ADMIN_PUBKEY, duplicate).unwrap_err()
+    )
+    .contains("TallyOutOfOrder"));
+    assert_eq!(svm.get_account(&world_key().0).unwrap().data, old);
+    assert_eq!(svm.get_account(&legacy).unwrap().lamports, 3_000_000_000);
     run(&mut svm, oxark::constants::ADMIN_PUBKEY, signed.clone()).unwrap();
     let after = read_world(&svm);
-    assert_eq!(after.total_participants, 3);
-    assert_eq!(after.total_prize_pool, 1_275_000_000);
+    assert_eq!(after.total_participants, 2);
+    for (p, before) in participants.iter().zip(player_before) {
+        assert_eq!(bytes(&read_player(&svm, *p)), before);
+    }
+    assert_eq!(after.total_prize_pool, 1_300_000_000);
     assert_eq!(after.prize_pool, pool_key().0);
     assert_eq!(after.prize_pool_bump, pool_key().1);
-    assert_eq!(svm.get_account(&legacy).unwrap().lamports, 1_725_000_000);
+    assert_eq!(svm.get_account(&legacy).unwrap().lamports, 1_700_000_000);
     assert_eq!(
         svm.get_account(&world_key().0).unwrap().data.len(),
         GameWorld::SIZE
     );
     assert!(run(&mut svm, oxark::constants::ADMIN_PUBKEY, signed).is_err());
-    assert_eq!(svm.get_account(&legacy).unwrap().lamports, 1_725_000_000);
+    assert_eq!(svm.get_account(&legacy).unwrap().lamports, 1_700_000_000);
+    set_time(&mut svm, 200);
+    run(
+        &mut svm,
+        oxark::constants::ADMIN_PUBKEY,
+        ix(
+            oxark::instruction::ActivateSeason {},
+            oxark::accounts::ActivateSeason {
+                game_world: world_key().0,
+                admin: oxark::constants::ADMIN_PUBKEY,
+            },
+        ),
+    )
+    .unwrap();
+    tally(&mut svm, &participants).unwrap();
+    end(&mut svm).unwrap();
+    for p in &participants {
+        claim(&mut svm, *p).unwrap();
+    }
+    assert_eq!(
+        svm.get_account(&pool_key().0).unwrap().lamports,
+        svm.minimum_balance_for_rent_exemption(0)
+    );
 }
 
 #[test]
@@ -384,7 +447,10 @@ fn invalid_migration_and_unregistered_tally_leave_state_unchanged() {
     old.truncate(185);
     put(&mut svm, world_key().0, old.clone());
     let migration = ix(
-        oxark::instruction::MigrateSeasonPrizes {},
+        oxark::instruction::MigrateSeasonPrizes {
+            registered_players: vec![],
+            additional_prize_lamports: 0,
+        },
         oxark::accounts::MigrateSeasonPrizes {
             game_world: world_key().0,
             admin: oxark::constants::ADMIN_PUBKEY,

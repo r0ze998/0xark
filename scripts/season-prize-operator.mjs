@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { decodePrizeWorld, decodePrizePlayer, prizeQuote } from '../solana/client/src/lib/season-prize.js';
 import { encodeBase58 } from '../solana/client/src/lib/base58.js';
+import { decodeOperatorPlayer, operatorPlayerOwner } from './season-prize-operator-lib.mjs';
 const require = createRequire(new URL('../solana/oxark/package.json', import.meta.url));
 const { Connection, PublicKey, Keypair, Transaction, TransactionInstruction, SystemProgram, ComputeBudgetProgram } = require('@solana/web3.js');
 const args = process.argv.slice(2);
@@ -55,13 +56,22 @@ async function send(ix, signers, label) {
   writeFileSync(path,JSON.stringify({...record,state:'finalized'},null,2),{mode:0o600});
   return signature;
 }
+async function registeredParticipants() {
+  const accounts=await conn.getProgramAccounts(program,{filters:[{memcmp:{offset:0,bytes:encodeBase58(discriminator('account','PlayerState'))}}]});
+  return accounts.map(({pubkey,account})=>{
+    validAccount(account,'PlayerState'); const owner=new PublicKey(operatorPlayerOwner(account.data));
+    if(!pda(Buffer.from('player'),owner.toBuffer()).equals(pubkey)) return null;
+    const ps=decodeOperatorPlayer(account.data); return BigInt(ps.deposit_amount)>0n?{owner,pubkey}:null;
+  }).filter(Boolean).sort((a,b)=>Buffer.compare(a.owner.toBuffer(),b.owner.toBuffer()));
+}
 async function inspect() {
   const w=await world(); const [pool,legacy,programAccount]=await conn.getMultipleAccountsInfo([poolKey,w.pool,program]);
   const programDataKey=programAccount?.executable ? new PublicKey(programAccount.data.subarray(4,36)) : null;
   const programData=programDataKey?await conn.getAccountInfo(programDataKey):null;
-  const data=w.info.data;
+  const data=w.info.data; const participants=await registeredParticipants();
   console.log(JSON.stringify({network:'devnet',world:worldKey.toString(),worldBytes:data.length,
-    participants:data.readUInt32LE(32),status:data[59],endTimestamp:Number(data.readBigInt64LE(16)),
+    participants:data.readUInt32LE(32),registeredPlayerAccounts:participants.length,
+    participantCountMatches:participants.length===data.readUInt32LE(32),status:data[59],endTimestamp:Number(data.readBigInt64LE(16)),
     recordedPrizeLamports:data.readBigUInt64LE(36).toString(),legacyPool:w.pool.toString(),
     legacyPoolLamports:legacy?.lamports??0,prizePDA:poolKey.toString(),prizePDALamports:pool?.lamports??0,
     programExecutable:programAccount?.executable??false,
@@ -75,8 +85,16 @@ if(action==='migrate') {
   const admin=wallet('--admin-keypair',adminKey);
   const external=!w.pool.equals(poolKey);
   const legacy=external?wallet('--legacy-pool-keypair',w.pool):null;
+  const participants=await registeredParticipants();
+  const extra=value('--additional-prize-lamports')??'0';
+  if(!/^\d+$/.test(extra)) throw Error('Additional prize must be an exact nonnegative lamport integer.');
+  const count=Buffer.alloc(4); count.writeUInt32LE(participants.length);
+  const amount=Buffer.alloc(8); amount.writeBigUInt64LE(BigInt(extra));
+  console.log(JSON.stringify({migrationUniqueParticipants:participants.length,additionalPrizeLamports:extra,
+    totalTransferLamports:(w.info.data.readBigUInt64LE(36)+BigInt(extra)).toString()}));
   await send(instruction('migrate_season_prizes',[meta(worldKey,true),meta(adminKey,true,true),
-    meta(w.pool,true,external),meta(poolKey,true),meta(SystemProgram.programId)]),legacy?[admin,legacy]:[admin],'migration');
+    meta(w.pool,true,external),meta(poolKey,true),meta(SystemProgram.programId),...participants.map(p=>meta(p.pubkey))],
+    Buffer.concat([count,...participants.map(p=>p.owner.toBuffer()),amount])),legacy?[admin,legacy]:[admin],'migration');
   await inspect();
 } else if(action==='settle') {
   const admin=wallet('--admin-keypair',adminKey); let w=await world();
@@ -84,12 +102,7 @@ if(action==='migrate') {
   if(w.state.game_status===2) throw Error('Already ended; do not tally or reset it again.');
   const slot=await conn.getSlot(); const now=await conn.getBlockTime(slot);
   if(now==null||now<w.state.end_timestamp) throw Error('The chain has not reached the season deadline.');
-  const accounts=await conn.getProgramAccounts(program,{filters:[{memcmp:{offset:0,bytes:encodeBase58(discriminator('account','PlayerState'))}}]});
-  const participants=accounts.map(({pubkey,account})=>{
-    validAccount(account,'PlayerState'); const owner=new PublicKey(account.data.subarray(8,40));
-    if(!pda(Buffer.from('player'),owner.toBuffer()).equals(pubkey)) return null;
-    const ps=decodePrizePlayer(account.data); return BigInt(ps.deposit_amount)>0n?{owner,pubkey}:null;
-  }).filter(Boolean).sort((a,b)=>Buffer.compare(a.owner.toBuffer(),b.owner.toBuffer()));
+  const participants=await registeredParticipants();
   if(participants.length!==w.state.total_participants) throw Error('Registered account count does not match the season. Reconcile registrations; do not force the tally.');
   if(w.state.game_status===0) await send(instruction('activate_season',[meta(worldKey,true),meta(adminKey,false,true)]),[admin],'activate');
   w=await world(); const cursor=w.info.data.subarray(194,226);

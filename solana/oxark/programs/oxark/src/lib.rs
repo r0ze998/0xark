@@ -721,8 +721,14 @@ pub mod oxark {
 
     /// Migrate the pre-settlement 185-byte world, preserving its participants.
     /// An external legacy prize vault must co-sign the recorded-allocation transfer.
-    pub fn migrate_season_prizes(ctx: Context<MigrateSeasonPrizes>) -> Result<()> {
-        instructions::migrate_season_prizes::handle_migrate_season_prizes(ctx)
+    pub fn migrate_season_prizes(
+        ctx: Context<MigrateSeasonPrizes>,
+        registered_players: Vec<Pubkey>,
+        additional_prize_lamports: u64,
+    ) -> Result<()> {
+        instructions::migrate_season_prizes::handle_migrate_season_prizes(
+            ctx, registered_players, additional_prize_lamports,
+        )
     }
 
     // ── Phase 20-C: Trade Floor ────────────────────────────────────────────────

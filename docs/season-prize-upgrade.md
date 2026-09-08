@@ -6,13 +6,26 @@ Read-only RPC inspection found:
 
 - Program: `5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN` (executable).
 - Upgrade authority / season admin: `DPMPhnVezSq5im35p4w3bC6XjpNZuuvCDVSAVxw4Q28R`.
-- World: `9EZ1KsXTjErwhbxthCLkT9CZuBdEC53yiXdkacgsHSSf`, 185 bytes, status 0, three participants.
+- World: `9EZ1KsXTjErwhbxthCLkT9CZuBdEC53yiXdkacgsHSSf`, 185 bytes, status 0, registration counter 3; two canonical registered player accounts.
 - Recorded allocation: 1,275,000,000 lamports.
 - Legacy pool: `C8ui4h9tuYiU55VrMohAoFwjsm5RxKPpmQizX9eAAgMa`, observed balance 1,300,000,000 lamports.
 - Current prize PDA: `8U8b8dsCB3XsZ3Uxn9r47sKrsidXtjnuuEB8kxbneKeX`, observed balance 0.
 - Existing season end: Unix 1779074791 (already elapsed). Migration preserves that deadline.
 
 These observations are not a funding guarantee. Re-run inspection before signing.
+The world history shows three successful registrations, including two by the
+same wallet. The repeated registration inflated the counter; no participant
+account is removed by reconciling it to the two existing registered owners.
+A historical pack purchase also sent 25,000,000 lamports to the old pool without
+incrementing the recorded allocation. Its finalized inner System transfer was
+verified. The audited transfer is therefore 1,300,000,000 lamports.
+
+Evidence (all devnet):
+- First distinct owner registration: `2YysxehT5qgqqxxsDoy1W8XGwCxyMHYiB7giQP6MwyfStdeZLVBbXcmfNLBjMGQLKZkzjQBLFGrLwezZHZnRU6eV`.
+- Repeated owner, first registration: `5fEpawqCC9nuRUN4yxBtbdSiQ2L924SoeiKrjiys8pcXGeBQUdiiqp9XxvZe7mJBUDrYfiet98h5fqGgtrbAvAq6`.
+- Same owner, second registration: `r2e6PNUNKMrxa4Mu9eK4C8voUEY2nTmAoqBnSsp7sJ2iEYLcgxRHH6SCbut1atsMzdMYJzxkWBH2UBNaEi6njBh`.
+- Pack transfer: `2neT8yTevHcGGpV5BALg8zNDB6XhWkfvfGYsYFfyzcNrxDNkaEQ6dWhc1woA5pRvE96y3XxGg6Bg4ZkKaso7e1zv`.
+
 Neither required authority wallet is available in the development environment.
 No devnet program upgrade, migration, settlement or prize transaction was sent.
 
@@ -44,14 +57,24 @@ No devnet program upgrade, migration, settlement or prize transaction was sent.
 
 `migrate_season_prizes` accepts only the 185-byte canonical, program-owned world
 with no prior settlement. It verifies the discriminator and original PDA bump,
-preserves the existing participants, counters, timestamps and player accounts,
+preserves the existing timestamps and player accounts,
 and appends the settlement fields and canonical prize-pool bump.
 
+The admin supplies the complete, sorted canonical participant list. Every supplied
+account must have the correct PDA, program owner, stored player and positive
+deposit; duplicates and a count greater than the old counter fail. The migration
+corrects the event counter to that unique count and emits the old/new counts.
+**Completeness is an operator attestation**, not an on-chain enumeration proof:
+legacy state has no participant registry. The operator must compare the entire
+RPC account set with the complete registration history before signing. The
+observed three events/two owners have been reconciled above.
+
 An external legacy pool must match the stored address, be a data-empty System
-account, and co-sign. Exactly the recorded allocation moves; the remaining legacy
-balance is untouched. For the observed state, 1.275 SOL moves and 0.025 SOL remains
-in the legacy account. Audit that remainder before deciding whether it represents
-additional prize revenue; the migration never guesses. The admin separately pays
+account, and co-sign. The transfer is the recorded allocation plus an explicitly
+specified, audited historical inflow; other legacy funds stay untouched. The extra
+amount defaults to zero, never to the wallet balance. For the observed state,
+use `--additional-prize-lamports 25000000`: the verified 1.3 SOL allocation moves.
+Omitting that flag preserves the 0.025 SOL instead of silently sweeping it. The admin separately pays
 the world extension and prize PDA rent. Replaying the migration fails without
 moving money. Unknown layouts and already-settled worlds are rejected.
 
@@ -102,6 +125,7 @@ continue to cover prize claims with signature verification enabled.
    node scripts/season-prize-operator.mjs --execute migrate \
      --admin-keypair /secure/admin.json \
      --legacy-pool-keypair /secure/legacy-pool.json \
+     --additional-prize-lamports 25000000 \
      --journal /secure/prize-migration
    ```
 
