@@ -21,6 +21,7 @@ jobs:
           # Copy only solana/client/ to a temp dir and push it as gh-pages root
           mkdir -p /tmp/pages-deploy
           cp -r solana/client/. /tmp/pages-deploy/
+          node scripts/version-pages-assets.mjs /tmp/pages-deploy "${GITHUB_SHA}"
 
           cd /tmp/pages-deploy
           git init
