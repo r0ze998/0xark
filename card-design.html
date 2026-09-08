@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>0xARK — Card Atelier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/style/tokens.css?v=77ad227ec8af177423afb2231a00ef4e30b5a65e">
+  <link rel="stylesheet" href="src/style/card-design.css?v=77ad227ec8af177423afb2231a00ef4e30b5a65e">
+</head>
+<body>
+  <header class="atelier-nav"><a href="./?devview=home">0xARK <span>THE DROWNED ARCHIVE</span></a><span>Card Atelier / Design study 01</span></header>
+  <main>
+    <section class="atelier-hero">
+      <div class="atelier-intro"><p class="eyebrow">PROPOSED DIRECTION · ARCHIVE STANDARD</p><h1>A face to remember.<br>A hand to read.</h1>
+        <p class="atelier-lead">絵で惹きつけ、情報で迷わせない。<br>暗い石板と真鍮のカードに、6つの陣営の個性を刻む。</p>
+        <p>対戦中に読む情報の位置は、すべてのカードで共通に。アートの明るさに左右されない名前と能力値、色だけに頼らない陣営とレアリティ、手札で選んだアクションを独立した帯で示します。</p>
+        <a class="atelier-button" href="#catalog">60枚で見え方を確認する</a>
+        <p class="atelier-note">デザイン検討用。ウォレット接続・購入はありません。イラストはゲームと共通の60枚の個別アートを使用しています。</p>
+      </div>
+      <div class="atelier-feature"><div id="hero-card"></div><div class="atelier-spec"><span>01 / IDENTITY</span><p>名前と陣営を固定位置へ</p><span>02 / PORTRAIT</span><p>顔とシルエットを主役に</p><span>03 / TACTICS</span><p>BP · HP · INIを一目で</p></div></div>
+    </section>
+    <section class="atelier-section" aria-labelledby="factions-title"><div class="section-heading"><div><p class="eyebrow">ONE SYSTEM / SIX FACTIONS</p><h2 id="factions-title">同じ読み方、異なる気配。</h2></div><p>陣営は紋章と文字、色で識別。<br>レアリティは文字と刻印の数で区別。</p></div><div class="faction-gallery" id="faction-gallery"></div></section>
+    <section class="atelier-section" aria-labelledby="states-title"><div class="section-heading"><div><p class="eyebrow">AT THE TABLE</p><h2 id="states-title">状態は、飾りよりも明快に。</h2></div><p>アクションは毎ラウンドの選択。<br>カード固有の能力とは分けて表示します。</p></div><div class="state-gallery" id="state-gallery"></div></section>
+    <section class="atelier-section" id="catalog" aria-labelledby="catalog-title"><div class="section-heading"><div><p class="eyebrow">CATALOG / REAL GAME DATA</p><h2 id="catalog-title">60枚で、読みやすさを試す。</h2></div><p id="catalog-count" role="status"></p></div>
+      <div class="atelier-controls"><label>陣営 <select id="faction-filter"><option value="all">全陣営</option></select></label><label>カード幅 <select id="card-size"><option value="208">208px · Collection</option><option value="160">160px · Battle</option><option value="260">260px · Detail</option></select></label></div><div class="catalog-gallery" id="catalog-gallery"></div>
+    </section>
+    <section class="atelier-closing"><p class="eyebrow">NEXT / THE ART PASS</p><h2>次は、60枚それぞれの顔を。</h2><p>フレームと情報設計をこの方向で固め、各陣営の衣装・素材・光・シルエットを揃えた上で、固有イラストを制作します。現在の共通画像は、完成アートではありません。</p><a href="./?devview=home">練習ゲームへ戻る</a></section>
+  </main><footer class="atelier-footer">0xARK / THE DROWNED ARCHIVE <span>Card system proposal · September 2026</span></footer>
+  <script type="module" src="src/card-design.js?v=77ad227ec8af177423afb2231a00ef4e30b5a65e"></script>
+</body>
+</html>

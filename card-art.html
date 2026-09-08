@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="海辺の古い書庫に生きる、6陣営・60枚のカードアート。0xARK / The Drowned Archive のゲーム採用版を一覧で。">
+  <title>0xARK — 60枚のカードアート</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/style/tokens.css?v=77ad227ec8af177423afb2231a00ef4e30b5a65e">
+  <link rel="stylesheet" href="src/style/archive.css?v=77ad227ec8af177423afb2231a00ef4e30b5a65e">
+  <link rel="stylesheet" href="src/style/card-art.css?v=77ad227ec8af177423afb2231a00ef4e30b5a65e">
+</head>
+<body>
+  <div id="app">
+    <a class="art-skip" href="#catalog">カード一覧へ</a>
+    <header class="art-nav">
+      <a class="art-wordmark" href="./?devview=home" aria-label="0xARK 練習ゲームへ">0xARK <span>THE DROWNED ARCHIVE</span></a>
+      <a class="art-game-link" href="./?devview=home">練習ゲームへ <span aria-hidden="true">↗</span></a>
+    </header>
+    <main class="art-main">
+      <section class="art-intro" aria-labelledby="page-title">
+        <div>
+          <p class="art-eyebrow">THE DROWNED ARCHIVE / CARD ART · 01</p>
+          <h1 id="page-title">海に残る、<br><span>60の物語。</span></h1>
+          <p class="art-lead">60枚のカードアート <span class="art-edition">ゲーム採用版</span></p>
+          <p class="art-description">守る者、商う者、奪う者。学び、祈り、造り直す者。<br>潮に侵されたひとつの書庫で、すべてのカードに固有の姿を。</p>
+          <a class="art-jump" href="#catalog">60枚を見渡す <span aria-hidden="true">↓</span></a>
+        </div>
+        <aside class="art-world" aria-label="世界観の指針">
+          <p class="art-eyebrow">ONE WORLD, SIX FACTIONS</p>
+          <h2>黒緑の石。古びた真鍮。<br>塩と、海霧の光。</h2>
+          <p>共通の素材と光の中に、陣営ごとの道具、衣装、輪郭を描き分けています。合成で生まれるカードには、元の2枚の意匠を受け継ぎます。</p>
+          <p class="art-note">既存のLegendaryの人物像を継承する制作方針です。新しい場面はアートの提案であり、設定やゲームのルールを変更するものではありません。</p>
+        </aside>
+      </section>
+      <section id="catalog" class="art-catalog" aria-labelledby="catalog-title">
+        <div class="art-catalog-heading">
+          <div><p class="art-eyebrow">THE COMPLETE SET</p><h2 id="catalog-title">六つの陣営、ひとつの世界。</h2></div>
+          <p class="art-catalog-hint">カードを選ぶと、大きな絵と制作意図を読めます。</p>
+        </div>
+        <div class="art-factions" id="faction-counts" aria-label="陣営ごとのカード数"></div>
+        <div class="art-controls">
+          <label>陣営<select id="art-faction"><option value="all">全陣営</option></select></label>
+          <label>レアリティ<select id="art-rarity"><option value="all">すべて</option></select></label>
+          <label>カード幅<select id="art-size"><option value="220">220px · 一覧</option><option value="140">140px · 手札</option><option value="320">320px · 大きく</option></select></label>
+          <fieldset class="art-view"><legend>表示</legend><label><input type="radio" name="art-view" value="illustration" checked><span>イラストのみ</span></label><label><input type="radio" name="art-view" value="card"><span>ゲームのカード</span></label></fieldset>
+        </div>
+        <div class="art-count-row"><p id="catalog-count" role="status" aria-live="polite"></p><p id="art-progress"></p></div>
+        <div class="art-grid" id="art-grid" data-view="illustration"></div>
+        <p class="art-empty" id="art-empty" hidden>この条件のカードはありません。陣営やレアリティを変更してください。</p>
+        <noscript><p>カード一覧の表示にはJavaScriptが必要です。</p></noscript>
+      </section>
+      <section class="art-endnote" aria-label="カードアートについて">
+        <p>名前・陣営・BP・HP・INIはゲームのカード情報を表示しています。ここでの閲覧はカードの所有や獲得を示しません。</p>
+        <a href="./?devview=home">この世界で、一戦遊ぶ <span aria-hidden="true">↗</span></a>
+      </section>
+    </main>
+    <footer class="art-footer"><span>0xARK / THE DROWNED ARCHIVE</span><span>60 CARD ILLUSTRATIONS · ART EDITION 01</span></footer>
+    <dialog class="art-dialog" id="art-dialog" aria-labelledby="detail-name" aria-describedby="detail-concept">
+      <div class="art-dialog-top"><span id="detail-position"></span><button class="art-close" type="button" id="detail-close" autofocus>閉じる <span aria-hidden="true">×</span></button></div>
+      <div class="art-dialog-content">
+        <div class="art-detail-media" id="detail-media"></div>
+        <div class="art-detail-copy">
+          <p class="art-eyebrow" id="detail-meta"></p>
+          <h2 id="detail-name" tabindex="-1"></h2>
+          <dl class="art-detail-stats" id="detail-stats"></dl>
+          <p class="art-detail-concept" id="detail-concept"></p>
+          <dl class="art-detail-notes" id="detail-notes"></dl>
+          <div class="art-lineage" id="detail-lineage" hidden></div>
+        </div>
+      </div>
+      <div class="art-dialog-bottom"><button type="button" id="detail-previous">← 前のカード</button><span>ゲーム採用版 / カードアート</span><button type="button" id="detail-next">次のカード →</button></div>
+    </dialog>
+  </div>
+  <script type="module" src="src/card-art.js?v=77ad227ec8af177423afb2231a00ef4e30b5a65e"></script>
+</body>
+</html>
