@@ -71,7 +71,8 @@ pub fn handle_claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
         require!(prize > 0, ErrorCode::NoPrizeClaim);
 
         // Balance guard: never pay beyond the pool, and never drain it below the
-        // rent-exempt floor (a lamports-only System PDA with 0 data still needs
+        // rent-exempt floor. Insufficient coverage fails before any payment or
+        // claim consumption (a lamports-only System PDA with 0 data still needs
         // minimum_balance(0) to stay alive). The floor (~0.00089 SOL) is stranded
         // dust by design — see PR notes.
         let rent_exempt_min = Rent::get()?.minimum_balance(0);

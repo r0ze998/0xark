@@ -10,9 +10,8 @@ use anchor_lang::system_program::{transfer, Transfer};
 /// Sets up season timestamps and initializes all counters to zero.
 ///
 /// Timeline:
-///   game_start                              (pass current time to open registration now)
-///   waitlist_close = game_start + 14 days  (waitlist window closes at season end)
-///   end            = game_start + 14 days   (status → 2 via finalize ix)
+///   waitlist_close = game_start (choose a future start to allow registration)
+///   end = game_start + 14 days (status → 2 only after the complete tally)
 ///
 /// PDA seeds: ["game_world"]
 #[derive(Accounts)]
@@ -27,8 +26,8 @@ pub struct InitGameWorld<'info> {
     pub game_world: Account<'info, GameWorld>,
 
     /// Prize-pool PDA vault (YKK-38). Lamports-only, System-owned; created lazily
-    /// on the first deposit. Here we only derive it to record its address + bump
-    /// into the GameWorld so `claim_prize_v2` can sign payouts via invoke_signed.
+    /// before the first deposit. The initializer funds rent separately and records
+    /// the canonical address + bump for program-signed prize payouts.
     #[account(
         mut,
         seeds = [GameWorld::PRIZE_POOL_SEED],

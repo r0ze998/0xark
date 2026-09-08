@@ -51,7 +51,16 @@ fn set_time(svm: &mut LiteSVM, timestamp: i64) {
     svm.set_sysvar(&c);
 }
 fn setup() -> LiteSVM {
-    let mut svm = LiteSVM::new().with_sigverify(false);
+    let base =
+        solana_compute_budget::compute_budget::ComputeBudget::new_with_defaults(false, false);
+    let budget = solana_compute_budget::compute_budget::ComputeBudget {
+        heap_size: 256 * 1024,
+        compute_unit_limit: 1_400_000,
+        ..base
+    };
+    let mut svm = LiteSVM::new()
+        .with_compute_budget(budget)
+        .with_sigverify(false);
     svm.add_program(oxark::id(), include_bytes!("../target/deploy/oxark.so"))
         .unwrap();
     svm.airdrop(&oxark::constants::ADMIN_PUBKEY, 10_000_000_000)
@@ -323,7 +332,6 @@ fn pack_revenue_is_recorded_and_purchases_freeze_at_deadline() {
     put(&mut svm, world_key().0, bytes(&w));
     let slot_key = Pubkey::new_from_array(oxark::constants::SLOT_HASHES_ID_BYTES);
     // A correctly addressed SlotHashes fixture with a count/slot/hash entry.
-    svm.airdrop(&slot_key, 1_000_000).unwrap();
     let mut slots = svm.get_account(&slot_key).unwrap();
     slots.data = vec![0; 48];
     slots.data[..8].copy_from_slice(&1u64.to_le_bytes());

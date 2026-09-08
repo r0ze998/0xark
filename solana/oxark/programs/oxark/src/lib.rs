@@ -570,7 +570,7 @@ pub mod oxark {
     /// Admin-only (ADMIN_PUBKEY). Can only be called once (init constraint).
     ///
     /// `game_start_timestamp`: Unix timestamp when the game goes active.
-    ///   waitlist_close = game_start - 14 days
+    ///   waitlist_close = game_start
     ///   end            = game_start + 14 days
     ///
     /// PDA seeds: ["game_world"]

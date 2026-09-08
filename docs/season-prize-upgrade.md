@@ -71,6 +71,11 @@ Anchor 1.0 pins SBF tools v1.52 itself; do not pass `--tools-version` a second t
 authority, and the program ID remains the source's `declare_id!` value. Never use
 a generated local build keypair as the live upgrade authority.
 
+When SBF tools cannot be downloaded locally, `anchor idl build --program-name oxark
+--out target/idl/oxark.json -- --lib` generates the IDL from the same source without
+running integration tests or creating a placeholder binary. The fresh SBF build
+and all integration tests must still pass in CI.
+
 The new LiteSVM settlement suite runs the freshly built SBF. Its admin scenarios
 disable cryptographic signature verification **only inside the isolated test
 ledger**, because the real admin key is not available. Account signer constraints,

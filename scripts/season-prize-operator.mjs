@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { decodePrizeWorld, decodePrizePlayer, prizeQuote } from '../solana/client/src/lib/season-prize.js';
 import { encodeBase58 } from '../solana/client/src/lib/base58.js';
 const require = createRequire(new URL('../solana/oxark/package.json', import.meta.url));
-const { Connection, PublicKey, Keypair, Transaction, TransactionInstruction, SystemProgram } = require('@solana/web3.js');
+const { Connection, PublicKey, Keypair, Transaction, TransactionInstruction, SystemProgram, ComputeBudgetProgram } = require('@solana/web3.js');
 const args = process.argv.slice(2);
 const value = flag => { const i=args.indexOf(flag); return i<0 ? null : args[i+1]; };
 const action=value('--execute');
@@ -38,7 +38,9 @@ async function send(ix, signers, label) {
   const path=`${prefix}-${label}.json`;
   if(existsSync(path)) throw Error(`Existing journal ${path}: verify its signature before retrying. Never delete an uncertain transaction record.`);
   const latest=await conn.getLatestBlockhash();
-  const tx=new Transaction({...latest,feePayer:signers[0].publicKey}).add(ix);
+  const tx=new Transaction({...latest,feePayer:signers[0].publicKey}).add(
+    ComputeBudgetProgram.requestHeapFrame({bytes:256*1024}),
+    ComputeBudgetProgram.setComputeUnitLimit({units:600_000}),ix);
   tx.sign(...signers);
   const simulation=await conn.simulateTransaction(tx);
   if(simulation.value.err) throw Error(`Simulation failed: ${JSON.stringify(simulation.value.err)}\n${simulation.value.logs?.join('\n')}`);

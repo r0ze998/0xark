@@ -66,6 +66,28 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "game_world",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -488,6 +510,7 @@
         },
         {
           "name": "game_world",
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -600,6 +623,28 @@
         {
           "name": "listing",
           "writable": true
+        },
+        {
+          "name": "game_world",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -816,6 +861,28 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "game_world",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -1267,6 +1334,28 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "game_world",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -1631,6 +1720,28 @@
         {
           "name": "admin",
           "signer": true
+        },
+        {
+          "name": "prize_pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  122,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": []
@@ -1972,7 +2083,7 @@
         "Admin-only (ADMIN_PUBKEY). Can only be called once (init constraint).",
         "",
         "`game_start_timestamp`: Unix timestamp when the game goes active.",
-        "waitlist_close = game_start - 14 days",
+        "waitlist_close = game_start",
         "end            = game_start + 14 days",
         "",
         "PDA seeds: [\"game_world\"]"
@@ -2015,9 +2126,10 @@
           "name": "prize_pool",
           "docs": [
             "Prize-pool PDA vault (YKK-38). Lamports-only, System-owned; created lazily",
-            "on the first deposit. Here we only derive it to record its address + bump",
-            "into the GameWorld so `claim_prize_v2` can sign payouts via invoke_signed."
+            "before the first deposit. The initializer funds rent separately and records",
+            "the canonical address + bump for program-signed prize payouts."
           ],
+          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -2325,6 +2437,85 @@
           "name": "player",
           "writable": true,
           "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "migrate_season_prizes",
+      "docs": [
+        "Migrate the pre-settlement 185-byte world, preserving its participants.",
+        "An external legacy prize vault must co-sign the recorded-allocation transfer."
+      ],
+      "discriminator": [
+        50,
+        217,
+        44,
+        149,
+        250,
+        114,
+        112,
+        31
+      ],
+      "accounts": [
+        {
+          "name": "game_world",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "legacy_pool",
+          "writable": true
+        },
+        {
+          "name": "prize_pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  105,
+                  122,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -3530,6 +3721,28 @@
         },
         {
           "name": "player"
+        },
+        {
+          "name": "game_world",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101,
+                  95,
+                  119,
+                  111,
+                  114,
+                  108,
+                  100
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": []
@@ -5709,6 +5922,31 @@
       "code": 6110,
       "name": "RevealCardNotOwned",
       "msg": "Revealed hand fields a card the player does not own"
+    },
+    {
+      "code": 6111,
+      "name": "CollectionFrozen",
+      "msg": "Collection changes are closed for season settlement"
+    },
+    {
+      "code": 6112,
+      "name": "SeasonNotDue",
+      "msg": "Season deadline has not been reached"
+    },
+    {
+      "code": 6113,
+      "name": "PrizeUnderfunded",
+      "msg": "Prize vault cannot cover the full entitlement; claim remains available"
+    },
+    {
+      "code": 6114,
+      "name": "InvalidSeasonMigration",
+      "msg": "Invalid or already migrated season account"
+    },
+    {
+      "code": 6115,
+      "name": "SeasonArithmeticOverflow",
+      "msg": "Season accounting overflow"
     }
   ],
   "types": [
