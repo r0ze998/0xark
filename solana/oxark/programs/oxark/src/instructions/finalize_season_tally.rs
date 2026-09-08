@@ -36,6 +36,8 @@ pub fn handle_finalize_season_tally(
 ) -> Result<()> {
     let world = &mut ctx.accounts.game_world;
     require!(world.game_status == 1, ErrorCode::SeasonWrongStatus);
+    require!(Clock::get()?.unix_timestamp >= world.end_timestamp, ErrorCode::SeasonNotDue);
+    require!(!players.is_empty(), ErrorCode::TallyIncomplete);
     require!(
         players.len() == ctx.remaining_accounts.len(),
         ErrorCode::TallyOutOfOrder
@@ -53,10 +55,12 @@ pub fn handle_finalize_season_tally(
 
         let data = acc.try_borrow_data()?;
         let ps = PlayerState::try_deserialize(&mut &data[..])?;
+        require!(ps.player == *pk && ps.deposit_amount > 0, ErrorCode::NotRegistered);
+        require!(world.finalize_processed < world.total_participants, ErrorCode::TallyIncomplete);
         let vc = ps.vault_count() as u64;
 
         if vc == 60 {
-            world.winner_60_count = world.winner_60_count.saturating_add(1);
+            world.winner_60_count = world.winner_60_count.checked_add(1).ok_or(ErrorCode::SeasonArithmeticOverflow)?;
         } else if vc > 0 {
             match GameWorld::band_of(vc) {
                 2 => world.tier2_total_vault += vc,

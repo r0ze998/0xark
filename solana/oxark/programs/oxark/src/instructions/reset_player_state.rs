@@ -4,7 +4,7 @@
 
 use crate::constants::ADMIN_PUBKEY;
 use crate::error::ErrorCode;
-use crate::state::PlayerState;
+use crate::state::{GameWorld, PlayerState};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -24,9 +24,17 @@ pub struct ResetPlayerState<'info> {
 
     /// CHECK: the player whose state is being reset
     pub player: AccountInfo<'info>,
+    #[account(seeds = [GameWorld::SEED], bump = game_world.bump)]
+    pub game_world: Account<'info, GameWorld>,
+
 }
 
 pub fn handle_reset_player_state(ctx: Context<ResetPlayerState>) -> Result<()> {
+    require!(ctx.accounts.game_world.game_status == 0
+        && ctx.accounts.game_world.total_participants == 0,
+        ErrorCode::CollectionFrozen);
+    require!(ctx.accounts.player_state.deposit_amount == 0, ErrorCode::AlreadyRegistered);
+
     let ps = &mut ctx.accounts.player_state;
     ps.deposit_amount = 0;
     ps.vault_bitmap = [0u8; 8];

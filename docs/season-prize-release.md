@@ -37,27 +37,21 @@ season, tally participants, or send a real wallet transaction.
 
 ## Gates before enabling real claims
 
-1. **Reconcile pool accounting.** `buy_pack.rs` transfers a share to the prize PDA
-   but does not increment `GameWorld.total_prize_pool`; payout math uses that field.
-   Decide and implement the intended accounting before advertising the entire vault
-   balance as distributable. Audit every other prize inflow as part of the same fix.
-2. **Freeze the collection used by settlement.** The tally reads vault counts in
-   batches; `claim_prize_v2` reads the current count again. Audit/fix every mutation
-   path around tally and season close so the numerator cannot drift from the tally.
-   The client cannot enforce this invariant against direct program calls.
-3. **Verify deployed state and program.** Match the deployed executable and account
-   layouts to the reviewed source, finalize the full participant tally using the
-   authorized operator, and verify an actual devnet claim end to end. No claim or
-   operator transaction was performed for this UI change.
-4. **Review partial payment behavior.** The contract caps payout at spendable balance
-   and consumes the claim. The client checks coverage before signing, but cannot
-   atomically guarantee that coverage remains unchanged until execution. A program
-   minimum-payout condition or fully reconciled/funded pool is needed for a stronger
-   guarantee.
+The source-level accounting, settlement freeze, and atomic full-payout fixes are
+in `docs/season-prize-upgrade.md`, together with the legacy migration and operator
+commands. They are not yet deployed to devnet. The observed world is still the
+185-byte legacy layout with an external prize vault.
 
-Only after these gates pass should the config flag change. Mainnet release and
-real-value prize funding require their own deployment verification; the current
-client is configured for devnet test SOL.
+Before changing the release flag:
+
+1. Deploy the freshly verified program with the existing upgrade authority.
+2. Migrate the old world and recorded allocation with both admin and legacy-vault
+   signatures; reconcile any additional historic prize inflows and participants.
+3. Complete the expired season tally and verify a real devnet claim, finalized
+   transfer receipt, wallet reconnect and browser recovery.
+
+No authority transaction has been sent by this work. Mainnet and real-value funding
+remain outside this devnet update; the client uses devnet test SOL.
 
 ## Verification
 

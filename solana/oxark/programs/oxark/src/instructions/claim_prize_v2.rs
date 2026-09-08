@@ -53,6 +53,7 @@ pub fn handle_claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
         let ps = &ctx.accounts.player_state;
 
         require!(world.game_status == 2, ErrorCode::GameNotEnded);
+        require!(world.finalize_processed == world.total_participants, ErrorCode::TallyIncomplete);
         // C1 guard: deposit_amount is zeroed after claim; a second call hits this.
         require!(ps.deposit_amount > 0, ErrorCode::NotRegistered);
 
@@ -70,7 +71,8 @@ pub fn handle_claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
         require!(prize > 0, ErrorCode::NoPrizeClaim);
 
         // Balance guard: never pay beyond the pool, and never drain it below the
-        // rent-exempt floor (a lamports-only System PDA with 0 data still needs
+        // rent-exempt floor. Insufficient coverage fails before any payment or
+        // claim consumption (a lamports-only System PDA with 0 data still needs
         // minimum_balance(0) to stay alive). The floor (~0.00089 SOL) is stranded
         // dust by design — see PR notes.
         let rent_exempt_min = Rent::get()?.minimum_balance(0);
@@ -79,7 +81,8 @@ pub fn handle_claim_prize_v2(ctx: Context<ClaimPrizeV2>) -> Result<()> {
             .prize_pool
             .lamports()
             .saturating_sub(rent_exempt_min);
-        let actual_prize = prize.min(spendable);
+        require!(spendable >= prize, ErrorCode::PrizeUnderfunded);
+        let actual_prize = prize;
         (vault_count, actual_prize)
     }; // immutable borrows on world/ps drop here
 
@@ -203,7 +206,7 @@ pub(crate) fn effective_band_shares(populated: [bool; 5]) -> [u64; 5] {
 /// the next populated band; a share with no populated band below it stays in the
 /// pool. Empty bands are never used as a divisor, so there is no division by zero,
 /// and Σ(payouts) ≤ pool.
-fn compute_tier_prize(
+pub(crate) fn compute_tier_prize(
     vault_count: u64,
     prize_pool: u64,
     world: &GameWorld,
@@ -235,27 +238,27 @@ fn compute_tier_prize(
         if t1_divisor == 0 {
             return 0;
         }
-        return prize_pool * eff[0] / 100 / t1_divisor;
+        return (u128::from(prize_pool) * u128::from(eff[0]) / 100 / u128::from(t1_divisor)) as u64;
     }
     if vault_count >= 50 {
         if world.tier2_total_vault == 0 {
             return 0;
         }
-        prize_pool * eff[1] / 100 * vault_count / world.tier2_total_vault
+        (u128::from(prize_pool) * u128::from(eff[1]) / 100 * u128::from(vault_count) / u128::from(world.tier2_total_vault)).min(u128::from(u64::MAX)) as u64
     } else if vault_count >= 30 {
         if world.tier3_total_vault == 0 {
             return 0;
         }
-        prize_pool * eff[2] / 100 * vault_count / world.tier3_total_vault
+        (u128::from(prize_pool) * u128::from(eff[2]) / 100 * u128::from(vault_count) / u128::from(world.tier3_total_vault)).min(u128::from(u64::MAX)) as u64
     } else if vault_count >= 10 {
         if world.tier4_total_vault == 0 {
             return 0;
         }
-        prize_pool * eff[3] / 100 * vault_count / world.tier4_total_vault
+        (u128::from(prize_pool) * u128::from(eff[3]) / 100 * u128::from(vault_count) / u128::from(world.tier4_total_vault)).min(u128::from(u64::MAX)) as u64
     } else {
         if world.tier5_total_vault == 0 {
             return 0;
         }
-        prize_pool * eff[4] / 100 * vault_count / world.tier5_total_vault
+        (u128::from(prize_pool) * u128::from(eff[4]) / 100 * u128::from(vault_count) / u128::from(world.tier5_total_vault)).min(u128::from(u64::MAX)) as u64
     }
 }

@@ -97,3 +97,6 @@ pub mod finalize_season_tally;
 pub use activate_season::*;
 pub use end_season_final::*;
 pub use finalize_season_tally::*;
+
+pub mod migrate_season_prizes;
+pub use migrate_season_prizes::*;

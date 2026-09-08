@@ -570,7 +570,7 @@ pub mod oxark {
     /// Admin-only (ADMIN_PUBKEY). Can only be called once (init constraint).
     ///
     /// `game_start_timestamp`: Unix timestamp when the game goes active.
-    ///   waitlist_close = game_start - 14 days
+    ///   waitlist_close = game_start
     ///   end            = game_start + 14 days
     ///
     /// PDA seeds: ["game_world"]
@@ -718,6 +718,12 @@ pub mod oxark {
     // flows. It was never called from any client or test; the fresh-init path
     // (YKK-34/38) makes it unnecessary. Module removed in YKK-60 — see git history
     // (YKK-39); it was never dispatched. (`migrate_game_world_finalize` removed too.)
+
+    /// Migrate the pre-settlement 185-byte world, preserving its participants.
+    /// An external legacy prize vault must co-sign the recorded-allocation transfer.
+    pub fn migrate_season_prizes(ctx: Context<MigrateSeasonPrizes>) -> Result<()> {
+        instructions::migrate_season_prizes::handle_migrate_season_prizes(ctx)
+    }
 
     // ── Phase 20-C: Trade Floor ────────────────────────────────────────────────
 

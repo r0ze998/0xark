@@ -24,7 +24,7 @@ pub fn handle_activate_season(ctx: Context<ActivateSeason>) -> Result<()> {
 
     let now = Clock::get()?.unix_timestamp;
     require!(
-        now >= world.waitlist_close_timestamp,
+        now >= world.waitlist_close_timestamp && now >= world.start_timestamp,
         ErrorCode::WaitlistStillOpen
     );
 

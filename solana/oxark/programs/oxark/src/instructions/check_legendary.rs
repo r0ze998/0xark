@@ -33,7 +33,8 @@ pub fn handle_check_legendary(ctx: Context<CheckLegendary>) -> Result<()> {
     let player = ctx.accounts.player.key();
     let now = Clock::get()?.unix_timestamp;
 
-    require!(world.game_status == 1, ErrorCode::GameNotActive);
+    world.require_collection_open(now)?;
+    require!(ps.deposit_amount > 0, ErrorCode::NotRegistered);
 
     check_all_legendaries(ps, world, player, now);
     Ok(())

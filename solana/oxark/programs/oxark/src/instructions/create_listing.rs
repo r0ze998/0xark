@@ -5,7 +5,7 @@
 
 use crate::constants::MIN_LISTING_PRICE;
 use crate::error::ErrorCode;
-use crate::state::{ListingCreatedEvent, PlayerState, TradeListing};
+use crate::state::{GameWorld, ListingCreatedEvent, PlayerState, TradeListing};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -31,9 +31,15 @@ pub struct CreateListing<'info> {
     pub listing: Account<'info, TradeListing>,
 
     pub system_program: Program<'info, System>,
+    #[account(seeds = [GameWorld::SEED], bump = game_world.bump)]
+    pub game_world: Account<'info, GameWorld>,
+
 }
 
 pub fn handle_create_listing(ctx: Context<CreateListing>, card_id: u8, price: u64) -> Result<()> {
+    ctx.accounts.game_world.require_collection_open(Clock::get()?.unix_timestamp)?;
+    require!(ctx.accounts.seller_state.deposit_amount > 0, ErrorCode::NotRegistered);
+
     require!(price >= MIN_LISTING_PRICE, ErrorCode::PriceTooLow);
 
     // Escrow: remove card from seller vault now

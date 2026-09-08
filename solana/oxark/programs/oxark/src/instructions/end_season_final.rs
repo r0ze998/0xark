@@ -22,11 +22,15 @@ pub struct EndSeasonFinal<'info> {
 
     #[account(constraint = admin.key() == ADMIN_PUBKEY @ ErrorCode::NotAdmin)]
     pub admin: Signer<'info>,
+    #[account(seeds = [GameWorld::PRIZE_POOL_SEED], bump = game_world.prize_pool_bump)]
+    pub prize_pool: SystemAccount<'info>,
+
 }
 
 pub fn handle_end_season_final(ctx: Context<EndSeasonFinal>) -> Result<()> {
     let world = &mut ctx.accounts.game_world;
     require!(world.game_status == 1, ErrorCode::SeasonWrongStatus);
+    require!(Clock::get()?.unix_timestamp >= world.end_timestamp, ErrorCode::SeasonNotDue);
     require!(
         world.finalize_processed == world.total_participants,
         ErrorCode::TallyIncomplete
@@ -43,6 +47,12 @@ pub fn handle_end_season_final(ctx: Context<EndSeasonFinal>) -> Result<()> {
         }
     }
 
+    // Capture ALL real inflows once, including earlier pack revenue and direct donations.
+    // Later top-ups cover liabilities; they must not change already fixed entitlements.
+    let allocation = ctx.accounts.prize_pool.lamports()
+        .saturating_sub(Rent::get()?.minimum_balance(0));
+    require!(allocation >= world.total_prize_pool, ErrorCode::PrizeUnderfunded);
+    world.total_prize_pool = allocation;
     world.game_status = 2;
     msg!(
         "EndSeasonFinal: status 1->2 (ended). winner60={} timeout={} max_vault={} max_count={}",

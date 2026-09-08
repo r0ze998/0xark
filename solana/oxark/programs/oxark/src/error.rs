@@ -246,4 +246,14 @@ pub enum ErrorCode {
     // the client hardcodes ANCHOR_ERRORS by numeric code.
     #[msg("Revealed hand fields a card the player does not own")]
     RevealCardNotOwned,
+    #[msg("Collection changes are closed for season settlement")]
+    CollectionFrozen,
+    #[msg("Season deadline has not been reached")]
+    SeasonNotDue,
+    #[msg("Prize vault cannot cover the full entitlement; claim remains available")]
+    PrizeUnderfunded,
+    #[msg("Invalid or already migrated season account")]
+    InvalidSeasonMigration,
+    #[msg("Season accounting overflow")]
+    SeasonArithmeticOverflow,
 }

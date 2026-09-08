@@ -28,7 +28,7 @@ pub struct BuyPack<'info> {
     )]
     pub player_state: Account<'info, PlayerState>,
 
-    #[account(seeds = [b"game_world"], bump = game_world.bump)]
+    #[account(mut, seeds = [b"game_world"], bump = game_world.bump)]
     pub game_world: Account<'info, GameWorld>,
 
     /// CHECK: verified against game_world.ops_treasury
@@ -51,6 +51,8 @@ pub struct BuyPack<'info> {
 }
 
 pub fn handle_buy_pack(ctx: Context<BuyPack>, pack_type: u8) -> Result<()> {
+    ctx.accounts.game_world.require_collection_open(Clock::get()?.unix_timestamp)?;
+    require!(ctx.accounts.player_state.deposit_amount > 0, ErrorCode::NotRegistered);
     let (price, pack_size): (u64, usize) = match pack_type {
         PACK_STANDARD => (STANDARD_PACK_PRICE, 5),
         PACK_PREMIUM => (PREMIUM_PACK_PRICE, 3),
@@ -80,6 +82,12 @@ pub fn handle_buy_pack(ctx: Context<BuyPack>, pack_type: u8) -> Result<()> {
         ),
         pool_amount,
     )?;
+
+    let world = &mut ctx.accounts.game_world;
+    world.total_prize_pool = world.total_prize_pool.checked_add(pool_amount)
+        .ok_or(ErrorCode::SeasonArithmeticOverflow)?;
+    world.total_ops_revenue = world.total_ops_revenue.checked_add(ops_amount)
+        .ok_or(ErrorCode::SeasonArithmeticOverflow)?;
 
     // 2. Phase determination
     let gw = &ctx.accounts.game_world;

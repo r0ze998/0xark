@@ -5,7 +5,7 @@
 // The TradeListing PDA is closed (close = seller) — rent refund goes to seller.
 
 use crate::error::ErrorCode;
-use crate::state::{ListingAcceptedEvent, PlayerState, TradeListing};
+use crate::state::{GameWorld, ListingAcceptedEvent, PlayerState, TradeListing};
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
 
@@ -37,6 +37,9 @@ pub struct AcceptListing<'info> {
     pub seller: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
+    #[account(seeds = [GameWorld::SEED], bump = game_world.bump)]
+    pub game_world: Account<'info, GameWorld>,
+
 }
 
 pub fn handle_accept_listing(
@@ -44,6 +47,9 @@ pub fn handle_accept_listing(
     _seller_pubkey: Pubkey,
     card_id: u8,
 ) -> Result<()> {
+    ctx.accounts.game_world.require_collection_open(Clock::get()?.unix_timestamp)?;
+    require!(ctx.accounts.buyer_state.deposit_amount > 0, ErrorCode::NotRegistered);
+
     let price = ctx.accounts.listing.price;
     let seller = ctx.accounts.listing.seller;
 

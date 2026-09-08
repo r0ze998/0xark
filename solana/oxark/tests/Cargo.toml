@@ -23,6 +23,10 @@ path = "provenance_settle.rs"
 name = "register_bump"
 path = "register_bump.rs"
 
+[[test]]
+name = "season_prizes"
+path = "season_prizes.rs"
+
 [dependencies]
 sha2 = "0.10"
 oxark = { path = "../programs/oxark", features = ["no-entrypoint"] }
