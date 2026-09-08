@@ -1,3 +1,4 @@
+import { encodeBase58, decodeBase58 } from '../src/lib/base58.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -7,8 +8,7 @@ class Key { constructor(v){this.v=String(v);} toString(){return this.v;} toBytes
 let rpc;
 class Transaction { add(...ix){this.instructions=ix;} serialize(){return new Uint8Array([1]);} }
 globalThis.solanaWeb3={PublicKey:Key,Connection:class{constructor(){return rpc;}},Transaction,
-  TransactionInstruction:class{constructor(v){Object.assign(this,v);}},SystemProgram:{programId:new Key('system')},
-  bs58:{encode:()=> '3'.repeat(88),decode:v=>Uint8Array.from(Buffer.from(v,'hex'))}};
+  TransactionInstruction:class{constructor(v){Object.assign(this,v);}},SystemProgram:{programId:new Key('system')}};
 const provider={isConnected:true,publicKey:new Key('wallet-a'),signTransaction:async tx=>{tx.signature=new Uint8Array(64);return tx;}};
 globalThis.window={oxarkWallet:{provider}};
 const {getPrizeSnapshot,sendPrizeClaimTransaction:submitPrizeClaim,getPrizeReceipt,submitPrizeClaim:guardedClaim}=await import('../src/onchain/prizes.js');
@@ -23,8 +23,8 @@ rpc={getMultipleAccountsInfoAndContext:async()=>({value:data,context:{slot:42}})
  getLatestBlockhash:async()=>({blockhash:'block',lastValidBlockHeight:100}),simulateTransaction:async()=>({value:{err:null}}),
  sendRawTransaction:async()=>{assert.equal(stored,true);sends++;throw Error('broadcast response lost');},
  getSignatureStatuses:async()=>({value:[{confirmationStatus:'finalized',err:null}]}),getBlockHeight:async()=>101};
-const record={signature:'3'.repeat(88),owner:'wallet-a',season:'100',lastValidBlockHeight:100};
-function tx(){return {blockTime:200,transaction:{message:{accountKeys:[{pubkey:new Key('wallet-a'),signer:true}],instructions:[{programId:new Key(PROGRAM_ID),data:disc('global:claim_prize_v2').toString('hex')}]}},meta:{err:null,fee:5000,innerInstructions:[{index:0,instructions:[{programId:new Key('system'),parsed:{type:'transfer',info:{source:'prize_pool',destination:'wallet-a',lamports:5000000000}}}]}]}};}
+const record={signature:'1'.repeat(64),owner:'wallet-a',season:'100',lastValidBlockHeight:100};
+function tx(){return {blockTime:200,transaction:{message:{accountKeys:[{pubkey:new Key('wallet-a'),signer:true}],instructions:[{programId:new Key(PROGRAM_ID),data:encodeBase58(disc('global:claim_prize_v2'))}]}},meta:{err:null,fee:5000,innerInstructions:[{index:0,instructions:[{programId:new Key('system'),parsed:{type:'transfer',info:{source:'prize_pool',destination:'wallet-a',lamports:5000000000}}}]}]}};}
 test('snapshot verifies account ownership, discriminator and exact layout',async()=>{
   const s=await getPrizeSnapshot('wallet-a');assert.equal(s.player.vault.length,60);assert.equal(s.spendable,'9999109120');assert.equal(s.slot,42);
   data[0].data[0]^=1;await assert.rejects(getPrizeSnapshot('wallet-a'),/Invalid GameWorld/);data=accounts();
@@ -50,3 +50,13 @@ test('receipt requires finalized successful game claim and exact pool-to-wallet 
 });
 
 test('release gate blocks the public claim adapter before wallet or RPC work', async()=>{ const before=sends;await assert.rejects(guardedClaim(null,{}),/not open/);assert.equal(sends,before); });
+
+test('base58 vectors retain leading zeros and encode instruction bytes without SDK internals',()=>{
+  for (const [bytes,text] of [[[], ''],[[0,0,1],'112'],[[0,0],'11'],[[1],'2'],[[255],'5Q']]) {
+    assert.equal(encodeBase58(Uint8Array.from(bytes)),text);
+    assert.deepEqual([...decodeBase58(text)],bytes);
+  }
+  const bytes=Uint8Array.from({length:64},(_,i)=>i*3);assert.deepEqual(decodeBase58(encodeBase58(bytes)),bytes);
+  assert.equal(encodeBase58(new TextEncoder().encode('hello world')),'StV1DL6CwTryKyV');
+  assert.throws(()=>decodeBase58('0OIl'));assert.throws(()=>decodeBase58('1'.repeat(129)));
+});

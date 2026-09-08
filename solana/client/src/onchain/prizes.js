@@ -1,3 +1,4 @@
+import { encodeBase58, decodeBase58 } from '../lib/base58.js';
 import { getConnection } from './rpc.js';
 import { getWalletProvider } from '../lib/wallet-provider.js';
 import { NETWORK, PROGRAM_ID, PRIZE_CLAIMS_ENABLED } from '../config.js';
@@ -58,7 +59,7 @@ export async function sendPrizeClaimTransaction(snapshot, { isCurrent, onSigned 
   const signed = await provider.signTransaction(tx);
   if (!valid()) throw new Error('Wallet or screen changed. No transaction was sent.');
   if (!signed.signature) throw new Error('Wallet did not sign the claim.');
-  const record = { signature: solanaWeb3.bs58.encode(signed.signature), blockhash, lastValidBlockHeight,
+  const record = { signature: encodeBase58(signed.signature), blockhash, lastValidBlockHeight,
     owner, season: String(fresh.world.game_start_timestamp), network: NETWORK, program: PROGRAM_ID };
   onSigned(record); // durable storage failure must prevent broadcasting
   try { await conn.sendRawTransaction(signed.serialize(), { skipPreflight: false, maxRetries: 5 }); }
@@ -82,7 +83,7 @@ export async function getPrizeReceipt(record) {
   const expected = await disc('claim_prize_v2');
   const instructions = tx.transaction.message.instructions;
   const index = instructions.findIndex(ix => ix.programId?.toString() === PROGRAM_ID && ix.data
-    && (() => { const data = solanaWeb3.bs58.decode(ix.data); return data.length === 8 && expected.every((b, i) => b === data[i]); })());
+    && (() => { const data = decodeBase58(ix.data); return data.length === 8 && expected.every((b, i) => b === data[i]); })());
   if (index < 0) throw new Error('Transaction is not a prize claim for this game');
   const keys = tx.transaction.message.accountKeys;
   if (!keys.some(k => k.signer && k.pubkey.toString() === record.owner)) throw new Error('Prize recipient does not match');
