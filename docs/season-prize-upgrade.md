@@ -108,6 +108,33 @@ continue to cover prize claims with signature verification enabled.
 
 ## Execute on devnet with the existing authority wallets
 
+### Use the tested CI binary
+
+The `CI` workflow uploads `oxark-devnet-<full source SHA>` after the Anchor
+integration tests, IDL instruction check and embedded verification-key check pass.
+Choose a **successful push run on main** for the intended commit; PR runs contain
+GitHub's temporary merge revision and are review artifacts. Check all CI jobs,
+not only the artifact-producing job. Artifacts expire after 30 days.
+
+Download and extract the artifact from that run's Artifacts section. It contains
+only `oxark.so`, the committed `oxark-idl.json`, `manifest.json` and `SHA256SUMS`.
+No wallet files are included. In the extracted directory run:
+
+```sh
+sha256sum --check SHA256SUMS
+cat manifest.json
+```
+
+Match `sourceCommit` to the selected main commit, `ref` to `refs/heads/main`,
+`event` to `push`, and `runUrl` to the successful CI run. The manifest records the
+binary size for the live allocation check below. Checksums detect file corruption;
+they are not a separate signature or proof that a run succeeded. The IDL is the
+committed client IDL, not a fresh Anchor-generated CI IDL. Use the extracted
+`oxark.so` for deployment and post-deployment byte comparison; rebuilding locally
+would produce a different, separately unverified deployment artifact.
+
+### Sign and verify
+
 1. Follow `devnet-v3-upgrade-runbook.md` size and VK gates, using this revision's
    freshly built binary. Explicitly pass `--url https://api.devnet.solana.com`.
    Extend the existing program allocation only if required, then upgrade with
