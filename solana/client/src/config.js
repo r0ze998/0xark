@@ -11,6 +11,10 @@ export const RELAY_URL = 'https://oxark-multiplayer.fly.dev';
 // until the service implements that contract; practice has its own free peek.
 export const LIVE_PEEK_ENABLED = false;
 
+// Open only after a deployed-program audit and a real finalized devnet claim.
+// The UI, signed-transaction recovery and receipt verification are wired now.
+export const PRIZE_CLAIMS_ENABLED = false;
+
 // oxark program id (matches CLAUDE.md / onchain.js PROGRAM_ID).
 export const PROGRAM_ID = '5i37jWBiA7bV9XmokyDWHQxjJ5s1sBnSEkPSB4J2XfmN';
 

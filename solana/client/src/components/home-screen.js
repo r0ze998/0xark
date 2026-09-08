@@ -1,3 +1,5 @@
+import { PRIZE_SCREEN_CSS } from '../style/prize-screen.js';
+import { sol } from '../lib/season-prize.js';
 import { injectStyle } from '../lib/inject-style.js';
 import { HOME_SCREEN_CSS } from '../style/home-screen.js';
 // Home is the player's lobby: an owned-card showcase and one clear way into battle.
@@ -13,6 +15,7 @@ let _cleanup = () => {};
 
 function _injectCSS() {
   injectStyle('home-css', HOME_SCREEN_CSS);
+  injectStyle('prize-screen-css', PRIZE_SCREEN_CSS);
 }
 
 function escapeHTML(value) {
@@ -23,7 +26,7 @@ function dayLabel(world) {
   const start = Number(world?.game_start_timestamp);
   if (!Number.isFinite(start) || start <= 0) return 'GAME DAY UNAVAILABLE';
   const elapsed = Math.floor((Date.now() / 1000 - start) / 86400);
-  return elapsed < 0 ? 'SEASON NOT STARTED' : elapsed >= 14 ? 'SEASON ENDED' : `DAY ${elapsed + 1} / 14`;
+  return world.game_status === 2 ? 'SEASON ENDED' : elapsed < 0 ? 'SEASON NOT STARTED' : elapsed >= 14 ? 'AWAITING SEASON RESULTS' : `DAY ${elapsed + 1} / 14`;
 }
 
 export function mount(container, props = {}) {
@@ -65,6 +68,7 @@ export function mount(container, props = {}) {
           <div class="home-rule"><span>01 &nbsp; BUILD</span><span>02 &nbsp; SEAL</span><span>03 &nbsp; REVEAL</span></div>
           <div class="home-battle-action"><button type="button" class="home-battle-button" id="btn-battle" aria-describedby="home-readiness" ${disabledReason() ? 'disabled' : ''}><span>${practice ? 'Play a practice duel' : 'Enter the arena'}</span>${pxIcon('battle',{size:24})}</button><p class="home-readiness" id="home-readiness" role="status">${practice ? 'No wallet needed · First to three round wins' : disabledReason() || '1 energy per duel · Network fees apply'}</p></div>
           <div class="home-energy" aria-label="Battle energy">${energyHTML}</div>
+          <button type="button" class="home-prize-link" data-home-nav="prizes">${practice ? '60 unique cards · Explore the prize rules' : `Prize allocation: ${sol(world.total_prize_pool)} SOL · View prizes →`}</button>
         </section>
         <section class="home-showcase" aria-label="Featured cards from your collection">
           <div class="home-showcase-heading"><p class="home-eyebrow">SELECTED FROM YOUR VAULT</p><span class="home-gallery-index">${featured.length} CARDS</span></div>

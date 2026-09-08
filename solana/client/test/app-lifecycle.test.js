@@ -16,7 +16,7 @@ function deferred() {
 function routerHost() {
   const mounts = [];
   const leaves = [];
-  const screens = Object.fromEntries(['home', 'main', 'shop', 'trade', 'matchmaking',
+  const screens = Object.fromEntries(['home', 'main', 'shop', 'trade', 'prizes', 'matchmaking',
     'preparation', 'interruption', 'reveal', 'loot', 'welcome', 'register', 'home-loading', 'menu']
     .map(name => [name, { mount: (_container, props) => mounts.push({ name, props }), unmount: () => leaves.push(name) }]));
   screens.main.defaults = { mode: 'vault' };
@@ -232,5 +232,18 @@ test('practice fixture boot keeps collection and score routes without a live dep
     assert.equal(state.duelId, null);
     assert.equal(state.p1RoundWins, view === 'loot' ? 3 : view === 'loss' ? 1 : 0);
     practice.dispose();
+  }
+});
+
+
+test('ended-season participants reconnect to prizes even after the deposit is consumed', async () => {
+  for (const registered of [true, false]) {
+    const h = liveHost();
+    h.onchain.checkPlayerStateExists = async () => registered;
+    h.onchain.getGameWorld = async () => ({ game_status: 2 });
+    h.onchain.getPlayerState = async () => ({ vault: [1, 10], deposit_amount: 0 });
+    await h.app.start();
+    assert.equal(h.router.current, 'prizes');
+    assert.ok(!h.mounts.some(m => m.name === 'register'));
   }
 });

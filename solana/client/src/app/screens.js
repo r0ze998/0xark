@@ -1,3 +1,4 @@
+import { mount as mountPrizes, unmount as unmountPrizes } from '../components/prize-screen.js';
 import { mount as mountHome,         unmount as unmountHome         } from '../components/home-screen.js';
 import { mount as mountShop,         unmount as unmountShop         } from '../components/shop-screen.js';
 import { mount as mountTrade,        unmount as unmountTrade        } from '../components/trade-screen.js';
@@ -9,11 +10,12 @@ import { mount as mountLoot,         unmount as unmountLoot         } from '../c
 import { mountWallet, mountRegister, unmount as unmountEntry } from '../components/entry-screens.js';
 import { mountPracticeMenu } from './practice.js';
 
-export const GAME_ROUTES = ['home', 'shop', 'trade', 'main', 'matchmaking',
+export const GAME_ROUTES = ['home', 'shop', 'trade', 'prizes', 'main', 'matchmaking',
   'preparation', 'interruption', 'reveal', 'loot'];
 
 export const SCREENS = {
   menu: { mount: mountPracticeMenu },
+  prizes: { mount: mountPrizes, unmount: unmountPrizes },
   home:          { mount: mountHome,   unmount: unmountHome   },
   shop:          { mount: mountShop,   unmount: unmountShop   },
   trade:         { mount: mountTrade,  unmount: unmountTrade  },

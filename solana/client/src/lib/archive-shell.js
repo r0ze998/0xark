@@ -1,7 +1,7 @@
 import { pxIcon } from './px-icons.js';
 
 // Game-native navigation. Preview links reload isolated fixtures deliberately.
-const NAV = [['home','home','Play'],['main','vault','Collection'],['shop','pack','Packs'],['trade','trade','Exchange']];
+const NAV = [['home','home','Play'],['main','vault','Collection'],['shop','pack','Packs'],['trade','trade','Exchange'],['prizes','star','Prizes']];
 export function mountArchiveShell(preview) {
   if (document.getElementById('archive-rail')) return;
   document.documentElement.classList.add('archive-ui');
