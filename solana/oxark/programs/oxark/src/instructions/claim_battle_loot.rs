@@ -22,7 +22,7 @@
 
 use crate::error::ErrorCode;
 use crate::instructions::init_duel::DUEL_SEED;
-use crate::state::{DuelLootRecord, DuelState, PlayerState};
+use crate::state::{GameWorld, DuelLootRecord, DuelState, PlayerState};
 use anchor_lang::prelude::*;
 
 // SysvarS1otHashes111111111111111111111111111
@@ -83,6 +83,9 @@ pub struct ClaimBattleLoot<'info> {
     pub slot_hashes: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
+    #[account(seeds = [GameWorld::SEED], bump = game_world.bump)]
+    pub game_world: Account<'info, GameWorld>,
+
 }
 
 /// Derive the loot pool from chain truth: the distinct species the loser
@@ -113,6 +116,10 @@ pub fn handle_claim_battle_loot(
     duel_id: Pubkey,
     loser_pubkey: Pubkey,
 ) -> Result<()> {
+    ctx.accounts.game_world.require_collection_open(Clock::get()?.unix_timestamp)?;
+    require!(ctx.accounts.winner_state.deposit_amount > 0, ErrorCode::NotRegistered);
+    require!(ctx.accounts.loser_state.deposit_amount > 0, ErrorCode::NotRegistered);
+
     // 1. Derive the loot pool from CHAIN TRUTH: the loser's fielded species,
     //    unioned across all rounds/slots (matching settle_duel_history's
     //    "played" definition), filtered to what the loser still owns. The winner

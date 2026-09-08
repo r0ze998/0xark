@@ -983,6 +983,7 @@ async function claimBattleLoot(duelId, loserPubkeyStr) {
     { pubkey: lootRecordPDA,  isSigner: false, isWritable: true  },
     { pubkey: SLOT_HASHES_PUBKEY, isSigner: false, isWritable: false },
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+    { pubkey: findGameWorldPDA()[0], isSigner: false, isWritable: false },
   ], data);
 
   // Read stolen_card_id from the DuelLootRecord account.
@@ -1010,7 +1011,7 @@ async function checkLegendaryV2() {
 
   return buildAndSend([
     { pubkey: playerStatePDA, isSigner: false, isWritable: true  },
-    { pubkey: gameWorldPDA,   isSigner: false, isWritable: false },
+    { pubkey: gameWorldPDA,   isSigner: false, isWritable: true  },
     { pubkey: player,         isSigner: true,  isWritable: false },
   ], data);
 }
@@ -1058,7 +1059,7 @@ async function buyPack(packType) {
   const sig = await buildAndSend([
     { pubkey: buyer,            isSigner: true,  isWritable: true  },
     { pubkey: playerStatePDA,   isSigner: false, isWritable: true  },
-    { pubkey: gameWorldPDA,     isSigner: false, isWritable: false },
+    { pubkey: gameWorldPDA,     isSigner: false, isWritable: true  },
     { pubkey: OPS_TREASURY_PK,  isSigner: false, isWritable: true  },
     { pubkey: prizePool,        isSigner: false, isWritable: true  },
     { pubkey: SLOT_HASHES_PUBKEY, isSigner: false, isWritable: false },
@@ -1146,6 +1147,7 @@ async function createListing(cardId, priceLamports) {
     { pubkey: sellerStatePDA,  isSigner: false, isWritable: true  },
     { pubkey: listingPDA,      isSigner: false, isWritable: true  },
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+    { pubkey: findGameWorldPDA()[0], isSigner: false, isWritable: false },
   ], data);
 }
 
@@ -1167,6 +1169,7 @@ async function acceptListing(cardId, sellerPubkeyStr) {
     { pubkey: listingPDA,     isSigner: false, isWritable: true  },
     { pubkey: sellerPK,       isSigner: false, isWritable: true  },
     { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+    { pubkey: findGameWorldPDA()[0], isSigner: false, isWritable: false },
   ], data);
 }
 
@@ -1184,6 +1187,7 @@ async function cancelListingOnchain(cardId) {
     { pubkey: seller,         isSigner: true,  isWritable: true  },
     { pubkey: sellerStatePDA, isSigner: false, isWritable: true  },
     { pubkey: listingPDA,     isSigner: false, isWritable: true  },
+    { pubkey: findGameWorldPDA()[0], isSigner: false, isWritable: false },
   ], data);
 }
 

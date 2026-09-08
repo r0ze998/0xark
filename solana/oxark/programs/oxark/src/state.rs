@@ -1196,6 +1196,14 @@ impl GameWorld {
         self.game_status == 0 && now < self.waitlist_close_timestamp
     }
 
+    /// Every vault mutation must share this boundary with the settlement crank.
+    pub fn require_collection_open(&self, now: i64) -> Result<()> {
+        require!(self.game_status == 1 && now >= self.start_timestamp
+            && now < self.end_timestamp && self.finalize_processed == 0,
+            crate::error::ErrorCode::CollectionFrozen);
+        Ok(())
+    }
+
     /// Proportional tier band for a vault_count: 2/3/4/5. (Band 1 = the 60-card
     /// or timeout-champion tier, handled separately.) `vault_count` is assumed > 0.
     pub fn band_of(vault_count: u64) -> u8 {

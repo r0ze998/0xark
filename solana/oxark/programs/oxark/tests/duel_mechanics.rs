@@ -736,6 +736,7 @@ fn finalize_and_end_reject_non_admin() {
         oxark::id(),
         &oxark::instruction::EndSeasonFinal {}.data(),
         oxark::accounts::EndSeasonFinal {
+            prize_pool: _pp,
             game_world: gw,
             admin: attacker.pubkey(),
         }

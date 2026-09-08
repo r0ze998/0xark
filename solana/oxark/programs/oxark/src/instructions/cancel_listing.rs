@@ -4,7 +4,7 @@
 // The TradeListing PDA is closed and rent is refunded to the seller.
 
 use crate::error::ErrorCode;
-use crate::state::{ListingCancelledEvent, PlayerState, TradeListing};
+use crate::state::{GameWorld, ListingCancelledEvent, PlayerState, TradeListing};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -29,9 +29,31 @@ pub struct CancelListing<'info> {
         constraint = listing.active             @ ErrorCode::ListingInactive,
     )]
     pub listing: Account<'info, TradeListing>,
+    #[account(seeds = [GameWorld::SEED], bump = game_world.bump)]
+    pub game_world: Account<'info, GameWorld>,
+
 }
 
 pub fn handle_cancel_listing(ctx: Context<CancelListing>, card_id: u8) -> Result<()> {
+    let world = &ctx.accounts.game_world;
+    if world.game_status == 2 {
+        require!(world.finalize_processed == world.total_participants, ErrorCode::TallyIncomplete);
+        let ps = &mut ctx.accounts.seller_state;
+        if ps.deposit_amount > 0 {
+            // A zero-entitlement player must also be able to recover escrow.
+            // Consume that zero claim BEFORE returning a card, so it cannot
+            // create a new entitlement against an already fixed denominator.
+            let count = ps.vault_count() as u64;
+            let amount = if count == 0 { 0 } else {
+                crate::instructions::claim_prize_v2::compute_tier_prize(
+                    count, world.total_prize_pool, world, world.winner_60_count == 0)
+            };
+            require!(amount == 0, ErrorCode::CollectionFrozen);
+            ps.deposit_amount = 0;
+        }
+    } else {
+        world.require_collection_open(Clock::get()?.unix_timestamp)?;
+    }
     // Return escrowed card to seller vault
     ctx.accounts.seller_state.add_card(card_id)?;
 

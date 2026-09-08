@@ -2,6 +2,7 @@ use crate::constants::ADMIN_PUBKEY;
 use crate::error::ErrorCode;
 use crate::state::GameWorld;
 use anchor_lang::prelude::*;
+use anchor_lang::system_program::{transfer, Transfer};
 
 /// Phase 15: One-time GameWorld PDA initialization.
 ///
@@ -29,6 +30,7 @@ pub struct InitGameWorld<'info> {
     /// on the first deposit. Here we only derive it to record its address + bump
     /// into the GameWorld so `claim_prize_v2` can sign payouts via invoke_signed.
     #[account(
+        mut,
         seeds = [GameWorld::PRIZE_POOL_SEED],
         bump,
     )]
@@ -48,7 +50,15 @@ pub fn handle_init_game_world(
     game_start_timestamp: i64,
     ops_treasury: Pubkey,
 ) -> Result<()> {
+    let rent = Rent::get()?.minimum_balance(0).saturating_sub(ctx.accounts.prize_pool.lamports());
+    if rent > 0 {
+        transfer(CpiContext::new(ctx.accounts.system_program.key(), Transfer {
+            from: ctx.accounts.authority.to_account_info(),
+            to: ctx.accounts.prize_pool.to_account_info(),
+        }), rent)?;
+    }
     let bump = ctx.bumps.game_world;
+    // Registration closes at game start, leaving the full 14-day active window.
     // YKK-38: the prize pool is now a program-derived vault, not an external key.
     let prize_pool = ctx.accounts.prize_pool.key();
     let prize_pool_bump = ctx.bumps.prize_pool;
@@ -56,7 +66,7 @@ pub fn handle_init_game_world(
 
     world.start_timestamp = game_start_timestamp;
     world.end_timestamp = game_start_timestamp + GameWorld::SEASON_DURATION_SECS;
-    world.waitlist_close_timestamp = game_start_timestamp + GameWorld::WAITLIST_WINDOW_SECS;
+    world.waitlist_close_timestamp = game_start_timestamp;
     world.total_participants = 0;
     world.total_prize_pool = 0;
     world.total_ops_revenue = 0;

@@ -719,6 +719,12 @@ pub mod oxark {
     // (YKK-34/38) makes it unnecessary. Module removed in YKK-60 — see git history
     // (YKK-39); it was never dispatched. (`migrate_game_world_finalize` removed too.)
 
+    /// Migrate the pre-settlement 185-byte world, preserving its participants.
+    /// An external legacy prize vault must co-sign the recorded-allocation transfer.
+    pub fn migrate_season_prizes(ctx: Context<MigrateSeasonPrizes>) -> Result<()> {
+        instructions::migrate_season_prizes::handle_migrate_season_prizes(ctx)
+    }
+
     // ── Phase 20-C: Trade Floor ────────────────────────────────────────────────
 
     /// Create a sell listing, escrowing the card from the seller's vault.
